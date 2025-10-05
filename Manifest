@@ -30,6 +30,8 @@ dir     driverkit-3           all
 dir     driverTools-1         all
 dir     drvEIDE-1             all
 dir     drvPExpert-1          all
+dir     drvNE2K-1             all
+dir     drvVMXNet-1           all
 dir     enscript-1            all
 dir     file_cmds-1           all
 dir     files-5               all
@@ -95,5 +97,3 @@ dir     wget-1                all
 dir     yacc-1                all
 dir     zlib-1                all
 dir     zsh-1                 all
-dir     VMXNet-1              all
-dir     NE2k-1                all

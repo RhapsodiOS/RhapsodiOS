@@ -1,4 +1,7 @@
-# Darwin-0.3
+# RhapsodiOS
+
+This is an open source reimplementation of Apple's Rhapsody operating system, that later became Mac OS X Server 1.0 through 1.2v3.
+It's a fork of the Darwin 0.3 open source release done by Apple in the summer of 1999 with additional contributions from the community.
 
 ## Building packages
 * Place the debs from the Release tarball in a directory e.g. /build/repo

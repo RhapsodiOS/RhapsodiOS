@@ -1,0 +1,14 @@
+-include $(LOCALMAKEFILEDIR)/Makefile.local_postamble
+include /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamble
+
+
+bundle all::
+	mv $(PRODUCT_ROOT)/English.lproj/DriverHelp \
+    	$(PRODUCT_ROOT)/English.lproj/Help
+
+after_install::
+	if [ ! -d $(DSTROOT)/usr/local/InfoFiles ]; then \
+		mkdirs $(DSTROOT)/usr/local/InfoFiles;\
+	fi
+	cp $(SRCROOT)/$(NAME).info \
+		$(DSTROOT)/usr/local/InfoFiles/$(NAME).info

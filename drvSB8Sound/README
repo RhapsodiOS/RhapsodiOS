@@ -1,0 +1,7 @@
+The SoundBlaster8 driver supports 8-bit Sound Blaster series cards. You can get documentation on programming these sound cards from Creative labs Software Development Kit (SDK) or from many public ftp sites.
+
+This driver tries not to rely on commands that are undocumented in the SDK so it should work on many Sound Blaster compatible cards.
+
+The sound library will do a lot of conversions for us while playing data. It will convert stereo to mono and 16-bit linear or 8-bit mulaw format to 8-bit linear if necessary. This support is only available from release 3.3. However there is no sample rate conversion.
+
+

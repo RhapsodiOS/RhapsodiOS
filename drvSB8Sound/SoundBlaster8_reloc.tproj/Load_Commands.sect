@@ -1,0 +1,7 @@
+#
+# Audio drivers must use these load commands to connect to
+# NeXT user-level sound API.
+# 
+SMAP		audio0 audioMessages 0
+ADVERTISE	audio0
+WIRE

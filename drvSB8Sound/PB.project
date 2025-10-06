@@ -1,0 +1,18 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, README);
+    OTHER_RESOURCES = (Default.table, DriverHelp);
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (SoundBlaster8_reloc.tproj);
+    SUBPROJECTS = ();
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    DriverHelp;
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+INSTALLDIR = /usr/Devices;
+PROJECTTYPE = Bundle;
+PROJECTNAME = SoundBlaster8;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;

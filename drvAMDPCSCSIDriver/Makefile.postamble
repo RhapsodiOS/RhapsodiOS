@@ -1,0 +1,55 @@
+-include $(LOCALMAKEFILEDIR)/Makefile.local_postamble
+include /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamble
+
+
+strip_driver:
+	@echo Stripping symbols from driver 
+	@echo `ls -l ./$(NAME).$(BUNDLE_EXTENSION)/$(NAME)_reloc` before	
+	@strip -S ./$(NAME).$(BUNDLE_EXTENSION)/$(NAME)_reloc
+	@echo `ls -l ./$(NAME).$(BUNDLE_EXTENSION)/$(NAME)_reloc` after	
+
+DRIVER_TOOLS_ROOT=$(SRCROOT)
+GENPKGFILES=sh $(DRIVER_TOOLS_ROOT)/genpkgfiles
+VEREDIT=sh $(DRIVER_TOOLS_ROOT)/veredit
+INFO_ROOT=$(DSTROOT)/usr/local/InfoFiles
+
+bundle all::autogen
+	mv $(PRODUCT_ROOT)/English.lproj/DriverHelp \
+	   $(PRODUCT_ROOT)/English.lproj/Help
+
+autogen::
+	@if [ "$(DSTROOT)" = "" ] ; then \
+		echo $(VEREDIT) $(PRODUCT_ROOT) $(PRODUCT_ROOT); \
+		$(VEREDIT) $(PRODUCT_ROOT) $(PRODUCT_ROOT) ; \
+		echo $(GENPKGFILES) $(NAME) $(SRCROOT) /tmp ; \
+		$(GENPKGFILES) $(NAME) $(SRCROOT) /tmp ; \
+	else \
+		mkdirs $(INFO_ROOT) 2>&1 >/dev/null ; \
+		echo $(VEREDIT) $(PRODUCT_ROOT) $(PRODUCT_ROOT) ; \
+		$(VEREDIT) $(PRODUCT_ROOT) $(PRODUCT_ROOT) ; \
+		echo $(GENPKGFILES) $(NAME) $(SRCROOT) $(INFO_ROOT) ; \
+		$(GENPKGFILES) $(NAME) $(SRCROOT) $(INFO_ROOT) ; \
+	fi;
+
+
+clean::
+	rm -rf *.lproj/DriverHelp/*~
+
+
+#
+# Custom install rule for NeXT build environment.
+#
+after_install::
+	@(if [ -n "$(INSTALL_EXAMPLE)" ] ; then \
+	    echo Modifying Example Makefile ; \
+	    rm -f $(EXAMPLE_DIR)/SGS_ENV ; \
+	    rm -f $(EXAMPLE_DIR)/changes ; \
+	    sed -e 's/changes//' -e 's/SGS_ENV//' $(EXAMPLE_DIR)/Makefile > $(EXAMPLE_DIR)/Makefile.new ; \
+	    rm -f $(EXAMPLE_DIR)/Makefile ; \
+	    mv $(EXAMPLE_DIR)/Makefile.new $(EXAMPLE_DIR)/Makefile ; \
+	    chmod 0444 $(EXAMPLE_DIR)/Makefile ; \
+	    sed -e 's/, changes//' -e 's/, SGS_ENV//' $(EXAMPLE_DIR)/PB.project >  $(EXAMPLE_DIR)/PB.project.new ; \
+	    rm -f $(EXAMPLE_DIR)/PB.project ; \
+	    mv $(EXAMPLE_DIR)/PB.project.new $(EXAMPLE_DIR)/PB.project ; \
+	    chmod 0444 $(EXAMPLE_DIR)/PB.project ; \
+	fi)

@@ -1,0 +1,24 @@
+DOCEXTENSIONS = ();
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    AMDInspector.nib;
+    DriverHelp;
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+INSTALLDIR = /usr/Devices;
+PROJECTTYPE = Bundle;
+PROJECTNAME = AMDPCSCSIDriver;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;
+DOCICONFILES = ();
+FILESTABLE = {
+    CLASSES = (SCSIInspector.m);
+    OTHER_RESOURCES = (Default.table, DriverHelp);
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, README.rtf, DriverInfo, genpkgfiles, veredit);
+    H_FILES = (SCSIInspector.h);
+    INTERFACES = (AMDInspector.nib);
+    SUBPROJECTS = ();
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (AMDPCSCSIDriver_reloc.tproj);
+};

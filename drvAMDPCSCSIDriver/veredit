@@ -1,0 +1,68 @@
+#!/bin/sh
+
+# veredit
+# - change all the versions in the .table files to 
+#   the one stored in the Default.table
+
+[ "$1" = "" -o "$2" = "" ] && {
+    echo "Usage: `basename $0` <input driver dir> <output driver dir>"
+    exit 1
+}
+
+INPUT_ROOT=$1
+OUTPUT_ROOT=$2
+DEFAULT_TABLE=$INPUT_ROOT/Default.table
+TMPFILE=/tmp/$$.veredit
+
+trap 'rm -f $TMPFILE; exit 1' 1 2 15
+
+[ -d "$INPUT_ROOT" ] || {
+    echo "$0: driver input root directory '$INPUT_ROOT' does not exist"
+    exit 1
+}
+
+[ -d "$OUTPUT_ROOT" ] || {
+    echo "$0: driver output root directory '$OUTPUT_ROOT' does not exist"
+    exit 1
+}
+
+[ -f "$DEFAULT_TABLE" ] || {
+    echo "$0: driver default table '$DEFAULT_TABLE' does not exist"
+    exit 1
+}
+
+
+DRIVER_VERSION=`sed -n 's/.*"Version"[       ]*=[    ]*"\([0-9].[0-9][0-9]\)".*/\1/p' $DEFAULT_TABLE`
+
+NEXTSTEP_VERSION=`echo $DRIVER_VERSION | sed 's/.$//'`
+
+if [ "$DRIVER_VERSION" = "" ]
+then
+    echo "$0: '$DEFAULT_TABLE' contains no version string"
+    exit 1
+fi
+
+
+# update versions in table files
+for i in $INPUT_ROOT/*.table
+do
+    THIS_VERSION=`sed -n 's/.*"Version"[       ]*=[    ]*"\([0-9].[0-9][0-9]\)".*/\1/p' $i`
+    if [ ! "$THIS_VERSION" = "$DRIVER_VERSION" ]
+    then
+	if fgrep '"Version"' $i 2>&1 >/dev/null
+        then # Version string already there, edit it
+	    sed "s/.*\"Version\".*/\"Version\" = \"$DRIVER_VERSION\";/" $i > $TMPFILE
+        else # 
+	    cat $i > $TMPFILE
+	    echo "\"Version\" = \"$DRIVER_VERSION\";" >> $TMPFILE
+        fi
+	BASENAME=`basename $i`
+	chmod 644 $OUTPUT_ROOT/$BASENAME
+        mv $TMPFILE $OUTPUT_ROOT/$BASENAME
+	chmod 444 $OUTPUT_ROOT/$BASENAME
+    fi
+done
+
+rm -f $TMPFILE
+
+exit 0

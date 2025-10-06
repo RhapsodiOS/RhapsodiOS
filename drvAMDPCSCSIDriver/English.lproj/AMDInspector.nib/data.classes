@@ -1,0 +1,45 @@
+IODeviceInspector = {
+    ACTIONS = {
+	channelOrInterruptPicked:;
+	rangeDidChange:;
+	showInfo:;
+    };
+    OUTLETS = {
+	portsBox;
+	statusTitle;
+	memoryController;
+	dmaMatrix;
+	memoryBox;
+	dmaBox;
+	portsController;
+	infoPanel;
+	accessoryHolder;
+	infoButton;
+	infoText;
+	irqBox;
+	irqMatrix;
+	inspectionView;
+	origWindow;
+    };
+    SUPERCLASS = Object;
+};
+FirstResponder = {
+    ACTIONS = {
+    };
+    SUPERCLASS = Object;
+};
+SCSIInspector = {
+    ACTIONS = {
+	sync:;
+	fast:;
+	cmdQueue:;
+    };
+    OUTLETS = {
+	syncButton;
+	cmdQueueButton;
+	boundingBox;
+	optionsBox;
+	fastButton;
+    };
+    SUPERCLASS = IODeviceInspector;
+};

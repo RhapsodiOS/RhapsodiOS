@@ -1,0 +1,24 @@
+"Title" = "AMD PC SCSI Driver";
+"Family" = "SCSI";
+"Version" = "4.00";
+"Instance" = "0";
+"Class Names" = "AMD_SCSI";
+"Location" = "";
+"DMA Channels" = "";
+"Boot Driver";
+"Valid DMA Channels" = "";
+"Bus Type" = "PCI";
+"Share IRQ Levels" = "Yes";
+"Auto Detect IDs" = "0x20201022";
+"Synchronous" = "NO";
+"Fast SCSI" = "NO";
+/*
+ * Must be used cautiously....
+ */
+"Cmd Queueing" = "NO";
+/*
+ * Accessible by Configure's Expert mode.
+ */
+"Extended Timing" = "NO";
+"SCSI Clock Rate" = "40";
+

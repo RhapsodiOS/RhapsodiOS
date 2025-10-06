@@ -1,0 +1,96 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh9000
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+{\b\fs36{\NeXTHelpMarker1 \markername Sending;}
+¬ }\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 AMD 53C974/79C974 PCI SCSI Adapter \
+
+{\b0\fs12{\NeXTGraphic39 216461_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+{\b\fs28{\NeXTGraphic42 366446_SCSI.tiff \width960 \height860
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 SCSI Devices
+\b0\fs24\up0 \
+\
+This driver automatically detects the target adapter and automatically configures itself.  \
+\
+PCI Bus\
+\
+
+\b\fc0\cf0 Supported Hardware: \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc0\cf0 AMD 53C974 On-Board (Embedded) PCI SCSI Adapter\
+AMD 79C974 On-Board (Embedded) PCI SCSI Adapter\
+
+\fs16\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Configuring the 
+\fc1\cf1 AMD 53C974/79C974
+\fc0\cf0  Adapter Device Driver 
+\b0  \
+
+\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b Note:
+\b0   There is no installation involved with AMD On-Board SCSI Adapters, but it may be necessary to run the system's Setup program program to configure the hardware.  \
+	
+\b\fc1\cf1 Note: 
+\b0\fc0\cf0 See Configure's Help for general information on running the Configure Application.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1. 	Click the SCSI icon at the top of Configure's Summary window.  
+\b \
+
+\b0 2. 	If you're planning to use the AMD SCSI Adapter adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "AMD 53C974/79C974 PCI SCSI Adapter"  from the list, and click Add. \
+	
+\b Note: 
+\b0  If the AMD driver does not show up in the list of  detected devices, this indicates a problem with the system setup. You need to run the system's setup program at boot time to ensure that the system BIOS knows about the board. \
+5.	Using the buttons in the box labelled "SCSI Options", you may enable any or all of the following three SCSI features: Synchronous, Fast SCSI, and Command Queueing. \
+	
+\b Note: 
+\b0  Consult the manual(s) for the SCSI drive(s) connected to the AMD PC SCSI Adapter for information on these three features. \
+	
+\b Note: 
+\b0  It is not recommended to enable the Fast SCSI option if any external SCSI drives are connected to the AMD PC SCSI Adapter. \
+	
+\b Note: 
+\b0  Even if all devices connected to the AMD PC SCSI Adapter do not support a given feature, you can still enable the feature. The AMD PC SCSI driver will disable any or all of these features for a given SCSI device if it detects that the device does not support the feature. However, use caution; some devices have an incomplete SCSI implementation which prevents them from informing the driver that they do not support a given feature. One such device is the NeXT CDROM drive; 
+\b do not enable
+\b0  Command queueing if a NeXT CDROM driver is connected to the AMD PC SCSI Adapter.\
+6.	Click Done, and then click Save. \
+7.	Choose Quit from the Configure menu.\
+
+\fs16\fc1\cf1 \
+
+{\fs12\fi0\li360{\NeXTGraphic2371 486444_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 	\
+
+\b\fs24 See also\
+
+\b0\fs16 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24 ·	See NeXTanswer 1824 for general information on installing and configuring device drivers. \
+
+}

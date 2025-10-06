@@ -1,0 +1,414 @@
+{\rtf0\ansi{\fonttbl\f1\fmodern Courier;\f0\fmodern Ohlfs;}
+\paperw13040
+\paperh8220
+\margl20
+\margr120
+{\colortbl;\red0\green0\blue0;}
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\f1\b\i0\ulnone\fs28\fc1\cf1 		AMD 53C974/79C974 SCSI Driver Design Notes\
+
+\f0\b0\fs24\fc0\cf0 		\
+    \
+
+\pard\tx720\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\f1\b\fs28\fc0\cf0 1.	General\
+
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc0\cf0 \
+
+\f0\b0\fs24\li720\fc1\cf1 This driver is primarily intended to be used with the AMD 79C974 PCnet-SCSI combo chip, which combines an Ethernet Controller, a SCSI Host Adapter, and a PCI Bus Interface module on one chip. This driver only controls the SCSI logic on the 79C974; a separate driver is used for the Ethernet logic. The driver also should work with the AMD 53C974, a subset of the 79C974. (This has not been tested as of 25 Jan, 1995.) The 53C974 is, in turn, a superset of the old NCR 53C90A chip, which was the SCSI controller used on all NeXT ("Black") hardware.\
+\
+This driver implements the following features:\
+\
+· Disconnect/Reselect\
+· 10 MB/s "Fast SCSI" Synchronous Transfers\
+· SCSI-2 Command Queueing \
+· Auto Request Sense\
+ \
+Synchronous Mode, Command Queueing, and Fast SCSI can be disabled and enabled for the driver as a whole via the driver instance's Instance table. There is a Custom Device Inspector used by the Configure App which allows the user to specify these parameters. Per-target disable flags for Command Queueing and Synchronous Mode are also kept for both of the features, so that if a target rejects an attempt to use the mode (typically via a "Message Reject" message), no further attempts will be made to use the feature with that target. Synchronous Transfer offset and period are also negotiated and kept on a per-target basis, per the SCSI-2 specification. \
+\
+\
+
+\pard\tx720\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\f1\b\fs28\fc0\cf0 2.	Architecture\
+
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc0\cf0 \
+
+\f0\b0\fs24\li720\fc1\cf1 Unlike most other SCSI Host Adapter drivers for the Intel Platform, this driver is involved in a lot of low-level SCSI events, including dealing with phase changes, setting ATN at appropriate times, doing synchronous transfer negotiation, etc. The driver has to maintain quite a bit of state to keep track of what is occurring on the bus and typically responds to 3 or 4 interrupts for every SCSI command.\
+\
+The driver is implemented as a subclass of 
+\f1\b\fs28 IOSCSIController
+\f0\b0\fs24  called 
+\f1\b\fs28 AMD_SCSI
+\f0\b0\fs24 . 
+\f1\b\fs28 IOSCSIController
+\f0\b0\fs24  is a subclass of 
+\f1\b\fs28 IODirectDevice
+\f0\b0\fs24 . The 
+\f1\b\fs28 IODirectDevice
+\f0\b0\fs24  categories 
+\f1\b\fs28 IOEISADirectDevice
+\f0\b0\fs24  and 
+\f1\b\fs28 IOPCIDirectDevice
+\f0\b0\fs24  are also used by 
+\f1\b\fs28 AMD_SCSI
+\f0\b0\fs24 .\
+\
+\
+
+\f1\b\fs28\fc0\cf0 Control Flow and the I/O thread\
+
+\f0\b0\fs24\fc1\cf1 \
+The control flow in the driver is the same as for all other NextStep SCSI drivers - all access to the hardware is done by one thread, the I/O thread. This eliminates the need for locks around accesses to the hardware and other critical resources. All communication with the I/O thread by exported methods is performed by passing a command struct, called a 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24 , to the I/O thread via the instance variable 
+\f1\b\fs28 commandQ
+\f0\b0\fs24 . 
+\f1\b\fs28 CommandQ
+\f0\b0\fs24  is protected by 
+\f1\b\fs28 commandLock
+\f0\b0\fs24 . After enqueueing a 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  on 
+\f1\b\fs28 commandQ
+\f0\b0\fs24 , a message with a 
+\f1\b\fs28 msg_id
+\f0\b0\fs24  of 
+\f1\b\fs28 IO_COMMAND_MSG
+\f0\b0\fs24  is sent to the driver's interrupt port. The I/O thread is the only code which does a 
+\f1\b\fs28 msg_receive()
+\f0\b0\fs24  on the interrupt port. Subsequent to initialization, 
+\f1\b\fs28 commandQ
+\f0\b0\fs24  and 
+\f1\b\fs28 commandLock
+\f0\b0\fs24  are the only data shared by exported methods and the I/O thread.\
+\
+I/O complete notification is performed via 
+\f1\b\fs28 commandBuf.cmdLock
+\f0\b0\fs24 , which is an 
+\f1\b\fs28 NXConditionLock
+\f0\b0\fs24 . Exported methods wait on this lock after passing a 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  to the I/O thread. \
+\
+Subsequent to initialization, the only methods in the driver which do 
+\f1\b\i\fs28 not
+\f0\b0\i0\fs24  run solely as part of the I/O thread are:\
+\
+
+\f1\b\fs28 	-executeRequest:buffer:client:\
+	-resetSCSIBus\
+	-resetStats\
+	-numQueueSamples\
+	-sumQueueLengths\
+	-maxQueueLength\
+	-executeCmdBuf\
+
+\f0\b0\fs24  \
+These are all found in 
+\f1\b\fs28 AMD_SCSI.m
+\f0\b0\fs24 . (Note: unless otherwise indicated, all files referred to in this document reside in the AMD53C974SCSIDriver_reloc.tproj directory of the driver project.) The first two methods are exported methods used for normal SCSI I/O and are called by indirect SCSI devices like SCSIDisk and SCSITape. The next four are associated with gathering statistics and are called from IOSCSIController. The last one, 
+\f1\b\fs28 -executeCmdBuf
+\f0\b0\fs24 , is the common means by which 
+\f1\b\fs28 -executeRequest:buffer:client: 
+\f0\b0\fs24 and
+\f1\b\fs28  -resetSCSIBus 
+\f0\b0\fs24 pass 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24 s to the I/O thread and wait for completion.\
+\
+\
+
+\f1\b\fs28\fc0\cf0 Processing of commands by the I/O thread\
+\
+
+\f0\b0\fs24\fc1\cf1 The I/O thread's job is basically to dequeue commands from 
+\f1\b\fs28 commandQ
+\f0\b0\fs24 , start up SCSI transactions on the 79C974, and deal with interrupts. All of the 
+\f1\b\fs28 msg_receive()
+\f0\b0\fs24 s which fetch command requests and interrupt events from the driver's interrupt port are done by 
+\f1\b\fs28 IODirectDevice
+\f0\b0\fs24 's I/O Thread. If a command message is received, 
+\f1\b\fs28 IODirectDevice
+\f0\b0\fs24  calls 
+\f1\b\fs28 -commandRequestOccurred
+\f0\b0\fs24 . If an interrupt message is received, 
+\f1\b\fs28 -interruptOccurred
+\f0\b0\fs24  is called. Both of these methods are implemented by the 
+\f1\b\fs28 AMD_SCSI
+\f0\b0\fs24  class. \
+\
+When an exported method passes a 
+\f1\b\fs28 commandBuf 
+\f0\b0\fs24 to the I/O thread, it is quite possible that the I/O thread can not immediately process the command due to the fact that there is already a command active on the SCSI bus at that time. If this occurs, the incoming command is enqueued on 
+\f1\b\fs28 pendingQ
+\f0\b0\fs24 . (Note that the decision as to whether a command can be processed, and the act of enqueueing a command on 
+\f1\b\fs28 pendingQ
+\f0\b0\fs24 , are solely the responsibility of the I/O thread. There are no races or deadlock conditions here.) Whenever the I/O thread detects a "Bus Free" condition, it will look at 
+\f1\b\fs28 pendingQ
+\f0\b0\fs24 , and if the queue is non-empty, the first 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  in the queue is dequeued and used to start up a new SCSI transaction. \
+\
+The 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  associated with the currently active SCSI transaction is always kept in 
+\f1\b\fs28 activeCmd
+\f0\b0\fs24 . If 
+\f1\b\fs28 activeCmd
+\f0\b0\fs24  is NULL, the SCSI bus is either free, or there is a reselection in progress for which we do not have complete target/LUN/queue tag information. \
+\
+When an active SCSI target disconnects (as opposed to doing a "Command Complete"), the I/O thread places the associated 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  on 
+\f1\b\fs28 disconnectQ
+\f0\b0\fs24 . Whenever a reselection occurs, 
+\f1\b\fs28 disconnectQ
+\f0\b0\fs24  is scanned for a commandBuf which matches the reselecting target, LUN, and (possibly) queue tag. If a match is found, the 
+\f1\b\fs28 commandBuf
+\f0\b0\fs24  is dequeued from 
+\f1\b\fs28 disconnectQ
+\f0\b0\fs24  and becomes 
+\f1\b\fs28 activeCmd
+\f0\b0\fs24 .\
+\
+The driver contains logic to prevent sending a command to a target/LUN nexus which currently has an active, but disconnected, command - unless command queueing is enabled for the driver, and is not disabled for the given target. This allows higher layers in the system (e.g., SCSIDisk) to enqueue multiple requests for one target and LUN without worrying about the nexus's current state. This logic uses the array 
+\f1\b\fs28 activeArray[][]
+\f0\b0\fs24 , which is an array of counters which keep track of how many I/Os are active on a per-LUN basis. When command queueing is disabled (either globally, or on a per-target basis), an 
+\f1\b\fs28 activeArray
+\f0\b0\fs24  counter has a maximum value of 1. If command queueing is enabled, an 
+\f1\b\fs28 activeArray
+\f0\b0\fs24  counter has a maximum value of the target's queue length (if known). See the 
+\f1\b\fs28 -cmdBufOk:
+\f0\b0\fs24  method, in AMD_SCSI.m, for the implementation of the decision as to whether a target/lun nexus is ready to accept a new command.\
+\
+\
+
+\pard\tx720\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\f1\b\fs28\fc0\cf0 3.	Organization\
+
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc0\cf0 \
+
+\f0\b0\fs24\li720\fc1\cf1 The driver was organized to facilitate porting to other platforms using chips similar to the 79C974, and also to other "dumb" host adapter chips on the x86 platform. With some exceptions, all of the logic which is independent of either the chip or the host bus is contained in 
+\f1\b\fs28 AMD_SCSI.m
+\f0\b0\fs24 . All of the logic which deals directly with the 79C974 is contained in 
+\f1\b\fs28 AMD_Chip.m 
+\f0\b0\fs24 and
+\f1\b\fs28  AMD_ChipPrivate.m.
+\f0\b0\fs24  All of the logic which is specific to the x86 architecture and the PCI bus is contained in 
+\f1\b\fs28 AMD_x86.m
+\f0\b0\fs24 . The API to 
+\f1\b\fs28 AMD_Chip.m 
+\f0\b0\fs24 which is public to the other parts of the driver consists of six methods:\
+\
+· 
+\f1\b\fs28 -probeChip
+\f0\b0\fs24 , performs one-time-only initialization.\
+· 
+\f1\b\fs28 -hwReset
+\f0\b0\fs24 , reusable chip reset/init.\
+· 
+\f1\b\fs28 -scsiReset
+\f0\b0\fs24 , performs SCSI reset.\
+· 
+\f1\b\fs28 -hwStart:
+\f0\b0\fs24 , starts up a new SCSI transaction.\
+· 
+\f1\b\fs28 -hwInterrupt
+\f0\b0\fs24 , deals with an interrupt event.\
+· 
+\f1\b\fs28 -logRegs
+\f0\b0\fs24 , a debugging function to dump registers to the console.\
+
+\f1\b\fs28\fc0\cf0 \
+
+\f0\b0\fs24\fc1\cf1 When porting this driver to a new chip, these six methods are pretty much all that need to be re-implemented (in addition to any private, implementation-specific methods needed for the new chip). \
+\
+The design goal of separating out the chip-specific, architecture-specific, and hardware-independent functionality into separate modules was not religiously adhered to. Sometimes, for example in the routines to handle DMA in 
+\f1\b\fs28 AMD_x86.m
+\f0\b0\fs24 , there is a mixture of chip- and bus-specific functions in one file (or even one method). The tradeoff between design clarity and portability went towards design clarity in these cases.\
+\
+\
+
+\pard\tx720\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\f1\b\fs28\fc0\cf0 4.	File contents\
+
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc0\cf0 \
+
+\f0\b0\fs24\li720\fc1\cf1 The following files all exist in the AMD53C974SCSIDriver_reloc.tproj directory. (AMD53C974SCSIDriver_reloc is the driver's loadable binary.)\
+\
+\
+AMD_SCSI.h\
+\
+
+\fi-20\li1160 Exported interface to the driver. Typically used by SCSI indirect drivers like SCSIDisk and SCSITape.\
+\
+
+\fi0\li720 AMD_Private.h\
+
+\li0 \
+
+\fi-20\li1160 Private hardware-independent methods.\
+\
+
+\fi0\li720 AMD_Types.h\
+
+\li0 \
+
+\fi-20\li1160 Private structs and #defines used by the entire driver. \
+\
+
+\fi0\li720 AMD_SCSI.m\
+
+\li0 \
+
+\fi-20\li1160 Implementation of AMD_SCSI.h and AMD_Private.h methods.\
+\
+
+\fi0\li720 AMD_x86.[hm]\
+
+\li0 \
+
+\fi-20\li1160 Methods specific to Intel platform and PCI bus.\
+\
+
+\fi0\li720 AMD_Chip.[hm]\
+
+\li0 \
+
+\fi-20\li1160 Chip-specific methods available to the rest of the driver.\
+\
+
+\fi0\li720 AMD_ChipPrivate.m\
+
+\li0 \
+
+\fi-20\li1160 Chip-specific methods available only to AMD_Chip.m.\
+\
+
+\fi0\li720 AMD_Regs.h\
+
+\li0 \
+
+\fi-20\li1160 Definitions of AMD 79C974 registers.\
+\
+
+\fi0\li720 bringup.h\
+
+\li0 \
+
+\fi-20\li1160 Debugging and bringup flags.\
+\
+
+\fi0\li720 AMD_ddm.h\
+
+\li0 \
+
+\fi-20\li1160 #defines used for DDM calls.\
+\
+
+\fi0\li720 AMD.ddm\
+
+\li0 \
+
+\fi-20\li1160 Config file used by DDMViewer.\
+\
+
+\fi0\li720 ioPorts.[ch]\
+
+\li0 \
+
+\fi-20\li1160 A DEBUG version of <driverkit/i386/ioPorts.h>.\
+\
+
+\fi0\li720 pciConf.h\
+
+\li0 \
+
+\fi-20\li1160 #defines for PCI configuration registers.\
+\
+
+\fi0\li720 configKeys.h\
+
+\li0 \
+
+\fi-20\li1160 String definition for keys in driver's config table.\
+\
+
+\fi0\li720 Makefile.driver_preamble \
+Makefile.preamble\
+Makefile.postamble\
+
+\li0 \
+
+\fi-20\li1160 Standard Makefile additions, common to all drivers.\
+\
+
+\fi0\li720 stateMachines.rtf\
+
+\li0 \
+
+\fi-20\li1160 Document describing the state machines used by the driver. \
+\
+\
+
+\f1\b\fs28\fi0\li720 Other Files
+\f0\b0\fs24 \
+\
+Here is a brief description of the other files residing in the driver project's root directory. \
+\
+\
+SCSIInspector.[mh]\
+\
+
+\fi-20\li1160 Custom Device Inspector for use in the Configure App.\
+\
+
+\fi0\li720 Default.table \
+\
+
+\fi-20\li1160 Template used by Configure App for creating Instance tables.\
+\
+
+\fi0\li720 English.lproj/AMDInspector.nib\
+\
+
+\fi-20\li1160 Localizable nib file for Custom Device Inspector. \
+
+\fi0\li720 \
+English.lproj/Localizable.strings\
+\
+
+\fi-20\li1160 Localizable strings file used by Configure App.\
+
+\fi0\li720 \
+English.lproj/DriverHelp/*\
+   \
+   Support for on-line help in the Configure App. \
+   \
+Makefile \
+PB.project \
+\
+
+\fi-20\li1160 Created by Project Builder.\
+
+\fi0\li720 \
+SGS_ENV\
+\
+
+\fi-20\li1160 For NeXT internal use.\
+\
+
+\fi0\li720 Makefile.postamble\
+Makefile.preamble\
+\
+
+\fi-20\li1160 Standard Makefile additions, common to all drivers.\
+
+\fi0\li720 \
+changes\
+\
+
+\fi-20\li1160 Revision history of this project.\
+\
+
+\fi0\li720 README.rtf\
+\
+
+\fi-20\li1160 This file.\
+
+}

@@ -1,0 +1,24 @@
+DOCICONFILES = ();
+LOCALIZABLE_FILES = {
+    DriverHelp;
+    Localizable.strings;
+};
+LANGUAGE = English;
+PROJECTVERSION = 1.1;
+
+INSTALLDIR = /usr/Devices;
+PROJECTTYPE = Bundle;
+PROJECTNAME = SMC16;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;
+FILESTABLE = {
+    CLASSES = ();
+    OTHER_RESOURCES = (Default.table, DriverHelp);
+    BUNDLES = ();
+    OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, Makefile.private, SMC16.info);
+    INTERFACES = ();
+    H_FILES = ();
+    STRINGS_FILES = (Localizable.strings);
+    SUBPROJECTS = ();
+    TOOLS = (SMC16_reloc.tproj);
+};

@@ -1,0 +1,21 @@
+# The info file for version 4.00 of the SMC16 Ethernet Adapter device driver
+
+# These fields will be displayed in the Info View
+Title		SMC EtherCard Plus Elite16 Device Driver
+Version		OPENSTEP for Mach Release 4.0, Driver Version 4.00 
+Description	This package contains version 4.00 of controller drivers for SMC EtherCard Plus Elite16 Ethernet Adapter. Install it only on Intel-based computers running OPENSTEP for Mach Release 4.0. After installing this device driver, use Configure.app to add and configure it to work with OPENSTEP for Mach.
+
+
+# These fields are used for the installed and floppy locations
+DefaultLocation		/
+Relocatable		NO
+Diskname		SMC16 #%d
+
+# Other fields <stuff below is always the same unless RC says different> 
+Application		NO
+LibrarySubdirectory	Standard
+InstallOnly 		YES
+DisableStop		YES
+LongFilenames		YES
+
+

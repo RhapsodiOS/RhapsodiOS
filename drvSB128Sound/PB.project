@@ -1,0 +1,20 @@
+BUNDLE_EXTENSION = config;
+DOCEXTENSIONS = ();
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+INSTALLDIR = "";
+PROJECTTYPE = Bundle;
+PROJECTNAME = SoundBlaster128PCI;
+GENERATEMAIN = YES;
+LANGUAGE = English;
+DOCICONFILES = ();
+FILESTABLE = {
+    OTHER_RESOURCES = (Default.table);
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    H_FILES = ();
+    SUBPROJECTS = ();
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (SoundBlaster128PCI_reloc.tproj);
+};

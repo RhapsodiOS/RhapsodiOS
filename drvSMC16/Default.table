@@ -1,0 +1,12 @@
+"Title" = "SMC16";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Version" = "4.00";
+"Driver Name" = "SMC16";
+"IRQ Levels" = "10";
+"DMA Channels" = "";
+"Sixteen Bit Mode" = "YES";
+"Memory Maps" = "0x0D0000-0xD3FFF";
+"I/O Ports" = "0x280-0x29F";
+"Valid IRQ Levels" = "3 4 5 7 10 11 15";

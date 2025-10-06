@@ -1,0 +1,12 @@
+LANGUAGE = English;
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, Makefile.driver_preamble, Load_Commands.sect);
+    H_FILES = (SMC16.h, SMC16Hdw.h, SMC16IOInline.h, SMC16Private.h, wd83C584.h, wd83C690.h);
+    CLASSES = (SMC16.m);
+};
+LOCALIZABLE_FILES = {
+};
+PROJECTVERSION = 1.1;
+PROJECTTYPE = Tool;
+PROJECTNAME = SMC16_reloc;
+GENERATEMAIN = YES;

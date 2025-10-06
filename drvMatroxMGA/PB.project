@@ -1,0 +1,37 @@
+INSTALLDIR = /usr/Devices;
+COMPILEROPTIONS = "";
+GENERATEMAIN = YES;
+DOCICONFILES = ();
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    OTHER_RESOURCES = (MatroxMGA1064SG_PCI2MB.modes, MatroxMGA1064SG_PCI2MB.table, MatroxMGA1064SG_PCI4MB.modes, MatroxMGA1064SG_PCI4MB.table, MatroxMGA1064SG_PCI8MB.modes, MatroxMGA1064SG_PCI8MB.table, MatroxMGA2164W_PCI4MB.modes, MatroxMGA2164W_PCI4MB.table, MatroxMGA2164W_PCI8MB.modes, MatroxMGA2164W_PCI8MB.table, PCI4MB.modes, PCI4MB.table, PCI8MB.modes, PCI8MB.table, Display.modes, Default.table, MatroxMGAG100_4MB.table, MatroxMGAG100_8MB.table, MatroxMGAG200_8MB.table, MatroxMGAG400_8MB.table, MatroxMGAG200_8MB.modes, MatroxMGAG400_8MB.modes, MatroxMGAG100_4MB.modes, MatroxMGAG100_8MB.modes, MatroxMGAG200_16MB.modes, MatroxMGAG200_16MB.table, MatroxMGAG400_16MB.modes, MatroxMGAG400_16MB.table, MatroxMGA2164W_PCI16MB.modes, MatroxMGA2164W_PCI16MB.table, Help, MatroxMGAG450_16MB.modes, MatroxMGAG450_16MB.table);
+    LIBRARYSEARCH = ();
+    STRINGS_FILES = (Localizable.strings, MatroxMGA1064SG_PCI4MB.strings, MatroxMGA1064SG_PCI8MB.strings, MatroxMGA2164W_PCI4MB.strings, MatroxMGA2164W_PCI8MB.strings, PCI4MB.strings, PCI8MB.strings, MatroxMGAG100_4MB.strings, MatroxMGAG100_8MB.strings, MatroxMGAG200_8MB.strings, MatroxMGAG400_8MB.strings, MatroxMGAG200_16MB.strings, MatroxMGAG400_16MB.strings, MatroxMGA2164W_PCI16MB.strings, MatroxMGA1064SG_PCI2MB.strings);
+    TOOLS = (MatroxMGA_reloc.tproj);
+    SUBPROJECTS = ();
+};
+BUNDLE_EXTENSION = config;
+DOCEXTENSIONS = ();
+PROJECTVERSION = 1.1;
+LOCALIZABLE_FILES = {
+    MatroxMGAG400_8MB.strings;
+    MatroxMGAG200_16MB.strings;
+    MatroxMGAG400_16MB.strings;
+    Help;
+    Localizable.strings;
+    MatroxMGA2164W_PCI8MB.strings;
+    MatroxMGA1064SG_PCI8MB.strings;
+    MatroxMGA2164W_PCI4MB.strings;
+    MatroxMGA1064SG_PCI2MB.strings;
+    PCI4MB.strings;
+    PCI8MB.strings;
+    MatroxMGAG100_4MB.strings;
+    MatroxMGAG100_8MB.strings;
+    MatroxMGAG200_8MB.strings;
+    MatroxMGA1064SG_PCI4MB.strings;
+    MatroxMGA2164W_PCI16MB.strings;
+};
+LINKEROPTIONS = "";
+PROJECTTYPE = Bundle;
+PROJECTNAME = MatroxMGA;
+LANGUAGE = English;

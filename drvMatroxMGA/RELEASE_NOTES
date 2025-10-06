@@ -1,0 +1,56 @@
+Release Notes
+=============
+
+This list of changes is a good place to learn about new features that were
+recently added, bugs that were fixed, and other changes made to MatroxMGA
+during development.
+
+
+Version number     Description
+
+-  v1.1            Added this resolution:
+
+                     1440 x 900 @ 60Hz
+
+-  v1.0            Added these resolutions:
+
+                     1600 x 1200 @ 75Hz
+                     1600 x 1200 @ 85Hz
+                     1792 x 1344 @ 75Hz
+                     1800 x 1440 @ 64Hz
+                     1800 x 1440 @ 70Hz
+                     1856 x 1392 @ 75Hz
+                     1920 x 1440 @ 60Hz
+                     1920 x 1440 @ 65Hz
+                     1920 x 1440 @ 66Hz
+                     1920 x 1440 @ 70Hz
+                     1920 x 1440 @ 72Hz
+                     1920 x 1440 @ 75Hz
+                     2048 x 1536 @ 60Hz
+                     2048 x 1536 @ 65Hz
+                     2048 x 1536 @ 68Hz
+                     2304 x 1778 @ 60Hz
+
+-  v0.9            Added the following resolutions:
+
+                      640 x 480 @ 60Hz
+                      640 x 480 @ 72Hz
+                      640 x 480 @ 75Hz
+                      640 x 480 @ 100Hz
+                     1600 x 1000 @ 90Hz
+                     1600 x 1024 @ 90Hz
+                     1920 x 1200 @ 64Hz
+                     1920 x 1200 @ 67Hz
+                     1920 x 1200 @ 70Hz
+                     1920 x 1200 @ 75Hz
+                     2048 x 1280 @ 60Hz
+
+                   Added two special keywords:
+
+                   "MGA Memory Size" = "size in MB"
+                     Tell the driver how much memory has your card.
+
+                   "MGA Sync On Green" = "YES/NO"
+                     Switch the output signal to Sync On Green mode.
+
+-  v0.8            First public release

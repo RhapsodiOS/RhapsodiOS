@@ -1,0 +1,34 @@
+"Height:512 Width:800 Refresh:62Hz ColorSpace:BW:8";
+"Height:512 Width:800 Refresh:62Hz ColorSpace:RGB:256/8";
+"Height:512 Width:800 Refresh:62Hz ColorSpace:RGB:555/16";
+"Height:512 Width:800 Refresh:62Hz ColorSpace:RGB:888/32";
+
+"Height:1024 Width:1600 Refresh:60Hz ColorSpace:BW:8";
+"Height:1024 Width:1600 Refresh:60Hz ColorSpace:RGB:256/8";
+"Height:1024 Width:1600 Refresh:60Hz ColorSpace:RGB:555/16";
+"Height:1024 Width:1600 Refresh:60Hz ColorSpace:RGB:888/32";
+
+"Height:1440 Width:1920 Refresh:65Hz ColorSpace:BW:8";
+"Height:1440 Width:1920 Refresh:65Hz ColorSpace:RGB:256/8";
+"Height:1440 Width:1920 Refresh:65Hz ColorSpace:RGB:555/16";
+"Height:1440 Width:1920 Refresh:65Hz ColorSpace:RGB:888/32";
+
+"Height:1536 Width:2048 Refresh:68Hz ColorSpace:BW:8";
+"Height:1536 Width:2048 Refresh:68Hz ColorSpace:RGB:256/8";
+"Height:1536 Width:2048 Refresh:68Hz ColorSpace:RGB:555/16";
+"Height:1536 Width:2048 Refresh:68Hz ColorSpace:RGB:888/32";
+
+"Height:1778 Width:2304 Refresh:60Hz ColorSpace:BW:8";
+"Height:1778 Width:2304 Refresh:60Hz ColorSpace:RGB:256/8";
+"Height:1778 Width:2304 Refresh:60Hz ColorSpace:RGB:555/16";
+"Height:1778 Width:2304 Refresh:60Hz ColorSpace:RGB:555/32";
+
+"Height:1344 Width:1792 Refresh:75Hz ColorSpace:BW:8";
+"Height:1344 Width:1792 Refresh:75Hz ColorSpace:RGB:256/8";
+"Height:1344 Width:1792 Refresh:75Hz ColorSpace:RGB:555/16";
+"Height:1344 Width:1792 Refresh:75Hz ColorSpace:RGB:555/32";
+
+"Height:1392 Width:1856 Refresh:75Hz ColorSpace:BW:8";
+"Height:1392 Width:1856 Refresh:75Hz ColorSpace:RGB:256/8";
+"Height:1392 Width:1856 Refresh:75Hz ColorSpace:RGB:555/16";
+"Height:1392 Width:1856 Refresh:75Hz ColorSpace:RGB:555/32";

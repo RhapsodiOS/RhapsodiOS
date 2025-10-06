@@ -1,0 +1,56 @@
+MatroxMGA Driver v1.1
+*********************
+
+MatroxMGA is a video driver for NeXTSTEP 3.3, OPENSTEP and Rhapsody operating systems.
+The following Matrox cards are supported:
+
+     Mystique
+   Mystique 220 
+    Millennium
+   Millennium II
+       G100
+       G200
+       G400
+       G450
+
+
+License
+=======
+
+MatroxMGA Driver is Copyright 1999-2007 Mirko Viviani
+
+See LICENSE file.
+
+
+How to install
+==============
+
+Start Configure.app, select video driver and click the Add button.
+In the driver panel click the Install Driver button and select MatroxMGA.config
+
+The driver supports two additional keywords that can be set in the Expert panel of Configure.app:
+
+"MGA Memory Size" = "size in MB"  Tell the driver how much memory has your card.
+"MGA Sync On Green" = "YES/NO"    Switch the output signal to Sync On Green mode.
+
+
+Known bugs
+==========
+
+The 8 bit color video mode is pretty unusable due to improper use of the gamma table.
+
+
+Special Thanks
+==============
+
+* Juergen Moellenhoff
+* Manfred Becker
+* Yoshitsugu Matsubara
+* Mark. F. Vlems
+* Henry Koplien
+
+
+   Mirko Viviani
+
+
+EMail: mirko.viviani@gmail.com

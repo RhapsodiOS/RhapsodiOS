@@ -1,0 +1,5 @@
+{
+    "Driver Name" = "S3 Generic Display Driver";
+    "Class Names" = ("S3Generic");
+    "Module Dependencies" = ();
+}

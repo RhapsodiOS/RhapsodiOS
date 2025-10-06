@@ -1,0 +1,17 @@
+{
+    "S3Generic" = {
+	/* Default display mode configuration for S3 Generic driver */
+	"Default Mode" = "1024 x 768 x 8 @ 60 Hz";
+
+	/* Available modes will be auto-detected based on chipset and memory */
+	"Supported Chipsets" = (
+	    "S3 86C805",
+	    "S3 86C928",
+	    "S3 Trio32",
+	    "S3 Trio64",
+	    "S3 Virge",
+	    "S3 VirgeDX",
+	    "S3 VirgeGX"
+	);
+    };
+}

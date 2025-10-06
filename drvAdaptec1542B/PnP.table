@@ -1,0 +1,14 @@
+"Title" = "Adaptec 1542CP";
+"Family" = "SCSI";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "AHAController";
+"DMA Channels" = "7";
+"IRQ Levels" = "10";
+"I/O Ports" = "0x334-0x337";
+"Boot Driver";
+"Bus Type" = "PnP";
+"Auto Detect IDs" = "0x04901542";
+/* "Valid I/O Ports" = "0x330-0x333 0x334-0x337 0x234-0x237 0x230-0x233 0x134-0x137 0x130-0x133"; */
+"Valid DMA Channels" = "5 6 7";
+"Valid IRQ Levels" = "10 11 12 14 15";

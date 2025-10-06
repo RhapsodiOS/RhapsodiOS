@@ -1,0 +1,11 @@
+"Title" = "Adaptec 154x";
+"Family" = "SCSI";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "AHAController";
+"DMA Channels" = "5";
+"IRQ Levels" = "11";
+"I/O Ports" = "0x330-0x333";
+"Boot Driver";
+"Valid DMA Channels" = "0 5 6 7";
+"Valid IRQ Levels" = "9 10 11 12 14 15";

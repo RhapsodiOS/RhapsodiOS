@@ -1,0 +1,7 @@
+#
+# used by geninfo: DRIVER_NAME is the names which appears on the
+# installer window
+#
+DRIVER_NAME="Adaptec1542B"
+DRIVER_VERSION_330="3.35"
+DEFAULT_DRIVER_VERSION="4.01"

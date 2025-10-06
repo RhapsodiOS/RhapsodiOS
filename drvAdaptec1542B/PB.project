@@ -1,0 +1,23 @@
+BUNDLE_EXTENSION = config;
+DOCEXTENSIONS = ();
+LOCALIZABLE_FILES = {
+    DriverHelp;
+    PnP.strings;
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+INSTALLDIR = /usr/Devices;
+PROJECTTYPE = Bundle;
+PROJECTNAME = Adaptec1542B;
+GENERATEMAIN = YES;
+LANGUAGE = English;
+DOCICONFILES = ();
+FILESTABLE = {
+    OTHER_LIBS = (Indexing_s);
+    OTHER_RESOURCES = (Default.table, PnP.table, DriverHelp);
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, README.rtf, DriverInfo);
+    H_FILES = ();
+    SUBPROJECTS = ();
+    STRINGS_FILES = (Localizable.strings, PnP.strings);
+    TOOLS = (Adaptec1542B_reloc.tproj);
+};

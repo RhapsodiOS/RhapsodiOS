@@ -1,0 +1,14 @@
+INSTALL_EXAMPLE = YES
+
+LOCALMAKEFILEDIR = /LocalDeveloper/Makefiles/driverkit
+LOCALMAKEFILE = Makefile.local_preamble
+-include $(LOCALMAKEFILEDIR)/$(LOCALMAKEFILE)
+
+BUNDLE_EXTENSION = config
+
+
+#
+# force clean at lower levels...
+#
+CLEAN_ALL_SUBPROJECTS=YES
+

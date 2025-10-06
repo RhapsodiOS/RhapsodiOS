@@ -1,0 +1,202 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw12420
+\paperh9000
+\margl0
+\margr4600
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+{\b\fs36{\NeXTHelpMarker1 \markername Sending;}
+¬ }\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 Adaptec 154x Series SCSI Adapter \
+
+{\b0\fs12{\NeXTGraphic37 63975_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+{\b\fs28{\NeXTGraphic40 143977_SCSI.tiff \width960 \height860
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 SCSI Devices
+\b0\fs24\up0 \
+
+\fs16 \
+
+\fs24 ISA, ISA Plug and Play (PnP), and EISA Bus\
+
+\fs16 \
+\
+
+\b\fs24\fc0\cf0 Supported Hardware: \
+
+\pard\tx0\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc0\cf0   Adaptec AHA-154xB SCSI Adapter\
+  Adaptec AHA-154xC SCSI Adapter\
+  Adaptec AHA-154xCF SCSI Adapter\
+  Adaptec AHA-174x SCSI Adapter (EISA) (in standard 154x \
+	mode only)\
+  Adaptec AHA-1542CP PnP SCSI Adapter\
+\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\li360\fc1\cf1 This device driver supports the Adaptec 154x series ISA SCSI Adapters and the Adaptec 1542CP ISA Plug and Play adapter
+\fc0\cf0 .  This device driver also supports the Adaptec 174x EISA series SCSI Adapter if you set the 174x Adapter to standard 154x emulation mode. \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\b\fs24 Note:
+\b0   Because of the differences in bus architecture of the adapters, you must install the Adaptec 154x ISA Adapter
+\fc0\cf0  after you run Configure.app, but you must install the Adaptec 174x Adapter before you run Configure.app.  \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b\fs24\li360\fc0\cf0 Configuring and Installing an 
+\fc1\cf1 Adaptec 1542CP ISA 
+\fc0\cf0 Plug and Play SCSI Adapter\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-380\li740\fc0\cf0 1. 	Log in as root, start Configure (in 
+\b /NextAdmin
+\b0 ), and click the SCSI icon at the top of Configure's Summary window.  
+\b \
+
+\b0 2. 	If you're planning to use the Adaptec 1542CP adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "Adaptec 1542CP PnP SCSI Adapter" from the list, and click Add. \
+5.	Select DMA, IRQ, and Port settings that do not conflict with other devices in the system.  If you are using any other device that uses the same DMA channel or IRQ, you must resolve those conflicts before you install the device driver.  Inspect the DMA and IRQ values to be sure no other devices contend for those you select for the SCSI subsystem. \
+6.	Click Done, and then click Save. \
+7.	Choose Quit from the Configure menu.\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b\fs24\li360\fc0\cf0 Configuring and Installing an 
+\fc1\cf1 Adaptec 154x series
+\fc0\cf0  ISA SCSI Adapter\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b\fs24\fi-360\li360\fc0\cf0 	Note:
+\b0   Before you install an 
+\fc1\cf1 Adaptec 154x series
+\fc0\cf0  ISA SCSI Adapter, you must first run the Configure application to configure the driver.  \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\b\fs24\fi-380\li740\fc0\cf0 	Configuring the 
+\fc1\cf1 Adaptec 154x series
+\fc0\cf0  ISA SCSI Adapter\
+
+\b0 1. 	Log in as root, start Configure (in 
+\b /NextAdmin
+\b0 ), and click the SCSI icon at the top of Configure's Summary window.  
+\b \
+
+\b0 2. 	If you're planning to use the Adaptec 154x ISA adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "Adaptec 154x Series SCSI Adapter" from the list, and click Add. \
+5.	Select the DMA, IRQ, and Port settings that match the settings you will make on the adapter.  Be sure to write down the settings for DMA channel, IRQ, and Port Address obtained from the Configure Application before you install the adapter itself. \
+
+\b 	Note:
+\b0   If you are using any other device that uses the same DMA channel or IRQ, you must resolve those conflicts before you install the device driver.  Inspect the DMA and IRQ values to be sure no other devices contend for those you select for the SCSI subsystem. \
+6.	Click Done, and then click Save. \
+7.	Choose Quit from the Configure menu.\
+\
+
+\b 	Installing the 
+\fc1\cf1 Adaptec 154x series
+\fc0\cf0  ISA SCSI Adapter\
+
+\b0 1.	Refer to the User's
+\fc1\cf1  Manual
+\fc0\cf0  that comes with the adapter.  This manual contains information that you should read before installing the adapter.  \
+
+\pard\tx740\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-360\li720\fc0\cf0 2.  For the Adaptec 154x series ISA SCSI Adapter, configure the jumpers for I/O Address, DRQ (DMA Channel), and IRQ to match the values selected in the 
+\b Configure.app
+\b0 , as described above
+\fc1\cf1 .\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 3.   Be aware of the necessity of proper SCSI termination.  Refer to the User's Man
+\fc1\cf1 ual
+\fc0\cf0  that comes with the adapter and configure the adapter accordingly. \
+4.	Install the Adaptec 154x series ISA SCSI Adapter in an ISA slot.\
+5.	Restart your computer.  It will use the new adapter as you configured it. 
+\pard\tx640\tx1280\tx1920\tx2560\tx3200\tx3840\tx4480\tx5120\tx5760\tx6400\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\fi-380\li740\fc1\cf1 \
+
+\fi0\li360 \
+
+\b\fs24\fc0\cf0 Installing and Configuring an 
+\fc1\cf1 Adaptec 174x series
+\fc0\cf0  EISA SCSI Adapter\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b Note:
+\b0   Be sure to set the Adaptec 174x EISA SCSI adapter to 154x emulation mode as explained in the User's Manual.  \
+
+\fs16 	
+\b\fs24\fc1\cf1 Note
+\b0\fc0\cf0 : Before configuring the driver, you must first install the Adaptec 174x EISA Adapter and run the ECU utility. \
+
+\fs16 	
+\b \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-380\li740\fc0\cf0 	Installing the 
+\fc1\cf1 Adaptec 174x series
+\fc0\cf0  EISA SCSI Adapter\
+
+\b0 1.	Refer to the User's
+\fc1\cf1  Manual
+\fc0\cf0  that comes with the adapter.  This manual contains information that you should read before installing the adapter.  \
+2.	Install the Adaptec EISA SCSI Adapter in an EISA slot.\
+3. 	Run the system's ECU program to add the board to the system's BIOS configuration. \
+4.   Be aware of the necessity of proper SCSI termination.  Refer to the User's Manual and configure the adapter accordingly using your system's ECU program.\
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs16\fi-360\li360\fc0\cf0 	
+\b \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-380\li740\fc1\cf1 	
+\fc0\cf0 Configuring the 
+\fc1\cf1 Adaptec 174x series
+\fc0\cf0  EISA SCSI Adapter\
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fi-360\li360\fc0\cf0 	
+\b \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b0\fs24\fi-380\li740\fc0\cf0 1. 	After you have installed the adapter, log in as root, start Configure (in 
+\b /NextAdmin
+\b0 ), and click the SCSI icon at the top of Configure's Summary window.  
+\b \
+
+\b0 2. 	If you're planning to use the Adaptec 174x EISA adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "Adaptec 154x Series SCSI Adapter" from the list, and click Add. \
+5.	Click Done, and then click Save. \
+6.	Choose Quit from the Configure menu.\
+
+\fs16\fc1\cf1 \
+
+{\fs12\fi0\li360{\NeXTGraphic5350 486444_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 	\
+
+\b\fs24 See also\
+
+\b0\fs16 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24 ·	See NeXTanswer 1824 for general information on installing and configuring device drivers. \
+
+\fs16 \
+
+\fs24 ·	See NeXTanswer 1758 for an overview of this Adaptec 154x device driver. \
+
+}

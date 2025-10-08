@@ -1,0 +1,10 @@
+"Title" = "Intel AC'97 Audio";
+"Family" = "Audio";
+"Location" = "";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x24158086 0x24258086 0x24458086 0x24858086 0x24C58086 0x24D58086 0x266E8086 0x25A68086 0x27DE8086";
+"Instance" = "0";
+"Driver Name" = "IntelAC97Driver";
+"Share IRQ Levels" = "Yes";
+"Version" = "1.0";
+"Driver Version" = "PROGRAM:IntelAC97Driver PROJECT:IntelAC97 DEVELOPER:RhapsodiOS BUILT:2025";

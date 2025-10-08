@@ -1,0 +1,2 @@
+kern_loader_server_com_section __KLD __command  Load_Commands.sect -segprot __KLD r r
+kern_loader_server_com_section __KLD __symbol   /dev/null           -segprot __KLD r r

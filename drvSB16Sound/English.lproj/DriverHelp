@@ -1,0 +1,49 @@
+Sound Blaster 16 Audio Driver Help
+====================================
+
+This driver supports Sound Blaster 16, AWE32, and AWE64 sound cards.
+
+Configuration Parameters:
+-------------------------
+
+I/O Port Address:
+  Valid values: 0x220, 0x240, 0x260, 0x280
+  Default: 0x220
+  Most cards are configured for 0x220.
+
+Interrupt Request (IRQ):
+  Valid values: 2, 5, 7, 10
+  Default: 5
+  Common values are 5 or 7.
+
+8-bit DMA Channel:
+  Valid values: 0, 1, 3
+  Default: 1
+  Used for 8-bit audio transfers.
+
+16-bit DMA Channel:
+  Valid values: 5, 6, 7
+  Default: 5
+  Used for 16-bit audio transfers.
+  Must be different from 8-bit DMA channel.
+
+Troubleshooting:
+----------------
+
+No sound output:
+- Verify the I/O port, IRQ, and DMA settings match your card's configuration
+- Check that the card is properly seated in the ISA slot
+- Ensure no resource conflicts with other devices
+- Try different IRQ or DMA channel settings
+
+Distorted audio:
+- Check that DMA channels are correct and not shared
+- Verify sample rate is supported (5000-44100 Hz)
+- Ensure adequate system resources
+
+Driver not loading:
+- Verify base address is correct
+- Check that card is Sound Blaster 16 or compatible
+- Ensure DSP version is 4.0 or higher
+
+For more information, see the README file.

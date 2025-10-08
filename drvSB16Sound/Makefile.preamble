@@ -1,0 +1,16 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile for configuring the standard application makefiles
+#  associated with ProjectBuilder.
+#
+#  Use this template to set attributes for a project.  These attributes are
+#  combined with the attributes defined by the standard makefiles to
+#  determine how a project is built.  In this way the project manager can
+#  customize attributes while allowing the standard values to be determined
+#  automatically by the system.
+#
+###############################################################################
+
+OTHER_CFLAGS = -DDRIVER_PRIVATE

@@ -1,0 +1,16 @@
+{
+    FILESTABLE = {
+	TOOLS = (SoundBlaster16_reloc.tproj);
+	GLOBAL_RESOURCES = (Default.table);
+	LOCAL_RESOURCES = (
+	    English.lproj/DriverHelp,
+	    English.lproj/Localizable.strings
+	);
+	OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, README, SoundBlaster16.info);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    PROJECTNAME = SoundBlaster16;
+    PROJECTTYPE = Bundle;
+    PROJECTVERSION = 1.0;
+}

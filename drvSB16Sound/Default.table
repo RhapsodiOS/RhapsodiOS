@@ -1,0 +1,12 @@
+{
+    "Unit 0" = {
+	"Interrupt Request" = "5";
+	"I/O Ports" = "0x220-0x22f";
+	"DMA Channels" = "1";
+	"DMA Channel Set" = "5";
+	"Device Description" = "Sound Blaster 16 Audio Adapter";
+	"Instance" = "0";
+	"Class Names" = "IOAudio";
+	"Location" = "";
+    };
+}

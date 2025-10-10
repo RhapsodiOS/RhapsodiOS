@@ -252,11 +252,14 @@ is486_or_higher(void)
  * 	- 17 September 92
  */
 typedef struct _cpuid {
-    unsigned int	step	:4,
-    			model	:4,
-			family	:4,
-			type	:2,
-				:18;
+    unsigned int	step		:4,	/* Stepping ID (bits 0-3) */
+    			model		:4,	/* Model (bits 4-7) */
+			family		:4,	/* Family (bits 8-11) */
+			type		:2,	/* Processor Type (bits 12-13) */
+			reserved1	:2,	/* Reserved (bits 14-15) */
+			ext_model	:4,	/* Extended Model (bits 16-19) */
+			ext_family	:8,	/* Extended Family (bits 20-27) */
+			reserved2	:4;	/* Reserved (bits 28-31) */
 } cpuid_t;
 
 static
@@ -266,10 +269,13 @@ cpuid(void)
     cpuid_t	value;
     
     asm volatile(
-	"movl $1,%%eax; cpuid"
+	"pushl %%ebx\n\t"		/* Save ebx (required for PIC) */
+	"movl $1,%%eax\n\t"
+	"cpuid\n\t"
+	"popl %%ebx"			/* Restore ebx */
 	    : "=a" (value)
 	    :
-	    : "ebx", "ecx", "edx");
+	    : "ecx", "edx");
 	    
     return (value);
 }

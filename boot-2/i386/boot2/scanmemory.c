@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 #import <mach/boolean.h>
@@ -36,11 +36,11 @@ void
 enable_cache(void)
 {
     cr0_t	cr0;
-    
+
     asm volatile(
     	"mov %%cr0,%0"
 	    : "=r" (cr0));
-    
+
     cr0.cd = cr0.nw = 0;
 
     asm volatile(
@@ -72,7 +72,7 @@ flush_cache(void)
  *	stack's	location in that segment.  The best way to acomplish this
  *	is to position the stack at the high end of a segment, and to make
  *	the segment size large enough to prevent it from overlapping the
- *	test area.  The stack needs to be large enough to contain the low 
+ *	test area.  The stack needs to be large enough to contain the low
  *	memory save area as well as the code for the scan function.
  */
 #define KB(x)		(1024*(x))
@@ -97,7 +97,7 @@ scan_memory(
 {
     struct test_datum		zero_pat = { 0, 0 };
     vm_offset_t			memory;
-    
+
     /*
      * Make sure that the cache(s) are flushed
      * and enabled.
@@ -109,22 +109,22 @@ scan_memory(
      * segment boundary.  This is where we will
      * begin testing.
      */
-    end_of_memory = (end_of_memory + (SCAN_INCR - 1) & ~(SCAN_INCR - 1));
+     end_of_memory = ((end_of_memory + (SCAN_INCR - 1)) & ~(SCAN_INCR - 1));
 
     /*
      * Zero out the test area of each segent
      * which is located in extended memory.
      */
     memory = KB(1024);
-    
+
     while (memory < end_of_memory) {
 	struct test_datum	*memory_ptr;
-	
+
 	(vm_offset_t)memory_ptr = memory;
-	
+
 	while ((vm_offset_t)memory_ptr < memory + SCAN_LEN)
 	    *memory_ptr++ = zero_pat;
-	    
+
 	memory += SCAN_INCR;
     }
 
@@ -157,11 +157,11 @@ scan_memory(
 					    SCAN_INCR,
 					    SCAN_LEN))
 		break;
-	    
+
 	    end_of_memory += SCAN_INCR;
 	}
     }
-    
+
     display_kbytes(end_of_memory);
 
     return (end_of_memory);
@@ -177,7 +177,7 @@ display_kbytes(
     int			places = 1;
 
     quant = address / 1024;
-    
+
     while (mag > 0) {
     	done *= 10;
     	dig = (quant / mag) - done;
@@ -188,9 +188,9 @@ display_kbytes(
 	}
 	mag /= 10;
     }
-    
+
     putc('K');
-    
+
     while (places-- > 0)
     	putc('\b');
 }
@@ -212,7 +212,7 @@ display_kbytes(
  *	SCAN_LEN		Size of per segment test area,
  *				located at the front of the segment.
  *	SCAN_LIM		Address next segment after highest
- *				to test. 
+ *				to test.
  */
 static
 boolean_t
@@ -257,7 +257,7 @@ scan_segment(
 	    while ((vm_offset_t)memory_ptr < memory + SCAN_LEN)
 		*copy_ptr++ = *memory_ptr++;
 	}
-	
+
 	memory += SCAN_INCR; copy += SCAN_LEN;
     }
 
@@ -288,7 +288,7 @@ scan_segment(
 
     while (memory < KB(640)) {
 	struct test_datum	*memory_ptr, *copy_ptr;
-	
+
 	if (memory <= (end_of_cnvmem - SCAN_LEN)) {
 	    (vm_offset_t)memory_ptr = memory;
 	    (vm_offset_t)copy_ptr = copy;
@@ -297,7 +297,7 @@ scan_segment(
 		if (	memory_ptr->word0 != copy_ptr->word0	||
 			memory_ptr->word1 != copy_ptr->word1	)
 		    break;
-		    
+
 		memory_ptr++; copy_ptr++;
 	    }
 
@@ -316,21 +316,21 @@ scan_segment(
     if (memory < KB(640)) {
 	copy = (vm_offset_t)copy_area;
 	memory = 0;
-	
+
 	while (memory < KB(640)) {
 	    unsigned int	*memory_ptr, *copy_ptr;
-	
+
 	    if (memory <= (end_of_cnvmem - SCAN_LEN)) {
 		(vm_offset_t)memory_ptr = memory;
 		(vm_offset_t)copy_ptr = copy;
-		
+
 		while ((vm_offset_t)memory_ptr < memory + SCAN_LEN)
 		    *memory_ptr++ = *copy_ptr++;
 	    }
 
 	    memory += SCAN_INCR; copy += SCAN_LEN;
 	}
-	
+
 	return (FALSE);
     }
 
@@ -341,12 +341,12 @@ scan_segment(
      * zeros.
      */
     memory = KB(1024);
-    
+
     while (memory < start_of_segment) {
 	struct test_datum	*memory_ptr;
-	
+
 	(vm_offset_t)memory_ptr = memory;
-	
+
 	while ((vm_offset_t)memory_ptr < memory + SCAN_LEN) {
 	    if (	memory_ptr->word0 != zero_pat.word0	||
 			memory_ptr->word1 != zero_pat.word1	)
@@ -354,10 +354,10 @@ scan_segment(
 
 	    memory_ptr++;
 	}
-	
+
 	if ((vm_offset_t)memory_ptr < memory + SCAN_LEN)
 	    break;
-	    
+
 	memory += SCAN_INCR;
     }
 
@@ -370,7 +370,7 @@ scan_segment(
      * written out.
      */
     (vm_offset_t)test_ptr = start_of_segment;
-    
+
     while ((vm_offset_t)test_ptr < start_of_segment + SCAN_LEN) {
 	if (	test_ptr->word0 != test_pat.word0	||
 		test_ptr->word1 != test_pat.word1	)
@@ -378,7 +378,7 @@ scan_segment(
 
 	test_ptr++;
     }
-    
+
     if ((vm_offset_t)test_ptr < start_of_segment + SCAN_LEN)
 	return (FALSE);
 
@@ -390,6 +390,6 @@ scan_segment(
 
     while ((vm_offset_t)test_ptr < start_of_segment + SCAN_LEN)
 	*test_ptr++ = zero_pat;
-	
+
     return (TRUE);
 }

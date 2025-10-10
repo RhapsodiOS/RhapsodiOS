@@ -228,20 +228,27 @@ static inline
 boolean_t
 is486_or_higher(void)
 {
-    unsigned int	efl;
+    unsigned int	efl, efl_saved;
     
-    efl = eflags();
+    /* Save original EFLAGS */
+    efl_saved = eflags();
 
+    /* Try to set AC flag (386 can't set it, 486+ can) */
+    efl = efl_saved;
     efl |= EFL_AC;
     set_eflags(efl);
     
-    if ((efl & EFL_AC) == 0)
-    	return (FALSE);
+    /* Read back and check if AC flag stuck */
+    efl = eflags();
+    
+    if ((efl & EFL_AC) == 0) {
+    	return (FALSE);  /* 386 - AC flag didn't stick */
+    }
 	
-    efl &= ~EFL_AC;
-    set_eflags(efl);
+    /* Restore original EFLAGS */
+    set_eflags(efl_saved);
 
-    return (TRUE);
+    return (TRUE);  /* 486 or higher */
 }
 
 /*
@@ -286,7 +293,7 @@ static
 cpuid_t
 get_cpuid(void)
 {
-    unsigned int	efl;
+    unsigned int	efl, efl_saved;
     cpuid_t		pid = { 0 };
 
     if (subtype != 0) {
@@ -300,20 +307,24 @@ get_cpuid(void)
 	return pid;
     }
     
-    efl = eflags();
-
+    /* Save original EFLAGS */
+    efl_saved = eflags();
+    
+    /* Try to set ID flag */
+    efl = efl_saved;
     efl |= EFL_ID;
     set_eflags(efl);
     
+    /* Read back and check if ID flag stuck */
     efl = eflags();
     
     if ((efl & EFL_ID) == 0)
-    	return pid;
+    	return pid;  /* CPUID not supported */
 	
     pid = cpuid();
 	
-    efl &= ~EFL_ID;
-    set_eflags(efl);
+    /* Restore original EFLAGS */
+    set_eflags(efl_saved);
 
     return pid;
 }

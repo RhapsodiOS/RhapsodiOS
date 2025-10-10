@@ -88,8 +88,8 @@ int			num_regions;
 vm_size_t		mem_size;
 
 /* parameters passed from bootstrap loader */
-int cnvmem = 0;		/* must be in .data section */
-int extmem = 0;
+unsigned int cnvmem = 0;	/* must be in .data section */
+unsigned int extmem = 0;	/* extended memory in KB */
 
 #import <sys/msgbuf.h>
 

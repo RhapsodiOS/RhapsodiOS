@@ -420,9 +420,9 @@ boot(int bootdev)
 
 	/* Check for insufficient memory */
 	if (kbp->extmem < MIN_EXT_MEM_KB) {
-	    printf("\nThis computer has only %d MB of memory (RAM).\n",
+	    printf("\nThis computer has only %u MB of memory (RAM).\n",
 		(kbp->extmem + 1024) / 1024);
-	    printf("Rhapsody requires at least %d MB of memory,\n",
+	    printf("Rhapsody requires at least %u MB of memory,\n",
 		(MIN_EXT_MEM_KB + 1024) / 1024);
 	    printf("so it can't run on this computer.\n");
 	    turnOffFloppy();

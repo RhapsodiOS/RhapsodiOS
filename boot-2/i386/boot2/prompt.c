@@ -29,4 +29,4 @@
 #import "vers.h"
 
 char bootPrompt[] = "\n\nRhapsody boot v" I386BOOT_VERSION "\n"
-		    "%dK conventional / %dK total memory\n\n";
+		    "%uK conventional / %uK total memory\n\n";

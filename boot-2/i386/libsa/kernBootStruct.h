@@ -141,8 +141,8 @@ typedef struct {
     int	    magicCookie;		// KERNBOOTMAGIC if struct valid
     int	    numIDEs;			// how many IDE drives
     int	    rootdev;			// booters guess as to rootdev
-    int	    convmem;			// conventional memory
-    int	    extmem;			// extended memory
+    unsigned int convmem;		// conventional memory (in KB)
+    unsigned int extmem;		// extended memory (in KB)
     char    boot_file[128];		// name of the kernel we booted
     int	    first_addr0;		// first address for kern convmem
     int	    diskInfo[4];		// bios info for bios dev 80-83

@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -71,7 +71,7 @@ unsigned int time18(void)
 	} s;
 	unsigned int i;
     } time;
-    
+
     bb.intno = 0x1a;
     bb.eax.r.h = 0x00;
     bios(&bb);
@@ -94,6 +94,113 @@ int memsize(int which)
     return bb.eax.rr;
 }
 
+#define E820_RAM        1
+#define E820_RESERVED   2
+#define E820_ACPI       3
+#define E820_NVS        4
+#define E820_UNUSABLE   5
+
+/*
+ * Get memory map using the INT 0x15, E820h call
+ * Returns total usable memory in KB, or 0 on failure
+ * This is the modern method that supports >4GB RAM
+ */
+unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries)
+{
+    unsigned long continuation = 0;
+    unsigned long total_mem = 0;
+    int count = 0;
+    e820_entry_t entry;
+
+    if (!map || !numEntries || maxEntries < 1) {
+        return 0;
+    }
+
+    *numEntries = 0;
+
+    do {
+        /* Set up for E820 call */
+        bb.intno = 0x15;
+        bb.eax.rx = 0xE820;
+        bb.edx.rx = 0x534D4150;  /* 'SMAP' signature */
+        bb.ebx.rx = continuation;
+        bb.ecx.rx = 24;  /* Size of buffer */
+        bb.edi.rr = ((unsigned)&entry & 0xffff);
+
+        bios(&bb);
+
+        /* Check for errors */
+        if (bb.flags.cf || bb.eax.rx != 0x534D4150) {
+            break;
+        }
+
+        /* Copy entry to map if there's space */
+        if (count < maxEntries) {
+            map[count] = entry;
+
+            /* Only count usable RAM */
+            if (entry.type == E820_RAM && entry.length > 0) {
+                /* Add to total, capping at 4GB to prevent overflow */
+                unsigned long long end = entry.base + entry.length;
+                if (end > 0x100000000ULL) {
+                    end = 0x100000000ULL;
+                }
+                if (entry.base < 0x100000000ULL) {
+                    total_mem += (unsigned long)((end - entry.base) / 1024);
+                }
+            }
+            count++;
+        }
+
+        continuation = bb.ebx.rx;
+
+    } while (continuation != 0 && count < maxEntries);
+
+    *numEntries = count;
+    return (count > 0) ? total_mem : 0;
+}
+
+/*
+ * Get extended memory size using the INT 0x15, E801h call
+ * Returns memory in KB, or 0 on failure
+ * This works on systems with >64MB up to 4GB
+ */
+unsigned long getExtendedMemoryE801(void)
+{
+    unsigned long mem_1m_16m;    /* Memory between 1MB-16MB in KB */
+    unsigned long mem_16m_4g;    /* Memory between 16MB-4GB in 64KB blocks */
+    unsigned long total;
+
+    bb.intno = 0x15;
+    bb.eax.r.h = 0xe8;
+    bb.eax.r.l = 0x01;
+    bios(&bb);
+
+    /* Check for error */
+    if (bb.flags.cf) {
+        return 0;
+    }
+
+    /* Get results - try AX/BX first, fall back to CX/DX */
+    if (bb.eax.rr != 0 || bb.ebx.rr != 0) {
+        mem_1m_16m = bb.eax.rr;      /* 1KB blocks */
+        mem_16m_4g = bb.ebx.rr;      /* 64KB blocks */
+    } else if (bb.ecx.rr != 0 || bb.edx.rr != 0) {
+        mem_1m_16m = bb.ecx.rr;      /* 1KB blocks */
+        mem_16m_4g = bb.edx.rr;      /* 64KB blocks */
+    } else {
+        return 0;
+    }
+
+    /* Calculate total:
+     * mem_1m_16m is already in KB (max 15MB = 15360 KB)
+     * mem_16m_4g is in 64KB blocks, convert to KB
+     */
+    total = mem_1m_16m + (mem_16m_4g * 64);
+
+    return total;
+}
+
 void video_mode(int mode)
 {
     bb.intno = 0x10;
@@ -109,7 +216,7 @@ int biosread(int dev, int cyl, int head, int sec, int num)
 
     bb.intno = 0x13;
     sec += 1;			/* sector numbers start at 1 */
-    
+
     for (i=0;;) {
 	bb.ecx.r.h = cyl;
 	bb.ecx.r.l = ((cyl & 0x300) >> 2) | (sec & 0x3F);
@@ -118,7 +225,7 @@ int biosread(int dev, int cyl, int head, int sec, int num)
 	bb.eax.r.l = num;
 	bb.ebx.rr = ptov(BIOS_ADDR);
 	bb.es = ((unsigned long)&i & 0xffff0000) >> 4;
-    
+
 	bb.eax.r.h = 0x02;
 	bios(&bb);
 
@@ -290,7 +397,7 @@ int
 APMPresent(void)
 {
     KERNBOOTSTRUCT *kbp = kernBootStruct;
-    
+
     bb.intno = APM_INTNO;
     bb.eax.r.h = APM_INTCODE;
     bb.eax.r.l = 0x00;
@@ -329,7 +436,7 @@ APMConnect32(void)
 		kbp->apm_config.cs_length = bb.esi.rr;
 		kbp->apm_config.ds_length = bb.edi.rr;
 	} else {
-		kbp->apm_config.cs_length = 
+		kbp->apm_config.cs_length =
 		    kbp->apm_config.ds_length = 64 * 1024;
 	}
 	kbp->apm_config.connected = 1;
@@ -350,10 +457,10 @@ eisa_present(
     if (!checked) {
 	if (strncmp((char *)0xfffd9, "EISA", 4) == 0)
 	    isEISA = TRUE;
-	    
+
 	checked = TRUE;
     }
-    
+
     return (isEISA);
 }
 
@@ -374,8 +481,8 @@ ReadEISASlotInfo(EISA_slot_info_t *ep, int slot)
 	unsigned char data[4];
     } u;
     static char hex[0x10] = "0123456789ABCDEF";
-	
-    
+
+
     bb.intno = 0x15;
     bb.eax.r.h = 0xd8;
     bb.eax.r.l = 0x00;

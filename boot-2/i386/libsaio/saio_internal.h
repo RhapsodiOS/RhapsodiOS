@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 #define SAIO_INTERNAL 1
@@ -39,6 +39,17 @@ extern unsigned int  get_diskinfo(int dev);
 extern int APMPresent(void);
 extern int APMConnect32(void);
 extern int  memsize(int i);
+
+/* Memory map entry structure for the modern INT 0x15, E820h BIOS call*/
+typedef struct {
+    unsigned long long base;
+    unsigned long long length;
+    unsigned long type;
+    unsigned long acpi_extended;
+} __attribute__((packed)) e820_entry_t;
+extern unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries);
+extern unsigned long getExtendedMemoryE801(void);
+
 extern void  video_mode(int mode);
 extern void  setCursorPosition(int x, int y);
 extern volatile void stop(char *message);
@@ -149,5 +160,3 @@ extern int reallyPrint(const char *fmt, ...);
 extern char *newString(char *oldString);
 extern int currentdev(void);
 extern int switchdev(int dev);
-
-

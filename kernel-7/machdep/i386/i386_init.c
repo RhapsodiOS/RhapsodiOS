@@ -352,29 +352,69 @@ machine_configure(void)
     (void) strcpy(machine, "i386");
 
     pid = get_cpuid();
-    switch (pid.family) {
     
-    case 0:
-	if (cpu_config.fpu_type == FPU_HDW) {
-	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
-	    (void) strcpy(cpu_model, "486");
+    /* Calculate effective family and model (handle extended fields) */
+    {
+	int effective_family = pid.family;
+	int effective_model = pid.model;
+	
+	/* Extended family is used when base family is 15 */
+	if (pid.family == 15) {
+	    effective_family = pid.family + pid.ext_family;
 	}
-	else {
-	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
-	    (void) strcpy(cpu_model, "486SX");
+	
+	/* Extended model is used when base family is 6 or 15 */
+	if (pid.family == 6 || pid.family == 15) {
+	    effective_model = (pid.ext_model << 4) | pid.model;
 	}
-	break;
+	
+	switch (pid.family) {
+	
+	case 0:
+	    /* Family 0 means CPUID failed or not supported */
+	    /* Default to 486 for safety */
+	    if (cpu_config.fpu_type == FPU_HDW) {
+		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
+		(void) strcpy(cpu_model, "486 (CPUID failed)");
+	    }
+	    else {
+		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
+		(void) strcpy(cpu_model, "486SX (CPUID failed)");
+	    }
+	    break;
 
-    case 5:
-	machine_slot[0].cpu_subtype = CPU_SUBTYPE_586;
-	(void) strcpy(cpu_model, "586");
-	break;
+	case 4:
+	    /* 486 family */
+	    if (cpu_config.fpu_type == FPU_HDW) {
+		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
+		(void) strcpy(cpu_model, "486");
+	    }
+	    else {
+		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
+		(void) strcpy(cpu_model, "486SX");
+	    }
+	    break;
 
-    default:
-	machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(pid.family, pid.model);
-	(void) sprintf(cpu_model, "i86 family %d, model %d",
-		       pid.family, pid.model);
-	break;
+	case 5:
+	    /* Pentium family */
+	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_586;
+	    (void) strcpy(cpu_model, "586");
+	    break;
+
+	case 6:
+	    /* Pentium Pro/II/III family */
+	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(effective_family, effective_model);
+	    (void) sprintf(cpu_model, "i86 family %d, model %d",
+			   effective_family, effective_model);
+	    break;
+
+	default:
+	    /* Everything else including extended families */
+	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(effective_family, effective_model);
+	    (void) sprintf(cpu_model, "i86 family %d, model %d",
+			   effective_family, effective_model);
+	    break;
+	}
     }
 }
 

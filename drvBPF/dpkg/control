@@ -1,0 +1,6 @@
+Package: BPF
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: RhapsodiOS Team
+Version: 1.0
+Description: Berkely Packet Filter device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

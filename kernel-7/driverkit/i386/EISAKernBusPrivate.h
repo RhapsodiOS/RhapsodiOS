@@ -23,49 +23,29 @@
  */
 
 /*
- * Copyright (c) 1994 NeXT Computer, Inc.
+ * Copyright (c) 1993 NeXT Computer, Inc.
  *
- * Exported interface for Kernel PCI Bus Resource Object(s).
+ * Private declarations for Kernel EISA Bus Resource Object(s).
  *
  * HISTORY
  *
  * 11 Oct 2025 raynorpat
- *	Created proper PCI bus support for i386.
+ *	Created proper EISA bus support for i386.
  */
 
-#ifdef	DRIVER_PRIVATE
+#ifdef	KERNEL_PRIVATE
+ 
+#import <mach/mach_types.h>
+ 
+#import <objc/objc.h>
 
-#import <driverkit/KernBus.h>
-#import <driverkit/KernBusMemory.h>
-#import <driverkit/KernBusInterrupt.h>
+typedef struct EISAKernBusInterrupt_ {
+    @defs(EISAKernBusInterrupt)
+} EISAKernBusInterrupt_;
 
+static
+void	_EISAKernBusInterruptDispatch(
+			    void		*interrupt,
+			    void		*state);
 
-@interface PCIKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
-{
-@private
-    id		_PCILock;
-    int		_priorityLevel;
-    int		_irq;
-    BOOL	_irqAttached;
-    BOOL	_irqEnabled;
-}
-
-@end
-
-
-#define IO_PORTS_KEY 		"I/O Ports"
-#define MEM_MAPS_KEY 		"Memory Maps"
-#define IRQ_LEVELS_KEY		"IRQ Levels"
-#define DMA_CHANNELS_KEY	"DMA Channels"
-
-@interface PCIKernBus : KernBus
-{
-@private
-}
-
-- init;
-- free;
-
-@end
-
-#endif	/* DRIVER_PRIVATE */
+#endif

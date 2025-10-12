@@ -33,7 +33,7 @@ AUDIOHDRS_LOCAL_DIR=$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B
 # OBJROOT and SYMROOT are overridden by RC tools for builds from read-only
 # source. OBJDIR is where libraries are built. .o files are placed in
 # OBJROOT/xxx, where xxx is something like 68kDebug or i386Release.
-# 
+#
 #
 OBJROOT= .
 SYMROOT= .
@@ -52,7 +52,7 @@ MIG= /usr/bin/mig
 
 MACHINE=i386
 MACHINE_LIST=ppc i386
-BUS_LIST=eisa pci
+BUS_LIST=eisa pci pcmcia
 
 ARFLAGS= rucv
 ARCHFULL_RC_CFLAGS = $(foreach X, $(RC_ARCHS),$(addprefix -arch , $(X)))
@@ -68,9 +68,9 @@ RELEASE_CFLAGS= -g -O2
 
 #KERN_CFLAGS=	-D_KERNEL -DKERNEL -DMACH_USER_API -DDRIVER_PRIVATE
 KERN_CFLAGS= -static -DNCPUS=1 -D_KERNEL -DKERNEL -DMACH_USER_API -DDRIVER_PRIVATE
-USER_CFLAGS= 
+USER_CFLAGS=
 ppc_CFLAGS=		-msoft-float -force_cpusubtype_ALL -mcpu=604 -finline -fno-keep-inline-functions -Wno-four-char-constants
-i386_CFLAGS=	-force_cpusubtype_ALL 
+i386_CFLAGS=	-force_cpusubtype_ALL
 MD_CFLAGS=	$(${MACHINE}_CFLAGS)
 
 INSTALLFLAGS= -c -m 644
@@ -87,10 +87,10 @@ COMMON_CFILES=
 #
 # Debug-only source files.
 #
-DEBUG_MFILES= 
+DEBUG_MFILES=
 DEBUG_CFILES=
 
-# 
+#
 # Kernel/user dependent, machine independent source files appearing in
 # both User/ and Kernel/.
 #
@@ -118,7 +118,7 @@ KERNEL_CFILES=	disk_label.c dma.c label_subr.c snd_reply.c audio_mix.c \
 		audio_peak.c audio_mulaw.c
 
 USER_MFILES=	IODeviceMaster.m NXConditionLock.m NXLock.m NXSpinLock.m
-USER_CFILES=    
+USER_CFILES=
 
 #
 # MI bus files
@@ -130,7 +130,8 @@ eisa_BUS_CFILES=
 pci_BUS_MFILES=		IOPCIDirectDevice.m IOPCIDeviceDescription.m
 pci_BUS_CFILES=
 
-pcmcia_BUS_MFILES=
+pcmcia_BUS_MFILES= 	IOPCMCIADirectDevice.m IOPCMCIADeviceDescription.m \
+			IOPCMCIATuple.m
 pcmcia_BUS_CFILES=
 
 
@@ -150,7 +151,7 @@ AUDIO_SERVER_CFILES=	audioServer.c
 AUDIO_REPLY_CFILES=	audioReplyUser.c
 AUDIO_CFILES=		$(AUDIO_SERVER_CFILES) $(AUDIO_REPLY_CFILES)
 KERNEL_MIG_CFILES=	$(EVENT_CFILES) $(AUDIO_CFILES)
-  
+
 #
 # Force mig to run before audio source is compiled.
 #
@@ -185,9 +186,9 @@ ppc_KERN_MFILES=	IOPPCDirectDevice.m IOPPCDeviceDescription.m IOPropertyTable.m	
 			IOMacRiscPCI.m IOPCIDevice.m						\
 			IOSmartDisplay.m IONDRVFramebuffer.m IONDRVInterface.m IONDRVLibraries.m
 ppc_KERN_CFILES=	IOPEFLoader.c IOPEFInternals.c
-			  
+
 ppc_USER_MFILES=
-ppc_MFILES=		
+ppc_MFILES=
 
 MD_KERN_CFILES=	$(${MACHINE}_KERN_CFILES)
 MD_USER_CFILES=	$(${MACHINE}_USER_CFILES)
@@ -210,12 +211,12 @@ first debug:  	$(MACHINE)kernrelease
 debug:		$(MACHINE)kerndebug
 release:	$(MACHINE)release
 profile:	$(MACHINE)profile
-kerndebug: 	$(MACHINE)kerndebug 
+kerndebug: 	$(MACHINE)kerndebug
 kernrelease:	$(MACHINE)kernrelease
 kernprofile:	$(MACHINE)kernprofile
 libs:		libraries lipoize
 all: 		libs
-TARGET_LIST=	release kernrelease profile 
+TARGET_LIST=	release kernrelease profile
 
 VPATH = $(BUILD_DIR):$(OBJDIR):$(SYMDIR):$(MODE_DIRS)
 
@@ -234,7 +235,7 @@ COMMON_OFILES=		$(COMMON_MFILES:.m=.o) \
 			$(MODE_CFILES:.c=.o)
 
 DEBUG_OFILES=		$(DEBUG_MFILES:.m=.o) \
-			$(DEBUG_CFILES:.c=.o) 
+			$(DEBUG_CFILES:.c=.o)
 
 KERNEL_OFILES=		$(KERNEL_MFILES:.m=.o) \
 			$(KERNEL_CFILES:.c=.o) \
@@ -272,12 +273,12 @@ USER_MD_OFILES= 	$(COMMON_OFILES) \
 # Enumerate mode directories for each target. These get added to VPATH.
 #
 USER_DIRS=		User
-KERNEL_DIRS=		Kernel:eisa:pci
+KERNEL_DIRS=		Kernel:eisa:pci:pcmcia
 
 #
 # Recursive rules to invoke various target builds.
 #
-# $(MACHINE) must resolve to exactly one of {i386,ppc} 
+# $(MACHINE) must resolve to exactly one of {i386,ppc}
 # at this time.
 #
 #
@@ -369,8 +370,8 @@ $(MACHINE)kerndebug: $(SYMDIR) always
 # Note that this clean rule doesn't delete the build directories
 # in OBJROOT, but I think that's OK; RC does that for us.
 clean:	always
-	rm -rf $(BUILD_DIRS) *.d *~ libs syms Makedep tags 
-	
+	rm -rf $(BUILD_DIRS) *.d *~ libs syms Makedep tags
+
 tags:	always
 	rm -f tags
 	ctags -o $(SYMROOT)/tags *.[hm]
@@ -383,10 +384,10 @@ tags:	always
 always:
 
 installsrc: 	SRCROOT $(SRCROOT)
-#	
+#
 # first install the common source (in this directory).
 #
-	gnutar cf - *.[mch] $(OTHER_SOURCE) | (cd $(SRCROOT); gnutar xpf -)	
+	gnutar cf - *.[mch] $(OTHER_SOURCE) | (cd $(SRCROOT); gnutar xpf -)
 #
 # now install all of the mode-dependent source.
 #
@@ -403,10 +404,10 @@ KERN_LIB_SUFFIXES=  	  _kern.o
 USER_LIB_SUFFIXES=  $(USER_EXPORT_LIB_SUFFIXES) $(USER_LOCAL_LIB_SUFFIXES)
 
 #
-# We only export release versions of the user library to /usr/lib. All 
+# We only export release versions of the user library to /usr/lib. All
 # others go to /usr/local/lib.
 #
-EXPORT_LIB_SUFFIXES= $(USER_EXPORT_LIB_SUFFIXES) 
+EXPORT_LIB_SUFFIXES= $(USER_EXPORT_LIB_SUFFIXES)
 LOCAL_LIB_SUFFIXES= $(KERN_LIB_SUFFIXES) $(USER_LOCAL_LIB_SUFFIXES)
 
 install:  DSTROOT $(DSTROOT)$(INSTALL_DIR) libraries lipoize install_only
@@ -420,7 +421,7 @@ install:  DSTROOT $(DSTROOT)$(INSTALL_DIR) libraries lipoize install_only
 install_only:	installhdrs DSTROOT $(DSTROOT)$(INSTALL_DIR) \
 		$(DSTROOT)$(INSTALL_LOCAL_DIR) ALWAYS
 #
-# Now our binaries. 
+# Now our binaries.
 #
 	@for libsuffix in $(EXPORT_LIB_SUFFIXES); do	    		\
 	    libname=`echo $(BUILD_NAME)$$libsuffix | sed -e 's/\./$(BUILD_VERS)./'`;	\
@@ -454,7 +455,7 @@ install_only:	installhdrs DSTROOT $(DSTROOT)$(INSTALL_DIR) \
 #
 # Build all of the individual archives as appropriate.
 #
-libraries: 	ALWAYS 
+libraries: 	ALWAYS
 	@if [ -n "$(RC_ARCHS)" ]; then					\
 	    machines="$(RC_ARCHS)";					\
 	elif [ -n "$(MACHINE_LIST)" ]; then				\
@@ -473,7 +474,7 @@ libraries: 	ALWAYS
 	    	"SYMROOT=$(SYMROOT)"					\
 	    	"DSTROOT=$(DSTROOT)";					\
 	done
-	
+
 #
 # Lipo the libraries for the various architectures together. This target
 # assumes that the constituent libraries have already been built.
@@ -545,21 +546,21 @@ SRCROOT DSTROOT:
 .c.o:
 	$(CC) $(COMMON_CFLAGS) $(OTHER_CFLAGS) -c $< \
  		-I$(BUILD_DIR) \
-		-dependency-file $(BUILD_DIR)/$(*F).d -o $(BUILD_DIR)/$(*F).o 
+		-dependency-file $(BUILD_DIR)/$(*F).d -o $(BUILD_DIR)/$(*F).o
 	md -u $(BUILD_DIR)/Makedep -f -d $(BUILD_DIR)/$(*F).d
 
 .m.o:
 	$(CC) $(COMMON_CFLAGS) $(OTHER_CFLAGS) -c $< \
  		-I$(BUILD_DIR) \
-		-dependency-file $(BUILD_DIR)/$(*F).d -o $(BUILD_DIR)/$(*F).o 
+		-dependency-file $(BUILD_DIR)/$(*F).d -o $(BUILD_DIR)/$(*F).o
 	md -u $(BUILD_DIR)/Makedep -f -d $(BUILD_DIR)/$(*F).d
 
 #
-# Mig rules. We copy mig source down to the build directory because 
+# Mig rules. We copy mig source down to the build directory because
 # mig writes its output to cwd.
 #
 $(DRIVER_SERVER_CFILES):	$(DRIVER_SERVER_MIG_SOURCE)
-	rm -f $(BUILD_DIR)/$(DRIVER_SERVER_CFILES) 
+	rm -f $(BUILD_DIR)/$(DRIVER_SERVER_CFILES)
 	rm -f $(BUILD_DIR)/$(DRIVER_SERVER_MIG_SOURCE)
 	cp $(DRIVER_SERVER_MIG_SOURCE) $(BUILD_DIR)
 	(cd $(BUILD_DIR); \
@@ -572,7 +573,7 @@ $(CONFIG_CFILES):	../Config/$(CONFIG_MIG_SOURCE)
 	cp ../Config/$(CONFIG_MIG_SOURCE) $(BUILD_DIR)
 	(cd $(BUILD_DIR); \
 	  ${MIG} -arch $(MACHINE) -server /dev/null $(CONFIG_MIG_SOURCE))
-	  
+
 $(EVENT_CFILES):		Kernel/$(EVENT_MIG_SOURCE)
 	rm -f $(BUILD_DIR)/$(EVENT_CFILES)
 	rm -f $(BUILD_DIR)/$(EVENT_MIG_SOURCE)
@@ -580,7 +581,7 @@ $(EVENT_CFILES):		Kernel/$(EVENT_MIG_SOURCE)
 	(cd $(BUILD_DIR); \
 	  ${MIG} -arch $(MACHINE) -user /dev/null \
 	  $(EVENT_MIG_SOURCE))
-  
+
 $(AUDIO_SERVER_CFILES):		Kernel/$(AUDIO_SERVER_MIG_SOURCE)
 	rm -f $(BUILD_DIR)/$(AUDIO_SERVER_CFILES)
 	rm -f $(BUILD_DIR)/$(AUDIO_SERVER_MIG_SOURCE)
@@ -610,15 +611,15 @@ vers.o:	$(OFILES)
 	rm -f $(BUILD_DIR)/vers.c
 	vers_string -l $(BUILD_NAME) > $(BUILD_DIR)/vers.c
 	$(CC) -arch $(MACHINE) $(ARCHLESS_RC_CFLAGS) -c $(BUILD_DIR)/vers.c \
-	    -o $(BUILD_DIR)/vers.o 
+	    -o $(BUILD_DIR)/vers.o
 
 #
-# Rules to build the libraries. Kernel versions only build and install 
-# unstripped .o's; the kernel project strips the end result when it 
+# Rules to build the libraries. Kernel versions only build and install
+# unstripped .o's; the kernel project strips the end result when it
 # installs. (Note we build .o's for the kernel version to ensure that
-# all object files are linked in, even those which might only be needed 
-# by loadable modules.) User versions build stripped versions in OBJDIR and 
-# unstripped in SYMDIR for debug. Stripped archives eventually get 
+# all object files are linked in, even those which might only be needed
+# by loadable modules.) User versions build stripped versions in OBJDIR and
+# unstripped in SYMDIR for debug. Stripped archives eventually get
 # installed in INSTALL_DIR.
 #
 # Kernel versions:

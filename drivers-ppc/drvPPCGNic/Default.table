@@ -1,0 +1,13 @@
+"Title" = "PPCGNic";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Version" = "1.00";
+"Driver Name" = "PPCGNic";
+"IRQ Levels" = "Auto";
+"DMA Channels" = "";
+"Memory Maps" = "Auto";
+"I/O Ports" = "Auto";
+"Bus Type" = "PCI";
+"PCI Vendor ID" = "0x1318 0x1000";
+"PCI Device ID" = "0x0702 0x0911";

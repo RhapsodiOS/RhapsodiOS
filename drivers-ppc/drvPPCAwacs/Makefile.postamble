@@ -1,0 +1,10 @@
+#
+# Makefile.postamble for PPCAwacs driver
+#
+
+# Installation directory
+DSTROOT = /System/Library/Drivers
+
+# Post-build actions
+after_install::
+	@echo "PPCAwacs driver installation complete"

@@ -6,7 +6,8 @@
 #
 
 # List of driver subdirectories
-SUBDIRS = drvPPCAwacs \
+SUBDIRS = drvPExpert \
+		  drvPPCAwacs \
           drvPPCBurgundy \
           drvPPCGem \
           drvPPCGNic \

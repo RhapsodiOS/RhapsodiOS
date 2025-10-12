@@ -66,6 +66,11 @@
 - init;
 - free;
 
+/* EISA slot information */
+- (IOReturn)getEISASlotNumber:(unsigned int *)slotNum
+                       slotID:(unsigned long *)slotID
+      usingDeviceDescription:deviceDescription;
+
 @end
 
 #endif	/* DRIVER_PRIVATE */

@@ -1,0 +1,57 @@
+# Per-platform rpm configuration file.
+
+#==============================================================================
+# ---- per-platform macros.
+#
+%_arch			@RPMRC_ARCH@
+%_vendor		redhat
+%_os			linux
+%_target_platform	%{_target_cpu}-%{_vendor}-%{_target_os}
+%optflags		@RPMRC_OPTFLAGS@
+
+#==============================================================================
+# ---- configure macros.
+#
+%_prefix		/usr
+%_exec_prefix		${prefix}
+%_bindir		${exec_prefix}/bin
+%_sbindir		${exec_prefix}/sbin
+%_libexecdir		${exec_prefix}/libexec
+%_datadir		${prefix}/share
+%_sysconfdir		/etc
+%_sharedstatedir	${prefix}/com
+%_localstatedir		/var
+%_lib			@LIB@
+%_libdir		${exec_prefix}/%{_lib}
+%_includedir		${prefix}/include
+%_oldincludedir		/usr/include
+%_infodir		/usr/share/info
+%_mandir		/usr/share/man
+
+#==============================================================================
+# ---- Build policy macros.
+#
+#------------------------------------------------------------------------
+#	Expanded at end of %install
+#
+%__arch_install_post	@ARCH_INSTALL_POST@
+
+%__os_install_post    \
+    /usr/lib/rpm/brp-compress \
+    /usr/lib/rpm/brp-strip \
+    /usr/lib/rpm/brp-strip-comment-note \
+%{nil}
+
+%__spec_install_post    \
+     %{__arch_install_post} \
+     %{__os_install_post}
+
+#------------------------------------------------------------------------
+#	Expanded at end of %prep
+#
+%__id_u			%{__id} -u
+%__chown_Rhf		%{__chown} -Rhf
+%__chgrp_Rhf		%{__chgrp} -Rhf
+%_fixowner		[ `%{__id_u}` = '0' ] && %{__chown_Rhf} root
+%_fixgroup		[ `%{__id_u}` = '0' ] && %{__chgrp_Rhf} root
+%_fixperms		%{__chmod} -Rf a+rX,g-w,o-w

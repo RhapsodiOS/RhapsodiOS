@@ -1,0 +1,16 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Makefile.driver_preamble);
+    H_FILES = (BPFDriver.h);
+    OTHER_LINKED = ();
+    CLASSES = (BPFDriver.m);
+    C_FILES = ();
+};
+LOCALIZABLE_FILES = {
+};
+LANGUAGE = English;
+PROJECTVERSION = 1.0;
+INSTALLDIR = "";
+PROJECTTYPE = Tool;
+PROJECTNAME = BPF_reloc;
+GENERATEMAIN = YES;
+DOCICONFILES = ();

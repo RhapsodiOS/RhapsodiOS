@@ -1,0 +1,5 @@
+/* Name used in the browser */
+"SCSITape" = "SCSI Tape";
+
+/* Name used in the inspector */
+"Long Name" = "SCSI Tape Drive";

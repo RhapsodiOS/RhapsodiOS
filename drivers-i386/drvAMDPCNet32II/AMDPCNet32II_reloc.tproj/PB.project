@@ -1,0 +1,16 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect, Makefile.driver_preamble);
+    H_FILES = (AMDPCNet32II.h, PCNetIO.h);
+    OTHER_LINKED = ();
+    CLASSES = (AMDPCNet32II.m);
+    C_FILES = ();
+};
+LOCALIZABLE_FILES = {
+};
+LANGUAGE = English;
+PROJECTVERSION = 1.1;
+INSTALLDIR = /Test/;
+PROJECTTYPE = Tool;
+PROJECTNAME = AMDPCNet32II_reloc;
+GENERATEMAIN = YES;
+DOCICONFILES = ();

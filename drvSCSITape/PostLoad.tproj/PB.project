@@ -1,0 +1,16 @@
+DOCICONFILES = ();
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    M_FILES = ();
+    OTHER_LIBS = (Driver);
+    H_FILES = ();
+    OTHER_LINKED = ();
+    CLASSES = (PostLoad.m);
+};
+LOCALIZABLE_FILES = {
+};
+PROJECTVERSION = 1.1;
+PROJECTTYPE = Tool;
+PROJECTNAME = PostLoad;
+GENERATEMAIN = YES;
+LANGUAGE = English;

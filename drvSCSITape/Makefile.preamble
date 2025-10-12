@@ -1,0 +1,7 @@
+LOCALMAKEFILEDIR = /LocalDeveloper/Makefiles/driverkit
+LOCALMAKEFILE = Makefile.local_preamble
+TARGET_ARCHS = i386 ppc
+
+-include $(LOCALMAKEFILEDIR)/$(LOCALMAKEFILE)
+INSTALL_EXAMPLE = YES
+BUNDLE_EXTENSION = config

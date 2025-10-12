@@ -1,0 +1,16 @@
+DOCICONFILES = ();
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+};
+PROJECTVERSION = 1.1;
+PROJECTTYPE = Tool;
+PROJECTNAME = PreLoad;
+GENERATEMAIN = YES;
+FILESTABLE = {
+    C_FILES = ();
+    CLASSES = (PreLoad.m);
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    H_FILES = ();
+    OTHER_LINKED = ();
+    M_FILES = ();
+};

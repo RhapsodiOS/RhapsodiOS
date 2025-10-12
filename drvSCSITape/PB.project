@@ -1,0 +1,18 @@
+LANGUAGE = English;
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    OTHER_RESOURCES = (Default.table, Info.rtf);
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (SCSITape_reloc.tproj, PostLoad.tproj, PreLoad.tproj, stblocksize.tproj);
+    SUBPROJECTS = ();
+};
+LOCALIZABLE_FILES = {
+    Info.rtf;
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+PROJECTTYPE = Bundle;
+PROJECTNAME = SCSITape;
+GENERATEMAIN = YES;
+DOCICONFILES = ();
+BUNDLE_EXTENSION = config;

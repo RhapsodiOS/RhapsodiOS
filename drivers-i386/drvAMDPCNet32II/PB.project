@@ -1,0 +1,21 @@
+LANGUAGE = English;
+FILESTABLE = {
+    CLASSES = ();
+    OTHER_RESOURCES = (Default.table);
+    OTHER_SOURCES = (Makefile, Makefile.postamble, Makefile.preamble);
+    H_FILES = ();
+    SUBPROJECTS = ();
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (AMDPCNet32II_reloc.tproj);
+};
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 1.1;
+INSTALLDIR = /Test;
+PROJECTNAME = drvAMDPCNet32II;
+PROJECTTYPE = Bundle;
+GENERATEMAIN = YES;
+DOCEXTENSIONS = ();
+BUNDLE_EXTENSION = config;
+DOCICONFILES = ();

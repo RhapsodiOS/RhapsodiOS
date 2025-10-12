@@ -2,13 +2,13 @@
 #  Makefile.preamble
 #  Copyright 1997, Apple Computer, Inc.
 #
-#  Use this makefile for configuring the standard application makefiles 
+#  Use this makefile for configuring the standard application makefiles
 #  associated with ProjectBuilder. It is included before the main makefile.
 #  In Makefile.preamble you set attributes for a project, so they are available
-#  to the project's makefiles.  In contrast, you typically write additional rules or 
+#  to the project's makefiles.  In contrast, you typically write additional rules or
 #  override built-in behavior in the Makefile.postamble.
-#  
-#  Each directory in a project tree (main project plus subprojects) should 
+#
+#  Each directory in a project tree (main project plus subprojects) should
 #  have its own Makefile.preamble and Makefile.postamble.
 ###############################################################################
 #
@@ -17,7 +17,7 @@
 #    MAKEFILEDIR: Directory in which to find $(MAKEFILE)
 #    MAKEFILE: Top level mechanism Makefile (e.g., app.make, bundle.make)
 
-# Compiler/linker flags added to the defaults:  The OTHER_* variables will be 
+# Compiler/linker flags added to the defaults:  The OTHER_* variables will be
 # inherited by all nested sub-projects, but the LOCAL_ versions of the same
 # variables will not.  Put your -I, -D, -U, and -L flags in ProjectBuilder's
 # Build Attributes inspector if at all possible.  To override the default flags
@@ -40,7 +40,7 @@
 #    OTHER_YFLAGS, LOCAL_YFLAGS:  additional flags passed to yacc
 #    OTHER_LFLAGS, LOCAL_LFLAGS:  additional flags passed to lex
 
-# These variables provide hooks enabling you to add behavior at almost every 
+# These variables provide hooks enabling you to add behavior at almost every
 # stage of the make:
 #
 #    BEFORE_PREBUILD: targets to build before installing headers for a subproject
@@ -54,7 +54,7 @@
 #    BEFORE_POSTINSTALL: targets to build before postinstalling every subproject
 #    AFTER_POSTINSTALL: targts to build after postinstalling every subproject
 #
-#    BEFORE_INSTALLHDRS: targets to build before installing headers for a 
+#    BEFORE_INSTALLHDRS: targets to build before installing headers for a
 #         subproject
 #    AFTER_INSTALLHDRS: targets to build after installing headers for a subproject
 #    BEFORE_INSTALLSRC: targets to build before installing source for a subproject
@@ -71,7 +71,7 @@
 
 # Framework-related variables:
 #    FRAMEWORK_DLL_INSTALLDIR:  On Windows platforms, this variable indicates
-#	where to put the framework's DLL.  This variable defaults to 
+#	where to put the framework's DLL.  This variable defaults to
 #	$(INSTALLDIR)/../Executables
 
 # Library-related variables:
@@ -85,7 +85,7 @@
 #  	whether the libraries produced are statically linked when they
 #	are used or if they are dynamically loadable. <<default?>>
 #    LIBRARY_DLL_INSTALLDIR:  On Windows platforms, this variable indicates
-#	where to put the library's DLL.  This variable defaults to 
+#	where to put the library's DLL.  This variable defaults to
 #	$(INSTALLDIR)/../Executables
 #
 #    INSTALL_AS_USER: owner of the intalled products (default root)
@@ -95,8 +95,8 @@
 #    OTHER_RECURSIVE_VARIABLES: The names of variables which you want to be
 #  	passed on the command line to recursive invocations of make.  Note that
 #	the values in OTHER_*FLAGS are inherited by subprojects automatically --
-#	you do not have to (and shouldn't) add OTHER_*FLAGS to 
-#	OTHER_RECURSIVE_VARIABLES. 
+#	you do not have to (and shouldn't) add OTHER_*FLAGS to
+#	OTHER_RECURSIVE_VARIABLES.
 
 # Additional headers to export beyond those in the PB.project:
 #    OTHER_PUBLIC_HEADERS
@@ -114,12 +114,12 @@
 # Set this to YES if you don't want a final libtool call for a library/framework.
 #    BUILD_OFILES_LIST_ONLY
 
-# To include a version string, project source must exist in a directory named 
+# To include a version string, project source must exist in a directory named
 # $(NAME).%d[.%d][.%d] and the following line must be uncommented.
 # OTHER_GENERATED_OFILES = $(VERS_OFILE)
 
 # This definition will suppress stripping of debug symbols when an executable
 # is installed.  By default it is YES.
 # STRIP_ON_INSTALL = NO
-INCLUDED_ARCHS = i386
 
+INCLUDED_ARCHS = i386

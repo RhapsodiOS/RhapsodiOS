@@ -476,4 +476,105 @@ static const char *resourceNameStrings[] = {
     return [super free];
 }
 
+/*
+ * Detect PCI bus presence
+ */
+- (BOOL)isPCIPresent
+{
+    unsigned long vendorID;
+
+    /* Try to read vendor ID from device 0:0:0 */
+    /* If PCI is present, this should return a valid vendor ID */
+    vendorID = pci_config_read32(0, 0, 0, 0x00);
+
+    /* Valid vendor IDs are 0x0001-0xFFFE (0xFFFF means no device) */
+    if ((vendorID & 0xFFFF) == 0xFFFF || (vendorID & 0xFFFF) == 0x0000) {
+        return NO;
+    }
+
+    return YES;
+}
+
+/*
+ * Extract PCI address from device description
+ */
+- (IOReturn)configAddress:deviceDescription
+                   device:(unsigned char *)devNum
+                 function:(unsigned char *)funNum
+                      bus:(unsigned char *)busNum
+{
+    const char *devStr, *funcStr, *busStr;
+
+    if (!deviceDescription) {
+        return IO_R_INVALID_ARG;
+    }
+
+    /* Get device, function, and bus from device description */
+    devStr = [deviceDescription valueForStringKey:"Device"];
+    funcStr = [deviceDescription valueForStringKey:"Function"];
+    busStr = [deviceDescription valueForStringKey:"Bus"];
+
+    if (!devStr || !funcStr || !busStr) {
+        return IO_R_NO_DEVICE;
+    }
+
+    /* Parse the values */
+    if (devNum) *devNum = (unsigned char)strtoul(devStr, NULL, 0);
+    if (funNum) *funNum = (unsigned char)strtoul(funcStr, NULL, 0);
+    if (busNum) *busNum = (unsigned char)strtoul(busStr, NULL, 0);
+
+    return IO_R_SUCCESS;
+}
+
+/*
+ * Read from PCI configuration space
+ */
+- (IOReturn)getRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long *)data
+{
+    if (!data) {
+        return IO_R_INVALID_ARG;
+    }
+
+    /* Verify address is 32-bit aligned */
+    if (address & 0x03) {
+        return IO_R_INVALID_ARG;
+    }
+
+    *data = pci_config_read32(busNum, devNum, funNum, address);
+
+    return IO_R_SUCCESS;
+}
+
+/*
+ * Write to PCI configuration space
+ */
+- (IOReturn)setRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long)data
+{
+    unsigned long configAddress;
+
+    /* Verify address is 32-bit aligned */
+    if (address & 0x03) {
+        return IO_R_INVALID_ARG;
+    }
+
+    configAddress = PCI_CONFIG_ENABLE |
+                    PCI_CONFIG_BUS(busNum) |
+                    PCI_CONFIG_DEV(devNum) |
+                    PCI_CONFIG_FUNC(funNum) |
+                    PCI_CONFIG_REG(address);
+
+    outl(PCI_CONFIG_ADDRESS, configAddress);
+    outl(PCI_CONFIG_DATA, data);
+
+    return IO_R_SUCCESS;
+}
+
 @end

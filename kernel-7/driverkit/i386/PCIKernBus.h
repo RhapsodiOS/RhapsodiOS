@@ -66,6 +66,27 @@
 - init;
 - free;
 
+/* PCI bus detection */
+- (BOOL)isPCIPresent;
+
+/* PCI configuration space access */
+- (IOReturn)configAddress:deviceDescription
+                   device:(unsigned char *)devNum
+                 function:(unsigned char *)funNum
+                      bus:(unsigned char *)busNum;
+
+- (IOReturn)getRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long *)data;
+
+- (IOReturn)setRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long)data;
+
 @end
 
 #endif	/* DRIVER_PRIVATE */

@@ -1,0 +1,16 @@
+"Title" = "VGA";
+"Family" = "Display";
+"Version" = "5.01";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "IOVGADisplay";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"I/O Ports" = "0x3b4-0x3b5 0x3b8-0x3bb 0x3c0-0x3cf 0x3d4-0x3d6 0x46E8-0x46E9";
+"Memory Maps" = "0xa0000-0xbffff";
+"Display Mode" = "Height: 600 Width: 800 Refresh: 60Hz ColorSpace: BW.2";
+"PostScript Driver" = "VGA_psdrvr";
+"Help File" = "VGA.rtfd";
+"Server Name" = "VGA";
+"Driver Version" = "PROGRAM:VGA  PROJECT:vga-18  DEVELOPER:root  BUILT:Sat May 4 04:34:54 PST 1996";
+

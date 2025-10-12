@@ -1,0 +1,7 @@
+# VGA PostScript Driver Makefile preamble
+
+# Additional compiler flags
+CFLAGS += -Wall -O2
+
+# Include paths
+INCLUDES += -I.

@@ -33,6 +33,7 @@
 #import <driverkit/KernBus.h>
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/KernBusInterrupt.h>
+#import <objc/List.h>
 
 
 @interface PCMCIAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>

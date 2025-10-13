@@ -17,14 +17,13 @@ CLASSES = NE2K.m
 
 HFILES = ioPortsExt.h NE2K.h ne2k_funcs.h ne2k_reg.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble m.template\
-            h.template Load_Commands.sect
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = kernelserver.make
-LIBS = 
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 

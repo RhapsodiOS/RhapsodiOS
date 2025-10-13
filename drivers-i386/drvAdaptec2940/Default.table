@@ -1,0 +1,19 @@
+"Title" = "Adaptec2940";
+"Family" = "SCSI";
+"Instance" = "0";
+"Class Name" = "SCSIBus Adaptec2940";
+"DMA Channels" = "";
+"Boot Driver";
+"Valid DMA Channels" = "";
+"Valid IRQ Levels" = "9 10 11 12 14 15";
+"Bus Type" = "PCI";
+"Share IRQ Levels" = "Yes";
+"Share IRQs" = "YES";
+"Level IRQs" = "YES";
+"Auto Detect IDs" = "0x907800b0-0x907ffffff";
+"Synchronous" = "YES";
+"Location" = "";
+/*
+ * Must be used cautiously.  With proper drives, this works.
+ */
+"Cmd Queueing" = "NO";

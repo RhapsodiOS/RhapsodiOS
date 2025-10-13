@@ -1,0 +1,10 @@
+#
+# Makefile.postamble for PPCBurgundy driver
+#
+
+# Installation directory
+DSTROOT = /System/Library/Drivers
+
+# Post-build actions
+after_install::
+	@echo "PPCBurgundy driver installation complete"

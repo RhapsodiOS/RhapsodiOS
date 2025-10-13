@@ -52,8 +52,8 @@ ndisasm: $(NDISASM)
 	$(CC) -o $(INSTALLDIR)/ndisasm $(NDISASM)
 
 installman: nasm.1 ndisasm.1
-	cp nasm.1 $(MANINSTALLDIR)
-	cp ndisasm.1 $(MANINSTALLDIR)
+	-cp nasm.1 $(MANINSTALLDIR) 2>/dev/null || true
+	-cp ndisasm.1 $(MANINSTALLDIR) 2>/dev/null || true
 
 # These two source files are automagically generated from a single
 # instruction-table file by a Perl script. They're distributed,

@@ -25,11 +25,11 @@ REP_LDFLAGS = /System/Library/Frameworks/System.framework/System /usr/lib/libcc_
 
 all: $(DIRS_NEEDED) $(VERSIONED_FILES)
 
-boot1: boot1.s Makefile
+boot1: boot1.s Makefile $(NASM)
 	$(NASM) -dBOOTDEV=HDISK  -dVERS="'$(NEW_VERS)'" boot1.s -o $(SYMROOT)/$@
-boot1f: boot1.s Makefile
+boot1f: boot1.s Makefile $(NASM)
 	$(NASM) -dBOOTDEV=FLOPPY -dVERS="'$(NEW_VERS)'" boot1.s -o $(SYMROOT)/$@
-nullboot1: nullboot1.s Makefile
+nullboot1: nullboot1.s Makefile $(NASM)
 	$(NASM) nullboot1.s -o $(SYMROOT)/$@
 
 install_i386:: all $(INSTALLDIR) $(FOREINSTALLDIR)

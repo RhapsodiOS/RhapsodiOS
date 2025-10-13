@@ -9,7 +9,8 @@
 
 NAME = SoundBlaster128PCI
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
 LOCAL_RESOURCES = Localizable.strings
@@ -28,6 +29,8 @@ BUNDLE_EXTENSION = config
 
 
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

@@ -1,0 +1,15 @@
+"IODomainSub Cat Default" = "Public"
+"Title" = "Port Server";
+"Version" = "5.00";
+"Class Names" = "PDPseudo PortServer";
+"Family" = "Serial";
+"Instance" = "0";
+"Post-Load" = "pdservd";
+"Driver Name" = "Port Server";
+"Maximum Sessions" = "16";
+"Port Count" = "0";
+"Support CTS" = "YES";   /* All ports support hardware handshaking */
+"Support DialIn" = "YES";  /* All ports support dialout (ttyof..) */
+"Support Dialout" = "YES"; /* All ports support dialin (cuA) */
+"Help File" = "PortServer_Main.rtf";
+"Server Name" = "PortServer";

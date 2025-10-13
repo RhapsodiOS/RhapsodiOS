@@ -1,0 +1,5 @@
+Driver Name: BusLogic
+Family: SCSI
+Port: i386
+Version: 1.0
+Description: BusLogic SCSI Host Adapter Driver

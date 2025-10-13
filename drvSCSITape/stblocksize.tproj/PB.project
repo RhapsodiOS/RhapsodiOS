@@ -1,0 +1,13 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    H_FILES = (stblocksize.h);
+    OTHER_LINKED = ();
+    C_FILES = (stblocksize.c);
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+};
+PROJECTVERSION = 1.1;
+PROJECTTYPE = Tool;
+PROJECTNAME = stblocksize;
+GENERATEMAIN = YES;

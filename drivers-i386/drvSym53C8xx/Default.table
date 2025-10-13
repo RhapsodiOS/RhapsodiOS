@@ -1,0 +1,15 @@
+"Title" = "Symbios Logic SCSI controller";
+"Family" = "SCSI";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "SYM53c8";
+"Share IRQ Levels" = "YES";
+"IRQ Levels" = "9 10 11 12 14 15";
+"I/O Ports" = "";
+"Auto Detect IDs" = "0x00001000 0x00021000 0x00031000 0x00041000";
+"Bus Type" = "PCI";
+"Boot Driver";
+"Valid IRQ Levels" = "9 10 11 12 14 15";
+"Wide SCSI" = "NO";
+"Synchronous" = "NO";
+"Version" = "5.00";

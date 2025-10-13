@@ -1,0 +1,8 @@
+"Title" = 		    "SCSI Tape";
+"Version" = 		"3.30";
+"Driver Name" = 	"SCSITape";
+"Family" = 		    "TAPE";
+"Prom Name" =		"pseudo";
+"Instance" = 		"0";
+"Post-Load" = 		"PostLoad";
+"Pre-Load" =		"PreLoad";

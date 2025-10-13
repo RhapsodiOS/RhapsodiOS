@@ -1,0 +1,7 @@
+-include $(LOCALMAKEFILEDIR)/Makefile.local_postamble
+include /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamble
+
+after_install::
+	mkdirs $(DSTROOT)/usr/etc
+	mv $(DSTROOT)$(INSTALLDIR)/SCSITape.config/stblocksize \
+		$(DSTROOT)/usr/etc/stblocksize

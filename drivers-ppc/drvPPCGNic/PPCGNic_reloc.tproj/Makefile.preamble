@@ -1,0 +1,8 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1999-2000, Apple Computer, Inc.
+#
+#  This Makefile is used for maintaining the driver project.
+###############################################################################
+
+-include Makefile.driver_preamble

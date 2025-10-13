@@ -36,6 +36,7 @@
 
 #define KERNEL_PRIVATE	1
 
+#import <objc/List.h>
 #import <driverkit/i386/IOPCMCIADirectDevice.h>
 #import <driverkit/IODirectDevicePrivate.h>
 

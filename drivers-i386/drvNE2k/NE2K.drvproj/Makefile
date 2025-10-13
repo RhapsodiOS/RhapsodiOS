@@ -19,14 +19,13 @@ LOCAL_RESOURCES = Localizable.strings DriverHelp
 
 TOOLS = NE2K.lksproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble m.template\
-            h.template DriverInfo
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble DriverInfo
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = driver.make
 NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
-LIBS = 
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 BUNDLE_EXTENSION = config

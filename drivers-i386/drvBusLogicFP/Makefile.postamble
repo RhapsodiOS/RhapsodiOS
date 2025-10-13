@@ -1,0 +1,7 @@
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1998, Apple Computer, Inc.
+#
+#  Use this makefile for configuring the standard application makefiles
+#  associated with ProjectBuilder.
+###############################################################################

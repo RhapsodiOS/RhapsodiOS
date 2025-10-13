@@ -1,0 +1,4 @@
+/* Localizable strings for PPCAwacs driver */
+
+"PPCAwacs" = "AWACS Audio Controller";
+"Description" = "Apple Wavetable Audio Chip Set driver for PowerMac/PowerBook";

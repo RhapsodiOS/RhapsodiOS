@@ -1,0 +1,21 @@
+{
+    "Driver Name"        = "PPCSerialPort";
+    "Class Names"        = ("PPCSerialPort");
+    "Instance Variables" = ();
+    "IODeviceType"       = "Serial Port";
+    "IODeviceClass"      = "IOSerialPort";
+    "IONameMatch"        = ("ch-a", "ch-b", "serial", "escc");
+    "Provider Class"     = "IOPlatformDevice";
+
+    "Modem Port" = {
+        "Channel" = "A";
+        "IODeviceType" = "Serial Port";
+        "Description" = "PowerMac Modem Port (SCC Channel A)";
+    };
+
+    "Printer Port" = {
+        "Channel" = "B";
+        "IODeviceType" = "Serial Port";
+        "Description" = "PowerMac Printer Port (SCC Channel B)";
+    };
+}

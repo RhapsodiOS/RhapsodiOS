@@ -1,0 +1,7 @@
+"Title" = "PCIBus";
+"Family" = "Bus";
+"Class Names" = "PCIResourceDriver";
+"Boot Driver" = "Yes";
+"Version" = "5.01";
+"Bus Class" = "PCIKernBus";
+"Server Name" = "BUS";

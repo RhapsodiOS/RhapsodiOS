@@ -35,13 +35,13 @@ VPATH = $(OBJROOT):$(SYMROOT)
 # boot2.o should be first.
 OBJS = boot2.o boot.o module.o \
 	graphics.o prompt.o bitmaps.o \
-	scanmemory.o sizememory.o
+	sizememory.o
 # button.o browser.o scrollbar.o == NOTYET	
 
 UTILDIR = ../util
 SFILES = boot2.s
 CFILES = boot.c load.c stringTable.c graphics.c browser.c \
-	 button.c scrollbar.c prompt.c sizememory.c scanmemory.c
+	 button.c scrollbar.c prompt.c sizememory.c
 HFILES = boot.h
 OTHERFILES = Makefile machOconv.c README
 ALLSRC = $(FOREIGNSRC) $(FOREIGNBIN) $(SFILES) $(CFILES) \
@@ -66,15 +66,6 @@ boot: machOconv $(OBJS) $(LIBS)
 	    exit 1;\
 	  fi)
 	
-
-scanmemory.o: scanmemory.c
-	cc $(RC_CFLAGS) -static -S -O3 -fomit-frame-pointer -arch i386 -o \
-	$(OBJROOT)/scanmemory.s scanmemory.c \
-	-MD -dependency-file $(OBJROOT)/scanmemory.d
-	md -u $(OBJROOT)/Makedep -f -d $(OBJROOT)/scanmemory.d
-	sed -f scanmemory.sed $(OBJROOT)/scanmemory.s | \
-	as -static -arch i386 - -o $(OBJROOT)/scanmemory.o
-	rm -f $(OBJROOT)/scanmemory.s
 
 prompt.o: vers.h
 vers.h:

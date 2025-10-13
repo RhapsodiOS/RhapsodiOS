@@ -26,7 +26,7 @@
  * PCMCIA Memory Window Implementation
  */
 
-#import <driverkit/i386/PCMCIAWindow.h>
+#import "PCMCIAWindow.h"
 #import <driverkit/KernLock.h>
 #import <kernserv/i386/spl.h>
 

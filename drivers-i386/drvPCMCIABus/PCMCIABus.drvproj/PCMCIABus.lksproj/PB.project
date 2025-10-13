@@ -1,0 +1,29 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (PCMCIABus.m, PCMCIAKernBus.m, PCMCIAPool.m, PCMCIASocket.m, PCMCIAWindow.m, PCMCIATuple.m, PCMCIATupleList.m);
+        H_FILES = (PCMCIABus.h, PCMCIAKernBus.h, PCMCIAKernBusPrivate.h, PCMCIAPool.h, PCMCIASocket.h, PCMCIAWindow.h, PCMCIATuple.h, PCMCIATupleList.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble,
+            Load_Commands.sect
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = PCMCIABus;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

@@ -28,8 +28,8 @@
 
 #import <mach/mach_types.h>
 #import <vm/vm_kern.h>
-#import <driverkit/i386/PCMCIAPool.h>
-#import <driverkit/i386/PCMCIASocket.h>
+#import "PCMCIAPool.h"
+#import "PCMCIASocket.h"
 #import <driverkit/KernLock.h>
 #import <kernserv/i386/spl.h>
 #import <libkern/libkern.h>

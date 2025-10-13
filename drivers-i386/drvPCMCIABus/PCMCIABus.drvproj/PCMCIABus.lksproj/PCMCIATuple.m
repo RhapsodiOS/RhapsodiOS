@@ -27,7 +27,7 @@
  */
 
 #import <mach/mach_types.h>
-#import <driverkit/i386/PCMCIATuple.h>
+#import "PCMCIATuple.h"
 #import <libkern/libkern.h>
 
 @implementation PCMCIATuple

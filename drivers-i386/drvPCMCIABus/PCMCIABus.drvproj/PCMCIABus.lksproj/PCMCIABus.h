@@ -23,21 +23,53 @@
  */
 
 /*
- * PCMCIA Tuple List Implementation
+ * PCMCIABus.h
+ * PCMCIA Bus Driver Header
+ *
+ * This driver provides PCMCIA bus enumeration and card management.
  */
 
-#import <driverkit/i386/PCMCIATupleList.h>
+#ifndef _PCMCIABUS_H_
+#define _PCMCIABUS_H_
 
-@implementation PCMCIATupleList
+#import <driverkit/IODevice.h>
+#import <driverkit/IODeviceDescription.h>
+#import <driverkit/generalFuncs.h>
+#import <driverkit/kernelDriver.h>
 
-- (unsigned)count
+/* Forward declarations */
+@class PCMCIAKernBus;
+@class PCMCIABusVersion;
+
+/*
+ * PCMCIABus - Main PCMCIA Bus driver class
+ */
+@interface PCMCIABus : IODevice
 {
-    return [self count];
+    @private
+    PCMCIAKernBus *_kernBus;
+    PCMCIABusVersion *_version;
+    BOOL _initialized;
 }
 
-- objectAt:(unsigned)index
-{
-    return [self objectAt:index];
-}
+/*
+ * Driver lifecycle methods
+ */
++ (BOOL)probe:(IODeviceDescription *)deviceDescription;
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- free;
+
+/*
+ * Boot driver initialization
+ */
+- (BOOL)BootDriver;
+
+/*
+ * PCMCIA bus operations
+ */
+- (int)getSocketCount;
+- (BOOL)scanSockets;
 
 @end
+
+#endif /* _PCMCIABUS_H_ */

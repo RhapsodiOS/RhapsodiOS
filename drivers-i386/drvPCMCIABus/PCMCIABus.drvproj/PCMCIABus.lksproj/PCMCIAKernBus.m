@@ -31,13 +31,13 @@
 #import <mach/mach_types.h>
 
 #import <driverkit/KernLock.h>
-#import <driverkit/i386/PCMCIAKernBus.h>
-#import <driverkit/i386/PCMCIAKernBusPrivate.h>
-#import <driverkit/i386/PCMCIAPool.h>
-#import <driverkit/i386/PCMCIATuple.h>
-#import <driverkit/i386/PCMCIATupleList.h>
-#import <driverkit/i386/PCMCIAWindow.h>
-#import <driverkit/i386/PCMCIASocket.h>
+#import "PCMCIAKernBus.h"
+#import "PCMCIAKernBusPrivate.h"
+#import "PCMCIAPool.h"
+#import "PCMCIATuple.h"
+#import "PCMCIATupleList.h"
+#import "PCMCIAWindow.h"
+#import "PCMCIASocket.h"
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
 #import <kernserv/i386/spl.h>

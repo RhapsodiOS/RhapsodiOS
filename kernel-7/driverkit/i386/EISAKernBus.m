@@ -276,7 +276,7 @@ static const char *resourceNameStrings[] = {
     const char *slotNumStr;
 
     /* Try to get slot number from device description directly */
-    slotNumStr = [deviceDescription valueForStringKey:"Slot"];
+    slotNumStr = [deviceDescription stringForKey:"Slot"];
     if (slotNumStr) {
         slot = strtoul(slotNumStr, NULL, 0);
         if (slot >= 0 && slot <= 0xf) {

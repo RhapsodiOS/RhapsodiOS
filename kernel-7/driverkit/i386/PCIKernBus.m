@@ -510,9 +510,9 @@ static const char *resourceNameStrings[] = {
     }
 
     /* Get device, function, and bus from device description */
-    devStr = [deviceDescription valueForStringKey:"Device"];
-    funcStr = [deviceDescription valueForStringKey:"Function"];
-    busStr = [deviceDescription valueForStringKey:"Bus"];
+    devStr = [deviceDescription stringForKey:"Device"];
+    funcStr = [deviceDescription stringForKey:"Function"];
+    busStr = [deviceDescription stringForKey:"Bus"];
 
     if (!devStr || !funcStr || !busStr) {
         return IO_R_NO_DEVICE;

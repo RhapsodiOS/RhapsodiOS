@@ -36,7 +36,6 @@
 #import <driverkit/i386/PCMCIAPool.h>
 #import <driverkit/i386/PCMCIATuple.h>
 #import <driverkit/i386/PCMCIATupleList.h>
-#import <driverkit/i386/IOPCMCIADeviceDescription.h>
 #import <driverkit/i386/PCMCIAWindow.h>
 #import <driverkit/i386/PCMCIASocket.h>
 #import <driverkit/KernDevice.h>
@@ -137,6 +136,7 @@ pcmcia_parse_cis(id pool, unsigned short *manfid, unsigned short *cardid,
     unsigned char code, link;
     unsigned char data[MAX_TUPLE_SIZE];
     int tuple_count = 0;
+    int i;
     id tuple;
     id tupleList;
     BOOL found_manfid = NO;
@@ -171,7 +171,7 @@ pcmcia_parse_cis(id pool, unsigned short *manfid, unsigned short *cardid,
         }
 
         /* Read tuple data */
-        for (int i = 0; i < link && i < MAX_TUPLE_SIZE; i++) {
+        for (i = 0; i < link && i < MAX_TUPLE_SIZE; i++) {
             data[i] = [pool readByte:(offset + 4 + (i * 2)) type:PCMCIA_MEM_ATTRIBUTE];
         }
 
@@ -564,41 +564,6 @@ static const char *resourceNameStrings[] = {
     }
 }
 
-/* Device description creation */
-+ deviceDescriptionFromConfigTable:table socket:(int)socket
-{
-    id busInstance;
-    id pool;
-    id tupleList;
-    id deviceDescription;
-
-    /* Get the PCMCIA bus instance */
-    busInstance = [KernBus lookupBusInstanceWithName:"PCMCIA" busId:0];
-    if (!busInstance) {
-        return nil;
-    }
-
-    /* Get the socket pool */
-    pool = [busInstance socketAtIndex:socket];
-    if (!pool) {
-        return nil;
-    }
-
-    /* Get tuple list from socket */
-    tupleList = [pool tupleList];
-    if (!tupleList) {
-        return nil;
-    }
-
-    /* Create PCMCIA device description */
-    deviceDescription = [[IOPCMCIADeviceDescription alloc]
-                         initFromConfigTable:table
-                         socket:socket
-                         tupleList:tupleList];
-
-    return deviceDescription;
-}
-
 /*
  * Allocate resources for a PCMCIA device description
  */
@@ -609,7 +574,7 @@ static const char *resourceNameStrings[] = {
 
     /* Get socket number from device description */
     if ([descr respondsTo:@selector(socket)]) {
-        socket = [(IOPCMCIADeviceDescription *)descr socket];
+        socket = [descr socket];
 
         if (socket >= 0 && socket < _numSockets) {
             pool = _sockets[socket];
@@ -648,7 +613,7 @@ static const char *resourceNameStrings[] = {
  */
 - memoryRangeResource
 {
-    return [self _resourceForKey:MEM_MAPS_KEY];
+    return [self _lookupResourceWithKey:MEM_MAPS_KEY];
 }
 
 @end

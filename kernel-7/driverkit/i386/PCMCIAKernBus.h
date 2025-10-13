@@ -77,9 +77,6 @@
 - (BOOL)probeSocket:(int)socket;
 - (void)probeAllSockets;
 
-/* Device description creation (for autoconf) */
-+ deviceDescriptionFromConfigTable:table socket:(int)socket;
-
 /* Memory window allocation */
 - allocMemoryWindowForSocket:socket;
 

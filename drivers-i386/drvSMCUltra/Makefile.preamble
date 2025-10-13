@@ -1,0 +1,31 @@
+###############################################################################
+#  NeXT Makefile.preamble
+#  Copyright 1998, NeXT Software, Inc.
+#
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Source files to compile
+MFILES = SMCElite16Ultra.m
+
+# Header files
+HFILES = SMCElite16Ultra.h SMCUltraPrivate.h SMCUltraHdw.h \
+         SMCUltraIOInline.h wd83C584.h wd83C690.h
+

@@ -7,30 +7,27 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = SoundBlaster128PCI
+NAME = AIC6X60SCSI_reloc
 
-PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECTVERSION = 1.0
 LANGUAGE = English
 
-LOCAL_RESOURCES = Localizable.strings
+CLASSES = AIC6X60Controller.m AIC6X60Routines.m AIC6X60Thread.m
 
-GLOBAL_RESOURCES = Default.table
+HFILES = AIC6X60Controller.h AIC6X60ControllerPrivate.h AIC6X60Inline.h AIC6X60Thread.h\
+         AIC6X60Types.h scsivar.h
 
-TOOLS = SoundBlaster128PCI_reloc.tproj
-
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble AIC6X60.ddm\
+            Load_Commands.sect Makefile.driver_preamble
 
 MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILE = tool.make
 SOURCEMODE = 444
 
-BUNDLE_EXTENSION = config
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
-
-
-
-include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

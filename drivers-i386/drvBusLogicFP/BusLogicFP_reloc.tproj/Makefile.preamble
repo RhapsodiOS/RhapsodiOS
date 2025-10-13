@@ -1,0 +1,5 @@
+OTHER_CFLAGS = -DCONFIG_SCSI_FLASHPOINT -DKERNEL -D__APPLE__
+OTHER_LDFLAGS = -sectcreate __TEXT __load Load_Commands.sect
+OTHER_INCLUDES = -I.. -I.
+
+-include Makefile.driver_preamble

@@ -1,0 +1,17 @@
+"Title" = "BusLogic FlashPoint PCI";
+"Family" = "SCSI";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "BLFPController";
+"DMA Channels" = "";
+"Boot Driver";
+"Valid DMA Channels" = "";
+"Valid IRQ Levels" = "9 10 11 12 14 15";
+"Bus Type" = "PCI";
+"Share IRQ Levels" = "YES";
+"Location" = "";
+"Auto Detect IDs" = "0x8138104b";
+"Help File" = "BusLogicFP_PCI.rtfd";
+"Server Name" = "BusLogicFPSCSI";
+"Driver Version" = "PROGRAM:BusLogicFPSCSI PROJECT:drvBusLogicFP-12 DEVELOPER:root BUILT:Sat Mar 28 22:01:42 PST 1998";
+"Version" = "1.0";

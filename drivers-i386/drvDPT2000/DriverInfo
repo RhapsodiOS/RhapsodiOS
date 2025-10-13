@@ -1,0 +1,6 @@
+#
+# used by geninfo: DRIVER_NAME is the name which appears on the
+# installer window
+#
+DRIVER_NAME="DPTSCSIDriver"
+DEFAULT_DRIVER_VERSION="5.00"

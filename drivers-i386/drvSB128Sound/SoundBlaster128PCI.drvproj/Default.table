@@ -1,0 +1,8 @@
+"Title" = "SoundBlaster128 PCI";
+"Family" = "Audio";
+"Location" = "";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x13711274 0x58801274 0x89381102";
+"Instance" = "0";
+"Driver Name" = "SoundBlaster128PCI";
+"Share IRQ Levels" = "Yes";

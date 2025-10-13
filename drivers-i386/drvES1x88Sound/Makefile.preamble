@@ -1,0 +1,14 @@
+#
+# Makefile.preamble
+#
+
+# Additional flags for compilation
+OTHER_CFLAGS = -DDRIVER_PRIVATE -Wall
+
+# Include paths
+OTHER_INCLUDES = -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+
+# Library paths
+OTHER_LDFLAGS =
+
+# Dependencies

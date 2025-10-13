@@ -1,0 +1,22 @@
+BusLogic SCSI Host Adapter Driver
+
+This driver supports BusLogic VL-Bus and ISA/EISA SCSI host adapters.
+
+Supported Models:
+- BusLogic BT-542B (ISA/EISA - Wide SCSI)
+- BusLogic BT-542D (MCA)
+- BusLogic BT-545C (VL Bus - BIOS 3.3x)
+- BusLogic BT-545S (VL Bus - BIOS 4.xx)
+
+Features:
+- Up to 7 SCSI devices (8 with Wide SCSI)
+- Fast SCSI support
+- Scatter/Gather DMA
+- Automatic request sense
+- Disconnect/Reconnect support
+
+Configuration:
+The driver auto-detects the IRQ and DMA channel settings from the adapter.
+Default I/O port: 0x330
+Valid DMA channels: 0, 5, 6, 7, 14
+Valid IRQ levels: 9, 10, 11, 12, 14, 15

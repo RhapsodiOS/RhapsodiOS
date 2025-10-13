@@ -1,0 +1,26 @@
+Symbios Logic 53C8xx SCSI Host Adapter Driver
+
+This driver supports Symbios Logic (formerly NCR) 53C8xx family PCI SCSI
+host adapters.
+
+Supported Models:
+- NCR 53C810/810A (PCI - Fast SCSI)
+- NCR 53C815 (PCI - Fast SCSI)
+- NCR 53C825/825A (PCI - Fast Wide SCSI)
+- NCR 53C860 (PCI - Ultra SCSI)
+- NCR 53C875 (PCI - Ultra Wide SCSI)
+- NCR 53C895 (PCI - Ultra2 Wide SCSI)
+
+Features:
+- PCI bus interface
+- Up to 7 SCSI devices (15 with Wide SCSI)
+- Scatter/Gather DMA support
+- Interrupt-driven I/O
+- Automatic request sense
+- SCSI bus reset capability
+
+Configuration:
+The driver auto-detects the controller on the PCI bus.
+IRQ and I/O ports are automatically assigned by the PCI BIOS.
+Default adapter SCSI ID: 7
+Valid IRQ levels: 9, 10, 11, 12, 14, 15

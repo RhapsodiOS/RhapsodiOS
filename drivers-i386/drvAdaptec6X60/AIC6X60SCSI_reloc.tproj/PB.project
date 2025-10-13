@@ -1,0 +1,13 @@
+LANGUAGE = English;
+MAKEFILEDIR = /NextDeveloper/Makefiles/app;
+NEXTSTEP_INSTALLDIR = /usr/Devices;
+PROJECTNAME = AIC6X60SCSI_reloc;
+PROJECTTYPE = Tool;
+PROJECTVERSION = 1.0;
+WINDOWS_INSTALLDIR = "";
+PDO_UNIX_INSTALLDIR = "";
+FILESTABLE = {
+    H_FILES = (AIC6X60Controller.h, AIC6X60ControllerPrivate.h, AIC6X60Inline.h, AIC6X60Thread.h, AIC6X60Types.h, scsivar.h);
+    M_FILES = (AIC6X60Controller.m, AIC6X60Routines.m, AIC6X60Thread.m);
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, AIC6X60.ddm, Load_Commands.sect, Makefile.driver_preamble);
+};

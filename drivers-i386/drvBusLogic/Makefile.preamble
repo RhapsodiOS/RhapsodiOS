@@ -1,0 +1,36 @@
+###############################################################################
+#  NeXT Makefile.preamble
+#  Copyright 1996, NeXT Software, Inc.
+#
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+#  Use this template to set attributes for a project, sub-project, bundle, or
+#  palette. Each node in the project's tree of sub-projects and bundles should
+#  have its own Makefile.preamble and Makefile.postamble. Additional settings
+#  should be added to the Makefile.postamble.
+#
+###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Source files to compile
+MFILES = BusLogicController.m BusLogicThread.m BusLogicRoutines.m
+
+# Header files
+HFILES = BusLogicController.h BusLogicControllerPrivate.h \
+         BusLogicThread.h BusLogicTypes.h BusLogicInline.h scsivar.h
+

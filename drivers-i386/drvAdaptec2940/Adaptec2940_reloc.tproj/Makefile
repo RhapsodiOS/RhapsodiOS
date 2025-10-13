@@ -7,30 +7,26 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = SoundBlaster128PCI
+NAME = Adaptec2940_reloc
 
-PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECTVERSION = 1.0
 LANGUAGE = English
 
-LOCAL_RESOURCES = Localizable.strings
+CLASSES = Adaptec2940.m Adaptec2940Routines.m Adaptec2940Thread.m
 
-GLOBAL_RESOURCES = Default.table
+HFILES = Adaptec2940.h Adaptec2940Private.h Adaptec2940Types.h
 
-TOOLS = SoundBlaster128PCI_reloc.tproj
-
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
+            Load_Commands.sect Makefile.driver_preamble
 
 MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILE = tool.make
 SOURCEMODE = 444
 
-BUNDLE_EXTENSION = config
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
-
-
-
-include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

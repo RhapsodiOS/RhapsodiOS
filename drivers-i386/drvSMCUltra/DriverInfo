@@ -1,0 +1,7 @@
+SMCElite16Ultra = {
+    "Name" = "SMC EtherCard Plus Elite16 Ultra";
+    "Version" = "5.01";
+    "Family" = "Network";
+    "Vendor" = "Standard Microsystems Corporation";
+    "Description" = "Driver for SMC EtherCard Plus Elite16 Ultra Ethernet adapters";
+};

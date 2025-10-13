@@ -1,0 +1,52 @@
+BusLogic SCSI Host Adapter Driver for RhapsodiOS
+================================================
+
+This driver provides support for BusLogic SCSI host adapters on the
+i386 platform.
+
+Installation
+------------
+The driver is installed as a loadable kernel module in /usr/Devices/BusLogic.config
+
+Supported Hardware
+------------------
+- BusLogic BT-542B (ISA/EISA - Wide SCSI)
+- BusLogic BT-542D (MCA)
+- BusLogic BT-545C (VL Bus - BIOS 3.3x)
+- BusLogic BT-545S (VL Bus - BIOS 4.xx)
+
+Configuration
+-------------
+The driver auto-detects adapter settings. You may need to configure the
+Default.table file if your adapter uses non-standard I/O ports, IRQ,
+or DMA channel settings.
+
+Default Settings:
+- I/O Port: 0x330-0x333
+- IRQ: 11
+- DMA Channel: 14
+
+Building
+--------
+To build the driver:
+  cd drvBusLogic
+  make
+
+Version History
+---------------
+1.0 - Initial release
+    - Basic SCSI command support
+    - Scatter/Gather DMA
+    - Auto request sense
+    - Timeout handling
+    - Bus reset support
+
+Notes
+-----
+This driver is based on the Adaptec 1542 driver architecture and
+uses the Linux BusLogic driver as a reference for hardware specifics.
+
+Author
+------
+Created from Adaptec 1542 driver template
+October 1998

@@ -1,0 +1,12 @@
+{
+    APPTYPE = DriverKit;
+    LANGUAGE = English;
+    LOCALRESOURCES = (DriverHelp, Localizable.strings);
+    MAININTERFACE = "";
+    MAKEFILEDIR = "/NextDeveloper/Makefiles/app";
+    NEXTSTEPRESOURCES = (Default.table);
+    PROJECTNAME = DPT2000;
+    PROJECTTYPE = Bundle;
+    PROJECTVERSION = 1.0;
+    SUBPROJECTS = (DPTSCSIDriver_reloc.tproj);
+}

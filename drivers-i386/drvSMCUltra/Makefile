@@ -7,30 +7,31 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = SoundBlaster128PCI
+NAME = SMCUltra
 
-PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECTVERSION = 5.01
 LANGUAGE = English
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = DriverHelp Localizable.strings
 
 GLOBAL_RESOURCES = Default.table
 
-TOOLS = SoundBlaster128PCI_reloc.tproj
+TOOLS = SMCUltra_reloc.tproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble \
+             README DriverInfo
 
 MAKEFILEDIR = /NextDeveloper/Makefiles/app
 MAKEFILE = bundle.make
+INSTALLDIR = /usr/Devices
+INSTALLFLAGS = -c -s -m 755
 SOURCEMODE = 444
 
-BUNDLE_EXTENSION = config
+LIBS = -lIndexing_s
+PROF_LIBS = -lIndexing_s
 
 
 
-
-include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

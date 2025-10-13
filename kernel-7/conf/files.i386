@@ -45,8 +45,6 @@ machdep/i386/unix_startup.c	standard
 machdep/i386/vm_machdep.c	standard
 
 driverkit/i386/autoconf_i386.m	optional driverkit
-driverkit/i386/EISAKernBus.m	optional driverkit
-driverkit/i386/PCIKernBus.m	    optional driverkit
 driverkit/i386/PCMCIAKernBus.m	optional driverkit
 driverkit/i386/PCMCIAPool.m	    optional driverkit
 driverkit/i386/PCMCIASocket.m	optional driverkit

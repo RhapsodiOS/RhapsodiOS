@@ -41,6 +41,8 @@
     @private
     void *_resourceData;
     BOOL _initialized;
+    unsigned char *_charValues;
+    unsigned int _charValuesCount;
 }
 
 /*
@@ -61,6 +63,12 @@
  */
 - (BOOL)configureDevice;
 - (void *)getResourceDescription;
+
+/*
+ * Character value methods
+ */
+- (void)getCharValues:(unsigned char *)values forParameter:(unsigned int)count;
+- (void)setCharValues:(unsigned char *)values forParameter:(unsigned int)count;
 
 @end
 

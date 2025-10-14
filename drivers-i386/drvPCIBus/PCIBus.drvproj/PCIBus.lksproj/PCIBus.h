@@ -39,7 +39,6 @@
 
 /* Forward declarations */
 @class PCIKernelServerInstance;
-@class PCIBusVersion;
 @class PCIResourceDriver;
 
 /*
@@ -49,8 +48,9 @@
 {
     @private
     PCIKernelServerInstance *_kernelServer;
-    PCIBusVersion *_version;
     BOOL _initialized;
+    unsigned int maxBusNum;
+    unsigned int maxDevNum;
 }
 
 /*

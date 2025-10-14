@@ -51,8 +51,15 @@
 - free;
 
 /*
+ * PCI presence detection
+ */
+- (BOOL)isPCIPresent;
+
+/*
  * PCI configuration space access
  */
+- (unsigned int)configAddress:(unsigned int)offset device:(unsigned int)dev
+                      function:(unsigned int)func bus:(unsigned int)bus;
 - (unsigned int)configRead:(unsigned int)bus device:(unsigned int)dev
                   function:(unsigned int)func offset:(unsigned int)offset width:(int)width;
 - (void)configWrite:(unsigned int)bus device:(unsigned int)dev
@@ -60,10 +67,19 @@
               width:(int)width value:(unsigned int)value;
 
 /*
+ * High-level register access
+ */
+- (BOOL)getRegister:(unsigned int)reg device:(unsigned int)dev
+           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int *)data;
+- (BOOL)setRegister:(unsigned int)reg device:(unsigned int)dev
+           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int)data;
+
+/*
  * PCI device enumeration
  */
 - (int)scanBus:(unsigned int)busNum;
 - (BOOL)deviceExists:(unsigned int)bus device:(unsigned int)dev function:(unsigned int)func;
+- (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus;
 
 /*
  * Resource allocation

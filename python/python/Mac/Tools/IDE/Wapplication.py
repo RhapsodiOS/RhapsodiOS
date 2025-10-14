@@ -6,14 +6,23 @@ import MacOS
 from Carbon import Events
 import traceback
 from types import *
-
 from Carbon import Menu; MenuToolbox = Menu; del Menu
+import macresource
+from Carbon import File
+
+if hasattr(Win, "FrontNonFloatingWindow"):
+	MyFrontWindow = Win.FrontNonFloatingWindow
+else:
+	MyFrontWindow = Win.FrontWindow
+
 
 KILLUNKNOWNWINDOWS = 0  # Set to 0 for debugging.
 
 class Application(FrameWork.Application):
 	
 	def __init__(self, signature='Pyth'):
+		# Open our resource file, if it is not open yet
+		macresource.need('CURS', 468, "Widgets.rsrc")
 		import W
 		W.setapplication(self, signature)
 		FrameWork.Application.__init__(self)
@@ -28,27 +37,33 @@ class Application(FrameWork.Application):
 	def mainloop(self, mask=FrameWork.everyEvent, wait=None):
 		import W
 		self.quitting = 0
-		saveyield = MacOS.EnableAppswitch(-1)
+		if hasattr(MacOS, 'EnableAppswitch'):
+			saveyield = MacOS.EnableAppswitch(-1)
 		try:
 			while not self.quitting:
 				try:
 					self.do1event(mask, wait)
 				except W.AlertError, detail:
-					MacOS.EnableAppswitch(-1)
+					if hasattr(MacOS, 'EnableAppswitch'):
+						MacOS.EnableAppswitch(-1)
 					W.Message(detail)
 				except self.DebuggerQuit:
-					MacOS.EnableAppswitch(-1)
+					if hasattr(MacOS, 'EnableAppswitch'):
+						MacOS.EnableAppswitch(-1)
 				except:
-					MacOS.EnableAppswitch(-1)
+					if hasattr(MacOS, 'EnableAppswitch'):
+						MacOS.EnableAppswitch(-1)
 					import PyEdit
 					PyEdit.tracebackwindow.traceback()
 		finally:
-			MacOS.EnableAppswitch(1)
+			if hasattr(MacOS, 'EnableAppswitch'):
+				MacOS.EnableAppswitch(1)
 	
 	def debugger_mainloop(self, mask=FrameWork.everyEvent, wait=None):
 		import W
 		self.debugger_quitting = 0
-		saveyield = MacOS.EnableAppswitch(-1)
+		if hasattr(MacOS, 'EnableAppswitch'):
+			saveyield = MacOS.EnableAppswitch(-1)
 		try:
 			while not self.quitting and not self.debugger_quitting:
 				try:
@@ -59,7 +74,8 @@ class Application(FrameWork.Application):
 					import PyEdit
 					PyEdit.tracebackwindow.traceback()
 		finally:
-			MacOS.EnableAppswitch(saveyield)
+			if hasattr(MacOS, 'EnableAppswitch'):
+				MacOS.EnableAppswitch(saveyield)
 	
 	def breathe(self, wait=1):
 		import W
@@ -108,13 +124,19 @@ class Application(FrameWork.Application):
 					break
 	
 	def do_frontWindowMethod(self, attr, *args):
-		wid = Win.FrontWindow()
+		wid = MyFrontWindow()
 		if wid and self._windows.has_key(wid):
 			window = self._windows[wid]
 			if hasattr(window, attr):
 				handler = getattr(window, attr)
 				apply(handler, args)
 				return 1
+				
+	def getfrontwindow(self):
+		wid = MyFrontWindow()
+		if wid and self._windows.has_key(wid):
+			return self._windows[wid]
+		return None
 	
 	def appendwindow(self, wid, window):
 		self._windows[wid] = window
@@ -139,7 +161,7 @@ class Application(FrameWork.Application):
 		if keycode in self.fkeymaps.keys():		# JJS
 			ch = self.fkeymaps[keycode]
 			modifiers = modifiers | FrameWork.cmdKey
-		wid = Win.FrontWindow()
+		wid = MyFrontWindow()
 		if modifiers & FrameWork.cmdKey and not modifiers & FrameWork.shiftKey:
 			if wid and self._windows.has_key(wid):
 				self.checkmenus(self._windows[wid])
@@ -168,13 +190,15 @@ class Application(FrameWork.Application):
 		Qd.InitCursor()
 		(what, message, when, where, modifiers) = event
 		self.checkopenwindowsmenu()
-		wid = Win.FrontWindow()
+		wid = MyFrontWindow()
 		if wid and self._windows.has_key(wid):
 			self.checkmenus(self._windows[wid])
 		else:
 			self.checkmenus(None)
 		result = MenuToolbox.MenuSelect(where)
 		id = (result>>16) & 0xffff	# Hi word
+		if id >= 0x8000:
+			id = -0x10000 + id
 		item = result & 0xffff		# Lo word
 		self.do_rawmenu(id, item, window, event)
 	
@@ -190,7 +214,10 @@ class Application(FrameWork.Application):
 				import sys
 				sys.stderr.write("XXX killed unknown (crashed?) Python window.\n")
 			else:
-				MacOS.HandleEvent(event)
+				if hasattr(MacOS, 'HandleEvent'):
+					MacOS.HandleEvent(event)
+				else:
+					print 'Unexpected updateEvent:', event
 	
 	def suspendresume(self, onoff):
 		pass
@@ -202,7 +229,7 @@ class Application(FrameWork.Application):
 	def checkopenwindowsmenu(self):
 		if self._openwindowscheckmark:
 			self.openwindowsmenu.menu.CheckMenuItem(self._openwindowscheckmark, 0)
-		window = Win.FrontWindow()
+		window = MyFrontWindow()
 		if window:
 			for item, wid in self._openwindows.items():
 				if wid == window:
@@ -253,7 +280,7 @@ class Application(FrameWork.Application):
 		if done.has_key(top):
 			return
 		done[top] = 1
-		import os, macfs, string
+		import os, string
 		try:
 			names = os.listdir(top)
 		except os.error:
@@ -265,21 +292,23 @@ class Application(FrameWork.Application):
 			if name == "CVS":
 				continue
 			try:
-				fss, isdir, isalias = macfs.ResolveAliasFile(name)
+				fsr, isdir, isalias = File.FSResolveAliasFile(name, 1)
 			except:
 				# maybe a broken alias
 				continue
-			path = fss.as_pathname()
+			path = fsr.as_pathname()
 			if done.has_key(path):
 				continue
 			name = string.strip(name)
+			if os.name == "posix":
+				name = unicode(name, "utf-8")
 			if name[-3:] == '---':
 				menu.addseparator()
 			elif isdir:
 				submenu = FrameWork.SubMenu(menu, name)
 				self.scriptswalk(path, submenu, done)
 			else:
-				creator, type = fss.GetCreatorType()
+				creator, type = MacOS.GetCreatorAndType(path)
 				if type == 'TEXT':
 					if name[-3:] == '.py':
 						name = name[:-3]
@@ -309,19 +338,24 @@ class Application(FrameWork.Application):
 				# exec in that window's namespace.
 				# xxx what to do when it's not saved???
 				# promt to save?
-				MacOS.EnableAppswitch(0)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(0)
 				execfile(path, {'__name__': '__main__', '__file__': path})
 			except W.AlertError, detail:
-				MacOS.EnableAppswitch(-1)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(-1)
 				raise W.AlertError, detail
 			except KeyboardInterrupt:
-				MacOS.EnableAppswitch(-1)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(-1)
 			except:
-				MacOS.EnableAppswitch(-1)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(-1)
 				import PyEdit
 				PyEdit.tracebackwindow.traceback(1)
 			else:
-				MacOS.EnableAppswitch(-1)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(-1)
 			#os.chdir(cwd)
 	
 	def openscript(self, filename, lineno=None, charoffset=0, modname=""):
@@ -429,7 +463,7 @@ class Menu(FrameWork.Menu):
 	
 	def _getmenuhandler(self, callback):
 		menuhandler = None
-		wid = Win.FrontWindow()
+		wid = MyFrontWindow()
 		if wid and self.bar.parent._windows.has_key(wid):
 			window = self.bar.parent._windows[wid]
 			if hasattr(window, "domenu_" + callback):

@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """Add reference count annotations to the Python/C API Reference."""
-__version__ = '$Revision: 1.1.1.1 $'
+__version__ = '$Revision: 1.4 $'
 
 import getopt
 import os

@@ -2,6 +2,43 @@
 #ifndef Py_CURSES_H
 #define Py_CURSES_H
 
+#ifdef __APPLE__
+/*
+** On Mac OS X 10.2 [n]curses.h and stdlib.h use different guards
+** against multiple definition of wchar_t.
+*/
+#ifdef	_BSD_WCHAR_T_DEFINED_
+#define _WCHAR_T
+#endif
+#endif
+
+#ifdef __FreeBSD__
+/*
+** On FreeBSD, [n]curses.h and stdlib.h/wchar.h use different guards
+** against multiple definition of wchar_t and wint_t.
+*/
+#ifdef	_XOPEN_SOURCE_EXTENDED
+#ifndef __FreeBSD_version
+#include <osreldate.h>
+#endif
+#if __FreeBSD_version >= 500000
+#ifndef __wchar_t
+#define __wchar_t
+#endif
+#ifndef __wint_t
+#define __wint_t
+#endif
+#else
+#ifndef _WCHAR_T
+#define _WCHAR_T
+#endif
+#ifndef _WINT_T
+#define _WINT_T
+#endif
+#endif
+#endif
+#endif
+
 #ifdef HAVE_NCURSES_H
 #include <ncurses.h>
 #else
@@ -68,10 +105,6 @@ static void **PyCurses_API;
 static char *catchall_ERR  = "curses function returned ERR";
 static char *catchall_NULL = "curses function returned NULL";
 
-/* Utility macros */
-#define ARG_COUNT(X) \
-	(((X) == NULL) ? 0 : (PyTuple_Check(X) ? PyTuple_Size(X) : 1))
-
 /* Function Prototype Macros - They are ugly but very, very useful. ;-)
 
    X - function name
@@ -81,10 +114,9 @@ static char *catchall_NULL = "curses function returned NULL";
    */
 
 #define NoArgNoReturnFunction(X) \
-static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
+static PyObject *PyCurses_ ## X (PyObject *self) \
 { \
   PyCursesInitialised \
-  if (!PyArg_NoArgs(args)) return NULL; \
   return PyCursesCheckERR(X(), # X); }
 
 #define NoArgOrFlagNoReturnFunction(X) \
@@ -92,11 +124,11 @@ static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
 { \
   int flag = 0; \
   PyCursesInitialised \
-  switch(ARG_COUNT(args)) { \
+  switch(PyTuple_Size(args)) { \
   case 0: \
     return PyCursesCheckERR(X(), # X); \
   case 1: \
-    if (!PyArg_Parse(args, "i;True(1) or False(0)", &flag)) return NULL; \
+    if (!PyArg_ParseTuple(args, "i;True(1) or False(0)", &flag)) return NULL; \
     if (flag) return PyCursesCheckERR(X(), # X); \
     else return PyCursesCheckERR(no ## X (), # X); \
   default: \
@@ -104,25 +136,22 @@ static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
     return NULL; } }
 
 #define NoArgReturnIntFunction(X) \
-static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
+static PyObject *PyCurses_ ## X (PyObject *self) \
 { \
  PyCursesInitialised \
- if (!PyArg_NoArgs(args)) return NULL; \
  return PyInt_FromLong((long) X()); }
 
 
 #define NoArgReturnStringFunction(X) \
-static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
+static PyObject *PyCurses_ ## X (PyObject *self) \
 { \
   PyCursesInitialised \
-  if (!PyArg_NoArgs(args)) return NULL; \
   return PyString_FromString(X()); }
 
 #define NoArgTrueFalseFunction(X) \
-static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
+static PyObject *PyCurses_ ## X (PyObject *self) \
 { \
   PyCursesInitialised \
-  if (!PyArg_NoArgs(args)) return NULL; \
   if (X () == FALSE) { \
     Py_INCREF(Py_False); \
     return Py_False; \
@@ -131,10 +160,9 @@ static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
   return Py_True; }
 
 #define NoArgNoReturnVoidFunction(X) \
-static PyObject *PyCurses_ ## X (PyObject *self, PyObject *args) \
+static PyObject *PyCurses_ ## X (PyObject *self) \
 { \
   PyCursesInitialised \
-  if (!PyArg_NoArgs(args)) return NULL; \
   X(); \
   Py_INCREF(Py_None); \
   return Py_None; }

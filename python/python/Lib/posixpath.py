@@ -10,14 +10,26 @@ Some of this can actually be useful on non-Posix systems too, e.g.
 for manipulation of the pathname component of URLs.
 """
 
+import sys
 import os
 import stat
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
            "basename","dirname","commonprefix","getsize","getmtime",
-           "getatime","islink","exists","isdir","isfile","ismount",
+           "getatime","getctime","islink","exists","isdir","isfile","ismount",
            "walk","expanduser","expandvars","normpath","abspath",
-           "samefile","sameopenfile","samestat"]
+           "samefile","sameopenfile","samestat",
+           "curdir","pardir","sep","pathsep","defpath","altsep","extsep",
+           "realpath","supports_unicode_filenames"]
+
+# strings representing various path-related bits and pieces
+curdir = '.'
+pardir = '..'
+extsep = '.'
+sep = '/'
+pathsep = ':'
+defpath = ':/bin:/usr/bin'
+altsep = None
 
 # Normalize the case of a pathname.  Trivial in Posix, string.lower on Mac.
 # On MS-DOS this may also turn slashes into backslashes; however, other
@@ -34,7 +46,7 @@ def normcase(s):
 
 def isabs(s):
     """Test whether a path is absolute"""
-    return s[:1] == '/'
+    return s.startswith('/')
 
 
 # Join pathnames.
@@ -45,12 +57,12 @@ def join(a, *p):
     """Join two or more pathname components, inserting '/' as needed"""
     path = a
     for b in p:
-        if b[:1] == '/':
+        if b.startswith('/'):
             path = b
-        elif path == '' or path[-1:] == '/':
-            path = path + b
+        elif path == '' or path.endswith('/'):
+            path +=  b
         else:
-            path = path + '/' + b
+            path += '/' + b
     return path
 
 
@@ -65,8 +77,7 @@ def split(p):
     i = p.rfind('/') + 1
     head, tail = p[:i], p[i:]
     if head and head != '/'*len(head):
-        while head[-1] == '/':
-            head = head[:-1]
+        head = head.rstrip('/')
     return head, tail
 
 
@@ -78,20 +89,11 @@ def split(p):
 def splitext(p):
     """Split the extension from a pathname.  Extension is everything from the
     last dot to the end.  Returns "(root, ext)", either part may be empty."""
-    root, ext = '', ''
-    for c in p:
-        if c == '/':
-            root, ext = root + ext + c, ''
-        elif c == '.':
-            if ext:
-                root, ext = root + ext, c
-            else:
-                ext = c
-        elif ext:
-            ext = ext + c
-        else:
-            root = root + c
-    return root, ext
+    i = p.rfind('.')
+    if i<=p.rfind('/'):
+        return p, ''
+    else:
+        return p[:i], p[i:]
 
 
 # Split a pathname into a drive specification and the rest of the
@@ -127,7 +129,8 @@ def commonprefix(m):
         for i in range(len(prefix)):
             if prefix[:i+1] != item[:i+1]:
                 prefix = prefix[:i]
-                if i == 0: return ''
+                if i == 0:
+                    return ''
                 break
     return prefix
 
@@ -136,19 +139,19 @@ def commonprefix(m):
 
 def getsize(filename):
     """Return the size of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[stat.ST_SIZE]
+    return os.stat(filename).st_size
 
 def getmtime(filename):
     """Return the last modification time of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[stat.ST_MTIME]
+    return os.stat(filename).st_mtime
 
 def getatime(filename):
     """Return the last access time of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[stat.ST_ATIME]
+    return os.stat(filename).st_atime
 
+def getctime(filename):
+    """Return the creation time of a file, reported by os.stat()."""
+    return os.stat(filename).st_ctime
 
 # Is a path a symbolic link?
 # This will always return false on systems where os.lstat doesn't exist.
@@ -158,20 +161,20 @@ def islink(path):
     try:
         st = os.lstat(path)
     except (os.error, AttributeError):
-        return 0
-    return stat.S_ISLNK(st[stat.ST_MODE])
+        return False
+    return stat.S_ISLNK(st.st_mode)
 
 
 # Does a path exist?
 # This is false for dangling symbolic links.
 
 def exists(path):
-    """Test whether a path exists.  Returns false for broken symbolic links"""
+    """Test whether a path exists.  Returns False for broken symbolic links"""
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return 1
+        return False
+    return True
 
 
 # Is a path a directory?
@@ -183,8 +186,8 @@ def isdir(path):
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return stat.S_ISDIR(st[stat.ST_MODE])
+        return False
+    return stat.S_ISDIR(st.st_mode)
 
 
 # Is a path a regular file?
@@ -196,8 +199,8 @@ def isfile(path):
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return stat.S_ISREG(st[stat.ST_MODE])
+        return False
+    return stat.S_ISREG(st.st_mode)
 
 
 # Are two filenames really pointing to the same file?
@@ -224,8 +227,8 @@ def sameopenfile(fp1, fp2):
 
 def samestat(s1, s2):
     """Test whether two stat buffers reference the same file"""
-    return s1[stat.ST_INO] == s2[stat.ST_INO] and \
-           s1[stat.ST_DEV] == s2[stat.ST_DEV]
+    return s1.st_ino == s2.st_ino and \
+           s1.st_dev == s2.st_dev
 
 
 # Is a path a mount point?
@@ -237,16 +240,16 @@ def ismount(path):
         s1 = os.stat(path)
         s2 = os.stat(join(path, '..'))
     except os.error:
-        return 0 # It doesn't exist -- so not a mount point :-)
-    dev1 = s1[stat.ST_DEV]
-    dev2 = s2[stat.ST_DEV]
+        return False # It doesn't exist -- so not a mount point :-)
+    dev1 = s1.st_dev
+    dev2 = s2.st_dev
     if dev1 != dev2:
-        return 1        # path/.. on a different device as path
-    ino1 = s1[stat.ST_INO]
-    ino2 = s2[stat.ST_INO]
+        return True     # path/.. on a different device as path
+    ino1 = s1.st_ino
+    ino2 = s2.st_ino
     if ino1 == ino2:
-        return 1        # path/.. is the same i-node as path
-    return 0
+        return True     # path/.. is the same i-node as path
+    return False
 
 
 # Directory tree walk.
@@ -283,7 +286,7 @@ def walk(top, func, arg):
             st = os.lstat(name)
         except os.error:
             continue
-        if stat.S_ISDIR(st[stat.ST_MODE]):
+        if stat.S_ISDIR(st.st_mode):
             walk(name, func, arg)
 
 
@@ -299,23 +302,26 @@ def walk(top, func, arg):
 def expanduser(path):
     """Expand ~ and ~user constructions.  If user or $HOME is unknown,
     do nothing."""
-    if path[:1] != '~':
+    if not path.startswith('~'):
         return path
-    i, n = 1, len(path)
-    while i < n and path[i] != '/':
-        i = i + 1
+    i = path.find('/', 1)
+    if i < 0:
+        i = len(path)
     if i == 1:
-        if not os.environ.has_key('HOME'):
-            return path
-        userhome = os.environ['HOME']
+        if 'HOME' not in os.environ:
+            import pwd
+            userhome = pwd.getpwuid(os.getuid()).pw_dir
+        else:
+            userhome = os.environ['HOME']
     else:
         import pwd
         try:
             pwent = pwd.getpwnam(path[1:i])
         except KeyError:
             return path
-        userhome = pwent[5]
-    if userhome[-1:] == '/': i = i + 1
+        userhome = pwent.pw_dir
+    if userhome.endswith('/'):
+        i += 1
     return userhome + path[i:]
 
 
@@ -335,19 +341,19 @@ def expandvars(path):
         import re
         _varprog = re.compile(r'\$(\w+|\{[^}]*\})')
     i = 0
-    while 1:
+    while True:
         m = _varprog.search(path, i)
         if not m:
             break
         i, j = m.span(0)
         name = m.group(1)
-        if name[:1] == '{' and name[-1:] == '}':
+        if name.startswith('{') and name.endswith('}'):
             name = name[1:-1]
-        if os.environ.has_key(name):
+        if name in os.environ:
             tail = path[j:]
             path = path[:i] + os.environ[name]
             i = len(path)
-            path = path + tail
+            path += tail
         else:
             i = j
     return path
@@ -410,3 +416,5 @@ symbolic links encountered in the path."""
             return realpath(newpath)
 
     return filename
+
+supports_unicode_filenames = False

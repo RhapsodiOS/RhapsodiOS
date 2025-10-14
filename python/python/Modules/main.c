@@ -4,18 +4,22 @@
 #include "osdefs.h"
 #include "compile.h" /* For CO_FUTURE_DIVISION */
 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#ifdef __VMS
+#include <unixlib.h>
 #endif
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) || defined(__CYGWIN__)
 #include <fcntl.h>
 #endif
 
-#if defined(PYOS_OS2) || defined(MS_WINDOWS)
+#if (defined(PYOS_OS2) && !defined(PYCC_GCC)) || defined(MS_WINDOWS)
 #define PYTHONHOMEHELP "<prefix>\\lib"
 #else
+#if defined(PYOS_OS2) && defined(PYCC_GCC)
+#define PYTHONHOMEHELP "<prefix>/Lib"
+#else
 #define PYTHONHOMEHELP "<prefix>/pythonX.X"
+#endif
 #endif
 
 #include "pygetopt.h"
@@ -62,9 +66,9 @@ static char *usage_2 = "\
 -S     : don't imply 'import site' on initialization\n\
 -t     : issue warnings about inconsistent tab usage (-tt: issue errors)\n\
 -u     : unbuffered binary stdout and stderr (also PYTHONUNBUFFERED=x)\n\
+         see man page for details on internal buffering relating to '-u'\n\
 ";
 static char *usage_3 = "\
--U     : Unicode literals: treats '...' literals like u'...'\n\
 -v     : verbose (trace import statements) (also PYTHONVERBOSE=x)\n\
 -V     : print the Python version number and exit\n\
 -W arg : warning control (arg is action:message:category:module:lineno)\n\
@@ -84,7 +88,7 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).\n\
 ";
 
 
-static void
+static int
 usage(int exitcode, char* program)
 {
 	FILE *f = exitcode ? stderr : stdout;
@@ -98,14 +102,25 @@ usage(int exitcode, char* program)
 		fprintf(f, usage_3);
 		fprintf(f, usage_4, DELIM, DELIM, PYTHONHOMEHELP);
 	}
-	exit(exitcode);
+#if defined(__VMS)
+	if (exitcode == 0) {
+		/* suppress 'error' message */
+		return 1;
+	}
+	else {
+		/* STS$M_INHIB_MSG + SS$_ABORT */
+		return 0x1000002c;
+	}
+#else
+	return exitcode;
+#endif
 	/*NOTREACHED*/
 }
 
 
 /* Main program */
 
-DL_EXPORT(int)
+int
 Py_Main(int argc, char **argv)
 {
 	int c;
@@ -179,7 +194,7 @@ Py_Main(int argc, char **argv)
 			fprintf(stderr,
 				"-Q option should be `-Qold', "
 				"`-Qwarn', `-Qwarnall', or `-Qnew' only\n");
-			usage(2, argv[0]);
+			return usage(2, argv[0]);
 			/* NOTREACHED */
 
 		case 'i':
@@ -240,18 +255,18 @@ Py_Main(int argc, char **argv)
 		/* This space reserved for other options */
 
 		default:
-			usage(2, argv[0]);
+			return usage(2, argv[0]);
 			/*NOTREACHED*/
 
 		}
 	}
 
 	if (help)
-		usage(0, argv[0]);
+		return usage(0, argv[0]);
 
 	if (version) {
 		fprintf(stderr, "Python %s\n", PY_VERSION);
-		exit(0);
+		return 0;
 	}
 
 	if (!saw_inspect_flag &&
@@ -264,12 +279,19 @@ Py_Main(int argc, char **argv)
 	if (command == NULL && _PyOS_optind < argc &&
 	    strcmp(argv[_PyOS_optind], "-") != 0)
 	{
+#ifdef __VMS
+		filename = decc$translate_vms(argv[_PyOS_optind]);
+		if (filename == (char *)0 || filename == (char *)-1)
+			filename = argv[_PyOS_optind];
+
+#else
 		filename = argv[_PyOS_optind];
+#endif
 		if (filename != NULL) {
 			if ((fp = fopen(filename, "r")) == NULL) {
 				fprintf(stderr, "%s: can't open file '%s'\n",
 					argv[0], filename);
-				exit(2);
+				return 2;
 			}
 			else if (skipfirstline) {
 				int ch;
@@ -288,7 +310,7 @@ Py_Main(int argc, char **argv)
 	stdin_is_interactive = Py_FdIsInteractive(stdin, (char *)0);
 
 	if (unbuffered) {
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) || defined(__CYGWIN__)
 		_setmode(fileno(stdin), O_BINARY);
 		_setmode(fileno(stdout), O_BINARY);
 #endif
@@ -322,14 +344,38 @@ Py_Main(int argc, char **argv)
 #endif /* !MS_WINDOWS */
 		/* Leave stderr alone - it should be unbuffered anyway. */
   	}
+#ifdef __VMS
+	else {
+		setvbuf (stdout, (char *)NULL, _IOLBF, BUFSIZ);
+	}
+#endif /* __VMS */
 
+#ifdef __APPLE__
+	/* On MacOS X, when the Python interpreter is embedded in an
+	   application bundle, it gets executed by a bootstrapping script
+	   that does os.execve() with an argv[0] that's different from the
+	   actual Python executable. This is needed to keep the Finder happy,
+	   or rather, to work around Apple's overly strict requirements of
+	   the process name. However, we still need a usable sys.executable,
+	   so the actual executable path is passed in an environment variable.
+	   See Lib/plat-mac/bundlebuiler.py for details about the bootstrap
+	   script. */
+	if ((p = Py_GETENV("PYTHONEXECUTABLE")) && *p != '\0')
+		Py_SetProgramName(p);
+	else
+		Py_SetProgramName(argv[0]);
+#else
 	Py_SetProgramName(argv[0]);
+#endif
 	Py_Initialize();
 
 	if (Py_VerboseFlag ||
-	    (command == NULL && filename == NULL && stdin_is_interactive))
-		fprintf(stderr, "Python %s on %s\n%s\n",
-			Py_GetVersion(), Py_GetPlatform(), COPYRIGHT);
+	    (command == NULL && filename == NULL && stdin_is_interactive)) {
+		fprintf(stderr, "Python %s on %s\n",
+			Py_GetVersion(), Py_GetPlatform());
+ 		if (!Py_NoSiteFlag)
+ 			fprintf(stderr, "%s\n", COPYRIGHT);
+	}
 
 	if (command != NULL) {
 		/* Backup _PyOS_optind and force sys.argv[0] = '-c' */
@@ -372,6 +418,15 @@ Py_Main(int argc, char **argv)
 			filename != NULL, &cf) != 0;
 	}
 
+	/* Check this environment variable at the end, to give programs the
+	 * opportunity to set it from Python.
+	 */
+	if (!saw_inspect_flag &&
+	    (p = Py_GETENV("PYTHONINSPECT")) && *p != '\0')
+	{
+		inspect = 1;
+	}
+
 	if (inspect && stdin_is_interactive &&
 	    (filename != NULL || command != NULL))
 		/* XXX */
@@ -379,7 +434,7 @@ Py_Main(int argc, char **argv)
 
 	Py_Finalize();
 #ifdef RISCOS
-	if(Py_RISCOSWimpFlag)
+	if (Py_RISCOSWimpFlag)
                 fprintf(stderr, "\x0cq\x0c"); /* make frontend quit */
 #endif
 

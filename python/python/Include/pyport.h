@@ -27,13 +27,12 @@ Used in:  Py_uintptr_t
 
 HAVE_LONG_LONG
 Meaning:  The compiler supports the C type "long long"
-Used in:  LONG_LONG
+Used in:  PY_LONG_LONG
 
 **************************************************************************/
 
 
 /* For backward compatibility only. Obsolete, do not use. */
-#define ANY void
 #ifdef HAVE_PROTOTYPES
 #define Py_PROTO(x) x
 #else
@@ -56,8 +55,8 @@ Used in:  LONG_LONG
  */
 
 #ifdef HAVE_LONG_LONG
-#ifndef LONG_LONG
-#define LONG_LONG long long
+#ifndef PY_LONG_LONG
+#define PY_LONG_LONG long long
 #endif
 #endif /* HAVE_LONG_LONG */
 
@@ -79,8 +78,8 @@ typedef unsigned long	Py_uintptr_t;
 typedef long		Py_intptr_t;
 
 #elif defined(HAVE_LONG_LONG) && (SIZEOF_VOID_P <= SIZEOF_LONG_LONG)
-typedef unsigned LONG_LONG	Py_uintptr_t;
-typedef LONG_LONG		Py_intptr_t;
+typedef unsigned PY_LONG_LONG	Py_uintptr_t;
+typedef PY_LONG_LONG		Py_intptr_t;
 
 #else
 #   error "Python needs a typedef for Py_uintptr_t in pyport.h."
@@ -118,13 +117,6 @@ typedef LONG_LONG		Py_intptr_t;
 
 #include <sys/select.h>
 
-#else /* !HAVE_SYS_SELECT_H */
-
-#ifdef USE_GUSI1
-/* If we don't have sys/select the definition may be in unistd.h */
-#include <GUSI.h>
-#endif
-
 #endif /* !HAVE_SYS_SELECT_H */
 
 /*******************************
@@ -155,9 +147,13 @@ typedef LONG_LONG		Py_intptr_t;
 
 #ifdef RISCOS
 #include <sys/types.h>
+#include "unixstuff.h"
 #endif
 
 #ifndef DONT_HAVE_SYS_STAT_H
+#if defined(PYOS_OS2) && defined(PYCC_GCC)
+#include <sys/types.h>
+#endif
 #include <sys/stat.h>
 #elif defined(HAVE_STAT_H)
 #include <stat.h>
@@ -234,19 +230,14 @@ extern "C" {
  */
 #define Py_IS_INFINITY(X) ((X) && (X)*0.5 == (X))
 
-/* According to
- * http://www.cray.com/swpubs/manuals/SN-2194_2.0/html-SN-2194_2.0/x3138.htm
- * on some Cray systems HUGE_VAL is incorrectly (according to the C std)
- * defined to be the largest positive finite rather than infinity.  We need
- * the std-conforming infinity meaning (provided the platform has one!).
- *
- * Then, according to a bug report on SourceForge, defining Py_HUGE_VAL as
- * INFINITY caused internal compiler errors under BeOS using some version
- * of gcc.  Explicitly casting INFINITY to double made that problem go away.
+/* HUGE_VAL is supposed to expand to a positive double infinity.  Python
+ * uses Py_HUGE_VAL instead because some platforms are broken in this
+ * respect.  We used to embed code in pyport.h to try to worm around that,
+ * but different platforms are broken in conflicting ways.  If you're on
+ * a platform where HUGE_VAL is defined incorrectly, fiddle your Python
+ * config to #define Py_HUGE_VAL to something that works on your platform.
  */
-#ifdef INFINITY
-#define Py_HUGE_VAL ((double)INFINITY)
-#else
+#ifndef Py_HUGE_VAL
 #define Py_HUGE_VAL HUGE_VAL
 #endif
 
@@ -265,10 +256,15 @@ extern "C" {
  *	  if the returned result is a NaN, or if a C89 box returns HUGE_VAL
  *	  in non-overflow cases.
  *    X is evaluated more than once.
+ * Some platforms have better way to spell this, so expect some #ifdef'ery.
  */
+#ifdef __FreeBSD__
+#define Py_OVERFLOWED(X) isinf(X)
+#else
 #define Py_OVERFLOWED(X) ((X) != 0.0 && (errno == ERANGE ||    \
 					 (X) == Py_HUGE_VAL || \
 					 (X) == -Py_HUGE_VAL))
+#endif
 
 /* Py_SET_ERANGE_ON_OVERFLOW(x)
  * If a libm function did not set errno, but it looks like the result
@@ -284,6 +280,54 @@ extern "C" {
 				   (X) == -Py_HUGE_VAL))  \
 			errno = ERANGE; \
 	} while(0)
+
+/* Py_ADJUST_ERANGE1(x)
+ * Py_ADJUST_ERANGE2(x, y)
+ * Set errno to 0 before calling a libm function, and invoke one of these
+ * macros after, passing the function result(s) (Py_ADJUST_ERANGE2 is useful
+ * for functions returning complex results).  This makes two kinds of
+ * adjustments to errno:  (A) If it looks like the platform libm set
+ * errno=ERANGE due to underflow, clear errno. (B) If it looks like the
+ * platform libm overflowed but didn't set errno, force errno to ERANGE.  In
+ * effect, we're trying to force a useful implementation of C89 errno
+ * behavior.
+ * Caution:
+ *    This isn't reliable.  See Py_OVERFLOWED comments.
+ *    X and Y may be evaluated more than once.
+ */
+#define Py_ADJUST_ERANGE1(X)						\
+	do {								\
+		if (errno == 0) {					\
+			if ((X) == Py_HUGE_VAL || (X) == -Py_HUGE_VAL)	\
+				errno = ERANGE;				\
+		}							\
+		else if (errno == ERANGE && (X) == 0.0)			\
+			errno = 0;					\
+	} while(0)
+
+#define Py_ADJUST_ERANGE2(X, Y)						\
+	do {								\
+		if ((X) == Py_HUGE_VAL || (X) == -Py_HUGE_VAL ||	\
+		    (Y) == Py_HUGE_VAL || (Y) == -Py_HUGE_VAL) {	\
+				if (errno == 0)				\
+					errno = ERANGE;			\
+		}							\
+		else if (errno == ERANGE)				\
+			errno = 0;					\
+	} while(0)
+
+/* Py_DEPRECATED(version)
+ * Declare a variable, type, or function deprecated.
+ * Usage:
+ *    extern int old_var Py_DEPRECATED(2.3);
+ *    typedef int T1 Py_DEPRECATED(2.4);
+ *    extern int x() Py_DEPRECATED(2.5);
+ */
+#if defined(__GNUC__) && (__GNUC__ == 3) && (__GNUC_MINOR__ >= 1)
+#define Py_DEPRECATED(VERSION_UNUSED) __attribute__((__deprecated__))
+#else
+#define Py_DEPRECATED(VERSION_UNUSED)
+#endif
 
 /**************************************************************************
 Prototypes that are missing from the standard include files on some systems
@@ -354,23 +398,87 @@ extern int fsync(int fd);
 extern double hypot(double, double);
 #endif
 
+/* Declarations for symbol visibility.
 
-/************************************
- * MALLOC COMPATIBILITY FOR pymem.h *
- ************************************/
+  PyAPI_FUNC(type): Declares a public Python API function and return type
+  PyAPI_DATA(type): Declares public Python data and its type
+  PyMODINIT_FUNC:   A Python module init function.  If these functions are
+                    inside the Python core, they are private to the core.
+                    If in an extension module, it may be declared with
+                    external linkage depending on the platform.
 
-#ifndef DL_IMPORT       /* declarations for DLL import */
-#define DL_IMPORT(RTYPE) RTYPE
+  As a number of platforms support/require "__declspec(dllimport/dllexport)",
+  we support a HAVE_DECLSPEC_DLL macro to save duplication.
+*/
+
+/*
+  All windows ports, except cygwin, are handled in PC/pyconfig.h.
+
+  BeOS and cygwin are the only other autoconf platform requiring special
+  linkage handling and both of these use __declspec().
+*/
+#if defined(__CYGWIN__) || defined(__BEOS__)
+#	define HAVE_DECLSPEC_DLL
 #endif
 
-#ifdef MALLOC_ZERO_RETURNS_NULL
-/* XXX Always allocate one extra byte, since some malloc's return NULL
-   XXX for malloc(0) or realloc(p, 0). */
-#define _PyMem_EXTRA 1
-#else
-#define _PyMem_EXTRA 0
+#if defined(Py_ENABLE_SHARED) /* only get special linkage if built as shared */
+#	if defined(HAVE_DECLSPEC_DLL)
+#		ifdef Py_BUILD_CORE
+#			define PyAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
+#			define PyAPI_DATA(RTYPE) extern __declspec(dllexport) RTYPE
+			/* module init functions inside the core need no external linkage */
+#			define PyMODINIT_FUNC void
+#		else /* Py_BUILD_CORE */
+			/* Building an extension module, or an embedded situation */
+			/* public Python functions and data are imported */
+			/* Under Cygwin, auto-import functions to prevent compilation */
+			/* failures similar to http://python.org/doc/FAQ.html#3.24 */
+#			if !defined(__CYGWIN__)
+#				define PyAPI_FUNC(RTYPE) __declspec(dllimport) RTYPE
+#			endif /* !__CYGWIN__ */
+#			define PyAPI_DATA(RTYPE) extern __declspec(dllimport) RTYPE
+			/* module init functions outside the core must be exported */
+#			if defined(__cplusplus)
+#				define PyMODINIT_FUNC extern "C" __declspec(dllexport) void
+#			else /* __cplusplus */
+#				define PyMODINIT_FUNC __declspec(dllexport) void
+#			endif /* __cplusplus */
+#		endif /* Py_BUILD_CORE */
+#	endif /* HAVE_DECLSPEC */
+#endif /* Py_ENABLE_SHARED */
+
+/* If no external linkage macros defined by now, create defaults */
+#ifndef PyAPI_FUNC
+#	define PyAPI_FUNC(RTYPE) RTYPE
+#endif
+#ifndef PyAPI_DATA
+#	define PyAPI_DATA(RTYPE) extern RTYPE
+#endif
+#ifndef PyMODINIT_FUNC
+#	if defined(__cplusplus)
+#		define PyMODINIT_FUNC extern "C" void
+#	else /* __cplusplus */
+#		define PyMODINIT_FUNC void
+#	endif /* __cplusplus */
 #endif
 
+/* Deprecated DL_IMPORT and DL_EXPORT macros */
+#if defined(Py_ENABLE_SHARED) && defined (HAVE_DECLSPEC_DLL)
+#	if defined(Py_BUILD_CORE)
+#		define DL_IMPORT(RTYPE) __declspec(dllexport) RTYPE
+#		define DL_EXPORT(RTYPE) __declspec(dllexport) RTYPE
+#	else
+#		define DL_IMPORT(RTYPE) __declspec(dllimport) RTYPE
+#		define DL_EXPORT(RTYPE) __declspec(dllexport) RTYPE
+#	endif
+#endif
+#ifndef DL_EXPORT
+#	define DL_EXPORT(RTYPE) RTYPE
+#endif
+#ifndef DL_IMPORT
+#	define DL_IMPORT(RTYPE) RTYPE
+#endif
+/* End of deprecated DL_* macros */
 
 /* If the fd manipulation macros aren't defined,
    here is a set that should do the job */
@@ -437,15 +545,6 @@ typedef	struct fd_set {
 #error "LONG_BIT definition appears wrong for platform (bad gcc/glibc config?)."
 #endif
 
-/*
- * Rename some functions for the Borland compiler
- */
-#ifdef __BORLANDC__
-#  include <io.h>
-#  define _chsize chsize
-#  define _setmode setmode
-#endif
-
 #ifdef __cplusplus
 }
 #endif
@@ -454,10 +553,11 @@ typedef	struct fd_set {
  * Hide GCC attributes from compilers that don't support them.
  */
 #if (!defined(__GNUC__) || __GNUC__ < 2 || \
-     (__GNUC__ == 2 && __GNUC_MINOR__ < 7) || \
-     defined(NEXT) ) && \
+     (__GNUC__ == 2 && __GNUC_MINOR__ < 7) ) && \
     !defined(RISCOS)
-#define __attribute__(__x)
+#define Py_GCC_ATTRIBUTE(x)
+#else
+#define Py_GCC_ATTRIBUTE(x) __attribute__(x)
 #endif
 
 #endif /* Py_PYPORT_H */

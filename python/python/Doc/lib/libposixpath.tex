@@ -42,7 +42,7 @@ half of the pair returned by \code{split(\var{path})}.
 \end{funcdesc}
 
 \begin{funcdesc}{exists}{path}
-Return true if \var{path} refers to an existing path.
+Return \code{True} if \var{path} refers to an existing path.
 \end{funcdesc}
 
 \begin{funcdesc}{expanduser}{path}
@@ -66,51 +66,61 @@ unchanged.
 \end{funcdesc}
 
 \begin{funcdesc}{getatime}{path}
-Return the time of last access of \var{filename}.  The return
-value is integer giving the number of seconds since the epoch (see the 
+Return the time of last access of \var{path}.  The return
+value is a number giving the number of seconds since the epoch (see the 
 \refmodule{time} module).  Raise \exception{os.error} if the file does
 not exist or is inaccessible.
 \versionadded{1.5.2}
+\versionchanged[If \function{os.stat_float_times()} returns True, the result is a floating point number]{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{getmtime}{path}
-Return the time of last modification of \var{filename}.  The return
-value is integer giving the number of seconds since the epoch (see the 
+Return the time of last modification of \var{path}.  The return
+value is a number giving the number of seconds since the epoch (see the 
 \refmodule{time} module).  Raise \exception{os.error} if the file does
 not exist or is inaccessible.
 \versionadded{1.5.2}
+\versionchanged[If \function{os.stat_float_times()} returns True, the result is a floating point number]{2.3}
+\end{funcdesc}
+
+\begin{funcdesc}{getctime}{path}
+Return the time of creation of \var{path}.  The return
+value is a number giving the number of seconds since the epoch (see the 
+\refmodule{time} module).  Raise \exception{os.error} if the file does
+not exist or is inaccessible.
+\versionadded{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{getsize}{path}
-Return the size, in bytes, of \var{filename}.  Raise
+Return the size, in bytes, of \var{path}.  Raise
 \exception{os.error} if the file does not exist or is inaccessible.
 \versionadded{1.5.2}
 \end{funcdesc}
 
 \begin{funcdesc}{isabs}{path}
-Return true if \var{path} is an absolute pathname (begins with a
+Return \code{True} if \var{path} is an absolute pathname (begins with a
 slash).
 \end{funcdesc}
 
 \begin{funcdesc}{isfile}{path}
-Return true if \var{path} is an existing regular file.  This follows
+Return \code{True} if \var{path} is an existing regular file.  This follows
 symbolic links, so both \function{islink()} and \function{isfile()}
 can be true for the same path.
 \end{funcdesc}
 
 \begin{funcdesc}{isdir}{path}
-Return true if \var{path} is an existing directory.  This follows
+Return \code{True} if \var{path} is an existing directory.  This follows
 symbolic links, so both \function{islink()} and \function{isdir()} can
 be true for the same path.
 \end{funcdesc}
 
 \begin{funcdesc}{islink}{path}
-Return true if \var{path} refers to a directory entry that is a
-symbolic link.  Always false if symbolic links are not supported.
+Return \code{True} if \var{path} refers to a directory entry that is a
+symbolic link.  Always \code{False} if symbolic links are not supported.
 \end{funcdesc}
 
 \begin{funcdesc}{ismount}{path}
-Return true if pathname \var{path} is a \dfn{mount point}: a point in
+Return \code{True} if pathname \var{path} is a \dfn{mount point}: a point in
 a file system where a different file system has been mounted.  The
 function checks whether \var{path}'s parent, \file{\var{path}/..}, is
 on a different device than \var{path}, or whether \file{\var{path}/..}
@@ -122,8 +132,12 @@ should detect mount points for all \UNIX{} and \POSIX{} variants.
 Joins one or more path components intelligently.  If any component is
 an absolute path, all previous components are thrown away, and joining
 continues.  The return value is the concatenation of \var{path1}, and
-optionally \var{path2}, etc., with exactly one slash (\code{'/'})
-inserted between components, unless \var{path} is empty.
+optionally \var{path2}, etc., with exactly one directory separator
+(\code{os.sep}) inserted between components, unless \var{path2} is
+empty.  Note that on Windows, since there is a current directory for
+each drive, \function{os.path.join("c:", "foo")} represents a path
+relative to the current directory on drive \file{C:} (\file{c:foo}), not
+\file{c:\textbackslash\textbackslash foo}.
 \end{funcdesc}
 
 \begin{funcdesc}{normcase}{path}
@@ -149,7 +163,7 @@ Availability:  \UNIX.
 \end{funcdesc}
 
 \begin{funcdesc}{samefile}{path1, path2}
-Return true if both pathname arguments refer to the same file or
+Return \code{True} if both pathname arguments refer to the same file or
 directory (as indicated by device number and i-node number).
 Raise an exception if a \function{os.stat()} call on either pathname
 fails.
@@ -157,14 +171,14 @@ Availability:  Macintosh, \UNIX.
 \end{funcdesc}
 
 \begin{funcdesc}{sameopenfile}{fp1, fp2}
-Return true if the file objects \var{fp1} and \var{fp2} refer to the
+Return \code{True} if the file objects \var{fp1} and \var{fp2} refer to the
 same file.  The two file objects may represent different file
 descriptors.
 Availability:  Macintosh, \UNIX.
 \end{funcdesc}
 
 \begin{funcdesc}{samestat}{stat1, stat2}
-Return true if the stat tuples \var{stat1} and \var{stat2} refer to
+Return \code{True} if the stat tuples \var{stat1} and \var{stat2} refer to
 the same file.  These structures may have been returned by
 \function{fstat()}, \function{lstat()}, or \function{stat()}.  This
 function implements the underlying comparison used by
@@ -214,4 +228,24 @@ influence the set of directories visited below \var{dirname}, e.g., to
 avoid visiting certain parts of the tree.  (The object referred to by
 \var{names} must be modified in place, using \keyword{del} or slice
 assignment.)
+
+\begin{notice}
+Symbolic links to directories are not treated as subdirectories, and
+that \function{walk()} therefore will not visit them. To visit linked
+directories you must identify them with
+\code{os.path.islink(\var{file})} and
+\code{os.path.isdir(\var{file})}, and invoke \function{walk()} as
+necessary.
+\end{notice}
+
+\note{The newer \function{\refmodule{os}.walk()} generator supplies
+      similar functionality and can be easier to use.}
 \end{funcdesc}
+
+\begin{datadesc}{supports_unicode_filenames}
+True if arbitrary Unicode strings can be used as file names (within
+limitations imposed by the file system), and if
+\function{os.listdir()} returns Unicode strings for a Unicode
+argument.
+\versionadded{2.3}
+\end{datadesc}

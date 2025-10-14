@@ -4,7 +4,7 @@ import unittest
 import StringIO
 import cStringIO
 import types
-import test_support
+from test import test_support
 
 
 class TestGenericStringIO(unittest.TestCase):
@@ -58,10 +58,10 @@ class TestGenericStringIO(unittest.TestCase):
     def test_iterator(self):
         eq = self.assertEqual
         unless = self.failUnless
-        it = iter(self._fp)
+        eq(iter(self._fp), self._fp)
         # Does this object support the iteration protocol?
-        unless(hasattr(it, '__iter__'))
-        unless(hasattr(it, 'next'))
+        unless(hasattr(self._fp, '__iter__'))
+        unless(hasattr(self._fp, 'next'))
         i = 0
         for line in self._fp:
             eq(line, self._line + '\n')
@@ -70,6 +70,23 @@ class TestGenericStringIO(unittest.TestCase):
 
 class TestStringIO(TestGenericStringIO):
     MODULE = StringIO
+
+    def test_unicode(self):
+
+        if not test_support.have_unicode: return
+
+        # The StringIO module also supports concatenating Unicode
+        # snippets to larger Unicode strings. This is tested by this
+        # method. Note that cStringIO does not support this extension.
+
+        f = self.MODULE.StringIO()
+        f.write(self._line[:6])
+        f.seek(3)
+        f.write(unicode(self._line[20:26]))
+        f.write(unicode(self._line[52]))
+        s = f.getvalue()
+        self.assertEqual(s, unicode('abcuvwxyz!'))
+        self.assertEqual(type(s), types.UnicodeType)
 
 class TestcStringIO(TestGenericStringIO):
     MODULE = cStringIO
@@ -88,10 +105,12 @@ class TestBuffercStringIO(TestcStringIO):
 
 
 def test_main():
-    test_support.run_unittest(TestStringIO)
-    test_support.run_unittest(TestcStringIO)
-    test_support.run_unittest(TestBufferStringIO)
-    test_support.run_unittest(TestBuffercStringIO)
+    test_support.run_unittest(
+        TestStringIO,
+        TestcStringIO,
+        TestBufferStringIO,
+        TestBuffercStringIO
+    )
 
 if __name__ == '__main__':
     test_main()

@@ -8,9 +8,9 @@ additional features:
   * options set attributes of a passed-in object
 """
 
-# created 1999/03/03, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: fancy_getopt.py,v 1.1.1.1 2002/02/05 23:21:17 zarzycki Exp $"
+__revision__ = "$Id: fancy_getopt.py,v 1.27 2002/11/19 13:12:27 akuchling Exp $"
 
 import sys, string, re
 from types import *
@@ -30,12 +30,6 @@ neg_alias_re = re.compile("^(%s)=!(%s)$" % (longopt_pat, longopt_pat))
 # This is used to translate long options to legitimate Python identifiers
 # (for use as attributes of some object).
 longopt_xlate = string.maketrans('-', '_')
-
-# This records (option, value) pairs in the order seen on the command line;
-# it's close to what getopt.getopt() returns, but with short options
-# expanded.  (Ugh, this module should be OO-ified.)
-_option_order = None
-
 
 class FancyGetopt:
     """Wrapper around the standard 'getopt()' module that provides some
@@ -157,13 +151,18 @@ class FancyGetopt:
         self.long_opts = []
         self.short_opts = []
         self.short2long.clear()
+        self.repeat = {}
 
         for option in self.option_table:
-            try:
-                (long, short, help) = option
-            except ValueError:
-                raise DistutilsGetoptError, \
-                      "invalid option tuple " + str(option)
+            if len(option) == 3:
+                long, short, help = option
+                repeat = 0
+            elif len(option) == 4:
+                long, short, help, repeat = option
+            else:
+                # the option table is part of the code, so simply
+                # assert that it is correct
+                assert "invalid option tuple: %s" % `option`
 
             # Type- and value-check the option names
             if type(long) is not StringType or len(long) < 2:
@@ -177,6 +176,7 @@ class FancyGetopt:
                       ("invalid short option '%s': "
                        "must a single character or None") % short
 
+            self.repeat[long] = repeat
             self.long_opts.append(long)
 
             if long[-1] == '=':             # option takes an argument?
@@ -232,14 +232,15 @@ class FancyGetopt:
 
 
     def getopt (self, args=None, object=None):
-        """Parse the command-line options in 'args' and store the results
-        as attributes of 'object'.  If 'args' is None or not supplied, uses
-        'sys.argv[1:]'.  If 'object' is None or not supplied, creates a new
-        OptionDummy object, stores option values there, and returns a tuple
-        (args, object).  If 'object' is supplied, it is modified in place
-        and 'getopt()' just returns 'args'; in both cases, the returned
-        'args' is a modified copy of the passed-in 'args' list, which is
-        left untouched.
+        """Parse command-line options in args. Store as attributes on object.
+
+        If 'args' is None or not supplied, uses 'sys.argv[1:]'.  If
+        'object' is None or not supplied, creates a new OptionDummy
+        object, stores option values there, and returns a tuple (args,
+        object).  If 'object' is supplied, it is modified in place and
+        'getopt()' just returns 'args'; in both cases, the returned
+        'args' is a modified copy of the passed-in 'args' list, which
+        is left untouched.
         """
         if args is None:
             args = sys.argv[1:]
@@ -253,30 +254,23 @@ class FancyGetopt:
 
         short_opts = string.join(self.short_opts)
         try:
-            (opts, args) = getopt.getopt(args, short_opts, self.long_opts)
+            opts, args = getopt.getopt(args, short_opts, self.long_opts)
         except getopt.error, msg:
             raise DistutilsArgError, msg
 
-        for (opt, val) in opts:
+        for opt, val in opts:
             if len(opt) == 2 and opt[0] == '-': # it's a short option
                 opt = self.short2long[opt[1]]
-
-            elif len(opt) > 2 and opt[0:2] == '--':
-                opt = opt[2:]
-
             else:
-                raise DistutilsInternalError, \
-                      "this can't happen: bad option string '%s'" % opt
+                assert len(opt) > 2 and opt[:2] == '--'
+                opt = opt[2:]
 
             alias = self.alias.get(opt)
             if alias:
                 opt = alias
 
             if not self.takes_arg[opt]:     # boolean option?
-                if val != '':               # shouldn't have a value!
-                    raise DistutilsInternalError, \
-                          "this can't happen: bad option value '%s'" % val
-
+                assert val == '', "boolean option can't have value"
                 alias = self.negative_alias.get(opt)
                 if alias:
                     opt = alias
@@ -285,13 +279,16 @@ class FancyGetopt:
                     val = 1
 
             attr = self.attr_name[opt]
+            # The only repeating option at the moment is 'verbose'.
+            # It has a negative option -q quiet, which should set verbose = 0.
+            if val and self.repeat.get(attr) is not None:
+                val = getattr(object, attr, 0) + 1
             setattr(object, attr, val)
             self.option_order.append((opt, val))
 
         # for opts
-
         if created_object:
-            return (args, object)
+            return args, object
         else:
             return args
 
@@ -361,8 +358,8 @@ class FancyGetopt:
         else:
             lines = ['Option summary:']
 
-        for (long,short,help) in self.option_table:
-
+        for option in self.option_table:
+            long, short, help = option[:3]
             text = wrap_text(help, text_width)
             if long[-1] == '=':
                 long = long[0:-1]

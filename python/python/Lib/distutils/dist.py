@@ -4,18 +4,24 @@ Provides the Distribution class, which represents the module distribution
 being built/installed/distributed.
 """
 
-# created 2000/04/03, Greg Ward
-# (extricated from core.py; actually dates back to the beginning)
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: dist.py,v 1.1.1.1 2002/02/05 23:21:17 zarzycki Exp $"
+__revision__ = "$Id: dist.py,v 1.63 2003/03/03 20:07:27 akuchling Exp $"
 
 import sys, os, string, re
 from types import *
 from copy import copy
+
+try:
+    import warnings
+except ImportError:
+    warnings = None
+
 from distutils.errors import *
 from distutils.fancy_getopt import FancyGetopt, translate_longopt
 from distutils.util import check_environ, strtobool, rfc822_escape
-
+from distutils import log
+from distutils.debug import DEBUG
 
 # Regex to define acceptable Distutils command names.  This is not *quite*
 # the same as a Python NAME -- I don't allow leading underscores.  The fact
@@ -46,7 +52,8 @@ class Distribution:
     # since every global option is also valid as a command option -- and we
     # don't want to pollute the commands with too many options that they
     # have minimal control over.
-    global_options = [('verbose', 'v', "run verbosely (default)"),
+    # The fourth entry for verbose means that it can be repeated.
+    global_options = [('verbose', 'v', "run verbosely (default)", 1),
                       ('quiet', 'q', "run quietly (turns verbosity off)"),
                       ('dry-run', 'n', "don't actually do anything"),
                       ('help', 'h', "show detailed help message"),
@@ -86,6 +93,8 @@ class Distribution:
          "print the long package description"),
         ('platforms', None,
          "print the list of platforms"),
+        ('classifiers', None,
+         "print the list of classifiers"),
         ('keywords', None,
          "print the list of keywords"),
         ]
@@ -196,6 +205,15 @@ class Distribution:
                     for (opt, val) in cmd_options.items():
                         opt_dict[opt] = ("setup script", val)
 
+            if attrs.has_key('licence'):
+                attrs['license'] = attrs['licence']
+                del attrs['licence']
+                msg = "'licence' distribution option is deprecated; use 'license'"
+                if warnings is not None:
+                    warnings.warn(msg)
+                else:
+                    sys.stderr.write(msg + "\n")
+
             # Now work on the rest of the attributes.  Any attribute that's
             # not already defined is invalid!
             for (key,val) in attrs.items():
@@ -204,8 +222,11 @@ class Distribution:
                 elif hasattr(self, key):
                     setattr(self, key, val)
                 else:
-                    raise DistutilsSetupError, \
-                          "invalid distribution option '%s'" % key
+                    msg = "Unknown distribution option: %s" % repr(key)
+                    if warnings is not None:
+                        warnings.warn(msg)
+                    else:
+                        sys.stderr.write(msg + "\n")
 
         self.finalize_options()
 
@@ -304,7 +325,6 @@ class Distribution:
     def parse_config_files (self, filenames=None):
 
         from ConfigParser import ConfigParser
-        from distutils.core import DEBUG
 
         if filenames is None:
             filenames = self.find_config_files()
@@ -392,6 +412,7 @@ class Distribution:
         parser.set_aliases({'licence': 'license'})
         args = parser.getopt(args=self.script_args, object=self)
         option_order = parser.get_option_order()
+        log.set_verbosity(self.verbose)
 
         # for display options we return immediately
         if self.handle_display_options(option_order):
@@ -624,6 +645,8 @@ class Distribution:
                 value = getattr(self.metadata, "get_"+opt)()
                 if opt in ['keywords', 'platforms']:
                     print string.join(value, ',')
+                elif opt == 'classifiers':
+                    print string.join(value, '\n')
                 else:
                     print value
                 any_display_options = 1
@@ -769,7 +792,6 @@ class Distribution:
         object for 'command' is in the cache, then we either create and
         return it (if 'create' is true) or return None.
         """
-        from distutils.core import DEBUG
         cmd_obj = self.command_obj.get(command)
         if not cmd_obj and create:
             if DEBUG:
@@ -800,8 +822,6 @@ class Distribution:
         supplied, uses the standard option dictionary for this command
         (from 'self.command_options').
         """
-        from distutils.core import DEBUG
-
         command_name = command_obj.get_command_name()
         if option_dict is None:
             option_dict = self.get_option_dict(command_name)
@@ -876,13 +896,7 @@ class Distribution:
     # -- Methods that operate on the Distribution ----------------------
 
     def announce (self, msg, level=1):
-        """Print 'msg' if 'level' is greater than or equal to the verbosity
-        level recorded in the 'verbose' attribute (which, currently, can be
-        only 0 or 1).
-        """
-        if self.verbose >= level:
-            print msg
-
+        log.debug(msg)
 
     def run_commands (self):
         """Run each command that was seen on the setup script command line.
@@ -907,7 +921,7 @@ class Distribution:
         if self.have_run.get(command):
             return
 
-        self.announce("running " + command)
+        log.info("running %s", command)
         cmd_obj = self.get_command_obj(command)
         cmd_obj.ensure_finalized()
         cmd_obj.run()
@@ -961,7 +975,8 @@ class DistributionMetadata:
                          "maintainer", "maintainer_email", "url",
                          "license", "description", "long_description",
                          "keywords", "platforms", "fullname", "contact",
-                         "contact_email", "licence")
+                         "contact_email", "license", "classifiers",
+                         "download_url")
 
     def __init__ (self):
         self.name = None
@@ -976,6 +991,8 @@ class DistributionMetadata:
         self.long_description = None
         self.keywords = None
         self.platforms = None
+        self.classifiers = None
+        self.download_url = None
 
     def write_pkg_info (self, base_dir):
         """Write the PKG-INFO file into the release tree.
@@ -991,6 +1008,8 @@ class DistributionMetadata:
         pkg_info.write('Author: %s\n' % self.get_contact() )
         pkg_info.write('Author-email: %s\n' % self.get_contact_email() )
         pkg_info.write('License: %s\n' % self.get_license() )
+        if self.download_url:
+            pkg_info.write('Download-URL: %s\n' % self.download_url)
 
         long_desc = rfc822_escape( self.get_long_description() )
         pkg_info.write('Description: %s\n' % long_desc)
@@ -1001,6 +1020,9 @@ class DistributionMetadata:
 
         for platform in self.get_platforms():
             pkg_info.write('Platform: %s\n' % platform )
+
+        for classifier in self.get_classifiers():
+            pkg_info.write('Classifier: %s\n' % classifier )
 
         pkg_info.close()
 
@@ -1057,6 +1079,12 @@ class DistributionMetadata:
 
     def get_platforms(self):
         return self.platforms or ["UNKNOWN"]
+
+    def get_classifiers(self):
+        return self.classifiers or []
+
+    def get_download_url(self):
+        return self.download_url or "UNKNOWN"
 
 # class DistributionMetadata
 

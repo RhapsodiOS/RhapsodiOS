@@ -8,9 +8,16 @@ import sys
 import linecache
 import cmd
 import bdb
-from repr import repr as _saferepr
+from repr import Repr
 import os
 import re
+import pprint
+
+# Create a custom safe Repr instance and increase its maxstring.
+# The default of 30 truncates error messages too easily.
+_repr = Repr()
+_repr.maxstring = 200
+_saferepr = _repr.repr
 
 __all__ = ["run", "pm", "Pdb", "runeval", "runctx", "runcall", "set_trace",
            "post_mortem", "help"]
@@ -58,7 +65,7 @@ class Pdb(bdb.Bdb, cmd.Cmd):
 
         # Read $HOME/.pdbrc and ./.pdbrc
         self.rcLines = []
-        if os.environ.has_key('HOME'):
+        if 'HOME' in os.environ:
             envHome = os.environ['HOME']
             try:
                 rcFile = open(os.path.join(envHome, ".pdbrc"))
@@ -102,10 +109,17 @@ class Pdb(bdb.Bdb, cmd.Cmd):
             self.rcLines = []
             for line in rcLines:
                 line = line[:-1]
-                if len (line) > 0 and line[0] != '#':
-                    self.onecmd (line)
+                if len(line) > 0 and line[0] != '#':
+                    self.onecmd(line)
 
-    # Override Bdb methods (except user_call, for now)
+    # Override Bdb methods
+
+    def user_call(self, frame, argument_list):
+        """This method is called when there is the remote possibility
+        that we ever need to stop in this function."""
+        if self.stop_here(frame):
+            print '--Call--'
+            self.interaction(frame, None)
 
     def user_line(self, frame):
         """This function is called when we stop or break at this line."""
@@ -151,10 +165,10 @@ class Pdb(bdb.Bdb, cmd.Cmd):
 
     def precmd(self, line):
         """Handle alias expansion and ';;' separator."""
-        if not line:
+        if not line.strip():
             return line
         args = line.split()
-        while self.aliases.has_key(args[0]):
+        while args[0] in self.aliases:
             line = self.aliases[args[0]]
             ii = 1
             for tmpArg in args[1:]:
@@ -179,9 +193,6 @@ class Pdb(bdb.Bdb, cmd.Cmd):
     # Return true to exit from the command loop
 
     do_h = cmd.Cmd.do_help
-
-    def do_EOF(self, arg):
-        return 0        # Don't die on EOF
 
     def do_break(self, arg, temporary = 0):
         # break [ ([filename:]lineno | function) [, "condition"] ]
@@ -321,8 +332,8 @@ class Pdb(bdb.Bdb, cmd.Cmd):
             return 0
         line = line.strip()
         # Don't allow setting breakpoint at a blank line
-        if ( not line or (line[0] == '#') or
-             (line[:3] == '"""') or line[:3] == "'''" ):
+        if (not line or (line[0] == '#') or
+             (line[:3] == '"""') or line[:3] == "'''"):
             print '*** Blank or comment'
             return 0
         # When a file is read in and a breakpoint is at
@@ -364,14 +375,34 @@ class Pdb(bdb.Bdb, cmd.Cmd):
     def do_enable(self, arg):
         args = arg.split()
         for i in args:
-            bp = bdb.Breakpoint.bpbynumber[int(i)]
+            try:
+                i = int(i)
+            except ValueError:
+                print 'Breakpoint index %r is not a number' % i
+                continue
+
+            if not (0 <= i < len(bdb.Breakpoint.bpbynumber)):
+                print 'No breakpoint numbered', i
+                continue
+
+            bp = bdb.Breakpoint.bpbynumber[i]
             if bp:
                 bp.enable()
 
     def do_disable(self, arg):
         args = arg.split()
         for i in args:
-            bp = bdb.Breakpoint.bpbynumber[int(i)]
+            try:
+                i = int(i)
+            except ValueError:
+                print 'Breakpoint index %r is not a number' % i
+                continue
+
+            if not (0 <= i < len(bdb.Breakpoint.bpbynumber)):
+                print 'No breakpoint numbered', i
+                continue
+
+            bp = bdb.Breakpoint.bpbynumber[i]
             if bp:
                 bp.disable()
 
@@ -401,9 +432,9 @@ class Pdb(bdb.Bdb, cmd.Cmd):
         bp = bdb.Breakpoint.bpbynumber[bpnum]
         if bp:
             bp.ignore = count
-            if (count > 0):
+            if count > 0:
                 reply = 'Will ignore next '
-                if (count > 1):
+                if count > 1:
                     reply = reply + '%d crossings' % count
                 else:
                     reply = reply + '1 crossing'
@@ -493,10 +524,47 @@ class Pdb(bdb.Bdb, cmd.Cmd):
         return 1
     do_c = do_cont = do_continue
 
+    def do_jump(self, arg):
+        if self.curindex + 1 != len(self.stack):
+            print "*** You can only jump within the bottom frame"
+            return
+        try:
+            arg = int(arg)
+        except ValueError:
+            print "*** The 'jump' command requires a line number."
+        else:
+            try:
+                # Do the jump, fix up our copy of the stack, and display the
+                # new position
+                self.curframe.f_lineno = arg
+                self.stack[self.curindex] = self.stack[self.curindex][0], arg
+                self.print_stack_entry(self.stack[self.curindex])
+            except ValueError, e:
+                print '*** Jump failed:', e
+    do_j = do_jump
+
+    def do_debug(self, arg):
+        sys.settrace(None)
+        globals = self.curframe.f_globals
+        locals = self.curframe.f_locals
+        p = Pdb()
+        p.prompt = "(%s) " % self.prompt.strip()
+        print "ENTERING RECURSIVE DEBUGGER"
+        sys.call_tracing(p.run, (arg, globals, locals))
+        print "LEAVING RECURSIVE DEBUGGER"
+        sys.settrace(self.trace_dispatch)
+        self.lastcmd = p.lastcmd
+
     def do_quit(self, arg):
         self.set_quit()
         return 1
     do_q = do_quit
+    do_exit = do_quit
+
+    def do_EOF(self, arg):
+        print
+        self.set_quit()
+        return 1
 
     def do_args(self, arg):
         f = self.curframe
@@ -508,30 +576,40 @@ class Pdb(bdb.Bdb, cmd.Cmd):
         for i in range(n):
             name = co.co_varnames[i]
             print name, '=',
-            if dict.has_key(name): print dict[name]
+            if name in dict: print dict[name]
             else: print "*** undefined ***"
     do_a = do_args
 
     def do_retval(self, arg):
-        if self.curframe.f_locals.has_key('__return__'):
+        if '__return__' in self.curframe.f_locals:
             print self.curframe.f_locals['__return__']
         else:
             print '*** Not yet returned!'
     do_rv = do_retval
 
-    def do_p(self, arg):
+    def _getval(self, arg):
         try:
-            value = eval(arg, self.curframe.f_globals,
-                            self.curframe.f_locals)
+            return eval(arg, self.curframe.f_globals,
+                        self.curframe.f_locals)
         except:
             t, v = sys.exc_info()[:2]
-            if type(t) == type(''):
+            if isinstance(t, str):
                 exc_type_name = t
             else: exc_type_name = t.__name__
             print '***', exc_type_name + ':', `v`
-            return
+            raise
 
-        print `value`
+    def do_p(self, arg):
+        try:
+            print repr(self._getval(arg))
+        except:
+            pass
+
+    def do_pp(self, arg):
+        try:
+            pprint.pprint(self._getval(arg))
+        except:
+            pass
 
     def do_list(self, arg):
         self.lastcmd = 'list'
@@ -613,7 +691,7 @@ class Pdb(bdb.Bdb, cmd.Cmd):
             for alias in keys:
                 print "%s = %s" % (alias, self.aliases[alias])
             return
-        if self.aliases.has_key(args[0]) and len (args) == 1:
+        if args[0] in self.aliases and len(args) == 1:
             print "%s = %s" % (args[0], self.aliases[args[0]])
         else:
             self.aliases[args[0]] = ' '.join(args[1:])
@@ -621,7 +699,7 @@ class Pdb(bdb.Bdb, cmd.Cmd):
     def do_unalias(self, arg):
         args = arg.split()
         if len(args) == 0: return
-        if self.aliases.has_key(args[0]):
+        if args[0] in self.aliases:
             del self.aliases[args[0]]
 
     # Print a traceback starting at the top stack frame.
@@ -781,6 +859,19 @@ Continue execution until the current function returns."""
         print """c(ont(inue))
 Continue execution, only stop when a breakpoint is encountered."""
 
+    def help_jump(self):
+        self.help_j()
+
+    def help_j(self):
+        print """j(ump) lineno
+Set the next line that will be executed."""
+
+    def help_debug(self):
+        print """debug code
+Enter a recursive debugger that steps through the code argument
+(which is an arbitrary expression or statement to be executed
+in the current environment)."""
+
     def help_list(self):
         self.help_l()
 
@@ -804,6 +895,10 @@ Print the arguments of the current function."""
         print """p expression
 Print the value of the expression."""
 
+    def help_pp(self):
+        print """pp expression
+Pretty-print the value of the expression."""
+
     def help_exec(self):
         print """(!) statement
 Execute the (one-line) statement in the context of
@@ -819,8 +914,10 @@ command with a 'global' command, e.g.:
         self.help_q()
 
     def help_q(self):
-        print """q(uit) Quit from the debugger.
+        print """q(uit) or exit - Quit from the debugger.
 The program being executed is aborted."""
+
+    help_exit = help_q
 
     def help_whatis(self):
         print """whatis arg
@@ -889,7 +986,7 @@ def runctx(statement, globals, locals):
     run(statement, globals, locals)
 
 def runcall(*args):
-    return apply(Pdb().runcall, args)
+    return Pdb().runcall(*args)
 
 def set_trace():
     Pdb().set_trace()

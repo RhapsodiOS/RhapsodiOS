@@ -1,6 +1,5 @@
-from test_support import TestFailed, verbose, verify
+from test.test_support import TestFailed, verbose, verify
 import struct
-## import pdb
 
 import sys
 ISBIGENDIAN = sys.byteorder == "big"
@@ -21,23 +20,21 @@ def bigendian_to_native(value):
 
 def simple_err(func, *args):
     try:
-        apply(func, args)
+        func(*args)
     except struct.error:
         pass
     else:
         raise TestFailed, "%s%s did not raise struct.error" % (
             func.__name__, args)
-##      pdb.set_trace()
 
 def any_err(func, *args):
     try:
-        apply(func, args)
+        func(*args)
     except (struct.error, OverflowError, TypeError):
         pass
     else:
         raise TestFailed, "%s%s did not raise error" % (
             func.__name__, args)
-##      pdb.set_trace()
 
 
 simple_err(struct.calcsize, 'Z')
@@ -393,3 +390,49 @@ def test_p_code():
                              (code, input, got, expectedback))
 
 test_p_code()
+
+
+###########################################################################
+# SF bug 705836.  "<f" and ">f" had a severe rounding bug, where a carry
+# from the low-order discarded bits could propagate into the exponent
+# field, causing the result to be wrong by a factor of 2.
+
+def test_705836():
+    import math
+
+    for base in range(1, 33):
+        # smaller <- largest representable float less than base.
+        delta = 0.5
+        while base - delta / 2.0 != base:
+            delta /= 2.0
+        smaller = base - delta
+        # Packing this rounds away a solid string of trailing 1 bits.
+        packed = struct.pack("<f", smaller)
+        unpacked = struct.unpack("<f", packed)[0]
+        # This failed at base = 2, 4, and 32, with unpacked = 1, 2, and
+        # 16, respectively.
+        verify(base == unpacked)
+        bigpacked = struct.pack(">f", smaller)
+        verify(bigpacked == string_reverse(packed),
+               ">f pack should be byte-reversal of <f pack")
+        unpacked = struct.unpack(">f", bigpacked)[0]
+        verify(base == unpacked)
+
+    # Largest finite IEEE single.
+    big = (1 << 24) - 1
+    big = math.ldexp(big, 127 - 23)
+    packed = struct.pack(">f", big)
+    unpacked = struct.unpack(">f", packed)[0]
+    verify(big == unpacked)
+
+    # The same, but tack on a 1 bit so it rounds up to infinity.
+    big = (1 << 25) - 1
+    big = math.ldexp(big, 127 - 24)
+    try:
+        packed = struct.pack(">f", big)
+    except OverflowError:
+        pass
+    else:
+        TestFailed("expected OverflowError")
+
+test_705836()

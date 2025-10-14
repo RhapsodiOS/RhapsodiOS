@@ -1,6 +1,6 @@
 "Test the functionality of Python classes implementing operators."
 
-from test_support import TestFailed
+from test.test_support import TestFailed
 
 testmeths = [
 
@@ -274,3 +274,44 @@ class C2:
 try: hash(C2())
 except TypeError: pass
 else: raise TestFailed, "hash(C2()) should raise an exception"
+
+
+# Test for SF bug 532646
+
+class A:
+    pass
+A.__call__ = A()
+a = A()
+try:
+    a() # This should not segfault
+except RuntimeError:
+    pass
+else:
+    raise TestFailed, "how could this not have overflowed the stack?"
+
+
+# Tests for exceptions raised in instance_getattr2().
+
+def booh(self):
+    raise AttributeError, "booh"
+
+class A:
+    a = property(booh)
+try:
+    A().a # Raised AttributeError: A instance has no attribute 'a'
+except AttributeError, x:
+    if str(x) is not "booh":
+        print "attribute error for A().a got masked:", str(x)
+
+class E:
+    __eq__ = property(booh)
+E() == E() # In debug mode, caused a C-level assert() to fail
+
+class I:
+    __init__ = property(booh)
+try:
+    I() # In debug mode, printed XXX undetected error and raises AttributeError
+except AttributeError, x:
+    pass
+else:
+    print "attribute error for I.__init__ got masked"

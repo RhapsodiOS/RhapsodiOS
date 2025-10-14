@@ -1,6 +1,6 @@
 #
 # XML-RPC SERVER
-# $Id: xmlrpc_handler.py,v 1.1.1.1 2002/02/05 23:23:30 zarzycki Exp $
+# $Id: xmlrpc_handler.py,v 1.2 2002/04/03 21:47:47 fdrake Exp $
 #
 # an asynchronous XML-RPC server for Medusa
 #
@@ -12,8 +12,6 @@
 import http_server
 import xmlrpclib
 
-import regex
-import string
 import sys
 
 class xmlrpc_handler:
@@ -43,7 +41,7 @@ class xmlrpc_handler:
             except:
                 # report exception back to server
                 response = xmlrpclib.dumps (
-                    xmlrpclib.Fault (1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                    xmlrpclib.Fault (1, "%s:%s" % sys.exc_info()[:2])
                     )
             else:
                 response = xmlrpclib.dumps (response, methodresponse=1)
@@ -76,7 +74,7 @@ class collector:
         if not cl:
             request.error (411)
         else:
-            cl = string.atoi (cl)
+            cl = int (cl)
             # using a 'numeric' terminator
             self.request.channel.set_terminator (cl)
 

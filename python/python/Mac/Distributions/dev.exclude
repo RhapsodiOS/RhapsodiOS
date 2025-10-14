@@ -5,12 +5,15 @@
 *.dbg
 *.hqx
 *.idb
+*.pch
 *.pyc
 *.pyo
 *.slb
 *.xMAP
 *.xSYM
 *Icon
+*_pch
+*~[0-9]
 .#*
 .DS_Store
 .cvsignore

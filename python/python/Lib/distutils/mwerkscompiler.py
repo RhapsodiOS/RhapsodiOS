@@ -4,6 +4,10 @@ Contains MWerksCompiler, an implementation of the abstract CCompiler class
 for MetroWerks CodeWarrior on the Macintosh. Needs work to support CW on
 Windows."""
 
+# This module should be kept compatible with Python 1.5.2.
+
+__revision__ = "$Id: mwerkscompiler.py,v 1.12 2002/11/19 13:12:27 akuchling Exp $"
+
 import sys, os, string
 from types import *
 from distutils.errors import \
@@ -13,6 +17,7 @@ from distutils.ccompiler import \
      CCompiler, gen_preprocess_options, gen_lib_options
 import distutils.util
 import distutils.dir_util
+from distutils import log
 import mkcwproject
 
 class MWerksCompiler (CCompiler) :
@@ -61,7 +66,8 @@ class MWerksCompiler (CCompiler) :
                  include_dirs=None,
                  debug=0,
                  extra_preargs=None,
-                 extra_postargs=None):
+                 extra_postargs=None,
+                 depends=None):
         (output_dir, macros, include_dirs) = \
            self._fix_compile_args (output_dir, macros, include_dirs)
         self.__sources = sources
@@ -82,7 +88,8 @@ class MWerksCompiler (CCompiler) :
               debug=0,
               extra_preargs=None,
               extra_postargs=None,
-              build_temp=None):
+              build_temp=None,
+              target_lang=None):
         # First fixup.
         (objects, output_dir) = self._fix_object_args (objects, output_dir)
         (libraries, library_dirs, runtime_library_dirs) = \
@@ -132,8 +139,8 @@ class MWerksCompiler (CCompiler) :
         exportname = basename + '.mcp.exp'
         prefixname = 'mwerks_%s_config.h'%basename
         # Create the directories we need
-        distutils.dir_util.mkpath(build_temp, self.verbose, self.dry_run)
-        distutils.dir_util.mkpath(output_dir, self.verbose, self.dry_run)
+        distutils.dir_util.mkpath(build_temp, dry_run=self.dry_run)
+        distutils.dir_util.mkpath(output_dir, dry_run=self.dry_run)
         # And on to filling in the parameters for the project builder
         settings = {}
         settings['mac_exportname'] = exportname
@@ -159,8 +166,7 @@ class MWerksCompiler (CCompiler) :
             return
         # Build the export file
         exportfilename = os.path.join(build_temp, exportname)
-        if self.verbose:
-            print '\tCreate export file', exportfilename
+        log.debug("\tCreate export file %s", exportfilename)
         fp = open(exportfilename, 'w')
         fp.write('%s\n'%export_symbols[0])
         fp.close()
@@ -168,7 +174,7 @@ class MWerksCompiler (CCompiler) :
         if self.__macros:
             prefixfilename = os.path.join(os.getcwd(), os.path.join(build_temp, prefixname))
             fp = open(prefixfilename, 'w')
-            fp.write('#include "mwerks_plugin_config.h"\n')
+            fp.write('#include "mwerks_shcarbon_config.h"\n')
             for name, value in self.__macros:
                 if value is None:
                     fp.write('#define %s\n'%name)
@@ -181,8 +187,7 @@ class MWerksCompiler (CCompiler) :
         # because we pass this pathname to CodeWarrior in an AppleEvent, and CW
         # doesn't have a clue about our working directory.
         xmlfilename = os.path.join(os.getcwd(), os.path.join(build_temp, xmlname))
-        if self.verbose:
-            print '\tCreate XML file', xmlfilename
+        log.debug("\tCreate XML file %s", xmlfilename)
         xmlbuilder = mkcwproject.cwxmlgen.ProjectBuilder(settings)
         xmlbuilder.generate()
         xmldata = settings['tmp_projectxmldata']
@@ -191,12 +196,10 @@ class MWerksCompiler (CCompiler) :
         fp.close()
         # Generate the project. Again a full pathname.
         projectfilename = os.path.join(os.getcwd(), os.path.join(build_temp, projectname))
-        if self.verbose:
-            print '\tCreate project file', projectfilename
+        log.debug('\tCreate project file %s', projectfilename)
         mkcwproject.makeproject(xmlfilename, projectfilename)
         # And build it
-        if self.verbose:
-            print '\tBuild project'
+        log.debug('\tBuild project')
         mkcwproject.buildproject(projectfilename)
 
     def _filename_to_abs(self, filename):
@@ -215,3 +218,31 @@ class MWerksCompiler (CCompiler) :
             if components[i] == '..':
                 components[i] = ''
         return string.join(components, ':')
+
+    def library_dir_option (self, dir):
+        """Return the compiler option to add 'dir' to the list of
+        directories searched for libraries.
+        """
+        return # XXXX Not correct...
+
+    def runtime_library_dir_option (self, dir):
+        """Return the compiler option to add 'dir' to the list of
+        directories searched for runtime libraries.
+        """
+        # Nothing needed or Mwerks/Mac.
+        return
+
+    def library_option (self, lib):
+        """Return the compiler option to add 'dir' to the list of libraries
+        linked into the shared library or executable.
+        """
+        return
+
+    def find_library_file (self, dirs, lib, debug=0):
+        """Search the specified list of directories for a static or shared
+        library file 'lib' and return the full path to that file.  If
+        'debug' true, look for a debugging version (if that makes sense on
+        the current platform).  Return None if 'lib' wasn't found in any of
+        the specified directories.
+        """
+        return 0

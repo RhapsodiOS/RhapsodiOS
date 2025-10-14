@@ -2,7 +2,8 @@
 
 Note: the class in this module doesn't implement any HTTP request; see
 SimpleHTTPServer for simple implementations of GET, HEAD and POST
-(including CGI scripts).
+(including CGI scripts).  It does, however, optionally implement HTTP/1.1
+persistent connections, as of version 0.3.
 
 Contents:
 
@@ -11,12 +12,9 @@ Contents:
 
 XXX To do:
 
-- send server version
 - log requests even later (to capture byte count)
 - log user-agent header and other interesting goodies
 - send error log to separate file
-- are request names really case sensitive?
-
 """
 
 
@@ -28,7 +26,15 @@ XXX To do:
 # Expires September 8, 1995                                  March 8, 1995
 #
 # URL: http://www.ics.uci.edu/pub/ietf/http/draft-ietf-http-v10-spec-00.txt
-
+#
+# and
+#
+# Network Working Group                                      R. Fielding
+# Request for Comments: 2616                                       et al
+# Obsoletes: 2068                                              June 1999
+# Category: Standards Track
+#
+# URL: http://www.faqs.org/rfcs/rfc2616.html
 
 # Log files
 # ---------
@@ -60,8 +66,7 @@ XXX To do:
 # (Actually, the latter is only true if you know the server configuration
 # at the time the request was made!)
 
-
-__version__ = "0.2"
+__version__ = "0.3"
 
 __all__ = ["HTTPServer", "BaseHTTPRequestHandler"]
 
@@ -70,6 +75,7 @@ import time
 import socket # For gethostbyaddr()
 import mimetools
 import SocketServer
+import cStringIO
 
 # Default error message
 DEFAULT_ERROR_MESSAGE = """\
@@ -92,7 +98,7 @@ class HTTPServer(SocketServer.TCPServer):
     def server_bind(self):
         """Override server_bind to store the server name."""
         SocketServer.TCPServer.server_bind(self)
-        host, port = self.socket.getsockname()
+        host, port = self.socket.getsockname()[:2]
         self.server_name = socket.getfqdn(host)
         self.server_port = port
 
@@ -122,15 +128,15 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
 
     where <command> is a (case-sensitive) keyword such as GET or POST,
     <path> is a string containing path information for the request,
-    and <version> should be the string "HTTP/1.0".  <path> is encoded
-    using the URL encoding scheme (using %xx to signify the ASCII
-    character with hex code xx).
+    and <version> should be the string "HTTP/1.0" or "HTTP/1.1".
+    <path> is encoded using the URL encoding scheme (using %xx to signify
+    the ASCII character with hex code xx).
 
-    The protocol is vague about whether lines are separated by LF
-    characters or by CRLF pairs -- for compatibility with the widest
-    range of clients, both should be accepted.  Similarly, whitespace
-    in the request line should be treated sensibly (allowing multiple
-    spaces between components and allowing trailing whitespace).
+    The specification specifies that lines are separated by CRLF but
+    for compatibility with the widest range of clients recommends
+    servers also handle LF.  Similarly, whitespace in the request line
+    is treated sensibly (allowing multiple spaces between components
+    and allowing trailing whitespace).
 
     Similarly, for output, lines ought to be separated by CRLF pairs
     but most clients grok LF characters just fine.
@@ -143,7 +149,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
     0.9 request; this form has no optional headers and data part and
     the reply consists of just the data.
 
-    The reply form of the HTTP 1.0 protocol again has three parts:
+    The reply form of the HTTP 1.x protocol again has three parts:
 
     1. One line giving the response code
     2. An optional set of RFC-822-style headers
@@ -155,7 +161,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
 
     <version> <responsecode> <responsestring>
 
-    where <version> is the protocol version (always "HTTP/1.0"),
+    where <version> is the protocol version ("HTTP/1.0" or "HTTP/1.1"),
     <responsecode> is a 3-digit response code indicating success or
     failure of the request, and <responsestring> is an optional
     human-readable string explaining what the response code means.
@@ -212,15 +218,17 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
     def parse_request(self):
         """Parse a request (internal).
 
-        The request should be stored in self.raw_request; the results
+        The request should be stored in self.raw_requestline; the results
         are in self.command, self.path, self.request_version and
         self.headers.
 
-        Return value is 1 for success, 0 for failure; on failure, an
+        Return True for success, False for failure; on failure, an
         error is sent back.
 
         """
+        self.command = None  # set in case of error on the first line
         self.request_version = version = "HTTP/0.9" # Default
+        self.close_connection = 1
         requestline = self.raw_requestline
         if requestline[-2:] == '\r\n':
             requestline = requestline[:-2]
@@ -232,21 +240,63 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
             [command, path, version] = words
             if version[:5] != 'HTTP/':
                 self.send_error(400, "Bad request version (%s)" % `version`)
-                return 0
+                return False
+            try:
+                base_version_number = version.split('/', 1)[1]
+                version_number = base_version_number.split(".")
+                # RFC 2145 section 3.1 says there can be only one "." and
+                #   - major and minor numbers MUST be treated as
+                #      separate integers;
+                #   - HTTP/2.4 is a lower version than HTTP/2.13, which in
+                #      turn is lower than HTTP/12.3;
+                #   - Leading zeros MUST be ignored by recipients.
+                if len(version_number) != 2:
+                    raise ValueError
+                version_number = int(version_number[0]), int(version_number[1])
+            except (ValueError, IndexError):
+                self.send_error(400, "Bad request version (%s)" % `version`)
+                return False
+            if version_number >= (1, 1) and self.protocol_version >= "HTTP/1.1":
+                self.close_connection = 0
+            if version_number >= (2, 0):
+                self.send_error(505,
+                          "Invalid HTTP Version (%s)" % base_version_number)
+                return False
         elif len(words) == 2:
             [command, path] = words
+            self.close_connection = 1
             if command != 'GET':
                 self.send_error(400,
                                 "Bad HTTP/0.9 request type (%s)" % `command`)
-                return 0
+                return False
+        elif not words:
+            return False
         else:
             self.send_error(400, "Bad request syntax (%s)" % `requestline`)
-            return 0
+            return False
         self.command, self.path, self.request_version = command, path, version
-        self.headers = self.MessageClass(self.rfile, 0)
-        return 1
 
-    def handle(self):
+        # Deal with pipelining
+        bytes = ""
+        while 1:
+            line = self.rfile.readline()
+            bytes = bytes + line
+            if line == '\r\n' or line == '\n' or line == '':
+                break
+
+        # Examine the headers and look for a Connection directive
+        hfile = cStringIO.StringIO(bytes)
+        self.headers = self.MessageClass(hfile)
+
+        conntype = self.headers.get('Connection', "")
+        if conntype.lower() == 'close':
+            self.close_connection = 1
+        elif (conntype.lower() == 'keep-alive' and
+              self.protocol_version >= "HTTP/1.1"):
+            self.close_connection = 0
+        return True
+
+    def handle_one_request(self):
         """Handle a single HTTP request.
 
         You normally don't need to override this method; see the class
@@ -254,8 +304,10 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         commands such as GET and POST.
 
         """
-
         self.raw_requestline = self.rfile.readline()
+        if not self.raw_requestline:
+            self.close_connection = 1
+            return
         if not self.parse_request(): # An error code has been sent, just exit
             return
         mname = 'do_' + self.command
@@ -264,6 +316,14 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
             return
         method = getattr(self, mname)
         method()
+
+    def handle(self):
+        """Handle multiple requests if necessary."""
+        self.close_connection = 1
+
+        self.handle_one_request()
+        while not self.close_connection:
+            self.handle_one_request()
 
     def send_error(self, code, message=None):
         """Send and log an error reply.
@@ -282,16 +342,18 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
             short, long = self.responses[code]
         except KeyError:
             short, long = '???', '???'
-        if not message:
+        if message is None:
             message = short
         explain = long
         self.log_error("code %d, message %s", code, message)
+        content = (self.error_message_format %
+                   {'code': code, 'message': message, 'explain': explain})
         self.send_response(code, message)
+        self.send_header("Content-Type", "text/html")
+        self.send_header('Connection', 'close')
         self.end_headers()
-        self.wfile.write(self.error_message_format %
-                         {'code': code,
-                          'message': message,
-                          'explain': explain})
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(content)
 
     error_message_format = DEFAULT_ERROR_MESSAGE
 
@@ -304,13 +366,14 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         """
         self.log_request(code)
         if message is None:
-            if self.responses.has_key(code):
+            if code in self.responses:
                 message = self.responses[code][0]
             else:
                 message = ''
         if self.request_version != 'HTTP/0.9':
-            self.wfile.write("%s %s %s\r\n" %
-                             (self.protocol_version, str(code), message))
+            self.wfile.write("%s %d %s\r\n" %
+                             (self.protocol_version, code, message))
+            # print (self.protocol_version, code, message)
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
 
@@ -318,6 +381,12 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
         """Send a MIME header."""
         if self.request_version != 'HTTP/0.9':
             self.wfile.write("%s: %s\r\n" % (keyword, value))
+
+        if keyword.lower() == 'connection':
+            if value.lower() == 'close':
+                self.close_connection = 1
+            elif value.lower() == 'keep-alive':
+                self.close_connection = 0
 
     def end_headers(self):
         """Send the blank line ending the MIME headers."""
@@ -346,7 +415,7 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
 
         """
 
-        apply(self.log_message, args)
+        self.log_message(*args)
 
     def log_message(self, format, *args):
         """Log an arbitrary message.
@@ -406,14 +475,13 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
 
         """
 
-        host, port = self.client_address
+        host, port = self.client_address[:2]
         return socket.getfqdn(host)
 
     # Essentially static class variables
 
     # The version of the HTTP protocol we support.
-    # Don't override unless you know what you're doing (hint: incoming
-    # requests are required to have exactly this version string).
+    # Set this to HTTP/1.1 to enable automatic keepalive
     protocol_version = "HTTP/1.0"
 
     # The Message-like class used to parse headers
@@ -423,18 +491,31 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
     # form {code: (shortmessage, longmessage)}.
     # See http://www.w3.org/hypertext/WWW/Protocols/HTTP/HTRESP.html
     responses = {
+        100: ('Continue', 'Request received, please continue'),
+        101: ('Switching Protocols',
+              'Switching to new protocol; obey Upgrade header'),
+
         200: ('OK', 'Request fulfilled, document follows'),
         201: ('Created', 'Document created, URL follows'),
         202: ('Accepted',
               'Request accepted, processing continues off-line'),
-        203: ('Partial information', 'Request fulfilled from cache'),
+        203: ('Non-Authoritative Information', 'Request fulfilled from cache'),
         204: ('No response', 'Request fulfilled, nothing follows'),
+        205: ('Reset Content', 'Clear input form for further input.'),
+        206: ('Partial Content', 'Partial content follows.'),
 
-        301: ('Moved', 'Object moved permanently -- see URI list'),
+        300: ('Multiple Choices',
+              'Object has several resources -- see URI list'),
+        301: ('Moved Permanently', 'Object moved permanently -- see URI list'),
         302: ('Found', 'Object moved temporarily -- see URI list'),
-        303: ('Method', 'Object moved -- see Method and URL list'),
+        303: ('See Other', 'Object moved -- see Method and URL list'),
         304: ('Not modified',
-              'Document has not changed singe given time'),
+              'Document has not changed since given time'),
+        305: ('Use Proxy',
+              'You must use proxy specified in Location to access this '
+              'resource.'),
+        307: ('Temporary Redirect',
+              'Object moved temporarily -- see URI list'),
 
         400: ('Bad request',
               'Bad request syntax or unsupported method'),
@@ -444,21 +525,40 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
               'No payment -- see charging schemes'),
         403: ('Forbidden',
               'Request forbidden -- authorization will not help'),
-        404: ('Not found', 'Nothing matches the given URI'),
+        404: ('Not Found', 'Nothing matches the given URI'),
+        405: ('Method Not Allowed',
+              'Specified method is invalid for this server.'),
+        406: ('Not Acceptable', 'URI not available in preferred format.'),
+        407: ('Proxy Authentication Required', 'You must authenticate with '
+              'this proxy before proceeding.'),
+        408: ('Request Time-out', 'Request timed out; try again later.'),
+        409: ('Conflict', 'Request conflict.'),
+        410: ('Gone',
+              'URI no longer exists and has been permanently removed.'),
+        411: ('Length Required', 'Client must specify Content-Length.'),
+        412: ('Precondition Failed', 'Precondition in headers is false.'),
+        413: ('Request Entity Too Large', 'Entity is too large.'),
+        414: ('Request-URI Too Long', 'URI is too long.'),
+        415: ('Unsupported Media Type', 'Entity body in unsupported format.'),
+        416: ('Requested Range Not Satisfiable',
+              'Cannot satisfy request range.'),
+        417: ('Expectation Failed',
+              'Expect condition could not be satisfied.'),
 
         500: ('Internal error', 'Server got itself in trouble'),
-        501: ('Not implemented',
+        501: ('Not Implemented',
               'Server does not support this operation'),
-        502: ('Service temporarily overloaded',
+        502: ('Bad Gateway', 'Invalid responses from another server/proxy.'),
+        503: ('Service temporarily overloaded',
               'The server cannot process the request due to a high load'),
-        503: ('Gateway timeout',
+        504: ('Gateway timeout',
               'The gateway server did not receive a timely response'),
-
+        505: ('HTTP Version not supported', 'Cannot fulfill request.'),
         }
 
 
 def test(HandlerClass = BaseHTTPRequestHandler,
-         ServerClass = HTTPServer):
+         ServerClass = HTTPServer, protocol="HTTP/1.0"):
     """Test the HTTP request handler class.
 
     This runs an HTTP server on port 8000 (or the first command line
@@ -472,6 +572,7 @@ def test(HandlerClass = BaseHTTPRequestHandler,
         port = 8000
     server_address = ('', port)
 
+    HandlerClass.protocol_version = protocol
     httpd = ServerClass(server_address, HandlerClass)
 
     sa = httpd.socket.getsockname()

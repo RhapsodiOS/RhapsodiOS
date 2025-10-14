@@ -2,11 +2,12 @@
 /* Method object implementation */
 
 #include "Python.h"
+#include "structmember.h"
 
 static PyCFunctionObject *free_list = NULL;
 
 PyObject *
-PyCFunction_New(PyMethodDef *ml, PyObject *self)
+PyCFunction_NewEx(PyMethodDef *ml, PyObject *self, PyObject *module)
 {
 	PyCFunctionObject *op;
 	op = free_list;
@@ -15,14 +16,16 @@ PyCFunction_New(PyMethodDef *ml, PyObject *self)
 		PyObject_INIT(op, &PyCFunction_Type);
 	}
 	else {
-		op = PyObject_NEW(PyCFunctionObject, &PyCFunction_Type);
+		op = PyObject_GC_New(PyCFunctionObject, &PyCFunction_Type);
 		if (op == NULL)
 			return NULL;
 	}
 	op->m_ml = ml;
 	Py_XINCREF(self);
 	op->m_self = self;
-	PyObject_GC_Init(op);
+	Py_XINCREF(module);
+	op->m_module = module;
+	_PyObject_GC_TRACK(op);
 	return (PyObject *)op;
 }
 
@@ -62,48 +65,56 @@ PyCFunction_Call(PyObject *func, PyObject *arg, PyObject *kw)
 	PyCFunctionObject* f = (PyCFunctionObject*)func;
 	PyCFunction meth = PyCFunction_GET_FUNCTION(func);
 	PyObject *self = PyCFunction_GET_SELF(func);
-	int flags = PyCFunction_GET_FLAGS(func);
-	int size = PyTuple_GET_SIZE(arg);
+	int size;
 
-	if (flags & METH_KEYWORDS) {
-		return (*(PyCFunctionWithKeywords)meth)(self, arg, kw);
-	}
-	if (kw != NULL && PyDict_Size(kw) != 0) {
-		PyErr_Format(PyExc_TypeError,
-			     "%.200s() takes no keyword arguments",
-			     f->m_ml->ml_name);
-		return NULL;
-	}
-
-	switch (flags) {
+	switch (PyCFunction_GET_FLAGS(func) & ~(METH_CLASS | METH_STATIC)) {
 	case METH_VARARGS:
-		return (*meth)(self, arg);
+		if (kw == NULL || PyDict_Size(kw) == 0)
+			return (*meth)(self, arg);
+		break;
+	case METH_VARARGS | METH_KEYWORDS:
+	case METH_OLDARGS | METH_KEYWORDS:
+		return (*(PyCFunctionWithKeywords)meth)(self, arg, kw);
 	case METH_NOARGS:
-		if (size == 0)
-			return (*meth)(self, NULL);
-		PyErr_Format(PyExc_TypeError,
-			     "%.200s() takes no arguments (%d given)",
-			     f->m_ml->ml_name, size);
-		return NULL;
+		if (kw == NULL || PyDict_Size(kw) == 0) {
+			size = PyTuple_GET_SIZE(arg);
+			if (size == 0)
+				return (*meth)(self, NULL);
+			PyErr_Format(PyExc_TypeError,
+			    "%.200s() takes no arguments (%d given)",
+			    f->m_ml->ml_name, size);
+			return NULL;
+		}
+		break;
 	case METH_O:
-		if (size == 1)
-			return (*meth)(self, PyTuple_GET_ITEM(arg, 0));
-		PyErr_Format(PyExc_TypeError,
-			     "%.200s() takes exactly one argument (%d given)",
-			     f->m_ml->ml_name, size);
-		return NULL;
+		if (kw == NULL || PyDict_Size(kw) == 0) {
+			size = PyTuple_GET_SIZE(arg);
+			if (size == 1)
+				return (*meth)(self, PyTuple_GET_ITEM(arg, 0));
+			PyErr_Format(PyExc_TypeError,
+			    "%.200s() takes exactly one argument (%d given)",
+			    f->m_ml->ml_name, size);
+			return NULL;
+		}
+		break;
 	case METH_OLDARGS:
 		/* the really old style */
-		if (size == 1)
-			arg = PyTuple_GET_ITEM(arg, 0);
-		else if (size == 0)
-			arg = NULL;
-		return (*meth)(self, arg);
+		if (kw == NULL || PyDict_Size(kw) == 0) {
+			size = PyTuple_GET_SIZE(arg);
+			if (size == 1)
+				arg = PyTuple_GET_ITEM(arg, 0);
+			else if (size == 0)
+				arg = NULL;
+			return (*meth)(self, arg);
+		}
+		break;
 	default:
-		/* should never get here ??? */
 		PyErr_BadInternalCall();
 		return NULL;
 	}
+	PyErr_Format(PyExc_TypeError, "%.200s() takes no keyword arguments",
+		     f->m_ml->ml_name);
+	return NULL;
 }
 
 /* Methods (the standard built-in methods, that is) */
@@ -111,8 +122,9 @@ PyCFunction_Call(PyObject *func, PyObject *arg, PyObject *kw)
 static void
 meth_dealloc(PyCFunctionObject *m)
 {
-	PyObject_GC_Fini(m);
+	_PyObject_GC_UNTRACK(m);
 	Py_XDECREF(m->m_self);
+	Py_XDECREF(m->m_module);
 	m->m_self = (PyObject *)free_list;
 	free_list = m;
 }
@@ -137,10 +149,18 @@ meth_get__name__(PyCFunctionObject *m, void *closure)
 static int
 meth_traverse(PyCFunctionObject *m, visitproc visit, void *arg)
 {
-	if (m->m_self != NULL)
-		return visit(m->m_self, arg);
-	else
-		return 0;
+	int err;
+	if (m->m_self != NULL) {
+		err = visit(m->m_self, arg);
+		if (err)
+			return err;
+	}
+	if (m->m_module != NULL) {
+		err = visit(m->m_module, arg);
+		if (err)
+			return err;
+	}
+	return 0;
 }
 
 static PyObject *
@@ -164,6 +184,13 @@ static PyGetSetDef meth_getsets [] = {
 	{"__name__", (getter)meth_get__name__, NULL, NULL},
 	{"__self__", (getter)meth_get__self__, NULL, NULL},
 	{0}
+};
+
+#define OFF(x) offsetof(PyCFunctionObject, x)
+
+static PyMemberDef meth_members[] = {
+	{"__module__",    T_OBJECT,     OFF(m_module), WRITE_RESTRICTED},
+	{NULL}
 };
 
 static PyObject *
@@ -216,7 +243,7 @@ PyTypeObject PyCFunction_Type = {
 	PyObject_HEAD_INIT(&PyType_Type)
 	0,
 	"builtin_function_or_method",
-	sizeof(PyCFunctionObject) + PyGC_HEAD_SIZE,
+	sizeof(PyCFunctionObject),
 	0,
 	(destructor)meth_dealloc, 		/* tp_dealloc */
 	0,					/* tp_print */
@@ -233,7 +260,7 @@ PyTypeObject PyCFunction_Type = {
 	PyObject_GenericGetAttr,		/* tp_getattro */
 	0,					/* tp_setattro */
 	0,					/* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_GC,	/* tp_flags */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,/* tp_flags */
  	0,					/* tp_doc */
  	(traverseproc)meth_traverse,		/* tp_traverse */
 	0,					/* tp_clear */
@@ -242,7 +269,7 @@ PyTypeObject PyCFunction_Type = {
 	0,					/* tp_iter */
 	0,					/* tp_iternext */
 	0,					/* tp_methods */
-	0,					/* tp_members */
+	meth_members,				/* tp_members */
 	meth_getsets,				/* tp_getset */
 	0,					/* tp_base */
 	0,					/* tp_dict */
@@ -257,7 +284,7 @@ listmethodchain(PyMethodChain *chain)
 	PyMethodDef *ml;
 	int i, n;
 	PyObject *v;
-	
+
 	n = 0;
 	for (c = chain; c != NULL; c = c->link) {
 		for (ml = c->methods; ml->ml_name != NULL; ml++)
@@ -300,6 +327,7 @@ Py_FindMethodInChain(PyMethodChain *chain, PyObject *self, char *name)
 		for (; ml->ml_name != NULL; ml++) {
 			if (name[0] == ml->ml_name[0] &&
 			    strcmp(name+1, ml->ml_name+1) == 0)
+				/* XXX */
 				return PyCFunction_New(ml, self);
 		}
 		chain = chain->link;
@@ -327,7 +355,20 @@ PyCFunction_Fini(void)
 	while (free_list) {
 		PyCFunctionObject *v = free_list;
 		free_list = (PyCFunctionObject *)(v->m_self);
-		v = (PyCFunctionObject *) PyObject_AS_GC(v);
-		PyObject_DEL(v);
+		PyObject_GC_Del(v);
 	}
+}
+
+/* PyCFunction_New() is now just a macro that calls PyCFunction_NewEx(),
+   but it's part of the API so we need to keep a function around that
+   existing C extensions can call.
+*/
+   
+#undef PyCFunction_New
+PyAPI_FUNC(PyObject *) PyCFunction_New(PyMethodDef *, PyObject *);
+
+PyObject *
+PyCFunction_New(PyMethodDef *ml, PyObject *self)
+{
+	return PyCFunction_NewEx(ml, self, NULL);
 }

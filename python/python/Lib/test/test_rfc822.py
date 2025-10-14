@@ -1,7 +1,7 @@
 import rfc822
 import sys
-import test_support
 import unittest
+from test import test_support
 
 try:
     from cStringIO import StringIO
@@ -18,7 +18,7 @@ class MessageTestCase(unittest.TestCase):
             'To: "last, first" <userid@foo.net>\n\ntest\n')
         self.assert_(msg.get("to") == '"last, first" <userid@foo.net>')
         self.assert_(msg.get("TO") == '"last, first" <userid@foo.net>')
-        self.assert_(msg.get("No-Such-Header") == "")
+        self.assert_(msg.get("No-Such-Header") is None)
         self.assert_(msg.get("No-Such-Header", "No-Such-Value")
                      == "No-Such-Value")
 
@@ -185,13 +185,47 @@ class MessageTestCase(unittest.TestCase):
         self.check('To: User J. Person <person@dom.ain>\n\n',
                    [('User J. Person', 'person@dom.ain')])
 
-    # This takes to long to add to the test suite
+    # This takes too long to add to the test suite
 ##    def test_an_excrutiatingly_long_address_field(self):
 ##        OBSCENELY_LONG_HEADER_MULTIPLIER = 10000
 ##        oneaddr = ('Person' * 10) + '@' + ('.'.join(['dom']*10)) + '.com'
 ##        addr = ', '.join([oneaddr] * OBSCENELY_LONG_HEADER_MULTIPLIER)
 ##        lst = rfc822.AddrlistClass(addr).getaddrlist()
 ##        self.assertEqual(len(lst), OBSCENELY_LONG_HEADER_MULTIPLIER)
+
+    def test_2getaddrlist(self):
+        eq = self.assertEqual
+        msg = self.create_message("""\
+To: aperson@dom.ain
+Cc: bperson@dom.ain
+Cc: cperson@dom.ain
+Cc: dperson@dom.ain
+
+A test message.
+""")
+        ccs = [('', a) for a in
+               ['bperson@dom.ain', 'cperson@dom.ain', 'dperson@dom.ain']]
+        addrs = msg.getaddrlist('cc')
+        addrs.sort()
+        eq(addrs, ccs)
+        # Try again, this one used to fail
+        addrs = msg.getaddrlist('cc')
+        addrs.sort()
+        eq(addrs, ccs)
+
+    def test_parseaddr(self):
+        eq = self.assertEqual
+        eq(rfc822.parseaddr('<>'), ('', ''))
+        eq(rfc822.parseaddr('aperson@dom.ain'), ('', 'aperson@dom.ain'))
+        eq(rfc822.parseaddr('bperson@dom.ain (Bea A. Person)'),
+           ('Bea A. Person', 'bperson@dom.ain'))
+        eq(rfc822.parseaddr('Cynthia Person <cperson@dom.ain>'),
+           ('Cynthia Person', 'cperson@dom.ain'))
+
+    def test_quote_unquote(self):
+        eq = self.assertEqual
+        eq(rfc822.quote('foo\\wacky"name'), 'foo\\\\wacky\\"name')
+        eq(rfc822.unquote('"foo\\\\wacky\\"name"'), 'foo\\wacky"name')
 
 
 def test_main():

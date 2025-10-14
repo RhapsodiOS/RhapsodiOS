@@ -9,22 +9,22 @@ extern "C" {
 
 #include <stdarg.h>
 
-extern DL_IMPORT(int) PyArg_Parse(PyObject *, char *, ...);
-extern DL_IMPORT(int) PyArg_ParseTuple(PyObject *, char *, ...);
-extern DL_IMPORT(int) PyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
+PyAPI_FUNC(int) PyArg_Parse(PyObject *, char *, ...);
+PyAPI_FUNC(int) PyArg_ParseTuple(PyObject *, char *, ...);
+PyAPI_FUNC(int) PyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                                   char *, char **, ...);
-extern DL_IMPORT(int) PyArg_UnpackTuple(PyObject *, char *, int, int, ...);
-extern DL_IMPORT(PyObject *) Py_BuildValue(char *, ...);
+PyAPI_FUNC(int) PyArg_UnpackTuple(PyObject *, char *, int, int, ...);
+PyAPI_FUNC(PyObject *) Py_BuildValue(char *, ...);
 
-extern DL_IMPORT(int) PyArg_VaParse(PyObject *, char *, va_list);
-extern DL_IMPORT(PyObject *) Py_VaBuildValue(char *, va_list);
+PyAPI_FUNC(int) PyArg_VaParse(PyObject *, char *, va_list);
+PyAPI_FUNC(PyObject *) Py_VaBuildValue(char *, va_list);
 
-extern DL_IMPORT(int) PyModule_AddObject(PyObject *, char *, PyObject *);
-extern DL_IMPORT(int) PyModule_AddIntConstant(PyObject *, char *, long);
-extern DL_IMPORT(int) PyModule_AddStringConstant(PyObject *, char *, char *);
+PyAPI_FUNC(int) PyModule_AddObject(PyObject *, char *, PyObject *);
+PyAPI_FUNC(int) PyModule_AddIntConstant(PyObject *, char *, long);
+PyAPI_FUNC(int) PyModule_AddStringConstant(PyObject *, char *, char *);
 
-#define PYTHON_API_VERSION 1011
-#define PYTHON_API_STRING "1011"
+#define PYTHON_API_VERSION 1012
+#define PYTHON_API_STRING "1012"
 /* The API version is maintained (independently from the Python version)
    so we can detect mismatches between the interpreter and dynamically
    loaded modules.  These are diagnosed by an error message but
@@ -37,6 +37,9 @@ extern DL_IMPORT(int) PyModule_AddStringConstant(PyObject *, char *, char *);
 
    Please add a line or two to the top of this log for each API
    version change:
+
+   19-Aug-2002  GvR	1012	Changes to string object struct for
+   				interning changes, saving 3 bytes.
 
    17-Jul-2001	GvR	1011	Descr-branch, just to be on the safe side
 
@@ -78,7 +81,7 @@ extern DL_IMPORT(int) PyModule_AddStringConstant(PyObject *, char *, char *);
 #define Py_InitModule4 Py_InitModule4TraceRefs
 #endif
 
-extern DL_IMPORT(PyObject *) Py_InitModule4(char *name, PyMethodDef *methods,
+PyAPI_FUNC(PyObject *) Py_InitModule4(char *name, PyMethodDef *methods,
                                             char *doc, PyObject *self,
                                             int apiver);
 
@@ -90,7 +93,7 @@ extern DL_IMPORT(PyObject *) Py_InitModule4(char *name, PyMethodDef *methods,
 	Py_InitModule4(name, methods, doc, (PyObject *)NULL, \
 		       PYTHON_API_VERSION)
 
-extern DL_IMPORT(char *) _Py_PackageContext;
+PyAPI_DATA(char *) _Py_PackageContext;
 
 #ifdef __cplusplus
 }

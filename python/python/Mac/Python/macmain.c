@@ -38,17 +38,13 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <Windows.h>
 #include <Fonts.h>
 #include <Balloons.h>
-#if TARGET_API_MAC_CARBON
 #include <CFBundle.h>
 #include <CFURL.h>
 #include <CFString.h>
 #include <CFBase.h>
 #include <CFArray.h>
-#endif /* TARGET_API_MAC_CARBON */
-#ifdef USE_APPEARANCE
 #include <Gestalt.h>
 #include <Appearance.h>
-#endif /* USE_APPEARANCE */
 #else
 #include <Carbon/Carbon.h>
 #endif /* WITHOUT_FRAMEWORKS */
@@ -88,41 +84,15 @@ int console_output_state = STATE_UNKNOWN;
 
 PyMac_PrefRecord PyMac_options;
 
-static void Py_Main(int, char **, char *); /* Forward */
+static void PyMac_Main(int, char **, char *); /* Forward */
 void PyMac_Exit(int); /* Forward */
 
-static void init_appearance(void)
-{
-#ifdef USE_APPEARANCE
-	OSErr err;
-	SInt32 response;
-
-	err = Gestalt(gestaltAppearanceAttr,&response);
-	if ( err ) goto no_appearance;
-	if ( !(response&(1<<gestaltAppearanceExists)) ) goto no_appearance;
-	/* XXXX Should we check the version? Compat-mode? */
-	PyMac_AppearanceCompliant = 1;
-no_appearance:
-	return;
-#endif /* USE_APPEARANCE */
-}
 /* Initialize the Mac toolbox world */
 
 static void
 init_mac_world(void)
 {
-#if !TARGET_API_MAC_CARBON
-	/* These aren't needed for carbon */
-	MaxApplZone();
-	InitGraf(&qd.thePort);
-	InitFonts();
-	InitWindows();
-	TEInit();
-	InitDialogs((long)0);
-	InitMenus();
-#endif
 	InitCursor();
-	init_appearance();
 }
 
 /*
@@ -194,12 +164,6 @@ PyMac_InteractiveOptions(PyMac_PrefRecord *p, int *argcp, char ***argvp)
 			DisposeDialog(dialog);
 			exit(0);
 		}
-#if !TARGET_API_MAC_CARBON
-		if ( item == OPT_HELP ) {
-			HMSetBalloons(!HMGetBalloons());
-		}
-#endif
-#if !TARGET_API_MAC_OSX
 		if ( item == OPT_CMDLINE ) {
 			int old_argc = *argcp;
 			int i;
@@ -220,7 +184,6 @@ PyMac_InteractiveOptions(PyMac_PrefRecord *p, int *argcp, char ***argvp)
 			
 			/* XXXX Is it not safe to use free() here, apparently */
 		}
-#endif /* !TARGET_API_MAC_OSX */
 #define OPT_ITEM(num, var) \
 		if ( item == (num) ) { \
 			p->var = !p->var; \
@@ -283,21 +246,12 @@ init_common(int *argcp, char ***argvp, int embedded)
 	PyMac_AddLibResources();
 #endif
 
-#if defined(USE_GUSI1)
-	/* Setup GUSI */
-	GUSIDefaultSetup();
-	PyMac_SetGUSISpin();
-	PyMac_SetGUSIOptions();
-#endif
 #if defined(USE_GUSI)
 	atexit(PyMac_StopGUSISpin);
 #endif	
 
 #ifdef USE_SIOUX
 	/* Set various SIOUX flags. Some are changed later based on options */
-#if 0
-	SIOUXSettings.standalone = 0;	/* XXXX Attempting to keep sioux from eating events */
-#endif
 	SIOUXSettings.asktosaveonclose = 0;
 	SIOUXSettings.showstatusline = 0;
 	SIOUXSettings.tabspaces = 4;
@@ -306,9 +260,7 @@ init_common(int *argcp, char ***argvp, int embedded)
 	/* Get options from preference file (or from applet resource fork) */
 	PyMac_options.keep_console = POPT_KEEPCONSOLE_OUTPUT;		/* default-default */
 	PyMac_options.unixnewlines = 1;
-#if !TARGET_API_MAC_OSX
 	PyMac_PreferenceOptions(&PyMac_options);
-#endif
 
 	if ( embedded ) {
 		static char *emb_argv[] = {"embedded-python", 0};
@@ -316,9 +268,11 @@ init_common(int *argcp, char ***argvp, int embedded)
 		*argcp = 1;
 		*argvp = emb_argv;
 	} else {
-		/* Create argc/argv. Do it before we go into the options event loop. */
-		*argcp = PyMac_GetArgv(argvp, PyMac_options.noargs);
-#if !TARGET_API_MAC_OSX
+		/* Create argc/argv. Do it before we go into the options event loop.
+		** In MachoPython we skip this step if we already have plausible
+		** command line arguments.
+		*/
+			*argcp = PyMac_GetArgv(argvp, PyMac_options.noargs);
 #ifndef NO_ARGV0_CHDIR
 		if (*argcp >= 1 && (*argvp)[0] && (*argvp)[0][0]) {
 			/* Workaround for MacOS X, which currently (DP4) doesn't set
@@ -332,7 +286,6 @@ init_common(int *argcp, char ***argvp, int embedded)
 			chdir(app_wd);
 		}
 #endif
-#endif
 		/* Do interactive option setting, if allowed and <option> depressed */
 		PyMac_InteractiveOptions(&PyMac_options, argcp, argvp);
 	}
@@ -345,7 +298,6 @@ init_common(int *argcp, char ***argvp, int embedded)
 	Py_NoSiteFlag = PyMac_options.nosite;
 	Py_TabcheckFlag = PyMac_options.tabwarn;
 	Py_DivisionWarningFlag = PyMac_options.divisionwarn;
-#if !TARGET_API_MAC_OSX
 	if ( PyMac_options.noargs ) {
 		/* don't process events at all without the scripts permission */
 		PyMacSchedParams scp;
@@ -355,7 +307,6 @@ init_common(int *argcp, char ***argvp, int embedded)
 		/* Should we disable command-dot as well? */
 		PyMac_SetSchedParams(&scp);
 	}
-#endif /* !TARGET_API_MAC_OSX */
 
 	/* Set buffering */
 	if (PyMac_options.unbuffered) {
@@ -467,122 +418,19 @@ PyMac_Initialize(void)
 
 #endif /* USE_MAC_APPLET_SUPPORT */
 
-#if TARGET_API_MAC_OSX /* Really: TARGET_API_MAC_CARBON */
-
-static int
-locateResourcePy(char * resourceName, char * resourceURLCStr, int length) {
-    CFBundleRef mainBundle = NULL;
-    CFURLRef URL, absoluteURL;
-    CFStringRef filenameString, filepathString, rsrcString;
-    CFIndex size, i;
-    CFArrayRef arrayRef = NULL;
-    int success = 0;
-    
-#if TARGET_API_MAC_OSX
-	CFURLPathStyle thePathStyle = kCFURLPOSIXPathStyle;
-#else
-	CFURLPathStyle thePathStyle = kCFURLHFSPathStyle;
-#endif
-
-    /* Get a reference to our main bundle */
-    mainBundle = CFBundleGetMainBundle();
-
-	/* If we are running inside a bundle, look through it. Otherwise, do nothing. */
-	if (mainBundle) {
-	    /* Create a CFString with the resource name in it */
-	    rsrcString = CFStringCreateWithCString(0, resourceName, kCFStringEncodingMacRoman);
-
-	    /* Look for py files in the main bundle by type */
-	    arrayRef = CFBundleCopyResourceURLsOfType( mainBundle, 
-	            CFSTR("py"), 
-	           NULL );
-
-	    /* See if there are any filename matches */
-	    size = CFArrayGetCount(arrayRef);
-	    for (i = 0; i < size; i++) {
-	        URL = CFArrayGetValueAtIndex(arrayRef, i);
-	        filenameString = CFURLCopyLastPathComponent(URL);
-	        if (CFStringCompare(filenameString, rsrcString, 0) == kCFCompareEqualTo) {
-	            /* We found a match, get the file's full path */
-	            absoluteURL = CFURLCopyAbsoluteURL(URL);
-	            filepathString = CFURLCopyFileSystemPath(absoluteURL, thePathStyle);
-	            CFRelease(absoluteURL);
-
-	            /* Copy the full path into the caller's character buffer */
-	            success = CFStringGetCString(filepathString, resourceURLCStr, length,
-	                                        kCFStringEncodingMacRoman);
-
-	            CFRelease(filepathString);
-	        }
-	        CFRelease(filenameString);
-	    }
-		CFRelease(arrayRef);
-	    CFRelease(rsrcString);
-	}
-    return success;
-}
-
-#endif /* TARGET_API_MAC_CARBON */
-
-#if TARGET_API_MAC_OSX
-
-int
-main(int argc, char **argv)
-{
-    int i;
-    static char scriptpath[1024];
-    char *script = NULL;
-
-	/* First we see whether we have __rawmain__.py and run that if it
-	** is there
-	*/
-	if (locateResourcePy("__rawmain__.py", scriptpath, 1024)) {
-		/* If we have a raw main we don't do AppleEvent processing.
-		** Notice that this also means we keep the -psn.... argv[1]
-		** value intact. Not sure whether that is important to someone,
-		** but you never know...
-		*/
-		script = scriptpath;
-	} else {
-		/* Otherwise we look for __main__.py. Whether that is
-		** found or not we also process AppleEvent arguments.
-		*/
-		if (locateResourcePy("__main__.py", scriptpath, 1024))
-			script = scriptpath;
-			
-		printf("original argc=%d\n", argc);
-		for(i=0; i<argc; i++) printf("original argv[%d] = \"%s\"\n", i, argv[i]);
-
-		init_common(&argc, &argv, 0);
-
-		printf("modified argc=%d\n", argc);
-		for(i=0; i<argc; i++) printf("modified argv[%d] = \"%s\"\n", i, argv[i]);
-	}
-
-	Py_Main(argc, argv, script);
-    return 0;
-}
-
-#else
-
 /* For normal application */
 void
 PyMac_InitApplication(void)
 {
 	int argc;
 	char **argv;
+	OSType filetype;
 	
 	static char scriptpath[1024];
 	char *script = NULL;
 
 	init_common(&argc, &argv, 0);
 
-#if TARGET_API_MAC_OSX /* Really: TARGET_API_MAC_CARBON */
-	/* If we are running inside of a bundle, and a __main__.py is available, use it */
-	if (locateResourcePy("__main__.py", scriptpath, 1024))
-		script = scriptpath;
-#endif
-	
 	if ( argc > 1 ) {
 		/* We're running a script. Attempt to change current directory */
 		char curwd[256], *endp;
@@ -593,25 +441,21 @@ PyMac_InitApplication(void)
 			*endp = '\0';
 
 			chdir(curwd);
-#ifdef USE_GUSI1
-			/* Change MacOS's idea of wd too */
-			PyMac_FixGUSIcd();
-#endif
 		}
 		/* Check that the first argument is a text file */
-		if ( PyMac_getfiletype(argv[1]) != 'TEXT' ) {
+		filetype = PyMac_getfiletype(argv[1]);
+		if ( filetype != 'TEXT' && filetype != 0 ) {
 			Alert(NOTASCRIPT_ID, NULL);
 			exit(0);
 		}
 	}
-	Py_Main(argc, argv, script);
+	PyMac_Main(argc, argv, script);
 }
-#endif /* TARGET_API_MAC_OSX */
 
 /* Main program */
 
 static void
-Py_Main(int argc, char **argv, char *filename)
+PyMac_Main(int argc, char **argv, char *filename)
 {
 	int sts;
 	char *command = NULL;
@@ -628,30 +472,32 @@ Py_Main(int argc, char **argv, char *filename)
 
 	if (Py_VerboseFlag ||
 	    (command == NULL && filename == NULL && isatty((int)fileno(fp))))
-		fprintf(stderr, "Python %s on %s\n%s\n",
+		fprintf(stderr, "%s %s on %s\n%s\n",
+			"Python",
 			Py_GetVersion(), Py_GetPlatform(), COPYRIGHT);
 	
 	if (filename != NULL) {
-		if ((fp = fopen(filename, "r")) == NULL) {
+		if ((fp = fopen(filename, "r" PY_STDIOTEXTMODE)) == NULL) {
 			fprintf(stderr, "%s: can't open file '%s'\n",
 				argv[0], filename);
 			PyMac_Exit(2);
 		}
 	}
 	
-#if !TARGET_API_MAC_OSX
 	/* We initialize the menubar here, hoping SIOUX is initialized by now */
 	PyMac_InitMenuBar();
-#endif
 
 	Py_Initialize();
 	
+#if 0
+	/* According to Martin v. Loewis this is a bad idea... */
 	PyUnicode_SetDefaultEncoding(PyMac_getscript());
+#endif
 	
 	PySys_SetArgv(argc, argv);
 
 	if (filename == NULL && isatty((int)fileno(fp))) {
-		FILE *fp = fopen(STARTUP, "r");
+		FILE *fp = fopen(STARTUP, "r" PY_STDIOTEXTMODE);
 		if (fp != NULL) {
 			(void) PyRun_SimpleFile(fp, STARTUP);
 			PyErr_Clear();
@@ -670,7 +516,6 @@ Py_Main(int argc, char **argv, char *filename)
 	/*NOTREACHED*/
 }
 
-#if !TARGET_API_MAC_OSX
 /*
 ** Reset the "unseen output" flag
 */
@@ -702,7 +547,6 @@ abort(void)
 	console_output_state = STATE_LASTWRITE;
 	PyMac_Exit(1);
 }
-#endif /* !TARGET_API_MAC_OSX */
 
 /*
 ** Terminate application
@@ -758,7 +602,6 @@ PyMac_Exit(int status)
 	exit(status);
 }
 
-#if !TARGET_API_MAC_OSX
 /* Make the *original* argc/argv available to other modules.
    This is rare, but it is needed by the secureware extension. */
 
@@ -768,10 +611,8 @@ Py_GetArgcArgv(int *argc,char ***argv)
 	*argc = orig_argc;
 	*argv = orig_argv;
 }
-#endif
 
 /* More cruft that shouldn't really be here, used in sysmodule.c */
-#if !TARGET_API_MAC_OSX
 /* Return the program name -- some code out there needs this. */
 char *
 Py_GetProgramFullPath(void)
@@ -796,24 +637,4 @@ PyMac_GetDelayConsoleFlag(void)
 {
 	return (int)PyMac_options.delayconsole;
 }
-
-#ifndef WITHOUT_UNIX_NEWLINES
-/*
-** Experimental feature (for 2.2a2): optionally allow unix newlines
-** as well as Mac newlines on input. We replace a lowlevel
-** MSL routine to accomplish this.
-*/
-void
-__convert_to_newlines(unsigned char * buf, size_t * n_ptr)
-{
-	unsigned char *p;
-	size_t n = *n_ptr;
-	
-	for(p=buf; n > 0; p++, n--)
-		if ( *p == '\r' ) *p = '\n';
-		else if ( *p == '\n' && !PyMac_options.unixnewlines )
-			*p = '\r';
-}
-#endif /* WITHOUT_UNIX_NEWLINES */
-#endif /* !TARGET_API_MAC_OSX */
 

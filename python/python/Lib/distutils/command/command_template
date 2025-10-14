@@ -5,7 +5,7 @@ Implements the Distutils 'x' command.
 
 # created 2000/mm/dd, John Doe
 
-__revision__ = "$Id: command_template,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+__revision__ = "$Id$"
 
 from distutils.core import Command
 

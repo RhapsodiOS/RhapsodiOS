@@ -4,6 +4,9 @@ import struct
 import string
 import types
 import re
+from Carbon import Qd, Icn, Fm, QuickDraw
+from Carbon.QuickDraw import hilitetransfermode
+
 
 nullid = '\0\0'
 closedid = struct.pack('h', 468)
@@ -44,9 +47,62 @@ def double_repr(key, value, truncvalue = 0,
 	return key + '\t' + value
 
 
-class BrowserWidget(W.List):
+def truncString(s, maxwid):
+	if maxwid < 1:
+		return 1, ""
+	strlen = len(s)
+	strwid = Qd.TextWidth(s, 0, strlen);
+	if strwid <= maxwid:
+		return 0, s
 	
-	LDEF_ID = 471
+	Qd.TextFace(QuickDraw.condense)
+	strwid = Qd.TextWidth(s, 0, strlen)
+	ellipsis = Qd.StringWidth('\xc9')
+	
+	if strwid <= maxwid:
+		Qd.TextFace(0)
+		return 1, s
+	if strwid < 1:
+		Qd.TextFace(0)
+		return 1, ""
+	
+	mid = int(strlen * maxwid / strwid)
+	while 1:
+		if mid <= 0:
+			mid = 0
+			break
+		strwid = Qd.TextWidth(s, 0, mid) + ellipsis
+		strwid2 = Qd.TextWidth(s, 0, mid + 1) + ellipsis
+		if strwid <= maxwid and maxwid <= strwid2:
+			if maxwid == strwid2:
+				mid += 1
+			break
+		if strwid > maxwid:
+			mid -= 1
+			if mid <= 0:
+				mid = 0
+				break
+		elif strwid2 < maxwid:
+			mid += 1
+	Qd.TextFace(0)
+	return 1, s[:mid] + '\xc9'
+
+
+def drawTextCell(text, cellRect, ascent, theList):
+	l, t, r, b = cellRect
+	cellwidth = r - l
+	Qd.MoveTo(int(l + 2), int(t + ascent))
+	condense, text = truncString(text, cellwidth - 3)
+	if condense:
+		Qd.TextFace(QuickDraw.condense)
+	Qd.DrawText(text, 0, len(text))
+	Qd.TextFace(0)
+
+
+PICTWIDTH = 16
+
+
+class BrowserWidget(W.CustomList):
 	
 	def __init__(self, possize, object = None, col = 100, closechildren = 0):
 		W.List.__init__(self, possize, callback = self.listhit)
@@ -154,7 +210,7 @@ class BrowserWidget(W.List):
 				Qd.PaintRect(rect)
 				lastpoint = (x, y)
 		Qd.PaintRect(rect)
-		Qd.PenPat(Qd.qd.black)
+		Qd.PenPat(Qd.GetQDGlobalsBlack())
 		Qd.PenNormal()
 		if newcol > 0 and newcol <> abscol:
 			self.setcolumn(newcol - l)
@@ -266,9 +322,7 @@ class BrowserWidget(W.List):
 					editor.select()
 					return
 				elif os.path.exists(value) and os.path.isfile(value):
-					import macfs
-					fss = macfs.FSSpec(value)
-					if fss.GetCreatorType()[1] == 'TEXT':
+					if MacOS.GetCreatorAndType(value)[1] in ('TEXT', '\0\0\0\0'):
 						W.getapplication().openscript(value)
 	
 	def itemrepr(self, (key, value, arrow, indent), str = str, double_repr = double_repr, 
@@ -291,8 +345,110 @@ class BrowserWidget(W.List):
 		text = string.join(selitems, '\r')
 		if text:
 			from Carbon import Scrap
-			Scrap.ZeroScrap()
-			Scrap.PutScrap('TEXT', text)
+			if hasattr(Scrap, 'PutScrap'):
+				Scrap.ZeroScrap()
+				Scrap.PutScrap('TEXT', text)
+			else:
+				Scrap.ClearCurrentScrap()
+				sc = Scrap.GetCurrentScrap()
+				sc.PutScrapFlavor('TEXT', 0, text)
+
+	def listDefDraw(self, selected, cellRect, theCell, 
+			dataOffset, dataLen, theList):
+		self.myDrawCell(0, selected, cellRect, theCell, 
+			dataOffset, dataLen, theList)
+	
+	def listDefHighlight(self, selected, cellRect, theCell, 
+			dataOffset, dataLen, theList):
+		self.myDrawCell(1, selected, cellRect, theCell, 
+			dataOffset, dataLen, theList)
+	
+	def myDrawCell(self, onlyHilite, selected, cellRect, theCell, 
+			dataOffset, dataLen, theList):
+		savedPort = Qd.GetPort()
+		Qd.SetPort(theList.GetListPort())
+		savedClip = Qd.NewRgn()
+		Qd.GetClip(savedClip)
+		Qd.ClipRect(cellRect)
+		savedPenState = Qd.GetPenState()
+		Qd.PenNormal()
+		
+		l, t, r, b = cellRect
+		
+		if not onlyHilite:
+			Qd.EraseRect(cellRect)
+			
+			ascent, descent, leading, size, hm = Fm.FontMetrics()
+			linefeed = ascent + descent + leading
+			
+			if dataLen >= 6:
+				data = theList.LGetCell(dataLen, theCell)
+				iconId, indent, tab = struct.unpack("hhh", data[:6])
+				try:
+					key, value = data[6:].split("\t", 1)
+				except ValueError:
+					# bogus data, at least don't crash.
+					indent = 0
+					tab = 0
+					iconId = 0
+					key = ""
+					value = data[6:]
+				
+				if iconId:
+					try:
+						theIcon = Icn.GetCIcon(iconId)
+					except Icn.Error:
+						pass
+					else:
+						rect = (0, 0, 16, 16)
+						rect = Qd.OffsetRect(rect, l, t)
+						rect = Qd.OffsetRect(rect, 0, (theList.cellSize[1] - (rect[3] - rect[1])) / 2)
+						Icn.PlotCIcon(rect, theIcon)
+				
+				if len(key) >= 0:
+					cl, ct, cr, cb = cellRect
+					vl, vt, vr, vb = self._viewbounds
+					cl = vl + PICTWIDTH + indent
+					cr = vl + tab
+					if cr > vr:
+						cr = vr
+					if cl < cr:
+						drawTextCell(key, (cl, ct, cr, cb), ascent, theList)
+					cl = vl + tab
+					cr = vr
+					if cl < cr:
+						drawTextCell(value, (cl, ct, cr, cb), ascent, theList)
+			#elif dataLen != 0:
+			#	drawTextCell("???", 3, cellRect, ascent, theList)
+			else:
+				return  # we have bogus data
+			
+			# draw nice dotted line
+			l, t, r, b = cellRect
+			l = self._viewbounds[0] + tab
+			r = l + 1;
+			if not (theList.cellSize[1] & 0x01) or (t & 0x01):
+				myPat = "\xff\x00\xff\x00\xff\x00\xff\x00"
+			else:
+				myPat = "\x00\xff\x00\xff\x00\xff\x00\xff"
+			Qd.PenPat(myPat)
+			Qd.PenMode(QuickDraw.srcCopy)
+			Qd.PaintRect((l, t, r, b))
+			Qd.PenNormal()
+		
+		if selected or onlyHilite:
+			l, t, r, b = cellRect
+			l = self._viewbounds[0] + PICTWIDTH
+			r = self._viewbounds[2]
+			Qd.PenMode(hilitetransfermode)
+			Qd.PaintRect((l, t, r, b))
+		
+		# restore graphics environment
+		Qd.SetPort(savedPort)
+		Qd.SetClip(savedClip)
+		Qd.DisposeRgn(savedClip)
+		Qd.SetPenState(savedPenState)
+
 
 
 class Browser:
@@ -344,42 +500,60 @@ class Browser:
 
 
 SIMPLE_TYPES = (
-	types.NoneType,
-	types.IntType,
-	types.LongType,
-	types.FloatType,
-	types.ComplexType,
-	types.StringType
+	type(None),
+	int,
+	long,
+	float,
+	complex,
+	str,
+	unicode,
 )
 
-INDEXING_TYPES = (
-	types.TupleType,
-	types.ListType,
-	types.DictionaryType
-)
+def get_ivars(obj):
+	"""Return a list the names of all (potential) instance variables."""
+	# __mro__ recipe from Guido
+	slots = {}
+	# old-style C objects
+	if hasattr(obj, "__members__"):
+		for name in obj.__members__:
+			slots[name] = None
+	if hasattr(obj, "__methods__"):
+		for name in obj.__methods__:
+			slots[name] = None
+	# generic type
+	if hasattr(obj, "__dict__"):
+		slots.update(obj.__dict__)
+	cls = type(obj)
+	if hasattr(cls, "__mro__"):
+		# new-style class, use descriptors
+		for base in cls.__mro__:
+			for name, value in base.__dict__.items():
+				# XXX using callable() is a heuristic which isn't 100%
+				# foolproof.
+				if hasattr(value, "__get__") and not callable(value):
+					slots[name] = None
+	if "__dict__" in slots:
+		del slots["__dict__"]
+	slots = slots.keys()
+	slots.sort()
+	return slots
 
 def unpack_object(object, indent = 0):
 	tp = type(object)
-	if tp in SIMPLE_TYPES and tp is not types.NoneType:
+	if isinstance(object, SIMPLE_TYPES) and object is not None:
 		raise TypeError, "can't browse simple type: %s" % tp.__name__
-	elif tp == types.DictionaryType:
+	elif isinstance(object, dict):
 		return unpack_dict(object, indent)
-	elif tp in (types.TupleType, types.ListType):
+	elif isinstance(object, (tuple, list)):
 		return unpack_sequence(object, indent)
-	elif tp == types.InstanceType:
-		return unpack_instance(object, indent)
-	elif tp == types.ClassType:
-		return unpack_class(object, indent)
-	elif tp == types.ModuleType:
+	elif isinstance(object, types.ModuleType):
 		return unpack_dict(object.__dict__, indent)
 	else:
 		return unpack_other(object, indent)
 
 def unpack_sequence(seq, indent = 0):
-	items = map(None, range(len(seq)), seq)
-	items = map(lambda (k, v), type = type, simp = SIMPLE_TYPES, indent = indent: 
-				(k, v, not type(v) in simp, indent), items)
-	return items
+	return [(i, v, not isinstance(v, SIMPLE_TYPES), indent)
+	         for i, v in enumerate(seq)]
 
 def unpack_dict(dict, indent = 0):
 	items = dict.items()
@@ -397,20 +571,20 @@ def unpack_class(clss, indent = 0):
 	return pack_items(items, indent)
 
 def unpack_other(object, indent = 0):
-	attrs = []
-	if hasattr(object, '__members__'):
-		attrs = attrs + object.__members__
-	if hasattr(object, '__methods__'):
-		attrs = attrs + object.__methods__
+	attrs = get_ivars(object)
 	items = []
 	for attr in attrs:
-		items.append((attr, getattr(object, attr)))
+		try:
+			value = getattr(object, attr)
+		except:
+			pass
+		else:
+			items.append((attr, value))
 	return pack_items(items, indent)
 
 def pack_items(items, indent = 0):
-	items = map(lambda (k, v), type = type, simp = SIMPLE_TYPES, indent = indent: 
-				(k, v, not type(v) in simp, indent), 
-			items)
+	items = [(k, v, not isinstance(v, SIMPLE_TYPES), indent)
+	         for k, v in items]
 	return tuple_caselesssort(items)
 
 def caselesssort(alist):

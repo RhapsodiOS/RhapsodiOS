@@ -1,12 +1,11 @@
-# created 1999/03/13, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: install_lib.py,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+__revision__ = "$Id: install_lib.py,v 1.42 2002/11/19 13:12:28 akuchling Exp $"
 
 import sys, os, string
 from types import IntType
 from distutils.core import Command
 from distutils.errors import DistutilsOptionError
-from distutils.dir_util import copy_tree
 
 class install_lib (Command):
 
@@ -125,13 +124,11 @@ class install_lib (Command):
 
         if self.compile:
             byte_compile(files, optimize=0,
-                         force=self.force,
-                         prefix=install_root,
-                         verbose=self.verbose, dry_run=self.dry_run)
+                         force=self.force, prefix=install_root,
+                         dry_run=self.dry_run)
         if self.optimize > 0:
             byte_compile(files, optimize=self.optimize,
-                         force=self.force,
-                         prefix=install_root,
+                         force=self.force, prefix=install_root,
                          verbose=self.verbose, dry_run=self.dry_run)
 
 

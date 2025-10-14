@@ -17,7 +17,7 @@ def _run_exitfuncs():
 
     while _exithandlers:
         func, targs, kargs = _exithandlers.pop()
-        apply(func, targs, kargs)
+        func(*targs, **kargs)
 
 def register(func, *targs, **kargs):
     """register a function to be executed upon normal program termination
@@ -29,15 +29,11 @@ def register(func, *targs, **kargs):
     _exithandlers.append((func, targs, kargs))
 
 import sys
-try:
-    x = sys.exitfunc
-except AttributeError:
-    sys.exitfunc = _run_exitfuncs
-else:
-    # if x isn't our own exit func executive, assume it's another
-    # registered exit function - append it to our list...
-    if x != _run_exitfuncs:
-        register(x)
+if hasattr(sys, "exitfunc"):
+    # Assume it's another registered exit function - append it to our list
+    register(sys.exitfunc)
+sys.exitfunc = _run_exitfuncs
+
 del sys
 
 if __name__ == "__main__":

@@ -33,6 +33,14 @@ Some of these are very old and/or not very robust; marked with ``hmm.''
 \item[\module{ihooks}]
 --- Import hook support (for \refmodule{rexec}; may become obsolete).
 
+\item[\module{platform}]
+--- This module tries to retrieve as much platform identifying data as
+possible.  It makes this information available via function APIs.
+If called from the command line, it prints the platform information
+concatenated as single string to \code{sys.stdout}.  The output format
+is useable as part of a filename.
+\versionadded{2.3}
+
 \item[\module{smtpd}]
 --- An SMTP daemon implementation which meets the minimum requirements
 for \rfc{821} conformance.
@@ -46,15 +54,17 @@ and are not documented beyond this mention.  There's little need to
 document these.
 
 \begin{description}
-\item[\module{dospath}]
---- Implementation of \module{os.path} on MS-DOS.
-
 \item[\module{ntpath}]
---- Implementation on \module{os.path} on Win32, Win64, WinCE, and
+--- Implementation of \module{os.path} on Win32, Win64, WinCE, and
 OS/2 platforms.
 
 \item[\module{posixpath}]
---- Implementation on \module{os.path} on \POSIX.
+--- Implementation of \module{os.path} on \POSIX.
+
+\item[\module{bsddb185}]
+--- Backwards compatibility module for systems which still use the Berkeley
+DB 1.85 module.  It is normally only available on certain BSD Unix-based
+systems.  It should never be used directly.
 \end{description}
 
 
@@ -64,12 +74,20 @@ OS/2 platforms.
 \item[\module{audiodev}]
 --- Platform-independent API for playing audio data.
 
+\item[\module{linuxaudiodev}]
+--- Play audio data on the Linux audio device.  Replaced in Python 2.3
+by the \module{ossaudiodev} module.
+
 \item[\module{sunaudio}]
 --- Interpret Sun audio headers (may become obsolete or a tool/demo).
 
 \item[\module{toaiff}]
 --- Convert "arbitrary" sound files to AIFF files; should probably
 become a tool or demo.  Requires the external program \program{sox}.
+
+\item[\module{ossaudiodev}]
+--- Play audio data via the Open Sound System API.  This is usable on
+Linux, some flavors of BSD, and some commercial \UNIX{} platforms.
 \end{description}
 
 

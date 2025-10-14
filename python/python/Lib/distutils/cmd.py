@@ -4,16 +4,15 @@ Provides the Command class, the base class for the command classes
 in the distutils.command package.
 """
 
-# created 2000/04/03, Greg Ward
-# (extricated from core.py; actually dates back to the beginning)
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: cmd.py,v 1.1.1.1 2002/02/05 23:21:18 zarzycki Exp $"
+__revision__ = "$Id: cmd.py,v 1.34 2003/02/20 02:10:08 gvanrossum Exp $"
 
 import sys, os, string, re
 from types import *
 from distutils.errors import *
 from distutils import util, dir_util, file_util, archive_util, dep_util
-
+from distutils import log
 
 class Command:
     """Abstract base class for defining command classes, the "worker bees"
@@ -72,11 +71,15 @@ class Command:
         # commands fallback on the Distribution's behaviour.  None means
         # "not defined, check self.distribution's copy", while 0 or 1 mean
         # false and true (duh).  Note that this means figuring out the real
-        # value of each flag is a touch complicated -- hence "self.verbose"
-        # (etc.) will be handled by __getattr__, below.
-        self._verbose = None
+        # value of each flag is a touch complicated -- hence "self._dry_run"
+        # will be handled by __getattr__, below.
+        # XXX This needs to be fixed.
         self._dry_run = None
 
+        # verbose is largely ignored, but needs to be set for
+        # backwards compatibility (I think)?
+        self.verbose = dist.verbose
+        
         # Some commands define a 'self.force' option to ignore file
         # timestamps, but methods defined *here* assume that
         # 'self.force' exists for all commands.  So define it here
@@ -96,8 +99,10 @@ class Command:
     # __init__ ()
 
 
+    # XXX A more explicit way to customize dry_run would be better.
+    
     def __getattr__ (self, attr):
-        if attr in ('verbose', 'dry_run'):
+        if attr == 'dry_run':
             myval = getattr(self, "_" + attr)
             if myval is None:
                 return getattr(self.distribution, attr)
@@ -186,15 +191,13 @@ class Command:
         """If the current verbosity level is of greater than or equal to
         'level' print 'msg' to stdout.
         """
-        if self.verbose >= level:
-            print msg
-            sys.stdout.flush()
+        log.log(level, msg)
 
     def debug_print (self, msg):
         """Print 'msg' to stdout if the global DEBUG (taken from the
         DISTUTILS_DEBUG environment variable) flag is true.
         """
-        from distutils.core import DEBUG
+        from distutils.debug import DEBUG
         if DEBUG:
             print msg
             sys.stdout.flush()
@@ -352,12 +355,11 @@ class Command:
 
 
     def execute (self, func, args, msg=None, level=1):
-        util.execute(func, args, msg, self.verbose >= level, self.dry_run)
+        util.execute(func, args, msg, dry_run=self.dry_run)
 
 
     def mkpath (self, name, mode=0777):
-        dir_util.mkpath(name, mode,
-                        self.verbose, self.dry_run)
+        dir_util.mkpath(name, mode, dry_run=self.dry_run)
 
 
     def copy_file (self, infile, outfile,
@@ -371,8 +373,7 @@ class Command:
             preserve_mode, preserve_times,
             not self.force,
             link,
-            self.verbose >= level,
-            self.dry_run)
+            dry_run=self.dry_run)
 
 
     def copy_tree (self, infile, outfile,
@@ -385,30 +386,21 @@ class Command:
             infile, outfile,
             preserve_mode,preserve_times,preserve_symlinks,
             not self.force,
-            self.verbose >= level,
-            self.dry_run)
-
+            dry_run=self.dry_run)
 
     def move_file (self, src, dst, level=1):
-        """Move a file respecting verbose and dry-run flags."""
-        return file_util.move_file(src, dst,
-                                   self.verbose >= level,
-                                   self.dry_run)
-
+        """Move a file respectin dry-run flag."""
+        return file_util.move_file(src, dst, dry_run = self.dry_run)
 
     def spawn (self, cmd, search_path=1, level=1):
-        """Spawn an external command respecting verbose and dry-run flags."""
+        """Spawn an external command respecting dry-run flag."""
         from distutils.spawn import spawn
-        spawn(cmd, search_path,
-              self.verbose >= level,
-              self.dry_run)
-
+        spawn(cmd, search_path, dry_run= self.dry_run)
 
     def make_archive (self, base_name, format,
                       root_dir=None, base_dir=None):
         return archive_util.make_archive(
-            base_name, format, root_dir, base_dir,
-            self.verbose, self.dry_run)
+            base_name, format, root_dir, base_dir, dry_run=self.dry_run)
 
 
     def make_file (self, infiles, outfile, func, args,
@@ -443,7 +435,7 @@ class Command:
 
         # Otherwise, print the "skip" message
         else:
-            self.announce(skip_msg, level)
+            log.debug(skip_msg)
 
     # make_file ()
 

@@ -1,22 +1,24 @@
 """distutils.msvccompiler
 
 Contains MSVCCompiler, an implementation of the abstract CCompiler class
-for the Microsoft Visual Studio."""
+for the Microsoft Visual Studio.
+"""
 
-
-# created 1999/08/19, Perry Stoll
+# Written by Perry Stoll
 # hacked by Robin Becker and Thomas Heller to do a better job of
 #   finding DevStudio (through the registry)
 
-__revision__ = "$Id: msvccompiler.py,v 1.1.1.1 2002/02/05 23:21:18 zarzycki Exp $"
+# This module should be kept compatible with Python 1.5.2.
+
+__revision__ = "$Id: msvccompiler.py,v 1.57 2003/07/17 14:41:07 jhylton Exp $"
 
 import sys, os, string
-from types import *
 from distutils.errors import \
      DistutilsExecError, DistutilsPlatformError, \
      CompileError, LibError, LinkError
 from distutils.ccompiler import \
      CCompiler, gen_preprocess_options, gen_lib_options
+from distutils import log
 
 _can_read_reg = 0
 try:
@@ -43,124 +45,128 @@ except ImportError:
         RegError = win32api.error
 
     except ImportError:
+        log.info("Warning: Can't read registry to find the "
+                 "necessary compiler setting\n"
+                 "Make sure that Python modules _winreg, "
+                 "win32api or win32con are installed.")
         pass
 
 if _can_read_reg:
-    HKEY_CLASSES_ROOT = hkey_mod.HKEY_CLASSES_ROOT
-    HKEY_LOCAL_MACHINE = hkey_mod.HKEY_LOCAL_MACHINE
-    HKEY_CURRENT_USER = hkey_mod.HKEY_CURRENT_USER
-    HKEY_USERS = hkey_mod.HKEY_USERS
+    HKEYS = (hkey_mod.HKEY_USERS,
+             hkey_mod.HKEY_CURRENT_USER,
+             hkey_mod.HKEY_LOCAL_MACHINE,
+             hkey_mod.HKEY_CLASSES_ROOT)
 
+def read_keys(base, key):
+    """Return list of registry keys."""
 
-
-def get_devstudio_versions ():
-    """Get list of devstudio versions from the Windows registry.  Return a
-       list of strings containing version numbers; the list will be
-       empty if we were unable to access the registry (eg. couldn't import
-       a registry-access module) or the appropriate registry keys weren't
-       found."""
-
-    if not _can_read_reg:
-        return []
-
-    K = 'Software\\Microsoft\\Devstudio'
+    try:
+        handle = RegOpenKeyEx(base, key)
+    except RegError:
+        return None
     L = []
-    for base in (HKEY_CLASSES_ROOT,
-                 HKEY_LOCAL_MACHINE,
-                 HKEY_CURRENT_USER,
-                 HKEY_USERS):
+    i = 0
+    while 1:
         try:
-            k = RegOpenKeyEx(base,K)
-            i = 0
-            while 1:
-                try:
-                    p = RegEnumKey(k,i)
-                    if p[0] in '123456789' and p not in L:
-                        L.append(p)
-                except RegError:
-                    break
-                i = i + 1
+            k = RegEnumKey(handle, i)
         except RegError:
-            pass
-    L.sort()
-    L.reverse()
+            break
+        L.append(k)
+        i = i + 1
     return L
 
-# get_devstudio_versions ()
+def read_values(base, key):
+    """Return dict of registry keys and values.
 
-
-def get_msvc_paths (path, version='6.0', platform='x86'):
-    """Get a list of devstudio directories (include, lib or path).  Return
-       a list of strings; will be empty list if unable to access the
-       registry or appropriate registry keys not found."""
-
-    if not _can_read_reg:
-        return []
-
-    L = []
-    if path=='lib':
-        path= 'Library'
-    path = string.upper(path + ' Dirs')
-    K = ('Software\\Microsoft\\Devstudio\\%s\\' +
-         'Build System\\Components\\Platforms\\Win32 (%s)\\Directories') % \
-        (version,platform)
-    for base in (HKEY_CLASSES_ROOT,
-                 HKEY_LOCAL_MACHINE,
-                 HKEY_CURRENT_USER,
-                 HKEY_USERS):
+    All names are converted to lowercase.
+    """
+    try:
+        handle = RegOpenKeyEx(base, key)
+    except RegError:
+        return None
+    d = {}
+    i = 0
+    while 1:
         try:
-            k = RegOpenKeyEx(base,K)
-            i = 0
-            while 1:
-                try:
-                    (p,v,t) = RegEnumValue(k,i)
-                    if string.upper(p) == path:
-                        V = string.split(v,';')
-                        for v in V:
-                            if v == '' or v in L: continue
-                            L.append(v)
-                        break
-                    i = i + 1
-                except RegError:
-                    break
+            name, value, type = RegEnumValue(handle, i)
         except RegError:
+            break
+        name = name.lower()
+        d[convert_mbcs(name)] = convert_mbcs(value)
+        i = i + 1
+    return d
+
+def convert_mbcs(s):
+    enc = getattr(s, "encode", None)
+    if enc is not None:
+        try:
+            s = enc("mbcs")
+        except UnicodeError:
             pass
-    return L
+    return s
 
-# get_msvc_paths()
+class MacroExpander:
 
+    def __init__(self, version):
+        self.macros = {}
+        self.load_macros(version)
 
-def find_exe (exe, version_number):
-    """Try to find an MSVC executable program 'exe' (from version
-       'version_number' of MSVC) in several places: first, one of the MSVC
-       program search paths from the registry; next, the directories in the
-       PATH environment variable.  If any of those work, return an absolute
-       path that is known to exist.  If none of them work, just return the
-       original program name, 'exe'."""
+    def set_macro(self, macro, path, key):
+        for base in HKEYS:
+            d = read_values(base, path)
+            if d:
+                self.macros["$(%s)" % macro] = d[key]
+                break
+              
+    def load_macros(self, version):
+        vsbase = r"Software\Microsoft\VisualStudio\%0.1f" % version
+        self.set_macro("VCInstallDir", vsbase + r"\Setup\VC", "productdir")
+        self.set_macro("VSInstallDir", vsbase + r"\Setup\VS", "productdir")
+        net = r"Software\Microsoft\.NETFramework"
+        self.set_macro("FrameworkDir", net, "installroot")
+        if version > 7.0:
+            self.set_macro("FrameworkSDKDir", net, "sdkinstallrootv1.1")
+        else:
+            self.set_macro("FrameworkSDKDir", net, "sdkinstallroot")
 
-    for p in get_msvc_paths ('path', version_number):
-        fn = os.path.join (os.path.abspath(p), exe)
-        if os.path.isfile(fn):
-            return fn
+        p = r"Software\Microsoft\NET Framework Setup\Product"
+        for base in HKEYS:
+            try:
+                h = RegOpenKeyEx(base, p)
+            except RegError:
+                continue
+            key = RegEnumKey(h, 0)
+            d = read_values(base, r"%s\%s" % (p, key))
+            self.macros["$(FrameworkVersion)"] = d["version"]
 
-    # didn't find it; try existing path
-    for p in string.split (os.environ['Path'],';'):
-        fn = os.path.join(os.path.abspath(p),exe)
-        if os.path.isfile(fn):
-            return fn
+    def sub(self, s):
+        for k, v in self.macros.items():
+            s = string.replace(s, k, v)
+        return s
 
-    return exe                          # last desperate hope
+def get_build_version():
+    """Return the version of MSVC that was used to build Python.
 
+    For Python 2.3 and up, the version number is included in
+    sys.version.  For earlier versions, assume the compiler is MSVC 6.
+    """
 
-def set_path_env_var (name, version_number):
-    """Set environment variable 'name' to an MSVC path type value obtained
-       from 'get_msvc_paths()'.  This is equivalent to a SET command prior
-       to execution of spawned commands."""
-
-    p = get_msvc_paths (name, version_number)
-    if p:
-        os.environ[name] = string.join (p,';')
-
+    prefix = "MSC v."
+    i = string.find(sys.version, prefix)
+    if i == -1:
+        return 6
+    i = i + len(prefix)
+    s, rest = sys.version[i:].split(" ", 1)
+    majorVersion = int(s[:-2]) - 6
+    minorVersion = int(s[2:3]) / 10.0
+    # I don't think paths are affected by minor version in version 6
+    if majorVersion == 6:
+        minorVersion = 0
+    if majorVersion >= 6:
+        return majorVersion + minorVersion
+    # else we don't know what version of the compiler this is
+    return None
+    
 
 class MSVCCompiler (CCompiler) :
     """Concrete class that implements an interface to Microsoft Visual C++,
@@ -192,42 +198,41 @@ class MSVCCompiler (CCompiler) :
     static_lib_format = shared_lib_format = '%s%s'
     exe_extension = '.exe'
 
-
-    def __init__ (self,
-                  verbose=0,
-                  dry_run=0,
-                  force=0):
-
+    def __init__ (self, verbose=0, dry_run=0, force=0):
         CCompiler.__init__ (self, verbose, dry_run, force)
-        versions = get_devstudio_versions ()
-
-        if versions:
-            version = versions[0]  # highest version
-
-            self.cc   = find_exe("cl.exe", version)
-            self.linker = find_exe("link.exe", version)
-            self.lib  = find_exe("lib.exe", version)
-            self.rc   = find_exe("rc.exe", version)     # resource compiler
-            self.mc   = find_exe("mc.exe", version)     # message compiler
-            set_path_env_var ('lib', version)
-            set_path_env_var ('include', version)
-            path=get_msvc_paths('path', version)
-            try:
-                for p in string.split(os.environ['path'],';'):
-                    path.append(p)
-            except KeyError:
-                pass
-            os.environ['path'] = string.join(path,';')
+        self.__version = get_build_version()
+        if self.__version >= 7:
+            self.__root = r"Software\Microsoft\VisualStudio"
+            self.__macros = MacroExpander(self.__version)
         else:
-            # devstudio not found in the registry
-            self.cc = "cl.exe"
-            self.linker = "link.exe"
-            self.lib = "lib.exe"
-            self.rc = "rc.exe"
-            self.mc = "mc.exe"
+            self.__root = r"Software\Microsoft\Devstudio"
+        self.__paths = self.get_msvc_paths("path")
+
+        if len (self.__paths) == 0:
+            raise DistutilsPlatformError, \
+                  ("Python was built with version %s of Visual Studio, "
+                   "and extensions need to be built with the same "
+                   "version of the compiler, but it isn't installed." % self.__version)
+
+        self.cc = self.find_exe("cl.exe")
+        self.linker = self.find_exe("link.exe")
+        self.lib = self.find_exe("lib.exe")
+        self.rc = self.find_exe("rc.exe")   # resource compiler
+        self.mc = self.find_exe("mc.exe")   # message compiler
+        self.set_path_env_var('lib')
+        self.set_path_env_var('include')
+
+        # extend the MSVC path with the current path
+        try:
+            for p in string.split(os.environ['path'], ';'):
+                self.__paths.append(p)
+        except KeyError:
+            pass
+        os.environ['path'] = string.join(self.__paths, ';')
 
         self.preprocess_options = None
-        self.compile_options = [ '/nologo', '/Ox', '/MD', '/W3', '/GX' ]
+        self.compile_options = [ '/nologo', '/Ox', '/MD', '/W3', '/GX' ,
+                                 '/DNDEBUG']
         self.compile_options_debug = ['/nologo', '/Od', '/MDd', '/W3', '/GX',
                                       '/Z7', '/D_DEBUG']
 
@@ -271,95 +276,84 @@ class MSVCCompiler (CCompiler) :
     # object_filenames ()
 
 
-    def compile (self,
-                 sources,
-                 output_dir=None,
-                 macros=None,
-                 include_dirs=None,
-                 debug=0,
-                 extra_preargs=None,
-                 extra_postargs=None):
+    def compile(self, sources,
+                output_dir=None, macros=None, include_dirs=None, debug=0,
+                extra_preargs=None, extra_postargs=None, depends=None):
 
-        (output_dir, macros, include_dirs) = \
-            self._fix_compile_args (output_dir, macros, include_dirs)
-        (objects, skip_sources) = self._prep_compile (sources, output_dir)
+        macros, objects, extra_postargs, pp_opts, build = \
+                self._setup_compile(output_dir, macros, include_dirs, sources,
+                                    depends, extra_postargs)
 
-        if extra_postargs is None:
-            extra_postargs = []
-
-        pp_opts = gen_preprocess_options (macros, include_dirs)
         compile_opts = extra_preargs or []
         compile_opts.append ('/c')
         if debug:
-            compile_opts.extend (self.compile_options_debug)
+            compile_opts.extend(self.compile_options_debug)
         else:
-            compile_opts.extend (self.compile_options)
+            compile_opts.extend(self.compile_options)
 
-        for i in range (len (sources)):
-            src = sources[i] ; obj = objects[i]
-            ext = (os.path.splitext (src))[1]
+        for obj, (src, ext) in build.items():
+            if debug:
+                # pass the full pathname to MSVC in debug mode,
+                # this allows the debugger to find the source file
+                # without asking the user to browse for it
+                src = os.path.abspath(src)
 
-            if skip_sources[src]:
-                self.announce ("skipping %s (%s up-to-date)" % (src, obj))
-            else:
-                self.mkpath (os.path.dirname (obj))
-
-                if ext in self._c_extensions:
-                    input_opt = "/Tc" + src
-                elif ext in self._cpp_extensions:
-                    input_opt = "/Tp" + src
-                elif ext in self._rc_extensions:
-                    # compile .RC to .RES file
-                    input_opt = src
-                    output_opt = "/fo" + obj
-                    try:
-                        self.spawn ([self.rc] +
-                                    [output_opt] + [input_opt])
-                    except DistutilsExecError, msg:
-                        raise CompileError, msg
-                    continue
-                elif ext in self._mc_extensions:
-
-                    # Compile .MC to .RC file to .RES file.
-                    #   * '-h dir' specifies the directory for the
-                    #     generated include file
-                    #   * '-r dir' specifies the target directory of the
-                    #     generated RC file and the binary message resource
-                    #     it includes
-                    #
-                    # For now (since there are no options to change this),
-                    # we use the source-directory for the include file and
-                    # the build directory for the RC file and message
-                    # resources. This works at least for win32all.
-
-                    h_dir = os.path.dirname (src)
-                    rc_dir = os.path.dirname (obj)
-                    try:
-                        # first compile .MC to .RC and .H file
-                        self.spawn ([self.mc] +
-                                    ['-h', h_dir, '-r', rc_dir] + [src])
-                        base, _ = os.path.splitext (os.path.basename (src))
-                        rc_file = os.path.join (rc_dir, base + '.rc')
-                        # then compile .RC to .RES file
-                        self.spawn ([self.rc] +
-                                    ["/fo" + obj] + [rc_file])
-
-                    except DistutilsExecError, msg:
-                        raise CompileError, msg
-                    continue
-                else:
-                    # how to handle this file?
-                    raise CompileError (
-                        "Don't know how to compile %s to %s" % \
-                        (src, obj))
-
-                output_opt = "/Fo" + obj
+            if ext in self._c_extensions:
+                input_opt = "/Tc" + src
+            elif ext in self._cpp_extensions:
+                input_opt = "/Tp" + src
+            elif ext in self._rc_extensions:
+                # compile .RC to .RES file
+                input_opt = src
+                output_opt = "/fo" + obj
                 try:
-                    self.spawn ([self.cc] + compile_opts + pp_opts +
-                                [input_opt, output_opt] +
-                                extra_postargs)
+                    self.spawn ([self.rc] + pp_opts +
+                                [output_opt] + [input_opt])
                 except DistutilsExecError, msg:
                     raise CompileError, msg
+                continue
+            elif ext in self._mc_extensions:
+
+                # Compile .MC to .RC file to .RES file.
+                #   * '-h dir' specifies the directory for the
+                #     generated include file
+                #   * '-r dir' specifies the target directory of the
+                #     generated RC file and the binary message resource
+                #     it includes
+                #
+                # For now (since there are no options to change this),
+                # we use the source-directory for the include file and
+                # the build directory for the RC file and message
+                # resources. This works at least for win32all.
+
+                h_dir = os.path.dirname (src)
+                rc_dir = os.path.dirname (obj)
+                try:
+                    # first compile .MC to .RC and .H file
+                    self.spawn ([self.mc] +
+                                ['-h', h_dir, '-r', rc_dir] + [src])
+                    base, _ = os.path.splitext (os.path.basename (src))
+                    rc_file = os.path.join (rc_dir, base + '.rc')
+                    # then compile .RC to .RES file
+                    self.spawn ([self.rc] +
+                                ["/fo" + obj] + [rc_file])
+
+                except DistutilsExecError, msg:
+                    raise CompileError, msg
+                continue
+            else:
+                # how to handle this file?
+                raise CompileError (
+                    "Don't know how to compile %s to %s" % \
+                    (src, obj))
+
+            output_opt = "/Fo" + obj
+            try:
+                self.spawn ([self.cc] + compile_opts + pp_opts +
+                            [input_opt, output_opt] +
+                            extra_postargs)
+            except DistutilsExecError, msg:
+                raise CompileError, msg
 
         return objects
 
@@ -371,8 +365,7 @@ class MSVCCompiler (CCompiler) :
                            output_libname,
                            output_dir=None,
                            debug=0,
-                           extra_preargs=None,
-                           extra_postargs=None):
+                           target_lang=None):
 
         (objects, output_dir) = self._fix_object_args (objects, output_dir)
         output_filename = \
@@ -382,17 +375,13 @@ class MSVCCompiler (CCompiler) :
             lib_args = objects + ['/OUT:' + output_filename]
             if debug:
                 pass                    # XXX what goes here?
-            if extra_preargs:
-                lib_args[:0] = extra_preargs
-            if extra_postargs:
-                lib_args.extend (extra_postargs)
             try:
                 self.spawn ([self.lib] + lib_args)
             except DistutilsExecError, msg:
                 raise LibError, msg
 
         else:
-            self.announce ("skipping %s (up-to-date)" % output_filename)
+            log.debug("skipping %s (up-to-date)", output_filename)
 
     # create_static_lib ()
 
@@ -408,7 +397,8 @@ class MSVCCompiler (CCompiler) :
               debug=0,
               extra_preargs=None,
               extra_postargs=None,
-              build_temp=None):
+              build_temp=None,
+              target_lang=None):
 
         (objects, output_dir) = self._fix_object_args (objects, output_dir)
         (libraries, library_dirs, runtime_library_dirs) = \
@@ -469,7 +459,7 @@ class MSVCCompiler (CCompiler) :
                 raise LinkError, msg
 
         else:
-            self.announce ("skipping %s (up-to-date)" % output_filename)
+            log.debug("skipping %s (up-to-date)", output_filename)
 
     # link ()
 
@@ -507,4 +497,69 @@ class MSVCCompiler (CCompiler) :
 
     # find_library_file ()
 
-# class MSVCCompiler
+    # Helper methods for using the MSVC registry settings
+
+    def find_exe(self, exe):
+        """Return path to an MSVC executable program.
+
+        Tries to find the program in several places: first, one of the
+        MSVC program search paths from the registry; next, the directories
+        in the PATH environment variable.  If any of those work, return an
+        absolute path that is known to exist.  If none of them work, just
+        return the original program name, 'exe'.
+        """
+
+        for p in self.__paths:
+            fn = os.path.join(os.path.abspath(p), exe)
+            if os.path.isfile(fn):
+                return fn
+
+        # didn't find it; try existing path
+        for p in string.split(os.environ['Path'],';'):
+            fn = os.path.join(os.path.abspath(p),exe)
+            if os.path.isfile(fn):
+                return fn
+
+        return exe
+    
+    def get_msvc_paths(self, path, platform='x86'):
+        """Get a list of devstudio directories (include, lib or path).
+
+        Return a list of strings.  The list will be empty if unable to
+        access the registry or appropriate registry keys not found.
+        """
+
+        if not _can_read_reg:
+            return []
+
+        path = path + " dirs"
+        if self.__version >= 7:
+            key = (r"%s\%0.1f\VC\VC_OBJECTS_PLATFORM_INFO\Win32\Directories"
+                   % (self.__root, self.__version))
+        else:
+            key = (r"%s\6.0\Build System\Components\Platforms"
+                   r"\Win32 (%s)\Directories" % (self.__root, platform))
+
+        for base in HKEYS:
+            d = read_values(base, key)
+            if d:
+                if self.__version >= 7:
+                    return string.split(self.__macros.sub(d[path]), ";")
+                else:
+                    return string.split(d[path], ";")
+        return []
+
+    def set_path_env_var(self, name):
+        """Set environment variable 'name' to an MSVC path type value.
+
+        This is equivalent to a SET command prior to execution of spawned
+        commands.
+        """
+
+        if name == "lib":
+            p = self.get_msvc_paths("library")
+        else:
+            p = self.get_msvc_paths(name)
+        if p:
+            os.environ[name] = string.join(p, ';')
+

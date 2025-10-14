@@ -80,7 +80,7 @@ class Pattern:
     def opengroup(self, name=None):
         gid = self.groups
         self.groups = gid + 1
-        if name:
+        if name is not None:
             ogid = self.groupdict.get(name, None)
             if ogid is not None:
                 raise error, ("redefinition of group name %s as group %d; "
@@ -97,7 +97,7 @@ class SubPattern:
     # a subpattern, in intermediate form
     def __init__(self, pattern, data=None):
         self.pattern = pattern
-        if not data:
+        if data is None:
             data = []
         self.data = data
         self.width = None
@@ -221,11 +221,11 @@ def isdigit(char):
 def isname(name):
     # check that group name is a valid string
     if not isident(name[0]):
-        return 0
+        return False
     for char in name:
         if not isident(char) and not isdigit(char):
-            return 0
-    return 1
+            return False
+    return True
 
 def _group(escape, groups):
     # check if the escape string represents a valid group
@@ -254,7 +254,7 @@ def _class_escape(source, escape):
             if len(escape) != 2:
                 raise error, "bogus escape: %s" % repr("\\" + escape)
             return LITERAL, atoi(escape, 16) & 0xff
-        elif str(escape[1:2]) in OCTDIGITS:
+        elif escape[1:2] in OCTDIGITS:
             # octal escape (up to three digits)
             while source.next in OCTDIGITS and len(escape) < 5:
                 escape = escape + source.get()
@@ -289,7 +289,6 @@ def _escape(source, escape, state):
             return LITERAL, atoi(escape[1:], 8) & 0xff
         elif escape[1:2] in DIGITS:
             # octal escape *or* decimal group reference (sigh)
-            here = source.tell()
             if source.next in DIGITS:
                 escape = escape + source.get()
                 if (escape[1] in OCTDIGITS and escape[2] in OCTDIGITS and
@@ -420,7 +419,7 @@ def _parse(source, state):
                         set.append(code1)
                         set.append((LITERAL, ord("-")))
                         break
-                    else:
+                    elif this:
                         if this[0] == "\\":
                             code2 = _class_escape(source, this)
                         else:
@@ -432,6 +431,8 @@ def _parse(source, state):
                         if hi < lo:
                             raise error, "bad character range"
                         set.append((RANGE, (lo, hi)))
+                    else:
+                        raise error, "unexpected end of regular expression"
                 else:
                     if code1[0] is IN:
                         code1 = code1[1][0]
@@ -569,9 +570,9 @@ def _parse(source, state):
                     continue
                 else:
                     # flags
-                    if not FLAGS.has_key(source.next):
+                    if not source.next in FLAGS:
                         raise error, "unexpected end of pattern"
-                    while FLAGS.has_key(source.next):
+                    while source.next in FLAGS:
                         state.flags = state.flags | FLAGS[source.get()]
             if group:
                 # parse group contents

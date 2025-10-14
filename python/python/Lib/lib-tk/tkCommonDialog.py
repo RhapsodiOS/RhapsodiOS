@@ -1,6 +1,6 @@
 #
 # Instant Python
-# $Id: tkCommonDialog.py,v 1.1.1.1 2002/02/05 23:21:37 zarzycki Exp $
+# $Id: tkCommonDialog.py,v 1.7 2003/04/06 09:00:53 rhettinger Exp $
 #
 # base class for tk common dialogues
 #
@@ -13,7 +13,6 @@
 #
 
 from Tkinter import *
-import os
 
 class Dialog:
 
@@ -50,7 +49,7 @@ class Dialog:
 
         try:
 
-            s = apply(w.tk.call, (self.command,) + w._options(self.options))
+            s = w.tk.call(self.command, *w._options(self.options))
 
             s = self._fixresult(w, s)
 

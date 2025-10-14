@@ -17,7 +17,7 @@ def register(name, klass, instance=None):
 
 def get(using=None):
     """Return a browser launcher instance appropriate for the environment."""
-    if using:
+    if using is not None:
         alternatives = [using]
     else:
         alternatives = _tryorder
@@ -78,15 +78,15 @@ def _synthesize(browser):
 
 
 def _iscommand(cmd):
-    """Return true if cmd can be found on the executable search path."""
+    """Return True if cmd can be found on the executable search path."""
     path = os.environ.get("PATH")
     if not path:
-        return 0
+        return False
     for d in path.split(os.pathsep):
         exe = os.path.join(d, cmd)
         if os.path.isfile(exe):
-            return 1
-    return 0
+            return True
+    return False
 
 
 PROCESS_CREATION_DELAY = 4
@@ -98,6 +98,7 @@ class GenericBrowser:
         self.basename = os.path.basename(self.name)
 
     def open(self, url, new=0, autoraise=1):
+        assert "'" not in url
         command = "%s %s" % (self.name, self.args)
         os.system(command % url)
 
@@ -134,6 +135,33 @@ class Netscape:
         self.open(url, 1)
 
 
+class Galeon:
+    """Launcher class for Galeon browsers."""
+    def __init__(self, name):
+        self.name = name
+        self.basename = os.path.basename(name)
+
+    def _remote(self, action, autoraise):
+        raise_opt = ("--noraise", "")[autoraise]
+        cmd = "%s %s %s >/dev/null 2>&1" % (self.name, raise_opt, action)
+        rc = os.system(cmd)
+        if rc:
+            import time
+            os.system("%s >/dev/null 2>&1 &" % self.name)
+            time.sleep(PROCESS_CREATION_DELAY)
+            rc = os.system(cmd)
+        return not rc
+
+    def open(self, url, new=0, autoraise=1):
+        if new:
+            self._remote("-w '%s'" % url, autoraise)
+        else:
+            self._remote("-n '%s'" % url, autoraise)
+
+    def open_new(self, url):
+        self.open(url, 1)
+
+
 class Konqueror:
     """Controller for the KDE File Manager (kfm, or Konqueror).
 
@@ -163,7 +191,8 @@ class Konqueror:
     def open(self, url, new=1, autoraise=1):
         # XXX Currently I know no way to prevent KFM from
         # opening a new win.
-        self._remote("openURL %s" % url)
+        assert "'" not in url
+        self._remote("openURL '%s'" % url)
 
     open_new = open
 
@@ -232,32 +261,44 @@ class WindowsDefault:
 # the TERM and DISPLAY cases, because we might be running Python from inside
 # an xterm.
 if os.environ.get("TERM") or os.environ.get("DISPLAY"):
-    _tryorder = ["mozilla","netscape","kfm","grail","links","lynx","w3m"]
+    _tryorder = ["links", "lynx", "w3m"]
 
     # Easy cases first -- register console browsers if we have them.
     if os.environ.get("TERM"):
         # The Links browser <http://artax.karlin.mff.cuni.cz/~mikulas/links/>
         if _iscommand("links"):
-            register("links", None, GenericBrowser("links %s"))
+            register("links", None, GenericBrowser("links '%s'"))
         # The Lynx browser <http://lynx.browser.org/>
         if _iscommand("lynx"):
-            register("lynx", None, GenericBrowser("lynx %s"))
+            register("lynx", None, GenericBrowser("lynx '%s'"))
         # The w3m browser <http://ei5nazha.yz.yamagata-u.ac.jp/~aito/w3m/eng/>
         if _iscommand("w3m"):
-            register("w3m", None, GenericBrowser("w3m %s"))
+            register("w3m", None, GenericBrowser("w3m '%s'"))
 
     # X browsers have more in the way of options
     if os.environ.get("DISPLAY"):
+        _tryorder = ["galeon", "skipstone", "mozilla", "netscape",
+                     "kfm", "grail"] + _tryorder
+
         # First, the Netscape series
-        if _iscommand("netscape") or _iscommand("mozilla"):
-            if _iscommand("mozilla"):
-                register("mozilla", None, Netscape("mozilla"))
-            if _iscommand("netscape"):
-                register("netscape", None, Netscape("netscape"))
+        if _iscommand("mozilla"):
+            register("mozilla", None, Netscape("mozilla"))
+        if _iscommand("netscape"):
+            register("netscape", None, Netscape("netscape"))
 
         # Next, Mosaic -- old but still in use.
         if _iscommand("mosaic"):
-            register("mosaic", None, GenericBrowser("mosaic %s >/dev/null &"))
+            register("mosaic", None, GenericBrowser(
+                "mosaic '%s' >/dev/null &"))
+
+        # Gnome's Galeon
+        if _iscommand("galeon"):
+            register("galeon", None, Galeon("galeon"))
+
+        # Skipstone, another Gtk/Mozilla based browser
+        if _iscommand("skipstone"):
+            register("skipstone", None, GenericBrowser(
+                "skipstone '%s' >/dev/null &"))
 
         # Konqueror/kfm, the KDE browser.
         if _iscommand("kfm") or _iscommand("konqueror"):
@@ -310,16 +351,19 @@ if sys.platform[:3] == "os2" and _iscommand("netscape.exe"):
 # OK, now that we know what the default preference orders for each
 # platform are, allow user to override them with the BROWSER variable.
 #
-if os.environ.has_key("BROWSER"):
+if "BROWSER" in os.environ:
     # It's the user's responsibility to register handlers for any unknown
     # browser referenced by this value, before calling open().
     _tryorder = os.environ["BROWSER"].split(os.pathsep)
 
 for cmd in _tryorder:
-    if not _browsers.has_key(cmd.lower()):
+    if not cmd.lower() in _browsers:
         if _iscommand(cmd.lower()):
-            register(cmd.lower(), None, GenericBrowser("%s %%s" % cmd.lower()))
+            register(cmd.lower(), None, GenericBrowser(
+                "%s '%%s'" % cmd.lower()))
+cmd = None # to make del work if _tryorder was empty
+del cmd
 
-_tryorder = filter(lambda x: _browsers.has_key(x.lower())
+_tryorder = filter(lambda x: x.lower() in _browsers
                    or x.find("%s") > -1, _tryorder)
 # what to do if _tryorder is now empty?

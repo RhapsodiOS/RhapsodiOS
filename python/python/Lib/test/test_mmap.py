@@ -1,4 +1,4 @@
-from test_support import verify, vereq, TESTFN
+from test.test_support import verify, vereq, TESTFN
 import mmap
 import os, re
 
@@ -17,7 +17,7 @@ def test_both():
         f.write('\0'* PAGESIZE)
         f.write('foo')
         f.write('\0'* (PAGESIZE-3) )
-
+        f.flush()
         m = mmap.mmap(f.fileno(), 2 * PAGESIZE)
         f.close()
 
@@ -102,7 +102,7 @@ def test_both():
         # Try resizing map
         print '  Attempting resize()'
         try:
-            m.resize( 512 )
+            m.resize(512)
         except SystemError:
             # resize() not supported
             # No messages are printed, since the output of this test suite
@@ -189,6 +189,30 @@ def test_both():
         verify(open(TESTFN, "rb").read() == 'a'*mapsize,
                "Readonly memory map data file was modified")
 
+        print "  Opening mmap with size too big"
+        import sys
+        f = open(TESTFN, "r+b")
+        try:
+            m = mmap.mmap(f.fileno(), mapsize+1)
+        except ValueError:
+            # we do not expect a ValueError on Windows
+            # CAUTION:  This also changes the size of the file on disk, and
+            # later tests assume that the length hasn't changed.  We need to
+            # repair that.
+            if sys.platform.startswith('win'):
+                verify(0, "Opening mmap with size+1 should work on Windows.")
+        else:
+            # we expect a ValueError on Unix, but not on Windows
+            if not sys.platform.startswith('win'):
+                verify(0, "Opening mmap with size+1 should raise ValueError.")
+            m.close()
+        f.close()
+        if sys.platform.startswith('win'):
+            # Repair damage from the resizing test.
+            f = open(TESTFN, 'r+b')
+            f.truncate(mapsize)
+            f.close()
+
         print "  Opening mmap with access=ACCESS_WRITE"
         f = open(TESTFN, "r+b")
         m = mmap.mmap(f.fileno(), mapsize, access=mmap.ACCESS_WRITE)
@@ -197,8 +221,12 @@ def test_both():
         verify(m[:] == 'c'*mapsize,
                "Write-through memory map memory not updated properly.")
         m.flush()
-        del m, f
-        verify(open(TESTFN).read() == 'c'*mapsize,
+        m.close()
+        f.close()
+        f = open(TESTFN, 'rb')
+        stuff = f.read()
+        f.close()
+        verify(stuff == 'c'*mapsize,
                "Write-through memory map data file not updated properly.")
 
         print "  Opening mmap with access=ACCESS_COPY"
@@ -238,11 +266,51 @@ def test_both():
                 pass
             else:
                 verify(0, "Incompatible parameters should raise ValueError.")
+            f.close()
     finally:
         try:
             os.unlink(TESTFN)
         except OSError:
             pass
+
+    # Do a tougher .find() test.  SF bug 515943 pointed out that, in 2.2,
+    # searching for data with embedded \0 bytes didn't work.
+    f = open(TESTFN, 'w+')
+
+    try:    # unlink TESTFN no matter what
+        data = 'aabaac\x00deef\x00\x00aa\x00'
+        n = len(data)
+        f.write(data)
+        f.flush()
+        m = mmap.mmap(f.fileno(), n)
+        f.close()
+
+        for start in range(n+1):
+            for finish in range(start, n+1):
+                slice = data[start : finish]
+                vereq(m.find(slice), data.find(slice))
+                vereq(m.find(slice + 'x'), -1)
+        m.close()
+
+    finally:
+        os.unlink(TESTFN)
+
+    # make sure a double close doesn't crash on Solaris (Bug# 665913)
+    f = open(TESTFN, 'w+')
+
+    try:    # unlink TESTFN no matter what
+        f.write(2**16 * 'a') # Arbitrary character
+        f.close()
+
+        f = open(TESTFN)
+        mf = mmap.mmap(f.fileno(), 2**16, access=mmap.ACCESS_READ)
+        mf.close()
+        mf.close()
+        f.close()
+
+    finally:
+        os.unlink(TESTFN)
+
 
     print ' Test passed'
 

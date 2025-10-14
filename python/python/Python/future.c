@@ -14,7 +14,7 @@
 #define FUTURE_POSSIBLE(FF) ((FF)->ff_last_lineno == -1)
 
 static int
-future_check_features(PyFutureFeatures *ff, node *n, char *filename)
+future_check_features(PyFutureFeatures *ff, node *n, const char *filename)
 {
 	int i;
 	char *feature;
@@ -35,7 +35,7 @@ future_check_features(PyFutureFeatures *ff, node *n, char *filename)
 		if (strcmp(feature, FUTURE_NESTED_SCOPES) == 0) {
 			continue;
 		} else if (strcmp(feature, FUTURE_GENERATORS) == 0) {
-			ff->ff_features |= CO_GENERATOR_ALLOWED;
+			continue;
 		} else if (strcmp(feature, FUTURE_DIVISION) == 0) {
 			ff->ff_features |= CO_FUTURE_DIVISION;
 		} else if (strcmp(feature, "braces") == 0) {
@@ -54,7 +54,7 @@ future_check_features(PyFutureFeatures *ff, node *n, char *filename)
 }
 
 static void
-future_error(node *n, char *filename)
+future_error(node *n, const char *filename)
 {
 	PyErr_SetString(PyExc_SyntaxError,
 			"from __future__ imports must occur at the "
@@ -89,7 +89,7 @@ dotted_name: NAME ('.' NAME)*
 */
 
 static int
-future_parse(PyFutureFeatures *ff, node *n, char *filename)
+future_parse(PyFutureFeatures *ff, node *n, const char *filename)
 {
 	int i, r;
  loop:
@@ -240,7 +240,7 @@ future_parse(PyFutureFeatures *ff, node *n, char *filename)
 }
 
 PyFutureFeatures *
-PyNode_Future(node *n, char *filename)
+PyNode_Future(node *n, const char *filename)
 {
 	PyFutureFeatures *ff;
 

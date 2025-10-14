@@ -25,10 +25,8 @@ used to query various info about the object, if available.
 import string
 import socket
 import os
-import stat
 import time
 import sys
-import types
 
 __all__ = ["urlopen", "URLopener", "FancyURLopener", "urlretrieve",
            "urlcleanup", "quote", "quote_plus", "unquote", "unquote_plus",
@@ -64,15 +62,20 @@ else:
 
 # Shortcut for basic usage
 _urlopener = None
-def urlopen(url, data=None):
+def urlopen(url, data=None, proxies=None):
     """urlopen(url [, data]) -> open file-like object"""
     global _urlopener
-    if not _urlopener:
-        _urlopener = FancyURLopener()
-    if data is None:
-        return _urlopener.open(url)
+    if proxies is not None:
+        opener = FancyURLopener(proxies=proxies)
+    elif not _urlopener:
+        opener = FancyURLopener()
+        _urlopener = opener
     else:
-        return _urlopener.open(url, data)
+        opener = _urlopener
+    if data is None:
+        return opener.open(url)
+    else:
+        return opener.open(url, data)
 def urlretrieve(url, filename=None, reporthook=None, data=None):
     global _urlopener
     if not _urlopener:
@@ -149,14 +152,14 @@ class URLopener:
     def open(self, fullurl, data=None):
         """Use URLopener().open(file) instead of open(file, 'r')."""
         fullurl = unwrap(toBytes(fullurl))
-        if self.tempcache and self.tempcache.has_key(fullurl):
+        if self.tempcache and fullurl in self.tempcache:
             filename, headers = self.tempcache[fullurl]
             fp = open(filename, 'rb')
             return addinfourl(fp, headers, fullurl)
         urltype, url = splittype(fullurl)
         if not urltype:
             urltype = 'file'
-        if self.proxies.has_key(urltype):
+        if urltype in self.proxies:
             proxy = self.proxies[urltype]
             urltype, proxyhost = splittype(proxy)
             host, selector = splithost(proxyhost)
@@ -193,13 +196,13 @@ class URLopener:
 
     # External interface
     def retrieve(self, url, filename=None, reporthook=None, data=None):
-        """retrieve(url) returns (filename, None) for a local object
+        """retrieve(url) returns (filename, headers) for a local object
         or (tempfilename, headers) for a remote object."""
         url = unwrap(toBytes(url))
-        if self.tempcache and self.tempcache.has_key(url):
+        if self.tempcache and url in self.tempcache:
             return self.tempcache[url]
         type, url1 = splittype(url)
-        if not filename and (not type or type == 'file'):
+        if filename is None and (not type or type == 'file'):
             try:
                 fp = self.open_local_file(url1)
                 hdrs = fp.info()
@@ -209,24 +212,26 @@ class URLopener:
                 pass
         fp = self.open(url, data)
         headers = fp.info()
-        if not filename:
+        if filename:
+            tfp = open(filename, 'wb')
+        else:
             import tempfile
             garbage, path = splittype(url)
             garbage, path = splithost(path or "")
             path, garbage = splitquery(path or "")
             path, garbage = splitattr(path or "")
             suffix = os.path.splitext(path)[1]
-            filename = tempfile.mktemp(suffix)
+            (fd, filename) = tempfile.mkstemp(suffix)
             self.__tempfiles.append(filename)
+            tfp = os.fdopen(fd, 'wb')
         result = filename, headers
         if self.tempcache is not None:
             self.tempcache[url] = result
-        tfp = open(filename, 'wb')
         bs = 1024*8
         size = -1
         blocknum = 1
         if reporthook:
-            if headers.has_key("content-length"):
+            if "content-length" in headers:
                 size = int(headers["Content-Length"])
             reporthook(0, bs, size)
         block = fp.read(bs)
@@ -250,7 +255,7 @@ class URLopener:
         """Use HTTP protocol."""
         import httplib
         user_passwd = None
-        if type(url) is types.StringType:
+        if isinstance(url, str):
             host, selector = splithost(url)
             if host:
                 user_passwd, host = splituser(host)
@@ -288,7 +293,7 @@ class URLopener:
             h.putrequest('GET', selector)
         if auth: h.putheader('Authorization', 'Basic %s' % auth)
         if realhost: h.putheader('Host', realhost)
-        for args in self.addheaders: apply(h.putheader, args)
+        for args in self.addheaders: h.putheader(*args)
         h.endheaders()
         if data is not None:
             h.send(data)
@@ -328,7 +333,7 @@ class URLopener:
             """Use HTTPS protocol."""
             import httplib
             user_passwd = None
-            if type(url) is types.StringType:
+            if isinstance(url, str):
                 host, selector = splithost(url)
                 if host:
                     user_passwd, host = splituser(host)
@@ -366,7 +371,7 @@ class URLopener:
                 h.putrequest('GET', selector)
             if auth: h.putheader('Authorization: Basic %s' % auth)
             if realhost: h.putheader('Host', realhost)
-            for args in self.addheaders: apply(h.putheader, args)
+            for args in self.addheaders: h.putheader(*args)
             h.endheaders()
             if data is not None:
                 h.send(data)
@@ -399,7 +404,7 @@ class URLopener:
 
     def open_file(self, url):
         """Use local file or FTP depending on form of URL."""
-        if url[:2] == '//' and url[2:3] != '/':
+        if url[:2] == '//' and url[2:3] != '/' and url[2:12].lower() != 'localhost/':
             return self.open_ftp(url)
         else:
             return self.open_local_file(url)
@@ -409,9 +414,12 @@ class URLopener:
         import mimetypes, mimetools, rfc822, StringIO
         host, file = splithost(url)
         localname = url2pathname(file)
-        stats = os.stat(localname)
-        size = stats[stat.ST_SIZE]
-        modified = rfc822.formatdate(stats[stat.ST_MTIME])
+        try:
+            stats = os.stat(localname)
+        except OSError, e:
+            raise IOError(e.errno, e.strerror, e.filename)
+        size = stats.st_size
+        modified = rfc822.formatdate(stats.st_mtime)
         mtype = mimetypes.guess_type(url)[0]
         headers = mimetools.Message(StringIO.StringIO(
             'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
@@ -466,7 +474,7 @@ class URLopener:
                     del self.ftpcache[k]
                     v.close()
         try:
-            if not self.ftpcache.has_key(key):
+            if not key in self.ftpcache:
                 self.ftpcache[key] = \
                     ftpwrapper(user, passwd, host, port, dirs)
             if not file: type = 'D'
@@ -497,7 +505,7 @@ class URLopener:
         # mediatype := [ type "/" subtype ] *( ";" parameter )
         # data      := *urlchar
         # parameter := attribute "=" value
-        import StringIO, mimetools, time
+        import StringIO, mimetools
         try:
             [type, data] = url.split(',', 1)
         except ValueError:
@@ -532,8 +540,8 @@ class URLopener:
 class FancyURLopener(URLopener):
     """Derived class with handlers for errors we can handle (perhaps)."""
 
-    def __init__(self, *args):
-        apply(URLopener.__init__, (self,) + args)
+    def __init__(self, *args, **kwargs):
+        URLopener.__init__(self, *args, **kwargs)
         self.auth_cache = {}
         self.tries = 0
         self.maxtries = 10
@@ -559,9 +567,9 @@ class FancyURLopener(URLopener):
         return result
 
     def redirect_internal(self, url, fp, errcode, errmsg, headers, data):
-        if headers.has_key('location'):
+        if 'location' in headers:
             newurl = headers['location']
-        elif headers.has_key('uri'):
+        elif 'uri' in headers:
             newurl = headers['uri']
         else:
             return
@@ -569,20 +577,28 @@ class FancyURLopener(URLopener):
         fp.close()
         # In case the server sent a relative URL, join with original:
         newurl = basejoin(self.type + ":" + url, newurl)
-        if data is None:
-            return self.open(newurl)
-        else:
-            return self.open(newurl, data)
+        return self.open(newurl)
 
     def http_error_301(self, url, fp, errcode, errmsg, headers, data=None):
         """Error 301 -- also relocated (permanently)."""
         return self.http_error_302(url, fp, errcode, errmsg, headers, data)
 
+    def http_error_303(self, url, fp, errcode, errmsg, headers, data=None):
+        """Error 303 -- also relocated (essentially identical to 302)."""
+        return self.http_error_302(url, fp, errcode, errmsg, headers, data)
+
+    def http_error_307(self, url, fp, errcode, errmsg, headers, data=None):
+        """Error 307 -- relocated, but turn POST into error."""
+        if data is None:
+            return self.http_error_302(url, fp, errcode, errmsg, headers, data)
+        else:
+            return self.http_error_default(url, fp, errcode, errmsg, headers)
+
     def http_error_401(self, url, fp, errcode, errmsg, headers, data=None):
         """Error 401 -- authentication required.
         See this URL for a description of the basic authentication scheme:
         http://www.ics.uci.edu/pub/ietf/http/draft-ietf-http-v10-spec-00.txt"""
-        if not headers.has_key('www-authenticate'):
+        if not 'www-authenticate' in headers:
             URLopener.http_error_default(self, url, fp,
                                          errcode, errmsg, headers)
         stuff = headers['www-authenticate']
@@ -626,7 +642,7 @@ class FancyURLopener(URLopener):
 
     def get_user_passwd(self, host, realm, clear_cache = 0):
         key = realm + '@' + host.lower()
-        if self.auth_cache.has_key(key):
+        if key in self.auth_cache:
             if clear_cache:
                 del self.auth_cache[key]
             else:
@@ -655,7 +671,7 @@ _localhost = None
 def localhost():
     """Return the IP address of the magic hostname 'localhost'."""
     global _localhost
-    if not _localhost:
+    if _localhost is None:
         _localhost = socket.gethostbyname('localhost')
     return _localhost
 
@@ -663,7 +679,7 @@ _thishost = None
 def thishost():
     """Return the IP address of the current host."""
     global _thishost
-    if not _thishost:
+    if _thishost is None:
         _thishost = socket.gethostbyname(socket.gethostname())
     return _thishost
 
@@ -671,7 +687,7 @@ _ftperrors = None
 def ftperrors():
     """Return the set of errors raised by the FTP class."""
     global _ftperrors
-    if not _ftperrors:
+    if _ftperrors is None:
         import ftplib
         _ftperrors = ftplib.all_errors
     return _ftperrors
@@ -680,7 +696,7 @@ _noheaders = None
 def noheaders():
     """Return an empty mimetools.Message object."""
     global _noheaders
-    if not _noheaders:
+    if _noheaders is None:
         import mimetools
         import StringIO
         _noheaders = mimetools.Message(StringIO.StringIO(), 0)
@@ -772,6 +788,10 @@ class addbase:
         self.readline = self.fp.readline
         if hasattr(self.fp, "readlines"): self.readlines = self.fp.readlines
         if hasattr(self.fp, "fileno"): self.fileno = self.fp.fileno
+        if hasattr(self.fp, "__iter__"):
+            self.__iter__ = self.fp.__iter__
+            if hasattr(self.fp, "next"):
+                self.next = self.fp.next
 
     def __repr__(self):
         return '<%s at %s whose fp = %s>' % (self.__class__.__name__,
@@ -796,7 +816,7 @@ class addclosehook(addbase):
     def close(self):
         addbase.close(self)
         if self.closehook:
-            apply(self.closehook, self.hookargs)
+            self.closehook(*self.hookargs)
             self.closehook = None
             self.hookargs = None
 
@@ -899,11 +919,20 @@ def basejoin(base, url):
 # unquote('abc%20def') -> 'abc def'
 # quote('abc def') -> 'abc%20def')
 
+try:
+    unicode
+except NameError:
+    def _is_unicode(x):
+        return 0
+else:
+    def _is_unicode(x):
+        return isinstance(x, unicode)
+
 def toBytes(url):
     """toBytes(u"URL") --> 'URL'."""
     # Most URL schemes require ASCII. If that changes, the conversion
     # can be relaxed
-    if type(url) is types.UnicodeType:
+    if _is_unicode(url):
         try:
             url = url.encode("ASCII")
         except UnicodeError:
@@ -951,7 +980,7 @@ def splituser(host):
     global _userprog
     if _userprog is None:
         import re
-        _userprog = re.compile('^([^@]*)@(.*)$')
+        _userprog = re.compile('^(.*)@(.*)$')
 
     match = _userprog.match(host)
     if match: return map(unquote, match.group(1, 2))
@@ -1094,7 +1123,7 @@ def _fast_quote(s):
     res = list(s)
     for i in range(len(res)):
         c = res[i]
-        if not _fast_safe.has_key(c):
+        if not c in _fast_safe:
             res[i] = '%%%02X' % ord(c)
     return ''.join(res)
 
@@ -1158,9 +1187,8 @@ def urlencode(query,doseq=0):
         # sequences...
         try:
             # non-sequence items should not work with len()
-            x = len(query)
             # non-empty strings will fail this
-            if len(query) and type(query[0]) != types.TupleType:
+            if len(query) and not isinstance(query[0], tuple):
                 raise TypeError
             # zero-length sequences of all types will get here and succeed,
             # but that's a minor nit - since the original implementation
@@ -1180,10 +1208,10 @@ def urlencode(query,doseq=0):
     else:
         for k, v in query:
             k = quote_plus(str(k))
-            if type(v) == types.StringType:
+            if isinstance(v, str):
                 v = quote_plus(v)
                 l.append(k + '=' + v)
-            elif type(v) == types.UnicodeType:
+            elif _is_unicode(v):
                 # is there a reasonable way to convert to ASCII?
                 # encode generates a string, but "replace" or "ignore"
                 # lose information and "strict" can raise UnicodeError
@@ -1240,7 +1268,7 @@ if os.name == 'mac':
             return {}
         proxies = {}
         # HTTP:
-        if config.has_key('UseHTTPProxy') and config['UseHTTPProxy']:
+        if 'UseHTTPProxy' in config and config['UseHTTPProxy']:
             try:
                 value = config['HTTPProxyHost']
             except ic.error:
@@ -1280,7 +1308,11 @@ elif os.name == 'nt':
                     # Per-protocol settings
                     for p in proxyServer.split(';'):
                         protocol, address = p.split('=', 1)
-                        proxies[protocol] = '%s://%s' % (protocol, address)
+                        # See if address has a type:// prefix
+                        import re
+                        if not re.match('^([^/:]+)://', address):
+                            address = '%s://%s' % (protocol, address)
+                        proxies[protocol] = address
                 else:
                     # Use one setting for all protocols
                     if proxyServer[:5] == 'http:':
@@ -1309,7 +1341,6 @@ elif os.name == 'nt':
         try:
             import _winreg
             import re
-            import socket
         except ImportError:
             # Std modules, so should be around - but you never know!
             return 0
@@ -1367,7 +1398,6 @@ else:
 
 # Test and time quote() and unquote()
 def test1():
-    import time
     s = ''
     for i in range(256): s = s + chr(i)
     s = s*4
@@ -1395,7 +1425,7 @@ def test(args=[]):
             '/etc/passwd',
             'file:/etc/passwd',
             'file://localhost/etc/passwd',
-            'ftp://ftp.python.org/etc/passwd',
+            'ftp://ftp.python.org/pub/python/README',
 ##          'gopher://gopher.micro.umn.edu/1/',
             'http://www.python.org/index.html',
             ]

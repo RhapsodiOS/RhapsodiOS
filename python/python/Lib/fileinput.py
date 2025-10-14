@@ -79,7 +79,7 @@ XXX Possible additions:
 
 """
 
-import sys, os, stat
+import sys, os
 
 __all__ = ["input","close","nextfile","filename","lineno","filelineno",
            "isfirstline","isstdin","FileInput"]
@@ -89,6 +89,13 @@ _state = None
 DEFAULT_BUFSIZE = 8*1024
 
 def input(files=None, inplace=0, backup="", bufsize=0):
+    """input([files[, inplace[, backup]]])
+
+    Create an instance of the FileInput class. The instance will be used
+    as global state for the functions of this module, and is also returned
+    to use during iteration. The parameters to this function will be passed
+    along to the constructor of the FileInput class.
+    """
     global _state
     if _state and _state._file:
         raise RuntimeError, "input() already active"
@@ -96,6 +103,7 @@ def input(files=None, inplace=0, backup="", bufsize=0):
     return _state
 
 def close():
+    """Close the sequence."""
     global _state
     state = _state
     _state = None
@@ -103,36 +111,77 @@ def close():
         state.close()
 
 def nextfile():
+    """
+    Close the current file so that the next iteration will read the first
+    line from the next file (if any); lines not read from the file will
+    not count towards the cumulative line count. The filename is not
+    changed until after the first line of the next file has been read.
+    Before the first line has been read, this function has no effect;
+    it cannot be used to skip the first file. After the last line of the
+    last file has been read, this function has no effect.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.nextfile()
 
 def filename():
+    """
+    Return the name of the file currently being read.
+    Before the first line has been read, returns None.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.filename()
 
 def lineno():
+    """
+    Return the cumulative line number of the line that has just been read.
+    Before the first line has been read, returns 0. After the last line
+    of the last file has been read, returns the line number of that line.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.lineno()
 
 def filelineno():
+    """
+    Return the line number in the current file. Before the first line
+    has been read, returns 0. After the last line of the last file has
+    been read, returns the line number of that line within the file.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.filelineno()
 
 def isfirstline():
+    """
+    Returns true the line just read is the first line of its file,
+    otherwise returns false.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.isfirstline()
 
 def isstdin():
+    """
+    Returns true if the last line was read from sys.stdin,
+    otherwise returns false.
+    """
     if not _state:
         raise RuntimeError, "no active input()"
     return _state.isstdin()
 
 class FileInput:
+    """class FileInput([files[, inplace[, backup]]])
+
+    Class FileInput is the implementation of the module; its methods
+    filename(), lineno(), fileline(), isfirstline(), isstdin(), nextfile()
+    and close() correspond to the functions of the same name in the module.
+    In addition it has a readline() method which returns the next
+    input line, and a __getitem__() method which implements the
+    sequence behavior. The sequence must be accessed in strictly
+    sequential order; random access and readline() cannot be mixed.
+    """
 
     def __init__(self, files=None, inplace=0, backup="", bufsize=0):
         if type(files) == type(''):
@@ -154,7 +203,7 @@ class FileInput:
         self._lineno = 0
         self._filelineno = 0
         self._file = None
-        self._isstdin = 0
+        self._isstdin = False
         self._backupfilename = None
         self._buffer = []
         self._bufindex = 0
@@ -166,7 +215,10 @@ class FileInput:
         self.nextfile()
         self._files = ()
 
-    def __getitem__(self, i):
+    def __iter__(self):
+        return self
+
+    def next(self):
         try:
             line = self._buffer[self._bufindex]
         except IndexError:
@@ -176,12 +228,18 @@ class FileInput:
             self._lineno += 1
             self._filelineno += 1
             return line
-        if i != self._lineno:
-            raise RuntimeError, "accessing lines out of order"
         line = self.readline()
         if not line:
-            raise IndexError, "end of input reached"
+            raise StopIteration
         return line
+
+    def __getitem__(self, i):
+        if i != self._lineno:
+            raise RuntimeError, "accessing lines out of order"
+        try:
+            return self.next()
+        except StopIteration:
+            raise IndexError, "end of input reached"
 
     def nextfile(self):
         savestdout = self._savestdout
@@ -203,9 +261,9 @@ class FileInput:
         self._backupfilename = 0
         if backupfilename and not self._backup:
             try: os.unlink(backupfilename)
-            except: pass
+            except OSError: pass
 
-        self._isstdin = 0
+        self._isstdin = False
         self._buffer = []
         self._bufindex = 0
 
@@ -226,12 +284,12 @@ class FileInput:
             self._files = self._files[1:]
             self._filelineno = 0
             self._file = None
-            self._isstdin = 0
+            self._isstdin = False
             self._backupfilename = 0
             if self._filename == '-':
                 self._filename = '<stdin>'
                 self._file = sys.stdin
-                self._isstdin = 1
+                self._isstdin = True
             else:
                 if self._inplace:
                     self._backupfilename = (
@@ -242,8 +300,8 @@ class FileInput:
                     os.rename(self._filename, self._backupfilename)
                     self._file = open(self._backupfilename, "r")
                     try:
-                        perm = os.fstat(self._file.fileno())[stat.ST_MODE]
-                    except:
+                        perm = os.fstat(self._file.fileno()).st_mode
+                    except OSError:
                         self._output = open(self._filename, "w")
                     else:
                         fd = os.open(self._filename,
@@ -251,8 +309,9 @@ class FileInput:
                                      perm)
                         self._output = os.fdopen(fd, "w")
                         try:
-                            os.chmod(self._filename, perm)
-                        except:
+                            if hasattr(os, 'chmod'):
+                                os.chmod(self._filename, perm)
+                        except OSError:
                             pass
                     self._savestdout = sys.stdout
                     sys.stdout = self._output

@@ -51,11 +51,6 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <Carbon/Carbon.h>
 #endif
 
-#if !TARGET_API_MAC_OS8
-/* Unfortunately this call is probably slower... */
-#define LMGetTicks() TickCount()
-#endif
-
 #ifdef __MWERKS__
 #include <SIOUX.h>
 extern void SIOUXSetupMenus(void);
@@ -65,15 +60,10 @@ extern void SIOUXDoAboutBox(void);
 /* Functions we redefine because they're in obscure libraries */
 extern void SpinCursor(short x);
 extern void RotateCursor(short x);
-extern pascal void PLstrcpy(unsigned char *, unsigned char *);
-extern pascal int PLstrcmp(unsigned char *, unsigned char *);
-extern pascal unsigned char *PLstrrchr(unsigned char *, unsigned char);
+extern pascal unsigned char * PLstrcpy(unsigned char *, const unsigned char *);
+extern pascal short PLstrcmp(const unsigned char *, const unsigned char *);
+extern pascal char *PLstrrchr(const unsigned char *, short);
 
-#endif
-
-#ifdef USE_GUSI1
-#include <TFileSpec.h> /* For Path2FSSpec */
-#include <GUSI.h>
 #endif
 
 /* The ID of the Sioux apple menu */
@@ -90,7 +80,6 @@ extern pascal unsigned char *PLstrrchr(unsigned char *, unsigned char);
 #define MINIMUM_STACK_SIZE 8192
 #endif
 
-#if TARGET_API_MAC_CARBON
 /*
 ** On MacOSX StackSpace() lies: it gives the distance from heap end to stack pointer,
 ** but the stack cannot grow that far due to rlimit values. We cannot get at this value
@@ -98,7 +87,6 @@ extern pascal unsigned char *PLstrrchr(unsigned char *, unsigned char);
 ** stack limit of 512K.
 */
 #define MAXIMUM_STACK_SIZE (256*1024)
-#endif
 
 /*
 ** We have to be careful, since we can't handle
@@ -153,31 +141,9 @@ int PyMac_ConsoleIsDead;
 static MenuBarHandle sioux_mbar;
 
 /*
-** Some stuff for our GetDirectory and PromptGetFile routines
-*/
-struct hook_args {
-	int selectcur_hit;		/* Set to true when "select current" selected */
-	char *prompt;			/* The prompt */
-};
-#if !TARGET_API_MAC_OS8
-/* The StandardFile hooks don't exist in Carbon. This breaks GetDirectory,
-** but the macfsn code will replace it by a NavServices version anyway.
-*/
-#define myhook_upp NULL
-#else
-static DlgHookYDUPP myhook_upp;
-static int upp_inited = 0;
-#endif
-
-/*
 ** The python-code event handler
 */
 static PyObject *python_event_handler;
-
-/*
-** Set to true if we're appearance-compliant
-*/
-int PyMac_AppearanceCompliant;
 
 /* Given an FSSpec, return the FSSpec of the parent folder */
 
@@ -250,29 +216,6 @@ PyMac_GetFullPathname (FSSpec *fss, char *buf, int length)
         return 0;
 }
 
-#ifdef USE_GUSI1
-/*
-** GUSI (1.6.0 and earlier, at the least) do not set the MacOS idea of
-** the working directory. Hence, we call this routine after each call
-** to chdir() to rectify things.
-*/
-void
-PyMac_FixGUSIcd()
-{
-	WDPBRec pb;
-	FSSpec curdirfss;
-	
-	if ( Path2FSSpec(":x", &curdirfss) != noErr ) 
-		return;
-	
-	/* Set MacOS "working directory" */
-	pb.ioNamePtr= "\p";
-	pb.ioVRefNum= curdirfss.vRefNum;
-	pb.ioWDDirID= curdirfss.parID;
-	if (PBHSetVolSync(&pb) != noErr)
-		return;
-}
-#endif
 
 #ifdef USE_GUSI
 /*
@@ -282,48 +225,6 @@ PyMac_FixGUSIcd()
 void SpinCursor(short x) { /* Dummy */ }
 void RotateCursor(short x) { /* Dummy */ }
 
-/*
-** Replacement GUSI Spin function
-*/
-#ifdef USE_GUSI1
-static int
-PyMac_GUSISpin(spin_msg msg, long arg)
-{
-	static Boolean	inForeground = true;
-	int		maxsleep = 6;	/* 6 ticks is "normal" sleeptime */
-
-	if (PyMac_ConsoleIsDead) return 0;
-#if 0
-	if (inForeground)
-		SpinCursor(msg == SP_AUTO_SPIN ? short(arg) : 1);
-#endif
-
-
-	if ( msg == SP_AUTO_SPIN )
-		maxsleep = 0;
-	if ( msg==SP_SLEEP||msg==SP_SELECT ) {
-		maxsleep = arg;
-		/*
-		** We force-scan for interrupts. Not pretty, but otherwise
-		** a program may hang in select or sleep forever.
-		*/
-		scan_event_queue(1);
-	}
-	if (interrupted) {
-		interrupted = 0;
-		return -1;
-	}
-
-	PyMac_DoYield(maxsleep, 0); /* XXXX or is it safe to call python here? */
-
-	return 0;
-}
-
-void
-PyMac_SetGUSISpin() {
-	GUSISetHook(GUSI_SpinHook, (GUSIHook)PyMac_GUSISpin);
-}
-#endif
 
 /* Called at exit() time thru atexit(), to stop event processing */
 void
@@ -331,48 +232,6 @@ PyMac_StopGUSISpin() {
 	PyMac_ConsoleIsDead = 1;
 }
 
-#if TARGET_API_MAC_OS8
-/*
-** Replacement routines for the PLstr... functions so we don't need
-** StdCLib.
-*/
-pascal void
-PLstrcpy(unsigned char *to, unsigned char *fr)
-{
-	memcpy(to, fr, fr[0]+1);
-}
-
-pascal int
-PLstrcmp(unsigned char *s1, unsigned char *s2)
-{
-	int res;
-	int l = s1[0] < s2[0] ? s1[0] : s2[0];
-	
-	res = memcmp(s1+1, s2+1, l);
-	if ( res != 0 )
-		return res;
-	
-	if ( s1[0] < s2[0] )
-		return -1;
-	else if ( s1[0] > s2[0] )
-		return 1;
-	else
-		return 0;
-}
-
-pascal unsigned char *
-PLstrrchr(unsigned char *str, unsigned char chr)
-{
-	unsigned char *ptr = 0;
-	unsigned char *p;
-	
-	for(p=str+1; p<str+str[0]; p++)
-		if ( *p == chr )
-			ptr = p;
-	return ptr;
-}
-	
-#endif /* TARGET_API_MAC_OS8 */
 #endif /* USE_GUSI */
 
 
@@ -391,18 +250,6 @@ Pstring(char *str)
 	return buf;
 }
 
-#if TARGET_API_MAC_OS8
-void
-c2pstrcpy(unsigned char *dst, const char *src)
-{
-	int len;
-	
-	len = strlen(src);
-	if ( len > 255 ) len = 255;
-	strncpy((char *)dst+1, src, len);
-	dst[0] = len;
-}
-#endif /* TARGET_API_MAC_OS8 */
 
 #ifdef USE_STACKCHECK
 /* Check for stack overflow */
@@ -429,11 +276,6 @@ PyOS_CheckStack()
 	if ( &here < sentinel ) {
 		if (thread_for_sentinel == PyThreadState_Get()) {
 			return -1;
-#if 0
-		} else {
-			/* Else we are unsure... */
-			fprintf(stderr, "Stackcheck in other thread (was %x now %x)\n", thread_for_sentinel,PyThreadState_Get()); 
-#endif
 		}
 	}
 	return 0;
@@ -441,6 +283,12 @@ PyOS_CheckStack()
 #endif /* USE_STACKCHECK */
 
 #if !TARGET_API_MAC_OSX
+void
+PyErr_SetInterrupt(void)
+{
+	interrupted = 1;
+}
+
 /* The catcher routine (which may not be used for all compilers) */
 static RETSIGTYPE
 intcatcher(sig)
@@ -489,35 +337,17 @@ static void
 scan_event_queue(force)
 	int force;
 {
-#if !TARGET_API_MAC_OS8
 	if ( interrupted || (!schedparams.check_interrupt && !force) )
 		return;
 	if ( CheckEventQueueForUserCancel() )
 		interrupted = 1;
-#else
-	register EvQElPtr q;
-	
-	if ( interrupted || (!schedparams.check_interrupt && !force) || !PyMac_InForeground() )
-		return;
-	q = (EvQElPtr) LMGetEventQueue()->qHead;
-	
-	for (; q; q = (EvQElPtr)q->qLink) {
-		if (q->evtQWhat == keyDown &&
-				(char)q->evtQMessage == '.' &&
-				(q->evtQModifiers & cmdKey) != 0) {
-			FlushEvents(keyDownMask, 0);
-			interrupted = 1;
-			break;
-		}
-	}
-#endif
 }
 
 int
 PyErr_CheckSignals()
 {
 	if (schedparams.enabled) {
-		if ( interrupted || (unsigned long)LMGetTicks() > schedparams.next_check ) {
+		if ( interrupted || (unsigned long)TickCount() > schedparams.next_check ) {
 			scan_event_queue(0);
 			if (interrupted) {
 				interrupted = 0;
@@ -526,7 +356,7 @@ PyErr_CheckSignals()
 			}
 			if ( PyMac_Yield() < 0)
 				return -1;
-			schedparams.next_check = (unsigned long)LMGetTicks()
+			schedparams.next_check = (unsigned long)TickCount()
 					 + schedparams.check_interval;
 		}
 	}
@@ -567,16 +397,6 @@ void
 PyMac_HandleEventIntern(evp)
 	EventRecord *evp;
 {
-#if TARGET_API_MAC_OS8
-	if ( evp->what == mouseDown ) {
-		WindowPtr wp;
-		
-		if ( FindWindow(evp->where, &wp) == inSysWindow ) {
-			SystemClick(evp, wp);
-			return;
-		}
-	}
-#endif
 #ifdef __MWERKS__
 	{
 		int siouxdidit;
@@ -637,14 +457,10 @@ PyMac_DoYield(int maxsleep, int maycallpython)
 	if( in_here > 1 || !schedparams.process_events || 
 	    (python_event_handler && !maycallpython) ) {
 		if ( maxsleep >= 0 ) {
-#if TARGET_API_MAC_OS8
-			SystemTask();
-#else
-			int xxx = 0;
-#endif
+			/* XXXX Need to do something here */
 		}
 	} else {
-		latest_time_ready = LMGetTicks() + maxsleep;
+		latest_time_ready = TickCount() + maxsleep;
 		do {
 			/* XXXX Hack by Jack.
 			** In time.sleep() you can click to another application
@@ -659,7 +475,7 @@ PyMac_DoYield(int maxsleep, int maycallpython)
 				in_here--;
 				return -1;
 			}
-			maxsleep = latest_time_ready - LMGetTicks();
+			maxsleep = latest_time_ready - TickCount();
 		} while ( maxsleep > 0 );
 	}
 	in_here--;
@@ -724,15 +540,7 @@ PyMac_InitMenuBar()
 	static unsigned char about_sioux[] = "\pAbout SIOUX";
 	
 	if ( sioux_mbar ) return;
-#if 0
-	/* This code does not seem to work anymore: apparently
-	** we now always have a menubar (since MacOS9?).
-	** So we simply always setup the Sioux menus here.
-	*/
-	if ( (sioux_mbar=GetMenuBar()) == NULL )  {
-#else
 	if ( (sioux_mbar=GetMenuBar()) == NULL || GetMenuHandle(SIOUX_APPLEID) == NULL)  {
-#endif
 		/* Sioux menu not installed yet. Do so */
 		SIOUXSetupMenus();
 		if ( (sioux_mbar=GetMenuBar()) == NULL )
@@ -751,8 +559,6 @@ PyMac_InitMenuBar()
 void
 PyMac_RestoreMenuBar()
 {
-#if 1
-	/* This doesn't seem to work anymore? Or only for Carbon? */
 	MenuBarHandle curmenubar;
 	
 	curmenubar = GetMenuBar();
@@ -763,7 +569,6 @@ PyMac_RestoreMenuBar()
 		PyMac_InitMenuBar();
 		DrawMenuBar();
 	}
-#endif
 }
 
 void
@@ -810,82 +615,3 @@ SIOUXDoAboutBox(void)
 }
 
 #endif /* !TARGET_API_MAC_OSX */
-
-#if TARGET_API_MAC_OS8
-/*
-** Helper routine for GetDirectory
-*/
-static pascal short
-myhook_proc(short item, DialogPtr theDialog, struct hook_args *dataptr)
-{
-	if ( item == sfHookFirstCall && dataptr->prompt) {
-		Handle prompth;
-		short type;
-		Rect rect;
-		
-		GetDialogItem(theDialog, PROMPT_ITEM, &type, &prompth, &rect);
-		if ( prompth )
-			SetDialogItemText(prompth, (unsigned char *)dataptr->prompt);
-	} else
-	if ( item == SELECTCUR_ITEM ) {
-		item = sfItemCancelButton;
-		dataptr->selectcur_hit = 1;
-	}
-	return item;
-}	
-
-/*
-** Ask the user for a directory. I still can't understand
-** why Apple doesn't provide a standard solution for this...
-*/
-int
-PyMac_GetDirectory(dirfss, prompt)
-	FSSpec *dirfss;
-	char *prompt;
-{
-	static SFTypeList list = {'fldr', 0, 0, 0};
-	static Point where = {-1, -1};
-	StandardFileReply reply;
-	struct hook_args hook_args;
-	
-	if ( !upp_inited ) {
-		myhook_upp = NewDlgHookYDProc(myhook_proc);
-		upp_inited = 1;
-	}
-	if ( prompt && *prompt )
-		hook_args.prompt = (char *)Pstring(prompt);
-	else
-		hook_args.prompt = NULL;
-	hook_args.selectcur_hit = 0;
-	CustomGetFile((FileFilterYDUPP)0, 1, list, &reply, GETDIR_ID, where, myhook_upp,
-				NULL, NULL, NULL, (void *)&hook_args);
-				
-	reply.sfFile.name[0] = 0;
-	if( FSMakeFSSpec(reply.sfFile.vRefNum, reply.sfFile.parID, reply.sfFile.name, dirfss) )
-		return 0;
-	return hook_args.selectcur_hit;
-}
-
-/*
-** Slightly extended StandardGetFile: accepts a prompt */
-void PyMac_PromptGetFile(short numTypes, ConstSFTypeListPtr typeList, 
-		StandardFileReply *reply, char *prompt)
-{
-	static Point where = {-1, -1};
-	struct hook_args hook_args;
-	
-	if ( !upp_inited ) {
-		myhook_upp = NewDlgHookYDProc(myhook_proc);
-		upp_inited = 1;
-	}
-	if ( prompt && *prompt )
-		hook_args.prompt = (char *)Pstring(prompt);
-	else
-		hook_args.prompt = NULL;
-	hook_args.selectcur_hit = 0;
-	CustomGetFile((FileFilterYDUPP)0, numTypes, typeList, reply, GETFILEPROMPT_ID, where,
-				myhook_upp, NULL, NULL, NULL, (void *)&hook_args);
-}
-#endif /* TARGET_API_MAC_OS8 */
-
-

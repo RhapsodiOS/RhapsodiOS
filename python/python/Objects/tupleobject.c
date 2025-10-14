@@ -26,7 +26,6 @@ int tuple_zero_allocs;
 PyObject *
 PyTuple_New(register int size)
 {
-	register int i;
 	register PyTupleObject *op;
 	if (size < 0) {
 		PyErr_BadInternalCall();
@@ -49,7 +48,7 @@ PyTuple_New(register int size)
 #ifdef COUNT_ALLOCS
 		fast_tuple_allocs++;
 #endif
-		/* PyObject_InitVar is inlined */
+		/* Inline PyObject_InitVar */
 #ifdef Py_TRACE_REFS
 		op->ob_size = size;
 		op->ob_type = &PyTuple_Type;
@@ -71,8 +70,7 @@ PyTuple_New(register int size)
 		if (op == NULL)
 			return NULL;
 	}
-	for (i = 0; i < size; i++)
-		op->ob_item[i] = NULL;
+	memset(op->ob_item, 0, sizeof(*op->ob_item) * size);
 #if MAXSAVESIZE > 0
 	if (size == 0) {
 		free_tuples[0] = op;
@@ -139,8 +137,8 @@ tupledealloc(register PyTupleObject *op)
 {
 	register int i;
 	register int len =  op->ob_size;
+	PyObject_GC_UnTrack(op);
 	Py_TRASHCAN_SAFE_BEGIN(op)
-	_PyObject_GC_UNTRACK(op);
 	if (len > 0) {
 		i = len;
 		while (--i >= 0)
@@ -265,15 +263,10 @@ tuplecontains(PyTupleObject *a, PyObject *el)
 {
 	int i, cmp;
 
-	for (i = 0; i < a->ob_size; ++i) {
+	for (i = 0, cmp = 0 ; cmp == 0 && i < a->ob_size; ++i)
 		cmp = PyObject_RichCompareBool(el, PyTuple_GET_ITEM(a, i),
-					       Py_EQ);
-		if (cmp > 0)
-			return 1;
-		else if (cmp < 0)
-			return -1;
-	}
-	return 0;
+						   Py_EQ);
+	return cmp;
 }
 
 static PyObject *
@@ -337,6 +330,8 @@ tupleconcat(register PyTupleObject *a, register PyObject *bb)
 	}
 #define b ((PyTupleObject *)bb)
 	size = a->ob_size + b->ob_size;
+	if (size < 0)
+		return PyErr_NoMemory();
 	np = (PyTupleObject *) PyTuple_New(size);
 	if (np == NULL) {
 		return NULL;
@@ -481,7 +476,7 @@ tuplerichcompare(PyObject *v, PyObject *w, int op)
 	return PyObject_RichCompare(vt->ob_item[i], wt->ob_item[i], op);
 }
 
-staticforward PyObject *
+static PyObject *
 tuple_subtype_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 static PyObject *
@@ -524,11 +519,11 @@ tuple_subtype_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	return new;
 }
 
-static char tuple_doc[] =
+PyDoc_STRVAR(tuple_doc,
 "tuple() -> an empty tuple\n"
 "tuple(sequence) -> tuple initialized from sequence's items\n"
 "\n"
-"If the argument is a tuple, the return value is the same object.";
+"If the argument is a tuple, the return value is the same object.");
 
 static PySequenceMethods tuple_as_sequence = {
 	(inquiry)tuplelength,			/* sq_length */
@@ -540,6 +535,77 @@ static PySequenceMethods tuple_as_sequence = {
 	0,					/* sq_ass_slice */
 	(objobjproc)tuplecontains,		/* sq_contains */
 };
+
+static PyObject*
+tuplesubscript(PyTupleObject* self, PyObject* item)
+{
+	if (PyInt_Check(item)) {
+		long i = PyInt_AS_LONG(item);
+		if (i < 0)
+			i += PyTuple_GET_SIZE(self);
+		return tupleitem(self, i);
+	}
+	else if (PyLong_Check(item)) {
+		long i = PyLong_AsLong(item);
+		if (i == -1 && PyErr_Occurred())
+			return NULL;
+		if (i < 0)
+			i += PyTuple_GET_SIZE(self);
+		return tupleitem(self, i);
+	}
+	else if (PySlice_Check(item)) {
+		int start, stop, step, slicelength, cur, i;
+		PyObject* result;
+		PyObject* it;
+
+		if (PySlice_GetIndicesEx((PySliceObject*)item,
+				 PyTuple_GET_SIZE(self),
+				 &start, &stop, &step, &slicelength) < 0) {
+			return NULL;
+		}
+
+		if (slicelength <= 0) {
+			return PyTuple_New(0);
+		}
+		else {
+			result = PyTuple_New(slicelength);
+
+			for (cur = start, i = 0; i < slicelength; 
+			     cur += step, i++) {
+				it = PyTuple_GET_ITEM(self, cur);
+				Py_INCREF(it);
+				PyTuple_SET_ITEM(result, i, it);
+			}
+			
+			return result;
+		}
+	}
+	else {
+		PyErr_SetString(PyExc_TypeError, 
+				"tuple indices must be integers");
+		return NULL;
+	}
+}
+
+static PyObject *
+tuple_getnewargs(PyTupleObject *v)
+{
+	return Py_BuildValue("(N)", tupleslice(v, 0, v->ob_size));
+	
+}
+
+static PyMethodDef tuple_methods[] = {
+	{"__getnewargs__",	(PyCFunction)tuple_getnewargs,	METH_NOARGS},
+	{NULL,		NULL}		/* sentinel */
+};
+
+static PyMappingMethods tuple_as_mapping = {
+	(inquiry)tuplelength,
+	(binaryfunc)tuplesubscript,
+	0
+};
+
+static PyObject *tuple_iter(PyObject *seq);
 
 PyTypeObject PyTuple_Type = {
 	PyObject_HEAD_INIT(&PyType_Type)
@@ -555,7 +621,7 @@ PyTypeObject PyTuple_Type = {
 	(reprfunc)tuplerepr,			/* tp_repr */
 	0,					/* tp_as_number */
 	&tuple_as_sequence,			/* tp_as_sequence */
-	0,					/* tp_as_mapping */
+	&tuple_as_mapping,			/* tp_as_mapping */
 	(hashfunc)tuplehash,			/* tp_hash */
 	0,					/* tp_call */
 	0,					/* tp_str */
@@ -569,9 +635,9 @@ PyTypeObject PyTuple_Type = {
 	0,					/* tp_clear */
 	tuplerichcompare,			/* tp_richcompare */
 	0,					/* tp_weaklistoffset */
-	0,					/* tp_iter */
+	tuple_iter,	    			/* tp_iter */
 	0,					/* tp_iternext */
-	0,					/* tp_methods */
+	tuple_methods,				/* tp_methods */
 	0,					/* tp_members */
 	0,					/* tp_getset */
 	0,					/* tp_base */
@@ -582,7 +648,7 @@ PyTypeObject PyTuple_Type = {
 	0,					/* tp_init */
 	0,					/* tp_alloc */
 	tuple_new,				/* tp_new */
-	_PyObject_GC_Del,			/* tp_free */
+	PyObject_GC_Del,        		/* tp_free */
 };
 
 /* The following function breaks the notion that tuples are immutable:
@@ -622,9 +688,7 @@ _PyTuple_Resize(PyObject **pv, int newsize)
 	}
 
 	/* XXX UNREF/NEWREF interface should be more symmetrical */
-#ifdef Py_REF_DEBUG
-	--_Py_RefTotal;
-#endif
+	_Py_DEC_REFTOTAL;
 	_PyObject_GC_UNTRACK(v);
 	_Py_ForgetReference((PyObject *) v);
 	/* DECREF items deleted by shrinkage */
@@ -640,8 +704,9 @@ _PyTuple_Resize(PyObject **pv, int newsize)
 	}
 	_Py_NewReference((PyObject *) sv);
 	/* Zero out items added by growing */
-	for (i = oldsize; i < newsize; i++)
-		sv->ob_item[i] = NULL;
+	if (newsize > oldsize)
+		memset(&sv->ob_item[oldsize], 0,
+		       sizeof(*sv->ob_item) * (newsize - oldsize));
 	*pv = (PyObject *) sv;
 	_PyObject_GC_TRACK(sv);
 	return 0;
@@ -668,3 +733,104 @@ PyTuple_Fini(void)
 	}
 #endif
 }
+
+/*********************** Tuple Iterator **************************/
+
+typedef struct {
+	PyObject_HEAD
+	long it_index;
+	PyTupleObject *it_seq; /* Set to NULL when iterator is exhausted */
+} tupleiterobject;
+
+PyTypeObject PyTupleIter_Type;
+
+static PyObject *
+tuple_iter(PyObject *seq)
+{
+	tupleiterobject *it;
+
+	if (!PyTuple_Check(seq)) {
+		PyErr_BadInternalCall();
+		return NULL;
+	}
+	it = PyObject_GC_New(tupleiterobject, &PyTupleIter_Type);
+	if (it == NULL)
+		return NULL;
+	it->it_index = 0;
+	Py_INCREF(seq);
+	it->it_seq = (PyTupleObject *)seq;
+	_PyObject_GC_TRACK(it);
+	return (PyObject *)it;
+}
+
+static void
+tupleiter_dealloc(tupleiterobject *it)
+{
+	_PyObject_GC_UNTRACK(it);
+	Py_XDECREF(it->it_seq);
+	PyObject_GC_Del(it);
+}
+
+static int
+tupleiter_traverse(tupleiterobject *it, visitproc visit, void *arg)
+{
+	if (it->it_seq == NULL)
+		return 0;
+	return visit((PyObject *)it->it_seq, arg);
+}
+
+static PyObject *
+tupleiter_next(tupleiterobject *it)
+{
+	PyTupleObject *seq;
+	PyObject *item;
+
+	assert(it != NULL);
+	seq = it->it_seq;
+	if (seq == NULL)
+		return NULL;
+	assert(PyTuple_Check(seq));
+
+	if (it->it_index < PyTuple_GET_SIZE(seq)) {
+		item = PyTuple_GET_ITEM(seq, it->it_index);
+		++it->it_index;
+		Py_INCREF(item);
+		return item;
+	}
+
+	Py_DECREF(seq);
+	it->it_seq = NULL;
+	return NULL;
+}
+
+PyTypeObject PyTupleIter_Type = {
+	PyObject_HEAD_INIT(&PyType_Type)
+	0,					/* ob_size */
+	"tupleiterator",			/* tp_name */
+	sizeof(tupleiterobject),		/* tp_basicsize */
+	0,					/* tp_itemsize */
+	/* methods */
+	(destructor)tupleiter_dealloc,		/* tp_dealloc */
+	0,					/* tp_print */
+	0,					/* tp_getattr */
+	0,					/* tp_setattr */
+	0,					/* tp_compare */
+	0,					/* tp_repr */
+	0,					/* tp_as_number */
+	0,					/* tp_as_sequence */
+	0,					/* tp_as_mapping */
+	0,					/* tp_hash */
+	0,					/* tp_call */
+	0,					/* tp_str */
+	PyObject_GenericGetAttr,		/* tp_getattro */
+	0,					/* tp_setattro */
+	0,					/* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,/* tp_flags */
+	0,					/* tp_doc */
+	(traverseproc)tupleiter_traverse,	/* tp_traverse */
+	0,					/* tp_clear */
+	0,					/* tp_richcompare */
+	0,					/* tp_weaklistoffset */
+	PyObject_SelfIter,			/* tp_iter */
+	(iternextfunc)tupleiter_next,		/* tp_iternext */
+};

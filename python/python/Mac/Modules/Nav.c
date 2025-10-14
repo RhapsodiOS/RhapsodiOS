@@ -56,7 +56,7 @@ my_eventProc(NavEventCallbackMessage callBackSelector,
 	
 	if (!dict) return;
 	if ( (pyfunc = PyDict_GetItemString(dict, "eventProc")) == NULL ) {
-		PyErr_Clear();
+		PyErr_Print();
 		return;
 	}
 	if ( pyfunc == Py_None ) {
@@ -74,8 +74,8 @@ my_eventProc(NavEventCallbackMessage callBackSelector,
 	if ( rv )
 		Py_DECREF(rv);
 	else {
-		fprintf(stderr, "Nav: exception in eventProc callback\n");
-		PyErr_Clear();
+		PySys_WriteStderr("Nav: exception in eventProc callback\n");
+		PyErr_Print();
 	}
 }
 
@@ -90,7 +90,7 @@ my_previewProc(NavCBRecPtr callBackParms,
 	
 	if (!dict) return false;
 	if ( (pyfunc = PyDict_GetItemString(dict, "previewProc")) == NULL ) {
-		PyErr_Clear();
+		PyErr_Print();
 		return false;
 	}
 	rv = PyObject_CallFunction(pyfunc, "s#", (void *)callBackParms, sizeof(NavCBRec));
@@ -98,8 +98,8 @@ my_previewProc(NavCBRecPtr callBackParms,
 		c_rv = PyObject_IsTrue(rv);
 		Py_DECREF(rv);
 	} else {
-		fprintf(stderr, "Nav: exception in previewProc callback\n");
-		PyErr_Clear();
+		PySys_WriteStderr("Nav: exception in previewProc callback\n");
+		PyErr_Print();
 	}
 	return c_rv;
 }
@@ -116,17 +116,17 @@ my_filterProc(AEDesc *theItem, void *info,
 	
 	if (!dict) return false;
 	if ( (pyfunc = PyDict_GetItemString(dict, "filterProc")) == NULL ) {
-		PyErr_Clear();
+		PyErr_Print();
 		return false;
 	}
 	rv = PyObject_CallFunction(pyfunc, "O&s#h",
-		AEDesc_New, theItem, info, sizeof(NavFileOrFolderInfo), (short)filterMode);
+		AEDesc_NewBorrowed, theItem, info, sizeof(NavFileOrFolderInfo), (short)filterMode);
 	if ( rv ) {
 		c_rv = PyObject_IsTrue(rv);
 		Py_DECREF(rv);
 	} else {
-		fprintf(stderr, "Nav: exception in filterProc callback\n");
-		PyErr_Clear();
+		PySys_WriteStderr("Nav: exception in filterProc callback\n");
+		PyErr_Print();
 	}
 	return c_rv;
 }
@@ -167,10 +167,10 @@ filldialogoptions(PyObject *d,
 			}
 			*defaultLocationP = defaultLocation_storage;
 		} else if( strcmp(keystr, "version") == 0 ) {
-			if ( !PyArg_Parse(value, "h", &opt->version) )
+			if ( !PyArg_Parse(value, "H", &opt->version) )
 				return 0;
 		} else if( strcmp(keystr, "dialogOptionFlags") == 0 ) {
-			if ( !PyArg_Parse(value, "l", &opt->dialogOptionFlags) )
+			if ( !PyArg_Parse(value, "k", &opt->dialogOptionFlags) )
 				return 0;
 		} else if( strcmp(keystr, "location") == 0 ) {
 			if ( !PyArg_Parse(value, "O&", PyMac_GetPoint, &opt->location) )
@@ -202,11 +202,9 @@ filldialogoptions(PyObject *d,
 		} else if( eventProcP && strcmp(keystr, "eventProc") == 0 ) {
 			*eventProcP = my_eventProcUPP;
 		} else if( previewProcP && strcmp(keystr, "previewProc") == 0 ) {
-			PyErr_SetString(ErrorObject, "No callbacks implemented yet");
-			return 0;
+			*previewProcP = my_previewProcUPP;
 		} else if( filterProcP && strcmp(keystr, "filterProc") == 0 ) {
-			PyErr_SetString(ErrorObject, "No callbacks implemented yet");
-			return 0;
+			*filterProcP = my_filterProcUPP;
 		} else if( typeListP && strcmp(keystr, "typeList") == 0 ) {
 			if ( !PyArg_Parse(value, "O&", ResObj_Convert, typeListP) )
 				return 0;
@@ -233,7 +231,7 @@ typedef struct {
 	NavReplyRecord itself;
 } navrrobject;
 
-staticforward PyTypeObject Navrrtype;
+static PyTypeObject Navrrtype;
 
 
 
@@ -249,7 +247,7 @@ nav_NavTranslateFile(navrrobject *self, PyObject *args)
 	NavTranslationOptions howToTranslate;
 	OSErr err;
 
-	if (!PyArg_ParseTuple(args, "l", &howToTranslate))
+	if (!PyArg_ParseTuple(args, "k", &howToTranslate))
 		return NULL;
 	err = NavTranslateFile(&self->itself, howToTranslate);
 	if ( err ) {
@@ -270,7 +268,7 @@ nav_NavCompleteSave(navrrobject *self, PyObject *args)
 	NavTranslationOptions howToTranslate;
 	OSErr err;
 
-	if (!PyArg_ParseTuple(args, "l", &howToTranslate))
+	if (!PyArg_ParseTuple(args, "k", &howToTranslate))
 		return NULL;
 	err = NavCompleteSave(&self->itself, howToTranslate);
 	if ( err ) {
@@ -309,17 +307,19 @@ static void
 navrr_dealloc(navrrobject *self)
 {
 	NavDisposeReply(&self->itself);
-	PyMem_DEL(self);
+	PyObject_DEL(self);
 }
 
 static PyObject *
 navrr_getattr(navrrobject *self, char *name)
 {
 	FSSpec fss;
+	FSRef fsr;
 	
 	if( strcmp(name, "__members__") == 0 )
-		return Py_BuildValue("sssssss", "version", "validRecord", "replacing",
-			"isStationery", "translationNeeded", "selection", "fileTranslation");
+		return Py_BuildValue("ssssssssss", "version", "validRecord", "replacing",
+			"isStationery", "translationNeeded", "selection", "selection_fsr",
+			"fileTranslation", "keyScript", "saveFileName");
 	if( strcmp(name, "version") == 0 )
 		return Py_BuildValue("h", self->itself.version);
 	if( strcmp(name, "validRecord") == 0 )
@@ -336,7 +336,7 @@ navrr_getattr(navrrobject *self, char *name)
 		PyObject *rv, *rvitem;
 		AEDesc desc;
 		
-		if (err=AECountItems(&self->itself.selection, &count)) {
+		if ((err=AECountItems(&self->itself.selection, &count))) {
 			PyErr_Mac(ErrorObject, err);
 			return NULL;
 		}
@@ -344,21 +344,47 @@ navrr_getattr(navrrobject *self, char *name)
 			return NULL;
 		for(i=0; i<count; i++) {
 			desc.dataHandle = NULL;
-			if (err=AEGetNthDesc(&self->itself.selection, i+1, typeFSS, NULL, &desc)) {
+			if ((err=AEGetNthDesc(&self->itself.selection, i+1, typeFSS, NULL, &desc))) {
 				Py_DECREF(rv);
 				PyErr_Mac(ErrorObject, err);
 				return NULL;
 			}
-#if TARGET_API_MAC_CARBON
-			if (err=AEGetDescData(&desc, &fss, sizeof(FSSpec))) {
+			if ((err=AEGetDescData(&desc, &fss, sizeof(FSSpec)))) {
 				Py_DECREF(rv);
 				PyErr_Mac(ErrorObject, err);
 				return NULL;
 			}
-#else
-			memcpy((void *)&fss, (void *)*desc.dataHandle, sizeof(FSSpec));
-#endif
 			rvitem = PyMac_BuildFSSpec(&fss);
+			PyList_SetItem(rv, i, rvitem);
+			AEDisposeDesc(&desc);
+		}
+		return rv;
+	}
+	if( strcmp(name, "selection_fsr") == 0 ) {
+		SInt32 i, count;
+		OSErr err;
+		PyObject *rv, *rvitem;
+		AEDesc desc;
+		
+		if ((err=AECountItems(&self->itself.selection, &count))) {
+			PyErr_Mac(ErrorObject, err);
+			return NULL;
+		}
+		if ( (rv=PyList_New(count)) == NULL )
+			return NULL;
+		for(i=0; i<count; i++) {
+			desc.dataHandle = NULL;
+			if ((err=AEGetNthDesc(&self->itself.selection, i+1, typeFSRef, NULL, &desc))) {
+				Py_DECREF(rv);
+				PyErr_Mac(ErrorObject, err);
+				return NULL;
+			}
+			if ((err=AEGetDescData(&desc, &fsr, sizeof(FSRef)))) {
+				Py_DECREF(rv);
+				PyErr_Mac(ErrorObject, err);
+				return NULL;
+			}
+			rvitem = PyMac_BuildFSRef(&fsr);
 			PyList_SetItem(rv, i, rvitem);
 			AEDisposeDesc(&desc);
 		}
@@ -366,6 +392,10 @@ navrr_getattr(navrrobject *self, char *name)
 	}
 	if( strcmp(name, "fileTranslation") == 0 )
 		return ResObj_New((Handle)self->itself.fileTranslation);
+	if( strcmp(name, "keyScript") == 0 )
+		return Py_BuildValue("h", (short)self->itself.keyScript);
+	if( strcmp(name, "saveFileName") == 0 )
+		return Py_BuildValue("O&", CFStringRefObj_New, self->itself.saveFileName);
 
 
 	return Py_FindMethod(navrr_methods, (PyObject *)self, name);
@@ -498,7 +528,7 @@ nav_NavAskSaveChanges(PyObject *self, PyObject *args, PyObject *kw)
 	OSErr err;
 
 	if ( kw && PyObject_IsTrue(kw) ) {
-		if (!PyArg_ParseTuple(args, "l", &action))
+		if (!PyArg_ParseTuple(args, "k", &action))
 			return NULL;
 		dict = kw;
 	} else if (!PyArg_ParseTuple(args, "lO!", &action, &PyDict_Type, &dict))

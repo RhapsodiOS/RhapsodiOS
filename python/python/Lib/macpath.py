@@ -5,8 +5,19 @@ from stat import *
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
            "basename","dirname","commonprefix","getsize","getmtime",
-           "getatime","islink","exists","isdir","isfile",
-           "walk","expanduser","expandvars","normpath","abspath"]
+           "getatime","getctime", "islink","exists","isdir","isfile",
+           "walk","expanduser","expandvars","normpath","abspath",
+           "curdir","pardir","sep","pathsep","defpath","altsep","extsep",
+           "realpath","supports_unicode_filenames"]
+
+# strings representing various path-related bits and pieces
+curdir = ':'
+pardir = '::'
+extsep = '.'
+sep = ':'
+pathsep = '\n'
+defpath = ':'
+altsep = None
 
 # Normalize the case of a pathname.  Dummy in Posix, but <s>.lower() here.
 
@@ -61,20 +72,11 @@ def splitext(p):
     pathname component; the root is everything before that.
     It is always true that root + ext == p."""
 
-    root, ext = '', ''
-    for c in p:
-        if c == ':':
-            root, ext = root + ext + c, ''
-        elif c == '.':
-            if ext:
-                root, ext = root + ext, c
-            else:
-                ext = c
-        elif ext:
-            ext = ext + c
-        else:
-            root = root + c
-    return root, ext
+    i = p.rfind('.')
+    if i<=p.rfind(':'):
+        return p, ''
+    else:
+        return p[:i], p[i:]
 
 
 def splitdrive(p):
@@ -92,6 +94,11 @@ def splitdrive(p):
 def dirname(s): return split(s)[0]
 def basename(s): return split(s)[1]
 
+def ismount(s):
+    if not isabs(s):
+        return False
+    components = split(s)
+    return len(components) == 2 and components[1] == ''
 
 def isdir(s):
     """Return true if the pathname refers to an existing directory."""
@@ -100,32 +107,32 @@ def isdir(s):
         st = os.stat(s)
     except os.error:
         return 0
-    return S_ISDIR(st[ST_MODE])
+    return S_ISDIR(st.st_mode)
 
 
 # Get size, mtime, atime of files.
 
 def getsize(filename):
     """Return the size of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[ST_SIZE]
+    return os.stat(filename).st_size
 
 def getmtime(filename):
     """Return the last modification time of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[ST_MTIME]
+    return os.stat(filename).st_mtime
 
 def getatime(filename):
     """Return the last access time of a file, reported by os.stat()."""
-    st = os.stat(filename)
-    return st[ST_ATIME]
+    return os.stat(filename).st_atime
 
 
 def islink(s):
-    """Return true if the pathname refers to a symbolic link.
-    Always false on the Mac, until we understand Aliases.)"""
+    """Return true if the pathname refers to a symbolic link."""
 
-    return 0
+    try:
+        import Carbon.File
+        return Carbon.File.ResolveAliasFile(s, 0)[2]
+    except:
+        return False
 
 
 def isfile(s):
@@ -134,18 +141,21 @@ def isfile(s):
     try:
         st = os.stat(s)
     except os.error:
-        return 0
-    return S_ISREG(st[ST_MODE])
+        return False
+    return S_ISREG(st.st_mode)
 
+def getctime(filename):
+    """Return the creation time of a file, reported by os.stat()."""
+    return os.stat(filename).st_ctime
 
 def exists(s):
-    """Return true if the pathname refers to an existing file or directory."""
+    """Return True if the pathname refers to an existing file or directory."""
 
     try:
         st = os.stat(s)
     except os.error:
-        return 0
-    return 1
+        return False
+    return True
 
 # Return the longest prefix of all list elements.
 
@@ -170,7 +180,8 @@ def expanduser(path):
     """Dummy to retain interface-compatibility with other operating systems."""
     return path
 
-norm_error = 'macpath.norm_error: path cannot be normalized'
+class norm_error(Exception):
+    """Path cannot be normalized"""
 
 def normpath(s):
     """Normalize a pathname.  Will return the same result for
@@ -222,7 +233,7 @@ def walk(top, func, arg):
     func(arg, top, names)
     for name in names:
         name = join(top, name)
-        if isdir(name):
+        if isdir(name) and not islink(name):
             walk(name, func, arg)
 
 
@@ -233,4 +244,19 @@ def abspath(path):
     return normpath(path)
 
 # realpath is a no-op on systems without islink support
-realpath = abspath
+def realpath(path):
+    path = abspath(path)
+    try:
+        import Carbon.File
+    except ImportError:
+        return path
+    if not path:
+        return path
+    components = path.split(':')
+    path = components[0] + ':'
+    for c in components[1:]:
+        path = join(path, c)
+        path = Carbon.File.FSResolveAliasFile(path, 1)[0].as_pathname()
+    return path
+
+supports_unicode_filenames = False

@@ -6,12 +6,14 @@ indirectly provides the Distribution and Command classes, although they are
 really defined in distutils.dist and distutils.cmd.
 """
 
-# created 1999/03/01, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: core.py,v 1.1.1.1 2002/02/05 23:21:17 zarzycki Exp $"
+__revision__ = "$Id: core.py,v 1.58 2003/02/19 14:16:00 akuchling Exp $"
 
 import sys, os
 from types import *
+
+from distutils.debug import DEBUG
 from distutils.errors import *
 from distutils.util import grok_environment_error
 
@@ -19,7 +21,6 @@ from distutils.util import grok_environment_error
 from distutils.dist import Distribution
 from distutils.cmd import Command
 from distutils.extension import Extension
-
 
 # This is a barebones help message generated displayed when the user
 # runs the setup script with no arguments at all.  More useful help
@@ -32,11 +33,6 @@ usage: %(script)s [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
    or: %(script)s cmd --help
 """
 
-
-# If DISTUTILS_DEBUG is anything other than the empty string, we run in
-# debug mode.
-DEBUG = os.environ.get('DISTUTILS_DEBUG')
-
 def gen_usage (script_name):
     script = os.path.basename(script_name)
     return USAGE % vars()
@@ -46,6 +42,19 @@ def gen_usage (script_name):
 _setup_stop_after = None
 _setup_distribution = None
 
+# Legal keyword arguments for the setup() function
+setup_keywords = ('distclass', 'script_name', 'script_args', 'options',
+                  'name', 'version', 'author', 'author_email',
+                  'maintainer', 'maintainer_email', 'url', 'license',
+                  'description', 'long_description', 'keywords',
+                  'platforms', 'classifiers', 'download_url')
+
+# Legal keyword arguments for the Extension constructor
+extension_keywords = ('name', 'sources', 'include_dirs',
+                      'define_macros', 'undef_macros',
+                      'library_dirs', 'libraries', 'runtime_library_dirs',
+                      'extra_objects', 'extra_compile_args', 'extra_link_args',
+                      'export_symbols', 'depends', 'language')
 
 def setup (**attrs):
     """The gateway to the Distutils: do everything your setup script needs
@@ -91,7 +100,7 @@ def setup (**attrs):
         klass = Distribution
 
     if not attrs.has_key('script_name'):
-        attrs['script_name'] = sys.argv[0]
+        attrs['script_name'] = os.path.basename(sys.argv[0])
     if not attrs.has_key('script_args'):
         attrs['script_args'] = sys.argv[1:]
 
@@ -100,7 +109,11 @@ def setup (**attrs):
     try:
         _setup_distribution = dist = klass(attrs)
     except DistutilsSetupError, msg:
-        raise SystemExit, "error in setup script: %s" % msg
+        if attrs.has_key('name'):
+            raise SystemExit, "error in %s setup command: %s" % \
+                  (attrs['name'], msg)
+        else:
+            raise SystemExit, "error in setup command: %s" % msg
 
     if _setup_stop_after == "init":
         return dist
@@ -121,9 +134,7 @@ def setup (**attrs):
     try:
         ok = dist.parse_command_line()
     except DistutilsArgError, msg:
-        script = os.path.basename(dist.script_name)
-        raise SystemExit, \
-              gen_usage(dist.script_name) + "\nerror: %s" % msg
+        raise SystemExit, gen_usage(dist.script_name) + "\nerror: %s" % msg
 
     if DEBUG:
         print "options (after parsing command line):"
@@ -147,9 +158,7 @@ def setup (**attrs):
             else:
                 raise SystemExit, error
 
-        except (DistutilsExecError,
-                DistutilsFileError,
-                DistutilsOptionError,
+        except (DistutilsError,
                 CCompilerError), msg:
             if DEBUG:
                 raise
@@ -229,3 +238,4 @@ def run_setup (script_name, script_args=None, stop_after="run"):
     return _setup_distribution
 
 # run_setup ()
+

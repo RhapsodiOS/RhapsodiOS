@@ -4,19 +4,17 @@ Provides the FileList class, used for poking about the filesystem
 and building lists of files.
 """
 
-# created 2000/07/17, Rene Liebscher (as template.py)
-# most parts taken from commands/sdist.py
-# renamed 2000/07/29 (to filelist.py) and officially added to
-#  the Distutils source, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: filelist.py,v 1.1.1.1 2002/02/05 23:21:17 zarzycki Exp $"
+__revision__ = "$Id: filelist.py,v 1.15 2002/11/19 13:12:27 akuchling Exp $"
 
-import sys, os, string, re
+import os, string, re
 import fnmatch
 from types import *
 from glob import glob
 from distutils.util import convert_path
 from distutils.errors import DistutilsTemplateError, DistutilsInternalError
+from distutils import log
 
 class FileList:
 
@@ -37,13 +35,11 @@ class FileList:
     def __init__(self,
                  warn=None,
                  debug_print=None):
-        # use standard warning and debug functions if no other given
-        self.warn = warn or self.__warn
-        self.debug_print = debug_print or self.__debug_print
+        # ignore argument to FileList, but keep them for backwards
+        # compatibility
 
         self.allfiles = None
         self.files = []
-
 
     def set_allfiles (self, allfiles):
         self.allfiles = allfiles
@@ -51,20 +47,13 @@ class FileList:
     def findall (self, dir=os.curdir):
         self.allfiles = findall(dir)
 
-
-    # -- Fallback warning/debug functions ------------------------------
-
-    def __warn (self, msg):
-        sys.stderr.write("warning: %s\n" % msg)
-
-    def __debug_print (self, msg):
+    def debug_print (self, msg):
         """Print 'msg' to stdout if the global DEBUG (taken from the
         DISTUTILS_DEBUG environment variable) flag is true.
         """
-        from distutils.core import DEBUG
+        from distutils.debug import DEBUG
         if DEBUG:
             print msg
-
 
     # -- List-like methods ---------------------------------------------
 
@@ -87,8 +76,8 @@ class FileList:
 
     def remove_duplicates (self):
         # Assumes list has been sorted!
-        for i in range(len(self.files)-1, 0, -1):
-            if self.files[i] == self.files[i-1]:
+        for i in range(len(self.files) - 1, 0, -1):
+            if self.files[i] == self.files[i - 1]:
                 del self.files[i]
 
 
@@ -147,61 +136,60 @@ class FileList:
             self.debug_print("include " + string.join(patterns))
             for pattern in patterns:
                 if not self.include_pattern(pattern, anchor=1):
-                    self.warn("no files found matching '%s'" % pattern)
+                    log.warn("warning: no files found matching '%s'",
+                             pattern)
 
         elif action == 'exclude':
             self.debug_print("exclude " + string.join(patterns))
             for pattern in patterns:
                 if not self.exclude_pattern(pattern, anchor=1):
-                    self.warn(
-                        "no previously-included files found matching '%s'"%
-                        pattern)
+                    log.warn(("warning: no previously-included files "
+                              "found matching '%s'"), pattern)
 
         elif action == 'global-include':
             self.debug_print("global-include " + string.join(patterns))
             for pattern in patterns:
                 if not self.include_pattern(pattern, anchor=0):
-                    self.warn(("no files found matching '%s' " +
-                               "anywhere in distribution") %
-                              pattern)
+                    log.warn(("warning: no files found matching '%s' " +
+                              "anywhere in distribution"), pattern)
 
         elif action == 'global-exclude':
             self.debug_print("global-exclude " + string.join(patterns))
             for pattern in patterns:
                 if not self.exclude_pattern(pattern, anchor=0):
-                    self.warn(("no previously-included files matching '%s' " +
-                               "found anywhere in distribution") %
-                              pattern)
+                    log.warn(("warning: no previously-included files matching "
+                              "'%s' found anywhere in distribution"),
+                             pattern)
 
         elif action == 'recursive-include':
             self.debug_print("recursive-include %s %s" %
                              (dir, string.join(patterns)))
             for pattern in patterns:
                 if not self.include_pattern(pattern, prefix=dir):
-                    self.warn(("no files found matching '%s' " +
-                                "under directory '%s'") %
-                               (pattern, dir))
+                    log.warn(("warngin: no files found matching '%s' " +
+                                "under directory '%s'"), 
+                             pattern, dir)
 
         elif action == 'recursive-exclude':
             self.debug_print("recursive-exclude %s %s" %
                              (dir, string.join(patterns)))
             for pattern in patterns:
                 if not self.exclude_pattern(pattern, prefix=dir):
-                    self.warn(("no previously-included files matching '%s' " +
-                               "found under directory '%s'") %
-                              (pattern, dir))
+                    log.warn(("warning: no previously-included files matching "
+                              "'%s' found under directory '%s'"),
+                             pattern, dir)
 
         elif action == 'graft':
             self.debug_print("graft " + dir_pattern)
             if not self.include_pattern(None, prefix=dir_pattern):
-                self.warn("no directories found matching '%s'" % dir_pattern)
+                log.warn("warning: no directories found matching '%s'",
+                         dir_pattern)
 
         elif action == 'prune':
             self.debug_print("prune " + dir_pattern)
             if not self.exclude_pattern(None, prefix=dir_pattern):
-                self.warn(("no previously-included directories found " +
-                           "matching '%s'") %
-                          dir_pattern)
+                log.warn(("no previously-included directories found " +
+                          "matching '%s'"), dir_pattern)
         else:
             raise DistutilsInternalError, \
                   "this cannot happen: invalid action '%s'" % action

@@ -3,13 +3,15 @@
 Provides the Extension class, used to describe C/C++ extension
 modules in setup scripts."""
 
-# created 2000/05/30, Greg Ward
+__revision__ = "$Id: extension.py,v 1.18 2003/01/27 16:30:36 akuchling Exp $"
 
-__revision__ = "$Id: extension.py,v 1.1.1.1 2002/02/05 23:21:18 zarzycki Exp $"
-
-import os, string
+import os, string, sys
 from types import *
 
+try:
+    import warnings
+except ImportError:
+    warnings = None
 
 # This class is really only used by the "build_ext" command, so it might
 # make sense to put it in distutils.command.build_ext.  However, that
@@ -73,8 +75,15 @@ class Extension:
         used on all platforms, and not generally necessary for Python
         extensions, which typically export exactly one symbol: "init" +
         extension_name.
+      depends : [string]
+        list of files that the extension depends on
+      language : string
+        extension language (i.e. "c", "c++", "objc"). Will be detected
+        from the source extensions if not provided.
     """
 
+    # When adding arguments to this constructor, be sure to update
+    # setup_keywords in core.py.
     def __init__ (self, name, sources,
                   include_dirs=None,
                   define_macros=None,
@@ -86,8 +95,10 @@ class Extension:
                   extra_compile_args=None,
                   extra_link_args=None,
                   export_symbols=None,
+                  depends=None,
+                  language=None,
+                  **kw                      # To catch unknown keywords
                  ):
-
         assert type(name) is StringType, "'name' must be a string"
         assert (type(sources) is ListType and
                 map(type, sources) == [StringType]*len(sources)), \
@@ -105,7 +116,18 @@ class Extension:
         self.extra_compile_args = extra_compile_args or []
         self.extra_link_args = extra_link_args or []
         self.export_symbols = export_symbols or []
+        self.depends = depends or []
+        self.language = language
 
+        # If there are unknown keyword options, warn about them
+        if len(kw):
+            L = kw.keys() ; L.sort()
+            L = map(repr, L)
+            msg = "Unknown Extension options: " + string.join(L, ', ')
+            if warnings is not None:
+                warnings.warn(msg)
+            else:
+                sys.stderr.write(msg + '\n')
 # class Extension
 
 
@@ -160,7 +182,7 @@ def read_setup_file (filename):
             suffix = os.path.splitext(word)[1]
             switch = word[0:2] ; value = word[2:]
 
-            if suffix in (".c", ".cc", ".cpp", ".cxx", ".c++"):
+            if suffix in (".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm"):
                 # hmm, should we do something about C vs. C++ sources?
                 # or leave it up to the CCompiler implementation to
                 # worry about?
@@ -188,11 +210,13 @@ def read_setup_file (filename):
                 append_next_word = ext.runtime_library_dirs
             elif word == "-Xlinker":
                 append_next_word = ext.extra_link_args
+            elif word == "-Xcompiler":
+                append_next_word = ext.extra_compile_args
             elif switch == "-u":
                 ext.extra_link_args.append(word)
                 if not value:
                     append_next_word = ext.extra_link_args
-            elif suffix in (".a", ".so", ".sl", ".o"):
+            elif suffix in (".a", ".so", ".sl", ".o", ".dylib"):
                 # NB. a really faithful emulation of makesetup would
                 # append a .o file to extra_objects only if it
                 # had a slash in it; otherwise, it would s/.o/.c/

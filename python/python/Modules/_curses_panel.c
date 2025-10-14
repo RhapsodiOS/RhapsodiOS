@@ -141,14 +141,12 @@ find_po(PANEL *pan)
    PARSESTR - format string for argument parsing */
 
 #define Panel_NoArgNoReturnFunction(X) \
-static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self, PyObject *args) \
-{ if (!PyArg_NoArgs(args)) return NULL; \
-  return PyCursesCheckERR(X(self->pan), # X); }
+static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self) \
+{ return PyCursesCheckERR(X(self->pan), # X); }
 
 #define Panel_NoArgTrueFalseFunction(X) \
-static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self, PyObject *args) \
+static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self) \
 { \
-  if (!PyArg_NoArgs(args)) return NULL; \
   if (X (self->pan) == FALSE) { Py_INCREF(Py_False); return Py_False; } \
   else { Py_INCREF(Py_True); return Py_True; } }
 
@@ -156,7 +154,7 @@ static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self, PyObject *args) \
 static PyObject *PyCursesPanel_##X(PyCursesPanelObject *self, PyObject *args) \
 { \
   TYPE arg1, arg2; \
-  if (!PyArg_Parse(args,PARSESTR, &arg1, &arg2)) return NULL; \
+  if (!PyArg_ParseTuple(args, PARSESTR, &arg1, &arg2)) return NULL; \
   return PyCursesCheckERR(X(self->pan, arg1, arg2), # X); }
 
 /* ------------- PANEL routines --------------- */
@@ -166,7 +164,7 @@ Panel_NoArgNoReturnFunction(hide_panel)
 Panel_NoArgNoReturnFunction(show_panel)
 Panel_NoArgNoReturnFunction(top_panel)
 Panel_NoArgTrueFalseFunction(panel_hidden)
-Panel_TwoArgNoReturnFunction(move_panel, int, "(ii);y,x")
+Panel_TwoArgNoReturnFunction(move_panel, int, "ii;y,x")
 
 /* Allocation and deallocation of Panel Objects */
 
@@ -193,18 +191,16 @@ PyCursesPanel_Dealloc(PyCursesPanelObject *po)
     (void)del_panel(po->pan);
     Py_DECREF(po->wo);
     remove_lop(po);
-    PyMem_DEL(po);
+    PyObject_DEL(po);
 }
 
 /* panel_above(NULL) returns the bottom panel in the stack. To get
    this behaviour we use curses.panel.bottom_panel(). */
 static PyObject *
-PyCursesPanel_above(PyCursesPanelObject *self, PyObject *args)
+PyCursesPanel_above(PyCursesPanelObject *self)
 {
     PANEL *pan;
     PyCursesPanelObject *po;
-    
-    if (!PyArg_NoArgs(args)) return NULL;
     
     pan = panel_above(self->pan);
 
@@ -226,12 +222,10 @@ PyCursesPanel_above(PyCursesPanelObject *self, PyObject *args)
 /* panel_below(NULL) returns the top panel in the stack. To get
    this behaviour we use curses.panel.top_panel(). */
 static PyObject *
-PyCursesPanel_below(PyCursesPanelObject *self, PyObject *args)
+PyCursesPanel_below(PyCursesPanelObject *self)
 {
     PANEL *pan;
     PyCursesPanelObject *po;
-    
-    if (!PyArg_NoArgs(args)) return NULL;
     
     pan = panel_below(self->pan);
     
@@ -251,10 +245,8 @@ PyCursesPanel_below(PyCursesPanelObject *self, PyObject *args)
 }
 
 static PyObject *
-PyCursesPanel_window(PyCursesPanelObject *self, PyObject *args)
+PyCursesPanel_window(PyCursesPanelObject *self)
 {
-    if (!PyArg_NoArgs(args)) return NULL;
-
     Py_INCREF(self->wo);
     return (PyObject *)self->wo;
 }
@@ -266,7 +258,7 @@ PyCursesPanel_replace_panel(PyCursesPanelObject *self, PyObject *args)
     PyCursesWindowObject *temp;
     int rtn;
     
-    if (ARG_COUNT(args) != 1) {
+    if (PyTuple_Size(args) != 1) {
 	PyErr_SetString(PyExc_TypeError, "replace requires one argument");
 	return NULL;
     }
@@ -294,27 +286,18 @@ PyCursesPanel_replace_panel(PyCursesPanelObject *self, PyObject *args)
 }
 
 static PyObject *
-PyCursesPanel_set_panel_userptr(PyCursesPanelObject *self, PyObject *args)
+PyCursesPanel_set_panel_userptr(PyCursesPanelObject *self, PyObject *obj)
 {
-    PyObject *obj;
-    
-    if (ARG_COUNT(args) != 1) {
-	PyErr_SetString(PyExc_TypeError, "set_userptr requires one argument");
-	return NULL;
-    }
-    obj = PyTuple_GetItem(args, 0);
     Py_INCREF(obj);
     return PyCursesCheckERR(set_panel_userptr(self->pan, (void*)obj),
                             "set_panel_userptr");
 }
 
-static PyObject *PyCursesPanel_userptr
-(PyCursesPanelObject *self, PyObject *args)
+static PyObject *
+PyCursesPanel_userptr(PyCursesPanelObject *self)
 {
     PyObject *obj;
     PyCursesInitialised; 
-    if (!PyArg_NoArgs(args))
-        return NULL;
     obj = (PyObject *) panel_userptr(self->pan);
     Py_INCREF(obj);
     return obj;
@@ -324,20 +307,18 @@ static PyObject *PyCursesPanel_userptr
 /* Module interface */
 
 static PyMethodDef PyCursesPanel_Methods[] = {
-    {"above",           (PyCFunction)PyCursesPanel_above},
-    {"below",           (PyCFunction)PyCursesPanel_below},
-    {"bottom",          (PyCFunction)PyCursesPanel_bottom_panel},
-    {"hidden",          (PyCFunction)PyCursesPanel_panel_hidden},
-    {"hide",            (PyCFunction)PyCursesPanel_hide_panel},
-    {"move",            (PyCFunction)PyCursesPanel_move_panel},
-    {"replace",         (PyCFunction)PyCursesPanel_replace_panel,
-     METH_VARARGS},
-    {"set_userptr",     (PyCFunction)PyCursesPanel_set_panel_userptr, 
-     METH_VARARGS},
-    {"show",            (PyCFunction)PyCursesPanel_show_panel},
-    {"top",             (PyCFunction)PyCursesPanel_top_panel},
-    {"userptr",         (PyCFunction)PyCursesPanel_userptr},
-    {"window",          (PyCFunction)PyCursesPanel_window},
+    {"above",           (PyCFunction)PyCursesPanel_above, METH_NOARGS},
+    {"below",           (PyCFunction)PyCursesPanel_below, METH_NOARGS},
+    {"bottom",          (PyCFunction)PyCursesPanel_bottom_panel, METH_NOARGS},
+    {"hidden",          (PyCFunction)PyCursesPanel_panel_hidden, METH_NOARGS},
+    {"hide",            (PyCFunction)PyCursesPanel_hide_panel, METH_NOARGS},
+    {"move",            (PyCFunction)PyCursesPanel_move_panel, METH_VARARGS},
+    {"replace",         (PyCFunction)PyCursesPanel_replace_panel, METH_VARARGS},
+    {"set_userptr",     (PyCFunction)PyCursesPanel_set_panel_userptr, METH_O},
+    {"show",            (PyCFunction)PyCursesPanel_show_panel, METH_NOARGS},
+    {"top",             (PyCFunction)PyCursesPanel_top_panel, METH_NOARGS},
+    {"userptr",         (PyCFunction)PyCursesPanel_userptr, METH_NOARGS},
+    {"window",          (PyCFunction)PyCursesPanel_window, METH_NOARGS},
     {NULL,		NULL}   /* sentinel */
 };
 
@@ -373,14 +354,12 @@ PyTypeObject PyCursesPanel_Type = {
    panel.above() *requires* a panel object in the first place which
    may be undesirable. */
 static PyObject *
-PyCurses_bottom_panel(PyObject *self, PyObject *args)
+PyCurses_bottom_panel(PyObject *self)
 {
     PANEL *pan;
     PyCursesPanelObject *po;
 
     PyCursesInitialised;
-	
-    if (!PyArg_NoArgs(args)) return NULL;
 
     pan = panel_above(NULL);
 
@@ -421,14 +400,12 @@ PyCurses_new_panel(PyObject *self, PyObject *args)
    *requires* a panel object in the first place which may be
    undesirable. */
 static PyObject *
-PyCurses_top_panel(PyObject *self, PyObject *args)
+PyCurses_top_panel(PyObject *self)
 {
     PANEL *pan;
     PyCursesPanelObject *po;
     
     PyCursesInitialised;
-	
-    if (!PyArg_NoArgs(args)) return NULL;
 
     pan = panel_below(NULL);
 
@@ -447,10 +424,9 @@ PyCurses_top_panel(PyObject *self, PyObject *args)
     return (PyObject *)po;
 }
 
-static PyObject *PyCurses_update_panels(PyObject *self, PyObject *args)
+static PyObject *PyCurses_update_panels(PyObject *self)
 { 
     PyCursesInitialised;
-    if (!PyArg_NoArgs(args)) return NULL;
     update_panels();
     Py_INCREF(Py_None);
     return Py_None;
@@ -460,16 +436,16 @@ static PyObject *PyCurses_update_panels(PyObject *self, PyObject *args)
 /* List of functions defined in the module */
 
 static PyMethodDef PyCurses_methods[] = {
-    {"bottom_panel",        (PyCFunction)PyCurses_bottom_panel},
-    {"new_panel",           (PyCFunction)PyCurses_new_panel, METH_VARARGS},
-    {"top_panel",           (PyCFunction)PyCurses_top_panel},
-    {"update_panels",       (PyCFunction)PyCurses_update_panels},
+    {"bottom_panel",        (PyCFunction)PyCurses_bottom_panel,  METH_NOARGS},
+    {"new_panel",           (PyCFunction)PyCurses_new_panel,     METH_VARARGS},
+    {"top_panel",           (PyCFunction)PyCurses_top_panel,     METH_NOARGS},
+    {"update_panels",       (PyCFunction)PyCurses_update_panels, METH_NOARGS},
     {NULL,		NULL}		/* sentinel */
 };
 
 /* Initialization function for the module */
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 init_curses_panel(void)
 {
     PyObject *m, *d, *v;

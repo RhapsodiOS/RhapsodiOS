@@ -3,7 +3,9 @@
 Package containing implementation of all the standard Distutils
 commands."""
 
-__revision__ = "$Id: __init__.py,v 1.1.1.1 2002/02/05 23:21:20 zarzycki Exp $"
+# This module should be kept compatible with Python 1.5.2.
+
+__revision__ = "$Id: __init__.py,v 1.18 2003/03/03 18:37:16 akuchling Exp $"
 
 __all__ = ['build',
            'build_py',
@@ -17,8 +19,15 @@ __all__ = ['build',
            'install_scripts',
            'install_data',
            'sdist',
+           'register',
            'bdist',
            'bdist_dumb',
            'bdist_rpm',
            'bdist_wininst',
+           # These two are reserved for future use:
+           #'bdist_sdux',
+           #'bdist_pkgtool',
+           # Note:
+           # bdist_packager is not included because it only provides
+           # an abstract base class
           ]

@@ -1,10 +1,8 @@
-from __future__ import generators
-
 import pprint
 import sys
 import unittest
 
-import test_support
+from test import test_support
 
 
 class HookWatcher:
@@ -329,6 +327,14 @@ protect_ident = ident(protect)
 
 
 def capture_events(callable, p=None):
+    try:
+        sys.setprofile()
+    except TypeError:
+        pass
+    else:
+        raise test_support.TestFailed(
+            'sys.setprofile() did not raise TypeError')
+
     if p is None:
         p = HookWatcher()
     sys.setprofile(p.callback)
@@ -343,11 +349,10 @@ def show_events(callable):
 
 
 def test_main():
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(ProfileHookTestCase))
-    suite.addTest(loader.loadTestsFromTestCase(ProfileSimulatorTestCase))
-    test_support.run_suite(suite)
+    test_support.run_unittest(
+        ProfileHookTestCase,
+        ProfileSimulatorTestCase
+    )
 
 
 if __name__ == "__main__":

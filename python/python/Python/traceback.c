@@ -35,8 +35,8 @@ tb_getattr(tracebackobject *tb, char *name)
 static void
 tb_dealloc(tracebackobject *tb)
 {
+	PyObject_GC_UnTrack(tb);
 	Py_TRASHCAN_SAFE_BEGIN(tb)
-	_PyObject_GC_UNTRACK(tb);
 	Py_XDECREF(tb->tb_next);
 	Py_XDECREF(tb->tb_frame);
 	PyObject_GC_Del(tb);
@@ -103,8 +103,7 @@ PyTypeObject PyTraceBack_Type = {
 };
 
 static tracebackobject *
-newtracebackobject(tracebackobject *next, PyFrameObject *frame, int lasti,
-		   int lineno)
+newtracebackobject(tracebackobject *next, PyFrameObject *frame)
 {
 	tracebackobject *tb;
 	if ((next != NULL && !PyTraceBack_Check(next)) ||
@@ -118,9 +117,10 @@ newtracebackobject(tracebackobject *next, PyFrameObject *frame, int lasti,
 		tb->tb_next = next;
 		Py_XINCREF(frame);
 		tb->tb_frame = frame;
-		tb->tb_lasti = lasti;
-		tb->tb_lineno = lineno;
-		_PyObject_GC_TRACK(tb);
+		tb->tb_lasti = frame->f_lasti;
+		tb->tb_lineno = PyCode_Addr2Line(frame->f_code, 
+						 frame->f_lasti);
+		PyObject_GC_Track(tb);
 	}
 	return tb;
 }
@@ -130,8 +130,7 @@ PyTraceBack_Here(PyFrameObject *frame)
 {
 	PyThreadState *tstate = frame->f_tstate;
 	tracebackobject *oldtb = (tracebackobject *) tstate->curexc_traceback;
-	tracebackobject *tb = newtracebackobject(oldtb,
-				frame, frame->f_lasti, frame->f_lineno);
+	tracebackobject *tb = newtracebackobject(oldtb, frame);
 	if (tb == NULL)
 		return -1;
 	tstate->curexc_traceback = (PyObject *)tb;
@@ -155,7 +154,7 @@ tb_displayline(PyObject *f, char *filename, int lineno, char *name)
 	/* This is needed by Emacs' compile command */
 #define FMT "  File \"%.500s\", line %d, in %.500s\n"
 #endif
-	xfp = fopen(filename, "r");
+	xfp = fopen(filename, "r" PY_STDIOTEXTMODE);
 	if (xfp == NULL) {
 		/* Search tail of filename in sys.path before giving up */
 		PyObject *path;
@@ -186,7 +185,7 @@ tb_displayline(PyObject *f, char *filename, int lineno, char *name)
 					if (len > 0 && namebuf[len-1] != SEP)
 						namebuf[len++] = SEP;
 					strcpy(namebuf+len, tail);
-					xfp = fopen(namebuf, "r");
+					xfp = fopen(namebuf, "r" PY_STDIOTEXTMODE);
 					if (xfp != NULL) {
 						filename = namebuf;
 						break;
@@ -203,7 +202,7 @@ tb_displayline(PyObject *f, char *filename, int lineno, char *name)
 		char* pLastChar = &linebuf[sizeof(linebuf)-2];
 		do {
 			*pLastChar = '\0';
-			if (fgets(linebuf, sizeof linebuf, xfp) == NULL)
+			if (Py_UniversalNewlineFgets(linebuf, sizeof linebuf, xfp, NULL) == NULL)
 				break;
 			/* fgets read *something*; if it didn't get as
 			   far as pLastChar, it must have found a newline
@@ -239,9 +238,6 @@ tb_printinternal(tracebackobject *tb, PyObject *f, int limit)
 	}
 	while (tb != NULL && err == 0) {
 		if (depth <= limit) {
-			if (Py_OptimizeFlag)
-				tb->tb_lineno = PyCode_Addr2Line(
-					tb->tb_frame->f_code, tb->tb_lasti);
 			err = tb_displayline(f,
 			    PyString_AsString(
 				    tb->tb_frame->f_code->co_filename),

@@ -1,5 +1,4 @@
 import marshal
-import string
 import bkfile
 
 
@@ -18,9 +17,7 @@ trailer = """\
 # if __debug__ == 0 (i.e. -O option given), set Py_OptimizeFlag in frozen app.
 default_entry_point = """
 int
-main(argc, argv)
-    int argc;
-    char **argv;
+main(int argc, char **argv)
 {
 	extern int Py_FrozenMain(int, char **);
 """ + ((not __debug__ and """
@@ -40,7 +37,7 @@ def makefreeze(base, dict, debug=0, entry_point=None, fail_import=()):
     mods.sort()
     for mod in mods:
         m = dict[mod]
-        mangled = string.join(string.split(mod, "."), "__")
+        mangled = "__".join(mod.split("."))
         if m.__code__:
             file = 'M_' + mangled + '.c'
             outfp = bkfile.open(base + file, 'w')
@@ -90,4 +87,4 @@ def writecode(outfp, mod, str):
 
 ## def writecode(outfp, mod, str):
 ##     outfp.write('unsigned char M_%s[%d] = "%s";\n' % (mod, len(str),
-##     string.join(map(lambda s: `s`[1:-1], string.split(str, '"')), '\\"')))
+##     '\\"'.join(map(lambda s: `s`[1:-1], str.split('"')))))

@@ -1,6 +1,6 @@
 #
 # Tkinter
-# $Id: tkFont.py,v 1.1.1.1 2002/02/05 23:21:37 zarzycki Exp $
+# $Id: tkFont.py,v 1.5 2003/06/14 21:40:04 loewis Exp $
 #
 # font wrapper
 #
@@ -21,6 +21,7 @@ import Tkinter
 
 # weight/slant
 NORMAL = "normal"
+ROMAN = "roman"
 BOLD   = "bold"
 ITALIC = "italic"
 
@@ -37,7 +38,7 @@ class Font:
     family -- font 'family', e.g. Courier, Times, Helvetica
     size -- font size in points
     weight -- font thickness: NORMAL, BOLD
-    slant -- font slant: NORMAL, ITALIC
+    slant -- font slant: ROMAN, ITALIC
     underline -- font underlining: false (0), true (1)
     overstrike -- font strikeout: false (0), true (1)
     name -- name to use for this font configuration (defaults to a unique name)
@@ -73,7 +74,7 @@ class Font:
         if not name:
             name = "font" + str(id(self))
         self.name = name
-        apply(root.tk.call, ("font", "create", name) + font)
+        root.tk.call("font", "create", name, *font)
         # backlinks!
         self._root  = root
         self._split = root.tk.splitlist
@@ -90,7 +91,7 @@ class Font:
 
     def copy(self):
         "Return a distinct copy of the current font"
-        return apply(Font, (self._root,), self.actual())
+        return Font(self._root, **self.actual())
 
     def actual(self, option=None):
         "Return actual font attributes"
@@ -108,8 +109,8 @@ class Font:
     def config(self, **options):
         "Modify font attributes"
         if options:
-            apply(self._call, ("font", "config", self.name) +
-                  self._set(options))
+            self._call("font", "config", self.name,
+                  *self._set(options))
         else:
             return self._mkdict(
                 self._split(self._call("font", "config", self.name))

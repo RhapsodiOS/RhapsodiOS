@@ -91,7 +91,7 @@ It is always available.
   containing three \code{None} values is returned.  Otherwise, the
   values returned are \code{(\var{type}, \var{value},
   \var{traceback})}.  Their meaning is: \var{type} gets the exception
-  type of the exception being handled (a string or class object);
+  type of the exception being handled (a class object);
   \var{value} gets the exception parameter (its \dfn{associated value}
   or the second argument to \keyword{raise}, which is always a class
   instance if the exception type is a class object); \var{traceback}
@@ -99,13 +99,18 @@ It is always available.
   encapsulates the call stack at the point where the exception
   originally occurred.  \obindex{traceback}
 
+  If \function{exc_clear()} is called, this function will return three
+  \code{None} values until either another exception is raised in the
+  current thread or the execution stack returns to a frame where
+  another exception is being handled.
+
   \warning{Assigning the \var{traceback} return value to a
   local variable in a function that is handling an exception will
   cause a circular reference.  This will prevent anything referenced
   by a local variable in the same function or by the traceback from
   being garbage collected.  Since most functions don't need access to
   the traceback, the best solution is to use something like
-  \code{type, value = sys.exc_info()[:2]} to extract only the
+  \code{exctype, value = sys.exc_info()[:2]} to extract only the
   exception type and value.  If you do need the traceback, make sure
   to delete it after use (best done with a \keyword{try}
   ... \keyword{finally} statement) or to call \function{exc_info()} in
@@ -113,6 +118,21 @@ It is always available.
   with Python 2.2, such cycles are automatically reclaimed when garbage
   collection is enabled and they become unreachable, but it remains more
   efficient to avoid creating cycles.}
+\end{funcdesc}
+
+\begin{funcdesc}{exc_clear}{}
+  This function clears all information relating to the current or last
+  exception that occured in the current thread.  After calling this
+  function, \function{exc_info()} will return three \code{None} values until
+  another exception is raised in the current thread or the execution stack
+  returns to a frame where another exception is being handled.
+  
+  This function is only needed in only a few obscure situations.  These
+  include logging and error handling systems that report information on the
+  last or current exception.  This function can also be used to try to free
+  resources and trigger object finalization, though no guarantee is made as
+  to what objects will be freed, if any.
+\versionadded{2.3}
 \end{funcdesc}
 
 \begin{datadesc}{exc_type}
@@ -177,6 +197,12 @@ It is always available.
   or when \code{os._exit()} is called.}
 \end{datadesc}
 
+\begin{funcdesc}{getcheckinterval}{}
+  Return the interpreter's ``check interval'';
+  see \function{setcheckinterval()}.
+  \versionadded{2.3}
+\end{funcdesc}
+
 \begin{funcdesc}{getdefaultencoding}{}
   Return the name of the current default string encoding used by the
   Unicode implementation.
@@ -189,6 +215,22 @@ It is always available.
   \refmodule{dl} and \module{DLFCN} modules.
   Availability: \UNIX.
   \versionadded{2.2}
+\end{funcdesc}
+
+\begin{funcdesc}{getfilesystemencoding}{}
+  Return the name of the encoding used to convert Unicode filenames
+  into system file names, or \code{None} if the system default encoding
+  is used. The result value depends on the operating system:
+\begin{itemize}
+\item On Windows 9x, the encoding is ``mbcs''.
+\item On Mac OS X, the encoding is ``utf-8''.
+\item On Unix, the encoding is the user's preference 
+      according to the result of nl_langinfo(CODESET), or None if
+      the nl_langinfo(CODESET) failed.
+\item On Windows NT+, file names are Unicode natively, so no conversion
+      is performed.
+\end{itemize}
+  \versionadded{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{getrefcount}{object}
@@ -214,6 +256,32 @@ It is always available.
 
   This function should be used for internal and specialized purposes
   only.
+\end{funcdesc}
+
+\begin{funcdesc}{getwindowsversion}{}
+  Return a tuple containing five components, describing the Windows 
+  version currently running.  The elements are \var{major}, \var{minor}, 
+  \var{build}, \var{platform}, and \var{text}.  \var{text} contains
+  a string while all other values are integers.
+
+  \var{platform} may be one of the following values:
+  \begin{list}{}{\leftmargin 0.7in \labelwidth 0.65in}
+    \item[0 (\constant{VER_PLATFORM_WIN32s})]
+      Win32s on Windows 3.1.
+    \item[1 (\constant{VER_PLATFORM_WIN32_WINDOWS})] 
+      Windows 95/98/ME
+    \item[2 (\constant{VER_PLATFORM_WIN32_NT})] 
+      Windows NT/2000/XP
+    \item[3 (\constant{VER_PLATFORM_WIN32_CE})] 
+      Windows CE.
+  \end{list}
+  
+  This function wraps the Win32 \function{GetVersionEx()} function;
+  see the Microsoft Documentation for more information about these
+  fields.
+
+  Availability: Windows.
+  \versionadded{2.3}
 \end{funcdesc}
 
 \begin{datadesc}{hexversion}
@@ -282,10 +350,11 @@ else:
 \begin{datadesc}{path}
 \indexiii{module}{search}{path}
   A list of strings that specifies the search path for modules.
-  Initialized from the environment variable \envvar{PYTHONPATH}, or an
+  Initialized from the environment variable \envvar{PYTHONPATH}, plus an
   installation-dependent default.
 
-  The first item of this list, \code{path[0]}, is the directory
+  As initialized upon program startup,
+  the first item of this list, \code{path[0]}, is the directory
   containing the script that was used to invoke the Python
   interpreter.  If the script directory is not available (e.g.  if the
   interpreter is invoked interactively or if the script is read from
@@ -293,6 +362,10 @@ else:
   Python to search modules in the current directory first.  Notice
   that the script directory is inserted \emph{before} the entries
   inserted as a result of \envvar{PYTHONPATH}.
+
+  A program is free to modify this list for its own purposes.
+
+  \versionchanged[Unicode strings are no longer ignored.]{2.3}
 \end{datadesc}
 
 \begin{datadesc}{platform}
@@ -329,8 +402,8 @@ else:
 \begin{funcdesc}{setcheckinterval}{interval}
   Set the interpreter's ``check interval''.  This integer value
   determines how often the interpreter checks for periodic things such
-  as thread switches and signal handlers.  The default is \code{10},
-  meaning the check is performed every 10 Python virtual instructions.
+  as thread switches and signal handlers.  The default is \code{100},
+  meaning the check is performed every 100 Python virtual instructions.
   Setting it to a larger value may increase performance for programs
   using threads.  Setting it to a value \code{<=} 0 checks every
   virtual instruction, maximizing responsiveness as well as overhead.
@@ -456,6 +529,12 @@ else:
 \end{verbatim}
 \end{datadesc}
 
+\begin{datadesc}{api_version}
+  The C API version for this interpreter.  Programmers may find this useful
+  when debugging version conflicts between Python and extension
+  modules. \versionadded{2.3}
+\end{datadesc}
+
 \begin{datadesc}{version_info}
   A tuple containing the five components of the version number:
   \var{major}, \var{minor}, \var{micro}, \var{releaselevel}, and
@@ -482,3 +561,9 @@ else:
   Python.
   Availability: Windows.
 \end{datadesc}
+
+
+\begin{seealso}
+  \seemodule{site}
+    {This describes how to use .pth files to extend \code{sys.path}.}
+\end{seealso}

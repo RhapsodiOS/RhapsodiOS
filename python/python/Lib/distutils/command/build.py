@@ -2,9 +2,9 @@
 
 Implements the Distutils 'build' command."""
 
-# created 1999/03/08, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: build.py,v 1.1.1.1 2002/02/05 23:21:20 zarzycki Exp $"
+__revision__ = "$Id: build.py,v 1.34 2002/11/19 13:12:28 akuchling Exp $"
 
 import sys, os
 from distutils.core import Command

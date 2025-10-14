@@ -26,7 +26,7 @@
  * Peters, Guido van Rossum, Ka-Ping Yee, Sjoerd Mullender, and
  * probably one or two others that I'm forgetting.
  *
- * $Id: regexpr.c,v 1.1.1.1 2002/02/05 23:24:31 zarzycki Exp $ */
+ * $Id: regexpr.c,v 1.36 2002/08/07 16:21:51 loewis Exp $ */
 
 #include "Python.h"
 #include "regexpr.h"
@@ -1243,7 +1243,7 @@ char *re_compile_pattern(unsigned char *regex, int size, regexp_t bufp)
 		}
 		case Rquote:
 		{
-			abort();
+			Py_FatalError("Rquote");
 			/*NOTREACHED*/
 		}
 		case Rbol:

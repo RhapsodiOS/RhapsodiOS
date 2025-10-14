@@ -1,9 +1,8 @@
 # Scan an Apple header file, generating a Python file of generator calls.
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
-from bgenlocations import TOOLBOXDIR
 
 from scantools import Scanner
 
@@ -14,6 +13,8 @@ def main():
 	scanner = MyScanner(input, output, defsoutput)
 	scanner.scan()
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	import winsupport
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -32,6 +33,8 @@ class MyScanner(Scanner):
 
 	def writeinitialdefs(self):
 		self.defsfile.write("def FOUR_CHAR_CODE(x): return x\n")
+		self.defsfile.write("false = 0\n")
+		self.defsfile.write("true = 1\n")
 
 	def makeblacklistnames(self):
 		return [
@@ -46,62 +49,30 @@ class MyScanner(Scanner):
 			# Constants with funny definitions
 			'kMouseUpOutOfSlop',
 			'kAllWindowClasses',
+			# OS8 only:
+			'GetAuxWin',
+			'GetWindowDataHandle',
+			'SaveOld',
+			'DrawNew',
+			'SetWinColor',
+			'SetDeskCPat',
+			'InitWindows',
+			'InitFloatingWindows',
+			'GetWMgrPort',
+			'GetCWMgrPort',
+			'ValidRgn',		# Use versions with Window in their name
+			'ValidRect',
+			'InvalRgn',
+			'InvalRect',
+			'IsValidWindowPtr', # I think this is useless for Python, but not sure...
+			'GetWindowZoomFlag',	# Not available in Carbon
+			'GetWindowTitleWidth',	# Ditto
+			'GetWindowGoAwayFlag',
+			'GetWindowSpareFlag',
 			]
 			
 	def makegreylist(self):
 		return [
-			('#if !TARGET_API_MAC_CARBON', [
-				'GetAuxWin',
-				'GetWindowDataHandle',
-				'SaveOld',
-				'DrawNew',
-				'SetWinColor',
-				'SetDeskCPat',
-				'InitWindows',
-				'InitFloatingWindows',
-				'GetWMgrPort',
-				'GetCWMgrPort',
-				'ValidRgn',		# Use versions with Window in their name
-				'ValidRect',
-				'InvalRgn',
-				'InvalRect',
-				'IsValidWindowPtr', # I think this is useless for Python, but not sure...
-				'GetWindowZoomFlag',	# Not available in Carbon
-				'GetWindowTitleWidth',	# Ditto
-				'GetWindowGoAwayFlag',
-				'GetWindowSpareFlag',
-			]),
-			('#if !TARGET_API_MAC_OS8', [
-				'IsWindowUpdatePending',
-				'FindWindowOfClass',
-				'GetFrontWindowOfClass',
-				'ChangeWindowPropertyAttributes',
-				'GetWindowPropertyAttributes',
-				'GetNextWindowOfClass',
-				'ScrollWindowRegion',
-				'ScrollWindowRect',
-				'ChangeWindowAttributes',
-				'ReshapeCustomWindow',
-				'EnableScreenUpdates',
-				'DisableScreenUpdates',
-				'GetAvailableWindowPositioningBounds',
-				'CreateStandardWindowMenu',
-				'GetSheetWindowParent',
-				'HideSheetWindow',
-				'ShowSheetWindow',
-				'ConstrainWindowToScreen',
-				'GetWindowGreatestAreaDevice',
-				'CopyWindowTitleAsCFString',
-				'SetWindowTitleWithCFString',
-				'CopyWindowAlternateTitle',
-				'SetWindowAlternateTitle',
-				'GetWindowModality',
-				'SetWindowModality',
-				'SetWindowClass',
-				'ReleaseWindow',
-				'RetainWindow',
-				'GetWindowRetainCount',
-			]),
 			('#if TARGET_API_MAC_OSX', [
 				'TransitionWindowAndParent',
 			])]
@@ -133,6 +104,13 @@ class MyScanner(Scanner):
 			
 			([("void", "wStorage", "OutMode")],
 			 [("NullStorage", "*", "InMode")]),
+			
+			# match FindWindowOfClass
+			([("WindowRef", "outWindow", "OutMode"), ("WindowPartCode", "outWindowPart", "OutMode")],
+			 [("ExistingWindowPtr", "*", "OutMode"), ("WindowPartCode", "outWindowPart", "OutMode")]),
+		    # then match CreateNewWindow and CreateWindowFromResource
+			([("WindowRef", "outWindow", "OutMode")],
+			 [("WindowRef", "*", "*")]),
 			
 			([("WindowPtr", "*", "OutMode")],
 			 [("ExistingWindowPtr", "*", "*")]),

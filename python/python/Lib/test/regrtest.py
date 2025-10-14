@@ -14,9 +14,11 @@ Command line options:
 -x: exclude   -- arguments are tests to *exclude*
 -s: single    -- run only a single test (see below)
 -r: random    -- randomize test execution order
+-f: fromfile  -- read names of tests to run from a file (see below)
 -l: findleaks -- if GC is available detect tests that leak memory
 -u: use       -- specify which special resource intensive tests to run
 -h: help      -- print this text and exit
+-t: threshold -- call gc.set_threshold(N)
 
 If non-option arguments are present, they are names for tests to run,
 unless -x is given, in which case they are names for tests not to run.
@@ -24,27 +26,46 @@ If no test names are given, all tests are run.
 
 -v is incompatible with -g and does not compare test output files.
 
--s means to run only a single test and exit.  This is useful when doing memory
-analysis on the Python interpreter (which tend to consume to many resources to
-run the full regression test non-stop).  The file /tmp/pynexttest is read to
-find the next test to run.  If this file is missing, the first test_*.py file
-in testdir or on the command line is used.  (actually tempfile.gettempdir() is
-used instead of /tmp).
+-s means to run only a single test and exit.  This is useful when
+doing memory analysis on the Python interpreter (which tend to consume
+too many resources to run the full regression test non-stop).  The
+file /tmp/pynexttest is read to find the next test to run.  If this
+file is missing, the first test_*.py file in testdir or on the command
+line is used.  (actually tempfile.gettempdir() is used instead of
+/tmp).
 
--u is used to specify which special resource intensive tests to run, such as
-those requiring large file support or network connectivity.  The argument is a
-comma-separated list of words indicating the resources to test.  Currently
-only the following are defined:
+-f reads the names of tests from the file given as f's argument, one
+or more test names per line.  Whitespace is ignored.  Blank lines and
+lines beginning with '#' are ignored.  This is especially useful for
+whittling down failures involving interactions among tests.
+
+-u is used to specify which special resource intensive tests to run,
+such as those requiring large file support or network connectivity.
+The argument is a comma-separated list of words indicating the
+resources to test.  Currently only the following are defined:
+
+    all -       Enable all special resources.
+
+    audio -     Tests that use the audio device.  (There are known
+                cases of broken audio drivers that can crash Python or
+                even the Linux kernel.)
 
     curses -    Tests that use curses and will modify the terminal's
                 state and output modes.
 
-    largefile - It is okay to run some test that may create huge files.  These
-                tests can take a long time and may consume >2GB of disk space
-                temporarily.
+    largefile - It is okay to run some test that may create huge
+                files.  These tests can take a long time and may
+                consume >2GB of disk space temporarily.
 
-    network -   It is okay to run tests that use external network resource,
-                e.g. testing SSL support for sockets.
+    network -   It is okay to run tests that use external network
+                resource, e.g. testing SSL support for sockets.
+
+    bsddb -     It is okay to run the bsddb testsuite, which takes
+                a long time to complete.
+
+To enable all resources except one, use '-uall,-<resource>'.  For
+example, to run all the tests except for the bsddb tests, give the
+option '-uall,-bsddb'.
 """
 
 import sys
@@ -52,9 +73,40 @@ import os
 import getopt
 import traceback
 import random
-import StringIO
+import cStringIO
+import warnings
+from sets import Set
 
-import test_support
+# I see no other way to suppress these warnings;
+# putting them in test_grammar.py has no effect:
+warnings.filterwarnings("ignore", "hex/oct constants", FutureWarning,
+                        ".*test.test_grammar$")
+if sys.maxint > 0x7fffffff:
+    # Also suppress them in <string>, because for 64-bit platforms,
+    # that's where test_grammar.py hides them.
+    warnings.filterwarnings("ignore", "hex/oct constants", FutureWarning,
+                            "<string>")
+
+# MacOSX (a.k.a. Darwin) has a default stack size that is too small
+# for deeply recursive regular expressions.  We see this as crashes in
+# the Python test suite when running test_re.py and test_sre.py.  The
+# fix is to set the stack limit to 2048.
+# This approach may also be useful for other Unixy platforms that
+# suffer from small default stack limits.
+if sys.platform == 'darwin':
+    try:
+        import resource
+    except ImportError:
+        pass
+    else:
+        soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+        newsoft = min(hard, max(soft, 1024*2048))
+        resource.setrlimit(resource.RLIMIT_STACK, (newsoft, hard))
+
+from test import test_support
+
+RESOURCE_NAMES = ('audio', 'curses', 'largefile', 'network', 'bsddb')
+
 
 def usage(code, msg=''):
     print __doc__
@@ -63,7 +115,7 @@ def usage(code, msg=''):
 
 
 def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
-         exclude=0, single=0, randomize=0, findleaks=0,
+         exclude=0, single=0, randomize=0, fromfile=None, findleaks=0,
          use_resources=None):
     """Execute a test suite.
 
@@ -81,19 +133,19 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
     command-line will be used.  If that's empty, too, then all *.py
     files beginning with test_ will be used.
 
-    The other default arguments (verbose, quiet, generate, exclude, single,
-    randomize, findleaks, and use_resources) allow programmers calling main()
-    directly to set the values that would normally be set by flags on the
-    command line.
+    The other default arguments (verbose, quiet, generate, exclude,
+    single, randomize, findleaks, and use_resources) allow programmers
+    calling main() directly to set the values that would normally be
+    set by flags on the command line.
 
     """
 
     test_support.record_original_stdout(sys.stdout)
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hvgqxsrlu:',
+        opts, args = getopt.getopt(sys.argv[1:], 'hvgqxsrf:lu:t:',
                                    ['help', 'verbose', 'quiet', 'generate',
-                                    'exclude', 'single', 'random',
-                                    'findleaks', 'use='])
+                                    'exclude', 'single', 'random', 'fromfile',
+                                    'findleaks', 'use=', 'threshold='])
     except getopt.error, msg:
         usage(2, msg)
 
@@ -116,20 +168,39 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
             single = 1
         elif o in ('-r', '--randomize'):
             randomize = 1
+        elif o in ('-f', '--fromfile'):
+            fromfile = a
         elif o in ('-l', '--findleaks'):
             findleaks = 1
+        elif o in ('-t', '--threshold'):
+            import gc
+            gc.set_threshold(int(a))
         elif o in ('-u', '--use'):
             u = [x.lower() for x in a.split(',')]
             for r in u:
-                if r not in ('curses', 'largefile', 'network'):
-                    usage(1, 'Invalid -u/--use option: %s' % a)
-            use_resources.extend(u)
+                if r == 'all':
+                    use_resources[:] = RESOURCE_NAMES
+                    continue
+                remove = False
+                if r[0] == '-':
+                    remove = True
+                    r = r[1:]
+                if r not in RESOURCE_NAMES:
+                    usage(1, 'Invalid -u/--use option: ' + a)
+                if remove:
+                    if r in use_resources:
+                        use_resources.remove(r)
+                elif r not in use_resources:
+                    use_resources.append(r)
     if generate and verbose:
         usage(2, "-g and -v don't go together!")
+    if single and fromfile:
+        usage(2, "-s and -f don't go together!")
 
     good = []
     bad = []
     skipped = []
+    resource_denieds = []
 
     if findleaks:
         try:
@@ -154,10 +225,22 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
             fp.close()
         except IOError:
             pass
-    for i in range(len(args)):
-        # Strip trailing ".py" from arguments
-        if args[i][-3:] == os.extsep+'py':
-            args[i] = args[i][:-3]
+
+    if fromfile:
+        tests = []
+        fp = open(fromfile)
+        for line in fp:
+            guts = line.split() # assuming no test has whitespace in its name
+            if guts and not guts[0].startswith('#'):
+                tests.extend(guts)
+        fp.close()
+
+    # Strip .py extensions.
+    if args:
+        args = map(removepy, args)
+    if tests:
+        tests = map(removepy, tests)
+
     stdtests = STDTESTS[:]
     nottests = NOTTESTS[:]
     if exclude:
@@ -177,6 +260,7 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
     for test in tests:
         if not quiet:
             print test
+            sys.stdout.flush()
         ok = runtest(test, generate, verbose, quiet, testdir)
         if ok > 0:
             good.append(test)
@@ -184,6 +268,8 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
             bad.append(test)
         else:
             skipped.append(test)
+            if ok == -2:
+                resource_denieds.append(test)
         if findleaks:
             gc.collect()
             if gc.garbage:
@@ -208,8 +294,8 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
             print "All",
         print count(len(good), "test"), "OK."
         if verbose:
-            print "CAUTION:  stdout isn't compared in verbose mode:  a test"
-            print "that passes in verbose mode may fail without it."
+            print "CAUTION:  stdout isn't compared in verbose mode:"
+            print "a test that passes in verbose mode may fail without it."
     if bad:
         print count(len(bad), "test"), "failed:"
         printlist(bad)
@@ -220,7 +306,7 @@ def main(tests=None, testdir=None, verbose=0, quiet=0, generate=0,
         e = _ExpectedSkips()
         plat = sys.platform
         if e.isvalid():
-            surprise = _Set(skipped) - e.getexpected()
+            surprise = Set(skipped) - e.getexpected() - Set(resource_denieds)
             if surprise:
                 print count(len(surprise), "skip"), \
                       "unexpected on", plat + ":"
@@ -259,8 +345,6 @@ STDTESTS = [
 
 NOTTESTS = [
     'test_support',
-    'test_b1',
-    'test_b2',
     'test_future1',
     'test_future2',
     'test_future3',
@@ -295,14 +379,20 @@ def runtest(test, generate, verbose, quiet, testdir = None):
     if verbose:
         cfp = None
     else:
-        cfp = StringIO.StringIO()
+        cfp = cStringIO.StringIO()
     try:
         save_stdout = sys.stdout
         try:
             if cfp:
                 sys.stdout = cfp
                 print test              # Output file starts with test name
-            the_module = __import__(test, globals(), locals(), [])
+            if test.startswith('test.'):
+                abstest = test
+            else:
+                # Always import it from the test package
+                abstest = 'test.' + test
+            the_package = __import__(abstest, globals(), locals(), [])
+            the_module = getattr(the_package, test)
             # Most tests run to completion simply as a side-effect of
             # being imported.  For the benefit of tests that can't run
             # that way (like test_threaded_import), explicitly invoke
@@ -312,20 +402,29 @@ def runtest(test, generate, verbose, quiet, testdir = None):
                 indirect_test()
         finally:
             sys.stdout = save_stdout
+    except test_support.ResourceDenied, msg:
+        if not quiet:
+            print test, "skipped --", msg
+            sys.stdout.flush()
+        return -2
     except (ImportError, test_support.TestSkipped), msg:
         if not quiet:
-            print "test", test, "skipped --", msg
+            print test, "skipped --", msg
+            sys.stdout.flush()
         return -1
     except KeyboardInterrupt:
         raise
     except test_support.TestFailed, msg:
         print "test", test, "failed --", msg
+        sys.stdout.flush()
         return 0
     except:
         type, value = sys.exc_info()[:2]
         print "test", test, "crashed --", str(type) + ":", value
+        sys.stdout.flush()
         if verbose:
             traceback.print_exc(file=sys.stdout)
+            sys.stdout.flush()
         return 0
     else:
         if not cfp:
@@ -355,7 +454,9 @@ def runtest(test, generate, verbose, quiet, testdir = None):
         if output == expected:
             return 1
         print "test", test, "produced unexpected output:"
+        sys.stdout.flush()
         reportdiff(expected, output)
+        sys.stdout.flush()
         return 0
 
 def reportdiff(expected, output):
@@ -408,6 +509,11 @@ def findtestdir():
     testdir = os.path.dirname(file) or os.curdir
     return testdir
 
+def removepy(name):
+    if name.endswith(os.extsep + "py"):
+        name = name[:-3]
+    return name
+
 def count(n, word):
     if n == 1:
         return "%d %s" % (n, word)
@@ -415,61 +521,42 @@ def count(n, word):
         return "%d %ss" % (n, word)
 
 def printlist(x, width=70, indent=4):
-    """Print the elements of a sequence to stdout.
+    """Print the elements of iterable x to stdout.
 
     Optional arg width (default 70) is the maximum line length.
     Optional arg indent (default 4) is the number of blanks with which to
     begin each line.
     """
 
-    line = ' ' * indent
-    for one in map(str, x):
-        w = len(line) + len(one)
-        if line[-1:] == ' ':
-            pad = ''
-        else:
-            pad = ' '
-            w += 1
-        if w > width:
-            print line
-            line = ' ' * indent + one
-        else:
-            line += pad + one
-    if len(line) > indent:
-        print line
+    from textwrap import fill
+    blanks = ' ' * indent
+    print fill(' '.join(map(str, x)), width,
+               initial_indent=blanks, subsequent_indent=blanks)
 
-class _Set:
-    def __init__(self, seq=[]):
-        data = self.data = {}
-        for x in seq:
-            data[x] = 1
-
-    def __len__(self):
-        return len(self.data)
-
-    def __sub__(self, other):
-        "Return set of all elements in self not in other."
-        result = _Set()
-        data = result.data = self.data.copy()
-        for x in other.data:
-            if x in data:
-                del data[x]
-        return result
-
-    def __iter__(self):
-        return iter(self.data)
-
-    def tolist(self, sorted=1):
-        "Return _Set elements as a list."
-        data = self.data.keys()
-        if sorted:
-            data.sort()
-        return data
+# Map sys.platform to a string containing the basenames of tests
+# expected to be skipped on that platform.
+#
+# Special cases:
+#     test_pep277
+#         The _ExpectedSkips constructor adds this to the set of expected
+#         skips if not os.path.supports_unicode_filenames.
+#     test_normalization
+#         Whether a skip is expected here depends on whether a large test
+#         input file has been downloaded.  test_normalization.skip_expected
+#         controls that.
+#     test_socket_ssl
+#         Controlled by test_socket_ssl.skip_expected.  Requires the network
+#         resource, and a socket module with ssl support.
+#     test_timeout
+#         Controlled by test_timeout.skip_expected.  Requires the network
+#         resource and a socket module.
 
 _expectations = {
     'win32':
         """
         test_al
+        test_bsddb185
+        test_bsddb3
         test_cd
         test_cl
         test_commands
@@ -477,49 +564,56 @@ _expectations = {
         test_curses
         test_dbm
         test_dl
+        test_email_codecs
         test_fcntl
         test_fork1
         test_gdbm
         test_gl
         test_grp
         test_imgfile
+        test_ioctl
         test_largefile
         test_linuxaudiodev
         test_mhlib
+        test_mpz
         test_nis
         test_openpty
+        test_ossaudiodev
         test_poll
+        test_posix
         test_pty
         test_pwd
+        test_resource
         test_signal
-        test_socket_ssl
-        test_socketserver
         test_sunaudiodev
         test_timing
         """,
     'linux2':
         """
         test_al
+        test_bsddb185
         test_cd
         test_cl
         test_curses
         test_dl
+        test_email_codecs
         test_gl
         test_imgfile
         test_largefile
+        test_linuxaudiodev
         test_nis
         test_ntpath
-        test_socket_ssl
-        test_socketserver
+        test_ossaudiodev
         test_sunaudiodev
-        test_unicode_file
-        test_winreg
-        test_winsound
         """,
    'mac':
         """
         test_al
+        test_atexit
         test_bsddb
+        test_bsddb185
+        test_bsddb3
+        test_bz2
         test_cd
         test_cl
         test_commands
@@ -527,36 +621,40 @@ _expectations = {
         test_curses
         test_dbm
         test_dl
+        test_email_codecs
         test_fcntl
         test_fork1
         test_gl
         test_grp
+        test_ioctl
         test_imgfile
         test_largefile
         test_linuxaudiodev
         test_locale
         test_mmap
+        test_mpz
         test_nis
         test_ntpath
         test_openpty
+        test_ossaudiodev
         test_poll
+        test_popen
         test_popen2
+        test_posix
         test_pty
         test_pwd
+        test_resource
         test_signal
-        test_socket_ssl
-        test_socketserver
         test_sunaudiodev
         test_sundry
+        test_tarfile
         test_timing
-        test_unicode_file
-        test_winreg
-        test_winsound
         """,
-    'unixware5':
+    'unixware7':
         """
         test_al
         test_bsddb
+        test_bsddb185
         test_cd
         test_cl
         test_dl
@@ -570,18 +668,68 @@ _expectations = {
         test_openpty
         test_pyexpat
         test_sax
-        test_socketserver
         test_sunaudiodev
         test_sundry
-        test_unicode_file
-        test_winreg
-        test_winsound
+        """,
+    'openunix8':
+        """
+        test_al
+        test_bsddb
+        test_bsddb185
+        test_cd
+        test_cl
+        test_dl
+        test_gl
+        test_imgfile
+        test_largefile
+        test_linuxaudiodev
+        test_minidom
+        test_nis
+        test_ntpath
+        test_openpty
+        test_pyexpat
+        test_sax
+        test_sunaudiodev
+        test_sundry
+        """,
+    'sco_sv3':
+        """
+        test_al
+        test_asynchat
+        test_bsddb
+        test_bsddb185
+        test_cd
+        test_cl
+        test_dl
+        test_fork1
+        test_gettext
+        test_gl
+        test_imgfile
+        test_largefile
+        test_linuxaudiodev
+        test_locale
+        test_minidom
+        test_nis
+        test_ntpath
+        test_openpty
+        test_pyexpat
+        test_queue
+        test_sax
+        test_sunaudiodev
+        test_sundry
+        test_thread
+        test_threaded_import
+        test_threadedtempfile
+        test_threading
         """,
     'riscos':
         """
         test_al
         test_asynchat
+        test_atexit
         test_bsddb
+        test_bsddb185
+        test_bsddb3
         test_cd
         test_cl
         test_commands
@@ -605,8 +753,6 @@ _expectations = {
         test_popen2
         test_pty
         test_pwd
-        test_socket_ssl
-        test_socketserver
         test_strop
         test_sunaudiodev
         test_sundry
@@ -615,42 +761,218 @@ _expectations = {
         test_threadedtempfile
         test_threading
         test_timing
-        test_unicode_file
-        test_winreg
-        test_winsound
         """,
     'darwin':
         """
         test_al
+        test_bsddb
+        test_bsddb3
+        test_cd
+        test_cl
+        test_curses
+        test_dl
+        test_email_codecs
+        test_gdbm
+        test_gl
+        test_imgfile
+        test_largefile
+        test_linuxaudiodev
+        test_locale
+        test_minidom
+        test_mpz
+        test_nis
+        test_ntpath
+        test_ossaudiodev
+        test_poll
+        test_sunaudiodev
+        """,
+    'sunos5':
+        """
+        test_al
+        test_bsddb
+        test_bsddb185
+        test_cd
+        test_cl
+        test_curses
+        test_dbm
+        test_email_codecs
+        test_gdbm
+        test_gl
+        test_gzip
+        test_imgfile
+        test_linuxaudiodev
+        test_mpz
+        test_openpty
+        test_zipfile
+        test_zlib
+        """,
+    'hp-ux11':
+        """
+        test_al
+        test_bsddb
+        test_bsddb185
         test_cd
         test_cl
         test_curses
         test_dl
         test_gdbm
         test_gl
+        test_gzip
         test_imgfile
         test_largefile
         test_linuxaudiodev
+        test_locale
         test_minidom
         test_nis
         test_ntpath
+        test_openpty
+        test_pyexpat
+        test_sax
+        test_sunaudiodev
+        test_zipfile
+        test_zlib
+        """,
+    'atheos':
+        """
+        test_al
+        test_bsddb185
+        test_cd
+        test_cl
+        test_curses
+        test_dl
+        test_email_codecs
+        test_gdbm
+        test_gl
+        test_imgfile
+        test_largefile
+        test_linuxaudiodev
+        test_locale
+        test_mhlib
+        test_mmap
+        test_mpz
+        test_nis
         test_poll
-        test_socket_ssl
+        test_popen2
+        test_resource
+        test_sunaudiodev
+        """,
+    'cygwin':
+        """
+        test_al
+        test_bsddb185
+        test_bsddb3
+        test_cd
+        test_cl
+        test_curses
+        test_dbm
+        test_email_codecs
+        test_gl
+        test_imgfile
+        test_ioctl
+        test_largefile
+        test_linuxaudiodev
+        test_locale
+        test_mpz
+        test_nis
+        test_ossaudiodev
         test_socketserver
         test_sunaudiodev
-        test_unicode_file
-        test_winreg
-        test_winsound
+        """,
+    'os2emx':
+        """
+        test_al
+        test_audioop
+        test_bsddb185
+        test_bsddb3
+        test_cd
+        test_cl
+        test_commands
+        test_curses
+        test_dl
+        test_email_codecs
+        test_gl
+        test_imgfile
+        test_largefile
+        test_linuxaudiodev
+        test_mhlib
+        test_mmap
+        test_nis
+        test_openpty
+        test_ossaudiodev
+        test_pty
+        test_resource
+        test_signal
+        test_sunaudiodev
+        """,
+     'freebsd4':
+         """
+       test_aepack
+       test_al
+       test_bsddb
+       test_bsddb3
+       test_cd
+       test_cl
+       test_email_codecs
+       test_gl
+       test_imgfile
+       test_linuxaudiodev
+       test_locale
+       test_macfs
+       test_macostools
+       test_nis
+       test_normalization
+       test_ossaudiodev
+       test_pep277
+       test_plistlib
+       test_scriptpackages
+       test_socket_ssl
+       test_socketserver
+       test_sunaudiodev
+       test_timeout
+       test_unicode_file
+       test_urllibnet
+       test_winreg
+       test_winsound
         """,
 }
 
 class _ExpectedSkips:
     def __init__(self):
-        self.valid = 0
-        if _expectations.has_key(sys.platform):
+        import os.path
+        from test import test_normalization
+        from test import test_socket_ssl
+        from test import test_timeout
+
+        self.valid = False
+        if sys.platform in _expectations:
             s = _expectations[sys.platform]
-            self.expected = _Set(s.split())
-            self.valid = 1
+            self.expected = Set(s.split())
+
+            if not os.path.supports_unicode_filenames:
+                self.expected.add('test_pep277')
+
+            if test_normalization.skip_expected:
+                self.expected.add('test_normalization')
+
+            if test_socket_ssl.skip_expected:
+                self.expected.add('test_socket_ssl')
+
+            if test_timeout.skip_expected:
+                self.expected.add('test_timeout')
+
+            if not sys.platform in ("mac", "darwin"):
+                MAC_ONLY = ["test_macostools", "test_macfs", "test_aepack",
+                            "test_plistlib", "test_scriptpackages"]
+                for skip in MAC_ONLY:
+                    self.expected.add(skip)
+
+            if sys.platform != "win32":
+                WIN_ONLY = ["test_unicode_file", "test_winreg",
+                            "test_winsound"]
+                for skip in WIN_ONLY:
+                    self.expected.add(skip)
+
+            self.valid = True
 
     def isvalid(self):
         "Return true iff _ExpectedSkips knows about the current platform."
@@ -666,4 +988,18 @@ class _ExpectedSkips:
         return self.expected
 
 if __name__ == '__main__':
+    # Remove regrtest.py's own directory from the module search path.  This
+    # prevents relative imports from working, and relative imports will screw
+    # up the testing framework.  E.g. if both test.test_support and
+    # test_support are imported, they will not contain the same globals, and
+    # much of the testing framework relies on the globals in the
+    # test.test_support module.
+    mydir = os.path.abspath(os.path.normpath(os.path.dirname(sys.argv[0])))
+    i = pathlen = len(sys.path)
+    while i >= 0:
+        i -= 1
+        if os.path.abspath(os.path.normpath(sys.path[i])) == mydir:
+            del sys.path[i]
+    if len(sys.path) == pathlen:
+        print 'Could not find %r in sys.path to remove it' % mydir
     main()

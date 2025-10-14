@@ -69,7 +69,7 @@ except ImportError:
         """ setlocale(integer,string=None) -> string.
             Activates/queries locale processing.
         """
-        if value is not None and value != 'C':
+        if value not in (None, '', 'C'):
             raise Error, '_locale emulation only supports "C" locale'
         return 'C'
 
@@ -190,7 +190,7 @@ def _test():
 ### Locale name aliasing engine
 
 # Author: Marc-Andre Lemburg, mal@lemburg.com
-# Various tweaks by Fredrik Lundh <effbot@telia.com>
+# Various tweaks by Fredrik Lundh <fredrik@pythonware.com>
 
 # store away the low-level version of setlocale (it's
 # overridden below)
@@ -264,6 +264,15 @@ def _parse_localename(localename):
 
     """
     code = normalize(localename)
+    if '@' in localename:
+        # Deal with locale modifiers
+        code, modifier = code.split('@')
+        if modifier == 'euro' and '.' not in code:
+            # Assume Latin-9 for @euro locales. This is bogus,
+            # since some systems may use other encodings for these
+            # locales. Also, we ignore other modifiers.
+            return code, 'iso-8859-15'
+
     if '.' in code:
         return code.split('.')[:2]
     elif code == 'C':
@@ -380,6 +389,38 @@ def resetlocale(category=LC_ALL):
 
     """
     _setlocale(category, _build_localename(getdefaultlocale()))
+
+if sys.platform in ('win32', 'darwin', 'mac'):
+    # On Win32, this will return the ANSI code page
+    # On the Mac, it should return the system encoding;
+    # it might return "ascii" instead
+    def getpreferredencoding(do_setlocale = True):
+        """Return the charset that the user is likely using."""
+        import _locale
+        return _locale._getdefaultlocale()[1]
+else:
+    # On Unix, if CODESET is available, use that.
+    try:
+        CODESET
+    except NameError:
+        # Fall back to parsing environment variables :-(
+        def getpreferredencoding(do_setlocale = True):
+            """Return the charset that the user is likely using,
+            by looking at environment variables."""
+            return getdefaultlocale()[1]
+    else:
+        def getpreferredencoding(do_setlocale = True):
+            """Return the charset that the user is likely using,
+            according to the system configuration."""
+            if do_setlocale:
+                oldloc = setlocale(LC_CTYPE)
+                setlocale(LC_CTYPE, "")
+                result = nl_langinfo(CODESET)
+                setlocale(LC_CTYPE, oldloc)
+                return result
+            else:
+                return nl_langinfo(CODESET)
+
 
 ### Database
 #
@@ -623,9 +664,12 @@ locale_alias = {
 # this maps windows language identifiers (as used on Windows 95 and
 # earlier) to locale strings.
 #
-# NOTE: this mapping is incomplete.  If your language is missing, send
-# a note with the missing language identifier and the suggested locale
-# code to Fredrik Lundh <effbot@telia.com>.  Thanks /F
+# NOTE: this mapping is incomplete.  If your language is missing, please
+# submit a bug report to Python bug manager, which you can find via:
+#     http://www.python.org/dev/
+# Make sure you include the missing language identifier and the suggested
+# locale code.
+#
 
 windows_locale = {
     0x0404: "zh_TW", # Chinese (Taiwan)
@@ -719,7 +763,7 @@ def _print_locale():
 
 try:
     LC_MESSAGES
-except:
+except NameError:
     pass
 else:
     __all__.append("LC_MESSAGES")

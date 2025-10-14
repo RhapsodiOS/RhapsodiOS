@@ -40,23 +40,17 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ** Resources that reside in the python executable (or, for
 ** shared ppc python, in the core dynamic library)
 */
+#ifndef Py_PYTHONRESOURCES_H
+#define Py_PYTHONRESOURCES_H
+
+#ifdef __cplusplus
+	extern "C" {
+#endif
 
 #define BASE_ID 228
 
-/* The alert for "No Python directory, where is it?" (OBSOLETE) */
-#define NOPYTHON_ALERT	BASE_ID+0
-#define YES_ITEM		1
-#define NO_ITEM			2
-#define CURWD_ITEM		3
-
 /* The alert for "this is an applet template" */
 #define NOPYC_ALERT		BASE_ID+1
-
-/* The dialog for our GetDirectory and PromptGetFile call */
-#define GETDIR_ID 		BASE_ID+2		/* Resource ID for our "get directory" */
-#define GETFILEPROMPT_ID BASE_ID+4		/* Resource id for prompted get file */
-#define PROMPT_ITEM		10				/* The prompt, at the top */
-#define SELECTCUR_ITEM	11				/* "Select current directory" button */
 
 
 /* The dialog for interactive options */
@@ -180,4 +174,10 @@ void PyMac_PreferenceOptions(PyMac_PrefRecord *);
 char * PyMac_GetPythonDir(void);
 /* from macmain.c: */
 extern PyMac_PrefRecord PyMac_options;
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

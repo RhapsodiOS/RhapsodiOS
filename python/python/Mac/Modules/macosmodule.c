@@ -36,6 +36,7 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <Events.h>
 #else
 #include <Carbon/Carbon.h>
+#include <ApplicationServices/ApplicationServices.h>
 #endif
 
 static PyObject *MacOS_Error; /* Exception MacOS.Error */
@@ -60,7 +61,7 @@ typedef struct {
 	int isclosed;
 } rfobject;
 
-staticforward PyTypeObject Rftype;
+static PyTypeObject Rftype;
 
 
 
@@ -259,7 +260,7 @@ static void
 rf_dealloc(rfobject *self)
 {
 	do_close(self);
-	PyMem_DEL(self);
+	PyObject_DEL(self);
 }
 
 static PyObject *
@@ -303,7 +304,7 @@ static PyTypeObject Rftype = {
 /*----------------------------------------------------------------------*/
 /* Miscellaneous File System Operations */
 
-static char getcrtp_doc[] = "Obsolete, use macfs module";
+static char getcrtp_doc[] = "Get MacOS 4-char creator and type for a file";
 
 static PyObject *
 MacOS_GetCreatorAndType(PyObject *self, PyObject *args)
@@ -325,7 +326,7 @@ MacOS_GetCreatorAndType(PyObject *self, PyObject *args)
 	return res;
 }
 
-static char setcrtp_doc[] = "Obsolete, use macfs module";
+static char setcrtp_doc[] = "Set MacOS 4-char creator and type for a file";
 
 static PyObject *
 MacOS_SetCreatorAndType(PyObject *self, PyObject *args)
@@ -347,49 +348,6 @@ MacOS_SetCreatorAndType(PyObject *self, PyObject *args)
 	Py_INCREF(Py_None);
 	return Py_None;
 }
-
-#if TARGET_API_MAC_OS8
-/*----------------------------------------------------------------------*/
-/* STDWIN High Level Event interface */
-
-#include <EPPC.h>
-#include <Events.h>
-
-static char accepthle_doc[] = "Get arguments of pending high-level event";
-
-static PyObject *
-MacOS_AcceptHighLevelEvent(self, args)
-	PyObject *self;
-	PyObject *args;
-{
-	TargetID sender;
-	unsigned long refcon;
-	Ptr buf;
-	unsigned long len;
-	OSErr err;
-	PyObject *res;
-	
-	buf = NULL;
-	len = 0;
-	err = AcceptHighLevelEvent(&sender, &refcon, buf, &len);
-	if (err == bufferIsSmall) {
-		buf = malloc(len);
-		if (buf == NULL)
-			return PyErr_NoMemory();
-		err = AcceptHighLevelEvent(&sender, &refcon, buf, &len);
-		if (err != noErr) {
-			free(buf);
-			return PyErr_Mac(MacOS_Error, (int)err);
-		}
-	}
-	else if (err != noErr)
-		return PyErr_Mac(MacOS_Error, (int)err);
-	res = Py_BuildValue("s#ls#",
-		(char *)&sender, (int)(sizeof sender), refcon, (char *)buf, (int)len);
-	free(buf);
-	return res;
-}
-#endif
 
 #if !TARGET_API_MAC_OSX
 static char schedparams_doc[] = "Set/return mainloop interrupt check flag, etc";
@@ -564,6 +522,47 @@ MacOS_SysBeep(PyObject *self, PyObject *args)
 	return Py_None;
 }
 
+static char WMAvailable_doc[] = 
+	"True if this process can interact with the display."
+	"Will foreground the application on the first call as a side-effect."
+	;
+
+static PyObject *
+MacOS_WMAvailable(PyObject *self, PyObject *args)
+{
+	static PyObject *rv = NULL;
+	
+	if (!PyArg_ParseTuple(args, ""))
+		return NULL;
+	if (!rv) {
+#if TARGET_API_MAC_OSX
+		ProcessSerialNumber psn;
+		
+		/*
+		** This is a fairly innocuous call to make if we don't have a window
+		** manager, or if we have no permission to talk to it. It will print
+		** a message on stderr, but at least it won't abort the process.
+		** It appears the function caches the result itself, and it's cheap, so
+		** no need for us to cache.
+		*/
+		if (CGMainDisplayID() == 0) {
+			rv = Py_False;
+		} else {
+			if (GetCurrentProcess(&psn) < 0 ||
+				SetFrontProcess(&psn) < 0) {
+				rv = Py_False;
+			} else {
+				rv = Py_True;
+			}
+		}
+#else
+		rv = Py_True;
+#endif
+	}
+	Py_INCREF(rv);
+	return rv;
+}
+
 static char GetTicks_doc[] = "Return number of ticks since bootup";
 
 static PyObject *
@@ -609,7 +608,7 @@ MacOS_openrf(PyObject *self, PyObject *args)
 		FILE *tfp;
 		char pathname[PATHNAMELEN];
 		
-		if ( err=PyMac_GetFullPathname(&fss, pathname, PATHNAMELEN) ) {
+		if ( (err=PyMac_GetFullPathname(&fss, pathname, PATHNAMELEN)) ) {
 			PyMac_Error(err);
 			Py_DECREF(fp);
 			return NULL;
@@ -701,9 +700,6 @@ MacOS_OutputSeen(PyObject *self, PyObject *args)
 #endif /* !TARGET_API_MAC_OSX */
 
 static PyMethodDef MacOS_Methods[] = {
-#if TARGET_API_MAC_OS8
-	{"AcceptHighLevelEvent",	MacOS_AcceptHighLevelEvent, 1,	accepthle_doc},
-#endif
 	{"GetCreatorAndType",		MacOS_GetCreatorAndType, 1,	getcrtp_doc},
 	{"SetCreatorAndType",		MacOS_SetCreatorAndType, 1,	setcrtp_doc},
 #if !TARGET_API_MAC_OSX
@@ -718,6 +714,7 @@ static PyMethodDef MacOS_Methods[] = {
 	{"DebugStr",			MacOS_DebugStr,		1,	DebugStr_doc},
 	{"GetTicks",			MacOS_GetTicks,		1,	GetTicks_doc},
 	{"SysBeep",			MacOS_SysBeep,		1,	SysBeep_doc},
+	{"WMAvailable",			MacOS_WMAvailable,		1,	WMAvailable_doc},
 #if !TARGET_API_MAC_OSX
 	{"FreeMem",			MacOS_FreeMem,		1,	FreeMem_doc},
 	{"MaxBlock",		MacOS_MaxBlock,		1,	MaxBlock_doc},
@@ -757,15 +754,8 @@ initMacOS(void)
 		if( PyDict_SetItemString(d, "string_id_to_buffer", Py_BuildValue("i", off)) != 0)
 			return;
 	}
-#if !TARGET_API_MAC_OSX
-	if (PyDict_SetItemString(d, "AppearanceCompliant", 
-				Py_BuildValue("i", PyMac_AppearanceCompliant)) != 0)
-		return;
-#endif
 #if TARGET_API_MAC_OSX
 #define PY_RUNTIMEMODEL "macho"
-#elif TARGET_API_MAC_OS8
-#define PY_RUNTIMEMODEL "ppc"
 #elif TARGET_API_MAC_CARBON
 #define PY_RUNTIMEMODEL "carbon"
 #else
@@ -774,5 +764,18 @@ initMacOS(void)
 	if (PyDict_SetItemString(d, "runtimemodel", 
 				Py_BuildValue("s", PY_RUNTIMEMODEL)) != 0)
 		return;
+#if !TARGET_API_MAC_OSX
+#define PY_LINKMODEL "cfm"
+#elif defined(WITH_NEXT_FRAMEWORK)
+#define PY_LINKMODEL "framework"
+#elif defined(Py_ENABLE_SHARED)
+#define PY_LINKMODEL "shared"
+#else
+#define PY_LINKMODEL "static"
+#endif
+	if (PyDict_SetItemString(d, "linkmodel", 
+				Py_BuildValue("s", PY_LINKMODEL)) != 0)
+		return;
+
 }
 

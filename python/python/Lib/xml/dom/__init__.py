@@ -55,6 +55,7 @@ SYNTAX_ERR                     = 12
 INVALID_MODIFICATION_ERR       = 13
 NAMESPACE_ERR                  = 14
 INVALID_ACCESS_ERR             = 15
+VALIDATION_ERR                 = 16
 
 
 class DOMException(Exception):
@@ -65,7 +66,7 @@ class DOMException(Exception):
         if self.__class__ is DOMException:
             raise RuntimeError(
                 "DOMException should not be instantiated directly")
-        apply(Exception.__init__, (self,) + args, kw)
+        Exception.__init__(self, *args, **kw)
 
     def _get_code(self):
         return self.code
@@ -116,10 +117,23 @@ class NamespaceErr(DOMException):
 class InvalidAccessErr(DOMException):
     code = INVALID_ACCESS_ERR
 
+class ValidationErr(DOMException):
+    code = VALIDATION_ERR
+
+class UserDataHandler:
+    """Class giving the operation constants for UserDataHandler.handle()."""
+
+    # Based on DOM Level 3 (WD 9 April 2002)
+
+    NODE_CLONED   = 1
+    NODE_IMPORTED = 2
+    NODE_DELETED  = 3
+    NODE_RENAMED  = 4
 
 XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace"
 XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/"
 XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml"
 EMPTY_NAMESPACE = None
+EMPTY_PREFIX = None
 
 from domreg import getDOMImplementation,registerDOMImplementation

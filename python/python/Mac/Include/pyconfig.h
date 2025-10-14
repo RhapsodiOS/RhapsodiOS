@@ -36,7 +36,7 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define macintosh
 #endif
 
-#if defined(USE_GUSI1) || defined(USE_GUSI2)
+#if defined(USE_GUSI2)
 #define USE_GUSI
 #endif
 
@@ -283,8 +283,8 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
    one supplied by Python itself. (see Include/unicodectype.h). */
 #undef WANT_WCTYPE_FUNCTIONS
 
-/* Define if you want to compile in cycle garbage collection */
-#define WITH_CYCLE_GC 1
+/* Define if you want cross-platform newline support for reading */
+#define WITH_UNIVERSAL_NEWLINES
 
 /* Define if you want to emulate SGI (IRIX 4) dynamic linking.
    This is rumoured to work on VAX (Ultrix), Sun3 (SunOS 3.4),
@@ -297,13 +297,16 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
    shared libraries */ 
 #undef WITH_DL_DLD
 
+/* Define if you want documentation strings in extension modules */
+#define WITH_DOC_STRINGS 1
+
 /* Define if you want to use the new-style (Openstep, Rhapsody, MacOS)
    dynamic linker (dyld) instead of the old-style (NextStep) dynamic
    linker (rld). Dyld is necessary to support frameworks. */
 #undef WITH_DYLD
 
 /* Define if you want to compile in Python-specific mallocs */
-#undef WITH_PYMALLOC
+#define WITH_PYMALLOC 1
 
 /* Define if you want to produce an OpenStep/Rhapsody framework
    (shared library plus accessory files). */
@@ -444,6 +447,9 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #ifdef USE_GUSI
 #define HAVE_GETPEERNAME
 #endif
+
+/* Define if you have the getpgid function.  */
+#undef HAVE_GETPGID
 
 /* Define if you have the getpgrp function.  */
 #undef HAVE_GETPGRP

@@ -1,8 +1,8 @@
-from test_support import verify
+from test.test_support import verify, TESTFN
 import sys, os
-import gzip, tempfile
+import gzip
 
-filename = tempfile.mktemp()
+filename = TESTFN
 
 data1 = """  int length=DEFAULTALLOC, err = Z_OK;
   PyObject *RetVal;
@@ -18,7 +18,7 @@ data2 = """/* zlibmodule.c -- gzip-compatible data compression */
 
 f = gzip.GzipFile(filename, 'wb') ; f.write(data1 * 50) ; f.close()
 
-f = gzip.GzipFile(filename, 'rb') ; d = f.read() ; f.close()
+f = gzip.GzipFile(filename, 'r') ; d = f.read() ; f.close()
 verify(d == data1*50)
 
 # Append to the previous file
@@ -73,6 +73,10 @@ f = gzip.GzipFile(filename, 'w')
 for pos in range(0, 256, 16):
     f.seek(pos)
     f.write('GZ\n')
+f.close()
+
+f = gzip.GzipFile(filename, 'r')
+verify(f.myfileobj.mode == 'rb')
 f.close()
 
 os.unlink(filename)

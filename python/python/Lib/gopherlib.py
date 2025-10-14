@@ -45,7 +45,7 @@ def type_to_name(gtype):
         for name in _names:
             if name[:2] == 'A_':
                 _type_to_name_map[eval(name)] = name[2:]
-    if _type_to_name_map.has_key(gtype):
+    if gtype in _type_to_name_map:
         return _type_to_name_map[gtype]
     return 'TYPE=' + `gtype`
 
@@ -66,7 +66,7 @@ def send_selector(selector, host, port = 0):
         port = int(port)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
-    s.send(selector + CRLF)
+    s.sendall(selector + CRLF)
     s.shutdown(1)
     return s.makefile('rb')
 

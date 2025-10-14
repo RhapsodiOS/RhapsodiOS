@@ -17,7 +17,8 @@ complex result allows earlier detection of the unexpected complex
 number used as a parameter, so that the programmer can determine how
 and why it was generated in the first place.
 
-The following functions provided by this module:
+The following functions are provided by this module.  Except
+when explicitly noted otherwise, all return values are floats:
 
 \begin{funcdesc}{acos}{x}
 Return the arc cosine of \var{x}.
@@ -47,12 +48,16 @@ Return the cosine of \var{x}.
 Return the hyperbolic cosine of \var{x}.
 \end{funcdesc}
 
+\begin{funcdesc}{degrees}{x}
+Converts angle \var{x} from radians to degrees.
+\end{funcdesc}
+
 \begin{funcdesc}{exp}{x}
 Return \code{e**\var{x}}.
 \end{funcdesc}
 
 \begin{funcdesc}{fabs}{x}
-Return the absolute value of the floating point number \var{x}.
+Return the absolute value of \var{x}.
 \end{funcdesc}
 
 \begin{funcdesc}{floor}{x}
@@ -82,8 +87,10 @@ Return the Euclidean distance, \code{sqrt(\var{x}*\var{x} + \var{y}*\var{y})}.
 Return \code{\var{x} * (2**\var{i})}.
 \end{funcdesc}
 
-\begin{funcdesc}{log}{x}
-Return the natural logarithm of \var{x}.
+\begin{funcdesc}{log}{x\optional{, base}}
+Returns the logarithm of \var{x} to the given \var{base}.
+If the \var{base} is not specified, returns the natural logarithm of \var{x}.
+\versionchanged[\var{base} argument added]{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{log10}{x}
@@ -97,6 +104,10 @@ carry the sign of \var{x}.  The integer part is returned as a float.
 
 \begin{funcdesc}{pow}{x, y}
 Return \code{\var{x}**\var{y}}.
+\end{funcdesc}
+
+\begin{funcdesc}{radians}{x}
+Converts angle \var{x} from degrees to radians.
 \end{funcdesc}
 
 \begin{funcdesc}{sin}{x}
@@ -134,6 +145,21 @@ The mathematical constant \emph{pi}.
 \begin{datadesc}{e}
 The mathematical constant \emph{e}.
 \end{datadesc}
+
+\begin{notice}
+  The \module{math} module consists mostly of thin wrappers around
+  the platform C math library functions.  Behavior in exceptional cases is
+  loosely specified by the C standards, and Python inherits much of its
+  math-function error-reporting behavior from the platform C
+  implementation.  As a result,
+  the specific exceptions raised in error cases (and even whether some
+  arguments are considered to be exceptional at all) are not defined in any
+  useful cross-platform or cross-release way.  For example, whether
+  \code{math.log(0)} returns \code{-Inf} or raises \exception{ValueError} or
+  \exception{OverflowError} isn't defined, and in
+  cases where \code{math.log(0)} raises \exception{OverflowError},
+  \code{math.log(0L)} may raise \exception{ValueError} instead.
+\end{notice}
 
 \begin{seealso}
   \seemodule{cmath}{Complex number versions of many of these functions.}

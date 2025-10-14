@@ -1,5 +1,3 @@
-from __future__ import generators
-
 tutorial_tests = """
 Let's try a simple generator:
 
@@ -259,7 +257,7 @@ Guido's binary tree example.
     >>> # Show it off: create a tree.
     >>> t = tree("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-    >>> # A recursive generator that generates Tree leaves in in-order.
+    >>> # A recursive generator that generates Tree labels in in-order.
     >>> def inorder(t):
     ...     if t:
     ...         for x in inorder(t.left):
@@ -388,10 +386,10 @@ From the Iterators list, about the types of these things.
 >>> print i.next.__doc__
 x.next() -> the next value, or raise StopIteration
 >>> iter(i) is i
-1
+True
 >>> import types
 >>> isinstance(i, types.GeneratorType)
-1
+True
 
 And more, added later.
 
@@ -446,15 +444,15 @@ Subject: Re: PEP 255: Simple Generators
 >>> roots = sets[:]
 
 >>> import random
->>> random.seed(42)
+>>> gen = random.WichmannHill(42)
 >>> while 1:
 ...     for s in sets:
 ...         print "%s->%s" % (s, s.find()),
 ...     print
 ...     if len(roots) > 1:
-...         s1 = random.choice(roots)
+...         s1 = gen.choice(roots)
 ...         roots.remove(s1)
-...         s2 = random.choice(roots)
+...         s2 = gen.choice(roots)
 ...         s1.union(s2)
 ...         print "merged", s1, "into", s2
 ...     else:
@@ -485,6 +483,7 @@ A->A B->G C->A D->G E->G F->A G->G H->G I->A J->G K->A L->A M->G
 merged A into G
 A->G B->G C->G D->G E->G F->G G->G H->G I->G J->G K->G L->G M->G
 """
+# Emacs turd '
 
 # Fun tests (for sufficiently warped notions of "fun").
 
@@ -807,6 +806,26 @@ SyntaxError: invalid syntax
 ...         yield 2             # because it's a generator
 Traceback (most recent call last):
 SyntaxError: 'return' with argument inside generator (<string>, line 8)
+
+This one caused a crash (see SF bug 567538):
+
+>>> def f():
+...     for i in range(3):
+...         try:
+...             continue
+...         finally:
+...             yield i
+...
+>>> g = f()
+>>> print g.next()
+0
+>>> print g.next()
+1
+>>> print g.next()
+2
+>>> print g.next()
+Traceback (most recent call last):
+StopIteration
 """
 
 # conjoin is a simple backtracking generator, named in honor of Icon's
@@ -1220,16 +1239,16 @@ generated sequence, you need to copy its results.
 >>> for n in range(10):
 ...     all = list(gencopy(conjoin([lambda: iter((0, 1))] * n)))
 ...     print n, len(all), all[0] == [0] * n, all[-1] == [1] * n
-0 1 1 1
-1 2 1 1
-2 4 1 1
-3 8 1 1
-4 16 1 1
-5 32 1 1
-6 64 1 1
-7 128 1 1
-8 256 1 1
-9 512 1 1
+0 1 True True
+1 2 True True
+2 4 True True
+3 8 True True
+4 16 True True
+5 32 True True
+6 64 True True
+7 128 True True
+8 256 True True
+9 512 True True
 
 And run an 8-queens solver.
 
@@ -1340,19 +1359,46 @@ Solution 2
 +---+---+---+---+---+---+---+---+---+---+
 """
 
+weakref_tests = """\
+Generators are weakly referencable:
+
+>>> import weakref
+>>> def gen():
+...     yield 'foo!'
+...
+>>> wr = weakref.ref(gen)
+>>> wr() is gen
+True
+>>> p = weakref.proxy(gen)
+
+Generator-iterators are weakly referencable as well:
+
+>>> gi = gen()
+>>> wr = weakref.ref(gi)
+>>> wr() is gi
+True
+>>> p = weakref.proxy(gi)
+>>> list(p)
+['foo!']
+
+"""
+
 __test__ = {"tut":      tutorial_tests,
             "pep":      pep_tests,
             "email":    email_tests,
             "fun":      fun_tests,
             "syntax":   syntax_tests,
-            "conjoin":  conjoin_tests}
+            "conjoin":  conjoin_tests,
+            "weakref":  weakref_tests,
+            }
 
 # Magic test name that regrtest.py invokes *after* importing this module.
 # This worms around a bootstrap problem.
 # Note that doctest and regrtest both look in sys.argv for a "-v" argument,
 # so this works as expected in both ways of running regrtest.
 def test_main(verbose=None):
-    import doctest, test_support, test_generators
+    import doctest
+    from test import test_support, test_generators
     if 0:   # change to 1 to run forever (to check for leaks)
         while 1:
             doctest.master = None

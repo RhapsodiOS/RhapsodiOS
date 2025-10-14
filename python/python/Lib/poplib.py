@@ -97,7 +97,7 @@ class POP3:
 
     def _putline(self, line):
         if self._debugging > 1: print '*put*', `line`
-        self.sock.send('%s%s' % (line, CRLF))
+        self.sock.sendall('%s%s' % (line, CRLF))
 
 
     # Internal: send one command to the server (through _putline())
@@ -220,7 +220,7 @@ class POP3:
         Result when a message number argument is given is a
         single response: the "scan listing" for that message.
         """
-        if which:
+        if which is not None:
             return self._shortcmd('LIST %s' % which)
         return self._longcmd('LIST')
 
@@ -313,7 +313,7 @@ class POP3:
         in the form 'response mesgnum uid', otherwise result is
         the list ['response', ['mesgnum uid', ...], octets]
         """
-        if which:
+        if which is not None:
             return self._shortcmd('UIDL %s' % which)
         return self._longcmd('UIDL')
 

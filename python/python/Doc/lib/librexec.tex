@@ -3,8 +3,12 @@
 
 \declaremodule{standard}{rexec}
 \modulesynopsis{Basic restricted execution framework.}
+\versionchanged[Disabled module]{2.3}
 
-
+\begin{notice}[warning]
+  The documentation has been left in place to help in reading old code
+  that uses the module.
+\end{notice}
 
 This module contains the \class{RExec} class, which supports
 \method{r_eval()}, \method{r_execfile()}, \method{r_exec()}, and
@@ -15,10 +19,23 @@ Code executed in this restricted environment will
 only have access to modules and functions that are deemed safe; you
 can subclass \class{RExec} to add or remove capabilities as desired.
 
-\note{The \class{RExec} class can prevent code from performing
-unsafe operations like reading or writing disk files, or using TCP/IP
-sockets.  However, it does not protect against code using extremely
-large amounts of memory or processor time.}
+\begin{notice}[warning]
+  While the \module{rexec} module is designed to perform as described
+  below, it does have a few known vulnerabilities which could be
+  exploited by carefully written code.  Thus it should not be relied
+  upon in situations requiring ``production ready'' security.  In such
+  situations, execution via sub-processes or very careful
+  ``cleansing'' of both code and data to be processed may be
+  necessary.  Alternatively, help in patching known \module{rexec}
+  vulnerabilities would be welcomed.
+\end{notice}
+
+\begin{notice}
+  The \class{RExec} class can prevent code from performing unsafe
+  operations like reading or writing disk files, or using TCP/IP
+  sockets.  However, it does not protect against code using extremely
+  large amounts of memory or processor time.
+\end{notice}
 
 \begin{classdesc}{RExec}{\optional{hooks\optional{, verbose}}}
 Returns an instance of the \class{RExec} class.  
@@ -209,6 +226,18 @@ Contains the names of the functions and variables in the \refmodule{sys}
 module which will be available to programs running in the restricted
 environment.  The value for \class{RExec} is \code{('ps1', 'ps2',
 'copyright', 'version', 'platform', 'exit', 'maxint')}.
+\end{memberdesc}
+
+\begin{memberdesc}{ok_file_types}
+Contains the file types from which modules are allowed to be loaded.
+Each file type is an integer constant defined in the \refmodule{imp} module.
+The meaningful values are \constant{PY_SOURCE}, \constant{PY_COMPILED}, and
+\constant{C_EXTENSION}.  The value for \class{RExec} is \code{(C_EXTENSION,
+PY_SOURCE)}.  Adding \constant{PY_COMPILED} in subclasses is not recommended;
+an attacker could exit the restricted execution mode by putting a forged
+byte-compiled file (\file{.pyc}) anywhere in your file system, for example
+by writing it to \file{/tmp} or uploading it to the \file{/incoming}
+directory of your public FTP server.
 \end{memberdesc}
 
 

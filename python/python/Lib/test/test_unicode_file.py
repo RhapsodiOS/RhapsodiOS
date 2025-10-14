@@ -1,27 +1,16 @@
 # Test some Unicode file name semantics
 # We dont test many operations on files other than
 # that their names can be used with Unicode characters.
-import os
+import os, glob
 
-from test_support import verify, TestSkipped, TESTFN_UNICODE
+from test.test_support import verify, TestSkipped, TESTFN_UNICODE
+from test.test_support import TESTFN_ENCODING
 try:
-    from test_support import TESTFN_ENCODING
-    oldlocale = None
-except ImportError:
-    import locale
-    # try to run the test in an UTF-8 locale. If this locale is not
-    # available, avoid running the test since the locale's encoding
-    # might not support TESTFN_UNICODE. Likewise, if the system does
-    # not support locale.CODESET, Unicode file semantics is not
-    # available, either.
-    oldlocale = locale.setlocale(locale.LC_CTYPE)
-    try:
-        locale.setlocale(locale.LC_CTYPE,"en_US.UTF-8")
-        TESTFN_ENCODING = locale.nl_langinfo(locale.CODESET)
-    except (locale.Error, AttributeError):
-        raise TestSkipped("No Unicode filesystem semantics on this platform.")
-
-TESTFN_ENCODED = TESTFN_UNICODE.encode(TESTFN_ENCODING)
+    TESTFN_ENCODED = TESTFN_UNICODE.encode(TESTFN_ENCODING)
+except (UnicodeError, TypeError):
+    # Either the file system encoding is None, or the file name
+    # cannot be encoded in the file system encoding.
+    raise TestSkipped("No Unicode filesystem semantics on this platform.")
 
 # Check with creation as Unicode string.
 f = open(TESTFN_UNICODE, 'wb')
@@ -40,6 +29,10 @@ os.chmod(TESTFN_ENCODED, 0777)
 os.chmod(TESTFN_UNICODE, 0777)
 
 # Test rename
+try:
+    os.unlink(TESTFN_ENCODED + ".new")
+except os.error:
+    pass
 os.rename(TESTFN_ENCODED, TESTFN_ENCODED + ".new")
 os.rename(TESTFN_UNICODE+".new", TESTFN_ENCODED)
 
@@ -55,8 +48,17 @@ if not os.path.isfile(TESTFN_UNICODE) or \
     print "File doesn't exist after creating it"
 
 path, base = os.path.split(os.path.abspath(TESTFN_ENCODED))
-if base not in os.listdir(path):
-    print "Filename did not appear in os.listdir()"
+# Until PEP 277 is adopted, this test is not portable
+#  if base not in os.listdir(path):
+#      print "Filename did not appear in os.listdir()"
+#  path, base = os.path.split(os.path.abspath(TESTFN_UNICODE))
+#  if base not in os.listdir(path):
+#      print "Unicode filename did not appear in os.listdir()"
+
+if os.path.abspath(TESTFN_ENCODED) != os.path.abspath(glob.glob(TESTFN_ENCODED)[0]):
+    print "Filename did not appear in glob.glob()"
+if os.path.abspath(TESTFN_UNICODE) != os.path.abspath(glob.glob(TESTFN_UNICODE)[0]):
+    print "Unicode filename did not appear in glob.glob()"
 
 f.close()
 os.unlink(TESTFN_UNICODE)
@@ -91,5 +93,3 @@ finally:
     os.chdir(cwd)
     os.rmdir(abs_encoded)
 print "All the Unicode tests appeared to work"
-if oldlocale:
-    locale.setlocale(locale.LC_CTYPE, oldlocale)

@@ -10,11 +10,17 @@
 The \module{telnetlib} module provides a \class{Telnet} class that
 implements the Telnet protocol.  See \rfc{854} for details about the
 protocol. In addition, it provides symbolic constants for the protocol
-characters (IAC/DONT/DO/WONT/WILL), and for the telnet options. The
+characters (see below), and for the telnet options. The
 symbolic names of the telnet options follow the definitions in
 \code{arpa/telnet.h}, with the leading \code{TELOPT_} removed. For
 symbolic names of options which are traditionally not included in
 \code{arpa/telnet.h}, see the module source itself.
+
+The symbolic constants for the telnet commands are: IAC, DONT, DO,
+WONT, WILL, SE (Subnegotiation End), NOP (No Operation), DM (Data
+Mark), BRK (Break), IP (Interrupt process), AO (Abort output), AYT
+(Are You There), EC (Erase Character), EL (Erase Line), GA (Go Ahead),
+SB (Subnegotiation Begin).
 
 
 \begin{classdesc}{Telnet}{\optional{host\optional{, port}}}
@@ -47,7 +53,8 @@ individual descriptions below.
 
 
 \begin{methoddesc}{read_until}{expected\optional{, timeout}}
-Read until a given string is encountered or until timeout.
+Read until a given string, \var{expected}, is encountered or until
+\var{timeout} seconds have passed.
 
 When no match is found, return whatever is available instead,
 possibly the empty string.  Raise \exception{EOFError} if the connection
@@ -94,6 +101,14 @@ Return any data available in the cooked queue (very lazy).
 Raise \exception{EOFError} if connection closed and no data available.
 Return \code{''} if no cooked data available otherwise.  This method
 never blocks.
+\end{methoddesc}
+
+\begin{methoddesc}{read_sb_data}{}
+Return the data collected between a SB/SE pair (suboption begin/end).
+The callback should access these data when it was invoked with a
+\code{SE} command. This method never blocks.
+
+\versionadded{2.3}
 \end{methoddesc}
 
 \begin{methoddesc}{open}{host\optional{, port}}

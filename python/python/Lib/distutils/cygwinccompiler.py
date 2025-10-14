@@ -40,16 +40,21 @@ cygwin in no-cygwin mode).
 #     this is windows standard and there are normally not the necessary symbols
 #     in the dlls.
 #   *** only the version of June 2000 shows these problems
+# * cygwin gcc 3.2/ld 2.13.90 works
+#   (ld supports -shared)
+# * mingw gcc 3.2/ld 2.13 works
+#   (ld supports -shared)
 
-# created 2000/05/05, Rene Liebscher
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: cygwinccompiler.py,v 1.1.1.1 2002/02/05 23:21:18 zarzycki Exp $"
+__revision__ = "$Id: cygwinccompiler.py,v 1.24 2003/04/14 12:51:26 jlt63 Exp $"
 
 import os,sys,copy
 from distutils.ccompiler import gen_preprocess_options, gen_lib_options
 from distutils.unixccompiler import UnixCCompiler
 from distutils.file_util import write_file
 from distutils.errors import DistutilsExecError, CompileError, UnknownFileError
+from distutils import log
 
 class CygwinCCompiler (UnixCCompiler):
 
@@ -61,10 +66,7 @@ class CygwinCCompiler (UnixCCompiler):
     shared_lib_format = "%s%s"
     exe_extension = ".exe"
 
-    def __init__ (self,
-                  verbose=0,
-                  dry_run=0,
-                  force=0):
+    def __init__ (self, verbose=0, dry_run=0, force=0):
 
         UnixCCompiler.__init__ (self, verbose, dry_run, force)
 
@@ -73,18 +75,19 @@ class CygwinCCompiler (UnixCCompiler):
                          (status, details))
         if status is not CONFIG_H_OK:
             self.warn(
-                "Python's pyconfig.h doesn't seem to support your compiler.  " +
-                ("Reason: %s." % details) +
-                "Compiling may fail because of undefined preprocessor macros.")
+                "Python's pyconfig.h doesn't seem to support your compiler. " 
+                "Reason: %s. "
+                "Compiling may fail because of undefined preprocessor macros."
+                % details)
 
-        (self.gcc_version, self.ld_version, self.dllwrap_version) = \
+        self.gcc_version, self.ld_version, self.dllwrap_version = \
             get_versions()
         self.debug_print(self.compiler_type + ": gcc %s, ld %s, dllwrap %s\n" %
                          (self.gcc_version,
                           self.ld_version,
                           self.dllwrap_version) )
 
-        # ld_version >= "2.10.90" should also be able to use
+        # ld_version >= "2.10.90" and < "2.13" should also be able to use
         # gcc -mdll instead of dllwrap
         # Older dllwraps had own version numbers, newer ones use the
         # same as the rest of binutils ( also ld )
@@ -94,13 +97,20 @@ class CygwinCCompiler (UnixCCompiler):
         else:
             self.linker_dll = "dllwrap"
 
+        # ld_version >= "2.13" support -shared so use it instead of
+        # -mdll -static
+        if self.ld_version >= "2.13":
+            shared_option = "-shared"
+        else:
+            shared_option = "-mdll -static"
+
         # Hard-code GCC because that's what this is all about.
         # XXX optimization, warnings etc. should be customizable.
         self.set_executables(compiler='gcc -mcygwin -O -Wall',
                              compiler_so='gcc -mcygwin -mdll -O -Wall',
                              linker_exe='gcc -mcygwin',
-                             linker_so=('%s -mcygwin -mdll -static' %
-                                        self.linker_dll))
+                             linker_so=('%s -mcygwin %s' %
+                                        (self.linker_dll, shared_option)))
 
         # cygwin and mingw32 need different sets of libraries
         if self.gcc_version == "2.91.57":
@@ -114,62 +124,20 @@ class CygwinCCompiler (UnixCCompiler):
 
     # __init__ ()
 
-    # not much different of the compile method in UnixCCompiler,
-    # but we have to insert some lines in the middle of it, so
-    # we put here a adapted version of it.
-    # (If we would call compile() in the base class, it would do some
-    # initializations a second time, this is why all is done here.)
-    def compile (self,
-                 sources,
-                 output_dir=None,
-                 macros=None,
-                 include_dirs=None,
-                 debug=0,
-                 extra_preargs=None,
-                 extra_postargs=None):
 
-        (output_dir, macros, include_dirs) = \
-            self._fix_compile_args (output_dir, macros, include_dirs)
-        (objects, skip_sources) = self._prep_compile (sources, output_dir)
-
-        # Figure out the options for the compiler command line.
-        pp_opts = gen_preprocess_options (macros, include_dirs)
-        cc_args = pp_opts + ['-c']
-        if debug:
-            cc_args[:0] = ['-g']
-        if extra_preargs:
-            cc_args[:0] = extra_preargs
-        if extra_postargs is None:
-            extra_postargs = []
-
-        # Compile all source files that weren't eliminated by
-        # '_prep_compile()'.
-        for i in range (len (sources)):
-            src = sources[i] ; obj = objects[i]
-            ext = (os.path.splitext (src))[1]
-            if skip_sources[src]:
-                self.announce ("skipping %s (%s up-to-date)" % (src, obj))
-            else:
-                self.mkpath (os.path.dirname (obj))
-                if ext == '.rc' or ext == '.res':
-                    # gcc needs '.res' and '.rc' compiled to object files !!!
-                    try:
-                        self.spawn (["windres","-i",src,"-o",obj])
-                    except DistutilsExecError, msg:
-                        raise CompileError, msg
-                else: # for other files use the C-compiler
-                    try:
-                        self.spawn (self.compiler_so + cc_args +
-                                [src, '-o', obj] +
-                                extra_postargs)
-                    except DistutilsExecError, msg:
-                        raise CompileError, msg
-
-        # Return *all* object filenames, not just the ones we just built.
-        return objects
-
-    # compile ()
-
+    def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
+        if ext == '.rc' or ext == '.res':
+            # gcc needs '.res' and '.rc' compiled to object files !!!
+            try:
+                self.spawn(["windres", "-i", src, "-o", obj])
+            except DistutilsExecError, msg:
+                raise CompileError, msg
+        else: # for other files use the C-compiler
+            try:
+                self.spawn(self.compiler_so + cc_args + [src, '-o', obj] +
+                           extra_postargs)
+            except DistutilsExecError, msg:
+                raise CompileError, msg
 
     def link (self,
               target_desc,
@@ -183,7 +151,8 @@ class CygwinCCompiler (UnixCCompiler):
               debug=0,
               extra_preargs=None,
               extra_postargs=None,
-              build_temp=None):
+              build_temp=None,
+              target_lang=None):
 
         # use separate copies, so we can modify the lists
         extra_preargs = copy.copy(extra_preargs or [])
@@ -212,7 +181,6 @@ class CygwinCCompiler (UnixCCompiler):
 
             # generate the filenames for these files
             def_file = os.path.join(temp_dir, dll_name + ".def")
-            exp_file = os.path.join(temp_dir, dll_name + ".exp")
             lib_file = os.path.join(temp_dir, 'lib' + dll_name + ".a")
 
             # Generate .def file
@@ -228,16 +196,14 @@ class CygwinCCompiler (UnixCCompiler):
 
             # dllwrap uses different options than gcc/ld
             if self.linker_dll == "dllwrap":
-                extra_preargs.extend([#"--output-exp",exp_file,
-                                       "--output-lib",lib_file,
-                                     ])
+                extra_preargs.extend(["--output-lib", lib_file])
                 # for dllwrap we have to use a special option
                 extra_preargs.extend(["--def", def_file])
             # we use gcc/ld here and can be sure ld is >= 2.9.10
             else:
                 # doesn't work: bfd_close build\...\libfoo.a: Invalid operation
                 #extra_preargs.extend(["-Wl,--out-implib,%s" % lib_file])
-                # for gcc/ld the def-file is specified as any other object files
+                # for gcc/ld the def-file is specified as any object files
                 objects.append(def_file)
 
         #end: if ((export_symbols is not None) and
@@ -264,7 +230,8 @@ class CygwinCCompiler (UnixCCompiler):
                            debug,
                            extra_preargs,
                            extra_postargs,
-                           build_temp)
+                           build_temp,
+                           target_lang)
 
     # link ()
 
@@ -312,6 +279,13 @@ class Mingw32CCompiler (CygwinCCompiler):
 
         CygwinCCompiler.__init__ (self, verbose, dry_run, force)
 
+        # ld_version >= "2.13" support -shared so use it instead of
+        # -mdll -static
+        if self.ld_version >= "2.13":
+            shared_option = "-shared"
+        else:
+            shared_option = "-mdll -static"
+
         # A real mingw32 doesn't need to specify a different entry point,
         # but cygwin 2.91.57 in no-cygwin-mode needs it.
         if self.gcc_version <= "2.91.57":
@@ -322,8 +296,9 @@ class Mingw32CCompiler (CygwinCCompiler):
         self.set_executables(compiler='gcc -mno-cygwin -O -Wall',
                              compiler_so='gcc -mno-cygwin -mdll -O -Wall',
                              linker_exe='gcc -mno-cygwin',
-                             linker_so='%s -mno-cygwin -mdll -static %s'
-                                        % (self.linker_dll, entry_point))
+                             linker_so='%s -mno-cygwin %s %s'
+                                        % (self.linker_dll, shared_option,
+                                           entry_point))
         # Maybe we should also append -mthreads, but then the finished
         # dlls need another dll (mingwm10.dll see Mingw32 docs)
         # (-mthreads: Support thread-safe exception handling on `Mingw32')
@@ -407,7 +382,7 @@ def get_versions():
         out = os.popen(gcc_exe + ' -dumpversion','r')
         out_string = out.read()
         out.close()
-        result = re.search('(\d+\.\d+\.\d+)',out_string)
+        result = re.search('(\d+\.\d+(\.\d+)*)',out_string)
         if result:
             gcc_version = StrictVersion(result.group(1))
         else:
@@ -419,7 +394,7 @@ def get_versions():
         out = os.popen(ld_exe + ' -v','r')
         out_string = out.read()
         out.close()
-        result = re.search('(\d+\.\d+\.\d+)',out_string)
+        result = re.search('(\d+\.\d+(\.\d+)*)',out_string)
         if result:
             ld_version = StrictVersion(result.group(1))
         else:
@@ -431,7 +406,7 @@ def get_versions():
         out = os.popen(dllwrap_exe + ' --version','r')
         out_string = out.read()
         out.close()
-        result = re.search(' (\d+\.\d+\.\d+)',out_string)
+        result = re.search(' (\d+\.\d+(\.\d+)*)',out_string)
         if result:
             dllwrap_version = StrictVersion(result.group(1))
         else:

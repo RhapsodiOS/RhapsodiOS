@@ -141,7 +141,7 @@ Flying Circus'' and has nothing to do with nasty reptiles.  Making
 references to Monty Python skits in documentation is not only allowed,
 it is encouraged!
 
-\section{Where From Here \label{where}}
+%\section{Where From Here \label{where}}
 
 Now that you are all excited about Python, you'll want to examine it
 in some more detail.  Since the best way to learn a language is
@@ -176,7 +176,7 @@ your local Python guru or system administrator.  (E.g.,
 \file{/usr/local/python} is a popular alternative location.)
 
 Typing an end-of-file character (\kbd{Control-D} on \UNIX,
-\kbd{Control-Z} on DOS or Windows) at the primary prompt causes the
+\kbd{Control-Z} on Windows) at the primary prompt causes the
 interpreter to exit with a zero exit status.  If that doesn't work,
 you can exit the interpreter by typing the following commands:
 \samp{import sys; sys.exit()}.
@@ -208,7 +208,7 @@ or other characters that are special to the shell, it is best to quote
 
 Note that there is a difference between \samp{python file} and
 \samp{python <file}.  In the latter case, input requests from the
-program, such as calls to \code{input()} and \code{raw_input()}, are
+program, such as calls to \function{input()} and \function{raw_input()}, are
 satisfied from \emph{file}.  Since this file has already been read
 until the end by the parser before the program starts executing, the
 program will encounter end-of-file immediately.  In the former case
@@ -271,8 +271,8 @@ When an error occurs, the interpreter prints an error
 message and a stack trace.  In interactive mode, it then returns to
 the primary prompt; when input came from a file, it exits with a
 nonzero exit status after printing
-the stack trace.  (Exceptions handled by an \code{except} clause in a
-\code{try} statement are not errors in this context.)  Some errors are
+the stack trace.  (Exceptions handled by an \keyword{except} clause in a
+\keyword{try} statement are not errors in this context.)  Some errors are
 unconditionally fatal and cause an exit with a nonzero exit; this
 applies to internal inconsistencies and some cases of running out of
 memory.  All error messages are written to the standard error stream;
@@ -285,8 +285,8 @@ primary prompt.\footnote{
         A problem with the GNU Readline package may prevent this.
 }
 Typing an interrupt while a command is executing raises the
-\code{KeyboardInterrupt} exception, which may be handled by a
-\code{try} statement.
+\exception{KeyboardInterrupt} exception, which may be handled by a
+\keyword{try} statement.
 
 \subsection{Executable Python Scripts \label{scripts}}
 
@@ -299,9 +299,53 @@ executable, like shell scripts, by putting the line
 
 (assuming that the interpreter is on the user's \envvar{PATH}) at the
 beginning of the script and giving the file an executable mode.  The
-\samp{\#!} must be the first two characters of the file.  Note that
+\samp{\#!} must be the first two characters of the file.  On some
+platforms, this first line must end with a \UNIX-style line ending
+(\character{\e n}), not a Mac OS (\character{\e r}) or Windows
+(\character{\e r\e n}) line ending.  Note that
 the hash, or pound, character, \character{\#}, is used to start a
 comment in Python.
+
+The script can be given a executable mode, or permission, using the
+\program{chmod} command:
+
+\begin{verbatim}
+$ chmod +x myscript.py
+\end{verbatim} % $ <-- bow to font-lock
+
+
+\subsection{Source Code Encoding}
+
+It is possible to use encodings different than \ASCII{} in Python source
+files. The best way to do it is to put one more special comment line
+right after the \code{\#!} line to define the source file encoding:
+
+\begin{verbatim}
+# -*- coding: iso-8859-1 -*- 
+\end{verbatim}
+
+With that declaration, all characters in the source file will be treated as
+{}\code{iso-8859-1}, and it will be
+possible to directly write Unicode string literals in the selected
+encoding.  The list of possible encodings can be found in the
+\citetitle[../lib/lib.html]{Python Library Reference}, in the section
+on \module{codecs}.
+
+If your editor supports saving files as \code{UTF-8} with an UTF-8
+signature (aka BOM -- Byte Order Mark), you can use that instead of an
+encoding declaration. IDLE supports this capability if
+\code{Options/General/Default Source Encoding/UTF-8} is set. Notice
+that this signature is not understood in older Python releases (2.2
+and earlier), and also not understood by the operating system for
+\code{\#!} files. 
+
+By using UTF-8 (either through the signature or an encoding
+declaration), characters of most languages in the world can be used
+simultaneously in string literals and comments. Using non-ASCII
+characters in identifiers is not supported. To display all these
+characters properly, your editor must recognize that the file is
+UTF-8, and it must use a font that supports all the characters in the
+file.
 
 \subsection{The Interactive Startup File \label{startup}}
 
@@ -640,6 +684,17 @@ separated by a colon.
 'lp'
 \end{verbatim}
 
+Slice indices have useful defaults; an omitted first index defaults to
+zero, an omitted second index defaults to the size of the string being
+sliced.
+
+\begin{verbatim}
+>>> word[:2]    # The first two characters
+'He'
+>>> word[2:]    # All but the first two characters
+'lpA'
+\end{verbatim}
+
 Unlike a C string, Python strings cannot be changed.  Assigning to an 
 indexed position in the string results in an error:
 
@@ -662,17 +717,6 @@ efficient:
 'xelpA'
 >>> 'Splat' + word[4]
 'SplatA'
-\end{verbatim}
-
-Slice indices have useful defaults; an omitted first index defaults to
-zero, an omitted second index defaults to the size of the string being
-sliced.
-
-\begin{verbatim}
->>> word[:2]    # The first two characters
-'He'
->>> word[2:]    # All but the first two characters
-'lpA'
 \end{verbatim}
 
 Here's a useful invariant of slice operations:
@@ -850,7 +894,7 @@ u'\xe4\xf6\xfc'
 >>> str(u"הצü")
 Traceback (most recent call last):
   File "<stdin>", line 1, in ?
-UnicodeError: ASCII encoding error: ordinal not in range(128)
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-2: ordinal not in range(128)
 \end{verbatim}
 
 To convert a Unicode string into an 8-bit string using a specific
@@ -1215,7 +1259,7 @@ program requires no action.
 For example:
 
 \begin{verbatim}
->>> while 1:
+>>> while True:
 ...       pass # Busy-wait for keyboard interrupt
 ... 
 \end{verbatim}
@@ -1358,7 +1402,7 @@ arguments than it is defined
 
 \begin{verbatim}
 def ask_ok(prompt, retries=4, complaint='Yes or no, please!'):
-    while 1:
+    while True:
         ok = raw_input(prompt)
         if ok in ('y', 'ye', 'yes'): return 1
         if ok in ('n', 'no', 'nop', 'nope'): return 0
@@ -1388,8 +1432,9 @@ will print \code{5}.
 
 \strong{Important warning:}  The default value is evaluated only once.
 This makes a difference when the default is a mutable object such as a
-list or dictionary.  For example, the following function accumulates
-the arguments passed to it on subsequent calls:
+list, dictionary, or instances of most classes.  For example, the
+following function accumulates the arguments passed to it on
+subsequent calls:
 
 \begin{verbatim}
 def f(a, L=[]):
@@ -1467,7 +1512,7 @@ Here's an example that fails due to this restriction:
 >>> function(0, a=0)
 Traceback (most recent call last):
   File "<stdin>", line 1, in ?
-TypeError: keyword parameter redefined
+TypeError: function() got multiple values for keyword argument 'a'
 \end{verbatim}
 
 When a final formal parameter of the form \code{**\var{name}} is
@@ -1485,7 +1530,9 @@ def cheeseshop(kind, *arguments, **keywords):
     print "-- I'm sorry, we're all out of", kind
     for arg in arguments: print arg
     print '-'*40
-    for kw in keywords.keys(): print kw, ':', keywords[kw]
+    keys = keywords.keys()
+    keys.sort()
+    for kw in keys: print kw, ':', keywords[kw]
 \end{verbatim}
 
 It could be called like this:
@@ -1510,6 +1557,11 @@ client : John Cleese
 shopkeeper : Michael Palin
 sketch : Cheese Shop Sketch
 \end{verbatim}
+
+Note that the \method{sort()} method of the list of keyword argument
+names is called before printing the contents of the \code{keywords}
+dictionary; if this is not done, the order in which the arguments are
+printed is undefined.
 
 
 \subsection{Arbitrary Argument Lists \label{arbitraryArgs}}
@@ -1611,45 +1663,54 @@ more detail, and adds some new things as well.
 The list data type has some more methods.  Here are all of the methods
 of list objects:
 
-\begin{description}
-
-\item[\code{append(x)}]
+\begin{methoddesc}[list]{append}{x}
 Add an item to the end of the list;
-equivalent to \code{a[len(a):] = [x]}.
+equivalent to \code{a[len(a):] = [\var{x}]}.
+\end{methoddesc}
 
-\item[\code{extend(L)}]
+\begin{methoddesc}[list]{extend}{L}
 Extend the list by appending all the items in the given list;
-equivalent to \code{a[len(a):] = L}.
+equivalent to \code{a[len(a):] = \var{L}}.
+\end{methoddesc}
 
-\item[\code{insert(i, x)}]
-Insert an item at a given position.  The first argument is the index of
-the element before which to insert, so \code{a.insert(0, x)} inserts at
-the front of the list, and \code{a.insert(len(a), x)} is equivalent to
-\code{a.append(x)}.
+\begin{methoddesc}[list]{insert}{i, x}
+Insert an item at a given position.  The first argument is the index
+of the element before which to insert, so \code{a.insert(0, \var{x})}
+inserts at the front of the list, and \code{a.insert(len(a), \var{x})}
+is equivalent to \code{a.append(\var{x})}.
+\end{methoddesc}
 
-\item[\code{remove(x)}]
-Remove the first item from the list whose value is \code{x}.
+\begin{methoddesc}[list]{remove}{x}
+Remove the first item from the list whose value is \var{x}.
 It is an error if there is no such item.
+\end{methoddesc}
 
-\item[\code{pop(\optional{i})}]
+\begin{methoddesc}[list]{pop}{\optional{i}}
 Remove the item at the given position in the list, and return it.  If
 no index is specified, \code{a.pop()} returns the last item in the
-list.  The item is also removed from the list.
+list.  The item is also removed from the list.  (The square brackets
+around the \var{i} in the method signature denote that the parameter
+is optional, not that you should type square brackets at that
+position.  You will see this notation frequently in the
+\citetitle[../lib/lib.html]{Python Library Reference}.)
+\end{methoddesc}
 
-\item[\code{index(x)}]
-Return the index in the list of the first item whose value is \code{x}.
+\begin{methoddesc}[list]{index}{x}
+Return the index in the list of the first item whose value is \var{x}.
 It is an error if there is no such item.
+\end{methoddesc}
 
-\item[\code{count(x)}]
-Return the number of times \code{x} appears in the list.
+\begin{methoddesc}[list]{count}{x}
+Return the number of times \var{x} appears in the list.
+\end{methoddesc}
 
-\item[\code{sort()}]
+\begin{methoddesc}[list]{sort}{}
 Sort the items of the list, in place.
+\end{methoddesc}
 
-\item[\code{reverse()}]
+\begin{methoddesc}[list]{reverse}{}
 Reverse the elements of the list, in place.
-
-\end{description}
+\end{methoddesc}
 
 An example that uses most of the list methods:
 
@@ -1803,6 +1864,11 @@ item, then to the result and the next item, and so on.  For example,
 0
 \end{verbatim}
 
+Don't use this example's definition of \function{sum()}: since summing
+numbers is such a common need, a built-in function
+\code{sum(\var{sequence})} is already provided, and works exactly like
+this.
+\versionadded{2.3}
 
 \subsection{List Comprehensions}
 
@@ -1810,7 +1876,7 @@ List comprehensions provide a concise way to create lists without resorting
 to use of \function{map()}, \function{filter()} and/or \keyword{lambda}.
 The resulting list definition tends often to be clearer than lists built
 using those constructs.  Each list comprehension consists of an expression
-following by a \keyword{for} clause, then zero or more \keyword{for} or
+followed by a \keyword{for} clause, then zero or more \keyword{for} or
 \keyword{if} clauses.  The result will be a list resulting from evaluating
 the expression in the context of the \keyword{for} and \keyword{if} clauses
 which follow it.  If the expression would evaluate to a tuple, it must be
@@ -1827,8 +1893,6 @@ parenthesized.
 [12, 18]
 >>> [3*x for x in vec if x < 2]
 []
->>> [{x: x**2} for x in vec]
-[{2: 4}, {4: 16}, {6: 36}]
 >>> [[x,x**2] for x in vec]
 [[2, 4], [4, 16], [6, 36]]
 >>> [x, x**2 for x in vec]	# error - parens required for tuples
@@ -1848,6 +1912,18 @@ SyntaxError: invalid syntax
 [8, 12, -54]
 \end{verbatim}
 
+To make list comprehensions match the behavior of \keyword{for}
+loops, assignments to the loop variable remain visible outside
+of the comprehension:
+
+\begin{verbatim}
+>>> x = 100                     # this gets overwritten
+>>> [x**3 for x in range(5)]
+[0, 1, 8, 27, 64]
+>>> x                           # the final value for range(5)
+4
+\end{verbatim}
+
 
 \section{The \keyword{del} statement \label{del}}
 
@@ -1857,8 +1933,7 @@ remove slices from a list (which we did earlier by assignment of an
 empty list to the slice).  For example:
 
 \begin{verbatim}
->>> a
-[-1, 1, 66.6, 333, 333, 1234.5]
+>>> a = [-1, 1, 66.6, 333, 333, 1234.5]
 >>> del a[0]
 >>> a
 [1, 66.6, 333, 333, 1234.5]
@@ -2004,8 +2079,62 @@ Here is a small example using a dictionary:
 >>> tel.keys()
 ['guido', 'irv', 'jack']
 >>> tel.has_key('guido')
-1
+True
 \end{verbatim}
+
+The \function{dict()} contructor builds dictionaries directly from
+lists of key-value pairs stored as tuples.  When the pairs form a
+pattern, list comprehensions can compactly specify the key-value list.
+
+\begin{verbatim}
+>>> dict([('sape', 4139), ('guido', 4127), ('jack', 4098)])
+{'sape': 4139, 'jack': 4098, 'guido': 4127}
+>>> dict([(x, x**2) for x in vec])     # use a list comprehension
+{2: 4, 4: 16, 6: 36}
+\end{verbatim}
+
+
+\section{Looping Techniques \label{loopidioms}}
+
+When looping through dictionaries, the key and corresponding value can
+be retrieved at the same time using the \method{items()} method.
+
+\begin{verbatim}
+>>> knights = {'gallahad': 'the pure', 'robin': 'the brave'}
+>>> for k, v in knights.items():
+...     print k, v
+...
+gallahad the pure
+robin the brave
+\end{verbatim}
+ 
+When looping through a sequence, the position index and corresponding
+value can be retrieved at the same time using the
+\function{enumerate()} function.
+
+\begin{verbatim} 
+>>> for i, v in enumerate(['tic', 'tac', 'toe']):
+...     print i, v
+...
+0 tic
+1 tac
+2 toe
+\end{verbatim}
+
+To loop over two or more sequences at the same time, the entries
+can be paired with the \function{zip()} function.
+
+\begin{verbatim}
+>>> questions = ['name', 'quest', 'favorite color']
+>>> answers = ['lancelot', 'the holy grail', 'blue']
+>>> for q, a in zip(questions, answers):
+...     print 'What is your %s?  It is %s.' % (q, a)
+...	
+What is your name?  It is lancelot.
+What is your quest?  It is the holy grail.
+What is your favorite color?  It is blue.
+\end{verbatim}
+
 
 \section{More on Conditions \label{conditions}}
 
@@ -2032,12 +2161,13 @@ the highest priority, and \code{or} the lowest, so that
 course, parentheses can be used to express the desired composition.
 
 The Boolean operators \code{and} and \code{or} are so-called
-\emph{shortcut} operators: their arguments are evaluated from left to
-right, and evaluation stops as soon as the outcome is determined.
-E.g., if \code{A} and \code{C} are true but \code{B} is false, \code{A
-and B and C} does not evaluate the expression C.  In general, the
-return value of a shortcut operator, when used as a general value and
-not as a Boolean, is the last evaluated argument.
+\emph{short-circuit} operators: their arguments are evaluated from
+left to right, and evaluation stops as soon as the outcome is
+determined.  For example, if \code{A} and \code{C} are true but
+\code{B} is false, \code{A and B and C} does not evaluate the
+expression \code{C}.  In general, the return value of a short-circuit
+operator, when used as a general value and not as a Boolean, is the
+last evaluated argument.
 
 It is possible to assign the result of a comparison or other Boolean
 expression to a variable.  For example,
@@ -2271,12 +2401,11 @@ Some tips for experts:
 
 \item
 When the Python interpreter is invoked with the \programopt{-O} flag,
-optimized code is generated and stored in \file{.pyo} files.
-The optimizer currently doesn't help much; it only removes
-\keyword{assert} statements and \code{SET_LINENO} instructions.
-When \programopt{-O} is used, \emph{all} bytecode is optimized;
-\code{.pyc} files are ignored and \code{.py} files are compiled to
-optimized bytecode.
+optimized code is generated and stored in \file{.pyo} files.  The
+optimizer currently doesn't help much; it only removes
+\keyword{assert} statements.  When \programopt{-O} is used, \emph{all}
+bytecode is optimized; \code{.pyc} files are ignored and \code{.py}
+files are compiled to optimized bytecode.
 
 \item
 Passing two \programopt{-O} flags to the Python interpreter
@@ -2342,7 +2471,8 @@ prompts:
 >>> sys.ps1 = 'C> '
 C> print 'Yuck!'
 Yuck!
-C> 
+C>
+
 \end{verbatim}
 
 These two variables are only defined if the interpreter is in
@@ -2370,14 +2500,15 @@ a module defines.  It returns a sorted list of strings:
 ['__name__', 'fib', 'fib2']
 >>> dir(sys)
 ['__displayhook__', '__doc__', '__excepthook__', '__name__', '__stderr__',
- '__stdin__', '__stdout__', '_getframe', 'argv', 'builtin_module_names',
- 'byteorder', 'copyright', 'displayhook', 'exc_info', 'exc_type',
- 'excepthook', 'exec_prefix', 'executable', 'exit', 'getdefaultencoding',
- 'getdlopenflags', 'getrecursionlimit', 'getrefcount', 'hexversion',
- 'maxint', 'maxunicode', 'modules', 'path', 'platform', 'prefix', 'ps1',
- 'ps2', 'setcheckinterval', 'setdlopenflags', 'setprofile',
- 'setrecursionlimit', 'settrace', 'stderr', 'stdin', 'stdout', 'version',
- 'version_info', 'warnoptions']
+ '__stdin__', '__stdout__', '_getframe', 'api_version', 'argv', 
+ 'builtin_module_names', 'byteorder', 'callstats', 'copyright',
+ 'displayhook', 'exc_clear', 'exc_info', 'exc_type', 'excepthook',
+ 'exec_prefix', 'executable', 'exit', 'getdefaultencoding', 'getdlopenflags',
+ 'getrecursionlimit', 'getrefcount', 'hexversion', 'maxint', 'maxunicode',
+ 'meta_path', 'modules', 'path', 'path_hooks', 'path_importer_cache',
+ 'platform', 'prefix', 'ps1', 'ps2', 'setcheckinterval', 'setdlopenflags',
+ 'setprofile', 'setrecursionlimit', 'settrace', 'stderr', 'stdin', 'stdout',
+ 'version', 'version_info', 'warnoptions']
 \end{verbatim}
 
 Without arguments, \function{dir()} lists the names you have defined
@@ -2402,25 +2533,26 @@ standard module \module{__builtin__}\refbimodindex{__builtin__}:
 >>> dir(__builtin__)
 ['ArithmeticError', 'AssertionError', 'AttributeError',
  'DeprecationWarning', 'EOFError', 'Ellipsis', 'EnvironmentError',
- 'Exception', 'FloatingPointError', 'IOError', 'ImportError',
+ 'Exception', 'False', 'FloatingPointError', 'IOError', 'ImportError',
  'IndentationError', 'IndexError', 'KeyError', 'KeyboardInterrupt',
  'LookupError', 'MemoryError', 'NameError', 'None', 'NotImplemented',
  'NotImplementedError', 'OSError', 'OverflowError', 'OverflowWarning',
- 'ReferenceError', 'RuntimeError', 'RuntimeWarning', 'StandardError',
- 'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError',
- 'SystemExit', 'TabError', 'TypeError', 'UnboundLocalError',
- 'UnicodeError', 'UserWarning', 'ValueError', 'Warning',
- 'ZeroDivisionError', '_', '__debug__', '__doc__', '__import__',
- '__name__', 'abs', 'apply', 'buffer', 'callable', 'chr', 'classmethod',
- 'cmp', 'coerce', 'compile', 'complex', 'copyright', 'credits', 'delattr',
- 'dict', 'dir', 'divmod', 'eval', 'execfile', 'exit', 'file', 'filter',
- 'float', 'getattr', 'globals', 'hasattr', 'hash', 'help', 'hex', 'id',
- 'input', 'int', 'intern', 'isinstance', 'issubclass', 'iter', 'len',
- 'license', 'list', 'locals', 'long', 'map', 'max', 'min', 'object',
- 'oct', 'open', 'ord', 'pow', 'property', 'quit', 'range', 'raw_input',
- 'reduce', 'reload', 'repr', 'round', 'setattr', 'slice', 'staticmethod',
- 'str', 'super', 'tuple', 'type', 'unichr', 'unicode', 'vars', 'xrange',
- 'zip']
+ 'PendingDeprecationWarning', 'ReferenceError',
+ 'RuntimeError', 'RuntimeWarning', 'StandardError', 'StopIteration',
+ 'SyntaxError', 'SyntaxWarning', 'SystemError', 'SystemExit', 'TabError',
+ 'True', 'TypeError', 'UnboundLocalError', 'UnicodeError', 'UserWarning',
+ 'ValueError', 'Warning', 'ZeroDivisionError', '__debug__', '__doc__',
+ '__import__', '__name__', 'abs', 'apply', 'bool', 'buffer',
+ 'callable', 'chr', 'classmethod', 'cmp', 'coerce', 'compile', 'complex',
+ 'copyright', 'credits', 'delattr', 'dict', 'dir', 'divmod',
+ 'enumerate', 'eval', 'execfile', 'exit', 'file', 'filter', 'float',
+ 'getattr', 'globals', 'hasattr', 'hash', 'help', 'hex', 'id',
+ 'input', 'int', 'intern', 'isinstance', 'issubclass', 'iter',
+ 'len', 'license', 'list', 'locals', 'long', 'map', 'max', 'min',
+ 'object', 'oct', 'open', 'ord', 'pow', 'property', 'quit',
+ 'range', 'raw_input', 'reduce', 'reload', 'repr', 'round',
+ 'setattr', 'slice', 'staticmethod', 'str', 'string', 'sum', 'super',
+ 'tuple', 'type', 'unichr', 'unicode', 'vars', 'xrange', 'zip']
 \end{verbatim}
 
 
@@ -2473,6 +2605,9 @@ Sound/                          Top-level package
               karaoke.py
               ...
 \end{verbatim}
+
+When importing the package, Python searchs through the directories
+on \code{sys.path} looking for the package subdirectory.
 
 The \file{__init__.py} files are required to make Python treat the
 directories as containing packages; this is done to prevent
@@ -2590,7 +2725,7 @@ current namespace because they are defined in the
 \module{Sound.Effects} package when the \code{from...import} statement
 is executed.  (This also works when \code{__all__} is defined.)
 
-Note that in general the practicing of importing * from a module or
+Note that in general the practice of importing \code{*} from a module or
 package is frowned upon, since it often causes poorly readable code.
 However, it is okay to use it to save typing in interactive sessions,
 and certain modules are designed to export only names that follow
@@ -2631,6 +2766,17 @@ Sound.Effects import echo}.
 %because of its awkwardness; since most packages will have a relative
 %shallow substructure, this is no big loss.)
 
+\subsection{Packages in Multiple Directories}
+
+Packages support one more special attribute, \member{__path__}.  This
+is initialized to be a list containing the name of the directory
+holding the package's \file{__init__.py} before the code in that file
+is executed.  This variable can be modified; doing so affects future
+searches for modules and subpackages contained in the package.
+
+While this feature is not often needed, it can be used to extend the
+set of modules found in a package.
+
 
 
 \chapter{Input and Output \label{io}}
@@ -2663,9 +2809,9 @@ resulting from this formatting operation.
 
 One question remains, of course: how do you convert values to strings?
 Luckily, Python has ways to convert any value to a string: pass it to
-the \function{repr()}  or \function{str()} functions, or just write
-the value between reverse quotes (\code{``}, equivalent to
-\function{repr()}).
+the \function{repr()}  or \function{str()} functions.  Reverse quotes
+(\code{``}) are equivalent to \function{repr()}, but their use is
+discouraged.
 
 The \function{str()} function is meant to return representations of
 values which are fairly human-readable, while \function{repr()} is
@@ -2684,28 +2830,26 @@ Some examples:
 >>> s = 'Hello, world.'
 >>> str(s)
 'Hello, world.'
->>> `s`
+>>> repr(s)
 "'Hello, world.'"
 >>> str(0.1)
 '0.1'
->>> `0.1`
+>>> repr(0.1)
 '0.10000000000000001'
 >>> x = 10 * 3.25
 >>> y = 200 * 200
->>> s = 'The value of x is ' + `x` + ', and y is ' + `y` + '...'
+>>> s = 'The value of x is ' + repr(x) + ', and y is ' + repr(y) + '...'
 >>> print s
 The value of x is 32.5, and y is 40000...
->>> # Reverse quotes work on other types besides numbers:
-... p = [x, y]
->>> ps = repr(p)
->>> ps
-'[32.5, 40000]'
->>> # Converting a string adds string quotes and backslashes:
+>>> # The repr() of a string adds string quotes and backslashes:
 ... hello = 'hello, world\n'
->>> hellos = `hello`
+>>> hellos = repr(hello)
 >>> print hellos
 'hello, world\n'
->>> # The argument of reverse quotes may be a tuple:
+>>> # The argument to repr() may be any Python object:
+... repr((x, y, ('spam', 'eggs')))
+"(32.5, 40000, ('spam', 'eggs'))"
+>>> # reverse quotes are convenient in interactive sessions:
 ... `x, y, ('spam', 'eggs')`
 "(32.5, 40000, ('spam', 'eggs'))"
 \end{verbatim}
@@ -2715,9 +2859,9 @@ Here are two ways to write a table of squares and cubes:
 \begin{verbatim}
 >>> import string
 >>> for x in range(1, 11):
-...     print string.rjust(`x`, 2), string.rjust(`x*x`, 3),
+...     print string.rjust(repr(x), 2), string.rjust(repr(x*x), 3),
 ...     # Note trailing comma on previous line
-...     print string.rjust(`x*x*x`, 4)
+...     print string.rjust(repr(x*x*x), 4)
 ...
  1   1    1
  2   4    8
@@ -3007,10 +3151,10 @@ Syntax errors, also known as parsing errors, are perhaps the most common
 kind of complaint you get while you are still learning Python:
 
 \begin{verbatim}
->>> while 1 print 'Hello world'
+>>> while True print 'Hello world'
   File "<stdin>", line 1, in ?
-    while 1 print 'Hello world'
-                ^
+    while True print 'Hello world'
+                   ^
 SyntaxError: invalid syntax
 \end{verbatim}
 
@@ -3035,15 +3179,15 @@ however, and result in error messages as shown here:
 >>> 10 * (1/0)
 Traceback (most recent call last):
   File "<stdin>", line 1, in ?
-ZeroDivisionError: integer division or modulo
+ZeroDivisionError: integer division or modulo by zero
 >>> 4 + spam*3
 Traceback (most recent call last):
   File "<stdin>", line 1, in ?
-NameError: spam
+NameError: name 'spam' is not defined
 >>> '2' + 2
 Traceback (most recent call last):
   File "<stdin>", line 1, in ?
-TypeError: illegal argument type for built-in operation
+TypeError: cannot concatenate 'str' and 'int' objects
 \end{verbatim}
 
 The last line of the error message indicates what happened.
@@ -3080,7 +3224,7 @@ supports); note that a user-generated interruption is signalled by
 raising the \exception{KeyboardInterrupt} exception.
 
 \begin{verbatim}
->>> while 1:
+>>> while True:
 ...     try:
 ...         x = int(raw_input("Please enter a number: "))
 ...         break
@@ -3174,17 +3318,29 @@ by the \keyword{try} \ldots\ \keyword{except} statement.
 When an exception occurs, it may have an associated value, also known as
 the exception's \emph{argument}.
 The presence and type of the argument depend on the exception type.
-For exception types which have an argument, the except clause may
-specify a variable after the exception name (or list) to receive the
-argument's value, as follows:
+
+The except clause may specify a variable after the exception name (or list).
+The variable is bound to an exception instance with the arguments stored
+in \code{instance.args}.  For convenience, the exception instance
+defines \method{__getitem__} and \method{__str__} so the arguments can
+be accessed or printed directly without having to reference \code{.args}.
 
 \begin{verbatim}
 >>> try:
-...     spam()
-... except NameError, x:
-...     print 'name', x, 'undefined'
-... 
-name spam undefined
+...    raise Exception('spam', 'eggs')
+... except Exception, inst:
+...    print type(inst)     # the exception instance
+...    print inst.args      # arguments stored in .args
+...    print inst           # __str__ allows args to printed directly
+...    x, y = inst          # __getitem__ allows args to be unpacked directly
+...    print 'x =', x
+...    print 'y =', y
+...
+<type 'instance'>
+('spam', 'eggs')
+('spam', 'eggs')
+x = spam
+y = eggs
 \end{verbatim}
 
 If an exception has an argument, it is printed as the last part
@@ -3255,7 +3411,7 @@ example:
 ...     def __init__(self, value):
 ...         self.value = value
 ...     def __str__(self):
-...         return `self.value`
+...         return repr(self.value)
 ... 
 >>> try:
 ...     raise MyError(2*2)
@@ -3405,7 +3561,7 @@ used to the benefit of the program, since aliases behave like pointers
 in some respects.  For example, passing an object is cheap since only
 a pointer is passed by the implementation; and if a function modifies
 an object passed as an argument, the caller will see the change --- this
-obviates the need for two different argument passing mechanisms as in
+eliminates the need for two different argument passing mechanisms as in
 Pascal.
 
 
@@ -3481,12 +3637,17 @@ that an unqualified reference to a name attempts to find the name in
 the namespace.
 
 Although scopes are determined statically, they are used dynamically.
-At any time during execution, exactly three nested scopes are in use
-(exactly three namespaces are directly accessible): the
-innermost scope, which is searched first, contains the local names,
-the middle scope, searched next, contains the current module's global
-names, and the outermost scope (searched last) is the namespace
-containing built-in names.
+At any time during execution, there are at least three nested scopes whose
+namespaces are directly accessible: the innermost scope, which is searched
+first, contains the local names; the namespaces of any enclosing
+functions, which are searched starting with the nearest enclosing scope;
+the middle scope, searched next, contains the current module's global names;
+and the outermost scope (searched last) is the namespace containing built-in
+names.
+
+If a name is declared global, then all references and assignments go
+directly to the middle scope containing the module's global names.
+Otherwise, all variables found outside of the innermost scope are read-only.
 
 Usually, the local scope references the local names of the (textually)
 current function.  Outside of functions, the local scope references
@@ -3582,7 +3743,7 @@ references, returning an integer and a method object, respectively.
 Class attributes can also be assigned to, so you can change the value
 of \code{MyClass.i} by assignment.  \member{__doc__} is also a valid
 attribute, returning the docstring belonging to the class: \code{"A
-simple example class"}). 
+simple example class"}. 
 
 Class \emph{instantiation} uses function notation.  Just pretend that
 the class object is a parameterless function that returns a new
@@ -3686,7 +3847,7 @@ later time.  For example:
 
 \begin{verbatim}
 xf = x.f
-while 1:
+while True:
     print xf()
 \end{verbatim}
 
@@ -3943,27 +4104,6 @@ code that is byte-compiled together.  The same restriction applies to
 \code{getattr()}, \code{setattr()} and \code{delattr()}, as well as
 when referencing \code{__dict__} directly.
 
-Here's an example of a class that implements its own
-\method{__getattr__()} and \method{__setattr__()} methods and stores
-all attributes in a private variable, in a way that works in all
-versions of Python, including those available before this feature was
-added:
-
-\begin{verbatim}
-class VirtualAttributes:
-    __vdict = None
-    __vdict_name = locals().keys()[0]
-     
-    def __init__(self):
-        self.__dict__[self.__vdict_name] = {}
-    
-    def __getattr__(self, name):
-        return self.__vdict[name]
-    
-    def __setattr__(self, name, value):
-        self.__vdict[name] = value
-\end{verbatim}
-
 
 \section{Odds and Ends \label{odds}}
 
@@ -4000,11 +4140,11 @@ Instance method objects have attributes, too: \code{m.im_self} is the
 object of which the method is an instance, and \code{m.im_func} is the
 function object corresponding to the method.
 
-\subsection{Exceptions Can Be Classes \label{exceptionClasses}}
 
-User-defined exceptions are no longer limited to being string objects
---- they can be identified by classes as well.  Using this mechanism it
-is possible to create extensible hierarchies of exceptions.
+\section{Exceptions Are Classes Too\label{exceptionClasses}}
+
+User-defined exceptions are identified by classes as well.  Using this
+mechanism it is possible to create extensible hierarchies of exceptions.
 
 There are two new valid (semantic) forms for the raise statement:
 
@@ -4022,8 +4162,7 @@ shorthand for:
 raise instance.__class__, instance
 \end{verbatim}
 
-An except clause may list classes as well as string objects.  A class
-in an except clause is compatible with an exception if it is the same
+A class in an except clause is compatible with an exception if it is the same
 class or a base class thereof (but not the other way around --- an
 except clause listing a derived class is not compatible with a base
 class).  For example, the following code will print B, C, D in that
@@ -4058,6 +4197,119 @@ finally the instance converted to a string using the built-in function
 \function{str()}.
 
 
+\section{Iterators\label{iterators}}
+
+By now, you've probably noticed that most container objects can looped over
+using a \code{for} statement:
+
+\begin{verbatim}
+for element in [1, 2, 3]:
+    print element
+for element in (1, 2, 3):
+    print element
+for key in {'one':1, 'two':2}:
+    print key
+for char in "123":
+    print char
+for line in open("myfile.txt"):
+    print line
+\end{verbatim}
+
+This style of access is clear, concise, and convenient.  The use of iterators
+pervades and unifies Python.  Behind the scenes, the \code{for} statement calls
+\function{iter()} on the container object.  The function returns an iterator
+object that defines the method \method{next()} which accesses elements in the
+container one at a time.  When there are no more elements, \method{next()}
+raises a \exception{StopIteration} exception which tells the \code{for} loop
+to terminate.  This example shows how it all works:
+
+\begin{verbatim}
+>>> s = 'abc'
+>>> it = iter(s)
+>>> it
+<iterator object at 0x00A1DB50>
+>>> it.next()
+'a'
+>>> it.next()
+'b'
+>>> it.next()
+'c'
+>>> it.next()
+
+Traceback (most recent call last):
+  File "<pyshell#6>", line 1, in -toplevel-
+    it.next()
+StopIteration
+\end{verbatim}
+
+Having seen the mechanics behind the iterator protocol, it is easy to add
+iterator behavior to your classes.  Define a \method{__iter__()} method
+which returns an object with a \method{next()} method.  If the class defines
+\method{next()}, then \method{__iter__()} can just return \code{self}:
+
+\begin{verbatim}
+>>> class Reverse:
+    "Iterator for looping over a sequence backwards"
+    def __init__(self, data):
+        self.data = data
+        self.index = len(data)
+    def __iter__(self):
+        return self
+    def next(self):
+        if self.index == 0:
+            raise StopIteration
+        self.index = self.index - 1
+        return self.data[self.index]
+
+>>> for char in Reverse('spam'):
+	print char
+
+m
+a
+p
+s
+\end{verbatim}
+
+
+\section{Generators\label{generators}}
+
+Generators are a simple and powerful tool for creating iterators.  They are
+written like regular functions but use the \keyword{yield} statement whenever
+they want to return data.  Each time the \method{next()} is called, the
+generator resumes where it left-off (it remembers all the data values and
+which statement was last executed).  An example shows that generators can
+be trivially easy to create:
+
+\begin{verbatim}
+>>> def reverse(data):
+	for index in range(len(data)-1, -1, -1):
+		yield data[index]
+		
+>>> for char in reverse('golf'):
+	print char
+
+f
+l
+o
+g	
+\end{verbatim}
+
+Anything that can be done with generators can also be done with class based
+iterators as described in the previous section.  What makes generators so
+compact is that the \method{__iter__()} and \method{next()} methods are
+created automatically.
+
+Another key feature is that the local variables and execution state
+are automatically saved between calls.  This made the function easier to write
+and much more clear than an approach using class variables like
+\code{self.index} and \code{self.data}.
+
+In addition to automatic method creation and saving program state, when
+generators terminate, they automatically raise \exception{StopIteration}.
+In combination, these features make it easy to create iterators with no
+more effort than writing a regular function.
+
+
 \chapter{What Now? \label{whatNow}}
 
 Reading this tutorial has probably reinforced your interest in using
@@ -4082,13 +4334,16 @@ world, such as Europe, Japan, and Australia; a mirror may be faster
 than the main site, depending on your geographical location.  A more
 informal site is \url{http://starship.python.net/}, which contains a
 bunch of Python-related personal home pages; many people have
-downloadable software there.
+downloadable software there. Many more user-created Python modules
+can be found in a third-party repository at
+\url{http://www.vex.net/parnassus}.
 
 For Python-related questions and problem reports, you can post to the
 newsgroup \newsgroup{comp.lang.python}, or send them to the mailing
 list at \email{python-list@python.org}.  The newsgroup and mailing list
 are gatewayed, so messages posted to one will automatically be
-forwarded to the other.  There are around 120 postings a day,
+forwarded to the other.  There are around 120 postings a day (with peaks
+up to several hundred),
 % Postings figure based on average of last six months activity as
 % reported by www.egroups.com; Jan. 2000 - June 2000: 21272 msgs / 182
 % days = 116.9 msgs / day and steadily increasing.
@@ -4104,8 +4359,7 @@ and may already contain the solution for your problem.
 
 \appendix
 
-\chapter{Interactive Input Editing and History Substitution
-         \label{interacting}}
+\chapter{Interactive Input Editing and History Substitution\label{interacting}}
 
 Some versions of the Python interpreter support editing of the current
 input line and history substitution, similar to facilities found in
@@ -4232,7 +4486,7 @@ out to be needed in most sessions with the interpreter.
 # bound to the Esc key by default (you can change it - see readline docs).
 #
 # Store the file in ~/.pystartup, and set an environment variable to point
-# to it, e.g. "export PYTHONSTARTUP=/max/home/itamar/.pystartup" in bash.
+# to it:  "export PYTHONSTARTUP=/max/home/itamar/.pystartup" in bash.
 #
 # Note that PYTHONSTARTUP does *not* expand "~", so you have to put in the
 # full path to your home directory.
@@ -4267,9 +4521,8 @@ check (or even suggest) matching parentheses, quotes, etc., would also
 be useful.
 
 
-\chapter{Floating Point Arithmetic:  Issues and Limitations
-         \label{fp-issues}}
-\sectionauthor{Tim Peters}{tim.one@home.com}
+\chapter{Floating Point Arithmetic:  Issues and Limitations\label{fp-issues}}
+\sectionauthor{Tim Peters}{tim_one@email.msn.com}
 
 Floating-point numbers are represented in computer hardware as
 base 2 (binary) fractions.  For example, the decimal fraction

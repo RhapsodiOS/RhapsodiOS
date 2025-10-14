@@ -233,6 +233,13 @@ PyErr_SetFromErrnoWithFilename:PyObject*::null:
 PyErr_SetFromErrnoWithFilename:PyObject*:type:0:
 PyErr_SetFromErrnoWithFilename:char*:filename::
 
+PyErr_SetFromWindowsErr:PyObject*::null:
+PyErr_SetFromWindowsErr:int:ierr::
+
+PyErr_SetFromWindowsErrWithFilename:PyObject*::null:
+PyErr_SetFromWindowsErrWithFilename:int:ierr::
+PyErr_SetFromWindowsErrWithFilename:char*:filename::
+
 PyErr_SetInterrupt:void:::
 
 PyErr_SetNone:void:::
@@ -804,6 +811,9 @@ PyObject_GetItem:PyObject*::+1:
 PyObject_GetItem:PyObject*:o:0:
 PyObject_GetItem:PyObject*:key:0:
 
+PyObject_GetIter:PyObject*::+1:
+PyObject_GetIter:PyObject*:o:0:
+
 PyObject_HasAttr:int:::
 PyObject_HasAttr:PyObject*:o:0:
 PyObject_HasAttr:PyObject*:attr_name:0:
@@ -842,6 +852,16 @@ PyObject_Print:int:flags::
 
 PyObject_Repr:PyObject*::+1:
 PyObject_Repr:PyObject*:o:0:
+
+PyObject_RichCompare:PyObject*::+1:
+PyObject_RichCompare:PyObject*:o1:0:
+PyObject_RichCompare:PyObject*:o2:0:
+PyObject_RichCompare:int:opid::
+
+PyObject_RichCompareBool:int:::
+PyObject_RichCompareBool:PyObject*:o1:0:
+PyObject_RichCompareBool:PyObject*:o2:0:
+PyObject_RichCompareBool:int:opid::
 
 PyObject_SetAttr:int:::
 PyObject_SetAttr:PyObject*:o:0:
@@ -963,6 +983,10 @@ PySequence_InPlaceConcat:PyObject*:o:0:
 PySequence_InPlaceRepeat:PyObject*::+1:
 PySequence_InPlaceRepeat:PyObject*:s:0:
 PySequence_InPlaceRepeat:PyObject*:o:0:
+
+PySequence_ITEM:PyObject*::+1:
+PySequence_ITEM:PyObject*:o:0:
+PySequence_ITEM:int:i::
 
 PySequence_Repeat:PyObject*::+1:
 PySequence_Repeat:PyObject*:o:0:
@@ -1379,14 +1403,14 @@ PyUnicode_Tailmatch:int:start::
 PyUnicode_Tailmatch:int:end::
 PyUnicode_Tailmatch:int:direction::
 
-PyUnicode_Find:PyObject*::+1:
+PyUnicode_Find:int:::
 PyUnicode_Find:PyObject*:str:0:
 PyUnicode_Find:PyObject*:substr:0:
 PyUnicode_Find:int:start::
 PyUnicode_Find:int:end::
 PyUnicode_Find:int:direction::
 
-PyUnicode_Count:PyObject*::+1:
+PyUnicode_Count:int:::
 PyUnicode_Count:PyObject*:str:0:
 PyUnicode_Count:PyObject*:substr:0:
 PyUnicode_Count:int:start::
@@ -1413,7 +1437,7 @@ PyUnicode_Contains:PyObject*:element:0:
 PyWeakref_GET_OBJECT:PyObject*::0:
 PyWeakref_GET_OBJECT:PyObject*:ref:0:
 
-PyWeakref_GetObject:PyObject*::+1:
+PyWeakref_GetObject:PyObject*::0:
 PyWeakref_GetObject:PyObject*:ref:0:
 
 PyWeakref_NewProxy:PyObject*::+1:

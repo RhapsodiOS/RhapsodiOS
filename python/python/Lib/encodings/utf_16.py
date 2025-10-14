@@ -31,7 +31,7 @@ class StreamWriter(Codec,codecs.StreamWriter):
             else:
                 self.encode = codecs.utf_16_be_encode
         return result
-        
+
 class StreamReader(Codec,codecs.StreamReader):
     def __init__(self, stream, errors='strict'):
         self.bom_read = 0
@@ -53,9 +53,11 @@ class StreamReader(Codec,codecs.StreamReader):
             self.bom_read = 1
         return codecs.StreamReader.read(self, size)
 
+    def readline(self, size=None):
+        raise NotImplementedError, '.readline() is not implemented for UTF-16'
+
 ### encodings module API
 
 def getregentry():
 
     return (Codec.encode,Codec.decode,StreamReader,StreamWriter)
-

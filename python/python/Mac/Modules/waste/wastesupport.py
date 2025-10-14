@@ -36,6 +36,7 @@ OptSoupHandle = OpaqueByValueType("WESoupHandle", "OptResObj")
 OptStScrpHandle = OpaqueByValueType("StScrpHandle", "OptResObj")
 
 WEStyleMode = Type("WEStyleMode", "H")
+WERulerMode = Type("WERulerMode", "l")
 WEActionKind = Type("WEActionKind", "h")
 WEAlignment = Type("WEAlignment", "B")
 WEEdge = Type("WEEdge", "B")
@@ -55,10 +56,16 @@ LongPt_ptr = LongPt
 LongRect = OpaqueType("LongRect", "LongRect")
 LongRect_ptr = LongRect
 
+TextEncodingVariant = Type("TextEncodingVariant", "l")
+TextEncodingFormat = Type("TextEncodingFormat", "l")
+
 includestuff = includestuff + """
 #include <%s>""" % MACHEADERFILE + """
 #include <WEObjectHandlers.h>
 #include <WETabs.h>
+#ifndef PyDoc_STR
+#define PyDoc_STR(x) (x)
+#endif
 
 /* Exported by Qdmodule.c: */
 extern PyObject *QdRGB_New(RGBColor *);
@@ -69,25 +76,22 @@ extern PyObject *AEDesc_New(AppleEvent *);
 extern int AEDesc_Convert(PyObject *, AppleEvent *);
 
 /* Forward declaration */
-staticforward PyObject *WEOObj_New(WEObjectReference);
-staticforward PyObject *ExistingwasteObj_New(WEReference);
+static PyObject *WEOObj_New(WEObjectReference);
+static PyObject *ExistingwasteObj_New(WEReference);
 
 /*
 ** Parse/generate TextStyle records
 */
-static
-PyObject *TextStyle_New(itself)
-	TextStylePtr itself;
+static PyObject *
+TextStyle_New(TextStylePtr itself)
 {
 
 	return Py_BuildValue("lllO&", (long)itself->tsFont, (long)itself->tsFace, (long)itself->tsSize, QdRGB_New,
 				&itself->tsColor);
 }
 
-static
-TextStyle_Convert(v, p_itself)
-	PyObject *v;
-	TextStylePtr p_itself;
+static int
+TextStyle_Convert(PyObject *v, TextStylePtr p_itself)
 {
 	long font, face, size;
 	
@@ -102,9 +106,8 @@ TextStyle_Convert(v, p_itself)
 /*
 ** Parse/generate RunInfo records
 */
-static
-PyObject *RunInfo_New(itself)
-	WERunInfo *itself;
+static PyObject *
+RunInfo_New(WERunInfo *itself)
 {
 
 	return Py_BuildValue("llhhO&O&", itself->runStart, itself->runEnd, itself->runHeight,
@@ -124,7 +127,7 @@ LongRect_New(LongRect *r)
 	return Py_BuildValue("(llll)", r->left, r->top, r->right, r->bottom);
 }
 
-
+int
 LongPt_Convert(PyObject *v, LongPt *p)
 {
 	return PyArg_Parse(v, "(ll)", &p->h, &p->v);
@@ -183,8 +186,12 @@ my_new_handler(Point *objectSize, WEObjectReference objref)
 		if (!PyMac_GetPoint(rv, objectSize) )
 			err = errAECoercionFail;
 	}
-	if ( args ) Py_DECREF(args);
-	if ( rv ) Py_DECREF(rv);
+	if ( args ) {
+		Py_DECREF(args);
+	}
+	if ( rv ) {
+		Py_DECREF(rv);
+	}
 	return err;
 }
 
@@ -196,8 +203,12 @@ my_dispose_handler(WEObjectReference objref)
 	
 	args=Py_BuildValue("(O&)", WEOObj_New, objref);
 	err = any_handler(weDisposeHandler, objref, args, &rv);
-	if ( args ) Py_DECREF(args);
-	if ( rv ) Py_DECREF(rv);
+	if ( args ) {
+		Py_DECREF(args);
+	}
+	if ( rv ) {
+		Py_DECREF(rv);
+	}
 	return err;
 }
 
@@ -209,8 +220,12 @@ my_draw_handler(const Rect *destRect, WEObjectReference objref)
 	
 	args=Py_BuildValue("O&O&", PyMac_BuildRect, destRect, WEOObj_New, objref);
 	err = any_handler(weDrawHandler, objref, args, &rv);
-	if ( args ) Py_DECREF(args);
-	if ( rv ) Py_DECREF(rv);
+	if ( args ) {
+		Py_DECREF(args);
+	}
+	if ( rv ) {
+		Py_DECREF(rv);
+	}
 	return err;
 }
 
@@ -229,8 +244,12 @@ my_click_handler(Point hitPt, EventModifiers modifiers,
 		retvalue = PyInt_AsLong(rv);
 	else
 		retvalue = 0;
-	if ( args ) Py_DECREF(args);
-	if ( rv ) Py_DECREF(rv);
+	if ( args ) {
+		Py_DECREF(args);
+	}
+	if ( rv ) {
+		Py_DECREF(rv);
+	}
 	return retvalue;
 }
 		
@@ -270,7 +289,7 @@ class WEMethodGenerator(OSErrMethodGenerator):
 
 
 
-class WEObjectDefinition(GlobalObjectDefinition):
+class WEObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("""if (itself == NULL) {
 					PyErr_SetString(waste_Error,"Cannot create null WE");
@@ -282,7 +301,7 @@ class WEObjectDefinition(GlobalObjectDefinition):
 	def outputFreeIt(self, itselfname):
 		Output("WEDispose(%s);", itselfname)
 		
-class WEOObjectDefinition(GlobalObjectDefinition):
+class WEOObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("""if (itself == NULL) {
 					Py_INCREF(Py_None);
@@ -356,7 +375,8 @@ stdhandlers_body = """
 				(UniversalProcPtr) NewWEClickObjectProc(HandleClickSound), NULL)) != noErr)
 		goto cleanup;
 	Py_INCREF(Py_None);
-	return Py_None;
+	_res = Py_None;
+	return _res;
 	
 cleanup:
 	return PyMac_Error(err);
@@ -394,7 +414,8 @@ inshandler_body = """
 	err = WEInstallObjectHandler(objectType, selector, handler, we);
 	if ( err ) return PyMac_Error(err);
 	Py_INCREF(Py_None);
-	return Py_None;
+	_res = Py_None;
+	return _res;
 """
 
 stdhand = ManualGenerator("STDObjectHandlers", stdhandlers_body)

@@ -5,10 +5,9 @@
 
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
 from scantools import Scanner
-from bgenlocations import TOOLBOXDIR
 
 LONG = "Scrap"
 SHORT = "scrap"
@@ -20,6 +19,8 @@ def main():
 	scanner = MyScanner(input, output, defsoutput)
 	scanner.scan()
 	scanner.close()
+##	print "=== Testing definitions output code ==="
+##	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	exec "import " + SHORT + "support"
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -29,28 +30,25 @@ class MyScanner(Scanner):
 	def destination(self, type, name, arglist):
 		classname = "Function"
 		listname = "functions"
+		if arglist:
+			t, n, m = arglist[0]
+			if t == 'ScrapRef' and m == "InMode":
+				classname = "Method"
+				listname = "methods"
 		return classname, listname
 
 	def makeblacklistnames(self):
 		return [
+			"GetScrapFlavorInfoList",
+			'InfoScrap',
+			'GetScrap',
+			'ZeroScrap',
+			'PutScrap',
 			]
-
-	def makegreylist(self):
-		return [
-			('#if !TARGET_API_MAC_CARBON', [
-				'InfoScrap',
-				'GetScrap',
-				'ZeroScrap',
-				'PutScrap',
-			]),
-			('#if TARGET_API_MAC_CARBON', [
-				'CallInScrapPromises',
-				'ClearCurrentScrap',
-			])]
 
 	def makeblacklisttypes(self):
 		return [
-			"ScrapRef",		# For now -- This is the Carbon scrap main object
+			'ScrapPromiseKeeperUPP',
 			]
 
 	def makerepairinstructions(self):

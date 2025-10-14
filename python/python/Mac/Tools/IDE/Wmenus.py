@@ -1,11 +1,18 @@
 import FrameWork
 import Wbase, Wcontrols
-from Carbon import Ctl, Controls, Qd
+from Carbon import Ctl, Controls, Qd, Res
 from types import *
 import Wapplication
 
-_arrowright = Qd.GetPicture(472)
-_arrowdown = Qd.GetPicture(473)
+#_arrowright = Qd.GetPicture(472)
+#_arrowdown = Qd.GetPicture(473)
+
+_arrowright = Res.Resource(
+	'\x00I\x00\x00\x00\x00\x00\n\x00\n\x11\x01\x01\x00\n\x00\x00\x00'
+	'\x00\x00\n\x00\n\x90\x00\x02\x00\x00\x00\x00\x00\n\x00\n\x00\x00'
+	'\x00\x00\x00\n\x00\n\x00\x00\x00\x00\x00\n\x00\n\x00\x00\x10\x00'
+	'\x18\x00\x1c\x00\x1e\x00\x1f\x00\x1f\x00\x1e\x00\x1c\x00\x18\x00'
+	'\x10\x00\xff')
 
 
 class PopupControl(Wcontrols.ControlWidget):
@@ -104,7 +111,7 @@ class PopupWidget(Wbase.ClickableWidget):
 		self.menu.menu.EnableMenuItem(0)
 		reply = self.menu.menu.PopUpMenuSelect(t, l, 1)
 		if reply:
-			id = (reply & 0xffff0000) >> 16
+			id = reply >> 16
 			item = reply & 0xffff
 			self._menu_callback(id, item)
 		self._emptymenu()
@@ -193,7 +200,7 @@ class PopupMenu(PopupWidget):
 		self.menu.menu.EnableMenuItem(0)
 		reply = self.menu.menu.PopUpMenuSelect(t, l, 1)
 		if reply:
-			id = (reply & 0xffff0000) >> 16
+			id = reply >> 16
 			item = reply & 0xffff
 			self._menu_callback(id, item)
 

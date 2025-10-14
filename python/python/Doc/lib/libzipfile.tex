@@ -48,8 +48,8 @@ The available attributes of this module are:
 \end{classdesc}
 
 \begin{funcdesc}{is_zipfile}{filename}
-  Returns true if \var{filename} is a valid ZIP file based on its magic
-  number, otherwise returns false.  This module does not currently
+  Returns \code{True} if \var{filename} is a valid ZIP file based on its magic
+  number, otherwise returns \code{False}.  This module does not currently
   handle ZIP files which have appended comments.
 \end{funcdesc}
 
@@ -97,7 +97,7 @@ cat myzip.zip >> python.exe
   the archive, and should be \constant{ZIP_STORED} or
   \constant{ZIP_DEFLATED}; unrecognized values will cause
   \exception{RuntimeError} to be raised.  If \constant{ZIP_DEFLATED}
-  is specified but the \refmodule{zlib} module is not avaialble,
+  is specified but the \refmodule{zlib} module is not available,
   \exception{RuntimeError} is also raised.  The default is
   \constant{ZIP_STORED}. 
 \end{classdesc}
@@ -146,11 +146,13 @@ cat myzip.zip >> python.exe
   \code{'a'}. 
 \end{methoddesc}
 
-\begin{methoddesc}{writestr}{zinfo, bytes}
-  Write the string \var{bytes} to the archive; meta-information is
-  given as the \class{ZipInfo} instance \var{zinfo}.  At least the
-  filename, date, and time must be given by \var{zinfo}.  The archive
-  must be opened with mode \code{'w'} or \code{'a'}.
+\begin{methoddesc}{writestr}{zinfo_or_arcname, bytes}
+  Write the string \var{bytes} to the archive; \var{zinfo_or_arcname}
+  is either the file name it will be given in the archive, or a
+  \class{ZipInfo} instance.  If it's an instance, at least the
+  filename, date, and time must be given.  If it's a name, the date
+  and time is set to the current date and time. The archive must be
+  opened with mode \code{'w'} or \code{'a'}.
 \end{methoddesc}
 
 

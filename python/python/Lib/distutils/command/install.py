@@ -2,13 +2,16 @@
 
 Implements the Distutils 'install' command."""
 
-# created 1999/03/13, Greg Ward
+from distutils import log
 
-__revision__ = "$Id: install.py,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+# This module should be kept compatible with Python 1.5.2.
+
+__revision__ = "$Id: install.py,v 1.67 2002/11/19 13:12:28 akuchling Exp $"
 
 import sys, os, string
 from types import *
-from distutils.core import Command, DEBUG
+from distutils.core import Command
+from distutils.debug import DEBUG
 from distutils.sysconfig import get_config_vars
 from distutils.errors import DistutilsPlatformError
 from distutils.file_util import write_file
@@ -50,6 +53,13 @@ INSTALL_SCHEMES = {
         },
     'nt': WINDOWS_SCHEME,
     'mac': {
+        'purelib': '$base/Lib/site-packages',
+        'platlib': '$base/Lib/site-packages',
+        'headers': '$base/Include/$dist_name',
+        'scripts': '$base/Scripts',
+        'data'   : '$base',
+        },
+    'os2': {
         'purelib': '$base/Lib/site-packages',
         'platlib': '$base/Lib/site-packages',
         'headers': '$base/Include/$dist_name',
@@ -127,7 +137,7 @@ class install (Command):
          "filename in which to record list of installed files"),
         ]
 
-    boolean_options = ['force', 'skip-build']
+    boolean_options = ['compile', 'force', 'skip-build']
     negative_opt = {'no-compile' : 'compile'}
 
 
@@ -158,7 +168,6 @@ class install (Command):
         self.install_data = None
 
         self.compile = None
-        self.no_compile = None
         self.optimize = None
 
         # These two are for putting non-packagized distributions into their
@@ -362,8 +371,8 @@ class install (Command):
                 self.install_scripts is None or
                 self.install_data is None):
                 raise DistutilsOptionError, \
-                      "install-base or install-platbase supplied, but " + \
-                      "installation scheme is incomplete"
+                      ("install-base or install-platbase supplied, but "
+                      "installation scheme is incomplete")
             return
 
         if self.home is not None:
@@ -458,8 +467,8 @@ class install (Command):
                 (path_file, extra_dirs) = self.extra_path
             else:
                 raise DistutilsOptionError, \
-                      "'extra_path' option must be a list, tuple, or " + \
-                      "comma-separated string with 1 or 2 elements"
+                      ("'extra_path' option must be a list, tuple, or "
+                      "comma-separated string with 1 or 2 elements")
 
             # convert to local form in case Unix notation used (as it
             # should be in setup scripts)
@@ -516,10 +525,10 @@ class install (Command):
         if (self.warn_dir and
             not (self.path_file and self.install_path_file) and
             install_lib not in sys_path):
-            self.warn(("modules installed to '%s', which is not in " +
-                       "Python's module search path (sys.path) -- " +
-                       "you'll have to change the search path yourself") %
-                      self.install_lib)
+            log.debug(("modules installed to '%s', which is not in "
+                       "Python's module search path (sys.path) -- " 
+                       "you'll have to change the search path yourself"),
+                       self.install_lib)
 
     # run ()
 

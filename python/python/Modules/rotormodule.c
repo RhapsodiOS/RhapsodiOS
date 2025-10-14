@@ -78,7 +78,7 @@ typedef struct {
 	unsigned char *advances;	     /* [num_rotors] */
 } Rotorobj;
 
-staticforward PyTypeObject Rotor_Type;
+static PyTypeObject Rotor_Type;
 
 #define is_rotor(v)		((v)->ob_type == &Rotor_Type)
 
@@ -463,7 +463,7 @@ rotorobj_encrypt(Rotorobj *self, PyObject *args)
 	PyObject *rtn = NULL;
 	char *tmp;
 
-	if (!PyArg_Parse(args, "s#", &string, &len))
+	if (!PyArg_ParseTuple(args, "s#:encrypt", &string, &len))
 		return NULL;
 	if (!(tmp = PyMem_NEW(char, len+5))) {
 		PyErr_NoMemory();
@@ -485,7 +485,7 @@ rotorobj_encrypt_more(Rotorobj *self, PyObject *args)
 	PyObject *rtn = NULL;
 	char *tmp;
 
-	if (!PyArg_Parse(args, "s#", &string, &len))
+	if (!PyArg_ParseTuple(args, "s#:encrypt_more", &string, &len))
 		return NULL;
 	if (!(tmp = PyMem_NEW(char, len+5))) {
 		PyErr_NoMemory();
@@ -507,7 +507,7 @@ rotorobj_decrypt(Rotorobj *self, PyObject *args)
 	PyObject *rtn = NULL;
 	char *tmp;
 
-	if (!PyArg_Parse(args, "s#", &string, &len))
+	if (!PyArg_ParseTuple(args, "s#:decrypt", &string, &len))
 		return NULL;
 	if (!(tmp = PyMem_NEW(char, len+5))) {
 		PyErr_NoMemory();
@@ -529,7 +529,7 @@ rotorobj_decrypt_more(Rotorobj *self, PyObject *args)
 	PyObject *rtn = NULL;
 	char *tmp;
 
-	if (!PyArg_Parse(args, "s#", &string, &len))
+	if (!PyArg_ParseTuple(args, "s#:decrypt_more", &string, &len))
 		return NULL;
 	if (!(tmp = PyMem_NEW(char, len+5))) {
 		PyErr_NoMemory();
@@ -558,11 +558,11 @@ rotorobj_setkey(Rotorobj *self, PyObject *args)
 
 static struct PyMethodDef
 rotorobj_methods[] = {
-	{"encrypt",	(PyCFunction)rotorobj_encrypt},
-	{"encryptmore",	(PyCFunction)rotorobj_encrypt_more},
-	{"decrypt",	(PyCFunction)rotorobj_decrypt},
-	{"decryptmore",	(PyCFunction)rotorobj_decrypt_more},
-	{"setkey",	(PyCFunction)rotorobj_setkey, 1},
+	{"encrypt",	(PyCFunction)rotorobj_encrypt, METH_VARARGS},
+	{"encryptmore",	(PyCFunction)rotorobj_encrypt_more, METH_VARARGS},
+	{"decrypt",	(PyCFunction)rotorobj_decrypt, METH_VARARGS},
+	{"decryptmore",	(PyCFunction)rotorobj_decrypt_more, METH_VARARGS},
+	{"setkey",	(PyCFunction)rotorobj_setkey, METH_VARARGS},
 	{NULL,		NULL}		/* sentinel */
 };
 
@@ -575,7 +575,7 @@ rotorobj_getattr(Rotorobj *s, char *name)
 }
 
 
-statichere PyTypeObject Rotor_Type = {
+static PyTypeObject Rotor_Type = {
 	PyObject_HEAD_INIT(NULL)
 	0,				/*ob_size*/
 	"rotor.rotor",			/*tp_name*/
@@ -597,10 +597,9 @@ rotor_rotor(PyObject *self, PyObject *args)
 {
 	Rotorobj *r;
 	char *string;
-	int len;
 	int num_rotors = 6;
 
-	if (!PyArg_ParseTuple(args, "s#|i:newrotor", &string, &len, &num_rotors))
+	if (!PyArg_ParseTuple(args, "s|i:newrotor", &string, &num_rotors))
 		return NULL;
 
 	r = rotorobj_new(num_rotors, string);
@@ -611,14 +610,18 @@ rotor_rotor(PyObject *self, PyObject *args)
 
 static struct PyMethodDef
 rotor_methods[] = {
-	{"newrotor",  rotor_rotor, 1},
+	{"newrotor",  rotor_rotor, METH_VARARGS},
 	{NULL,        NULL}		     /* sentinel */
 };
 
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 initrotor(void)
 {
 	Rotor_Type.ob_type = &PyType_Type;
 	(void)Py_InitModule("rotor", rotor_methods);
+	if (PyErr_Warn(PyExc_DeprecationWarning,
+		       "the rotor module uses an insecure algorithm "
+                       "and is deprecated") < 0)
+		return;
 }

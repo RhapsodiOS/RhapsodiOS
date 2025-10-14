@@ -73,26 +73,24 @@ del m
 # only absolute pathnames, even if we're running from the build directory.
 L = []
 _dirs_in_sys_path = {}
+dir = dircase = None  # sys.path may be empty at this point
 for dir in sys.path:
-    # Filter out paths that don't exist, but leave in the empty string
-    # since it's a special case. We also need to special-case the Mac,
-    # as file names are allowed on sys.path there.
-    if sys.platform != 'mac':
-        if dir and not os.path.isdir(dir):
-            continue
-    else:
-        if dir and not os.path.exists(dir):
-            continue
+    # Filter out duplicate paths (on case-insensitive file systems also
+    # if they only differ in case); turn relative paths into absolute
+    # paths.
     dir, dircase = makepath(dir)
-    if not _dirs_in_sys_path.has_key(dircase):
+    if not dircase in _dirs_in_sys_path:
         L.append(dir)
         _dirs_in_sys_path[dircase] = 1
 sys.path[:] = L
-del dir, L
+del dir, dircase, L
 
 # Append ./build/lib.<platform> in case we're running in the build dir
 # (especially for Guido :-)
-if os.name == "posix" and os.path.basename(sys.path[-1]) == "Modules":
+# XXX This should not be part of site.py, since it is needed even when
+# using the -S option for Python.  See http://www.python.org/sf/586680
+if (os.name == "posix" and sys.path and
+    os.path.basename(sys.path[-1]) == "Modules"):
     from distutils.util import get_platform
     s = "build/lib.%s-%.3s" % (get_platform(), sys.version)
     s = os.path.join(os.path.dirname(sys.path[-1]), s)
@@ -116,7 +114,7 @@ def addsitedir(sitedir):
     else:
         reset = 0
     sitedir, sitedircase = makepath(sitedir)
-    if not _dirs_in_sys_path.has_key(sitedircase):
+    if not sitedircase in _dirs_in_sys_path:
         sys.path.append(sitedir)        # Add path component
     try:
         names = os.listdir(sitedir)
@@ -153,18 +151,21 @@ def addpackage(sitedir, name):
         if dir[-1] == '\n':
             dir = dir[:-1]
         dir, dircase = makepath(sitedir, dir)
-        if not _dirs_in_sys_path.has_key(dircase) and os.path.exists(dir):
+        if not dircase in _dirs_in_sys_path and os.path.exists(dir):
             sys.path.append(dir)
             _dirs_in_sys_path[dircase] = 1
     if reset:
         _dirs_in_sys_path = None
 
 prefixes = [sys.prefix]
+sitedir = None # make sure sitedir is initialized because of later 'del'
 if sys.exec_prefix != sys.prefix:
     prefixes.append(sys.exec_prefix)
 for prefix in prefixes:
     if prefix:
-        if os.sep == '/':
+        if sys.platform in ('os2emx', 'riscos'):
+            sitedirs = [os.path.join(prefix, "Lib", "site-packages")]
+        elif os.sep == '/':
             sitedirs = [os.path.join(prefix,
                                      "lib",
                                      "python" + sys.version[:3],
@@ -172,9 +173,23 @@ for prefix in prefixes:
                         os.path.join(prefix, "lib", "site-python")]
         else:
             sitedirs = [prefix, os.path.join(prefix, "lib", "site-packages")]
+        if sys.platform == 'darwin':
+            # for framework builds *only* we add the standard Apple
+            # locations. Currently only per-user, but /Library and
+            # /Network/Library could be added too
+            if 'Python.framework' in prefix:
+                home = os.environ.get('HOME')
+                if home:
+                    sitedirs.append(
+                        os.path.join(home,
+                                     'Library',
+                                     'Python',
+                                     sys.version[:3],
+                                     'site-packages'))
         for sitedir in sitedirs:
             if os.path.isdir(sitedir):
                 addsitedir(sitedir)
+del prefix, sitedir
 
 _dirs_in_sys_path = None
 
@@ -258,7 +273,7 @@ if sys.platform[:4] == 'java':
         "Jython is maintained by the Jython developers (www.jython.org).")
 else:
     __builtin__.credits = _Printer("credits", """\
-Thanks to CWI, CNRI, BeOpen.com, Digital Creations and a cast of thousands
+Thanks to CWI, CNRI, BeOpen.com, Zope Corporation and a cast of thousands
 for supporting Python development.  See www.python.org for more information.""")
 here = os.path.dirname(os.__file__)
 __builtin__.license = _Printer(
@@ -280,6 +295,22 @@ class _Helper:
 
 __builtin__.help = _Helper()
 
+
+# On Windows, some default encodings are not provided
+# by Python (e.g. "cp932" in Japanese locale), while they
+# are always available as "mbcs" in each locale.
+# Make them usable by aliasing to "mbcs" in such a case.
+
+if sys.platform == 'win32':
+    import locale, codecs
+    enc = locale.getdefaultlocale()[1]
+    if enc.startswith('cp'):            # "cp***" ?
+        try:
+            codecs.lookup(enc)
+        except LookupError:
+            import encodings
+            encodings._cache[enc] = encodings._unknown
+            encodings.aliases.aliases[enc] = 'mbcs'
 
 # Set the string encoding used by the Unicode implementation.  The
 # default is 'ascii', but if you're willing to experiment, you can

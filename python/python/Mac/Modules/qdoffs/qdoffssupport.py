@@ -57,7 +57,8 @@ initstuff = initstuff + """
 	PyMac_INIT_TOOLBOX_OBJECT_CONVERT(GWorldPtr, GWorldObj_Convert);
 """
 
-class MyObjectDefinition(GlobalObjectDefinition):
+class MyObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
+	# XXXX Should inherit from GrafPtr?
 	def outputCheckNewArg(self):
 		Output("if (itself == NULL) return PyMac_Error(resNotFound);")
 ## 	def outputInitStructMembers(self):
@@ -83,8 +84,8 @@ module.addobject(object)
 
 
 # Create the generator classes used to populate the lists
-Function = OSErrFunctionGenerator
-Method = OSErrMethodGenerator
+Function = OSErrWeakLinkFunctionGenerator
+Method = OSErrWeakLinkMethodGenerator
 
 # Create and populate the lists
 functions = []

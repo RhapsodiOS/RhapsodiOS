@@ -471,7 +471,7 @@ typedef struct {
 	char name[MAXNAME+1];
 } cdfobject;
 
-staticforward PyTypeObject Cdftype;
+static PyTypeObject Cdftype;
 
 
 
@@ -485,7 +485,7 @@ typedef struct {
 	char name[MAXNAME+1];
 } cdrobject;
 
-staticforward PyTypeObject Cdrtype;
+static PyTypeObject Cdrtype;
 
 
 
@@ -503,7 +503,7 @@ typedef struct {
 	conventry *argconv[MAXARG];	/* Value converter list */
 } cdcobject;
 
-staticforward PyTypeObject Cdctype;
+static PyTypeObject Cdctype;
 
 
 
@@ -543,7 +543,7 @@ static void
 cdr_dealloc(self)
 	cdrobject *self;
 {
-	PyMem_DEL(self);
+	PyObject_DEL(self);
 }
 
 static PyObject *
@@ -631,7 +631,7 @@ cdc_dealloc(self)
 	cdcobject *self;
 {
 	Py_XDECREF(self->routine);
-	PyMem_DEL(self);
+	PyObject_DEL(self);
 }
 
 
@@ -855,7 +855,7 @@ static void
 cdf_dealloc(self)
 	cdfobject *self;
 {
-	PyMem_DEL(self);
+	PyObject_DEL(self);
 }
 
 static PyObject *

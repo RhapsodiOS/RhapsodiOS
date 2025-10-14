@@ -68,6 +68,9 @@ syntactic features.}
 \lineii{RuntimeWarning}{Base category for warnings about dubious
 runtime features.}
 
+\lineii{FutureWarning}{Base category for warnings about constructs
+that will change semantically in the future.}
+
 \end{tableii}
 
 While these are technically built-in exceptions, they are documented
@@ -113,14 +116,15 @@ form (\var{action}, \var{message}, \var{category}, \var{module},
 
     \end{tableii}
 
-\item \var{message} is a compiled regular expression that the warning
-message must match (the match is case-insensitive)
+\item \var{message} is a string containing a regular expression that
+the warning message must match (the match is compiled to always be 
+case-insensitive) 
 
 \item \var{category} is a class (a subclass of \exception{Warning}) of
       which the warning category must be a subclass in order to match
 
-\item \var{module} is a compiled regular expression that the module
-      name must match
+\item \var{module} is a string containing a regular expression that the module
+      name must match (the match is compiled to be case-sensitive)
 
 \item \var{lineno} is an integer that the line number where the
       warning occurred must match, or \code{0} to match all line
@@ -145,7 +149,10 @@ message to \code{sys.stderr}).
 \begin{funcdesc}{warn}{message\optional{, category\optional{, stacklevel}}}
 Issue a warning, or maybe ignore it or raise an exception.  The
 \var{category} argument, if given, must be a warning category class
-(see above); it defaults to \exception{UserWarning}.  This function
+(see above); it defaults to \exception{UserWarning}.  Alternatively
+\var{message} can be a \exception{Warning} instance, in which case
+\var{category} will be ignored and \code{message.__class__} will be used.
+In this case the message text will be \code{str(message)}. This function
 raises an exception if the particular warning issued is changed
 into an error by the warnings filter see above.  The \var{stacklevel}
 argument can be used by wrapper functions written in Python, like
@@ -153,7 +160,7 @@ this:
 
 \begin{verbatim}
 def deprecation(message):
-    warnings.warn(message, DeprecationWarning, level=2)
+    warnings.warn(message, DeprecationWarning, stacklevel=2)
 \end{verbatim}
 
 This makes the warning refer to \function{deprecation()}'s caller,
@@ -169,12 +176,15 @@ filename and line number, and optionally the module name and the
 registry (which should be the \code{__warningregistry__} dictionary of
 the module).  The module name defaults to the filename with \code{.py}
 stripped; if no registry is passed, the warning is never suppressed.
+\var{message} must be a string and \var{category} a subclass of
+\exception{Warning} or \var{message} may be a \exception{Warning} instance,
+in which case \var{category} will be ignored.
 \end{funcdesc}
 
 \begin{funcdesc}{showwarning}{message, category, filename,
 			     lineno\optional{, file}}
 Write a warning to a file.  The default implementation calls
-\code{showwarning(\var{message}, \var{category}, \var{filename},
+\code{formatwarning(\var{message}, \var{category}, \var{filename},
 \var{lineno})} and writes the resulting string to \var{file}, which
 defaults to \code{sys.stderr}.  You may replace this function with an
 alternative implementation by assigning to

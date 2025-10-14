@@ -107,7 +107,6 @@ extern "C" {
 #define JUMP_IF_FALSE	111	/* "" */
 #define JUMP_IF_TRUE	112	/* "" */
 #define JUMP_ABSOLUTE	113	/* Target byte offset from beginning of code */
-#define FOR_LOOP	114	/* Number of bytes to skip */
 
 #define LOAD_GLOBAL	116	/* Index in name list */
 
@@ -119,8 +118,6 @@ extern "C" {
 #define LOAD_FAST	124	/* Local variable number */
 #define STORE_FAST	125	/* Local variable number */
 #define DELETE_FAST	126	/* Local variable number */
-
-#define SET_LINENO	127	/* Current line number */
 
 #define RAISE_VARARGS	130	/* Number of raise arguments (1, 2 or 3) */
 /* CALL_FUNCTION_XXX opcodes defined below depend on this definition */
@@ -142,9 +139,9 @@ extern "C" {
 /* Support for opargs more than 16 bits long */
 #define EXTENDED_ARG  143
 
-/* Comparison operator codes (argument to COMPARE_OP) */
-enum cmp_op {LT=Py_LT, LE=Py_LE, EQ=Py_EQ, NE=Py_NE, GT=Py_GT, GE=Py_GE,
-	     IN, NOT_IN, IS, IS_NOT, EXC_MATCH, BAD};
+
+enum cmp_op {PyCmp_LT=Py_LT, PyCmp_LE=Py_LE, PyCmp_EQ=Py_EQ, PyCmp_NE=Py_NE, PyCmp_GT=Py_GT, PyCmp_GE=Py_GE,
+	     PyCmp_IN, PyCmp_NOT_IN, PyCmp_IS, PyCmp_IS_NOT, PyCmp_EXC_MATCH, PyCmp_BAD};
 
 #define HAS_ARG(op) ((op) >= HAVE_ARGUMENT)
 

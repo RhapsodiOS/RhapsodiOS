@@ -25,8 +25,12 @@
  * 2Kb.  So the module docstring has been broken roughly in half, using
  * compile-time literal concatenation.
  */
-static char
-module__doc__[] =
+
+/* NOTE: If the exception class hierarchy changes, don't forget to update
+ * Doc/lib/libexcs.tex!
+ */
+
+PyDoc_STRVAR(module__doc__,
 "Python's standard exception class hierarchy.\n\
 \n\
 Before Python 1.5, the standard exceptions were all simple string objects.\n\
@@ -63,6 +67,7 @@ Exception\n\
  |    |    +-- OSError\n\
  |    |         |\n\
  |    |         +-- WindowsError\n\
+ |    |         +-- VMSError\n\
  |    |\n\
  |    +-- EOFError\n\
  |    +-- RuntimeError\n\
@@ -96,6 +101,10 @@ Exception\n\
  |    +-- ValueError\n\
  |    |    |\n\
  |    |    +-- UnicodeError\n\
+ |    |        |\n\
+ |    |        +-- UnicodeEncodeError\n\
+ |    |        +-- UnicodeDecodeError\n\
+ |    |        +-- UnicodeTranslateError\n\
  |    |\n\
  |    +-- ReferenceError\n\
  |    +-- SystemError\n\
@@ -105,31 +114,39 @@ Exception\n\
       |\n\
       +-- UserWarning\n\
       +-- DeprecationWarning\n\
+      +-- PendingDeprecationWarning\n\
       +-- SyntaxWarning\n\
       +-- OverflowWarning\n\
-      +-- RuntimeWarning";
+      +-- RuntimeWarning\n\
+      +-- FutureWarning"
+);
 
 
 /* Helper function for populating a dictionary with method wrappers. */
 static int
 populate_methods(PyObject *klass, PyObject *dict, PyMethodDef *methods)
 {
+    PyObject *module;
+    int status = -1;
+
     if (!methods)
 	return 0;
 
+    module = PyString_FromString("exceptions");
+    if (!module)
+	return 0;
     while (methods->ml_name) {
 	/* get a wrapper for the built-in function */
-	PyObject *func = PyCFunction_New(methods, NULL);
+	PyObject *func = PyCFunction_NewEx(methods, NULL, module);
 	PyObject *meth;
-	int status;
 
 	if (!func)
-	    return -1;
+	    goto status;
 
 	/* turn the function into an unbound method */
 	if (!(meth = PyMethod_New(func, NULL, klass))) {
 	    Py_DECREF(func);
-	    return -1;
+	    goto status;
 	}
 
 	/* add method to dictionary */
@@ -139,11 +156,14 @@ populate_methods(PyObject *klass, PyObject *dict, PyMethodDef *methods)
 
 	/* stop now if an error occurred, otherwise do the next method */
 	if (status)
-	    return status;
+	    goto status;
 
 	methods++;
     }
-    return 0;
+    status = 0;
+ status:
+    Py_DECREF(module);
+    return status;
 }
 
 
@@ -224,8 +244,7 @@ get_self(PyObject *args)
  * All classes after Exception can be created using PyErr_NewException().
  */
 
-static char
-Exception__doc__[] = "Common base class for all exceptions.";
+PyDoc_STRVAR(Exception__doc__, "Common base class for all exceptions.");
 
 
 static PyObject *
@@ -278,6 +297,9 @@ Exception__str__(PyObject *self, PyObject *args)
 	    out = NULL;
 	break;
     }
+    case -1:
+        PyErr_Clear();
+        /* Fall through */
     default:
         out = PyObject_Str(args);
         break;
@@ -366,19 +388,16 @@ make_Exception(char *modulename)
 
 
 
-static char
-StandardError__doc__[] = "Base class for all standard Python exceptions.";
+PyDoc_STRVAR(StandardError__doc__,
+"Base class for all standard Python exceptions.");
 
-static char
-TypeError__doc__[] = "Inappropriate argument type.";
+PyDoc_STRVAR(TypeError__doc__, "Inappropriate argument type.");
 
-static char
-StopIteration__doc__[] = "Signal the end from iterator.next().";
+PyDoc_STRVAR(StopIteration__doc__, "Signal the end from iterator.next().");
 
 
 
-static char
-SystemExit__doc__[] = "Request to exit from the interpreter.";
+PyDoc_STRVAR(SystemExit__doc__, "Request to exit from the interpreter.");
 
 
 static PyObject *
@@ -409,6 +428,9 @@ SystemExit__init__(PyObject *self, PyObject *args)
     case 1:
         code = PySequence_GetItem(args, 0);
         break;
+    case -1:
+        PyErr_Clear();
+        /* Fall through */
     default:
         Py_INCREF(args);
         code = args;
@@ -433,17 +455,14 @@ static PyMethodDef SystemExit_methods[] = {
 
 
 
-static char
-KeyboardInterrupt__doc__[] = "Program interrupted by user.";
+PyDoc_STRVAR(KeyboardInterrupt__doc__, "Program interrupted by user.");
 
-static char
-ImportError__doc__[] =
-"Import can't find module, or can't find name in module.";
+PyDoc_STRVAR(ImportError__doc__,
+"Import can't find module, or can't find name in module.");
 
 
 
-static char
-EnvironmentError__doc__[] = "Base class for I/O related errors.";
+PyDoc_STRVAR(EnvironmentError__doc__, "Base class for I/O related errors.");
 
 
 static PyObject *
@@ -514,6 +533,10 @@ EnvironmentError__init__(PyObject *self, PyObject *args)
 	{
 	    goto finally;
 	}
+	break;
+
+    case -1:
+	PyErr_Clear();
 	break;
     }
 
@@ -621,41 +644,36 @@ PyMethodDef EnvironmentError_methods[] = {
 
 
 
-static char
-IOError__doc__[] = "I/O operation failed.";
+PyDoc_STRVAR(IOError__doc__, "I/O operation failed.");
 
-static char
-OSError__doc__[] = "OS system call failed.";
+PyDoc_STRVAR(OSError__doc__, "OS system call failed.");
 
 #ifdef MS_WINDOWS
-static char
-WindowsError__doc__[] = "MS-Windows OS system call failed.";
+PyDoc_STRVAR(WindowsError__doc__, "MS-Windows OS system call failed.");
 #endif /* MS_WINDOWS */
 
+#ifdef __VMS
 static char
-EOFError__doc__[] = "Read beyond end of file.";
+VMSError__doc__[] = "OpenVMS OS system call failed.";
+#endif
 
-static char
-RuntimeError__doc__[] = "Unspecified run-time error.";
+PyDoc_STRVAR(EOFError__doc__, "Read beyond end of file.");
 
-static char
-NotImplementedError__doc__[] =
-"Method or function hasn't been implemented yet.";
+PyDoc_STRVAR(RuntimeError__doc__, "Unspecified run-time error.");
 
-static char
-NameError__doc__[] = "Name not found globally.";
+PyDoc_STRVAR(NotImplementedError__doc__,
+"Method or function hasn't been implemented yet.");
 
-static char
-UnboundLocalError__doc__[] =
-"Local name referenced but not bound to a value.";
+PyDoc_STRVAR(NameError__doc__, "Name not found globally.");
 
-static char
-AttributeError__doc__[] = "Attribute not found.";
+PyDoc_STRVAR(UnboundLocalError__doc__,
+"Local name referenced but not bound to a value.");
+
+PyDoc_STRVAR(AttributeError__doc__, "Attribute not found.");
 
 
 
-static char
-SyntaxError__doc__[] = "Invalid syntax.";
+PyDoc_STRVAR(SyntaxError__doc__, "Invalid syntax.");
 
 
 static int
@@ -670,7 +688,8 @@ SyntaxError__classinit__(PyObject *klass)
 	PyObject_SetAttrString(klass, "filename", Py_None) ||
 	PyObject_SetAttrString(klass, "lineno", Py_None) ||
 	PyObject_SetAttrString(klass, "offset", Py_None) ||
-	PyObject_SetAttrString(klass, "text", Py_None))
+	PyObject_SetAttrString(klass, "text", Py_None) ||
+	PyObject_SetAttrString(klass, "print_file_and_line", Py_None))
     {
 	retval = -1;
     }
@@ -790,7 +809,7 @@ SyntaxError__str__(PyObject *self, PyObject *args)
     /* XXX -- do all the additional formatting with filename and
        lineno here */
 
-    if (PyString_Check(str)) {
+    if (str != NULL && PyString_Check(str)) {
 	int have_filename = 0;
 	int have_lineno = 0;
 	char *buffer = NULL;
@@ -849,79 +868,690 @@ static PyMethodDef SyntaxError_methods[] = {
 };
 
 
+static PyObject *
+KeyError__str__(PyObject *self, PyObject *args)
+{
+    PyObject *argsattr;
+    PyObject *result;
+
+    if (!PyArg_ParseTuple(args, "O:__str__", &self))
+	return NULL;
+
+    if (!(argsattr = PyObject_GetAttrString(self, "args")))
+	return NULL;
+
+    /* If args is a tuple of exactly one item, apply repr to args[0].
+       This is done so that e.g. the exception raised by {}[''] prints
+         KeyError: ''
+       rather than the confusing
+         KeyError
+       alone.  The downside is that if KeyError is raised with an explanatory
+       string, that string will be displayed in quotes.  Too bad.
+       If args is anything else, use the default Exception__str__().
+    */
+    if (PyTuple_Check(argsattr) && PyTuple_GET_SIZE(argsattr) == 1) {
+	PyObject *key = PyTuple_GET_ITEM(argsattr, 0);
+	result = PyObject_Repr(key);
+    }
+    else
+	result = Exception__str__(self, args);
+
+    Py_DECREF(argsattr);
+    return result;
+}
+
+static PyMethodDef KeyError_methods[] = {
+    {"__str__",  KeyError__str__, METH_VARARGS},
+    {NULL, NULL}
+};
+
+
+#ifdef Py_USING_UNICODE
+static
+int get_int(PyObject *exc, const char *name, int *value)
+{
+    PyObject *attr = PyObject_GetAttrString(exc, (char *)name);
+
+    if (!attr)
+	return -1;
+    if (!PyInt_Check(attr)) {
+	PyErr_Format(PyExc_TypeError, "%.200s attribute must be int", name);
+	Py_DECREF(attr);
+	return -1;
+    }
+    *value = PyInt_AS_LONG(attr);
+    Py_DECREF(attr);
+    return 0;
+}
+
+
+static
+int set_int(PyObject *exc, const char *name, int value)
+{
+    PyObject *obj = PyInt_FromLong(value);
+    int result;
+
+    if (!obj)
+	return -1;
+    result = PyObject_SetAttrString(exc, (char *)name, obj);
+    Py_DECREF(obj);
+    return result;
+}
+
+
+static
+PyObject *get_string(PyObject *exc, const char *name)
+{
+    PyObject *attr = PyObject_GetAttrString(exc, (char *)name);
+
+    if (!attr)
+	return NULL;
+    if (!PyString_Check(attr)) {
+	PyErr_Format(PyExc_TypeError, "%.200s attribute must be str", name);
+	Py_DECREF(attr);
+	return NULL;
+    }
+    return attr;
+}
+
+
+static
+int set_string(PyObject *exc, const char *name, const char *value)
+{
+    PyObject *obj = PyString_FromString(value);
+    int result;
+
+    if (!obj)
+	return -1;
+    result = PyObject_SetAttrString(exc, (char *)name, obj);
+    Py_DECREF(obj);
+    return result;
+}
+
+
+static
+PyObject *get_unicode(PyObject *exc, const char *name)
+{
+    PyObject *attr = PyObject_GetAttrString(exc, (char *)name);
+
+    if (!attr)
+	return NULL;
+    if (!PyUnicode_Check(attr)) {
+	PyErr_Format(PyExc_TypeError, "%.200s attribute must be unicode", name);
+	Py_DECREF(attr);
+	return NULL;
+    }
+    return attr;
+}
+
+PyObject * PyUnicodeEncodeError_GetEncoding(PyObject *exc)
+{
+    return get_string(exc, "encoding");
+}
+
+PyObject * PyUnicodeDecodeError_GetEncoding(PyObject *exc)
+{
+    return get_string(exc, "encoding");
+}
+
+PyObject *PyUnicodeEncodeError_GetObject(PyObject *exc)
+{
+    return get_unicode(exc, "object");
+}
+
+PyObject *PyUnicodeDecodeError_GetObject(PyObject *exc)
+{
+    return get_string(exc, "object");
+}
+
+PyObject *PyUnicodeTranslateError_GetObject(PyObject *exc)
+{
+    return get_unicode(exc, "object");
+}
+
+int PyUnicodeEncodeError_GetStart(PyObject *exc, int *start)
+{
+    if (!get_int(exc, "start", start)) {
+	PyObject *object = PyUnicodeEncodeError_GetObject(exc);
+	int size;
+	if (!object)
+	    return -1;
+	size = PyUnicode_GET_SIZE(object);
+	if (*start<0)
+	    *start = 0;
+	if (*start>=size)
+	    *start = size-1;
+	Py_DECREF(object);
+	return 0;
+    }
+    return -1;
+}
+
+
+int PyUnicodeDecodeError_GetStart(PyObject *exc, int *start)
+{
+    if (!get_int(exc, "start", start)) {
+	PyObject *object = PyUnicodeDecodeError_GetObject(exc);
+	int size;
+	if (!object)
+	    return -1;
+	size = PyString_GET_SIZE(object);
+	if (*start<0)
+	    *start = 0;
+	if (*start>=size)
+	    *start = size-1;
+	Py_DECREF(object);
+	return 0;
+    }
+    return -1;
+}
+
+
+int PyUnicodeTranslateError_GetStart(PyObject *exc, int *start)
+{
+    return PyUnicodeEncodeError_GetStart(exc, start);
+}
+
+
+int PyUnicodeEncodeError_SetStart(PyObject *exc, int start)
+{
+    return set_int(exc, "start", start);
+}
+
+
+int PyUnicodeDecodeError_SetStart(PyObject *exc, int start)
+{
+    return set_int(exc, "start", start);
+}
+
+
+int PyUnicodeTranslateError_SetStart(PyObject *exc, int start)
+{
+    return set_int(exc, "start", start);
+}
+
+
+int PyUnicodeEncodeError_GetEnd(PyObject *exc, int *end)
+{
+    if (!get_int(exc, "end", end)) {
+	PyObject *object = PyUnicodeEncodeError_GetObject(exc);
+	int size;
+	if (!object)
+	    return -1;
+	size = PyUnicode_GET_SIZE(object);
+	if (*end<1)
+	    *end = 1;
+	if (*end>size)
+	    *end = size;
+	Py_DECREF(object);
+	return 0;
+    }
+    return -1;
+}
+
+
+int PyUnicodeDecodeError_GetEnd(PyObject *exc, int *end)
+{
+    if (!get_int(exc, "end", end)) {
+	PyObject *object = PyUnicodeDecodeError_GetObject(exc);
+	int size;
+	if (!object)
+	    return -1;
+	size = PyString_GET_SIZE(object);
+	if (*end<1)
+	    *end = 1;
+	if (*end>size)
+	    *end = size;
+	Py_DECREF(object);
+	return 0;
+    }
+    return -1;
+}
+
+
+int PyUnicodeTranslateError_GetEnd(PyObject *exc, int *start)
+{
+    return PyUnicodeEncodeError_GetEnd(exc, start);
+}
+
+
+int PyUnicodeEncodeError_SetEnd(PyObject *exc, int end)
+{
+    return set_int(exc, "end", end);
+}
+
+
+int PyUnicodeDecodeError_SetEnd(PyObject *exc, int end)
+{
+    return set_int(exc, "end", end);
+}
+
+
+int PyUnicodeTranslateError_SetEnd(PyObject *exc, int end)
+{
+    return set_int(exc, "end", end);
+}
+
+
+PyObject *PyUnicodeEncodeError_GetReason(PyObject *exc)
+{
+    return get_string(exc, "reason");
+}
+
+
+PyObject *PyUnicodeDecodeError_GetReason(PyObject *exc)
+{
+    return get_string(exc, "reason");
+}
+
+
+PyObject *PyUnicodeTranslateError_GetReason(PyObject *exc)
+{
+    return get_string(exc, "reason");
+}
+
+
+int PyUnicodeEncodeError_SetReason(PyObject *exc, const char *reason)
+{
+    return set_string(exc, "reason", reason);
+}
+
+
+int PyUnicodeDecodeError_SetReason(PyObject *exc, const char *reason)
+{
+    return set_string(exc, "reason", reason);
+}
+
+
+int PyUnicodeTranslateError_SetReason(PyObject *exc, const char *reason)
+{
+    return set_string(exc, "reason", reason);
+}
+
+
+static PyObject *
+UnicodeError__init__(PyObject *self, PyObject *args, PyTypeObject *objecttype)
+{
+    PyObject *rtnval = NULL;
+    PyObject *encoding;
+    PyObject *object;
+    PyObject *start;
+    PyObject *end;
+    PyObject *reason;
+
+    if (!(self = get_self(args)))
+	return NULL;
+
+    if (!(args = PySequence_GetSlice(args, 1, PySequence_Size(args))))
+	return NULL;
+
+    if (!PyArg_ParseTuple(args, "O!O!O!O!O!",
+	&PyString_Type, &encoding,
+	objecttype, &object,
+	&PyInt_Type, &start,
+	&PyInt_Type, &end,
+	&PyString_Type, &reason))
+	return NULL;
+
+    if (PyObject_SetAttrString(self, "args", args))
+	goto finally;
+
+    if (PyObject_SetAttrString(self, "encoding", encoding))
+	goto finally;
+    if (PyObject_SetAttrString(self, "object", object))
+	goto finally;
+    if (PyObject_SetAttrString(self, "start", start))
+	goto finally;
+    if (PyObject_SetAttrString(self, "end", end))
+	goto finally;
+    if (PyObject_SetAttrString(self, "reason", reason))
+	goto finally;
+
+    Py_INCREF(Py_None);
+    rtnval = Py_None;
+
+  finally:
+    Py_DECREF(args);
+    return rtnval;
+}
+
+
+static PyObject *
+UnicodeEncodeError__init__(PyObject *self, PyObject *args)
+{
+    return UnicodeError__init__(self, args, &PyUnicode_Type);
+}
+
+static PyObject *
+UnicodeEncodeError__str__(PyObject *self, PyObject *arg)
+{
+    PyObject *encodingObj = NULL;
+    PyObject *objectObj = NULL;
+    int start;
+    int end;
+    PyObject *reasonObj = NULL;
+    char buffer[1000];
+    PyObject *result = NULL;
+
+    self = arg;
+
+    if (!(encodingObj = PyUnicodeEncodeError_GetEncoding(self)))
+	goto error;
+
+    if (!(objectObj = PyUnicodeEncodeError_GetObject(self)))
+	goto error;
+
+    if (PyUnicodeEncodeError_GetStart(self, &start))
+	goto error;
+
+    if (PyUnicodeEncodeError_GetEnd(self, &end))
+	goto error;
+
+    if (!(reasonObj = PyUnicodeEncodeError_GetReason(self)))
+	goto error;
+
+    if (end==start+1) {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "'%.400s' codec can't encode character '\\u%x' in position %d: %.400s",
+	    PyString_AS_STRING(encodingObj),
+	    (int)PyUnicode_AS_UNICODE(objectObj)[start],
+	    start,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    else {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "'%.400s' codec can't encode characters in position %d-%d: %.400s",
+	    PyString_AS_STRING(encodingObj),
+	    start,
+	    end-1,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    result = PyString_FromString(buffer);
+
+error:
+    Py_XDECREF(reasonObj);
+    Py_XDECREF(objectObj);
+    Py_XDECREF(encodingObj);
+    return result;
+}
+
+static PyMethodDef UnicodeEncodeError_methods[] = {
+    {"__init__", UnicodeEncodeError__init__, METH_VARARGS},
+    {"__str__",  UnicodeEncodeError__str__, METH_O},
+    {NULL, NULL}
+};
+
+
+PyObject * PyUnicodeEncodeError_Create(
+	const char *encoding, const Py_UNICODE *object, int length,
+	int start, int end, const char *reason)
+{
+    return PyObject_CallFunction(PyExc_UnicodeEncodeError, "su#iis",
+	encoding, object, length, start, end, reason);
+}
+
+
+static PyObject *
+UnicodeDecodeError__init__(PyObject *self, PyObject *args)
+{
+    return UnicodeError__init__(self, args, &PyString_Type);
+}
+
+static PyObject *
+UnicodeDecodeError__str__(PyObject *self, PyObject *arg)
+{
+    PyObject *encodingObj = NULL;
+    PyObject *objectObj = NULL;
+    int start;
+    int end;
+    PyObject *reasonObj = NULL;
+    char buffer[1000];
+    PyObject *result = NULL;
+
+    self = arg;
+
+    if (!(encodingObj = PyUnicodeDecodeError_GetEncoding(self)))
+	goto error;
+
+    if (!(objectObj = PyUnicodeDecodeError_GetObject(self)))
+	goto error;
+
+    if (PyUnicodeDecodeError_GetStart(self, &start))
+	goto error;
+
+    if (PyUnicodeDecodeError_GetEnd(self, &end))
+	goto error;
+
+    if (!(reasonObj = PyUnicodeDecodeError_GetReason(self)))
+	goto error;
+
+    if (end==start+1) {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "'%.400s' codec can't decode byte 0x%x in position %d: %.400s",
+	    PyString_AS_STRING(encodingObj),
+	    ((int)PyString_AS_STRING(objectObj)[start])&0xff,
+	    start,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    else {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "'%.400s' codec can't decode bytes in position %d-%d: %.400s",
+	    PyString_AS_STRING(encodingObj),
+	    start,
+	    end-1,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    result = PyString_FromString(buffer);
+
+error:
+    Py_XDECREF(reasonObj);
+    Py_XDECREF(objectObj);
+    Py_XDECREF(encodingObj);
+    return result;
+}
+
+static PyMethodDef UnicodeDecodeError_methods[] = {
+    {"__init__", UnicodeDecodeError__init__, METH_VARARGS},
+    {"__str__",  UnicodeDecodeError__str__, METH_O},
+    {NULL, NULL}
+};
+
+
+PyObject * PyUnicodeDecodeError_Create(
+	const char *encoding, const char *object, int length,
+	int start, int end, const char *reason)
+{
+    return PyObject_CallFunction(PyExc_UnicodeDecodeError, "ss#iis",
+	encoding, object, length, start, end, reason);
+}
+
+
+static PyObject *
+UnicodeTranslateError__init__(PyObject *self, PyObject *args)
+{
+    PyObject *rtnval = NULL;
+    PyObject *object;
+    PyObject *start;
+    PyObject *end;
+    PyObject *reason;
+
+    if (!(self = get_self(args)))
+	return NULL;
+
+    if (!(args = PySequence_GetSlice(args, 1, PySequence_Size(args))))
+	return NULL;
+
+    if (!PyArg_ParseTuple(args, "O!O!O!O!",
+	&PyUnicode_Type, &object,
+	&PyInt_Type, &start,
+	&PyInt_Type, &end,
+	&PyString_Type, &reason))
+	goto finally;
+
+    if (PyObject_SetAttrString(self, "args", args))
+	goto finally;
+
+    if (PyObject_SetAttrString(self, "object", object))
+	goto finally;
+    if (PyObject_SetAttrString(self, "start", start))
+	goto finally;
+    if (PyObject_SetAttrString(self, "end", end))
+	goto finally;
+    if (PyObject_SetAttrString(self, "reason", reason))
+	goto finally;
+
+    Py_INCREF(Py_None);
+    rtnval = Py_None;
+
+  finally:
+    Py_DECREF(args);
+    return rtnval;
+}
+
+
+static PyObject *
+UnicodeTranslateError__str__(PyObject *self, PyObject *arg)
+{
+    PyObject *objectObj = NULL;
+    int start;
+    int end;
+    PyObject *reasonObj = NULL;
+    char buffer[1000];
+    PyObject *result = NULL;
+
+    self = arg;
+
+    if (!(objectObj = PyUnicodeTranslateError_GetObject(self)))
+	goto error;
+
+    if (PyUnicodeTranslateError_GetStart(self, &start))
+	goto error;
+
+    if (PyUnicodeTranslateError_GetEnd(self, &end))
+	goto error;
+
+    if (!(reasonObj = PyUnicodeTranslateError_GetReason(self)))
+	goto error;
+
+    if (end==start+1) {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "can't translate character '\\u%x' in position %d: %.400s",
+	    (int)PyUnicode_AS_UNICODE(objectObj)[start],
+	    start,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    else {
+	PyOS_snprintf(buffer, sizeof(buffer),
+	    "can't translate characters in position %d-%d: %.400s",
+	    start,
+	    end-1,
+	    PyString_AS_STRING(reasonObj)
+	);
+    }
+    result = PyString_FromString(buffer);
+
+error:
+    Py_XDECREF(reasonObj);
+    Py_XDECREF(objectObj);
+    return result;
+}
+
+static PyMethodDef UnicodeTranslateError_methods[] = {
+    {"__init__", UnicodeTranslateError__init__, METH_VARARGS},
+    {"__str__",  UnicodeTranslateError__str__, METH_O},
+    {NULL, NULL}
+};
+
+
+PyObject * PyUnicodeTranslateError_Create(
+	const Py_UNICODE *object, int length,
+	int start, int end, const char *reason)
+{
+    return PyObject_CallFunction(PyExc_UnicodeTranslateError, "u#iis",
+	object, length, start, end, reason);
+}
+#endif
+
+
 
 /* Exception doc strings */
 
-static char
-AssertionError__doc__[] = "Assertion failed.";
+PyDoc_STRVAR(AssertionError__doc__, "Assertion failed.");
 
-static char
-LookupError__doc__[] = "Base class for lookup errors.";
+PyDoc_STRVAR(LookupError__doc__, "Base class for lookup errors.");
 
-static char
-IndexError__doc__[] = "Sequence index out of range.";
+PyDoc_STRVAR(IndexError__doc__, "Sequence index out of range.");
 
-static char
-KeyError__doc__[] = "Mapping key not found.";
+PyDoc_STRVAR(KeyError__doc__, "Mapping key not found.");
 
-static char
-ArithmeticError__doc__[] = "Base class for arithmetic errors.";
+PyDoc_STRVAR(ArithmeticError__doc__, "Base class for arithmetic errors.");
 
-static char
-OverflowError__doc__[] = "Result too large to be represented.";
+PyDoc_STRVAR(OverflowError__doc__, "Result too large to be represented.");
 
-static char
-ZeroDivisionError__doc__[] =
-"Second argument to a division or modulo operation was zero.";
+PyDoc_STRVAR(ZeroDivisionError__doc__,
+"Second argument to a division or modulo operation was zero.");
 
-static char
-FloatingPointError__doc__[] = "Floating point operation failed.";
+PyDoc_STRVAR(FloatingPointError__doc__, "Floating point operation failed.");
 
-static char
-ValueError__doc__[] = "Inappropriate argument value (of correct type).";
+PyDoc_STRVAR(ValueError__doc__,
+"Inappropriate argument value (of correct type).");
 
-static char
-UnicodeError__doc__[] = "Unicode related error.";
+PyDoc_STRVAR(UnicodeError__doc__, "Unicode related error.");
 
-static char
-SystemError__doc__[] = "Internal error in the Python interpreter.\n\
+#ifdef Py_USING_UNICODE
+PyDoc_STRVAR(UnicodeEncodeError__doc__, "Unicode encoding error.");
+
+PyDoc_STRVAR(UnicodeDecodeError__doc__, "Unicode decoding error.");
+
+PyDoc_STRVAR(UnicodeTranslateError__doc__, "Unicode translation error.");
+#endif
+
+PyDoc_STRVAR(SystemError__doc__,
+"Internal error in the Python interpreter.\n\
 \n\
 Please report this to the Python maintainer, along with the traceback,\n\
-the Python version, and the hardware/OS platform and version.";
+the Python version, and the hardware/OS platform and version.");
 
-static char
-ReferenceError__doc__[] = "Weak ref proxy used after referent went away.";
+PyDoc_STRVAR(ReferenceError__doc__,
+"Weak ref proxy used after referent went away.");
 
-static char
-MemoryError__doc__[] = "Out of memory.";
+PyDoc_STRVAR(MemoryError__doc__, "Out of memory.");
 
-static char
-IndentationError__doc__[] = "Improper indentation.";
+PyDoc_STRVAR(IndentationError__doc__, "Improper indentation.");
 
-static char
-TabError__doc__[] = "Improper mixture of spaces and tabs.";
+PyDoc_STRVAR(TabError__doc__, "Improper mixture of spaces and tabs.");
 
 /* Warning category docstrings */
 
-static char
-Warning__doc__[] = "Base class for warning categories.";
+PyDoc_STRVAR(Warning__doc__, "Base class for warning categories.");
 
-static char
-UserWarning__doc__[] = "Base class for warnings generated by user code.";
+PyDoc_STRVAR(UserWarning__doc__,
+"Base class for warnings generated by user code.");
 
-static char
-DeprecationWarning__doc__[] =
-"Base class for warnings about deprecated features.";
+PyDoc_STRVAR(DeprecationWarning__doc__,
+"Base class for warnings about deprecated features.");
 
-static char
-SyntaxWarning__doc__[] = "Base class for warnings about dubious syntax.";
+PyDoc_STRVAR(PendingDeprecationWarning__doc__,
+"Base class for warnings about features which will be deprecated "
+"in the future.");
 
-static char
-OverflowWarning__doc__[] = "Base class for warnings about numeric overflow.";
+PyDoc_STRVAR(SyntaxWarning__doc__,
+"Base class for warnings about dubious syntax.");
 
-static char
-RuntimeWarning__doc__[] =
-"Base class for warnings about dubious runtime behavior.";
+PyDoc_STRVAR(OverflowWarning__doc__,
+"Base class for warnings about numeric overflow.");
+
+PyDoc_STRVAR(RuntimeWarning__doc__,
+"Base class for warnings about dubious runtime behavior.");
+
+PyDoc_STRVAR(FutureWarning__doc__,
+"Base class for warnings about constructs that will change semantically "
+"in the future.");
 
 
 
@@ -965,11 +1595,17 @@ PyObject *PyExc_SystemError;
 PyObject *PyExc_SystemExit;
 PyObject *PyExc_UnboundLocalError;
 PyObject *PyExc_UnicodeError;
+PyObject *PyExc_UnicodeEncodeError;
+PyObject *PyExc_UnicodeDecodeError;
+PyObject *PyExc_UnicodeTranslateError;
 PyObject *PyExc_TypeError;
 PyObject *PyExc_ValueError;
 PyObject *PyExc_ZeroDivisionError;
 #ifdef MS_WINDOWS
 PyObject *PyExc_WindowsError;
+#endif
+#ifdef __VMS
+PyObject *PyExc_VMSError;
 #endif
 
 /* Pre-computed MemoryError instance.  Best to create this as early as
@@ -981,9 +1617,11 @@ PyObject *PyExc_MemoryErrorInst;
 PyObject *PyExc_Warning;
 PyObject *PyExc_UserWarning;
 PyObject *PyExc_DeprecationWarning;
+PyObject *PyExc_PendingDeprecationWarning;
 PyObject *PyExc_SyntaxWarning;
 PyObject *PyExc_OverflowWarning;
 PyObject *PyExc_RuntimeWarning;
+PyObject *PyExc_FutureWarning;
 
 
 
@@ -1020,6 +1658,10 @@ static struct {
  {"WindowsError", &PyExc_WindowsError, &PyExc_OSError,
   WindowsError__doc__},
 #endif /* MS_WINDOWS */
+#ifdef __VMS
+ {"VMSError", &PyExc_VMSError, &PyExc_OSError,
+  VMSError__doc__},
+#endif
  {"EOFError",     &PyExc_EOFError,     0, EOFError__doc__},
  {"RuntimeError", &PyExc_RuntimeError, 0, RuntimeError__doc__},
  {"NotImplementedError", &PyExc_NotImplementedError,
@@ -1039,7 +1681,7 @@ static struct {
  {"IndexError",         &PyExc_IndexError,     &PyExc_LookupError,
   IndexError__doc__},
  {"KeyError",           &PyExc_KeyError,       &PyExc_LookupError,
-  KeyError__doc__},
+  KeyError__doc__, KeyError_methods},
  {"ArithmeticError",    &PyExc_ArithmeticError, 0, ArithmeticError__doc__},
  {"OverflowError",      &PyExc_OverflowError,     &PyExc_ArithmeticError,
   OverflowError__doc__},
@@ -1049,6 +1691,14 @@ static struct {
   FloatingPointError__doc__},
  {"ValueError",   &PyExc_ValueError,  0, ValueError__doc__},
  {"UnicodeError", &PyExc_UnicodeError, &PyExc_ValueError, UnicodeError__doc__},
+#ifdef Py_USING_UNICODE
+ {"UnicodeEncodeError", &PyExc_UnicodeEncodeError, &PyExc_UnicodeError,
+  UnicodeEncodeError__doc__, UnicodeEncodeError_methods},
+ {"UnicodeDecodeError", &PyExc_UnicodeDecodeError, &PyExc_UnicodeError,
+  UnicodeDecodeError__doc__, UnicodeDecodeError_methods},
+ {"UnicodeTranslateError", &PyExc_UnicodeTranslateError, &PyExc_UnicodeError,
+  UnicodeTranslateError__doc__, UnicodeTranslateError_methods},
+#endif
  {"ReferenceError",  &PyExc_ReferenceError, 0, ReferenceError__doc__},
  {"SystemError",  &PyExc_SystemError, 0, SystemError__doc__},
  {"MemoryError",  &PyExc_MemoryError, 0, MemoryError__doc__},
@@ -1057,18 +1707,22 @@ static struct {
  {"UserWarning", &PyExc_UserWarning, &PyExc_Warning, UserWarning__doc__},
  {"DeprecationWarning", &PyExc_DeprecationWarning, &PyExc_Warning,
   DeprecationWarning__doc__},
+ {"PendingDeprecationWarning", &PyExc_PendingDeprecationWarning, &PyExc_Warning,
+  PendingDeprecationWarning__doc__},
  {"SyntaxWarning", &PyExc_SyntaxWarning, &PyExc_Warning, SyntaxWarning__doc__},
  {"OverflowWarning", &PyExc_OverflowWarning, &PyExc_Warning,
   OverflowWarning__doc__},
  {"RuntimeWarning", &PyExc_RuntimeWarning, &PyExc_Warning,
   RuntimeWarning__doc__},
+ {"FutureWarning", &PyExc_FutureWarning, &PyExc_Warning,
+  FutureWarning__doc__},
  /* Sentinel */
  {NULL}
 };
 
 
 
-DL_EXPORT(void)
+void
 _PyExc_Init(void)
 {
     char *modulename = "exceptions";
@@ -1164,7 +1818,7 @@ _PyExc_Init(void)
 }
 
 
-DL_EXPORT(void)
+void
 _PyExc_Fini(void)
 {
     int i;

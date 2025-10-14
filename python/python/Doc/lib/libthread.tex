@@ -15,9 +15,12 @@ semaphores}) are provided.
 \index{binary semaphores}
 \index{semaphores, binary}
 
-The module is optional.  It is supported on Windows NT and '95, SGI
+The module is optional.  It is supported on Windows, Linux, SGI
 IRIX, Solaris 2.x, as well as on systems that have a \POSIX{} thread
-(a.k.a. ``pthread'') implementation.
+(a.k.a. ``pthread'') implementation.  For systems lacking the \module{thread}
+module, the \refmodule[dummythread]{dummy_thread} module is available.
+It duplicates this module's interface and can be
+used as a drop-in replacement.
 \index{pthreads}
 \indexii{threads}{\POSIX}
 
@@ -40,14 +43,15 @@ terminates with an unhandled exception, a stack trace is printed and
 then the thread exits (but other threads continue to run).
 \end{funcdesc}
 
+\begin{funcdesc}{interrupt_main}{}
+Raise a KeyboardInterrupt in the main thread.  A subthread can use this
+function to interrupt the main thread.
+\versionadded{2.3}
+\end{funcdesc}
+
 \begin{funcdesc}{exit}{}
 Raise the \exception{SystemExit} exception.  When not caught, this
 will cause the thread to exit silently.
-\end{funcdesc}
-
-\begin{funcdesc}{exit_thread}{}
-\deprecated{1.5.2}{Use \function{exit()}.}
-This is an obsolete synonym for \function{exit()}.
 \end{funcdesc}
 
 %\begin{funcdesc}{exit_prog}{status}
@@ -82,8 +86,8 @@ reason for existence), and returns \code{None}.  If the integer
 value: if it is zero, the lock is only acquired if it can be acquired
 immediately without waiting, while if it is nonzero, the lock is
 acquired unconditionally as before.  If an argument is present, the
-return value is \code{1} if the lock is acquired successfully,
-\code{0} if not.
+return value is \code{True} if the lock is acquired successfully,
+\code{False} if not.
 \end{methoddesc}
 
 \begin{methoddesc}[lock]{release}{}
@@ -92,8 +96,8 @@ necessarily by the same thread.
 \end{methoddesc}
 
 \begin{methoddesc}[lock]{locked}{}
-Return the status of the lock:\ \code{1} if it has been acquired by
-some thread, \code{0} if not.
+Return the status of the lock:\ \code{True} if it has been acquired by
+some thread, \code{False} if not.
 \end{methoddesc}
 
 \strong{Caveats:}

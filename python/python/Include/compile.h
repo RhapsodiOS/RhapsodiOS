@@ -34,16 +34,22 @@ typedef struct {
 #define CO_VARKEYWORDS	0x0008
 #define CO_NESTED       0x0010
 #define CO_GENERATOR    0x0020
+/* The CO_NOFREE flag is set if there are no free or cell variables.
+   This information is redundant, but it allows a single flag test
+   to determine whether there is any extra work to be done when the
+   call frame it setup.
+*/
+#define CO_NOFREE       0x0040
 /* XXX Temporary hack.  Until generators are a permanent part of the
    language, we need a way for a code object to record that generators
    were *possible* when it was compiled.  This is so code dynamically
    compiled *by* a code object knows whether to allow yield stmts.  In
    effect, this passes on the "from __future__ import generators" state
    in effect when the code block was compiled. */
-#define CO_GENERATOR_ALLOWED    0x1000
+#define CO_GENERATOR_ALLOWED    0x1000 /* no longer used in an essential way */
 #define CO_FUTURE_DIVISION    	0x2000
 
-extern DL_IMPORT(PyTypeObject) PyCode_Type;
+PyAPI_DATA(PyTypeObject) PyCode_Type;
 
 #define PyCode_Check(op) ((op)->ob_type == &PyCode_Type)
 #define PyCode_GetNumFree(op) (PyTuple_GET_SIZE((op)->co_freevars))
@@ -52,12 +58,12 @@ extern DL_IMPORT(PyTypeObject) PyCode_Type;
 
 /* Public interface */
 struct _node; /* Declare the existence of this type */
-DL_IMPORT(PyCodeObject *) PyNode_Compile(struct _node *, char *);
-DL_IMPORT(PyCodeObject *) PyCode_New(
+PyAPI_FUNC(PyCodeObject *) PyNode_Compile(struct _node *, const char *);
+PyAPI_FUNC(PyCodeObject *) PyCode_New(
 	int, int, int, int, PyObject *, PyObject *, PyObject *, PyObject *,
 	PyObject *, PyObject *, PyObject *, PyObject *, int, PyObject *); 
         /* same as struct above */
-DL_IMPORT(int) PyCode_Addr2Line(PyCodeObject *, int);
+PyAPI_FUNC(int) PyCode_Addr2Line(PyCodeObject *, int);
 
 /* Future feature support */
 
@@ -67,8 +73,8 @@ typedef struct {
     int ff_features;
 } PyFutureFeatures;
 
-DL_IMPORT(PyFutureFeatures *) PyNode_Future(struct _node *, char *);
-DL_IMPORT(PyCodeObject *) PyNode_CompileFlags(struct _node *, char *,
+PyAPI_FUNC(PyFutureFeatures *) PyNode_Future(struct _node *, const char *);
+PyAPI_FUNC(PyCodeObject *) PyNode_CompileFlags(struct _node *, const char *,
 					      PyCompilerFlags *);
 
 #define FUTURE_NESTED_SCOPES "nested_scopes"

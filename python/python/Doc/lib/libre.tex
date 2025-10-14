@@ -1,8 +1,8 @@
 \section{\module{re} ---
          Regular expression operations}
 \declaremodule{standard}{re}
-\moduleauthor{Fredrik Lundh}{effbot@telia.com}
-\sectionauthor{Andrew M. Kuchling}{akuchlin@mems-exchange.org}
+\moduleauthor{Fredrik Lundh}{fredrik@pythonware.com}
+\sectionauthor{Andrew M. Kuchling}{amk@amk.ca}
 
 
 \modulesynopsis{Regular expression search and match operations with a
@@ -33,20 +33,11 @@ while \code{"\e n"} is a one-character string containing a newline.
 Usually patterns will be expressed in Python code using this raw
 string notation.
 
-\strong{Implementation note:}
-The \module{re}\refstmodindex{pre} module has two distinct
-implementations: \module{sre} is the default implementation and
-includes Unicode support, but may run into stack limitations for some
-patterns.  Though this will be fixed for a future release of Python,
-the older implementation (without Unicode support) is still available
-as the \module{pre}\refstmodindex{pre} module.
-
-
 \begin{seealso}
   \seetitle{Mastering Regular Expressions}{Book on regular expressions
-            by Jeffrey Friedl, published by O'Reilly.  The Python
-            material in this book dates from before the \refmodule{re}
-            module, but it covers writing good regular expression
+            by Jeffrey Friedl, published by O'Reilly.  The second 
+            edition of the book no longer covers Python at all, 
+            but the first edition covered writing good regular expression
             patterns in great detail.}
 \end{seealso}
 
@@ -67,7 +58,7 @@ conditions that are no longer satisfied by \emph{pq}.  Thus, complex
 expressions can easily be constructed from simpler primitive
 expressions like the ones described here.  For details of the theory
 and implementation of regular expressions, consult the Friedl book
-referenced below, or almost any textbook about compiler construction.
+referenced above, or almost any textbook about compiler construction.
 
 A brief explanation of the format of regular expressions follows.  For
 further information and a gentler presentation, consult the Regular
@@ -93,14 +84,15 @@ The special characters are:
 character except a newline.  If the \constant{DOTALL} flag has been
 specified, this matches any character including a newline.
 
-\item[\character{\^}] (Caret.)  Matches the start of the string, and in
-\constant{MULTILINE} mode also matches immediately after each newline.
+\item[\character{\textasciicircum}] (Caret.)  Matches the start of the
+string, and in \constant{MULTILINE} mode also matches immediately
+after each newline.
 
 \item[\character{\$}] Matches the end of the string or just before the
 newline at the end of the string, and in \constant{MULTILINE} mode
 also matches before a newline.  \regexp{foo} matches both 'foo' and
 'foobar', while the regular expression \regexp{foo\$} matches only
-'foo'.  More interestingly, searching for \regexp{foo\$} in
+'foo'.  More interestingly, searching for \regexp{foo.\$} in
 'foo1\textbackslash nfoo2\textbackslash n' matches 'foo2' normally,
 but 'foo1' in \constant{MULTILINE} mode.
 
@@ -137,9 +129,10 @@ not five.
 \item[\code{\{\var{m},\var{n}\}}] Causes the resulting RE to match from
 \var{m} to \var{n} repetitions of the preceding RE, attempting to
 match as many repetitions as possible.  For example, \regexp{a\{3,5\}}
-will match from 3 to 5 \character{a} characters.  Omitting \var{n}
-specifies an infinite upper bound; you can't omit \var{m}.  As an
-example, \regexp{a\{4,\}b} will match \code{aaaab}, a thousand
+will match from 3 to 5 \character{a} characters.  Omitting \var{m}
+specifies a lower bound of zero, 
+and omitting \var{n} specifies an infinite upper bound.  As an
+example, \regexp{a\{4,\}b} will match \code{aaaab} or a thousand
 \character{a} characters followed by a \code{b}, but not \code{aaab}.
 The comma may not be omitted or the modifier would be confused with
 the previously described form.
@@ -181,10 +174,14 @@ backslash, or place it as the first character.  The
 pattern \regexp{[]]} will match \code{']'}, for example.
 
 You can match the characters not within a range by \dfn{complementing}
-the set.  This is indicated by including a \character{\^} as the first
-character of the set; \character{\^} elsewhere will simply match the
-\character{\^} character.  For example, \regexp{[{\^}5]} will match
-any character except \character{5}.
+the set.  This is indicated by including a
+\character{\textasciicircum} as the first character of the set;
+\character{\textasciicircum} elsewhere will simply match the
+\character{\textasciicircum} character.  For example,
+\regexp{[{\textasciicircum}5]} will match
+any character except \character{5}, and
+\regexp{[\textasciicircum\code{\textasciicircum}]} will match any character
+except \character{\textasciicircum}.
 
 \item[\character{|}]\code{A|B}, where A and B can be arbitrary REs,
 creates a regular expression that will match either A or B.  An
@@ -267,18 +264,38 @@ followed by \code{'Asimov'}.
 
 \item[\code{(?<=...)}] Matches if the current position in the string
 is preceded by a match for \regexp{...} that ends at the current
-position.  This is called a positive lookbehind assertion.
-\regexp{(?<=abc)def} will match \samp{abcdef}, since the lookbehind
-will back up 3 characters and check if the contained pattern matches.
-The contained pattern must only match strings of some fixed length,
-meaning that \regexp{abc} or \regexp{a|b} are allowed, but \regexp{a*}
-isn't.
+position.  This is called a \dfn{positive lookbehind assertion}.
+\regexp{(?<=abc)def} will find a match in \samp{abcdef}, since the
+lookbehind will back up 3 characters and check if the contained
+pattern matches.  The contained pattern must only match strings of
+some fixed length, meaning that \regexp{abc} or \regexp{a|b} are
+allowed, but \regexp{a*} and \regexp{a\{3,4\}} are not.  Note that
+patterns which start with positive lookbehind assertions will never
+match at the beginning of the string being searched; you will most
+likely want to use the \function{search()} function rather than the
+\function{match()} function:
+
+\begin{verbatim}
+>>> import re
+>>> m = re.search('(?<=abc)def', 'abcdef')
+>>> m.group(0)
+'def'
+\end{verbatim}
+
+This example looks for a word following a hyphen:
+
+\begin{verbatim}
+>>> m = re.search('(?<=-)\w+', 'spam-egg')
+>>> m.group(0)
+'egg'
+\end{verbatim}
 
 \item[\code{(?<!...)}] Matches if the current position in the string
-is not preceded by a match for \regexp{...}.  This
-is called a negative lookbehind assertion.  Similar to positive lookbehind
+is not preceded by a match for \regexp{...}.  This is called a
+\dfn{negative lookbehind assertion}.  Similar to positive lookbehind
 assertions, the contained pattern must only match strings of some
-fixed length.
+fixed length.  Patterns which start with negative lookbehind
+assertions may match at the beginning of the string being searched.
 
 \end{list}
 
@@ -297,8 +314,6 @@ the space after the group).  This special sequence can only be used to
 match one of the first 99 groups.  If the first digit of \var{number}
 is 0, or \var{number} is 3 octal digits long, it will not be interpreted
 as a group match, but as the character with octal value \var{number}.
-(There is a group 0, which is the entire matched pattern, but it can't
-be referenced with \regexp{\e 0}; instead, use \regexp{\e g<0>}.)
 Inside the \character{[} and \character{]} of a character class, all numeric
 escapes are treated as characters.
 
@@ -306,52 +321,69 @@ escapes are treated as characters.
 
 \item[\code{\e b}] Matches the empty string, but only at the
 beginning or end of a word.  A word is defined as a sequence of
-alphanumeric characters, so the end of a word is indicated by
-whitespace or a non-alphanumeric character.  Inside a character range,
-\regexp{\e b} represents the backspace character, for compatibility with
-Python's string literals.
+alphanumeric or underscore characters, so the end of a word is indicated by
+whitespace or a non-alphanumeric, non-underscore character.  Note that 
+{}\code{\e b} is defined as the boundary between \code{\e w} and \code{\e
+W}, so the precise set of characters deemed to be alphanumeric depends on the
+values of the \code{UNICODE} and \code{LOCALE} flags.  Inside a character
+range, \regexp{\e b} represents the backspace character, for compatibility
+with Python's string literals.
 
-\item[\code{\e B}] Matches the empty string, but only when it is
-\emph{not} at the beginning or end of a word.
+\item[\code{\e B}] Matches the empty string, but only when it is \emph{not}
+at the beginning or end of a word.  This is just the opposite of {}\code{\e
+b}, so is also subject to the settings of \code{LOCALE} and \code{UNICODE}.
 
 \item[\code{\e d}]Matches any decimal digit; this is
 equivalent to the set \regexp{[0-9]}.
 
 \item[\code{\e D}]Matches any non-digit character; this is
-equivalent to the set \regexp{[{\^}0-9]}.
+equivalent to the set \regexp{[{\textasciicircum}0-9]}.
 
 \item[\code{\e s}]Matches any whitespace character; this is
 equivalent to the set \regexp{[ \e t\e n\e r\e f\e v]}.
 
 \item[\code{\e S}]Matches any non-whitespace character; this is
-equivalent to the set \regexp{[\^\ \e t\e n\e r\e f\e v]}.
+equivalent to the set \regexp{[\textasciicircum\ \e t\e n\e r\e f\e v]}.
 
 \item[\code{\e w}]When the \constant{LOCALE} and \constant{UNICODE}
-flags are not specified,
-matches any alphanumeric character; this is equivalent to the set
+flags are not specified, matches any alphanumeric character and the
+underscore; this is equivalent to the set
 \regexp{[a-zA-Z0-9_]}.  With \constant{LOCALE}, it will match the set
-\regexp{[0-9_]} plus whatever characters are defined as letters for
+\regexp{[0-9_]} plus whatever characters are defined as alphanumeric for
 the current locale.  If \constant{UNICODE} is set, this will match the
 characters \regexp{[0-9_]} plus whatever is classified as alphanumeric
 in the Unicode character properties database.
 
 \item[\code{\e W}]When the \constant{LOCALE} and \constant{UNICODE}
 flags are not specified, matches any non-alphanumeric character; this
-is equivalent to the set \regexp{[{\^}a-zA-Z0-9_]}.   With
+is equivalent to the set \regexp{[{\textasciicircum}a-zA-Z0-9_]}.   With
 \constant{LOCALE}, it will match any character not in the set
-\regexp{[0-9_]}, and not defined as a letter for the current locale.
+\regexp{[0-9_]}, and not defined as alphanumeric for the current locale.
 If \constant{UNICODE} is set, this will match anything other than
-\regexp{[0-9_]} and characters marked at alphanumeric in the Unicode
+\regexp{[0-9_]} and characters marked as alphanumeric in the Unicode
 character properties database.
 
 \item[\code{\e Z}]Matches only at the end of the string.
 
-\item[\code{\e \e}] Matches a literal backslash.
-
 \end{list}
 
+Most of the standard escapes supported by Python string literals are
+also accepted by the regular expression parser:
 
-\subsection{Matching vs. Searching \label{matching-searching}}
+\begin{verbatim}
+\a      \b      \f      \n
+\r      \t      \v      \x
+\\
+\end{verbatim}
+
+Octal escapes are included in a limited form: If the first digit is a
+0, or if there are three octal digits, it is considered an octal
+escape. Otherwise, it is a group reference.
+
+
+% Note the lack of a period in the section title; it causes problems
+% with readers of the GNU info version.  See http://www.python.org/sf/581414.
+\subsection{Matching vs Searching \label{matching-searching}}
 \sectionauthor{Fred L. Drake, Jr.}{fdrake@acm.org}
 
 Python offers two different primitive operations based on regular
@@ -361,7 +393,8 @@ semantics, the search operation is what you're looking for.  See the
 regular expression objects.
 
 Note that match may differ from search using a regular expression
-beginning with \character{\^}: \character{\^} matches only at the
+beginning with \character{\textasciicircum}:
+\character{\textasciicircum} matches only at the
 start of the string, or in \constant{MULTILINE} mode also immediately
 following a newline.  The ``match'' operation succeeds only if the
 pattern matches at the start of the string regardless of mode, or at
@@ -429,14 +462,14 @@ Make \regexp{\e w}, \regexp{\e W}, \regexp{\e b}, and
 
 \begin{datadesc}{M}
 \dataline{MULTILINE}
-When specified, the pattern character \character{\^} matches at the
-beginning of the string and at the beginning of each line
-(immediately following each newline); and the pattern character
+When specified, the pattern character \character{\textasciicircum}
+matches at the beginning of the string and at the beginning of each
+line (immediately following each newline); and the pattern character
 \character{\$} matches at the end of the string and at the end of each
-line (immediately preceding each newline).  By default, \character{\^}
-matches only at the beginning of the string, and \character{\$} only
-at the end of the string and immediately before the newline (if any)
-at the end of the string.
+line (immediately preceding each newline).  By default,
+\character{\textasciicircum} matches only at the beginning of the
+string, and \character{\$} only at the end of the string and
+immediately before the newline (if any) at the end of the string.
 \end{datadesc}
 
 \begin{datadesc}{S}
@@ -516,6 +549,13 @@ ignored.
   pattern has more than one group.  Empty matches are included in the
   result.
   \versionadded{1.5.2}
+\end{funcdesc}
+
+\begin{funcdesc}{finditer}{pattern, string}
+  Return an iterator over all non-overlapping matches for the RE
+  \var{pattern} in \var{string}.  For each match, the iterator returns
+  a match object.  Empty matches are included in the result.
+  \versionadded{2.2}
 \end{funcdesc}
 
 \begin{funcdesc}{sub}{pattern, repl, string\optional{, count}}
@@ -598,18 +638,6 @@ ignored.
 Compiled regular expression objects support the following methods and
 attributes:
 
-\begin{methoddesc}[RegexObject]{search}{string\optional{, pos\optional{,
-                                        endpos}}}
-  Scan through \var{string} looking for a location where this regular
-  expression produces a match, and return a
-  corresponding \class{MatchObject} instance.  Return \code{None} if no
-  position in the string matches the pattern; note that this is
-  different from finding a zero-length match at some point in the string.
-
-  The optional \var{pos} and \var{endpos} parameters have the same
-  meaning as for the \method{match()} method.
-\end{methoddesc}
-
 \begin{methoddesc}[RegexObject]{match}{string\optional{, pos\optional{,
                                        endpos}}}
   If zero or more characters at the beginning of \var{string} match
@@ -623,15 +651,32 @@ attributes:
 
   The optional second parameter \var{pos} gives an index in the string
   where the search is to start; it defaults to \code{0}.  This is not
-  completely equivalent to slicing the string; the \code{'\^'} pattern
+  completely equivalent to slicing the string; the
+  \code{'\textasciicircum'} pattern
   character matches at the real beginning of the string and at positions
   just after a newline, but not necessarily at the index where the search
   is to start.
 
   The optional parameter \var{endpos} limits how far the string will
   be searched; it will be as if the string is \var{endpos} characters
-  long, so only the characters from \var{pos} to \var{endpos} will be
-  searched for a match.
+  long, so only the characters from \var{pos} to \code{\var{endpos} -
+  1} will be searched for a match.  If \var{endpos} is less than
+  \var{pos}, no match will be found, otherwise, if \var{rx} is a
+  compiled regular expression object,
+  \code{\var{rx}.match(\var{string}, 0, 50)} is equivalent to
+  \code{\var{rx}.match(\var{string}[:50], 0)}.
+\end{methoddesc}
+
+\begin{methoddesc}[RegexObject]{search}{string\optional{, pos\optional{,
+                                        endpos}}}
+  Scan through \var{string} looking for a location where this regular
+  expression produces a match, and return a
+  corresponding \class{MatchObject} instance.  Return \code{None} if no
+  position in the string matches the pattern; note that this is
+  different from finding a zero-length match at some point in the string.
+
+  The optional \var{pos} and \var{endpos} parameters have the same
+  meaning as for the \method{match()} method.
 \end{methoddesc}
 
 \begin{methoddesc}[RegexObject]{split}{string\optional{,
@@ -641,6 +686,10 @@ Identical to the \function{split()} function, using the compiled pattern.
 
 \begin{methoddesc}[RegexObject]{findall}{string}
 Identical to the \function{findall()} function, using the compiled pattern.
+\end{methoddesc}
+
+\begin{methoddesc}[RegexObject]{finditer}{string}
+Identical to the \function{finditer()} function, using the compiled pattern.
 \end{methoddesc}
 
 \begin{methoddesc}[RegexObject]{sub}{repl, string\optional{, count\code{ = 0}}}
@@ -732,7 +781,7 @@ used for groups that did not participate in the match; it defaults to
 \end{methoddesc}
 
 \begin{methoddesc}[MatchObject]{start}{\optional{group}}
-\funcline{end}{\optional{group}}
+\methodline{end}{\optional{group}}
 Return the indices of the start and end of the substring
 matched by \var{group}; \var{group} defaults to zero (meaning the whole
 matched substring).
@@ -763,25 +812,30 @@ Note that if \var{group} did not contribute to the match, this is
 \end{methoddesc}
 
 \begin{memberdesc}[MatchObject]{pos}
-The value of \var{pos} which was passed to the
-\function{search()} or \function{match()} function.  This is the index
-into the string at which the RE engine started looking for a match.
+The value of \var{pos} which was passed to the \function{search()} or
+\function{match()} method of the \class{RegexObject}.  This is the
+index into the string at which the RE engine started looking for a
+match.
 \end{memberdesc}
 
 \begin{memberdesc}[MatchObject]{endpos}
-The value of \var{endpos} which was passed to the
-\function{search()} or \function{match()} function.  This is the index
-into the string beyond which the RE engine will not go.
+The value of \var{endpos} which was passed to the \function{search()}
+or \function{match()} method of the \class{RegexObject}.  This is the
+index into the string beyond which the RE engine will not go.
+\end{memberdesc}
+
+\begin{memberdesc}[MatchObject]{lastindex}
+The integer index of the last matched capturing group, or \code{None}
+if no group was matched at all. For example, the expressions
+\regexp{(a)b}, \regexp{((a)(b))}, and \regexp{((ab))} will have
+\code{lastindex == 1} if applyied to the string \code{'ab'},
+while the expression \regexp{(a)(b)} will have \code{lastindex == 2},
+if applyied to the same string.
 \end{memberdesc}
 
 \begin{memberdesc}[MatchObject]{lastgroup}
 The name of the last matched capturing group, or \code{None} if the
 group didn't have a name, or if no group was matched at all.
-\end{memberdesc}
-
-\begin{memberdesc}[MatchObject]{lastindex}
-The integer index of the last matched capturing group, or \code{None}
-if no group was matched at all.
 \end{memberdesc}
 
 \begin{memberdesc}[MatchObject]{re}
@@ -794,10 +848,6 @@ The string passed to \function{match()} or \function{search()}.
 \end{memberdesc}
 
 \subsection{Examples}
-
-%\begin{list}{}{\leftmargin 0.7in \labelwidth 0.65in}
-
-%\item[Simulating scanf]
 
 \leftline{\strong{Simulating \cfunction{scanf()}}}
 
@@ -814,11 +864,11 @@ offers some more-or-less equivalent mappings between
   \lineii{\code{\%5c}}
          {\regexp{.\{5\}}}
   \lineii{\code{\%d}}
-         {\regexp{[-+]\e d+}}
+         {\regexp{[-+]?\e d+}}
   \lineii{\code{\%e}, \code{\%E}, \code{\%f}, \code{\%g}}
-         {\regexp{[-+](\e d+(\e.\e d*)?|\e d*\e.\e d+)([eE]\e d+)?}}
+         {\regexp{[-+]?(\e d+(\e.\e d*)?|\e d*\e.\e d+)([eE]\e d+)?}}
   \lineii{\code{\%i}}
-         {\regexp{[-+](0[xX][\e dA-Fa-f]+|0[0-7]*|\e d+)}}
+         {\regexp{[-+]?(0[xX][\e dA-Fa-f]+|0[0-7]*|\e d+)}}
   \lineii{\code{\%o}}
          {\regexp{0[0-7]*}}
   \lineii{\code{\%s}}
@@ -826,7 +876,7 @@ offers some more-or-less equivalent mappings between
   \lineii{\code{\%u}}
          {\regexp{\e d+}}
   \lineii{\code{\%x}, \code{\%X}}
-         {\regexp{0[xX][\e dA-Fa-f]}}
+         {\regexp{0[xX][\e dA-Fa-f]+}}
 \end{tableii}
 
 To extract the filename and numbers from a string like
@@ -844,7 +894,30 @@ you would use a \cfunction{scanf()} format like
 The equivalent regular expression would be
 
 \begin{verbatim}
-    ([^\s]+) - (\d+) errors, (\d+) warnings
+    (\S+) - (\d+) errors, (\d+) warnings
 \end{verbatim}
 
-%\end{list}
+\leftline{\strong{Avoiding recursion}}
+
+If you create regular expressions that require the engine to perform a
+lot of recursion, you may encounter a RuntimeError exception with
+the message \code{maximum recursion limit} exceeded. For example,
+
+\begin{verbatim}
+>>> import re
+>>> s = 'Begin ' + 1000*'a very long string ' + 'end'
+>>> re.match('Begin (\w| )*? end', s).end()
+Traceback (most recent call last):
+  File "<stdin>", line 1, in ?
+  File "/usr/local/lib/python2.3/sre.py", line 132, in match
+    return _compile(pattern, flags).match(string)
+RuntimeError: maximum recursion limit exceeded
+\end{verbatim}
+
+You can often restructure your regular expression to avoid recursion.
+
+Starting with Python 2.3, simple uses of the \regexp{*?} pattern are
+special-cased to avoid recursion.  Thus, the above regular expression
+can avoid recursion by being recast as
+\regexp{Begin [a-zA-Z0-9_ ]*?end}.  As a further benefit, such regular
+expressions will run faster than their recursive equivalents.

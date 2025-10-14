@@ -3,6 +3,11 @@
 There are functions to reset the cache or to selectively remove items.
 """
 
+import warnings
+warnings.warn("The statcache module is obsolete.  Use os.stat() instead.",
+              DeprecationWarning)
+del warnings
+
 import os as _os
 from stat import *
 
@@ -11,7 +16,7 @@ __all__ = ["stat","reset","forget","forget_prefix","forget_dir",
 
 # The cache.  Keys are pathnames, values are os.stat outcomes.
 # Remember that multiple threads may be calling this!  So, e.g., that
-# cache.has_key(path) returns 1 doesn't mean the cache will still contain
+# path in cache returns 1 doesn't mean the cache will still contain
 # path on the next line.  Code defensively.
 
 cache = {}
@@ -69,9 +74,9 @@ def forget_except_prefix(prefix):
             forget(path)
 
 def isdir(path):
-    """Return 1 if directory, else 0."""
+    """Return True if directory, else False."""
     try:
         st = stat(path)
     except _os.error:
-        return 0
-    return S_ISDIR(st[ST_MODE])
+        return False
+    return S_ISDIR(st.st_mode)

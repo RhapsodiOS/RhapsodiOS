@@ -1,8 +1,9 @@
-from test_support import TESTFN, TestFailed
+from test.test_support import TESTFN, TestFailed
 
 import os
 import random
 import sys
+import py_compile
 
 # Brief digression to test that import is case-sensitive:  if we got this
 # far, we know for sure that "random" exists.
@@ -69,3 +70,41 @@ try:
             test_with_extension(ext)
 finally:
     del sys.path[0]
+
+# Verify that the imp module can correctly load and find .py files
+import imp
+x = imp.find_module("os")
+os = imp.load_module("os", *x)
+
+def test_module_with_large_stack(module):
+    # create module w/list of 65000 elements to test bug #561858
+    filename = module + os.extsep + 'py'
+
+    # create a file with a list of 65000 elements
+    f = open(filename, 'w+')
+    f.write('d = [\n')
+    for i in range(65000):
+        f.write('"",\n')
+    f.write(']')
+    f.close()
+
+    # compile & remove .py file, we only need .pyc (or .pyo)
+    f = open(filename, 'r')
+    py_compile.compile(filename)
+    f.close()
+    os.unlink(filename)
+
+    # need to be able to load from current dir
+    sys.path.append('')
+
+    # this used to crash
+    exec 'import ' + module
+
+    # cleanup
+    del sys.path[-1]
+    for ext in 'pyc', 'pyo':
+        fname = module + os.extsep + ext
+        if os.path.exists(fname):
+            os.unlink(fname)
+
+test_module_with_large_stack('longlist')

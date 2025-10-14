@@ -38,11 +38,22 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 char *PyMac_getscript()
 {
 #if TARGET_API_MAC_OSX
-    /* We cannot use GetSysFont because it requires the window manager
-    ** There are other APIs to query the default 8 bit encoding, but
-    ** I don't know about them (yet).
-    */
-    return "ascii";
+    CFStringEncoding enc = CFStringGetSystemEncoding();
+    static CFStringRef name = NULL;
+    /* Return the code name for the encodings for which we have codecs. */
+    switch(enc) {
+    case kCFStringEncodingMacRoman: return "mac-roman";
+    case kCFStringEncodingMacGreek: return "mac-greek";
+    case kCFStringEncodingMacCyrillic: return "mac-cyrillic";
+    case kCFStringEncodingMacTurkish: return "mac-turkish";
+    case kCFStringEncodingMacIcelandic: return "mac-icelandic";
+    /* XXX which one is mac-latin2? */
+    }
+    if (!name) {
+        /* This leaks a an object. */
+        name = CFStringConvertEncodingToIANACharSetName(enc);
+    }
+    return (char *)CFStringGetCStringPtr(name, 0); 
 #else
    int font, script, lang;
     font = 0;
@@ -81,8 +92,42 @@ char *PyMac_StrError(int err)
 	static char buf[256];
 	Handle h;
 	char *str;
+	static int errors_loaded;
 	
 	h = GetResource('Estr', err);
+	if (!h && !errors_loaded) {
+		/*
+		** Attempt to open the resource file containing the
+		** Estr resources. We ignore all errors. We also try
+		** this only once.
+		*/
+		PyObject *m, *rv;
+		errors_loaded = 1;
+		
+		m = PyImport_ImportModule("macresource");
+		if (!m) {
+			if (Py_VerboseFlag)
+				PyErr_Print();
+			PyErr_Clear();
+		} else {
+			rv = PyObject_CallMethod(m, "open_error_resource", "");
+			if (!rv) {
+				if (Py_VerboseFlag)
+					PyErr_Print();
+				PyErr_Clear();
+			} else {
+				Py_DECREF(rv);
+				/* And try again... */
+				h = GetResource('Estr', err);
+			}
+		}
+	}
+	/*
+	** Whether the code above succeeded or not, we won't try
+	** again.
+	*/
+	errors_loaded = 1;
+		
 	if ( h ) {
 		HLock(h);
 		str = (char *)*h;
@@ -104,7 +149,7 @@ PyObject *
 PyMac_GetOSErrException(void)
 {
 	if (PyMac_OSErrException == NULL)
-		PyMac_OSErrException = PyString_FromString("MacOS.Error");
+		PyMac_OSErrException = PyErr_NewException("MacOS.Error", NULL, NULL);
 	return PyMac_OSErrException;
 }
 
@@ -175,6 +220,94 @@ PyMac_GetFullPathname(FSSpec *fss, char *path, int len)
 }
 
 #endif /* TARGET_API_MAC_OSX */
+
+#ifdef WITH_NEXT_FRAMEWORK
+/*
+** In a bundle, find a file "resourceName" of type "resourceType". Return the
+** full pathname in "resourceURLCstr".
+*/
+static int
+locateResourcePy(CFStringRef resourceType, CFStringRef resourceName, char *resourceURLCStr, int length)
+{
+    CFBundleRef mainBundle = NULL;
+    CFURLRef URL, absoluteURL;
+    CFStringRef filenameString, filepathString;
+    CFIndex size, i;
+    CFArrayRef arrayRef = NULL;
+    int success = 0;
+    
+#if TARGET_API_MAC_OSX
+	CFURLPathStyle thePathStyle = kCFURLPOSIXPathStyle;
+#else
+	CFURLPathStyle thePathStyle = kCFURLHFSPathStyle;
+#endif
+
+    /* Get a reference to our main bundle */
+    mainBundle = CFBundleGetMainBundle();
+
+	/* If we are running inside a bundle, look through it. Otherwise, do nothing. */
+	if (mainBundle) {
+
+	    /* Look for py files in the main bundle by type */
+	    arrayRef = CFBundleCopyResourceURLsOfType( mainBundle, 
+	            resourceType, 
+	           NULL );
+
+	    /* See if there are any filename matches */
+	    size = CFArrayGetCount(arrayRef);
+	    for (i = 0; i < size; i++) {
+	        URL = CFArrayGetValueAtIndex(arrayRef, i);
+	        filenameString = CFURLCopyLastPathComponent(URL);
+	        if (CFStringCompare(filenameString, resourceName, 0) == kCFCompareEqualTo) {
+	            /* We found a match, get the file's full path */
+	            absoluteURL = CFURLCopyAbsoluteURL(URL);
+	            filepathString = CFURLCopyFileSystemPath(absoluteURL, thePathStyle);
+	            CFRelease(absoluteURL);
+
+	            /* Copy the full path into the caller's character buffer */
+	            success = CFStringGetCString(filepathString, resourceURLCStr, length,
+	                                        kCFStringEncodingMacRoman);
+
+	            CFRelease(filepathString);
+	        }
+	        CFRelease(filenameString);
+	    }
+		CFRelease(arrayRef);
+	}
+    return success;
+}
+
+/*
+** iff we are running in a .app framework then we could be
+** the main program for an applet. In that case, return the
+** script filename for the applet.
+** Otherwise return NULL.
+*/
+char *
+PyMac_GetAppletScriptFile(void)
+{
+    static char scriptpath[1024];
+
+	/* First we see whether we have __rawmain__.py and run that if it
+	** is there. This is used for applets that want sys.argv to be
+	** unix-like: __rawmain__ will construct it (from the initial appleevent)
+	** and then call __main__.py.
+	*/
+	if (locateResourcePy(CFSTR("py"), CFSTR("__rawmain__.py"), scriptpath, 1024)) {
+		return scriptpath;
+	} else if (locateResourcePy(CFSTR("pyc"), CFSTR("__rawmain__.pyc"), scriptpath, 1024)) {
+		return scriptpath;
+	} else if (locateResourcePy(CFSTR("py"), CFSTR("__main__.py"), scriptpath, 1024)) {
+		return scriptpath;
+	} else if (locateResourcePy(CFSTR("pyc"), CFSTR("__main__.pyc"), scriptpath, 1024)) {
+		return scriptpath;
+	}
+	return NULL;
+}
+
+#endif
+
+
 /* Convert a 4-char string object argument to an OSType value */
 int
 PyMac_GetOSType(PyObject *v, OSType *pr)
@@ -282,7 +415,7 @@ PyMac_BuildPoint(Point p)
 int
 PyMac_GetEventRecord(PyObject *v, EventRecord *e)
 {
-	return PyArg_Parse(v, "(Hll(hh)H)",
+	return PyArg_Parse(v, "(Hkk(hh)H)",
 	                   &e->what,
 	                   &e->message,
 	                   &e->when,
@@ -338,7 +471,7 @@ PyMac_Getwide(PyObject *v, wide *rv)
 			rv->hi = -1;
 		return 1;
 	}
-	return PyArg_Parse(v, "(ll)", &rv->hi, &rv->lo);
+	return PyArg_Parse(v, "(kk)", &rv->hi, &rv->lo);
 }
 
 
@@ -395,12 +528,13 @@ int routinename(PyObject *pyobj, object *cobj) { \
     return (*PyMacGluePtr_##routinename)(pyobj, cobj); \
 }
 
-GLUE_NEW(FSSpec *, PyMac_BuildFSSpec, "macfs")
-GLUE_CONVERT(FSSpec, PyMac_GetFSSpec, "macfs")
-GLUE_NEW(FSRef *, PyMac_BuildFSRef, "macfs")
-GLUE_CONVERT(FSRef, PyMac_GetFSRef, "macfs")
+GLUE_NEW(FSSpec *, PyMac_BuildFSSpec, "Carbon.File")
+GLUE_CONVERT(FSSpec, PyMac_GetFSSpec, "Carbon.File")
+GLUE_NEW(FSRef *, PyMac_BuildFSRef, "Carbon.File")
+GLUE_CONVERT(FSRef, PyMac_GetFSRef, "Carbon.File")
 
 GLUE_NEW(AppleEvent *, AEDesc_New, "Carbon.AE") /* XXXX Why by address? */
+GLUE_NEW(AppleEvent *, AEDesc_NewBorrowed, "Carbon.AE")
 GLUE_CONVERT(AppleEvent, AEDesc_Convert, "Carbon.AE")
 
 GLUE_NEW(Component, CmpObj_New, "Carbon.Cm")
@@ -458,6 +592,9 @@ GLUE_CONVERT(TEHandle, TEObj_Convert, "Carbon.TE")
 GLUE_NEW(WindowPtr, WinObj_New, "Carbon.Win")
 GLUE_CONVERT(WindowPtr, WinObj_Convert, "Carbon.Win")
 GLUE_NEW(WindowPtr, WinObj_WhichWindow, "Carbon.Win")
+
+GLUE_CONVERT(CFTypeRef, CFObj_Convert, "Carbon.CF")
+GLUE_NEW(CFTypeRef, CFObj_New, "Carbon.CF")
 
 GLUE_CONVERT(CFTypeRef, CFTypeRefObj_Convert, "Carbon.CF")
 GLUE_NEW(CFTypeRef, CFTypeRefObj_New, "Carbon.CF")

@@ -83,39 +83,6 @@ extern int _ListObj_Convert(PyObject *, ListHandle *);
 
 static ListDefUPP myListDefFunctionUPP;
 
-#if !TARGET_API_MAC_CARBON
-
-#define kJumpAbs 0x4EF9
-
-#pragma options align=mac68k
-typedef struct {
-	short jmpabs;       /* 4EF9 */
-	ListDefUPP theUPP;  /* 00000000 */
-} LDEFStub, **LDEFStubHandle;
-#pragma options align=reset
-
-static OSErr installLDEFStub(ListHandle list) {
-	LDEFStubHandle stubH;
-
-	stubH = (LDEFStubHandle)NewHandleClear(sizeof(LDEFStub));
-	if (stubH == NULL)
-		return MemError();
-	
-	(*stubH)->jmpabs = kJumpAbs;
-	(*stubH)->theUPP = myListDefFunctionUPP;
-	HLock((Handle) stubH);
-	
-	(*list)->listDefProc = (Handle)stubH;
-	return noErr;
-}
-
-static void removeLDEFStub(ListHandle list) {
-	if ((*list)->listDefProc)
-		DisposeHandle((Handle)(*list)->listDefProc);
-	(*list)->listDefProc = NULL;
-}
-
-#endif
 """
 
 initstuff = initstuff + """
@@ -137,46 +104,28 @@ class ListMethodGenerator(MethodGenerator):
 		FunctionGenerator.parseArgumentList(self, args)
 		self.argumentList.append(self.itself)
 
-getattrHookCode = """{
-	if ( strcmp(name, "listFlags") == 0 )
-		return Py_BuildValue("l", (long)GetListFlags(self->ob_itself) & 0xff);
-	if ( strcmp(name, "selFlags") == 0 )
-		return Py_BuildValue("l", (long)GetListSelectionFlags(self->ob_itself) & 0xff);
-	if ( strcmp(name, "cellSize") == 0 )
-		return Py_BuildValue("O&", PyMac_BuildPoint, (*self->ob_itself)->cellSize);
-}"""
-
-setattrCode = """
-static int
-ListObj_setattr(ListObject *self, char *name, PyObject *value)
-{
-	long intval;
-	int err = 0;
-	
-	if ( value == NULL ) {
-		PyErr_SetString(PyExc_AttributeError, "Cannot delete attribute");
-		return -1;
-	}
-	if (strcmp(name, "listFlags") == 0 )
-		err = PyArg_Parse(value, "B", &(*self->ob_itself)->listFlags);
-	else if (strcmp(name, "selFlags") == 0 )
-		err = PyArg_Parse(value, "B", &(*self->ob_itself)->selFlags);
-	else if (strcmp(name, "cellSize") == 0 )
-		err = PyArg_Parse(value, "O&", PyMac_GetPoint, &(*self->ob_itself)->cellSize);
-	else
-		PyErr_SetString(PyExc_AttributeError, "No such attribute");
-	if (err) return 0;
-	else return -1;
-}
-"""
-
-
-class MyObjectDefinition(GlobalObjectDefinition):
+class MyObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
+	# XXXX Should inherit from Resource
+	getsetlist = [(
+		'listFlags',
+		'return Py_BuildValue("l", (long)GetListFlags(self->ob_itself) & 0xff);',
+		'if (!PyArg_Parse(v, "B", &(*self->ob_itself)->listFlags)) return -1;',
+		None,
+		), (
+		'selFlags',
+		'return Py_BuildValue("l", (long)GetListSelectionFlags(self->ob_itself) & 0xff);',
+		'if (!PyArg_Parse(v, "B", &(*self->ob_itself)->selFlags)) return -1;',
+		None,
+		), (
+		'cellSize',
+		'return Py_BuildValue("O&", PyMac_BuildPoint, (*self->ob_itself)->cellSize);',
+		'if (!PyArg_Parse(v, "O&", PyMac_GetPoint, &(*self->ob_itself)->cellSize)) return -1;',
+		None
+		)]
 
 	def outputStructMembers(self):
 		ObjectDefinition.outputStructMembers(self)
 		Output("PyObject *ob_ldef_func;")
-		Output("int ob_have_ldef_stub;")
 		Output("int ob_must_be_disposed;")
 
 	def outputCheckNewArg(self):
@@ -188,24 +137,14 @@ class MyObjectDefinition(GlobalObjectDefinition):
 	def outputInitStructMembers(self):
 		ObjectDefinition.outputInitStructMembers(self)
 		Output("it->ob_ldef_func = NULL;")
-		Output("it->ob_have_ldef_stub = 0;")
 		Output("it->ob_must_be_disposed = 1;")
 		Output("SetListRefCon(itself, (long)it);")
 
 	def outputFreeIt(self, itselfname):
 		Output("Py_XDECREF(self->ob_ldef_func);")
 		Output("self->ob_ldef_func = NULL;")
-		Output("#if !TARGET_API_MAC_CARBON")
-		Output("if (self->ob_have_ldef_stub) removeLDEFStub(self->ob_itself);");
-		Output("#endif");
 		Output("SetListRefCon(self->ob_itself, (long)0);")
 		Output("if (self->ob_must_be_disposed && %s) LDispose(%s);", itselfname, itselfname)
-		
-	def outputGetattrHook(self):
-		Output(getattrHookCode)
-		
-	def outputSetattr(self):
-		Output(setattrCode)
 		
 # From here on it's basically all boiler plate...
 
@@ -308,7 +247,6 @@ if (!PyArg_ParseTuple(_args, "O&O&O&(iO)O&bbbb",
 	return NULL;
 
 
-#if TARGET_API_MAC_CARBON
 /* Carbon applications use the CreateCustomList API */ 
 theSpec.u.userProc = myListDefFunctionUPP;
 CreateCustomList(&rView,
@@ -322,33 +260,12 @@ CreateCustomList(&rView,
                  scrollVert,
                  &outList);
 
-#else
-/* pre-Carbon applications set the address in the LDEF
-to a routine descriptor referring to their list
-definition routine. */
-outList = LNew(&rView,
-               &dataBounds,
-               cellSize,
-               0,
-               theWindow,
-               drawIt, /* XXX must be false */
-               hasGrow,
-               scrollHoriz,
-               scrollVert);
-if (installLDEFStub(outList) != noErr) {
-	PyErr_SetString(PyExc_MemoryError, "can't create LDEF stub");
-	return NULL;
-}
-#endif
 
 _res = ListObj_New(outList);
 if (_res == NULL)
 	return NULL;
 Py_INCREF(listDefFunc);
 ((ListObject*)_res)->ob_ldef_func = listDefFunc;
-#if !TARGET_API_MAC_CARBON
-((ListObject*)_res)->ob_have_ldef_stub = 1;
-#endif
 return _res;\
 """
 

@@ -1,5 +1,5 @@
 /*
-** Configuration file for standalone 68k/ppc Python.
+** Configuration file for standalone Carbon Python.
 **
 ** Note: enabling the switches below is not enough to enable the
 ** specific features, you may also need different sets of sources.
@@ -8,21 +8,14 @@
 #define OPAQUE_TOOLBOX_STRUCTS 1
 #define TARGET_API_MAC_CARBON 1
 
-#define USE_ARGV0_CHDIR		/* Workaround for OSXDP4: change dir to argv[0] dir */
 #define USE_GUSI2		/* Stdio implemented with GUSI 2 */
-#if defined(USE_GUSI1) || defined(USE_GUSI2)
 #define USE_GUSI
-#endif
-/* #define WITH_THREAD		/* Use thread support (needs GUSI 2, not GUSI 1) */
+#define WITH_THREAD		/* Use thread support (needs GUSI 2, not GUSI 1) */
 #define USE_MSL			/* Use Mw Standard Library (as opposed to Plaugher C libraries) */
 #define USE_TOOLBOX		/* Include toolbox modules in core Python */
 #define USE_QT			/* Include quicktime modules in core Python */
 #define USE_WASTE		/* Include waste module in core Python */
-/* #define USE_MACSPEECH		/* Include macspeech module in core Python */
-#define USE_IMG	       		/* Include img modules in core Python */
-/* #define USE_MACCTB		/* Include ctb module in core Python */
-/* #define USE_TK			/* Include _tkinter module in core Python */
-/* #define MAC_TCL			/* This *must* be on if USE_TK is on */
+/* #define USE_IMG	       		/* Include img modules in core Python */
 /* #define USE_MAC_SHARED_LIBRARY	/* Enable code to add shared-library resources */
 /* #define USE_MAC_APPLET_SUPPORT	/* Enable code to run a PYC resource */
 /* #define HAVE_DYNAMIC_LOADING		/* Enable dynamically loaded modules */
@@ -30,11 +23,13 @@
 #define USE_ZLIB		/* Include the zlib module */
 #define USE_IC			/* Include Internet Config module */
 #define USE_PYEXPAT		/* Include Pyexpat module */
-#define USE_APPEARANCE	/* Enable Appearance support */
+#define XML_NS 1
+#define XML_DTD 1
+#define BYTEORDER 4321
+#define XML_CONTEXT_BYTES 1024
 #define USE_MSL_MALLOC	/* Disable private malloc. Also disables next two defines */
 #ifndef USE_MSL_MALLOC
 /* #define USE_MALLOC_DEBUG			/* Enable range checking and other malloc debugging */
-#define USE_CACHE_ALIGNED 8		/* Align on 32-byte boundaries for 604 */
 #endif
 #define WITHOUT_FRAMEWORKS /* Use old-style Universal Header includes, not Carbon/Carbon.h */
 

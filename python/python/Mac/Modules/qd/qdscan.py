@@ -2,11 +2,10 @@
 
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
 
 from scantools import Scanner
-from bgenlocations import TOOLBOXDIR
 
 def main():
 	input = "QuickDraw.h"
@@ -41,6 +40,8 @@ def main():
 		ifp.close()
 		ofp.close()
 		
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	import qdsupport
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -52,6 +53,12 @@ class MyScanner(Scanner):
 		listname = "functions"
 		if arglist:
 			t, n, m = arglist[0]
+			if t in ('GrafPtr', 'CGrafPtr') and m == 'InMode':
+				classname = "Method"
+				listname = "gr_methods"
+			elif t == 'BitMapPtr' and m == 'InMode':
+				classname = "Method"
+				listname = "bm_methods"
 ##			elif t == "PolyHandle" and m == "InMode":
 ##				classname = "Method"
 ##				listname = "p_methods"
@@ -110,25 +117,6 @@ extend						= 0x40
 			'CursorComponentChanged',
 			'CursorComponentSetData',
 			]
-
-	def makegreylist(self):
-		return [
-			('#if !TARGET_API_MAC_CARBON', [
-			]),
-			('#if TARGET_API_MAC_CARBON', [
-				'IsPortOffscreen',	# Lazy
-				'IsPortColor',	# Lazy
-				'IsRegionRectangular',
-				'CreateNewPort',
-				'DisposePort',
-				'SetQDError',
-				'IsPortPolyBeingDefined',
-				'QDSetDirtyRegion',
-				'QDGetDirtyRegion',
-				'IsValidPort',
-				'RgnToHandle',
-			])]
-
 
 	def makeblacklisttypes(self):
 		return [

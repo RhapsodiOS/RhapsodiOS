@@ -18,6 +18,13 @@ from macsupport import *
 
 # Create the type objects
 
+class RevVarInputBufferType(VarInputBufferType):
+	def passInput(self, name):
+		return "%s__len__, %s__in__" % (name, name)
+
+TextBuffer = RevVarInputBufferType()
+
+
 includestuff = includestuff + """
 #ifdef WITHOUT_FRAMEWORKS
 #include <Fonts.h>
@@ -63,7 +70,7 @@ FMetricRecPtr = OpaqueType('FMetricRec', 'FMRec')
 module = MacModule(MODNAME, MODPREFIX, includestuff, finalstuff, initstuff)
 
 # Create the generator classes used to populate the lists
-Function = OSErrFunctionGenerator
+Function = OSErrWeakLinkFunctionGenerator
 
 # Create and populate the lists
 functions = []

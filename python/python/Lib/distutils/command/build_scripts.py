@@ -2,18 +2,20 @@
 
 Implements the Distutils 'build_scripts' command."""
 
-# created 2000/05/23, Bastian Kleineidam
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: build_scripts.py,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+__revision__ = "$Id: build_scripts.py,v 1.21 2003/06/27 19:33:38 niemeyer Exp $"
 
 import sys, os, re
+from stat import ST_MODE
 from distutils import sysconfig
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.util import convert_path
+from distutils import log
 
 # check if Python is called on the first line with this expression
-first_line_re = re.compile(r'^#!.*python(\s+.*)?$')
+first_line_re = re.compile('^#!.*python[0-9.]*([ \t].*)?$')
 
 class build_scripts (Command):
 
@@ -53,13 +55,15 @@ class build_scripts (Command):
         line to refer to the current Python interpreter as we copy.
         """
         self.mkpath(self.build_dir)
+        outfiles = []
         for script in self.scripts:
             adjust = 0
             script = convert_path(script)
             outfile = os.path.join(self.build_dir, os.path.basename(script))
+            outfiles.append(outfile)
 
             if not self.force and not newer(script, outfile):
-                self.announce("not copying %s (up-to-date)" % script)
+                log.debug("not copying %s (up-to-date)", script)
                 continue
 
             # Always open the file, but ignore failures in dry-run mode --
@@ -83,8 +87,8 @@ class build_scripts (Command):
                     post_interp = match.group(1) or ''
 
             if adjust:
-                self.announce("copying and adjusting %s -> %s" %
-                              (script, self.build_dir))
+                log.info("copying and adjusting %s -> %s", script,
+                         self.build_dir)
                 if not self.dry_run:
                     outf = open(outfile, "w")
                     if not sysconfig.python_build:
@@ -92,7 +96,7 @@ class build_scripts (Command):
                                    (os.path.normpath(sys.executable),
                                     post_interp))
                     else:
-                        outf.write("#!%s%s" %
+                        outf.write("#!%s%s\n" %
                                    (os.path.join(
                             sysconfig.get_config_var("BINDIR"),
                             "python" + sysconfig.get_config_var("EXE")),
@@ -104,6 +108,18 @@ class build_scripts (Command):
             else:
                 f.close()
                 self.copy_file(script, outfile)
+
+        if os.name == 'posix':
+            for file in outfiles:
+                if self.dry_run:
+                    log.info("changing mode of %s", file)
+                else:
+                    oldmode = os.stat(file)[ST_MODE] & 07777
+                    newmode = (oldmode | 0555) & 07777
+                    if newmode != oldmode:
+                        log.info("changing mode of %s from %o to %o",
+                                 file, oldmode, newmode)
+                        os.chmod(file, newmode)
 
     # copy_scripts ()
 

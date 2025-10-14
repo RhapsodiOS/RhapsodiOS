@@ -1,11 +1,12 @@
 /* ------------------------------------------------------------------------
 
-   unicodedata -- Provides access to the Unicode 3.0 data base.
+   unicodedata -- Provides access to the Unicode 3.2 data base.
 
-   Data was extracted from the Unicode 3.0 UnicodeData.txt file.
+   Data was extracted from the Unicode 3.2 UnicodeData.txt file.
 
    Written by Marc-Andre Lemburg (mal@lemburg.com).
    Modified for Python 2.0 by Fredrik Lundh (fredrik@pythonware.com)
+   Modified by Martin v. Löwis (martin@v.loewis.de)
 
    Copyright (c) Corporation for National Research Initiatives.
 
@@ -29,14 +30,10 @@ typedef struct {
 #include "unicodedata_db.h"
 
 static const _PyUnicode_DatabaseRecord*
-_getrecord(PyUnicodeObject* v)
+_getrecord_ex(Py_UCS4 code)
 {
-    int code;
     int index;
-
-    code = (int) *PyUnicode_AS_UNICODE(v);
-
-    if (code < 0 || code >= 65536)
+    if (code >= 0x110000)
         index = 0;
     else {
         index = index1[(code>>SHIFT)];
@@ -44,6 +41,12 @@ _getrecord(PyUnicodeObject* v)
     }
 
     return &_PyUnicode_Database_Records[index];
+}
+
+static const _PyUnicode_DatabaseRecord*
+_getrecord(PyUnicodeObject* v)
+{
+    return _getrecord_ex(*PyUnicode_AS_UNICODE(v));
 }
 
 /* --- Module API --------------------------------------------------------- */
@@ -219,7 +222,7 @@ unicodedata_decomposition(PyObject *self, PyObject *args)
 
     code = (int) *PyUnicode_AS_UNICODE(v);
 
-    if (code < 0 || code >= 65536)
+    if (code < 0 || code >= 0x110000)
         index = 0;
     else {
         index = decomp_index1[(code>>DECOMP_SHIFT)];
@@ -252,6 +255,276 @@ unicodedata_decomposition(PyObject *self, PyObject *args)
     return PyString_FromString(decomp);
 }
 
+void
+get_decomp_record(Py_UCS4 code, int *index, int *prefix, int *count)
+{
+    if (code >= 0x110000) {
+        *index = 0;
+    } 
+    else {
+        *index = decomp_index1[(code>>DECOMP_SHIFT)];
+        *index = decomp_index2[(*index<<DECOMP_SHIFT)+
+                               (code&((1<<DECOMP_SHIFT)-1))];
+    }
+	
+    /* high byte is number of hex bytes (usually one or two), low byte
+       is prefix code (from*/
+    *count = decomp_data[*index] >> 8;
+    *prefix = decomp_data[*index] & 255;
+
+    (*index)++;
+}
+
+#define SBase   0xAC00
+#define LBase   0x1100
+#define VBase   0x1161
+#define TBase   0x11A7
+#define LCount  19
+#define VCount  21
+#define TCount  28
+#define NCount  (VCount*TCount)
+#define SCount  (LCount*NCount)
+
+static PyObject*
+nfd_nfkd(PyObject *input, int k)
+{
+    PyObject *result;
+    Py_UNICODE *i, *end, *o;
+    /* Longest decomposition in Unicode 3.2: U+FDFA */
+    Py_UNICODE stack[20]; 
+    int space, stackptr, isize;
+    int index, prefix, count;
+    unsigned char prev, cur;
+	
+    stackptr = 0;
+    isize = PyUnicode_GET_SIZE(input);
+    /* Overallocate atmost 10 characters. */
+    space = (isize > 10 ? 10 : isize) + isize;
+    result = PyUnicode_FromUnicode(NULL, space);
+    if (!result)
+        return NULL;
+    i = PyUnicode_AS_UNICODE(input);
+    end = i + isize;
+    o = PyUnicode_AS_UNICODE(result);
+
+    while (i < end) {
+        stack[stackptr++] = *i++;
+        while(stackptr) {
+            Py_UNICODE code = stack[--stackptr];
+            if (!space) {
+                space = PyString_GET_SIZE(result) + 10;
+                if (PyUnicode_Resize(&result, space) == -1)
+                    return NULL;
+                o = PyUnicode_AS_UNICODE(result) + space - 10;
+                space = 10;
+            }
+            /* Hangul Decomposition. */
+            if (SBase <= code && code < (SBase+SCount)) {
+                int SIndex = code - SBase;
+                int L = LBase + SIndex / NCount;
+                int V = VBase + (SIndex % NCount) / TCount;
+                int T = TBase + SIndex % TCount;
+                *o++ = L;
+                *o++ = V;
+                space -= 2;
+                if (T != TBase) {
+                    *o++ = T;
+                    space --;
+                }
+                continue;
+            }
+            /* Other decompoistions. */
+            get_decomp_record(code, &index, &prefix, &count);
+
+            /* Copy character if it is not decomposable, or has a
+               compatibility decomposition, but we do NFD. */
+            if (!count || (prefix && !k)) {
+                *o++ = code;
+                space--;
+                continue;
+            }
+            /* Copy decomposition onto the stack, in reverse
+               order.  */
+            while(count) {
+                code = decomp_data[index + (--count)];
+                stack[stackptr++] = code;
+            }
+        }
+    }
+
+    /* Drop overallocation. Cannot fail. */
+    PyUnicode_Resize(&result, PyUnicode_GET_SIZE(result) - space);
+
+    /* Sort canonically. */
+    i = PyUnicode_AS_UNICODE(result);
+    prev = _getrecord_ex(*i)->combining;
+    end = i + PyUnicode_GET_SIZE(result);
+    for (i++; i < end; i++) {
+        cur = _getrecord_ex(*i)->combining;
+        if (prev == 0 || cur == 0 || prev <= cur) {
+            prev = cur;
+            continue;
+        }
+        /* Non-canonical order. Need to switch *i with previous. */
+        o = i - 1;
+        while (1) {
+            Py_UNICODE tmp = o[1];
+            o[1] = o[0];
+            o[0] = tmp;
+            o--;
+            if (o < PyUnicode_AS_UNICODE(result))
+                break;
+            prev = _getrecord_ex(*o)->combining;
+            if (prev == 0 || prev <= cur)
+                break;
+        }
+        prev = _getrecord_ex(*i)->combining;
+    }
+    return result;
+}
+
+static int
+find_nfc_index(struct reindex* nfc, Py_UNICODE code)
+{
+    int index;
+    for (index = 0; nfc[index].start; index++) {
+        int start = nfc[index].start;
+        if (code < start)
+            return -1;
+        if (code <= start + nfc[index].count) {
+            int delta = code - start;
+            return nfc[index].index + delta;
+        }
+    }
+    return -1;
+}
+
+static PyObject*
+nfc_nfkc(PyObject *input, int k)
+{
+    PyObject *result;
+    Py_UNICODE *i, *i1, *o, *end;
+    int f,l,index,index1,comb;
+    Py_UNICODE code;
+    Py_UNICODE *skipped[20];
+    int cskipped = 0;
+
+    result = nfd_nfkd(input, k);
+    if (!result)
+        return NULL;
+
+    /* We are going to modify result in-place.
+       If nfd_nfkd is changed to sometimes return the input,
+       this code needs to be reviewed. */
+    assert(result != input);
+
+    i = PyUnicode_AS_UNICODE(result);
+    end = i + PyUnicode_GET_SIZE(result);
+    o = PyUnicode_AS_UNICODE(result);
+	
+  again:
+    while (i < end) {
+      for (index = 0; index < cskipped; index++) {
+          if (skipped[index] == i) {
+              /* *i character is skipped. 
+                 Remove from list. */
+              skipped[index] = skipped[cskipped-1];
+              cskipped--;
+              i++;
+              goto again; /* continue while */
+          }
+      }
+      /* Hangul Composition. We don't need to check for <LV,T>
+         pairs, since we always have decomposed data. */
+      if (LBase <= *i && *i < (LBase+LCount) &&
+          i + 1 < end && 
+          VBase <= i[1] && i[1] <= (VBase+VCount)) {
+          int LIndex, VIndex;
+          LIndex = i[0] - LBase;
+          VIndex = i[1] - VBase;
+          code = SBase + (LIndex*VCount+VIndex)*TCount;
+          i+=2;
+          if (i < end &&
+              TBase <= *i && *i <= (TBase+TCount)) {
+              code += *i-TBase;
+              i++;
+          }
+          *o++ = code;
+          continue;
+      }
+
+      f = find_nfc_index(nfc_first, *i);
+      if (f == -1) {
+          *o++ = *i++;
+          continue;
+      }
+      /* Find next unblocked character. */
+      i1 = i+1;
+      comb = 0;
+      while (i1 < end) {
+          int comb1 = _getrecord_ex(*i1)->combining;
+          if (comb1 && comb == comb1) {
+              /* Character is blocked. */
+              i1++;
+              continue;
+          }
+          l = find_nfc_index(nfc_last, *i1);
+          /* *i1 cannot be combined with *i. If *i1
+             is a starter, we don't need to look further.
+             Otherwise, record the combining class. */
+          if (l == -1) {
+            not_combinable:
+              if (comb1 == 0)
+                  break;
+              comb = comb1;
+              i1++;
+              continue;
+          }
+          index = f*TOTAL_LAST + l;
+          index1 = comp_index[index >> COMP_SHIFT];
+          code = comp_data[(index1<<COMP_SHIFT)+
+                           (index&((1<<COMP_SHIFT)-1))];
+          if (code == 0)
+              goto not_combinable;
+			
+          /* Replace the original character. */
+          *i = code;
+          /* Mark the second character unused. */
+          skipped[cskipped++] = i1;
+          i1++;
+          f = find_nfc_index(nfc_first, *i);
+          if (f == -1)
+              break;
+      }
+      *o++ = *i++;
+    }
+    if (o != end)
+        PyUnicode_Resize(&result, o - PyUnicode_AS_UNICODE(result));
+    return result;
+}
+		
+static PyObject*
+unicodedata_normalize(PyObject *self, PyObject *args)
+{
+    char *form;
+    PyObject *input;
+
+    if(!PyArg_ParseTuple(args, "sO!:normalized",
+                         &form, &PyUnicode_Type, &input))
+        return NULL;
+
+    if (strcmp(form, "NFC") == 0)
+        return nfc_nfkc(input, 0);
+    if (strcmp(form, "NFKC") == 0)
+        return nfc_nfkc(input, 1);
+    if (strcmp(form, "NFD") == 0)
+        return nfd_nfkd(input, 0);
+    if (strcmp(form, "NFKD") == 0)
+        return nfd_nfkd(input, 1);
+    PyErr_SetString(PyExc_ValueError, "invalid normalization form");
+    return NULL;
+}
+
 /* -------------------------------------------------------------------- */
 /* unicode character name tables */
 
@@ -276,15 +549,85 @@ _gethash(const char *s, int len, int scale)
     return h;
 }
 
+static char *hangul_syllables[][3] = {
+    { "G",  "A",   ""   },
+    { "GG", "AE",  "G"  },
+    { "N",  "YA",  "GG" },
+    { "D",  "YAE", "GS" },
+    { "DD", "EO",  "N", },
+    { "R",  "E",   "NJ" },
+    { "M",  "YEO", "NH" },
+    { "B",  "YE",  "D"  },
+    { "BB", "O",   "L"  },
+    { "S",  "WA",  "LG" },
+    { "SS", "WAE", "LM" },
+    { "",   "OE",  "LB" },
+    { "J",  "YO",  "LS" },
+    { "JJ", "U",   "LT" },
+    { "C",  "WEO", "LP" },
+    { "K",  "WE",  "LH" },
+    { "T",  "WI",  "M"  },
+    { "P",  "YU",  "B"  },
+    { "H",  "EU",  "BS" },
+    { 0,    "YI",  "S"  },
+    { 0,    "I",   "SS" },
+    { 0,    0,     "NG" },
+    { 0,    0,     "J"  },
+    { 0,    0,     "C"  },
+    { 0,    0,     "K"  },
+    { 0,    0,     "T"  },
+    { 0,    0,     "P"  },
+    { 0,    0,     "H"  }
+};
+
 static int
-_getname(Py_UCS4 code, char* buffer, int buflen)
+is_unified_ideograph(Py_UCS4 code)
+{
+    return (
+        (0x3400 <= code && code <= 0x4DB5) || /* CJK Ideograph Extension A */
+        (0x4E00 <= code && code <= 0x9FA5) || /* CJK Ideograph */
+        (0x20000 <= code && code <= 0x2A6D6));/* CJK Ideograph Extension B */
+}
+
+static int
+_getucname(Py_UCS4 code, char* buffer, int buflen)
 {
     int offset;
     int i;
     int word;
     unsigned char* w;
 
-    if (code >= 65536)
+    if (SBase <= code && code < SBase+SCount) {
+	/* Hangul syllable. */
+	int SIndex = code - SBase;
+	int L = SIndex / NCount;
+	int V = (SIndex % NCount) / TCount;
+	int T = SIndex % TCount;
+
+	if (buflen < 27)
+	    /* Worst case: HANGUL SYLLABLE <10chars>. */
+	    return 0;
+	strcpy(buffer, "HANGUL SYLLABLE ");
+	buffer += 16;
+	strcpy(buffer, hangul_syllables[L][0]);
+	buffer += strlen(hangul_syllables[L][0]);
+	strcpy(buffer, hangul_syllables[V][1]);
+	buffer += strlen(hangul_syllables[V][1]);
+	strcpy(buffer, hangul_syllables[T][2]);
+	buffer += strlen(hangul_syllables[T][2]);
+	*buffer = '\0';
+	return 1;
+    }
+
+    if (is_unified_ideograph(code)) {
+        if (buflen < 28)
+            /* Worst case: CJK UNIFIED IDEOGRAPH-20000 */
+            return 0;
+        sprintf(buffer, "CJK UNIFIED IDEOGRAPH-%X", code);
+        return 1;
+    }
+
+    if (code >= 0x110000)
         return 0;
 
     /* get offset into phrasebook */
@@ -334,7 +677,7 @@ _cmpname(int code, const char* name, int namelen)
     /* check if code corresponds to the given name */
     int i;
     char buffer[NAME_MAXLEN];
-    if (!_getname(code, buffer, sizeof(buffer)))
+    if (!_getucname(code, buffer, sizeof(buffer)))
         return 0;
     for (i = 0; i < namelen; i++) {
         if (toupper(name[i]) != buffer[i])
@@ -343,12 +686,75 @@ _cmpname(int code, const char* name, int namelen)
     return buffer[namelen] == '\0';
 }
 
+static void 
+find_syllable(const char *str, int *len, int *pos, int count, int column)
+{
+    int i, len1;
+    *len = -1;
+    for (i = 0; i < count; i++) {
+	char *s = hangul_syllables[i][column];
+	len1 = strlen(s);
+	if (len1 <= *len)
+	    continue;
+	if (strncmp(str, s, len1) == 0) {
+	    *len = len1;
+	    *pos = i;
+	}
+    }
+    if (*len == -1) {
+	*len = 0;
+	*pos = -1;
+    }
+}
+
 static int
 _getcode(const char* name, int namelen, Py_UCS4* code)
 {
     unsigned int h, v;
     unsigned int mask = code_size-1;
     unsigned int i, incr;
+
+    /* Check for hangul syllables. */
+    if (strncmp(name, "HANGUL SYLLABLE ", 16) == 0) {
+	int L, V, T, len;
+	const char *pos = name + 16;
+	find_syllable(pos, &len, &L, LCount, 0);
+	pos += len;
+	find_syllable(pos, &len, &V, VCount, 1);
+	pos += len;
+	find_syllable(pos, &len, &T, TCount, 2);
+	pos += len;
+	if (V != -1 && V != -1 && T != -1 && pos-name == namelen) {
+	    *code = SBase + (L*VCount+V)*TCount + T;
+	    return 1;
+	}
+        /* Otherwise, it's an illegal syllable name. */
+        return 0;
+    }
+
+    /* Check for unified ideographs. */
+    if (strncmp(name, "CJK UNIFIED IDEOGRAPH-", 22) == 0) {
+        /* Four or five hexdigits must follow. */
+        v = 0;
+        name += 22;
+        namelen -= 22;
+        if (namelen != 4 && namelen != 5)
+            return 0;
+        while (namelen--) {
+            v *= 16;
+            if (*name >= '0' && *name <= '9')
+                v += *name - '0';
+            else if (*name >= 'A' && *name <= 'F')
+                v += *name - 'A' + 10;
+            else
+                return 0;
+            name++;
+        }
+        if (!is_unified_ideograph(v))
+            return 0;
+        *code = v;
+        return 1;
+    }
 
     /* the following is the same as python's dictionary lookup, with
        only minor changes.  see the makeunicodedata script for more
@@ -384,7 +790,7 @@ _getcode(const char* name, int namelen, Py_UCS4* code)
 static const _PyUnicode_Name_CAPI hashAPI = 
 {
     sizeof(_PyUnicode_Name_CAPI),
-    _getname,
+    _getucname,
     _getcode
 };
 
@@ -407,7 +813,7 @@ unicodedata_name(PyObject* self, PyObject* args)
 	return NULL;
     }
 
-    if (!_getname((Py_UCS4) *PyUnicode_AS_UNICODE(v),
+    if (!_getucname((Py_UCS4) *PyUnicode_AS_UNICODE(v),
                              name, sizeof(name))) {
 	if (defobj == NULL) {
 	    PyErr_SetString(PyExc_ValueError, "no such name");
@@ -434,7 +840,11 @@ unicodedata_lookup(PyObject* self, PyObject* args)
         return NULL;
 
     if (!_getcode(name, namelen, &code)) {
-        PyErr_SetString(PyExc_KeyError, "undefined character name");
+        char fmt[] = "undefined character name '%s'";
+        char *buf = PyMem_MALLOC(sizeof(fmt) + namelen);
+        sprintf(buf, fmt, name);
+        PyErr_SetString(PyExc_KeyError, buf);
+        PyMem_FREE(buf);
         return NULL;
     }
 
@@ -455,29 +865,33 @@ static PyMethodDef unicodedata_functions[] = {
     {"decomposition",unicodedata_decomposition, METH_VARARGS},
     {"name", unicodedata_name, METH_VARARGS},
     {"lookup", unicodedata_lookup, METH_VARARGS},
+    {"normalize", unicodedata_normalize, METH_VARARGS},
     {NULL, NULL}		/* sentinel */
 };
 
-static char *unicodedata_docstring = "unicode character database";
+PyDoc_STRVAR(unicodedata_docstring, "unicode character database");
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 initunicodedata(void)
 {
-    PyObject *m, *d, *v;
+    PyObject *m, *v;
 
     m = Py_InitModule3(
         "unicodedata", unicodedata_functions, unicodedata_docstring);
     if (!m)
         return;
 
-    d = PyModule_GetDict(m);
-    if (!d)
-        return;
+    PyModule_AddStringConstant(m, "unidata_version", UNIDATA_VERSION);
 
     /* Export C API */
     v = PyCObject_FromVoidPtr((void *) &hashAPI, NULL);
-    if (v != NULL) {
-        PyDict_SetItemString(d, "ucnhash_CAPI", v);
-        Py_DECREF(v);
-    }
+    if (v != NULL)
+        PyModule_AddObject(m, "ucnhash_CAPI", v);
 }
+
+/* 
+Local variables:
+c-basic-offset: 4
+indent-tabs-mode: nil
+End:
+*/

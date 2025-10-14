@@ -430,7 +430,10 @@ class EditText(Wbase.SelectableWidget, _ScrollWidget):
 		selbegin, selend = self.ted.WEGetSelection()
 		if selbegin == selend:
 			return
-		Scrap.ZeroScrap()
+		if hasattr(Scrap, 'ZeroScrap'):
+			Scrap.ZeroScrap()
+		else:
+			Scrap.ClearCurrentScrap()
 		self.ted.WECopy()
 		self.updatescrollbars()
 	
@@ -438,7 +441,10 @@ class EditText(Wbase.SelectableWidget, _ScrollWidget):
 		selbegin, selend = self.ted.WEGetSelection()
 		if selbegin == selend:
 			return
-		Scrap.ZeroScrap()
+		if hasattr(Scrap, 'ZeroScrap'):
+			Scrap.ZeroScrap()
+		else:
+			Scrap.ClearCurrentScrap()
 		self.ted.WECut()
 		self.updatescrollbars()
 		self.selview()
@@ -523,6 +529,7 @@ class EditText(Wbase.SelectableWidget, _ScrollWidget):
 			delta = vr[1] - dr[1] - value
 		delta = min(maxdelta, delta)
 		delta = max(mindelta, delta)
+		delta = int(delta)
 		self.ted.WEScroll(0, delta)
 		self.updatescrollbars()
 	
@@ -550,6 +557,7 @@ class EditText(Wbase.SelectableWidget, _ScrollWidget):
 			#	delta = viewoffset
 		delta = min(maxdelta, delta)
 		delta = max(mindelta, delta)
+		delta = int(delta)
 		self.ted.WEScroll(delta, 0)
 		self.updatescrollbars()
 	
@@ -959,7 +967,7 @@ class PyEditor(TextEditor):
 					if autoscroll:
 						self.ted.WEFeatureFlag(WASTEconst.weFAutoScroll, 0)
 					self.ted.WESetSelection(count, count + 1)
-					Qd.QDFlushPortBuffer(self._parentwindow.wid, None)  # needed under OSX
+					self._parentwindow.wid.GetWindowPort().QDFlushPortBuffer(None)  # needed under OSX
 					time.sleep(0.2)
 					self.ted.WESetSelection(selstart, selend)
 					if autoscroll:
@@ -1036,7 +1044,7 @@ class PyEditor(TextEditor):
 		breakrect = bl, bt, br, bb = self._getbreakrect()
 		br = br - 1
 		self.SetPort()
-		Qd.PenPat(Qd.qd.gray)
+		Qd.PenPat(Qd.GetQDGlobalsGray())
 		Qd.PaintRect((br, bt, br + 1, bb))
 		Qd.PenNormal()
 		self._parentwindow.tempcliprect(breakrect)
@@ -1117,7 +1125,7 @@ def GetFNum(fontname):
 GetFName = Fm.GetFontName
 
 def GetPortFontSettings(port):
-	return Fm.GetFontName(port.txFont), port.txFace, port.txSize
+	return Fm.GetFontName(port.GetPortTextFont()), port.GetPortTextFace(), port.GetPortTextSize()
 
 def SetPortFontSettings(port, (font, face, size)):
 	saveport = Qd.GetPort()

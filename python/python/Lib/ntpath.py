@@ -7,11 +7,28 @@ module as os.path.
 
 import os
 import stat
+import sys
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
            "basename","dirname","commonprefix","getsize","getmtime",
-           "getatime","islink","exists","isdir","isfile","ismount",
-           "walk","expanduser","expandvars","normpath","abspath","splitunc"]
+           "getatime","getctime", "islink","exists","isdir","isfile","ismount",
+           "walk","expanduser","expandvars","normpath","abspath","splitunc",
+           "curdir","pardir","sep","pathsep","defpath","altsep","extsep",
+           "realpath","supports_unicode_filenames"]
+
+# strings representing various path-related bits and pieces
+curdir = '.'
+pardir = '..'
+extsep = '.'
+sep = '\\'
+pathsep = ';'
+altsep = '/'
+defpath = '.;C:\\bin'
+if 'ce' in sys.builtin_module_names:
+    defpath = '\\Windows'
+elif 'os2' in sys.builtin_module_names:
+    # OS/2 w/ VACPP
+    altsep = '/'
 
 # Normalize the case of a pathname and map slashes to backslashes.
 # Other normalizations (such as optimizing '../' away) are not done
@@ -167,20 +184,12 @@ def splitext(p):
 
     Extension is everything from the last dot to the end.
     Return (root, ext), either part may be empty."""
-    root, ext = '', ''
-    for c in p:
-        if c in ['/','\\']:
-            root, ext = root + ext + c, ''
-        elif c == '.':
-            if ext:
-                root, ext = root + ext, c
-            else:
-                ext = c
-        elif ext:
-            ext = ext + c
-        else:
-            root = root + c
-    return root, ext
+
+    i = p.rfind('.')
+    if i<=max(p.rfind('/'), p.rfind('\\')):
+        return p, ''
+    else:
+        return p[:i], p[i:]
 
 
 # Return the tail (basename) part of a path.
@@ -216,26 +225,26 @@ def commonprefix(m):
 
 def getsize(filename):
     """Return the size of a file, reported by os.stat()"""
-    st = os.stat(filename)
-    return st[stat.ST_SIZE]
+    return os.stat(filename).st_size
 
 def getmtime(filename):
     """Return the last modification time of a file, reported by os.stat()"""
-    st = os.stat(filename)
-    return st[stat.ST_MTIME]
+    return os.stat(filename).st_mtime
 
 def getatime(filename):
     """Return the last access time of a file, reported by os.stat()"""
-    st = os.stat(filename)
-    return st[stat.ST_ATIME]
+    return os.stat(filename).st_atime
 
+def getctime(filename):
+    """Return the creation time of a file, reported by os.stat()."""
+    return os.stat(filename).st_ctime
 
 # Is a path a symbolic link?
 # This will always return false on systems where posix.lstat doesn't exist.
 
 def islink(path):
     """Test for symbolic link.  On WindowsNT/95 always returns false"""
-    return 0
+    return False
 
 
 # Does a path exist?
@@ -246,8 +255,8 @@ def exists(path):
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return 1
+        return False
+    return True
 
 
 # Is a path a dos directory?
@@ -259,8 +268,8 @@ def isdir(path):
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return stat.S_ISDIR(st[stat.ST_MODE])
+        return False
+    return stat.S_ISDIR(st.st_mode)
 
 
 # Is a path a regular file?
@@ -272,8 +281,8 @@ def isfile(path):
     try:
         st = os.stat(path)
     except os.error:
-        return 0
-    return stat.S_ISREG(st[stat.ST_MODE])
+        return False
+    return stat.S_ISREG(st.st_mode)
 
 
 # Is a path a mount point?  Either a root (with or without drive letter)
@@ -343,9 +352,9 @@ def expanduser(path):
     while i < n and path[i] not in '/\\':
         i = i + 1
     if i == 1:
-        if os.environ.has_key('HOME'):
+        if 'HOME' in os.environ:
             userhome = os.environ['HOME']
-        elif not os.environ.has_key('HOMEPATH'):
+        elif not 'HOMEPATH' in os.environ:
             return path
         else:
             try:
@@ -399,7 +408,7 @@ def expandvars(path):
                 try:
                     index = path.index('}')
                     var = path[:index]
-                    if os.environ.has_key(var):
+                    if var in os.environ:
                         res = res + os.environ[var]
                 except ValueError:
                     res = res + path
@@ -412,7 +421,7 @@ def expandvars(path):
                     var = var + c
                     index = index + 1
                     c = path[index:index + 1]
-                if os.environ.has_key(var):
+                if var in os.environ:
                     res = res + os.environ[var]
                 if c != '':
                     res = res + c
@@ -457,8 +466,18 @@ def normpath(path):
 # Return an absolute path.
 def abspath(path):
     """Return the absolute version of a path"""
-    if path: # Empty path must return current working directory.
+    try:
         from nt import _getfullpathname
+    except ImportError: # Not running on Windows - mock up something sensible.
+        global abspath
+        def _abspath(path):
+            if not isabs(path):
+                path = join(os.getcwd(), path)
+            return normpath(path)
+        abspath = _abspath
+        return _abspath(path)
+
+    if path: # Empty path must return current working directory.
         try:
             path = _getfullpathname(path)
         except WindowsError:
@@ -469,3 +488,6 @@ def abspath(path):
 
 # realpath is a no-op on systems without islink support
 realpath = abspath
+# Win9x family and earlier have no Unicode filename support.
+supports_unicode_filenames = (hasattr(sys, "getwindowsversion") and
+                              sys.getwindowsversion()[3] >= 2)

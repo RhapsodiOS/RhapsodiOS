@@ -51,7 +51,6 @@ ScrollWindowOptions = Type("ScrollWindowOptions", "l")
 WindowPartCode = Type("WindowPartCode", "h")
 WindowDefPartCode = Type("WindowDefPartCode", "h")
 WindowModality = Type("WindowModality", "l")
-CFStringRef = OpaqueByValueType("CFStringRef", "CFStringRefObj")
 GDHandle = OpaqueByValueType("GDHandle", "ResObj")
 WindowConstrainOptions = Type("WindowConstrainOptions", "l")
 
@@ -75,21 +74,10 @@ extern int _WinObj_Convert(PyObject *, WindowRef *);
 #define WinObj_Convert _WinObj_Convert
 #endif
 
-#if !ACCESSOR_CALLS_ARE_FUNCTIONS  && UNIVERSAL_INTERFACES_VERSION < 0x340
-/* Carbon calls that we emulate in classic mode */
-#define GetWindowSpareFlag(win) (((CWindowPeek)(win))->spareFlag)
-#define GetWindowFromPort(port) ((WindowRef)(port))
-#define GetWindowPortBounds(win, rectp) (*(rectp) = ((CWindowPeek)(win))->port.portRect)
-#endif
-#if !ACCESSOR_CALLS_ARE_FUNCTIONS
-#define IsPointerValid(p) (((long)p&3) == 0)
-#endif
-#if ACCESSOR_CALLS_ARE_FUNCTIONS
 /* Classic calls that we emulate in carbon mode */
 #define GetWindowUpdateRgn(win, rgn) GetWindowRegion((win), kWindowUpdateRgn, (rgn))
 #define GetWindowStructureRgn(win, rgn) GetWindowRegion((win), kWindowStructureRgn, (rgn))
 #define GetWindowContentRgn(win, rgn) GetWindowRegion((win), kWindowContentRgn, (rgn))
-#endif
 
 /* Function to dispose a window, with a "normal" calling sequence */
 static void
@@ -129,9 +117,10 @@ initstuff = initstuff + """
 	PyMac_INIT_TOOLBOX_OBJECT_CONVERT(WindowPtr, WinObj_Convert);
 """
 
-class MyObjectDefinition(GlobalObjectDefinition):
+class MyObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("if (itself == NULL) return PyMac_Error(resNotFound);")
+		Output("/* XXXX Or should we use WhichWindow code here? */")
 	def outputStructMembers(self):
 		GlobalObjectDefinition.outputStructMembers(self)
 		Output("void (*ob_freeit)(%s ptr);", self.itselftype)

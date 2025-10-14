@@ -2,14 +2,13 @@
 
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
 from scantools import Scanner
-from bgenlocations import TOOLBOXDIR
 
 LONG = "Appearance"
 SHORT = "app"
-OBJECT = "NOTUSED"
+OBJECT = "ThemeDrawingState"
 
 def main():
 	input = LONG + ".h"
@@ -18,6 +17,8 @@ def main():
 	scanner = MyScanner(input, output, defsoutput)
 	scanner.scan()
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	exec "import " + SHORT + "support"
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -48,38 +49,32 @@ class MyScanner(Scanner):
 			"appearanceBadTextColorIndexErr",
 			"appearanceThemeHasNoAccents",
 			"appearanceBadCursorIndexErr",
-			"DrawThemeTextBox",    # Funny void* out param
 			]
 
-	def makegreylist(self):
-		return [
-			('#if TARGET_API_MAC_CARBON', [
-				'GetThemeMetric',
-				'GetThemeTextShadowOutset',
-				'GetThemeTextDimensions',
-				'TruncateThemeText',
-			])]
-			
 	def makeblacklisttypes(self):
 		return [
 			"MenuTitleDrawingUPP",
 			"MenuItemDrawingUPP",
 			"ThemeIteratorUPP",
 			"ThemeTabTitleDrawUPP",
-			"ThemeEraseUPP",
-			"ThemeButtonDrawUPP",
+#			"ThemeEraseUPP",
+#			"ThemeButtonDrawUPP",
 			"WindowTitleDrawingUPP",
 			"ProcessSerialNumber_ptr",		# Too much work for now.
 			"ThemeTrackDrawInfo_ptr", 	# Too much work
-			"ThemeButtonDrawInfo_ptr",	# ditto
+#			"ThemeButtonDrawInfo_ptr",	# ditto
 			"ThemeWindowMetrics_ptr",	# ditto
-			"ThemeDrawingState",	# This is an opaque pointer, so it should be simple. Later.
+#			"ThemeDrawingState",	# This is an opaque pointer, so it should be simple. Later.
 			"Collection",		# No interface to collection mgr yet.
 			"BytePtr",		# Not yet.
 			]
 
 	def makerepairinstructions(self):
 		return [
+			([("void", 'inContext', "OutMode")],
+			 [("NULL", 'inContext', "InMode")]),
+			([("Point", 'ioBounds', "OutMode")],
+			 [("Point", 'ioBounds', "InOutMode")]),
 			]
 			
 if __name__ == "__main__":

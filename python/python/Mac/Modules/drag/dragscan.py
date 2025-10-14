@@ -1,11 +1,10 @@
 # Scan <Drag.h>, generating draggen.py.
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR, INCLUDEDIR
 sys.path.append(BGENDIR)
 
 from scantools import Scanner
-from bgenlocations import TOOLBOXDIR, INCLUDEDIR
 
 MISSING_DEFINES="""
 kDragHasLeftSenderWindow	= (1 << 0)
@@ -26,6 +25,8 @@ def main():
 	scanner = MyScanner(input, output, defsoutput)
 	scanner.scan()
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now doing 'import dragsupport' ==="
 	import dragsupport
 	print "=== Done.  It's up to you to compile Dragmodule.c ==="
@@ -44,8 +45,8 @@ class MyScanner(Scanner):
 
 	def writeinitialdefs(self):
 		self.defsfile.write("def FOUR_CHAR_CODE(x): return x\n")
-		self.defsfile.write("from TextEdit import *\n")
-		self.defsfile.write("from QuickDraw import *\n")
+		self.defsfile.write("from Carbon.TextEdit import *\n")
+		self.defsfile.write("from Carbon.QuickDraw import *\n")
 		self.defsfile.write("\n")
 		# Defines unparseable in Drag.h
 		self.defsfile.write(MISSING_DEFINES)

@@ -24,7 +24,7 @@ typedef struct {
         int num_groups;
 } PcreObject;
 
-staticforward PyTypeObject Pcre_Type;
+static PyTypeObject Pcre_Type;
 
 #define PcreObject_Check(v)	((v)->ob_type == &Pcre_Type)
 #define NORMAL			0
@@ -114,7 +114,7 @@ PyPcre_exec(PcreObject *self, PyObject *args)
 }
 
 static PyMethodDef Pcre_methods[] = {
-	{"match",	(PyCFunction)PyPcre_exec,	1},
+	{"match",	(PyCFunction)PyPcre_exec,	METH_VARARGS},
 	{NULL,		NULL}		/* sentinel */
 };
 
@@ -125,7 +125,7 @@ PyPcre_getattr(PcreObject *self, char *name)
 }
 
 
-staticforward PyTypeObject Pcre_Type = {
+static PyTypeObject Pcre_Type = {
 	PyObject_HEAD_INIT(NULL)
 	0,			/*ob_size*/
 	"pcre.Pcre",		/*tp_name*/
@@ -582,8 +582,8 @@ PyPcre_expand(PyObject *self, PyObject *args)
 /* List of functions defined in the module */
 
 static PyMethodDef pcre_methods[] = {
-	{"pcre_compile",		PyPcre_compile,		1},
-	{"pcre_expand",		PyPcre_expand,		1},
+	{"pcre_compile",		PyPcre_compile,		METH_VARARGS},
+	{"pcre_expand",		PyPcre_expand,		METH_VARARGS},
 	{NULL,		NULL}		/* sentinel */
 };
 
@@ -610,7 +610,7 @@ insint(PyObject *d, char *name, int value)
 
 /* Initialization function for the module (*must* be called initpcre) */
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 initpcre(void)
 {
 	PyObject *m, *d;

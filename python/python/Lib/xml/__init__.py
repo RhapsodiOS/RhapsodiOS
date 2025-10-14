@@ -18,10 +18,10 @@ __all__ = ["dom", "parsers", "sax"]
 # When being checked-out without options, this has the form
 # "<dollar>Revision: x.y </dollar>"
 # When exported using -kv, it is "x.y".
-__version__ = "$Revision: 1.1.1.1 $".split()[-2:][0]
+__version__ = "$Revision: 1.13 $".split()[-2:][0]
 
 
-_MINIMUM_XMLPLUS_VERSION = (0, 6, 1)
+_MINIMUM_XMLPLUS_VERSION = (0, 8, 2)
 
 
 try:

@@ -1,11 +1,11 @@
 import re
 import W
-import macfs
 import os
 import MacPrefs
 import MacOS
 import string
 import webbrowser
+import EasyDialogs
 
 
 app = W.getapplication()
@@ -122,7 +122,8 @@ def dosearch(docpath, searchstring, settings):
 	_open = open
 	hits = {}
 	try:
-		MacOS.EnableAppswitch(0)
+		if hasattr(MacOS, 'EnableAppswitch'):
+			MacOS.EnableAppswitch(0)
 		try:
 			for do, name in books:
 				if not do:
@@ -145,7 +146,8 @@ def dosearch(docpath, searchstring, settings):
 					if filehits:
 						hits[fullpath] = filehits
 		finally:
-			MacOS.EnableAppswitch(-1)
+			if hasattr(MacOS, 'EnableAppswitch'):
+				MacOS.EnableAppswitch(-1)
 			status.close()
 	except KeyboardInterrupt:
 		pass
@@ -221,9 +223,8 @@ class PyDocSearch:
 			MacOS.SysBeep(0)
 	
 	def setdocpath(self):
-		fss, ok = macfs.GetDirectory()
-		if ok:
-			docpath = fss.as_pathname()
+		docpath = EasyDialogs.AskFolder()
+		if docpath:
 			if not verifydocpath(docpath):
 				W.Message("This does not seem to be a Python documentation folder...")
 			else:

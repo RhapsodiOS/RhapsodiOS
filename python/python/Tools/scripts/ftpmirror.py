@@ -4,7 +4,7 @@
 
 usage: ftpmirror [-v] [-q] [-i] [-m] [-n] [-r] [-s pat]
                  [-l username [-p passwd [-a account]]]
-                 hostname [remotedir [localdir]]
+                 hostname[:port] [remotedir [localdir]]
 -v: verbose
 -q: quiet
 -i: interactive mode
@@ -13,7 +13,7 @@ usage: ftpmirror [-v] [-q] [-i] [-m] [-n] [-r] [-s pat]
 -r: remove local files/directories no longer pertinent
 -l username [-p passwd [-a account]]: login info (default .netrc or anonymous)
 -s pat: skip files matching pattern
-hostname: remote host
+hostname: remote host w/ optional port separated by ':'
 remotedir: remote directory (default initial)
 localdir: local directory (default current)
 """
@@ -22,7 +22,6 @@ import os
 import sys
 import time
 import getopt
-import string
 import ftplib
 import netrc
 from fnmatch import fnmatch
@@ -53,6 +52,10 @@ def main():
     account = ''
     if not args: usage('hostname missing')
     host = args[0]
+    port = 0
+    if ':' in host:
+        host, port = host.split(':', 1)
+        port = int(port)
     try:
         auth = netrc.netrc().authenticators(host)
         if auth is not None:
@@ -79,8 +82,9 @@ def main():
             if args[3:]: usage('too many arguments')
     #
     f = ftplib.FTP()
-    if verbose: print 'Connecting to %s...' % `host`
-    f.connect(host)
+    if verbose: print "Connecting to '%s%s'..." % (host,
+                                                   (port and ":%d"%port or ""))
+    f.connect(host,port)
     if not nologin:
         if verbose:
             print 'Logging in as %s...' % `login or 'anonymous'`
@@ -127,7 +131,7 @@ def mirrorsubdir(f, localdir):
         if mac:
             # Mac listing has just filenames;
             # trailing / means subdirectory
-            filename = string.strip(line)
+            filename = line.strip()
             mode = '-'
             if filename[-1:] == '/':
                 filename = filename[:-1]
@@ -135,12 +139,12 @@ def mirrorsubdir(f, localdir):
             infostuff = ''
         else:
             # Parse, assuming a UNIX listing
-            words = string.split(line, None, 8)
+            words = line.split(None, 8)
             if len(words) < 6:
                 if verbose > 1: print 'Skipping short line'
                 continue
-            filename = string.lstrip(words[-1])
-            i = string.find(filename, " -> ")
+            filename = words[-1].lstrip()
+            i = filename.find(" -> ")
             if i >= 0:
                 # words[0] had better start with 'l'...
                 if verbose > 1:
@@ -360,7 +364,7 @@ class LoggingFile:
 def askabout(filetype, filename, pwd):
     prompt = 'Retrieve %s %s from %s ? [ny] ' % (filetype, filename, pwd)
     while 1:
-        reply = string.lower(string.strip(raw_input(prompt)))
+        reply = raw_input(prompt).strip().lower()
         if reply in ['y', 'ye', 'yes']:
             return 1
         if reply in ['', 'n', 'no', 'nop', 'nope']:
@@ -380,9 +384,9 @@ def makedir(pathname):
 # rval() but is still somewhat readable (i.e. not a single long line).
 # Also creates a backup file.
 def writedict(dict, filename):
-    dir, file = os.path.split(filename)
-    tempname = os.path.join(dir, '@' + file)
-    backup = os.path.join(dir, file + '~')
+    dir, fname = os.path.split(filename)
+    tempname = os.path.join(dir, '@' + fname)
+    backup = os.path.join(dir, fname + '~')
     try:
         os.unlink(backup)
     except os.error:

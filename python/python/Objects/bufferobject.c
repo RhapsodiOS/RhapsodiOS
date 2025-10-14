@@ -10,9 +10,7 @@ typedef struct {
 	void *b_ptr;
 	int b_size;
 	int b_readonly;
-#ifdef CACHE_HASH
 	long b_hash;
-#endif
 } PyBufferObject;
 
 
@@ -36,9 +34,7 @@ _PyBuffer_FromMemory(PyObject *base, void *ptr, int size, int readonly)
 	b->b_ptr = ptr;
 	b->b_size = size;
 	b->b_readonly = readonly;
-#ifdef CACHE_HASH
 	b->b_hash = -1;
-#endif
 
 	return (PyObject *) b;
 }
@@ -142,7 +138,7 @@ PyBuffer_New(int size)
 				"size must be zero or positive");
 		return NULL;
 	}
-	/* PyObject_New is inlined */
+	/* Inline PyObject_New */
 	o = PyObject_MALLOC(sizeof(*b) + size);
 	if ( o == NULL )
 		return PyErr_NoMemory();
@@ -152,14 +148,33 @@ PyBuffer_New(int size)
 	b->b_ptr = (void *)(b + 1);
 	b->b_size = size;
 	b->b_readonly = 0;
-#ifdef CACHE_HASH
 	b->b_hash = -1;
-#endif
 
 	return o;
 }
 
 /* Methods */
+
+static PyObject *
+buffer_new(PyTypeObject *type, PyObject *args, PyObject *kw)
+{
+	PyObject *ob;
+	int offset = 0;
+	int size = Py_END_OF_BUFFER;
+
+	if ( !PyArg_ParseTuple(args, "O|ii:buffer", &ob, &offset, &size) )
+	    return NULL;
+	return PyBuffer_FromObject(ob, offset, size);
+}
+
+PyDoc_STRVAR(buffer_doc,
+"buffer(object [, offset[, size]])\n\
+\n\
+Create a new buffer object which references the given object.\n\
+The buffer will reference a slice of the target object from the\n\
+start of the object (or at the specified offset). The slice will\n\
+extend to the end of the target object (or with the specified size).");
+
 
 static void
 buffer_dealloc(PyBufferObject *self)
@@ -211,10 +226,8 @@ buffer_hash(PyBufferObject *self)
 	register unsigned char *p;
 	register long x;
 
-#ifdef CACHE_HASH
 	if ( self->b_hash != -1 )
 		return self->b_hash;
-#endif
 
 	if ( !self->b_readonly )
 	{
@@ -231,9 +244,7 @@ buffer_hash(PyBufferObject *self)
 	x ^= self->b_size;
 	if (x == -1)
 		x = -2;
-#ifdef CACHE_HASH
 	self->b_hash = x;
-#endif
 	return x;
 }
 
@@ -284,13 +295,6 @@ buffer_concat(PyBufferObject *self, PyObject *other)
 
 	if ( (count = (*pb->bf_getreadbuffer)(other, 0, &p2)) < 0 )
 		return NULL;
-
-	/* optimize special case */
-	if ( count == 0 )
-	{
-	    Py_INCREF(self);
-	    return (PyObject *)self;
-	}
 
 	ob = PyString_FromStringAndSize(NULL, self->b_size + count);
 	p1 = PyString_AS_STRING(ob);
@@ -350,12 +354,6 @@ buffer_slice(PyBufferObject *self, int left, int right)
 		right = 0;
 	if ( right > self->b_size )
 		right = self->b_size;
-	if ( left == 0 && right == self->b_size )
-	{
-		/* same as self */
-		Py_INCREF(self);
-		return (PyObject *)self;
-	}
 	if ( right < left )
 		right = left;
 	return PyString_FromStringAndSize((char *)self->b_ptr + left,
@@ -549,5 +547,22 @@ PyTypeObject PyBuffer_Type = {
 	0,					/* tp_setattro */
 	&buffer_as_buffer,			/* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT,			/* tp_flags */
-	0,					/* tp_doc */
+	buffer_doc,				/* tp_doc */
+	0,					/* tp_traverse */
+	0,					/* tp_clear */
+	0,					/* tp_richcompare */
+	0,					/* tp_weaklistoffset */
+	0,					/* tp_iter */
+	0,					/* tp_iternext */
+	0,					/* tp_methods */	
+	0,					/* tp_members */
+	0,					/* tp_getset */
+	0,					/* tp_base */
+	0,					/* tp_dict */
+	0,					/* tp_descr_get */
+	0,					/* tp_descr_set */
+	0,					/* tp_dictoffset */
+	0,					/* tp_init */
+	0,					/* tp_alloc */
+	buffer_new,				/* tp_new */
 };

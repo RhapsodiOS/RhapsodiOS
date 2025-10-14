@@ -5,14 +5,12 @@ default, these calendars have Monday as the first day of the week, and
 Sunday as the last (the European convention). Use setfirstweekday() to
 set the first day of the week (0=Monday, 6=Sunday)."""
 
-# Revision 2: uses functions from built-in time module
-
-# Import functions and variables from time module
-from time import localtime, mktime, strftime
+import datetime
 
 __all__ = ["error","setfirstweekday","firstweekday","isleap",
            "leapdays","weekday","monthrange","monthcalendar",
-           "prmonth","month","prcal","calendar","timegm"]
+           "prmonth","month","prcal","calendar","timegm",
+           "month_name", "month_abbr", "day_name", "day_abbr"]
 
 # Exception raised for bad input (with string parameter for details)
 error = ValueError
@@ -24,19 +22,44 @@ February = 2
 # Number of days per month (except for February in leap years)
 mdays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-class _localized_name:
+# This module used to have hard-coded lists of day and month names, as
+# English strings.  The classes following emulate a read-only version of
+# that, but supply localized names.  Note that the values are computed
+# fresh on each call, in case the user changes locale between calls.
+
+class _localized_month:
     def __init__(self, format):
         self.format = format
-    def __getitem__(self, item):
-        return strftime(self.format, (item,)*9).capitalize()
+
+    def __getitem__(self, i):
+        data = [datetime.date(2001, j, 1).strftime(self.format)
+                     for j in range(1, 13)]
+        data.insert(0, "")
+        return data[i]
+
+    def __len__(self):
+        return 13
+
+class _localized_day:
+    def __init__(self, format):
+        self.format = format
+
+    def __getitem__(self, i):
+        # January 1, 2001, was a Monday.
+        data = [datetime.date(2001, 1, j+1).strftime(self.format)
+                     for j in range(7)]
+        return data[i]
+
+    def __len__(self_):
+        return 7
 
 # Full and abbreviated names of weekdays
-day_name = _localized_name('%A')
-day_abbr = _localized_name('%a')
+day_name = _localized_day('%A')
+day_abbr = _localized_day('%a')
 
 # Full and abbreviated names of months (1-based arrays!!!)
-month_name = _localized_name('%B')
-month_abbr = _localized_name('%b')
+month_name = _localized_month('%B')
+month_abbr = _localized_month('%b')
 
 # Constants for weekdays
 (MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY) = range(7)
@@ -63,14 +86,12 @@ def leapdays(y1, y2):
        Assume y1 <= y2."""
     y1 -= 1
     y2 -= 1
-    return (y2/4 - y1/4) - (y2/100 - y1/100) + (y2/400 - y1/400)
+    return (y2//4 - y1//4) - (y2//100 - y1//100) + (y2//400 - y1//400)
 
 def weekday(year, month, day):
     """Return weekday (0-6 ~ Mon-Sun) for year (1970-...), month (1-12),
        day (1-31)."""
-    secs = mktime((year, month, day, 0, 0, 0, 0, 0, 0))
-    tuple = localtime(secs)
-    return tuple[6]
+    return datetime.date(year, month, day).weekday()
 
 def monthrange(year, month):
     """Return weekday (0-6 ~ Mon-Sun) and number of days (28-31) for
@@ -96,13 +117,6 @@ def monthcalendar(year, month):
         rows.append(row)
     return rows
 
-def _center(str, width):
-    """Center a string in a field."""
-    n = width - len(str)
-    if n <= 0:
-        return str
-    return ' '*((n+1)/2) + str + ' '*((n)/2)
-
 def prweek(theweek, width):
     """Print a single week (no newline)."""
     print week(theweek, width),
@@ -115,7 +129,7 @@ def week(theweek, width):
             s = ''
         else:
             s = '%2i' % day             # right-align single-digit days
-        days.append(_center(s, width))
+        days.append(s.center(width))
     return ' '.join(days)
 
 def weekheader(width):
@@ -126,7 +140,7 @@ def weekheader(width):
         names = day_abbr
     days = []
     for i in range(_firstweekday, _firstweekday + 7):
-        days.append(_center(names[i%7][:width], width))
+        days.append(names[i%7][:width].center(width))
     return ' '.join(days)
 
 def prmonth(theyear, themonth, w=0, l=0):
@@ -137,7 +151,7 @@ def month(theyear, themonth, w=0, l=0):
     """Return a month's calendar string (multi-line)."""
     w = max(2, w)
     l = max(1, l)
-    s = (_center(month_name[themonth] + ' ' + `theyear`,
+    s = ((month_name[themonth] + ' ' + `theyear`).center(
                  7 * (w + 1) - 1).rstrip() +
          '\n' * l + weekheader(w).rstrip() + '\n' * l)
     for aweek in monthcalendar(theyear, themonth):
@@ -154,8 +168,8 @@ def format3c(a, b, c, colwidth=_colwidth, spacing=_spacing):
 
 def format3cstring(a, b, c, colwidth=_colwidth, spacing=_spacing):
     """Returns a string formatted from 3 strings, centered within 3 columns."""
-    return (_center(a, colwidth) + ' ' * spacing + _center(b, colwidth) +
-            ' ' * spacing + _center(c, colwidth))
+    return (a.center(colwidth) + ' ' * spacing + b.center(colwidth) +
+            ' ' * spacing + c.center(colwidth))
 
 def prcal(year, w=0, l=0, c=_spacing):
     """Print a year's calendar."""
@@ -167,7 +181,7 @@ def calendar(year, w=0, l=0, c=_spacing):
     l = max(1, l)
     c = max(2, c)
     colwidth = (w + 1) * 7 - 1
-    s = _center(`year`, colwidth * 3 + c * 2).rstrip() + '\n' * l
+    s = `year`.center(colwidth * 3 + c * 2).rstrip() + '\n' * l
     header = weekheader(w)
     header = format3cstring(header, header, header, colwidth, c).rstrip()
     for q in range(January, January+12, 3):
@@ -194,17 +208,12 @@ def calendar(year, w=0, l=0, c=_spacing):
     return s[:-l] + '\n'
 
 EPOCH = 1970
+_EPOCH_ORD = datetime.date(EPOCH, 1, 1).toordinal()
+
 def timegm(tuple):
     """Unrelated but handy function to calculate Unix timestamp from GMT."""
     year, month, day, hour, minute, second = tuple[:6]
-    assert year >= EPOCH
-    assert 1 <= month <= 12
-    days = 365*(year-EPOCH) + leapdays(EPOCH, year)
-    for i in range(1, month):
-        days = days + mdays[i]
-    if month > 2 and isleap(year):
-        days = days + 1
-    days = days + day - 1
+    days = datetime.date(year, month, 1).toordinal() - _EPOCH_ORD + day - 1
     hours = days*24 + hour
     minutes = hours*60 + minute
     seconds = minutes*60 + second

@@ -6,7 +6,7 @@ Example:
 
 >>> from ftplib import FTP
 >>> ftp = FTP('ftp.python.org') # connect to host, default port
->>> ftp.login() # default, i.e.: user anonymous, passwd user@hostname
+>>> ftp.login() # default, i.e.: user anonymous, passwd anonymous@
 '230 Guest login ok, access restrictions apply.'
 >>> ftp.retrlines('LIST') # list directory contents
 total 9
@@ -36,7 +36,6 @@ python ftplib.py -d localhost -l -p -l
 
 import os
 import sys
-import string
 
 # Import SOCKS module if it exists, else standard socket module socket
 try:
@@ -114,7 +113,6 @@ class FTP:
         - port: port to connect to (integer, default previous port)'''
         if host: self.host = host
         if port: self.port = port
-        self.passiveserver = 0
         msg = "getaddrinfo returns an empty list"
         for res in socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
@@ -169,7 +167,7 @@ class FTP:
     def putline(self, line):
         line = line + CRLF
         if self.debugging > 1: print '*put*', self.sanitize(line)
-        self.sock.send(line)
+        self.sock.sendall(line)
 
     # Internal: send one command to the server (through putline())
     def putcmd(self, line):
@@ -232,7 +230,7 @@ class FTP:
         tried.  Instead, just send the ABOR command as OOB data.'''
         line = 'ABOR' + CRLF
         if self.debugging > 1: print '*put urgent*', self.sanitize(line)
-        self.sock.send(line, MSG_OOB)
+        self.sock.sendall(line, MSG_OOB)
         resp = self.getmultiline()
         if resp[:3] not in ('426', '226'):
             raise error_proto, resp
@@ -267,7 +265,7 @@ class FTP:
         if af == 0:
             raise error_proto, 'unsupported address family'
         fields = ['', `af`, host, `port`, '']
-        cmd = 'EPRT ' + string.joinfields(fields, '|')
+        cmd = 'EPRT ' + '|'.join(fields)
         return self.voidcmd(cmd)
 
     def makeport(self):
@@ -352,19 +350,14 @@ class FTP:
         if not passwd: passwd = ''
         if not acct: acct = ''
         if user == 'anonymous' and passwd in ('', '-'):
-            # get fully qualified domain name of local host
-            thishost = socket.getfqdn()
-            try:
-                if os.environ.has_key('LOGNAME'):
-                    realuser = os.environ['LOGNAME']
-                elif os.environ.has_key('USER'):
-                    realuser = os.environ['USER']
-                else:
-                    realuser = 'anonymous'
-            except AttributeError:
-                # Not all systems have os.environ....
-                realuser = 'anonymous'
-            passwd = passwd + realuser + '@' + thishost
+            # If there is no anonymous ftp password specified
+            # then we'll just use anonymous@
+            # We don't send any other thing because:
+            # - We want to remain anonymous
+            # - We want to stop SPAM
+            # - We don't want to let ftp sites to discriminate by the user,
+            #   host or country.
+            passwd = passwd + 'anonymous@'
         resp = self.sendcmd('USER ' + user)
         if resp[0] == '3': resp = self.sendcmd('PASS ' + passwd)
         if resp[0] == '3': resp = self.sendcmd('ACCT ' + acct)
@@ -398,7 +391,7 @@ class FTP:
         The callback function (2nd argument) is called for each line,
         with trailing CRLF stripped.  This creates a new port for you.
         print_line() is the default callback.'''
-        if not callback: callback = print_line
+        if callback is None: callback = print_line
         resp = self.sendcmd('TYPE A')
         conn = self.transfercmd(cmd)
         fp = conn.makefile('rb')
@@ -423,7 +416,7 @@ class FTP:
         while 1:
             buf = fp.read(blocksize)
             if not buf: break
-            conn.send(buf)
+            conn.sendall(buf)
         conn.close()
         return self.voidresp()
 
@@ -437,7 +430,7 @@ class FTP:
             if buf[-2:] != CRLF:
                 if buf[-1] in CRLF: buf = buf[:-1]
                 buf = buf + CRLF
-            conn.send(buf)
+            conn.sendall(buf)
         conn.close()
         return self.voidresp()
 
@@ -493,8 +486,8 @@ class FTP:
             try:
                 return self.voidcmd('CDUP')
             except error_perm, msg:
-                if msg[:3] != '500':
-                    raise error_perm, msg
+                if msg.args[0][:3] != '500':
+                    raise
         elif dirname == '':
             dirname = '.'  # does nothing, but could return error
         cmd = 'CWD ' + dirname
@@ -591,18 +584,18 @@ def parse229(resp, peer):
 
     if resp[:3] <> '229':
         raise error_reply, resp
-    left = string.find(resp, '(')
+    left = resp.find('(')
     if left < 0: raise error_proto, resp
-    right = string.find(resp, ')', left + 1)
+    right = resp.find(')', left + 1)
     if right < 0:
         raise error_proto, resp # should contain '(|||port|)'
     if resp[left + 1] <> resp[right - 1]:
         raise error_proto, resp
-    parts = string.split(resp[left + 1:right], resp[left+1])
+    parts = resp[left + 1:right].split(resp[left+1])
     if len(parts) <> 5:
         raise error_proto, resp
     host = peer[0]
-    port = string.atoi(parts[3])
+    port = int(parts[3])
     return host, port
 
 
@@ -666,8 +659,8 @@ class Netrc:
     __defacct = None
 
     def __init__(self, filename=None):
-        if not filename:
-            if os.environ.has_key("HOME"):
+        if filename is None:
+            if "HOME" in os.environ:
                 filename = os.path.join(os.environ["HOME"],
                                         ".netrc")
             else:
@@ -721,7 +714,7 @@ class Netrc:
                 self.__defpasswd = passwd or self.__defpasswd
                 self.__defacct = acct or self.__defacct
             if host:
-                if self.__hosts.has_key(host):
+                if host in self.__hosts:
                     ouser, opasswd, oacct = \
                            self.__hosts[host]
                     user = user or ouser
@@ -743,7 +736,7 @@ class Netrc:
         """
         host = host.lower()
         user = passwd = acct = None
-        if self.__hosts.has_key(host):
+        if host in self.__hosts:
             user, passwd, acct = self.__hosts[host]
         user = user or self.__defuser
         passwd = passwd or self.__defpasswd

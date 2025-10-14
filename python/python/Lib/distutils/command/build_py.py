@@ -2,9 +2,9 @@
 
 Implements the Distutils 'build_py' command."""
 
-# created 1999/03/08, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: build_py.py,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+__revision__ = "$Id: build_py.py,v 1.42 2003/02/28 22:03:04 akuchling Exp $"
 
 import sys, string, os
 from types import *
@@ -12,7 +12,8 @@ from glob import glob
 
 from distutils.core import Command
 from distutils.errors import *
-
+from distutils.util import convert_path
+from distutils import log
 
 class build_py (Command):
 
@@ -50,7 +51,10 @@ class build_py (Command):
         # options -- list of packages and list of modules.
         self.packages = self.distribution.packages
         self.py_modules = self.distribution.py_modules
-        self.package_dir = self.distribution.package_dir
+        self.package_dir = {}
+        if self.distribution.package_dir:
+            for name, path in self.distribution.package_dir.items():
+                self.package_dir[name] = convert_path(path)
 
         # Ick, copied straight from install_lib.py (fancy_getopt needs a
         # type system!  Hell, *everything* needs a type system!!!)
@@ -82,25 +86,11 @@ class build_py (Command):
         # Two options control which modules will be installed: 'packages'
         # and 'py_modules'.  The former lets us work with whole packages, not
         # specifying individual modules at all; the latter is for
-        # specifying modules one-at-a-time.  Currently they are mutually
-        # exclusive: you can define one or the other (or neither), but not
-        # both.  It remains to be seen how limiting this is.
+        # specifying modules one-at-a-time.
 
-        # Dispose of the two "unusual" cases first: no pure Python modules
-        # at all (no problem, just return silently), and over-specified
-        # 'packages' and 'py_modules' options.
-
-        if not self.py_modules and not self.packages:
-            return
-        if self.py_modules and self.packages:
-            raise DistutilsOptionError, \
-                  "build_py: supplying both 'packages' and 'py_modules' " + \
-                  "options is not allowed"
-
-        # Now we're down to two cases: 'py_modules' only and 'packages' only.
         if self.py_modules:
             self.build_modules()
-        else:
+        if self.packages:
             self.build_packages()
 
         self.byte_compile(self.get_outputs(include_bytecode=0))
@@ -172,20 +162,19 @@ class build_py (Command):
             if os.path.isfile(init_py):
                 return init_py
             else:
-                self.warn(("package init file '%s' not found " +
-                           "(or not a regular file)") % init_py)
+                log.warn(("package init file '%s' not found " +
+                          "(or not a regular file)"), init_py)
 
         # Either not in a package at all (__init__.py not expected), or
         # __init__.py doesn't exist -- so don't return the filename.
-        return
+        return None
 
     # check_package ()
 
 
     def check_module (self, module, module_file):
         if not os.path.isfile(module_file):
-            self.warn("file %s (for module %s) not found" %
-                      (module_file, module))
+            log.warn("file %s (for module %s) not found", module_file, module)
             return 0
         else:
             return 1
@@ -273,10 +262,10 @@ class build_py (Command):
         (package, module, module_file), just like 'find_modules()' and
         'find_package_modules()' do."""
 
+        modules = []
         if self.py_modules:
-            modules = self.find_modules()
-        else:
-            modules = []
+            modules.extend(self.find_modules())
+        if self.packages:
             for package in self.packages:
                 package_dir = self.get_package_dir(package)
                 m = self.find_package_modules(package, package_dir)
@@ -385,13 +374,9 @@ class build_py (Command):
 
         if self.compile:
             byte_compile(files, optimize=0,
-                         force=self.force,
-                         prefix=prefix,
-                         verbose=self.verbose, dry_run=self.dry_run)
+                         force=self.force, prefix=prefix, dry_run=self.dry_run)
         if self.optimize > 0:
             byte_compile(files, optimize=self.optimize,
-                         force=self.force,
-                         prefix=prefix,
-                         verbose=self.verbose, dry_run=self.dry_run)
+                         force=self.force, prefix=prefix, dry_run=self.dry_run)
 
 # class build_py

@@ -135,7 +135,7 @@ The functions defined in this module are:
 \end{funcdesc}
 
 \begin{funcdesc}{capitalize}{word}
-  Capitalize the first character of the argument.
+  Return a copy of \var{word} with only its first character capitalized.
 \end{funcdesc}
 
 \begin{funcdesc}{capwords}{s}
@@ -230,22 +230,41 @@ The functions defined in this module are:
 \end{funcdesc}
 
 \begin{funcdesc}{joinfields}{words\optional{, sep}}
-  This function behaves identical to \function{join()}.  (In the past, 
+  This function behaves identically to \function{join()}.  (In the past, 
   \function{join()} was only used with one argument, while
   \function{joinfields()} was only used with two arguments.)
+  Note that there is no \method{joinfields()} method on string
+  objects; use the \method{join()} method instead.
 \end{funcdesc}
 
-\begin{funcdesc}{lstrip}{s}
-  Return a copy of \var{s} but without leading whitespace characters.
+\begin{funcdesc}{lstrip}{s\optional{, chars}}
+Return a copy of the string with leading characters removed.  If
+\var{chars} is omitted or \code{None}, whitespace characters are
+removed.  If given and not \code{None}, \var{chars} must be a string;
+the characters in the string will be stripped from the beginning of
+the string this method is called on.
+\versionchanged[The \var{chars} parameter was added.  The \var{chars}
+parameter cannot be passed in earlier 2.2 versions]{2.2.3}
 \end{funcdesc}
 
-\begin{funcdesc}{rstrip}{s}
-  Return a copy of \var{s} but without trailing whitespace
-  characters.
+\begin{funcdesc}{rstrip}{s\optional{, chars}}
+Return a copy of the string with trailing characters removed.  If
+\var{chars} is omitted or \code{None}, whitespace characters are
+removed.  If given and not \code{None}, \var{chars} must be a string;
+the characters in the string will be stripped from the end of the
+string this method is called on.
+\versionchanged[The \var{chars} parameter was added.  The \var{chars}
+parameter cannot be passed in 2.2 versions]{2.2.3}
 \end{funcdesc}
 
-\begin{funcdesc}{strip}{s}
-  Return a copy of \var{s} without leading or trailing whitespace.
+\begin{funcdesc}{strip}{s\optional{, chars}}
+Return a copy of the string with leading and trailing characters
+removed.  If \var{chars} is omitted or \code{None}, whitespace
+characters are removed.  If given and not \code{None}, \var{chars}
+must be a string; the characters in the string will be stripped from
+the both ends of the string this method is called on.
+\versionchanged[The \var{chars} parameter was added.  The \var{chars}
+parameter cannot be passed in earlier 2.2 versions]{2.2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{swapcase}{s}
@@ -257,7 +276,7 @@ The functions defined in this module are:
   Delete all characters from \var{s} that are in \var{deletechars} (if 
   present), and then translate the characters using \var{table}, which 
   must be a 256-character string giving the translation for each
-  character value, indexed by its ordinal.  
+  character value, indexed by its ordinal.
 \end{funcdesc}
 
 \begin{funcdesc}{upper}{s}

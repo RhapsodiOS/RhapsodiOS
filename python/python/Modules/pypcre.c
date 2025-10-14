@@ -45,8 +45,8 @@ restrictions:
 
 
 #define FOR_PYTHON
-#include "pcre-int.h"
 #include "Python.h"
+#include "pcre-int.h"
 #include <ctype.h>
 #include "graminit.h"
 
@@ -577,6 +577,7 @@ restrictions:
 of #ifdef inline, and there are *still* stupid compilers about that don't like
 indented pre-processor statements. I suppose it's only been 10 years... */
 
+#undef DPRINTF
 #ifdef DEBUG
 #define DPRINTF(p) printf p
 #else
@@ -3078,8 +3079,11 @@ static int grow_stack(match_data *md)
       else {md->length = 80;}
     }
   PyMem_RESIZE(md->offset_top, int, md->length);
-  PyMem_RESIZE(md->eptr, const uschar *, md->length);
-  PyMem_RESIZE(md->ecode, const uschar *, md->length);
+  /* Can't realloc a pointer-to-const; cast const away. */
+  md->eptr = (const uschar **)PyMem_Realloc((void *)md->eptr,
+  					    sizeof(uschar *) * md->length);
+  md->ecode = (const uschar **)PyMem_Realloc((void *)md->ecode,
+  					     sizeof(uschar *) * md->length);
   PyMem_RESIZE(md->off_num, int, md->length);
   PyMem_RESIZE(md->r1, int, md->length);
   PyMem_RESIZE(md->r2, int, md->length);

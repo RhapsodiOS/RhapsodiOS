@@ -1,5 +1,5 @@
-# regression test for SAX 2.0
-# $Id: test_sax.py,v 1.1.1.1 2002/02/05 23:21:06 zarzycki Exp $
+# regression test for SAX 2.0            -*- coding: iso-8859-1 -*-
+# $Id: test_sax.py,v 1.24 2002/10/28 17:58:48 fdrake Exp $
 
 from xml.sax import make_parser, ContentHandler, \
                     SAXException, SAXReaderNotAvailable, SAXParseException
@@ -8,27 +8,28 @@ try:
 except SAXReaderNotAvailable:
     # don't try to test this module if we cannot create a parser
     raise ImportError("no XML parsers available")
-from xml.sax.saxutils import XMLGenerator, escape, quoteattr, XMLFilterBase
+from xml.sax.saxutils import XMLGenerator, escape, unescape, quoteattr, \
+                             XMLFilterBase
 from xml.sax.expatreader import create_parser
 from xml.sax.xmlreader import InputSource, AttributesImpl, AttributesNSImpl
 from cStringIO import StringIO
-from test_support import verify, verbose, TestFailed, findfile
+from test.test_support import verify, verbose, TestFailed, findfile
 import os
 
 # ===== Utilities
 
 tests = 0
-fails = 0
+failures = []
 
 def confirm(outcome, name):
-    global tests, fails
+    global tests
 
     tests = tests + 1
     if outcome:
-        print "Passed", name
+        if verbose:
+            print "Failed", name
     else:
-        print "Failed", name
-        fails = fails + 1
+        failures.append(name)
 
 def test_make_parser2():
     try:
@@ -69,6 +70,20 @@ def test_escape_all():
 
 def test_escape_extra():
     return escape("Hei på deg", {"å" : "&aring;"}) == "Hei p&aring; deg"
+
+# ===== unescape
+
+def test_unescape_basic():
+    return unescape("Donald Duck &amp; Co") == "Donald Duck & Co"
+
+def test_unescape_all():
+    return unescape("&lt;Donald Duck &amp; Co&gt;") == "<Donald Duck & Co>"
+
+def test_unescape_extra():
+    return unescape("Hei på deg", {"å" : "&aring;"}) == "Hei p&aring; deg"
+
+def test_unescape_amp_extra():
+    return unescape("&amp;foo;", {"&foo;": "splat"}) == "&foo;"
 
 # ===== quoteattr
 
@@ -337,7 +352,7 @@ def test_expat_nsattrs_wattr():
 
     return attrs.getLength() == 1 and \
            attrs.getNames() == [(ns_uri, "attr")] and \
-           attrs.getQNames() == [] and \
+           (attrs.getQNames() == [] or attrs.getQNames() == ["ns:attr"]) and \
            len(attrs) == 1 and \
            attrs.has_key((ns_uri, "attr")) and \
            attrs.keys() == [(ns_uri, "attr")] and \
@@ -638,6 +653,8 @@ for (name, value) in items:
     if name[ : 5] == "test_":
         confirm(value(), name)
 
-print "%d tests, %d failures" % (tests, fails)
-if fails != 0:
-    raise TestFailed, "%d of %d tests failed" % (fails, tests)
+if verbose:
+    print "%d tests, %d failures" % (tests, len(failures))
+if failures:
+    raise TestFailed("%d of %d tests failed: %s"
+                     % (len(failures), tests, ", ".join(failures)))

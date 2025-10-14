@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: rain.py,v 1.1.1.1 2002/02/05 23:23:28 zarzycki Exp $
+# $Id: rain.py,v 1.1 2000/12/15 00:41:48 akuchling Exp $
 #
 # somebody should probably check the randrange()s...
 

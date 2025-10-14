@@ -3,9 +3,9 @@
 Implements the Distutils 'install_headers' command, to install C/C++ header
 files to the Python include directory."""
 
-# created 2000/05/26, Greg Ward
+# This module should be kept compatible with Python 1.5.2.
 
-__revision__ = "$Id: install_headers.py,v 1.1.1.1 2002/02/05 23:21:19 zarzycki Exp $"
+__revision__ = "$Id: install_headers.py,v 1.10 2002/11/19 13:12:28 akuchling Exp $"
 
 import os
 from distutils.core import Command

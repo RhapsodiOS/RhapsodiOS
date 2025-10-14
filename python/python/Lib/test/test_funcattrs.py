@@ -1,4 +1,4 @@
-from test_support import verbose, TestFailed, verify
+from test.test_support import verbose, TestFailed, verify
 import types
 
 class F:
@@ -8,6 +8,10 @@ class F:
 def b():
     'my docstring'
     pass
+
+# __module__ is a special attribute
+verify(b.__module__ == __name__)
+verify(verify.__module__ == "test.test_support")
 
 # setting attributes on functions
 try:

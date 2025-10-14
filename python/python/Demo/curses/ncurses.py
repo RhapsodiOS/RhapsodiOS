@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: ncurses.py,v 1.1.1.1 2002/02/05 23:23:28 zarzycki Exp $
+# $Id: ncurses.py,v 1.2 2000/12/22 21:50:01 akuchling Exp $
 #
 # (n)curses exerciser in Python, an interactive test for the curses
 # module. Currently, only the panel demos are ported.

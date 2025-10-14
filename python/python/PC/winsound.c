@@ -40,13 +40,13 @@
 #include <conio.h>	/* port functions on Win9x */
 #include <Python.h>
 
-static char sound_playsound_doc[] =
+PyDoc_STRVAR(sound_playsound_doc,
 "PlaySound(sound, flags) - a wrapper around the Windows PlaySound API\n"
 "\n"
 "The sound argument can be a filename, data, or None.\n"
-"For flag values, ored together, see module documentation.\n";
+"For flag values, ored together, see module documentation.");
 
-static char sound_beep_doc[] =
+PyDoc_STRVAR(sound_beep_doc,
 "Beep(frequency, duration) - a wrapper around the Windows Beep API\n"
 "\n"
 "The frequency argument specifies frequency, in hertz, of the sound.\n"
@@ -54,9 +54,12 @@ static char sound_beep_doc[] =
 "The duration argument specifies the number of milliseconds.\n"
 "On WinNT and 2000, the platform Beep API is used directly.  Else funky\n"
 "code doing direct port manipulation is used; it's unknown whether that\n"
-"will work on all systems.\n";
+"will work on all systems.");
 
-static char sound_module_doc[] =
+PyDoc_STRVAR(sound_msgbeep_doc,
+"MessageBeep(x) - call Windows MessageBeep(x). x defaults to MB_OK.");
+
+PyDoc_STRVAR(sound_module_doc,
 "PlaySound(sound, flags) - play a sound\n"
 "SND_FILENAME - sound is a wav file name\n"
 "SND_ALIAS - sound is a registry sound association name\n"
@@ -68,9 +71,9 @@ static char sound_module_doc[] =
 "SND_NOSTOP - Do not interrupt any sounds currently playing\n"  // Raising RuntimeError if needed
 "SND_NOWAIT - Return immediately if the sound driver is busy\n" // Without any errors
 "\n"
-"Beep(frequency, duration) - Make a beep through the PC speaker.\n";
+"Beep(frequency, duration) - Make a beep through the PC speaker.");
 
-PyObject *
+static PyObject *
 sound_playsound(PyObject *s, PyObject *args)
 {
     const char *sound;
@@ -173,10 +176,22 @@ sound_beep(PyObject *self, PyObject *args)
 	return Py_None;
 }
 
+static PyObject *
+sound_msgbeep(PyObject *self, PyObject *args)
+{
+	int x = MB_OK;
+	if (!PyArg_ParseTuple(args, "|i:MessageBeep", &x))
+		return NULL;
+	MessageBeep(x);
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
 static struct PyMethodDef sound_methods[] =
 {
-    {"PlaySound", sound_playsound, 1, sound_playsound_doc},
-    {"Beep",      sound_beep,      1, sound_beep_doc},
+    {"PlaySound", sound_playsound, METH_VARARGS, sound_playsound_doc},
+    {"Beep",      sound_beep,      METH_VARARGS, sound_beep_doc},
+    {"MessageBeep", sound_msgbeep, METH_VARARGS, sound_msgbeep_doc},
     {NULL,  NULL}
 };
 
@@ -195,7 +210,7 @@ add_define(PyObject *dict, const char *key, long value)
 
 #define ADD_DEFINE(tok) add_define(dict,#tok,tok)
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 initwinsound(void)
 {
 	OSVERSIONINFO version;
@@ -215,6 +230,12 @@ initwinsound(void)
 	ADD_DEFINE(SND_PURGE);
 	ADD_DEFINE(SND_LOOP);
 	ADD_DEFINE(SND_APPLICATION);
+
+	ADD_DEFINE(MB_OK);
+	ADD_DEFINE(MB_ICONASTERISK);
+	ADD_DEFINE(MB_ICONEXCLAMATION);
+	ADD_DEFINE(MB_ICONHAND);
+	ADD_DEFINE(MB_ICONQUESTION);
 
 	version.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 	GetVersionEx(&version);

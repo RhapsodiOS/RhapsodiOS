@@ -94,8 +94,8 @@ Return a new empty module object called \var{name}.  This object is
 \end{funcdesc}
 
 \begin{funcdesc}{lock_held}{}
-Return 1 if the import lock is currently held, else 0.
-On platforms without threads, always return 0.
+Return \code{True} if the import lock is currently held, else \code{False}.
+On platforms without threads, always return \code{False}.
 
 On platforms with threads, a thread executing an import holds an internal
 lock until the import is complete.
@@ -104,6 +104,19 @@ import completes, which in turn prevents other threads from seeing
 incomplete module objects constructed by the original thread while in
 the process of completing its import (and the imports, if any,
 triggered by that).
+\end{funcdesc}
+
+\begin{funcdesc}{acquire_lock}{}
+Acquires the interpreter's import lock for the current thread.  This lock
+should be used by import hooks to ensure thread-safety when importing modules.
+On platforms without threads, this function does nothing.
+\versionadded{2.3}
+\end{funcdesc}
+
+\begin{funcdesc}{release_lock}{}
+Release the interpreter's import lock.
+On platforms without threads, this function does nothing.
+\versionadded{2.3}
 \end{funcdesc}
 
 The following constants with integer values, defined in this module,
@@ -174,8 +187,8 @@ module called \var{name}.
 \end{funcdesc}
 
 \begin{funcdesc}{is_frozen}{name}
-Return \code{1} if there is a frozen module (see
-\function{init_frozen()}) called \var{name}, or \code{0} if there is
+Return \code{True} if there is a frozen module (see
+\function{init_frozen()}) called \var{name}, or \code{False} if there is
 no such module.
 \end{funcdesc}
 
@@ -255,6 +268,6 @@ def __import__(name, globals=None, locals=None, fromlist=None):
 
 A more complete example that implements hierarchical module names and
 includes a \function{reload()}\bifuncindex{reload} function can be
-found in the standard module \module{knee}\refstmodindex{knee} (which
-is intended as an example only --- don't rely on any part of it being
-a standard interface).
+found in the module \module{knee}\refmodindex{knee}.  The
+\module{knee} module can be found in \file{Demo/imputil/} in the
+Python source distribution.

@@ -212,7 +212,7 @@ static PyObject *CG_Error;
 
 PyTypeObject CGContextRef_Type;
 
-#define CGContextRefObj_Check(x) ((x)->ob_type == &CGContextRef_Type)
+#define CGContextRefObj_Check(x) ((x)->ob_type == &CGContextRef_Type || PyObject_TypeCheck((x), &CGContextRef_Type))
 
 typedef struct CGContextRefObject {
 	PyObject_HEAD
@@ -241,7 +241,7 @@ int CGContextRefObj_Convert(PyObject *v, CGContextRef *p_itself)
 static void CGContextRefObj_dealloc(CGContextRefObject *self)
 {
 	CGContextRelease(self->ob_itself);
-	PyMem_DEL(self);
+	self->ob_type->tp_free((PyObject *)self);
 }
 
 static PyObject *CGContextRefObj_CGContextSaveGState(CGContextRefObject *_self, PyObject *_args)
@@ -1115,136 +1115,183 @@ static PyObject *CGContextRefObj_CGContextSetShouldAntialias(CGContextRefObject 
 	return _res;
 }
 
+static PyObject *CGContextRefObj_SyncCGContextOriginWithPort(CGContextRefObject *_self, PyObject *_args)
+{
+	PyObject *_res = NULL;
+	CGrafPtr port;
+	if (!PyArg_ParseTuple(_args, "O&",
+	                      GrafObj_Convert, &port))
+		return NULL;
+	SyncCGContextOriginWithPort(_self->ob_itself,
+	                            port);
+	Py_INCREF(Py_None);
+	_res = Py_None;
+	return _res;
+}
+
+static PyObject *CGContextRefObj_ClipCGContextToRegion(CGContextRefObject *_self, PyObject *_args)
+{
+	PyObject *_res = NULL;
+	Rect portRect;
+	RgnHandle region;
+	if (!PyArg_ParseTuple(_args, "O&O&",
+	                      PyMac_GetRect, &portRect,
+	                      ResObj_Convert, &region))
+		return NULL;
+	ClipCGContextToRegion(_self->ob_itself,
+	                      &portRect,
+	                      region);
+	Py_INCREF(Py_None);
+	_res = Py_None;
+	return _res;
+}
+
 static PyMethodDef CGContextRefObj_methods[] = {
 	{"CGContextSaveGState", (PyCFunction)CGContextRefObj_CGContextSaveGState, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextRestoreGState", (PyCFunction)CGContextRefObj_CGContextRestoreGState, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextScaleCTM", (PyCFunction)CGContextRefObj_CGContextScaleCTM, 1,
-	 "(float sx, float sy) -> None"},
+	 PyDoc_STR("(float sx, float sy) -> None")},
 	{"CGContextTranslateCTM", (PyCFunction)CGContextRefObj_CGContextTranslateCTM, 1,
-	 "(float tx, float ty) -> None"},
+	 PyDoc_STR("(float tx, float ty) -> None")},
 	{"CGContextRotateCTM", (PyCFunction)CGContextRefObj_CGContextRotateCTM, 1,
-	 "(float angle) -> None"},
+	 PyDoc_STR("(float angle) -> None")},
 	{"CGContextConcatCTM", (PyCFunction)CGContextRefObj_CGContextConcatCTM, 1,
-	 "(CGAffineTransform transform) -> None"},
+	 PyDoc_STR("(CGAffineTransform transform) -> None")},
 	{"CGContextGetCTM", (PyCFunction)CGContextRefObj_CGContextGetCTM, 1,
-	 "() -> (CGAffineTransform _rv)"},
+	 PyDoc_STR("() -> (CGAffineTransform _rv)")},
 	{"CGContextSetLineWidth", (PyCFunction)CGContextRefObj_CGContextSetLineWidth, 1,
-	 "(float width) -> None"},
+	 PyDoc_STR("(float width) -> None")},
 	{"CGContextSetLineCap", (PyCFunction)CGContextRefObj_CGContextSetLineCap, 1,
-	 "(int cap) -> None"},
+	 PyDoc_STR("(int cap) -> None")},
 	{"CGContextSetLineJoin", (PyCFunction)CGContextRefObj_CGContextSetLineJoin, 1,
-	 "(int join) -> None"},
+	 PyDoc_STR("(int join) -> None")},
 	{"CGContextSetMiterLimit", (PyCFunction)CGContextRefObj_CGContextSetMiterLimit, 1,
-	 "(float limit) -> None"},
+	 PyDoc_STR("(float limit) -> None")},
 	{"CGContextSetFlatness", (PyCFunction)CGContextRefObj_CGContextSetFlatness, 1,
-	 "(float flatness) -> None"},
+	 PyDoc_STR("(float flatness) -> None")},
 	{"CGContextSetAlpha", (PyCFunction)CGContextRefObj_CGContextSetAlpha, 1,
-	 "(float alpha) -> None"},
+	 PyDoc_STR("(float alpha) -> None")},
 	{"CGContextBeginPath", (PyCFunction)CGContextRefObj_CGContextBeginPath, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextMoveToPoint", (PyCFunction)CGContextRefObj_CGContextMoveToPoint, 1,
-	 "(float x, float y) -> None"},
+	 PyDoc_STR("(float x, float y) -> None")},
 	{"CGContextAddLineToPoint", (PyCFunction)CGContextRefObj_CGContextAddLineToPoint, 1,
-	 "(float x, float y) -> None"},
+	 PyDoc_STR("(float x, float y) -> None")},
 	{"CGContextAddCurveToPoint", (PyCFunction)CGContextRefObj_CGContextAddCurveToPoint, 1,
-	 "(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y) -> None"},
+	 PyDoc_STR("(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y) -> None")},
 	{"CGContextAddQuadCurveToPoint", (PyCFunction)CGContextRefObj_CGContextAddQuadCurveToPoint, 1,
-	 "(float cpx, float cpy, float x, float y) -> None"},
+	 PyDoc_STR("(float cpx, float cpy, float x, float y) -> None")},
 	{"CGContextClosePath", (PyCFunction)CGContextRefObj_CGContextClosePath, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextAddRect", (PyCFunction)CGContextRefObj_CGContextAddRect, 1,
-	 "(CGRect rect) -> None"},
+	 PyDoc_STR("(CGRect rect) -> None")},
 	{"CGContextAddArc", (PyCFunction)CGContextRefObj_CGContextAddArc, 1,
-	 "(float x, float y, float radius, float startAngle, float endAngle, int clockwise) -> None"},
+	 PyDoc_STR("(float x, float y, float radius, float startAngle, float endAngle, int clockwise) -> None")},
 	{"CGContextAddArcToPoint", (PyCFunction)CGContextRefObj_CGContextAddArcToPoint, 1,
-	 "(float x1, float y1, float x2, float y2, float radius) -> None"},
+	 PyDoc_STR("(float x1, float y1, float x2, float y2, float radius) -> None")},
 	{"CGContextIsPathEmpty", (PyCFunction)CGContextRefObj_CGContextIsPathEmpty, 1,
-	 "() -> (int _rv)"},
+	 PyDoc_STR("() -> (int _rv)")},
 	{"CGContextGetPathCurrentPoint", (PyCFunction)CGContextRefObj_CGContextGetPathCurrentPoint, 1,
-	 "() -> (CGPoint _rv)"},
+	 PyDoc_STR("() -> (CGPoint _rv)")},
 	{"CGContextGetPathBoundingBox", (PyCFunction)CGContextRefObj_CGContextGetPathBoundingBox, 1,
-	 "() -> (CGRect _rv)"},
+	 PyDoc_STR("() -> (CGRect _rv)")},
 	{"CGContextDrawPath", (PyCFunction)CGContextRefObj_CGContextDrawPath, 1,
-	 "(int mode) -> None"},
+	 PyDoc_STR("(int mode) -> None")},
 	{"CGContextFillPath", (PyCFunction)CGContextRefObj_CGContextFillPath, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextEOFillPath", (PyCFunction)CGContextRefObj_CGContextEOFillPath, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextStrokePath", (PyCFunction)CGContextRefObj_CGContextStrokePath, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextFillRect", (PyCFunction)CGContextRefObj_CGContextFillRect, 1,
-	 "(CGRect rect) -> None"},
+	 PyDoc_STR("(CGRect rect) -> None")},
 	{"CGContextStrokeRect", (PyCFunction)CGContextRefObj_CGContextStrokeRect, 1,
-	 "(CGRect rect) -> None"},
+	 PyDoc_STR("(CGRect rect) -> None")},
 	{"CGContextStrokeRectWithWidth", (PyCFunction)CGContextRefObj_CGContextStrokeRectWithWidth, 1,
-	 "(CGRect rect, float width) -> None"},
+	 PyDoc_STR("(CGRect rect, float width) -> None")},
 	{"CGContextClearRect", (PyCFunction)CGContextRefObj_CGContextClearRect, 1,
-	 "(CGRect rect) -> None"},
+	 PyDoc_STR("(CGRect rect) -> None")},
 	{"CGContextClip", (PyCFunction)CGContextRefObj_CGContextClip, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextEOClip", (PyCFunction)CGContextRefObj_CGContextEOClip, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextClipToRect", (PyCFunction)CGContextRefObj_CGContextClipToRect, 1,
-	 "(CGRect rect) -> None"},
+	 PyDoc_STR("(CGRect rect) -> None")},
 	{"CGContextSetGrayFillColor", (PyCFunction)CGContextRefObj_CGContextSetGrayFillColor, 1,
-	 "(float gray, float alpha) -> None"},
+	 PyDoc_STR("(float gray, float alpha) -> None")},
 	{"CGContextSetGrayStrokeColor", (PyCFunction)CGContextRefObj_CGContextSetGrayStrokeColor, 1,
-	 "(float gray, float alpha) -> None"},
+	 PyDoc_STR("(float gray, float alpha) -> None")},
 	{"CGContextSetRGBFillColor", (PyCFunction)CGContextRefObj_CGContextSetRGBFillColor, 1,
-	 "(float r, float g, float b, float alpha) -> None"},
+	 PyDoc_STR("(float r, float g, float b, float alpha) -> None")},
 	{"CGContextSetRGBStrokeColor", (PyCFunction)CGContextRefObj_CGContextSetRGBStrokeColor, 1,
-	 "(float r, float g, float b, float alpha) -> None"},
+	 PyDoc_STR("(float r, float g, float b, float alpha) -> None")},
 	{"CGContextSetCMYKFillColor", (PyCFunction)CGContextRefObj_CGContextSetCMYKFillColor, 1,
-	 "(float c, float m, float y, float k, float alpha) -> None"},
+	 PyDoc_STR("(float c, float m, float y, float k, float alpha) -> None")},
 	{"CGContextSetCMYKStrokeColor", (PyCFunction)CGContextRefObj_CGContextSetCMYKStrokeColor, 1,
-	 "(float c, float m, float y, float k, float alpha) -> None"},
+	 PyDoc_STR("(float c, float m, float y, float k, float alpha) -> None")},
 	{"CGContextSetCharacterSpacing", (PyCFunction)CGContextRefObj_CGContextSetCharacterSpacing, 1,
-	 "(float spacing) -> None"},
+	 PyDoc_STR("(float spacing) -> None")},
 	{"CGContextSetTextPosition", (PyCFunction)CGContextRefObj_CGContextSetTextPosition, 1,
-	 "(float x, float y) -> None"},
+	 PyDoc_STR("(float x, float y) -> None")},
 	{"CGContextGetTextPosition", (PyCFunction)CGContextRefObj_CGContextGetTextPosition, 1,
-	 "() -> (CGPoint _rv)"},
+	 PyDoc_STR("() -> (CGPoint _rv)")},
 	{"CGContextSetTextMatrix", (PyCFunction)CGContextRefObj_CGContextSetTextMatrix, 1,
-	 "(CGAffineTransform transform) -> None"},
+	 PyDoc_STR("(CGAffineTransform transform) -> None")},
 	{"CGContextGetTextMatrix", (PyCFunction)CGContextRefObj_CGContextGetTextMatrix, 1,
-	 "() -> (CGAffineTransform _rv)"},
+	 PyDoc_STR("() -> (CGAffineTransform _rv)")},
 	{"CGContextSetTextDrawingMode", (PyCFunction)CGContextRefObj_CGContextSetTextDrawingMode, 1,
-	 "(int mode) -> None"},
+	 PyDoc_STR("(int mode) -> None")},
 	{"CGContextSetFontSize", (PyCFunction)CGContextRefObj_CGContextSetFontSize, 1,
-	 "(float size) -> None"},
+	 PyDoc_STR("(float size) -> None")},
 	{"CGContextSelectFont", (PyCFunction)CGContextRefObj_CGContextSelectFont, 1,
-	 "(char * name, float size, int textEncoding) -> None"},
+	 PyDoc_STR("(char * name, float size, int textEncoding) -> None")},
 	{"CGContextShowText", (PyCFunction)CGContextRefObj_CGContextShowText, 1,
-	 "(Buffer cstring) -> None"},
+	 PyDoc_STR("(Buffer cstring) -> None")},
 	{"CGContextShowTextAtPoint", (PyCFunction)CGContextRefObj_CGContextShowTextAtPoint, 1,
-	 "(float x, float y, Buffer cstring) -> None"},
+	 PyDoc_STR("(float x, float y, Buffer cstring) -> None")},
 	{"CGContextEndPage", (PyCFunction)CGContextRefObj_CGContextEndPage, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextFlush", (PyCFunction)CGContextRefObj_CGContextFlush, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextSynchronize", (PyCFunction)CGContextRefObj_CGContextSynchronize, 1,
-	 "() -> None"},
+	 PyDoc_STR("() -> None")},
 	{"CGContextSetShouldAntialias", (PyCFunction)CGContextRefObj_CGContextSetShouldAntialias, 1,
-	 "(int shouldAntialias) -> None"},
+	 PyDoc_STR("(int shouldAntialias) -> None")},
+	{"SyncCGContextOriginWithPort", (PyCFunction)CGContextRefObj_SyncCGContextOriginWithPort, 1,
+	 PyDoc_STR("(CGrafPtr port) -> None")},
+	{"ClipCGContextToRegion", (PyCFunction)CGContextRefObj_ClipCGContextToRegion, 1,
+	 PyDoc_STR("(Rect portRect, RgnHandle region) -> None")},
 	{NULL, NULL, 0}
 };
 
-PyMethodChain CGContextRefObj_chain = { CGContextRefObj_methods, NULL };
+#define CGContextRefObj_getsetlist NULL
 
-static PyObject *CGContextRefObj_getattr(CGContextRefObject *self, char *name)
-{
-	return Py_FindMethodInChain(&CGContextRefObj_chain, (PyObject *)self, name);
-}
-
-#define CGContextRefObj_setattr NULL
 
 #define CGContextRefObj_compare NULL
 
 #define CGContextRefObj_repr NULL
 
 #define CGContextRefObj_hash NULL
+#define CGContextRefObj_tp_init 0
+
+#define CGContextRefObj_tp_alloc PyType_GenericAlloc
+
+static PyObject *CGContextRefObj_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+	PyObject *self;
+	CGContextRef itself;
+	char *kw[] = {"itself", 0};
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "O&", kw, CGContextRefObj_Convert, &itself)) return NULL;
+	if ((self = type->tp_alloc(type, 0)) == NULL) return NULL;
+	((CGContextRefObject *)self)->ob_itself = itself;
+	return self;
+}
+
+#define CGContextRefObj_tp_free PyObject_Del
+
 
 PyTypeObject CGContextRef_Type = {
 	PyObject_HEAD_INIT(NULL)
@@ -1255,14 +1302,39 @@ PyTypeObject CGContextRef_Type = {
 	/* methods */
 	(destructor) CGContextRefObj_dealloc, /*tp_dealloc*/
 	0, /*tp_print*/
-	(getattrfunc) CGContextRefObj_getattr, /*tp_getattr*/
-	(setattrfunc) CGContextRefObj_setattr, /*tp_setattr*/
+	(getattrfunc)0, /*tp_getattr*/
+	(setattrfunc)0, /*tp_setattr*/
 	(cmpfunc) CGContextRefObj_compare, /*tp_compare*/
 	(reprfunc) CGContextRefObj_repr, /*tp_repr*/
 	(PyNumberMethods *)0, /* tp_as_number */
 	(PySequenceMethods *)0, /* tp_as_sequence */
 	(PyMappingMethods *)0, /* tp_as_mapping */
 	(hashfunc) CGContextRefObj_hash, /*tp_hash*/
+	0, /*tp_call*/
+	0, /*tp_str*/
+	PyObject_GenericGetAttr, /*tp_getattro*/
+	PyObject_GenericSetAttr, /*tp_setattro */
+	0, /*tp_as_buffer*/
+	Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE, /* tp_flags */
+	0, /*tp_doc*/
+	0, /*tp_traverse*/
+	0, /*tp_clear*/
+	0, /*tp_richcompare*/
+	0, /*tp_weaklistoffset*/
+	0, /*tp_iter*/
+	0, /*tp_iternext*/
+	CGContextRefObj_methods, /* tp_methods */
+	0, /*tp_members*/
+	CGContextRefObj_getsetlist, /*tp_getset*/
+	0, /*tp_base*/
+	0, /*tp_dict*/
+	0, /*tp_descr_get*/
+	0, /*tp_descr_set*/
+	0, /*tp_dictoffset*/
+	CGContextRefObj_tp_init, /* tp_init */
+	CGContextRefObj_tp_alloc, /* tp_alloc */
+	CGContextRefObj_tp_new, /* tp_new */
+	CGContextRefObj_tp_free, /* tp_free */
 };
 
 /* ------------------ End object type CGContextRef ------------------ */
@@ -1288,7 +1360,7 @@ static PyObject *CG_CreateCGContextForPort(PyObject *_self, PyObject *_args)
 
 static PyMethodDef CG_methods[] = {
 	{"CreateCGContextForPort", (PyCFunction)CG_CreateCGContextForPort, 1,
-	 "(CGrafPtr) -> CGContextRef"},
+	 PyDoc_STR("(CGrafPtr) -> CGContextRef")},
 	{NULL, NULL, 0}
 };
 
@@ -1327,9 +1399,12 @@ void init_CG(void)
 	    PyDict_SetItemString(d, "Error", CG_Error) != 0)
 		return;
 	CGContextRef_Type.ob_type = &PyType_Type;
+	if (PyType_Ready(&CGContextRef_Type) < 0) return;
 	Py_INCREF(&CGContextRef_Type);
-	if (PyDict_SetItemString(d, "CGContextRefType", (PyObject *)&CGContextRef_Type) != 0)
-		Py_FatalError("can't initialize CGContextRefType");
+	PyModule_AddObject(m, "CGContextRef", (PyObject *)&CGContextRef_Type);
+	/* Backward-compatible name */
+	Py_INCREF(&CGContextRef_Type);
+	PyModule_AddObject(m, "CGContextRefType", (PyObject *)&CGContextRef_Type);
 }
 
 /* ========================= End module _CG ========================= */

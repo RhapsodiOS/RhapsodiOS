@@ -25,9 +25,6 @@ EOFError is needed in some cases to distinguish between "no data" and
 "connection closed" (since the socket also appears ready for reading
 when it is closed).
 
-Bugs:
-- may hang when connection is slow in the middle of an IAC sequence
-
 To do:
 - option negotiation
 - timeout should be intrinsic to the connection object instead of an
@@ -56,6 +53,19 @@ DO   = chr(253)
 WONT = chr(252)
 WILL = chr(251)
 theNULL = chr(0)
+
+SE  = chr(240)  # Subnegotiation End
+NOP = chr(241)  # No Operation
+DM  = chr(242)  # Data Mark
+BRK = chr(243)  # Break
+IP  = chr(244)  # Interrupt process
+AO  = chr(245)  # Abort output
+AYT = chr(246)  # Are You There
+EC  = chr(247)  # Erase Character
+EL  = chr(248)  # Erase Line
+GA  = chr(249)  # Go Ahead
+SB =  chr(250)  # Subnegotiation Begin
+
 
 # Telnet protocol options code (don't change)
 # These ones all come from arpa/telnet.h
@@ -117,6 +127,7 @@ PRAGMA_LOGON = chr(138) # TELOPT PRAGMA LOGON
 SSPI_LOGON = chr(139) # TELOPT SSPI LOGON
 PRAGMA_HEARTBEAT = chr(140) # TELOPT PRAGMA HEARTBEAT
 EXOPL = chr(255) # Extended-Options-List
+NOOPT = chr(0)
 
 class Telnet:
 
@@ -161,10 +172,14 @@ class Telnet:
         Reads all data in the cooked queue, without doing any socket
         I/O.
 
+    read_sb_data()
+        Reads available data between SB ... SE sequence. Don't block.
+
     set_option_negotiation_callback(callback)
         Each time a telnet option is read on the input flow, this callback
         (if set) is called with the following parameters :
-        callback(telnet socket, command (DO/DONT/WILL/WONT), option)
+        callback(telnet socket, command, option)
+            option will be chr(0) when there is no option.
         No other action is done afterwards by telnetlib.
 
     """
@@ -185,8 +200,11 @@ class Telnet:
         self.irawq = 0
         self.cookedq = ''
         self.eof = 0
+        self.iacseq = '' # Buffer for IAC sequence.
+        self.sb = 0 # flag for SB and SE sequence.
+        self.sbdataq = ''
         self.option_callback = None
-        if host:
+        if host is not None:
             self.open(host, port)
 
     def open(self, host, port=0):
@@ -250,6 +268,8 @@ class Telnet:
             self.sock.close()
         self.sock = 0
         self.eof = 1
+        self.iacseq = ''
+        self.sb = 0
 
     def get_socket(self):
         """Return the socket object used internally."""
@@ -269,7 +289,7 @@ class Telnet:
         if IAC in buffer:
             buffer = buffer.replace(IAC, IAC+IAC)
         self.msg("send %s", `buffer`)
-        self.sock.send(buffer)
+        self.sock.sendall(buffer)
 
     def read_until(self, match, timeout=None):
         """Read until a given string is encountered or until timeout.
@@ -291,7 +311,7 @@ class Telnet:
         s_args = s_reply
         if timeout is not None:
             s_args = s_args + (timeout,)
-        while not self.eof and apply(select.select, s_args) == s_reply:
+        while not self.eof and select.select(*s_args) == s_reply:
             i = max(0, len(self.cookedq)-n)
             self.fill_rawq()
             self.process_rawq()
@@ -380,6 +400,18 @@ class Telnet:
             raise EOFError, 'telnet connection closed'
         return buf
 
+    def read_sb_data(self):
+        """Return any data available in the SB ... SE queue.
+
+        Return '' if no SB ... SE available. Should only be called
+        after seeing a SB or SE command. When a new SB command is
+        found, old unread SB data will be discarded. Don't block.
+
+        """
+        buf = self.sbdataq
+        self.sbdataq = ''
+        return buf
+
     def set_option_negotiation_callback(self, callback):
         """Provide a callback function called after each receipt of a telnet option."""
         self.option_callback = callback
@@ -391,40 +423,70 @@ class Telnet:
         the midst of an IAC sequence.
 
         """
-        buf = ''
+        buf = ['', '']
         try:
             while self.rawq:
                 c = self.rawq_getchar()
-                if c == theNULL:
-                    continue
-                if c == "\021":
-                    continue
-                if c != IAC:
-                    buf = buf + c
-                    continue
-                c = self.rawq_getchar()
-                if c == IAC:
-                    buf = buf + c
-                elif c in (DO, DONT):
-                    opt = self.rawq_getchar()
-                    self.msg('IAC %s %d', c == DO and 'DO' or 'DONT', ord(opt))
-                    if self.option_callback:
-                        self.option_callback(self.sock, c, opt)
+                if not self.iacseq:
+                    if c == theNULL:
+                        continue
+                    if c == "\021":
+                        continue
+                    if c != IAC:
+                        buf[self.sb] = buf[self.sb] + c
+                        continue
                     else:
-                        self.sock.send(IAC + WONT + opt)
-                elif c in (WILL, WONT):
-                    opt = self.rawq_getchar()
-                    self.msg('IAC %s %d',
-                             c == WILL and 'WILL' or 'WONT', ord(opt))
-                    if self.option_callback:
-                        self.option_callback(self.sock, c, opt)
+                        self.iacseq += c
+                elif len(self.iacseq) == 1:
+                    'IAC: IAC CMD [OPTION only for WILL/WONT/DO/DONT]'
+                    if c in (DO, DONT, WILL, WONT):
+                        self.iacseq += c
+                        continue
+
+                    self.iacseq = ''
+                    if c == IAC:
+                        buf[self.sb] = buf[self.sb] + c
                     else:
-                        self.sock.send(IAC + DONT + opt)
-                else:
-                    self.msg('IAC %d not recognized' % ord(opt))
+                        if c == SB: # SB ... SE start.
+                            self.sb = 1
+                            self.sbdataq = ''
+                        elif c == SE:
+                            self.sb = 0
+                            self.sbdataq = self.sbdataq + buf[1]
+                            buf[1] = ''
+                        if self.option_callback:
+                            # Callback is supposed to look into
+                            # the sbdataq
+                            self.option_callback(self.sock, c, NOOPT)
+                        else:
+                            # We can't offer automatic processing of
+                            # suboptions. Alas, we should not get any
+                            # unless we did a WILL/DO before.
+                            self.msg('IAC %d not recognized' % ord(c))
+                elif len(self.iacseq) == 2:
+                    cmd = self.iacseq[1]
+                    self.iacseq = ''
+                    opt = c
+                    if cmd in (DO, DONT):
+                        self.msg('IAC %s %d',
+                            cmd == DO and 'DO' or 'DONT', ord(opt))
+                        if self.option_callback:
+                            self.option_callback(self.sock, cmd, opt)
+                        else:
+                            self.sock.sendall(IAC + WONT + opt)
+                    elif cmd in (WILL, WONT):
+                        self.msg('IAC %s %d',
+                            cmd == WILL and 'WILL' or 'WONT', ord(opt))
+                        if self.option_callback:
+                            self.option_callback(self.sock, cmd, opt)
+                        else:
+                            self.sock.sendall(IAC + DONT + opt)
         except EOFError: # raised by self.rawq_getchar()
+            self.iacseq = '' # Reset on EOF
+            self.sb = 0
             pass
-        self.cookedq = self.cookedq + buf
+        self.cookedq = self.cookedq + buf[0]
+        self.sbdataq = self.sbdataq + buf[1]
 
     def rawq_getchar(self):
         """Get next char from raw queue.

@@ -1,6 +1,6 @@
 #
 # Instant Python
-# $Id: tkFileDialog.py,v 1.1.1.1 2002/02/05 23:21:36 zarzycki Exp $
+# $Id: tkFileDialog.py,v 1.11 2003/06/15 19:08:57 gvanrossum Exp $
 #
 # tk common file dialogues
 #
@@ -29,12 +29,16 @@
 #
 # - title: dialog title
 #
+# - multiple: if true user may select more than one file
+#
 # options for the directory chooser:
 #
 # - initialdir, parent, title: see above
 #
 # - mustexist: if true, user must pick an existing directory
 #
+#
+
 
 from tkCommonDialog import Dialog
 
@@ -51,6 +55,12 @@ class _Dialog(Dialog):
         if result:
             # keep directory and filename until next time
             import os
+            # convert Tcl path objects to strings
+            try:
+                result = result.string
+            except AttributeError:
+                # it already is a string
+                pass
             path, file = os.path.split(result)
             self.options["initialdir"] = path
             self.options["initialfile"] = file
@@ -65,6 +75,21 @@ class Open(_Dialog):
     "Ask for a filename to open"
 
     command = "tk_getOpenFile"
+
+    def _fixresult(self, widget, result):
+        if isinstance(result, tuple):
+            # multiple results:
+            result = tuple([getattr(r, "string", r) for r in result])
+            if result:
+                import os
+                path, file = os.path.split(result[0])
+                self.options["initialdir"] = path
+                # don't set initialfile or filename, as we have multiple of these
+            return result
+        if not widget.tk.wantobjects() and "multiple" in self.options:
+            # Need to split result explicitly
+            return self._fixresult(widget, widget.tk.splitlist(result))
+        return _Dialog._fixresult(self, widget, result)
 
 class SaveAs(_Dialog):
     "Ask for a filename to save as"
@@ -98,7 +123,16 @@ def asksaveasfilename(**options):
 
     return SaveAs(**options).show()
 
-# FIXME: are the following two perhaps a bit too convenient?
+def askopenfilenames(**options):
+    """Ask for multiple filenames to open
+    
+    Returns a list of filenames or empty list if 
+    cancel button selected
+    """
+    options["multiple"]=1
+    return Open(**options).show()
+
+# FIXME: are the following  perhaps a bit too convenient?
 
 def askopenfile(mode = "r", **options):
     "Ask for a filename to open, and returned the opened file"
@@ -107,6 +141,23 @@ def askopenfile(mode = "r", **options):
     if filename:
         return open(filename, mode)
     return None
+
+def askopenfiles(mode = "r", **options):
+    """Ask for multiple filenames and return the open file
+    objects
+    
+    returns a list of open file objects or an empty list if 
+    cancel selected
+    """
+
+    files = askopenfilenames(**options)
+    if files:
+        ofiles=[]
+        for filename in files:
+            ofiles.append(open(filename, mode))
+        files=ofiles
+    return files
+
 
 def asksaveasfile(mode = "w", **options):
     "Ask for a filename to save as, and returned the opened file"
@@ -124,6 +175,36 @@ def askdirectory (**options):
 # test stuff
 
 if __name__ == "__main__":
+    # Since the file name may contain non-ASCII characters, we need
+    # to find an encoding that likely supports the file name, and
+    # displays correctly on the terminal.
 
-    print "open", askopenfilename(filetypes=[("all filez", "*")])
-    print "saveas", asksaveasfilename()
+    # Start off with UTF-8
+    enc = "utf-8"
+    import sys
+
+    # See whether CODESET is defined
+    try:
+        import locale
+        locale.setlocale(locale.LC_ALL,'')
+        enc = locale.nl_langinfo(locale.CODESET)
+    except (ImportError, AttributeError):
+        pass
+
+    # dialog for openening files
+
+    openfilename=askopenfilename(filetypes=[("all files", "*")])
+    try:
+        fp=open(openfilename,"r")
+        fp.close()
+    except:
+        print "Could not open File: " 
+        print sys.exc_info()[1]
+
+    print "open", openfilename.encode(enc)
+
+    # dialog for saving files
+
+    saveasfilename=asksaveasfilename()
+    print "saveas", saveasfilename.encode(enc)
+

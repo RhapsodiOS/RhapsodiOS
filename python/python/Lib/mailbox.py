@@ -6,9 +6,11 @@
 import rfc822
 import os
 
-__all__ = ["UnixMailbox","MmdfMailbox","MHMailbox","Maildir","BabylMailbox"]
+__all__ = ["UnixMailbox","MmdfMailbox","MHMailbox","Maildir","BabylMailbox",
+           "PortableUnixMailbox"]
 
 class _Mailbox:
+
     def __init__(self, fp, factory=rfc822.Message):
         self.fp = fp
         self.seekp = 0
@@ -34,6 +36,7 @@ class _Mailbox:
 
 
 class _Subfile:
+
     def __init__(self, fp, start, stop):
         self.fp = fp
         self.start = start
@@ -91,7 +94,9 @@ class _Subfile:
         del self.fp
 
 
+# Recommended to use PortableUnixMailbox instead!
 class UnixMailbox(_Mailbox):
+
     def _search_start(self):
         while 1:
             pos = self.fp.tell()
@@ -135,8 +140,8 @@ class UnixMailbox(_Mailbox):
     # _search_end() may not be completely correct, because it doesn't check
     # that the two characters preceding "From " are \n\n or the beginning of
     # the file.  Fixing this would require a more extensive rewrite than is
-    # necessary.  For convenience, we've added a StrictUnixMailbox class which
-    # uses the older, more strict _fromlinepattern regular expression.
+    # necessary.  For convenience, we've added a PortableUnixMailbox class
+    # which uses the more lenient _fromlinepattern regular expression.
 
     _fromlinepattern = r"From \s*[^\s]+\s+\w\w\w\s+\w\w\w\s+\d?\d\s+" \
                        r"\d?\d:\d\d(:\d\d)?(\s+[^\s]+)?\s+\d\d\d\d\s*$"
@@ -149,7 +154,7 @@ class UnixMailbox(_Mailbox):
         return self._regexp.match(line)
 
     def _portable_isrealfromline(self, line):
-        return 1
+        return True
 
     _isrealfromline = _strict_isrealfromline
 
@@ -159,6 +164,7 @@ class PortableUnixMailbox(UnixMailbox):
 
 
 class MmdfMailbox(_Mailbox):
+
     def _search_start(self):
         while 1:
             line = self.fp.readline()
@@ -179,6 +185,7 @@ class MmdfMailbox(_Mailbox):
 
 
 class MHMailbox:
+
     def __init__(self, dirname, factory=rfc822.Message):
         import re
         pat = re.compile('^[1-9][0-9]*$')
@@ -200,10 +207,14 @@ class MHMailbox:
     def next(self):
         if not self.boxes:
             return None
-        fn = self.boxes[0]
-        del self.boxes[0]
+        fn = self.boxes.pop(0)
         fp = open(os.path.join(self.dirname, fn))
-        return self.factory(fp)
+        msg = self.factory(fp)
+        try:
+            msg._mh_msgno = fn
+        except (AttributeError, TypeError):
+            pass
+        return msg
 
 
 class Maildir:
@@ -231,13 +242,13 @@ class Maildir:
     def next(self):
         if not self.boxes:
             return None
-        fn = self.boxes[0]
-        del self.boxes[0]
+        fn = self.boxes.pop(0)
         fp = open(fn)
         return self.factory(fp)
 
 
 class BabylMailbox(_Mailbox):
+
     def _search_start(self):
         while 1:
             line = self.fp.readline()
@@ -263,7 +274,7 @@ def _test():
     args = sys.argv[1:]
     if not args:
         for key in 'MAILDIR', 'MAIL', 'LOGNAME', 'USER':
-            if os.environ.has_key(key):
+            if key in os.environ:
                 mbox = os.environ[key]
                 break
         else:
@@ -274,7 +285,10 @@ def _test():
     if mbox[:1] == '+':
         mbox = os.environ['HOME'] + '/Mail/' + mbox[1:]
     elif not '/' in mbox:
-        mbox = '/usr/mail/' + mbox
+        if os.path.isfile('/var/mail/' + mbox):
+            mbox = '/var/mail/' + mbox
+        else:
+            mbox = '/usr/mail/' + mbox
     if os.path.isdir(mbox):
         if os.path.isdir(os.path.join(mbox, 'cur')):
             mb = Maildir(mbox)
@@ -282,7 +296,7 @@ def _test():
             mb = MHMailbox(mbox)
     else:
         fp = open(mbox, 'r')
-        mb = UnixMailbox(fp)
+        mb = PortableUnixMailbox(fp)
 
     msgs = []
     while 1:

@@ -1,11 +1,11 @@
-#!/usr/local/bin/python
+# -*-mode: python; fill-column: 75; tab-width: 8; coding: iso-latin-1-unix -*-
 # 
-# $Id: OptMenu.py,v 1.1.1.1 2002/02/05 23:23:11 zarzycki Exp $
+# $Id: OptMenu.py,v 1.2 2002/03/17 18:19:13 loewis Exp $
 #
 # Tix Demostration Program
 #
 # This sample program is structured in such a way so that it can be
-# executed from the Tix demo program "tixwidgets": it must have a
+# executed from the Tix demo program "tixwidgets.py": it must have a
 # procedure called "RunSample". It should also have the "if" statment
 # at the end of this file so that it can be run as a standalone
 # program.
@@ -59,7 +59,7 @@ def RunSample(w):
     top.pack(side=Tix.TOP, fill=Tix.BOTH, expand=1)
 
 def ok_command(w):
-    print "Convert file from", demo_opt_from.get(), " to", demo_opt_to.get()
+    # tixDemo:Status "Convert file from %s to %s" % ( demo_opt_from.get(), demo_opt_to.get())
     w.destroy()
 
 if __name__ == '__main__':

@@ -35,19 +35,13 @@ class SymbolTableFactory:
 
 newSymbolTable = SymbolTableFactory()
 
-def bool(x):
-    """Helper to force boolean result to 1 or 0"""
-    if x:
-        return 1
-    return 0
-
 def is_free(flags):
     if (flags & (USE | DEF_FREE)) \
        and (flags & (DEF_LOCAL | DEF_PARAM | DEF_GLOBAL)):
-        return 1
+        return True
     if flags & DEF_FREE_CLASS:
-        return 1
-    return 0
+        return True
+    return False
 
 class SymbolTable:
     def __init__(self, raw_table, filename):
@@ -169,7 +163,7 @@ class Class(SymbolTable):
             d = {}
             for st in self._table.children:
                 d[st.name] = 1
-            self.__methods = tuple(d.keys())
+            self.__methods = tuple(d)
         return self.__methods
 
 class Symbol:
@@ -206,10 +200,10 @@ class Symbol:
     def is_free(self):
         if (self.__flags & (USE | DEF_FREE)) \
             and (self.__flags & (DEF_LOCAL | DEF_PARAM | DEF_GLOBAL)):
-            return 1
+            return True
         if self.__flags & DEF_FREE_CLASS:
-            return 1
-        return 0
+            return True
+        return False
 
     def is_imported(self):
         return bool(self.__flags & DEF_IMPORT)

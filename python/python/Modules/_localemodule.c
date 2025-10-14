@@ -1,5 +1,5 @@
 /***********************************************************
-Copyright (C) 1997 Martin von Loewis
+Copyright (C) 1997, 2002 Martin von Loewis
 
 Permission to use, copy, modify, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
@@ -21,12 +21,20 @@ This software comes with no warranty. Use at your own risk.
 #include <langinfo.h>
 #endif
 
-#if defined(MS_WIN32)
-#define WINDOWS_LEAN_AND_MEAN
+#ifdef HAVE_LIBINTL_H
+#include <libintl.h>
+#endif
+
+#ifdef HAVE_WCHAR_H
+#include <wchar.h>
+#endif
+
+#if defined(MS_WINDOWS)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
 
-#ifdef macintosh
+#if defined(__APPLE__) || defined(__MWERKS__)
 #include "macglue.h"
 #endif
 
@@ -34,15 +42,14 @@ This software comes with no warranty. Use at your own risk.
 char *strdup(const char *);
 #endif
 
-static char locale__doc__[] = "Support for POSIX locales.";
+PyDoc_STRVAR(locale__doc__, "Support for POSIX locales.");
 
 static PyObject *Error;
 
 /* support functions for formatting floating point numbers */
 
-static char setlocale__doc__[] =
-"(integer,string=None) -> string. Activates/queries locale processing."
-;
+PyDoc_STRVAR(setlocale__doc__,
+"(integer,string=None) -> string. Activates/queries locale processing.");
 
 /* to record the LC_NUMERIC settings */
 static PyObject* grouping = NULL;
@@ -154,10 +161,6 @@ fixup_ulcase(void)
     Py_DECREF(ulo);
 }
 
-#if defined(HAVE_LANGINFO_H) && defined(CODESET)
-static int fileencoding_uses_locale = 0;
-#endif
-
 static PyObject*
 PyLocale_setlocale(PyObject* self, PyObject* args)
 {
@@ -178,7 +181,7 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
             return NULL;
         }
         result_object = PyString_FromString(result);
-        if (!result)
+        if (!result_object)
             return NULL;
         /* record changes to LC_NUMERIC */
         if (category == LC_NUMERIC || category == LC_ALL) {
@@ -196,6 +199,8 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
                 thousands_sep = PyString_FromString(lc->thousands_sep);
                 Py_XDECREF(decimal_point);
                 decimal_point = PyString_FromString(lc->decimal_point);
+                if (saved_numeric)
+                    free(saved_numeric);
                 saved_numeric = strdup(locale);
                 /* restore to "C" */
                 setlocale(LC_NUMERIC, "C");
@@ -206,22 +211,6 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
             fixup_ulcase();
         /* things that got wrong up to here are ignored */
         PyErr_Clear();
-#if defined(HAVE_LANGINFO_H) && defined(CODESET)
-	if (Py_FileSystemDefaultEncoding == NULL)
-	    fileencoding_uses_locale = 1;
-	if (fileencoding_uses_locale) {
-	    char *codeset = nl_langinfo(CODESET);
-	    PyObject *enc = NULL;
-	    if (*codeset && (enc = PyCodec_Encoder(codeset))) {
-		/* Release previous file encoding */
-		if (Py_FileSystemDefaultEncoding)
-		    free((char *)Py_FileSystemDefaultEncoding);
-		Py_FileSystemDefaultEncoding = strdup(codeset);
-		Py_DECREF(enc);
-	    } else
-		PyErr_Clear();
-	}
-#endif
     } else {
         /* get locale */
         /* restore LC_NUMERIC first, if appropriate */
@@ -240,19 +229,15 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
     return result_object;
 }
 
-static char localeconv__doc__[] =
-"() -> dict. Returns numeric and monetary locale-specific parameters."
-;
+PyDoc_STRVAR(localeconv__doc__,
+"() -> dict. Returns numeric and monetary locale-specific parameters.");
 
 static PyObject*
-PyLocale_localeconv(PyObject* self, PyObject* args)
+PyLocale_localeconv(PyObject* self)
 {
     PyObject* result;
     struct lconv *l;
     PyObject *x;
-
-    if (!PyArg_NoArgs(args))
-        return NULL;
 
     result = PyDict_New();
     if (!result)
@@ -320,23 +305,84 @@ PyLocale_localeconv(PyObject* self, PyObject* args)
     return NULL;
 }
 
-static char strcoll__doc__[] =
-"string,string -> int. Compares two strings according to the locale."
-;
+PyDoc_STRVAR(strcoll__doc__,
+"string,string -> int. Compares two strings according to the locale.");
 
 static PyObject*
 PyLocale_strcoll(PyObject* self, PyObject* args)
 {
-  char *s1,*s2;
-
-  if (!PyArg_ParseTuple(args, "ss:strcoll", &s1, &s2))
-      return NULL;
-  return PyInt_FromLong(strcoll(s1, s2));
+#if !defined(HAVE_WCSCOLL) || !defined(Py_USING_UNICODE)
+    char *s1,*s2;
+    
+    if (!PyArg_ParseTuple(args, "ss:strcoll", &s1, &s2))
+        return NULL;
+    return PyInt_FromLong(strcoll(s1, s2));
+#else
+    PyObject *os1, *os2, *result = NULL;
+    wchar_t *ws1 = NULL, *ws2 = NULL;
+    int rel1 = 0, rel2 = 0, len1, len2;
+    
+    if (!PyArg_ParseTuple(args, "OO:strcoll", &os1, &os2))
+        return NULL;
+    /* If both arguments are byte strings, use strcoll.  */
+    if (PyString_Check(os1) && PyString_Check(os2))
+        return PyInt_FromLong(strcoll(PyString_AS_STRING(os1),
+                                      PyString_AS_STRING(os2)));
+    /* If neither argument is unicode, it's an error.  */
+    if (!PyUnicode_Check(os1) && !PyUnicode_Check(os2)) {
+        PyErr_SetString(PyExc_ValueError, "strcoll arguments must be strings");
+    }
+    /* Convert the non-unicode argument to unicode. */
+    if (!PyUnicode_Check(os1)) {
+        os1 = PyUnicode_FromObject(os1);
+        if (!os1)
+            return NULL;
+        rel1 = 1;
+    }
+    if (!PyUnicode_Check(os2)) {
+        os2 = PyUnicode_FromObject(os2);
+        if (!os2) {
+            Py_DECREF(os1);
+            return NULL;
+        } 
+        rel2 = 1;
+    }
+    /* Convert the unicode strings to wchar[]. */
+    len1 = PyUnicode_GET_SIZE(os1) + 1;
+    len2 = PyUnicode_GET_SIZE(os2) + 1;
+    ws1 = PyMem_MALLOC(len1 * sizeof(wchar_t));
+    if (!ws1) {
+        PyErr_NoMemory();
+        goto done;
+    }
+    if (PyUnicode_AsWideChar((PyUnicodeObject*)os1, ws1, len1) == -1)
+        goto done;
+    ws2 = PyMem_MALLOC(len2 * sizeof(wchar_t));
+    if (!ws2) {
+        PyErr_NoMemory();
+        goto done;
+    }
+    if (PyUnicode_AsWideChar((PyUnicodeObject*)os2, ws2, len2) == -1)
+        goto done;
+    /* Collate the strings. */
+    result = PyInt_FromLong(wcscoll(ws1, ws2));
+  done:
+    /* Deallocate everything. */
+    if (ws1) PyMem_FREE(ws1);
+    if (ws2) PyMem_FREE(ws2);
+    if (rel1) {
+        Py_DECREF(os1);
+    }
+    if (rel2) {
+        Py_DECREF(os2);
+    }
+    return result;
+#endif
 }
 
-static char strxfrm__doc__[] =
-"string -> string. Returns a string that behaves for cmp locale-aware."
-;
+
+PyDoc_STRVAR(strxfrm__doc__,
+"string -> string. Returns a string that behaves for cmp locale-aware.");
 
 static PyObject*
 PyLocale_strxfrm(PyObject* self, PyObject* args)
@@ -366,15 +412,12 @@ PyLocale_strxfrm(PyObject* self, PyObject* args)
     return result;
 }
 
-#if defined(MS_WIN32)
+#if defined(MS_WINDOWS)
 static PyObject*
-PyLocale_getdefaultlocale(PyObject* self, PyObject* args)
+PyLocale_getdefaultlocale(PyObject* self)
 {
     char encoding[100];
     char locale[100];
-
-    if (!PyArg_NoArgs(args))
-        return NULL;
 
     PyOS_snprintf(encoding, sizeof(encoding), "cp%d", GetACP());
 
@@ -406,55 +449,262 @@ PyLocale_getdefaultlocale(PyObject* self, PyObject* args)
 }
 #endif
 
-#if defined(macintosh)
+#if defined(__APPLE__)
 static PyObject*
-PyLocale_getdefaultlocale(PyObject* self, PyObject* args)
+PyLocale_getdefaultlocale(PyObject* self)
 {
     return Py_BuildValue("Os", Py_None, PyMac_getscript());
 }
 #endif
 
 #ifdef HAVE_LANGINFO_H
-static char nl_langinfo__doc__[] =
+#define LANGINFO(X) {#X, X}
+struct langinfo_constant{
+	char* name;
+	int value;
+} langinfo_constants[] = 
+{
+    /* These constants should exist on any langinfo implementation */
+    LANGINFO(DAY_1),
+    LANGINFO(DAY_2),
+    LANGINFO(DAY_3),
+    LANGINFO(DAY_4),
+    LANGINFO(DAY_5),
+    LANGINFO(DAY_6),
+    LANGINFO(DAY_7),
+
+    LANGINFO(ABDAY_1),
+    LANGINFO(ABDAY_2),
+    LANGINFO(ABDAY_3),
+    LANGINFO(ABDAY_4),
+    LANGINFO(ABDAY_5),
+    LANGINFO(ABDAY_6),
+    LANGINFO(ABDAY_7),
+
+    LANGINFO(MON_1),
+    LANGINFO(MON_2),
+    LANGINFO(MON_3),
+    LANGINFO(MON_4),
+    LANGINFO(MON_5),
+    LANGINFO(MON_6),
+    LANGINFO(MON_7),
+    LANGINFO(MON_8),
+    LANGINFO(MON_9),
+    LANGINFO(MON_10),
+    LANGINFO(MON_11),
+    LANGINFO(MON_12),
+
+    LANGINFO(ABMON_1),
+    LANGINFO(ABMON_2),
+    LANGINFO(ABMON_3),
+    LANGINFO(ABMON_4),
+    LANGINFO(ABMON_5),
+    LANGINFO(ABMON_6),
+    LANGINFO(ABMON_7),
+    LANGINFO(ABMON_8),
+    LANGINFO(ABMON_9),
+    LANGINFO(ABMON_10),
+    LANGINFO(ABMON_11),
+    LANGINFO(ABMON_12),
+
+#ifdef RADIXCHAR
+    /* The following are not available with glibc 2.0 */
+    LANGINFO(RADIXCHAR),
+    LANGINFO(THOUSEP),
+    /* YESSTR and NOSTR are deprecated in glibc, since they are
+       a special case of message translation, which should be rather
+       done using gettext. So we don't expose it to Python in the
+       first place.
+    LANGINFO(YESSTR),
+    LANGINFO(NOSTR),
+    */
+    LANGINFO(CRNCYSTR),
+#endif
+
+    LANGINFO(D_T_FMT),
+    LANGINFO(D_FMT),
+    LANGINFO(T_FMT),
+    LANGINFO(AM_STR),
+    LANGINFO(PM_STR),
+
+    /* The following constants are available only with XPG4, but...
+       AIX 3.2. only has CODESET.
+       OpenBSD doesn't have CODESET but has T_FMT_AMPM, and doesn't have
+       a few of the others.
+       Solution: ifdef-test them all. */
+#ifdef CODESET
+    LANGINFO(CODESET),
+#endif
+#ifdef T_FMT_AMPM
+    LANGINFO(T_FMT_AMPM),
+#endif
+#ifdef ERA
+    LANGINFO(ERA),
+#endif
+#ifdef ERA_D_FMT
+    LANGINFO(ERA_D_FMT),
+#endif
+#ifdef ERA_D_T_FMT
+    LANGINFO(ERA_D_T_FMT),
+#endif
+#ifdef ERA_T_FMT
+    LANGINFO(ERA_T_FMT),
+#endif
+#ifdef ALT_DIGITS
+    LANGINFO(ALT_DIGITS),
+#endif
+#ifdef YESEXPR
+    LANGINFO(YESEXPR),
+#endif
+#ifdef NOEXPR
+    LANGINFO(NOEXPR),
+#endif
+#ifdef _DATE_FMT
+    /* This is not available in all glibc versions that have CODESET. */
+    LANGINFO(_DATE_FMT),
+#endif
+    {0, 0}
+};
+
+PyDoc_STRVAR(nl_langinfo__doc__,
 "nl_langinfo(key) -> string\n"
-"Return the value for the locale information associated with key."
-;
+"Return the value for the locale information associated with key.");
 
 static PyObject*
 PyLocale_nl_langinfo(PyObject* self, PyObject* args)
 {
-    int item;
+    int item, i;
     if (!PyArg_ParseTuple(args, "i:nl_langinfo", &item))
         return NULL;
-    return PyString_FromString(nl_langinfo(item));
+    /* Check whether this is a supported constant. GNU libc sometimes
+       returns numeric values in the char* return value, which would
+       crash PyString_FromString.  */
+    for (i = 0; langinfo_constants[i].name; i++)
+	    if (langinfo_constants[i].value == item)
+		    return PyString_FromString(nl_langinfo(item));
+    PyErr_SetString(PyExc_ValueError, "unsupported langinfo constant");
+    return NULL;
 }
+#endif /* HAVE_LANGINFO_H */
+
+#ifdef HAVE_LIBINTL_H
+
+PyDoc_STRVAR(gettext__doc__,
+"gettext(msg) -> string\n"
+"Return translation of msg.");
+
+static PyObject*
+PyIntl_gettext(PyObject* self, PyObject *args)
+{
+	char *in;
+	if (!PyArg_ParseTuple(args, "z", &in))
+		return 0;
+	return PyString_FromString(gettext(in));
+}
+
+PyDoc_STRVAR(dgettext__doc__,
+"dgettext(domain, msg) -> string\n"
+"Return translation of msg in domain.");
+
+static PyObject*
+PyIntl_dgettext(PyObject* self, PyObject *args)
+{
+	char *domain, *in;
+	if (!PyArg_ParseTuple(args, "zz", &domain, &in))
+		return 0;
+	return PyString_FromString(dgettext(domain, in));
+}
+
+PyDoc_STRVAR(dcgettext__doc__,
+"dcgettext(domain, msg, category) -> string\n"
+"Return translation of msg in domain and category.");
+
+static PyObject*
+PyIntl_dcgettext(PyObject *self, PyObject *args)
+{
+	char *domain, *msgid;
+	int category;
+	if (!PyArg_ParseTuple(args, "zzi", &domain, &msgid, &category))
+		return 0;
+	return PyString_FromString(dcgettext(domain,msgid,category));
+}
+
+PyDoc_STRVAR(textdomain__doc__,
+"textdomain(domain) -> string\n"
+"Set the C library's textdmain to domain, returning the new domain.");
+
+static PyObject*
+PyIntl_textdomain(PyObject* self, PyObject* args)
+{
+	char *domain;
+	if (!PyArg_ParseTuple(args, "z", &domain))
+		return 0;
+	domain = textdomain(domain);
+	if (!domain) {
+		PyErr_SetFromErrno(PyExc_OSError);
+		return NULL;
+	}
+	return PyString_FromString(domain);
+}
+
+PyDoc_STRVAR(bindtextdomain__doc__,
+"bindtextdomain(domain, dir) -> string\n"
+"Bind the C library's domain to dir.");
+
+static PyObject*
+PyIntl_bindtextdomain(PyObject* self,PyObject*args)
+{
+	char *domain,*dirname;
+	if (!PyArg_ParseTuple(args, "zz", &domain, &dirname))
+		return 0;
+	dirname = bindtextdomain(domain, dirname);
+	if (!dirname) {
+		PyErr_SetFromErrno(PyExc_OSError);
+		return NULL;
+	}
+	return PyString_FromString(dirname);
+}
+
 #endif
-    
 
 static struct PyMethodDef PyLocale_Methods[] = {
   {"setlocale", (PyCFunction) PyLocale_setlocale, 
    METH_VARARGS, setlocale__doc__},
   {"localeconv", (PyCFunction) PyLocale_localeconv, 
-   0, localeconv__doc__},
+   METH_NOARGS, localeconv__doc__},
   {"strcoll", (PyCFunction) PyLocale_strcoll, 
    METH_VARARGS, strcoll__doc__},
   {"strxfrm", (PyCFunction) PyLocale_strxfrm, 
    METH_VARARGS, strxfrm__doc__},
-#if defined(MS_WIN32) || defined(macintosh)
-  {"_getdefaultlocale", (PyCFunction) PyLocale_getdefaultlocale, 0},
+#if defined(MS_WINDOWS) || defined(__APPLE__)
+  {"_getdefaultlocale", (PyCFunction) PyLocale_getdefaultlocale, METH_NOARGS},
 #endif
 #ifdef HAVE_LANGINFO_H
   {"nl_langinfo", (PyCFunction) PyLocale_nl_langinfo,
    METH_VARARGS, nl_langinfo__doc__},
 #endif
-  
+#ifdef HAVE_LIBINTL_H
+  {"gettext",(PyCFunction)PyIntl_gettext,METH_VARARGS,
+    gettext__doc__},
+  {"dgettext",(PyCFunction)PyIntl_dgettext,METH_VARARGS,
+   dgettext__doc__},
+  {"dcgettext",(PyCFunction)PyIntl_dcgettext,METH_VARARGS,
+    dcgettext__doc__},
+  {"textdomain",(PyCFunction)PyIntl_textdomain,METH_VARARGS,
+   textdomain__doc__},
+  {"bindtextdomain",(PyCFunction)PyIntl_bindtextdomain,METH_VARARGS,
+   bindtextdomain__doc__},
+#endif  
   {NULL, NULL}
 };
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 init_locale(void)
 {
     PyObject *m, *d, *x;
+#ifdef HAVE_LANGINFO_H
+    int i;
+#endif
 
     m = Py_InitModule("_locale", PyLocale_Methods);
 
@@ -501,86 +751,17 @@ init_locale(void)
     PyDict_SetItemString(d, "__doc__", x);
     Py_XDECREF(x);
 
-#define ADDINT(X) PyModule_AddIntConstant(m, #X, X)
 #ifdef HAVE_LANGINFO_H
-    /* These constants should exist on any langinfo implementation */
-    ADDINT(DAY_1);
-    ADDINT(DAY_2);
-    ADDINT(DAY_3);
-    ADDINT(DAY_4);
-    ADDINT(DAY_5);
-    ADDINT(DAY_6);
-    ADDINT(DAY_7);
-
-    ADDINT(ABDAY_1);
-    ADDINT(ABDAY_2);
-    ADDINT(ABDAY_3);
-    ADDINT(ABDAY_4);
-    ADDINT(ABDAY_5);
-    ADDINT(ABDAY_6);
-    ADDINT(ABDAY_7);
-
-    ADDINT(MON_1);
-    ADDINT(MON_2);
-    ADDINT(MON_3);
-    ADDINT(MON_4);
-    ADDINT(MON_5);
-    ADDINT(MON_6);
-    ADDINT(MON_7);
-    ADDINT(MON_8);
-    ADDINT(MON_9);
-    ADDINT(MON_10);
-    ADDINT(MON_11);
-    ADDINT(MON_12);
-
-    ADDINT(ABMON_1);
-    ADDINT(ABMON_2);
-    ADDINT(ABMON_3);
-    ADDINT(ABMON_4);
-    ADDINT(ABMON_5);
-    ADDINT(ABMON_6);
-    ADDINT(ABMON_7);
-    ADDINT(ABMON_8);
-    ADDINT(ABMON_9);
-    ADDINT(ABMON_10);
-    ADDINT(ABMON_11);
-    ADDINT(ABMON_12);
-
-#ifdef RADIXCHAR
-    /* The following are not available with glibc 2.0 */
-    ADDINT(RADIXCHAR);
-    ADDINT(THOUSEP);
-    /* YESSTR and NOSTR are deprecated in glibc, since they are
-       a special case of message translation, which should be rather
-       done using gettext. So we don't expose it to Python in the
-       first place.
-    ADDINT(YESSTR);
-    ADDINT(NOSTR);
-    */
-    ADDINT(CRNCYSTR);
+    for (i = 0; langinfo_constants[i].name; i++) {
+	    PyModule_AddIntConstant(m, langinfo_constants[i].name,
+				    langinfo_constants[i].value);
+    }
 #endif
-
-    ADDINT(D_T_FMT);
-    ADDINT(D_FMT);
-    ADDINT(T_FMT);
-    ADDINT(AM_STR);
-    ADDINT(PM_STR);
-
-#ifdef CODESET
-    /* The following constants are available only with XPG4. */
-    ADDINT(CODESET);
-    ADDINT(T_FMT_AMPM);
-    ADDINT(ERA);
-    ADDINT(ERA_D_FMT);
-    ADDINT(ERA_D_T_FMT);
-    ADDINT(ERA_T_FMT);
-    ADDINT(ALT_DIGITS);
-    ADDINT(YESEXPR);
-    ADDINT(NOEXPR);
-#endif
-#ifdef _DATE_FMT
-    /* This is not available in all glibc versions that have CODESET. */
-    ADDINT(_DATE_FMT);
-#endif
-#endif /* HAVE_LANGINFO_H */
 }
+
+/* 
+Local variables:
+c-basic-offset: 4
+indent-tabs-mode: nil
+End:
+*/

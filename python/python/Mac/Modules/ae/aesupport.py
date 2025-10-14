@@ -77,11 +77,14 @@ AEEventHandlerUPP = EventHandlerProcPtr
 AlwaysFalse = FakeType("0")
 
 
-AEFunction = OSErrFunctionGenerator
-AEMethod = OSErrMethodGenerator
+AEFunction = OSErrWeakLinkFunctionGenerator
+AEMethod = OSErrWeakLinkMethodGenerator
 
 
 includestuff = includestuff + """
+#ifndef PyDoc_STR
+#define PyDoc_STR(x) (x)
+#endif
 #ifdef WITHOUT_FRAMEWORKS
 #include <AppleEvents.h>
 #include <AEObjects.h>
@@ -94,10 +97,13 @@ extern PyObject *_AEDesc_New(AEDesc *);
 extern int _AEDesc_Convert(PyObject *, AEDesc *);
 
 #define AEDesc_New _AEDesc_New
+#define AEDesc_NewBorrowed _AEDesc_NewBorrowed
 #define AEDesc_Convert _AEDesc_Convert
 #endif
 
-static pascal OSErr GenericEventHandler(); /* Forward */
+typedef long refcontype;
+
+static pascal OSErr GenericEventHandler(const AppleEvent *request, AppleEvent *reply, refcontype refcon); /* Forward */
 
 AEEventHandlerUPP upp_GenericEventHandler;
 
@@ -118,12 +124,6 @@ AEIdleUPP upp_AEIdleProc;
 """
 
 finalstuff = finalstuff + """
-#if UNIVERSAL_INTERFACES_VERSION >= 0x0340
-typedef long refcontype;
-#else
-typedef unsigned long refcontype;
-#endif
-
 static pascal OSErr
 GenericEventHandler(const AppleEvent *request, AppleEvent *reply, refcontype refcon)
 {
@@ -148,69 +148,78 @@ GenericEventHandler(const AppleEvent *request, AppleEvent *reply, refcontype ref
 	replyObject->ob_itself.descriptorType = 'null';
 	replyObject->ob_itself.dataHandle = NULL;
 	Py_DECREF(args);
-	if (res == NULL)
+	if (res == NULL) {
+		PySys_WriteStderr("Exception in AE event handler function\\n");
+		PyErr_Print();
 		return -1;
+	}
 	Py_DECREF(res);
 	return noErr;
 }
+
+PyObject *AEDesc_NewBorrowed(AEDesc *itself)
+{
+	PyObject *it;
+	
+	it = AEDesc_New(itself);
+	if (it)
+		((AEDescObject *)it)->ob_owned = 0;
+	return (PyObject *)it;
+}
+
 """
 
 initstuff = initstuff + """
 	upp_AEIdleProc = NewAEIdleUPP(AEIdleProc);
-#if UNIVERSAL_INTERFACES_VERSION >= 0x03400
-	upp_GenericEventHandler = NewAEEventHandlerUPP(&GenericEventHandler);
-#else
 	upp_GenericEventHandler = NewAEEventHandlerUPP(GenericEventHandler);
-#endif
 	PyMac_INIT_TOOLBOX_OBJECT_NEW(AEDesc *, AEDesc_New);
+	PyMac_INIT_TOOLBOX_OBJECT_NEW(AEDesc *, AEDesc_NewBorrowed);
 	PyMac_INIT_TOOLBOX_OBJECT_CONVERT(AEDesc, AEDesc_Convert);
 """
 
 module = MacModule('_AE', 'AE', includestuff, finalstuff, initstuff)
 
-class AEDescDefinition(GlobalObjectDefinition):
+class AEDescDefinition(PEP253Mixin, GlobalObjectDefinition):
+	getsetlist = [(
+		'type',
+		'return PyMac_BuildOSType(self->ob_itself.descriptorType);',
+		None,
+		'Type of this AEDesc'
+		), (
+		'data',
+		"""
+		PyObject *res;
+		Size size;
+		char *ptr;
+		OSErr err;
+		
+		size = AEGetDescDataSize(&self->ob_itself);
+		if ( (res = PyString_FromStringAndSize(NULL, size)) == NULL )
+			return NULL;
+		if ( (ptr = PyString_AsString(res)) == NULL )
+			return NULL;
+		if ( (err=AEGetDescData(&self->ob_itself, ptr, size)) < 0 )
+			return PyMac_Error(err);	
+		return res;
+		""",
+		None,
+		'The raw data in this AEDesc'
+		)]
 
 	def __init__(self, name, prefix = None, itselftype = None):
 		GlobalObjectDefinition.__init__(self, name, prefix or name, itselftype or name)
 		self.argref = "*"
 
-	def outputFreeIt(self, name):
-		Output("AEDisposeDesc(&%s);", name)
-
-	def outputGetattrHook(self):
-		Output("""
-if (strcmp(name, "type") == 0)
-	return PyMac_BuildOSType(self->ob_itself.descriptorType);
-if (strcmp(name, "data") == 0) {
-	PyObject *res;
-#if !TARGET_API_MAC_CARBON
-	char state;
-	state = HGetState(self->ob_itself.dataHandle);
-	HLock(self->ob_itself.dataHandle);
-	res = PyString_FromStringAndSize(
-		*self->ob_itself.dataHandle,
-		GetHandleSize(self->ob_itself.dataHandle));
-	HUnlock(self->ob_itself.dataHandle);
-	HSetState(self->ob_itself.dataHandle, state);
-#else
-	Size size;
-	char *ptr;
-	OSErr err;
-	
-	size = AEGetDescDataSize(&self->ob_itself);
-	if ( (res = PyString_FromStringAndSize(NULL, size)) == NULL )
-		return NULL;
-	if ( (ptr = PyString_AsString(res)) == NULL )
-		return NULL;
-	if ( (err=AEGetDescData(&self->ob_itself, ptr, size)) < 0 )
-		return PyMac_Error(err);	
-#endif
-	return res;
-}
-if (strcmp(name, "__members__") == 0)
-	return Py_BuildValue("[ss]", "data", "type");
-""")
-
+	def outputStructMembers(self):
+		GlobalObjectDefinition.outputStructMembers(self)
+		Output("int ob_owned;")
+		
+	def outputInitStructMembers(self):
+		GlobalObjectDefinition.outputInitStructMembers(self)
+		Output("it->ob_owned = 1;")
+		
+	def outputCleanupStructMembers(self):
+		Output("if (self->ob_owned) AEDisposeDesc(&self->ob_itself);")
 
 aedescobject = AEDescDefinition('AEDesc')
 module.addobject(aedescobject)
@@ -220,6 +229,20 @@ aedescmethods = []
 
 execfile('aegen.py')
 ##execfile('aedatamodelgen.py')
+
+# Manual generator
+AutoDispose_body = """
+int onoff, old;
+if (!PyArg_ParseTuple(_args, "i", &onoff))
+        return NULL;
+old = _self->ob_owned;
+_self->ob_owned = onoff;
+_res = Py_BuildValue("i", old);
+return _res;
+"""
+f = ManualGenerator("AutoDispose", AutoDispose_body)
+f.docstring = lambda: "(int)->int. Automatically AEDisposeDesc the object on Python object cleanup"
+aedescmethods.append(f)
 
 for f in functions: module.add(f)
 for f in aedescmethods: aedescobject.add(f)

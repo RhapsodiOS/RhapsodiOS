@@ -1,4 +1,4 @@
-.TH PYTHON "1" "$Date: 2002/02/05 23:23:33 $"
+.TH PYTHON "1" "$Date: 2003/05/26 05:15:35 $"
 .SH NAME
 python \- an interpreted, interactive, object-oriented programming language
 .SH SYNOPSIS
@@ -31,9 +31,6 @@ python \- an interpreted, interactive, object-oriented programming language
 ]
 [
 .B \-u
-]
-[
-.B \-U
 ]
 .br
        [
@@ -138,7 +135,12 @@ indentation in a way that makes it depend on the worth of a tab
 expressed in spaces.  Issue an error when the option is given twice.
 .TP
 .B \-u
-Force stdin, stdout and stderr to be totally unbuffered.
+Force stdin, stdout and stderr to be totally unbuffered.  On systems
+where it matters, also put stdin, stdout and stderr in binary mode.
+Note that there is internal buffering in xreadlines(), readlines() and
+file-object iterators ("for line in sys.stdin") which is not
+influenced by this option.  To work around this, you will want to use
+"sys.stdin.readline()" inside a "while 1:" loop.
 .TP
 .B \-v
 Print a message each time a module is initialized, showing the place
@@ -338,7 +340,7 @@ in this file.
 Set this to a non-empty string to cause the \fItime\fP module to
 require dates specified as strings to include 4-digit years, otherwise
 2-digit years are converted based on rules described in the \fItime\fP
-module documnetation.
+module documentation.
 .IP PYTHONOPTIMIZE
 If this is set to a non-empty string it is equivalent to specifying
 the \fB\-O\fP option. If set to an integer, it is equivalent to

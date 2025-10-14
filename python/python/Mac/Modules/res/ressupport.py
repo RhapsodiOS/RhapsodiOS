@@ -5,25 +5,29 @@
 
 from macsupport import *
 
-FSRef_ptr = OpaqueType("FSRef", "PyMac_BuildFSRef", "PyMac_GetFSRef")
-
 class ResMixIn:
 
 	def checkit(self):
-		OutLbrace()
-		Output("OSErr _err = ResError();")
-		Output("if (_err != noErr) return PyMac_Error(_err);")
-		OutRbrace()
+		if self.returntype.__class__ != OSErrType:
+			OutLbrace()
+			Output("OSErr _err = ResError();")
+			Output("if (_err != noErr) return PyMac_Error(_err);")
+			OutRbrace()
 		FunctionGenerator.checkit(self) # XXX
 
-class ResFunction(ResMixIn, FunctionGenerator): pass
-class ResMethod(ResMixIn, MethodGenerator): pass
+class ResFunction(ResMixIn, OSErrWeakLinkFunctionGenerator): pass
+class ResMethod(ResMixIn, OSErrWeakLinkMethodGenerator): pass
 
 RsrcChainLocation = Type("RsrcChainLocation", "h")
+FSCatalogInfoBitmap = FakeType("0") # Type("FSCatalogInfoBitmap", "l")
+FSCatalogInfo_ptr = FakeType("(FSCatalogInfo *)0")
 
 # includestuff etc. are imported from macsupport
 
 includestuff = includestuff + """
+#ifndef PyDoc_STR
+#define PyDoc_STR(x) (x)
+#endif
 #ifdef WITHOUT_FRAMEWORKS
 #include <Resources.h>
 #include <string.h>
@@ -96,51 +100,49 @@ initstuff = initstuff + """
 
 module = MacModule('_Res', 'Res', includestuff, finalstuff, initstuff)
 
-getattrHookCode = """
-if (strcmp(name, "size") == 0)
-	return PyInt_FromLong(GetHandleSize(self->ob_itself));
-if (strcmp(name, "data") == 0) {
-	PyObject *res;
-	char state;
-	state = HGetState(self->ob_itself);
-	HLock(self->ob_itself);
-	res = PyString_FromStringAndSize(
-		*self->ob_itself,
-		GetHandleSize(self->ob_itself));
-	HUnlock(self->ob_itself);
-	HSetState(self->ob_itself, state);
-	return res;
-}
-if (strcmp(name, "__members__") == 0)
-	return Py_BuildValue("[ss]", "data", "size");
-"""
+class ResDefinition(PEP253Mixin, GlobalObjectDefinition):
+	getsetlist = [
+		('data',
+		"""
+		PyObject *res;
+		char state;
 
-setattrCode = """
-static int
-ResObj_setattr(ResourceObject *self, char *name, PyObject *value)
-{
-	char *data;
-	long size;
+		state = HGetState(self->ob_itself);
+		HLock(self->ob_itself);
+		res = PyString_FromStringAndSize(
+			*self->ob_itself,
+			GetHandleSize(self->ob_itself));
+		HUnlock(self->ob_itself);
+		HSetState(self->ob_itself, state);
+		return res;
+		""",
+		"""
+		char *data;
+		long size;
 	
-	if (strcmp(name, "data") != 0 || value == NULL )
-		return -1;
-	if ( !PyString_Check(value) )
-		return -1;
-	size = PyString_Size(value);
-	data = PyString_AsString(value);
-	/* XXXX Do I need the GetState/SetState calls? */
-	SetHandleSize(self->ob_itself, size);
-	if ( MemError())
-		return -1;
-	HLock(self->ob_itself);
-	memcpy((char *)*self->ob_itself, data, size);
-	HUnlock(self->ob_itself);
-	/* XXXX Should I do the Changed call immedeately? */
-	return 0;
-}
-"""
-
-class ResDefinition(GlobalObjectDefinition):
+		if ( v == NULL )
+			return -1;
+		if ( !PyString_Check(v) )
+			return -1;
+		size = PyString_Size(v);
+		data = PyString_AsString(v);
+		/* XXXX Do I need the GetState/SetState calls? */
+		SetHandleSize(self->ob_itself, size);
+		if ( MemError())
+			return -1;
+		HLock(self->ob_itself);
+		memcpy((char *)*self->ob_itself, data, size);
+		HUnlock(self->ob_itself);
+		/* XXXX Should I do the Changed call immedeately? */
+		return 0;
+		""",
+		'The resource data'
+		), (
+		'size',
+		'return PyInt_FromLong(GetHandleSize(self->ob_itself));',
+		None,
+		'The length of the resource data'
+		)]
 
 	def outputCheckNewArg(self):
 		Output("if (itself == NULL) return PyMac_Error(resNotFound);")
@@ -159,12 +161,6 @@ class ResDefinition(GlobalObjectDefinition):
 		Output("PyErr_Clear();")
 		OutRbrace()
 
-	def outputGetattrHook(self):
-		Output(getattrHookCode)
-		
-	def outputSetattr(self):
-		Output(setattrCode)
-
 	def outputStructMembers(self):
 		GlobalObjectDefinition.outputStructMembers(self)
 		Output("void (*ob_freeit)(%s ptr);", self.itselftype)
@@ -180,6 +176,42 @@ class ResDefinition(GlobalObjectDefinition):
 		OutRbrace()
 		Output("self->ob_itself = NULL;")
 
+	def output_tp_newBody(self):
+		Output("PyObject *self;")
+		Output
+		Output("if ((self = type->tp_alloc(type, 0)) == NULL) return NULL;")
+		Output("((%s *)self)->ob_itself = NULL;", self.objecttype)
+		Output("((%s *)self)->ob_freeit = NULL;", self.objecttype)
+		Output("return self;")
+		
+	def output_tp_initBody(self):
+		Output("char *srcdata = NULL;")
+		Output("int srclen = 0;")
+		Output("%s itself;", self.itselftype);
+		Output("char *kw[] = {\"itself\", 0};")
+		Output()
+		Output("if (PyArg_ParseTupleAndKeywords(args, kwds, \"O&\", kw, %s_Convert, &itself))",
+			self.prefix);
+		OutLbrace()
+		Output("((%s *)self)->ob_itself = itself;", self.objecttype)
+		Output("return 0;")
+		OutRbrace()
+		Output("PyErr_Clear();")
+		Output("if (!PyArg_ParseTupleAndKeywords(args, kwds, \"|s#\", kw, &srcdata, &srclen)) return -1;")
+		Output("if ((itself = NewHandle(srclen)) == NULL)")
+		OutLbrace()
+		Output("PyErr_NoMemory();")
+		Output("return 0;")
+		OutRbrace()
+		Output("((%s *)self)->ob_itself = itself;", self.objecttype)
+# XXXX		Output("((%s *)self)->ob_freeit = PyMac_AutoDisposeHandle;")
+		Output("if (srclen && srcdata)")
+		OutLbrace()
+		Output("HLock(itself);")
+		Output("memcpy(*itself, srcdata, srclen);")
+		Output("HUnlock(itself);")
+		OutRbrace()
+		Output("return 0;")
 
 resobject = ResDefinition('Resource', 'ResObj', 'Handle')
 module.addobject(resobject)

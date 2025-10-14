@@ -1,7 +1,7 @@
 # Test suite for SocketServer.py
 
-import test_support
-from test_support import verbose, verify, TESTFN, TestSkipped
+from test import test_support
+from test.test_support import verbose, verify, TESTFN, TestSkipped
 test_support.requires('network')
 
 from SocketServer import *
@@ -124,10 +124,10 @@ def testloop(proto, servers, hdlrcls, testfunc):
         if verbose: print "done"
 
 tcpservers = [TCPServer, ThreadingTCPServer]
-if hasattr(os, 'fork'):
+if hasattr(os, 'fork') and os.name not in ('os2',):
     tcpservers.append(ForkingTCPServer)
 udpservers = [UDPServer, ThreadingUDPServer]
-if hasattr(os, 'fork'):
+if hasattr(os, 'fork') and os.name not in ('os2',):
     udpservers.append(ForkingUDPServer)
 
 if not hasattr(socket, 'AF_UNIX'):

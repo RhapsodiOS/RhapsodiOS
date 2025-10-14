@@ -1,4 +1,4 @@
-from test_support import verify, TestFailed, check_syntax
+from test.test_support import verify, TestFailed, check_syntax
 
 import warnings
 warnings.filterwarnings("ignore", r"import \*", SyntaxWarning, "<string>")
@@ -471,6 +471,10 @@ sys.settrace(tracer)
 adaptgetter("foo", TestClass, (1, ""))
 sys.settrace(None)
 
+try: sys.settrace()
+except TypeError: pass
+else: raise TestFailed, 'sys.settrace() did not raise TypeError'
+
 print "20. eval and exec with free variables"
 
 def f(x):
@@ -508,3 +512,13 @@ try:
     print bad
 except NameError:
     pass
+
+print "22. eval with free variables"
+
+def f(x):
+    def g():
+        x
+        eval("x + 1")
+    return g
+
+f(4)()

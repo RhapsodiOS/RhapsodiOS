@@ -8,6 +8,8 @@ used from a setup script as
    setup (...)
 """
 
-__revision__ = "$Id: __init__.py,v 1.1.1.1 2002/02/05 23:21:18 zarzycki Exp $"
+# This module should be kept compatible with Python 1.5.2.
+
+__revision__ = "$Id: __init__.py,v 1.23 2002/11/19 13:12:26 akuchling Exp $"
 
 __version__ = "1.0.3"

@@ -5,7 +5,7 @@
 #
 #----------------------------------------------------------------------
 
-import test_support
+from test import test_support
 import os, struct, stat, sys
 
 try:
@@ -23,11 +23,11 @@ size = 2500000000L
 name = test_support.TESTFN
 
 
-# On Windows this test comsumes large resources; It takes a long time to build
-# the >2GB file and takes >2GB of disk space therefore the resource must be
-# enabled to run this test.  If not, nothing after this line stanza will be
-# executed.
-if sys.platform[:3] == 'win':
+# On Windows and Mac OSX this test comsumes large resources; It takes
+# a long time to build the >2GB file and takes >2GB of disk space
+# therefore the resource must be enabled to run this test.  If not,
+# nothing after this line stanza will be executed.
+if sys.platform[:3] == 'win' or sys.platform == 'darwin':
     test_support.requires(
         'largefile',
         'test requires %s bytes and a long time to run' % str(size))
@@ -128,20 +128,35 @@ expect(os.lseek(f.fileno(), size, 0), size)
 expect(f.read(1), 'a') # the 'a' that was written at the end of the file above
 f.close()
 
+if hasattr(f, 'truncate'):
+    if test_support.verbose:
+        print 'try truncate'
+    f = open(name, 'r+b')
+    f.seek(0, 2)
+    expect(f.tell(), size+1)    # else we've lost track of the true size
+    # Cut it back via seek + truncate with no argument.
+    newsize = size - 10
+    f.seek(newsize)
+    f.truncate()
+    expect(f.tell(), newsize)   # else pointer moved
+    f.seek(0, 2)
+    expect(f.tell(), newsize)   # else wasn't truncated
+    # Ensure that truncate(smaller than true size) shrinks the file.
+    newsize -= 1
+    f.seek(42)
+    f.truncate(newsize)
+    expect(f.tell(), 42)        # else pointer moved
+    f.seek(0, 2)
+    expect(f.tell(), newsize)   # else wasn't truncated
 
-# XXX add tests for truncate if it exists
-# XXX has truncate ever worked on Windows? specifically on WinNT I get:
-#     "IOError: [Errno 13] Permission denied"
-##try:
-##      newsize = size - 10
-##      f.seek(newsize)
-##      f.truncate()
-##      expect(f.tell(), newsize)
-##      newsize = newsize - 1
-##      f.seek(0)
-##      f.truncate(newsize)
-##      expect(f.tell(), newsize)
-##except AttributeError:
-##      pass
+    # XXX truncate(larger than true size) is ill-defined across platforms
+
+    # cut it waaaaay back
+    f.seek(0)
+    f.truncate(1)
+    expect(f.tell(), 0)         # else pointer moved
+    expect(len(f.read()), 1)    # else wasn't truncated
+
+    f.close()
 
 os.unlink(name)

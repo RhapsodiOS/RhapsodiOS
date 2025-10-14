@@ -1,17 +1,25 @@
-How to install Python 2.2b2 on your Macintosh
----------------------------------------------
+How to install MacPython-OS9 2.3a2 on your Macintosh
+----------------------------------------------------
 
-This is a MacPython that can run on classic MacOS (from 8.1
-onwards) and natively on MacOSX. The installer tries to work out whether you can
-use the Carbon version or not.
+This is a MacPython that can run on Mac OS 8.6 with CarbonLib
+installed, Mac OS 9 and Mac OS X. It is the direct successor of MacPython 2.2.
 
-You should definitely read the Relnotes file too, and the section below about
-toolbox module reorganization. You should also read :Misc:NEWS, which lists
-the general (non-mac-dependent) new features of this Python release.
+For Mac OS X users: you are probably better off with the normal unix distribution
+of Python. That version also runs from the commandline, and if you do a framework
+build it will contain all the functionality of this version too. A prebuilt
+version will be available starting with the beta distributions.
 
-A special note about the active installer: do not background it, it may hang
-your machine. This is a general problem with Vise active installers, MindVision
-are working on it.
+If you are upgrading from a previous MacPython you should read :Misc:NEWS,
+which lists the new features of this Python release. As of this release
+the Mac-specific release notes have been moved to the "Mac" section of
+the general NEWS file.
+
+Two changes since 2.2 deserve special mention:
+- Most Mac-specific modules have moved to :Lib:plat-mac. :Mac:Lib now contains
+  only modules that are not shared with MacPython-OSX 2.3.
+- macfs is now a pure Python wrapper module around various modules in the
+  Carbon package. For 2.3a2 only this wrapping is incomplete: fsspec.SetDates()
+  does not work yet. If you encounter any other problems please report them.
 
 ------
 
@@ -26,90 +34,29 @@ Mac-specific documentation is included in this distribution in folder
 Mac:Demo. The documentation is sparse, but it will have to serve for
 now. The documentation is in HTML format, start with index.html.
 
-This installer installs MacPython for classic PPC MacOS, MacPython for Carbon
-(OS X, OS 9 or OS8 with CarbonLib installed) or both, depending on your
-configuration. By selecting custom install you can bypass these tests and
-install what you want.
+If you want a MacPython that runs on systems without Carbon support (8.1
+up to 8.6 without CarbonLib) you should get MacPython 2.2.2.
 
-If you want 68k support you will have to stay with MacPython 1.5.2.
-
-Toolbox module reorganization and more
---------------------------------------
-
-You can safely skip this section if this is your first encounter with MacPython.
-
-I am working on a new organization of the mac-specific modules, and in
-general bringing the MacPython folder structure more in line with
-unix-Python. This is not only a good idea, it will also immensely
-facilitate moving MacPython functionality to an OSX Python that is based
-on Mach-O and the unix-Python distribution. But don't worry: MacPython
-is definitely not dead yet, and the hope is that the transition will be
-as seamless as possible.
-
-First a change that should not cause too much concern: :Mac:Plugins has
-gone, and most of the dynamically loaded modules have moved to
-:Lib:lib-dynload.
-
-Second, and more important: the toolbox modules, such as Res and
-Resource, have moved to a Carbon package. So, in stead of "import Res"
-you should now say "from Carbon import Res" and in stead of "from Res
-import *" you should use "from Carbon.Res import *". For the lifetime of
-MacPython 2.2 there is a folder :Mac:Lib:lib-compat on sys.path that
-contains modules with the old names which imports the new names after
-issuing a warning.
-
-Note that although the package is called Carbon the modules work fine under
-classic PPC, and they are normal classic modules. Also note that some
-modules you may think of as toolbox modules (such as Waste) really are not,
-and they are not in the Carbon package.
-  
-Another change related to the OSX growth path is that there is a new module
-macresource that you can use to easily open a resource file accompanying your
-script. Use "macresource.need("DLOG", MY_DIALOG_ID, "name.rsrc") and if the
-given resource is not available (it _is_ available if your script has been
-turned into an applet) the given resource file will be opened. This method will
-eventually also contain the magic needed to open the resource file on
-OSX MachO Python.
-
-Another feature to help with the OSX transition is that if you open a
-textfile for reading MacPython will now accept either unix linefeeds
-(LF, '\n') or Macintosh linefeeds (CR, '\r') and present both of them
-as '\n'. This is done on a low level, so it works for files opened by
-scripts as well as for your scripts and modules itself. This can be
-turned off with a preference/startup option.
-
-But:
-- this works only for input, and there's no way to find out what the original
-  linefeed convention of the file was.
-- Windows \r\n linefeeds are not supported and get turned into \n\n.
+If you want 68k support you will have get MacPython 1.5.2.
 
 What to install
 ---------------
 
 The optional parts in this distribution are
-- TK+PIL: Tkinter and support modules, plus Imaging, the Python image
-  manipulation package (allows you to read, write and display images and
-  do lots of operations on them). 
-  For Carbon MacPython you only get PIL: there is no Tcl/Tk for Carbon yet.
-  This is the reason Classic MacPython is also installed on MacOSX: it
-  allows you to run Tkinter applications, albeit in the Classic box.
+- PIL: the Python image manipulation package (allows you to read, write
+  and display images and do lots of operations on them). Tkinter is no
+  longer supported, a working Carbon version is Tk is not available.
 - img: another imaging package. Has more file format support and is faster
   than imaging, but has only limited operations on images. There is a bridge
   between the packages.
 - Numeric: the LLNL Numeric Python extension. All sorts of nifty operations
-  on matrices and such. This is the most recent version from the
-  sourceforge archive.
-  Numeric has moved from Extensions to :Lib:site-python, by the way,
-  see the release notes.
+  on matrices and such. This is version 22.
 - Developers kit: all header files and some tools and sample projects
   to get you started on writing Python extensions if you have CodeWarrior.
 All these except the DevKit are installed with Easy Install.
 
-After the installer finishes it automatically launches the appropriate
-ConfigurePython applet, to finish configuration of your Python. If you
-run MacOS9 or later (or 8 with CarbonLib installed) you can switch
-back and forth between the classic and Carbon versions of Python by
-running either ConfigurePythonClassic or ConfigurePythonCarbon.
+After the installer finishes it automatically launches the
+ConfigurePython applet, to finish configuration of your Python. 
 
 Moving your Python installation after installing is generally not a
 good idea.  If you have to do this anyway you should remove your
@@ -126,13 +73,14 @@ After installing
 ----------------
 
 It is probably a good idea to run the automatic tests. Start
-Python and "import test.regrtest ; test.regrtest.main()". 
+Python and "import test.regrtest ; test.regrtest.main()".
 
-test_frozen will fail in MacPython because of different handling on
-frozen modules. This should not be a problem in normal use.
+On MacOS 8.6 a number of tests will fail because FSRefs are not
+supported.
 
-test_time will fail because MacPython accepts bogus values for
-mktime(), this will be fixed later (it is not a very serious problem).
+test_socket and test_logging fail, this problem is being investigated.
+
+test_tarfile fails, this problem is being investigated.
 
 Three tests will fail on MacOS9 with MemoryErrors:
 test_longexp, test_sha and test_zlib (on MacOSX these should pass).
@@ -156,35 +104,46 @@ If your program uses Tkinter you MUST run it under PythonInterpreter,
 Tkinter and IDE are incompatible and your program will fail in strange
 ways.
 
+OSX Multiple users note
+-----------------------
+
+Interaction with Mac OS X multiple users has been tested only very lightly.
+If you install as a privileged user everything installs fine. 
+
+If you install as a non-privileged user everything should install in your local
+per-user folders. But: as there is no global PythonCore you can only run applets
+if they reside in your toplevel Python folder.
+
+If you install as a privileged user and then try to run
+Python as another (non-privileged) user you may encounter a problem with
+not having a preference file: the symptom is failing to import all sorts
+of standard modules. If you remove your per-user Python preference files
+(in ~/Library/Preferences) and then run PythonInterpreter once everything should
+be fine.
+
 Uninstalling
 ------------
 
-Two items are installed in the system folder: the interpreter shared
-libraries PythonCore and PythonCoreCarbon lives in the Extensions
-folder and the "Python 2.2b2 Preferences" file in the Python subfolder
+Up to three items are installed in the MacOS 8 or 9 system folder: the interpreter
+shared library PythonCore lives in the Extensions
+folder and the "Python 2.3a2 Preferences" file in the Python subfolder
 in the Preferences folder. All the rest of Python lives in the folder
 you installed in.
 
-On OSX the libraries are installed in /Library/CFMSupport. There is a
-nasty bug in OSX that is triggered by Python: if any orphaned aliases
-are left in /Library/CFMSupport your machine will start to behave very
-badly. 2.1 beta installers triggered this problem if you simply threw
-away your Python folder, so if you installed a 2.1beta you should
-clean out the aliases in /Library/CFMSupport too. The final 2.1 and
-2.1.1 installers always copied the shared libraries on OSX, so it does
-not have the problem anymore.
+On OSX the library is installed in /Library/CFMSupport. The ConfigurePython
+applets will complain if you have no right to create the libraries there
+(you need Admin privileges). This has one consequence: you will not be able to
+run applets unless they reside in the MacPython folder (such as the IDE or
+EditPythonPrefs). If you try to run an applet stored elsewhere you will
+get a "Cannot locate PythonCore" error message.
 
 Things to see
 -------------
 
 Start off at Mac:Demo:index.html. Read at least the first few sections.
 
-There are also some interesting files in the "Relnotes" folder that may
-contain useful information. There is also a first stab at documentation
-(plus examples) in the Mac:Demo folder. The toplevel Demo folder has
-machine-independent demos. 
-The Mac:Lib:test folder also has some programs that show simple
-capabilities of various modules.
+There is also a first stab at documentation (plus examples) in the
+Mac:Demo folder. The toplevel Demo folder has machine-independent demos.
 
 The ":Mac:scripts" folder has some sample scripts. Some are useful,
 some are just interesting to look at to see how various things
@@ -211,11 +170,11 @@ this means you can keep your older version around if you are unsure
 whether to upgrade. The bad news is that your old preference settings
 are lost and you have to set them again.
 
-After you are satisfied that 2.2b2 works as expected you can trash
+After you are satisfied that 2.3a2 works as expected you can trash
 anything in the system folder that has "python" in the name and not
-"2.2b2".
+"2.3a2".
 
-The ConfigurePython... applets will try to detect incompatible
+The ConfigurePython applet will try to detect incompatible
 preferences files and offer to remove them. This means that re-running
 ConfigurePython after a second install of the same MacPython version
 (or after moving the Python folder) should fix things up correctly.
@@ -240,14 +199,8 @@ installer (with Installer Vise Lite), and Jack worked from there.
 Thanks!
 -------
 
-Thanks go to the whole Python community with Guido in the lead, of
-course. Mac-specific thanks go to the pythonmac-sig, Just van Rossum,
-Corran Webster, Tony Ingraldi, Erik van Blokland, Bill Bedford, Chris
-Stern, Gordon Worley, Oliver Steele, M. Papillon, Steven Majewski, David
-Goodger, Chris Barker, Luc Lefebvre, Tattoo Mabonzo K., Russell Finn,
-Tom Bridgman, Russel Owen, Pascal Oberndoerfer, Dean Draayer,
-Alexandre Parenteau, Donovan Preston
-and all the other people who provided feedback, code or both!
+As of Python 2.3 the MacPython thanks list has been merged into the
+general acknowledgements, see :Misc:ACKS.
 
 MacPython includes waste, a TextEdit replacement which is (c) 1998
 Marco Piovanelli.
@@ -267,9 +220,9 @@ this purpose.
 
 
 Jack Jansen
-Oratrix Development BV
-Valeriusplein 30
-Amsterdam
+CWI
+Kruislaan 413
+1098 SJ Amsterdam
 the Netherlands
 
 <jack@cwi.nl>, http://www.cwi.nl/~jack

@@ -34,6 +34,12 @@ EventTypeSpec_ptr = OpaqueType("EventTypeSpec", "EventTypeSpec")
 void_ptr = stringptr
 # here are some types that are really other types
 
+class MyVarInputBufferType(VarInputBufferType):
+	def passInput(self, name):
+		return "%s__len__, %s__in__" % (name, name)
+
+MyInBuffer = MyVarInputBufferType('char', 'long', 'l')		# (buf, len)
+
 EventTime = double
 EventTimeout = EventTime
 EventTimerInterval = EventTime
@@ -60,6 +66,11 @@ class EventHandlerRefMethod(OSErrMethodGenerator):
 		Output('PyErr_SetString(CarbonEvents_Error, "Handler has been removed");')
 		Output('return NULL;')
 		OutRbrace()
+
+
+RgnHandle = OpaqueByValueType("RgnHandle", "ResObj")
+GrafPtr = OpaqueByValueType("GrafPtr", "GrafObj")
+MouseTrackingResult = UInt16
 
 
 includestuff = r"""
@@ -204,7 +215,7 @@ module = MacModule('_CarbonEvt', 'CarbonEvents', includestuff, finalstuff, inits
 
 
 
-class EventHandlerRefObjectDefinition(GlobalObjectDefinition):
+class EventHandlerRefObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputStructMembers(self):
 		Output("%s ob_itself;", self.itselftype)
 		Output("PyObject *ob_callback;")
@@ -216,12 +227,15 @@ class EventHandlerRefObjectDefinition(GlobalObjectDefinition):
 		Output("RemoveEventHandler(self->ob_itself);")
 		Output("Py_DECREF(self->ob_callback);")
 		OutRbrace()
+		
+class MyGlobalObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
+	pass
 
 for typ in RefObjectTypes:
 	if typ == 'EventHandlerRef':
 		EventHandlerRefobject = EventHandlerRefObjectDefinition('EventHandlerRef')
 	else:
-		execstr = typ + 'object = GlobalObjectDefinition(typ)'
+		execstr = typ + 'object = MyGlobalObjectDefinition(typ)'
 		exec execstr
 	module.addobject(eval(typ + 'object'))
 
@@ -343,8 +357,8 @@ MPDeleteCriticalRegion(reentrantLock);
 #endif /* USE_MAC_MP_MULTITHREADING */
 
 Py_INCREF(Py_None);
-
-return Py_None;
+_res = Py_None;
+return _res;
 """			
 
 f = ManualGenerator("RunApplicationEventLoop", runappeventloop);

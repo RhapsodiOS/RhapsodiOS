@@ -4,29 +4,26 @@ See RFC 1808: "Relative Uniform Resource Locators", by R. Fielding,
 UC Irvine, June 1995.
 """
 
-__all__ = ["urlparse", "urlunparse", "urljoin"]
+__all__ = ["urlparse", "urlunparse", "urljoin", "urldefrag",
+           "urlsplit", "urlunsplit"]
 
 # A classification of schemes ('' means apply by default)
-uses_relative = ['ftp', 'http', 'gopher', 'nntp', 'wais', 'file',
-                 'https', 'shttp',
-                 'prospero', 'rtsp', 'rtspu', '']
-uses_netloc = ['ftp', 'http', 'gopher', 'nntp', 'telnet', 'wais',
-               'file',
-               'https', 'shttp', 'snews',
-               'prospero', 'rtsp', 'rtspu', '']
-non_hierarchical = ['gopher', 'hdl', 'mailto', 'news', 'telnet', 'wais',
-                    'snews', 'sip',
-                    ]
-uses_params = ['ftp', 'hdl', 'prospero', 'http',
-               'https', 'shttp', 'rtsp', 'rtspu', 'sip',
-               '']
-uses_query = ['http', 'wais',
-              'https', 'shttp',
-              'gopher', 'rtsp', 'rtspu', 'sip',
-              '']
-uses_fragment = ['ftp', 'hdl', 'http', 'gopher', 'news', 'nntp', 'wais',
-                 'https', 'shttp', 'snews',
-                 'file', 'prospero', '']
+uses_relative = ['ftp', 'http', 'gopher', 'nntp', 'imap',
+                               'wais', 'file', 'https', 'shttp', 'mms',
+                               'prospero', 'rtsp', 'rtspu', '']
+uses_netloc = ['ftp', 'http', 'gopher', 'nntp', 'telnet',
+                             'imap', 'wais', 'file', 'mms', 'https', 'shttp',
+                             'snews', 'prospero', 'rtsp', 'rtspu', '']
+non_hierarchical = ['gopher', 'hdl', 'mailto', 'news',
+                                  'telnet', 'wais', 'imap', 'snews', 'sip']
+uses_params = ['ftp', 'hdl', 'prospero', 'http', 'imap',
+                             'https', 'shttp', 'rtsp', 'rtspu', 'sip',
+                             'mms', '']
+uses_query = ['http', 'wais', 'imap', 'https', 'shttp', 'mms',
+                            'gopher', 'rtsp', 'rtspu', 'sip', '']
+uses_fragment = ['ftp', 'hdl', 'http', 'gopher', 'news',
+                               'nntp', 'wais', 'https', 'shttp', 'snews',
+                               'file', 'prospero', '']
 
 # Characters valid in scheme names
 scheme_chars = ('abcdefghijklmnopqrstuvwxyz'
@@ -87,7 +84,9 @@ def urlsplit(url, scheme='', allow_fragments=1):
             if url[:2] == '//':
                 i = url.find('/', 2)
                 if i < 0:
-                    i = len(url)
+                    i = url.find('#')
+                    if i < 0:
+                        i = len(url)
                 netloc = url[2:i]
                 url = url[i:]
             if allow_fragments and '#' in url:
@@ -126,7 +125,7 @@ def urlunparse((scheme, netloc, url, params, query, fragment)):
     return urlunsplit((scheme, netloc, url, query, fragment))
 
 def urlunsplit((scheme, netloc, url, query, fragment)):
-    if netloc or (scheme in uses_netloc and url[:2] == '//'):
+    if netloc or (scheme and scheme in uses_netloc and url[:2] != '//'):
         if url and url[:1] != '/': url = '/' + url
         url = '//' + (netloc or '') + url
     if scheme:
@@ -237,7 +236,6 @@ test_input = """
       http:g?y        = <URL:http://a/b/c/g?y>
       http:g?y/./x    = <URL:http://a/b/c/g?y/./x>
 """
-# XXX The result for //g is actually http://g/; is this a problem?
 
 def test():
     import sys

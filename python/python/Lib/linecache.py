@@ -7,9 +7,8 @@ that name.
 
 import sys
 import os
-from stat import *
 
-__all__ = ["getline","clearcache","checkcache"]
+__all__ = ["getline", "clearcache", "checkcache"]
 
 def getline(filename, lineno):
     lines = getlines(filename)
@@ -35,7 +34,7 @@ def getlines(filename):
     """Get the lines for a file from the cache.
     Update the cache if it doesn't contain an entry for this file already."""
 
-    if cache.has_key(filename):
+    if filename in cache:
         return cache[filename][2]
     else:
         return updatecache(filename)
@@ -52,7 +51,7 @@ def checkcache():
         except os.error:
             del cache[filename]
             continue
-        if size != stat[ST_SIZE] or mtime != stat[ST_MTIME]:
+        if size != stat.st_size or mtime != stat.st_mtime:
             del cache[filename]
 
 
@@ -61,7 +60,7 @@ def updatecache(filename):
     If something's wrong, print a message, discard the cache entry,
     and return an empty list."""
 
-    if cache.has_key(filename):
+    if filename in cache:
         del cache[filename]
     if not filename or filename[0] + filename[-1] == '<>':
         return []
@@ -90,12 +89,12 @@ def updatecache(filename):
 ##          print '*** Cannot stat', filename, ':', msg
             return []
     try:
-        fp = open(fullname, 'r')
+        fp = open(fullname, 'rU')
         lines = fp.readlines()
         fp.close()
     except IOError, msg:
 ##      print '*** Cannot open', fullname, ':', msg
         return []
-    size, mtime = stat[ST_SIZE], stat[ST_MTIME]
+    size, mtime = stat.st_size, stat.st_mtime
     cache[filename] = size, mtime, lines, fullname
     return lines

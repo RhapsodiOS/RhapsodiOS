@@ -135,16 +135,14 @@ instance but a list of such instances.  Similarly, in this situation,
 \samp{form.getvalue(\var{key})} would return a list of strings.
 If you expect this possibility
 (when your HTML form contains multiple fields with the same name), use
-the \function{type()} built-in function to determine whether you
+the \function{isinstance()} built-in function to determine whether you
 have a single instance or a list of instances.  For example, this
 code concatenates any number of username fields, separated by
 commas:
 
 \begin{verbatim}
-from types import ListType
-
 value = form.getvalue("username", "")
-if isinstance(value, ListType):
+if isinstance(value, list):
     # Multiple username fields specified
     usernames = ",".join(value)
 else:
@@ -206,10 +204,8 @@ In the previous section, you learned to write following code anytime
 you expected a user to post more than one value under one name:
 
 \begin{verbatim}
-from types import ListType
-
 item = form.getvalue("item")
-if isinstance(item, ListType):
+if isinstance(item, list):
     # The user is requesting more than one item.
 else:
     # The user is requesting only one item.
@@ -254,10 +250,14 @@ and \method{getlist()} provided by this higher level interface.
   \var{name}.  The method returns only the first value in case that
   more values were posted under such name.  Please note that the order
   in which the values are received may vary from browser to browser
-  and should not be counted on.  If no such form field or value exists
-  then the method returns the value specified by the optional
-  parameter \var{default}.  This parameter defaults to \code{None} if
-  not specified.
+  and should not be counted on.\footnote{Note that some recent
+      versions of the HTML specification do state what order the
+      field values should be supplied in, but knowing whether a
+      request was received from a conforming browser, or even from a
+      browser at all, is tedious and error-prone.}  If no such form
+  field or value exists then the method returns the value specified by
+  the optional parameter \var{default}.  This parameter defaults to
+  \code{None} if not specified.
 \end{methoddesc}
 
 \begin{methoddesc}[FieldStorage]{getlist}{name}
@@ -272,7 +272,7 @@ Using these methods you can write nice compact code:
 \begin{verbatim}
 import cgi
 form = cgi.FieldStorage()
-user = form.getfirst("user").toupper()    # This way it's safe.
+user = form.getfirst("user", "").toupper()    # This way it's safe.
 for item in form.getlist("item"):
     do_something(item)
 \end{verbatim}
@@ -331,6 +331,10 @@ The optional argument \var{strict_parsing} is a flag indicating what
 to do with parsing errors.  If false (the default), errors
 are silently ignored.  If true, errors raise a ValueError
 exception.
+
+Use the \function{\refmodule{urllib}.urlencode()} function to convert
+such dictionaries into query strings.
+
 \end{funcdesc}
 
 \begin{funcdesc}{parse_qsl}{qs\optional{, keep_blank_values\optional{,
@@ -351,6 +355,9 @@ The optional argument \var{strict_parsing} is a flag indicating what
 to do with parsing errors.  If false (the default), errors
 are silently ignored.  If true, errors raise a ValueError
 exception.
+
+Use the \function{\refmodule{urllib}.urlencode()} function to convert
+such lists of pairs into query strings.
 \end{funcdesc}
 
 \begin{funcdesc}{parse_multipart}{fp, pdict}
@@ -404,7 +411,7 @@ HTML-safe sequences.  Use this if you need to display text that might
 contain such characters in HTML.  If the optional flag \var{quote} is
 true, the double-quote character (\character{"}) is also translated;
 this helps for inclusion in an HTML attribute value, as in \code{<A
-HREF="...">}.  If the value to be qouted might include single- or
+HREF="...">}.  If the value to be quoted might include single- or
 double-quote characters, or both, consider using the
 \function{quoteattr()} function in the \refmodule{xml.sax.saxutils}
 module instead.

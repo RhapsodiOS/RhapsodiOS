@@ -2,7 +2,7 @@
 
 # Create a bunch of threads, let each do some work, wait until all are done
 
-from test_support import verbose
+from test.test_support import verbose
 import random
 import thread
 import time
@@ -97,10 +97,14 @@ def task2(ident):
         if verbose:
             print 'task', ident, 'leaving barrier', i
     mutex.acquire()
-    running = running - 1
-    if running == 0:
-        done.release()
+    running -= 1
+    # Must release mutex before releasing done, else the main thread can
+    # exit and set mutex to None as part of global teardown; then
+    # mutex.release() raises AttributeError.
+    finished = running == 0
     mutex.release()
+    if finished:
+        done.release()
 
 print '\n*** Barrier Test ***'
 if done.acquire(0):

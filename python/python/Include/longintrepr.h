@@ -36,18 +36,21 @@ typedef BASE_TWODIGITS_TYPE stwodigits; /* signed variant of twodigits */
    digit) is never zero.  Also, in all cases, for all valid i,
    	0 <= ob_digit[i] <= MASK.
    The allocation function takes care of allocating extra memory
-   so that ob_digit[0] ... ob_digit[abs(ob_size)-1] are actually available. */
+   so that ob_digit[0] ... ob_digit[abs(ob_size)-1] are actually available.
+
+   CAUTION:  Generic code manipulating subtypes of PyVarObject has to
+   aware that longs abuse  ob_size's sign bit.
+*/
 
 struct _longobject {
-	PyObject_HEAD
-	int ob_size;
+	PyObject_VAR_HEAD
 	digit ob_digit[1];
 };
 
-DL_IMPORT(PyLongObject *) _PyLong_New(int);
+PyAPI_FUNC(PyLongObject *) _PyLong_New(int);
 
 /* Return a copy of src. */
-DL_IMPORT(PyObject *) _PyLong_Copy(PyLongObject *src);
+PyAPI_FUNC(PyObject *) _PyLong_Copy(PyLongObject *src);
 
 #ifdef __cplusplus
 }

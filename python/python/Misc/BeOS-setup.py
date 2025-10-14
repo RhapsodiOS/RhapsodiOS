@@ -232,17 +232,13 @@ class PyBuildExt(build_ext):
         # (NIST's Secure Hash Algorithm.)
         exts.append( Extension('sha', ['shamodule.c']) )
 
-        # Tommy Burnette's 'new' module (creates new empty objects of certain
-        # kinds):
-        exts.append( Extension('new', ['newmodule.c']) )
-
         # Helper module for various ascii-encoders
         exts.append( Extension('binascii', ['binascii.c']) )
 
         # Fred Drake's interface to the Python parser
         exts.append( Extension('parser', ['parsermodule.c']) )
 
-        # Digital Creations' cStringIO and cPickle
+        # cStringIO and cPickle
         exts.append( Extension('cStringIO', ['cStringIO.c']) )
         exts.append( Extension('cPickle', ['cPickle.c']) )
 

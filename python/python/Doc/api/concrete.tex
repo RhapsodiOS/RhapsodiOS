@@ -36,12 +36,27 @@ This section describes Python type objects and the singleton object
 \end{cvardesc}
 
 \begin{cfuncdesc}{int}{PyType_Check}{PyObject *o}
-  Returns true is the object \var{o} is a type object.
+  Returns true if the object \var{o} is a type object, including
+  instances of types derived from the standard type object.  Returns
+  false in all other cases.
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{int}{PyType_CheckExact}{PyObject *o}
+  Returns true if the object \var{o} is a type object, but not a
+  subtype of the standard type object.  Returns false in all other
+  cases.
+  \versionadded{2.2}
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyType_HasFeature}{PyObject *o, int feature}
   Returns true if the type object \var{o} sets the feature
   \var{feature}.  Type features are denoted by single bit flags.
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{int}{PyType_IS_GC}{PyObject *o}
+  Return true if the type object includes support for the cycle
+  detector; this tests the type flag \constant{Py_TPFLAGS_HAVE_GC}.
+  \versionadded{2.0}
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyType_IsSubtype}{PyTypeObject *a, PyTypeObject *b}
@@ -60,6 +75,10 @@ This section describes Python type objects and the singleton object
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyType_Ready}{PyTypeObject *type}
+  Finalize a type object.  This should be called on all type objects
+  to finish their initialization.  This function is responsible for
+  adding inherited slots from a type's base class.  Returns \code{0}
+  on success, or returns \code{-1} and sets an exception on error.
   \versionadded{2.2}
 \end{cfuncdesc}
 
@@ -74,7 +93,8 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
 
 \begin{cvardesc}{PyObject*}{Py_None}
   The Python \code{None} object, denoting lack of value.  This object
-  has no methods.
+  has no methods.  It needs to be treated just like any other object
+  with respect to reference counts.
 \end{cvardesc}
 
 
@@ -109,6 +129,25 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
   \versionadded{2.2}
 \end{cfuncdesc}
 
+\begin{cfuncdesc}{PyObject*}{PyInt_FromString}{char *str, char **pend,
+                                               int base}
+  Return a new \ctype{PyIntObject} or \ctype{PyLongObject} based on the
+  string value in \var{str}, which is interpreted according to the radix in
+  \var{base}.  If \var{pend} is non-\NULL, \code{*\var{pend}} will point to
+  the first character in \var{str} which follows the representation of the
+  number.  If \var{base} is \code{0}, the radix will be determined based on
+  the leading characters of \var{str}: if \var{str} starts with \code{'0x'}
+  or \code{'0X'}, radix 16 will be used; if \var{str} starts with
+  \code{'0'}, radix 8 will be used; otherwise radix 10 will be used.  If
+  \var{base} is not \code{0}, it must be between \code{2} and \code{36},
+  inclusive.  Leading spaces are ignored.  If there are no digits,
+  \exception{ValueError} will be raised.  If the string represents a number
+  too large to be contained within the machine's \ctype{long int} type and
+  overflow warnings are being suppressed, a \ctype{PyLongObject} will be
+  returned.  If overflow warnings are not being suppressed, \NULL{} will be
+  returned in this case.
+\end{cfuncdesc}
+
 \begin{cfuncdesc}{PyObject*}{PyInt_FromLong}{long ival}
   Creates a new integer object with a value of \var{ival}.
 
@@ -127,6 +166,20 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
 \begin{cfuncdesc}{long}{PyInt_AS_LONG}{PyObject *io}
   Returns the value of the object \var{io}.  No error checking is
   performed.
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{unsigned long}{PyInt_AsUnsignedLongMask}{PyObject *io}
+  Will first attempt to cast the object to a \ctype{PyIntObject} or
+  \ctype{PyLongObject}, if it is not already one, and then return its
+  value as unsigned long.  This function does not check for overflow.
+  \versionadded{2.3}
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{unsigned long}{PyInt_AsUnsignedLongLongMask}{PyObject *io}
+  Will first attempt to cast the object to a \ctype{PyIntObject} or
+  \ctype{PyLongObject}, if it is not already one, and then return its
+  value as unsigned long long, without checking for overflow.
+  \versionadded{2.3}
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{long}{PyInt_GetMax}{}
@@ -194,7 +247,7 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
   \var{base}.  If \var{pend} is non-\NULL, \code{*\var{pend}} will
   point to the first character in \var{str} which follows the
   representation of the number.  If \var{base} is \code{0}, the radix
-  will be determined base on the leading characters of \var{str}: if
+  will be determined based on the leading characters of \var{str}: if
   \var{str} starts with \code{'0x'} or \code{'0X'}, radix 16 will be
   used; if \var{str} starts with \code{'0'}, radix 8 will be used;
   otherwise radix 10 will be used.  If \var{base} is not \code{0}, it
@@ -254,6 +307,18 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
   \versionadded{2.2}
 \end{cfuncdesc}
 
+\begin{cfuncdesc}{unsigned long}{PyLong_AsUnsignedLongMask}{PyObject *io}
+  Return a C \ctype{unsigned long} from a Python long integer, without
+  checking for overflow.
+  \versionadded{2.3}
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{unsigned long}{PyLong_AsUnsignedLongLongMask}{PyObject *io}
+  Return a C \ctype{unsigned long long} from a Python long integer, without
+  checking for overflow.
+  \versionadded{2.3}
+\end{cfuncdesc}
+
 \begin{cfuncdesc}{double}{PyLong_AsDouble}{PyObject *pylong}
   Returns a C \ctype{double} representation of the contents of
   \var{pylong}.  If \var{pylong} cannot be approximately represented
@@ -295,6 +360,12 @@ There is no \cfunction{PyNone_Check()} function for the same reason.
   Returns true if its argument is a \ctype{PyFloatObject}, but not a
   subtype of \ctype{PyFloatObject}.
   \versionadded{2.2}
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{PyObject*}{PyFloat_FromString}{PyObject *str, char **pend}
+  Creates a \ctype{PyFloatObject} object based on the string value in
+  \var{str}, or \NULL{} on failure.  The \var{pend} argument is ignored.  It
+  remains only for backward compatibility.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{PyObject*}{PyFloat_FromDouble}{double v}
@@ -513,36 +584,45 @@ parameter and are called with a non-string parameter.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{char*}{PyString_AsString}{PyObject *string}
-  Returns a null-terminated representation of the contents of
+  Returns a NUL-terminated representation of the contents of
   \var{string}.  The pointer refers to the internal buffer of
   \var{string}, not a copy.  The data must not be modified in any way,
   unless the string was just created using
   \code{PyString_FromStringAndSize(NULL, \var{size})}.
-  It must not be deallocated.
+  It must not be deallocated.  If \var{string} is a Unicode object,
+  this function computes the default encoding of \var{string} and
+  operates on that.  If \var{string} is not a string object at all,
+  \cfunction{PyString_AsString()} returns \NULL{} and raises
+  \exception{TypeError}.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{char*}{PyString_AS_STRING}{PyObject *string}
   Macro form of \cfunction{PyString_AsString()} but without error
-  checking.
+  checking.  Only string objects are supported; no Unicode objects
+  should be passed.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyString_AsStringAndSize}{PyObject *obj,
                                                  char **buffer,
                                                  int *length}
-  Returns a null-terminated representation of the contents of the
+  Returns a NUL-terminated representation of the contents of the
   object \var{obj} through the output variables \var{buffer} and
   \var{length}.
 
   The function accepts both string and Unicode objects as input. For
   Unicode objects it returns the default encoded version of the
-  object.  If \var{length} is set to \NULL, the resulting buffer may
-  not contain null characters; if it does, the function returns -1 and
-  a \exception{TypeError} is raised.
+  object.  If \var{length} is \NULL, the resulting buffer may not
+  contain NUL characters; if it does, the function returns \code{-1}
+  and a \exception{TypeError} is raised.
 
   The buffer refers to an internal string buffer of \var{obj}, not a
   copy. The data must not be modified in any way, unless the string
   was just created using \code{PyString_FromStringAndSize(NULL,
-  \var{size})}.  It must not be deallocated.
+  \var{size})}.  It must not be deallocated.  If \var{string} is a
+  Unicode object, this function computes the default encoding of
+  \var{string} and operates on that.  If \var{string} is not a string
+  object at all, \cfunction{PyString_AsString()} returns \NULL{} and
+  raises \exception{TypeError}.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{void}{PyString_Concat}{PyObject **string,
@@ -566,7 +646,16 @@ parameter and are called with a non-string parameter.
 \begin{cfuncdesc}{int}{_PyString_Resize}{PyObject **string, int newsize}
   A way to resize a string object even though it is ``immutable''.
   Only use this to build up a brand new string object; don't use this
-  if the string may already be known in other parts of the code.
+  if the string may already be known in other parts of the code.  It
+  is an error to call this function if the refcount on the input string
+  object is not one.
+  Pass the address of an existing string object as an lvalue (it may
+  be written into), and the new size desired.  On success, \var{*string}
+  holds the resized string object and \code{0} is returned; the address in
+  \var{*string} may differ from its input value.  If the
+  reallocation fails, the original string object at \var{*string} is
+  deallocated, \var{*string} is set to \NULL{}, a memory exception is set,
+  and \code{-1} is returned.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{PyObject*}{PyString_Format}{PyObject *format,
@@ -855,16 +944,16 @@ following functions. Support is optimized if Python's own
 
 \begin{cfuncdesc}{PyObject*}{PyUnicode_FromWideChar}{const wchar_t *w,
                                                      int size}
-  Create a Unicode object from the \ctype{whcar_t} buffer \var{w} of
+  Create a Unicode object from the \ctype{wchar_t} buffer \var{w} of
   the given size.  Returns \NULL{} on failure.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyUnicode_AsWideChar}{PyUnicodeObject *unicode,
                                              wchar_t *w,
                                              int size}
-  Copies the Unicode object contents into the \ctype{whcar_t} buffer
-  \var{w}.  At most \var{size} \ctype{whcar_t} characters are copied.
-  Returns the number of \ctype{whcar_t} characters copied or -1 in
+  Copies the Unicode object contents into the \ctype{wchar_t} buffer
+  \var{w}.  At most \var{size} \ctype{wchar_t} characters are copied.
+  Returns the number of \ctype{wchar_t} characters copied or -1 in
   case of an error.
 \end{cfuncdesc}
 
@@ -1256,10 +1345,11 @@ They all return \NULL{} or \code{-1} if an exception occurs.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{PyObject*}{PyUnicode_Splitlines}{PyObject *s,
-                                                   int maxsplit}
+                                                   int keepend}
   Split a Unicode string at line breaks, returning a list of Unicode
-  strings.  CRLF is considered to be one line break.  The Line break
-  characters are not included in the resulting strings.
+  strings.  CRLF is considered to be one line break.  If \var{keepend}
+  is 0, the Line break characters are not included in the resulting
+  strings.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{PyObject*}{PyUnicode_Translate}{PyObject *str,
@@ -1296,23 +1386,27 @@ They all return \NULL{} or \code{-1} if an exception occurs.
   match, \var{direction} == 1 a suffix match), 0 otherwise.
 \end{cfuncdesc}
 
-\begin{cfuncdesc}{PyObject*}{PyUnicode_Find}{PyObject *str,
-                                                  PyObject *substr,
-                                                  int start,
-                                                  int end,
-                                                  int direction}
+\begin{cfuncdesc}{int}{PyUnicode_Find}{PyObject *str,
+                                       PyObject *substr,
+                                       int start,
+                                       int end,
+                                       int direction}
   Return the first position of \var{substr} in
   \var{str}[\var{start}:\var{end}] using the given \var{direction}
   (\var{direction} == 1 means to do a forward search,
-  \var{direction} == -1 a backward search), 0 otherwise.
+  \var{direction} == -1 a backward search).  The return value is the
+  index of the first match; a value of \code{-1} indicates that no
+  match was found, and \code{-2} indicates that an error occurred and
+  an exception has been set.
 \end{cfuncdesc}
 
-\begin{cfuncdesc}{PyObject*}{PyUnicode_Count}{PyObject *str,
-                                                  PyObject *substr,
-                                                  int start,
-                                                  int end}
-  Count the number of occurrences of \var{substr} in
-  \var{str}[\var{start}:\var{end}]
+\begin{cfuncdesc}{int}{PyUnicode_Count}{PyObject *str,
+                                        PyObject *substr,
+                                        int start,
+                                        int end}
+  Return the number of non-overlapping occurrences of \var{substr} in
+  \code{\var{str}[\var{start}:\var{end}]}.  Returns \code{-1} if an
+  error occurred.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{PyObject*}{PyUnicode_Replace}{PyObject *str,
@@ -1727,7 +1821,7 @@ format.
 \begin{cfuncdesc}{int}{PyDict_DelItem}{PyObject *p, PyObject *key}
   Removes the entry in dictionary \var{p} with key \var{key}.
   \var{key} must be hashable; if it isn't, \exception{TypeError} is
-  raised.
+  raised.  Returns \code{0} on success or \code{-1} on failure.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyDict_DelItemString}{PyObject *p, char *key}
@@ -1779,7 +1873,8 @@ format.
   dictionary, and false once all pairs have been reported.  The
   parameters \var{pkey} and \var{pvalue} should either point to
   \ctype{PyObject*} variables that will be filled in with each key and
-  value, respectively, or may be \NULL.
+  value, respectively, or may be \NULL.  Any references returned through
+  them are borrowed.
 
   For example:
 
@@ -1932,6 +2027,12 @@ implementation detail and may change in future releases of Python.
   Available on systems with \cfunction{setvbuf()}\ttindex{setvbuf()}
   only.  This should only be called immediately after file object
   creation.
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{int}{PyFile_Encoding}{PyFileObject *p, char *enc}
+  Set the file's encoding for Unicode output to \var{enc}. Return
+  1 on success and 0 on failure.
+  \versionadded{2.3}
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{int}{PyFile_SoftSpace}{PyObject *p, int newflag}
@@ -2090,6 +2191,9 @@ There are only a few functions special to module objects.
   namespace; this object is the same as the \member{__dict__}
   attribute of the module object.  This function never fails.
   \withsubitem{(module attribute)}{\ttindex{__dict__}}
+  It is recommended extensions use other \cfunction{PyModule_*()}
+  and \cfunction{PyObject_*()} functions rather than directly
+  manipulate a module's \member{__dict__}.
 \end{cfuncdesc}
 
 \begin{cfuncdesc}{char*}{PyModule_GetName}{PyObject *module}
@@ -2255,6 +2359,32 @@ They are found in the dictionary of type objects.
 
 \begin{cfuncdesc}{int}{PySlice_GetIndices}{PySliceObject *slice, int length,
                                            int *start, int *stop, int *step}
+Retrieve the start, stop and step indices from the slice object
+\var{slice}, assuming a sequence of length \var{length}. Treats
+indices greater than \var{length} as errors.
+
+Returns 0 on success and -1 on error with no exception set (unless one
+of the indices was not \constant{None} and failed to be converted to
+an integer, in which case -1 is returned with an exception set).
+
+You probably do not want to use this function.  If you want to use
+slice objects in versions of Python prior to 2.3, you would probably
+do well to incorporate the source of \cfunction{PySlice_GetIndicesEx},
+suitably renamed, in the source of your extension.
+\end{cfuncdesc}
+
+\begin{cfuncdesc}{int}{PySlice_GetIndicesEx}{PySliceObject *slice, int length,
+                                             int *start, int *stop, int *step, 
+                                             int *slicelength}
+Usable replacement for \cfunction{PySlice_GetIndices}.  Retrieve the
+start, stop, and step indices from the slice object \var{slice}
+assuming a sequence of length \var{length}, and store the length of
+the slice in \var{slicelength}.  Out of bounds indices are clipped in
+a manner consistent with the handling of normal slices.
+
+Returns 0 on success and -1 on error with exception set.
+
+\versionadded{2.3}
 \end{cfuncdesc}
 
 
@@ -2312,7 +2442,7 @@ acts as a proxy for the original object as much as it can.
 
 \begin{cfuncdesc}{PyObject*}{PyWeakref_GetObject}{PyObject *ref}
   Returns the referenced object from a weak reference, \var{ref}.  If
-  the referent is no longer live, returns \NULL.
+  the referent is no longer live, returns \code{None}.
   \versionadded{2.2}
 \end{cfuncdesc}
 

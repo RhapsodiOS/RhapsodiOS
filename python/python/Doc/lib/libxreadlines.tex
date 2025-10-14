@@ -6,6 +6,7 @@
 
 \versionadded{2.1}
 
+\deprecated{2.3}{Use \code{for line in file} instead.}
 
 This module defines a new object type which can efficiently iterate
 over the lines of a file.  An xreadlines object is a sequence type
@@ -38,7 +39,9 @@ former case.
 \begin{funcdesc}{xreadlines}{fileobj}
   Return a new xreadlines object which will iterate over the contents
   of \var{fileobj}.  \var{fileobj} must have a \method{readlines()}
-  method that supports the \var{sizehint} parameter.
+  method that supports the \var{sizehint} parameter.  \note{Because
+  the \method{readlines()} method buffers data, this effectively
+  ignores the effects of setting the file object as unbuffered.}
 \end{funcdesc}
 
 An xreadlines object \var{s} supports the following sequence

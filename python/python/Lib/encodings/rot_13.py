@@ -1,4 +1,4 @@
-#!/usr/local/bin/python2.1
+#!/usr/bin/env python
 """ Python Character Mapping Codec for ROT13.
 
     See http://ucsub.colorado.edu/~kominek/rot13/ for details.
@@ -16,14 +16,14 @@ class Codec(codecs.Codec):
     def encode(self,input,errors='strict'):
 
         return codecs.charmap_encode(input,errors,encoding_map)
-        
+
     def decode(self,input,errors='strict'):
 
         return codecs.charmap_decode(input,errors,decoding_map)
 
 class StreamWriter(Codec,codecs.StreamWriter):
     pass
-        
+
 class StreamReader(Codec,codecs.StreamReader):
     pass
 

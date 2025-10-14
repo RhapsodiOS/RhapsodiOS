@@ -51,6 +51,12 @@ operations to control debugging.
 Return the debugging flags currently set.
 \end{funcdesc}
 
+\begin{funcdesc}{get_objects}{}
+Returns a list of all objects tracked by the collector, excluding the
+list returned.
+\versionadded{2.2}
+\end{funcdesc}
+
 \begin{funcdesc}{set_threshold}{threshold0\optional{,
                                 threshold1\optional{, threshold2}}}
 Set the garbage collection thresholds (the collection frequency).
@@ -83,7 +89,27 @@ Return the list of objects that directly refer to any of objs. This
 function will only locate those containers which support garbage
 collection; extension types which do refer to other objects but do not
 support garbage collection will not be found.
+
+Note that objects which have already been dereferenced, but which live
+in cycles and have not yet been collected by the garbage collector can
+be listed among the resulting referrers.  To get only currently live
+objects, call \function{collect()} before calling
+\function{get_referrers()}.
+
 \versionadded{2.2}
+\end{funcdesc}
+
+\begin{funcdesc}{get_referents}{*objs}
+Return a list of objects directly referred to by any of the arguments.
+The referents returned are those objects visited by the arguments'
+C-level \member{tp_traverse} methods (if any), and may not be all
+objects actually directly reachable.  \member{tp_traverse} methods
+are supported only by objects that support garbage collection, and are
+only required to visit objects that may be involved in a cycle.  So,
+for example, if an integer is directly reachable from an argument, that
+integer object may or may not appear in the result list.
+
+\versionadded{2.3}
 \end{funcdesc}
 
 The following variable is provided for read-only access (you can

@@ -7,17 +7,17 @@ extern "C" {
 #endif
 
 typedef struct {
-	PyObject_VAR_HEAD
+	PyObject_HEAD
 	PyObject *ob_ref;
 } PyCellObject;
 
-extern DL_IMPORT(PyTypeObject) PyCell_Type;
+PyAPI_DATA(PyTypeObject) PyCell_Type;
 
 #define PyCell_Check(op) ((op)->ob_type == &PyCell_Type)
 
-extern DL_IMPORT(PyObject *) PyCell_New(PyObject *);
-extern DL_IMPORT(PyObject *) PyCell_Get(PyObject *);
-extern DL_IMPORT(int) PyCell_Set(PyObject *, PyObject *);
+PyAPI_FUNC(PyObject *) PyCell_New(PyObject *);
+PyAPI_FUNC(PyObject *) PyCell_Get(PyObject *);
+PyAPI_FUNC(int) PyCell_Set(PyObject *, PyObject *);
 
 #define PyCell_GET(op) (((PyCellObject *)(op))->ob_ref)
 #define PyCell_SET(op, v) (((PyCellObject *)(op))->ob_ref = v)

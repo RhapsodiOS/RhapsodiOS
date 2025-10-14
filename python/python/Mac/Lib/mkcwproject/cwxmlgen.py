@@ -39,7 +39,7 @@ class ProjectBuilder:
 		self.dict = dict
 		if not dict.has_key('prefixname'):
 			if hasattr(MacOS, 'runtimemodel') and MacOS.runtimemodel == "carbon":
-				dict['prefixname'] = 'mwerks_carbonplugin_config.h'
+				dict['prefixname'] = 'mwerks_shcarbon_pch'
 			else:
 				dict['prefixname'] = 'mwerks_plugin_config.h'
 		self.templatelist = templatelist
@@ -53,6 +53,8 @@ class ProjectBuilder:
 			dict['stdlibraryflags'] = 'Debug'
 		if not dict.has_key('libraryflags'):
 			dict['libraryflags'] = 'Debug'
+		if not dict.has_key('initialize'):
+			dict['initialize'] = '__initialize'
 		if not dict.has_key('mac_sysprefixtype'):
 			if os.path.isabs(dict['sysprefix']):
 				dict['mac_sysprefixtype'] = 'Absolute'

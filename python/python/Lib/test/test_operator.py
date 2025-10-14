@@ -1,7 +1,7 @@
 import operator
 import unittest
 
-import test_support
+from test import test_support
 
 
 class OperatorTestCase(unittest.TestCase):
@@ -161,6 +161,12 @@ class OperatorTestCase(unittest.TestCase):
         self.failUnless(operator.pos(0) == 0)
         self.failUnless(operator.pos(-0) == 0)
 
+    def test_pow(self):
+        self.failUnless(operator.pow(3,5) == 3**5)
+        self.failUnless(operator.__pow__(3,5) == 3**5)
+        self.assertRaises(TypeError, operator.pow, 1)
+        self.assertRaises(TypeError, operator.pow, 1, 2, 3)
+
     def test_repeat(self):
         a = range(3)
         self.failUnless(operator.repeat(a, 2) == a+a)
@@ -209,6 +215,17 @@ class OperatorTestCase(unittest.TestCase):
     def test_bitwise_xor(self):
         self.failUnless(operator.xor(0xb, 0xc) == 0x7)
 
+    def test_is(self):
+        a = b = 'xyzpdq'
+        c = a[:3] + b[3:]
+        self.failUnless(operator.is_(a, b))
+        self.failIf(operator.is_(a,c))
+
+    def test_is_not(self):
+        a = b = 'xyzpdq'
+        c = a[:3] + b[3:]
+        self.failIf(operator.is_not(a, b))
+        self.failUnless(operator.is_not(a,c))
 
 def test_main():
     test_support.run_unittest(OperatorTestCase)

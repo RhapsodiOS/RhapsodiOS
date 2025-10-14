@@ -3,8 +3,8 @@
 
 \declaremodule{standard}{locale}
 \modulesynopsis{Internationalization services.}
-\moduleauthor{Martin von L\"owis}{loewis@informatik.hu-berlin.de}
-\sectionauthor{Martin von L\"owis}{loewis@informatik.hu-berlin.de}
+\moduleauthor{Martin von L\"owis}{martin@v.loewis.de}
+\sectionauthor{Martin von L\"owis}{martin@v.loewis.de}
 
 
 The \module{locale} module opens access to the \POSIX{} locale
@@ -145,14 +145,28 @@ for which symbolic constants are available in the locale module.
 
 \begin{funcdesc}{getlocale}{\optional{category}}
   Returns the current setting for the given locale category as
-  tuple (language code, encoding).  \var{category} may be one of the
-  \constant{LC_*} values except \constant{LC_ALL}.  It defaults to
-  \constant{LC_CTYPE}.
+  sequence containing \var{language code}, \var{encoding}.
+  \var{category} may be one of the \constant{LC_*} values except
+  \constant{LC_ALL}.  It defaults to \constant{LC_CTYPE}.
 
   Except for the code \code{'C'}, the language code corresponds to
   \rfc{1766}.  \var{language code} and \var{encoding} may be
   \code{None} if their values cannot be determined.
   \versionadded{2.0}
+\end{funcdesc}
+
+\begin{funcdesc}{getpreferredencoding}{\optional{do_setlocale}}
+  Return the encoding used for text data, according to user
+  preferences.  User preferences are expressed differently on
+  different systems, and might not be available programmatically on
+  some systems, so this function only returns a guess.
+
+  On some systems, it is necessary to invoke \function{setlocale}
+  to obtain the user preferences, so this function is not thread-safe.
+  If invoking setlocale is not necessary or desired, \var{do_setlocale}
+  should be set to \code{False}.
+
+  \versionadded{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{normalize}{localename}
@@ -412,8 +426,8 @@ threads that happen to run before the settings have been restored.
 
 If, when coding a module for general use, you need a locale
 independent version of an operation that is affected by the locale
-(e.g. \function{string.lower()}, or certain formats used with
-\function{time.strftime()})), you will have to find a way to do it
+(such as \function{string.lower()}, or certain formats used with
+\function{time.strftime()}), you will have to find a way to do it
 without using the standard library routine.  Even better is convincing
 yourself that using locale settings is okay.  Only as a last resort
 should you document that your module is not compatible with
@@ -467,3 +481,22 @@ application doesn't want this to happen, it should remove the
 \module{_locale} extension module (which does all the work) from the
 table of built-in modules in the \file{config.c} file, and make sure
 that the \module{_locale} module is not accessible as a shared library.
+
+
+\subsection{Access to message catalogs \label{locale-gettext}}
+
+The locale module exposes the C library's gettext interface on systems
+that provide this interface.  It consists of the functions
+\function{gettext()}, \function{dgettext()}, \function{dcgettext()},
+\function{textdomain()}, and \function{bindtextdomain()}.  These are
+similar to the same functions in the \refmodule{gettext} module, but use
+the C library's binary format for message catalogs, and the C
+library's search algorithms for locating message catalogs. 
+
+Python applications should normally find no need to invoke these
+functions, and should use \refmodule{gettext} instead.  A known
+exception to this rule are applications that link use additional C
+libraries which internally invoke \cfunction{gettext()} or
+\function{cdgettext()}.  For these applications, it may be necessary to
+bind the text domain, so that the libraries can properly locate their
+message catalogs.

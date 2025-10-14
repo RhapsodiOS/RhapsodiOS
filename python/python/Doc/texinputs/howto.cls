@@ -11,7 +11,7 @@
 % Change the options here to get a different set of basic options,  This
 % is where to add things like "a4paper" or "10pt".
 %
-\LoadClass[twoside]{article}
+\LoadClass[\py@paper,\py@ptsize,twoside]{article}
 
 \setcounter{secnumdepth}{1}
 
@@ -61,7 +61,7 @@
   }}
   \begin{flushright}
     {\rm\Huge\py@HeaderFamily \@title} \par
-    {\em\large\py@HeaderFamily \py@release} \par
+    {\em\large\py@HeaderFamily \py@release\releaseinfo} \par
     \vspace{25pt}
     {\Large\py@HeaderFamily \@author} \par
     \vspace{25pt}

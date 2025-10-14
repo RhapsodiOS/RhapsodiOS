@@ -79,10 +79,12 @@ bool GUSISIOUXSocket::initialized = false;
 
 GUSISIOUXSocket::GUSISIOUXSocket(int fd) : fFd(fd) 
 {
-	if (!PyMac_GetDelayConsoleFlag() && !hasCustomConsole() && !initialized)
-		Initialize();
-	/* Tell the upper layers there's no unseen output */
-	PyMac_OutputSeen();
+	if (!hasCustomConsole()) {
+		if (!PyMac_GetDelayConsoleFlag() && !initialized)
+			Initialize();
+		/* Tell the upper layers there's no unseen output */
+		PyMac_OutputSeen();
+	}
 }
 
 void
@@ -172,19 +174,6 @@ int GUSISIOUXSocket::isatty()
 }
 static bool input_pending()
 {
-#if !TARGET_API_MAC_CARBON
-	// Jack thinks that completely removing this code is a bit
-	// too much...
-	QHdrPtr eventQueue = LMGetEventQueue();
-	EvQElPtr element = (EvQElPtr)eventQueue->qHead;
-	
-	// now, count the number of pending keyDown events.
-	while (element != nil) {
-		if (element->evtQWhat == keyDown || element->evtQWhat == autoKey)
-			return true;
-		element = (EvQElPtr)element->qLink;
-	}
-#endif
 	return false;
 }
 

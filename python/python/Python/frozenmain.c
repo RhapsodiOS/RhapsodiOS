@@ -3,19 +3,10 @@
 
 #include "Python.h"
 
-#ifdef MS_WIN32
+#ifdef MS_WINDOWS
 extern void PyWinFreeze_ExeInit(void);
 extern void PyWinFreeze_ExeTerm(void);
 extern int PyInitFrozenExtensions(void);
-#endif
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h> /* For isatty() */
-#endif
-
-/* For isatty()'s proto. - [cjh] */
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
 #endif
 
 /* Main program */
@@ -41,12 +32,12 @@ Py_FrozenMain(int argc, char **argv)
 		setbuf(stderr, (char *)NULL);
 	}
 
-#ifdef MS_WIN32
+#ifdef MS_WINDOWS
 	PyInitFrozenExtensions();
-#endif /* MS_WIN32 */
+#endif /* MS_WINDOWS */
 	Py_SetProgramName(argv[0]);
 	Py_Initialize();
-#ifdef MS_WIN32
+#ifdef MS_WINDOWS
 	PyWinFreeze_ExeInit();
 #endif
 
@@ -69,7 +60,7 @@ Py_FrozenMain(int argc, char **argv)
 	if (inspect && isatty((int)fileno(stdin)))
 		sts = PyRun_AnyFile(stdin, "<stdin>") != 0;
 
-#ifdef MS_WIN32
+#ifdef MS_WINDOWS
 	PyWinFreeze_ExeTerm();
 #endif
 	Py_Finalize();

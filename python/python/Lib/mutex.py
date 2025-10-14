@@ -24,12 +24,12 @@ class mutex:
 
     def testandset(self):
         """Atomic test-and-set -- grab the lock if it is not set,
-        return true if it succeeded."""
+        return True if it succeeded."""
         if not self.locked:
             self.locked = 1
-            return 1
+            return True
         else:
-            return 0
+            return False
 
     def lock(self, function, argument):
         """Lock a mutex, call the function with supplied argument
@@ -44,8 +44,7 @@ class mutex:
         """Unlock a mutex.  If the queue is not empty, call the next
         function with its argument."""
         if self.queue:
-            function, argument = self.queue[0]
-            del self.queue[0]
+            function, argument = self.queue.pop(0)
             function(argument)
         else:
             self.locked = 0

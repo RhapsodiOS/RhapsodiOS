@@ -2,10 +2,9 @@
 
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
 from scantools import Scanner_OSX
-from bgenlocations import TOOLBOXDIR
 
 LONG = "CoreFoundation"
 SHORT = "cf"
@@ -15,6 +14,7 @@ OBJECTS = ("CFTypeRef",
 		"CFDictionaryRef", "CFMutableDictionaryRef",
 		"CFStringRef", "CFMutableStringRef",
 		"CFURLRef",
+##		"CFPropertyListRef",
 		)
 # ADD object typenames here
 
@@ -30,8 +30,8 @@ def main():
 		"CFDictionary.h",
 ##		"CFNumber.h",
 ##		"CFPlugIn.h",
-##		"CFPreferences.h",
-##		"CFPropertyList.h",
+		"CFPreferences.h",
+		"CFPropertyList.h",
 ##		"CFSet.h",
 		"CFString.h",
 ##		"CFStringEncodingExt.h",
@@ -44,6 +44,8 @@ def main():
 	scanner.scan()
 	scanner.gentypetest(SHORT+"typetest.py")
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	exec "import " + SHORT + "support"
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -53,7 +55,7 @@ class MyScanner(Scanner_OSX):
 	def destination(self, type, name, arglist):
 		classname = "Function"
 		listname = "functions"
-		if arglist:
+		if arglist and name[:13] != 'CFPreferences':
 			t, n, m = arglist[0]
 			if t in OBJECTS and m == "InMode":
 				classname = "Method"
@@ -92,6 +94,11 @@ class MyScanner(Scanner_OSX):
 			"CFStringGetCString", 
 			"CFStringGetCharacters",
 			"CFURLCreateStringWithFileSystemPath", # Gone in later releases
+			"CFStringCreateMutableWithExternalCharactersNoCopy", # Not a clue...
+			"CFStringSetExternalCharactersNoCopy",
+			"CFStringGetCharacterAtIndex", # No format for single unichars yet.
+			"kCFStringEncodingInvalidId", # incompatible constant declaration
+			"CFPropertyListCreateFromXMLData", # Manually generated
 			]
 
 	def makegreylist(self):
@@ -105,9 +112,6 @@ class MyScanner(Scanner_OSX):
 			"void_ptr", # Ditto for various array lookup methods
 			"CFArrayApplierFunction", # Callback function pointer
 			"CFDictionaryApplierFunction", # Callback function pointer
-			"UniChar_ptr", # XXXX To be done
-			"const_UniChar_ptr", # XXXX To be done
-			"UniChar", # XXXX To be done
 			"va_list", # For printf-to-a-cfstring. Use Python.
 			"const_CFStringEncoding_ptr", # To be done, I guess
 			]
@@ -118,6 +122,9 @@ class MyScanner(Scanner_OSX):
 			([("UInt8_ptr", "*", "InMode"), ("CFIndex", "*", "InMode")],
 			 [("UcharInBuffer", "*", "*")]),
 			 
+			([("UniChar_ptr", "*", "InMode"), ("CFIndex", "*", "InMode")],
+			 [("UnicodeInBuffer", "*", "*")]),
+
 			# Some functions return a const char *. Don't worry, we won't modify it.
 			([("const_char_ptr", "*", "ReturnMode")],
 			 [("return_stringptr", "*", "*")]),
@@ -126,6 +133,9 @@ class MyScanner(Scanner_OSX):
 			([("CFURLRef", "baseURL", "InMode")],
 			 [("OptionalCFURLRef", "*", "*")]),
 			 
+			# We handle CFPropertyListRef objects as plain CFTypeRef
+			([("CFPropertyListRef", "*", "*")],
+			 [("CFTypeRef", "*", "*")]),
 			]
 			
 if __name__ == "__main__":

@@ -2,8 +2,6 @@
 
 Types that are part of optional modules (e.g. array) are not listed.
 """
-from __future__ import generators
-
 import sys
 
 # Iterators in Python aren't a matter of type but of protocol.  A large
@@ -18,19 +16,24 @@ ObjectType = object
 IntType = int
 LongType = long
 FloatType = float
+BooleanType = bool
 try:
     ComplexType = complex
 except NameError:
     pass
 
 StringType = str
+
+# StringTypes is already outdated.  Instead of writing "type(x) in
+# types.StringTypes", you should use "isinstance(x, basestring)".  But
+# we keep around for compatibility with Python 2.2.
 try:
     UnicodeType = unicode
     StringTypes = (StringType, UnicodeType)
 except NameError:
     StringTypes = (StringType,)
 
-BufferType = type(buffer(''))
+BufferType = buffer
 
 TupleType = tuple
 ListType = list
@@ -63,7 +66,7 @@ BuiltinMethodType = type([].append)     # Same as BuiltinFunctionType
 
 ModuleType = type(sys)
 FileType = file
-XRangeType = type(xrange(0))
+XRangeType = xrange
 
 try:
     raise TypeError
@@ -78,9 +81,10 @@ except TypeError:
         pass
     tb = None; del tb
 
-SliceType = type(slice(0))
+SliceType = slice
 EllipsisType = type(Ellipsis)
 
 DictProxyType = type(TypeType.__dict__)
+NotImplementedType = type(NotImplemented)
 
-del sys, _f, _C, _x, generators                  # Not for export
+del sys, _f, _C, _x                  # Not for export

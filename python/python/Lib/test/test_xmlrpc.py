@@ -1,7 +1,7 @@
 import sys
-import test_support
 import unittest
 import xmlrpclib
+from test import test_support
 
 alist = [{'astring': 'foo@bar.baz.spam',
           'afloat': 7283.43,
@@ -28,6 +28,14 @@ class XMLRPCTestCase(unittest.TestCase):
         if sys.maxint > 2L**31-1:
             self.assertRaises(OverflowError, xmlrpclib.dumps,
                               (int(2L**34),))
+
+    def test_dump_none(self):
+        value = alist + [None]
+        arg1 = (alist + [None],)
+        strg = xmlrpclib.dumps(arg1, allow_none=True)
+        self.assertEquals(value,
+                          xmlrpclib.loads(strg)[0][0])
+        self.assertRaises(TypeError, xmlrpclib.dumps, (arg1,))
 
 def test_main():
     test_support.run_unittest(XMLRPCTestCase)

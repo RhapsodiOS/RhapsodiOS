@@ -101,6 +101,18 @@ class WeakValueDictionary(UserDict.UserDict):
             if o is not None:
                 return key, o
 
+    def pop(self, key, *args):
+        try:
+            o = self.data.pop(key)()
+        except KeyError:
+            if args:
+                return args[0]
+            raise
+        if o is None:
+            raise KeyError, key
+        else:
+            return o
+
     def setdefault(self, key, default):
         try:
             wr = self.data[key]
@@ -144,19 +156,15 @@ class WeakKeyDictionary(UserDict.UserDict):
 
     def __init__(self, dict=None):
         self.data = {}
-        if dict is not None: self.update(dict)
         def remove(k, selfref=ref(self)):
             self = selfref()
             if self is not None:
                 del self.data[k]
         self._remove = remove
+        if dict is not None: self.update(dict)
 
     def __delitem__(self, key):
-        for ref in self.data.iterkeys():
-            o = ref()
-            if o == key:
-                del self.data[ref]
-                return
+        del self.data[ref(key)]
 
     def __getitem__(self, key):
         return self.data[ref(key)]
@@ -183,7 +191,14 @@ class WeakKeyDictionary(UserDict.UserDict):
             wr = ref(key)
         except TypeError:
             return 0
-        return self.data.has_key(wr)
+        return wr in self.data
+
+    def __contains__(self, key):
+        try:
+            wr = ref(key)
+        except TypeError:
+            return 0
+        return wr in self.data
 
     def items(self):
         L = []
@@ -217,6 +232,9 @@ class WeakKeyDictionary(UserDict.UserDict):
             o = key()
             if o is not None:
                 return o, value
+
+    def pop(self, key, *args):
+        return self.data.pop(ref(key), *args)
 
     def setdefault(self, key, default):
         return self.data.setdefault(ref(key, self._remove),default)

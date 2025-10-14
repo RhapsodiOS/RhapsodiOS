@@ -27,10 +27,10 @@ includestuff = includestuff + """
 #endif
 
 /* For now we declare them forward here. They'll go to mactoolbox later */
-staticforward PyObject *TXNObj_New(TXNObject);
-staticforward int TXNObj_Convert(PyObject *, TXNObject *);
-staticforward PyObject *TXNFontMenuObj_New(TXNFontMenuObject);
-staticforward int TXNFontMenuObj_Convert(PyObject *, TXNFontMenuObject *);
+static PyObject *TXNObj_New(TXNObject);
+static int TXNObj_Convert(PyObject *, TXNObject *);
+static PyObject *TXNFontMenuObj_New(TXNFontMenuObject);
+static int TXNFontMenuObj_Convert(PyObject *, TXNFontMenuObject *);
 
 // ADD declarations
 #ifdef NOTYET_USE_TOOLBOX_OBJECT_GLUE
@@ -125,21 +125,22 @@ OptRgnHandle = OpaqueByValueType("RgnHandle", "OptResObj")
 GWorldPtr = OpaqueByValueType("GWorldPtr", "GWorldObj")
 OptGWorldPtr = OpaqueByValueType("GWorldPtr", "OptGWorldObj")
 MlteInBuffer = VarInputBufferType('void *', 'ByteCount', 'l')
-CFStringRef = OpaqueByValueType("CFStringRef", "CFStringRefObj")
 
 OptFSSpecPtr = OpaqueByValueType("FSSpec *", "OptFSSpecPtr")
 OptRectPtr = OpaqueByValueType("Rect *", "OptRectPtr")
+
+UniChar = Type("UniChar", "h") # XXXX For now...
 # ADD object type here
 
 execfile("mltetypetest.py")
 
 # Our (opaque) objects
 
-class TXNObjDefinition(GlobalObjectDefinition):
+class TXNObjDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("if (itself == NULL) return PyMac_Error(resNotFound);")
 
-class TXNFontMenuObjDefinition(GlobalObjectDefinition):
+class TXNFontMenuObjDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("if (itself == NULL) return PyMac_Error(resNotFound);")
 

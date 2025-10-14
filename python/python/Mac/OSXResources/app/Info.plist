@@ -7,38 +7,6 @@
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>py</string>
-			</array>
-			<key>CFBundleTypeIconFile</key>
-			<string>PythonSource.icns</string>
-			<key>CFBundleTypeName</key>
-			<string>Python Module</string>
-			<key>CFBundleTypeOSTypes</key>
-			<array>
-				<string>TEXT</string>
-			</array>
-			<key>CFBundleTypeRole</key>
-			<string>Shell</string>
-		</dict>
-		<dict>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>pyc</string>
-			</array>
-			<key>CFBundleTypeIconFile</key>
-			<string>PythonCompiled.icns</string>
-			<key>CFBundleTypeName</key>
-			<string>Python Compiled Module</string>
-			<key>CFBundleTypeOSTypes</key>
-			<array>
-				<string>PYC</string>
-			</array>
-			<key>CFBundleTypeRole</key>
-			<string>Shell</string>
-		</dict>
-		<dict>
 			<key>CFBundleTypeOSTypes</key>
 			<array>
 				<string>****</string>
@@ -50,34 +18,46 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>python</string>
+	<string>Python</string>
 
 	<key>CFBundleGetInfoString</key>
-	<string>Python Interpreter version 2.2, (c) 2001 Python Software Foundation.</string>
+	<string>2.3, (c) 2003 Python Software Foundation.</string>
 	<key>CFBundleLongVersionString</key>
-	<string>2.2, (c) 2001 Python Software Foundation.</string>
+	<string>2.3, (c) 2003 Python Software Foundation.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright 2001 Python Software Foundation.</string>
+	<string>Copyright 2003 Python Software Foundation.</string>
 	<key>CFBundleShortVersionString</key>
-	<string>6.5</string>
+	<string>2.3</string>
+
+	<key>CFBundleHelpBookFolder</key>
+	<array>
+		<string>Documentation</string>
+		<string>PythonDocumentation</string>
+	</array>
+	<key>CFBundleHelpBookName</key>
+	<string>MacPython Help</string>
+	<key>CFBundleHelpTOCFile</key>
+	<string>index.html</string>
 
 	<key>CFBundleIconFile</key>
 	<string>PythonInterpreter.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.python.interpreter</string>
+	<string>org.python.python</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>PythonInterpreter</string>
+	<string>Python</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleSignature</key>
 	<string>PytX</string>
 	<key>CFBundleVersion</key>
-	<string>2.2</string>
+	<string>2.3</string>
 	<key>LSRequiresCarbon</key>
     <true/>
 	<key>CSResourcesFileMapped</key>
+	<true/>
+	<key>NSAppleScriptEnabled</key>
 	<true/>
 </dict>
 </plist>

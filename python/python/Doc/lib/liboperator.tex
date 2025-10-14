@@ -48,7 +48,7 @@ for more informations about rich comparisons.
 
 
 The logical operations are also generally applicable to all objects,
-and support truth tests and Boolean operations:
+and support truth tests, identity tests, and boolean operations:
 
 \begin{funcdesc}{not_}{o}
 \funcline{__not__}{o}
@@ -59,7 +59,17 @@ core defines this operation.  The result is affected by the
 \end{funcdesc}
 
 \begin{funcdesc}{truth}{o}
-Return \code{1} if \var{o} is true, and 0 otherwise.
+Return \constant{True} if \var{o} is true, and \constant{False}
+otherwise.  This is equivalent to using the \class{bool}
+constructor.
+\end{funcdesc}
+
+\begin{funcdesc}{is_}{a, b}
+Return \code{\var{a} is \var{b}}.  Tests object identity.
+\end{funcdesc}
+
+\begin{funcdesc}{is_not}{a, b}
+Return \code{\var{a} is not \var{b}}.  Tests object identity.
 \end{funcdesc}
 
 
@@ -129,6 +139,12 @@ Return the bitwise or of \var{a} and \var{b}.
 \begin{funcdesc}{pos}{o}
 \funcline{__pos__}{o}
 Return \var{o} positive.
+\end{funcdesc}
+
+\begin{funcdesc}{pow}{a, b}
+\funcline{__pow__}{a, b}
+Return \var{a} \code{**} \var{b}, for \var{a} and \var{b} numbers.
+\versionadded{2.3}
 \end{funcdesc}
 
 \begin{funcdesc}{rshift}{a, b}
@@ -310,6 +326,12 @@ symbols in the Python syntax and the functions in the
           {\code{invert(\var{a})}}
   \lineiii{Bitwise Or}{\code{\var{a} | \var{b}}}
           {\code{or_(\var{a}, \var{b})}}
+  \lineiii{Exponentiation}{\code{\var{a} ** \var{b}}}
+          {\code{pow(\var{a}, \var{b})}}
+  \lineiii{Identity}{\code{\var{a} is \var{b}}}
+          {\code{is_(\var{a}, \var{b})}}
+  \lineiii{Identity}{\code{\var{a} is not \var{b}}}
+          {\code{is_not(\var{a}, \var{b})}}
   \lineiii{Indexed Assignment}{\code{\var{o}[\var{k}] = \var{v}}}
           {\code{setitem(\var{o}, \var{k}, \var{v})}}
   \lineiii{Indexed Deletion}{\code{del \var{o}[\var{k}]}}

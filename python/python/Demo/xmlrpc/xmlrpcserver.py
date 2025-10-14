@@ -1,6 +1,6 @@
 #
 # XML-RPC SERVER
-# $Id: xmlrpcserver.py,v 1.1.1.1 2002/02/05 23:23:30 zarzycki Exp $
+# $Id: xmlrpcserver.py,v 1.2 2002/04/03 21:47:47 fdrake Exp $
 #
 # a simple XML-RPC server for Python
 #
@@ -42,7 +42,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             except:
                 # report exception back to server
                 response = xmlrpclib.dumps(
-                    xmlrpclib.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                    xmlrpclib.Fault(1, "%s:%s" % sys.exc_info()[:2])
                     )
             else:
                 response = xmlrpclib.dumps(

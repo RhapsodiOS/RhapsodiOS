@@ -16,10 +16,6 @@
 #include "Python.h"
 #include "structmember.h"
 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #else
@@ -74,7 +70,7 @@ static struct {
 
 static int n_audio_types = sizeof(audio_types) / sizeof(audio_types[0]);
 
-staticforward PyTypeObject Ladtype;
+static PyTypeObject Ladtype;
 
 static PyObject *LinuxAudioError;
 
@@ -83,11 +79,21 @@ newladobject(PyObject *arg)
 {
     lad_t *xp;
     int fd, afmts, imode;
-    char *mode;
-    char *basedev;
+    char *basedev = NULL;
+    char *mode = NULL;
 
-    /* Check arg for r/w/rw */
-    if (!PyArg_ParseTuple(arg, "s:open", &mode)) return NULL;
+    /* Two ways to call linuxaudiodev.open():
+         open(device, mode) (for consistency with builtin open())
+         open(mode)         (for backwards compatibility)
+       because the *first* argument is optional, parsing args is
+       a wee bit tricky. */
+    if (!PyArg_ParseTuple(arg, "s|s:open", &basedev, &mode))
+       return NULL;
+    if (mode == NULL) {                 /* only one arg supplied */
+       mode = basedev;
+       basedev = NULL;
+    }
+
     if (strcmp(mode, "r") == 0)
         imode = O_RDONLY;
     else if (strcmp(mode, "w") == 0)
@@ -106,9 +112,11 @@ newladobject(PyObject *arg)
      * latter uses 8-bit unsigned encoding.
      */
 
-    basedev = getenv("AUDIODEV");
-    if (!basedev)
-        basedev = "/dev/dsp";
+    if (basedev == NULL) {              /* called with one arg */
+       basedev = getenv("AUDIODEV");
+       if (basedev == NULL)             /* $AUDIODEV not set */
+          basedev = "/dev/dsp";
+    }
 
     if ((fd = open(basedev, imode)) == -1) {
         PyErr_SetFromErrnoWithFilename(LinuxAudioError, basedev);
@@ -162,8 +170,7 @@ lad_read(lad_t *self, PyObject *args)
         return NULL;
     }
     self->x_icount += count;
-    if (_PyString_Resize(&rv, count) == -1)
-	return NULL;
+    _PyString_Resize(&rv, count);
     return rv;
 }
 

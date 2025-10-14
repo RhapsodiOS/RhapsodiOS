@@ -24,6 +24,7 @@ from macsupport import *
 
 MenuHandle = OpaqueByValueType(OBJECTTYPE, OBJECTPREFIX)
 MenuRef = MenuHandle
+OptMenuRef = OpaqueByValueType(OBJECTTYPE, "Opt" + OBJECTPREFIX)
 Handle = OpaqueByValueType("Handle", "ResObj")
 MenuBarHandle = OpaqueByValueType("MenuBarHandle", "ResObj")
 MenuID = Type("MenuID", "h")
@@ -35,7 +36,6 @@ MenuItemAttributes = Type("MenuItemAttributes", "l")
 unsigned_char = Type('unsigned char', 'b')
 FMFontFamily = Type("FMFontFamily", "h")
 FMFontStyle = Type("FMFontStyle", "h")
-CFStringRef = OpaqueByValueType("CFStringRef", "CFStringRefObj")
 UniChar = Type("UniChar", "h")
 
 includestuff = includestuff + """
@@ -68,6 +68,27 @@ extern int _MenuObj_Convert(PyObject *, MenuHandle *);
 
 #define as_Menu(h) ((MenuHandle)h)
 #define as_Resource(h) ((Handle)h)
+
+
+/* Alternative version of MenuObj_New, which returns None for NULL argument */
+PyObject *OptMenuObj_New(MenuRef itself)
+{
+	if (itself == NULL) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+	return MenuObj_New(itself);
+}
+
+/* Alternative version of MenuObj_Convert, which returns NULL for a None argument */
+int OptMenuObj_Convert(PyObject *v, MenuRef *p_itself)
+{
+	if ( v == Py_None ) {
+		*p_itself = NULL;
+		return 1;
+	}
+	return MenuObj_Convert(v, p_itself);
+}
 """
 
 initstuff = initstuff + """
@@ -75,7 +96,7 @@ initstuff = initstuff + """
 	PyMac_INIT_TOOLBOX_OBJECT_CONVERT(MenuHandle, MenuObj_Convert);
 """
 
-class MyObjectDefinition(GlobalObjectDefinition):
+class MyObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	pass
 
 # Create the generator groups and link them

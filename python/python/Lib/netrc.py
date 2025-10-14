@@ -21,14 +21,16 @@ class NetrcParseError(Exception):
 
 class netrc:
     def __init__(self, file=None):
-        if not file:
-            file = os.path.join(os.environ['HOME'], ".netrc")
+        if file is None:
+            try:
+                file = os.path.join(os.environ['HOME'], ".netrc")
+            except KeyError:
+                raise IOError("Could not find .netrc: $HOME is not set")
         fp = open(file)
         self.hosts = {}
         self.macros = {}
         lexer = shlex.shlex(fp)
-        # Allows @ in hostnames.  Not a big deal...
-        lexer.wordchars = lexer.wordchars + '.-@'
+        lexer.wordchars += r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
         while 1:
             # Look for a machine, default, or macdef top-level keyword
             toplevel = tt = lexer.get_token()
@@ -41,28 +43,27 @@ class netrc:
             elif tt == 'macdef':                # Just skip to end of macdefs
                 entryname = lexer.get_token()
                 self.macros[entryname] = []
-                lexer.whitepace = ' \t'
+                lexer.whitespace = ' \t'
                 while 1:
                     line = lexer.instream.readline()
-                    if not line or line == '\012' and tt == '\012':
-                        lexer.whitepace = ' \t\r\n'
+                    if not line or line == '\012':
+                        lexer.whitespace = ' \t\r\n'
                         break
-                    tt = line
                     self.macros[entryname].append(line)
+                continue
             else:
                 raise NetrcParseError(
                     "bad toplevel token %r" % tt, file, lexer.lineno)
 
             # We're looking at start of an entry for a named machine or default.
-            if toplevel == 'machine':
-                login = account = password = None
-                self.hosts[entryname] = {}
+            login = ''
+            account = password = None
+            self.hosts[entryname] = {}
             while 1:
                 tt = lexer.get_token()
-                if tt=='' or tt == 'machine' or tt == 'default' or tt == 'macdef':
-                    if toplevel == 'macdef':
-                        break
-                    elif login and password:
+                if (tt=='' or tt == 'machine' or
+                    tt == 'default' or tt =='macdef'):
+                    if password:
                         self.hosts[entryname] = (login, account, password)
                         lexer.push_token(tt)
                         break
@@ -83,9 +84,9 @@ class netrc:
 
     def authenticators(self, host):
         """Return a (user, account, password) tuple for given host."""
-        if self.hosts.has_key(host):
+        if host in self.hosts:
             return self.hosts[host]
-        elif self.hosts.has_key('default'):
+        elif 'default' in self.hosts:
             return self.hosts['default']
         else:
             return None

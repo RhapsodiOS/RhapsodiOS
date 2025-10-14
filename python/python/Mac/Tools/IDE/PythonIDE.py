@@ -4,11 +4,20 @@
 # it like the "normal" interpreter.
 
 __version__ = '1.0.1'
-
+import sys
+import os
 
 def init():
 	import MacOS
-	MacOS.EnableAppswitch(-1)
+	if hasattr(MacOS, 'EnableAppswitch'):
+		MacOS.EnableAppswitch(-1)
+	
+	try:
+		import autoGIL
+	except ImportError:
+		pass
+	else:
+		autoGIL.installAutoGIL()
 	
 	from Carbon import Qd, QuickDraw
 	Qd.SetCursor(Qd.GetCursor(QuickDraw.watchCursor).data)
@@ -16,11 +25,26 @@ def init():
 	import macresource
 	import sys, os
 	macresource.need('DITL', 468, "PythonIDE.rsrc")
-	widgetresfile = os.path.join(sys.exec_prefix, ":Mac:Tools:IDE:Widgets.rsrc")
+	widgetrespathsegs = [sys.exec_prefix, "Mac", "Tools", "IDE", "Widgets.rsrc"]
+	widgetresfile = os.path.join(*widgetrespathsegs)
+	if not os.path.exists(widgetresfile):
+		widgetrespathsegs = [os.pardir, "Tools", "IDE", "Widgets.rsrc"]
+		widgetresfile = os.path.join(*widgetrespathsegs)
 	refno = macresource.need('CURS', 468, widgetresfile)
-	if refno:
+	if os.environ.has_key('PYTHONIDEPATH'):
+		# For development set this environment variable
+		ide_path = os.environ['PYTHONIDEPATH']
+	elif refno:
 		# We're not a fullblown application
-		ide_path = os.path.join(sys.exec_prefix, ":Mac:Tools:IDE")
+		idepathsegs = [sys.exec_prefix, "Mac", "Tools", "IDE"]
+		ide_path = os.path.join(*idepathsegs)
+		if not os.path.exists(ide_path):
+			idepathsegs = [os.pardir, "Tools", "IDE"]
+			for p in sys.path:
+				ide_path = os.path.join(*([p]+idepathsegs))
+				if os.path.exists(ide_path):
+					break
+		
 	else:
 		# We are a fully frozen application
 		ide_path = sys.argv[0]
@@ -31,4 +55,5 @@ def init():
 init()
 del init
 
-import PythonIDEMain
+import PythonIDEMain as _PythonIDEMain
+_PythonIDEMain.PythonIDE()

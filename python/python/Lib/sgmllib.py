@@ -30,11 +30,10 @@ shorttagopen = re.compile('<[a-zA-Z][-.a-zA-Z0-9]*/')
 shorttag = re.compile('<([a-zA-Z][-.a-zA-Z0-9]*)/([^/]*)/')
 piclose = re.compile('>')
 endbracket = re.compile('[<>]')
-commentclose = re.compile(r'--\s*>')
 tagfind = re.compile('[a-zA-Z][-_.a-zA-Z0-9]*')
 attrfind = re.compile(
     r'\s*([a-zA-Z_][-:.a-zA-Z_0-9]*)(\s*=\s*'
-    r'(\'[^\']*\'|"[^"]*"|[-a-zA-Z0-9./:;+*%?!&$\(\)_#=~\'"]*))?')
+    r'(\'[^\']*\'|"[^"]*"|[-a-zA-Z0-9./,:;+*%?!&$\(\)_#=~\'"@]*))?')
 
 
 class SGMLParseError(RuntimeError):
@@ -145,6 +144,10 @@ class SGMLParser(markupbase.ParserBase):
                         break
                     continue
                 if rawdata.startswith("<!--", i):
+                        # Strictly speaking, a comment is --.*--
+                        # within a declaration tag <!...>.
+                        # This should be removed,
+                        # and comments handled only in parse_declaration.
                     k = self.parse_comment(i)
                     if k < 0: break
                     i = k
@@ -201,19 +204,6 @@ class SGMLParser(markupbase.ParserBase):
             i = n
         self.rawdata = rawdata[i:]
         # XXX if end: check for empty stack
-
-    # Internal -- parse comment, return length or -1 if not terminated
-    def parse_comment(self, i, report=1):
-        rawdata = self.rawdata
-        if rawdata[i:i+4] != '<!--':
-            self.error('unexpected call to parse_comment()')
-        match = commentclose.search(rawdata, i+4)
-        if not match:
-            return -1
-        if report:
-            j = match.start(0)
-            self.handle_comment(rawdata[i+4: j])
-        return match.end(0)
 
     # Extensions for the DOCTYPE scanner:
     _decl_otherchars = '='
@@ -396,7 +386,7 @@ class SGMLParser(markupbase.ParserBase):
         tailored by setting up the self.entitydefs mapping appropriately.
         """
         table = self.entitydefs
-        if table.has_key(name):
+        if name in table:
             self.handle_data(table[name])
         else:
             self.unknown_entityref(name)
@@ -471,6 +461,10 @@ class TestSGMLParser(SGMLParser):
         self.flush()
         print '*** unknown char ref: &#' + ref + ';'
 
+    def unknown_decl(self, data):
+        self.flush()
+        print '*** unknown decl: [' + data + ']'
+
     def close(self):
         SGMLParser.close(self)
         self.flush()
@@ -479,7 +473,7 @@ class TestSGMLParser(SGMLParser):
 def test(args = None):
     import sys
 
-    if not args:
+    if args is None:
         args = sys.argv[1:]
 
     if args and args[0] == '-s':

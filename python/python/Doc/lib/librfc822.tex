@@ -4,6 +4,11 @@
 \declaremodule{standard}{rfc822}
 \modulesynopsis{Parse \rfc{2822} style mail messages.}
 
+\deprecated{2.3}{The \refmodule{email} package should be used in
+                 preference to the \module{rfc822} module.  This
+                 module is present only to maintain backward
+                 compatibility.}
+
 This module defines a class, \class{Message}, which represents an
 ``email message'' as defined by the Internet standard
 \rfc{2822}.\footnote{This module originally conformed to \rfc{822},
@@ -115,7 +120,7 @@ usable.
 
 \begin{funcdesc}{mktime_tz}{tuple}
 Turn a 10-tuple as returned by \function{parsedate_tz()} into a UTC
-timestamp.  It the timezone item in the tuple is \code{None}, assume
+timestamp.  If the timezone item in the tuple is \code{None}, assume
 local time.  Minor deficiency: this first interprets the first 8
 elements as a local time and then compensates for the timezone
 difference; this may yield a slight error around daylight savings time
@@ -124,10 +129,12 @@ switch dates.  Not enough to worry about for common use.
 
 
 \begin{seealso}
+  \seemodule{email}{Comprehensive email handling package; supercedes
+                    the \module{rfc822} module.}
   \seemodule{mailbox}{Classes to read various mailbox formats produced 
                       by end-user mail programs.}
-  \seemodule{mimetools}{Subclass of rfc.Message that handles MIME encoded
-		        messages.} 
+  \seemodule{mimetools}{Subclass of \class{rfc822.Message} that
+                        handles MIME encoded messages.} 
 \end{seealso}
 
 
@@ -156,8 +163,8 @@ checks that the line is blank, but you can override it in a subclass.
 \end{methoddesc}
 
 \begin{methoddesc}{iscomment}{line}
-Return true if the given line should be ignored entirely, just skipped.
-By default this is a stub that always returns false, but you can
+Return \code{True} if the given line should be ignored entirely, just skipped.
+By default this is a stub that always returns \code{False}, but you can
 override it in a subclass.
 \end{methoddesc}
 
@@ -248,12 +255,12 @@ there is no header matching \var{name}, or it is unparsable, return
 In particular: \code{\var{m}[name]} is like
 \code{\var{m}.getheader(name)} but raises \exception{KeyError} if
 there is no matching header; and \code{len(\var{m})},
-\code{\var{m}.get(name\optional{, deafult})},
-\code{\var{m}.has_key(name)}, \code{\var{m}.keys()},
+\code{\var{m}.get(\var{name}\optional{, \var{default}})},
+\code{\var{m}.has_key(\var{name})}, \code{\var{m}.keys()},
 \code{\var{m}.values()} \code{\var{m}.items()}, and
-\code{\var{m}.setdefault(name\optional{, default})} act as expected,
-with the one difference that \method{get()} and \method{setdefault()}
-use an empty string as the default value.  \class{Message} instances
+\code{\var{m}.setdefault(\var{name}\optional{, \var{default}})} act as
+expected, with the one difference that \method{setdefault()} uses
+an empty string as the default value.  \class{Message} instances
 also support the mapping writable interface \code{\var{m}[name] =
 value} and \code{del \var{m}[name]}.  \class{Message} objects do not
 support the \method{clear()}, \method{copy()}, \method{popitem()}, or

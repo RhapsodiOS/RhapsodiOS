@@ -166,6 +166,7 @@ def findall(pattern, string):
     return _compile(pattern, 0).findall(string)
 
 if sys.hexversion >= 0x02020000:
+    __all__.append("finditer")
     def finditer(pattern, string):
         """Return an iterator over all non-overlapping matches in the
         string.  For each match, the iterator returns a match object.
@@ -218,9 +219,9 @@ def _compile(*key):
     if p is not None:
         return p
     pattern, flags = key
-    if type(pattern) is _pattern_type:
+    if isinstance(pattern, _pattern_type):
         return pattern
-    if type(pattern) not in sre_compile.STRING_TYPES:
+    if not sre_compile.isstring(pattern):
         raise TypeError, "first argument must be string or compiled pattern"
     try:
         p = sre_compile.compile(pattern, flags)

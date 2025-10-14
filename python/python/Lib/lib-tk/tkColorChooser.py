@@ -1,6 +1,6 @@
 #
 # Instant Python
-# $Id: tkColorChooser.py,v 1.1.1.1 2002/02/05 23:21:37 zarzycki Exp $
+# $Id: tkColorChooser.py,v 1.6 2003/04/06 09:00:52 rhettinger Exp $
 #
 # tk common colour chooser dialogue
 #
@@ -63,7 +63,7 @@ def askcolor(color = None, **options):
         options = options.copy()
         options["initialcolor"] = color
 
-    return apply(Chooser, (), options).show()
+    return Chooser(**options).show()
 
 
 # --------------------------------------------------------------------

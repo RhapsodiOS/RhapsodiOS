@@ -1,6 +1,6 @@
 """Simple textbox editing widget with Emacs-like keybindings."""
 
-import sys, curses, ascii
+import curses, ascii
 
 def rectangle(win, uly, ulx, lry, lrx):
     "Draw a rectangle."
@@ -71,7 +71,7 @@ class Textbox:
                     self.win.addch(ch)
                 except curses.error:
                     pass
-        elif ch == ascii.SOH:				# ^a
+        elif ch == ascii.SOH:                           # ^a
             self.win.move(y, 0)
         elif ch in (ascii.STX,curses.KEY_LEFT, ascii.BS,curses.KEY_BACKSPACE):
             if x > 0:
@@ -84,55 +84,54 @@ class Textbox:
                 self.win.move(y-1, self.maxx)
             if ch in (ascii.BS, curses.KEY_BACKSPACE):
                 self.win.delch()
-        elif ch == ascii.EOT:				# ^d
+        elif ch == ascii.EOT:                           # ^d
             self.win.delch()
-        elif ch == ascii.ENQ:				# ^e
+        elif ch == ascii.ENQ:                           # ^e
             if self.stripspaces:
                 self.win.move(y, self._end_of_line(y))
             else:
                 self.win.move(y, self.maxx)
-        elif ch in (ascii.ACK, curses.KEY_RIGHT):	# ^f
+        elif ch in (ascii.ACK, curses.KEY_RIGHT):       # ^f
             if x < self.maxx:
                 self.win.move(y, x+1)
             elif y == self.maxy:
                 pass
             else:
                 self.win.move(y+1, 0)
-        elif ch == ascii.BEL:				# ^g
+        elif ch == ascii.BEL:                           # ^g
             return 0
-        elif ch == ascii.NL:				# ^j
+        elif ch == ascii.NL:                            # ^j
             if self.maxy == 0:
                 return 0
             elif y < self.maxy:
                 self.win.move(y+1, 0)
-        elif ch == ascii.VT:				# ^k
+        elif ch == ascii.VT:                            # ^k
             if x == 0 and self._end_of_line(y) == 0:
                 self.win.deleteln()
             else:
                 self.win.clrtoeol()
-        elif ch == ascii.FF:				# ^l
+        elif ch == ascii.FF:                            # ^l
             self.win.refresh()
-        elif ch in (ascii.SO, curses.KEY_DOWN):		# ^n
+        elif ch in (ascii.SO, curses.KEY_DOWN):         # ^n
             if y < self.maxy:
                 self.win.move(y+1, x)
                 if x > self._end_of_line(y+1):
                     self.win.move(y+1, self._end_of_line(y+1))
-        elif ch == ascii.SI:				# ^o
+        elif ch == ascii.SI:                            # ^o
             self.win.insertln()
-        elif ch in (ascii.DLE, curses.KEY_UP):		# ^p
+        elif ch in (ascii.DLE, curses.KEY_UP):          # ^p
             if y > 0:
                 self.win.move(y-1, x)
                 if x > self._end_of_line(y-1):
                     self.win.move(y-1, self._end_of_line(y-1))
         return 1
-        
+
     def gather(self):
         "Collect and return the contents of the window."
         result = ""
         for y in range(self.maxy+1):
             self.win.move(y, 0)
             stop = self._end_of_line(y)
-            #sys.stderr.write("y=%d, _end_of_line(y)=%d\n" % (y, stop))
             if stop == 0 and self.stripspaces:
                 continue
             for x in range(self.maxx+1):

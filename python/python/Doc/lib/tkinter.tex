@@ -38,9 +38,10 @@ Python.
 \moduleauthor{Guido van Rossum}{guido@Python.org}
 
 The \module{Tkinter} module (``Tk interface'') is the standard Python
-interface to the Tk GUI toolkit, now maintained at ActiveState.  Both
-Tk and \module{Tkinter} are available on most \UNIX{} platforms, as well
-as on Windows and Macintosh systems.
+interface to the Tk GUI toolkit.  Both Tk and \module{Tkinter} are
+available on most \UNIX{} platforms, as well as on Windows and
+Macintosh systems.  (Tk itself is not part of Python; it is maintained
+at ActiveState.)
 
 \begin{seealso}
 \seetitle[http://www.python.org/topics/tkinter/]
@@ -219,34 +220,33 @@ place to go when nothing else makes sense.
 
 
 \begin{verbatim}
-from Tkinter import *                                                    1
-                                                                         2
-class Application(Frame):                                                3
-    def say_hi(self):                                                    4
-        print "hi there, everyone!"                                      5
-                                                                         6
-    def createWidgets(self):                                             7
-        self.QUIT = Button(self)                                         8
-        self.QUIT["text"] = "QUIT"                                       9
-        self.QUIT["fg"]   = "red"                                       10
-        self.QUIT["command"] =  self.quit                               11
-                                                                        12
-        self.QUIT.pack({"side": "left"})                                13
-                                                                        14
-        self.hi_there = Button(self)                                    15
-        self.hi_there["text"] = "Hello",                                16
-        self.hi_there["command"] = self.say_hi                          17
-                                                                        18
-        self.hi_there.pack({"side": "left"})                            19
-                                                                        20
-                                                                        21
-    def __init__(self, master=None):                                    22
-        Frame.__init__(self, master)                                    23
-            self.pack()                                                 24
-        self.createWidgets()                                            25
-                                                                        26
-app = Application()                                                     27
-app.mainloop()                                                          28
+from Tkinter import *
+
+class Application(Frame):
+    def say_hi(self):
+        print "hi there, everyone!"
+
+    def createWidgets(self):
+        self.QUIT = Button(self)
+        self.QUIT["text"] = "QUIT"
+        self.QUIT["fg"]   = "red"
+        self.QUIT["command"] =  self.quit
+
+        self.QUIT.pack({"side": "left"})
+
+        self.hi_there = Button(self)
+        self.hi_there["text"] = "Hello",
+        self.hi_there["command"] = self.say_hi
+
+        self.hi_there.pack({"side": "left"})
+
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.pack()
+        self.createWidgets()
+
+app = Application()
+app.mainloop()
 \end{verbatim}
 
 
@@ -471,17 +471,17 @@ class of the widget; buttons have a \code{command} option, labels do not.
 
 The options supported by a given widget are listed in that widget's
 man page, or can be queried at runtime by calling the
-\kbd{config()} method with arguments, or by calling the keys()
-method on that widget. The return value of these calls is a dictionary
-whose key is the name of the option (e.g. \kbd{relief}) and whose
-values are 5 tuples. 
+\method{config()} method without arguments, or by calling the
+\method{keys()} method on that widget.  The return value of these
+calls is a dictionary whose key is the name of the option as a string
+(for example, \code{'relief'}) and whose values are 5-tuples.
 
-(Some options, like \kbd{bg} are synonyms for common options with
-hard-to-type names (\kbd{bg} is shorthand for "background"). 
-Passing the \kbd{config()} method the name of a
-shorthand option will return a 2-tuple, not 5-tuple. The 2-tuple
-passed back will contain the name of the synonym ``real''
-option. (\kbd{bg}, \kbd{background}))
+Some options, like \code{bg} are synonyms for common options with long
+names (\code{bg} is shorthand for "background"). Passing the
+\code{config()} method the name of a shorthand option will return a
+2-tuple, not 5-tuple. The 2-tuple passed back will contain the name of
+the synonym and the ``real'' option (such as \code{('bg',
+'background')}).
 
 \begin{tableiii}{c|l|l}{textrm}{Index}{Meaning}{Example}
   \lineiii{0}{option name}                       {\code{'relief'}}
@@ -691,7 +691,7 @@ filename, give the full path to the file, preceded with an \code{@},
 as in \code{"@/usr/contrib/bitmap/gumby.bit"}.
 
 \item[boolean]
-You can pass integers 0 or 1 or the stings \code{"yes"} or \code{"no"} .
+You can pass integers 0 or 1 or the strings \code{"yes"} or \code{"no"} .
 
 \item[callback]
 This is any Python function that takes no arguments.  For example: 
@@ -880,6 +880,24 @@ that matches for menu items labelled \code{last}, \code{active}, or
 \end{itemize}
 \end{description}
 
+\subsubsection{Images}
+
+Bitmap/Pixelmap images can be created through the subclasses of
+\class{Tkinter.Image}:
+
+\begin{itemize}
+\item  \class{BitmapImage} can be used for X11 bitmap data.
+\item  \class{PhotoImage} can be used for GIF and PPM/PGM color bitmaps.
+\end{itemize}
+
+Either type of image is created through either the \code{file} or the
+\code{data} option (other options are available as well).
+
+The image object can then be used wherever an \code{image} option is
+supported by some widget (e.g. labels, buttons, menus). In these
+cases, Tk will not keep a reference to the image. When the last Python
+reference to the image object is deleted, the image data is deleted as
+well, and Tk will display an empty box wherever the image was used.
 
 \section{\module{Tix} ---
          Extension widgets for Tk}
@@ -1763,13 +1781,15 @@ translations from the itcl to Python. It offers most of the range of
 widgets that \code{[incr Widgets]} does, and is almost as complete as
 Tix, lacking however Tix's fast \class{HList} widget for drawing trees.
 }
-\seetitle[http://tkinter.effbot.org]{Tkinter3000}{
-is a Widget Construction Kit that allows you to write new Tkinter
-widgets in Python using Mixins. It is built on top of Tkinter,
-and does not offer the extended range of widgets that \refmodule{Tix} does,
-but does allow a form of  building mega-widgets. The project is
-still in the early stages.
-}
+
+\seetitle[http://tkinter.effbot.org/]{Tkinter3000 Widget Construction
+          Kit (WCK)}{%
+is a library that allows you to write new Tkinter widgets in pure
+Python.  The WCK framework gives you full control over widget
+creation, configuration, screen appearance, and event handling.  WCK
+widgets can be very fast and light-weight, since they can operate
+directly on Python data structures, without having to transfer data
+through the Tk/Tcl layer.}
 \end{seealso*}
 
 
@@ -1789,12 +1809,19 @@ wxWindows is much richer in widgets than \refmodule{Tkinter}, with its
 help system, sophisticated HTML and image viewers, and other
 specialized widgets, extensive documentation, and printing capabilities.
 }
-\seetitle[http://www.thekompany.com]{PyKDE}{
-PyKDE is a SIP wrapped interface to the Qt toolkit.
-The Qt \Cpp{} toolkit lies at the heart of the KDE desktop, and the
-Qt toolkit allows very tight integration with KDE, and also Windows
-portability. SIP is a tool for generating bindings for \Cpp{} libraries
-as Python classes, and is specifically designed for Python.
+\seetitle[]{PyQt}{
+PyQt is a \program{sip}-wrapped binding to the Qt toolkit.  Qt is an
+extensive \Cpp{} GUI toolkit that is available for \UNIX, Windows and
+Mac OS X.  \program{sip} is a tool for generating bindings for \Cpp{}
+libraries as Python classes, and is specifically designed for Python.
+An online manual is available at
+\url{http://www.opendocspublishing.com/pyqt/} (errata are located at
+\url{http://www.valdyas.org/python/book.html}). 
+}
+\seetitle[http://www.riverbankcomputing.co.uk/pykde/index.php]{PyKDE}{
+PyKDE is a \program{sip}-wrapped interface to the KDE desktop
+libraries.  KDE is a desktop environment for \UNIX{} computers; the
+graphical components are based on Qt.
 }
 \seetitle[http://fxpy.sourceforge.net/]{FXPy}{
 is a Python extension module which provides an interface to the 
@@ -1811,15 +1838,16 @@ leverages \Cpp{} to allow programmers to easily build additional Controls
 and GUI elements, simply by taking existing controls, and creating a
 derived class which simply adds or redefines the desired behavior.
 }
-\seetitle[http://www.daa.com.au/\~james/pygtk/]{PyGTK}{
+\seetitle[http://www.daa.com.au/\textasciitilde james/software/pygtk/]{PyGTK}{
 is a set of bindings for the \ulink{GTK}{http://www.gtk.org/} widget set.
 It provides an object oriented interface that is slightly higher
 level than the C one. It automatically does all the type casting and
 reference counting that you would have to do normally with the C
-API. There are also \ulink{bindings}{http://www.daa.com.au/\~james/gnome/}
+API. There are also
+\ulink{bindings}{http://www.daa.com.au/\textasciitilde james/gnome/}
 to  \ulink{GNOME}{http://www.gnome.org}, and a 
 \ulink{tutorial}
-{http://laguna.fmedic.unam.mx/\~daniel/pygtutorial/pygtutorial/index.html}
+{http://laguna.fmedic.unam.mx/\textasciitilde daniel/pygtutorial/pygtutorial/index.html}
 is available.
 }
 \end{seealso*}

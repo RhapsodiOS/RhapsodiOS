@@ -13,9 +13,10 @@ Options specifying formats to build:
 
 HTML options:
     --address, -a	Specify an address for page footers.
+    --dir		Specify the directory for HTML output.
     --link		Specify the number of levels to include on each page.
     --split, -s		Specify a section level for page splitting, default: %(max_split_depth)s.
-    --iconserver, -i	Specify location of icons (default: ../).
+    --iconserver, -i	Specify location of icons (default: ./).
     --image-type	Specify the image type to use in HTML output;
                         values: gif (default), png.
     --numeric           Don't rename the HTML files; just keep node#.html for
@@ -24,6 +25,7 @@ HTML options:
                         not a URL).
     --up-link           URL to a parent document.
     --up-title          Title of a parent document.
+    --favicon           Icon to display in the browsers location bar.
 
 Other options:
     --a4		Format for A4 paper.
@@ -43,7 +45,6 @@ import re
 import shutil
 import string
 import sys
-import tempfile
 
 
 if not hasattr(os.path, "abspath"):
@@ -94,7 +95,7 @@ class Options:
     debugging = 0
     discard_temps = 1
     have_temps = 0
-    icon_server = None
+    icon_server = "."
     image_type = "gif"
     logging = 0
     max_link_depth = 3
@@ -108,6 +109,7 @@ class Options:
     about_file = os.path.join(TOPDIR, "html", "about.dat")
     up_link = None
     up_title = None
+    favicon = None
     #
     # 'dvips_safe' is a weird option.  It is used mostly to make
     # LaTeX2HTML not try to be too smart about protecting the user
@@ -153,7 +155,8 @@ class Options:
                                     "keep", "quiet", "runs=", "image-type=",
                                     "about=", "numeric", "style=", "paper=",
                                     "up-link=", "up-title=", "dir=",
-                                    "global-module-index=", "dvips-safe"]
+                                    "global-module-index=", "dvips-safe",
+                                    "favicon="]
                                    + list(self.ALL_FORMATS))
         for opt, arg in opts:
             if opt == "--all":
@@ -196,6 +199,8 @@ class Options:
                 self.style_file = os.path.abspath(arg)
             elif opt == "--l2h-init":
                 self.l2h_init_files.append(os.path.abspath(arg))
+            elif opt == "--favicon":
+                self.favicon = arg
             elif opt == "--up-link":
                 self.up_link = arg
             elif opt == "--up-title":
@@ -205,7 +210,7 @@ class Options:
             elif opt == "--dir":
                 if os.sep == "\\":
                     arg = re.sub("/", "\\", arg)
-                self.builddir = arg
+                self.builddir = os.path.expanduser(arg)
             elif opt == "--paper":
                 self.paper = arg
             elif opt == "--dvips-safe":
@@ -265,10 +270,12 @@ class Job:
             self.log_filename = os.path.abspath(self.doc + ".how")
         if os.path.exists(self.log_filename):
             os.unlink(self.log_filename)
-        if os.path.exists(self.doc + ".l2h"):
-            self.l2h_aux_init_file = tempfile.mktemp()
-        else:
-            self.l2h_aux_init_file = self.doc + ".l2h"
+        l2hconf = self.doc + ".l2h"
+        if os.path.exists(l2hconf):
+            if os.path.exists(l2hconf + "~"):
+                os.unlink(l2hconf + "~")
+            os.rename(l2hconf, l2hconf + "~")
+        self.l2h_aux_init_file = self.doc + ".l2h"
         self.write_l2h_aux_init_file()
 
     def build(self):
@@ -292,7 +299,7 @@ class Job:
                         "Could not locate support images of type %s."
                         % `self.options.image_type`)
                 for fn in imgs:
-                    new_fn = os.path.join(self.doc, os.path.basename(fn))
+                    new_fn = os.path.join(self.builddir, os.path.basename(fn))
                     shutil.copyfile(fn, new_fn)
         if "text" in formats:
             self.require_temps()
@@ -436,6 +443,11 @@ class Job:
                     self.run("%s %s *.html" % (PERL_BINARY, NODE2LABEL_SCRIPT))
                 finally:
                     os.chdir(pwd)
+        # These files need to be cleaned up here since builddir there
+        # can be more than one, so we clean each of them.
+        if self.options.discard_temps:
+            for fn in ("images.tex", "images.log", "images.aux"):
+                safe_unlink(os.path.join(builddir, fn))
 
     def build_text(self, tempdir=None):
         if tempdir is None:
@@ -475,6 +487,7 @@ class Job:
         l2hoption(fp, "MAX_SPLIT_DEPTH", options.max_split_depth)
         l2hoption(fp, "EXTERNAL_UP_LINK", options.up_link)
         l2hoption(fp, "EXTERNAL_UP_TITLE", options.up_title)
+        l2hoption(fp, "FAVORITES_ICON", options.favicon)
         l2hoption(fp, "GLOBAL_MODULE_INDEX", options.global_module_index)
         l2hoption(fp, "DVIPS_SAFE", options.dvips_safe)
         fp.write("1;\n")
@@ -512,9 +525,11 @@ class Job:
             self.warning(
                 "Session transcript and error messages are in %s."
                 % self.log_filename)
+            result = 1
             if hasattr(os, "WIFEXITED"):
                 if os.WIFEXITED(rc):
-                    self.warning("Exited with status %s." % os.WEXITSTATUS(rc))
+                    result = os.WEXITSTATUS(rc)
+                    self.warning("Exited with status %s." % result)
                 else:
                     self.warning("Killed by signal %s." % os.WSTOPSIG(rc))
             else:
@@ -522,7 +537,7 @@ class Job:
             sys.stderr.write("The relevant lines from the transcript are:\n")
             sys.stderr.write("-" * 72 + "\n")
             sys.stderr.writelines(get_run_transcript(self.log_filename))
-            sys.exit(rc)
+            sys.exit(result)
 
     def message(self, msg):
         msg = "+++ " + msg

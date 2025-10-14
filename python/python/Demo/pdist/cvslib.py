@@ -70,7 +70,7 @@ class File:
 		except os.error:
 			self.lmtime = self.lctime = self.lsum = None
 		else:
-			self.lsum = md5.md5(open(self.file).read()).digest()
+			self.lsum = md5.new(open(self.file).read()).digest()
 		self.lseen = 1
 
 	def getentry(self, line):
@@ -289,10 +289,10 @@ class CVS:
 			os.rename(file, bfile)
 
 	def ignored(self, file):
-		if os.path.isdir(file): return 1
+		if os.path.isdir(file): return True
 		for pat in self.IgnoreList:
-			if fnmatch.fnmatch(file, pat): return 1
-		return 0
+			if fnmatch.fnmatch(file, pat): return True
+		return False
 
 
 # hexify and unhexify are useful to print MD5 checksums in hex format

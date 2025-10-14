@@ -2,10 +2,9 @@
 
 import sys
 import os
-BGENDIR=os.path.join(sys.prefix, ':Tools:bgen:bgen')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
 from scantools import Scanner_OSX
-from bgenlocations import TOOLBOXDIR
 
 LONG = "MacTextEditor"
 SHORT = "mlte"
@@ -20,6 +19,8 @@ def main():
 	scanner.scan()
 	scanner.gentypetest(SHORT+"typetest.py")
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "=== Done scanning and generating, now importing the generated code... ==="
 	exec "import " + SHORT + "support"
 	print "=== Done.  It's up to you to compile it now! ==="
@@ -49,6 +50,8 @@ kTXNUseCurrentSelection = 0xFFFFFFFF
 kTXNStartOffset = 0
 kTXNEndOffset = 0x7FFFFFFF
 MovieFileType = FOUR_CHAR_CODE('moov')
+kTXNUseEncodingWordRulesMask = 0x80000000
+kTXNFontSizeAttributeSize = 4
 """)
 
 	def makeblacklistnames(self):
@@ -71,14 +74,16 @@ MovieFileType = FOUR_CHAR_CODE('moov')
 			"kTXNQDFontStyleAttributeSize",
 			"kTXNQDFontColorAttributeSize",
 			"kTXNTextEncodingAttributeSize",
+			"kTXNUseEncodingWordRulesMask",
+			"kTXNFontSizeAttributeSize",
 			"status",
 			"justification",
+			'TXNTSMCheck', # OS8
 			]
 
 	def makegreylist(self):
 		return [
 			('#if TARGET_API_MAC_OS8', [
-				'TXNTSMCheck',
 			])]
 
 
@@ -93,9 +98,6 @@ MovieFileType = FOUR_CHAR_CODE('moov')
 			"TXNTypeAttributes", #TBD
 			"TXNMatchTextRecord", #TBD
 			"TXNBackground", #TBD
-			"UniChar", #TBD
-			"UniCharCount", #TBD
-			"UniChar_ptr", #TBD
 			"TXNFindUPP", 
 			"ATSUStyle", #TBD
 			"TXNActionKeyMapperProcPtr",

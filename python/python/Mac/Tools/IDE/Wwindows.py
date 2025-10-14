@@ -7,6 +7,11 @@ import struct
 import traceback
 from types import InstanceType, StringType
 
+if hasattr(Win, "FrontNonFloatingWindow"):
+	MyFrontWindow = Win.FrontNonFloatingWindow
+else:
+	MyFrontWindow = Win.FrontWindow
+
 
 class Window(FrameWork.Window, Wbase.SelectableWidget):
 	
@@ -265,7 +270,7 @@ class Window(FrameWork.Window, Wbase.SelectableWidget):
 			self._collectselectablewidgets(w._widgets)
 	
 	def _calcbounds(self):
-		self._possize = self.wid.GetWindowPort().portRect[2:]
+		self._possize = self.wid.GetWindowPort().GetPortBounds()[2:]
 		w, h = self._possize
 		self._bounds = (0, 0, w, h)
 		self.wid.GetWindowContentRgn(scratchRegion)
@@ -382,7 +387,7 @@ class Window(FrameWork.Window, Wbase.SelectableWidget):
 		del self.saveclip[-1]
 	
 	def getgrowrect(self):
-		l, t, r, b = self.wid.GetWindowPort().portRect
+		l, t, r, b = self.wid.GetWindowPort().GetPortBounds()
 		return (r - 15, b - 15, r, b)
 	
 	def has_key(self, key):
@@ -418,7 +423,7 @@ class Dialog(Window):
 		return 0
 	
 	def getwindowbounds(self, size, minsize = None):
-		screenbounds = sl, st, sr, sb = Qd.qd.screenBits.bounds
+		screenbounds = sl, st, sr, sb = Qd.GetQDGlobalsScreenBits().bounds
 		w, h = size
 		l = sl + (sr - sl - w) / 2
 		t = st + (sb - st - h) / 3
@@ -455,7 +460,8 @@ class ModalDialog(Dialog):
 		Dialog.close(self)
 	
 	def mainloop(self):
-		saveyield = MacOS.EnableAppswitch(-1)
+		if hasattr(MacOS, 'EnableAppswitch'):
+			saveyield = MacOS.EnableAppswitch(-1)
 		while not self.done:
 			#self.do1event()
 			self.do1event(	Events.keyDownMask + 
@@ -465,7 +471,8 @@ class ModalDialog(Dialog):
 						Events.mDownMask +
 						Events.mUpMask, 
 						10)
-		MacOS.EnableAppswitch(saveyield)
+		if hasattr(MacOS, 'EnableAppswitch'):
+			MacOS.EnableAppswitch(saveyield)
 	
 	def do1event(self, mask = Events.everyEvent, wait = 0):
 		ok, event = self.app.getevent(mask, wait)
@@ -486,9 +493,9 @@ class ModalDialog(Dialog):
 	
 	def do_key(self, event):
 		(what, message, when, where, modifiers) = event
-		w = Win.FrontWindow()
-		if w <> self.wid:
-			return
+		#w = Win.FrontWindow()
+		#if w <> self.wid:
+		#	return
 		c = chr(message & Events.charCodeMask)
 		if modifiers & Events.cmdKey:
 			self.app.checkmenus(self)
@@ -512,7 +519,10 @@ class ModalDialog(Dialog):
 			name = "do_%d" % partcode
 		
 		if name == "do_inDesk":
-			MacOS.HandleEvent(event)
+			if hasattr(MacOS, "HandleEvent"):
+				MacOS.HandleEvent(event)
+			else:
+				print 'Unexpected inDesk event:', event
 			return
 		if wid == self.wid:
 			try:
@@ -550,7 +560,7 @@ def FrontWindowInsert(stuff):
 		raise TypeError, 'string expected'
 	import W
 	app = W.getapplication()
-	wid = Win.FrontWindow()
+	wid = MyFrontWindow()
 	if wid and app._windows.has_key(wid):
 		window = app._windows[wid]
 		if hasattr(window, "insert"):
@@ -564,8 +574,13 @@ def FrontWindowInsert(stuff):
 			"Can't find window or widget to insert text into; copy to clipboard instead?", 
 			1) == 1:
 		from Carbon import Scrap
-		Scrap.ZeroScrap()
-		Scrap.PutScrap('TEXT', stuff)
+		if hasattr(Scrap, 'PutScrap'):
+			Scrap.ZeroScrap()
+			Scrap.PutScrap('TEXT', stuff)
+		else:
+			Scrap.ClearCurrentScrap()
+			sc = Scrap.GetCurrentScrap()
+			sc.PutScrapFlavor('TEXT', 0, stuff)
 
 
 # not quite based on the same function in FrameWork	
@@ -600,7 +615,7 @@ def windowbounds(preferredsize, minsize=None):
 	minwidth, minheight = minsize
 	width, height = preferredsize
 	
-	sl, st, sr, sb = screenbounds = Qd.InsetRect(Qd.qd.screenBits.bounds, 4, 4)
+	sl, st, sr, sb = screenbounds = Qd.InsetRect(Qd.GetQDGlobalsScreenBits().bounds, 4, 4)
 	l, t = getnextwindowpos()
 	if (l + width) > sr:
 		_windowcounter = 0

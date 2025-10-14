@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: tclock.py,v 1.1.1.1 2002/02/05 23:23:28 zarzycki Exp $
+# $Id: tclock.py,v 1.2 2000/12/23 14:50:18 akuchling Exp $
 #
 # From tclock.c, Copyright Howard Jones <ha.jones@ic.ac.uk>, September 1994.
 

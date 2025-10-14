@@ -12,7 +12,7 @@ import waste
 import WASTEconst
 from Carbon import Scrap
 import os
-import macfs
+import EasyDialogs
 
 UNDOLABELS = [ # Indexed by WEGetUndoInfo() value
 	None, "", "typing", "Cut", "Paste", "Clear", "Drag", "Style"]
@@ -50,7 +50,7 @@ class WasteWindow(ScrolledWindow):
 		self.ted.WEIdle()	
 		if self.ted.WEAdjustCursor(where, BIGREGION):
 			return
-		Qd.SetCursor(Qd.qd.arrow)
+		Qd.SetCursor(Qd.GetQDGlobalsArrow())
 		
 	def getscrollbarvalues(self):
 		dr = self.ted.WEGetDestRect()
@@ -181,24 +181,29 @@ class WasteWindow(ScrolledWindow):
 		self.changed = 0
 		
 	def menu_save_as(self):
-		fss, ok = macfs.StandardPutFile('Save as:')
-		if not ok: return
-		self.path = fss.as_pathname()
+		path = EasyDialogs.AskFileForSave(message='Save as:')
+		if not path: return
+		self.path = path
 		self.name = os.path.split(self.path)[-1]
 		self.wid.SetWTitle(self.name)
 		self.menu_save()
 		
 	def menu_cut(self):
 		self.ted.WESelView()
-		self.ted.WECut()
-		Scrap.ZeroScrap()
+		if hasattr(Scrap, 'ZeroScrap'):
+			Scrap.ZeroScrap()
+		else:
+			Scrap.ClearCurrentScrap()
 		self.ted.WECut()
 		self.updatescrollbars()
 		self.parent.updatemenubar()
 		self.changed = 1
 		
 	def menu_copy(self):
-		Scrap.ZeroScrap()
+		if hasattr(Scrap, 'ZeroScrap'):
+			Scrap.ZeroScrap()
+		else:
+			Scrap.ClearCurrentScrap()
 		self.ted.WECopy()
 		self.updatescrollbars()
 		self.parent.updatemenubar()
@@ -324,10 +329,9 @@ class Wed(Application):
 
 	def _open(self, askfile):
 		if askfile:
-			fss, ok = macfs.StandardGetFile('TEXT')
-			if not ok:
+			path = EasyDialogs.AskFileForOpen(typeList=('TEXT',))
+			if not path:
 				return
-			path = fss.as_pathname()
 			name = os.path.split(path)[-1]
 			try:
 				fp = open(path, 'rb') # NOTE binary, we need cr as end-of-line
@@ -412,7 +416,7 @@ class Wed(Application):
 		if self.active:
 			self.active.do_idle(event)
 		else:
-			Qd.SetCursor(Qd.qd.arrow)
+			Qd.SetCursor(Qd.GetQDGlobalsArrow())
 
 def main():
 	App = Wed()

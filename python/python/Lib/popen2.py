@@ -8,7 +8,6 @@ and popen3(cmd) which return two or three pipes to the spawned command.
 
 import os
 import sys
-import types
 
 __all__ = ["popen2", "popen3", "popen4"]
 
@@ -26,7 +25,7 @@ class Popen3:
 
     sts = -1                    # Child not completed yet
 
-    def __init__(self, cmd, capturestderr=0, bufsize=-1):
+    def __init__(self, cmd, capturestderr=False, bufsize=-1):
         """The parameter 'cmd' is the shell command to execute in a
         sub-process.  The 'capturestderr' flag, if true, specifies that
         the object should capture standard error output of the child process.
@@ -57,12 +56,12 @@ class Popen3:
         _active.append(self)
 
     def _run_child(self, cmd):
-        if isinstance(cmd, types.StringTypes):
+        if isinstance(cmd, basestring):
             cmd = ['/bin/sh', '-c', cmd]
         for i in range(3, MAXFD):
             try:
                 os.close(i)
-            except:
+            except OSError:
                 pass
         try:
             os.execvp(cmd[0], cmd)
@@ -84,10 +83,11 @@ class Popen3:
 
     def wait(self):
         """Wait for and return the exit status of the child process."""
-        pid, sts = os.waitpid(self.pid, 0)
-        if pid == self.pid:
-            self.sts = sts
-            _active.remove(self)
+        if self.sts < 0:
+            pid, sts = os.waitpid(self.pid, 0)
+            if pid == self.pid:
+                self.sts = sts
+                _active.remove(self)
         return self.sts
 
 
@@ -112,7 +112,7 @@ class Popen4(Popen3):
         _active.append(self)
 
 
-if sys.platform[:3] == "win":
+if sys.platform[:3] == "win" or sys.platform == "os2emx":
     # Some things don't make sense on non-Unix platforms.
     del Popen3, Popen4
 
@@ -141,14 +141,14 @@ else:
         """Execute the shell command 'cmd' in a sub-process.  If 'bufsize' is
         specified, it sets the buffer size for the I/O pipes.  The file objects
         (child_stdout, child_stdin) are returned."""
-        inst = Popen3(cmd, 0, bufsize)
+        inst = Popen3(cmd, False, bufsize)
         return inst.fromchild, inst.tochild
 
     def popen3(cmd, bufsize=-1, mode='t'):
         """Execute the shell command 'cmd' in a sub-process.  If 'bufsize' is
         specified, it sets the buffer size for the I/O pipes.  The file objects
         (child_stdout, child_stdin, child_stderr) are returned."""
-        inst = Popen3(cmd, 1, bufsize)
+        inst = Popen3(cmd, True, bufsize)
         return inst.fromchild, inst.tochild, inst.childerr
 
     def popen4(cmd, bufsize=-1, mode='t'):

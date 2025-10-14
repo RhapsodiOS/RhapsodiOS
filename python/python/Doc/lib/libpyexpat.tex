@@ -99,6 +99,12 @@ elem2
 \end{funcdesc}
 
 
+\begin{seealso}
+  \seetitle[http://www.libexpat.org/]{The Expat XML Parser}
+           {Home page of the Expat project.}
+\end{seealso}
+
+
 \subsection{XMLParser Objects \label{xmlparser-objects}}
 
 \class{xmlparser} objects have the following methods:
@@ -152,6 +158,29 @@ values of this parser.
 
 
 \class{xmlparser} objects have the following attributes:
+
+\begin{memberdesc}[xmlparser]{buffer_size}
+The size of the buffer used when \member{buffer_text} is true.  This
+value cannot be changed at this time.
+\versionadded{2.3}
+\end{memberdesc}
+
+\begin{memberdesc}[xmlparser]{buffer_text}
+Setting this to true causes the \class{xmlparser} object to buffer
+textual content returned by Expat to avoid multiple calls to the
+\method{CharacterDataHandler()} callback whenever possible.  This can
+improve performance substantially since Expat normally breaks
+character data into chunks at every line ending.  This attribute is
+false by default, and may be changed at any time.
+\versionadded{2.3}
+\end{memberdesc}
+
+\begin{memberdesc}[xmlparser]{buffer_used}
+If \member{buffer_text} is enabled, the number of bytes stored in the
+buffer.  These bytes represent UTF-8 encoded text.  This attribute has
+no meaningful interpretation when \member{buffer_text} is false.
+\versionadded{2.3}
+\end{memberdesc}
 
 \begin{memberdesc}[xmlparser]{ordered_attributes}
 Setting this attribute to a non-zero integer causes the attributes to
@@ -451,7 +480,7 @@ p.CharacterDataHandler = char_data
 p.Parse("""<?xml version="1.0"?>
 <parent id="top"><child1 name="paul">Text goes here</child1>
 <child2 name="fred">More text</child2>
-</parent>""")
+</parent>""", 1)
 \end{verbatim}
 
 The output from this program is:
@@ -551,7 +580,7 @@ entity instead of an internal entity.
 
 \begin{datadescni}{XML_ERROR_BAD_CHAR_REF}
 A character reference referred to a character which is illegal in XML
-(for example, character \code{0}, or `\code{\&\#0;}'.
+(for example, character \code{0}, or `\code{\&\#0;}').
 \end{datadescni}
 
 \begin{datadescni}{XML_ERROR_BINARY_ENTITY_REF}

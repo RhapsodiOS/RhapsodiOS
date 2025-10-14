@@ -36,9 +36,20 @@
 #
 # Finally, if a line contains just the word "*shared*" (without the
 # quotes but with the stars), then the following modules will not be
+# built statically.  The build process works like this:
+#
+# 1. Build all modules that are declared as static in Modules/Setup,
+#    combine them into libpythonxy.a, combine that into python.
+# 2. Build all modules that are listed as shared in Modules/Setup.
+# 3. Invoke setup.py. That builds all modules that
+#    a) are not builtin, and
+#    b) are not listed in Modules/Setup, and
+#    c) can be build on the target
+#
+# Therefore, modules declared to be shared will not be
 # included in the config.c file, nor in the list of objects to be
 # added to the library archive, and their linker options won't be
-# added to the linker options, but rules to create their .o files and
+# added to the linker options. Rules to create their .o files and
 # their shared libraries will still be added to the Makefile, and
 # their names will be collected in the Make variable SHAREDMODS.  This
 # is used to build modules as shared libraries.  (They can be
@@ -46,8 +57,9 @@
 # toplevel "make install" target.)  (For compatibility,
 # *noconfig* has the same effect as *shared*.)
 #
-# In addition, *static* reverses this effect (negating a previous
-# *shared* line).
+# In addition, *static* explicitly declares the following modules to
+# be static.  Lines containing "*static*" and "*shared*" may thus
+# alternate thoughout this file.
 
 # NOTE: As a standard policy, as many modules as can be supported by a
 # platform should be present.  The distribution comes with all modules
@@ -80,12 +92,13 @@ TESTPATH=
 
 # Path components for machine- or system-dependent modules and shared libraries
 MACHDEPPATH=:plat-$(MACHDEP)
+EXTRAMACHDEPPATH=
 
 # Path component for the Tkinter-related modules
 # The TKPATH variable is always enabled, to save you the effort.
 TKPATH=:lib-tk
 
-COREPYTHONPATH=$(DESTPATH)$(SITEPATH)$(TESTPATH)$(MACHDEPPATH)$(TKPATH)
+COREPYTHONPATH=$(DESTPATH)$(SITEPATH)$(TESTPATH)$(MACHDEPPATH)$(EXTRAMACHDEPPATH)$(TKPATH)
 PYTHONPATH=$(COREPYTHONPATH)
 
 
@@ -97,8 +110,13 @@ PYTHONPATH=$(COREPYTHONPATH)
 # setup.py script in the root of the Python source tree.
 
 posix posixmodule.c		# posix (UNIX) system calls
+errno errnomodule.c		# posix (UNIX) errno values
 _sre _sre.c			# Fredrik Lundh's new regular expressions
-new newmodule.c			# Tommy Burnette's 'new' module
+_codecs _codecsmodule.c		# access to the builtin codecs and codec registry
+
+# The zipimport module is always imported at startup. Having it as a
+# builtin module avoids some bootstrapping problems and reduces overhead.
+zipimport zipimport.c
 
 # The rest of the modules listed in this file are all commented out by
 # default.  Usually they can be detected and built as dynamically
@@ -151,12 +169,12 @@ GLHACK=-Dclear=__GLclear
 #time timemodule.c # -lm # time operations and variables
 #operator operator.c	# operator.add() and similar goodies
 #_weakref _weakref.c	# basic weak reference support
-#_codecs _codecsmodule.c	# access to the builtin codecs and codec registry
 #_testcapi _testcapimodule.c    # Python C API test module
 
 #unicodedata unicodedata.c    # static Unicode character database
 
-#_locale _localemodule.c  # access to ISO C locale support
+# access to ISO C locale support
+#_locale _localemodule.c  # -lintl
 
 
 # Modules with some UNIX dependencies -- on by default:
@@ -166,7 +184,6 @@ GLHACK=-Dclear=__GLclear
 #fcntl fcntlmodule.c	# fcntl(2) and ioctl(2)
 #pwd pwdmodule.c		# pwd(3) 
 #grp grpmodule.c		# grp(3)
-#errno errnomodule.c	# posix (UNIX) errno values
 #select selectmodule.c	# select(2); not on ancient System V
 
 # Memory-mapped files (also works on Win32).
@@ -175,13 +192,16 @@ GLHACK=-Dclear=__GLclear
 # Dynamic readlines
 #xreadlines xreadlinesmodule.c
 
-# for socket(2), without SSL support.
+# CSV file helper
+#_csv _csv.c
+
+# Socket module helper for socket(2)
 #_socket socketmodule.c
 
-# Socket module compiled with SSL support; you must comment out the other
+# Socket module helper for SSL support; you must comment out the other
 # socket line above, and possibly edit the SSL variable:
 #SSL=/usr/local/ssl
-#_socket socketmodule.c \
+#_ssl _ssl.c \
 #	-DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \
 #	-L$(SSL)/lib -lssl -lcrypto
 
@@ -382,25 +402,33 @@ GLHACK=-Dclear=__GLclear
 #gdbm gdbmmodule.c -I/usr/local/include -L/usr/local/lib -lgdbm
 
 
-# Berkeley DB interface.
+# Sleepycat Berkeley DB interface.
 #
-# This requires the Berkeley DB code, see
-# ftp://ftp.cs.berkeley.edu/pub/4bsd/db.1.85.tar.gz
+# This requires the Sleepycat DB code, see http://www.sleepycat.com/
+# The earliest supported version of that library is 3.0, the latest
+# supported version is 4.0 (4.1 is specifically not supported, as that
+# changes the semantics of transactional databases). A list of available
+# releases can be found at
 #
-# Edit the variables DB and DBPORT to point to the db top directory
+# http://www.sleepycat.com/update/index.html
+#
+# Edit the variables DB and DBLIBVERto point to the db top directory
 # and the subdirectory of PORT where you built it.
-#
-# (See http://electricrain.com/greg/python/bsddb3/ for an interface to
-# BSD DB 3.x.)
+#DB=/usr/local/BerkeleyDB.4.0
+#DBLIBVER=4.0
+#DBINC=$(DB)/include
+#DBLIB=$(DB)/lib
+#_bsddb _bsddb.c -I$(DBINC) -L$(DBLIB) -ldb-$(DBLIBVER)
 
-# Note: If a db.h file is found by configure, bsddb will be enabled
-# automatically via Setup.config.in.  It only needs to be enabled here
-# if it is not automatically enabled there; check the generated
-# Setup.config before enabling it here.
+# Historical Berkeley DB 1.85
+#
+# This module is deprecated; the 1.85 version of the Berkeley DB library has
+# bugs that can cause data corruption. If you can, use later versions of the
+# library instead, available from <http://www.sleepycat.com/>.
 
 #DB=/depot/sundry/src/berkeley-db/db.1.85
 #DBPORT=$(DB)/PORT/irix.5.3
-#bsddb bsddbmodule.c -I$(DBPORT)/include -I$(DBPORT) $(DBPORT)/libdb.a
+#bsddb185 bsddbmodule.c -I$(DBPORT)/include -I$(DBPORT) $(DBPORT)/libdb.a
 
 
 
@@ -410,7 +438,7 @@ GLHACK=-Dclear=__GLclear
 # Fred Drake's interface to the Python parser
 #parser parsermodule.c
 
-# Digital Creations' cStringIO and cPickle
+# cStringIO and cPickle
 #cStringIO cStringIO.c
 #cPickle cPickle.c
 
@@ -439,26 +467,17 @@ GLHACK=-Dclear=__GLclear
 
 # Interface to the Expat XML parser
 #
-# Expat is written by James Clark and must be downloaded separately
-# (see below).  The pyexpat module was written by Paul Prescod after a
-# prototype by Jack Jansen.
+# Expat was written by James Clark and is now maintained by a group of
+# developers on SourceForge; see www.libexpat.org for more
+# information.  The pyexpat module was written by Paul Prescod after a
+# prototype by Jack Jansen.  Source of Expat 1.95.2 is included in
+# Modules/expat/.  Usage of a system shared libexpat.so/expat.dll is
+# not advised.
 #
-# The Expat dist includes Windows .lib and .dll files.  Home page is at
-# http://www.jclark.com/xml/expat.html, the current production release is
-# always ftp://ftp.jclark.com/pub/xml/expat.zip.
+# More information on Expat can be found at www.libexpat.org.
 #
-# EXPAT_DIR, below, should point to the expat/ directory created by
-# unpacking the Expat source distribution.
-#
-# Note: the expat build process doesn't yet build a libexpat.a; you can
-# do this manually while we try convince the author to add it.  To do so,
-# cd to EXPAT_DIR, run "make" if you have not done so, then run:
-#
-#    ar cr libexpat.a xmltok/*.o xmlparse/*.o
-#
-#EXPAT_DIR=/usr/local/src/expat
-#pyexpat pyexpat.c -I$(EXPAT_DIR)/xmlparse -L$(EXPAT_DIR) -lexpat
-
+#EXPAT_DIR=/usr/local/src/expat-1.95.2
+#pyexpat pyexpat.c -DHAVE_EXPAT_H -I$(EXPAT_DIR)/lib -L$(EXPAT_DIR) -lexpat
 
 # Example -- included for reference only:
 # xx xxmodule.c

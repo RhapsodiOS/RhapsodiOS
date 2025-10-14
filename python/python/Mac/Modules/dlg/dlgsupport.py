@@ -47,13 +47,6 @@ extern int _DlgObj_Convert(PyObject *, DialogRef *);
 #define DlgObj_Convert _DlgObj_Convert
 #endif
 
-#if !ACCESSOR_CALLS_ARE_FUNCTIONS && UNIVERSAL_INTERFACES_VERSION < 0x340
-#define GetDialogTextEditHandle(dlg) (((DialogPeek)(dlg))->textH)
-#define SetPortDialogPort(dlg) SetPort(dlg)
-#define GetDialogPort(dlg) ((CGrafPtr)(dlg))
-#define GetDialogFromWindow(win) ((DialogRef)(win))
-#endif
-
 /* XXX Shouldn't this be a stack? */
 static PyObject *Dlg_FilterProc_callback = NULL;
 
@@ -201,7 +194,7 @@ initstuff = initstuff + """
 
 
 # Define a class which specializes our object definition
-class MyObjectDefinition(GlobalObjectDefinition):
+class MyObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def __init__(self, name, prefix = None, itselftype = None):
 		GlobalObjectDefinition.__init__(self, name, prefix, itselftype)
 ## This won't work in Carbon, so we disable it for all MacPythons:-(

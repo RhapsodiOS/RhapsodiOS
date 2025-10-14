@@ -3,8 +3,8 @@
 import HTMLParser
 import pprint
 import sys
-import test_support
 import unittest
+from test import test_support
 
 
 class EventCollector(HTMLParser.HTMLParser):
@@ -101,6 +101,9 @@ class HTMLParserTestCase(TestCaseBase):
         self._run_check("<?processing instruction>", [
             ("pi", "processing instruction"),
             ])
+        self._run_check("<?processing instruction ?>", [
+            ("pi", "processing instruction ?"),
+            ])
 
     def test_simple_html(self):
         self._run_check("""
@@ -196,6 +199,10 @@ DOCTYPE html [
                          ])
         self._run_check("""<a b='' c="">""", [
             ("starttag", "a", [("b", ""), ("c", "")]),
+            ])
+        # Regression test for SF patch #669683.
+        self._run_check("<e a=rgb(1,2,3)>", [
+            ("starttag", "e", [("a", "rgb(1,2,3)")]),
             ])
 
     def test_attr_entity_replacement(self):

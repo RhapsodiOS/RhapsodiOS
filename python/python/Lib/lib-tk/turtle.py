@@ -2,6 +2,7 @@
 
 from math import * # Also for export
 import Tkinter
+
 class Error(Exception):
     pass
 
@@ -24,6 +25,7 @@ class RawPen:
 
     def reset(self):
         canvas = self._canvas
+        self._canvas.update()
         width = canvas.winfo_width()
         height = canvas.winfo_height()
         if width <= 1:
@@ -51,7 +53,6 @@ class RawPen:
             canvas.delete(item)
         self._delete_turtle()
         self._draw_turtle()
-
 
     def tracer(self, flag):
         self._tracing = flag
@@ -117,7 +118,6 @@ class RawPen:
         self._color = color
         self._draw_turtle()
 
-
     def write(self, arg, move=0):
         x, y = start = self._position
         x = x-1 # correction -- calibrated for Windows
@@ -149,6 +149,7 @@ class RawPen:
         self._filling = flag
         if flag:
             self._path.append(self._position)
+        self.forward(0)
 
     def circle(self, radius, extent=None):
         if extent is None:
@@ -198,6 +199,41 @@ class RawPen:
         self._position = x1, y1
         if self._filling:
             self._path.append(self._position)
+        self._draw_turtle()
+
+    def heading(self):
+        return self._angle
+
+    def setheading(self, angle):
+        self._angle = angle
+        self._draw_turtle()
+
+    def window_width(self):
+        width = self._canvas.winfo_width()
+        if width <= 1:  # the window isn't managed by a geometry manager
+            width = self._canvas['width']
+        return width
+
+    def window_height(self):
+        height = self._canvas.winfo_height()
+        if height <= 1: # the window isn't managed by a geometry manager
+            height = self._canvas['height']
+        return height
+
+    def position(self):
+        x0, y0 = self._origin
+        x1, y1 = self._position
+        return [x1-x0, -y1+y0]
+
+    def setx(self, xpos):
+        x0, y0 = self._origin
+        x1, y1 = self._position
+        self._goto(x0+xpos, y1)
+
+    def sety(self, ypos):
+        x0, y0 = self._origin
+        x1, y1 = self._position
+        self._goto(x1, y0-ypos)
 
     def goto(self, *args):
         if len(args) == 1:
@@ -219,7 +255,7 @@ class RawPen:
         if self._filling:
             self._path.append(self._position)
         if self._drawing:
-            if self._tracing:                
+            if self._tracing:
                 dx = float(x1 - x0)
                 dy = float(y1 - y0)
                 distance = hypot(dx, dy)
@@ -259,7 +295,7 @@ class RawPen:
         dx = distance * cos(self._angle*self._invradian)
         dy = distance * sin(self._angle*self._invradian)
         self._delete_turtle()
-        self._arrow = _canvas.create_line(x-dx,y+dy,x,y,
+        self._arrow = self._canvas.create_line(x-dx,y+dy,x,y,
                                           width=self._width,
                                           arrow="last",
                                           capstyle="round",
@@ -319,11 +355,18 @@ def right(angle): _getpen().right(angle)
 def up(): _getpen().up()
 def down(): _getpen().down()
 def width(width): _getpen().width(width)
-def color(*args): apply(_getpen().color, args)
+def color(*args): _getpen().color(*args)
 def write(arg, move=0): _getpen().write(arg, move)
 def fill(flag): _getpen().fill(flag)
 def circle(radius, extent=None): _getpen().circle(radius, extent)
-def goto(*args): apply(_getpen().goto, args)
+def goto(*args): _getpen().goto(*args)
+def heading(): return _getpen().heading()
+def setheading(angle): _getpen().setheading(angle)
+def position(): return _getpen().position()
+def window_width(): return _getpen().window_width()
+def window_height(): return _getpen().window_height()
+def setx(xpos): _getpen().setx(xpos)
+def sety(ypos): _getpen().sety(ypos)
 
 def demo():
     reset()

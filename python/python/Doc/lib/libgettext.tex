@@ -69,6 +69,32 @@ Like \function{gettext()}, but look the message up in the specified
 \var{domain}.
 \end{funcdesc}
 
+\begin{funcdesc}{ngettext}{singular, plural, n}
+
+Like \function{gettext()}, but consider plural forms. If a translation
+is found, apply the plural formula to \var{n}, and return the
+resulting message (some languages have more than two plural forms).
+If no translation is found, return \var{singular} if \var{n} is 1;
+return \var{plural} otherwise.
+
+The Plural formula is taken from the catalog header. It is a C or
+Python expression that has a free variable n; the expression evaluates
+to the index of the plural in the catalog. See the GNU gettext
+documentation for the precise syntax to be used in .po files, and the
+formulas for a variety of languages.
+
+\versionadded{2.3}
+
+\end{funcdesc}
+
+\begin{funcdesc}{dngettext}{domain, singular, plural, n}
+Like \function{ngettext()}, but look the message up in the specified
+\var{domain}.
+
+\versionadded{2.3}
+\end{funcdesc}
+
+
 Note that GNU \program{gettext} also defines a \function{dcgettext()}
 method, but this was deemed not useful and so it is currently
 unimplemented.
@@ -95,7 +121,8 @@ for returning either standard 8-bit strings or Unicode strings.
 Translations instances can also install themselves in the built-in
 namespace as the function \function{_()}.
 
-\begin{funcdesc}{find}{domain\optional{, localedir\optional{, languages}}}
+\begin{funcdesc}{find}{domain\optional{, localedir\optional{, 
+                        languages\optional{, all}}}}
 This function implements the standard \file{.mo} file search
 algorithm.  It takes a \var{domain}, identical to what
 \function{textdomain()} takes.  Optional \var{localedir} is as in
@@ -119,20 +146,32 @@ components:
 \file{\var{localedir}/\var{language}/LC_MESSAGES/\var{domain}.mo}
 
 The first such file name that exists is returned by \function{find()}.
-If no such file is found, then \code{None} is returned.
+If no such file is found, then \code{None} is returned. If \var{all}
+is given, it returns a list of all file names, in the order in which
+they appear in the languages list or the environment variables.
 \end{funcdesc}
 
 \begin{funcdesc}{translation}{domain\optional{, localedir\optional{,
-                              languages\optional{, class_}}}}
+                              languages\optional{, 
+                              class_,\optional{fallback}}}}}
 Return a \class{Translations} instance based on the \var{domain},
 \var{localedir}, and \var{languages}, which are first passed to
-\function{find()} to get the
-associated \file{.mo} file path.  Instances with
+\function{find()} to get a list of the
+associated \file{.mo} file paths.  Instances with
 identical \file{.mo} file names are cached.  The actual class instantiated
 is either \var{class_} if provided, otherwise
 \class{GNUTranslations}.  The class's constructor must take a single
-file object argument.  If no \file{.mo} file is found, this
-function raises \exception{IOError}.
+file object argument.  
+
+If multiple files are found, later files are used as fallbacks for
+earlier ones. To allow setting the fallback, \function{copy.copy}
+is used to clone each translation object from the cache; the actual
+instance data is still shared with the cache.
+
+If no \file{.mo} file is found, this function raises
+\exception{IOError} if \var{fallback} is false (which is the default),
+and returns a \class{NullTranslations} instance if \var{fallback} is
+true.
 \end{funcdesc}
 
 \begin{funcdesc}{install}{domain\optional{, localedir\optional{, unicode}}}
@@ -165,7 +204,8 @@ methods of \class{NullTranslations}:
 \begin{methoddesc}[NullTranslations]{__init__}{\optional{fp}}
 Takes an optional file object \var{fp}, which is ignored by the base
 class.  Initializes ``protected'' instance variables \var{_info} and
-\var{_charset} which are set by derived classes.  It then calls
+\var{_charset} which are set by derived classes, as well as \var{_fallback},
+which is set through \method{add_fallback}.  It then calls
 \code{self._parse(fp)} if \var{fp} is not \code{None}.
 \end{methoddesc}
 
@@ -176,13 +216,36 @@ you have an unsupported message catalog file format, you should
 override this method to parse your format.
 \end{methoddesc}
 
+\begin{methoddesc}{NullTranslations}{add_fallback}{fallback}
+Add \var{fallback} as the fallback object for the current translation
+object. A translation object should consult the fallback if it cannot
+provide a translation for a given message.
+\end{methoddesc}
+
 \begin{methoddesc}[NullTranslations]{gettext}{message}
-Return the translated message.  Overridden in derived classes.
+If a fallback has been set, forward \method{gettext} to the fallback.
+Otherwise, return the translated message.  Overridden in derived classes.
 \end{methoddesc}
 
 \begin{methoddesc}[NullTranslations]{ugettext}{message}
-Return the translated message as a Unicode string.  Overridden in
-derived classes.
+If a fallback has been set, forward \method{ugettext} to the fallback.
+Otherwise, return the translated message as a Unicode string.
+Overridden in derived classes.
+\end{methoddesc}
+
+\begin{methoddesc}[NullTranslations]{ngettext}{singular, plural, n}
+If a fallback has been set, forward \method{ngettext} to the fallback.
+Otherwise, return the translated message.  Overridden in derived classes.
+
+\versionadded{2.3}
+\end{methoddesc}
+
+\begin{methoddesc}[NullTranslations]{ungettext}{singular, plural, n}
+If a fallback has been set, forward \method{ungettext} to the fallback.
+Otherwise, return the translated message as a Unicode string.
+Overridden in derived classes.
+
+\versionadded{2.3}
 \end{methoddesc}
 
 \begin{methoddesc}[NullTranslations]{info}{}
@@ -222,24 +285,91 @@ The \module{gettext} module provides one additional class derived from
 \class{NullTranslations}: \class{GNUTranslations}.  This class
 overrides \method{_parse()} to enable reading GNU \program{gettext}
 format \file{.mo} files in both big-endian and little-endian format.
+It also coerces both message ids and message strings to Unicode.
 
-It also parses optional meta-data out of the translation catalog.  It
-is convention with GNU \program{gettext} to include meta-data as the
-translation for the empty string.  This meta-data is in \rfc{822}-style
-\code{key: value} pairs.  If the key \code{Content-Type} is found,
-then the \code{charset} property is used to initialize the
-``protected'' \member{_charset} instance variable.  The entire set of
-key/value pairs are placed into a dictionary and set as the
-``protected'' \member{_info} instance variable.
+\class{GNUTranslations} parses optional meta-data out of the
+translation catalog.  It is convention with GNU \program{gettext} to
+include meta-data as the translation for the empty string.  This
+meta-data is in \rfc{822}-style \code{key: value} pairs, and should
+contain the \code{Project-Id-Version} key.  If the key
+\code{Content-Type} is found, then the \code{charset} property is used
+to initialize the ``protected'' \member{_charset} instance variable,
+defaulting to \code{None} if not found.  If the charset encoding is
+specified, then all message ids and message strings read from the
+catalog are converted to Unicode using this encoding.  The
+\method{ugettext()} method always returns a Unicode, while the
+\method{gettext()} returns an encoded 8-bit string.  For the message
+id arguments of both methods, either Unicode strings or 8-bit strings
+containing only US-ASCII characters are acceptable.  Note that the
+Unicode version of the methods (i.e. \method{ugettext()} and
+\method{ungettext()}) are the recommended interface to use for
+internationalized Python programs.
+
+The entire set of key/value pairs are placed into a dictionary and set
+as the ``protected'' \member{_info} instance variable.
 
 If the \file{.mo} file's magic number is invalid, or if other problems
 occur while reading the file, instantiating a \class{GNUTranslations} class
 can raise \exception{IOError}.
 
-The other usefully overridden method is \method{ugettext()}, which
-returns a Unicode string by passing both the translated message string
-and the value of the ``protected'' \member{_charset} variable to the
-builtin \function{unicode()} function.
+The following methods are overridden from the base class implementation:
+
+\begin{methoddesc}[GNUTranslations]{gettext}{message}
+Look up the \var{message} id in the catalog and return the
+corresponding message string, as an 8-bit string encoded with the
+catalog's charset encoding, if known.  If there is no entry in the
+catalog for the \var{message} id, and a fallback has been set, the
+look up is forwarded to the fallback's \method{gettext()} method.
+Otherwise, the \var{message} id is returned.
+\end{methoddesc}
+
+\begin{methoddesc}[GNUTranslations]{ugettext}{message}
+Look up the \var{message} id in the catalog and return the
+corresponding message string, as a Unicode string.  If there is no
+entry in the catalog for the \var{message} id, and a fallback has been
+set, the look up is forwarded to the fallback's \method{ugettext()}
+method.  Otherwise, the \var{message} id is returned.
+\end{methoddesc}
+
+\begin{methoddesc}[GNUTranslations]{ngettext}{singular, plural, n}
+Do a plural-forms lookup of a message id.  \var{singular} is used as
+the message id for purposes of lookup in the catalog, while \var{n} is
+used to determine which plural form to use.  The returned message
+string is an 8-bit string encoded with the catalog's charset encoding,
+if known.
+
+If the message id is not found in the catalog, and a fallback is
+specified, the request is forwarded to the fallback's
+\method{ngettext()} method.  Otherwise, when \var{n} is 1 \var{singular} is
+returned, and \var{plural} is returned in all other cases.
+
+\versionadded{2.3}
+\end{methoddesc}
+
+\begin{methoddesc}[GNUTranslations]{ungettext}{singular, plural, n}
+Do a plural-forms lookup of a message id.  \var{singular} is used as
+the message id for purposes of lookup in the catalog, while \var{n} is
+used to determine which plural form to use.  The returned message
+string is a Unicode string.
+
+If the message id is not found in the catalog, and a fallback is
+specified, the request is forwarded to the fallback's
+\method{ungettext()} method.  Otherwise, when \var{n} is 1 \var{singular} is
+returned, and \var{plural} is returned in all other cases.
+
+Here is an example:
+
+\begin{verbatim}
+n = len(os.listdir('.'))
+cat = GNUTranslations(somefile)
+message = cat.ungettext(
+    'There is %(num)d file in this directory',
+    'There are %(num)d files in this directory',
+    n) % {'n': n}
+\end{verbatim}
+
+\versionadded{2.3}
+\end{methoddesc}
 
 \subsubsection{Solaris message catalog support}
 
@@ -312,11 +442,11 @@ The \program{pygettext}\footnote{Fran\c cois Pinard has
 written a program called
 \program{xpot} which does a similar job.  It is available as part of
 his \program{po-utils} package at
-\url{http://www.iro.umontreal.ca/contrib/po-utils/HTML}.} program
+\url{http://www.iro.umontreal.ca/contrib/po-utils/HTML/}.} program
 scans all your Python source code looking for the strings you
 previously marked as translatable.  It is similar to the GNU
 \program{gettext} program except that it understands all the
-intricacies of Python source code, but knows nothing about C or C++
+intricacies of Python source code, but knows nothing about C or \Cpp
 source code.  You don't need GNU \code{gettext} unless you're also
 going to be translating C code (such as C extension modules).
 
@@ -426,7 +556,7 @@ lang3.install()
 
 \subsubsection{Deferred translations}
 
-In most coding situations, strings are translated were they are coded.
+In most coding situations, strings are translated where they are coded.
 Occasionally however, you need to mark strings for translation, but
 defer actual translation until later.  A classic example is:
 
@@ -512,6 +642,7 @@ this module:
 \begin{itemize}
     \item Peter Funk
     \item James Henstridge
+    \item Juan David Ib\'a\~nez Palomar
     \item Marc-Andr\'e Lemburg
     \item Martin von L\"owis
     \item Fran\c cois Pinard

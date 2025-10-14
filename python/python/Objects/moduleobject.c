@@ -43,24 +43,31 @@ PyModule_New(char *name)
 PyObject *
 PyModule_GetDict(PyObject *m)
 {
+	PyObject *d;
 	if (!PyModule_Check(m)) {
 		PyErr_BadInternalCall();
 		return NULL;
 	}
-	return ((PyModuleObject *)m) -> md_dict;
+	d = ((PyModuleObject *)m) -> md_dict;
+	if (d == NULL)
+		((PyModuleObject *)m) -> md_dict = d = PyDict_New();
+	return d;
 }
 
 char *
 PyModule_GetName(PyObject *m)
 {
+	PyObject *d;
 	PyObject *nameobj;
 	if (!PyModule_Check(m)) {
 		PyErr_BadArgument();
 		return NULL;
 	}
-	nameobj = PyDict_GetItemString(((PyModuleObject *)m)->md_dict,
-				       "__name__");
-	if (nameobj == NULL || !PyString_Check(nameobj)) {
+	d = ((PyModuleObject *)m)->md_dict;
+	if (d == NULL ||
+	    (nameobj = PyDict_GetItemString(d, "__name__")) == NULL ||
+	    !PyString_Check(nameobj))
+	{
 		PyErr_SetString(PyExc_SystemError, "nameless module");
 		return NULL;
 	}
@@ -70,14 +77,17 @@ PyModule_GetName(PyObject *m)
 char *
 PyModule_GetFilename(PyObject *m)
 {
+	PyObject *d;
 	PyObject *fileobj;
 	if (!PyModule_Check(m)) {
 		PyErr_BadArgument();
 		return NULL;
 	}
-	fileobj = PyDict_GetItemString(((PyModuleObject *)m)->md_dict,
-				       "__file__");
-	if (fileobj == NULL || !PyString_Check(fileobj)) {
+	d = ((PyModuleObject *)m)->md_dict;
+	if (d == NULL ||
+	    (fileobj = PyDict_GetItemString(d, "__file__")) == NULL ||
+	    !PyString_Check(fileobj))
+	{
 		PyErr_SetString(PyExc_SystemError, "module filename missing");
 		return NULL;
 	}
@@ -99,6 +109,8 @@ _PyModule_Clear(PyObject *m)
 	PyObject *d;
 
 	d = ((PyModuleObject *)m)->md_dict;
+	if (d == NULL)
+		return;
 
 	/* First, clear only names starting with a single underscore */
 	pos = 0;
@@ -135,10 +147,23 @@ _PyModule_Clear(PyObject *m)
 /* Methods */
 
 static int
-module_init(PyModuleObject *m, PyObject *args, PyObject *kw)
+module_init(PyModuleObject *m, PyObject *args, PyObject *kwds)
 {
-	m->md_dict = PyDict_New();
-	if (m->md_dict == NULL)
+	static char *kwlist[] = {"name", "doc", NULL};
+	PyObject *dict, *name = Py_None, *doc = Py_None;
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|O", kwlist,
+					 &name, &doc))
+		return -1;
+	dict = m->md_dict;
+	if (dict == NULL) {
+		dict = PyDict_New();
+		if (dict == NULL)
+			return -1;
+		m->md_dict = dict;
+	}
+	if (PyDict_SetItemString(dict, "__name__", name) < 0)
+		return -1;
+	if (PyDict_SetItemString(dict, "__doc__", doc) < 0)
 		return -1;
 	return 0;
 }
@@ -184,6 +209,12 @@ module_traverse(PyModuleObject *m, visitproc visit, void *arg)
 	return 0;
 }
 
+PyDoc_STRVAR(module_doc,
+"module(name[, doc])\n\
+\n\
+Create a module object.\n\
+The name must be a string; the optional doc argument can have any type.");
+
 PyTypeObject PyModule_Type = {
 	PyObject_HEAD_INIT(&PyType_Type)
 	0,					/* ob_size */
@@ -207,7 +238,7 @@ PyTypeObject PyModule_Type = {
 	0,					/* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
 		Py_TPFLAGS_BASETYPE,		/* tp_flags */
-	0,					/* tp_doc */
+	module_doc,				/* tp_doc */
 	(traverseproc)module_traverse,		/* tp_traverse */
 	0,					/* tp_clear */
 	0,					/* tp_richcompare */
@@ -225,5 +256,5 @@ PyTypeObject PyModule_Type = {
 	(initproc)module_init,			/* tp_init */
 	PyType_GenericAlloc,			/* tp_alloc */
 	PyType_GenericNew,			/* tp_new */
-	_PyObject_GC_Del,			/* tp_free */
+	PyObject_GC_Del,		        /* tp_free */
 };

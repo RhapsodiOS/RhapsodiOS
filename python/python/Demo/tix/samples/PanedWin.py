@@ -1,6 +1,6 @@
 # -*-mode: python; fill-column: 75; tab-width: 8; coding: iso-latin-1-unix -*-
 #
-# $Id: PanedWin.py,v 1.1.1.1 2002/02/05 23:23:10 zarzycki Exp $
+# $Id: PanedWin.py,v 1.1 2001/11/25 14:50:55 loewis Exp $
 #
 # Tix Demostration Program
 #

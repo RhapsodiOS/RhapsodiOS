@@ -98,6 +98,9 @@
     <attribute name="name"/>
     <child name="args"/>
     </environment>
+  <environment name="csimplemacrodesc">
+    <attribute name="name"/>
+    </environment>
   <environment name="ctypedesc">
     <attribute name="tag" optional="yes"/>
     <attribute name="name"/>
@@ -690,16 +693,15 @@
     <attribute name="token"/>
     <content/>
     </macro>
+  <macro name="productioncont">
+    <content/>
+    </macro>
   <macro name="token" outputname="grammartoken">
     <content/>
     </macro>
   <macro name="grammartoken">
     <content/>
     </macro>
-  <macro name="orgroup">
-    <content/>
-    </macro>
-  <macro name="oritem"/>
 
   <!-- Misc. -->
   <macro name="emph">
@@ -733,6 +735,9 @@
     <content/>
     </macro>
   <macro name="cfunction">
+    <content/>
+    </macro>
+  <macro name="csimplemacro">
     <content/>
     </macro>
   <macro name="ctype">
@@ -875,6 +880,12 @@
     </macro>
   <macro name="textbar" outputname="">
     <text>|</text>
+    </macro>
+  <macro name="textgreater" outputname="">
+    <text>&gt;</text>
+    </macro>
+  <macro name="textless" outputname="">
+    <text>&lt;</text>
     </macro>
 
   <!-- These will end up disappearing as well! -->

@@ -1,5 +1,5 @@
 # Testing select module
-from test_support import verbose
+from test.test_support import verbose
 import select
 import os
 
@@ -32,10 +32,17 @@ except TypeError:
 else:
     print 'expected TypeError exception not raised'
 
+try:
+    rfd, wfd, xfd = select.select([], [], [], 'not a number')
+except TypeError:
+    pass
+else:
+    print 'expected TypeError exception not raised'
+
 
 def test():
     import sys
-    if sys.platform[:3] in ('win', 'mac', 'os2'):
+    if sys.platform[:3] in ('win', 'mac', 'os2', 'riscos'):
         if verbose:
             print "Can't test select easily on", sys.platform
         return

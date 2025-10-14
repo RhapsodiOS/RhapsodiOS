@@ -5,14 +5,14 @@
 Note: string objects have grown methods in Python 1.6
 This module requires Python 1.6 or later.
 """
-from types import StringType, UnicodeType
+from types import StringTypes
 import sys
 
 __all__ = ["UserString","MutableString"]
 
 class UserString:
     def __init__(self, seq):
-        if isinstance(seq, StringType) or isinstance(seq, UnicodeType):
+        if isinstance(seq, StringTypes):
             self.data = seq
         elif isinstance(seq, UserString):
             self.data = seq.data[:]
@@ -43,29 +43,20 @@ class UserString:
     def __add__(self, other):
         if isinstance(other, UserString):
             return self.__class__(self.data + other.data)
-        elif isinstance(other, StringType) or isinstance(other, UnicodeType):
+        elif isinstance(other, StringTypes):
             return self.__class__(self.data + other)
         else:
             return self.__class__(self.data + str(other))
     def __radd__(self, other):
-        if isinstance(other, StringType) or isinstance(other, UnicodeType):
+        if isinstance(other, StringTypes):
             return self.__class__(other + self.data)
         else:
             return self.__class__(str(other) + self.data)
-    def __iadd__(self, other):
-        if isinstance(other, UserString):
-            self.data += other.data
-        elif isinstance(other, StringType) or isinstance(other, UnicodeType):
-            self.data += other
-        else:
-            self.data += str(other)
-        return self
     def __mul__(self, n):
         return self.__class__(self.data*n)
     __rmul__ = __mul__
-    def __imul__(self, n):
-        self.data *= n
-        return self
+    def __mod__(self, args):
+        return self.__class__(self.data % args)
 
     # the following methods are defined in alphabetical order:
     def capitalize(self): return self.__class__(self.data.capitalize())
@@ -108,7 +99,7 @@ class UserString:
     def join(self, seq): return self.data.join(seq)
     def ljust(self, width): return self.__class__(self.data.ljust(width))
     def lower(self): return self.__class__(self.data.lower())
-    def lstrip(self): return self.__class__(self.data.lstrip())
+    def lstrip(self, chars=None): return self.__class__(self.data.lstrip(chars))
     def replace(self, old, new, maxsplit=-1):
         return self.__class__(self.data.replace(old, new, maxsplit))
     def rfind(self, sub, start=0, end=sys.maxint):
@@ -116,18 +107,19 @@ class UserString:
     def rindex(self, sub, start=0, end=sys.maxint):
         return self.data.rindex(sub, start, end)
     def rjust(self, width): return self.__class__(self.data.rjust(width))
-    def rstrip(self): return self.__class__(self.data.rstrip())
+    def rstrip(self, chars=None): return self.__class__(self.data.rstrip(chars))
     def split(self, sep=None, maxsplit=-1):
         return self.data.split(sep, maxsplit)
     def splitlines(self, keepends=0): return self.data.splitlines(keepends)
     def startswith(self, prefix, start=0, end=sys.maxint):
         return self.data.startswith(prefix, start, end)
-    def strip(self): return self.__class__(self.data.strip())
+    def strip(self, chars=None): return self.__class__(self.data.strip(chars))
     def swapcase(self): return self.__class__(self.data.swapcase())
     def title(self): return self.__class__(self.data.title())
     def translate(self, *args):
         return self.__class__(self.data.translate(*args))
     def upper(self): return self.__class__(self.data.upper())
+    def zfill(self, width): return self.__class__(self.data.zfill(width))
 
 class MutableString(UserString):
     """mutable string objects
@@ -158,7 +150,7 @@ class MutableString(UserString):
         start = max(start, 0); end = max(end, 0)
         if isinstance(sub, UserString):
             self.data = self.data[:start]+sub.data+self.data[end:]
-        elif isinstance(sub, StringType) or isinstance(sub, UnicodeType):
+        elif isinstance(sub, StringTypes):
             self.data = self.data[:start]+sub+self.data[end:]
         else:
             self.data =  self.data[:start]+str(sub)+self.data[end:]
@@ -167,15 +159,24 @@ class MutableString(UserString):
         self.data = self.data[:start] + self.data[end:]
     def immutable(self):
         return UserString(self.data)
+    def __iadd__(self, other):
+        if isinstance(other, UserString):
+            self.data += other.data
+        elif isinstance(other, StringTypes):
+            self.data += other
+        else:
+            self.data += str(other)
+        return self
+    def __imul__(self, n):
+        self.data *= n
+        return self
 
 if __name__ == "__main__":
     # execute the regression test to stdout, if called as a script:
     import os
     called_in_dir, called_as = os.path.split(sys.argv[0])
-    called_in_dir = os.path.abspath(called_in_dir)
     called_as, py = os.path.splitext(called_as)
-    sys.path.append(os.path.join(called_in_dir, 'test'))
     if '-q' in sys.argv:
-        import test_support
+        from test import test_support
         test_support.verbose = 0
-    __import__('test_' + called_as.lower())
+    __import__('test.test_' + called_as.lower())

@@ -1,7 +1,7 @@
-This is Python version 2.2
-==========================
+This is Python version 2.3 (final)
+==================================
 
-Copyright (c) 2001 Python Software Foundation.
+Copyright (c) 2001, 2002, 2003 Python Software Foundation.
 All rights reserved.
 
 Copyright (c) 2000 BeOpen.com.
@@ -35,15 +35,19 @@ What's new in this release?
 
 See the file "Misc/NEWS".
 
+
 If you don't read instructions
 ------------------------------
 
 Congratulations on getting this far. :-)
 
 To start building right away (on UNIX): type "./configure" in the
-current directory and when it finishes, type "make".  The section
-`Build Instructions' below is still recommended reading, especially
-the part on customizing Modules/Setup.
+current directory and when it finishes, type "make".  This creates an
+executable "./python"; to install in /usr/local, first do "su root"
+and then "make install".
+
+The section `Build instructions' below is still recommended reading,
+especially the part on customizing Modules/Setup.
 
 
 What is Python anyway?
@@ -65,7 +69,7 @@ http://www.python.org/doc/ for online and downloadable versions, as
 well as a list of other introductions, and reference documentation.
 
 There's a quickly growing set of books on Python.  See
-http://www.python.org/psa/bookstore/ for a list.
+http://www.python.org/cgi-bin/moinmoin/PythonBooks for a list.
 
 
 Documentation
@@ -85,10 +89,10 @@ access.  The documentation is available in HTML, PostScript, PDF, and
 LaTeX formats; the LaTeX version is primarily for documentation
 authors, translators, and people with special formatting requirements.
 
-The best documentation for the new (in Python 2.2) type/class unification
-features is Guido's tutorial introduction, at
+The best documentation for the new (in Python 2.2) type/class
+unification features is Guido's tutorial introduction, at
 
-    http://www.python.org/2.2/descrintro.html
+    http://www.python.org/2.2.1/descrintro.html
 
 
 Web sites
@@ -97,7 +101,8 @@ Web sites
 New Python releases and related technologies are published at
 http://www.python.org/.  Come visit us!
 
-There's also a Python community web site at http://starship.python.net/.
+There's also a Python community web site at
+http://starship.python.net/.
 
 
 Newsgroups and Mailing Lists
@@ -109,8 +114,8 @@ for Python-related announcements.  These are also accessible as
 mailing lists: see http://www.python.org/psa/MailingLists.html for an
 overview of the many Python-related mailing lists.
 
-Archives are accessible via Deja.com Usenet News: see
-http://www.deja.com/usenet.  The mailing lists are also archived, see
+Archives are accessible via the Google Groups usenet archive; see
+http://groups.google.com/.  The mailing lists are also archived, see
 http://www.python.org/psa/MailingLists.html for details.
 
 
@@ -130,7 +135,7 @@ for patch submission may be found at http://www.python.org/patches/.
 
 If you have a proposal to change Python, it's best to submit a Python
 Enhancement Proposal (PEP) first.  All current PEPs, as well as
-guidelines for submitting a new PEP, are list at
+guidelines for submitting a new PEP, are listed at
 http://python.sourceforge.net/peps/.
 
 
@@ -148,32 +153,36 @@ efficient way to ask public questions.
 Build instructions
 ==================
 
-Before you can build Python, you must first configure it.  Fortunately,
-the configuration and build process has been streamlined for most Unix
-installations, so all you have to do is type a few commands,
-optionally edit one file, and sit back.  There are some platforms
-where things are not quite as smooth; see the platform specific notes
-below.  If you want to build for multiple platforms sharing the same
-source tree, see the section on VPATH below.
+Before you can build Python, you must first configure it.
+Fortunately, the configuration and build process has been automated
+for Unix and Linux installations, so all you usually have to do is
+type a few commands and sit back.  There are some platforms where
+things are not quite as smooth; see the platform specific notes below.
+If you want to build for multiple platforms sharing the same source
+tree, see the section on VPATH below.
 
-Start by running the script "./configure", which determines your system
-configuration and creates the Makefile.  (It takes a minute or two --
-please be patient!)  You may want to pass options to the configure
-script or edit the Modules/Setup file after running configure -- see the
-section below on configuration options and variables.  When it's done,
-you are ready to run make.
+Start by running the script "./configure", which determines your
+system configuration and creates the Makefile.  (It takes a minute or
+two -- please be patient!)  You may want to pass options to the
+configure script -- see the section below on configuration options and
+variables.  When it's done, you are ready to run make.
 
-To build Python, you normally type "make" in the toplevel directory.  If
-you have changed the configuration or have modified Modules/Setup, the
-Makefile may have to be rebuilt.  In this case you may have to run make
-again to correctly build your desired target.  The interpreter
-executable is built in the top level directory.
+To build Python, you normally type "make" in the toplevel directory.
+If you have changed the configuration, the Makefile may have to be
+rebuilt.  In this case you may have to run make again to correctly
+build your desired target.  The interpreter executable is built in the
+top level directory.
 
 Once you have built a Python interpreter, see the subsections below on
-testing, configuring additional modules, and installation.  If you run
-into trouble, see the next section.  Editing the Modules/Setup file
-after running make is supported; just run "make" again after making
-the desired changes.
+testing and installation.  If you run into trouble, see the next
+section.
+
+Previous versions of Python used a manual configuration process that
+involved editing the file Modules/Setup.  While this file still exists
+and manual configuration is still supported, it is rarely needed any
+more: almost all modules are automatically built as appropriate under
+guidance of the setup.py script, which is run by Make after the
+interpreter has been built.
 
 
 Troubleshooting
@@ -206,15 +215,40 @@ the OPT variable.
 
 If you get failures in test_long, or sys.maxint gets set to -1, you
 are probably experiencing compiler bugs, usually related to
-optimization.  This is a common problem with some versions of gcc and
-egcs, and some vendor-supplied compilers, which can sometimes be
-worked around by turning off optimization.  Consider switching to
-stable versions (gcc 2.7.2.3, egcs 1.1.2, or contact your vendor.)
+optimization.  This is a common problem with some versions of gcc, and
+some vendor-supplied compilers, which can sometimes be worked around
+by turning off optimization.  Consider switching to stable versions
+(gcc 2.95.2, or contact your vendor.)
 
 From Python 2.0 onward, all Python C code is ANSI C.  Compiling using
 old K&R-C-only compilers is no longer possible.  ANSI C compilers are
 available for all modern systems, either in the form of updated
-compilers from the vendor, or one of the free compilers (gcc, egcs).
+compilers from the vendor, or one of the free compilers (gcc).
+
+
+Unsupported systems
+-------------------
+
+A number of features are not supported in Python 2.3 anymore. Some
+support code is still present, but will be removed in Python 2.4.
+If you still need to use current Python versions on these systems,
+please send a message to python-dev@python.org indicating that you
+volunteer to support this system.
+
+More specifically, the following systems are not supported any
+longer:
+- SunOS 4
+- DYNIX
+- dgux
+- Minix
+- Irix 4 and --with-sgi-dl
+- Linux 1
+- Systems defining __d6_pthread_create (configure.in)
+- Systems defining PY_PTHREAD_D4, PY_PTHREAD_D6,
+  or PY_PTHREAD_D7 in thread_pthread.h
+- Systems using --with-dl-dld
+- Systems using --without-universal-newlines
+
 
 Platform specific notes
 -----------------------
@@ -224,7 +258,23 @@ on these platforms without the special directions mentioned here,
 submit a documentation bug report to SourceForge (see Bug Reports
 above) so we can remove them!)
 
+Unix platforms: If your vendor still ships (and you still use) Berkeley DB
+	1.85 you will need to edit Modules/Setup to build the bsddb185
+	module and add a line to sitecustomize.py which makes it the
+	default.  In Modules/Setup a line like
+
+	    bsddb185 bsddbmodule.c
+
+	should work.  (You may need to add -I, -L or -l flags to direct the
+	compiler and linker to your include files and libraries.)  You can
+	then force it to be the version people import by adding
+
+	    import bsddb185 as bsddb
+
+	in sitecustomize.py.
+
 64-bit platforms: The modules audioop, imageop and rgbimg don't work.
+	The setup.py script disables them on 64-bit installations.
 	Don't try to enable them in the Modules/Setup file.  They
 	contain code that is quite wordsize sensitive.  (If you have a
 	fix, let us know!)
@@ -235,15 +285,52 @@ Solaris: When using Sun's C compiler with threads, at least on Solaris
 	the "CC" environment variable when running the configure
 	script).
 
+        When using GCC on Solaris, beware of binutils 2.13 or GCC
+        versions built using it.  This mistakenly enables the
+        -zcombreloc option which creates broken shared libraries on
+        Solaris.  binutils 2.12 works, and the binutils maintainers
+        are aware of the problem.  Binutils 2.13.1 only partially
+        fixed things.  It appears that 2.13.2 solves the problem
+        completely.  This problem is known to occur with Solaris 2.7
+        and 2.8, but may also affect earlier and later versions of the
+        OS.
+
+	When the dynamic loader complains about errors finding shared
+	libraries, such as
+
+	ld.so.1: ./python: fatal: libstdc++.so.5: open failed: 
+	No such file or directory 
+
+	you need to first make sure that the library is available on
+	your system. Then, you need to instruct the dynamic loader how
+	to find it. You can choose any of the following strategies:
+
+	1. When compiling Python, set LD_RUN_PATH to the directories
+	   containing missing libraries.
+	2. When running Python, set LD_LIBRARY_PATH to these directories.
+	3. Use crle(8) to extend the search path of the loader.
+	4. Modify the installed GCC specs file, adding -R options into the
+	   *link: section.
+
 Linux:  A problem with threads and fork() was tracked down to a bug in
 	the pthreads code in glibc version 2.0.5; glibc version 2.0.7
 	solves the problem.  This causes the popen2 test to fail;
 	problem and solution reported by Pablo Bleyer.
 
 	Under Linux systems using GNU libc 2 (aka libc6), the crypt
-	module now needs the -lcrypt option.  Uncomment this flag in
-	Modules/Setup, or comment out the crypt module in the same
-	file. Most modern Linux systems use glibc2.
+	module now needs the -lcrypt option.  The setup.py script
+	takes care of this automatically.
+
+Red Hat Linux: Red Hat 9 built Python2.2 in UCS-4 mode and hacked
+	Tcl to support it. To compile Python2.3 with Tkinter, you will
+	need to pass --enable-unicode=ucs4 flag to ./configure. 
+
+	There's an executable /usr/bin/python which is Python
+	1.5.2 on most older Red Hat installations; several key Red Hat tools
+	require this version.  Python 2.1.x may be installed as
+	/usr/bin/python2.  The Makefile installs Python as
+	/usr/local/bin/python, which may or may not take precedence
+	over /usr/bin/python, depending on how you have set up $PATH.
 
 FreeBSD 3.x and probably platforms with NCurses that use libmytinfo or
 	similar: When using cursesmodule, the linking is not done in
@@ -274,18 +361,20 @@ AIX:	A complete overhaul of the shared library support is now in
 	place.  See Misc/AIX-NOTES for some notes on how it's done.
 	(The optimizer bug reported at this place in previous releases
 	has been worked around by a minimal code change.) If you get
-	errors about ptread_* functions, during compile or during
+	errors about pthread_* functions, during compile or during
 	testing, try setting CC to a thread-safe (reentrant) compiler,
 	like "cc_r".  For full C++ module support, set CC="xlC_r" (or
 	CC="xlC" without thread support).
 
-HP-UX:	Please read the file Misc/HPUX-NOTES for shared libraries.
-	When using threading, you may have to add -D_REENTRANT to the
+HP-UX:	When using threading, you may have to add -D_REENTRANT to the
 	OPT variable in the top-level Makefile; reported by Pat Knight,
 	this seems to make a difference (at least for HP-UX 10.20)
-	even though config.h defines it.
+	even though pyconfig.h defines it.
 
-Minix:  When using ack, use "CC=cc AR=aal RANLIB=: ./configure"!
+HP PA-RISC 2.0: A recent bug report (http://www.python.org/sf/546117)
+	suggests that the C compiler in this 64-bit system has bugs
+	in the optimizer that break Python.  Compiling without
+	optimization solves the problems.
 
 SCO:	The following apply to SCO 3 only; Python builds out of the box
 	on SCO 5 (or so we've heard).
@@ -309,6 +398,7 @@ UnixWare: There are known bugs in the math library of the system, as well as
 SunOS 4.x: When using the SunPro C compiler, you may want to use the
 	'-Xa' option instead of '-Xc', to enable some needed non-ANSI
 	Sunisms.
+	THIS SYSTEM IS NO LONGER SUPPORTED.
 
 NeXT:   Not supported anymore. Start with the MacOSX/Darwin code if you
 	want to revive it.
@@ -350,20 +440,52 @@ QNX:	Chris Herborth (chrish@qnx.com) writes:
 	little tight.  To increase the stack size, edit the Makefile
 	to read: LDFLAGS = -N 48k
 
-BeOS:	Chris Herborth (chrish@qnx.com) writes:
-	See BeOS/README for notes about compiling/installing Python on
-	BeOS R3 or later.  Note that only the PowerPC platform is
-	supported for R3; both PowerPC and x86 are supported for R4.
+BeOS:	See Misc/BeOS-NOTES for notes about compiling/installing
+	Python on BeOS R3 or later.  Note that only the PowerPC
+	platform is supported for R3; both PowerPC and x86 are
+	supported for R4.
 
-Cray T3E: Konrad Hinsen writes:
-	1) Don't use gcc. It compiles Python/graminit.c into something
-	   that the Cray assembler doesn't like. Cray's cc seems to work
-	   fine.
-	2) Comment out modules md5 (won't compile) and audioop (will
-	   crash the interpreter during the test suite).
-	If you run the test suite, two tests will fail (rotate and
-	binascii), but these are not the modules you'd expect to need
-	on a Cray.
+Cray T3E: Mark Hadfield (m.hadfield@niwa.co.nz) writes:
+	Python can be built satisfactorily on a Cray T3E but based on
+	my experience with the NIWA T3E (2002-05-22, version 2.2.1)
+	there are a few bugs and gotchas. For more information see a
+	thread on comp.lang.python in May 2002 entitled "Building
+	Python on Cray T3E".
+
+        1) Use Cray's cc and not gcc. The latter was reported not to
+           work by Konrad Hinsen. It may work now, but it may not.
+
+        2) To set sys.platform to something sensible, pass the
+           following environment variable to the configure script:
+
+             MACHDEP=unicosmk
+
+	2) Run configure with option "--enable-unicode=ucs4".
+
+	3) The Cray T3E does not support dynamic linking, so extension
+	   modules have to be built by adding (or uncommenting) lines
+	   in Modules/Setup. The minimum set of modules is
+
+	     posix, new, _sre, unicodedata
+
+	   On NIWA's vanilla T3E system the following have also been
+	   included successfully:
+
+	     _codecs, _locale, _socket, _symtable, _testcapi, _weakref
+	     array, binascii, cmath, cPickle, crypt, cStringIO, dbm
+	     errno, fcntl, grp, math, md5, operator, parser, pcre, pwd
+	     regex, rotor, select, struct, strop, syslog, termios
+	     time, timing, xreadlines
+
+	4) Once the python executable and library have been built, make
+	   will execute setup.py, which will attempt to build remaining
+	   extensions and link them dynamically. Each of these attempts
+	   will fail but should not halt the make process. This is
+	   normal.
+
+	5) Running "make test" uses a lot of resources and causes
+	   problems on our system. You might want to try running tests
+	   singly or in small groups.
 
 SGI:	SGI's standard "make" utility (/bin/make or /usr/bin/make)
 	does not check whether a command actually changed the file it
@@ -396,9 +518,12 @@ Reliant UNIX: The thread support does not compile on Reliant UNIX, and
         platform as well.  This should be resolved in time for a
         future release.
 
-Mac OS X 10: One of the regular expression tests fails
-        with a SEGV due to the small stack size used by default, if you do
-        "limit stacksize 2048" before "make test" it should work.
+MacOSX: The tests will crash on both 10.1 and 10.2 with SEGV in
+        test_re and test_sre due to the small default stack size.  If
+        you set the stack size to 2048 before doing a "make test" the
+        failure can be avoided.  If you're using the tcsh (the default
+        on OSX), or csh shells use "limit stacksize 2048" and for the
+        bash shell, use "ulimit -s 2048".
 
         On naked Darwin you may want to add the configure option
         "--disable-toolbox-glue" to disable the glue code for the Carbon
@@ -406,17 +531,24 @@ Mac OS X 10: One of the regular expression tests fails
         if you add the --enable-framework option, see below.
 
         On a clean OSX /usr/local does not exist. Do a
-	"sudo mkdir -m 775 /usr/local"
-        before you do a make install. Alternatively, do "sudo make install"
-        which installs everything as superuser.
+        "sudo mkdir -m 775 /usr/local"
+        before you do a make install. It is probably not a good idea to
+        do "sudo make install" which installs everything as superuser,
+        as this may later cause problems when installing distutils-based
+        additions.
+        
+        Some people have reported problems building Python after using "fink"
+        to install additional unix software. Disabling fink (remove all references
+        to /sw from your .profile or .login) should solve this.
 
         You may want to try the configure option "--enable-framework"
         which installs Python as a framework. The location can be set
         as argument to the --enable-framework option (default
-        /Library/Frameworks). You may also want to check out ./Mac/OSX
-        for building a Python.app. You may also want to manually
-        install a symlink in /usr/local/bin/python to the executable
-        deep down in the framework.
+        /Library/Frameworks). A framework install is probably needed if you
+        want to use any Aqua-based GUI toolkit (whether Tkinter, wxPython,
+        Carbon, Cocoa or anything else).
+        
+        See Mac/OSX/README for more information on framework builds.
 
 Cygwin: With recent (relative to the time of writing, 2001-12-19)
         Cygwin installations, there are problems with the interaction
@@ -435,7 +567,7 @@ Cygwin: With recent (relative to the time of writing, 2001-12-19)
 
         To do this, run "./configure --with-threads=no" including any
         other options you need (--prefix, etc.).  Then in Modules/Setup
-         uncomment the lines:
+        uncomment the lines:
 
         #SSL=/usr/local/ssl
         #_socket socketmodule.c \
@@ -483,6 +615,89 @@ Cygwin: With recent (relative to the time of writing, 2001-12-19)
         News regarding these platforms with more recent Cygwin
         versions would be appreciated!
 
+AtheOS: From Octavian Cerna <tavy at ylabs.com>:
+
+	Before building:
+
+	    Make sure you have shared versions of the libraries you
+	    want to use with Python. You will have to compile them
+	    yourself, or download precompiled packages.
+
+	    Recommended libraries:
+
+		ncurses-4.2
+		readline-4.2a
+		zlib-1.1.4
+
+	Build:
+
+	    $ ./configure --prefix=/usr/python
+	    $ make
+
+	    Python is always built as a shared library, otherwise
+	    dynamic loading would not work.
+
+	Testing:
+
+	    $ make test
+
+	Install:
+
+	    # make install
+	    # pkgmanager -a /usr/python
+
+
+	AtheOS issues:
+
+	    - large file support: due to a stdio bug in glibc/libio,
+	      access to large files may not work correctly.  fseeko()
+	      tries to seek to a negative offset.  ftello() returns a
+	      negative offset, it looks like a 32->64bit
+	      sign-extension issue.  The lowlevel functions (open,
+	      lseek, etc) are OK.
+	    - sockets: AF_UNIX is defined in the C library and in
+	      Python, but not implemented in the system.
+	    - select: poll is available in the C library, but does not
+	      work (It does not return POLLNVAL for bad fds and
+	      hangs).
+	    - posix: statvfs and fstatvfs always return ENOSYS.
+	    - disabled modules:
+		- mmap: not yet implemented in AtheOS
+		- nis: broken (on an unconfigured system
+		  yp_get_default_domain() returns junk instead of
+		  error)
+		- dl: dynamic loading doesn't work via dlopen()
+		- resource: getrimit and setrlimit are not yet
+		  implemented
+
+	    - if you are getting segmentation faults, you probably are
+	      low on memory.  AtheOS doesn't handle very well an
+	      out-of-memory condition and simply SEGVs the process.
+
+	Tested on:
+
+	    AtheOS-0.3.7
+	    gcc-2.95
+	    binutils-2.10
+	    make-3.78
+
+
+Configuring the bsddb and dbm modules
+-------------------------------------
+
+Beginning with Python version 2.3, the PyBsddb package
+<http://pybsddb.sf.net/> was adopted into Python as the bsddb package,
+exposing a set of package-level functions which provide
+backwards-compatible behavior.  Only versions 3.1 through 4.1 of
+Sleepycat's libraries provide the necessary API, so older versions
+aren't supported through this interface.  The old bsddb module has
+been retained as bsddb185, though it is not built by default.  Users
+wishing to use it will have to tweak Modules/Setup to build it.  The
+dbm module will still be built against the Sleepycat libraries if
+other preferred alternatives (ndbm, gdbm) are not found, though
+versions of the Sleepycat library prior to 3.1 are not considered.
+
+
 Configuring threads
 -------------------
 
@@ -496,7 +711,7 @@ more, but the information below is not enough to write a patch for the
 configure.in file, so manual intervention is required.  If you patch
 the configure.in file and are confident that the patch works, please
 send in the patch.  (Don't bother patching the configure script itself
--- it is regenerated each the configure.in file changes.)
+-- it is regenerated each time the configure.in file changes.)
 
 Compiler switches for threads
 .............................
@@ -543,13 +758,32 @@ Linker (ld) libraries and flags for threads
 	    (jph@emilia.engr.sgi.com)
 
 
+Building a shared libpython
+---------------------------
+
+Starting with Python 2.3, the majority of the interpreter can be built
+into a shared library, which can then be used by the interpreter 
+executable, and by applications embedding Python. To enable this feature,
+configure with --enable-shared. 
+
+If you enable this feature, the same object files will be used to create
+a static library.  In particular, the static library will contain object
+files using position-independent code (PIC) on platforms where PIC flags
+are needed for the shared library.
+
+
 Configuring additional built-in modules
 ---------------------------------------
 
 Starting with Python 2.1, the setup.py script at the top of the source
 distribution attempts to detect which modules can be built and
 automatically compiles them.  Autodetection doesn't always work, so
-you can customize the configuration by editing the Modules/Setup file.
+you can still customize the configuration by editing the Modules/Setup
+file; but this should be considered a last resort.  The rest of this
+section only applies if you decide to edit the Modules/Setup file.
+You also need this to enable static linking of certain modules (which
+is needed to enable profiling on some systems).
+
 This file is initially copied from Setup.dist by the configure script;
 if it does not exist yet, create it by copying Modules/Setup.dist
 yourself (configure will never overwrite it).  Never edit Setup.dist
@@ -607,7 +841,7 @@ gprof(1):
 
 Note that on Linux, gprof apparently does not work for shared
 libraries.  The Makefile/Setup mechanism can be used to compile and
-link most extension module statically.
+link most extension modules statically.
 
 
 Testing
@@ -617,8 +851,7 @@ To test the interpreter, type "make test" in the top-level directory.
 This runs the test set twice (once with no compiled files, once with
 the compiled files left by the previous test run).  The test set
 produces some output.  You can generally ignore the messages about
-skipped tests due to optional features which can't be imported.  (If
-you want to test those modules, edit Modules/Setup to configure them.)
+skipped tests due to optional features which can't be imported.
 If a message is printed about a failed test or a traceback or core
 dump is produced, something is wrong.  On some Linux systems (those
 that are not yet using glibc 6), test_strftime fails due to a
@@ -629,9 +862,9 @@ IMPORTANT: If the tests fail and you decide to mail a bug report,
 *don't* include the output of "make test".  It is useless.  Run the
 failing test manually, as follows:
 
-	python ../Lib/test/test_whatever.py
+	./python ./Lib/test/test_whatever.py
 
-(substituting the top of the source tree for .. if you built in a
+(substituting the top of the source tree for '.' if you built in a
 different directory).  This runs the test in verbose mode.
 
 
@@ -651,6 +884,10 @@ platform-specific files will be installed in subdirectories if the
 directory given by --exec-prefix or the `exec_prefix' Make variable
 (defaults to the --prefix directory) is given.
 
+If DESTDIR is set, it will be taken as the root directory of the
+installation, and files will be installed into $(DESTDIR)$(prefix),
+$(DESTDIR)$(exec_prefix), etc.
+
 All subdirectories created will have Python's version number in their
 name, e.g. the library modules are installed in
 "/usr/local/lib/python<version>/" by default, where <version> is the
@@ -668,12 +905,6 @@ want to replace yet, use
 This installs the same set of files as "make install" except it
 doesn't create the hard link to "python<version>" named "python" and
 it doesn't install the manual page at all.
-
-Alpha/beta revision levels are stripped from the executable and
-library filenames during installation. For example, Python2.1a2 will
-install as python2.1, overwriting the previous python2.1. To avoid
-this, you could set the Makefile VERSION variable manually
-(e.g. VERSION=2.1a2) before running "make install" or "make altinstall".
 
 The only thing you may have to install manually is the Python mode for
 Emacs found in Misc/python-mode.el.  (But then again, more recent
@@ -721,8 +952,8 @@ Modules/getpath.o.
 	than re-running the configure script if you change your mind
 	about the install prefix.
 
---with-readline: This option is no longer supported.  To use GNU
-	readline, enable module "readline" in the Modules/Setup file.
+--with-readline: This option is no longer supported.  GNU
+	readline is automatically enabled by setup.py when present.
 
 --with-threads: On most Unix systems, you can now use multiple
 	threads, and support for this is enabled by default.  To
@@ -740,7 +971,7 @@ Modules/getpath.o.
 	library) by passing --with-sgi-dl=DIRECTORY where DIRECTORY
 	is the absolute pathname of the dl library.  (Don't bother on
 	IRIX 5, it already has dynamic linking using SunOS style
-	shared libraries.)  Support for this feature is deprecated.
+	shared libraries.)  THIS OPTION IS UNSUPPORTED.
 
 --with-dl-dld: Dynamic loading of modules is rumored to be supported
 	on some other systems: VAX (Ultrix), Sun3 (SunOS 3.4), Sequent
@@ -756,8 +987,7 @@ Modules/getpath.o.
 	the absolute pathname of the dl emulation library and
 	DLD_DIRECTORY is the absolute pathname of the GNU dld library.
 	(Don't bother on SunOS 4 or 5, they already have dynamic
-	linking using shared libraries.)  Support for this feature is
-	deprecated.
+	linking using shared libraries.)  THIS OPTION IS UNSUPPORTED.
 
 --with-libm, --with-libc: It is possible to specify alternative
 	versions for the Math library (default -lm) and the C library
@@ -783,6 +1013,13 @@ Modules/getpath.o.
 --with-pydebug:  Enable additional debugging code to help track down
 	memory management problems.  This allows printing a list of all
 	live objects when the interpreter terminates.
+	
+--with(out)-universal-newlines: enable reading of text files with
+	foreign newline convention (default: enabled). In other words,
+	any of \r, \n or \r\n is acceptable as end-of-line character.
+	If enabled import and execfile will automatically accept any newline
+	in files. Python code can open a file with open(file, 'U') to
+	read it in universal newline mode. THIS OPTION IS UNSUPPORTED.
 
 
 Building for multiple architectures (using the VPATH feature)
@@ -845,11 +1082,11 @@ platforms -- see http://www.python.org/.
 To port Python to a new non-UNIX system, you will have to fake the
 effect of running the configure script manually (for Mac and PC, this
 has already been done for you).  A good start is to copy the file
-config.h.in to config.h and edit the latter to reflect the actual
+pyconfig.h.in to pyconfig.h and edit the latter to reflect the actual
 configuration of your system.  Most symbols must simply be defined as
 1 only if the corresponding feature is present and can be left alone
-otherwise; however the *_t type symbols must be defined as some variant
-of int if they need to be defined at all.
+otherwise; however the *_t type symbols must be defined as some
+variant of int if they need to be defined at all.
 
 For all platforms, it's important that the build arrange to define the
 preprocessor symbol NDEBUG on the compiler command line in a release
@@ -877,25 +1114,12 @@ files.  (Newer versions of Emacs or XEmacs may already come with the
 latest version of python-mode.)
 
 
-The Tk interface
-----------------
+Tkinter
+-------
 
-Tk (the user interface component of John Ousterhout's Tcl language) is
-also usable from Python.  Since this requires that you first build and
-install Tcl/Tk, the Tk interface is not enabled by default when
-building Python from source.  Python supports Tcl/Tk version 8.0 and
+The setup.py script automatically configures this when it detects a
+usable Tcl/Tk installation.  This requires Tcl/Tk version 8.0 or
 higher.
-
-See http://dev.ajubasolutions.com/ for more info on Tcl/Tk, including
-the on-line manual pages.
-
-
-To enable the Python/Tk interface, once you've built and installed
-Tcl/Tk, load the file Modules/Setup into your favorite text editor and
-search for the string "_tkinter".  Then follow the instructions found
-there.  If you have installed Tcl/Tk or X11 in unusual places, you
-will have to edit the first line to fix or add the -I and -L options.
-(Also see the general instructions at the top of that file.)
 
 For more Tkinter information, see the Tkinter Resource page:
 http://www.python.org/topics/tkinter/
@@ -908,15 +1132,11 @@ Note that there's a Python module called "Tkinter" (capital T) which
 lives in Lib/lib-tk/Tkinter.py, and a C module called "_tkinter"
 (lower case t and leading underscore) which lives in
 Modules/_tkinter.c.  Demos and normal Tk applications import only the
-Python Tkinter module -- the latter uses the C _tkinter module
-directly.  In order to find the C _tkinter module, it must be compiled
-and linked into the Python interpreter -- the _tkinter line in the
-Setup file does this.  In order to find the Python Tkinter module,
-sys.path must be set correctly -- the TKPATH assignment in the Setup
-file takes care of this, but only if you install Python properly
-("make install libinstall").  (You can also use dynamic loading for
-the C _tkinter module, in which case you must manually fix up sys.path
-or set $PYTHONPATH for the Python Tkinter module.)
+Python Tkinter module -- only the latter imports the C _tkinter
+module.  In order to find the C _tkinter module, it must be compiled
+and linked into the Python interpreter -- the setup.py script does
+this.  In order to find the Python Tkinter module, sys.path must be
+set correctly -- normal installation takes care of this.
 
 
 Distribution structure
@@ -933,6 +1153,7 @@ Grammar/        Input for the parser generator
 Include/        Public header files
 LICENSE		Licensing information
 Lib/            Python library modules
+Mac/            Macintosh specific resources
 Makefile.pre.in Source from which config.status creates the Makefile.pre
 Misc/           Miscellaneous useful files
 Modules/        Implementation of most built-in modules
@@ -943,8 +1164,7 @@ Parser/         The parser and tokenizer and their input handling
 Python/         The byte-compiler and interpreter
 README          The file you're reading now
 Tools/          Some useful programs written in Python
-acconfig.h      Additional input for the GNU autoheader program
-config.h.in     Source from which config.h is created (GNU autoheader output)
+pyconfig.h.in   Source from which pyconfig.h is created (GNU autoheader output)
 configure       Configuration shell script (GNU autoconf output)
 configure.in    Configuration specification (input for GNU autoconf)
 install-sh      Shell script used to install files
@@ -954,9 +1174,9 @@ the configuration and build processes:
 
 Makefile        Build rules
 Makefile.pre    Build rules before running Modules/makesetup
-buildno		Keeps track of the build number
+buildno         Keeps track of the build number
 config.cache    Cache of configuration variables
-config.h        Configuration header
+pyconfig.h      Configuration header
 config.log      Log from last configure run
 config.status   Status from last run of the configure script
 getbuildinfo.o	Object file from Modules/getbuildinfo.c

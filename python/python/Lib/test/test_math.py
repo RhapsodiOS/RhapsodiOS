@@ -1,7 +1,7 @@
 # Python test set -- math module
 # XXXX Should not do tests around zero only
 
-from test_support import *
+from test.test_support import TestFailed, verbose
 
 seps='1e-05'
 eps = eval(seps)
@@ -57,6 +57,11 @@ print 'cosh'
 testit('cosh(0)', math.cosh(0), 1)
 testit('cosh(2)-2*cosh(1)**2', math.cosh(2)-2*math.cosh(1)**2, -1) # Thanks to Lambert
 
+print 'degrees'
+testit('degrees(pi)', math.degrees(math.pi), 180.0)
+testit('degrees(pi/2)', math.degrees(math.pi/2), 90.0)
+testit('degrees(-pi/4)', math.degrees(-math.pi/4), -45.0)
+
 print 'exp'
 testit('exp(-1)', math.exp(-1), 1/math.e)
 testit('exp(0)', math.exp(0), 1)
@@ -108,6 +113,9 @@ print 'log'
 testit('log(1/e)', math.log(1/math.e), -1)
 testit('log(1)', math.log(1), 0)
 testit('log(e)', math.log(math.e), 1)
+testit('log(32,2)', math.log(32,2), 5)
+testit('log(10**40, 10)', math.log(10**40, 10), 40)
+testit('log(10**40, 10**20)', math.log(10**40, 10**20), 2)
 
 print 'log10'
 testit('log10(0.1)', math.log10(0.1), -1)
@@ -128,6 +136,11 @@ testit('pow(0,1)', math.pow(0,1), 0)
 testit('pow(1,0)', math.pow(1,0), 1)
 testit('pow(2,1)', math.pow(2,1), 2)
 testit('pow(2,-1)', math.pow(2,-1), 0.5)
+
+print 'radians'
+testit('radians(180)', math.radians(180), math.pi)
+testit('radians(90)', math.radians(90), math.pi/2)
+testit('radians(-45)', math.radians(-45), -math.pi/4)
 
 print 'sin'
 testit('sin(0)', math.sin(0), 0)

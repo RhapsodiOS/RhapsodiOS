@@ -8,7 +8,7 @@
 # of much interest anymore), and a few were fiddled to make the output
 # deterministic.
 
-from test_support import sortdict
+from test.test_support import sortdict
 import pprint
 
 class defaultdict(dict):
@@ -48,7 +48,7 @@ Here's the new type at work:
     >>> print a.__class__               # show its class
     <class 'test.test_descrtut.defaultdict'>
     >>> print type(a) is a.__class__    # its type is its class
-    1
+    True
     >>> a[1] = 3.25                     # modify the instance
     >>> print a                         # show the new value
     {1: 3.25}
@@ -98,16 +98,16 @@ just like classic classes:
     >>> print a["noway"]
     -1000
     >>> 'default' in dir(a)
-    1
+    True
     >>> a.x1 = 100
     >>> a.x2 = 200
     >>> print a.x1
     100
     >>> d = dir(a)
     >>> 'default' in d and 'x1' in d and 'x2' in d
-    1
-    >>> print a.__dict__
-    {'default': -1000, 'x2': 200, 'x1': 100}
+    True
+    >>> print sortdict(a.__dict__)
+    {'default': -1000, 'x1': 100, 'x2': 200}
     >>>
 """
 
@@ -167,11 +167,11 @@ For instance of built-in types, x.__class__ is now the same as type(x):
     >>> list
     <type 'list'>
     >>> isinstance([], list)
-    1
+    True
     >>> isinstance([], dict)
-    0
+    False
     >>> isinstance([], object)
-    1
+    True
     >>>
 
 Under the new proposal, the __methods__ attribute no longer exists:
@@ -191,6 +191,7 @@ Instead, you can get the same information from the list type:
      '__delattr__',
      '__delitem__',
      '__delslice__',
+     '__doc__',
      '__eq__',
      '__ge__',
      '__getattribute__',
@@ -201,6 +202,7 @@ Instead, you can get the same information from the list type:
      '__iadd__',
      '__imul__',
      '__init__',
+     '__iter__',
      '__le__',
      '__len__',
      '__lt__',
@@ -208,6 +210,7 @@ Instead, you can get the same information from the list type:
      '__ne__',
      '__new__',
      '__reduce__',
+     '__reduce_ex__',
      '__repr__',
      '__rmul__',
      '__setattr__',
@@ -492,8 +495,8 @@ def test_main(verbose=None):
     # into the doctest examples, and unless the full test.test_descrtut
     # business is used the name can change depending on how the test is
     # invoked.
-    import test_support, test.test_descrtut
-    test_support.run_doctest(test.test_descrtut, verbose)
+    from test import test_support, test_descrtut
+    test_support.run_doctest(test_descrtut, verbose)
 
 # This part isn't needed for regrtest, but for running the test directly.
 if __name__ == "__main__":

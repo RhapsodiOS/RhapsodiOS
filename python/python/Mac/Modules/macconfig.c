@@ -69,11 +69,9 @@ extern void initfl();
 extern void initthread();
 extern void inittiming();
 extern void initsignal();
-extern void initnew();
 extern void initdl();
 extern void initsyslog();
 extern void initgestalt();
-extern void initmacfs();
 extern void initbinascii();
 extern void initoperator();
 extern void initerrno();
@@ -95,9 +93,11 @@ extern void initicglue();
 #ifndef USE_CORE_TOOLBOX
 #define USE_CORE_TOOLBOX
 #endif
+extern void init_AH();
 extern void init_App();
 extern void init_Fm();
 extern void init_Help();
+extern void init_IBCarbon();
 extern void init_Icn();
 extern void init_List();
 extern void init_Mlte();
@@ -116,6 +116,8 @@ extern void init_Ctl();
 extern void init_Dlg();
 extern void init_Drag();
 extern void init_Evt();
+extern void init_File();
+extern void init_Folder();
 extern void init_Menu();
 extern void init_Qd();
 extern void init_Res();
@@ -164,9 +166,8 @@ extern void init_hotshot();
 #ifdef USE_PYEXPAT
 extern void initpyexpat();
 #endif
-#ifdef WITH_CYCLE_GC
 extern void initgc();
-#endif
+extern void init_random();
 
 extern void initcPickle();
 extern void initcStringIO();
@@ -175,6 +176,8 @@ extern void initsha();
 extern void init_locale();
 extern void init_sre();
 extern void initxreadlines();
+extern void initzipimport();
+extern void inititertools();
 /* -- ADDMODULE MARKER 1 -- */
 
 extern void PyMarshal_Init();
@@ -199,9 +202,7 @@ struct _inittab _PyImport_Inittab[] = {
 	{"rgbimg", initrgbimg},
 	{"md5", initmd5},
 	{"rotor", initrotor},
-	{"new", initnew},
 	{"gestalt", initgestalt},
-	{"macfs", initmacfs},
 	{"binascii", initbinascii},
 	{"operator", initoperator},
 	{"errno", initerrno},
@@ -226,14 +227,18 @@ struct _inittab _PyImport_Inittab[] = {
 	{"_Dlg", init_Dlg},
 	{"_Drag", init_Drag},
 	{"_Evt", init_Evt},
+	{"_File", init_File},
+	{"_Folder", init_Folder},
 	{"_Menu", init_Menu},
 	{"_Qd", init_Qd},
 	{"_Win", init_Win},
 	{"_Res", init_Res},
 #endif
 #ifdef USE_TOOLBOX
+	{"_AH", init_AH},
 	{"_App", init_App},
 	{"_Fm", init_Fm},
+	{"_IBCarbon", init_IBCarbon},
 	{"_Icn", init_Icn},
 	{"_List", init_List},
 	{"_Mlte", init_Mlte},
@@ -244,16 +249,8 @@ struct _inittab _PyImport_Inittab[] = {
 	{"_Scrap", init_Scrap},
 	{"_TE", init_TE},
 	{"ColorPicker", initColorPicker},
-#if !TARGET_API_MAC_CARBON
-	{"_Help", init_Help},
-	{"Printing", initPrinting},
-#endif
-#if TARGET_API_MAC_CARBON
 	{"_CF", init_CF},
-#endif
-#if TARGET_API_MAC_CARBON
 	{"hfsplus", inithfsplus},
-#endif
 #endif /* USE_TOOLBOX */
 #ifdef USE_QT
 	{"_Cm", init_Cm},
@@ -297,14 +294,15 @@ struct _inittab _PyImport_Inittab[] = {
 #ifdef USE_PYEXPAT
 	{"pyexpat", initpyexpat},
 #endif
-#ifdef WITH_CYCLE_GC
 	{"gc", initgc},
-#endif
+	{"_random", init_random},
 	{"cPickle",	initcPickle},
 	{"cStringIO",	initcStringIO},
 	{"_locale", init_locale},
 	{"_sre", init_sre},
 	{"xreadlines", initxreadlines},
+	{"zipimport", initzipimport},
+	{"itertools", inititertools},
 /* -- ADDMODULE MARKER 2 -- */
 
 	/* This module "lives in" with marshal.c */

@@ -255,7 +255,17 @@ Continue execution until the current function returns.
 
 Continue execution, only stop when a breakpoint is encountered.
 
-\item[l(ist) \optional{\var{first\optional{, last}}}]
+\item[j(ump) \var{lineno}]
+
+Set the next line that will be executed.  Only available in the
+bottom-most frame.  This lets you jump back and execute code
+again, or jump forward to skip code that you don't want to run.
+
+It should be noted that not all jumps are allowed --- for instance it
+is not possible to jump into the middle of a \keyword{for} loop or out
+of a \keyword{finally} clause.
+
+\item[l(ist) \optional{\var{first}\optional{, \var{last}}}]
 
 List source code for the current file.  Without arguments, list 11
 lines around the current line or continue the previous listing.  With
@@ -270,8 +280,13 @@ Print the argument list of the current function.
 \item[p \var{expression}]
 
 Evaluate the \var{expression} in the current context and print its
-value.  (Note: \samp{print} can also be used, but is not a debugger
-command --- this executes the Python \keyword{print} statement.)
+value.  \note{\samp{print} can also be used, but is not a debugger
+command --- this executes the Python \keyword{print} statement.}
+
+\item[pp \var{expression}]
+
+Like the \samp{p} command, except the value of the exception is
+pretty-printed using the \module{pprint} module.
 
 \item[alias \optional{\var{name} \optional{command}}]
 
@@ -298,7 +313,7 @@ alias pi for k in %1.__dict__.keys(): print "%1.",k,"=",%1.__dict__[k]
 #Print instance variables in self
 alias ps pi self
 \end{verbatim}
-		
+                
 \item[unalias \var{name}]
 
 Deletes the specified alias.

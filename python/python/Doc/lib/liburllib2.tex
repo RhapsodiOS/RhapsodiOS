@@ -50,12 +50,18 @@ which case it must be possible to call the constructor without
 any parameters).  Instances of the following classes will be in
 front of the \var{handler}s, unless the \var{handler}s contain
 them, instances of them or subclasses of them:
-
-\code{ProxyHandler, UnknownHandler, HTTPHandler, HTTPDefaultErrorHandler, 
-      HTTPRedirectHandler, FTPHandler, FileHandler}
+\class{ProxyHandler}, \class{UnknownHandler}, \class{HTTPHandler},
+\class{HTTPDefaultErrorHandler}, \class{HTTPRedirectHandler},
+\class{FTPHandler}, \class{FileHandler}
 
 If the Python installation has SSL support (\function{socket.ssl()}
 exists), \class{HTTPSHandler} will also be added.
+
+Beginning in Python 2.3, a \class{BaseHandler} subclass may also
+change its \member{handler_order} member variable to modify its
+position in the handlers list. Besides \class{ProxyHandler}, which has
+\member{handler_order} of \code{100}, all handlers currently have it
+set to \code{500}.
 \end{funcdesc}
 
 
@@ -217,6 +223,12 @@ by all handlers except HTTP handlers --- and there it should be an
 request to be \code{POST} rather than \code{GET}. 
 \end{methoddesc}
 
+\begin{methoddesc}[Request]{get_method}{}
+Return a string indicating the HTTP request method.  This is only
+meaningful for HTTP requests, and currently always takes one of the
+values ("GET", "POST").
+\end{methoddesc}
+
 \begin{methoddesc}[Request]{has_data}{}
 Return whether the instance has a non-\code{None} data.
 \end{methoddesc}
@@ -291,7 +303,7 @@ Open the given \var{url} (which can be a request object or a string),
 optionally passing the given \var{data}.
 Arguments, return values and exceptions raised are the same as those
 of \function{urlopen()} (which simply calls the \method{open()} method
-on the default installed \class{OpenerDirector}.
+on the default installed \class{OpenerDirector}).
 \end{methoddesc}
 
 \begin{methoddesc}[OpenerDirector]{error}{proto\optional{,
@@ -394,23 +406,58 @@ Arguments, return values and exceptions raised should be the same as
 for \method{http_error_default()}.
 \end{methoddesc}
 
-
 \subsection{HTTPRedirectHandler Objects \label{http-redirect-handler}}
 
-\note{303 redirection is not supported by this version of 
-\module{urllib2}.}
+\note{Some HTTP redirections require action from this module's client
+  code.  If this is the case, \exception{HTTPError} is raised.  See
+  \rfc{2616} for details of the precise meanings of the various
+  redirection codes.}
+
+\begin{methoddesc}[HTTPRedirectHandler]{redirect_request}{req,
+                                                  fp, code, msg, hdrs}
+Return a \class{Request} or \code{None} in response to a redirect.
+This is called by the default implementations of the
+\method{http_error_30*()} methods when a redirection is received
+from the server.  If a redirection should take place, return a new
+\class{Request} to allow \method{http_error_30*()} to perform the
+redirect.  Otherwise, raise \exception{HTTPError} if no other
+\class{Handler} should try to handle this URL, or return \code{None}
+if you can't but another \class{Handler} might.
+
+\begin{notice}
+ The default implementation of this method does not strictly
+ follow \rfc{2616}, which says that 301 and 302 responses to \code{POST}
+ requests must not be automatically redirected without confirmation by
+ the user.  In reality, browsers do allow automatic redirection of
+ these responses, changing the POST to a \code{GET}, and the default
+ implementation reproduces this behavior.
+\end{notice}
+\end{methoddesc}
+
 
 \begin{methoddesc}[HTTPRedirectHandler]{http_error_301}{req,
                                                   fp, code, msg, hdrs}
 Redirect to the \code{Location:} URL.  This method is called by
 the parent \class{OpenerDirector} when getting an HTTP
-permanent-redirect response.
+`moved permanently' response.
 \end{methoddesc}
 
 \begin{methoddesc}[HTTPRedirectHandler]{http_error_302}{req,
                                                   fp, code, msg, hdrs}
 The same as \method{http_error_301()}, but called for the
-temporary-redirect response.
+`found' response.
+\end{methoddesc}
+
+\begin{methoddesc}[HTTPRedirectHandler]{http_error_303}{req,
+                                                  fp, code, msg, hdrs}
+The same as \method{http_error_301()}, but called for the
+`see other' response.
+\end{methoddesc}
+
+\begin{methoddesc}[HTTPRedirectHandler]{http_error_307}{req,
+                                                  fp, code, msg, hdrs}
+The same as \method{http_error_301()}, but called for the
+`temporary redirect' response.
 \end{methoddesc}
 
 
@@ -571,3 +618,39 @@ Open the gopher resource indicated by \var{req}.
 \begin{methoddesc}[UnknownHandler]{unknown_open}{}
 Raise a \exception{URLError} exception.
 \end{methoddesc}
+
+
+\subsection{Examples \label{urllib2-examples}}
+
+This example gets the python.org main page and displays the first 100
+bytes of it:
+
+\begin{verbatim}
+>>> import urllib2
+>>> f = urllib2.urlopen('http://www.python.org/')
+>>> print f.read(100)
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<?xml-stylesheet href="./css/ht2html
+\end{verbatim}
+
+Here we are sending a data-stream to the stdin of a CGI and reading
+the data it returns to us:
+
+\begin{verbatim}
+>>> import urllib2
+>>> req = urllib2.Request(url='https://localhost/cgi-bin/test.cgi',
+...                       data='This data is passed to stdin of the CGI')
+>>> f = urllib2.urlopen(req)
+>>> print f.read()
+Got Data: "This data is passed to stdin of the CGI"
+\end{verbatim}
+
+The code for the sample CGI used in the above example is:
+
+\begin{verbatim}
+#!/usr/bin/env python
+import sys
+data = sys.stdin.read()
+print 'Content-type: text-plain\n\nGot Data: "%s"' %
+data
+\end{verbatim}

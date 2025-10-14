@@ -1,20 +1,17 @@
 
 /* This code implemented by Dag.Gruneau@elsa.preseco.comm.se */
 /* Fast NonRecursiveMutex support by Yakov Markovitch, markovitch@iso.ru */
+/* Eliminated some memory leaks, gsw@agere.com */
 
 #include <windows.h>
 #include <limits.h>
 #include <process.h>
-#include <Python.h>
 
 typedef struct NRMUTEX {
 	LONG   owned ;
 	DWORD  thread_id ;
 	HANDLE hevent ;
 } NRMUTEX, *PNRMUTEX ;
-
-/* dictionary to correlate thread ids with the handle needed to terminate them*/
-static PyObject *threads = NULL;
 
 typedef PVOID WINAPI interlocked_cmp_xchg_t(PVOID *dest, PVOID exc, PVOID comperand) ;
 
@@ -139,16 +136,10 @@ void FreeNonRecursiveMutex(PNRMUTEX mutex)
 long PyThread_get_thread_ident(void);
 
 /*
- * Change all headers to pure ANSI as no one will use K&R style on an
- * NT
- */
-
-/*
  * Initialization of the C package, should not be needed.
  */
 static void PyThread__init_thread(void)
 {
-	threads = PyDict_New();
 }
 
 /*
@@ -157,7 +148,7 @@ static void PyThread__init_thread(void)
 
 typedef struct {
 	void (*func)(void*);
-	void *arg;			
+	void *arg;
 	long id;
 	HANDLE done;
 } callobj;
@@ -176,39 +167,42 @@ bootstrap(void *call)
 	return 0;
 }
 
-long PyThread_start_new_thread(void (*func)(void *), void *arg)
+long
+PyThread_start_new_thread(void (*func)(void *), void *arg)
 {
 	unsigned long rv;
-	int success = 0;
-	callobj *obj;
-	int id;
-	PyObject *key, *val;
+	callobj obj;
 
-	dprintf(("%ld: PyThread_start_new_thread called\n", PyThread_get_thread_ident()));
+	dprintf(("%ld: PyThread_start_new_thread called\n",
+		 PyThread_get_thread_ident()));
 	if (!initialized)
 		PyThread_init_thread();
 
-	obj = malloc(sizeof(callobj)); 
-	obj->func = func;
-	obj->arg = arg;
-	obj->done = CreateSemaphore(NULL, 0, 1, NULL);
+	obj.id = -1;	/* guilty until proved innocent */
+	obj.func = func;
+	obj.arg = arg;
+	obj.done = CreateSemaphore(NULL, 0, 1, NULL);
+	if (obj.done == NULL)
+		return -1;
 
-	rv = _beginthread(bootstrap, 0, obj); /* use default stack size */
- 
-	if (rv != (unsigned long)-1) {
-		success = 1;
-		dprintf(("%ld: PyThread_start_new_thread succeeded: %p\n", PyThread_get_thread_ident(), rv));
+	rv = _beginthread(bootstrap, 0, &obj); /* use default stack size */
+	if (rv == (unsigned long)-1) {
+		/* I've seen errno == EAGAIN here, which means "there are
+		 * too many threads".
+		 */
+		dprintf(("%ld: PyThread_start_new_thread failed: %p errno %d\n",
+		         PyThread_get_thread_ident(), rv, errno));
+		obj.id = -1;
 	}
-
-	/* wait for thread to initialize and retrieve id */
-	WaitForSingleObject(obj->done, 5000);  /* maybe INFINITE instead of 5000? */
-	CloseHandle((HANDLE)obj->done);
-	key = PyLong_FromLong(obj->id);
-	val = PyLong_FromLong((long)rv);
-	PyDict_SetItem(threads, key, val);
-	id = obj->id;
-	free(obj);
-	return id;
+	else {
+		dprintf(("%ld: PyThread_start_new_thread succeeded: %p\n",
+		         PyThread_get_thread_ident(), rv));
+		/* wait for thread to initialize, so we can get its id */
+		WaitForSingleObject(obj.done, INFINITE);
+		assert(obj.id != -1);
+	}
+	CloseHandle((HANDLE)obj.done);
+	return obj.id;
 }
 
 /*
@@ -318,57 +312,4 @@ void PyThread_release_lock(PyThread_type_lock aLock)
 
 	if (!(aLock && LeaveNonRecursiveMutex((PNRMUTEX) aLock)))
 		dprintf(("%ld: Could not PyThread_release_lock(%p) error: %l\n", PyThread_get_thread_ident(), aLock, GetLastError()));
-}
-
-/*
- * Semaphore support.
- */
-PyThread_type_sema PyThread_allocate_sema(int value)
-{
-	HANDLE aSemaphore;
-
-	dprintf(("%ld: PyThread_allocate_sema called\n", PyThread_get_thread_ident()));
-	if (!initialized)
-		PyThread_init_thread();
-
-	aSemaphore = CreateSemaphore( NULL,           /* Security attributes          */
-	                              value,          /* Initial value                */
-	                              INT_MAX,        /* Maximum value                */
-	                              NULL);          /* Name of semaphore            */
-
-	dprintf(("%ld: PyThread_allocate_sema() -> %p\n", PyThread_get_thread_ident(), aSemaphore));
-
-	return (PyThread_type_sema) aSemaphore;
-}
-
-void PyThread_free_sema(PyThread_type_sema aSemaphore)
-{
-	dprintf(("%ld: PyThread_free_sema(%p) called\n", PyThread_get_thread_ident(), aSemaphore));
-
-	CloseHandle((HANDLE) aSemaphore);
-}
-
-/*
-  XXX must do something about waitflag
- */
-int PyThread_down_sema(PyThread_type_sema aSemaphore, int waitflag)
-{
-	DWORD waitResult;
-
-	dprintf(("%ld: PyThread_down_sema(%p) called\n", PyThread_get_thread_ident(), aSemaphore));
-
-	waitResult = WaitForSingleObject( (HANDLE) aSemaphore, INFINITE);
-
-	dprintf(("%ld: PyThread_down_sema(%p) return: %l\n", PyThread_get_thread_ident(), aSemaphore, waitResult));
-	return 0;
-}
-
-void PyThread_up_sema(PyThread_type_sema aSemaphore)
-{
-	ReleaseSemaphore(
-                (HANDLE) aSemaphore,            /* Handle of semaphore                          */
-                1,                              /* increment count by one                       */
-                NULL);                          /* not interested in previous count             */
-                                                
-	dprintf(("%ld: PyThread_up_sema(%p)\n", PyThread_get_thread_ident(), aSemaphore));
 }

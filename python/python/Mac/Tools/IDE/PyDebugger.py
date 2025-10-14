@@ -153,7 +153,7 @@ class Debugger(bdb.Bdb):
 		browserpanes.globals.browser = PyBrowser.BrowserWidget((0, 16, 0, 0))
 		
 		w.panes.bottom = bottom = W.Group(None)
-		bottom.src = src = W.Group((0, 52, 0, 0))
+		bottom.src = src = W.Group((0, 64, 0, 0))
 		source = SourceViewer((1, 1, -15, -15), readonly = 1, debugger = self)
 		src.optionsmenu = W.PopupMenu((-16, 0, 16, 16), [])
 		src.optionsmenu.bind('<click>', self.makeoptionsmenu)
@@ -164,18 +164,18 @@ class Debugger(bdb.Bdb):
 		src.frame = W.Frame((0, 0, -15, -15))
 		
 		bottom.tracingmonitor = TracingMonitor((0, 23, 6, 6))
-		bottom.state = W.TextBox((12, 20, 0, 16), self.reason)
+		bottom.state = W.TextBox((12, 24, 0, 16), self.reason)
 		
-		bottom.srctitle = W.TextBox((12, 36, 0, 14))
-		bottom.buttons = buttons = W.Group((12, 0, 0, 16))
+		bottom.srctitle = W.TextBox((12, 44, 0, 16))
+		bottom.buttons = buttons = W.Group((12, 0, 0, 20))
 		
 		buttons.runbutton = W.Button((0, 0, 50, 16), "Run", self.do_run)
 		buttons.stopbutton = W.Button((58, 0, 50, 16), "Stop", self.do_stop)
 		buttons.killbutton = W.Button((116, 0, 50, 16), "Kill", self.do_kill)
 		buttons.line = W.VerticalLine((173, 0, 0, 0))
-		buttons.stepbutton = W.Button((181, 0, 50, 16), "Step", self.do_step)
-		buttons.stepinbutton = W.Button((239, 0, 50, 16), "Step in", self.do_stepin)
-		buttons.stepoutbutton = W.Button((297, 0, 50, 16), "Step out", self.do_stepout)
+		buttons.stepbutton = W.Button((181, 0, 60, 16), "Step", self.do_step)
+		buttons.stepinbutton = W.Button((249, 0, 60, 16), "Step in", self.do_stepin)
+		buttons.stepoutbutton = W.Button((317, 0, 60, 16), "Step out", self.do_stepout)
 		
 		w.bind('cmdr', buttons.runbutton.push)
 		w.bind('cmd.', buttons.stopbutton.push)
@@ -345,7 +345,7 @@ class Debugger(bdb.Bdb):
 				self.w.panes.bottom.src.source.set(editor.get(), filename)
 			else:
 				try:
-					f = open(filename, 'rb')
+					f = open(filename, 'rU')
 					data = f.read()
 					f.close()
 				except IOError:
@@ -360,7 +360,7 @@ class Debugger(bdb.Bdb):
 							if f:
 								f.close()
 							if f and suff == '.py':
-								f = open(filename, 'rb')
+								f = open(filename, 'rU')
 								data = f.read()
 								f.close()
 								self.w.panes.bottom.src.source.set(data, filename)
@@ -369,6 +369,7 @@ class Debugger(bdb.Bdb):
 					else:
 						self.w.panes.bottom.src.source.set("can't find file")
 				else:
+					data = data.replace('\n', '\r')
 					self.w.panes.bottom.src.source.set(data, filename)
 			self.file = filename
 		self.w.panes.bottom.srctitle.set('Source: ' + filename + ((lineno > 0) and (' (line %d)' % lineno) or ' '))
@@ -496,7 +497,8 @@ class Debugger(bdb.Bdb):
 			self.w.panes.bottom.tracingmonitor.toggle()
 		try:
 			try:
-				MacOS.EnableAppswitch(0)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(0)
 				if self.quitting:
 					# returning None is not enough, a former BdbQuit exception
 					# might have been eaten by the print statement
@@ -512,7 +514,8 @@ class Debugger(bdb.Bdb):
 				print 'bdb.Bdb.dispatch: unknown debugging event:', `event`
 				return self.trace_dispatch
 			finally:
-				MacOS.EnableAppswitch(-1)
+				if hasattr(MacOS, 'EnableAppswitch'):
+					MacOS.EnableAppswitch(-1)
 		except KeyboardInterrupt:
 			self.set_step()
 			return self.trace_dispatch

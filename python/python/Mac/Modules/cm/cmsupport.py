@@ -79,14 +79,14 @@ ComponentResult = Type("ComponentResult", "l")
 
 ComponentResourceHandle = OpaqueByValueType("ComponentResourceHandle", "ResObj")
 
-class MyCIObjectDefinition(GlobalObjectDefinition):
+class MyCIObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("""if (itself == NULL) {
 					PyErr_SetString(Cm_Error,"NULL ComponentInstance");
 					return NULL;
 				}""")
 
-class MyCObjectDefinition(GlobalObjectDefinition):
+class MyCObjectDefinition(PEP253Mixin, GlobalObjectDefinition):
 	def outputCheckNewArg(self):
 		Output("""if (itself == NULL) {
 					/* XXXX Or should we return None? */
@@ -109,8 +109,8 @@ module.addobject(ci_object)
 module.addobject(c_object)
 
 # Create the generator classes used to populate the lists
-Function = OSErrFunctionGenerator
-Method = OSErrMethodGenerator
+Function = OSErrWeakLinkFunctionGenerator
+Method = OSErrWeakLinkMethodGenerator
 
 # Create and populate the lists
 functions = []

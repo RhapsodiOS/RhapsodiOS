@@ -1,19 +1,21 @@
-"""Proposed new threading module, emulating a subset of Java's threading model."""
+"""Thread module emulating a subset of Java's threading model."""
 
-import sys
-import time
-import thread
-import traceback
-import StringIO
+import sys as _sys
+
+try:
+    import thread
+except ImportError:
+    del _sys.modules[__name__]
+    raise
+
+from StringIO import StringIO as _StringIO
+from time import time as _time, sleep as _sleep
+from traceback import print_exc as _print_exc
 
 # Rename some stuff so "from threading import *" is safe
-
-_sys = sys
-del sys
-
-_time = time.time
-_sleep = time.sleep
-del time
+__all__ = ['activeCount', 'Condition', 'currentThread', 'enumerate', 'Event',
+           'Lock', 'RLock', 'Semaphore', 'BoundedSemaphore', 'Thread',
+           'Timer', 'setprofile', 'settrace']
 
 _start_new_thread = thread.start_new_thread
 _allocate_lock = thread.allocate_lock
@@ -21,20 +23,18 @@ _get_ident = thread.get_ident
 ThreadError = thread.error
 del thread
 
-_print_exc = traceback.print_exc
-del traceback
 
-_StringIO = StringIO.StringIO
-del StringIO
+# Debug support (adapted from ihooks.py).
+# All the major classes here derive from _Verbose.  We force that to
+# be a new-style class so that all the major classes here are new-style.
+# This helps debugging (type(instance) is more revealing for instances
+# of new-style classes).
 
-
-# Debug support (adapted from ihooks.py)
-
-_VERBOSE = 0
+_VERBOSE = False
 
 if __debug__:
 
-    class _Verbose:
+    class _Verbose(object):
 
         def __init__(self, verbose=None):
             if verbose is None:
@@ -50,19 +50,31 @@ if __debug__:
 
 else:
     # Disable this when using "python -O"
-    class _Verbose:
+    class _Verbose(object):
         def __init__(self, verbose=None):
             pass
         def _note(self, *args):
             pass
 
+# Support for profile and trace hooks
+
+_profile_hook = None
+_trace_hook = None
+
+def setprofile(func):
+    global _profile_hook
+    _profile_hook = func
+
+def settrace(func):
+    global _trace_hook
+    _trace_hook = func
 
 # Synchronization classes
 
 Lock = _allocate_lock
 
 def RLock(*args, **kwargs):
-    return apply(_RLock, args, kwargs)
+    return _RLock(*args, **kwargs)
 
 class _RLock(_Verbose):
 
@@ -133,7 +145,7 @@ class _RLock(_Verbose):
 
 
 def Condition(*args, **kwargs):
-    return apply(_Condition, args, kwargs)
+    return _Condition(*args, **kwargs)
 
 class _Condition(_Verbose):
 
@@ -172,14 +184,16 @@ class _Condition(_Verbose):
         self.__lock.acquire()           # Ignore saved state
 
     def _is_owned(self):
+        # Return True if lock is owned by currentThread.
+        # This method is called only if __lock doesn't have _is_owned().
         if self.__lock.acquire(0):
             self.__lock.release()
-            return 0
+            return False
         else:
-            return 1
+            return True
 
     def wait(self, timeout=None):
-        me = currentThread()
+        currentThread() # for side-effect
         assert self._is_owned(), "wait() of un-acquire()d lock"
         waiter = _allocate_lock()
         waiter.acquire()
@@ -198,7 +212,7 @@ class _Condition(_Verbose):
                 # than 20 times per second (or the timeout time remaining).
                 endtime = _time() + timeout
                 delay = 0.0005 # 500 us -> initial delay of 1 ms
-                while 1:
+                while True:
                     gotit = waiter.acquire(0)
                     if gotit:
                         break
@@ -221,7 +235,7 @@ class _Condition(_Verbose):
             self._acquire_restore(saved_state)
 
     def notify(self, n=1):
-        me = currentThread()
+        currentThread() # for side-effect
         assert self._is_owned(), "notify() of un-acquire()d lock"
         __waiters = self.__waiters
         waiters = __waiters[:n]
@@ -243,7 +257,7 @@ class _Condition(_Verbose):
 
 
 def Semaphore(*args, **kwargs):
-    return apply(_Semaphore, args, kwargs)
+    return _Semaphore(*args, **kwargs)
 
 class _Semaphore(_Verbose):
 
@@ -256,7 +270,7 @@ class _Semaphore(_Verbose):
         self.__value = value
 
     def acquire(self, blocking=1):
-        rc = 0
+        rc = False
         self.__cond.acquire()
         while self.__value == 0:
             if not blocking:
@@ -270,7 +284,7 @@ class _Semaphore(_Verbose):
             if __debug__:
                 self._note("%s.acquire: success, value=%s",
                            self, self.__value)
-            rc = 1
+            rc = True
         self.__cond.release()
         return rc
 
@@ -285,7 +299,7 @@ class _Semaphore(_Verbose):
 
 
 def BoundedSemaphore(*args, **kwargs):
-    return apply(_BoundedSemaphore, args, kwargs)
+    return _BoundedSemaphore(*args, **kwargs)
 
 class _BoundedSemaphore(_Semaphore):
     """Semaphore that checks that # releases is <= # acquires"""
@@ -300,7 +314,7 @@ class _BoundedSemaphore(_Semaphore):
 
 
 def Event(*args, **kwargs):
-    return apply(_Event, args, kwargs)
+    return _Event(*args, **kwargs)
 
 class _Event(_Verbose):
 
@@ -309,27 +323,33 @@ class _Event(_Verbose):
     def __init__(self, verbose=None):
         _Verbose.__init__(self, verbose)
         self.__cond = Condition(Lock())
-        self.__flag = 0
+        self.__flag = False
 
     def isSet(self):
         return self.__flag
 
     def set(self):
         self.__cond.acquire()
-        self.__flag = 1
-        self.__cond.notifyAll()
-        self.__cond.release()
+        try:
+            self.__flag = True
+            self.__cond.notifyAll()
+        finally:
+            self.__cond.release()
 
     def clear(self):
         self.__cond.acquire()
-        self.__flag = 0
-        self.__cond.release()
+        try:
+            self.__flag = False
+        finally:
+            self.__cond.release()
 
     def wait(self, timeout=None):
         self.__cond.acquire()
-        if not self.__flag:
-            self.__cond.wait(timeout)
-        self.__cond.release()
+        try:
+            if not self.__flag:
+                self.__cond.wait(timeout)
+        finally:
+            self.__cond.release()
 
 # Helper to generate new thread names
 _counter = 0
@@ -348,7 +368,7 @@ _limbo = {}
 
 class Thread(_Verbose):
 
-    __initialized = 0
+    __initialized = False
 
     def __init__(self, group=None, target=None, name=None,
                  args=(), kwargs={}, verbose=None):
@@ -359,10 +379,10 @@ class Thread(_Verbose):
         self.__args = args
         self.__kwargs = kwargs
         self.__daemonic = self._set_daemon()
-        self.__started = 0
-        self.__stopped = 0
+        self.__started = False
+        self.__stopped = False
         self.__block = Condition(Lock())
-        self.__initialized = 1
+        self.__initialized = True
 
     def _set_daemon(self):
         # Overridden in _MainThread and _DummyThread
@@ -388,22 +408,30 @@ class Thread(_Verbose):
         _limbo[self] = self
         _active_limbo_lock.release()
         _start_new_thread(self.__bootstrap, ())
-        self.__started = 1
+        self.__started = True
         _sleep(0.000001)    # 1 usec, to let the thread run (Solaris hack)
 
     def run(self):
         if self.__target:
-            apply(self.__target, self.__args, self.__kwargs)
+            self.__target(*self.__args, **self.__kwargs)
 
     def __bootstrap(self):
         try:
-            self.__started = 1
+            self.__started = True
             _active_limbo_lock.acquire()
             _active[_get_ident()] = self
             del _limbo[self]
             _active_limbo_lock.release()
             if __debug__:
                 self._note("%s.__bootstrap(): thread started", self)
+
+            if _trace_hook:
+                self._note("%s.__bootstrap(): registering trace hook", self)
+                _sys.settrace(_trace_hook)
+            if _profile_hook:
+                self._note("%s.__bootstrap(): registering profile hook", self)
+                _sys.setprofile(_profile_hook)
+
             try:
                 self.run()
             except SystemExit:
@@ -421,11 +449,14 @@ class Thread(_Verbose):
                     self._note("%s.__bootstrap(): normal return", self)
         finally:
             self.__stop()
-            self.__delete()
+            try:
+                self.__delete()
+            except:
+                pass
 
     def __stop(self):
         self.__block.acquire()
-        self.__stopped = 1
+        self.__stopped = True
         self.__block.notifyAll()
         self.__block.release()
 
@@ -520,7 +551,7 @@ class _MainThread(Thread):
 
     def __init__(self):
         Thread.__init__(self, name="MainThread")
-        self._Thread__started = 1
+        self._Thread__started = True
         _active_limbo_lock.acquire()
         _active[_get_ident()] = self
         _active_limbo_lock.release()
@@ -528,7 +559,7 @@ class _MainThread(Thread):
         atexit.register(self.__exitfunc)
 
     def _set_daemon(self):
-        return 0
+        return False
 
     def __exitfunc(self):
         self._Thread__stop()
@@ -561,16 +592,16 @@ class _DummyThread(Thread):
 
     def __init__(self):
         Thread.__init__(self, name=_newname("Dummy-%d"))
-        self._Thread__started = 1
+        self._Thread__started = True
         _active_limbo_lock.acquire()
         _active[_get_ident()] = self
         _active_limbo_lock.release()
 
     def _set_daemon(self):
-        return 1
+        return True
 
-    def join(self):
-        assert 0, "cannot join a dummy thread"
+    def join(self, timeout=None):
+        assert False, "cannot join a dummy thread"
 
 
 # Global API functions
@@ -593,7 +624,6 @@ def enumerate():
     active = _active.values() + _limbo.values()
     _active_limbo_lock.release()
     return active
-
 
 # Create the main thread object
 
@@ -630,8 +660,7 @@ def _test():
             while not self.queue:
                 self._note("get(): queue empty")
                 self.rc.wait()
-            item = self.queue[0]
-            del self.queue[0]
+            item = self.queue.pop(0)
             self._note("get(): got %s, %d left", item, len(self.queue))
             self.wc.notify()
             self.mon.release()

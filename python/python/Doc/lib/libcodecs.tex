@@ -5,7 +5,7 @@
 \modulesynopsis{Encode and decode data and streams.}
 \moduleauthor{Marc-Andre Lemburg}{mal@lemburg.com}
 \sectionauthor{Marc-Andre Lemburg}{mal@lemburg.com}
-
+\sectionauthor{Martin v. L\"owis}{martin@v.loewis.de}
 
 \index{Unicode}
 \index{Codecs}
@@ -17,7 +17,7 @@
 
 This module defines base classes for standard Python codecs (encoders
 and decoders) and provides access to the internal Python codec
-registry which manages the codec lookup process.
+registry which manages the codec and error handling lookup process.
 
 It defines the following functions:
 
@@ -45,9 +45,13 @@ return a tuple of functions \code{(\var{encoder}, \var{decoder}, \var{stream_rea
 
   Possible values for errors are \code{'strict'} (raise an exception
   in case of an encoding error), \code{'replace'} (replace malformed
-  data with a suitable replacement marker, such as \character{?}) and
+  data with a suitable replacement marker, such as \character{?}),
   \code{'ignore'} (ignore malformed data and continue without further
-  notice).
+  notice), \code{'xmlcharrefreplace'} (replace with the appropriate XML
+  character reference (for encoding only)) and \code{'backslashreplace'}
+  (replace with backslashed escape sequences (for encoding only)) as
+  well as any other error handling name defined via
+  \function{register_error()}.
 
 In case a search function cannot find a given encoding, it should
 return \code{None}.
@@ -63,7 +67,7 @@ is found, a \exception{LookupError} is raised. Otherwise, the codecs
 tuple is stored in the cache and returned to the caller.
 \end{funcdesc}
 
-To simply access to the various codecs, the module provides these
+To simplify access to the various codecs, the module provides these
 additional functions which use \function{lookup()} for the codec
 lookup:
 
@@ -93,6 +97,54 @@ Lookup up the codec for the given encoding and return its StreamWriter
 class or factory function.
 
 Raises a \exception{LookupError} in case the encoding cannot be found.
+\end{funcdesc}
+
+\begin{funcdesc}{register_error}{name, error_handler}
+Register the error handling function \var{error_handler} under the
+name \var{name}. \var{error_handler} will be called during encoding
+and decoding in case of an error, when \var{name} is specified as the
+errors parameter.
+
+For encoding \var{error_handler} will be called with a
+\exception{UnicodeEncodeError} instance, which contains information about
+the location of the error. The error handler must either raise this or
+a different exception or return a tuple with a replacement for the
+unencodable part of the input and a position where encoding should
+continue. The encoder will encode the replacement and continue encoding
+the original input at the specified position. Negative position values
+will be treated as being relative to the end of the input string. If the
+resulting position is out of bound an IndexError will be raised.
+
+Decoding and translating works similar, except \exception{UnicodeDecodeError}
+or \exception{UnicodeTranslateError} will be passed to the handler and
+that the replacement from the error handler will be put into the output
+directly.
+\end{funcdesc}
+
+\begin{funcdesc}{lookup_error}{name}
+Return the error handler previously register under the name \var{name}.
+
+Raises a \exception{LookupError} in case the handler cannot be found.
+\end{funcdesc}
+
+\begin{funcdesc}{strict_errors}{exception}
+Implements the \code{strict} error handling.
+\end{funcdesc}
+
+\begin{funcdesc}{replace_errors}{exception}
+Implements the \code{replace} error handling.
+\end{funcdesc}
+
+\begin{funcdesc}{ignore_errors}{exception}
+Implements the \code{ignore} error handling.
+\end{funcdesc}
+
+\begin{funcdesc}{xmlcharrefreplace_errors_errors}{exception}
+Implements the \code{xmlcharrefreplace} error handling.
+\end{funcdesc}
+
+\begin{funcdesc}{backslashreplace_errors_errors}{exception}
+Implements the \code{backslashreplace} error handling.
 \end{funcdesc}
 
 To simplify working with encoded files or stream, the module
@@ -142,16 +194,21 @@ for reading and writing to platform dependent files:
 \begin{datadesc}{BOM}
 \dataline{BOM_BE}
 \dataline{BOM_LE}
-\dataline{BOM32_BE}
-\dataline{BOM32_LE}
-\dataline{BOM64_BE}
-\dataline{BOM64_LE}
-These constants define the byte order marks (BOM) used in data
-streams to indicate the byte order used in the stream or file.
-\constant{BOM} is either \constant{BOM_BE} or \constant{BOM_LE}
-depending on the platform's native byte order, while the others
-represent big endian (\samp{_BE} suffix) and little endian
-(\samp{_LE} suffix) byte order using 32-bit and 64-bit encodings.
+\dataline{BOM_UTF8}
+\dataline{BOM_UTF16}
+\dataline{BOM_UTF16_BE}
+\dataline{BOM_UTF16_LE}
+\dataline{BOM_UTF32}
+\dataline{BOM_UTF32_BE}
+\dataline{BOM_UTF32_LE}
+These constants define various encodings of the Unicode byte order mark
+(BOM) used in UTF-16 and UTF-32 data streams to indicate the byte order
+used in the stream or file and in UTF-8 as a Unicode signature.
+\constant{BOM_UTF16} is either \constant{BOM_UTF16_BE} or
+\constant{BOM_UTF16_LE} depending on the platform's native byte order,
+\constant{BOM} is an alias for \constant{BOM_UTF16}, \constant{BOM_LE}
+for \constant{BOM_UTF16_LE} and \constant{BOM_BE} for \constant{BOM_UTF16_BE}.
+The others represent the BOM in UTF-8 and UTF-32 encodings.
 \end{datadesc}
 
 
@@ -185,13 +242,20 @@ string values are defined and implemented by all standard Python
 codecs:
 
 \begin{tableii}{l|l}{code}{Value}{Meaning}
-  \lineii{'strict'}{Raise \exception{ValueError} (or a subclass);
+  \lineii{'strict'}{Raise \exception{UnicodeError} (or a subclass);
                     this is the default.}
   \lineii{'ignore'}{Ignore the character and continue with the next.}
   \lineii{'replace'}{Replace with a suitable replacement character;
                      Python will use the official U+FFFD REPLACEMENT
-                     CHARACTER for the built-in Unicode codecs.}
+                     CHARACTER for the built-in Unicode codecs on
+                     decoding and '?' on encoding.}
+  \lineii{'xmlcharrefreplace'}{Replace with the appropriate XML
+                     character reference (only for encoding).}
+  \lineii{'backslashreplace'}{Replace with backslashed escape sequences
+                     (only for encoding).}
 \end{tableii}
+
+The set of allowed values can be extended via \method{register_error}.
 
 
 \subsubsection{Codec Objects \label{codec-objects}}
@@ -201,7 +265,10 @@ function interfaces of the stateless encoder and decoder:
 
 \begin{methoddesc}{encode}{input\optional{, errors}}
   Encodes the object \var{input} and returns a tuple (output object,
-  length consumed).
+  length consumed).  While codecs are not restricted to use with Unicode, in
+  a Unicode context, encoding converts a Unicode object to a plain string
+  using a particular character set encoding (e.g., \code{cp1252} or
+  \code{iso-8859-1}).
 
   \var{errors} defines the error handling to apply. It defaults to
   \code{'strict'} handling.
@@ -216,7 +283,8 @@ function interfaces of the stateless encoder and decoder:
 
 \begin{methoddesc}{decode}{input\optional{, errors}}
   Decodes the object \var{input} and returns a tuple (output object,
-  length consumed).
+  length consumed).  In a Unicode context, decoding converts a plain string
+  encoded using a particular character set encoding to a Unicode object.
 
   \var{input} must be an object which provides the \code{bf_getreadbuf}
   buffer slot.  Python strings, buffer objects and memory mapped files
@@ -257,14 +325,25 @@ order to be compatible to the Python codec registry.
 
   The \class{StreamWriter} may implement different error handling
   schemes by providing the \var{errors} keyword argument. These
-  parameters are defined:
+  parameters are predefined:
 
   \begin{itemize}
     \item \code{'strict'} Raise \exception{ValueError} (or a subclass);
                           this is the default.
     \item \code{'ignore'} Ignore the character and continue with the next.
     \item \code{'replace'} Replace with a suitable replacement character
+    \item \code{'xmlcharrefreplace'} Replace with the appropriate XML
+                     character reference
+    \item \code{'backslashreplace'} Replace with backslashed escape sequences.
   \end{itemize}
+
+  The \var{errors} argument will be assigned to an attribute of the
+  same name. Assigning to this attribute makes it possible to switch
+  between different error handling strategies during the lifetime
+  of the \class{StreamWriter} object.
+
+  The set of allowed values for the \var{errors} argument can
+  be extended with \function{register_error()}.
 \end{classdesc}
 
 \begin{methoddesc}{write}{object}
@@ -314,6 +393,14 @@ order to be compatible to the Python codec registry.
     \item \code{'ignore'} Ignore the character and continue with the next.
     \item \code{'replace'} Replace with a suitable replacement character.
   \end{itemize}
+
+  The \var{errors} argument will be assigned to an attribute of the
+  same name. Assigning to this attribute makes it possible to switch
+  between different error handling strategies during the lifetime
+  of the \class{StreamReader} object.
+
+  The set of allowed values for the \var{errors} argument can
+  be extended with \function{register_error()}.
 \end{classdesc}
 
 \begin{methoddesc}{read}{\optional{size}}
@@ -435,3 +522,429 @@ the \function{lookup()} function to construct the instance.
 \class{StreamReader} and \class{StreamWriter} classes. They inherit
 all other methods and attribute from the underlying stream.
 
+\subsection{Standard Encodings}
+
+Python comes with a number of codecs builtin, either implemented as C
+functions, or with dictionaries as mapping tables. The following table
+lists the codecs by name, together with a few common aliases, and the
+languages for which the encoding is likely used. Neither the list of
+aliases nor the list of languages is meant to be exhaustive. Notice
+that spelling alternatives that only differ in case or use a hyphen
+instead of an underscore are also valid aliases.
+
+Many of the character sets support the same languages. They vary in
+individual characters (e.g. whether the EURO SIGN is supported or
+not), and in the assignment of characters to code positions. For the
+European languages in particular, the following variants typically
+exist:
+
+\begin{itemize}
+\item an ISO 8859 codeset
+\item a Microsoft Windows code page, which is typically derived from
+      a 8859 codeset, but replaces control characters with additional
+      graphic characters
+\item an IBM EBCDIC code page
+\item an IBM PC code page, which is \ASCII{} compatible
+\end{itemize}
+
+\begin{longtableiii}{l|l|l}{textrm}{Codec}{Aliases}{Languages}
+
+\lineiii{ascii}
+        {646, us-ascii}
+        {English}
+
+\lineiii{cp037}
+        {IBM037, IBM039}
+        {English}
+
+\lineiii{cp424}
+        {EBCDIC-CP-HE, IBM424}
+        {Hebrew}
+
+\lineiii{cp437}
+        {437, IBM437}
+        {English}
+
+\lineiii{cp500}
+        {EBCDIC-CP-BE, EBCDIC-CP-CH, IBM500}
+        {Western Europe}
+
+\lineiii{cp737}
+        {}
+        {Greek}
+
+\lineiii{cp775}
+        {IBM775}
+        {Baltic languages}
+
+\lineiii{cp850}
+        {850, IBM850}
+        {Western Europe}
+
+\lineiii{cp852}
+        {852, IBM852}
+        {Central and Eastern Europe}
+
+\lineiii{cp855}
+        {855, IBM855}
+        {Bulgarian, Byelorussian, Macedonian, Russian, Serbian}
+
+\lineiii{cp856}
+        {}
+        {Hebrew}
+
+\lineiii{cp857}
+        {857, IBM857}
+        {Turkish}
+
+\lineiii{cp860}
+        {860, IBM860}
+        {Portuguese}
+
+\lineiii{cp861}
+        {861, CP-IS, IBM861}
+        {Icelandic}
+
+\lineiii{cp862}
+        {862, IBM862}
+        {Hebrew}
+
+\lineiii{cp863}
+        {863, IBM863}
+        {Canadian}
+
+\lineiii{cp864}
+        {IBM864}
+        {Arabic}
+
+\lineiii{cp865}
+        {865, IBM865}
+        {Danish, Norwegian}
+
+\lineiii{cp869}
+        {869, CP-GR, IBM869}
+        {Greek}
+
+\lineiii{cp874}
+        {}
+        {Thai}
+
+\lineiii{cp875}
+        {}
+        {Greek}
+
+\lineiii{cp1006}
+        {}
+        {Urdu}
+
+\lineiii{cp1026}
+        {ibm1026}
+        {Turkish}
+
+\lineiii{cp1140}
+        {ibm1140}
+        {Western Europe}
+
+\lineiii{cp1250}
+        {windows-1250}
+        {Central and Eastern Europe}
+
+\lineiii{cp1251}
+        {windows-1251}
+        {Bulgarian, Byelorussian, Macedonian, Russian, Serbian}
+
+\lineiii{cp1252}
+        {windows-1252}
+        {Western Europe}
+
+\lineiii{cp1253}
+        {windows-1253}
+        {Greek}
+
+\lineiii{cp1254}
+        {windows-1254}
+        {Turkish}
+
+\lineiii{cp1255}
+        {windows-1255}
+        {Hebrew}
+
+\lineiii{cp1256}
+        {windows1256}
+        {Arabic}
+
+\lineiii{cp1257}
+        {windows-1257}
+        {Baltic languages}
+
+\lineiii{cp1258}
+        {windows-1258}
+        {Vietnamese}
+
+\lineiii{latin_1}
+        {iso-8859-1, iso8859-1, 8859, cp819, latin, latin1, L1}
+        {West Europe}
+
+\lineiii{iso8859_2}
+        {iso-8859-2, latin2, L2}
+        {Central and Eastern Europe}
+
+\lineiii{iso8859_3}
+        {iso-8859-3, latin3, L3}
+        {Esperanto, Maltese}
+
+\lineiii{iso8859_4}
+        {iso-8859-4, latin4, L4}
+        {Baltic languagues}
+
+\lineiii{iso8859_5}
+        {iso-8859-5, cyrillic}
+        {Bulgarian, Byelorussian, Macedonian, Russian, Serbian}
+
+\lineiii{iso8859_6}
+        {iso-8859-6, arabic}
+        {Arabic}
+
+\lineiii{iso8859_7}
+        {iso-8859-7, greek, greek8}
+        {Greek}
+
+\lineiii{iso8859_8}
+        {iso-8859-8, hebrew}
+        {Hebrew}
+
+\lineiii{iso8859_9}
+        {iso-8859-9, latin5, L5}
+        {Turkish}
+
+\lineiii{iso8859_10}
+        {iso-8859-10, latin6, L6}
+        {Nordic languages}
+
+\lineiii{iso8859_13}
+        {iso-8859-13}
+        {Baltic languages}
+
+\lineiii{iso8859_14}
+        {iso-8859-14, latin8, L8}
+        {Celtic languages}
+
+\lineiii{iso8859_15}
+        {iso-8859-15}
+        {Western Europe}
+
+\lineiii{koi8_r}
+        {}
+        {Russian}
+
+\lineiii{koi8_u}
+        {}
+        {Ukrainian}
+
+\lineiii{mac_cyrillic}
+        {maccyrillic}
+        {Bulgarian, Byelorussian, Macedonian, Russian, Serbian}
+
+\lineiii{mac_greek}
+        {macgreek}
+        {Greek}
+
+\lineiii{mac_iceland}
+        {maciceland}
+        {Icelandic}
+
+\lineiii{mac_latin2}
+        {maclatin2, maccentraleurope}
+        {Central and Eastern Europe}
+
+\lineiii{mac_roman}
+        {macroman}
+        {Western Europe}
+
+\lineiii{mac_turkish}
+        {macturkish}
+        {Turkish}
+
+\lineiii{utf_16}
+        {U16, utf16}
+        {all languages}
+
+\lineiii{utf_16_be}
+        {UTF-16BE}
+        {all languages (BMP only)}
+
+\lineiii{utf_16_le}
+        {UTF-16LE}
+        {all languages (BMP only)}
+
+\lineiii{utf_7}
+        {U7}
+        {all languages}
+
+\lineiii{utf_8}
+        {U8, UTF, utf8}
+        {all languages}
+
+\end{longtableiii}
+
+A number of codecs are specific to Python, so their codec names have
+no meaning outside Python. Some of them don't convert from Unicode
+strings to byte strings, but instead use the property of the Python
+codecs machinery that any bijective function with one argument can be
+considered as an encoding.
+
+For the codecs listed below, the result in the ``encoding'' direction
+is always a byte string. The result of the ``decoding'' direction is
+listed as operand type in the table.
+
+\begin{tableiv}{l|l|l|l}{textrm}{Codec}{Aliases}{Operand type}{Purpose}
+
+\lineiv{base64_codec}
+         {base64, base-64}
+         {byte string}
+         {Convert operand to MIME base64}
+
+\lineiv{hex_codec}
+         {hex}
+         {byte string}
+         {Convert operand to hexadecimal representation, with two
+          digits per byte}
+
+\lineiv{idna}
+         {}
+         {Unicode string}
+         {Implements \rfc{3490}.
+          \versionadded{2.3}.
+          See also \refmodule{encodings.idna}}
+
+\lineiv{mbcs}
+         {dbcs}
+         {Unicode string}
+         {Windows only: Encode operand according to the ANSI codepage (CP_ACP)}
+
+\lineiv{palmos}
+         {}
+         {Unicode string}
+         {Encoding of PalmOS 3.5}
+
+\lineiv{punycode}
+         {}
+         {Unicode string}
+         {Implements \rfc{3492}.
+          \versionadded{2.3}}
+
+\lineiv{quopri_codec}
+         {quopri, quoted-printable, quotedprintable}
+         {byte string}
+         {Convert operand to MIME quoted printable}
+
+\lineiv{raw_unicode_escape}
+         {}
+         {Unicode string}
+         {Produce a string that is suitable as raw Unicode literal in
+          Python source code}
+
+\lineiv{rot_13}
+         {rot13}
+         {byte string}
+         {Returns the Caesar-cypher encryption of the operand}
+
+\lineiv{string_escape}
+         {}
+         {byte string}
+         {Produce a string that is suitable as string literal in
+          Python source code}
+
+\lineiv{undefined}
+         {}
+         {any}
+         {Raise an exception for all conversion. Can be used as the
+          system encoding if no automatic coercion between byte and
+          Unicode strings is desired.} 
+
+\lineiv{unicode_escape}
+         {}
+         {Unicode string}
+         {Produce a string that is suitable as Unicode literal in
+          Python source code}
+
+\lineiv{unicode_internal}
+         {}
+         {Unicode string}
+         {Return the internal represenation of the operand}
+
+\lineiv{uu_codec}
+         {uu}
+         {byte string}
+         {Convert the operand using uuencode}
+
+\lineiv{zlib_codec}
+         {zip, zlib}
+         {byte string}
+         {Compress the operand using gzip}
+
+\end{tableiv}
+
+\subsection{\module{encodings.idna} ---
+            Internationalized Domain Names in Applications}
+
+\declaremodule{standard}{encodings.idna}
+\modulesynopsis{Internationalized Domain Names implementation}
+% XXX The next line triggers a formatting bug, so it's commented out
+% until that can be fixed.
+%\moduleauthor{Martin v. L\"owis}
+
+\versionadded{2.3}
+
+This module implements \rfc{3490} (Internationalized Domain Names in
+Applications) and \rfc{3492} (Nameprep: A Stringprep Profile for
+Internationalized Domain Names (IDN)). It builds upon the
+\code{punycode} encoding and \refmodule{stringprep}.
+
+These RFCs together define a protocol to support non-\ASCII{} characters
+in domain names. A domain name containing non-\ASCII{} characters (such
+as ``www.Alliancefran\c caise.nu'') is converted into an
+\ASCII-compatible encoding (ACE, such as
+``www.xn--alliancefranaise-npb.nu''). The ACE form of the domain name
+is then used in all places where arbitrary characters are not allowed
+by the protocol, such as DNS queries, HTTP \mailheader{Host} fields, and so
+on. This conversion is carried out in the application; if possible
+invisible to the user: The application should transparently convert
+Unicode domain labels to IDNA on the wire, and convert back ACE labels
+to Unicode before presenting them to the user.
+
+Python supports this conversion in several ways: The \code{idna} codec
+allows to convert between Unicode and the ACE. Furthermore, the
+\refmodule{socket} module transparently converts Unicode host names to
+ACE, so that applications need not be concerned about converting host
+names themselves when they pass them to the socket module. On top of
+that, modules that have host names as function parameters, such as
+\refmodule{httplib} and \refmodule{ftplib}, accept Unicode host names
+(\refmodule{httplib} then also transparently sends an IDNA hostname in
+the \mailheader{Host} field if it sends that field at all). 
+
+When receiving host names from the wire (such as in reverse name
+lookup), no automatic conversion to Unicode is performed: Applications
+wishing to present such host names to the user should decode them to
+Unicode.
+
+The module \module{encodings.idna} also implements the nameprep
+procedure, which performs certain normalizations on host names, to
+achieve case-insensitivity of international domain names, and to unify
+similar characters. The nameprep functions can be used directly if
+desired.
+
+\begin{funcdesc}{nameprep}{label}
+Return the nameprepped version of \var{label}. The implementation
+currently assumes query strings, so \code{AllowUnassigned} is
+true.
+\end{funcdesc}
+
+\begin{funcdesc}{ToASCII}{label}
+Convert a label to \ASCII, as specified in \rfc{3490}.
+\code{UseSTD3ASCIIRules} is assumed to be false.
+\end{funcdesc}
+
+\begin{funcdesc}{ToUnicode}{label}
+Convert a label to Unicode, as specified in \rfc{3490}.
+\end{funcdesc}

@@ -1,11 +1,11 @@
 #include "Python.h"
 #include "structmember.h"
 
-static char xxsubtype__doc__[] =
+PyDoc_STRVAR(xxsubtype__doc__,
 "xxsubtype is an example module showing how to subtype builtin types from C.\n"
 "test_descr.py in the standard test suite requires it in order to complete.\n"
 "If you don't care about the examples, and don't intend to run the Python\n"
-"test suite, you can recompile Python without Modules/xxsubtype.c.";
+"test suite, you can recompile Python without Modules/xxsubtype.c.");
 
 /* We link this module statically for convenience.  If compiled as a shared
    library instead, some compilers don't allow addresses of Python objects
@@ -43,15 +43,43 @@ spamlist_setstate(spamlistobject *self, PyObject *args)
 	return Py_None;
 }
 
+static PyObject *
+spamlist_specialmeth(PyObject *self, PyObject *args, PyObject *kw)
+{
+	PyObject *result = PyTuple_New(3);
+
+	if (result != NULL) {
+		if (self == NULL)
+			self = Py_None;
+		if (kw == NULL)
+			kw = Py_None;
+		Py_INCREF(self);
+		PyTuple_SET_ITEM(result, 0, self);
+		Py_INCREF(args);
+		PyTuple_SET_ITEM(result, 1, args);
+		Py_INCREF(kw);
+		PyTuple_SET_ITEM(result, 2, kw);
+	}
+	return result;
+}
+
 static PyMethodDef spamlist_methods[] = {
 	{"getstate", (PyCFunction)spamlist_getstate, METH_VARARGS,
-	 	"getstate() -> state"},
+	 	PyDoc_STR("getstate() -> state")},
 	{"setstate", (PyCFunction)spamlist_setstate, METH_VARARGS,
-	 	"setstate(state)"},
+	 	PyDoc_STR("setstate(state)")},
+	/* These entries differ only in the flags; they are used by the tests
+	   in test.test_descr. */
+	{"classmeth", (PyCFunction)spamlist_specialmeth,
+		METH_VARARGS | METH_KEYWORDS | METH_CLASS,
+	 	PyDoc_STR("classmeth(*args, **kw)")},
+	{"staticmeth", (PyCFunction)spamlist_specialmeth,
+		METH_VARARGS | METH_KEYWORDS | METH_STATIC,
+	 	PyDoc_STR("staticmeth(*args, **kw)")},
 	{NULL,	NULL},
 };
 
-staticforward PyTypeObject spamlist_type;
+static PyTypeObject spamlist_type;
 
 static int
 spamlist_init(spamlistobject *self, PyObject *args, PyObject *kwds)
@@ -70,7 +98,7 @@ spamlist_state_get(spamlistobject *self)
 
 static PyGetSetDef spamlist_getsets[] = {
 	{"state", (getter)spamlist_state_get, NULL,
-	 "an int variable for demonstration purposes"},
+	 PyDoc_STR("an int variable for demonstration purposes")},
 	{0}
 };
 
@@ -145,13 +173,13 @@ spamdict_setstate(spamdictobject *self, PyObject *args)
 
 static PyMethodDef spamdict_methods[] = {
 	{"getstate", (PyCFunction)spamdict_getstate, METH_VARARGS,
-	 	"getstate() -> state"},
+	 	PyDoc_STR("getstate() -> state")},
 	{"setstate", (PyCFunction)spamdict_setstate, METH_VARARGS,
-	 	"setstate(state)"},
+	 	PyDoc_STR("setstate(state)")},
 	{NULL,	NULL},
 };
 
-staticforward PyTypeObject spamdict_type;
+static PyTypeObject spamdict_type;
 
 static int
 spamdict_init(spamdictobject *self, PyObject *args, PyObject *kwds)
@@ -164,7 +192,7 @@ spamdict_init(spamdictobject *self, PyObject *args, PyObject *kwds)
 
 static PyMemberDef spamdict_members[] = {
 	{"state", T_INT, offsetof(spamdictobject, state), READONLY,
-	 "an int variable for demonstration purposes"},
+	 PyDoc_STR("an int variable for demonstration purposes")},
 	{0}
 };
 
@@ -235,10 +263,10 @@ static PyMethodDef xxsubtype_functions[] = {
 	{NULL,		NULL}		/* sentinel */
 };
 
-DL_EXPORT(void)
+PyMODINIT_FUNC
 initxxsubtype(void)
 {
-	PyObject *m, *d;
+	PyObject *m;
 
 	/* Fill in deferred data addresses.  This must be done before
 	   PyType_Ready() is called.  Note that PyType_Ready() automatically
@@ -263,17 +291,13 @@ initxxsubtype(void)
 	if (PyType_Ready(&spamdict_type) < 0)
 		return;
 
-	d = PyModule_GetDict(m);
-	if (d == NULL)
-		return;
-
 	Py_INCREF(&spamlist_type);
-	if (PyDict_SetItemString(d, "spamlist",
-				 (PyObject *) &spamlist_type) < 0)
+	if (PyModule_AddObject(m, "spamlist",
+			       (PyObject *) &spamlist_type) < 0)
 		return;
 
 	Py_INCREF(&spamdict_type);
-	if (PyDict_SetItemString(d, "spamdict",
-				 (PyObject *) &spamdict_type) < 0)
+	if (PyModule_AddObject(m, "spamdict",
+			       (PyObject *) &spamdict_type) < 0)
 		return;
 }

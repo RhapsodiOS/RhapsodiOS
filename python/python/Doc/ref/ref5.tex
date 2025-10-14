@@ -54,8 +54,8 @@ categorized syntactically as atoms.  The syntax for atoms is:
   \production{atom}
              {\token{identifier} | \token{literal} | \token{enclosure}}
   \production{enclosure}
-             {\token{parenth_form} | \token{list_display}
-              | \token{dict_display} | \token{string_conversion}}
+             {\token{parenth_form} | \token{list_display}}
+  \productioncont{| \token{dict_display} | \token{string_conversion}}
 \end{productionlist}
 
 
@@ -63,24 +63,8 @@ categorized syntactically as atoms.  The syntax for atoms is:
 \index{name}
 \index{identifier}
 
-An identifier occurring as an atom is a reference to a local, global
-or built-in name binding.  If a name is assigned to anywhere in a code
-block (even in unreachable code), and is not mentioned in a
-\keyword{global} statement in that code block, then it refers to a local
-name throughout that code block.  When it is not assigned to anywhere
-in the block, or when it is assigned to but also explicitly listed in
-a \keyword{global} statement, it refers to a global name if one exists,
-else to a built-in name (and this binding may dynamically
-change).\footnote{The Python interpreter provides a useful set of
-  predefined built-in functions.  It is not recommended to reuse
-  (hide) these names with self defined objects.  See the
-  \citetitle[../lib/built-in-funcs.html]{Python Library Reference} for
-  the descriptions of built-in functions and methods.}
-\indexii{name}{binding}
-\index{code block}
-\stindex{global}
-\indexii{built-in}{name}
-\indexii{global}{name}
+An identifier occurring as an atom is a name.  See Section 4.1 for
+documentation of naming and binding.
 
 When the name is bound to an object, evaluation of the atom yields
 that object.  When a name is not bound, an attempt to evaluate it
@@ -112,9 +96,8 @@ Python supports string literals and various numeric literals:
 
 \begin{productionlist}
   \production{literal}
-             {\token{stringliteral} | \token{integer}
-              | \token{longinteger} | \token{floatnumber}
-              | \token{imagnumber}}
+             {\token{stringliteral} | \token{integer} | \token{longinteger}}
+  \productioncont{| \token{floatnumber} | \token{imagnumber}}
 \end{productionlist}
 
 Evaluation of a literal yields an object of the given type (string,
@@ -170,11 +153,16 @@ A list display is a possibly empty series of expressions enclosed in
 square brackets:
 
 \begin{productionlist}
+  \production{test}
+             {\token{and_test} ( "or" \token{and_test} )*
+              | \token{lambda_form}}
+  \production{testlist}
+             {\token{test} ( "," \token{test} )* [ "," ]}
   \production{list_display}
              {"[" [\token{listmaker}] "]"}
   \production{listmaker}
              {\token{expression} ( \token{list_for}
-              | ( "," \token{expression})* [","] )}
+              | ( "," \token{expression} )* [","] )}
   \production{list_iter}
              {\token{list_for} | \token{list_if}}
   \production{list_for}
@@ -212,7 +200,7 @@ enclosed in curly braces:
 
 \begin{productionlist}
   \production{dict_display}
-             {"{" [\token{key_datum_list}] "}"}
+             {"\{" [\token{key_datum_list}] "\}"}
   \production{key_datum_list}
              {\token{key_datum} ("," \token{key_datum})* [","]}
   \production{key_datum}
@@ -262,9 +250,11 @@ involved).
 (In particular, converting a string adds quotes around it and converts
 ``funny'' characters to escape sequences that are safe to print.)
 
-It is illegal to attempt to convert recursive objects (e.g., lists or
-dictionaries that contain a reference to themselves, directly or
-indirectly.)
+Recursive objects (for example, lists or dictionaries that contain a
+reference to themselves, directly or indirectly) use \samp{...} to
+indicate a recursive reference, and the result cannot be passed to
+\function{eval()} to get an equal value (\exception{SyntaxError} will
+be raised instead).
 \obindex{recursive}
 
 The built-in function \function{repr()} performs exactly the same
@@ -439,13 +429,13 @@ series of arguments:
   \production{call}
              {\token{primary} "(" [\token{argument_list} [","]] ")"}
   \production{argument_list}
-             {\token{positional_arguments} ["," \token{keyword_arguments} 
-		 ["," "*" \token{expression} ["," "**" \token{expression}]]]
-              | \token{keyword_arguments} ["," "*" \token{expression} 
-		["," "**" \token{expression}]]
-	      | "*" \token{expression} ["," "**" \token{expression}]
-	      | "**" \token{expression}
-	     }
+             {\token{positional_arguments} ["," \token{keyword_arguments}]}
+  \productioncont{                     ["," "*" \token{expression}]}
+  \productioncont{                     ["," "**" \token{expression}]}
+  \productioncont{| \token{keyword_arguments} ["," "*" \token{expression}]}
+  \productioncont{                    ["," "**" \token{expression}]}
+  \productioncont{| "*" \token{expression} ["," "**" \token{expression}]}
+  \productioncont{| "**" \token{expression}}
   \production{positional_arguments}
              {\token{expression} ("," \token{expression})*}
   \production{keyword_arguments}
@@ -616,10 +606,20 @@ The power operator has the same semantics as the built-in
 \function{pow()} function, when called with two arguments: it yields
 its left argument raised to the power of its right argument.  The
 numeric arguments are first converted to a common type.  The result
-type is that of the arguments after coercion; if the result is not
-expressible in that type (as in raising an integer to a negative
-power, or a negative floating point number to a broken power), a
-\exception{TypeError} exception is raised.
+type is that of the arguments after coercion.
+
+With mixed operand types, the coercion rules for binary arithmetic
+operators apply. For int and long int operands, the result has the
+same type as the operands (after coercion) unless the second argument
+is negative; in that case, all arguments are converted to float and a
+float result is delivered. For example, \code{10**2} returns \code{100},
+but \code{10**-2} returns \code{0.01}. (This last feature was added in
+Python 2.2. In Python 2.1 and before, if both arguments were of integer
+types and the second argument was negative, an exception was raised).
+
+Raising \code{0.0} to a negative power results in a
+\exception{ZeroDivisionError}.  Raising a negative number to a
+fractional power results in a \exception{ValueError}.
 
 
 \section{Unary arithmetic operations \label{unary}}
@@ -631,7 +631,7 @@ All unary arithmetic (and bit-wise) operations have the same priority:
 \begin{productionlist}
   \production{u_expr}
              {\token{power} | "-" \token{u_expr}
-              | "+" \token{u_expr} | "~" \token{u_expr}}
+              | "+" \token{u_expr} | "{\~}" \token{u_expr}}
 \end{productionlist}
 
 The unary \code{-} (minus) operator yields the negation of its
@@ -666,11 +666,12 @@ operators:
 \begin{productionlist}
   \production{m_expr}
              {\token{u_expr} | \token{m_expr} "*" \token{u_expr}
-              | \token{m_expr} "/" \token{u_expr}
-              | \token{m_expr} "\%" \token{u_expr}}
+              | \token{m_expr} "//" \token{u_expr}
+              | \token{m_expr} "/" \token{u_expr}}
+  \productioncont{| \token{m_expr} "\%" \token{u_expr}}
   \production{a_expr}
-             {\token{m_expr} | \token{aexpr} "+" \token{m_expr}
-              \token{aexpr} "-" \token{m_expr}}
+             {\token{m_expr} | \token{a_expr} "+" \token{m_expr}
+              | \token{a_expr} "-" \token{m_expr}}
 \end{productionlist}
 
 The \code{*} (multiplication) operator yields the product of its
@@ -681,11 +682,12 @@ then multiplied together.  In the latter case, sequence repetition is
 performed; a negative repetition factor yields an empty sequence.
 \index{multiplication}
 
-The \code{/} (division) operator yields the quotient of its
-arguments.  The numeric arguments are first converted to a common
-type.  Plain or long integer division yields an integer of the same
-type; the result is that of mathematical division with the `floor'
-function applied to the result.  Division by zero raises the
+The \code{/} (division) and \code{//} (floor division) operators yield
+the quotient of their arguments.  The numeric arguments are first
+converted to a common type.  Plain or long integer division yields an
+integer of the same type; the result is that of mathematical division
+with the `floor' function applied to the result.  Division by zero
+raises the
 \exception{ZeroDivisionError} exception.
 \exindex{ZeroDivisionError}
 \index{division}
@@ -697,24 +699,39 @@ the \exception{ZeroDivisionError} exception.  The arguments may be floating
 point numbers, e.g., \code{3.14\%0.7} equals \code{0.34} (since
 \code{3.14} equals \code{4*0.7 + 0.34}.)  The modulo operator always
 yields a result with the same sign as its second operand (or zero);
-the absolute value of the result is strictly smaller than the second
-operand.
+the absolute value of the result is strictly smaller than the absolute
+value of the second operand\footnote{
+    While \code{abs(x\%y) < abs(y)} is true mathematically, for
+    floats it may not be true numerically due to roundoff.  For
+    example, and assuming a platform on which a Python float is an
+    IEEE 754 double-precision number, in order that \code{-1e-100 \% 1e100}
+    have the same sign as \code{1e100}, the computed result is
+    \code{-1e-100 + 1e100}, which is numerically exactly equal
+    to \code{1e100}.  Function \function{fmod()} in the \module{math}
+    module returns a result whose sign matches the sign of the
+    first argument instead, and so returns \code{-1e-100} in this case.
+    Which approach is more appropriate depends on the application.
+}.
 \index{modulo}
 
 The integer division and modulo operators are connected by the
 following identity: \code{x == (x/y)*y + (x\%y)}.  Integer division and
 modulo are also connected with the built-in function \function{divmod()}:
 \code{divmod(x, y) == (x/y, x\%y)}.  These identities don't hold for
-floating point and complex numbers; there similar identities hold
-approximately where \code{x/y} is replaced by \code{floor(x/y)}) or
-\code{floor(x/y) - 1} (for floats),\footnote{
+floating point numbers; there similar identities hold
+approximately where \code{x/y} is replaced by \code{floor(x/y)} or
+\code{floor(x/y) - 1}\footnote{
     If x is very close to an exact integer multiple of y, it's
     possible for \code{floor(x/y)} to be one larger than
     \code{(x-x\%y)/y} due to rounding.  In such cases, Python returns
     the latter result, in order to preserve that \code{divmod(x,y)[0]
     * y + x \%{} y} be very close to \code{x}.
-} or \code{floor((x/y).real)} (for
-complex).
+}.
+
+\deprecated{2.3}{The floor division operator, the modulo operator,
+and the \function{divmod()} function are no longer defined for complex
+numbers.  Instead, convert to a floating point number using the
+\function{abs()} function if appropriate.}
 
 The \code{+} (addition) operator yields the sum of its arguments.
 The arguments must either both be numbers or both sequences of the
@@ -801,11 +818,11 @@ interpretation that is conventional in mathematics:
   \production{comparison}
              {\token{or_expr} ( \token{comp_operator} \token{or_expr} )*}
   \production{comp_operator}
-             {"<" | ">" | "==" | ">=" | "<=" | "<>" | "!="
-              | "is" ["not"] | ["not"] "in"}
+             {"<" | ">" | "==" | ">=" | "<=" | "<>" | "!="}
+  \productioncont{| "is" ["not"] | ["not"] "in"}
 \end{productionlist}
 
-Comparisons yield integer values: \code{1} for true, \code{0} for false.
+Comparisons yield boolean values: \code{True} or \code{False}.
 
 Comparisons can be chained arbitrarily, e.g., \code{x < y <= z} is
 equivalent to \code{x < y and y <= z}, except that \code{y} is
@@ -831,7 +848,7 @@ obsolescent.
 The operators \code{<}, \code{>}, \code{==}, \code{>=}, \code{<=}, and
 \code{!=} compare
 the values of two objects.  The objects need not have the same type.
-If both are numbers, they are coverted to a common type.  Otherwise,
+If both are numbers, they are converted to a common type.  Otherwise,
 objects of different types \emph{always} compare unequal, and are
 ordered consistently but arbitrarily.
 
@@ -855,7 +872,15 @@ behavior.
 
 \item
 Tuples and lists are compared lexicographically using comparison of
-corresponding items.
+corresponding elements.  This means that to compare equal, each
+element must compare equal and the two sequences must be of the same
+type and have the same length.
+
+If not equal, the sequences are ordered the same as their first
+differing elements.  For example, \code{cmp([1,2,x], [1,2,y])} returns
+the same as \code{cmp(x,y)}.  If the corresponding element does not
+exist, the shorter sequence is ordered first (for example,
+\code{[1,2] < [1,2,3]}).
 
 \item
 Mappings (dictionaries) compare equal if and only if their sorted
@@ -893,10 +918,13 @@ only if there exists an index \var{i} such that
 \code{\var{x} == \var{y}[\var{i}]} is true.
 
 For the Unicode and string types, \code{\var{x} in \var{y}} is true if
-and only if there exists an index \var{i} such that \code{\var{x} ==
-\var{y}[\var{i}]} is true. If \code{\var{x}} is not a string or
-Unicode object of length \code{1}, a \exception{TypeError} exception
-is raised.
+and only if \var{x} is a substring of \var{y}.  An equivalent test is
+\code{y.find(x) != -1}.  Note, \var{x} and \var{y} need not be the
+same type; consequently, \code{u'ab' in 'abc'} will return \code{True}.
+Empty strings are always considered to be a substring of any other string,
+so \code{"" in "abc"} will return \code{True}.
+\versionchanged[Previously, \var{x} was required to be a string of
+length \code{1}]{2.3}
 
 For user-defined classes which define the \method{__contains__()} method,
 \code{\var{x} in \var{y}} is true if and only if
@@ -973,11 +1001,16 @@ invent a value anyway, it does not bother to return a value of the
 same type as its argument, so e.g., \code{not 'foo'} yields \code{0},
 not \code{''}.)
 
+\section{Lambdas\label{lambdas}}
+\indexii{lambda}{expression}
+\indexii{lambda}{form}
+\indexii{anonmymous}{function}
+
 Lambda forms (lambda expressions) have the same syntactic position as
 expressions.  They are a shorthand to create anonymous functions; the
 expression \code{lambda \var{arguments}: \var{expression}}
-yields a function object that behaves virtually identical to one
-defined with
+yields a function object.  The unnamed object behaves like a function
+object defined with
 
 \begin{verbatim}
 def name(arguments):
@@ -987,34 +1020,6 @@ def name(arguments):
 See section \ref{function} for the syntax of parameter lists.  Note
 that functions created with lambda forms cannot contain statements.
 \label{lambda}
-\indexii{lambda}{expression}
-\indexii{lambda}{form}
-\indexii{anonmymous}{function}
-
-\strong{Programmer's note:} Prior to Python 2.1, a lambda form defined
-inside a function has no access to names defined in the function's
-namespace.  This is because Python had only two scopes: local and
-global.  A common work-around was to use default argument values to
-pass selected variables into the lambda's namespace, e.g.:
-
-\begin{verbatim}
-def make_incrementor(increment):
-    return lambda x, n=increment: x+n
-\end{verbatim}
-
-As of Python 2.1, nested scopes were introduced, and this work-around
-has not been necessary.  Python 2.1 supports nested scopes in modules
-which include the statement \samp{from __future__ import
-nested_scopes}, and more recent versions of Python enable nested
-scopes by default.  This version works starting with Python 2.1:
-
-\begin{verbatim}
-from __future__ import nested_scopes
-
-def make_incrementor(increment):
-    return lambda x: x+increment
-\end{verbatim}
-
 
 \section{Expression lists\label{exprlists}}
 \indexii{expression}{list}
@@ -1037,6 +1042,24 @@ tuple, but rather yields the value of that expression.
 \code{()}.)
 \indexii{trailing}{comma}
 
+\section{Evaluation order\label{evalorder}}
+\indexii{evaluation}{order}
+
+Python evaluates expressions from left to right. Notice that while
+evaluating an assignment, the right-hand side is evaluated before
+the left-hand side.
+
+In the following lines, expressions will be evaluated in the
+arithmetic order of their suffixes:
+
+\begin{verbatim}
+expr1, expr2, expr3, expr4
+(expr1, expr2, expr3, expr4)
+{expr1: expr2, expr3: expr4}
+expr1 + expr2 * (expr3 - expr4)
+func(expr1, expr2, *expr3, **expr4)
+expr3, expr4 = expr1, expr2
+\end{verbatim}
 
 \section{Summary\label{summary}}
 

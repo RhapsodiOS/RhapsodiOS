@@ -6,10 +6,8 @@ import string
 import MacOS
 import sys
 
-BGENDIR= os.path.join(sys.prefix, ':Tools:bgen:bgen:')
+from bgenlocations import TOOLBOXDIR, BGENDIR
 sys.path.append(BGENDIR)
-
-from bgenlocations import TOOLBOXDIR
 
 from scantools import Scanner, Scanner_OSX
 
@@ -21,6 +19,8 @@ def main():
 	scanner = CarbonEvents_Scanner(input, output, defsoutput)
 	scanner.scan()
 	scanner.close()
+	print "=== Testing definitions output code ==="
+	execfile(defsoutput, {}, {})
 	print "--done scanning, importing--"
 	import CarbonEvtsupport
 	print "done"
@@ -63,9 +63,9 @@ class CarbonEvents_Scanner(Scanner_OSX):
 		return [
 			"sHandler",
 			"MacCreateEvent",
-			"TrackMouseLocationWithOptions",
-			"TrackMouseLocation",
-			"TrackMouseRegion",
+#			"TrackMouseLocationWithOptions",
+#			"TrackMouseLocation",
+#			"TrackMouseRegion",
 			"RegisterToolboxObjectClass",
 			"UnregisterToolboxObjectClass",
 			"ProcessHICommand",
@@ -107,7 +107,12 @@ class CarbonEvents_Scanner(Scanner_OSX):
 #				]
 
 	def makerepairinstructions(self):
-		return []
-		
+		return [
+			([("UInt32", 'inSize', "InMode"), ("void_ptr", 'inDataPtr', "InMode")],
+			 [("MyInBuffer", 'inDataPtr', "InMode")]),
+			([("Boolean", 'ioWasInRgn', "OutMode")],
+			 [("Boolean", 'ioWasInRgn', "InOutMode")]),
+		]
+
 if __name__ == "__main__":
 	main()

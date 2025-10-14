@@ -1,6 +1,6 @@
 import os, sys, string, random, tempfile, unittest
 
-from test_support import run_unittest
+from test.test_support import run_unittest
 
 class TestImport(unittest.TestCase):
 
@@ -17,8 +17,7 @@ class TestImport(unittest.TestCase):
                 del sys.modules[module_name]
 
     def setUp(self):
-        self.test_dir = tempfile.mktemp()
-        os.mkdir(self.test_dir)
+        self.test_dir = tempfile.mkdtemp()
         sys.path.append(self.test_dir)
         self.package_dir = os.path.join(self.test_dir,
                                         self.package_name)

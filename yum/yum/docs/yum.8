@@ -1,0 +1,184 @@
+.\" yum - Yellowdog Updater Modified
+.TH "yum" "8" "2002 Jun 8" "Seth Vidal" ""
+.SH "NAME"
+yum \- Yellowdog Updater Modified
+.SH "SYNOPSIS"
+\fByum\fP [options] [command] [package ...]
+.SH "DESCRIPTION"
+.PP 
+\fByum\fP is an interactive, automated update program which can be used for maintaining systems using rpm
+.PP 
+\fIcommand\fP is one of:
+.br 
+.I \fR * install package1 [package2] [\&.\&.\&.]
+.br 
+.I \fR * update [package1] [package2] [\&.\&.\&.]
+.br 
+.I \fR * check-update
+.br 
+.I \fR * upgrade
+.br 
+.I \fR * remove [package1] [package2] [\&.\&.\&.]
+.br 
+.I \fR * list [\&.\&.\&.]
+.br 
+.I \fR * info [\&.\&.\&.]
+.br 
+.I \fR * provides [\&.\&.\&.]
+.br  
+.I \fR * clean [packages | headers | old\-headers | all]
+.br 
+.PP 
+Unless the \-\-help or \-h option is given, one of the above commands
+must be present\&.
+.PP 
+.IP "\fBinstall\fP"
+is used to install the latest version of a package or
+group of packages while ensuring that all dependencies are
+satisfied\&.  If no package matches the given package name(s), they are
+assumed to be a shell glob and any matches are then installed\&.
+.IP 
+.IP "\fBupdate\fP"
+If run without any packages, \fBupdate\fP will update every currently
+installed package.  If one or more packages are specified, Yum will
+only update the listed packages\&.  While updating packages, \fByum\fP
+will ensure that all dependencies are satisfied\&.  If no package
+matches the given package name(s), they are assumed to be a shell glob
+and any matches are then installed\&.
+.IP 
+.IP "\fBcheck-update\fP"
+Implemented so you could know if your machine had any updates that needed to
+be applied without running it interactively. Returns exit value of 100 if
+there are packages available for an update. Also returns a list of the pkgs
+to be updated in list format. Returns 0 and no packages are available for
+update.
+.IP
+.IP "\fBupgrade\fP"
+takes no arguments, this performs a complete upgrade of the system \- good for distro\-version changes as it includes packages obsoleting other packages in its updating calculations.
+.IP 
+.IP "\fBremove\fP"
+is used to remove the specified packages from the system
+as well as removing any packages which depend on the package being
+removed\&.
+.IP 
+.IP "\fBlist\fP"
+can be used to list various information about available
+packages; more complete details are available in the \fIList Options\fP
+section below\&.
+.IP 
+.IP "\fBprovides\fP"
+can be used to find out which package provides some feature
+or file. Just use a specific name or a file-glob-syntax wildcards to list
+the packages available or installed that provide that feature or file\&.
+.IP 
+.IP "\fBinfo\fP"
+can be used to list a description and summary information about available
+packages; takes the same arguments as in the \fIList Options\fP
+section below\&.
+.IP 
+.IP "\fBclean\fP"
+is used to clean up various things which accumulate in the
+yup cache directory over time.  More complete details can be found in
+the \fIClean Options\fP section below\&.
+.IP 
+.PP 
+.SH "GENERAL OPTIONS"
+Most command line options can be set using the configuration file as
+well and the descriptions indicate the necessary configuration option
+to set\&.
+.PP 
+.IP "\fB\-h, \-\-help\fP"
+Help; display a help message and then quit\&.
+.IP "\fB\-y\fP"
+Assume yes; assume that the answer to answer to any question which
+would be asked is yes\&.
+Configuration Item: \fBassume\-yes\fP
+.IP "\fB\-c [config file]\fP" 
+Specifies the config file location\&.
+.IP "\fB\-d [number]\fP" 
+Sets the debugging level to [number] \- turns up or down the amount of things that are printed\&.
+.IP "\fB\-e [number]\fP" 
+Sets the error level to [number] 0 \- 10. 0 means print only critical errors about which you must be told. 1 means print all errors, even ones that are not overly important. 1+ means print more errors (if any) \-e 0 is good for cron jobs.
+.IP "\fB\-t\fP" 
+Tells yum to be tolerant of errors on the command line with regard to packages on the commandline. For example: if you request to install foo, bar and baz and baz is installed; yum won't error out complaining that baz is already installed.
+.IP "\fB\-R [time in minutes]\fP" 
+Sets the maximum amount of time yum will wait before performing a command \- it randomizes over the time.
+.IP "\fB\-C\fP" 
+Tells yum to run entirely from cache - does not download or update any
+headers unless it has to to perform the requested action.
+.PP 
+.SH "LIST OPTIONS"
+The following are the ways which you can invoke \fByum\fP in list
+mode\&.  Note that all \fBlist\fP commands include information on the
+version of the package\&.
+.IP 
+.IP "\fByum list [available]\fP"
+list all packages in the yum repositories available to be installed\&.
+.IP 
+.IP "\fByum list updates\fP"
+list all packages with updates available in the yum repositories\&.
+.IP 
+.IP "\fByum list [args]\fP"
+list the packages specified by \fIargs\fP\&.  If an argument does not
+match the name of a package, it is assumed to be a
+shell\-style glob and any matches are printed\&.
+.IP
+.IP "\fByum list installed\fP"
+list the packages specified by \fIargs\fP\&.  If an argument does not
+match the name of an available package, it is assumed to be a
+shell\-style glob and any matches are printed\&.
+.IP
+.IP "\fByum list extras\fP"
+list the packages installed on the system that are not available in any yum
+repository listed in the config file.
+.IP
+.IP
+.PP 
+.SH "CLEAN OPTIONS"
+The following are the ways which you can invoke \fByum\fP in clean
+mode.
+
+.IP "\fByum clean packages\fP"
+Eliminate any cached packages from the system.  Note that packages are not automatically deleted after they are downloaded.
+
+.IP "\fByum clean headers\fP"
+Eliminate all of the files which yum uses to determine the remote
+availablility of packages. Using this option will force yum to download all the headers the next time it is run.
+
+.IP "\fByum clean oldheaders\fP"
+Eliminate the old headers that yum no longer needs to determine the remote availablility of packages.
+
+.IP "\fByum clean [all]\fP"
+Runs \fByum clean packages\fP and \fByum clean oldheaders\fP as above.
+
+.PP
+.SH "MISC"
+.IP "\fBProxy configuration\fP"
+If you would like to use a proxy with yum you can simply set a shell
+environment variable of http_proxy. Set it to the url for your proxy. 
+Ex: "http://your_proxy:port/"
+
+.PP 
+.SH "FILES"
+.nf 
+/etc/yum.conf
+/var/cache/yum/
+.fi 
+
+.PP 
+.SH "SEE ALSO"
+.I yum\-arch (8),
+.I yum.conf (5)
+.nf 
+
+.PP 
+.SH "AUTHORS"
+.nf 
+Seth Vidal <skvidal@phy.duke.edu>
+.fi 
+
+.PP 
+.SH "BUGS"
+There of course aren't any bugs, but if you find any, they should be sent
+to the mailing list: yum@dulug.duke.edu
+.fi 

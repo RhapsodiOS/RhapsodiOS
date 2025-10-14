@@ -1,0 +1,68 @@
+% new file
+applying patch from stdin
+% new empty file
+applying patch from stdin
+empty
+% chmod +x
+applying patch from stdin
+% copy
+applying patch from stdin
+a
+a
+% rename
+applying patch from stdin
+copyx
+empty
+new
+rename
+% delete
+applying patch from stdin
+empty
+new
+rename
+% regular diff
+applying patch from stdin
+% copy and modify
+applying patch from stdin
+a
+a
+b
+a
+a
+% rename and modify
+applying patch from stdin
+a
+a
+b
+c
+a
+% one file renamed multiple times
+applying patch from stdin
+9 rename2 rename3 rename3-2 / rename3 (rename2)rename3-2 (rename2)
+rename3
+rename3-2
+a
+a
+b
+c
+a
+
+a
+a
+b
+c
+a
+% binary files and regular patch hunks
+applying patch from stdin
+foo
+045c85ba38952325e126c70962cc0f9d9077bc67 644   binary
+% many binary files
+applying patch from stdin
+045c85ba38952325e126c70962cc0f9d9077bc67 644   mbinary1
+a874b471193996e7cb034bb301cac7bdaf3e3f46 644   mbinary2
+% filenames with spaces
+applying patch from stdin
+foo
+% copy then modify the original file
+applying patch from stdin
+foo

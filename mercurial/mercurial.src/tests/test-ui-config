@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+
+import ConfigParser
+from mercurial import ui, util, dispatch
+
+testui = ui.ui()
+parsed = dispatch._parseconfig([
+    'values.string=string value',
+    'values.bool1=true',
+    'values.bool2=false',
+    'lists.list1=foo',
+    'lists.list2=foo bar baz',
+    'lists.list3=alice, bob',
+    'lists.list4=foo bar baz alice, bob',
+    'interpolation.value1=hallo',
+    'interpolation.value2=%(value1)s world',
+    'interpolation.value3=%(novalue)s',
+    'interpolation.value4=%(bad)1',
+    'interpolation.value5=%bad2',
+])
+testui.updateopts(config=parsed)
+
+print repr(testui.configitems('values'))
+print repr(testui.configitems('lists'))
+try:
+    print repr(testui.configitems('interpolation'))
+except util.Abort, inst:
+    print inst
+print "---"
+print repr(testui.config('values', 'string'))
+print repr(testui.config('values', 'bool1'))
+print repr(testui.config('values', 'bool2'))
+print repr(testui.config('values', 'unknown'))
+print "---"
+try:
+    print repr(testui.configbool('values', 'string'))
+except util.Abort, inst:
+    print inst
+print repr(testui.configbool('values', 'bool1'))
+print repr(testui.configbool('values', 'bool2'))
+print repr(testui.configbool('values', 'bool2', True))
+print repr(testui.configbool('values', 'unknown'))
+print repr(testui.configbool('values', 'unknown', True))
+print "---"
+print repr(testui.configlist('lists', 'list1'))
+print repr(testui.configlist('lists', 'list2'))
+print repr(testui.configlist('lists', 'list3'))
+print repr(testui.configlist('lists', 'list4'))
+print repr(testui.configlist('lists', 'list4', ['foo']))
+print repr(testui.configlist('lists', 'unknown'))
+print repr(testui.configlist('lists', 'unknown', ''))
+print repr(testui.configlist('lists', 'unknown', 'foo'))
+print repr(testui.configlist('lists', 'unknown', ['foo']))
+print repr(testui.configlist('lists', 'unknown', 'foo bar'))
+print repr(testui.configlist('lists', 'unknown', 'foo, bar'))
+print repr(testui.configlist('lists', 'unknown', ['foo bar']))
+print repr(testui.configlist('lists', 'unknown', ['foo', 'bar']))
+print "---"
+print repr(testui.config('interpolation', 'value1'))
+print repr(testui.config('interpolation', 'value2'))
+try:
+    print repr(testui.config('interpolation', 'value3'))
+except util.Abort, inst:
+    print inst
+try:
+    print repr(testui.config('interpolation', 'value4'))
+except util.Abort, inst:
+    print inst
+try:
+    print repr(testui.config('interpolation', 'value5'))
+except util.Abort, inst:
+    print inst
+print "---"
+
+cp = util.configparser()
+cp.add_section('foo')
+cp.set('foo', 'bar', 'baz')
+try:
+    # should fail - keys are case-sensitive
+    cp.get('foo', 'Bar')
+except ConfigParser.NoOptionError, inst:
+    print inst
+
+def function():
+    pass
+
+cp.add_section('hook')
+# values that aren't strings should work
+cp.set('hook', 'commit', function)
+f = cp.get('hook', 'commit')
+print "f %s= function" % (f == function and '=' or '!')

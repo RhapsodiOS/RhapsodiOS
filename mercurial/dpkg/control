@@ -1,0 +1,7 @@
+Package: Mercurial
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Mercurial developers
+Version: 1.1.2
+URL: https://www.mercurial-scm.org/release/mercurial-1.1.2.tar.gz
+Description: Mercurial
+Build-Depends: build-base, python

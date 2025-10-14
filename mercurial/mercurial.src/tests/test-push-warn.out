@@ -1,0 +1,82 @@
+updating working directory
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+pushing to ../a
+searching for changes
+abort: push creates new remote heads!
+(did you forget to merge? use push -f to force)
+pulling from ../a
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 1 changesets with 1 changes to 1 files (+1 heads)
+(run 'hg heads' to see heads, 'hg merge' to merge)
+pushing to ../a
+searching for changes
+abort: push creates new remote heads!
+(did you forget to merge? use push -f to force)
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+(branch merge, don't forget to commit)
+pushing to ../a
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 2 changesets with 1 changes to 1 files
+adding foo
+updating working directory
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+merging foo
+0 files updated, 1 files merged, 0 files removed, 0 files unresolved
+(branch merge, don't forget to commit)
+pushing to ../c
+searching for changes
+abort: push creates new remote heads!
+(did you forget to merge? use push -f to force)
+1
+pushing to ../c
+searching for changes
+no changes found
+0
+pushing to ../c
+searching for changes
+abort: push creates new remote heads!
+(did you forget to merge? use push -f to force)
+1
+pushing to ../c
+searching for changes
+abort: push creates new remote heads!
+(did you forget to merge? use push -f to force)
+1
+pushing to ../c
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 2 changesets with 2 changes to 1 files (+2 heads)
+0
+pushing to ../c
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 1 changesets with 1 changes to 1 files (-1 heads)
+0
+pushing to ../e
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 1 changesets with 1 changes to 1 files
+0
+pushing to ../e
+searching for changes
+adding changesets
+adding manifests
+adding file changes
+added 1 changesets with 1 changes to 1 files
+0

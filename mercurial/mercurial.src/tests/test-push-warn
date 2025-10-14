@@ -1,0 +1,62 @@
+#!/bin/sh
+
+mkdir a
+cd a
+hg init
+echo foo > t1
+hg add t1
+hg commit -m "1" -d "1000000 0"
+
+cd ..
+hg clone a b
+
+cd a
+echo foo > t2
+hg add t2
+hg commit -m "2" -d "1000000 0"
+
+cd ../b
+echo foo > t3
+hg add t3
+hg commit -m "3" -d "1000000 0"
+
+hg push ../a
+hg pull ../a
+hg push ../a
+hg merge
+hg commit -m "4" -d "1000000 0"
+hg push ../a
+cd ..
+
+hg init c
+cd c
+for i in 0 1 2; do
+    echo $i >> foo
+    hg ci -Am $i -d "1000000 0"
+done
+cd ..
+
+hg clone c d
+cd d
+for i in 0 1; do
+    hg co -C $i
+    echo d-$i >> foo
+    hg ci -m d-$i -d "1000000 0"
+done
+
+HGMERGE=true hg merge 3
+hg ci -m c-d -d "1000000 0"
+
+hg push ../c; echo $?
+hg push -r 2 ../c; echo $?
+hg push -r 3 ../c; echo $?
+hg push -r 3 -r 4 ../c; echo $?
+hg push -f -r 3 -r 4 ../c; echo $?
+hg push -r 5 ../c; echo $?
+
+# issue 450
+hg init ../e
+hg push -r 0 ../e ; echo $?
+hg push -r 1 ../e ; echo $?
+
+exit 0

@@ -1,0 +1,154 @@
+0: Adding root node
+-------
+0: Adding root node
+=======
+marked working directory as branch a
+1: Adding a branch
+-------
+1: Adding a branch
+=======
+0 files updated, 0 files merged, 1 files removed, 0 files unresolved
+marked working directory as branch b
+created new head
+2: Adding b branch
+1: Adding a branch
+-------
+2: Adding b branch
+=======
+3: Adding b branch head 1
+1: Adding a branch
+-------
+3: Adding b branch head 1
+=======
+0 files updated, 0 files merged, 1 files removed, 0 files unresolved
+created new head
+4: Adding b branch head 2
+3: Adding b branch head 1
+1: Adding a branch
+-------
+4: Adding b branch head 2
+3: Adding b branch head 1
+=======
+0 files updated, 0 files merged, 1 files removed, 0 files unresolved
+created new head
+5: Adding b branch head 3
+4: Adding b branch head 2
+3: Adding b branch head 1
+1: Adding a branch
+-------
+5: Adding b branch head 3
+4: Adding b branch head 2
+3: Adding b branch head 1
+=======
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+(branch merge, don't forget to commit)
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+=======
+marked working directory as branch c
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+7: Adding c branch
+=======
+no changes on branch c containing . are reachable from 3
+1
+-------
+7: Adding c branch
+0
+-------
+0 files updated, 0 files merged, 2 files removed, 0 files unresolved
+0
+-------
+3: Adding b branch head 1
+0
+-------
+3: Adding b branch head 1
+6: Merging b branch head 2 and b branch head 3
+0
+-------
+no changes on branch b containing . are reachable from 7
+1
+=======
+0 files updated, 0 files merged, 2 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+0: Adding root node
+-------
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+1: Adding a branch
+-------
+1 files updated, 0 files merged, 1 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+1 files updated, 0 files merged, 1 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+1 files updated, 0 files merged, 1 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+7: Adding c branch
+3: Adding b branch head 1
+1: Adding a branch
+-------
+7: Adding c branch
+-------
+=======
+1: Adding a branch
+-------
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+-------
+7: Adding c branch
+-------
+abort: unknown revision 'z'!
+-------
+=======
+0: Adding root node
+1: Adding a branch
+6: Merging b branch head 2 and b branch head 3
+3: Adding b branch head 1
+7: Adding c branch

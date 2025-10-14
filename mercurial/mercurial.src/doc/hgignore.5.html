@@ -1,0 +1,98 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="generator" content="AsciiDoc 8.2.7">
+<title>HGIGNORE(5)</title>
+</head>
+<body>
+<h1>HGIGNORE(5)</h1>
+<p>
+<strong>Vadim Gelfer</strong><br />
+<tt>&lt;<a href="mailto:vadim.gelfer@gmail.com">vadim.gelfer@gmail.com</a>&gt;</tt><br />
+</p>
+<hr />
+<h2><a name="_name"></a>NAME</h2>
+<p>hgignore - syntax for Mercurial ignore files</p>
+<hr />
+<h2><a name="_synopsis"></a>SYNOPSIS</h2>
+<p>The Mercurial system uses a file called .hgignore in the root
+directory of a repository to control its behavior when it finds files
+that it is not currently managing.</p>
+<hr />
+<h2><a name="_description"></a>DESCRIPTION</h2>
+<p>Mercurial ignores every unmanaged file that matches any pattern in an
+ignore file. The patterns in an ignore file do not apply to files
+managed by Mercurial. To control Mercurial's handling of files that
+it manages, see the hg(1) man page. Look for the "-I" and "-X"
+options.</p>
+<p>In addition, a Mercurial configuration file can point to a set of
+per-user or global ignore files. See the hgrc(5) man page for details
+of how to configure these files. Look for the "ignore" entry in the
+"ui" section.</p>
+<hr />
+<h2><a name="_syntax"></a>SYNTAX</h2>
+<p>An ignore file is a plain text file consisting of a list of patterns,
+with one pattern per line. Empty lines are skipped. The "#"
+character is treated as a comment character, and the "\" character is
+treated as an escape character.</p>
+<p>Mercurial supports several pattern syntaxes. The default syntax used
+is Python/Perl-style regular expressions.</p>
+<p>To change the syntax used, use a line of the following form:</p>
+<p>syntax: NAME</p>
+<p>where NAME is one of the following:</p>
+<dl>
+<dt>
+regexp
+</dt>
+<dd>
+<p>
+  Regular expression, Python/Perl syntax.
+</p>
+</dd>
+<dt>
+glob
+</dt>
+<dd>
+<p>
+  Shell-style glob.
+</p>
+</dd>
+</dl>
+<p>The chosen syntax stays in effect when parsing all patterns that
+follow, until another syntax is selected.</p>
+<p>Neither glob nor regexp patterns are rooted. A glob-syntax pattern of
+the form "*.c" will match a file ending in ".c" in any directory, and
+a regexp pattern of the form "\.c$" will do the same. To root a
+regexp pattern, start it with "^".</p>
+<hr />
+<h2><a name="_example"></a>EXAMPLE</h2>
+<p>Here is an example ignore file.</p>
+<pre># use glob syntax.
+syntax: glob</pre>
+<pre>*.elc
+*.pyc
+*~</pre>
+<pre># switch to regexp syntax.
+syntax: regexp
+^\.pc/</pre>
+<hr />
+<h2><a name="_author"></a>AUTHOR</h2>
+<p>Vadim Gelfer &lt;<a href="mailto:vadim.gelfer@gmail.com">vadim.gelfer@gmail.com</a>&gt;</p>
+<p>Mercurial was written by Matt Mackall &lt;<a href="mailto:mpm@selenic.com">mpm@selenic.com</a>&gt;.</p>
+<hr />
+<h2><a name="_see_also"></a>SEE ALSO</h2>
+<p>hg(1), hgrc(5)</p>
+<hr />
+<h2><a name="_copying"></a>COPYING</h2>
+<p>This manual page is copyright 2006 Vadim Gelfer.
+Mercurial is copyright 2005-2007 Matt Mackall.
+Free use of this software is granted under the terms of the GNU General
+Public License (GPL).</p>
+<p></p>
+<p></p>
+<hr /><p><small>
+Last updated 2008-12-31 17:38:54 CDT
+</small></p>
+</body>
+</html>

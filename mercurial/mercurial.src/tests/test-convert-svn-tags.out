@@ -1,0 +1,37 @@
+% convert
+initializing destination A-hg repository
+scanning source...
+sorting...
+converting...
+4 init projA
+3 adda
+2 changea
+1 changea2
+0 changea3
+updating tags
+o  5 update tags tags: tip
+|
+o  4 changea3 tags:
+|
+o  3 changea2 tags: trunk.v1 trunk.goodtag
+|
+o  2 changea tags:
+|
+o  1 adda tags:
+|
+o  0 init projA tags:
+
+tip
+trunk.v1
+trunk.goodtag
+% convert without tags
+initializing destination A-notags-hg repository
+scanning source...
+sorting...
+converting...
+4 init projA
+3 adda
+2 changea
+1 changea2
+0 changea3
+tip

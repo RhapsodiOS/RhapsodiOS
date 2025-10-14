@@ -1,0 +1,512 @@
+#!/bin/sh
+
+checkundo()
+{
+    if [ -f .hg/store/undo ]; then
+	echo ".hg/store/undo still exists after $1"
+    fi
+}
+
+echo "[extensions]" >> $HGRCPATH
+echo "mq=" >> $HGRCPATH
+
+echo % help
+hg help mq
+
+hg init a
+cd a
+echo a > a
+hg ci -Ama
+
+hg clone . ../k
+
+mkdir b
+echo z > b/z
+hg ci -Ama
+
+echo % qinit
+
+hg qinit
+
+cd ..
+hg init b
+
+echo % -R qinit
+
+hg -R b qinit
+
+hg init c
+
+echo % qinit -c
+
+hg --cwd c qinit -c
+hg -R c/.hg/patches st
+
+echo '% qinit; qinit -c'
+hg init d
+cd d
+hg qinit
+hg qinit -c
+# qinit -c should create both files if they don't exist
+echo '  .hgignore:'
+cat .hg/patches/.hgignore
+echo '  series:'
+cat .hg/patches/series
+hg qinit -c 2>&1 | sed -e 's/repository.*already/repository already/'
+cd ..
+
+echo '% qinit; <stuff>; qinit -c'
+hg init e
+cd e
+hg qnew A
+checkundo qnew
+echo foo > foo
+hg add foo
+hg qrefresh
+hg qnew B
+echo >> foo
+hg qrefresh
+echo status >> .hg/patches/.hgignore
+echo bleh >> .hg/patches/.hgignore
+hg qinit -c
+hg -R .hg/patches status
+# qinit -c shouldn't touch these files if they already exist
+echo '  .hgignore:'
+cat .hg/patches/.hgignore
+echo '  series:'
+cat .hg/patches/series
+cd ..
+
+cd a
+
+hg qnew -m 'foo bar' test.patch
+
+echo % qrefresh
+
+echo a >> a
+hg qrefresh
+sed -e "s/^\(diff -r \)\([a-f0-9]* \)/\1 x/" \
+    -e "s/\(+++ [a-zA-Z0-9_/.-]*\).*/\1/" \
+    -e "s/\(--- [a-zA-Z0-9_/.-]*\).*/\1/" .hg/patches/test.patch
+
+echo % empty qrefresh
+
+hg qrefresh -X a
+echo 'revision:'
+hg diff -r -2 -r -1
+echo 'patch:'
+cat .hg/patches/test.patch
+echo 'working dir diff:'
+hg diff --nodates -q
+# restore things
+hg qrefresh
+checkundo qrefresh
+
+echo % qpop
+
+hg qpop
+checkundo qpop
+
+echo % qpush
+
+hg qpush
+checkundo qpush
+
+cd ..
+
+echo % pop/push outside repo
+
+hg -R a qpop
+hg -R a qpush
+
+cd a
+hg qnew test2.patch
+
+echo % qrefresh in subdir
+
+cd b
+echo a > a
+hg add a
+hg qrefresh
+
+echo % pop/push -a in subdir
+
+hg qpop -a
+hg --traceback qpush -a
+
+echo % qseries
+hg qseries
+hg qpop
+hg qseries -vs
+hg qpush
+
+echo % qapplied
+hg qapplied
+
+echo % qtop
+hg qtop
+
+echo % qprev
+hg qprev
+
+echo % qnext
+hg qnext
+
+echo % pop, qnext, qprev, qapplied
+hg qpop
+hg qnext
+hg qprev
+hg qapplied
+
+echo % commit should fail
+hg commit
+
+echo % push should fail
+hg push ../../k
+
+echo % import should fail
+hg st .
+echo foo >> ../a
+hg diff > ../../import.diff
+hg revert --no-backup ../a
+hg import ../../import.diff
+hg st
+
+echo % qunapplied
+hg qunapplied
+
+echo % qpush/qpop with index
+hg qnew test1b.patch
+echo 1b > 1b
+hg add 1b
+hg qrefresh
+hg qpush 2
+hg qpop 0
+hg qpush test.patch+1
+hg qpush test.patch+2
+hg qpop test2.patch-1
+hg qpop test2.patch-2
+hg qpush test1b.patch+1
+
+echo % push should succeed
+hg qpop -a
+hg push ../../k
+
+echo % qpush/qpop error codes
+errorcode()
+{
+    hg "$@" && echo "  $@ succeeds" || echo "  $@ fails"
+}
+
+# we want to start with some patches applied
+hg qpush -a
+echo "  % pops all patches and succeeds"
+errorcode qpop -a
+echo "  % does nothing and succeeds"
+errorcode qpop -a
+echo "  % fails - nothing else to pop"
+errorcode qpop
+echo "  % pushes a patch and succeeds"
+errorcode qpush
+echo "  % pops a patch and succeeds"
+errorcode qpop
+echo "  % pushes up to test1b.patch and succeeds"
+errorcode qpush test1b.patch
+echo "  % does nothing and succeeds"
+errorcode qpush test1b.patch
+echo "  % does nothing and succeeds"
+errorcode qpop test1b.patch
+echo "  % fails - can't push to this patch"
+errorcode qpush test.patch
+echo "  % fails - can't pop to this patch"
+errorcode qpop test2.patch
+echo "  % pops up to test.patch and succeeds"
+errorcode qpop test.patch
+echo "  % pushes all patches and succeeds"
+errorcode qpush -a
+echo "  % does nothing and succeeds"
+errorcode qpush -a
+echo "  % fails - nothing else to push"
+errorcode qpush
+echo "  % does nothing and succeeds"
+errorcode qpush test2.patch
+
+
+echo % strip
+cd ../../b
+echo x>x
+hg ci -Ama
+hg strip tip 2>&1 | sed 's/\(saving bundle to \).*/\1/'
+hg unbundle .hg/strip-backup/*
+
+echo % strip with local changes, should complain
+hg up
+echo y>y
+hg add y
+hg strip tip | sed 's/\(saving bundle to \).*/\1/'
+echo % --force strip with local changes
+hg strip -f tip 2>&1 | sed 's/\(saving bundle to \).*/\1/'
+
+echo '% cd b; hg qrefresh'
+hg init refresh
+cd refresh
+echo a > a
+hg ci -Ama -d'0 0'
+hg qnew -mfoo foo
+echo a >> a
+hg qrefresh
+mkdir b
+cd b
+echo f > f
+hg add f
+hg qrefresh
+sed -e "s/\(+++ [a-zA-Z0-9_/.-]*\).*/\1/" \
+    -e "s/\(--- [a-zA-Z0-9_/.-]*\).*/\1/" ../.hg/patches/foo
+echo % hg qrefresh .
+hg qrefresh .
+sed -e "s/\(+++ [a-zA-Z0-9_/.-]*\).*/\1/" \
+    -e "s/\(--- [a-zA-Z0-9_/.-]*\).*/\1/" ../.hg/patches/foo
+hg status
+
+echo % qpush failure
+cd ..
+hg qrefresh
+hg qnew -mbar bar
+echo foo > foo
+echo bar > bar
+hg add foo bar
+hg qrefresh
+hg qpop -a
+echo bar > foo
+hg qpush -a
+hg st
+
+echo % mq tags
+hg log --template '{rev} {tags}\n' -r qparent:qtip
+
+echo % bad node in status
+hg qpop
+hg strip -qn tip
+hg tip 2>&1 | sed -e 's/unknown node .*/unknown node/'
+hg branches 2>&1 | sed -e 's/unknown node .*/unknown node/'
+hg qpop
+
+cat >>$HGRCPATH <<EOF
+[diff]
+git = True
+EOF
+cd ..
+hg init git
+cd git
+hg qinit
+
+hg qnew -m'new file' new
+echo foo > new
+chmod +x new
+hg add new
+hg qrefresh
+sed -e "s/\(+++ [a-zA-Z0-9_/.-]*\).*/\1/" \
+    -e "s/\(--- [a-zA-Z0-9_/.-]*\).*/\1/" .hg/patches/new
+
+hg qnew -m'copy file' copy
+hg cp new copy
+hg qrefresh
+sed -e "s/\(+++ [a-zA-Z0-9_/.-]*\).*/\1/" \
+    -e "s/\(--- [a-zA-Z0-9_/.-]*\).*/\1/" .hg/patches/copy
+
+hg qpop
+hg qpush
+hg qdiff
+cat >>$HGRCPATH <<EOF
+[diff]
+git = False
+EOF
+hg qdiff --git
+
+cd ..
+hg init slow
+cd slow
+hg qinit
+echo foo > foo
+hg add foo
+hg ci -m 'add foo'
+hg qnew bar
+echo bar > bar
+hg add bar
+hg mv foo baz
+hg qrefresh --git
+hg up -C 0
+echo >> foo
+hg ci -m 'change foo'
+hg up -C 1
+hg qrefresh --git 2>&1 | grep -v 'saving bundle'
+cat .hg/patches/bar
+hg log -vC --template '{rev} {file_copies%filecopy}\n' -r .
+hg qrefresh --git
+cat .hg/patches/bar
+hg log -vC --template '{rev} {file_copies%filecopy}\n' -r .
+hg qrefresh
+grep 'diff --git' .hg/patches/bar
+
+echo
+hg up -C 1
+echo >> foo
+hg ci -m 'change foo again'
+hg up -C 2
+hg mv bar quux
+hg mv baz bleh
+hg qrefresh --git 2>&1 | grep -v 'saving bundle'
+cat .hg/patches/bar
+hg log -vC --template '{rev} {file_copies%filecopy}\n' -r .
+hg mv quux fred
+hg mv bleh barney
+hg qrefresh --git
+cat .hg/patches/bar
+hg log -vC --template '{rev} {file_copies%filecopy}\n' -r .
+
+echo % refresh omitting an added file
+hg qnew baz
+echo newfile > newfile
+hg add newfile
+hg qrefresh
+hg st -A newfile
+hg qrefresh -X newfile
+hg st -A newfile
+hg revert newfile
+rm newfile
+hg qpop
+hg qdel baz
+
+echo % create a git patch
+echo a > alexander
+hg add alexander
+hg qnew -f --git addalexander
+grep diff .hg/patches/addalexander
+
+echo % create a git binary patch
+cat > writebin.py <<EOF
+import sys
+path = sys.argv[1]
+open(path, 'wb').write('BIN\x00ARY')
+EOF
+python writebin.py bucephalus
+
+python "$TESTDIR/md5sum.py" bucephalus
+hg add bucephalus
+hg qnew -f --git addbucephalus
+grep diff .hg/patches/addbucephalus
+
+echo % check binary patches can be popped and pushed
+hg qpop
+test -f bucephalus && echo % bucephalus should not be there
+hg qpush
+test -f bucephalus || echo % bucephalus should be there
+python "$TESTDIR/md5sum.py" bucephalus
+
+
+echo '% strip again'
+cd ..
+hg init strip
+cd strip
+touch foo
+hg add foo
+hg ci -m 'add foo' -d '0 0'
+echo >> foo
+hg ci -m 'change foo 1' -d '0 0'
+hg up -C 0
+echo 1 >> foo
+hg ci -m 'change foo 2' -d '0 0'
+HGMERGE=true hg merge
+hg ci -m merge -d '0 0'
+hg log
+hg strip 1 2>&1 | sed 's/\(saving bundle to \).*/\1/'
+checkundo strip
+hg log
+cd ..
+
+echo '% qclone'
+qlog()
+{
+    echo 'main repo:'
+    hg log --template '    rev {rev}: {desc}\n'
+    echo 'patch repo:'
+    hg -R .hg/patches log --template '    rev {rev}: {desc}\n'
+}
+hg init qclonesource
+cd qclonesource
+echo foo > foo
+hg add foo
+hg ci -m 'add foo'
+hg qinit
+hg qnew patch1
+echo bar >> foo
+hg qrefresh -m 'change foo'
+cd ..
+
+# repo with unversioned patch dir
+hg qclone qclonesource failure
+
+cd qclonesource
+hg qinit -c
+hg qci -m checkpoint
+qlog
+cd ..
+
+# repo with patches applied
+hg qclone qclonesource qclonedest
+cd qclonedest
+qlog
+cd ..
+
+# repo with patches unapplied
+cd qclonesource
+hg qpop -a
+qlog
+cd ..
+hg qclone qclonesource qclonedest2
+cd qclonedest2
+qlog
+cd ..
+
+echo % 'test applying on an empty file (issue 1033)'
+hg init empty
+cd empty
+touch a
+hg ci -Am addempty
+echo a > a
+hg qnew -f -e changea
+hg qpop
+hg qpush
+cd ..
+
+echo % test qpush with --force, issue1087
+hg init forcepush
+cd forcepush
+echo hello > hello.txt
+echo bye > bye.txt
+hg ci -Ama
+hg qnew -d '0 0' empty
+hg qpop
+echo world >> hello.txt
+
+echo % qpush should fail, local changes
+hg qpush
+
+echo % apply force, should not discard changes with empty patch
+hg qpush -f 2>&1 | sed 's,^.*/patch,patch,g'
+hg diff --config diff.nodates=True
+hg qdiff --config diff.nodates=True
+hg log -l1 -p
+hg qref -d '0 0'
+hg qpop
+echo universe >> hello.txt
+echo universe >> bye.txt
+
+echo % qpush should fail, local changes
+hg qpush
+
+echo % apply force, should discard changes in hello, but not bye
+hg qpush -f
+hg st
+hg diff --config diff.nodates=True
+hg qdiff --config diff.nodates=True

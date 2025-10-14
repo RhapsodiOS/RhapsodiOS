@@ -1,0 +1,43 @@
+% pattern error
+grep: invalid match pattern: nothing to repeat
+% simple
+port:4:export
+port:4:vaportight
+port:4:import/export
+% all
+port:4:4:-:spam:import/export
+port:3:4:+:eggs:import/export
+port:2:1:-:spam:import
+port:2:2:-:spam:export
+port:2:1:+:spam:export
+port:2:2:+:spam:vaportight
+port:2:3:+:spam:import/export
+port:1:2:+:eggs:export
+port:0:1:+:spam:import
+% other
+port:4:import/export
+% follow
+port:0:import
+port2:6:4:+:eggs:deport
+port:4:4:-:spam:import/export
+port:3:4:+:eggs:import/export
+port:2:1:-:spam:import
+port:2:2:-:spam:export
+port:2:1:+:spam:export
+port:2:2:+:spam:vaportight
+port:2:3:+:spam:import/export
+port:1:2:+:eggs:export
+port:0:1:+:spam:import
+color:3:orange
+color:3:+:orange
+color:2:-:orange
+color:1:+:orange
+% match in last line without newline
+adding noeol
+% last character omitted in output to avoid infinite loop
+noeol:4:no infinite loo
+% issue 685
+adding color
+color:0:octarine
+colour:1:octarine
+colour:1:octarine

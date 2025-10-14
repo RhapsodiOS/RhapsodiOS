@@ -1,0 +1,83 @@
+000000000000 tip
+0 files updated, 0 files merged, 0 files removed, 0 files unresolved
+0acdaf898367 tip
+tip                                0:0acdaf898367
+This is a local tag with a really long name!     0:0acdaf898367
+0acdaf8983679e0aac16e811534eb49d7ee1f2b4 first
+tip                                1:8a3ca90d111d
+first                              0:0acdaf898367
+8a3ca90d111d tip
+M a
+8a3ca90d111d+ tip
+0 files updated, 0 files merged, 1 files removed, 0 files unresolved
+0acdaf898367+ first
+0acdaf898367+ first
+M a
+created new head
+8216907a933d tip
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+(branch merge, don't forget to commit)
+8216907a933d+8a3ca90d111d+ tip
+M .hgtags
+tip                                6:e2174d339386
+first                              0:0acdaf898367
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+.hgtags@c071f74ab5eb, line 2: cannot parse entry
+.hgtags@c071f74ab5eb, line 4: node 'foo' is not well formed
+.hgtags@4ca6f1b1a68c, line 2: node 'x' is not well formed
+localtags, line 1: tag 'invalid' refers to unknown node
+tip                                8:4ca6f1b1a68c
+first                              0:0acdaf898367
+changeset:   8:4ca6f1b1a68c
+.hgtags@c071f74ab5eb, line 2: cannot parse entry
+.hgtags@c071f74ab5eb, line 4: node 'foo' is not well formed
+.hgtags@4ca6f1b1a68c, line 2: node 'x' is not well formed
+localtags, line 1: tag 'invalid' refers to unknown node
+tag:         tip
+parent:      3:b2ef3841386b
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     head
+
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+tip                                4:36195b728445
+bar                                1:b204a97e6e8d
+changeset:   5:1f98c77278de
+tag:         tip
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     Removed tag bar
+
+tip                                5:1f98c77278de
+% remove nonexistent tag
+abort: tag 'foobar' does not exist
+changeset:   5:1f98c77278de
+tag:         tip
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     Removed tag bar
+
+tip                                5:d8bb4d1eff25
+bar                                0:b409d9da318e
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+tip                                6:b5ff9d142648
+bar                                0:b409d9da318e
+abort: tag 'bar' already exists (use -f to force)
+tip                                6:b5ff9d142648
+bar                                0:b409d9da318e
+adding foo
+tip                                3:ca8479b4351c
+bar                                2:72b852876a42
+% bar should still point to rev 2
+tip                                4:40af5d225513
+bar                                2:72b852876a42
+adding foo
+abort: tag 'localtag' is not a global tag
+abort: tag 'globaltag' is not a local tag
+tip                                1:a0b6fe111088
+localtag                           0:bbd179dfa0a7 local
+globaltag                          0:bbd179dfa0a7

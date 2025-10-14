@@ -1,0 +1,24 @@
+#!/bin/sh
+# http://www.selenic.com/mercurial/bts/issue352
+
+"$TESTDIR/hghave" eol-in-paths || exit 80
+
+hg init foo
+cd foo
+
+A=`printf 'he\rllo'`
+
+echo foo > "$A"
+hg add
+hg ci -A -m m
+rm "$A"
+
+echo foo > "hell
+o"
+hg add
+hg ci -A -m m
+
+echo foo > "$A"
+hg debugwalk
+
+exit 0

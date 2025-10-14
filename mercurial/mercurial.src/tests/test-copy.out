@@ -1,0 +1,52 @@
+A b
+b
+ b: copy a:b789fdd96dc2f3bd229c1dd8eedf0fc60e2b68e3
+committed changeset 1:386a3cc01532710ca78aed9a54fa2f459c04f29c
+we should see two history entries
+changeset:   1:386a3cc01532
+tag:         tip
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+files:       b
+description:
+2
+
+
+changeset:   0:33aaa84a386b
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+files:       a
+description:
+1
+
+
+we should see one log entry for a
+changeset:   0:33aaa84a386b
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     1
+
+this should show a revision linked to changeset 0
+   rev    offset  length   base linkrev nodeid       p1           p2
+     0         0       3      0       0 b789fdd96dc2 000000000000 000000000000
+we should see one log entry for b
+changeset:   1:386a3cc01532
+tag:         tip
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     2
+
+this should show a revision linked to changeset 1
+   rev    offset  length   base linkrev nodeid       p1           p2
+     0         0      65      0       1 9a263dd772e0 000000000000 000000000000
+this should show the rename information in the metadata
+copyrev: b789fdd96dc2f3bd229c1dd8eedf0fc60e2b68e3
+copy: a
+ed156f22f0a6fde642de0b5eba0cbbb2  .hg/store/data/b.i
+60b725f10c9c85c70d97880dfe8191b3  bsum
+60b725f10c9c85c70d97880dfe8191b3  asum
+checking changesets
+checking manifests
+crosschecking files in changesets and manifests
+checking files
+2 files, 2 changesets, 2 total revisions

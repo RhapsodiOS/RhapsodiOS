@@ -28,7 +28,7 @@
  */
 
 #import "PCIBus.h"
-#import "PCIKernelServer.h"
+#import "PCIKernBus.h"
 #import "PCIResourceDriver.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -56,11 +56,10 @@
         return nil;
     }
 
-    /* Create kernel server instance */
-    _kernelServer = [[PCIKernelServerInstance alloc]
-                     initFromDeviceDescription:deviceDescription];
+    /* Create kernel bus instance */
+    _kernelServer = [[PCIKernBus alloc] init];
     if (_kernelServer == nil) {
-        IOLog("PCIBus: Failed to create kernel server instance\n");
+        IOLog("PCIBus: Failed to create kernel bus instance\n");
         return nil;
     }
 
@@ -99,7 +98,7 @@
     }
 
     if (_kernelServer == nil) {
-        IOLog("PCIBus: BootDriver called without kernel server\n");
+        IOLog("PCIBus: BootDriver called without kernel bus\n");
         return NO;
     }
 

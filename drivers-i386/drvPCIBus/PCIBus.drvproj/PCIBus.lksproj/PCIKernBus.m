@@ -23,13 +23,17 @@
  */
 
 /*
- * PCIKernelServer.m
- * PCI Kernel Server Instance Implementation
+ * PCIKernBus.m
+ * PCI Kernel Bus Driver Implementation
  */
 
-#import "PCIKernelServer.h"
+#import "PCIKernBus.h"
+#import "PCIKernBusInterrupt.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/KernBusMemory.h>
+#import <driverkit/KernBusInterruptPrivate.h>
+#import <machdep/i386/intr_internal.h>
 
 /* PCI Configuration Space Registers */
 #define PCI_CONFIG_VENDOR_ID    0x00
@@ -43,54 +47,94 @@
 #define PCI_CONFIG_ADDRESS      0x0CF8
 #define PCI_CONFIG_DATA         0x0CFC
 
-/* Global kernel server instance */
-static PCIKernelServerInstance *gPCIKernelServer = nil;
+/*
+ * Resource keys
+ */
+#define IO_PORTS_KEY        "I/O Ports"
+#define MEM_MAPS_KEY        "Memory Maps"
+#define IRQ_LEVELS_KEY      "IRQ Levels"
+#define DMA_CHANNELS_KEY    "DMA Channels"
 
 /*
  * ============================================================================
- * PCIKernelServerInstance Implementation
+ * PCIKernBus Implementation
  * ============================================================================
  */
 
-@implementation PCIKernelServerInstance
+@implementation PCIKernBus
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription
+static const char *resourceNameStrings[] = {
+    IRQ_LEVELS_KEY,
+    DMA_CHANNELS_KEY,
+    MEM_MAPS_KEY,
+    IO_PORTS_KEY,
+    NULL
+};
+
++ initialize
 {
-    return YES;
+    [self registerBusClass:self name:"PCI"];
+    return self;
 }
 
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
+- init
 {
-    if ([super initFromDeviceDescription:deviceDescription] == nil) {
+    if ([super init] == nil) {
         return nil;
     }
 
     _pciData = NULL;
     _initialized = NO;
 
-    [self setName:"PCIKernelServer"];
-    [self setDeviceKind:"PCIKernelServer"];
-
     /* Verify PCI is present before continuing */
     if (![self isPCIPresent]) {
-        IOLog("PCIKernelServer: Initialization failed - PCI not detected\n");
+        IOLog("PCIKernBus: Initialization failed - PCI not detected\n");
         [super free];
         return nil;
     }
 
-    gPCIKernelServer = self;
+    /* Register IRQ resources (16 IRQs on i386) */
+    [self _insertResource:[[KernBusItemResource alloc]
+                           initWithItemCount:INTR_NIRQ
+                           itemKind:[PCIKernBusInterrupt class]
+                           owner:self]
+                  withKey:IRQ_LEVELS_KEY];
+
+    /* Register memory map resources */
+    [self _insertResource:[[KernBusRangeResource alloc]
+                           initWithExtent:RangeMAX
+                           kind:[KernBusMemoryRange class]
+                           owner:self]
+                  withKey:MEM_MAPS_KEY];
+
+    /* Register I/O port resources (64K ports on i386) */
+    [self _insertResource:[[KernBusRangeResource alloc]
+                           initWithExtent:0x10000
+                           kind:[KernBusMemoryRange class]
+                           owner:self]
+                  withKey:IO_PORTS_KEY];
+
     _initialized = YES;
 
-    IOLog("PCIKernelServer: Initialized\n");
+    /* Register with the kernel bus system */
+    [[self class] registerBusInstance:self name:"PCI" busId:0];
+
+    IOLog("PCIKernBus: Initialized and registered\n");
 
     return self;
 }
 
 - free
 {
-    if (gPCIKernelServer == self) {
-        gPCIKernelServer = nil;
+    /* Check if resources are still active */
+    if ([self areResourcesActive]) {
+        return self;
     }
+
+    /* Free resources */
+    [[self _deleteResourceWithKey:IRQ_LEVELS_KEY] free];
+    [[self _deleteResourceWithKey:MEM_MAPS_KEY] free];
+    [[self _deleteResourceWithKey:IO_PORTS_KEY] free];
 
     if (_pciData != NULL) {
         IOFree(_pciData, sizeof(void *));
@@ -98,6 +142,14 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
     }
 
     return [super free];
+}
+
+/*
+ * Return array of resource names
+ */
+- (const char **)resourceNames
+{
+    return resourceNameStrings;
 }
 
 /*
@@ -129,12 +181,12 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
 
         /* Valid vendor IDs are not 0x0000 or 0xFFFF */
         if (vendorId != 0x0000 && vendorId != 0xFFFF) {
-            IOLog("PCIKernelServer: PCI bus detected (Vendor ID: 0x%04x)\n", vendorId);
+            IOLog("PCIKernBus: PCI bus detected (Vendor ID: 0x%04x)\n", vendorId);
             return YES;
         }
     }
 
-    IOLog("PCIKernelServer: No PCI bus detected\n");
+    IOLog("PCIKernBus: No PCI bus detected\n");
     return NO;
 }
 
@@ -162,6 +214,91 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
               (offset & 0xFC);
 
     return address;
+}
+
+- (IOReturn)configAddress:(id)delegate device:(unsigned char *)devNum
+                 function:(unsigned char *)funNum bus:(unsigned char *)busNum
+{
+    const char *locationStr;
+    unsigned int busValue = 0, devValue = 0, funcValue = 0;
+    int matched;
+
+    /* Validate delegate */
+    if (delegate == nil) {
+        return IO_R_INVALID_ARG;
+    }
+
+    /* Try to get the location string from the delegate */
+    /* The delegate should be an IODeviceDescription or similar */
+    if ([delegate respondsToSelector:@selector(location)]) {
+        locationStr = [delegate location];
+
+        if (locationStr != NULL) {
+            /* Parse location string in format "bus:device.function" or "device.function" */
+            matched = sscanf(locationStr, "%u:%u.%u", &busValue, &devValue, &funcValue);
+
+            if (matched == 3) {
+                /* Successfully parsed bus:device.function */
+                if (devNum) *devNum = (unsigned char)devValue;
+                if (funNum) *funNum = (unsigned char)funcValue;
+                if (busNum) *busNum = (unsigned char)busValue;
+                return IO_R_SUCCESS;
+            }
+
+            /* Try parsing without bus number (device.function format) */
+            matched = sscanf(locationStr, "%u.%u", &devValue, &funcValue);
+
+            if (matched == 2) {
+                /* Successfully parsed device.function, assume bus 0 */
+                if (devNum) *devNum = (unsigned char)devValue;
+                if (funNum) *funNum = (unsigned char)funcValue;
+                if (busNum) *busNum = 0;
+                return IO_R_SUCCESS;
+            }
+        }
+    }
+
+    /* Try to extract from properties if location string parsing failed */
+    if ([delegate respondsToSelector:@selector(getProperty:length:)]) {
+        unsigned int length;
+        unsigned int *value;
+
+        /* Try PCIBusNumber property */
+        length = sizeof(unsigned int);
+        value = (unsigned int *)[delegate getProperty:"PCIBusNumber" length:&length];
+        if (value != NULL && length == sizeof(unsigned int)) {
+            busValue = *value;
+        } else {
+            busValue = 0; /* Default to bus 0 */
+        }
+
+        /* Try PCIDeviceNumber property */
+        length = sizeof(unsigned int);
+        value = (unsigned int *)[delegate getProperty:"PCIDeviceNumber" length:&length];
+        if (value != NULL && length == sizeof(unsigned int)) {
+            devValue = *value;
+        } else {
+            return IO_R_NO_DEVICE;
+        }
+
+        /* Try PCIFunctionNumber property */
+        length = sizeof(unsigned int);
+        value = (unsigned int *)[delegate getProperty:"PCIFunctionNumber" length:&length];
+        if (value != NULL && length == sizeof(unsigned int)) {
+            funcValue = *value;
+        } else {
+            funcValue = 0; /* Default to function 0 */
+        }
+
+        /* Successfully extracted from properties */
+        if (devNum) *devNum = (unsigned char)devValue;
+        if (funNum) *funNum = (unsigned char)funcValue;
+        if (busNum) *busNum = (unsigned char)busValue;
+        return IO_R_SUCCESS;
+    }
+
+    /* Unable to extract PCI address from delegate */
+    return IO_R_NO_DEVICE;
 }
 
 - (unsigned int)configRead:(unsigned int)bus device:(unsigned int)dev
@@ -219,39 +356,41 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
 }
 
 /*
- * High-level register access
+ * High-level register access (KernBus interface)
  */
 
-- (BOOL)getRegister:(unsigned int)reg device:(unsigned int)dev
-           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int *)data
+- (IOReturn)getRegister:(unsigned char)address device:(unsigned char)devNum
+               function:(unsigned char)funNum bus:(unsigned char)busNum
+                   data:(unsigned long *)data
 {
     if (data == NULL) {
-        return NO;
+        return IO_R_INVALID_ARG;
     }
 
     /* Check if device exists */
-    if (![self deviceExists:bus device:dev function:func]) {
-        return NO;
+    if (![self deviceExists:busNum device:devNum function:funNum]) {
+        return IO_R_NO_DEVICE;
     }
 
     /* Read the 32-bit register value */
-    *data = [self configRead:bus device:dev function:func offset:reg width:4];
+    *data = [self configRead:busNum device:devNum function:funNum offset:address width:4];
 
-    return YES;
+    return IO_R_SUCCESS;
 }
 
-- (BOOL)setRegister:(unsigned int)reg device:(unsigned int)dev
-           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int)data
+- (IOReturn)setRegister:(unsigned char)address device:(unsigned char)devNum
+               function:(unsigned char)funNum bus:(unsigned char)busNum
+                   data:(unsigned long)data
 {
     /* Check if device exists */
-    if (![self deviceExists:bus device:dev function:func]) {
-        return NO;
+    if (![self deviceExists:busNum device:devNum function:funNum]) {
+        return IO_R_NO_DEVICE;
     }
 
     /* Write the 32-bit register value */
-    [self configWrite:bus device:dev function:func offset:reg width:4 value:data];
+    [self configWrite:busNum device:devNum function:funNum offset:address width:4 value:data];
 
-    return YES;
+    return IO_R_SUCCESS;
 }
 
 /*
@@ -304,7 +443,7 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
     unsigned int vendorId, deviceId, classCode, headerType;
     int deviceCount = 0;
 
-    IOLog("PCIKernelServer: Scanning PCI bus %d\n", busNum);
+    IOLog("PCIKernBus: Scanning PCI bus %d\n", busNum);
 
     for (dev = 0; dev < 32; dev++) {
         for (func = 0; func < 8; func++) {
@@ -445,7 +584,7 @@ static PCIKernelServerInstance *gPCIKernelServer = nil;
         [deviceDescription setProperty:"PCIInterruptPin" value:(void *)(unsigned long)interruptPin length:sizeof(unsigned int)];
     }
 
-    IOLog("PCIKernelServer: Allocated device description for %04x:%04x at %s\n",
+    IOLog("PCIKernBus: Allocated device description for %04x:%04x at %s\n",
           vendorId, deviceId, locationString);
 
     return deviceDescription;

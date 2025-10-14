@@ -13,9 +13,9 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = PCIBus.m PCIKernelServer.m PCIResourceDriver.m
+CLASSES = PCIBus.m PCIKernBus.m PCIKernBusInterrupt.m PCIResourceDriver.m
 
-HFILES = PCIBus.h PCIKernelServer.h PCIResourceDriver.h
+HFILES = PCIBus.h PCIKernBus.h PCIKernBusInterrupt.h PCIResourceDriver.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

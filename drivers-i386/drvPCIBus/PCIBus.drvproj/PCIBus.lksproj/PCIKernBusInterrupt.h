@@ -23,53 +23,49 @@
  */
 
 /*
- * PCIBus.h
- * PCI Bus Driver Header
- *
- * This driver provides PCI bus enumeration and device management.
+ * PCIKernBusInterrupt.h
+ * PCI Kernel Bus Interrupt Handler Header
  */
 
-#ifndef _PCIBUS_H_
-#define _PCIBUS_H_
+#ifndef _PCIKERNBUSINTERRUPT_H_
+#define _PCIKERNBUSINTERRUPT_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
-
-@class PCIKernBus;
-@class PCIResourceDriver;
+#import <driverkit/KernBusInterrupt.h>
 
 /*
- * PCIBus - Main PCI Bus driver class
+ * PCIKernBusInterrupt - Handles PCI device interrupts
  */
-@interface PCIBus : IODevice
+@interface PCIKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
 {
     @private
-    PCIKernBus *_kernelServer;
-    BOOL _initialized;
-    unsigned int maxBusNum;
-    unsigned int maxDevNum;
+    id _PCILock;
+    int _priorityLevel;
+    int _irq;
+    BOOL _irqAttached;
+    BOOL _irqEnabled;
 }
 
 /*
- * Driver lifecycle methods
+ * Initialization
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- initForResource:resource
+             item:(unsigned int)item
+        shareable:(BOOL)shareable;
+- dealloc;
 
 /*
- * Boot driver initialization
+ * Interrupt attachment
  */
-- (BOOL)BootDriver;
+- attachDeviceInterrupt:interrupt;
+- attachDeviceInterrupt:interrupt atLevel:(int)level;
+- detachDeviceInterrupt:interrupt;
 
 /*
- * PCI bus operations
+ * Interrupt control
  */
-- (int)getBusCount;
-- (BOOL)scanBuses;
+- suspend;
+- resume;
 
 @end
 
-#endif /* _PCIBUS_H_ */
+#endif /* _PCIKERNBUSINTERRUPT_H_ */

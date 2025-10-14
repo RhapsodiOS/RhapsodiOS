@@ -23,20 +23,22 @@
  */
 
 /*
- * PCIKernelServer.h
- * PCI Kernel Server Instance Header
+ * PCIKernBus.h
+ * PCI Kernel Bus Driver Header
  */
 
-#ifndef _PCIKERNELSERVER_H_
-#define _PCIKERNELSERVER_H_
+#ifndef _PCIKERNBUS_H_
+#define _PCIKERNBUS_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
+#import <driverkit/KernBus.h>
+#import <driverkit/return.h>
+
+@class PCIKernBusInterrupt;
 
 /*
- * PCIKernelServerInstance - Kernel server for PCI operations
+ * PCIKernBus - PCI bus driver conforming to KernBus interface
  */
-@interface PCIKernelServerInstance : IODevice
+@interface PCIKernBus : KernBus
 {
     @private
     void *_pciData;
@@ -44,10 +46,9 @@
 }
 
 /*
- * Server lifecycle methods
+ * Initialization
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- init;
 - free;
 
 /*
@@ -56,38 +57,44 @@
 - (BOOL)isPCIPresent;
 
 /*
- * PCI configuration space access
+ * PCI configuration space access (KernBus interface)
  */
-- (unsigned int)configAddress:(unsigned int)offset device:(unsigned int)dev
-                      function:(unsigned int)func bus:(unsigned int)bus;
+- (IOReturn)configAddress:(id)deviceDescription
+                   device:(unsigned char *)devNum
+                 function:(unsigned char *)funNum
+                      bus:(unsigned char *)busNum;
+
+- (IOReturn)getRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long *)data;
+
+- (IOReturn)setRegister:(unsigned char)address
+                 device:(unsigned char)devNum
+               function:(unsigned char)funNum
+                    bus:(unsigned char)busNum
+                   data:(unsigned long)data;
+
+/*
+ * Additional PCI-specific methods
+ */
+- (unsigned int)configAddressForOffset:(unsigned int)offset
+                                device:(unsigned int)dev
+                              function:(unsigned int)func
+                                   bus:(unsigned int)bus;
 - (unsigned int)configRead:(unsigned int)bus device:(unsigned int)dev
                   function:(unsigned int)func offset:(unsigned int)offset width:(int)width;
 - (void)configWrite:(unsigned int)bus device:(unsigned int)dev
            function:(unsigned int)func offset:(unsigned int)offset
               width:(int)width value:(unsigned int)value;
-
-/*
- * High-level register access
- */
-- (BOOL)getRegister:(unsigned int)reg device:(unsigned int)dev
-           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int *)data;
-- (BOOL)setRegister:(unsigned int)reg device:(unsigned int)dev
-           function:(unsigned int)func bus:(unsigned int)bus data:(unsigned int)data;
-
-/*
- * PCI device enumeration
- */
 - (int)scanBus:(unsigned int)busNum;
 - (BOOL)deviceExists:(unsigned int)bus device:(unsigned int)dev function:(unsigned int)func;
 - (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus;
-
-/*
- * Resource allocation
- */
 - (void *)allocateResourceDescriptionForDevice:(unsigned int)bus
                                         device:(unsigned int)dev
                                       function:(unsigned int)func;
 
 @end
 
-#endif /* _PCIKERNELSERVER_H_ */
+#endif /* _PCIKERNBUS_H_ */

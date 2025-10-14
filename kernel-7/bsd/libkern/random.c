@@ -57,7 +57,15 @@
  *	@(#)random.c	8.1 (Berkeley) 6/10/93
  */
 
+/*
+ * Modification History
+ *
+ * Feb 22, 1999 	Dieter Siegmund (dieter@apple.com)
+ * - the first time, set the random seed to the microsecond time value
+ *   to make the random numbers less predictable
+ */
 #include <libkern/libkern.h>
+#include <sys/time.h>
 
 /*
  * Pseudo-random number generator for randomizing the profiling clock,
@@ -67,8 +75,19 @@
 u_long
 random()
 {
-	static u_long randseed = 1;
+    	static int first = 1;
+    	static u_long randseed = 1;
+
 	register long x, hi, lo, t;
+
+	if (first) {
+	    struct timeval tv;
+	    microtime(&tv);
+	    randseed = tv.tv_usec;
+	    if(!randseed)
+		randseed=1;
+	    first = 0;
+	}
 
 	/*
 	 * Compute x[n + 1] = (7^5 * x[n]) mod (2^31 - 1).

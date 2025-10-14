@@ -1,9 +1,9 @@
 ##
-# Makefile for rpm
+# Makefile for yum
 ##
 
 # Project info
-Project               = rpm
+Project               = yum
 Extra_Configure_Flags = --bindir="/bin"
 Extra_Install_Flags   = bindir="$(DSTROOT)/bin"
 UserType              = Administration

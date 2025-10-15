@@ -20,13 +20,14 @@ CFLAGS=-O
 #CFLAGS=-O3 -Wall -Wwrite-strings -Wpointer-arith -Wconversion \
 #           -Wstrict-prototypes -Wmissing-prototypes
 
-LDFLAGS=-L. -lz
+LDFLAGS=
 LDSHARED=$(CC)
 CPP=$(CC) -E
 
 VER=1.1.3
 LIBS=libz.a
-SHAREDLIB=libz.so
+SHAREDLIB=libz
+SHAREDEXT=.so
 
 AR=ar rc
 RANLIB=ranlib
@@ -79,30 +80,30 @@ match.o: match.S
 	mv _match.o match.o
 	rm -f _match.s
 
-$(SHAREDLIB).$(VER): $(OBJS)
+$(SHAREDLIB).$(VER)$(SHAREDEXT): $(OBJS)
 	$(LDSHARED) -o $@ $(OBJS)
-	rm -f $(SHAREDLIB) $(SHAREDLIB).1
-	ln -s $@ $(SHAREDLIB)
-	ln -s $@ $(SHAREDLIB).1
+	rm -f $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT)
+	ln -s $@ $(SHAREDLIB)$(SHAREDEXT)
+	ln -s $@ $(SHAREDLIB).1$(SHAREDEXT)
 
 example: example.o $(LIBS)
-	$(CC) $(CFLAGS) -o $@ example.o $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ example.o -L. -lz $(LDFLAGS)
 
 minigzip: minigzip.o $(LIBS)
-	$(CC) $(CFLAGS) -o $@ minigzip.o $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ minigzip.o -L. -lz $(LDFLAGS)
 
 install: $(LIBS)
-	-@if [ ! -d $(includedir)  ]; then mkdir $(includedir); fi
-	-@if [ ! -d $(libdir) ]; then mkdir $(libdir); fi
+	-@if [ ! -d $(includedir)  ]; then mkdir -p $(includedir); fi
+	-@if [ ! -d $(libdir) ]; then mkdir -p $(libdir); fi
 	cp zlib.h zconf.h $(includedir)
 	chmod 644 $(includedir)/zlib.h $(includedir)/zconf.h
 	cp $(LIBS) $(libdir)
 	cd $(libdir); chmod 755 $(LIBS)
 	-@(cd $(libdir); $(RANLIB) libz.a || true) >/dev/null 2>&1
-	cd $(libdir); if test -f $(SHAREDLIB).$(VER); then \
-	  rm -f $(SHAREDLIB) $(SHAREDLIB).1; \
-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB); \
-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB).1; \
+	cd $(libdir); if test -f $(SHAREDLIB).$(VER)$(SHAREDEXT); then \
+	  rm -f $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
+	  ln -s $(SHAREDLIB).$(VER)$(SHAREDEXT) $(SHAREDLIB)$(SHAREDEXT); \
+	  ln -s $(SHAREDLIB).$(VER)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
 	  (ldconfig || true)  >/dev/null 2>&1; \
 	fi
 # The ranlib in install is needed on NeXTSTEP which checks file times
@@ -116,8 +117,8 @@ uninstall:
           rm -f zlib.h zconf.h; \
 	fi; \
 	cd $(libdir); rm -f libz.a; \
-	if test -f $(SHAREDLIB).$$v; then \
-	  rm -f $(SHAREDLIB).$$v $(SHAREDLIB) $(SHAREDLIB).1; \
+	if test -f $(SHAREDLIB).$$v$(SHAREDEXT); then \
+	  rm -f $(SHAREDLIB).$$v$(SHAREDEXT) $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
 	fi
 
 clean:

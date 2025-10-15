@@ -1,2 +1,0 @@
-INCLUDED_ARCHS = i386
-OTHER_CFLAGS = -I./EISABus.lksproj

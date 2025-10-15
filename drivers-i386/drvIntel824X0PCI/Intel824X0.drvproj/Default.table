@@ -2,7 +2,6 @@
 "Class Names" = "Intel824X0";
 "Family" = "Other";
 "Instance" = "0";
-"Version" = "5.01";
 "Server Name" = "Intel824X0";
 "Bus Type" = "PCI";
 "Location" = "";
@@ -10,4 +9,3 @@
 "Boot Driver" = "Yes";
 "Help File" = "Intel_824X0_PCI_Host_Bridge.rtfd";
 "Server Name" = "Intel824X0";
-"Driver Version" = "PROGRAM:Intel824X0 PROJECT:drvIntel824X0PCI-12 DEVELOPER:root BUILT:Sat Mar 28 22:09:34 PST 1998";

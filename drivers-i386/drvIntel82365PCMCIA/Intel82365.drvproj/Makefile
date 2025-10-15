@@ -7,29 +7,37 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel824X0_reloc
+NAME = Intel82365
 
 PROJECTVERSION = 1.0
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-CLASSES = Intel824X0.m
+GLOBAL_RESOURCES = Default.table
 
-HFILES = Intel824X0.h
+CLASSES =
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
-            Load_Commands.sect Makefile.driver_preamble
+HFILES =
 
+TOOLS = Intel82365.lksproj
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-SOURCEMODE = 444
+OTHERSRCS = Makefile Makefile.preamble
 
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
 
 
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

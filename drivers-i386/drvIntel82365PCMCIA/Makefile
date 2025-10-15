@@ -7,13 +7,13 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel824X0
+NAME = Intel82365
 
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-BUNDLES = Intel824X0.drvproj
+BUNDLES = Intel82365.drvproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

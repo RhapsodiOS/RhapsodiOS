@@ -7,23 +7,28 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel824X0
+NAME = Intel82365
 
 PROJECTVERSION = 1.0
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-BUNDLES = Intel824X0.drvproj
+CLASSES = PCIC.m
 
-OTHERSRCS = Makefile Makefile.preamble
+HFILES = PCIC.h
+
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
+
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
 
 
 

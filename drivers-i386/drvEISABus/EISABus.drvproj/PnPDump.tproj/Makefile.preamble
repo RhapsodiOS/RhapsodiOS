@@ -1,0 +1,10 @@
+INCLUDED_ARCHS = i386
+
+# Additional compiler flags
+OTHER_CFLAGS = -Wno-format
+
+# Include paths
+OTHER_INCLUDES =
+
+# Frameworks
+FRAMEWORKS =

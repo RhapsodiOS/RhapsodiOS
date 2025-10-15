@@ -23,58 +23,27 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * PnPArgStack.h
+ * PnP Argument Stack
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#ifndef _PNPARGSTACK_H_
+#define _PNPARGSTACK_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+#import <objc/Object.h>
 
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
-
-/*
- * EISABus - Main EISA Bus driver class
- */
-@interface EISABus : IODevice
+/* PnPArgStack - Stack for PnP configuration arguments */
+@interface PnPArgStack : Object
 {
     @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    void *_stackData;
+    int _depth;
 }
-
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- init;
 - free;
-
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
-
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
-
+- (BOOL)push:(void *)data;
+- (void *)pop;
+- (int)depth;
 @end
 
-#endif /* _EISABUS_H_ */
+#endif /* _PNPARGSTACK_H_ */

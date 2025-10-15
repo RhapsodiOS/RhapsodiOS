@@ -23,58 +23,28 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * PnPDMAResource.h
+ * PnP DMA Resource Descriptor
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#ifndef _PNPDMARESOURCE_H_
+#define _PNPDMARESOURCE_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+#import <objc/Object.h>
 
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
-
-/*
- * EISABus - Main EISA Bus driver class
- */
-@interface EISABus : IODevice
+/* PnPDMAResource - DMA resource descriptor */
+@interface PnPDMAResource : Object
 {
     @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    unsigned char _channelMask;
+    unsigned char _flags;
 }
-
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- init;
 - free;
-
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
-
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
-
+- (void)setChannelMask:(unsigned char)mask;
+- (unsigned char)channelMask;
+- (void)setFlags:(unsigned char)flags;
+- (unsigned char)flags;
 @end
 
-#endif /* _EISABUS_H_ */
+#endif /* _PNPDMARESOURCE_H_ */

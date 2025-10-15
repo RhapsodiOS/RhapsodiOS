@@ -23,37 +23,23 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * EISAResourceDriver.h
+ * EISA Resource Driver Header
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#ifndef _EISARESOURCEDRIVER_H_
+#define _EISARESOURCEDRIVER_H_
 
 #import <driverkit/IODevice.h>
 #import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
-
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
 
 /*
- * EISABus - Main EISA Bus driver class
+ * EISAResourceDriver - Manages EISA device resources
  */
-@interface EISABus : IODevice
+@interface EISAResourceDriver : IODevice
 {
     @private
-    EISAKernBus *_kernBus;
+    void *_resourceData;
     BOOL _initialized;
 }
 
@@ -65,16 +51,11 @@
 - free;
 
 /*
- * Boot driver initialization
+ * Resource management
  */
-- (BOOL)BootDriver;
-
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
+- (BOOL)allocateResources;
+- (void)deallocateResources;
 
 @end
 
-#endif /* _EISABUS_H_ */
+#endif /* _EISARESOURCEDRIVER_H_ */

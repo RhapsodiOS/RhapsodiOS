@@ -23,58 +23,78 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * PnPMemoryResource.m
+ * PnP Memory Resource Descriptor Implementation
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#import "PnPMemoryResource.h"
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+@implementation PnPMemoryResource
 
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
-
-/*
- * EISABus - Main EISA Bus driver class
- */
-@interface EISABus : IODevice
+- init
 {
-    @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    [super init];
+    _minBase = 0;
+    _maxBase = 0;
+    _alignment = 1;
+    _length = 0;
+    _flags = 0;
+    return self;
 }
 
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- free
+{
+    return [super free];
+}
 
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
+- (void)setMinBase:(unsigned int)base
+{
+    _minBase = base;
+}
 
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
+- (void)setMaxBase:(unsigned int)base
+{
+    _maxBase = base;
+}
+
+- (void)setAlignment:(unsigned int)align
+{
+    _alignment = align;
+}
+
+- (void)setLength:(unsigned int)len
+{
+    _length = len;
+}
+
+- (void)setFlags:(unsigned char)flags
+{
+    _flags = flags;
+}
+
+- (unsigned int)minBase
+{
+    return _minBase;
+}
+
+- (unsigned int)maxBase
+{
+    return _maxBase;
+}
+
+- (unsigned int)alignment
+{
+    return _alignment;
+}
+
+- (unsigned int)length
+{
+    return _length;
+}
+
+- (unsigned char)flags
+{
+    return _flags;
+}
 
 @end
-
-#endif /* _EISABUS_H_ */

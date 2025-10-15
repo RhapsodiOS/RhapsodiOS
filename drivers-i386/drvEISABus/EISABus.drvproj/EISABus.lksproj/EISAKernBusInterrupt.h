@@ -23,58 +23,49 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * EISAKernBusInterrupt.h
+ * EISA Kernel Bus Interrupt Handler Header
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#ifndef _EISAKERNBUSINTERRUPT_H_
+#define _EISAKERNBUSINTERRUPT_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
-
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
+#import <driverkit/KernBusInterrupt.h>
 
 /*
- * EISABus - Main EISA Bus driver class
+ * EISAKernBusInterrupt - Handles EISA device interrupts
  */
-@interface EISABus : IODevice
+@interface EISAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
 {
     @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    id _EISALock;
+    int _priorityLevel;
+    int _irq;
+    BOOL _irqAttached;
+    BOOL _irqEnabled;
 }
 
 /*
- * Driver lifecycle methods
+ * Initialization
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- initForResource:resource
+             item:(unsigned int)item
+        shareable:(BOOL)shareable;
+- dealloc;
 
 /*
- * Boot driver initialization
+ * Interrupt attachment
  */
-- (BOOL)BootDriver;
+- attachDeviceInterrupt:interrupt;
+- attachDeviceInterrupt:interrupt atLevel:(int)level;
+- detachDeviceInterrupt:interrupt;
 
 /*
- * EISA bus operations
+ * Interrupt control
  */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
+- suspend;
+- resume;
 
 @end
 
-#endif /* _EISABUS_H_ */
+#endif /* _EISAKERNBUSINTERRUPT_H_ */

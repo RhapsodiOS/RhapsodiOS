@@ -30,30 +30,82 @@
 #ifndef _EISAKERNBUS_H_
 #define _EISAKERNBUS_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
+#import <driverkit/KernBus.h>
 
-@interface EISAKernBus : IODevice
+@class EISAKernBusInterrupt;
+
+/*
+ * EISAKernBus - EISA Bus driver conforming to KernBus protocol
+ */
+@interface EISAKernBus : KernBus
 {
     @private
     void *_eisaData;
     int _slotCount;
-    unsigned int _irqLevels[16];
-    unsigned int _ioPortRanges[8];
     BOOL _initialized;
+    BOOL _inDependentSection;
+    int _dependentPriority;
+    id _pnpResourceTable;  /* Array/table of discovered PnP resources */
+    id _niosTable;         /* NIOS (Non-Invasive Override String) table */
 }
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+/*
+ * Bus lifecycle methods
+ */
++ initialize;
+- init;
 - free;
 
-/* Slot management */
+/*
+ * Slot management
+ */
 - (int)getEISASlotNumber:(int)slot;
 - (BOOL)testSlot:(int)slot;
 
-/* Resource management */
-- (void *)allocateResourcesForDevice:(IODeviceDescription *)description;
-- (void)freeResourcesForDevice:(void *)resources;
+/*
+ * EISA slot information (required by IOEISADeviceDescription)
+ */
+- (IOReturn)getEISASlotNumber:(unsigned int *)slotNum
+                       slotID:(unsigned long *)slotID
+      usingDeviceDescription:deviceDescription;
+
+/*
+ * Resource management (KernBus protocol)
+ */
+- (const char **)resourceNames;
+
+@end
+
+/*
+ * EISAKernBus Private Category for Plug and Play Support
+ */
+@interface EISAKernBus(PlugAndPlayPrivate)
+
+- (void)initializeNIOSTable;
+- (void *)pnpReadConfig:(int)length forCard:(int)csn;
+- (void)pnpSetResourcesForDescription:(id)description errorStrings:(void *)errorStrings;
+- (BOOL)pnpBios_setDeviceTable:(void *)table cardIndex:(int)index;
+- (unsigned int)pnpBios_computeChecksum:(void *)data readIsolationBit:(BOOL)bit;
+- (void)initializePnPBIOS:(void *)configTable;
+- (void)deactivateLogicalDevices:(id)configTable;
+- (BOOL)testConfig:(void *)config forCard:(int)csn;
+- (BOOL)registerPnPResource:(int)instance
+                        csn:(int)csn
+              logicalDevice:(int)logicalDev
+                   vendorID:(unsigned int)vendorID
+                   deviceID:(unsigned int)deviceID
+               resourceData:(void *)resourceData
+             resourceLength:(int)resourceLength;
+- (BOOL)unregisterPnPResource:(int)instance;
+- (void *)lookForPnPResource:(int)instance;
+- (void)findCardWithID:(int)serial LogicalDevice:(id)logicalDevice;
+- (void)initializePnP:(id)configTable;
+- (void)getConfigForCard:(id)logicalDevice;
+- (void)allocateResources:(id)resources Using:(id)object;
+- (void)setDepStart;
+- (void)setDepEnd;
+- (void)setDependentPriority:(int)priority;
+- (BOOL)inDependentSection;
 
 @end
 

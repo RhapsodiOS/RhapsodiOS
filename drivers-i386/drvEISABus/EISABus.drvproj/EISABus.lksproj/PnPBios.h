@@ -23,58 +23,26 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * PnPBios.h
+ * PnP BIOS Interface
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#ifndef _PNPBIOS_H_
+#define _PNPBIOS_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+#import <objc/Object.h>
 
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
-
-/*
- * EISABus - Main EISA Bus driver class
- */
-@interface EISABus : IODevice
+/* PnPBios - BIOS interface */
+@interface PnPBios : Object
 {
     @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    void *_biosData;
+    unsigned int _biosAddress;
 }
-
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- init;
 - free;
-
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
-
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
-
+- (BOOL)detectBios;
+- (void *)getBiosData;
 @end
 
-#endif /* _EISABUS_H_ */
+#endif /* _PNPBIOS_H_ */

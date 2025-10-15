@@ -23,52 +23,32 @@
  */
 
 /*
- * PnPResources.h
- * EISA Plug and Play Resource Management
- * Main header that includes all PnP resource classes
+ * PnPDeviceResources.h
+ * PnP Device Resource Collection
  */
 
-#ifndef _PNPRESOURCES_H_
-#define _PNPRESOURCES_H_
-
-/* Include all individual PnP resource class headers */
-#import "PnPArgStack.h"
-#import "PnPBios.h"
-#import "PnPDependentResources.h"
-#import "PnPInterruptResource.h"
-#import "PnPIOPortResource.h"
-#import "PnPMemoryResource.h"
-#import "PnPDMAResource.h"
-#import "PnPLogicalDevice.h"
-#import "PnPDeviceResources.h"
+#ifndef _PNPDEVICERESOURCES_H_
+#define _PNPDEVICERESOURCES_H_
 
 #import <objc/Object.h>
 
-/* PnPResources - Main PnP resources container */
-@interface PnPResources : Object
+/* PnPDeviceResources - Device resource collection */
+@interface PnPDeviceResources : Object
 {
     @private
-    void *_resourceList;
-    int _resourceCount;
-    BOOL _inDependentSection;
-    id _dependentResources;
-    id _goodConfig;
-    id _currentConfig;
+    id _irqList;
+    id _dmaList;
+    id _ioPortList;
+    id _memoryList;
 }
 - init;
 - free;
-- (BOOL)initFromDeviceDescription:(id)description;
-- (void)setDependentFunctionDescription:(id)description;
-- objectAt:(int)index Using:(id)object;
-- (void)print;
+- (void)setDeviceName:(const char *)name;
+- (const char *)ID;
 - (void)setGoodConfig:(id)config;
-- (void)addDMA:(id)dma;
-- (void)addIOPort:(id)ioport;
-- (void)addMemory:(id)memory;
-- (void)addIRQ:(id)irq;
-- (void)configure:(id)config Using:(id)object;
-- (void)markStartDependentResources;
-- (void)setoodConfig:(id)config;
+- (void)setReadPort:(int)port;
+- (void)setCSN:(int)csn;
+- (void)initFromBuffer:(void *)buffer Length:(int)length CSN:(int)csn;
 @end
 
-#endif /* _PNPRESOURCES_H_ */
+#endif /* _PNPDEVICERESOURCES_H_ */

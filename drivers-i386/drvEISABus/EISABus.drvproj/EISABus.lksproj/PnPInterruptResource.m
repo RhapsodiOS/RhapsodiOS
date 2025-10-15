@@ -23,58 +23,45 @@
  */
 
 /*
- * EISABus.h
- * EISA Bus Driver Header
+ * PnPInterruptResource.m
+ * PnP Interrupt Resource Descriptor Implementation
  */
 
-#ifndef _EISABUS_H_
-#define _EISABUS_H_
+#import "PnPInterruptResource.h"
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+@implementation PnPInterruptResource
 
-/* Forward declarations */
-@class EISAKernBus;
-@class EISAResourceDriver;
-@class EISAKernBusPlugAndPlay;
-@class PnPArgStack;
-@class PnPBios;
-@class PnPDependentResources;
-@class PnPInterruptResource;
-@class PnPIOPortResource;
-@class PnPMemoryResource;
-@class PnPDMAResource;
-
-/*
- * EISABus - Main EISA Bus driver class
- */
-@interface EISABus : IODevice
+- init
 {
-    @private
-    EISAKernBus *_kernBus;
-    BOOL _initialized;
+    [super init];
+    _irqMask = 0;
+    _flags = 0;
+    return self;
 }
 
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- free
+{
+    return [super free];
+}
 
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
+- (void)setIRQMask:(unsigned int)mask
+{
+    _irqMask = mask;
+}
 
-/*
- * EISA bus operations
- */
-- (int)getSlotCount;
-- (BOOL)scanSlots;
+- (unsigned int)irqMask
+{
+    return _irqMask;
+}
+
+- (void)setFlags:(unsigned char)flags
+{
+    _flags = flags;
+}
+
+- (unsigned char)flags
+{
+    return _flags;
+}
 
 @end
-
-#endif /* _EISABUS_H_ */

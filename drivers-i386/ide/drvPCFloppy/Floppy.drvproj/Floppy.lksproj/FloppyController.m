@@ -34,6 +34,14 @@
 #define DOR_DMA_ENABLE   0x08
 #define DOR_RESET        0x04
 
+// DMA Controller I/O ports
+#define DMA_MODE_REG        0x0B
+#define DMA_MASK_REG        0x0A
+#define DMA_CLEAR_FF_REG    0x0C
+#define DMA_ADDR_2          0x04
+#define DMA_COUNT_2         0x05
+#define DMA_PAGE_2          0x81
+
 @implementation FloppyController
 
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
@@ -325,12 +333,89 @@
             buffer:(void *)buffer
             length:(unsigned int)length
 {
-    // Simplified read implementation
-    [self doMotorOn:drive];
-    [self doSeek:drive cylinder:cyl];
+    unsigned char cmd[9];
+    unsigned char result[7];
+    IOReturn status;
+    int i;
+    unsigned int sectorsToRead;
 
-    // This would need full DMA setup and command sequence
-    // For now, return success
+    if (drive > 3 || cyl >= _cylinders || head >= _heads || sec == 0 || sec > _sectorsPerTrack) {
+        return IO_R_INVALID_ARG;
+    }
+
+    // Calculate number of sectors to read
+    sectorsToRead = (length + _sectorSize - 1) / _sectorSize;
+    if (sectorsToRead > _sectorsPerTrack) {
+        sectorsToRead = _sectorsPerTrack;  // Limit to one track
+    }
+
+    // Turn on motor
+    [self doMotorOn:drive];
+
+    // Seek to cylinder
+    status = [self doSeek:drive cylinder:cyl];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Copy buffer to DMA buffer if necessary
+    if ((vm_address_t)buffer != _dmaBuffer) {
+        if (length > _dmaBufferSize) {
+            length = _dmaBufferSize;
+        }
+    }
+
+    // Setup DMA for read
+    status = [self setupDMA:_dmaBuffer length:length write:NO];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Build read command
+    cmd[0] = CMD_READ;              // Read command with MT, MFM, SK flags
+    cmd[1] = (head << 2) | drive;   // Head and drive
+    cmd[2] = cyl;                   // Cylinder
+    cmd[3] = head;                  // Head
+    cmd[4] = sec;                   // Sector (1-based)
+    cmd[5] = 2;                     // Sector size: 2 = 512 bytes (128 << 2)
+    cmd[6] = _sectorsPerTrack;      // End of track (last sector number)
+    cmd[7] = 0x1B;                  // Gap length (27 for 1.44MB)
+    cmd[8] = 0xFF;                  // Data length (unused when N != 0)
+
+    // Send read command
+    status = [self sendCmd:cmd length:9];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Wait for interrupt (operation completion)
+    for (i = 0; i < 5000; i++) {
+        unsigned char msr = inb(_ioPortBase + FDC_MSR);
+        if ((msr & MSR_RQM) && (msr & MSR_DIO)) {
+            break;  // Ready to read result
+        }
+        IODelay(100);  // 100us delay
+    }
+
+    // Get command result
+    status = [self getCmdResult:result length:7];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Check result status
+    // result[0] = ST0, result[1] = ST1, result[2] = ST2
+    if ((result[0] & 0xC0) != 0) {
+        IOLog("FloppyController: Read error ST0=0x%02x ST1=0x%02x ST2=0x%02x\n",
+              result[0], result[1], result[2]);
+        return IO_R_IO;
+    }
+
+    // Copy from DMA buffer to user buffer
+    if ((vm_address_t)buffer != _dmaBuffer) {
+        bcopy((void *)_dmaBuffer, buffer, length);
+    }
+
     return IO_R_SUCCESS;
 }
 
@@ -341,12 +426,85 @@
              buffer:(void *)buffer
              length:(unsigned int)length
 {
-    // Simplified write implementation
-    [self doMotorOn:drive];
-    [self doSeek:drive cylinder:cyl];
+    unsigned char cmd[9];
+    unsigned char result[7];
+    IOReturn status;
+    int i;
+    unsigned int sectorsToWrite;
 
-    // This would need full DMA setup and command sequence
-    // For now, return success
+    if (drive > 3 || cyl >= _cylinders || head >= _heads || sec == 0 || sec > _sectorsPerTrack) {
+        return IO_R_INVALID_ARG;
+    }
+
+    // Calculate number of sectors to write
+    sectorsToWrite = (length + _sectorSize - 1) / _sectorSize;
+    if (sectorsToWrite > _sectorsPerTrack) {
+        sectorsToWrite = _sectorsPerTrack;  // Limit to one track
+    }
+
+    // Turn on motor
+    [self doMotorOn:drive];
+
+    // Seek to cylinder
+    status = [self doSeek:drive cylinder:cyl];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Copy data to DMA buffer
+    if ((vm_address_t)buffer != _dmaBuffer) {
+        if (length > _dmaBufferSize) {
+            length = _dmaBufferSize;
+        }
+        bcopy(buffer, (void *)_dmaBuffer, length);
+    }
+
+    // Setup DMA for write
+    status = [self setupDMA:_dmaBuffer length:length write:YES];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Build write command
+    cmd[0] = CMD_WRITE;             // Write command with MT, MFM flags
+    cmd[1] = (head << 2) | drive;   // Head and drive
+    cmd[2] = cyl;                   // Cylinder
+    cmd[3] = head;                  // Head
+    cmd[4] = sec;                   // Sector (1-based)
+    cmd[5] = 2;                     // Sector size: 2 = 512 bytes (128 << 2)
+    cmd[6] = _sectorsPerTrack;      // End of track (last sector number)
+    cmd[7] = 0x1B;                  // Gap length (27 for 1.44MB)
+    cmd[8] = 0xFF;                  // Data length (unused when N != 0)
+
+    // Send write command
+    status = [self sendCmd:cmd length:9];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Wait for interrupt (operation completion)
+    for (i = 0; i < 5000; i++) {
+        unsigned char msr = inb(_ioPortBase + FDC_MSR);
+        if ((msr & MSR_RQM) && (msr & MSR_DIO)) {
+            break;  // Ready to read result
+        }
+        IODelay(100);  // 100us delay
+    }
+
+    // Get command result
+    status = [self getCmdResult:result length:7];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Check result status
+    // result[0] = ST0, result[1] = ST1, result[2] = ST2
+    if ((result[0] & 0xC0) != 0) {
+        IOLog("FloppyController: Write error ST0=0x%02x ST1=0x%02x ST2=0x%02x\n",
+              result[0], result[1], result[2]);
+        return IO_R_IO;
+    }
+
     return IO_R_SUCCESS;
 }
 
@@ -354,17 +512,122 @@
             cylinder:(unsigned int)cyl
                 head:(unsigned int)head
 {
-    // Simplified format implementation
+    unsigned char cmd[6];
+    unsigned char result[7];
+    unsigned char *formatBuffer;
+    IOReturn status;
+    int i, sector;
+
+    if (drive > 3 || cyl >= _cylinders || head >= _heads) {
+        return IO_R_INVALID_ARG;
+    }
+
+    // Turn on motor
     [self doMotorOn:drive];
-    [self doSeek:drive cylinder:cyl];
+
+    // Seek to cylinder
+    status = [self doSeek:drive cylinder:cyl];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Build format data in DMA buffer
+    // Format data consists of 4 bytes per sector: C, H, R, N
+    formatBuffer = (unsigned char *)_dmaBuffer;
+    for (sector = 0; sector < _sectorsPerTrack; sector++) {
+        formatBuffer[sector * 4 + 0] = cyl;        // Cylinder
+        formatBuffer[sector * 4 + 1] = head;       // Head
+        formatBuffer[sector * 4 + 2] = sector + 1; // Sector (1-based)
+        formatBuffer[sector * 4 + 3] = 2;          // Sector size code (2 = 512 bytes)
+    }
+
+    // Setup DMA for format data
+    status = [self setupDMA:_dmaBuffer length:_sectorsPerTrack * 4 write:YES];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Build format command
+    cmd[0] = CMD_FORMAT;            // Format track command with MFM
+    cmd[1] = (head << 2) | drive;   // Head and drive
+    cmd[2] = 2;                     // Sector size: 2 = 512 bytes (128 << 2)
+    cmd[3] = _sectorsPerTrack;      // Sectors per track
+    cmd[4] = 0x1B;                  // Gap length (27 for 1.44MB)
+    cmd[5] = 0xF6;                  // Fill byte (0xF6 is standard)
+
+    // Send format command
+    status = [self sendCmd:cmd length:6];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Wait for interrupt (format completion)
+    // Format takes longer than read/write
+    for (i = 0; i < 10000; i++) {
+        unsigned char msr = inb(_ioPortBase + FDC_MSR);
+        if ((msr & MSR_RQM) && (msr & MSR_DIO)) {
+            break;  // Ready to read result
+        }
+        IODelay(100);  // 100us delay
+    }
+
+    // Get command result
+    status = [self getCmdResult:result length:7];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Check result status
+    if ((result[0] & 0xC0) != 0) {
+        IOLog("FloppyController: Format error ST0=0x%02x ST1=0x%02x ST2=0x%02x\n",
+              result[0], result[1], result[2]);
+        return IO_R_IO;
+    }
 
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)getDriveStatus:(unsigned int)drive
 {
+    unsigned char cmd[2];
+    unsigned char result[1];
+    IOReturn status;
+    int i;
+
     if (drive > 3) {
         return IO_R_INVALID_ARG;
+    }
+
+    // Wait for controller ready
+    for (i = 0; i < 1000; i++) {
+        if (inb(_ioPortBase + FDC_MSR) & MSR_RQM) {
+            break;
+        }
+        IODelay(1);
+    }
+
+    // Send sense drive status command
+    cmd[0] = 0x04;  // SENSE DRIVE STATUS command
+    cmd[1] = drive;
+
+    status = [self sendCmd:cmd length:2];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Get result (ST3)
+    status = [self getCmdResult:result length:1];
+    if (status != IO_R_SUCCESS) {
+        return status;
+    }
+
+    // Check if drive is ready (bit 5 = ready, bit 6 = write protect, bit 7 = fault)
+    if (result[0] & 0x80) {
+        return IO_R_IO;  // Drive fault
+    }
+
+    if (!(result[0] & 0x20)) {
+        return IO_R_NO_MEDIA;  // Drive not ready
     }
 
     return IO_R_SUCCESS;
@@ -533,8 +796,48 @@
 
 - (IOReturn)setupDMA:(vm_address_t)buffer length:(unsigned int)length write:(BOOL)write
 {
-    // Setup DMA channel 2 for floppy
-    // This is simplified - real implementation would use DMA API
+    unsigned int dmaAddr;
+    unsigned int dmaCount;
+    unsigned int dmaMode;
+
+    // Verify buffer is within DMA-able range (first 16MB)
+    if (buffer >= 0x1000000) {
+        IOLog("FloppyController: DMA buffer above 16MB boundary\n");
+        return IO_R_INVALID_ARG;
+    }
+
+    // Setup DMA mode: channel 2, single mode, auto-init disabled
+    if (write) {
+        dmaMode = 0x4A;  // Write mode: read from memory to device
+    } else {
+        dmaMode = 0x46;  // Read mode: write to memory from device
+    }
+
+    // Mask DMA channel 2
+    outb(DMA_MASK_REG, 0x06);
+
+    // Clear flip-flop
+    outb(DMA_CLEAR_FF_REG, 0);
+
+    // Set DMA address (low, high)
+    dmaAddr = (unsigned int)buffer;
+    outb(DMA_ADDR_2, dmaAddr & 0xFF);
+    outb(DMA_ADDR_2, (dmaAddr >> 8) & 0xFF);
+
+    // Set DMA page
+    outb(DMA_PAGE_2, (dmaAddr >> 16) & 0xFF);
+
+    // Set DMA count (length - 1)
+    dmaCount = length - 1;
+    outb(DMA_COUNT_2, dmaCount & 0xFF);
+    outb(DMA_COUNT_2, (dmaCount >> 8) & 0xFF);
+
+    // Set DMA mode
+    outb(DMA_MODE_REG, dmaMode);
+
+    // Unmask DMA channel 2
+    outb(DMA_MASK_REG, 0x02);
+
     return IO_R_SUCCESS;
 }
 

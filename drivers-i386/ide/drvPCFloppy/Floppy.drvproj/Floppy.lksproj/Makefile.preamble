@@ -1,0 +1,16 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  This makefile is included at the beginning of the common makefile.
+###############################################################################
+
+# Flags to pass to compiler
+
+OTHER_CFLAGS = -DDRIVER_PRIVATE -Wno-format
+OTHER_MFLAGS =
+OTHER_LDFLAGS =
+
+# Set these two macros to be empty to prevent any headers from being installed
+PUBLIC_HEADERS =
+PRIVATE_HEADERS =

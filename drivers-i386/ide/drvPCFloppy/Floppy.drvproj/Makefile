@@ -10,23 +10,33 @@
 NAME = Floppy
 
 PROJECTVERSION = 5.10
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-BUNDLES = Floppy.drvproj
+LOCAL_RESOURCES =
 
-TOOLS =
+GLOBAL_RESOURCES = Default.table
+
+CLASSES =
+
+HFILES =
+
+TOOLS = Floppy.lksproj
 
 OTHERSRCS = Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
 
 
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
 
 include $(MAKEFILEDIR)/platform.make

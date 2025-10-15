@@ -30,17 +30,61 @@
     _blockSize = 512;
     _capacity = _cylinders * _heads * _sectorsPerTrack;
 
-    _isPhysical = YES;
-    _isWriteProtected = NO;
-    _isRemovable = YES;
-    _isFormatted = YES;
+    // Initialize state (only what's not provided by superclass)
+    _isRegistered = NO;
+    _isOpen = NO;
+    _blockDeviceOpen = NO;
+    _rawDeviceOpen = NO;
 
+    // Initialize cache
+    _cachePointer = NULL;
+    _cacheUnderNumber = 0;
+
+    // Initialize request handling
+    _operationThread = nil;
+    _pendingRequest = NULL;
+
+    // Create lock for thread safety (use NXLock, not NSLock)
+    _lock = [[NXLock alloc] init];
+    if (_lock == nil) {
+        IOLog("IOFloppyDisk: Failed to create lock\n");
+        [self free];
+        return nil;
+    }
+
+    // Set superclass properties
     [self setBlockSize:_blockSize];
     [self setDiskSize:_capacity];
     [self setRemovable:YES];
     [self setFormattedInternal:YES];
 
+    IOLog("IOFloppyDisk: Initialized disk %d (C:%d H:%d S:%d, capacity:%d blocks)\n",
+          unit, _cylinders, _heads, _sectorsPerTrack, _capacity);
+
     return self;
+}
+
+- (void)free
+{
+    // Clean up lock
+    if (_lock != nil) {
+        [_lock free];
+        _lock = nil;
+    }
+
+    // Clean up cache
+    if (_cachePointer != NULL) {
+        IOFree(_cachePointer, _blockSize);
+        _cachePointer = NULL;
+    }
+
+    // Clean up pending request
+    if (_pendingRequest != NULL) {
+        IOFree(_pendingRequest, sizeof(void *));
+        _pendingRequest = NULL;
+    }
+
+    return [super free];
 }
 
 - (IOReturn)readAt:(unsigned int)offset
@@ -125,7 +169,8 @@
         return IO_R_INVALID_ARG;
     }
 
-    if (_isWriteProtected) {
+    // Use IODisk's isWriteProtected method
+    if ([self isWriteProtected]) {
         return IO_R_NOT_WRITABLE;
     }
 
@@ -206,24 +251,27 @@
                   client:client];
 }
 
+// These methods are provided by IODisk superclass
+// Keep these for compatibility but delegate to super
+
 - (BOOL)isWriteProtected
 {
-    return _isWriteProtected;
+    return [super isWriteProtected];
 }
 
 - (BOOL)isRemovable
 {
-    return _isRemovable;
+    return [super isRemovable];
 }
 
 - (BOOL)isPhysical
 {
-    return _isPhysical;
+    return [super isPhysical];
 }
 
 - (BOOL)isFormatted
 {
-    return _isFormatted;
+    return [super isFormatted];
 }
 
 - (unsigned int)diskSize
@@ -241,7 +289,8 @@
     unsigned int cyl, head;
     IOReturn result;
 
-    if (_isWriteProtected) {
+    // Use IODisk's isWriteProtected method
+    if ([self isWriteProtected]) {
         return IO_R_NOT_WRITABLE;
     }
 
@@ -253,7 +302,8 @@
         }
     }
 
-    _isFormatted = YES;
+    // Use IODisk's setFormattedInternal method
+    [self setFormattedInternal:YES];
     return IO_R_SUCCESS;
 }
 
@@ -304,7 +354,8 @@
         return IO_R_INVALID_ARG;
     }
 
-    if (_isWriteProtected) {
+    // Use IODisk's isWriteProtected method
+    if ([self isWriteProtected]) {
         return IO_R_NOT_WRITABLE;
     }
 
@@ -324,19 +375,54 @@
 
 - (IOReturn)setRemovable:(BOOL)removable
 {
-    _isRemovable = removable;
+    // Use IODisk's setRemovable method
+    [super setRemovable:removable];
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)registerDevice
 {
-    // Register with system
+    [_lock lock];
+
+    if (_isRegistered) {
+        [_lock unlock];
+        IOLog("IOFloppyDisk: Device already registered\n");
+        return IO_R_SUCCESS;
+    }
+
+    // Call superclass registration
+    [super registerDevice];
+
+    _isRegistered = YES;
+    IOLog("IOFloppyDisk: Device %d registered\n", _diskNumber);
+
+    [_lock unlock];
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)unregisterDevice
 {
-    // Unregister from system
+    [_lock lock];
+
+    if (!_isRegistered) {
+        [_lock unlock];
+        IOLog("IOFloppyDisk: Device not registered\n");
+        return IO_R_SUCCESS;
+    }
+
+    // Ensure device is closed before unregistering
+    if (_isOpen) {
+        IOLog("IOFloppyDisk: Closing device before unregister\n");
+        _isOpen = NO;
+    }
+
+    // Call superclass unregistration
+    [super unregisterDevice];
+
+    _isRegistered = NO;
+    IOLog("IOFloppyDisk: Device %d unregistered\n", _diskNumber);
+
+    [_lock unlock];
     return IO_R_SUCCESS;
 }
 
@@ -348,44 +434,33 @@
 
 - (IOReturn)unlockLogicalDisk
 {
-    // Unlock disk for operations
+    if (_lock != nil) {
+        [_lock unlock];
+        IOLog("IOFloppyDisk: Logical disk unlocked\n");
+    }
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)lockLogicalDisk
 {
-    // Lock disk from operations
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setBlockDeviceOpen
-{
-    // Mark block device as open
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setBlockDeviceOpen:(BOOL)open
-{
-    // Set block device open state
+    if (_lock != nil) {
+        [_lock lock];
+        IOLog("IOFloppyDisk: Logical disk locked\n");
+    }
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)setFormatted:(BOOL)formatted
 {
-    _isFormatted = formatted;
+    // Use IODisk's setFormattedInternal method
+    [super setFormattedInternal:formatted];
     return IO_R_SUCCESS;
 }
 
 - (IOReturn)setFormattedInternal:(BOOL)formatted
 {
-    _isFormatted = formatted;
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)isBlockDeviceOpen
-{
-    // Check if block device is open
-    return IO_R_SUCCESS;
+    // Delegate to IODisk
+    return [super setFormattedInternal:formatted];
 }
 
 - (IOReturn)getGeometry:(void *)geometry
@@ -457,7 +532,8 @@
 - (IOReturn)isDiskReady:(BOOL *)ready
 {
     if (ready != NULL) {
-        *ready = _isFormatted && !_isWriteProtected;
+        // Use IODisk methods
+        *ready = [self isFormatted] && ![self isWriteProtected];
     }
     return IO_R_SUCCESS;
 }
@@ -465,69 +541,123 @@
 // IOLogicalDisk inherited methods
 - (BOOL)isOpen
 {
-    // Check if this logical disk is open
-    return YES;
+    BOOL result;
+
+    [_lock lock];
+    result = _isOpen;
+    [_lock unlock];
+
+    return result;
 }
 
 - (BOOL)isAnyOtherOpen
 {
     // Check if any other logical disks in chain are open
+    // Use IODisk's nextLogicalDisk method
+    id nextDisk = [self nextLogicalDisk];
+    if (nextDisk != nil && [nextDisk respondsToSelector:@selector(isOpen)]) {
+        return [nextDisk isOpen];
+    }
     return NO;
 }
 
 - (IOReturn)connectToPhysicalDisk:(id)physicalDisk
 {
-    // Connect to physical disk device
-    return IO_R_SUCCESS;
+    // Delegate to IOLogicalDisk superclass
+    IOReturn result = [super connectToPhysicalDisk:physicalDisk];
+
+    if (result == IO_R_SUCCESS) {
+        IOLog("IOFloppyDisk: Connected to physical disk %s\n",
+              [[physicalDisk name] cString]);
+    }
+
+    return result;
 }
 
 - (void)setPartitionBase:(unsigned)partBase
 {
-    // Set partition base offset
+    // Delegate to IOLogicalDisk superclass
+    [super setPartitionBase:partBase];
+
+    IOLog("IOFloppyDisk: Partition base set to %d\n", partBase);
 }
 
 - (id)physicalDisk
 {
-    // Return physical disk
-    return _drive;
+    // Use IOLogicalDisk's physicalDisk method, fall back to _drive if nil
+    id result = [super physicalDisk];
+
+    if (result == nil) {
+        result = _drive;
+    }
+
+    return result;
 }
 
 - (void)setPhysicalBlockSize:(unsigned)size
 {
-    // Set physical block size
+    [_lock lock];
+    _blockSize = size;
+    [_lock unlock];
+
+    IOLog("IOFloppyDisk: Physical block size set to %d\n", size);
 }
 
 - (u_int)physicalBlockSize
 {
-    // Return physical block size
-    return _blockSize;
+    unsigned int result;
+
+    [_lock lock];
+    result = _blockSize;
+    [_lock unlock];
+
+    return result;
 }
 
 - (BOOL)isInstanceOpen
 {
-    // Check if this instance is open
-    return YES;
+    return [self isOpen];
 }
 
 - (void)setInstanceOpen:(BOOL)isOpen
 {
-    // Set instance open state
+    [_lock lock];
+    _isOpen = isOpen;
+    [_lock unlock];
+
+    if (isOpen) {
+        IOLog("IOFloppyDisk: Instance opened\n");
+    } else {
+        IOLog("IOFloppyDisk: Instance closed\n");
+    }
 }
 
 // IODisk inherited methods that may need override
 - (void)setLogicalDisk:(id)diskId
 {
-    // Set next logical disk in chain
+    // Delegate to IODisk superclass
+    [super setLogicalDisk:diskId];
+
+    if (diskId != nil) {
+        IOLog("IOFloppyDisk: Next logical disk set to %s\n",
+              [[diskId name] cString]);
+    } else {
+        IOLog("IOFloppyDisk: Next logical disk cleared\n");
+    }
 }
 
 - (void)lockLogicalDisks
 {
-    // Lock logical disk chain
+    if (_lock != nil) {
+        [_lock lock];
+    }
 }
 
 - (void)unlockLogicalDisks
 {
-    // Unlock logical disk chain
+    if (_lock != nil) {
+        [_lock unlock];
+    }
 }
 
 - (const char *)stringFromReturn:(IOReturn)rtn
@@ -568,15 +698,15 @@
 
 - (IOReturn)diskBecameReady
 {
-    // Handle disk becoming ready
-    _isFormatted = YES;
+    // Handle disk becoming ready - use IODisk method
+    [self setFormattedInternal:YES];
     return IO_R_SUCCESS;
 }
 
 - (IODiskReadyState)updateReadyState
 {
-    // Update and return ready state
-    if (!_isFormatted) {
+    // Update and return ready state - use IODisk method
+    if (![self isFormatted]) {
         return IO_NoDisk;
     }
     return IO_Ready;
@@ -594,7 +724,82 @@
     return IO_R_SUCCESS;
 }
 
-// Partition/Label methods
+// Partition/Label methods (IODiskPartition protocol)
+
+- (IOReturn)readLabel:(disk_label_t *)label_p
+{
+    if (label_p == NULL) {
+        return IO_R_INVALID_ARG;
+    }
+
+    // Floppies don't typically have NeXT disk labels
+    // Return IO_R_NO_LABEL to indicate no label present
+    IOLog("IOFloppyDisk: Read label - no label on floppy\n");
+    return IO_R_NO_LABEL;
+}
+
+- (IOReturn)writeLabel:(disk_label_t *)label_p
+{
+    if (label_p == NULL) {
+        return IO_R_INVALID_ARG;
+    }
+
+    // Check write protection
+    if ([self isWriteProtected]) {
+        return IO_R_NOT_WRITABLE;
+    }
+
+    // Floppies don't support NeXT disk labels
+    IOLog("IOFloppyDisk: Write label - unsupported on floppy\n");
+    return IO_R_UNSUPPORTED;
+}
+
+- (BOOL)isBlockDeviceOpen
+{
+    BOOL result;
+
+    [_lock lock];
+    result = _blockDeviceOpen;
+    [_lock unlock];
+
+    return result;
+}
+
+- (void)setBlockDeviceOpen:(BOOL)openFlag
+{
+    [_lock lock];
+    _blockDeviceOpen = openFlag;
+    _isOpen = _blockDeviceOpen || _rawDeviceOpen;
+    [_lock unlock];
+
+    IOLog("IOFloppyDisk: Block device %s (disk %d)\n",
+          openFlag ? "opened" : "closed", _diskNumber);
+}
+
+- (BOOL)isRawDeviceOpen
+{
+    BOOL result;
+
+    [_lock lock];
+    result = _rawDeviceOpen;
+    [_lock unlock];
+
+    return result;
+}
+
+- (void)setRawDeviceOpen:(BOOL)openFlag
+{
+    [_lock lock];
+    _rawDeviceOpen = openFlag;
+    _isOpen = _blockDeviceOpen || _rawDeviceOpen;
+    [_lock unlock];
+
+    IOLog("IOFloppyDisk: Raw device %s (disk %d)\n",
+          openFlag ? "opened" : "closed", _diskNumber);
+}
+
+// Legacy label methods (kept for compatibility)
+
 - (IOReturn)virtualLabel
 {
     // Return virtual label for floppy (floppies don't have labels)

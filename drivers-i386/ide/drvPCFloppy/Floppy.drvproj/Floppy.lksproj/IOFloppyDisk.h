@@ -21,15 +21,27 @@
     unsigned int _blockSize;
     unsigned int _capacity;
 
-    // State
-    BOOL _isPhysical;
-    BOOL _isWriteProtected;
-    BOOL _isRemovable;
-    BOOL _isFormatted;
+    // State (additional to IOLogicalDisk)
+    BOOL _isRegistered;
+    BOOL _isOpen;  // Track open state locally (IOLogicalDisk may not expose this directly)
+    BOOL _blockDeviceOpen;  // Block device open flag
+    BOOL _rawDeviceOpen;    // Raw device open flag
 
     // Cache support
     void *_cachePointer;
     unsigned int _cacheUnderNumber;
+
+    // Lock for thread safety (use NXLock, not NSLock)
+    id _lock;
+
+    // Request handling
+    id _operationThread;
+    void *_pendingRequest;
+
+    // Note: Statistics are provided by IODisk base class
+    // Note: _isPhysical, _isWriteProtected, _isRemovable, _isFormatted provided by IODisk
+    // Note: _physicalDisk, _partitionBase provided by IOLogicalDisk
+    // Note: _nextLogicalDisk is accessed via [self nextLogicalDisk] from IODisk
 }
 
 - initWithController:(id)controller
@@ -95,13 +107,10 @@
 - (IOReturn)logicalDisk;
 - (IOReturn)unlockLogicalDisk;
 - (IOReturn)lockLogicalDisk;
-- (IOReturn)setBlockDeviceOpen;
-- (IOReturn)setBlockDeviceOpen:(BOOL)open;
 
 // Format internal
 - (IOReturn)setFormatted:(BOOL)formatted;
 - (IOReturn)setFormattedInternal:(BOOL)formatted;
-- (IOReturn)isBlockDeviceOpen;
 
 // Drive relationship
 - (void)setDrive:(IOFloppyDrive *)drive;
@@ -147,7 +156,15 @@
 - (BOOL)needsManualPolling;
 - (IOReturn)kernelDeviceInfo:(void *)info;
 
-// Partition/Label methods
+// Partition/Label methods (IODiskPartition protocol)
+- (IOReturn)readLabel:(disk_label_t *)label_p;
+- (IOReturn)writeLabel:(disk_label_t *)label_p;
+- (BOOL)isBlockDeviceOpen;
+- (void)setBlockDeviceOpen:(BOOL)openFlag;
+- (BOOL)isRawDeviceOpen;
+- (void)setRawDeviceOpen:(BOOL)openFlag;
+
+// Legacy label methods (kept for compatibility)
 - (IOReturn)virtualLabel;
 - (IOReturn)getLabel:(void *)label;
 - (IOReturn)setLabel:(void *)label;

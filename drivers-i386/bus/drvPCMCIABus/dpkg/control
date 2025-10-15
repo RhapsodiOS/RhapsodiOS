@@ -1,0 +1,6 @@
+Package: drvpcmciabus
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 1
+Description: PCMCIA Bus device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

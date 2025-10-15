@@ -15,7 +15,6 @@ dir     bootstrap_cmds-1      all
 dir     bsdmake-1             all
 dir     buildtools-2          all
 dir     cc-1                  all
-dir     cc-791                all
 dir     cctools-2             all
 dir     cdis-3                all
 dir     CoreOSMakefiles-1     all
@@ -91,5 +90,5 @@ dir     vi-1                  all
 dir     volfs-2               all
 dir     wget-1                all
 dir     yacc-1                all
-dir     zlib-1                all
+dir     zlib                  all
 dir     zsh-1                 all

@@ -1,0 +1,11 @@
+"Title" = "Intel824X0";
+"Class Names" = "Intel824X0";
+"Family" = "Other";
+"Instance" = "0";
+"Server Name" = "Intel824X0";
+"Bus Type" = "PCI";
+"Location" = "";
+"Auto Detect_IDs" = "0x04838086 0x04A38086";
+"Boot Driver" = "Yes";
+"Help File" = "Intel_824X0_PCI_Host_Bridge.rtfd";
+"Server Name" = "Intel824X0";

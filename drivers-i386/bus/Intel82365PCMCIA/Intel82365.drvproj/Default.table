@@ -1,0 +1,17 @@
+{
+    "Title" = "PCIC";
+    "Family" = "Other";
+    "Location" = "";
+    "Instance" = "0";
+    "Driver Name" = "PCIC";
+    "IRQ Levels" = "5";
+    "DMA Channels" = "";
+    "Memory Maps" = "";
+    "I/O Ports" = "0x3E0-0x3E1";
+    "Valid IRQ Levels" = "3 4 5 7 10 11 15";
+    "Boot Driver" = "Yes";
+    "Help File" = "Intel82365PCMCIA.rtfd";
+    "Server Name" = "PROGRAM:PCIC  PROJECT:drvIntel82365PCMCIA-13  DEVELOPER:root  BUILT:Sat Mar 28 22:08:58 PST 1998";
+    "Driver Version" = "PROGRAM:PCIC  PROJECT:drvIntel82365PCMCIA-13  DEVELOPER:root  BUILT:Sat Mar 28 22:08:58 PST 1998";
+    "Version" = "5.00";
+}

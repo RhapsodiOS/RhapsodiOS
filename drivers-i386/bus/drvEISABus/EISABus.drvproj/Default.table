@@ -1,0 +1,9 @@
+"Title" = "EISABus";
+"Family" = "Bus";
+"Bus Class" = "EISAKernBus";
+"Class Names" = "EISAResourceDriver";
+"Boot Driver" = "Yes";
+"I/O Ports" = "0x00-0x0f 0x20-0x21 0x40-0x4b 0x70-0x71 0x81-0x8f 0x92-0x92 0xc0-0xcf";
+"Valid IRQ Levels" = "2";
+"IRQ Levels" = "";
+"Server Name" = "EISABus";

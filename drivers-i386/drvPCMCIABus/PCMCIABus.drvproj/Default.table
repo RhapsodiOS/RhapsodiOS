@@ -1,9 +1,0 @@
-"Title" = "PCMCIABus";
-"Family" = "Bus";
-"Bus Class" = "PCMCIAKernBus";
-"Class Names" = "PCMCIABus";
-"Boot Driver" = "Yes";
-"I/O Ports" = "0x3e0-0x3e1";
-"Valid IRQ Levels" = "3 4 5 7 9 10 11 12 14 15";
-"IRQ Levels" = "";
-"Server Name" = "PCMCIABus";

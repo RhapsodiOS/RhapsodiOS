@@ -1,0 +1,29 @@
+###############################################################################
+#  NeXT Makefile.preamble
+#  Copyright 1998, NeXT Software, Inc.
+#
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Source files to compile
+MFILES = Intel82556NetworkDriver.m
+
+# Header files
+HFILES = Intel82556NetworkDriver.h

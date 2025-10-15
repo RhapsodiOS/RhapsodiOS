@@ -1,0 +1,19 @@
+localhost% cat Default.table
+"Title" = "DEChip 21140 Network Driver";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DECchip21140";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"POR Selection" = "10BASE-T";
+"Hardware Vendor ID" = "Custom";
+"Address Offset" = "0";
+"CSI/2 10" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x00091011 0:0";
+"Help File" = "DECchip21140NetworkDriver.rtfd";
+"Server Name" = "DECchip21140NetworkDriver";
+"Driver Version" = "PROGRAM:DECchip21140NetworkDriver  PROJECT:drvDECchip21140-20  DEVELOPER:root  BUILT:Sun Mar 28 03:26:45 PST 1998";
+"Version" = "5.00";

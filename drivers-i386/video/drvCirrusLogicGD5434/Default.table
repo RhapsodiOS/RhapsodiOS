@@ -1,0 +1,14 @@
+"Title" = "Cirrus Logic GD5434 (1 MB Modes)";
+"Family" = "Display";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "CirrusLogicGD5434DisplayDriver";
+"DMA Channels" = "";
+"Memory Maps" = "0x00000000-0x04ffffff 0xa0000-0xbffff 0xc0000-0xcffff";
+"VGA Vendor" = "0xa0000-0xbffff 0xc0000-0xcffff";
+"I/O Ports" = "0x3b0-0x3bf 0x1b2-0x1b2 0x46e8-0x46e9";
+"Display Mode" = "Height_600 Width_800 Refresh_60Hz ColorSpace_RGB_256/8";
+"Help File" = "CL_GD5434_rt.rtf";
+"Server Name" = "CirrusLogicGD5434DisplayDriver";
+"Driver Version" = "PROGRAM:CirrusLogicGD5434DisplayDriver PROJECT:drvCirrusLogicGD5434-19 DEVELOPER:root BUILT:Sat Mar 28 22:19:42 PST 1998";
+"Version" = "5.00";

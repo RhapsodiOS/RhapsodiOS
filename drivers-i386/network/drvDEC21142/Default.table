@@ -1,0 +1,15 @@
+"Title" = "DEC Celebris On-Board 21142 LAN Driver";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DEC21142";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Address Offset" = "20";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x00191011";
+"Help File" = "DEC21142Network.rtfd";
+"Server Name" = "DEC21142Network";
+"Driver Version" = "PROGRAM:DEC21142Network  PROJECT:drvDEC21142-6  DEVELOPER:root  BUILT:Sat Mar 28 22:12:08 PST 1998";
+"Version" = "5.00";

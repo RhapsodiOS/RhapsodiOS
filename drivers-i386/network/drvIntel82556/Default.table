@@ -1,0 +1,16 @@
+"Title" = "Intel EtherExpress PRO/100 EISA";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "IntelPRO100EISA";
+"Bus Type" = "EISA";
+"Auto Detect IDs" = "0x25d41060";
+"Location" = "";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Data Rate" = "Auto";
+"Help File" = "IntelPRO100EISA.rtfd";
+"Server Name" = "Intel82556NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82556NetworkDriver  PROJECT:drvIntel82556-20  DEVELOPER:root  BUILT:Sat Mar 28 21:55:23 PST 1998";
+"Version" = "5.00";

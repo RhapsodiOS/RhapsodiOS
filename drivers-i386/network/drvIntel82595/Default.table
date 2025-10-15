@@ -1,0 +1,12 @@
+"Title" = "Cogent EM595 PCMCIA";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "CogentEM595";
+"Bus Type" = "PCMCIA";
+"I/O Ports" = "0x300-0x30F";
+"IRQ Levels" = "10";
+"Valid IRQ Levels" = "3 5 9 10 11";
+"Auto Detect IDs" = "MFPeCogentPRODeEM595EthernetAdapter";
+"Server Name" = "Intel82595NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82595NetworkDriver  PROJECT:drvIntel82595-21  DEVELOPER:root  BUILT:Sat Mar 28 21:53:30 PST 1998";
+"Version" = "5.00";

@@ -1,0 +1,29 @@
+###############################################################################
+#  NeXT Makefile.preamble
+#  Copyright 1998, 3Com Corporation.
+#
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Source files to compile
+MFILES = EtherLinkXL.m EtherLinkXLMII.m EtherLinkXL_reloc.m
+
+# Header files
+HFILES = EtherLinkXL.h EtherLinkXLMII.h

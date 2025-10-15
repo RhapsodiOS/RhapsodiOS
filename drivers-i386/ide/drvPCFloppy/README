@@ -1,0 +1,62 @@
+PC Floppy Disk Controller Driver (drvPCFloppy)
+===============================================
+
+Version: 5.10
+Author: root
+Built: Sat Mar 28 21:57:33 PST 1998
+
+Description:
+-----------
+This driver provides support for standard PC floppy disk controllers using
+the Intel 82077 and compatible FDC chips. It supports 3.5" 1.44MB floppy
+disk drives.
+
+Features:
+--------
+- Standard PC floppy controller support
+- 1.44MB (HD) floppy disk support
+- DMA data transfer (channel 2)
+- Interrupt-driven operation (IRQ 6)
+- Read/Write operations
+- Format support
+- Motor control
+- Seek and recalibrate operations
+
+Hardware Configuration:
+----------------------
+I/O Ports: 0x3F2-0x3F7
+IRQ: 6
+DMA Channel: 2
+
+Driver Classes:
+--------------
+- FloppyController: Main controller driver
+- IOFloppyDrive: Drive interface
+- IOFloppyDisk: Logical disk interface
+
+File Structure:
+--------------
+Floppy_reloc.tproj/
+  FloppyController.h    - Controller class interface
+  FloppyController.m    - Controller implementation
+  IOFloppyDrive.h       - Drive class interface
+  IOFloppyDrive.m       - Drive implementation
+  IOFloppyDisk.h        - Disk class interface
+  IOFloppyDisk.m        - Disk implementation
+  Makefile              - Build configuration
+
+Default.table           - Driver configuration
+Makefile                - Top-level makefile
+
+Usage:
+-----
+The driver is automatically loaded during system boot if a floppy controller
+is detected. Floppy disks appear as /dev/fd0 and /dev/rfd0 (block and character
+devices).
+
+Notes:
+-----
+- This driver supports up to 4 floppy drives (typical systems have 1 or 2)
+- Only 1.44MB high-density disks are currently supported
+- Write protection is detected and honored
+- Media changes are detected

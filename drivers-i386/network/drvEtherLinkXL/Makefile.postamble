@@ -1,0 +1,9 @@
+###############################################################################
+#  NeXT Makefile.postamble
+#  Copyright 1998, 3Com Corporation.
+#
+#  This Makefile is used for additional configuration after the main build.
+#
+###############################################################################
+
+# Additional build rules can be added here

@@ -1,0 +1,32 @@
+###############################################################################
+#  NeXT Makefile.preamble
+#  Copyright 1998, NeXT Software, Inc.
+#
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Objective-C source files to compile
+MFILES = DECchip2104x.m DECchip21040.m DECchip21041.m DECchip2104xKernelServerInstance.m
+
+# C source files to compile
+CFILES =
+
+# Header files
+HFILES = DECchip2104x.h DECchip21040.h DECchip21041.h DECchip2104xKernelServerInstance.h

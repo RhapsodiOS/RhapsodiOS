@@ -1,0 +1,51 @@
+{
+    "Driver Name"    = "BusMouse";
+    "Class Name"     = "BusMouseDriver";
+    "Instance"       = "0";
+    "Family"         = "Pointing Device";
+    "Version"        = "1.0";
+    "Server Name"    = "Mouse";
+    "IODeviceType"   = "BusMouse";
+    "IODeviceClass"  = "BusMouseDriver";
+    "Location"       = "ISA";
+
+    /* Microsoft InPort Mouse - Primary */
+    "InPort_Primary" = {
+        "Port"       = "0x23C";
+        "IRQ"        = "5";
+        "Probe"      = "YES";
+        "Type"       = "InPort";
+    };
+
+    /* Microsoft InPort Mouse - Secondary */
+    "InPort_Secondary" = {
+        "Port"       = "0x238";
+        "IRQ"        = "5";
+        "Probe"      = "YES";
+        "Type"       = "InPort";
+    };
+
+    /* Logitech Bus Mouse - Primary */
+    "Logitech_Primary" = {
+        "Port"       = "0x23C";
+        "IRQ"        = "5";
+        "Probe"      = "YES";
+        "Type"       = "Logitech";
+    };
+
+    /* Logitech Bus Mouse - Secondary */
+    "Logitech_Secondary" = {
+        "Port"       = "0x238";
+        "IRQ"        = "5";
+        "Probe"      = "YES";
+        "Type"       = "Logitech";
+    };
+
+    /* ATI XL Mouse */
+    "ATI_Mouse" = {
+        "Port"       = "0x23C";
+        "IRQ"        = "5";
+        "Probe"      = "YES";
+        "Type"       = "ATI";
+    };
+}

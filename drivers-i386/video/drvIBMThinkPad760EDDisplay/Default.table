@@ -1,0 +1,15 @@
+"Title" = "IBM ThinkPad 560";
+"Family" = "Display";
+"Instance" = "0";
+"Driver Name" = "IBMThinkPad760EDDisplayDriver";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x96501023";
+"Memory Maps" = "0x08000000-0x081fffff 0xa0000-0xbffff 0xc0000-0xcffff";
+"Location" = "";
+"I/O Ports" = "0x300-0x30af 0x0102-0x0102 0x43c6-0x43c9";
+"Help File" = "Height:600 Width:800 Refresh:60Hz ColorSpace:RGB:555/16-";
+"Server Name" = "IBMThinkPad760EDDisplayDriver";
+"Driver Version" = "PROGRAM:IBMThinkPad760EDDisplayDriver  PROJECT:drvIBMThinkPad760EDDisplay-7  DEVELOPER:root  BUILT:Sat Mar 28 21:52:38 PST 1998";
+"Version" = "5.01";

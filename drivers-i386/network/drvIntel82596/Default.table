@@ -1,0 +1,15 @@
+"Title" = "CogentEM935vL";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "CogentEMaster";
+"Bus Type" = "EISA";
+"Auto Detect IDs" = "0x0de79002";
+"Location" = "";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Help File" = "CogentEM935.rtfd";
+"Server Name" = "Intel82596NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82596NetworkDriver  PROJECT:drvIntel82596-25  DEVELOPER:root  BUILT:Sat Mar 28 21:54:23 PST 1998";
+"Version" = "5.00";

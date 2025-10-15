@@ -1,0 +1,34 @@
+{
+    DYNAMICLIBRARIES = ();
+    FRAMEWORKPATH = "";
+    FRAMEWORKS = (DriverKit.framework IOKit.framework);
+    HEADERSEARCH = ();
+    INSTALLPATH = "$(SYSTEM_LIBRARY_DIR)/Devices";
+    LANGUAGE = "English";
+    LIBRARIES = (driver);
+    LINKERSETTINGS = {
+        OPTIMIZATION_CFLAG = "-O";
+        OTHER_CFLAGS = ();
+        OTHER_LDFLAGS = ();
+        OTHER_LIBTOOL_FLAGS = ();
+        PRELINK_LIBS = ();
+        WARNING_CFLAGS = "-Wmost -Wno-four-char-constants -Wno-unknown-pragmas";
+    };
+    NEXTSTEP_BUILDTOOL = "/bin/gnumake";
+    NEXTSTEP_COMPILEROPTIONS = "";
+    NEXTSTEP_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Devices";
+    NEXTSTEP_JAVA_COMPILER = "/usr/bin/javac";
+    NEXTSTEP_OBJCPLUS_COMPILER = "/usr/bin/cc";
+    OTHER_GENERATED = ();
+    OTHER_LINKED = (driver);
+    OTHER_RESOURCES = (Default.table);
+    OTHER_SOURCES = (Makefile);
+    PDO_UNIX_BUILDTOOL = "/usr/bin/make";
+    PDO_UNIX_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Devices";
+    PROJECTNAME = CirrusLogicGD5434;
+    PROJECTTYPE = Driver;
+    PROJECTVERSION = 2.8;
+    SUBPROJECTS = ();
+    WINDOWS_BUILDTOOL = "$(NEXTDEV_BIN)/make";
+    WINDOWS_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Devices";
+}

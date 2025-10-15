@@ -1,0 +1,12 @@
+{
+    "Title" = "Beep";
+    "Family" = "Audio";
+    "Location" = "";
+    "Instance" = "0";
+    "Driver Name" = "Beep";
+    "Frequency" = "880";
+    "Duration" = "100";
+    "Style" = "Plain";
+    "Help File" = "Beep.rtfd";
+    "Server Name" = "Beep";
+}

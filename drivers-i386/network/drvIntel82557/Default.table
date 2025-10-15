@@ -1,0 +1,17 @@
+"Title" = "Intel EtherExpress PRO/100B PCI";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "Intel82557";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x12298086";
+"Location" = "";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Data Rate" = "Auto";
+"Share IRQ Levels" = "YES";
+"Help File" = "IntelPRO100BPCI.rtfd";
+"Server Name" = "Intel82557NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82557NetworkDriver  PROJECT:drvIntel82557-17  DEVELOPER:root  BUILT:Sat Mar 28 21:56:16 PST 1998";
+"Version" = "5.00";

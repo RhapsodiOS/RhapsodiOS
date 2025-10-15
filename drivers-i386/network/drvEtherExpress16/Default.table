@@ -1,0 +1,14 @@
+"Title" = "EtherExpress";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherExpress16";
+"DMA Channels" = "";
+"IRQ Levels" = "10";
+"I/O Ports" = "0x300-0x30F";
+"Memory Maps" = "";
+"Connector" = "default";
+"Valid IRQ Levels" = "3 4 5 9 10 11";
+"Server Name" = "EtherExpress16";
+"Driver Version" = "PROGRAM:EtherExpress16  PROJECT:drvEtherExpress16-12  DEVELOPER:root  BUILT:Sat Mar 28 22:14:21 PST 1998";
+"Version" = "5.00";

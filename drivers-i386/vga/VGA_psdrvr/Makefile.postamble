@@ -1,6 +1,0 @@
-# VGA PostScript Driver Makefile postamble
-
-# Install PPD file along with the binary driver
-install:: $(DSTROOT)$(INSTALLDIR)
-	$(SILENT) $(MKDIRS) $(DSTROOT)$(INSTALLDIR)
-	$(SILENT) $(INSTALL) -c -m 644 VGA.ppd $(DSTROOT)$(INSTALLDIR)/VGA.ppd

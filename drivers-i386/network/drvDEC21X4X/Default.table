@@ -1,0 +1,15 @@
+"Title" = "DEC Generic 21X4X";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DEC21142";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x00191011 0x00091011 0x00141011 0x000B1011";
+"Help File" = "DEC21X4XNetwork.rtfd";
+"Network Connection" = "AutoSense";
+"Server Name" = "DEC21X4XNetwork";
+"Driver Version" = "PROGRAM:DEC21X4XNetwork  PROJECT:drvDEC21X4X-5  DEVELOPER:root  BUILT:Sun Mar 29 03:26:45 PST 1998";
+"Version" = "5.00";

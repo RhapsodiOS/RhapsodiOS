@@ -1,0 +1,75 @@
+{
+    DYNAMIC_CODE_GEN = YES; 
+    FILESTABLE = {
+        CLASSES = (
+            CacheAgent.m, 
+            Controller.m, 
+            DNSAgent.m, 
+            FFAgent.m, 
+            FFParser.m, 
+            Interpreter.m, 
+            LookupDaemon.m, 
+            LDAPAgent+FixedSchema.m,
+            LDAPAgent+Parsing.m,
+            LDAPAgent.m,
+            LUAgent.m, 
+            LUArray+LDAP.m,
+            LUArray.m, 
+            LUCache.m, 
+            LUDictionary.m, 
+            LUNIDomain.m, 
+            LUServer.m, 
+            MachRPC.m, 
+            MemoryWatchdog.m, 
+            NIAgent.m, 
+            NILAgent.m, 
+            Syslog.m, 
+            XDRSerializer.m, 
+            YPAgent.m
+        ); 
+        FRAMEWORKS = (Foundation.framework); 
+        H_FILES = (
+            CacheAgent.h, 
+            Controller.h, 
+            DNSAgent.h, 
+            FFAgent.h, 
+            FFParser.h, 
+            Interpreter.h, 
+            LookupDaemon.h, 
+            LDAPAgent+FixedSchema.h,
+            LDAPAgent+Parsing.h,
+            LDAPAgent.h,
+            LUAgent.h, 
+            LUArray+LDAP.h,
+            LUArray.h, 
+            LUCache.h, 
+            LUCachedDictionary.h, 
+            LUDictionary.h, 
+            LUGlobal.h, 
+            LUNIDomain.h, 
+            LUPrivate.h, 
+            LUServer.h, 
+            MachRPC.h, 
+            MemoryWatchdog.h, 
+            NIAgent.h, 
+            NILAgent.h, 
+            stringops.h, 
+            Syslog.h, 
+            XDRSerializer.h, 
+            YPAgent.h
+        ); 
+        OTHER_LINKED = (lookupd.m, lookup_proc.m, nettoa.c, stringops.c, sys_address.c, Interactive.m);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, lookup.defs, _lu_types.x); 
+        SUBPROJECTS = (); 
+    }; 
+    LANGUAGE = English; 
+    LOCALIZABLE_FILES = {}; 
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles"; 
+    NEXTSTEP_BUILDTOOL = /bin/gnumake; 
+    NEXTSTEP_INSTALLDIR = /usr/sbin; 
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make; 
+    PROJECTNAME = lookupd; 
+    PROJECTTYPE = Tool; 
+    PROJECTVERSION = 2.6; 
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make; 
+}

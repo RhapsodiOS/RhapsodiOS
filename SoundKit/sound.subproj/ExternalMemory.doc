@@ -1,0 +1,41 @@
+External memory
+
+L:A800
+
+X:AD20-AD87 = external x (to x_end)
+Y:AD20-AD97 = external y (to y_end)
+
+free1 = 2D98 (2DD0 before computed) = org for atc_dma_support
+free2 = 3DC7 (ADA0 = 3DA0 before computed => lossage?) = org for Y_DMAQ_A0
+free2_after_y = 3DD5 = Y_DMA_TOP_REAL
+
+main follows atc_dma_support starting at 2F3A and going to 2FB6 => 
+free1_unused = $49
+
+partition 2 starts at 3DD5 = free2_after_p = free2_after_y and is unused =>
+free2_unused = $225
+
+READ_BUF1 = 2000
+READ_BUF2 = 2400
+WRITE_BUF1 = 3000
+WRITE_BUF2 = 3400
+
+Y_DMAQ_A0 = 3DC8
+cbth = x:AD20
+cblo = y:AD20
+lshft = X:AD60
+cbwid = Y:AD70
+end_phasors = Y:AD00
+exponent = Y:AD48
+
+g_buf = L:A800
+h_buf = L:A900
+intmem_save = L:AD00
+w2nbuf = L:AB00
+window_buf = L:AA00
+nzbuf = L:AC00
+ymem_ext = L:AD20
+
+xe_end = Y:ADC7
+ye_end = Y:AD98
+

@@ -1,0 +1,144 @@
+/* Message for no error */
+"No error";
+
+/* Message for kernel error */
+"Kernel Error";
+
+/* Message for timeout error */
+"Timeout";
+
+/* Message for look up failed error */
+"Look up failed";
+
+/* Message for bad host error */
+"Bad host name";
+
+/* Message for stream has no device error */
+"Stream has no device";
+
+/* Message for stream is not active error */
+"Stream is not active";
+
+/* Message for invalid tag error */
+"Invalid tag";
+
+/* Message for bad parameter or value error */
+"Bad parameter or value";
+
+/* Message for unknown error */
+"Unknown error";
+
+/* Text for mute speaker */
+"Mute speaker";
+
+/* Text for output attenuation stereo */
+"Output attenuation stereo";
+
+/* Text for output loudness */
+"Output loudness";
+
+/* Text for buffer count */
+"Buffer count";
+
+/* Text for ramp down */
+"Ramp down";
+
+/* Text for data encoding */
+"Data encoding";
+
+/* Text for analog input source */
+"Analog input source";
+
+/* Text for input gain left */
+"Input gain left";
+
+/* Text for linear 8 */
+"Linear 8-bit";
+
+/* Text for mute line out */
+"Mute line out";
+
+/* Text for analog input source microphone */
+"Analog input source micropone";
+
+/* Text for unknown parameter */
+"Unknown parameter";
+
+/* Text for mulaw 8 */
+"mu-law 8-bit";
+
+/* Text for input gain right */
+"Input gain right";
+
+/* Text for alaw 8 */
+"a-law 8-bit";
+
+/* Text for high water mark */
+"High water mark";
+
+/* Text for detect peaks */
+"Detect peaks";
+
+/* Text for ramp up */
+"Ramp up";
+
+/* Text for linear 16 */
+"Linear 16-bit";
+
+/* Text for AES */
+"AES";
+
+/* Text for insert zeros */
+"Insert zeros";
+
+/* Text for input gain stereo */
+"Input gain stereo";
+
+/* Text for sampling rate */
+"Sampling rate";
+
+/* Text for analog */
+"Analog";
+
+/* Text for gain left */
+"Gain left";
+
+/* Text for channel count */
+"Channel count";
+
+/* Text for low water mark */
+"Low water mark";
+
+/* Text for monitor attenuation */
+"Monitor attenuation";
+
+/* Text for output attenuation left */
+"Output attenuation left";
+
+/* Text for gain right */
+"Gain right";
+
+/* Text for buffer size */
+"Buffer size";
+
+/* Text for output attenuation right */
+"Output attenuation right";
+
+/* Text for gain stereo */
+"Gain stereo";
+
+/* Text for deemphasize */
+"Deemphasize";
+
+/* Text for mute headphone */
+"Mute headphone";
+
+/* Text for analog input source line in */
+"Analog input source line in";
+
+/* Text for source */
+"Source";
+
+/* Text for sink */
+"Sink";
+

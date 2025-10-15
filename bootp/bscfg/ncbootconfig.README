@@ -1,0 +1,16 @@
+
+NC Boot Server Configuration Instructions
+
+To configure the NC boot server, do the following:
+1) configure all of the network interfaces to be used for NCs
+   ie. edit your iftab,etc
+2) copy the shared (and private) images to file(s) called Shared (and Private)
+3) edit ncbootconfig.sh:
+   - replace the first set of lines contained within the EOT's 
+     by the ip ranges you want to use for NCs
+     Note: you must complete step 0) for this to work
+   - if you know what you are doing, update the volumes to use for NCs,
+     the default is NCRoot rooted at /NCRoot  
+     DON'T MUCK WITH THIS UNLESS YOU KNOW WHAT YOU ARE DOING!!!
+4) run ncbootconfig.sh as root
+

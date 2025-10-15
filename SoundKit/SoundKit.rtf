@@ -1,0 +1,368 @@
+{\rtf0\ansi{\fonttbl\f0\fnil Times-Roman;\f1\ftech Symbol;\f2\fswiss Helvetica;\f3\fmodern Courier;\f4\fmodern Ohlfs;}
+\paperw12240
+\paperh11200
+\margl120
+\margr120
+{\colortbl;\red0\green0\blue0;}
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f0\b0\i0\ulnone\fs24\fc0\cf0 Release 3.1  Copyright 
+\f1 ã
+\f0 1993 by NeXT Computer, Inc.  All Rights Reserved.\
+
+\pard\f2\fs30\fc0\cf0 \
+\
+\
+
+\f0\fs48\li1440 Preliminary 3.1 Release Notes: \
+Sound Kit
+\fs30 \
+
+\fs28 \
+\
+\
+
+\pard\tx1800\li1440\fc0\cf0 This file contains release notes for both the 3.1 and 3.0 releases of the Sound Kit. Items specific to the 3.1 release are listed first, and the Release 3.0 notes follow.  \
+
+\pard\li1440\fc0\cf0 \
+\
+\
+
+\b\fs36\li0 Notes Specific to Release 3.1\
+
+\b0\fs28\li1440 \
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Pre-release 2 Notes\
+
+\pard\b0\li1440\fc0\cf0 \
+The following changes have been made since Pre-release 1.\
+\
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-360\li1800\fc0\cf0 ·	The following 
+\b NXSoundDevice
+\b0  method:\
+\
+	
+\f3\fc1\cf1 - (NXSoundDeviceError)getStreamSamplingRates:\
+		(const float **)rates\
+		count:(unsigned int *)numRates\
+		forDataEncoding:(NXSoundParameterTag)encoding;\
+\
+
+\f0\fc0\cf0 	has changed to:\
+\
+	
+\f3\fc1\cf1 - (NXSoundDeviceError)getStreamSamplingRates:(const 	float **)rates\
+		count:(unsigned int *)numRates;\
+
+\f0\fc0\cf0 \
+·	The following 
+\b NXSoundDevice
+\b0  method has been removed:\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\f3\b0\fi-360\li1800\fc1\cf1 	- (NXSoundDeviceError)getStreamChannelCounts:(const 	unsigned int **)chans\
+		count:(unsigned int *)numChans\
+		forDataEncoding:(NXSoundParameterTag)encoding;\
+
+\f0\fc0\cf0 \
+·	The following 
+\b NXSoundDevice
+\b0  methods have been added:\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\f3\b0\fi-360\li1800\fc1\cf1 	- (BOOL)acceptsContinuousStreamSamplingRates;\
+\
+	- (NXSoundDeviceError)getStreamSamplingRatesLow:\
+		(float *)lowRate high:(float *)highRate;\
+\
+	- (NXSoundDeviceError)getStreamDataEncodings:\
+		(const NXSoundParameterTag **)encodings\
+		count:(unsigned int *)numEncodings;\
+\
+	- (unsigned int)streamChannelCountLimit;\
+
+\pard\tx0\tx2520\tx2880\tx3240\f0\b\li720\fc1\cf1 \
+Pre-release 1 Notes\
+\
+
+\pard\b0\li1440\fc0\cf0 Pre-release 1 on the i486 platform does not support any sound API.  Attempts to call some sound functions or methods will cause the PC speaker to beep. \
+\
+For some applications such as the Sound.app, when the play or record button is pressed, the button will remain highlighted until the stop button is pressed.\
+\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 New Features\
+
+\pard\b0\li1440\fc0\cf0 \
+
+\pard\tx1800\li1440\fc0\cf0 The following new features have been added to the Sound Kit since Release 3.0.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-360\li1800\fc0\cf0 ·	<talk about PAS support and PC speaker support>\
+\
+·	<talk about new api>\
+
+\pard\b\li720\fc0\cf0 \
+Incompatible Changes\
+
+\b0\li1440 \
+
+\pard\tx1800\li1440\fc0\cf0 The following incompatible changes have been made to 
+\fc1\cf1 the Sound Kit since Release 3.0.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 ·	
+\b SoundView
+\b0  now expects floating-point samples (SND_FORMAT_FLOAT and SND_FORMAT_DOUBLE) to be in the range -1.0 to +1.0.  In Release 3.0, floating-point samples were expected to be in the range -32768.0 to +32767.0.\
+
+\pard\tx1800\tx2160\tx2520\tx2880\li1440\fc0\cf0 \
+
+\fi-360\li1800 \
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Bugs Fixed in Release 3.1
+\pard\b0\li1440\fc0\cf0 \
+\
+
+\pard\tx1800\li1440\fc0\cf0 These bugs have been fixed in Release 3.1.\
+\
+
+\pard\li1440\fc0\cf0 \
+\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Known Problems  
+\b0 <You probably won't need this section>
+\pard\li1440\fc0\cf0 \
+\
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 These new bugs have appeared since Release 3.0.\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 \
+
+\pard\b0\li1440\fc0\cf0 \
+\
+
+\b\fs36\li0 Notes Specific to Release 3.0\
+
+\b0\fs28\li1440 \
+
+\pard\tx1800\li1440\fc0\cf0 These notes were included with the Release 3.0 version of the Sound Kit.\
+
+\pard\li1440\fc0\cf0 \
+
+\b\li720 New Features\
+
+\b0\li1440 \
+
+\pard\tx1800\li1440\fc0\cf0 The following new features have been added to the Sound Kit since Release 
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 2.1
+\pard\tx1800\li1440\fc0\cf0 .\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\b\fi-360\li1800\fc1\cf1 ·	
+\b0 SoundView has been significantly optimized (especially when viewing large sounds).  \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-360\li1800\fc0\cf0 \
+·	Several new objects have been added to provide a low-level interface to sound recording and playback facilities, including the new mixing and scaling features of the sound driver.  These objects do not provide access to the DSP.  See the documentation and header files for NXSoundDevice, NXSoundStream, NXSoundIn, NXSoundOut, NXPlayStream, and NXRecordStream.\
+\
+
+\fi-380 ·	Four new methods have been added to 
+\b SoundView
+\b0  for Services support:\
+\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc0\cf0 		+ 
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 initializ
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 e;\
+		- (BOOL)writeSelectionToPasteboard:pboard \
+				  types:(NXAtom *)types;\
+		- readSelectionFromPasteboard:pboard;\
+		- validRequestorForSendType:(NXAtom)sendType 				   andReturnType:(NXAtom)returnType;\
+
+\pard\tx1800\tx2160\tx2520\tx2880\f0\fi-380\li1800\fc0\cf0 \
+·	The new method  \
+\
+
+\f3 		- isPlayable:
+\i aSound;
+\i0 \
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\f0\fi-380\li1800\fc0\cf0 	has been added for determining if a sound object can be played using 
+\b play
+\b0  method.   The method is implemented in 
+\b Sound, 
+\b0 and
+\b  SoundView
+\b0  forwards it.\
+
+\fi-360 \
+·	A new method,\
+\
+	
+\f3 + addName:(const char *)aName fromBundle:(NXBundle *)aBundle;\
+\
+	
+\f0 has been added to the Sound object.\
+
+\fi-380 \
+·	The method 
+\f3 convertToFormat:samplingRate:channelCount:
+\f0  has been generalized to many more cases, as provided by SNDConvertSound().
+\fi-360 \
+
+\fi-380 \
+·	A convenience method 
+\f3 convertToFormat:
+\i newFormat
+\f0\i0  has been added to 
+\b Sound
+\b0  which converts the data format without modifying the sampling rate or channel count.
+\fi-360 \
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-380\li1800\fc0\cf0 ·	The 
+\b SoundView
+\b0  method 
+\f3 setSound:
+\i aSound 
+\f0\i0 now returns
+\f3  nil
+\f0  if a sound format cannot be displayed.  When this is detected, 
+\f3 convertToFormat: 
+\f0 can be used to create a displayable format.  The most efficient display format is 
+\f3 SND_FORMAT_LINEAR_16.
+\f0 \
+
+\pard\b\li720\fc0\cf0 \
+\
+Incompatible Changes\
+
+\b0\li1440 \
+
+\pard\tx1800\li1440\fc0\cf0 The following incompatible changes have been made to 
+\fc1\cf1 the Sound Kit since Release 2.1.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 ·	The following Sound methods  \
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc1\cf1   \
+		+ addName:(char *)name\
+                     fromMachO:(char *)sectionName;\
+		- initFromMachO:(char *)sectionName;\
+\
+		
+\f0 have been changed to  \
+
+\f3 \
+		+ addName:(char *)name\
+                     fromSection:(char *)sectionName;\
+		- initFromSection:(char *)sectionName;\
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\f0\fi-360\li1800\fc1\cf1 \
+	to conform with the corresponding methods of other NeXTstep classes. \
+\
+·	The following Sound methods  \
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc1\cf1   \
+		- 
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 initFromPasteboard
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 ;\
+		- (int)
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 writeToPasteboard
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 ;\
+\
+		
+\f0 have been changed to  \
+
+\f3 \
+		- 
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 initFromPasteboard:(NXPasteboard *)thePboard
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 ;\
+		- (int)
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc1\cf1 writeToPasteboard:(NXPasteboard *)thePboard
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 ;\
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\f0\fi-360\li1800\fc1\cf1 \
+	to conform with the corresponding methods of other NeXTstep classes. \
+\
+·	The following three methods in SoundView have been removed from the API.  The ªreductionº concept was never utilized in 2.1 and its predecessors and the calcDrawInfo method is no longer necessary due to enhancements in SoundView's internal architecture.\
+
+\pard\tx2160\tx2520\tx2880\fi-380\li1800\fc1\cf1 \
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc1\cf1            - reduction;\
+           - setReduction:
+\i aDisplayReduction
+\i0 ;\
+           - calcDrawInfo;\
+\
+
+\pard\f0\li1440\fc0\cf0 \
+
+\b\li720 Other Changes\
+
+\pard\tx1800\b0\li1440\fc0\cf0 \
+The following additional changes have been made to 
+\fc1\cf1 the Sound Kit since Release 2.1.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 ·	SoundView\
+\
+	SoundView has been optimized for much greater performance.  The SoundView can now load and display any size file in a few seconds.  For reference, 16M file used to take about a minute to load and display.   Two new methods have been added to determine whether full optimization will be used.  When optimizing for speed, a zoomed out display may miss samples -- zooming in always shows all detail.\
+\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc1\cf1            - (BOOL)isOptimizedForSpeed;\
+           - setOptimizedForSpeed:(BOOL)
+\i aFlag
+\i0 ;\
+
+\pard\tx2160\tx2520\tx2880\f0\fi-380\li1800\fc1\cf1  \
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 	A new method has been added to SoundView to make it easier to subclass SoundView to draw the visual appearance of the samples in the sound without having to keep track of other parts of the SoundView (e.g. the bezel, the cursor, etc.):\
+\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f3\fc1\cf1            - drawSamplesFrom:(int)
+\i startX
+\i0 \
+                          to:(int)
+\i endX
+\i0 ;\
+
+\pard\tx1800\tx2160\tx2520\tx2880\f0\fi-360\li1800\fc0\cf0 \
+·	Constants using the "SK" prefix have been changed to use the "NX" prefix.  The old contants have been retained for compatiblity, but new code should use the new prefixes.  See the Sound.h and SoundView.h header files.\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc0\cf0 \
+
+\pard\b\li720\fc0\cf0 \
+Known Problems\
+
+\pard\tx1800\tx2160\tx2520\tx2880\b0\fi-380\li1800\fc0\cf0 \
+
+\pard\tx1800\li1440\fc0\cf0 The following are known problems in the current release of the Sound Kit
+\fc1\cf1 .  They will be fixed in a future release.\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc1\cf1 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-360\li1800\fc0\cf0 ·	Your application may crash if the sound driver sends a message to an 
+\b NXSoundStream
+\b0  object that has been freed.  To avoid this, send the 
+\b -abort:
+\b0  and 
+\b -deactivate
+\b0  messages to the stream, then free the object only after your 
+\b soundStreamDidAbort:deviceReserved:
+\b0  delegate method has been called.\
+\
+·	Setting the gain to a value greater than 1.0 on an NXPlayStream can cause a numerical "wrap-around" which actually reduces the amplitude.  Only soft sounds should be boosted with a gain greater than 1.0.\
+
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\fc0\cf0 \
+
+\pard\li1440\fc0\cf0 \
+
+}

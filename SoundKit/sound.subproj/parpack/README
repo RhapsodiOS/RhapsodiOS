@@ -1,0 +1,88 @@
+README File for the Parallel Soundfile Compression Utilities
+
+
+Overview
+
+The command line utilities in this directory, parpack and unparpack, compress and decompress NeXT soundfiles (.snd extension) using a technique called "Parallel Packing."
+
+The parpack utility reads an existing soundfile and produces a new, compressed soundfile.  This new soundfile has the same .snd extension, but with a dataFormat code of SND_FORMAT_COMPRESSED.  The new soundfile is typically smaller, and can be stored instead of the original when disk space is at a premium.
+
+By default, parpack produces a soundfile that, when decompressed, will sound perceptually similar to the original but won't be exactly the same.  In this mode the compressed file will be about 1/3 the size of the original.  Parpack can also create a 'bit-faithful' soundfile - that is, when decompressed the soundfile will be exactly the same as the original file, bit for bit.  In this mode the compressed file will be about 1/2 the size of the original.  Note:  The exact amount of compression depends on characteristics of the sound, so will be different for different soundfiles.
+
+The unparpack utility reads a soundfile created by parpack and creates a new decompressed soundfile (with a relationship to the original soundfile as noted above).  
+
+
+Soundfile Requirements
+
+Soundfiles to be compressed by parpack must be in 16-bit, linear format (you can check this with the sndinfo utility).  Mainly this means soundfiles recorded through the DSP port rather that through the CODEC microphone.  They may be stereo or mono (actually any number of channels), and may be at any sampling rate (typically 22500 Hz or 44100 Hz).  Unparpack produces a soundfile in the same format as the original.
+
+
+Options
+
+The parpack utility has several options that can be specified on the command line.  The command line takes the form
+
+	parpack [-{4..8}bdmsv] infile outfile
+
+where the options are as follows:
+
+ 	-{4..8} Number of least significant bits to drop before compressing, default 4
+ 	-b      Bit-faithful, save dropped bits for exact decompression
+ 	-d      Down-sample 44.1KHz to 22.5KHz before compressing
+ 	-m      Convert multi-channel (e.g. stereo) to mono before compressing
+ 	-s      Suppress compression (down-sample and/or convert to mono only)
+ 	-v      Verbose, display algorithms statistics
+ 
+See below for a discussion of down-sampling and stereo to mono conversion.
+
+Unparpack has no options - it gets all its information from a special soundfile subheader.  The command line for unparpack takes the form:
+
+	unparpack infile outfile
+
+
+Converting to Mono and to the Low Sampling Rate
+
+To obtain an additional 2 to 1 reduction of a stereo soundfile, invoke parpack with the -m switch.  Samples from all channels will be mixed (averaged) to obtain a single channel (mono) sound.  To obtain yet another 2 to 1 reduction of a soundfile at the 44100 Hz sample rate, invoke parpack with the -d switch to down-sample to 22500 Hz.  Both of these conversions are applied before the compression process.  The decompressed file created by unparpack will reflect these conversions.   See below for examples of using these options.
+
+
+Examples
+
+Here is an example of running parpack on a soundfile called 'myoriginal.snd', creating a new compressed soundfile called 'mycompressed.snd'.  A bit-faithful version is requested:
+
+	parpack -b myoriginal.snd mycompressed.snd
+	
+Now unparpack is used to retrieve the original soundfile:
+
+	unparpack mycompressed.snd neworiginal.snd
+	
+Notice that with both utilities you must explicitly include the .snd extension on the soundfile names.
+
+Here is an example of using parpack to down-sample and convert to mono only, the file is not compressed:
+
+	parpack -smd mystereo44.snd mymono22.snd
+	
+Finally, here is an example of recording from the DSP port (with the Ariel Digital Microphone, for example), and compressing the file.  The file is then decompressed and played back:
+
+	sndrecord -d stereo44.snd
+	parpack -md stereo44.snd compressed.snd
+	unparpack compressed.snd mono22.snd
+	sndplay mono22.snd
+	
+Note: In the next release of the sound library, sndplay will be able to play back compressed soundfiles directly and sndrecord will have an option to create a compressed sounfile.  There will also be an sndcompress utility to do the compression and decompression.
+	
+
+Files in this Directory
+
+Files in the source directory are:
+
+	README		This file
+	Makefile	Builds and installs the utilities
+	parpack.c,	The source code
+	unparpack.c,
+	parlib.c
+	parlib.h	Header file
+	parlib.o	Object code for parlib.c
+	parpack,	Executable utilities
+	unparpack
+
+
+

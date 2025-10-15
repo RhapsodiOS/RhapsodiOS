@@ -1,0 +1,11 @@
+
+The NISLDAPFixes branch has fixes and enhancements for both 
+YPAgent and LDAPAgent.
+
+If you want *JUST* the YPAgent fixes, then:
+
+- Keep the existing makefiles
+- Do not add lu_fakeutils.c
+- Remove any code in the diffs that's within #ifdef DNS_SRV
+
+

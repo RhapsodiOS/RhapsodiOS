@@ -1,0 +1,240 @@
+{\rtf0\ansi{\fonttbl\f0\fnil Times-Roman;\f1\ftech Symbol;\f2\fswiss Helvetica;\f4\fmodern Ohlfs;}
+\paperw12180
+\paperh12120
+\margl380
+\margr620
+{\colortbl;\red0\green0\blue0;}
+\pard\tx960\tx1920\tx2880\tx3840\tx4800\tx5760\tx6720\tx7680\tx8640\tx9600\f0\b0\i0\ulnone\fs24\fc0\cf0 Release 3.1  Copyright 
+\f1 ã
+\f0 1993 by NeXT Computer, Inc.  All Rights Reserved.\
+
+\pard\f2\fs30\fc0\cf0 \
+\
+\
+
+\f0\fs48\li1440 Preliminary 3.1 Release Notes: \
+Sound Library
+\fs30 \
+
+\fs28 \
+\
+\
+
+\pard\tx1800\li1440\fc0\cf0 This file contains release notes for both the 3.1 and 3.0 releases of the Sound Library. Items specific to the 3.1 release are listed first, and the Release 3.0 notes follow.  \
+
+\pard\li1440\fc0\cf0 \
+\
+
+\b\fs36\li0 Notes Specific to Release 3.1\
+
+\b0\fs28\li1440 \
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Pre-release 2 Notes\
+\
+
+\pard\b0\li1440\fc0\cf0 The 
+\b SNDSwapHostToSound() 
+\b0 and
+\b  SNDSwapSoundToHost()
+\b0  been added since Pre-release 1
+\b  
+\b0 (see 
+\b New Features 
+\b0 below).\
+
+\pard\tx0\tx2520\tx2880\tx3240\li1440\fc0\cf0 \
+
+\b\li720\fc1\cf1 Pre-release 1 Notes\
+\
+
+\pard\b0\li1440\fc0\cf0 Pre-release 1 on the i486 platform does not support any sound API.  Attempts to call some sound functions or methods will cause the PC speaker to beep.\
+\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 New Features\
+
+\pard\b0\li1440\fc0\cf0 \
+
+\pard\tx1800\li1440\fc0\cf0 The following new features have been added to the Sound Library since Release 3.0.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-380\li1800\fc0\cf0 ·	
+\b <
+\b0 talk about new format support, PAS, and Beep>.\
+\
+·	
+\b SNDSwapHostToSound()
+\b0  swaps sound samples from the machine's native endian format to the endian format for stored sounds.  See <sound/utilsound.h>.\
+
+\pard\li1440\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-380\li1800\fc0\cf0 ·	
+\b SNDSwapSoundToHost()
+\b0  swaps sound samples from the endian format for stored sounds to the machine's native endian format.  See <sound/utilsound.h>.\
+
+\fi0\li1440 \
+
+\fi-360\li1800 \
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Bugs Fixed in Release 3.1
+\pard\b0\li1440\fc0\cf0 \
+\
+
+\pard\tx1800\li1440\fc0\cf0 These bugs have been fixed in Release 3.1:\
+\
+
+\pard\li1440\fc0\cf0 \
+\
+
+\pard\tx0\tx2520\tx2880\tx3240\b\li720\fc1\cf1 Known Problems  
+\b0 <You probably won't need this section>
+\pard\li1440\fc0\cf0 \
+\
+
+\pard\tx0\tx1800\tx2160\tx2540\tx2880\tx7920\fi-360\li1800\fc1\cf1 These new bugs have appeared since Release 3.0.\
+
+\pard\li1440\fc0\cf0 \
+\
+\
+
+\b\fs36\li0 Notes Specific to Release 3.0\
+
+\b0\fs28\li1440 \
+
+\pard\tx1800\li1440\fc0\cf0 These notes were included with the Release 3.0 version of the Sound Library.\
+
+\pard\tx1800\tx2160\tx2520\li1440\fc0\cf0 \
+\
+
+\pard\b\li720\fc0\cf0 New Features\
+
+\pard\tx1800\tx2160\tx2520\li1440\fc0\cf0 \
+
+\b0 The following are new features that have been added to the Sound Library since Release 2.0.
+\b \
+
+\pard\tx1800\tx2160\tx2520\tx2880\b0\fi-380\li1800\fc0\cf0 \
+·	A new compression format, 
+\i Audio Transform Compression (ATC)
+\i0 ,  has been added for 3.0.  The ATC format gives compression ratios greater than 3 and sometimes as high as 10 without affecting sound quality in most listening situations.  It works by stripping out inaudible spectral features in the short-time Fourier transform.  It is not ªbit faithful,º in that the decompressed sound is not bit-for-bit identical with the original sound.  Any sampling rate may be used, but 44.1 kHz is considered standard, and the algorithm for deciding what is audible in the spectrum assumes this sampling rate.   \
+\
+	ATC compression and decompression each run in 
+\i real time
+\i0  for 
+\i 44.1 kHz stereo
+\i0 .  This is made possible by the imbedded DSP chip.   ATC is now the default compression format used by the command-line utility 
+\b sndcompress
+\b0 , the sound library function 
+\b SNDCompressSound()
+\b0 , and the 
+\b Sound
+\b0  object's method 
+\b convertToFormat: 
+\b0\i SND_FORMAT_COMPRESSED
+\i0 .  Several new functions of the form 
+\b SND*ATC*()
+\b0  have been added to support ATC.\
+\
+	The Audio Transform Compression algorithm was developed by Julius O. Smith at NeXT.
+\b \
+\
+
+\b0 ·	Support for high-quality sampling-rate conversion by 
+\i arbitrary
+\i0  factors has been added to 
+\b SNDConvertSound().   
+\b0 The  
+\b SoundEditor
+\b0  programming example illustrates its usage in the 
+\i SaveTo
+\i0  panel.  The sampling-rate conversion algorithm is documented in the paper ªA Flexible Sampling-Rate Conversion Methodº by Julius O. Smith and Phil Gossett, ICASSP-84, San Diego, pp. 19.4.1-4.  The algorithm does not yet use the DSP, so it runs out of real time. \
+\
+·	Sounds which formerly required the DSP to be played are now playable when the DSP is not available.  In particular, CODEC sounds (8KHz, mulaw, mono) will be converted and played in real time using the 68040 when the DSP is busy.  The same applies to mono-to-stereo conversion, mulaw-to-linear conversion and other simple conversions.  Of course, the DSP is still used as an accelerator if it is available and if the DSP version has been written.  In general, demanding signal processing tasks tend to run about five times faster on the DSP than on the 68040, including the overhead of shipping data to the DSP and back via DMA.  Therefore, some algorithms, such as ATC, simply cannot run in real time when the DSP is busy.\
+ \
+·	A new function,  
+\b SNDVerifyPlayable()
+\b0 , is provided for determining if a sound struct is ªplayableº using 
+\b SNDStartPlaying()
+\b0 .  The function assumes the DSP will be available if needed.\
+\
+·	The function  
+\b SNDConvertSound()
+\b0  has been generalized to cover many more cases.  In particular, 
+\i compression
+\i0  to ATC format, 
+\i decompression
+\i0  of any NeXT compression format, arbitrary 
+\i sampling-rate conversion
+\i0 , 
+\i mu-law
+\i0  
+\i to
+\i0  
+\i or from
+\i0  
+\i linear
+\i0 , 
+\i mono to or from stereo
+\i0 , 
+\i float to or from linear, double to or from linear
+\i0 ,  meaningful combinations of the above, and so on, are now handled.  Unlike the case of playing sounds in real time, multiple-step conversions are supported.  This function is normally accessed via the 
+\b Sound
+\b0  object's 
+\b convertToFormat:
+\b0  method.   
+\b  
+\b0 The  
+\b SoundEditor
+\b0  programming example illustrates the more generally useful conversions by means of its new 
+\i SaveTo
+\i0  panel.\
+
+\pard\b\li720\fc0\cf0 \
+Known Problems\
+
+\pard\tx1800\tx2160\tx2520\tx2880\b0\fi-380\li1800\fc0\cf0 \
+·	Compressed soundfiles must have either 22 kHz or 44 kHz sampling rates in order to be playable without first decompressing.  In particular, an 8 kHz CODEC file (such as from the built-in microphone) must be first resampled to 22 kHz (e.g., by 
+\b SNDConvertSound()
+\b0 ) before compressing.   Since ATC format discards empty portions of the sound spectrum, upsampling does not increase the file size as you might expect. \
+\
+·	Compression  to ATC format ªramps onº the first 256 and ªramps onº the last 256 samples of the input soundfile.  This means sounds which originally started or ended abruptly sound like they quickly ªfade inº and/or ªfade outº after being compressed.  The work-around is to make sure the sound has at least 256 leading and trailing zeros.\
+\
+·	Some ATC-compressed sounds receive a small burst of noise at the end on playback.   The noise can be made to disappear by adding 100 or so zeros to the end of the original sound and recompressing.  You should never encounter this problem if you are already prepending and appending 256 zeros to avoid ramping distortion.\
+\
+·	The presentATC implementation on the DSP can only handle soundfile headers up to  2048 bytes long.    The C version (used automatically when the DSP is unavailable) does not have this restriction.   An oversized header will generally produce a DSP hang or a heavily distorted soundfile.  To measure the size of a soundfile header, subtract the sound size reported by sndinfo from the soundfile size obtained via "ls -l" (both are in bytes). \
+\
+·	Many previously unplayable formats, such as stereo floating-point, may not keep up with  real time on all configurations.\
+\
+·	The built-in sampling-rate conversion utilitity attenuates the upper 20% of the spectrum to prevent ªaliasingº using a high-speed anti-aliasing filter.  This attenuation is most noticeable when upsampling 8 kHz CODEC files to 22 kHz or higher.   What you hear is a loss of  ªbrightnessº or ªcrispnessº in the sound.   The benefits of being on this point in the trade-off space are conversion speed and aliasing suppression.    However, 8 kHz CODEC speech typically sounds better if brightness is preserved and some aliasing is allowed (primarily within noise-like consanants where it is hard to hear).  As a result, in the special case where the requested format conversion is from monaural 8 kHz (linear or 
+\f1 m
+\f0 -law) to stereo 22 kHz linear format, a different anti-aliasing filter is used which preserves brightness but admits aliasing; this sounds better for typical CODEC speech. \
+\
+	To obtain the high quality sampling-rate conversion (at the expense of execution speed), you may use the 
+\b resample
+\b0  program Ða command-line utility available via anonymous ftp from 
+\b ccrma-ftp.stanford.edu
+\b0 .   Look for 
+\b resample.tar.Z
+\b0  the 
+\b pub
+\b0  directory there.  It uses the same sampling-rate conversion algorithm but provides complete trade-off flexibility.   The 
+\b resample
+\b0  program was submitted for inclusion in the NeXT Public Domain CD ROM for Education, and it is contained in the CCRMA Music and DSP tools distribution.   See the DSP release notes  
+\b DSP.rtf
+\b0  for more information.\
+\
+·	Real-time compression using 
+\b SNDStartRecording()
+\b0  does not support the bit-faithful or ATC modes, and the mode that is supported (ªdropped bitsº format) gives a maximum compression factor of about 2 to 1.  Use 
+\b SNDCompressSound()
+\b0  to get full ATC or bit-faithful compression.  The 
+\b sndcompress
+\b0  command-line utility supports all three as well.\
+
+\pard\tx1140\tx2300\tx3440\tx4600\tx5760\tx6900\tx8060\tx9200\tx10360\tx11520\fc0\cf0 \
+
+\pard\tx1800\tx2160\tx2520\tx2880\fi-380\li1800\fc0\cf0 ·	The function 
+\b SNDStartRecordingFile()
+\b0  does not support recording sounds in the compressed format.\
+
+}

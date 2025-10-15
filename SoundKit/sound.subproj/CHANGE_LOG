@@ -1,0 +1,44 @@
+Fri Aug  9 15:53:50 PDT 1991 mminnick
+	This is sound-34 as on land with gk's header file changes.
+
+Thu Aug 15 15:39:20 PDT 1991 mminnick
+	Added Andy Litmans Makefile change to precompile headers.
+	Changed "Imports" to "Headers".
+
+Wed Sep 18 11:10:37 PDT 1991 mminnick
+	Mike DeMoney's Makefile, accessssound.c, snddriver_client.c
+	minor changes.
+
+Thu Sep 26 10:27:05 PDT 1991 mminnick
+	accesssound.h now imports <mach/cthreads.h> not <cthreads.h>.
+	sounddriver.h now imports <mach/*> and <bsd/sys/types.h>.
+	Changes to precomp stuff (litman mail).
+
+Wed Oct  2 11:05:34 PDT 1991 mminnick
+	More import changes.
+	Makefile changes to conform to rc Makefile API.
+
+Tue Oct 22 12:14:45 PDT 1991 mminnick
+	Change import of snd_msgs.h
+
+Wed Oct  9 09:59:31 PDT 1991 julius
+      Integrated ATC compression
+      SND_CFORMAT_ATC added
+  
+Tue Dec 10 12:55:01 PST 1991 mminnick
+	Made SNDSoundError strings localizable.
+
+Fri Jan 10 19:37:42 PST 1992 mminnick
+	Change stream msg format in snddriver_client.c
+
+Fri Jan 31 15:09:53 PST 1992 mminnick
+	FCC approved changes: removed reference to squelch in
+	convertsound.h, removed references to SNDStartPlayingDSP and
+	SNDUpdateDSPParameter in performsound.h.
+
+Fri Mar 13 10:27:35 PST 1992 mminnick
+	Fixed RESOURCESDIR location, add Sun format codes.
+	
+Tue Mar 17 11:12:35 PST 1992 mminnick
+	Add soundout abort (bug 19874).
+

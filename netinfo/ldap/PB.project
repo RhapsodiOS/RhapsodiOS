@@ -1,0 +1,61 @@
+{
+    FILESTABLE = {
+        H_FILES = (disptmpl.h, lber.h, ldap-int.h, ldap.h, ldapconfig.h, portable.h, regex.h, srchpref.h); 
+        C_FILES = (
+	    abandon.c,
+	    add.c,
+	    addentry.c,
+	    bind.c,
+	    bprint.c,
+	    cache.c,
+	    charset.c,
+	    cldap.c,
+	    compare.c,
+	    decode.c,
+	    delete.c,
+	    disptmpl.c,
+	    dsparse.c,
+	    encode.c,
+	    error.c,
+	    free.c,
+	    friendly.c,
+	    getattr.c,
+	    getdn.c,
+	    getdxbyname.c,
+	    getentry.c,
+	    getfilter.c,
+	    getvalues.c,
+	    io.c,
+	    kbind.c,
+	    ldapnew.c,
+	    modify.c,
+	    modrdn.c,
+	    open.c,
+	    os-ip.c,
+	    regex.c,
+	    request.c,
+	    result.c,
+	    sbind.c,
+	    search.c,
+	    sort.c,
+	    srchpref.c,
+	    tmplout.c,
+	    ufn.c,
+	    unbind.c,
+	    url.c,
+	    v3compat.c
+        ); 
+        OTHER_RESOURCES = (); 
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble); 
+        PRECOMPILED_HEADERS = (); 
+        PROJECT_HEADERS = (); 
+        PUBLIC_HEADERS = (ldap.h, lber.h, disptmpl.h, srchpref.h); 
+    }; 
+    GENERATEMAIN = YES; 
+    LANGUAGE = English; 
+    LOCALIZABLE_FILES = {}; 
+    NEXTSTEP_DOCUMENTEXTENSIONS = (); 
+    PROJECTNAME = ldap; 
+    PROJECTTYPE = Subproject; 
+    PROJECTVERSION = 2.6; 
+}

@@ -1,0 +1,22 @@
+#!/bin/sh
+
+niload -r /config/MacNC/BootServer . <<EOT
+{
+  "name" = ( "BootServer" );
+  "private_image_name" = ( "Private" );
+  "default_bootfile" = ( "Mac OS ROM" );
+  "volumes" = ( "NCRoot" );
+  "shared_image_name" = ( "Shared" );
+  "shadow_both" = ( "_shadow_both" );
+  "_use_aufs" = ( "_use_aufs" );
+  "afp_group_name" = ( "Mac NC Group" );
+  "hostname_format" = ( "macnc%03d" );
+  "private_image_volume" = ( "NCRoot" );
+  "afp_user_format" = ( "Mac NC #%d" );
+  "default_bootdir" = ( "/private/tftpboot" );
+  "shared_image_volume" = ( "NCRoot" );
+  "image_directory" = ( "MacNCFolder/SharedImages" );
+  "client_image_directory" = ( "MacNCFolder/ClientImages" );
+  "shadow_extension" = ( "_s" );
+}
+EOT

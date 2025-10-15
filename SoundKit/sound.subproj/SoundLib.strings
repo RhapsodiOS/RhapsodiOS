@@ -1,0 +1,110 @@
+/* SNDSoundError message */
+"No error";
+
+/* SNDSoundError message */
+"Not a sound";
+
+/* SNDSoundError message */
+"Bad data format";
+
+/* SNDSoundError message */
+"Bad sampling rate";
+
+/* SNDSoundError message */
+"Bad channel count";
+
+/* SNDSoundError message */
+"Bad size";
+
+/* SNDSoundError message */
+"Bad file name";
+
+/* SNDSoundError message */
+"Cannot open file";
+
+/* SNDSoundError message */
+"Cannot write file";
+
+/* SNDSoundError message */
+"Cannot read file";
+
+/* SNDSoundError message */
+"Cannot allocate memory";
+
+/* SNDSoundError message */
+"Cannot free memory";
+
+/* SNDSoundError message */
+"Cannot copy";
+
+/* SNDSoundError message */
+"Cannot reserve access";
+
+/* SNDSoundError message */
+"Access not reserved";
+
+/* SNDSoundError message */
+"Cannot record sound";
+
+/* SNDSoundError message */
+"Already recording sound";
+
+/* SNDSoundError message */
+"Not recording sound";
+
+/* SNDSoundError message */
+"Cannot play sound";
+
+/* SNDSoundError message */
+"Already playing sound";
+
+/* SNDSoundError message */
+"Not implemented";
+
+/* SNDSoundError message */
+"Not playing sound";
+
+/* SNDSoundError message */
+"Cannot find sound";
+
+/* SNDSoundError message */
+"Cannot edit sound";
+
+/* SNDSoundError message */
+"Bad memory space in dsp load image";
+
+/* SNDSoundError message */
+"Mach kernel error";
+
+/* SNDSoundError message */
+"Bad configuration";
+
+/* SNDSoundError message */
+"Cannot configure";
+
+/* SNDSoundError message */
+"Data underrun";
+
+/* SNDSoundError message */
+"Aborted";
+
+/* SNDSoundError message */
+"Bad tag";
+
+/* SNDSoundError message */
+"Cannot access hardware resources";
+
+/* SNDSoundError message */
+"Timeout";
+
+/* SNDSoundError message */
+"Hardware resources already in use";
+
+/* SNDSoundError message */
+"Cannot abort operation";
+
+/* SNDSoundError message */
+"Information string too large";
+
+/* SNDSoundError message */
+"Unknown error";

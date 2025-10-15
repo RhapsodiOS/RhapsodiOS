@@ -1,0 +1,4 @@
+compress.c convertsound.c
+recordtest.c
+rfiletest.c
+utilsound.c

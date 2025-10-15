@@ -1,0 +1,18 @@
+#!/bin/sh
+
+niutil -destroy . /groups/realname="Mac NC Group"
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+	for j in 0 1 2 3 4 5 6 7 8 9
+	do
+		[ "$i" = "0" -a "$j" = "0" ] && continue;
+		niutil -destroy . /machines/macnc0${i}${j}
+		number=${i}${j}
+		[ "$i" = "0" ] && number=${j}
+		niutil -destroy . /users/realname="Mac NC #$number"
+		[ "${i}${j}" = "$1" ] && {
+			echo stopped at $1
+			exit 0
+		}
+	done
+done

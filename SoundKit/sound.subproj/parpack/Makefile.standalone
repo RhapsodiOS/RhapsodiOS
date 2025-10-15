@@ -1,0 +1,39 @@
+# This Makefile builds the parallel soundfile compression utilities
+
+SRCS = parpack.c unparpack.c parplay.c parlib.c parlib.h
+CFLAGS=-O -Wimplicit
+LIBS=-lsys_s
+#DEBUG_LIBS=/Net/marvin/ds/mminnick/sound_proj/sound/libsound_g.a
+DEBUG_LIBS=-lsys_s
+
+all: parpack unparpack parplay
+
+debug:
+	$(MAKE) all "CFLAGS=-g -Wimplicit" "LIBS=$(DEBUG_LIBS)"
+	
+profile:
+	$(MAKE) all "CFLAGS=-O -pg -Wimplicit"
+	
+parpack: parlib.o parlib.h parpack.c
+	cc $(CFLAGS) -o parpack parpack.c parlib.o $(LIBS)
+
+unparpack: parlib.o parlib.h unparpack.c
+	cc $(CFLAGS) -o unparpack unparpack.c parlib.o $(LIBS)
+
+parplay: parlib.o parlib.h parplay.c
+	cc $(CFLAGS) -o parplay parplay.c parlib.o $(LIBS)
+
+parlib.o: parlib.c
+	cc $(CFLAGS) -c parlib.c
+
+clean:
+	/bin/rm -f parpack unparpack parplay parlib.o
+	
+installsrc:
+	/bin/rm -rf $(SRCROOT)
+	mkdirs -m 755 $(SRCROOT)
+	cp $(SRCS) README Makefile $(SRCROOT)
+	chmod 444 $(SRCROOT)/*
+
+
+

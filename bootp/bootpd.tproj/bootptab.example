@@ -1,0 +1,74 @@
+#
+# /etc/bootptab
+#
+# This file is the default configuration file for the bootpd daemon,
+# specifying:
+# 1) the default boot directory
+# 2) the default boot file
+# 3) the list of hardware address -> ip address bindings
+#
+# In the normal case, only 1) and 2) are actually used, 3) is only
+# used if lookupd is not running.  Normally, lookupd will be running,
+# and bootpd will use the host information that's stored under netinfo.
+# See the bootpd man page for full details.
+#
+####
+#
+# File layout and syntax
+# - blank lines and lines beginning with '#' are ignored
+# - the first two uncommented, non-blank lines in this file MUST be
+#   the default boot directory followed by the default boot file
+#   (as shown below)
+# - the hardware address -> ip address list must be preceded by a line
+#   containing just %%
+####
+#
+# 1) default boot directory
+#
+# The format of the default boot directory is homedir[:bootdir] where
+# "homedir" is the location of the files on the local machine and
+# "bootdir" is the where the files appear to the TFTP server.  That is,
+# if you are running a secure TFTP server that changes is root to
+# /private/tftpboot, you should use "/private/tftpboot:/".  If you
+# are running an insecure TFTP server and your bootfiles are kept in
+# the same place, the entry will be "/private/tftpboot".
+#
+/private/tftpboot
+
+####
+#
+# 2) default boot file
+#
+mach_kernel
+
+####
+#
+# end of default boot directory and file
+#
+%%
+
+####
+#
+# 3) hardware address -> ip address bindings
+#
+# The remainder of this file contains one line per client
+# with the information shown by the table headings below.
+# The 'host' name is also tried as a suffix for the 'bootfile'
+# when searching the home directory.  (e.g., bootfile.host)
+#
+# To set up a client, change "CLIENT" to the hostname of the client
+# and change the hardware address to its ethernet address.  The IP
+# address should be changed to the address you want the client to use.
+# Each number in the hardware address is hexadecimal and should be
+# between 00 and ff.  Each number in the IP address is in decimal and
+# should be between 1 and 254.  Note that the IP address for the CLIENT
+# should also be found in the host tables.
+#
+# NOTE:
+# This information is IGNORED when lookupd is running which is the 
+# normal case.  Add new host entries to netinfo.  This mechanism is provided
+# as a fallback in case lookupd is not configured.
+#
+# host		htype 	haddr			iaddr	 	  bootfile
+#
+# CLIENT 	1	1a:2b:3c:4d:5e:6f	XXX.XXX.XXX.XXX	  mach_kernel

@@ -1,0 +1,75 @@
+{
+    CURRENTLY_ACTIVE_VERSION = YES; 
+    DEPLOY_WITH_VERSION_NAME = A; 
+    DYNAMIC_CODE_GEN = YES; 
+    FILESTABLE = {
+        CLASSES = (
+            clientTypes.m, 
+            dhcpOptions.m, 
+            macNCOptions.m, 
+            NIDomain.m, 
+            NIHosts.m, 
+            subnetDescr.m
+        ); 
+        FRAMEWORKS = (oamshim.framework, ServerControl.framework); 
+        FRAMEWORKSEARCH = ("$(NEXT_ROOT)/System/Library/PrivateFrameworks"); 
+        H_FILES = (
+            afp.h, 
+            clientTypes.h, 
+            dhcp.h, 
+            dhcpOptions.h, 
+            dhcpOptionsPrivate.h, 
+            gen_dhcp_parse_table.h, 
+            gen_dhcp_tags.h, 
+            gen_dhcp_types.h, 
+            hostlist.h, 
+            host_identifier.h, 
+            inetroute.h, 
+            interfaces.h, 
+            macNCOptions.h, 
+            netinfo.h, 
+            NIDomain.h, 
+            NIHosts.h, 
+            rfc_options.h, 
+            subnetDescr.h, 
+            util.h, 
+            arp.h, 
+            hfsvols.h, 
+            sharepoints.h
+        ); 
+        LIBRARYSEARCH = (); 
+        OTHER_LIBS = (); 
+        OTHER_LINKED = (
+            arp.c, 
+            hfsvols.c, 
+            hostlist.c, 
+            host_identifier.c, 
+            inetroute.c, 
+            interfaces.c, 
+            netinfo.c, 
+            sharepoints.c
+        ); 
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, genoptionfiles.c); 
+    }; 
+    LANGUAGE = English; 
+    LOCALIZABLE_FILES = {}; 
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles"; 
+    NEXTSTEP_BUILDTOOL = /bin/gnumake; 
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-four-char-constants"; 
+    NEXTSTEP_INSTALLDIR = /usr/libexec; 
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac; 
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc; 
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make; 
+    PDO_UNIX_INSTALLDIR = /usr/local/lib; 
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac"; 
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc"; 
+    PDO_UNIX_PUBLICHEADERSDIR = "$(LOCAL_DEVELOPER_DIR)/Headers/$(NAME)"; 
+    PROJECTNAME = bootplib; 
+    PROJECTTYPE = Library; 
+    PROJECTVERSION = 2.8; 
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make; 
+    WINDOWS_INSTALLDIR = "$(HOMEDRIVE)$(LOCAL_DEVELOPER_DIR)/Libraries"; 
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe"; 
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc"; 
+    WINDOWS_PUBLICHEADERSDIR = "$(HOMEDRIVE)$(LOCAL_DEVELOPER_DIR)/Headers/$(NAME)"; 
+}

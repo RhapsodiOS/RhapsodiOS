@@ -1,0 +1,112 @@
+{
+    DOCICONFILES = (); 
+    DYNAMIC_CODE_GEN = YES; 
+    FILESTABLE = {
+        C_FILES = (); 
+        H_FILES = (
+            accesssound.h, 
+            atcsound.h, 
+            black_boxes.h, 
+            cb.h, 
+            convertsound.h, 
+            editsound.h, 
+            filesound.h, 
+            mulaw.h, 
+            performsound.h, 
+            snddriver_client.h, 
+            sound.h, 
+            sounddriver.h, 
+            sounderror.h, 
+            soundstruct.h, 
+            utilsound.h, 
+            _atcsound.h, 
+            _compression.h, 
+            _convertsound.h, 
+            _sounddriver.h
+        ); 
+        OTHER_LINKED = (
+            accesssound.c, 
+            atcsound.c, 
+            convertsound.c, 
+            editsound.c, 
+            filesound.c, 
+            performsound.c, 
+            sounddriver.c, 
+            sounderror.c, 
+            utilsound.c
+        ); 
+        OTHER_SOURCES = (
+            Makefile.preamble, 
+            Makefile, 
+            Makefile.postamble, 
+            m.template, 
+            h.template, 
+            black_boxes.c, 
+            compress.c, 
+            downby2.c, 
+            resample.c, 
+            snddriver_client.c, 
+            squelch.c, 
+            upsamplecodec.c, 
+            SoundLib.strings, 
+            atc_c, 
+            parpack, 
+            resample, 
+            booter.snd, 
+            codec.snd, 
+            decodemulawsquelch.snd, 
+            derecord22m.snd, 
+            dsprecord.snd, 
+            encodemulawsquelch.snd, 
+            hostcompressatc.snd, 
+            hostcompress.snd, 
+            hostdecompressatc.snd, 
+            hostdecompress.snd, 
+            monobyte.snd, 
+            mono.snd, 
+            mulawcodecsquelch.snd, 
+            mulawcodec.snd, 
+            sndoutdecompressatc.snd, 
+            sndoutdecompress.snd, 
+            ssicompress.snd, 
+            ssiplay.snd
+        ); 
+        PROJECT_HEADERS = (sound.h, soundstruct.h, cb.h); 
+        PUBLIC_HEADERS = (
+            sound.h, 
+            soundstruct.h, 
+            sounderror.h, 
+            utilsound.h, 
+            filesound.h, 
+            editsound.h, 
+            sounddriver.h, 
+            accesssound.h, 
+            convertsound.h, 
+            performsound.h, 
+            snddriver_client.h, 
+            atcsound.h, 
+            mulaw.h
+        ); 
+    }; 
+    GENERATEMAIN = YES; 
+    LANGUAGE = English; 
+    LOCALIZABLE_FILES = {}; 
+    NEXTSTEP_BUILDTOOL = /bin/gnumake; 
+    NEXTSTEP_COMPILEROPTIONS = ""; 
+    NEXTSTEP_INSTALLDIR = /usr/lib; 
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac; 
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc; 
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make; 
+    PDO_UNIX_COMPILEROPTIONS = ""; 
+    PDO_UNIX_INSTALLDIR = /usr/lib; 
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac"; 
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc"; 
+    PROJECTNAME = sound; 
+    PROJECTTYPE = Subproject; 
+    PROJECTVERSION = 2.7; 
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make; 
+    WINDOWS_COMPILEROPTIONS = ""; 
+    WINDOWS_INSTALLDIR = /usr/lib; 
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe"; 
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc"; 
+}

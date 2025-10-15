@@ -1,0 +1,898 @@
+#!/usr/bin/perl
+#
+# Copyright (c) 1996, 1997 Lance Kurisaki. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. All advertising materials mentioning features or use of this software
+#    must display the following acknowledgement:
+#        This product includes software developed by Lance Kurisaki.
+# 4. The name of the other may not be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY LANCE KURISAKI ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL LANCE KURISAKI BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+############################################################################
+#
+# Do "niutil"-like operations on the NetInfo database files!
+# Doesn't need a running netinfod.
+# Should work on any architecture that supports perl (unlike liutil)...
+#
+#			L. Kurisaki (11/01/96)
+#			Lance_Kurisaki@tds.com
+#
+# TO DO
+#
+#	Right now, a directory with two properties with the same name
+#	isn't handled correctly.  This is because "ni_read" returns the
+#	properties as an associative array indexed by property name.
+#	Need to change this to a regular array with the value of the form:
+#		prop_name . "\0" . val0 . "\0" . val2
+#	This will also let me represent an empty property
+#		prop_name
+#	and a property with a single empty value
+#		prop_name . "\0"
+#
+#
+# MODIFICATION HISTORY
+#
+# 08/18/97 (LRK) - Added a "-statistics" option. Fixed up the raw dump.
+#
+# 08/15/97 (LH)  - Added raw dump option.
+#
+# 07/25/97 (LRK) - Changed ni_write so it would work under perl4 or perl5.
+#
+# 06/10/97 (LRK) - Changed ni_find_empty_slot to not return 0.
+#	Reserve slot 0 for the root directory.
+#
+############################################################################
+#
+($PROG = $0) =~ s?.*/??;	# Strip leading path
+
+require('getopts.pl');
+
+$OPTSTRING = "v";
+$FALSE = 0;
+$TRUE  = ! $FALSE;
+
+$verbose = $FALSE;
+
+#
+# From <sys/file.h>
+#
+$L_SET		= 0;    #/* set the seek pointer */
+$L_INCR		= 1;    #/* increment the seek pointer */
+$L_XTND		= 2;    #/* extend the file size */
+
+$LOCK_SH	= 1;    #/* shared lock */
+$LOCK_EX	= 2;    #/* exclusive lock */
+$LOCK_NB	= 4;    #/* don't block when locking */
+$LOCK_UN	= 8;    #/* unlock */
+
+sub YorN {
+    $_[0] ? "YES" : "NO";
+}
+
+sub Usage {
+    print(STDERR "Usage: \n",
+	"\t$PROG -read domain path\n",
+	"\t$PROG -dump domain path\n",
+	"\t$PROG -list domain path [prop]\n",
+	"\t$PROG -createprop domain path prop [val ...]\n",
+	"\t$PROG -renameprop domain path oldprop newprop\n",
+	"\t$PROG -destroyprop domain path prop\n",
+	"\t$PROG -destroy domain path\n",
+	"\t$PROG -create domain path\n",
+	"\t$PROG -checksum domain\n",
+	"\n",
+	"The 'domain' is the path to a '*.nidb' database directory.\n",
+	"Some examples:\n",
+	"\t$PROG -list /etc/netinfo/local.nidb /\n",
+	"\t$PROG -read /tmp/local.nidb /machines/localhost\n",
+	"\t$PROG -read /tmp/local.nidb /machines/ip_address=127.0.0.1\n",
+	"\t$PROG -read /tmp/local.nidb 23\n");
+    exit(1);
+}
+
+# Parse arguments...
+# &Getopts($OPTSTRING) || &Usage;
+
+$verbose ^= $opt_v;
+
+##########################################################################
+package rpc;
+$sizeofNetLong = length(&main'pack("N", 0));
+
+#
+# These are XDR-type routines...
+#
+# So far, the only recognized formats are:
+#	'i' or 'l' (long int)
+#	'a' (variable length ascii string)
+#
+sub pack {			# public
+    local($template, @list) = @_;
+    local($char, $count, $i, $buf, $str, $len);
+
+    print("ENTER ${pkg}'pack\n") if ($verbose);
+
+    $buf = "";
+    while ($template =~ s/^\s*([a-zA-Z])\s*(\d*)\s*//) {
+	$char = $1;
+	$count = $2 || 1;
+
+	for ($i = 0; $i < $count; $i++) {
+	    if ($char eq "i" || $char eq "l" || $char eq "I") {
+		$buf .= &main'pack("N", shift(@list));
+	    } elsif ($char eq "a") {
+		$str = shift(@list);
+		$len = length($str);
+
+		$buf .= &main'pack("N", $len);
+		$buf .= &main'pack("a$len", $str);
+		$buf .= &main'pack("x" . (($len % 4) ? 4 - ($len % 4) : 0), 0);
+	    } else {
+		print(STDERR "${pkg}'pack: bad format char: $char\n");
+	    }
+	}
+    }
+    $buf;
+}
+
+#
+# Unpack an XDR stream into its components.
+# The parameter "buf" is modified as items are peeled off the front.
+#
+sub unpack {			# public
+    # local($template, $buf) = @_;
+    local($template) = $_[0];		# avoid the copy of $buf!
+    local($char, $count, $i, $len, @results);
+
+    print("ENTER ${pkg}'unpack\n") if ($verbose);
+
+    @results = ();
+
+    while ($template =~ s/^\s*([a-zA-Z])\s*(\d*)\s*//) {
+	$char = $1;
+	$count = $2 || 1;
+
+	for ($i = 0; $i < $count; $i++) {
+	    if ($char eq "i" || $char eq "l") {
+		push(@results, &main'unpack("N", $_[1]));
+		# substr($_[1], 0, length(&main'pack("N", 0))) = "";
+		substr($_[1], 0, $sizeofNetLong) = "";
+	    } elsif ($char eq "a") {
+		$len = &main'unpack("N", $_[1]); # Get length of string...
+		# substr($_[1], 0, length(&main'pack("N", 0))) = "";
+		substr($_[1], 0, $sizeofNetLong) = "";
+
+		push(@results, &main'unpack("a$len", $_[1]));
+		# Now round up to nearest long word.
+		substr($_[1], 0, $len + ($len % 4 ? 4 - ($len % 4) : 0)) = "";
+	    } else {
+		print(STDERR "${pkg}'unpack: bad format char: $char\n");
+	    }
+	}
+    }
+
+    @results;
+}
+
+package main;
+
+#
+# These pack/unpack routines are for the 64-bit DEC Alpha!
+#
+sub pack {
+    local($fmt, @data) = @_;
+    local($s) = "";
+    local($_, $c, $n);
+
+    # print("ENTER pack($fmt, len=", length($s), ")\n");
+    $fmt =~ s/\s+//g;
+    while ($fmt =~ s/^(\S)(\d*)//) {
+	$c = $1;
+	$n = $2 ne "" ? $2 : 1;
+	if ($c eq "N") {
+	    foreach (1..$n) {
+		$s .= pack("i", unpack("i", pack("N", shift(@data))));
+	    }
+	} else {
+	    $s .= pack("$c$n", splice(@data, 0, $n));
+	}
+    }
+    $s;
+}
+
+sub unpack {
+    local($fmt, $s) = @_;
+    local(@a);
+    local($_, $c, $n);
+
+    # print("ENTER unpack($fmt, len=", length($s), ")\n");
+
+    $fmt =~ s/\s+//g;
+    while ($fmt =~ s/^(\S)(\d*)//) {
+	$c = $1;
+	$n = $2 ne "" ? $2 : 1;
+	if ($c eq "N") {
+	    local($i);
+	    foreach (1..$n) {
+		@r = unpack("i", pack("N", unpack("i", $s)));
+
+		push(@a, unpack("i", pack("N", unpack("i", $s))));
+		substr($s, 0, length(pack("i", 0))) = "";
+	    }
+	} else {
+	    push(@a, unpack("$c$n", $s));
+	    substr($s, 0, length(pack("$c$n", 0))) = "";
+	}
+    }
+    # print("Returning a=@a\n");
+    wantarray ? @a : $a[0];
+}
+
+##########################################################################
+
+sub readBuffer {
+    local(*F, $dir_id) = @_;
+    local($buf);
+
+    local($ext) = "$domain/extension_${dir_id}";
+    if (-f $ext) {
+	local($size) = -s _;
+	local(*G);
+	open(G, $ext) || die("$PROG: $ext: $!\n");
+	if (read(G, $buf, $size) != $size) {
+	    die("$PROG: readBuffer: $ext: $!\n");
+	}
+	close(G);
+    } else {
+	seek(F, $dir_id * $blocksize, $L_SET) || die("$PROG: seek: $!\n");
+	local($n);
+	if (($n = read(F, $buf, $blocksize)) == 0) {
+	    #
+	    # Extending the database -- fake an empty slot...
+	    #
+	    $buf = &rpc'pack("ii", -1, 0);
+	    $buf .= "\0" x ($blocksize - length($buf));
+	} elsif ($n < 0) {
+	    die("$PROG: readBuffer [$dir_id]: $!\n");
+	}
+    }
+    $buf;
+}
+
+#
+# Return an assoc array consisting of the contents of the dir_id...
+# The value "array" is returned as a single string joined by "\0".
+#
+sub ni_read {
+    local(*F, $dir_id) = @_;
+    local($_, $buf, %props, @vals);
+
+    $buf = &readBuffer(*F, $dir_id);
+
+    local($id, $instance) = &rpc'unpack("ii", $buf);
+    die("$PROG: dir_id $dir_id is empty\n") if ($id < 0);
+
+    local($nitems) = &rpc'unpack("i", $buf);
+
+    #
+    # Skip past contents of directory...
+    #
+    foreach (1 .. $nitems) {
+	local($prop, $n) = &rpc'unpack("ai", $buf);
+	@vals = ();
+	foreach (1 .. $n) {
+	    push(@vals, &rpc'unpack("a", $buf));
+	}
+	$props{$prop} = join("\0", @vals);
+    }
+    %props;
+}
+
+#
+# Read "other" information from the directory...
+#
+sub ni_read_info {
+    local(*F, $dir_id) = @_;
+    local($_, $buf, @children);
+
+    $buf = &readBuffer(*F, $dir_id);
+
+    local($id, $instance) = &rpc'unpack("ii", $buf);
+    die("$PROG: dir_id $dir_id is overflow\n") if ($dir_id < 0);
+
+    local($nitems) = &rpc'unpack("i", $buf);
+
+    #
+    # Skip past contents of directory...
+    #
+    foreach (1 .. $nitems) {
+	local($prop, $n) = &rpc'unpack("ai", $buf);
+	foreach (1 .. $n) {
+	    &rpc'unpack("a", $buf);
+	}
+    }
+
+    local($parent) = &rpc'unpack("i", $buf);
+    local($n) = &rpc'unpack("i", $buf);
+    foreach (1 .. $n) {
+	push(@children, &rpc'unpack("i", $buf));
+    }
+
+    ($id, $instance, $parent, @children);
+}
+
+sub ni_write {
+    local(*F, $dir_id, *props, *t_id, *t_instance, *t_parent, *t_children) = @_;
+    local($_, $buf);
+
+    #
+    # Do this for compatability between perl4 & perl5...
+    #
+    local($l_id) = $t_id;
+    local($l_instance) = $t_instance;
+    local($l_parent) = $t_parent;
+    local(@l_children) = @t_children;
+
+    flock(F, $LOCK_EX | $LOCK_NB) || die("$PROG: $collectionFile: $!\n");
+
+    die("$PROG: dir_id $dir_id is overflow\n") if ($dir_id < 0);
+
+    local($id, $instance, $parent, @children) = &ni_read_info(*F, $dir_id);
+
+    $id = $l_id if (defined($l_id));
+    $instance = $l_instance if (defined($l_instance));
+    $parent = $l_parent if (defined($l_parent));
+    @children = @l_children if (defined(@l_children));
+
+    #
+    # Format a buffer to write...
+    #
+    $buf = &rpc'pack("ii", $id, $instance + 1);
+
+    local($nitems) = scalar(keys(%props));
+    $buf .= &rpc'pack("i", $nitems);
+    local($prop, @vals);
+    foreach $prop (keys(%props)) {
+	$buf .= &rpc'pack("a", $prop);
+	@vals = split(/\0/, $props{$prop});
+	$buf .= &rpc'pack("i", scalar(@vals));
+	local($val);
+	foreach $val (@vals) {
+	    $buf .= &rpc'pack("a", $val);
+	}
+    }
+
+    $buf .= &rpc'pack("i", $parent);
+
+    $buf .= &rpc'pack("i", scalar(@children));
+    local($c);
+    foreach $c (@children) {
+	$buf .= &rpc'pack("i", $c);
+    }
+
+    if (length($buf) > $blocksize) {
+	#
+	# Write an extension file...
+	#
+	# die("$PROG: &ni_write: too big\n") if (length($buf) > $blocksize);
+	local(*G);
+
+	local($ext) = "$domain/extension_${dir_id}";
+	open(G, "> $ext") || die("$PROG: ni_write: $ext: $!\n");
+
+	if (syswrite(G, $buf, length($buf)) != length($buf)) {
+	    die("$PROG: &ni_write: $ext: $!\n");
+	}
+	close(G);
+
+	#
+	# This gets written back into Collection...
+	#
+	$buf = &rpc'pack("ii", -1, 0);	# id, instance
+    } else {
+	unlink("$domain/extension_${dir_id}");
+    }
+
+    $buf .= "\0" x ($blocksize - length($buf));
+
+    #
+    # Now, write the stuff back!
+    #
+    seek(F, $dir_id * $blocksize, $L_SET) || die("$PROG: seek: $!\n");
+    if (syswrite(F, $buf, $blocksize) != $blocksize) {
+	die("$PROG: &ni_write: $collectionFile: $!\n");
+    }
+
+    #
+    # Remove the checksum file, so it gets rebuilt on restart...
+    #
+    unlink("$domain/checksum");
+
+    0;
+}
+
+sub ni_destroy {
+    local(*F, $dir_id) = @_;
+    local($buf);
+    local($id, $instance, $parent, @children) = &ni_read_info(*F, $dir_id);
+
+    flock(F, $LOCK_EX | $LOCK_NB) || die("$PROG: $collectionFile: $!\n");
+
+    die("$PROG: Cannot delete name object with children\n") if (@children);
+    die("$PROG: $dir_id: invalid parent\n") if ($parent < 0);
+
+    $buf = &rpc'pack("ii", -1, 0);	# id, instance
+    $buf .= "\0" x ($blocksize - length($buf));
+
+    seek(F, $dir_id * $blocksize, $L_SET) || die("$PROG: seek: $!\n");
+    if (syswrite(F, $buf, $blocksize) != $blocksize) {
+	die("$PROG: &ni_destroy [$dir_id]: $!\n");
+    }
+
+    #
+    # Rewrite parent dir...
+    #
+    local($pparent);
+    local(%props) = &ni_read(*F, $parent);
+    local($id, $instance, $pparent, @children) = &ni_read_info(*F, $parent);
+    @children = grep($_ != $dir_id, @children);
+    $instance++;
+    &ni_write(*F, $parent, *props, *id, *instance, *parent, *children);
+
+    unlink("$domain/extension_${dir_id}");
+}
+
+sub ni_find_empty_slot {
+    local(*F) = @_;
+
+    local($len) = length(&rpc'pack("ii", 0));
+    local($size) = -s $collectionFile;
+    local($i, $id, $instance);
+    local($x);
+
+    foreach $i (1 .. ($size / $blocksize) - 1) {
+	seek(F, $i * $blocksize, $L_SET) || die("$PROG: seek: $!\n");
+	if (read(F, $buf, $len) != $len) {
+	    die("$PROG: ni_find_empty_slot: $!\n");
+	}
+	($id, $instance) = &rpc'unpack("ii", $buf);
+	$x=$i;
+	return $x if ($id < 0 && ! -f "$domain/extension_${id}");
+    }
+
+    return ($size ? $size / $blocksize : 1);
+}
+
+sub ni_create {
+    local(*F, $path) = @_;
+    local($buf);
+
+    flock(F, $LOCK_EX | $LOCK_NB) || die("$PROG: $collectionFile: $!\n");
+
+    die("$PROG: $path: cannot create root\n") if ($path eq "/");
+
+    #
+    # Find parent path...
+    #
+    #local($parent_path, $name) = ($path =~ m#(.*)/(.+)#);
+    #$parent_path = "/" if ($parent_path eq "");
+
+    local(@components, $parent_path, $name);
+    push(@components, "");
+    push(@components, $1) while ($path =~ m#((\\/|[^/])+)#g);
+    grep(s#\\/#/#g, @components);
+    $name = pop(@components);
+    $parent_path = join('/', @components);
+    $parent_path = "/" if ($parent_path eq "");
+
+    local($parent_dir_id) = &path_to_id(*F, $parent_path);
+    die("$PROG: $parent_path: No such directory\n") if ($parent_dir_id < 0);
+
+    #
+    # Does the directory already exist?
+    #
+    die("$PROG: $path: Directory exists\n") if (&path_to_id(*F, $path) >= 0);
+
+    #
+    # Find an empty dir_id slot...
+    #
+    local($dir_id) = &ni_find_empty_slot(*F);
+
+    #
+    # Write the new directory...
+    #
+    local($id, $instance, $parent, @children);
+    local(%props) = ("name", $name);
+    $instance = 1;
+    &ni_write(*F, $dir_id, *props, *dir_id, *instance,
+	*parent_dir_id, *children);
+
+    #
+    # And fix up the parent...
+    #
+    ($id, $instance, $parent, @children) = &ni_read_info(*F, $parent_dir_id);
+    %props = &ni_read(*F, $parent_dir_id);
+    $instance++;
+
+    #
+    # Add to the children list...
+    #
+    # @children = sort({$a <=> $b} @children, $dir_id);
+    push(@children, $dir_id);	# just add to end -- don't sort.
+
+    &ni_write(*F, $parent_dir_id, *props, *parent_dir_id, *instance,
+	*parent, *children);
+
+    unlink("$domain/extension_${dir_id}");
+}
+
+#
+# Get children...
+#
+sub ni_children {
+    local(*F, $dir_id) = @_;
+    local($_, $buf, @kids);
+
+    $buf = &readBuffer(*F, $dir_id);
+
+    local($dir_id, $dir_instance) = &rpc'unpack("ii", $buf);
+
+    local($nitems) = &rpc'unpack("i", $buf);
+
+    #
+    # Skip past contents of directory...
+    #
+    foreach (1 .. $nitems) {
+	local($s1, $n) = &rpc'unpack("ai", $buf);
+	foreach (1 .. $n) {
+	    &rpc'unpack("a", $buf);
+	}
+    }
+
+    local($parent) = &rpc'unpack("i", $buf);		# skip parent
+
+    local($n) = &rpc'unpack("i", $buf);
+    foreach (1 .. $n) {
+	push(@kids, &rpc'unpack("i", $buf));
+    }
+
+    # sort({$a <=> $b} @kids);		# sort the kids?
+    @kids;
+}
+
+#
+# Return the dir_id of the child whose property matches the value...
+#
+sub ni_find {
+    local (*F, $dir_id, $property, $value) = @_;
+    local($_, $try, @kids, %props);
+
+    @kids = &ni_children(*F, $dir_id);
+    while (!$found && @kids) {
+	%props = &ni_read(*F, $try = shift(@kids));
+	return($try) if (grep($_ eq $value, split(/\0/, $props{$property})));
+    }
+    -1;
+}
+
+#
+# Emulate "nidump -r"
+#
+# lukeh@xedoc.com.au, 15 August 1997
+# Modified quoteVal, kurisaki@tds.com, 18 August 1997
+#
+
+$TABSTOP = 4;
+
+sub quoteVal {
+    local($s) = @_;
+
+    #
+    # Look for legal chars rather than illegal ones...
+    #
+    if ($s =~ /^[\w\d\/:.]+$/) {
+	$s;
+    } else {
+	$s =~ s/"/\\"/g;	# quote any quote
+	qq("$s");
+    }
+}
+
+#sub quoteVal {
+#    local($val) = @_;
+#    if ($val =~ /[\*\-\@\=\s]/) {
+#	return '"',$val,'"';
+#    }
+#    return $val;
+#}
+
+sub rawDump {
+    local(*F, $dir_id, $indent) = @_;
+    local(@kids) = &ni_children(*F, $dir_id);
+    local(%props) = &ni_read(*F, $dir_id);
+    local($spaces) = " " x ($indent * $TABSTOP);
+
+    foreach (keys(%props)) {
+	local (@vals) = split(/\0/, $props{$_});
+        print $spaces, "$_ = ";
+	if ($#vals == 0) {
+	    print &quoteVal($vals[0]);
+	} else {
+	    local ($val, $first);
+	    $first = 1;
+	    print '(';
+            foreach $val (@vals) {
+		if ($first) {
+		    $first = 0;
+		} else {
+		    print ", ";
+		}
+		print &quoteVal($val);
+	    }
+	    print ')';
+	}
+	print ";\n";
+    }
+
+    if ($#kids < 0) {
+	# no children
+	return;
+    }
+
+    local ($i);
+    $indent++;
+    print $spaces, "CHILDREN = ";
+    if ($#kids > 0) {
+	print "(";
+    }
+    print "{\n";
+
+    for ($i = 0; $i <= $#kids; $i++) {
+	local($dir_id) = $kids[$i];
+	&rawDump(*F, $dir_id, $indent);
+	if ($i < $#kids) {
+	    print $spaces, "}, {\n";
+	} elsif ($#kids > 0) {
+	    print $spaces, "});\n";
+	} else {
+	    print $spaces, "};\n";
+	}
+	# print ";\n";
+    }
+}
+
+#
+# Map a path name to dir_id...
+#
+sub path_to_id {
+    local (*F, $path) = @_;
+    local($dir_id) = 0;
+    local($prop, $val, @components);
+
+    return $path if ($path =~ /^\d+$/);
+
+    die("$PROG: path must start with '/'\n") unless ($path =~ m#^/#);
+
+    #
+    # Split the path into components...
+    #
+    # @components = split(m#/#, substr($path, 1));
+
+    #
+    # This takes into account paths like '/mount/server:\\/Users1'...
+    #
+    push(@components, $1) while ($path =~ m#((\\/|[^/])+)#g);
+    grep(s#\\/#/#g, @components);
+
+    while ($dir_id >= 0 && @components) {
+	$prop = "name";
+	$val = shift(@components);
+	($prop, $val) = ($1, $2) if ($val =~ /(.+)=(.+)/);
+	$dir_id = &ni_find(*F, $dir_id, $prop, $val);
+    }
+    $dir_id;
+}
+
+sub dump_id {
+    local(*F, $dir_id) = @_;
+    local($_);
+
+    local($buf) = &readBuffer(*F, $dir_id);
+    local($id, $instance) = &rpc'unpack("ii", $buf);
+
+    print("ID=$id INSTANCE=$instance\n");
+
+    local($nitems) = &rpc'unpack("i", $buf);
+    foreach (1 .. $nitems) {
+	local($s1, $n) = &rpc'unpack("ai", $buf);
+	print("    $s1:");
+	foreach (1..$n) {
+	    local($s) = &rpc'unpack("a", $buf);
+	    print(" $s");
+	}
+	print("\n");
+    }
+
+    local($parent) = &rpc'unpack("i", $buf);
+    print("    PARENT=$parent\n");
+    local($n) = &rpc'unpack("i", $buf);
+    print("    CHILDREN[$n]=");
+    foreach (1 .. $n) {
+	($n) = &rpc'unpack("i", $buf);
+	print(" $n");
+    }
+    print("\n");
+}
+
+sub ni_checksum {
+    local(*F) = @_;
+    local($checksum) = 0;
+    local($id, $instance, $parent, @children);
+    local($_);
+
+    foreach $_ (0 .. ($size / $blocksize) - 1) {
+	($id, $instance, $parent, @children) = &ni_read_info(*F, $_);
+	next if ($id < 0);
+
+	$checksum = ($checksum + ($id + 1) * $instance) & 0xFFFFFFFF;
+    }
+    $checksum;
+}
+
+$rpc'verbose = $verbose;
+
+&Usage if (@ARGV < 2);
+
+$cmd = shift;
+$domain = shift;
+
+if (-f "$domain/Collection") {
+    $collectionFile = "$domain/Collection";
+    $blocksize = 512;
+} elsif (-f "$domain/collection") {
+    $collectionFile = "$domain/collection";
+    $blocksize = 256;
+} else {
+    die("$PROG: $domain: bad domain\n");
+}
+
+die("$PROG: $collectionFile: bad size: $size\n")
+    if (($size = -s $collectionFile) % $blocksize);
+
+#
+# Try opening the file for R/W.  If that fails, then open RDONLY...
+#
+open(F, "+< $collectionFile") ||
+    open(F, $collectionFile) ||
+    die("$PROG: $collectionFile: $!\n");
+seek(F, 0, $L_SET) || die("$PROG: seek: $!\n");
+
+if ($cmd eq "-inspect") {
+    &Usage if (@ARGV > 1);
+    if (@ARGV) {
+	$path = shift;
+	$dir_id = &path_to_id(*F, $path);
+	die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+	&dump_id(*F, $dir_id);
+    } else {
+	foreach $dir_id (0 .. ($size / $blocksize) - 1) {
+	    &dump_id(*F, $dir_id);
+	}
+    }
+} elsif ($cmd eq "-dump") {
+    &Usage if (@ARGV != 1);
+    $path = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    &rawDump(*F, $dir_id);
+} elsif ($cmd eq "-read") {
+    &Usage if (@ARGV != 1);
+    $path = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    local(%props) = &ni_read(*F, $dir_id);
+    foreach (keys(%props)) {
+	print("$_: ", join(" ", split(/\0/, $props{$_})), "\n");
+    }
+} elsif ($cmd eq "-list") {
+    &Usage if (@ARGV > 2);
+    $path = shift;
+    $prop = @ARGV ? shift : "name";
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    foreach $dir_id (&ni_children(*F, $dir_id)) {
+	local(%props) = &ni_read(*F, $dir_id);
+	print("$dir_id\t", join(" ", split(/\0/, $props{$prop})), "\n");
+    }
+} elsif ($cmd eq "-createprop") {
+    &Usage if (@ARGV < 2);
+    $path = shift;
+    $prop = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    local(%props) = &ni_read(*F, $dir_id);
+
+    $props{$prop} = join("\0", @ARGV);
+    &ni_write(*F, $dir_id, *props);
+} elsif ($cmd eq "-renameprop") {
+    &Usage if (@ARGV != 3);
+    $path = shift;
+    $oldprop = shift;
+    $newprop = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    local(%props) = &ni_read(*F, $dir_id);
+    die("$PROG: $path: $oldprop: no such property\n")
+	if (!defined($props{$oldprop}));
+
+    $props{$newprop} = $props{$oldprop};
+    delete($props{$oldprop});
+    &ni_write(*F, $dir_id, *props);
+} elsif ($cmd eq "-destroyprop") {
+    &Usage if (@ARGV != 2);
+    $path = shift;
+    $prop = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    local(%props) = &ni_read(*F, $dir_id);
+    die("$PROG: $path: $prop: no such property\n") if (!defined($props{$prop}));
+
+    delete($props{$prop});
+    &ni_write(*F, $dir_id, *props);
+} elsif ($cmd eq "-destroy") {
+    &Usage if (@ARGV != 1);
+    $path = shift;
+
+    $dir_id = &path_to_id(*F, $path);
+    die("$PROG: $path: No such directory\n") if ($dir_id < 0);
+
+    &ni_destroy(*F, $dir_id);
+} elsif ($cmd eq "-create") {
+    &Usage if (@ARGV != 1);
+    $path = shift;
+
+    &ni_create(*F, $path);
+} elsif ($cmd eq "-checksum") {
+    &Usage if (@ARGV);
+    print("checksum: ", &ni_checksum(*F), "\n");
+} else {
+    warn("$PROG: $cmd: unknown command\n");
+    &Usage;
+}
+
+close(F);
+
+exit(0);

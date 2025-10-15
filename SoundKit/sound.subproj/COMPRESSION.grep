@@ -1,0 +1,212 @@
+compress.c: * compress.c
+compress.c: *	09/28/90/mtm	Send correct data size to DSP for compression (bug #7909).
+compress.c:#define	COMPRESS_DMASIZE 2048	/* must be compatible with hostdecompress.asm
+compress.c:				   and hostcompress.asm */
+compress.c:#define	COMPRESS_STREAM_AWAIT_TIMEOUT 1000
+compress.c:#define	COMPRESS_MAX_TIMEOUTS 5
+compress.c:#define COMPRESS_READ_TAG 1
+compress.c:#define COMPRESS_WRITE_TAG 2
+compress.c:    MODE_COMPRESS,
+compress.c:    MODE_DECOMPRESS
+compress.c:} compressionSubHeader;
+compress.c:    compressionSubHeader subheader;
+compress.c:} compress_info_t;
+compress.c:static void compress_read_data(void *arg, int tag, void *p, int i)
+compress.c: * buffer using stream control.  If compressing, abort stream when
+compress.c:    compress_info_t *info = (compress_info_t *)arg;
+compress.c:    if (info->mode == MODE_COMPRESS) {
+compress.c:	 * away if you write the compressed sound to a file.
+compress.c:		    printf("Sound could not be compressed\n");
+compress.c:     * Normally we get one COMPRESS_DMASIZE chunk each time.
+compress.c:static int compressDSP(SNDSoundStruct *s1, SNDSoundStruct **s2,
+compress.c: * Compress or decompress on DSP depending on mode of s1.
+compress.c:    static SNDSoundStruct *decompressCore = NULL;
+compress.c:    static SNDSoundStruct *compressCore = NULL;
+compress.c:    /* Currently, compress.asm has a max encode length of 256 */
+compress.c:    int bufsize = COMPRESS_DMASIZE;
+compress.c:    int dmaBytes = COMPRESS_DMASIZE * 2;
+compress.c:    compress_info_t info;
+compress.c:				      compress_read_data };
+compress.c:    compressionSubHeader *subheader = NULL;
+compress.c:    if (s1->dataFormat == SND_FORMAT_COMPRESSED ||
+compress.c:	s1->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED)
+compress.c:	info.mode = MODE_DECOMPRESS;
+compress.c:	info.mode = MODE_COMPRESS;
+compress.c:    if (info.mode == MODE_DECOMPRESS) {
+compress.c:	if (!decompressCore) {
+compress.c:	    err = findDSPcore("hostdecompress", &decompressCore);
+compress.c:	core = decompressCore;
+compress.c:	if (s1->dataSize <= sizeof(compressionSubHeader))
+compress.c:	subheader = (compressionSubHeader *)data_pointer(s1);
+compress.c:	(*s2)->dataFormat = (s1->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED ?
+compress.c:    } else {	/* MODE_COMPRESS */
+compress.c:	if (!compressCore) {
+compress.c:	    err = findDSPcore("hostcompress", &compressCore);
+compress.c:	core = compressCore;
+compress.c:	(*s2)->dataSize = sizeof(compressionSubHeader);
+compress.c:			     SND_FORMAT_COMPRESSED_EMPHASIZED : SND_FORMAT_COMPRESSED);
+compress.c:	subheader = (compressionSubHeader *)data_pointer(*s2);
+compress.c:	info.read_ptr = (char *)data_pointer(*s2) + sizeof(compressionSubHeader);
+compress.c:	info.read_count = sizeof(compressionSubHeader);
+compress.c:	info.remaining_bytes = s1->dataSize - sizeof(compressionSubHeader);
+compress.c:				 COMPRESS_DMASIZE, read_width,
+compress.c:				 COMPRESS_DMASIZE, write_width, 
+compress.c:    err = snddriver_stream_start_reading(read_port, 0, req_size, COMPRESS_READ_TAG,
+compress.c:    if (info.mode == MODE_COMPRESS) {
+compress.c:					 COMPRESS_WRITE_TAG,
+compress.c:    err = snddriver_stream_control(read_port, COMPRESS_READ_TAG, SNDDRIVER_AWAIT_STREAM);
+compress.c:	err = msg_receive(reply_msg, RCV_TIMEOUT, COMPRESS_STREAM_AWAIT_TIMEOUT);
+compress.c:	    if (++timeoutCount > COMPRESS_MAX_TIMEOUTS) {
+compress.c:	    err = snddriver_stream_control(read_port, COMPRESS_READ_TAG,
+compresstest.c: * compresstest.c
+compresstest.c: *	Usage: compresstest [-<n>] <infile> <outfile>
+compresstest.c: *	If <infile> sound is in a linear format, it is compressed.
+compresstest.c: *	If <infile> sound is in a compressed format, it is decompressed.
+compresstest.c:    err = SNDCompressSound(s1, &s2, bitFaithful, dropBits);
+convertsound.c: *	04/06/90/mtm	Added SNDCompressSound().
+convertsound.c: *	07/25/90/mtm	Implement SNDCompressSound().
+convertsound.c:#include "compress.c"
+convertsound.c:int SNDCompressSound(SNDSoundStruct *s1, SNDSoundStruct **s2,
+convertsound.c:     * dspCompress compresses or decompresses based on the format code
+convertsound.c:    return compressDSP(s1, s2, bitFaithful, dropBits);
+performsound.c: *	02/15/90/mtm	Added support for SND_FORMAT_COMPRESSED.
+performsound.c: *	04/02/90/mtm	Added support for compressed recording from DSP
+performsound.c: *	04/06/90/mtm	Added stubs for playing on DSP, setting compression
+performsound.c: *			SND{Set,Get}CompressionOptions().  Implement playback
+performsound.c: *			Send sampleSkip=4 to DSP for 22K compression hack.
+performsound.c: *			FOR MODE_COMPRESSED_IN ONLY to get around driver bug
+performsound.c: *			Made MODE_COMPRESSED_IN optimizable, and don't send
+performsound.c: *	05/30/90/mtm	Back to stream control for compressed case now that
+performsound.c: *			decompression.
+performsound.c: *	06/16/90/mtm	Pad compressed recording to decompression dma size.
+performsound.c: *			Change compress.snd to ssicompress.snd.
+performsound.c: *			Change decompress.snd to sndoutdecompress.snd.
+performsound.c: *	09/28/90/mtm	Fix 22K mono compression (bug #9881).
+performsound.c: *	10/01/90/mtm	Dont' allow chained playback of compressed sounds (bug #7909).
+performsound.c: *	10/01/90/mtm	Don't pad compression, bump dma to the dsp count
+performsound.c: *	10/11/90/mtm	Only pad decompression to dma size
+performsound.c:#define	COMPRESSED_IN_REPLY_TIMEOUT (1000)
+performsound.c:#define	MODE_COMPRESSED_OUT		11
+performsound.c:#define	MODE_DSP_SSI_COMPRESSED_OUT	14
+performsound.c:#define	MODE_COMPRESSED_IN		258
+performsound.c:    if (mode == MODE_COMPRESSED_IN) {
+performsound.c:      case SND_FORMAT_COMPRESSED:
+performsound.c:      case SND_FORMAT_COMPRESSED_EMPHASIZED:
+performsound.c:	    mode = MODE_COMPRESSED_OUT;
+performsound.c:      case SND_FORMAT_COMPRESSED:
+performsound.c:      case SND_FORMAT_COMPRESSED_EMPHASIZED:
+performsound.c:	 * DSP compression code interprets this data so
+performsound.c:	    mode = MODE_DSP_SSI_COMPRESSED_OUT;
+performsound.c:      case SND_FORMAT_COMPRESSED:
+performsound.c:      case SND_FORMAT_COMPRESSED_EMPHASIZED:
+performsound.c:	    return MODE_COMPRESSED_IN;
+performsound.c:      case MODE_COMPRESSED_IN:
+performsound.c:	/* FIXME: must also check compression subheader parameters */
+performsound.c:      case MODE_DSP_SSI_COMPRESSED_OUT:
+performsound.c:      case MODE_COMPRESSED_OUT:
+performsound.c:		 mode == MODE_DSP_SSI_COMPRESSED_OUT)
+performsound.c:	else if (mode == MODE_DSP_DATA_IN || mode == MODE_COMPRESSED_IN ||
+performsound.c:#define	DECOMPRESS_DMA_SIZE	2048
+performsound.c:      case MODE_COMPRESSED_OUT:
+performsound.c:	dmasize = DECOMPRESS_DMA_SIZE;
+performsound.c:	err = findDSPcore("sndoutdecompress",&core);
+performsound.c:      case MODE_DSP_SSI_COMPRESSED_OUT:
+performsound.c:	dmasize = DECOMPRESS_DMA_SIZE;
+performsound.c:	err = findDSPcore("ssidecompress",&core);
+performsound.c:#define	COMPRESS_DMA_SIZE	512
+performsound.c:      case MODE_COMPRESSED_IN:
+performsound.c:				     COMPRESS_DMA_SIZE,
+performsound.c:	err = findDSPcore("ssicompress",&core);
+performsound.c:    int dmaBytes = DECOMPRESS_DMA_SIZE * 2;
+performsound.c:        s->dataFormat == SND_FORMAT_COMPRESSED  ||
+performsound.c:	s->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED)
+performsound.c:    if (s->dataFormat == SND_FORMAT_COMPRESSED ||
+performsound.c:	s->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED) {
+performsound.c:typedef struct {			/* Keep in sync with decompression.asm */
+performsound.c:} compressionSubHeader;
+performsound.c:    compressionSubHeader *subheader = NULL;
+performsound.c:    /* Currently, compress.asm has a max encode length of 256 */
+performsound.c:    if (pr->mode == MODE_COMPRESSED_IN) {
+performsound.c:        if (pr->work_count <= sizeof(compressionSubHeader))
+performsound.c:        subheader = (compressionSubHeader *)pr->work_ptr;
+performsound.c:	    if (write(pr->recordFD, (char *)pr->work_ptr, sizeof(compressionSubHeader))
+performsound.c:		!= sizeof(compressionSubHeader))
+performsound.c:        pr->work_ptr = (void *) ((char *)pr->work_ptr + sizeof(compressionSubHeader));
+performsound.c:	pr->work_count -= sizeof(compressionSubHeader);
+performsound.c:	pr->sound->dataSize = sizeof(compressionSubHeader);
+performsound.c:	if (pr->mode == MODE_COMPRESSED_IN) {
+performsound.c:        (pr->mode != MODE_DSP_SSI_COMPRESSED_OUT) &&
+performsound.c:	 pr->sound->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED)) {
+performsound.c:      case MODE_COMPRESSED_OUT:
+performsound.c:      case MODE_DSP_SSI_COMPRESSED_OUT:
+performsound.c:      case MODE_COMPRESSED_IN:
+performsound.c:	return record_samples(pr,reply_port,COMPRESS_DMA_SIZE);
+performsound.c:      case MODE_COMPRESSED_OUT:
+performsound.c:        (pr->mode != MODE_DSP_SSI_COMPRESSED_OUT) &&
+performsound.c:	 pr->sndInfo.dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED)) {
+performsound.c:      case MODE_COMPRESSED_IN:
+performsound.c:	    else if (pr->mode == MODE_COMPRESSED_IN)
+performsound.c:		reply_timeout = COMPRESSED_IN_REPLY_TIMEOUT;
+performsound.c:    compressionSubHeader *subheader = NULL;
+performsound.c:	  case MODE_COMPRESSED_IN:
+performsound.c:	    subheader = (compressionSubHeader *)((char *)pr->sound
+performsound.c:	    /* FIXME: for compressed to work with recording to file, you have
+performsound.c:	       This would work fine for the non-compressed case too. */
+performsound.c:	    if (pr->mode == MODE_COMPRESSED_IN) {
+performsound.c:		 * away if you write the compressed sound to a file.
+performsound.c:			    printf("Sound could not be compressed\n");
+performsound.c:       sound does not have to have this memory allocated.  If recording compressed,
+performsound.c:       enough data must be allocated for the compression subheader.  In fact, you
+performsound.c:       should call SNDAlloc() to get the default compression parameters.
+performsound.c:int SNDSetCompressionOptions(SNDSoundStruct *s, int bitFaithful, int dropBits)
+performsound.c:    compressionSubHeader *subheader = NULL;
+performsound.c:    if (s->dataFormat != SND_FORMAT_COMPRESSED &&
+performsound.c:        s->dataFormat != SND_FORMAT_COMPRESSED_EMPHASIZED)
+performsound.c:    if (s->dataSize < sizeof(compressionSubHeader))
+performsound.c:    subheader = (compressionSubHeader *)((char *)s + s->dataLocation);
+performsound.c:int SNDGetCompressionOptions(SNDSoundStruct *s, int *bitFaithful, int *dropBits)
+performsound.c:    compressionSubHeader *subheader = NULL;
+performsound.c:    if (s->dataFormat != SND_FORMAT_COMPRESSED &&
+performsound.c:        s->dataFormat != SND_FORMAT_COMPRESSED_EMPHASIZED)
+performsound.c:    if (s->dataSize < sizeof(compressionSubHeader))
+performsound.c:    subheader = (compressionSubHeader *)((char *)s + s->dataLocation);
+recordtest.c: * 	-c	record from dsp compressed
+recordtest.c: *	-2c	record from dsp compressed at 22K mono
+recordtest.c: * 	-b	record from dsp compressed, bit faithful
+recordtest.c: * 	03/30/90/mtm	Added support for recording from DSP, normal and compressed
+recordtest.c: * 	04/21/90/mtm    Added setting of compression options.
+recordtest.c: *	05/14/90/mtm	Added 22K mono compressed.  Cleaned up header and USAGE.
+recordtest.c:    int compress = FALSE;
+recordtest.c:        compress = TRUE;
+recordtest.c:    if ((dspData || compress) && strcmp(argv[2],"-e") == 0) {
+recordtest.c:	} else if (compress) {
+recordtest.c:			       SND_FORMAT_COMPRESSED,SND_RATE_LOW,1,0);
+recordtest.c:		err = SNDSetCompressionOptions(s[j],0,4);
+recordtest.c:		err = SNDGetCompressionOptions(s[j],&method,&dropBits);
+recordtest.c:			       SND_FORMAT_COMPRESSED,SND_RATE_HIGH,2,0);
+recordtest.c:		err = SNDSetCompressionOptions(s[j],bitfaithful,4);
+recordtest.c:		err = SNDGetCompressionOptions(s[j],&method,&dropBits);
+recordtest.c:	    printf("Compression options: bitFaithful=%d, dropBits=%d\n",
+recordtest.c:	} else if (compress && emphasize)
+recordtest.c:		s[j]->dataFormat = SND_FORMAT_COMPRESSED_EMPHASIZED;
+rfiletest.c: * 	-c	record from dsp compressed
+rfiletest.c: *	-2c	record from dsp compressed at 22K mono
+rfiletest.c: * 	-b	record from dsp compressed, bit faithful
+rfiletest.c:    int compress = FALSE;
+rfiletest.c:        compress = TRUE;
+rfiletest.c:    } else if (compress) {
+rfiletest.c:			   SND_FORMAT_COMPRESSED,SND_RATE_LOW,1,0);
+rfiletest.c:	    err = SNDSetCompressionOptions(s,0,4);
+rfiletest.c:	    err = SNDGetCompressionOptions(s,&method,&dropBits);
+rfiletest.c:			   SND_FORMAT_COMPRESSED,SND_RATE_HIGH,2,0);
+rfiletest.c:	    err = SNDSetCompressionOptions(s,bitfaithful,4);
+rfiletest.c:	    err = SNDGetCompressionOptions(s,&method,&dropBits);
+rfiletest.c:	printf("Compression options: bitFaithful=%d, dropBits=%d\n",
+squelch.c: * result is 8 kHz muLaw (compresssed)
+utilsound.c: *	04/06/90/mtm	Added support for SND_FORMAT_COMPRESSED*,
+utilsound.c: *	04/10/90/mtm	Set default compression options in SNDAlloc().
+utilsound.c:    } else if (s->dataFormat == SND_FORMAT_COMPRESSED ||
+utilsound.c:    	       s->dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED) {
+utilsound.c:    if (dataFormat == SND_FORMAT_COMPRESSED ||
+utilsound.c:        dataFormat == SND_FORMAT_COMPRESSED_EMPHASIZED)
+utilsound.c:	return SNDSetCompressionOptions(pS, 1, 4);	// bitFaithful, 4 dropped bits

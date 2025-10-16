@@ -1,0 +1,7 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(NEXT_ROOT)/NextDeveloper/Makefiles/app";
+    NEXTSTEP_BUILDTOOL = "/bin/gnumake";
+    NEXTSTEP_INSTALLDIR = "/usr/Devices";
+}

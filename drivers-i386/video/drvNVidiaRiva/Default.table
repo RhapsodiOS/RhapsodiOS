@@ -1,0 +1,14 @@
+"Title" = "NVIDIA Riva FB Adapter";
+"Bus Type" = "PCI";
+"Family" = "Display";
+"Version" = "1.00";
+"Auto Detect IDs" = "0x002010de 0x002810de 0x002910de 0x002a10de 0x002c10de 0x002d10de 0x00a010de";
+"Instance" = "0";
+"Driver Name" = "RivaFB";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"I/O Ports" = "";
+"Memory Maps" = "";
+"VGA Memory Maps" = "0xa0000-0xbffff 0xc0000-0xcffff";
+"Display Mode" = "Height: 768 Width: 1024 Refresh: 60Hz ColorSpace: RGB:888/32";
+

@@ -5,7 +5,7 @@
 "Instance" = "0";
 "Driver Name" = "EIDE";
 "Class Names" = "IdeDisk DualEide AtapiController";
-"Auto Detect IDs" = "0x12308086 0x70108086 0x71118086";
+"Auto Detect IDs" = "0x12308086 0x70108086 0x71118086 0x71128086 0x71138086";
 "IRQ Levels" = "14 15";
 "I/O Ports" = "0x1f0-0x1f7 0x170-0x177";
 "Boot Driver" = "Boot Driver";

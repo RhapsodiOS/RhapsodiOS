@@ -24,14 +24,15 @@
 /*
  * Copyright 1998 by Apple Computer, Inc., All rights reserved.
  *
- * Intel PIIX/PIIX3/PIIX4 PCI IDE controller.
+ * Intel PIIX/PIIX3/PIIX4/PIIX4E/PIIX4M PCI IDE controller.
  * PIIX = PCI-ISA-IDE-Xelerator. (USB also on newer controllers)
  *
  * Notes:
- * 
+ *
  * PIIX  introduced in the "Triton" chipset.
  * PIIX3 supports different timings for Master/Slave devices on both channels.
  * PIIX4 adds support for Ultra DMA/33.
+ * PIIX4E and PIIX4M are variants of PIIX4 with the same IDE capabilities.
  *
  * Be sure to download and read the PIIX errata from Intel's web site at
  * developer.intel.com. Even then, don't trust everything you read.
@@ -47,6 +48,8 @@
 #define PCI_ID_PIIX		0x12308086
 #define PCI_ID_PIIX3	0x70108086
 #define PCI_ID_PIIX4	0x71118086
+#define PCI_ID_PIIX4E	0x71128086
+#define PCI_ID_PIIX4M	0x71138086
 #define PCI_ID_NONE		0xffffffff
 
 /*

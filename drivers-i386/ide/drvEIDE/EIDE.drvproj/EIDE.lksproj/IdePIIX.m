@@ -180,6 +180,12 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		case PCI_ID_PIIX4:
 			deviceName = "PIIX4";
 			break;
+		case PCI_ID_PIIX4E:
+			deviceName = "PIIX4E";
+			break;
+		case PCI_ID_PIIX4M:
+			deviceName = "PIIX4M";
+			break;
 		default:
 			IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
 				[self name], _controllerID);
@@ -348,10 +354,14 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		case PCI_ID_PIIX:
 		case PCI_ID_PIIX3:
 		case PCI_ID_PIIX4:
+		case PCI_ID_PIIX4E:
+		case PCI_ID_PIIX4M:
 			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
 			if (_busMaster) {
 				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
-				if (_controllerID == PCI_ID_PIIX4)
+				if ((_controllerID == PCI_ID_PIIX4) ||
+				    (_controllerID == PCI_ID_PIIX4E) ||
+				    (_controllerID == PCI_ID_PIIX4M))
 					m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
 			}
 			break;
@@ -382,6 +392,8 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		case PCI_ID_PIIX:
 		case PCI_ID_PIIX3:
 		case PCI_ID_PIIX4:
+		case PCI_ID_PIIX4E:
+		case PCI_ID_PIIX4M:
 			[self PIIXInit];
 			[self PIIXResetTimings:[self deviceDescription]];
 			break;
@@ -607,16 +619,18 @@ IOMallocPage(int request_size, void ** actual_ptr,
 - (BOOL) setPCIControllerCapabilitiesForDrives:(driveInfo_t *)drives
 {
 	IOPCIConfigSpace configSpace;
-	
+
 	if (_controllerID == PCI_ID_NONE)
 		return NO;
-	
+
 	[self getPCIConfigSpace:&configSpace];
-	
+
 	switch (_controllerID) {
 		case PCI_ID_PIIX:
 		case PCI_ID_PIIX3:
 		case PCI_ID_PIIX4:
+		case PCI_ID_PIIX4E:
+		case PCI_ID_PIIX4M:
 			[self PIIXComputePCIConfigSpace:&configSpace forDrives:drives];
 			break;
 		default:

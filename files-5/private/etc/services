@@ -1,6 +1,6 @@
 #
 # Services Database
-# 
+#
 # Note that this file is consulted when the system is running in single-user
 # mode.  At other times this information is handled by lookupd.  By default,
 # lookupd gets information from NetInfo, so this file will not be consulted
@@ -18,7 +18,8 @@ netstat		15/tcp
 qotd		17/tcp		quote
 chargen		19/tcp		ttytst source
 chargen		19/udp		ttytst source
-ftp		21/tcp
+ftp		    21/tcp
+ssh         22/tcp                          # Secure Shell
 telnet		23/tcp
 smtp		25/tcp		mail
 time		37/tcp		timserver

@@ -107,7 +107,7 @@ else
   SunOS\ 4*) SFLAGS=${CFLAGS-"-O2 -PIC"}
 	     CFLAGS=${CFLAGS-"-O2"}
 	     LDSHARED=${LDSHARED-"ld"};;
-  UNIX_System_V\ 4.2.0) 
+  UNIX_System_V\ 4.2.0)
 	     SFLAGS=${CFLAGS-"-KPIC -O"}
 	     CFLAGS=${CFLAGS-"-O"}
 	     LDSHARED=${LDSHARED-"cc -G"};;
@@ -115,7 +115,12 @@ else
 	     SFLAGS=${CFLAGS-"-Kconform_pic -O"}
 	     CFLAGS=${CFLAGS-"-O"}
 	     LDSHARED=${LDSHARED-"cc -G"};;
-  Darwin*)   SFLAGS=${CFLAGS-"-O3"}
+  Darwin*) SFLAGS=${CFLAGS-"-O3"}
+	     CFLAGS=${CFLAGS-"-O3"}
+	     SHAREDEXT='.dylib'
+	     LDSHARED=${LDSHARED-'$(CC) $(CFLAGS) -dynamiclib -install_name "$(libdir)/$(SHAREDLIB).$(VER)$(SHAREDEXT)" -current_version $(VER) -compatibility_version 1'}
+	     LDTEST=NO;;
+  Rhapsody*) SFLAGS=${CFLAGS-"-O3"}
 	     CFLAGS=${CFLAGS-"-O3"}
 	     SHAREDEXT='.dylib'
 	     LDSHARED=${LDSHARED-'$(CC) $(CFLAGS) -dynamiclib -install_name "$(libdir)/$(SHAREDLIB).$(VER)$(SHAREDEXT)" -current_version $(VER) -compatibility_version 1'}
@@ -176,7 +181,7 @@ cat > $test.c <<EOF
 #include <sys/mman.h>
 #include <sys/stat.h>
 caddr_t hello() {
-  return mmap((caddr_t)0, (off_t)0, PROT_READ, MAP_SHARED, 0, (off_t)0); 
+  return mmap((caddr_t)0, (off_t)0, PROT_READ, MAP_SHARED, 0, (off_t)0);
 }
 EOF
 if test "`($CC -c $CFLAGS $test.c) 2>&1`" = ""; then

@@ -71,6 +71,7 @@ test: all
 	fi
 
 libz.a: $(OBJS) $(OBJA)
+	rm -f $@
 	$(AR) $@ $(OBJS) $(OBJA)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 

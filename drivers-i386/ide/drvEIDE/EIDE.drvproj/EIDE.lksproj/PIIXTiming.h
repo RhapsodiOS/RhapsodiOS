@@ -48,7 +48,7 @@ typedef struct {
 } PIIXTiming;
 
 #define INV		255			// invalid mode
-#define PIIX_TIMING_TABLE_SIZE	6
+#define PIIX_TIMING_TABLE_SIZE	7
 
 static const
 PIIXTiming PIIXTimingTable[] = {
@@ -58,7 +58,8 @@ PIIXTiming PIIXTimingTable[] = {
 	{2,     2,     INV,   4, 4, 240},
 	{3,     INV,   1,     3, 3, 180},
     {4,     INV,   2,     3, 1, 120},
-	{5,     INV,   2,     3, 1, 120},	// Isn't this 90ns?
+	{5,     INV,   INV,   3, 1, 90},	// PIO Mode 5 (90ns cycle time)
+	{INV,   INV,   2,     3, 1, 120},	// MW DMA Mode 2 (120ns)
 };
 
 /*

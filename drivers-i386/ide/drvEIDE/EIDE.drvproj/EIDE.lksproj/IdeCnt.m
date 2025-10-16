@@ -338,7 +338,9 @@ static unsigned short lastCommand = 0;
 			
 	if ((_controllerID == PCI_ID_PIIX) ||
 		(_controllerID == PCI_ID_PIIX3) ||
-		(_controllerID == PCI_ID_PIIX4)) {
+		(_controllerID == PCI_ID_PIIX4) ||
+		(_controllerID == PCI_ID_PIIX4E) ||
+		(_controllerID == PCI_ID_PIIX4M)) {
 		if (_prdTable.ptr)
 			IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
 	}

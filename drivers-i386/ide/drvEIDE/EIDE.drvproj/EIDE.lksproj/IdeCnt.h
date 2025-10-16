@@ -189,6 +189,7 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
 	memStruct_t			_prdTable;			// descriptor table memory
 	unsigned int		_tablePhyAddr;		// table's physical address
 	BOOL				_busMaster;			// YES for bus master controllers
+	BOOL				_has80WireCable;	// YES for 80-wire cable (required for UDMA > Mode 2)
 	enum {
 	 	PCI_CHANNEL_PRIMARY,				// 0x1f0, 14
 		PCI_CHANNEL_SECONDARY,				// 0x170, 15

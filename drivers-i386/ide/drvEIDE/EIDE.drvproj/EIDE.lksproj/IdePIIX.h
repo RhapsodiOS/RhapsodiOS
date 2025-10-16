@@ -93,6 +93,8 @@
 
 - (void) PIIXInit;
 
+- (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc;
+
 @end
 
 #endif	/* _BSD_DEV_IDEPIIX_H */

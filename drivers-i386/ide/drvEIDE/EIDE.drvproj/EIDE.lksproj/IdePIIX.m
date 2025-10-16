@@ -337,7 +337,18 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 * Revert to default timing.
 	 */
 	[self PIIXResetTimings:devDesc];
-	
+
+	/*
+	 * Detect 80-wire cable for UDMA modes > 2
+	 */
+	if ((_controllerID == PCI_ID_PIIX4) ||
+	    (_controllerID == PCI_ID_PIIX4E) ||
+	    (_controllerID == PCI_ID_PIIX4M)) {
+		_has80WireCable = [self PIIXDetect80WireCable:devDesc];
+	} else {
+		_has80WireCable = NO;
+	}
+
     return YES;
 }
 
@@ -1208,8 +1219,19 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	}
 	else {
 		[self getIdeRegisters:ideRegs Print:NULL];
-		IOLog("%s: PIIX status:0x%02x error code:%d\n",
-			[self name], piix_status.byte, rtn);
+		IOLog("%s: Bus master DMA error:\n", [self name]);
+		IOLog("%s:   PIIX status: 0x%02x (Active:%d Error:%d Interrupt:%d)\n",
+			[self name], piix_status.byte,
+			piix_status.bits.bmidea ? 1 : 0,
+			piix_status.bits.err ? 1 : 0,
+			piix_status.bits.ideints ? 1 : 0);
+		IOLog("%s:   IDE return code: %d\n", [self name], rtn);
+		if (piix_status.bits.err)
+			IOLog("%s:   DMA error bit set - possible memory abort or invalid PRD\n",
+				[self name]);
+		if (!piix_status.bits.ideints)
+			IOLog("%s:   IDE interrupt not received - possible drive timeout\n",
+				[self name]);
 		rtn = IDER_CMD_ERROR;
 	}
 
@@ -1329,9 +1351,20 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	}
 	else {
 		[self getIdeRegisters:NULL Print:"ATAPI DMA"];
-		IOLog("%s: PIIX status:0x%02x error code:%d\n",
-			[self name], piix_status.byte, rtn);
-		IOLog("%s: transfer size: %d\n", [self name], atapiIoReq->maxTransfer);
+		IOLog("%s: ATAPI bus master DMA error:\n", [self name]);
+		IOLog("%s:   PIIX status: 0x%02x (Active:%d Error:%d Interrupt:%d)\n",
+			[self name], piix_status.byte,
+			piix_status.bits.bmidea ? 1 : 0,
+			piix_status.bits.err ? 1 : 0,
+			piix_status.bits.ideints ? 1 : 0);
+		IOLog("%s:   IDE return code: %d\n", [self name], rtn);
+		IOLog("%s:   Transfer size: %d bytes\n", [self name], atapiIoReq->maxTransfer);
+		if (piix_status.bits.err)
+			IOLog("%s:   DMA error bit set - possible memory abort or invalid PRD\n",
+				[self name]);
+		if (!piix_status.bits.ideints)
+			IOLog("%s:   IDE interrupt not received - possible drive timeout\n",
+				[self name]);
 		[self atapiSoftReset:_driveNum];
 		atapiIoReq->scsiStatus = STAT_CHECK;
 		return SR_IOST_CHKSNV;
@@ -1340,6 +1373,43 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	atapiIoReq->bytesTransferred = atapiIoReq->maxTransfer;
 	atapiIoReq->scsiStatus = STAT_GOOD;
 	return SR_IOST_GOOD;
+}
+
+/*
+ * Method: PIIXDetect80WireCable
+ *
+ * Purpose:
+ * Detect the presence of an 80-wire cable. This is required for UDMA
+ * modes greater than Mode 2 (ATA/33). Unfortunately, PIIX4 does not
+ * provide a hardware mechanism to detect cable type. We assume a
+ * 40-wire cable by default for safety.
+ *
+ * Note:
+ * Some BIOS implementations may set a bit in a vendor-specific register,
+ * but this is not standardized across all PIIX4 implementations.
+ * Later chipsets (ICH and newer) provide proper cable detection via
+ * the UDMA Control Register.
+ *
+ * For now, we conservatively assume 40-wire cable, which limits UDMA
+ * to Mode 2 (33 MB/s). Users can potentially override this via a
+ * configuration option if needed.
+ */
+- (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc
+{
+	/*
+	 * PIIX4/PIIX4E/PIIX4M do not have a standard cable detection mechanism.
+	 * We conservatively assume 40-wire cable to prevent data corruption
+	 * that could occur if we incorrectly enable UDMA Mode 4/5 with a
+	 * 40-wire cable.
+	 *
+	 * This limits UDMA to Mode 2 (ATA/33), which is safe for both
+	 * 40-wire and 80-wire cables.
+	 */
+	if (_ide_debug) {
+		IOLog("%s: Cable detection: assuming 40-wire cable (UDMA limited to Mode 2)\n",
+			[self name]);
+	}
+	return NO;
 }
 
 @end

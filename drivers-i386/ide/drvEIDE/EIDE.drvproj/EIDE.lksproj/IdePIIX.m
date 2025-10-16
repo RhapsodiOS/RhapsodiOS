@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * "Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,14 +18,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License."
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
  * Copyright 1997-1998 by Apple Computer, Inc., All rights reserved.
  * Copyright 1994-1997 NeXT Software, Inc., All rights reserved.
  *
- * IdePIIX.m - PIIX/PCI specific ATA controller initialization module. 
+ * IdePIIX.m - PIIX/PCI specific ATA controller initialization module.
  *
  * 23-Jan-1998 Joe Liu at Apple
  *  Added support for PIIX/PIIX3/PIIX4 PCI IDE controllers.
@@ -33,7 +33,7 @@
  * 05-Apr-1995	Rakesh Dubey at NeXT
  *	Fixed some bugs in PCI support.
  * 03-Oct-1994 	Rakesh Dubey at NeXT
- *      Created. 
+ *      Created.
  */
 
 #import "IdeCnt.h"
@@ -88,7 +88,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 				 int * actual_size)
 {
     void * mem_ptr;
-    
+
 	/*
 	 * Minimize memory use by first trying to allocate the requested size
 	 * without any padding.
@@ -97,7 +97,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	mem_ptr = IOMalloc(*actual_size);
 	if (mem_ptr == NULL)
 		return NULL;
-	
+
 	/*
 	 * Check alignment of this page.
 	 */
@@ -106,11 +106,11 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		*actual_size = round_page(request_size) + PAGE_SIZE;
 		mem_ptr = IOMalloc(*actual_size);
 		if (mem_ptr == NULL)
-			return NULL;		
+			return NULL;
 	}
 
 	*actual_ptr = mem_ptr;
-	return ((void *)round_page(mem_ptr));		
+	return ((void *)round_page(mem_ptr));
 }
 
 @implementation IdeController(PIIX)
@@ -143,7 +143,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	_ideChannel   = PCI_CHANNEL_OTHER;
 	_busMaster    = NO;
 	bzero((char *)&_prdTable, sizeof(_prdTable));
-	
+
 	/*
 	 * Make sure we are dealing with a PCI config table by reading the
 	 * BUS_TYPE key.
@@ -154,7 +154,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		// Not PCI, return YES to continue probing for non PCI controllers.
 		return YES;
     }
-    
+
 	/*
 	 * Read PCI config space for VendorID and DeviceID.
 	 */
@@ -168,7 +168,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
     if (rtn != IO_R_SUCCESS)	{
     	IOLog("%s: PCI config space access error %d\n", [self name], rtn);
 		return NO;
-    }	  
+    }
 
 	switch (_controllerID) {
 		case PCI_ID_PIIX:
@@ -185,6 +185,30 @@ IOMallocPage(int request_size, void ** actual_ptr,
 			break;
 		case PCI_ID_PIIX4M:
 			deviceName = "PIIX4M";
+			break;
+		case PCI_ID_ICH:
+			deviceName = "ICH";
+			break;
+		case PCI_ID_ICH0:
+			deviceName = "ICH0";
+			break;
+		case PCI_ID_ICH2:
+			deviceName = "ICH2-M";
+			break;
+		case PCI_ID_ICH2_1:
+			deviceName = "ICH2";
+			break;
+		case PCI_ID_ICH3:
+			deviceName = "ICH3-M";
+			break;
+		case PCI_ID_ICH3_1:
+			deviceName = "ICH3";
+			break;
+		case PCI_ID_ICH4:
+			deviceName = "ICH4-M";
+			break;
+		case PCI_ID_ICH4_1:
+			deviceName = "ICH4";
 			break;
 		default:
 			IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
@@ -232,7 +256,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		default:
 			_ideChannel = PCI_CHANNEL_OTHER;
 	}
-	
+
 	/*
 	 * PIIX configured on a weird location, cannot continue.
 	 *
@@ -249,7 +273,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 			[devDesc portRangeList]->size);
 		return NO;
 	}
-	
+
 	/*
 	 * Verify our IRQ assignment.
 	 *
@@ -259,14 +283,14 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 */
 	{
 	unsigned int irq;
-	
+
 	irq = (_ideChannel == PCI_CHANNEL_PRIMARY) ? PIIX_P_IRQ : PIIX_S_IRQ;
 	if ([devDesc interrupt] != irq) {
 		IOLog("%s: Invalid IRQ: %d\n", [self name], [devDesc interrupt]);
 		return NO;
 	}
 	}
-	
+
 	/*
 	 * Check the I/O Space Enable bit in the PCI command register.
 	 *
@@ -277,16 +301,49 @@ IOMallocPage(int request_size, void ** actual_ptr,
     if (rtn != IO_R_SUCCESS)	{
     	IOLog("%s: PCI config space access error %d\n", [self name], rtn);
 		return NO;
-    }	
-	if (!(configReg & 0x0001)) {
+    }
+	if (!(configReg & PCI_COMMAND_IO_ENABLE)) {
 		IOLog("%s: PCI IDE controller is not enabled\n", [self name]);
 		return NO;
 	}
-	if (configReg & 0x0004)
+	if (configReg & PCI_COMMAND_BUS_MASTER)
 		_busMaster = YES;
 	else
 		_busMaster = NO;
-	
+
+	/*
+	 * Enable PCI INTx interrupts if disabled by BIOS.
+	 *
+	 * Some BIOSes (particularly on ICH chipsets) disable legacy INTx
+	 * interrupts via the PCI_COMMAND_INTX_DISABLE bit (bit 10) in the
+	 * PCI Command register. This is documented in Linux ata_piix as the
+	 * PIIX_FLAG_CHECKINTR workaround.
+	 *
+	 * If this bit is set, no interrupts will be delivered to the IDE driver,
+	 * causing all operations to timeout.
+	 */
+	if ((_controllerID == PCI_ID_ICH) ||
+	    (_controllerID == PCI_ID_ICH0) ||
+	    (_controllerID == PCI_ID_ICH2) ||
+	    (_controllerID == PCI_ID_ICH2_1) ||
+	    (_controllerID == PCI_ID_ICH3) ||
+	    (_controllerID == PCI_ID_ICH3_1) ||
+	    (_controllerID == PCI_ID_ICH4) ||
+	    (_controllerID == PCI_ID_ICH4_1)) {
+
+		if (configReg & PCI_COMMAND_INTX_DISABLE) {
+			IOLog("%s: PCI INTx interrupts disabled by BIOS, enabling...\n",
+				[self name]);
+			configReg &= ~PCI_COMMAND_INTX_DISABLE;
+			rtn = [self_class setPCIConfigData:configReg atRegister:PIIX_PCICMD
+					withDeviceDescription:devDesc];
+			if (rtn != IO_R_SUCCESS) {
+				IOLog("%s: WARNING: Failed to enable PCI INTx interrupts\n",
+					[self name]);
+			}
+		}
+	}
+
 	/*
 	 * Fetch the corresponding primary/secondary IDETIM register and
 	 * verify that the individual channels are enabled.
@@ -300,7 +357,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	if (_ideChannel == PCI_CHANNEL_SECONDARY)
 		configReg >>= 16;	// PIIX_IDETIM + 2 for secondary channel
 	idetim.word = (u_short)configReg;
-	
+
 	if (!idetim.bits.ide) {
 		IOLog("%s: %s PCI IDE channel is not enabled\n",
 			[self name],
@@ -309,7 +366,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	}
 
 	/*
-	 * Register and record the location of our Bus Master 
+	 * Register and record the location of our Bus Master
 	 * interface registers.
 	 */
 	if (_busMaster && ([self PIIXRegisterBMRange:devDesc] == NO)) {
@@ -317,7 +374,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 			[self name]);
 		_busMaster = NO;
 	}
-	
+
 	/*
 	 * Allocate a 4K-page (perhaps 8K) aligned page of memory for
 	 * the PRD table.
@@ -328,9 +385,19 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		_busMaster = NO;
 	}
 
+	/*
+	 * Check for Intel 450NX chipset - disable DMA if found.
+	 * The 450NX has known DMA issues with PIIX controllers.
+	 */
+	if (_busMaster && [self PIIXCheck450NX]) {
+		IOLog("%s: Intel 450NX chipset detected - disabling DMA for stability\n",
+			[self name]);
+		_busMaster = NO;
+	}
+
 #if 0
 	IOLog("%s: PCI bus master DMA: %s\n",
-		[self name], busMaster ? "Enabled" : "Disabled");
+		[self name], _busMaster ? "Enabled" : "Disabled");
 #endif
 
 	/*
@@ -340,10 +407,19 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	/*
 	 * Detect 80-wire cable for UDMA modes > 2
+	 * PIIX4 and ICH chipsets support cable detection
 	 */
 	if ((_controllerID == PCI_ID_PIIX4) ||
 	    (_controllerID == PCI_ID_PIIX4E) ||
-	    (_controllerID == PCI_ID_PIIX4M)) {
+	    (_controllerID == PCI_ID_PIIX4M) ||
+	    (_controllerID == PCI_ID_ICH) ||
+	    (_controllerID == PCI_ID_ICH0) ||
+	    (_controllerID == PCI_ID_ICH2) ||
+	    (_controllerID == PCI_ID_ICH2_1) ||
+	    (_controllerID == PCI_ID_ICH3) ||
+	    (_controllerID == PCI_ID_ICH3_1) ||
+	    (_controllerID == PCI_ID_ICH4) ||
+	    (_controllerID == PCI_ID_ICH4_1)) {
 		_has80WireCable = [self PIIXDetect80WireCable:devDesc];
 	} else {
 		_has80WireCable = NO;
@@ -364,16 +440,61 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	switch (_controllerID) {
 		case PCI_ID_PIIX:
 		case PCI_ID_PIIX3:
+			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
+			if (_busMaster) {
+				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
+			}
+			break;
+
 		case PCI_ID_PIIX4:
 		case PCI_ID_PIIX4E:
 		case PCI_ID_PIIX4M:
 			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
 			if (_busMaster) {
 				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
-				if ((_controllerID == PCI_ID_PIIX4) ||
-				    (_controllerID == PCI_ID_PIIX4E) ||
-				    (_controllerID == PCI_ID_PIIX4M))
+				/*
+				 * PIIX4 supports UDMA/33 (Mode 2) by default.
+				 * We conservatively limit to Mode 2 for safety.
+				 */
+				m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
+			}
+			break;
+
+		case PCI_ID_ICH:
+		case PCI_ID_ICH0:
+			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
+			if (_busMaster) {
+				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
+				/*
+				 * ICH/ICH0 support UDMA/66 (Mode 4) with 80-wire cable
+				 * Fall back to UDMA/33 (Mode 2) with 40-wire cable
+				 */
+				if (_has80WireCable) {
+					m->mode.udma = ata_mode_to_mask(ATA_MODE_4);
+				} else {
 					m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
+				}
+			}
+			break;
+
+		case PCI_ID_ICH2:
+		case PCI_ID_ICH2_1:
+		case PCI_ID_ICH3:
+		case PCI_ID_ICH3_1:
+		case PCI_ID_ICH4:
+		case PCI_ID_ICH4_1:
+			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
+			if (_busMaster) {
+				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
+				/*
+				 * ICH2/3/4 support UDMA/100 (Mode 5) with 80-wire cable
+				 * Fall back to UDMA/33 (Mode 2) with 40-wire cable
+				 */
+				if (_has80WireCable) {
+					m->mode.udma = ata_mode_to_mask(ATA_MODE_5);
+				} else {
+					m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
+				}
 			}
 			break;
 	}
@@ -405,6 +526,14 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		case PCI_ID_PIIX4:
 		case PCI_ID_PIIX4E:
 		case PCI_ID_PIIX4M:
+		case PCI_ID_ICH:
+		case PCI_ID_ICH0:
+		case PCI_ID_ICH2:
+		case PCI_ID_ICH2_1:
+		case PCI_ID_ICH3:
+		case PCI_ID_ICH3_1:
+		case PCI_ID_ICH4:
+		case PCI_ID_ICH4_1:
 			[self PIIXInit];
 			[self PIIXResetTimings:[self deviceDescription]];
 			break;
@@ -434,7 +563,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	/*
 	 * Read the PIIX_IDETIM register.
-	 */	
+	 */
 	rtn = [[self class] getPCIConfigData:&timings.dword
 		atRegister:PIIX_IDETIM
 		withDeviceDescription:devDesc];
@@ -450,7 +579,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	/*
 	 * Set compatible timing.
 	 * Disable UDDMA and set its timing registers to the slowest mode.
-	 */	
+	 */
 	switch (_ideChannel) {
 		case PCI_CHANNEL_PRIMARY:
 			timings.tim.pri.word &= 0x8000;
@@ -463,7 +592,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		default:
 			return;
 	}
-	
+
 	/*
 	 * Write the modified PCI config space registers back.
 	 */
@@ -491,14 +620,14 @@ IOMallocPage(int request_size, void ** actual_ptr,
     IOReturn 		rtn;
 	unsigned long	bmiba;
 	IORange 		io_range[2];
-	
+
     rtn = [[self class] getPCIConfigData:&bmiba atRegister:PIIX_BMIBA
 		withDeviceDescription:devDesc];
     if (rtn != IO_R_SUCCESS) {
     	IOLog("%s: PCI config space access error %d\n", [self name], rtn);
 		return NO;
     }
-	
+
 	/*
 	 * Sanity check. Make sure this is an I/O range.
 	 */
@@ -507,7 +636,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 			[self name], PIIX_BMIBA, bmiba);
 		return NO;
 	}
-	
+
 	_bmRegs = bmiba & PIIX_BM_MASK;
 
 	if (_bmRegs == 0)	// uninitialized range
@@ -515,7 +644,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	if (_ideChannel == PCI_CHANNEL_SECONDARY)
 		_bmRegs += PIIX_BM_OFFSET;
-	
+
 	/*
 	 * Add this range to our device description's port range list.
 	 */
@@ -526,7 +655,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		IOLog("%s: setPortRangeList failed\n", [self name]);
 		return NO;
 	}
-	
+
 	return YES;
 }
 
@@ -554,7 +683,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 */
     if (_prdTable.ptr == NULL)
 		return NO;
-	
+
 	/*
 	 * cache the physical address of the descriptor table to _tablePhyAddr.
 	 */
@@ -599,8 +728,8 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	IOLog("%s: Drive 1: ISP:%d Clks RCT:%d Clks\n", [self name],
 		tim.bits.sitre ?
 			(primary ?
-				PIIX_ISP_TO_CLK(stim.bits.pisp1) : 
-				PIIX_ISP_TO_CLK(stim.bits.sisp1)) : 
+				PIIX_ISP_TO_CLK(stim.bits.pisp1) :
+				PIIX_ISP_TO_CLK(stim.bits.sisp1)) :
 			PIIX_ISP_TO_CLK(tim.bits.isp),
 		tim.bits.sitre ?
 			(primary ?
@@ -642,6 +771,22 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		case PCI_ID_PIIX4:
 		case PCI_ID_PIIX4E:
 		case PCI_ID_PIIX4M:
+		case PCI_ID_ICH:
+		case PCI_ID_ICH0:
+		case PCI_ID_ICH2:
+		case PCI_ID_ICH2_1:
+		case PCI_ID_ICH3:
+		case PCI_ID_ICH3_1:
+		case PCI_ID_ICH4:
+		case PCI_ID_ICH4_1:
+			/*
+			 * Configure UDMA clock for ICH chipsets (must be done first)
+			 */
+			[self PIIXConfigureUDMAClock:drives];
+
+			/*
+			 * Configure timing registers
+			 */
 			[self PIIXComputePCIConfigSpace:&configSpace forDrives:drives];
 			break;
 		default:
@@ -650,6 +795,120 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	[self setPCIConfigSpace:&configSpace];
     return YES;
+}
+
+/*
+ * Method: PIIXConfigureUDMAClock
+ *
+ * Purpose:
+ * Configure the UDMA clock frequency for ICH chipsets in the IOCFG register.
+ * This is necessary for UDMA modes > 2 (UDMA/66 and UDMA/100).
+ *
+ * PIIX4 does not have clock selection - it's fixed at 33MHz.
+ * ICH chipsets use bits 8-11 of IOCFG register for clock selection.
+ */
+- (void) PIIXConfigureUDMAClock:(driveInfo_t *)drv
+{
+	IOPCIDeviceDescription *devDesc = [self deviceDescription];
+	IOReturn rtn;
+	unsigned long iocfg;
+	unsigned long clock_mask, clock_value;
+	u_char drive0_clk = 0, drive1_clk = 0;
+	const id self_class = [self class];
+
+	/*
+	 * Only ICH chipsets need clock configuration.
+	 * PIIX4 uses fixed 33MHz clock.
+	 */
+	if ((_controllerID != PCI_ID_ICH) &&
+	    (_controllerID != PCI_ID_ICH0) &&
+	    (_controllerID != PCI_ID_ICH2) &&
+	    (_controllerID != PCI_ID_ICH2_1) &&
+	    (_controllerID != PCI_ID_ICH3) &&
+	    (_controllerID != PCI_ID_ICH3_1) &&
+	    (_controllerID != PCI_ID_ICH4) &&
+	    (_controllerID != PCI_ID_ICH4_1)) {
+		return;
+	}
+
+	/*
+	 * Determine required clock for each drive based on its UDMA mode
+	 */
+	if (drv[0].transferType == IDE_TRANSFER_ULTRA_DMA) {
+		drive0_clk = PIIXGetUDMAClockSelect(ata_mode_to_num(drv[0].transferMode));
+	}
+	if (drv[1].transferType == IDE_TRANSFER_ULTRA_DMA) {
+		drive1_clk = PIIXGetUDMAClockSelect(ata_mode_to_num(drv[1].transferMode));
+	}
+
+	/*
+	 * Use the faster clock if drives have different requirements
+	 */
+	u_char required_clock = (drive0_clk > drive1_clk) ? drive0_clk : drive1_clk;
+
+	/*
+	 * Read current IOCFG register
+	 */
+	rtn = [self_class getPCIConfigData:&iocfg atRegister:PIIX_IOCFG
+		withDeviceDescription:devDesc];
+	if (rtn != IO_R_SUCCESS) {
+		IOLog("%s: UDMA clock config: failed to read IOCFG register\n", [self name]);
+		return;
+	}
+
+	/*
+	 * Determine mask and value based on channel
+	 */
+	switch (_ideChannel) {
+		case PCI_CHANNEL_PRIMARY:
+			clock_mask = PIIX_IOCFG_PRI_CLK_MASK;
+			switch (required_clock) {
+				case 2:  // 100MHz
+					clock_value = PIIX_IOCFG_PRI_CLK_100;
+					break;
+				case 1:  // 66MHz
+					clock_value = PIIX_IOCFG_PRI_CLK_66;
+					break;
+				default:  // 33MHz
+					clock_value = PIIX_IOCFG_PRI_CLK_33;
+			}
+			break;
+		case PCI_CHANNEL_SECONDARY:
+			clock_mask = PIIX_IOCFG_SEC_CLK_MASK;
+			switch (required_clock) {
+				case 2:  // 100MHz
+					clock_value = PIIX_IOCFG_SEC_CLK_100;
+					break;
+				case 1:  // 66MHz
+					clock_value = PIIX_IOCFG_SEC_CLK_66;
+					break;
+				default:  // 33MHz
+					clock_value = PIIX_IOCFG_SEC_CLK_33;
+			}
+			break;
+		default:
+			return;
+	}
+
+	/*
+	 * Update IOCFG register
+	 */
+	iocfg = (iocfg & ~clock_mask) | clock_value;
+
+	rtn = [self_class setPCIConfigData:iocfg atRegister:PIIX_IOCFG
+		withDeviceDescription:devDesc];
+	if (rtn != IO_R_SUCCESS) {
+		IOLog("%s: UDMA clock config: failed to write IOCFG register\n", [self name]);
+		return;
+	}
+
+	if (_ide_debug) {
+		const char *clock_name[] = {"33MHz", "66MHz", "100MHz"};
+		IOLog("%s: UDMA clock configured to %s for %s channel\n",
+			[self name],
+			clock_name[required_clock],
+			(_ideChannel == PCI_CHANNEL_PRIMARY) ? "Primary" : "Secondary");
+	}
 }
 
 /*
@@ -673,7 +932,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	if (MAX_IDE_DRIVES != 2)
 		return;
-	
+
 	switch (_ideChannel) {
 		case PCI_CHANNEL_PRIMARY:
 			idetim = (piix_idetim_u	*)&pci_space[PIIX_IDETIM];
@@ -691,15 +950,15 @@ IOMallocPage(int request_size, void ** actual_ptr,
 
 	modeDrive0 = ata_mode_to_num(drv[0].transferMode);
 	modeDrive1 = ata_mode_to_num(drv[1].transferMode);
-	
+
 	/* Enable slave timing if timings are different and
 	 * a slave device is present.
 	 */
 	idetim->bits.sitre = 0;
 	isp = PIIXGetISPForMode(modeDrive0, drv[0].transferType);
 	rct = PIIXGetRCTForMode(modeDrive0, drv[0].transferType);
-	
-	if ((PIIXGetCycleForMode(modeDrive0, drv[0].transferType) != 
+
+	if ((PIIXGetCycleForMode(modeDrive0, drv[0].transferType) !=
 		PIIXGetCycleForMode(modeDrive1, drv[1].transferType)) &&
 		(drv[1].ideInfo.type != 0)) {
 		if (_controllerID == PCI_ID_PIIX) {
@@ -710,12 +969,12 @@ IOMallocPage(int request_size, void ** actual_ptr,
 			isp = MAX(PIIXGetISPForMode(modeDrive0, drv[0].transferType),
 				      PIIXGetISPForMode(modeDrive1, drv[1].transferType));
 			rct = MAX(PIIXGetRCTForMode(modeDrive0, drv[0].transferType),
-				      PIIXGetRCTForMode(modeDrive1, drv[1].transferType));			
+				      PIIXGetRCTForMode(modeDrive1, drv[1].transferType));
 		}
 		else
 			idetim->bits.sitre = 1;		// enable slave timing
 	}
-	
+
 	/*
 	 * Reset all performance tuning bits and disable UDMA.
 	 */
@@ -742,15 +1001,36 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 * Set timings for Drive 0 (Master drive).
 	 */
 	if (drv[0].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive0 > 2) modeDrive0 = 2;
+		/*
+		 * Limit UDMA mode based on controller type:
+		 * - PIIX4: Mode 2 (UDMA/33)
+		 * - ICH/ICH0: Mode 4 (UDMA/66)
+		 * - ICH2+: Mode 5 (UDMA/100)
+		 */
+		unsigned char maxMode = 2;  /* PIIX4 default */
+		if ((_controllerID == PCI_ID_ICH) || (_controllerID == PCI_ID_ICH0)) {
+			maxMode = 4;
+		} else if ((_controllerID == PCI_ID_ICH2) || (_controllerID == PCI_ID_ICH2_1) ||
+		           (_controllerID == PCI_ID_ICH3) || (_controllerID == PCI_ID_ICH3_1) ||
+		           (_controllerID == PCI_ID_ICH4) || (_controllerID == PCI_ID_ICH4_1)) {
+			maxMode = 5;
+		}
+		if (modeDrive0 > maxMode) modeDrive0 = maxMode;
+
+		/*
+		 * Get proper timing bits from table.
+		 * The 2-bit UDMATIM field encodes timing dividers, not raw mode numbers.
+		 */
+		u_char timing_bits = PIIXGetUDMATimingBits(modeDrive0);
+
 		switch (_ideChannel) {
 			case PCI_CHANNEL_PRIMARY:
 				udmactl->bits.psde0 = 1;
-				udmatim->bits.pct0 = modeDrive0;
+				udmatim->bits.pct0 = timing_bits;
 				break;
 			case PCI_CHANNEL_SECONDARY:
 				udmactl->bits.ssde0 = 1;
-				udmatim->bits.sct0 = modeDrive0;
+				udmatim->bits.sct0 = timing_bits;
 				break;
 			default:
 				break;
@@ -758,19 +1038,33 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	}
 	idetim->bits.isp = isp;
 	idetim->bits.rct = rct;
-	
+
 	/* Set timings for drive 1 (Slave drive).
 	 */
 	if (drv[1].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive1 > 2) modeDrive1 = 2;
+		unsigned char maxMode = 2;  /* PIIX4 default */
+		if ((_controllerID == PCI_ID_ICH) || (_controllerID == PCI_ID_ICH0)) {
+			maxMode = 4;
+		} else if ((_controllerID == PCI_ID_ICH2) || (_controllerID == PCI_ID_ICH2_1) ||
+		           (_controllerID == PCI_ID_ICH3) || (_controllerID == PCI_ID_ICH3_1) ||
+		           (_controllerID == PCI_ID_ICH4) || (_controllerID == PCI_ID_ICH4_1)) {
+			maxMode = 5;
+		}
+		if (modeDrive1 > maxMode) modeDrive1 = maxMode;
+
+		/*
+		 * Get proper timing bits from table.
+		 */
+		u_char timing_bits = PIIXGetUDMATimingBits(modeDrive1);
+
 		switch (_ideChannel) {
 			case PCI_CHANNEL_PRIMARY:
 				udmactl->bits.psde1 = 1;
-				udmatim->bits.pct1 = modeDrive1;
+				udmatim->bits.pct1 = timing_bits;
 				break;
 			case PCI_CHANNEL_SECONDARY:
 				udmactl->bits.ssde1 = 1;
-				udmatim->bits.sct1 = modeDrive1;
+				udmatim->bits.sct1 = timing_bits;
 				break;
 			default:
 				break;
@@ -778,7 +1072,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	}
 	if (idetim->bits.sitre) {
 		isp = PIIXGetISPForMode(modeDrive1, drv[1].transferType);
-		rct = PIIXGetRCTForMode(modeDrive1, drv[1].transferType);	
+		rct = PIIXGetRCTForMode(modeDrive1, drv[1].transferType);
 		if (_ideChannel == PCI_CHANNEL_PRIMARY) {
 			sidetim->bits.pisp1 = isp;
 			sidetim->bits.prct1 = rct;
@@ -809,7 +1103,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	if (drv[1].transferType != IDE_TRANSFER_PIO)
 		idetim->bits.dte1 = 1;
 
-	[self PIIXReportTimings:*idetim slaveTiming:*sidetim 
+	[self PIIXReportTimings:*idetim slaveTiming:*sidetim
 		isPrimary:(_ideChannel == PCI_CHANNEL_PRIMARY)];
 
 	return;
@@ -847,7 +1141,7 @@ static __inline__ void
 PIIXStartDMA(u_short piix_base)
 {
 	piix_bmicx_u piix_cmd;
-	
+
 	/*
 	 * Engage the bus master by writing 1 to the start bit in the
 	 * Command Register.
@@ -870,14 +1164,14 @@ static __inline__ void
 PIIXStopDMA(u_short piix_base)
 {
 	piix_bmicx_u piix_cmd;
-	
+
 	/*
 	 * Stop the bus master by writing 0 to the start bit in the
 	 * Command Register.
 	 */
 	piix_cmd.byte = inb(piix_base + PIIX_BMICX);
 	piix_cmd.bits.ssbm = 0;
-	outb(piix_base + PIIX_BMICX, piix_cmd.byte);	
+	outb(piix_base + PIIX_BMICX, piix_cmd.byte);
 }
 
 /*
@@ -894,7 +1188,7 @@ PIIXGetStatus(u_short piix_base)
 {
 	return (inb(piix_base + PIIX_BMISX));
 }
-			
+
 /*
  * Function: PIIXSetupPRDTable
  *
@@ -926,7 +1220,7 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 	u_int len_prd;
 	u_int index;
 
-#ifdef DEBUG	
+#ifdef DEBUG
 	piix_prd_t *table_saved = table;
 #endif DEBUG
 
@@ -937,12 +1231,12 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 		IOLog("%s: buffer is not %d byte aligned\n", name, PIIX_BUF_ALIGN);
 		return NO;
 	}
-	
+
 	if (size == 0) {
 		IOLog("%s: zero length DMA buffer\n", name);
 		return NO;
 	}
-	
+
 	index = len_prd = 0;
 	paddr = PIIXVirtualToPhysical(map, vaddr);
 	paddr_start = paddr;
@@ -952,7 +1246,7 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 		vaddr_next = trunc_page(vaddr) + PAGE_SIZE;		// next virtual page
 		paddr_next = trunc_page(paddr) + PAGE_SIZE;		// next phys page
 		vaddr      = vaddr_next;
-		
+
 		len = paddr_next - paddr;		// length to transfer in this page
 		if (len > size) len = size;		// take the minimum
 		size  -= len;					// decrement total remaining bytes
@@ -965,7 +1259,7 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 		 *
 		 * Each PRD cannot cross 64K boundary, and is limited to 64K per PRD.
 		 */
-		if (size && 
+		if (size &&
 		(paddr_next == (paddr = PIIXVirtualToPhysical(map, vaddr))) &&
 		((paddr_start & ~(PIIX_BUF_BOUND-1))==(paddr & ~(PIIX_BUF_BOUND-1))) &&
 		(len_prd <= (PIIX_BUF_LIMIT - PAGE_SIZE))) {
@@ -1073,7 +1367,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	 * For some reason, outl(piix_base + PIIX_BMIDTPX, tableAddr)
 	 * will only write the lower 16-bit WORD. That's why we use
 	 * two outw instructions.
-	 */	
+	 */
 	outw(piix_base + PIIX_BMIDTPX, tableAddr & 0xffff);
 	outw(piix_base + PIIX_BMIDTPX + 2, (tableAddr >> 16) & 0xffff);
 
@@ -1086,7 +1380,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	piix_cmd.byte = 0;
 	piix_cmd.bits.rwcon = isRead ? 1 : 0;
 	outb(piix_base + PIIX_BMICX, piix_cmd.byte);
-	
+
 	/*
 	 * Clear interrupt and error bits in the Status Register.
 	 */
@@ -1094,7 +1388,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	piix_status.bits.err = piix_status.bits.ideints = 1;
 //	piix_status.bits.dma0cap = piix_status.bits.dma1cap = 1;
 	outb(piix_base + PIIX_BMISX, piix_status.byte);
-	
+
 	return YES;
 }
 
@@ -1184,7 +1478,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 		IOLog("%s: PIIXPrepareDMA error\n", [self name]);
 		return IDER_CMD_ERROR;
 	}
-	
+
 	/*
 	 * Program the drive (task file).
 	 * Recall that _driveNum must be set prior to calling logToPhys.
@@ -1208,22 +1502,74 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 
 	/*
 	 * Issue DMA READ/WRITE command to drive.
+     *
+	 * Clear any pending interrupts before starting the operation
+	 * to ensure we only wait for the new interrupt.
 	 */
-//	[self enableInterrupts];
-//	[self clearInterrupts];
+	[self enableInterrupts];
+	[self clearInterrupts];
     outb(rp->command, cmd);
 
 	/*
 	 * Start the PIIX bus master.
 	 */
 	PIIXStartDMA(_bmRegs);
-	
-	/* Wait for interrupt to signal the completion of the transfer.
+
+	/*
+	 * Wait for interrupt to signal the completion of the transfer.
 	 */
-    rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];	
+    rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
 	piix_status.byte = PIIXGetStatus(_bmRegs);
 	PIIXStopDMA(_bmRegs);
-	
+
+	/*
+	 * Handle timeout with controller recovery
+	 */
+	if (rtn != IDER_SUCCESS) {
+		/* Clear any pending DMA state */
+		piix_status.byte = inb(_bmRegs + PIIX_BMISX);
+		piix_status.bits.err = 1;
+		piix_status.bits.ideints = 1;
+		outb(_bmRegs + PIIX_BMISX, piix_status.byte);
+
+		/* Re-read PIIX status after clearing */
+		piix_status.byte = PIIXGetStatus(_bmRegs);
+
+		if (_ide_debug) {
+			IOLog("%s: DMA timeout recovery - PIIX status after clear: 0x%02x\n",
+				[self name], piix_status.byte);
+		}
+
+		/* Abort DMA operation at the drive level to prevent hung DMA */
+		IOLog("%s: Aborting DMA operation on drive %d\n", [self name], _driveNum);
+
+		/* Disable interrupts during abort */
+		[self disableInterrupts];
+
+		/* Perform soft reset to abort the DMA command */
+		outb(rp->deviceControl, DISK_RESET_ENABLE);
+		IODelay(10);	/* Hold reset for at least 5us, use 10us to be safe */
+		outb(rp->deviceControl, DISK_INTERRUPT_ENABLE);
+
+		/* Wait for drive to recover from reset (up to 2 seconds) */
+		{
+			int i;
+			unsigned char abort_status;
+			for (i = 0; i < 200; i++) {
+				IOSleep(10);
+				abort_status = inb(rp->altStatus);
+				if (!(abort_status & BUSY))
+					break;
+			}
+			if (_ide_debug) {
+				IOLog("%s:   Drive status after abort: 0x%02x\n",
+					[self name], abort_status);
+			}
+		}
+
+		[self enableInterrupts];
+	}
+
 #ifdef TRUST_PIIX
 	if ((piix_status.byte & PIIX_STATUS_MASK) == PIIX_STATUS_OK) {
 
@@ -1233,12 +1579,16 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 				 * This may require more testing. Always trust PIIX?
 				 * First, read status from the drive.
 				 */
+				if (_ide_debug) {
+					IOLog("%s: IRQ timeout but PIIX status OK - trusting PIIX\n",
+						[self name]);
+				}
 				if ((rtn = [self waitForNotBusy]) != IDER_SUCCESS)
 					return IDER_CMD_ERROR;
 				status = inb(rp->status);
-			}			 
+			}
 #else
-	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) == 
+	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) ==
 		PIIX_STATUS_OK)) {
 #endif TRUST_PIIX
 
@@ -1248,7 +1598,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	    	}
 
 	    	if (status & ERROR_CORRECTED) {
-				IOLog("%s: Error during data transfer (corrected).\n", 
+				IOLog("%s: Error during data transfer (corrected).\n",
 			    	[self name]);
 		    }
 	}
@@ -1287,7 +1637,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  * Perform DMA transfers for ATAPI devices.
  */
 - (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
-	buffer:(void *)buffer 
+	buffer:(void *)buffer
 	client:(struct vm_map *)client
 {
 	piix_bmisx_u piix_status;
@@ -1300,7 +1650,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	//IOLog("DMA transfer\n");
 
 	atapiIoReq->bytesTransferred = 0;
-	
+
 	/*
 	 * Set up PRD descriptor table
 	 */
@@ -1327,7 +1677,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 
 	if (atapiIoReq->timeout > IDE_INTR_TIMEOUT) {
 		u_int current_timeout = [self interruptTimeOut];
-		
+
 		//IOLog("using SCSI timeout:%d\n", atapiIoReq->timeout);
 		[self setInterruptTimeOut:atapiIoReq->timeout];
 		rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
@@ -1341,17 +1691,66 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	PIIXStopDMA(_bmRegs);
 
 	/*
+	 * Handle timeout with controller recovery
+	 */
+	if (rtn != IDER_SUCCESS) {
+		/* Clear any pending DMA state */
+		piix_status.byte = inb(_bmRegs + PIIX_BMISX);
+		piix_status.bits.err = 1;
+		piix_status.bits.ideints = 1;
+		outb(_bmRegs + PIIX_BMISX, piix_status.byte);
+
+		/* Re-read PIIX status after clearing */
+		piix_status.byte = PIIXGetStatus(_bmRegs);
+
+		if (_ide_debug) {
+			IOLog("%s: ATAPI DMA timeout recovery - PIIX status: 0x%02x\n",
+				[self name], piix_status.byte);
+		}
+
+		/* Abort DMA operation at the drive level to prevent hung DMA */
+		IOLog("%s: Aborting ATAPI DMA operation on drive %d\n",
+			[self name], _driveNum);
+
+		/* Disable interrupts during abort */
+		[self disableInterrupts];
+
+		/* Perform soft reset to abort the DMA command */
+		outb(rp->deviceControl, DISK_RESET_ENABLE);
+		IODelay(10);	/* Hold reset for at least 5us, use 10us to be safe */
+		outb(rp->deviceControl, DISK_INTERRUPT_ENABLE);
+
+		/* Wait for drive to recover from reset (up to 2 seconds) */
+		{
+			int i;
+			unsigned char abort_status;
+			for (i = 0; i < 200; i++) {
+				IOSleep(10);
+				abort_status = inb(rp->altStatus);
+				if (!(abort_status & BUSY))
+					break;
+			}
+			if (_ide_debug) {
+				IOLog("%s:   ATAPI drive status after abort: 0x%02x\n",
+					[self name], abort_status);
+			}
+		}
+
+		[self enableInterrupts];
+	}
+
+	/*
 	 * This is stupid but the Chinon drive fires off an interrupt first
 	 * and then updates the status register. It appears that any drive
 	 * based on Western Digital chipset will do this. At any rate, this
-	 * code is harmless and should be left here. 
+	 * code is harmless and should be left here.
 	 */
 	for (i = 0; i < MAX_BUSY_WAIT; i++)	{
 		if (status & BUSY)
 			IODelay(10);
 		else
 			break;
-		status = inb(_ideRegsAddrs.status);	
+		status = inb(_ideRegsAddrs.altStatus);
 	}
 
 #ifdef TRUST_PIIX
@@ -1363,7 +1762,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 			 * First, read status from the drive.
 			 */
 			if ((rtn = [self waitForNotBusy]) != IDER_SUCCESS) {
-				IOLog("%s: FATAL: ATAPI Drive: %d Command %x failed.\n", 
+				IOLog("%s: FATAL: ATAPI Drive: %d Command %x failed.\n",
 					[self name], _driveNum, atapiIoReq->atapiCmd[0]);
 				[self getIdeRegisters:NULL Print:"ATAPI DMA"];
 				IOLog("%s: transfer size: %d\n",
@@ -1375,13 +1774,13 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 			status = inb(rp->status);
 		}
 #else
-	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) == 
+	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) ==
 		PIIX_STATUS_OK)) {
 #endif TRUST_PIIX
 
 		if (status & ERROR) {
 			atapiIoReq->scsiStatus = STAT_CHECK;
-			return SR_IOST_CHKSNV;	
+			return SR_IOST_CHKSNV;
 		}
 	}
 	else {
@@ -1411,9 +1810,6 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 }
 
 /*
- * Method: PIIXDetect80WireCable
- *
- * Purpose:
  * Detect the presence of an 80-wire cable. This is required for UDMA
  * modes greater than Mode 2 (ATA/33). Unfortunately, PIIX4 does not
  * provide a hardware mechanism to detect cable type. We assume a
@@ -1431,20 +1827,162 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  */
 - (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc
 {
+	IOReturn rtn;
+	unsigned long iocfg;
+	unsigned char cable_bit;
+	const id self_class = [self class];
+
 	/*
-	 * PIIX4/PIIX4E/PIIX4M do not have a standard cable detection mechanism.
-	 * We conservatively assume 40-wire cable to prevent data corruption
-	 * that could occur if we incorrectly enable UDMA Mode 4/5 with a
-	 * 40-wire cable.
+	 * Read the PIIX_IOCFG register (0x54) to detect cable type.
+	 * PIIX4 and later chipsets have cable detection bits:
+	 * - Bit 4: Primary channel 80-wire cable present
+	 * - Bit 5: Secondary channel 80-wire cable present
 	 *
-	 * This limits UDMA to Mode 2 (ATA/33), which is safe for both
-	 * 40-wire and 80-wire cables.
+	 * If the bit is SET, an 80-wire cable is detected.
+	 * If the bit is CLEAR, either a 40-wire cable is present, or
+	 * the BIOS has not configured cable detection.
 	 */
-	if (_ide_debug) {
-		IOLog("%s: Cable detection: assuming 40-wire cable (UDMA limited to Mode 2)\n",
+	rtn = [self_class getPCIConfigData:&iocfg atRegister:PIIX_IOCFG
+		withDeviceDescription:devDesc];
+
+	if (rtn != IO_R_SUCCESS) {
+		IOLog("%s: Cable detection: PCI config read failed, assuming 40-wire\n",
 			[self name]);
+		return NO;
 	}
+
+	/*
+	 * Check the appropriate bit based on our channel.
+	 */
+	switch (_ideChannel) {
+		case PCI_CHANNEL_PRIMARY:
+			cable_bit = (iocfg & PIIX_80C_PRI) ? 1 : 0;
+			break;
+		case PCI_CHANNEL_SECONDARY:
+			cable_bit = (iocfg & PIIX_80C_SEC) ? 1 : 0;
+			break;
+		default:
+			cable_bit = 0;
+			break;
+	}
+
+	if (_ide_debug) {
+		IOLog("%s: Cable detection: IOCFG=0x%08lx, %s channel has %s cable\n",
+			[self name], iocfg,
+			(_ideChannel == PCI_CHANNEL_PRIMARY) ? "Primary" : "Secondary",
+			cable_bit ? "80-wire" : "40-wire");
+	}
+
+	return (cable_bit ? YES : NO);
+}
+
+/*
+ * Check if the system is using an Intel 450NX chipset. The 450NX has
+ * known issues with DMA reliability when paired with PIIX controllers.
+ * According to Intel errata and Linux driver experience, DMA should be
+ * disabled when this chipset is detected.
+ *
+ * The 450NX uses the 82451NX PCI bridge, which can be detected by
+ * scanning the PCI bus for its device ID.
+ */
+- (BOOL) PIIXCheck450NX
+{
+	unsigned char bus, dev, func;
+	unsigned long deviceID;
+	IOPCIDeviceDescription *devDesc = [self deviceDescription];
+	IOReturn rtn;
+	const id self_class = [self class];
+
+	/*
+	 * Get our current PCI location as a starting point
+	 */
+	rtn = [devDesc getPCIdevice:&dev function:&func bus:&bus];
+	if (rtn != IO_R_SUCCESS) {
+		/* Can't determine PCI location, assume no 450NX */
+		return NO;
+	}
+
+	/*
+	 * Scan PCI bus 0 for the 450NX bridge.
+	 * We check devices 0-15 on bus 0, which should cover host bridges.
+	 */
+	for (dev = 0; dev < 16; dev++) {
+		for (func = 0; func < 8; func++) {
+			/*
+			 * Read the device/vendor ID from PCI config space.
+			 * We can't easily change the device being accessed through
+			 * our current devDesc, so we'll use a workaround:
+			 *
+			 * Use outl/inl to directly access PCI configuration space.
+			 * PCI Configuration Address Port: 0xCF8
+			 * PCI Configuration Data Port: 0xCFC
+			 */
+			unsigned long pci_addr = 0x80000000 |
+				(((unsigned long)bus) << 16) |
+				(((unsigned long)dev) << 11) |
+				(((unsigned long)func) << 8) |
+				0x00;  /* Register 0 = Device/Vendor ID */
+
+			outl(0xCF8, pci_addr);
+			deviceID = inl(0xCFC);
+
+			/*
+			 * Check for Intel 450NX bridge (82451NX)
+			 * Also check for 0xFFFFFFFF which indicates no device present
+			 */
+			if (deviceID == PCI_DEVICE_ID_INTEL_82451NX) {
+				IOLog("%s: Intel 450NX chipset (82451NX bridge) detected\n",
+					[self name]);
+				return YES;
+			}
+
+			/* If we read all FFs, no device at this location */
+			if (deviceID == 0xFFFFFFFF)
+				break;  /* No more functions */
+		}
+	}
+
+	/* No 450NX detected */
 	return NO;
+}
+
+/*
+ * Verify that an interrupt is actually from the IDE controller by checking
+ * the PIIX Bus Master Status Register (BMISX). This helps filter spurious
+ * interrupts, especially in systems where the IDE IRQ may be shared.
+ *
+ * The ideints bit in BMISX is set when the IDE device has generated an
+ * interrupt. If this bit is not set, the interrupt is from another source.
+ */
+- (BOOL) verifyInterruptSource
+{
+	piix_bmisx_u piix_status;
+
+	/*
+	 * Can only verify interrupts for bus-mastering controllers.
+	 * Non-DMA controllers don't have BMISX register access.
+	 */
+	if (!_busMaster)
+		return YES;
+
+	/*
+	 * Read the Bus Master Status Register
+	 */
+	piix_status.byte = inb(_bmRegs + PIIX_BMISX);
+
+	/*
+	 * Check if the IDE interrupt status bit is set.
+	 * If clear, this interrupt is not from our IDE controller.
+	 */
+	if (!piix_status.bits.ideints) {
+		if (_ide_debug) {
+			IOLog("%s: Spurious interrupt filtered (BMISX=0x%02x, ideints=0)\n",
+				[self name], piix_status.byte);
+		}
+		return NO;
+	}
+
+	return YES;
 }
 
 @end

@@ -31,8 +31,8 @@ CFILES = audioLookup.c audioReplyHandler.c
 
 SUBPROJECTS = sound.subproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble m.template\
-            h.template SoundKit.rtf SoundKit.user_bom audioReply.defs\
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
+            SoundKit.rtf SoundKit.user_bom audioReply.defs\
             audio.defs
 
 
@@ -44,7 +44,7 @@ MAKEFILE = framework.make
 NEXTSTEP_INSTALLDIR = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
 WINDOWS_INSTALLDIR = $(SYSTEM_LIBRARY_DIR)/Frameworks
 PDO_UNIX_INSTALLDIR = $(SYSTEM_LIBRARY_DIR)/Frameworks
-LIBS = 
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 

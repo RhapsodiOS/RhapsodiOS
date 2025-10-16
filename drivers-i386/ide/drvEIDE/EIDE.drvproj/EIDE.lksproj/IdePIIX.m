@@ -987,17 +987,52 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 		paddr_start = paddr;
 
 	} while (size && (++index < table_size));
-	
+
 	if (size) {
 		IOLog("%s: PRD table exhausted\n", name);
 		return NO;
-	} 
-	
+	}
+
 	/*
 	 * Set the 'end-of-table' bit on the last PRD entry.
 	 */
 	--table;
 	table->eot = 1;
+
+	/*
+	 * Validate PRD table entries for common errors
+	 */
+	{
+		piix_prd_t *validate = table_saved;
+		int i;
+		for (i = 0; i <= index; i++) {
+			/* Check for NULL base address */
+			if (validate->base == 0) {
+				IOLog("%s: PRD[%d] has NULL base address\n", name, i);
+				return NO;
+			}
+			/* Check for proper alignment (4-byte) */
+			if (validate->base & 0x03) {
+				IOLog("%s: PRD[%d] base 0x%08x not 4-byte aligned\n",
+					name, i, validate->base);
+				return NO;
+			}
+			/* Check count is not zero (unless it means 64K) */
+			if (validate->count == 0 && i != index) {
+				/* Zero count means 64K, only valid for non-final entries
+				 * in some cases, but let's log it */
+				ddm_ide_dma("    PRD[%d] has count=0 (64K transfer)\n",
+					i, 2, 3, 4, 5);
+			}
+			/* Check that only the last entry has EOT set */
+			if (validate->eot && i != index) {
+				IOLog("%s: PRD[%d] has EOT set but is not last entry\n",
+					name, i);
+				return NO;
+			}
+			validate++;
+		}
+	}
 
 #ifdef DEBUG
 	{

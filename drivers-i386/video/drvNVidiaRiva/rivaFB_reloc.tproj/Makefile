@@ -12,11 +12,11 @@ NAME = RivaFB_reloc
 PROJECTVERSION = 1.0
 LANGUAGE = English
 
-CLASSES = RivaFB.m RivaFBRegisters.m RivaFBUtility.m
+CLASSES = RivaFB.m RivaFBRegisters.m RivaFBUtility.m RivaFBCursor.m RivaFBPower.m
 
-HFILES = riva_reg.h riva_hw.h RivaFB.h
+HFILES = riva_reg.h riva_hw.h riva_timing.h RivaFB.h
 
-CFILES = riva.c
+CFILES = riva.c riva_timing.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
             Makefile.driver_preamble Load_Commands.sect

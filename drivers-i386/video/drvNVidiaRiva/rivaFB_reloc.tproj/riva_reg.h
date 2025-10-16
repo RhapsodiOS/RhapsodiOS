@@ -50,6 +50,11 @@
 #define NV_PMC_INTR_0                       0x00000100
 #define NV_PMC_INTR_EN_0                    0x00000140
 
+/* PMC Enable bits */
+#define NV_PMC_ENABLE_PGRAPH                0x00001000
+#define NV_PMC_ENABLE_PFIFO                 0x00000100
+#define NV_PMC_ENABLE_PTIMER                0x00000010
+
 /* PEXTDEV - External Device Control */
 #define NV_PEXTDEV_BOOT_0                   0x00000000
 
@@ -71,6 +76,23 @@
 #define NV_PRAMDAC_FP_HVALID_END            0x00000824
 #define NV_PRAMDAC_FP_VVALID_START          0x00000828
 #define NV_PRAMDAC_FP_VVALID_END            0x0000082C
+
+/* Hardware Cursor Registers */
+#define NV_PRAMDAC_CURSOR_CONFIG            0x00000300
+#define NV_PRAMDAC_CURSOR_POS               0x00000304
+#define NV_PRAMDAC_CURSOR_PLANE0_OFFSET     0x00000400
+#define NV_PRAMDAC_CURSOR_PLANE1_OFFSET     0x00000404
+
+/* Cursor Config bits */
+#define NV_PRAMDAC_CURSOR_CONFIG_ENABLE     0x00000001
+#define NV_PRAMDAC_CURSOR_CONFIG_DOUBLE     0x00000002
+#define NV_PRAMDAC_CURSOR_CONFIG_FORMAT_32x32_ARGB 0x00000000
+#define NV_PRAMDAC_CURSOR_CONFIG_FORMAT_64x64_ARGB 0x00000100
+
+/* Cursor dimensions */
+#define RIVA_CURSOR_WIDTH                   32
+#define RIVA_CURSOR_HEIGHT                  32
+#define RIVA_CURSOR_SIZE                    (RIVA_CURSOR_WIDTH * RIVA_CURSOR_HEIGHT * 4)
 
 /* PCRTC - CRTC Control */
 #define NV_PCRTC_INTR_0                     0x00000100

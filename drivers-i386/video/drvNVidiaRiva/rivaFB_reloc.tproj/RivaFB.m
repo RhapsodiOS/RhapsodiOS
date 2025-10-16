@@ -4,6 +4,7 @@
  */
 
 #import "RivaFB.h"
+#import "riva_timing.h"
 #include <stdio.h>
 
 #import <driverkit/i386/IOPCIDeviceDescription.h>
@@ -232,6 +233,9 @@ static const IODisplayInfo modeTable[] = {
     RivaLog("RivaFB: Framebuffer mapped at %p\n", displayInfo->frameBuffer);
     [self logInfo];
 
+    /* Initialize hardware cursor */
+    [self initCursor];
+
     return self;
 }
 
@@ -245,8 +249,12 @@ static const IODisplayInfo modeTable[] = {
     int height = displayInfo->height;
     int bpp = 32;  /* Always 32bpp */
     int pitch = displayInfo->rowBytes;
+    RivaModeTimingRec timing;
 
     RivaLog("RivaFB: Entering linear mode %dx%d @ %dbpp\n", width, height, bpp);
+
+    /* Calculate proper CRTC timings for this mode */
+    rivaCalculateTimings(width, height, 60, &timing);
 
     /* Unlock extended registers */
     rivaLockUnlockExtended(0);
@@ -272,42 +280,11 @@ static const IODisplayInfo modeTable[] = {
     [self writeVGA: VGA_SEQ_INDEX value: 0x00];
     [self writeVGA: VGA_SEQ_DATA value: 0x03];  /* Clear reset */
 
-    /* Program CRTC for the selected mode */
-    [self writeVGA: VGA_CRTC_INDEX value: 0x11];
-    [self writeVGA: VGA_CRTC_DATA value: 0x00];  /* Unlock CRTC */
+    /* Program PLL for pixel clock */
+    rivaProgramVPLL(regBase, timing.pixelClock, rivaHW.chipType);
 
-    /* Horizontal total */
-    int htotal = ((width / 8) - 5) & 0xFF;
-    [self writeVGA: VGA_CRTC_INDEX value: 0x00];
-    [self writeVGA: VGA_CRTC_DATA value: htotal];
-
-    /* Horizontal display end */
-    int hdisplay = ((width / 8) - 1) & 0xFF;
-    [self writeVGA: VGA_CRTC_INDEX value: 0x01];
-    [self writeVGA: VGA_CRTC_DATA value: hdisplay];
-
-    /* Vertical total */
-    int vtotal = (height + 31) & 0xFF;
-    [self writeVGA: VGA_CRTC_INDEX value: 0x06];
-    [self writeVGA: VGA_CRTC_DATA value: vtotal];
-
-    /* Vertical display end */
-    int vdisplay = (height - 1) & 0xFF;
-    [self writeVGA: VGA_CRTC_INDEX value: 0x12];
-    [self writeVGA: VGA_CRTC_DATA value: vdisplay];
-
-    /* Set pitch */
-    int offset = (pitch / 8) & 0xFF;
-    [self writeVGA: VGA_CRTC_INDEX value: 0x13];
-    [self writeVGA: VGA_CRTC_DATA value: offset];
-
-    /* Extended offset register for high bits */
-    [self writeVGA: VGA_CRTC_INDEX value: NV_CIO_CRE_RPC0_INDEX];
-    [self writeVGA: VGA_CRTC_DATA value: ((pitch / 8) >> 8) & 0xFF];
-
-    /* Set pixel mode to 32bpp */
-    [self writeVGA: VGA_CRTC_INDEX value: NV_CIO_CRE_PIXEL_INDEX];
-    [self writeVGA: VGA_CRTC_DATA value: 0x03];  /* 32bpp packed */
+    /* Program CRTC with calculated timings */
+    rivaProgramCRTC(regBase, &timing, pitch, bpp);
 
     /* Program graphics controller */
     [self writeVGA: VGA_GFX_INDEX value: 0x05];
@@ -336,7 +313,7 @@ static const IODisplayInfo modeTable[] = {
         rivaHW.fbBase[i] = 0;
     }
 
-    RivaLog("RivaFB: Linear mode enabled\n");
+    RivaLog("RivaFB: Linear mode enabled with proper VESA timings\n");
 }
 
 /*

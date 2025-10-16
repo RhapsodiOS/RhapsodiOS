@@ -34,6 +34,12 @@
 
     /* Register base pointers */
     CARD32 *regBase;
+
+    /* Hardware cursor state */
+    BOOL cursorEnabled;
+    int cursorX;
+    int cursorY;
+    CARD32 cursorOffset;  /* Offset in framebuffer for cursor data */
 }
 
 + (BOOL)probe: deviceDescription;
@@ -42,6 +48,22 @@
 - (void)enterLinearMode;
 - (void)revertToVGAMode;
 
+/* Power management */
+- (IOReturn)getIntValues: (unsigned int *)parameterArray
+            forParameter: (IOParameterName)parameterName
+                   count: (unsigned int *)count;
+- (IOReturn)setIntValues: (unsigned int *)parameterArray
+            forParameter: (IOParameterName)parameterName
+                   count: (unsigned int)count;
+
+@end
+
+@interface RivaFB (Cursor)
+/* Hardware cursor methods */
+- (void) initCursor;
+- (void) setCursorPosition: (int)x : (int)y;
+- (void) showCursor: (BOOL)show;
+- (void) setCursorImage: (const CARD32 *)image;
 @end
 
 @interface RivaFB (Utility)

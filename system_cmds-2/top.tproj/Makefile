@@ -7,31 +7,25 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = system_cmds
+NAME = top
 
 PROJECTVERSION = 2.8
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Tool
 
-SUBPROJECTS = cron.tproj
+CFILES = top.c commands.c display.c screen.c username.c \
+         utils.c version.c getopt.c machine.c
 
-TOOLS = ac.tproj accton.tproj arch.tproj at.tproj atrun.tproj\
-        chkpasswd.tproj chpass.tproj dmesg.tproj fbalert.tproj\
-        fbshow.tproj getty.tproj halt.tproj hostinfo.tproj init.tproj\
-        iostat.tproj kgmon.tproj ktrace.tproj login.tproj\
-        mach_init.tproj mach_swapon.tproj makekey.tproj mkfile.tproj\
-        nvram.tproj passwd.tproj pwd_mkdb.tproj reboot.tproj\
-        shutdown.tproj swapon.tproj sync.tproj sysctl.tproj top.tproj\
-        update.tproj vipw.tproj zic.tproj zdump.tproj vm_stat.tproj\
-        zprint.tproj
-
-LEGACIES = fastboot.tproj nologin.tproj pagesize.tproj
-
-OTHERSRCS = Makefile.preamble Makefile Makefile.include README.rtf
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Makefile.orig\
+            top.X top.h top.local.h boolean.h display.h layout.h\
+            loadavg.h machine.h os.h screen.h utils.h patchlevel.h
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = tool.make
+NEXTSTEP_INSTALLDIR = /usr/bin
+WINDOWS_INSTALLDIR = /usr/bin
+PDO_UNIX_INSTALLDIR = /usr/bin
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)

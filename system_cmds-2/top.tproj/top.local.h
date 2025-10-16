@@ -15,7 +15,7 @@
  *  should always be specified as a floating point number.
  */
 #ifndef LoadMax
-#define LoadMax  %LoadMax%
+#define LoadMax         5.0
 #endif
 
 /*
@@ -27,7 +27,7 @@
  *  of lines in /etc/passwd.
  */
 #ifndef Table_size
-#define Table_size	%TableSize%
+#define Table_size      128
 #endif
 
 /*
@@ -39,15 +39,15 @@
  *  overridden on the command line, even with the value "infinity".
  */
 #ifndef Nominal_TOPN
-#define Nominal_TOPN	%NominalTopn%
+#define Nominal_TOPN	18
 #endif
 
 #ifndef Default_TOPN
-#define Default_TOPN	%topn%
+#define Default_TOPN	15
 #endif
 
 #ifndef Default_DELAY
-#define Default_DELAY	%delay%
+#define Default_DELAY	5
 #endif
 
 /*
@@ -62,7 +62,7 @@
  *  Configure script.  Then if its value is 0, we undef it.
  */
 
-#define RANDOM_PW	%random%
+#define RANDOM_PW	0
 #if RANDOM_PW == 0
 #undef RANDOM_PW
 #endif

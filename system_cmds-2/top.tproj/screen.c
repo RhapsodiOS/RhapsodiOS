@@ -56,7 +56,7 @@ int  screen_width;
 char ch_erase;
 char ch_kill;
 char smart_terminal;
-char PC;
+char pad_character;
 char *tgetstr();
 char *tgoto();
 char termcap_buf[1024];
@@ -71,7 +71,6 @@ char *start_standout;
 char *end_standout;
 char *terminal_init;
 char *terminal_end;
-short ospeed;
 
 #ifdef SGTTY
 static struct sgttyb old_settings;
@@ -201,7 +200,7 @@ int interactive;
     end_standout   = tgetstr("se", &bufptr);
 
     /* pad character */
-    PC = (PCptr = tgetstr("pc", &bufptr)) ? *PCptr : 0;
+    pad_character = (PCptr = tgetstr("pc", &bufptr)) ? *PCptr : 0;
 
     /* set convenience strings */
     (void) strcpy(home, tgoto(cursor_motion, 0, 0));
@@ -491,4 +490,3 @@ char ch;
 {
     putchar(ch);
 }
-

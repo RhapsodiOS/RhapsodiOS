@@ -26,7 +26,7 @@
  * Intel 82365 PCMCIA Controller Driver
  */
 
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -36,7 +36,7 @@
 /* Forward declarations */
 @class PCMCIAKernBus;
 
-@interface PCIC : IODevice
+@interface PCIC : IODirectDevice
 {
     unsigned int basePort;
     unsigned int numSockets;
@@ -44,6 +44,9 @@
     id pcmciaBus;              /* PCMCIAKernBus instance */
     BOOL *cardPresent;         /* Array tracking card presence per socket */
     id lock;                   /* NXLock for thread safety */
+    id *deviceList;            /* Array of List objects tracking devices per socket */
+    unsigned char *memWindowsAllocated;  /* Bitmap of allocated memory windows per socket */
+    unsigned char *ioWindowsAllocated;   /* Bitmap of allocated I/O windows per socket */
 }
 
 /* Instance methods */
@@ -104,6 +107,15 @@
 - (void)writeRegister:(unsigned int)socket offset:(unsigned int)offset value:(unsigned char)value;
 - (IOReturn)waitForReady:(unsigned int)socket timeout:(unsigned int)timeout;
 - (void)dumpRegisters:(unsigned int)socket;
+
+/* Device management */
+- (void)registerDevice:device forSocket:(unsigned int)socket;
+- (void)removeAllDevicesFromSocket:(unsigned int)socket;
+
+/* Window management */
+- (IOReturn)freeMemoryWindow:(unsigned int)window socket:(unsigned int)socket;
+- (IOReturn)freeIOWindow:(unsigned int)window socket:(unsigned int)socket;
+- (void)freeAllWindowsForSocket:(unsigned int)socket;
 
 @end
 

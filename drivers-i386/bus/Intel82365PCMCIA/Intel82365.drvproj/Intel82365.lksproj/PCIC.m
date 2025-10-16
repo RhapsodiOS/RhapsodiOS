@@ -32,6 +32,7 @@
 #import <driverkit/kernelDriver.h>
 #import <driverkit/i386/PCMCIAKernBus.h>
 #import <machkit/NXLock.h>
+#import <objc/List.h>
 #import <bsd/sys/types.h>
 
 #define PCIC_INDEX_PORT    0x00
@@ -114,6 +115,35 @@
         cardPresent[i] = NO;
     }
 
+    /* Allocate device tracking lists */
+    deviceList = (id *)IOMalloc(numSockets * sizeof(id));
+    if (!deviceList) {
+        IOLog("PCIC: Failed to allocate device list array\n");
+        [self free];
+        return nil;
+    }
+    for (i = 0; i < numSockets; i++) {
+        deviceList[i] = [[List alloc] init];
+        if (!deviceList[i]) {
+            IOLog("PCIC: Failed to create device list for socket %d\n", i);
+            [self free];
+            return nil;
+        }
+    }
+
+    /* Allocate window tracking bitmaps */
+    memWindowsAllocated = (unsigned char *)IOMalloc(numSockets * sizeof(unsigned char));
+    ioWindowsAllocated = (unsigned char *)IOMalloc(numSockets * sizeof(unsigned char));
+    if (!memWindowsAllocated || !ioWindowsAllocated) {
+        IOLog("PCIC: Failed to allocate window tracking arrays\n");
+        [self free];
+        return nil;
+    }
+    for (i = 0; i < numSockets; i++) {
+        memWindowsAllocated[i] = 0;
+        ioWindowsAllocated[i] = 0;
+    }
+
     /* Create lock for thread-safe access */
     lock = [[NXLock alloc] init];
     if (!lock) {
@@ -173,6 +203,29 @@
     /* Disable all sockets */
     for (i = 0; i < numSockets; i++) {
         [self disableSocket:i];
+        [self removeAllDevicesFromSocket:i];
+        [self freeAllWindowsForSocket:i];
+    }
+
+    /* Free device tracking lists */
+    if (deviceList) {
+        for (i = 0; i < numSockets; i++) {
+            if (deviceList[i]) {
+                [deviceList[i] free];
+            }
+        }
+        IOFree(deviceList, numSockets * sizeof(id));
+        deviceList = NULL;
+    }
+
+    /* Free window tracking arrays */
+    if (memWindowsAllocated) {
+        IOFree(memWindowsAllocated, numSockets * sizeof(unsigned char));
+        memWindowsAllocated = NULL;
+    }
+    if (ioWindowsAllocated) {
+        IOFree(ioWindowsAllocated, numSockets * sizeof(unsigned char));
+        ioWindowsAllocated = NULL;
     }
 
     /* Free PCMCIA bus */
@@ -336,6 +389,9 @@
         val |= 0x40;
     [self writeRegister:socket offset:regBase + 5 value:val];
 
+    /* Mark window as allocated */
+    memWindowsAllocated[socket] |= (1 << window);
+
     return IO_R_SUCCESS;
 }
 
@@ -367,6 +423,9 @@
     [self writeRegister:socket offset:regBase + 2 value:val];
     val = ((base + size - 1) >> 8) & 0xFF;
     [self writeRegister:socket offset:regBase + 3 value:val];
+
+    /* Mark window as allocated */
+    ioWindowsAllocated[socket] |= (1 << window);
 
     return IO_R_SUCCESS;
 }
@@ -583,25 +642,32 @@
     else if (!isCardPresent && wasCardPresent) {
         IOLog("PCIC: Card removed from socket %d\n", socket);
 
+        /* Remove all device drivers attached to this socket */
+        [self removeAllDevicesFromSocket:socket];
+
+        /* Free all allocated windows for this socket */
+        [self freeAllWindowsForSocket:socket];
+
         /* Disable socket interrupts */
-        [self disableSocket:socket];
+        [self disableCardStatusChangeInterrupts:socket];
 
         /* Power down the socket */
         [self setPowerState:socket state:0];
 
         /* Notify PCMCIA bus about card removal */
-        /* The bus will handle cleaning up device instances */
         if (pcmciaBus) {
             id socketObj = [pcmciaBus socketAtIndex:socket];
             if (socketObj) {
-                /* Reset socket state in the bus */
-                IOLog("PCIC: Cleaning up socket %d resources\n", socket);
-                /* Additional cleanup would happen here in a full implementation */
+                IOLog("PCIC: Notifying bus of card removal from socket %d\n", socket);
+                /* The bus will handle cleaning up any remaining socket state */
+                /* Card Information Structure (CIS) tuples will be freed by the bus */
             }
         }
 
-        /* Re-enable status change detection */
-        [self enableSocket:socket];
+        IOLog("PCIC: Socket %d cleanup complete\n", socket);
+
+        /* Re-enable status change detection for future insertions */
+        [self enableCardStatusChangeInterrupts:socket];
     }
 }
 
@@ -987,6 +1053,179 @@
           [self readRegister:socket offset:PCIC_IO_WINDOW_1_START_LSB],
           [self readRegister:socket offset:PCIC_IO_WINDOW_1_END_MSB],
           [self readRegister:socket offset:PCIC_IO_WINDOW_1_END_LSB]);
+}
+
+/*
+ * Register a device driver instance for a socket
+ * Called when a device driver is attached to a card
+ */
+- (void)registerDevice:device forSocket:(unsigned int)socket
+{
+    if (socket >= numSockets || !device) {
+        IOLog("PCIC: Invalid socket or device in registerDevice\n");
+        return;
+    }
+
+    [lock lock];
+
+    if (deviceList[socket]) {
+        [deviceList[socket] addObject:device];
+        IOLog("PCIC: Registered device %s for socket %d\n",
+              [device name] ? [device name] : "unknown", socket);
+    }
+
+    [lock unlock];
+}
+
+/*
+ * Remove all devices from a socket
+ * Called during card removal to cleanly detach all device drivers
+ */
+- (void)removeAllDevicesFromSocket:(unsigned int)socket
+{
+    int i, count;
+    id device;
+
+    if (socket >= numSockets) {
+        IOLog("PCIC: Invalid socket in removeAllDevicesFromSocket\n");
+        return;
+    }
+
+    [lock lock];
+
+    if (deviceList[socket]) {
+        count = [deviceList[socket] count];
+
+        if (count > 0) {
+            IOLog("PCIC: Removing %d device(s) from socket %d\n", count, socket);
+        }
+
+        /* Detach and free each device driver */
+        for (i = count - 1; i >= 0; i--) {
+            device = [deviceList[socket] objectAt:i];
+            if (device) {
+                IOLog("PCIC: Detaching device %s from socket %d\n",
+                      [device name] ? [device name] : "unknown", socket);
+
+                /* Tell the device it's being removed */
+                if ([device respondsTo:@selector(willTerminate)]) {
+                    [device willTerminate];
+                }
+
+                /* Remove from our tracking list */
+                [deviceList[socket] removeObjectAt:i];
+
+                /* The device will be freed by the system */
+            }
+        }
+    }
+
+    [lock unlock];
+}
+
+/*
+ * Free a memory window
+ */
+- (IOReturn)freeMemoryWindow:(unsigned int)window socket:(unsigned int)socket
+{
+    unsigned int regBase;
+    unsigned char mask;
+
+    if (socket >= numSockets || window >= 5) {
+        return IO_R_INVALID_ARG;
+    }
+
+    mask = 1 << window;
+
+    /* Check if window is allocated */
+    if (!(memWindowsAllocated[socket] & mask)) {
+        return IO_R_SUCCESS;  /* Already free */
+    }
+
+    regBase = PCIC_MEM_WINDOW_0 + (window * 8);
+
+    /* Disable the window by clearing its registers */
+    [self writeRegister:socket offset:regBase + 0 value:0];
+    [self writeRegister:socket offset:regBase + 1 value:0];
+    [self writeRegister:socket offset:regBase + 2 value:0];
+    [self writeRegister:socket offset:regBase + 3 value:0];
+    [self writeRegister:socket offset:regBase + 4 value:0];
+    [self writeRegister:socket offset:regBase + 5 value:0];
+
+    /* Mark window as free */
+    memWindowsAllocated[socket] &= ~mask;
+
+    IOLog("PCIC: Freed memory window %d for socket %d\n", window, socket);
+
+    return IO_R_SUCCESS;
+}
+
+/*
+ * Free an I/O window
+ */
+- (IOReturn)freeIOWindow:(unsigned int)window socket:(unsigned int)socket
+{
+    unsigned int regBase;
+    unsigned char mask;
+
+    if (socket >= numSockets || window >= 2) {
+        return IO_R_INVALID_ARG;
+    }
+
+    mask = 1 << window;
+
+    /* Check if window is allocated */
+    if (!(ioWindowsAllocated[socket] & mask)) {
+        return IO_R_SUCCESS;  /* Already free */
+    }
+
+    regBase = PCIC_IO_WINDOW_0 + (window * 8);
+
+    /* Disable the window by clearing its registers */
+    [self writeRegister:socket offset:regBase + 0 value:0];
+    [self writeRegister:socket offset:regBase + 1 value:0];
+    [self writeRegister:socket offset:regBase + 2 value:0];
+    [self writeRegister:socket offset:regBase + 3 value:0];
+
+    /* Mark window as free */
+    ioWindowsAllocated[socket] &= ~mask;
+
+    IOLog("PCIC: Freed I/O window %d for socket %d\n", window, socket);
+
+    return IO_R_SUCCESS;
+}
+
+/*
+ * Free all windows for a socket
+ * Called during card removal cleanup
+ */
+- (void)freeAllWindowsForSocket:(unsigned int)socket
+{
+    int i;
+
+    if (socket >= numSockets) {
+        IOLog("PCIC: Invalid socket in freeAllWindowsForSocket\n");
+        return;
+    }
+
+    /* Free all memory windows */
+    for (i = 0; i < 5; i++) {
+        if (memWindowsAllocated[socket] & (1 << i)) {
+            [self freeMemoryWindow:i socket:socket];
+        }
+    }
+
+    /* Free all I/O windows */
+    for (i = 0; i < 2; i++) {
+        if (ioWindowsAllocated[socket] & (1 << i)) {
+            [self freeIOWindow:i socket:socket];
+        }
+    }
+
+    /* Disable I/O window control */
+    [self writeRegister:socket offset:PCIC_IO_CONTROL value:0];
+
+    IOLog("PCIC: Freed all windows for socket %d\n", socket);
 }
 
 @end

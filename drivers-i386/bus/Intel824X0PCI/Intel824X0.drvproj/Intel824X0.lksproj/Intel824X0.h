@@ -23,9 +23,10 @@
  */
 
 #import <driverkit/i386/IOPCIDeviceDescription.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
 
-@interface Intel824X0 : IOPCIDirectDevice
+@interface Intel824X0 : IODirectDevice
 {
 }
 
@@ -35,5 +36,9 @@
 
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
 - free;
+
+/* PCI config space byte access helpers */
+- (unsigned char)configReadByte:(unsigned char)offset;
+- (void)configWriteByte:(unsigned char)value at:(unsigned char)offset;
 
 @end

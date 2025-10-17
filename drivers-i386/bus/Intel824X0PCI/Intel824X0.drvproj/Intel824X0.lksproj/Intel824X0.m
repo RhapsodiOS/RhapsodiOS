@@ -42,22 +42,70 @@
 
 /* Binary exports required by the kernel */
 static Protocol *protocols[] = {
-    @protocol(IOPCIDirectDevice),
     nil
 };
 
 @implementation Intel824X0
 
+/*
+ * Helper method to read a byte from PCI config space
+ */
+- (unsigned char)configReadByte:(unsigned char)offset
+{
+    unsigned long data;
+    unsigned char alignedOffset = offset & ~3;  /* Align to 32-bit boundary */
+    unsigned char byteOffset = offset & 3;       /* Byte within 32-bit word */
+
+    if ([self getPCIConfigData:&data atRegister:alignedOffset] != IO_R_SUCCESS) {
+        return 0xFF;
+    }
+
+    return (data >> (byteOffset * 8)) & 0xFF;
+}
+
+/*
+ * Helper method to write a byte to PCI config space
+ */
+- (void)configWriteByte:(unsigned char)value at:(unsigned char)offset
+{
+    unsigned long data;
+    unsigned char alignedOffset = offset & ~3;  /* Align to 32-bit boundary */
+    unsigned char byteOffset = offset & 3;       /* Byte within 32-bit word */
+    unsigned long mask = 0xFF << (byteOffset * 8);
+
+    /* Read current value */
+    if ([self getPCIConfigData:&data atRegister:alignedOffset] != IO_R_SUCCESS) {
+        return;
+    }
+
+    /* Clear the byte we're writing and set new value */
+    data = (data & ~mask) | ((unsigned long)value << (byteOffset * 8));
+
+    /* Write back */
+    [self setPCIConfigData:data atRegister:alignedOffset];
+}
+
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription
 {
-    unsigned int vendorID, deviceID;
+    unsigned long configData;
+    unsigned short vendorID, deviceID;
+    IOReturn result;
 
     if ([super probe:deviceDescription] == NO) {
         return NO;
     }
 
-    vendorID = [deviceDescription vendorID];
-    deviceID = [deviceDescription deviceID];
+    /* Read vendor ID and device ID from PCI config space offset 0x00 */
+    result = [self getPCIConfigData:&configData
+                         atRegister:0x00
+              withDeviceDescription:deviceDescription];
+
+    if (result != IO_R_SUCCESS) {
+        return NO;
+    }
+
+    vendorID = configData & 0xFFFF;
+    deviceID = (configData >> 16) & 0xFFFF;
 
     /* Intel vendor ID: 0x8086
      * Device IDs: 0x0483, 0x04A3
@@ -87,15 +135,22 @@ static Protocol *protocols[] = {
 
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
 {
-    unsigned int vendorID, deviceID;
+    unsigned long configData;
+    unsigned short vendorID, deviceID;
     unsigned char revisionID, dramcReg;
 
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
         return nil;
     }
 
-    vendorID = [deviceDescription vendorID];
-    deviceID = [deviceDescription deviceID];
+    /* Read vendor ID and device ID from PCI config space offset 0x00 */
+    if ([self getPCIConfigData:&configData atRegister:0x00] == IO_R_SUCCESS) {
+        vendorID = configData & 0xFFFF;
+        deviceID = (configData >> 16) & 0xFFFF;
+    } else {
+        vendorID = 0;
+        deviceID = 0;
+    }
 
     [self setDeviceKind:"Intel 824X0 PCI Host Bridge"];
     [self setLocation:""];

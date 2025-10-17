@@ -3,7 +3,7 @@
 ##
 
 # Project info
-Project               = rpm
+Project               = rpm-4.0
 Extra_Configure_Flags = --bindir="/bin"
 Extra_Install_Flags   = bindir="$(DSTROOT)/bin"
 UserType              = Administration

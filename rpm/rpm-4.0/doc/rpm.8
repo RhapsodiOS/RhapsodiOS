@@ -1,0 +1,606 @@
+.\" rpm - Red Hat Package Manager
+.TH rpm 8 "22 December 1998" "Red Hat Software" "Red Hat Linux"
+.SH NAME
+rpm \- Red Hat Package Manager
+.SH SYNOPSIS
+\fBrpm\fP [options] 
+.SH DESCRIPTION
+\fBrpm\fP is a powerful \fIpackage manager\fP, which can be used to
+build, install, query, verify, update, and uninstall individual
+software packages.  A \fIpackage\fP consists of an archive of files,
+and package information, including name, version, and description.
+
+One of the following basic modes must be selected:
+\fIInitialize Database\fP, \fIRebuild Database\fP, \fIBuild Package\fP, 
+\fIRecompile Package\fP, \fIBuild Package from Tarball\fP, 
+\fIQuery\fP, \fIShow Querytags\fP, \fIInstall\fP, \fIFreshen\fP, 
+\fIUninstall\fP, \fIVerify\fP, \fISignature Check\fP, \fIResign\fP, 
+\fIAdd Signature\fP, \fIset owners and groups\fR and \fIShow
+Configuration\fP.
+
+
+
+Database maintenance:
+.br
+.I "\fB    rpm \-i [\-\-initdb]\fP"
+.br
+.I "\fB    rpm \-i [\-\-rebuilddb]\fP"
+
+Building:
+.br
+.I "\fB    rpm [\-b|t] [package_spec]+\fP"
+.br
+.I "\fB    rpm [\-\-rebuild] [sourcerpm]+\fP"
+.br
+.I "\fB    rpm [\-\-tarbuild] [tarredsource]+\fP"
+.br
+
+Querying:
+.br
+.I "\fB    rpm [\-\-query] [queryoptions]\fP"
+.br
+.I "\fB    rpm [\-\-querytags]\fP"
+.br
+
+Maintaining installed packages:
+.br
+.I "\fB    rpm [\-\-install] [installoptions] [package_file]+\fP"
+.br
+.I "\fB    rpm [\-\-freshen|\-F] [installoptions] [package_file]+\fP"
+.br
+.I "\fB    rpm [\-\-uninstall|\-e] [uninstalloptions] [package]+\fP"
+.br
+.I "\fB    rpm [\-\-verify|\-V] [verifyoptions] [package]+\fP"
+.br
+
+Signatures:
+.br
+.I "\fB    rpm [\-\-verify|\-V] [verifyoptions] [package]+\fP"
+.br
+.I "\fB    rpm [\-\-resign] [package_file]+\fP"
+.br
+.I "\fB    rpm [\-\-addsign] [package_file]+\fP"
+.br
+
+Miscellaneous:
+.br
+.I "\fB    rpm [\-\-showrc]\fP"
+.br
+.I "\fB    rpm [\-\-setperms] [package]+\fP"
+.br
+.I "\fB    rpm [\-\-setgids] [package]+\fP"
+.br
+
+
+.SH GENERAL OPTIONS
+These options can be used in all the different modes.
+.IP "\fB\-vv\fP"
+Print lots of ugly debugging information.
+.IP "\fB\-\-quiet\fP"
+Print as little as possible \- normally only error messages will be
+displayed.
+.IP "\fB\-\-help\fP"
+Print a longer usage message then normal.
+.IP "\fB\-\-version\fP"
+Print a single line containing the version number of \fBrpm\fP being used.
+.IP "\fB\-\-rcfile \fI<filelist>\fP"
+Each of the files in the colon separated \fI<filelist>\fP is read
+sequentially by \fBrpm\fP for configuration information.
+The default \fI<filelist>\fP is \fB/usr/lib/rpm/rpmrc:/etc/rpmrc:~/.rpmrc\fP.
+Only the first file in the list must exist, and tildes will be expanded to
+the value of \fB$HOME\fP.
+.IP "\fB\-\-root \fI<dir>\fP"
+Use the system rooted at \fI<dir>\fP for all operations.  Note that
+this means the database will be read or modified under \fI<dir>\fP and
+any \fIpre\fP or \fIpost\fP scripts are run after a chroot() to \fI<dir>\fP.
+.IP "\fB\-\-dbpath \fI<path>\fP"
+Use RPM database in \fI<path>\fP.
+.IP "\fB\-\-justdb\fP"
+Update only the database, not the filesystem.
+.IP "\fB\-\-ftpproxy \fI<host>\fP, \fB\-\-httpproxy \fI<host>\fP"
+Use \fI<host>\fP as an FTP or HTTP proxy host.
+See \fBFTP/HTTP OPTIONS\fP.
+.IP "\fB\-\-ftpport \fI<port>\fP, \fB\-\-httpport \fI<port>\fP"
+Use \fI<port>\fP as the FTP or HTTP port on the proxy host.
+See \fBFTP/HTTP OPTIONS\fP.
+.IP "\fB\-\-pipe \fI<cmd>\fP"
+Pipes the output of \fBrpm\fP to the command \fI<cmd>\fP.
+
+.SH INSTALL AND UPGRADE OPTIONS
+The general form of an rpm install command is
+.PP
+	\fBrpm \-i [install\-options] \fI<package_file>+\fP
+.PP
+This installs a new package.
+The general form of an rpm upgrade command is
+.PP
+	\fBrpm \-U [install\-options] \fI<package_file>+\fP
+.PP
+This upgrades or installs the package currently installed to the version
+in the new RPM.  This is the same as install, except all other version of
+the package are removed from the system. 
+.PP
+	\fBrpm [\-F|--freshen] [install\-options] \fI<package_file>+\fP
+.PP
+This will upgrade packages, but only if an earlier version currently
+exists.
+
+
+The \fI<package_file>\fP may be specified as an ftp or http URL, in which case
+the package will be downloaded before being installed. See \fBFTP/HTTP
+OPTIONS\fP for information on RPM's built-in ftp and http support.
+.PP
+.IP "\fB\-\-force\fP"
+Same as using \fB\-\-replacepkgs\fP, \fB\-\-replacefiles\fP, and 
+\fB\-\-oldpackage\fP.
+.IP "\fB\-h\fP, \fB\-\-hash\fP"
+Print 50 hash marks as the package archive is unpacked.  Use
+with \fB\-v\fP for a nice display.
+.IP "\fB\-\-oldpackage\fP"
+Allow an upgrade to replace a newer package with an older one.
+.IP "\fB\-\-percent\fP"
+Print percentages as files are unpacked from the package archive. This
+is intended to make RPM easy to run from other tools.
+.IP "\fB\-\-replacefiles\fP"
+Install the packages even if they replace files from other, already
+installed, packages.
+.IP "\fB\-\-replacepkgs\fP"
+Install the packages even if some of them are already installed on this
+system.
+.IP "\fB\-\-allfiles\fP"
+Installs or upgrades all the missingok files in the package, regardless if
+they exist.
+.IP "\fB\-\-nodeps\fP"
+Don't do a dependency check before installing or upgrading a package.
+.IP "\fB\-\-noscripts\fP"
+Don't execute the preinstall or postinstall scripts.
+.IP "\fB\-\-notriggers\fP"
+Don't execute scripts which are triggered by the installation of this package.
+.IP "\fB\-\-ignoresize\fP"
+Don't check mount file systems for sufficient disk space before installing this package.
+.IP "\fB\-\-excludepath \fI<path>\fP"
+Don't install files whose name begins with \fI<path>\fP.
+.IP "\fB\-\-excludedocs\fP"
+Don't install any files which are marked as documentation (which includes
+man pages and texinfo documents).
+.IP "\fB\-\-includedocs\fP"
+Install documentation files. This is the default behavior.
+.IP "\fB\-\-test\fP"
+Do not install the package, simply check for and report potential
+conflicts.
+.IP "\fB\-\-ignorearch\fP"
+This allows installation or upgrading even if the architectures of the
+binary RPM and host don't match.
+.IP "\fB\-\-ignoreos\fP"
+This allows installation or upgrading even if the operating systems of the
+binary RPM and host don't match.
+.IP "\fB\-\-prefix \fI<path>\fP"
+This sets the installation prefix to \fI<path>\fP for relocatable packages.
+.IP "\fB\-\-relocate \fI<oldpath>\fB=\fI<newpath>\fP"
+For relocatable packages, translates the files that would be put in
+\fI<oldpath>\fP to \fI<newpath>\fP.
+.IP "\fB\-\-badreloc\fP"
+To be used in conjunction with \-\-relocate, this forces the relocation
+even if the package isn't relocatable.
+.IP "\fB\-\-noorder\fP"
+Don't reorder the packages for an install. The list of packages would
+normally be reordered to satisfy dependancies.
+
+
+.SH QUERY OPTIONS
+The general form of an rpm query command is
+.PP
+	\fBrpm \-q [query\-options]\fP
+.PP
+You may specify the format that package information should be printed 
+in. To do this, you use the \fB[\-\-queryformat|\-qf]\fP option, followed
+by the format string.
+
+Query formats are modifed versions of the standard \fBprintf(3)\fP
+formatting. The format is made up of static strings (which may include
+standard C character escapes for newlines, tabs, and other special
+characters) and \fBprintf(3)\fP type formatters. As \fBrpm\fP
+already knows the type to print, the type specifier must be
+omitted however, and replaced by the name of the header tag to
+be printed, enclosed by \fB{}\fP characters. The 
+\fBRPMTAG_\fP portion of the tag name may be omitted.
+
+Alternate output formats may be requested by following the tag with
+\fB:\fItypetag\fR. Currently, the following types are supported: \fBoctal\fR,
+\fBdate\fR, \fBshescape\fR, \fBperms\fR, \fBfflags\fR, and \fBdepflags\fR.
+
+For example, to print only the names of the packages queried, you
+could use \fB%{NAME}\fP as the format string. To print the packages
+name and distribution information in two columns, you could use
+\fB%\-30{NAME}%{DISTRIBUTION}\fP.
+
+\fBrpm\fP will print a list of all of the tags it knows about when
+it is invoked with the \fB\-\-querytags\fP argument.
+
+There are two subsets of options for querying: package selection, and
+information selection.
+
+Package selection options:
+.br
+.IP "\fB\fI<package_name>\fP"
+Query installed package named \fI<package_name>\fP.
+.IP "\fB\-a\fP, \fB\-\-all\fP"
+Query all installed packages
+.IP "\fB\-\-whatrequires \fI<capability>\fP"
+Query all packages that requires \fI<capability>\fP for proper functioning.
+.IP "\fB\-\-whatprovides \fI<virtual>\fP"
+Query all packages that provide the \fI<virtual>\fP capability.
+.IP "\fB\-f \fI<file>\fP, \fB\-\-file \fI<file>\fP"
+Query package owning \fI<file>\fP.
+.IP "\fB\-g \fI<group>\fP, \fB\-\-group \fI<group>\fP"
+Query packages with the group of \fI<group>\fP.
+.IP "\fB\-p \fI<package_file>\fP"
+Query an (uninstalled) package \fI<package_file>\fP. 
+The \fI<package_file>\fP may be specified as an ftp or http style URL, in which case
+the package header will be downloaded and queried. See \fBFTP/HTTP
+OPTIONS\fP for information on RPM's built-in ftp and http client support.
+.IP "\fB\-\-specfile \fI<specfile>\fP"
+Parse and query \fI<specfile>\fP as if it were a package. Although not all
+the information (e.g. file lists) is available, this type of query permits
+rpm to be used to extract information from spec files without having to
+write a specfile parser.
+.IP "\fB\-\-querybynumber \fI<num>\fP"
+Query the \fI<num>\fPth database entry directly; this is helpful for debugging 
+purposes.
+.IP "\fB\-\-triggeredby \fI<pkg>\fP"
+Query packages that are triggered by packages \fI<pkg>\fP.
+
+.P
+Information selection options:
+.br
+.IP "\fB\-i\fP"
+Display package information, including name, version, and description. This
+uses the \fB\-\-queryformat\fP if one was specified.
+.IP "\fB\-R\fP, \fB\-\-requires\fP"
+List packages on which this package depends.
+.IP "\fB\-\-provides\fP"
+List capabilities this package provides.
+.IP "\fB\-\-changelog\fP"
+Display change information for the package.
+.IP "\fB\-l\fP, \fB\-\-list\fP"
+List files in package.
+.IP "\fB\-s\fP, \fB\-\-state\fP"
+Display the \fIstates\fP of files in the package (implies \fB\-l\fP).  
+The state of each file is
+either \fInormal\fP, \fInot installed\fP, or \fIreplaced\fP.
+.IP "\fB\-d\fP, \fB\-\-docfiles\fP"
+List only documentation files (implies \fB\-l\fP).  
+.IP "\fB\-c\fP, \fB\-\-configfiles\fP"
+List only configuration files (implies \fB\-l\fP).  
+.IP "\fB\-\-scripts\fP"
+List the package specific shell scripts that are used as part of the 
+installation and uninstallation processes, if there are any.
+.IP "\fB\-\-triggers\fP, \fB\-\-triggerscripts\fP"
+Display the trigger scripts, if any, which are contained in the package.
+.IP "\fB\-\-dump\fP"
+Dump file information as follows: path size mtime md5sum mode
+owner group isconfig isdoc rdev symlink. This must be used with
+at least one of \fB\-l\fP, \fB\-c\fP, \fB\-d\fP.
+.IP "\fB\-\-last\fP"
+Orders the package listing by install time such that the latest packages
+are at the top.
+.IP "\fB\-\-filesbypkg\fP"
+This lists all the files in each package.
+.IP "\fB\-\-triggerscripts\fP"
+Shows all the trigger scripts for the selected packages.
+
+.SH VERIFY OPTIONS
+The general form of an rpm verify command is
+.PP
+	\fBrpm \-V|\-y|\-\-verify [verify\-options]\fP
+.PP
+Verifying a package compares information about the installed
+files in the package with information about the files taken from the
+original package and stored in the rpm database.  Among other things,
+verifying compares the size, MD5 sum, permissions, type, owner and group
+of each file.  Any discrepencies are displayed.  The package specification
+options are the same as for package querying.
+
+Files that were not installed from the package, for example documentation
+files excluded on installation using the "\fB\-\-excludedocs\fP" option,
+will be silently ignored.
+
+Options that can be used in verify mode:
+
+.IP "\fB\-\-nofiles\fP"
+Ignores missing files when verifying.
+.IP "\fB\-\-nomd5\fP"
+Ignores MD5 checksum errors when verifying.
+.IP "\fB\-\-nopgp\fP"
+Ignores PGP checking errors when verifying.
+.IP "\fB\-\-nofiles\fP"
+Ignores missing files when verifying.
+.IP "\fB\-\-noscripts\fP"
+Don't execute the verify script (if any).
+
+
+The format of the output is a string of 8 characters, a possible "\fBc\fP"
+denoting a configuration file, and then the file name.  Each of the 8
+characters denotes the result of a comparison of one attribute of the file
+to the value of that attribute recorded in the RPM database.  A 
+single "\fB.\fP" (period) means the test passed, while a single "\fB?\fP"
+indicates the test could not be performed (e.g. file permissions prevent
+reading).  The following characters denote failure of certain tests:
+
+.IP "\fB5\fP"
+MD5 sum
+.IP "\fBS\fP"
+File size
+.IP "\fBL\fP"
+Symlink
+.IP "\fBT\fP"
+Mtime
+.IP "\fBD\fP"
+Device
+.IP "\fBU\fP"
+User
+.IP "\fBG\fP"
+Group
+.IP "\fBM\fP"
+Mode (includes permissions and file type)
+
+.SH SIGNATURE CHECKING
+The general form of an rpm signature check command is
+.PP
+	\fBrpm \-\-checksig \fI<package_file>+\fP
+.PP
+This checks the PGP signature of package \fI<package_file>\fP to ensure
+its integrity and origin.
+PGP configuration information is read from configuration files.
+See the section on PGP SIGNATURES for details.
+
+.SH UNINSTALL OPTIONS
+The general form of an rpm uninstall command is
+.PP
+	\fB    rpm \-e \fI<package_name>+\fP
+.PP
+.IP "\fB\-\-allmatches\fP"
+Remove all versions of the package which match \fI<package_name>\fR. Normally
+an error is issued if \fI<package_name>\fR matches multiple packages.
+.IP "\fB\-\-noscripts\fP"
+Don't execute the preuninstall or postuninstall scripts.
+.IP "\fB\-\-notriggers\fP"
+Don't execute scripts which are triggered by the removal of this package.
+.IP "\fB\-\-nodeps\fP"
+Don't check dependencies before uninstalling the packages.
+.IP "\fB\-\-test\fP"
+Don't really uninstall anything, just go through the motions.  Useful in
+conjunction with the \fB\-vv\fP option.
+
+.SH BUILD OPTIONS
+The general form of an rpm build command is
+.PP
+    \fBrpm \-[b|t]\fIO\fP [build\-options] \fI<package_spec>+\fP
+.PP
+The argument used is \fB-b\fR if a spec file is being used to build the package
+and \fB-t\fR if \fBRPM\fR should look inside of a gzipped (or compressed) tar
+file for the spec file to use. After the first argument, the next argument
+(\fIO\fR) specifies the stages of building and packaging to be done and
+is one of:
+
+.IP "\fB\-bp\fP"
+Executes the "%prep" stage from the spec file.  Normally this
+involves unpacking the sources and applying any patches.
+.IP "\fB\-bl\fP"
+Do a "list check".  The "%files" section from the spec file
+is macro expanded, and checks are made to verify that each file
+exists.
+.IP "\fB\-bc\fP"
+Do the "%build" stage from the spec file (after doing the prep stage).
+This generally involves the equivalent of a "make".
+.IP "\fB\-bi\fP"
+Do the "%install" stage from the spec file (after doing the prep
+and build stages).  This generally involves the equivalent of a
+"make install".
+.IP "\fB\-bb\fP"
+Build a binary package (after doing the prep, build, and install stages).
+.IP "\fB\-bs\fP"
+Build just the source package.
+.IP "\fB\-ba\fP"
+Build binary and source packages (after doing the prep, build, and 
+install stages).
+.PP
+The following options may also be used:
+.IP "\fB\-\-short\-circuit\fP"
+Skip straight to specified stage (ie, skip all stages leading up
+to the specified stage).  Only valid with \fB\-bc\fP and \fB\-bi\fP.
+.IP "\fB\-\-timecheck\fP"
+Set the "timecheck" age (0 to disable).  This value can also
+be configured by defining the macro "_timecheck". The timecheck
+value expresses, in seconds, the maximum age of a file being packaged.
+Warnings will be printed for all files beyond the timecheck age.
+.IP "\fB\-\-clean\fP"
+Remove the build tree after the packages are made.
+.IP "\fB\-\-rmsource\fP"
+Remove the sources and spec file after the build (may also be
+used standalone, eg. "\fBrpm \-\-rmsource foo.spec\fP").
+.IP "\fB\-\-test\fP"
+Do not execute any build stages.
+Useful for testing out spec files.
+.IP "\fB\-\-sign\fP"
+Embed a PGP signature in the package.  This signature can be used
+to verify the integrity and the origin of the package.  See the
+section on PGP SIGNATURES for configuration details.
+.IP "\fB\-\-buildroot \fI<dir>\fP"
+When building the package, override the BuildRoot tag with directory
+\fI<dir>\fP.
+.IP "\fB\-\-target \fI<platform>\fP"
+When building the package, interpret \fI<platform>\fP as \fBarch-vendor-os\fP
+and set the macros \fB_target\fP, \fB_target_arch\fP and \fB_target_os\fP
+accordingly.
+.IP "\fB\-\-buildarch \fI<arch>\fP"
+When building the package, set the architecture to \fI<arch>\fP. This option
+has been obsoleted by \fB\-\-target\fI in RPM 3.0.
+.IP "\fB\-\-buildos \fI<os>\fP"
+When building the package, set the architecture to \fI<os>\fP. This option
+has been obsoleted by \fB\-\-target\fI in RPM 3.0.
+
+
+.SH REBUILD AND RECOMPILE OPTIONS
+
+There are two other ways to invoke building with rpm:
+
+.I "\fBrpm \-\-recompile \fI<source_package_file>+\fP"
+
+.I "\fBrpm \-\-rebuild \fI<source_package_file>+\fP"
+
+When invoked this way, \fBrpm\fP installs the named source package, and does
+a prep, compile and install.  In addition, \fB\-\-rebuild\fP builds a new
+binary package. When the build has completed, the build directory is
+removed (as in \fB\-\-clean\fP) and the the sources and spec file for
+the package are removed.
+
+.SH SIGNING AN EXISTING RPM
+
+.I "\fBrpm \-\-resign \fI<binary_package_file>+\fP"
+
+This option generates and inserts new signatures for the listed packages.
+Any existing signatures are removed.
+
+.I "\fBrpm \-\-addsign \fI<binary_package_file>+\fP"
+
+This option generates and appends new signatures for the listed packages
+to those that already exist.
+
+.SH PGP SIGNATURES
+
+In order to use the signature feature RPM must be configured to run PGP,
+and it must be able to find a public key ring with RPM public keys in it.
+By default, RPM uses the PGP defaults to find the keyrings (honoring PGPPATH).
+If your key rings are not located where PGP expects them to be,
+you will need to configure the macro
+
+.IP "\fB_pgp_path\fP"
+to be the location of the PGP key rings to use.
+.PP
+
+If you want to be able to sign packages you create yourself, you also
+need to create your own public and secret key pair (see the PGP manual).
+You will also need to configure the macros
+
+.IP "\fB_signature\fP"
+The signature type.  Right now only pgp is supported.
+.IP "\fB_pgp_name\fP"
+The name of the "user" whose key you wish to use to sign your packages.
+.PP
+
+When building packages you then add \-\-sign to the command line.
+You will be prompted for your pass phrase, and your package will
+be built and signed.
+
+For example, to be able to use PGP to sign packages as the user
+\fB"John Doe <jdoe@foo.com>"\fP from the key rings located in
+\fB/etc/rpm/.pgp\fP using the executable \fB/usr/bin/pgp\fP you would include
+
+.I "\fB%_signature pgp\fP"
+
+.I "\fB%_pgp_path /etc/rpm/.pgp\fP"
+
+.I "\fB%_pgp_name John Doe <jdoe@foo.com>\fP"
+
+.I "\fB%_pgpbin /usr/bin/pgp\fP"
+
+in a macro configuration file. Use \fB/etc/rpm/macros\fP for per-system
+configuration and \fB~/.rpmmacros\fP for per-user configuration.
+
+.SH REBUILD DATABASE OPTIONS
+
+The general form of an rpm rebuild database command is
+.PP
+	\fBrpm \-\-rebuilddb\fP
+.PP
+
+To rebuild a new database, do:
+.PP
+	\fBrpm \-\-initdb\fP
+.PP
+
+The only options for these modes are \fB-\-dbpath\fP and
+\fB-\-root\fP.
+
+.SH SHOWRC 
+
+Running 
+
+.PP
+	\fBrpm \-\-showrc\fP
+
+.PP
+shows the values RPM will use for all of the options that may be set
+in \fIrpmrc\fP files.
+
+.SH FTP/HTTP OPTIONS
+
+RPM includes simple FTP and HTTP clients to simplify installing and querying
+packages which are available over the internet. Package files for install,
+upgrade, and query operations may be specified as an ftp or http style URL:
+
+.PP
+	\fBftp://<user>:<password>@hostname:<port>/path/to/package.rpm\fP
+.PP
+If the \fB:password\fP portion is omitted, the password will be prompted
+for (once per user/hostname pair). If both the user and password are
+omitted, anonymous ftp is used. In all cases passive (PASV) ftp transfers are
+used.
+
+RPM allows the following options to be used with ftp URLs:
+
+.IP "\fB\--ftpproxy \fI<hostname>\fP"
+The host \fI<hostname>\fP will be used as a proxy server for all ftp
+transfers, which allows users to ftp through firewall machines which
+use proxy systems.
+This option may also be specified by configuring the macro \fB_ftpproxy\fP.
+
+.IP "\fB\--ftpport \fI<port>\fP"
+The TCP \fI<port>\fP  number to use for the ftp connection on the proxy
+ftp server instead of the default port.
+This option may also be specified by configuring the macro \fB_ftpport\fP.
+.PP
+
+RPM allows the following options to be used with http URLs:
+
+.IP "\fB\--httpproxy \fI<hostname>\fP"
+The host \fI<hostname>\fP will be used as a proxy server for all http
+transfers.
+This option may also be specified by configuring the macro \fB_httpproxy\fP.
+
+.IP "\fB\--httpport \fI<port>\fP"
+The TCP \fI<port>\fP  number to use for the http connection on the proxy
+http server instead of the default port.
+This option may also be specified by configuring the macro \fB_httpport\fP.
+.PP
+
+.SH FILES
+.nf
+/usr/lib/rpm/rpmrc
+/etc/rpmrc
+~/.rpmrc
+/usr/lib/rpm/macros
+/etc/rpm/macros
+~/.rpmmacros
+/var/lib/rpm/Conflictname
+/var/lib/rpm/Basenames
+/var/lib/rpm/Group
+/var/lib/rpm/Name
+/var/lib/rpm/Packages
+/var/lib/rpm/Providename
+/var/lib/rpm/Requirename
+/var/lib/rpm/Triggername
+/var/tmp/rpm*
+.fi
+.El
+.SH SEE ALSO
+.IR rpm2cpio (8) ,
+.B http://www.rpm.org/
+.nf
+.SH AUTHORS
+.nf
+Marc Ewing <marc@redhat.com>
+Jeff Johnson <jbj@redhat.com>
+Erik Troan <ewt@redhat.com>
+.fi

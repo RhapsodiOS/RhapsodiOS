@@ -45,7 +45,6 @@
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
-#import <driverkit/i386/PCMCIAPool.h>
 
 #define ATTRIBUTE_MAPPING_KEY	"PCMCIA_DEVICE_ATTR_MAPPING"
 

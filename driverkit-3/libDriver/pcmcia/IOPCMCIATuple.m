@@ -26,7 +26,6 @@
  * All rights reserved.
  */
 
-#import <driverkit/i386/PCMCIATuple.h>
 #import <driverkit/i386/IOPCMCIATuple.h>
 #import <driverkit/i386/IOPCMCIATuplePrivate.h>
 

@@ -1,4 +1,4 @@
-Package: SoundBlaster128PCI
+Package: soundblaster128pci
 Maintainer: Jens Heise
 Vendor: https://github.com/heisej/SoundBlaster16PCI
 Version: 1.2

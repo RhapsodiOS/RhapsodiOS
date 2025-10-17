@@ -1,0 +1,17 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile for configuring the standard application makefile
+#  associated with ProjectBuilder.
+#
+###############################################################################
+
+# Flags to be passed to $(CC) when compiling
+CFLAGS += -DKERNEL -DDRIVER_PRIVATE -D__APPLE__ -D__NeXT__
+
+# Flags to be passed to $(LD) when linking
+LDFLAGS += -nostdlib -r
+
+# Export symbols for kernel linking
+EXPORT_SYMBOLS = YES

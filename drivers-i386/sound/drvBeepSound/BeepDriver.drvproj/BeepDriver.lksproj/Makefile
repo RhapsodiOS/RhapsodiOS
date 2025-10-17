@@ -9,29 +9,34 @@
 
 NAME = BeepDriver
 
-PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECTVERSION = 2.7
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+CLASSES = BeepDriver.m
 
-GLOBAL_RESOURCES =
+HFILES = BeepDriver.h BeepTypes.h PCSpeakerRegs.h
 
-BUNDLES = BeepDriver.drvproj
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
-TOOLS =
-
-OTHERSRCS = Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
+NEXTSTEP_PB_CFLAGS = -Wno-format
 
+
+NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
+WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
+PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
+NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
+WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
+PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
 
 include $(MAKEFILEDIR)/platform.make
 

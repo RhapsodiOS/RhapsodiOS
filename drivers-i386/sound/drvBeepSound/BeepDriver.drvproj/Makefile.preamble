@@ -1,0 +1,8 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile for configuring the standard application makefile
+#  associated with ProjectBuilder.
+#
+###############################################################################

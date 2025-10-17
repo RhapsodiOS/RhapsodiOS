@@ -1,0 +1,6 @@
+Package: drveisabus
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 1
+Description: EISA Bus device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

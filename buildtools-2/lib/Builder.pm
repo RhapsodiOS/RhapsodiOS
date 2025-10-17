@@ -16,11 +16,11 @@ sub copyhash
 {
   my ($src) = @_;
   my $ret = { };
-  
+
   for my $key (keys (%$src)) {
     $ret->{$key} = $src->{$key};
   }
-  
+
   return $ret;
 }
 
@@ -33,7 +33,7 @@ sub liststring
   return $ret;
 }
 
-my @cflags = 
+my @cflags =
 (
  '-Dunix',
  '-D__unix',
@@ -52,7 +52,7 @@ my @cflags =
  '-D_NEXT_SOURCE'
 );
 
-my $baseflags = 
+my $baseflags =
 {
  'SRCROOT' => undef,
  'OBJROOT' => undef,
@@ -107,14 +107,14 @@ sub printcmd
 sub buildflags
 {
   my ($baseflags, $params, $target) = @_;
-  
+
   my $flags = &copyhash ($baseflags);
-  
+
   $flags->{'SRCROOT'} = $params->{'SRCROOT'};
   $flags->{'OBJROOT'} = $params->{'OBJROOT'};
   $flags->{'SYMROOT'} = $params->{'SYMROOT'};
   $flags->{'SUBLIBROOTS'} = $params->{'SUBLIBROOTS'};
-  
+
   if ($target eq 'installhdrs') {
     $flags->{'DSTROOT'} = $params->{'HDRROOT'};
   } else {
@@ -123,7 +123,7 @@ sub buildflags
 
     $flags->{'RC_CFLAGS'} = '-arch i386 -arch ppc ' . &liststring (@cflags);
     $flags->{'RC_ARCHS'} = 'i386 ppc';
-    $flags->{'RC_i386'} = 'YES';  
+    $flags->{'RC_i386'} = 'YES';
     $flags->{'RC_ppc'} = 'YES';
 
   return $flags;
@@ -179,7 +179,7 @@ sub getparams ()
 {
   my ($package, $projectname) = @_;
   my $params = { };
-  
+
   my $buildroot = '/private/tmp/roots';
   if (defined ($ENV{'BUILDIT_DIR'} && $ENV{'BUILDIT_DIR'})) {
     $buildroot = $ENV{'BUILDIT_DIR'};
@@ -194,37 +194,37 @@ sub getparams ()
   if (defined ($ENV{'SRCROOT'} && $ENV{'SRCROOT'})) {
     $params->{'SRCROOT'} = $ENV{'SRCROOT'};
   }
-  
+
   $params->{'OBJROOT'} = "$buildroot/$projectname.roots/$projectname.obj";
   if (defined ($ENV{'OBJROOT'} && $ENV{'OBJROOT'})) {
     $params->{'OBJROOT'} = $ENV{'OBJROOT'};
   }
-  
+
   $params->{'SYMROOT'} = "$buildroot/$projectname.roots/$projectname.sym";
   if (defined ($ENV{'SYMROOT'} && $ENV{'SYMROOT'})) {
     $params->{'SYMROOT'} = $ENV{'SYMROOT'};
   }
-  
+
   $params->{'DSTROOT'} = "$buildroot/$projectname.roots/$projectname.dst";
   if (defined ($ENV{'DSTROOT'} && $ENV{'DSTROOT'})) {
     $params->{'DSTROOT'} = $ENV{'DSTROOT'};
   }
-  
+
   $params->{'HDRROOT'} = "$buildroot/$projectname.roots/$projectname.hdr";
   if (defined ($ENV{'HDRROOT'} && $ENV{'HDRROOT'})) {
     $params->{'HDRROOT'} = $ENV{'HDRROOT'};
   }
-  
+
   $params->{'LIBCOBJROOT'} = "$buildroot/$projectname.roots/$projectname.cobj";
   if (defined ($ENV{'LIBCOBJROOT'} && $ENV{'LIBCOBJROOT'})) {
     $params->{'LIBCOBJROOT'} = $ENV{'LIBCOBJROOT'};
   }
-  
+
   $params->{'LOGFILE'} = "$buildroot/$projectname.roots/$projectname.log";
   if (defined ($ENV{'LOGFILE'} && $ENV{'LOGFILE'})) {
     $params->{'LOGFILE'} = $ENV{'LOGFILE'};
   }
-  
+
   $params->{'SUBLIBROOTS'} = "/usr/local/lib/objs";
   if (defined ($ENV{'SUBLIBROOTS'} && $ENV{'SUBLIBROOTS'})) {
     $params->{'SUBLIBROOTS'} = $ENV{'SUBLIBROOTS'};
@@ -270,19 +270,19 @@ sub dir2name
   if ($revision =~ /^[^-]*(-([0-9.]+))?/) {
       $revision = $2;
   }
-  
+
   $pbase =~ s/-[0-9.]+$//;
   my $pname = &pkgname ($pbase, $revision);
-  
+
   return ($pbase, $pname, $revision);
 }
 
 sub makecontrol
 {
   my ($pname, $revision) = @_;
-  
+
   my $package = Dpkg::Package::Package->new ('data' => '');
-  
+
   $package->{'package'} = $pname;
   $package->{'version'} = "0";
   $package->{'architecture'} = 'universal-apple-rhapsody';
@@ -290,7 +290,7 @@ sub makecontrol
   $package->{'description'} = "No description available.";
   $package->{'maintainer'} = "Anonymous <darwin-development\@public.lists.apple.com>";
   $package->{'build-depends'} = ['build-base'];
-  
+
   return $package;
 }
 
@@ -312,7 +312,7 @@ sub readcontrol
   if (! defined ($package)) {
     return $package;
   }
-  
+
   if (! defined ($package->{'package'})) {
     print "error: package file does not contain 'Package:' entry\n";
     return undef;
@@ -327,10 +327,10 @@ sub readcontrol
   if (! defined ($package->{'maintainer'})) {
       $package->{'maintainer'} = "Anonymous <darwin-development\@public.lists.apple.com>";
   }
-  
+
   $package->{'architecture'} = 'universal-apple-rhapsody';
   $package->{'source'} = $package->{'package'};
-  
+
   return $package;
 }
 
@@ -338,16 +338,16 @@ sub checkret ()
 {
   my ($status) = @_;
   my $ret = "";
-  
+
   if ($status == 0) {
     return "exited successfully";
   }
-  
+
   my $lowbyte = ($status & 0xff);
   if ($lowbyte == 0x7f) {
     return "stopped";
   }
-  
+
   my $signal = ($lowbyte & 0177);
   if ($signal != 0) {
     $ret = "terminated by signal $signal";
@@ -356,7 +356,7 @@ sub checkret ()
     }
     return $ret;
   }
-  
+
   my $exitstatus = (($status >> 8) & 0xff);
   return "failed with status $exitstatus";
 }
@@ -365,28 +365,28 @@ sub buildpackage ()
 {
   my ($spackage, $params, $target) = @_;
   my $dstroot;
-  
+
   my $package = Dpkg::Package::Package->new ('data' => $spackage->unparse ());
   my $pname = $package->{'package'};
-  
+
   if ($target eq 'binary') {
-    
+
     $dstroot = $params->{'DSTROOT'};
     $package->{'package'} = $pname;
     $package->{'provides'} = $pname . '-hdrs';
     $package->{'conflicts'} = $pname . '-hdrs';
     $package->{'replaces'} = $pname . '-hdrs';
-    
+
   } elsif ($target eq 'headers') {
-    
+
     $dstroot = $params->{'HDRROOT'};
     $package->{'package'} = $pname . '-hdrs';
-    
+
   } elsif ($target eq 'objects') {
-    
+
     $dstroot = $params->{'LIBCOBJROOT'};
     $package->{'package'} = $pname . '-obj';
-        
+
   } elsif ($target eq 'local') {
 
     return;
@@ -394,15 +394,15 @@ sub buildpackage ()
   } else {
     die ("bad target: \"$target\"");
   }
-  
+
   my $debdir = "$dstroot/DEBIAN";
-  
+
   # ensure that the base package gets created
   if ($target eq 'binary') {
     system ('mkdir', '-p', $debdir);
     if ($? != 0) { die (&checkret ($?)); }
   }
-  
+
   if (! opendir (DESTDIR, $dstroot)) {
     # no files in package
     return;
@@ -413,18 +413,18 @@ sub buildpackage ()
     # no files in package
     return;
   }
-  
+
   system ('rm', '-rf', "$dstroot/System/Developer/Source");
   if ($? != 0) { die (&checkret ($?)); }
-  
+
   system ('mkdir', '-p', $debdir);
   if ($? != 0) { die (&checkret ($?)); }
-  
+
   open (CONTROL, ">$debdir/control")
     || die ("unable to open $debdir/control for writing\n");
   $package->write (*CONTROL{IO});
   close (CONTROL);
-  
+
   if ($target eq 'binary') {
     for my $ename ('conffiles', 'preinst', 'postinst', 'prerm', 'postrm') {
       my $extra = "$params->{'SRCDIR'}/dpkg/$ename";
@@ -483,14 +483,14 @@ sub scandir ()
 sub scancvs ()
 {
   my ($srcname) = @_;
-  
+
   my ($pbase, $pname, $revision) = &dir2name ($srcname);
 
   my $package = undef;
   my $params = undef;
 
   my $cvstag;
-  
+
   if (defined ($revision)) {
       $cvstag = $pbase . '-' . $revision;
       $cvstag =~ s/\./-/og;
@@ -507,7 +507,7 @@ sub scancvs ()
     $package = &readcontrol (*CONTROL{IO});
     close (CONTROL);
   }
-  
+
   if (! defined ($package)) {
     die ("unable to read $pbase/dpkg/control via cvs $cvsarg");
   }
@@ -548,9 +548,9 @@ sub getcvs ()
   my ($package, $params, $srcname) = @_;
 
   my ($pbase, $pname, $revision) = &dir2name ($srcname);
-  
+
   my $cvstag;
-  
+
   if (defined ($revision)) {
       $cvstag = $pbase . '-' . $revision;
       $cvstag =~ s/\./-/og;
@@ -616,37 +616,37 @@ sub getcvs ()
   }
 }
 
-my @basedeps = 
+my @basedeps =
   (
-   # Tools
-   'cc', 'cctools', #'objcunique',
-   'file-cmds',
-   'text-cmds', 'awk', 'grep',
-   'shell-cmds',
-   'developer-cmds',
+   # Compiler, Linker, Driver
+   'cc', 'cctools', 'gnumake',
 
    # Makefiles
-   'pb-makefiles', 'coreosmakefiles',
+   'pb-makefiles', 'coreosmakefiles', 'project-makefiles',
 
-   # Libraries
-   'libsystem',
+   # Shells
+   'zsh', 'tcsh',
 
-   # System
+   # Base Tools
+   'file-cmds', 'text-cmds', 'shell-cmds', 'developer-cmds',
+   'awk', 'grep', 'gnutar',
+
+   # Base Libraries
+   'libsystem', 'libc-hdrs',
+   'architecture-hdrs', 'kernel-hdrs',
+   'csu', 'objc4-hdrs',
+
+   # Base System
    'files',
 
    # Junk we should get rid of
-   'csu',
-   'libc-hdrs', 'gnumake',
-   'basic-cmds',
-   'architecture-hdrs', 'kernel-hdrs', 'gnutar',
-   'project-makefiles', 'bootstrap-cmds', 'objc4-hdrs',
-   'system-cmds',
+   'basic-cmds', 'bootstrap-cmds', 'system-cmds',
   );
 
 sub makeroot ()
 {
     my ($package, $buildroot, $repository) = @_;
-    
+
     my $deps = $package->{'build-depends'};
     if (! defined ($deps)) {
       $deps = \@basedeps;
@@ -666,7 +666,7 @@ sub makeroot ()
 	$depmap{$dep} = '';
       }
     }
-    
+
     @ndeps = keys (%depmap);
 
     my %depfiles = ();
@@ -690,7 +690,7 @@ sub makeroot ()
 	while (<DEPFILE>) {
 	    chomp;
 	    $curdeps{$_} = "";
-	} 
+	}
 	close (DEPFILE);
     }
 
@@ -763,7 +763,7 @@ sub setupdirs ()
 	system (@command);
 	if ($? != 0) { die (&checkret ($?)); }
 
-	@command = ('sh', '-c', "(cd $srcdir && rsync -avr . $srcroot)");
+	@command = ('sh', '-c', "(cd $srcdir && rsync -avr . --exclude=CVS/ $srcroot)");
 	&printcmd (@command);
 	system (@command);
 	if ($? != 0) { die (&checkret ($?)); }
@@ -784,7 +784,7 @@ sub findobjs {
   }
 }
 
-sub build () 
+sub build ()
 {
   my ($srctype, $srcname, $repository, $target, $dstdir, $clean) = @_;
   my ($package, $params);
@@ -802,9 +802,9 @@ sub build ()
       return 0;
   }
   if (-e "$dstdir/$filename.deb") {
-      print "package file for \"$filename\" already exists; not building\n";     
-      return 0;    
-  }    
+      print "package file for \"$filename\" already exists; not building\n";
+      return 0;
+  }
 
   my $bparams = $params;
   $params = &chrootparams ($params, $params->{'BUILDROOT'});
@@ -843,38 +843,38 @@ sub build ()
   &setupdirs ($package, $params, $srcname, $srctype, $repository);
 
   if (($target eq 'all') || ($target eq 'headers')) {
-    
+
     my @installhdrscommand = &buildcmd ($package, $params, $bparams, 'installhdrs');
-    print 'UNAME_SYSNAME=Rhapsody PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ';
-    &printcmd (@installhdrscommand);
     $ENV{'UNAME_SYSNAME'} = 'Rhapsody';
     $ENV{'PATH'} = '/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin';
+    print 'UNAME_SYSNAME=Rhapsody PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ';
+    &printcmd (@installhdrscommand);
     system (@installhdrscommand);
     if ($? != 0) { die (&checkret ($?)); }
     print "\n";
   }
-  
+
   if (($target eq 'all') || ($target eq 'binary')) {
-    
+
     my @installcommand = &buildcmd ($package, $params, $bparams, 'install');
-    print 'UNAME_SYSNAME=Rhapsody /sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ';
-    &printcmd (@installcommand);
     $ENV{'UNAME_SYSNAME'} = 'Rhapsody';
     $ENV{'PATH'} = '/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin';
+    print 'UNAME_SYSNAME=Rhapsody /sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ';
+    &printcmd (@installcommand);
     system (@installcommand);
     if ($? != 0) { die (&checkret ($?)); }
     print "\n";
-    
+
     $cwd = `pwd`;
     chomp ($cwd);
-    
+
     @objs = ();
     print "finding files in $params->{'OBJROOT'}\n";
     if (! chdir ($params->{'OBJROOT'})) {
       die ("unable to chdir (\"$params->{'OBJROOT'}\"): $!");
     }
     &File::Find::find (\&findobjs, '.');
-    
+
     for my $file (@objs) {
       print "copying files from $file\n";
       my $objdest = "/usr/local/lib/objs/$package->{'source'}/$file";
@@ -895,7 +895,7 @@ sub build ()
 
     print "\n";
   }
-  
+
   if (($target eq 'all') || ($target eq 'headers')) {
     &buildpackage ($package, $params, 'headers');
   }
@@ -912,16 +912,16 @@ sub build ()
     system (@command);
     if ($? != 0) { die (&checkret ($?)); }
   }
-  
+
   return 0;
 }
 
 sub resolve_dependency ()
 {
   my ($pname, $repository) = @_;
-  
+
   for my $dir (@$repository) {
-    
+
     opendir (DIR, $dir) || die ("unable to open directory \"$dir\": $!");
     my @entries = readdir (DIR);
     for (@entries) {

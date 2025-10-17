@@ -73,7 +73,9 @@ static IOEISADeviceDescription *getBusDescription(IOConfigTable *configTable)
     char	*nameBuf = NULL;
     id		device;
 
-    defaultBusClass = [KernBus lookupBusClassWithName:DEFAULT_BUS];	
+    nameBuf = (char *)IOMalloc(NAME_BUF_LEN);
+
+    defaultBusClass = [KernBus lookupBusClassWithName:DEFAULT_BUS];
     // XXX
     if (defaultBusClass == nil) {
         sprintf(nameBuf, "Missing %s kernel bus class", DEFAULT_BUS);
@@ -81,8 +83,6 @@ static IOEISADeviceDescription *getBusDescription(IOConfigTable *configTable)
     }
 
     defaultBus = [KernBus lookupBusInstanceWithName:DEFAULT_BUS busId:0];
-
-    nameBuf = (char *)IOMalloc(NAME_BUF_LEN);
 
     busTypeString = [configTable valueForStringKey:BUS_TYPE_KEY];
 

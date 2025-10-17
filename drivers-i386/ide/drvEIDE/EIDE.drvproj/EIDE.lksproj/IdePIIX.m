@@ -814,6 +814,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	unsigned long iocfg;
 	unsigned long clock_mask, clock_value;
 	u_char drive0_clk = 0, drive1_clk = 0;
+	u_char required_clock;
 	const id self_class = [self class];
 
 	/*
@@ -844,7 +845,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	/*
 	 * Use the faster clock if drives have different requirements
 	 */
-	u_char required_clock = (drive0_clk > drive1_clk) ? drive0_clk : drive1_clk;
+	required_clock = (drive0_clk > drive1_clk) ? drive0_clk : drive1_clk;
 
 	/*
 	 * Read current IOCFG register
@@ -1001,13 +1002,16 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 * Set timings for Drive 0 (Master drive).
 	 */
 	if (drv[0].transferType == IDE_TRANSFER_ULTRA_DMA) {
+		unsigned char maxMode;
+		u_char timing_bits;
+
 		/*
 		 * Limit UDMA mode based on controller type:
 		 * - PIIX4: Mode 2 (UDMA/33)
 		 * - ICH/ICH0: Mode 4 (UDMA/66)
 		 * - ICH2+: Mode 5 (UDMA/100)
 		 */
-		unsigned char maxMode = 2;  /* PIIX4 default */
+		maxMode = 2;  /* PIIX4 default */
 		if ((_controllerID == PCI_ID_ICH) || (_controllerID == PCI_ID_ICH0)) {
 			maxMode = 4;
 		} else if ((_controllerID == PCI_ID_ICH2) || (_controllerID == PCI_ID_ICH2_1) ||
@@ -1021,7 +1025,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		 * Get proper timing bits from table.
 		 * The 2-bit UDMATIM field encodes timing dividers, not raw mode numbers.
 		 */
-		u_char timing_bits = PIIXGetUDMATimingBits(modeDrive0);
+		timing_bits = PIIXGetUDMATimingBits(modeDrive0);
 
 		switch (_ideChannel) {
 			case PCI_CHANNEL_PRIMARY:
@@ -1042,7 +1046,10 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	/* Set timings for drive 1 (Slave drive).
 	 */
 	if (drv[1].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		unsigned char maxMode = 2;  /* PIIX4 default */
+		unsigned char maxMode;
+		u_char timing_bits;
+
+		maxMode = 2;  /* PIIX4 default */
 		if ((_controllerID == PCI_ID_ICH) || (_controllerID == PCI_ID_ICH0)) {
 			maxMode = 4;
 		} else if ((_controllerID == PCI_ID_ICH2) || (_controllerID == PCI_ID_ICH2_1) ||
@@ -1055,7 +1062,7 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		/*
 		 * Get proper timing bits from table.
 		 */
-		u_char timing_bits = PIIXGetUDMATimingBits(modeDrive1);
+		timing_bits = PIIXGetUDMATimingBits(modeDrive1);
 
 		switch (_ideChannel) {
 			case PCI_CHANNEL_PRIMARY:
@@ -1219,10 +1226,7 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 	const char *name = "PIIXSetupPRDTable";
 	u_int len_prd;
 	u_int index;
-
-#ifdef DEBUG
 	piix_prd_t *table_saved = table;
-#endif DEBUG
 
 	ddm_ide_dma("  PIIXSetupPRDTable: vaddr:%08x size:%d\n",
 		(u_int)vaddr, (u_int)size, 3, 4, 5);
@@ -1891,7 +1895,6 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	unsigned long deviceID;
 	IOPCIDeviceDescription *devDesc = [self deviceDescription];
 	IOReturn rtn;
-	const id self_class = [self class];
 
 	/*
 	 * Get our current PCI location as a starting point

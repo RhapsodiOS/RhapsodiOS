@@ -57,7 +57,7 @@
 
 #define OVERRIDE_TABLE_SIZE		4
 
-static const char * overrideTable[]= {
+static const char * overrideTable[] = {
    "Auto",
 #define OVERRIDE_AUTO	0
    "ATA",

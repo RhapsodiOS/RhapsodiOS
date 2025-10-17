@@ -95,6 +95,10 @@
 
 - (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc;
 
+- (BOOL) PIIXCheck450NX;
+
+- (void) PIIXConfigureUDMAClock:(driveInfo_t *)drv;
+
 @end
 
 #endif	/* _BSD_DEV_IDEPIIX_H */

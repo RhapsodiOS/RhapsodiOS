@@ -20,14 +20,14 @@ TOOLS = SoundBlaster16_reloc.tproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble README SoundBlaster16.info
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
-
 
 BUNDLE_EXTENSION = config
 
-
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

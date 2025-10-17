@@ -15,11 +15,14 @@ TOOLS = ES1x88AudioDriver_reloc.tproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble README
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
 
 BUNDLE_EXTENSION = config
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

@@ -20,7 +20,9 @@ CFLAGS += -DKERNEL -DDRIVER_PRIVATE -D__APPLE__ -D__NeXT__
 # Linker flags for driver bundle
 LDFLAGS += -nostdlib -r
 
-MAKEFILEDIR = $(NEXT_ROOT)/NextDeveloper/Makefiles/app
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = bundle.make
 
+include $(MAKEFILEDIR)/platform.make
 include $(MAKEFILEDIR)/$(MAKEFILE)

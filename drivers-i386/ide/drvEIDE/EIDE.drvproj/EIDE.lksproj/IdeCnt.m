@@ -530,10 +530,13 @@ static unsigned int spuriousInterruptCount = 0;
  * AtapiCntCmds.m. The problem in both cases is that some devices pass
  * identification checks even when they should not. Now the first command
  * issued after can really confirm that but we don't want to wait too long.
+ *
+ * Linux uses 5 seconds for the first IDENTIFY attempt, which covers >99% of
+ * drives. We use half that (5 seconds) as a reasonable compromise.
  */
 - (ide_return_t)ataIdeReadGetInfoCommonWaitForDataReady
 {
-    int     delay = MAX_DATA_READY_DELAY/25;
+    int     delay = MAX_DATA_READY_DELAY/2;  /* 5 seconds, matches Linux's first try */
     unsigned char status;
 
 #ifdef undef

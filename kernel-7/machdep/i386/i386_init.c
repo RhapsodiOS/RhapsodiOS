@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -118,22 +118,22 @@ i386_init(void)
     // Clear "zero fill" data sections.
 
     zero_fill_data();
-    
+
     getargs(kernBootStruct->bootString);
 
     // Figure out what kind of cpu is present
-    
+
     machine_configure();
-	
+
     // Initialize the interrupt system.
 
     intr_initialize();
-    
+
     // Calibrate the constant for us_spin().
 
     us_spin_calibrate();
 
-    // Set the MI system page size	
+    // Set the MI system page size
 
     page_size = 2*I386_PGBYTES;
     vm_set_page_size();
@@ -173,11 +173,11 @@ i386_init(void)
 
     locate_gdt((vm_offset_t) gdt + KERNEL_LINEAR_BASE);
     locate_idt((vm_offset_t) idt + KERNEL_LINEAR_BASE);
-    
+
     //
     // Set up the handler
     // for double bus faults
-    
+
     dbf_init();
 
     /*
@@ -209,15 +209,15 @@ zero_fill_data(void)
 {
     struct segment_command	*sgp;
     struct section		*sp;
-    
+
     sgp = getsegbyname("__DATA");
     if (!sgp)
-	return;
-	
+        return;
+
     sp = firstsect(sgp);
     if (!sp)
-	return;
-	
+        return;
+
     do {
 	if (sp->flags & S_ZEROFILL)
 	    bzero(sp->addr, sp->size);
@@ -229,7 +229,7 @@ boolean_t
 is486_or_higher(void)
 {
     unsigned int	efl, efl_saved;
-    
+
     /* Save original EFLAGS */
     efl_saved = eflags();
 
@@ -237,14 +237,14 @@ is486_or_higher(void)
     efl = efl_saved;
     efl |= EFL_AC;
     set_eflags(efl);
-    
+
     /* Read back and check if AC flag stuck */
     efl = eflags();
-    
+
     if ((efl & EFL_AC) == 0) {
     	return (FALSE);  /* 386 - AC flag didn't stick */
     }
-	
+
     /* Restore original EFLAGS */
     set_eflags(efl_saved);
 
@@ -274,7 +274,7 @@ cpuid_t
 cpuid(void)
 {
     cpuid_t	value;
-    
+
     asm volatile(
 	"pushl %%ebx\n\t"		/* Save ebx (required for PIC) */
 	"movl $1,%%eax\n\t"
@@ -283,7 +283,7 @@ cpuid(void)
 	    : "=a" (value)
 	    :
 	    : "ecx", "edx");
-	    
+
     return (value);
 }
 
@@ -297,32 +297,32 @@ get_cpuid(void)
     cpuid_t		pid = { 0 };
 
     if (subtype != 0) {
-       /*
-	* This is a hack, intended only
-	* for testing purposes.
-	*/
-	pid.family = CPU_SUBTYPE_INTEL_FAMILY(subtype);
-	pid.model = CPU_SUBTYPE_INTEL_MODEL(subtype);
+        /*
+    	* This is a hack, intended only
+    	* for testing purposes.
+    	*/
+    	pid.family = CPU_SUBTYPE_INTEL_FAMILY(subtype);
+    	pid.model = CPU_SUBTYPE_INTEL_MODEL(subtype);
 
-	return pid;
+    	return pid;
     }
-    
+
     /* Save original EFLAGS */
     efl_saved = eflags();
-    
+
     /* Try to set ID flag */
     efl = efl_saved;
     efl |= EFL_ID;
     set_eflags(efl);
-    
+
     /* Read back and check if ID flag stuck */
     efl = eflags();
-    
+
     if ((efl & EFL_ID) == 0)
     	return pid;  /* CPUID not supported */
-	
+
     pid = cpuid();
-	
+
     /* Restore original EFLAGS */
     set_eflags(efl_saved);
 
@@ -336,62 +336,62 @@ static
 void
 machine_configure(void)
 {
+#if 0
     cpuid_t	pid;
+    int effective_family, effective_model;
+#endif
 
     while (!is486_or_higher())
 	asm volatile("hlt");
-			
+
     enable_cache();
-    
+
     fp_configure();
 
     machine_slot[0].is_cpu = TRUE;
     machine_slot[0].running = TRUE;
 
+#if 0
     machine_slot[0].cpu_type = CPU_TYPE_I386;
     (void) strcpy(machine, "i386");
 
     pid = get_cpuid();
-    
+
     /* Calculate effective family and model (handle extended fields) */
-    {
-	int effective_family = pid.family;
-	int effective_model = pid.model;
-	
-	/* Extended family is used when base family is 15 */
-	if (pid.family == 15) {
-	    effective_family = pid.family + pid.ext_family;
+	effective_family = pid.family;
+	effective_model = pid.model;
+
+	/* Fold in extended family if base family is 0x0f */
+	if (pid.family == 0x0f) {
+	    effective_family += pid.ext_family;
 	}
-	
-	/* Extended model is used when base family is 6 or 15 */
-	if (pid.family == 6 || pid.family == 15) {
-	    effective_model = (pid.ext_model << 4) | pid.model;
+
+	/* Fold in extended model if family is 0x0f or 0x06 */
+	if (pid.family == 0x0f || pid.family == 0x06) {
+	    effective_model += (pid.ext_model << 4);
 	}
-	
+
 	switch (pid.family) {
-	
 	case 0:
 	    /* Family 0 means CPUID failed or not supported */
 	    /* Default to 486 for safety */
 	    if (cpu_config.fpu_type == FPU_HDW) {
-		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
-		(void) strcpy(cpu_model, "486 (CPUID failed)");
-	    }
-	    else {
-		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
-		(void) strcpy(cpu_model, "486SX (CPUID failed)");
+			machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
+		    (void) strcpy(cpu_model, "486 (CPUID failed)");
+	    } else {
+			machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
+			(void) strcpy(cpu_model, "486SX (CPUID failed)");
 	    }
 	    break;
 
 	case 4:
 	    /* 486 family */
 	    if (cpu_config.fpu_type == FPU_HDW) {
-		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
-		(void) strcpy(cpu_model, "486");
-	    }
-	    else {
-		machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
-		(void) strcpy(cpu_model, "486SX");
+			machine_slot[0].cpu_subtype = CPU_SUBTYPE_486;
+			(void) strcpy(cpu_model, "486");
+	    } else {
+			machine_slot[0].cpu_subtype = CPU_SUBTYPE_486SX;
+			(void) strcpy(cpu_model, "486SX");
 	    }
 	    break;
 
@@ -402,20 +402,26 @@ machine_configure(void)
 	    break;
 
 	case 6:
-	    /* Pentium Pro/II/III family */
-	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(effective_family, effective_model);
-	    (void) sprintf(cpu_model, "i86 family %d, model %d",
-			   effective_family, effective_model);
+	case 15:
+	    /* Pentium Pro/II/III/4 and later families */
+	    /* Use base family for subtype since CPU_SUBTYPE_INTEL expects 0-15 */
+	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(pid.family, effective_model & 0x0F);
+	    (void) sprintf(cpu_model, "i86 family %d, model %d", effective_family, effective_model);
 	    break;
 
 	default:
-	    /* Everything else including extended families */
-	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(effective_family, effective_model);
-	    (void) sprintf(cpu_model, "i86 family %d, model %d",
-			   effective_family, effective_model);
+	    /* Unknown/future families - treat as generic 686 */
+	    machine_slot[0].cpu_subtype = CPU_SUBTYPE_INTEL(6, 0);
+	    (void) sprintf(cpu_model, "i86 family %d, model %d", effective_family, effective_model);
 	    break;
 	}
-    }
+#endif
+
+    /*
+     *  raynorpat: force a 586/Pentium CPU type, otherwise we crash, probably due to cctools not supporting higher subtypes...
+     */
+    machine_slot[0].cpu_subtype = CPU_SUBTYPE_586;
+    (void) strcpy(cpu_model, "586");
 }
 
 static
@@ -430,12 +436,12 @@ size_memory(void)
     end_of_image = getlastaddr();
 
     for (i=0; i < kernBootStruct->numBootDrivers; i++)
-	end_of_image += kernBootStruct->driverConfig[i].size;
-    
+        end_of_image += kernBootStruct->driverConfig[i].size;
+
     if (maxmem)
-	end_of_memory = KB(maxmem);
+        end_of_memory = KB(maxmem);
     else
-	end_of_memory = KB(extmem);
+        end_of_memory = KB(extmem);
 
     /*
      * This is the Mach notion of
@@ -446,7 +452,7 @@ size_memory(void)
      */
 
     mem_size = end_of_memory;
-    
+
     first_addr0 = round_page(kernBootStruct->first_addr0);
     last_addr0 = trunc_page(KB(cnvmem));
 
@@ -469,18 +475,18 @@ alloc_cnvmem(
 {
     static vm_offset_t	free_ptr, end_ptr;
     vm_offset_t		p;
-    
+
     if (!free_ptr) {
-	free_ptr = pmap_phys_to_kern(first_addr0);
-	end_ptr = pmap_phys_to_kern(last_addr0);
+        free_ptr = pmap_phys_to_kern(first_addr0);
+        end_ptr = pmap_phys_to_kern(last_addr0);
     }
-	
+
     p = (free_ptr + (align - 1)) & ~(align - 1);
     if ((p + size) > end_ptr)
 	return ((vm_offset_t) 0);
-	
+
     free_ptr = (p + size);
-    
+
     return (p);
 }
 
@@ -493,17 +499,17 @@ alloc_pages(
 
     {	/* XXX */
 	extern boolean_t	pmap_initialized;
-    
+
 	if (pmap_initialized)
 	    panic("alloc_pages");
 
 	/* XXX */
     }
-    
+
     size = round_page(size);
     p = pmap_phys_to_kern(mem_region[0].first_phys_addr);
     mem_region[0].first_phys_addr += size;
-    
+
     return (p);
 }
 
@@ -572,7 +578,7 @@ getargs(char *args)
 					goto gotit;
 				}
 
-				switch (getval(cp, &val)) 
+				switch (getval(cp, &val))
 				{
 					case NUM:
 						*kp->i_ptr = val;
@@ -694,4 +700,3 @@ cpu_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 	 */
 	return (EOPNOTSUPP);
 }
-

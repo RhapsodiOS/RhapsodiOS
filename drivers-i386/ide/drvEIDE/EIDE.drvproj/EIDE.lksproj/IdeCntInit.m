@@ -79,8 +79,19 @@
 //#define DEBUG
 
 /*
+ * Device override table (from IdeShared.h)
+ */
+static const char * overrideTable[] = {
+   "Auto",
+#define OVERRIDE_AUTO	0
+   "ATA",
+   "ATAPI",
+   "None",			// None must be the last entry
+};
+
+/*
  * The controller at base address 0x1f0-0x1f7 is always the first controller
- * no matter when it gets probed, so we start the counter at 1. 
+ * no matter when it gets probed, so we start the counter at 1.
  */
 static unsigned char controllerNum = 1;
 

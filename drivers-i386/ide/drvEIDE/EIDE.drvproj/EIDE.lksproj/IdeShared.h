@@ -57,13 +57,8 @@
 
 #define OVERRIDE_TABLE_SIZE		4
 
-static const char * overrideTable[] = {
-   "Auto",
-#define OVERRIDE_AUTO	0
-   "ATA",
-   "ATAPI",
-   "None",			// None must be the last entry
-};
+/* Device override table is defined in IdeCntInit.m */
+extern const char * overrideTable[];
 
 /*
  * Obsolete override parameters.

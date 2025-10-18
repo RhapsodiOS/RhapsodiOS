@@ -106,10 +106,11 @@ static IOEISADeviceDescription *getBusDescription(IOConfigTable *configTable)
 	 * for the "I/O Ports" and the "IRQ Levels" key.
 	 * The defaultBusClass, which is EISA, does allocate the resources.
 	 */
-    deviceDescription = [defaultBusClass 
-			deviceDescriptionFromConfigTable:configTable];	
+    deviceDescription = [defaultBusClass
+			deviceDescriptionFromConfigTable:configTable];
     if (deviceDescription == nil) {
         IOLog("getBusDescription: deviceDescriptionFromConfigTable failed");
+		IOFree(nameBuf, NAME_BUF_LEN);
 		return nil;
     }
 
@@ -123,7 +124,8 @@ static IOEISADeviceDescription *getBusDescription(IOConfigTable *configTable)
     device = [[KernDevice alloc] initWithDeviceDescription:deviceDescription];
     if (device == nil) {
         IOLog("getBusDescription: initWithDeviceDescription failed ");
-        return nil;	
+		IOFree(nameBuf, NAME_BUF_LEN);
+        return nil;
     }
 
     [deviceDescription setDevice: device];
@@ -135,6 +137,7 @@ static IOEISADeviceDescription *getBusDescription(IOConfigTable *configTable)
                                 _initWithDelegate: deviceDescription];
     [ioDeviceDescription setDevicePort:create_dev_port(device)];
 
+    IOFree(nameBuf, NAME_BUF_LEN);
     return (IOEISADeviceDescription *) ioDeviceDescription;
 }
 

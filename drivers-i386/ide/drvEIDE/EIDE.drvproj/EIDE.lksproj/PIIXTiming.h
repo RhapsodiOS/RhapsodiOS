@@ -47,20 +47,10 @@ typedef struct {
 	u_short	cycle;	// cycle time in ns
 } PIIXTiming;
 
-#define INV		255			// invalid mode
 #define PIIX_TIMING_TABLE_SIZE	7
 
-static const
-PIIXTiming PIIXTimingTable[] = {
-//   PIO    SW     MW
-	{0,     0,     0,     5, 4, 600},	// compatible timing
-	{1, 	1,     INV,   5, 4, 600},
-	{2,     2,     INV,   4, 4, 240},
-	{3,     INV,   1,     3, 3, 180},
-    {4,     INV,   2,     3, 1, 120},
-	{5,     INV,   INV,   3, 1, 90},	// PIO Mode 5 (90ns cycle time)
-	{INV,   INV,   2,     3, 1, 120},	// MW DMA Mode 2 (120ns)
-};
+/* Timing tables are defined in IdePIIX.m */
+extern const PIIXTiming PIIXTimingTable[];
 
 /*
  * PIIX Ultra DMA timing table.
@@ -79,15 +69,8 @@ typedef struct {
 	u_short	strobe;		// Strobe period in ns
 } PIIXUltraDMATiming;
 
-static const
-PIIXUltraDMATiming PIIXUltraDMATimingTable[] = {
-	{0,     0,     0,     120},	// UDMA/33 Mode 0: 33MHz, timing=00
-	{1, 	1,     0,     90},	// UDMA/33 Mode 1: 33MHz, timing=01
-	{2,     2,     0,     60},	// UDMA/33 Mode 2: 33MHz, timing=02
-	{3,     1,     1,     45},	// UDMA/66 Mode 3: 66MHz, timing=01
-	{4,     2,     1,     30},	// UDMA/66 Mode 4: 66MHz, timing=02
-	{5,     1,     2,     20},	// UDMA/100 Mode 5: 100MHz, timing=01
-};
+/* Ultra DMA timing table is defined in IdePIIX.m */
+extern const PIIXUltraDMATiming PIIXUltraDMATimingTable[];
 
 /*
  * Calculate UDMA timing bits based on mode number.

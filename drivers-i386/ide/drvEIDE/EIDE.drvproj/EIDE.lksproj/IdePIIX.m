@@ -71,6 +71,36 @@ extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_offset_t va);
 #endif  MAX
 
 /*
+ * PIIX PIO/DMA timing table.
+ */
+#define INV		255			// invalid mode
+
+static const
+PIIXTiming PIIXTimingTable[] = {
+//   PIO    SW     MW
+	{0,     0,     0,     5, 4, 600},	// compatible timing
+	{1, 	1,     INV,   5, 4, 600},
+	{2,     2,     INV,   4, 4, 240},
+	{3,     INV,   1,     3, 3, 180},
+    {4,     INV,   2,     3, 1, 120},
+	{5,     INV,   INV,   3, 1, 90},	// PIO Mode 5 (90ns cycle time)
+	{INV,   INV,   2,     3, 1, 120},	// MW DMA Mode 2 (120ns)
+};
+
+/*
+ * PIIX Ultra DMA timing table.
+ */
+static const
+PIIXUltraDMATiming PIIXUltraDMATimingTable[] = {
+	{0,     0,     0,     120},	// UDMA/33 Mode 0: 33MHz, timing=00
+	{1, 	1,     0,     90},	// UDMA/33 Mode 1: 33MHz, timing=01
+	{2,     2,     0,     60},	// UDMA/33 Mode 2: 33MHz, timing=02
+	{3,     1,     1,     45},	// UDMA/66 Mode 3: 66MHz, timing=01
+	{4,     2,     1,     30},	// UDMA/66 Mode 4: 66MHz, timing=02
+	{5,     1,     2,     20},	// UDMA/100 Mode 5: 100MHz, timing=01
+};
+
+/*
  * Function: IOMallocPage
  *
  * Purpose:

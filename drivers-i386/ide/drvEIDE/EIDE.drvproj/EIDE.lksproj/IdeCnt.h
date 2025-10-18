@@ -256,11 +256,10 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
 - (void)getIdeRegisters:(ideRegsVal_t *)rvp Print:(char *)printString;
 
 - (BOOL) isDmaSupported:(unsigned int)unit;
-- (BOOL) verifyInterruptSource;
 
 /*
  * Number of sectors that can be transferred via READ_MULTIPLE or
- * WRITE_MULTIPLE command.
+ * WRITE_MULTIPLE command. 
  */
 - (unsigned int)getMultiSectorValue:(unsigned int)unit;
 

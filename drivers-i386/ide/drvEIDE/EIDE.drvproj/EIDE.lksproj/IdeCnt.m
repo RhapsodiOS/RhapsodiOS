@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- *
+ * 
  * "Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- *
+ * 
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,16 +18,16 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License."
- *
+ * 
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
  * Copyright 1997-1998 by Apple Computer, Inc., All rights reserved.
  * Copyright 1994-1997 NeXT Software, Inc., All rights reserved.
  *
- * IdeCnt.m - IDE Controller class.
+ * IdeCnt.m - IDE Controller class. 
  *
- * HISTORY
+ * HISTORY 
  *
  * 1-Feb-1998	Joe Liu at Apple
  *	Created an initFromDeviceDescription method to do things that used to be
@@ -36,7 +36,7 @@
  *
  * 04-Sep-1996	 Becky Divinski at NeXT
  *	Added code in probe method to handle Dual EIDE personality case.
- *
+ * 
  * 07-Jul-1994	 Rakesh Dubey at NeXT
  *	Created from original driver written by David Somayajulu.
  */
@@ -44,7 +44,7 @@
 #if 0
 #define KERNEL		1
 #define KERNEL_PRIVATE	1
-#define ARCH_PRIVATE	1
+#define ARCH_PRIVATE	1 
 #undef	MACH_USER_API
 #endif
 
@@ -81,12 +81,12 @@
 
 /*
  * If set to non-zero some debugging messages will be prinetd in case of
- * failure.
+ * failure. 
  */
 __private_extern__ unsigned int _ide_debug = 0;
 
 /*
- * Config table keys that determine our configuration.
+ * Config table keys that determine our configuration. 
  */
 #define CONTROLLER_INSTANCE 	"Instance"
 #define ATA_DEBUG 				"Debug"
@@ -101,7 +101,7 @@ typedef struct _ideStruct {
 @implementation IdeController
 
 /*
- * Create and initialize one instance of IDE Controller.
+ * Create and initialize one instance of IDE Controller. 
  */
 
 + (BOOL)probe:(IODeviceDescription *)devDesc
@@ -113,7 +113,7 @@ typedef struct _ideStruct {
 		IOLog("%s: Failed to alloc instance\n", [self name]);
     	return NO;
     }
-
+	
 	return ([idec initFromDeviceDescription:devDesc] != nil);
 }
 
@@ -122,8 +122,8 @@ typedef struct _ideStruct {
     char			devName[20];
     const char  	*ctlType, *param;
     int     		n, hcUnitNum;
-
-    IOEISADeviceDescription *deviceDescription =
+	
+    IOEISADeviceDescription *deviceDescription = 
     			(IOEISADeviceDescription *)devDesc;
 
     if ((n = [deviceDescription numPortRanges]) != 1) {
@@ -131,14 +131,14 @@ typedef struct _ideStruct {
 		[self free];
 		return nil;
 	}
-
+    
     if ((n = [deviceDescription numInterrupts]) != 1) {
 		IOLog("ATA: Invalid number of interrupts: %d.\n", n);
 		[self free];
 		return nil;
 	}
 
-    ctlType = [[deviceDescription configTable]
+    ctlType = [[deviceDescription configTable] 
     			valueForStringKey: CONTROLLER_INSTANCE];
 
     hcUnitNum = (unsigned char) ctlType[0] - '0';
@@ -150,14 +150,14 @@ typedef struct _ideStruct {
 		if (instanceNum > 0)
 			hcUnitNum = instanceNum;
 	}
-
+    
     if (hcUnitNum > MAX_IDE_CONTROLLERS-1) {
 		IOLog("ATA: Controller %d not supported.\n", hcUnitNum);
 		[self free];
 		return nil;
     }
-
-    param = [[deviceDescription configTable]
+    
+    param = [[deviceDescription configTable] 
     			valueForStringKey: ATA_DEBUG];
     if ((param != NULL) && (strcmp(param, "Yes") == 0))	{
     	_ide_debug = 1;
@@ -167,7 +167,7 @@ typedef struct _ideStruct {
     }
 
     /*
-     * Proceed with initialization.
+     * Proceed with initialization. 
      */
     [self setUnit:hcUnitNum];
     sprintf(devName, "hc%d", hcUnitNum);
@@ -194,7 +194,7 @@ typedef struct _ideStruct {
 		[self free];
 		return nil;
     }
-
+	
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
 		IOLog("%s: initFromDeviceDescription failed.\n", [self name]);
 		[self free];
@@ -212,13 +212,8 @@ typedef struct _ideStruct {
 static int logInterrupts = 0;
 static unsigned short lastCommand = 0;
 
-/* Interrupt statistics for debugging */
-static unsigned int interruptCount = 0;
-static unsigned int interruptTimeoutCount = 0;
-static unsigned int spuriousInterruptCount = 0;
-
 /*
- * Wait for interrupt or timeout. Returns IDER_SUCCESS or IDER_TIMEOUT.
+ * Wait for interrupt or timeout. Returns IDER_SUCCESS or IDER_TIMEOUT. 
  */
 - (ide_return_t)ideWaitForInterrupt:(unsigned int)command
 			  ideStatus:(unsigned char *)status
@@ -230,42 +225,27 @@ static unsigned int spuriousInterruptCount = 0;
 
 	s = spldevice();
 
-	/* Clear interrupt flag before waiting */
-	interruptOccurred = NO;
-
 	assert_wait((void *)&waitQueue, TRUE);
 	thread_set_timeout(HZ * _interruptTimeOut / 1000);	// value in ticks
 	thread_block_with_continuation((void (*)()) 0);
 
-	/* Read flag while still at elevated IPL for atomicity */
 	_interruptOccurred = interruptOccurred;
 
 	splx(s);
-
-	/* Read status register to return to caller.
-	 * Note: Hardware interrupt was already acknowledged in ideInterruptHandler.
-	 * We use altStatus here to avoid double-acknowledging.
-	 */
-	if ((_interruptOccurred == YES) && (status != NULL))  {
-		*status = inb(_ideRegsAddrs.altStatus);
-	}
-
+	
 	if (_interruptOccurred == YES)  {
+		if (status != NULL)
+			*status = inb(_ideRegsAddrs.status);	/* acknowledge */
+		else
+			inb(_ideRegsAddrs.status);
+
         logInterrupts -= 1;
         lastCommand = command;
-		interruptCount++;
-
-		if (_ide_debug) {
-			IOLog("%s: IRQ received for cmd 0x%02x (total: %u)\n",
-				[self name], command, interruptCount);
-		}
 
 		ret = IDER_SUCCESS;
     }
     else {
-		interruptTimeoutCount++;
-		IOLog("%s: interrupt timeout, cmd: 0x%02x (timeout #%u, total IRQs: %u)\n",
-			[self name], command, interruptTimeoutCount, interruptCount);
+		IOLog("%s: interrupt timeout, cmd: 0x%0x\n", [self name], command);
 		ret = IDER_CMD_ERROR;
 	}
 
@@ -275,49 +255,39 @@ static unsigned int spuriousInterruptCount = 0;
 
     msg_return_t result;
     msg_header_t msg;
-    unsigned char hw_status;
-
+    
 	msg.msg_local_port = _ideInterruptPort;
     msg.msg_size = sizeof(msg);
 
 #ifdef undef
         if (logInterrupts > 0)
-	    IOLog("%s: waiting for interrupt for command %x\n",
+	    IOLog("%s: waiting for interrupt for command %x\n", 
 		    [self name], command);
 #endif undef
 
     result = msg_receive(&msg, RCV_TIMEOUT, _interruptTimeOut);
-
+    
     if (result == RCV_SUCCESS || result == RCV_TOO_LARGE) {
-		/* Acknowledge interrupt at hardware level IMMEDIATELY */
-		hw_status = inb(_ideRegsAddrs.status);
-
 		if (status != NULL)
-			*status = hw_status;
-
+			*status = inb(_ideRegsAddrs.status);	/* acknowledge */
+		else
+			inb(_ideRegsAddrs.status);
+	    
+#ifdef undef
+        if (logInterrupts > 0)
+	    IOLog("%s: interrupt received for cmd: 0x%0x, status: 0x%0x\n", 
+		    [self name], command, (status == NULL) ? 0 : *status);
+#endif undef
         logInterrupts -= 1;
         lastCommand = command;
-		interruptCount++;
-
-		if (_ide_debug) {
-			IOLog("%s: IRQ received for cmd 0x%02x, status: 0x%02x (total: %u)\n",
-				[self name], command, hw_status, interruptCount);
-		}
 
 		return IDER_SUCCESS;
     }
-
-    if (result == RCV_TIMED_OUT) {
-		interruptTimeoutCount++;
-		IOLog("%s: interrupt timeout, cmd: 0x%02x (timeout #%u, total IRQs: %u)\n",
-			[self name], command, interruptTimeoutCount, interruptCount);
-		/* Log current hardware state for debugging */
-		hw_status = inb(_ideRegsAddrs.altStatus);  /* Don't ack */
-		IOLog("%s:   Hardware status: 0x%02x, Error: 0x%02x\n",
-			[self name], hw_status, inb(_ideRegsAddrs.error));
-	}
+    
+    if (result == RCV_TIMED_OUT)
+		IOLog("%s: interrupt timeout, cmd: 0x%0x\n", [self name], command);
     else
-		IOLog("%s: Error %d in receiving interrupt, cmd: 0x%0x\n",
+		IOLog("%s: Error %d in receiving interrupt, cmd: 0x%0x\n", 
 			[self name], result, command);
 
     return IDER_CMD_ERROR;
@@ -326,20 +296,11 @@ static unsigned int spuriousInterruptCount = 0;
 
 /*
  * Remove any interrupts messages that have queued up. This will get rid of
- * any spurious or duplicate interrupts.
+ * any spurious or duplicate interrupts. 
  */
 - (void)clearInterrupts
 {
 #ifdef NO_IRQ_MSG
-	u_int s;
-
-	/* Clear any stale interrupt flag to prevent false interrupt detection.
-	 * This is especially important after DMA operations where we clear
-	 * interrupts before starting a new operation.
-	 */
-	s = spldevice();
-	interruptOccurred = NO;
-	splx(s);
 	return;
 #else  NO_IRQ_MSG
     msg_return_t result;
@@ -352,16 +313,15 @@ static unsigned int spuriousInterruptCount = 0;
 
 	msg.msg_local_port = _ideInterruptPort;
 	msg.msg_size = sizeof(msg);
-
+	
 	result = msg_receive(&msg, RCV_TIMEOUT, 0);
-
+	
 	if (result != RCV_SUCCESS) {
 	    if (count != 0)	{
-			spuriousInterruptCount += count;
-			if (_ide_debug) {
-				IOLog("%s: %d spurious interrupts after command 0x%02x (total spurious: %u)\n",
-					[self name], count, lastCommand, spuriousInterruptCount);
-			}
+#ifdef DEBUG
+		IOLog("%s: %d spurious interrupts after command 0x%0x\n", 
+			[self name], count, lastCommand);
+#endif DEBUG
 	    }
 	    return;
 	}
@@ -375,7 +335,7 @@ static unsigned int spuriousInterruptCount = 0;
 	int n;
 
 	[self resetController];
-
+			
 	if ((_controllerID == PCI_ID_PIIX) ||
 		(_controllerID == PCI_ID_PIIX3) ||
 		(_controllerID == PCI_ID_PIIX4) ||
@@ -384,16 +344,10 @@ static unsigned int spuriousInterruptCount = 0;
 		if (_prdTable.ptr)
 			IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
 	}
-
+	
 	for (n = 0; n < MAX_IDE_DRIVES; n++) {
 		if (_drives[n].ideIdentifyInfo)
 			IOFree(_drives[n].ideIdentifyInfo, sizeof(ideIdentifyInfo_t));
-	}
-
-	/* Free the command lock if it was allocated */
-	if (_ideCmdLock) {
-		[_ideCmdLock free];
-		_ideCmdLock = nil;
 	}
 
 	return [super free];
@@ -410,8 +364,7 @@ static unsigned int spuriousInterruptCount = 0;
 
     delay -= 2;			/* Or else will block on second try */
     while (delay > 0) {
-	/* Use altStatus to avoid acknowledging interrupts during polling */
-	status = inb(_ideRegsAddrs.altStatus);
+	status = inb(_ideRegsAddrs.status);
 	if (!(status & BUSY)) {
 	    return IDER_SUCCESS;
 	}
@@ -422,10 +375,10 @@ static unsigned int spuriousInterruptCount = 0;
 	    IOSleep(1);
 	    delay -= 1000;
 	}
-
+	
 #ifdef undef
 	if ((_printWaitForNotBusy) && (delay % 20000 == 0))	{
-	    IOLog("%s: waitForNotBusy, status = %x\n",
+	    IOLog("%s: waitForNotBusy, status = %x\n", 
 	    	[self name], status);
 	}
 #endif undef
@@ -443,11 +396,10 @@ static unsigned int spuriousInterruptCount = 0;
     if (_printWaitForNotBusy)
 	IOLog("%s: waitForDeviceReady\n", [self name]);
 #endif undef
-
+	
     delay -= 2;
     while (delay > 0) {
-	/* Use altStatus to avoid acknowledging interrupts during polling */
-	status = inb(_ideRegsAddrs.altStatus);
+	status = inb(_ideRegsAddrs.status);
 	if ((!(status & BUSY)) && (status & READY)) {
 	    return IDER_SUCCESS;
 	}
@@ -458,10 +410,10 @@ static unsigned int spuriousInterruptCount = 0;
 	    IOSleep(1);
 	    delay -= 1000;
 	}
-
+	
 #ifdef undef
 	if ((_printWaitForNotBusy) && (delay % 20000 == 0))	{
-	    IOLog("%s: waitForDeviceReady, status = %x\n",
+	    IOLog("%s: waitForDeviceReady, status = %x\n", 
 	    	[self name], status);
 	}
 #endif undef
@@ -479,11 +431,10 @@ static unsigned int spuriousInterruptCount = 0;
 #ifdef undef
 	IOLog("%s: waitForDeviceIdle\n", [self name]);
 #endif undef
-
+	
     delay -= 2;
     while (delay > 0) {
-		/* Use altStatus to avoid acknowledging interrupts during polling */
-		status = inb(_ideRegsAddrs.altStatus);
+		status = inb(_ideRegsAddrs.status);
 		if ((status & ATA_IDLE_BIT_MASK) == 0)
 			return IDER_SUCCESS;
 		if (delay % 1000) {
@@ -519,7 +470,7 @@ static unsigned int spuriousInterruptCount = 0;
 	    delay -= 1000;
 	}
     }
-
+    
     return IDER_TIMEOUT;
 }
 
@@ -556,7 +507,7 @@ static unsigned int spuriousInterruptCount = 0;
 	    delay -= 1000;
 	}
     }
-
+    
     return IDER_TIMEOUT;
 }
 
@@ -583,12 +534,12 @@ static unsigned int spuriousInterruptCount = 0;
 
 
 /*
- * Return task file values, optionally print them if given a non-null string.
+ * Return task file values, optionally print them if given a non-null string. 
  */
 - (void)getIdeRegisters:(ideRegsVal_t *)rvp Print:(char *)printString
 {
     ideRegsVal_t	ideRegs;
-
+    
     ideRegs.error = inb(_ideRegsAddrs.error);
     ideRegs.sectCnt = inb(_ideRegsAddrs.sectCnt);
     ideRegs.sectNum = inb(_ideRegsAddrs.sectNum);
@@ -596,13 +547,13 @@ static unsigned int spuriousInterruptCount = 0;
     ideRegs.cylHigh = inb(_ideRegsAddrs.cylHigh);
     ideRegs.drHead = inb(_ideRegsAddrs.drHead);
     ideRegs.status = inb(_ideRegsAddrs.altStatus);	/* don't ack */
-
+    
     if (rvp != NULL)
 	*rvp = ideRegs;
-
+    
     if (printString != NULL)	{
 	IOLog("%s: %s: error=0x%x secCnt=0x%x "
-		"secNum=0x%x cyl=0x%x drhd=0x%x status=0x%x\n",
+		"secNum=0x%x cyl=0x%x drhd=0x%x status=0x%x\n", 
 		[self name], printString,
 		ideRegs.error, ideRegs.sectCnt, ideRegs.sectNum,
 		((ideRegs.cylHigh << 8) | ideRegs.cylLow),
@@ -613,7 +564,7 @@ static unsigned int spuriousInterruptCount = 0;
 /*
  * Read maximum of one page from the sector buffer to "addr", write maximum
  * of one page from "addr" into the sector buffer. Note that (length <=
- * PAGE_SIZE).
+ * PAGE_SIZE). 
  */
 - (void)xferData:(caddr_t)addr read:(BOOL)read client:(struct vm_map *)client
 		length:(unsigned)length
@@ -644,7 +595,7 @@ static unsigned int spuriousInterruptCount = 0;
 
 /*
  * There is no need for separate ATAPI locks but we keep them for testing
- * purposes.
+ * purposes. 
  */
 - (void)atapiCntrlrLock
 {
@@ -658,7 +609,7 @@ static unsigned int spuriousInterruptCount = 0;
 
 /*
  * The ATAPI driver (CD-ROM or Tape) will scan thorugh this list of devices
- * looking for ATAPI hardware.
+ * looking for ATAPI hardware. 
  */
 - (unsigned int)numDevices
 {
@@ -669,7 +620,7 @@ static unsigned int spuriousInterruptCount = 0;
 {
     if (unit >= MAX_IDE_DRIVES)
     	return NO;
-
+	
     return _drives[unit].atapiDevice;
 }
 
@@ -680,7 +631,7 @@ static unsigned int spuriousInterruptCount = 0;
 
 - (void)setAtapiCommandActive:(BOOL)state forUnit:(unsigned char)unit
 {
-    _drives[unit].atapiCommandActive = state;
+    _drives[unit].atapiCommandActive = state; 
 }
 
 - (BOOL) isDmaSupported:(unsigned int)unit
@@ -689,72 +640,16 @@ static unsigned int spuriousInterruptCount = 0;
 }
 
 /*
- * Simply forward the interrupt.
- *
- * We must acknowledge the interrupt at hardware level by reading the Status register.
- * Otherwise the interrupt may remain pending and cause repeated spurious interrupts
- * or prevent new interrupts from being delivered.
+ * Simply forward the interrupt. 
  */
 static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 {
 #ifdef NO_IRQ_MSG
 	ideStruct_t	*obj = (ideStruct_t *)arg;
-	IdeController *controller = (IdeController *)identity;
-
-	/*
-	 * Verify that this interrupt is actually from the IDE controller.
-	 * For PIIX controllers with bus mastering, this checks the BMISX
-	 * register to filter spurious interrupts.
-	 *
-	 * This is REQUIRED for shared IRQ support - we must not process
-	 * interrupts from other devices sharing this IRQ line.
-	 */
-	if ([controller respondsToSelector:@selector(verifyInterruptSource)]) {
-		if (![controller verifyInterruptSource]) {
-			/*
-			 * Spurious interrupt not from our controller.
-			 * Re-enable IRQ line for other devices sharing this interrupt.
-			 */
-			IOEnableInterrupt(identity);
-			return;
-		}
-	}
-
-	/*
-	 * Acknowledge interrupt at hardware level by reading Status register.
-	 * This MUST be done at interrupt time, not later when the thread wakes.
-	 * Reading the status register clears the interrupt pending state.
-	 */
-	(void)inb(obj->_ideRegsAddrs.status);
-
 	obj->interruptOccurred = YES;
 	thread_wakeup_one(&obj->waitQueue);
-
-	/*
-	 * Re-enable the IRQ line for other devices sharing this interrupt.
-	 */
-	IOEnableInterrupt(identity);
 #else  NO_IRQ_MSG
-	IdeController *controller = (IdeController *)identity;
-
-	/*
-	 * Verify interrupt source before sending message.
-	 * This prevents processing interrupts from other devices on shared IRQ lines.
-	 */
-	if ([controller respondsToSelector:@selector(verifyInterruptSource)]) {
-		if (![controller verifyInterruptSource]) {
-			/* Not our interrupt - re-enable IRQ for other devices */
-			IOEnableInterrupt(identity);
-			return;
-		}
-	}
-
-	IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
-
-	/*
-	 * Re-enable the IRQ line for shared interrupt support.
-	 */
-	IOEnableInterrupt(identity);
+    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 #endif NO_IRQ_MSG
 }
 
@@ -765,12 +660,12 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 {
     *handler = ideInterruptHandler;
     *ipl = IPLDEVICE;
-    *arg = (unsigned int)self;
+    *arg = (unsigned int)self;    
     return YES;
 }
 
 /*
- * Power management.
+ * Power management. 
  */
 - (idePowerState_t)drivePowerState
 {
@@ -786,9 +681,7 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 {
     if ([self drivePowerState] == IDE_PM_SLEEP)
     	return;
-
-	[self disableInterrupts];
-
+	
     _driveSleepRequest = YES;
     ddm_ide_lock("putDriveToSleep: acquiring lock, suspend\n",1,2,3,4,5);
     [self ideCntrlrLock];
@@ -802,25 +695,23 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 /*
  * The method wakeUpDrive simply sets a flag. The drive is actually woken up
  * the next time we need it. This is done by a call from
- * ideExecuteCmd:ToDrive: method to the spinUpDrive:unit: method below.
+ * ideExecuteCmd:ToDrive: method to the spinUpDrive:unit: method below. 
  */
 - (void)wakeUpDrive
 {
     if ([self drivePowerState] == IDE_PM_ACTIVE)
     	return;
-
+	
     _driveSleepRequest = NO;
     ddm_ide_lock("wakeUpDrive: Exiting suspend mode.\n", 1,2,3,4,5);
     [self setDrivePowerState:IDE_PM_STANDBY];
-    ddm_ide_lock("wakeUpDrive: releasing lock, recovered\n",1,2,3,4,5);
+    ddm_ide_lock("wakeUpDrive: releasing lock, recovered\n",1,2,3,4,5);    
     [self ideCntrlrUnLock];
-
-	[self enableInterrupts];
 }
 
 /*
  * This will get the drive to spin up. We simply try to read a single sector
- * and are prepared to camp out for a very long time (>>30 secs).
+ * and are prepared to camp out for a very long time (>>30 secs). 
  */
 #define MAX_MEDIA_ACCESS_TRIES		30
 
@@ -833,10 +724,10 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
     dh = _drives[unit].addressMode | (unit ? SEL_DRIVE1 : SEL_DRIVE0);
 
     for (i = 0; i < MAX_MEDIA_ACCESS_TRIES; i++)	{
-
+    
 	[self ideReset];
 	[self disableInterrupts];
-
+    
        /*
 	* Read one sector at (0,0,1). (LBA == 1).
 	*/
@@ -845,18 +736,18 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 	outb(_ideRegsAddrs.sectCnt, 0x1);
 	outb(_ideRegsAddrs.cylLow, 0x0);
 	outb(_ideRegsAddrs.cylHigh, 0x0);
-	outb(_ideRegsAddrs.command, IDE_READ);
+	outb(_ideRegsAddrs.command, IDE_READ);   
 
 	/*
-	 * Wait for about ten seconds for response from drive.
+	 * Wait for about ten seconds for response from drive. 
 	 */
 	for (j = 0; j < 5; j++)	{
-        IOSleep(2000);
-	    status = inb(_ideRegsAddrs.altStatus);
+            IOSleep(2000);
+	    status = inb(_ideRegsAddrs.status);
 	    if ((!(status & BUSY)) && (status & DREQUEST))	{
-    		[self ideReset];	/* FIXME: may not be needed */
-    		IOLog("%s: Recovered from suspend mode.\n", [self name]);
-    		return YES;
+		[self ideReset];	/* FIXME: may not be needed */
+		IOLog("%s: Recovered from suspend mode.\n", [self name]);
+		return YES;
 	    }
 	}
 	IOLog("%s: Retrying to recover from suspend mode.\n", [self name]);
@@ -869,23 +760,23 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 /*
  * We need to get the ATA drives spinning before we can try to reset them.
  * The situation gets complicated if the ATA and ATAPI device share the same
- * cable. We basically start up all devices on this controller.
+ * cable. We basically start up all devices on this controller. 
  */
 - (BOOL)startUpAttachedDevices
 {
     int i;
     BOOL status = YES;
-
+    
     /* Spin up only ATA drives */
-    for (i = 0; i < MAX_IDE_DRIVES; i++) {
-    	if ((_drives[i].ideInfo.type != 0) && ([self isAtapiDevice:i] == NO)) {
-    	    status = [self spinUpDrive:i];
-    	}
+    for (i = 0; i < MAX_IDE_DRIVES; i++)	{
+	if ((_drives[i].ideInfo.type != 0) && ([self isAtapiDevice:i] == NO)) {
+	    status = [self spinUpDrive:i];
+	}
     }
-
+    
     [self resetAndInit];
     [self setDrivePowerState:IDE_PM_ACTIVE];
-
+    
     return status;
 }
 
@@ -897,13 +788,13 @@ static void ideInterruptHandler(void *identity, void *state, unsigned int arg)
 - (IOReturn) setPowerState:(PMPowerState)state
 {
     if (state == PM_READY) {
-	    [self wakeUpDrive];
+	[self wakeUpDrive];
     } else if (state == PM_SUSPENDED)	{
-	    [self putDriveToSleep];
+	[self putDriveToSleep];
     } else {
         //IOLog("%s: unknown APM event %x\n", [self name], (unsigned int)state);
     }
-
+    
     return IO_R_SUCCESS;
 }
 

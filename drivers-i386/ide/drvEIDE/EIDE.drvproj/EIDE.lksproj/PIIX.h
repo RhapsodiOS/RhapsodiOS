@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- *
+ * 
  * "Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- *
+ * 
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License."
- *
+ * 
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -50,22 +50,7 @@
 #define PCI_ID_PIIX4	0x71118086
 #define PCI_ID_PIIX4E	0x71128086
 #define PCI_ID_PIIX4M	0x71138086
-#define PCI_ID_ICH		0x24118086	// ICH (82801AA)
-#define PCI_ID_ICH0		0x24218086	// ICH0 (82801AB)
-#define PCI_ID_ICH2		0x244A8086	// ICH2 (82801BA) - Mobile
-#define PCI_ID_ICH2_1	0x244B8086	// ICH2 (82801BA)
-#define PCI_ID_ICH3		0x248A8086	// ICH3 (82801CA) - Mobile
-#define PCI_ID_ICH3_1	0x248B8086	// ICH3 (82801CA)
-#define PCI_ID_ICH4		0x24CA8086	// ICH4 (82801DB) - Mobile
-#define PCI_ID_ICH4_1	0x24CB8086	// ICH4 (82801DB)
-
 #define PCI_ID_NONE		0xffffffff
-
-/*
- * Intel 450NX PCI bridge IDs for DMA workaround detection.
- * The 450NX chipset has unreliable DMA, so we disable it when detected.
- */
-#define PCI_DEVICE_ID_INTEL_82451NX	0x84ca8086
 
 /*
  * Decoded port addresses. Seems to be hardcoded and it does not
@@ -85,13 +70,6 @@
 #define PIIX_S_IRQ			15
 
 /*
- * PCI Command Register bit definitions (PIIX_PCICMD)
- */
-#define PCI_COMMAND_IO_ENABLE		0x0001	// I/O Space Enable (bit 0)
-#define PCI_COMMAND_BUS_MASTER		0x0004	// Bus Master Enable (bit 2)
-#define PCI_COMMAND_INTX_DISABLE	0x0400	// INTx Emulation Disable (bit 10)
-
-/*
  * PIIX PCI configuration space registers.
  * Register size (bits) in parenthesis.
  */
@@ -107,34 +85,6 @@
 #define PIIX_SIDETIM	0x44	// (8)  Slave IDE timing register
 #define PIIX_UDMACTL	0x48	// (8)  Ultra DMA/33 control register
 #define PIIX_UDMATIM	0x4a	// (16) Ultra DMA/33 timing register
-#define PIIX_IOCFG		0x54	// (32) IDE I/O Configuration register
-
-/*
- * PIIX_IOCFG register bit definitions
- *
- * For cable detection:
- */
-#define PIIX_80C_PRI	0x10	// Primary channel 80-wire cable
-#define PIIX_80C_SEC	0x20	// Secondary channel 80-wire cable
-
-/*
- * For ICH UDMA clock selection (bits 8-15):
- * These bits select the UDMA clock frequency for high-speed modes.
- *
- * Format: Bits [9:8] control primary channel, bits [11:10] control secondary
- * Values: 00 = 33MHz (UDMA 0-2)
- *         01 = 66MHz (UDMA 3-4)
- *         10 = 100MHz (UDMA 5)
- */
-#define PIIX_IOCFG_PRI_CLK_MASK		0x0300	// Primary channel clock mask (bits 8-9)
-#define PIIX_IOCFG_SEC_CLK_MASK		0x0C00	// Secondary channel clock mask (bits 10-11)
-#define PIIX_IOCFG_PRI_CLK_33		0x0000	// Primary 33MHz
-#define PIIX_IOCFG_PRI_CLK_66		0x0100	// Primary 66MHz
-#define PIIX_IOCFG_PRI_CLK_100		0x0200	// Primary 100MHz
-#define PIIX_IOCFG_SEC_CLK_33		0x0000	// Secondary 33MHz
-#define PIIX_IOCFG_SEC_CLK_66		0x0400	// Secondary 66MHz
-#define PIIX_IOCFG_SEC_CLK_100		0x0800	// Secondary 100MHz
-#define PIIX_IOCFG_WR_PINGPONG_EN	0x0400	// Write ping-pong enable (performance)
 
 /*
  * PIIX PCI configuration space register definition.

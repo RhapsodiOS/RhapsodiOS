@@ -53,52 +53,22 @@ typedef struct {
 extern const PIIXTiming PIIXTimingTable[];
 
 /*
- * PIIX Ultra DMA timing table.
- *
- * The UDMA timing is controlled by a combination of:
- * 1. Clock selection (33/66/100 MHz) in IOCFG register (ICH only)
- * 2. Timing divider (2 bits) in UDMATIM register
- *
- * Linux driver rule: "Odd modes are UDMATIMx 01, even are 02 except UDMA0 which is 00"
- * This translates to: timing_bits = min(2 - (mode & 1), mode)
+ * PIIX Ultra DMA/33 timing table.
  */
 typedef struct {
-	u_char	mode;		// UDMA mode number (0-5)
-	u_char	timing_bits;	// 2-bit value for UDMATIM register
-	u_char	clock_sel;	// Clock selection: 0=33MHz, 1=66MHz, 2=100MHz
-	u_short	strobe;		// Strobe period in ns
+	u_char	mode;
+	u_char	ct;		// Cycle time in PCI clocks
+	u_char	rp;		// Ready to Pause time in PCI clocks
+	u_char	bits;	// bit settings
+	u_short	strobe;	// strobe period in ns
 } PIIXUltraDMATiming;
 
-/* Ultra DMA timing table is defined in IdePIIX.m */
-extern const PIIXUltraDMATiming PIIXUltraDMATimingTable[];
-
-/*
- * Calculate UDMA timing bits based on mode number.
- * Follows Linux algorithm: "Odd modes are UDMATIMx 01, even are 02 except UDMA0"
- */
-static __inline__
-u_char
-PIIXGetUDMATimingBits(u_char mode)
-{
-	if (mode <= 5) {
-		return PIIXUltraDMATimingTable[mode].timing_bits;
-	}
-	return 0;	// Default to slowest
-}
-
-/*
- * Get clock selection for UDMA mode.
- * Returns: 0 = 33MHz, 1 = 66MHz, 2 = 100MHz
- */
-static __inline__
-u_char
-PIIXGetUDMAClockSelect(u_char mode)
-{
-	if (mode <= 5) {
-		return PIIXUltraDMATimingTable[mode].clock_sel;
-	}
-	return 0;	// Default to 33MHz
-}
+static const
+PIIXUltraDMATiming PIIXUltraDMATimingTable[] = {
+	{0,     4,     6,     0,     120},
+	{1, 	3,     5,     1,     90},
+	{2,     2,     4,     2,     60},
+};
 
 /*
  * Given a transfer mode/type, return the index for the

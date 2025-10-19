@@ -31,14 +31,6 @@
 }
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
-+ (IODeviceStyle)deviceStyle;
-+ (Protocol **)requiredProtocols;
-
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
-- free;
-
-/* PCI config space byte access helpers */
-- (unsigned char)configReadByte:(unsigned char)offset;
-- (void)configWriteByte:(unsigned char)value at:(unsigned char)offset;
 
 @end

@@ -28,168 +28,123 @@
 #import <driverkit/align.h>
 #import <driverkit/kernelDriver.h>
 
-/*
- * Intel 82430 (Triton) PCI-to-Memory Controller Configuration Registers
- * The 82430 chipset has a bug in A0 stepping that requires write-posting
- * to be disabled to prevent system crashes.
- */
-#define INTEL_82430_DRAMC       0x57    /* DRAM Control Register */
-#define INTEL_82430_WP_DISABLE  0xFE    /* Bit 0: 0 = Write-Posting Disabled */
-#define INTEL_82430_WP_ENABLE   0x01    /* Bit 0: 1 = Write-Posting Enabled */
-
 /* PCI Configuration Space Registers */
-#define PCI_REVISION_ID         0x08    /* Revision ID register */
+#define PCI_REVISION_ID        0x08    /* Revision ID register */
+#define PCI_DRAMC              0x54    /* DRAM Control Register */
 
-/* Binary exports required by the kernel */
-static Protocol *protocols[] = {
-    nil
-};
+/* PCI Vendor/Device IDs */
+#define INTEL_VENDOR_ID        0x8086
+#define INTEL_82440FX_DEVID    0x0483  /* 82440FX (Natoma) */
+#define INTEL_82443FX_DEVID    0x04A3  /* 82443FX (Orion) */
+
+/* DRAM Control Register bits */
+#define DRAMC_WP_ENABLE        0x01    /* Bit 0: Write-Posting Enable */
 
 @implementation Intel824X0
 
-/*
- * Helper method to read a byte from PCI config space
- */
-- (unsigned char)configReadByte:(unsigned char)offset
-{
-    unsigned long data;
-    unsigned char alignedOffset = offset & ~3;  /* Align to 32-bit boundary */
-    unsigned char byteOffset = offset & 3;       /* Byte within 32-bit word */
-
-    if ([self getPCIConfigData:&data atRegister:alignedOffset] != IO_R_SUCCESS) {
-        return 0xFF;
-    }
-
-    return (data >> (byteOffset * 8)) & 0xFF;
-}
-
-/*
- * Helper method to write a byte to PCI config space
- */
-- (void)configWriteByte:(unsigned char)value at:(unsigned char)offset
-{
-    unsigned long data;
-    unsigned char alignedOffset = offset & ~3;  /* Align to 32-bit boundary */
-    unsigned char byteOffset = offset & 3;       /* Byte within 32-bit word */
-    unsigned long mask = 0xFF << (byteOffset * 8);
-
-    /* Read current value */
-    if ([self getPCIConfigData:&data atRegister:alignedOffset] != IO_R_SUCCESS) {
-        return;
-    }
-
-    /* Clear the byte we're writing and set new value */
-    data = (data & ~mask) | ((unsigned long)value << (byteOffset * 8));
-
-    /* Write back */
-    [self setPCIConfigData:data atRegister:alignedOffset];
-}
-
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription
 {
-    unsigned long configData;
-    unsigned short vendorID, deviceID;
-    IOReturn result;
+    id instance;
 
-    if ([super probe:deviceDescription] == NO) {
+    /* Attempt to allocate and initialize an instance */
+    instance = [[self alloc] initFromDeviceDescription:deviceDescription];
+
+    /* If initialization failed, device is not supported */
+    if (instance == nil) {
         return NO;
     }
 
-    /* Read vendor ID and device ID from PCI config space offset 0x00 */
-    result = [self getPCIConfigData:&configData
-                         atRegister:0x00
-              withDeviceDescription:deviceDescription];
-
-    if (result != IO_R_SUCCESS) {
-        return NO;
-    }
-
-    vendorID = configData & 0xFFFF;
-    deviceID = (configData >> 16) & 0xFFFF;
-
-    /* Intel vendor ID: 0x8086
-     * Device IDs: 0x0483, 0x04A3
-     */
-    if (vendorID != 0x8086) {
-        return NO;
-    }
-
-    if (deviceID != 0x0483 && deviceID != 0x04A3) {
-        return NO;
-    }
-
-    IOLog("Intel824X0: probe detected device %04x:%04x\n", vendorID, deviceID);
-
+    /* Initialization succeeded, device is supported */
     return YES;
-}
-
-+ (IODeviceStyle)deviceStyle
-{
-    return IO_DirectDevice;
-}
-
-+ (Protocol **)requiredProtocols
-{
-    return protocols;
 }
 
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
 {
+    BOOL needsWritePostingFix = NO;
     unsigned long configData;
     unsigned short vendorID, deviceID;
-    unsigned char revisionID, dramcReg;
+    unsigned char revisionID;
+    const char *deviceName;
 
+    /* Set device identification */
+    [self setName:"Intel824X0"];
+    [self setDeviceKind:"Intel 824X0 PCI Host Bridge"];
+
+    /* Initialize from parent */
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
+        [self free];
         return nil;
     }
 
-    /* Read vendor ID and device ID from PCI config space offset 0x00 */
-    if ([self getPCIConfigData:&configData atRegister:0x00] == IO_R_SUCCESS) {
-        vendorID = configData & 0xFFFF;
-        deviceID = (configData >> 16) & 0xFFFF;
-    } else {
-        vendorID = 0;
-        deviceID = 0;
+    /* Verify this is device 0:0.0 (host bridge must be at device 0, function 0, bus 0) */
+    if ([deviceDescription getPCIdevice:0 function:0 bus:0] != 0) {
+        [self free];
+        return nil;
     }
 
-    [self setDeviceKind:"Intel 824X0 PCI Host Bridge"];
-    [self setLocation:""];
+    /* Register the device */
+    [self registerDevice];
 
-    /* Read the revision ID to check for A0 stepping */
-    revisionID = [self configReadByte:PCI_REVISION_ID];
+    /* Read vendor and device ID */
+    [self getPCIConfigData:&configData atRegister:0x00];
+    vendorID = configData & 0xFFFF;
+    deviceID = (configData >> 16) & 0xFFFF;
 
-    IOLog("Intel824X0: initialized device %04x:%04x revision %02x\n",
-          vendorID, deviceID, revisionID);
+    deviceName = [self name];
+    IOLog("Intel824X0: %s\n", deviceName);
 
-    /*
-     * Disable write-posting on the Intel 82430 chipset.
-     * The A0 stepping (revision 0x00) has a hardware bug that can cause
-     * system crashes when write-posting is enabled. Later steppings may
-     * work correctly, but we disable it unconditionally for safety.
-     */
-    dramcReg = [self configReadByte:INTEL_82430_DRAMC];
-    if (dramcReg & INTEL_82430_WP_ENABLE) {
-        IOLog("Intel824X0: Write-posting is enabled (DRAMC=0x%02x), disabling...\n", dramcReg);
-        dramcReg &= INTEL_82430_WP_DISABLE;
-        [self configWriteByte:dramcReg at:INTEL_82430_DRAMC];
+    /* Identify the specific chipset */
+    if (configData == ((INTEL_82440FX_DEVID << 16) | INTEL_VENDOR_ID)) {
+        /* Intel 82440FX (Natoma) */
+        IOLog("Intel824X0: Intel 82440FX (Natoma) PCI and Memory Controller detected\n");
+        needsWritePostingFix = YES;
+    }
+    else if (configData == ((INTEL_82443FX_DEVID << 16) | INTEL_VENDOR_ID)) {
+        /* Intel 82443FX (Orion) */
+        [self getPCIConfigData:&configData atRegister:PCI_REVISION_ID];
+        revisionID = configData & 0xFF;
 
-        /* Verify the write was successful */
-        dramcReg = [self configReadByte:INTEL_82430_DRAMC];
-        if (dramcReg & INTEL_82430_WP_ENABLE) {
-            IOLog("Intel824X0: WARNING - Failed to disable write-posting!\n");
+        /* Determine stepping (C0 = 0x00, C1 = 0x01, etc.) */
+        if (configData & 0x10) {
+            IOLog("Intel824X0: Intel 82443FX (Orion) C-%d stepping detected\n",
+                  0x0E, revisionID & 0x0F);
         } else {
-            IOLog("Intel824X0: Write-posting disabled successfully (DRAMC=0x%02x)\n", dramcReg);
+            IOLog("Intel824X0: Intel 82443FX (Orion) C-%d stepping detected\n",
+                  0x0C, revisionID & 0x0F);
         }
-    } else {
-        IOLog("Intel824X0: Write-posting already disabled (DRAMC=0x%02x)\n", dramcReg);
+
+        /* Revision 0x10 and later need write-posting fix */
+        if ((revisionID & 0xFF) == 0x10) {
+            needsWritePostingFix = YES;
+        }
+    }
+    else {
+        /* Check if it's at least an Intel chipset */
+        if (vendorID == INTEL_VENDOR_ID) {
+            IOLog("Intel824X0: Intel chipset detected (device ID 0x%04x)\n", deviceID);
+        }
+        IOLog("Intel824X0: Unknown or unsupported chipset\n");
+    }
+
+    /* Apply write-posting fix if needed */
+    if (needsWritePostingFix) {
+        [self getPCIConfigData:&configData atRegister:PCI_DRAMC];
+
+        if ((configData & DRAMC_WP_ENABLE) == 0) {
+            deviceName = [self name];
+            IOLog("Intel824X0: %s: Write-posting already disabled\n", deviceName);
+        }
+        else {
+            deviceName = [self name];
+            IOLog("Intel824X0: %s: Write-posting enabled, disabling...\n", deviceName);
+
+            /* Disable write-posting by clearing bit 0 */
+            configData &= ~DRAMC_WP_ENABLE;
+            [self setPCIConfigData:configData atRegister:PCI_DRAMC];
+        }
     }
 
     return self;
-}
-
-- free
-{
-    return [super free];
 }
 
 @end

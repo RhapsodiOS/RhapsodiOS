@@ -89,6 +89,7 @@ extern u_long *mpic_int_mapping_tbl;
 extern int *mpic_spl_to_pri;
 extern int nmpic_via_interrupts;
 extern int nmpic_interrupts;
+extern int mpic_via_cascade;
 
 #ifndef __ASSEMBLER__
 

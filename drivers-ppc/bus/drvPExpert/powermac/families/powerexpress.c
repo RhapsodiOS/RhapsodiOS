@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <machdep/ppc/interrupts.h>
@@ -39,7 +39,7 @@ powermac_init_t powerexpress_init = {
 struct powermac_interrupt powerexpress_via1_interrupts[NPOWEREXPRESS_VIA1_INTERRUPTS] = {
 	{ 0,	0,	0,	-1},			/* Cascade */
 	{ 0,	0,	0,	PMAC_DEV_HZTICK},
-	{ 0,	0,	0,	PMAC_DEV_VIA1},		
+	{ 0,	0,	0,	PMAC_DEV_VIA1},
 	{ 0,	0, 	0,	-1},			/* VIA Data */
 	{ 0,	0, 	0,	-1},			/* VIA CLK Source */
 	{ 0,	0,	0,	PMAC_DEV_TIMER2},
@@ -153,9 +153,10 @@ void configure_powerexpress(void)
   mpic_via1_interrupts = &powerexpress_via1_interrupts;
   mpic_int_mapping_tbl = &powerexpress_int_mapping_tbl;
   mpic_spl_to_pri = &powerexpress_spl_to_pri;
-  
+
   nmpic_interrupts = NPOWEREXPRESS_INTERRUPTS;
   nmpic_via_interrupts = NPOWEREXPRESS_VIA1_INTERRUPTS;
+  mpic_via_cascade = 0x14; /* VIA cascaded at interrupt 20 (0x14) */
 
   powermac_info.viaIRQ = (NPOWEREXPRESS_INTERRUPTS + 2) ^ 0x18;
 }

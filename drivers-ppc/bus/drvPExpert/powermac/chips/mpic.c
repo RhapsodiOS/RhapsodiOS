@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,29 +18,29 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
- * Copyright 1996 1995 by Open Software Foundation, Inc. 1997 1996 1995 1994 1993 1992 1991  
- *              All Rights Reserved 
- *  
- * Permission to use, copy, modify, and distribute this software and 
- * its documentation for any purpose and without fee is hereby granted, 
- * provided that the above copyright notice appears in all copies and 
- * that both the copyright notice and this permission notice appear in 
- * supporting documentation. 
- *  
- * OSF DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE 
- * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
- * FOR A PARTICULAR PURPOSE. 
- *  
- * IN NO EVENT SHALL OSF BE LIABLE FOR ANY SPECIAL, INDIRECT, OR 
- * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM 
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN ACTION OF CONTRACT, 
- * NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION 
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
- * 
+ * Copyright 1996 1995 by Open Software Foundation, Inc. 1997 1996 1995 1994 1993 1992 1991
+ *              All Rights Reserved
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose and without fee is hereby granted,
+ * provided that the above copyright notice appears in all copies and
+ * that both the copyright notice and this permission notice appear in
+ * supporting documentation.
+ *
+ * OSF DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE
+ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE.
+ *
+ * IN NO EVENT SHALL OSF BE LIABLE FOR ANY SPECIAL, INDIRECT, OR
+ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN ACTION OF CONTRACT,
+ * NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+ * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
  */
 /*
  * MKLINUX-1.0DR2
@@ -104,6 +104,7 @@ u_long *mpic_int_mapping_tbl;
 int *mpic_spl_to_pri;
 int nmpic_via_interrupts;
 int nmpic_interrupts;
+int mpic_via_cascade;
 
 /* Reset the hardware interrupt control */
 void
@@ -182,7 +183,7 @@ mpic_interrupt_initialize(void)
 
 	/* Clear Interrupts on MPIC */
 	for (cnt = 0; cnt < nmpic_interrupts; cnt++) {
-	  
+
 	  /* Unmask the interrupt */
 	  tmp = lwbrx(MPIC_INT_CFG + cnt * 0x20);
 	  tmp &= ~MASKED;
@@ -201,7 +202,7 @@ mpic_interrupt_initialize(void)
 	    /* Ack the interrupt then end it */
 	    tmp = lwbrx(MPIC_P0_INT_ACK);
 	    stwbrx(0, MPIC_P0_EOI);
-	    
+
 	    /* Waste some time? */
 	    for (cnt2 = 0; cnt2 < 0x40; cnt2++) {
 	      tmp = lwbrx(MPIC_INT_CFG +  cnt * 0x20);
@@ -211,7 +212,7 @@ mpic_interrupt_initialize(void)
 	  /* Set the interrupt as masked again. */
 	  tmp = lwbrx(MPIC_INT_CFG + cnt * 0x20);
 	  tmp |= MASKED;
-	  
+
 #if 0
 	  if (cnt == 25) tmp &= ~MASKED; /* Allow NMI */
 #endif
@@ -266,7 +267,7 @@ mpic_int_to_number(int index)
 static void
 mpic_register_int(int device,
 		  spl_t level,
-		  void (*handler)(int, void *, void *), 
+		  void (*handler)(int, void *, void *),
 		  void *arg)
 {
 	int	i;
@@ -314,14 +315,14 @@ mpic_register_int(int device,
 
 			*((v_u_char *) PCI_VIA1_IER) |= (1 << i);
 			eieio();
-			tmp = lwbrx(MPIC_INT_CFG + 20 * 0x20);
+			tmp = lwbrx(MPIC_INT_CFG + mpic_via_cascade * 0x20);
 #if 0
 			tmp &= ~(MASKED | (0x0f << 16)); /* un-mask, 0 pri */
 			tmp |= spl_to_mpic[SPLTTY] << 16; /* add in real pri */
 #else
 			tmp &= ~MASKED;
 #endif
-			stwbrx(tmp, MPIC_INT_CFG + 20 * 0x20);
+			stwbrx(tmp, MPIC_INT_CFG + mpic_via_cascade * 0x20);
 			eieio();
 			return;
 		}
@@ -338,7 +339,7 @@ mpic_set_priority_level(spl_t lvl)
   spl_t old_level;
 
   old_level = current_priority;
-  
+
 // kprintf("mpic_set_priority_level: Setting Int Priv addr: 0x%x, data: %d.\n",
 //	   MPIC_P0_CUR_TSK_PRI, spl_to_mpic[lvl]);
 
@@ -369,7 +370,7 @@ mpic_enable_irq(int irq)
     irq ^= 0x18;
 
   /* make sure the irq is in the mpic table and not via-cuda */
-  if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == 20))
+  if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
     return FALSE;
 
   /* Unmask the source for this irq on mpic */
@@ -392,7 +393,7 @@ mpic_disable_irq(int irq)
     irq ^= 0x18;
 
   /* make sure the irq is in the mpic table and not via-cuda */
-  if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == 20))
+  if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
     return FALSE;
 
   /* Mask the source for this irq on mpic */
@@ -410,7 +411,7 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 {
 	unsigned long int	        irq;
 	struct powermac_interrupt	*handler;
-	
+
 //kprintf("mpic_interrupt: Entering\n");
 
 	/* Loop until all interrupts have been processed */
@@ -423,7 +424,7 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 
             /* Set the End of Interrupt Bit */
 	    stwbrx(0, MPIC_P0_EOI);
-	    
+
 //kprintf("mpic_interrupt: IRQ: %d\n", irq);
 
 //if (irq == 14) kprintf("IRQ14\n");
@@ -435,7 +436,7 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 	      handler->i_handler(handler->i_device, ssp, handler->i_arg);
 	    else
 	      printf("{MPIC INT %d}", irq);
-	    
+
           } else break; /* No more interrupts so bail. */
 	}
 
@@ -463,14 +464,14 @@ void mpic_via1_interrupt(int device, void *ssp, void *arg)
 	while (irq) {
 	  /* Find the bit position of the first set bit */
 	  bit = 31 - cntlzw(irq);
-	  
+
 	  /* Find the handler */
 	  handler = &mpic_via1_interrupts[bit];
-	  
+
 	  if (handler->i_handler) {
 	    handler->i_handler(handler->i_device, ssp, handler->i_arg);
 	  }
-	  
+
 	  /* Clear the bit in irq that we just dispached. */
 	  irq &= ~(1<<bit);
 	}

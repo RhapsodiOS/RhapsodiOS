@@ -1,0 +1,5 @@
+
+#define PCMCIA_SOCKETS_KEY	"PCMCIA Sockets"
+#define PCMCIA_TUPLE_LIST	"PCMCIA Tuple List"
+#define PCMCIA_SOCKET_LIST	"PCMCIA Socket List"
+#define PCMCIA_WINDOW_LIST	"PCMCIA Window List"

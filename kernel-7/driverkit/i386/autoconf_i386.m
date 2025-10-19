@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -57,6 +57,8 @@
 #import <driverkit/driverTypesPrivate.h>
 #import <driverkit/autoconfCommon.h>
 #import <driverkit/i386/EISAKernBus.h>
+#import <driverkit/i386/PCMCIA.h>
+#import <driverkit/i386/PCMCIAKernBus.h>
 #import <driverkit/i386/PCIKernBus.h>
 
 #import <machdep/i386/kernBootStruct.h>
@@ -110,13 +112,13 @@ static BOOL
 versionIsOK(const char *serverName)
 {
     int version;
-    
+
     /*
      * Right now, if serverName is NULL, that means the driver
      * is compiled into the kernel, so don't check the version.
      * This may change later, however.
      */
-    
+
     if (serverName != NULL) {
 	version = [IODevice
 		driverKitVersionForDriverNamed:(char *)serverName];
@@ -128,7 +130,7 @@ versionIsOK(const char *serverName)
 	 */
 	if (version <= 310) {
 	    IOLog("WARNING: driver %s uses incompatible DriverKit version %d\n", serverName, version);
-	    IOLog("Driver %s could not be configured\n", 
+	    IOLog("Driver %s could not be configured\n",
 		serverName);
 	    return NO;
 	}
@@ -137,8 +139,8 @@ versionIsOK(const char *serverName)
 }
 
 /*
- * Eventually, this routine will only initialize the boot device(s) per 
- * input from the booter via KERNBOOTSTRUCT. 
+ * Eventually, this routine will only initialize the boot device(s) per
+ * input from the booter via KERNBOOTSTRUCT.
  * For now, configure all native devices enumerated in the various
  * tables in device_configuration.c.
  */
@@ -154,10 +156,10 @@ probeNativeDevices(void)
 	const char	*family, *busName;
 	char		*nameBuf;
 	id		busClass;
-	
+
 	//
 	// Initialize drivers and modules loaded by booter.
-	
+
 	bootDriverInit();
 
 	nameBuf = (char *)IOMalloc(NAME_BUF_LEN);
@@ -180,14 +182,14 @@ probeNativeDevices(void)
 		if (family)
 		    [configTable freeString:family];
 	}
-	
+
 	defaultBusClass = [KernBus lookupBusClassWithName:DEFAULT_BUS];	// XXX
 	if (defaultBusClass == nil) {
 		sprintf(nameBuf, "Missing %s kernel bus class", DEFAULT_BUS);
 		panic(nameBuf);
 	}
 	defaultBus = [KernBus lookupBusInstanceWithName:DEFAULT_BUS busId:0];
-	
+
 	/*
 	 * For now this is the only
 	 * concession to EISA bus.
@@ -229,15 +231,15 @@ probeNativeDevices(void)
 + probe:(int)a deviceMaster:(port_t) b;
 @end
 
-/* 
+/*
  * Called from MD probeNativeDevices() and from configureThread(), the
  * IOTask version of IOProbeDriver().
  *
  * Given a class name and an ASCII representation of a config file,
- * create a kern_dev and an IODeviceDescription and probe the class. 
- * This is used both at boot time - for the boot device and (temporarily) 
+ * create a kern_dev and an IODeviceDescription and probe the class.
+ * This is used both at boot time - for the boot device and (temporarily)
  * any native drivers with static config tables - and by IOProbeDriver().
- * 
+ *
  * Returns YES if driver was started successfully, else returns NO.
 */
 static BOOL
@@ -261,14 +263,14 @@ configureDriver(
 	id		busClass, busDescriptionClass;
 
 	nameBuf = (char *)IOMalloc(NAME_BUF_LEN);
-	
+
 	configTable = [IOConfigTable newForConfigData:configData];
 
 	serverName = [configTable valueForStringKey:SERVER_NAME_KEY];
-	
+
 	classNames = (char *)[configTable valueForStringKey:CLASS_NAMES_KEY];
 	if (classNames == NULL)
-	    classNames = (char *)[configTable 
+	    classNames = (char *)[configTable
 				     valueForStringKey:DRIVER_NAME_KEY];
 	classNameList = [[KernStringList alloc]
 			    initWithWhitespaceDelimitedString:classNames];
@@ -297,14 +299,14 @@ configureDriver(
 		    IOLog("Driver %s could not be configured\n", serverName);
 		    goto abort;
 	    }
-	    
+
 	    if (versionChecked == NO) {
 		/*
 		 * Right now, if serverName is NULL, that means the driver
 		 * is compiled into the kernel, so don't check the version.
 		 * This may change later, however.
 		 */
-    
+
 		if (serverName != NULL) {
 		    if (versionIsOK(serverName) == NO)
 			goto abort;
@@ -320,7 +322,7 @@ configureDriver(
 		/* Return success. */
 		break;
 	    }
-	    
+
 	    /*
 	     *  Depending on the deviceStyle, we either make
 	     *  an DeviceDescription or the bus type device description.
@@ -328,18 +330,18 @@ configureDriver(
 	    switch ([theClass deviceStyle]) {
 		case IO_DirectDevice:
 		    deviceDescription = [busClass
-			deviceDescriptionFromConfigTable:configTable];	
-    
+			deviceDescriptionFromConfigTable:configTable];
+
 		    if (deviceDescription == nil) {
 			    IOLog("configureDriver: initFromConfigTable "
 					"failed for class %s\n", className);
 				goto abort;
 		    }
-		    
+
 		    if ([deviceDescription bus] == nil) {
 			[deviceDescription setBus:defaultBus];
 		    }
-		    
+
 		    if ([[deviceDescription bus] allocateResourcesForDeviceDescription:
 				    deviceDescription] == nil) {
 			    IOLog("configureDriver: could not allocate "
@@ -349,29 +351,29 @@ configureDriver(
 
 		    device = [[KernDevice alloc]
 		    	initWithDeviceDescription:deviceDescription];
-    
+
 		    if (device == nil) {
 			    IOLog("configureDriver: initFromDeviceDescription "
 					"failed for class %s\n", className);
 				goto abort;
 		    }
-		    
+
 		    [deviceDescription setDevice:device];
-		    
+
 		    sprintf(nameBuf, "IO%sDeviceDescription", busType);
 		    busDescriptionClass = objc_getClass((const char *)nameBuf);
 
 		    ioDeviceDescription = [[busDescriptionClass alloc]
 			_initWithDelegate:deviceDescription];
-			
+
 		    if (ioDeviceDescription == nil) {
 		    		goto abort;
 		    }
-				
-		    [ioDeviceDescription 
+
+		    [ioDeviceDescription
 		    		setDevicePort:create_dev_port(device)];
 		    break;
-    
+
 		case IO_IndirectDevice:
 		case IO_PseudoDevice:
 		    deviceDescription = [[KernDeviceDescription alloc]
@@ -379,10 +381,10 @@ configureDriver(
 		    if (deviceDescription == nil) {
 			    goto abort;
 		    }
-		    
+
 		    ioDeviceDescription = [[IODeviceDescription alloc]
 		    	_initWithDelegate:deviceDescription];
-			
+
 		    if (ioDeviceDescription == nil)
 		    		goto abort;
 
@@ -392,7 +394,7 @@ configureDriver(
 		    IOLog("Invalid style for class %s", className);
 		    goto abort;
 	    }
-    
+
 	    /*
 	     *  Now that we have a valid device description for the device,
 	     *  probe the sucker.
@@ -402,9 +404,9 @@ configureDriver(
 		          "to probe:\n", className);
 		    continue;
 	    }
-    
+
 	    if (
-		[IODevice addLoadedClass:theClass 
+		[IODevice addLoadedClass:theClass
 			    description:ioDeviceDescription] == IO_R_SUCCESS) {
 		    classesLoaded++;
 	    }
@@ -465,10 +467,10 @@ eisa_present(
     if (!checked) {
 	if (strncmp((char *)0xfffd9, "EISA", 4) == 0)
 	    isEISA = TRUE;
-	    
+
 	checked = TRUE;
     }
-    
+
     return (isEISA);
 }
 
@@ -480,20 +482,20 @@ eisa_id(
 {
     unsigned char	*ids = (unsigned char *)_id;
     IOEISAPortAddress		port;
-    
+
     if (!eisa_present())
 	return (FALSE);
-    
+
     port = (slot << 12) | 0x0C80;
-    
+
     ids[3] = inb(port);
     ids[2] = inb(++port);
     ids[1] = inb(++port);
     ids[0] = inb(++port);
-    
+
     if (*_id == 0xffffffff)
     	return (FALSE);
-	
+
     return (TRUE);
 }
 
@@ -506,7 +508,7 @@ static void
 probe_indirect(const char **indirectNamep, id driverInstance)
 {
 	id driverClass;
-	
+
 	if(indirectNamep == NULL) {
 		return;
 	}
@@ -523,7 +525,7 @@ probe_indirect(const char **indirectNamep, id driverInstance)
 			continue;
 		}
 
-		[driverClass probe:driverInstance]; 
+		[driverClass probe:driverInstance];
 	}
 }
 
@@ -536,7 +538,7 @@ void
 configureThread(struct probeDriverArgs *args)
 {
 	args->rtn = configureDriver(args->configData);
-	
+
 	/*
 	 * Notify parent that we're finished, then terminate.
 	 */
@@ -553,7 +555,7 @@ void probeHardware(void)
 }
 
 /*
- * Start up all non-native direct drivers. Called after probeHardware(). 
+ * Start up all non-native direct drivers. Called after probeHardware().
  */
 void probeDirectDevices(void)
 {
@@ -563,7 +565,7 @@ void probeDirectDevices(void)
 /*
  * Obtain n'th string in KERNBOOSTRUCT.config[]. Returns pointer to desired
  * string if found, else returns NULL.
- * KERNBOOTSTRUCT.config is a set of contiguous strings, NULL separated. 
+ * KERNBOOTSTRUCT.config is a set of contiguous strings, NULL separated.
  * The end of the list is delineated by a double NULL.
  */
 const char *findBootConfigString(int n)
@@ -573,7 +575,7 @@ const char *findBootConfigString(int n)
 	const char *cp = kernBootStruct->config;
 	int currentIndex = 0;
 	int length;
-	
+
 	if(*cp == '\0') {
 		IOLog("WARNING: No config table in KERNBOOTSTRUCT!\n");
 		return NULL;
@@ -582,7 +584,7 @@ const char *findBootConfigString(int n)
 		length = strlen(cp);
 		currentIndex += (length + 1);
 		cp += (length + 1);
-		if( (length == 0) || 
+		if( (length == 0) ||
 		    (currentIndex > CONFIG_SIZE) ||
 		    (*cp == '\0')) {
 			/*
@@ -602,7 +604,7 @@ bootDriverInit(void)
     int i;
     struct section *sp;
     struct mach_header *hdr;
-    
+
     for (i = 0; i < bootstruct->numBootDrivers; i++) {
 	hdr = (struct mach_header *)bootstruct->driverConfig[i].address;
     	/* Zero out bss */

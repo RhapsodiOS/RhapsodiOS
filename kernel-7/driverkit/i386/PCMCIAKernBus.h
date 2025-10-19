@@ -31,58 +31,10 @@
 #ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
-#import <driverkit/KernBusMemory.h>
-#import <driverkit/KernBusInterrupt.h>
-#import <objc/List.h>
-
-
-@interface PCMCIAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
-{
-@private
-    id		_PCMCIALock;
-    int		_priorityLevel;
-    int		_irq;
-    BOOL	_irqAttached;
-    BOOL	_irqEnabled;
-}
-
-@end
-
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
 #define IRQ_LEVELS_KEY		"IRQ Levels"
 #define DMA_CHANNELS_KEY	"DMA Channels"
-#define PCMCIA_SOCKETS_KEY	"PCMCIA Sockets"
-#define PCMCIA_TUPLE_LIST	"PCMCIA Tuple List"
-#define PCMCIA_SOCKET_LIST	"PCMCIA Socket List"
-#define PCMCIA_WINDOW_LIST	"PCMCIA Window List"
-
-@interface PCMCIAKernBus : KernBus
-{
-@private
-    id		*_sockets;		/* Array of PCMCIAPool objects */
-    int		_numSockets;		/* Number of sockets */
-}
-
-- init;
-- initWithSocketCount:(int)count;
-- free;
-
-/* Socket management */
-- (int)numSockets;
-- socketAtIndex:(int)index;
-
-/* Card detection and enumeration */
-- (BOOL)probeSocket:(int)socket;
-- (void)probeAllSockets;
-
-/* Memory window allocation */
-- allocMemoryWindowForSocket:socket;
-
-/* Resource access */
-- memoryRangeResource;
-
-@end
 
 #endif	/* DRIVER_PRIVATE */

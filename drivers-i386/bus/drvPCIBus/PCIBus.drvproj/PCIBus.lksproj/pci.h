@@ -23,49 +23,37 @@
  */
 
 /*
- * PCIKernBusInterrupt.h
- * PCI Kernel Bus Interrupt Handler Header
+ * pci.h
+ * PCI Helper Functions
  */
 
-#ifndef _PCIKERNBUSINTERRUPT_H_
-#define _PCIKERNBUSINTERRUPT_H_
+#ifndef _PCI_H_
+#define _PCI_H_
 
-#import <driverkit/KernBusInterrupt.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
- * PCIKernBusInterrupt - Handles PCI device interrupts
+ * Helper function to check if string starts with a prefix followed by '('
+ * Returns pointer after the prefix if match, NULL otherwise
+ * Example: PCIParsePrefix("PCI", "PCI(something)") returns pointer to "(something)"
  */
-@interface PCIKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
-{
-    @private
-    id _PCILock;
-    int _priorityLevel;
-    int _irq;
-    BOOL _irqAttached;
-    BOOL _irqEnabled;
+char *PCIParsePrefix(char *prefix, char *str);
+
+/*
+ * Helper function to parse PCI location strings
+ * Format: Supports keywords like "DEV:1 FUNC:0 BUS:0 REG:10"
+ * Returns 1 if parsing successful, 0 otherwise
+ */
+unsigned int PCIParseKeys(char *locationStr,
+                         unsigned long *device,
+                         unsigned int *function,
+                         unsigned int *bus,
+                         unsigned int *reg);
+
+#ifdef __cplusplus
 }
+#endif
 
-/*
- * Initialization
- */
-- initForResource:resource
-             item:(unsigned int)item
-        shareable:(BOOL)shareable;
-- dealloc;
-
-/*
- * Interrupt attachment
- */
-- attachDeviceInterrupt:interrupt;
-- attachDeviceInterrupt:interrupt atLevel:(int)level;
-- detachDeviceInterrupt:interrupt;
-
-/*
- * Interrupt control
- */
-- suspend;
-- resume;
-
-@end
-
-#endif /* _PCIKERNBUSINTERRUPT_H_ */
+#endif /* _PCI_H_ */

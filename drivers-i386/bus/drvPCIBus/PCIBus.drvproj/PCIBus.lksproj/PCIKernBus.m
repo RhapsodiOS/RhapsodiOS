@@ -28,12 +28,34 @@
  */
 
 #import "PCIKernBus.h"
-#import "PCIKernBusInterrupt.h"
+#import "pci.h"
+
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/KernBusMemory.h>
-#import <driverkit/KernBusInterruptPrivate.h>
 #import <machdep/i386/intr_internal.h>
+
+#import <string.h>
+
+/*
+ * Private category for internal PCI configuration methods
+ */
+@interface PCIKernBus (Private)
+- (BOOL)test_M1;
+- (BOOL)test_M2;
+- (unsigned long)Method1:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write;
+- (unsigned long)Method2:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write;
+@end
 
 /* PCI Configuration Space Registers */
 #define PCI_CONFIG_VENDOR_ID    0x00
@@ -63,14 +85,6 @@
 
 @implementation PCIKernBus
 
-static const char *resourceNameStrings[] = {
-    IRQ_LEVELS_KEY,
-    DMA_CHANNELS_KEY,
-    MEM_MAPS_KEY,
-    IO_PORTS_KEY,
-    NULL
-};
-
 + initialize
 {
     [self registerBusClass:self name:"PCI"];
@@ -79,280 +93,246 @@ static const char *resourceNameStrings[] = {
 
 - init
 {
-    if ([super init] == nil) {
-        return nil;
+    unsigned int pciConfigData;
+    unsigned int subsystemId;
+    unsigned char bus, dev, func;
+    const char *bios16Str, *bios32Str, *cm1Str, *cm2Str, *sc1Str, *sc2Str;
+
+    /* Initialize instance variables from configuration data */
+    /* TODO: Read these from PCI BIOS if available */
+    _maxBusNum = 0;  /* Default to single bus, could be read from BIOS */
+    _maxDevNum = 0;  /* Will be set based on config mechanism */
+    _pciVersionMajor = 2;  /* PCI 2.x */
+    _pciVersionMinor = 1;
+    _bios16Present = YES;  /* Assume BIOS present for now */
+    _bios32Present = NO;
+    _reserved = NULL;
+
+    /* Initialize feature flags - will be detected */
+    _configMech1 = NO;
+    _configMech2 = NO;
+    _specialCycle1 = NO;
+    _specialCycle2 = NO;
+
+    /* Test for configuration mechanisms */
+    if (!_configMech1 && !_configMech2 && _bios16Present) {
+        _configMech1 = [self test_M1];
+        if (!_configMech1) {
+            _configMech2 = [self test_M2];
+        }
     }
 
-    _pciData = NULL;
-    _initialized = NO;
+    /* If still no mechanism found, try detecting directly */
+    if (!_configMech1 && !_configMech2) {
+        _configMech1 = [self test_M1];
+        if (!_configMech1) {
+            _configMech2 = [self test_M2];
+        }
+    }
 
-    /* Verify PCI is present before continuing */
+    /* Set max device number based on configuration mechanism */
+    if (_configMech1) {
+        _maxDevNum = 0x1f;  /* Mechanism 1 supports 32 devices (0-31) */
+    } else if (_configMech2) {
+        _maxDevNum = 0xf;   /* Mechanism 2 supports 16 devices (0-15) */
+    }
+
+    /* Verify PCI is present */
     if (![self isPCIPresent]) {
-        IOLog("PCIKernBus: Initialization failed - PCI not detected\n");
-        [super free];
-        return nil;
+        return [self free];
     }
 
-    /* Register IRQ resources (16 IRQs on i386) */
-    [self _insertResource:[[KernBusItemResource alloc]
-                           initWithItemCount:INTR_NIRQ
-                           itemKind:[PCIKernBusInterrupt class]
-                           owner:self]
-                  withKey:IRQ_LEVELS_KEY];
+    /* Build feature strings for logging */
+    bios16Str = _bios16Present ? "BIOS16 " : "";
+    bios32Str = _bios32Present ? "BIOS32 " : "";
+    cm1Str = _configMech1 ? "CM1 " : "";
+    cm2Str = _configMech2 ? "CM2 " : "";
+    sc1Str = _specialCycle1 ? "SC1 " : "";
+    sc2Str = _specialCycle2 ? "SC2 " : "";
 
-    /* Register memory map resources */
-    [self _insertResource:[[KernBusRangeResource alloc]
-                           initWithExtent:RangeMAX
-                           kind:[KernBusMemoryRange class]
-                           owner:self]
-                  withKey:MEM_MAPS_KEY];
+    IOLog("PCI Ver=%x.%02x BusCount=%d Features=[ %s%s%s%s%s%s]\n",
+          _pciVersionMajor, _pciVersionMinor, _maxBusNum + 1,
+          bios16Str, bios32Str, cm1Str, cm2Str, sc1Str, sc2Str);
 
-    /* Register I/O port resources (64K ports on i386) */
-    [self _insertResource:[[KernBusRangeResource alloc]
-                           initWithExtent:0x10000
-                           kind:[KernBusMemoryRange class]
-                           owner:self]
-                  withKey:IO_PORTS_KEY];
+    /* Scan all PCI devices */
+    for (bus = 0; bus <= _maxBusNum; bus++) {
+        for (dev = 0; dev <= _maxDevNum; dev++) {
+            for (func = 0; func < 8; func++) {
+                /* Read vendor/device ID */
+                if ([self getRegister:0 device:dev function:func bus:bus
+                              data:(unsigned long *)&pciConfigData] != IO_R_SUCCESS) {
+                    continue;
+                }
 
-    _initialized = YES;
+                /* Check if device exists */
+                if ((short)pciConfigData == -1 || (short)pciConfigData == 0) {
+                    continue;
+                }
 
-    /* Register with the kernel bus system */
-    [[self class] registerBusInstance:self name:"PCI" busId:0];
+                /* Read subsystem ID at offset 0x2C */
+                [self getRegister:0x2C device:dev function:func bus:bus
+                          data:(unsigned long *)&subsystemId];
 
-    IOLog("PCIKernBus: Initialized and registered\n");
+                if (subsystemId == 0) {
+                    IOLog("Found PCI 2.0 device: ID=0x%08x at Dev=%d Func=%d Bus=%d\n",
+                          pciConfigData, dev, func, bus);
+                } else {
+                    IOLog("Found PCI 2.1 device: ID=0x%08x/0x%08x at Dev=%d Func=%d Bus=%d\n",
+                          pciConfigData, subsystemId, dev, func, bus);
+                }
 
-    return self;
+                /* Check header type to see if this is a multi-function device */
+                [self getRegister:0x0C device:dev function:func bus:bus
+                          data:(unsigned long *)&pciConfigData];
+
+                /* If not multi-function (bit 23 clear), don't check other functions */
+                if ((pciConfigData & 0x800000) == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /* Register with the bus system */
+    [self setBusId:0];
+    [[self class] registerBusInstance:self name:"PCI" busId:[self busId]];
+
+    printf("PCI bus support enabled\n");
+
+    return [super init];
 }
 
 - free
 {
-    /* Check if resources are still active */
-    if ([self areResourcesActive]) {
-        return self;
-    }
-
-    /* Free resources */
-    [[self _deleteResourceWithKey:IRQ_LEVELS_KEY] free];
-    [[self _deleteResourceWithKey:MEM_MAPS_KEY] free];
-    [[self _deleteResourceWithKey:IO_PORTS_KEY] free];
-
-    if (_pciData != NULL) {
-        IOFree(_pciData, sizeof(void *));
-        _pciData = NULL;
+    if (_reserved != NULL) {
+        IOFree(_reserved, sizeof(void *));
+        _reserved = NULL;
     }
 
     return [super free];
 }
 
-/*
- * Return array of resource names
- */
-- (const char **)resourceNames
-{
-    return resourceNameStrings;
-}
 
 /*
  * PCI presence detection
+ * Checks if any PCI configuration mechanism is available
+ * This checks bytes at offset 0x19, 0x1a, 0x1b (configMech1, configMech2, specialCycle1)
  */
 
 - (BOOL)isPCIPresent
 {
-    unsigned int value;
-
-    /* Try to access PCI configuration mechanism #1 */
-    /* Save the current CONFIG_ADDRESS value */
-    unsigned int savedAddress = inl(PCI_CONFIG_ADDRESS);
-
-    /* Write a test pattern to CONFIG_ADDRESS */
-    outl(PCI_CONFIG_ADDRESS, 0x80000000);
-
-    /* Read it back */
-    value = inl(PCI_CONFIG_ADDRESS);
-
-    /* Restore original value */
-    outl(PCI_CONFIG_ADDRESS, savedAddress);
-
-    /* If we read back what we wrote, PCI is present */
-    if (value == 0x80000000) {
-        /* Additional verification: try to read vendor ID from bus 0, device 0 */
-        unsigned int vendorId = [self configRead:0 device:0 function:0
-                                         offset:PCI_CONFIG_VENDOR_ID width:2];
-
-        /* Valid vendor IDs are not 0x0000 or 0xFFFF */
-        if (vendorId != 0x0000 && vendorId != 0xFFFF) {
-            IOLog("PCIKernBus: PCI bus detected (Vendor ID: 0x%04x)\n", vendorId);
-            return YES;
-        }
-    }
-
-    IOLog("PCIKernBus: No PCI bus detected\n");
-    return NO;
+    /* Check if any configuration mechanism is present */
+    /* The decompiled code checks: (*(uint *)(this + 0x18) & 0xffff00) != 0 */
+    /* This is equivalent to checking if configMech1, configMech2, or specialCycle1 is set */
+    return (_configMech1 || _configMech2 || _specialCycle1);
 }
 
 /*
  * PCI configuration space access
  */
 
-- (unsigned int)configAddress:(unsigned int)offset device:(unsigned int)dev
-                      function:(unsigned int)func bus:(unsigned int)bus
+- (IOReturn)configAddress:(id)deviceDescription
+                   device:(unsigned char *)devNum
+                 function:(unsigned char *)funNum
+                      bus:(unsigned char *)busNum
 {
-    unsigned int address;
-
-    /* Build PCI configuration address for mechanism #1 */
-    /* Bit 31: Enable bit (must be 1)
-     * Bits 23-16: Bus number
-     * Bits 15-11: Device number
-     * Bits 10-8: Function number
-     * Bits 7-2: Register offset (DWORD aligned)
-     * Bits 1-0: Must be 0 (DWORD alignment)
-     */
-    address = 0x80000000 |
-              ((bus & 0xFF) << 16) |
-              ((dev & 0x1F) << 11) |
-              ((func & 0x07) << 8) |
-              (offset & 0xFC);
-
-    return address;
-}
-
-- (IOReturn)configAddress:(id)delegate device:(unsigned char *)devNum
-                 function:(unsigned char *)funNum bus:(unsigned char *)busNum
-{
+    id configTable;
+    const char *busTypeStr;
     const char *locationStr;
-    unsigned int busValue = 0, devValue = 0, funcValue = 0;
-    int matched;
+    const char *instanceStr;
+    char *autoDetectIDs;
+    unsigned long dev = 0;
+    unsigned int func = 0, busNum_local = 0;
+    unsigned long instance = 0;
+    unsigned int headerType;
+    BOOL locationFound = NO;
 
-    /* Validate delegate */
-    if (delegate == nil) {
-        return IO_R_INVALID_ARG;
-    }
+    /* Get the config table from device description */
+    configTable = [deviceDescription configTable];
 
-    /* Try to get the location string from the delegate */
-    /* The delegate should be an IODeviceDescription or similar */
-    if ([delegate respondsToSelector:@selector(location)]) {
-        locationStr = [delegate location];
-
-        if (locationStr != NULL) {
-            /* Parse location string in format "bus:device.function" or "device.function" */
-            matched = sscanf(locationStr, "%u:%u.%u", &busValue, &devValue, &funcValue);
-
-            if (matched == 3) {
-                /* Successfully parsed bus:device.function */
-                if (devNum) *devNum = (unsigned char)devValue;
-                if (funNum) *funNum = (unsigned char)funcValue;
-                if (busNum) *busNum = (unsigned char)busValue;
-                return IO_R_SUCCESS;
-            }
-
-            /* Try parsing without bus number (device.function format) */
-            matched = sscanf(locationStr, "%u.%u", &devValue, &funcValue);
-
-            if (matched == 2) {
-                /* Successfully parsed device.function, assume bus 0 */
-                if (devNum) *devNum = (unsigned char)devValue;
-                if (funNum) *funNum = (unsigned char)funcValue;
-                if (busNum) *busNum = 0;
-                return IO_R_SUCCESS;
-            }
-        }
-    }
-
-    /* Try to extract from properties if location string parsing failed */
-    if ([delegate respondsToSelector:@selector(getProperty:length:)]) {
-        unsigned int length;
-        unsigned int *value;
-
-        /* Try PCIBusNumber property */
-        length = sizeof(unsigned int);
-        value = (unsigned int *)[delegate getProperty:"PCIBusNumber" length:&length];
-        if (value != NULL && length == sizeof(unsigned int)) {
-            busValue = *value;
-        } else {
-            busValue = 0; /* Default to bus 0 */
-        }
-
-        /* Try PCIDeviceNumber property */
-        length = sizeof(unsigned int);
-        value = (unsigned int *)[delegate getProperty:"PCIDeviceNumber" length:&length];
-        if (value != NULL && length == sizeof(unsigned int)) {
-            devValue = *value;
-        } else {
+    /* Check Bus Type */
+    busTypeStr = [configTable valueForStringKey:"Bus Type"];
+    if (busTypeStr != NULL) {
+        /* Verify this is a PCI device (compare first 4 chars) */
+        if (strncmp(busTypeStr, "PCI", 4) != 0) {
+            [configTable freeString:busTypeStr];
             return IO_R_NO_DEVICE;
         }
+        [configTable freeString:busTypeStr];
 
-        /* Try PCIFunctionNumber property */
-        length = sizeof(unsigned int);
-        value = (unsigned int *)[delegate getProperty:"PCIFunctionNumber" length:&length];
-        if (value != NULL && length == sizeof(unsigned int)) {
-            funcValue = *value;
-        } else {
-            funcValue = 0; /* Default to function 0 */
+        /* Check for Auto Detect IDs */
+        autoDetectIDs = (char *)[configTable valueForStringKey:"Auto Detect IDs"];
+        if (autoDetectIDs != NULL) {
+            /* Try to get location string */
+            locationStr = [configTable valueForStringKey:"Location"];
+            if (locationStr != NULL && *locationStr != '\0') {
+                /* Parse the location string using PCIParseKeys */
+                if (PCIParseKeys((char *)locationStr, &dev, &func, &busNum_local, NULL)) {
+                    /* Validate parsed values */
+                    if (dev <= _maxDevNum && func < 8 && busNum_local <= _maxBusNum) {
+                        /* Test if device with these IDs exists at this location */
+                        if ([self testIDs:(unsigned int *)autoDetectIDs
+                                      dev:(unsigned int)dev fun:func bus:busNum_local]) {
+                            locationFound = YES;
+                        }
+                    }
+                }
+                [configTable freeString:locationStr];
+            }
+
+            /* If location was found, return it */
+            if (locationFound) {
+                [configTable freeString:autoDetectIDs];
+                if (devNum) *devNum = (unsigned char)dev;
+                if (funNum) *funNum = (unsigned char)func;
+                if (busNum) *busNum = (unsigned char)busNum_local;
+                return IO_R_SUCCESS;
+            }
+
+            /* Try to get instance number */
+            instanceStr = [configTable valueForStringKey:"Instance"];
+            if (instanceStr != NULL) {
+                instance = strtoul(instanceStr, NULL, 0);
+                [configTable freeString:instanceStr];
+            }
+
+            /* Scan all PCI devices to find matching IDs */
+            for (busNum_local = 0; busNum_local <= _maxBusNum; busNum_local++) {
+                for (dev = 0; dev <= _maxDevNum; dev++) {
+                    for (func = 0; func < 8; func++) {
+                        /* Test if this device matches the auto-detect IDs */
+                        if ([self testIDs:(unsigned int *)autoDetectIDs
+                                      dev:(unsigned int)dev fun:func bus:busNum_local]) {
+                            /* Found a matching device */
+                            if (instance == 0) {
+                                /* This is the instance we're looking for */
+                                [configTable freeString:autoDetectIDs];
+                                if (devNum) *devNum = (unsigned char)dev;
+                                if (funNum) *funNum = (unsigned char)func;
+                                if (busNum) *busNum = (unsigned char)busNum_local;
+                                return IO_R_SUCCESS;
+                            }
+                            /* Decrement instance counter and keep looking */
+                            instance--;
+                        }
+
+                        /* Check if this is a multi-function device */
+                        [self getRegister:0x0C device:(unsigned char)dev function:func bus:busNum_local
+                                     data:(unsigned long *)&headerType];
+
+                        /* If not multi-function (bit 23 clear), skip remaining functions */
+                        if ((headerType & 0x800000) == 0) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            [configTable freeString:autoDetectIDs];
         }
-
-        /* Successfully extracted from properties */
-        if (devNum) *devNum = (unsigned char)devValue;
-        if (funNum) *funNum = (unsigned char)funcValue;
-        if (busNum) *busNum = (unsigned char)busValue;
-        return IO_R_SUCCESS;
     }
 
-    /* Unable to extract PCI address from delegate */
     return IO_R_NO_DEVICE;
-}
-
-- (unsigned int)configRead:(unsigned int)bus device:(unsigned int)dev
-                  function:(unsigned int)func offset:(unsigned int)offset width:(int)width
-{
-    unsigned int address;
-    unsigned int value = 0xFFFFFFFF;
-
-    /* Build PCI configuration address */
-    address = [self configAddress:offset device:dev function:func bus:bus];
-
-    /* Write address to CONFIG_ADDRESS register */
-    outl(PCI_CONFIG_ADDRESS, address);
-
-    /* Read data from CONFIG_DATA register */
-    switch (width) {
-        case 1:
-            value = inb(PCI_CONFIG_DATA + (offset & 3));
-            break;
-        case 2:
-            value = inw(PCI_CONFIG_DATA + (offset & 2));
-            break;
-        case 4:
-            value = inl(PCI_CONFIG_DATA);
-            break;
-    }
-
-    return value;
-}
-
-- (void)configWrite:(unsigned int)bus device:(unsigned int)dev
-           function:(unsigned int)func offset:(unsigned int)offset
-              width:(int)width value:(unsigned int)value
-{
-    unsigned int address;
-
-    /* Build PCI configuration address */
-    address = [self configAddress:offset device:dev function:func bus:bus];
-
-    /* Write address to CONFIG_ADDRESS register */
-    outl(PCI_CONFIG_ADDRESS, address);
-
-    /* Write data to CONFIG_DATA register */
-    switch (width) {
-        case 1:
-            outb(PCI_CONFIG_DATA + (offset & 3), value);
-            break;
-        case 2:
-            outw(PCI_CONFIG_DATA + (offset & 2), value);
-            break;
-        case 4:
-            outl(PCI_CONFIG_DATA, value);
-            break;
-    }
 }
 
 /*
@@ -363,231 +343,374 @@ static const char *resourceNameStrings[] = {
                function:(unsigned char)funNum bus:(unsigned char)busNum
                    data:(unsigned long *)data
 {
-    if (data == NULL) {
+    unsigned long result;
+
+    /* Validate parameters */
+    if (_maxBusNum < busNum || _maxDevNum < devNum || funNum > 7 || (address & 3) != 0) {
         return IO_R_INVALID_ARG;
     }
 
-    /* Check if device exists */
-    if (![self deviceExists:busNum device:devNum function:funNum]) {
-        return IO_R_NO_DEVICE;
+    /* Check which configuration mechanism to use */
+    if (_configMech1) {
+        /* Use Configuration Mechanism #1 */
+        result = [self Method1:address device:devNum function:funNum bus:busNum data:0 write:0];
+        *data = result;
+        return IO_R_SUCCESS;
+    } else if (_configMech2) {
+        /* Use Configuration Mechanism #2 */
+        result = [self Method2:address device:devNum function:funNum bus:busNum data:0 write:0];
+        *data = result;
+        return IO_R_SUCCESS;
     }
 
-    /* Read the 32-bit register value */
-    *data = [self configRead:busNum device:devNum function:funNum offset:address width:4];
-
-    return IO_R_SUCCESS;
+    return IO_R_NO_DEVICE;
 }
 
 - (IOReturn)setRegister:(unsigned char)address device:(unsigned char)devNum
                function:(unsigned char)funNum bus:(unsigned char)busNum
                    data:(unsigned long)data
 {
-    /* Check if device exists */
-    if (![self deviceExists:busNum device:devNum function:funNum]) {
-        return IO_R_NO_DEVICE;
+    /* Validate parameters */
+    if (_maxBusNum < busNum || _maxDevNum < devNum || funNum > 7 || (address & 3) != 0) {
+        return IO_R_INVALID_ARG;
     }
 
-    /* Write the 32-bit register value */
-    [self configWrite:busNum device:devNum function:funNum offset:address width:4 value:data];
+    /* Check which configuration mechanism to use */
+    if (_configMech1) {
+        /* Use Configuration Mechanism #1 */
+        [self Method1:address device:devNum function:funNum bus:busNum data:data write:1];
+        return IO_R_SUCCESS;
+    } else if (_configMech2) {
+        /* Use Configuration Mechanism #2 */
+        [self Method2:address device:devNum function:funNum bus:busNum data:data write:1];
+        return IO_R_SUCCESS;
+    }
 
-    return IO_R_SUCCESS;
-}
-
-/*
- * PCI device enumeration
- */
-
-- (BOOL)deviceExists:(unsigned int)bus device:(unsigned int)dev function:(unsigned int)func
-{
-    unsigned int vendorId;
-
-    vendorId = [self configRead:bus device:dev function:func offset:PCI_CONFIG_VENDOR_ID width:2];
-
-    return (vendorId != 0xFFFF && vendorId != 0x0000);
+    return IO_R_NO_DEVICE;
 }
 
 - (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus
 {
-    unsigned int vendorId, deviceId;
-    unsigned int classCode, revisionId;
+    const char *idStr = (const char *)ids;
+    char *prevPtr = NULL;
+    char *ptr;
+    unsigned int vendorDeviceID = 0;
+    unsigned int subsystemID = 0;
+    unsigned long primaryID, primaryMask;
+    unsigned long subsystemIDValue, subsystemMask;
 
-    if (ids == NULL) {
+    /* Read vendor/device ID from register 0 */
+    [self getRegister:0 device:dev function:func bus:bus data:(unsigned long *)&vendorDeviceID];
+
+    /* Check if device exists (vendor ID not 0xFFFF or 0x0000) */
+    if ((short)vendorDeviceID == -1 || (short)vendorDeviceID == 0 || *idStr == '\0') {
         return NO;
     }
 
-    /* Check if device exists */
-    if (![self deviceExists:bus device:dev function:func]) {
-        return NO;
-    }
+    ptr = (char *)idStr;
 
-    /* Read Vendor ID and Device ID (offset 0x00, 32-bit read) */
-    vendorId = [self configRead:bus device:dev function:func offset:PCI_CONFIG_VENDOR_ID width:2];
-    deviceId = [self configRead:bus device:dev function:func offset:PCI_CONFIG_DEVICE_ID width:2];
+    /* Parse ID string and match against device */
+    while (*ptr != '\0') {
+        /* Detect infinite loop */
+        if (ptr == prevPtr) {
+            return NO;
+        }
+        prevPtr = ptr;
 
-    /* Read Revision ID and Class Code (offset 0x08, 32-bit read) */
-    revisionId = [self configRead:bus device:dev function:func offset:0x08 width:1];
-    classCode = [self configRead:bus device:dev function:func offset:PCI_CONFIG_CLASS_CODE width:4];
+        /* Skip whitespace */
+        if (*ptr == ' ' || *ptr == '\t') {
+            ptr++;
+            primaryID = 0;
+            primaryMask = 0;
+            continue;
+        }
 
-    /* Store IDs in the array */
-    ids[0] = vendorId;
-    ids[1] = deviceId;
-    ids[2] = revisionId;
-    ids[3] = classCode >> 8;  /* Class code is in upper 24 bits */
+        /* Parse primary ID (vendor/device) */
+        primaryID = strtoul(ptr, &ptr, 0);
 
-    return YES;
-}
+        /* Check for mask */
+        if (*ptr == '&') {
+            ptr++;
+            primaryMask = strtoul(ptr, &ptr, 0);
+        } else {
+            primaryMask = 0xFFFFFFFF;
+        }
 
-- (int)scanBus:(unsigned int)busNum
-{
-    unsigned int dev, func;
-    unsigned int vendorId, deviceId, classCode, headerType;
-    int deviceCount = 0;
+        /* Check for subsystem ID */
+        if (*ptr == ':') {
+            /* Read subsystem vendor/device ID from register 0x2C */
+            [self getRegister:0x2C device:dev function:func bus:bus
+                         data:(unsigned long *)&subsystemID];
 
-    IOLog("PCIKernBus: Scanning PCI bus %d\n", busNum);
+            ptr++;
+            subsystemIDValue = strtoul(ptr, &ptr, 0);
 
-    for (dev = 0; dev < 32; dev++) {
-        for (func = 0; func < 8; func++) {
-            if (![self deviceExists:busNum device:dev function:func]) {
-                if (func == 0) {
-                    break;  /* No device at this slot */
-                }
-                continue;
+            /* Check for subsystem mask */
+            if (*ptr == '&') {
+                ptr++;
+                subsystemMask = strtoul(ptr, &ptr, 0);
+            } else {
+                subsystemMask = 0xFFFFFFFF;
             }
+        } else {
+            subsystemIDValue = 0;
+            subsystemMask = 0;
+        }
 
-            vendorId = [self configRead:busNum device:dev function:func
-                               offset:PCI_CONFIG_VENDOR_ID width:2];
-            deviceId = [self configRead:busNum device:dev function:func
-                               offset:PCI_CONFIG_DEVICE_ID width:2];
-            classCode = [self configRead:busNum device:dev function:func
-                                offset:PCI_CONFIG_CLASS_CODE width:4];
-            headerType = [self configRead:busNum device:dev function:func
-                                 offset:PCI_CONFIG_HEADER_TYPE width:1];
-
-            IOLog("  PCI %d:%d.%d - Vendor: 0x%04x, Device: 0x%04x, Class: 0x%06x\n",
-                  busNum, dev, func, vendorId, deviceId, classCode >> 8);
-
-            deviceCount++;
-
-            /* Check if this is a multi-function device */
-            if (func == 0 && !(headerType & 0x80)) {
-                break;  /* Not a multi-function device */
+        /* Compare IDs with masks */
+        if ((primaryMask & vendorDeviceID) == (primaryID & primaryMask)) {
+            if ((subsystemMask & subsystemID) == (subsystemIDValue & subsystemMask)) {
+                return YES;
             }
         }
     }
 
-    return deviceCount;
+    return NO;
 }
 
-- (void *)allocateResourceDescriptionForDevice:(unsigned int)bus
-                                        device:(unsigned int)dev
-                                      function:(unsigned int)func
+/*
+ * PCI bus and device limits
+ */
+
+- (unsigned int)maxBusNum
 {
-    IODeviceDescription *deviceDescription;
-    unsigned int vendorId, deviceId, classCode, revisionId;
-    unsigned int headerType, subsystemVendor, subsystemDevice;
+    return _maxBusNum;
+}
+
+- (unsigned int)maxDevNum
+{
+    return _maxDevNum;
+}
+
+/*
+ * Resource allocation for device
+ */
+
+- (IOReturn)allocateResourcesForDeviceDescription:(id)deviceDescription
+{
+    unsigned char bus, dev, func;
     unsigned int bar[6];
     unsigned int interruptLine, interruptPin;
-    char locationString[64];
-    char nameString[128];
+    IOReturn result;
     int i;
 
-    /* Check if device exists */
+    if (deviceDescription == nil) {
+        return IO_R_INVALID_ARG;
+    }
+
+    /* Extract bus/device/function from device description */
+    result = [self configAddress:deviceDescription device:&dev function:&func bus:&bus];
+    if (result != IO_R_SUCCESS) {
+        return result;
+    }
+
+    /* Verify device exists */
     if (![self deviceExists:bus device:dev function:func]) {
-        return NULL;
+        return IO_R_NO_DEVICE;
     }
 
-    /* Read device identification */
-    vendorId = [self configRead:bus device:dev function:func offset:PCI_CONFIG_VENDOR_ID width:2];
-    deviceId = [self configRead:bus device:dev function:func offset:PCI_CONFIG_DEVICE_ID width:2];
-    revisionId = [self configRead:bus device:dev function:func offset:0x08 width:1];
-    classCode = [self configRead:bus device:dev function:func offset:PCI_CONFIG_CLASS_CODE width:4];
-    headerType = [self configRead:bus device:dev function:func offset:PCI_CONFIG_HEADER_TYPE width:1];
-
-    /* Read subsystem IDs (offset 0x2C for type 0 headers) */
-    if ((headerType & 0x7F) == 0x00) {
-        subsystemVendor = [self configRead:bus device:dev function:func offset:0x2C width:2];
-        subsystemDevice = [self configRead:bus device:dev function:func offset:0x2E width:2];
-    } else {
-        subsystemVendor = 0;
-        subsystemDevice = 0;
-    }
-
-    /* Read Base Address Registers (BARs) */
+    /* Read Base Address Registers (BARs) for resource requirements */
     for (i = 0; i < 6; i++) {
         bar[i] = [self configRead:bus device:dev function:func offset:0x10 + (i * 4) width:4];
-    }
 
-    /* Read interrupt configuration */
-    interruptLine = [self configRead:bus device:dev function:func offset:0x3C width:1];
-    interruptPin = [self configRead:bus device:dev function:func offset:0x3D width:1];
-
-    /* Create device description */
-    deviceDescription = [IODeviceDescription new];
-    if (deviceDescription == nil) {
-        return NULL;
-    }
-
-    /* Set location string (bus:device.function format) */
-    sprintf(locationString, "%d:%d.%d", bus, dev, func);
-    [deviceDescription setLocation:locationString];
-
-    /* Set device name based on class code */
-    sprintf(nameString, "PCI%04X,%04X", vendorId, deviceId);
-    [deviceDescription setName:nameString];
-
-    /* Set device properties */
-    [deviceDescription setProperty:"PCIVendorID" value:(void *)(unsigned long)vendorId length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIDeviceID" value:(void *)(unsigned long)deviceId length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIRevisionID" value:(void *)(unsigned long)revisionId length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIClassCode" value:(void *)(unsigned long)(classCode >> 8) length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIHeaderType" value:(void *)(unsigned long)headerType length:sizeof(unsigned int)];
-
-    if (subsystemVendor != 0 || subsystemDevice != 0) {
-        [deviceDescription setProperty:"PCISubsystemVendorID" value:(void *)(unsigned long)subsystemVendor length:sizeof(unsigned int)];
-        [deviceDescription setProperty:"PCISubsystemID" value:(void *)(unsigned long)subsystemDevice length:sizeof(unsigned int)];
-    }
-
-    /* Set bus/device/function properties */
-    [deviceDescription setProperty:"PCIBusNumber" value:(void *)(unsigned long)bus length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIDeviceNumber" value:(void *)(unsigned long)dev length:sizeof(unsigned int)];
-    [deviceDescription setProperty:"PCIFunctionNumber" value:(void *)(unsigned long)func length:sizeof(unsigned int)];
-
-    /* Process and set BAR resources */
-    for (i = 0; i < 6; i++) {
         if (bar[i] != 0 && bar[i] != 0xFFFFFFFF) {
-            char barName[32];
-            sprintf(barName, "PCIBAR%d", i);
-
             if (bar[i] & 0x1) {
-                /* I/O Space BAR */
+                /* I/O Space BAR - allocate from I/O port resources */
                 unsigned int ioBase = bar[i] & 0xFFFFFFFC;
-                [deviceDescription setProperty:barName value:(void *)(unsigned long)ioBase length:sizeof(unsigned int)];
+                /* TODO: Allocate I/O port range from resource pool */
+                IOLog("PCIKernBus: Device %d:%d.%d requires I/O space at 0x%x\n",
+                      bus, dev, func, ioBase);
             } else {
-                /* Memory Space BAR */
+                /* Memory Space BAR - allocate from memory resources */
                 unsigned int memBase = bar[i] & 0xFFFFFFF0;
                 unsigned int memType = (bar[i] >> 1) & 0x3;
 
-                [deviceDescription setProperty:barName value:(void *)(unsigned long)memBase length:sizeof(unsigned int)];
+                IOLog("PCIKernBus: Device %d:%d.%d requires memory space at 0x%x\n",
+                      bus, dev, func, memBase);
 
                 /* Handle 64-bit BARs */
                 if (memType == 0x2 && i < 5) {
-                    /* This is a 64-bit BAR, skip next BAR */
-                    i++;
+                    i++; /* Skip next BAR as it's part of the 64-bit address */
                 }
             }
         }
     }
 
-    /* Set interrupt properties if present */
+    /* Read interrupt configuration */
+    interruptPin = [self configRead:bus device:dev function:func offset:0x3D width:1];
+
     if (interruptPin != 0) {
-        [deviceDescription setProperty:"PCIInterruptLine" value:(void *)(unsigned long)interruptLine length:sizeof(unsigned int)];
-        [deviceDescription setProperty:"PCIInterruptPin" value:(void *)(unsigned long)interruptPin length:sizeof(unsigned int)];
+        interruptLine = [self configRead:bus device:dev function:func offset:0x3C width:1];
+
+        /* Allocate interrupt resources */
+        if (interruptLine < INTR_NIRQ) {
+            IOLog("PCIKernBus: Device %d:%d.%d requires IRQ %d (pin %d)\n",
+                  bus, dev, func, interruptLine, interruptPin);
+            /* TODO: Mark IRQ as allocated in resource pool */
+        }
     }
 
-    IOLog("PCIKernBus: Allocated device description for %04x:%04x at %s\n",
-          vendorId, deviceId, locationString);
+    return IO_R_SUCCESS;
+}
 
-    return deviceDescription;
+@end
+
+/*
+ * ============================================================================
+ * PCIKernBus (Private) Category Implementation
+ * ============================================================================
+ */
+
+@implementation PCIKernBus (Private)
+
+/*
+ * Test for PCI Configuration Mechanism #1
+ */
+- (BOOL)test_M1
+{
+    unsigned int savedAddress, testValue;
+
+    /* Test PCI Configuration Mechanism #1 */
+    savedAddress = inl(PCI_CONFIG_ADDRESS);
+    outl(PCI_CONFIG_ADDRESS, 0x80000000);
+    testValue = inl(PCI_CONFIG_ADDRESS);
+    outl(PCI_CONFIG_ADDRESS, savedAddress);
+
+    return (testValue == 0x80000000);
+}
+
+/*
+ * Test for PCI Configuration Mechanism #2
+ */
+- (BOOL)test_M2
+{
+    unsigned char savedCSE, savedForward;
+
+    /* Test PCI Configuration Mechanism #2 */
+    /* This mechanism uses ports 0xCF8 (CSE) and 0xCFA (Forward Register) */
+    savedCSE = inb(0xCF8);
+    savedForward = inb(0xCFA);
+
+    /* Try to enable mechanism #2 */
+    outb(0xCF8, 0x00);
+    outb(0xCFA, 0x00);
+
+    /* Check if we can read/write the registers */
+    if (inb(0xCF8) == 0x00 && inb(0xCFA) == 0x00) {
+        /* Restore original values */
+        outb(0xCF8, savedCSE);
+        outb(0xCFA, savedForward);
+        return YES;
+    }
+
+    /* Restore original values */
+    outb(0xCF8, savedCSE);
+    outb(0xCFA, savedForward);
+    return NO;
+}
+
+/*
+ * PCI Configuration Mechanism #1 - Access method
+ * Uses I/O ports 0xCF8 (CONFIG_ADDRESS) and 0xCFC (CONFIG_DATA)
+ */
+- (unsigned long)Method1:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write
+{
+    unsigned int configAddress;
+    unsigned int readValue;
+    unsigned int verifyAddress;
+
+    /* Build PCI configuration address for mechanism #1 */
+    configAddress = 0x80000000 |
+                    ((unsigned int)(address & 0xFC)) |
+                    ((unsigned int)(device & 0x1F) << 11) |
+                    ((unsigned int)(function & 0x07) << 8) |
+                    ((unsigned int)bus << 16);
+
+    /* Write the configuration address to CONFIG_ADDRESS port (0xCF8) */
+    outl(PCI_CONFIG_ADDRESS, configAddress);
+
+    /* Verify the address was written correctly */
+    verifyAddress = inl(PCI_CONFIG_ADDRESS);
+
+    if (verifyAddress == configAddress) {
+        if (write) {
+            /* Write data to CONFIG_DATA port (0xCFC) */
+            outl(PCI_CONFIG_DATA, data);
+        }
+        /* Read data from CONFIG_DATA port (0xCFC) */
+        readValue = inl(PCI_CONFIG_DATA);
+    } else {
+        /* Address verification failed */
+        readValue = 0xFFFFFFFF;
+    }
+
+    /* Clear CONFIG_ADDRESS */
+    outl(PCI_CONFIG_ADDRESS, 0);
+
+    return readValue;
+}
+
+/*
+ * PCI Configuration Mechanism #2 - Access method
+ * Uses I/O ports 0xCF8 (CSE), 0xCFA (Forward Register), and 0xC000-0xCFFF (Config Space)
+ */
+- (unsigned long)Method2:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write
+{
+    unsigned char cseValue;
+    unsigned char verifyCse;
+    unsigned char verifyBus;
+    unsigned short configPort;
+    unsigned long readValue = 0xFFFFFFFF;
+
+    /* Calculate CSE (Configuration Space Enable) value */
+    /* CSE format: 0xF0 | (bus * 2) */
+    cseValue = 0xF0 | (bus * 2);
+
+    /* Write to CSE register (0xCF8) */
+    outb(0xCF8, cseValue);
+
+    /* Verify CSE was written correctly */
+    verifyCse = inb(0xCF8);
+
+    if (verifyCse == cseValue) {
+        /* Write bus number to Forward Register (0xCFA) */
+        outb(0xCFA, bus);
+
+        /* Verify bus number was written correctly */
+        verifyBus = inb(0xCFA);
+
+        if (verifyBus == bus) {
+            /* Calculate configuration space port */
+            /* Port format: 0xC000 | ((function & 0xF) << 8) | (address & 0xFC) */
+            configPort = 0xC000 | ((unsigned short)(function & 0x0F) << 8) | (address & 0xFC);
+
+            if (write) {
+                /* Write data to configuration space port */
+                outl(configPort, data);
+            }
+
+            /* Read data from configuration space port */
+            readValue = inl(configPort);
+        }
+
+        /* Clear Forward Register */
+        outb(0xCFA, 0);
+    }
+
+    /* Clear CSE register */
+    outb(0xCF8, 0);
+
+    return readValue;
 }
 
 @end

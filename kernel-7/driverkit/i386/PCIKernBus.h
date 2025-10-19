@@ -25,7 +25,7 @@
 /*
  * Copyright (c) 1994 NeXT Computer, Inc.
  *
- * Exported interface for Kernel PCI Bus Resource Object(s).
+ * PCI Bus Resource Constants
  *
  * HISTORY
  *
@@ -36,57 +36,10 @@
 #ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
-#import <driverkit/KernBusMemory.h>
-#import <driverkit/KernBusInterrupt.h>
-
-
-@interface PCIKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
-{
-@private
-    id		_PCILock;
-    int		_priorityLevel;
-    int		_irq;
-    BOOL	_irqAttached;
-    BOOL	_irqEnabled;
-}
-
-@end
-
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
 #define IRQ_LEVELS_KEY		"IRQ Levels"
 #define DMA_CHANNELS_KEY	"DMA Channels"
-
-@interface PCIKernBus : KernBus
-{
-@private
-}
-
-- init;
-- free;
-
-/* PCI bus detection */
-- (BOOL)isPCIPresent;
-
-/* PCI configuration space access */
-- (IOReturn)configAddress:deviceDescription
-                   device:(unsigned char *)devNum
-                 function:(unsigned char *)funNum
-                      bus:(unsigned char *)busNum;
-
-- (IOReturn)getRegister:(unsigned char)address
-                 device:(unsigned char)devNum
-               function:(unsigned char)funNum
-                    bus:(unsigned char)busNum
-                   data:(unsigned long *)data;
-
-- (IOReturn)setRegister:(unsigned char)address
-                 device:(unsigned char)devNum
-               function:(unsigned char)funNum
-                    bus:(unsigned char)busNum
-                   data:(unsigned long)data;
-
-@end
 
 #endif	/* DRIVER_PRIVATE */

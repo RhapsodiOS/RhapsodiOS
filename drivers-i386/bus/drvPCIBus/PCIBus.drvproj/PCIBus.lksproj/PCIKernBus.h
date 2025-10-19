@@ -33,16 +33,23 @@
 #import <driverkit/KernBus.h>
 #import <driverkit/return.h>
 
-@class PCIKernBusInterrupt;
-
 /*
  * PCIKernBus - PCI bus driver conforming to KernBus interface
  */
 @interface PCIKernBus : KernBus
 {
     @private
-    void *_pciData;
-    BOOL _initialized;
+    unsigned int _maxBusNum;
+    unsigned int _maxDevNum;
+    BOOL _bios16Present;
+    BOOL _configMech1;
+    BOOL _configMech2;
+    BOOL _specialCycle1;
+    BOOL _specialCycle2;
+    BOOL _bios32Present;
+    void *_reserved;
+    unsigned int _pciVersionMajor;
+    unsigned int _pciVersionMinor;
 }
 
 /*
@@ -55,6 +62,14 @@
  * PCI presence detection
  */
 - (BOOL)isPCIPresent;
+
+/*
+ * PCI bus and device number limits
+ */
+- (unsigned int)maxBusNum;
+- (unsigned int)maxDevNum;
+
+- (IOReturn)allocateResourcesForDeviceDescription:(id)deviceDescription;
 
 /*
  * PCI configuration space access (KernBus interface)
@@ -76,24 +91,7 @@
                     bus:(unsigned char)busNum
                    data:(unsigned long)data;
 
-/*
- * Additional PCI-specific methods
- */
-- (unsigned int)configAddressForOffset:(unsigned int)offset
-                                device:(unsigned int)dev
-                              function:(unsigned int)func
-                                   bus:(unsigned int)bus;
-- (unsigned int)configRead:(unsigned int)bus device:(unsigned int)dev
-                  function:(unsigned int)func offset:(unsigned int)offset width:(int)width;
-- (void)configWrite:(unsigned int)bus device:(unsigned int)dev
-           function:(unsigned int)func offset:(unsigned int)offset
-              width:(int)width value:(unsigned int)value;
-- (int)scanBus:(unsigned int)busNum;
-- (BOOL)deviceExists:(unsigned int)bus device:(unsigned int)dev function:(unsigned int)func;
 - (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus;
-- (void *)allocateResourceDescriptionForDevice:(unsigned int)bus
-                                        device:(unsigned int)dev
-                                      function:(unsigned int)func;
 
 @end
 

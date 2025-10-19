@@ -39,36 +39,25 @@
 @interface PCIResourceDriver : IODevice
 {
     @private
-    void *_resourceData;
-    BOOL _initialized;
-    unsigned char *_charValues;
-    unsigned int _charValuesCount;
+    char _nameBuffer[512];
+    unsigned int _nameBufferLen;
 }
 
 /*
- * Driver lifecycle methods
+ * Initialization
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
 
 /*
- * Resource management
+ * Resource access methods
  */
-- (BOOL)allocateResources;
-- (void)deallocateResources;
+- (IOReturn)getCharValues:(char *)values
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int *)count;
 
-/*
- * Configuration methods
- */
-- (BOOL)configureDevice;
-- (void *)getResourceDescription;
-
-/*
- * Character value methods
- */
-- (void)getCharValues:(unsigned char *)values forParameter:(unsigned int)count;
-- (void)setCharValues:(unsigned char *)values forParameter:(unsigned int)count;
+- (IOReturn)setCharValues:(unsigned char *)values
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int)count;
 
 @end
 

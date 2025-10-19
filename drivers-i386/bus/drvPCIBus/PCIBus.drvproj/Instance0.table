@@ -1,8 +1,0 @@
-"Instance" = "0";
-"Class Names" = "PCIResourceDriver";
-"Version" = "5.01";
-"Boot Driver" = "Yes";
-"Bus Class" = "PCIKernBus";
-"Family" = "Bus";
-"Title" = "PCIBus";
-"Server Name" = "PCIBUS";

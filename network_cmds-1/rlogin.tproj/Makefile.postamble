@@ -1,1 +1,0 @@
-INSTALL_PERMISSIONS = 4755    # If set, 'install' chmod's executable to this

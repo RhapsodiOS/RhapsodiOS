@@ -1,3 +1,0 @@
-SHELLTOOL = vgrind.sh
-
-include $(CoreOSMakefiles)/ProjectBuilder/Makefile.Preamble.Common

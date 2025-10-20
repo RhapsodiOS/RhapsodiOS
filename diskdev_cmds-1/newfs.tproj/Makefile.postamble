@@ -1,2 +1,0 @@
-after_install::
-	$(LN) $(INSTALLED_PRODUCTS) $(DSTROOT)$(INSTALLDIR)/mount_mfs

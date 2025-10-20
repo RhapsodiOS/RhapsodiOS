@@ -1,5 +1,0 @@
-VPATH_PREAMBLE = ../mkhits:../../api:
-
-OTHER_OFILES = dohits.o asc_ebc.o ebc_disp.o
-
--include ../../../Makefile.include

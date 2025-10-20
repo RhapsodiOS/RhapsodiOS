@@ -1,9 +1,0 @@
-FILESTABLE = {
-    OTHER_SOURCES = (Makefile, sccs.me, spell.ok);
-};
-LOCALIZABLE_FILES = {
-};
-LANGUAGE = English;
-PROJECTVERSION = 1.1;
-PROJECTTYPE = Legacy;
-PROJECTNAME = PSD.doc;

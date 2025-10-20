@@ -1,5 +1,0 @@
-VPATH_PREAMBLE = ../../api:
-
-OTHER_OFILES = ebc_disp.o
-
--include ../../../Makefile.include

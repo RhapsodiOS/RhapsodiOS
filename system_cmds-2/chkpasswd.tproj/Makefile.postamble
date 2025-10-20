@@ -1,6 +1,0 @@
-
-INSTALL_AS_USER =	root
-INSTALL_PERMISSIONS =	4555
-
-after_install::
-	$(CHFLAGS) schg  $(DSTROOT)$(INSTALLDIR)/$(NAME)

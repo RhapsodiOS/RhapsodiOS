@@ -1,7 +1,0 @@
-include $(CoreOSMakefiles)/ProjectBuilder/Makefile.Postamble.Common
-
-DATADIR = /usr/share/calendar
-
-after_install::
-	$(INSTALL_DIRECTORY) $(DSTROOT)$(DATADIR)
-	$(INSTALL_FILE) -c calendars/calendar.* $(DSTROOT)$(DATADIR)

@@ -1,4 +1,0 @@
-CLEAN_ALL_SUBPROJECTS = YES
-OTHER_CFLAGS =-I/sys
-OTHER_GENERATED_OFILES = $(VERS_OFILE)
--include ../Makefile.include

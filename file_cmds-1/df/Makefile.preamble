@@ -1,5 +1,0 @@
-vpath strpct.c ../csh
-
-CFILES += strpct.c
-
-include $(CoreOSMakefiles)/ProjectBuilder/Makefile.Preamble.Common

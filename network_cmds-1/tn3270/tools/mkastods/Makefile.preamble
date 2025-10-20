@@ -1,3 +1,0 @@
-OTHER_OFILES = asc_ebc.o ebc_disp.c
-
--include ../../../Makefile.include

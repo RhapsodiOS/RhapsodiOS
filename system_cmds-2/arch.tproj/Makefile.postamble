@@ -1,3 +1,0 @@
-after_install::
-	@-$(RM) -f $(DSTROOT)$(INSTALLDIR)/machine
-	ln $(DSTROOT)$(INSTALLDIR)/arch $(DSTROOT)$(INSTALLDIR)/machine

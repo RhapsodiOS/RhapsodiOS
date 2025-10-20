@@ -1,0 +1,10 @@
+/*	NSMenu.m
+	Copyright (c) 1994-1997, Apple Computer, Inc.
+	All rights reserved.
+*/
+
+#import <AppKit/NSMenu.h>
+
+// Stub implementation
+// TODO: Implement NSMenu methods
+

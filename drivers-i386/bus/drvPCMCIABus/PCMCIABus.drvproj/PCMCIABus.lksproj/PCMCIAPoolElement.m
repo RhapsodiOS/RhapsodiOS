@@ -23,53 +23,55 @@
  */
 
 /*
- * PCMCIABus.h
- * PCMCIA Bus Driver Header
- *
- * This driver provides PCMCIA bus enumeration and card management.
+ * PCMCIA Pool Element Wrapper Implementation
  */
 
-#ifndef _PCMCIABUS_H_
-#define _PCMCIABUS_H_
+#import "PCMCIAPoolElement.h"
+#import <libkern/libkern.h>
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
+/* Internal structure containing pool and object pointers */
+typedef struct {
+    id pool;    /* Reference to the pool */
+    id object;  /* The wrapped object */
+} ElementData;
 
-/* Forward declarations */
-@class PCMCIAKernBus;
-@class PCMCIABusVersion;
+@implementation PCMCIAPoolElement
 
-/*
- * PCMCIABus - Main PCMCIA Bus driver class
- */
-@interface PCMCIABus : IODevice
+- initWithPCMCIAPool:pool object:object
 {
-    @private
-    PCMCIAKernBus *_kernBus;
-    PCMCIABusVersion *_version;
-    BOOL _initialized;
+    ElementData *elementData;
+
+    [super init];
+
+    /* Allocate 8 bytes for the two pointers */
+    elementData = (ElementData *)IOMalloc(8);
+    _elementData = elementData;
+
+    /* Store pool and object */
+    elementData->pool = pool;
+    elementData->object = object;
+
+    return self;
 }
 
-/*
- * Driver lifecycle methods
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- free
+{
+    ElementData *elementData = (ElementData *)_elementData;
 
-/*
- * Boot driver initialization
- */
-- (BOOL)BootDriver;
+    /* Release the object back to the pool */
+    [elementData->pool releaseObject:elementData->object];
 
-/*
- * PCMCIA bus operations
- */
-- (int)getSocketCount;
-- (BOOL)scanSockets;
+    /* Free the element data structure (8 bytes) */
+    IOFree(_elementData, 8);
+
+    return [super free];
+}
+
+- object
+{
+    ElementData *elementData = (ElementData *)_elementData;
+
+    return elementData->object;
+}
 
 @end
-
-#endif /* _PCMCIABUS_H_ */

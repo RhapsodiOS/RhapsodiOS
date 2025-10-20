@@ -23,402 +23,230 @@
  */
 
 /*
- * PCMCIA Memory Pool Implementation
+ * PCMCIA Object Pool Implementation
  */
 
-#import <mach/mach_types.h>
-#import <vm/vm_kern.h>
 #import "PCMCIAPool.h"
-#import "PCMCIASocket.h"
-#import <driverkit/KernLock.h>
-#import <kernserv/i386/spl.h>
+#import "PCMCIAPoolElement.h"
+#import <objc/List.h>
 #import <libkern/libkern.h>
+
+/* Internal structure containing the two lists */
+typedef struct {
+    id elementList;  /* List for available elements/objects (used by addList/addObject) */
+    id objectList;   /* List for allocated objects */
+} PoolData;
 
 @implementation PCMCIAPool
 
-- initWithSocket:(unsigned int)socket
+- init
 {
+    PoolData *poolData;
+
     [super init];
 
-    _socket = socket;
-    _state = PCMCIA_SOCKET_EMPTY;
+    /* Allocate 8 bytes for the two list pointers */
+    poolData = (PoolData *)IOMalloc(sizeof(PoolData));
+    _poolData = poolData;
 
-    /* Initialize windows as unmapped */
-    bzero(&_common_window, sizeof(pcmcia_mem_window_t));
-    bzero(&_attr_window, sizeof(pcmcia_mem_window_t));
-    bzero(&_io_window, sizeof(pcmcia_mem_window_t));
+    /* Create and initialize the element list */
+    poolData->elementList = [[List alloc] init];
 
-    _common_window.type = PCMCIA_MEM_COMMON;
-    _attr_window.type = PCMCIA_MEM_ATTRIBUTE;
-    _io_window.type = PCMCIA_MEM_IO;
-
-    /* Initialize card information */
-    _manufacturer_id = 0;
-    _card_id = 0;
-    _function_id = 0;
-
-    /* Create lock for thread-safe access */
-    _lock = [[KernLock alloc] initWithLevel:IPLHIGH];
-
-    /* Create socket object for driverkit-3 compatibility */
-    _socketObject = [[PCMCIASocket alloc] initWithSocketNumber:_socket pool:self];
+    /* Create and initialize the object list */
+    poolData->objectList = [[List alloc] init];
 
     return self;
 }
 
 - free
 {
-    /* Unmap all windows */
-    [self unmapWindow:PCMCIA_MEM_COMMON];
-    [self unmapWindow:PCMCIA_MEM_ATTRIBUTE];
-    [self unmapWindow:PCMCIA_MEM_IO];
+    PoolData *poolData = (PoolData *)_poolData;
 
-    /* Free socket object */
-    if (_socketObject) {
-        [_socketObject free];
-        _socketObject = nil;
-    }
+    /* Free the element list */
+    [poolData->elementList free];
 
-    if (_lock) {
-        [_lock free];
-        _lock = nil;
-    }
+    /* Free the object list */
+    [poolData->objectList free];
+
+    /* Free the pool data structure (8 bytes) */
+    IOFree(_poolData, 8);
 
     return [super free];
 }
 
-/* Socket management */
-- (unsigned int)socket
+- addList:list
 {
-    return _socket;
-}
+    PoolData *poolData = (PoolData *)_poolData;
 
-- (pcmcia_socket_state_t)state
-{
-    return _state;
-}
-
-- (BOOL)cardPresent
-{
-    return (_state == PCMCIA_SOCKET_OCCUPIED ||
-            _state == PCMCIA_SOCKET_READY);
-}
-
-- (BOOL)cardReady
-{
-    return (_state == PCMCIA_SOCKET_READY);
-}
-
-/* Memory window management */
-- (BOOL)mapWindow:(pcmcia_mem_type_t)type
-         physAddr:(vm_offset_t)phys_addr
-             size:(vm_size_t)size
-            flags:(unsigned int)flags
-{
-    pcmcia_mem_window_t *window;
-    vm_offset_t virt_addr;
-    kern_return_t result;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return NO;
+    if (poolData != NULL && list != nil) {
+        /* Append entire list to element list */
+        [poolData->elementList appendList:list];
     }
 
-    [_lock acquire];
-
-    /* Unmap existing window if necessary */
-    if (window->flags & PCMCIA_WINDOW_MAPPED) {
-        kmem_free(kernel_map, window->virt_addr, window->size);
-        window->flags &= ~PCMCIA_WINDOW_MAPPED;
-    }
-
-    /* Map physical memory to virtual address space */
-    result = kmem_alloc_pageable(kernel_map, &virt_addr, size);
-    if (result != KERN_SUCCESS) {
-        [_lock release];
-        return NO;
-    }
-
-    /* Set up window structure */
-    window->phys_addr = phys_addr;
-    window->virt_addr = virt_addr;
-    window->size = size;
-    window->flags = flags | PCMCIA_WINDOW_MAPPED;
-
-    [_lock release];
-    return YES;
-}
-
-- (void)unmapWindow:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return;
-    }
-
-    [_lock acquire];
-
-    if (window->flags & PCMCIA_WINDOW_MAPPED) {
-        kmem_free(kernel_map, window->virt_addr, window->size);
-        bzero(window, sizeof(pcmcia_mem_window_t));
-        window->type = type;
-    }
-
-    [_lock release];
-}
-
-- (vm_offset_t)windowAddress:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-    vm_offset_t addr = 0;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return 0;
-    }
-
-    [_lock acquire];
-
-    if (window->flags & PCMCIA_WINDOW_MAPPED) {
-        addr = window->virt_addr;
-    }
-
-    [_lock release];
-    return addr;
-}
-
-/* Memory access functions */
-- (unsigned char)readByte:(vm_offset_t)offset type:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-    unsigned char value = 0xFF;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return 0xFF;
-    }
-
-    [_lock acquire];
-
-    if ((window->flags & PCMCIA_WINDOW_MAPPED) && offset < window->size) {
-        value = *(volatile unsigned char *)(window->virt_addr + offset);
-    }
-
-    [_lock release];
-    return value;
-}
-
-- (unsigned short)readWord:(vm_offset_t)offset type:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-    unsigned short value = 0xFFFF;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return 0xFFFF;
-    }
-
-    [_lock acquire];
-
-    if ((window->flags & PCMCIA_WINDOW_MAPPED) &&
-        (offset + 1) < window->size &&
-        (window->flags & PCMCIA_WINDOW_16BIT)) {
-        value = *(volatile unsigned short *)(window->virt_addr + offset);
-    }
-
-    [_lock release];
-    return value;
-}
-
-- (void)writeByte:(unsigned char)value offset:(vm_offset_t)offset type:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return;
-    }
-
-    [_lock acquire];
-
-    if ((window->flags & PCMCIA_WINDOW_MAPPED) && offset < window->size) {
-        *(volatile unsigned char *)(window->virt_addr + offset) = value;
-    }
-
-    [_lock release];
-}
-
-- (void)writeWord:(unsigned short)value offset:(vm_offset_t)offset type:(pcmcia_mem_type_t)type
-{
-    pcmcia_mem_window_t *window;
-
-    /* Select the appropriate window */
-    switch (type) {
-        case PCMCIA_MEM_COMMON:
-            window = &_common_window;
-            break;
-        case PCMCIA_MEM_ATTRIBUTE:
-            window = &_attr_window;
-            break;
-        case PCMCIA_MEM_IO:
-            window = &_io_window;
-            break;
-        default:
-            return;
-    }
-
-    [_lock acquire];
-
-    if ((window->flags & PCMCIA_WINDOW_MAPPED) &&
-        (offset + 1) < window->size &&
-        (window->flags & PCMCIA_WINDOW_16BIT)) {
-        *(volatile unsigned short *)(window->virt_addr + offset) = value;
-    }
-
-    [_lock release];
-}
-
-/* Card information */
-- (void)setManufacturerID:(unsigned short)manfid cardID:(unsigned short)cardid
-{
-    [_lock acquire];
-    _manufacturer_id = manfid;
-    _card_id = cardid;
-    [_lock release];
-}
-
-- (void)setFunctionID:(unsigned char)funcid
-{
-    [_lock acquire];
-    _function_id = funcid;
-    [_lock release];
-}
-
-- (unsigned short)manufacturerID
-{
-    unsigned short manfid;
-    [_lock acquire];
-    manfid = _manufacturer_id;
-    [_lock release];
-    return manfid;
-}
-
-- (unsigned short)cardID
-{
-    unsigned short cardid;
-    [_lock acquire];
-    cardid = _card_id;
-    [_lock release];
-    return cardid;
-}
-
-- (unsigned char)functionID
-{
-    unsigned char funcid;
-    [_lock acquire];
-    funcid = _function_id;
-    [_lock release];
-    return funcid;
-}
-
-/* Socket state management */
-- (void)setState:(pcmcia_socket_state_t)state
-{
-    [_lock acquire];
-    _state = state;
-    [_lock release];
-}
-
-/* Tuple list management */
-- (void)setTupleList:tuples
-{
-    [_lock acquire];
-    if (_tupleList) {
-        [_tupleList free];
-    }
-    _tupleList = tuples;
-    [_lock release];
-}
-
-- tupleList
-{
-    id list;
-    [_lock acquire];
-    list = _tupleList;
-    [_lock release];
     return list;
 }
 
-/* Socket object access */
-- socketObject
+- addObject:object
 {
-    id socket;
-    [_lock acquire];
-    socket = _socketObject;
-    [_lock release];
-    return socket;
+    PoolData *poolData = (PoolData *)_poolData;
+
+    if (poolData != NULL && object != nil) {
+        /* Add object to element list */
+        [poolData->elementList addObject:object];
+    }
+
+    return object;
+}
+
+- allocElement
+{
+    id object;
+    id element = nil;
+
+    /* Allocate an object from the pool */
+    object = [self allocObject];
+
+    if (object != nil) {
+        /* Wrap it in a PCMCIAPoolElement */
+        element = [[PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
+    }
+
+    return element;
+}
+
+- allocElementByMethod:(SEL)method
+{
+    PoolData *poolData = (PoolData *)_poolData;
+    unsigned int index = 0;
+    unsigned int count;
+    id object;
+    int result;
+    id element;
+
+    if (poolData == NULL || method == NULL) {
+        return nil;
+    }
+
+    /* Search through elementList for first object where method returns non-zero */
+    while (1) {
+        count = [poolData->elementList count];
+        if (count <= index) {
+            /* No object found that matches */
+            return nil;
+        }
+
+        object = [poolData->elementList objectAt:index];
+        result = (int)[object perform:method];
+
+        if (result != 0) {
+            /* Found a matching object */
+            break;
+        }
+
+        index++;
+    }
+
+    /* Remove from element list */
+    [poolData->elementList removeObjectAt:index];
+
+    /* Add to object list (tracking) */
+    [poolData->objectList addObject:object];
+
+    /* Wrap in PCMCIAPoolElement */
+    element = [[PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
+
+    return element;
+}
+
+- allocObject
+{
+    PoolData *poolData = (PoolData *)_poolData;
+    id object;
+
+    if (poolData == NULL) {
+        return nil;
+    }
+
+    /* Get and remove first object from element list (available pool) */
+    object = [poolData->elementList objectAt:0];
+    if (object != nil) {
+        [poolData->elementList removeObjectAt:0];
+
+        /* Track it in the allocated object list */
+        [poolData->objectList addObject:object];
+    }
+
+    return object;
+}
+
+- allocObjectByMethod:(SEL)method
+{
+    PoolData *poolData = (PoolData *)_poolData;
+    unsigned int index = 0;
+    unsigned int count;
+    id object;
+    int result;
+
+    if (poolData == NULL || method == NULL) {
+        return nil;
+    }
+
+    /* Search through elementList for first object where method returns non-zero */
+    while (1) {
+        count = [poolData->elementList count];
+        if (count <= index) {
+            /* No object found that matches */
+            return nil;
+        }
+
+        object = [poolData->elementList objectAt:index];
+        result = (int)[object perform:method];
+
+        if (result != 0) {
+            /* Found a matching object */
+            break;
+        }
+
+        index++;
+    }
+
+    /* Remove from element list */
+    [poolData->elementList removeObjectAt:index];
+
+    /* Add to object list (tracking) */
+    [poolData->objectList addObject:object];
+
+    return object;
+}
+
+- releaseObject:object
+{
+    PoolData *poolData = (PoolData *)_poolData;
+    id result;
+
+    /* Remove from allocated (object) list */
+    result = [poolData->objectList removeObject:object];
+
+    if (result == nil) {
+        /* Object wasn't in the allocated list, return nil */
+        return nil;
+    }
+
+    /* Successfully removed, return object to the element list (back to available pool) */
+    [poolData->elementList addObject:object];
+
+    return object;
+}
+
+- removeObject:object
+{
+    PoolData *poolData = (PoolData *)_poolData;
+    id result;
+
+    /* Remove from element list */
+    result = [poolData->elementList removeObject:object];
+
+    return result;
 }
 
 @end

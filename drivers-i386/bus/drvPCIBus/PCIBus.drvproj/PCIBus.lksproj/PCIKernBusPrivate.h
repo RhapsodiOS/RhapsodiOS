@@ -23,21 +23,33 @@
  */
 
 /*
- * PCMCIA Tuple List Implementation
+ * PCIKernBusPrivate.h
+ * Private category interface for internal PCI configuration methods
  */
 
-#import "PCMCIATupleList.h"
+#ifndef _DRIVERKIT_I386_PCIKERNBUSPRIVATE_H_
+#define _DRIVERKIT_I386_PCIKERNBUSPRIVATE_H_
 
-@implementation PCMCIATupleList
+#import "PCIKernBus.h"
 
-- (unsigned)count
-{
-    return [self count];
-}
-
-- objectAt:(unsigned)index
-{
-    return [self objectAt:index];
-}
-
+/*
+ * Private category for internal PCI configuration methods
+ */
+@interface PCIKernBus (Private)
+- (BOOL)test_M1;
+- (BOOL)test_M2;
+- (unsigned long)Method1:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write;
+- (unsigned long)Method2:(unsigned char)address
+                  device:(unsigned char)device
+                function:(unsigned char)function
+                     bus:(unsigned char)bus
+                    data:(unsigned long)data
+                   write:(char)write;
 @end
+
+#endif /* _DRIVERKIT_I386_PCIKERNBUSPRIVATE_H_ */

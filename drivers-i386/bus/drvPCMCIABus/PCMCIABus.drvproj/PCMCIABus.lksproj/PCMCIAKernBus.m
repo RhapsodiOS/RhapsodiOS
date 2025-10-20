@@ -38,336 +38,107 @@
 #import "PCMCIATupleList.h"
 #import "PCMCIAWindow.h"
 #import "PCMCIASocket.h"
+#import "PCMCIAid.h"
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
+#import <driverkit/IODevice.h>
 #import <kernserv/i386/spl.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
+#import <objc/HashTable.h>
+#import <objc/List.h>
 #import <libkern/libkern.h>
+#import <string.h>
 
-#define IO_NUM_PCMCIA_INTERRUPTS	16
-#define PCMCIA_DEFAULT_SOCKETS		2
+/* Global list of bus instances */
+static id _busInstances = nil;
 
-/* PCMCIA controller I/O ports (Intel 82365SL compatible) */
-#define PCMCIA_INDEX_REG		0x3E0
-#define PCMCIA_DATA_REG			0x3E1
+/* Global list of driver config tables waiting to be matched */
+id _driverConfigTables = nil;
 
-/* PCMCIA registers */
-#define PCMCIA_REG_IDENT		0x00
-#define PCMCIA_REG_STATUS		0x01
-#define PCMCIA_REG_POWER		0x02
-#define PCMCIA_REG_INTCTL		0x03
-#define PCMCIA_REG_CARDSTAT		0x04
+/* Global BIOS memory bitmap - 3 uints (12 bytes) for tracking BIOS ROM regions */
+/* Covers 0xC0000-0xF0000 range: 192KB / 2KB blocks = 96 blocks = 3 uints */
+static unsigned int _biosBitmap[3];
 
-/* Status register bits */
-#define PCMCIA_STATUS_CD1		0x01	/* Card Detect 1 */
-#define PCMCIA_STATUS_CD2		0x02	/* Card Detect 2 */
-#define PCMCIA_STATUS_RDY		0x20	/* Ready */
-#define PCMCIA_STATUS_PWR		0x40	/* Power */
-
-/* Card present mask */
-#define PCMCIA_CARD_PRESENT		(PCMCIA_STATUS_CD1 | PCMCIA_STATUS_CD2)
-
-/* Function name strings for diagnostic output */
-static const char *pcmcia_function_names[] = {
-    "Multi-Function",
-    "Memory",
-    "Serial I/O",
-    "Parallel I/O",
-    "Fixed Disk",
-    "Video Adapter",
-    "Network Adapter",
-    "AIMS"
-};
+/* External function to look up server configuration attributes */
+extern char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute);
 
 /*
- * Read PCMCIA controller register
+ * Helper function to mark a range in the BIOS memory bitmap
+ * bitmap: pointer to bitmap array (treated as array of unsigned ints)
+ * offset: byte offset from base (0xC0000)
+ * length: length of range to mark in bytes
  */
-static inline unsigned char
-pcmcia_read_reg(unsigned int socket, unsigned char reg)
+static void markRange(int bitmap, unsigned int offset, unsigned int length)
 {
-    unsigned char index;
+    unsigned int *intPtr;
 
-    /* Calculate register index (socket << 6 | reg) */
-    index = (socket << 6) | reg;
+    /* Convert offset to 2KB block index (>> 0xb = divide by 2048) */
+    offset = offset >> 0xb;
 
-    outb(PCMCIA_INDEX_REG, index);
-    return inb(PCMCIA_DATA_REG);
-}
+    /* Convert length to number of 2KB blocks */
+    for (length = length >> 0xb; length != 0; length = length - 1) {
+        /* Calculate pointer to the uint containing this bit */
+        /* offset >> 5 = divide by 32 (bits per uint) */
+        /* * 4 = multiply by sizeof(uint) */
+        intPtr = (unsigned int *)(bitmap + (offset >> 5) * 4);
 
-/*
- * Write PCMCIA controller register
- */
-static inline void
-pcmcia_write_reg(unsigned int socket, unsigned char reg, unsigned char value)
-{
-    unsigned char index;
+        /* Set the bit: offset & 0x1f = modulo 32 (which bit in the uint) */
+        *intPtr = *intPtr | (1 << ((unsigned char)offset & 0x1f));
 
-    /* Calculate register index (socket << 6 | reg) */
-    index = (socket << 6) | reg;
-
-    outb(PCMCIA_INDEX_REG, index);
-    outb(PCMCIA_DATA_REG, value);
-}
-
-/*
- * Check if card is present in socket
- */
-static BOOL
-pcmcia_card_present(unsigned int socket)
-{
-    unsigned char status;
-
-    status = pcmcia_read_reg(socket, PCMCIA_REG_CARDSTAT);
-
-    /* Both card detect pins must be low for card to be present */
-    return ((status & PCMCIA_CARD_PRESENT) == 0);
-}
-
-/*
- * Parse CIS (Card Information Structure) tuples
- * Returns tuple list and parsed information
- */
-static id
-pcmcia_parse_cis(id pool, unsigned short *manfid, unsigned short *cardid,
-                 unsigned char *funcid, char *vendor, char *product)
-{
-    unsigned int offset = 0;
-    unsigned char code, link;
-    unsigned char data[MAX_TUPLE_SIZE];
-    int tuple_count = 0;
-    int i;
-    id tuple;
-    id tupleList;
-    BOOL found_manfid = NO;
-    BOOL found_funcid = NO;
-
-    /* Initialize output parameters */
-    if (vendor) vendor[0] = '\0';
-    if (product) product[0] = '\0';
-
-    /* Create tuple list */
-    tupleList = [[PCMCIATupleList alloc] init];
-    if (!tupleList) {
-        return nil;
+        /* Move to next block */
+        offset = offset + 1;
     }
+}
 
-    /* Parse tuples from attribute memory */
-    while (offset < 0x1000 && tuple_count < 100) {
-        /* Read tuple code */
-        code = [pool readByte:offset type:PCMCIA_MEM_ATTRIBUTE];
+/*
+ * Find and mark BIOS ROM regions in upper memory area
+ * Scans 0xC0000-0xF0000 for ROM signatures (0x55 0xAA)
+ */
+static void findBIOSMemoryRange(void *bitmap)
+{
+    unsigned char *scanPtr;
+    int romSize;
+    unsigned int roundedSize;
 
-        /* Check for end of chain */
-        if (code == CISTPL_END || code == 0xFF) {
-            break;
-        }
+    /* Clear bitmap - 3 uints = 12 bytes */
+    bzero(bitmap, 3 * sizeof(unsigned int));
 
-        /* Read link byte */
-        link = [pool readByte:(offset + 2) type:PCMCIA_MEM_ATTRIBUTE];
+    /* Scan from 0xC0000 to 0xF0000 */
+    scanPtr = (unsigned char *)0xC0000;
 
-        /* Sanity check link value */
-        if (link == 0xFF || link > MAX_TUPLE_SIZE) {
-            break;
-        }
+    do {
+        /* Check for ROM signature: 0x55 0xAA */
+        if ((*scanPtr == 'U') && (scanPtr[1] == 0xAA)) {
+            /* Third byte contains size in 512-byte blocks */
+            romSize = (unsigned int)scanPtr[2] * 0x200;
 
-        /* Read tuple data */
-        for (i = 0; i < link && i < MAX_TUPLE_SIZE; i++) {
-            data[i] = [pool readByte:(offset + 4 + (i * 2)) type:PCMCIA_MEM_ATTRIBUTE];
-        }
-
-        /* Create tuple object */
-        tuple = [[PCMCIATuple alloc] initWithCode:code
-                                             link:link
-                                             data:data
-                                           length:link];
-
-        if (tuple) {
-            /* Add to list */
-            [tupleList addObject:tuple];
-
-            /* Parse specific tuple types */
-            if (code == CISTPL_MANFID) {
-                if ([tuple parseManufacturerID:manfid cardID:cardid]) {
-                    found_manfid = YES;
-                }
-            } else if (code == CISTPL_FUNCID) {
-                if ([tuple parseFunctionID:funcid]) {
-                    found_funcid = YES;
-                }
-            } else if (code == CISTPL_VERS_1) {
-                char vers[64];
-                [tuple parseVersionString:product vendor:vendor version:vers];
+            /* Round size to power-of-2 boundary for alignment */
+            if (romSize - 0x8001 < 0x8000) {
+                /* Size > 32KB, round to 64KB */
+                roundedSize = 0x10000;
+            } else if (romSize - 0x4001 < 0x4000) {
+                /* Size > 16KB, round to 32KB */
+                roundedSize = 0x8000;
+            } else if (romSize - 0x2001 < 0x2000) {
+                /* Size > 8KB, round to 16KB */
+                roundedSize = 0x4000;
+            } else {
+                /* Minimum 8KB */
+                roundedSize = 0x2000;
             }
+
+            /* Mark the range as occupied */
+            markRange((int)bitmap, scanPtr - (unsigned char *)0xC0000, roundedSize);
+
+            /* Skip past this ROM */
+            scanPtr += romSize;
+        } else {
+            /* No ROM found, advance by 2KB */
+            scanPtr += 0x800;
         }
-
-        /* Move to next tuple (code + link + data) */
-        offset += 4 + (link * 2);
-        tuple_count++;
-    }
-
-    /* Return tuple list if we found minimum required info */
-    if (found_manfid && found_funcid && [tupleList count] > 0) {
-        return tupleList;
-    }
-
-    /* Failed to parse properly, free tuples */
-    [tupleList freeObjects];
-    [tupleList free];
-    return nil;
+    } while (scanPtr < (unsigned char *)0xF0000);
 }
-
-
-static void
-PCMCIAKernBusInterruptDispatch(int deviceIntr, void * ssp, int old_ipl, void *_interrupt)
-{
-    BOOL			leave_enabled;
-    PCMCIAKernBusInterrupt_ *	interrupt = (PCMCIAKernBusInterrupt_ *)_interrupt;
-
-    leave_enabled = KernBusInterruptDispatch(_interrupt, ssp);
-    if (!leave_enabled) {
-        KernLockAcquire(interrupt->_PCMCIALock);
-        intr_disable_irq(interrupt->_irq);
-        interrupt->_irqEnabled = NO;
-        KernLockRelease(interrupt->_PCMCIALock);
-    }
-}
-
-@implementation PCMCIAKernBusInterrupt
-
-- initForResource:	resource
-	item:		(unsigned int)item
-	shareable:	(BOOL)shareable
-{
-    [super initForResource:resource item:item shareable:shareable];
-
-    _irq = item;
-    _irqEnabled = NO;
-    _PCMCIALock = [[KernLock alloc] initWithLevel:IPLHIGH];
-    _priorityLevel = IPLDEVICE;
-
-    return self;
-}
-
-- dealloc
-{
-    [_PCMCIALock free];
-    return [super dealloc];
-}
-
-- attachDeviceInterrupt:	interrupt
-{
-    if (!interrupt)
-    	return nil;
-
-    [_PCMCIALock acquire];
-
-    if( NO == _irqAttached) {
-        intr_register_irq(_irq,
-                        (intr_handler_t)PCMCIAKernBusInterruptDispatch,
-                        (unsigned int)self,
-                        _priorityLevel);
-	_irqAttached = YES;
-    }
-
-    if ([super attachDeviceInterrupt:interrupt]) {
-        _irqEnabled = YES;
-        intr_enable_irq(_irq);
-    } else {
-        intr_disable_irq(_irq);
-        _irqEnabled = NO;
-    }
-
-    [_PCMCIALock release];
-
-    return self;
-}
-
-- attachDeviceInterrupt:	interrupt
-		atLevel: 	(int)level
-{
-    if (!interrupt)
-	return nil;
-
-    [_PCMCIALock acquire];
-
-    if (level < _priorityLevel || level >  IPLSCHED) {
-	[_PCMCIALock release];
-    	return nil;
-    }
-
-    if (level > _priorityLevel)
-    	intr_change_ipl(_irq, level);
-
-    _priorityLevel = level;
-
-    if( NO == _irqAttached) {
-        intr_register_irq(_irq,
-                        (intr_handler_t)PCMCIAKernBusInterruptDispatch,
-                        (unsigned int)self,
-                        _priorityLevel);
-	_irqAttached = YES;
-    }
-
-    if ([super attachDeviceInterrupt:interrupt]) {
-        _irqEnabled = YES;
-        intr_enable_irq(_irq);
-    } else {
-        intr_disable_irq(_irq);
-        _irqEnabled = NO;
-    }
-
-    [_PCMCIALock release];
-    return self;
-}
-
-- detachDeviceInterrupt:	interrupt
-{
-    int			irq = [self item];
-
-    [_PCMCIALock acquire];
-
-    if ( ![super detachDeviceInterrupt:interrupt]) {
-      intr_disable_irq(_irq);
-      _irqEnabled = NO;
-    }
-
-    [_PCMCIALock release];
-    return self;
-}
-
-- suspend
-{
-    [_PCMCIALock acquire];
-
-    [super suspend];
-
-    if (_irqEnabled) {
-      intr_disable_irq(_irq);
-      _irqEnabled = NO;
-    }
-
-    [_PCMCIALock release];
-
-    return self;
-}
-
-- resume
-{
-    [_PCMCIALock acquire];
-
-    if ([super resume] && !_irqEnabled) {
-        _irqEnabled = YES;
-        intr_enable_irq(_irq);
-    }
-
-    [_PCMCIALock release];
-
-    return self;
-}
-
-@end
-
-
 
 @implementation PCMCIAKernBus
 
@@ -382,228 +153,267 @@ static const char *resourceNameStrings[] = {
 
 + initialize
 {
+    /* Initialize BIOS memory range bitmap */
+    findBIOSMemoryRange(&_biosBitmap);
+
+    /* Initialize global list of driver config tables */
+    _driverConfigTables = [[List alloc] init];
+
+    /* Initialize global list of bus instances */
+    _busInstances = [[List alloc] init];
+
+    /* Register the bus class */
     [self registerBusClass:self name:"PCMCIA"];
+
+    /* Register with IODevice */
+    [IODevice registerClass:self];
+
     return self;
+}
+
+/*
+ * Class method to configure a driver with a table
+ * Called when a driver loads to match it with an existing card
+ */
++ (BOOL)configureDriverWithTable:table
+{
+    unsigned int i, count;
+    id busInstance;
+    BOOL configured;
+
+    /* Try to configure with each bus instance */
+    for (i = 0; i < [_busInstances count]; i++) {
+        busInstance = [_busInstances objectAt:i];
+        configured = [busInstance configureDriverWithTable:table];
+        if (configured) {
+            /* Successfully configured - done */
+            return YES;
+        }
+    }
+
+    /* No existing card matched - add to queue for future matching */
+    [_driverConfigTables addObject:table];
+    return YES;
+}
+
+/*
+ * Class method to return device style
+ * Returns 1 to indicate this is a physical device
+ */
++ (int)deviceStyle
+{
+    return 1;
+}
+
+/*
+ * Class method to return required protocols
+ * Returns a NULL-terminated array of protocol objects
+ */
++ (id *)requiredProtocols
+{
+    static id protocols[] = { "PCMCIAStatusChange", "PCMCIAAdapter", NULL };
+    return protocols;
+}
+
+/*
+ * Class method to probe and configure bus instances
+ * Configures each bus instance with settings from config table
+ */
++ (BOOL)probe:deviceDesc
+{
+    id directDevice;
+    unsigned int i;
+    unsigned int busCount;
+    id busInstance;
+    char *configValue;
+    char *strPtr;
+    char c;
+    unsigned int strLen;
+    unsigned int memoryBase;
+    unsigned int memoryLength;
+    IORange range;
+
+    /* Get the direct device from device description */
+    directDevice = [deviceDesc directDevice];
+
+    /* Iterate through all bus instances */
+    i = 0;
+    do {
+        busCount = [_busInstances count];
+        if (i >= busCount) {
+            return NO;
+        }
+
+        /* Set default memory range values */
+        memoryBase = 0xD0000;
+        memoryLength = 0x2000;
+
+        /* Get bus instance */
+        busInstance = [_busInstances objectAt:i];
+
+        /* Look up "Verbose" configuration */
+        configValue = configTableLookupServerAttribute("PCMCIABus", i, "Verbose");
+        [busInstance setVerbose:NO];
+
+        if (configValue != NULL) {
+            if (*configValue == 'Y' || *configValue == 'y') {
+                [busInstance setVerbose:YES];
+            }
+
+            /* Calculate string length manually and free */
+            strLen = 0xFFFFFFFF;
+            strPtr = configValue;
+            do {
+                if (strLen == 0) break;
+                strLen--;
+                c = *strPtr;
+                strPtr++;
+            } while (c != '\0');
+            IOFree(configValue, ~strLen);
+        }
+
+        /* Look up "PCMCIA Memory Base" configuration */
+        configValue = configTableLookupServerAttribute("PCMCIABus", i, "PCMCIA Memory Base");
+
+        if (configValue != NULL) {
+            memoryBase = strtol(configValue, NULL, 0);
+
+            /* Clamp to valid range 0xC0000 - 0xEF000 */
+            if (memoryBase < 0xC0000) {
+                memoryBase = 0xC0000;
+            } else if (memoryBase > 0xEEFFF) {
+                memoryBase = 0xEF000;
+            }
+
+            /* Calculate string length and free */
+            strLen = 0xFFFFFFFF;
+            strPtr = configValue;
+            do {
+                if (strLen == 0) break;
+                strLen--;
+                c = *strPtr;
+                strPtr++;
+            } while (c != '\0');
+            IOFree(configValue, ~strLen);
+        }
+
+        /* Look up "PCMCIA Memory Length" configuration */
+        configValue = configTableLookupServerAttribute("PCMCIABus", i, "PCMCIA Memory Length");
+
+        if (configValue != NULL) {
+            memoryLength = strtol(configValue, NULL, 0);
+
+            /* Clamp to minimum 0x1000 */
+            if (memoryLength < 0x1000) {
+                memoryLength = 0x1000;
+            }
+
+            /* Ensure it fits within upper memory area (up to 0xF0000) */
+            if (memoryLength > (0xF0000 - memoryBase)) {
+                memoryLength = 0xF0000 - memoryBase;
+            }
+
+            /* Calculate string length and free */
+            strLen = 0xFFFFFFFF;
+            strPtr = configValue;
+            do {
+                if (strLen == 0) break;
+                strLen--;
+                c = *strPtr;
+                strPtr++;
+            } while (c != '\0');
+            IOFree(configValue, ~strLen);
+        }
+
+        /* Set bus range */
+        range.base = memoryBase;
+        range.length = memoryLength;
+        [busInstance setBusRange:range];
+
+        /* Add adapter to bus instance */
+        [busInstance addAdapter:directDevice];
+
+        i++;
+    } while (1);
 }
 
 - init
 {
-    return [self initWithSocketCount:PCMCIA_DEFAULT_SOCKETS];
-}
-
-- initWithSocketCount:(int)count
-{
-    int i;
+    int busId;
 
     [super init];
 
-    _numSockets = count;
+    /* Create adapters list */
+    _adapters = [[List alloc] init];
 
-    /* Allocate socket array */
-    if (_numSockets > 0) {
-        _sockets = (id *)IOMalloc(_numSockets * sizeof(id));
-        if (_sockets == NULL) {
-            [super free];
-            return nil;
-        }
+    /* Create socket mapping hash table */
+    _socketMap = [[HashTable alloc] initKeyDesc:"@" valueDesc:"!"];
 
-        /* Create pool for each socket */
-        for (i = 0; i < _numSockets; i++) {
-            _sockets[i] = [[PCMCIAPool alloc] initWithSocket:i];
-        }
-    } else {
-        _sockets = NULL;
+    /* Initialize global bus instances list if needed */
+    if (_busInstances == nil) {
+        _busInstances = [[List alloc] init];
     }
 
-    [self _insertResource:[[KernBusItemResource alloc]
-				initWithItemCount:IO_NUM_PCMCIA_INTERRUPTS
-				itemKind:[PCMCIAKernBusInterrupt class]
-				owner:self]
-		    withKey:IRQ_LEVELS_KEY];
+    /* Add to global bus instances */
+    [_busInstances addObject:self];
 
-    [self _insertResource:[[KernBusRangeResource alloc]
-    					initWithExtent:RangeMAX
-					kind:[KernBusMemoryRange class]
-					owner:self]
-		    withKey:MEM_MAPS_KEY];
+    /* Set bus ID to 0 */
+    [self setBusId:0];
 
-    [[self class] registerBusInstance:self name:"PCMCIA" busId:[self busId]];
+    /* Register the bus instance */
+    busId = [self busId];
+    [[self class] registerBusInstance:self name:"PCMCIA" busId:busId];
 
-    /* Probe all sockets for cards */
-    [self probeAllSockets];
+    /* Initialize memory range resource to NULL */
+    _memoryRangeResource = nil;
 
-    printf("PCMCIA bus support enabled (%d socket%s)\n",
-           _numSockets, _numSockets == 1 ? "" : "s");
+    /* Initialize verbose flag to 0 */
+    _verbose = 0;
+
     return self;
-}
-
-- (const char **)resourceNames
-{
-    return resourceNameStrings;
 }
 
 - free
 {
-    int i;
+    NXHashState state;
+    void *key;
+    void *value;
 
-    if ([self areResourcesActive])
-    	return self;
+    /* Free the adapters list */
+    [_adapters free];
 
-    /* Free all sockets */
-    if (_sockets) {
-        for (i = 0; i < _numSockets; i++) {
-            if (_sockets[i]) {
-                [_sockets[i] free];
-            }
-        }
-        IOFree(_sockets, _numSockets * sizeof(id));
-        _sockets = NULL;
+    /* Iterate through socket map and free all values */
+    state = [_socketMap initState];
+    while ([_socketMap nextState:&state key:&key value:&value]) {
+        /* Free the socket info structure (24 bytes) */
+        IOFree(value, 0x18);
     }
 
-    [[self _deleteResourceWithKey:IRQ_LEVELS_KEY] free];
-    [[self _deleteResourceWithKey:MEM_MAPS_KEY] free];
+    /* Free the socket map hash table */
+    [_socketMap free];
+
+    /* Remove from global bus instances list */
+    [_busInstances removeObject:self];
 
     return [super free];
 }
 
-/* Socket management */
-- (int)numSockets
-{
-    return _numSockets;
-}
-
-- socketAtIndex:(int)index
-{
-    if (index < 0 || index >= _numSockets || _sockets == NULL) {
-        return nil;
-    }
-
-    return _sockets[index];
-}
-
-/* Card detection and enumeration */
-- (BOOL)probeSocket:(int)socket
-{
-    id pool;
-    id tupleList;
-    unsigned short manfid = 0, cardid = 0;
-    unsigned char funcid = 0;
-    char vendor[64], product[64];
-    const char *func_name;
-
-    if (socket < 0 || socket >= _numSockets) {
-        return NO;
-    }
-
-    /* Check if card is present */
-    if (!pcmcia_card_present(socket)) {
-        return NO;
-    }
-
-    pool = _sockets[socket];
-    [pool setState:PCMCIA_SOCKET_OCCUPIED];
-
-    /* Map attribute memory window to read CIS */
-    if (![pool mapWindow:PCMCIA_MEM_ATTRIBUTE
-                physAddr:0xD0000  /* Typical PCMCIA attribute memory base */
-                    size:0x4000
-                   flags:PCMCIA_WINDOW_8BIT]) {
-        printf("PCMCIA Socket %d: Failed to map attribute memory\n", socket);
-        return NO;
-    }
-
-    /* Parse CIS tuples */
-    tupleList = pcmcia_parse_cis(pool, &manfid, &cardid, &funcid, vendor, product);
-    if (!tupleList) {
-        printf("PCMCIA Socket %d: Card present but CIS parse failed\n", socket);
-        [pool unmapWindow:PCMCIA_MEM_ATTRIBUTE];
-        return NO;
-    }
-
-    /* Store card information and tuple list in pool */
-    [pool setManufacturerID:manfid cardID:cardid];
-    [pool setFunctionID:funcid];
-    [pool setTupleList:tupleList];
-    [pool setState:PCMCIA_SOCKET_READY];
-
-    /* Get function name string */
-    if (funcid < (sizeof(pcmcia_function_names) / sizeof(char *))) {
-        func_name = pcmcia_function_names[funcid];
-    } else {
-        func_name = "Unknown";
-    }
-
-    /* Print card information */
-    printf("PCMCIA Socket %d: %s Card detected\n", socket, func_name);
-    printf("  Manufacturer: %s\n", vendor[0] ? vendor : "Unknown");
-    printf("  Product: %s\n", product[0] ? product : "Unknown");
-    printf("  IDs: %04x:%04x Function: 0x%02x\n", manfid, cardid, funcid);
-    printf("  Tuples: %d\n", [tupleList count]);
-
-    /* Keep attribute memory mapped for driver use */
-    /* Drivers can access via IOPCMCIADirectDevice methods */
-
-    return YES;
-}
-
-- (void)probeAllSockets
-{
-    int i;
-    int cards_found = 0;
-
-    printf("Scanning PCMCIA sockets...\n");
-
-    for (i = 0; i < _numSockets; i++) {
-        if ([self probeSocket:i]) {
-            cards_found++;
-        }
-    }
-
-    if (cards_found == 0) {
-        printf("No PCMCIA cards detected\n");
-    }
-}
-
-/*
- * Allocate resources for a PCMCIA device description
- */
-- allocateResourcesForDeviceDescription:descr
-{
-    id pool;
-    int socket;
-
-    /* Get socket number from device description */
-    if ([descr respondsTo:@selector(socket)]) {
-        socket = [descr socket];
-
-        if (socket >= 0 && socket < _numSockets) {
-            pool = _sockets[socket];
-
-            /* Set bus reference */
-            [descr setBus:self];
-
-            /* Allocate interrupt and memory resources via parent class */
-            return [super allocateResourcesForDeviceDescription:descr];
-        }
-    }
-
-    return nil;
-}
-
 /*
  * Allocate memory window for socket
- * Takes a PCMCIASocket object and returns a PCMCIAWindow object
  */
-- allocMemoryWindowForSocket:socketObj
+- allocMemoryWindowForSocket:socket
 {
+    SocketInfo *socketInfo;
     id window;
 
-    if (!socketObj) {
+    /* Look up socket info in hash table */
+    socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
+    if (socketInfo == NULL) {
         return nil;
     }
 
-    /* Create new window associated with this socket */
-    window = [[PCMCIAWindow alloc] initWithSocket:socketObj];
+    /* Allocate window from pool using supportsMemory predicate */
+    window = [socketInfo->pool allocElementByMethod:@selector(supportsMemory)];
 
     return window;
 }
@@ -613,7 +423,347 @@ static const char *resourceNameStrings[] = {
  */
 - memoryRangeResource
 {
-    return [self _lookupResourceWithKey:MEM_MAPS_KEY];
+    unsigned int alignedLength;
+    IORange range;
+
+    /* If we have a cached resource, free it first */
+    if (_memoryRangeResource != nil) {
+        if (_verbose) {
+            range = [_memoryRangeResource range];
+            IOLog("PKB: freeing range 0x%x(0x%x)\n", range.base, range.length);
+        }
+        [_memoryRangeResource free];
+        _memoryRangeResource = nil;
+    }
+
+    /* Calculate page-aligned length */
+    extern vm_size_t page_size;
+    alignedLength = ((page_size + _memoryLength - 1) / page_size) * page_size;
+
+    /* Find and reserve a memory range */
+    _memoryRangeResource = [self findAndReserveRangeBase:_memoryBase
+                                                  Length:alignedLength
+                                               Alignment:page_size];
+
+    /* Log the result if verbose */
+    if (_verbose) {
+        if (_memoryRangeResource == nil) {
+            IOLog("%s: memoryRangeResource: resource is nil\n", [self name]);
+        } else {
+            range = [_memoryRangeResource range];
+            IOLog("%s: memoryRangeResource: reserved 0x%x..0x%x\n",
+                  [self name], range.base, range.base + range.length);
+        }
+    }
+
+    return _memoryRangeResource;
+}
+
+/*
+ * Socket info structure (24 bytes)
+ */
+typedef struct {
+    unsigned int    status;         // Offset 0 - Current socket status
+    unsigned char   flag1;          // Offset 4
+    unsigned char   probed;         // Offset 5 - Card has been probed
+    unsigned short  padding;        // Offset 6
+    id              pool;           // Offset 8 - PCMCIAPool
+    id              tupleList;      // Offset 12 - PCMCIATupleList
+    id              deviceDesc;     // Offset 16 - KernDeviceDescription
+    id              cardID;         // Offset 20 - PCMCIAid
+} SocketInfo;
+
+/*
+ * Add adapter to the bus
+ */
+- addAdapter:adapter
+{
+    id sockets;
+    unsigned int i, count;
+    id socket;
+    SocketInfo *socketInfo;
+    id pool;
+    id windows;
+    unsigned int windowCount;
+
+    if (_verbose) {
+        IOLog("PKB: adding adapter %x\n", (unsigned int)adapter);
+    }
+
+    /* Add adapter to list */
+    [_adapters addObject:adapter];
+
+    /* Set self as status change handler */
+    [adapter setStatusChangeHandler:self];
+
+    /* Get sockets from adapter */
+    sockets = [adapter sockets];
+
+    /* Process each socket */
+    count = [sockets count];
+    for (i = 0; i < count; i++) {
+        socket = [sockets objectAt:i];
+
+        /* Allocate socket info structure (24 bytes) */
+        socketInfo = (SocketInfo *)IOMalloc(0x18);
+        bzero(socketInfo, 0x18);
+
+        /* Create pool for this socket */
+        pool = [[PCMCIAPool alloc] init];
+        socketInfo->pool = pool;
+
+        /* Add windows from socket to pool */
+        if (_verbose) {
+            windows = [socket windows];
+            windowCount = [windows count];
+            IOLog("PKB: adding %d windows for adapter\n", windowCount);
+        }
+
+        windows = [socket windows];
+        [socketInfo->pool addList:windows];
+
+        /* Insert socket and info into hash table */
+        [_socketMap insertKey:socket value:socketInfo];
+
+        /* Set status change mask */
+        [socket setStatusChangeMask:1];
+
+        /* Initialize remaining fields */
+        socketInfo->tupleList = nil;
+        socketInfo->deviceDesc = nil;
+        socketInfo->flag1 = 0;
+        socketInfo->probed = 0;
+        socketInfo->cardID = nil;
+
+        /* Trigger initial status change */
+        [self statusChangedForSocket:socket changedStatus:1];
+    }
+
+    return self;
+}
+
+/*
+ * Remove adapter from the bus
+ */
+- removeAdapter:adapter
+{
+    id sockets;
+    unsigned int i, count;
+    id socket;
+    SocketInfo *socketInfo;
+
+    /* Get sockets from adapter */
+    sockets = [adapter sockets];
+
+    /* Remove each socket */
+    count = [sockets count];
+    for (i = 0; i < count; i++) {
+        socket = [sockets objectAt:i];
+
+        /* Look up socket info in hash table */
+        socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
+
+        /* Free the pool */
+        [socketInfo->pool free];
+
+        /* Free the socket info structure (24 bytes) */
+        IOFree(socketInfo, 0x18);
+
+        /* Remove socket from hash table */
+        [_socketMap removeKey:socket];
+    }
+
+    /* Remove adapter from list */
+    [_adapters removeObject:adapter];
+
+    return self;
+}
+
+/*
+ * Allocate I/O window for socket
+ */
+- allocIOWindowForSocket:socket
+{
+    SocketInfo *socketInfo;
+    id window;
+
+    /* Look up socket info in hash table */
+    socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
+    if (socketInfo == NULL) {
+        return nil;
+    }
+
+    /* Allocate window from pool using supportsIO predicate */
+    window = [socketInfo->pool allocElementByMethod:@selector(supportsIO)];
+
+    return window;
+}
+
+/*
+ * Set bus range
+ */
+- (void)setBusRange:(IORange)range
+{
+    _memoryBase = range.base;
+    _memoryLength = range.length;
+}
+
+/*
+ * Set verbose logging flag
+ */
+- (void)setVerbose:(BOOL)verbose
+{
+    _verbose = verbose;
+}
+
+/*
+ * Handle socket status change
+ */
+- (void)statusChangedForSocket:socket changedStatus:(unsigned int)changedStatus
+{
+    SocketInfo *socketInfo;
+    unsigned int socketNum;
+    unsigned int currentStatus;
+    id memRange;
+    IORange range;
+    id memWindow;
+    unsigned int i, count;
+    id tuple;
+
+    /* Get socket number for logging */
+    socketNum = [socket socketNumber];
+
+    /* Check if we care about this status change (bit 0) */
+    if ((changedStatus & 1) == 0) {
+        IOLog("PCMCIA: don't care socket %d\n", socketNum);
+        return;
+    }
+
+    /* Look up socket info */
+    socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
+    if (socketInfo == NULL) {
+        IOLog("PCMCIA: Status changed on unknown socket %x\n", (unsigned int)socket);
+        return;
+    }
+
+    /* Check if already probed */
+    if (socketInfo->flag1 != 0) {
+        IOLog("PCMCIA: Socket %d: already probed\n", socketNum);
+        return;
+    }
+
+    /* Get current status */
+    currentStatus = [socket status];
+
+    if (_verbose) {
+        IOLog("PKB: socket %d status: changed = %x, current = %x\n",
+              socketNum, changedStatus, currentStatus);
+    }
+
+    /* Store current status */
+    socketInfo->status = currentStatus;
+
+    /* Check if card is present (bit 0 of status) */
+    if ((currentStatus & 1) == 0) {
+        /* Card removed */
+        if (socketInfo->probed != 0) {
+            /* Clean up card resources */
+            if (socketInfo->tupleList != nil) {
+                [[socketInfo->tupleList freeObjects:@selector(free)] free];
+            }
+
+            if (socketInfo->deviceDesc != nil) {
+                [socketInfo->deviceDesc free];
+            }
+
+            if (socketInfo->cardID != nil) {
+                [socketInfo->cardID free];
+            }
+
+            socketInfo->cardID = nil;
+            socketInfo->tupleList = nil;
+            socketInfo->deviceDesc = nil;
+            socketInfo->probed = 0;
+            socketInfo->flag1 = 0;
+
+            [self disableSocket:socket];
+            IOLog("PCMCIABus: Socket %d: card removed\n", socketNum);
+        }
+    } else {
+        /* Card inserted */
+        if (socketInfo->probed == 0) {
+            socketInfo->probed = 1;
+
+            /* Enable socket */
+            if (![self enableSocket:socket]) {
+                IOLog("%s: enableSocket failed\n", [self name]);
+                return;
+            }
+
+            /* Allocate memory range for attribute memory */
+            if (_verbose) {
+                IOLog("%s: trying to allocate memory range 0x%x..0x%x\n",
+                      [self name], _memoryBase, _memoryBase + _memoryLength - 1);
+            }
+
+            memRange = [self findAndReserveRangeBase:_memoryBase
+                                              Length:_memoryLength
+                                           Alignment:0x1000];
+
+            if (memRange == nil) {
+                IOLog("PCMCIA: could not find a memory range 0x%x..0x%x\n",
+                      _memoryBase, _memoryBase + _memoryLength - 1);
+                return;
+            }
+
+            range = [memRange range];
+
+            if (_verbose) {
+                IOLog("%s: reserved memory range 0x%x..0x%x\n",
+                      [self name], range.base, range.base + range.length - 1);
+            }
+
+            /* Map attribute memory */
+            memWindow = [self mapAttributeMemory:range ForSocket:socket CardOffset:0];
+
+            if (memWindow == nil) {
+                [memRange free];
+                IOLog("PCMCIA: couldn't get a memory window!\n");
+                return;
+            }
+
+            /* Read and parse tuples */
+            socketInfo->tupleList = [self tupleListFromSocket:socket
+                                                mappedAddress:range.base];
+
+            /* Create device description */
+            socketInfo->deviceDesc = [[KernDeviceDescription alloc] init];
+
+            if (socketInfo->deviceDesc != nil) {
+                /* Parse all tuples into device description */
+                count = [socketInfo->tupleList count];
+                for (i = 0; i < count; i++) {
+                    tuple = [socketInfo->tupleList objectAt:i];
+                    [self parseTuple:tuple intoDeviceDescription:socketInfo->deviceDesc];
+                }
+
+                IOLog("PCMCIABus: Socket %d: card inserted\n", socketNum);
+
+                /* Create PCMCIAid from device description */
+                socketInfo->cardID = [[PCMCIAid alloc] initFromDescription:socketInfo->deviceDesc];
+
+                /* Log card information */
+                [PCMCIAid IOLogCardInformation:socketInfo->deviceDesc];
+            }
+
+            /* Clean up */
+            [self freeMemoryWindowElement:memWindow];
+            [memRange free];
+
+            /* Configure the socket */
+            [self configureSocket:socket];
+        }
+    }
 }
 
 @end

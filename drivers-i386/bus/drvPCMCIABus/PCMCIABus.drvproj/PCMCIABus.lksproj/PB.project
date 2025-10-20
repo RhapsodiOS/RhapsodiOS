@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        CLASSES = (PCMCIABus.m, PCMCIAKernBus.m, PCMCIAPool.m, PCMCIASocket.m, PCMCIAWindow.m, PCMCIATuple.m, PCMCIATupleList.m);
-        H_FILES = (PCMCIABus.h, PCMCIAKernBus.h, PCMCIAKernBusPrivate.h, PCMCIAPool.h, PCMCIASocket.h, PCMCIAWindow.h, PCMCIATuple.h, PCMCIATupleList.h);
+        CLASSES = (PCMCIAKernBus.m, PCMCIAKernBusPrivate.m, PCMCIAKernBusParsing.m, PCMCIAPool.m, PCMCIAPoolElement.m, PCMCIATuple.m, PCMCIATupleTypes.m, PCMCIAConfigEntry.m, PCMCIAResourceDriver.m, PCMCIAid.m);
+        H_FILES = (PCMCIAKernBus.h, PCMCIAKernBusPrivate.h, PCMCIAKernBusParsing.h, PCMCIAPool.h, PCMCIAPoolElement.h, PCMCIATuple.h, PCMCIATupleTypes.h, PCMCIAConfigEntry.h, PCMCIAResourceDriver.h, PCMCIAid.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

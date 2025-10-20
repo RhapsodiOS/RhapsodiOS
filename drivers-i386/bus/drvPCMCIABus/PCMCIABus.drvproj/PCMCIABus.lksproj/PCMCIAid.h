@@ -23,28 +23,41 @@
  */
 
 /*
- * PCMCIA Tuple List
- *
- * Simple wrapper around objc/List for storing PCMCIATuple objects
+ * PCMCIA Card ID
  */
 
-#ifndef _DRIVERKIT_I386_PCMCIATUPLELIST_H_
-#define _DRIVERKIT_I386_PCMCIATUPLELIST_H_
+#ifndef _DRIVERKIT_I386_PCMCIAID_H_
+#define _DRIVERKIT_I386_PCMCIAID_H_
 
-#import <objc/List.h>
+#import <objc/Object.h>
 
 #ifdef DRIVER_PRIVATE
 
-@interface PCMCIATupleList : List
+@interface PCMCIAid : Object
 {
+@private
+    char *_function;      /* PCMCIA_TPLFID_FUNCTION */
+    char *_manufacturer;  /* PCMCIA_TPLMID_MANF */
+    char *_product;       /* PCMCIA_TPLMID_CARD */
+    char *_version1;      /* PCMCIA_TPLVERS_1 */
+    char *_version2;      /* PCMCIA_TPLVERS_2 */
 }
 
-/* Convenience methods for compatibility */
-- (unsigned)count;
-- objectAt:(unsigned)index;
+- initFromDescription:description;
+- initFromIDString:(char **)idStringPtr;
+- free;
+
+/* Matching */
+- (BOOL)matchesID:otherID;
+
+/* Logging */
+- (void)IOLog;
+
+/* Class method for logging card information from device description */
++ (void)IOLogCardInformation:deviceDesc;
 
 @end
 
 #endif /* DRIVER_PRIVATE */
 
-#endif /* _DRIVERKIT_I386_PCMCIATUPLELIST_H_ */
+#endif /* _DRIVERKIT_I386_PCMCIAID_H_ */

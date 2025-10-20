@@ -75,6 +75,31 @@ static IOReturn Set_ConfigReg(unsigned int count, char *values, unsigned int reg
 @implementation PCIResourceDriver
 
 /*
+ * Probe for PCI bus presence
+ * Returns YES if PCI is available and driver can be initialized
+ */
++ (BOOL)probe:(IODeviceDescription *)deviceDescription
+{
+    id pciBus;
+    id driver;
+
+    /* Lookup PCI bus instance */
+    pciBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
+    if (pciBus != nil) {
+        /* Check if PCI is present */
+        if ([pciBus isPCIPresent]) {
+            /* Try to allocate and initialize driver */
+            driver = [[PCIResourceDriver alloc] initFromDeviceDescription:deviceDescription];
+            if (driver != nil) {
+                return YES;
+            }
+        }
+    }
+
+    return NO;
+}
+
+/*
  * Get character values for a parameter
  */
 - (IOReturn)getCharValues:(char *)values

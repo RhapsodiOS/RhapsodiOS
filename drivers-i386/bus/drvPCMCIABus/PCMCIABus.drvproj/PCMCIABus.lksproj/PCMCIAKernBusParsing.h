@@ -23,37 +23,35 @@
  */
 
 /*
- * PCMCIA Object Pool Management
+ * PCMCIAKernBus Parsing Category
+ *
+ * Methods for parsing PCMCIA tuples and allocating resources
+ * from device descriptions.
  */
 
-#ifndef _DRIVERKIT_I386_PCMCIAPOOL_H_
-#define _DRIVERKIT_I386_PCMCIAPOOL_H_
+#ifndef _DRIVERKIT_I386_PCMCIAKERNBUSPARSING_H_
+#define _DRIVERKIT_I386_PCMCIAKERNBUSPARSING_H_
 
-#import <objc/Object.h>
+#import "PCMCIAKernBus.h"
 
 #ifdef DRIVER_PRIVATE
 
-@interface PCMCIAPool : Object
-{
-@private
-    void *_poolData;  /* Points to structure containing two List pointers */
-}
+@interface PCMCIAKernBus(Parsing)
 
-- init;
-- free;
+/*
+ * Allocate resources for a device description by parsing tuple list
+ * Returns the description if successful, nil otherwise
+ */
+- _allocResourcesForDescription:description fromTupleList:tupleList;
 
-/* Pool management methods */
-- addList:list;
-- addObject:object;
-- allocElement;
-- allocElementByMethod:(SEL)method;
-- allocObject;
-- allocObjectByMethod:(SEL)method;
-- releaseObject:object;
-- removeObject:object;
+/*
+ * Parse a single tuple into device description
+ * Extracts resource information from the tuple and adds it to the description
+ */
+- (void)_parseTuple:tuple intoDeviceDescription:description;
 
 @end
 
 #endif /* DRIVER_PRIVATE */
 
-#endif /* _DRIVERKIT_I386_PCMCIAPOOL_H_ */
+#endif /* _DRIVERKIT_I386_PCMCIAKERNBUSPARSING_H_ */

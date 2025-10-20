@@ -26,157 +26,70 @@
  * PCMCIA Tuple Implementation
  */
 
-#import <mach/mach_types.h>
 #import "PCMCIATuple.h"
 #import <libkern/libkern.h>
 
 @implementation PCMCIATuple
 
-- initWithCode:(unsigned char)code
-          link:(unsigned char)link
-          data:(unsigned char *)data
-        length:(unsigned int)length
+/*
+ * Initialize from data
+ */
+- initFromData:(void *)data length:(unsigned int)length
 {
+    void *buffer;
+
     [super init];
 
-    _code = code;
-    _link = link;
+    /* Set length */
     _length = length;
 
-    if (length > 0 && data != NULL) {
-        _data = (unsigned char *)IOMalloc(length);
-        if (_data) {
-            bcopy(data, _data, length);
-        }
-    } else {
-        _data = NULL;
-    }
+    /* Allocate buffer */
+    buffer = IOMalloc(length);
+    _data = buffer;
+
+    /* Copy data */
+    bcopy(data, buffer, length);
+
+    /* Set length again (matches decompiled code) */
+    _length = length;
 
     return self;
 }
 
+/*
+ * Free tuple
+ */
 - free
 {
-    if (_data) {
-        IOFree(_data, _length);
-        _data = NULL;
-    }
+    /* Free data buffer */
+    IOFree(_data, _length);
+
+    /* Call superclass free */
     return [super free];
 }
 
+/*
+ * Get tuple code (first byte of data)
+ */
 - (unsigned char)code
 {
-    return _code;
+    return *((unsigned char *)_data);
 }
 
-- (unsigned char)link
-{
-    return _link;
-}
-
-- (unsigned char *)data
+/*
+ * Get tuple data pointer
+ */
+- (void *)data
 {
     return _data;
 }
 
+/*
+ * Get tuple length
+ */
 - (unsigned int)length
 {
     return _length;
-}
-
-/*
- * Parse CISTPL_MANFID tuple (manufacturer ID)
- * Format: 2 bytes manufacturer ID, 2 bytes card ID
- */
-- (BOOL)parseManufacturerID:(unsigned short *)manfid
-                     cardID:(unsigned short *)cardid
-{
-    if (_code != CISTPL_MANFID || _length < 4 || _data == NULL) {
-        return NO;
-    }
-
-    if (manfid) {
-        *manfid = (_data[1] << 8) | _data[0];
-    }
-
-    if (cardid) {
-        *cardid = (_data[3] << 8) | _data[2];
-    }
-
-    return YES;
-}
-
-/*
- * Parse CISTPL_FUNCID tuple (function ID)
- * Format: 1 byte function code
- */
-- (BOOL)parseFunctionID:(unsigned char *)funcid
-{
-    if (_code != CISTPL_FUNCID || _length < 1 || _data == NULL) {
-        return NO;
-    }
-
-    if (funcid) {
-        *funcid = _data[0];
-    }
-
-    return YES;
-}
-
-/*
- * Parse CISTPL_VERS_1 tuple (version/product information)
- * Format: major version, minor version, null-terminated strings
- */
-- (BOOL)parseVersionString:(char *)product
-                    vendor:(char *)vendor
-                   version:(char *)version
-{
-    unsigned int i, str_index;
-    char *strings[4] = { vendor, product, version, NULL };
-    unsigned int str_count = 0;
-
-    if (_code != CISTPL_VERS_1 || _length < 2 || _data == NULL) {
-        return NO;
-    }
-
-    /* Skip major/minor version bytes */
-    i = 2;
-    str_index = 0;
-
-    /* Parse up to 3 null-terminated strings */
-    while (i < _length && str_count < 3) {
-        if (_data[i] == 0xFF) {
-            break;  /* End of strings */
-        }
-
-        if (_data[i] == 0x00) {
-            /* Null terminator, move to next string */
-            str_count++;
-            i++;
-            str_index = 0;
-            continue;
-        }
-
-        /* Copy character to appropriate string buffer */
-        if (strings[str_count] && str_index < 63) {
-            strings[str_count][str_index++] = _data[i];
-        }
-        i++;
-    }
-
-    /* Null-terminate all strings */
-    if (vendor) vendor[str_index] = '\0';
-    if (product && str_count > 0) {
-        /* Find the last character written to product */
-        for (i = 0; i < 63 && product[i] != '\0'; i++);
-        product[i] = '\0';
-    }
-    if (version && str_count > 1) {
-        for (i = 0; i < 63 && version[i] != '\0'; i++);
-        version[i] = '\0';
-    }
-
-    return YES;
 }
 
 @end

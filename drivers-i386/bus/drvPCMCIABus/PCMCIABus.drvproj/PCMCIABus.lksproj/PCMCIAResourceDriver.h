@@ -23,41 +23,30 @@
  */
 
 /*
- * PCMCIA Socket Object
- *
- * Represents a PCMCIA socket with configuration capabilities
+ * PCMCIA Resource Driver
  */
 
-#ifndef _DRIVERKIT_I386_PCMCIASOCKET_H_
-#define _DRIVERKIT_I386_PCMCIASOCKET_H_
+#ifndef _DRIVERKIT_I386_PCMCIARESOURCEDRIVER_H_
+#define _DRIVERKIT_I386_PCMCIARESOURCEDRIVER_H_
 
-#import <objc/Object.h>
+#import <driverkit/IODirectDevice.h>
 
 #ifdef DRIVER_PRIVATE
 
-@interface PCMCIASocket : Object
+@interface PCMCIAResourceDriver : IODirectDevice
 {
-@private
-    id              _pool;              /* Associated PCMCIAPool */
-    int             _socketNumber;      /* Socket number */
-    BOOL            _memoryInterface;   /* Memory interface enabled */
-    id              _lock;              /* Access lock */
 }
 
-- initWithSocketNumber:(int)socketNum pool:pool;
+/* Class method */
++ (BOOL)probe:deviceDesc;
 
-/* Socket configuration */
-- (void)setMemoryInterface:(BOOL)memInterface;
-- (BOOL)memoryInterface;
-
-- (int)socketNumber;
-- pool;
-
-/* Element interface */
-- object;
+- initFromDeviceDescription:deviceDesc;
+- (int)getCharValues:(unsigned char *)values
+        forParameter:(const char *)parameterName
+               count:(unsigned int *)count;
 
 @end
 
 #endif /* DRIVER_PRIVATE */
 
-#endif /* _DRIVERKIT_I386_PCMCIASOCKET_H_ */
+#endif /* _DRIVERKIT_I386_PCMCIARESOURCEDRIVER_H_ */

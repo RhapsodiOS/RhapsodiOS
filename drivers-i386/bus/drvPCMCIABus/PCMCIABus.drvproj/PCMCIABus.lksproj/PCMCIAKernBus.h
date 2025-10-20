@@ -61,27 +61,40 @@
 @interface PCMCIAKernBus : KernBus
 {
 @private
-    id		*_sockets;		/* Array of PCMCIAPool objects */
-    int		_numSockets;		/* Number of sockets */
+    id              _adapters;              /* Offset 0x10: List of PCMCIA adapters */
+    unsigned int    _memoryBase;            /* Offset 0x14: Memory range base */
+    unsigned int    _memoryLength;          /* Offset 0x18: Memory range length */
+    id              _socketMap;             /* Offset 0x1c: HashTable mapping sockets to info */
+    int             _verbose;               /* Offset 0x20: Verbose logging flag */
+    id              _memoryRangeResource;   /* Offset 0x24: Cached memory range resource */
 }
 
+/* Class methods */
++ (BOOL)configureDriverWithTable:table;
++ (int)deviceStyle;
++ (BOOL)probe:deviceDesc;
++ (id *)requiredProtocols;
+
 - init;
-- initWithSocketCount:(int)count;
 - free;
 
-/* Socket management */
-- (int)numSockets;
-- socketAtIndex:(int)index;
+/* Adapter management */
+- addAdapter:adapter;
+- removeAdapter:adapter;
 
-/* Card detection and enumeration */
-- (BOOL)probeSocket:(int)socket;
-- (void)probeAllSockets;
-
-/* Memory window allocation */
+/* Window allocation */
+- allocIOWindowForSocket:socket;
 - allocMemoryWindowForSocket:socket;
 
 /* Resource access */
 - memoryRangeResource;
+
+/* Configuration */
+- (void)setBusRange:(IORange)range;
+- (void)setVerbose:(BOOL)verbose;
+
+/* Status changes */
+- (void)statusChangedForSocket:socket changedStatus:(unsigned int)status;
 
 @end
 

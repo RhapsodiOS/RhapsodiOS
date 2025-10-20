@@ -23,24 +23,55 @@
  */
 
 /*
- * Copyright (c) 1995 NeXT Computer, Inc.
- *
- * Private declarations for Kernel PCMCIA Bus Resource Object(s).
+ * PCMCIAKernBus Private Methods
  */
 
-#ifdef	KERNEL_PRIVATE
+#import "PCMCIAKernBus.h"
 
-#import <mach/mach_types.h>
+@interface PCMCIAKernBus (Private)
 
-#import <objc/objc.h>
+/* Resource allocation */
+- (BOOL)allocateResourcesForDeviceDescription:deviceDesc;
+- allocateSharedMemory:(unsigned int)size
+        ForDescription:deviceDesc
+             AndSocket:socket;
 
-typedef struct PCMCIAKernBusInterrupt_ {
-    @defs(PCMCIAKernBusInterrupt)
-} PCMCIAKernBusInterrupt_;
+/* Configuration */
+- (BOOL)configTable:table matchesSocket:socket;
+- (BOOL)configureDriverWithTable:table;
+- (BOOL)configureSocket:socket;
+- (BOOL)configureSocket:socket withDescription:deviceDesc;
+- (BOOL)configureSocket:socket withDriverTable:table;
 
-static
-void	_PCMCIAKernBusInterruptDispatch(
-			    void		*interrupt,
-			    void		*state);
+/* Tuple management */
+- copyTupleList:tupleList;
+- tupleListFromSocket:socket mappedAddress:(unsigned int)address;
+- (BOOL)parseTuple:tuple intoDeviceDescription:deviceDesc;
 
-#endif
+/* Socket control */
+- (BOOL)enableSocket:socket;
+- (BOOL)disableSocket:socket;
+
+/* Memory window management */
+- freeMemoryWindowElement:element;
+- mapAttributeMemory:(IORange)range
+           ForSocket:socket
+            CardBase:(unsigned int)cardBase;
+- mapMemory:(IORange)range
+  ForSocket:socket
+ToCardAddress:(unsigned int)cardAddr;
+
+/* Device probing */
+- (BOOL)probeDevice:device withDescription:deviceDesc;
+- (BOOL)testIDs:idList ForAdapter:adapter andSocket:socket;
+
+/* I/O port management */
+- (BOOL)entry:entry matchesUserIOPorts:(const char *)portString;
+- (BOOL)reserveIOPorts:(const char *)portString UsingEntry:entry;
+
+/* Range finding */
+- findAndReserveRangeBase:(unsigned int)base
+                   Length:(unsigned int)length
+                AlignedTo:(unsigned int)alignment;
+
+@end

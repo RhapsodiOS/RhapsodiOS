@@ -13,9 +13,9 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = PCMCIABus.m PCMCIAKernBus.m PCMCIAPool.m PCMCIASocket.m PCMCIATuple.m PCMCIATupleList.m PCMCIAWindow.m
+CLASSES = PCMCIAKernBus.m PCMCIAKernBusPrivate.m PCMCIAKernBusParsing.m PCMCIAPool.m PCMCIAPoolElement.m PCMCIATuple.m PCMCIATupleTypes.m PCMCIAConfigEntry.m PCMCIAResourceDriver.m PCMCIAid.m
 
-HFILES = PCMCIABus.h PCMCIAKernBus.h PCMCIAKernBusPrivate.h PCMCIAPool.h PCMCIASocket.h PCMCIATuple.h PCMCIATupleList.h PCMCIAWindow.h
+HFILES = PCMCIAKernBus.h PCMCIAKernBusPrivate.h PCMCIAKernBusParsing.h PCMCIAPool.h PCMCIAPoolElement.h PCMCIATuple.h PCMCIATupleTypes.h PCMCIAConfigEntry.h PCMCIAResourceDriver.h PCMCIAid.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

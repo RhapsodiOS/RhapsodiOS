@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        CLASSES = (PCIBus.m);
-        H_FILES = (PCIBus.h, PCIBusVersion.h, PCIKernelServer.h, PCIResourceDriver.h);
+        CLASSES = (PCIKernBus.m, PCIKernBusPrivate.m, PCIResourceDriver.m, pci.c);
+        H_FILES = (PCIKernBus.h, PCIKernBusPrivate.h, PCIResourceDriver.h, pci.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

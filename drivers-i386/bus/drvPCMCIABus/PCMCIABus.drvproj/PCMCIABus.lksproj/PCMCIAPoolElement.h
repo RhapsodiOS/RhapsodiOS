@@ -23,69 +23,30 @@
  */
 
 /*
- * PCMCIA Socket Implementation
+ * PCMCIA Pool Element Wrapper
  */
 
-#import "PCMCIASocket.h"
-#import <driverkit/KernLock.h>
-#import <kernserv/i386/spl.h>
+#ifndef _DRIVERKIT_I386_PCMCIAPOOLELEMENT_H_
+#define _DRIVERKIT_I386_PCMCIAPOOLELEMENT_H_
 
-@implementation PCMCIASocket
+#import <objc/Object.h>
 
-- initWithSocketNumber:(int)socketNum pool:pool
+#ifdef DRIVER_PRIVATE
+
+@interface PCMCIAPoolElement : Object
 {
-    [super init];
-
-    _socketNumber = socketNum;
-    _pool = pool;
-    _memoryInterface = NO;
-
-    _lock = [[KernLock alloc] initWithLevel:IPLHIGH];
-
-    return self;
+@private
+    void *_elementData;  /* Points to structure containing pool and object pointers */
 }
 
-- free
-{
-    if (_lock) {
-        [_lock free];
-        _lock = nil;
-    }
+- initWithPCMCIAPool:pool object:object;
+- free;
 
-    return [super free];
-}
-
-/* Socket configuration */
-- (void)setMemoryInterface:(BOOL)memInterface
-{
-    [_lock acquire];
-    _memoryInterface = memInterface;
-    [_lock release];
-}
-
-- (BOOL)memoryInterface
-{
-    BOOL result;
-    [_lock acquire];
-    result = _memoryInterface;
-    [_lock release];
-    return result;
-}
-
-- (int)socketNumber
-{
-    return _socketNumber;
-}
-
-- pool
-{
-    return _pool;
-}
-
-/* Element interface */
-- object
-{
-    return self;
-}
+/* Access the wrapped object */
+- object;
 
 @end
+
+#endif /* DRIVER_PRIVATE */
+
+#endif /* _DRIVERKIT_I386_PCMCIAPOOLELEMENT_H_ */

@@ -44,6 +44,11 @@
 }
 
 /*
+ * Probing
+ */
++ (BOOL)probe:(IODeviceDescription *)deviceDescription;
+
+/*
  * Initialization
  */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription;

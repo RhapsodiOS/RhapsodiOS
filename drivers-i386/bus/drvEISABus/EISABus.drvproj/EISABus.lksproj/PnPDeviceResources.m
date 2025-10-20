@@ -28,233 +28,618 @@
  */
 
 #import "PnPDeviceResources.h"
-#import "PnPInterruptResource.h"
-#import "PnPDMAResource.h"
-#import "PnPIOPortResource.h"
-#import "PnPMemoryResource.h"
 #import <driverkit/generalFuncs.h>
 #import <objc/List.h>
+#import <string.h>
+
+/* External verbose flag */
+extern char verbose;
+
+/* Global PnP read port - set by setReadPort: class method */
+static unsigned short readPort = 0;
+
+/* Offset where resource data starts (after 9-byte header) */
+#define START_OFFSET 9
 
 @implementation PnPDeviceResources
 
-- init
+/*
+ * Set the PnP read port
+ * Class method to configure the I/O port used for reading PnP data
+ */
++ (void)setReadPort:(unsigned short)port
 {
+    readPort = port;
+}
+
+/*
+ * Set verbose logging mode
+ * Enables or disables verbose logging for PnP device resource operations
+ */
++ (void)setVerbose:(char)verboseFlag
+{
+    verbose = verboseFlag;
+}
+
+/*
+ * Initialize from buffer with header
+ * Buffer format:
+ *   +0: Device ID (4 bytes, little-endian)
+ *   +4: Serial number (4 bytes)
+ *   +8: Checksum (1 byte)
+ *   +9: Resource data...
+ */
+- initForBuf:(void *)buffer Length:(int)length CSN:(int)csn
+{
+    unsigned char *data = (unsigned char *)buffer;
+    unsigned int deviceID;
+    unsigned int serialNum;
+    char vendorID[9];
+    unsigned int idValue;
+
+    /* Call superclass init */
     [super init];
 
-    _irqList = [[List alloc] init];
-    _dmaList = [[List alloc] init];
-    _ioPortList = [[List alloc] init];
-    _memoryList = [[List alloc] init];
+    /* Check minimum length */
+    if (length < START_OFFSET) {
+        IOLog("PnPDeviceResources: len %d is < START_OFFSET %d\n", length, START_OFFSET);
+        return nil;
+    }
+
+    /* Extract device ID (4 bytes, little-endian, reverse byte order) */
+    deviceID = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0];
+
+    /* Set CSN */
+    _csn = csn;
+
+    /* Set device ID */
+    [self setID:deviceID];
+
+    /* Set serial number from offset +4 */
+    serialNum = *(unsigned int *)(data + 4);
+    [self setSerialNumber:serialNum];
+
+    /* Log device information if verbose */
+    if (verbose) {
+        unsigned char checksum = data[8];
+        idValue = [self ID];
+
+        /* Convert device ID to vendor string (3 letters) */
+        vendorID[0] = ((idValue >> 26) & 0x1F) + 0x40;  /* Bits 26-30 */
+        vendorID[1] = ((idValue >> 21) & 0x1F) + 0x40;  /* Bits 21-25 */
+        vendorID[2] = ((idValue >> 16) & 0x1F) + 0x40;  /* Bits 16-20 */
+        sprintf(vendorID + 3, "%04x", idValue & 0xFFFF); /* Lower 16 bits as hex */
+        vendorID[7] = '\0';
+
+        IOLog("Vendor Id %s (0x%lx) Serial Number 0x%lx CheckSum 0x%x\n",
+              vendorID, (unsigned long)idValue, (unsigned long)serialNum, checksum);
+    }
+
+    /* Allocate device list */
+    _deviceList = [[List alloc] init];
+    if (_deviceList == nil) {
+        IOLog("PnPDeviceResources: failed to allocate device_list\n");
+        return [self free];
+    }
+
+    /* Parse configuration data starting at offset 9 */
+    if (![self parseConfig:(data + START_OFFSET) Length:length]) {
+        return [self free];
+    }
 
     return self;
 }
 
+/*
+ * Initialize from buffer without header
+ * Parses resource data directly without reading device ID/serial number
+ */
+- initForBufNoHeader:(void *)buffer Length:(int)length CSN:(int)csn
+{
+    /* Call superclass init */
+    [super init];
+
+    /* Set CSN */
+    _csn = csn;
+
+    /* Allocate device list */
+    _deviceList = [[List alloc] init];
+    if (_deviceList == nil) {
+        IOLog("PnPDeviceResources: failed to allocate device_list\n");
+        return [self free];
+    }
+
+    /* Parse configuration data directly from buffer (no header offset) */
+    if (![self parseConfig:buffer Length:length]) {
+        return [self free];
+    }
+
+    return self;
+}
+
+/*
+ * Free device resources
+ * Frees all logical devices in the list, then the list itself
+ */
 - free
 {
-    if (_irqList != nil) {
-        int i;
-        int count = [_irqList count];
-        for (i = 0; i < count; i++) {
-            id obj = [_irqList objectAt:i];
-            if (obj != nil) {
-                [obj free];
-            }
-        }
-        [_irqList free];
-        _irqList = nil;
+    /* Free all devices in the list, then free the list */
+    if (_deviceList != nil) {
+        /* Free each device object in the list */
+        [[_deviceList freeObjects:@selector(free)] free];
     }
 
-    if (_dmaList != nil) {
-        int i;
-        int count = [_dmaList count];
-        for (i = 0; i < count; i++) {
-            id obj = [_dmaList objectAt:i];
-            if (obj != nil) {
-                [obj free];
-            }
-        }
-        [_dmaList free];
-        _dmaList = nil;
-    }
-
-    if (_ioPortList != nil) {
-        int i;
-        int count = [_ioPortList count];
-        for (i = 0; i < count; i++) {
-            id obj = [_ioPortList objectAt:i];
-            if (obj != nil) {
-                [obj free];
-            }
-        }
-        [_ioPortList free];
-        _ioPortList = nil;
-    }
-
-    if (_memoryList != nil) {
-        int i;
-        int count = [_memoryList count];
-        for (i = 0; i < count; i++) {
-            id obj = [_memoryList objectAt:i];
-            if (obj != nil) {
-                [obj free];
-            }
-        }
-        [_memoryList free];
-        _memoryList = nil;
-    }
-
+    /* Call superclass free */
     return [super free];
 }
 
-- (void)setDeviceName:(const char *)name
+/*
+ * Get device ID
+ */
+- (unsigned int)ID
 {
-    /* Set device name (for debugging) */
-    if (name != NULL) {
-        IOLog("PnPDeviceResources: Device name = %s\n", name);
+    return _id;
+}
+
+/*
+ * Set device ID
+ */
+- setID:(unsigned int)deviceID
+{
+    _id = deviceID;
+    return self;
+}
+
+/*
+ * Get serial number
+ */
+- (unsigned int)serialNumber
+{
+    return _serialNumber;
+}
+
+/*
+ * Set serial number
+ */
+- setSerialNumber:(unsigned int)serial
+{
+    _serialNumber = serial;
+    return self;
+}
+
+/*
+ * Get Card Select Number
+ * Returns CSN at offset 100 (0x64)
+ */
+- (int)csn
+{
+    return _csn;
+}
+
+/*
+ * Get device count
+ * Returns count of devices in the device list
+ */
+- (int)deviceCount
+{
+    return [_deviceList count];
+}
+
+/*
+ * Get device list
+ * Returns the List object at offset 4
+ */
+- deviceList
+{
+    return _deviceList;
+}
+
+/*
+ * Get device with specific logical device ID
+ * Searches through device list for matching ID
+ */
+- deviceWithID:(int)logicalDeviceID
+{
+    int index = 0;
+    id device;
+
+    /* Iterate through device list */
+    while (1) {
+        /* Get device at current index */
+        device = [_deviceList objectAt:index];
+
+        /* If no device found at this index, search failed */
+        if (device == nil) {
+            return nil;
+        }
+
+        /* Check if this device's ID matches */
+        if ([device ID] == logicalDeviceID) {
+            break;
+        }
+
+        /* Try next index */
+        index++;
     }
+
+    return device;
 }
 
-- (const char *)ID
+/*
+ * Get device name
+ * Returns pointer to inline buffer at offset 8
+ */
+- (const char *)deviceName
 {
-    /* Return device ID string */
-    return "PnPDevice";
+    /* Device name is stored inline starting at offset 8 */
+    return (const char *)((unsigned char *)self + 8);
 }
 
-- (void)setGoodConfig:(id)config
+/*
+ * Set device name
+ * Copies name to inline buffer at offset 8 (max 79 chars + null)
+ * Returns YES if set successfully, NO if already set
+ */
+- setDeviceName:(const char *)name Length:(int)length
 {
-    /* Set good configuration priority */
-    if (config != nil) {
-        IOLog("PnPDeviceResources: Setting good configuration\n");
-    }
-}
+    char *nameBuffer = (char *)((unsigned char *)self + 8);
+    int *nameLengthPtr = (int *)((unsigned char *)self + 0x58);
+    int copyLength;
 
-- (void)setReadPort:(int)port
-{
-    /* Set PnP read data port */
-    IOLog("PnPDeviceResources: Read port = 0x%04X\n", port);
-}
-
-- (void)setCSN:(int)csn
-{
-    /* Set Card Select Number */
-    IOLog("PnPDeviceResources: CSN = %d\n", csn);
-}
-
-- (void)initFromBuffer:(void *)buffer Length:(int)length CSN:(int)csn
-{
-    /* Initialize resources from PnP resource data buffer */
-    if (buffer == NULL || length <= 0) {
-        IOLog("PnPDeviceResources: Invalid buffer\n");
-        return;
+    /* Check if name is already set */
+    if (*nameLengthPtr != 0) {
+        return NO;
     }
 
-    IOLog("PnPDeviceResources: Parsing %d bytes of resource data for CSN %d\n", length, csn);
+    /* Limit length to 79 bytes (0x4F) to leave room for null terminator */
+    copyLength = (length < 0x4F) ? length : 0x4F;
 
+    /* Store length */
+    *nameLengthPtr = copyLength;
+
+    /* Copy name to inline buffer */
+    strncpy(nameBuffer, name, copyLength);
+
+    /* Null terminate */
+    nameBuffer[copyLength] = '\0';
+
+    return YES;
+}
+
+/*
+ * Parse configuration data
+ * Parses PnP resource descriptors (both small and large items)
+ * Returns YES on success, NO on error
+ */
+- parseConfig:(void *)buffer Length:(int)length
+{
     unsigned char *data = (unsigned char *)buffer;
-    int offset = 0;
+    unsigned int bytesLeft = length;
+    unsigned char tag;
+    unsigned int itemLength;
+    unsigned short largeLength;
+    id logicalDevice = nil;
+    int depthCounter = 0;
+    id depResources = nil;
+    char vendorID[9];
+    unsigned int deviceID;
+    int i;
 
-    /* Parse PnP resource data stream
-     * Resource data format consists of tagged items:
-     * - Small resource items: tag byte + data
-     * - Large resource items: tag byte + 2-byte length + data
-     */
+    /* Parse resource data stream */
+    while (bytesLeft > 0) {
+        /* Read tag byte */
+        tag = *data;
+        data++;
+        bytesLeft--;
 
-    while (offset < length) {
-        unsigned char tag = data[offset];
-
-        /* Check if this is a large or small resource item */
+        /* Check if this is a large item (bit 7 set) */
         if (tag & 0x80) {
-            /* Large resource item */
-            if (offset + 2 >= length) {
+            /* Large item format: [tag] [len_lo] [len_hi] [data...] */
+            if (bytesLeft < 2) {
+                IOLog("PnPDeviceResources: bytes left is < 2\n");
+                return NO;
+            }
+
+            /* Read 16-bit length */
+            largeLength = *(unsigned short *)data;
+            data += 2;
+            bytesLeft -= 2;
+            itemLength = largeLength;
+
+            /* Check if we have enough data */
+            if (bytesLeft < itemLength) {
+                IOLog("PnPDeviceResources: LIN ilen %d > bytes left %d\n", itemLength, bytesLeft);
+                return NO;
+            }
+
+            /* Parse large item by type (bits 0-6) */
+            switch (tag & 0x7F) {
+            case 1:  /* Memory Range Descriptor (24-bit) */
+            case 5:  /* 32-bit Memory Range Descriptor */
+            case 6:  /* 32-bit Fixed Memory Range Descriptor */
+            {
+                id memory = [[[objc_getClass("pnpMemory") alloc]
+                             initFrom:data Length:largeLength Type:(tag & 0x7F)] init];
+                if (memory == nil) {
+                    IOLog("failed to init memory\n");
+                    return NO;
+                }
+                if (depthCounter == 0) {
+                    [[[logicalDevice resources] addMemory:memory] free];
+                } else {
+                    [[depResources addMemory:memory] free];
+                }
                 break;
             }
-
-            unsigned int itemLen = data[offset + 1] | (data[offset + 2] << 8);
-            unsigned char itemType = tag & 0x7F;
-
-            IOLog("  Large resource: type=0x%02X, length=%d\n", itemType, itemLen);
-
-            /* Parse based on type */
-            switch (itemType) {
-                case 0x01: /* Memory range descriptor */
-                    if (itemLen >= 9 && offset + 3 + itemLen <= length) {
-                        id memResource = [[PnPMemoryResource alloc] init];
-                        unsigned int minBase = (data[offset + 4] | (data[offset + 5] << 8)) << 8;
-                        unsigned int maxBase = (data[offset + 6] | (data[offset + 7] << 8)) << 8;
-                        unsigned int memLength = (data[offset + 10] | (data[offset + 11] << 8)) << 8;
-
-                        [memResource setMinBase:minBase];
-                        [memResource setMaxBase:maxBase];
-                        [memResource setLength:memLength];
-                        [_memoryList addObject:memResource];
-
-                        IOLog("    Memory: 0x%08X-0x%08X (length=%d)\n", minBase, maxBase, memLength);
+            case 2:  /* ANSI Identifier String */
+            {
+                /* Set device name */
+                if (![self setDeviceName:(const char *)data Length:largeLength]) {
+                    [logicalDevice setDeviceName:(const char *)data Length:largeLength];
+                }
+                if (verbose) {
+                    IOLog("id string(%d) '", largeLength);
+                    for (i = 0; i < largeLength; i++) {
+                        IOLog("%c", data[i]);
                     }
-                    break;
+                    IOLog("'\n");
+                }
+                break;
+            }
+            case 3:  /* Unicode Identifier String */
+            {
+                /* Skip 2-byte language ID, set device name */
+                if (![self setDeviceName:(const char *)(data + 2) Length:(largeLength - 2)]) {
+                    [logicalDevice setDeviceName:(const char *)(data + 2) Length:(largeLength - 2)];
+                }
+                if (verbose) {
+                    IOLog("UNICODE id string(%d) '", largeLength);
+                    for (i = 0; i < (largeLength - 2); i++) {
+                        IOLog("%c", data[i + 2]);
+                    }
+                    IOLog("'\n");
+                }
+                break;
+            }
+            case 4:  /* Vendor Defined */
+            {
+                if (verbose) {
+                    IOLog("vendor defined(%d bytes)", largeLength);
+                    for (i = 0; i < largeLength; i++) {
+                        unsigned char ch = data[i];
+                        unsigned char printable = (ch >= 0x20 && ch < 0x80) ? ch : '.';
+                        IOLog(" '%c'[%xh]", printable, ch);
+                    }
+                    IOLog(" ]\n");
+                }
+                break;
+            }
             }
 
-            offset += 3 + itemLen;
-        } else {
-            /* Small resource item */
-            unsigned char itemLen = tag & 0x07;
-            unsigned char itemType = (tag >> 3) & 0x0F;
+            /* Advance past item data */
+            data += itemLength;
+            bytesLeft -= itemLength;
+        }
+        else {
+            /* Small item format: [tag+len] [data...] */
+            /* Length is in bits 0-2, type is in bits 3-6 */
+            itemLength = tag & 0x7;
+            unsigned char itemType = (tag >> 3) & 0xF;
 
-            IOLog("  Small resource: type=0x%02X, length=%d\n", itemType, itemLen);
-
-            /* Parse based on type */
-            switch (itemType) {
-                case 0x04: /* IRQ descriptor */
-                    if (itemLen >= 2 && offset + 1 + itemLen <= length) {
-                        unsigned int irqMask = data[offset + 1] | (data[offset + 2] << 8);
-                        id irqResource = [[PnPInterruptResource alloc] init];
-                        [irqResource setIRQMask:irqMask];
-                        [_irqList addObject:irqResource];
-
-                        IOLog("    IRQ mask: 0x%04X\n", irqMask);
-                    }
-                    break;
-
-                case 0x05: /* DMA descriptor */
-                    if (itemLen >= 1 && offset + 1 + itemLen <= length) {
-                        unsigned char dmaMask = data[offset + 1];
-                        id dmaResource = [[PnPDMAResource alloc] init];
-                        [dmaResource setChannelMask:dmaMask];
-                        [_dmaList addObject:dmaResource];
-
-                        IOLog("    DMA mask: 0x%02X\n", dmaMask);
-                    }
-                    break;
-
-                case 0x08: /* I/O port descriptor */
-                    if (itemLen >= 7 && offset + 1 + itemLen <= length) {
-                        unsigned int minBase = data[offset + 2] | (data[offset + 3] << 8);
-                        unsigned int maxBase = data[offset + 4] | (data[offset + 5] << 8);
-                        unsigned char alignment = data[offset + 6];
-                        unsigned char portLen = data[offset + 7];
-
-                        id ioResource = [[PnPIOPortResource alloc] init];
-                        [ioResource setMinBase:minBase];
-                        [ioResource setMaxBase:maxBase];
-                        [ioResource setAlignment:alignment];
-                        [ioResource setLength:portLen];
-                        [_ioPortList addObject:ioResource];
-
-                        IOLog("    I/O: 0x%04X-0x%04X align=%d length=%d\n",
-                              minBase, maxBase, alignment, portLen);
-                    }
-                    break;
-
-                case 0x0F: /* End tag */
-                    IOLog("  End of resource data\n");
-                    return;
+            /* Check for end tag */
+            if ((tag & 0x78) == 0x78) {  /* End tag (type 0xF) */
+                return YES;
             }
 
-            offset += 1 + itemLen;
+            /* Check if we have enough data */
+            if (bytesLeft < itemLength) {
+                IOLog("PnPDeviceResources: bytes left %d, needed %d\n", bytesLeft, itemLength);
+                return NO;
+            }
+
+            /* Parse small item by type */
+            switch (itemType) {
+            case 1:  /* PnP Version Number */
+            {
+                if (verbose) {
+                    IOLog("Plug and Play Version %d.%d (Vendor %d.%d)\n",
+                          data[0] >> 4, data[0] & 0xF,
+                          data[1] >> 4, data[1] & 0xF);
+                }
+                break;
+            }
+            case 2:  /* Logical Device ID */
+            {
+                /* Allocate new logical device */
+                logicalDevice = [[[objc_getClass("PnPLogicalDevice") alloc] init] init];
+                if (logicalDevice == nil) {
+                    IOLog("PnPDeviceResources: allocate PnPLogicalDevice failed\n");
+                    return NO;
+                }
+
+                /* Set logical device number (count of devices so far) */
+                [logicalDevice setLogicalDeviceNumber:[_deviceList count]];
+
+                /* Add to device list */
+                [_deviceList addObject:logicalDevice];
+
+                /* Extract and set device ID (4 bytes, reversed) */
+                deviceID = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0];
+                [logicalDevice setID:deviceID];
+
+                if (verbose) {
+                    /* Convert to vendor ID string */
+                    vendorID[0] = ((deviceID >> 26) & 0x1F) + 0x40;
+                    vendorID[1] = ((deviceID >> 21) & 0x1F) + 0x40;
+                    vendorID[2] = ((deviceID >> 16) & 0x1F) + 0x40;
+                    sprintf(vendorID + 3, "%04x", deviceID & 0xFFFF);
+                    vendorID[7] = '\0';
+                    IOLog("\nLogical Device %d: Id %s (0x%lx)\n",
+                          [logicalDevice logicalDeviceNumber], vendorID, (unsigned long)deviceID);
+                }
+
+                /* Check flags byte at offset 4 (if length >= 5) */
+                if (itemLength >= 5) {
+                    unsigned char flags = data[4];
+                    if ((flags & 1) && verbose) {
+                        IOLog("boot process participation capable\n");
+                    }
+                    if (flags & 0xFE) {
+                        if (verbose) IOLog("register support:");
+                        for (i = 1; i < 8; i++) {
+                            if ((flags >> i) & 1) {
+                                if (verbose) IOLog(" 0x%x", 0x30 + i);
+                            }
+                        }
+                        if (verbose) IOLog("\n");
+                    }
+                }
+
+                /* Check extended flags at offset 5 (if length > 5) */
+                if (itemLength > 5) {
+                    unsigned char flags2 = data[5];
+                    if (flags2 != 0) {
+                        if (verbose) IOLog("register support:");
+                        for (i = 0; i < 8; i++) {
+                            if ((flags2 >> i) & 1) {
+                                if (verbose) IOLog(" 0x%x", 0x38 + i);
+                            }
+                        }
+                        if (verbose) IOLog("\n");
+                    }
+                }
+                break;
+            }
+            case 3:  /* Compatible Device ID */
+            {
+                /* Extract compatible ID (4 bytes, reversed) */
+                deviceID = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0];
+
+                if (verbose) {
+                    vendorID[0] = ((deviceID >> 26) & 0x1F) + 0x40;
+                    vendorID[1] = ((deviceID >> 21) & 0x1F) + 0x40;
+                    vendorID[2] = ((deviceID >> 16) & 0x1F) + 0x40;
+                    sprintf(vendorID + 3, "%04x", deviceID & 0xFFFF);
+                    vendorID[7] = '\0';
+                    IOLog("Compatible Device Id: %s (0x%lx)\n", vendorID, (unsigned long)deviceID);
+                }
+
+                [logicalDevice addCompatID:deviceID];
+                break;
+            }
+            case 4:  /* IRQ Format */
+            {
+                id irq = [[[objc_getClass("pnpIRQ") alloc] initFrom:data Length:itemLength] init];
+                if (irq == nil) {
+                    IOLog("PnPDeviceResources: failed to parse IRQ\n");
+                    return NO;
+                }
+                if (depthCounter == 0) {
+                    [[[logicalDevice resources] addIRQ:irq] free];
+                } else {
+                    [[depResources addIRQ:irq] free];
+                }
+                break;
+            }
+            case 5:  /* DMA Format */
+            {
+                id dma = [[[objc_getClass("pnpDMA") alloc] initFrom:data Length:itemLength] init];
+                if (dma == nil) {
+                    IOLog("PnPDeviceResources: failed to parse DMA\n");
+                    return NO;
+                }
+                if (depthCounter == 0) {
+                    [[[logicalDevice resources] addDMA:dma] free];
+                } else {
+                    [[depResources addDMA:dma] free];
+                }
+                break;
+            }
+            case 6:  /* Start Dependent Functions */
+            {
+                if (verbose) {
+                    IOLog("Start dependent function %d ", depthCounter);
+                }
+                depthCounter++;
+
+                /* Allocate dependent resources object */
+                depResources = [[[objc_getClass("PnPDependentResources") alloc] init] init];
+                if (depResources == nil) {
+                    IOLog("PnPDeviceResources: failed to alloc depResources\n");
+                    return NO;
+                }
+
+                /* Mark start of dependent resources */
+                [[[logicalDevice resources] markStartDependentResources] free];
+
+                /* Add to logical device's dependent resources list */
+                [[[logicalDevice depResources] addObject:depResources] free];
+
+                /* Set good config flag (default: good) */
+                [depResources setGoodConfig:1];
+
+                /* Check priority byte if present */
+                if (itemLength > 0) {
+                    unsigned char priority = data[0];
+                    if (priority == 0) {
+                        if (verbose) IOLog("[good configuration]");
+                    } else if (priority == 1) {
+                        if (verbose) IOLog("[acceptable configuration]");
+                    } else if (priority == 2) {
+                        [depResources setGoodConfig:0];
+                        if (verbose) IOLog("[suboptimal configuration]");
+                    }
+                }
+                if (verbose) IOLog("\n");
+                break;
+            }
+            case 7:  /* End Dependent Functions */
+            {
+                if (verbose) {
+                    IOLog("End of dependent functions\n");
+                }
+                depthCounter = 0;
+                depResources = nil;
+                break;
+            }
+            case 8:  /* I/O Port Descriptor */
+            case 9:  /* Fixed I/O Port Descriptor */
+            {
+                id ioPort = [[[objc_getClass("pnpIOPort") alloc]
+                             initFrom:data Length:itemLength Type:itemType] init];
+                if (ioPort == nil) {
+                    IOLog("PnPDeviceResources: failed to parse ioPort\n");
+                    return NO;
+                }
+                if (depthCounter == 0) {
+                    [[[logicalDevice resources] addIOPort:ioPort] free];
+                } else {
+                    [[depResources addIOPort:ioPort] free];
+                }
+                break;
+            }
+            case 0xE:  /* Vendor Defined */
+            {
+                if (verbose) {
+                    IOLog("vendor defined(%d bytes)[", itemLength);
+                    for (i = 0; i < itemLength; i++) {
+                        unsigned char ch = data[i];
+                        unsigned char printable = (ch >= 0x20 && ch < 0x80) ? ch : '.';
+                        IOLog(" '%c'[%xh]", printable, ch);
+                    }
+                    IOLog(" ]\n");
+                }
+                break;
+            }
+            }
+
+            /* Advance past item data */
+            data += itemLength;
+            bytesLeft -= itemLength;
         }
     }
 
-    IOLog("PnPDeviceResources: Parsed %d IRQs, %d DMAs, %d I/O ports, %d memory ranges\n",
-          [_irqList count], [_dmaList count], [_ioPortList count], [_memoryList count]);
+    return YES;
 }
 
 @end

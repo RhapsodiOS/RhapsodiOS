@@ -29,73 +29,19 @@
 
 #import "EISAKernBusInterrupt.h"
 #import <driverkit/KernLock.h>
-#import <driverkit/KernBusInterruptPrivate.h>
 #import <machdep/i386/intr_exported.h>
-
-/*
- * Interrupt dispatch wrapper
- * Called by the low-level interrupt handler
- */
-static void
-EISAKernBusInterruptDispatch(unsigned int which, void *state, int old_ipl)
-{
-    BOOL leave_enabled;
-    EISAKernBusInterrupt *interrupt = (EISAKernBusInterrupt *)which;
-
-    /* Dispatch to registered device interrupt handlers */
-    leave_enabled = KernBusInterruptDispatch(interrupt, state);
-
-    /* If handlers want interrupt disabled, disable it */
-    if (!leave_enabled) {
-        [interrupt->_EISALock acquire];
-        if (interrupt->_irqEnabled) {
-            intr_disable_irq(interrupt->_irq);
-            interrupt->_irqEnabled = NO;
-        }
-        [interrupt->_EISALock release];
-    }
-}
-
-/*
- * ============================================================================
- * EISAKernBusInterrupt Implementation
- * ============================================================================
- */
 
 @implementation EISAKernBusInterrupt
 
-- initForResource:resource
-             item:(unsigned int)item
-        shareable:(BOOL)shareable
-{
-    [super initForResource:resource item:item shareable:shareable];
-
-    _irq = item;
-    _irqEnabled = NO;
-    _irqAttached = NO;
-    _EISALock = [[KernLock alloc] initWithLevel:INTR_IPL7];
-    _priorityLevel = INTR_IPL3;  /* Default to IPL3 for device interrupts */
-
-    return self;
-}
-
 - dealloc
 {
-    /* Make sure interrupt is disabled and detached */
-    if (_irqAttached) {
-        [_EISALock acquire];
-        if (_irqEnabled) {
-            intr_disable_irq(_irq);
-            _irqEnabled = NO;
-        }
-        intr_unregister_irq(_irq);
-        _irqAttached = NO;
-        [_EISALock release];
-    }
+    /* Unregister the IRQ */
+    intr_unregister_irq(_irq);
 
+    /* Free the lock */
     [_EISALock free];
-    _EISALock = nil;
 
+    /* Call superclass dealloc */
     return [super dealloc];
 }
 
@@ -104,42 +50,28 @@ EISAKernBusInterruptDispatch(unsigned int which, void *state, int old_ipl)
  */
 - attachDeviceInterrupt:interrupt
 {
+    int result;
+
+    /* Check for NULL interrupt */
     if (interrupt == nil) {
         return nil;
     }
 
+    /* Acquire lock */
     [_EISALock acquire];
 
-    /* Register the interrupt with the system if not already done */
-    if (!_irqAttached) {
-        if (!intr_register_irq(_irq, EISAKernBusInterruptDispatch,
-                               (unsigned int)self, _priorityLevel)) {
-            IOLog("EISAKernBusInterrupt: Failed to register IRQ %d\n", _irq);
-            [_EISALock release];
-            return nil;
-        }
-        _irqAttached = YES;
+    /* Call superclass to attach the device interrupt */
+    result = [super attachDeviceInterrupt:interrupt];
+
+    /* If attachment succeeded and IRQ is not enabled, enable it */
+    if (result != 0 && !_irqEnabled) {
+        intr_enable_irq(_irq);
+        _irqEnabled = YES;
     }
 
-    /*
-     * Call super to attach the device interrupt
-     * Returns nil if interrupt is suspended
-     */
-    if ([super attachDeviceInterrupt:interrupt]) {
-        /* Enable the IRQ if not already enabled */
-        if (!_irqEnabled) {
-            intr_enable_irq(_irq);
-            _irqEnabled = YES;
-        }
-    } else {
-        /* Interrupt is suspended, keep IRQ disabled */
-        if (_irqEnabled) {
-            intr_disable_irq(_irq);
-            _irqEnabled = NO;
-        }
-    }
-
+    /* Release lock */
     [_EISALock release];
+
     return self;
 }
 
@@ -148,61 +80,42 @@ EISAKernBusInterruptDispatch(unsigned int which, void *state, int old_ipl)
  */
 - attachDeviceInterrupt:interrupt atLevel:(int)level
 {
+    int result;
+
+    /* Check for NULL interrupt */
     if (interrupt == nil) {
         return nil;
     }
 
+    /* Acquire lock */
     [_EISALock acquire];
 
-    /* Validate priority level */
-    if (level < INTR_IPL0 || level > INTR_IPL7) {
-        IOLog("EISAKernBusInterrupt: Invalid priority level %d\n", level);
+    /* Validate priority level - must be between current priority and 6 (IPL6) */
+    if (level < _priorityLevel || level > 6) {
         [_EISALock release];
         return nil;
     }
 
-    /* Update priority level if changed */
-    if (_irqAttached && level != _priorityLevel) {
-        /* Change the IPL for this IRQ */
-        if (!intr_change_ipl(_irq, level)) {
-            IOLog("EISAKernBusInterrupt: Failed to change IPL for IRQ %d\n", _irq);
-            [_EISALock release];
-            return nil;
-        }
+    /* If raising priority level, change IPL */
+    if (_priorityLevel < level) {
+        intr_change_ipl(_irq, level);
     }
 
+    /* Update priority level */
     _priorityLevel = level;
 
-    /* Register the interrupt with the system if not already done */
-    if (!_irqAttached) {
-        if (!intr_register_irq(_irq, EISAKernBusInterruptDispatch,
-                               (unsigned int)self, _priorityLevel)) {
-            IOLog("EISAKernBusInterrupt: Failed to register IRQ %d\n", _irq);
-            [_EISALock release];
-            return nil;
-        }
-        _irqAttached = YES;
+    /* Call superclass to attach the device interrupt */
+    result = [super attachDeviceInterrupt:interrupt];
+
+    /* If attachment succeeded and IRQ is not enabled, enable it */
+    if (result != 0 && !_irqEnabled) {
+        intr_enable_irq(_irq);
+        _irqEnabled = YES;
     }
 
-    /*
-     * Call super to attach the device interrupt
-     * Returns nil if interrupt is suspended
-     */
-    if ([super attachDeviceInterrupt:interrupt]) {
-        /* Enable the IRQ if not already enabled */
-        if (!_irqEnabled) {
-            intr_enable_irq(_irq);
-            _irqEnabled = YES;
-        }
-    } else {
-        /* Interrupt is suspended, keep IRQ disabled */
-        if (_irqEnabled) {
-            intr_disable_irq(_irq);
-            _irqEnabled = NO;
-        }
-    }
-
+    /* Release lock */
     [_EISALock release];
+
     return self;
 }
 

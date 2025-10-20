@@ -28,178 +28,366 @@
  */
 
 #import "EISAResourceDriver.h"
-#import <driverkit/generalFuncs.h>
+#import "EISAKernBus.h"
+#import "eisa.h"
+#import <driverkit/KernBus.h>
+#import <driverkit/IODevice.h>
+#import <machdep/i386/io_inline.h>
+#import <string.h>
+#import <stdlib.h>
+
+/* Parameter name keys */
+static const char *keys[] = {
+    "Slot(",           /* 0 - Read slot info */
+    "Function(",       /* 1 - Read function info */
+    "Register(",       /* 2 - Read PnP register */
+    "Write(",          /* 3 - Write to PnP register */
+    "Config(",         /* 4 - Read PnP config */
+    "Port(",           /* 5 - Read I/O port */
+    "Out(",            /* 6 - Write to I/O port */
+    "IDs(",            /* 7 - Parse ID prefix */
+    "",                /* 8 - continuation of IDs */
+    "Instance(",       /* 9 - Lookup by instance */
+    "Device(",         /* 10 - Read device config */
+    "Node("            /* 11 - Read system node */
+};
 
 @implementation EISAResourceDriver
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription
+/*
+ * Probe method - called to determine if driver can handle a device
+ * This is a class method that attempts to create an instance
+ * Returns YES if the driver can handle the device, NO otherwise
+ */
++ (BOOL)probe:deviceDescription
 {
-    /* Probe for EISA resource driver compatibility */
-    if (deviceDescription == nil) {
+    id instance;
+    id result;
+
+    /* Try to allocate and initialize an instance with the device description */
+    instance = [EISAResourceDriver alloc];
+    result = [instance initFromDeviceDescription:deviceDescription];
+
+    /* Check if initialization succeeded */
+    if (result == nil) {
         return NO;
     }
 
-    /* Check if this is an EISA device description */
-    id busType = [deviceDescription propertyForKey:"BusType"];
-    if (busType != nil) {
-        const char *busTypeName = [busType cStringValue];
-        if (busTypeName != NULL && strcmp(busTypeName, "EISA") == 0) {
-            IOLog("EISAResourceDriver: Probing EISA device\n");
-            return YES;
-        }
-    }
-
-    /* Also accept devices with EISA slot information */
-    id slotProperty = [deviceDescription propertyForKey:"Slot"];
-    if (slotProperty != nil) {
-        IOLog("EISAResourceDriver: Found device with slot property\n");
-        return YES;
-    }
-
-    return NO;
-}
-
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
-{
-    if ([super initFromDeviceDescription:deviceDescription] == nil) {
-        return nil;
-    }
-
-    _resourceData = NULL;
-    _initialized = NO;
-
-    [self setName:"EISAResourceDriver"];
-    [self setDeviceKind:"EISAResourceDriver"];
-
-    /* Extract device information from description */
-    id slotProperty = [deviceDescription propertyForKey:"Slot"];
-    if (slotProperty != nil) {
-        int slot = [[slotProperty objectAt:0] intValue];
-        IOLog("EISAResourceDriver: Initializing for EISA slot %d\n", slot);
-    }
-
-    /* Log available resources */
-    id irqProperty = [deviceDescription propertyForKey:"IRQ"];
-    if (irqProperty != nil) {
-        int irq = [[irqProperty objectAt:0] intValue];
-        IOLog("EISAResourceDriver: Device uses IRQ %d\n", irq);
-    }
-
-    id ioProperty = [deviceDescription propertyForKey:"IOPorts"];
-    if (ioProperty != nil) {
-        int count = [ioProperty count];
-        int i;
-        for (i = 0; i < count; i++) {
-            id range = [ioProperty objectAt:i];
-            unsigned int base = [[range objectAt:0] intValue];
-            unsigned int length = [[range objectAt:1] intValue];
-            IOLog("EISAResourceDriver: Device uses I/O ports 0x%04X-0x%04X\n",
-                  base, base + length - 1);
-        }
-    }
-
-    return self;
-}
-
-- free
-{
-    /* Ensure resources are deallocated before freeing */
-    if (_initialized) {
-        [self deallocateResources];
-    }
-
-    if (_resourceData != NULL) {
-        IOFree(_resourceData, 256);
-        _resourceData = NULL;
-    }
-
-    return [super free];
-}
-
-- (BOOL)allocateResources
-{
-    /* Allocate hardware resources for this EISA device */
-    IOLog("EISAResourceDriver: Allocating resources\n");
-
-    /* Allocate memory for resource tracking */
-    if (_resourceData == NULL) {
-        _resourceData = (void *)IOMalloc(256); /* Allocate resource structure */
-        if (_resourceData == NULL) {
-            IOLog("EISAResourceDriver: Failed to allocate resource data\n");
-            return NO;
-        }
-        bzero(_resourceData, 256);
-    }
-
-    /* Parse device description and allocate each resource type */
-    id deviceDescription = [self deviceDescription];
-    if (deviceDescription != nil) {
-        /* Allocate IRQ resources */
-        id irqProperty = [deviceDescription propertyForKey:"IRQ"];
-        if (irqProperty != nil) {
-            int irq = [[irqProperty objectAt:0] intValue];
-            IOLog("EISAResourceDriver: Requesting IRQ %d\n", irq);
-            /* Would call: [self reserveInterruptLine:irq] */
-        }
-
-        /* Allocate DMA channels */
-        id dmaProperty = [deviceDescription propertyForKey:"DMA"];
-        if (dmaProperty != nil) {
-            int dma = [[dmaProperty objectAt:0] intValue];
-            IOLog("EISAResourceDriver: Requesting DMA channel %d\n", dma);
-            /* Would call: [self reserveDMAChannel:dma] */
-        }
-
-        /* Allocate I/O port ranges */
-        id ioProperty = [deviceDescription propertyForKey:"IOPorts"];
-        if (ioProperty != nil) {
-            int count = [ioProperty count];
-            int i;
-            for (i = 0; i < count; i++) {
-                id range = [ioProperty objectAt:i];
-                unsigned int base = [[range objectAt:0] intValue];
-                unsigned int length = [[range objectAt:1] intValue];
-                IOLog("EISAResourceDriver: Requesting I/O ports 0x%04X-0x%04X\n",
-                      base, base + length - 1);
-                /* Would call: [self reserveIOPorts:base length:length] */
-            }
-        }
-
-        /* Allocate memory ranges */
-        id memProperty = [deviceDescription propertyForKey:"Memory"];
-        if (memProperty != nil) {
-            int count = [memProperty count];
-            int i;
-            for (i = 0; i < count; i++) {
-                id range = [memProperty objectAt:i];
-                unsigned int base = [[range objectAt:0] intValue];
-                unsigned int length = [[range objectAt:1] intValue];
-                IOLog("EISAResourceDriver: Requesting memory 0x%08X-0x%08X\n",
-                      base, base + length - 1);
-                /* Would call: [self reserveMemory:base length:length] */
-            }
-        }
-    }
-
-    _initialized = YES;
-    IOLog("EISAResourceDriver: Resource allocation complete\n");
     return YES;
 }
 
-- (void)deallocateResources
+/*
+ * Initialize from device description
+ */
+- initFromDeviceDescription:deviceDescription
 {
-    /* Deallocate all hardware resources */
-    IOLog("EISAResourceDriver: Deallocating resources\n");
+    id result;
 
-    /* Free allocated resources */
-    if (_resourceData != NULL) {
-        /* Would release IRQ, DMA, I/O ports, and memory here */
-        IOFree(_resourceData, 256);
-        _resourceData = NULL;
+    /* Call superclass initialization */
+    result = [super initFromDeviceDescription:deviceDescription];
+
+    if (result != nil) {
+        /* Set device name and kind */
+        [self setName:"EISA0"];
+        [self setDeviceKind:"Bus"];
+
+        /* Register the device */
+        [self registerDevice];
+
+        /* Setup boot flag */
+        [self setupBootFlag];
     }
 
-    _initialized = NO;
-    IOLog("EISAResourceDriver: Resource deallocation complete\n");
+    return result;
+}
+
+/*
+ * Get character values for parameter
+ */
+- (IOReturn)getCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int *)count
+{
+    id busInstance;
+    unsigned int keyIndex;
+    char *parsePtr;
+    char *originalPtr;
+    long slot, function, value;
+    unsigned int portValue;
+    unsigned short portAddr;
+    char readByte;
+    unsigned int copySize;
+    char localBuffer[320];
+
+    /* Look up the EISA bus instance */
+    busInstance = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
+
+    /* Find which key matches the parameter name */
+    keyIndex = 0;
+    parsePtr = NULL;
+
+    do {
+        parsePtr = EISAParsePrefix(keys[keyIndex], parameterName);
+        if (parsePtr != NULL) {
+            break;
+        }
+        keyIndex++;
+    } while (keyIndex < 12);
+
+    /* Handle each parameter type */
+    switch (keyIndex) {
+    case 0: /* Slot( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        if (*count > 15 && getEISASlotInfo(slot, parameterArray)) {
+            *count = 16;
+            return IO_R_SUCCESS;
+        }
+        break;
+
+    case 1: /* Function( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        /* Skip non-digit characters */
+        while (*parsePtr != '\0' && *parsePtr < '0') {
+            parsePtr++;
+        }
+        function = strtol(parsePtr, &parsePtr, 0);
+        if (getEISAFunctionInfo(slot, function, localBuffer)) {
+            copySize = *count;
+            if (copySize > 0x140) {
+                copySize = 0x140;
+            }
+            bcopy(localBuffer, parameterArray, copySize);
+            *count = copySize;
+            return IO_R_SUCCESS;
+        }
+        break;
+
+    case 2: /* Register( */
+        value = strtol(parsePtr, &parsePtr, 0);
+        if (*count != 1) {
+            return IO_R_INVALID_ARG;
+        }
+        readByte = [busInstance readPnPRegister:(value & 0xFF)];
+        *parameterArray = readByte;
+        return IO_R_SUCCESS;
+
+    case 4: /* Config( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        readByte = [busInstance readPnPConfig:parameterArray length:count forCard:slot];
+        if (readByte == 0) {
+            return IO_R_INVALID_ARG;
+        }
+        return IO_R_SUCCESS;
+
+    case 5: /* Port( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        portAddr = (unsigned short)slot;
+
+        if (*count == 1) {
+            readByte = inb(portAddr);
+            *parameterArray = readByte;
+            return IO_R_SUCCESS;
+        } else if (*count == 2) {
+            portValue = inw(portAddr);
+            *(unsigned short *)parameterArray = (unsigned short)portValue;
+            return IO_R_SUCCESS;
+        } else if (*count == 4) {
+            portValue = inw(portAddr);
+            *(unsigned int *)parameterArray = portValue & 0xFFFF;
+            return IO_R_SUCCESS;
+        }
+        return IO_R_INVALID_ARG;
+
+    case 7: /* IDs( - parse EISA or PnP prefix */
+        _bufferLength = 0;
+        bzero(_idBuffer, 512);
+
+        originalPtr = EISAParsePrefix("EISA)", parsePtr);
+        if (originalPtr == NULL) {
+            parsePtr = EISAParsePrefix("PnP)", parsePtr);
+            if (parsePtr == NULL) {
+                return IO_R_INVALID;
+            }
+            _isEISA = NO;
+        } else {
+            _isEISA = YES;
+            parsePtr = originalPtr;
+        }
+        /* Fall through to case 8 */
+
+    case 8: /* Continue building ID string */
+        while (parsePtr < parameterName + 64 && *parsePtr != '\0' && _bufferLength < 0x1FF) {
+            _idBuffer[_bufferLength] = *parsePtr;
+            _bufferLength++;
+            parsePtr++;
+        }
+        _idBuffer[_bufferLength] = '\0';
+        strncpy((char *)parameterArray, _idBuffer, *count);
+        return IO_R_SUCCESS;
+
+    case 9: /* Instance( */
+        if (*count < 80) {
+            return IO_R_INVALID_ARG;
+        }
+
+        if (_idBuffer[0] != '\0') {
+            unsigned long instance = strtoul(parsePtr, &parsePtr, 0);
+
+            if (_isEISA) {
+                return LookForEISAID(instance, _idBuffer, parameterArray, count);
+            } else {
+                /* PnP lookup */
+                unsigned int logicalDevice;
+                id deviceResources = [busInstance lookForPnPIDs:_idBuffer
+                                                       Instance:instance
+                                                  LogicalDevice:&logicalDevice];
+                if (deviceResources != nil) {
+                    unsigned long serialNum = [deviceResources serialNumber];
+                    unsigned long idValue = [deviceResources ID];
+
+                    sprintf((char *)parameterArray, "Card:0x%lx Serial:0x%lx Logical:0x%x",
+                            idValue, serialNum, logicalDevice);
+
+                    /* Calculate string length */
+                    unsigned int len = 0;
+                    while (parameterArray[len] != '\0' && len < *count) {
+                        len++;
+                    }
+                    *count = len;
+                    return IO_R_SUCCESS;
+                }
+                *count = 0;
+            }
+        }
+        return IO_R_INVALID;
+
+    case 10: /* Device( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        function = strtol(parsePtr, &parsePtr, 0);
+        readByte = [busInstance readPnPDeviceCfg:parameterArray
+                                          length:count
+                                         forCard:slot
+                                   LogicalDevice:function];
+        if (readByte == 0) {
+            return IO_R_INVALID_ARG;
+        }
+        return IO_R_SUCCESS;
+
+    case 11: /* Node( */
+        slot = strtol(parsePtr, &parsePtr, 0);
+        if (parsePtr == NULL) {
+            return IO_R_INVALID_ARG;
+        }
+        readByte = [busInstance readSystemNode:parameterArray length:count forNode:slot];
+        if (readByte != 1) {
+            return IO_R_INVALID_ARG;
+        }
+        return IO_R_SUCCESS;
+
+    default:
+        /* Unknown parameter - call superclass */
+        return [super getCharValues:parameterArray forParameter:parameterName count:count];
+    }
+
+    /* Cases that break end up here - parameter not found */
+    *count = 0;
+    return IO_R_INVALID_ARG;
+}
+
+/*
+ * Set character values for parameter
+ */
+- (IOReturn)setCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int)count
+{
+    id busInstance;
+    unsigned int keyIndex;
+    char *parsePtr;
+    unsigned int registerNum;
+    long portAddr;
+    unsigned short portValue16;
+
+    /* Look up the EISA bus instance */
+    busInstance = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
+
+    /* Find which key matches the parameter name */
+    keyIndex = 0;
+    parsePtr = NULL;
+
+    do {
+        parsePtr = EISAParsePrefix(keys[keyIndex], parameterName);
+        if (parsePtr != NULL) {
+            break;
+        }
+        keyIndex++;
+    } while (keyIndex < 12);
+
+    /* Handle parameter writes based on key index */
+    if (keyIndex == 3) {
+        /* Write to PnP register - expects index 3 to handle register writes */
+        registerNum = strtol(parsePtr, &parsePtr, 0);
+        if (count == 1) {
+            [busInstance writePnPRegister:(registerNum & 0xFF) value:*parameterArray];
+            return IO_R_SUCCESS;
+        }
+    } else if (keyIndex == 6) {
+        /* Write to I/O port - expects index 6 to handle port writes */
+        portAddr = strtol(parsePtr, &parsePtr, 0);
+        portValue16 = (unsigned short)portAddr;
+
+        if (count == 1) {
+            /* Write 1 byte */
+            outb(portValue16, *parameterArray);
+            return IO_R_SUCCESS;
+        } else if (count == 2) {
+            /* Write 2 bytes (word) */
+            outw(portValue16, *(unsigned short *)parameterArray);
+            return IO_R_SUCCESS;
+        } else if (count == 4) {
+            /* Write 4 bytes (dword) - uses 2-byte writes on i386 */
+            outw(portValue16, *(unsigned short *)parameterArray);
+            return IO_R_SUCCESS;
+        }
+    } else {
+        /* Unknown parameter - call superclass */
+        return [super setCharValues:parameterArray forParameter:parameterName count:count];
+    }
+
+    return IO_R_INVALID_ARG;
+}
+
+/*
+ * Setup boot flag
+ */
+- setupBootFlag
+{
+    id deviceDescription;
+    id configTable;
+    const char *coldBootValue;
+
+    /* Get device description */
+    deviceDescription = [self deviceDescription];
+
+    /* Get config table from device description */
+    configTable = [deviceDescription configTable];
+
+    /* Get "Cold Boot" configuration value */
+    coldBootValue = [configTable valueForStringKey:"Cold Boot"];
+
+    if (coldBootValue != NULL) {
+        /* Check if cold boot is enabled (starts with 'y' or 'Y') */
+        if (*coldBootValue == 'y' || *coldBootValue == 'Y') {
+            /* Write 0 to BIOS boot flag location (0x472) to force cold boot */
+            /* This is the PC BIOS warm boot flag - 0x0000 = cold boot, 0x1234 = warm boot */
+            *(unsigned short *)0x00000472 = 0;
+        }
+
+        /* Free the string */
+        [configTable freeString:coldBootValue];
+    }
+
+    return self;
 }
 
 @end

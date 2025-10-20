@@ -23,37 +23,52 @@
  */
 
 /*
- * PnPMemoryResource.h
- * PnP Memory Resource Descriptor
+ * pnpIOPort.h
+ * PnP I/O Port Resource Descriptor
  */
 
-#ifndef _PNPMEMORYRESOURCE_H_
-#define _PNPMEMORYRESOURCE_H_
+#ifndef _PNPIOPORT_H_
+#define _PNPIOPORT_H_
 
 #import <objc/Object.h>
 
-/* PnPMemoryResource - Memory resource descriptor */
-@interface PnPMemoryResource : Object
+/* pnpIOPort - I/O port range resource descriptor */
+@interface pnpIOPort : Object
 {
     @private
-    unsigned int _minBase;
-    unsigned int _maxBase;
-    unsigned int _alignment;
-    unsigned int _length;
-    unsigned char _flags;
+    unsigned short _min_base;      /* Minimum base address at offset 0x04 */
+    unsigned short _max_base;      /* Maximum base address at offset 0x06 */
+    unsigned short _alignment;     /* Alignment at offset 0x08 */
+    unsigned short _length;        /* Length at offset 0x0a */
+    unsigned char _lines_decoded;  /* Address lines decoded at offset 0x0c */
 }
-- init;
-- free;
-- (void)setMinBase:(unsigned int)base;
-- (void)setMaxBase:(unsigned int)base;
-- (void)setAlignment:(unsigned int)align;
-- (void)setLength:(unsigned int)len;
-- (void)setFlags:(unsigned char)flags;
-- (unsigned int)minBase;
-- (unsigned int)maxBase;
-- (unsigned int)alignment;
-- (unsigned int)length;
-- (unsigned char)flags;
+
+/*
+ * Initialization
+ */
+- initFrom:(void *)buffer Length:(int)length Type:(int)type;
+- initWithBase:(unsigned short)base Length:(unsigned short)length;
+
+/*
+ * I/O port information
+ */
+- (unsigned short)min_base;
+- (unsigned short)max_base;
+- (unsigned short)alignment;
+- (unsigned short)length;
+- (unsigned char)lines_decoded;
+- (BOOL)matches:(id)otherPort;
+
+/*
+ * Output
+ */
+- print;
+
+/*
+ * Configuration
+ */
+- writePnPConfig:(id)portObject Index:(int)index;
+
 @end
 
-#endif /* _PNPMEMORYRESOURCE_H_ */
+#endif /* _PNPIOPORT_H_ */

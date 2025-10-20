@@ -15,9 +15,9 @@ LANGUAGE = English
 
 CFILES =
 
-MFILES = PnPDump.m PnPDeviceResources.m
+MFILES = PnPDump.m
 
-HFILES = PnPDeviceResources.h
+HFILES =
 
 OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 

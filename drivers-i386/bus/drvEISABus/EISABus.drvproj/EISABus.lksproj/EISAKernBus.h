@@ -32,8 +32,6 @@
 
 #import <driverkit/KernBus.h>
 
-@class EISAKernBusInterrupt;
-
 /*
  * EISAKernBus - EISA Bus driver conforming to KernBus protocol
  */
@@ -43,24 +41,13 @@
     void *_eisaData;
     int _slotCount;
     BOOL _initialized;
-    BOOL _inDependentSection;
-    int _dependentPriority;
-    id _pnpResourceTable;  /* Array/table of discovered PnP resources */
-    id _niosTable;         /* NIOS (Non-Invasive Override String) table */
 }
 
 /*
  * Bus lifecycle methods
  */
-+ initialize;
 - init;
 - free;
-
-/*
- * Slot management
- */
-- (int)getEISASlotNumber:(int)slot;
-- (BOOL)testSlot:(int)slot;
 
 /*
  * EISA slot information (required by IOEISADeviceDescription)
@@ -70,42 +57,15 @@
       usingDeviceDescription:deviceDescription;
 
 /*
+ * Slot testing
+ */
+- (BOOL)testIDs:(const char *)ids slot:(unsigned int)slot;
+
+/*
  * Resource management (KernBus protocol)
  */
 - (const char **)resourceNames;
-
-@end
-
-/*
- * EISAKernBus Private Category for Plug and Play Support
- */
-@interface EISAKernBus(PlugAndPlayPrivate)
-
-- (void)initializeNIOSTable;
-- (void *)pnpReadConfig:(int)length forCard:(int)csn;
-- (void)pnpSetResourcesForDescription:(id)description errorStrings:(void *)errorStrings;
-- (BOOL)pnpBios_setDeviceTable:(void *)table cardIndex:(int)index;
-- (unsigned int)pnpBios_computeChecksum:(void *)data readIsolationBit:(BOOL)bit;
-- (void)initializePnPBIOS:(void *)configTable;
-- (void)deactivateLogicalDevices:(id)configTable;
-- (BOOL)testConfig:(void *)config forCard:(int)csn;
-- (BOOL)registerPnPResource:(int)instance
-                        csn:(int)csn
-              logicalDevice:(int)logicalDev
-                   vendorID:(unsigned int)vendorID
-                   deviceID:(unsigned int)deviceID
-               resourceData:(void *)resourceData
-             resourceLength:(int)resourceLength;
-- (BOOL)unregisterPnPResource:(int)instance;
-- (void *)lookForPnPResource:(int)instance;
-- (void)findCardWithID:(int)serial LogicalDevice:(id)logicalDevice;
-- (void)initializePnP:(id)configTable;
-- (void)getConfigForCard:(id)logicalDevice;
-- (void)allocateResources:(id)resources Using:(id)object;
-- (void)setDepStart;
-- (void)setDepEnd;
-- (void)setDependentPriority:(int)priority;
-- (BOOL)inDependentSection;
+- (IOReturn)allocateResourcesForDeviceDescription:deviceDescription;
 
 @end
 

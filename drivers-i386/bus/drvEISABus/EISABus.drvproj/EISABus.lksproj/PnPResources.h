@@ -24,51 +24,76 @@
 
 /*
  * PnPResources.h
- * EISA Plug and Play Resource Management
- * Main header that includes all PnP resource classes
+ * PnP Resources Collection
  */
 
 #ifndef _PNPRESOURCES_H_
 #define _PNPRESOURCES_H_
 
-/* Include all individual PnP resource class headers */
-#import "PnPArgStack.h"
-#import "PnPBios.h"
-#import "PnPDependentResources.h"
-#import "PnPInterruptResource.h"
-#import "PnPIOPortResource.h"
-#import "PnPMemoryResource.h"
-#import "PnPDMAResource.h"
-#import "PnPLogicalDevice.h"
-#import "PnPDeviceResources.h"
-
 #import <objc/Object.h>
 
-/* PnPResources - Main PnP resources container */
+/* Structure for PnP configuration registers */
+typedef struct {
+    unsigned char field0_0x0[4][5];      /* 24-bit memory (4 slots x 5 bytes) */
+    unsigned char field1_0x14[4][9];     /* 32-bit memory (4 slots x 9 bytes) */
+    unsigned char field2_0x38[8][2];     /* I/O ports (8 slots x 2 bytes) */
+    unsigned char field3_0x48[2][2];     /* IRQs (2 slots x 2 bytes) */
+    unsigned char field4_0x4c[2][2];     /* DMAs (2 slots x 2 bytes) */
+} PnPConfigRegisters;
+
+/* PnPResources - Collection of all PnP resources for a device */
 @interface PnPResources : Object
 {
     @private
-    void *_resourceList;
-    int _resourceCount;
-    BOOL _inDependentSection;
-    id _dependentResources;
-    id _goodConfig;
-    id _currentConfig;
+    id _irq;        /* IRQ resource container (PnPResource) at offset 0x04 */
+    id _dma;        /* DMA resource container (PnPResource) at offset 0x08 */
+    id _port;       /* I/O port resource container (PnPResource) at offset 0x0c */
+    id _memory;     /* Memory resource container (PnPResource) at offset 0x10 */
 }
+
+/*
+ * Initialization
+ */
 - init;
-- free;
-- (BOOL)initFromDeviceDescription:(id)description;
-- (void)setDependentFunctionDescription:(id)description;
-- objectAt:(int)index Using:(id)object;
-- (void)print;
-- (void)setGoodConfig:(id)config;
-- (void)addDMA:(id)dma;
-- (void)addIOPort:(id)ioport;
-- (void)addMemory:(id)memory;
-- (void)addIRQ:(id)irq;
-- (void)configure:(id)config Using:(id)object;
+- initFromDeviceDescription:(id)description;
+- initFromRegisters:(PnPConfigRegisters *)registers;
+
+/*
+ * Resource access
+ */
+- (id)irq;
+- (id)dma;
+- (id)port;
+- (id)memory;
+
+/*
+ * Resource management
+ */
+- (id)addIRQ:(id)irqObject;
+- (id)addDMA:(id)dmaObject;
+- (id)addIOPort:(id)portObject;
+- (id)addMemory:(id)memoryObject;
+
+/*
+ * Dependent resources
+ */
 - (void)markStartDependentResources;
-- (void)setoodConfig:(id)config;
+
+/*
+ * Configuration
+ */
+- (void)configure:(id)config Using:(id)depConfig;
+
+/*
+ * Output
+ */
+- (void)print;
+
+/*
+ * Memory management
+ */
+- free;
+
 @end
 
 #endif /* _PNPRESOURCES_H_ */

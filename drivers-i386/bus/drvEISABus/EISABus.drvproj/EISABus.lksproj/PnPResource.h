@@ -23,37 +23,49 @@
  */
 
 /*
- * PnPIOPortResource.h
- * PnP I/O Port Resource Descriptor
+ * PnPResource.h
+ * PnP Resource Container
  */
 
-#ifndef _PNPIOPORTRESOURCE_H_
-#define _PNPIOPORTRESOURCE_H_
+#ifndef _PNPRESOURCE_H_
+#define _PNPRESOURCE_H_
 
 #import <objc/Object.h>
 
-/* PnPIOPortResource - I/O Port resource descriptor */
-@interface PnPIOPortResource : Object
+/* PnPResource - Container for a single type of PnP resource */
+@interface PnPResource : Object
 {
     @private
-    unsigned int _minBase;
-    unsigned int _maxBase;
-    unsigned char _alignment;
-    unsigned char _length;
-    unsigned char _flags;
+    id _list;           /* Resource list at offset 0x04 */
+    int _depStart;      /* Dependent start index at offset 0x08 */
 }
+
+/*
+ * Initialization
+ */
 - init;
+
+/*
+ * Resource list access
+ */
+- (id)list;
+- (void)setDepStart:(int)startIndex;
+
+/*
+ * Resource access with dependent fallback
+ */
+- (id)objectAt:(int)index Using:(id)otherResource;
+
+/*
+ * Resource matching
+ */
+- (BOOL)matches:(id)configResource Using:(id)depResource;
+
+/*
+ * Memory management
+ */
 - free;
-- (void)setMinBase:(unsigned int)base;
-- (void)setMaxBase:(unsigned int)base;
-- (void)setAlignment:(unsigned char)align;
-- (void)setLength:(unsigned char)len;
-- (void)setFlags:(unsigned char)flags;
-- (unsigned int)minBase;
-- (unsigned int)maxBase;
-- (unsigned char)alignment;
-- (unsigned char)length;
-- (unsigned char)flags;
+
 @end
 
-#endif /* _PNPIOPORTRESOURCE_H_ */
+#endif /* _PNPRESOURCE_H_ */

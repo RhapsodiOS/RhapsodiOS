@@ -36,19 +36,48 @@
 @interface PnPDeviceResources : Object
 {
     @private
-    id _irqList;
-    id _dmaList;
-    id _ioPortList;
-    id _memoryList;
+    id _deviceList;                /* List of logical devices at offset 0x04 */
+    char _deviceName[80];          /* Device name inline buffer at offset 0x08 (79 chars + null) */
+    int _deviceNameLength;         /* Length of device name at offset 0x58 (88) */
+    unsigned int _id;              /* Device ID at offset 0x5C (92) */
+    unsigned int _serialNumber;    /* Serial number at offset 0x60 (96) */
+    int _csn;                      /* Card Select Number at offset 0x64 (100) */
 }
-- init;
+
+/*
+ * Initialization
+ */
+- initForBuf:(void *)buffer Length:(int)length CSN:(int)csn;
+- initForBufNoHeader:(void *)buffer Length:(int)length CSN:(int)csn;
 - free;
-- (void)setDeviceName:(const char *)name;
-- (const char *)ID;
-- (void)setGoodConfig:(id)config;
-- (void)setReadPort:(int)port;
-- (void)setCSN:(int)csn;
-- (void)initFromBuffer:(void *)buffer Length:(int)length CSN:(int)csn;
+
+/*
+ * Device information
+ */
+- (unsigned int)ID;
+- setID:(unsigned int)deviceID;
+- (unsigned int)serialNumber;
+- setSerialNumber:(unsigned int)serial;
+- (int)csn;
+
+/*
+ * Logical devices
+ */
+- (int)deviceCount;
+- deviceList;
+- deviceWithID:(int)logicalDeviceID;
+
+/*
+ * Device name
+ */
+- (const char *)deviceName;
+- setDeviceName:(const char *)name Length:(int)length;
+
+/*
+ * Configuration parsing
+ */
+- parseConfig:(void *)buffer Length:(int)length;
+
 @end
 
 #endif /* _PNPDEVICERESOURCES_H_ */

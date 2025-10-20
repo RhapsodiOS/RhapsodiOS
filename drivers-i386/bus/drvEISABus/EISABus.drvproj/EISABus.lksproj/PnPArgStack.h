@@ -36,14 +36,24 @@
 @interface PnPArgStack : Object
 {
     @private
-    void *_stackData;
-    int _depth;
+    unsigned short _stack[20]; /* Stack storage (20 entries) at offset 0x04 */
+    int _stackCount;           /* Stack counter at offset 0x2C */
+    void *_data;               /* Pointer to data buffer at offset 0x30 */
+    unsigned short _selector;  /* Selector value at offset 0x34 */
 }
-- init;
-- free;
-- (BOOL)push:(void *)data;
-- (void *)pop;
-- (int)depth;
+
+/*
+ * Initialization
+ */
+- initWithData:(void *)data Selector:(unsigned short)selector;
+
+/*
+ * Stack operations
+ */
+- push:(unsigned short)value;
+- pushFarPtr:(void *)ptr;
+- reset;
+
 @end
 
 #endif /* _PNPARGSTACK_H_ */

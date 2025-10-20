@@ -1,0 +1,48 @@
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+EISABusInspector = {
+    ACTIONS = {
+	"coldBootToggled:" = "coldBootToggled:"; 
+	"plugAndPlayToggled:" = "plugAndPlayToggled:"; 
+    }; 
+    OUTLETS = {
+	boundingBox = boundingBox; 
+	coldBootSwitch = coldBootSwitch; 
+	plugAndPlaySwitch = plugAndPlaySwitch; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+IOAddressRanger = {
+    ACTIONS = {"checkText:" = "checkText:"; "minus:" = "minus:"; "plus:" = "plus:"; }; 
+    OUTLETS = {
+	delegate = delegate; 
+	rangeText = rangeText; 
+	sizeText = sizeText; 
+	statusButton = statusButton; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

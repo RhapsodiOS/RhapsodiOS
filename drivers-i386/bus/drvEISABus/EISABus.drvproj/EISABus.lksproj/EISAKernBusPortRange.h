@@ -23,78 +23,35 @@
  */
 
 /*
- * PnPIOPortResource.m
- * PnP I/O Port Resource Descriptor Implementation
+ * EISAKernBusPortRange.h
+ * EISA/ISA I/O Port Range Resource
  */
 
-#import "PnPIOPortResource.h"
+#ifndef _EISAKERNBUSPORTRANGE_H_
+#define _EISAKERNBUSPORTRANGE_H_
 
-@implementation PnPIOPortResource
+#import <driverkit/KernBus.h>
 
-- init
+/*
+ * EISAKernBusPortRange - I/O port range resource
+ * Extends KernBusRange for EISA/ISA I/O port management
+ */
+@interface EISAKernBusPortRange : KernBusRange
 {
-    [super init];
-    _minBase = 0;
-    _maxBase = 0;
-    _alignment = 1;
-    _length = 0;
-    _flags = 0;
-    return self;
+    @private
 }
 
-- free
-{
-    return [super free];
-}
+/*
+ * I/O port access methods
+ */
+- (unsigned char)readByteAt:(unsigned int)offset;
+- (unsigned short)readWordAt:(unsigned int)offset;
+- (unsigned int)readLongAt:(unsigned int)offset;
 
-- (void)setMinBase:(unsigned int)base
-{
-    _minBase = base;
-}
-
-- (void)setMaxBase:(unsigned int)base
-{
-    _maxBase = base;
-}
-
-- (void)setAlignment:(unsigned char)align
-{
-    _alignment = align;
-}
-
-- (void)setLength:(unsigned char)len
-{
-    _length = len;
-}
-
-- (void)setFlags:(unsigned char)flags
-{
-    _flags = flags;
-}
-
-- (unsigned int)minBase
-{
-    return _minBase;
-}
-
-- (unsigned int)maxBase
-{
-    return _maxBase;
-}
-
-- (unsigned char)alignment
-{
-    return _alignment;
-}
-
-- (unsigned char)length
-{
-    return _length;
-}
-
-- (unsigned char)flags
-{
-    return _flags;
-}
+- (void)writeByte:(unsigned char)value At:(unsigned int)offset;
+- (void)writeWord:(unsigned short)value At:(unsigned int)offset;
+- (void)writeLong:(unsigned int)value At:(unsigned int)offset;
 
 @end
+
+#endif /* _EISAKERNBUSPORTRANGE_H_ */

@@ -23,42 +23,55 @@
  */
 
 /*
- * EISAKernBusPlugAndPlay.h
- * EISA Plug and Play Support Header
+ * pnpIRQ.h
+ * PnP IRQ Resource Descriptor
  */
 
-#ifndef _EISAKERNBUSPLUGANDPLAY_H_
-#define _EISAKERNBUSPLUGANDPLAY_H_
+#ifndef _PNPIRQ_H_
+#define _PNPIRQ_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
+#import <objc/Object.h>
 
-@interface EISAKernBusPlugAndPlay : IODevice
+/* pnpIRQ - IRQ resource descriptor */
+@interface pnpIRQ : Object
 {
     @private
-    void *_pnpData;
-    BOOL _initialized;
-    unsigned int _isolationPort;
-    unsigned int _addressPort;
-    unsigned int _writeDataPort;
-    unsigned int _readDataPort;
-    int _csn;  /* Card Select Number */
+    int _irqs[16];              /* IRQ numbers array at offset 0x04 (64 bytes) */
+    int _count;                 /* Number of IRQs at offset 0x44 */
+    unsigned char _highLevel;   /* High/level flag at offset 0x48 */
+    unsigned char _flag1;       /* Flag 1 at offset 0x49 */
+    unsigned char _flag2;       /* Flag 2 at offset 0x4a */
+    unsigned char _flag3;       /* Flag 3 at offset 0x4b */
 }
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+/*
+ * Initialization
+ */
+- initFrom:(void *)buffer Length:(int)length;
 
-/* PnP operations */
-- (BOOL)initiatePnP;
-- (BOOL)isolateCards;
-- (int)assignCSN:(int)logicalDevice;
-- (BOOL)configureDevice:(int)csn logical:(int)logical;
+/*
+ * IRQ information
+ */
+- (int *)irqs;
+- (int)number;
+- (BOOL)matches:(id)otherIRQ;
 
-/* Resource reading */
-- (void *)readResourceData:(int)csn;
-- (void)freeResourceData:(void *)resources;
+/*
+ * Configuration
+ */
+- setHigh:(BOOL)high Level:(BOOL)level;
+- addToIRQList:(id)list;
+
+/*
+ * Output
+ */
+- print;
+
+/*
+ * Configuration
+ */
+- writePnPConfig:(id)irqObject Index:(int)index;
 
 @end
 
-#endif /* _EISAKERNBUSPLUGANDPLAY_H_ */
+#endif /* _PNPIRQ_H_ */

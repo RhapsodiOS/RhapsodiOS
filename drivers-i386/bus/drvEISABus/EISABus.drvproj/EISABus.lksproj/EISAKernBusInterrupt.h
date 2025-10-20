@@ -46,11 +46,8 @@
 }
 
 /*
- * Initialization
+ * Deallocation
  */
-- initForResource:resource
-             item:(unsigned int)item
-        shareable:(BOOL)shareable;
 - dealloc;
 
 /*

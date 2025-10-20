@@ -28,78 +28,26 @@
  */
 
 #import "PnPDependentResources.h"
-#import <driverkit/generalFuncs.h>
-
-#define MAX_DEPENDENT_RESOURCES 16
-
-typedef struct {
-    void *resources[MAX_DEPENDENT_RESOURCES];
-    int count;
-} DependentResourceData;
 
 @implementation PnPDependentResources
 
-- init
+/*
+ * Get good configuration flag
+ * Returns the configuration status flag at offset 0x14
+ */
+- (char)goodConfig
 {
-    [super init];
+    return _goodConfig;
+}
 
-    _resources = IOMalloc(sizeof(DependentResourceData));
-    if (_resources != NULL) {
-        DependentResourceData *data = (DependentResourceData *)_resources;
-        data->count = 0;
-        _count = 0;
-    }
-
+/*
+ * Set good configuration flag
+ * Sets the configuration status flag at offset 0x14
+ */
+- setGoodConfig:(char)flag
+{
+    _goodConfig = flag;
     return self;
-}
-
-- free
-{
-    if (_resources != NULL) {
-        IOFree(_resources, sizeof(DependentResourceData));
-        _resources = NULL;
-    }
-    return [super free];
-}
-
-- (BOOL)addResource:(void *)resource
-{
-    if (_resources == NULL || resource == NULL) {
-        return NO;
-    }
-
-    DependentResourceData *data = (DependentResourceData *)_resources;
-
-    if (data->count >= MAX_DEPENDENT_RESOURCES) {
-        IOLog("PnPDependentResources: Maximum resources reached\n");
-        return NO;
-    }
-
-    data->resources[data->count] = resource;
-    data->count++;
-    _count = data->count;
-
-    return YES;
-}
-
-- (void *)getResource:(int)index
-{
-    if (_resources == NULL || index < 0) {
-        return NULL;
-    }
-
-    DependentResourceData *data = (DependentResourceData *)_resources;
-
-    if (index >= data->count) {
-        return NULL;
-    }
-
-    return data->resources[index];
-}
-
-- (int)count
-{
-    return _count;
 }
 
 @end

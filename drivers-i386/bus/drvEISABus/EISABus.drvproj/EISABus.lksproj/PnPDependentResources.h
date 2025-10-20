@@ -36,14 +36,16 @@
 @interface PnPDependentResources : Object
 {
     @private
-    void *_resources;
-    int _count;
+    unsigned char _padding[16];  /* Padding to offset 0x14 (4 bytes isa + 16 bytes) */
+    char _goodConfig;            /* Good configuration flag at offset 0x14 */
 }
-- init;
-- free;
-- (BOOL)addResource:(void *)resource;
-- (void *)getResource:(int)index;
-- (int)count;
+
+/*
+ * Configuration status
+ */
+- (char)goodConfig;
+- setGoodConfig:(char)flag;
+
 @end
 
 #endif /* _PNPDEPENDENTRESOURCES_H_ */

@@ -23,78 +23,32 @@
  */
 
 /*
- * PnPMemoryResource.m
- * PnP Memory Resource Descriptor Implementation
+ * EISAKernBusDMAChannel.h
+ * EISA/ISA DMA Channel Resource
  */
 
-#import "PnPMemoryResource.h"
+#ifndef _EISAKERNBUSDMACHANNEL_H_
+#define _EISAKERNBUSDMACHANNEL_H_
 
-@implementation PnPMemoryResource
+#import <driverkit/KernBusItem.h>
 
-- init
+/*
+ * EISAKernBusDMAChannel - DMA channel resource item
+ */
+@interface EISAKernBusDMAChannel : KernBusItem
 {
-    [super init];
-    _minBase = 0;
-    _maxBase = 0;
-    _alignment = 1;
-    _length = 0;
-    _flags = 0;
-    return self;
 }
 
-- free
-{
-    return [super free];
-}
+/*
+ * Initialize DMA channel resource
+ */
+- initForResource:resource item:(unsigned int)item shareable:(BOOL)shareable;
 
-- (void)setMinBase:(unsigned int)base
-{
-    _minBase = base;
-}
-
-- (void)setMaxBase:(unsigned int)base
-{
-    _maxBase = base;
-}
-
-- (void)setAlignment:(unsigned int)align
-{
-    _alignment = align;
-}
-
-- (void)setLength:(unsigned int)len
-{
-    _length = len;
-}
-
-- (void)setFlags:(unsigned char)flags
-{
-    _flags = flags;
-}
-
-- (unsigned int)minBase
-{
-    return _minBase;
-}
-
-- (unsigned int)maxBase
-{
-    return _maxBase;
-}
-
-- (unsigned int)alignment
-{
-    return _alignment;
-}
-
-- (unsigned int)length
-{
-    return _length;
-}
-
-- (unsigned char)flags
-{
-    return _flags;
-}
+/*
+ * Deallocate DMA channel
+ */
+- dealloc;
 
 @end
+
+#endif /* _EISAKERNBUSDMACHANNEL_H_ */

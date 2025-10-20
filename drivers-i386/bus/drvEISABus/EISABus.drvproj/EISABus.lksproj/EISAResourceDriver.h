@@ -30,31 +30,39 @@
 #ifndef _EISARESOURCEDRIVER_H_
 #define _EISARESOURCEDRIVER_H_
 
-#import <driverkit/IODevice.h>
-#import <driverkit/IODeviceDescription.h>
+#import <driverkit/IODirectDevice.h>
 
 /*
  * EISAResourceDriver - Manages EISA device resources
  */
-@interface EISAResourceDriver : IODevice
+@interface EISAResourceDriver : IODirectDevice
 {
     @private
-    void *_resourceData;
-    BOOL _initialized;
+    char _idBuffer[512];      /* Buffer for ID strings at offset 0x128 */
+    int _bufferLength;        /* Buffer length at offset 0x328 */
+    BOOL _isEISA;            /* EISA vs PnP flag at offset 0x32c */
 }
 
 /*
- * Driver lifecycle methods
+ * Initialization
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
+- initFromDeviceDescription:deviceDescription;
 
 /*
- * Resource management
+ * Parameter access
  */
-- (BOOL)allocateResources;
-- (void)deallocateResources;
+- (IOReturn)getCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int *)count;
+
+- (IOReturn)setCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int)count;
+
+/*
+ * Boot flag setup
+ */
+- setupBootFlag;
 
 @end
 

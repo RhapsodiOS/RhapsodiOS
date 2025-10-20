@@ -32,17 +32,62 @@
 
 #import <objc/Object.h>
 
+/* PnP Installation Check Structure */
+typedef struct {
+    char signature[4];          /* "$PnP" */
+    unsigned char version;
+    unsigned char length;
+    unsigned short controlField;
+    unsigned char checksum;
+    unsigned int eventNotify;
+    unsigned short realModeOffset;
+    unsigned short realModeCS;
+    unsigned short protModeOffset;
+    unsigned int protModeCS;
+    unsigned int oemDeviceId;
+    unsigned short realModeDataCS;
+    unsigned int protModeDataBaseAddr;
+} PnPInstallationStructure;
+
 /* PnPBios - BIOS interface */
 @interface PnPBios : Object
 {
     @private
-    void *_biosData;
-    unsigned int _biosAddress;
+    id _argStack;                           /* PnPArgStack object at offset 0x04 */
+    unsigned char _biosCallData[48];        /* BIOS call structure at offset 0x08 */
+    unsigned int _realModeEntryOffset;      /* Real mode entry offset at 0x38 */
+    unsigned short _realModeCS;             /* Real mode code segment at 0x3C */
+    unsigned short _dataSelector;           /* Data segment selector at 0x3E */
+    unsigned int _protModeEntryOffset;      /* Protected mode entry at 0x40 */
+    PnPInstallationStructure *_pnpStruct;   /* PnP structure pointer at 0x44 */
+    void *_pnpBuffer;                       /* 64KB buffer at 0x48 */
+    unsigned int _padding;                  /* Padding at offset 0x4C */
+    unsigned int _savedGDT[8];              /* Saved GDT entries at 0x50-0x6F */
 }
+
+/*
+ * Initialization
+ */
 - init;
 - free;
-- (BOOL)detectBios;
-- (void *)getBiosData;
+
+/*
+ * Device node operations
+ */
+- (int)getDeviceNode:(void *)buffer ForHandle:(int *)handle;
+- (int)getNumNodes:(int *)numNodes AndSize:(int *)maxNodeSize;
+
+/*
+ * Configuration
+ */
+- (int)getPnPConfig:(void *)buffer;
+
+/*
+ * Segment setup
+ */
+- setupSegments;
+- releaseSegments;
+
 @end
 
 #endif /* _PNPBIOS_H_ */

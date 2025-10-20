@@ -30,81 +30,94 @@
 #import "PnPArgStack.h"
 #import <driverkit/generalFuncs.h>
 
-#define MAX_STACK_DEPTH 32
-
-typedef struct {
-    void *items[MAX_STACK_DEPTH];
-    int top;
-} StackData;
+/* External globals for PnP argument passing */
+extern int PnPEntry_argStackBase;
+extern int PnPEntry_numArgs;
 
 @implementation PnPArgStack
 
-- init
+/*
+ * Initialize with data buffer and selector
+ */
+- initWithData:(void *)data Selector:(unsigned short)selector
 {
+    /* Call superclass init */
     [super init];
 
-    _stackData = IOMalloc(sizeof(StackData));
-    if (_stackData != NULL) {
-        StackData *stack = (StackData *)_stackData;
-        stack->top = -1;
-        _depth = 0;
-    }
+    /* Reset the stack */
+    [self reset];
+
+    /* Store data pointer and selector */
+    _data = data;
+    _selector = selector;
 
     return self;
 }
 
-- free
+/*
+ * Reset the stack
+ */
+- reset
 {
-    if (_stackData != NULL) {
-        IOFree(_stackData, sizeof(StackData));
-        _stackData = NULL;
-    }
-    return [super free];
+    /* Reset global PnP entry points */
+    PnPEntry_argStackBase = 0;
+    PnPEntry_numArgs = 0;
+
+    /* Initialize stack counter to 20 (0x14) entries */
+    _stackCount = 0x14;
+
+    return self;
 }
 
-- (BOOL)push:(void *)data
+/*
+ * Push a value onto the stack
+ */
+- push:(unsigned short)value
 {
-    if (_stackData == NULL) {
-        return NO;
+    /* Check if stack is full */
+    if (_stackCount == 0) {
+        IOLog("PnPArgStack: stack is full, can't push %d\n", value);
+        return;
     }
 
-    StackData *stack = (StackData *)_stackData;
+    /* Decrement stack counter (stack grows downward) */
+    _stackCount--;
 
-    if (stack->top >= MAX_STACK_DEPTH - 1) {
-        IOLog("PnPArgStack: Stack overflow\n");
-        return NO;
-    }
+    /* Store value in stack at current position */
+    _stack[_stackCount] = value;
 
-    stack->top++;
-    stack->items[stack->top] = data;
-    _depth = stack->top + 1;
+    /* Update global PnP entry base pointer to current stack position */
+    PnPEntry_argStackBase = (int)&_stack[_stackCount];
 
-    return YES;
+    /* Update number of arguments on stack */
+    PnPEntry_numArgs = 0x14 - _stackCount;
 }
 
-- (void *)pop
+/*
+ * Push a far pointer onto the stack (segment:offset)
+ */
+- pushFarPtr:(void *)ptr
 {
-    if (_stackData == NULL) {
-        return NULL;
+    int offset;
+
+    /* Calculate offset from data base */
+    offset = (int)ptr - (int)_data;
+
+    /* Check if address is within segment (< 64K + 1) */
+    if (offset < 0x10001) {
+        /* Check if we have room for 2 pushes (segment and offset) */
+        if (_stackCount < 2) {
+            IOLog("PnPArgStack: stack is full, can't push pointer\n");
+        } else {
+            /* Push selector (segment) */
+            [self push:_selector];
+
+            /* Push offset within segment (cast to short for proper calculation) */
+            [self push:(unsigned short)((short)ptr - (short)_data)];
+        }
+    } else {
+        IOLog("PnPArgStack: trying to push an address beyond the segment\n");
     }
-
-    StackData *stack = (StackData *)_stackData;
-
-    if (stack->top < 0) {
-        IOLog("PnPArgStack: Stack underflow\n");
-        return NULL;
-    }
-
-    void *data = stack->items[stack->top];
-    stack->top--;
-    _depth = stack->top + 1;
-
-    return data;
-}
-
-- (int)depth
-{
-    return _depth;
 }
 
 @end

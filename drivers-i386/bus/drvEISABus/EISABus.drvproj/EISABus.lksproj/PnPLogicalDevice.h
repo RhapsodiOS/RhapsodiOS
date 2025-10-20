@@ -24,7 +24,7 @@
 
 /*
  * PnPLogicalDevice.h
- * PnP Logical Device Representation
+ * PnP Logical Device
  */
 
 #ifndef _PNPLOGICALDEVICE_H_
@@ -32,26 +32,52 @@
 
 #import <objc/Object.h>
 
-/* PnPLogicalDevice - Logical device representation */
+/* PnPLogicalDevice - Represents a logical device within a PnP card */
 @interface PnPLogicalDevice : Object
 {
     @private
-    int _deviceNumber;
-    int _vendorID;
-    char *_deviceName;
-    id _resources;
+    char _deviceName[80];           /* Device name buffer at offset 0x04 */
+    int _deviceNameLength;          /* Length of device name at offset 0x54 (84) */
+    unsigned int _id;               /* Device ID at offset 0x58 (88) */
+    id _compatIDs;                  /* Compatible IDs list at offset 0x5c (92) */
+    id _resources;                  /* PnPResources object at offset 0x60 (96) */
+    id _depResources;               /* Dependent resources list at offset 0x64 (100) */
+    int _logicalDeviceNumber;       /* Logical device number at offset 0x68 (104) */
 }
+
+/*
+ * Initialization
+ */
 - init;
-- free;
-- (void)findMatchingDependentFunction:(id)config;
-- (void)addConfig:(id)config;
-- (void)setID:(int)deviceID;
-- (void)setLogicalDeviceNumber:(int)number;
-- (int)ID;
-- (void)setDeviceName:(const char *)name;
-- (const char *)deviceName;
-- (id)depResources;
+
+/*
+ * Device information
+ */
+- (unsigned int)ID;
+- (char *)deviceName;
+- (int)logicalDeviceNumber;
 - (id)resources;
+- (id)depResources;
+- (id)compatIDs;
+
+/*
+ * Configuration
+ */
+- (void)setID:(unsigned int)deviceID;
+- (BOOL)setDeviceName:(const char *)name Length:(int)length;
+- (void)setLogicalDeviceNumber:(int)number;
+- (void)addCompatID:(unsigned int)compatID;
+
+/*
+ * Matching
+ */
+- (BOOL)findMatchingDependentFunction:(id *)matchedFunction ForConfig:(id)config;
+
+/*
+ * Memory management
+ */
+- free;
+
 @end
 
 #endif /* _PNPLOGICALDEVICE_H_ */

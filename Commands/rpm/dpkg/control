@@ -1,7 +1,0 @@
-Package: rpm
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Red Hat
-Version: 3.0.6
-URL: http://ftp.rpm.org/releases/historical/rpm-3.0.x/rpm-3.0.6.tar.gz
-Description: Red Hat Package Manager
-Build-Depends: build-base, zlib

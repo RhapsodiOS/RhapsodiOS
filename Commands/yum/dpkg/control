@@ -1,7 +1,0 @@
-Package: yum
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Yellow Dog Linux
-Version: 1.0.3
-URL: https://sourceforge.net/projects/rpm4darwin/files/distfiles/All/yum-1.0.3.tar.gz/download
-Description: Yellowdog Updater Modified
-Build-Depends: build-base, autoconf, gnudiff, gm4, perl, bash, zlib

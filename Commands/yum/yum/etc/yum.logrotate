@@ -1,4 +1,0 @@
-/var/log/yum.log {
-    missingok
-    create 0600 root root
-}

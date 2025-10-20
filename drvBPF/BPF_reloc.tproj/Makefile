@@ -12,9 +12,9 @@ NAME = BPF_reloc
 PROJECTVERSION = 1.1
 LANGUAGE = English
 
-CLASSES = BPFDriver.m
+CLASSES = BPF.m
 
-HFILES = BPFDriver.h
+HFILES = BPF.h
 
 CFILES =
 

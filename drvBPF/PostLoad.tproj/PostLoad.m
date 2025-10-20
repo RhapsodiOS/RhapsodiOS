@@ -36,122 +36,76 @@
 #import <libc.h>
 #import <sys/stat.h>
 
-#define PATH_NAME_SIZE 32
 #define DEV_STRING "/dev/"
 #define BPF_INIT_ERR_STRING "Error initializing BPF driver"
-
-#define DEV_MOD_CHAR 020640
-#define DEV_UMASK 0
-
-/* Default number of BPF devices */
-#define DEFAULT_BPF_DEVICES 16
-#define MAX_BPF_DEVICES 256
-
-static int makeNode(char *deviceName, int deviceNum, int major, unsigned short mode);
 
 int main(int argc, char **argv)
 {
     IOReturn ret;
     IOObjectNumber tag;
     IOString kind;
-    unsigned int count;
     IODeviceMaster *devMaster;
-    int characterMajor;
-    int i, iRet;
-    int numBPFDevices = DEFAULT_BPF_DEVICES;
-    char path[PATH_NAME_SIZE];
+    int bpfValues[2];  /* [0] = major number, [1] = number of devices */
+    unsigned int count;
+    unsigned int i;
+    int iRet;
+    char path[10];
 
     iRet = 0;
+    count = 2;  /* Expect 2 values: major number and device count */
 
     devMaster = [IODeviceMaster new];
 
     /*
-     * Look up the BPF kernel server to get configuration
+     * Look up the BPF driver
      */
-    bzero(path, PATH_NAME_SIZE);
-    sprintf(path, "BPFKernelServer");
-
-    ret = [devMaster lookUpByDeviceName:path
+    ret = [devMaster lookUpByDeviceName:"bpf"
         objectNumber:&tag
         deviceKind:&kind];
 
-    if (ret == IO_R_SUCCESS) {
-        /*
-         * Query the BPF kernel server for the number of devices
-         */
-        ret = [devMaster getIntValues:&numBPFDevices
-               forParameter:"BPF Devices" objectNumber:tag
-               count:&count];
-        if (ret != IO_R_SUCCESS) {
-            /* Use default if we can't get the parameter */
-            numBPFDevices = DEFAULT_BPF_DEVICES;
-        }
+    if (ret != IO_R_SUCCESS) {
+        printf("%s: couldn't find driver. Returned %d\n",
+               BPF_INIT_ERR_STRING, ret);
+        return -1;
+    }
 
-        /* Sanity check */
-        if (numBPFDevices < 1) {
-            numBPFDevices = 1;
-        } else if (numBPFDevices > MAX_BPF_DEVICES) {
-            numBPFDevices = MAX_BPF_DEVICES;
-        }
+    /*
+     * Query the BPF driver for major number and device count
+     */
+    ret = [devMaster getIntValues:bpfValues
+           forParameter:"BpfMajorMinor"
+           objectNumber:tag
+           count:&count];
 
-        /*
-         * Query the object for its character major device number
-         */
-        characterMajor = -1;
-        ret = [devMaster getIntValues:&characterMajor
-               forParameter:"CharacterMajor" objectNumber:tag
-               count:&count];
-        if (ret != IO_R_SUCCESS) {
-            printf("%s: couldn't get char major number: Returned %d.\n",
-                   BPF_INIT_ERR_STRING, ret);
-            exit(-1);
-        }
+    if (ret != IO_R_SUCCESS) {
+        printf("%s: couldn't get major number:  Returned %d.\n",
+               BPF_INIT_ERR_STRING, ret);
+        return -1;
+    }
 
-        /*
-         * Create device nodes for all BPF devices
-         */
-        for (i = 0; i < numBPFDevices; i++) {
-            iRet = makeNode("bpf", i, characterMajor, DEV_MOD_CHAR);
-            if (iRet != 0) {
-                printf("%s: Failed to create /dev/bpf%d\n",
-                       BPF_INIT_ERR_STRING, i);
+    /*
+     * Create device nodes for all BPF devices
+     */
+    for (i = 0; i < bpfValues[1]; i++) {
+        bzero(path, sizeof(path));
+        sprintf(path, "%s%s%d", DEV_STRING, "bpf", i);
+
+        if (unlink(path) != 0) {
+            if (errno != ENOENT) {
+                printf("%s: could not delete old %s.  Errno is %d\n",
+                       BPF_INIT_ERR_STRING, path, errno);
+                iRet = -1;
             }
         }
 
-        printf("BPF PostLoad: Created %d BPF device node%s\n",
-               numBPFDevices, (numBPFDevices == 1) ? "" : "s");
-    } else {
-        printf("%s: BPF kernel server not found (ret = %d)\n",
-               BPF_INIT_ERR_STRING, ret);
-        iRet = -1;
-    }
-
-    exit(iRet);
-}
-
-static int makeNode(char *deviceName, int deviceNum, int major, unsigned short mode)
-{
-    int iRet;
-    char path[PATH_NAME_SIZE];
-
-    iRet = 0;
-
-    bzero(path, PATH_NAME_SIZE);
-    sprintf(path, "%s%s%d", DEV_STRING, deviceName, deviceNum);
-
-    if (unlink(path)) {
-        if (errno != ENOENT) {
-            printf("%s: could not delete old %s. Errno is %d\n",
-                BPF_INIT_ERR_STRING, path, errno);
-            /* Don't fail, try to create anyway */
+        if (ret == IO_R_SUCCESS) {
+            umask(0);
+            if (mknod(path, 0x2180, (bpfValues[0] << 8) | i) != 0) {
+                printf("%s: could not create %s.  Errno is %d\n",
+                       BPF_INIT_ERR_STRING, path, errno);
+                iRet = -1;
+            }
         }
-    }
-
-    umask(DEV_UMASK);
-    if (mknod(path, mode, (major << 8) | deviceNum)) {
-        printf("%s: could not create %s. Errno is %d\n",
-            BPF_INIT_ERR_STRING, path, errno);
-        iRet = -1;
     }
 
     return iRet;

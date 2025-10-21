@@ -1,0 +1,2 @@
+# Additional compiler flags
+OTHER_CFLAGS = -Wall

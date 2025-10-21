@@ -1,0 +1,47 @@
+PS2MouseInspector = {
+    ACTIONS = {
+	invertDirections:;
+	setResolutionFromSlider:;
+	setResolutionFromTextField:;
+    };
+    OUTLETS = {
+	resolutionSlider;
+	resolutionField;
+	resolutionBox;
+	PS2MouseView;
+	slowText;
+	fastText;
+	invertedSwitch;
+    };
+    SUPERCLASS = IODeviceInspector;
+};
+IODeviceInspector = {
+    ACTIONS = {
+	channelOrInterruptPicked:;
+	rangeDidChange:;
+	showInfo:;
+    };
+    OUTLETS = {
+	portsBox;
+	statusTitle;
+	memoryController;
+	dmaMatrix;
+	memoryBox;
+	dmaBox;
+	portsController;
+	infoPanel;
+	accessoryHolder;
+	infoButton;
+	infoText;
+	irqBox;
+	irqMatrix;
+	inspectionView;
+	origWindow;
+    };
+    SUPERCLASS = Object;
+};
+FirstResponder = {
+    ACTIONS = {
+    };
+    SUPERCLASS = Object;
+};

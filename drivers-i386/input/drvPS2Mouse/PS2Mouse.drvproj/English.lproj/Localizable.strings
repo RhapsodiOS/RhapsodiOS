@@ -1,0 +1,30 @@
+/* Name used in the browser */
+"PS2Mouse" = "PS/2 Mouse";
+
+/* Name used in the inspector */
+"Long Name" = "PS/2-Style Mouse";
+
+/* shows which end of the slider is 'slower' */
+"Slow";
+
+/* warning alert title */
+"Warning";
+
+/* title of the resolution box */
+"RESOLUTION_BOX_TITLE" = "Resolution in dots per inch";
+
+/* confirmation button for invert mouse */
+"Do It";
+
+/* shows which end of the slider is 'faster' */
+"Fast";
+
+/* cancel button for invert mouse */
+"Cancel";
+
+/* for upside-down mice */
+"INVERTED_SWITCH_TITLE" = "Invert directional axes";
+
+/* warning for people who select inverted mice out of curiosity */
+"INVERTED_SWITCH_ALERT" = "This will invert the horizontal and vertical axes of your mouse. If your mouse is not inverted, you may find it difficult to use after this setting takes effect.";
+

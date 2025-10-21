@@ -1,0 +1,15 @@
+"Title" = "PS2Mouse";
+"Family" = "Pointing Device";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "PS2Mouse";
+"Class Names" = "PS2Mouse";
+"IRQ Levels" = "12";
+"Valid IRQ Levels" = "12";
+"I/O Ports" = "";
+"Memory Maps" = "";
+"DMA Channels" = "";
+"Inverted" = "No";
+"Resolution" = "150";
+"Force Detection" = "No";
+"Server Name" = "PS2Mouse";

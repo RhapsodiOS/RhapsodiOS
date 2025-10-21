@@ -7,28 +7,32 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = BeepDriver
+NAME = Beep
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Kernel Server
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-CLASSES = BeepDriver.m
+GLOBAL_RESOURCES = Default.table
 
-HFILES = BeepDriver.h BeepTypes.h PCSpeakerRegs.h
+LOCAL_RESOURCES = Localizable.strings
+
+TOOLS = Beep.lksproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
-
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = kernelserver.make
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
 
 
-NEXTSTEP_PB_CFLAGS = -Wno-format
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\
+                  -F/System/Library/PrivateFrameworks
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

@@ -1,0 +1,5 @@
+/* Name used in the browser */
+"Beep" = "Beep Driver";
+
+/* Name used in the inspector */
+"Long Name" = "System Beep Driver";

@@ -7,7 +7,7 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = BeepDriver
+NAME = Beep
 
 PROJECTVERSION = 2.6
 PROJECT_TYPE = Aggregate
@@ -17,7 +17,7 @@ LOCAL_RESOURCES =
 
 GLOBAL_RESOURCES =
 
-BUNDLES = BeepDriver.drvproj
+BUNDLES = Beep.drvproj
 
 TOOLS =
 

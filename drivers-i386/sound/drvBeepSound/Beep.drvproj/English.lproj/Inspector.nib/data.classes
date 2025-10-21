@@ -1,0 +1,48 @@
+FirstResponder = {
+    ACTIONS = {
+    };
+    SUPERCLASS = Object;
+};
+IODeviceInspector = {
+    ACTIONS = {
+	channelOrInterruptPicked:;
+	rangeDidChange:;
+	showInfo:;
+    };
+    OUTLETS = {
+	portsBox;
+	statusTitle;
+	memoryController;
+	dmaMatrix;
+	memoryBox;
+	dmaBox;
+	portsController;
+	infoPanel;
+	accessoryHolder;
+	infoButton;
+	infoText;
+	irqBox;
+	irqMatrix;
+	inspectionView;
+	origWindow;
+    };
+    SUPERCLASS = Object;
+};
+IOBeepInspector = {
+    ACTIONS = {
+	frequencyDidChange:;
+	durationDidChange:;
+	styleDidChange:;
+    };
+    OUTLETS = {
+	beepView;
+	styleButton;
+	frequencyField;
+	durationSlider;
+	stylePopup;
+	durationField;
+	frequencySlider;
+	table;
+    };
+    SUPERCLASS = IODeviceInspector;
+};

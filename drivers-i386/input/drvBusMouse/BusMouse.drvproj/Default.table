@@ -1,0 +1,12 @@
+"Title" = "Bus Mouse";
+"Family" = "Pointing Device";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "BusMouse";
+"DMA Channels" = "";
+"IRQ Levels" = "5";
+"I/O Ports" = "0x23C-0x23F";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "3 4 5";
+"Inverted" = "No";
+"Server Name" = "BusMouse";

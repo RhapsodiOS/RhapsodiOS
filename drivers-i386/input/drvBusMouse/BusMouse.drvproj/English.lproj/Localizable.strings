@@ -1,0 +1,15 @@
+/* Name used in the browser */
+"BusMouse" = "Bus Mouse";
+
+/* Name used in the inspector */
+"Long Name" = "Bus Mouse";
+
+/* shows which end of the slider is 'slower' */
+"Slow";
+
+/* title of the resolution box */
+"RESOLUTION_BOX_TITLE" = "Resolution in dots per inch";
+
+/* shows which end of the slider is 'faster' */
+"Fast";
+

@@ -4,6 +4,16 @@
 
 #import <Foundation/NSEnumerator.h>
 
-// Stub implementation
-// TODO: Implement NSEnumerator methods
+@implementation NSEnumerator
 
+- (id)nextObject {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSArray *)allObjects {
+    // TODO: Implement this method
+    return nil;
+}
+
+@end

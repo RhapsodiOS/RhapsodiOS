@@ -4,6 +4,26 @@
 
 #import <Foundation/NSProtocolChecker.h>
 
-// Stub implementation
-// TODO: Implement NSProtocolChecker methods
+@implementation NSProtocolChecker
 
+- (Protocol *)protocol {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSObject *)target {
+    // TODO: Implement this method
+    return nil;
+}
+
++ (id)protocolCheckerWithTarget:(NSObject *)anObject protocol:(Protocol *)aProtocol {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (id)initWithTarget:(NSObject *)anObject protocol:(Protocol *)aProtocol {
+    // TODO: Implement this method
+    return nil;
+}
+
+@end

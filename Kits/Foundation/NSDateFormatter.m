@@ -4,6 +4,21 @@
 
 #import <Foundation/NSDateFormatter.h>
 
-// Stub implementation
-// TODO: Implement NSDateFormatter methods
+@implementation NSDateFormatter
 
+- (id)initWithDateFormat:(NSString *)format allowNaturalLanguage:(BOOL)flag {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSString *)dateFormat {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (BOOL)allowsNaturalLanguage {
+    // TODO: Implement this method
+    return NO;
+}
+
+@end

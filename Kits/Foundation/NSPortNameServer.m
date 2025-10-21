@@ -4,6 +4,40 @@
 
 #import <Foundation/NSPortNameServer.h>
 
-// Stub implementation
-// TODO: Implement NSPortNameServer methods
+@implementation NSPortNameServer
 
++ (id)defaultPortNameServer {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSPort *)portForName:(NSString *)name {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSPort *)portForName:(NSString *)name host:(NSString *) host {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (BOOL)registerPort:(NSPort *)port name:(NSString *)netName {
+    // TODO: Implement this method
+    return NO;
+}
+
+- (void)removePortForName:(NSString *)key {
+    // TODO: Implement this method
+}
+
+- (NSPort *)portForName:(NSString *)name onHost:(NSString *) host {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (BOOL)registerPort:(NSPort *)port forName:(NSString *)netName {
+    // TODO: Implement this method
+    return NO;
+}
+
+@end

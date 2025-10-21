@@ -4,6 +4,14 @@
 
 #import <Foundation/NSAutoreleasePool.h>
 
-// Stub implementation
-// TODO: Implement NSAutoreleasePool methods
+@implementation NSAutoreleasePool
 
++ (void)addObject:(id)anObject {
+    // TODO: Implement this method
+}
+
+- (void)addObject:(id)anObject {
+    // TODO: Implement this method
+}
+
+@end

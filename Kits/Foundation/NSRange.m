@@ -4,6 +4,16 @@
 
 #import <Foundation/NSRange.h>
 
-// Stub implementation
-// TODO: Implement NSRange methods
+@implementation NSValue
 
++ (NSValue *)valueWithRange:(NSRange)range {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (NSRange)rangeValue {
+    // TODO: Implement this method
+    return NSMakeRange(0, 0);
+}
+
+@end

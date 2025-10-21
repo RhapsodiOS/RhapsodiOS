@@ -16,13 +16,14 @@ LANGUAGES = English
 
 CLASSES = NSArchiver.m NSArray.m NSAttributedString.m\
           NSAutoreleasePool.m NSBundle.m NSCalendarDate.m NSCharacterSet.m\
-          NSCoder.m NSConnection.m NSData.m NSDate.m NSDateFormatter.m\
-          NSDecimal.m NSDecimalNumber.m NSDictionary.m NSDistantObject.m\
-          NSDistributedLock.m NSDistributedNotificationCenter.m NSEnumerator.m\
-          NSException.m NSFileHandle.m NSFileManager.m NSFormatter.m\
-          NSGeometry.m NSHashTable.m NSHost.m NSInvocation.m NSLock.m\
-          NSMapTable.m NSMethodSignature.m NSNotification.m NSNotificationQueue.m\
-          NSNumberFormatter.m NSObject.m NSPathUtilities.m NSPort.m\
+          NSCoder.m NSCompatibility.m NSConnection.m NSData.m NSDate.m\
+          NSDateFormatter.m NSDebug.m NSDecimal.m NSDecimalNumber.m\
+          NSDictionary.m NSDistantObject.m NSDistributedLock.m\
+          NSDistributedNotificationCenter.m NSEnumerator.m NSException.m\
+          NSFileHandle.m NSFileManager.m NSFormatter.m NSGeometry.m\
+          NSHashTable.m NSHost.m NSInvocation.m NSJavaSetup.m NSLock.m NSMapTable.m\
+          NSMethodSignature.m NSNotification.m NSNotificationQueue.m\
+          NSNumberFormatter.m NSObjCRuntime.m NSObject.m NSPathUtilities.m NSPort.m\
           NSPortCoder.m NSPortMessage.m NSPortNameServer.m NSProcessInfo.m\
           NSProtocolChecker.m NSProxy.m NSRange.m NSRunLoop.m NSScanner.m\
           NSSerialization.m NSSet.m NSString.m NSTask.m NSThread.m\

@@ -4,6 +4,35 @@
 
 #import <Foundation/NSDistantObject.h>
 
-// Stub implementation
-// TODO: Implement NSDistantObject methods
+@implementation NSDistantObject
 
++ (NSDistantObject *)proxyWithTarget:(id)target connection:(NSConnection *)connection {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (id)initWithTarget:(id)target connection:(NSConnection *)connection {
+    // TODO: Implement this method
+    return nil;
+}
+
++ (NSDistantObject *)proxyWithLocal:(id)target connection:(NSConnection *)connection {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (id)initWithLocal:(id)target connection:(NSConnection *)connection {
+    // TODO: Implement this method
+    return nil;
+}
+
+- (void)setProtocolForProxy:(Protocol *)proto {
+    // TODO: Implement this method
+}
+
+- (NSConnection *)connectionForProxy {
+    // TODO: Implement this method
+    return nil;
+}
+
+@end

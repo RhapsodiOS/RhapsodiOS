@@ -19,34 +19,39 @@ Things are a bit manual to get going:
    ```
  * Download the source files from the [RhapsodiOS GitHub repository](https://github.com/RhapsodiOS/RhapsodiOS) as a tarball and extract it to a directory on a supported system e.g. /build/source
  * Download the released set of packages from the [GitHub releases page](https://github.com/evolver56k/Darwin-0.3/releases/tag/v1.0) and extract it to a directory on a supported system e.g. /build/repo
- * Compile and install libiberty and dpkg
+ * Mount the released iso cd and open Terminal and run the following commands to install dpkg and the build scripts
    ```
-   cd /build/source/dpkg/dpkg.src/libiberty && ./configure --host=i386-apple-rhapsody && make && make install (replace i386-apple-rhapsody with ppc-apple-rhapsody if compiling for PowerPC)
-   cd /build/source/dpkg/dpkg.src && ./configure --host=i386-apple-rhapsody && make && make install (replace i386-apple-rhapsody with ppc-apple-rhapsody if compiling for PowerPC)
+   cd /tmp
+   ar x /CDROM/deb/dpkg_1.4.1.0.2-3_i386.deb
+   cd /
+   tar -xzvf /tmp/data.tar.gz
+   rm /tmp/data.tar.gz
+   rm /tmp/control.tar.gz
+   rm /tmp/debian-binary
+   ```
+   Close and reopen a Terminal session and you'll be able to run dpkg commands.
+ * Update perl (for Rhapsody DR2 only)
+   ```
+   dpkg-deb -x /CDROM/deb/perl_5.005.03-1_i386-apple-rhapsody.deb /
    ```
  * Install dpkg_scriptlib
    ```
-   cd /build/source/dpkg_scriptlib && make install
+   dpkg-deb -x /CDROM/deb/dpkg_scriptlib_1.4.1.0.2-3_i386-apple-rhapsody.deb /
    ```
  * Install buildtools
    ```
-   cd /build/source/buildtools
-   cp -p lib/*.pm /usr/lib/perl5/Dpkg/Package
-	 cp tools/darwin-buildall.pl /usr/bin/darwin-buildall
-	 cp tools/darwin-buildpackage.pl /usr/bin/darwin-buildpackage
-	 cp tools/darwin-missing.pl /usr/bin/darwin-missing
-	 chmod a+x /usr/bin/*
+   dpkg-deb -x /CDROM/deb/buildtools_0.1-2_i386-apple-rhapsody.deb /
    ```
 
 ## Building individual packages
 ```
-usage: /usr/bin/darwin-buildpackage [ --cvs | --dir ] [ --target {all|headers|objs|local} ] <source> <repository> <dstdir>
-darwin-buildpackage --dir --target all /build/source/kernel-7 /build/repo /build/built
+usage: darwin-buildpackage [ --cvs | --dir ] [ --target {all|headers|objs|local} ] <source> <repository> <dstdir>
+example: darwin-buildpackage --dir --target all /build/source/kernel-7 /build/repo /build/built
 ```
 
 ## Building from the manifest file
 * Current working directory must be the root directory containing source files e.g. /build/source and the Manifest file e.g. /build/source/Manifest
 ```
-usage: /usr/bin/darwin-buildall <srclist> <repository> <dstdir>
-darwin-buildall Manifest /build/repo /build/built
+usage: darwin-buildall <srclist> <repository> <dstdir>
+example: darwin-buildall Manifest /build/repo /build/built
 ```

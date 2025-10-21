@@ -45,6 +45,12 @@
 }
 
 /*
+ * Class methods
+ */
++ (void)setReadPort:(unsigned short)port;
++ (void)setVerbose:(char)verboseFlag;
+
+/*
  * Initialization
  */
 - initForBuf:(void *)buffer Length:(int)length CSN:(int)csn;

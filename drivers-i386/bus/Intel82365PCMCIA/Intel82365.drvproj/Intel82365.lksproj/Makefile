@@ -13,9 +13,10 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = PCIC.m
+CLASSES = PCIC.m PCICDebug.m PCICInternal.m PCICSocket.m PCICWindow.m \
+          PCICWindowAttributes.m
 
-HFILES = PCIC.h
+HFILES = PCIC.h PCICInternal.h PCICSocket.h PCICWindow.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

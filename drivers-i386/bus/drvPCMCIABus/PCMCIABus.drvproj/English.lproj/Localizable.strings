@@ -1,1 +1,2 @@
-"PCMCIABus" = "PCMCIA Bus Driver";
+"PCIC" = "PCIC Adapter";
+"Long Name" = "Intel 82365 PCMCIA Adapter";

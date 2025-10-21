@@ -27,48 +27,50 @@
  */
 
 #import "PCIC.h"
+#import "PCICSocket.h"
+#import "PCICWindow.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/i386/PCMCIAKernBus.h>
-#import <machkit/NXLock.h>
 #import <objc/List.h>
 #import <bsd/sys/types.h>
 
-#define PCIC_INDEX_PORT    0x00
-#define PCIC_DATA_PORT     0x01
+/* Global base port register (used by internal functions) */
+unsigned int reg_base = 0;
+
+/* Internal helper functions */
+static char _socketIsValid(unsigned int socket);
+static unsigned char _checkForCirrusChip(void);
+static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 
 @implementation PCIC
 
 /*
+ * Device style
+ * Returns 0 (default device style)
+ */
++ (int)deviceStyle
+{
+    return 0;
+}
+
+/*
  * Probe for Intel 82365 compatible PCMCIA controller
+ * Allocates and initializes an instance
  */
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
 {
-    unsigned int port;
-    unsigned char id;
-    IORange *range;
+    id instance;
+    int result;
 
-    /* Get I/O port base from device description */
-    range = [deviceDescription portRangeList];
-    if (!range) {
-        IOLog("PCIC: No I/O port range specified\n");
-        return NO;
-    }
+    /* Allocate and initialize an instance */
+    instance = [[self alloc] initFromDeviceDescription:deviceDescription];
 
-    port = range->start;
+    /* Check if initialization succeeded */
+    result = (instance != nil);
 
-    /* Try to read the chip ID/revision register */
-    outb(port + PCIC_INDEX_PORT, PCIC_ID_REVISION);
-    id = inb(port + PCIC_DATA_PORT);
-
-    /* Check for valid ID (Intel 82365 or compatible) */
-    if ((id & 0xC0) == 0x80) {
-        IOLog("PCIC: Intel 82365 PCMCIA controller detected (ID: 0x%02x)\n", id);
-        return YES;
-    }
-
-    return NO;
+    return result;
 }
 
 /*
@@ -78,11 +80,11 @@
 {
     IORange *range;
     const char *irqStr;
+    id socket;
+    id socketWindows;
     int i;
 
-    [super initFromDeviceDescription:deviceDescription];
-
-    /* Get I/O port base */
+    /* Get port range list and validate */
     range = [deviceDescription portRangeList];
     if (!range) {
         IOLog("PCIC: No I/O port range specified\n");
@@ -90,6 +92,27 @@
         return nil;
     }
     basePort = range->start;
+
+    /* Set global base register for internal functions */
+    reg_base = basePort;
+
+    /* Validate socket 0 exists (basic hardware check) */
+    if (!_socketIsValid(0)) {
+        IOLog("PCIC: Hardware validation failed at port 0x%x\n", basePort);
+        [self free];
+        return nil;
+    }
+
+    /* Call superclass initialization */
+    if (![super initFromDeviceDescription:deviceDescription]) {
+        [super free];
+        return nil;
+    }
+
+    /* Set device name and properties */
+    [self setName:"PCIC"];
+    [self setDeviceKind:"PCMCIA Adapter"];
+    [self setUnit:0];
 
     /* Get IRQ level */
     irqStr = [deviceDescription interrupt];
@@ -99,1133 +122,427 @@
         irqLevel = 5; /* Default IRQ */
     }
 
-    /* Detect number of sockets (typically 2 for 82365) */
-    numSockets = 2;
-
-    /* Allocate card presence tracking array */
-    cardPresent = (BOOL *)IOMalloc(numSockets * sizeof(BOOL));
-    if (!cardPresent) {
-        IOLog("PCIC: Failed to allocate card presence array\n");
+    /* Create socket list */
+    socketList = [[List alloc] init];
+    if (!socketList) {
+        IOLog("PCIC: Failed to create socket list\n");
         [self free];
         return nil;
     }
 
-    /* Initialize card presence state */
-    for (i = 0; i < numSockets; i++) {
-        cardPresent[i] = NO;
-    }
-
-    /* Allocate device tracking lists */
-    deviceList = (id *)IOMalloc(numSockets * sizeof(id));
-    if (!deviceList) {
-        IOLog("PCIC: Failed to allocate device list array\n");
+    /* Create window list */
+    windowList = [[List alloc] init];
+    if (!windowList) {
+        IOLog("PCIC: Failed to create window list\n");
         [self free];
         return nil;
     }
-    for (i = 0; i < numSockets; i++) {
-        deviceList[i] = [[List alloc] init];
-        if (!deviceList[i]) {
-            IOLog("PCIC: Failed to create device list for socket %d\n", i);
-            [self free];
-            return nil;
+
+    /* Create up to 4 sockets and collect their windows */
+    for (i = 0; i < 4; i++) {
+        socket = [[PCICSocket alloc] initWithAdapter:self socketNumber:i];
+        if (!socket) {
+            break;
+        }
+
+        /* Add socket to socket list */
+        [socketList addObject:socket];
+
+        /* Get socket's window list and append to master window list */
+        socketWindows = [socket windows];
+        if (socketWindows) {
+            [windowList appendList:socketWindows];
         }
     }
 
-    /* Allocate window tracking bitmaps */
-    memWindowsAllocated = (unsigned char *)IOMalloc(numSockets * sizeof(unsigned char));
-    ioWindowsAllocated = (unsigned char *)IOMalloc(numSockets * sizeof(unsigned char));
-    if (!memWindowsAllocated || !ioWindowsAllocated) {
-        IOLog("PCIC: Failed to allocate window tracking arrays\n");
-        [self free];
-        return nil;
-    }
-    for (i = 0; i < numSockets; i++) {
-        memWindowsAllocated[i] = 0;
-        ioWindowsAllocated[i] = 0;
-    }
-
-    /* Create lock for thread-safe access */
-    lock = [[NXLock alloc] init];
-    if (!lock) {
-        IOLog("PCIC: Failed to create lock\n");
+    /* Check if we successfully created any sockets */
+    if ([socketList count] == 0) {
+        IOLog("PCIC: Failed to create any sockets\n");
         [self free];
         return nil;
     }
 
-    /* Create PCMCIA bus instance */
-    pcmciaBus = [[PCMCIAKernBus alloc] initWithSocketCount:numSockets];
-    if (!pcmciaBus) {
-        IOLog("PCIC: Failed to create PCMCIA bus\n");
-        [self free];
-        return nil;
+    /* Store actual number of sockets created */
+    numSockets = [socketList count];
+
+    /* Check for Cirrus Logic chip */
+    isCirrusChip = _checkForCirrusChip();
+
+    /* Set up status change interrupts for each socket */
+    for (i = 0; i < [socketList count]; i++) {
+        _setStatusChangeInterrupt(i, irqLevel);
     }
 
-    /* Initialize each socket */
-    for (i = 0; i < numSockets; i++) {
-        [self resetSocket:i];
-        [self enableSocket:i];
-    }
-
-    /* Register interrupt handler */
+    /* Enable all interrupts */
     if ([self enableAllInterrupts] != IO_R_SUCCESS) {
-        IOLog("PCIC: Failed to enable interrupts\n");
+        IOLog("PCIC: couldn't enable interrupts\n");
         [self free];
         return nil;
     }
 
-    IOLog("PCIC: Initialized at port 0x%x, IRQ %d, %d sockets\n",
-          basePort, irqLevel, numSockets);
+    /* Start I/O thread */
+    if ([self startIOThread] != IO_R_SUCCESS) {
+        IOLog("PCIC: couldn't start IO thread\n");
+        [self free];
+        return nil;
+    }
 
-    /* Register with DriverKit */
+    /* Register device with system */
     [self registerDevice];
 
-    /* Probe all sockets for already-inserted cards */
-    for (i = 0; i < numSockets; i++) {
-        unsigned int status;
-        [self getSocketStatus:i status:&status];
-        if (status & 0x01) {
-            /* Card is present, trigger detection */
-            cardPresent[i] = YES;
-            [self cardStatusChangeHandler:i];
-        }
-    }
+    IOLog("PCIC: Initialized at port 0x%x, IRQ %d, %d sockets%s\n",
+          basePort, irqLevel, numSockets, isCirrusChip ? " (Cirrus)" : "");
 
     return self;
 }
 
 /*
- * Free resources
- */
-- free
-{
-    int i;
-
-    /* Disable all sockets */
-    for (i = 0; i < numSockets; i++) {
-        [self disableSocket:i];
-        [self removeAllDevicesFromSocket:i];
-        [self freeAllWindowsForSocket:i];
-    }
-
-    /* Free device tracking lists */
-    if (deviceList) {
-        for (i = 0; i < numSockets; i++) {
-            if (deviceList[i]) {
-                [deviceList[i] free];
-            }
-        }
-        IOFree(deviceList, numSockets * sizeof(id));
-        deviceList = NULL;
-    }
-
-    /* Free window tracking arrays */
-    if (memWindowsAllocated) {
-        IOFree(memWindowsAllocated, numSockets * sizeof(unsigned char));
-        memWindowsAllocated = NULL;
-    }
-    if (ioWindowsAllocated) {
-        IOFree(ioWindowsAllocated, numSockets * sizeof(unsigned char));
-        ioWindowsAllocated = NULL;
-    }
-
-    /* Free PCMCIA bus */
-    if (pcmciaBus) {
-        [pcmciaBus free];
-        pcmciaBus = nil;
-    }
-
-    /* Free lock */
-    if (lock) {
-        [lock free];
-        lock = nil;
-    }
-
-    /* Free card presence array */
-    if (cardPresent) {
-        IOFree(cardPresent, numSockets * sizeof(BOOL));
-        cardPresent = NULL;
-    }
-
-    return [super free];
-}
-
-/*
- * Read PCIC register
- */
-- (unsigned char)readRegister:(unsigned int)socket offset:(unsigned int)offset
-{
-    unsigned int reg;
-
-    /* Calculate register address (socket * 0x40 + offset) */
-    reg = (socket * 0x40) + offset;
-
-    outb(basePort + PCIC_INDEX_PORT, reg);
-    return inb(basePort + PCIC_DATA_PORT);
-}
-
-/*
- * Write PCIC register
- */
-- (void)writeRegister:(unsigned int)socket offset:(unsigned int)offset value:(unsigned char)value
-{
-    unsigned int reg;
-
-    /* Calculate register address (socket * 0x40 + offset) */
-    reg = (socket * 0x40) + offset;
-
-    outb(basePort + PCIC_INDEX_PORT, reg);
-    outb(basePort + PCIC_DATA_PORT, value);
-}
-
-/*
- * Set power state for a socket
- */
-- (IOReturn)setPowerState:(unsigned int)socket state:(unsigned int)state
-{
-    unsigned char power = 0;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Configure power based on requested state */
-    if (state & PCMCIA_VCC_5V) {
-        power |= PCIC_POWER_VCC_5V;
-    } else if (state & PCMCIA_VCC_3V) {
-        power |= PCIC_POWER_VCC_3V;
-    }
-
-    if (state & PCMCIA_VPP1_5V) {
-        power |= PCIC_POWER_VPP1_5V;
-    } else if (state & PCMCIA_VPP1_12V) {
-        power |= PCIC_POWER_VPP1_12V;
-    }
-
-    if (state & PCMCIA_VPP2_5V) {
-        power |= PCIC_POWER_VPP2_5V;
-    } else if (state & PCMCIA_VPP2_12V) {
-        power |= PCIC_POWER_VPP2_12V;
-    }
-
-    /* Enable output if any power requested */
-    if (power)
-        power |= PCIC_POWER_OUTPUT_ENA;
-
-    [self writeRegister:socket offset:PCIC_POWER value:power];
-
-    /* Wait for power stabilization */
-    IOSleep(250);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Get power state for a socket
- */
-- (IOReturn)getPowerState:(unsigned int)socket state:(unsigned int *)state
-{
-    unsigned char power;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    power = [self readRegister:socket offset:PCIC_POWER];
-
-    *state = 0;
-    if (power & PCIC_POWER_VCC_5V)
-        *state |= PCMCIA_VCC_5V;
-    if (power & PCIC_POWER_VCC_3V)
-        *state |= PCMCIA_VCC_3V;
-    if (power & PCIC_POWER_VPP1_5V)
-        *state |= PCMCIA_VPP1_5V;
-    if (power & PCIC_POWER_VPP1_12V)
-        *state |= PCMCIA_VPP1_12V;
-    if (power & PCIC_POWER_VPP2_5V)
-        *state |= PCMCIA_VPP2_5V;
-    if (power & PCIC_POWER_VPP2_12V)
-        *state |= PCMCIA_VPP2_12V;
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Set memory window mapping
- */
-- (IOReturn)setMemoryWindow:(unsigned int)window
-                     socket:(unsigned int)socket
-                       base:(unsigned int)base
-                       size:(unsigned int)size
-                     offset:(unsigned int)offset
-                      flags:(unsigned int)flags
-{
-    unsigned int regBase;
-    unsigned char val;
-
-    if (socket >= numSockets || window >= 5)
-        return IO_R_INVALID_ARG;
-
-    regBase = PCIC_MEM_WINDOW_0 + (window * 8);
-
-    /* Set window start address */
-    val = (base >> 12) & 0xFF;
-    [self writeRegister:socket offset:regBase + 0 value:val];
-    val = (base >> 20) & 0x0F;
-    if (flags & 0x01) /* 16-bit window */
-        val |= 0x80;
-    [self writeRegister:socket offset:regBase + 1 value:val];
-
-    /* Set window end address */
-    val = ((base + size - 1) >> 12) & 0xFF;
-    [self writeRegister:socket offset:regBase + 2 value:val];
-    val = ((base + size - 1) >> 20) & 0x0F;
-    [self writeRegister:socket offset:regBase + 3 value:val];
-
-    /* Set card offset */
-    val = (offset >> 12) & 0xFF;
-    [self writeRegister:socket offset:regBase + 4 value:val];
-    val = (offset >> 20) & 0x3F;
-    if (flags & 0x02) /* Write-protect */
-        val |= 0x80;
-    if (flags & 0x04) /* Attribute memory */
-        val |= 0x40;
-    [self writeRegister:socket offset:regBase + 5 value:val];
-
-    /* Mark window as allocated */
-    memWindowsAllocated[socket] |= (1 << window);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Set I/O window mapping
- */
-- (IOReturn)setIOWindow:(unsigned int)window
-                 socket:(unsigned int)socket
-                   base:(unsigned int)base
-                   size:(unsigned int)size
-                  flags:(unsigned int)flags
-{
-    unsigned int regBase;
-    unsigned char val;
-
-    if (socket >= numSockets || window >= 2)
-        return IO_R_INVALID_ARG;
-
-    regBase = PCIC_IO_WINDOW_0 + (window * 8);
-
-    /* Set window start address */
-    val = base & 0xFF;
-    [self writeRegister:socket offset:regBase + 0 value:val];
-    val = (base >> 8) & 0xFF;
-    [self writeRegister:socket offset:regBase + 1 value:val];
-
-    /* Set window end address */
-    val = (base + size - 1) & 0xFF;
-    [self writeRegister:socket offset:regBase + 2 value:val];
-    val = ((base + size - 1) >> 8) & 0xFF;
-    [self writeRegister:socket offset:regBase + 3 value:val];
-
-    /* Mark window as allocated */
-    ioWindowsAllocated[socket] |= (1 << window);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Get socket status
- */
-- (IOReturn)getSocketStatus:(unsigned int)socket status:(unsigned int *)status
-{
-    unsigned char stat;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    stat = [self readRegister:socket offset:PCIC_STATUS];
-
-    *status = 0;
-    if ((stat & (PCIC_STATUS_CD1 | PCIC_STATUS_CD2)) == (PCIC_STATUS_CD1 | PCIC_STATUS_CD2))
-        *status |= 0x01; /* Card detected */
-    if (stat & PCIC_STATUS_READY)
-        *status |= 0x02; /* Card ready */
-    if (stat & PCIC_STATUS_POWER)
-        *status |= 0x04; /* Power active */
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Reset socket
- */
-- (IOReturn)resetSocket:(unsigned int)socket
-{
-    unsigned char ctrl;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Assert reset */
-    ctrl = [self readRegister:socket offset:PCIC_INT_GEN_CTRL];
-    ctrl |= PCIC_IGCTRL_CARD_RESET;
-    [self writeRegister:socket offset:PCIC_INT_GEN_CTRL value:ctrl];
-
-    IOSleep(10);
-
-    /* Deassert reset */
-    ctrl &= ~PCIC_IGCTRL_CARD_RESET;
-    [self writeRegister:socket offset:PCIC_INT_GEN_CTRL value:ctrl];
-
-    IOSleep(20);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Enable socket
- */
-- (IOReturn)enableSocket:(unsigned int)socket
-{
-    unsigned char ctrl;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Enable management interrupt */
-    ctrl = [self readRegister:socket offset:PCIC_INT_GEN_CTRL];
-    ctrl |= PCIC_IGCTRL_INTR_ENA;
-    ctrl = (ctrl & ~PCIC_IGCTRL_IRQ_MASK) | (irqLevel & PCIC_IGCTRL_IRQ_MASK);
-    [self writeRegister:socket offset:PCIC_INT_GEN_CTRL value:ctrl];
-
-    /* Enable card status change interrupts */
-    [self enableCardStatusChangeInterrupts:socket];
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Disable socket
- */
-- (IOReturn)disableSocket:(unsigned int)socket
-{
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Disable card status change interrupts */
-    [self disableCardStatusChangeInterrupts:socket];
-
-    /* Disable management interrupts */
-    [self writeRegister:socket offset:PCIC_INT_GEN_CTRL value:0];
-
-    /* Power off */
-    [self writeRegister:socket offset:PCIC_POWER value:0];
-
-    return IO_R_SUCCESS;
-}
-
-/*
  * Interrupt handler
+ * Reads card status change registers and notifies the status change handler
  */
 - (void)interruptOccurred
 {
-    unsigned int i;
-    unsigned char csc;
+    unsigned int i, count;
+    unsigned char statusByte;
+    unsigned char changedStatus;
+    id socket;
+    unsigned char regOffset;
+
+    /* Get number of sockets */
+    count = [socketList count];
 
     /* Check each socket for status changes */
-    for (i = 0; i < numSockets; i++) {
-        csc = [self readRegister:i offset:PCIC_CARD_STATUS];
+    for (i = 0; i < count; i++) {
+        /* Get socket object */
+        socket = [socketList objectAt:i];
 
-        if (csc & (PCIC_CSC_CD | PCIC_CSC_READY | PCIC_CSC_BATTWARN | PCIC_CSC_BATTDEAD)) {
-            [self cardStatusChangeHandler:i];
+        /* Calculate register offset: socket * 0x40 + 0x04 (Card Status Change register) */
+        regOffset = (i << 6) + 0x04;
 
-            /* Clear interrupt */
-            [self writeRegister:i offset:PCIC_CARD_STATUS value:csc];
-        }
-    }
-}
+        /* Read from base port with calculated offset */
+        outb(basePort, regOffset);
+        statusByte = inb(basePort + 1);
 
-/*
- * Card status change handler
- *
- * Called when a card insertion/removal event is detected.
- * This method handles the hardware state changes and notifies
- * the PCMCIA bus subsystem to probe/remove the card.
- */
-- (void)cardStatusChangeHandler:(unsigned int)socket
-{
-    unsigned int status;
-    BOOL isCardPresent;
-    BOOL wasCardPresent;
+        /* If any status change bits are set */
+        if (statusByte != 0) {
+            /* Reformat status bits:
+             * Original bits -> New position:
+             * bit 0 (BATTDEAD) -> bit 4
+             * bit 1 (BATTWARN) -> bit 4 (OR'd)
+             * bit 2 (READY)    -> bit 7
+             * bit 3 (CD)       -> bit 0
+             */
+            changedStatus = (((statusByte >> 2) & 1) << 7) |  /* bit 2 -> bit 7 */
+                           ((statusByte >> 3) & 1) |          /* bit 3 -> bit 0 */
+                           (((statusByte >> 1) & 1) | (statusByte & 1)) << 4;  /* bits 0,1 -> bit 4 */
 
-    if (socket >= numSockets) {
-        return;
-    }
-
-    /* Acquire lock for thread-safe access */
-    [lock lock];
-
-    /* Get current socket status */
-    [self getSocketStatus:socket status:&status];
-    isCardPresent = (status & 0x01) ? YES : NO;
-
-    /* Get previous card presence state */
-    wasCardPresent = cardPresent[socket];
-
-    /* Check if this is a real state change */
-    if (isCardPresent == wasCardPresent) {
-        [lock unlock];
-        return;  /* No change, spurious interrupt */
-    }
-
-    /* Update card presence state */
-    cardPresent[socket] = isCardPresent;
-
-    [lock unlock];
-
-    /* Handle card insertion */
-    if (isCardPresent && !wasCardPresent) {
-        IOLog("PCIC: Card inserted in socket %d\n", socket);
-
-        /* Wait for card to stabilize (debounce) */
-        IOSleep(100);
-
-        /* Detect card voltage requirements */
-        unsigned int cardVoltage;
-        if ([self detectCardVoltage:socket voltage:&cardVoltage] == IO_R_SUCCESS) {
-            const char *voltageStr = [self getCardTypeString:cardVoltage];
-            IOLog("PCIC: Detected %s in socket %d\n", voltageStr, socket);
-
-            /* Apply appropriate voltage to the socket */
-            if ([self setCardVoltage:socket voltage:cardVoltage] != IO_R_SUCCESS) {
-                IOLog("PCIC: Failed to set voltage for socket %d\n", socket);
-                [self setPowerState:socket state:0];
-                [lock lock];
-                cardPresent[socket] = NO;
-                [lock unlock];
-                return;
-            }
-        } else {
-            IOLog("PCIC: Using default 5V power for socket %d\n", socket);
-            /* Fall back to 5V */
-            [self setPowerState:socket state:(PCMCIA_VCC_5V | PCMCIA_VPP1_5V)];
-            IOSleep(250);
-        }
-
-        /* Reset the card */
-        [self resetSocket:socket];
-
-        /* Wait for card to be ready */
-        if ([self waitForReady:socket timeout:PCIC_READY_TIMEOUT] != IO_R_SUCCESS) {
-            IOLog("PCIC: Card in socket %d not ready after reset\n", socket);
-            /* Continue anyway, card might not support ready signal */
-        }
-
-        /* Enable the socket */
-        [self enableSocket:socket];
-
-        /* Notify PCMCIA bus to probe the socket */
-        if (pcmciaBus) {
-            IOLog("PCIC: Probing socket %d for card information\n", socket);
-            if ([pcmciaBus probeSocket:socket]) {
-                IOLog("PCIC: Socket %d card successfully enumerated\n", socket);
-
-                /* Dump registers for debugging */
-                #ifdef DEBUG
-                [self dumpRegisters:socket];
-                #endif
-            } else {
-                IOLog("PCIC: Socket %d card probe failed\n", socket);
-                /* Power down on probe failure */
-                [self setPowerState:socket state:0];
+            /* Call status change handler if registered */
+            if (statusChangeHandler) {
+                [statusChangeHandler statusChangedForSocket:socket changedStatus:changedStatus];
             }
         }
     }
-    /* Handle card removal */
-    else if (!isCardPresent && wasCardPresent) {
-        IOLog("PCIC: Card removed from socket %d\n", socket);
-
-        /* Remove all device drivers attached to this socket */
-        [self removeAllDevicesFromSocket:socket];
-
-        /* Free all allocated windows for this socket */
-        [self freeAllWindowsForSocket:socket];
-
-        /* Disable socket interrupts */
-        [self disableCardStatusChangeInterrupts:socket];
-
-        /* Power down the socket */
-        [self setPowerState:socket state:0];
-
-        /* Notify PCMCIA bus about card removal */
-        if (pcmciaBus) {
-            id socketObj = [pcmciaBus socketAtIndex:socket];
-            if (socketObj) {
-                IOLog("PCIC: Notifying bus of card removal from socket %d\n", socket);
-                /* The bus will handle cleaning up any remaining socket state */
-                /* Card Information Structure (CIS) tuples will be freed by the bus */
-            }
-        }
-
-        IOLog("PCIC: Socket %d cleanup complete\n", socket);
-
-        /* Re-enable status change detection for future insertions */
-        [self enableCardStatusChangeInterrupts:socket];
-    }
 }
 
 /*
- * Enable card status change interrupts
+ * Get interrupt number from device description
+ * Returns the IRQ number assigned to this controller
  */
-- (IOReturn)enableCardStatusChangeInterrupts:(unsigned int)socket
+- (unsigned int)interrupt
 {
-    unsigned char cscen;
+    id deviceDesc;
+    const char *interruptStr;
 
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
+    deviceDesc = [self deviceDescription];
+    interruptStr = [deviceDesc interrupt];
 
-    /* Enable all card status change interrupts */
-    cscen = PCIC_CSCEN_CD | PCIC_CSCEN_READY | PCIC_CSCEN_BATTWARN | PCIC_CSCEN_BATTDEAD;
-    [self writeRegister:socket offset:PCIC_CARD_STATUS_CHG value:cscen];
-
-    return IO_R_SUCCESS;
+    return atoi(interruptStr);
 }
 
 /*
- * Disable card status change interrupts
+ * Get socket list
+ * Returns the List of PCICSocket objects (offset 0x12C / 300)
  */
-- (IOReturn)disableCardStatusChangeInterrupts:(unsigned int)socket
+- sockets
 {
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Disable all card status change interrupts */
-    [self writeRegister:socket offset:PCIC_CARD_STATUS_CHG value:0];
-
-    return IO_R_SUCCESS;
+    return socketList;
 }
 
 /*
- * Detect card voltage from voltage sense pins
- * Returns voltage type based on VS1 and VS2 pins
+ * Get window list
+ * Returns the List of PCICWindow objects (offset 0x130 / 304)
  */
-- (IOReturn)detectCardVoltage:(unsigned int)socket voltage:(unsigned int *)voltage
+- windows
 {
-    unsigned char status;
-    unsigned char vs1, vs2;
-
-    if (socket >= numSockets || !voltage)
-        return IO_R_INVALID_ARG;
-
-    /* Read status register to get voltage sense pins */
-    status = [self readRegister:socket offset:PCIC_STATUS];
-
-    /* Extract VS1 and VS2 bits (bits 6 and 5) */
-    vs1 = (status >> 6) & 0x01;
-    vs2 = (status >> 5) & 0x01;
-
-    /* Determine card type based on voltage sense pins
-     * VS1=1, VS2=1: 5V card
-     * VS1=0, VS2=1: 3.3V card
-     * VS1=1, VS2=0: X.V card (low voltage)
-     * VS1=0, VS2=0: Y.V card (low voltage)
-     */
-    if (vs1 && vs2) {
-        *voltage = PCMCIA_CARD_TYPE_5V;
-    } else if (!vs1 && vs2) {
-        *voltage = PCMCIA_CARD_TYPE_3V;
-    } else if (vs1 && !vs2) {
-        *voltage = PCMCIA_CARD_TYPE_XV;
-    } else {
-        *voltage = PCMCIA_CARD_TYPE_YV;
-    }
-
-    return IO_R_SUCCESS;
+    return windowList;
 }
 
 /*
- * Set card voltage based on detected type
+ * Set status change handler
+ * Stores the handler object at offset 0x134
+ * The handler will be called by interruptOccurred with statusChangedForSocket:changedStatus:
  */
-- (IOReturn)setCardVoltage:(unsigned int)socket voltage:(unsigned int)voltage
+- (void)setStatusChangeHandler:handler
 {
-    unsigned char power;
-    unsigned char misc1;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Configure power based on voltage type */
-    switch (voltage) {
-        case PCMCIA_CARD_TYPE_5V:
-            /* 5V card */
-            power = PCIC_POWER_VCC_5V | PCIC_POWER_VPP1_5V;
-            misc1 = 0;
-            break;
-
-        case PCMCIA_CARD_TYPE_3V:
-            /* 3.3V card */
-            power = PCIC_POWER_VCC_3V | PCIC_POWER_VPP1_5V;
-            misc1 = PCIC_MISC1_VCC_33;
-            break;
-
-        case PCMCIA_CARD_TYPE_XV:
-        case PCMCIA_CARD_TYPE_YV:
-            /* Low voltage cards - use 3.3V */
-            power = PCIC_POWER_VCC_3V;
-            misc1 = PCIC_MISC1_VCC_33;
-            break;
-
-        default:
-            return IO_R_INVALID_ARG;
-    }
-
-    /* Set misc control register for 3.3V if needed */
-    if (misc1) {
-        unsigned char current = [self readRegister:socket offset:PCIC_MISC_CTRL_1];
-        current |= misc1;
-        [self writeRegister:socket offset:PCIC_MISC_CTRL_1 value:current];
-    }
-
-    /* Enable power output */
-    power |= PCIC_POWER_OUTPUT_ENA;
-
-    /* Apply power */
-    [self writeRegister:socket offset:PCIC_POWER value:power];
-
-    /* Wait for power to stabilize */
-    IOSleep(250);
-
-    return IO_R_SUCCESS;
+    statusChangeHandler = handler;
 }
 
 /*
- * Check if socket supports a specific voltage
+ * Set power management flags
+ * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (BOOL)supportsVoltage:(unsigned int)socket voltage:(unsigned int)voltage
+- (IOReturn)setPowerManagement:(int)flags
 {
-    unsigned int detectedVoltage;
-
-    if (socket >= numSockets)
-        return NO;
-
-    /* Detect actual card voltage */
-    if ([self detectCardVoltage:socket voltage:&detectedVoltage] != IO_R_SUCCESS)
-        return NO;
-
-    /* Check if requested voltage matches detected voltage */
-    return (voltage == detectedVoltage);
+    return IO_R_UNSUPPORTED;
 }
 
 /*
- * Set command timing (setup and hold times)
+ * Set system-wide power state
+ * Based on decompiled implementation
+ * Power state 3 disables all sockets and windows
  */
-- (IOReturn)setCommandTiming:(unsigned int)socket setup:(unsigned int)setup hold:(unsigned int)hold
+- (IOReturn)setPowerState:(int)powerState
 {
-    unsigned char timing;
+    unsigned int i, count;
+    id socket;
+    id window;
 
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
+    /* If power state is 3 (sleep/suspend), disable everything */
+    if (powerState == 3) {
+        /* Disable all sockets */
+        count = [socketList count];
+        for (i = 0; i < count; i++) {
+            socket = [socketList objectAt:i];
 
-    /* Read current timing register */
-    timing = [self readRegister:socket offset:PCIC_TIMING_0];
+            /* Disable card */
+            [socket setCardEnabled:0];
 
-    /* Clear and set command timing bits */
-    timing &= ~0x03;
-    if (setup == 0 && hold == 0) {
-        timing |= PCIC_TIMING_COMMAND_FAST;
-    } else if (setup == 1 && hold == 1) {
-        timing |= PCIC_TIMING_COMMAND_MEDIUM;
-    } else {
-        timing |= PCIC_TIMING_COMMAND_SLOW;
-    }
+            /* Turn off VCC power */
+            [socket setCardVccPower:0];
 
-    /* Write timing register */
-    [self writeRegister:socket offset:PCIC_TIMING_0 value:timing];
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Set memory timing speed
- */
-- (IOReturn)setMemoryTiming:(unsigned int)socket speed:(unsigned int)speed
-{
-    unsigned char timing;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Read current timing register */
-    timing = [self readRegister:socket offset:PCIC_TIMING_0];
-
-    /* Clear and set memory timing bits */
-    timing &= ~0x30;
-    switch (speed) {
-        case 0:  /* Fast */
-            timing |= PCIC_TIMING_MEMORY_FAST;
-            break;
-        case 1:  /* Medium */
-            timing |= PCIC_TIMING_MEMORY_MEDIUM;
-            break;
-        default: /* Slow */
-            timing |= PCIC_TIMING_MEMORY_SLOW;
-            break;
-    }
-
-    /* Write timing register */
-    [self writeRegister:socket offset:PCIC_TIMING_0 value:timing];
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Get card type based on voltage sense pins
- */
-- (IOReturn)getCardType:(unsigned int)socket type:(unsigned int *)type
-{
-    return [self detectCardVoltage:socket voltage:type];
-}
-
-/*
- * Get string representation of card type
- */
-- (const char *)getCardTypeString:(unsigned int)type
-{
-    switch (type) {
-        case PCMCIA_CARD_TYPE_5V:
-            return "5V PC Card";
-        case PCMCIA_CARD_TYPE_3V:
-            return "3.3V CardBus/PC Card";
-        case PCMCIA_CARD_TYPE_XV:
-            return "X.V Card (Low Voltage)";
-        case PCMCIA_CARD_TYPE_YV:
-            return "Y.V Card (Low Voltage)";
-        default:
-            return "Unknown Card Type";
-    }
-}
-
-/*
- * Force card ejection (power down and disable)
- */
-- (IOReturn)forceCardEject:(unsigned int)socket
-{
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    IOLog("PCIC: Force ejecting card from socket %d\n", socket);
-
-    /* Disable socket */
-    [self disableSocket:socket];
-
-    /* Power down */
-    [self setPowerState:socket state:0];
-
-    /* Update card presence state */
-    [lock lock];
-    cardPresent[socket] = NO;
-    [lock unlock];
-
-    /* Trigger card removal handler */
-    [self cardStatusChangeHandler:socket];
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Lock card (prevent removal)
- * Note: Not all hardware supports this feature
- */
-- (IOReturn)lockCard:(unsigned int)socket
-{
-    unsigned char misc2;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Read misc control register 2 */
-    misc2 = [self readRegister:socket offset:PCIC_MISC_CTRL_2];
-
-    /* Set lock bit if supported */
-    misc2 |= 0x01;  /* Lock enable bit */
-
-    [self writeRegister:socket offset:PCIC_MISC_CTRL_2 value:misc2];
-
-    IOLog("PCIC: Card locked in socket %d\n", socket);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Unlock card (allow removal)
- */
-- (IOReturn)unlockCard:(unsigned int)socket
-{
-    unsigned char misc2;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Read misc control register 2 */
-    misc2 = [self readRegister:socket offset:PCIC_MISC_CTRL_2];
-
-    /* Clear lock bit */
-    misc2 &= ~0x01;  /* Lock disable */
-
-    [self writeRegister:socket offset:PCIC_MISC_CTRL_2 value:misc2];
-
-    IOLog("PCIC: Card unlocked in socket %d\n", socket);
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Wait for card to be ready with timeout
- */
-- (IOReturn)waitForReady:(unsigned int)socket timeout:(unsigned int)timeout
-{
-    unsigned int elapsed = 0;
-    unsigned char status;
-
-    if (socket >= numSockets)
-        return IO_R_INVALID_ARG;
-
-    /* Wait for ready bit with timeout */
-    while (elapsed < timeout) {
-        status = [self readRegister:socket offset:PCIC_STATUS];
-
-        if (status & PCIC_STATUS_READY) {
-            return IO_R_SUCCESS;
-        }
-
-        IOSleep(10);
-        elapsed += 10;
-    }
-
-    IOLog("PCIC: Timeout waiting for ready on socket %d\n", socket);
-    return IO_R_TIMEOUT;
-}
-
-/*
- * Dump all registers for debugging
- */
-- (void)dumpRegisters:(unsigned int)socket
-{
-    unsigned int i;
-    unsigned char value;
-
-    if (socket >= numSockets) {
-        IOLog("PCIC: Invalid socket %d for register dump\n", socket);
-        return;
-    }
-
-    IOLog("PCIC: Register dump for socket %d:\n", socket);
-    IOLog("  ID/Revision:      0x%02x\n", [self readRegister:socket offset:PCIC_ID_REVISION]);
-    IOLog("  Status:           0x%02x\n", [self readRegister:socket offset:PCIC_STATUS]);
-    IOLog("  Power:            0x%02x\n", [self readRegister:socket offset:PCIC_POWER]);
-    IOLog("  Int/Gen Ctrl:     0x%02x\n", [self readRegister:socket offset:PCIC_INT_GEN_CTRL]);
-    IOLog("  Card Status:      0x%02x\n", [self readRegister:socket offset:PCIC_CARD_STATUS]);
-    IOLog("  Card Status Chg:  0x%02x\n", [self readRegister:socket offset:PCIC_CARD_STATUS_CHG]);
-    IOLog("  I/O Control:      0x%02x\n", [self readRegister:socket offset:PCIC_IO_CONTROL]);
-    IOLog("  Misc Ctrl 1:      0x%02x\n", [self readRegister:socket offset:PCIC_MISC_CTRL_1]);
-    IOLog("  Misc Ctrl 2:      0x%02x\n", [self readRegister:socket offset:PCIC_MISC_CTRL_2]);
-    IOLog("  Timing 0:         0x%02x\n", [self readRegister:socket offset:PCIC_TIMING_0]);
-    IOLog("  Timing 1:         0x%02x\n", [self readRegister:socket offset:PCIC_TIMING_1]);
-
-    /* Dump memory windows */
-    for (i = 0; i < 5; i++) {
-        unsigned int regBase = PCIC_MEM_WINDOW_0 + (i * 8);
-        IOLog("  Memory Window %d:  Start=0x%02x%02x End=0x%02x%02x Offset=0x%02x%02x\n",
-              i,
-              [self readRegister:socket offset:regBase + 1],
-              [self readRegister:socket offset:regBase + 0],
-              [self readRegister:socket offset:regBase + 3],
-              [self readRegister:socket offset:regBase + 2],
-              [self readRegister:socket offset:regBase + 5],
-              [self readRegister:socket offset:regBase + 4]);
-    }
-
-    /* Dump I/O windows */
-    IOLog("  I/O Window 0:     Start=0x%02x%02x End=0x%02x%02x\n",
-          [self readRegister:socket offset:PCIC_IO_WINDOW_0_START_MSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_0_START_LSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_0_END_MSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_0_END_LSB]);
-    IOLog("  I/O Window 1:     Start=0x%02x%02x End=0x%02x%02x\n",
-          [self readRegister:socket offset:PCIC_IO_WINDOW_1_START_MSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_1_START_LSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_1_END_MSB],
-          [self readRegister:socket offset:PCIC_IO_WINDOW_1_END_LSB]);
-}
-
-/*
- * Register a device driver instance for a socket
- * Called when a device driver is attached to a card
- */
-- (void)registerDevice:device forSocket:(unsigned int)socket
-{
-    if (socket >= numSockets || !device) {
-        IOLog("PCIC: Invalid socket or device in registerDevice\n");
-        return;
-    }
-
-    [lock lock];
-
-    if (deviceList[socket]) {
-        [deviceList[socket] addObject:device];
-        IOLog("PCIC: Registered device %s for socket %d\n",
-              [device name] ? [device name] : "unknown", socket);
-    }
-
-    [lock unlock];
-}
-
-/*
- * Remove all devices from a socket
- * Called during card removal to cleanly detach all device drivers
- */
-- (void)removeAllDevicesFromSocket:(unsigned int)socket
-{
-    int i, count;
-    id device;
-
-    if (socket >= numSockets) {
-        IOLog("PCIC: Invalid socket in removeAllDevicesFromSocket\n");
-        return;
-    }
-
-    [lock lock];
-
-    if (deviceList[socket]) {
-        count = [deviceList[socket] count];
-
-        if (count > 0) {
-            IOLog("PCIC: Removing %d device(s) from socket %d\n", count, socket);
-        }
-
-        /* Detach and free each device driver */
-        for (i = count - 1; i >= 0; i--) {
-            device = [deviceList[socket] objectAt:i];
-            if (device) {
-                IOLog("PCIC: Detaching device %s from socket %d\n",
-                      [device name] ? [device name] : "unknown", socket);
-
-                /* Tell the device it's being removed */
-                if ([device respondsTo:@selector(willTerminate)]) {
-                    [device willTerminate];
-                }
-
-                /* Remove from our tracking list */
-                [deviceList[socket] removeObjectAt:i];
-
-                /* The device will be freed by the system */
+            /* Disable all windows for this socket */
+            unsigned int j, windowCount;
+            windowCount = [windowList count];
+            for (j = 0; j < windowCount; j++) {
+                window = [windowList objectAt:j];
+                [window setEnabled:0];
             }
         }
     }
 
-    [lock unlock];
-}
-
-/*
- * Free a memory window
- */
-- (IOReturn)freeMemoryWindow:(unsigned int)window socket:(unsigned int)socket
-{
-    unsigned int regBase;
-    unsigned char mask;
-
-    if (socket >= numSockets || window >= 5) {
-        return IO_R_INVALID_ARG;
-    }
-
-    mask = 1 << window;
-
-    /* Check if window is allocated */
-    if (!(memWindowsAllocated[socket] & mask)) {
-        return IO_R_SUCCESS;  /* Already free */
-    }
-
-    regBase = PCIC_MEM_WINDOW_0 + (window * 8);
-
-    /* Disable the window by clearing its registers */
-    [self writeRegister:socket offset:regBase + 0 value:0];
-    [self writeRegister:socket offset:regBase + 1 value:0];
-    [self writeRegister:socket offset:regBase + 2 value:0];
-    [self writeRegister:socket offset:regBase + 3 value:0];
-    [self writeRegister:socket offset:regBase + 4 value:0];
-    [self writeRegister:socket offset:regBase + 5 value:0];
-
-    /* Mark window as free */
-    memWindowsAllocated[socket] &= ~mask;
-
-    IOLog("PCIC: Freed memory window %d for socket %d\n", window, socket);
-
     return IO_R_SUCCESS;
 }
 
 /*
- * Free an I/O window
+ * Get power management flags
+ * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)freeIOWindow:(unsigned int)window socket:(unsigned int)socket
+- (IOReturn)getPowerManagement:(int *)flags
 {
-    unsigned int regBase;
-    unsigned char mask;
-
-    if (socket >= numSockets || window >= 2) {
-        return IO_R_INVALID_ARG;
-    }
-
-    mask = 1 << window;
-
-    /* Check if window is allocated */
-    if (!(ioWindowsAllocated[socket] & mask)) {
-        return IO_R_SUCCESS;  /* Already free */
-    }
-
-    regBase = PCIC_IO_WINDOW_0 + (window * 8);
-
-    /* Disable the window by clearing its registers */
-    [self writeRegister:socket offset:regBase + 0 value:0];
-    [self writeRegister:socket offset:regBase + 1 value:0];
-    [self writeRegister:socket offset:regBase + 2 value:0];
-    [self writeRegister:socket offset:regBase + 3 value:0];
-
-    /* Mark window as free */
-    ioWindowsAllocated[socket] &= ~mask;
-
-    IOLog("PCIC: Freed I/O window %d for socket %d\n", window, socket);
-
-    return IO_R_SUCCESS;
+    return IO_R_UNSUPPORTED;
 }
 
 /*
- * Free all windows for a socket
- * Called during card removal cleanup
+ * Get power state
+ * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (void)freeAllWindowsForSocket:(unsigned int)socket
+- (IOReturn)getPowerState:(int *)state
 {
-    int i;
-
-    if (socket >= numSockets) {
-        IOLog("PCIC: Invalid socket in freeAllWindowsForSocket\n");
-        return;
-    }
-
-    /* Free all memory windows */
-    for (i = 0; i < 5; i++) {
-        if (memWindowsAllocated[socket] & (1 << i)) {
-            [self freeMemoryWindow:i socket:socket];
-        }
-    }
-
-    /* Free all I/O windows */
-    for (i = 0; i < 2; i++) {
-        if (ioWindowsAllocated[socket] & (1 << i)) {
-            [self freeIOWindow:i socket:socket];
-        }
-    }
-
-    /* Disable I/O window control */
-    [self writeRegister:socket offset:PCIC_IO_CONTROL value:0];
-
-    IOLog("PCIC: Freed all windows for socket %d\n", socket);
+    return IO_R_UNSUPPORTED;
 }
 
 @end
+
+/*
+ * Internal Helper Functions Implementation
+ */
+
+/*
+ * Check if socket is valid by reading hardware
+ * Returns 1 if valid, 0 if invalid
+ * Based on decompiled implementation
+ */
+static char _socketIsValid(unsigned int socket)
+{
+    unsigned char regValue;
+    unsigned char regOffset;
+
+    /* Calculate register offset: socket * 0x40 */
+    regOffset = socket << 6;
+
+    /* Write register offset to index port */
+    outb(reg_base, regOffset);
+
+    /* Read register value from data port */
+    regValue = inb(reg_base + 1);
+
+    /* Check if socket is valid:
+     * - Lower 4 bits must be > 1
+     * - Bits 4-5 must be 0
+     */
+    if (((regValue & 0x0F) > 1) && ((regValue & 0x30) == 0)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
+ * Check for Cirrus Logic chip
+ * Returns 1 if Cirrus chip detected, 0 otherwise
+ */
+static unsigned char _checkForCirrusChip(void)
+{
+    unsigned char value;
+    unsigned short dataPort;
+
+    dataPort = reg_base + 1;
+
+    /* Write to register 0x1f (Cirrus-specific test register) */
+    outb(reg_base, 0x1f);
+
+    /* Write 0 to data port */
+    outb(dataPort, 0);
+
+    /* Write to register 0x1f again */
+    outb(reg_base, 0x1f);
+
+    /* Read from data port */
+    value = inb(dataPort);
+
+    /* Check if bits 6-7 are both set (0xc0) */
+    if ((value & 0xc0) == 0xc0) {
+        /* Write to register 0x1f again */
+        outb(reg_base, 0x1f);
+
+        /* Read from data port */
+        value = inb(dataPort);
+
+        /* Check if bits 6-7 are both clear */
+        if ((value & 0xc0) == 0) {
+            return 1;  /* Cirrus chip detected */
+        }
+    }
+
+    return 0;  /* Not a Cirrus chip */
+}
+
+/*
+ * Set status change interrupt for a socket
+ * Configures the interrupt handling for card status changes
+ */
+static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
+{
+    unsigned char regOffset;
+    unsigned char value;
+
+    /* Calculate register offset: (socket * 64) + 5 */
+    /* Register 5 is the Card Status Change Enable register */
+    regOffset = (socket << 6) + 0x05;
+
+    /* Write register offset to index port */
+    outb(reg_base, regOffset);
+
+    /* Write value to data port:
+     * Upper nibble: IRQ number (irq << 4)
+     * Lower nibble: Enable all status change interrupts (0x0f)
+     */
+    value = (irq << 4) | 0x0f;
+    outb(reg_base + 1, value);
+}
+
+/*
+ * Configure an I/O window
+ * Sets up PCIC registers for I/O window mapping
+ */
+void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned short startAddr;
+    unsigned short stopAddr;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x08 + (window * 4) for I/O windows */
+    /* Each I/O window uses 4 registers:
+     * +0: I/O window start address low
+     * +1: I/O window start address high
+     * +2: I/O window stop address low
+     * +3: I/O window stop address high
+     */
+    windowOffset = 0x08 + (window * 4);
+
+    /* Calculate start and stop addresses */
+    startAddr = (unsigned short)sysAddr;
+    stopAddr = (unsigned short)(sysAddr + size - 1);
+
+    /* Write start address low byte */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+
+    /* Write start address high byte */
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0xFF));
+
+    /* Write stop address low byte */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+
+    /* Write stop address high byte */
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0xFF));
+}
+
+/*
+ * Configure a memory window
+ * Sets up PCIC registers for memory window mapping
+ */
+void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned int startAddr;
+    unsigned int stopAddr;
+    unsigned int cardOffset;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x10 + (window * 8) for memory windows */
+    /* Each memory window uses 8 registers:
+     * +0: Memory window start address low (bits 12-19)
+     * +1: Memory window start address high (bits 20-23)
+     * +2: Memory window stop address low (bits 12-19)
+     * +3: Memory window stop address high (bits 20-23)
+     * +4: Card offset address low (bits 12-19)
+     * +5: Card offset address high (bits 20-25) + flags
+     * +6: Reserved
+     * +7: Reserved
+     */
+    windowOffset = 0x10 + (window * 8);
+
+    /* Memory addresses are shifted right by 12 bits (4KB pages) */
+    startAddr = sysAddr >> 12;
+    stopAddr = (sysAddr + size - 1) >> 12;
+    cardOffset = cardAddr >> 12;
+
+    /* Write system start address */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0x0F));
+
+    /* Write system stop address */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0x0F));
+
+    /* Write card offset address */
+    outb(reg_base, socketOffset + windowOffset + 4);
+    outb(reg_base + 1, (unsigned char)(cardOffset & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 5);
+    outb(reg_base + 1, (unsigned char)((cardOffset >> 8) & 0x3F));
+}

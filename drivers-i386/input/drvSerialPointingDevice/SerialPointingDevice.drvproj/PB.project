@@ -1,0 +1,17 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    OTHER_RESOURCES = (Default.table);
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (SerialPointingDevice.lksproj);
+    SUBPROJECTS = ();
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 2.7;
+INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+PROJECTTYPE = Bundle;
+PROJECTNAME = SerialPointingDevice;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;

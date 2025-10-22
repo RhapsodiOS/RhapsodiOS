@@ -1,0 +1,15 @@
+"Title" = "Serial Mouse";
+"Family" = "Pointing Device";
+"Location" = "";
+"Instance" = "0";
+"Class Names" = "SerialPointingDevice";
+"Server Name" = "SerialPointingDevice";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"I/O Ports" = "";
+"Memory Maps" = "";
+"Port Device" = "ISASerialPort0";
+"Resolution" = "100";
+"Inverted" = "No";
+"Help File" = "SerialPointingDevice_Main.rtfd";
+"Server Name" = "SerialPointingDevice";

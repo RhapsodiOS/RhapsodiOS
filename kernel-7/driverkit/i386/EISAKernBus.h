@@ -45,7 +45,6 @@
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
-#define IRQ_LEVELS_KEY		"IRQ Levels"
 #define DMA_CHANNELS_KEY	"DMA Channels"
 
 #endif	/* DRIVER_PRIVATE */

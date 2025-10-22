@@ -28,7 +28,7 @@
  * Exported interface for Kernel PCMCIA Bus Resource Object(s).
  */
 
-#ifdef	DRIVER_PRIVATE
+ #ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
 
@@ -36,5 +36,10 @@
 #define MEM_MAPS_KEY 		"Memory Maps"
 #define IRQ_LEVELS_KEY		"IRQ Levels"
 #define DMA_CHANNELS_KEY	"DMA Channels"
+
+#define PCMCIA_SOCKETS_KEY	"PCMCIA Sockets"
+#define PCMCIA_TUPLE_LIST	"PCMCIA Tuple List"
+#define PCMCIA_SOCKET_LIST	"PCMCIA Socket List"
+#define PCMCIA_WINDOW_LIST	"PCMCIA Window List"
 
 #endif	/* DRIVER_PRIVATE */

@@ -2,8 +2,6 @@
 "Family" = "Other";
 "Instance" = "0";
 "Driver Name" = "BPF";
-"Version" = "1.0";
 "Post-Load" = "PostLoad";
 "Help File" = "BPF.rtfd";
 "Server Name" = "BPF";
-"Driver Version" = "PROGRAM:BPF  PROJECT:drvBPF-3  DEVELOPER:root  BUILT:Sun Mar 29 03:25:39 PST 1998";

@@ -351,10 +351,11 @@ machine_configure(void)
     machine_slot[0].is_cpu = TRUE;
     machine_slot[0].running = TRUE;
 
-#if 0
+    /* we are running on an i386-based architecture */
     machine_slot[0].cpu_type = CPU_TYPE_I386;
     (void) strcpy(machine, "i386");
 
+#if 0
     pid = get_cpuid();
 
     /* Calculate effective family and model (handle extended fields) */

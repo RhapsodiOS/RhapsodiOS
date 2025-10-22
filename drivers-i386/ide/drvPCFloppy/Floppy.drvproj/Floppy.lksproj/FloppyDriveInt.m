@@ -9,6 +9,205 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+// External references for VM functions
+extern unsigned int __page_size;
+extern unsigned int __page_mask;
+extern vm_map_t __kernel_map;
+extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
+
+/*
+ * floppyMalloc - Allocate page-aligned memory for DMA
+ * From decompiled code: allocates memory aligned to page boundary.
+ *
+ * This function allocates memory that is guaranteed to be within a single
+ * physical page, which is required for ISA DMA operations. It allocates
+ * double the requested size and returns a pointer to a region within the
+ * allocation that doesn't cross a page boundary.
+ *
+ * Parameters:
+ *   size          - Size in bytes to allocate (must be <= page_size)
+ *   allocAddrOut  - Output: actual allocation address (for later freeing)
+ *   allocSizeOut  - Output: actual allocation size (for later freeing)
+ *
+ * Returns:
+ *   Pointer to page-aligned memory region, or 0 if allocation fails
+ *   or if size exceeds page size.
+ *
+ * The function works by:
+ *   1. Allocating 2x the requested size
+ *   2. Finding the physical address of the allocation
+ *   3. Calculating the offset to the next page boundary
+ *   4. Returning a pointer that ensures the requested size fits in one page
+ */
+static void *floppyMalloc(unsigned int size,
+                          vm_address_t *allocAddrOut,
+                          unsigned int *allocSizeOut)
+{
+	vm_address_t allocAddr;
+	vm_address_t returnAddr;
+	unsigned int allocSize;
+	pmap_t pmap;
+	vm_offset_t physAddr;
+	int offsetToNextPage;
+
+	// Check if requested size exceeds page size
+	if (__page_size < size) {
+		return NULL;
+	}
+
+	// Allocate double the requested size to ensure we can find
+	// a contiguous region within a single page
+	allocSize = size * 2;
+	allocAddr = (vm_address_t)IOMalloc(allocSize);
+
+	// Store allocation info for later freeing
+	*allocAddrOut = allocAddr;
+	*allocSizeOut = allocSize;
+
+	// Get physical address of the allocation
+	pmap = _vm_map_pmap_EXTERNAL(__kernel_map, allocAddr);
+	physAddr = _pmap_resident_extract(pmap, allocAddr);
+
+	// Calculate offset from physical address to next page boundary
+	// (-__page_size & physAddr) rounds down to page boundary
+	// Adding __page_size gives next page boundary
+	// Subtracting physAddr gives offset to next boundary
+	offsetToNextPage = ((-__page_size & physAddr) + __page_size) - physAddr;
+
+	// If the offset to the next page boundary is less than the requested size,
+	// we need to move forward to ensure the buffer doesn't cross a page
+	if (offsetToNextPage < (int)size) {
+		returnAddr = allocAddr + offsetToNextPage;
+	} else {
+		// The allocation already starts within a page with enough room
+		returnAddr = allocAddr;
+	}
+
+	return (void *)returnAddr;
+}
+
+/*
+ * _fdTimer - Timer callback for floppy motor control
+ * From decompiled code: timer callback that checks motor state.
+ *
+ * This function is called by the system timer to handle motor timeout.
+ * It checks if the motor timer is active (bit 0 at offset 0x178) and
+ * if so, calls the motorOffCheck method to potentially turn off the motor.
+ *
+ * Parameters:
+ *   drive - IOFloppyDrive object pointer
+ *
+ * The _motorTimerActive flag is at offset 0x178:
+ *   - Bit 0 set: timer is active/pending
+ *   - Bit 0 clear: timer has fired or is inactive
+ */
+static void _fdTimer(id drive)
+{
+	unsigned char *timerFlagPtr;
+
+	// Get pointer to motor timer active flag at offset 0x178
+	timerFlagPtr = (unsigned char *)((char *)drive + 0x178);
+
+	// Check if bit 0 is set (timer is active)
+	if ((*timerFlagPtr & 1) != 0) {
+		// Clear bit 0 (mark timer as fired)
+		*timerFlagPtr = *timerFlagPtr & 0xfe;
+
+		// Call motorOffCheck method to potentially turn off motor
+		[drive motorOffCheck];
+	}
+}
+
+/*
+ * fdrToIo - Convert floppy drive result code to IOReturn code
+ * From decompiled code: maps FDC error codes to IOKit error codes.
+ *
+ * This function translates floppy disk controller result codes (from the
+ * status registers after commands) into IOKit IOReturn error codes.
+ *
+ * Parameters:
+ *   fdrCode - Floppy drive result code from FDC
+ *
+ * Returns:
+ *   IOReturn error code
+ *
+ * Error code mappings:
+ *   0x00 -> IO_R_SUCCESS (0)
+ *   0x01, 0x06-0x0c, 0x0e-0x10, 0x12-0x13, 0x17 -> IO_R_IO_ERROR (0xfffffd36 = -714)
+ *   0x02 -> IO_R_NOT_WRITABLE (0xfffffd43 = -701)
+ *   0x03 -> IO_R_NOT_READABLE (0xfffffd38 = -712)
+ *   0x04, 0x11 -> IO_R_NOT_FORMATTED (0xfffffd39 = -711)
+ *   0x05 -> IO_R_MEDIA_ERROR (0xfffffd40 = -704)
+ *   0x0d -> IO_R_DMA_ERROR (0xfffffd31 = -719)
+ *   0x14 -> IO_R_TIMEOUT (0xfffffbb2 = -1102)
+ *   0x15 -> IO_R_DEVICE_ERROR (0xfffffd30 = -720)
+ *   0x16 -> IO_R_NO_MEDIA (0xfffffd2c = -724)
+ *   default -> IO_R_INVALID (0xfffffd37 = -713)
+ */
+static IOReturn fdrToIo(unsigned int fdrCode)
+{
+	switch (fdrCode) {
+	case 0x00:
+		// Success
+		return IO_R_SUCCESS;
+
+	case 0x01:
+	case 0x06:
+	case 0x07:
+	case 0x08:
+	case 0x09:
+	case 0x0a:
+	case 0x0b:
+	case 0x0c:
+	case 0x0e:
+	case 0x0f:
+	case 0x10:
+	case 0x12:
+	case 0x13:
+	case 0x17:
+		// General I/O error
+		return IO_R_IO_ERROR;  // 0xfffffd36 = -714
+
+	case 0x02:
+		// Write protected
+		return IO_R_NOT_WRITABLE;  // 0xfffffd43 = -701
+
+	case 0x03:
+		// Read error
+		return IO_R_NOT_READABLE;  // 0xfffffd38 = -712
+
+	case 0x04:
+	case 0x11:
+		// Not formatted
+		return IO_R_NOT_FORMATTED;  // 0xfffffd39 = -711
+
+	case 0x05:
+		// Media error
+		return IO_R_MEDIA_ERROR;  // 0xfffffd40 = -704
+
+	case 0x0d:
+		// DMA error
+		return IO_R_DMA_ERROR;  // 0xfffffd31 = -719
+
+	case 0x14:
+		// Timeout
+		return IO_R_TIMEOUT;  // 0xfffffbb2 = -1102
+
+	case 0x15:
+		// Device error
+		return IO_R_DEVICE_ERROR;  // 0xfffffd30 = -720
+
+	case 0x16:
+		// No media
+		return IO_R_NO_MEDIA;  // 0xfffffd2c = -724
+
+	default:
+		// Invalid/unknown error
+		return IO_R_INVALID;  // 0xfffffd37 = -713
+	}
+}
+
 @implementation IOFloppyDrive(Internal)
 
 /*

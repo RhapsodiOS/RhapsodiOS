@@ -53,6 +53,25 @@ void _OperationThreadStartup(id self);
 }
 
 /*
+ * Class method: Get device style.
+ *
+ * Returns:
+ *   Device style constant (2 = removable media)
+ */
++ (int)deviceStyle;
+
+/*
+ * Class method: Probe for devices.
+ *
+ * Parameters:
+ *   deviceDescription - Device description to probe
+ *
+ * Returns:
+ *   0 (false) - probing not used for floppy disks
+ */
++ (BOOL)probe:(id)deviceDescription;
+
+/*
  * Dummy method for IODisk protocol compliance.
  */
 - (void)_dummyIODiskPhysicalMethod;
@@ -105,16 +124,6 @@ void _OperationThreadStartup(id self);
              buffer:(void *)buffer
        actualLength:(unsigned *)actualLength
              client:(vm_task_t)client;
-
-/*
- * Get geometry object for a given capacity.
- */
-+ (id)geometryOfCapacity:(unsigned)capacity;
-
-/*
- * Get drive number from drive object.
- */
-+ (unsigned)driveNumberOfDrive:(id)drive;
 
 @end
 

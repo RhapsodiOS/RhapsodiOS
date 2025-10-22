@@ -9,6 +9,191 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+// External VM functions
+extern void *vm_map_pmap(vm_map_t map);
+extern unsigned int pmap_resident_extract(void *pmap, vm_address_t va);
+extern unsigned int page_size;
+
+/*
+ * _physContBlocks - Calculate physically contiguous blocks
+ * From decompiled code: determines how many blocks are physically contiguous in memory.
+ *
+ * This function checks how many blocks starting from a given virtual address
+ * are physically contiguous in memory. This is important for DMA operations
+ * which require physically contiguous memory.
+ *
+ * Parameters:
+ *   address    - Virtual address to start checking from
+ *   map        - VM map (task) containing the address
+ *   blockCount - Number of blocks to check
+ *   blockSize  - Size of each block in bytes
+ *
+ * Returns:
+ *   Number of physically contiguous blocks (may be less than blockCount)
+ *
+ * Algorithm:
+ *   - Translates virtual addresses to physical addresses using pmap
+ *   - Checks if consecutive pages have consecutive physical addresses
+ *   - Stops when a non-contiguous page is encountered
+ *   - Returns the count of contiguous blocks found
+ */
+static int _physContBlocks(vm_address_t address, vm_map_t map,
+                           int blockCount, int blockSize)
+{
+	int totalBytes;
+	int contiguousBytes;
+	int pageRemaining;
+	vm_address_t pageAlignedAddr;
+	vm_address_t nextPageAddr;
+	unsigned int physAddr;
+	unsigned int nextPhysAddr;
+	unsigned int expectedNextPhys;
+	void *pmap;
+
+	contiguousBytes = 0;
+
+	// Get the physical map for this VM map
+	pmap = vm_map_pmap(map);
+
+	// Get physical address for the starting virtual address
+	physAddr = pmap_resident_extract(pmap, address);
+
+	// Calculate total bytes to check
+	totalBytes = blockCount * blockSize;
+
+	// Calculate page-aligned address
+	pageAlignedAddr = address & ~(page_size - 1);
+
+	// Calculate end of first page
+	expectedNextPhys = (physAddr & ~(page_size - 1)) + page_size;
+
+	// Calculate bytes remaining in first page
+	pageRemaining = expectedNextPhys - physAddr;
+
+	// Loop through pages checking for physical contiguity
+	while (1) {
+		// If we've checked all requested bytes, we're done
+		if (totalBytes < 1) {
+			// Return number of contiguous blocks
+			return contiguousBytes / blockSize;
+		}
+
+		// If remaining bytes fit in current page, we're done
+		if (totalBytes <= pageRemaining) {
+			contiguousBytes += totalBytes;
+			return contiguousBytes / blockSize;
+		}
+
+		// Add bytes from current page
+		contiguousBytes += pageRemaining;
+
+		// Move to next page
+		nextPageAddr = pageAlignedAddr + page_size;
+
+		// Get physical address of next page
+		nextPhysAddr = pmap_resident_extract(pmap, nextPageAddr);
+
+		// Check if next page is physically contiguous
+		if (expectedNextPhys != nextPhysAddr) {
+			// Not contiguous, stop here
+			return contiguousBytes / blockSize;
+		}
+
+		// Update for next iteration
+		totalBytes -= pageRemaining;
+		pageAlignedAddr = nextPageAddr;
+		expectedNextPhys += page_size;
+		pageRemaining = page_size;
+	}
+}
+
+/*
+ * _vFloppyCopy - Copy data between virtual addresses with page boundary handling
+ * From decompiled code: copies data between two virtual address spaces page-by-page.
+ *
+ * This function copies data from one virtual address space to another, handling
+ * page boundaries properly. It translates virtual addresses to physical addresses
+ * and performs the copy in chunks that don't cross page boundaries.
+ *
+ * Parameters:
+ *   srcAddr  - Source virtual address
+ *   srcMap   - Source VM map (task)
+ *   destAddr - Destination virtual address
+ *   destMap  - Destination VM map (task)
+ *   size     - Number of bytes to copy
+ *
+ * Algorithm:
+ *   - Copies data in chunks, respecting page boundaries
+ *   - Each iteration:
+ *     1. Calculate bytes remaining in source page
+ *     2. Calculate bytes remaining in destination page
+ *     3. Use minimum of (src remaining, dest remaining, bytes left)
+ *     4. Translate both addresses to physical addresses
+ *     5. Copy chunk using bcopy on physical addresses
+ *     6. Advance addresses and decrease remaining bytes
+ */
+static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
+                         vm_address_t destAddr, vm_map_t destMap,
+                         unsigned int size)
+{
+	void *srcPmap;
+	void *destPmap;
+	void *srcPhys;
+	void *destPhys;
+	unsigned int srcPageRemaining;
+	unsigned int destPageRemaining;
+	unsigned int chunkSize;
+
+	// Nothing to copy if size is 0
+	if (size == 0) {
+		return;
+	}
+
+	// Loop until all bytes are copied
+	do {
+		// Calculate bytes remaining in source page
+		srcPageRemaining = page_size - (srcAddr & (page_size - 1));
+
+		// Start with minimum of (src page remaining, total size)
+		chunkSize = size;
+		if (srcPageRemaining <= size) {
+			chunkSize = srcPageRemaining;
+		}
+
+		// Calculate bytes remaining in destination page
+		destPageRemaining = page_size - (destAddr & (page_size - 1));
+
+		// Further limit chunk size by destination page boundary
+		if (chunkSize < destPageRemaining) {
+			destPageRemaining = chunkSize;
+		}
+
+		// Final chunk size is the minimum of all constraints
+		chunkSize = destPageRemaining;
+
+		// Get physical address for destination
+		destPmap = vm_map_pmap(destMap);
+		destPhys = (void *)pmap_resident_extract(destPmap, destAddr);
+
+		// Get physical address for source
+		srcPmap = vm_map_pmap(srcMap);
+		srcPhys = (void *)pmap_resident_extract(srcPmap, srcAddr);
+
+		// Copy chunk using physical addresses
+		bcopy(srcPhys, destPhys, chunkSize);
+
+		// Advance addresses by chunk size
+		srcAddr += destPageRemaining;
+		destAddr += destPageRemaining;
+
+		// Decrease remaining bytes
+		size -= destPageRemaining;
+
+	} while (size != 0);
+
+	return;
+}
+
 @implementation IOFloppyDrive(Internal2)
 
 /*
@@ -145,7 +330,7 @@
 		}
 
 		// Check if buffer is physically contiguous
-		isContiguous = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
+		isContiguous = _physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
 
 		// If not contiguous, can only transfer 1 block at a time
 		if (!isContiguous) {
@@ -179,7 +364,7 @@
 
 			// For write, copy data to bounce buffer
 			if (!isRead) {
-				vFloppyCopy(currentBuffer, client, bounceBuffer, kernel_map, sectorSize);
+				_vFloppyCopy(currentBuffer, client, bounceBuffer, kernel_map, sectorSize);
 			}
 		}
 
@@ -202,7 +387,7 @@
 
 		// For read with bounce buffer, copy data back
 		if ((blocksToTransfer != 0) && (!isContiguous) && isRead) {
-			vFloppyCopy(bounceBuffer, kernel_map, currentBuffer, client, sectorSize);
+			_vFloppyCopy(bounceBuffer, kernel_map, currentBuffer, client, sectorSize);
 		}
 
 		// Update counters

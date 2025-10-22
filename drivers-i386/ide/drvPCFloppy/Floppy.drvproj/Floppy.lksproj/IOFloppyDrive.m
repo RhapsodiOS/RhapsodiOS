@@ -11,6 +11,38 @@
 @implementation IOFloppyDrive
 
 /*
+ * Class method: Get device style.
+ * From decompiled code: returns device style constant.
+ *
+ * This method indicates that floppy drives are removable media devices.
+ *
+ * Returns:
+ *   2 - Indicates removable media device style
+ */
++ (int)deviceStyle
+{
+	return 2;
+}
+
+/*
+ * Class method: Probe for devices.
+ * From decompiled code: probing is not used for floppy drives.
+ *
+ * Floppy drives are not probed automatically. Instead, they are
+ * instantiated by the FloppyController during initialization.
+ *
+ * Parameters:
+ *   deviceDescription - Device description to probe (unused)
+ *
+ * Returns:
+ *   0 (false) - Probing not supported/used
+ */
++ (BOOL)probe:(id)deviceDescription
+{
+	return 0;
+}
+
+/*
  * Check if media can be polled inexpensively.
  * From decompiled code: returns NO (floppy drives cannot poll inexpensively).
  */

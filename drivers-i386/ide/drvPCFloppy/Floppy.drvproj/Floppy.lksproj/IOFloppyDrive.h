@@ -48,6 +48,25 @@
 }
 
 /*
+ * Class method: Get device style.
+ *
+ * Returns:
+ *   Device style constant (2 = removable media)
+ */
++ (int)deviceStyle;
+
+/*
+ * Class method: Probe for devices.
+ *
+ * Parameters:
+ *   deviceDescription - Device description to probe
+ *
+ * Returns:
+ *   0 (false) - probing not used for floppy drives
+ */
++ (BOOL)probe:(id)deviceDescription;
+
+/*
  * Check if media can be polled inexpensively.
  */
 - (BOOL)canPollInexpensively;

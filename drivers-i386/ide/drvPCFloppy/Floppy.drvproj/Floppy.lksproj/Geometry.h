@@ -15,6 +15,41 @@
 @interface IOFloppyDisk(Geometry)
 
 /*
+ * Class method: Get capacity from disk size.
+ *
+ * Parameters:
+ *   diskSize - Size of the disk
+ *
+ * Returns:
+ *   Capacity value corresponding to the disk size
+ */
++ (unsigned int)_capacityFromSize:(unsigned int)diskSize;
+
+/*
+ * Class method: Get geometry from capacity.
+ *
+ * Parameters:
+ *   capacity - Disk capacity value
+ *
+ * Returns:
+ *   Pointer to geometry structure for the given capacity
+ */
++ (void *)_geometryOfCapacity:(unsigned int)capacity;
+
+/*
+ * Class method: Create size list from capacities.
+ *
+ * Parameters:
+ *   capacities - Bitmask of capacity identifiers
+ *   sizeList   - Output array to store size values (NULL-terminated)
+ *
+ * Returns:
+ *   IOReturn status code
+ */
++ (IOReturn)_sizeListFromCapacities:(unsigned int)capacities
+                           sizeList:(unsigned int *)sizeList;
+
+/*
  * Calculate blocks remaining to end of cylinder from given block number.
  */
 - (unsigned)_blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber;

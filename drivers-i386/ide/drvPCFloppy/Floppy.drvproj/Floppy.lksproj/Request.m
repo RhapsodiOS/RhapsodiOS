@@ -9,6 +9,132 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+// External references for VM functions
+extern unsigned int __page_size;
+extern unsigned int __page_mask;
+extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
+extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
+
+/*
+ * _doWire - Wire or unwire memory pages
+ * From decompiled code: wires or unwires memory pages in a VM map.
+ *
+ * This function makes memory pages resident (wired) or pageable (unwired) by
+ * calling _vm_map_pageable. It automatically page-aligns the address range.
+ *
+ * Parameters:
+ *   map       - VM map containing the memory
+ *   address   - Starting virtual address (will be page-aligned down)
+ *   size      - Size in bytes (range will be page-aligned up)
+ *   wireFlag  - 0 to unwire (make pageable), non-zero to wire (make resident)
+ *
+ * Implementation details:
+ *   - Start address is aligned down: address & ~__page_mask
+ *   - End address is aligned up: (address + size + __page_mask) & ~__page_mask
+ *   - Wiring when wireFlag != 0 (new_pageable = FALSE)
+ *   - Unwiring when wireFlag == 0 (new_pageable = TRUE)
+ */
+static void _doWire(vm_map_t map,
+                    vm_address_t address,
+                    vm_size_t size,
+                    int wireFlag)
+{
+	vm_address_t startAddr;
+	vm_address_t endAddr;
+	boolean_t newPageable;
+
+	// Calculate page-aligned start address (round down)
+	startAddr = address & ~__page_mask;
+
+	// Calculate page-aligned end address (round up)
+	// address + size + __page_mask rounds up to next page boundary
+	// Then & ~__page_mask aligns it
+	endAddr = (address + size + __page_mask) & ~__page_mask;
+
+	// Convert wire flag to pageable flag
+	// wireFlag == 0 means unwire (make pageable = TRUE)
+	// wireFlag != 0 means wire (make pageable = FALSE)
+	newPageable = (wireFlag == 0);
+
+	// Wire or unwire the memory range
+	_vm_map_pageable(map, startAddr, endAddr, newPageable);
+}
+
+/*
+ * _doCopy - Low-level page-by-page memory copy utility
+ * From decompiled code: copies memory between address spaces page by page.
+ *
+ * This function performs a low-level copy operation between potentially different
+ * address spaces by extracting physical addresses page-by-page and using bcopy.
+ * It handles page boundaries correctly to avoid crossing page mappings.
+ *
+ * Parameters:
+ *   sourceMap    - Source VM map (address space)
+ *   sourceAddr   - Source virtual address
+ *   destMap      - Destination VM map (address space)
+ *   destAddr     - Destination virtual address
+ *   byteCount    - Number of bytes to copy
+ *
+ * Implementation details:
+ *   - Processes data in chunks that don't cross page boundaries
+ *   - Uses _vm_map_pmap_EXTERNAL to get pmap from vm_map
+ *   - Uses _pmap_resident_extract to get physical addresses
+ *   - Copies data using bcopy on physical addresses
+ *   - Handles source and destination page boundaries separately
+ */
+static void _doCopy(vm_map_t sourceMap,
+                    vm_address_t sourceAddr,
+                    vm_map_t destMap,
+                    vm_address_t destAddr,
+                    vm_size_t byteCount)
+{
+	pmap_t sourcePmap;
+	pmap_t destPmap;
+	vm_offset_t sourcePhys;
+	vm_offset_t destPhys;
+	vm_size_t sourceBytesRemaining;
+	vm_size_t destBytesRemaining;
+	vm_size_t chunkSize;
+
+	// Process all bytes
+	while (byteCount != 0) {
+		// Calculate bytes remaining to end of source page
+		// __page_mask contains the page offset mask (e.g., 0xFFF for 4KB pages)
+		// sourceAddr & __page_mask gives offset within page
+		// __page_size - offset gives bytes to page boundary
+		sourceBytesRemaining = __page_size - (sourceAddr & __page_mask);
+
+		// Start with minimum of bytes remaining and source page boundary
+		chunkSize = byteCount;
+		if (sourceBytesRemaining < byteCount) {
+			chunkSize = sourceBytesRemaining;
+		}
+
+		// Also limit by destination page boundary
+		destBytesRemaining = __page_size - (destAddr & __page_mask);
+		if (destBytesRemaining < chunkSize) {
+			chunkSize = destBytesRemaining;
+		}
+
+		// Get physical addresses for this chunk
+		// First get the pmap (physical map) for each address space
+		destPmap = _vm_map_pmap_EXTERNAL(destMap, destAddr);
+		destPhys = _pmap_resident_extract(destPmap, destAddr);
+
+		sourcePmap = _vm_map_pmap_EXTERNAL(sourceMap, sourceAddr);
+		sourcePhys = _pmap_resident_extract(sourcePmap, sourceAddr);
+
+		// Copy the chunk using physical addresses
+		bcopy((void *)sourcePhys, (void *)destPhys, chunkSize);
+
+		// Update addresses and count
+		sourceAddr += chunkSize;
+		destAddr += chunkSize;
+		byteCount -= chunkSize;
+	}
+}
+
 @implementation IOFloppyDisk(Request)
 
 /*
@@ -540,46 +666,33 @@
 	blockCount = *(unsigned *)((char *)subrequest + 0x18);
 	byteCount = sectorSize * blockCount;
 
-	// Wire the cache memory
-	wireResult = vm_wire(kern_serv_kernel_task_port(),
-	                      kernel_map,
-	                      (vm_address_t)cachePointer,
-	                      byteCount,
-	                      VM_PROT_READ | VM_PROT_WRITE);
-
-	if (wireResult != KERN_SUCCESS) {
-		// Wiring failed
-		parentRequest = *(id *)((char *)subrequest + 0x08);
-		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_VM_FAILURE;
-		return IO_R_VM_FAILURE;
-	}
+	// Wire the cache memory (make pages resident)
+	_doWire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
 
 	// Get write flag and buffer info
 	isWrite = *(BOOL *)subrequest;
 	buffer = *(void **)((char *)subrequest + 0x1c);
 	bufferMap = *(vm_task_t *)((char *)subrequest + 0x20);
 
-	// Perform the copy operation
+	// Perform the copy operation using _doCopy
 	if (!isWrite) {
 		// Read operation: copy from cache to user buffer
-		vm_map_copy_overwrite(bufferMap,
-		                       (vm_address_t)buffer,
-		                       (vm_map_copy_t)cachePointer,
-		                       FALSE);
+		_doCopy(kernel_map,
+		        (vm_address_t)cachePointer,
+		        bufferMap,
+		        (vm_address_t)buffer,
+		        byteCount);
 	} else {
 		// Write operation: copy from user buffer to cache
-		vm_map_copy_overwrite(kernel_map,
-		                       (vm_address_t)cachePointer,
-		                       (vm_map_copy_t)buffer,
-		                       FALSE);
+		_doCopy(bufferMap,
+		        (vm_address_t)buffer,
+		        kernel_map,
+		        (vm_address_t)cachePointer,
+		        byteCount);
 	}
 
-	// Unwire the cache memory
-	vm_wire(kern_serv_kernel_task_port(),
-	        kernel_map,
-	        (vm_address_t)cachePointer,
-	        byteCount,
-	        VM_PROT_NONE);
+	// Unwire the cache memory (make pages pageable again)
+	_doWire(kernel_map, (vm_address_t)cachePointer, byteCount, 0);
 
 	return IO_R_SUCCESS;
 }

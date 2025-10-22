@@ -12,19 +12,63 @@
 /*
  * Thread startup function.
  * From decompiled code: entry point for operation thread.
+ *
+ * This function is the entry point for the disk operation thread. It calls
+ * the operationThread method which runs the main operation processing loop,
+ * then exits the thread when the operation thread completes.
+ *
+ * Parameters:
+ *   self - The IOFloppyDisk object instance
  */
 void _OperationThreadStartup(id self)
 {
-	// Call the operation thread method
-	[self _operationThread];
+	// Call the operation thread method (runs the main loop)
+	[self operationThread];
+
+	// Exit the thread when complete
+	IOExitThread();
+
+	return;
 }
 
 // External geometry table
-// Each entry is 7 words (28 bytes): capacity, diskSize, numCylinders, numHeads, 
+// Each entry is 7 words (28 bytes): capacity, diskSize, numCylinders, numHeads,
 // numSectors, sectorSize, variableGeometry
 extern unsigned int _FloppyGeometry[];
 
 @implementation IOFloppyDisk
+
+/*
+ * Class method: Get device style.
+ * From decompiled code: returns device style constant.
+ *
+ * This method indicates that floppy disks are removable media devices.
+ *
+ * Returns:
+ *   2 - Indicates removable media device style
+ */
++ (int)deviceStyle
+{
+	return 2;
+}
+
+/*
+ * Class method: Probe for devices.
+ * From decompiled code: probing is not used for floppy disks.
+ *
+ * Floppy disks are not probed automatically. Instead, they are
+ * instantiated by the FloppyController when drives are detected.
+ *
+ * Parameters:
+ *   deviceDescription - Device description to probe (unused)
+ *
+ * Returns:
+ *   0 (false) - Probing not supported/used
+ */
++ (BOOL)probe:(id)deviceDescription
+{
+	return 0;
+}
 
 /*
  * Dummy method for IODisk protocol compliance.
@@ -149,7 +193,7 @@ extern unsigned int _FloppyGeometry[];
 	_capacity = capacity;
 
 	// Get geometry for this capacity
-	geometry = [IOFloppyDisk geometryOfCapacity:capacity];
+	geometry = [IOFloppyDisk _geometryOfCapacity:capacity];
 	_geometry = geometry;
 
 	// Allocate queue lock (NXConditionLock)
@@ -194,7 +238,7 @@ extern unsigned int _FloppyGeometry[];
 	[self setDiskSize:*(unsigned *)((char *)geometry + 4)];
 
 	// Get drive number and create name
-	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
+	driveNumber = [IOFloppyDisk _driveNumberOfDrive:drive];
 	sprintf(diskName, "fdsk%d", driveNumber);
 
 	// Set unit and name
@@ -308,9 +352,6 @@ extern unsigned int _FloppyGeometry[];
 	return result;
 }
 
-	return IO_R_SUCCESS;
-}
-
 - (IOReturn)writeAsyncAt:(unsigned)offset
                   length:(unsigned)length
                   buffer:(void *)buffer
@@ -417,63 +458,6 @@ extern unsigned int _FloppyGeometry[];
 
 	return result;
 }
-
-	return IO_R_SUCCESS;
-}
-
-+ (id)geometryOfCapacity:(unsigned)capacity
-{
-	int index;
-	unsigned *geometryEntry;
-
-	// Search through global geometry table
-	// Each entry is 7 words (28 bytes)
-	index = 0;
-	while (1) {
-		geometryEntry = &_FloppyGeometry[index * 7];
-		
-		// Check if this entry matches the capacity
-		if (geometryEntry[0] == capacity) {
-			// Return pointer to this geometry structure
-			return (id)geometryEntry;
-		}
-		
-		// Check for sentinel (capacity == 0 means end of table)
-		if (_FloppyGeometry[(index + 1) * 7] == 0) {
-			// Not found
-			return nil;
-		}
-		
-		index++;
-	}
-}
-
-
-+ (unsigned)driveNumberOfDrive:(id)drive
-{
-	unsigned driveNumber;
-	unsigned char *deviceFlags;
-	id *drivePointer;
-
-	// Search through BSD device table (at 0xc000, 8 entries max)
-	// Each entry is 0x34 (52) bytes
-	for (driveNumber = 0; driveNumber < 8; driveNumber++) {
-		// Get pointer to flags byte at offset 0xc000 + driveNumber * 0x34
-		deviceFlags = (unsigned char *)(0xc000 + driveNumber * 0x34);
-		
-		// Get pointer to drive object at offset 0xc004 + driveNumber * 0x34
-		drivePointer = (id *)(0xc004 + driveNumber * 0x34);
-		
-		// Check if entry is valid (bit 0 set) and drive matches
-		if (((*deviceFlags) & 1) != 0 && (*drivePointer) == drive) {
-			return driveNumber;
-		}
-	}
-
-	// Not found
-	return 0xffffffff;
-}
-
 
 @end
 

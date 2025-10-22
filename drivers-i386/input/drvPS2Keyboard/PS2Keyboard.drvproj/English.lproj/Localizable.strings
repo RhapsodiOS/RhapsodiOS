@@ -1,0 +1,24 @@
+/* Name used in the browser */
+"PS2Keyboard" = "PS/2 Keyboard";
+
+/* Name used in the inspector */
+"Long Name" = "PS/2-Style Keyboard";
+
+/* button to select the keyboard */
+"Select...";
+
+/* help text for keyboard selection */
+"SELECT_TEXT" = "Please select the keyboard layout that best describes the shape of your keyboard";
+
+/* OK button */
+"OK";
+
+/* title of the keyboard type box */
+"KEYBOARD_BOX_TITLE" = "Keyboard Layout";
+
+/* cancel button */
+"Cancel";
+
+/* browser title */
+"Keyboard Layouts";
+

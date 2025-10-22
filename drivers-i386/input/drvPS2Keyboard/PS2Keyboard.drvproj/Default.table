@@ -1,0 +1,17 @@
+"Title" = "PS2Keyboard";
+"Family" = "Keyboard";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "PS2Keyboard";
+"Class Names" = "PS2Controller PS2Keyboard";
+"IRQ Levels" = "1";
+"Valid IRQ Levels" = "1";
+"I/O Ports" = "0x60-0x65";
+"Memory Maps" = "";
+"DMA Channels" = "";
+"Boot Driver";
+"Interface" = "3";
+"Handler ID" = "0";
+"Server Name" = "PS2Keyboard";
+"Driver Version" = "PROGRAM:PS2Keyboard  PROJECT:drvPS2Keyboard-11  DEVELOPER:root  BUILT:Sat Mar 28 22:03:53 PST 1998";
+"Version" = "5.00";

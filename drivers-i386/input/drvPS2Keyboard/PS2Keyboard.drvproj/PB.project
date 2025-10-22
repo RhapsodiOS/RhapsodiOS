@@ -1,0 +1,17 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+    OTHER_RESOURCES = (Default.table);
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (PS2Keyboard.lksproj);
+    SUBPROJECTS = ();
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 2.7;
+INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+PROJECTTYPE = Bundle;
+PROJECTNAME = PS2Keyboard;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;

@@ -1,172 +1,128 @@
 /*
- * IOFloppyDisk.h
- * Floppy Disk Partition/Logical Disk Interface
+ * IOFloppyDisk.h - Floppy disk device class
+ *
+ * Main class for floppy disk devices with cylinder-based caching
  */
 
-#import <driverkit/IODisk.h>
-#import <driverkit/IOLogicalDisk.h>
-#import <driverkit/IODiskPartition.h>
+#import "IODriveNEW.h"
+#import <driverkit/return.h>
+#import <mach/vm_types.h>
 
+// Forward declarations
 @class IOFloppyDrive;
 
-@interface IOFloppyDisk : IOLogicalDisk
+// Thread startup function
+void _OperationThreadStartup(id self);
+
+/*
+ * IOFloppyDisk - Floppy disk device with cylinder caching
+ *
+ * Extends IODriveNEW to provide cylinder-based caching for floppy disks.
+ * Uses a background operation thread for read-ahead and write-behind operations.
+ */
+@interface IOFloppyDisk : IODriveNEW
 {
-    IOFloppyDrive *_drive;
-    unsigned int _diskNumber;
+	// Cache management (offsets 0x134-0x140)
+	void *_cacheBuffer;              // offset 0x134: cache data buffer
+	unsigned _cacheSize;             // offset 0x138: cache buffer size
+	void *_cacheMetadata;            // offset 0x13c: cylinder metadata array
+	unsigned _metadataSize;          // offset 0x140: metadata size
 
-    // Geometry
-    unsigned int _cylinders;
-    unsigned int _heads;
-    unsigned int _sectorsPerTrack;
-    unsigned int _blockSize;
-    unsigned int _capacity;
+	// Synchronization (offset 0x144)
+	id _operationLock;               // offset 0x144: lock for cache operations
 
-    // State (additional to IOLogicalDisk)
-    BOOL _isRegistered;
-    BOOL _isOpen;  // Track open state locally (IOLogicalDisk may not expose this directly)
-    BOOL _blockDeviceOpen;  // Block device open flag
-    BOOL _rawDeviceOpen;    // Raw device open flag
+	// Disk state (offsets 0x148-0x14c)
+	int _capacity;                   // offset 0x148: capacity/format state
+	id _geometry;                    // offset 0x14c: geometry object
 
-    // Cache support
-    void *_cachePointer;
-    unsigned int _cacheUnderNumber;
+	// Operation queue (offsets 0x150-0x158)
+	void *_queueHead;                // offset 0x150: operation queue head
+	void *_queueTail;                // offset 0x154: operation queue tail
+	id _queueLock;                   // offset 0x158: queue lock
 
-    // Lock for thread safety (use NXLock, not NSLock)
-    id _lock;
+	// Thread management (offset 0x15c)
+	int _operationThreadPort;        // offset 0x15c: operation thread port
 
-    // Request handling
-    id _operationThread;
-    void *_pendingRequest;
+	// Device info (offset 0x160)
+	id _deviceDescription;           // offset 0x160: device description
 
-    // Note: Statistics are provided by IODisk base class
-    // Note: _isPhysical, _isWriteProtected, _isRemovable, _isFormatted provided by IODisk
-    // Note: _physicalDisk, _partitionBase provided by IOLogicalDisk
-    // Note: _nextLogicalDisk is accessed via [self nextLogicalDisk] from IODisk
+	// Reserved/additional fields (offsets 0x164-0x16c)
+	unsigned _reserved1;             // offset 0x164
+	unsigned _reserved2;             // offset 0x168
+	unsigned _reserved3;             // offset 0x16c
 }
 
-- initWithController:(id)controller
-                unit:(unsigned int)unit
-        diskGeometry:(void *)geometry;
+/*
+ * Dummy method for IODisk protocol compliance.
+ */
+- (void)_dummyIODiskPhysicalMethod;
 
-// Disk operations
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(void *)buffer
-        actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client;
+/*
+ * Free the disk object and release resources.
+ */
+- free;
 
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(void *)buffer
-         actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client;
+/*
+ * Initialize from device description.
+ */
+- initFromDeviceDescription:(id)deviceDescription
+                      drive:(id)drive
+                   capacity:(unsigned)capacity
+             writeProtected:(BOOL)writeProtected;
 
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
+/*
+ * Asynchronous read operation.
+ */
+- (IOReturn)readAsyncAt:(unsigned)offset
+                 length:(unsigned)length
                  buffer:(void *)buffer
-                 pending:(void *)pending
+                pending:(void *)pending
                  client:(vm_task_t)client;
 
-- (IOReturn)writeAsyncAt:(unsigned int)offset
-                  length:(unsigned int)length
+/*
+ * Synchronous read operation.
+ */
+- (IOReturn)readAt:(unsigned)offset
+            length:(unsigned)length
+            buffer:(void *)buffer
+      actualLength:(unsigned *)actualLength
+            client:(vm_task_t)client;
+
+/*
+ * Asynchronous write operation.
+ */
+- (IOReturn)writeAsyncAt:(unsigned)offset
+                  length:(unsigned)length
                   buffer:(void *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client;
 
-// Status
-- (BOOL)isWriteProtected;
-- (BOOL)isRemovable;
-- (BOOL)isPhysical;
-- (BOOL)isFormatted;
+/*
+ * Synchronous write operation.
+ */
+- (IOReturn)writeAt:(unsigned)offset
+             length:(unsigned)length
+             buffer:(void *)buffer
+       actualLength:(unsigned *)actualLength
+             client:(vm_task_t)client;
 
-// Geometry
-- (unsigned int)diskSize;
-- (unsigned int)blockSize;
-- (unsigned int)cylindersPerDisk;
-- (unsigned int)sizeList;
-- (unsigned int)sizeListFromCapacities;
+/*
+ * Get geometry object for a given capacity.
+ */
++ (id)geometryOfCapacity:(unsigned)capacity;
 
-// Cache operations
-- (void *)cachePointerFromUnderNumber:(unsigned int)underNumber;
-
-// Format
-- (IOReturn)formatMedia;
-- (IOReturn)formatCylinder:(unsigned int)cylinder
-                      head:(unsigned int)head
-                      data:(void *)data;
-
-// Eject
-- (IOReturn)ejectMedia;
-- (IOReturn)updatePhysicalParameters;
-
-// Partition support
-- (IOReturn)nextLogicalDisk;
-- (IOReturn)setRemovable:(BOOL)removable;
-- (IOReturn)registerDevice;
-- (IOReturn)unregisterDevice;
-- (IOReturn)logicalDisk;
-- (IOReturn)unlockLogicalDisk;
-- (IOReturn)lockLogicalDisk;
-
-// Format internal
-- (IOReturn)setFormatted:(BOOL)formatted;
-- (IOReturn)setFormattedInternal:(BOOL)formatted;
-
-// Drive relationship
-- (void)setDrive:(IOFloppyDrive *)drive;
-
-// Additional operations
-- (IOReturn)getGeometry:(void *)geometry;
-- (IOReturn)setGeometry:(void *)geometry;
-- (IOReturn)getCapacity:(unsigned long long *)capacity;
-- (IOReturn)readBlock:(unsigned int)blockNumber
-               buffer:(void *)buffer
-               client:(vm_task_t)client;
-- (IOReturn)writeBlock:(unsigned int)blockNumber
-                buffer:(void *)buffer
-                client:(vm_task_t)client;
-- (IOReturn)completeTransfer:(void *)transfer
-                      status:(IOReturn)status
-                actualLength:(unsigned int)actualLength;
-- (IOReturn)pendingRequest:(void **)request;
-- (const char *)driverName;
-- (IOReturn)isDiskReady:(BOOL *)ready;
-
-// IOLogicalDisk inherited methods
-- (BOOL)isOpen;
-- (BOOL)isAnyOtherOpen;
-- (IOReturn)connectToPhysicalDisk:(id)physicalDisk;
-- (void)setPartitionBase:(unsigned)partBase;
-- (id)physicalDisk;
-- (void)setPhysicalBlockSize:(unsigned)size;
-- (u_int)physicalBlockSize;
-- (BOOL)isInstanceOpen;
-- (void)setInstanceOpen:(BOOL)isOpen;
-
-// IODisk inherited methods
-- (void)setLogicalDisk:(id)diskId;
-- (void)lockLogicalDisks;
-- (void)unlockLogicalDisks;
-- (const char *)stringFromReturn:(IOReturn)rtn;
-- (IOReturn)errnoFromReturn:(IOReturn)rtn;
-- (IOReturn)eject;
-- (IOReturn)abortRequest;
-- (IOReturn)diskBecameReady;
-- (IODiskReadyState)updateReadyState;
-- (BOOL)needsManualPolling;
-- (IOReturn)kernelDeviceInfo:(void *)info;
-
-// Partition/Label methods (IODiskPartition protocol)
-- (IOReturn)readLabel:(disk_label_t *)label_p;
-- (IOReturn)writeLabel:(disk_label_t *)label_p;
-- (BOOL)isBlockDeviceOpen;
-- (void)setBlockDeviceOpen:(BOOL)openFlag;
-- (BOOL)isRawDeviceOpen;
-- (void)setRawDeviceOpen:(BOOL)openFlag;
-
-// Legacy label methods (kept for compatibility)
-- (IOReturn)virtualLabel;
-- (IOReturn)getLabel:(void *)label;
-- (IOReturn)setLabel:(void *)label;
+/*
+ * Get drive number from drive object.
+ */
++ (unsigned)driveNumberOfDrive:(id)drive;
 
 @end
+
+// Import category headers
+#import "Bsd.h"
+#import "Geometry.h"
+#import "Request.h"
+#import "Support.h"
+#import "Thread.h"
+
+/* End of IOFloppyDisk.h */

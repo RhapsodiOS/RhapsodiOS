@@ -1,465 +1,379 @@
 /*
- * IOLogicalDiskNEW.m
- * Stub class implementation for IOLogicalDisk compatibility
+ * IOLogicalDiskNEW.m - Implementation for LogicalDisk class (NEW implementation)
+ *
+ * Base class for logical disk operations (partitions, etc.)
  */
 
 #import "IOLogicalDiskNEW.h"
 #import <driverkit/generalFuncs.h>
-#import <objc/objc.h>
+#import <driverkit/kernelDriver.h>
 
 @implementation IOLogicalDiskNEW
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription
+/*
+ * Connect to physical disk.
+ * From decompiled code: connects to physical disk and copies its properties.
+ */
+- (IOReturn)connectToPhysicalDisk : diskId
 {
-    // Never probe - this is just a stub class for compatibility
-    return NO;
+	BOOL removable;
+	BOOL formatted;
+	BOOL writeProtected;
+	id devAndIdInfo;
+	
+	// Store physical disk reference (offset 0x134)
+	_physicalDisk = diskId;
+	
+	// This is a logical disk, not a physical disk
+	[self setIsPhysical:NO];
+	
+	// Copy properties from physical disk
+	removable = [diskId isRemovable];
+	[self setRemovable:removable];
+	
+	formatted = [diskId isFormatted];
+	[self setFormattedInternal:formatted];
+	
+	writeProtected = [diskId isWriteProtected];
+	[self setWriteProtected:writeProtected];
+	
+	// Initialize logical disk chain to nil
+	[self setLogicalDisk:nil];
+	
+	// Copy device and ID info from physical disk
+	devAndIdInfo = [diskId devAndIdInfo];
+	[self setDevAndIdInfo:devAndIdInfo];
+	
+	return IO_R_SUCCESS;
 }
 
-- init
+/*
+ * Free method.
+ * From decompiled code: frees next logical disk in chain, then calls super.
+ */
+- _free
 {
-    if ([super init] == nil) {
-        return nil;
-    }
-
-    // Initialize device state
-    _blockDeviceOpen = NO;
-    _writeProtected = NO;
-    _registered = NO;
-    _openCount = 0;
-
-    // Default geometry (1.44MB floppy)
-    _blockSize = 512;
-    _logicalBlockCount = 2880;  // 1.44MB = 2880 sectors
-
-    // Initialize logical disk chain
-    _nextLogicalDisk = nil;
-    _logicalDiskLock = nil;
-
-    // Initialize physical disk reference
-    _physicalDisk = nil;
-
-    // Default max bytes per transfer (one track)
-    _maxBytesPerTransfer = 18 * 512;  // 18 sectors/track * 512 bytes
-
-    return self;
+	id nextDisk;
+	
+	// Get next logical disk in chain
+	nextDisk = [self nextLogicalDisk];
+	
+	// Free the next disk if it exists (recursively frees entire chain)
+	if (nextDisk != nil) {
+		[nextDisk free];
+	}
+	
+	// Call superclass free
+	return [super free];
 }
 
-- (void)free
+/*
+ * Get physical disk.
+ * From decompiled code: returns physical disk at offset 0x134.
+ */
+- _physicalDisk
 {
-    // Clean up logical disk lock if allocated
-    if (_logicalDiskLock != nil) {
-        [_logicalDiskLock free];
-        _logicalDiskLock = nil;
-    }
-
-    return [super free];
+	return _physicalDisk;  // offset 0x134
 }
 
-- (IOReturn)registerDevice
+/*
+ * Check if instance is open.
+ * From decompiled code: returns flag at offset 0x13c.
+ */
+- (BOOL)_isInstanceOpen
 {
-    if (_registered) {
-        IOLog("IOLogicalDiskNEW: Device already registered\n");
-        return IO_R_SUCCESS;
-    }
-
-    // Call superclass registration
-    [super registerDevice];
-
-    _registered = YES;
-    IOLog("IOLogicalDiskNEW: Device registered\n");
-
-    return IO_R_SUCCESS;
+	return _instanceOpen;  // offset 0x13c
 }
 
-- (IOReturn)unregisterDevice
+/*
+ * Set instance open flag.
+ * From decompiled code: sets flag at offset 0x13c.
+ */
+- (void)_setInstanceOpen : (BOOL)openFlag
 {
-    if (!_registered) {
-        IOLog("IOLogicalDiskNEW: Device not registered\n");
-        return IO_R_SUCCESS;
-    }
-
-    // Ensure device is closed before unregistering
-    if (_blockDeviceOpen) {
-        IOLog("IOLogicalDiskNEW: Closing device before unregister\n");
-        [self setBlockDeviceOpen:NO];
-    }
-
-    // Call superclass unregistration
-    [super unregisterDevice];
-
-    _registered = NO;
-    IOLog("IOLogicalDiskNEW: Device unregistered\n");
-
-    return IO_R_SUCCESS;
+	_instanceOpen = (openFlag != 0);  // offset 0x13c
 }
 
-- (IOReturn)setLogicalDisk:(id)disk
+/*
+ * Check if disk is open.
+ * From decompiled code: checks if this instance or any in the chain is open.
+ */
+- (BOOL)_isOpen
 {
-    // Lock before modifying chain
-    [self lockLogicalDisks];
-
-    _nextLogicalDisk = disk;
-
-    if (disk != nil) {
-        IOLog("IOLogicalDiskNEW: Next logical disk set to %s\n",
-              [[disk name] cString]);
-    } else {
-        IOLog("IOLogicalDiskNEW: Next logical disk cleared\n");
-    }
-
-    [self unlockLogicalDisks];
-
-    return IO_R_SUCCESS;
+	BOOL instanceOpen;
+	id nextDisk;
+	
+	// Check if this instance is open
+	instanceOpen = [self isInstanceOpen];
+	if (instanceOpen) {
+		return YES;
+	}
+	
+	// Check if there's a next logical disk
+	nextDisk = [self nextLogicalDisk];
+	if (nextDisk == nil) {
+		return NO;
+	}
+	
+	// Recursively check if next disk (or any in its chain) is open
+	return [nextDisk isOpen];
 }
 
-- (IOReturn)lockLogicalDisks
+/*
+ * Check if any other instance is open.
+ * From decompiled code: iterates through logical disk chain checking for open instances.
+ */
+- (BOOL)_isAnyOtherOpen
 {
-    // Create lock if needed
-    if (_logicalDiskLock == nil) {
-        _logicalDiskLock = [[NSLock alloc] init];
-        if (_logicalDiskLock == nil) {
-            IOLog("IOLogicalDiskNEW: Failed to create logical disk lock\n");
-            return IO_R_NO_MEMORY;
-        }
-    }
-
-    [_logicalDiskLock lock];
-    return IO_R_SUCCESS;
+	id disk;
+	BOOL isOpen;
+	
+	// Start with physical disk
+	disk = _physicalDisk;
+	
+	// Iterate through all logical disks
+	while (1) {
+		// Get next logical disk
+		disk = [disk nextLogicalDisk];
+		
+		// If no more disks, none are open
+		if (disk == nil) {
+			return NO;
+		}
+		
+		// Skip self
+		if (disk == self) {
+			continue;
+		}
+		
+		// Check if this disk is open
+		isOpen = [disk isInstanceOpen];
+		if (isOpen) {
+			return YES;
+		}
+	}
 }
 
-- (IOReturn)unlockLogicalDisks
+/*
+ * Set partition base offset.
+ * From decompiled code: sets base at offset 0x138.
+ */
+- (void)_setPartitionBase : (unsigned)base
 {
-    if (_logicalDiskLock == nil) {
-        IOLog("IOLogicalDiskNEW: Logical disk lock not initialized\n");
-        return IO_R_INVALID;
-    }
-
-    [_logicalDiskLock unlock];
-    return IO_R_SUCCESS;
+	_partitionBase = base;  // offset 0x138
 }
 
-- (IOReturn)setBlockDeviceOpen:(BOOL)open
+#ifdef KERNEL
+
+/*
+ * Read at offset.
+ * From decompiled code: validates params, then delegates to physical disk.
+ */
+- (IOReturn)_readAt : (unsigned)offset
+	     length : (unsigned)length
+	     buffer : (unsigned char *)buffer
+       actualLength : (unsigned *)actualLength
+	     client : (vm_task_t)client
 {
-    [self lockLogicalDisks];
+	unsigned deviceOffset;
+	unsigned bytesToMove;
+	IOReturn result;
 
-    if (open) {
-        if (_openCount == 0) {
-            _blockDeviceOpen = YES;
-            IOLog("IOLogicalDiskNEW: Block device opened\n");
-        }
-        _openCount++;
-    } else {
-        if (_openCount > 0) {
-            _openCount--;
-        }
-        if (_openCount == 0) {
-            _blockDeviceOpen = NO;
-            IOLog("IOLogicalDiskNEW: Block device closed\n");
-        }
-    }
+	// Validate parameters and calculate offsets
+	result = [self __diskParamCommon:offset
+	                          length:length
+	                    deviceOffset:&deviceOffset
+	                     bytesToMove:&bytesToMove];
+	if (result != IO_R_SUCCESS) {
+		if (actualLength) {
+			*actualLength = 0;
+		}
+		return result;
+	}
 
-    [self unlockLogicalDisks];
-
-    return IO_R_SUCCESS;
+	// Delegate to physical disk (offset already calculated in deviceOffset)
+	return [_physicalDisk _readAt:deviceOffset
+	                       length:bytesToMove
+	                       buffer:buffer
+	                 actualLength:actualLength
+	                       client:client];
 }
 
-- (IOReturn)isBlockDeviceOpen
+/*
+ * Read asynchronously at offset.
+ * From decompiled code: validates params, then delegates to physical disk.
+ */
+- (IOReturn)_readAsyncAt : (unsigned)offset
+		  length : (unsigned)length
+		  buffer : (unsigned char *)buffer
+		 pending : (void *)pending
+		  client : (vm_task_t)client
 {
-    BOOL result;
+	unsigned deviceOffset;
+	unsigned bytesToMove;
+	IOReturn result;
 
-    [self lockLogicalDisks];
-    result = _blockDeviceOpen;
-    [self unlockLogicalDisks];
+	// Validate parameters and calculate offsets
+	result = [self __diskParamCommon:offset
+	                          length:length
+	                    deviceOffset:&deviceOffset
+	                     bytesToMove:&bytesToMove];
+	if (result != IO_R_SUCCESS) {
+		return result;
+	}
 
-    return result ? YES : NO;
+	// Delegate to physical disk (offset already calculated in deviceOffset)
+	return [_physicalDisk _readAsyncAt:deviceOffset
+	                            length:bytesToMove
+	                            buffer:buffer
+	                           pending:pending
+	                            client:client];
 }
 
-- (BOOL)isAnyBlockDeviceOpen
+/*
+ * Write at offset.
+ * From decompiled code: checks write protection, validates params, then delegates to physical disk.
+ */
+- (IOReturn)_writeAt : (unsigned)offset
+	      length : (unsigned)length
+	      buffer : (unsigned char *)buffer
+        actualLength : (unsigned *)actualLength
+	      client : (vm_task_t)client
 {
-    BOOL result;
+	unsigned deviceOffset;
+	unsigned bytesToMove;
+	IOReturn result;
+	BOOL writeProtected;
 
-    [self lockLogicalDisks];
-    result = _blockDeviceOpen;
-    [self unlockLogicalDisks];
+	// Check if disk is write protected
+	writeProtected = [self isWriteProtected];
+	if (writeProtected) {
+		if (actualLength) {
+			*actualLength = 0;
+		}
+		return (IOReturn)0xfffffd31;  // IO_R_WRITE_PROTECTED
+	}
 
-    return result;
+	// Validate parameters and calculate offsets
+	result = [self __diskParamCommon:offset
+	                          length:length
+	                    deviceOffset:&deviceOffset
+	                     bytesToMove:&bytesToMove];
+	if (result != IO_R_SUCCESS) {
+		if (actualLength) {
+			*actualLength = 0;
+		}
+		return result;
+	}
+
+	// Delegate to physical disk (offset already calculated in deviceOffset)
+	return [_physicalDisk _writeAt:deviceOffset
+	                        length:bytesToMove
+	                        buffer:buffer
+	                  actualLength:actualLength
+	                        client:client];
 }
 
-- (BOOL)isAnyOtherOpen
+/*
+ * Write asynchronously at offset.
+ * From decompiled code: checks write protection, validates params, then delegates to physical disk.
+ */
+- (IOReturn)_writeAsyncAt : (unsigned)offset
+		   length : (unsigned)length
+		   buffer : (unsigned char *)buffer
+		  pending : (void *)pending
+		   client : (vm_task_t)client
 {
-    BOOL result;
+	unsigned deviceOffset;
+	unsigned bytesToMove;
+	IOReturn result;
+	BOOL writeProtected;
 
-    [self lockLogicalDisks];
-    result = (_openCount > 1) ? YES : NO;
-    [self unlockLogicalDisks];
+	// Check if disk is write protected
+	writeProtected = [self isWriteProtected];
+	if (writeProtected) {
+		return (IOReturn)0xfffffd31;  // IO_R_WRITE_PROTECTED
+	}
 
-    return result;
+	// Validate parameters and calculate offsets
+	result = [self __diskParamCommon:offset
+	                          length:length
+	                    deviceOffset:&deviceOffset
+	                     bytesToMove:&bytesToMove];
+	if (result != IO_R_SUCCESS) {
+		return result;
+	}
+
+	// Delegate to physical disk (offset already calculated in deviceOffset)
+	return [_physicalDisk _writeAsyncAt:deviceOffset
+	                             length:bytesToMove
+	                             buffer:buffer
+	                            pending:pending
+	                             client:client];
 }
 
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(void *)buffer
-        actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client
+#endif KERNEL
+
+@end
+
+/*
+ * Category: Private
+ */
+@implementation IOLogicalDiskNEW(Private)
+
+/*
+ * Common disk parameter validation.
+ * From decompiled code: validates parameters and calculates device offset and bytes to move.
+ */
+- (IOReturn)__diskParamCommon : (unsigned)offset
+		        length : (unsigned)length
+		  deviceOffset : (unsigned *)deviceOffset
+		   bytesToMove : (unsigned *)bytesToMove
 {
-    IOReturn status;
-
-    // Validate parameters
-    if (buffer == NULL || length == 0) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Check if device is open
-    [self lockLogicalDisks];
-    if (!_blockDeviceOpen) {
-        [self unlockLogicalDisks];
-        IOLog("IOLogicalDiskNEW: Read failed - device not open\n");
-        return IO_R_NOT_OPEN;
-    }
-
-    // Validate offset within logical disk bounds
-    if (offset >= _logicalBlockCount) {
-        [self unlockLogicalDisks];
-        IOLog("IOLogicalDiskNEW: Read offset %d beyond disk size %d\n",
-              offset, _logicalBlockCount);
-        return IO_R_INVALID_ARG;
-    }
-
-    // Clamp length to logical disk bounds
-    if (offset + length > _logicalBlockCount) {
-        length = _logicalBlockCount - offset;
-    }
-
-    [self unlockLogicalDisks];
-
-    // Delegate to physical disk if available
-    if (_physicalDisk != nil && [_physicalDisk respondsToSelector:@selector(readAt:length:buffer:actualLength:client:)]) {
-        status = [_physicalDisk readAt:offset
-                                length:length
-                                buffer:buffer
-                          actualLength:actualLength
-                                client:client];
-    } else {
-        // No physical disk - return unsupported
-        IOLog("IOLogicalDiskNEW: No physical disk available for read\n");
-        status = IO_R_UNSUPPORTED;
-    }
-
-    // Set actual length if requested
-    if (actualLength != NULL && status == IO_R_SUCCESS) {
-        *actualLength = length;
-    }
-
-    return status;
-}
-
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(void *)buffer
-         actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client
-{
-    IOReturn status;
-
-    // Validate parameters
-    if (buffer == NULL || length == 0) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Check if device is open
-    [self lockLogicalDisks];
-    if (!_blockDeviceOpen) {
-        [self unlockLogicalDisks];
-        IOLog("IOLogicalDiskNEW: Write failed - device not open\n");
-        return IO_R_NOT_OPEN;
-    }
-
-    // Check write protection
-    if (_writeProtected) {
-        [self unlockLogicalDisks];
-        IOLog("IOLogicalDiskNEW: Write failed - device is write protected\n");
-        return IO_R_IO;
-    }
-
-    // Validate offset within logical disk bounds
-    if (offset >= _logicalBlockCount) {
-        [self unlockLogicalDisks];
-        IOLog("IOLogicalDiskNEW: Write offset %d beyond disk size %d\n",
-              offset, _logicalBlockCount);
-        return IO_R_INVALID_ARG;
-    }
-
-    // Clamp length to logical disk bounds
-    if (offset + length > _logicalBlockCount) {
-        length = _logicalBlockCount - offset;
-    }
-
-    [self unlockLogicalDisks];
-
-    // Delegate to physical disk if available
-    if (_physicalDisk != nil && [_physicalDisk respondsToSelector:@selector(writeAt:length:buffer:actualLength:client:)]) {
-        status = [_physicalDisk writeAt:offset
-                                 length:length
-                                 buffer:buffer
-                           actualLength:actualLength
-                                 client:client];
-    } else {
-        // No physical disk - return unsupported
-        IOLog("IOLogicalDiskNEW: No physical disk available for write\n");
-        status = IO_R_UNSUPPORTED;
-    }
-
-    // Set actual length if requested
-    if (actualLength != NULL && status == IO_R_SUCCESS) {
-        *actualLength = length;
-    }
-
-    return status;
-}
-
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
-                 buffer:(void *)buffer
-                 client:(vm_task_t)client
-               pending:(void *)pending
-{
-    // Async read not supported for floppy
-    // Fall back to synchronous read
-    IOLog("IOLogicalDiskNEW: Async read not supported, using sync read\n");
-    return [self readAt:offset length:length buffer:buffer actualLength:NULL client:client];
-}
-
-- (unsigned int)deviceBytesOnce
-{
-    unsigned int result;
-
-    [self lockLogicalDisks];
-    result = _maxBytesPerTransfer;
-    [self unlockLogicalDisks];
-
-    return result;
-}
-
-- (IOReturn)completeTransfer:(void *)status
-              actualLength:(unsigned int)actualLength
-                    client:(vm_task_t)client
-{
-    // Transfer completion notification
-    // For floppy, we don't need to do anything special here
-    IOLog("IOLogicalDiskNEW: Transfer completed, %d bytes transferred\n",
-          actualLength);
-
-    return IO_R_SUCCESS;
-}
-
-- (id)setPhysicalDisk:(id)disk
-{
-    [self lockLogicalDisks];
-    _physicalDisk = disk;
-    [self unlockLogicalDisks];
-
-    if (disk != nil) {
-        IOLog("IOLogicalDiskNEW: Physical disk set to %s\n",
-              [[disk name] cString]);
-    } else {
-        IOLog("IOLogicalDiskNEW: Physical disk cleared\n");
-    }
-
-    return self;
-}
-
-- (id)isWriteProtected
-{
-    BOOL result;
-
-    [self lockLogicalDisks];
-    result = _writeProtected;
-    [self unlockLogicalDisks];
-
-    return (id)result;
-}
-
-// Additional geometry management methods
-
-- (IOReturn)setBlockSize:(unsigned int)size
-{
-    // Validate block size (must be power of 2 and reasonable)
-    if (size == 0 || size > 4096) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Check if power of 2
-    if ((size & (size - 1)) != 0) {
-        return IO_R_INVALID_ARG;
-    }
-
-    [self lockLogicalDisks];
-    _blockSize = size;
-    [self unlockLogicalDisks];
-
-    IOLog("IOLogicalDiskNEW: Block size set to %d bytes\n", size);
-
-    return IO_R_SUCCESS;
-}
-
-- (unsigned int)blockSize
-{
-    unsigned int result;
-
-    [self lockLogicalDisks];
-    result = _blockSize;
-    [self unlockLogicalDisks];
-
-    return result;
-}
-
-- (IOReturn)setLogicalBlockCount:(unsigned int)count
-{
-    [self lockLogicalDisks];
-    _logicalBlockCount = count;
-    [self unlockLogicalDisks];
-
-    IOLog("IOLogicalDiskNEW: Logical block count set to %d blocks (%d KB)\n",
-          count, (count * _blockSize) / 1024);
-
-    return IO_R_SUCCESS;
-}
-
-- (unsigned int)logicalBlockCount
-{
-    unsigned int result;
-
-    [self lockLogicalDisks];
-    result = _logicalBlockCount;
-    [self unlockLogicalDisks];
-
-    return result;
-}
-
-- (IOReturn)setWriteProtected:(BOOL)protect
-{
-    [self lockLogicalDisks];
-    _writeProtected = protect;
-    [self unlockLogicalDisks];
-
-    if (protect) {
-        IOLog("IOLogicalDiskNEW: Write protection enabled\n");
-    } else {
-        IOLog("IOLogicalDiskNEW: Write protection disabled\n");
-    }
-
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setMaxBytesPerTransfer:(unsigned int)maxBytes
-{
-    [self lockLogicalDisks];
-    _maxBytesPerTransfer = maxBytes;
-    [self unlockLogicalDisks];
-
-    IOLog("IOLogicalDiskNEW: Max bytes per transfer set to %d\n", maxBytes);
-
-    return IO_R_SUCCESS;
+	const char *name;
+	unsigned physicalBlockSize;
+	unsigned logicalBlockSize;
+	unsigned diskSize;
+	unsigned blocksNeeded;
+	
+	// Get name for logging
+	name = (const char *)[self name];
+	
+	// Get block sizes
+	physicalBlockSize = [_physicalDisk blockSize];  // offset 0x134
+	logicalBlockSize = [self blockSize];
+	diskSize = [self diskSize];
+	
+	// Check if length is a multiple of logical block size
+	if (length % logicalBlockSize != 0) {
+		IOLog("%s: Bytes requested not multiple of block size
+", name);
+		return (IOReturn)0xfffffd3e;
+	}
+	
+	// Calculate blocks needed
+	blocksNeeded = length / logicalBlockSize;
+	
+	// Check if operation fits within partition bounds
+	if (diskSize < offset + blocksNeeded) {
+		// Operation goes past end of partition
+		if (diskSize <= offset) {
+			// Offset is completely out of bounds
+			return (IOReturn)0xfffffd3e;
+		}
+		// Truncate to fit within partition
+		blocksNeeded = diskSize - offset;
+	}
+	
+	// Calculate device offset in physical blocks
+	// deviceOffset = (logicalBlockSize / physicalBlockSize) * offset + partitionBase
+	*deviceOffset = (logicalBlockSize / physicalBlockSize) * offset + _partitionBase;  // offset 0x138
+	
+	// Calculate bytes to move
+	// bytesToMove = physicalBlockSize * blocksNeeded * (logicalBlockSize / physicalBlockSize)
+	*bytesToMove = physicalBlockSize * blocksNeeded * (logicalBlockSize / physicalBlockSize);
+	
+	return IO_R_SUCCESS;
 }
 
 @end

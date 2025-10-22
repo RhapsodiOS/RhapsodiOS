@@ -1,134 +1,117 @@
 /*
- * IOFloppyDrive.h
- * Floppy Drive Interface
+ * IOFloppyDrive.h - Main IOFloppyDrive class interface
+ *
+ * Floppy disk drive class for PC floppy controller
  */
 
-#import <driverkit/IODisk.h>
+#import <driverkit/IODrive.h>
 #import <driverkit/return.h>
 
-@class FloppyController;
-@class IOFloppyDisk;
-
-@interface IOFloppyDrive : IODisk <IOPhysicalDiskMethods, IODiskReadingAndWriting>
+@interface IOFloppyDrive : IODrive
 {
-@private
-    FloppyController *_controller;
-    IOFloppyDisk *_disk;
-    unsigned int _unit;
+	// Device and controller information
+	IODeviceDescription *_deviceDescription;  // offset 0x160
+	id _fdController;                          // offset 0x164
+	unsigned _unit;                            // offset 0x168
+	unsigned char _regFlags;                   // offset 0x16c (registration/volcheck flags)
 
-    BOOL _isRegistered;
+	// Motor control
+	unsigned char _motorTimerActive;           // offset 0x178
 
-    // Drive state
-    BOOL _mediaPresent;
-    BOOL _diskChanged;
+	// Disk type and geometry
+	unsigned char _diskType;                   // offset 0x17c
+	unsigned char _density;                    // offset 0x180 (number of heads)
+	unsigned _numCyls;                         // offset 0x184
+	unsigned _numHeads;                        // offset 0x188
+	unsigned _flags;                           // offset 0x18c (formatted, write-protected, etc.)
 
-    // Geometry - cached for efficiency
-    unsigned int _cylinders;
-    unsigned int _heads;
-    unsigned int _sectorsPerTrack;
+	// Physical parameters
+	unsigned _totalBytes;                      // offset 0x194
+	unsigned _writePrecomp;                    // offset 0x198
+	unsigned _sectorSize;                      // offset 0x19c
+	unsigned char _sectorSizeCode;             // offset 0x1a0 (N parameter for FDC)
+	unsigned char _sectorsPerTrack;            // offset 0x1a4
+	unsigned char _readWriteGapLength;         // offset 0x1a8
+	unsigned char _formatGapLength;            // offset 0x1a9
+	unsigned _numBlocks;                       // offset 0x1ac
 
-    // Cached data
-    void *_readBuffer;
-    unsigned int _readBufferSize;
+	// Buffers
+	void *_bounceBuffer;                       // DMA bounce buffer
+	vm_address_t _bounceBufferAllocAddr;       // offset 0x1b4 (allocation address)
+	unsigned _bounceBufferAllocSize;           // offset 0x1b8 (allocation size)
 
-    // I/O thread management
-    IOThread _ioThread;
-    id _ioQLock;  // NXConditionLock for I/O queue
-    queue_head_t _ioQueue;
-    BOOL _threadRunning;
+	// FDC parameters
+	unsigned _fdcNumber;                       // offset 400 (FDC density setting)
 
-    // Current position tracking
-    unsigned int _currentCylinder;
-    unsigned int _currentHead;
-
-    // Volume check support
-    id _volCheck;
-
-    // Lock for internal state
-    id _lock;  // NXLock
-
-    int _IOFloppyDrive_reserved[4];
+	// Disk object
+	id _nextLogicalDisk;                       // offset 0x108 (IOFloppyDisk object)
 }
 
 /*
- * Class methods for driver registration
+ * Check if media can be polled inexpensively.
  */
-+ (BOOL)probe:(id)deviceDescription;
-+ (IODeviceStyle)deviceStyle;
-+ (Protocol **)requiredProtocols;
+- (BOOL)canPollInexpensively;
 
 /*
- * Initialization
+ * Eject the floppy disk.
  */
-- initWithController:(FloppyController *)controller
-                unit:(unsigned int)unit;
+- (IOReturn)ejectMedia;
 
 /*
- * Registration
+ * Get list of supported format capacities.
  */
-- registerDevice;
+- (IOReturn)formatCapacities;
+
+/*
+ * Format a specific cylinder.
+ */
+- (IOReturn)formatCylinder:(unsigned)cylinder
+                      data:(void *)data;
+
+/*
+ * Free the drive object and resources.
+ */
 - free;
 
 /*
- * IODiskReadingAndWriting protocol methods
- * (inherited from IODisk, must implement)
+ * Initialize drive from device description.
  */
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(unsigned char *)buffer
-      actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client;
-
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(unsigned char *)buffer
-       actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client;
-
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
-                 buffer:(unsigned char *)buffer
-                pending:(void *)pending
-                 client:(vm_task_t)client;
-
-- (IOReturn)writeAsyncAt:(unsigned int)offset
-                  length:(unsigned int)length
-                  buffer:(unsigned char *)buffer
-                 pending:(void *)pending
-                  client:(vm_task_t)client;
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
+                 controller:(id)controller
+                       unit:(unsigned)unit;
 
 /*
- * IOPhysicalDiskMethods protocol methods
- * (required for physical disk devices)
+ * Poll for media presence/change.
  */
-- (IOReturn)updatePhysicalParameters;
-- (void)abortRequest;
-- (void)diskBecameReady;
-- (IOReturn)isDiskReady:(BOOL)prompt;
-- (IOReturn)ejectPhysical;
-- (IODiskReadyState)updateReadyState;
+- (BOOL)pollMedia;
 
 /*
- * Additional floppy-specific operations
+ * Get list of supported read capacities.
  */
-- (IOReturn)formatCapacities:(unsigned long long *)capacities
-                       count:(unsigned int *)count;
-- (IOReturn)formatCylinder:(unsigned int)cylinder
-                      head:(unsigned int)head
-                      data:(void *)data;
+- (IOReturn)readCapacities;
 
-// Internal floppy operations
-- (IOReturn)fdRecalibrate;
-- (IOReturn)fdSeek:(unsigned int)cylinder;
-- (IOReturn)fdGetStatus:(unsigned char *)status;
-- (IOReturn)fdFormat:(unsigned int)cylinder head:(unsigned int)head;
+/*
+ * Read a specific cylinder.
+ */
+- (IOReturn)readCylinder:(unsigned)cylinder
+                    data:(void *)data;
 
-// Motor control
-- (IOReturn)motorOn;
-- (IOReturn)motorOff;
+/*
+ * Set the media capacity.
+ */
+- (IOReturn)setMediaCapacity:(unsigned)capacity;
 
-// Controller access
-- (FloppyController *)controller;
-- (unsigned int)unit;
+/*
+ * Get list of supported write capacities.
+ */
+- (IOReturn)writeCapacities;
+
+/*
+ * Write a specific cylinder.
+ */
+- (IOReturn)writeCylinder:(unsigned)cylinder
+                     data:(void *)data;
 
 @end
+
+/* End of IOFloppyDrive.h */

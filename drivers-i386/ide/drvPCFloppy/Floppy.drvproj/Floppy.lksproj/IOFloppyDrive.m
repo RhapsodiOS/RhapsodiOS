@@ -1,717 +1,405 @@
 /*
- * IOFloppyDrive.m
- * Floppy Drive Implementation - Proper DriverKit Pattern
+ * IOFloppyDrive.m - Main IOFloppyDrive class implementation
+ *
+ * Floppy disk drive class for PC floppy controller
  */
 
 #import "IOFloppyDrive.h"
-#import "FloppyController.h"
-#import "IOFloppyDisk.h"
 #import <driverkit/generalFuncs.h>
-#import <driverkit/IODiskPartition.h>
-#import <driverkit/volCheck.h>
-#import <kernserv/prototypes.h>
-#import <mach/mach.h>
-#import <bsd/sys/errno.h>
+#import <driverkit/kernelDriver.h>
 
 @implementation IOFloppyDrive
 
 /*
- * Class methods for driver registration
+ * Check if media can be polled inexpensively.
+ * From decompiled code: returns NO (floppy drives cannot poll inexpensively).
  */
-
-+ (BOOL)probe:(id)deviceDescription
+- (BOOL)canPollInexpensively
 {
-    IOLog("IOFloppyDrive: Probing for floppy disk controller\n");
-
-    // Look for floppy controller in device description
-    // For now, return NO since we're loaded explicitly
-    // A full implementation would:
-    // 1. Check for floppy controller hardware
-    // 2. Create IOFloppyDrive instances for each unit
-    // 3. Return YES if any drives found
-
-    return NO;
-}
-
-+ (IODeviceStyle)deviceStyle
-{
-    // Floppy drives are indirect devices (accessed through controller)
-    return IO_IndirectDevice;
-}
-
-+ (Protocol **)requiredProtocols
-{
-    // Floppy drives require a controller that implements FloppyController protocol
-    static Protocol *protocols[] = {
-        @protocol(IOPhysicalDiskMethods),
-        @protocol(IODiskReadingAndWriting),
-        nil
-    };
-    return protocols;
+	// Floppy drives do not support inexpensive polling
+	// They require explicit status commands or motor spin-up to detect media
+	return NO;
 }
 
 /*
- * Initialization
+ * Eject the floppy disk.
+ * From decompiled code: calls superclass eject, then internal eject.
  */
-
-- initWithController:(FloppyController *)controller
-                unit:(unsigned int)unit
+- (IOReturn)ejectMedia
 {
-    if ([super init] == nil) {
-        return nil;
-    }
-
-    _controller = controller;
-    _unit = unit;
-
-    // Standard 1.44MB floppy geometry (cached for efficiency)
-    _cylinders = 80;
-    _heads = 2;
-    _sectorsPerTrack = 18;
-
-    // Use IODisk setters to configure the device
-    [self setBlockSize:512];
-    [self setDiskSize:_cylinders * _heads * _sectorsPerTrack];
-    [self setRemovable:YES];
-    [self setFormattedInternal:YES];
-    [self setWriteProtected:NO];
-    [self setIsPhysical:YES];
-    [self setDriveName:"Sony Floppy"];
-    [self setName:"fd"];
-    [self setDeviceKind:"Floppy"];
-
-    // Initialize state
-    _isRegistered = NO;
-    _mediaPresent = YES;
-    _diskChanged = NO;
-    _currentCylinder = 0;
-    _currentHead = 0;
-    _volCheck = nil;
-
-    // Allocate read buffer (one track size)
-    _readBufferSize = _sectorsPerTrack * 512;
-    _readBuffer = IOMalloc(_readBufferSize);
-    if (_readBuffer == NULL) {
-        IOLog("IOFloppyDrive: Failed to allocate read buffer\n");
-        [self free];
-        return nil;
-    }
-
-    // Create NXLock for internal state protection
-    _lock = [[NXLock alloc] init];
-    if (_lock == nil) {
-        IOLog("IOFloppyDrive: Failed to create lock\n");
-        IOFree(_readBuffer, _readBufferSize);
-        [self free];
-        return nil;
-    }
-
-    // Create NXConditionLock for I/O queue management
-    _ioQLock = [[NXConditionLock alloc] initWith:0];
-    if (_ioQLock == nil) {
-        IOLog("IOFloppyDrive: Failed to create I/O queue lock\n");
-        [_lock free];
-        IOFree(_readBuffer, _readBufferSize);
-        [self free];
-        return nil;
-    }
-
-    // Initialize I/O queue
-    queue_init(&_ioQueue);
-    _threadRunning = NO;
-    _ioThread = (IOThread)0;
-
-    // Register with controller
-    [_controller registerDrive:self atUnit:unit];
-
-    // Create logical disk instance
-    _disk = [[IOFloppyDisk alloc] initWithController:controller
-                                                unit:unit
-                                        diskGeometry:NULL];
-    if (_disk != nil) {
-        // Connect logical disk to physical disk (IOLogicalDisk pattern)
-        [_disk connectToPhysicalDisk:self];
-        [_disk setPartitionBase:0];
-        [_disk setPhysicalBlockSize:512];
-
-        // Add to logical disk chain
-        [self setLogicalDisk:_disk];
-    }
-
-    // Recalibrate drive to cylinder 0
-    [_controller doRecalibrate:_unit];
-
-    // Set initial ready state
-    [self setLastReadyState:IO_Ready];
-
-    // Register device with system
-    [self registerDevice];
-
-    IOLog("IOFloppyDrive: Initialized unit %d (C:%d H:%d S:%d)\n",
-          unit, _cylinders, _heads, _sectorsPerTrack);
-
-    return self;
-}
-
-- registerDevice
-{
-    id result;
-
-    [_lock lock];
-
-    if (_isRegistered) {
-        [_lock unlock];
-        IOLog("IOFloppyDrive: Device already registered\n");
-        return self;
-    }
-
-    [_lock unlock];
-
-    // Call superclass to register with system
-    result = [super registerDevice];
-
-    if (result != nil) {
-        [_lock lock];
-        _isRegistered = YES;
-        [_lock unlock];
-        IOLog("IOFloppyDrive: Device %d registered as %s\n", _unit, [[self name] cString]);
-    } else {
-        IOLog("IOFloppyDrive: Failed to register device %d\n", _unit);
-    }
-
-    return result;
-}
-
-- (void)free
-{
-    // Stop I/O thread if running
-    if (_threadRunning && _ioThread != (IOThread)0) {
-        [_lock lock];
-        _threadRunning = NO;
-        [_lock unlock];
-
-        // Wake up thread so it can exit
-        [_ioQLock lock];
-        [_ioQLock unlockWith:1];
-
-        IOSleep(100);  // Give thread time to exit
-    }
-
-    // Free locks
-    if (_ioQLock != nil) {
-        [_ioQLock free];
-        _ioQLock = nil;
-    }
-
-    if (_lock != nil) {
-        [_lock free];
-        _lock = nil;
-    }
-
-    // Free buffer
-    if (_readBuffer != NULL) {
-        IOFree(_readBuffer, _readBufferSize);
-        _readBuffer = NULL;
-    }
-
-    // Free logical disk
-    if (_disk != nil) {
-        [_disk free];
-        _disk = nil;
-    }
-
-    // Release volume check
-    if (_volCheck != nil) {
-        [_volCheck release];
-        _volCheck = nil;
-    }
-
-    [super free];
+	// Call superclass ejectMedia
+	[super ejectMedia];
+	
+	// Perform internal eject operations
+	// - Seeks to track 79 to unload heads
+	// - Turns off motor
+	[self _fdEjectInt];
+	
+	return IO_R_SUCCESS;
 }
 
 /*
- * IODiskReadingAndWriting protocol implementation
+ * Get list of supported format capacities.
+ * From decompiled code: returns 0x120 (same as read/write).
  */
-
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(unsigned char *)buffer
-      actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client
+- (IOReturn)formatCapacities
 {
-    unsigned int blockNumber;
-    unsigned int cylinder, head, sector;
-    unsigned int blockSize;
-    IOReturn result;
-    ns_time_t startTime, endTime;
-
-    // Check ready state using IODisk's lastReadyState
-    if ([self lastReadyState] != IO_Ready) {
-        IOLog("IOFloppyDrive: Read failed - disk not ready (state=%d)\n",
-              [self lastReadyState]);
-        return IO_R_NO_DISK;
-    }
-
-    if (length == 0 || buffer == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Get timestamp for statistics
-    IOGetTimestamp(&startTime);
-
-    blockSize = [self blockSize];
-
-    // Calculate CHS from byte offset
-    blockNumber = offset / blockSize;
-    cylinder = blockNumber / (_heads * _sectorsPerTrack);
-    head = (blockNumber / _sectorsPerTrack) % _heads;
-    sector = (blockNumber % _sectorsPerTrack) + 1;  // 1-based
-
-    if (cylinder >= _cylinders) {
-        IOLog("IOFloppyDrive: Read failed - cylinder %d out of range\n", cylinder);
-        return IO_R_INVALID_ARG;
-    }
-
-    IOLog("IOFloppyDrive: Reading C:%d H:%d S:%d length:%d\n",
-          cylinder, head, sector, length);
-
-    // Perform read via controller
-    result = [_controller doRead:_unit
-                        cylinder:cylinder
-                            head:head
-                          sector:sector
-                          buffer:buffer
-                          length:length];
-
-    // Get end timestamp
-    IOGetTimestamp(&endTime);
-
-    if (result == IO_R_SUCCESS) {
-        if (actualLength != NULL) {
-            *actualLength = length;
-        }
-
-        // Update statistics using IODisk methods
-        [self addToBytesRead:length
-                   totalTime:(endTime - startTime)
-                  latentTime:0];  // Latent time is 0 for synchronous I/O
-
-        IOLog("IOFloppyDrive: Read completed successfully\n");
-    } else {
-        // Increment error count using IODisk method
-        [self incrementReadErrors];
-
-        IOLog("IOFloppyDrive: Read failed with error 0x%x\n", result);
-
-        // Notify volCheck of error if media-related
-        if (result == IO_R_NO_DISK || result == IO_R_OFFLINE || result == IO_R_MEDIA) {
-            [self diskNotReady];
-        }
-    }
-
-    return result;
-}
-
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(unsigned char *)buffer
-       actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client
-{
-    unsigned int blockNumber;
-    unsigned int cylinder, head, sector;
-    unsigned int blockSize;
-    IOReturn result;
-    ns_time_t startTime, endTime;
-
-    // Check ready state
-    if ([self lastReadyState] != IO_Ready) {
-        IOLog("IOFloppyDrive: Write failed - disk not ready (state=%d)\n",
-              [self lastReadyState]);
-        return IO_R_NO_DISK;
-    }
-
-    // Check write protection using IODisk method
-    if ([self isWriteProtected]) {
-        IOLog("IOFloppyDrive: Write failed - disk is write protected\n");
-        return IO_R_NOT_WRITABLE;
-    }
-
-    if (length == 0 || buffer == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Get timestamp for statistics
-    IOGetTimestamp(&startTime);
-
-    blockSize = [self blockSize];
-
-    // Calculate CHS from byte offset
-    blockNumber = offset / blockSize;
-    cylinder = blockNumber / (_heads * _sectorsPerTrack);
-    head = (blockNumber / _sectorsPerTrack) % _heads;
-    sector = (blockNumber % _sectorsPerTrack) + 1;  // 1-based
-
-    if (cylinder >= _cylinders) {
-        IOLog("IOFloppyDrive: Write failed - cylinder %d out of range\n", cylinder);
-        return IO_R_INVALID_ARG;
-    }
-
-    IOLog("IOFloppyDrive: Writing C:%d H:%d S:%d length:%d\n",
-          cylinder, head, sector, length);
-
-    // Perform write via controller
-    result = [_controller doWrite:_unit
-                         cylinder:cylinder
-                             head:head
-                           sector:sector
-                           buffer:buffer
-                           length:length];
-
-    // Get end timestamp
-    IOGetTimestamp(&endTime);
-
-    if (result == IO_R_SUCCESS) {
-        if (actualLength != NULL) {
-            *actualLength = length;
-        }
-
-        // Update statistics using IODisk methods
-        [self addToBytesWritten:length
-                      totalTime:(endTime - startTime)
-                     latentTime:0];  // Latent time is 0 for synchronous I/O
-
-        IOLog("IOFloppyDrive: Write completed successfully\n");
-    } else {
-        // Increment error count using IODisk method
-        [self incrementWriteErrors];
-
-        IOLog("IOFloppyDrive: Write failed with error 0x%x\n", result);
-
-        // Notify volCheck of error if media-related
-        if (result == IO_R_NO_DISK || result == IO_R_OFFLINE || result == IO_R_MEDIA) {
-            [self diskNotReady];
-        }
-    }
-
-    return result;
-}
-
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
-                 buffer:(unsigned char *)buffer
-                pending:(void *)pending
-                 client:(vm_task_t)client
-{
-    unsigned int actualLength;
-
-    // Floppy is synchronous, so just call sync version
-    // In a more sophisticated implementation, this would queue the request
-    IOReturn result = [self readAt:offset
-                            length:length
-                            buffer:buffer
-                      actualLength:&actualLength
-                            client:client];
-
-    // For async, we would normally call a completion routine here
-    // but since we're doing sync I/O, just return the result
-    return result;
-}
-
-- (IOReturn)writeAsyncAt:(unsigned int)offset
-                  length:(unsigned int)length
-                  buffer:(unsigned char *)buffer
-                 pending:(void *)pending
-                  client:(vm_task_t)client
-{
-    unsigned int actualLength;
-
-    // Floppy is synchronous, so just call sync version
-    IOReturn result = [self writeAt:offset
-                             length:length
-                             buffer:buffer
-                       actualLength:&actualLength
-                             client:client];
-
-    return result;
+	// Return capacity bitmap or count
+	// 0x120 = 288 decimal (same as read/write)
+	return 0x120;
 }
 
 /*
- * IOPhysicalDiskMethods protocol implementation
+ * Format a specific cylinder.
+ * From decompiled code: formats all tracks in cylinder, then verifies.
  */
-
-- (IOReturn)updatePhysicalParameters
-{
-    IOReturn result;
-    unsigned char status;
-
-    IOLog("IOFloppyDrive: Updating physical parameters\n");
-
-    // Check for media presence
-    result = [_controller getDriveStatus:_unit];
-    if (result != IO_R_SUCCESS) {
-        IOLog("IOFloppyDrive: No media detected\n");
-        [self setLastReadyState:IO_NoDisk];
-        [_lock lock];
-        _mediaPresent = NO;
-        [_lock unlock];
-        return IO_R_NO_DISK;
-    }
-
-    [_lock lock];
-    _mediaPresent = YES;
-    [_lock unlock];
-
-    // Get geometry from controller (may vary by media type)
-    _cylinders = [_controller cylindersPerDisk];
-    _heads = [_controller headsPerCylinder];
-    _sectorsPerTrack = [_controller sectorsPerTrack];
-
-    // Update using IODisk setters
-    [self setBlockSize:[_controller blockSize]];
-    [self setDiskSize:_cylinders * _heads * _sectorsPerTrack];
-    [self setFormattedInternal:YES];
-
-    // Check write protection status
-    status = [_controller getWriteProtectStatus:_unit];
-    [self setWriteProtected:(status != 0)];
-
-    IOLog("IOFloppyDrive: Parameters updated - C:%d H:%d S:%d BS:%d WP:%d\n",
-          _cylinders, _heads, _sectorsPerTrack, [self blockSize],
-          [self isWriteProtected]);
-
-    return IO_R_SUCCESS;
-}
-
-- (void)abortRequest
-{
-    // Abort any pending I/O requests
-    IOLog("IOFloppyDrive: Aborting pending requests\n");
-
-    [_lock lock];
-
-    // In a full implementation, we would walk the I/O queue and abort each request
-    // For now, just ensure the queue is empty
-
-    [_lock unlock];
-}
-
-- (void)diskBecameReady
-{
-    IOLog("IOFloppyDrive: Disk became ready on unit %d\n", _unit);
-
-    [_lock lock];
-    _mediaPresent = YES;
-    _diskChanged = NO;
-    [_lock unlock];
-
-    // Update ready state using IODisk method
-    [self setLastReadyState:IO_Ready];
-
-    // Update physical parameters from new media
-    [self updatePhysicalParameters];
-}
-
-- (IOReturn)isDiskReady:(BOOL)prompt
-{
-    IODiskReadyState state = [self updateReadyState];
-
-    if (state == IO_NoDisk) {
-        if (prompt) {
-            // Request insertion panel using IODisk method
-            [self requestInsertionPanelForDiskType:IO_Floppy];
-            return IO_R_NO_DISK;
-        }
-        return IO_R_NO_DISK;
-    }
-
-    if (state == IO_NotReady) {
-        return IO_R_NOT_READY;
-    }
-
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)ejectPhysical
-{
-    IOLog("IOFloppyDrive: Ejecting unit %d\n", _unit);
-
-    // Notify volCheck we're ejecting using IODisk method
-    [self diskIsEjecting:IO_Floppy];
-
-    // Update state
-    [_lock lock];
-    _mediaPresent = NO;
-    _diskChanged = YES;
-    [_lock unlock];
-
-    [self setLastReadyState:IO_Ejecting];
-
-    // Turn off motor (ejects floppy on some drives)
-    [_controller doMotorOff:_unit];
-
-    return IO_R_SUCCESS;
-}
-
-- (IODiskReadyState)updateReadyState
-{
-    IOReturn result;
-    IODiskReadyState newState;
-    IODiskReadyState oldState;
-
-    oldState = [self lastReadyState];
-
-    [_lock lock];
-
-    // Check for media presence via controller
-    result = [_controller getDriveStatus:_unit];
-    if (result != IO_R_SUCCESS || !_mediaPresent) {
-        newState = IO_NoDisk;
-        _mediaPresent = NO;
-    } else {
-        newState = IO_Ready;
-        _mediaPresent = YES;
-    }
-
-    [_lock unlock];
-
-    // Update last ready state using IODisk method
-    [self setLastReadyState:newState];
-
-    if (newState != oldState) {
-        IOLog("IOFloppyDrive: Ready state changed from %d to %d\n", oldState, newState);
-    }
-
-    return newState;
-}
-
-/*
- * Additional floppy-specific operations
- */
-
-- (IOReturn)formatCapacities:(unsigned long long *)capacities
-                       count:(unsigned int *)count
-{
-    if (capacities != NULL && count != NULL && *count > 0) {
-        // Return 1.44MB capacity
-        capacities[0] = (unsigned long long)_cylinders * _heads *
-                       _sectorsPerTrack * [self blockSize];
-        *count = 1;
-    }
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)formatCylinder:(unsigned int)cylinder
-                      head:(unsigned int)head
+- (IOReturn)formatCylinder:(unsigned)cylinder
                       data:(void *)data
 {
-    if (cylinder >= _cylinders || head >= _heads) {
-        return IO_R_INVALID_ARG;
-    }
-
-    if ([self isWriteProtected]) {
-        return IO_R_NOT_WRITABLE;
-    }
-
-    IOLog("IOFloppyDrive: Formatting C:%d H:%d\n", cylinder, head);
-
-    return [_controller doFormat:_unit cylinder:cylinder head:head];
-}
-
-- (IOReturn)fdRecalibrate
-{
-    IOLog("IOFloppyDrive: Recalibrating unit %d\n", _unit);
-
-    IOReturn result = [_controller doRecalibrate:_unit];
-
-    if (result == IO_R_SUCCESS) {
-        [_lock lock];
-        _currentCylinder = 0;
-        _currentHead = 0;
-        [_lock unlock];
-    }
-
-    return result;
-}
-
-- (IOReturn)fdSeek:(unsigned int)cylinder
-{
-    if (cylinder >= _cylinders) {
-        return IO_R_INVALID_ARG;
-    }
-
-    IOLog("IOFloppyDrive: Seeking to cylinder %d\n", cylinder);
-
-    IOReturn result = [_controller doSeek:_unit cylinder:cylinder];
-
-    if (result == IO_R_SUCCESS) {
-        [_lock lock];
-        _currentCylinder = cylinder;
-        [_lock unlock];
-    }
-
-    return result;
-}
-
-- (IOReturn)fdGetStatus:(unsigned char *)status
-{
-    if (status == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    return [_controller getDriveStatus:_unit];
-}
-
-- (IOReturn)fdFormat:(unsigned int)cylinder head:(unsigned int)head
-{
-    return [self formatCylinder:cylinder head:head data:NULL];
-}
-
-- (IOReturn)motorOn
-{
-    IOLog("IOFloppyDrive: Motor on for unit %d\n", _unit);
-    return [_controller doMotorOn:_unit];
-}
-
-- (IOReturn)motorOff
-{
-    IOLog("IOFloppyDrive: Motor off for unit %d\n", _unit);
-    return [_controller doMotorOff:_unit];
-}
-
-- (FloppyController *)controller
-{
-    return _controller;
-}
-
-- (unsigned int)unit
-{
-    return _unit;
+	IOReturn result;
+	unsigned head;
+	unsigned startingBlock;
+	unsigned blocksPerCylinder;
+	unsigned actualLength;
+	unsigned numHeads;
+	unsigned sectorsPerTrack;
+	
+	result = IO_R_SUCCESS;
+	sectorsPerTrack = _sectorsPerTrack;  // offset 0x1a4
+	numHeads = _density;                 // offset 0x180
+	
+	// If this is cylinder 0, recalibrate first
+	if (cylinder == 0) {
+		result = [self _fdRecal];
+		if (result != IO_R_SUCCESS) {
+			return result;
+		}
+	}
+	
+	// Format each track (head) in the cylinder
+	for (head = 0; head < numHeads; head++) {
+		result = [self _fdFormatTrack:cylinder head:head];
+		if (result != IO_R_SUCCESS) {
+			return result;  // Format failed
+		}
+	}
+	
+	// Verify the format by reading the cylinder
+	if (result == IO_R_SUCCESS) {
+		// Calculate starting block
+		startingBlock = cylinder * sectorsPerTrack * numHeads;
+		
+		// Calculate blocks per cylinder
+		blocksPerCylinder = numHeads * sectorsPerTrack;
+		
+		// Read to verify format
+		result = [self _fdRwCommon:YES  // isRead = YES
+				    block:startingBlock
+				 blockCnt:blocksPerCylinder
+				   buffer:data
+				   client:kernel_map
+			     actualLength:&actualLength];
+	}
+	
+	return result;
 }
 
 /*
- * IODisk method overrides
+ * Free the drive object and resources.
+ * From decompiled code: unregisters and frees buffers.
  */
-
-- (BOOL)needsManualPolling
+- free
 {
-    // Floppy drives need manual polling for media change detection
-    return YES;
+	// If bit 2 is set, unregister from volume check
+	if ((_regFlags & 2) != 0) {
+		[self _unregisterVolCheck];
+	}
+	
+	// If bit 1 is set, unregister drive from IOFloppyDisk
+	if ((_regFlags & 1) != 0) {
+		[IOFloppyDisk unregisterDrive:self];
+	}
+	
+	// Free bounce buffer if allocated
+	if (_bounceBuffer != NULL) {
+		IOFree(_bounceBufferAllocAddr, _bounceBufferAllocSize);
+	}
+	
+	// Call superclass free
+	return [super free];
 }
 
-- (const char *)stringFromReturn:(IOReturn)rtn
+/*
+ * Initialize drive from device description.
+ * From decompiled code: initializes drive with default parameters and registers.
+ */
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
+                 controller:(id)controller
+                       unit:(unsigned)unit
 {
-    // Add floppy-specific error strings, then call super
-    switch (rtn) {
-        case IO_R_NO_DISK:
-            return "No Disk";
-        case IO_R_NOT_WRITABLE:
-            return "Write Protected";
-        case IO_R_MEDIA:
-            return "Media Error";
-        default:
-            return [super stringFromReturn:rtn];
-    }
+	BOOL registered;
+	int driveNumber;
+	char name[20];
+	IOReturn result;
+	
+	// Store device description, controller, and unit
+	_deviceDescription = deviceDescription;    // offset 0x160
+	_fdController = controller;                // offset 0x164
+	_unit = unit;                              // offset 0x168
+	
+	// Initialize disk object pointer
+	_nextLogicalDisk = nil;                    // offset 0x108
+	
+	// Set default parameters (720KB DD settings)
+	_fdcNumber = 1;                            // offset 400
+	_totalBytes = 0xb4000;                     // offset 0x194 (737,280 bytes)
+	_writePrecomp = 1;                         // offset 0x198
+	_sectorSize = 0x200;                       // offset 0x19c (512 bytes)
+	_sectorSizeCode = 2;                       // offset 0x1a0
+	_sectorsPerTrack = 9;                      // offset 0x1a4
+	_readWriteGapLength = 0x1b;                // offset 0x1a8
+	_formatGapLength = 0x54;                   // offset 0x1a9 (packed with 0x1a8)
+	_numBlocks = 0;                            // offset 0x1ac
+	_flags = 0;                                // offset 0x18c
+	
+	// Clear motor timer active flag
+	_motorTimerActive = _motorTimerActive & 0xfe;  // offset 0x178
+	
+	// Allocate bounce buffer (1024 bytes = 0x400)
+	vm_address_t allocAddr;
+	unsigned allocSize;
+	_bounceBuffer = (void *)floppyMalloc(0x400, &allocAddr, &allocSize);
+	
+	if (_bounceBuffer == NULL) {
+		// Allocation failed
+		return [self free];
+	}
+	
+	// Store allocation info for later freeing
+	_bounceBufferAllocAddr = allocAddr;
+	_bounceBufferAllocSize = allocSize;
+	
+	// Register drive with IOFloppyDisk class
+	registered = [IOFloppyDisk registerDrive:self];
+	
+	// Store registration status in bit 0 of _regFlags
+	_regFlags = _regFlags & 0xfe;  // Clear bit 0
+	_regFlags = _regFlags | (registered & 1);  // Set bit 0 if registered
+	
+	if (!registered) {
+		// Registration failed
+		return [self free];
+	}
+	
+	// Get drive number and set up name
+	driveNumber = [IOFloppyDisk driveNumberOfDrive:self];
+	sprintf(name, "fd%d", driveNumber);
+	
+	// Set up drive properties
+	[self setUnit:driveNumber];
+	[self setName:name];
+	[self setDeviceKind:"Floppy Drive"];
+	[self setDriveName:"Floppy Drive"];
+	
+	// Set initial ready state to 1 (not ready)
+	[self setLastReadyState:1];
+	
+	// Register for volume check notifications
+	[self _registerVolCheck];
+	
+	// Set bit 2 of _regFlags (volCheck registered flag)
+	_regFlags = _regFlags | 2;
+	
+	// Register the device with the system
+	result = [self registerDevice];
+	
+	if (result != IO_R_SUCCESS) {
+		// Registration failed
+		return [self free];
+	}
+	
+	// Success
+	return self;
+}
+
+/*
+ * Poll for media presence/change.
+ * From decompiled code: updates ready state and allocates disk if needed.
+ */
+- (BOOL)pollMedia
+{
+	IOReturn result;
+	BOOL allocated;
+	
+	// Update ready state
+	result = [self _updateReadyStateInt];
+	
+	// If ready and no disk object allocated yet
+	if ((result == 0) && (_nextLogicalDisk == nil)) {
+		// Update physical parameters (probe geometry)
+		result = [self _updatePhysicalParametersInt];
+		
+		if (result == 0) {
+			// Set ready state to 0 (ready)
+			[self setLastReadyState:0];
+			
+			// Allocate disk object
+			allocated = [self _allocateDisk];
+			
+			if (allocated) {
+				return YES;  // Media present and disk allocated
+			}
+		}
+	}
+	
+	return NO;  // No media or error
+}
+
+/*
+ * Get list of supported read capacities.
+ * From decompiled code: returns 0x120.
+ */
+- (IOReturn)readCapacities
+{
+	// Return capacity bitmap or count
+	// 0x120 = 288 decimal
+	return 0x120;
+}
+
+/*
+ * Read a specific cylinder.
+ * From decompiled code: reads all sectors in cylinder using _fdRwCommon.
+ */
+- (IOReturn)readCylinder:(unsigned)cylinder
+                    data:(void *)data
+{
+	IOReturn result;
+	unsigned startingBlock;
+	unsigned blocksPerCylinder;
+	unsigned actualLength;
+	
+	// Calculate starting block for this cylinder
+	// startBlock = cylinder * sectorsPerTrack * numHeads
+	startingBlock = cylinder * _sectorsPerTrack * _density;
+	
+	// Calculate blocks per cylinder (sectorsPerTrack * numHeads)
+	blocksPerCylinder = _density * _sectorsPerTrack;
+	
+	// Read the entire cylinder
+	result = [self _fdRwCommon:YES  // isRead = YES
+			    block:startingBlock
+			 blockCnt:blocksPerCylinder
+			   buffer:data
+			   client:kernel_map
+		     actualLength:&actualLength];
+	
+	return result;
+}
+
+/*
+ * Set the media capacity.
+ * From decompiled code: sets geometry parameters based on capacity type.
+ */
+- (IOReturn)setMediaCapacity:(unsigned)capacity
+{
+	// Set parameters based on capacity type
+	if (capacity == 0x100) {
+		// 1.44MB (HD) floppy
+		_diskType = 2;              // offset 0x17c
+		_density = 2;               // offset 0x180 (2 heads)
+		_numCyls = 0x50;            // offset 0x184 (80 cylinders)
+		_numHeads = 2;              // offset 0x188
+		_fdcNumber = 2;             // offset 400 (HD density)
+		_totalBytes = 0x168000;     // offset 0x194 (1,474,560 bytes)
+		_writePrecomp = 1;          // offset 0x198
+		_sectorSize = 0x200;        // offset 0x19c (512 bytes)
+		_sectorSizeCode = 2;        // offset 0x1a0 (N=2 for 512 bytes)
+		_sectorsPerTrack = 0x12;    // offset 0x1a4 (18 sectors)
+		_readWriteGapLength = 0x1b; // offset 0x1a8
+		_formatGapLength = 0x65;    // offset 0x1a9
+	} else if (capacity == 0x20) {
+		// 720KB (DD in HD drive) floppy
+		_diskType = 3;              // offset 0x17c
+		_density = 2;               // offset 0x180 (2 heads)
+		_numCyls = 0x50;            // offset 0x184 (80 cylinders)
+		_numHeads = 1;              // offset 0x188
+		_fdcNumber = 1;             // offset 400 (DD density)
+		_totalBytes = 0xb4000;      // offset 0x194 (737,280 bytes)
+		_writePrecomp = 1;          // offset 0x198
+		_sectorSize = 0x200;        // offset 0x19c (512 bytes)
+		_sectorSizeCode = 2;        // offset 0x1a0
+		_sectorsPerTrack = 9;       // offset 0x1a4
+		_readWriteGapLength = 0x1b; // offset 0x1a8
+		_formatGapLength = 0x54;    // offset 0x1a9
+	} else if (capacity == 0x800) {
+		// 2.88MB (ED) floppy
+		_diskType = 1;              // offset 0x17c
+		_density = 2;               // offset 0x180 (2 heads)
+		_numCyls = 0x50;            // offset 0x184 (80 cylinders)
+		_numHeads = 3;              // offset 0x188
+		_fdcNumber = 3;             // offset 400 (ED density)
+		_totalBytes = 0x2d0000;     // offset 0x194 (2,949,120 bytes)
+		_writePrecomp = 1;          // offset 0x198
+		_sectorSize = 0x200;        // offset 0x19c (512 bytes)
+		_sectorSizeCode = 2;        // offset 0x1a0
+		_sectorsPerTrack = 0x24;    // offset 0x1a4 (36 sectors)
+		_readWriteGapLength = 0x1b; // offset 0x1a8
+		_formatGapLength = 0x53;    // offset 0x1a9
+	} else {
+		// Unknown capacity
+		return NO;
+	}
+	
+	// Calculate total blocks (numHeads * sectorsPerTrack * numCyls)
+	_numBlocks = _density * _sectorsPerTrack * _numCyls;  // offset 0x1ac
+	
+	// Set formatted flag (bit 0)
+	_flags = _flags | 1;  // offset 0x18c
+	
+	return YES;
+}
+
+/*
+ * Get list of supported write capacities.
+ * From decompiled code: returns 0x120 (same as readCapacities).
+ */
+- (IOReturn)writeCapacities
+{
+	// Return capacity bitmap or count
+	// 0x120 = 288 decimal (same as read)
+	return 0x120;
+}
+
+/*
+ * Write a specific cylinder.
+ * From decompiled code: writes all sectors in cylinder using _fdRwCommon.
+ */
+- (IOReturn)writeCylinder:(unsigned)cylinder
+                     data:(void *)data
+{
+	IOReturn result;
+	unsigned startingBlock;
+	unsigned blocksPerCylinder;
+	unsigned actualLength;
+	
+	// Calculate starting block for this cylinder
+	// startBlock = cylinder * sectorsPerTrack * numHeads
+	startingBlock = cylinder * _sectorsPerTrack * _density;
+	
+	// Calculate blocks per cylinder (sectorsPerTrack * numHeads)
+	blocksPerCylinder = _density * _sectorsPerTrack;
+	
+	// Write the entire cylinder
+	result = [self _fdRwCommon:NO   // isRead = NO (write)
+			    block:startingBlock
+			 blockCnt:blocksPerCylinder
+			   buffer:data
+			   client:kernel_map
+		     actualLength:&actualLength];
+	
+	return result;
 }
 
 @end
+
+/* End of IOFloppyDrive.m */

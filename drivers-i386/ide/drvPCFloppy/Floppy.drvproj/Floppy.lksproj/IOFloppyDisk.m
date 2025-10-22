@@ -1,821 +1,480 @@
 /*
- * IOFloppyDisk.m
- * Floppy Disk Partition/Logical Disk Interface
+ * IOFloppyDisk.m - Floppy disk device class
+ *
+ * Main implementation for floppy disk devices with cylinder-based caching
  */
 
 #import "IOFloppyDisk.h"
 #import "IOFloppyDrive.h"
-#import "FloppyController.h"
 #import <driverkit/generalFuncs.h>
-#import <mach/mach.h>
-#import <bsd/sys/errno.h>
+#import <driverkit/kernelDriver.h>
+
+/*
+ * Thread startup function.
+ * From decompiled code: entry point for operation thread.
+ */
+void _OperationThreadStartup(id self)
+{
+	// Call the operation thread method
+	[self _operationThread];
+}
+
+// External geometry table
+// Each entry is 7 words (28 bytes): capacity, diskSize, numCylinders, numHeads, 
+// numSectors, sectorSize, variableGeometry
+extern unsigned int _FloppyGeometry[];
 
 @implementation IOFloppyDisk
 
-- initWithController:(id)controller
-                unit:(unsigned int)unit
-        diskGeometry:(void *)geometry
+/*
+ * Dummy method for IODisk protocol compliance.
+ * From decompiled code: placeholder method that does nothing.
+ */
+- (void)_dummyIODiskPhysicalMethod
 {
-    if ([super init] == nil) {
-        return nil;
-    }
-
-    _drive = nil;
-    _diskNumber = unit;
-
-    // Standard 1.44MB floppy geometry
-    _cylinders = 80;
-    _heads = 2;
-    _sectorsPerTrack = 18;
-    _blockSize = 512;
-    _capacity = _cylinders * _heads * _sectorsPerTrack;
-
-    // Initialize state (only what's not provided by superclass)
-    _isRegistered = NO;
-    _isOpen = NO;
-    _blockDeviceOpen = NO;
-    _rawDeviceOpen = NO;
-
-    // Initialize cache
-    _cachePointer = NULL;
-    _cacheUnderNumber = 0;
-
-    // Initialize request handling
-    _operationThread = nil;
-    _pendingRequest = NULL;
-
-    // Create lock for thread safety (use NXLock, not NSLock)
-    _lock = [[NXLock alloc] init];
-    if (_lock == nil) {
-        IOLog("IOFloppyDisk: Failed to create lock\n");
-        [self free];
-        return nil;
-    }
-
-    // Set superclass properties
-    [self setBlockSize:_blockSize];
-    [self setDiskSize:_capacity];
-    [self setRemovable:YES];
-    [self setFormattedInternal:YES];
-
-    IOLog("IOFloppyDisk: Initialized disk %d (C:%d H:%d S:%d, capacity:%d blocks)\n",
-          unit, _cylinders, _heads, _sectorsPerTrack, _capacity);
-
-    return self;
+	// Intentionally empty - just a placeholder for protocol compliance
+	return;
 }
 
-- (void)free
+- free
 {
-    // Clean up lock
-    if (_lock != nil) {
-        [_lock free];
-        _lock = nil;
-    }
+	id drive;
+	unsigned *operation;
+	id completionLock;
+	id mainQueue;
+	int *queueHead;
 
-    // Clean up cache
-    if (_cachePointer != NULL) {
-        IOFree(_cachePointer, _blockSize);
-        _cachePointer = NULL;
-    }
+	// Get drive and detach BSD interface
+	drive = [self drive];
+	[self _detachBsdDiskInterfaceFromDrive:drive];
 
-    // Clean up pending request
-    if (_pendingRequest != NULL) {
-        IOFree(_pendingRequest, sizeof(void *));
-        _pendingRequest = NULL;
-    }
+	// If operation thread is running, shut it down
+	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+		// Allocate abort operation (type 4)
+		operation = (unsigned *)IOMalloc(0x28);
+		operation[0] = 4;  // Type 4: abort and exit thread
 
-    return [super free];
+		// Allocate completion lock
+		completionLock = [[objc_getClass("NXConditionLock") alloc] init];
+		[completionLock initWith:1];
+		operation[4] = (unsigned)completionLock;
+
+		// Lock queue and add operation
+		[_queueLock lock];
+
+		mainQueue = (id)((char *)self + 0x150);
+		queueHead = (int *)((char *)self + 0x150);
+
+		if (_queueHead == mainQueue) {
+			// Queue is empty
+			_queueHead = (void *)operation;
+			_queueTail = (void *)operation;
+			operation[8] = (unsigned)queueHead;  // prev
+			operation[9] = (unsigned)queueHead;  // next
+		} else {
+			// Append to end
+			int lastEntry = (int)_queueTail;
+			operation[9] = lastEntry;  // prev
+			operation[8] = (unsigned)queueHead;  // next
+			_queueTail = (void *)operation;
+			*(unsigned **)(lastEntry + 0x20) = operation;
+		}
+
+		// Unlock with status 1 (wake operation thread)
+		[_queueLock unlockWith:1];
+
+		// Wait for thread to complete
+		[completionLock lockWhen:0];
+		[completionLock unlock];
+		[completionLock free];
+
+		// Free operation structure
+		IOFree(operation, 0x28);
+	}
+
+	// Release cache
+	[self _releaseCache];
+
+	// Free queue lock
+	if (_queueLock != nil) {
+		[_queueLock free];
+	}
+
+	// Free operation lock
+	if (_operationLock != nil) {
+		[_operationLock free];
+	}
+
+	// Call super's free
+	return [super free];
 }
 
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(void *)buffer
-        actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client
+
+/*
+ * Initialize from device description.
+ * From decompiled code: sets up disk instance with geometry and drive.
+ */
+- initFromDeviceDescription:(id)deviceDescription
+                      drive:(id)drive
+                   capacity:(unsigned)capacity
+             writeProtected:(BOOL)writeProtected
 {
-    unsigned int blockNumber;
-    unsigned int numBlocks;
-    unsigned int cylinder, head, sector;
-    unsigned int i;
-    IOReturn result;
-    void *localBuffer;
+	id geometry;
+	BOOL isFormatted;
+	unsigned driveNumber;
+	char diskName[12];
+	IOReturn result;
+	int threadResult;
 
-    if (length == 0 || buffer == NULL) {
-        return IO_R_INVALID_ARG;
-    }
+	// Call super's init
+	self = [super initFromDeviceDescription:deviceDescription];
+	if (self == nil) {
+		return nil;
+	}
 
-    // Calculate block number
-    blockNumber = offset / _blockSize;
-    numBlocks = (length + _blockSize - 1) / _blockSize;
+	// Initialize operation queue (circular list pointing to itself)
+	_queueHead = (void *)((char *)self + 0x150);
+	_queueTail = (void *)((char *)self + 0x150);
 
-    if (blockNumber + numBlocks > _capacity) {
-        return IO_R_INVALID_ARG;
-    }
+	// Clear cache pointers
+	_cacheBuffer = NULL;
+	_cacheSize = 0;
+	_cacheMetadata = NULL;
+	_metadataSize = 0;
 
-    // Allocate local buffer for reading
-    localBuffer = IOMalloc(numBlocks * _blockSize);
-    if (localBuffer == NULL) {
-        return IO_R_NO_MEMORY;
-    }
+	// Allocate operation lock (NXSpinLock)
+	_operationLock = [[objc_getClass("NXSpinLock") alloc] init];
 
-    // Read each block
-    for (i = 0; i < numBlocks; i++) {
-        unsigned int block = blockNumber + i;
+	// Set capacity
+	_capacity = capacity;
 
-        // Convert block number to CHS
-        cylinder = block / (_heads * _sectorsPerTrack);
-        head = (block / _sectorsPerTrack) % _heads;
-        sector = (block % _sectorsPerTrack) + 1;  // Sectors are 1-based
+	// Get geometry for this capacity
+	geometry = [IOFloppyDisk geometryOfCapacity:capacity];
+	_geometry = geometry;
 
-        // Read from drive
-        if (_drive != nil) {
-            result = [_drive readAt:block * _blockSize
-                             length:_blockSize
-                             buffer:(void *)((char *)localBuffer + (i * _blockSize))
-                        actualLength:actualLength
-                             client:client];
+	// Allocate queue lock (NXConditionLock)
+	_queueLock = [[objc_getClass("NXConditionLock") alloc] init];
 
-            if (result != IO_R_SUCCESS) {
-                IOFree(localBuffer, numBlocks * _blockSize);
-                return result;
-            }
-        }
-    }
+	// Clear thread port flag (bit 0)
+	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
 
-    // Copy to user buffer
-    bcopy(localBuffer, buffer, length);
-    if (actualLength != NULL) {
-        *actualLength = length;
-    }
+	// Store device description
+	_deviceDescription = deviceDescription;
 
-    IOFree(localBuffer, numBlocks * _blockSize);
-    return IO_R_SUCCESS;
+	// Clear reserved fields
+	_reserved1 = 0;
+	_reserved2 = 0;
+	_reserved3 = 0;
+
+	// Validate allocations
+	if (geometry == nil || _operationLock == nil || _queueLock == nil) {
+		return [self free];
+	}
+
+	// Initialize locks
+	[_operationLock init];
+	[_queueLock initWith:0];
+
+	// Set drive
+	[self setDrive:drive];
+
+	// Set disk properties
+	[self setRemovable:YES];
+	[self setIsPhysical:YES];
+	[self setWriteProtected:writeProtected];
+
+	// Set formatted flag (formatted if capacity != 1)
+	isFormatted = (_capacity != 1);
+	[self setFormattedInternal:isFormatted];
+
+	// Set block size from geometry
+	[self setBlockSize:*(unsigned *)((char *)geometry + 0x14)];
+
+	// Set disk size from geometry
+	[self setDiskSize:*(unsigned *)((char *)geometry + 4)];
+
+	// Get drive number and create name
+	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
+	sprintf(diskName, "fdsk%d", driveNumber);
+
+	// Set unit and name
+	[self setUnit:driveNumber];
+	[self setName:diskName];
+	[self setDeviceKind:"Floppy Disk"];
+
+	// Set up cache
+	result = [self _setUpCache];
+	if (!result) {
+		return [self free];
+	}
+
+	// Attach BSD interface
+	result = [self _attachBsdDiskInterfaceToDrive:drive];
+	if (!result) {
+		return [self free];
+	}
+
+	// Fork operation thread
+	threadResult = IOForkThread((IOThreadFunc)_OperationThreadStartup, self);
+
+	// Set thread port flag based on result
+	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
+	if (threadResult != 0) {
+		*(unsigned char *)((char *)self + 0x15c) |= 1;
+	}
+
+	// Register device if thread started successfully
+	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+		if ([self registerDevice]) {
+			return self;
+		}
+	}
+
+	// Failed - cleanup and return nil
+	return [self free];
 }
 
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(void *)buffer
-         actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client
-{
-    unsigned int blockNumber;
-    unsigned int numBlocks;
-    unsigned int cylinder, head, sector;
-    unsigned int i;
-    IOReturn result;
-    void *localBuffer;
 
-    if (length == 0 || buffer == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Use IODisk's isWriteProtected method
-    if ([self isWriteProtected]) {
-        return IO_R_NOT_WRITABLE;
-    }
-
-    // Calculate block number
-    blockNumber = offset / _blockSize;
-    numBlocks = (length + _blockSize - 1) / _blockSize;
-
-    if (blockNumber + numBlocks > _capacity) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Allocate local buffer
-    localBuffer = IOMalloc(numBlocks * _blockSize);
-    if (localBuffer == NULL) {
-        return IO_R_NO_MEMORY;
-    }
-
-    // Copy from user buffer
-    bcopy(buffer, localBuffer, length);
-
-    // Write each block
-    for (i = 0; i < numBlocks; i++) {
-        unsigned int block = blockNumber + i;
-
-        // Convert block number to CHS
-        cylinder = block / (_heads * _sectorsPerTrack);
-        head = (block / _sectorsPerTrack) % _heads;
-        sector = (block % _sectorsPerTrack) + 1;
-
-        // Write to drive
-        if (_drive != nil) {
-            result = [_drive writeAt:block * _blockSize
-                              length:_blockSize
-                              buffer:(void *)((char *)localBuffer + (i * _blockSize))
-                          actualLength:actualLength
-                              client:client];
-
-            if (result != IO_R_SUCCESS) {
-                IOFree(localBuffer, numBlocks * _blockSize);
-                return result;
-            }
-        }
-    }
-
-    if (actualLength != NULL) {
-        *actualLength = length;
-    }
-
-    IOFree(localBuffer, numBlocks * _blockSize);
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
+- (IOReturn)readAsyncAt:(unsigned)offset
+                 length:(unsigned)length
                  buffer:(void *)buffer
-                 pending:(void *)pending
+                pending:(void *)pending
                  client:(vm_task_t)client
 {
-    unsigned int actualLength;
-    return [self readAt:offset
-                 length:length
-                 buffer:buffer
-             actualLength:&actualLength
-                 client:client];
+	id request;
+	IOReturn result;
+
+	// Construct request (status pointer = NULL for async)
+	request = [self _constructRequest:NULL
+	                       blockStart:offset
+	                        byteCount:length
+	                           buffer:buffer
+	                        bufferMap:client];
+
+	if (request == nil) {
+		return IO_R_NO_MEMORY;
+	}
+
+	// Execute the request
+	result = [self _executeRequest:request];
+
+	// If successful, complete the transfer
+	if (result == IO_R_SUCCESS) {
+		[self completeTransfer:pending
+		           withStatus:IO_R_SUCCESS
+		         actualLength:length];
+	}
+
+	// Free the request
+	[self _freeRequest:request];
+
+	return result;
 }
 
-- (IOReturn)writeAsyncAt:(unsigned int)offset
-                  length:(unsigned int)length
+
+- (IOReturn)readAt:(unsigned)offset
+            length:(unsigned)length
+            buffer:(void *)buffer
+      actualLength:(unsigned *)actualLength
+            client:(vm_task_t)client
+{
+	id request;
+	IOReturn result;
+
+	// Construct request (status pointer = NULL)
+	request = [self _constructRequest:NULL
+	                       blockStart:offset
+	                        byteCount:length
+	                           buffer:buffer
+	                        bufferMap:client];
+
+	if (request == nil) {
+		return IO_R_NO_MEMORY;
+	}
+
+	// Execute the request
+	result = [self _executeRequest:request];
+
+	// If successful, set actual length
+	if (result == IO_R_SUCCESS) {
+		if (actualLength != NULL) {
+			*actualLength = length;
+		}
+	}
+
+	// Free the request
+	[self _freeRequest:request];
+
+	return result;
+}
+
+	return IO_R_SUCCESS;
+}
+
+- (IOReturn)writeAsyncAt:(unsigned)offset
+                  length:(unsigned)length
                   buffer:(void *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client
 {
-    unsigned int actualLength;
-    return [self writeAt:offset
-                  length:length
-                  buffer:buffer
-              actualLength:&actualLength
-                  client:client];
+	id drive;
+	unsigned writeCapacities;
+	id request;
+	IOReturn result;
+
+	// Get drive and check write capabilities
+	drive = [self drive];
+	writeCapacities = [drive writeCapacities];
+
+	// Check if current capacity is writable
+	if ((_capacity & writeCapacities) == 0) {
+		// Capacity not supported for writing
+		return IO_R_UNSUPPORTED;
+	}
+
+	// Check write protection
+	if ([self isWriteProtected]) {
+		return IO_R_NOT_WRITABLE;
+	}
+
+	// Construct request (status pointer = (IOReturn *)1 for write flag)
+	request = [self _constructRequest:(IOReturn *)1
+	                       blockStart:offset
+	                        byteCount:length
+	                           buffer:buffer
+	                        bufferMap:client];
+
+	if (request == nil) {
+		return IO_R_NO_MEMORY;
+	}
+
+	// Execute the request
+	result = [self _executeRequest:request];
+
+	// If successful, complete the transfer
+	if (result == IO_R_SUCCESS) {
+		[self completeTransfer:pending
+		           withStatus:IO_R_SUCCESS
+		         actualLength:length];
+	}
+
+	// Free the request
+	[self _freeRequest:request];
+
+	return result;
 }
 
-// These methods are provided by IODisk superclass
-// Keep these for compatibility but delegate to super
 
-- (BOOL)isWriteProtected
+- (IOReturn)writeAt:(unsigned)offset
+             length:(unsigned)length
+             buffer:(void *)buffer
+       actualLength:(unsigned *)actualLength
+             client:(vm_task_t)client
 {
-    return [super isWriteProtected];
+	id drive;
+	unsigned writeCapacities;
+	id request;
+	IOReturn result;
+
+	// Get drive and check write capabilities
+	drive = [self drive];
+	writeCapacities = [drive writeCapacities];
+
+	// Check if current capacity is writable
+	if ((_capacity & writeCapacities) == 0) {
+		// Capacity not supported for writing
+		return IO_R_UNSUPPORTED;
+	}
+
+	// Check write protection
+	if ([self isWriteProtected]) {
+		return IO_R_NOT_WRITABLE;
+	}
+
+	// Construct request (status pointer = (IOReturn *)1 for write flag)
+	request = [self _constructRequest:(IOReturn *)1
+	                       blockStart:offset
+	                        byteCount:length
+	                           buffer:buffer
+	                        bufferMap:client];
+
+	if (request == nil) {
+		return IO_R_NO_MEMORY;
+	}
+
+	// Execute the request
+	result = [self _executeRequest:request];
+
+	// If successful, set actual length
+	if (result == IO_R_SUCCESS) {
+		if (actualLength != NULL) {
+			*actualLength = length;
+		}
+	}
+
+	// Free the request
+	[self _freeRequest:request];
+
+	return result;
 }
 
-- (BOOL)isRemovable
+	return IO_R_SUCCESS;
+}
+
++ (id)geometryOfCapacity:(unsigned)capacity
 {
-    return [super isRemovable];
+	int index;
+	unsigned *geometryEntry;
+
+	// Search through global geometry table
+	// Each entry is 7 words (28 bytes)
+	index = 0;
+	while (1) {
+		geometryEntry = &_FloppyGeometry[index * 7];
+		
+		// Check if this entry matches the capacity
+		if (geometryEntry[0] == capacity) {
+			// Return pointer to this geometry structure
+			return (id)geometryEntry;
+		}
+		
+		// Check for sentinel (capacity == 0 means end of table)
+		if (_FloppyGeometry[(index + 1) * 7] == 0) {
+			// Not found
+			return nil;
+		}
+		
+		index++;
+	}
 }
 
-- (BOOL)isPhysical
+
++ (unsigned)driveNumberOfDrive:(id)drive
 {
-    return [super isPhysical];
+	unsigned driveNumber;
+	unsigned char *deviceFlags;
+	id *drivePointer;
+
+	// Search through BSD device table (at 0xc000, 8 entries max)
+	// Each entry is 0x34 (52) bytes
+	for (driveNumber = 0; driveNumber < 8; driveNumber++) {
+		// Get pointer to flags byte at offset 0xc000 + driveNumber * 0x34
+		deviceFlags = (unsigned char *)(0xc000 + driveNumber * 0x34);
+		
+		// Get pointer to drive object at offset 0xc004 + driveNumber * 0x34
+		drivePointer = (id *)(0xc004 + driveNumber * 0x34);
+		
+		// Check if entry is valid (bit 0 set) and drive matches
+		if (((*deviceFlags) & 1) != 0 && (*drivePointer) == drive) {
+			return driveNumber;
+		}
+	}
+
+	// Not found
+	return 0xffffffff;
 }
 
-- (BOOL)isFormatted
-{
-    return [super isFormatted];
-}
-
-- (unsigned int)diskSize
-{
-    return _capacity;
-}
-
-- (unsigned int)blockSize
-{
-    return _blockSize;
-}
-
-- (IOReturn)formatMedia
-{
-    unsigned int cyl, head;
-    IOReturn result;
-
-    // Use IODisk's isWriteProtected method
-    if ([self isWriteProtected]) {
-        return IO_R_NOT_WRITABLE;
-    }
-
-    // Format each track
-    for (cyl = 0; cyl < _cylinders; cyl++) {
-        for (head = 0; head < _heads; head++) {
-            // Format track would go here
-            // This would call controller doFormat method
-        }
-    }
-
-    // Use IODisk's setFormattedInternal method
-    [self setFormattedInternal:YES];
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)ejectMedia
-{
-    // Floppy drives don't have motorized eject
-    // This would just turn off the motor
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)updatePhysicalParameters
-{
-    // Update geometry from physical disk
-    return IO_R_SUCCESS;
-}
-
-- (void)setDrive:(IOFloppyDrive *)drive
-{
-    _drive = drive;
-}
-
-- (unsigned int)cylindersPerDisk
-{
-    return _cylinders;
-}
-
-- (unsigned int)sizeList
-{
-    return _capacity;
-}
-
-- (unsigned int)sizeListFromCapacities
-{
-    return _capacity * _blockSize;
-}
-
-- (void *)cachePointerFromUnderNumber:(unsigned int)underNumber
-{
-    // Return cached pointer for under number
-    return _cachePointer;
-}
-
-- (IOReturn)formatCylinder:(unsigned int)cylinder
-                      head:(unsigned int)head
-                      data:(void *)data
-{
-    if (cylinder >= _cylinders || head >= _heads) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Use IODisk's isWriteProtected method
-    if ([self isWriteProtected]) {
-        return IO_R_NOT_WRITABLE;
-    }
-
-    // Format specific cylinder/head
-    if (_drive != nil) {
-        return [_drive formatCylinder:cylinder head:head data:data];
-    }
-
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)nextLogicalDisk
-{
-    // Return next logical disk in partition chain
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setRemovable:(BOOL)removable
-{
-    // Use IODisk's setRemovable method
-    [super setRemovable:removable];
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)registerDevice
-{
-    [_lock lock];
-
-    if (_isRegistered) {
-        [_lock unlock];
-        IOLog("IOFloppyDisk: Device already registered\n");
-        return IO_R_SUCCESS;
-    }
-
-    // Call superclass registration
-    [super registerDevice];
-
-    _isRegistered = YES;
-    IOLog("IOFloppyDisk: Device %d registered\n", _diskNumber);
-
-    [_lock unlock];
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)unregisterDevice
-{
-    [_lock lock];
-
-    if (!_isRegistered) {
-        [_lock unlock];
-        IOLog("IOFloppyDisk: Device not registered\n");
-        return IO_R_SUCCESS;
-    }
-
-    // Ensure device is closed before unregistering
-    if (_isOpen) {
-        IOLog("IOFloppyDisk: Closing device before unregister\n");
-        _isOpen = NO;
-    }
-
-    // Call superclass unregistration
-    [super unregisterDevice];
-
-    _isRegistered = NO;
-    IOLog("IOFloppyDisk: Device %d unregistered\n", _diskNumber);
-
-    [_lock unlock];
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)logicalDisk
-{
-    // Return logical disk reference
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)unlockLogicalDisk
-{
-    if (_lock != nil) {
-        [_lock unlock];
-        IOLog("IOFloppyDisk: Logical disk unlocked\n");
-    }
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)lockLogicalDisk
-{
-    if (_lock != nil) {
-        [_lock lock];
-        IOLog("IOFloppyDisk: Logical disk locked\n");
-    }
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setFormatted:(BOOL)formatted
-{
-    // Use IODisk's setFormattedInternal method
-    [super setFormattedInternal:formatted];
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setFormattedInternal:(BOOL)formatted
-{
-    // Delegate to IODisk
-    return [super setFormattedInternal:formatted];
-}
-
-- (IOReturn)getGeometry:(void *)geometry
-{
-    // Return disk geometry structure
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)setGeometry:(void *)geometry
-{
-    // Set disk geometry from structure
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)getCapacity:(unsigned long long *)capacity
-{
-    if (capacity != NULL) {
-        *capacity = (unsigned long long)_capacity * _blockSize;
-    }
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)readBlock:(unsigned int)blockNumber
-               buffer:(void *)buffer
-               client:(vm_task_t)client
-{
-    unsigned int actualLength;
-    return [self readAt:blockNumber * _blockSize
-                 length:_blockSize
-                 buffer:buffer
-             actualLength:&actualLength
-                 client:client];
-}
-
-- (IOReturn)writeBlock:(unsigned int)blockNumber
-                buffer:(void *)buffer
-                client:(vm_task_t)client
-{
-    unsigned int actualLength;
-    return [self writeAt:blockNumber * _blockSize
-                  length:_blockSize
-                  buffer:buffer
-              actualLength:&actualLength
-                  client:client];
-}
-
-- (IOReturn)completeTransfer:(void *)transfer
-                      status:(IOReturn)status
-                actualLength:(unsigned int)actualLength
-{
-    // Complete async transfer with status
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)pendingRequest:(void **)request
-{
-    // Get pending request
-    if (request != NULL) {
-        *request = NULL;
-    }
-    return IO_R_SUCCESS;
-}
-
-- (const char *)driverName
-{
-    return "IOFloppyDisk";
-}
-
-- (IOReturn)isDiskReady:(BOOL *)ready
-{
-    if (ready != NULL) {
-        // Use IODisk methods
-        *ready = [self isFormatted] && ![self isWriteProtected];
-    }
-    return IO_R_SUCCESS;
-}
-
-// IOLogicalDisk inherited methods
-- (BOOL)isOpen
-{
-    BOOL result;
-
-    [_lock lock];
-    result = _isOpen;
-    [_lock unlock];
-
-    return result;
-}
-
-- (BOOL)isAnyOtherOpen
-{
-    // Check if any other logical disks in chain are open
-    // Use IODisk's nextLogicalDisk method
-    id nextDisk = [self nextLogicalDisk];
-    if (nextDisk != nil && [nextDisk respondsToSelector:@selector(isOpen)]) {
-        return [nextDisk isOpen];
-    }
-    return NO;
-}
-
-- (IOReturn)connectToPhysicalDisk:(id)physicalDisk
-{
-    // Delegate to IOLogicalDisk superclass
-    IOReturn result = [super connectToPhysicalDisk:physicalDisk];
-
-    if (result == IO_R_SUCCESS) {
-        IOLog("IOFloppyDisk: Connected to physical disk %s\n",
-              [[physicalDisk name] cString]);
-    }
-
-    return result;
-}
-
-- (void)setPartitionBase:(unsigned)partBase
-{
-    // Delegate to IOLogicalDisk superclass
-    [super setPartitionBase:partBase];
-
-    IOLog("IOFloppyDisk: Partition base set to %d\n", partBase);
-}
-
-- (id)physicalDisk
-{
-    // Use IOLogicalDisk's physicalDisk method, fall back to _drive if nil
-    id result = [super physicalDisk];
-
-    if (result == nil) {
-        result = _drive;
-    }
-
-    return result;
-}
-
-- (void)setPhysicalBlockSize:(unsigned)size
-{
-    [_lock lock];
-    _blockSize = size;
-    [_lock unlock];
-
-    IOLog("IOFloppyDisk: Physical block size set to %d\n", size);
-}
-
-- (u_int)physicalBlockSize
-{
-    unsigned int result;
-
-    [_lock lock];
-    result = _blockSize;
-    [_lock unlock];
-
-    return result;
-}
-
-- (BOOL)isInstanceOpen
-{
-    return [self isOpen];
-}
-
-- (void)setInstanceOpen:(BOOL)isOpen
-{
-    [_lock lock];
-    _isOpen = isOpen;
-    [_lock unlock];
-
-    if (isOpen) {
-        IOLog("IOFloppyDisk: Instance opened\n");
-    } else {
-        IOLog("IOFloppyDisk: Instance closed\n");
-    }
-}
-
-// IODisk inherited methods that may need override
-- (void)setLogicalDisk:(id)diskId
-{
-    // Delegate to IODisk superclass
-    [super setLogicalDisk:diskId];
-
-    if (diskId != nil) {
-        IOLog("IOFloppyDisk: Next logical disk set to %s\n",
-              [[diskId name] cString]);
-    } else {
-        IOLog("IOFloppyDisk: Next logical disk cleared\n");
-    }
-}
-
-- (void)lockLogicalDisks
-{
-    if (_lock != nil) {
-        [_lock lock];
-    }
-}
-
-- (void)unlockLogicalDisks
-{
-    if (_lock != nil) {
-        [_lock unlock];
-    }
-}
-
-- (const char *)stringFromReturn:(IOReturn)rtn
-{
-    // Convert IOReturn to string
-    switch (rtn) {
-        case IO_R_SUCCESS: return "Success";
-        case IO_R_NO_MEDIA: return "No Media";
-        case IO_R_INVALID_ARG: return "Invalid Argument";
-        case IO_R_NOT_WRITABLE: return "Not Writable";
-        default: return "Unknown Error";
-    }
-}
-
-- (IOReturn)errnoFromReturn:(IOReturn)rtn
-{
-    // Convert IOReturn to errno
-    switch (rtn) {
-        case IO_R_SUCCESS: return 0;
-        case IO_R_NO_MEMORY: return ENOMEM;
-        case IO_R_INVALID_ARG: return EINVAL;
-        case IO_R_NO_MEDIA: return ENXIO;
-        default: return EIO;
-    }
-}
-
-- (IOReturn)eject
-{
-    // Eject disk (logical disk version)
-    return [self ejectMedia];
-}
-
-- (IOReturn)abortRequest
-{
-    // Abort pending requests
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)diskBecameReady
-{
-    // Handle disk becoming ready - use IODisk method
-    [self setFormattedInternal:YES];
-    return IO_R_SUCCESS;
-}
-
-- (IODiskReadyState)updateReadyState
-{
-    // Update and return ready state - use IODisk method
-    if (![self isFormatted]) {
-        return IO_NoDisk;
-    }
-    return IO_Ready;
-}
-
-- (BOOL)needsManualPolling
-{
-    // Floppy drives need manual polling
-    return YES;
-}
-
-- (IOReturn)kernelDeviceInfo:(void *)info
-{
-    // Return kernel device information
-    return IO_R_SUCCESS;
-}
-
-// Partition/Label methods (IODiskPartition protocol)
-
-- (IOReturn)readLabel:(disk_label_t *)label_p
-{
-    if (label_p == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Floppies don't typically have NeXT disk labels
-    // Return IO_R_NO_LABEL to indicate no label present
-    IOLog("IOFloppyDisk: Read label - no label on floppy\n");
-    return IO_R_NO_LABEL;
-}
-
-- (IOReturn)writeLabel:(disk_label_t *)label_p
-{
-    if (label_p == NULL) {
-        return IO_R_INVALID_ARG;
-    }
-
-    // Check write protection
-    if ([self isWriteProtected]) {
-        return IO_R_NOT_WRITABLE;
-    }
-
-    // Floppies don't support NeXT disk labels
-    IOLog("IOFloppyDisk: Write label - unsupported on floppy\n");
-    return IO_R_UNSUPPORTED;
-}
-
-- (BOOL)isBlockDeviceOpen
-{
-    BOOL result;
-
-    [_lock lock];
-    result = _blockDeviceOpen;
-    [_lock unlock];
-
-    return result;
-}
-
-- (void)setBlockDeviceOpen:(BOOL)openFlag
-{
-    [_lock lock];
-    _blockDeviceOpen = openFlag;
-    _isOpen = _blockDeviceOpen || _rawDeviceOpen;
-    [_lock unlock];
-
-    IOLog("IOFloppyDisk: Block device %s (disk %d)\n",
-          openFlag ? "opened" : "closed", _diskNumber);
-}
-
-- (BOOL)isRawDeviceOpen
-{
-    BOOL result;
-
-    [_lock lock];
-    result = _rawDeviceOpen;
-    [_lock unlock];
-
-    return result;
-}
-
-- (void)setRawDeviceOpen:(BOOL)openFlag
-{
-    [_lock lock];
-    _rawDeviceOpen = openFlag;
-    _isOpen = _blockDeviceOpen || _rawDeviceOpen;
-    [_lock unlock];
-
-    IOLog("IOFloppyDisk: Raw device %s (disk %d)\n",
-          openFlag ? "opened" : "closed", _diskNumber);
-}
-
-// Legacy label methods (kept for compatibility)
-
-- (IOReturn)virtualLabel
-{
-    // Return virtual label for floppy (floppies don't have labels)
-    return IO_R_SUCCESS;
-}
-
-- (IOReturn)getLabel:(void *)label
-{
-    // Get disk label (floppies typically don't have disk labels)
-    return IO_R_NO_LABEL;
-}
-
-- (IOReturn)setLabel:(void *)label
-{
-    // Set disk label (floppies typically can't set labels)
-    return IO_R_UNSUPPORTED;
-}
 
 @end
+
+/* End of IOFloppyDisk.m */

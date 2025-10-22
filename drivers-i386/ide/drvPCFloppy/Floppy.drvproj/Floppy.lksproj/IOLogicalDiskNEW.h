@@ -1,86 +1,110 @@
 /*
- * IOLogicalDiskNEW.h
- * Stub class for IOLogicalDisk compatibility
+ * IOLogicalDiskNEW.h - Interface for LogicalDisk class (NEW implementation)
+ *
+ * Base class for logical disk operations (partitions, etc.)
  */
 
-#import <driverkit/IOLogicalDisk.h>
+#import "IODiskNEW.h"
 
-/*
- * IOLogicalDiskNEW - Compatibility stub class
- * This class provides a compatibility shim for the floppy driver.
- * It inherits all behavior from IOLogicalDisk and never probes hardware.
- */
-@interface IOLogicalDiskNEW : IOLogicalDisk
+#ifdef	KERNEL
+#import <driverkit/kernelDiskMethods.h>
+#import <bsd/dev/ldd.h>
+#endif	KERNEL
+
+@interface IOLogicalDiskNEW : IODiskNEW
 {
-    // Device state
-    BOOL _blockDeviceOpen;
-    BOOL _writeProtected;
-    BOOL _registered;
-    unsigned int _openCount;
+@private
+	id		_physicalDisk;		// physical disk object
+	unsigned	_partitionBase;		// base offset of partition
+	BOOL		_instanceOpen;		// instance open flag
 
-    // Disk geometry
-    unsigned int _blockSize;
-    unsigned int _logicalBlockCount;
-
-    // Logical disk chain
-    id _nextLogicalDisk;
-    id _logicalDiskLock;
-
-    // Physical disk reference
-    id _physicalDisk;
-
-    // Transfer state
-    unsigned int _maxBytesPerTransfer;
+	int		_IOLogicalDiskNEW_reserved[4];
 }
 
-// Logical disk methods
-- (IOReturn)registerDevice;
-- (IOReturn)unregisterDevice;
-- (IOReturn)setLogicalDisk:(id)disk;
-- (IOReturn)lockLogicalDisks;
-- (IOReturn)unlockLogicalDisks;
+/*
+ * Connect to physical disk.
+ */
+- (IOReturn)connectToPhysicalDisk : diskId;
 
-// Device status
-- (IOReturn)setBlockDeviceOpen:(BOOL)open;
-- (IOReturn)isBlockDeviceOpen;
-- (BOOL)isAnyBlockDeviceOpen;
-- (BOOL)isAnyOtherOpen;
+/*
+ * Free method.
+ */
+- _free;
 
-// Read/write operations
-- (IOReturn)readAt:(unsigned int)offset
-            length:(unsigned int)length
-            buffer:(void *)buffer
-        actualLength:(unsigned int *)actualLength
-            client:(vm_task_t)client;
+/*
+ * Get physical disk.
+ */
+- _physicalDisk;
 
-- (IOReturn)writeAt:(unsigned int)offset
-             length:(unsigned int)length
-             buffer:(void *)buffer
-         actualLength:(unsigned int *)actualLength
-             client:(vm_task_t)client;
+/*
+ * Check if instance is open.
+ */
+- (BOOL)_isInstanceOpen;
 
-- (IOReturn)readAsyncAt:(unsigned int)offset
-                 length:(unsigned int)length
-                 buffer:(void *)buffer
-                 client:(vm_task_t)client
-               pending:(void *)pending;
+/*
+ * Set instance open flag.
+ */
+- (void)_setInstanceOpen : (BOOL)openFlag;
 
-// Device methods
-- (unsigned int)deviceBytesOnce;
-- (IOReturn)completeTransfer:(void *)status
-              actualLength:(unsigned int)actualLength
-                    client:(vm_task_t)client;
+/*
+ * Check if disk is open.
+ */
+- (BOOL)_isOpen;
 
-// Physical disk
-- (id)setPhysicalDisk:(id)disk;
-- (id)isWriteProtected;
+/*
+ * Check if any other instance is open.
+ */
+- (BOOL)_isAnyOtherOpen;
 
-// Geometry management
-- (IOReturn)setBlockSize:(unsigned int)size;
-- (unsigned int)blockSize;
-- (IOReturn)setLogicalBlockCount:(unsigned int)count;
-- (unsigned int)logicalBlockCount;
-- (IOReturn)setWriteProtected:(BOOL)protect;
-- (IOReturn)setMaxBytesPerTransfer:(unsigned int)maxBytes;
+/*
+ * Set partition base offset.
+ */
+- (void)_setPartitionBase : (unsigned)base;
+
+/*
+ * Read/Write methods.
+ */
+#ifdef KERNEL
+- (IOReturn)_readAt : (unsigned)offset
+	     length : (unsigned)length
+	     buffer : (unsigned char *)buffer
+       actualLength : (unsigned *)actualLength
+	     client : (vm_task_t)client;
+
+- (IOReturn)_readAsyncAt : (unsigned)offset
+		  length : (unsigned)length
+		  buffer : (unsigned char *)buffer
+		 pending : (void *)pending
+		  client : (vm_task_t)client;
+
+- (IOReturn)_writeAt : (unsigned)offset
+	      length : (unsigned)length
+	      buffer : (unsigned char *)buffer
+        actualLength : (unsigned *)actualLength
+	      client : (vm_task_t)client;
+
+- (IOReturn)_writeAsyncAt : (unsigned)offset
+		   length : (unsigned)length
+		   buffer : (unsigned char *)buffer
+		  pending : (void *)pending
+		   client : (vm_task_t)client;
+#endif KERNEL
 
 @end
+
+/*
+ * Private methods category.
+ */
+@interface IOLogicalDiskNEW(Private)
+
+/*
+ * Common disk parameter validation.
+ */
+- (IOReturn)__diskParamCommon : (unsigned)offset
+		        length : (unsigned)length
+		  deviceOffset : (unsigned *)deviceOffset
+		   bytesToMove : (unsigned *)bytesToMove;
+
+@end
+
+/* End of IOLogicalDiskNEW interface. */

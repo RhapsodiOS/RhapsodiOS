@@ -7,7 +7,7 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = BPF_reloc
+NAME = BPF
 
 PROJECTVERSION = 1.1
 LANGUAGE = English

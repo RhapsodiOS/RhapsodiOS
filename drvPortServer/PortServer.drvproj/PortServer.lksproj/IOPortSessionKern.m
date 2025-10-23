@@ -6,13 +6,13 @@
 #import "IOPortSessionKern.h"
 #import <objc/objc-runtime.h>
 
-/* External global arrays for kernel port session management */
-extern id _nsPortKernIdMap[];      /* Array of port kernel session objects */
-extern char _nsPortKernStateMap[]; /* Array of session state flags */
+/* Global kernel port session maps - defined here */
+id _nsPortKernIdMap[64] = { NULL };     /* Array of port kernel session objects (64 * 8 bytes = 0x200) */
+char _nsPortKernStateMap[128] = { 0 };  /* Array of session state flags (64 * 2 bytes = 128) */
 
-/* External global variables for session management */
-extern int _numSessions;           /* Number of sessions (-1 if not initialized) */
-extern id _mapLock;                /* AppleIOPSSafeCondLock for map access */
+/* Global kernel session state */
+int _numSessions = -1;                  /* Number of sessions (-1 if not initialized) */
+id _mapLock = NULL;                     /* AppleIOPSSafeCondLock for map access */
 
 /* External kernel functions */
 extern int copyout(const void *kaddr, void *uaddr, size_t len);

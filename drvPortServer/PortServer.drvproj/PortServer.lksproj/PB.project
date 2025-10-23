@@ -3,7 +3,6 @@
     FILESTABLE = {
         CLASSES = (
             AppleIOPSSafeCondLock.m,
-            globals.m,
             IOPortSession.m,
             IOPortSessionKern.m,
             PDPseudo.m,

@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 #ifndef _POWERMAC_H_
@@ -31,10 +31,10 @@
 #include <machdep/ppc/dbdma.h>
 
 /*
- * Machine class 
+ * Machine class
  */
 
-#define	POWERMAC_CLASS_PDM		1	/* PowerMac 61/71/8100 */
+#define	POWERMAC_CLASS_PDM		    1	/* PowerMac 61/71/8100 */
 #define	POWERMAC_CLASS_PERFORMA		2	/* PowerMac 52/6200 */
 #define	POWERMAC_CLASS_POWERSURGE	3	/* PowerMac 72/75/85/9500 */
 #define	POWERMAC_CLASS_POWEREXPRESS	4	/* PowerMac 9700 */
@@ -42,19 +42,22 @@
 #define	POWERMAC_CLASS_GOSSAMER 	6	/* PowerMac G3 Desk/Mini-Twr */
 #define	POWERMAC_CLASS_POWERSTAR 	7	/* PowerBook 2400/3400/G3 */
 #define	POWERMAC_CLASS_YOSEMITE 	8	/* 1st Gen New World */
+#define	POWERMAC_CLASS_SAWTOOTH 	9	/* 2nd Gen New World */
 
 /* Some macros for easy machine identification */
 #define IsPowerSurge()	(powermac_info.class == POWERMAC_CLASS_POWERSURGE)
- 
+
 #define IsPEx()		(powermac_info.class == POWERMAC_CLASS_POWEREXPRESS)
 
 #define IsPowerBook()	(powermac_info.class == POWERMAC_CLASS_POWERBOOK)
- 
+
 #define IsGossamer()	(powermac_info.class == POWERMAC_CLASS_GOSSAMER)
 
 #define IsPowerStar()	(powermac_info.class == POWERMAC_CLASS_POWERSTAR)
 
 #define IsYosemite()	(powermac_info.class == POWERMAC_CLASS_YOSEMITE)
+
+#define IsSawtooth()	(powermac_info.class == POWERMAC_CLASS_SAWTOOTH)
 
 // This is not safe until the PMU or Cuda driver have been set up.
 #define HasPMU()        (powermac_info.hasPMU)
@@ -66,9 +69,9 @@ typedef struct powermac_info {
         unsigned int    dec_clock_period;       /* Fixed point number 8.24 */
 
         /* to convert from real time ticks to nsec convert by this*/
-	unsigned int	proc_clock_to_nsec_numerator; 
-	unsigned int	proc_clock_to_nsec_denominator; 
-	
+	unsigned int	proc_clock_to_nsec_numerator;
+	unsigned int	proc_clock_to_nsec_denominator;
+
 	int		machine;		/* Gestalt value .. */
 	int		hasPMU;                 // Flag for machines with PMU
 	int		viaIRQ;                 // irq number for the via

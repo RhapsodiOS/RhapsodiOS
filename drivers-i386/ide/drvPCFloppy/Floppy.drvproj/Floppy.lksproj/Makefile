@@ -9,29 +9,21 @@
 
 NAME = Floppy
 
-PROJECTVERSION = 5.10
+PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = FloppyController.m FloppyController_Arch.m\
-          FloppyController_Cmds.m FloppyController_IO.m FloppyController_Device.m\
-          FloppyController_Test.m\
-          IOFloppyDrive.m IOFloppyDrive_Internal.m IOFloppyDrive_BlockOps.m\
-          IOFloppyDrive_VolCheckSupport.m\
-          IOFloppyDisk.m IOFloppyDisk_Bsd.m IOFloppyDisk_Support.m\
-          IOFloppyDisk_Geometry.m IOFloppyDisk_Parameters.m\
-          IOFloppyDisk_Request.m IOFloppyDisk_OperationThread.m\
-          IODiskNEW.m IOLogicalDiskNEW.m IODiskPartitionNEW.m IODriveNEW.m
+CLASSES = Bsd.m FloppyArch.m FloppyCmds.m FloppyCnt.m FloppyCntIo.m\
+          FloppyDriveInt.m FloppyDriveInt2.m Geometry.m\
+          IODiskNew.m IODiskPartitionNEW.m IODriveNEW.m\
+          IOFloppyDisk.m IOFloppyDrive.m IOLogicalDiskNEW.m\
+          kernelDiskMethodsNEW.m Request.m Support.m Thread.m VolCheck.m
 
-HFILES = FloppyController.h FloppyController_Arch.h\
-         FloppyController_Cmds.h FloppyController_IO.h FloppyController_Device.h\
-         FloppyController_Test.h\
-         IOFloppyDrive.h IOFloppyDrive_Internal.h IOFloppyDrive_BlockOps.h\
-         IOFloppyDrive_VolCheckSupport.h\
-         IOFloppyDisk.h IOFloppyDisk_Bsd.h IOFloppyDisk_Support.h\
-         IOFloppyDisk_Geometry.h IOFloppyDisk_Parameters.h\
-         IOFloppyDisk_Request.h IOFloppyDisk_OperationThread.h\
-         IODiskNEW.h IOLogicalDiskNEW.h IODiskPartitionNEW.h IODriveNEW.h
+HFILES = Bsd.h FloppyArch.h FloppyCmds.h FloppyCnt.h FloppyCntIo.h\
+         FloppyDriveInt.h FloppyDriveInt2.h Geometry.h\
+         IODiskNew.h IODiskPartitionNEW.h IODriveNEW.h\
+         IOFloppyDisk.h IOFloppyDrive.h IOLogicalDiskNEW.h\
+         kernelDiskMethodsNEW.h Request.h Support.h Thread.h VolCheck.h
 
 OTHERSRCS = Makefile Makefile.preamble
 

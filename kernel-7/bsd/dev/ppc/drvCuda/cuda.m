@@ -120,6 +120,7 @@ extern void kprintf(const char *, ...);
 extern void bcopy(void *, void *, int);
 // extern to let us fix up the boot time.
 extern void set_boot_time(void);
+extern void InitNVRAMPartitions(void);
 extern msg_send_from_kernel(msg_header_t *, int, int);
 
 // Variables copied from cuda.c:
@@ -196,6 +197,7 @@ struct ctldebug debug2 = { "cuda_glob_dbug_freeze", &cuda_glob_dbug_freeze };
 	// tell ADB about us.  This is a global variable accessible in adb.m
 	ApplePMUId = dev;
 
+	InitNVRAMPartitions();
 	set_boot_time();
 
 	return YES;

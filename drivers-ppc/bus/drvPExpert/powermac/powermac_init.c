@@ -347,6 +347,10 @@ void display_machine_class(void)
         str = "Yosemite";
         break;
 
+    case    POWERMAC_CLASS_SAWTOOTH:
+        str = "Sawtooth";
+        break;
+
     default:
         str = "unsupported";
         break;

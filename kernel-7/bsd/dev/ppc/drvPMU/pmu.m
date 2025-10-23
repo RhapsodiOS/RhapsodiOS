@@ -40,6 +40,7 @@
 
 // extern to let us fix up the boot time.
 extern void set_boot_time(void);
+extern void InitNVRAMPartitions(void);
 
 void gotInterruptCause(id, UInt32, UInt32, UInt8 *);
 void timer_expired(port_t mach_port);
@@ -71,7 +72,8 @@ kprintf("PMU probe\n");
   }
   
   ApplePMUId = dev;
-  
+
+  InitNVRAMPartitions();
   set_boot_time();
 
   return YES;

@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 #include <powermac.h>
@@ -33,6 +33,7 @@
 #include <families/gossamer.h>
 #include <families/powerstar.h>
 #include <families/yosemite.h>
+#include <families/sawtooth.h>
 #include "IOProperties.h"
 
 /* Local declarations */
@@ -79,13 +80,13 @@ void identify_machine1()
 	/* Everything starts out zeroed... */
 	bzero((void*) &powermac_info,           sizeof(powermac_info_t));
 
-	/* 
+	/*
 	 * First, find out the gestalt number for this machine.
 	 */
 
 	powermac_info.machine               = get_machine_id();
 
-	/* 
+	/*
 	 * Set up the machine class values based on the
 	 * gestalt number.
 	 */
@@ -120,11 +121,17 @@ void identify_machine1()
 		powermac_io_info.io_size	= OHARE_SIZE;
 		powermac_init_p = &powerstar_init;
 		break;
-	  
+
 	case gestaltCHRP_Version1:
 		powermac_info.class		= POWERMAC_CLASS_YOSEMITE;
 		powermac_io_info.io_size	= HEATHROW_SIZE;
 		powermac_init_p = &yosemite_init;
+		break;
+
+	case gestaltSawtooth:
+		powermac_info.class		= POWERMAC_CLASS_SAWTOOTH;
+		powermac_io_info.io_size	= HEATHROW_SIZE;
+		powermac_init_p = &sawtooth_init;
 		break;
 
 	default:
@@ -200,13 +207,11 @@ void identify_machine2()
 
 	/* The cache initialization stuff. */
 	InitBacksideL2();
-
-	InitNVRAMPartitions();
 }
 
 /* get_io_base_addr():
  *
- *   Get the base address of the io controller.  
+ *   Get the base address of the io controller.
  */
 vm_offset_t get_io_base_addr(void)
 {
@@ -230,7 +235,7 @@ vm_offset_t get_io_base_addr(void)
 
 /* get_mem_cntlr_base_addr():
  *
- *   Get the base address of the memory controller.  
+ *   Get the base address of the memory controller.
  */
 vm_offset_t get_mem_cntlr_base_addr(void)
 {
@@ -245,13 +250,13 @@ vm_offset_t get_mem_cntlr_base_addr(void)
 	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
 	}
-	
+
 	return(0);
 }
 
 /* get_int_cntlr_base_addr():
  *
- *   Get the base address of the interrupt controller.  
+ *   Get the base address of the interrupt controller.
  */
 vm_offset_t get_int_cntlr_base_addr(void)
 {
@@ -282,7 +287,7 @@ vm_offset_t get_dma_offset()
 	    (DTFindEntry("device_type", "mac-io", &entryP) == kSuccess))
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
-	
+
 	panic("Uhmmm.. I can't get this machine's dma offset\n");
 	return(kError);
 }
@@ -315,7 +320,7 @@ vm_offset_t get_scsi_int_offset()
 	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess))
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
-	
+
 	panic("Uhmmm.. I can't get this machine's scsi internal offset\n");
 	return(kError);
 }
@@ -333,7 +338,7 @@ vm_offset_t get_scsi_int_dma_offset()
 	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess))
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*(address+2));
-	
+
 	panic("Uhmmm.. I can't get this machine's scsi internal dma offset\n");
 	return(kError);
 }
@@ -350,7 +355,7 @@ vm_offset_t get_scsi_ext_offset()
 	if (DTFindEntry("name", "53c94", &entryP) == kSuccess)
 	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
-	
+
 	return(0);
 }
 
@@ -387,8 +392,8 @@ vm_offset_t get_floppy_offset()
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
 
-	panic("Uhmmm.. I can't get this machine's floppy offset\n");
-	return(kError);
+	/* Return 0 if no floppy controller found (not all Macs have floppy drives) */
+	return(0);
 }
 
 /* get_ethernet_offset():
@@ -433,7 +438,7 @@ vm_offset_t get_via_offset()
 	     kSuccess)) {
 	    return(*address);
 	}
-	
+
 	panic("Uhmmm.. I can't get this machine's via offset\n");
 	return(kError);
 }
@@ -466,7 +471,7 @@ vm_offset_t get_nvram_data_offset()
 	if (DTFindEntry("device_type", "nvram", &entryP) == kSuccess)
 	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*(address + 2));
-	
+
 	return(0);
 }
 
@@ -482,7 +487,7 @@ vm_offset_t get_ide_offset(int channel)
 	if (DTFindEntry("device_type", "ide", &entryP) == kSuccess) {
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess) {
 	    offset = *address;
-	    
+
 	    // Wallstreet has ata1 first...
 	    if (powermac_info.machine == gestaltWallstreet) {
 	      if (channel == 0) offset -= 0x1000;
@@ -493,7 +498,7 @@ vm_offset_t get_ide_offset(int channel)
 	  }
 	} else if (DTFindEntry("device_type", "ata", &entryP) == kSuccess) {
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess) {
-	    /* Kanga has IDE1 first in the tree... dohhh */	    
+	    /* Kanga has IDE1 first in the tree... dohhh */
 	    offset = *address;
 	    if (channel == 0) offset -= 0x1000;
 	    return offset;
@@ -574,8 +579,8 @@ init_powermac_machine_info(void)
 /* get_machine_id():
  *
  *   get the gestalt ID of the machine.  Currently we map from the OF "compatable" string, so
- *   so we really only get the family, but it could also check the clock frequency and other 
- *   hw to narrow it down.  
+ *   so we really only get the family, but it could also check the clock frequency and other
+ *   hw to narrow it down.
  *   Returns:    gestaltID
  *               kError = unknown machine
  */
@@ -603,7 +608,7 @@ int get_machine_id(void)
 	      strcpy(cpu_model, family);
 
 	    strcpy(machine, "Power Macintosh");
-	    
+
 	    if      (strcmp( family, "AAPL,6100") == 0)		return(gestaltPowerMac6100_60);
 	    else if (strcmp( family, "AAPL,7100") == 0)		return(gestaltPowerMac7100_66);
 	    else if (strcmp( family, "AAPL,8100") == 0)		return(gestaltPowerMac8100_80);
@@ -625,7 +630,14 @@ int get_machine_id(void)
 	    else if (strcmp( family, "AAPL,3500") == 0)	return(gestaltKanga);
 	    else if (strcmp( family, "iMac") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,1") == 0)	return(gestaltCHRP_Version1);
+	    else if (strcmp( family, "PowerMac1,2") == 0)	return(gestaltCHRP_Version1);
+		else if (strcmp( family, "PowerMac2,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerBook1,1") == 0)	return(gestaltCHRP_Version1);
+	    else if (strcmp( family, "PowerMac3,1") == 0)	return(gestaltSawtooth);
+	    else if (strcmp( family, "PowerMac3,2") == 0)	return(gestaltSawtooth);
+	    else if (strcmp( family, "PowerMac3,3") == 0)	return(gestaltSawtooth);
+	    else if (strcmp( family, "PowerMac5,1") == 0)	return(gestaltSawtooth);
+	    else if (strcmp( family, "PowerBook2,1") == 0)	return(gestaltSawtooth);
 	    else
 		panic("Unsupported machine\n");
 	}
@@ -640,13 +652,22 @@ void identify_via_irq(void)
   DTEntry     entryP;
   int         size, *irq;
 
-  if ((DTFindEntry("device_type", "cuda", &entryP) == kSuccess) ||
-      (DTFindEntry("device_type", "via-cuda", &entryP) == kSuccess) ||
-      (DTFindEntry("device_type", "pmu", &entryP) == kSuccess) ||
-      (DTFindEntry("device_type", "via-pmu", &entryP) == kSuccess))
-    if ((DTGetProperty(entryP, "AAPL,interrupts", (void **)&irq, &size) == kSuccess) ||
-	(DTGetProperty(entryP, "interrupts", (void **)&irq, &size) == kSuccess))
-      *irq = powermac_info.viaIRQ ^ 0x18;
+  /* Find VIA/Cuda/PMU device - return if not found */
+  if ((DTFindEntry("device_type", "cuda", &entryP) != kSuccess) &&
+      (DTFindEntry("device_type", "via-cuda", &entryP) != kSuccess) &&
+      (DTFindEntry("device_type", "pmu", &entryP) != kSuccess) &&
+      (DTFindEntry("device_type", "via-pmu", &entryP) != kSuccess)) {
+    return;
+  }
+
+  /* Get interrupt property - return if not found */
+  if ((DTGetProperty(entryP, "AAPL,interrupts", (void **)&irq, &size) != kSuccess) &&
+      (DTGetProperty(entryP, "interrupts", (void **)&irq, &size) != kSuccess)) {
+    return;
+  }
+
+  /* Remap VIA interrupt number */
+  *irq = powermac_info.viaIRQ ^ 0x18;
 }
 
 int set_ethernet_irq(int newIRQ)
@@ -658,17 +679,22 @@ int set_ethernet_irq(int newIRQ)
     hasOHare2 = 1;
   }
 
-  if ((DTFindEntry("name", "pci1011,14", &entryP) == kSuccess))
-    if ((DTGetProperty(entryP, "AAPL,interrupts", (void **)&irq, &size) == kSuccess) ||
-	(DTGetProperty(entryP, "interrupts", (void **)&irq, &size) == kSuccess)) {
-      if (!hasOHare2) {
-	newIRQ = *irq ^ 0x18;
-      }
-      
-      *irq = newIRQ ^ 0x18;
+  if ((DTFindEntry("name", "pci1011,14", &entryP) == kSuccess)) {
+    /* Try to get interrupt property - return early if not found */
+    if ((DTGetProperty(entryP, "AAPL,interrupts", (void **)&irq, &size) != kSuccess) &&
+        (DTGetProperty(entryP, "interrupts", (void **)&irq, &size) != kSuccess)) {
+      return hasOHare2;
     }
 
-    return hasOHare2; 
+    /* Process interrupt remapping */
+    if (!hasOHare2) {
+      newIRQ = *irq ^ 0x18;
+    }
+
+    *irq = newIRQ ^ 0x18;
+  }
+
+  return hasOHare2;
 }
 
 /* DriverKit calls this for PExpert to change DT entries
@@ -684,6 +710,93 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
     int		err = -1;
     extern int  kdp_flag;
     DTEntry	entry;
+    int         *classCode;
+    int         size;
+    static int  usbDeviceFound = 0;
+
+    /* Sawtooth-specific: Handle PCI bridge class code for AGP */
+    if( powermac_info.class == POWERMAC_CLASS_SAWTOOTH) {
+        if( 0 == strcmp( nodeName, "pci") && index == 0) {
+            if( kSuccess == DTGetProperty(dtEntry, "class-code", (void **)&classCode, &size)) {
+                if( *classCode == 0x060400) {  /* PCI-to-PCI bridge */
+                    *propName = "compatible";
+                    *propData = "pci-bridge";
+                    *propSize = 11;
+                    return 0;
+                }
+            }
+            return -1;
+        }
+
+        /* Sawtooth-specific: Filter out USB devices except first keyboard/mouse */
+        if( 0 == strcmp( nodeName, "usb") && index == 0) {
+            /* Check if this USB node has keyboard or mouse children */
+            if( (kSuccess == DTLookupEntry(dtEntry, "keyboard", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "mouse", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "hub/keyboard", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "hub/mouse", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "device/keyboard", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "device/mouse", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "hub/device/keyboard", &entry)) ||
+                (kSuccess == DTLookupEntry(dtEntry, "hub/device/mouse", &entry)) ) {
+
+                if( !usbDeviceFound) {
+                    usbDeviceFound = 1;
+                    return -1;  /* Allow first USB HID device */
+                }
+            }
+            /* Ignore all other USB devices */
+            *propName = *propData = "AAPL,ignore";
+            *propSize = 0;
+            return 0;
+        }
+    }
+
+    /* Handle ATY,LTProParent (Rage LTPro graphics) */
+    if( 0 == strcmp( nodeName, "ATY,LTProParent")) switch( index) {
+
+        case 0:
+            *propName = "device_type";
+            *propSize = 8;
+            *propData = "display";
+            err = 0;
+            break;
+
+        case 1:
+            *propName = "AAPL,boot-display";
+            *propData = "AAPL,boot-display";
+            *propSize = 0;
+            err = 0;
+            break;
+
+        case 2:
+            /* Get driver property from ATY,264LTProA child */
+            if( kSuccess == DTLookupEntry(dtEntry, "ATY,264LTProA", &entry)) {
+                *propName = "driver,AAPL,MacOS,PowerPC";
+                err = DTGetProperty(entry, "driver,AAPL,MacOS,PowerPC", propData, propSize);
+            }
+            break;
+    }
+
+    /* TODO: Handle ATY,Rage128Pd - detect Cabernet (iMac DV) displays */
+#if 0
+    /* Handle ATY,Rage128Pd - detect Cabernet (iMac DV) displays */
+    if( 0 == strcmp( nodeName, "ATY,Rage128Pd") && index == 0) {
+        int     *edidData;
+        int     edidSize;
+        extern int gIsCabernet;
+
+        if( kSuccess == DTGetProperty(dtEntry, "EDID", (void **)&edidData, &edidSize)) {
+            if( edidSize >= 12) {
+                /* Check for Apple Studio Display (Cabernet) vendor/product ID */
+                if( edidData[2] == 0x6101392) {  /* Apple vendor 0x0610, product 0x9213 */
+                    gIsCabernet = 1;
+                }
+            }
+        }
+        return -1;
+    }
+#endif
 
     if( 0 == strcmp( nodeName, "53c94")) switch( index) {
 
@@ -710,9 +823,9 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
 	    err = 0;
 	    break;
 
-    } else if( 
-	   (0 == strcmp( nodeName, "chips65550")) 
-	|| (0 == strcmp( nodeName, "pci1011,14")) 
+    } else if(
+	   (0 == strcmp( nodeName, "chips65550"))
+	|| (0 == strcmp( nodeName, "pci1011,14"))
 	|| (0 == strcmp( nodeName, "pci106b,7"))
 	|| (0 == strncmp( nodeName, "ATY,mach64_3DU", strlen("ATY,mach64_3DU")))) switch( index) {
 
@@ -799,20 +912,20 @@ void InitNVRAMPartitions(void)
   long curOffset = 0;
   char buf[17];
 
-  if (IsYosemite()) {
-    // Look at the NVRAM partitons and find the right ones.
+  if (IsYosemite() || IsSawtooth()) {
+    // Look at the NVRAM partitions and find the right ones.
 
     buf[16] = '\0';
     while (curOffset < 0x2000) {
       ReadNVRAM(curOffset, 16, buf);
 
-      if (strcmp(buf + 4, "common") == 0) {
+      if (strncmp(buf + 4, "common", 6) == 0) {
 	NVRAM_OpenFirmware_Offset = curOffset + 16;
-      } else if (strcmp(buf + 4, "APL,MacOS75") == 0) {
+      } else if (strncmp(buf + 4, "APL,MacOS75", 11) == 0) {
 	NVRAM_XPRAM_Offset = curOffset + 16;
 	NVRAM_NameRegistry_Offset = NVRAM_XPRAM_Offset + 0x100;
       }
-      
+
       curOffset += ((short *)buf)[1] * 16;
     }
   } else {

@@ -2,6 +2,6 @@
 include /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamble
 
 after_install::
-	mkdirs $(DSTROOT)/usr/etc
+	mkdirs $(DSTROOT)/usr/sbin
 	mv $(DSTROOT)$(INSTALLDIR)/SCSITape.config/stblocksize \
-		$(DSTROOT)/usr/etc/stblocksize
+		$(DSTROOT)/usr/sbin/stblocksize

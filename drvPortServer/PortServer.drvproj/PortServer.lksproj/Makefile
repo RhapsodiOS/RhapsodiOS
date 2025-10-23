@@ -13,8 +13,8 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = IOPortSession.m IOPortSessionKern.m PDPseudo.m PortServer.m
-HFILES = IOPortSession.h IOPortSessionKern.h PDPseudo.h PortServer.h
+CLASSES = AppleIOPSSafeCondLock.m globals.m IOPortSession.m IOPortSessionKern.m PDPseudo.m PortServer.m ttyiops.m
+HFILES = AppleIOPSSafeCondLock.h IOPortSession.h IOPortSessionKern.h PDPseudo.h PortServer.h ttyiops.h
 
 OTHERSRCS = Makefile Makefile.preamble
 

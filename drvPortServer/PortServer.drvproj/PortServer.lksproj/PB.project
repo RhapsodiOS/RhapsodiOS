@@ -2,16 +2,21 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         CLASSES = (
+            AppleIOPSSafeCondLock.m,
+            globals.m,
             IOPortSession.m,
             IOPortSessionKern.m,
             PDPseudo.m,
-            PortServer.m
+            PortServer.m,
+            ttyiops.m
         );
         H_FILES = (
+            AppleIOPSSafeCondLock.h,
             IOPortSession.h,
             IOPortSessionKern.h,
             PDPseudo.h,
-            PortServer.h
+            PortServer.h,
+            ttyiops.h
         );
         OTHER_SOURCES = (Makefile, Makefile.preamble);
         PUBLIC_HEADERS = ();

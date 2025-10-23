@@ -2,7 +2,9 @@
     FILESTABLE = {
         C_FILES = ();
         HEADERSEARCH = (../PortServer.drvproj/PortServer.lksproj);
-        OTHER_LINKED = (pdservd.c);
+        H_FILES = (IODeviceMaster.h, pdservd.h);
+        M_FILES = (IODeviceMaster.m, pdservd.m);
+        OTHER_LINKED = ();
         OTHER_SOURCES = (Makefile, Makefile.preamble);
     };
     GENERATEMAIN = YES;

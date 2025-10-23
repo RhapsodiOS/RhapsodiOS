@@ -13,7 +13,9 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Tool
 LANGUAGE = English
 
-CFILES = pdservd.c
+MFILES = IODeviceMaster.m pdservd.m
+
+HFILES = IODeviceMaster.h pdservd.h
 
 OTHERSRCS = Makefile Makefile.preamble
 

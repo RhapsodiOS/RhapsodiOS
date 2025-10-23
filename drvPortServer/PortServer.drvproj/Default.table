@@ -1,6 +1,4 @@
-"IODomainSub Cat Default" = "Public"
 "Title" = "Port Server";
-"Version" = "5.00";
 "Class Names" = "PDPseudo PortServer";
 "Family" = "Serial";
 "Instance" = "0";

@@ -1,115 +1,283 @@
 /*
  * PDPseudo.m
- * Port Server Driver - Pseudo Device Implementation
+ * Pseudo serial device for PortServer driver
  */
 
 #import "PDPseudo.h"
-#import <mach/mach.h>
-#import <kernserv/prototypes.h>
+#import <objc/objc-runtime.h>
+
+/* Global flag to track if pseudo device has been loaded */
+static char _PseudoDeviceLoaded = '\0';
 
 @implementation PDPseudo
 
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription
+/*
+ * deviceStyle - Return device style
+ * Returns: 2 (device style constant)
+ *
+ * Class method that returns the style/type of this device.
+ */
++ (int)deviceStyle
 {
-    return YES;
+    return 2;
 }
 
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
+/*
+ * probe: - Probe for pseudo device
+ * deviceDescription: Device description to probe
+ * Returns: 1 if probe successful, 0 otherwise
+ *
+ * Attempts to allocate and initialize a PDPseudo device.
+ * Returns 1 if initialization succeeds (device present), 0 otherwise.
+ */
++ (char)probe:(id)deviceDescription
 {
-    if ([super initFromDeviceDescription:deviceDescription] == nil)
-        return nil;
+    id pseudoDevice;
+    int initResult;
 
-    privateData = NULL;
+    /* Allocate and initialize PDPseudo with device description */
+    pseudoDevice = objc_msgSend(objc_getClass("PDPseudo"),
+                                @selector(alloc));
+    pseudoDevice = objc_msgSend(pseudoDevice,
+                                @selector(initFromDeviceDescription:),
+                                deviceDescription);
 
-    return self;
-}
+    /* Check if initialization succeeded */
+    initResult = objc_msgSend(pseudoDevice);
 
-- (void)free
-{
-    if (privateData != NULL) {
-        IOFree(privateData, sizeof(void *));
-        privateData = NULL;
+    if (initResult == 0) {
+        return 0;  /* Probe failed */
     }
-    [super free];
+
+    return 1;  /* Probe succeeded */
 }
 
-- (IOReturn)acquire
+/*
+ * initFromDeviceDescription: - Initialize pseudo device from device description
+ * deviceDescription: Device description structure
+ * Returns: initialized object or nil on failure
+ *
+ * Only initializes once (singleton pattern using _PseudoDeviceLoaded flag)
+ * Sets device name and kind, then registers the device
+ */
+- initFromDeviceDescription:(void *)deviceDescription
 {
-    // Acquire pseudo device (placeholder implementation)
-    return IO_R_SUCCESS;
+    id result;
+    struct objc_super super_struct;
+
+    /* Check if pseudo device has already been loaded */
+    if (_PseudoDeviceLoaded == '\0') {
+        /* Mark as loaded */
+        _PseudoDeviceLoaded = '\x01';
+
+        /* Set device name to "PDPseudo" */
+        [self setName:"PDPseudo"];
+
+        /* Set device kind to "Server Device" */
+        [self setDeviceKind:"Server Device"];
+
+        /* Call [super initFromDeviceDescription:] using objc_msgSendSuper */
+        super_struct.receiver = self;
+        super_struct.class = objc_getClass("IODevice");
+        result = objc_msgSendSuper(&super_struct,
+                                   @selector(initFromDeviceDescription:),
+                                   deviceDescription);
+
+        if (result != nil) {
+            /* Registration successful - register the device */
+            [self registerDevice];
+            return result;
+        }
+    }
+
+    /* Already loaded or initialization failed - free self and return nil */
+    result = [self free];
+    return result;
 }
 
-- (IOReturn)release
+/*
+ * acquire: - Acquire pseudo device
+ * param: Acquisition parameter
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices cannot be acquired - always returns error
+ */
+- (int)acquire:(int)param
 {
-    // Release pseudo device (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Pseudo devices cannot be acquired */
+    return 0xfffffd42;  /* -702 decimal */
 }
 
-- (IOReturn)setState:(int)state mask:(int)mask
+/*
+ * release - Release pseudo device
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices cannot be released - always returns error
+ */
+- (void)release
 {
-    // Set device state with mask (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Operation not supported - no-op */
+    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-- (IOReturn)getState
+
+/*
+ * getState - Get current device state
+ * Returns: Current state value (always 0)
+ *
+ * PDPseudo devices have no state - always returns 0
+ */
+- (unsigned int)getState
 {
-    // Get current state (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Pseudo devices have no state */
+    return 0;
 }
 
-- (IOReturn)watchState:(int)mask
+
+/*
+ * setState:mask: - Set device state with mask
+ * state: New state value
+ * mask: Bits to modify
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support state setting
+ */
+- (void)setState:(unsigned int)state mask:(unsigned int)mask
 {
-    // Watch state changes (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Operation not supported - no-op */
+    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-- (IOReturn)nextEvent:(void *)event data:(void *)data sleep:(BOOL)sleep
+
+/*
+ * watchState:mask: - Watch for state changes
+ * state: Pointer to receive state (output parameter)
+ * mask: State bits to watch
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support state watching
+ */
+- (void)watchState:(unsigned int *)state mask:(unsigned int)mask
 {
-    if (event == NULL)
-        return IO_R_INVALID_ARG;
-
-    // Get next event (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Operation not supported - no-op */
+    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-- (IOReturn)executeEvent:(void *)event data:(void *)data
+
+/*
+ * nextEvent - Get next pending event
+ * Returns: 0 (no events)
+ *
+ * PDPseudo devices have no events - always returns 0
+ */
+- (unsigned int)nextEvent
 {
-    if (event == NULL)
-        return IO_R_INVALID_ARG;
-
-    // Execute event (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* No events available */
+    return 0;
 }
 
-- (IOReturn)enqueueData:(void *)buffer size:(unsigned int)size transferCount:(unsigned int *)transferCount
+
+/*
+ * executeEvent:data: - Execute immediate event
+ * event: Event code
+ * data: Event data
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support event execution
+ */
+- (void)executeEvent:(unsigned int)event data:(unsigned int)data
 {
-    if (buffer == NULL || transferCount == NULL)
-        return IO_R_INVALID_ARG;
-
-    // Enqueue data (placeholder implementation)
-    *transferCount = size;
-
-    return IO_R_SUCCESS;
+    /* Operation not supported - no-op */
+    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-- (IOReturn)dequeueData:(void *)buffer size:(unsigned int)size transferCount:(unsigned int *)transferCount
+
+/*
+ * requestEvent:data: - Request event data
+ * event: Event code
+ * data: Pointer to receive data (output parameter)
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support event requests
+ */
+- (void)requestEvent:(unsigned int)event data:(unsigned int *)data
 {
-    if (buffer == NULL || transferCount == NULL)
-        return IO_R_INVALID_ARG;
-
-    // Dequeue data (placeholder implementation)
-    *transferCount = 0;
-
-    return IO_R_SUCCESS;
+    /* Operation not supported - no-op */
+    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-- (IOReturn)requestEvent:(void *)event data:(void *)data
+}
+
+/*
+ * enqueueEvent:data:sleep: - Enqueue event with data
+ * event: Event code
+ * data: Event data
+ * sleep: Whether to sleep if queue is full
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support event queueing
+ */
+- (int)enqueueEvent:(unsigned int)event data:(unsigned int)data sleep:(int)sleep
 {
-    if (event == NULL)
-        return IO_R_INVALID_ARG;
-
-    // Request event (placeholder implementation)
-    return IO_R_SUCCESS;
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
 }
+
+
+/*
+ * dequeueEvent:data:sleep: - Dequeue event with data
+ * event: Pointer to receive event code (output parameter)
+ * data: Pointer to receive event data (output parameter)
+ * sleep: Whether to sleep if queue is empty
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support event queueing
+ */
+- (int)dequeueEvent:(unsigned int *)event data:(unsigned int *)data sleep:(int)sleep
+{
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
+}
+
+
+/*
+ * enqueueData:bufferSize:transferCount:sleep: - Enqueue data for transmission
+ * buffer: Data buffer
+ * bufferSize: Size of data to enqueue
+ * transferCount: Pointer to receive actual bytes transferred (output parameter)
+ * sleep: Whether to sleep if buffer is full
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support data transfer
+ */
+- (int)enqueueData:(void *)buffer
+        bufferSize:(unsigned int)bufferSize
+     transferCount:(unsigned int *)transferCount
+             sleep:(int)sleep
+{
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
+}
+
+
+/*
+ * dequeueData:bufferSize:transferCount:minCount: - Dequeue received data
+ * buffer: Buffer to receive data
+ * bufferSize: Maximum buffer size
+ * transferCount: Pointer to receive actual bytes transferred (output parameter)
+ * minCount: Minimum bytes required before returning
+ * Returns: 0xfffffd42 (-702 decimal) - operation not supported
+ *
+ * PDPseudo devices do not support data transfer
+ */
+- (int)dequeueData:(void *)buffer
+        bufferSize:(unsigned int)bufferSize
+     transferCount:(unsigned int *)transferCount
+          minCount:(unsigned int)minCount
+{
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
+}
+
 
 @end

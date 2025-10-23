@@ -90,9 +90,14 @@ cuda_restart(int powerOff)
 {
     unsigned char commandBuffer[4] = {'M', 'A', 'T', 'T'};
     unsigned char inputBuffer[1];
-    
+
     kprintf("cuda_restart\n");
-    
+
+    /* Sync NVRAM on Sawtooth before shutdown/restart */
+    if (IsSawtooth()) {
+      SyncCore99NVRAM();
+    }
+
     if ( ApplePMUId == NULL ) {
       kprintf("cuda_restart, no PMU driver\n");
     } else {
@@ -146,19 +151,165 @@ enum {
 
 static long Core99NVRAMInited;
 static char Core99NVRAM[0x2000];
+static char Core99NVRAMBackup[0x2000];  /* For tracking changes */
+static void *Core99NVRAMPhysAddr;       /* Physical NVRAM base address */
+static void *Core99PrimaryBank;         /* Current primary bank pointer */
+static void *Core99BackupBank;          /* Backup bank pointer */
+static unsigned long Core99GenCount;    /* Current generation counter */
+
+/* Calculate header checksum (first 16 bytes, skip byte 1) */
+static unsigned char CalcHeaderChecksum(unsigned char *data)
+{
+  unsigned char sum = 0, oldsum;
+  int i;
+
+  for (i = 0; i < 0x10; i++) {
+    if (i != 1) {
+      oldsum = sum;
+      sum += data[i];
+      if (sum < oldsum) sum++;  /* Handle carry */
+    }
+  }
+  return sum;
+}
+
+/* Calculate Adler-32 style data checksum */
+static unsigned long CalcDataChecksum(unsigned char *data, int length)
+{
+  unsigned long a = 1, b = 0;
+  int i;
+
+  for (i = 0; i < length; i++) {
+    a = a + data[i];
+    b = b + a;
+  }
+  return ((b % 0xFFF1) << 16) | (a % 0xFFF1);
+}
+
+/* Read generation counter from NVRAM bank header with validation */
+static unsigned long ReadGenCount(void *bankAddr)
+{
+  unsigned char *bank = (unsigned char *)bankAddr;
+  unsigned char headerChecksum, expectedHeader;
+  unsigned long dataChecksum, expectedData;
+
+  /* Check signature byte */
+  if (bank[0] != 'Z') {
+    return 0;  /* Invalid bank */
+  }
+
+  /* Verify header checksum */
+  expectedHeader = CalcHeaderChecksum(bank);
+  headerChecksum = bank[1];
+  if (headerChecksum != expectedHeader) {
+    kprintf("ReadGenCount: header checksum mismatch\n");
+    return 0;  /* Corrupted header */
+  }
+
+  /* Verify data checksum */
+  expectedData = CalcDataChecksum(bank + 0x18, 0x1FEC);
+  dataChecksum = *(unsigned long *)(bank + 0x10);
+  if (dataChecksum != expectedData) {
+    kprintf("ReadGenCount: data checksum mismatch\n");
+    return 0;  /* Corrupted data */
+  }
+
+  /* Return generation counter at offset 0x14 */
+  return *(unsigned long *)(bank + 0x14);
+}
 
 IOReturn InitCore99NVRAM(void)
 {
   volatile unsigned char *nvAddrReg =
     (volatile unsigned char *) (POWERMAC_IO(PCI_NVRAM_ADDR_PHYS));
-  
+  unsigned long gen0, gen1;
+  void *bank0, *bank1;
+
   kprintf("InitCore99NVRAM: nvAddrReg = %x\n", nvAddrReg);
 
-  bcopy(nvAddrReg, Core99NVRAM, 0x2000);
-  
+  /* Core99 NVRAM uses double-buffering with generation counters:
+   * - Physical NVRAM has TWO 8KB banks
+   * - Each bank has a generation counter in its header
+   * - Read both counters and use the bank with higher generation (newer data)
+   */
+  Core99NVRAMPhysAddr = (void *)nvAddrReg;
+  bank0 = Core99NVRAMPhysAddr;
+  bank1 = (void *)((char *)Core99NVRAMPhysAddr + 0x2000);
+
+  gen0 = ReadGenCount(bank0);
+  gen1 = ReadGenCount(bank1);
+
+  kprintf("InitCore99NVRAM: bank0 gen=%d, bank1 gen=%d\n", gen0, gen1);
+
+  /* Select the newer bank (higher generation count) */
+  if (gen1 < gen0) {
+    /* Bank 0 is newer */
+    Core99PrimaryBank = bank0;
+    Core99BackupBank = bank1;
+    Core99GenCount = gen0;
+  } else {
+    /* Bank 1 is newer (or equal) */
+    Core99PrimaryBank = bank1;
+    Core99BackupBank = bank0;
+    Core99GenCount = gen1;
+  }
+
+  /* Copy the newer bank into RAM buffer */
+  bcopy(Core99PrimaryBank, Core99NVRAM, 0x2000);
+  bcopy(Core99NVRAM, Core99NVRAMBackup, 0x2000);
+
   Core99NVRAMInited = 1;
-  
+
   return 0;
+}
+
+/* Sync Core99 NVRAM buffer back to hardware if modified */
+void SyncCore99NVRAM(void)
+{
+  unsigned char *nvramBuf = (unsigned char *)Core99NVRAM;
+  unsigned long dataChecksum;
+  unsigned char headerChecksum;
+
+  if (!Core99NVRAMInited) {
+    return;  /* NVRAM not initialized */
+  }
+
+  /* Check if NVRAM was modified since last sync */
+  if (bcmp(Core99NVRAM, Core99NVRAMBackup, 0x2000) != 0) {
+    kprintf("SyncCore99NVRAM: flushing modified NVRAM to hardware (gen %d -> %d)\n",
+            Core99GenCount, Core99GenCount + 1);
+
+    /* Increment generation counter at offset 0x14 */
+    Core99GenCount++;
+    *(unsigned long *)(nvramBuf + 0x14) = Core99GenCount;
+
+    /* Calculate and write data checksum at offset 0x10 */
+    dataChecksum = CalcDataChecksum(nvramBuf + 0x18, 0x1FEC);
+    *(unsigned long *)(nvramBuf + 0x10) = dataChecksum;
+
+    /* Set signature byte */
+    nvramBuf[0] = 'Z';
+
+    /* Calculate and write header checksum at offset 0x01 */
+    headerChecksum = CalcHeaderChecksum(nvramBuf);
+    nvramBuf[1] = headerChecksum;
+
+    eieio();
+
+    /* Write to BACKUP bank (atomic update - if power fails, primary is still valid) */
+    bcopy(Core99NVRAM, Core99BackupBank, 0x2000);
+    eieio();
+
+    /* Swap bank pointers - backup bank is now primary */
+    void *temp = Core99PrimaryBank;
+    Core99PrimaryBank = Core99BackupBank;
+    Core99BackupBank = temp;
+
+    /* Update tracking backup */
+    bcopy(Core99NVRAM, Core99NVRAMBackup, 0x2000);
+
+    kprintf("SyncCore99NVRAM: sync complete\n");
+  }
 }
 
 IOReturn
@@ -174,7 +325,9 @@ int	i;
 	return( IO_R_UNSUPPORTED);
 
     if (IsSawtooth()) {
-      if (!Core99NVRAMInited && (InitCore99NVRAM != 0)) return -1;
+      if (!Core99NVRAMInited) {
+        if (InitCore99NVRAM() != 0) return -1;
+      }
       for (i = 0; i < length; i++) {
 	buffer[i] = Core99NVRAM[offset + i];
       }
@@ -220,11 +373,13 @@ int	i;
 	return( IO_R_UNSUPPORTED);
 
     if (IsSawtooth()) {
-      if (!Core99NVRAMInited && (InitCore99NVRAM != 0)) return -1;
+      if (!Core99NVRAMInited) {
+        if (InitCore99NVRAM() != 0) return -1;
+      }
       for (i = 0; i < length; i++) {
 	Core99NVRAM[offset + i] = buffer[i];
       }
-    } if (HasPMU()) { 
+    } else if (HasPMU()) { 
       // This is a powerbook
       if (ApplePMUId == NULL) {
       } else {

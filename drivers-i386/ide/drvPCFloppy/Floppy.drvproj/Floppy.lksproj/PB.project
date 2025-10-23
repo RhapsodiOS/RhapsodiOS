@@ -1,0 +1,58 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (
+            Bsd.m,
+            FloppyArch.m,
+            FloppyCmds.m,
+            FloppyCnt.m,
+            FloppyCntIo.m,
+            FloppyDriveInt.m,
+            FloppyDriveInt2.m,
+            Geometry.m,
+            IODiskNew.m,
+            IODiskPartitionNEW.m,
+            IODriveNEW.m,
+            IOFloppyDisk.m,
+            IOFloppyDrive.m,
+            IOLogicalDiskNEW.m,
+            kernelDiskMethodsNEW.m,
+            Request.m,
+            Support.m,
+            Thread.m,
+            VolCheck.m
+        );
+        H_FILES = (
+            Bsd.h,
+            FloppyArch.h,
+            FloppyCmds.h,
+            FloppyCnt.h,
+            FloppyCntIo.h,
+            FloppyDriveInt.h,
+            FloppyDriveInt2.h,
+            Geometry.h,
+            IODiskNew.h,
+            IODiskPartitionNEW.h,
+            IODriveNEW.h,
+            IOFloppyDisk.h,
+            IOFloppyDrive.h,
+            IOLogicalDiskNEW.h,
+            kernelDiskMethodsNEW.h,
+            Request.h,
+            Support.h,
+            Thread.h,
+            VolCheck.h
+        );
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        PUBLIC_HEADERS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format -DDRIVER_PRIVATE";
+    NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+    PROJECTNAME = Floppy;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 1.0;
+}

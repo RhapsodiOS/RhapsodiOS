@@ -7,26 +7,31 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = SCSITape_reloc
+NAME = SCSITape
 
 PROJECTVERSION = 1.1
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
 CLASSES = SCSITape.m SCSITapeKern.m
-
 HFILES = SCSITape.h SCSITapeTypes.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
-            Load_Commands.sect Makefile.driver_preamble
+OTHERSRCS = Makefile Makefile.preamble
+
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-SOURCEMODE = 444
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
+PUBLIC_HEADERS =
 
 
-
-
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

@@ -10,21 +10,33 @@
 NAME = SCSITape
 
 PROJECTVERSION = 1.1
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-BUNDLES = SCSITape.drvproj
+LOCAL_RESOURCES = Localizable.strings
 
-TOOLS = PostLoad.tproj PreLoad.tproj stblocksize.tproj
+GLOBAL_RESOURCES = Default.table
+
+CLASSES =
+
+HFILES =
+
+TOOLS = SCSITape.lksproj
 
 OTHERSRCS = Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
+
+
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
 
 include $(MAKEFILEDIR)/platform.make

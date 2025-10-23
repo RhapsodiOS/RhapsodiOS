@@ -743,7 +743,5 @@ read_er_info_low_24(struct esense_reply *erp)
 #elif	__LITTLE_ENDIAN__
     return (unsigned int)
 	(erp->er_info2 << 16) + (erp->er_info1 << 8) + erp->er_info0;
-
 #endif
-
 }

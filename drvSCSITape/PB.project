@@ -1,18 +1,15 @@
-LANGUAGE = English;
-FILESTABLE = {
-    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
-    OTHER_RESOURCES = (Default.table, Info.rtf);
-    STRINGS_FILES = (Localizable.strings);
-    TOOLS = (SCSITape_reloc.tproj, PostLoad.tproj, PreLoad.tproj, stblocksize.tproj);
-    SUBPROJECTS = ();
-};
-LOCALIZABLE_FILES = {
-    Info.rtf;
-    Localizable.strings;
-};
-PROJECTVERSION = 1.1;
-PROJECTTYPE = Bundle;
-PROJECTNAME = SCSITape;
-GENERATEMAIN = YES;
-DOCICONFILES = ();
-BUNDLE_EXTENSION = config;
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        BUNDLES = (SCSITape.drvproj);
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        SUBPROJECTS = (PostLoad.tproj, PreLoad.tproj, stblocksize.tproj);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = SCSITape;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 1.1;
+}

@@ -1,0 +1,9 @@
+"Title" = "SCSI Server";
+"Family" = "";
+"Location" = "";
+"Bus Type" = "";
+"Auto Detect IDs" = "";
+"Instance" = "0";
+"Driver Name" = "SCSI Server";
+"Class Names" = "SCSIServer";
+"Server Name" = "SCSIServer";

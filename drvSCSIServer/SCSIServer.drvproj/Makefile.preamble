@@ -1,0 +1,2 @@
+INCLUDED_ARCHS = i386 ppc
+OTHER_CFLAGS = -I./SCSIServer.lksproj

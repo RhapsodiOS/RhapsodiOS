@@ -1,0 +1,15 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        BUNDLES = (SCSIServer.drvproj);
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = SCSIServer;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 1.0;
+}

@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -95,10 +95,25 @@ extern IODisplayInfo	bootDisplayInfo;
     char *	name;
 
     if( NDRVForDevice( device)) {
-        // temporary for in-kernel acceleration
+        // Hardware-specific driver selection based on device node name
         name = [device nodeName];
-        if( 0 == strncmp("ATY,", name, strlen("ATY,")))
-            newClass = [IOATINDRV class];
+
+        // Check for ATI Rage 128
+        if( 0 == strncmp("ATY,Rage128", name, 11)) {
+            newClass = [IOATIRAGE128NDRV class];
+        }
+        // Check for other ATI cards (Mach64-based)
+        else if( 0 == strncmp("ATY,", name, 4)) {
+            newClass = [IOATIMACH64NDRV class];
+        }
+        // Check for IMS TwinTurbo 128
+        else if( 0 == strncmp("IMS,tt128", name, 9)) {
+            newClass = [IOIXMNDRV class];
+        }
+        // Check for IMS TwinTurbo 3D
+        else if( 0 == strncmp("IMS,tt3d", name, 8)) {
+            newClass = [IOIX3DNDRV class];
+        }
     } else
 	newClass = [IOOFFramebuffer class];
 
@@ -144,8 +159,8 @@ extern IODisplayInfo	bootDisplayInfo;
 	err = NDRVGetSymbol( ndrvInst, "TheDriverDescription", (void **)&theDriverDesc );
 	if( err)
 	    continue;
-    
-	transferTable = IOMalloc(sizeof( ColorSpec) * 256);    // Initialize transfer table variables.  
+
+	transferTable = IOMalloc(sizeof( ColorSpec) * 256);    // Initialize transfer table variables.
 	brightnessLevel = EV_SCREEN_MAX_BRIGHTNESS;
 	scaledTable = 0;
 	cachedModeIndex = 0x7fffffff;
@@ -154,7 +169,7 @@ extern IODisplayInfo	bootDisplayInfo;
 	err = [ioDevice getApertures:maps items:&numMaps];
 	if( err)
 	    continue;
-    
+
 	for( i = 0, map = maps; i < numMaps; i++, map++) {
 
 	    if( (((UInt32)bootDisplayInfo.frameBuffer) >= ((UInt32)map->physical))
@@ -273,7 +288,7 @@ extern IODisplayInfo	bootDisplayInfo;
 
     cachedVDResolution.csPreviousDisplayModeID = cachedModeID;
 
-    while( 
+    while(
  	   (noErr == [self doStatus:cscGetNextResolution params:&cachedVDResolution])
 	&& ((SInt32) cachedVDResolution.csDisplayModeID > 0) ) {
 
@@ -314,7 +329,7 @@ extern IODisplayInfo	bootDisplayInfo;
 }
 
 - (IOReturn)
-    getDisplayModeInformation:(IOFBDisplayModeID)modeID info:(IOFBDisplayModeInformation *)info 
+    getDisplayModeInformation:(IOFBDisplayModeID)modeID info:(IOFBDisplayModeInformation *)info
 {
     IOReturn			err;
     VDResolutionInfoRec	*	resInfo;
@@ -355,7 +370,7 @@ extern IODisplayInfo	bootDisplayInfo;
 	err = [self doStatus:cscGetVideoParameters params:&pixelParams];
 	if( err)
 	    continue;
-    
+
 	info->flags 			= 0;
 	info->rowBytes             	= pixelInfo.vpRowBytes & 0x7fff;
 	info->width                	= pixelInfo.vpBounds.right;
@@ -365,7 +380,7 @@ extern IODisplayInfo	bootDisplayInfo;
 	info->pixelType 		= (pixelInfo.vpPixelSize <= 8) ?
 					kIOFBRGBCLUTPixelType : kIOFBDirectRGBPixelType;
 	info->bitsPerPixel 		= pixelInfo.vpPixelSize;
-//	info->channelMasks 		=    
+//	info->channelMasks 		=
 
     } while( false);
 
@@ -399,13 +414,13 @@ extern IODisplayInfo	bootDisplayInfo;
 	do {
 	    initInfo.refNum = 0xffcd;			// ...sure.
 	    MAKE_REG_ENTRY(initInfo.deviceEntry, ioDevice)
-    
+
 	    err = NDRVDoDriverIO( doDriverIO, 0, &initInfo, kInitializeCommand, kImmediateIOCommandKind );
 	    if( err) continue;
-	
+
 	    err = NDRVDoDriverIO( doDriverIO, 0, &pb, kOpenCommand, kImmediateIOCommandKind );
 	    if( err) continue;
-    
+
 	} while( false);
 	if( err)
 	    return( err);
@@ -422,7 +437,7 @@ extern IODisplayInfo	bootDisplayInfo;
 		(noErr == [self doStatus:cscGetNextResolution params:&vdRes])
 	    && ((SInt32) vdRes.csDisplayModeID > 0) )
 	    {
-    
+
 		pixelParams.csDisplayModeID = vdRes.csDisplayModeID;
 		pixelParams.csDepthMode = vdRes.csMaxDepthMode;
 		pixelParams.csVPBlockPtr = &pixelInfo;
@@ -443,10 +458,10 @@ extern IODisplayInfo	bootDisplayInfo;
 #endif
 		if( size > vramLength)
 		    vramLength = size;
-    
+
 		vdRes.csPreviousDisplayModeID = vdRes.csDisplayModeID;
 	    }
-   
+
 	    err = [self getConfiguration:&config];
 	    vramBase = config.physicalFramebuffer;
 	    vramLength = (vramLength + (vramBase & 0xffff) + 0xffff) & 0xffff0000;
@@ -706,7 +721,7 @@ Boolean StdIntDisabler( InterruptSetMember setMember, void *refCon)
 		forParameter:(IOParameterName)parameterName
     		count:(unsigned int *)count
 {
-       
+
     if (strcmp(parameterName, "IOGetTransferTable") == 0) {
 	return( [self getTransferTable:&parameterArray[0] count:count] );
 
@@ -740,7 +755,7 @@ Boolean StdIntDisabler( InterruptSetMember setMember, void *refCon)
     return( noErr);
 }
 
-- (IOReturn) IONDRVDoControl:(UInt32 *)inputParams inputSize:(unsigned) inputCount 
+- (IOReturn) IONDRVDoControl:(UInt32 *)inputParams inputSize:(unsigned) inputCount
 		params:(void *)outputParams outputSize:(unsigned *) outputCount
 		privileged:(host_priv_t *)privileged
 {
@@ -759,7 +774,7 @@ Boolean StdIntDisabler( InterruptSetMember setMember, void *refCon)
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-- (IOReturn) IONDRVDoStatus:(UInt32 *)inputParams inputSize:(unsigned) inputCount 
+- (IOReturn) IONDRVDoStatus:(UInt32 *)inputParams inputSize:(unsigned) inputCount
 		params:(void *)outputParams outputSize:(unsigned *) outputCount
 {
     IOReturn	err = noErr;
@@ -819,13 +834,13 @@ Boolean StdIntDisabler( InterruptSetMember setMember, void *refCon)
 
 - setBrightness:(int)level token:(int)t
 {
-    if ((level < EV_SCREEN_MIN_BRIGHTNESS) || 
+    if ((level < EV_SCREEN_MIN_BRIGHTNESS) ||
         (level > EV_SCREEN_MAX_BRIGHTNESS)){
             IOLog("Display: Invalid arg to setBrightness: %d\n",
                 level);
             return nil;
-    }   
-    brightnessLevel = level;    
+    }
+    brightnessLevel = level;
     [self setTheTable];
     return self;
 }
@@ -896,7 +911,7 @@ Boolean StdIntDisabler( InterruptSetMember setMember, void *refCon)
 // Apple style CLUT - pass thru gamma table
 
 - (IOReturn)
-    setCLUT:(IOFBColorEntry *) colors index:(UInt32)index numEntries:(UInt32)numEntries 
+    setCLUT:(IOFBColorEntry *) colors index:(UInt32)index numEntries:(UInt32)numEntries
     	brightness:(IOFixed)brightness options:(IOOptionBits)options
 {
     IOReturn		err;
@@ -950,7 +965,7 @@ enum { kTheDisplayMode	= 10 };
 	err = [ioDevice getApertures:maps items:&numMaps];
 	if( err)
 	    continue;
-    
+
 	err = -1;
 	for( i = 0, map = maps; i < numMaps; i++, map++) {
 
@@ -995,7 +1010,7 @@ enum { kTheDisplayMode	= 10 };
 }
 
 - (IOReturn)
-    getDisplayModeInformation:(IOFBDisplayModeID)modeID info:(IOFBDisplayModeInformation *)info 
+    getDisplayModeInformation:(IOFBDisplayModeID)modeID info:(IOFBDisplayModeInformation *)info
 {
     if( modeID == kTheDisplayMode) {
 	info->displayModeID	= modeID;
@@ -1015,7 +1030,7 @@ enum { kTheDisplayMode	= 10 };
 {
 
     if( (modeID == kTheDisplayMode) && (depthIndex == 0)) {
-    
+
 	info->flags 			= 0;
 	info->rowBytes             	= bootDisplayInfo.rowBytes;
 	info->width                	= bootDisplayInfo.width;
@@ -1024,7 +1039,7 @@ enum { kTheDisplayMode	= 10 };
 	info->pageCount 		= 1;
 	info->pixelType 		= kIOFBRGBCLUTPixelType;
 	info->bitsPerPixel 		= 8;
-//	info->channelMasks 		=    
+//	info->channelMasks 		=
 	return( noErr);
     }
     return( IO_R_UNDEFINED_MODE);
@@ -1138,7 +1153,961 @@ enum { kTheDisplayMode	= 10 };
 
 @end
 
+// Register access functions
+// We need to perform byte swapping on all register accesses for IMS and the ATI Mach64/Rage.
+
+static inline UInt32 regr(volatile UInt32 *base, UInt32 offset)
+{
+    UInt32 value;
+
+    offset = offset & 0xffff;
+    eieio();  // Enforce I/O ordering before read
+
+    value = *(volatile UInt32 *)((UInt8 *)base + offset);
+
+    // Byte swap from little-endian to big-endian
+    value = (value >> 24) |
+            ((value >> 8) & 0xff00) |
+            ((value & 0xff00) << 8) |
+            (value << 24);
+
+    return value;
+}
+
+static inline void regw(volatile UInt32 *base, UInt32 offset, UInt32 value)
+{
+    // Byte swap from big-endian to little-endian
+    value = (value >> 24) |
+            ((value >> 8) & 0xff00) |
+            ((value & 0xff00) << 8) |
+            (value << 24);
+
+    *(volatile UInt32 *)((UInt8 *)base + offset) = value;
+    eieio();  // Enforce I/O ordering after write
+}
+
+static inline void regwMask(volatile UInt32 *base, UInt32 offset, UInt32 value, UInt32 mask)
+{
+    UInt32 temp;
+
+    temp = regr(base, offset);
+    temp = (temp & mask) | value;
+    regw(base, offset, temp);
+}
+
+// No-swap register access functions (for hardware that matches PowerPC endianness)
+static inline UInt32 regrNoswap(volatile UInt32 *base, UInt32 offset)
+{
+    UInt32 value;
+
+    offset = offset & 0xffff;
+    eieio();  // Enforce I/O ordering before read
+
+    value = *(volatile UInt32 *)((UInt8 *)base + offset);
+
+    return value;  // No byte swapping
+}
+
+static inline void regwNoswap(volatile UInt32 *base, UInt32 offset, UInt32 value)
+{
+    *(volatile UInt32 *)((UInt8 *)base + offset) = value;  // No byte swapping
+    eieio();  // Enforce I/O ordering after write
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// ATI Mach64 Engine Control Functions
+
+/*
+ * _m64WaitForIdle - Wait for the Mach64 graphics engine to become idle
+ *
+ * @param base: Register base address
+ *
+ * Polls the engine status register (0x338) until bit 0 (engine busy) is clear.
+ */
+static void _m64WaitForIdle(volatile UInt32 *base)
+{
+    UInt32 status;
+
+    do {
+        status = regr(base, 0x338);  // GUI_STAT register
+    } while ((status & 1) != 0);      // Wait for engine idle (bit 0 = 0)
+}
+
+/*
+ * _m64WaitForFIFO - Wait for FIFO space to become available
+ *
+ * @param base: Register base address
+ * @param entries: Number of FIFO entries needed
+ *
+ * Polls the FIFO status register (0x310) until the requested number
+ * of entries are available in the command FIFO.
+ */
+static void _m64WaitForFIFO(volatile UInt32 *base, UInt32 entries)
+{
+    UInt32 status;
+    UInt32 mask;
+
+    mask = (0x8000 >> (entries & 0x3f)) & 0xffff;
+
+    do {
+        status = regr(base, 0x310);   // GUI_STAT register (FIFO status)
+    } while ((status & 0xffff) < mask);
+}
+
+/*
+ * _m64Init - Initialize the ATI Mach64 2D graphics engine
+ *
+ * @param base: Register base address
+ *
+ * Performs complete initialization of the Mach64 graphics engine:
+ * - Resets engine state
+ * - Clears FIFO
+ * - Sets up default drawing parameters
+ * - Configures pixel depth from current mode
+ * - Sets clipping and mask registers
+ * - Enables the drawing engine
+ */
+static void _m64Init(volatile UInt32 *base)
+{
+    UInt32 pixelDepth;
+    UInt32 pitch;
+
+    // Reset GUI engine
+    regwMask(base, 0xd0, 0, 0xfffffeff);          // GEN_TEST_CNTL - clear bit 8
+    regwMask(base, 0xd0, 0x100, 0xfffffeff);      // GEN_TEST_CNTL - set bit 8
+
+    // Clear engine status and FIFO
+    regw(base, 0x338, 0);                          // GUI_STAT = 0
+    regw(base, 0x310, 0);                          // GUI_STAT = 0 (alt offset)
+
+    // Configure bus mastering
+    regwMask(base, 0xa0, 0xa00000, 0xff5fffff);   // BUS_CNTL
+
+    // Reset again
+    regwMask(base, 0xd0, 0, 0xfffffeff);          // GEN_TEST_CNTL
+    regwMask(base, 0xd0, 0x100, 0xfffffeff);      // GEN_TEST_CNTL
+
+    // Wait for engine to be idle before programming
+    _m64WaitForIdle(base);
+    _m64WaitForFIFO(base, 14);
+
+    // Get pixel depth from CRTC configuration
+    pixelDepth = regr(base, 0x1c);                 // CRTC_GEN_CNTL
+    pixelDepth = (pixelDepth >> 8) & 7;            // Extract pixel depth field
+
+    // Set DP_PIX_WIDTH (destination/source/host pixel width)
+    regw(base, 0x2d0, (pixelDepth << 16) | (pixelDepth << 8) | pixelDepth);
+
+    // Set drawing parameters
+    regw(base, 0x2c8, 0xffffffff);                 // DP_WRITE_MASK - all bits enabled
+    regw(base, 0x2a0, 0);                          // DP_FRGD_CLR - foreground color
+    regw(base, 0x2ac, 0);                          // DP_MIX - source copy
+    regw(base, 0x2b0, 0x3fff);                     // DP_SRC - source select
+    regw(base, 0x2a4, 0xfff);                      // DP_BKGD_CLR - background color
+    regw(base, 0x308, 0);                          // DST_CNTL - destination control
+
+    _m64WaitForFIFO(base, 14);
+
+    // Set pitch registers from current configuration
+    pitch = regr(base, 0x14);                      // CRTC_OFF_PITCH
+    regw(base, 0x100, pitch);                      // DST_OFF_PITCH
+    regw(base, 0x180, pitch);                      // SRC_OFF_PITCH
+
+    // Set clipping and control registers
+    regw(base, 0x300, 0);                          // SC_LEFT_RIGHT - scissor left/right
+    regw(base, 0x304, 0xffffffff);                 // SC_TOP_BOTTOM - scissor top/bottom
+    regw(base, 0x308, 0);                          // DST_CNTL
+    regw(base, 0x1b4, 0);                          // CLR_CMP_CNTL - color compare off
+
+    // Set GUI control - enable drawing engine
+    regw(base, 0x130, 0x23);                       // GUI_TRAJ_CNTL
+
+    // Final wait for idle
+    _m64WaitForIdle(base);
+}
+
+/*
+ * _m64DoFill - Hardware-accelerated rectangle fill
+ *
+ * @param base: Register base address
+ * @param x: X coordinate of rectangle
+ * @param y: Y coordinate of rectangle
+ * @param width: Width of rectangle
+ * @param height: Height of rectangle
+ * @param color: Fill color (32-bit ARGB)
+ *
+ * Fills a solid rectangle using the Mach64 2D engine.
+ */
+static void _m64DoFill(volatile UInt32 *base, UInt32 x, UInt32 y,
+                       UInt32 width, UInt32 height, UInt32 color)
+{
+    _m64WaitForFIFO(base, 6);
+
+    regw(base, 0x2d8, 0x100);           // DP_BKGD_MIX - background mix
+    regw(base, 0x2d4, 0x70003);         // DP_FRGD_MIX - foreground mix (source copy)
+    regw(base, 0x130, 3);               // GUI_TRAJ_CNTL - direction (left-to-right, top-to-bottom)
+    regw(base, 0x2c4, color);           // DP_FRGD_CLR - fill color
+    regw(base, 0x10c, (y << 16) | x);   // DST_Y_X - destination position
+    regw(base, 0x118, (height << 16) | width);  // DST_HEIGHT_WIDTH - rectangle size
+}
+
+/*
+ * _m64DoBlit - Hardware-accelerated screen-to-screen blit
+ *
+ * @param base: Register base address
+ * @param src_x: Source X coordinate
+ * @param src_y: Source Y coordinate
+ * @param width: Width of rectangle to copy
+ * @param height: Height of rectangle to copy
+ * @param dst_x: Destination X coordinate
+ * @param dst_y: Destination Y coordinate
+ *
+ * Copies a rectangle from one screen location to another using the Mach64 2D engine.
+ * Automatically handles overlapping regions by adjusting blit direction.
+ */
+static void _m64DoBlit(volatile UInt32 *base, UInt32 src_x, UInt32 src_y,
+                       UInt32 width, UInt32 height, UInt32 dst_x, UInt32 dst_y)
+{
+    UInt32 dx, dy;
+    UInt32 direction = 3;  // Default: left-to-right, top-to-bottom
+    SInt32 signed_dx, signed_dy;
+
+    // Calculate deltas
+    dx = dst_x - src_x;
+    dy = dst_y - src_y;
+
+    // Get signed versions for comparison
+    signed_dx = (SInt32)dx;
+    signed_dy = (SInt32)dy;
+
+    // Check for overlap and adjust direction if needed
+    // abs(dx) < width && abs(dy) < height indicates overlap
+    if ((((signed_dx >> 31) ^ dx) - (signed_dx >> 31) < width) &&
+        (((signed_dy >> 31) ^ dy) - (signed_dy >> 31) < height)) {
+
+        if (signed_dy < 0) {
+            // Overlapping vertically, moving up - use bottom-to-top
+            direction = 1;
+            dst_y = (dst_y + height) - 1;
+            src_y = (src_y + height) - 1;
+        } else if ((signed_dy == 0) && (signed_dx > 0)) {
+            // Same line, moving right - use right-to-left
+            direction = 2;
+            dst_x = (dst_x + width) - 1;
+            src_x = (src_x + width) - 1;
+        }
+    }
+
+    _m64WaitForFIFO(base, 7);
+
+    regw(base, 0x2d8, 0x300);           // DP_BKGD_MIX
+    regw(base, 0x2d4, 0x70003);         // DP_FRGD_MIX - source copy
+    regw(base, 0x190, width);           // SRC_WIDTH1 - source width
+    regw(base, 0x130, direction);       // GUI_TRAJ_CNTL - blit direction
+    regw(base, 0x18c, (src_y << 16) | src_x);   // SRC_Y_X - source position
+    regw(base, 0x10c, (dst_y << 16) | dst_x);   // DST_Y_X - destination position
+    regw(base, 0x118, (height << 16) | width);  // DST_HEIGHT_WIDTH - rectangle size
+}
+
+// ATI Mach64 NDRV - for ATI Mach64-based cards (Rage, Rage II, etc.)
+// Provides hardware acceleration support for blits and fills
+
+@implementation IOATIMACH64NDRV
+{
+    BOOL	engineInitialized;
+}
+
+//=======================================================================
+// Hardware cursor support
+
+- hideCursor:(int)token
+{
+    // Wait for any pending operations to complete before hiding cursor
+    if (registerBase != NULL)
+        _m64WaitForIdle(registerBase);
+
+    // Call parent implementation for software cursor
+    return [super hideCursor:token];
+}
+
+- moveCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    // Wait for any pending operations before moving cursor
+    if (registerBase != NULL)
+        _m64WaitForIdle(registerBase);
+
+    // Call parent implementation for software cursor
+    return [super moveCursor:cursorLoc frame:frame token:t];
+}
+
+- showCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    // Wait for any pending operations before showing cursor
+    if (registerBase != NULL)
+        _m64WaitForIdle(registerBase);
+
+    // Call parent implementation for software cursor
+    return [super showCursor:cursorLoc frame:frame token:t];
+}
+
+//=======================================================================
+// Engine initialization
+
+- initEngine
+{
+    IOFBConfiguration config;
+    IOReturn err;
+
+    // Get current configuration to find framebuffer address
+    err = [self getConfiguration:&config];
+    if (err != IO_R_SUCCESS) {
+        IOLog("%s: Could not get configuration (err=%d)\n", [self name], err);
+        engineInitialized = NO;
+        registerBase = NULL;
+        return self;
+    }
+
+    // Calculate MMIO register base from framebuffer address
+    // For ATI Mach64, registers are located 1KB (0x400) before framebuffer
+    // Page-align the framebuffer address and subtract 0x400
+    registerBase = (volatile UInt32 *)((config.mappedFramebuffer & 0xffff0000) - 0x400);
+
+    if (registerBase == NULL) {
+        IOLog("%s: Register base calculation failed\n", [self name]);
+        engineInitialized = NO;
+        return self;
+    }
+
+    IOLog("%s: Mach64 registers at 0x%08x (framebuffer at 0x%08x)\n",
+          [self name], (UInt32)registerBase, (UInt32)config.mappedFramebuffer);
+
+    // Initialize the hardware
+    _m64Init(registerBase);
+
+    engineInitialized = YES;
+
+    return self;
+}
+
+//=======================================================================
+// Device open/configuration
+
+- (IOReturn)open
+{
+    IOReturn err;
+
+    // Call parent open
+    err = [super open];
+    if (err != IO_R_SUCCESS)
+        return err;
+
+    // Initialize the acceleration engine
+    // This will calculate registerBase and initialize the hardware
+    [self initEngine];
+
+    return IO_R_SUCCESS;
+}
+
+- (IOReturn)setDisplayMode:(IOFBDisplayModeID)modeID depth:(IOFBIndex)depthIndex page:(IOFBIndex)pageIndex
+{
+    IOReturn result;
+
+    // Call parent setDisplayMode
+    result = [super setDisplayMode:modeID depth:depthIndex page:pageIndex];
+    if (result == 0) {
+        [self initEngine];
+    }
+    return result;
+}
+
+//=======================================================================
+// Acceleration capabilities
+
+- (UInt32)tempFlags
+{
+    // Advertise hardware acceleration capabilities
+    // IO_DISPLAY_CAN_BLIT = 0x20 (hardware blit support)
+    // IO_DISPLAY_CAN_FILL = 0x40 (hardware fill support)
+    return IO_DISPLAY_CAN_BLIT | IO_DISPLAY_CAN_FILL;
+}
+
+//=======================================================================
+// Hardware acceleration operations
+
+- (IOReturn)setIntValues:(unsigned *)parameterArray
+		forParameter:(IOParameterName)parameterName
+    		count:(unsigned int *)count
+{
+    // Handle hardware-accelerated blit operations
+    if (strcmp(parameterName, IO_DISPLAY_DO_BLIT) == 0) {
+        if (*count != IO_DISPLAY_BLIT_SIZE)
+            return IO_R_INVALID_ARG;
+
+        if (!engineInitialized || registerBase == NULL)
+            return IO_R_RESOURCE;
+
+        // Parameters: [0]=src_x, [1]=src_y, [2]=width, [3]=height, [4]=dst_x, [5]=dst_y
+        _m64DoBlit(registerBase,
+                   parameterArray[0],  // src_x
+                   parameterArray[1],  // src_y
+                   parameterArray[2],  // width
+                   parameterArray[3],  // height
+                   parameterArray[4],  // dst_x
+                   parameterArray[5]); // dst_y
+
+        return 0;  // Success (IO_R_SUCCESS = 0)
+    }
+
+    // Handle hardware-accelerated fill operations
+    else if (strcmp(parameterName, IO_DISPLAY_DO_FILL) == 0) {
+        if (*count != IO_DISPLAY_FILL_SIZE)
+            return IO_R_INVALID_ARG;
+
+        if (!engineInitialized || registerBase == NULL)
+            return IO_R_RESOURCE;
+
+        // Parameters: [0]=x, [1]=y, [2]=width, [3]=height, [4]=color
+        _m64DoFill(registerBase,
+                   parameterArray[0],  // x
+                   parameterArray[1],  // y
+                   parameterArray[2],  // width
+                   parameterArray[3],  // height
+                   parameterArray[4]); // color
+
+        return 0;  // Success (IO_R_SUCCESS = 0)
+    }
+
+    // Handle display sync (wait for idle) operations
+    else if (strcmp(parameterName, IO_DISPLAY_GET_SYNCED) == 0) {
+        if (*count != IO_DISPLAY_GET_SYNCED_SIZE)
+            return IO_R_INVALID_ARG;
+
+        if (registerBase != NULL)
+            _m64WaitForIdle(registerBase);
+
+        return 0;  // Success (IO_R_SUCCESS = 0)
+    }
+
+    // Pass other parameters to parent
+    return [super setIntValues:parameterArray forParameter:parameterName count:count];
+}
+
+@end
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// ATI Rage 128 NDRV - for ATI Rage 128 cards
+
+@implementation IOATIRAGE128NDRV
+
+- moveCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    int i;
+
+    [super moveCursor:cursorLoc frame:frame token:t];
+
+    // Hardware delay loop (8 iterations)
+    i = 0;
+    do {
+        i = i + 1;
+    } while (i < 8);
+
+    return self;
+}
+
+@end
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// IMS TwinTurbo (tt128) NDRV - for IMS TwinTurbo 128 graphics cards
+// Used in PowerMac 7200-9600 and some early G3 systems
+
+//=======================================================================
+// IMS TwinTurbo utility functions
+
+static void _ixIdleEngine(volatile UInt32 *base)
+{
+    UInt32 status;
+
+    do {
+        status = regr(base, 0x90);  // Engine status register
+    } while ((status & 0xc0) != 0);  // Wait for bits 6-7 to be clear
+}
+
+static void _ixDoFill(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelFormat,
+                     UInt32 x, UInt32 y, UInt32 width, UInt32 height, UInt32 color)
+{
+    UInt32 stride;
+    UInt32 swappedColor;
+
+    stride = pixelFormat & 0xffff;
+
+    // Byte swap color based on pixel depth
+    swappedColor = color;
+    if (bytesPerPixel == 2) {
+        // 16-bit: swap bytes and replicate
+        swappedColor = ((color & 0xff) << 8) | ((color >> 8) & 0xff);
+        swappedColor = swappedColor | (swappedColor << 16);
+    } else if (bytesPerPixel == 1) {
+        // 8-bit: replicate to all 4 bytes
+        swappedColor = color & 0xff;
+        swappedColor = swappedColor | (swappedColor << 8) | (swappedColor << 16) | (swappedColor << 24);
+    } else if (bytesPerPixel == 4) {
+        // 32-bit: full byte swap
+        swappedColor = (color >> 24) | ((color >> 8) & 0xff00) |
+                      ((color & 0xff00) << 8) | (color << 24);
+    }
+
+    // Wait for engine idle
+    _ixIdleEngine(base);
+
+    // Program fill operation
+    regw(base, 0x18, swappedColor);  // Foreground color
+    regw(base, 0x1c, swappedColor);  // Background color
+    regw(base, 0x10, ((height - 1) << 16) | ((width * bytesPerPixel - 1) & 0xffff));  // Dimensions
+    regw(base, 0x0c, y * stride + x * bytesPerPixel + 0x20);  // Destination offset
+    regw(base, 0x08, stride);  // Destination stride
+    regw(base, 0x14, stride);  // Source stride (same)
+    regw(base, 0x28, 0x200000);  // Fill command
+}
+
+static void _ixDoBlit(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelFormat,
+                     UInt32 srcX, UInt32 srcY, UInt32 dstX, UInt32 dstY,
+                     UInt32 width, UInt32 height)
+{
+    UInt32 stride;
+    UInt32 widthBytes;
+    UInt32 srcOffset, dstOffset;
+    UInt32 command;
+    BOOL reverseX, reverseY;
+
+    stride = pixelFormat & 0xffff;
+
+    // Detect overlap - need to reverse direction?
+    reverseX = (srcX < dstX);
+    reverseY = (srcY < dstY);
+
+    widthBytes = width * bytesPerPixel - 1;
+    if (reverseX) {
+        widthBytes = -widthBytes;
+    }
+
+    // Adjust coordinates for reverse directions
+    if (reverseX) {
+        srcX = (srcX - 1) + width;
+        dstX = (dstX - 1) + width;
+    }
+
+    if (reverseY) {
+        srcY = (srcY - 1) + height;
+        dstY = (dstY - 1) + height;
+    }
+
+    // Calculate offsets
+    srcOffset = srcY * stride + srcX * bytesPerPixel + 0x20;
+    dstOffset = dstY * stride + dstX * bytesPerPixel + 0x20;
+
+    // Adjust for reverse X
+    if (reverseX) {
+        srcOffset = srcOffset - 1 + bytesPerPixel;
+        dstOffset = dstOffset - 1 + bytesPerPixel;
+    }
+
+    // Adjust stride for reverse Y
+    if (reverseY) {
+        stride = -stride;
+    }
+
+    // Wait for engine idle
+    _ixIdleEngine(base);
+
+    // Program blit operation
+    regw(base, 0x10, ((height - 1) << 16) | (widthBytes & 0xffff));  // Dimensions
+    regw(base, 0x00, srcOffset);  // Source offset
+    regw(base, 0x0c, dstOffset);  // Destination offset
+    regw(base, 0x08, stride & 0xffff);  // Source stride
+    regw(base, 0x14, stride & 0xffff);  // Destination stride
+
+    // Command: 0x85 for reverse X, 0x5 for forward
+    command = reverseX ? 0x85 : 0x5;
+    regw(base, 0x28, command);
+}
+
+//=======================================================================
+
+@implementation IOIXMNDRV
+
+- initEngine
+{
+    IOFBConfiguration config;
+    IOFBPixelInformation pixelInfo;
+    IOReturn err;
+    IOFBDisplayModeID modeID;
+    IOFBIndex depthIndex, pageIndex;
+
+    // Get current configuration
+    err = [self getConfiguration:&config];
+    if (err != IO_R_SUCCESS) {
+        IOLog("%s: Could not get configuration (err=%d)\n", [self name], err);
+        registerBase = NULL;
+        return self;
+    }
+
+    // Get current display mode and depth
+    modeID = config.mode;
+    depthIndex = config.depth;
+    pageIndex = config.page;
+
+    // Get pixel information
+    err = [self getPixelInformationForDisplayMode:modeID depth:depthIndex page:pageIndex
+                                     pixelInformation:&pixelInfo];
+    if (err != IO_R_SUCCESS) {
+        IOLog("%s: Could not get pixel information (err=%d)\n", [self name], err);
+        registerBase = NULL;
+        return self;
+    }
+
+    // Calculate MMIO register base from framebuffer address
+    // IMS registers are 8MB (0x800000) after framebuffer base
+    registerBase = (volatile UInt32 *)((config.mappedFramebuffer & 0xffff0000) + 0x800000);
+
+    // Calculate bytes per pixel from depth (1 << depth)
+    bytesPerPixel = 1 << (depthIndex & 0x3f);
+
+    // Store pixel format
+    pixelFormat = pixelInfo.pixelType;
+
+    IOLog("%s: IMS TwinTurbo registers at 0x%08x (framebuffer at 0x%08x, bpp=%d)\n",
+          [self name], (UInt32)registerBase, (UInt32)config.mappedFramebuffer, bytesPerPixel);
+
+    return self;
+}
+
+- hideCursor:(int)token
+{
+    if (registerBase != NULL)
+        _ixIdleEngine(registerBase);
+    return [super hideCursor:token];
+}
+
+- moveCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    if (registerBase != NULL)
+        _ixIdleEngine(registerBase);
+    return [super moveCursor:cursorLoc frame:frame token:t];
+}
+
+- showCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    if (registerBase != NULL)
+        _ixIdleEngine(registerBase);
+    return [super showCursor:cursorLoc frame:frame token:t];
+}
+
+- open
+{
+    int result;
+
+    result = [super open];
+    if (result == 0) {
+        [self initEngine];
+    }
+    return result;
+}
+
+- (IOReturn)setDisplayMode:(IOFBDisplayModeID)modeID depth:(IOFBIndex)depthIndex page:(IOFBIndex)pageIndex
+{
+    IOReturn result;
+
+    result = [super setDisplayMode:modeID depth:depthIndex page:pageIndex];
+    if (result == 0) {
+        [self initEngine];
+    }
+    return result;
+}
+
+- (UInt32)tempFlags
+{
+    // Advertise hardware acceleration capabilities
+    // 0x60 = 0x20 (IO_DISPLAY_CAN_BLIT) | 0x40 (IO_DISPLAY_CAN_FILL)
+    return 0x60;
+}
+
+- (IOReturn)setIntValues:(unsigned int *)values forParameter:(IOParameterName)parameter count:(unsigned int)count
+{
+    // Handle hardware-accelerated blit operations
+    if (strcmp(parameter, IO_DISPLAY_DO_BLIT) == 0 && count == IO_DISPLAY_BLIT_SIZE) {
+        _ixDoBlit(registerBase, bytesPerPixel, pixelFormat,
+                 values[0], values[1], values[2], values[3], values[4], values[5]);
+        return 0;
+    }
+    // Handle hardware-accelerated fill operations
+    else if (strcmp(parameter, IO_DISPLAY_DO_FILL) == 0 && count == IO_DISPLAY_FILL_SIZE) {
+        _ixDoFill(registerBase, bytesPerPixel, pixelFormat,
+                 values[0], values[1], values[2], values[3], values[4]);
+        return 0;
+    }
+    // Handle display sync (wait for idle) operations
+    else if (strcmp(parameter, IO_DISPLAY_GET_SYNCED) == 0 && count == IO_DISPLAY_GET_SYNCED_SIZE) {
+        _ixIdleEngine(registerBase);
+        return 0;
+    }
+    // Pass other parameters to parent
+    else {
+        return [super setIntValues:values forParameter:parameter count:count];
+    }
+}
+
+@end
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// IMS TwinTurbo 3D (tt3d) NDRV - for IMS TwinTurbo 3D graphics cards
+
+//=======================================================================
+// IMS TwinTurbo 3D utility functions
+
+static void _ix3dIdleEngine(volatile UInt32 *base)
+{
+    UInt32 status;
+
+    do {
+        status = regrNoswap(base, 0xec);  // Engine status register (no byte swap)
+    } while ((status & 0xc0) != 0);  // Wait for bits 6-7 to be clear
+}
+
+static void _ix3dDoFill(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelFormat,
+                       UInt32 x, UInt32 y, UInt32 width, UInt32 height, UInt32 color)
+{
+    UInt32 stride;
+    UInt32 destOffset;
+
+    stride = pixelFormat & 0xffff;
+
+    // Wait for engine idle
+    _ix3dIdleEngine(base);
+
+    // Program fill operation
+    regwNoswap(base, 0x28, color);  // Foreground color
+    regwNoswap(base, 0x24, (height << 16) | (width & 0xffff));  // Dimensions
+    regwNoswap(base, 0x14, y * stride + x * bytesPerPixel + 0x20);  // Destination offset
+    regwNoswap(base, 0x44, ((bytesPerPixel - 1) * 0x80000) | 0x381);  // Fill command
+}
+
+static void _ix3dDoBlit(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelFormat,
+                       UInt32 srcX, UInt32 srcY, UInt32 dstX, UInt32 dstY,
+                       UInt32 width, UInt32 height)
+{
+    UInt32 stride;
+    UInt32 srcOffset, dstOffset;
+    UInt32 command;
+    BOOL reverse;
+
+    stride = pixelFormat & 0xffff;
+
+    // Complex overlap detection algorithm
+    if (srcY < dstY) {
+        reverse = FALSE;
+    } else if (dstY < srcY) {
+        reverse = TRUE;
+    } else {
+        reverse = (dstX <= srcX);
+    }
+    reverse = !reverse;
+
+    // Adjust coordinates for reverse direction
+    if (reverse) {
+        srcX = (srcX - 1) + width;
+        srcY = (srcY - 1) + height;
+        dstX = (dstX - 1) + width;
+        dstY = (dstY - 1) + height;
+    }
+
+    // Calculate offsets
+    srcOffset = srcY * stride + srcX * bytesPerPixel;
+    dstOffset = dstY * stride + dstX * bytesPerPixel;
+
+    srcOffset += 0x20;
+    dstOffset += 0x20;
+
+    // Adjust for reverse direction
+    if (reverse) {
+        srcOffset = srcOffset + 0x1f + bytesPerPixel;
+        dstOffset = dstOffset + 0x1f + bytesPerPixel;
+    }
+
+    // Build command value
+    command = ((bytesPerPixel - 1) * 0x80000) | 0x81;
+    if (!reverse) {
+        command = ((bytesPerPixel - 1) * 0x80000) | 0x1;
+    }
+
+    // Wait for engine idle
+    _ix3dIdleEngine(base);
+
+    // Program blit operation
+    regwNoswap(base, 0x24, (height << 16) | (width & 0xffff));  // Dimensions
+    regwNoswap(base, 0x18, srcOffset);  // Source offset
+    regwNoswap(base, 0x14, dstOffset);  // Destination offset
+    regwNoswap(base, 0x40, 0xaa);  // ROP (copy)
+    regwNoswap(base, 0x44, command);  // Command
+}
+
+//=======================================================================
+// IMS TwinTurbo 3D interrupt handler
+
+static void _ix3dInterruptHandler(void *identity, void *state, void *arg)
+{
+    IOIX3DNDRV *self = (IOIX3DNDRV *)arg;
+
+    // Clear interrupt status by writing 0x30 to register 0xec
+    regwNoswap(self->registerBase, 0xec, 0x30);
+
+    // Re-enable interrupt
+    IOEnableInterrupt(identity);
+}
+
+//=======================================================================
+
+@implementation IOIX3DNDRV
+
+- (UInt32)tempFlags
+{
+    // Advertise hardware acceleration capabilities
+    return IO_DISPLAY_CAN_BLIT | IO_DISPLAY_CAN_FILL;
+}
+
+- showCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    _ix3dIdleEngine(registerBase);
+    return [super showCursor:cursorLoc frame:frame token:t];
+}
+
+- (IOReturn)setDisplayMode:(IOFBDisplayModeID)modeID depth:(IOFBIndex)depthIndex page:(IOFBIndex)pageIndex
+{
+    IOReturn result;
+
+    [self disableInterrupt:0];
+
+    result = [super setDisplayMode:modeID depth:depthIndex page:pageIndex];
+    if (result == 0) {
+        [self initEngine];
+    }
+
+    [self enableInterrupt:0];
+
+    return result;
+}
+
+- initEngine
+{
+    IOFBConfiguration config;
+    IOFBPixelInformation pixelInfo;
+    IOReturn err;
+    IOFBDisplayModeID modeID;
+    IOFBIndex depthIndex, pageIndex;
+
+    // Get current configuration
+    err = [self getConfiguration:&config];
+    if (err != IO_R_SUCCESS) {
+        IOLog("%s: Could not get configuration (err=%d)\n", [self name], err);
+        registerBase = NULL;
+        return self;
+    }
+
+    // Get current display mode and depth
+    modeID = config.mode;
+    depthIndex = config.depth;
+    pageIndex = config.page;
+
+    // Get pixel information
+    err = [self getPixelInformationForDisplayMode:modeID depth:depthIndex page:pageIndex
+                                     pixelInformation:&pixelInfo];
+    if (err != IO_R_SUCCESS) {
+        IOLog("%s: Could not get pixel information (err=%d)\n", [self name], err);
+        registerBase = NULL;
+        return self;
+    }
+
+    // Calculate MMIO register base from framebuffer address
+    // IMS TwinTurbo 3D registers are 96MB (0x6000000) after framebuffer base
+    registerBase = (volatile UInt32 *)((config.mappedFramebuffer & 0xffff0000) + 0x6000000);
+
+    // Calculate bytes per pixel from depth (1 << depth)
+    bytesPerPixel = 1 << (depthIndex & 0x3f);
+
+    // Store pixel format
+    pixelFormat = pixelInfo.pixelType;
+
+    IOLog("%s: IMS TwinTurbo 3D registers at 0x%08x (framebuffer at 0x%08x, bpp=%d)\n",
+          [self name], (UInt32)registerBase, (UInt32)config.mappedFramebuffer, bytesPerPixel);
+
+    // Initialize engine registers
+    _ix3dIdleEngine(registerBase);
+    regwNoswap(registerBase, 0x04, (pixelFormat << 16) | pixelFormat);
+    regwNoswap(registerBase, 0x20, (pixelFormat << 16) | pixelFormat);
+
+    return self;
+}
+
+- hideCursor:(int)token
+{
+    _ix3dIdleEngine(registerBase);
+    return [super hideCursor:token];
+}
+
+- moveCursor:(Point*)cursorLoc frame:(int)frame token:(int)t
+{
+    _ix3dIdleEngine(registerBase);
+    return [super moveCursor:cursorLoc frame:frame token:t];
+}
+
+- open
+{
+    int result;
+
+    result = [super open];
+    if (result == 0) {
+        [self initEngine];
+        [self enableInterrupt:0];
+    }
+    return result;
+}
+
+- (IOReturn)setIntValues:(unsigned int *)values forParameter:(IOParameterName)parameter count:(unsigned int)count
+{
+    // Handle hardware-accelerated blit operations
+    if (strcmp(parameter, IO_DISPLAY_DO_BLIT) == 0 && count == IO_DISPLAY_BLIT_SIZE) {
+        _ix3dDoBlit(registerBase, bytesPerPixel, pixelFormat,
+                   values[0], values[1], values[2], values[3], values[4], values[5]);
+        return 0;
+    }
+    // Handle hardware-accelerated fill operations
+    else if (strcmp(parameter, IO_DISPLAY_DO_FILL) == 0 && count == IO_DISPLAY_FILL_SIZE) {
+        _ix3dDoFill(registerBase, bytesPerPixel, pixelFormat,
+                   values[0], values[1], values[2], values[3], values[4]);
+        return 0;
+    }
+    // Handle display sync (wait for idle) operations
+    else if (strcmp(parameter, IO_DISPLAY_GET_SYNCED) == 0 && count == IO_DISPLAY_GET_SYNCED_SIZE) {
+        _ix3dIdleEngine(registerBase);
+        return 0;
+    }
+    // Pass other parameters to parent
+    else {
+        return [super setIntValues:values forParameter:parameter count:count];
+    }
+}
+
+- (BOOL)getHandler:(IOInterruptHandler *)handler
+             level:(unsigned int *)ipl
+          argument:(unsigned int *)arg
+      forInterrupt:(unsigned int)interruptIndex
+{
+    *handler = (IOInterruptHandler)_ix3dInterruptHandler;
+    *ipl = 0x1e;  // Interrupt priority level 30
+    *arg = (unsigned int)self;
+    return YES;
+}
+
+@end

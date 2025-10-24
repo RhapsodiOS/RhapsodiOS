@@ -115,5 +115,30 @@
 
 @interface IOATIMACH64NDRV:IOATINDRV
 {
+@private
+    volatile UInt32 *	registerBase;	// Memory-mapped register base
+}
+@end
+
+@interface IOATIRAGE128NDRV:IOATINDRV
+{
+}
+@end
+
+@interface IOIXMNDRV:IONDRVFramebuffer
+{
+@private
+    volatile UInt32 *	registerBase;	// Memory-mapped register base
+    UInt32		bytesPerPixel;	// Bytes per pixel (1 << depth)
+    UInt32		pixelFormat;	// Pixel format information
+}
+@end
+
+@interface IOIX3DNDRV:IONDRVFramebuffer
+{
+@private
+    volatile UInt32 *	registerBase;	// Memory-mapped register base
+    UInt32		bytesPerPixel;	// Bytes per pixel (1 << depth)
+    UInt32		pixelFormat;	// Pixel format information
 }
 @end

@@ -1,0 +1,10 @@
+/* Name used in the browser */
+"ParallelPort" = "Parallel Port";
+
+/* Name used in the inspector */
+"Long Name" = "On-Board Parallel Port";
+
+/* The following entries are used in PrintManager.app */
+
+/* Name of the Parallel port */
+"Port Name 0" = "Parallel 1";

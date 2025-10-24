@@ -10,26 +10,26 @@
 NAME = ParallelPort
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+CLASSES = IOParallelPort.m IOParallelPortKern.m
 
-GLOBAL_RESOURCES =
+HFILES = IOParallelPort.h IOParallelPortKern.h
 
-BUNDLES = PCParallelPort.drvproj
-
-TOOLS =
-
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
+
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
+PUBLIC_HEADERS = IOParallelPort.h IOParallelPortKern.h
 
 
 

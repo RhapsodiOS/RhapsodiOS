@@ -10,27 +10,33 @@
 NAME = ParallelPort
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+LOCAL_RESOURCES = Localizable.strings
 
 GLOBAL_RESOURCES =
 
-BUNDLES = PCParallelPort.drvproj
+CLASSES =
 
-TOOLS =
+HFILES =
 
-OTHERSRCS = Makefile Makefile.preamble
+TOOLS = PCParallelPort.lksproj PostLoad.tproj PreLoad.tproj
+
+OTHERSRCS = Makefile Makefile.preamble DriverInfo
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
 
 
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
 
 include $(MAKEFILEDIR)/platform.make

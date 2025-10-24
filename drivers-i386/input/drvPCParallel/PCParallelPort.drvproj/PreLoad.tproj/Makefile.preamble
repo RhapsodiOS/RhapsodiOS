@@ -1,0 +1,13 @@
+INCLUDED_ARCHS = i386
+
+# Additional compiler flags
+OTHER_CFLAGS = -Wall -O2
+
+# Include paths
+OTHER_INCLUDES =
+
+# Frameworks
+FRAMEWORKS = -framework System
+
+# Libraries
+OTHER_LIBS = -lobjc

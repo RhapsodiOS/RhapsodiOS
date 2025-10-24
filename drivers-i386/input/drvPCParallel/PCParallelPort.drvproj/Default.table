@@ -1,0 +1,16 @@
+"Title" = "System Parallel";
+"Driver Name" = "IOParallelPort";
+"Family" = "Parallel";
+"Location" = "System Baseboard";
+"Instance" = "0";
+"IRQ Levels" = "7";
+"I/O Ports" = "0x378-0x37f";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Pre-Load" = "RemovePPDev";
+"Post-Load" = "InstallPPDev";
+"Port Count" = "1";
+"Path 0" = "/dev/pp0";
+"Minor Device Number" = "0";
+"Valid IRQ Levels" = "7";
+"Server Name" = "ParallelPort";

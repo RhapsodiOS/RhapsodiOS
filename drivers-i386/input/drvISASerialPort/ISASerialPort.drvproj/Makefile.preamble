@@ -1,0 +1,17 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1999, Apple Computer, Inc.
+#
+#  This file is for custom flags and settings that apply to the
+#  entire project.
+###############################################################################
+
+###############################################################################
+# Flags to be passed to the compiler, linker, etc.
+###############################################################################
+
+# Any custom compiler flags you want to use
+# CFLAGS +=
+
+# Any custom linker flags you want to use
+# LDFLAGS +=

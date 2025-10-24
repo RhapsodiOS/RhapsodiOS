@@ -1,0 +1,14 @@
+"SerialPort" = "Serial Port";
+"Long Name" = "Serial Port";
+
+"CONFIG_TITLE" = "Port";
+"CONFIG_COM1" = "COM1";
+"CONFIG_COM2" = "COM2";
+"CONFIG_COM3" = "COM3";
+"CONFIG_COM4" = "COM4";
+"CONFIG_CUSTOM" = "Custom";
+
+"PORT_TYPE_TITLE" = "Connect Via";
+"PORT_TYPE_NORMAL" = "Serial Port";
+"PORT_TYPE_PNP"    = "PnP Serial Port";
+"PORT_TYPE_PCMCIA" = "PCMCIA Modem";

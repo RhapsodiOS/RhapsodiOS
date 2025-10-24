@@ -1,0 +1,260 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;\f1\fmodern Ohlfs;}
+\paperw7900
+\paperh12540
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+\b\fs36 Serial Port Device Driver\
+
+{{\NeXTHelpMarker27 \markername Sending;}
+¬ }\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 Technical Information\
+
+{\b0\fs12{\NeXTGraphic51 205923_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+\b Technical Information Overview
+\b0 \
+\
+This topic provides information on several aspects of the Serial Port Device Driver.  Information in this help topic, intended for users familiar with PC compatible serial hardware and terminology, is provided on the following subjects:\
+\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc1\cf1 ·	
+\fc0\cf0 Troubleshooting\
+
+\fc1\cf1 ·	
+\fc0\cf0 The Boot-Time Console Log\
+
+\fc1\cf1 ·	
+\fc0\cf0 Device Driver Hierarchy\
+
+\fc1\cf1 ·	
+\fc0\cf0 Recommended Serial Cabling\
+
+\fc1\cf1 ·	
+\fc0\cf0 UART Characteristics\
+
+\fc1\cf1 ·	
+\fc0\cf0 UART Programming\
+
+\fc1\cf1 \
+\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\b\li360\fc0\cf0 Troubleshooting\
+
+\b0 \
+If you can't get your serial port working with your application, there could be a number of possible problems.  The following list may provide some hints to get you up and running.\
+\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 1 -	Make sure that you have correctly configured every device driver you need to support your setup.\
+\
+2 -	Verify that there are no resource conflicts.  If your system board provides serial ports that you are not using, make sure they are disabled so they don't interfere with Internal or PCMCIA Modems.\
+\
+3 -	Boot OPENSTEP for Mach in verbose mode by typing "-v" at the boot prompt.  You should see a registration message for every serial port you have configured.  "The Boot-Time Console Log" section later in this help topic describes each bit of information presented.\
+\
+4 -	If the port you are having problems with is a PCMCIA device that did not display a Boot-Time log (as discussed in step 3), then you may have selected a Port Address or IRQ Level that the PCMCIA device or adapter is not capable of supporting.  Most PCMCIA devices and adapters will work with the standard COM addresses and interrupts.\
+\
+5 -	Make sure that cabling is correct.  Given the number of choices for connectors and handshaking, it is often difficult to get two devices talking without an RS-232 break-out box.  The section "Recommended Serial Cabling" (later in this help topic) provides proper wiring diagrams for common configurations.\
+\
+6 -	Verify that the port is working by using a simple utility, such as tip, which is provided with OPENSTEP for Mach.  For more information on tip, type  man tip  in a terminal window.\
+\
+\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\b\li360\fc0\cf0 The Boot-Time Console Log\
+
+\b0 \
+When OPENSTEP for Mach boots, it probes each configured device driver.  The Serial Port Device Driver will provide several useful bits of information.  A successful probe will produce a message that looks something like:\
+\
+
+\f1\fs20\fi-180 Registering: ISASerialPort0\
+ISASerialPort0: Base=0x03f8, IRQ=4, Type=16550AF/C/CF, FIFO=16\
+
+\f0\fs24 \
+
+\fi0 Each instance of the Serial Port Device Driver is given a name of the form "ISASerialPort#", where # is replaced with the instance number for the port.  All messages logged to the Console will be prefixed with the instance name.\
+\
+
+\f1\fs20\fi-180 Registering: ISASerialPort0\
+
+\f0\fs24\fi0 The first line indicates that the port configuration went well and indicates the instance name.  The second line indicates several configuration details of the port.\
+\
+
+\f1\fs20\fi-180 ISASerialPort0: Base=0x03f8, IRQ=4, Type=16550AF/C/CF, FIFO=16\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\f0\fs24\fi-360\li720\fc1\cf1 The device driver's
+\fc0\cf0  instance name is followed by:\
+
+\fc1\cf1 ·	
+\fc0\cf0 The "Base=" field indicates the address of this port.  It should match the Port Address assigned to this port in Configure.  If this port is a PCMCIA device, then the word "Base" will be preceded by "PCMCIA".\
+
+\fc1\cf1 ·	
+\fc0\cf0 The "IRQ=" field indicates the interrupt this port uses.  It should match the IRQ Level assigned to this port in Configure.\
+
+\fc1\cf1 ·	
+\fc0\cf0 The "Type=" field indicates the type of UART detected.  For more information about what this means, see the  "UART Characteristics" section.\
+
+\fc1\cf1 ·	
+\fc0\cf0 The "FIFO=" field indicates the size of the UART's FIFO.  For more information about what this means, see the  "UART Characteristics" section (later in this help topic).\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\li360\fc0\cf0 \
+If something goes wrong during the probe, one of the following error messages will be seen instead of the two lines shown above:\
+\
+
+\f1\fs20\fi-180 ISASeria
+\fc1\cf1 lPort
+\fi0 : Invalid Config Table
+\fi-180 \
+
+\f0\fs24\fi0\fc0\cf0 This indicates that the device driver was unable to read its own configuration table.  Correct this by running Configure.app, and removing and re-adding the offending device driver.  If the problem persists, try re-installing the Serial Port Device Driver package.\
+\
+
+\f1\fs20\fi-180 ISA
+\fc1\cf1 SerialPort0
+\fi0 : Invalid configuration
+\f0\fs24\fc0\cf0 \
+This indicates that the device driver's configuration table didn't include the correct number of resources.  Correct this by running Configure.app and removing and re-adding the offending device driver. \
+\
+
+\f1\fs20\fi-180 ISASerialPor
+\fc1\cf1 t0
+\fi0 : Invalid Port configuration
+\f0\fs24\fc0\cf0 \
+This indicates that the Port Address specified in the device driver's configuration table was not acceptable.  The Port Address range must be 8 bytes long and start on an address that is a multiple of 8.  Correct this by running Configure.app and correcting the Port Address for the offending device driver. \
+\
+
+\f1\fs20\fi-180 ISASeria
+\fc1\cf1 lPort0
+\fi0 : Unable to determine chip type at I/O base 
+\fi-180 0x#
+\f0\fs24\fi0\fc0\cf0 \
+This indicates that the device driver was unable to detect a compatible UART at the Port Address given.  Verify that the address is correct, and make sure that the serial port hardware is jumpered correctly and enabled in the system's BIOS (if applicable).  Also, verify that the UART being used is in the list of compatible UARTs; see the "UART Characteristics" section, later in this help topic. \
+\
+
+\f1\fs20\fi-180 ISASerialPort
+\fc1\cf1 0
+\fi0 : Unable to allocate callout entries
+\f0\fs24\fc0\cf0 \
+This indicates that the device driver was unable to allocate a necessary resource, which is an uncorrectable internal error.   Try re-installing the Serial Port Device Driver package.\
+\
+
+\f1\fs20\fi-180 ISASerialPor
+\fc1\cf1 t0
+\fi0 : Unable to enable interrupts
+\f0\fs24\fc0\cf0 \
+This indicates that the device driver was unable to activate its IRQ, which is an uncorrectable internal error.   Try re-installing the Serial Port Device Driver package.\
+\
+\
+
+\b Device Driver Hierarchy\
+
+\b0 \
+This device driver works in concert with several other software and hardware components.  This section provides a diagram to clarify the relationships between these components:\
+
+{\qc{\NeXTGraphic5754 DriverHier.tiff \width7480 \height13080
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\f0\b0\i0\ulnone\qc\fs24\li360\fc0\cf0 \
+
+\ql \
+
+\b Recommended Serial Cabling\
+
+\b0 \
+Correct serial cables are essential for proper operation of the serial port and its attached devices.  In some cases, leaving flow control lines unconnected may cause a slight loss of performance.\
+\
+The following designations are used for signal names and pin numbers:\
+
+{\qc{\NeXTGraphic6053 PinOut.tiff \width7480 \height3980
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\f0\b0\i0\ulnone\qc\fs24\li360\fc0\cf0 \
+
+\ql The following cable wiring diagrams are suggested for use with standard EIA-232 devices.  Consult the documentation provided with the hardware before using these diagrams:\
+
+{\qc{\NeXTGraphic6227 Cables.tiff \width7480 \height3980
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\f0\b0\i0\ulnone\fs24\li360\fc0\cf0 \
+
+\b UART Characteristics\
+
+\b0 \
+The type of chip that is used in serial ports is called a UART, which stands for Universal Asynchronous Receiver Transmitter.  There are several types of UARTs in common use today, but they are all backward compatible with the Intel i8250 used in the original IBM PC's Asynchronous Communications Adapter.\
+\
+The Serial Port Device Driver will detect the type of UART that the serial port or modem uses and adjust its behavior accordingly.   The basic feature that effects the performance and behavior of the device driver is whether or not the UART has a FIFO. \
+\
+Older non-FIFO UARTs will not be able reliably to communicate at high speeds and present a greater burden on the CPU, as each character sent or received results in an interrupt.  Non-FIFO UARTs include the original i8250 family, the 16450, and the original 16550, which has a defective FIFO.  Non-FIFO UARTs will be reliable up to 9600 bps on all platforms, and 19200 bps should be reliable on most.\
+\
+For high speed and multiple port communications, FIFO UARTs should be used.  The Serial Port Device Driver makes use of the 16 byte FIFO on the 16550 family (except the original chip, which had a defective FIFO).  If an ST16C650 is detected, the driver will adjust its FIFO control to optimize for the 16650's 32 byte FIFO.    UARTs with a FIFO should have no problem achieving 38400 bps and should reach 57600 bps on most platforms.\
+\
+Because OPENSTEP for Mach is a multi-tasking operating system and places high demands on the system, it should be expected that occasionally, a character will be dropped.  Testing has shown this to be rare and should not effect normal operation of the port or the software using the port.\
+\
+\
+
+\b UART Programming\
+
+\b0 \
+This section provides details of how the Serial Port Device Driver programs the UART (you should be familiar with the register interface and operation of standard PC compatible serial devices).\
+\
+The Serial Port Device Driver enables chip interrupts when a port is opened.  All interrupt sources are enabled except for the MSR interrupt, as many serial implementations leave RI and/or DCD unconnected.  At the time that interrupts are enabled, a heartbeat timer is set which polls the Modem Status Register every 20ms (milliseconds).  This is a light load operation that shouldn't cause a noticeable performance loss.\
+\
+If the UART has a usable FIFO, then the following table is used to determine the receive-FIFO threshold.  The values are chosen to allow the minimum number of interrupts while ensuring 2ms to respond to each interrupt, while not allowing more than 10ms character latency.\
+\
+
+\pard\tx1180\tx2780\tx3180\tx4880\tx5240\li360\fc0\cf0 	
+\ul bps:	16550 Level	16650 Level
+\ulnone \
+
+\f1\fs20 	    50		1/16		 1/1\
+	   110		1/16		 1/1\
+	   134		1/16		 1/1\
+	   300		1/16		 1/1\
+	  1200		1/16		 1/1\
+	  2400		1/16		 8/32\
+	  4800		1/16		 8/32\
+	  7200		4/16		 8/32\
+	  9600		4/16		 8/32\
+	 19200		8/16		16/32\
+	 38400		8/16		24/32\
+	 57600		4/16		16/32\
+	115200		1/16		 8/32\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\f0\fs24\li360\fc0\cf0 \
+\
+
+\fc1\cf1 \
+
+{\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs12\li360\fc1\cf1{\NeXTGraphic9150 475903_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 \
+
+\b\fs24 See also\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\b0\fs16\fi-360\li720\fc1\cf1 \
+
+\fs24 ·	The main "Serial Port" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	The "Installing and Configuring the Serial Port Device Driver" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the TTY Port Server Device Driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the Serial Mouse Device Driver. \
+
+\fs16 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs16\fi-360\li720\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-360\li720\fc1\cf1 ·	See NeXTAnswer 1824 for general information on installing and configuring device drivers. \
+
+}

@@ -1,0 +1,158 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh12160
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+{\b\fs36{\NeXTHelpMarker1 \markername Sending;}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 Installing and Configuring the\
+Serial Port Device Driver\
+
+{\b0\fs12{\NeXTGraphic59 3PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+\b\fc0\cf0 Overview:\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc1\cf1 You should first install any serial port add-in boards into your system.  To do this, follow the steps under "
+\fc0\cf0 Installing a Serial Port Adapter" later in this help topic. \
+
+\b \
+
+\b0\fc1\cf1 You should configure all the serial ports that you intend to use by following the steps in the section "Configuring the Serial Port Device Driver" later in this help topic.\
+\
+To determine what other device drivers you will need to use in conjunction with the Serial Port Device Driver, consult the section called "Other Device Drivers You Will Need" later in this help topic.\
+\
+PCMCIA Adapters may be present or absent but should not be inserted or removed while the computer is on.  For more information see the section entitled "Using PCMCIA Modems" later in this help topic.\
+\
+\
+
+\b\fc0\cf0 Installing a Serial Port Adapter\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-380\li740\fc0\cf0 1.	Refer to the User's
+\fc1\cf1  Guide
+\fc0\cf0  that comes with your adapter for information you need before installing the adapter.  \
+
+\pard\tx740\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-360\li720\fc0\cf0 2.	For each serial port being installed, select values for the Port Address and IRQ Level.  Different devices will have varying options for configuration.  When selecting the base address and IRQ Level settings for the device, keep in mind that OPENSTEP for Mach does not support shared interrupts for serial ports.  Make sure that you remember these selections, as they will be needed later to configure the Serial Port Device Driver.\
+3.	Follow the installation instructions provided with the device and the computer it is being installed into.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 4.	Restart your computer\
+\
+\
+
+\b\fi0\li360\fc1\cf1 Configuring the Serial Port Device Driver
+\fc0\cf0 \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-380\li740\fc0\cf0 1.	Run Configure.app as root, and select Other Devices.  \
+
+\pard\tx740\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-360\li720\fc0\cf0 2.	For each serial port being configured:  Click Add and select the Serial Port device driver.  Select the settings for the each serial port according to the way your hardware is configured.  For more information on how to do this, consult the section "Using the Serial Port Inspector" later in this help topic.  If the device being configured is a PCMCIA device, then also review the section 
+\fc1\cf1 "Using PCMCIA Modems" later in this help topic. \
+3.	After all serial ports are configured, confirm that you have all the other device drivers you need.  Read through the section "Other Device Drivers you will need" (in this help topic), and configure them now.
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b\fi-720\li1080\fc0\cf0 \
+
+\pard\tx740\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-360\li720\fc0\cf0 	Note:	
+\b0 If at any point in Step 2 or 3 you feel you have made too many mistakes and want to start over, you may safely Quit Configure and go back to Step 1 above (of course, you will lose any changes you have made).
+\fc1\cf1 \
+4.	Click Done to return Configure's summary page.  Save your new configuration by clicking Save.\
+5.	In order for this new configuration to take effect, you must restart OPENSTEP for Mach.  To do this, log out then restart, or power off and then on.
+\fc0\cf0 \
+\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\li360\fc0\cf0 \
+
+\b Using the Serial Port Inspector
+\b0 \
+\
+The Serial Port Inspector, pictured below, provides several useful features.  Besides the Port Address and IRQ Level controls, there are two pop-up lists.\
+\
+Picking an entry from the Port pop-up will change the Port Address and IRQ Level selections to match the COM port you selected.  Likewise, changing either the Port Address or IRQ Level selections will change the selection of the Port pop-up accordingly.  The Custom selection is present to allow non-standard settings.\
+\
+The Connect Via pop-up lets you specify the type of device being used.  If a port is being configured for a PCMCIA serial device, choose "PCMCIA Modem".  For all non-PCMCIA devices, choose  "PnP Serial Port" for PnP capable devices, otherwise choose "Serial Port". \
+
+\qc \
+
+{\fi360\li0{\NeXTGraphic3543 SerialPortInspector.tiff \width7500 \height4200
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\qc\fs24\fi360\fc0\cf0 \
+\
+
+\pard\tx740\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b\fi-360\li720\fc1\cf1 Other Device Drivers You Will Need\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\b0\li360\fc1\cf1 \
+The most common uses of serial ports are either for communications between two computers (directly or over a modem) or to attach a serial peripheral, such as a serial mouse.  The Serial Port Device Driver only provides support for the actual serial port hardware.  In order to make use of the port, additional device drivers and software are needed.\
+\
+If you will be using a serial mouse on a serial port which is controlled by the Serial Port Device Driver, then configure the Serial Mouse Device Driver as well.\
+\
+In order to allow application programs access to any serial ports controlled by the Serial Port Device Driver, you must configure the 
+\fc0\cf0 TTY Port Server Device Driver.  This driver provides the UNIX TTY layer and creates device nodes for all configured serial ports.  All popular UNIX and OPENSTEP for Mach communication software uses the TTY layer, including NXFax, UUCP, Taylor UUCP, PPP, and tip.\
+
+\fc1\cf1 \
+In order to use the Serial Port Device Driver with PCMCIA devices, you need to configure two additional device drivers.  The PCMCIA Bus Support Device Driver provides kernel support for PCMCIA features.  You also need the device driver for the PCMCIA socket adapter, such as the 
+\fc0\cf0 Intel 82365 PCMCIA Adapter Device Driver, which supports most built-in and many add-on PCMCIA socket adapters.
+\fc1\cf1 \
+\
+
+\b\fc0\cf0 \
+
+\fc1\cf1 Using PCMCIA Modems
+\fc0\cf0 \
+
+\b0 \
+There are a few special considerations you need to be aware of when using PCMCIA devices.  OPENSTEP for Mach 4.0 does not support hot-swapping, so you should never insert or remove a PCMCIA device while the machine is running.\
+\
+
+\b\fi-1080\li1440 Warning:	
+\b0 Inserting or removing a PCMCIA device while the system is running may result in OPENSTEP for Mach hanging or crashing.  It may also damage the PCMCIA device or socket if either doesn't support hot-swapping.\
+\
+
+\fi0\li360 For PCMCIA devices, the Port Address and IRQ Level settings must be within the abilities of the PCMCIA device as well as the PCMCIA adapter it is inserted into.  Generally, any available IRQ Level may be chosen, though choosing a Port Address that isn't one of the standard COM addresses may not work.  NeXT recommends choosing one of the four standard COM Port Addresses, first making sure that no serial ports on your system board are enabled at that same address.\
+\
+For more information, see the "Troubleshooting" section under the help topic "Hardware Details".\
+\
+It is recommended that any PCMCIA serial device drivers be configured last, as you may choose to boot the system with or without the PCMCIA modem inserted.  Serial ports will be probed in the order in which they are numbered in Configure's Other Devices list, and the presence or absence of a serial port in the middle of the list will effect the device node names assigned to subsequent ports.  For more information, see Configure's on-line help for the TTY Port Server Device Driver.\
+
+\fs16\fc1\cf1 \
+
+{\fs12{\NeXTGraphic6405 842445_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 	\
+
+\b\fs24 See also\
+
+\b0\fs16 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs24\fi-360\li720\fc1\cf1 ·	The main "Serial Port" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	The "Serial Port Device Driver Technical Information" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the TTY Port Server Device Driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the Serial Mouse Device Driver. \
+
+\fs16 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\fs16 \
+
+\fs24 ·	See NeXTAnswer 1824 for general information on installing and configuring device drivers. \
+
+}

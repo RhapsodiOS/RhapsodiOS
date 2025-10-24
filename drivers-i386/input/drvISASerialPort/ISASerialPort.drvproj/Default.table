@@ -1,0 +1,13 @@
+"Title" = "System Serial";
+"Class Names" = "ISASerialPort";
+"Family" = "Serial";
+"Boot Driver" = "Yes";
+"Bus Type" = "EISA";
+"IRQ Levels" = "4";
+"Valid IRQ Levels" = "3 4 5 7 9 10 11 12 14 15";
+"I/O Ports" = "0x3f8-0x3ff";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Instance" = "0";
+"Auto Resolve Conflicts";
+"Server Name" = "ISASerialPort";

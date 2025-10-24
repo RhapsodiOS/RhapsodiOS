@@ -1,0 +1,42 @@
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+ISASerialPortInspector = {
+    ACTIONS = {
+	"configDidChange:" = "configDidChange:"; 
+	"portTypeDidChange:" = "portTypeDidChange:"; 
+    }; 
+    OUTLETS = {
+	ISASerialPortView = ISASerialPortView; 
+	configBox = configBox; 
+	configButton = configButton; 
+	configPopup = configPopup; 
+	portTypeBox = portTypeBox; 
+	portTypeButton = portTypeButton; 
+	portTypePopup = portTypePopup; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

@@ -1,0 +1,149 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh11800
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+\b\fs36 Serial Port\
+
+{\b0\fs12{\NeXTGraphic13 494393_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+{\b\fs28\up20{\NeXTGraphic16 other.tiff \width880 \height880
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 	Other Devices
+\b0\fs24\up0 \
+
+\fs16 \
+\
+
+\b\fs24\fc0\cf0 Overview:\
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc0\cf0 The Serial Port Device Driver is designed to support all standard serial ports and modems that are 100% compatible with standard and PnP PC serial devices.  This includes serial ports built onto the system board and serial ports provided by add-in cards, as well as PCMCIA modems.\
+\
+This device driver is one of a suite of device drivers that provides support for serial devices.  Depending on your needs, the Serial Port Device Driver will need to work in conjunction with one or more other device drivers:\
+\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc1\cf1 ·	
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 The TTY Port Server
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0  Device D
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 river must be configured
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0  
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 In order for 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 a
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 pplication
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 s
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0  to access a port controlled by the 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 Serial Port Device Driver
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 .
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0   You should always configure this device driver, unless you know for certain that you won't need it.
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 \
+\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc1\cf1 ·	
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 The Serial Mouse 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 Device D
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 river must be configured in order to use a mouse connected to a port controlled by the 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 Serial Port Device Driver
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 .
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\fi-1080\li1440\fc0\cf0 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc1\cf1 ·	
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 If any of the ports controlled by the 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 Serial Port Device Driver
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0  are PCMCIA devices (i.e., pocket FAX/Modems), then both the PCMCIA Bus Support
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0  device
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0  
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 driver
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0  and the appropriate PCMCIA adapter driver 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 should
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0  be configured (
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 e.g
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 .,  Intel 82365 PCMCIA Adapter
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0  Device Driver
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fi-380\li740\fc0\cf0 ).\
+\
+
+\fi0\li360 For more information about installing and configuring serial ports, see the help topic "Installing and Configuring the Serial Port Device Driver" in Configure's help for this device driver.  \
+\
+\
+
+\b\fc1\cf1 Supported Hardware
+\b0 \
+\
+The Serial Port Device Driver is designed to support devices that are fully compatible with one or more of the following components:\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc1\cf1 ·	
+\fc0\cf0 Intel i8250, i8250B\
+
+\fc1\cf1 ·	
+\fc0\cf0 Intel i82510\
+
+\fc1\cf1 ·	
+\fc0\cf0 NS16450, NS16C450\
+
+\fc1\cf1 ·	
+\fc0\cf0 NS16550, NS16C550\
+
+\fc1\cf1 ·	
+\fc0\cf0 NS16550, NS16C550\
+
+\fc1\cf1 ·	
+\fc0\cf0 ST16C650\
+\
+Also the following PCMCIA FAX Modems are supported:\
+
+\fc1\cf1 ·	
+\fc0\cf0 Megahertz 14,400bps (XJ1144)\
+
+\fc1\cf1 ·	
+\fc0\cf0 AT&T Keep In Touch Express (4760-B1-261)\
+\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\li360\fc0\cf0 For more information about specific hardware support, see the help topic "Serial Port Device Driver Technical Information" in Configure's help for this device driver. 
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fi-360\li720\fc0\cf0 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+{\fs12{\NeXTGraphic1966 749266_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 \
+
+\b\fs24 See also\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\b0\fs16\fi-360\li720\fc1\cf1 \
+
+\fs24 ·	The "Installing and Configuring the Serial Port Device Driver" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	The "Serial Port Device Driver Technical Information" topic in Configure's on-line help for this device driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the TTY Port Server Device Driver. \
+
+\fs16 \
+
+\fs24 ·	Configure's on-line help for the Serial Mouse Device Driver. \
+
+\fs16 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs16\fi-360\li720\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\fi-360\li720\fc1\cf1 ·	See NeXTAnswer 1824 for general information on installing and configuring device drivers. \
+
+}

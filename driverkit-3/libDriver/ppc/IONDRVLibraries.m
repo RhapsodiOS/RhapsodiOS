@@ -2,7 +2,7 @@
  * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
  * Reserved.  This file contains Original Code and/or Modifications of
  * Original Code as defined in and that are subject to the Apple Public
@@ -10,7 +10,7 @@
  * except in compliance with the License.  Please obtain a copy of the
  * License at http://www.apple.com/publicsource and read it before using
  * this file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
@@ -56,6 +56,9 @@
 enum {
     kNVRAMProperty        = 0x00000020L,            // matches NR
 };
+
+// Global set by drvPExpert in kernel for Cabernet hardware (iMac DV)
+int gIsCabernet = 0;
 
 //=========================================================================
 
@@ -270,9 +273,9 @@ OSStatus _eRegistryEntryIDInit( void *entryID )
 /*
  * Compare EntryID's for equality or if invalid
  *
- * If a NULL value is given for either id1 or id2, the other id 
- * is compared with an invalid ID.  If both are NULL, the id's 
- * are consided equal (result = true). 
+ * If a NULL value is given for either id1 or id2, the other id
+ * is compared with an invalid ID.  If both are NULL, the id's
+ * are consided equal (result = true).
  *   note: invalid != uninitialized
  */
 Boolean _eRegistryEntryIDCompare( void * entryID1, void * entryID2 )
@@ -310,6 +313,10 @@ OSStatus _eRegistryPropertyGet(void *entryID, const char *propertyName, UInt32 *
     void * value = propertyValue;
 
     REG_ENTRY_TO_ID( entryID, ioDevice)
+
+    // Cabernet hardware workaround: block ATYN property access
+    if( _gIsCabernet && (strcmp(propertyName, "ATYN") == 0))
+        return( -1);
 
     err = [[ioDevice propertyTable] getProperty:propertyName flags:0 value:&value length:propertySize];
 #if LOGNAMEREG
@@ -1107,4 +1114,3 @@ LibraryEntry Libraries[ NUMLIBRARIES ] =
     // out of spec stuff
     { "InterfaceLib", sizeof(InterfaceLibFuncs) / sizeof(FunctionEntry), InterfaceLibFuncs }
 };
-

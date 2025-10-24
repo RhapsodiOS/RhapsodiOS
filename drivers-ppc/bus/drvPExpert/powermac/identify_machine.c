@@ -778,8 +778,6 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
             break;
     }
 
-    /* TODO: Handle ATY,Rage128Pd - detect Cabernet (iMac DV) displays */
-#if 0
     /* Handle ATY,Rage128Pd - detect Cabernet (iMac DV) displays */
     if( 0 == strcmp( nodeName, "ATY,Rage128Pd") && index == 0) {
         int     *edidData;
@@ -796,7 +794,6 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
         }
         return -1;
     }
-#endif
 
     if( 0 == strcmp( nodeName, "53c94")) switch( index) {
 

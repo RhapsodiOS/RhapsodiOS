@@ -110,14 +110,44 @@ void call_kdp(void);
     char		devName[20];
     int			numInts, numRange;
     int			maxInts, maxRange;
+    char *		compatible;
+    char *		model;
+    IOPropertyTable *	propTable;
 
 //    call_kdp();
 
     idec = [[self alloc] initFromDeviceDescription:deviceDescription];
 
-    if ( strcmp([deviceDescription nodeName], "pci-ata") == 0 )
+    // Default to Heathrow controller
+    idec->_controllerType = kControllerTypeHeathrow;
+
+    propTable = [deviceDescription propertyTable];
+
+    // Check "compatible" property for controller type detection
+    if ([propTable getProperty:"compatible" flags:kReferenceProperty
+                         value:&compatible length:NULL] == IO_R_SUCCESS)
     {
-        idec->_controllerType = kControllerTypeCmd646X;
+        if (strcmp(compatible, "keylargo-ata") == 0)
+        {
+            // KeyLargo ATA controller
+            idec->_controllerType = kControllerTypeKeyLargo;
+
+            // Check if this is an ATA-4 variant
+            if ([propTable getProperty:"model" flags:kReferenceProperty
+                                 value:&model length:NULL] == IO_R_SUCCESS)
+            {
+                if (strcmp(model, "ata-4") == 0)
+                {
+                    idec->_controllerType = kControllerTypeATA4;
+                }
+            }
+        }
+        else if (strcmp(compatible, "cmd646-ata") == 0 ||
+                 strcmp(compatible, "pci1095,646") == 0)
+        {
+            // CMD646 PCI ATA controller
+            idec->_controllerType = kControllerTypeCmd646X;
+        }
     }
 
     numRange = [deviceDescription numMemoryRanges];

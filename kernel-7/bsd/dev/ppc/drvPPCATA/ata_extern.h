@@ -395,10 +395,13 @@ typedef	struct	_ideIdentifyInfo {
 #define PIO_FLOW_CONTROL_TM_MASK		0x000f
 #define DMA_FLOW_CONTROL_TM_MASK		0x0017
 
-enum ControllerType 
+enum ControllerType
 {
-    kControllerTypePPC	= 	0x00,
-    kControllerTypeCmd646X  =	0x01,
+    kControllerTypePPC	    = 0x00,    // Reserved/unused
+    kControllerTypeHeathrow = 0x01,    // Default Heathrow ATA
+    kControllerTypeKeyLargo = 0x02,    // KeyLargo ATA
+    kControllerTypeATA4     = 0x03,    // KeyLargo ATA-4
+    kControllerTypeCmd646X  = 0x04,    // CMD646 PCI ATA
 };
 
 typedef struct _ideDMAList

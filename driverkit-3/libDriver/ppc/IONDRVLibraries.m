@@ -315,7 +315,7 @@ OSStatus _eRegistryPropertyGet(void *entryID, const char *propertyName, UInt32 *
     REG_ENTRY_TO_ID( entryID, ioDevice)
 
     // Cabernet hardware workaround: block ATYN property access
-    if( _gIsCabernet && (strcmp(propertyName, "ATYN") == 0))
+    if( gIsCabernet && (strcmp(propertyName, "ATYN") == 0))
         return( -1);
 
     err = [[ioDevice propertyTable] getProperty:propertyName flags:0 value:&value length:propertySize];

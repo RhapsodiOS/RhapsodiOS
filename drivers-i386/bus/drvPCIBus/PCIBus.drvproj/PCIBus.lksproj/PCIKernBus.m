@@ -37,6 +37,8 @@
 #import <machdep/i386/intr_internal.h>
 
 #import <string.h>
+#import <stdlib.h>
+#import <stdio.h>
 
 /* PCI Configuration Space Registers */
 #define PCI_CONFIG_VENDOR_ID    0x00
@@ -469,69 +471,19 @@
 
 - (IOReturn)allocateResourcesForDeviceDescription:(id)deviceDescription
 {
-    unsigned char bus, dev, func;
-    unsigned int bar[6];
-    unsigned int interruptLine, interruptPin;
-    IOReturn result;
-    int i;
+    id eisaBus;
+    id result;
 
-    if (deviceDescription == nil) {
-        return IO_R_INVALID_ARG;
-    }
+    /* Lookup EISA bus instance */
+    eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
 
-    /* Extract bus/device/function from device description */
-    result = [self configAddress:deviceDescription device:&dev function:&func bus:&bus];
-    if (result != IO_R_SUCCESS) {
-        return result;
-    }
+    /* Set the bus on the device description */
+    [deviceDescription setBus:eisaBus];
 
-    /* Verify device exists */
-    if (![self deviceExists:bus device:dev function:func]) {
-        return IO_R_NO_DEVICE;
-    }
+    /* Delegate resource allocation to EISA bus */
+    result = [eisaBus allocateResourcesForDeviceDescription:deviceDescription];
 
-    /* Read Base Address Registers (BARs) for resource requirements */
-    for (i = 0; i < 6; i++) {
-        bar[i] = [self configRead:bus device:dev function:func offset:0x10 + (i * 4) width:4];
-
-        if (bar[i] != 0 && bar[i] != 0xFFFFFFFF) {
-            if (bar[i] & 0x1) {
-                /* I/O Space BAR - allocate from I/O port resources */
-                unsigned int ioBase = bar[i] & 0xFFFFFFFC;
-                /* TODO: Allocate I/O port range from resource pool */
-                IOLog("PCIKernBus: Device %d:%d.%d requires I/O space at 0x%x\n",
-                      bus, dev, func, ioBase);
-            } else {
-                /* Memory Space BAR - allocate from memory resources */
-                unsigned int memBase = bar[i] & 0xFFFFFFF0;
-                unsigned int memType = (bar[i] >> 1) & 0x3;
-
-                IOLog("PCIKernBus: Device %d:%d.%d requires memory space at 0x%x\n",
-                      bus, dev, func, memBase);
-
-                /* Handle 64-bit BARs */
-                if (memType == 0x2 && i < 5) {
-                    i++; /* Skip next BAR as it's part of the 64-bit address */
-                }
-            }
-        }
-    }
-
-    /* Read interrupt configuration */
-    interruptPin = [self configRead:bus device:dev function:func offset:0x3D width:1];
-
-    if (interruptPin != 0) {
-        interruptLine = [self configRead:bus device:dev function:func offset:0x3C width:1];
-
-        /* Allocate interrupt resources */
-        if (interruptLine < INTR_NIRQ) {
-            IOLog("PCIKernBus: Device %d:%d.%d requires IRQ %d (pin %d)\n",
-                  bus, dev, func, interruptLine, interruptPin);
-            /* TODO: Mark IRQ as allocated in resource pool */
-        }
-    }
-
-    return IO_R_SUCCESS;
+    return (IOReturn)result;
 }
 
 @end

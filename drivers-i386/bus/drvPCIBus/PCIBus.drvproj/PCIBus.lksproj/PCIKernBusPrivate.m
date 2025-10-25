@@ -30,6 +30,8 @@
 #import "PCIKernBusPrivate.h"
 #import "pci.h"
 
+#import <driverkit/i386/ioPorts.h>
+
 /* PCI I/O Ports (Intel architecture) */
 #define PCI_CONFIG_ADDRESS      0x0CF8
 #define PCI_CONFIG_DATA         0x0CFC

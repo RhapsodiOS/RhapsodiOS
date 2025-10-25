@@ -112,7 +112,6 @@ static IOReturn Set_ConfigReg(unsigned int count, char *values, unsigned int reg
     unsigned int dev = 0, func = 0, bus = 0, reg = 0;
     unsigned int maxDev, maxBus;
     unsigned long idValue;
-    IOReturn result;
 
     if (count == NULL || *count == 0) {
         return [super getCharValues:values forParameter:parameterName count:count];
@@ -353,7 +352,6 @@ static IOReturn Get_ConfigReg(unsigned int *count, char *values, unsigned int re
 {
     id pciBus;
     IOReturn result;
-    unsigned long regValue;
 
     /* Lookup PCI bus instance */
     pciBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];

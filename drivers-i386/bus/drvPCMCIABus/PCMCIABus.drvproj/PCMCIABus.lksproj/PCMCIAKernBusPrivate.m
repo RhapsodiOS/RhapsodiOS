@@ -28,7 +28,25 @@
 
 #import "PCMCIAKernBus.h"
 #import "PCMCIAKernBusPrivate.h"
+#import "PCMCIAid.h"
+#import "PCMCIAPoolElement.h"
+#import "PCMCIATuple.h"
 #import <libkern/libkern.h>
+#import <driverkit/generalFuncs.h>
+#import <driverkit/KernDevice.h>
+#import <driverkit/KernDeviceDescription.h>
+#import <driverkit/IODevice.h>
+#import <driverkit/IODeviceDescription.h>
+#import <objc/HashTable.h>
+#import <string.h>
+
+/* Forward declaration for IOPCMCIADeviceDescription */
+@interface IOPCMCIADeviceDescription : IODeviceDescription
+- _initWithDelegate:delegate;
+@end
+
+/* Some mach stuff to create a mach port, kernel/driverkit/driverServerXXX.m */
+extern port_t create_dev_port(KernDevice *kernDevice);
 
 /*
  * Wait for socket to become ready
@@ -67,7 +85,7 @@ static BOOL waitForSocketReady(id socket)
 static void printDescription(id deviceDesc)
 {
     BOOL hasMore;
-    unsigned long long state;
+    NXHashState state;
     const char *key;
     const char *stringValue;
     id resourceValue;
@@ -100,19 +118,19 @@ static void printDescription(id deviceDesc)
 /*
  * Allocate resources for device description
  */
-- (BOOL)allocateResourcesForDeviceDescription:deviceDesc
+- allocateResourcesForDeviceDescription:descr
 {
     id eisaBus;
-    BOOL result;
+    id result;
 
     /* Look up EISA bus instance */
     eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
 
     /* Set the bus on the device description */
-    [deviceDesc setBus:eisaBus];
+    [descr setBus:eisaBus];
 
     /* Delegate resource allocation to EISA bus */
-    result = [eisaBus allocateResourcesForDeviceDescription:deviceDesc];
+    result = [eisaBus allocateResourcesForDeviceDescription:descr];
 
     return result;
 }
@@ -132,7 +150,7 @@ static void printDescription(id deviceDesc)
     id windowList;
     unsigned int *rangePtr;
     id rangeResource;
-    IORange range;
+    Range range;
     unsigned int base, length, cardBase;
     BOOL isShared;
     int matchIndex;
@@ -562,7 +580,7 @@ cleanup_and_fail:
     BOOL matched;
     id ioPortsResource;
     unsigned int alignment, numRanges;
-    IORange range;
+    Range range;
     id rangeResource;
     BOOL failed;
     id irqLevelsResource;
@@ -597,7 +615,7 @@ cleanup_and_fail:
     if (_verbose) {
         IOLog("PKB: configureSocket:withDescription:\n");
         if (_verbose) {
-            _printDescription(deviceDesc);
+            printDescription(deviceDesc);
         }
     }
 
@@ -923,7 +941,7 @@ cleanup_and_fail:
     [configRangeResource free];
 
     /* Wait for socket to be ready */
-    waitResult = _waitForSocketReady(socket);
+    waitResult = waitForSocketReady(socket);
     if (waitResult == 0) {
         IOLog("PCMCIA: configureDriver: waitForSocketReady failed\n");
     }
@@ -966,7 +984,7 @@ cleanup_and_fail:
     BOOL configured;
     char *driverName;
     BOOL probed;
-    IORange range;
+    Range range;
 
     /* Get socket info */
     socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
@@ -1060,7 +1078,6 @@ cleanup_and_fail:
     unsigned int length;
     void *data;
     id newTuple;
-    extern id PCMCIATuple;
 
     /* Create new list */
     newList = [[List alloc] init];
@@ -1116,7 +1133,7 @@ cleanup_and_fail:
 
     while (attrMem < endAddr) {
         /* Wait for socket to be ready */
-        waitResult = _waitForSocketReady(socket);
+        waitResult = waitForSocketReady(socket);
         if (waitResult == 0) {
             IOLog("PCMCIA: tupleListFromSocket: not ready 1\n");
             break;
@@ -1137,7 +1154,7 @@ cleanup_and_fail:
         }
 
         /* Wait for socket ready before reading data */
-        waitResult = _waitForSocketReady(socket);
+        waitResult = waitForSocketReady(socket);
         if (waitResult == 0) {
             IOLog("PCMCIA: tupleListFromSocket: not ready 2\n");
             break;
@@ -1155,7 +1172,7 @@ cleanup_and_fail:
         /* Copy tuple data from attribute memory */
         /* Attribute memory has data at even addresses only (every 2 bytes) */
         for (i = 0; i < actualLength; i++) {
-            waitResult = _waitForSocketReady(socket);
+            waitResult = waitForSocketReady(socket);
             if (waitResult == 0) {
                 IOLog("PCMCIA: tupleListFromSocket: not ready 3\n");
                 goto done;
@@ -1296,7 +1313,7 @@ done:
 /*
  * Map attribute memory
  */
-- mapAttributeMemory:(IORange)range
+- mapAttributeMemory:(Range)range
            ForSocket:socket
             CardBase:(unsigned int)cardBase
 {
@@ -1320,7 +1337,7 @@ done:
 /*
  * Map memory to card address
  */
-- mapMemory:(IORange)range
+- mapMemory:(Range)range
   ForSocket:socket
 ToCardAddress:(unsigned int)cardAddr
 {
@@ -1444,7 +1461,7 @@ ToCardAddress:(unsigned int)cardAddr
         }
 
         /* Create device port */
-        devicePort = _create_dev_port(kernDevice);
+        devicePort = create_dev_port(kernDevice);
         [pcmciaDesc setDevicePort:devicePort];
 
         /* Check if class responds to probe: */
@@ -1610,12 +1627,12 @@ cleanup_and_fail:
     int addressLines;
     unsigned int alignment;
     id rangeResource;
-    IORange range;
+    Range range;
     BOOL matched;
     unsigned int i;
     unsigned int *rangesPtr;
     unsigned int entryBase, entryLength;
-    IORange entryRange;
+    Range entryRange;
 
     matched = NO;
 
@@ -1703,7 +1720,7 @@ done:
     unsigned int i;
     unsigned int *rangesPtr;
     unsigned int base, length;
-    IORange range;
+    Range range;
     id rangeResource;
 
     /* Get EISA bus and I/O Ports resource */
@@ -1773,7 +1790,6 @@ done:
     id memMapsResource;
     unsigned int rangeBase;
     id rangeResource;
-    extern unsigned int _biosBitmap[];
 
     /* Convert alignment to 2KB blocks (shift by 11 bits) */
     alignmentBlocks = alignment >> 11;
@@ -1796,7 +1812,7 @@ done:
         word = currentBlock >> 5;  /* Which 32-bit word */
         bit = currentBlock & 0x1f;  /* Which bit in that word */
 
-        if ((_biosBitmap[word] & (1 << bit)) != 0) {
+        if ((biosBitmap[word] & (1 << bit)) != 0) {
             /* Block is used - skip to next aligned position */
             currentBlock = ((currentBlock + alignmentBlocks) / alignmentBlocks) * alignmentBlocks;
             consecutiveBlocks = 1;
@@ -1807,7 +1823,7 @@ done:
         /* Block is free - check if we have enough consecutive blocks */
         if (consecutiveBlocks == requiredBlocks) {
             /* Found enough consecutive free blocks - reserve the range */
-            IORange range;
+            Range range;
 
             eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
             memMapsResource = [eisaBus _lookupResourceWithKey:"Memory Maps"];

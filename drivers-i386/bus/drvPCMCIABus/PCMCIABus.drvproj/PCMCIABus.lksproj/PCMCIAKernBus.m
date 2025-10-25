@@ -30,14 +30,13 @@
 
 #import <mach/mach_types.h>
 
+#import <driverkit/generalFuncs.h>
+#import <driverkit/kernelDriver.h>
 #import <driverkit/KernLock.h>
 #import "PCMCIAKernBus.h"
 #import "PCMCIAKernBusPrivate.h"
 #import "PCMCIAPool.h"
 #import "PCMCIATuple.h"
-#import "PCMCIATupleList.h"
-#import "PCMCIAWindow.h"
-#import "PCMCIASocket.h"
 #import "PCMCIAid.h"
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
@@ -45,6 +44,7 @@
 #import <kernserv/i386/spl.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
+#import <mach/vm_param.h>           // PAGE_SIZE
 #import <objc/HashTable.h>
 #import <objc/List.h>
 #import <libkern/libkern.h>
@@ -58,7 +58,7 @@ id _driverConfigTables = nil;
 
 /* Global BIOS memory bitmap - 3 uints (12 bytes) for tracking BIOS ROM regions */
 /* Covers 0xC0000-0xF0000 range: 192KB / 2KB blocks = 96 blocks = 3 uints */
-static unsigned int _biosBitmap[3];
+unsigned int biosBitmap[3];
 
 /* External function to look up server configuration attributes */
 extern char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute);
@@ -151,19 +151,10 @@ static void findBIOSMemoryRange(void *bitmap)
 
 @implementation PCMCIAKernBus
 
-static const char *resourceNameStrings[] = {
-    IRQ_LEVELS_KEY,
-    DMA_CHANNELS_KEY,
-    MEM_MAPS_KEY,
-    IO_PORTS_KEY,
-    PCMCIA_SOCKETS_KEY,
-    NULL
-};
-
 + initialize
 {
     /* Initialize BIOS memory range bitmap */
-    findBIOSMemoryRange(&_biosBitmap);
+    findBIOSMemoryRange(&biosBitmap);
 
     /* Initialize global list of driver config tables */
     _driverConfigTables = [[List alloc] init];
@@ -239,7 +230,7 @@ static const char *resourceNameStrings[] = {
     unsigned int strLen;
     unsigned int memoryBase;
     unsigned int memoryLength;
-    IORange range;
+    Range range;
 
     /* Get the direct device from device description */
     directDevice = [deviceDesc directDevice];
@@ -432,7 +423,7 @@ static const char *resourceNameStrings[] = {
 - memoryRangeResource
 {
     unsigned int alignedLength;
-    IORange range;
+    Range range;
 
     /* If we have a cached resource, free it first */
     if (_memoryRangeResource != nil) {
@@ -445,13 +436,12 @@ static const char *resourceNameStrings[] = {
     }
 
     /* Calculate page-aligned length */
-    extern vm_size_t page_size;
-    alignedLength = ((page_size + _memoryLength - 1) / page_size) * page_size;
+    alignedLength = ((PAGE_SIZE + _memoryLength - 1) / PAGE_SIZE) * PAGE_SIZE;
 
     /* Find and reserve a memory range */
     _memoryRangeResource = [self findAndReserveRangeBase:_memoryBase
                                                   Length:alignedLength
-                                               Alignment:page_size];
+                                               AlignedTo:PAGE_SIZE];
 
     /* Log the result if verbose */
     if (_verbose) {
@@ -466,20 +456,6 @@ static const char *resourceNameStrings[] = {
 
     return _memoryRangeResource;
 }
-
-/*
- * Socket info structure (24 bytes)
- */
-typedef struct {
-    unsigned int    status;         // Offset 0 - Current socket status
-    unsigned char   flag1;          // Offset 4
-    unsigned char   probed;         // Offset 5 - Card has been probed
-    unsigned short  padding;        // Offset 6
-    id              pool;           // Offset 8 - PCMCIAPool
-    id              tupleList;      // Offset 12 - PCMCIATupleList
-    id              deviceDesc;     // Offset 16 - KernDeviceDescription
-    id              cardID;         // Offset 20 - PCMCIAid
-} SocketInfo;
 
 /*
  * Add adapter to the bus
@@ -610,7 +586,7 @@ typedef struct {
 /*
  * Set bus range
  */
-- (void)setBusRange:(IORange)range
+- (void)setBusRange:(Range)range
 {
     _memoryBase = range.base;
     _memoryLength = range.length;
@@ -633,7 +609,7 @@ typedef struct {
     unsigned int socketNum;
     unsigned int currentStatus;
     id memRange;
-    IORange range;
+    Range range;
     id memWindow;
     unsigned int i, count;
     id tuple;
@@ -716,7 +692,7 @@ typedef struct {
 
             memRange = [self findAndReserveRangeBase:_memoryBase
                                               Length:_memoryLength
-                                           Alignment:0x1000];
+                                           AlignedTo:0x1000];
 
             if (memRange == nil) {
                 IOLog("PCMCIA: could not find a memory range 0x%x..0x%x\n",
@@ -732,8 +708,7 @@ typedef struct {
             }
 
             /* Map attribute memory */
-            memWindow = [self mapAttributeMemory:range ForSocket:socket CardOffset:0];
-
+            memWindow = [self mapAttributeMemory:range ForSocket:socket CardBase:0];
             if (memWindow == nil) {
                 [memRange free];
                 IOLog("PCMCIA: couldn't get a memory window!\n");

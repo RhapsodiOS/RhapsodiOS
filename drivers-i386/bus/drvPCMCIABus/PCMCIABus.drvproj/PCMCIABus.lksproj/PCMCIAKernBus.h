@@ -35,6 +35,41 @@
 #import <driverkit/KernBusInterrupt.h>
 #import <objc/List.h>
 
+/* Socket info structure (24 bytes) */
+typedef struct {
+    unsigned int    status;         // Offset 0 - Current socket status
+    unsigned char   flag1;          // Offset 4
+    unsigned char   probed;         // Offset 5 - Card has been probed
+    unsigned short  padding;        // Offset 6
+    id              pool;           // Offset 8 - PCMCIAPool
+    id              tupleList;      // Offset 12 - List of PCMCIATuple objects
+    id              deviceDesc;     // Offset 16 - KernDeviceDescription
+    id              cardID;         // Offset 20 - PCMCIAid
+} SocketInfo;
+
+/* Global BIOS memory bitmap - 3 uints (12 bytes) for tracking BIOS ROM regions */
+/* Covers 0xC0000-0xF0000 range: 192KB / 2KB blocks = 96 blocks = 3 uints */
+extern unsigned int biosBitmap[3];
+
+/*
+ * Protocol for PCMCIA status change notifications
+ */
+@protocol PCMCIAStatusChange
+
+- statusChangedForSocket:socket changedStatus:(unsigned int)status;
+
+@end
+
+/*
+ * Protocol for PCMCIA adapter drivers
+ */
+@protocol PCMCIAAdapter
+
+- setStatusChangeHandler:handler;
+- sockets;
+
+@end
+
 
 @interface PCMCIAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
 {
@@ -90,7 +125,7 @@
 - memoryRangeResource;
 
 /* Configuration */
-- (void)setBusRange:(IORange)range;
+- (void)setBusRange:(Range)range;
 - (void)setVerbose:(BOOL)verbose;
 
 /* Status changes */

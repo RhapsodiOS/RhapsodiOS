@@ -31,9 +31,10 @@
 #import "PCMCIAConfigEntry.h"
 #import <objc/List.h>
 #import <driverkit/IODevice.h>
+#import <driverkit/IODeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <libkern/libkern.h>
-#import <bsd/libc.h>
+#import <string.h>
 
 /*
  * Global default configuration entry
@@ -726,15 +727,19 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
  */
 - _allocResourcesForDescription:description fromTupleList:tupleList
 {
+    unsigned int count;
+    unsigned int i;
+    id tuple;
+
     /* Allocate base resources for device description */
     if ([self allocateResourcesForDeviceDescription:description] == nil) {
         return nil;
     }
 
     /* Parse each tuple in the list and extract resource information */
-    unsigned int count = [tupleList count];
-    for (unsigned int i = 0; i < count; i++) {
-        id tuple = [tupleList objectAt:i];
+    count = [tupleList count];
+    for (i = 0; i < count; i++) {
+        tuple = [tupleList objectAt:i];
         [self _parseTuple:tuple intoDeviceDescription:description];
     }
 

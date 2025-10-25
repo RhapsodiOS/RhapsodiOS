@@ -27,6 +27,8 @@
  */
 
 #import "PCMCIAid.h"
+#import <driverkit/generalFuncs.h>
+#import <driverkit/IODeviceDescription.h>
 #import <string.h>
 #import <libkern/libkern.h>
 
@@ -351,7 +353,7 @@ static char *_sanitizeStringCopy(char *str)
     /* Log each non-NULL field with its label */
     for (i = 0; i < 5; i++) {
         if (fields[i] != NULL) {
-            ::IOLog("PCMCIAid: %s %s\n", PCMCIAidFieldLabels[i], fields[i]);
+            IOLog("PCMCIAid: %s %s\n", PCMCIAidFieldLabels[i], fields[i]);
         }
     }
 }
@@ -375,11 +377,11 @@ static char *_sanitizeStringCopy(char *str)
             if (i == 0) {
                 /* Field 0 is function type - convert to human-readable string */
                 functionName = _stringForFunctionID(value);
-                ::IOLog("PCMCIABus: %s %s (%s)\n",
+                IOLog("PCMCIABus: %s %s (%s)\n",
                        PCMCIAidFieldLabels[i], functionName, value);
             } else {
                 /* Other fields - just log the value */
-                ::IOLog("PCMCIABus: %s %s\n",
+                IOLog("PCMCIABus: %s %s\n",
                        PCMCIAidFieldLabels[i], value);
             }
         }

@@ -28,10 +28,22 @@
 
 #import "PCMCIAKernBus.h"
 
+/* Forward declarations that a secondary PCMCIA driver would have to hook into the bus driver */
+@interface Object(PCMCIASocketWindowMethods)
+- (id)windows;
+- (void)setStatusChangeMask:(unsigned int)mask;
+- (unsigned int)socketNumber;
+- (unsigned int)status;
+@end
+
+@interface Object(ListFreeMethods)
+- (id)freeObjects:(SEL)selector;
+@end
+
 @interface PCMCIAKernBus (Private)
 
 /* Resource allocation */
-- (BOOL)allocateResourcesForDeviceDescription:deviceDesc;
+- allocateResourcesForDeviceDescription:descr;
 - allocateSharedMemory:(unsigned int)size
         ForDescription:deviceDesc
              AndSocket:socket;
@@ -54,10 +66,10 @@
 
 /* Memory window management */
 - freeMemoryWindowElement:element;
-- mapAttributeMemory:(IORange)range
+- mapAttributeMemory:(Range)range
            ForSocket:socket
             CardBase:(unsigned int)cardBase;
-- mapMemory:(IORange)range
+- mapMemory:(Range)range
   ForSocket:socket
 ToCardAddress:(unsigned int)cardAddr;
 

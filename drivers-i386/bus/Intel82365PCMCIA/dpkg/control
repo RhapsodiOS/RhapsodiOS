@@ -1,4 +1,4 @@
-Package: Intel82365PCMCIA
+Package: intel82365pcmcia
 Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: Apple Computer
 Version: 13

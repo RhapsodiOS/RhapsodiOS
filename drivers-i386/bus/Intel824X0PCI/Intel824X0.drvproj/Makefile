@@ -13,6 +13,8 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
+LOCAL_RESOURCES = Localizable.strings DriverHelp
+
 GLOBAL_RESOURCES = Default.table
 
 CLASSES =
@@ -21,7 +23,7 @@ HFILES =
 
 TOOLS = Intel824X0.lksproj
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

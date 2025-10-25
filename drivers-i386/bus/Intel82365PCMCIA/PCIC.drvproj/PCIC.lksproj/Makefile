@@ -7,7 +7,7 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel82365
+NAME = PCIC
 
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server

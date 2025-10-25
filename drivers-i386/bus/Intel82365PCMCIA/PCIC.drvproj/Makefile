@@ -7,23 +7,23 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel82365
+NAME = PCIC
 
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table PCI.table
+LOCAL_RESOURCES = Localizable.strings PCI.strings DriverHelp
 
-ENGLISH_RESOURCES = Localizable.strings PCI.strings
+GLOBAL_RESOURCES = Default.table PCI.table
 
 CLASSES =
 
 HFILES =
 
-TOOLS = Intel82365.lksproj
+TOOLS = PCIC.lksproj
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

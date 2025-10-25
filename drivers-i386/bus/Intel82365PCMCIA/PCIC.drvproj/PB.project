@@ -4,13 +4,12 @@
     FILESTABLE = {
         FRAMEWORKS = ();
         FRAMEWORKSEARCH = ("$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks", /System/Library/PrivateFrameworks);
-        GLOBAL_RESOURCES = (Default.table);
-        ENGLISH_RESOURCES = (Localizable.strings, PCI.strings);
+        OTHER_RESOURCES = (Default.table, PCI.table, Localizable.strings, PCI.strings);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
-        SUBPROJECTS = (Intel82365.lksproj);
+        SUBPROJECTS = (PCIC.lksproj);
     };
     LANGUAGE = English;
-    LOCALIZABLE_FILES = {Localizable.strings = "English.lproj/Localizable.strings"; PCI.strings = "English.lproj/PCI.strings"; };
+    LOCALIZABLE_FILES = {};
     MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
     NEXTSTEP_BUILDTOOL = /bin/gnumake;
     NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
@@ -18,7 +17,7 @@
     NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
     PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
     PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
-    PROJECTNAME = Intel82365;
+    PROJECTNAME = PCIC;
     PROJECTTYPE = Driver;
     PROJECTVERSION = 1.0;
     WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";

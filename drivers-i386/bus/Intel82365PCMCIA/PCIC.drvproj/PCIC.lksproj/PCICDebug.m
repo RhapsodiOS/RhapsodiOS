@@ -28,7 +28,7 @@
 
 #import "PCIC.h"
 #import <driverkit/generalFuncs.h>
-#import <mach/mach.h>
+#import <machdep/i386/io_inline.h>
 #import <kernserv/prototypes.h>
 
 /* External reference to global reg_base from PCIC.m */

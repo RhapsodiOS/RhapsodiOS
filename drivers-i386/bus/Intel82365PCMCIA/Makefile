@@ -7,13 +7,13 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel82365
+NAME = PCIC
 
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-BUNDLES = Intel82365.drvproj
+BUNDLES = PCIC.drvproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

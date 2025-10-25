@@ -32,7 +32,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
-#import <driverkit/i386/PCMCIAKernBus.h>
+#import <machdep/i386/io_inline.h>
 #import <objc/List.h>
 #import <bsd/sys/types.h>
 
@@ -79,13 +79,12 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
     IORange *range;
-    const char *irqStr;
     id socket;
     id socketWindows;
     int i;
 
     /* Get port range list and validate */
-    range = [deviceDescription portRangeList];
+    range = [deviceDescription resourcesForKey:"I/O Ports"];
     if (!range) {
         IOLog("PCIC: No I/O port range specified\n");
         [self free];
@@ -115,10 +114,8 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     [self setUnit:0];
 
     /* Get IRQ level */
-    irqStr = [deviceDescription interrupt];
-    if (irqStr) {
-        irqLevel = atoi(irqStr);
-    } else {
+    irqLevel = [deviceDescription interrupt];
+    if (irqLevel == 0) {
         irqLevel = 5; /* Default IRQ */
     }
 
@@ -251,12 +248,9 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 - (unsigned int)interrupt
 {
     id deviceDesc;
-    const char *interruptStr;
 
     deviceDesc = [self deviceDescription];
-    interruptStr = [deviceDesc interrupt];
-
-    return atoi(interruptStr);
+    return [deviceDesc interrupt];
 }
 
 /*
@@ -304,6 +298,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 - (IOReturn)setPowerState:(int)powerState
 {
     unsigned int i, count;
+    unsigned int j, windowCount;
     id socket;
     id window;
 
@@ -321,7 +316,6 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
             [socket setCardVccPower:0];
 
             /* Disable all windows for this socket */
-            unsigned int j, windowCount;
             windowCount = [windowList count];
             for (j = 0; j < windowCount; j++) {
                 window = [windowList objectAt:j];

@@ -33,13 +33,20 @@
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
-#import <driverkit/i386/PCMCIA.h>
-#import <driverkit/i386/PCMCIAKernBus.h>
 
 /* Forward declarations */
 @class PCMCIAKernBus;
 @class PCICSocket;
 @class PCICWindow;
+
+/*
+ * Protocol for PCMCIA status change notifications
+ */
+@protocol PCMCIAStatusChange
+
+- statusChangedForSocket:socket changedStatus:(unsigned int)status;
+
+@end
 
 @interface PCIC : IODirectDevice
 {

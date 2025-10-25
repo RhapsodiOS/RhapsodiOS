@@ -28,6 +28,7 @@
 
 #import "PCIC.h"
 #import <driverkit/generalFuncs.h>
+#import <machdep/i386/io_inline.h>
 
 /* External reference to global reg_base from PCIC.m */
 extern unsigned int reg_base;

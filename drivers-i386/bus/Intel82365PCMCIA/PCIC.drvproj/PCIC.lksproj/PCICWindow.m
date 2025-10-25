@@ -28,6 +28,7 @@
 
 #import "PCICWindow.h"
 #import "PCICSocket.h"
+#import <machdep/i386/io_inline.h>
 #import <objc/List.h>
 
 /* External reference to global reg_base from PCIC.m */

@@ -256,12 +256,12 @@ idestrategy(struct buf *bp)
     u_int block_size;
     IOReturn rtn;
     vm_task_t client;
-	
+
     if(diskObj == nil) {
 	bp->b_error = ENXIO;
 	goto bad;
     }
-    
+
     if((bp->b_flags & (B_PHYS|B_KERNSPACE)) == B_PHYS) {
 	/*
 	 * Physical I/O to user space.
@@ -275,7 +275,7 @@ idestrategy(struct buf *bp)
 	 */
 	client = IOVmTaskSelf();
     }
-    
+
     block_size = [diskObj blockSize];
     if (block_size == 0) {
 	bp->b_error = ENXIO;

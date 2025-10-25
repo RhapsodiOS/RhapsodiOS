@@ -47,10 +47,19 @@ typedef struct {
 	u_short	cycle;	// cycle time in ns
 } PIIXTiming;
 
-#define PIIX_TIMING_TABLE_SIZE	7
+#define INV		255			// invalid mode
+#define PIIX_TIMING_TABLE_SIZE	6
 
-/* Timing tables are defined in IdePIIX.m */
-extern const PIIXTiming PIIXTimingTable[];
+static const
+PIIXTiming PIIXTimingTable[] = {
+//   PIO    SW     MW
+	{0,     0,     0,     5, 4, 600},	// compatible timing
+	{1, 	1,     INV,   5, 4, 600},
+	{2,     2,     INV,   4, 4, 240},
+	{3,     INV,   1,     3, 3, 180},
+    {4,     INV,   2,     3, 1, 120},
+	{5,     INV,   2,     3, 1, 120},	// Isn't this 90ns?
+};
 
 /*
  * PIIX Ultra DMA/33 timing table.

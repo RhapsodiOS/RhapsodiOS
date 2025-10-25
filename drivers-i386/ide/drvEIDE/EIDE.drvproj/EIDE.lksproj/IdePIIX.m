@@ -71,23 +71,6 @@ extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_offset_t va);
 #endif  MAX
 
 /*
- * PIIX PIO/DMA timing table.
- */
-#define INV		255			// invalid mode
-
-static const
-PIIXTiming PIIXTimingTable[] = {
-//   PIO    SW     MW
-	{0,     0,     0,     5, 4, 600},	// compatible timing
-	{1, 	1,     INV,   5, 4, 600},
-	{2,     2,     INV,   4, 4, 240},
-	{3,     INV,   1,     3, 3, 180},
-    {4,     INV,   2,     3, 1, 120},
-	{5,     INV,   INV,   3, 1, 90},	// PIO Mode 5 (90ns cycle time)
-	{INV,   INV,   2,     3, 1, 120},	// MW DMA Mode 2 (120ns)
-};
-
-/*
  * Function: IOMallocPage
  *
  * Purpose:
@@ -942,7 +925,10 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 	const char *name = "PIIXSetupPRDTable";
 	u_int len_prd;
 	u_int index;
+
+#ifdef DEBUG	
 	piix_prd_t *table_saved = table;
+#endif DEBUG
 
 	ddm_ide_dma("  PIIXSetupPRDTable: vaddr:%08x size:%d\n",
 		(u_int)vaddr, (u_int)size, 3, 4, 5);
@@ -1001,52 +987,17 @@ PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
 		paddr_start = paddr;
 
 	} while (size && (++index < table_size));
-
+	
 	if (size) {
 		IOLog("%s: PRD table exhausted\n", name);
 		return NO;
-	}
-
+	} 
+	
 	/*
 	 * Set the 'end-of-table' bit on the last PRD entry.
 	 */
 	--table;
 	table->eot = 1;
-
-	/*
-	 * Validate PRD table entries for common errors
-	 */
-	{
-		piix_prd_t *validate = table_saved;
-		int i;
-		for (i = 0; i <= index; i++) {
-			/* Check for NULL base address */
-			if (validate->base == 0) {
-				IOLog("%s: PRD[%d] has NULL base address\n", name, i);
-				return NO;
-			}
-			/* Check for proper alignment (4-byte) */
-			if (validate->base & 0x03) {
-				IOLog("%s: PRD[%d] base 0x%08x not 4-byte aligned\n",
-					name, i, validate->base);
-				return NO;
-			}
-			/* Check count is not zero (unless it means 64K) */
-			if (validate->count == 0 && i != index) {
-				/* Zero count means 64K, only valid for non-final entries
-				 * in some cases, but let's log it */
-				ddm_ide_dma("    PRD[%d] has count=0 (64K transfer)\n",
-					i, 2, 3, 4, 5);
-			}
-			/* Check that only the last entry has EOT set */
-			if (validate->eot && i != index) {
-				IOLog("%s: PRD[%d] has EOT set but is not last entry\n",
-					name, i);
-				return NO;
-			}
-			validate++;
-		}
-	}
 
 #ifdef DEBUG
 	{
@@ -1268,19 +1219,8 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	}
 	else {
 		[self getIdeRegisters:ideRegs Print:NULL];
-		IOLog("%s: Bus master DMA error:\n", [self name]);
-		IOLog("%s:   PIIX status: 0x%02x (Active:%d Error:%d Interrupt:%d)\n",
-			[self name], piix_status.byte,
-			piix_status.bits.bmidea ? 1 : 0,
-			piix_status.bits.err ? 1 : 0,
-			piix_status.bits.ideints ? 1 : 0);
-		IOLog("%s:   IDE return code: %d\n", [self name], rtn);
-		if (piix_status.bits.err)
-			IOLog("%s:   DMA error bit set - possible memory abort or invalid PRD\n",
-				[self name]);
-		if (!piix_status.bits.ideints)
-			IOLog("%s:   IDE interrupt not received - possible drive timeout\n",
-				[self name]);
+		IOLog("%s: PIIX status:0x%02x error code:%d\n",
+			[self name], piix_status.byte, rtn);
 		rtn = IDER_CMD_ERROR;
 	}
 
@@ -1400,20 +1340,9 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	}
 	else {
 		[self getIdeRegisters:NULL Print:"ATAPI DMA"];
-		IOLog("%s: ATAPI bus master DMA error:\n", [self name]);
-		IOLog("%s:   PIIX status: 0x%02x (Active:%d Error:%d Interrupt:%d)\n",
-			[self name], piix_status.byte,
-			piix_status.bits.bmidea ? 1 : 0,
-			piix_status.bits.err ? 1 : 0,
-			piix_status.bits.ideints ? 1 : 0);
-		IOLog("%s:   IDE return code: %d\n", [self name], rtn);
-		IOLog("%s:   Transfer size: %d bytes\n", [self name], atapiIoReq->maxTransfer);
-		if (piix_status.bits.err)
-			IOLog("%s:   DMA error bit set - possible memory abort or invalid PRD\n",
-				[self name]);
-		if (!piix_status.bits.ideints)
-			IOLog("%s:   IDE interrupt not received - possible drive timeout\n",
-				[self name]);
+		IOLog("%s: PIIX status:0x%02x error code:%d\n",
+			[self name], piix_status.byte, rtn);
+		IOLog("%s: transfer size: %d\n", [self name], atapiIoReq->maxTransfer);
 		[self atapiSoftReset:_driveNum];
 		atapiIoReq->scsiStatus = STAT_CHECK;
 		return SR_IOST_CHKSNV;
@@ -1445,15 +1374,6 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  */
 - (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc
 {
-	/*
-	 * PIIX4/PIIX4E/PIIX4M do not have a standard cable detection mechanism.
-	 * We conservatively assume 40-wire cable to prevent data corruption
-	 * that could occur if we incorrectly enable UDMA Mode 4/5 with a
-	 * 40-wire cable.
-	 *
-	 * This limits UDMA to Mode 2 (ATA/33), which is safe for both
-	 * 40-wire and 80-wire cables.
-	 */
 	if (_ide_debug) {
 		IOLog("%s: Cable detection: assuming 40-wire cable (UDMA limited to Mode 2)\n",
 			[self name]);

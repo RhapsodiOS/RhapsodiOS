@@ -206,6 +206,12 @@ typedef struct _ideStruct {
 		return nil;
     }
 
+    if ([self registerDevice] == nil)	{
+		IOLog("%s: Failed to register device.\n", [self name]);
+		[self free];
+		return nil;
+    }
+	
     return self;
 }
 
@@ -483,7 +489,7 @@ static unsigned short lastCommand = 0;
  * issued after can really confirm that but we don't want to wait too long.
  *
  * Linux uses 5 seconds for the first IDENTIFY attempt, which covers >99% of
- * drives. We use half that (5 seconds) as a reasonable compromise.
+ * drives.
  */
 - (ide_return_t)ataIdeReadGetInfoCommonWaitForDataReady
 {

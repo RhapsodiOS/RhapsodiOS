@@ -842,7 +842,7 @@ cleanup_and_fail:
         [windowObject set16Bit:*(unsigned char *)((char *)selectedConfig + 0x71) != 0];
     }
 
-    [deviceDesc setResources:windowList forKey:"PCMCIA_WINDOW_LIST"];
+    [deviceDesc setResources:windowList forKey:PCMCIA_WINDOW_LIST];
     windowList = nil;
 
     /* Set card IRQ */
@@ -932,7 +932,7 @@ cleanup_and_fail:
     socketList = [[List alloc] initCount:1];
     socketElement = [[_PCMCIAPoolElement alloc] initWithPCMCIAPool:nil object:socket];
     [socketList addObject:socketElement];
-    [deviceDesc setResources:socketList forKey:"PCMCIA_SOCKET_LIST"];
+    [deviceDesc setResources:socketList forKey:PCMCIA_SOCKET_LIST];
 
     return YES;
 
@@ -1022,7 +1022,7 @@ cleanup_and_fail:
     }
 
     /* Set tuple list as a resource */
-    [deviceDesc setResources:tupleListCopy forKey:"PCMCIA_TUPLE_LIST"];
+    [deviceDesc setResources:tupleListCopy forKey:PCMCIA_TUPLE_LIST];
 
     /* Probe device with driver table */
     probed = [self probeDevice:table withDescription:deviceDesc];

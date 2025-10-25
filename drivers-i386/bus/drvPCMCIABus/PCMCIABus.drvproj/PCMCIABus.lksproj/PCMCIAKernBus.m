@@ -63,6 +63,15 @@ static unsigned int _biosBitmap[3];
 /* External function to look up server configuration attributes */
 extern char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute);
 
+ /*
+ * The protocol we need as an indirect device.
+ */
+static Protocol *protocols[] = {
+	@protocol(PCMCIAStatusChange),
+	@protocol(PCMCIAAdapter),
+	nil
+};
+
 /*
  * Helper function to mark a range in the BIOS memory bitmap
  * bitmap: pointer to bitmap array (treated as array of unsigned ints)
@@ -211,7 +220,6 @@ static const char *resourceNameStrings[] = {
  */
 + (id *)requiredProtocols
 {
-    static id protocols[] = { "PCMCIAStatusChange", "PCMCIAAdapter", NULL };
     return protocols;
 }
 

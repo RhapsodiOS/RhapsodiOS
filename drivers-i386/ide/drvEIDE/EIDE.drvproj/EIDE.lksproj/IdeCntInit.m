@@ -79,17 +79,6 @@
 //#define DEBUG
 
 /*
- * Device override table (from IdeShared.h)
- */
-static const char * overrideTable[] = {
-   "Auto",
-#define OVERRIDE_AUTO	0
-   "ATA",
-   "ATAPI",
-   "None",			// None must be the last entry
-};
-
-/*
  * The controller at base address 0x1f0-0x1f7 is always the first controller
  * no matter when it gets probed, so we start the counter at 1.
  */
@@ -571,18 +560,8 @@ ata_mode_to_mask(ata_mode_t mode)
     }
 
     /*
-     * Register the device now that all critical initialization is complete.
-     * This must be done before resetAndInit so that interrupts can be delivered.
-     */
-    if ([self registerDevice] == nil)	{
-		IOLog("%s: Failed to register device.\n", [self name]);
-		[self ideCntrlrUnLock];
-		return NO;
-    }
-
-    /*
      * Initialization was successful. We should release the lock so that the
-     * controller can now execute commands from disk objects.
+     * controller can now execute commands from disk objects. 
      */
 
     [self resetAndInit];

@@ -13,13 +13,17 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
+LOCAL_RESOURCES = Localizable.strings DriverHelp
+
 GLOBAL_RESOURCES = Default.table
 
-LOCAL_RESOURCES = Localizable.strings
+CLASSES =
+
+HFILES =
 
 TOOLS = PCMCIABus.lksproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
@@ -31,16 +35,8 @@ PROF_LIBS = $(LIBS)
 BUNDLE_EXTENSION = config
 
 
-FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\
-                  -F/System/Library/PrivateFrameworks
-
-
-NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
-WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
-PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
-NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
-WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
-PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
 include $(MAKEFILEDIR)/platform.make
 

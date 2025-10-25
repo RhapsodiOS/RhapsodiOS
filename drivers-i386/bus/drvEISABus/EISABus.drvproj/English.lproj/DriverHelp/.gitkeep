@@ -1,0 +1,2 @@
+# This file ensures the DriverHelp directory is tracked by git
+# The build system expects this directory to exist

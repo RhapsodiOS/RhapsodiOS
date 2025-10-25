@@ -35,6 +35,7 @@
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/generalFuncs.h>
 #import <machdep/i386/intr_exported.h>
+#import <machdep/i386/io_inline.h>
 #import <objc/objc.h>
 #import <string.h>
 #import <stdlib.h>
@@ -360,15 +361,15 @@ static BOOL testSlotForID(unsigned int slot, unsigned int *slotID, const char *a
 /*
  * Allocate resources for device description
  */
-- (IOReturn)allocateResourcesForDeviceDescription:deviceDescription
+- allocateResourcesForDeviceDescription:descr
 {
     const char **resourceNamePtr;
     const char *resourceName;
-    IOReturn result;
     const char *busType;
+    id result;
 
-    if (deviceDescription == nil) {
-        return IO_R_INVALID_ARG;
+    if (descr == nil) {
+        return nil;
     }
 
     /* Iterate through all resource types and allocate them */
@@ -378,7 +379,7 @@ static BOOL testSlotForID(unsigned int slot, unsigned int *slotID, const char *a
         resourceName = *resourceNamePtr;
 
         /* Ask device description to allocate resources for this resource type */
-        result = [deviceDescription allocateResourcesForKey:resourceName];
+        result = [descr allocateResourcesForKey:resourceName];
 
         if (result == 0) {
             /* Allocation failed */
@@ -391,20 +392,20 @@ static BOOL testSlotForID(unsigned int slot, unsigned int *slotID, const char *a
 
     /* Check if this is a PnP device and if PnP support is enabled */
     if (_initialized) {
-        busType = [deviceDescription stringForKey:"Bus Type"];
+        busType = [descr stringForKey:"Bus Type"];
 
         if (busType != NULL) {
             /* Compare bus type with "PnP" (4 characters including null terminator) */
             if (strncmp(busType, "PnP", 4) == 0) {
                 /* This is a PnP device - use PnP-specific resource allocation */
                 if ([self respondsTo:@selector(pnpSetResourcesForDescription:)]) {
-                    [self pnpSetResourcesForDescription:deviceDescription];
+                    [self pnpSetResourcesForDescription:descr];
                 }
             }
         }
     }
 
-    return deviceDescription;
+    return descr;
 }
 
 @end

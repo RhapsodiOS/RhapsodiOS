@@ -65,7 +65,7 @@
  * Resource management (KernBus protocol)
  */
 - (const char **)resourceNames;
-- (IOReturn)allocateResourcesForDeviceDescription:deviceDescription;
+- allocateResourcesForDeviceDescription:descr;
 
 @end
 

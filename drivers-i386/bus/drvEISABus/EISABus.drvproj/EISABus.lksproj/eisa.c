@@ -28,6 +28,7 @@
  */
 
 #include "eisa.h"
+#include <driverkit/generalFuncs.h>
 #include <stdlib.h>
 #include <string.h>
 

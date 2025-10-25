@@ -105,14 +105,6 @@
         }
     }
 
-    /* If still no mechanism found, try detecting directly */
-    if (!_configMech1 && !_configMech2) {
-        _configMech1 = [self test_M1];
-        if (!_configMech1) {
-            _configMech2 = [self test_M2];
-        }
-    }
-
     /* Set max device number based on configuration mechanism */
     if (_configMech1) {
         _maxDevNum = 0x1f;  /* Mechanism 1 supports 32 devices (0-31) */
@@ -187,11 +179,6 @@
 
 - free
 {
-    if (_reserved != NULL) {
-        IOFree(_reserved, sizeof(void *));
-        _reserved = NULL;
-    }
-
     return [super free];
 }
 

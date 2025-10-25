@@ -49,15 +49,40 @@
  */
 - (BOOL)test_M1
 {
-    unsigned int savedAddress, testValue;
+    unsigned int testAddress;
+    unsigned int verifyAddress;
+    unsigned int dataValue;
 
     /* Test PCI Configuration Mechanism #1 */
-    savedAddress = inl(PCI_CONFIG_ADDRESS);
-    outl(PCI_CONFIG_ADDRESS, 0x80000000);
-    testValue = inl(PCI_CONFIG_ADDRESS);
-    outl(PCI_CONFIG_ADDRESS, savedAddress);
+    /* Try different device addresses to find a valid PCI device */
+    testAddress = 0x80000000;
 
-    return (testValue == 0x80000000);
+    while (testAddress <= 0x8000FFFF) {
+        /* Write test address to CONFIG_ADDRESS */
+        outl(PCI_CONFIG_ADDRESS, testAddress);
+
+        /* Verify address was written correctly */
+        verifyAddress = inl(PCI_CONFIG_ADDRESS);
+
+        if (verifyAddress == testAddress) {
+            /* Read from CONFIG_DATA */
+            dataValue = inl(PCI_CONFIG_DATA);
+
+            /* Check if we got a valid device (not 0xFFFFFFFF or 0x00000000) */
+            if (dataValue != 0xFFFFFFFF && dataValue != 0x00000000) {
+                /* Found a valid device - Mechanism #1 is present */
+                outl(PCI_CONFIG_ADDRESS, 0);
+                return YES;
+            }
+        }
+
+        /* Try next device address (increment by 0x800) */
+        testAddress += 0x800;
+    }
+
+    /* No valid devices found */
+    outl(PCI_CONFIG_ADDRESS, 0);
+    return NO;
 }
 
 /*
@@ -65,28 +90,47 @@
  */
 - (BOOL)test_M2
 {
-    unsigned char savedCSE, savedForward;
+    unsigned char cseValue;
+    unsigned char verifyCSE;
+    unsigned char verifyForward;
+    unsigned short configPort;
+    unsigned int dataValue;
 
     /* Test PCI Configuration Mechanism #2 */
-    /* This mechanism uses ports 0xCF8 (CSE) and 0xCFA (Forward Register) */
-    savedCSE = inb(0xCF8);
-    savedForward = inb(0xCFA);
+    /* Write CSE value (0xF0) to port 0xCF8 */
+    outb(0xCF8, 0xF0);
 
-    /* Try to enable mechanism #2 */
-    outb(0xCF8, 0x00);
-    outb(0xCFA, 0x00);
+    /* Verify CSE was written correctly */
+    verifyCSE = inb(0xCF8);
 
-    /* Check if we can read/write the registers */
-    if (inb(0xCF8) == 0x00 && inb(0xCFA) == 0x00) {
-        /* Restore original values */
-        outb(0xCF8, savedCSE);
-        outb(0xCFA, savedForward);
-        return YES;
+    if (verifyCSE == 0xF0) {
+        /* Write 0 to Forward Register (0xCFA) */
+        outb(0xCFA, 0);
+
+        /* Verify Forward Register was written correctly */
+        verifyForward = inb(0xCFA);
+
+        if (verifyForward == 0) {
+            /* Try to find a valid device in configuration space */
+            /* Scan ports from 0xC000 to 0xCFFF */
+            for (configPort = 0xC000; configPort < 0xD000; configPort += 0x100) {
+                dataValue = inl(configPort);
+
+                /* Check if we got a valid device (not 0xFFFFFFFF or 0x00000000) */
+                if (dataValue != 0xFFFFFFFF && dataValue != 0x00000000) {
+                    /* Found a valid device - Mechanism #2 is present */
+                    outb(0xCF8, 0);
+                    return YES;
+                }
+            }
+
+            /* No valid devices found */
+            outb(0xCF8, 0);
+        }
     }
 
-    /* Restore original values */
-    outb(0xCF8, savedCSE);
-    outb(0xCFA, savedForward);
+    /* Mechanism #2 not present */
+    outb(0xCF8, 0);
     return NO;
 }
 

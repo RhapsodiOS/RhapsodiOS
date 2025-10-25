@@ -34,6 +34,8 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/KernBusMemory.h>
+#import <driverkit/IODeviceDescription.h>
+#import <driverkit/IOConfigTable.h>
 #import <machdep/i386/intr_internal.h>
 
 #import <string.h>
@@ -456,7 +458,7 @@
  * Resource allocation for device
  */
 
-- (IOReturn)allocateResourcesForDeviceDescription:(id)deviceDescription
+- allocateResourcesForDeviceDescription:descr
 {
     id eisaBus;
     id result;
@@ -465,12 +467,12 @@
     eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
 
     /* Set the bus on the device description */
-    [deviceDescription setBus:eisaBus];
+    [descr setBus:eisaBus];
 
     /* Delegate resource allocation to EISA bus */
-    result = [eisaBus allocateResourcesForDeviceDescription:deviceDescription];
+    result = [eisaBus allocateResourcesForDeviceDescription:descr];
 
-    return (IOReturn)result;
+    return result;
 }
 
 @end

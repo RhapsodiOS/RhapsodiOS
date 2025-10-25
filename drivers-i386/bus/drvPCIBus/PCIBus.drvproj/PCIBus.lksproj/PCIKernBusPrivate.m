@@ -90,7 +90,6 @@
  */
 - (BOOL)test_M2
 {
-    unsigned char cseValue;
     unsigned char verifyCSE;
     unsigned char verifyForward;
     unsigned short configPort;

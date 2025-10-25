@@ -60,8 +60,8 @@ char *PCIParsePrefix(char *prefix, char *str)
     if (strncmp(prefix, str, prefixLen) == 0) {
         /* Check if character after prefix is '(' */
         if (str[prefixLen] == '(') {
-            /* Return pointer to character after prefix */
-            return str + prefixLen;
+            /* Return pointer to character after '(' (prefix length + 1) */
+            return str + prefixLen + 1;
         }
     }
 

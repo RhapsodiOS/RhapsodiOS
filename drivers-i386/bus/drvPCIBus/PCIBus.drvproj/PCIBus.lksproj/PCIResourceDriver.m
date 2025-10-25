@@ -63,8 +63,8 @@ static IOReturn LookForID(unsigned long idValue, char *nameBuffer,
                           char *values, unsigned int *count);
 static IOReturn Set_ConfigSpace(unsigned int count, char *values,
                                 unsigned int dev, unsigned int func, unsigned int bus);
-static IOReturn Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
-                              unsigned int dev, unsigned int func, unsigned int bus);
+static void Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
+                          unsigned int dev, unsigned int func, unsigned int bus);
 
 /*
  * ============================================================================
@@ -267,7 +267,8 @@ static IOReturn Set_ConfigReg(unsigned int count, char *values, unsigned int reg
         if (count > 3) {
             if (PCIParseKeys(parsedStr, (unsigned long *)&dev, &func, &bus, &reg)) {
                 if (dev <= maxDev && func < 8 && bus <= maxBus && reg < 256) {
-                    return Set_ConfigReg(count, (char *)values, reg, dev, func, bus);
+                    Set_ConfigReg(count, (char *)values, reg, dev, func, bus);
+                    return IO_R_SUCCESS;
                 }
             }
         }
@@ -315,7 +316,6 @@ static IOReturn Get_ConfigSpace(unsigned int *count, char *values,
     id pciBus;
     IOReturn result;
     unsigned int offset;
-    unsigned long regValue;
 
     /* Lookup PCI bus instance */
     pciBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
@@ -334,14 +334,11 @@ static IOReturn Get_ConfigSpace(unsigned int *count, char *values,
                               device:(unsigned char)dev
                             function:(unsigned char)func
                                  bus:(unsigned char)bus
-                                data:&regValue];
+                                data:(unsigned long *)(values + offset)];
 
         if (result != IO_R_SUCCESS) {
             return result;
         }
-
-        /* Store the 4 bytes in values buffer */
-        *(unsigned long *)(values + offset) = regValue;
     }
 
     return IO_R_SUCCESS;
@@ -459,56 +456,54 @@ static IOReturn Set_ConfigSpace(unsigned int count, char *values,
     id pciBus;
     IOReturn result;
     unsigned int offset;
-    unsigned long dataToWrite;
+    unsigned int alignedCount;
 
     /* Lookup PCI bus instance */
     pciBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
 
     /* Align count to DWORD boundary (mask off lower 2 bits) */
-    count = count & 0xFFFC;
+    alignedCount = count & 0xFFFC;
 
     /* Limit to 256 bytes */
-    if (count > 256) {
-        count = 256;
+    if (alignedCount > 256) {
+        alignedCount = 256;
     }
 
     /* Write config space 4 bytes at a time */
-    for (offset = 0; offset < count; offset += 4) {
-        /* Read the 4-byte value from values buffer */
-        dataToWrite = *(unsigned long *)(values + offset);
+    offset = 0;
+    if (alignedCount != 0) {
+        do {
+            result = [pciBus setRegister:(unsigned char)(offset & 0xFF)
+                                  device:(unsigned char)dev
+                                function:(unsigned char)func
+                                     bus:(unsigned char)bus
+                                    data:*(unsigned long *)(values + offset)];
 
-        result = [pciBus setRegister:(unsigned char)(offset & 0xFF)
-                              device:(unsigned char)dev
-                            function:(unsigned char)func
-                                 bus:(unsigned char)bus
-                                data:dataToWrite];
+            if (result != IO_R_SUCCESS) {
+                return result;
+            }
 
-        if (result != IO_R_SUCCESS) {
-            return result;
-        }
+            offset += 4;
+        } while (offset < alignedCount);
     }
 
     return IO_R_SUCCESS;
 }
 
-static IOReturn Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
-                              unsigned int dev, unsigned int func, unsigned int bus)
+static void Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
+                          unsigned int dev, unsigned int func, unsigned int bus)
 {
     id pciBus;
-    unsigned long dataToWrite;
 
     /* Lookup PCI bus instance */
     pciBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
-
-    /* Read the 4-byte value from values buffer */
-    dataToWrite = *(unsigned long *)values;
 
     /* Write the config register */
     [pciBus setRegister:(unsigned char)reg
                  device:(unsigned char)dev
                function:(unsigned char)func
                     bus:(unsigned char)bus
-                   data:dataToWrite];
+                   data:*(unsigned long *)values];
 
-    return IO_R_SUCCESS;
+    return;
 }

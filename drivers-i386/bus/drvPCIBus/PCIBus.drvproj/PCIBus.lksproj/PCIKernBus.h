@@ -69,7 +69,7 @@
 - (unsigned int)maxBusNum;
 - (unsigned int)maxDevNum;
 
-- (IOReturn)allocateResourcesForDeviceDescription:(id)deviceDescription;
+- allocateResourcesForDeviceDescription:descr;
 
 /*
  * PCI configuration space access (KernBus interface)

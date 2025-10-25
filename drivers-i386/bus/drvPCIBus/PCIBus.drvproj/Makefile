@@ -13,7 +13,7 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = Localizable.strings DriverHelp
 
 GLOBAL_RESOURCES = Default.table
 

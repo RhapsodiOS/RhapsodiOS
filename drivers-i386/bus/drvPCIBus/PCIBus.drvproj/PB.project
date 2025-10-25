@@ -2,7 +2,7 @@
     BUNDLE_EXTENSION = config;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        FRAMEWORKS = (appkit.framework);
+        FRAMEWORKS = ();
         FRAMEWORKSEARCH = ("$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks", /System/Library/PrivateFrameworks);
         OTHER_RESOURCES = (Default.table, Localizable.strings);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);

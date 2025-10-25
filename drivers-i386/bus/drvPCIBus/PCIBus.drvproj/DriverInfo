@@ -1,0 +1,10 @@
+#
+# used by geninfo: DRIVER_NAME is the name which appears on the
+# installer window
+#
+DRIVER_NAME="PCIBus"
+DRIVER_VERSION_330="3.3";
+DRIVER_VERSION_400="4.0";
+DRIVER_VERSION_410="4.0";
+DRIVER_VERSION_420="4.0";
+DEFAULT_DRIVER_VERSION="5.01";

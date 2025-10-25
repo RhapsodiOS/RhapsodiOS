@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        CLASSES = (EISABus.m, EISAKernBus.m, EISAKernBusInterrupt.m, EISAResourceDriver.m);
-        H_FILES = (EISABus.h, EISAKernBus.h, EISAKernBusInterrupt.h, EISAResourceDriver.h, EISAKernBusPlugAndPlay.h, PnPResources.h);
+        CLASSES = (EISAKernBus.m, EISAKernBus+PlugAndPlay.m, EISAKernBus+PlugAndPlayPrivate.m, EISAKernBusDMAChannel.m, EISAKernBusInterrupt.m, EISAKernBusPortRange.m, EISAResourceDriver.m, PnPArgStack.m, PnPBios.m, PnPDependentResources.m, PnPDeviceResources.m, pnpDMA.m, pnpIOPort.m, pnpIRQ.m, PnPLogicalDevice.m, pnpMemory.m, PnPResource.m, PnPResources.m, bios.c, eisa.c);
+        H_FILES = (bios.h, eisa.h, EISAKernBus.h, EISAKernBus+PlugAndPlay.h, EISAKernBus+PlugAndPlayPrivate.h, EISAKernBusDMAChannel.h, EISAKernBusInterrupt.h, EISAKernBusPortRange.h, EISAResourceDriver.h, PnPArgStack.h, PnPBios.h, PnPDependentResources.h, PnPDeviceResources.h, pnpDMA.h, pnpIOPort.h, pnpIRQ.h, PnPLogicalDevice.h, pnpMemory.h, PnPResource.h, PnPResources.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

@@ -1,1 +1,2 @@
-# Makefile.preamble
+INCLUDED_ARCHS = i386
+OTHER_CFLAGS = -I./PCIC.lksproj

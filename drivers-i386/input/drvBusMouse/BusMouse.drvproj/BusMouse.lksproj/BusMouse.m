@@ -28,13 +28,24 @@
 
 #import "BusMouse.h"
 
+#import <machdep/i386/io_inline.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
-#import <driverkit/i386/ioPorts.h>
 #import <driverkit/i386/directDevice.h>
 #import <kernserv/prototypes.h>
 #import <mach/message.h>
+#import <libkern/libkern.h>
+
+#define LOCK()
+#define UNLOCK()
+
+/* Forward declarations for IODirectDevice methods */
+@interface IODirectDevice (BusMousePrivate)
+- (void)dispatchPointerEvent:(void *)eventData;
+- (void)setResolution:(unsigned int)res;
+- (void)setInverted:(BOOL)flag;
+@end
 
 /* Interrupt message structure */
 typedef struct {
@@ -60,11 +71,6 @@ static struct {
     char deltaX;
     char deltaY;
 } mouseEvent;
-
-/* Forward declarations */
-static void BusMouseThread(id driver);
-static unsigned int GetIRQFromBoard(void);
-static unsigned int MouseIntHandler(unsigned int param_1, unsigned int param_2);
 
 /* Detect IRQ from bus mouse board */
 static unsigned int GetIRQFromBoard(void)
@@ -181,7 +187,7 @@ static unsigned int MouseIntHandler(unsigned int param_1, unsigned int param_2)
             mouseEvent.deltaY = accumulatedDeltaY + yDelta;
 
             higherLevelsBusy = 1;
-            returnValue = IOSendInterrupt(param_1, param_2, 0x232325);
+            returnValue = IOSendInterrupt(param_1, param_2, IO_DEVICE_INTERRUPT_MSG);
 
             accumulatedDeltaX = 0;
             accumulatedDeltaY = 0;
@@ -200,12 +206,12 @@ static unsigned int MouseIntHandler(unsigned int param_1, unsigned int param_2)
 /* Thread function for handling interrupts */
 static void BusMouseThread(id driver)
 {
-    IOEISAInterruptPort interruptPort;
+    port_t interruptPort;
     interrupt_msg_t msg;
     kern_return_t ret;
 
     /* Get the interrupt port from the driver instance */
-    interruptPort = [driver interruptPort];
+    interruptPort = (port_t)[driver interruptPort];
 
     /* Loop forever, processing interrupt messages */
     while (1) {
@@ -221,7 +227,7 @@ static void BusMouseThread(id driver)
         }
 
         /* Check if this is an interrupt message */
-        if (msg.msgId == MSG_ID_INTERRUPT) {
+        if (msg.msgId == IO_DEVICE_INTERRUPT_MSG) {
             /* Verify the port matches */
             if (msg.header.msg_local_port == interruptPort) {
                 /* Call the interrupt handler */
@@ -257,8 +263,8 @@ static void BusMouseThread(id driver)
     ioPortCount = ioPortCount + 1;
     UNLOCK();
 
-    /* Delay for hardware to settle */
-    us_spin(30000);
+    /* Delay for hardware to settle (30ms) */
+    IODelay(30);
 
     /* Write signature */
     outb(0x23d, 0xa5);

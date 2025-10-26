@@ -1,1 +1,2 @@
-# Additional flags and settings
+INCLUDED_ARCHS = i386
+OTHER_CFLAGS = -I./BusMouse.lksproj

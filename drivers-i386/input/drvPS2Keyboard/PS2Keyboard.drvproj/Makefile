@@ -15,7 +15,7 @@ LANGUAGE = English
 
 GLOBAL_RESOURCES = Default.table
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = Localizable.strings DriverHelp
 
 TOOLS = PS2Keyboard.lksproj
 

@@ -60,10 +60,10 @@ extern unsigned short pnpReadPort;
     unsigned char value;
 
     /* Write register number to address port (0x279) */
-    __asm__ volatile("outb %0, %1" : : "a"(regNum), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"(regNum), "d"(0x279));
 
     /* Read value from PnP read data port */
-    __asm__ volatile("inb %1, %0" : "=a"(value) : "d"(pnpReadPort));
+    __asm__ volatile("inb %w1,%b0" : "=a"(value) : "d"(pnpReadPort));
 
     return value;
 }
@@ -76,10 +76,10 @@ extern unsigned short pnpReadPort;
 - (void)writePnPRegister:(unsigned char)regNum value:(unsigned char)value
 {
     /* Write register number to address port (0x279) */
-    __asm__ volatile("outb %0, %1" : : "a"(regNum), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"(regNum), "d"(0x279));
 
     /* Write value to PnP write data port (0xa79) */
-    __asm__ volatile("outb %0, %1" : : "a"(value), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"(value), "d"(0xa79));
 }
 
 /*
@@ -151,19 +151,20 @@ extern unsigned short pnpReadPort;
 - (BOOL)getPnPId:(unsigned int *)vendorID forCsn:(unsigned char)csn
 {
     id device;
-    unsigned int id;
+    unsigned int deviceID;
 
     /* Get the device from the PnP device table using CSN as key */
-    device = [pnpDeviceTable valueForKey:(void *)csn];
+    device = [pnpDeviceTable valueForKey:(void *)(unsigned long)csn];
 
     /* If device found, get its ID and store in pointer */
     if (device != nil) {
-        id = [device ID];
-        *vendorID = id;
+        deviceID = [device ID];
+        *vendorID = deviceID;
+        return YES;
     }
 
     /* Return whether device was found */
-    return (device != nil);
+    return NO;
 }
 
 /*

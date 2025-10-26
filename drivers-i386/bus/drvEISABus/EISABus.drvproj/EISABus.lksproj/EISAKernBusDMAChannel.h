@@ -30,7 +30,7 @@
 #ifndef _EISAKERNBUSDMACHANNEL_H_
 #define _EISAKERNBUSDMACHANNEL_H_
 
-#import <driverkit/KernBusItem.h>
+#import <driverkit/KernBus.h>
 
 /*
  * EISAKernBusDMAChannel - DMA channel resource item

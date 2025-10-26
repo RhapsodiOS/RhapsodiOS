@@ -69,6 +69,7 @@ unsigned long EISAParseID(unsigned char **param_1)
     long productCode;
     unsigned int len;
     int isWhitespace;
+    unsigned short manufacturerCode;
 
     /* Check for NULL pointer */
     if (param_1 == NULL || *param_1 == NULL) {
@@ -146,7 +147,7 @@ unsigned long EISAParseID(unsigned char **param_1)
              * - Letter 2: bits 21-25 (shifted left by 21, then right by 16 for upper word)
              * - Letter 3: bits 16-20 (masked with 0x1F)
              */
-            unsigned short manufacturerCode =
+            manufacturerCode =
                 (unsigned short)(((byte1 & 0x1F) << 0x1A) >> 0x10) |  /* Letter 1 */
                 (unsigned short)(((byte2 & 0x1F) << 0x15) >> 0x10) |  /* Letter 2 */
                 (byte3 & 0x1F);                                        /* Letter 3 */
@@ -423,8 +424,10 @@ int LookForEISAID(unsigned long instance, const char *ids, unsigned char *buffer
 static int eisa_id(unsigned int slot, unsigned int *slotID)
 {
     unsigned char idBytes[4];
+    unsigned char slotData[16];
     unsigned int id;
     int i;
+    int result;
 
     /* Validate slot number (must be < 64) */
     if (slot >= 0x40) {
@@ -433,8 +436,7 @@ static int eisa_id(unsigned int slot, unsigned int *slotID)
 
     /* Read from cached slot data instead of I/O ports */
     /* Use getEISASlotInfo to read the 16-byte slot data */
-    unsigned char slotData[16];
-    int result = getEISASlotInfo(slot, slotData);
+    result = getEISASlotInfo(slot, slotData);
 
     if (!result) {
         return 0;

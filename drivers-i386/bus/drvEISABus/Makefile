@@ -15,7 +15,7 @@ LANGUAGE = English
 
 BUNDLES = EISABus.drvproj
 
-TOOLS = PnPDump.tproj
+TOOLS =
 
 OTHERSRCS = Makefile Makefile.preamble
 

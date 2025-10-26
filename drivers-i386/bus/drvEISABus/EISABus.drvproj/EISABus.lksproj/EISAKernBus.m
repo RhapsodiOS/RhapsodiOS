@@ -33,6 +33,8 @@
 #import "EISAKernBusInterrupt.h"
 #import "eisa.h"
 #import <driverkit/KernBusMemory.h>
+#import <driverkit/IOConfigTable.h>
+#import <driverkit/IODeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
@@ -52,6 +54,12 @@
 
 /* Memory range maximum (4GB) */
 #define MEM_RANGE_MAX           0xFFFFFFFF
+
+/* Resource key names */
+#define IO_PORTS_KEY            "I/O Ports"
+#define MEM_MAPS_KEY            "Memory Maps"
+#define IRQ_LEVELS_KEY          "IRQ Levels"
+#define DMA_CHANNELS_KEY        "DMA Channels"
 
 /*
  * Resource names for EISA bus
@@ -180,57 +188,6 @@ static const char *resourceNameStrings[] = {
 
     /* Call superclass free */
     return [super free];
-}
-
-/*
- * Test slot for EISA ID
- * Helper function to test a slot and return its ID
- */
-static BOOL testSlotForID(unsigned int slot, unsigned int *slotID, const char *autoDetectIDs)
-{
-    unsigned int idPort;
-    unsigned char idByte;
-    unsigned int id;
-    int i;
-
-    if (slot >= EISA_MAX_SLOTS) {
-        return NO;
-    }
-
-    /* Calculate ID port for this slot */
-    idPort = EISA_ID_PORT_BASE + (slot * 0x1000);
-
-    /* Read ID byte - if 0xFF, slot is empty */
-    idByte = inb(idPort);
-    if (idByte == 0xFF) {
-        return NO;
-    }
-
-    /* Read full 4-byte EISA ID */
-    unsigned char idBytes[4];
-    for (i = 0; i < 4; i++) {
-        idBytes[i] = inb(idPort + i);
-    }
-
-    /* Construct 32-bit ID from bytes */
-    id = (idBytes[0] << 24) | (idBytes[1] << 16) |
-         (idBytes[2] << 8) | idBytes[3];
-
-    /* Store the ID if requested */
-    if (slotID) {
-        *slotID = id;
-    }
-
-    /* If autoDetectIDs is provided, match against the ID list */
-    if (autoDetectIDs != NULL) {
-        /* Use EISAMatchIDs to check if this ID matches any in the list */
-        if (!EISAMatchIDs(id, (char *)autoDetectIDs)) {
-            /* ID doesn't match the list */
-            return NO;
-        }
-    }
-
-    return YES;
 }
 
 /*

@@ -29,6 +29,7 @@
 
 #import "PnPDeviceResources.h"
 #import <driverkit/generalFuncs.h>
+#import <libkern/libkern.h>
 #import <objc/List.h>
 #import <string.h>
 
@@ -316,6 +317,7 @@ static unsigned short readPort = 0;
     unsigned char *data = (unsigned char *)buffer;
     unsigned int bytesLeft = length;
     unsigned char tag;
+    unsigned char itemType;
     unsigned int itemLength;
     unsigned short largeLength;
     id logicalDevice = nil;
@@ -424,7 +426,7 @@ static unsigned short readPort = 0;
             /* Small item format: [tag+len] [data...] */
             /* Length is in bits 0-2, type is in bits 3-6 */
             itemLength = tag & 0x7;
-            unsigned char itemType = (tag >> 3) & 0xF;
+            itemType = (tag >> 3) & 0xF;
 
             /* Check for end tag */
             if ((tag & 0x78) == 0x78) {  /* End tag (type 0xF) */

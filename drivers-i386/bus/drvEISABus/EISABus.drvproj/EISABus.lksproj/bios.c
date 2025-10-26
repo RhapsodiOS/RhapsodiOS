@@ -133,11 +133,11 @@ void _bios32PnP(void *biosCallData)
         "movl _PnPEntry_argStackBase, %%edx\n\t"
         "1:\n\t"
         "decl _PnPEntry_numArgs\n\t"
-        "movl _PnPEntry_numArgs, %%esp\n\t"
-        "movzwl (%%edx,%%esp,2), %%esp\n\t"
-        "push %%esp\n\t"
-        "movl _PnPEntry_numArgs, %%esp\n\t"
-        "testl %%esp, %%esp\n\t"
+        "movl _PnPEntry_numArgs, %%eax\n\t"
+        "movzwl (%%edx,%%eax,2), %%eax\n\t"
+        "push %%eax\n\t"
+        "movl _PnPEntry_numArgs, %%eax\n\t"
+        "testl %%eax, %%eax\n\t"
         "jnz 1b\n\t"
         "2:\n\t"
 
@@ -223,8 +223,8 @@ void clearPnPConfigRegisters(void)
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 2; j++) {
             addr = 0x70 + (i * 2) + j;
-            __asm__ volatile("outb %0, %1" : : "a"(addr), "d"(0x279));
-            __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+            __asm__ volatile("outb %b0,%w1" : : "a"(addr), "d"(0x279));
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
         }
     }
 
@@ -232,8 +232,8 @@ void clearPnPConfigRegisters(void)
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 1; j++) {
             addr = 0x74 + i + j;
-            __asm__ volatile("outb %0, %1" : : "a"(addr), "d"(0x279));
-            __asm__ volatile("outb %0, %1" : : "a"((unsigned char)4), "d"(0xa79));
+            __asm__ volatile("outb %b0,%w1" : : "a"(addr), "d"(0x279));
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)4), "d"(0xa79));
         }
     }
 
@@ -241,8 +241,8 @@ void clearPnPConfigRegisters(void)
     for (i = 0; i < 8; i++) {
         for (j = 0; j < 2; j++) {
             addr = 0x60 + (i * 2) + j;
-            __asm__ volatile("outb %0, %1" : : "a"(addr), "d"(0x279));
-            __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+            __asm__ volatile("outb %b0,%w1" : : "a"(addr), "d"(0x279));
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
         }
     }
 
@@ -250,8 +250,8 @@ void clearPnPConfigRegisters(void)
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 5; j++) {
             addr = 0x40 + (i * 8) + j;
-            __asm__ volatile("outb %0, %1" : : "a"(addr), "d"(0x279));
-            __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+            __asm__ volatile("outb %b0,%w1" : : "a"(addr), "d"(0x279));
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
         }
     }
 
@@ -280,8 +280,8 @@ void clearPnPConfigRegisters(void)
 
         for (j = 0; j < 9; j++) {
             addr = baseAddr + j;
-            __asm__ volatile("outb %0, %1" : : "a"(addr), "d"(0x279));
-            __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+            __asm__ volatile("outb %b0,%w1" : : "a"(addr), "d"(0x279));
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
         }
     }
 }
@@ -331,24 +331,30 @@ void __attribute__((regparm(3))) __PnPEntry(unsigned int param_1, unsigned int p
 
         "movl _PnPEntry_argStackBase, %%edx\n\t"
         "movzwl (%%edx,%%ecx,2), %%eax\n\t"  /* Load arg[ecx] as word */
-        "pushw %%ax\n\t"                      /* Push argument */
+        "pushl %%eax\n\t"                     /* Push argument */
         "jmp 1b\n\t"                          /* Loop */
 
         "2:\n\t"
         /* Push return address (CS:IP for far return) */
-        "pushw %%cs\n\t"                      /* Push code segment */
-        "pushl $0x6e\n\t"                     /* Push return offset */
+        "pushl $0x10\n\t"                     /* Push code segment (kernel CS) */
+        "pushl $3f\n\t"                       /* Push return offset */
+
+        /* Push far call target from memory */
+        "movzwl 0x7058, %%eax\n\t"            /* Load selector from 0x7058 */
+        "pushl %%eax\n\t"                     /* Push selector */
+        "movl 0x7054, %%eax\n\t"              /* Load offset from 0x7054 */
+        "pushl %%eax\n\t"                     /* Push offset */
 
         /* Restore saved parameters for BIOS call */
         "movl _save_eax, %%eax\n\t"
         "movl _save_ecx, %%ecx\n\t"
         "movl _save_edx, %%edx\n\t"
 
-        /* Make indirect far call through trampoline at 0x7054 */
-        /* This jumps to the PnP BIOS entry point */
-        "lcall *(0x7054)\n\t"
+        /* Make far call through lret */
+        "lret\n\t"
 
-        /* BIOS returns here (at offset 0x6e from the push above) */
+        /* BIOS returns here */
+        "3:\n\t"
 
         : /* no outputs */
         : "a" (param_1), "d" (param_2), "c" (param_3)
@@ -369,10 +375,10 @@ static unsigned char readIsolationBit(void)
     unsigned char bit1, bit2;
 
     /* Read first byte from PnP read port */
-    __asm__ volatile("inb %1, %0" : "=a"(bit1) : "d"(pnpReadPort));
+    __asm__ volatile("inb %w1,%b0" : "=a"(bit1) : "d"(pnpReadPort));
 
     /* Read second byte from PnP read port */
-    __asm__ volatile("inb %1, %0" : "=a"(bit2) : "d"(pnpReadPort));
+    __asm__ volatile("inb %w1,%b0" : "=a"(bit2) : "d"(pnpReadPort));
 
     /* Check if this is a '1' bit: first = 0x55 ('U') AND second = 0xAA (-0x56) */
     return (bit2 == 0xAA && bit1 == 0x55);
@@ -463,11 +469,11 @@ int isolateCard(unsigned char csn)
     int i;
 
     /* Wake CSN 0 (all unconfigured cards) - register 0x03 */
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
 
     /* Set Read Data Port - register 0x01 - currently in isolation mode */
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)1), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)1), "d"(0x279));
 
     /* Sleep 1ms to allow cards to respond */
     IOSleep(1);
@@ -512,8 +518,8 @@ int isolateCard(unsigned char csn)
     if (receivedChecksum == checksum) {
         /* Checksum matches - assign this card the CSN */
         /* Card Select Number register (0x06) */
-        __asm__ volatile("outb %0, %1" : : "a"((unsigned char)6), "d"(0x279));
-        __asm__ volatile("outb %0, %1" : : "a"(csn), "d"(0xa79));
+        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)6), "d"(0x279));
+        __asm__ volatile("outb %b0,%w1" : : "a"(csn), "d"(0xa79));
 
         return 1;  /* Success */
     }

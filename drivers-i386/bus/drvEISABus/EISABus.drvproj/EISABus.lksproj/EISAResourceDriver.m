@@ -29,12 +29,13 @@
 
 #import "EISAResourceDriver.h"
 #import "EISAKernBus.h"
+#import "EISAKernBus+PlugAndPlay.h"
 #import "eisa.h"
 #import <driverkit/KernBus.h>
 #import <driverkit/IODevice.h>
+#import <libkern/libkern.h>
 #import <machdep/i386/io_inline.h>
 #import <string.h>
-#import <stdlib.h>
 
 /* Parameter name keys */
 static const char *keys[] = {
@@ -117,6 +118,7 @@ static const char *keys[] = {
     unsigned short portAddr;
     char readByte;
     unsigned int copySize;
+    unsigned int len;
     char localBuffer[320];
 
     /* Look up the EISA bus instance */
@@ -249,7 +251,7 @@ static const char *keys[] = {
                             idValue, serialNum, logicalDevice);
 
                     /* Calculate string length */
-                    unsigned int len = 0;
+                    len = 0;
                     while (parameterArray[len] != '\0' && len < *count) {
                         len++;
                     }

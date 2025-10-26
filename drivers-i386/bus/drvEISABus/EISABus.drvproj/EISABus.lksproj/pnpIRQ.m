@@ -243,12 +243,12 @@ extern char verbose;
     regBase = 0x70 + (index * 2);
 
     /* Write IRQ number to first register (masked to 4 bits) */
-    __asm__ volatile("outb %0, %1" : : "a"(regBase), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)(irqNum & 0xF)), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(irqNum & 0xF)), "d"(0xa79));
 
     /* Write 0 to second register */
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)0), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
 
     return self;
 }

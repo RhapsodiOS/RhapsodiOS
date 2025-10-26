@@ -247,8 +247,8 @@ extern char verbose;
 
     /* Write to PnP config register */
     reg = 0x74 + (unsigned char)index;
-    __asm__ volatile("outb %0, %1" : : "a"(reg), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)(channels[0] & 0x7)), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"(reg), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(channels[0] & 0x7)), "d"(0xa79));
 
     return self;
 }

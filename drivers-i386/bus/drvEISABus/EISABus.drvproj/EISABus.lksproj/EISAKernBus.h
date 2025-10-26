@@ -31,6 +31,7 @@
 #define _EISAKERNBUS_H_
 
 #import <driverkit/KernBus.h>
+#import <driverkit/return.h>
 
 /*
  * EISAKernBus - EISA Bus driver conforming to KernBus protocol

@@ -51,6 +51,7 @@ extern char verbose;
 {
     unsigned char *data = (unsigned char *)buffer;
     unsigned char flags;
+    unsigned short base;
 
     /* Call superclass init */
     [super init];
@@ -96,7 +97,7 @@ extern char verbose;
         }
 
         /* Parse base address (mask to 10 bits) */
-        unsigned short base = *(unsigned short *)data & 0x3FF;
+        base = *(unsigned short *)data & 0x3FF;
         _min_base = base;
         _max_base = base;
 
@@ -248,12 +249,12 @@ extern char verbose;
     highByte = (unsigned char)((baseAddress >> 8) & 0xFF);
 
     /* Write high byte to first register */
-    __asm__ volatile("outb %0, %1" : : "a"(regBase), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"(highByte), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"(highByte), "d"(0xa79));
 
     /* Write low byte to second register */
-    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-    __asm__ volatile("outb %0, %1" : : "a"(lowByte), "d"(0xa79));
+    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
+    __asm__ volatile("outb %b0,%w1" : : "a"(lowByte), "d"(0xa79));
 
     return self;
 }

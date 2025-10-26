@@ -1,5 +1,6 @@
 ###############################################################################
-#  Makefile.postamble
-#  Copyright 1997, Apple Computer, Inc.
+#  Makefile.preamble
+#  Copyright 1999-2000, Apple Computer, Inc.
 #
+#  This Makefile is used for maintaining the driver project.
 ###############################################################################

@@ -10,30 +10,24 @@
 NAME = PPCSerialPort
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+LOCAL_RESOURCES = DriverInfo
 
-GLOBAL_RESOURCES =
+GLOBAL_RESOURCES = Default.table
 
-BUNDLES = PPCSerialPort.drvproj
+TOOLS = PPCSerialPort.lksproj
 
-TOOLS =
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 
-OTHERSRCS = Makefile Makefile.preamble
+MAKEFILEDIR = /NextDeveloper/Makefiles/app
+MAKEFILE = bundle.make
+INSTALLDIR = /usr/Devices
+INSTALLFLAGS = -c -s -m 755
+SOURCEMODE = 444
 
-MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
-CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
-LIBS =
-DEBUG_LIBS = $(LIBS)
-PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
 
-
-
-
-include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

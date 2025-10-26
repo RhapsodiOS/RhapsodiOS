@@ -1,0 +1,27 @@
+###############################################################################
+#  Makefile.driver_preamble
+#  Copyright 1999-2000, Apple Computer, Inc.
+#
+#  PowerPC Serial Port driver specific makefile settings
+###############################################################################
+
+# Architecture
+ARCHS = ppc
+
+# Compiler flags for driver
+CFLAGS = -g -O2 -Wall -Wno-protocol -fno-builtin -finline -fno-keep-inline-functions
+
+# Include paths
+INCLUDEPATHS = -I.. -I. -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+
+# Driver specific flags
+DRIVERFLAGS = -static -nostdlib -r
+
+# Linker flags
+LDFLAGS = $(DRIVERFLAGS)
+
+# Framework paths
+FRAMEWORKS = -framework System -framework DriverKit
+
+OTHER_CFLAGS = $(INCLUDEPATHS)
+OTHER_LDFLAGS = $(LDFLAGS)

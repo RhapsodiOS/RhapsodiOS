@@ -1,0 +1,8 @@
+"Title" = "Audio Waveform Amplifier And Codec";
+"Family" = "Audio";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "PPCBurgundy";
+"Matching"    = "burgundy davbus";
+"Class Names" = "PPCBurgundy";
+"Server Name" = "drvPPCBurgundy";

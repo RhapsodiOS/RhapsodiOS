@@ -1,0 +1,20 @@
+{
+    FILESTABLE = {
+        GLOBAL_RESOURCES = (Default.table);
+        LOCAL_RESOURCES = (DriverInfo);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble);
+        TOOLS = (PPCSerialPort.lksproj);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = /NextDeveloper/Makefiles/app;
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_INSTALLDIR = /usr/Devices;
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make;
+    PDO_UNIX_INSTALLDIR = /usr/Devices;
+    PROJECTNAME = PPCSerialPort;
+    PROJECTTYPE = Bundle;
+    PROJECTVERSION = 2.6;
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make;
+    WINDOWS_INSTALLDIR = /usr/Devices;
+}

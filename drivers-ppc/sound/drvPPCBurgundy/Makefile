@@ -10,23 +10,28 @@
 NAME = PPCBurgundy
 
 PROJECTVERSION = 1.0
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
 LOCAL_RESOURCES = Localizable.strings
 
 GLOBAL_RESOURCES = Default.table
 
-TOOLS = PPCBurgundy_reloc.tproj
+TOOLS = PPCBurgundy.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
 
 BUNDLE_EXTENSION = config
 
 
+
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

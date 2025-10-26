@@ -1,0 +1,8 @@
+"Title" = "Audio Waveform Amplifier And Codec";
+"Family" = "Audio";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "PPCAwacs";
+"Matching"    = "awacs davbus";
+"Class Names" = "PPCAwacs";
+"Server Name" = "PPCAwacs";

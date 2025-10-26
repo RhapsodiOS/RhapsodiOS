@@ -58,17 +58,23 @@
 #define PIT_DIVISOR(freq)  (PIT_FREQUENCY / (freq))
 
 /* Default beep sequences - NULL terminated array */
-static BeepSequence _defaultBeepSequences[] = {
-    /* Blip style */
-    { "Blip", 1, 1, 1 }, // TODO: Implement blip style
-    /* Plain style: single note, no frequency modulation */
-    { "Plain", 1, 1, 1 },
+static BeepSequence defaultBeepSequences[] = {
+    /* Blip style: single short beep */
+    { "Blip", 1, 1, 1 },
+    /* Plain style: simple two-tone, frequency ratio 3:4 (perfect fifth down) */
+    { "Plain", 2, 3, 4 },
+    /* Funk style: 8-note ascending sequence, frequency ratio 17:16 (slightly sharp) */
+    { "Funk", 8, 17, 16 },
+    /* Basso style: 8-note descending sequence, frequency ratio 15:16 (slightly flat) */
+    { "Basso", 8, 15, 16 },
+    /* Ping style: 2-note sequence, octave jump (frequency ratio 2:1) */
+    { "Ping", 2, 2, 1 },
     /* NULL terminator */
     { NULL, 0, 0, 0 }
 };
 
 /* Convert style string to index */
-static int _stringToStyle(const char *styleStr)
+static int stringToStyle(const char *styleStr)
 {
     size_t nameLen;
     BeepSequence *seq;
@@ -82,7 +88,7 @@ static int _stringToStyle(const char *styleStr)
 
     /* Iterate through all beep sequences */
     index = 0;
-    for (seq = _defaultBeepSequences; seq->name != NULL; seq++, index++) {
+    for (seq = defaultBeepSequences; seq->name != NULL; seq++, index++) {
         /* Compare using strncmp with calculated length */
         if (strncmp(seq->name, styleStr, nameLen) == 0) {
             return index;
@@ -122,7 +128,7 @@ static int _stringToStyle(const char *styleStr)
     _pitCommand = PIT_CMD_COUNTER2_LOHI_MODE3;
 
     /* Set default beep sequence */
-    _beepSequence = _defaultBeepSequences;
+    _beepSequence = defaultBeepSequences;
 
     /* Set duration (default 100 ms if not specified) */
     if (durationStr == NULL) {
@@ -142,9 +148,9 @@ static int _stringToStyle(const char *styleStr)
 
     /* Set beep sequence based on style */
     if (styleStr != NULL) {
-        styleIndex = _stringToStyle(styleStr);
+        styleIndex = stringToStyle(styleStr);
         if (styleIndex >= 0) {
-            _beepSequence = &_defaultBeepSequences[styleIndex];
+            _beepSequence = &defaultBeepSequences[styleIndex];
         }
     }
 
@@ -289,8 +295,8 @@ static int _stringToStyle(const char *styleStr)
 
     /* Check for "Style" parameter */
     if (strcmp(parameterName, "Style") == 0) {
-        /* Calculate style index: (_beepSequence - _defaultBeepSequences) / sizeof(BeepSequence) */
-        styleIndex = (_beepSequence - _defaultBeepSequences);
+        /* Calculate style index: (_beepSequence - defaultBeepSequences) / sizeof(BeepSequence) */
+        styleIndex = (_beepSequence - defaultBeepSequences);
         parameterArray[0] = styleIndex;
         *count = 1;
         return IO_R_SUCCESS;
@@ -344,7 +350,7 @@ static int _stringToStyle(const char *styleStr)
         firstItem = YES;
 
         /* Iterate through all sequences */
-        for (seq = _defaultBeepSequences; seq->name != NULL; seq++) {
+        for (seq = defaultBeepSequences; seq->name != NULL; seq++) {
             styleName = seq->name;
             nameLen = strlen(styleName);
 
@@ -408,7 +414,7 @@ static int _stringToStyle(const char *styleStr)
         }
 
         /* Set beep sequence to selected style */
-        _beepSequence = &_defaultBeepSequences[parameterArray[0]];
+        _beepSequence = &defaultBeepSequences[parameterArray[0]];
 
         return IO_R_SUCCESS;
     }
@@ -428,7 +434,7 @@ static int _stringToStyle(const char *styleStr)
     /* Check for "Style" parameter */
     if (strcmp(parameterName, "Style") == 0) {
         /* Convert style name to index */
-        styleIndex = _stringToStyle((const char *)parameterArray);
+        styleIndex = stringToStyle((const char *)parameterArray);
 
         if (styleIndex < 0) {
             /* Invalid style name */
@@ -436,7 +442,7 @@ static int _stringToStyle(const char *styleStr)
         }
 
         /* Set beep sequence to selected style */
-        _beepSequence = &_defaultBeepSequences[styleIndex];
+        _beepSequence = &defaultBeepSequences[styleIndex];
 
         return IO_R_SUCCESS;
     }
@@ -453,6 +459,7 @@ static int _stringToStyle(const char *styleStr)
 {
     /* Beep when someone tries to add a stream */
     [self beep];
+
     /* But don't allow the stream to be added */
     return NO;
 }

@@ -34,11 +34,15 @@
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IODeviceMaster.h>
 #import <driverkit/IOConfigTable.h>
-#import <machkit/NXLock.h>
 #import <kernserv/prototypes.h>
 #import <objc/objc-runtime.h>
-#import <bsd/dev/i386/io_inline.h>
-#import <bsd/sys/types.h>
+#import <machdep/i386/io_inline.h>
+#import <libkern/libkern.h>
+
+/* Forward declaration of IOAudio private method */
+@interface IOAudio (Private)
+- _outputChannel;
+@end
 
 /* PC Speaker hardware registers */
 #define PIT_CONTROL     0x43

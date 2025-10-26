@@ -7,7 +7,8 @@
         OTHER_SOURCES = (
             Makefile.preamble,
             Makefile,
-            Makefile.postamble
+            Makefile.postamble,
+            Beep.lkc
         );
         SUBPROJECTS = ();
     };

@@ -19,7 +19,7 @@ LOCAL_RESOURCES = Localizable.strings
 
 TOOLS = Beep.lksproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble DriverInfo
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

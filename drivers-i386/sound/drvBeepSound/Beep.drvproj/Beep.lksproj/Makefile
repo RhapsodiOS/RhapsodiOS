@@ -17,7 +17,7 @@ CLASSES = Beep.m
 
 HFILES = Beep.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

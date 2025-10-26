@@ -67,12 +67,12 @@ static BeepSequence defaultBeepSequences[] = {
     { "Blip", 1, 1, 1 },
     /* Plain style: simple two-tone, frequency ratio 3:4 (perfect fifth down) */
     { "Plain", 2, 3, 4 },
-    /* Funk style: 8-note ascending sequence, frequency ratio 17:16 (slightly sharp) */
-    { "Funk", 8, 17, 16 },
-    /* Basso style: 8-note descending sequence, frequency ratio 15:16 (slightly flat) */
-    { "Basso", 8, 15, 16 },
-    /* Ping style: 2-note sequence, octave jump (frequency ratio 2:1) */
-    { "Ping", 2, 2, 1 },
+    /* Up style: 8-note ascending sequence, frequency ratio 17:16 (slightly sharp) */
+    { "Up", 8, 17, 16 },
+    /* Down style: 8-note descending sequence, frequency ratio 15:16 (slightly flat) */
+    { "Down", 8, 15, 16 },
+    /* Octave style: 2-note sequence, octave jump (frequency ratio 2:1) */
+    { "Octave", 2, 2, 1 },
     /* NULL terminator */
     { NULL, 0, 0, 0 }
 };

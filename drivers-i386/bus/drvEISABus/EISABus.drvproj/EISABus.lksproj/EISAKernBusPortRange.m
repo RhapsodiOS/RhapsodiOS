@@ -30,6 +30,11 @@
 #import "EISAKernBusPortRange.h"
 #import <driverkit/generalFuncs.h>
 
+/* Forward declaration for undocumented KernBusRange methods */
+@interface KernBusRange (UndocumentedMethods)
+- (unsigned int)base;
+@end
+
 @implementation EISAKernBusPortRange
 
 /*
@@ -42,7 +47,7 @@
     unsigned char value;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Read byte from port */
     __asm__ volatile("inb %1, %0" : "=a"(value) : "d"((unsigned short)port));
@@ -60,7 +65,7 @@
     unsigned short value;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Read word from port */
     __asm__ volatile("inw %1, %0" : "=a"(value) : "d"((unsigned short)port));
@@ -78,7 +83,7 @@
     unsigned int value;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Read long from port */
     __asm__ volatile("inl %1, %0" : "=a"(value) : "d"((unsigned short)port));
@@ -95,7 +100,7 @@
     unsigned int port;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Write byte to port */
     __asm__ volatile("outb %0, %1" : : "a"(value), "d"((unsigned short)port));
@@ -110,7 +115,7 @@
     unsigned int port;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Write word to port */
     __asm__ volatile("outw %0, %1" : : "a"(value), "d"((unsigned short)port));
@@ -125,7 +130,7 @@
     unsigned int port;
 
     /* Get absolute port address (base + offset) */
-    port = [self base] + offset;
+    port = (unsigned int)[self base] + offset;
 
     /* Write long to port */
     __asm__ volatile("outl %0, %1" : : "a"(value), "d"((unsigned short)port));

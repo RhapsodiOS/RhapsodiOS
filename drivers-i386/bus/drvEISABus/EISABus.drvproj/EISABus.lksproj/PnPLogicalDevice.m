@@ -29,6 +29,12 @@
 
 #import "PnPLogicalDevice.h"
 #import "PnPResources.h"
+#import "PnPResource.h"
+#import "PnPDependentResources.h"
+#import "pnpIRQ.h"
+#import "pnpIOPort.h"
+#import "pnpDMA.h"
+#import "pnpMemory.h"
 #import <objc/List.h>
 #import <string.h>
 
@@ -182,7 +188,7 @@
 {
     int count;
     int i;
-    id depResource;
+    PnPDependentResources *depResource;
     id depIRQ, configIRQ, resourceIRQ;
     id depPort, configPort, resourcePort;
     id depDMA, configDMA, resourceDMA;

@@ -30,11 +30,13 @@
 #import "EISAResourceDriver.h"
 #import "EISAKernBus.h"
 #import "EISAKernBus+PlugAndPlay.h"
+#import "PnPDeviceResources.h"
 #import "eisa.h"
 #import <driverkit/KernBus.h>
 #import <driverkit/IODevice.h>
 #import <libkern/libkern.h>
 #import <machdep/i386/io_inline.h>
+#import <stdio.h>
 #import <string.h>
 
 /* Parameter name keys */
@@ -129,7 +131,7 @@ static const char *keys[] = {
     parsePtr = NULL;
 
     do {
-        parsePtr = EISAParsePrefix(keys[keyIndex], parameterName);
+        parsePtr = EISAParsePrefix((char *)keys[keyIndex], (char *)parameterName);
         if (parsePtr != NULL) {
             break;
         }
@@ -236,16 +238,16 @@ static const char *keys[] = {
             unsigned long instance = strtoul(parsePtr, &parsePtr, 0);
 
             if (_isEISA) {
-                return LookForEISAID(instance, _idBuffer, parameterArray, count);
+                return LookForEISAID((int)instance, _idBuffer, (char *)parameterArray, count);
             } else {
                 /* PnP lookup */
                 unsigned int logicalDevice;
-                id deviceResources = [busInstance lookForPnPIDs:_idBuffer
-                                                       Instance:instance
-                                                  LogicalDevice:&logicalDevice];
+                PnPDeviceResources *deviceResources = [busInstance lookForPnPIDs:_idBuffer
+                                                                         Instance:instance
+                                                                    LogicalDevice:&logicalDevice];
                 if (deviceResources != nil) {
-                    unsigned long serialNum = [deviceResources serialNumber];
-                    unsigned long idValue = [deviceResources ID];
+                    unsigned long serialNum = (unsigned long)[deviceResources serialNumber];
+                    unsigned long idValue = (unsigned long)[deviceResources ID];
 
                     sprintf((char *)parameterArray, "Card:0x%lx Serial:0x%lx Logical:0x%x",
                             idValue, serialNum, logicalDevice);
@@ -269,7 +271,7 @@ static const char *keys[] = {
         readByte = [busInstance readPnPDeviceCfg:parameterArray
                                           length:count
                                          forCard:slot
-                                   LogicalDevice:function];
+                                andLogicalDevice:function];
         if (readByte == 0) {
             return IO_R_INVALID_ARG;
         }
@@ -318,7 +320,7 @@ static const char *keys[] = {
     parsePtr = NULL;
 
     do {
-        parsePtr = EISAParsePrefix(keys[keyIndex], parameterName);
+        parsePtr = EISAParsePrefix((char *)keys[keyIndex], (char *)parameterName);
         if (parsePtr != NULL) {
             break;
         }

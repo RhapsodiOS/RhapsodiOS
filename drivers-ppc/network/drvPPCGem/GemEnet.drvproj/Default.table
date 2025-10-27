@@ -1,0 +1,6 @@
+"Title"         = "drvGemEnet";
+"Driver Name"   = "drvGemEnet";
+"Matching"      = "pci108e,2bad";
+"Class Names"   = "GemEnet";
+"Boot Driver"   = "no";
+"Server Name" = "drvPPCGem";

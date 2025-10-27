@@ -28,6 +28,10 @@
  */
 
 #import "PnPResource.h"
+#import "pnpIRQ.h"
+#import "pnpIOPort.h"
+#import "pnpDMA.h"
+#import "pnpMemory.h"
 #import <objc/List.h>
 
 @implementation PnPResource

@@ -355,110 +355,8 @@ int getEISAFunctionInfo(unsigned int slot, unsigned int function, unsigned char 
     return 0;
 }
 
-/*
- * Look for EISA ID in system
- *
- * Searches all EISA slots for cards matching the specified ID list.
- * Returns information about the Nth matching instance.
- */
-int LookForEISAID(unsigned long instance, const char *ids, unsigned char *buffer, unsigned int *count)
-{
-    unsigned int slot;
-    unsigned char slotInfo[4];
-    unsigned int slotID;
-    unsigned long instanceCounter;
-    int result;
-    unsigned int functionCount;
-
-    /* Validate parameters */
-    if (ids == NULL || buffer == NULL || count == NULL) {
-        return 0;
-    }
-
-    instanceCounter = 0;
-
-    /* Search through all EISA slots (1-15) */
-    for (slot = 1; slot <= 15; slot++) {
-        /* Read slot information */
-        result = getEISASlotInfo(slot, slotInfo);
-        if (!result) {
-            continue;
-        }
-
-        /* Construct slot ID from the 4 bytes */
-        /* EISA ID format: bytes are in little-endian order */
-        slotID = (slotInfo[3] << 24) | (slotInfo[2] << 16) | (slotInfo[1] << 8) | slotInfo[0];
-
-        /* Check if this slot is empty (ID = 0xFFFFFFFF or 0x00000000) */
-        if (slotID == 0xFFFFFFFF || slotID == 0x00000000) {
-            continue;
-        }
-
-        /* Check if this slot matches the ID list */
-        if (EISAMatchIDs(slotID, (char *)ids)) {
-            /* Found a matching slot */
-            if (instanceCounter == instance) {
-                /* This is the instance we're looking for */
-                /* Read full slot configuration into buffer */
-                getEISASlotInfo(slot, buffer);
-
-                /* Read function count (typically from slot configuration) */
-                /* For now, assume 1 function - actual implementation would read from config */
-                *count = 1;
-
-                return slot;
-            }
-            instanceCounter++;
-        }
-    }
-
-    /* Not found */
-    return 0;
-}
-
-/*
- * Read EISA ID from a slot
- * Helper function to read the 4-byte EISA ID from a slot's configuration registers
- * Returns 1 on success, 0 if slot is empty or invalid
- */
-static int eisa_id(unsigned int slot, unsigned int *slotID)
-{
-    unsigned char idBytes[4];
-    unsigned char slotData[16];
-    unsigned int id;
-    int i;
-    int result;
-
-    /* Validate slot number (must be < 64) */
-    if (slot >= 0x40) {
-        return 0;
-    }
-
-    /* Read from cached slot data instead of I/O ports */
-    /* Use getEISASlotInfo to read the 16-byte slot data */
-    result = getEISASlotInfo(slot, slotData);
-
-    if (!result) {
-        return 0;
-    }
-
-    /* Extract the 4-byte EISA ID from slot data */
-    /* The ID is typically in the first 4 bytes */
-    id = (slotData[0] << 0) | (slotData[1] << 8) |
-         (slotData[2] << 16) | (slotData[3] << 24);
-
-    /* Check if slot is empty (ID = 0xFFFFFFFF or 0x00000000) */
-    if (id == 0xFFFFFFFF || id == 0x00000000) {
-        return 0;
-    }
-
-    /* Store the ID */
-    if (slotID != NULL) {
-        *slotID = id;
-    }
-
-    return 1;
-}
+/* this is in the kernel */
+extern boolean_t eisa_id(int slot, unsigned int *_id);
 
 /*
  * Test slot for EISA ID match
@@ -474,7 +372,6 @@ int testSlotForID(unsigned int slot, unsigned int *slotID, const char *idList)
 
     /* Try to read EISA ID from slot */
     result = eisa_id(slot, &localID);
-
     if (result == 0) {
         /* Slot is empty or invalid */
         return 0;

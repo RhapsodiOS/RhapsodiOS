@@ -1,0 +1,6 @@
+#
+# used by veredit/genpkgfiles: DRIVER_NAME is the names which appears on the
+# installer window
+#
+DRIVER_NAME="PowerPC Sun Gem 1Gb/s Ethernet Controller"
+DEFAULT_DRIVER_VERSION="5.00";

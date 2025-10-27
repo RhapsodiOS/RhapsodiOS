@@ -85,8 +85,8 @@ typedef struct {
 /*
  * Segment setup
  */
-- setupSegments;
-- releaseSegments;
+- (int)setupSegments:(void *)biosStruct;
+- releaseSegments:(void *)biosStruct;
 
 @end
 

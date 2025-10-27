@@ -27,6 +27,8 @@
  * EISA Kernel Bus Interrupt Handler Implementation
  */
 
+#define KERNEL_PRIVATE 1
+
 #import "EISAKernBusInterrupt.h"
 #import <driverkit/KernLock.h>
 #import <machdep/i386/intr_exported.h>
@@ -51,6 +53,7 @@
 - attachDeviceInterrupt:interrupt
 {
     int result;
+    KernLock *lock = (KernLock *)_EISALock;
 
     /* Check for NULL interrupt */
     if (interrupt == nil) {
@@ -58,10 +61,10 @@
     }
 
     /* Acquire lock */
-    [_EISALock acquire];
+    [lock acquire];
 
     /* Call superclass to attach the device interrupt */
-    result = [super attachDeviceInterrupt:interrupt];
+    result = (int)[super attachDeviceInterrupt:interrupt];
 
     /* If attachment succeeded and IRQ is not enabled, enable it */
     if (result != 0 && !_irqEnabled) {
@@ -70,7 +73,7 @@
     }
 
     /* Release lock */
-    [_EISALock release];
+    [lock release];
 
     return self;
 }
@@ -81,6 +84,7 @@
 - attachDeviceInterrupt:interrupt atLevel:(int)level
 {
     int result;
+    KernLock *lock = (KernLock *)_EISALock;
 
     /* Check for NULL interrupt */
     if (interrupt == nil) {
@@ -88,11 +92,11 @@
     }
 
     /* Acquire lock */
-    [_EISALock acquire];
+    [lock acquire];
 
     /* Validate priority level - must be between current priority and 6 (IPL6) */
     if (level < _priorityLevel || level > 6) {
-        [_EISALock release];
+        [lock release];
         return nil;
     }
 
@@ -105,7 +109,7 @@
     _priorityLevel = level;
 
     /* Call superclass to attach the device interrupt */
-    result = [super attachDeviceInterrupt:interrupt];
+    result = (int)[super attachDeviceInterrupt:interrupt];
 
     /* If attachment succeeded and IRQ is not enabled, enable it */
     if (result != 0 && !_irqEnabled) {
@@ -114,7 +118,7 @@
     }
 
     /* Release lock */
-    [_EISALock release];
+    [lock release];
 
     return self;
 }
@@ -124,7 +128,9 @@
  */
 - detachDeviceInterrupt:interrupt
 {
-    [_EISALock acquire];
+    KernLock *lock = (KernLock *)_EISALock;
+
+    [lock acquire];
 
     /* Call super to detach the device interrupt */
     if (![super detachDeviceInterrupt:interrupt]) {
@@ -135,7 +141,7 @@
         }
     }
 
-    [_EISALock release];
+    [lock release];
     return self;
 }
 
@@ -144,7 +150,9 @@
  */
 - suspend
 {
-    [_EISALock acquire];
+    KernLock *lock = (KernLock *)_EISALock;
+
+    [lock acquire];
 
     /* Call super to increment suspend count */
     [super suspend];
@@ -155,7 +163,7 @@
         _irqEnabled = NO;
     }
 
-    [_EISALock release];
+    [lock release];
     return self;
 }
 
@@ -164,7 +172,9 @@
  */
 - resume
 {
-    [_EISALock acquire];
+    KernLock *lock = (KernLock *)_EISALock;
+
+    [lock acquire];
 
     /* Call super to decrement suspend count and check if we should resume */
     if ([super resume] && !_irqEnabled) {
@@ -173,7 +183,7 @@
         _irqEnabled = YES;
     }
 
-    [_EISALock release];
+    [lock release];
     return self;
 }
 

@@ -28,9 +28,12 @@
  */
 
 #import "EISAKernBus+PlugAndPlay.h"
+#import "PnPDeviceResources.h"
+#import "PnPLogicalDevice.h"
 #import "eisa.h"
 #import <driverkit/generalFuncs.h>
 #import <objc/HashTable.h>
+#import <objc/List.h>
 
 /* Global PnP device table and card count */
 extern unsigned int maxPnPCard;
@@ -38,6 +41,15 @@ extern HashTable *pnpDeviceTable;
 
 /* Global PnP read port */
 extern unsigned short pnpReadPort;
+
+/* Forward declarations for functions in PlugAndPlayPrivate.m */
+BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length);
+BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned int *size);
+
+/* Forward declaration for id methods (List objects with NSNumber-like behavior) */
+@protocol UnsignedIntValue
+- (unsigned int)unsignedIntValue;
+@end
 
 @implementation EISAKernBus (PlugAndPlay)
 
@@ -109,16 +121,16 @@ extern unsigned short pnpReadPort;
                  forCard:(unsigned char)csn
         andLogicalDevice:(int)logicalDevice
 {
-    id device;
+    PnPDeviceResources *device;
     unsigned int deviceCount;
 
     /* Validate CSN (must be non-zero and within range) */
     if ((csn != 0) && (csn <= maxPnPCard)) {
         /* Get the device from the PnP device table */
-        device = [pnpDeviceTable valueForKey:(void *)csn];
+        device = [pnpDeviceTable valueForKey:(void *)(unsigned long)csn];
 
         /* Get the number of logical devices on this card */
-        deviceCount = [device deviceCount];
+        deviceCount = (unsigned int)[device deviceCount];
 
         /* Validate logical device number is within range */
         if (logicalDevice <= (int)(deviceCount - 1)) {
@@ -150,7 +162,7 @@ extern unsigned short pnpReadPort;
  */
 - (BOOL)getPnPId:(unsigned int *)vendorID forCsn:(unsigned char)csn
 {
-    id device;
+    PnPDeviceResources *device;
     unsigned int deviceID;
 
     /* Get the device from the PnP device table using CSN as key */
@@ -158,7 +170,7 @@ extern unsigned short pnpReadPort;
 
     /* If device found, get its ID and store in pointer */
     if (device != nil) {
-        deviceID = [device ID];
+        deviceID = (unsigned int)[device ID];
         *vendorID = deviceID;
         return YES;
     }
@@ -186,7 +198,7 @@ extern unsigned short pnpReadPort;
     }
 
     /* Check if vendor ID matches any in the ID list */
-    return EISAMatchIDs(vendorID, idList);
+    return EISAMatchIDs(vendorID, (char *)idList);
 }
 
 /*
@@ -199,20 +211,22 @@ extern unsigned short pnpReadPort;
        Instance:(int)instance
   LogicalDevice:(unsigned int *)logicalDevice
 {
-    id card;
+    PnPDeviceResources *card;
     unsigned int csn;
     unsigned int cardID;
     BOOL matches;
     BOOL found;
     int instanceCounter;
     int logicalDeviceIndex;
-    id logicalDeviceObj;
+    PnPLogicalDevice *logicalDeviceObj;
     unsigned int logicalDevID;
+    List *compatIDList;
     unsigned int compatCount;
     unsigned int compatIndex;
     id compatIDObj;
     unsigned int compatID;
     unsigned int logicalDeviceNumber;
+    List *deviceList;
 
     /* Initialize return values and counters */
     card = nil;
@@ -223,11 +237,11 @@ extern unsigned short pnpReadPort;
     /* Search through all PnP cards */
     for (csn = 1; csn <= maxPnPCard && !found; csn++) {
         /* Get card from device table */
-        card = [pnpDeviceTable valueForKey:(void *)csn];
+        card = [pnpDeviceTable valueForKey:(void *)(unsigned long)csn];
 
         /* Check if the card's main ID matches the ID list */
-        cardID = [card ID];
-        matches = EISAMatchIDs(cardID, idList);
+        cardID = (unsigned int)[card ID];
+        matches = EISAMatchIDs(cardID, (char *)idList);
 
         if (matches) {
             /* Found a match - check if this is the requested instance */
@@ -241,44 +255,46 @@ extern unsigned short pnpReadPort;
         } else {
             /* Card ID doesn't match - check logical devices */
             logicalDeviceIndex = 0;
+            deviceList = [card deviceList];
 
             while (!found) {
                 /* Get next logical device */
-                logicalDeviceObj = [[card deviceList] objectAt:logicalDeviceIndex];
+                logicalDeviceObj = [deviceList objectAt:logicalDeviceIndex];
                 if (logicalDeviceObj == nil) {
                     break;  /* No more logical devices */
                 }
 
                 /* Check if logical device ID matches */
-                logicalDevID = [logicalDeviceObj ID];
-                matches = EISAMatchIDs(logicalDevID, idList);
+                logicalDevID = (unsigned int)[logicalDeviceObj ID];
+                matches = EISAMatchIDs(logicalDevID, (char *)idList);
 
                 if (matches) {
                     /* Found a match - check if this is the requested instance */
                     if (instance == instanceCounter) {
                         found = YES;
                         /* Get and store logical device number */
-                        logicalDeviceNumber = [logicalDeviceObj logicalDeviceNumber];
+                        logicalDeviceNumber = (unsigned int)[logicalDeviceObj logicalDeviceNumber];
                         *logicalDevice = logicalDeviceNumber;
                     } else {
                         instanceCounter++;
                     }
                 } else {
                     /* Logical device ID doesn't match - check compatible IDs */
-                    compatCount = [[logicalDeviceObj compatIDs] count];
+                    compatIDList = [logicalDeviceObj compatIDs];
+                    compatCount = (unsigned int)[compatIDList count];
 
                     for (compatIndex = 0; compatIndex < compatCount && !found; compatIndex++) {
                         /* Get compatible ID */
-                        compatIDObj = [[logicalDeviceObj compatIDs] objectAt:compatIndex];
-                        compatID = [compatIDObj unsignedIntValue];
-                        matches = EISAMatchIDs(compatID, idList);
+                        compatIDObj = [compatIDList objectAt:compatIndex];
+                        compatID = (unsigned int)[compatIDObj unsignedIntValue];
+                        matches = EISAMatchIDs(compatID, (char *)idList);
 
                         if (matches) {
                             /* Found a match - check if this is the requested instance */
                             if (instance == instanceCounter) {
                                 found = YES;
                                 /* Get and store logical device number */
-                                logicalDeviceNumber = [logicalDeviceObj logicalDeviceNumber];
+                                logicalDeviceNumber = (unsigned int)[logicalDeviceObj logicalDeviceNumber];
                                 *logicalDevice = logicalDeviceNumber;
                             } else {
                                 instanceCounter++;

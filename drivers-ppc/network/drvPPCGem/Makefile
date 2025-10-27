@@ -7,36 +7,26 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = EISABus
+NAME = GemEnet
 
-PROJECTVERSION = 2.7
-PROJECT_TYPE = Driver
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp
+BUNDLES = GemEnet.drvproj
 
-GLOBAL_RESOURCES = Default.table
+TOOLS =
 
-CLASSES =
-
-HFILES =
-
-TOOLS = EISABus.lksproj #PnPDump.tproj
-
-OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
+OTHERSRCS = Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = driver.make
-NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
+MAKEFILE = aggregate.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
-BUNDLE_EXTENSION = config
 
 
-FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
-FRAMEWORKS =
 
 
 include $(MAKEFILEDIR)/platform.make

@@ -77,7 +77,7 @@ extern int PnPEntry_numArgs;
     /* Check if stack is full */
     if (_stackCount == 0) {
         IOLog("PnPArgStack: stack is full, can't push %d\n", value);
-        return;
+        return self;
     }
 
     /* Decrement stack counter (stack grows downward) */
@@ -91,6 +91,8 @@ extern int PnPEntry_numArgs;
 
     /* Update number of arguments on stack */
     PnPEntry_numArgs = 0x14 - _stackCount;
+
+    return self;
 }
 
 /*
@@ -101,7 +103,7 @@ extern int PnPEntry_numArgs;
     int offset;
 
     /* Calculate offset from data base */
-    offset = (int)ptr - (int)_data;
+    offset = (int)((unsigned long)ptr - (unsigned long)_data);
 
     /* Check if address is within segment (< 64K + 1) */
     if (offset < 0x10001) {
@@ -112,12 +114,14 @@ extern int PnPEntry_numArgs;
             /* Push selector (segment) */
             [self push:_selector];
 
-            /* Push offset within segment (cast to short for proper calculation) */
-            [self push:(unsigned short)((short)ptr - (short)_data)];
+            /* Push offset within segment (cast to unsigned short) */
+            [self push:(unsigned short)((unsigned long)ptr - (unsigned long)_data)];
         }
     } else {
         IOLog("PnPArgStack: trying to push an address beyond the segment\n");
     }
+
+    return self;
 }
 
 @end

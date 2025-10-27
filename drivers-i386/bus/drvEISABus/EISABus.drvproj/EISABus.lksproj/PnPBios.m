@@ -31,10 +31,8 @@
 #import "PnPArgStack.h"
 #import "bios.h"
 #import <driverkit/generalFuncs.h>
+#import <machdep/i386/gdt.h>
 #import <string.h>
-
-/* External GDT pointer */
-extern unsigned int *__gdt;
 
 /* External globals for PnP BIOS entry */
 extern unsigned short PnPEntry_biosCodeSelector;
@@ -125,7 +123,7 @@ extern char verbose;
     _pnpBuffer = NULL;
 
     /* Check if PnP BIOS is present and get structure pointer */
-    present = [PnPBios Present:&_pnpStruct];
+    present = [PnPBios Present:(void **)&_pnpStruct];
 
     if (present) {
         /* Copy entry points from PnP installation structure */
@@ -185,7 +183,7 @@ extern char verbose;
 - (int)getDeviceNode:(void *)buffer ForHandle:(int *)handle
 {
     unsigned char *pnpBuf;
-    BOOL setupOk;
+    id setupOk;
     int result;
 
     /* Setup segments for BIOS call */
@@ -218,7 +216,7 @@ extern char verbose;
     result = call_bios(_biosCallData);
 
     /* Release segments */
-    [self releaseSegments];
+    [self releaseSegments:_biosCallData];
 
     return result;
 }
@@ -229,7 +227,7 @@ extern char verbose;
 - (int)getNumNodes:(int *)numNodes AndSize:(int *)maxNodeSize
 {
     unsigned short *pnpBuf;
-    BOOL setupOk;
+    id setupOk;
     int result;
 
     /* Setup segments for BIOS call */
@@ -268,7 +266,7 @@ extern char verbose;
  */
 - (int)getPnPConfig:(void *)buffer
 {
-    BOOL setupOk;
+    id setupOk;
     int result;
 
     /* Setup segments for BIOS call */
@@ -292,7 +290,7 @@ extern char verbose;
     result = call_bios(_biosCallData);
 
     /* Release segments */
-    [self releaseSegments];
+    [self releaseSegments:_biosCallData];
 
     return result;
 }
@@ -303,7 +301,6 @@ extern char verbose;
  */
 - setupSegments
 {
-    unsigned int *gdt = __gdt;
     unsigned int base;
     unsigned short *bufferSelector;
 
@@ -385,37 +382,175 @@ extern char verbose;
         _argStack = [[PnPArgStack alloc] initWithData:_pnpBuffer Selector:*bufferSelector];
         if (_argStack == nil) {
             IOLog("PnPBios: PnPArgStack init failed\n");
-            return NO;
+            return nil;
         }
     }
 
-    return YES;
+    return self;
+}
+
+/*
+ * Setup segments for PnP BIOS calls
+ * Configures GDT entries for PnP BIOS code and data segments
+ *
+ * @param biosStruct  Pointer to PnP BIOS structure containing entry points and segments
+ * @return            1 on success, 0 on failure
+ */
+- (int)setupSegments:(void *)biosStruct
+{
+    unsigned int *savedEntry;
+    unsigned int biosCodeBase;
+    unsigned int biosDataBase;
+    unsigned int biosBufferBase;
+    id argStack;
+    int result;
+
+    /* Save current GDT entries (segments 16-19: 0x80-0x9F) */
+    /* Each entry is 8 bytes, so we save as pairs of 32-bit values */
+
+    /* Segment 16 (0x80): BIOS code selector */
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x50);
+    savedEntry[0] = *(unsigned int *)&gdt[16];
+    savedEntry[1] = *((unsigned int *)&gdt[16] + 1);
+
+    /* Segment 18 (0x90): BIOS data selector */
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x58);
+    savedEntry[0] = *(unsigned int *)&gdt[18];
+    savedEntry[1] = *((unsigned int *)&gdt[18] + 1);
+
+    /* Segment 19 (0x98): BIOS data segment */
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x60);
+    savedEntry[0] = *(unsigned int *)&gdt[19];
+    savedEntry[1] = *((unsigned int *)&gdt[19] + 1);
+
+    /* Segment 17 (0x88): Buffer segment */
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x68);
+    savedEntry[0] = *(unsigned int *)&gdt[17];
+    savedEntry[1] = *((unsigned int *)&gdt[17] + 1);
+
+    /* === Setup GDT Entry for BIOS Code Segment (0x80 = entry 16) === */
+    biosCodeBase = *(unsigned int *)((char *)biosStruct + 0x38);
+
+    gdt[16].code.limit00 = 0xFFFF;
+    gdt[16].code.base00 = (unsigned short)biosCodeBase;
+    gdt[16].code.base16 = (unsigned char)(biosCodeBase >> 16);
+    gdt[16].code.type = DESC_CODE_READ;
+    gdt[16].code.dpl = 0;
+    gdt[16].code.present = 1;
+    gdt[16].code.limit16 = 0;
+    gdt[16].code.opsz = DESC_CODE_16B;
+    gdt[16].code.granular = DESC_GRAN_BYTE;
+    gdt[16].code.base24 = (unsigned char)(biosCodeBase >> 24);
+
+    /* === Setup GDT Entry for BIOS Data Selector (0x90 = entry 18) === */
+    biosDataBase = *(unsigned int *)((char *)biosStruct + 0x40);
+
+    gdt[18].data.limit00 = 0xFFFF;
+    gdt[18].data.base00 = (unsigned short)biosDataBase;
+    gdt[18].data.base16 = (unsigned char)(biosDataBase >> 16);
+    gdt[18].data.type = DESC_DATA_WRITE;
+    gdt[18].data.dpl = 0;
+    gdt[18].data.present = 1;
+    gdt[18].data.limit16 = 0;
+    gdt[18].data.stksz = DESC_DATA_32B;
+    gdt[18].data.granular = DESC_GRAN_PAGE;
+    gdt[18].data.base24 = (unsigned char)(biosDataBase >> 24);
+
+    /* Store selector in biosStruct */
+    *(unsigned short *)((char *)biosStruct + 0x3E) = 0x90;
+
+    /* === Setup GDT Entry for BIOS Data Segment (0x98 = entry 19) === */
+    /* This is a fixed segment at 0xC0000000-0xC006FFFF */
+    gdt[19].code.limit00 = 0xFFFF;
+    gdt[19].code.base00 = 0x6FEC;
+    gdt[19].code.base16 = 0x00;
+    gdt[19].code.type = DESC_CODE_READ;
+    gdt[19].code.dpl = 0;
+    gdt[19].code.present = 1;
+    gdt[19].code.limit16 = 0;
+    gdt[19].code.opsz = DESC_CODE_32B;
+    gdt[19].code.granular = DESC_GRAN_PAGE;
+    gdt[19].code.base24 = 0xC0;
+
+    /* === Setup GDT Entry for Buffer Segment (0x88 = entry 17) === */
+    biosBufferBase = *(unsigned int *)((char *)biosStruct + 0x48) - 0x40000000;
+
+    gdt[17].data.limit00 = 0xFFFF;
+    gdt[17].data.base00 = (unsigned short)biosBufferBase;
+    gdt[17].data.base16 = (unsigned char)(biosBufferBase >> 16);
+    gdt[17].data.type = DESC_DATA_WRITE;
+    gdt[17].data.dpl = 0;
+    gdt[17].data.present = 1;
+    gdt[17].data.limit16 = 0;
+    gdt[17].data.stksz = DESC_DATA_32B;
+    gdt[17].data.granular = DESC_GRAN_PAGE;
+    gdt[17].data.base24 = (unsigned char)(biosBufferBase >> 24);
+
+    /* Store selector in biosStruct */
+    *(unsigned short *)((char *)biosStruct + 0x4C) = 0x88;
+
+    /* Initialize call frame structure */
+    bzero((char *)biosStruct + 8, 0x30);
+
+    /* Setup selectors */
+    *(unsigned short *)((char *)biosStruct + 0x28) = 0x98;
+    *(unsigned int *)((char *)biosStruct + 0x34) = 0;
+    *(unsigned short *)((char *)biosStruct + 0x2A) = 0x10;
+
+    /* Set global PnP entry point variables */
+    PnPEntry_biosCodeSelector = 0x80;
+    PnPEntry_biosCodeOffset = *(unsigned short *)((char *)biosStruct + 0x3C);
+    kernDataSel = 0x10;
+
+    /* Initialize PnPArgStack if not already created */
+    if (*(int *)((char *)biosStruct + 4) == 0) {
+        argStack = [objc_getClass("PnPArgStack") alloc];
+        argStack = [argStack initWithData:(void *)(*(unsigned int *)((char *)biosStruct + 0x48))
+                             Selector:*(unsigned short *)((char *)biosStruct + 0x4C)];
+        result = (int)argStack;
+        *(int *)((char *)biosStruct + 4) = result;
+
+        if (result == 0) {
+            IOLog("PnPBios: PnPArgStack init failed\n");
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 /*
  * Release segments after PnP BIOS calls
  * Restores saved GDT entries for segments 16-19 (0x80-0x9F)
+ *
+ * @param biosStruct  Pointer to PnP BIOS structure containing saved GDT entries
  */
-- releaseSegments
+- releaseSegments:(void *)biosStruct
 {
-    unsigned int *gdt = __gdt;
+    unsigned int *savedEntry;
 
-    /* Restore saved GDT entries (8 DWORDs) */
+    /* Restore saved GDT entries from biosStruct */
+    /* Each saved entry is 8 bytes (2 DWORDs) */
+
     /* Segment 16 (0x80): Code segment */
-    *(unsigned int *)(gdt + 0x80) = _savedGDT[0];
-    *(unsigned int *)(gdt + 0x84) = _savedGDT[1];
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x50);
+    *(unsigned int *)&gdt[16] = savedEntry[0];
+    *((unsigned int *)&gdt[16] + 1) = savedEntry[1];
 
     /* Segment 18 (0x90): Data selector */
-    *(unsigned int *)(gdt + 0x90) = _savedGDT[2];
-    *(unsigned int *)(gdt + 0x94) = _savedGDT[3];
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x58);
+    *(unsigned int *)&gdt[18] = savedEntry[0];
+    *((unsigned int *)&gdt[18] + 1) = savedEntry[1];
 
     /* Segment 19 (0x98): Data segment */
-    *(unsigned int *)(gdt + 0x98) = _savedGDT[4];
-    *(unsigned int *)(gdt + 0x9C) = _savedGDT[5];
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x60);
+    *(unsigned int *)&gdt[19] = savedEntry[0];
+    *((unsigned int *)&gdt[19] + 1) = savedEntry[1];
 
     /* Segment 17 (0x88): Buffer segment */
-    *(unsigned int *)(gdt + 0x88) = _savedGDT[6];
-    *(unsigned int *)(gdt + 0x8C) = _savedGDT[7];
+    savedEntry = (unsigned int *)((char *)biosStruct + 0x68);
+    *(unsigned int *)&gdt[17] = savedEntry[0];
+    *((unsigned int *)&gdt[17] + 1) = savedEntry[1];
 
     return self;
 }

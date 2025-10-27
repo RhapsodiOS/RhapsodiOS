@@ -1,0 +1,7 @@
+###############################################################################
+#  Makefile.preamble
+###############################################################################
+
+NEXTSTEP_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)
+WINDOWS_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)
+PDO_UNIX_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)

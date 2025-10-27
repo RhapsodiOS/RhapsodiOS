@@ -34,7 +34,9 @@
 #import "pnpIOPort.h"
 #import "pnpMemory.h"
 #import <driverkit/IODeviceDescription.h>
+#import <driverkit/KernDeviceDescription.h>
 #import <driverkit/generalFuncs.h>
+#import <objc/List.h>
 
 /* External verbose flag */
 extern char verbose;
@@ -115,7 +117,7 @@ extern char verbose;
  */
 - (id)addIRQ:(id)irqObject
 {
-    id list = [_irq list];
+    List *list = [_irq list];
     return [list addObject:irqObject];
 }
 
@@ -125,7 +127,7 @@ extern char verbose;
  */
 - (id)addDMA:(id)dmaObject
 {
-    id list = [_dma list];
+    List *list = [_dma list];
     return [list addObject:dmaObject];
 }
 
@@ -135,7 +137,7 @@ extern char verbose;
  */
 - (id)addIOPort:(id)portObject
 {
-    id list = [_port list];
+    List *list = [_port list];
     return [list addObject:portObject];
 }
 
@@ -145,7 +147,7 @@ extern char verbose;
  */
 - (id)addMemory:(id)memoryObject
 {
-    id list = [_memory list];
+    List *list = [_memory list];
     return [list addObject:memoryObject];
 }
 
@@ -157,7 +159,7 @@ extern char verbose;
 - (void)markStartDependentResources
 {
     int count;
-    id list;
+    List *list;
 
     /* Set IRQ dependent start */
     list = [_irq list];
@@ -191,7 +193,7 @@ extern char verbose;
     SEL selectors[4];
     int i, j;
     id configResourceContainer;
-    id configList;
+    List *configList;
     id resourceObject;
     id depResourceContainer;
     id ourResourceObject;
@@ -241,10 +243,11 @@ extern char verbose;
  */
 - initFromDeviceDescription:(id)description
 {
-    id resources;
+    KernDeviceDescription *desc = (KernDeviceDescription *)description;
+    List *resources;
     int i;
     id resource;
-    unsigned long long range;
+    Range range;
     unsigned int base, length;
     id irqObject, dmaObject, portObject, memoryObject;
     int item;
@@ -255,7 +258,7 @@ extern char verbose;
     }
 
     /* Parse I/O ports */
-    resources = [description resourcesForKey:"I/O Ports"];
+    resources = [desc resourcesForKey:"I/O Ports"];
     i = 0;
     while (1) {
         resource = [resources objectAt:i];
@@ -265,8 +268,8 @@ extern char verbose;
 
         /* Get range (base and length) */
         range = [resource range];
-        base = range & 0xFFFF;
-        length = (range >> 32) & 0xFFFF;
+        base = range.base & 0xFFFF;
+        length = range.length & 0xFFFF;
 
         /* Create port object */
         portObject = [[pnpIOPort alloc] initWithBase:base Length:length];
@@ -279,7 +282,7 @@ extern char verbose;
     }
 
     /* Parse IRQ levels */
-    resources = [description resourcesForKey:"IRQ Levels"];
+    resources = [desc resourcesForKey:"IRQ Levels"];
     i = 0;
     while (1) {
         resource = [resources objectAt:i];
@@ -296,13 +299,13 @@ extern char verbose;
             return [self free];
         }
 
-        [irqObject addToIRQList:(id)item];
+        [irqObject addToIRQList:(id)(unsigned long)item];
         [self addIRQ:irqObject];
         i++;
     }
 
     /* Parse DMA channels */
-    resources = [description resourcesForKey:"DMA Channels"];
+    resources = [desc resourcesForKey:"DMA Channels"];
     i = 0;
     while (1) {
         resource = [resources objectAt:i];
@@ -319,13 +322,13 @@ extern char verbose;
             return [self free];
         }
 
-        [dmaObject addDMAToList:(id)item];
+        [dmaObject addDMAToList:(id)(unsigned long)item];
         [self addDMA:dmaObject];
         i++;
     }
 
     /* Parse memory maps */
-    resources = [description resourcesForKey:"Memory Maps"];
+    resources = [desc resourcesForKey:"Memory Maps"];
     i = 0;
     while (1) {
         resource = [resources objectAt:i];
@@ -335,8 +338,8 @@ extern char verbose;
 
         /* Get range (base and length) */
         range = [resource range];
-        base = range & 0xFFFFFFFF;
-        length = (range >> 32) & 0xFFFFFFFF;
+        base = range.base & 0xFFFFFFFF;
+        length = range.length & 0xFFFFFFFF;
 
         /* Create memory object */
         memoryObject = [[pnpMemory alloc] initWithBase:base Length:length
@@ -366,7 +369,7 @@ extern char verbose;
     unsigned int memBase32, memControl32, memLimit32;
     unsigned int length;
     id portObject, irqObject, dmaObject, memoryObject;
-    id memList;
+    List *memList;
     int memCount;
 
     /* Initialize */
@@ -409,7 +412,7 @@ extern char verbose;
                 return [self free];
             }
 
-            [irqObject addToIRQList:(id)irqNum];
+            [irqObject addToIRQList:(id)(unsigned long)irqNum];
             [irqObject setHigh:(irqFlags & 2) Level:(irqFlags & 1)];
             [self addIRQ:irqObject];
 
@@ -429,7 +432,7 @@ extern char verbose;
                 return [self free];
             }
 
-            [dmaObject addDMAToList:(id)dmaChannel];
+            [dmaObject addDMAToList:(id)(unsigned long)dmaChannel];
             [self addDMA:dmaObject];
 
             if (verbose) {
@@ -535,7 +538,7 @@ extern char verbose;
 - (void)print
 {
     id resourceContainers[4];
-    id list;
+    List *list;
     int i, j;
     id resource;
 

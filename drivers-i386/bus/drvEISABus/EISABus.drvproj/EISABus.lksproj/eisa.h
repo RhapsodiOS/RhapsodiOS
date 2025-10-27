@@ -97,18 +97,21 @@ int getEISASlotInfo(unsigned int slot, unsigned char *buffer);
 int getEISAFunctionInfo(unsigned int slot, unsigned int function, unsigned char *buffer);
 
 /*
- * Look for EISA ID in system
+ * Look for EISA ID in system (Objective-C implementation)
  *
- * Searches all EISA slots for cards matching the specified ID list.
+ * Searches all EISA slots (0-15) for cards matching the specified ID list.
  * Returns information about the Nth matching instance.
  *
- * instance: Which matching instance to find (0-based)
- * ids: String containing list of IDs to match against
- * buffer: Buffer to receive slot/function configuration data
- * count: Pointer to receive function count
- * returns: Slot number if found (1-based), 0 if not found
+ * NOTE: This function is implemented in EISAKernBus.m to match the original
+ * Rhapsody DR2 binary which uses Objective-C method dispatch.
+ *
+ * param_1: Which matching instance to find (0-based)
+ * param_2: String containing list of IDs to match against
+ * param_3: Output buffer to receive "Slot N" string
+ * param_4: Pointer to receive string length (including null terminator)
+ * returns: 0 on success, 0xfffffd27 (IO_R_NO_DEVICE) if not found
  */
-int LookForEISAID(unsigned long instance, const char *ids, unsigned char *buffer, unsigned int *count);
+int LookForEISAID(int param_1, const char *param_2, char *param_3, unsigned int *param_4);
 
 /*
  * Test slot for EISA ID match

@@ -33,11 +33,20 @@
 #import "PnPDeviceResources.h"
 #import "PnPLogicalDevice.h"
 #import "PnPResources.h"
+#import "PnPResource.h"
+#import "PnPDependentResources.h"
+#import "pnpMemory.h"
+#import "pnpIOPort.h"
+#import "pnpIRQ.h"
+#import "pnpDMA.h"
 #import "bios.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/KernDeviceDescription.h>
 #import <driverkit/IODeviceDescription.h>
 #import <libkern/libkern.h>
 #import <objc/HashTable.h>
+#import <objc/List.h>
+#import <stdio.h>
 #import <string.h>
 
 /* Global PnP device table and card count */
@@ -54,8 +63,8 @@ id pnpBios = nil;
 extern char *configTableLookupServerAttribute(const char *serverName, const char *attributeName);
 
 /* Forward declarations */
-static BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length);
-static BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned int *size);
+BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length);
+BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned int *size);
 
 @implementation EISAKernBus (PlugAndPlayPrivate)
 
@@ -533,20 +542,21 @@ static int isolateCardsWithReadPort(unsigned short readPort)
        DependentFunction:(id)function
              Description:(id)description
 {
-    id functionMemory, functionPort;
-    id resourcesDMA, resourcesIRQ;
-    id depFunctionMemory, depFunctionPort;
-    id resourcesMemory, resourcesPort;
+    KernDeviceDescription *desc = (KernDeviceDescription *)description;
+    PnPResource *functionMemory, *functionPort;
+    PnPResource *resourcesDMA, *resourcesIRQ;
+    PnPResource *depFunctionMemory, *depFunctionPort;
+    PnPResource *resourcesMemory, *resourcesPort;
     int resourcesMemoryCount, depFunctionMemoryCount, functionMemoryCount;
     int resourcesPortCount, depFunctionPortCount, functionPortCount;
     int resourcesIRQCount, resourcesDMACount;
     int memoryCount, portCount;
     void *memoryArray, *portArray, *irqArray, *dmaArray;
     int i;
-    id obj;
     unsigned int base, length;
-    unsigned int *valuePtr;
     id result;
+    pnpMemory *memObj, *memLenObj;
+    pnpIOPort *portObj, *portLenObj;
 
     /* Get resource objects from function parameter */
     functionMemory = [function memory];
@@ -582,14 +592,12 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         /* Fill array with memory ranges */
         for (i = 0; i < memoryCount; i++) {
             /* Get min_base from resources memory list */
-            obj = [[resourcesMemory list] objectAt:i];
-            obj = [obj min_base];
-            base = [obj unsignedIntValue];
+            memObj = [[resourcesMemory list] objectAt:i];
+            base = [memObj min_base];
 
             /* Get length from depFunction, using function memory */
-            obj = [depFunctionMemory objectAt:i Using:functionMemory];
-            obj = [obj length];
-            length = [obj unsignedIntValue];
+            memLenObj = [depFunctionMemory objectAt:i Using:functionMemory];
+            length = [memLenObj length];
 
             /* Store base and length in array */
             ((unsigned int *)memoryArray)[i * 2] = base;
@@ -597,9 +605,9 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
 
         /* Allocate ranges in device description */
-        result = [description allocateRanges:memoryArray
-                                   numRanges:memoryCount
-                                      forKey:"Memory Maps"];
+        result = [desc allocateRanges:memoryArray
+                             numRanges:memoryCount
+                                forKey:"Memory Maps"];
         if (result == nil) {
             IOLog("PnP: allocateRanges:numRanges:%d forKey:'%s' returns nil\n",
                   memoryCount, "Memory Maps");
@@ -629,14 +637,12 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         /* Fill array with port ranges */
         for (i = 0; i < portCount; i++) {
             /* Get min_base from resources port list */
-            obj = [[resourcesPort list] objectAt:i];
-            obj = [obj min_base];
-            base = [obj unsignedIntValue];
+            portObj = [[resourcesPort list] objectAt:i];
+            base = [portObj min_base];
 
             /* Get length from depFunction, using function port */
-            obj = [depFunctionPort objectAt:i Using:functionPort];
-            obj = [obj length];
-            length = [obj unsignedIntValue];
+            portLenObj = [depFunctionPort objectAt:i Using:functionPort];
+            length = [portLenObj length];
 
             /* Store base and length in array (masked to 16 bits for ports) */
             ((unsigned int *)portArray)[i * 2] = base & 0xffff;
@@ -644,9 +650,9 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
 
         /* Allocate ranges in device description */
-        result = [description allocateRanges:portArray
-                                   numRanges:portCount
-                                      forKey:"I/O Ports"];
+        result = [desc allocateRanges:portArray
+                             numRanges:portCount
+                                forKey:"I/O Ports"];
         if (result == nil) {
             IOLog("PnP: allocateRanges:numRanges:%d forKey:'%s' returns nil\n",
                   portCount, "I/O Ports");
@@ -665,18 +671,17 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         /* Fill array with IRQ numbers */
         for (i = 0; i < resourcesIRQCount; i++) {
             /* Get irqs pointer from resources IRQ list */
-            obj = [[resourcesIRQ list] objectAt:i];
-            obj = [obj irqs];
-            valuePtr = (unsigned int *)[obj unsignedIntValue];
+            pnpIRQ *irqObj = [[resourcesIRQ list] objectAt:i];
+            int *irqsPtr = [irqObj irqs];
 
             /* Dereference pointer to get IRQ value */
-            ((unsigned int *)irqArray)[i] = *valuePtr;
+            ((unsigned int *)irqArray)[i] = *irqsPtr;
         }
 
         /* Allocate items in device description */
-        result = [description allocateItems:irqArray
-                                   numItems:resourcesIRQCount
-                                     forKey:"IRQ Levels"];
+        result = [desc allocateItems:irqArray
+                            numItems:resourcesIRQCount
+                              forKey:"IRQ Levels"];
         if (result == nil) {
             IOLog("PnP: allocateItems:numItems:%d forKey:'%s' returns nil\n",
                   resourcesIRQCount, "IRQ Levels");
@@ -695,18 +700,17 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         /* Fill array with DMA channel numbers */
         for (i = 0; i < resourcesDMACount; i++) {
             /* Get dmaChannels pointer from resources DMA list */
-            obj = [[resourcesDMA list] objectAt:i];
-            obj = [obj dmaChannels];
-            valuePtr = (unsigned int *)[obj unsignedIntValue];
+            pnpDMA *dmaObj = [[resourcesDMA list] objectAt:i];
+            int *dmaChannelsPtr = [dmaObj dmaChannels];
 
             /* Dereference pointer to get DMA channel value */
-            ((unsigned int *)dmaArray)[i] = *valuePtr;
+            ((unsigned int *)dmaArray)[i] = *dmaChannelsPtr;
         }
 
         /* Allocate items in device description */
-        result = [description allocateItems:dmaArray
-                                   numItems:resourcesDMACount
-                                     forKey:"DMA Channels"];
+        result = [desc allocateItems:dmaArray
+                            numItems:resourcesDMACount
+                              forKey:"DMA Channels"];
         if (result == nil) {
             IOLog("PnP: allocateItems:numItems:%d forKey:'%s' returns nil\n",
                   resourcesDMACount, "DMA Channels");
@@ -786,19 +790,21 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     const char *serverName;
     const char *instance;
     const char *autoDetectIDs;
-    id card;
+    PnPDeviceResources *card;
     unsigned int cardID;
     unsigned int serialNum;
     unsigned int logicalDevice;
-    id resources;
-    id logicalDeviceObj;
+    PnPResources *resources;
+    PnPLogicalDevice *logicalDeviceObj;
     const char *deviceName;
     const char *cardDeviceName;
-    id depFunction;
+    PnPDependentResources *depFunction;
     BOOL found;
     unsigned char csn;
     unsigned char lfsr;
     int i;
+    List *deviceList;
+    KernDeviceDescription *desc = (KernDeviceDescription *)description;
 
     card = nil;
     cardID = 0;
@@ -806,7 +812,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     logicalDevice = 0;
 
     /* Get Location string from device description */
-    location = [description stringForKey:"Location"];
+    location = [desc stringForKey:"Location"];
     if (location != NULL) {
         /* Parse Location string format: "Card: <id> Serial: <serial> Logical: <device>" */
 
@@ -858,48 +864,49 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
 
     /* If Location parsing failed, try alternative method */
     if (card == nil) {
-        instance = [description stringForKey:"Instance"];
+        instance = [desc stringForKey:"Instance"];
         if (instance != NULL) {
             int instanceNum = strtol(instance, NULL, 0);
-            autoDetectIDs = [description stringForKey:"Auto Detect IDs"];
+            autoDetectIDs = [desc stringForKey:"Auto Detect IDs"];
             card = [self lookForPnPIDs:autoDetectIDs Instance:instanceNum LogicalDevice:&logicalDevice];
         }
     }
 
     /* If we still couldn't find the card, log error and fail */
     if (card == nil) {
-        serverName = [description stringForKey:"Server Name"];
+        serverName = [desc stringForKey:"Server Name"];
         if (serverName == NULL) {
             serverName = "<unknown>";
         }
-        location = [description stringForKey:"Location"];
-        instance = [description stringForKey:"Instance"];
+        location = [desc stringForKey:"Location"];
+        instance = [desc stringForKey:"Instance"];
         IOLog("PnP: could not find card for driver '%s' location '%s' instance %s\n",
               serverName, location ? location : "", instance ? instance : "");
         return NO;
     }
 
     /* Create PnPResources object from device description */
-    resources = [[PnPResources alloc] initFromDeviceDescription:description];
+    resources = [[PnPResources alloc] initFromDeviceDescription:desc];
     if (resources == nil) {
         IOLog("PnP: PnPResources initFromDeviceDescription failed\n");
         return NO;
     }
 
     /* Get the logical device object */
-    logicalDeviceObj = [[card deviceList] objectAt:logicalDevice];
+    deviceList = [card deviceList];
+    logicalDeviceObj = [deviceList objectAt:logicalDevice];
 
     /* Get device name for logging */
-    deviceName = [logicalDeviceObj deviceName];
+    deviceName = (const char *)[logicalDeviceObj deviceName];
     if (deviceName == NULL) {
         deviceName = "";
     }
-    cardDeviceName = [card deviceName];
+    cardDeviceName = (const char *)[card deviceName];
     IOLog("PnP: configuring %s %s\n", cardDeviceName ? cardDeviceName : "", deviceName);
 
     /* Find matching dependent function configuration */
     found = [logicalDeviceObj findMatchingDependentFunction:&depFunction
-                                                        For:resources];
+                                                   ForConfig:resources];
     if (!found) {
         IOLog("PnP: could not find a matching configuration for %s %s\n",
               cardDeviceName ? cardDeviceName : "", deviceName);
@@ -972,7 +979,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
  * Read full card configuration data
  * Reads the PnP resource data from a card using ISA PnP protocol
  */
-static BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
+BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
 {
     unsigned char *bufPtr;
     unsigned int bytesRead;
@@ -1040,34 +1047,44 @@ static BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
 /*
  * Read logical device configuration registers
  * Reads the current hardware configuration (0x4e bytes) for a logical device
+ *
+ * Based on decompiled code - reads configuration in specific register ranges:
+ *   - I/O config: 0x40+ (20 bytes at offset 0x00)
+ *   - Memory config: 0x76,0x80,0x90,0xA0 (36 bytes at offset 0x14)
+ *   - I/O base addresses: 0x60+ (16 bytes at offset 0x38)
+ *   - IRQ config: 0x70+ (4 bytes at offset 0x48)
+ *   - DMA config: 0x74+ (2 bytes at offset 0x4c)
  */
-static BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned int *size)
+BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned int *size)
 {
     unsigned char *bufPtr;
-    unsigned char regNum;
     unsigned char regValue;
+    unsigned char regBase;
     unsigned char lfsr;
-    int i;
+    int i, j;
 
-    if (csn == 0 || buffer == NULL || size == NULL) {
+    /* Check buffer size - need at least 0x4e bytes */
+    if (*size < 0x4e) {
         return NO;
     }
 
     bufPtr = (unsigned char *)buffer;
 
-    /* Send PnP initiation sequence */
-    /* Reset and Wait for Key */
+    /* === PnP Initialization Sequence === */
+
+    /* Send initiation key sequence */
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
 
-    /* Two writes of 0x00 to address port */
+    /* Two writes of 0x00 to address port (reset) */
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
 
-    /* Send 32-byte initiation key using LFSR */
+    /* Send 32-byte LFSR initiation key */
     lfsr = 0x6a;
     for (i = 0; i < 0x20; i++) {
         __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        /* Calculate next LFSR value */
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
     }
 
@@ -1079,27 +1096,87 @@ static BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, uns
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)7), "d"(0x279));
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)logicalDevice), "d"(0xa79));
 
-    /* Read 0x4e bytes of configuration registers */
-    /* Registers 0x30-0x7F (device configuration registers) */
-    for (i = 0; i < 0x4e; i++) {
-        regNum = 0x30 + i;
+    /* Update size to actual bytes read */
+    *size = 0x4e;
 
-        /* Select register */
-        __asm__ volatile("outb %b0,%w1" : : "a"(regNum), "d"(0x279));
+    /* === Read Configuration Registers === */
 
-        /* Read value from PnP read port */
-        __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
-
-        /* Store in buffer */
-        bufPtr[i] = regValue;
+    /* Read I/O configuration registers (0x40, 0x48, 0x50, 0x58) */
+    /* 4 I/O ranges × 5 bytes each = 20 bytes at buffer offset 0 */
+    regBase = 0x40;
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 5; j++) {
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
+            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            bufPtr[i * 5 + j] = regValue;
+        }
+        regBase += 8;  /* Next I/O range (0x40, 0x48, 0x50, 0x58) */
     }
 
-    /* Send Wait for Key */
+    /* Read memory configuration registers (0x76, 0x80, 0x90, 0xA0) */
+    /* 4 memory ranges × 9 bytes each = 36 bytes at buffer offset 0x14 (20) */
+    for (i = 0; i < 4; i++) {
+        /* Determine base register for this memory range */
+        if (i == 1) {
+            regBase = 0x80;
+        } else if (i == 2) {
+            regBase = 0x90;
+        } else if (i == 3) {
+            regBase = 0xA0;
+        } else {
+            regBase = 0x76;  /* i == 0 */
+        }
+
+        for (j = 0; j < 9; j++) {
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
+            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            bufPtr[0x14 + i * 9 + j] = regValue;
+        }
+    }
+
+    /* Read I/O base address registers (0x60-0x6F) */
+    /* 8 I/O base addresses × 2 bytes each = 16 bytes at buffer offset 0x38 (56) */
+    regBase = 0x60;
+    for (i = 0; i < 8; i++) {
+        for (j = 0; j < 2; j++) {
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
+            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            bufPtr[0x38 + i * 2 + j] = regValue;
+        }
+        regBase += 2;
+    }
+
+    /* Read IRQ configuration registers (0x70, 0x72) */
+    /* 2 IRQ settings × 2 bytes each = 4 bytes at buffer offset 0x48 (72) */
+    regBase = 0x70;
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < 2; j++) {
+            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
+            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            bufPtr[0x48 + i * 2 + j] = regValue;
+        }
+        regBase += 2;
+    }
+
+    /* Read DMA configuration registers (0x74, 0x75) */
+    /* 2 DMA channels × 1 byte each = 2 bytes at buffer offset 0x4c (76) */
+    regBase = 0x74;
+    for (i = 0; i < 2; i++) {
+        __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
+        __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+        bufPtr[0x4c + i] = regValue;
+        regBase++;
+    }
+
+    /* Set default DMA values if both are 0 (disabled) */
+    if (bufPtr[0x4c] == 0 && bufPtr[0x4d] == 0) {
+        bufPtr[0x4c] = 4;  /* DMA channel 4 (cascade/disabled) */
+        bufPtr[0x4d] = 4;
+    }
+
+    /* === Return to "Wait for Key" state === */
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
     __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
-
-    /* Update size */
-    *size = 0x4e;
 
     return YES;
 }

@@ -23,7 +23,7 @@
  */
 
 /*
- * PnPDump.m
+ * PnPDump
  * Plug and Play Device Dump Utility
  *
  * This tool enumerates and displays Plug and Play device configurations

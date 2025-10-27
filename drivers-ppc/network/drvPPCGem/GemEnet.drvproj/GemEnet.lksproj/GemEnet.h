@@ -19,6 +19,14 @@ struct mar_entry {
     enet_addr_t		myAddress;	/* local copy of ethernet address */
     IONetwork		*network;	/* handle to kernel network object */
     id			transmitQueue;	/* transmit queue */
+    BOOL		promiscuousMode;/* Promiscuous mode flag (offset 0x188) */
+    BOOL		multicastEnabled;/* Multicast enabled flag (offset 0x189) */
+    BOOL		ready;		/* Ready flag (offset 0x18a) */
+    unsigned char	pad_18b;	/* Padding (offset 0x18b) */
+    unsigned int	initValue1;	/* Init value (offset 0x18c) */
+    unsigned char	initValue2;	/* Init value (offset 0x190) */
+    unsigned char	initValue3;	/* Init value (offset 0x191) */
+    unsigned short	linkStatus;	/* Link status (offset 0x192) */
 
     /* Multicast support */
     struct mar_entry	mar_list[MAR_MAX];	/* multicast address list */
@@ -28,16 +36,23 @@ struct mar_entry {
     /* Transmit/Receive ring buffers */
     void		*txRing;		/* transmit ring buffer */
     void		*rxRing;		/* receive ring buffer */
-    unsigned int	txHead;			/* transmit ring head */
-    unsigned int	txTail;			/* transmit ring tail */
-    unsigned int	rxHead;			/* receive ring head */
 
     /* DMA memory management */
-    void		*dmaCommands;		/* DMA command memory (offset 0x5ac) */
-    void		*txDMACommands;		/* TX DMA commands (offset 0x5b8) */
-    void		*rxDMACommands;		/* RX DMA commands (offset 0x5b0) */
-    unsigned int	txDMACommandsSize;	/* TX DMA size (offset 0x5a8) */
+    unsigned int	txHead;			/* TX ring head (offset 0x594) */
+    unsigned int	txTail;			/* TX ring tail (offset 0x598) */
     unsigned int	rxDMACommandsSize;	/* RX DMA size (offset 0x59c) */
+    unsigned int	rxHead;			/* RX ring head (offset 0x5a0) */
+    unsigned int	rxTail;			/* RX ring tail (offset 0x5a4) */
+    unsigned int	txDMACommandsSize;	/* TX DMA size (offset 0x5a8) */
+    void		*dmaCommands;		/* DMA command memory (offset 0x5ac) */
+    void		*rxDMACommands;		/* RX DMA commands virtual (offset 0x5b0) */
+    unsigned int	txDMACommandsPhys;	/* TX DMA commands physical (offset 0x5b4) */
+    void		*txDMACommands;		/* TX DMA commands virtual (offset 0x5b8) */
+    unsigned int	rxDMACommandsPhys;	/* RX DMA commands physical (offset 0x5bc) */
+    unsigned int	pad_5c0;		/* Padding (offset 0x5c0) */
+    unsigned int	pad_5c4;		/* Padding (offset 0x5c4) */
+    void		*debuggerPktBuffer;	/* Debugger packet buffer (offset 0x5c8) */
+    unsigned int	debuggerPktLength;	/* Debugger packet length (offset 0x5cc) */
 
     /* Multicast hash table */
     unsigned short	hashTableUseCount[256];	/* Hash usage counter (offset 0x5d0) */
@@ -47,6 +62,16 @@ struct mar_entry {
     BOOL		transmitActive;		/* Transmit active */
     BOOL		promMode;		/* Promiscuous mode */
     BOOL		multiMode;		/* Multicast mode */
+
+    /* Link status */
+    unsigned short	linkStatus;		/* Link status (offset 0x192) */
+    unsigned short	pad3;			/* Padding */
+
+    /* TX netbuf array */
+    netbuf_t		txNetbufs[128];		/* TX netbuf array (offset 0x194) */
+
+    /* RX netbuf array */
+    netbuf_t		rxNetbufs[128];		/* RX netbuf array (offset 0x394) */
 
     /* Hardware info */
     int			debug;			/* debug level flag; 0=off */
@@ -132,7 +157,7 @@ struct mar_entry {
 
 /* Utilities */
 - (void)_getStationAddress:(enet_addr_t *)addr;
-- (void)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(void *)desc ReceiveFlag:(BOOL)isReceive;
+- (BOOL)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(void *)desc ReceiveFlag:(BOOL)isReceive;
 - (void)_monitorLinkStatus;
 - (void)_dumpRegisters;
 - (void)_packetToDebugger:(void *)pkt;

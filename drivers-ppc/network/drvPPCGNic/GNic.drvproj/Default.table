@@ -1,0 +1,6 @@
+"Title"       = "drvPPCGNic";
+"Family"      = "Network";
+"Driver Name" = "drvPPCGNic";
+"Class Names" = "GNicEnet";
+"Matching"    = "pci1318,911 pci1318,1";
+"Server Name" = "drvPPCGNic";

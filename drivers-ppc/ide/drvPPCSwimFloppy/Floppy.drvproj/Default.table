@@ -1,0 +1,11 @@
+"Title" = "Floppy";
+"Family" = "Disk";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "Floppy";
+"Class Names" = "FloppyController FloppyDisk";
+"Memory Maps" = "";
+"Boot Driver";
+"Block Major" = "1";
+"Character Major" = "41";
+"Server Name" = "Floppy";

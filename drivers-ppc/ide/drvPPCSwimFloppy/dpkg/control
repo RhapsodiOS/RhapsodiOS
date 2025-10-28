@@ -1,0 +1,6 @@
+Package: drvppcswimfloppy
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 20
+Description: Apple SWIM Floppy device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

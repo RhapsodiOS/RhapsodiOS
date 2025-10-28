@@ -1,0 +1,3 @@
+MAKEFILEDIR = /NextDeveloper
+
+CFLAGS = -g -Wall

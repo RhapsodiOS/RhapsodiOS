@@ -74,16 +74,16 @@
  * Allocate resources for a device
  * Assigns resources using the specified dependent function and description
  */
-- (BOOL)allocateResources:(id)resources
-                    Using:(id)depFunction
-       DependentFunction:(id)function
-             Description:(id)description;
+- (id)allocateResources:(id)resources
+                  Using:(id)depFunction
+     DependentFunction:(id)function
+           Description:(id)description;
 
 /*
  * Set PnP resources from device description
  * Configures device resources based on the description
  */
-- (BOOL)pnpSetResourcesForDescription:(id)description;
+- (id)pnpSetResourcesForDescription:(id)description;
 
 @end
 

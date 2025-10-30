@@ -30,13 +30,12 @@
 #ifndef _PNPDEPENDENTRESOURCES_H_
 #define _PNPDEPENDENTRESOURCES_H_
 
-#import <objc/Object.h>
+#import "PnPResources.h"
 
 /* PnPDependentResources - Dependent resource configurations */
-@interface PnPDependentResources : Object
+@interface PnPDependentResources : PnPResources
 {
     @private
-    unsigned char _padding[16];  /* Padding to offset 0x14 (4 bytes isa + 16 bytes) */
     char _goodConfig;            /* Good configuration flag at offset 0x14 */
 }
 

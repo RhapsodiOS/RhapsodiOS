@@ -41,6 +41,11 @@
 #import <stdio.h>
 #import <string.h>
 
+/* List category for freeObjects: method */
+@interface List (FreeObjects)
+- freeObjects:(SEL)aSelector;
+@end
+
 /* External verbose flag */
 extern char verbose;
 
@@ -375,9 +380,9 @@ static unsigned short readPort = 0;
                     return nil;
                 }
                 if (depthCounter == 0) {
-                    [[[logicalDevice resources] addMemory:memory] free];
+                    [[logicalDevice resources] addMemory:memory];
                 } else {
-                    [[depResources addMemory:memory] free];
+                    [depResources addMemory:memory];
                 }
                 break;
             }
@@ -545,9 +550,9 @@ static unsigned short readPort = 0;
                     return nil;
                 }
                 if (depthCounter == 0) {
-                    [[[logicalDevice resources] addIRQ:irq] free];
+                    [[logicalDevice resources] addIRQ:irq];
                 } else {
-                    [[depResources addIRQ:irq] free];
+                    [depResources addIRQ:irq];
                 }
                 break;
             }
@@ -559,9 +564,9 @@ static unsigned short readPort = 0;
                     return nil;
                 }
                 if (depthCounter == 0) {
-                    [[[logicalDevice resources] addDMA:dma] free];
+                    [[logicalDevice resources] addDMA:dma];
                 } else {
-                    [[depResources addDMA:dma] free];
+                    [depResources addDMA:dma];
                 }
                 break;
             }
@@ -580,10 +585,10 @@ static unsigned short readPort = 0;
                 }
 
                 /* Mark start of dependent resources */
-                [[[logicalDevice resources] markStartDependentResources] free];
+                [[logicalDevice resources] markStartDependentResources];
 
                 /* Add to logical device's dependent resources list */
-                [[[logicalDevice depResources] addObject:depResources] free];
+                [[logicalDevice depResources] addObject:depResources];
 
                 /* Set good config flag (default: good) */
                 [depResources setGoodConfig:1];
@@ -622,9 +627,9 @@ static unsigned short readPort = 0;
                     return nil;
                 }
                 if (depthCounter == 0) {
-                    [[[logicalDevice resources] addIOPort:ioPort] free];
+                    [[logicalDevice resources] addIOPort:ioPort];
                 } else {
-                    [[depResources addIOPort:ioPort] free];
+                    [depResources addIOPort:ioPort];
                 }
                 break;
             }

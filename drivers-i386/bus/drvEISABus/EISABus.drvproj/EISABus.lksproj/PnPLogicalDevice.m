@@ -38,6 +38,11 @@
 #import <objc/List.h>
 #import <string.h>
 
+/* List category for freeObjects: method */
+@interface List (FreeObjects)
+- freeObjects:(SEL)aSelector;
+@end
+
 @implementation PnPLogicalDevice
 
 /*

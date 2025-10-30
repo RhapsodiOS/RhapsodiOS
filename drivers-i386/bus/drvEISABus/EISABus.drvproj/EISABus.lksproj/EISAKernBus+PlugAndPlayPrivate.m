@@ -334,7 +334,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     size_t strLen;
     char *p;
     int biosResult;
-    int configData;
+    void *configData;
     void *configBuffer;
     unsigned int csn;
     unsigned int bufferSize;
@@ -417,8 +417,8 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
 
         /* Extract configuration from result */
-        maxPnPCard = *((unsigned char *)&configData + 1);
-        pnpReadPort = *((unsigned short *)&configData + 1);
+        maxPnPCard = *((unsigned char *)configData + 1);
+        pnpReadPort = *((unsigned short *)configData + 1);
 
         IOLog("PnP: Plug and Play BIOS present\n");
     }
@@ -537,10 +537,10 @@ static int isolateCardsWithReadPort(unsigned short readPort)
  * Allocates memory, I/O port, IRQ, and DMA resources based on the
  * resource descriptors and adds them to the device description
  */
-- (BOOL)allocateResources:(id)resources
-                    Using:(id)depFunction
-       DependentFunction:(id)function
-             Description:(id)description
+- (id)allocateResources:(id)resources
+                  Using:(id)depFunction
+     DependentFunction:(id)function
+           Description:(id)description
 {
     KernDeviceDescription *desc = (KernDeviceDescription *)description;
     PnPResource *functionMemory, *functionPort;
@@ -611,7 +611,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         if (result == nil) {
             IOLog("PnP: allocateRanges:numRanges:%d forKey:'%s' returns nil\n",
                   memoryCount, "Memory Maps");
-            return NO;
+            return nil;
         }
 
         IOFree(memoryArray, memoryCount * 8);
@@ -656,7 +656,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         if (result == nil) {
             IOLog("PnP: allocateRanges:numRanges:%d forKey:'%s' returns nil\n",
                   portCount, "I/O Ports");
-            return NO;
+            return nil;
         }
 
         IOFree(portArray, portCount * 8);
@@ -685,7 +685,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         if (result == nil) {
             IOLog("PnP: allocateItems:numItems:%d forKey:'%s' returns nil\n",
                   resourcesIRQCount, "IRQ Levels");
-            return NO;
+            return nil;
         }
 
         IOFree(irqArray, resourcesIRQCount * 4);
@@ -714,14 +714,14 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         if (result == nil) {
             IOLog("PnP: allocateItems:numItems:%d forKey:'%s' returns nil\n",
                   resourcesDMACount, "DMA Channels");
-            return NO;
+            return nil;
         }
 
         IOFree(dmaArray, resourcesDMACount * 4);
     }
 
     /* Success - return the description object */
-    return YES;
+    return description;
 }
 
 /*
@@ -783,7 +783,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
  * Set PnP resources from device description
  * Configures a PnP device based on information in the device description
  */
-- (BOOL)pnpSetResourcesForDescription:(id)description
+- (id)pnpSetResourcesForDescription:(id)description
 {
     const char *location;
     const char *p;
@@ -882,14 +882,14 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
         instance = [desc stringForKey:"Instance"];
         IOLog("PnP: could not find card for driver '%s' location '%s' instance %s\n",
               serverName, location ? location : "", instance ? instance : "");
-        return NO;
+        return nil;
     }
 
     /* Create PnPResources object from device description */
     resources = [[PnPResources alloc] initFromDeviceDescription:desc];
     if (resources == nil) {
         IOLog("PnP: PnPResources initFromDeviceDescription failed\n");
-        return NO;
+        return nil;
     }
 
     /* Get the logical device object */
@@ -916,7 +916,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
         __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
 
         [resources free];
-        return NO;
+        return nil;
     }
 
     /* ===== ISA PnP Programming Sequence ===== */
@@ -972,7 +972,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     /* Free resources object */
     [resources free];
 
-    return YES;
+    return self;
 }
 
 /*

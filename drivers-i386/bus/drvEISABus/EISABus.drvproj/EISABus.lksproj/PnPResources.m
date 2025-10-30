@@ -156,7 +156,7 @@ extern char verbose;
  * Sets the dependent start index for all resource types
  * This marks where dependent (alternative) resources begin in each list
  */
-- (void)markStartDependentResources
+- markStartDependentResources
 {
     int count;
     List *list;
@@ -180,6 +180,8 @@ extern char verbose;
     list = [_memory list];
     count = [list count];
     [_memory setDepStart:count];
+
+    return self;
 }
 
 /*

@@ -32,6 +32,17 @@
 @implementation PnPDependentResources
 
 /*
+ * Initialize dependent resources
+ * Calls parent PnPResources init to set up resource containers
+ */
+- init
+{
+    [super init];
+    _goodConfig = 0;
+    return self;
+}
+
+/*
  * Get good configuration flag
  * Returns the configuration status flag at offset 0x14
  */

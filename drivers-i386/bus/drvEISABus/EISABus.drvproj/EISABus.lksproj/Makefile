@@ -19,7 +19,7 @@ CFILES = bios.c eisa.c
 
 HFILES = bios.h eisa.h EISAKernBus.h EISAKernBus+PlugAndPlay.h EISAKernBus+PlugAndPlayPrivate.h EISAKernBusDMAChannel.h EISAKernBusInterrupt.h EISAKernBusPortRange.h EISAResourceDriver.h PnPArgStack.h PnPBios.h PnPDependentResources.h PnPDeviceResources.h pnpDMA.h pnpIOPort.h pnpIRQ.h PnPLogicalDevice.h pnpMemory.h PnPResource.h PnPResources.h
 
-OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble bios_asm.s
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

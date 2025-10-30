@@ -1,5 +1,7 @@
 INCLUDED_ARCHS = i386
 
+OTHER_GENERATED_OFILES = bios_asm.o
+
 OTHER_PRIVATE_HEADERS := $(PUBLIC_HEADERS)
 PUBLIC_HEADERS =
 
@@ -13,3 +15,6 @@ PUBLIC_HDR_INSTALLDIR  = $(SYSTEM_VERS_HEADERS)/bsd/dev
 PRIVATE_HDR_INSTALLDIR = $(KERNEL_VERS_HEADERS)/bsd/dev
 
 OTHER_CFLAGS =  -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep
+
+# Enable writable .text segment for self-modifying BIOS call code
+OTHER_LDFLAGS = -N -segprot __TEXT rwx rwx

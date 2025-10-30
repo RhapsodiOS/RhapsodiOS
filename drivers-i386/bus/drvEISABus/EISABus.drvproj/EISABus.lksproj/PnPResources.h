@@ -77,7 +77,7 @@ typedef struct {
 /*
  * Dependent resources
  */
-- (void)markStartDependentResources;
+- markStartDependentResources;
 
 /*
  * Configuration

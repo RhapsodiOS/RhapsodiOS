@@ -39,7 +39,6 @@
 #import <driverkit/generalFuncs.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
-#import <machdep/i386/gdt.h>
 #import <objc/objc.h>
 #import <string.h>
 #import <stdlib.h>

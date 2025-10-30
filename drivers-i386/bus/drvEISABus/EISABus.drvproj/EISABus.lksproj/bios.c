@@ -33,26 +33,30 @@
 /* Global PnP read port - set during initialization */
 extern unsigned short pnpReadPort;
 
-/* Verbose logging flag */
-char verbose = 0;
+/*
+ * Global variables - ordered to match decompiled binary memory layout
+ * Starting at 0x80CC
+ */
 
-/* Global variables for PnP BIOS interface */
-unsigned short PnPEntry_biosCodeSelector = 0;
-unsigned int PnPEntry_biosCodeOffset = 0;
-unsigned short *PnPEntry_argStackBase = NULL;
-int PnPEntry_numArgs = 0;
-unsigned short kernDataSel = 0x10;  /* Default kernel data selector */
+/* 0x80CC */ char verbose = 0;                              /* Verbose logging flag */
+/* 0x80CE */ unsigned short readPort = 0;                   /* PnP read port */
+/* 0x80D0 */ unsigned short save_es = 0;                    /* Temp ES storage */
+/* 0x80D4 */ unsigned int save_eax = 0;                     /* Temp EAX storage */
+/* 0x80D8 */ unsigned int save_ecx = 0;                     /* Temp ECX storage */
+/* 0x80DC */ unsigned int save_edx = 0;                     /* Saves biosCallData pointer */
+/* 0x80E0 */ unsigned short save_flag = 0;                  /* Temp EFLAGS storage */
+/* 0x80E4 */ unsigned int new_eax = 0;                      /* Input EAX value */
+/* 0x80E8 */ unsigned int new_edx = 0;                      /* Input/output EDX value */
+/* 0x80EC */ unsigned short *PnPEntry_argStackBase = NULL;  /* Argument stack base */
+/* 0x80F0 */ int PnPEntry_numArgs = 0;                      /* Number of arguments */
+/* 0x80F4 */ unsigned int PnPEntry_biosCodeOffset = 0;      /* BIOS code offset */
+/* 0x80F8 */ unsigned short PnPEntry_biosCodeSelector = 0;  /* BIOS code selector */
+/* 0x80FC */ unsigned short kernDataSel = 0x10;             /* Kernel data selector */
 
-/* Internal variables for _bios32PnP */
-int save_edx = 0;
-unsigned short uRam00006f7f = 0;
-unsigned int uRam00006f7b = 0;
-
-/* Internal variables for __PnPEntry */
-int save_eax = 0;
-int save_ecx = 0;
-unsigned int *uRam00007054 = (unsigned int *)0x7054;  /* PnP entry offset location */
-unsigned short *uRam00007058 = (unsigned short *)0x7058;  /* PnP entry selector location */
+/* Far pointer structures defined in bios_asm.s (.data section) */
+/* save_addr, save_seg, pnp_addr, pnp_seg are in writable memory */
+/* Used by indirect far call/jump instructions */
+/* Declarations are in bios.h */
 
 /*
  * Call PnP BIOS with the given parameters structure
@@ -61,143 +65,27 @@ int call_bios(void *biosCallData)
 {
     int result;
 
-    /* Log if verbose mode enabled */
-    if (verbose) {
+    /* Optional verbose logging */
+    if (verbose == 1) {
         IOLog("PnPBios: calling BIOS\n");
     }
+
+    IOLog("PnPBios: Calling 16-bit BIOS at 0x%X:%0xX\n",
+              ((BiosCallData *)biosCallData)->far_seg,
+              ((BiosCallData *)biosCallData)->far_offset);
 
     /* Call low-level BIOS interface */
     _bios32PnP(biosCallData);
 
-    /* Get result from offset 4 in biosCallData structure */
-    result = *(int *)((char *)biosCallData + 4);
+    /* Get the result from the eax register */
+    result = ((BiosCallData *)biosCallData)->eax;
 
-    /* Log result if verbose mode enabled */
-    if (verbose) {
+    /* Optional verbose logging of result */
+    if (verbose == 1) {
         IOLog("PnPBios: BIOS returned 0x%x\n", result);
     }
 
     return result;
-}
-
-/*
- * _bios32PnP - Low-level PnP BIOS entry point
- *
- * This function performs the actual far call to the PnP BIOS entry point.
- * It saves/restores all registers and handles segment switching for the BIOS call.
- *
- * The biosCallData structure layout (48 bytes / 0x30):
- *   +0x04: EAX (input/output)
- *   +0x08: EBX (input/output)
- *   +0x0C: ECX (input/output)
- *   +0x10: EDX (input/output)
- *   +0x14: ESI (input/output)
- *   +0x18: EDI (input/output)
- *   +0x1C: ESP (saved)
- *   +0x20: DS segment (input)
- *   +0x24: ES segment (output)
- *   +0x28: EFLAGS (output)
- */
-void _bios32PnP(void *biosCallData)
-{
-    __asm__ __volatile__(
-        /* Save all registers we're going to clobber */
-        "pushal\n\t"
-        "push %%ds\n\t"
-        "push %%es\n\t"
-        "push %%fs\n\t"
-        "push %%gs\n\t"
-
-        /* EDX = biosCallData pointer (passed in, save it) */
-        "movl %%edx, _save_edx\n\t"
-
-        /* Load input registers from biosCallData */
-        "movl 0x04(%%edx), %%eax\n\t"    /* Load EAX */
-        "movl 0x08(%%edx), %%ebx\n\t"    /* Load EBX */
-        "movl 0x0C(%%edx), %%ecx\n\t"    /* Load ECX */
-        "movl 0x10(%%edx), %%esi\n\t"    /* Load EDX (temp in ESI) */
-        "movl 0x14(%%edx), %%edi\n\t"    /* Load ESI (temp in EDI) */
-        "movl 0x18(%%edx), %%ebp\n\t"    /* Load EDI (temp in EBP) */
-
-        /* Setup segments for BIOS call */
-        "movw 0x20(%%edx), %%ds\n\t"     /* Load DS from biosCallData */
-        "movw 0x20(%%edx), %%es\n\t"     /* Load ES (same as DS) */
-
-        /* Save current ESP */
-        "movl %%esp, 0x1C(%%edx)\n\t"
-
-        /* Push arguments from PnP argument stack */
-        "movl _PnPEntry_numArgs, %%edx\n\t"
-        "testl %%edx, %%edx\n\t"
-        "jz 2f\n\t"                       /* Skip if no args */
-        "movl _PnPEntry_argStackBase, %%edx\n\t"
-        "1:\n\t"
-        "decl _PnPEntry_numArgs\n\t"
-        "movl _PnPEntry_numArgs, %%eax\n\t"
-        "movzwl (%%edx,%%eax,2), %%eax\n\t"
-        "push %%eax\n\t"
-        "movl _PnPEntry_numArgs, %%eax\n\t"
-        "testl %%eax, %%eax\n\t"
-        "jnz 1b\n\t"
-        "2:\n\t"
-
-        /* Move temps to final registers */
-        "movl %%esi, %%edx\n\t"          /* EDX from temp */
-        "movl %%edi, %%esi\n\t"          /* ESI from temp */
-        "movl %%ebp, %%edi\n\t"          /* EDI from temp */
-
-        /* Store values to special memory locations (from decompiled code) */
-        "movl _save_edx, %%ebp\n\t"
-        "movw 0x20(%%ebp), %%bp\n\t"
-        "movw %%bp, _uRam00006f7f\n\t"
-        "movl 0x2C(%%ebp), %%ebp\n\t"
-        "movl %%ebp, _uRam00006f7b\n\t"
-
-        /* Perform far call to PnP BIOS entry point */
-        /* Push return address segment:offset, then jump */
-        "pushl $0x10\n\t"                 /* Kernel code segment */
-        "pushl $3f\n\t"                   /* Return address offset */
-        "pushl _PnPEntry_biosCodeSelector\n\t"
-        "pushl _PnPEntry_biosCodeOffset\n\t"
-        "lret\n\t"                        /* Far return to BIOS */
-
-        /* BIOS returns here */
-        "3:\n\t"
-
-        /* Save result registers back to biosCallData */
-        "movl _save_edx, %%ebp\n\t"
-        "movl %%eax, 0x04(%%ebp)\n\t"    /* Save EAX */
-        "movl %%ebx, 0x08(%%ebp)\n\t"    /* Save EBX */
-        "movl %%ecx, 0x0C(%%ebp)\n\t"    /* Save ECX */
-        "movl %%edx, 0x10(%%ebp)\n\t"    /* Save EDX */
-        "movl %%esi, 0x14(%%ebp)\n\t"    /* Save ESI */
-        "movl %%edi, 0x18(%%ebp)\n\t"    /* Save EDI */
-
-        /* Save ES segment */
-        "movw %%es, %%ax\n\t"
-        "movw %%ax, 0x24(%%ebp)\n\t"
-
-        /* Save EFLAGS */
-        "pushfl\n\t"
-        "popl %%eax\n\t"
-        "movw %%ax, 0x28(%%ebp)\n\t"
-
-        /* Restore segments */
-        "movw _kernDataSel, %%ax\n\t"
-        "movw %%ax, %%ds\n\t"
-        "movw %%ax, %%es\n\t"
-
-        /* Restore saved registers */
-        "pop %%gs\n\t"
-        "pop %%fs\n\t"
-        "pop %%es\n\t"
-        "pop %%ds\n\t"
-        "popal\n\t"
-
-        : /* no outputs */
-        : "d" (biosCallData)  /* EDX = biosCallData */
-        : "memory", "cc"
-    );
 }
 
 /*
@@ -284,82 +172,6 @@ void clearPnPConfigRegisters(void)
             __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
         }
     }
-}
-
-/*
- * __PnPEntry - Low-level PnP BIOS entry trampoline
- *
- * This function sets up a far call to the PnP BIOS entry point through a fixed
- * memory location trampoline. It's called with __regparm3 convention:
- *   param_1 in EAX
- *   param_2 in EDX
- *   param_3 in ECX
- *
- * The function:
- * 1. Sets up the far call target address at memory location 0x7054-0x7058
- * 2. Pushes arguments from the PnP argument stack
- * 3. Saves registers for the BIOS call
- * 4. Makes an indirect far call through the trampoline
- */
-void __attribute__((regparm(3))) __PnPEntry(unsigned int param_1, unsigned int param_2, unsigned int param_3)
-{
-    __asm__ __volatile__(
-        /* Save incoming register parameters */
-        "movl %%eax, _save_eax\n\t"
-        "movl %%ecx, _save_ecx\n\t"
-        "movl %%edx, _save_edx\n\t"
-
-        /* Set up far call target at fixed memory location */
-        /* Write PnP BIOS entry offset to 0x7054 */
-        "movl _PnPEntry_biosCodeOffset, %%eax\n\t"
-        "movl $0x7054, %%edx\n\t"
-        "movl %%eax, (%%edx)\n\t"
-
-        /* Write PnP BIOS entry selector to 0x7058 */
-        "movzwl _PnPEntry_biosCodeSelector, %%eax\n\t"
-        "movl $0x7058, %%edx\n\t"
-        "movw %%ax, (%%edx)\n\t"
-
-        /* Push arguments from PnP argument stack in reverse order */
-        "movl _PnPEntry_numArgs, %%ecx\n\t"
-        "testl %%ecx, %%ecx\n\t"
-        "jz 2f\n\t"                           /* Skip if no arguments */
-
-        "1:\n\t"
-        "decl %%ecx\n\t"                      /* Decrement counter */
-        "jl 2f\n\t"                           /* Exit if counter < 0 */
-
-        "movl _PnPEntry_argStackBase, %%edx\n\t"
-        "movzwl (%%edx,%%ecx,2), %%eax\n\t"  /* Load arg[ecx] as word */
-        "pushl %%eax\n\t"                     /* Push argument */
-        "jmp 1b\n\t"                          /* Loop */
-
-        "2:\n\t"
-        /* Push return address (CS:IP for far return) */
-        "pushl $0x10\n\t"                     /* Push code segment (kernel CS) */
-        "pushl $3f\n\t"                       /* Push return offset */
-
-        /* Push far call target from memory */
-        "movzwl 0x7058, %%eax\n\t"            /* Load selector from 0x7058 */
-        "pushl %%eax\n\t"                     /* Push selector */
-        "movl 0x7054, %%eax\n\t"              /* Load offset from 0x7054 */
-        "pushl %%eax\n\t"                     /* Push offset */
-
-        /* Restore saved parameters for BIOS call */
-        "movl _save_eax, %%eax\n\t"
-        "movl _save_ecx, %%ecx\n\t"
-        "movl _save_edx, %%edx\n\t"
-
-        /* Make far call through lret */
-        "lret\n\t"
-
-        /* BIOS returns here */
-        "3:\n\t"
-
-        : /* no outputs */
-        : "a" (param_1), "d" (param_2), "c" (param_3)
-        : "memory", "cc"
-    );
 }
 
 /*

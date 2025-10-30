@@ -187,8 +187,10 @@ lfs_vcreate(mp, ino, vpp)
 	struct ufsmount *ump;
 	int error, i;
 
+	MALLOC(ip, struct inode *, sizeof(struct inode), M_LFSNODE, M_WAITOK);
 	/* Create the vnode. */
 	if (error = getnewvnode(VT_LFS, mp, lfs_vnodeop_p, vpp)) {
+		FREE(ip, M_LFSNODE);
 		*vpp = NULL;
 		return (error);
 	}
@@ -197,7 +199,6 @@ lfs_vcreate(mp, ino, vpp)
 	ump = VFSTOUFS(mp);
 
 	/* Initialize the inode. */
-	MALLOC(ip, struct inode *, sizeof(struct inode), M_LFSNODE, M_WAITOK);
 	(*vpp)->v_data = ip;
 	ip->i_vnode = *vpp;
 	ip->i_devvp = ump->um_devvp;

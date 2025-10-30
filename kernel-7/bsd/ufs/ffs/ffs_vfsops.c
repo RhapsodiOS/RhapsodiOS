@@ -945,12 +945,13 @@ ffs_vget(mp, ino, vpp)
 		return (0);
 	}
 	/* Allocate a new vnode/inode. */
+    type = ump->um_devvp->v_tag == VT_MFS ? M_MFSNODE : M_FFSNODE; /* XXX */
+	MALLOC_ZONE(ip, struct inode *, sizeof(struct inode), type, M_WAITOK);
 	if (error = getnewvnode(VT_UFS, mp, ffs_vnodeop_p, &vp)) {
+		FREE_ZONE(ip, sizeof(struct inode), type);
 		*vpp = NULL;
 		return (error);
 	}
-	type = ump->um_devvp->v_tag == VT_MFS ? M_MFSNODE : M_FFSNODE; /* XXX */
-	MALLOC_ZONE(ip, struct inode *, sizeof(struct inode), type, M_WAITOK);
 	bzero((caddr_t)ip, sizeof(struct inode));
 	lockinit(&ip->i_lock, PINOD, "inode", 0, 0);
 	vp->v_data = ip;

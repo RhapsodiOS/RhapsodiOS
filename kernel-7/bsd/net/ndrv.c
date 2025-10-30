@@ -30,6 +30,22 @@
  * 980130 - Cleanup, reorg, performance improvemements
  */
 
+/*
+ * PF_NDRV allows raw access to a specified network device, directly
+ *  with a socket.  Expected use involves a socket option to request
+ *  protocol packets.  This lets ndrv_output() call dlil_output(), and
+ *  lets DLIL find the proper recipient for incoming packets.
+ *  The purpose here is for user-mode protocol implementation.
+ * Note that "pure raw access" will still be accomplished with BPF.
+ *
+ * In addition to the former use, when combined with socket NKEs,
+ * PF_NDRV permits a fairly flexible mechanism for implementing
+ * strange protocol support.  One of the main ones will be the
+ * BlueBox/Classic Shared IP Address support.
+ *
+ * TODO: Add user access to protocol registration
+ */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>

@@ -62,6 +62,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)cd9660_util.c	8.3 (Berkeley) 12/5/94
+ *
+ * HISTORY
+ *  7-Dec-98	Add ATTR_VOL_MOUNTFLAGS attribute support - djb
+ * 18-Nov-98	Add support for volfs - djb
  */
 
 #include <sys/param.h>

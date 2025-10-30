@@ -62,6 +62,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
+
+
+
+ * HISTORY
+ * 22-Jan-98	radar 1669467 - ISO 9660 CD support - jwc
+
  */
 
 #include <sys/param.h>
@@ -550,7 +556,11 @@ cd9660_rrip_loop(isodir,ana,table)
 			if (ana->iso_ce_blk >= ana->imp->volume_space_size
 			    || ana->iso_ce_off + ana->iso_ce_len > ana->imp->logical_block_size
 			    || bread(ana->imp->im_devvp,
+#if 1 // radar 1669467 - logical and physical blocksize are the same
 				     ana->iso_ce_blk,
+#else
+				     ana->iso_ce_blk << (ana->imp->im_bshift - DEV_BSHIFT),
+#endif // radar 1669467
 				     ana->imp->logical_block_size, NOCRED, &bp))
 				/* what to do now? */
 				break;

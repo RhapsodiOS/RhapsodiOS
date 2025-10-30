@@ -62,6 +62,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)cd9660_vnops.c	8.15 (Berkeley) 12/5/94
+ *
+ * HISTORY
+ * 15-sep-98	added cd9660_rmdir to do proper unlocking - chw
+ * 12-aug-98	added cd9660_remove which will do proper unlocking - chw
+ * 17-Feb-98	radar 1669467 - changed lock protocols to use the lock manager - chw
+ * 22-Jan-98	radar 1669467 - ISO 9660 CD support - jwc
  */
 
 #include <sys/param.h>
@@ -83,6 +89,7 @@
 #include <sys/attr.h>
 #include <vfs/vfs_support.h>
 
+// radar 1669467  Using the lock manager now so include lock.h
 #include <sys/lock.h>
 
 #include <isofs/cd9660/iso.h>
@@ -221,7 +228,7 @@ cd9660_access(ap)
 				return (error);
 #endif
 			break;
-		default:
+		default:	// radar 1669467 - fix compiler warning
 			break;
 		}
 	}
@@ -324,6 +331,7 @@ cd9660_getattr(ap)
 	vap->va_blocksize = ip->i_mnt->logical_block_size;
 	vap->va_bytes	= (u_quad_t) ip->i_size;
 	vap->va_type	= vp->v_type;
+
 	return (0);
 }
 
@@ -452,7 +460,6 @@ cd9660_select(ap)
 		struct proc *a_p;
 	} */ *ap;
 {
-
 	/*
 	 * We should really check to see if I/O is possible.
 	 */
@@ -699,12 +706,20 @@ cd9660_readdir(ap)
 			break;
 		}
 
+#if 1 // radar 1669467 - make it pretty
 		if ( isonum_711(ep->flags) & directoryBit )
+#else
+		if (isonum_711(ep->flags)&2)		
+#endif // radar 1669467
 			idp->current.d_fileno = isodirino(ep, imp);
 		else
 		{
 
+#if 1 // radar 1669467
 			idp->current.d_fileno = (bp->b_blkno << imp->im_bshift) + entryoffsetinblock;
+#else
+			idp->current.d_fileno = dbtob(bp->b_blkno) + entryoffsetinblock;
+#endif // radar 1669467
 
 		}
 
@@ -853,7 +868,11 @@ cd9660_readlink(ap)
 	 * Get parents directory record block that this inode included.
 	 */
 	error = bread(imp->im_devvp,
+#if 1 // radar 1669467 
 			  (ip->i_number >> imp->im_bshift),
+#else
+		      (ip->i_number >> imp->im_bshift) << (imp->im_bshift - DEV_BSHIFT),
+#endif // radar 1669467
 		      imp->logical_block_size, NOCRED, &bp);
 	if (error) {
 		brelse(bp);
@@ -931,6 +950,10 @@ cd9660_abortop(ap)
 /*
  * Lock an inode.
  */
+ 
+ // radar 1669467 - changed ap struct too!!!
+ // radar 1669467 - chw changed implementation to use the lock manager. This is a delta from
+ //   		    what we first did with the radar.  This is now basically identical to ufs_lock.
 int
 cd9660_lock(ap)
 	struct vop_lock_args /* {
@@ -949,6 +972,10 @@ cd9660_lock(ap)
 /*
  * Unlock an inode.
  */
+
+// radar 1669467 - chw changed implementation to use the lock manager.  As with lock,  this is a
+//                 delta from what we first did with the radar.
+
 int
 cd9660_unlock(ap)
 	struct vop_unlock_args /* {
@@ -1018,6 +1045,8 @@ cd9660_print(ap)
 /*
  * Check for a locked inode.
  */
+// radar 1669467 changed this to use the lock manager  - chw
+
 int
 cd9660_islocked(ap)
 	struct vop_islocked_args /* {

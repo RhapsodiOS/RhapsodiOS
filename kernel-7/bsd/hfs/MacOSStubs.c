@@ -324,7 +324,11 @@ OSStatus  GetInitializedVNode(struct hfsmount *hfsmp, struct vnode **tmpvnode )
     DBG_ASSERT(tmpvnode != NULL);
 
     /* Allocate a new hfsnode. */
-    /* Must malloc() here, since getnewvnode() can sleep */
+    /*
+	 * Must do malloc() before getnewvnode(), since malloc() can block
+	 * and could cause other part of the system to access v_data
+	 * which has not been initialized yet
+	 */
     MALLOC(hp, struct hfsnode *, sizeof(struct hfsnode), M_HFSNODE, M_WAITOK);
     if(hp == NULL) {
         rtn = ENOMEM;
@@ -333,13 +337,16 @@ OSStatus  GetInitializedVNode(struct hfsmount *hfsmp, struct vnode **tmpvnode )
     bzero((caddr_t)hp, sizeof(struct hfsnode));
     lockinit(&hp->h_lock, PINOD, "hfsnode", 0, 0);
 
+    MALLOC(hp->h_meta, struct hfsfilemeta *, 
+		sizeof(struct hfsfilemeta), M_HFSFMETA, M_WAITOK);
     /* Allocate a new vnode. */
     if ((rtn = getnewvnode(VT_HFS, HFSTOVFS(hfsmp), hfs_vnodeop_p, &vp))) {
+		FREE(hp->h_meta, M_HFSFMETA);
+		FREE(hp, M_HFSNODE);
         goto Err_Exit;
     }
 
     /* Init the structure */
-    MALLOC(hp->h_meta, struct hfsfilemeta *, sizeof(struct hfsfilemeta), M_HFSNODE, M_WAITOK);
     bzero(hp->h_meta, sizeof(struct hfsfilemeta));
     lockinit(&hp->h_meta->h_fmetalock, PINOD, "hfsfilemeta", 0, 0);
     MALLOC(hp->h_xfcb, struct vfsFCB *, sizeof(struct vfsFCB), M_HFSNODE, M_WAITOK);

@@ -247,14 +247,15 @@ mfs_mount(mp, path, data, ndp, p)
 #endif
 		return (0);
 	}
+	MALLOC(mfsp, struct mfsnode *, sizeof(struct mfsnode), M_MFSNODE, M_WAITOK);
 	error = getnewvnode(VT_MFS, (struct mount *)0, mfs_vnodeop_p, &devvp);
-	if (error)
+	if (error) {
+		FREE(mfsp, M_MFSNODE);
 		return (error);
+	}
 	devvp->v_type = VBLK;
 	if (checkalias(devvp, makedev(255, mfs_minor++), (struct mount *)0))
 		panic("mfs_mount: dup dev");
-//	mfsp = (struct mfsnode *)malloc(sizeof *mfsp, M_MFSNODE, M_WAITOK);
-	MALLOC(mfsp, struct mfsnode *, sizeof(struct mfsnode), M_MFSNODE, M_WAITOK);
 	devvp->v_data = mfsp;
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;

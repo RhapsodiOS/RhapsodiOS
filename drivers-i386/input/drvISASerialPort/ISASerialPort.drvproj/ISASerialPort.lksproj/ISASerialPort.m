@@ -34,7 +34,7 @@
 #import <driverkit/i386/ioPorts.h>
 #import <kernserv/prototypes.h>
 #import <kernserv/i386/spl.h>
-#import "ISASerialPortKernelSupport.h"
+#import <kern/thread_call.h>
 #import <string.h>
 #import <stdio.h>
 #import <stdlib.h>
@@ -42,6 +42,29 @@
 // I/O port access macros
 #define OUTB(port, val) outb(port, val)
 #define INB(port) inb(port)
+
+// Helper utilities to bridge legacy nanosecond interval encoding with thread_call API
+static inline unsigned long long
+_ISASerialPortCombineParts(unsigned int low, unsigned int high)
+{
+    return ((unsigned long long)high << 32) | (unsigned long long)low;
+}
+
+static inline tvalspec_t
+_ISASerialPortIntervalFromNanoseconds(unsigned long long nanoseconds)
+{
+    tvalspec_t interval;
+    interval.tv_sec = (unsigned int)(nanoseconds / NSEC_PER_SEC);
+    interval.tv_nsec = (clock_res_t)(nanoseconds % NSEC_PER_SEC);
+    return interval;
+}
+
+static inline tvalspec_t
+_ISASerialPortDeadlineFromParts(unsigned int low, unsigned int high)
+{
+    unsigned long long nanoseconds = _ISASerialPortCombineParts(low, high);
+    return deadline_from_interval(_ISASerialPortIntervalFromNanoseconds(nanoseconds));
+}
 
 // Forward declarations for 64-bit arithmetic helper functions
 unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
@@ -107,9 +130,9 @@ static IOReturn _deactivatePort(ISASerialPort *self);
 static IOReturn _allocateRingBuffer(void *queueBase, ISASerialPort *self);
 static void _freeRingBuffer(void *queueBase);
 static IOReturn _RX_dequeueData(ISASerialPort *self, unsigned char *byteOut, BOOL sleep);
-static void _heartBeatTOHandler(ISASerialPort *self);
-static void _frameTOHandler(ISASerialPort *self);
-static void _delayTOHandler(ISASerialPort *self);
+static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call);
+static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call);
+static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call);
 static void _dataLatTOHandler(ISASerialPort *self);
 static unsigned int _flowMachine(ISASerialPort *self);
 static void _executeEvent(ISASerialPort *self, unsigned char eventType, unsigned int eventData,
@@ -189,8 +212,10 @@ static void _freeRingBuffer(void *queueBase)
  * Timer callback that triggers interrupt handler when frame timeout occurs.
  * Used for detecting end of transmission or processing delayed events.
  */
-static void _frameTOHandler(ISASerialPort *self)
+static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    ISASerialPort *self = (ISASerialPort *)spec;
+    (void)call;
     unsigned int oldIRQL;
 
     // Raise interrupt level
@@ -217,8 +242,10 @@ static void _frameTOHandler(ISASerialPort *self)
  * Timer callback for delayed operations. Clears the delay bit from state
  * and triggers the appropriate interrupt handler.
  */
-static void _delayTOHandler(ISASerialPort *self)
+static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    ISASerialPort *self = (ISASerialPort *)spec;
+    (void)call;
     unsigned int oldIRQL;
 
     // Raise interrupt level
@@ -2006,8 +2033,10 @@ static IOReturn _RX_dequeueData(ISASerialPort *self, unsigned char *byteOut, BOO
  * Timer callback that polls the UART by calling the interrupt handler.
  * Used for chips without reliable interrupts or for periodic monitoring.
  */
-static void _heartBeatTOHandler(ISASerialPort *self)
+static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    ISASerialPort *self = (ISASerialPort *)spec;
+    (void)call;
     unsigned int oldIRQL;
 
     // Raise interrupt level
@@ -2031,10 +2060,9 @@ static void _heartBeatTOHandler(ISASerialPort *self)
         self->heartBeatPending = 0;
 
         // Schedule next heartbeat
-        unsigned long long deadline = deadline_from_interval(
+        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->heartBeatInterval & 0xFFFFFFFF),
-            (unsigned int)(self->heartBeatInterval >> 32)
-        );
+            (unsigned int)(self->heartBeatInterval >> 32));
         thread_call_enter_delayed(self->heartBeatCallout, deadline);
     }
 
@@ -2455,10 +2483,9 @@ data_processed:
     // Schedule timer if needed
     if ((timerNeeded != 0) && (self->timerPending == 0)) {
         self->timerPending = 1;
-        unsigned long long deadline = deadline_from_interval(
+        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->charTimeNS & 0xFFFFFFFF),
-            (unsigned int)(self->charTimeFracNS)
-        );
+            (unsigned int)(self->charTimeFracNS));
         thread_call_enter_delayed(self->timerCallout, deadline);
     }
 
@@ -3056,10 +3083,9 @@ tx_done_fifo:
     // Schedule timer if needed
     if ((timerNeeded != 0) && (self->timerPending == 0)) {
         self->timerPending = 1;
-        unsigned long long deadline = deadline_from_interval(
+        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->charTimeNS & 0xFFFFFFFF),
-            (unsigned int)(self->charTimeFracNS)
-        );
+            (unsigned int)(self->charTimeFracNS));
         thread_call_enter_delayed(self->timerCallout, deadline);
     }
 
@@ -3329,7 +3355,7 @@ static void _executeEvent(ISASerialPort *self, unsigned char eventType,
             }
             // Set new delay timeout if non-zero
             if (eventData != 0) {
-                unsigned long long deadline = deadline_from_interval(eventData, 0);
+                tvalspec_t deadline = _ISASerialPortDeadlineFromParts(eventData, 0);
                 thread_call_enter_delayed(self->delayTimeoutCallout, deadline);
             }
             break;
@@ -3810,8 +3836,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     // Allocate timer callout objects
     *(void **)((char *)self + 0x210) = thread_call_allocate(NULL, NULL);
     *(void **)((char *)self + 0x214) = thread_call_allocate(NULL, NULL);
-    *(void **)((char *)self + 0x218) = thread_call_allocate(_delayTOHandler, (char *)self + 0x128);
-    *(void **)((char *)self + 0x21c) = thread_call_allocate(_heartBeatTOHandler, (char *)self + 0x128);
+    *(void **)((char *)self + 0x218) = thread_call_allocate(_delayTOHandler, self);
+    *(void **)((char *)self + 0x21c) = thread_call_allocate(_heartBeatTOHandler, self);
 
     if (*(void **)((char *)self + 0x210) == NULL ||
         *(void **)((char *)self + 0x214) == NULL ||
@@ -4304,7 +4330,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     unsigned int remainingMin;
     int timerScheduled;
     unsigned int charTimeLo, charTimeHi;
-    unsigned long long deadline;
+    tvalspec_t deadline = { 0, 0 };
 
     // Validate parameters
     if (count == NULL || buffer == NULL || size < minCount) {
@@ -4364,7 +4390,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
 
         // Schedule character timeout timer after first byte if enabled
         if (timerScheduled > 0) {
-            deadline = deadline_from_interval(charTimeLo, charTimeHi);
+            deadline = _ISASerialPortDeadlineFromParts(charTimeLo, charTimeHi);
             thread_call_enter_delayed(self->delayTimeoutCallout, deadline);
             timerScheduled = -1;  // Mark as scheduled
         }

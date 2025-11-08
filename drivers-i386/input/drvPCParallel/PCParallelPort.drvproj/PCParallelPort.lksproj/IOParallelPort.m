@@ -33,20 +33,12 @@
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/align.h>
+#import <driverkit/devsw.h>
+#import <driverkit/generalFuncs.h>
 #import <objc/objc.h>
 #import <objc/objc-runtime.h>
 #import <string.h>
 #import <stdio.h>
-
-// External kernel functions
-extern unsigned int IOForkThread(void (*func)(id), id arg);
-extern void *IOMalloc(size_t size);
-extern void IOFree(void *addr, size_t size);
-extern void IOSleep(unsigned int milliseconds);
-extern Class objc_getClass(const char *name);
-extern int IOAddToCdevsw(int (*open)(), int (*close)(), int (*read)(),
-                         int (*write)(), int (*ioctl)(), int (*stop)());
-extern void IOLog(const char *format, ...);
 
 // Global pointer to parallel port software control structure
 static void *pp_softc = NULL;

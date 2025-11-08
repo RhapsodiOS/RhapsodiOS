@@ -32,17 +32,18 @@
 #import "IOParallelPortKern.h"
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/generalFuncs.h>
+#import <driverkit/KernDevice.h>
 #import <kern/time_stamp.h>
+#import <kernserv/i386/spl.h>
+#import <mach/message.h>
 #import <sys/errno.h>
 #import <sys/types.h>
 #import <sys/uio.h>
 #import <sys/conf.h>
+#import <sys/buf.h>
+#import <sys/systm.h>
 #import <objc/objc.h>
 #import <objc/objc-runtime.h>
-
-// SPL (Set Priority Level) function declarations
-extern int spl3(void);
-extern void splx(int level);
 
 // Device number extraction macros
 #ifndef minor
@@ -51,18 +52,6 @@ extern void splx(int level);
 #ifndef major
 #define major(x)  ((int)(((x) >> 8) & 0xff))
 #endif
-
-// External kernel functions
-extern void IOSendInterrupt(unsigned int param1, unsigned int param2, int msgType);
-extern void IOExitThread(void);
-extern int msg_receive(void *msg, int option, int timeout);
-extern void IOLog(const char *format, ...);
-extern void *IOMalloc(size_t size);
-extern void IOFree(void *addr, size_t size);
-extern int copyin(const void *uaddr, void *kaddr, size_t len);
-extern void bzero(void *s, size_t n);
-extern int physio(void (*strategy)(void *), void *bp, dev_t dev, int flags,
-                  unsigned int (*minphys)(void *), void *uio, unsigned int blocksize);
 
 // Interrupt message type codes
 #define PP_INT_MSG_COMPLETE     0x232325

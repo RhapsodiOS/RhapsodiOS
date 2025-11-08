@@ -7,16 +7,10 @@
 #import "IODeviceMaster.h"
 #import <mach/mach.h>
 #import <mach/mach_error.h>
+#import <mach/mach_traps.h>
+#import <mach/mig_support.h>
 #import <stdio.h>
 #import <string.h>
-
-// External kernel functions
-extern port_t device_master_self(void);
-
-// Mach IPC functions
-extern mach_port_t mig_get_reply_port(void);
-extern void mig_dealloc_reply_port(mach_port_t port);
-extern kern_return_t msg_rpc(void *msg, int option, int send_size, int rcv_size, int timeout);
 
 // Utility function for device method calls
 int __IOCallDeviceMethod(port_t masterPort, int objNum, unsigned int *inStruct,

@@ -29,6 +29,8 @@
 #import "PS2Mouse.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/interruptMsg.h>
+#import <driverkit/KernDevice.h>
 
 /* Global state variables for packet processing */
 static int seqInProgress = 0;         /* Flag: new sequence is arriving while processing */

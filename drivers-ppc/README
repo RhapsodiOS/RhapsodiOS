@@ -1,0 +1,23 @@
+Current list of drivers to be implemented and the status of re-implementation
+=====================================================
+
+bus
+ * drvPExpert - needs compiled and then tested
+
+ide
+ * drvPPCSwimFloppy - needs compiled and then tested
+
+input
+ * drvPPCSerialPort - needs compiled and then tested
+
+network
+ * drvPPCGem - needs compiled and then tested
+ * drvPPCGNic - needs compiled and then tested
+
+scsi
+
+sound
+ * drvPPCAwacs - needs compiled and then tested
+ * drvPPCBurgundy - needs compiled and then tested
+
+video

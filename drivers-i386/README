@@ -1,0 +1,69 @@
+Current list of drivers to be implemented and the status of re-implementation
+=====================================================
+
+bus
+ * drvEISABus - crashing, needs debugging
+ * drvPICBus - complete
+ * drvPCMCIABus - needs compiled and then tested
+ * Intel824X0PCI - complete
+ * Intel82365PCMCIA - needs compiled and then tested
+
+ide
+ * drvEIDE - complete
+ * drvPCFloppy - needs compiled and then tested
+
+input
+ * drvBusMouse
+ * drvISASerialPort
+ * drvPCParallel
+ * drvPS2Keyboard
+ * drvPS2Mouse
+ * drvSerialPointingDevice
+
+network
+ * drvAMDPCNet21II
+ * drvDEC21X4X
+ * drvDEC21142
+ * drvDECchip21040
+ * drvDECchip21140
+ * drvEtherExpress16
+ * drvEtherLinkXL
+ * drvIntel82556
+ * drvIntel82557
+ * drvIntel82595
+ * drvIntel82596
+ * drvNE2k - complete
+ * drvSMC16
+ * drvSMCUltra
+ * drvVMwareVMXNet - complete
+
+scsi
+ * drvAdaptec6X60
+ * drvAdaptec1542B
+ * drvAdaptec2940
+ * drvAMDPCSCSIDriver - complete
+ * drvBusLogic
+ * drvBusLogicFP
+ * drvDPT2000
+ * drvSym53C8xx
+
+sound
+ * drvBeepSound - needs compiled and then tested
+ * drvES1x88Sound
+ * drvIntelAC97Sound
+ * drvSB8Sound
+ * drvSB16Sound
+ * drvSB128Sound - complete
+
+video
+ * drv3DfxVoodooVSA
+ * drvATIMach64
+ * drvATIRage
+ * drvCirrusLogicGD5434
+ * drvIBMThinkPad760EDDisplay
+ * drvMatroxMGA - complete
+ * drvNVidiaRiva
+ * drvS3Generic - complete
+ * drvVBoxVideo - complete
+ * drvVMWareVideo - complete
+ * vga

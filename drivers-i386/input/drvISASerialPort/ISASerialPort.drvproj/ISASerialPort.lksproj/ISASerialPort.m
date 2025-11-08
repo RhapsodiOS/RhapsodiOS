@@ -32,6 +32,9 @@
 #import <driverkit/kernelDriver.h>
 #import <driverkit/i386/directDevice.h>
 #import <driverkit/i386/ioPorts.h>
+#import <kernserv/prototypes.h>
+#import <kernserv/i386/spl.h>
+#import "ISASerialPortKernelSupport.h"
 #import <string.h>
 #import <stdio.h>
 #import <stdlib.h>
@@ -39,24 +42,6 @@
 // I/O port access macros
 #define OUTB(port, val) outb(port, val)
 #define INB(port) inb(port)
-
-// External kernel threading and synchronization functions
-extern void thread_sleep(void *event, int lock, int interruptible);
-extern int thread_wait_result(void);
-extern void thread_wakeup_prim(void *event, int one_thread, int result);
-extern void *thread_call_allocate(void (*func)(void *), void *param);
-extern void thread_call_enter(void *call);
-extern void thread_call_cancel(void *call);
-extern void thread_call_free(void *call);
-extern void thread_call_enter_delayed(void *call, unsigned long long deadline);
-extern unsigned long long deadline_from_interval(unsigned int interval_low, unsigned int interval_high);
-extern unsigned int spl4(void);
-extern void splx(unsigned int level);
-extern void IOEnterCriticalSection(void);
-extern void IOExitCriticalSection(void);
-extern void *IOMalloc(unsigned int size);
-extern void IOFree(void *address, unsigned int size);
-extern void IOLog(const char *format, ...);
 
 // Forward declarations for 64-bit arithmetic helper functions
 unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
@@ -2024,10 +2009,6 @@ static IOReturn _RX_dequeueData(ISASerialPort *self, unsigned char *byteOut, BOO
 static void _heartBeatTOHandler(ISASerialPort *self)
 {
     unsigned int oldIRQL;
-    extern unsigned int spl4(void);
-    extern void splx(unsigned int);
-    extern void thread_call_enter_delayed(void *call, unsigned long long deadline);
-    extern unsigned long long deadline_from_interval(unsigned int interval_low, unsigned int interval_high);
 
     // Raise interrupt level
     oldIRQL = spl4();

@@ -35,6 +35,7 @@
 #import <driverkit/i386/directDevice.h>
 #import <kernserv/prototypes.h>
 #import <mach/message.h>
+#import <stdlib.h>
 
 /* Mouse type names for logging */
 static const char *mouseTypeNames[] = {

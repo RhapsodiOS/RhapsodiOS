@@ -9,11 +9,9 @@
 #import <driverkit/interruptMsg.h>
 #import <driverkit/i386/ioPorts.h>
 #import <bsd/dev/i386/PCPointer.h>
-#import <kernserv/prototypes.h>
+#import <bsd/dev/i386/kbd_entries.h>
+#import <mach/mach_traps.h>
 #import <objc/NXLock.h>
-
-/* External functions from other modules */
-extern void _register_keyboard_entries(void *entries);
 
 /* Forward declarations for functions in this file */
 BOOL _keyboardDataPresent(void);

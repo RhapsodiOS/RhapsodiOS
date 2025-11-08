@@ -34,6 +34,7 @@
 
 #import "UniNEnet.h"
 #import "UniNEnetMII.h"
+#import "UniNEnetRegisters.h"
 
 void WriteUniNRegister(IOPPCAddress ioEnetBase, u_int32_t reg_offset, u_int32_t data);
 u_int32_t ReadUniNRegister(IOPPCAddress ioEnetBase, u_int32_t reg_offset);

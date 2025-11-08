@@ -431,14 +431,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     u_int32_t interruptStatus;
     u_int32_t *txWatchdogCounter;
 
-    /* Interrupt status register (offset 0x000c) */
-    #define kInterruptStatus    0x4000C
-
-    /* Interrupt status bits */
-    #define kIntrStatus_TxComplete      0x00000001  /* Transmit completed */
-    #define kIntrStatus_RxComplete      0x00000010  /* Receive completed */
-    #define kIntrStatus_TxRxMask        0x00000011  /* TX or RX interrupt */
-
     /* Acquire debugger lock for thread safety */
     [self reserveDebuggerLock];
 
@@ -475,11 +467,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
-
-    #undef kInterruptStatus
-    #undef kIntrStatus_TxComplete
-    #undef kIntrStatus_RxComplete
-    #undef kIntrStatus_TxRxMask
 }
 
 /*-------------------------------------------------------------------------
@@ -556,10 +543,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 {
     u_int16_t rxConfig;
 
-    /* RX Configuration register (offset 0x6034) */
-    #define kRxConfig           0x26034
-    #define kRxConfig_Promisc   0x0008  /* Promiscuous mode bit */
-
     /* Set promiscuous mode flag */
     isPromiscuous = YES;
 
@@ -567,19 +550,16 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     [self reserveDebuggerLock];
 
     /* Read current RX configuration register */
-    rxConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kRxConfig);
+    rxConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kRxDmaConfig);
 
     /* Set promiscuous mode bit */
-    rxConfig |= kRxConfig_Promisc;
+    rxConfig |= kRxDmaConfig_Promisc;
 
     /* Write updated configuration back to hardware */
-    WriteUniNRegister(ioBaseEnet, kRxConfig, rxConfig);
+    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, rxConfig);
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
-
-    #undef kRxConfig
-    #undef kRxConfig_Promisc
 }
 
 /*-------------------------------------------------------------------------
@@ -592,10 +572,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 {
     u_int32_t rxConfig;
 
-    /* RX Configuration register (offset 0x6034) */
-    #define kRxConfig           0x26034
-    #define kRxConfig_Promisc   0x0008  /* Promiscuous mode bit */
-
     /* Clear promiscuous mode flag */
     isPromiscuous = NO;
 
@@ -603,19 +579,16 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     [self reserveDebuggerLock];
 
     /* Read current RX configuration register */
-    rxConfig = ReadUniNRegister(ioBaseEnet, kRxConfig);
+    rxConfig = ReadUniNRegister(ioBaseEnet, kRxDmaConfig);
 
     /* Clear promiscuous mode bit (mask 0xfff7 = ~0x0008) */
     rxConfig &= 0xFFF7;
 
     /* Write updated configuration back to hardware */
-    WriteUniNRegister(ioBaseEnet, kRxConfig, rxConfig);
+    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, rxConfig);
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
-
-    #undef kRxConfig
-    #undef kRxConfig_Promisc
 }
 
 /*-------------------------------------------------------------------------

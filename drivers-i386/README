@@ -13,15 +13,15 @@ ide
  * drvPCFloppy - needs compiled and then tested
 
 input
- * drvBusMouse
- * drvISASerialPort
- * drvPCParallel
- * drvPS2Keyboard
- * drvPS2Mouse
- * drvSerialPointingDevice
+ * drvBusMouse - needs compiled and then tested
+ * drvISASerialPort - needs compiled and then tested
+ * drvPCParallel - needs compiled and then tested
+ * drvPS2Keyboard - needs compiled and then tested
+ * drvPS2Mouse - needs compiled and then tested
+ * drvSerialPointingDevice - needs compiled and then tested
 
 network
- * drvAMDPCNet21II
+ * drvAMDPCNet21II - old driver layout, needs updated for Rhapsody
  * drvDEC21X4X
  * drvDEC21142
  * drvDECchip21040

@@ -23,35 +23,23 @@
  */
 
 #import "AdaptecU2SCSI.h"
+#import "OSMFunctions.h"
 #import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <kernserv/prototypes.h>
 #import <mach/mach_interface.h>
+#import <mach/vm_param.h>
+#import <machdep/ppc/interrupts.h>
+#import <objc/objc-runtime.h>
 #import <string.h>
 
 extern void SCSIGetFunctionPointers(void *table, unsigned int size);
-extern unsigned int pmac_int_to_number(void);
-extern void pmac_register_int(unsigned int num, unsigned int level, void *handler, void *param);
-extern void *AdptMallocContiguous(unsigned int size);
-extern void *_allocOSMIOB(void *p1, void *p2, void *p3, void *p4, void *p5, void *p6, void *p7, void *p8);
-extern void _freeOSMIOB(void *iob, void *p1, void *p2, void *p3, void *p4, void *p5, void *p6, void *p7);
-extern void _CleanupWaitingQ(void *targetStruct);
-extern void AU2Handler(void);
-extern id objc_getClass(const char *name);
-extern kern_return_t port_set_backlog(task_t task, port_t port, int backlog);
-extern task_t task_self(void);
-extern unsigned int page_size;
-extern unsigned int page_mask;
 
 // Global adapter queue - one queue per IRQ number (0-255)
 // Supports multiple adapters sharing the same IRQ
 // Each queue is a circular doubly-linked list of AdapterQueueEntry structures
 static queue_head_t adapterQ[256];
-
-// Global OSM routines function table (defined in OSMFunctions.m)
-// Size: 0x7c (124 bytes) = 31 entries * 4 bytes each
-extern void *OSMRoutines[31];
 
 // Module initialization - called when driver is loaded
 // Initializes the global adapter queue array
@@ -716,7 +704,7 @@ static void __attribute__((constructor)) AdaptecU2SCSI_module_init(void)
     // Queue is empty if head pointer equals the queue head address
     if ((void *)&adapterQ[irq] == adapterQ[irq].next) {
         // First adapter on this IRQ - register interrupt handler
-        intNum = pmac_int_to_number();
+        intNum = pmac_int_to_number(irq);
         pmac_register_int(intNum, 0x18, AU2Handler, self);
     }
 
@@ -1381,7 +1369,7 @@ done:
     // Queue is empty if head pointer equals the queue head address
     if ((void *)&adapterQ[irq] == adapterQ[irq].next) {
         // First adapter on this IRQ - register interrupt handler
-        intNum = pmac_int_to_number();
+        intNum = pmac_int_to_number(irq);
         pmac_register_int(intNum, 0x18, AU2Handler, self);
     }
 

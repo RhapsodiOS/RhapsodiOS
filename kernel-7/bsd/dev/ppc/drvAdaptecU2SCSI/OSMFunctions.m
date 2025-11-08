@@ -29,23 +29,18 @@
  * (Common Hardware Interface Module) and the RhapsodiOS kernel.
  */
 
-#import <kernserv/prototypes.h>
+#import "OSMFunctions.h"
+
+#import <driverkit/generalFuncs.h>
+#import <driverkit/kernelDriver.h>
+#import <kern/thread_call.h>
+#import <kernserv/kalloc.h>
 #import <kernserv/ns_timer.h>
+#import <kernserv/prototypes.h>
 #import <mach/vm_param.h>
+#import <machdep/ppc/pmap.h>
 #import <machdep/ppc/proc_reg.h>
 #import <objc/objc.h>
-
-// External kernel memory allocation functions
-extern void *kalloc(unsigned int size);
-extern void kfree(void *addr, unsigned int size);
-
-// Page size variables from kernel
-extern unsigned int page_size;
-extern unsigned int page_shift;
-extern unsigned int page_mask;
-
-// External kernel cache management
-extern void flush_cache_v(vm_offset_t pa, unsigned length);
 
 /*
  * Allocate contiguous physical memory.
@@ -151,11 +146,6 @@ typedef struct OSMIOBuffer {
     void *nextLink;                     // 0xc4 - Next IOB in free queue
 } OSMIOBuffer;
 
-// External kernel functions
-extern void *IOVmTaskSelf(void);
-extern int IOPhysicalFromVirtual(void *task, unsigned int vaddr, unsigned int *paddr);
-extern void IOLog(const char *format, ...);
-
 /*
  * Allocate an OSMIO Buffer for CHIM operations.
  *
@@ -237,7 +227,7 @@ void *_allocOSMIOB(void *p1, void *p2, void *p3, void *p4,
  * Free an OSMIO Buffer (low-level deallocation).
  *
  * From decompiled code:
- *   void __freeOSMIOB(int param_1, int param_2, ...)
+ *   void _freeOSMIOB(int param_1, int param_2, ...)
  *   {
  *       int param_11;  // alignment
  *       int param_12;  // size
@@ -401,8 +391,8 @@ void *_AllocOSMIOB(void *adapter)
 
     return iob;
 }
-void __freeOSMIOB(void *iobPtr, void *p1, void *p2, void *p3,
-                  void *p4, void *p5, void *p6, void *p7)
+void _freeOSMIOB(void *iobPtr, void *p1, void *p2, void *p3,
+                 void *p4, void *p5, void *p6, void *p7)
 {
     OSMIOBuffer *iob = (OSMIOBuffer *)iobPtr;
     unsigned int alignment;
@@ -455,7 +445,7 @@ void __freeOSMIOB(void *iobPtr, void *p1, void *p2, void *p3,
  *           *(int *)(param_1 + 0x584) = param_2;
  *       } else {
  *           _memcpy(auStack_1c8, (void *)(param_1 + 0x2c8), 0x1b4);
- *           __freeOSMIOB(param_2, *(undefined4 *)(param_1 + 0x2ac),
+ *           _freeOSMIOB(param_2, *(undefined4 *)(param_1 + 0x2ac),
  *                        *(undefined4 *)(param_1 + 0x2b0),
  *                        *(undefined4 *)(param_1 + 0x2b4),
  *                        *(undefined4 *)(param_1 + 0x2b8),
@@ -522,7 +512,7 @@ void _FreeOSMIOB(void *adapter, void *iob)
         memcpy(stackBuffer, (void *)((unsigned int)adapter + 0x2c8), 0x1b4);
 
         // Call low-level deallocator with profile parameters
-        __freeOSMIOB(iob,
+        _freeOSMIOB(iob,
                      (void *)adapterPtr[0x2ac / 4],  // Profile param 0
                      (void *)adapterPtr[0x2b0 / 4],  // Profile param 1
                      (void *)adapterPtr[0x2b4 / 4],  // Profile param 2
@@ -667,19 +657,17 @@ void _CleanupWaitingQ(void *targetStruct)
  * @param param_2 Interrupt context (unused)
  * @param param_3 Adapter instance or context
  */
-void _AU2Handler(void *param_1, void *param_2, void *param_3)
+void AU2Handler(int interruptType, void *state, void *context)
 {
-    // External kernel function for scheduling thread calls
-    extern void thread_call_func(void *func, void *param, int flags);
-
-    // External reference to the I/O thread function
-    // This is likely AdaptecU2SCSIThread or similar
-    extern void AdaptecU2SCSIIOThread(void *adapter);
+    (void)interruptType;
+    (void)state;
 
     // Schedule the I/O thread to process the interrupt
     // Flags: 1 = async (don't wait for completion)
-    thread_call_func(AdaptecU2SCSIIOThread, param_3, 1);
+    thread_call_func(AdaptecU2SCSIIOThread, context, TRUE);
 }
+
+/*
  * SCSI Timeout Handler
  *
  * From decompiled code:
@@ -1633,7 +1621,6 @@ void SendIOBsMaybe(void *targetStruct)
                 timeoutField = *((unsigned int *)((unsigned int)timeoutField + 0x18));
                 if (timeoutField != 0) {
                     // Schedule timeout callback
-                    extern void IOScheduleFunc(void (*func)(void *), void *arg);
                     IOScheduleFunc(_AdaptecU2SCSITimeout, iob);
                 }
             }

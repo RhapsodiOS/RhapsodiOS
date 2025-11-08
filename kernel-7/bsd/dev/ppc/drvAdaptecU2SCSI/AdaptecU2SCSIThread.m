@@ -28,22 +28,27 @@
  */
 
 #import "AdaptecU2SCSI.h"
+#import "OSMFunctions.h"
+
+#import <driverkit/generalFuncs.h>
+#import <driverkit/kernelDriver.h>
 #import <kernserv/prototypes.h>
+#import <mach/vm_param.h>
 
 // Forward declarations for thread methods
-extern void ProbeTarget(id adapter, void *request);
 extern void ResetSCSIBus(id adapter, void *request);
-extern void IOExitThread(void);
-extern void *_AllocOSMIOB(void *adapter);
-extern void _EnqueueOsmIOB(void *iob, void *targetStruct);
-extern void NormalPostRoutine(void);
-extern void IOGetTimestamp(void *timestamp);
-extern int IOPhysicalFromVirtual(vm_task_t task, void *virtualAddr, unsigned int *physAddr);
-extern vm_task_t IOVmTaskSelf(void);
 
-// External variables
-extern unsigned int page_size;
-extern unsigned int page_mask;
+void AdaptecU2SCSIIOThread(thread_call_spec_t spec, thread_call_t call)
+{
+    id adapter = (id)spec;
+    (void)call;
+
+    if (adapter == nil) {
+        return;
+    }
+
+    [adapter commandRequestOccurred];
+}
 
 @implementation AdaptecU2SCSI(AdaptecU2SCSIThread)
 

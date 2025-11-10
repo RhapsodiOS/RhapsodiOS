@@ -24,13 +24,13 @@
 
 /*
  * BPF.h
- * Berkeley Packet Filter (BPF) IOKit Driver
+ * Berkeley Packet Filter (BPF) DriverKit Driver
  *
- * This driver provides an IOKit wrapper for the BSD BPF subsystem.
+ * This driver provides an DriverKit wrapper for the BSD BPF subsystem.
  */
 
-#ifndef _BPF_H_
-#define _BPF_H_
+#ifndef _DRVBPF_H_
+#define _DRVBPF_H_
 
 #import <driverkit/IODevice.h>
 
@@ -44,4 +44,4 @@
 
 @end
 
-#endif /* _BPF_H_ */
+#endif /* _DRVBPF_H_ */

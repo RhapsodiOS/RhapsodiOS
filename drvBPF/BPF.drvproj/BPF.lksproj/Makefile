@@ -16,7 +16,7 @@ CLASSES = BPF.m
 
 HFILES = BPF.h
 
-CFILES =
+CFILES = bpf.c bpf_filter.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Makefile.driver_preamble
 

@@ -3,7 +3,7 @@ FILESTABLE = {
     H_FILES = (BPF.h);
     OTHER_LINKED = ();
     CLASSES = (BPF.m);
-    C_FILES = ();
+    C_FILES = (bpf.c, bpf_filter.c);
 };
 LOCALIZABLE_FILES = {
 };

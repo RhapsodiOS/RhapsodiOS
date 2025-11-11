@@ -1,14 +1,1 @@
-LOCALMAKEFILEDIR = /LocalDeveloper/Makefiles/driverkit
-LOCALMAKEFILE = Makefile.local_preamble
--include $(LOCALMAKEFILEDIR)/$(LOCALMAKEFILE)
-OTHER_CFLAGS = -I./AMDPCSCSIDriver_reloc.tproj
-INSTALL_EXAMPLE = YES
-# This works around a bug in PB
-BUNDLE_EXTENSION = config
-
-bundle all::
-	rm -rf $(PRODUCT_ROOT)/English.lproj/Help
-#
-# force clean at lower levels...
-#
-CLEAN_ALL_SUBPROJECTS=YES
+INCLUDED_ARCHS = i386

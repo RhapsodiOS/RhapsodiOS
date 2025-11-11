@@ -10,14 +10,28 @@
 NAME = AMDPCSCSIDriver
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
+LANGUAGE = English
 
-BUNDLES = AMDPCSCSIDriver.drvproj
+CLASSES = AMD_Chip.m AMD_ChipPrivate.m AMD_SCSI.m AMD_x86.m
+
+CFILES = ioPorts.c
+
+HFILES = AMD_Chip.h AMD_ChipPrivate.h AMD_ddm.h AMD_Private.h AMD_Regs.h AMD_SCSI.h AMD_Types.h AMD_x86.h bringup.h configKeys.h ioPorts.h pciconf.h
+
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
-MAKEFILE = aggregate.make
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = kernelserver.make
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
-NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
+
+NEXTSTEP_PB_CFLAGS = -Wno-format
+
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
 WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
@@ -27,10 +41,6 @@ WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
 PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
 
 include $(MAKEFILEDIR)/platform.make
-
-
-
-
 
 -include Makefile.preamble
 

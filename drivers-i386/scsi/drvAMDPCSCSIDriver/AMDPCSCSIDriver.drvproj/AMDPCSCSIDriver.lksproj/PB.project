@@ -1,0 +1,13 @@
+{
+    LANGUAGE = English;
+    NEXTSTEP_BUILDTOOL = "$(MAKEFILEPATH)/pb_makefiles/platform.make";
+    NEXTSTEP_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+    NEXTSTEP_JAVA_COMPILER = "/usr/bin/javac";
+    NEXTSTEP_OBJCPLUS_COMPILER = "/usr/bin/cc";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = AMDPCSCSIDriver;
+    PROJECTTYPE = KernelServer;
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

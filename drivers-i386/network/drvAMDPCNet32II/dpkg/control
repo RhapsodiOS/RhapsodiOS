@@ -1,0 +1,6 @@
+Package: drvamdpcnet32ii
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Austin Wells
+Version: 1
+Description: AMD PCNet32 II ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

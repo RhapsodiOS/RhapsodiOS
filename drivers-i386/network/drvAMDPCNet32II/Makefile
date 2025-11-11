@@ -7,31 +7,29 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = AMDPCNet32II_reloc
+NAME = AMDPCNet32II
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-CLASSES = AMDPCNet32II.m
+BUNDLES = AMDPCNet32II.drvproj
 
-HFILES = AMDPCNet32II.h PCNetIO.h
+TOOLS =
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
-            Load_Commands.sect Makefile.driver_preamble
+OTHERSRCS = Makefile Makefile.preamble
 
-
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-INSTALLDIR = /Test/
-INSTALLFLAGS = -c -s -m 755
-SOURCEMODE = 444
-
-LIBS = 
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

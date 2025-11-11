@@ -1,0 +1,31 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (AMDPCNet32II.m);
+        H_FILES = (AMDPCNet32II.h, PCNetIO.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble,
+            m.template,
+            h.template,
+            Load_Commands.sect
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = AMDPCNet32II;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

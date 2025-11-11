@@ -4,9 +4,12 @@
 	GLOBAL_RESOURCES = (Default.table);
 	LOCAL_RESOURCES = (
 	    English.lproj/DriverHelp,
-	    English.lproj/Localizable.strings
+	    English.lproj/Localizable.strings,
+        English.lproj/SB16PnP.strings,
+        English.lproj/SB16SingleDMAChannelPnP.strings,
+        English.lproj/SingleDMAChannel.strings
 	);
-	OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, README, SoundBlaster16.info);
+	OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};

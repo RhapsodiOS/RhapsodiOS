@@ -14,11 +14,11 @@ LANGUAGE = English
 
 LOCAL_RESOURCES = DriverHelp Localizable.strings
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table SB16PnP.table SB16SingleDMAChannelPnP.table SingleDMAChannel.table
 
 TOOLS = SoundBlaster16_reloc.tproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble README SoundBlaster16.info
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

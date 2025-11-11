@@ -10,34 +10,37 @@
 /*
  * Base address - determined at runtime
  */
-static unsigned int sb16BaseRegisterAddress = 0;
+static unsigned int sbBaseRegisterAddress = 0;
 
 /*
- * Register addresses - determined at runtime
+ * DSP Register addresses - determined at runtime
  */
-static unsigned int sb16ResetReg = 0;
-static unsigned int sb16ReadDataReg = 0;
-static unsigned int sb16WriteDataOrCommandReg = 0;
-static unsigned int sb16WriteBufferStatusReg = 0;
-static unsigned int sb16DataAvailableStatusReg = 0;
-static unsigned int sb16Interrupt16BitAckReg = 0;
+static unsigned int sbResetReg = 0;
+static unsigned int sbReadDataReg = 0;
+static unsigned int sbWriteDataOrCommandReg = 0;
+static unsigned int sbWriteBufferStatusReg = 0;
+static unsigned int sbDataAvailableStatusReg = 0;
+static unsigned int sbAck8bitInterrupt = 0;
+static unsigned int sbAck16bitInterrupt = 0;
 
 static __inline__
 void
 assignDSPRegAddresses(void)
 {
-    sb16ResetReg =
-        (sb16BaseRegisterAddress + SB16_DSP_RESET_OFFSET);
-    sb16ReadDataReg =
-        (sb16BaseRegisterAddress + SB16_DSP_READ_DATA_OFFSET);
-    sb16WriteDataOrCommandReg =
-        (sb16BaseRegisterAddress + SB16_DSP_WRITE_DATA_OR_COMMAND_OFFSET);
-    sb16WriteBufferStatusReg =
-        (sb16BaseRegisterAddress + SB16_DSP_WRITE_BUFFER_STATUS_OFFSET);
-    sb16DataAvailableStatusReg =
-        (sb16BaseRegisterAddress + SB16_DSP_DATA_AVAILABLE_STATUS_OFFSET);
-    sb16Interrupt16BitAckReg =
-        (sb16BaseRegisterAddress + SB16_DSP_16BIT_ACK_OFFSET);
+    sbResetReg =
+        (sbBaseRegisterAddress + SB16_DSP_RESET_OFFSET);
+    sbReadDataReg =
+        (sbBaseRegisterAddress + SB16_DSP_READ_DATA_OFFSET);
+    sbWriteDataOrCommandReg =
+        (sbBaseRegisterAddress + SB16_DSP_WRITE_DATA_OR_COMMAND_OFFSET);
+    sbWriteBufferStatusReg =
+        (sbBaseRegisterAddress + SB16_DSP_WRITE_BUFFER_STATUS_OFFSET);
+    sbDataAvailableStatusReg =
+        (sbBaseRegisterAddress + SB16_DSP_DATA_AVAILABLE_STATUS_OFFSET);
+    sbAck8bitInterrupt =
+        (sbBaseRegisterAddress + SB16_DSP_DATA_AVAILABLE_STATUS_OFFSET);
+    sbAck16bitInterrupt =
+        (sbBaseRegisterAddress + SB16_DSP_16BIT_ACK_OFFSET);
 }
 
 /*
@@ -56,17 +59,17 @@ outbV(unsigned int address, unsigned int data)
 /*
  * Mixer register addresses
  */
-static unsigned int sb16MixerAddressReg = 0;
-static unsigned int sb16MixerDataReg = 0;
+static unsigned int sbMixerAddressReg = 0;
+static unsigned int sbMixerDataReg = 0;
 
 static __inline__
 void
 assignMixerRegAddresses(void)
 {
-    sb16MixerAddressReg =
-        (sb16BaseRegisterAddress + SB16_MIXER_ADDRESS_OFFSET);
-    sb16MixerDataReg =
-        (sb16BaseRegisterAddress + SB16_MIXER_DATA_OFFSET);
+    sbMixerAddressReg =
+        (sbBaseRegisterAddress + SB16_MIXER_ADDRESS_OFFSET);
+    sbMixerDataReg =
+        (sbBaseRegisterAddress + SB16_MIXER_DATA_OFFSET);
 }
 
 /*
@@ -85,6 +88,27 @@ static unsigned char inputGainRight =           0;
 static unsigned char outputGainLeft =           0;
 static unsigned char outputGainRight =          0;
 
+/*
+ * Interrupt status tracking
+ */
+static unsigned char interruptStatus =          0;
+static unsigned int interruptCount =            0;
+
+/*
+ * Last stage (output) gain controls (0-3 for SB16)
+ */
+static unsigned char lastStageGainInputLeft =   0;
+static unsigned char lastStageGainInputRight =  0;
+static unsigned char lastStageGainOutputLeft =  0;
+static unsigned char lastStageGainOutputRight = 0;
+
+/*
+ * Buffer counter and DMA command variables
+ */
+static unsigned int sbBufferCounter =           0;
+static unsigned char sbStartDMACommand =        0;
+static unsigned char sbStartDMAMode =           0;
+
 #define MAX_WAIT_FOR_DATA_AVAILABLE             2000
 #define SB16_WAIT_DELAY                         10
 #define SB16_RESET_DELAY                        100
@@ -101,15 +125,15 @@ dspReadWait(void)
 
     for (i = 0; i < MAX_WAIT_FOR_DATA_AVAILABLE; i++) {
         IODelay(SB16_WAIT_DELAY);
-        val = inb(sb16DataAvailableStatusReg);
-        if (val & 0x080)   /* MSB == 1 before reading */
+        val = inb(sbDataAvailableStatusReg);
+        if (val & SB16_DSP_BUSY_BIT)   /* MSB == 1 before reading */
             return YES;
     }
 
     /* Reset DSP to recover */
-    outbV(sb16ResetReg, 0x01);
+    outbV(sbResetReg, 0x01);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outbV(sb16ResetReg, 0x00);
+    outbV(sbResetReg, 0x00);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
     IODelay(SB16_RESET_DELAY);
 
@@ -132,15 +156,15 @@ dspWriteWait(void)
 
     for (i = 0; i < MAX_WAIT_FOR_DATA_AVAILABLE; i++) {
         IODelay(SB16_WAIT_DELAY);
-        val = inb(sb16WriteBufferStatusReg);
-        if (!(val & 0x080))     /* MSB == 0 before writing */
+        val = inb(sbWriteBufferStatusReg);
+        if (!(val & SB16_DSP_BUSY_BIT))     /* MSB == 0 before writing */
             return YES;
     }
 
     /* Reset DSP */
-    outbV(sb16ResetReg, 0x01);
+    outbV(sbResetReg, 0x01);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outbV(sb16ResetReg, 0x00);
+    outbV(sbResetReg, 0x00);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
     IODelay(SB16_RESET_DELAY);
 
@@ -161,7 +185,7 @@ writeToDSP(unsigned int dataOrCommand)
     if (!dspWriteWait())
         return NO;
 
-    outbV(sb16WriteDataOrCommandReg, dataOrCommand);
+    outbV(sbWriteDataOrCommandReg, dataOrCommand);
     IODelay(SB16_DATA_WRITE_DELAY);
 
 #ifdef DEBUG
@@ -183,7 +207,7 @@ readFromDSP(void)
     if (!dspReadWait())
         return 0xff;
 
-    val = inb(sb16ReadDataReg);
+    val = inb(sbReadDataReg);
     IODelay(SB16_DATA_READ_DELAY);
 
 #ifdef DEBUG
@@ -194,34 +218,15 @@ readFromDSP(void)
 }
 
 /*
- * Read from mixer register
- */
-static __inline__
-unsigned int
-inbIXMixer(unsigned int address)
-{
-    unsigned int val = 0xff;
-
-    outbV(sb16MixerAddressReg, address);
-    IODelay(SB16_ADDRESS_WRITE_DELAY);
-    val = inb(sb16MixerDataReg);
-
-#ifdef DEBUG
-    //IOLog("SoundBlaster16: Mixer address %x. Read %x\n", address, val);
-#endif DEBUG
-    return val;
-}
-
-/*
  * Write to mixer register
  */
 static  __inline__
 void
 outbIXMixer(unsigned int address, unsigned int val)
 {
-    outbV(sb16MixerAddressReg, address);
+    outbV(sbMixerAddressReg, address);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outbV(sb16MixerDataReg, val);
+    outbV(sbMixerDataReg, val);
     IODelay(SB16_DATA_WRITE_DELAY);
 
 #ifdef DEBUG
@@ -293,59 +298,15 @@ initMixerRegisters(void)
 }
 
 /*
- * Set input source
- */
-static __inline__
-void
-setInputLevel(unsigned int level)
-{
-    if (level == LINE_LEVEL_INPUT)      {
-        inputControlLeft = INPUT_SOURCE_LINE_LEFT;
-        inputControlRight = INPUT_SOURCE_LINE_RIGHT;
-    } else if (level == CD_LEVEL_INPUT) {
-        inputControlLeft = INPUT_SOURCE_CD_LEFT;
-        inputControlRight = INPUT_SOURCE_CD_RIGHT;
-    } else {
-        inputControlLeft = INPUT_SOURCE_MIC;
-        inputControlRight = INPUT_SOURCE_MIC;
-    }
-
-    outbIXMixer(MC16_INPUT_CONTROL_LEFT, inputControlLeft);
-    outbIXMixer(MC16_INPUT_CONTROL_RIGHT, inputControlRight);
-}
-
-/*
- * Mute audio output
- */
-static __inline__
-void
-muteOutput(void)
-{
-    outbIXMixer(MC16_MASTER_VOLUME, 0);
-    outbIXMixer(MC16_VOICE_VOLUME, 0);
-}
-
-/*
- * Unmute audio output (restore previous values)
- */
-static __inline__
-void
-unMuteOutput(void)
-{
-    outbIXMixer(MC16_MASTER_VOLUME, volMaster.data);
-    outbIXMixer(MC16_VOICE_VOLUME, volVoice.data);
-}
-
-/*
  * Quick DSP reset
  */
 static __inline__
 void
 resetDSPQuick(void)
 {
-    outbV(sb16ResetReg, 0x01);
+    outbV(sbResetReg, 0x01);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outbV(sb16ResetReg, 0x00);
+    outbV(sbResetReg, 0x00);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
     IODelay(SB16_RESET_DELAY);
 
@@ -377,9 +338,9 @@ resetDSP(sb16CardParameters_t *cardType)
     cardType->supportsAWE = NO;
 
     /* Reset DSP */
-    outbV(sb16ResetReg, 0x01);
+    outbV(sbResetReg, 0x01);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outbV(sb16ResetReg, 0x00);
+    outbV(sbResetReg, 0x00);
     IODelay(SB16_ADDRESS_WRITE_DELAY);
     IODelay(SB16_RESET_DELAY);
 
@@ -427,28 +388,19 @@ resetDSP(sb16CardParameters_t *cardType)
     if (cardType->majorVersion >= 4) {
         cardType->supports16Bit = YES;
         cardType->mixerPresent = YES;
+        cardType->name = "Sound Blaster 16";
 
         if (cardType->majorVersion == 4) {
             cardType->version = SB16_BASIC;
-            cardType->name = "Sound Blaster 16";
-        } else if (cardType->majorVersion == 5) {
+        } else if (cardType->majorVersion >= 5) {
             cardType->version = SB16_VIBRA;
-            cardType->name = "Sound Blaster 16 Vibra";
         }
-
-        /* Check for AWE capabilities by reading mixer */
-        /* AWE cards have additional registers */
-        val = inbIXMixer(0x20);  /* AWE identification register */
-        if ((val & 0xf0) == 0xf0) {
-            cardType->supportsAWE = YES;
-            if (cardType->majorVersion >= 8) {
-                cardType->version = SB16_AWE64;
-                cardType->name = "Sound Blaster AWE64";
-            } else {
-                cardType->version = SB16_AWE32;
-                cardType->name = "Sound Blaster AWE32";
-            }
-        }
+    } else if (cardType->majorVersion == 3) {
+        /* DSP 3.x is 8-bit only (SBPro, etc.) */
+        cardType->version = SB_8BIT;
+        cardType->name = "Sound Blaster Pro";
+        cardType->supports16Bit = NO;
+        cardType->mixerPresent = YES;
     }
 }
 
@@ -477,199 +429,104 @@ resetHardware(sb16CardParameters_t *cardType)
 }
 
 /*
- * Set input gain (0-3 for SB16)
- */
-static  __inline__
-void
-setInputGain(unsigned int channel, unsigned int gain)
-{
-    if (channel == LEFT_CHANNEL) {
-        inputGainLeft = gain & 0x03;
-        outbIXMixer(MC16_INPUT_GAIN_LEFT, inputGainLeft);
-    } else {
-        inputGainRight = gain & 0x03;
-        outbIXMixer(MC16_INPUT_GAIN_RIGHT, inputGainRight);
-    }
-
-#ifdef DEBUG
-    IOLog("SoundBlaster16: set input gain channel %d to %d\n", channel, gain);
-#endif DEBUG
-}
-
-/*
- * Set output attenuation (master volume)
- */
-static  __inline__
-void
-setOutputAttenuation(unsigned int channel, unsigned int attenuation)
-{
-    if (channel == LEFT_CHANNEL) {
-        volMaster.reg.left = attenuation & 0x1f;
-        volVoice.reg.left = attenuation & 0x1f;
-    } else {
-        volMaster.reg.right = attenuation & 0x1f;
-        volVoice.reg.right = attenuation & 0x1f;
-    }
-
-    outbIXMixer(MC16_MASTER_VOLUME, volMaster.data);
-    outbIXMixer(MC16_VOICE_VOLUME, volVoice.data);
-
-#ifdef DEBUG
-    IOLog("SoundBlaster16: set output attenuation channel %d to %d\n",
-          channel, attenuation);
-#endif DEBUG
-}
-
-/*
- * Enable/disable audio output
+ * Stop DMA transfer - sends pause command and performs DSP reset
  */
 static __inline__
 void
-enableAudioOutput(BOOL enable)
+stopDMATransfer(BOOL is16Bit)
 {
-    (enable) ? unMuteOutput() : muteOutput();
-    (enable) ? writeToDSP(DC16_TURN_ON_SPEAKER) :
-               writeToDSP(DC16_TURN_OFF_SPEAKER);
-}
+    unsigned char pauseCommand;
 
-/*
- * Set DMA buffer size
- */
-static  __inline__
-void
-setSampleBufferCounter(unsigned int count, BOOL is16Bit)
-{
-    /* For 16-bit, count is in samples, need to multiply by 2 for bytes */
-    if (is16Bit)
-        count = (count * 2) - 1;
-    else
-        count -= 1;
-
-    writeToDSP(count & 0xff);
-    writeToDSP((count >> 8) & 0xff);
-
-#ifdef DEBUG
-    //IOLog("SoundBlaster16: buffer counter set to %d\n", count);
-#endif DEBUG
-}
-
-/*
- * Set sample rate for output
- */
-static __inline__
-void
-setCodecSamplingRateOutput(unsigned int rate)
-{
-    /* Clamp to valid range */
-    if (rate < SB16_MIN_SAMPLE_RATE_16BIT)
-        rate = SB16_MIN_SAMPLE_RATE_16BIT;
-    else if (rate > SB16_MAX_SAMPLE_RATE_16BIT)
-        rate = SB16_MAX_SAMPLE_RATE_16BIT;
-
-    writeToDSP(DC16_SET_SAMPLE_RATE_OUTPUT);
-    writeToDSP((rate >> 8) & 0xff);
-    writeToDSP(rate & 0xff);
-
-#ifdef DEBUG
-    IOLog("SoundBlaster16: output sample rate set to %d Hz\n", rate);
-#endif DEBUG
-}
-
-/*
- * Set sample rate for input
- */
-static __inline__
-void
-setCodecSamplingRateInput(unsigned int rate)
-{
-    /* Clamp to valid range */
-    if (rate < SB16_MIN_SAMPLE_RATE_16BIT)
-        rate = SB16_MIN_SAMPLE_RATE_16BIT;
-    else if (rate > SB16_MAX_SAMPLE_RATE_16BIT)
-        rate = SB16_MAX_SAMPLE_RATE_16BIT;
-
-    writeToDSP(DC16_SET_SAMPLE_RATE_INPUT);
-    writeToDSP((rate >> 8) & 0xff);
-    writeToDSP(rate & 0xff);
-
-#ifdef DEBUG
-    IOLog("SoundBlaster16: input sample rate set to %d Hz\n", rate);
-#endif DEBUG
-}
-
-/*
- * Start DMA transfer
- */
-static __inline__
-void
-startDMA(unsigned int direction, BOOL is16Bit, BOOL isStereo, unsigned int count)
-{
-    unsigned int command;
-    unsigned int mode = DMA_MODE_FIFO | DMA_MODE_AUTO_INIT;
-
-    if (isStereo)
-        mode |= DMA_MODE_STEREO;
-
+    /* Send appropriate pause command based on bit depth */
     if (is16Bit) {
-        mode |= DMA_MODE_SIGNED;  /* 16-bit is always signed */
-        command = (direction == DMA_DIRECTION_IN) ?
-                  DC16_START_16BIT_DMA_ADC : DC16_START_16BIT_DMA_DAC;
+        pauseCommand = DC16_PAUSE_16BIT_DMA;
     } else {
-        command = (direction == DMA_DIRECTION_IN) ?
-                  DC16_START_8BIT_DMA_ADC : DC16_START_8BIT_DMA_DAC;
+        pauseCommand = DC16_PAUSE_8BIT_DMA;
+    }
+    writeToDSP(pauseCommand);
+
+    /* Perform full DSP reset to ensure clean stop */
+    outbV(sbResetReg, 0x01);
+    IODelay(SB16_ADDRESS_WRITE_DELAY);
+    outbV(sbResetReg, 0x00);
+    IODelay(SB16_ADDRESS_WRITE_DELAY);
+
+    /* Wait for and verify 0xAA response */
+    if (dspReadWait()) {
+        unsigned int response = readFromDSP();
+        if (response != 0xaa) {
+            IOLog("SoundBlaster16: Can not reset DSP.\n");
+        }
+    }
+}
+
+/*
+ * Clear and acknowledge interrupts
+ * Reads the IRQ status register to determine which interrupt fired
+ * and acknowledges only the appropriate one.
+ */
+static __inline__
+void
+clearInterrupts(void)
+{
+    unsigned char status;
+    unsigned int ackReg;
+
+    /* Read interrupt status register from mixer */
+    outbV(sbMixerAddressReg, MC16_IRQ_STATUS);
+
+    /* Track interrupt count for statistics */
+    interruptCount++;
+
+    IODelay(15);
+
+    /* Read the status byte */
+    status = inb(sbMixerDataReg);
+    IODelay(75);
+
+    /* Store for debugging */
+    interruptStatus = status;
+
+    /* Determine which interrupt fired and acknowledge it
+     * Check bit 2 for 16-bit interrupt, bit 1 for 8-bit interrupt
+     */
+    ackReg = sbAck16bitInterrupt;
+    if ((status & IRQ_STATUS_16BIT) ||
+        (ackReg = sbAck8bitInterrupt, (status & IRQ_STATUS_8BIT))) {
+        /* Acknowledge the interrupt by reading the appropriate register */
+        inb(ackReg);
+    }
+}
+
+/*
+ * Program the DMA Select register (0x81) with the active DMA channels
+ */
+static __inline__
+void
+programDMASelect(unsigned int dma8Channel, unsigned int dma16Channel)
+{
+    unsigned char dmaSelectBits = 0;
+
+    /* Set 8-bit DMA channel bit */
+    if (dma8Channel == 0) {
+        dmaSelectBits = 0x01;
+    } else if (dma8Channel == 1) {
+        dmaSelectBits = 0x02;
+    } else if (dma8Channel == 3) {
+        dmaSelectBits = 0x08;
     }
 
-    /* Send DMA command with mode */
-    writeToDSP(command | mode);
-
-    /* Send buffer size */
-    setSampleBufferCounter(count, is16Bit);
-
-#ifdef DEBUG
-    IOLog("SoundBlaster16: started %s %d-bit %s DMA\n",
-          direction == DMA_DIRECTION_IN ? "input" : "output",
-          is16Bit ? 16 : 8,
-          isStereo ? "stereo" : "mono");
-#endif DEBUG
-}
-
-/*
- * Stop DMA transfer
- */
-static __inline__
-void
-stopDMA(BOOL is16Bit)
-{
-    if (is16Bit) {
-        writeToDSP(DC16_PAUSE_16BIT_DMA);
-        writeToDSP(DC16_EXIT_16BIT_AUTO_DMA);
-    } else {
-        writeToDSP(DC16_PAUSE_8BIT_DMA);
-        writeToDSP(DC16_EXIT_8BIT_AUTO_DMA);
+    /* Set 16-bit DMA channel bit */
+    if (dma16Channel == 5) {
+        dmaSelectBits |= 0x20;
+    } else if (dma16Channel == 6) {
+        dmaSelectBits |= 0x40;
+    } else if (dma16Channel == 7) {
+        dmaSelectBits |= 0x80;
     }
 
-    /* Quick reset to ensure DMA is stopped */
-    resetDSPQuick();
-}
-
-/*
- * Enable codec interrupts (handled by mixer/DSP)
- */
-static __inline__
-void
-enableCodecInterrupts(void)
-{
-    /* SB16 interrupts are enabled by starting DMA */
-}
-
-/*
- * Disable codec interrupts
- */
-static __inline__
-void
-disableCodecInterrupts(void)
-{
-    /* Interrupts disabled by stopping DMA */
+    /* Write to mixer DMA select register */
+    outbIXMixer(MC16_DMA_SELECT, dmaSelectBits);
 }
 
 /*

@@ -2,6 +2,8 @@
 "Family" = "Audio";
 "Location" = "";
 "Instance" = "0";
+"Bus Type" = "PnP";
+"Auto Detect IDs" = "PNPB003 0x0e8c0031 CTL009e CTL00c3";
 "Driver Name" = "SoundBlaster16";
 "DMA Channels" = "1 5";
 "IRQ Levels" = "5";

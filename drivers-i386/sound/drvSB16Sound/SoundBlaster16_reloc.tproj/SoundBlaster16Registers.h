@@ -29,8 +29,13 @@
  * DSP Command timing delays
  */
 #define SB16_ADDRESS_WRITE_DELAY                10
-#define SB16_DATA_WRITE_DELAY                   25
+#define SB16_DATA_WRITE_DELAY                   75
 #define SB16_DATA_READ_DELAY                    10
+
+/*
+ * DSP status register bits
+ */
+#define SB16_DSP_BUSY_BIT                       0x80
 
 /*
  * Mixer register offsets
@@ -39,7 +44,7 @@
 #define SB16_MIXER_DATA_OFFSET                  0x05
 
 /*
- * SB16 Mixer Registers
+ * SB16 Mixer Registers (new addresses for newer cards)
  */
 #define MC16_RESET                              0x00
 #define MC16_MASTER_VOLUME                      0x22
@@ -64,6 +69,22 @@
 #define MC16_IRQ_SELECT                         0x80
 #define MC16_DMA_SELECT                         0x81
 #define MC16_IRQ_STATUS                         0x82
+
+/*
+ * CT1745 Mixer Registers (old addresses for compatibility)
+ * Used for hardware detection
+ */
+#define CT1745_MASTER_VOLUME_LEFT               0x30
+#define CT1745_MASTER_VOLUME_RIGHT              0x31
+#define CT1745_VOICE_VOLUME_LEFT                0x32
+#define CT1745_VOICE_VOLUME_RIGHT               0x33
+#define CT1745_FM_VOLUME_LEFT                   0x34
+#define CT1745_FM_VOLUME_RIGHT                  0x35
+#define CT1745_CD_VOLUME_LEFT                   0x36
+#define CT1745_CD_VOLUME_RIGHT                  0x37
+#define CT1745_LINE_VOLUME_LEFT                 0x38
+#define CT1745_LINE_VOLUME_RIGHT                0x39
+#define CT1745_MIC_VOLUME                       0x3a
 
 /*
  * DSP Commands - 8-bit transfers
@@ -120,9 +141,9 @@
 /*
  * Maximum and minimum sampling rates for SB16
  */
-#define SB16_MAX_SAMPLE_RATE_8BIT               44100
+#define SB16_MAX_SAMPLE_RATE_8BIT               45000
 #define SB16_MIN_SAMPLE_RATE_8BIT               5000
-#define SB16_MAX_SAMPLE_RATE_16BIT              44100
+#define SB16_MAX_SAMPLE_RATE_16BIT              45000
 #define SB16_MIN_SAMPLE_RATE_16BIT              5000
 
 /*
@@ -134,6 +155,11 @@
 #define MAX_OUTPUT_GAIN_16                      0x03
 #define MAX_TREBLE_16                           0x0f    /* 4 bits per channel */
 #define MAX_BASS_16                             0x0f
+
+/*
+ * Attenuation range used by IOAudio framework (0 to -84)
+ */
+#define SB16_ATTENUATION_RANGE                  0x54    /* 84 decimal */
 
 /*
  * DMA channels supported by SB16
@@ -173,6 +199,7 @@
 
 #define DMA_DIRECTION_IN                        0
 #define DMA_DIRECTION_OUT                       1
+#define DMA_DIRECTION_STOPPED                   2
 
 /*
  * Mixer register data structures for stereo controls
@@ -207,13 +234,13 @@ typedef union {
 
 /*
  * Card version enumeration
+ * Values match original driver implementation
  */
 typedef enum {
-    SB16_NONE = 0,
-    SB16_BASIC = 4,     /* SB16 DSP version 4.x */
-    SB16_VIBRA = 5,     /* SB16 Vibra (laptop version) */
-    SB16_AWE32 = 8,     /* AWE32 */
-    SB16_AWE64 = 9      /* AWE64 */
+    SB16_BASIC = 1,     /* SB16 16-bit capable */
+    SB16_VIBRA = 2,     /* SB16 Vibra or compatible 16-bit */
+    SB_8BIT = 3,        /* 8-bit Sound Blaster (not supported) */
+    SB16_NONE = 4       /* No card detected */
 }       sb16CardVersion_t;
 
 /*
@@ -239,6 +266,9 @@ typedef struct  {
 #define INPUT_SOURCE_LINE_LEFT                  0x08
 #define INPUT_SOURCE_MIDI_RIGHT                 0x10
 #define INPUT_SOURCE_MIDI_LEFT                  0x20
+
+/* All input sources enabled (for mono recording) */
+#define INPUT_SOURCE_ALL                        0x1f
 
 /*
  * Output mixer control bits

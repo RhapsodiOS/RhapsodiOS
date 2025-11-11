@@ -15,19 +15,17 @@
 @private
     unsigned int currentDMADirection;
     BOOL interruptTimedOut;
-    unsigned int dmaDescriptorSize;      // DMA descriptor size for interrupts
-    BOOL isValidRequest;                 // Can we do I/O of type requested?
     BOOL is16BitTransfer;                // Are we doing 16-bit audio?
     unsigned int dma8Channel;            // 8-bit DMA channel
     unsigned int dma16Channel;           // 16-bit DMA channel
-    BOOL useHighDMA;                     // Use 16-bit DMA channel
+    unsigned int numDMAChannels;         // Number of DMA channels (1 or 2)
 }
 
 + (BOOL)probe: deviceDescription;
 - (BOOL)reset;
 - (void) initializeHardware;
-
-- (BOOL) isValidRequest: (BOOL)isRead;
+- (BOOL) initializeDMAChannels;
+- (void) initializeLastStageGainRegisters;
 
 - (BOOL) startDMAForChannel: (unsigned int) localChannel
         read: (BOOL) isRead

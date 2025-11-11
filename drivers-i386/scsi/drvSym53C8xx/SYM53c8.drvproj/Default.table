@@ -1,0 +1,18 @@
+"Title"	= "Symbios Logic SCSI controller";
+"Family" = "SCSI";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "SYM53c8";
+"DMA Channels" = "";
+"Share IRQ Levels" = "YES";
+"IRQ Levels" = "";
+"I/O Ports" = "";
+"Auto Detect IDs" = "0x00011000 0x00021000 0x00031000 0x00041000";
+"Bus Type" = "PCI";
+"Boot Driver";
+"Valid DMA Channels" = "";
+"Valid IRQ Levels" = "9 10 11 12 14 15";
+"Wide SCSI" = "NO";
+"Synchronous" = "NO";
+"Help File" = "Symbios_Logic_53C8xx_SCSI_Adapter.rtfd";
+"Server Name" = "SYM53c8";

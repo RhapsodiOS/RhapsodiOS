@@ -1,0 +1,37 @@
+SYM53c8Inspector = {
+    ACTIONS = {"cmdQueue:" = "cmdQueue:"; "sync:" = "sync:"; "wide:" = "wide:"; }; 
+    OUTLETS = {
+	boundingBox = boundingBox; 
+	cmdQueueButton = cmdQueueButton; 
+	optionsBox = optionsBox; 
+	syncButton = syncButton; 
+	wideButton = wideButton; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

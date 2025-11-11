@@ -1,0 +1,107 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh9000
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+\b\fs36 Symbios Logic 53C8xx SCSI Adapter \
+
+{\b0\fs12{\NeXTGraphic36 216461_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+{\b\fs28{\NeXTGraphic39 366446_SCSI.tiff \width960 \height860
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 SCSI Devices
+\b0\fs24\up0 \
+
+\fs16 \
+\
+
+\fs24 This device driver automatically detects the target adapter and automatically configures itself.  \
+PCI Bus\
+
+\fs16 \
+\
+
+\b\fs24\fc0\cf0 Supported Hardware: \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc1\cf1 This PCI device driver supports SCSI host adapters based on the Symbios Logic 53C8xx chip series. 
+\fc0\cf0 \
+
+\fs16\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Installing a 53C8xx Based SCSI Host Adapter \
+
+\b0\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b Note:
+\b0   You must install the SCSI Host adapter in your system before you configure the device driver.  \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1.	Refer to the user's
+\fc1\cf1  manual
+\fc0\cf0  that comes with the SCSI Host adapter you are using. This manual contains information that you should read before installing the adapter.  Be aware of the necessity of proper SCSI termination.  \
+2.	Install the SCSI Host Adapter in a PCI slot.\
+3.   Configure the host adapter accordingly using the SCSI Host Adapter's Setup program, available at boot time. \
+
+\fs16\fi0\li360\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Configuring the Symbios Logic 53C8xx SCSI Adapter Device Driver 
+\b0  \
+
+\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b\fs24\fi-360\li360\fc1\cf1 	Note
+\b0\fc0\cf0 : When installing a PCI Host Adapter, you must first install the expansion board before configuring the device driver.\
+	
+\b\fc1\cf1 Note: 
+\b0\fc0\cf0 See Configure's Help for general information on running the Configure Application.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1. 	Click the SCSI icon at the top of Configure's Summary window.  If any string containing "53C8xx" is in the list of devices that appears in the window, and if a SCSI Host Adapter containing a SCSI chip from the Symbios Logic 53C8xx series onboard is already installed in your computer, select the driver's name, and click Remove.
+\b \
+
+\b0 2. 	If you're planning to use the SCSI Host Adapter containing a SCSI chip from the Symbios Logic 53C8xx series onboard in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "Symbios Logic 53C8xx SCSI Adapter"  from the list, and click Add. \
+	
+\b Note: 
+\b0  If the 53C8xx driver does not show up in the list of  detected devices, this indicates a problem with the system setup. You need to run the system's setup program at boot time to ensure that the system BIOS knows about the board. \
+5.	Click Done, and then click Save. \
+6.	Choose Quit from the Configure menu.\
+
+\fs16\fc1\cf1 \
+
+{\fs12\fi0\li360{\NeXTGraphic2200 486444_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 	\
+
+\b\fs24 See also\
+
+\b0\fs16 \
+
+\fs24\fi-380\li740 ·	"Add a Device" in Configure's on-line help.\
+
+\fs16\fi0\li360 \
+
+\fs24\fi-380\li740 ·	See NeXTanswer 1824 for general information on installing and configuring device drivers. \
+
+\fs16\fi0\li360 \
+
+\fs24\fi-380\li740 ·	For a description of this device driver, see NeXTanswer 1754_Symbios_Logic_53C8xx_family_Driver_Overview.rtf. \
+
+}

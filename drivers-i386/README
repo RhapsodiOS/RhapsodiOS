@@ -21,7 +21,7 @@ input
  * drvSerialPointingDevice - needs compiled and then tested
 
 network
- * drvAMDPCNet21II - old driver layout, needs updated for Rhapsody
+ * drvAMDPCNet32II - complete
  * drvDEC21X4X
  * drvDEC21142
  * drvDECchip21040
@@ -34,8 +34,8 @@ network
  * drvIntel82595
  * drvIntel82596
  * drvNE2k - complete
- * drvSMC16
- * drvSMCUltra
+ * drvSMC16 - complete
+ * drvSMCUltra - complete
  * drvVMwareVMXNet - complete
 
 scsi
@@ -46,7 +46,7 @@ scsi
  * drvBusLogic
  * drvBusLogicFP
  * drvDPT2000
- * drvSym53C8xx
+ * drvSym53C8xx - needs compiled and then tested
 
 sound
  * drvBeepSound - needs compiled and then tested

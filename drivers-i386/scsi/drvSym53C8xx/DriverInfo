@@ -1,7 +1,0 @@
-SYM53c8 = {
-    "Name" = "Symbios Logic 53C8xx SCSI";
-    "Version" = "5.00";
-    "Family" = "SCSI";
-    "Vendor" = "Symbios Logic";
-    "Description" = "Driver for Symbios Logic NCR 53C8xx family SCSI controllers";
-};

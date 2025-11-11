@@ -9,29 +9,27 @@
 
 NAME = SMCUltra
 
-PROJECTVERSION = 5.01
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings
+BUNDLES = SMCUltra.drvproj
 
-GLOBAL_RESOURCES = Default.table
+TOOLS =
 
-TOOLS = SMCUltra_reloc.tproj
+OTHERSRCS = Makefile Makefile.preamble
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble \
-             README DriverInfo
-
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
-SOURCEMODE = 444
-
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
 
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

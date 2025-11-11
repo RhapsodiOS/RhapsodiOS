@@ -9,25 +9,34 @@
 
 NAME = SMC16
 
-PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECTVERSION = 2.7
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-BUNDLES = SMC16.drvproj
+CLASSES = SMC16.m
 
-TOOLS =
+HFILES = SMC16.h SMC16Hdw.h SMC16IOInline.h SMC16Private.h wd83C584.h wd83C690.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
+NEXTSTEP_PB_CFLAGS = -Wno-format
 
+
+NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
+WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
+PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
+NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
+WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
+PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
 
 include $(MAKEFILEDIR)/platform.make
 

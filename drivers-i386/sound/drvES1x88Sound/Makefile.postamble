@@ -1,5 +1,7 @@
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1997, Apple Computer, Inc.
 #
-# Makefile.postamble
+#  Use this makefile for adding commands to be run at the end of the build.
 #
-
-# Additional build rules can go here
+###############################################################################

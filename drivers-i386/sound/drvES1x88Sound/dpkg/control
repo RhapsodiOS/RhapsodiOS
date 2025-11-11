@@ -1,6 +1,6 @@
 Package: es1x88sound
 Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: Apple Computer
-Version: 1
+Version: 10
 Description: ES1x88 sound device driver
 Build-Depends: build-base, drivertools, driverkit, kernload

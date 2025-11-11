@@ -1,14 +1,16 @@
+###############################################################################
+#  Makefile.preamble
+#  Copyright 1997, Apple Computer, Inc.
 #
-# Makefile.preamble
+#  Use this makefile for configuring the standard application makefiles
+#  associated with ProjectBuilder.
 #
+#  Use this template to set attributes for a project.  These attributes are
+#  combined with the attributes defined by the standard makefiles to
+#  determine how a project is built.  In this way the project manager can
+#  customize attributes while allowing the standard values to be determined
+#  automatically by the system.
+#
+###############################################################################
 
-# Additional flags for compilation
-OTHER_CFLAGS = -DDRIVER_PRIVATE -Wall
-
-# Include paths
-OTHER_INCLUDES = -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
-
-# Library paths
-OTHER_LDFLAGS =
-
-# Dependencies
+OTHER_CFLAGS = -DDRIVER_PRIVATE

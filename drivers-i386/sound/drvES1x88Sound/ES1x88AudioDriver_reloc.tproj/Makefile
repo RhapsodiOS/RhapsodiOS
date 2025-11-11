@@ -1,8 +1,8 @@
 NAME = ES1x88AudioDriver_reloc
 
-CFILES = ES1x88AudioDriver.m ES1x88AudioDriverKernelServerInstance.m
+CFILES = ES1x88AudioDriver.m
 
-HFILES = ES1x88AudioDriver.h ES1x88AudioDriverKernelServerInstance.h
+HFILES = ES1x88AudioDriver.h ES1x88AudioDriverRegisters.h ES1x88AudioDriverInline.h
 
 MAKEFILEDIR = /NextDeveloper/Makefiles/app
 MAKEFILE = tool.make

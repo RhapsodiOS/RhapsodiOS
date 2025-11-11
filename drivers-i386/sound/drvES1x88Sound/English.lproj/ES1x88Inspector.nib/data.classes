@@ -1,0 +1,35 @@
+ES1x88Inspector = {
+    ACTIONS = {"selectInputSource:" = "selectInputSource:"; }; 
+    OUTLETS = {
+	boundingBox = boundingBox; 
+	inputSource = inputSource; 
+	inputSourcePopup = inputSourcePopup; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+	versionTitle = versionTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

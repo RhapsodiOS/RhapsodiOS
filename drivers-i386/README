@@ -27,6 +27,7 @@ network
  * drvDECchip21040
  * drvDECchip21140
  * drvEtherExpress16
+ * drvEtherLink3
  * drvEtherLinkXL
  * drvIntel82556
  * drvIntel82557
@@ -49,10 +50,10 @@ scsi
 
 sound
  * drvBeepSound - needs compiled and then tested
- * drvES1x88Sound
+ * drvES1x88Sound - needs compiled and then tested
  * drvIntelAC97Sound
- * drvSB8Sound
- * drvSB16Sound
+ * drvSB8Sound - needs compiled and then tested
+ * drvSB16Sound - needs compiled and then tested
  * drvSB128Sound - complete
 
 video

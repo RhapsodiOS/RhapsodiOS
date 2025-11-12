@@ -1,0 +1,20 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (DECchip21040.m, DECchip21041.m, DECchip2104x.m, DECchip2104xPrivate.m);
+        H_FILES = (DECchip21040.h, DECchip21041.h, DECchip2104x.h, DECchip2104xInline.h, DECchip2104xPrivate.h, DECchip2104xRegisters.h, DECchip2104xShared.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = DECchip21040;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 5.00;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

@@ -1,0 +1,14 @@
+"Title" = "DECchip 21041 Network Driver";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DECchip21041";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Network Interface" = "AUTO";
+"Auto Detect IDs" = "0x00141011";
+"Help File" = "DECchip21040NetworkDriver.rtfd";
+"Server Name" = "DECchip21040NetworkDriver";
+

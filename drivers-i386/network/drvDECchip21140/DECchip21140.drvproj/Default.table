@@ -1,0 +1,12 @@
+"Title" = "DECchip 21140 Network Driver";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DECchip21140";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x00091011";
+"Help File" = "DECchip21140Network.rtfd";
+"Server Name" = "DECchip21140Network";

@@ -1,7 +1,7 @@
 "Title" = "DECchip 21040 Network Driver";
 "Family" = "Network";
 "Location" = "";
-"Instance" = "";
+"Instance" = "0";
 "Driver Name" = "DECchip21040";
 "DMA Channels" = "";
 "Memory Maps" = "";
@@ -11,5 +11,4 @@
 "Auto Detect IDs" = "0x00021011";
 "Help File" = "DECchip21040NetworkDriver.rtfd";
 "Server Name" = "DECchip21040NetworkDriver";
-"Driver Version" = "PROGRAM:DECchip21040NetworkDriver  PROJECT:drvDECchip21040-21  DEVELOPER:root  BUILT:Sat Mar 28 22:25:54 PST 1998";
-"Version" = "5.00";
+

@@ -170,7 +170,37 @@
 
 @interface DEC21142 : IOEthernetDriver
 {
+    /* Descriptor rings */
+    void *rxDescriptors;              /* RX descriptor ring base */
+    void *txDescriptors;              /* TX descriptor ring base */
+    void *setupFrame;                 /* Setup frame buffer */
+    unsigned int rxIndex;             /* Current RX descriptor index */
 
+    /* Instance state flags */
+    BOOL isRunning;                   /* Adapter running state */
+    BOOL isPromiscuous;               /* Promiscuous mode enabled */
+    BOOL isMulticast;                 /* Multicast mode enabled */
+    BOOL isDebugger;                  /* Debugger/polling mode active */
+
+    /* Synchronization */
+    void *lock;                       /* Transmit lock */
+
+    /* Transmit management */
+    netbuf_t txNetbufArray[TX_RING_SIZE];   /* TX netbuf pointers */
+    unsigned int txHead;              /* TX ring head index */
+    unsigned int txTail;              /* TX ring tail index */
+    unsigned int txCount;             /* Available TX descriptors */
+    unsigned int txInterruptCounter;  /* Packet counter for interrupt coalescing */
+    void *txQueue;                    /* Transmit queue */
+    netbuf_t txTempNetbuf;            /* Temporary netbuf for polling mode */
+
+    /* Receive management */
+    netbuf_t rxNetbufArray[RX_RING_SIZE];   /* RX netbuf pointers */
+
+    /* Hardware state */
+    unsigned int interruptMask;       /* CSR7 interrupt mask */
+    unsigned int csr6Value;           /* Cached CSR6 value */
+    unsigned int mediaSelection;      /* Selected media type */
 }
 
 /* Class Methods */

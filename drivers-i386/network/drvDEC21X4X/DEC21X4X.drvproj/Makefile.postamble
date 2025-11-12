@@ -1,0 +1,80 @@
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile, which is imported after all other makefiles, to
+#  override attributes and rules of the standard application makefile.
+#
+#  Each directory in a project tree (main project plus subprojects) should
+#  have its own Makefile.postamble.
+###############################################################################
+#
+# Use this makefile to:
+#   1. Define what should happen during installation.
+#
+#   2. Add more dependencies.
+#
+#   3. Define derived source files and how to generate them.
+#
+#   4. Specify additional files to be removed during `make clean'
+#
+# BEFORE THE POSTAMBLE IS IMPORTED, the main makefile will include
+# framework.make, app.make, bundle.make, or library.make.  The
+# variables specified here override the variables in
+# $(MAKEFILEPATH)/platform.make.  In Makefile.preamble you specify
+# makefile features that can be shared across different build styles and
+# across different platform architectures.  Here, in Makefile.postamble, you
+# specify variables and rules that are particular to one platform architecture
+# and are closely tied to the final arrangement of installed products.
+
+# Some compiler flags can be overridden here for certain build situations:
+#
+#    WARNING_CFLAGS:  flag used to set warning level (defaults to -Wmost)
+#    DEBUG_SYMBOLS_CFLAGS:  debug-symbol flag passed to all builds that are
+#	meant to be debuggable (defaults to -g)
+#    DEBUG_BUILD_CFLAGS:  flags passed during debug builds (defaults to -DDEBUG)
+#    OPTIMIZE_BUILD_CFLAGS:  flags passed during optimized builds (defaults to
+#	-O)
+#    PROFILE_BUILD_CFLAGS:  flags passed during profile builds (defaults to -O -pg)
+#
+# Framework-specific rules:
+#
+#    AFTER_INSTALL_RECURSION:  This target is typically used to install public
+#	and private headers that were not installed by the recursive call to the
+#	generic makefiles.  Headers should be installed in the directory
+#	$(DSTROOT)$(PUBLIC_HEADER_DIR) or $(DSTROOT)$(PRIVATE_HEADER_DIR).
+#	Make sure you allow multiple invocations of this target.  For example,
+#	if you also need to install a framework bundle in a subdirectory named
+#	Resources, you might:
+#		$(MKDIRS) $(DSTROOT)$(INSTALLDIR)/Resources
+#		$(TAR) cf - *.tiff | \
+#			(cd $(DSTROOT)$(INSTALLDIR)/Resources; $(TAR) xf -)
+#	This target will be invoked automatically during framework installation.
+###############################################################################
+
+# Set this to YES to strip debugging symbols from the installed executable after
+# installation or to NO to leave them in:
+# STRIP_ON_INSTALL = YES
+
+# For PB Projects, this variable determines if the product should be installed as
+# a fat binary:
+# FATBINARIES = YES
+
+# You can pass extra arguments to the strip program used during installation by
+# setting STRIPFLAGS here:
+# STRIPFLAGS =
+
+# You can specify which headers get exported (i.e. public versus private):
+# PUBLIC_HEADER_DIR = $(SYSTEM_LIBRARY_DIR)/Frameworks/$(PRODUCT_NAME).framework/Versions/$(FRAMEWORK_VERSION)/Headers
+
+# You can add more stuff to clean if you need to:
+# OTHER_GARBAGE =
+
+# The following usually only applies to bundles:
+# AFTER_INSTALL += after-install
+#
+#.PHONY: after-install
+#after-install:
+#	rm -rf $(PRODUCT)
+#	cp -rp $(SYMROOT)/$(PRODUCT) .
+#	/bin/chmod -R ugo-w $(PRODUCT)

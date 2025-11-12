@@ -1,0 +1,10 @@
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile, which is imported after all other makefiles, to
+#  override attributes for a project's Makefile environment. This allows you
+#  to take advantage of the environment set up by the other Makefiles.
+#  You can also define custom rules at the end of this file.
+#
+###############################################################################

@@ -1,0 +1,6 @@
+Package: dec21142
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer, Inc
+Version: 6
+Description: DEC 21142 Ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

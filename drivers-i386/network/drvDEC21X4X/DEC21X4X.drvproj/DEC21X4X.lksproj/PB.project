@@ -1,0 +1,30 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (DEC21x4Init.m, DEC21x4SRom.m, DEC21142.m);
+        CFILES = (DEC21X4XMII.c, DEC21X4XUtil.c);
+        H_FILES = (DEC21X4X.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble,
+            Load_Commands.sect
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = DEC21X4X;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

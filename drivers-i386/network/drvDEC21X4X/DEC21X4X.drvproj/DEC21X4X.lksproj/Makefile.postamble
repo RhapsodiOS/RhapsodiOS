@@ -1,0 +1,10 @@
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile, which is imported after all other makefiles, to
+#  override attributes and rules of the standard application makefile.
+#
+#  Each directory in a project tree (main project plus subprojects) should
+#  have its own Makefile.postamble.
+###############################################################################

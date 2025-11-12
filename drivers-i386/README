@@ -22,7 +22,7 @@ input
 
 network
  * drvAMDPCNet32II - complete
- * drvDEC21X4X
+ * drvDEC21X4X - needs compiled and then tested
  * drvDEC21142
  * drvDECchip21040
  * drvDECchip21140

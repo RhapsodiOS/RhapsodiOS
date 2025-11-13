@@ -1,0 +1,14 @@
+"Title" = "EtherLink III PnP";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherLink3PnP";
+"Bus Type" = "PnP";
+"Auto Detect IDs" = "0x506d5090&0xfffffff0";
+"IRQ Levels" = "10";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"I/O Ports" = "0x300-0x30f";
+"Valid IRQ Levels" = "3 5 7 9 10 11 12 15";
+"Help File" = "EtherLink3PnP.rtfd";
+"Server Name" = "EtherLink3";

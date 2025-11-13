@@ -1,8 +1,6 @@
-Package: drvetherlink3
-Version: 5.00-1
-Section: Drivers
-Priority: optional
-Architecture: i386
-Maintainer: RhapsodiOS Project
-Description: 3Com EtherLink III Ethernet Driver
- Driver for 3Com EtherLink III (3C509) ISA Ethernet adapters.
+Package: etherlink3
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer, Inc.
+Version: 16
+Description: 3Com EtherLink 3 ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

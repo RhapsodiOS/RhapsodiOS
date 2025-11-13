@@ -13,7 +13,7 @@ PROJECTVERSION = 5.00
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = EtherLink3.m
+CLASSES = EtherLink3.m EtherLink3EISA.m EtherLink3PCMCIA.m EtherLink3PnP.m
 
 HFILES = EtherLink3.h
 

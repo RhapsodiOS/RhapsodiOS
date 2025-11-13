@@ -1,5 +1,5 @@
-"EtherLink3" = "EtherLink III ISA";
-"Long Name" = "3Com EtherLink III ISA Adapter";
+"EtherLink3" = "EtherLink III PnP";
+"Long Name" = "3Com EtherLink III PnP Adapter";
 
 /* The interface connector on the adaptor which will be used to access the network. */
 "Connector" = "Connector";

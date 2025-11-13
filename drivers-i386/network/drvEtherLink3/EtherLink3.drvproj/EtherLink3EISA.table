@@ -1,0 +1,12 @@
+"Title" = "EtherLink III EISA";
+"Family" = "Network";
+"Bus Type" = "EISA";
+"Auto Detect IDs" = "0x506d5092";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherLink3EISA";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Help File" = "EtherLink3EISA.rtfd";
+"Server Name" = "EtherLink3";

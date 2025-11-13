@@ -1,0 +1,14 @@
+"Title" = "EtherLink III PCMCIA";
+"Family" = "Network";
+"Bus Type" = "PCMCIA";
+"Auto Detect IDs" = "MFR=3ComCorporation,PROD=3C589 MFR=3ComCorporation,PROD=3C589D";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherLink3PCMCIA";
+"DMA Channels" = "";
+"Valid IRQ Levels" = "";
+"I/O Ports" = "0x300-0x30f";
+"Valid IRQ Levels" = "3 5 7 9 10 11 12 15";
+"IRQ Levels" = "10";
+"Help File" = "EtherLink3PCMCIA.rtfd";
+"Server Name" = "EtherLink3";

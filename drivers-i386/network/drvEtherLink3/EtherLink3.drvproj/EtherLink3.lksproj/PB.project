@@ -1,7 +1,7 @@
 {
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (EtherLink3.m);
+        CLASSES = (EtherLink3.m, EtherLink3EISA.m, EtherLink3PCMCIA.m, EtherLink3PnP.m);
         H_FILES = (EtherLink3.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };

@@ -23,12 +23,12 @@ input
 network
  * drvAMDPCNet32II - complete
  * drvDEC21X4X - needs compiled and then tested
- * drvDEC21142
- * drvDECchip21040
+ * drvDEC21142 - needs compiled and then tested
+ * drvDECchip21040 - needs compiled and then tested
  * drvDECchip21140
  * drvEtherExpress16
  * drvEtherLink3
- * drvEtherLinkXL
+ * drvEtherLinkXL - needs compiled and then tested
  * drvIntel82556
  * drvIntel82557
  * drvIntel82595

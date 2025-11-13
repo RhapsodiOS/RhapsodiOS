@@ -9,14 +9,15 @@
 
 NAME = SoundBlaster16
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings
+LOCAL_RESOURCES = Localizable.strings
 
-GLOBAL_RESOURCES = Default.table SB16PnP.table SB16SingleDMAChannelPnP.table SingleDMAChannel.table
+GLOBAL_RESOURCES = Default.table
 
-TOOLS = SoundBlaster16_reloc.tproj
+TOOLS = SoundBlaster16.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 

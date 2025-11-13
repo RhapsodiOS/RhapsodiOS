@@ -9,14 +9,15 @@
 
 NAME = IntelAC97
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
 LOCAL_RESOURCES = Localizable.strings
 
 GLOBAL_RESOURCES = Default.table
 
-TOOLS = IntelAC97_reloc.tproj
+TOOLS = IntelAC97.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 

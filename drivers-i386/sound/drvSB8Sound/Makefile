@@ -9,14 +9,15 @@
 
 NAME = SoundBlaster8
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings
+LOCAL_RESOURCES = Localizable.strings
 
 GLOBAL_RESOURCES = Default.table
 
-TOOLS = SoundBlaster8_reloc.tproj
+TOOLS = SoundBlaster8.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble README SoundBlaster8.info
 

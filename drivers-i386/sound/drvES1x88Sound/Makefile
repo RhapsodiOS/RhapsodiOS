@@ -9,14 +9,15 @@
 
 NAME = ES1x88AudioDriver
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings
+LOCAL_RESOURCES = Localizable.strings
 
-GLOBAL_RESOURCES = Default.table ESPnP.table
+GLOBAL_RESOURCES = Default.table
 
-TOOLS = ES1x88AudioDriver_reloc.tproj
+TOOLS = ES1x88AudioDriver.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 

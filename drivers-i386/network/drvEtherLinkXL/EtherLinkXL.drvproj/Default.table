@@ -1,4 +1,4 @@
-"Title" = "3Com EtherLink XL 3C90X";
+"Title" = "3Com EtherLink XL 3C900";
 "Family" = "Network";
 "Location" = "";
 "Instance" = "0";
@@ -9,10 +9,8 @@
 "Valid IRQ Levels" = "";
 "Share IRQ Levels" = "YES";
 "Bus Type" = "PCI";
-"Auto Detect IDs" = "0x90B110B7 0x905010B7 0x900010B70x7B0xff0fffff";
+"Auto Detect IDs" = "0x900110b7 0x905010b7 0x900010b7&0xff00ffff";
 "Network Interface" = "Auto";
 "Full Duplex" = "No";
-"Help File" = "EtherLinkXL_3C90B.rtfd";
+"Help File" = "EtherLinkXL_3C900.rtfd";
 "Server Name" = "EtherLinkXL";
-"Driver Version" = "PROGRAM:EtherLinkXL  PROJECT:drvEtherLinkXL-5  DEVELOPER:root  BUILT:Sat Mar 28 22:28:02 PST 1998";
-"Version" = "5.01";

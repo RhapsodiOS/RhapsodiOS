@@ -1,0 +1,8 @@
+Package: drvetherlink3
+Version: 5.00-1
+Section: Drivers
+Priority: optional
+Architecture: i386
+Maintainer: RhapsodiOS Project
+Description: 3Com EtherLink III Ethernet Driver
+ Driver for 3Com EtherLink III (3C509) ISA Ethernet adapters.

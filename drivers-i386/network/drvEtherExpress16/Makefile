@@ -1,14 +1,25 @@
-NAME = EtherExpress16
-DRIVERTYPE = reloc
+NAME = drvEtherExpress16
 
-OFILES = EtherExpress16_reloc.o EtherExpress16KernelServerInstance.o
+export NEXT_ROOT
 
-CFILES = EtherExpress16.m EtherExpress16KernelServerInstance.m
+SRCROOT = .
 
-INSTALL_BIN_DIR = /usr/Devices/System.config
+INSTALLDIR = $(DSTROOT)/private/Drivers
 
-LDFLAGS = -noseglinkedit
-LIBS = -lDriver
+BUNDLE = $(NAME).config
 
-include ../CoreOSMakefiles-1/ReleaseControl/Common.make
-include ../CoreOSMakefiles-1/ReleaseControl/Driver.make
+all: $(BUNDLE)
+
+$(BUNDLE):
+	cd EtherExpress16.drvproj && $(MAKE)
+
+clean:
+	cd EtherExpress16.drvproj && $(MAKE) clean
+
+install: $(BUNDLE)
+	cd EtherExpress16.drvproj && $(MAKE) install DSTROOT=$(DSTROOT)
+
+installhdrs:
+
+installsrc:
+	tar cf - . | (cd $(SRCROOT); tar xfBp -)

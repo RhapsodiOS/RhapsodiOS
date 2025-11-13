@@ -1,0 +1,53 @@
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };
+EtherLinkXLInspector = {
+    ACTIONS = {
+	"cancel:" = "cancel:"; 
+	"disableDuplex:" = "disableDuplex:"; 
+	"enableDuplex:" = "enableDuplex:"; 
+	"ok:" = "ok:"; 
+	"selectConnector:" = "selectConnector:"; 
+	"selectFullDuplex:" = "selectFullDuplex:"; 
+    }; 
+    OUTLETS = {
+	boundingBox = boundingBox; 
+	cancelButtonCell = cancelButtonCell; 
+	connectorBox = connectorBox; 
+	connectorButton = connectorButton; 
+	connectorMatrix = connectorMatrix; 
+	connectorPanel = connectorPanel; 
+	connectorPanelTitle = connectorPanelTitle; 
+	connectorTitleField = connectorTitleField; 
+	fullDuplexSwitch = fullDuplexSwitch; 
+	fullDuplexTitleField = fullDuplexTitleField; 
+	inspectorBox = inspectorBox; 
+	okButtonCell = okButtonCell; 
+	selectButton = selectButton; 
+	titleBox = titleBox; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};

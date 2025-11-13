@@ -1,0 +1,13 @@
+"Title" = "3Com EtherLink III";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherLink3";
+"DMA Channels" = "";
+"IRQ Levels" = "10";
+"I/O Ports" = "0x300-0x30F";
+"Memory Maps" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "ISA";
+"Auto Detect IDs" = "";
+"Server Name" = "EtherLink3";

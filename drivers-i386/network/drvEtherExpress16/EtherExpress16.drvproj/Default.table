@@ -10,5 +10,3 @@
 "Connector" = "default";
 "Valid IRQ Levels" = "3 4 5 9 10 11";
 "Server Name" = "EtherExpress16";
-"Driver Version" = "PROGRAM:EtherExpress16  PROJECT:drvEtherExpress16-12  DEVELOPER:root  BUILT:Sat Mar 28 22:14:21 PST 1998";
-"Version" = "5.00";

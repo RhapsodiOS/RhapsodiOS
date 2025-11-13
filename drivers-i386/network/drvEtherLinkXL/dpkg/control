@@ -1,0 +1,6 @@
+Package: etherlinkxl
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer, Inc.
+Version: 5
+Description: 3Com EtherLink XL ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

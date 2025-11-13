@@ -1,0 +1,16 @@
+"Title" = "3Com EtherLink XL 3C905";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "EtherLinkXL";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"IRQ Levels" = "";
+"Valid IRQ Levels" = "";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x905010b7&0xfff0ffff";
+"Network Interface" = "MII";
+"Help File" = "EtherLinkXL_3C905.rtfd";
+"Server Name" = "EtherLinkXL";
+

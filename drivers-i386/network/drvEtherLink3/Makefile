@@ -1,4 +1,4 @@
-NAME = drvEtherLinkXL
+NAME = drvEtherLink3
 
 export NEXT_ROOT
 
@@ -11,13 +11,13 @@ BUNDLE = $(NAME).config
 all: $(BUNDLE)
 
 $(BUNDLE):
-	cd EtherLinkXL.drvproj && $(MAKE)
+	cd EtherLink3.drvproj && $(MAKE)
 
 clean:
-	cd EtherLinkXL.drvproj && $(MAKE) clean
+	cd EtherLink3.drvproj && $(MAKE) clean
 
 install: $(BUNDLE)
-	cd EtherLinkXL.drvproj && $(MAKE) install DSTROOT=$(DSTROOT)
+	cd EtherLink3.drvproj && $(MAKE) install DSTROOT=$(DSTROOT)
 
 installhdrs:
 

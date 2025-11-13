@@ -8,15 +8,13 @@
 @interface DECchip21041 : DECchip2104x
 {
 @private
-    unsigned int _mediaType;
+    unsigned char _sromAddressBits;    /* SROM address width (6 or 8 bits) */
+    unsigned int _sromWordOffset;      /* SROM word offset for MAC address */
 }
 
-+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
-
-/* 21041-specific methods */
-- (BOOL)initChip;
-- (void)setupSIA;
-- (BOOL)selectMedia:(unsigned int)mediaType;
+- (IOReturn)setInterface:(unsigned int)interfaceType;
+- (void)getStationAddress:(enet_addr_t *)addr;
+- (IOReturn)selectInterface;
 
 @end

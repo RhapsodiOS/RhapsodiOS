@@ -90,6 +90,22 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
 @implementation DEC21142
 
 /*
+ * Read CSR register
+ */
+- (unsigned int)readCSR:(unsigned int)reg
+{
+    return inl(ioBase + (reg * 8));
+}
+
+/*
+ * Write CSR register
+ */
+- (void)writeCSR:(unsigned int)reg value:(unsigned int)value
+{
+    outl(ioBase + (reg * 8), value);
+}
+
+/*
  * Probe method - called to determine if hardware is present
  */
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
@@ -239,6 +255,10 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
         return NO;
     }
 
+    /* Store memory base and size for later cleanup */
+    descriptorMemBase = memBase;
+    descriptorMemSize = allocSize;
+
     /* Setup RX descriptor ring (64 descriptors * 16 bytes = 1024 bytes) */
     rxDescriptors = memBase;
 
@@ -277,9 +297,10 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
         setupFrame = (void *)(((unsigned int)txDescriptors + 0x20F) & ~0xF);
     }
 
-    /* Verify setup frame has a valid physical address */
+    /* Verify setup frame has a valid physical address and store it */
     task = IOVmTaskSelf();
-    if (IOPhysicalFromVirtual(task, (unsigned int)setupFrame) != 0) {
+    setupFramePhysAddr = IOPhysicalFromVirtual(task, (unsigned int)setupFrame);
+    if (setupFramePhysAddr == 0) {
         driverName = [[self name] cString];
         IOLog("%s: Invalid shared memory address\n", driverName);
         return NO;
@@ -306,8 +327,8 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     }
 
     /* Get SROM address width from device configuration */
-    addrWidth = *(unsigned char *)((char *)self + 0x18B);
-    sromData = *(unsigned int *)((char *)self + 0x18C);
+    addrWidth = sromAddressBits;
+    sromData = sromDataOffset;
 
     /* Read 3 words (6 bytes) from SROM for MAC address */
     for (wordIndex = 0; wordIndex < 3; wordIndex++) {
@@ -439,9 +460,6 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
 
     /* Load TX ring base address into CSR4 */
     [self writeCSR:CSR4_TX_LIST_BASE value:physAddr];
-
-    /* Read media selection from instance variable */
-    mediaSelection = mediaSelection;
 
     /* Configure CSR6 based on media selection */
     if (mediaSelection == MEDIA_10BASET) {
@@ -601,9 +619,6 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     unsigned int *descriptor;
     unsigned int csrValue;
     int timeout;
-    unsigned int txCount;
-    unsigned int txHead;
-    unsigned int txTail;
 
     /* Check if TX ring has available descriptors */
     if (txCount == 0) {
@@ -642,7 +657,7 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     descriptor[1] &= 0xFFC007FF;  /* Clear buffer 2 size */
 
     /* Set buffer 1 address to setup frame physical address */
-    descriptor[2] = *(unsigned int *)((char *)self + 0x33C);
+    descriptor[2] = setupFramePhysAddr;
 
     /* Clear buffer 2 address */
     descriptor[3] = 0;
@@ -672,16 +687,13 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
         }
 
         /* Update txTail index */
-        txTail = txTail;
         txTail++;
-        if (txTail == 0x20) {
+        if (txTail == TX_RING_SIZE) {
             txTail = 0;
         }
-        txTail = txTail;
 
         /* Increment available descriptor count */
         txCount++;
-        txCount = txCount;
     }
 
     return YES;
@@ -694,7 +706,6 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
 - (BOOL)_receiveInterruptOccurred
 {
     unsigned int *descriptor;
-    unsigned int rxIndex;
     unsigned int status;
     unsigned int frameLength;
     netbuf_t oldNetbuf;
@@ -706,8 +717,6 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
 
     /* Acquire debugger lock */
     [self reserveDebuggerLock];
-
-    rxIndex = rxIndex;
 
     while (1) {
         /* Get current RX descriptor */
@@ -766,14 +775,13 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
 skip_packet:
         /* Return descriptor to chip */
         descriptor[0] = 0;
-        descriptor[0] |= 0x80000000;
+        descriptor[0] |= RDES0_OWN;
 
-        /* Advance RX index, wrap at 64 descriptors */
+        /* Advance RX index, wrap at RX_RING_SIZE descriptors */
         rxIndex++;
-        if (rxIndex == 0x40) {
+        if (rxIndex == RX_RING_SIZE) {
             rxIndex = 0;
         }
-        rxIndex = rxIndex;
 
         /* If we have a valid packet, pass it to upper layer */
         if (allocated) {
@@ -781,9 +789,6 @@ skip_packet:
             [_serverInstance handleInputPacket:oldNetbuf extra:0];
             [self reserveDebuggerLock];
         }
-
-        /* Update rxIndex for next iteration */
-        rxIndex = rxIndex;
     }
 }
 
@@ -812,8 +817,8 @@ skip_packet:
  */
 - (BOOL)_setAddressFiltering:(BOOL)waitForCompletion
 {
-    unsigned short *stationAddr;
-    unsigned int *setupFrame;
+    unsigned short *stationAddrPtr;
+    unsigned int *setupFramePtr;
     int i;
     BOOL hasMulticast;
     void *multicastQueue;
@@ -823,17 +828,17 @@ skip_packet:
     unsigned short *macAddr;
     unsigned short addrWord;
 
-    setupFrame = (unsigned int *)*(void **)((char *)self + 0x338);
-    stationAddr = (unsigned short *)((char *)self + 0x178);
+    setupFramePtr = (unsigned int *)setupFrame;
+    stationAddrPtr = (unsigned short *)&stationAddress;
 
     /* Slot 0: Copy station address (6 bytes as 3 words) */
     for (i = 0; i < 3; i++) {
-        setupFrame[i] = (unsigned int)stationAddr[i];
+        setupFramePtr[i] = (unsigned int)stationAddrPtr[i];
     }
 
     /* Slot 1: Broadcast address (all 0xFFFF) */
     for (i = 0; i < 3; i++) {
-        setupFrame[3 + i] = 0xFFFF;
+        setupFramePtr[3 + i] = 0xFFFF;
     }
 
     /* Start filling multicast addresses at slot 2 */
@@ -858,15 +863,15 @@ skip_packet:
                     unsigned char byte0 = *((unsigned char *)entry + (i * 2));
                     unsigned char byte1 = *((unsigned char *)entry + (i * 2) + 1);
                     addrWord = (unsigned short)byte0 | ((unsigned short)byte1 << 8);
-                    setupFrame[(slot * 3) + i] = addrWord;
+                    setupFramePtr[(slot * 3) + i] = addrWord;
                 }
 
                 slot++;
 
                 /* Check if we've exceeded the 16 slot limit */
-                if (slot > 0xF) {
+                if (slot > SETUP_FRAME_PERFECT_ADDRS - 1) {
                     IOLog("%s: %d multicast address limit exceeded\n",
-                          [[self name] cString], 14);
+                          [[self name] cString], SETUP_FRAME_PERFECT_ADDRS - 2);
                     break;
                 }
 
@@ -877,8 +882,8 @@ skip_packet:
     }
 
     /* Fill remaining slots with station address */
-    for (; slot < 0x10; slot++) {
-        bcopy((void *)setupFrame, (void *)&setupFrame[slot * 3], 12);
+    for (; slot < SETUP_FRAME_PERFECT_ADDRS; slot++) {
+        bcopy((void *)setupFramePtr, (void *)&setupFramePtr[slot * 3], 12);
     }
 
     /* Load the setup filter frame */
@@ -891,16 +896,8 @@ skip_packet:
  */
 - (void)_startReceive
 {
-    unsigned int csr6Value;
-
-    /* Read current CSR6 value from offset 0x344 */
-    csr6Value = csr6Value;
-
-    /* Set Start/Stop Receive bit */
+    /* Set Start/Stop Receive bit in CSR6 value */
     csr6Value |= CSR6_START_RX;
-
-    /* Store updated value */
-    csr6Value = csr6Value;
 
     /* Write to CSR6 register */
     [self writeCSR:CSR6_OPERATION_MODE value:csr6Value];
@@ -912,16 +909,8 @@ skip_packet:
  */
 - (void)_startTransmit
 {
-    unsigned int csr6Value;
-
-    /* Read current CSR6 value from offset 0x344 */
-    csr6Value = csr6Value;
-
-    /* Set Start/Stop Transmit bit */
+    /* Set Start/Stop Transmit bit in CSR6 value */
     csr6Value |= CSR6_START_TX;
-
-    /* Store updated value */
-    csr6Value = csr6Value;
 
     /* Write to CSR6 register */
     [self writeCSR:CSR6_OPERATION_MODE value:csr6Value];
@@ -933,23 +922,18 @@ skip_packet:
  */
 - (BOOL)_transmitInterruptOccurred
 {
-    unsigned int txCount;
-    unsigned int txTail;
     unsigned int *descriptor;
     unsigned int status;
     unsigned char collisionCount;
     netbuf_t netbuf;
 
-    txCount = txCount;
-
     while (1) {
         /* Check if all descriptors have been processed */
-        if (txCount > 0x1F) {
+        if (txCount >= TX_RING_SIZE) {
             return YES;
         }
 
         /* Get descriptor at txTail */
-        txTail = txTail;
         descriptor = (unsigned int *)((char *)txDescriptors + (txTail * 16));
 
         /* Check ownership bit - if set, chip still owns it */
@@ -994,16 +978,14 @@ skip_packet:
             }
         }
 
-        /* Advance txTail, wrap at 32 descriptors */
+        /* Advance txTail, wrap at TX_RING_SIZE descriptors */
         txTail++;
-        if (txTail == 0x20) {
+        if (txTail == TX_RING_SIZE) {
             txTail = 0;
         }
-        txTail = txTail;
 
         /* Increment available descriptor count */
         txCount++;
-        txCount = txCount;
     }
 }
 
@@ -1014,8 +996,6 @@ skip_packet:
 - (void)_transmitPacket:(netbuf_t)packet
 {
     unsigned int *descriptor;
-    unsigned int txHead;
-    unsigned int txCount;
     unsigned int packetCount;
     BOOL result;
 
@@ -1026,7 +1006,6 @@ skip_packet:
     [self reserveDebuggerLock];
 
     /* Check if TX descriptors are available */
-    txCount = txCount;
     if (txCount == 0) {
         /* No descriptors available, drop packet */
         [self releaseDebuggerLock];
@@ -1035,7 +1014,6 @@ skip_packet:
     }
 
     /* Get descriptor at txHead */
-    txHead = txHead;
     descriptor = (unsigned int *)((char *)txDescriptors + (txHead * 16));
 
     /* Store netbuf in TX array */
@@ -1087,14 +1065,12 @@ skip_packet:
     if (txHead == TX_RING_SIZE) {
         txHead = 0;
     }
-    txHead = txHead;
 
     /* Decrement available descriptor count */
     txCount--;
-    txCount = txCount;
 
     /* Trigger transmit poll by writing to CSR1 */
-    [self writeCSR:1 value:0x00000001];
+    [self writeCSR:CSR1_TX_POLL_DEMAND value:0x00000001];
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
@@ -1144,8 +1120,8 @@ skip_packet:
     [self writeCSR:9 value:0x4801];
     IODelay(250);
 
-    /* Read address width from offset 0x18B */
-    addrWidth = *(unsigned char *)((char *)self + 0x18B);
+    /* Get SROM address width */
+    addrWidth = sromAddressBits;
     sromAddr = 3;  /* Reading from address 3 for checksum */
 
     /* Clock out address bits */
@@ -1470,11 +1446,6 @@ skip_packet:
  */
 - (void)enableAdapterInterrupts
 {
-    unsigned int interruptMask;
-
-    /* Get interrupt mask from offset 0x340 */
-    interruptMask = interruptMask;
-
     /* Write interrupt mask to CSR7 (interrupt enable register) */
     [self writeCSR:CSR7_INTERRUPT_ENABLE value:interruptMask];
 }
@@ -1522,8 +1493,6 @@ skip_packet:
 {
     int i;
     netbuf_t netbuf;
-    void *memBase;
-    unsigned int allocSize;
 
     /* Clear any pending timeouts */
     [self clearTimeout];
@@ -1537,8 +1506,8 @@ skip_packet:
         _serverInstance = NULL;
     }
 
-    /* Free all RX netbufs (64 descriptors) */
-    for (i = 0; i < 0x40; i++) {
+    /* Free all RX netbufs (RX_RING_SIZE descriptors) */
+    for (i = 0; i < RX_RING_SIZE; i++) {
         netbuf = rxNetbufArray[i];
         if (netbuf != NULL) {
             nb_free(netbuf);
@@ -1546,8 +1515,8 @@ skip_packet:
         }
     }
 
-    /* Free all TX netbufs (32 descriptors) */
-    for (i = 0; i < 0x20; i++) {
+    /* Free all TX netbufs (TX_RING_SIZE descriptors) */
+    for (i = 0; i < TX_RING_SIZE; i++) {
         netbuf = txNetbufArray[i];
         if (netbuf != NULL) {
             nb_free(netbuf);
@@ -1556,11 +1525,9 @@ skip_packet:
     }
 
     /* Free low memory allocation (descriptors) */
-    memBase = *(void **)((char *)self + 0x330);
-    if (memBase != NULL) {
-        allocSize = *(unsigned int *)((char *)self + 0x334);
-        IOFreeLow(memBase, allocSize);
-        *(void **)((char *)self + 0x330) = NULL;
+    if (descriptorMemBase != NULL) {
+        IOFreeLow(descriptorMemBase, descriptorMemSize);
+        descriptorMemBase = NULL;
     }
 
     /* Re-enable all interrupts (cleanup) */
@@ -1597,17 +1564,13 @@ skip_packet:
 {
     IOPCIDeviceDescription *pciDevice;
     IORange *portRange;
-    unsigned short ioBase;
-    unsigned short irq;
     NXStringTable *configTable;
     const char *configValue;
     char *endPtr;
     int sromOffset;
-    unsigned int mediaSelection;
     const char *mediaNames[4];
-    enet_addr_t stationAddress;
+    enet_addr_t tempStationAddress;
     BOOL result;
-    id networkInterface;
 
     /* Call superclass initialization */
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
@@ -1618,11 +1581,9 @@ skip_packet:
     pciDevice = (IOPCIDeviceDescription *)deviceDescription;
     portRange = [pciDevice portRangeList:0];
     ioBase = portRange->start;
-    *(unsigned short *)((char *)self + 0x174) = ioBase;
 
     /* Get interrupt level */
     irq = [deviceDescription interrupt];
-    *(unsigned short *)((char *)self + 0x176) = irq;
 
     /* Get configuration table */
     configTable = [deviceDescription configTable];
@@ -1630,9 +1591,9 @@ skip_packet:
     /* Read SROM address bits configuration */
     configValue = [configTable valueForStringKey:"SROM Address Bits"];
     if (configValue != NULL && strcmp(configValue, "8") == 0) {
-        *(unsigned char *)((char *)self + 0x18B) = 8;
+        sromAddressBits = 8;
     } else {
-        *(unsigned char *)((char *)self + 0x18B) = 6;
+        sromAddressBits = 6;
     }
 
     /* Free string if allocated */
@@ -1641,7 +1602,7 @@ skip_packet:
     }
 
     /* Read SROM data offset - defaults to 0x14 (20 decimal) */
-    *(unsigned int *)((char *)self + 0x18C) = 0x14;
+    sromDataOffset = 0x14;
     configValue = [configTable valueForStringKey:"SROM Data Offset"];
     if (configValue != NULL) {
         /* Skip leading whitespace */
@@ -1659,7 +1620,7 @@ skip_packet:
             configValue++;
         }
 
-        *(int *)((char *)self + 0x18C) = sromOffset;
+        sromDataOffset = sromOffset;
         [configTable freeString:configValue];
     }
 
@@ -1672,7 +1633,6 @@ skip_packet:
         mediaNames[2] = "AUI";
         mediaNames[3] = "TP";
 
-        mediaSelection = 0;
         while (mediaSelection < 4) {
             if (strcmp(configValue, mediaNames[mediaSelection]) == 0) {
                 break;
@@ -1680,7 +1640,6 @@ skip_packet:
             mediaSelection++;
         }
 
-        mediaSelection = mediaSelection;
         [configTable freeString:configValue];
     }
 
@@ -1712,18 +1671,18 @@ skip_packet:
     }
 
     /* Get station address from SROM */
-    [self _getStationAddress:&stationAddress];
-    *(unsigned int *)((char *)self + 0x32C) = *(unsigned int *)&stationAddress.ea_byte[0];
+    [self _getStationAddress:&tempStationAddress];
+    bcopy(&tempStationAddress, &stationAddress, sizeof(enet_addr_t));
 
-    /* Verify station address is valid */
-    if (*(unsigned int *)((char *)self + 0x32C) == 0) {
+    /* Verify station address is valid (check first 4 bytes) */
+    if (*(unsigned int *)&stationAddress.ea_byte[0] == 0) {
         IOLog("%s: Invalid station address\n", [[self name] cString]);
         [self free];
         return nil;
     }
 
-    /* Clear some flag at offset 0x18A */
-    isDebugger = 0;
+    /* Clear debugger flag */
+    isDebugger = NO;
 
     /* Perform chip initialization */
     result = [self _init];
@@ -1734,7 +1693,6 @@ skip_packet:
 
     /* Attach to network stack */
     networkInterface = [super attachToNetworkWithAddress:&stationAddress];
-    *(id *)((char *)self + 0x180) = networkInterface;
 
     return self;
 }
@@ -1790,16 +1748,12 @@ skip_packet:
 - (unsigned int)pendingTransmitCount
 {
     unsigned int queueCount;
-    unsigned int txCount;
 
     /* Get count from transmit queue */
     queueCount = [(id)txQueue count];
 
-    /* Get available descriptor count */
-    txCount = txCount;
-
     /* Return total pending: queued packets + (max descriptors - available) */
-    return (queueCount + 0x20) - txCount;
+    return (queueCount + TX_RING_SIZE) - txCount;
 }
 
 /*
@@ -1809,7 +1763,6 @@ skip_packet:
 - (void)receivePacket:(void *)buffer length:(unsigned int *)length timeout:(unsigned int)timeout
 {
     unsigned int *descriptor;
-    unsigned int rxIndex;
     unsigned int status;
     unsigned int frameLength;
     int timeRemaining;
@@ -1822,14 +1775,13 @@ skip_packet:
     /* Convert timeout from milliseconds to microseconds */
     timeRemaining = timeout * 1000;
 
-    /* Check if in debugger mode (flag at offset 0x18A) */
-    if (isDebugger == 0) {
+    /* Check if in debugger mode */
+    if (isDebugger == NO) {
         return;
     }
 
     /* Poll for packet */
     while (1) {
-        rxIndex = rxIndex;
         descriptor = (unsigned int *)((char *)rxDescriptors + (rxIndex * 16));
 
         /* Wait for descriptor ownership to be released by chip */
@@ -1859,10 +1811,9 @@ skip_packet:
 
         /* Advance RX index */
         rxIndex++;
-        if (rxIndex == 0x40) {
+        if (rxIndex == RX_RING_SIZE) {
             rxIndex = 0;
         }
-        rxIndex = rxIndex;
     }
 
     /* Extract frame length (bits 16-29) and subtract 4 for CRC */
@@ -1876,14 +1827,13 @@ skip_packet:
 
     /* Return descriptor to chip */
     descriptor[0] = 0;
-    descriptor[0] |= 0x80000000;
+    descriptor[0] |= RDES0_OWN;
 
     /* Advance RX index */
     rxIndex++;
-    if (rxIndex == 0x40) {
+    if (rxIndex == RX_RING_SIZE) {
         rxIndex = 0;
     }
-    rxIndex = rxIndex;
 }
 
 /*
@@ -1917,7 +1867,7 @@ skip_packet:
     int interruptResult;
 
     /* Clear debugger flag */
-    isDebugger = 0;
+    isDebugger = NO;
 
     /* Clear any pending timeouts */
     [self clearTimeout];
@@ -1927,6 +1877,15 @@ skip_packet:
 
     /* Reset the chip */
     [self _resetChip];
+
+    /* If disabling (enable == NO), we're done */
+    if (!enable) {
+        [self setRunning:enable];
+        isDebugger = YES;
+        return YES;
+    }
+
+    /* If enabling, perform full initialization */
 
     /* Reinitialize RX ring */
     result = [self _initRxRing];
@@ -1951,20 +1910,13 @@ skip_packet:
     [self _startTransmit];
     [self _startReceive];
 
-    /* If disabling (enable == NO), we're done */
-    if (!enable) {
-        [self setRunning:enable];
-        isDebugger = 1;
-        return YES;
-    }
-
-    /* If enabling, setup interrupts */
+    /* Enable interrupts */
     interruptResult = [self enableAllInterrupts];
     if (interruptResult == 0) {
         /* Success - enable adapter interrupts */
         [self enableAdapterInterrupts];
         [self setRunning:enable];
-        isDebugger = 1;
+        isDebugger = YES;
         return YES;
     }
 
@@ -2080,16 +2032,14 @@ skip_packet:
 - (void)sendPacket:(void *)data length:(unsigned int)length
 {
     unsigned int *descriptor;
-    unsigned int txHead;
-    unsigned int txCount;
     netbuf_t txNetbuf;
     void *netbufData;
     int originalSize;
     BOOL result;
     int timeout;
 
-    /* Check if in debugger mode (flag at offset 0x18A) */
-    if (isDebugger == 0) {
+    /* Check if in debugger mode */
+    if (isDebugger == NO) {
         return;
     }
 
@@ -2097,20 +2047,18 @@ skip_packet:
     [self _transmitInterruptOccurred];
 
     /* Check if TX descriptors are available */
-    txCount = txCount;
     if (txCount == 0) {
         IOLog("%s: _sendPacket: No free tx descriptors\n", [[self name] cString]);
         return;
     }
 
     /* Get descriptor at txHead */
-    txHead = txHead;
     descriptor = (unsigned int *)((char *)txDescriptors + (txHead * 16));
 
     /* Clear netbuf in TX array (not using it for polling mode) */
     txNetbufArray[txHead] = NULL;
 
-    /* Get temporary netbuf for this packet (stored at offset 0x32C) */
+    /* Get temporary netbuf for this packet */
     txNetbuf = txTempNetbuf;
     netbufData = nb_map(txNetbuf);
 
@@ -2149,21 +2097,19 @@ skip_packet:
 
     /* Clear status word and set ownership bit */
     descriptor[0] = 0;
-    descriptor[0] |= 0x80000000;
+    descriptor[0] |= TDES0_OWN;
 
-    /* Advance txHead, wrap at 32 descriptors */
+    /* Advance txHead, wrap at TX_RING_SIZE descriptors */
     txHead++;
-    if (txHead == 0x20) {
+    if (txHead == TX_RING_SIZE) {
         txHead = 0;
     }
-    txHead = txHead;
 
     /* Decrement available descriptor count */
     txCount--;
-    txCount = txCount;
 
     /* Trigger transmit poll by writing to CSR1 */
-    [self writeCSR:1 value:0x00000001];
+    [self writeCSR:CSR1_TX_POLL_DEMAND value:0x00000001];
 
     /* Poll for transmission completion (timeout 5 seconds) */
     timeout = 0;
@@ -2190,19 +2136,14 @@ skip_packet:
 - (void)serviceTransmitQueue
 {
     netbuf_t packet;
-    unsigned int txCount;
-    void *txQueue;
 
-    /* Get transmit queue pointer at offset 0x184 */
-    txQueue = txQueue;
     if (txQueue == NULL) {
         return;
     }
 
     /* Service packets while descriptors are available */
     while (YES) {
-        /* Check if TX descriptors are available at offset 0x320 */
-        txCount = txCount;
+        /* Check if TX descriptors are available */
         if (txCount == 0) {
             break;
         }
@@ -2221,15 +2162,15 @@ skip_packet:
 - (IOReturn)setPowerManagement:(unsigned int)powerLevel
 {
     /* Power management not supported */
-    return 0xfffffd39;  /* IO_R_UNSUPPORTED */
+    return IO_R_UNSUPPORTED;
 }
 
 - (IOReturn)setPowerState:(unsigned int)powerState
 {
     /* Only handle power state 3 (ON_STATE) */
     if (powerState == 3) {
-        /* Clear debugger flag at offset 0x18A */
-        isDebugger = 0;
+        /* Clear debugger flag */
+        isDebugger = NO;
 
         /* Reset the chip */
         [self _resetChip];
@@ -2238,27 +2179,24 @@ skip_packet:
     }
 
     /* Other power states not supported */
-    return 0xfffffd39;  /* IO_R_UNSUPPORTED */
+    return IO_R_UNSUPPORTED;
 }
 
 - (void)timeoutOccurred
 {
-    BOOL running;
-
     /* Check if adapter is running */
-    running = isRunning;
-    if (!running) {
+    if (!isRunning) {
         return;
     }
 
-    /* Acquire lock at offset 0x180 */
-    IOTakeLock(lock);
+    /* Acquire debugger lock */
+    [self reserveDebuggerLock];
 
     /* Process any pending TX completions */
     [self _transmitInterruptOccurred];
 
-    /* Release lock */
-    IOUnlock(lock);
+    /* Release debugger lock */
+    [self releaseDebuggerLock];
 
     /* Service transmit queue */
     [self serviceTransmitQueue];
@@ -2266,70 +2204,48 @@ skip_packet:
 
 - (void)transmit:(netbuf_t)packet
 {
-    BOOL running;
-    unsigned int txCount;
-    void *txQueue;
     unsigned int queueCount;
 
     /* Validate netbuf */
     if (packet == NULL) {
+        IOLog("%s: transmit: received NULL netbuf\n", [[self name] cString]);
         return;
     }
 
-    /* Check if adapter is running at offset 0x17C */
-    running = isRunning;
-    if (!running) {
+    /* Check if adapter is running */
+    if (!isRunning) {
         nb_free(packet);
         return;
     }
 
-    /* Acquire lock at offset 0x180 */
-    IOTakeLock(lock);
+    /* Acquire debugger lock */
+    [self reserveDebuggerLock];
 
     /* Process any pending TX completions */
     [self _transmitInterruptOccurred];
 
-    /* Release lock */
-    IOUnlock(lock);
+    /* Release debugger lock */
+    [self releaseDebuggerLock];
 
-    /* Check if TX descriptors are available at offset 0x320 */
-    txCount = txCount;
+    /* Service transmit queue to free up descriptors */
+    [self serviceTransmitQueue];
 
-    /* Get transmit queue pointer at offset 0x184 */
-    txQueue = txQueue;
-    if (txQueue != NULL) {
-        queueCount = nb_queue_size(txQueue);
-    } else {
-        queueCount = 0;
-    }
+    /* Get transmit queue count */
+    queueCount = [(id)txQueue count];
 
     /* If no descriptors available or queue not empty, enqueue packet */
     if (txCount == 0 || queueCount != 0) {
-        if (txQueue != NULL) {
-            nb_enqueue(txQueue, packet);
-        } else {
-            /* No queue, drop packet */
-            nb_free(packet);
-        }
-        return;
+        [(id)txQueue enqueue:packet];
+    } else {
+        /* Transmit directly */
+        [self _transmitPacket:packet];
     }
-
-    /* Transmit directly */
-    [self _transmitPacket:packet];
 }
 
 - (unsigned int)transmitQueueCount
 {
-    void *txQueue;
-
-    /* Get transmit queue pointer at offset 0x184 */
-    txQueue = txQueue;
-    if (txQueue == NULL) {
-        return 0;
-    }
-
     /* Return count of packets in queue */
-    return [txQueue count];
+    return [(id)txQueue count];
 }
 
 - (unsigned int)transmitQueueSize

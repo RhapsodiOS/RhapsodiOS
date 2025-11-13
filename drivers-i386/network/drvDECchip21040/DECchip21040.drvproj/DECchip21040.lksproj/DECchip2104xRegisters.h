@@ -9,9 +9,12 @@
 /* CSR (Control/Status Register) offsets */
 #define CSR0_BUS_MODE           0x00
 #define CSR1_TX_POLL_DEMAND     0x08
+#define CSR1_TX_POLL            0x08  /* Alias */
 #define CSR2_RX_POLL_DEMAND     0x10
 #define CSR3_RX_LIST_BASE       0x18
+#define CSR3_RX_LIST            0x18  /* Alias */
 #define CSR4_TX_LIST_BASE       0x20
+#define CSR4_TX_LIST            0x20  /* Alias */
 #define CSR5_STATUS             0x28
 #define CSR6_COMMAND            0x30
 #define CSR7_INTERRUPT_MASK     0x38

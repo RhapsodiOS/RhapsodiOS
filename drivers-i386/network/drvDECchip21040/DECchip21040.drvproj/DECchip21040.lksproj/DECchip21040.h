@@ -9,11 +9,9 @@
 {
 }
 
-+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
-
-/* 21040-specific methods */
-- (BOOL)initChip;
-- (void)setupSIA;
+- (IOReturn)setInterface:(unsigned int)interfaceType;
+- (void)getStationAddress:(enet_addr_t *)addr;
+- (IOReturn)selectInterface;
 
 @end

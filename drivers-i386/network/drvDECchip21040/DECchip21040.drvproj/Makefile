@@ -13,9 +13,9 @@ PROJECTVERSION = 5.00
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table DEC21041.table
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp
+LOCAL_RESOURCES = Localizable.strings DEC21041.strings DriverHelp
 
 TOOLS = DECchip21040.lksproj
 

@@ -170,10 +170,22 @@
 
 @interface DEC21142 : IOEthernetDriver
 {
+    /* Hardware configuration */
+    unsigned short ioBase;            /* I/O port base address */
+    unsigned short irq;               /* IRQ number */
+    enet_addr_t stationAddress;       /* MAC address */
+
+    /* SROM configuration */
+    unsigned char sromAddressBits;    /* SROM address width (6 or 8) */
+    unsigned int sromDataOffset;      /* SROM data offset */
+
     /* Descriptor rings */
     void *rxDescriptors;              /* RX descriptor ring base */
     void *txDescriptors;              /* TX descriptor ring base */
     void *setupFrame;                 /* Setup frame buffer */
+    void *descriptorMemBase;          /* Base of allocated descriptor memory */
+    unsigned int descriptorMemSize;   /* Size of descriptor memory allocation */
+    unsigned int setupFramePhysAddr;  /* Physical address of setup frame */
     unsigned int rxIndex;             /* Current RX descriptor index */
 
     /* Instance state flags */
@@ -181,6 +193,9 @@
     BOOL isPromiscuous;               /* Promiscuous mode enabled */
     BOOL isMulticast;                 /* Multicast mode enabled */
     BOOL isDebugger;                  /* Debugger/polling mode active */
+
+    /* Network interface */
+    id networkInterface;              /* Network interface instance */
 
     /* Synchronization */
     void *lock;                       /* Transmit lock */

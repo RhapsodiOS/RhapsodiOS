@@ -31,18 +31,34 @@ BOOL IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /* Private category methods */
 @interface DECchip2104x(Private)
 
+/* PCI Configuration */
++ (IOReturn)getPCIConfigSpace:(void *)configSpace withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc;
++ (IOReturn)getPCIConfigData:(unsigned int *)data atRegister:(unsigned int)reg withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc;
++ (IOReturn)setPCIConfigData:(unsigned int)data atRegister:(unsigned int)reg withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc;
+
+/* Memory management */
 - (BOOL)allocateMemory;
+
+/* Chip initialization */
 - (BOOL)initChip;
 - (void)initRegisters;
 - (BOOL)initRxRing;
 - (BOOL)initTxRing;
+
+/* Filtering */
 - (void)loadSetupFilter:(BOOL)perfect;
+- (BOOL)setAddressFiltering:(BOOL)enable;
+
+/* Interrupt handlers */
 - (void)receiveInterruptOccurred;
+- (void)transmitInterruptOccurred;
+
+/* Chip control */
 - (void)resetChip;
-- (void)setAddressFiltering:(BOOL)enable;
 - (void)startReceive;
 - (void)startTransmit;
-- (void)transmitInterruptOccurred;
+
+/* Packet I/O */
 - (BOOL)transmitPacket:(netbuf_t)pkt;
 - (BOOL)receivePacket:(void *)data length:(unsigned int *)length timeout:(unsigned int)timeout;
 - (BOOL)sendPacket:(void *)data length:(unsigned int)length;

@@ -385,19 +385,19 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
     }
 
-    IOLog("PnP: Plug and Play support enabled\n");
+    IOLog("PnP: Initializing Plug and Play support\n");
 
     /* Try to initialize PnP BIOS */
     pnpBios = [[PnPBios alloc] init];
-
     if (pnpBios == nil) {
+        IOLog("PnP: Plug and Play support not found\n");
+
         /* No BIOS support - fall back to manual enumeration */
         result = [self initializeNoBIOS];
         if (result == NO) {
             return NO;
         }
-    }
-    else {
+    } else {      
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
 
@@ -420,7 +420,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         maxPnPCard = *((unsigned char *)configData + 1);
         pnpReadPort = *((unsigned short *)configData + 1);
 
-        IOLog("PnP: Plug and Play BIOS present\n");
+        IOLog("PnP: Plug and Play support enabled\n");
     }
 
     /* Log configuration */

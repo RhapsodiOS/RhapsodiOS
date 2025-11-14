@@ -9,50 +9,21 @@
 
 NAME = MatroxMGA
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = Help Localizable.strings\
-                  MatroxMGA1064SG_PCI4MB.strings\
-                  MatroxMGA1064SG_PCI8MB.strings\
-                  MatroxMGA2164W_PCI4MB.strings\
-                  MatroxMGA2164W_PCI8MB.strings PCI4MB.strings\
-                  PCI8MB.strings MatroxMGAG100_4MB.strings\
-                  MatroxMGAG100_8MB.strings MatroxMGAG200_8MB.strings\
-                  MatroxMGAG400_8MB.strings MatroxMGAG200_16MB.strings\
-                  MatroxMGAG400_16MB.strings\
-                  MatroxMGA2164W_PCI16MB.strings\
-                  MatroxMGA1064SG_PCI2MB.strings
+LOCAL_RESOURCES = Localizable.strings
 
-GLOBAL_RESOURCES = MatroxMGA1064SG_PCI2MB.modes\
-                   MatroxMGA1064SG_PCI2MB.table\
-                   MatroxMGA1064SG_PCI4MB.modes\
-                   MatroxMGA1064SG_PCI4MB.table\
-                   MatroxMGA1064SG_PCI8MB.modes\
-                   MatroxMGA1064SG_PCI8MB.table\
-                   MatroxMGA2164W_PCI4MB.modes\
-                   MatroxMGA2164W_PCI4MB.table\
-                   MatroxMGA2164W_PCI8MB.modes\
-                   MatroxMGA2164W_PCI8MB.table PCI4MB.modes PCI4MB.table\
-                   PCI8MB.modes PCI8MB.table Display.modes\
-                   Default.table MatroxMGAG100_4MB.table\
-                   MatroxMGAG100_8MB.table MatroxMGAG200_8MB.table\
-                   MatroxMGAG400_8MB.table MatroxMGAG200_8MB.modes\
-                   MatroxMGAG400_8MB.modes MatroxMGAG100_4MB.modes\
-                   MatroxMGAG100_8MB.modes MatroxMGAG200_16MB.modes\
-                   MatroxMGAG200_16MB.table MatroxMGAG400_16MB.modes\
-                   MatroxMGAG400_16MB.table MatroxMGA2164W_PCI16MB.modes\
-                   MatroxMGA2164W_PCI16MB.table MatroxMGAG450_16MB.modes\
-                   MatroxMGAG450_16MB.table
+GLOBAL_RESOURCES = Default.table
 
-TOOLS = MatroxMGA_reloc.tproj
+TOOLS = MatroxMGA.drvproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
 
 BUNDLE_EXTENSION = config

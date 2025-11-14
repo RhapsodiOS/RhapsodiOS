@@ -1,0 +1,6 @@
+#
+# used by geninfo: DRIVER_NAME is the names which appears on the
+# installer window
+#
+DRIVER_NAME="CirrusLogicGD5434"
+DEFAULT_DRIVER_VERSION="1.0";

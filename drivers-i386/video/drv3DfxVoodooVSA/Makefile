@@ -9,24 +9,24 @@
 
 NAME = VoodooVSAFB
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = Info.rtf Localizable.strings
+LOCAL_RESOURCES = Localizable.strings
 
-GLOBAL_RESOURCES = Default.table Display.modes
+GLOBAL_RESOURCES = Default.table
 
-TOOLS = voodooVSAFB_reloc.tproj
+TOOLS = VoodooVSAFB.drvproj
 
 OTHERSRCS = Makefile Makefile.postamble Makefile.preamble
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
 
 BUNDLE_EXTENSION = config
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
 
 
 

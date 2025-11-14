@@ -25,9 +25,9 @@ network
  * drvDEC21X4X - needs compiled and then tested
  * drvDEC21142 - needs compiled and then tested
  * drvDECchip21040 - needs compiled and then tested
- * drvDECchip21140
- * drvEtherExpress16
- * drvEtherLink3
+ * drvDECchip21140 - needs compiled and then tested
+ * drvEtherExpress16 - needs compiled and then tested
+ * drvEtherLink3 - needs compiled and then tested
  * drvEtherLinkXL - needs compiled and then tested
  * drvIntel82556
  * drvIntel82557

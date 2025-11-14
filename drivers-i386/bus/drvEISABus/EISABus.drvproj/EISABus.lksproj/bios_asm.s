@@ -23,152 +23,190 @@
 .globl _PnPEntry_biosCodeOffset
 .globl _PnPEntry_biosCodeSelector
 .globl _kernDataSel
+.globl _PnPEntry_pmStackSel
+.globl _PnPEntry_pmStackOff
 
-/*
- * Writable far pointer structures for ___PnPEntry
- * This function uses the "indirect" method, so its
- * pointers belong in a writable .data section.
- */
 .data
-.align 2  /* 2^2 = 4-byte alignment */
+.align 2 /* 2^2 = 4-byte alignment */
 
 _pnp_addr:
-    .long   0x00000000          /* Far jump offset (4 bytes) */
+    .long 0x00000000 /* Far jump offset (4 bytes) */
 _pnp_seg:
-    .word   0x0000              /* Far jump segment (2 bytes) */
+    .word 0x0000 /* Far jump segment (2 bytes) */
 
-.align 2  /* 2^2 = 4-byte alignment */
+.globl _bios32_call_addr
+.globl _bios32_call_seg
+_bios32_call_addr:
+    .long 0x00000000 /* Far call offset (4 bytes) */
+_bios32_call_seg:
+    .word 0x0000 /* Far call segment (2 bytes) */
 
-/* Storage for real return address (beyond what BIOS can reach with 16-bit offset) */
+.align 2 /* 2^2 = 4-byte alignment */
+
+/* Storage for real return address */
 _real_return_addr:
-    .long   0x00000000          /* 32-bit return address */
+    .long 0x00000000 /* 32-bit return address */
 
-.globl _pnp_addr
-.globl _pnp_seg
-.globl _real_return_addr
-
+/* Storage for saving kernel stack */
+_save_ss:
+    .word 0x0000
+_save_esp:
+    .long 0x00000000
+/* Global variables for new 16-bit stack */
+_PnPEntry_pmStackSel:
+    .word 0x0000
+_PnPEntry_pmStackOff:
+    .long 0x00000000
 
 .text
-/*
- * .code 32 directive removed. The -m32 flag to gcc
- * should be sufficient to put 'as' in 32-bit mode.
- */
 
 /*
- * _bios32PnP - Low-level PnP BIOS call entry point
+ * __bios32PnP - Low-level PnP BIOS call entry point.
  *
- * C prototype: void _bios32PnP(void *biosCallData);
- * Parameter: biosCallData pointer at 8(%ebp)
+ * This version has been modified to write its far-call target
+ * to the .data segment (_bios32_call_seg/_bios32_call_addr)
+ * instead of self-modifying its own code in the .text segment.
  */
 .globl __bios32PnP
 __bios32PnP:
-    enter   $0, $0              /* 0x6F24: ENTER 0x0,0x0 */
+    enter   $0, $0
+    pushal
+    push    %es
+    push    %fs
+    push    %gs
+    pushfl
+    movl    8(%ebp), %edx
 
-    /* Save all registers */
-    pushal                      /* 0x6F28: PUSHAD */
-    push    %es                 /* 0x6F29: PUSH ES */
-    push    %fs                 /* 0x6F2A: PUSH FS */
-    push    %gs                 /* 0x6F2C: PUSH GS */
-    pushfl                      /* 0x6F2E: PUSHFD */
+    /* Get segment/offset from biosCallData struct and write to .data */
+    movw    0x20(%edx), %ax         /* Get far call segment */
+    movw    %ax, _bios32_call_seg   /* Store in writable .data variable */
+    movl    0x2c(%edx), %eax        /* Get far call offset */
+    movl    %eax, _bios32_call_addr /* Store in writable .data variable */
 
-    /* Get biosCallData pointer from parameter */
-    movl    8(%ebp), %edx       /* 0x6F2F: MOV EDX,dword ptr [EBP + param_1] */
+    movl    0x08(%edx), %ebx        /* Snapshot caller EBX (in/out) */
+    movl    0x0c(%edx), %ecx        /* Snapshot caller ECX (in/out) */
+    movl    0x14(%edx), %edi        /* Snapshot caller EDI (in/out) */
+    movl    0x18(%edx), %esi        /* Snapshot caller ESI (in/out) */
+    movl    %edx, _save_edx         /* Remember biosCallData pointer */
+    movl    0x04(%edx), %eax        /* Stash input EAX for call */
+    movl    %eax, _new_eax
+    movl    0x10(%edx), %eax        /* Stash input EDX for call */
+    movl    %eax, _new_edx
+    movw    0x22(%edx), %ax         /* Incoming DS segment value */
+    pushw   %ax
+    movl    _new_eax, %eax          /* Restore caller-provided EAX/EDX */
+    movl    _new_edx, %edx
+    popw    %ds                     /* Switch to caller DS */
+    cli                             /* BIOS expects interrupts disabled */
 
-    /* Extract far call segment and offset */
-    /* Write to writable data section (not instruction bytes) */
-    movw    0x20(%edx), %ax     /* 0x6F32: MOV AX,word ptr [EDX + 0x20] - load far_seg */
-    movw    %ax, _save_seg      /* 0x6F36: MOV [save_seg],AX - store segment */
-    movl    0x2c(%edx), %eax    /* 0x6F3C: MOV EAX,dword ptr [EDX + 0x2c] - load far_offset */
-    movl    %eax, _save_addr    /* 0x6F3F: MOV [save_addr],EAX - store offset */
+    /* Perform an indirect far call using the 6-byte pointer in .data */
+    lcall   _bios32_call_addr
 
-    /* Load input registers from biosCallData structure */
-    movl    0x08(%edx), %ebx    /* 0x6F44: MOV EBX,dword ptr [EDX + 0x8] */
-    movl    0x0c(%edx), %ecx    /* 0x6F47: MOV ECX,dword ptr [EDX + 0xc] */
-    movl    0x14(%edx), %edi    /* 0x6F4A: MOV EDI,dword ptr [EDX + 0x14] */
-    movl    0x18(%edx), %esi    /* 0x6F4D: MOV ESI,dword ptr [EDX + 0x18] */
-
-    /* Save biosCallData pointer for later */
-    movl    %edx, _save_edx     /* 0x6F50: MOV dword ptr [save_edx],EDX */
-
-    /* Save EAX and EDX inputs to temporaries */
-    movl    0x04(%edx), %eax    /* 0x6F56: MOV EAX,dword ptr [EDX + 0x4] */
-    movl    %eax, _new_eax      /* 0x6F59: MOV [new_eax],EAX */
-    movl    0x10(%edx), %eax    /* 0x6F5E: MOV EAX,dword ptr [EDX + 0x10] */
-    movl    %eax, _new_edx      /* 0x6F61: MOV [new_edx],EAX */
-
-    /* Load DS segment and prepare for switch */
-    movw    0x22(%edx), %ax     /* 0x6F66: MOV AX,word ptr [EDX + 0x22] */
-    pushw   %ax                 /* 0x6F6A: PUSH AX */
-
-    /* Restore EAX and EDX from temporaries */
-    movl    _new_eax, %eax      /* 0x6F6C: MOV EAX,[new_eax] */
-    movl    _new_edx, %edx      /* 0x6F71: MOV EDX,dword ptr [new_edx] */
-
-    /* Switch DS segment and disable interrupts */
-    popw    %ds                 /* 0x6F77: POP DS */
-    cli                         /* 0x6F79: CLI */
-
-    /* Force 1-byte alignment, critical for self-modifying code */
-    /* .align 0 means 2^0 = 1-byte alignment */
-    .align 0
-
-    /* Make these labels global so the 'mov' instructions can find them */
-    .globl _save_addr
-    .globl _save_seg
-
-    .byte 0x9A              /* 0x6F7A: CALLF direct */
-_save_addr:
-    .long 0x00000000        /* 0x6F7B: 32-bit offset (patched) */
-_save_seg:
-    .word 0x0000            /* 0x6F7F: 16-bit segment (patched) */
-
-    /* Resume default alignment for subsequent code */
-    /* .align 2 means 2^2 = 4-byte alignment */
     .align 2
 
-    /* 0x6F81: BIOS returns here
-     * Save EFLAGS from BIOS call
+    pushfl                          /* Preserve EFLAGS returned by BIOS */
+    pushw   %ax                     /* Save AX so we can borrow it */
+    movw    _kernDataSel, %ax       /* Switch DS back to kernel data selector */
+    movw    %ax, %ds
+    popw    %ax                     /* Restore AX from before DS switch */
+    movl    %eax, _save_eax         /* Capture EAX as returned by BIOS */
+    popl    %eax                    /* Restore original EAX pushed by PUSHAD */
+    movw    %ax, _save_flag         /* Save the EFLAGS value popped earlier */
+    movw    %es, %ax                /* Save ES (set by BIOS to data segment) */
+    movw    %ax, _save_es
+    movl    %edx, _new_edx          /* Preserve updated EDX */
+    movl    _save_edx, %edx         /* Reload biosCallData pointer */
+    movl    _new_edx, %eax          /* Write updated registers back to struct */
+    movl    %eax, 0x10(%edx)        /* Store EDX result */
+    movl    _save_eax, %eax
+    movl    %eax, 0x04(%edx)        /* Store EAX result */
+    movw    _save_es, %ax
+    movw    %ax, 0x24(%edx)         /* Store ES result */
+    movw    _save_flag, %ax
+    movw    %ax, 0x28(%edx)         /* Store FLAGS result */
+    movl    %ebx, 0x08(%edx)        /* Store general-purpose register outputs */
+    movl    %ecx, 0x0c(%edx)
+    movl    %edi, 0x14(%edx)
+    movl    %esi, 0x18(%edx)
+    movl    %ebp, 0x1c(%edx)
+    popfl                           /* Restore original EFLAGS */
+    pop     %gs                     /* Restore segment registers */
+    pop     %fs
+    pop     %es
+    popal                           /* Restore general-purpose registers */
+
+    leave
+    ret
+
+/*
+ * _PnPEntry - Low-level trampoline into the 16-bit PnP BIOS entry point
+ *
+ * This routine expects its three arguments in EAX, EDX, and ECX (regparm(3)).
+ * It preserves those registers, pushes the argument stack prepared by
+ * PnPArgStack, and then performs a far jump into the BIOS.
+ *
+ * On return from the 16-bit BIOS (via RETF), control resumes at bios_rtn,
+ * the argument stack is unwound, and a far return is performed to the caller.
+ */
+.globl _PnPEntry
+.globl __PnPEntry
+_PnPEntry:
+__PnPEntry:
+    movl    %eax, _save_eax        /* Preserve regparm arguments */
+    movl    %ecx, _save_ecx
+    movl    %edx, _save_edx
+
+    /*
+     * Save 32-bit kernel stack
      */
-    pushfl                      /* 0x6F81: PUSHFD */
+    movw    %ss, _save_ss
+    movl    %esp, _save_esp
+    
+    /* Load 16-bit PnP stack */
+    movw    _PnPEntry_pmStackSel, %ax
+    movw    %ax, %ss
+    movl    _PnPEntry_pmStackOff, %esp    
 
-    /* Temporarily save AX and restore kernel DS */
-    pushw   %ax                 /* 0x6F82: PUSH AX */
-    movw    _kernDataSel, %ax   /* 0x6F84: MOV AX,[_kernDataSel] */
-    movw    %ax, %ds            /* 0x6F8A: MOV DS,AX */
-    popw    %ax                 /* 0x6F8D: POP AX */
+    movl    _PnPEntry_biosCodeOffset, %eax
+    movl    %eax, _pnp_addr        /* Patch writable far pointer offset */
+    movw    _PnPEntry_biosCodeSelector, %ax
+    movw    %ax, _pnp_seg          /* Patch writable far pointer segment */
 
-    /* Save output registers to temporaries */
-    movl    %eax, _save_eax     /* 0x6F8F: MOV [save_eax],EAX */
-    popl    %eax                /* 0x6F94: POP EAX */
-    movw    %ax, _save_flag     /* 0x6F95: MOV [save_flag],AX */
-    movw    %es, %ax            /* 0x6F9B: MOV AX,ES */
-    movw    %ax, _save_es       /* 0x6F9E: MOV [save_es],AX */
-    movl    %edx, _new_edx      /* 0x6FA4: MOV dword ptr [new_edx],EDX */
+    movl    _PnPEntry_argStackBase, %ecx
+    movl    _PnPEntry_numArgs, %edx
+    jmp     check_args             /* Arguments pushed in reverse order */
 
-    /* Get biosCallData pointer back */
-    movl    _save_edx, %edx     /* 0x6FAA: MOV EDX,dword ptr [save_edx] */
+push_arg:
+    movw    (%ecx,%edx,2), %ax
+    pushw   %ax                    /* Push one 16-bit argument */
 
-    /* Store all output registers back to biosCallData */
-    movl    _new_edx, %eax      /* 0x6FB0: MOV EAX,[new_edx] */
-    movl    %eax, 0x10(%edx)    /* 0x6FB5: MOV dword ptr [EDX + 0x10],EAX */
-    movl    _save_eax, %eax     /* 0x6FB8: MOV EAX,[save_eax] */
-    movl    %eax, 0x04(%edx)    /* 0x6FBD: MOV dword ptr [EDX + 0x4],EAX */
-    movw    _save_es, %ax       /* 0x6FC0: MOV AX,[save_es] */
-    movw    %ax, 0x24(%edx)     /* 0x6FC6: MOV word ptr [EDX + 0x24],AX */
-    movw    _save_flag, %ax     /* 0x6FCA: MOV AX,[save_flag] */
-    movw    %ax, 0x28(%edx)     /* 0x6FD0: MOV word ptr [EDX + 0x28],AX */
-    movl    %ebx, 0x08(%edx)    /* 0x6FD4: MOV dword ptr [EDX + 0x8],EBX */
-    movl    %ecx, 0x0c(%edx)    /* 0x6FD7: MOV dword ptr [EDX + 0xc],ECX */
-    movl    %edi, 0x14(%edx)    /* 0x6FDA: MOV dword ptr [EDX + 0x14],EDI */
-    movl    %esi, 0x18(%edx)    /* 0x6FDD: MOV dword ptr [EDX + 0x18],ESI */
-    movl    %ebp, 0x1c(%edx)    /* 0x6FE0: MOV dword ptr [EDX + 0x1c],EBP */
+check_args:
+    decl    %edx
+    jns     push_arg               /* Loop until all args consumed */
 
-    /* Restore saved registers */
-    popfl                       /* 0x6FE3: POPFD */
-    pop     %gs                 /* 0x6FE4: POP GS */
-    pop     %fs                 /* 0x6FE6: POP FS */
-    pop     %es                 /* 0x6FE8: POP ES */
-    popal                       /* 0x6FE9: POPAD */
+    movw    %cs, %ax
+    pushw   %ax                    /* Push return segment */
 
-    /* Restore stack frame and return */
-    leave                       /* 0x6FEA: LEAVE */
+    movl    $bios_rtn, %eax
+    subl    $_PnPEntry, %eax
+    pushw   %ax                    /* Push return offset within this segment */
+
+    movl    _save_eax, %eax        /* Restore caller argument registers */
+    movl    _save_ecx, %ecx
+    movl    _save_edx, %edx
+
+bios_rtn:
+    movl    %eax, _save_eax        /* Capture AX result for caller */
+    movl    _PnPEntry_numArgs, %eax
+    addl    %eax, %eax             /* Multiply %eax by 2 by adding it to itself */
+    addl    %eax, %esp             /* Pop (numArgs * 2) bytes */
+
+    /*
+     * Restore 32-bit kernel stack
+     */
+    movl    _save_esp, %esp
+    movw    _save_ss, %ax
+    movw    %ax, %ss
+
+    movl    _save_eax, %eax        /* Restore EAX with BIOS return value */
+    lret                           /* Far return to original caller */

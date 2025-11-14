@@ -62,6 +62,8 @@ typedef struct {
     PnPInstallationStructure *_installCheck_p;  /* PnP structure pointer at 0x44 */
     void *_kData;                           /* 64KB buffer at 0x48 */
     unsigned short _kDataSelector;          /* Buffer selector at offset 0x4C */
+    unsigned short _pmStackSel;
+    unsigned short _pmStackOff;
     unsigned int _saveGDTBiosCode[2];       /* Saved GDT entry 16 (0x80) at 0x50-0x57 */
     unsigned int _saveGDTBiosEntry[2];      /* Saved GDT entry 18 (0x90) at 0x58-0x5F */
     unsigned int _saveGDTKData[2];          /* Saved GDT entry 19 (0x98) at 0x60-0x67 */

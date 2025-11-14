@@ -121,7 +121,7 @@ void clearPnPConfigRegisters(void);
  * Sets up and makes a far call to the PnP BIOS entry point
  * Uses regparm(3) calling convention: param_1=EAX, param_2=EDX, param_3=ECX
  */
-void __attribute__((regparm(3))) __PnPEntry(unsigned int param_1, unsigned int param_2, unsigned int param_3);
+void __attribute__((regparm(3))) _PnPEntry(unsigned int param_1, unsigned int param_2, unsigned int param_3);
 
 /*
  * ISA PnP card isolation protocol

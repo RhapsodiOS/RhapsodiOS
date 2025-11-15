@@ -31,7 +31,7 @@ network
  * drvEtherLinkXL - needs compiled and then tested
  * drvIntel82556 - needs compiled and then tested
  * drvIntel82557 - needs compiled and then tested
- * drvIntel82595
+ * drvIntel82595 - needs compiled and then tested
  * drvIntel82596
  * drvNE2k - complete
  * drvSMC16 - complete

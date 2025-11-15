@@ -1,0 +1,18 @@
+{
+    DRIVERNAME = BusLogicFP;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (BusLogicFPSCSI.m);
+        C_FILES = (FlashPoint.c);
+        H_FILES = (BusLogicFPSCSI.h, FlashPoint.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = BusLogicFP;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

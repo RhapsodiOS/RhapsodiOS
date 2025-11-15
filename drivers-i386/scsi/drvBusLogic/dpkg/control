@@ -1,0 +1,6 @@
+Package: drvbuslogic
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 17
+Description: BusLogic SCSI device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

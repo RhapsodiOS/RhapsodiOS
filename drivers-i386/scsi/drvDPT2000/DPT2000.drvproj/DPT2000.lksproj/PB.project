@@ -1,0 +1,17 @@
+{
+    DRIVERNAME = DPT2000;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (DPTSCSIDriver.m, DPTSCSIDriverRoutines.m, DPTSCSIDriverThread.m);
+        H_FILES = (DPTSCSIDriver.h, DPTSCSIDriverPrivate.h, DPTSCSIDriverTypes.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = DPT2000;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

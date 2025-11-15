@@ -1,0 +1,17 @@
+{
+    DRIVERNAME = Adaptec6X60;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (AIC6X60Controller.m, AIC6X60Routines.m, AIC6X60Thread.m);
+        H_FILES = (scsivar.h, AIC6X60Controller.h, AIC6X60ControllerPrivate.h, AIC6X60Inline.h, AIC6X60Thread.h, AIC6X60Types.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = Adaptec6X60;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

@@ -1,0 +1,17 @@
+{
+    DRIVERNAME = Adaptec2940;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (Adaptec2940.m, Adaptec2940Routines.m, Adaptec2940Thread.m);
+        H_FILES = (Adaptec2940.h, Adaptec2940Private.h, Adaptec2940Types.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = Adaptec2940;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

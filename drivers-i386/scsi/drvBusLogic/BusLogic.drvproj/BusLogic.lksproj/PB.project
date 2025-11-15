@@ -1,0 +1,17 @@
+{
+    DRIVERNAME = BusLogic;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (BusLogicController.m, BusLogicRoutines.m, BusLogicThread.m);
+        H_FILES = (scsivar.h, BusLogicController.h, BusLogicControllerPrivate.h, BusLogicInline.h, BusLogicThread.h, BusLogicTypes.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = BusLogic;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

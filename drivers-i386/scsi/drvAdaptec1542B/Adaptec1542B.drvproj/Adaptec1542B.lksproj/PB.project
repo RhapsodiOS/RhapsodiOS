@@ -1,0 +1,17 @@
+{
+    DRIVERNAME = Adaptec1542B;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (AHAController.m, AHARoutines.m, AHAThread.m);
+        H_FILES = (scsivar.h, AHAController.h, AHAControllerPrivate.h, AHAInline.h, AHAThread.h, AHATypes.h);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = $(GNUMAKE);
+    PDO_UNIX_BUILDTOOL = $(GNUMAKE);
+    PROJECTNAME = Adaptec1542B;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $(GNUMAKE);
+}

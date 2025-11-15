@@ -100,7 +100,8 @@ __bios32PnP:
     cli                             /* BIOS expects interrupts disabled */
 
     /* Perform an indirect far call using the 6-byte pointer in .data */
-    lcall   _bios32_call_addr
+    .byte   0xff, 0x1d          /* CALL FAR m16:32 - opcode FF /3 */
+    .long   _bios32_call_addr   /* Address of 6-byte far pointer */
 
     .align 2
 
@@ -148,10 +149,10 @@ __bios32PnP:
  * On return from the 16-bit BIOS (via RETF), control resumes at bios_rtn,
  * the argument stack is unwound, and a far return is performed to the caller.
  */
-.globl _PnPEntry
 .globl __PnPEntry
-_PnPEntry:
+.globl _PnPEntry
 __PnPEntry:
+_PnPEntry:
     movl    %eax, _save_eax        /* Preserve regparm arguments */
     movl    %ecx, _save_ecx
     movl    %edx, _save_edx
@@ -194,6 +195,9 @@ check_args:
     movl    _save_eax, %eax        /* Restore caller argument registers */
     movl    _save_ecx, %ecx
     movl    _save_edx, %edx
+
+    .byte   0xff, 0x2d          /* JMP FAR m16:32 - opcode FF /5 */
+    .long   _pnp_addr           /* Address of 6-byte far pointer */
 
 bios_rtn:
     movl    %eax, _save_eax        /* Capture AX result for caller */

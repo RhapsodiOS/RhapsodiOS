@@ -61,7 +61,7 @@ extern unsigned short pnpReadPort;
 /*
  * Call PnP BIOS with the given parameters structure
  */
-int call_bios(void *biosCallData)
+int volatile call_bios(void *biosCallData)
 {
     int result;
 
@@ -70,7 +70,7 @@ int call_bios(void *biosCallData)
         IOLog("PnPBios: calling BIOS\n");
     }
 
-    IOLog("PnPBios: Calling 16-bit BIOS at 0x%X:%0xX\n",
+    IOLog("PnPBios DEBUG: Calling 16-bit BIOS at 0x%X:%0xX\n",
               ((BiosCallData *)biosCallData)->far_seg,
               ((BiosCallData *)biosCallData)->far_offset);
 
@@ -79,6 +79,8 @@ int call_bios(void *biosCallData)
 
     /* Get the result from the eax register */
     result = ((BiosCallData *)biosCallData)->eax;
+
+    IOLog("PnPBios DEBUG: BIOS returned 0x%x\n", result);
 
     /* Optional verbose logging of result */
     if (verbose == 1) {

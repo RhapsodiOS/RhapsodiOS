@@ -102,7 +102,7 @@ extern char verbose;
  * Call PnP BIOS with the given parameters structure
  * Returns the result code from the BIOS
  */
-int call_bios(void *biosCallData);
+int volatile call_bios(void *biosCallData);
 
 /*
  * Low-level BIOS32 PnP call

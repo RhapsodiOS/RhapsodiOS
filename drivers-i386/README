@@ -29,7 +29,7 @@ network
  * drvEtherExpress16 - needs compiled and then tested
  * drvEtherLink3 - needs compiled and then tested
  * drvEtherLinkXL - needs compiled and then tested
- * drvIntel82556
+ * drvIntel82556 - needs compiled and then tested
  * drvIntel82557
  * drvIntel82595
  * drvIntel82596

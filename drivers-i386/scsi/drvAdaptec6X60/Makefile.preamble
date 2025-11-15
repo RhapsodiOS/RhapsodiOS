@@ -1,7 +1,36 @@
 ###############################################################################
-#  Makefile.preamble
-#  Copyright 1997, Apple Computer, Inc.
+#  NeXT Makefile.preamble
+#  Copyright 1998, NeXT Software, Inc.
 #
-#  This file is used to specify driver specific parameters
+#  This Makefile is used for configuring the standard app makefiles associated
+#  with ProjectBuilder.
+#
+#  Use this template to set attributes for a project, sub-project, bundle, or
+#  palette. Each node in the project's tree of sub-projects and bundles should
+#  have its own Makefile.preamble and Makefile.postamble. Additional settings
+#  should be added to the Makefile.postamble.
+#
 ###############################################################################
+
+# Flags to be passed to the C compiler
+OTHER_CFLAGS = -g -Wall
+
+# Flags to be passed to the linker
+OTHER_LDFLAGS =
+
+# Libraries to link against
+OTHER_LIBS =
+
+# More libraries to link against
+LIBS =
+
+# Frameworks to link against
+FRAMEWORKS =
+
+# Source files to compile
+MFILES = AIC6X60Controller.m AIC6X60Thread.m AIC6X60Routines.m
+
+# Header files
+HFILES = AIC6X60Controller.h AIC6X60ControllerPrivate.h \
+         AIC6X60Thread.h AIC6X60Types.h AIC6X60Inline.h scsivar.h
 

@@ -1,24 +1,15 @@
 ###############################################################################
-#  Makefile.preamble
-#  Copyright 1998, Apple Computer, Inc.
-#
-#  Use this makefile for configuring the standard application makefiles
-#  associated with ProjectBuilder.
+#  NeXT Makefile.preamble
 ###############################################################################
 
-###############################################################################
-# Flags to be passed to compiler
-###############################################################################
-OTHER_CFLAGS = -DCONFIG_SCSI_FLASHPOINT
+OTHER_CFLAGS = -g -Wall
 OTHER_LDFLAGS =
-OTHER_LIBTOOL_FLAGS =
+OTHER_LIBS =
+LIBS =
+FRAMEWORKS =
 
-###############################################################################
-# Linking flags for libraries
-###############################################################################
-LIBS = -lDriver -lkernload
+MFILES = BusLogicFPSCSI.m
+CFILES = FlashPoint.c
 
-###############################################################################
-# Additional headers
-###############################################################################
-OTHER_INCLUDES = -I.
+HFILES = BusLogicFPSCSI.h FlashPoint.h
+

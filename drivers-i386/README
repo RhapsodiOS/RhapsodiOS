@@ -39,31 +39,31 @@ network
  * drvVMwareVMXNet - complete
 
 scsi
- * drvAdaptec6X60
- * drvAdaptec1542B
- * drvAdaptec2940
+ * drvAdaptec6X60 - needs compiled and then tested
+ * drvAdaptec1542B - needs compiled and then tested
+ * drvAdaptec2940 - needs compiled and then tested
  * drvAMDPCSCSIDriver - complete
- * drvBusLogic
- * drvBusLogicFP
- * drvDPT2000
+ * drvBusLogic - needs compiled and then tested
+ * drvBusLogicFP - needs compiled and then tested
+ * drvDPT2000 - needs compiled and then tested
  * drvSym53C8xx - needs compiled and then tested
 
 sound
  * drvBeepSound - needs compiled and then tested
  * drvES1x88Sound - needs compiled and then tested
- * drvIntelAC97Sound
+ * drvIntelAC97Sound - needs compiled and then tested
  * drvSB8Sound - needs compiled and then tested
  * drvSB16Sound - needs compiled and then tested
  * drvSB128Sound - complete
 
 video
- * drv3DfxVoodooVSA
+ * drv3DfxVoodooVSA - needs compiled and then tested
  * drvATIMach64
  * drvATIRage
  * drvCirrusLogicGD5434
  * drvIBMThinkPad760EDDisplay
  * drvMatroxMGA - complete
- * drvNVidiaRiva
+ * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete

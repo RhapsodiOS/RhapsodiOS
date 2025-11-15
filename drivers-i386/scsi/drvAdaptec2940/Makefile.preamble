@@ -1,14 +1,14 @@
-INSTALL_EXAMPLE = YES
+###############################################################################
+#  NeXT Makefile.preamble
+###############################################################################
 
-LOCALMAKEFILEDIR = /LocalDeveloper/Makefiles/driverkit
-LOCALMAKEFILE = Makefile.local_preamble
--include $(LOCALMAKEFILEDIR)/$(LOCALMAKEFILE)
+OTHER_CFLAGS = -g -Wall
+OTHER_LDFLAGS =
+OTHER_LIBS =
+LIBS =
+FRAMEWORKS =
 
-BUNDLE_EXTENSION = config
+MFILES = Adaptec2940.m Adaptec2940Thread.m Adaptec2940Routines.m
 
-
-#
-# force clean at lower levels...
-#
-CLEAN_ALL_SUBPROJECTS=YES
+HFILES = Adaptec2940.h Adaptec2940Private.h Adaptec2940Types.h
 

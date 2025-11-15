@@ -9,29 +9,27 @@
 
 NAME = Adaptec2940
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings
+BUNDLES = Adaptec2940.drvproj
 
-GLOBAL_RESOURCES = Default.table
+TOOLS =
 
-TOOLS = Adaptec2940_reloc.tproj
+OTHERSRCS = Makefile Makefile.preamble
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble \
-             DriverInfo
-
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
-SOURCEMODE = 444
-
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
 
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

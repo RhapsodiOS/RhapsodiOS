@@ -9,29 +9,27 @@
 
 NAME = Adaptec1542B
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES = DriverHelp Localizable.strings PnP.strings
+BUNDLES = Adaptec1542B.drvproj
 
-GLOBAL_RESOURCES = Default.table PnP.table
+TOOLS =
 
-TOOLS = Adaptec1542B_reloc.tproj
+OTHERSRCS = Makefile Makefile.preamble
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble \
-             README.rtf DriverInfo
-
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
-SOURCEMODE = 444
-
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
 
 
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

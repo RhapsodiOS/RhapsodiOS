@@ -45,6 +45,7 @@
 #import <machdep/i386/sel_inline.h>
 #import <machdep/i386/table_inline.h>
 #import <machdep/i386/desc_inline.h>
+#import <machdep/i386/pmap.h>
 
 /*
 
@@ -78,6 +79,8 @@ We then return to the __bios32PnP function, which returns to the call_bios funct
 #define PNP_KDATA_SEL           (17 << 3)  /* 0x88 - Kernel Buffer (Index 17) */
 #define PNP_DATA32_SEL          (18 << 3)  /* 0x90 - 32-bit PnP Data (Index 18) */
 #define PNP_TRAMPOLINE_SEL      (19 << 3)  /* 0x98 - PnP Trampoline (Index 19) */
+
+#define PNP_STACK_INITIAL_OFFSET 0xFFFC
 
 /*
 PnP BIOS Function Codes
@@ -116,57 +119,77 @@ extern char verbose;
 @implementation PnPBios
 
 /*
- * Check if PnP BIOS is present in the system
- * Searches BIOS ROM area (0xF0000 to 0xFFFFE) for PnP installation check structure
- * Returns YES if found and valid, NO otherwise
- * If found, stores pointer to structure in pnpStructPtr
+ * Present - Check if PnP BIOS is present in the system
+ *
+ * Searches BIOS ROM area (0xF0000 to 0xFFFF0) for PnP installation check structure.
+ *
+ * @param pnpStructPtr  Pointer to store the found PnP BIOS structure
+ * @return YES if valid PnP BIOS found, NO otherwise
+ *
+ * Validation performed:
+ * 1. Signature check ("$PnP")
+ * 2. Length field validation
+ * 3. Checksum verification (sum of all bytes must equal 0)
+ * 4. Version check (must be >= 1.0)
  */
 + (BOOL)Present:(void **)pnpStructPtr
 {
-    unsigned char *ptr;
-    int compareResult;
-    unsigned char checksum;
+    pnp_bios_install_struct *check;
+    unsigned char sum;
     int i;
     unsigned char length;
+    unsigned char version;
 
-    /* Search BIOS ROM from 0xF0000 to 0xFFFFE in 16-byte increments */
-    ptr = (unsigned char *)0xF0000;
+    /* Scan BIOS ROM from 0xF0000 to 0xFFFF0 in 16-byte increments */
+    for (check = (pnp_bios_install_struct *)0xF0000;
+         check < (pnp_bios_install_struct *)0xFFFF0;
+         check = (pnp_bios_install_struct *)((unsigned char *)check + 0x10))
+    {
+        /* Check for "$PnP" signature (0x506E5024) */
+        if (check->fields.signature != PNP_SIGNATURE)
+            continue;
 
-    while (1) {
-        /* Check for "$PnP" signature (4 bytes) */
-        compareResult = strncmp((char *)ptr, "$PnP", 4);
-
-        if (compareResult == 0) {
-            /* Found signature - validate checksum */
-            /* Offset 5 contains structure length */
-            length = ptr[5];
-
-            /* Calculate checksum - sum of all bytes should be 0 */
-            checksum = 0;
-            i = 0;
-
-            if (length != 0) {
-                do {
-                    checksum = checksum + ptr[i];
-                    i++;
-                } while (i < (int)length);
-            }
-
-            /* If checksum is valid (0), we found it */
-            if (checksum == 0) {
-                *pnpStructPtr = ptr;
-                return YES;
-            }
+        /* Validate structure length */
+        length = check->fields.length;
+        if (length == 0) {
+            IOLog("PnPBios: Found signature at 0x%08x but invalid length (0)\n",
+                  (unsigned int)check);
+            continue;
         }
 
-        /* Move to next 16-byte boundary */
-        ptr = ptr + 0x10;
-
-        /* Check if we've passed the end of the search area (0xFFFFE) */
-        if (ptr > (unsigned char *)0xFFFFE) {
-            return NO;
+        /* Calculate checksum - sum of all bytes should be 0 */
+        sum = 0;
+        for (i = 0; i < length; i++) {
+            sum += check->bytes[i];
         }
+
+        if (sum != 0) {
+            IOLog("PnPBios: Found signature at 0x%08x but checksum failed (0x%02x)\n",
+                  (unsigned int)check, sum);
+            continue;
+        }
+
+        /* Validate version (must be >= 1.0) */
+        version = check->fields.version;
+        if (version < 0x10) {
+            IOLog("PnPBios: Found PnP BIOS v%x.%x at 0x%08x, but need >= v1.0\n",
+                  version >> 4, version & 0x0F, (unsigned int)check);
+            continue;
+        }
+
+        /* All validation passed */
+#ifdef PNPBIOSDEBUG
+        IOLog("PnPBios: Found valid PnP BIOS v%x.%x at 0x%08x\n",
+              version >> 4, version & 0x0F, (unsigned int)check);
+        IOLog("PnPBios: Length: 0x%02x, Control: 0x%04x\n",
+              length, check->fields.control);
+#endif
+
+        *pnpStructPtr = check;
+        return YES;
     }
+
+    return NO;
 }
 
 /*
@@ -180,6 +203,11 @@ extern char verbose;
 
 /*
  * Initialize PnP BIOS interface
+ *
+ * Improved initialization based on Linux's approach:
+ * - Better validation of PnP BIOS structure
+ * - More detailed logging of BIOS configuration
+ * - Simplified buffer allocation
  */
 - init
 {
@@ -191,50 +219,53 @@ extern char verbose;
     /* Initialize instance variables */
     _argStack = nil;
     _kData = NULL;
-    _paddingBuffer = NULL;
-    _biosDataSegBuffer = NULL;
+    _pnpBios = NULL;
 
-    /* Check if PnP BIOS is present and get structure pointer */
-    present = [PnPBios Present:(void **)&_installCheck_p];
-    if (present) {
-        const PnPInstallationStructure *install = _installCheck_p;
-
-        /*
-        * Copy entry points from PnP installation structure
-        * Note: These offsets match the PnP BIOS specification
-        */
-        _biosEntryOffset = install->realModeEntryOffset;
-        _biosCodeSegAddr = (install->realModeEntrySegment << 4);
-        _dataSegAddr = install->protModeDataBaseAddr;
-        _pmStackOff = install->pmStackOffset;
-        _pmStackSel = install->pmStackSelector;
-
-        IOLog("PnPBios DEBUG: BIOS entry offset: 0x%x\n", _biosEntryOffset);
-        IOLog("PnPBios DEBUG: BIOS code segment address: 0x%x\n", _biosCodeSegAddr);
-        IOLog("PnPBios DEBUG: Data segment address: 0x%x\n", _dataSegAddr);
-        IOLog("PnPBios DEBUG: PM stack offset: 0x%x\n", _pmStackOff);
-        IOLog("PnPBios DEBUG: PM stack selector: 0x%x\n", _pmStackSel);
-
-        /* Allocate 64KB buffer for PnP BIOS operations */
-        _kData = IOMalloc(0x10000);
-        if (_kData != NULL) {
-            _paddingBuffer = IOMalloc(0x20000); // 128KB
-            if (_paddingBuffer != NULL) {
-
-                    _biosDataSegBuffer = IOMalloc(0x10000); // 64KB
-
-                    /* Successfully initialized */
-                    IOLog("PnPBios DEBUG: IOMalloc successful with padding buffer\n");
-                    return self;
-            }
-        }
-
-        /* Allocation failed */
-        IOLog("PnPBios: IOMalloc failed\n");
+    /* Probe for PnP BIOS */
+    present = [PnPBios Present:(void **)&_pnpBios];
+    if (!present) {
+        IOLog("PnPBios: PnP BIOS not detected\n");
+        return [self free];
     }
 
-    /* PnP BIOS not present or initialization failed - free and return nil */
-    return [self free];
+    /*
+     * Extract entry points from PnP BIOS installation structure
+     *
+     * For 16-bit BIOS calls, we need:
+     * - Real-mode code segment converted to linear address (segment << 4)
+     * - Protected-mode 16-bit entry offset
+     * - Protected-mode data segment base address
+     */
+    _biosEntryOffset = _pnpBios->fields.pm16offset;
+    _biosCodeSegAddr = (_pnpBios->fields.rmcseg << 4);  /* Convert RM segment to address */
+    _dataSegAddr = _pnpBios->fields.pm16dseg;
+
+    /* Log PnP BIOS configuration */
+    IOLog("PnPBios: Version %x.%x, Control=0x%04x\n",
+          _pnpBios->fields.version >> 4,
+          _pnpBios->fields.version & 0x0F,
+          _pnpBios->fields.control);
+
+    IOLog("PnPBios: RM code seg=0x%04x (base 0x%08x), PM entry offset=0x%04x\n",
+          _pnpBios->fields.rmcseg, _biosCodeSegAddr, _biosEntryOffset);
+
+    IOLog("PnPBios: PM16 code base=0x%08x, PM16 data base=0x%08x\n",
+          _pnpBios->fields.pm16cseg, _dataSegAddr);
+
+    if (_pnpBios->fields.deviceID != 0) {
+        IOLog("PnPBios: Device ID: 0x%08x\n", _pnpBios->fields.deviceID);
+    }
+
+    /* Allocate 64KB buffer for PnP BIOS data transfers */
+    _kData = IOMalloc(0x10000);
+    if (_kData == NULL) {
+        IOLog("PnPBios: Failed to allocate kernel buffer\n");
+        return [self free];
+    }
+
+    /* Successfully initialized */
+    IOLog("PnPBios: Initialization successful\n");
+    return self;
 }
 
 /*
@@ -242,22 +273,16 @@ extern char verbose;
  */
 - free
 {
-    /* Free the 64KB PnP buffer if allocated */
+    /* Free allocated buffer */
     if (_kData != NULL) {
         IOFree(_kData, 0x10000);
-    }
-
-    if (_paddingBuffer != NULL) {
-        IOFree(_paddingBuffer, 0x20000);
-    }
-
-    if (_biosDataSegBuffer != NULL) {
-        IOFree(_biosDataSegBuffer, 0x10000);
+        _kData = NULL;
     }
 
     /* Free the argument stack object if allocated */
     if (_argStack != nil) {
         [_argStack free];
+        _argStack = nil;
     }
 
     /* Call superclass free and return its result */
@@ -398,6 +423,34 @@ extern char verbose;
     /* Call PnP BIOS */
     result = call_bios(_bb);
 
+    /* Dump first bytes of the returned buffer for debugging */
+    {
+        unsigned char *dump = (unsigned char *)_kData;
+        unsigned int vendorRaw = (dump[0] |
+                                  (dump[1] << 8) |
+                                  (dump[2] << 16) |
+                                  (dump[3] << 24));
+        char vendorStr[5];
+        int i;
+
+        IOLog("PnPBios DEBUG: GetPnPConfig buffer[0..31]:");
+        for (i = 0; i < 32; i++) {
+            if ((i % 16) == 0)
+                IOLog("\nPnPBios DEBUG:   ");
+            IOLog("%02X ", dump[i]);
+        }
+        IOLog("\n");
+
+        vendorStr[0] = (dump[0] >= 0x20 && dump[0] <= 0x7E) ? dump[0] : '.';
+        vendorStr[1] = (dump[1] >= 0x20 && dump[1] <= 0x7E) ? dump[1] : '.';
+        vendorStr[2] = (dump[2] >= 0x20 && dump[2] <= 0x7E) ? dump[2] : '.';
+        vendorStr[3] = (dump[3] >= 0x20 && dump[3] <= 0x7E) ? dump[3] : '.';
+        vendorStr[4] = '\0';
+
+        IOLog("PnPBios DEBUG: Vendor ID raw=0x%08X (%s)\n",
+              vendorRaw, vendorStr);
+    }
+
     IOLog("PnPBios: GetPnPConfig result: 0x%x\n", result);
 
     /* Release segments */
@@ -533,18 +586,24 @@ extern char verbose;
     callData->far_seg    = PNP_TRAMPOLINE_SEL;
     callData->far_offset = 0;
 
-    /* Set the Data Segment for the 16-bit call (Kernel Data Segment) */
-    callData->ds_seg = PNP_KDS_SEL;
+    /*
+     * Set DS/ES for the 16-bit call to the same selector we use when
+     * building far pointers (points at _kData).
+     */
+    callData->ds_seg = _kDataSelector;
+    callData->es_seg = _kDataSelector;
 
     /* Set global PnP entry point variables (used by the trampoline) */
     PnPEntry_biosCodeSelector = PNP_CODE16_SEL;
     PnPEntry_biosCodeOffset = (unsigned int)_biosEntryOffset;
     kernDataSel = PNP_KDS_SEL;
 
-    /* Use the data segment selector for the stack as well */
-    /* The BIOS typically shares the same segment for data and stack */
-    PnPEntry_pmStackSel = _biosSelector;  /* Use 0x90 (PNP_DATA32_SEL) */
-    PnPEntry_pmStackOff = (unsigned int)_pmStackOff;  /* Keep offset from BIOS */
+    /*
+     * Use our scratch selector for the stack. We start near the top of the
+     * buffer so arguments can grow downward without hitting data.
+     */
+    PnPEntry_pmStackSel = _kDataSelector;
+    PnPEntry_pmStackOff = PNP_STACK_INITIAL_OFFSET;
 
     IOLog("PnPBios DEBUG: Setup segments start\n");
 
@@ -554,8 +613,6 @@ extern char verbose;
     IOLog("PnPBios DEBUG: PnP 16-bit code offset: 0x%x\n", PnPEntry_biosCodeOffset);
     IOLog("PnPBios DEBUG: kData selector: 0x%x\n", _kDataSelector);
     IOLog("PnPBios DEBUG: Kernel data selector: 0x%x\n", kernDataSel);
-    IOLog("PnPBios DEBUG: PM stack selector: 0x%x\n", _pmStackSel);
-    IOLog("PnPBios DEBUG: PM stack offset: 0x%x\n", _pmStackOff);
 
     IOLog("PnPBios DEBUG: Setup segments end\n");
 

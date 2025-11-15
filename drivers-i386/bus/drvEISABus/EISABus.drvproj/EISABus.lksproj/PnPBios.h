@@ -46,48 +46,49 @@
 #endif
 
 /*
- * PnP Installation Check Structure (PnP BIOS Specification v1.0a, §4.3)
- * Offsets are documented to make it obvious when fields need to line up with
- * the firmware-defined layout.
+ * PnP BIOS Installation Check Structure
+ * Based on PnP BIOS Specification v1.0a, §4.3
+ *
+ * This union allows both field-level access and byte-level checksum calculation.
+ * The structure is exactly 0x21 (33) bytes as defined by the specification.
  */
-struct PnPInstallationStructure {
-    char signature[4];              /* 0x00: ASCII "$PnP" */
-    unsigned char version;          /* 0x04: BCD version (major<<4 | minor) */
-    unsigned char length;           /* 0x05: Total length of this structure */
-    unsigned short controlField;    /* 0x06: Feature flags */
-    unsigned char checksum;         /* 0x08: Sum over length bytes == 0 */
-    unsigned int eventNotification; /* 0x09: Physical address of event flag */
-    unsigned short realModeEntryOffset;   /* 0x0D: Real-mode entry offset */
-    unsigned short realModeEntrySegment;  /* 0x0F: Real-mode entry segment */
-    unsigned short protModeEntryOffset;   /* 0x11: 16-bit protected entry offset */
-    unsigned int protModeEntryBase;       /* 0x13: 32-bit base for protected entry */
-    unsigned int oemDeviceID;             /* 0x17: OEM-specific ID */
-    unsigned short realModeDataSegment;   /* 0x1B: Real-mode data segment */
-    unsigned int protModeDataBaseAddr;    /* 0x1D: 32-bit base for protected data */
-    unsigned char reserved0[0x25 - 0x21]; /* 0x21-0x24: Reserved by spec */
-    unsigned short pmStackOffset;         /* 0x25: 16-bit protected stack offset */
-    unsigned short pmStackSelector;       /* 0x27: Selector for protected stack */
+union pnp_bios_install_struct {
+    struct {
+        unsigned int signature;           /* 0x00: "$PnP" signature (0x506E5024) */
+        unsigned char version;            /* 0x04: BCD version (e.g., 0x10 = v1.0) */
+        unsigned char length;             /* 0x05: Structure length (0x21) */
+        unsigned short control;           /* 0x06: System capabilities bitmap */
+        unsigned char checksum;           /* 0x08: Checksum (sum of all bytes = 0) */
+        unsigned int eventflag;           /* 0x09: Physical address of event flag */
+        unsigned short rmoffset;          /* 0x0D: Real-mode entry point offset */
+        unsigned short rmcseg;            /* 0x0F: Real-mode code segment */
+        unsigned short pm16offset;        /* 0x11: 16-bit PM entry point offset */
+        unsigned int pm16cseg;            /* 0x13: 16-bit PM code segment base */
+        unsigned int deviceID;            /* 0x17: EISA system ID (or 0) */
+        unsigned short rmdseg;            /* 0x1B: Real-mode data segment */
+        unsigned int pm16dseg;            /* 0x1D: 16-bit PM data segment base */
+    } fields;
+    unsigned char bytes[0x21];            /* Raw bytes for checksum calculation */
 } PNP_PACKED;
 
-typedef struct PnPInstallationStructure PnPInstallationStructure;
+typedef union pnp_bios_install_struct pnp_bios_install_struct;
+
+/* PnP BIOS signature: "$PnP" */
+#define PNP_SIGNATURE   (('$' << 0) + ('P' << 8) + ('n' << 16) + ('P' << 24))
 
 /* PnPBios - BIOS interface */
 @interface PnPBios : Object
 {
     @private
-    id _argStack;                           /* PnPArgStack object at offset 0x04 */
-    unsigned char _bb[48];                  /* BIOS call structure at offset 0x08 */
-    unsigned int _biosCodeSegAddr;          /* Real mode entry offset at 0x38 */
-    unsigned short _biosEntryOffset;        /* Real mode code segment at 0x3C */
-    unsigned short _biosSelector;           /* Data segment selector at 0x3E */
-    unsigned int _dataSegAddr;              /* Protected mode entry at 0x40 */
-    PnPInstallationStructure *_installCheck_p;  /* PnP structure pointer at 0x44 */
-    void *_kData;                           /* 64KB buffer at 0x48 */
-    void *_paddingBuffer;                   /* Padding buffer */
-    void *_biosDataSegBuffer;               /* BIOS data segment buffer */
+    id _argStack;                           /* PnPArgStack object */
+    unsigned char _bb[48];                  /* BIOS call structure */
+    unsigned int _biosCodeSegAddr;          /* BIOS code segment base address */
+    unsigned short _biosEntryOffset;        /* BIOS entry point offset */
+    unsigned short _biosSelector;           /* Data segment selector */
+    unsigned int _dataSegAddr;              /* BIOS data segment base address */
+    pnp_bios_install_struct *_pnpBios;      /* PnP BIOS installation structure */
+    void *_kData;                           /* 64KB buffer for PnP operations */
     unsigned short _kDataSelector;          /* Buffer selector */
-    unsigned short _pmStackSel;
-    unsigned short _pmStackOff;
     unsigned int _saveGDTBiosCode[2];       /* Saved GDT entry 16 */
     unsigned int _saveGDTBiosEntry[2];      /* Saved GDT entry 18 */
     unsigned int _saveGDTKData[2];          /* Saved GDT entry 19 */

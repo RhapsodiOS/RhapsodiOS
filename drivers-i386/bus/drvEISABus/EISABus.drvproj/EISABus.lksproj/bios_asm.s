@@ -2,9 +2,6 @@
  * bios_asm.s
  * Assembly implementations of BIOS call functions
  *
- * NOTE: __bios32PnP uses self-modifying code and
- * MUST be linked into a Read-Write-Execute (RWX) segment.
- *
  * This version is for legacy gcc 2.7-era 'as'.
  */
 
@@ -158,15 +155,10 @@ _PnPEntry:
     movl    %edx, _save_edx
 
     /*
-     * Save 32-bit kernel stack
+     * NOTE: We do NOT switch stacks here.
+     * The PnP BIOS specification states that the caller provides the stack.
+     * The BIOS will use our current kernel stack for its operations.
      */
-    movw    %ss, _save_ss
-    movl    %esp, _save_esp
-    
-    /* Load 16-bit PnP stack */
-    movw    _PnPEntry_pmStackSel, %ax
-    movw    %ax, %ss
-    movl    _PnPEntry_pmStackOff, %esp    
 
     movl    _PnPEntry_biosCodeOffset, %eax
     movl    %eax, _pnp_addr        /* Patch writable far pointer offset */
@@ -206,11 +198,8 @@ bios_rtn:
     addl    %eax, %esp             /* Pop (numArgs * 2) bytes */
 
     /*
-     * Restore 32-bit kernel stack
+     * No need to restore stack - we never switched it
      */
-    movl    _save_esp, %esp
-    movw    _save_ss, %ax
-    movw    %ax, %ss
 
     movl    _save_eax, %eax        /* Restore EAX with BIOS return value */
     lret                           /* Far return to original caller */

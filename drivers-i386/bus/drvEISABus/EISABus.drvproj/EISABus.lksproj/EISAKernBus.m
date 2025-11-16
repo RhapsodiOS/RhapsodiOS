@@ -160,7 +160,6 @@ static const char *resourceNameStrings[] = {
     [self setBusId:0];
     busId = [self busId];
     [[self class] registerBusInstance:self name:"EISA" busId:busId];
-    [self init];
 
     IOLog("ISA/EISA bus support enabled\n");
 

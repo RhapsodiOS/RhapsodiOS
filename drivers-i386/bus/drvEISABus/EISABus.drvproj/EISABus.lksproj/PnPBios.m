@@ -654,7 +654,6 @@ __asm__(
      * (BIOS data area, IVT, etc.) which would happen if we used base=0.
      */
     base = (unsigned int)_kStack;
-    IOLog("PnPBios DEBUG: Configuring GDT 20 (stack) with base=0x%08x\n", base);
     entryStack16->limitLow = 0x0FFF;        /* 4KB limit */
     entryStack16->baseLow = (unsigned short)base;
     entryStack16->baseMid = (unsigned char)(base >> 16);
@@ -663,7 +662,6 @@ __asm__(
     entryStack16->flagsLimitHigh = 0x00;    /* G=0 (byte), D/B=0 (16-bit), L=0, AVL=0 */
 
     /* Save selector values for later use */
-    _biosSelector = PNP_DATA32_SEL;
     _kDataSelector = PNP_KDATA_SEL;
 
     /*

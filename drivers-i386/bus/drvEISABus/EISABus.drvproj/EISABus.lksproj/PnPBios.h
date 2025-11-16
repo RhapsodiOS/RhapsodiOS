@@ -72,7 +72,6 @@ typedef union pnp_bios_install_struct pnp_bios_install_struct;
     unsigned char _bb[48];                  /* BIOS call structure */
     unsigned int _biosCodeSegAddr;          /* BIOS code segment base address */
     unsigned short _biosEntryOffset;        /* BIOS entry point offset */
-    unsigned short _biosSelector;           /* Data segment selector */
     unsigned int _dataSegAddr;              /* BIOS data segment base address */
     pnp_bios_install_struct *_pnpBios;      /* PnP BIOS installation structure */
     void *_kData;                           /* 64KB buffer for PnP operations */

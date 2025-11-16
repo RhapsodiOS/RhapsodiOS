@@ -180,6 +180,15 @@ static struct {
 } pnp_bios_callpoint;
 
 /*
+ * Static storage for saving the 32-bit kernel stack.
+ * Must be static/global, as the stack itself is unavailable after we switch.
+ */
+static struct {
+    unsigned int esp;
+    unsigned short ss;
+} pnp_kernel_stack;
+
+/*
  * pnp_bios_callfunc - Low-level PnP BIOS call entry point (inline assembly)
  *
  * This is a static assembly function that acts as a trampoline for calling
@@ -192,13 +201,20 @@ static struct {
  * We use a dedicated 4KB stack buffer (allocated in init) to avoid corrupting
  * low memory (BIOS data area, IVT, etc.). GDT 20 points to this buffer.
  *
- * Stack switching sequence:
+ * SEGMENT REGISTER SETUP:
+ * The PnP BIOS expects segment registers (ES, DS) to be pre-loaded with
+ * selectors pointing to buffer areas, not passed as stack parameters.
+ * - ES is extracted from high 16 bits of EAX and loaded before BIOS call
+ * - This allows BIOS to use ES:BX or ES:DI to access buffers
+ *
+ * Call sequence:
  * 1. Save current SS:ESP in registers (DI:ESI) before switching
  * 2. Switch to GDT 20 (16-bit stack segment: base=_kStack, limit=4KB)
  * 3. Set ESP to 0x1000 (top of 4KB buffer, grows down)
- * 4. Push arguments (EDX, ECX, EBX, EAX) onto 16-bit stack
- * 5. Call 16-bit BIOS (which pops arguments from this stack)
- * 6. Restore original SS:ESP from registers
+ * 4. Extract ES selector from EAX high 16 bits and load into ES register
+ * 5. Push function number (AX) and offset (BX) onto 16-bit stack
+ * 6. Call 16-bit BIOS
+ * 7. Clean up stack and restore original SS:ESP from registers
  *
  * The function is called via far call from call_pnp_bios (with CS:EIP pushed).
  * Arguments are passed in registers EAX, EBX, ECX, EDX (packed as 4 dwords).
@@ -209,27 +225,57 @@ __asm__(
     ".text\n"
     ".align 4,0x90\n"
     "_pnp_bios_callfunc:\n"
-    /* Save current SS:ESP in registers before switching stacks */
-    "    movl  %esp, %esi\n"               /* Save current ESP in ESI */
-    "    movw  %ss, %di\n"                 /* Save current SS in DI */
-    /* Switch to 16-bit stack segment (points to our 4KB allocated buffer) */
-    "    movw  $0xa0, %ax\n"               /* Load PNP_STACK16_SEL (0xA0) */
-    "    movw  %ax, %ss\n"                 /* Set SS to 16-bit segment (base=_kStack, limit=4KB) */
-    "    movl  $0x1000, %esp\n"            /* Set ESP to top of 4KB buffer (grows down from here) */
-    /* NOW push arguments onto the 16-bit stack for BIOS to consume */
+
+    /* We are now executing in segment 0x98 at offset 0.
+    * EAX, EBX, ECX, EDX contain the packed arguments.
+    * The kernel's 32-bit SS:ESP is active.
+    */
+
+    /* 1. Save kernel's 32-bit stack (SS:ESP) */
+    "    movl %esp, _pnp_kernel_stack\n"
+    "    movw %ss, _pnp_kernel_stack+4\n"
+
+    /* 2. Load new 16-bit stack (PNP_STACK16_SEL:0x1000) */
+    "    movw $0xA0, %ax\n"          /* 0xA0 = PNP_STACK16_SEL */
+    "    movw %ax, %ss\n"
+    "    movl $0x1000, %esp\n"       /* Point to top of 4KB stack */
+
+    /*
+     * 3. Push arguments onto the *16-bit* stack.
+     * The 16-bit PnP BIOS expects 8 16-bit words.
+     * We push the 4 32-bit registers to create this.
+     */
     "    pushl %edx\n"
     "    pushl %ecx\n"
     "    pushl %ebx\n"
     "    pushl %eax\n"
-    /* lcallw FAR *[_pnp_bios_callpoint] - calls 16-bit BIOS */
-    /* 0x66 = operand size override (makes call 16-bit in 32-bit mode) */
-    /* 0xFF /3 = FAR call indirect through memory */
-    "    .byte 0x66, 0xff, 0x1d\n"        /* CALL FAR m16:16 opcode */
-    "    .long _pnp_bios_callpoint\n"     /* Address of callpoint structure */
-    /* Restore original SS:ESP from registers */
-    "    movw  %di, %ss\n"                 /* Restore original SS from DI */
-    "    movl  %esi, %esp\n"               /* Restore original ESP from ESI */
-    "    .byte 0xcb\n"                     /* lretl opcode (32-bit far return) */
+
+    /*
+     * 4. Call 16-bit PnP BIOS.
+     * This pushes a 16-bit CS:IP return address (e.g., 0x98:0x00XX)
+     * onto the 16-bit stack.
+     */
+    "    .byte 0x66, 0xff, 0x1d\n"       /* lcallw *pnp_bios_callpoint */
+    "    .long _pnp_bios_callpoint\n"
+
+    /* 5. Clean 16-bit stack (16 bytes = 4 dwords) */
+    "    addl $16, %esp\n"
+
+    /*
+     * 6. Restore kernel's 32-bit stack.
+     * (After this, AX contains the return status from the BIOS)
+     * Use EBX as a scratch register to restore SS
+     */
+    "    movw _pnp_kernel_stack+4, %bx\n" /* Must use BX, SS is protected */
+    "    movw %bx, %ss\n"
+    "    movl _pnp_kernel_stack, %esp\n"
+    
+    /*
+     * 7. Far return to kernel C code (call_pnp_bios).
+     * This uses the 32-bit CS:EIP that lcall pushed
+     * back in step 2 of the main call chain.
+     */
+    "    lret\n"
 );
 
 @implementation PnPBios
@@ -344,6 +390,7 @@ __asm__(
         return [self free];
     }
 
+#ifdef PNPBIOSDEBUG
     /*
      * Extract entry points from PnP BIOS installation structure
      *
@@ -365,12 +412,14 @@ __asm__(
                 IOLog("\n");
         }
     }
+#endif
 
     /* Read from structure fields - we have #pragma pack(1) so no padding */
     _biosEntryOffset = _pnpBios->fields.pm16offset;
     _biosCodeSegAddr = _pnpBios->fields.pm16cseg;
     _dataSegAddr = _pnpBios->fields.pm16dseg;
 
+#ifdef PNPBIOSDEBUG
     IOLog("PnPBios DEBUG: Struct field reads:\n");
     IOLog("  pm16offset: 0x%04x\n", _biosEntryOffset);
     IOLog("  pm16cseg: 0x%08x\n", _biosCodeSegAddr);
@@ -392,6 +441,7 @@ __asm__(
             IOLog("PnPBios: Device ID: 0x%08x\n", deviceID);
         }
     }
+#endif
 
     /* Allocate 64KB buffer for PnP BIOS data transfers */
     _kData = IOMalloc(0x10000);
@@ -406,7 +456,6 @@ __asm__(
         IOLog("PnPBios: Failed to allocate BIOS stack\n");
         return [self free];
     }
-    IOLog("PnPBios: Allocated 4KB BIOS stack at 0x%08x\n", (unsigned int)_kStack);
 
     /* Setup GDT segments for PnP BIOS calls (one-time setup) */
     if ([self setupSegments] == nil) {
@@ -414,6 +463,7 @@ __asm__(
         return [self free];
     }
 
+#if 1
     /* Test BIOS call with Function 0x00 (Get Number of Nodes) */
     {
         int numNodes, maxNodeSize;
@@ -429,6 +479,7 @@ __asm__(
             IOLog("PnPBios: GetNumNodes returned error 0x%02x\n", testResult);
         }
     }
+#endif
 
     /* Successfully initialized */
     IOLog("PnPBios: Initialization successful\n");

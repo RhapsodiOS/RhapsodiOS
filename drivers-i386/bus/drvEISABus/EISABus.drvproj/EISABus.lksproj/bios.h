@@ -31,84 +31,10 @@
 #define _BIOS_H_
 
 /*
- * BIOS Call Data Structure
- * This structure is passed to _bios32PnP to make far calls to the PnP BIOS.
- * Total size: 48 bytes (0x30)
+ * Global variables for BIOS operations
  */
-typedef struct {
-    unsigned int reserved;          /* +0x00: Reserved */
-    unsigned int eax;                /* +0x04: EAX register (input/output) */
-    unsigned int ebx;                /* +0x08: EBX register (input/output) */
-    unsigned int ecx;                /* +0x0C: ECX register (input/output) */
-    unsigned int edx;                /* +0x10: EDX register (input/output) */
-    unsigned int edi;                /* +0x14: EDI register (input/output) */
-    unsigned int esi;                /* +0x18: ESI register (input/output) */
-    unsigned int ebp;                /* +0x1C: EBP register (output only) */
-    unsigned short far_seg;          /* +0x20: Far call segment (input) */
-    unsigned short ds_seg;           /* +0x22: DS segment (input) */
-    unsigned short es_seg;           /* +0x24: ES segment (output) */
-    unsigned short reserved2;        /* +0x26: Reserved */
-    unsigned short flags;            /* +0x28: EFLAGS (output, word only) */
-    unsigned short reserved3;        /* +0x2A: Reserved */
-    unsigned int far_offset;         /* +0x2C: Far call offset (input) */
-} BiosCallData;
-
-/*
- * Global variables used by PnP BIOS interface
- * These are set up by PnPBios setupSegments method
- */
-extern unsigned short PnPEntry_biosCodeSelector;
-extern unsigned int PnPEntry_biosCodeOffset;
-extern unsigned short *PnPEntry_argStackBase;
-extern int PnPEntry_numArgs;
-extern unsigned short kernDataSel;
-
-/*
- * Global variables - ordered to match decompiled binary memory layout
- * Starting at 0x80CC
- */
-extern unsigned short readPort;                  /* 0x80CE - PnP read port */
-extern unsigned short save_es;                   /* 0x80D0 - Temp ES storage */
-extern unsigned int save_eax;                    /* 0x80D4 - Temp EAX storage */
-extern unsigned int save_ecx;                    /* 0x80D8 - Temp ECX storage */
-extern unsigned int save_edx;                    /* 0x80DC - Saves biosCallData pointer */
-extern unsigned short save_flag;                 /* 0x80E0 - Temp EFLAGS storage */
-extern unsigned int new_eax;                     /* 0x80E4 - Input EAX value */
-extern unsigned int new_edx;                     /* 0x80E8 - Input/output EDX value */
-
-/*
- * Far pointer components for BIOS calls
- * These are defined in bios_asm.s in the .data section (writable memory)
- *
- * save_addr and save_seg form a 6-byte far pointer used by _bios32PnP
- * pnp_addr and pnp_seg form a 6-byte far pointer used by __PnPEntry
- *
- * The assembly code uses indirect far call/jump through these addresses:
- *   lcall *_save_addr  (reads 6 bytes: 4-byte offset + 2-byte segment)
- *   ljmp *_pnp_addr    (reads 6 bytes: 4-byte offset + 2-byte segment)
- */
-extern unsigned int save_addr;       /* Far call offset (4 bytes) */
-extern unsigned short save_seg;      /* Far call segment (2 bytes, immediately follows save_addr) */
-extern unsigned int pnp_addr;        /* Far jump offset (4 bytes) */
-extern unsigned short pnp_seg;       /* Far jump segment (2 bytes, immediately follows pnp_addr) */
-
-/*
- * Verbose logging flag
- * Set to non-zero to enable verbose logging of PnP BIOS operations
- */
-extern char verbose;
-
-/*
- * Call PnP BIOS with the given parameters structure
- * Returns the result code from the BIOS
- */
-int volatile call_bios(void *biosCallData);
-
-/*
- * Low-level BIOS32 PnP call
- * Performs the actual protected mode to real mode transition
- */
-void _bios32PnP(void *biosCallData);
+extern unsigned short readPort;                  /* PnP read port */
+extern char verbose;                             /* Verbose logging flag */
 
 /*
  * Clear all PnP configuration registers
@@ -117,11 +43,23 @@ void _bios32PnP(void *biosCallData);
 void clearPnPConfigRegisters(void);
 
 /*
- * Low-level PnP BIOS entry trampoline
- * Sets up and makes a far call to the PnP BIOS entry point
- * Uses regparm(3) calling convention: param_1=EAX, param_2=EDX, param_3=ECX
+ * PnP BIOS call wrapper (matches Linux kernel)
+ *
+ * Arguments are packed into registers:
+ * EAX = func | (arg1 << 16)
+ * EBX = arg2 | (arg3 << 16)
+ * ECX = arg4 | (arg5 << 16)
+ * EDX = arg6 | (arg7 << 16)
+ *
+ * We call pnp_bios_callfunc which:
+ * - Pushes the packed registers onto stack (as 4 dwords = 8 words for BIOS)
+ * - Calls BIOS via lcallw
+ * - Returns via lret back to us
  */
-void __attribute__((regparm(3))) _PnPEntry(unsigned int param_1, unsigned int param_2, unsigned int param_3);
+extern int call_pnp_bios(unsigned short func, unsigned short arg1,
+    unsigned short arg2, unsigned short arg3,
+    unsigned short arg4, unsigned short arg5,
+    unsigned short arg6, unsigned short arg7);
 
 /*
  * ISA PnP card isolation protocol

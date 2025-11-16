@@ -28,7 +28,6 @@
  */
 
 #import "PnPBios.h"
-#import "PnPArgStack.h"
 #import "bios.h"
 #import <driverkit/generalFuncs.h>
 #import <architecture/i386/table.h>
@@ -48,27 +47,83 @@
 #import <machdep/i386/pmap.h>
 
 /*
-
-call chain, which explains everything:
-[getPnPConfig, getDeviceNode, getNumNodes] ➡ __bios32PnP ➡ callf 0x98:0x00 ➡ __PnPEntry ➡ [16-bit PnP BIOS] ➡ return
-
-Objective-C Get methods: code calls call_bios(_bb). This sets up the segments and stack through PnPArgStack.
-
-call_bios: calls into the __bios32PnP assembly function. This function reads the target from the _bb struct.
-
-__bios32PnP: This function reads the target from the _bb struct. setupSegments sets this target. 
-
-The Trampoline: setupSegments also maps GDT segment 0x98 to __PnPEntry, where the BIOS code is loaded.
-
-__PnPEntry: This function is the trampoline that jumps to the BIOS code. It is the entry point for the 16-bit PnP BIOS.
-
-We then return to the __bios32PnP function, which returns to the call_bios function, which returns to the Objective-C code in the EISABus driver.
-
-*/
+ * PnP BIOS Call Chain
+ * =================================================
+ *
+ * Call flow from Objective-C to 16-bit PnP BIOS and back:
+ *
+ * 1. Objective-C methods (getPnPConfig, getDeviceNode, getNumNodes)
+ *    ↓
+ *    Call call_pnp_bios(func, arg1, arg2, ..., arg7) with individual u16 arguments
+ *
+ * 2. call_pnp_bios() [bios.c]
+ *    - Packs arguments into registers:
+ *      EAX = func | (arg1 << 16)
+ *      EBX = arg2 | (arg3 << 16)
+ *      ECX = arg4 | (arg5 << 16)
+ *      EDX = arg6 | (arg7 << 16)
+ *    - Saves all segment registers (DS, ES, FS, GS) and EFLAGS
+ *    - Executes: lcall $0x98, $0
+ *      (Far call to PNP_CS32_SEL:0, which is pnp_bios_callfunc)
+ *      This pushes CS:EIP and switches to segment 0x98
+ *    ↓
+ *
+ * 3. pnp_bios_callfunc() [PnPBios.m - inline assembly, executing in segment 0x98:0]
+ *    - Saves current SS:ESP in registers (DI:ESI) - CRITICAL for stack switch!
+ *    - Switches to 16-bit stack segment (SS=0xA0, ESP=0x1000)
+ *      GDT 20 points to our allocated 4KB buffer (_kStack)
+ *      This is required because x86 CPU may fault if CS is 16-bit but SS is 32-bit
+ *    - Pushes EDX, ECX, EBX, EAX onto 16-bit stack (creates 8 words for BIOS)
+ *    - Executes: lcallw *pnp_bios_callpoint
+ *      (Far call to segment 0x80:offset, where 0x80 = PNP_CODE16_SEL)
+ *      This is a 16-bit far call, so it only pushes 16-bit CS:IP!
+ *    ↓
+ *
+ * 4. 16-bit PnP BIOS [runs in GDT segment 16 @ pm16cseg base address]
+ *    - Pops 8 words from stack as BIOS arguments
+ *    - Executes BIOS function
+ *    - Returns AX = status code
+ *    - Does far return back to pnp_bios_callfunc
+ *      CRITICAL: Far return only pops 16-bit IP! Works because we're in
+ *      segment 0x98 where pnp_bios_callfunc appears at offset 0, so the
+ *      return address (instruction after lcallw) is < 64KB
+ *    ↓
+ *
+ * 5. pnp_bios_callfunc() [resumes after lcallw, still in segment 0x98]
+ *    - Restores original SS from DI register
+ *    - Restores original ESP from ESI register (back to kernel stack)
+ *    - Cleans up arguments (addl $16, %esp)
+ *    - Executes lretl (far return using CS:EIP pushed by lcall in step 2)
+ *    ↓
+ *
+ * 6. call_pnp_bios() [resumes after lcall, back in kernel code segment 0x08]
+ *    - Restores EFLAGS and segment registers
+ *    - Returns AX (status) to caller
+ *    ↓
+ *
+ * 7. Objective-C method receives status code
+ *
+ * GDT Configuration (set up once in setupSegments):
+ * - GDT 16 (0x80): 16-bit code segment → pm16cseg (BIOS code)
+ * - GDT 17 (0x88): 32-bit data segment → _kData (our 64KB buffer)
+ * - GDT 18 (0x90): 32-bit data segment → pm16dseg (BIOS data)
+ * - GDT 19 (0x98): 32-bit code segment → pnp_bios_callfunc (makes it appear at offset 0)
+ * - GDT 20 (0xA0): 16-bit stack segment → _kStack (4KB dedicated BIOS stack buffer)
+ *
+ * The pnp_bios_callpoint structure contains: { offset, 0x80 }
+ * where offset = pm16offset from PnP BIOS installation structure.
+ *
+ * WHY GDT 19 (PNP_CS32) IS CRITICAL:
+ * The 16-bit BIOS uses far return which only pops 16-bit IP. If pnp_bios_callfunc
+ * were at its real address (e.g., 0xc00a376), the return would truncate to 0xa376
+ * and crash. By setting GDT 19's base to pnp_bios_callfunc, that function appears
+ * at offset 0, and the instruction after lcallw is at a small offset (< 64KB),
+ * allowing the 16-bit return to work correctly.
+ */
 
 /*
  * Local GDT selector values for PnP BIOS setup.
- * These map to the GDT indices (16-19) and kernel data (2)
+ * These map to the GDT indices (16-20) and kernel data (2)
  * used by this driver.
  *
  * A selector value is (Index << 3) | RPL.
@@ -78,23 +133,25 @@ We then return to the __bios32PnP function, which returns to the call_bios funct
 #define PNP_CODE16_SEL          (16 << 3)  /* 0x80 - 16-bit PnP Code (Index 16) */
 #define PNP_KDATA_SEL           (17 << 3)  /* 0x88 - Kernel Buffer (Index 17) */
 #define PNP_DATA32_SEL          (18 << 3)  /* 0x90 - 32-bit PnP Data (Index 18) */
-#define PNP_TRAMPOLINE_SEL      (19 << 3)  /* 0x98 - PnP Trampoline (Index 19) */
+#define PNP_CS32_SEL            (19 << 3)  /* 0x98 - pnp_bios_callfunc alias (Index 19) */
+#define PNP_STACK16_SEL         (20 << 3)  /* 0xA0 - 16-bit stack segment (Index 20) */
 
 #define PNP_STACK_INITIAL_OFFSET 0xFFFC
 
 /*
 PnP BIOS Function Codes
+
 0x00 - Get Number of System Device Nodes
 0x01 - Get Device Node
 0x40 - Get Static Allocation Resource Information
 0x41 - Get Dynamic Allocation Resource Information
 0x42 - Get Resource Allocation Conflict Information
 */
-#define PNP_FC_GET_NUM_NODES 0x00
-#define PNP_FC_GET_DEVICE_NODE 0x01
-#define PNP_FC_GET_STATIC_ALLOCATION_RESOURCE_INFORMATION 0x40
-#define PNP_FC_GET_DYNAMIC_ALLOCATION_RESOURCE_INFORMATION 0x41
-#define PNP_FC_GET_RESOURCE_ALLOCATION_CONFLICT_INFORMATION 0x42
+#define PNP_FC_GET_NUM_NODES                                    0x00
+#define PNP_FC_GET_DEVICE_NODE                                  0x01
+#define PNP_FC_GET_STATIC_ALLOCATION_RESOURCE_INFORMATION       0x40
+#define PNP_FC_GET_DYNAMIC_ALLOCATION_RESOURCE_INFORMATION      0x41
+#define PNP_FC_GET_RESOURCE_ALLOCATION_CONFLICT_INFORMATION     0x42
 
 typedef struct {
     unsigned short limitLow;
@@ -105,16 +162,75 @@ typedef struct {
     unsigned char baseHigh;
 } GDTEntry;
 
-/* External globals for PnP BIOS entry */
-extern unsigned short PnPEntry_biosCodeSelector;
-extern unsigned int PnPEntry_biosCodeOffset;
+/* External globals for PnP BIOS */
 extern unsigned short kernDataSel;
-
-extern unsigned short PnPEntry_pmStackSel;
-extern unsigned int PnPEntry_pmStackOff; // Use 32-bit int for 16-bit offset
 
 /* External verbose logging flag (defined in bios.c) */
 extern char verbose;
+
+/*
+ * PnP BIOS callpoint structure (Linux-style)
+ * This 4-byte structure contains the far pointer for calling the 16-bit BIOS
+ * For 16-bit code, offset must be 16-bit, not 32-bit!
+ * Must be non-static so inline assembly can reference it.
+ */
+static struct {
+    unsigned short offset;   /* 2-byte offset (16-bit) */
+    unsigned short segment;  /* 2-byte segment selector */
+} pnp_bios_callpoint;
+
+/*
+ * pnp_bios_callfunc - Low-level PnP BIOS call entry point (inline assembly)
+ *
+ * This is a static assembly function that acts as a trampoline for calling
+ * the 16-bit PnP BIOS from 32-bit kernel code.
+ *
+ * CRITICAL STACK HANDLING (Linux-style approach):
+ * The x86 CPU requires that when executing 16-bit code (CS with D/B=0), the
+ * stack segment SS should also be 16-bit (D/B=0) to avoid compatibility issues.
+ *
+ * We use a dedicated 4KB stack buffer (allocated in init) to avoid corrupting
+ * low memory (BIOS data area, IVT, etc.). GDT 20 points to this buffer.
+ *
+ * Stack switching sequence:
+ * 1. Save current SS:ESP in registers (DI:ESI) before switching
+ * 2. Switch to GDT 20 (16-bit stack segment: base=_kStack, limit=4KB)
+ * 3. Set ESP to 0x1000 (top of 4KB buffer, grows down)
+ * 4. Push arguments (EDX, ECX, EBX, EAX) onto 16-bit stack
+ * 5. Call 16-bit BIOS (which pops arguments from this stack)
+ * 6. Restore original SS:ESP from registers
+ *
+ * The function is called via far call from call_pnp_bios (with CS:EIP pushed).
+ * Arguments are passed in registers EAX, EBX, ECX, EDX (packed as 4 dwords).
+ */
+void pnp_bios_callfunc(void);
+
+__asm__(
+    ".text\n"
+    ".align 4,0x90\n"
+    "_pnp_bios_callfunc:\n"
+    /* Save current SS:ESP in registers before switching stacks */
+    "    movl  %esp, %esi\n"               /* Save current ESP in ESI */
+    "    movw  %ss, %di\n"                 /* Save current SS in DI */
+    /* Switch to 16-bit stack segment (points to our 4KB allocated buffer) */
+    "    movw  $0xa0, %ax\n"               /* Load PNP_STACK16_SEL (0xA0) */
+    "    movw  %ax, %ss\n"                 /* Set SS to 16-bit segment (base=_kStack, limit=4KB) */
+    "    movl  $0x1000, %esp\n"            /* Set ESP to top of 4KB buffer (grows down from here) */
+    /* NOW push arguments onto the 16-bit stack for BIOS to consume */
+    "    pushl %edx\n"
+    "    pushl %ecx\n"
+    "    pushl %ebx\n"
+    "    pushl %eax\n"
+    /* lcallw FAR *[_pnp_bios_callpoint] - calls 16-bit BIOS */
+    /* 0x66 = operand size override (makes call 16-bit in 32-bit mode) */
+    /* 0xFF /3 = FAR call indirect through memory */
+    "    .byte 0x66, 0xff, 0x1d\n"        /* CALL FAR m16:16 opcode */
+    "    .long _pnp_bios_callpoint\n"     /* Address of callpoint structure */
+    /* Restore original SS:ESP from registers */
+    "    movw  %di, %ss\n"                 /* Restore original SS from DI */
+    "    movl  %esi, %esp\n"               /* Restore original ESP from ESI */
+    "    .byte 0xcb\n"                     /* lretl opcode (32-bit far return) */
+);
 
 @implementation PnPBios
 
@@ -217,8 +333,8 @@ extern char verbose;
     [super init];
 
     /* Initialize instance variables */
-    _argStack = nil;
     _kData = NULL;
+    _kStack = NULL;
     _pnpBios = NULL;
 
     /* Probe for PnP BIOS */
@@ -231,29 +347,50 @@ extern char verbose;
     /*
      * Extract entry points from PnP BIOS installation structure
      *
-     * For 16-bit BIOS calls, we need:
-     * - Real-mode code segment converted to linear address (segment << 4)
-     * - Protected-mode 16-bit entry offset
-     * - Protected-mode data segment base address
+     * Following Linux's approach, we use the protected-mode 16-bit entry point:
+     * - PM16 code segment base address (NOT real-mode segment)
+     * - PM16 entry offset
+     * - PM16 data segment base address
      */
+    /* Debug: dump the raw structure bytes */
+    {
+        unsigned char *raw = (unsigned char *)_pnpBios;
+        int i;
+        IOLog("PnPBios DEBUG: Structure bytes at 0x%08x:\n", (unsigned int)_pnpBios);
+        for (i = 0; i < 0x21; i++) {
+            if ((i % 16) == 0)
+                IOLog("  %02x: ", i);
+            IOLog("%02x ", raw[i]);
+            if ((i % 16) == 15 || i == 0x20)
+                IOLog("\n");
+        }
+    }
+
+    /* Read from structure fields - we have #pragma pack(1) so no padding */
     _biosEntryOffset = _pnpBios->fields.pm16offset;
-    _biosCodeSegAddr = (_pnpBios->fields.rmcseg << 4);  /* Convert RM segment to address */
+    _biosCodeSegAddr = _pnpBios->fields.pm16cseg;
     _dataSegAddr = _pnpBios->fields.pm16dseg;
 
-    /* Log PnP BIOS configuration */
-    IOLog("PnPBios: Version %x.%x, Control=0x%04x\n",
-          _pnpBios->fields.version >> 4,
-          _pnpBios->fields.version & 0x0F,
-          _pnpBios->fields.control);
+    IOLog("PnPBios DEBUG: Struct field reads:\n");
+    IOLog("  pm16offset: 0x%04x\n", _biosEntryOffset);
+    IOLog("  pm16cseg: 0x%08x\n", _biosCodeSegAddr);
+    IOLog("  pm16dseg: 0x%08x\n", _dataSegAddr);
 
-    IOLog("PnPBios: RM code seg=0x%04x (base 0x%08x), PM entry offset=0x%04x\n",
-          _pnpBios->fields.rmcseg, _biosCodeSegAddr, _biosEntryOffset);
+    /* Log PnP BIOS configuration - read from structure fields */
+    {
+        unsigned char version = _pnpBios->fields.version;
+        unsigned short control = _pnpBios->fields.control;
+        unsigned int deviceID = _pnpBios->fields.deviceID;
 
-    IOLog("PnPBios: PM16 code base=0x%08x, PM16 data base=0x%08x\n",
-          _pnpBios->fields.pm16cseg, _dataSegAddr);
+        IOLog("PnPBios: Version %x.%x, Control=0x%04x\n",
+              version >> 4, version & 0x0F, control);
 
-    if (_pnpBios->fields.deviceID != 0) {
-        IOLog("PnPBios: Device ID: 0x%08x\n", _pnpBios->fields.deviceID);
+        IOLog("PnPBios: PM16 entry point: CS=0x%08x:0x%04x, DS=0x%08x\n",
+              _biosCodeSegAddr, _biosEntryOffset, _dataSegAddr);
+
+        if (deviceID != 0) {
+            IOLog("PnPBios: Device ID: 0x%08x\n", deviceID);
+        }
     }
 
     /* Allocate 64KB buffer for PnP BIOS data transfers */
@@ -261,6 +398,36 @@ extern char verbose;
     if (_kData == NULL) {
         IOLog("PnPBios: Failed to allocate kernel buffer\n");
         return [self free];
+    }
+
+    /* Allocate 4KB stack for 16-bit BIOS calls (Linux-style) */
+    _kStack = IOMalloc(0x1000);
+    if (_kStack == NULL) {
+        IOLog("PnPBios: Failed to allocate BIOS stack\n");
+        return [self free];
+    }
+    IOLog("PnPBios: Allocated 4KB BIOS stack at 0x%08x\n", (unsigned int)_kStack);
+
+    /* Setup GDT segments for PnP BIOS calls (one-time setup) */
+    if ([self setupSegments] == nil) {
+        IOLog("PnPBios: Failed to setup segments\n");
+        return [self free];
+    }
+
+    /* Test BIOS call with Function 0x00 (Get Number of Nodes) */
+    {
+        int numNodes, maxNodeSize;
+        int testResult;
+
+        IOLog("PnPBios: Testing BIOS calls with GetNumNodes (func=0x00)...\n");
+        testResult = [self getNumNodes:&numNodes AndSize:&maxNodeSize];
+
+        if (testResult == 0) {
+            IOLog("PnPBios: SUCCESS! GetNumNodes returned: numNodes=%d, maxNodeSize=%d\n",
+                  numNodes, maxNodeSize);
+        } else {
+            IOLog("PnPBios: GetNumNodes returned error 0x%02x\n", testResult);
+        }
     }
 
     /* Successfully initialized */
@@ -279,10 +446,10 @@ extern char verbose;
         _kData = NULL;
     }
 
-    /* Free the argument stack object if allocated */
-    if (_argStack != nil) {
-        [_argStack free];
-        _argStack = nil;
+    /* Free allocated stack */
+    if (_kStack != NULL) {
+        IOFree(_kStack, 0x1000);
+        _kStack = NULL;
     }
 
     /* Call superclass free and return its result */
@@ -295,52 +462,31 @@ extern char verbose;
 - (int)getDeviceNode:(void **)buffer ForHandle:(int)handle
 {
     unsigned char *pnpBuf;
-    id setupOk;
     int result;
-
-    /* Setup segments for BIOS call */
-    setupOk = [self setupSegments];
-    if (!setupOk) {
-        return 0x8F;
-    }
 
     /* Get pointer to PnP buffer */
     pnpBuf = (unsigned char *)_kData;
 
-    /* Store handle in first byte of buffer */
-    *pnpBuf = (unsigned char)handle;
+    /* Set output buffer pointer */
+    *(void **)buffer = pnpBuf;
 
-    /* Reset argument stack */
-    [_argStack reset];
+    IOLog("PnPBios: Calling GetDeviceNode (handle=0x%02x)\n", handle);
 
-    /* Push arguments for PnP BIOS function 0x01 (Get Device Node) */
-    /* Arguments are pushed in reverse order */
-    [_argStack push:_biosSelector];
-    [_argStack push:PNP_FC_GET_DEVICE_NODE];  /* Function 0x01 */
-    [_argStack pushFarPtr:(pnpBuf + 2)];      /* Far pointer to node buffer */
-    [_argStack pushFarPtr:pnpBuf];            /* Far pointer to handle/control */
-    [_argStack push:PNP_FC_GET_DEVICE_NODE];  /* Get next node */
-
-    /* Set output buffer pointer to node data area (offset +2) */
-    *(void **)buffer = pnpBuf + 2;
-
-    IOLog("PnPBios DEBUG: Pushed arguments for Get Device Node\n");
-    IOLog("PnPBios DEBUG: Bios selector: 0x%x\n", _biosSelector);
-    IOLog("PnPBios DEBUG: Function: 0x%x\n", PNP_FC_GET_DEVICE_NODE);
-    IOLog("PnPBios DEBUG: Far pointer to node buffer: 0x%x\n", (pnpBuf + 2));
-    IOLog("PnPBios DEBUG: Far pointer to handle/control: 0x%x\n", pnpBuf);
-    IOLog("PnPBios DEBUG: Handle: 0x%x\n", handle);
-
-    /* Call PnP BIOS */
-    result = call_bios(_bb);
+    /* Call PnP BIOS - Function 0x01: AX=0x01, CL=node, ES:BX=buffer, DL=control */
+    result = call_pnp_bios(
+        PNP_FC_GET_DEVICE_NODE,     /* AX = function */
+        (unsigned short)handle,     /* CL = node number */
+        _kDataSelector,             /* ES = buffer segment */
+        0,                          /* BX = buffer offset */
+        1,                          /* DL = control (1 = current config) */
+        0, 0, 0                     /* Unused arguments */
+    );
 
     IOLog("PnPBios: GetDeviceNode result: 0x%x\n", result);
 
-    /* Release segments */
-    [self releaseSegments];
-
     return result;
 }
+
 
 /*
  * Get number of nodes and maximum node size
@@ -348,35 +494,22 @@ extern char verbose;
 - (int)getNumNodes:(int *)numNodes AndSize:(int *)maxNodeSize
 {
     unsigned short *pnpBuf;
-    id setupOk;
     int result;
-
-    /* Setup segments for BIOS call */
-    setupOk = [self setupSegments];
-    if (!setupOk) {
-        return 0x8F;
-    }
 
     /* Get pointer to PnP buffer (as short array) */
     pnpBuf = (unsigned short *)_kData;
 
-    /* Reset argument stack */
-    [_argStack reset];
+    IOLog("PnPBios: Calling GetNumNodes\n");
 
-    /* Push arguments for PnP BIOS function 0x00 (Get Number of System Device Nodes) */
-    [_argStack push:_biosSelector];
-    [_argStack pushFarPtr:pnpBuf];        /* Far pointer for numNodes */
-    [_argStack pushFarPtr:(pnpBuf + 1)];  /* Far pointer for maxNodeSize */
-    [_argStack push:PNP_FC_GET_NUM_NODES];  /* Function 0x00 */
-
-    IOLog("PnPBios DEBUG: Pushed arguments for Get Number of Nodes\n");
-    IOLog("PnPBios DEBUG: Bios selector: 0x%x\n", _biosSelector);
-    IOLog("PnPBios DEBUG: Function: 0x%x\n", PNP_FC_GET_NUM_NODES);
-    IOLog("PnPBios DEBUG: Far pointer for numNodes: 0x%x\n", pnpBuf);
-    IOLog("PnPBios DEBUG: Far pointer for maxNodeSize: 0x%x\n", (pnpBuf + 1));
-
-    /* Call PnP BIOS */
-    result = call_bios(_bb);
+    /* Call PnP BIOS - Function 0x00: AX=0x00, ES:BX=NumNodes, CX=2, ES:DI=MaxNodeSize */
+    result = call_pnp_bios(
+        PNP_FC_GET_NUM_NODES,   /* AX = function */
+        _kDataSelector,         /* ES = buffer segment */
+        0,                      /* BX = offset for NumNodes */
+        2,                      /* CX = size (2 bytes) */
+        2,                      /* DI = offset for MaxNodeSize */
+        0, 0, 0                 /* Unused arguments */
+    );
 
     IOLog("PnPBios: GetNumNodes result: 0x%x\n", result);
 
@@ -384,293 +517,171 @@ extern char verbose;
     *maxNodeSize = (int)*pnpBuf;
     *numNodes = (int)*((unsigned char *)(pnpBuf + 1));
 
-    /* Release segments */
-    [self releaseSegments];
-
     return result;
 }
+
 
 /*
  * Get PnP configuration
  */
 - (int)getPnPConfig:(void **)buffer
 {
-    id setupOk;
     int result;
-
-    /* Setup segments for BIOS call */
-    setupOk = [self setupSegments];
-    if (!setupOk) {
-        return 0x8F;
-    }
 
     /* Set output buffer pointer to PnP buffer */
     *(void **)buffer = _kData;
 
-    /* Reset argument stack */
-    [_argStack reset];
+    IOLog("PnPBios: Calling GetPnPConfig (func=0x40, ES=0x%02x, BX=0x%04x)\n",
+          _kDataSelector, 0);
 
-    /* Push arguments for PnP BIOS function 0x40 (Get Static Allocation Resource Information) */
-    [_argStack push:_biosSelector];
-    [_argStack pushFarPtr:_kData];
-    [_argStack push:PNP_FC_GET_STATIC_ALLOCATION_RESOURCE_INFORMATION];  /* Function 0x40 */
+    /* Call PnP BIOS - Function 0x40: AX=0x40, ES:BX=buffer */
+    result = call_pnp_bios(
+        PNP_FC_GET_STATIC_ALLOCATION_RESOURCE_INFORMATION,  /* AX = function */
+        _kDataSelector,                                      /* ES = buffer segment */
+        0,                                                   /* BX = buffer offset */
+        0, 0, 0, 0, 0                                        /* Unused arguments */
+    );
 
-    IOLog("PnPBios DEBUG: Pushed arguments for Get Static Allocation Resource Information\n");
-    IOLog("PnPBios DEBUG: Bios selector: 0x%x\n", _biosSelector);
-    IOLog("PnPBios DEBUG: Function: 0x%x\n", PNP_FC_GET_STATIC_ALLOCATION_RESOURCE_INFORMATION);
-    IOLog("PnPBios DEBUG: Far pointer for PnP buffer: 0x%x\n", _kData);
-
-    /* Call PnP BIOS */
-    result = call_bios(_bb);
-
-    /* Dump first bytes of the returned buffer for debugging */
-    {
-        unsigned char *dump = (unsigned char *)_kData;
-        unsigned int vendorRaw = (dump[0] |
-                                  (dump[1] << 8) |
-                                  (dump[2] << 16) |
-                                  (dump[3] << 24));
-        char vendorStr[5];
-        int i;
-
-        IOLog("PnPBios DEBUG: GetPnPConfig buffer[0..31]:");
-        for (i = 0; i < 32; i++) {
-            if ((i % 16) == 0)
-                IOLog("\nPnPBios DEBUG:   ");
-            IOLog("%02X ", dump[i]);
-        }
-        IOLog("\n");
-
-        vendorStr[0] = (dump[0] >= 0x20 && dump[0] <= 0x7E) ? dump[0] : '.';
-        vendorStr[1] = (dump[1] >= 0x20 && dump[1] <= 0x7E) ? dump[1] : '.';
-        vendorStr[2] = (dump[2] >= 0x20 && dump[2] <= 0x7E) ? dump[2] : '.';
-        vendorStr[3] = (dump[3] >= 0x20 && dump[3] <= 0x7E) ? dump[3] : '.';
-        vendorStr[4] = '\0';
-
-        IOLog("PnPBios DEBUG: Vendor ID raw=0x%08X (%s)\n",
-              vendorRaw, vendorStr);
-    }
-
-    IOLog("PnPBios: GetPnPConfig result: 0x%x\n", result);
-
-    /* Release segments */
-    [self releaseSegments];
+    IOLog("PnPBios: GetPnPConfig returned, result=0x%x\n", result);
 
     return result;
 }
 
+
+
 /*
- * Setup segments for PnP BIOS calls
+ * Setup segments for PnP BIOS calls (Linux-style)
  *
- * This function temporarily reprograms GDT entries 16-19 to create
- * selectors for the PnP BIOS 16-bit code, 32-bit data, the kernel
- * data buffer, and the 32-bit PM trampoline.
+ * Following Linux's approach, we set up GDT entries ONCE during initialization.
+ * These remain permanently configured - no save/restore needed.
+ *
+ * GDT Entries:
+ * - GDT 16 (PNP_CODE16_SEL=0x80): 16-bit code segment for BIOS
+ * - GDT 17 (PNP_KDATA_SEL=0x88): 32-bit data segment for kernel buffer
+ * - GDT 18 (PNP_DATA32_SEL=0x90): 32-bit data segment for BIOS data
+ * - GDT 19 (PNP_CS32_SEL=0x98): 32-bit code segment alias for pnp_bios_callfunc
  */
 - setupSegments
 {
     unsigned char *gdtBase;
     unsigned int base;
-    unsigned int bufferBase = 0;
-    unsigned int trampolineBase = 0;
-    BiosCallData *callData = (BiosCallData *)_bb;
     GDTEntry *entryPnPCode16;
     GDTEntry *entryKData;
     GDTEntry *entryPnPData32;
-    GDTEntry *entryPnPTrampoline;
-    unsigned int *entryWords;
+    GDTEntry *entryPnPCS32;
+    GDTEntry *entryStack16;
 
-    /* Get pointer to GDT as byte array for offset calculations */
+    /* Get pointer to GDT */
     gdtBase = (unsigned char *)gdt;
 
-    /* Get GDT entry pointers using their selector values as offsets */
-    entryPnPCode16 = (GDTEntry *)(gdtBase + PNP_CODE16_SEL);
-    entryKData = (GDTEntry *)(gdtBase + PNP_KDATA_SEL);
-    entryPnPData32 = (GDTEntry *)(gdtBase + PNP_DATA32_SEL);
-    entryPnPTrampoline = (GDTEntry *)(gdtBase + PNP_TRAMPOLINE_SEL);
+    /* Get GDT entry pointers */
+    entryPnPCode16 = (GDTEntry *)(gdtBase + PNP_CODE16_SEL);   /* 0x80 */
+    entryKData = (GDTEntry *)(gdtBase + PNP_KDATA_SEL);         /* 0x88 */
+    entryPnPData32 = (GDTEntry *)(gdtBase + PNP_DATA32_SEL);   /* 0x90 */
+    entryPnPCS32 = (GDTEntry *)(gdtBase + PNP_CS32_SEL);       /* 0x98 */
+    entryStack16 = (GDTEntry *)(gdtBase + PNP_STACK16_SEL);     /* 0xA0 */
 
     /*
-     * Save existing GDT entries (8 bytes each)
-     */
-    entryWords = (unsigned int *)entryPnPCode16;
-    _saveGDTBiosCode[0] = entryWords[0];
-    _saveGDTBiosCode[1] = entryWords[1];
-
-    entryWords = (unsigned int *)entryPnPData32;
-    _saveGDTBiosEntry[0] = entryWords[0];
-    _saveGDTBiosEntry[1] = entryWords[1];
-
-    entryWords = (unsigned int *)entryPnPTrampoline;
-    _saveGDTKData[0] = entryWords[0];
-    _saveGDTKData[1] = entryWords[1];
-
-    entryWords = (unsigned int *)entryKData;
-    _saveGDTBiosData[0] = entryWords[0];
-    _saveGDTBiosData[1] = entryWords[1];
-
-    /*
-     * Setup GDT 16 (PNP_CODE16_SEL) - 16-bit code segment
-     * Base: _biosCodeSegAddr, Limit: 0xFFFF
-     */
+     * Setup GDT 16 (PNP_CODE16_SEL) - 16-bit code segment for BIOS
+     * Base: _biosCodeSegAddr (pm16cseg from PnP BIOS structure)
+     * Limit: 0xFFFF (64KB), Granularity: byte, Size: 16-bit
+     */
     base = _biosCodeSegAddr;
     entryPnPCode16->limitLow = 0xFFFF;
     entryPnPCode16->baseLow = (unsigned short)base;
     entryPnPCode16->baseMid = (unsigned char)(base >> 16);
     entryPnPCode16->baseHigh = (unsigned char)(base >> 24);
-    entryPnPCode16->access = (entryPnPCode16->access & 0xE0) | 0x1A; /* type = 16-bit code */
-    entryPnPCode16->access = (entryPnPCode16->access & 0x9F);  /* DPL = ring 0 */
-    entryPnPCode16->access |= 0x80; /* P = 1 (present) */
-    entryPnPCode16->flagsLimitHigh &= 0xBF; /* D/B = 0 (16-bit) */
-    entryPnPCode16->flagsLimitHigh &= 0xF0; /* G = 0 (byte granular) */
-    entryPnPCode16->flagsLimitHigh &= 0x7F; /* AVL = 0 */
+    entryPnPCode16->access = 0x9A;          /* P=1, DPL=0, S=1, Type=1010 (Code, Execute/Read) */
+    entryPnPCode16->flagsLimitHigh = 0x00;  /* G=0 (byte), D/B=0 (16-bit), L=0, AVL=0 */
 
     /*
-     * Setup GDT 18 (PNP_DATA32_SEL) - 32-bit data segment
-     * Base: _dataSegAddr, Limit: 0xFFFF
-     */
-    base = (unsigned int)_dataSegAddr;
-    entryPnPData32->limitLow = 0xFFFF; /* 64kb limit */
+     * Setup GDT 18 (PNP_DATA32_SEL) - 32-bit data segment for BIOS data
+     * Base: _dataSegAddr (pm16dseg from PnP BIOS structure)
+     * Limit: 0xFFFF (64KB), Granularity: byte, Size: 32-bit
+     */
+    base = _dataSegAddr;
+    entryPnPData32->limitLow = 0xFFFF;
     entryPnPData32->baseLow = (unsigned short)base;
     entryPnPData32->baseMid = (unsigned char)(base >> 16);
     entryPnPData32->baseHigh = (unsigned char)(base >> 24);
-    entryPnPData32->access = (entryPnPData32->access & 0xE0) | 0x12; /* type = data, W */
-    entryPnPData32->access = (entryPnPData32->access & 0x9F); /* DPL = ring 0 */
-    entryPnPData32->access |= 0x80; /* P = 1 */
-    entryPnPData32->flagsLimitHigh |= 0x40; /* D/B = 1 (32-bit) */
-    entryPnPData32->flagsLimitHigh &= 0xF0; /* G = 0 (byte granular) */
-    entryPnPData32->flagsLimitHigh &= 0x7F; /* AVL = 0 */
-    entryPnPData32->flagsLimitHigh &= 0xBF; /* L = 0 */
-
-    /* Set _biosSelector to the 32-bit PnP data segment */
-    _biosSelector = PNP_DATA32_SEL; /* 0x90 */
+    entryPnPData32->access = 0x92;          /* P=1, DPL=0, S=1, Type=0010 (Data, Read/Write) */
+    entryPnPData32->flagsLimitHigh = 0x40;  /* G=0 (byte), D/B=1 (32-bit), L=0, AVL=0 */
 
     /*
-     * Setup GDT 19 (PNP_TRAMPOLINE_SEL) - Trampoline segment
-     * Base: (address of _PnPEntry), Limit: 0xFFFF
-     */
-    trampolineBase = (unsigned int)&_PnPEntry;
-    entryPnPTrampoline->limitLow = 0xFFFF;
-    entryPnPTrampoline->baseLow = (unsigned short)trampolineBase;
-    entryPnPTrampoline->baseMid = (unsigned char)(trampolineBase >> 16);
-    entryPnPTrampoline->baseHigh = (unsigned char)(trampolineBase >> 24);
-    entryPnPTrampoline->access = (entryPnPTrampoline->access & 0xE0) | 0x1A;
-    entryPnPTrampoline->access = (entryPnPTrampoline->access & 0x9F);
-    entryPnPTrampoline->access |= 0x80;
-    entryPnPTrampoline->flagsLimitHigh |= 0x40;
-    entryPnPTrampoline->flagsLimitHigh &= 0xF0;
-    entryPnPTrampoline->flagsLimitHigh &= 0x7F;
-
-    /*
-     * Setup GDT 17 (PNP_KDATA_SEL) - Kernel buffer segment
-     * Base: _kData, Limit: 0xFFFF
-     */
-    bufferBase = (unsigned int)_kData;
+     * Setup GDT 17 (PNP_KDATA_SEL) - 32-bit data segment for our buffer
+     * Base: _kData (our allocated 64KB buffer)
+     * Limit: 0xFFFF (64KB), Granularity: byte, Size: 32-bit
+     */
+    base = (unsigned int)_kData;
     entryKData->limitLow = 0xFFFF;
-    entryKData->baseLow = (unsigned short)bufferBase;
-    entryKData->baseMid = (unsigned char)(bufferBase >> 16);
-    entryKData->baseHigh = (unsigned char)(bufferBase >> 24);
-    entryKData->access = (entryKData->access & 0xE0) | 0x12;
-    entryKData->access = (entryKData->access & 0x9F);
-    entryKData->access |= 0x80;
-    entryKData->flagsLimitHigh |= 0x40;
-    entryKData->flagsLimitHigh &= 0xF0;
-    entryKData->flagsLimitHigh &= 0x7F;
-    entryKData->flagsLimitHigh &= 0xBF;
+    entryKData->baseLow = (unsigned short)base;
+    entryKData->baseMid = (unsigned char)(base >> 16);
+    entryKData->baseHigh = (unsigned char)(base >> 24);
+    entryKData->access = 0x92;              /* P=1, DPL=0, S=1, Type=0010 (Data, Read/Write) */
+    entryKData->flagsLimitHigh = 0x40;      /* G=0 (byte), D/B=1 (32-bit), L=0, AVL=0 */
 
-    /* Set _kDataSelector to the kernel buffer segment */
+    /*
+     * Setup GDT 19 (PNP_CS32_SEL) - 32-bit code segment alias for pnp_bios_callfunc
+     * Base: address of pnp_bios_callfunc
+     * Limit: 0xFFFF (64KB), Granularity: byte, Size: 32-bit
+     *
+     * This segment makes pnp_bios_callfunc appear at offset 0.
+     * When the 16-bit BIOS does far return after lcallw, it only pops 16-bit IP.
+     * By executing lcallw in the context of this segment (via far call from
+     * call_pnp_bios), the return address is a small offset that fits in 16 bits.
+     */
+    base = (unsigned int)pnp_bios_callfunc;
+    IOLog("PnPBios DEBUG: pnp_bios_callfunc address = 0x%08x\n", base);
+    entryPnPCS32->limitLow = 0xFFFF;
+    entryPnPCS32->baseLow = (unsigned short)base;
+    entryPnPCS32->baseMid = (unsigned char)(base >> 16);
+    entryPnPCS32->baseHigh = (unsigned char)(base >> 24);
+    entryPnPCS32->access = 0x9A;            /* P=1, DPL=0, S=1, Type=1010 (Code, Execute/Read) */
+    entryPnPCS32->flagsLimitHigh = 0x40;    /* G=0 (byte), D/B=1 (32-bit), L=0, AVL=0 */
+    IOLog("PnPBios DEBUG: GDT 19 configured: base=0x%02x%02x%02x%02x\n",
+          entryPnPCS32->baseHigh, entryPnPCS32->baseMid,
+          (entryPnPCS32->baseLow >> 8) & 0xFF, entryPnPCS32->baseLow & 0xFF);
+
+    /*
+     * Setup GDT 20 (PNP_STACK16_SEL) - 16-bit stack segment (Linux-style)
+     * Base: _kStack (our allocated 4KB buffer)
+     * Limit: 0x0FFF (4KB), Granularity: byte, Size: 16-bit
+     *
+     * CRITICAL: When calling 16-bit BIOS code, SS must point to a 16-bit segment.
+     * The CPU will fault if CS is 16-bit but SS is 32-bit.
+     *
+     * We allocate a dedicated 4KB stack buffer to avoid corrupting low memory
+     * (BIOS data area, IVT, etc.) which would happen if we used base=0.
+     */
+    base = (unsigned int)_kStack;
+    IOLog("PnPBios DEBUG: Configuring GDT 20 (stack) with base=0x%08x\n", base);
+    entryStack16->limitLow = 0x0FFF;        /* 4KB limit */
+    entryStack16->baseLow = (unsigned short)base;
+    entryStack16->baseMid = (unsigned char)(base >> 16);
+    entryStack16->baseHigh = (unsigned char)(base >> 24);
+    entryStack16->access = 0x92;            /* P=1, DPL=0, S=1, Type=0010 (Data, Read/Write) */
+    entryStack16->flagsLimitHigh = 0x00;    /* G=0 (byte), D/B=0 (16-bit), L=0, AVL=0 */
+
+    /* Save selector values for later use */
+    _biosSelector = PNP_DATA32_SEL;
     _kDataSelector = PNP_KDATA_SEL;
 
-    /* Clear the bios call data struct */
-    bzero(callData, sizeof(BiosCallData));
-
-    /* Set the far call target to the PnP PM Trampoline */
-    callData->far_seg    = PNP_TRAMPOLINE_SEL;
-    callData->far_offset = 0;
-
     /*
-     * Set DS/ES for the 16-bit call to the same selector we use when
-     * building far pointers (points at _kData).
+     * Initialize PnP BIOS callpoint structure (Linux-style)
+     * This 4-byte structure contains the segment:offset for the far call
+     * Offset is 16-bit because PnP BIOS is 16-bit code!
      */
-    callData->ds_seg = _kDataSelector;
-    callData->es_seg = _kDataSelector;
+    pnp_bios_callpoint.offset = _biosEntryOffset;
+    pnp_bios_callpoint.segment = PNP_CODE16_SEL;
 
-    /* Set global PnP entry point variables (used by the trampoline) */
-    PnPEntry_biosCodeSelector = PNP_CODE16_SEL;
-    PnPEntry_biosCodeOffset = (unsigned int)_biosEntryOffset;
-    kernDataSel = PNP_KDS_SEL;
-
-    /*
-     * Use our scratch selector for the stack. We start near the top of the
-     * buffer so arguments can grow downward without hitting data.
-     */
-    PnPEntry_pmStackSel = _kDataSelector;
-    PnPEntry_pmStackOff = PNP_STACK_INITIAL_OFFSET;
-
-    IOLog("PnPBios DEBUG: Setup segments start\n");
-
-    IOLog("PnPBios DEBUG: PnP 16-bit stack selector: 0x%x\n", PnPEntry_pmStackSel);
-    IOLog("PnPBios DEBUG: PnP 16-bit stack offset: 0x%x\n", PnPEntry_pmStackOff);
-    IOLog("PnPBios DEBUG: PnP 16-bit code selector: 0x%x\n", PnPEntry_biosCodeSelector);
-    IOLog("PnPBios DEBUG: PnP 16-bit code offset: 0x%x\n", PnPEntry_biosCodeOffset);
-    IOLog("PnPBios DEBUG: kData selector: 0x%x\n", _kDataSelector);
-    IOLog("PnPBios DEBUG: Kernel data selector: 0x%x\n", kernDataSel);
-
-    IOLog("PnPBios DEBUG: Setup segments end\n");
-
-    /* Create PnPArgStack if not already created */
-    if (_argStack == nil) {
-        _argStack = [[PnPArgStack alloc] initWithData:_kData Selector:_kDataSelector];
-        if (_argStack == nil) {
-            IOLog("PnPBios: PnPArgStack init failed\n");
-            return nil;
-        }
-    }
-
-    return self;
-}
-
-/*
- * Release segments after PnP BIOS calls
- * Restores saved GDT entries
- */
-- releaseSegments
-{
-    unsigned char *gdtBase;
-    GDTEntry *entryPnPCode16;
-    GDTEntry *entryKData;
-    GDTEntry *entryPnPData32;
-    GDTEntry *entryPnPTrampoline;
-    unsigned int *entryWords;
-
-    /* Get pointer to GDT as byte array for offset calculations */
-    gdtBase = (unsigned char *)gdt;
-
-    /* Get GDT entry pointers using their selector values as offsets */
-    entryPnPCode16 = (GDTEntry *)(gdtBase + PNP_CODE16_SEL);      /* 0x80 - PnP 16-bit Code */
-    entryKData = (GDTEntry *)(gdtBase + PNP_KDATA_SEL);           /* 0x88 - Kernel Buffer */
-    entryPnPData32 = (GDTEntry *)(gdtBase + PNP_DATA32_SEL);      /* 0x90 - 32-bit PnP Data */
-    entryPnPTrampoline = (GDTEntry *)(gdtBase + PNP_TRAMPOLINE_SEL);  /* 0x98 - PnP Trampoline */
-
-    /* Restore selector PNP_CODE16_SEL (PnP 16-bit Code) */
-    entryWords = (unsigned int *)entryPnPCode16;
-    entryWords[0] = _saveGDTBiosCode[0];
-    entryWords[1] = _saveGDTBiosCode[1];
-
-    /* Restore selector PNP_DATA32_SEL (PnP 32-bit Data) */
-    entryWords = (unsigned int *)entryPnPData32;
-    entryWords[0] = _saveGDTBiosEntry[0];
-    entryWords[1] = _saveGDTBiosEntry[1];
-
-    /* Restore selector PNP_TRAMPOLINE_SEL (PnP Trampoline) */
-    entryWords = (unsigned int *)entryPnPTrampoline;
-    entryWords[0] = _saveGDTKData[0];
-    entryWords[1] = _saveGDTKData[1];
-
-    /* Restore selector PNP_KDATA_SEL (Kernel Buffer) */
-    entryWords = (unsigned int *)entryKData;
-    entryWords[0] = _saveGDTBiosData[0];
-    entryWords[1] = _saveGDTBiosData[1];
-
-    IOLog("PnPBios: releaseSegments end\n");
+    IOLog("PnPBios: GDT segments configured\n");
+    IOLog("PnPBios: Code seg=0x%02x @ 0x%08x, Data seg=0x%02x @ 0x%08x\n",
+          PNP_CODE16_SEL, _biosCodeSegAddr, PNP_DATA32_SEL, _dataSegAddr);
+    IOLog("PnPBios: PNP_CS32 seg=0x%02x @ 0x%08x (pnp_bios_callfunc)\n",
+          PNP_CS32_SEL, base);
+    IOLog("PnPBios: Callpoint = %04x:%04x (struct @ 0x%08x)\n",
+          pnp_bios_callpoint.segment, pnp_bios_callpoint.offset,
+          (unsigned int)&pnp_bios_callpoint);
 
     return self;
 }

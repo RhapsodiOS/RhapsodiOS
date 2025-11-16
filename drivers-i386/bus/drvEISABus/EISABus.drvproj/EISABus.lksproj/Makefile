@@ -13,13 +13,13 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = EISAKernBus.m EISAKernBus+PlugAndPlay.m EISAKernBus+PlugAndPlayPrivate.m EISAKernBusDMAChannel.m EISAKernBusInterrupt.m EISAKernBusPortRange.m EISAResourceDriver.m PnPArgStack.m PnPBios.m PnPDependentResources.m PnPDeviceResources.m pnpDMA.m pnpIOPort.m pnpIRQ.m PnPLogicalDevice.m pnpMemory.m PnPResource.m PnPResources.m
+CLASSES = EISAKernBus.m EISAKernBus+PlugAndPlay.m EISAKernBus+PlugAndPlayPrivate.m EISAKernBusDMAChannel.m EISAKernBusInterrupt.m EISAKernBusPortRange.m EISAResourceDriver.m PnPBios.m PnPDependentResources.m PnPDeviceResources.m pnpDMA.m pnpIOPort.m pnpIRQ.m PnPLogicalDevice.m pnpMemory.m PnPResource.m PnPResources.m
 
 CFILES = bios.c eisa.c
 
-HFILES = bios.h eisa.h EISAKernBus.h EISAKernBus+PlugAndPlay.h EISAKernBus+PlugAndPlayPrivate.h EISAKernBusDMAChannel.h EISAKernBusInterrupt.h EISAKernBusPortRange.h EISAResourceDriver.h PnPArgStack.h PnPBios.h PnPDependentResources.h PnPDeviceResources.h pnpDMA.h pnpIOPort.h pnpIRQ.h PnPLogicalDevice.h pnpMemory.h PnPResource.h PnPResources.h
+HFILES = bios.h eisa.h EISAKernBus.h EISAKernBus+PlugAndPlay.h EISAKernBus+PlugAndPlayPrivate.h EISAKernBusDMAChannel.h EISAKernBusInterrupt.h EISAKernBusPortRange.h EISAResourceDriver.h PnPBios.h PnPDependentResources.h PnPDeviceResources.h pnpDMA.h pnpIOPort.h pnpIRQ.h PnPLogicalDevice.h pnpMemory.h PnPResource.h PnPResources.h
 
-OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble bios_asm.s
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

@@ -34,60 +34,61 @@
 extern unsigned short pnpReadPort;
 
 /*
- * Global variables - ordered to match decompiled binary memory layout
- * Starting at 0x80CC
+ * Global variables for BIOS operations
  */
-
-/* 0x80CC */ char verbose = 0;                              /* Verbose logging flag */
-/* 0x80CE */ unsigned short readPort = 0;                   /* PnP read port */
-/* 0x80D0 */ unsigned short save_es = 0;                    /* Temp ES storage */
-/* 0x80D4 */ unsigned int save_eax = 0;                     /* Temp EAX storage */
-/* 0x80D8 */ unsigned int save_ecx = 0;                     /* Temp ECX storage */
-/* 0x80DC */ unsigned int save_edx = 0;                     /* Saves biosCallData pointer */
-/* 0x80E0 */ unsigned short save_flag = 0;                  /* Temp EFLAGS storage */
-/* 0x80E4 */ unsigned int new_eax = 0;                      /* Input EAX value */
-/* 0x80E8 */ unsigned int new_edx = 0;                      /* Input/output EDX value */
-/* 0x80EC */ unsigned short *PnPEntry_argStackBase = NULL;  /* Argument stack base */
-/* 0x80F0 */ int PnPEntry_numArgs = 0;                      /* Number of arguments */
-/* 0x80F4 */ unsigned int PnPEntry_biosCodeOffset = 0;      /* BIOS code offset */
-/* 0x80F8 */ unsigned short PnPEntry_biosCodeSelector = 0;  /* BIOS code selector */
-/* 0x80FC */ unsigned short kernDataSel = 0x10;             /* Kernel data selector */
-
-/* Far pointer structures defined in bios_asm.s (.data section) */
-/* save_addr, save_seg, pnp_addr, pnp_seg are in writable memory */
-/* Used by indirect far call/jump instructions */
-/* Declarations are in bios.h */
+char verbose = 0;                      /* Verbose logging flag */
+unsigned short readPort = 0;           /* PnP read port */
 
 /*
- * Call PnP BIOS with the given parameters structure
+ * PnP BIOS call wrapper (matches Linux kernel)
+ *
+ * Arguments are packed into registers:
+ * EAX = func | (arg1 << 16)
+ * EBX = arg2 | (arg3 << 16)
+ * ECX = arg4 | (arg5 << 16)
+ * EDX = arg6 | (arg7 << 16)
+ *
+ * We make a far call to pnp_bios_callfunc via PNP_CS32_SEL segment.
+ * This makes pnp_bios_callfunc appear at offset 0, so when the 16-bit
+ * BIOS does far return (which only pops 16-bit IP), the return address
+ * fits in 16 bits.
  */
-int volatile call_bios(void *biosCallData)
+int call_pnp_bios(unsigned short func, unsigned short arg1,
+                                unsigned short arg2, unsigned short arg3,
+                                unsigned short arg4, unsigned short arg5,
+                                unsigned short arg6, unsigned short arg7)
 {
-    int result;
+    unsigned short status;
 
-    /* Optional verbose logging */
-    if (verbose == 1) {
-        IOLog("PnPBios: calling BIOS\n");
-    }
+    __asm__ __volatile__(
+        "pushl  %%ebp\n\t"
+        "pushl  %%edi\n\t"
+        "pushl  %%esi\n\t"
+        "pushl  %%ds\n\t"
+        "pushl  %%es\n\t"
+        "pushl  %%fs\n\t"
+        "pushl  %%gs\n\t"
+        "pushfl\n\t"
+        /* Far call to pnp_bios_callfunc via PNP_CS32_SEL (0x98) */
+        /* This makes the function appear at offset 0 in that segment */
+        "lcall  $0x98, $0\n\t"   /* Far call to PNP_CS32_SEL:0 */
+        "popfl\n\t"
+        "popl   %%gs\n\t"
+        "popl   %%fs\n\t"
+        "popl   %%es\n\t"
+        "popl   %%ds\n\t"
+        "popl   %%esi\n\t"
+        "popl   %%edi\n\t"
+        "popl   %%ebp\n\t"
+        : "=a" (status)
+        : "0" ((func) | (((unsigned int)arg1) << 16)),
+          "b" ((arg2) | (((unsigned int)arg3) << 16)),
+          "c" ((arg4) | (((unsigned int)arg5) << 16)),
+          "d" ((arg6) | (((unsigned int)arg7) << 16))
+        : "memory"
+    );
 
-    IOLog("PnPBios DEBUG: Calling 16-bit BIOS at 0x%X:%0xX\n",
-              ((BiosCallData *)biosCallData)->far_seg,
-              ((BiosCallData *)biosCallData)->far_offset);
-
-    /* Call low-level BIOS interface */
-    _bios32PnP(biosCallData);
-
-    /* Get the result from the eax register */
-    result = ((BiosCallData *)biosCallData)->eax;
-
-    IOLog("PnPBios DEBUG: BIOS returned 0x%x\n", result);
-
-    /* Optional verbose logging of result */
-    if (verbose == 1) {
-        IOLog("PnPBios: BIOS returned 0x%x\n", result);
-    }
-
-    return result;
+    return status;
 }
 
 /*

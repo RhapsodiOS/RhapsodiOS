@@ -69,9 +69,10 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
         "pushl  %%fs\n\t"
         "pushl  %%gs\n\t"
         "pushfl\n\t"
+
         /* Far call to pnp_bios_callfunc via PNP_CS32_SEL (0x98) */
-        /* This makes the function appear at offset 0 in that segment */
         "lcall  $0x98, $0\n\t"   /* Far call to PNP_CS32_SEL:0 */
+        
         "popfl\n\t"
         "popl   %%gs\n\t"
         "popl   %%fs\n\t"
@@ -80,12 +81,12 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
         "popl   %%esi\n\t"
         "popl   %%edi\n\t"
         "popl   %%ebp\n\t"
-        : "=a" (status)
-        : "0" ((func) | (((unsigned int)arg1) << 16)),
-          "b" ((arg2) | (((unsigned int)arg3) << 16)),
-          "c" ((arg4) | (((unsigned int)arg5) << 16)),
-          "d" ((arg6) | (((unsigned int)arg7) << 16))
-        : "memory"
+        : "=a" (status) /* output: status in AX */
+        : "0" ((func) | (((unsigned int)arg1) << 16)), /* input 0: EAX */
+          "b" ((arg2) | (((unsigned int)arg3) << 16)), /* input 1: EBX */
+          "c" ((arg4) | (((unsigned int)arg5) << 16)), /* input 2: ECX */
+          "d" ((arg6) | (((unsigned int)arg7) << 16))  /* input 3: EDX */
+        : "memory" /* clobber memory */
     );
 
     return status;

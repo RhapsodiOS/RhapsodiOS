@@ -41,6 +41,7 @@
 #import "pnpDMA.h"
 #import "bios.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 #import <driverkit/KernDeviceDescription.h>
 #import <driverkit/IODeviceDescription.h>
 #import <libkern/libkern.h>
@@ -137,17 +138,17 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
 
     /* ISA PnP Initiation Sequence */
     /* Send two consecutive writes of 0x00 to address port */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
+    outb(0x279, 0);
+    outb(0x279, 0);
 
     /* Send Initiation Key (32 writes using LFSR sequence) */
     /* Start with seed value 0x6a */
     lfsr = 0x6a;
     for (j = 0; j < 0x20; j++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        outb(0x279, lfsr);
 
         /* LFSR computation: next = (current >> 1) | ((current ^ (current & 2) >> 1) << 7) */
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
@@ -157,8 +158,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     csn = [device csn];
 
     /* Wake card with CSN (register 0x03) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"(csn), "d"(0xa79));
+    outb(0x279, 3);
+    outb(0xa79, csn);
 
     /* Get device list count */
     deviceList = [device deviceList];
@@ -167,20 +168,20 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* Deactivate each logical device */
     for (i = 0; i < deviceCount; i++) {
         /* Select logical device number (register 0x07) */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)7), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)i), "d"(0xa79));
+        outb(0x279, 7);
+        outb(0xa79, i);
 
         /* Deactivate device (register 0x30, write 0) */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0x30), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
+        outb(0x279, 0x30);
+        outb(0xa79, 0);
 
         /* Clear all PnP configuration registers for this device */
         clearPnPConfigRegisters();
     }
 
     /* Wait for Key (register 0x02, value 0x02) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 }
 
 /*
@@ -192,20 +193,20 @@ static void sendPnPInitiationKey(void)
     int i;
 
     /* Reset sequence */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)4), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 4);
 
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Two writes of 0x00 to address port */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
+    outb(0x279, 0);
+    outb(0x279, 0);
 
     /* Send 32-byte initiation key using LFSR */
     lfsr = 0x6a;
     for (i = 0; i < 0x20; i++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        outb(0x279, lfsr);
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
     }
 }
@@ -219,19 +220,19 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     BOOL result;
 
     /* Set config control (register 0x02 = 0x01) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)1), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 1);
 
     /* Sleep 5ms */
     IOSleep(5);
 
     /* Wake CSN 0 (all cards) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
+    outb(0x279, 3);
+    outb(0xa79, 0);
 
     /* Set read port address (register 0x00, write port>>2) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(readPort >> 2)), "d"(0xa79));
+    outb(0x279, 0);
+    outb(0xa79, (unsigned char)(readPort >> 2));
 
     /* Isolate cards starting from CSN 1 */
     cardNum = 1;
@@ -267,11 +268,11 @@ static int isolateCardsWithReadPort(unsigned short readPort)
 
     /* Try to get PnP read port from config table */
     configPort = configTableLookupServerAttribute("EISABus", "PnP Read Port");
-
     if (configPort == NULL) {
         /* No config attribute - auto-scan for read port */
-        /* Try read ports from 0x203 to 0x277 in steps of 4 */
-        readPort = 0x203;
+        /* Try read ports from 0x20B to 0x277 in steps of 4 */
+        /* Note: 0x203 is what the PnP Spec says to start with, but things like a standard joystick occupy the lower port addresses. */
+        readPort = 0x20B;
 
         do {
             /* Send PnP initiation sequence */
@@ -291,8 +292,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             /* Try next read port */
             readPort += 4;
         } while (readPort < 0x278);
-    }
-    else {
+    } else {
         /* Use specified read port from config */
         readPort = (unsigned short)strtol(configPort, NULL, 0);
         pnpReadPort = readPort;
@@ -316,8 +316,8 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     }
 
     /* Send Wait for Key to complete */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Return YES if we found any cards */
     return (maxPnPCard != 0);
@@ -413,10 +413,13 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             IOLog("PnP: getPnPConfig returned 0x%x '%s'\n", biosResult, errorStr);
             [pnpBios free];
             pnpBios = nil;
-            return NO;
+
+            /* Fall back to manual enumeration (which does its own setup and returns) */
+            result = [self initializeNoBIOS];
+            return result;
         }
 
-        /* Extract configuration from result */
+        /* BIOS call succeeded - extract configuration from result */
         maxPnPCard = *((unsigned char *)configData + 1);
         pnpReadPort = *((unsigned short *)configData + 1);
 
@@ -448,7 +451,6 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         /* Get card configuration */
         bufferSize = 0x800;
         result = getCardConfig(csn, configBuffer, &bufferSize);
-
         if (result == NO) {
             IOLog("PnP: couldn't get card configuration for card %d\n", csn);
             continue;
@@ -912,8 +914,8 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
               cardDeviceName ? cardDeviceName : "", deviceName);
 
         /* Send Wait for Key */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+        outb(0x279, 2);
+        outb(0xa79, 2);
 
         [resources free];
         return nil;
@@ -922,17 +924,17 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     /* ===== ISA PnP Programming Sequence ===== */
 
     /* Reset and Wait for Key */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Two writes of 0x00 to address port */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
+    outb(0x279, 0);
+    outb(0x279, 0);
 
     /* Send 32-byte initiation key using LFSR */
     lfsr = 0x6a;
     for (i = 0; i < 0x20; i++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        outb(0x279, lfsr);
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
     }
 
@@ -940,16 +942,16 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     csn = [card csn];
 
     /* Wake card (register 0x03) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"(csn), "d"(0xa79));
+    outb(0x279, 3);
+    outb(0xa79, csn);
 
     /* Select logical device (register 0x07) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)7), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)logicalDevice), "d"(0xa79));
+    outb(0x279, 7);
+    outb(0xa79, logicalDevice);
 
     /* Deactivate device (register 0x30 = 0) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0x30), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
+    outb(0x279, 0x30);
+    outb(0xa79, 0);
 
     /* Clear all PnP configuration registers */
     clearPnPConfigRegisters();
@@ -958,16 +960,16 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     [[logicalDeviceObj resources] configure:resources Using:depFunction];
 
     /* Set device control register (register 0x31 = 0) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0x31), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
+    outb(0x279, 0x31);
+    outb(0xa79, 0);
 
     /* Activate device (register 0x30 = 1) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0x30), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)1), "d"(0xa79));
+    outb(0x279, 0x30);
+    outb(0xa79, 1);
 
     /* Send Wait for Key */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Free resources object */
     [resources free];
@@ -996,47 +998,49 @@ BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
 
     /* Send PnP initiation sequence */
     /* Reset and Wait for Key */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Two writes of 0x00 to address port */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
+    outb(0x279, 0);
+    outb(0x279, 0);
 
     /* Send 32-byte initiation key using LFSR */
     lfsr = 0x6a;
     for (i = 0; i < 0x20; i++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        outb(0x279, lfsr);
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
     }
 
     /* Wake card with CSN (register 0x03) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)csn), "d"(0xa79));
+    outb(0x279, 3);
+    outb(0xa79, csn);
 
     /* Read resource data starting at register 0x04 */
     /* Resource data format: tags followed by data bytes */
     /* Read until we hit End tag (0x79) or buffer full */
     for (bytesRead = 0; bytesRead < *length; bytesRead++) {
         /* Select resource data register (0x04 + offset) */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(0x04 + bytesRead)), "d"(0x279));
+        outb(0x279, (unsigned char)(0x04 + bytesRead));
 
         /* Read value from PnP read port */
-        __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+        regValue = inb(pnpReadPort);
 
         /* Store in buffer */
         bufPtr[bytesRead] = regValue;
 
-        /* Check for End tag (small item tag 0x78-0x79) */
-        if (bytesRead == 0 && (regValue == 0x79 || regValue == 0x78)) {
-            bytesRead = 1;
+        /*
+        * Check for the PnP End Tag (0x79). If we see it, stop reading.
+        */
+        if (regValue == 0x79) {
+            bytesRead++; // Include the end tag in the count
             break;
         }
     }
 
     /* Send Wait for Key */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Update length with actual bytes read */
     *length = bytesRead;
@@ -1073,28 +1077,28 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* === PnP Initialization Sequence === */
 
     /* Send initiation key sequence */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     /* Two writes of 0x00 to address port (reset) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0x279));
+    outb(0x279, 0);
+    outb(0x279, 0);
 
     /* Send 32-byte LFSR initiation key */
     lfsr = 0x6a;
     for (i = 0; i < 0x20; i++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(lfsr), "d"(0x279));
+        outb(0x279, lfsr);
         /* Calculate next LFSR value */
         lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
     }
 
     /* Wake card with CSN (register 0x03) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)3), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)csn), "d"(0xa79));
+    outb(0x279, 3);
+    outb(0xa79, csn);
 
     /* Select logical device (register 0x07) */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)7), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)logicalDevice), "d"(0xa79));
+    outb(0x279, 7);
+    outb(0xa79, logicalDevice);
 
     /* Update size to actual bytes read */
     *size = 0x4e;
@@ -1106,8 +1110,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x40;
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 5; j++) {
-            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
-            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            outb(0x279, (unsigned char)(regBase + j));
+            regValue = inb(pnpReadPort);
             bufPtr[i * 5 + j] = regValue;
         }
         regBase += 8;  /* Next I/O range (0x40, 0x48, 0x50, 0x58) */
@@ -1128,8 +1132,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
         }
 
         for (j = 0; j < 9; j++) {
-            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
-            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            outb(0x279, (unsigned char)(regBase + j));
+            regValue = inb(pnpReadPort);
             bufPtr[0x14 + i * 9 + j] = regValue;
         }
     }
@@ -1139,8 +1143,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x60;
     for (i = 0; i < 8; i++) {
         for (j = 0; j < 2; j++) {
-            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
-            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            outb(0x279, (unsigned char)(regBase + j));
+            regValue = inb(pnpReadPort);
             bufPtr[0x38 + i * 2 + j] = regValue;
         }
         regBase += 2;
@@ -1151,8 +1155,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x70;
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 2; j++) {
-            __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + j)), "d"(0x279));
-            __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+            outb(0x279, (unsigned char)(regBase + j));
+            regValue = inb(pnpReadPort);
             bufPtr[0x48 + i * 2 + j] = regValue;
         }
         regBase += 2;
@@ -1162,8 +1166,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* 2 DMA channels × 1 byte each = 2 bytes at buffer offset 0x4c (76) */
     regBase = 0x74;
     for (i = 0; i < 2; i++) {
-        __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
-        __asm__ volatile("inb %w1,%b0" : "=a"(regValue) : "d"(pnpReadPort));
+        outb(0x279, regBase);
+        regValue = inb(pnpReadPort);
         bufPtr[0x4c + i] = regValue;
         regBase++;
     }
@@ -1175,8 +1179,8 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     }
 
     /* === Return to "Wait for Key" state === */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)2), "d"(0xa79));
+    outb(0x279, 2);
+    outb(0xa79, 2);
 
     return YES;
 }

@@ -87,7 +87,6 @@ options		GDB		# GNU kernel debugger		# <gdb>
 options		DEBUG		# general debugging code	# <debug>
 options		SHOW_SPACE	# print size of structures	# <debug>
 options		EVENTMETER	# event meter support		# <debug>
-options		FP_EMUL		# floating point emulation	# <fp>
 options		PC_SUPPORT	# virtual PC support		# <pc>
 options		UXPR		# user-level XPR package	# <uxpr>
 config		mach_kernel	swap generic			# <mach>

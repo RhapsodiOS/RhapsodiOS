@@ -43,12 +43,6 @@
 #import <machdep/i386/fp_exported.h>
 #import <machdep/i386/configure.h>
 
-#import <fp_emul.h>
-#if	FP_EMUL
-#import <machdep/i386/table_inline.h>
-#import <machdep/i386/desc_inline.h>
-#endif
-
 #import <pc_support.h>
 #if	PC_SUPPORT
 #import <machdep/i386/pc_support/PCprivate.h>
@@ -117,9 +111,6 @@ fp_configure(void)
 	_cr0.em = 1;	// cause floating point instructions to trap INT7
 	_cr0.mp = 0;	// cause WAIT instructions to trap INT7
 	set_cr0(_cr0);
-#if	FP_EMUL
-    	cpu_config.fpu_type = FPU_EMUL;
-#endif
     }
     else {
     	_cr0.ne = 1; // cause unmasked floating point exceptions to trap INT16
@@ -154,17 +145,6 @@ fp_noextension(
      * if necessary.
      */
     fp_switch();
-
-#if	FP_EMUL
-    if (cpu_config.fpu_type ==  FPU_EMUL) {
-	/*
-	 * If we are using the
-	 * kernel floating point
-	 * emulator, call it.
-	 */
-	e80387(state);
-    }
-#endif
 }
 
 /*
@@ -351,15 +331,6 @@ fp_restore(void)
 		    frstor(&shared->fpuState);	// clears TS flag
 	    }
 
-#if	FP_EMUL
-	    if (cpu_config.fpu_type == FPU_EMUL)
-		map_data(sel_to_gdt_entry(FPSTATE_SEL),
-			    (vm_offset_t) &shared->fpuState
-				+ KERNEL_LINEAR_BASE,
-			    (vm_size_t) sizeof (shared->fpuState),
-					    KERN_PRIV, FALSE);
-#endif
-
 	    shared->fpuOwned = TRUE;
 	}
 	else {
@@ -382,15 +353,6 @@ restore_thread:
 	    if (cpu_config.fpu_type == FPU_HDW)
 		frstor(&thread->pcb->fpstate);	// clears TS flag
 	}
-
-#if	FP_EMUL
-	if (cpu_config.fpu_type == FPU_EMUL)
-	    map_data(sel_to_gdt_entry(FPSTATE_SEL),
-			(vm_offset_t) &thread->pcb->fpstate
-			    + KERNEL_LINEAR_BASE,
-			(vm_size_t) sizeof (thread->pcb->fpstate),
-					KERN_PRIV, FALSE);
-#endif
 #if	PC_SUPPORT
     }
 #endif
@@ -435,15 +397,6 @@ fp_switch(void)
 			    frstor(&shared->fpuState);	// clears TS flag
 		    }
 
-#if	FP_EMUL
-		    if (cpu_config.fpu_type == FPU_EMUL)
-			map_data(sel_to_gdt_entry(FPSTATE_SEL),
-				    (vm_offset_t) &shared->fpuState
-					+ KERNEL_LINEAR_BASE,
-				    (vm_size_t) sizeof (shared->fpuState),
-						    KERN_PRIV, FALSE);
-#endif
-
 		    shared->fpuOwned = TRUE;
 		}
 	    }
@@ -466,16 +419,6 @@ fp_switch(void)
 			if (cpu_config.fpu_type == FPU_HDW)
 			    frstor(&thread->pcb->fpstate);// clears TS flag
 		    }
-
-#if	FP_EMUL
-		    if (cpu_config.fpu_type == FPU_EMUL)
-			map_data(sel_to_gdt_entry(FPSTATE_SEL),
-				    (vm_offset_t) &thread->pcb->fpstate
-					+ KERNEL_LINEAR_BASE,
-				    (vm_size_t)
-					sizeof (thread->pcb->fpstate),
-						    KERN_PRIV, FALSE);
-#endif
 
 		    shared->fpuOwned = FALSE;
 		}

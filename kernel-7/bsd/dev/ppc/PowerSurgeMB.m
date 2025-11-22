@@ -38,6 +38,8 @@
 #import <bsd/dev/ppc/drvPMU/pmu.h>
 #import <bsd/dev/ppc/drvPMU/pmupriv.h>
 #import <bsd/dev/ppc/drvPMU/pmumisc.h>
+#include <sys/systm.h>     /* For bcopy() */
+#include <string.h>        /* For bcmp() */
 
 
 // seconds between 1904 (Mac) & 1970 (UNIX) - many.
@@ -49,6 +51,8 @@
 
 void MBCallback(id unused, UInt32 refnum, UInt32 length, UInt8* buffer);
 void wait_for_callback(void);
+
+void SyncCore99NVRAM(void);
 
 thread_t  our_thread;
 id ApplePMUId;		// loaded driver
@@ -269,6 +273,7 @@ void SyncCore99NVRAM(void)
   unsigned char *nvramBuf = (unsigned char *)Core99NVRAM;
   unsigned long dataChecksum;
   unsigned char headerChecksum;
+  void *temp = Core99PrimaryBank;
 
   if (!Core99NVRAMInited) {
     return;  /* NVRAM not initialized */
@@ -301,7 +306,6 @@ void SyncCore99NVRAM(void)
     eieio();
 
     /* Swap bank pointers - backup bank is now primary */
-    void *temp = Core99PrimaryBank;
     Core99PrimaryBank = Core99BackupBank;
     Core99BackupBank = temp;
 

@@ -28,6 +28,12 @@
  *
  * UNIX Device switch tables.
  *
+ * HISTORY
+ *
+ * 30 July 1997 Umesh Vaishampayan (umeshv@apple.com)
+ * 	enabled file descriptor pseudo-device.
+ * 18 June 1993 ? at NeXT
+ *	Cleaned up a lot of stuff in this file.
  */
 
 #include <sys/param.h>

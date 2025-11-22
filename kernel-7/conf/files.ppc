@@ -2,13 +2,9 @@ OPTIONS/show_space		optional show_space
 OPTIONS/eventmeter		optional eventmeter
 OPTIONS/gdb			optional gdb
 OPTIONS/iplmeas			optional iplmeas
-OPTIONS/fp_emul			optional fp_emul
 OPTIONS/pc_support		optional pc_support
 OPTIONS/mk_hasdrivers		optional mk_hasdrivers
 OPTIONS/dk_hasdrivers		optional dk_hasdrivers
-
-
-bsd/dev/vol.c			optional vol
 
 bsd/dev/vol.c			optional vol
 
@@ -93,6 +89,10 @@ bsd/dev/ppc/PCPointer.m			optional event
 
 bsd/dev/ppc/drvOHare/ohare.m		optional mk_hasdrivers
 
+#bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m 			optional mk_hasdrivers
+#bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m 		optional mk_hasdrivers
+#bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m 		optional mk_hasdrivers
+
 bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m		optional mk_hasdrivers
@@ -104,7 +104,14 @@ bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96SCSIPrivate.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/StateMachines.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Timestamp.c		optional mk_hasdrivers
+
 bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m		optional mk_hasdrivers
+
+#bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m 			optional mk_hasdrivers
+#bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m 		optional mk_hasdrivers
+#bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m 		optional mk_hasdrivers
+#bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m 		optional mk_hasdrivers
+#bsd/dev/ppc/drvAttoScsiController/AttoScsiScripts.c 		optional mk_hasdrivers
 
 bsd/dev/ppc/drvMaceEnet/MaceEnet.m 			optional mk_hasdrivers
 bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m 		optional mk_hasdrivers
@@ -136,6 +143,10 @@ bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m 			optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m 			optional mk_hasdrivers
+
+bsd/dev/ppc/drvUniNEnet/UniNEnet.m 			    optional mk_hasdrivers
+bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m 		    optional mk_hasdrivers
+bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m 		optional mk_hasdrivers
 
 bsd/dev/ppc/drvUSBCMD/usbcmd.m						standard
 bsd/dev/ppc/drvUSBCMD/ohciuim.c						standard

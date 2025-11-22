@@ -63,6 +63,10 @@ static u_int32_t crc416(u_int32_t current, u_int16_t nxtval)
 {
     register unsigned int counter;
     register int highCRCBitSet, lowDataBitSet;
+    register u_int16_t swapped;
+
+    /* Byte swap the 16-bit input value */
+    swapped = ((nxtval << 8) & 0xFF00) | ((nxtval >> 8) & 0x00FF);
 
     /* Compute CRC-32 over each bit of the 16-bit value */
     for (counter = 0; counter < 16; counter++)
@@ -74,8 +78,8 @@ static u_int32_t crc416(u_int32_t current, u_int16_t nxtval)
         current = current << 1;
 
         /* Check if current data bit is set */
-        lowDataBitSet = nxtval & 1;
-        nxtval = nxtval >> 1;
+        lowDataBitSet = swapped & 1;
+        swapped = swapped >> 1;
 
         /* XOR if high CRC bit differs from low data bit */
         if (highCRCBitSet ^ lowDataBitSet)
@@ -186,8 +190,8 @@ static u_int32_t hashIndex(u_int8_t *addr)
     txMaxCommand = 0x80;  /* 128 TX descriptors */
 
     /* Partition DMA buffer between RX and TX rings */
-    rxDMACommands = (enet_dma_cmd_t *)dmaCommands;           /* RX at start */
-    txDMACommands = (enet_txdma_cmd_t *)((u_int32_t)dmaCommands + 0x800);  /* TX at +2KB offset */
+    rxDMACommands = dmaCommands;                             /* RX at start */
+    txDMACommands = (void *)((u_int32_t)dmaCommands + 0x800);  /* TX at +2KB offset */
 
     return YES;
 }
@@ -202,8 +206,8 @@ static u_int32_t hashIndex(u_int8_t *addr)
 {
     IOReturn result;
 
-    /* Zero out the entire TX DMA command buffer */
-    bzero(txDMACommands, txMaxCommand * sizeof(enet_txdma_cmd_t));
+    /* Zero out the entire TX DMA command buffer (16 bytes per descriptor) */
+    bzero(txDMACommands, txMaxCommand * 16);
 
     /* Initialize ring head and tail pointers */
     txCommandHead = 0;
@@ -243,10 +247,9 @@ static u_int32_t hashIndex(u_int8_t *addr)
     IOReturn result;
     u_int32_t i;
     netbuf_t packet;
-    enet_dma_cmd_t *desc;
 
-    /* Zero out the entire RX DMA command buffer */
-    bzero(rxDMACommands, rxMaxCommand * sizeof(enet_dma_cmd_t));
+    /* Zero out the entire RX DMA command buffer (16 bytes per descriptor) */
+    bzero(rxDMACommands, rxMaxCommand * 16);
 
     /* Get physical address of RX DMA command buffer */
     result = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)rxDMACommands,
@@ -268,11 +271,10 @@ static u_int32_t hashIndex(u_int8_t *addr)
             rxNetbuf[i] = packet;
         }
 
-        /* Get descriptor pointer */
-        desc = &rxDMACommands[i];
-
-        /* Update descriptor with netbuf physical address */
-        if (![self _updateDescriptorFromNetBuf:rxNetbuf[i] Desc:desc ReceiveFlag:YES]) {
+        /* Update descriptor with netbuf physical address (16 bytes per descriptor) */
+        if (![self _updateDescriptorFromNetBuf:rxNetbuf[i]
+                                          Desc:((u_int8_t *)rxDMACommands + (i * 16))
+                                  ReceiveFlag:YES]) {
             IOLog("Ethernet(UniN): cant map Netbuf to physical memory in _initRxRing\n");
             return NO;
         }
@@ -451,11 +453,12 @@ static u_int32_t hashIndex(u_int8_t *addr)
             [self miiResetPHY:phyId];
 
             // Read PHY manufacturer/model ID from MII registers 2 and 3
-            [self miiReadWord:(u_int16_t *)&phyMfgID reg:MII_ID0 phy:phyId];
-            [self miiReadWord:(u_int16_t *)((u_int32_t)&phyMfgID + 2) reg:MII_ID1 phy:phyId];
+            // Reads into phyType as two 16-bit halves to form 32-bit ID
+            [self miiReadWord:(u_int16_t *)&phyType reg:MII_ID0 phy:phyId];
+            [self miiReadWord:(u_int16_t *)((char *)&phyType + 2) reg:MII_ID1 phy:phyId];
 
             // Check if this is a Broadcom BCM5400 PHY (ID 0x0020604x)
-            if ((phyMfgID & 0xFFFFFFF0) == 0x00206040) {
+            if ((phyType & 0xFFFFFFF0) == 0x00206040) {
                 // BCM5400-specific initialization sequence
 
                 // Read register 0x18, set bit 2, write back
@@ -530,7 +533,7 @@ static u_int32_t hashIndex(u_int8_t *addr)
 - (void)_setDuplexMode:(BOOL)duplexMode
 {
     u_int16_t txDmaConfig;
-    u_int16_t macConfig;
+    u_int16_t pcsConfig;
     u_int32_t status;
 
     // Store duplex mode
@@ -547,22 +550,22 @@ static u_int32_t hashIndex(u_int8_t *addr)
         status = ReadUniNRegister(ioBaseEnet, kTxDmaConfig);
     } while ((status & 1) != 0);
 
-    // Read MAC configuration
-    macConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kMacConfig);
+    // Read PCS/MII configuration
+    pcsConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kPCSMIIControl);
 
     if (duplexMode == NO) {
         // Half duplex mode
         txDmaConfig &= 0xFFF9;  // Clear bits 1 and 2
-        macConfig |= 0x0004;    // Set bit 2
+        pcsConfig |= 0x0004;    // Set bit 2
     } else {
         // Full duplex mode
         txDmaConfig |= 0x0006;  // Set bits 1 and 2
-        macConfig &= 0xFFFB;    // Clear bit 2
+        pcsConfig &= 0xFFFB;    // Clear bit 2
     }
 
     // Write back configurations
     WriteUniNRegister(ioBaseEnet, kTxDmaConfig, txDmaConfig);
-    WriteUniNRegister(ioBaseEnet, kMacConfig, macConfig);
+    WriteUniNRegister(ioBaseEnet, kPCSMIIControl, pcsConfig);
 }
 
 /*-------------------------------------------------------------------------
@@ -696,9 +699,9 @@ static u_int32_t hashIndex(u_int8_t *addr)
         return NO;
     }
 
-    // Update the descriptor for this packet
+    // Update the descriptor for this packet (16 bytes per descriptor)
     [self _updateDescriptorFromNetBuf:packet
-          Desc:&txDMACommands[txCommandTail]
+          Desc:((u_int8_t *)txDMACommands + (txCommandTail * 16))
           ReceiveFlag:NO];
 
     // Store the netbuf pointer for later cleanup
@@ -707,8 +710,8 @@ static u_int32_t hashIndex(u_int8_t *addr)
     // Update tail pointer to next position
     txCommandTail = next;
 
-    // Kick the transmit DMA engine
-    WriteUniNRegister(ioBaseEnet, kTxKick, 0);
+    // Kick the transmit DMA engine with new tail index
+    WriteUniNRegister(ioBaseEnet, kTxKick, next);
 
     return YES;
 }
@@ -734,7 +737,7 @@ static u_int32_t hashIndex(u_int8_t *addr)
 
 - (BOOL)_receivePackets:(BOOL)fDebugger
 {
-    enet_dma_cmd_t *desc;
+    UniNRxDescriptor *rxDesc;
     netbuf_t packet;
     netbuf_t newPacket;
     u_int32_t currentIndex;
@@ -758,13 +761,13 @@ static u_int32_t hashIndex(u_int8_t *addr)
             packetProcessed = NO;
 
             /* Get pointer to current descriptor */
-            desc = &rxDMACommands[currentIndex];
+            rxDesc = &((UniNRxDescriptor *)rxDMACommands)[currentIndex];
 
-            /* Read descriptor status word (offset +2) */
-            status = OSSwapInt16(desc->desc_seg[0].address);
+            /* Read descriptor status word */
+            status = OSSwapInt16(rxDesc->status);
 
-            /* Check ownership bit (bit 7 of high byte) */
-            if ((status & 0x80) != 0) {
+            /* Check ownership bit (bit 15) */
+            if ((status & 0x8000) != 0) {
                 /* Hardware still owns this descriptor - we're done */
                 goto receiveComplete;
             }
@@ -772,8 +775,8 @@ static u_int32_t hashIndex(u_int8_t *addr)
             /* Extract packet length (lower 15 bits) */
             packetLength = status & 0x7FFF;
 
-            /* Read status flags from descriptor (offset +4, shifted left 24 bits in original code) */
-            statusWord = OSSwapInt32(desc->desc_seg[0].cmdDep);
+            /* Read status flags from descriptor */
+            statusWord = OSSwapInt32(rxDesc->flags);
 
             /* Validate packet length (60-1514 bytes) and check error bit */
             if ((packetLength < 60) || (packetLength > 1514) || ((statusWord & 0x40000000) != 0)) {
@@ -786,9 +789,9 @@ static u_int32_t hashIndex(u_int8_t *addr)
 
             if (packetError) {
 resetDescriptor:
-                /* Reset descriptor for reuse - set ownership bit and clear status */
-                desc->desc_seg[0].address = OSSwapInt16(0xF085);  /* 0x85F0 swapped */
-                desc->desc_seg[0].cmdDep = 0;
+                /* Reset descriptor for reuse - set ownership bit and clear flags */
+                rxDesc->status = OSSwapInt16(0x85F0);
+                rxDesc->flags = 0;
             }
             else {
                 /* Check for unwanted multicast packet (if not in promiscuous mode) */
@@ -815,7 +818,7 @@ resetDescriptor:
                 rxNetbuf[currentIndex] = newPacket;
 
                 /* Update descriptor with new netbuf */
-                if (![self _updateDescriptorFromNetBuf:newPacket Desc:desc ReceiveFlag:YES]) {
+                if (![self _updateDescriptorFromNetBuf:newPacket Desc:rxDesc ReceiveFlag:YES]) {
                     IOLog("Ethernet(UniN): _updateDescriptorFromNetBuf failed for receive\n");
                 }
 
@@ -916,7 +919,7 @@ receiveComplete:
  *
  *-------------------------------------------------------------------------*/
 
-- (BOOL)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(enet_dma_cmd_t *)desc ReceiveFlag:(BOOL)isReceive
+- (BOOL)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(void *)desc ReceiveFlag:(BOOL)isReceive
 {
     IOReturn result;
     u_int32_t size;
@@ -946,32 +949,29 @@ receiveComplete:
         return NO;
     }
 
-    // Build descriptor based on transmit or receive
+    // Build descriptor using hardware structures
     if (isReceive) {
-        // Receive descriptor format
-        // Word 0 (command): [size:16][flags:16] - flags include 0x80 for receive
-        // Word 1: reserved (0)
-        // Word 2: physical address
-        desc->desc_seg[0].operation = OSSwapInt16((u_int16_t)size) | 0x0080;
-        desc->desc_seg[0].address = 0;
-        desc->desc_seg[0].cmdDep = OSSwapInt32(paddr);
+        UniNRxDescriptor *rxDesc = (UniNRxDescriptor *)desc;
+
+        // RX descriptor: size with ownership bit, clear flags, set buffer address
+        rxDesc->status = OSSwapInt16((u_int16_t)size | 0x8000);
+        rxDesc->flags = 0;
+        rxDesc->bufferPtr = OSSwapInt32(paddr);
     } else {
-        // Transmit descriptor format
-        // Word 0 (command): [flags:16][size:16] - flags include 0xC000 for transmit
-        // Word 1: interrupt control (0x01000000 every 64 packets)
-        // Word 2: physical address
-        u_int32_t command = (size & 0xFFFF) | 0xC0000000;
-        desc->desc_seg[0].operation = OSSwapInt32(command);
+        UniNTxDescriptor *txDesc = (UniNTxDescriptor *)desc;
+
+        // TX descriptor: size with control bits, interrupt flag, buffer address
+        txDesc->control = OSSwapInt32(size | 0xC0000000);
 
         // Generate interrupt every 64 packets
-        txInterruptCounter = (txInterruptCounter + 1) & 0x3F;
-        if (txInterruptCounter == 0) {
-            desc->desc_seg[0].address = 0x01000000;
+        txInterruptCounter++;
+        if ((txInterruptCounter & 0x3F) == 0) {
+            txDesc->interrupt = OSSwapInt32(1);
         } else {
-            desc->desc_seg[0].address = 0;
+            txDesc->interrupt = 0;
         }
 
-        desc->desc_seg[0].cmdDep = OSSwapInt32(paddr);
+        txDesc->bufferPtr = OSSwapInt32(paddr);
     }
 
     return YES;
@@ -987,7 +987,9 @@ receiveComplete:
 {
     void *bufPtr;
     int bufSize;
-    int timeout;
+    ns_time_t startTime, currentTime;
+    u_int64_t elapsedTime;
+    u_int32_t elapsedMs;
 
     // Only send if chip is running
     if (!resetAndEnabled) {
@@ -997,19 +999,22 @@ receiveComplete:
     // Disable interrupts for polled operation
     [self disableAllInterrupts];
 
+    // Get start time for timeout
+    IOGetTimestamp(&startTime);
+
     // Wait for transmit ring to be empty (poll for completions)
-    timeout = 1000;  // 1 second timeout
-    while (txCommandHead != txCommandTail && timeout > 0)
+    while (txCommandHead != txCommandTail)
     {
         [self _transmitInterruptOccurred];
-        IOSleep(1);
-        timeout--;
-    }
+        IOGetTimestamp(&currentTime);
+        elapsedTime = currentTime - startTime;
+        elapsedMs = (u_int32_t)(elapsedTime / 1000000);
 
-    if (timeout <= 0) {
-        IOLog("Ethernet(UniN): Polled transmit timeout - 1\n\r");
-        [self enableAllInterrupts];
-        return;
+        if (elapsedMs > 1000) {  // 1 second timeout
+            IOLog("Ethernet(UniN): Polled transmit timeout - 1\n\r");
+            [self enableAllInterrupts];
+            return;
+        }
     }
 
     // Allocate netbuf for debugger packet
@@ -1031,16 +1036,17 @@ receiveComplete:
     [self _transmitPacket:debuggerPkt];
 
     // Poll for transmission complete
-    timeout = 1000;  // 1 second timeout
-    while (txCommandHead != txCommandTail && timeout > 0)
+    while (txCommandHead != txCommandTail)
     {
         [self _transmitInterruptOccurred];
-        IOSleep(1);
-        timeout--;
-    }
+        IOGetTimestamp(&currentTime);
+        elapsedTime = currentTime - startTime;
+        elapsedMs = (u_int32_t)(elapsedTime / 1000000);
 
-    if (timeout <= 0) {
-        IOLog("Ethernet(UniN): Polled transmit timeout - 2\n\r");
+        if (elapsedMs > 1000) {  // 1 second timeout
+            IOLog("Ethernet(UniN): Polled transmit timeout - 2\n\r");
+            break;
+        }
     }
 
     // Re-enable interrupts
@@ -1069,9 +1075,9 @@ receiveComplete:
     /* Disable interrupts for polled mode */
     [self disableAllInterrupts];
 
-    /* Set up debugger receive buffer */
-    debuggerBuf = pkt;
-    rxDebuggerBytes = 0;
+    /* Set up debugger receive buffer (type-punned: void* stored in netbuf_t field) */
+    debuggerPkt = (netbuf_t)pkt;
+    debuggerPktSize = 0;
 
     /* Get start time */
     IOGetTimestamp(&startTime);
@@ -1091,13 +1097,13 @@ receiveComplete:
         elapsedMs = (u_int32_t)(elapsedTime / 1000000);
 
         /* Check if packet was received */
-        if (rxDebuggerBytes != 0)
+        if (debuggerPktSize != 0)
             break;
 
     } while (elapsedMs < timeout);
 
     /* Return received packet length */
-    *pkt_len = rxDebuggerBytes;
+    *pkt_len = debuggerPktSize;
 
     /* Re-enable interrupts */
     [self enableAllInterrupts];
@@ -1114,13 +1120,13 @@ receiveComplete:
     void *packetData;
 
     /* Get packet size */
-    rxDebuggerBytes = nb_size(packet);
+    debuggerPktSize = nb_size(packet);
 
     /* Get pointer to packet data */
     packetData = nb_map(packet);
 
-    /* Copy packet to debugger buffer */
-    bcopy(packetData, debuggerBuf, rxDebuggerBytes);
+    /* Copy packet to debugger buffer (debuggerPkt is type-punned as void*) */
+    bcopy(packetData, (void *)debuggerPkt, debuggerPktSize);
 
     /* Free the netbuf */
     nb_free(packet);
@@ -1140,20 +1146,20 @@ receiveComplete:
     bzero(dummyPacket, sizeof(dummyPacket));
 
     // Set destination MAC address (first 6 bytes) to our own address
-    dummyPacket[0] = myAddress.ea_byte[0];
-    dummyPacket[1] = myAddress.ea_byte[1];
-    dummyPacket[2] = myAddress.ea_byte[2];
-    dummyPacket[3] = myAddress.ea_byte[3];
-    dummyPacket[4] = myAddress.ea_byte[4];
-    dummyPacket[5] = myAddress.ea_byte[5];
+    dummyPacket[0] = myAddress.ether_addr_octet[0];
+    dummyPacket[1] = myAddress.ether_addr_octet[1];
+    dummyPacket[2] = myAddress.ether_addr_octet[2];
+    dummyPacket[3] = myAddress.ether_addr_octet[3];
+    dummyPacket[4] = myAddress.ether_addr_octet[4];
+    dummyPacket[5] = myAddress.ether_addr_octet[5];
 
     // Set source MAC address (next 6 bytes) to our own address
-    dummyPacket[6] = myAddress.ea_byte[0];
-    dummyPacket[7] = myAddress.ea_byte[1];
-    dummyPacket[8] = myAddress.ea_byte[2];
-    dummyPacket[9] = myAddress.ea_byte[3];
-    dummyPacket[10] = myAddress.ea_byte[4];
-    dummyPacket[11] = myAddress.ea_byte[5];
+    dummyPacket[6] = myAddress.ether_addr_octet[0];
+    dummyPacket[7] = myAddress.ether_addr_octet[1];
+    dummyPacket[8] = myAddress.ether_addr_octet[2];
+    dummyPacket[9] = myAddress.ether_addr_octet[3];
+    dummyPacket[10] = myAddress.ether_addr_octet[4];
+    dummyPacket[11] = myAddress.ether_addr_octet[5];
 
     // Send the dummy packet using polled mode
     [self _sendPacket:dummyPacket length:sizeof(dummyPacket)];
@@ -1171,7 +1177,7 @@ receiveComplete:
     id propTable;
     IOReturn result;
     void *propertyData;
-    int propertyLength[1];
+    unsigned int propertyLength[1];
     int i;
 
     /* Get device description from IOTreeDevice */
@@ -1268,13 +1274,13 @@ receiveComplete:
     // Read current receive configuration register value
     savedControl = (u_int16_t)ReadUniNRegister(ioBaseEnet, kRxDmaConfig);
 
-    // Disable hash table by clearing the register
-    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, 0);
+    // Disable RX DMA and hash table (clear bits 0 and 5)
+    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, savedControl & 0xFFDE);
 
-    // Wait for hardware to be ready (busy bits should clear)
+    // Wait for hardware to stop (bits 0 and 5 should clear)
     do {
         status = ReadUniNRegister(ioBaseEnet, kRxDmaConfig);
-    } while ((status & kRxConfig_Busy) != 0);
+    } while ((status & 0x21) != 0);
 
     // Write 16 hash table entries to hardware registers
     // Note: Hardware expects hash table in reverse order
@@ -1283,8 +1289,8 @@ receiveComplete:
         WriteUniNRegister(ioBaseEnet, kHashTable0 + (i * 4), hashTableMask[15 - i]);
     }
 
-    // Restore control register with hash enable bit set
-    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, savedControl | kRxConfig_HashEnable);
+    // Restore control register with hash enable bit set (bit 5 = 0x20)
+    WriteUniNRegister(ioBaseEnet, kRxDmaConfig, savedControl | 0x20);
 }
 
 /*-------------------------------------------------------------------------
@@ -1455,6 +1461,7 @@ receiveComplete:
     u_int16_t phyAuxStatus;
     u_int32_t phyMode;
     u_int16_t xifConfig;
+    u_int16_t linkMode;
     BOOL linkUp = NO;
     BOOL fullDuplex = NO;
     char *speedStr;
@@ -1496,7 +1503,7 @@ receiveComplete:
     WriteUniNRegister(ioBaseEnet, kPCSMIIControl, xifConfig);
 
     /* Determine link speed and duplex based on PHY manufacturer */
-    phyMode = phyMfgID & 0xFFFFFFF0;
+    phyMode = phyType & 0xFFFFFFF0;
 
     if (phyMode == 0x00406210) {
         /* Marvell 88E1000 PHY */
@@ -1518,7 +1525,7 @@ receiveComplete:
         [self miiReadWord:&phyAuxStatus reg:0x19 phy:phyId];
 
         /* Extract speed/duplex from bits 8-10 */
-        u_int16_t linkMode = (phyAuxStatus >> 8) & 7;
+        linkMode = (phyAuxStatus >> 8) & 7;
 
         /* Configure MII mode based on link speed */
         xifConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kPCSMIIControl);

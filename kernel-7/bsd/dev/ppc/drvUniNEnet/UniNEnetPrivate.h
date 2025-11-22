@@ -36,6 +36,28 @@
 #import "UniNEnetMII.h"
 #import "UniNEnetRegisters.h"
 
+/*
+ * UniN Ethernet hardware descriptor structures (16 bytes each, big-endian)
+ * These match the exact hardware format used by the DMA engine.
+ */
+
+/* Receive descriptor (16 bytes) */
+typedef struct {
+    u_int16_t   reserved1;      /* Offset +0: Unused */
+    u_int16_t   status;         /* Offset +2: Status/size word (bit 15=ownership, bits 14-0=size) */
+    u_int32_t   flags;          /* Offset +4: Status flags */
+    u_int32_t   bufferPtr;      /* Offset +8: Physical buffer address */
+    u_int32_t   reserved2;      /* Offset +12: Unused */
+} UniNRxDescriptor;
+
+/* Transmit descriptor (16 bytes) */
+typedef struct {
+    u_int32_t   control;        /* Offset +0: Control word (size | 0xC0000000) */
+    u_int32_t   interrupt;      /* Offset +4: Interrupt flag (0 or 1) */
+    u_int32_t   bufferPtr;      /* Offset +8: Physical buffer address */
+    u_int32_t   reserved;       /* Offset +12: Unused */
+} UniNTxDescriptor;
+
 void WriteUniNRegister(IOPPCAddress ioEnetBase, u_int32_t reg_offset, u_int32_t data);
 u_int32_t ReadUniNRegister(IOPPCAddress ioEnetBase, u_int32_t reg_offset);
 
@@ -61,7 +83,7 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioEnetBase, u_int32_t reg_offset);
 - (BOOL)_receiveInterruptOccurred;
 - (BOOL)_receivePackets:(BOOL)fDebugger;
 - (BOOL)_transmitInterruptOccurred;
-- (BOOL)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(enet_dma_cmd_t *)desc ReceiveFlag:(BOOL)isReceive;
+- (BOOL)_updateDescriptorFromNetBuf:(netbuf_t)nb Desc:(void *)desc ReceiveFlag:(BOOL)isReceive;
 
 /*
  * Kernel Debugger

@@ -46,16 +46,6 @@
 
 typedef void  *		IOPPCAddress;
 
-typedef struct enet_dma_cmd_t
-{
-    IODBDMADescriptor	desc_seg[2];
-} enet_dma_cmd_t;
-
-typedef struct enet_txdma_cmd_t
-{
-    IODBDMADescriptor	desc_seg[3];
-} enet_txdma_cmd_t;
-
 /*
  * Ring buffer sizes - must match values in _allocateMemory
  */
@@ -64,70 +54,64 @@ typedef struct enet_txdma_cmd_t
 
 @interface UniNEnet:IOEthernet <IOPower>
 {
-    volatile IOPPCAddress       	ioBaseEnet;
-    volatile IODBDMAChannelRegisters 	*ioBaseEnetRxDMA;
-    volatile IODBDMAChannelRegisters 	*ioBaseEnetTxDMA;
+    /* Base addresses - 0x174 */
+    volatile IOPPCAddress       	ioBaseEnet;             /* +0x174: Ethernet controller registers */
 
-    enet_addr_t				myAddress;
-    IONetwork				*networkInterface;
-    IONetbufQueue			*transmitQueue;
-    BOOL				isPromiscuous;
-    BOOL				multicastEnabled;
-    BOOL				isFullDuplex;
+    /* Hardware addresses - 0x178 */
+    enet_addr_t				myAddress;              /* +0x178: Station MAC address (6 bytes) */
+    /* 2 bytes padding to align to 4-byte boundary */
 
-    BOOL				resetAndEnabled;
+    /* Network interface - 0x180 */
+    IONetwork				*networkInterface;      /* +0x180: Network interface object */
+    IONetbufQueue			*transmitQueue;         /* +0x184: Transmit queue */
 
-    /*
-     * Transmit DMA support
-     */
-    enet_txdma_cmd_t			*txDMACommands;
-    u_int32_t				txDMACommandsPhys;	// Physical address of TX DMA commands
-    u_int32_t				txCommandHead;
-    u_int32_t				txCommandTail;
-    u_int32_t				txMaxCommand;
-    netbuf_t				txNetbuf[TRANSMIT_RING_SIZE];
+    /* Mode flags - 0x188 */
+    BOOL				isPromiscuous;          /* +0x188: Promiscuous mode flag */
+    BOOL				multicastEnabled;       /* +0x189: Multicast enabled flag */
+    BOOL				isFullDuplex;           /* +0x18A: Full duplex mode flag */
+    BOOL				resetAndEnabled;        /* +0x18B: Reset and enabled flag */
 
-    /*
-     * Receive DMA support
-     */
-    enet_dma_cmd_t			*rxDMACommands;
-    u_int32_t				rxDMACommandsPhys;	// Physical address of RX DMA commands
-    u_int32_t				rxCommandHead;
-    u_int32_t				rxCommandTail;
-    u_int32_t				rxMaxCommand;
-    netbuf_t				rxNetbuf[RECEIVE_RING_SIZE];
+    /* MII/PHY support - 0x18C */
+    unsigned int			phyType;                /* +0x18C: PHY manufacturer/model ID (MII ID0+ID1) */
+    unsigned char			phyId;                  /* +0x190: PHY address on MII bus */
+    /* 1 byte padding */
+    unsigned short			phyStatusPrev;          /* +0x192: Previous PHY status (MII register 1) */
+    char				linkStatusPrev;         /* +0x194: Previous link status (0=down, 1=up) */
+    /* 3 bytes padding to align to 4-byte boundary */
 
-    void 				*dmaCommands;
+    /* Transmit/Receive buffers - 0x198 */
+    netbuf_t				txNetbuf[TRANSMIT_RING_SIZE];  /* +0x198: TX netbuf array [128] */
+    netbuf_t				rxNetbuf[RECEIVE_RING_SIZE];   /* +0x398: RX netbuf array [128] */
 
-    /*
-     * MII/PHY support
-     */
-    unsigned char			phyId;
-    BOOL				phyStatusPrev;
-    BOOL				phyType;
-    u_int32_t				phyMfgID;		// PHY manufacturer/model ID from MII regs 2&3
+    /* Transmit DMA ring management - 0x598 */
+    u_int32_t				txCommandHead;          /* +0x598: TX command head index */
+    u_int32_t				txCommandTail;          /* +0x59C: TX command tail index */
+    u_int32_t				txMaxCommand;           /* +0x5A0: TX max command index */
 
-    /*
-     * Debugger support
-     */
-    netbuf_t				debuggerPkt;
-    void				*debuggerBuf;
-    BOOL				rxDebuggerPkt;
-    u_int32_t				rxDebuggerBytes;
-    BOOL				txDebuggerPkt;
+    /* Receive DMA ring management - 0x5A4 */
+    u_int32_t				rxCommandHead;          /* +0x5A4: RX command head index */
+    u_int32_t				rxCommandTail;          /* +0x5A8: RX command tail index */
+    u_int32_t				rxMaxCommand;           /* +0x5AC: RX max command index */
 
-    /*
-     * Power management support
-     */
-    unsigned long			currentPowerState;
-    unsigned long			numberOfPowerStates;
-    IOPMPowerState			powerStates[2];
+    /* DMA command buffers - 0x5B0 */
+    void 				*dmaCommands;           /* +0x5B0: DMA commands buffer */
+    void				*txDMACommands;         /* +0x5B4: TX DMA command descriptors */
+    u_int32_t				txDMACommandsPhys;      /* +0x5B8: TX DMA physical address */
+    void				*rxDMACommands;         /* +0x5BC: RX DMA command descriptors */
+    u_int32_t				rxDMACommandsPhys;      /* +0x5C0: RX DMA physical address */
 
-    u_int16_t				hashTableUseCount[256];
-    u_int16_t				hashTableMask[16];
+    /* Watchdog support - 0x5C4 */
+    u_int32_t				txWDInterrupts;         /* +0x5C4: TX watchdog interrupt count */
+    u_int32_t				txWDCount;              /* +0x5C8: TX watchdog count */
 
-    u_int8_t				chipId;
-    BOOL				chipIdVerified;
+    /* Debugger support - 0x5CC */
+    netbuf_t				debuggerPkt;            /* +0x5CC: Debugger packet buffer */
+    u_int32_t				debuggerPktSize;        /* +0x5D0: Debugger packet size */
+
+    /* Hash table for multicast filtering - 0x5D4 */
+    u_int16_t				hashTableUseCount[256]; /* +0x5D4: Hash table use count */
+    u_int16_t				hashTableMask[16];      /* +0x7D4: Hash table mask */
+    /* Total size: 0x7F4 (2036 bytes) */
 }
 
 /*

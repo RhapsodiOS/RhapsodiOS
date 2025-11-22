@@ -337,11 +337,11 @@ OSStatus  GetInitializedVNode(struct hfsmount *hfsmp, struct vnode **tmpvnode )
     bzero((caddr_t)hp, sizeof(struct hfsnode));
     lockinit(&hp->h_lock, PINOD, "hfsnode", 0, 0);
 
-    MALLOC(hp->h_meta, struct hfsfilemeta *, 
-		sizeof(struct hfsfilemeta), M_HFSFMETA, M_WAITOK);
+	MALLOC(hp->h_meta, struct hfsfilemeta *, 
+		sizeof(struct hfsfilemeta), M_HFSNODE, M_WAITOK);
     /* Allocate a new vnode. */
     if ((rtn = getnewvnode(VT_HFS, HFSTOVFS(hfsmp), hfs_vnodeop_p, &vp))) {
-		FREE(hp->h_meta, M_HFSFMETA);
+		FREE(hp->h_meta, M_HFSNODE);
 		FREE(hp, M_HFSNODE);
         goto Err_Exit;
     }

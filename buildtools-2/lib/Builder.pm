@@ -60,7 +60,7 @@ my $baseflags =
  'DSTROOT' => undef,
  'SUBLIBROOTS' => undef,
  'RC_JASPER' => 'YES',
- 'RC_ARCHS' => 'i386 ppc',
+ 'RC_ARCHS' => '',
  'RC_CFLAGS' => '',
  'RC_hppa' => '',
  'RC_i386' => '',
@@ -79,17 +79,17 @@ my $baseflags =
 
 sub buildcmd ()
 {
-    my ($package, $params, $bparams, $target) = @_;
+  my ($package, $params, $bparams, $target) = @_;
 
-    my $flags = &buildflags ($baseflags, $bparams, $target);
-    my @command = ('chroot', $params->{'BUILDROOT'}, 'make', '-w', '-C', $bparams->{'SRCROOT'});
+  my $flags = &buildflags ($baseflags, $bparams, $target, $package);
+  my @command = ('chroot', $params->{'BUILDROOT'}, 'make', '-w', '-C', $bparams->{'SRCROOT'});
 
-    for my $key (keys (%$flags)) {
-	push (@command, "$key=$flags->{$key}");
-    }
-    push (@command, $target);
+  for my $key (keys (%$flags)) {
+	  push (@command, "$key=$flags->{$key}");
+  }
+  push (@command, $target);
 
-    return @command;
+  return @command;
 }
 
 sub printcmd
@@ -106,7 +106,7 @@ sub printcmd
 
 sub buildflags
 {
-  my ($baseflags, $params, $target) = @_;
+  my ($baseflags, $params, $target, $package) = @_;
 
   my $flags = &copyhash ($baseflags);
 
@@ -121,10 +121,29 @@ sub buildflags
     $flags->{'DSTROOT'} = $params->{'DSTROOT'};
   }
 
+  # build universal unless architecture is defined in the package control file
+  my $arch = undef;
+  if (defined ($package) && defined ($package->{'architecture'})) {
+    $arch = $package->{'architecture'};
+  }
+
+  if (defined ($arch) && ($arch eq 'i386-apple-rhapsody')) {
+    $flags->{'RC_CFLAGS'} = '-arch i386 ' . &liststring (@cflags);
+    $flags->{'RC_ARCHS'} = 'i386';
+    $flags->{'RC_i386'} = 'YES';
+    $flags->{'RC_ppc'} = '';
+  } elsif (defined ($arch) && ($arch eq 'ppc-apple-rhapsody')) {
+    $flags->{'RC_CFLAGS'} = '-arch ppc ' . &liststring (@cflags);
+    $flags->{'RC_ARCHS'} = 'ppc';
+    $flags->{'RC_i386'} = '';
+    $flags->{'RC_ppc'} = 'YES';
+  } else {
+    # default to universal build
     $flags->{'RC_CFLAGS'} = '-arch i386 -arch ppc ' . &liststring (@cflags);
     $flags->{'RC_ARCHS'} = 'i386 ppc';
     $flags->{'RC_i386'} = 'YES';
     $flags->{'RC_ppc'} = 'YES';
+  }
 
   return $flags;
 }
@@ -325,10 +344,11 @@ sub readcontrol
     $package->{'description'} = "No description available.";
   }
   if (! defined ($package->{'maintainer'})) {
-      $package->{'maintainer'} = "Anonymous <darwin-development\@public.lists.apple.com>";
+    $package->{'maintainer'} = "Anonymous <darwin-development\@public.lists.apple.com>";
   }
-
-  $package->{'architecture'} = 'universal-apple-rhapsody';
+  if (! defined ($package->{'architecture'})) {
+    $package->{'architecture'} = 'universal-apple-rhapsody';
+  }
   $package->{'source'} = $package->{'package'};
 
   return $package;

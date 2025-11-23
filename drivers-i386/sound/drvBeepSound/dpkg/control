@@ -2,5 +2,6 @@ Package: beepsound
 Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: Apple Computer
 Version: 5
+Architecture: i386-apple-rhapsody
 Description: PC Speaker sound device driver
 Build-Depends: build-base, drivertools, driverkit, kernload

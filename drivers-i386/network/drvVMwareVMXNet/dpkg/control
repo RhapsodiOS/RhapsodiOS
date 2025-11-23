@@ -1,6 +1,7 @@
-Package: vmxnet
+Package: drvvmwarevmxnet
 Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: VMware, Inc.
 Version: 1.5
-Description: VMXNet device driver
+Architecture: i386-apple-rhapsody
+Description: VMware VMXNet ethernet driver
 Build-Depends: build-base, drivertools, driverkit, kernload

@@ -3,4 +3,5 @@ Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: Apple Computer
 Version: 12
 Description: Intel 824x0 PCI Controller Driver
+Architecture: i386-apple-rhapsody
 Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

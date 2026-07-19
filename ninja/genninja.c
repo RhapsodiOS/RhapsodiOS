@@ -470,7 +470,7 @@ static void scan_tree(const char *srcroot, const char *rel, int depth)
 			continue;
 		}
 
-		/* container directory (Commands/, drivers-i386/, ...) */
+		/* container directory (Commands/, drivers/x86/, ...) */
 		scan_tree(srcroot, child, depth + 1);
 	}
 	closedir(d);

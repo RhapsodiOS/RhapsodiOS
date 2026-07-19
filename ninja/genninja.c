@@ -104,7 +104,7 @@ static int istartswith(const char *s, const char *prefix)
 /* ------------------------------------------------------------------ */
 
 struct config {
-	const char *srcroot;   /* repo root (where projects live)   */
+	const char *srcroot;   /* source tree root (projects live under it, e.g. src) */
 	const char *dstroot;   /* shared install/staging tree       */
 	const char *objroot;   /* per-project object roots base     */
 	const char *symroot;   /* per-project symbol roots base     */
@@ -832,7 +832,7 @@ static void usage(void)
 "usage: genninja [options]\n"
 "  Generates build.ninja for the RhapsodiOS source tree.\n\n"
 "  Options (defaults in brackets; env vars of the same name also honored):\n"
-"    --srcroot DIR    source tree root [.]\n"
+"    --srcroot DIR    source tree root [src]\n"
 "    --dstroot DIR    shared install/staging tree [/tmp/rhapsody/dst]\n"
 "    --objroot DIR    per-project object roots base [/tmp/rhapsody/obj]\n"
 "    --symroot DIR    per-project symbol roots base [/tmp/rhapsody/sym]\n"
@@ -850,7 +850,7 @@ int main(int argc, char **argv)
 	struct config cfg;
 	int i;
 
-	cfg.srcroot  = env_or("SRCROOT",  ".");
+	cfg.srcroot  = env_or("SRCROOT",  "src");
 	cfg.dstroot  = env_or("DSTROOT",  "/tmp/rhapsody/dst");
 	cfg.objroot  = env_or("OBJROOT",  "/tmp/rhapsody/obj");
 	cfg.symroot  = env_or("SYMROOT",  "/tmp/rhapsody/sym");

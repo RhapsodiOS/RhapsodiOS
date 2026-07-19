@@ -35,7 +35,7 @@ TOOLROOT ?= $(DSTROOT)
 RC_ARCHS ?= ppc i386
 RC_OS    ?= teflon
 
-GENFLAGS = --srcroot "." \
+GENFLAGS = --srcroot "src" \
 	   --dstroot "$(DSTROOT)" --objroot "$(OBJROOT)" \
 	   --symroot "$(SYMROOT)" --srcbase "$(SRCBASE)" \
 	   --toolroot "$(TOOLROOT)" \

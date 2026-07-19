@@ -7,6 +7,11 @@ Perl + dpkg build orchestration (`darwin-buildall` / `darwin-buildpackage` /
 implementation of ninja, whose source is **vendored in `ninja/samurai/`** so
 no separate checkout or install is required.
 
+The project sources live under **`src/`** at the repo root; this `ninja/`
+directory stays at the top level and generates `build.ninja` at the repo root
+(so paths and the `ninja/buildproj.sh` wrapper resolve relative to it, with
+`--srcroot src`).
+
 It replaces **only the orchestration layer**. Each project is still built by
 its existing Apple/NeXT make framework (`pb_makefiles`, `CoreOSMakefiles`,
 `project_makefiles`, `configure`); the ninja graph just decides *what* gets
@@ -64,7 +69,7 @@ variables). Defaults in brackets:
 
 | Option | Env | Default | Meaning |
 |--------|-----|---------|---------|
-| `--srcroot`  | `SRCROOT`  | `.` | source tree root |
+| `--srcroot`  | `SRCROOT`  | `src` | source tree root (project sources live under `src/`) |
 | `--dstroot`  | `DSTROOT`  | `/tmp/rhapsody/dst` | shared install/staging tree |
 | `--objroot`  | `OBJROOT`  | `/tmp/rhapsody/obj` | per-project object roots base |
 | `--symroot`  | `SYMROOT`  | `/tmp/rhapsody/sym` | per-project symbol roots base |

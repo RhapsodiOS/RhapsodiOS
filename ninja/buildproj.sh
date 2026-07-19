@@ -34,7 +34,7 @@ proj="$1"; target="$2"; arch="$3"
 srcbase="$4"; objbase="$5"; symbase="$6"; dstroot="$7"
 toolroot="$8"; rc_archs="$9"; rc_os="${10}"; stamp="${11}"
 
-: "${SRCROOT_TREE:=.}"   # where the original source tree lives (repo root)
+: "${SRCROOT_TREE:=src}"  # where the original source tree lives (repo root/src)
 : "${MAKE:=make}"
 
 # The repo root: ninja passes proj relative to $srcroot, which ninja knows as

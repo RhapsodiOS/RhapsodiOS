@@ -55,3 +55,17 @@ example: darwin-buildpackage --dir --target all /build/source/kernel-7 /build/re
 usage: darwin-buildall <srclist> <repository> <dstdir>
 example: darwin-buildall Manifest /build/repo /build/built
 ```
+
+## Building with ninja / samurai (new)
+
+The legacy Perl + dpkg orchestration above is being replaced by a modern
+`ninja`-based build driven by [samurai](https://github.com/michaelforney/samurai)
+(`samu`), whose source is vendored under [`ninja/samurai`](ninja/samurai). It
+builds every project with its existing make framework into a single shared
+`DSTROOT` (no `.deb`, no chroot). See [`ninja/README.md`](ninja/README.md) for
+full details.
+
+```sh
+# From the repo root (builds the bundled samu, generates build.ninja, builds):
+make -C ninja world     # ...or `make -C ninja kernel` for just the kernel
+```

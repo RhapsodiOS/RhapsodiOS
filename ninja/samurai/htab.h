@@ -1,0 +1,19 @@
+#include <stddef.h>
+#ifndef _WIN32
+#include <stdint.h>  /* for uint64_t */
+#endif
+
+struct hashtablekey {
+	uint64_t hash;
+	const char *str;
+	size_t len;
+};
+
+void htabkey(struct hashtablekey *, const char *, size_t);
+
+struct hashtable *mkhtab(size_t);
+void delhtab(struct hashtable *, void(void *));
+void **htabput(struct hashtable *, struct hashtablekey *);
+void *htabget(struct hashtable *, struct hashtablekey *);
+
+uint64_t rapidhashv1(const void *, size_t);

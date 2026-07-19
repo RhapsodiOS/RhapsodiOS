@@ -29,6 +29,7 @@
 
 #import "pnpIOPort.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 
 /* External verbose flag */
 extern char verbose;
@@ -249,12 +250,12 @@ extern char verbose;
     highByte = (unsigned char)((baseAddress >> 8) & 0xFF);
 
     /* Write high byte to first register */
-    __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"(highByte), "d"(0xa79));
+    outb(0x279, regBase);
+    outb(0xa79, highByte);
 
     /* Write low byte to second register */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"(lowByte), "d"(0xa79));
+    outb(0x279, regBase + 1);
+    outb(0xa79, lowByte);
 
     return self;
 }

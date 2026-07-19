@@ -29,6 +29,7 @@
 
 #import "pnpIRQ.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 
 /* External verbose flag */
 extern char verbose;
@@ -223,6 +224,10 @@ extern char verbose;
  * Writes IRQ configuration to PnP config registers
  * Registers: 0x70 + (index*2) and 0x71 + (index*2)
  * Data: IRQ number (with IRQ 9 -> IRQ 2 redirection)
+ *
+ * Based on decompiled implementation - writes to ISA PnP IRQ configuration registers:
+ *   Register 0x70/0x72: IRQ select (IRQ number masked to 4 bits)
+ *   Register 0x71/0x73: IRQ type (set to 0 for default)
  */
 - writePnPConfig:(id)irqObject Index:(int)index
 {
@@ -234,21 +239,24 @@ extern char verbose;
     irqs = (unsigned char *)[irqObject irqs];
     irqNum = irqs[0];
 
-    /* IRQ 9 redirects to IRQ 2 */
+    /* IRQ 9 redirects to IRQ 2 (PC/AT IRQ cascade) */
     if (irqNum == 9) {
         irqNum = 2;
     }
 
-    /* Calculate register base */
+    /* Mask to 4 bits */
+    irqNum &= 0xF;
+
+    /* Calculate register base (0x70 for index 0, 0x72 for index 1) */
     regBase = 0x70 + (index * 2);
 
-    /* Write IRQ number to first register (masked to 4 bits) */
-    __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(irqNum & 0xF)), "d"(0xa79));
+    /* Write IRQ number to select register */
+    outb(0x279, regBase);
+    outb(0xa79, irqNum);
 
-    /* Write 0 to second register */
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)0), "d"(0xa79));
+    /* Write 0 to type register (default type) */
+    outb(0x279, regBase + 1);
+    outb(0xa79, 0);
 
     return self;
 }

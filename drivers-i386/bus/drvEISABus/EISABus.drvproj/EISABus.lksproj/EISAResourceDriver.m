@@ -378,7 +378,6 @@ static const char *keys[] = {
 
     /* Get "Cold Boot" configuration value */
     coldBootValue = [configTable valueForStringKey:"Cold Boot"];
-
     if (coldBootValue != NULL) {
         /* Check if cold boot is enabled (starts with 'y' or 'Y') */
         if (*coldBootValue == 'y' || *coldBootValue == 'Y') {

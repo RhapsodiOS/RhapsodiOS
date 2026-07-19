@@ -29,6 +29,7 @@
 
 #import "pnpDMA.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 
 /* External verbose flag */
 extern char verbose;
@@ -247,8 +248,8 @@ extern char verbose;
 
     /* Write to PnP config register */
     reg = 0x74 + (unsigned char)index;
-    __asm__ volatile("outb %b0,%w1" : : "a"(reg), "d"(0x279));
-    __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(channels[0] & 0x7)), "d"(0xa79));
+    outb(0x279, reg);
+    outb(0xa79, (unsigned char)(channels[0] & 0x7));
 
     return self;
 }

@@ -34,6 +34,11 @@
 #import "pnpMemory.h"
 #import <objc/List.h>
 
+/* List category for freeObjects: method */
+@interface List (FreeObjects)
+- freeObjects:(SEL)aSelector;
+@end
+
 @implementation PnPResource
 
 /*

@@ -29,6 +29,7 @@
 
 #import "pnpMemory.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 
 /* External verbose flag */
 extern char verbose;
@@ -416,11 +417,11 @@ extern char verbose;
         regBase = 0x40 + (index * 8);
 
         /* Write base address (high byte, low byte) in 256-byte units */
-        __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((baseAddr >> 8) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase);
+        outb(0xa79, (unsigned char)((baseAddr >> 8) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((baseAddr >> 16) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 1);
+        outb(0xa79, (unsigned char)((baseAddr >> 16) & 0xFF));
 
         /* Build control byte */
         control = 0;
@@ -439,15 +440,15 @@ extern char verbose;
         }
 
         /* Write control byte */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 2)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"(control), "d"(0xa79));
+        outb(0x279, regBase + 2);
+        outb(0xa79, control);
 
         /* Write upper limit (high byte, low byte) */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 3)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((upperLimit >> 8) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 3);
+        outb(0xa79, (unsigned char)((upperLimit >> 8) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 4)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(upperLimit & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 4);
+        outb(0xa79, (unsigned char)(upperLimit & 0xFF));
     }
     else {
         /* 32-bit memory descriptor */
@@ -471,17 +472,17 @@ extern char verbose;
         }
 
         /* Write base address (4 bytes, little-endian) */
-        __asm__ volatile("outb %b0,%w1" : : "a"(regBase), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(baseAddr & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase);
+        outb(0xa79, (unsigned char)(baseAddr & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 1)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((baseAddr >> 8) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 1);
+        outb(0xa79, (unsigned char)((baseAddr >> 8) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 2)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((baseAddr >> 16) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 2);
+        outb(0xa79, (unsigned char)((baseAddr >> 16) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 3)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((baseAddr >> 24) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 3);
+        outb(0xa79, (unsigned char)((baseAddr >> 24) & 0xFF));
 
         /* Build control byte */
         control = 0;
@@ -502,21 +503,21 @@ extern char verbose;
         }
 
         /* Write control byte */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 4)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"(control), "d"(0xa79));
+        outb(0x279, regBase + 4);
+        outb(0xa79, control);
 
         /* Write upper limit (4 bytes, little-endian) */
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 5)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((upperLimit >> 24) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 5);
+        outb(0xa79, (unsigned char)((upperLimit >> 24) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 6)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((upperLimit >> 16) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 6);
+        outb(0xa79, (unsigned char)((upperLimit >> 16) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 7)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)((upperLimit >> 8) & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 7);
+        outb(0xa79, (unsigned char)((upperLimit >> 8) & 0xFF));
 
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(regBase + 8)), "d"(0x279));
-        __asm__ volatile("outb %b0,%w1" : : "a"((unsigned char)(upperLimit & 0xFF)), "d"(0xa79));
+        outb(0x279, regBase + 8);
+        outb(0xa79, (unsigned char)(upperLimit & 0xFF));
     }
 
     return self;

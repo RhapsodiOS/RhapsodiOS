@@ -122,6 +122,54 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     return nil;
 }
 
+/**
+ * Send the ISAPnP initiation key.
+ *
+ * Sending the key causes all ISAPnP cards that are currently in the
+ * Wait for Key state to transition into the Sleep state.
+ *
+ */
+static void pnp_send_key(void)
+{
+    unsigned char lfsr;
+    int i;
+
+    /* Sleep 1ms to allow card to wake up */
+    IODelay(1000);
+
+    /* Two writes of 0x00 to address port */
+    pnp_write_address ( 0x00 );
+	pnp_write_address ( 0x00 );
+
+    /* Send 32-byte initiation key using LFSR */
+    lfsr = PNP_LFSR_SEED;
+    for (i = 0; i < 32; i++) {
+        pnp_write_address ( lfsr );
+        lfsr = pnp_lfsr_next(lfsr, 0);
+    }
+}
+
+/**
+ * Compute PnP identifier checksum
+ */
+static unsigned char pnp_checksum(unsigned char *data)
+{
+	int i, j;
+	unsigned char checksum = PNP_LFSR_SEED;
+	unsigned char byte, bit;
+
+	for (i = 0; i < 8; i++) {
+        byte = data[i];
+        for (j = 0; j < 8; j++) {
+            bit = (byte >> j) & 0x01;
+            checksum = (checksum >> 1) | 
+                       (((checksum ^ (checksum >> 1) ^ bit) & 0x01) << 7);
+        }
+    }
+    return checksum;
+}
+
+
 /*
  * Deactivate logical devices on a card
  * Disables all logical devices on the specified PnP card
@@ -132,34 +180,16 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     unsigned char csn;
     unsigned int deviceCount;
     unsigned int i;
-    unsigned char lfsr;
-    int j;
     id deviceList;
 
-    /* ISA PnP Initiation Sequence */
-    /* Send two consecutive writes of 0x00 to address port */
-    outb(0x279, 2);
-    outb(0xa79, 2);
-
-    outb(0x279, 0);
-    outb(0x279, 0);
-
-    /* Send Initiation Key (32 writes using LFSR sequence) */
-    /* Start with seed value 0x6a */
-    lfsr = 0x6a;
-    for (j = 0; j < 0x20; j++) {
-        outb(0x279, lfsr);
-
-        /* LFSR computation: next = (current >> 1) | ((current ^ (current & 2) >> 1) << 7) */
-        lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
-    }
+    /* Send PnP initiation key */
+    pnp_send_key();
 
     /* Get Card Select Number from device */
     csn = [device csn];
 
     /* Wake card with CSN (register 0x03) */
-    outb(0x279, 3);
-    outb(0xa79, csn);
+    pnp_wake(csn);
 
     /* Get device list count */
     deviceList = [device deviceList];
@@ -168,87 +198,136 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* Deactivate each logical device */
     for (i = 0; i < deviceCount; i++) {
         /* Select logical device number (register 0x07) */
-        outb(0x279, 7);
-        outb(0xa79, i);
+        pnp_logicaldevice(i);
 
         /* Deactivate device (register 0x30, write 0) */
-        outb(0x279, 0x30);
-        outb(0xa79, 0);
+        pnp_write_byte(PNP_ACTIVATE, 0);
 
         /* Clear all PnP configuration registers for this device */
         clearPnPConfigRegisters();
     }
 
     /* Wait for Key (register 0x02, value 0x02) */
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    pnp_wait_for_key();
 }
 
-/*
- * Send ISA PnP initiation sequence with LFSR key
+/**
+ * Try isolating PnP cards at the current read port.
+ *
+ * @ret \>0		Number of PnP cards found
+ * @ret 0		There are no PnP cards in the system
+ * @ret \<0		A conflict was detected; try a new read port
+ *
+ * The state diagram on page 18 (PDF page 24) of the PnP ISA spec
+ * gives the best overview of what happens here.
+ *
  */
-static void sendPnPInitiationKey(void)
-{
-    unsigned char lfsr;
-    int i;
+static int pnp_try_isolate ( void ) {
+	struct pnp_identifier identifier;
+	unsigned int i, j;
+	unsigned int seen_55aa, seen_life;
+	unsigned int csn = 0;
+	unsigned short data;
+	unsigned char byte;
+    int s;
 
-    /* Reset sequence */
-    outb(0x279, 2);
-    outb(0xa79, 4);
+	IOLog( "PnP: attempting isolation at read port 0x%x\n", pnpReadPort );
 
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    /* BLOCK INTERRUPTS */
+    s = splhigh();
 
-    /* Two writes of 0x00 to address port */
-    outb(0x279, 0);
-    outb(0x279, 0);
+	/* Global Reset Sequence */
+    pnp_send_key(); 
+    pnp_reset_all_cards();
+    IODelay(2000); /* 2ms wait */
 
-    /* Send 32-byte initiation key using LFSR */
-    lfsr = 0x6a;
-    for (i = 0; i < 0x20; i++) {
-        outb(0x279, lfsr);
-        lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
-    }
-}
+    /* Wait for Key State */
+    pnp_send_key();
+    pnp_wait_for_key();
+    IODelay(2000);
 
-/*
- * Configure PnP read port and isolate cards
- */
-static int isolateCardsWithReadPort(unsigned short readPort)
-{
-    int cardNum;
-    BOOL result;
+    /* CSN Reset (Preps for isolation) */
+    pnp_send_key();
+    pnp_reset_csn();
+    IODelay(2000);   
 
-    /* Set config control (register 0x02 = 0x01) */
-    outb(0x279, 2);
-    outb(0xa79, 1);
+	/* Wake Cards */
+    pnp_send_key(); /* Send Key AGAIN (Redundancy for slow cards) */
+    pnp_wake(0x00);
+	
+	/* Set Read Port */
+    pnp_set_read_port();
+    IODelay(2000); /* Wait 2ms for bus to settle */
 
-    /* Sleep 5ms */
-    IOSleep(5);
+	while ( 1 ) {
 
-    /* Wake CSN 0 (all cards) */
-    outb(0x279, 3);
-    outb(0xa79, 0);
+		/* Initiate serial isolation */
+		pnp_serialisolation ();
+		IODelay(1000);
 
-    /* Set read port address (register 0x00, write port>>2) */
-    outb(0x279, 0);
-    outb(0xa79, (unsigned char)(readPort >> 2));
+		/* Read identifier serially via the PnP read port. */
+		memset ( &identifier, 0, sizeof ( identifier ) );
+		seen_55aa = seen_life = 0;
 
-    /* Isolate cards starting from CSN 1 */
-    cardNum = 1;
-    while (1) {
-        result = isolateCard(cardNum);
-        if (result != YES) {
+        /* Read 9 Bytes (8 ID + 1 Checksum) */
+		for ( i = 0 ; i < 9 ; i++ ) {
+			byte = 0;
+			for ( j = 0 ; j < 8 ; j++ ) {
+                /* Read 0x55 / 0xAA pair */
+				data = pnp_read_data ();
+				IODelay(250);
+				data = ( data << 8 ) | pnp_read_data ();
+				IODelay(250);
+
+				if (  data != 0xffff ) {
+					seen_life++;
+					if ( data == 0x55aa ) {
+						byte |= (1 << j);
+						seen_55aa++;
+					}
+				}
+			}
+			( (char *) &identifier )[i] = byte;
+		}
+
+        /* Did we see any valid PnP headers? */
+        if ( ! seen_55aa ) {
+            if ( csn == 0 && seen_life ) {
+                /* Noisy bus (Legacy conflict), skip this read port */
+                csn = -1; 
+            }
             break;
         }
-        cardNum++;
-    }
 
-    /* Return count of cards found (cardNum - 1) */
-    if (cardNum > 1) {
-        return cardNum - 1;
-    }
-    return 0;
+		/* If the checksum was invalid stop here */
+		if ( identifier.checksum != pnp_checksum((unsigned char *)&identifier) ) {
+			IOLog("PnP: Checksum Failed on Port 0x%x. ID: %02x %02x %02x...\n", 
+                  pnpReadPort, ((char*)&identifier)[0], ((char*)&identifier)[1], ((char*)&identifier)[2]);        
+			csn = -1;
+			break;
+		}
+
+		/* Give the device a CSN */
+		csn++;
+		IOLog( "PnP: found card %s, assigning CSN %hhx\n", pnp_id_string ( identifier.vendor_id, identifier.prod_id ), csn );
+    
+		pnp_write_csn ( csn );
+		IODelay(1000);
+
+		/* Send this card back to Sleep and force all cards
+		 * without a CSN into Isolation state
+		 */
+		pnp_wake ( 0x00 );
+		IODelay(1000);
+	}
+
+	/* Place all cards in Wait for Key state */
+	pnp_wait_for_key();
+
+    /* Restore Interrupts */
+    splx(s);
+
+	return csn;
 }
 
 /*
@@ -257,67 +336,39 @@ static int isolateCardsWithReadPort(unsigned short readPort)
  */
 - (BOOL)initializeNoBIOS
 {
-    char *configPort;
-    unsigned short readPort;
-    int cardsFound;
-    size_t strLen;
-    char *p;
+    IOLog("PnP: initializeNoBIOS - starting manual PnP enumeration\n");
 
     /* Initialize card count */
     maxPnPCard = 0;
 
-    /* Try to get PnP read port from config table */
-    configPort = configTableLookupServerAttribute("EISABus", "PnP Read Port");
-    if (configPort == NULL) {
-        /* No config attribute - auto-scan for read port */
-        /* Try read ports from 0x20B to 0x277 in steps of 4 */
-        /* Note: 0x203 is what the PnP Spec says to start with, but things like a standard joystick occupy the lower port addresses. */
-        readPort = 0x20B;
+    /* Try to isolate cards with different read ports */
+    for ( pnpReadPort = PNP_READ_PORT_MIN ;
+        pnpReadPort <= PNP_READ_PORT_MAX ;
+        pnpReadPort += PNP_READ_PORT_STEP ) {
+        int cardsFound;
+        
+        /* Avoid problematic locations such as the NE2000
+         * probe space
+         */
+        if ( ( pnpReadPort >= 0x280 ) && ( pnpReadPort <= 0x380 ) )
+            continue;
 
-        do {
-            /* Send PnP initiation sequence */
-            sendPnPInitiationKey();
-
-            /* Try to isolate cards with this read port */
-            cardsFound = isolateCardsWithReadPort(readPort);
-
-            maxPnPCard = cardsFound;
-
-            /* If we found cards, we're done */
-            if (cardsFound != 0) {
-                pnpReadPort = readPort;
-                break;
-            }
-
-            /* Try next read port */
-            readPort += 4;
-        } while (readPort < 0x278);
-    } else {
-        /* Use specified read port from config */
-        readPort = (unsigned short)strtol(configPort, NULL, 0);
-        pnpReadPort = readPort;
-
-        /* Free the config string */
-        strLen = 0;
-        p = configPort;
-        while (*p != '\0') {
-            p++;
-            strLen++;
+        /* Try to isolate cards at this read port */
+        cardsFound = pnp_try_isolate();
+        
+        /* Accumulate card count (ignore negative values which indicate conflicts) */
+        if ( cardsFound > 0 ) {
+            maxPnPCard += cardsFound;
         }
-        IOFree(configPort, strLen + 1);
-
-        /* Send PnP initiation sequence */
-        sendPnPInitiationKey();
-
-        /* Isolate cards with specified read port */
-        cardsFound = isolateCardsWithReadPort(readPort);
-
-        maxPnPCard = cardsFound;
     }
 
-    /* Send Wait for Key to complete */
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    /* log the result of the enumeration */
+    if (maxPnPCard == 0) {
+        IOLog("PnP: No PnP cards found during auto-scan\n");
+    } else {
+        IOLog("PnP: successfully enumerated %d card%s\n",
+              maxPnPCard, (maxPnPCard == 1) ? "" : "s");
+    }
 
     /* Return YES if we found any cards */
     return (maxPnPCard != 0);
@@ -387,6 +438,8 @@ static int isolateCardsWithReadPort(unsigned short readPort)
 
     IOLog("PnP: Initializing Plug and Play support\n");
 
+    /* raynorpat: this is broken at the moment, so we'll just return the NoPnPBIOS case */
+#if 0
     /* Try to initialize PnP BIOS */
     pnpBios = [[PnPBios alloc] init];
     if (pnpBios == nil) {
@@ -400,7 +453,6 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     } else {      
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
-
         if (biosResult != 0) {
             /* BIOS call failed */
             if ((biosResult >= 0x81) && (biosResult <= 0x8f)) {
@@ -425,6 +477,12 @@ static int isolateCardsWithReadPort(unsigned short readPort)
 
         IOLog("PnP: Plug and Play support enabled\n");
     }
+#else
+    result = [self initializeNoBIOS];
+    if (result == NO) {
+        return NO;
+    }
+#endif
 
     /* Log configuration */
     IOLog("PnP: read port 0x%x, max csn %d\n", pnpReadPort, maxPnPCard);
@@ -803,8 +861,6 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     PnPDependentResources *depFunction;
     BOOL found;
     unsigned char csn;
-    unsigned char lfsr;
-    int i;
     List *deviceList;
     KernDeviceDescription *desc = (KernDeviceDescription *)description;
 
@@ -914,8 +970,7 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
               cardDeviceName ? cardDeviceName : "", deviceName);
 
         /* Send Wait for Key */
-        outb(0x279, 2);
-        outb(0xa79, 2);
+        pnp_wait_for_key();
 
         [resources free];
         return nil;
@@ -923,35 +978,19 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
 
     /* ===== ISA PnP Programming Sequence ===== */
 
-    /* Reset and Wait for Key */
-    outb(0x279, 2);
-    outb(0xa79, 2);
-
-    /* Two writes of 0x00 to address port */
-    outb(0x279, 0);
-    outb(0x279, 0);
-
-    /* Send 32-byte initiation key using LFSR */
-    lfsr = 0x6a;
-    for (i = 0; i < 0x20; i++) {
-        outb(0x279, lfsr);
-        lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
-    }
+    pnp_send_key();
 
     /* Get Card Select Number */
     csn = [card csn];
 
     /* Wake card (register 0x03) */
-    outb(0x279, 3);
-    outb(0xa79, csn);
+    pnp_wake(csn);
 
     /* Select logical device (register 0x07) */
-    outb(0x279, 7);
-    outb(0xa79, logicalDevice);
+    pnp_logicaldevice(logicalDevice);
 
     /* Deactivate device (register 0x30 = 0) */
-    outb(0x279, 0x30);
-    outb(0xa79, 0);
+    pnp_write_byte(PNP_ACTIVATE, 0);
 
     /* Clear all PnP configuration registers */
     clearPnPConfigRegisters();
@@ -960,16 +999,13 @@ static unsigned int parseVendorID(const char *str, const char **endPtr)
     [[logicalDeviceObj resources] configure:resources Using:depFunction];
 
     /* Set device control register (register 0x31 = 0) */
-    outb(0x279, 0x31);
-    outb(0xa79, 0);
+    pnp_write_byte(PNP_IORANGECHECK, 0);
 
     /* Activate device (register 0x30 = 1) */
-    outb(0x279, 0x30);
-    outb(0xa79, 1);
+    pnp_write_byte(PNP_ACTIVATE, 1);
 
     /* Send Wait for Key */
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    pnp_wait_for_key();
 
     /* Free resources object */
     [resources free];
@@ -986,8 +1022,6 @@ BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
     unsigned char *bufPtr;
     unsigned int bytesRead;
     unsigned char regValue;
-    unsigned char lfsr;
-    int i;
 
     if (csn == 0 || buffer == NULL || length == NULL) {
         return NO;
@@ -997,34 +1031,17 @@ BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
     bytesRead = 0;
 
     /* Send PnP initiation sequence */
-    /* Reset and Wait for Key */
-    outb(0x279, 2);
-    outb(0xa79, 2);
-
-    /* Two writes of 0x00 to address port */
-    outb(0x279, 0);
-    outb(0x279, 0);
-
-    /* Send 32-byte initiation key using LFSR */
-    lfsr = 0x6a;
-    for (i = 0; i < 0x20; i++) {
-        outb(0x279, lfsr);
-        lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
-    }
+    pnp_send_key();
 
     /* Wake card with CSN (register 0x03) */
-    outb(0x279, 3);
-    outb(0xa79, csn);
+    pnp_wake(csn);
 
     /* Read resource data starting at register 0x04 */
     /* Resource data format: tags followed by data bytes */
     /* Read until we hit End tag (0x79) or buffer full */
     for (bytesRead = 0; bytesRead < *length; bytesRead++) {
-        /* Select resource data register (0x04 + offset) */
-        outb(0x279, (unsigned char)(0x04 + bytesRead));
-
-        /* Read value from PnP read port */
-        regValue = inb(pnpReadPort);
+        /* Read resource data register (0x04 + offset) */
+        regValue = pnp_read_byte((unsigned char)(PNP_RESOURCEDATA + bytesRead));
 
         /* Store in buffer */
         bufPtr[bytesRead] = regValue;
@@ -1039,8 +1056,7 @@ BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)
     }
 
     /* Send Wait for Key */
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    pnp_wait_for_key();
 
     /* Update length with actual bytes read */
     *length = bytesRead;
@@ -1064,7 +1080,6 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     unsigned char *bufPtr;
     unsigned char regValue;
     unsigned char regBase;
-    unsigned char lfsr;
     int i, j;
 
     /* Check buffer size - need at least 0x4e bytes */
@@ -1077,28 +1092,13 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* === PnP Initialization Sequence === */
 
     /* Send initiation key sequence */
-    outb(0x279, 2);
-    outb(0xa79, 2);
-
-    /* Two writes of 0x00 to address port (reset) */
-    outb(0x279, 0);
-    outb(0x279, 0);
-
-    /* Send 32-byte LFSR initiation key */
-    lfsr = 0x6a;
-    for (i = 0; i < 0x20; i++) {
-        outb(0x279, lfsr);
-        /* Calculate next LFSR value */
-        lfsr = (lfsr >> 1) | (((lfsr ^ ((lfsr & 2) >> 1)) << 7) & 0x80);
-    }
+    pnp_send_key();
 
     /* Wake card with CSN (register 0x03) */
-    outb(0x279, 3);
-    outb(0xa79, csn);
+    pnp_wake(csn);
 
     /* Select logical device (register 0x07) */
-    outb(0x279, 7);
-    outb(0xa79, logicalDevice);
+    pnp_logicaldevice(logicalDevice);
 
     /* Update size to actual bytes read */
     *size = 0x4e;
@@ -1110,8 +1110,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x40;
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 5; j++) {
-            outb(0x279, (unsigned char)(regBase + j));
-            regValue = inb(pnpReadPort);
+            regValue = pnp_read_byte((unsigned char)(regBase + j));
             bufPtr[i * 5 + j] = regValue;
         }
         regBase += 8;  /* Next I/O range (0x40, 0x48, 0x50, 0x58) */
@@ -1132,8 +1131,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
         }
 
         for (j = 0; j < 9; j++) {
-            outb(0x279, (unsigned char)(regBase + j));
-            regValue = inb(pnpReadPort);
+            regValue = pnp_read_byte((unsigned char)(regBase + j));
             bufPtr[0x14 + i * 9 + j] = regValue;
         }
     }
@@ -1143,8 +1141,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x60;
     for (i = 0; i < 8; i++) {
         for (j = 0; j < 2; j++) {
-            outb(0x279, (unsigned char)(regBase + j));
-            regValue = inb(pnpReadPort);
+            regValue = pnp_read_byte((unsigned char)(regBase + j));
             bufPtr[0x38 + i * 2 + j] = regValue;
         }
         regBase += 2;
@@ -1155,8 +1152,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     regBase = 0x70;
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 2; j++) {
-            outb(0x279, (unsigned char)(regBase + j));
-            regValue = inb(pnpReadPort);
+            regValue = pnp_read_byte((unsigned char)(regBase + j));
             bufPtr[0x48 + i * 2 + j] = regValue;
         }
         regBase += 2;
@@ -1166,8 +1162,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     /* 2 DMA channels × 1 byte each = 2 bytes at buffer offset 0x4c (76) */
     regBase = 0x74;
     for (i = 0; i < 2; i++) {
-        outb(0x279, regBase);
-        regValue = inb(pnpReadPort);
+        regValue = pnp_read_byte(regBase);
         bufPtr[0x4c + i] = regValue;
         regBase++;
     }
@@ -1179,8 +1174,7 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     }
 
     /* === Return to "Wait for Key" state === */
-    outb(0x279, 2);
-    outb(0xa79, 2);
+    pnp_wait_for_key();
 
     return YES;
 }

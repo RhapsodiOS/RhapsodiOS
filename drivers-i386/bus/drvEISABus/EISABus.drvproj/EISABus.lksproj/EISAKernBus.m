@@ -54,10 +54,6 @@ extern const char *findBootConfigString(int index);
 
 /* External variables */
 extern unsigned short pnpReadPort;
-
-/* PnP BIOS entry point variables */
-extern unsigned short PnPEntry_biosCodeSelector;
-extern unsigned int PnPEntry_biosCodeOffset;
 extern unsigned short kernDataSel;
 
 /* EISA I/O ports */

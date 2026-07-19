@@ -87,7 +87,7 @@ typedef struct {
 /*
  * Output
  */
-- (void)print;
+- print;
 
 /*
  * Memory management

@@ -537,7 +537,7 @@ extern char verbose;
  * Print all resources
  * Iterates through all resource types and prints each resource
  */
-- (void)print
+- print
 {
     id resourceContainers[4];
     List *list;
@@ -566,6 +566,8 @@ extern char verbose;
             j++;
         }
     }
+
+    return self;
 }
 
 @end

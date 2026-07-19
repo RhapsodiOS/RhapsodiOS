@@ -32,6 +32,7 @@
 #import "PnPLogicalDevice.h"
 #import "eisa.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/ioPorts.h>
 #import <objc/HashTable.h>
 #import <objc/List.h>
 
@@ -72,10 +73,10 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
     unsigned char value;
 
     /* Write register number to address port (0x279) */
-    __asm__ volatile("outb %b0,%w1" : : "a"(regNum), "d"(0x279));
+    outb(0x279, regNum);
 
     /* Read value from PnP read data port */
-    __asm__ volatile("inb %w1,%b0" : "=a"(value) : "d"(pnpReadPort));
+    value = inb(pnpReadPort);
 
     return value;
 }
@@ -88,10 +89,10 @@ BOOL getDeviceCfg(unsigned char csn, int logicalDevice, void *buffer, unsigned i
 - (void)writePnPRegister:(unsigned char)regNum value:(unsigned char)value
 {
     /* Write register number to address port (0x279) */
-    __asm__ volatile("outb %b0,%w1" : : "a"(regNum), "d"(0x279));
+    outb(0x279, regNum);
 
     /* Write value to PnP write data port (0xa79) */
-    __asm__ volatile("outb %b0,%w1" : : "a"(value), "d"(0xa79));
+    outb(0xa79, value);
 }
 
 /*

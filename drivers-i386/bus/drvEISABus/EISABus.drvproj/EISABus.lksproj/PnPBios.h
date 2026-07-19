@@ -31,6 +31,7 @@
 #define _PNPBIOS_H_
 
 #import <objc/Object.h>
+#import "bios.h"
 
 /*
  * PnP BIOS Installation Check Structure
@@ -62,26 +63,35 @@ union pnp_bios_install_struct {
 #pragma pack()
 typedef union pnp_bios_install_struct pnp_bios_install_struct;
 
-/* PnP BIOS signature: "$PnP" */
-#define PNP_SIGNATURE   (('$' << 0) + ('P' << 8) + ('n' << 16) + ('P' << 24))
+/*
+ * Forward declaration for PnPArgStack
+ */
+@class PnPArgStack;
 
 /* PnPBios - BIOS interface */
 @interface PnPBios : Object
 {
     @private
-    unsigned char _bb[48];                  /* BIOS call structure */
-    unsigned int _biosCodeSegAddr;          /* BIOS code segment base address */
-    unsigned short _biosEntryOffset;        /* BIOS entry point offset */
-    unsigned int _dataSegAddr;              /* BIOS data segment base address */
-    pnp_bios_install_struct *_pnpBios;      /* PnP BIOS installation structure */
-    void *_kData;                           /* 64KB buffer for PnP operations */
-    unsigned short _kDataSelector;          /* Buffer selector */
-    void *_kStack;                          /* 4KB stack for 16-bit BIOS calls */
-    unsigned int _saveGDTBiosCode[2];       /* Saved GDT entry 16 */
-    unsigned int _saveGDTBiosEntry[2];      /* Saved GDT entry 18 */
-    unsigned int _saveGDTKData[2];          /* Saved GDT entry 19 */
-    unsigned int _saveGDTBiosData[2];       /* Saved GDT entry 17 */
+    PnPArgStack *argStack;                  /* Argument stack builder */
+    BIOSCallStruct bb;                      /* BIOS call structure (48 bytes) */
+    unsigned int biosCodeSegAddr;           /* BIOS code segment base address */
+    unsigned short biosEntryOffset;         /* BIOS entry point offset */
+    unsigned short biosSelector;            /* BIOS code selector */
+    unsigned int dataSegAddr;               /* BIOS data segment base address */
+    pnp_bios_install_struct *installCheck_p; /* PnP BIOS installation structure */
+    void *kData;                            /* 64KB buffer for PnP operations */
+    unsigned short kDataSelector;           /* Buffer selector */
+    unsigned int saveGDTBiosCode[2];        /* Saved GDT entry 16 */
+    unsigned int saveGDTBiosData[2];        /* Saved GDT entry 17 */
+    unsigned int saveGDTBiosEntry[2];       /* Saved GDT entry 18 */
+    unsigned int saveGDTKData[2];           /* Saved GDT entry 19 */
 }
+
+/*
+ * Class methods
+ */
++ (BOOL)Present:(void **)pnpStructPtr;
++ (void)setVerbose:(char)verboseFlag;
 
 /*
  * Initialization
@@ -101,9 +111,10 @@ typedef union pnp_bios_install_struct pnp_bios_install_struct;
 - (int)getPnPConfig:(void **)buffer;
 
 /*
- * Segment setup
+ * Internal methods for GDT segment management
  */
-- setupSegments;
+- (BOOL)setupSegments;
+- (void)releaseSegments;
 
 @end
 

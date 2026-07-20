@@ -1,9 +1,0 @@
-#! /bin/sh
-
-echo -n 'Unmounting /dev ...'
-umount /dev
-echo ' done'
-
-echo -n 'Removing old device files ...'
-rm -f /dev/*
-echo ' done'

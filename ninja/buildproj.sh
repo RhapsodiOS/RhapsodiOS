@@ -3,9 +3,7 @@
 # buildproj.sh - build a single RhapsodiOS project via its existing
 # Apple/NeXT make framework, staging into a shared DSTROOT.
 #
-# Invoked by build.ninja edges (see ninja/genninja.c). This replaces the
-# per-project work that Dpkg::Package::Builder::build used to do
-# (buildtools-2/lib/Builder.pm), minus the chroot and .deb packaging:
+# Invoked by build.ninja edges (see ninja/genninja.c):
 #   - stage sources into a per-project SRCROOT (make installsrc)
 #   - run `make installhdrs` or `make install` with the RC_* build flags
 #   - install everything into one shared DSTROOT

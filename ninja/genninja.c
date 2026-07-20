@@ -1,19 +1,17 @@
 /*
  * genninja - generate a build.ninja for the RhapsodiOS source tree.
  *
- * This replaces the Perl + dpkg build orchestration (darwin-buildall /
- * darwin-buildpackage / Dpkg::Package::Builder) with a static build graph
+ * This replaces the old Perl build orchestration with a static build graph
  * that samurai (samu) or ninja can execute.
  *
  * It does NOT replace the per-project Apple/NeXT make framework: every graph
  * edge simply runs a project's existing `make installhdrs` / `make install`
- * via ninja/buildproj.sh, staging everything into a shared DSTROOT (no .deb,
- * no chroot).
+ * via ninja/buildproj.sh, staging everything into a shared DSTROOT (no
+ * package-format chroot).
  *
  * The generator:
- *   1. Scans the source tree for */apk/PKGINFO (preferred) or */dpkg/control
- *      (one per project).
- *   2. Parses package name, build deps, and architecture from each metadata file.
+ *   1. Scans the source tree for */apk/PKGINFO (one per project).
+ *   2. Parses pkgname, builddepend, and arch from each PKGINFO.
  *   3. Builds a package-name -> project-directory map.
  *   4. Normalizes dependencies:
  *        - build-base            -> the base toolchain set (see basedeps[]).
@@ -88,18 +86,6 @@ static char *strtrim(char *s)
 	return s;
 }
 
-/* case-insensitive prefix test */
-static int istartswith(const char *s, const char *prefix)
-{
-	while (*prefix) {
-		if (tolower((unsigned char)*s) != tolower((unsigned char)*prefix))
-			return 0;
-		s++;
-		prefix++;
-	}
-	return 1;
-}
-
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
@@ -132,8 +118,8 @@ enum arch { ARCH_UNIVERSAL, ARCH_I386, ARCH_PPC };
 struct project {
 	char *dir;        /* path relative to srcroot, e.g. "Commands/adv_cmds" */
 	char *name;       /* filesystem-safe id (dir with '/' -> '_')           */
-	char *pkg;        /* Package: field, lowercased                         */
-	char **rawdeps;   /* raw Build-Depends tokens (lowercased)              */
+	char *pkg;        /* pkgname from apk/PKGINFO, lowercased               */
+	char **rawdeps;   /* raw builddepend tokens (lowercased)                */
 	int   nrawdeps;
 	enum arch arch;
 	int   is_bootstrap;
@@ -156,9 +142,8 @@ static struct project *project_add(void)
 	return &projects[nprojects++];
 }
 
-/* The base toolchain set that "build-base" expands to, ported verbatim from
- * @basedeps in buildtools-2/lib/Builder.pm. The -hdrs suffixes are retained
- * deliberately: the original build depended only on the *headers* of libc,
+/* The base toolchain set that "build-base" expands to. The -hdrs suffixes
+ * are retained deliberately: builds depend only on the *headers* of libc,
  * architecture, kernel and objc4 (not their full builds), so userland does
  * not have to wait for e.g. a full kernel build. Dependency normalization
  * (resolve_token) maps a -hdrs token to the project's headers node. */
@@ -243,7 +228,7 @@ static struct project *find_by_dir(const char *dir)
 }
 
 /* ------------------------------------------------------------------ */
-/* control file parsing                                                */
+/* PKGINFO parsing                                                     */
 /* ------------------------------------------------------------------ */
 
 /* Read an entire file into a NUL-terminated buffer. Returns NULL on error. */
@@ -267,55 +252,6 @@ static char *read_file(const char *path)
 	return buf;
 }
 
-/* Extract the value of an RFC822-style field from a control file buffer,
- * merging continuation lines (lines beginning with whitespace). Returns a
- * newly-allocated string (caller frees) or NULL if the field is absent. */
-static char *field_value(const char *buf, const char *field)
-{
-	const char *p = buf;
-	size_t flen = strlen(field);
-
-	while (*p) {
-		const char *line = p;
-		const char *nl = strchr(p, '\n');
-		const char *lineend = nl ? nl : p + strlen(p);
-
-		if (istartswith(line, field) && line[flen] == ':') {
-			/* found it; accumulate this line + continuations */
-			char *out = NULL;
-			size_t outlen = 0;
-			const char *v = line + flen + 1;
-
-			for (;;) {
-				size_t vlen = (size_t)(lineend - v);
-				out = xrealloc(out, outlen + vlen + 2);
-				if (outlen)
-					out[outlen++] = ' ';
-				memcpy(out + outlen, v, vlen);
-				outlen += vlen;
-				out[outlen] = '\0';
-
-				if (!nl)
-					break;
-				/* peek next line: continuation if it starts with space/tab */
-				p = nl + 1;
-				if (*p != ' ' && *p != '\t')
-					break;
-				line = p;
-				nl = strchr(p, '\n');
-				lineend = nl ? nl : p + strlen(p);
-				v = line;
-			}
-			return out;
-		}
-
-		if (!nl)
-			break;
-		p = nl + 1;
-	}
-	return NULL;
-}
-
 static enum arch parse_arch(const char *val)
 {
 	if (!val)
@@ -327,7 +263,7 @@ static enum arch parse_arch(const char *val)
 	return ARCH_UNIVERSAL;
 }
 
-/* Split a comma-separated Build-Depends value into lowercased tokens,
+/* Split a comma-separated dependency value into lowercased tokens,
  * stripping any "(version)" constraints. */
 static void parse_deps(struct project *pr, char *val)
 {
@@ -352,57 +288,6 @@ static void parse_deps(struct project *pr, char *val)
 			break;
 		tok = comma + 1;
 	}
-}
-
-/* Register a project from a control file at <dir>/dpkg/control.
- * `dir` is relative to srcroot. */
-static void register_project(const char *srcroot, const char *dir)
-{
-	char path[4096];
-	char *buf, *pkg, *bdeps, *archv;
-	struct project *pr;
-	char *safe;
-	size_t i;
-
-	snprintf(path, sizeof(path), "%s/%s/dpkg/control", srcroot, dir);
-	buf = read_file(path);
-	if (!buf)
-		return; /* no control file; not a buildable project */
-
-	pkg = field_value(buf, "Package");
-	if (!pkg) {
-		fprintf(stderr, "genninja: warning: %s has no Package: field; skipping\n", dir);
-		free(buf);
-		return;
-	}
-
-	pr = project_add();
-	pr->dir = xstrdup(dir);
-
-	safe = xstrdup(dir);
-	for (i = 0; safe[i]; i++)
-		if (safe[i] == '/' || safe[i] == '\\')
-			safe[i] = '_';
-	pr->name = safe;
-
-	{
-		char *t = strtrim(pkg);
-		strlower(t);
-		pr->pkg = xstrdup(t);
-	}
-	free(pkg);
-
-	archv = field_value(buf, "Architecture");
-	pr->arch = parse_arch(archv);
-	free(archv);
-
-	bdeps = field_value(buf, "Build-Depends");
-	if (bdeps) {
-		parse_deps(pr, bdeps);
-		free(bdeps);
-	}
-
-	free(buf);
 }
 
 /* Extract `key = value` from an apk/PKGINFO buffer. Skips blank lines and
@@ -456,7 +341,7 @@ static char *pkginfo_value(const char *buf, const char *key)
 
 /* Register a project from apk/PKGINFO at <dir>/apk/PKGINFO.
  * `dir` is relative to srcroot. */
-static void register_project_pkginfo(const char *srcroot, const char *dir)
+static void register_project(const char *srcroot, const char *dir)
 {
 	char path[4096];
 	char *buf, *pkg, *bdeps, *archv;
@@ -522,14 +407,6 @@ static int is_dir(const char *path)
 	return S_ISDIR(st.st_mode);
 }
 
-static int has_control(const char *srcroot, const char *rel)
-{
-	char path[4096];
-	struct stat st;
-	snprintf(path, sizeof(path), "%s/%s/dpkg/control", srcroot, rel);
-	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
-}
-
 static int has_pkginfo(const char *srcroot, const char *rel)
 {
 	char path[4096];
@@ -539,8 +416,8 @@ static int has_pkginfo(const char *srcroot, const char *rel)
 }
 
 /* Recursively scan `rel` (relative to srcroot) for directories that contain
- * apk/PKGINFO (preferred) or dpkg/control. Each such directory is registered
- * as a project; we do not descend into a project's own subdirectories. */
+ * apk/PKGINFO. Each such directory is registered as a project; we do not
+ * descend into a project's own subdirectories. */
 static void scan_tree(const char *srcroot, const char *rel, int depth)
 {
 	char full[4096];
@@ -565,8 +442,7 @@ static void scan_tree(const char *srcroot, const char *rel, int depth)
 
 		if (de->d_name[0] == '.')
 			continue; /* skip ., .., and hidden dirs (.git etc) */
-		if (strcmp(de->d_name, "dpkg") == 0 ||
-		    strcmp(de->d_name, "apk") == 0 ||
+		if (strcmp(de->d_name, "apk") == 0 ||
 		    strcmp(de->d_name, "CVS") == 0)
 			continue;
 
@@ -580,11 +456,6 @@ static void scan_tree(const char *srcroot, const char *rel, int depth)
 			continue;
 
 		if (has_pkginfo(srcroot, child)) {
-			register_project_pkginfo(srcroot, child);
-			/* do not descend into a registered project */
-			continue;
-		}
-		if (has_control(srcroot, child)) {
 			register_project(srcroot, child);
 			/* do not descend into a registered project */
 			continue;
@@ -633,7 +504,7 @@ static void resolve_token(const char *tok, struct project *self,
 	dep = find_by_pkg(base);
 	if (!dep) {
 		fprintf(stderr,
-			"genninja: warning: %s: unknown Build-Depends '%s' "
+			"genninja: warning: %s: unknown builddepend '%s' "
 			"(no project provides '%s'); skipping\n",
 			self->dir, tok, base);
 		return;
@@ -655,7 +526,7 @@ static void resolve_token(const char *tok, struct project *self,
  * cross-dependencies on the wider tree are satisfied by the host bootstrap
  * toolchain); this keeps the base toolchain free of build-order cycles.
  * Non-bootstrap projects depend on the "build-base" aggregate plus their
- * explicit Build-Depends. */
+ * explicit builddepend entries. */
 static struct resdep *resolve_deps(struct project *self, int *ndeps)
 {
 	struct resdep *out = NULL;
@@ -1005,7 +876,7 @@ int main(int argc, char **argv)
 	scan_tree(cfg.srcroot, "", 0);
 	if (nprojects == 0) {
 		fprintf(stderr, "genninja: no projects found under '%s' "
-			"(looked for */apk/PKGINFO and */dpkg/control)\n",
+			"(looked for */apk/PKGINFO)\n",
 			cfg.srcroot);
 		return 1;
 	}

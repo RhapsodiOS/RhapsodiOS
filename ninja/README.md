@@ -1,8 +1,6 @@
 # Ninja / samurai build for RhapsodiOS
 
-This directory contains a modern, `ninja`-based replacement for the old
-Perl + dpkg build orchestration (`darwin-buildall` / `darwin-buildpackage` /
-`Dpkg::Package::Builder` in `buildtools-2`). It is driven by
+This directory contains a `ninja`-based build orchestrator driven by
 [samurai](https://github.com/michaelforney/samurai) (`samu`), a small C
 implementation of ninja, whose source is **vendored in `ninja/samurai/`** so
 no separate checkout or install is required.
@@ -15,14 +13,15 @@ directory stays at the top level and generates `build.ninja` at the repo root
 It replaces **only the orchestration layer**. Each project is still built by
 its existing Apple/NeXT make framework (`pb_makefiles`, `CoreOSMakefiles`,
 `project_makefiles`, `configure`); the ninja graph just decides *what* gets
-built, *in what order*, and *in parallel*. There is **no `.deb` packaging and
-no chroot** - everything installs into a single shared `DSTROOT`.
+built, *in what order*, and *in parallel*. There is **no chroot** — everything
+installs into a single shared `DSTROOT`. Runtime packaging uses **apk** (see
+the packaging section below).
 
 ## Components
 
 | File | Purpose |
 |------|---------|
-| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO` (with legacy `*/dpkg/control` fallback), parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
+| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO`, parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
 | `buildproj.sh` | Per-project build wrapper invoked by every ninja edge. Stages sources (`make installsrc`), then runs `make installhdrs` / `make install` with the `RC_*` flags, into the shared `DSTROOT`. |
 | `Makefile` | Builds the vendored `samu` and `genninja`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
 | `samurai/` | Vendored [samurai](https://github.com/michaelforney/samurai) source (the `samu` ninja-compatible build tool). Built with its own POSIX `Makefile`. |
@@ -86,8 +85,6 @@ build dependencies change.
 ## Project discovery
 
 A project is any directory under `--srcroot` that contains **`apk/PKGINFO`**.
-Legacy `dpkg/control` remains as a fallback in `genninja` for transitional
-trees, but the in-tree world has been migrated to PKGINFO.
 
 From `apk/PKGINFO`, `genninja` reads:
 
@@ -95,10 +92,7 @@ From `apk/PKGINFO`, `genninja` reads:
 |-----|---------|
 | `pkgname` | Package name (required) |
 | `builddepend` | Build dependencies (space-separated; commas also accepted) |
-| `arch` | Architecture (optional; same rules as former dpkg `Architecture`) |
-
-Helpers: `ninja/dpkg-control-to-pkginfo.sh` and `ninja/migrate-dpkg-to-apk.py`
-convert Debian-style control files if you need them again.
+| `arch` | Architecture (optional; values containing `i386` / `ppc` select that arch) |
 
 ## How the graph is built
 
@@ -109,7 +103,7 @@ the generator emits **two** nodes:
 * `<project>.full.stamp` - runs `make install`; depends on its own
   `.hdrs.stamp`.
 
-Dependencies from `builddepend` / `Build-Depends` are mapped as follows:
+Dependencies from `builddepend` are mapped as follows:
 
 * `foo-hdrs` -> depend on `foo.hdrs.stamp` (headers only)
 * `foo` or `foo-obj` -> depend on `foo.full.stamp`
@@ -123,10 +117,10 @@ full-build cycle.
 
 ### The bootstrap set (`build-base`)
 
-`build-base` expands to the base toolchain, ported from `@basedeps` in
-`buildtools-2/lib/Builder.pm`: `cc`, `cctools`, `gnumake`, the three makefile
-packages, the base shells/tools, `libsystem`, `libc`, `architecture`,
-`kernel`, `csu`, `objc4`, `files`, and the legacy `*-cmds` base commands.
+`build-base` expands to the base toolchain: `cc`, `cctools`, `gnumake`, the
+three makefile packages, the base shells/tools, `libsystem`, `libc`,
+`architecture`, `kernel`, `csu`, `objc4`, `files`, and the `*-cmds` base
+commands.
 
 Because the original build relied on a *seed repository* of pre-built base
 packages, the from-source graph would otherwise be cyclic (e.g. `gnumake`
@@ -147,7 +141,7 @@ it finds (they are emitted as order-only edges so the build can still proceed).
 
 The generator is portable POSIX C (`dirent.h`, `sys/stat.h`) and can run on any
 POSIX host (Rhapsody/Darwin, macOS, Linux). The **build itself** currently
-assumes a native Rhapsody/Darwin host, matching the old dpkg flow:
+assumes a native Rhapsody/Darwin host:
 
 * A minimal **host bootstrap** `cc` and `make` must exist to build the base
   toolchain first (this is the classic bootstrap chicken-and-egg; the old
@@ -172,12 +166,6 @@ make -C ninja/samurai CFLAGS="-O -DNO_POSIX_SPAWN" LDLIBS=
 
 The top-level `ninja/Makefile` invokes `make -C samurai`, so you can also pass
 these through the environment when running `make -C ninja world`.
-
-## Relationship to the old build system
-
-The Perl/dpkg orchestration (`buildtools-2` tools, `dpkg-3`,
-`dpkg_scriptlib-1`) is intentionally left in place during migration. Remove it
-only after this flow has been validated against a dpkg-built reference.
 
 ## Packaging with apk
 

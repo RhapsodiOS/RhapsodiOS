@@ -1,0 +1,6 @@
+Package: apk-tools
+Maintainer: RhapsodiOS Developers
+Vendor: Alpine Linux
+Version: 2.0_pre11
+Description: Alpine package manager (RhapsodiOS port)
+Build-Depends: build-base, zlib

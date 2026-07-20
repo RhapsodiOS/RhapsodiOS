@@ -1,0 +1,7 @@
+pkgname = apk-tools
+pkgver = 2.0_pre11
+pkgdesc = Alpine package manager (RhapsodiOS port)
+url = https://github.com/alpinelinux/apk-tools
+license = GPL-2.0
+builddepend = build-base zlib
+depend = zlib

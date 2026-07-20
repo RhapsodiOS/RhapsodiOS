@@ -44,8 +44,8 @@ GENFLAGS = --srcroot "src" \
 
 all: samu genninja generate
 
-genninja: genninja.c
-	$(CC) $(CFLAGS) -o $@ genninja.c
+genninja: genninja.c generate.c util.c
+	$(CC) $(CFLAGS) -o $@ genninja.c generate.c util.c
 
 # Build the vendored samurai (samu) build tool using its own Makefile.
 samu:

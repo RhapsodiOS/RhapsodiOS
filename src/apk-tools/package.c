@@ -14,7 +14,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <limits.h>
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -446,6 +450,7 @@ struct apk_package *apk_pkg_read(struct apk_database *db, const char *file)
 		goto err;
 	}
 
+#if !defined(RHAPSODY)
 	/* Add implicit busybox dependency if there is scripts */
 	if (ctx.has_install) {
 		struct apk_dependency dep = {
@@ -453,6 +458,7 @@ struct apk_package *apk_pkg_read(struct apk_database *db, const char *file)
 		};
 		apk_deps_add(&ctx.pkg->depends, &dep);
 	}
+#endif
 	ctx.pkg->filename = strdup(realfile);
 
 	return ctx.pkg;

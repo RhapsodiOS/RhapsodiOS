@@ -50,7 +50,16 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <machine/endian.h>
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER BYTE_ORDER
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+#else
 #include <endian.h>
+#endif
 #include <sys/types.h>
 #if defined HAVE_LIMITS_H
 # include <limits.h>

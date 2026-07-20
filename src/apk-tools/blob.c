@@ -9,7 +9,11 @@
  * by the Free Software Foundation. See http://www.gnu.org/ for details.
  */
 
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <string.h>
 
 #include "apk_blob.h"

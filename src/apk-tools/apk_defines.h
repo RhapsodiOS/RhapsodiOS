@@ -12,7 +12,12 @@
 #ifndef APK_DEFINES_H
 #define APK_DEFINES_H
 
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
+#include <stddef.h>
 #include <string.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -31,9 +36,14 @@
 #endif
 
 #ifndef container_of
+#ifdef __GNUC__
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offsetof(type,member) );})
+#else
+#define container_of(ptr, type, member) \
+	((type *)((char *)(ptr) - offsetof(type, member)))
+#endif
 #endif
 
 #if 1

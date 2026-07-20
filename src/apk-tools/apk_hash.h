@@ -12,7 +12,11 @@
 #ifndef APK_HASH_H
 #define APK_HASH_H
 
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include "apk_defines.h"
 #include "apk_blob.h"
 

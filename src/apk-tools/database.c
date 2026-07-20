@@ -14,7 +14,11 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <sys/file.h>

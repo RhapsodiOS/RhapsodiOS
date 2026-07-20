@@ -12,8 +12,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#if defined(__APPLE__) || defined(__rhapsody__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
-
+#endif
 #include "apk_state.h"
 #include "apk_database.h"
 

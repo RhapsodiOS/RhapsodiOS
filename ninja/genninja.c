@@ -11,8 +11,9 @@
  * no chroot).
  *
  * The generator:
- *   1. Scans the source tree for */dpkg/control files (one per project).
- *   2. Parses Package, Build-Depends and Architecture from each control file.
+ *   1. Scans the source tree for */apk/PKGINFO (preferred) or */dpkg/control
+ *      (one per project).
+ *   2. Parses package name, build deps, and architecture from each metadata file.
  *   3. Builds a package-name -> project-directory map.
  *   4. Normalizes dependencies:
  *        - build-base            -> the base toolchain set (see basedeps[]).
@@ -404,6 +405,111 @@ static void register_project(const char *srcroot, const char *dir)
 	free(buf);
 }
 
+/* Extract `key = value` from an apk/PKGINFO buffer. Skips blank lines and
+ * `#` comments. Returns a newly-allocated trimmed value or NULL. */
+static char *pkginfo_value(const char *buf, const char *key)
+{
+	const char *p = buf;
+
+	while (*p) {
+		const char *line = p;
+		const char *nl = strchr(p, '\n');
+		size_t linelen = nl ? (size_t)(nl - line) : strlen(line);
+		char *eq;
+		char *copy, *k, *v;
+
+		if (linelen > 0 && line[linelen - 1] == '\r')
+			linelen--;
+
+		if (linelen == 0 || line[0] == '#') {
+			if (!nl)
+				break;
+			p = nl + 1;
+			continue;
+		}
+
+		copy = xmalloc(linelen + 1);
+		memcpy(copy, line, linelen);
+		copy[linelen] = '\0';
+
+		eq = strchr(copy, '=');
+		if (eq) {
+			*eq = '\0';
+			k = strtrim(copy);
+			if (strcmp(k, key) == 0) {
+				v = strtrim(eq + 1);
+				{
+					char *out = xstrdup(v);
+					free(copy);
+					return out;
+				}
+			}
+		}
+		free(copy);
+
+		if (!nl)
+			break;
+		p = nl + 1;
+	}
+	return NULL;
+}
+
+/* Register a project from apk/PKGINFO at <dir>/apk/PKGINFO.
+ * `dir` is relative to srcroot. */
+static void register_project_pkginfo(const char *srcroot, const char *dir)
+{
+	char path[4096];
+	char *buf, *pkg, *bdeps, *archv;
+	struct project *pr;
+	char *safe;
+	size_t i;
+
+	snprintf(path, sizeof(path), "%s/%s/apk/PKGINFO", srcroot, dir);
+	buf = read_file(path);
+	if (!buf)
+		return; /* no PKGINFO; not a buildable project */
+
+	pkg = pkginfo_value(buf, "pkgname");
+	if (!pkg) {
+		fprintf(stderr, "genninja: warning: %s has no pkgname; skipping\n", dir);
+		free(buf);
+		return;
+	}
+
+	pr = project_add();
+	pr->dir = xstrdup(dir);
+
+	safe = xstrdup(dir);
+	for (i = 0; safe[i]; i++)
+		if (safe[i] == '/' || safe[i] == '\\')
+			safe[i] = '_';
+	pr->name = safe;
+
+	{
+		char *t = strtrim(pkg);
+		strlower(t);
+		pr->pkg = xstrdup(t);
+	}
+	free(pkg);
+
+	archv = pkginfo_value(buf, "arch");
+	pr->arch = parse_arch(archv);
+	free(archv);
+
+	bdeps = pkginfo_value(buf, "builddepend");
+	if (bdeps) {
+		char *p;
+		/* Space- or comma-separated; normalize to commas for parse_deps. */
+		for (p = bdeps; *p; p++)
+			if (*p == ',' || isspace((unsigned char)*p))
+				*p = ',';
+		parse_deps(pr, bdeps);
+		free(bdeps);
+	}
+
+	free(buf);
+}
+
 /* ------------------------------------------------------------------ */
 /* Tree scanning                                                       */
 /* ------------------------------------------------------------------ */
@@ -424,9 +530,17 @@ static int has_control(const char *srcroot, const char *rel)
 	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
+static int has_pkginfo(const char *srcroot, const char *rel)
+{
+	char path[4096];
+	struct stat st;
+	snprintf(path, sizeof(path), "%s/%s/apk/PKGINFO", srcroot, rel);
+	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
 /* Recursively scan `rel` (relative to srcroot) for directories that contain
- * a dpkg/control file. Each such directory is registered as a project; we do
- * not descend into a project's own subdirectories. */
+ * apk/PKGINFO (preferred) or dpkg/control. Each such directory is registered
+ * as a project; we do not descend into a project's own subdirectories. */
 static void scan_tree(const char *srcroot, const char *rel, int depth)
 {
 	char full[4096];
@@ -452,6 +566,7 @@ static void scan_tree(const char *srcroot, const char *rel, int depth)
 		if (de->d_name[0] == '.')
 			continue; /* skip ., .., and hidden dirs (.git etc) */
 		if (strcmp(de->d_name, "dpkg") == 0 ||
+		    strcmp(de->d_name, "apk") == 0 ||
 		    strcmp(de->d_name, "CVS") == 0)
 			continue;
 
@@ -464,6 +579,11 @@ static void scan_tree(const char *srcroot, const char *rel, int depth)
 		if (!is_dir(childfull))
 			continue;
 
+		if (has_pkginfo(srcroot, child)) {
+			register_project_pkginfo(srcroot, child);
+			/* do not descend into a registered project */
+			continue;
+		}
 		if (has_control(srcroot, child)) {
 			register_project(srcroot, child);
 			/* do not descend into a registered project */
@@ -885,7 +1005,8 @@ int main(int argc, char **argv)
 	scan_tree(cfg.srcroot, "", 0);
 	if (nprojects == 0) {
 		fprintf(stderr, "genninja: no projects found under '%s' "
-			"(looked for */dpkg/control)\n", cfg.srcroot);
+			"(looked for */apk/PKGINFO and */dpkg/control)\n",
+			cfg.srcroot);
 		return 1;
 	}
 

@@ -22,7 +22,7 @@ no chroot** - everything installs into a single shared `DSTROOT`.
 
 | File | Purpose |
 |------|---------|
-| `genninja.c` | Generator. Scans the tree for `*/dpkg/control`, parses `Package` / `Build-Depends` / `Architecture`, computes the dependency DAG, and writes `build.ninja`. |
+| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO` (preferred) or `*/dpkg/control`, parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
 | `buildproj.sh` | Per-project build wrapper invoked by every ninja edge. Stages sources (`make installsrc`), then runs `make installhdrs` / `make install` with the `RC_*` flags, into the shared `DSTROOT`. |
 | `Makefile` | Builds the vendored `samu` and `genninja`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
 | `samurai/` | Vendored [samurai](https://github.com/michaelforney/samurai) source (the `samu` ninja-compatible build tool). Built with its own POSIX `Makefile`. |
@@ -81,18 +81,36 @@ variables). Defaults in brackets:
 | `-o`/`--out` |            | `build.ninja` | output file |
 
 Regenerate `build.ninja` whenever projects are added/removed or their
-`dpkg/control` `Build-Depends` change.
+build dependencies change.
+
+## Project discovery
+
+A project is any directory under `--srcroot` that contains metadata:
+
+1. **`apk/PKGINFO`** (preferred when both exist)
+2. **`dpkg/control`** (fallback during migration)
+
+From `apk/PKGINFO`, `genninja` reads:
+
+| Key | Meaning |
+|-----|---------|
+| `pkgname` | Package name (required) |
+| `builddepend` | Build dependencies (space-separated; commas also accepted) |
+| `arch` | Architecture (optional; same rules as dpkg `Architecture`) |
+
+From `dpkg/control`, it still reads `Package`, `Build-Depends`, and
+`Architecture`.
 
 ## How the graph is built
 
-For every project (a directory containing `dpkg/control`) the generator emits
-**two** nodes:
+For every project (a directory containing `apk/PKGINFO` or `dpkg/control`)
+the generator emits **two** nodes:
 
 * `<project>.hdrs.stamp` - runs `make installhdrs` (installs public headers).
 * `<project>.full.stamp` - runs `make install`; depends on its own
   `.hdrs.stamp`.
 
-Dependencies from `Build-Depends` are mapped as follows:
+Dependencies from `builddepend` / `Build-Depends` are mapped as follows:
 
 * `foo-hdrs` -> depend on `foo.hdrs.stamp` (headers only)
 * `foo` or `foo-obj` -> depend on `foo.full.stamp`

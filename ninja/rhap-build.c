@@ -116,6 +116,79 @@ static int safe_filename_part(const char *s)
 	return *s && !strchr(s, '/') && !strchr(s, '\\');
 }
 
+static int resolve_repo_root(const char *argv0, char *repo, size_t reposz)
+{
+	char path[PATH_MAX];
+	const char *suffix = "/ninja/rhap-build";
+	const char *ninja;
+	size_t len;
+
+	if (!argv0 || !*argv0) {
+		if (!getcwd(repo, reposz))
+			return -1;
+		return 0;
+	}
+
+	if (argv0[0] == '/') {
+		if (strlen(argv0) >= sizeof(path))
+			return -1;
+		strcpy(path, argv0);
+	} else if (strchr(argv0, '/')) {
+		if (!getcwd(path, sizeof(path)))
+			return -1;
+		len = strlen(path);
+		if (len + 1 + strlen(argv0) >= sizeof(path))
+			return -1;
+		path[len] = '/';
+		strcpy(path + len + 1, argv0);
+	} else {
+		if (!getcwd(repo, reposz))
+			return -1;
+		return 0;
+	}
+
+	len = strlen(path);
+	if (len >= strlen(suffix) &&
+	    !strcmp(path + len - strlen(suffix), suffix)) {
+		path[len - strlen(suffix)] = '\0';
+		if (snprintf(repo, reposz, "%s", path) >= (int)reposz)
+			return -1;
+		return 0;
+	}
+
+	ninja = strstr(path, "/ninja/");
+	if (ninja) {
+		*ninja = '\0';
+		if (snprintf(repo, reposz, "%s", path) >= (int)reposz)
+			return -1;
+		return 0;
+	}
+
+	if (!getcwd(repo, reposz))
+		return -1;
+	return 0;
+}
+
+static char **compact_argv(int argc, char **argv, int skip_idx, int *out_argc)
+{
+	char **out;
+	int i, j;
+
+	out = malloc((size_t)(argc + 1) * sizeof(*out));
+	if (!out)
+		return NULL;
+	j = 0;
+	out[j++] = argv[0];
+	for (i = 1; i < argc; i++) {
+		if (i == skip_idx)
+			continue;
+		out[j++] = argv[i];
+	}
+	out[j] = NULL;
+	*out_argc = j;
+	return out;
+}
+
 static int publish(int argc, char **argv)
 {
 	const char *repo;
@@ -156,17 +229,18 @@ static int publish(int argc, char **argv)
 	return index_apk_repo(repo);
 }
 
-static int run_samu(const char *samu, char **targets, int ntargets)
+static int run_samu(const char *argv0, const char *samu, char **targets,
+		    int ntargets)
 {
-	char cwd[PATH_MAX];
+	char repo[PATH_MAX];
 	char default_samu[PATH_MAX];
 	char **args;
 	pid_t pid;
 	int status;
 	int i;
 
-	if (!getcwd(cwd, sizeof(cwd))) {
-		fprintf(stderr, "rhap-build: getcwd: %s\n", strerror(errno));
+	if (resolve_repo_root(argv0, repo, sizeof(repo)) != 0) {
+		fprintf(stderr, "rhap-build: cannot resolve repo root\n");
 		return 1;
 	}
 	if (!samu) {
@@ -175,12 +249,18 @@ static int run_samu(const char *samu, char **targets, int ntargets)
 			samu = env_samu;
 		else {
 			if (snprintf(default_samu, sizeof(default_samu),
-			    "%s/ninja/samurai/samu", cwd) >= (int)sizeof(default_samu)) {
+			    "%s/ninja/samurai/samu", repo) >=
+			    (int)sizeof(default_samu)) {
 				fprintf(stderr, "rhap-build: default samu path too long\n");
 				return 1;
 			}
 			samu = default_samu;
 		}
+	}
+	if (chdir(repo) != 0) {
+		fprintf(stderr, "rhap-build: chdir %s: %s\n",
+		    repo, strerror(errno));
+		return 1;
 	}
 	args = malloc((size_t)(ntargets + 2) * sizeof(*args));
 	if (!args) {
@@ -202,11 +282,6 @@ static int run_samu(const char *samu, char **targets, int ntargets)
 		return 1;
 	}
 	if (pid == 0) {
-		if (chdir(cwd) != 0) {
-			fprintf(stderr, "rhap-build: chdir %s: %s\n",
-				cwd, strerror(errno));
-			_exit(127);
-		}
 		execvp(samu, args);
 		fprintf(stderr, "rhap-build: cannot run %s: %s\n",
 			samu, strerror(errno));
@@ -263,6 +338,8 @@ int main(int argc, char **argv)
 {
 	int command = -1;
 	int i;
+	int compact_argc;
+	char **compact;
 	struct config cfg;
 	int r;
 
@@ -278,25 +355,22 @@ int main(int argc, char **argv)
 	}
 
 	if (command >= 0 && !strcmp(argv[command], "mkapk")) {
-		if (command != 1 || argc != 5) {
+		if (argc != command + 4) {
 			usage();
 			return 2;
 		}
-		return mkapk(argv[2], argv[3], argv[4]);
+		return mkapk(argv[command + 1], argv[command + 2],
+		    argv[command + 3]);
 	}
 	if (command >= 0 && !strcmp(argv[command], "index")) {
-		if (command != 1 || argc != 3) {
+		if (argc != command + 2) {
 			usage();
 			return 2;
 		}
-		return index_apk_repo(argv[2]);
+		return index_apk_repo(argv[command + 1]);
 	}
 	if (command >= 0 && !strcmp(argv[command], "publish")) {
-		if (command != 1) {
-			usage();
-			return 2;
-		}
-		return publish(argc - 1, argv + 1);
+		return publish(argc - command, argv + command);
 	}
 
 	generate_config_defaults(&cfg);
@@ -319,16 +393,18 @@ int main(int argc, char **argv)
 		return r;
 	}
 
-	if (command != 1) {
-		usage();
-		return 2;
-	}
 	if (!strcmp(argv[command], "generate")) {
-		i = command + 1;
-		r = generate_parse_args(&cfg, argc, argv, &i);
+		compact = compact_argv(argc, argv, command, &compact_argc);
+		if (!compact) {
+			fprintf(stderr, "rhap-build: out of memory\n");
+			return 1;
+		}
+		i = 1;
+		r = generate_parse_args(&cfg, compact_argc, compact, &i);
+		free(compact);
 		if (r < 0)
 			return 0;
-		if (r || i != argc) {
+		if (r || i != compact_argc) {
 			usage();
 			return 2;
 		}
@@ -338,16 +414,25 @@ int main(int argc, char **argv)
 		const char *samu = NULL;
 		char **targets = calloc((size_t)argc, sizeof(*targets));
 		int ntargets = 0;
-		if (!targets ||
-		    parse_build_args(&cfg, argc - command - 1, argv + command + 1,
-			&samu, &targets, &ntargets) != 0) {
+
+		compact = compact_argv(argc, argv, command, &compact_argc);
+		if (!targets || !compact) {
 			free(targets);
+			free(compact);
+			fprintf(stderr, "rhap-build: out of memory\n");
+			return 1;
+		}
+		if (parse_build_args(&cfg, compact_argc - 1, compact + 1,
+		    &samu, &targets, &ntargets) != 0) {
+			free(targets);
+			free(compact);
 			usage();
 			return 2;
 		}
+		free(compact);
 		r = generate_build_ninja(&cfg);
 		if (!r)
-			r = run_samu(samu, targets, ntargets);
+			r = run_samu(argv[0], samu, targets, ntargets);
 		free(targets);
 		return r;
 	}

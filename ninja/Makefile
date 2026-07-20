@@ -44,7 +44,7 @@ GENFLAGS = --srcroot "src" \
 
 all: samu genninja generate
 
-RHAP_SRCS = rhap-build.c generate.c mkapk.c util.c
+RHAP_SRCS = rhap-build.c generate.c mkapk.c index.c util.c
 
 rhap-build: $(RHAP_SRCS)
 	$(CC) $(CFLAGS) -o $@ $(RHAP_SRCS)

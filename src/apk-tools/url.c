@@ -73,8 +73,10 @@ struct apk_istream *apk_istream_from_url_gz(const char *file)
 
 struct apk_bstream *apk_bstream_from_url(const char *url)
 {
-	if (apk_url_local_file(url))
-		return apk_bstream_from_file(url);
+	const char *local = apk_url_local_file(url);
+
+	if (local != NULL)
+		return apk_bstream_from_file(local);
 
 	return apk_bstream_from_fd(fork_wget(url));
 }

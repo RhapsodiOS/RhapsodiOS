@@ -1299,11 +1299,14 @@ int apk_db_install_pkg(struct apk_database *db,
 
 	bs->close(bs, csum, NULL);
 
-	apk_pkg_set_state(db, newpkg, APK_PKG_INSTALLED);
+	if (memcmp(csum, newpkg->csum, sizeof(csum)) != 0) {
+		apk_error("%s-%s: checksum does not match",
+			  newpkg->name->name, newpkg->version);
+		apk_db_purge_pkg(db, newpkg);
+		return -1;
+	}
 
-	if (memcmp(csum, newpkg->csum, sizeof(csum)) != 0)
-		apk_warning("%s-%s: checksum does not match",
-			    newpkg->name->name, newpkg->version);
+	apk_pkg_set_state(db, newpkg, APK_PKG_INSTALLED);
 
 	if (oldpkg != NULL)
 		apk_db_purge_pkg(db, oldpkg);

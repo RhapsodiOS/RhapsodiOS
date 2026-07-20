@@ -15,3 +15,6 @@
 
 # build staging trees (default locations)
 /tmp/rhapsody/
+
+# apk integration test work dirs
+/ninja/tests/out/

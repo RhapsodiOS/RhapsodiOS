@@ -1,0 +1,6 @@
+pkgname = depb
+pkgver = 1.0.0
+pkgdesc = dependency middle B
+url = http://rhapsody.local/depb
+license = MIT
+depend = depc

@@ -179,3 +179,39 @@ these through the environment when running `make -C ninja world`.
 The Perl/dpkg orchestration (`buildtools-2` tools, `dpkg-3`,
 `dpkg_scriptlib-1`) is intentionally left in place during migration. Remove it
 only after this flow has been validated against a dpkg-built reference.
+
+## Packaging with apk
+
+After a project is built into a staging tree, package it with Alpine-style
+`.apk` archives and an `APKINDEX` so the same repo can be used from install
+media or over the network.
+
+**Repo layout.** Publish under `$REPO/rhapsody/$ARCH/` (for example
+`/media/apk/rhapsody/ppc/` or a directory you later serve over HTTP). Each
+architecture directory holds `*.apk` packages and `APKINDEX.tar.gz`.
+
+**Helpers.**
+
+* `ninja/mkapk.sh <PKGINFO> <staging-root> <out.apk>` ? builds one package from
+  an `apk/PKGINFO` and a staged install root.
+* `ninja/publish-apk-repo.sh <repo-dir> <pkginfo> <stage-root> [...]` ? runs
+  `mkapk.sh` for each pair into `<repo-dir>`, then generates `APKINDEX.tar.gz`
+  atomically (`APKINDEX.tar.gz.new` then `mv`) when `apk` is on `PATH` (or set
+  `APK=/path/to/apk`).
+
+**Consuming the repo.** Point `apk` at the same tree via `file://` (local media
+or a mounted volume) or `http://` / `https://` (a static file server of that
+directory). Example:
+
+```sh
+# Local / media
+apk add --repository file:///media/apk/rhapsody/ppc zlib
+
+# Or after configuring /etc/apk/repositories with the same URL
+apk update
+apk add zlib
+apk add -u zlib   # upgrade installed packages from the repo
+```
+
+Full packaging of the entire world build into a seed repository is follow-on
+work; these helpers support incremental seeding of individual packages.

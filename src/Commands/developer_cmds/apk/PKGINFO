@@ -1,0 +1,7 @@
+pkgname = developer-cmds
+pkgver = 1998.10.05
+pkgdesc = Developer commands
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base libinfo-hdrs
+depend = 

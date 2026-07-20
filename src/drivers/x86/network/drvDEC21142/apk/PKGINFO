@@ -1,0 +1,8 @@
+pkgname = dec21142
+pkgver = 6
+pkgdesc = DEC 21142 Ethernet device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

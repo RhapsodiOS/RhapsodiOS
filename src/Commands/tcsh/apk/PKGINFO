@@ -1,0 +1,7 @@
+pkgname = tcsh
+pkgver = 6.08.00
+pkgdesc = Turbo C-Shell
+url = ftp://ftp.gw.com/pub/unix/tcsh/tcsh-6.08.tar.gz
+license = unknown
+builddepend = build-base
+depend = 

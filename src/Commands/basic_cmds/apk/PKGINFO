@@ -1,0 +1,7 @@
+pkgname = basic-cmds
+pkgver = 25
+pkgdesc = Basic user commands.
+url = 
+license = unknown
+builddepend = build-base libcompat yacc libedit-hdrs
+depend = 

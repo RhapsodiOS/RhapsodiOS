@@ -1,0 +1,7 @@
+pkgname = liby
+pkgver = 10
+pkgdesc = y library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

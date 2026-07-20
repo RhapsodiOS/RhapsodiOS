@@ -1,0 +1,7 @@
+pkgname = sounds
+pkgver = 15
+pkgdesc = System sounds
+url = 
+license = unknown
+builddepend = build-base
+depend = 

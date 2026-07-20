@@ -1,0 +1,7 @@
+pkgname = ncftp
+pkgver = 2.4.3
+pkgdesc = Better ftp client
+url = ftp://ftp.ncftp.com/pub/ncftp/
+license = unknown
+builddepend = build-base
+depend = 

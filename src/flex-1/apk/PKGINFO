@@ -1,0 +1,7 @@
+pkgname = flex
+pkgver = 2.5.4a
+pkgdesc = Fast lexer generator
+url = ftp://prep.ai.mit.edu/pub/gnu/flex-2.5.4.tar.gz
+license = unknown
+builddepend = build-base perl
+depend = 

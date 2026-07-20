@@ -1,0 +1,7 @@
+pkgname = rsync
+pkgver = 1.6.8
+pkgdesc = Remote file syncronizer
+url = http://samba.anu.edu.au/cgi-bin/rsync
+license = unknown
+builddepend = build-base
+depend = 

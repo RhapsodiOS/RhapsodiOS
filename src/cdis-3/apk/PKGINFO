@@ -1,0 +1,7 @@
+pkgname = cdis
+pkgver = 156.1
+pkgdesc = Installation tools
+url = 
+license = unknown
+builddepend = build-base drveide-hdrs
+depend = 

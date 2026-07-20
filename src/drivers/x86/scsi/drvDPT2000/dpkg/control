@@ -1,7 +1,0 @@
-Package: drvdpt2000
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 17
-Architecture: i386-apple-rhapsody
-Description: DPT 2000 SCSI device driver
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -1,7 +1,0 @@
-Package: intelac97sound
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 1
-Architecture: i386-apple-rhapsody
-Description: Intel AC97 generic sound device driver
-Build-Depends: build-base, drivertools, driverkit, kernload

@@ -17,15 +17,24 @@ url=$(field URL)
 if [ -z "$url" ]; then
   url=$(field Homepage)
 fi
+arch=$(field Architecture)
 
 # Description: first line only (synopsis). Continuation lines start with space/tab.
 pkgdesc=$(sed -n 's/^Description:[[:space:]]*//p' "$CTL" | head -1 | tr -d '\r')
 
-# Build-Depends: map commas to spaces, collapse whitespace
-builddepend=$(field Build-Depends | tr ',' ' ' | tr -s '[:space:]' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+# Build-Depends: drop "(version)" constraints, map commas to spaces, collapse whitespace
+builddepend=$(field Build-Depends \
+  | sed 's/([^)]*)//g' \
+  | tr ',' ' ' \
+  | tr -s '[:space:]' ' ' \
+  | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 # Depends (runtime), if present
-depend=$(field Depends | tr ',' ' ' | tr -s '[:space:]' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+depend=$(field Depends \
+  | sed 's/([^)]*)//g' \
+  | tr ',' ' ' \
+  | tr -s '[:space:]' ' ' \
+  | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 if [ -z "$pkgname" ] || [ -z "$pkgver" ]; then
   echo "error: Package and Version are required in $CTL" >&2
@@ -42,3 +51,6 @@ printf 'url = %s\n' "$url"
 printf 'license = %s\n' "$license"
 printf 'builddepend = %s\n' "$builddepend"
 printf 'depend = %s\n' "$depend"
+if [ -n "$arch" ]; then
+  printf 'arch = %s\n' "$arch"
+fi

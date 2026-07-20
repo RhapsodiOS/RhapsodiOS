@@ -1,6 +1,0 @@
-Package: buildtools
-Maintainer: Klee Dienes <kdienes@apple.com>
-Vendor: Apple Computer, Inc.
-Version: 0.1
-Description: Build tools
-Build-Depends: build-base, gnuzip

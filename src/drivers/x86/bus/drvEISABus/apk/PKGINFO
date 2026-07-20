@@ -1,0 +1,8 @@
+pkgname = drveisabus
+pkgver = 20
+pkgdesc = EISA Bus device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 
+arch = i386-apple-rhapsody

@@ -1,8 +1,10 @@
 # RhapsodiOS apk package management design
 
 **Date:** 2026-07-19  
-**Status:** Approved for implementation planning  
+**Status:** Implemented (vendored apk-tools + mass metadata migration to `apk/PKGINFO`)  
 **Replaces:** Debian dpkg / `.deb` as the runtime package manager and distribution format
+
+World package metadata under `src/` uses `apk/PKGINFO` exclusively for genninja discovery (`*/dpkg/control` removed; converter helpers remain for external trees).
 
 ## Summary
 

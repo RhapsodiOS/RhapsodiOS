@@ -1,7 +1,0 @@
-Package: drveisabus
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 20
-Description: EISA Bus device driver
-Architecture: i386-apple-rhapsody
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -1,0 +1,7 @@
+pkgname = mail-cmds
+pkgver = 1998.10.07
+pkgdesc = Mail commands
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base libcurses-hdrs
+depend = 

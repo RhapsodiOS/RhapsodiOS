@@ -1,0 +1,7 @@
+pkgname = project-makefiles
+pkgver = 118.2.1
+pkgdesc = Legacy NeXT ProjectBuilder makefiles (obsolete)
+url = 
+license = unknown
+builddepend = build-base objc4-hdrs
+depend = 

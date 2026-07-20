@@ -1,7 +1,0 @@
-Package: drvetherlink3
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer, Inc.
-Version: 16
-Architecture: i386-apple-rhapsody
-Description: 3Com EtherLink 3 ethernet device driver
-Build-Depends: build-base, drivertools, driverkit, kernload

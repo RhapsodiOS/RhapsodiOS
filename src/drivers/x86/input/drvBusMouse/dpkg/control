@@ -1,7 +1,0 @@
-Package: drvbusmouse
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 6
-Description: Bus Mouse device driver
-Architecture: i386-apple-rhapsody
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -1,0 +1,7 @@
+pkgname = wget
+pkgver = 1.4.5
+pkgdesc = Web document retrieval utility
+url = ftp://prep.ai.mit.edu/pub/gnu/wget-1.4.5.tar.gz
+license = unknown
+builddepend = build-base perl
+depend = 

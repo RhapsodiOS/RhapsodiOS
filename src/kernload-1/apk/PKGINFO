@@ -1,0 +1,7 @@
+pkgname = kernload
+pkgver = 60
+pkgdesc = Kernel loader
+url = 
+license = unknown
+builddepend = build-base adv-cmds kernload-hdrs libstreams-hdrs driverkit-hdrs
+depend = 

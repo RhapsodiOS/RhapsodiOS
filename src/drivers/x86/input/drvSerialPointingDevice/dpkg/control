@@ -1,7 +1,0 @@
-Package: drvserialpointingdevice
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 9
-Description: Serial Mouse device driver
-Architecture: i386-apple-rhapsody
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -22,7 +22,7 @@ no chroot** - everything installs into a single shared `DSTROOT`.
 
 | File | Purpose |
 |------|---------|
-| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO` (preferred) or `*/dpkg/control`, parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
+| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO` (with legacy `*/dpkg/control` fallback), parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
 | `buildproj.sh` | Per-project build wrapper invoked by every ninja edge. Stages sources (`make installsrc`), then runs `make installhdrs` / `make install` with the `RC_*` flags, into the shared `DSTROOT`. |
 | `Makefile` | Builds the vendored `samu` and `genninja`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
 | `samurai/` | Vendored [samurai](https://github.com/michaelforney/samurai) source (the `samu` ninja-compatible build tool). Built with its own POSIX `Makefile`. |
@@ -85,10 +85,9 @@ build dependencies change.
 
 ## Project discovery
 
-A project is any directory under `--srcroot` that contains metadata:
-
-1. **`apk/PKGINFO`** (preferred when both exist)
-2. **`dpkg/control`** (fallback during migration)
+A project is any directory under `--srcroot` that contains **`apk/PKGINFO`**.
+Legacy `dpkg/control` remains as a fallback in `genninja` for transitional
+trees, but the in-tree world has been migrated to PKGINFO.
 
 From `apk/PKGINFO`, `genninja` reads:
 
@@ -96,14 +95,14 @@ From `apk/PKGINFO`, `genninja` reads:
 |-----|---------|
 | `pkgname` | Package name (required) |
 | `builddepend` | Build dependencies (space-separated; commas also accepted) |
-| `arch` | Architecture (optional; same rules as dpkg `Architecture`) |
+| `arch` | Architecture (optional; same rules as former dpkg `Architecture`) |
 
-From `dpkg/control`, it still reads `Package`, `Build-Depends`, and
-`Architecture`.
+Helpers: `ninja/dpkg-control-to-pkginfo.sh` and `ninja/migrate-dpkg-to-apk.py`
+convert Debian-style control files if you need them again.
 
 ## How the graph is built
 
-For every project (a directory containing `apk/PKGINFO` or `dpkg/control`)
+For every project (a directory containing `apk/PKGINFO`)
 the generator emits **two** nodes:
 
 * `<project>.hdrs.stamp` - runs `make installhdrs` (installs public headers).

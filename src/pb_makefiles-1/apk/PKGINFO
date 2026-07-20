@@ -1,0 +1,7 @@
+pkgname = pb-makefiles
+pkgver = 89.5.1
+pkgdesc = ProjectBuilder makefiles
+url = 
+license = unknown
+builddepend = build-base
+depend = 

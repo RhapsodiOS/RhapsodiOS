@@ -1,7 +1,0 @@
-Package: drvsb16sound
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 23
-Architecture: i386-apple-rhapsody
-Description: Sound Blaster 16 sound device driver
-Build-Depends: build-base, drivertools, driverkit, kernload

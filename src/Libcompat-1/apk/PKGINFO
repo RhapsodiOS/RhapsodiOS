@@ -1,0 +1,7 @@
+pkgname = libcompat
+pkgver = 12
+pkgdesc = BSD compatibility library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

@@ -1,0 +1,7 @@
+pkgname = drvportserver
+pkgver = 14
+pkgdesc = PortServer device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 

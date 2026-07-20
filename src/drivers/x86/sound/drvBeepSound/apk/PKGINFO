@@ -1,0 +1,8 @@
+pkgname = beepsound
+pkgver = 5
+pkgdesc = PC Speaker sound device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

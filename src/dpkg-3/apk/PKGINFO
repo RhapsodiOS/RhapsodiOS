@@ -1,0 +1,7 @@
+pkgname = dpkg
+pkgver = 1.4.1.0.2
+pkgdesc = The `dpkg' package-management tool
+url = 
+license = unknown
+builddepend = build-base perl gnudiff
+depend = 

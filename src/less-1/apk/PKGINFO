@@ -1,0 +1,7 @@
+pkgname = less
+pkgver = 332
+pkgdesc = Text pager
+url = ftp://prep.ai.mit.edu/pub/gnu/less-332.tar.gz
+license = unknown
+builddepend = build-base
+depend = 

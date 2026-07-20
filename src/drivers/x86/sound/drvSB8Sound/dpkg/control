@@ -1,7 +1,0 @@
-Package: drvsb8sound
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 1
-Architecture: i386-apple-rhapsody
-Description: Sound Blaster and Sound Blaster Pro sound device driver
-Build-Depends: build-base, drivertools, driverkit, kernload

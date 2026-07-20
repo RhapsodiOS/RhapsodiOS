@@ -1,0 +1,7 @@
+pkgname = libcurses
+pkgver = 19
+pkgdesc = Text-mode display library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

@@ -1,0 +1,7 @@
+pkgname = cc
+pkgver = 783.1
+pkgdesc = C compiler
+url = 
+license = unknown
+builddepend = build-base gnudiff
+depend = 

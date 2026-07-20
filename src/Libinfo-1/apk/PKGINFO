@@ -1,0 +1,7 @@
+pkgname = libinfo
+pkgver = 44.2
+pkgdesc = NetInfo library
+url = 
+license = unknown
+builddepend = build-base librpcsvc-hdrs libinfo-hdrs
+depend = 

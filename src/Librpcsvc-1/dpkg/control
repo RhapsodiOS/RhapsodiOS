@@ -1,6 +1,0 @@
-Package: librpcsvc
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer, Inc.
-Version: 8
-Description: Remote procedure call library
-Build-Depends: build-base, libinfo

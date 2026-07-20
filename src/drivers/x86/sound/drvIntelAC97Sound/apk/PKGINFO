@@ -1,0 +1,8 @@
+pkgname = intelac97sound
+pkgver = 1
+pkgdesc = Intel AC97 generic sound device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

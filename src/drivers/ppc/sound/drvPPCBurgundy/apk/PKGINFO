@@ -1,0 +1,7 @@
+pkgname = drvppcburgundy
+pkgver = 2
+pkgdesc = Burgundy audio device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 

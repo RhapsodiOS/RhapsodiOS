@@ -1,0 +1,8 @@
+pkgname = drvamdpcnet32ii
+pkgver = 1
+pkgdesc = AMD PCNet32 II ethernet device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

@@ -1,7 +1,0 @@
-Package: drvpcfloppy
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 5
-Description: PC Floppy device driver
-Architecture: i386-apple-rhapsody
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

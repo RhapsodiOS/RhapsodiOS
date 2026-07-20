@@ -1,7 +1,0 @@
-Package: intel82365pcmcia
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 13
-Description: Intel 82365 PCMCIA Controller Driver
-Architecture: i386-apple-rhapsody
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -1,7 +1,0 @@
-Package: drvsb128sound
-Maintainer: Jens Heise
-Vendor: https://github.com/heisej/SoundBlaster16PCI
-Version: 1.2
-Architecture: i386-apple-rhapsody
-Description: Sound Blaster 128, ES1371, and ES1373 sound device driver
-Build-Depends: build-base, drivertools, driverkit, kernload

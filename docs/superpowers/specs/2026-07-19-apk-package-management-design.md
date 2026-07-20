@@ -61,11 +61,11 @@ flowchart LR
     Meta[New apk metadata]
     Ninja[ninja to DSTROOT]
     Mkpkg[apk package builder]
-    Idx[APKINDEX publisher]
+    Idx[APK_INDEX.gz publisher]
     Src --> Ninja
     Meta --> Mkpkg
     Ninja --> Mkpkg
-    Mkpkg --> Repo["Repo or media tree .apk + APKINDEX"]
+    Mkpkg --> Repo["Repo or media tree .apk + APK_INDEX.gz"]
     Mkpkg --> Idx
     Idx --> Repo
   end
@@ -84,7 +84,7 @@ flowchart LR
 1. **Metadata** — Per-project apk-style package definition (replaces `dpkg/control`).
 2. **Build/stage** — Existing ninja → shared `DSTROOT`.
 3. **Package** — Staged files + metadata → `.apk`.
-4. **Publish** — Repo directory with `.apk` files and `APKINDEX`; copy to media or serve over HTTP(S).
+4. **Publish** — Repo directory with `.apk` files and `APK_INDEX.gz` (pre11 name; not modern `APKINDEX.tar.gz`); copy to media or serve over HTTP(S).
 5. **Runtime** — Ported `apk` on the OS: solve, fetch or read local, install/remove/upgrade, maintain installed DB.
 
 ## Components
@@ -112,7 +112,7 @@ flowchart LR
 
 ### 4. Index / publish
 
-- Build `APKINDEX` (and any companion files pre11 expects) over a directory of `.apk` files.
+- Build `APK_INDEX.gz` over a directory of `.apk` files (`apk index` writes the uncompressed index to stdout; gzip that stream).
 - That directory is the **unit of distribution**: CD/ISO/USB layout or static HTTP document root.
 - Suggested layout: `$REPO/rhapsody/$ARCH/` containing `.apk` files and index.
 
@@ -133,7 +133,7 @@ flowchart LR
 1. Ninja builds projects into shared `DSTROOT`.
 2. Packaging step creates `.apk` from staged files + metadata using vendored apk-tools 2.0_pre11.
 3. Artifacts land in the repo root for the target architecture.
-4. Index step writes `APKINDEX` into that directory (**write to a temp name, then replace**) so incomplete indexes are never advertised as ready.
+4. Index step writes `APK_INDEX.gz` into that directory (**write to a temp name, then replace**) so incomplete indexes are never advertised as ready.
 5. Copy the directory to install media or serve it with a static HTTP server.
 
 ### Runtime (network)
@@ -166,7 +166,7 @@ flowchart LR
 | Index/package skew | Fail `update` or `add` with an actionable message. |
 | Disk full / file conflicts | Fail the transaction; follow pre11 conflict rules (no automatic overwrite of files owned by another package). |
 | Privileges | Mutating ops require root. Read-only ops allowed where pre11 already allows them. |
-| Package/index build failure | Fail that build/publish edge only; never publish a half-written `APKINDEX`. |
+| Package/index build failure | Fail that build/publish edge only; never publish a half-written `APK_INDEX.gz`. |
 | Broken/missing `apk` on system | Recover via seed media reinstall; no self-heal via dpkg. |
 
 ## Testing
@@ -192,7 +192,7 @@ flowchart LR
 ## Success criteria
 
 - A RhapsodiOS system can `apk update` / `apk add` / `apk del` / `apk add -u` with automatic dependency resolution from both a network repo and local/media using the same published tree.
-- World (or a defined seed subset) can be packaged as `.apk` + `APKINDEX` from ninja `DSTROOT` output.
+- World (or a defined seed subset) can be packaged as `.apk` + `APK_INDEX.gz` from ninja `DSTROOT` output.
 - `genninja` no longer requires `dpkg/control` for the migrated metadata format.
 - apk-tools at the pinned SHA builds and runs on RhapsodiOS after the Apple makefile / Darwin port.
 

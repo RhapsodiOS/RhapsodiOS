@@ -18,7 +18,12 @@ url = http://rhapsody.local/hello
 license = MIT
 depend =
 EOF
-"$ROOT/ninja/mkapk.sh" "$FIX/PKGINFO" "$FIX/root" "$OUT/hello-1.0.0.apk"
+RHAP="${RHAP_BUILD:-$ROOT/ninja/rhap-build}"
+if [ ! -x "$RHAP" ]; then
+	echo "SKIP: rhap-build not built" >&2
+	exit 77
+fi
+"$RHAP" mkapk "$FIX/PKGINFO" "$FIX/root" "$OUT/hello-1.0.0.apk"
 # Must be gzip
 if command -v od >/dev/null 2>&1; then
 	dd if="$OUT/hello-1.0.0.apk" bs=2 count=1 2>/dev/null | od -An -tx1 | grep -q '1f 8b' || \

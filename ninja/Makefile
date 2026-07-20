@@ -44,6 +44,11 @@ GENFLAGS = --srcroot "src" \
 
 all: samu genninja generate
 
+RHAP_SRCS = rhap-build.c generate.c mkapk.c util.c
+
+rhap-build: $(RHAP_SRCS)
+	$(CC) $(CFLAGS) -o $@ $(RHAP_SRCS)
+
 genninja: genninja.c generate.c util.c
 	$(CC) $(CFLAGS) -o $@ genninja.c generate.c util.c
 
@@ -63,7 +68,7 @@ kernel: samu generate
 	cd .. && $(SAMU) buildkernel
 
 clean:
-	rm -f genninja
+	rm -f genninja rhap-build
 	-$(MAKE) -C samurai clean
 
-.PHONY: all samu generate world kernel clean
+.PHONY: all samu generate world kernel clean rhap-build

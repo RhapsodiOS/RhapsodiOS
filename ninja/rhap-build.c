@@ -169,6 +169,22 @@ static int resolve_repo_root(const char *argv0, char *repo, size_t reposz)
 	return 0;
 }
 
+static int chdir_repo_root(const char *argv0)
+{
+	char repo[PATH_MAX];
+
+	if (resolve_repo_root(argv0, repo, sizeof(repo)) != 0) {
+		fprintf(stderr, "rhap-build: cannot resolve repo root\n");
+		return 1;
+	}
+	if (chdir(repo) != 0) {
+		fprintf(stderr, "rhap-build: chdir %s: %s\n",
+		    repo, strerror(errno));
+		return 1;
+	}
+	return 0;
+}
+
 static char **compact_argv(int argc, char **argv, int skip_idx, int *out_argc)
 {
 	char **out;
@@ -383,6 +399,8 @@ int main(int argc, char **argv)
 			usage();
 			return 2;
 		}
+		if (chdir_repo_root(argv[0]) != 0)
+			return 1;
 		r = generate_build_ninja(&cfg);
 		if (!r)
 			fprintf(stderr,
@@ -408,6 +426,8 @@ int main(int argc, char **argv)
 			usage();
 			return 2;
 		}
+		if (chdir_repo_root(argv[0]) != 0)
+			return 1;
 		return generate_build_ninja(&cfg);
 	}
 	if (!strcmp(argv[command], "build")) {
@@ -430,6 +450,10 @@ int main(int argc, char **argv)
 			return 2;
 		}
 		free(compact);
+		if (chdir_repo_root(argv[0]) != 0) {
+			free(targets);
+			return 1;
+		}
 		r = generate_build_ninja(&cfg);
 		if (!r)
 			r = run_samu(argv[0], samu, targets, ntargets);

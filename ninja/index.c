@@ -92,6 +92,15 @@ static int ends_with_apk(const char *name)
 	return strcmp(name + len - 4, ".apk") == 0;
 }
 
+static void free_file_list(char **list, size_t count)
+{
+	size_t i;
+
+	for (i = 0; i < count; i++)
+		free(list[i]);
+	free(list);
+}
+
 static int collect_apk_files(const char *repo, char ***files, size_t *count)
 {
 	DIR *d;
@@ -117,6 +126,7 @@ static int collect_apk_files(const char *repo, char ***files, size_t *count)
 			fprintf(stderr, "index: path too long: %s/%s\n", repo,
 			    de->d_name);
 			closedir(d);
+			free_file_list(list, n);
 			return -1;
 		}
 		if (n == cap) {
@@ -178,7 +188,6 @@ int index_apk_repo(const char *repo)
 	char index[PATH_MAX];
 	char **files = NULL;
 	size_t nfiles = 0;
-	size_t i;
 	int n;
 	int ret = 1;
 
@@ -202,7 +211,8 @@ int index_apk_repo(const char *repo)
 		fprintf(stderr,
 		    "  set APK=/path/to/apk and re-run: rhap-build index %s\n",
 		    repo);
-		return 0;
+		ret = 0;
+		goto cleanup;
 	}
 
 	n = snprintf(index_new, sizeof(index_new), "%s/APK_INDEX.gz.new", repo);
@@ -232,8 +242,6 @@ int index_apk_repo(const char *repo)
 	ret = 0;
 
 cleanup:
-	for (i = 0; i < nfiles; i++)
-		free(files[i]);
-	free(files);
+	free_file_list(files, nfiles);
 	return ret;
 }

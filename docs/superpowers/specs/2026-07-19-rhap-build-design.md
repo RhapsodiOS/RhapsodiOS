@@ -1,7 +1,7 @@
 # rhap-build unified build/packaging CLI design
 
 **Date:** 2026-07-19  
-**Status:** Approved, pending implementation  
+**Status:** Implemented  
 **Supersedes:** `ninja/genninja` as the public generator name; folds apk packaging helpers into one binary
 
 ## Summary

@@ -97,6 +97,7 @@ struct config {
 	const char *symroot;   /* per-project symbol roots base     */
 	const char *srcbase;   /* per-project source roots base     */
 	const char *toolroot;  /* staged toolchain prefix (MAKEFILEPATH/PATH) */
+	const char *apkrepo;   /* directory for generated .apk files */
 	const char *rc_archs;  /* e.g. "ppc i386"                   */
 	const char *rc_os;     /* e.g. "teflon"                     */
 	const char *wrapper;   /* path to buildproj.sh              */
@@ -724,17 +725,26 @@ static void emit(const struct config *cfg)
 	fprintf(f, "symroot = %s\n", cfg->symroot);
 	fprintf(f, "srcbase = %s\n", cfg->srcbase);
 	fprintf(f, "toolroot = %s\n", cfg->toolroot);
+	fprintf(f, "apkrepo = %s\n", cfg->apkrepo);
 	fprintf(f, "rc_archs = %s\n", cfg->rc_archs);
 	fprintf(f, "rc_os = %s\n", cfg->rc_os);
 	fprintf(f, "wrapper = %s\n", cfg->wrapper);
 	fprintf(f, "stampdir = $objroot/.stamps\n\n");
 
 	fprintf(f, "rule buildproj\n");
-	fprintf(f, "  command = SRCROOT_TREE=\"$srcroot\" sh $wrapper "
+	fprintf(f, "  command = SRCROOT_TREE=\"$srcroot\" APKREPO=\"$apkrepo\" "
+		   "DSTROOT=\"$dstroot\" TOOLROOT=\"$toolroot\" "
+		   "sh $wrapper "
 		   "\"$proj\" \"$target\" \"$parch\" "
 		   "\"$srcbase\" \"$objroot\" \"$symroot\" \"$dstroot\" "
 		   "\"$toolroot\" \"$rc_archs\" \"$rc_os\" \"$stamp\"\n");
 	fprintf(f, "  description = %s $proj\n\n", "$target");
+
+	fprintf(f, "rule apkindex\n");
+	fprintf(f, "  command = APKREPO=\"$apkrepo\" DSTROOT=\"$dstroot\" "
+		   "TOOLROOT=\"$toolroot\" "
+		   "sh ninja/index-apk-repo.sh \"$apkrepo\"\n");
+	fprintf(f, "  description = apk index $apkrepo\n\n");
 
 	/* Per-project edges: a headers node and a full node. */
 	for (i = 0; i < nprojects; i++) {
@@ -757,10 +767,11 @@ static void emit(const struct config *cfg)
 		fprintf(f, "  parch = %s\n", an);
 		fprintf(f, "  stamp = $stampdir/%s.hdrs.stamp\n\n", pr->name);
 
-		/* full node: make install */
-		fprintf(f, "build $stampdir/%s.full.stamp: buildproj || "
+		/* full node: make install (+ automatic .apk into $apkrepo) */
+		fprintf(f, "build $stampdir/%s.full.stamp: buildproj "
+			   "$srcroot/%s/apk/PKGINFO || "
 			   "$stampdir/%s.hdrs.stamp $wrapper",
-			pr->name, pr->name);
+			pr->name, pr->dir, pr->name);
 		for (j = 0; j < ndeps; j++) {
 			if (deps[j].headers)
 				fprintf(f, " $stampdir/%s.hdrs.stamp", deps[j].pr->name);
@@ -790,11 +801,15 @@ static void emit(const struct config *cfg)
 	fprintf(f, "\n\n");
 	free(border);
 
-	/* buildworld: everything */
-	fprintf(f, "build buildworld: phony");
+	/* apkindex: regenerate APK_INDEX.gz whenever any package rebuilds */
+	fprintf(f, "build $apkrepo/APK_INDEX.gz: apkindex");
 	for (i = 0; i < nprojects; i++)
 		fprintf(f, " $stampdir/%s.full.stamp", projects[i].name);
 	fprintf(f, "\n\n");
+	fprintf(f, "build apkindex: phony $apkrepo/APK_INDEX.gz\n\n");
+
+	/* buildworld: everything (apkindex already waits on all full stamps) */
+	fprintf(f, "build buildworld: phony apkindex\n\n");
 
 	/* buildkernel: the kernel project set */
 	fprintf(f, "build buildkernel: phony");
@@ -829,6 +844,7 @@ static void usage(void)
 "    --symroot DIR    per-project symbol roots base [/tmp/rhapsody/sym]\n"
 "    --srcbase DIR    per-project source roots base [/tmp/rhapsody/src]\n"
 "    --toolroot DIR   staged toolchain prefix [=dstroot]\n"
+"    --apkrepo DIR    directory for generated .apk files [/tmp/rhapsody/apk]\n"
 "    --rc-archs STR   target architectures [\"ppc i386\"]\n"
 "    --rc-os STR      RC_OS value [teflon]\n"
 "    --wrapper PATH   per-project build wrapper [ninja/buildproj.sh]\n"
@@ -847,6 +863,7 @@ int main(int argc, char **argv)
 	cfg.symroot  = env_or("SYMROOT",  "/tmp/rhapsody/sym");
 	cfg.srcbase  = env_or("SRCBASE",  "/tmp/rhapsody/src");
 	cfg.toolroot = env_or("TOOLROOT", NULL);
+	cfg.apkrepo  = env_or("APKREPO",  "/tmp/rhapsody/apk");
 	cfg.rc_archs = env_or("RC_ARCHS", "ppc i386");
 	cfg.rc_os    = env_or("RC_OS",    "teflon");
 	cfg.wrapper  = env_or("WRAPPER",  "ninja/buildproj.sh");
@@ -861,6 +878,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(a, "--symroot"))  cfg.symroot  = NEXTARG();
 		else if (!strcmp(a, "--srcbase"))  cfg.srcbase  = NEXTARG();
 		else if (!strcmp(a, "--toolroot")) cfg.toolroot = NEXTARG();
+		else if (!strcmp(a, "--apkrepo"))  cfg.apkrepo  = NEXTARG();
 		else if (!strcmp(a, "--rc-archs")) cfg.rc_archs = NEXTARG();
 		else if (!strcmp(a, "--rc-os"))    cfg.rc_os    = NEXTARG();
 		else if (!strcmp(a, "--wrapper"))  cfg.wrapper  = NEXTARG();

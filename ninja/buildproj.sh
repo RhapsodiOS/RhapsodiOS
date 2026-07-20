@@ -6,7 +6,8 @@
 # Invoked by build.ninja edges (see ninja/genninja.c):
 #   - stage sources into a per-project SRCROOT (make installsrc)
 #   - run `make installhdrs` or `make install` with the RC_* build flags
-#   - install everything into one shared DSTROOT
+#   - for `install`: stage into a private pkgroot, merge into DSTROOT, then
+#     build an .apk into APKREPO when apk/PKGINFO exists
 #
 # Arguments (all positional, passed by ninja):
 #   1  proj      project directory, relative to srcroot (e.g. Commands/adv_cmds)
@@ -20,6 +21,11 @@
 #   9  rc_archs  e.g. "ppc i386" (informational; per-arch flags set below)
 #  10  rc_os     RC_OS value (e.g. teflon)
 #  11  stamp     stamp file to touch on success
+#
+# Environment:
+#   SRCROOT_TREE   original source tree (default: src)
+#   APKREPO        directory for .apk outputs (default: <parent of dstroot>/apk)
+#   SKIP_APK=1     skip .apk generation after install
 
 set -e
 
@@ -32,19 +38,22 @@ proj="$1"; target="$2"; arch="$3"
 srcbase="$4"; objbase="$5"; symbase="$6"; dstroot="$7"
 toolroot="$8"; rc_archs="$9"; rc_os="${10}"; stamp="${11}"
 
-: "${SRCROOT_TREE:=src}"  # where the original source tree lives (repo root/src)
+: "${SRCROOT_TREE:=src}"
 : "${MAKE:=make}"
 
-# The repo root: ninja passes proj relative to $srcroot, which ninja knows as
-# its own working directory. We derive the source tree from SRCROOT_TREE (set
-# by the caller/ninja file) or default to the current directory.
+here=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 srctree="${SRCROOT_TREE}"
 
-srcdir="$srctree/$proj"        # original sources
-SRCROOT="$srcbase/$proj"       # staged sources (build happens here)
+srcdir="$srctree/$proj"
+SRCROOT="$srcbase/$proj"
 OBJROOT="$objbase/$proj"
 SYMROOT="$symbase/$proj"
-DSTROOT="$dstroot"             # shared
+DSTROOT="$dstroot"
+PKGROOT="$objbase/$proj/pkgroot"
+
+if [ -z "${APKREPO:-}" ]; then
+	APKREPO=$(CDPATH= cd -- "$(dirname "$dstroot")" && pwd)/apk
+fi
 
 if [ ! -d "$srcdir" ]; then
 	echo "buildproj.sh: source directory not found: $srcdir" >&2
@@ -55,25 +64,17 @@ mkdir -p "$SRCROOT" "$OBJROOT" "$SYMROOT" "$DSTROOT"
 mkdir -p "$(dirname "$stamp")"
 
 # ---------------------------------------------------------------------------
-# Build environment (ported from Builder.pm build()).
+# Build environment
 # ---------------------------------------------------------------------------
 UNAME_SYSNAME=Rhapsody
 export UNAME_SYSNAME
 
-# Prefer the freshly-staged toolchain, then fall back to the host base tools.
 PATH="$toolroot/usr/bin:$toolroot/bin:$toolroot/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin"
 export PATH
 
-# The Apple make framework locates its makefiles via MAKEFILEPATH.
-# CoreOSMakefiles installs into $DSTROOT/System/Developer/Makefiles/CoreOS
-# (see CoreOSMakefiles-1/Makefile); pb_makefiles/project_makefiles install
-# alongside. Point MAKEFILEPATH at the staged toolchain.
 MAKEFILEPATH="$toolroot/System/Developer/Makefiles"
 export MAKEFILEPATH
 
-# ---------------------------------------------------------------------------
-# RC_* compiler flags (ported from @cflags / buildflags() in Builder.pm).
-# ---------------------------------------------------------------------------
 CFLAGS_NEXT="-Dunix -D__unix -D__unix__ \
 -DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 \
 -DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 \
@@ -93,10 +94,6 @@ case "$arch" in
 		RC_ARCHS="i386 ppc"; RC_i386="YES"; RC_ppc="YES" ;;
 esac
 
-# The full set of make variables Builder.pm passed on every invocation.
-# Kept as positional parameters ("$@") so that values containing spaces
-# (notably RC_CFLAGS) survive as single arguments to make. A subshell
-# ( ... ) inherits these positional parameters.
 set -- \
 	"MAKEFILEPATH=$MAKEFILEPATH" \
 	"SUBLIBROOTS=/usr/local/lib/objs" \
@@ -128,9 +125,36 @@ fi
 # ---------------------------------------------------------------------------
 # 2) Build the requested target in the staged source root.
 # ---------------------------------------------------------------------------
-( cd "$SRCROOT" && $MAKE "$@" \
-	"SRCROOT=$SRCROOT" "OBJROOT=$OBJROOT" "SYMROOT=$SYMROOT" \
-	"DSTROOT=$DSTROOT" "$target" )
+if [ "$target" = "install" ]; then
+	# Private install root so we know exactly which files this package owns,
+	# then merge into the shared DSTROOT and build an .apk.
+	rm -rf "$PKGROOT"
+	mkdir -p "$PKGROOT"
+	echo "    install -> $PKGROOT (private), then merge to $DSTROOT"
+	( cd "$SRCROOT" && $MAKE "$@" \
+		"SRCROOT=$SRCROOT" "OBJROOT=$OBJROOT" "SYMROOT=$SYMROOT" \
+		"DSTROOT=$PKGROOT" install )
+	# Merge package files into the shared tree (deps already live there).
+	( cd "$PKGROOT" && tar cf - . ) | ( cd "$DSTROOT" && tar xf - )
+
+	pkginfo="$srcdir/apk/PKGINFO"
+	if [ "${SKIP_APK:-0}" != "1" ] && [ -f "$pkginfo" ]; then
+		name=$(sed -n 's/^pkgname = //p' "$pkginfo" | head -1 | tr -d '\r')
+		ver=$(sed -n 's/^pkgver = //p' "$pkginfo" | head -1 | tr -d '\r')
+		if [ -n "$name" ] && [ -n "$ver" ]; then
+			mkdir -p "$APKREPO"
+			out="$APKREPO/${name}-${ver}.apk"
+			echo "    mkapk -> $out"
+			"$here/mkapk.sh" "$pkginfo" "$PKGROOT" "$out"
+		else
+			echo "    warning: $pkginfo missing pkgname/pkgver; skipping apk" >&2
+		fi
+	fi
+else
+	( cd "$SRCROOT" && $MAKE "$@" \
+		"SRCROOT=$SRCROOT" "OBJROOT=$OBJROOT" "SYMROOT=$SYMROOT" \
+		"DSTROOT=$DSTROOT" "$target" )
+fi
 
 # ---------------------------------------------------------------------------
 # 3) Mark success.

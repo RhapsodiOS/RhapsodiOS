@@ -22,7 +22,8 @@ the packaging section below).
 | File | Purpose |
 |------|---------|
 | `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO`, parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
-| `buildproj.sh` | Per-project build wrapper invoked by every ninja edge. Stages sources (`make installsrc`), then runs `make installhdrs` / `make install` with the `RC_*` flags, into the shared `DSTROOT`. |
+| `buildproj.sh` | Per-project build wrapper. Stages sources, runs `installhdrs` / `install`. On `install`, stages into a private pkgroot, merges into `DSTROOT`, and builds an `.apk` into `APKREPO`. |
+| `mkapk.sh` / `index-apk-repo.sh` | Build one `.apk`; regenerate `APK_INDEX.gz` after `buildworld`. |
 | `Makefile` | Builds the vendored `samu` and `genninja`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
 | `samurai/` | Vendored [samurai](https://github.com/michaelforney/samurai) source (the `samu` ninja-compatible build tool). Built with its own POSIX `Makefile`. |
 
@@ -74,6 +75,7 @@ variables). Defaults in brackets:
 | `--symroot`  | `SYMROOT`  | `/tmp/rhapsody/sym` | per-project symbol roots base |
 | `--srcbase`  | `SRCBASE`  | `/tmp/rhapsody/src` | per-project staged source roots base |
 | `--toolroot` | `TOOLROOT` | `= dstroot` | staged toolchain prefix (`MAKEFILEPATH`, `PATH`) |
+| `--apkrepo`  | `APKREPO`  | `/tmp/rhapsody/apk` | directory for generated `.apk` files + `APK_INDEX.gz` |
 | `--rc-archs` | `RC_ARCHS` | `ppc i386` | target architectures |
 | `--rc-os`    | `RC_OS`    | `teflon` | `RC_OS` value |
 | `--wrapper`  | `WRAPPER`  | `ninja/buildproj.sh` | per-project wrapper path |
@@ -99,9 +101,10 @@ From `apk/PKGINFO`, `genninja` reads:
 For every project (a directory containing `apk/PKGINFO`)
 the generator emits **two** nodes:
 
-* `<project>.hdrs.stamp` - runs `make installhdrs` (installs public headers).
-* `<project>.full.stamp` - runs `make install`; depends on its own
-  `.hdrs.stamp`.
+* `<project>.hdrs.stamp` - runs `make installhdrs` (installs public headers into `DSTROOT`).
+* `<project>.full.stamp` - runs `make install` into a **private pkgroot**, merges that tree into `DSTROOT`, then runs `mkapk.sh` to write `$APKREPO/<pkgname>-<pkgver>.apk`. Rebuilds when `apk/PKGINFO` changes.
+
+`buildworld` also builds `apkindex`, which regenerates `$APKREPO/APK_INDEX.gz` after all packages succeed. Set `SKIP_APK=1` in the environment to skip `.apk` creation (install/merge still run).
 
 Dependencies from `builddepend` are mapped as follows:
 
@@ -178,15 +181,16 @@ modern `APKINDEX.tar.gz` name.)
 `/media/apk/rhapsody/ppc/` or a directory you later serve over HTTP). Each
 architecture directory holds `*.apk` packages and `APK_INDEX.gz`.
 
-**Helpers.**
+**Automatic packages.** A successful `make install` for each project produces an
+`.apk` under `$APKREPO` (default `/tmp/rhapsody/apk`). After `buildworld`,
+`samu apkindex` (included in `buildworld`) rebuilds `APK_INDEX.gz`.
 
-* `ninja/mkapk.sh <PKGINFO> <staging-root> <out.apk>` — builds one package from
-  an `apk/PKGINFO` and a staged install root.
-* `ninja/publish-apk-repo.sh <repo-dir> <pkginfo> <stage-root> [...]` — runs
-  `mkapk.sh` for each pair into `<repo-dir>`, then generates `APK_INDEX.gz`
-  atomically (`APK_INDEX.gz.new` then `mv`) when `apk` is on `PATH` (or set
-  `APK=/path/to/apk`). Pre11 `apk index` writes the index to stdout; the helper
-  gzips that stream.
+**Helpers (manual / media publish).**
+
+* `ninja/mkapk.sh <PKGINFO> <staging-root> <out.apk>` — build one package.
+* `ninja/index-apk-repo.sh <repo-dir>` — write `APK_INDEX.gz` for a repo dir.
+* `ninja/publish-apk-repo.sh <repo-dir> <pkginfo> <stage-root> [...]` — batch
+  helper for packaging arbitrary stage trees.
 
 **Consuming the repo.** Point `apk` at the same tree via `file://` (local media
 or a mounted volume) or `http://` / `https://` (a static file server of that
@@ -202,8 +206,8 @@ apk add zlib
 apk add -u zlib   # upgrade installed packages from the repo
 ```
 
-Full packaging of the entire world build into a seed repository is follow-on
-work; these helpers support incremental seeding of individual packages.
+For install media, copy or rsync `$APKREPO` (or a filtered subset) into the
+published layout under `$REPO/rhapsody/$ARCH/`.
 
 **Tests.** See `ninja/tests/README.md`. Set `APK=` to a built binary; scripts
 exit 77 if apk is unavailable.

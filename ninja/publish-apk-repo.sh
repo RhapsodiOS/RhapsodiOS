@@ -20,14 +20,4 @@ while [ $# -ge 2 ]; do
   out="$REPO/${name}-${ver}.apk"
   "$SCRIPT_ROOT/mkapk.sh" "$PKGINFO" "$STAGE" "$out"
 done
-APK="${APK:-apk}"
-# apk-tools 2.0_pre11: `apk index` writes uncompressed index to stdout; repo file is APK_INDEX.gz
-INDEX_NEW="$REPO/APK_INDEX.gz.new"
-INDEX="$REPO/APK_INDEX.gz"
-if command -v "$APK" >/dev/null 2>&1 || [ -x "$APK" ]; then
-  "$APK" index "$REPO"/*.apk | gzip -n > "$INDEX_NEW"
-  mv "$INDEX_NEW" "$INDEX"
-else
-  echo "warning: apk not found; packages written but APK_INDEX.gz not generated" >&2
-  echo "  set APK=/path/to/apk and re-run, or: apk index $REPO/*.apk | gzip -n > $INDEX" >&2
-fi
+exec "$SCRIPT_ROOT/index-apk-repo.sh" "$REPO"

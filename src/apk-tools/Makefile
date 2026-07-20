@@ -28,7 +28,8 @@ MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = tool.make
 NEXTSTEP_INSTALLDIR = /sbin
-LIBS = -lz
+# Libraries live in Makefile.preamble (OTHER_LIBS = -lz); keep LIBS empty like other Tools.
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 

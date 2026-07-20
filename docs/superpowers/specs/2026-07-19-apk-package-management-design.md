@@ -94,7 +94,7 @@ flowchart LR
 - Source under `src/apk-tools/` at the pinned commit, built with **Apple/NeXT-style makefiles** (aligned with the rest of the tree), not upstream’s kbuild-style `Make.rules` as the long-term interface.
 - Link against the tree’s **zlib** (replace upstream’s hardcoded `/usr/lib/libz.a`).
 - Day-one commands: `update`, `add`, `del`, `info`, `search`, `index`, `fetch`; upgrades via `apk add --upgrade` / `-u`.
-- Installed-package database at **`/lib/apk`** (Alpine pre11 convention; keep unless the Darwin port forces a documented relocation).
+- Installed-package database at **`/var/lib/apk`** (matches apk-tools 2.0_pre11 `database.c`; keep unless the Darwin port forces a documented relocation).
 - Config: `/etc/apk/repositories` lists `http(s)://` and/or `file://` roots.
 
 ### 2. Package metadata (replaces `dpkg/control`)

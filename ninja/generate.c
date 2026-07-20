@@ -39,6 +39,24 @@ static struct project *projects = NULL;
 static int nprojects = 0;
 static int cprojects = 0;
 
+static void reset_projects(void)
+{
+	int i, j;
+
+	for (i = 0; i < nprojects; i++) {
+		free(projects[i].dir);
+		free(projects[i].name);
+		free(projects[i].pkg);
+		for (j = 0; j < projects[i].nrawdeps; j++)
+			free(projects[i].rawdeps[j]);
+		free(projects[i].rawdeps);
+	}
+	free(projects);
+	projects = NULL;
+	nprojects = 0;
+	cprojects = 0;
+}
+
 static struct project *project_add(void)
 {
 	if (nprojects == cprojects) {
@@ -833,6 +851,8 @@ int generate_parse_args(struct config *cfg, int argc, char **argv, int *argi)
 int generate_build_ninja(const struct config *cfg)
 {
 	struct config local = *cfg;
+
+	reset_projects();
 
 	if (!local.toolroot)
 		local.toolroot = local.dstroot;

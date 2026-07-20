@@ -1,1 +1,34 @@
+# AI dirs
+.claude
+
+# macOS system files
 .DS_Store
+
+# ninja/samurai build orchestration
+/build.ninja
+/ninja/genninja
+/ninja/genninja.exe
+/.ninja_log
+/.ninja_deps
+
+# vendored samurai build artifacts
+/ninja/samurai/samu
+/ninja/samurai/samu.exe
+/ninja/samurai/*.o
+/ninja/samurai/*.obj
+
+# build staging trees (default locations)
+/tmp/rhapsody/
+
+# apk integration test work dirs
+/ninja/tests/out/
+
+# vm testing — local binaries and machine-specific config (scripts/docs are tracked)
+/vm/*.exe
+/vm/*.dll
+/vm/*.vmdk
+/vm/*.flp
+/vm/*.iso
+/vm/*.img
+/vm/pc-bios/
+/vm/bridge.conf

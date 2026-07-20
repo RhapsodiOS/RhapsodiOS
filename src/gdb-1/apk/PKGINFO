@@ -1,0 +1,7 @@
+pkgname = gdb
+pkgver = 142
+pkgdesc = The GNU Debugger
+url = 
+license = unknown
+builddepend = build-base flex bison gnudiff perl
+depend = 

@@ -1,0 +1,7 @@
+pkgname = libstreams
+pkgver = 15.2
+pkgdesc = Streams library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

@@ -1,0 +1,7 @@
+pkgname = libtelnet
+pkgver = 11
+pkgdesc = Telnet library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

@@ -1,0 +1,7 @@
+pkgname = drvppcswimfloppy
+pkgver = 20
+pkgdesc = Apple SWIM Floppy device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 

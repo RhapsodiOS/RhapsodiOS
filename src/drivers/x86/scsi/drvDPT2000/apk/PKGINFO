@@ -1,0 +1,8 @@
+pkgname = drvdpt2000
+pkgver = 17
+pkgdesc = DPT 2000 SCSI device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 
+arch = i386-apple-rhapsody

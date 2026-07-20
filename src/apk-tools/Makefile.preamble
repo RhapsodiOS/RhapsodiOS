@@ -1,0 +1,10 @@
+Install_Source = $(NSSOURCEDIR)/Commands/$(NAME)
+
+include /System/Developer/Makefiles/CoreOS/ProjectBuilder/Makefile.Preamble.Common
+
+# apk gunzip.c uses zlib (inflate / inflateInit2 / inflateEnd).
+# Prefer OTHER_LIBS (Apple PB convention); keep -L so ninja DSTROOT zlib is found.
+OTHER_LIBS = -lz
+OTHER_DEBUG_LIBS = -lz
+OTHER_PROF_LIBS = -lz
+OTHER_LDFLAGS += -L$(DSTROOT)/usr/lib

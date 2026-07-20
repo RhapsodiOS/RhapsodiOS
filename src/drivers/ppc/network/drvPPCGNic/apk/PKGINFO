@@ -1,0 +1,7 @@
+pkgname = drvppcgem
+pkgver = 2
+pkgdesc = Gem ethernet device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 

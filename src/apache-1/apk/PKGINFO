@@ -1,0 +1,7 @@
+pkgname = apache
+pkgver = 1.3.6
+pkgdesc = Apache HTTP server
+url = 
+license = unknown
+builddepend = build-base perl
+depend = 

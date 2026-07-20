@@ -1,6 +1,0 @@
-Package: keymaps
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 25.1
-Description: Key mappings
-Build-Depends: build-base

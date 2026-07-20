@@ -1,0 +1,7 @@
+pkgname = bash
+pkgver = 2.02.1
+pkgdesc = Bourne-again shell
+url = ftp://prep.ai.mit.edu/pub/gnu/bash-2.02.1.tar.gz
+license = unknown
+builddepend = build-base
+depend = 

@@ -1,0 +1,7 @@
+pkgname = python
+pkgver = 2.3
+pkgdesc = Python
+url = http://www.python.org/
+license = unknown
+builddepend = build-base
+depend = 

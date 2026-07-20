@@ -1,0 +1,7 @@
+pkgname = bootstrap-cmds
+pkgver = 13.2
+pkgdesc = Developer commands needed to bootstrap the OS
+url = 
+license = unknown
+builddepend = build-base yacc flex
+depend = 

@@ -1,0 +1,7 @@
+pkgname = objc
+pkgver = 210
+pkgdesc = In-kernel Objective-C runtime
+url = 
+license = unknown
+builddepend = build-base libstreams-hdrs
+depend = 

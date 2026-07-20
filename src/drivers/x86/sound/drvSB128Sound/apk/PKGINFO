@@ -1,0 +1,8 @@
+pkgname = drvsb128sound
+pkgver = 1.2
+pkgdesc = Sound Blaster 128, ES1371, and ES1373 sound device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

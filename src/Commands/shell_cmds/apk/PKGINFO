@@ -1,0 +1,7 @@
+pkgname = shell-cmds
+pkgver = 1998.10.09
+pkgdesc = Shell scripting commands
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base libcurses
+depend = 

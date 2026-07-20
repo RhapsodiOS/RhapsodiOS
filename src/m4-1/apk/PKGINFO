@@ -1,0 +1,7 @@
+pkgname = m4
+pkgver = 1998.10.06
+pkgdesc = Macro preprocessor
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base
+depend = 

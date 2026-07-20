@@ -1,6 +1,0 @@
-Package: intel824x0pci
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 12
-Description: Intel 824x0 PCI Controller Driver
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

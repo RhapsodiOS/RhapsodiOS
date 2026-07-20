@@ -1,0 +1,7 @@
+pkgname = volfs
+pkgver = 0
+pkgdesc = volfs commands
+url = 
+license = unknown
+builddepend = build-base drivertools kernload
+depend = 

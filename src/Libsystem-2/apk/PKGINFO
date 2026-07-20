@@ -1,0 +1,7 @@
+pkgname = libsystem
+pkgver = 25.1
+pkgdesc = System framework
+url = 
+license = unknown
+builddepend = build-base cctools-obj libc-obj libcurses-obj libedit-obj libinfo-obj libkvm-obj libm-obj librpcsvc-obj libstreams-obj objc4-obj project-makefiles
+depend = 

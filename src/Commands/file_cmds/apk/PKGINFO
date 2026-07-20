@@ -1,0 +1,7 @@
+pkgname = file-cmds
+pkgver = 1998.10.06
+pkgdesc = File commands
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base
+depend = 

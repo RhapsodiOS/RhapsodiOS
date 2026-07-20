@@ -1,0 +1,7 @@
+pkgname = kernel
+pkgver = 154.5.1
+pkgdesc = Mach+BSD kernel
+url = 
+license = unknown
+builddepend = build-base architecture driverkit drvpexpert kernel-hdrs libstreams-hdrs machkit objc adv-cmds gnudiff
+depend = 

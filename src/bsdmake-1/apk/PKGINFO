@@ -1,0 +1,7 @@
+pkgname = bsdmake
+pkgver = 1997.11.10
+pkgdesc = BSD build driver ("make")
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base
+depend = 

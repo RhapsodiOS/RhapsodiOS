@@ -1,0 +1,7 @@
+pkgname = doc-cmds
+pkgver = 1998.10.05
+pkgdesc = Documentation commands
+url = http://www.netbsd.org/
+license = unknown
+builddepend = build-base
+depend = 

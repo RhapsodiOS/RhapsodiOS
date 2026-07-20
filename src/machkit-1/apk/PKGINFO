@@ -1,0 +1,7 @@
+pkgname = machkit
+pkgver = 318.2
+pkgdesc = Mach Kit
+url = 
+license = unknown
+builddepend = build-base
+depend = 

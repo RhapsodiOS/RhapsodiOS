@@ -1,0 +1,30 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (EISAKernBus.m, EISAKernBus+PlugAndPlay.m, EISAKernBus+PlugAndPlayPrivate.m, EISAKernBusDMAChannel.m, EISAKernBusInterrupt.m, EISAKernBusPortRange.m, EISAResourceDriver.m, PnPArgStack.m, PnPBios.m, PnPDependentResources.m, PnPDeviceResources.m, pnpDMA.m, pnpIOPort.m, pnpIRQ.m, PnPLogicalDevice.m, pnpMemory.m, PnPResource.m, PnPResources.m, bios.c, eisa.c);
+        H_FILES = (bios.h, eisa.h, EISAKernBus.h, EISAKernBus+PlugAndPlay.h, EISAKernBus+PlugAndPlayPrivate.h, EISAKernBusDMAChannel.h, EISAKernBusInterrupt.h, EISAKernBusPortRange.h, EISAResourceDriver.h, PnPArgStack.h, PnPBios.h, PnPDependentResources.h, PnPDeviceResources.h, pnpDMA.h, pnpIOPort.h, pnpIRQ.h, PnPLogicalDevice.h, pnpMemory.h, PnPResource.h, PnPResources.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble,
+            Load_Commands.sect,
+            biospnp.s
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = EISABus;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

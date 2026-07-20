@@ -1,0 +1,55 @@
+#include <stddef.h>
+#ifndef _WIN32
+#include <stdint.h>
+#endif
+
+struct buffer {
+	char *data;
+	size_t len, cap;
+};
+
+struct string {
+	size_t n;
+	char s[];
+};
+
+/* an unevaluated string */
+struct evalstring {
+	char *var;
+	struct string *str;
+	struct evalstring *next;
+};
+
+#ifndef countof
+#define countof(a) (sizeof(a) / sizeof((a)[0]))
+#endif
+
+void warn(const char *, ...);
+void fatal(const char *, ...);
+
+void *xmalloc(size_t);
+void *xreallocarray(void *, size_t, size_t);
+char *xmemdup(const char *, size_t);
+int xasprintf(char **, const char *, ...);
+
+/* append a byte to a buffer */
+void bufadd(struct buffer *buf, char c);
+
+/* allocates a new string with length n. n + 1 bytes are allocated for
+ * s, but not initialized. */
+struct string *mkstr(size_t n);
+
+/* delete an unevaluated string */
+void delevalstr(void *);
+
+/* canonicalizes the given path by removing duplicate slashes, and
+ * folding '/.' and 'foo/..' */
+void canonpath(struct string *);
+/* write a new file with the given name and contents */
+int writefile(const char *, struct string *);
+
+/* format a 64-bit value into buf without printf's %I64 (the NT4 CRT printf
+ * does not support it). buf must hold >= 21 bytes (i64dec) / >= 17 (u64hex).
+ * returns buf, so it can be passed inline to a %s argument. */
+char *i64dec(char *buf, int64_t v);
+char *u64hex(char *buf, uint64_t v);

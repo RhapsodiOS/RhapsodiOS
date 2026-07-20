@@ -1,0 +1,7 @@
+pkgname = csu
+pkgver = 23.1
+pkgdesc = C startup library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

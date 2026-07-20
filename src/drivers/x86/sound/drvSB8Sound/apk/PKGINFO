@@ -1,0 +1,8 @@
+pkgname = drvsb8sound
+pkgver = 1
+pkgdesc = Sound Blaster and Sound Blaster Pro sound device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit kernload
+depend = 
+arch = i386-apple-rhapsody

@@ -1,0 +1,7 @@
+pkgname = drvppcawacs
+pkgver = 13
+pkgdesc = AWACS audio device driver
+url = 
+license = unknown
+builddepend = build-base drivertools driverkit machkit kernload libstreams
+depend = 

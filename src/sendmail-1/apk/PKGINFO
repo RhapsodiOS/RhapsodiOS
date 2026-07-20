@@ -1,0 +1,7 @@
+pkgname = sendmail
+pkgver = 8.9.1
+pkgdesc = Mail server and tranport agent
+url = http://www.sendmail.org/
+license = unknown
+builddepend = build-base m4 libinfo groff
+depend = 

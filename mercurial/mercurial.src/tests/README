@@ -1,7 +1,0 @@
-To run the tests, do:
-
-cd tests/
-python run-tests.py
-
-See http://www.selenic.com/mercurial/wiki/index.cgi/WritingTests for
-more information on writing tests.

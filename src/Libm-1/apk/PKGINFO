@@ -1,0 +1,7 @@
+pkgname = libm
+pkgver = 15
+pkgdesc = Math library
+url = 
+license = unknown
+builddepend = build-base
+depend = 

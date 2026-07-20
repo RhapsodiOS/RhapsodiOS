@@ -1,0 +1,7 @@
+pkgname = zlib
+pkgver = 1.1.3
+pkgdesc = Zip compression library
+url = http://www.cdrom.com/pub/infozip/zlib/
+license = zlib
+builddepend = build-base
+depend =

@@ -1,4 +1,0 @@
-30 cdrom Installe à partir d'un CD-ROM.
-35 nfs Installe à partir d'un serveur NFS (pas encore monté).
-40 harddisk Installe à partir d'une partition de disque dur (pas encore montée).
-42 mounted Installe à partir d'un système de fichiers déjà monté.

@@ -1,7 +1,0 @@
-pkgname = dpkg-scriptlib
-pkgver = 0.2
-pkgdesc = Perl and Python interfaces to dpkg
-url = 
-license = unknown
-builddepend = build-base gnuzip
-depend = 

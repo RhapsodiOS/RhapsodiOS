@@ -1,7 +1,0 @@
-pkgname = buildtools
-pkgver = 0.1
-pkgdesc = Build tools
-url = 
-license = unknown
-builddepend = build-base gnuzip
-depend = 

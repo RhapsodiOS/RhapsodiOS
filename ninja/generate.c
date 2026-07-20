@@ -281,7 +281,7 @@ static void register_project(const char *srcroot, const char *dir)
 
 	pkg = pkginfo_value(buf, "pkgname");
 	if (!pkg) {
-		fprintf(stderr, "genninja: warning: %s has no pkgname; skipping\n", dir);
+		fprintf(stderr, "rhap-build: warning: %s has no pkgname; skipping\n", dir);
 		free(buf);
 		return;
 	}
@@ -429,7 +429,7 @@ static void resolve_token(const char *tok, struct project *self,
 	dep = find_by_pkg(base);
 	if (!dep) {
 		fprintf(stderr,
-			"genninja: warning: %s: unknown builddepend '%s' "
+			"rhap-build: warning: %s: unknown builddepend '%s' "
 			"(no project provides '%s'); skipping\n",
 			self->dir, tok, base);
 		return;
@@ -522,7 +522,7 @@ static void dfs(struct project *pr)
 		} else if (dep->visit == 1) {
 			int k;
 			cyc_count++;
-			fprintf(stderr, "genninja: warning: dependency cycle:\n  ");
+			fprintf(stderr, "rhap-build: warning: dependency cycle:\n  ");
 			for (k = 0; k < cyc_top; k++)
 				fprintf(stderr, "%s -> ", projects[cyc_stack[k]].dir);
 			fprintf(stderr, "%s\n", dep->dir);
@@ -548,7 +548,7 @@ static void detect_cycles(void)
 	free(cyc_stack);
 	if (cyc_count)
 		fprintf(stderr,
-			"genninja: %d cycle(s) detected; emitted as order-only "
+			"rhap-build: %d cycle(s) detected; emitted as order-only "
 			"edges (build order among them is unspecified)\n",
 			cyc_count);
 }
@@ -742,7 +742,7 @@ static void emit(const struct config *cfg)
 		if (pr)
 			fprintf(f, " $stampdir/%s.full.stamp", pr->name);
 		else
-			fprintf(stderr, "genninja: warning: kernel project '%s' "
+			fprintf(stderr, "rhap-build: warning: kernel project '%s' "
 				"not found\n", kernel_projects[i]);
 	}
 	fprintf(f, "\n\n");
@@ -759,7 +759,7 @@ static void emit(const struct config *cfg)
 static void usage(void)
 {
 	fprintf(stderr,
-"usage: genninja [options]\n"
+"usage: rhap-build generate [options]\n"
 "  Generates build.ninja for the RhapsodiOS source tree.\n\n"
 "  Options (defaults in brackets; env vars of the same name also honored):\n"
 "    --srcroot DIR    source tree root [src]\n"
@@ -838,7 +838,7 @@ int generate_parse_args(struct config *cfg, int argc, char **argv, int *argi)
 			usage();
 			return -1;
 		} else {
-			fprintf(stderr, "genninja: unknown option '%s'\n", a);
+			fprintf(stderr, "rhap-build: unknown option '%s'\n", a);
 			usage();
 			return 1;
 		}
@@ -859,7 +859,7 @@ int generate_build_ninja(const struct config *cfg)
 
 	scan_tree(local.srcroot, "", 0);
 	if (nprojects == 0) {
-		fprintf(stderr, "genninja: no projects found under '%s' "
+		fprintf(stderr, "rhap-build: no projects found under '%s' "
 			"(looked for */apk/PKGINFO)\n",
 			local.srcroot);
 		return 1;
@@ -869,7 +869,7 @@ int generate_build_ninja(const struct config *cfg)
 	detect_cycles();
 	emit(&local);
 
-	fprintf(stderr, "genninja: wrote %s (%d projects)\n",
+	fprintf(stderr, "rhap-build: wrote %s (%d projects)\n",
 		local.outfile, nprojects);
 	return 0;
 }

@@ -1,15 +1,15 @@
 ##
 # Makefile for the ninja/samurai build orchestration.
 #
-# This builds the vendored samurai build tool (samu), the `genninja`
-# generator, (re)generates the top-level build.ninja, and hands off to samu
+# This builds the vendored samurai build tool (samu), the `rhap-build`
+# command, (re)generates the top-level build.ninja, and hands off to samu
 # to build the tree.
 #
-#   make            # build samu + genninja and generate ../build.ninja
+#   make            # build samu + rhap-build and generate ../build.ninja
 #   make world      # generate, then `samu buildworld`
 #   make kernel     # generate, then `samu buildkernel`
 #   make samu       # just build the vendored samurai build tool
-#   make clean      # remove genninja and clean samurai
+#   make clean      # remove rhap-build and clean samurai
 #
 # Override any of the staging locations / target settings on the command line:
 #   make world DSTROOT=/build/dst RC_ARCHS=i386
@@ -42,15 +42,12 @@ GENFLAGS = --srcroot "src" \
 	   --rc-archs "$(RC_ARCHS)" --rc-os "$(RC_OS)" \
 	   --wrapper ninja/buildproj.sh
 
-all: samu genninja generate
+all: samu rhap-build generate
 
 RHAP_SRCS = rhap-build.c generate.c mkapk.c index.c util.c
 
 rhap-build: $(RHAP_SRCS)
 	$(CC) $(CFLAGS) -o $@ $(RHAP_SRCS)
-
-genninja: genninja.c generate.c util.c
-	$(CC) $(CFLAGS) -o $@ genninja.c generate.c util.c
 
 # Build the vendored samurai (samu) build tool using its own Makefile.
 samu:
@@ -58,17 +55,17 @@ samu:
 
 # Generate ../build.ninja from the repo root so that project paths and the
 # wrapper path (ninja/buildproj.sh) are relative to where samu is run.
-generate: genninja
-	cd .. && ninja/genninja $(GENFLAGS)
+generate: rhap-build
+	cd .. && ninja/rhap-build generate $(GENFLAGS)
 
-world: samu generate
-	cd .. && $(SAMU) buildworld
+world: samu
+	cd .. && SAMU="$(SAMU)" ninja/rhap-build build buildworld
 
-kernel: samu generate
-	cd .. && $(SAMU) buildkernel
+kernel: samu
+	cd .. && SAMU="$(SAMU)" ninja/rhap-build build buildkernel
 
 clean:
-	rm -f genninja rhap-build
+	rm -f rhap-build genninja
 	-$(MAKE) -C samurai clean
 
 .PHONY: all samu generate world kernel clean rhap-build

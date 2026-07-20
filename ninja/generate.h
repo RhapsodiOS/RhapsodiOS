@@ -18,7 +18,7 @@ struct config {
 /* Write build.ninja. Returns 0 on success, non-zero on failure. */
 int generate_build_ninja(const struct config *cfg);
 
-/* Fill cfg from env defaults (same as today's genninja main). */
+/* Fill cfg from env defaults. */
 void generate_config_defaults(struct config *cfg);
 
 /* Parse generate options from argv[start..argc). Updates *argi past consumed args.

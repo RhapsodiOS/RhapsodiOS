@@ -15,6 +15,12 @@ if [ ! -f "$APK" ] || [ ! -x "$APK" ]; then
 	exit 77
 fi
 
+RHAP="${RHAP_BUILD:-$ROOT/ninja/rhap-build}"
+if [ ! -x "$RHAP" ]; then
+	echo "SKIP: rhap-build not built" >&2
+	exit 77
+fi
+
 FIX="$ROOT/ninja/tests/fixtures/deps"
 WORK="$ROOT/ninja/tests/out/deps"
 rm -rf "$WORK"
@@ -26,9 +32,9 @@ echo depa > "$FIX/depa/root/usr/share/deps/a"
 echo depb > "$FIX/depb/root/usr/share/deps/b"
 echo depc > "$FIX/depc/root/usr/share/deps/c"
 
-"$ROOT/ninja/mkapk.sh" "$FIX/depc/PKGINFO" "$FIX/depc/root" "$WORK/repo/depc-1.0.0.apk"
-"$ROOT/ninja/mkapk.sh" "$FIX/depb/PKGINFO" "$FIX/depb/root" "$WORK/repo/depb-1.0.0.apk"
-"$ROOT/ninja/mkapk.sh" "$FIX/depa/PKGINFO" "$FIX/depa/root" "$WORK/repo/depa-1.0.0.apk"
+"$RHAP" mkapk "$FIX/depc/PKGINFO" "$FIX/depc/root" "$WORK/repo/depc-1.0.0.apk"
+"$RHAP" mkapk "$FIX/depb/PKGINFO" "$FIX/depb/root" "$WORK/repo/depb-1.0.0.apk"
+"$RHAP" mkapk "$FIX/depa/PKGINFO" "$FIX/depa/root" "$WORK/repo/depa-1.0.0.apk"
 
 # unmet-dep package (built into same repo, not indexed until after happy path — keep in repo)
 mkdir -p "$WORK/nosuch/stage/usr/share/deps"
@@ -41,7 +47,7 @@ url = http://rhapsody.local/neednosuch
 license = MIT
 depend = nosuch
 EOF
-"$ROOT/ninja/mkapk.sh" "$WORK/nosuch/PKGINFO" "$WORK/nosuch/stage" "$WORK/repo/neednosuch-1.0.0.apk"
+"$RHAP" mkapk "$WORK/nosuch/PKGINFO" "$WORK/nosuch/stage" "$WORK/repo/neednosuch-1.0.0.apk"
 
 # pre11: index → stdout; APK_INDEX.gz (includes neednosuch)
 if command -v gzip >/dev/null 2>&1; then

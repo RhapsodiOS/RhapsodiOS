@@ -15,6 +15,12 @@ if [ ! -f "$APK" ] || [ ! -x "$APK" ]; then
 	exit 77
 fi
 
+RHAP="${RHAP_BUILD:-$ROOT/ninja/rhap-build}"
+if [ ! -x "$RHAP" ]; then
+	echo "SKIP: rhap-build not built" >&2
+	exit 77
+fi
+
 if command -v python3 >/dev/null 2>&1; then
 	PYTHON=python3
 elif command -v python >/dev/null 2>&1; then
@@ -57,9 +63,9 @@ license = MIT
 depend =
 EOF
 
-"$ROOT/ninja/mkapk.sh" "$WORK/a/PKGINFO" "$WORK/a/stage" "$WORK/repo/conflict-a-1.0.0.apk"
-"$ROOT/ninja/mkapk.sh" "$WORK/b/PKGINFO" "$WORK/b/stage" "$WORK/repo/conflict-b-1.0.0.apk"
-"$ROOT/ninja/mkapk.sh" "$WORK/good/PKGINFO" "$WORK/good/stage" "$WORK/repo/goodpkg-1.0.0.apk"
+"$RHAP" mkapk "$WORK/a/PKGINFO" "$WORK/a/stage" "$WORK/repo/conflict-a-1.0.0.apk"
+"$RHAP" mkapk "$WORK/b/PKGINFO" "$WORK/b/stage" "$WORK/repo/conflict-b-1.0.0.apk"
+"$RHAP" mkapk "$WORK/good/PKGINFO" "$WORK/good/stage" "$WORK/repo/goodpkg-1.0.0.apk"
 
 if command -v gzip >/dev/null 2>&1; then
 	"$APK" index "$WORK/repo"/*.apk | gzip -n > "$WORK/repo/APK_INDEX.gz.tmp"

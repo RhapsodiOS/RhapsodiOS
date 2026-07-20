@@ -21,16 +21,15 @@ the packaging section below).
 
 | File | Purpose |
 |------|---------|
-| `genninja.c` | Generator. Scans the tree for `*/apk/PKGINFO`, parses package metadata, computes the dependency DAG, and writes `build.ninja`. |
-| `buildproj.sh` | Per-project build wrapper. Stages sources, runs `installhdrs` / `install`. On `install`, stages into a private pkgroot, merges into `DSTROOT`, and builds an `.apk` into `APKREPO`. |
-| `mkapk.sh` / `index-apk-repo.sh` | Build one `.apk`; regenerate `APK_INDEX.gz` after `buildworld`. |
-| `Makefile` | Builds the vendored `samu` and `genninja`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
+| `rhap-build` | Multi-command tool: generate `build.ninja`, run `samu`, build `.apk` archives, index repos, and batch-publish packages. Built from `rhap-build.c`, `generate.c`, `mkapk.c`, `index.c`, `util.c`. |
+| `buildproj.sh` | Per-project build wrapper. Stages sources, runs `installhdrs` / `install`. On `install`, stages into a private pkgroot, merges into `DSTROOT`, and calls `rhap-build mkapk` to write an `.apk` into `APKREPO`. |
+| `Makefile` | Builds the vendored `samu` and `rhap-build`, regenerates `build.ninja`; convenience `world` / `kernel` targets. |
 | `samurai/` | Vendored [samurai](https://github.com/michaelforney/samurai) source (the `samu` ninja-compatible build tool). Built with its own POSIX `Makefile`. |
 
 ## Quick start
 
 ```sh
-# From the repo root: build samu + genninja, generate build.ninja, build all:
+# From the repo root: build samu + rhap-build, generate build.ninja, build all:
 make -C ninja world      # builds ninja/samurai/samu, generates ../build.ninja,
                          # then runs `samu buildworld`
 make -C ninja kernel     # ...or just the kernel
@@ -38,7 +37,7 @@ make -C ninja kernel     # ...or just the kernel
 # Or do the steps by hand:
 make -C ninja samu       # build the vendored samurai -> ninja/samurai/samu
 make -C ninja generate   # write ../build.ninja
-ninja/samurai/samu buildworld
+samu buildworld
 ```
 
 By default the `Makefile` uses the vendored `ninja/samurai/samu`. To use an
@@ -52,20 +51,43 @@ Build a single project (by its directory name) with the convenience alias
 (run from the repo root, after `make -C ninja generate`):
 
 ```sh
-ninja/samurai/samu zlib
-ninja/samurai/samu Commands/adv_cmds
+samu zlib
+samu Commands/adv_cmds
 ```
 
 Headers-only for a project:
 
 ```sh
-ninja/samurai/samu /tmp/rhapsody/obj/.stamps/zlib.hdrs.stamp
+samu /tmp/rhapsody/obj/.stamps/zlib.hdrs.stamp
+```
+
+## rhap-build commands
+
+`rhap-build` is the single entry point for graph generation, packaging, and
+convenience builds:
+
+| Command | Purpose |
+|---------|---------|
+| `generate [opts…]` | Write `build.ninja` (same flags as below). |
+| `build [opts…] [--samu PATH] [target …]` | Regenerate, then run `samu` (default target: `buildworld`). |
+| `mkapk <PKGINFO> <staging-root> <out.apk>` | Build one `.apk` archive. |
+| `index <repo-dir>` | Write `APK_INDEX.gz` for a repo directory. |
+| `publish <repo-dir> <PKGINFO> <staging-root> […]` | Package one or more stage trees, then index the repo. |
+
+Without a command, `rhap-build` generates `build.ninja` and prints build hints.
+
+```sh
+make -C ninja rhap-build
+ninja/rhap-build generate --srcroot src
+ninja/rhap-build build buildworld
+ninja/rhap-build mkapk path/to/PKGINFO /stage/root out.apk
+ninja/rhap-build index /tmp/rhapsody/apk
 ```
 
 ## Configuration
 
-`genninja` reads options from the command line (or same-named environment
-variables). Defaults in brackets:
+`rhap-build generate` reads options from the command line (or same-named
+environment variables). Defaults in brackets:
 
 | Option | Env | Default | Meaning |
 |--------|-----|---------|---------|
@@ -84,11 +106,20 @@ variables). Defaults in brackets:
 Regenerate `build.ninja` whenever projects are added/removed or their
 build dependencies change.
 
+### Environment variables
+
+| Variable | Used by | Meaning |
+|----------|---------|---------|
+| `APKREPO` | `buildproj.sh`, `generate` | Directory for `.apk` outputs and `APK_INDEX.gz` (default: parent of `DSTROOT` + `/apk`). |
+| `SKIP_APK=1` | `buildproj.sh` | Skip `.apk` creation after `install` (install/merge still run). |
+| `RHAP_BUILD` | `buildproj.sh`, tests | Path to the `rhap-build` binary (default: `ninja/rhap-build` next to `buildproj.sh`). |
+| `SAMU` | `Makefile`, `rhap-build build` | Path to the `samu` (or ninja) executable. |
+
 ## Project discovery
 
 A project is any directory under `--srcroot` that contains **`apk/PKGINFO`**.
 
-From `apk/PKGINFO`, `genninja` reads:
+From `apk/PKGINFO`, `rhap-build generate` reads:
 
 | Key | Meaning |
 |-----|---------|
@@ -102,7 +133,7 @@ For every project (a directory containing `apk/PKGINFO`)
 the generator emits **two** nodes:
 
 * `<project>.hdrs.stamp` - runs `make installhdrs` (installs public headers into `DSTROOT`).
-* `<project>.full.stamp` - runs `make install` into a **private pkgroot**, merges that tree into `DSTROOT`, then runs `mkapk.sh` to write `$APKREPO/<pkgname>-<pkgver>.apk`. Rebuilds when `apk/PKGINFO` changes.
+* `<project>.full.stamp` - runs `make install` into a **private pkgroot**, merges that tree into `DSTROOT`, then runs `rhap-build mkapk` to write `$APKREPO/<pkgname>-<pkgver>.apk`. Rebuilds when `apk/PKGINFO` changes.
 
 `buildworld` also builds `apkindex`, which regenerates `$APKREPO/APK_INDEX.gz` after all packages succeed. Set `SKIP_APK=1` in the environment to skip `.apk` creation (install/merge still run).
 
@@ -137,8 +168,9 @@ build-depends `perl`, and everything - including `perl` - build-depends
 * Every non-bootstrap project depends on the `build-base` aggregate, so the
   whole base toolchain is staged into `DSTROOT` before anything else builds.
 
-`genninja` still runs a full cycle check over the graph and prints any cycle
-it finds (they are emitted as order-only edges so the build can still proceed).
+`rhap-build generate` still runs a full cycle check over the graph and prints
+any cycle it finds (they are emitted as order-only edges so the build can still
+proceed).
 
 ## Host assumptions
 
@@ -185,11 +217,11 @@ architecture directory holds `*.apk` packages and `APK_INDEX.gz`.
 `.apk` under `$APKREPO` (default `/tmp/rhapsody/apk`). After `buildworld`,
 `samu apkindex` (included in `buildworld`) rebuilds `APK_INDEX.gz`.
 
-**Helpers (manual / media publish).**
+**Manual packaging.**
 
-* `ninja/mkapk.sh <PKGINFO> <staging-root> <out.apk>` — build one package.
-* `ninja/index-apk-repo.sh <repo-dir>` — write `APK_INDEX.gz` for a repo dir.
-* `ninja/publish-apk-repo.sh <repo-dir> <pkginfo> <stage-root> [...]` — batch
+* `ninja/rhap-build mkapk <PKGINFO> <staging-root> <out.apk>` — build one package.
+* `ninja/rhap-build index <repo-dir>` — write `APK_INDEX.gz` for a repo dir.
+* `ninja/rhap-build publish <repo-dir> <pkginfo> <stage-root> [...]` — batch
   helper for packaging arbitrary stage trees.
 
 **Consuming the repo.** Point `apk` at the same tree via `file://` (local media
@@ -209,5 +241,6 @@ apk add -u zlib   # upgrade installed packages from the repo
 For install media, copy or rsync `$APKREPO` (or a filtered subset) into the
 published layout under `$REPO/rhapsody/$ARCH/`.
 
-**Tests.** See `ninja/tests/README.md`. Set `APK=` to a built binary; scripts
-exit 77 if apk is unavailable.
+**Tests.** See `ninja/tests/README.md`. Set `APK=` to a built binary and ensure
+`rhap-build` is built (`make -C ninja rhap-build`); scripts exit 77 if either
+is unavailable.

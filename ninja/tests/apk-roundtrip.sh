@@ -16,6 +16,12 @@ if [ ! -f "$APK" ] || [ ! -x "$APK" ]; then
 	exit 77
 fi
 
+RHAP="${RHAP_BUILD:-$ROOT/ninja/rhap-build}"
+if [ ! -x "$RHAP" ]; then
+	echo "SKIP: rhap-build not built" >&2
+	exit 77
+fi
+
 WORK="$ROOT/ninja/tests/out/roundtrip"
 rm -rf "$WORK"
 mkdir -p "$WORK/repo" "$WORK/root" "$WORK/stage/usr/bin"
@@ -28,7 +34,7 @@ url = http://rhapsody.local/rt
 license = MIT
 depend =
 EOF
-"$ROOT/ninja/mkapk.sh" "$WORK/PKGINFO" "$WORK/stage" "$WORK/repo/roundtrip-1.0.0.apk"
+"$RHAP" mkapk "$WORK/PKGINFO" "$WORK/stage" "$WORK/repo/roundtrip-1.0.0.apk"
 
 # pre11: apk index writes uncompressed index to stdout (no -o); repo file is APK_INDEX.gz
 if command -v gzip >/dev/null 2>&1; then

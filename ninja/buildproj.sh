@@ -3,7 +3,7 @@
 # buildproj.sh - build a single RhapsodiOS project via its existing
 # Apple/NeXT make framework, staging into a shared DSTROOT.
 #
-# Invoked by build.ninja edges (see ninja/genninja.c):
+# Invoked by build.ninja edges (see ninja/rhap-build.c generate):
 #   - stage sources into a per-project SRCROOT (make installsrc)
 #   - run `make installhdrs` or `make install` with the RC_* build flags
 #   - for `install`: stage into a private pkgroot, merge into DSTROOT, then
@@ -144,8 +144,13 @@ if [ "$target" = "install" ]; then
 		if [ -n "$name" ] && [ -n "$ver" ]; then
 			mkdir -p "$APKREPO"
 			out="$APKREPO/${name}-${ver}.apk"
-			echo "    mkapk -> $out"
-			"$here/mkapk.sh" "$pkginfo" "$PKGROOT" "$out"
+			RHAP="${RHAP_BUILD:-$here/rhap-build}"
+			if [ ! -x "$RHAP" ]; then
+				echo "    warning: rhap-build not found at $RHAP; skipping apk" >&2
+			else
+				echo "    mkapk -> $out"
+				"$RHAP" mkapk "$pkginfo" "$PKGROOT" "$out"
+			fi
 		else
 			echo "    warning: $pkginfo missing pkgname/pkgver; skipping apk" >&2
 		fi

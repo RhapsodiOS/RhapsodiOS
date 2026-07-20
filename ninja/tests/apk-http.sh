@@ -16,6 +16,12 @@ if [ ! -f "$APK" ] || [ ! -x "$APK" ]; then
 	exit 77
 fi
 
+RHAP="${RHAP_BUILD:-$ROOT/ninja/rhap-build}"
+if [ ! -x "$RHAP" ]; then
+	echo "SKIP: rhap-build not built" >&2
+	exit 77
+fi
+
 if command -v python3 >/dev/null 2>&1; then
 	PYTHON=python3
 elif command -v python >/dev/null 2>&1; then
@@ -37,7 +43,7 @@ url = http://rhapsody.local/rt
 license = MIT
 depend =
 EOF
-"$ROOT/ninja/mkapk.sh" "$WORK/PKGINFO" "$WORK/stage" "$WORK/repo/roundtrip-1.0.0.apk"
+"$RHAP" mkapk "$WORK/PKGINFO" "$WORK/stage" "$WORK/repo/roundtrip-1.0.0.apk"
 
 if command -v gzip >/dev/null 2>&1; then
 	"$APK" index "$WORK/repo"/*.apk | gzip -n > "$WORK/repo/APK_INDEX.gz.tmp"

@@ -136,6 +136,17 @@ function Invoke-Sync([hashtable]$Cfg) {
             Write-Die "pscp failed (exit $LASTEXITCODE) for $rel"
         }
     }
+
+    # Windows checkouts often have CRLF; Rhapsody gnumake treats CR as part of
+    # target names and prints garbled "needed by `all'" errors.
+    $rr = $Cfg.RemoteRoot
+    $stripCr = 'sh -c ''tr -d "\r" < ' + $rr + '/ninja/Makefile > /tmp/rhap-mf && mv /tmp/rhap-mf ' + $rr + '/ninja/Makefile && tr -d "\r" < ' + $rr + '/ninja/samurai/Makefile > /tmp/rhap-mf && mv /tmp/rhap-mf ' + $rr + '/ninja/samurai/Makefile'''
+    Write-Host 'rhap-vm: stripping CR from remote ninja Makefiles'
+    Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $stripCr
+    $ec = Get-LastPlinkExitCode
+    if ($ec -ne 0) {
+        Write-Host "rhap-vm: warning: CR strip exited $ec (continuing)"
+    }
     Write-Host 'rhap-vm: sync complete'
 }
 

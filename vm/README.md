@@ -68,15 +68,15 @@ Requires PuTTY (`plink.exe`, `pscp.exe` on PATH) and a running guest with SSH
 
 1. Copy `vm.conf.example` → `vm.conf` (gitignored). Adjust `Host` / password if needed.
 2. **One-time:** accept the SSH host key, e.g. run  
-   `pwsh -File vm\rhap-vm.ps1 ssh hostname`  
+   `powershell -File vm\rhap-vm.ps1 ssh hostname`  
    and confirm the PuTTY host-key prompt. Later `sync`/`build` use `-batch`.
 3. Ensure guest has `/build/source` parent writable as `root` (script runs `mkdir -p`).
 
 ```powershell
-pwsh -File vm\rhap-vm.ps1 sync
-pwsh -File vm\rhap-vm.ps1 build          # make -C /build/source/ninja world
-pwsh -File vm\rhap-vm.ps1 build kernel
-pwsh -File vm\rhap-vm.ps1 ssh hostname
+powershell -File vm\rhap-vm.ps1 sync
+powershell -File vm\rhap-vm.ps1 build          # make -C /build/source/ninja world
+powershell -File vm\rhap-vm.ps1 build kernel
+powershell -File vm\rhap-vm.ps1 ssh hostname
 ```
 
 Default `SyncPaths` are `src` and `ninja` only (not `vm/` binaries, not `.git`).

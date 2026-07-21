@@ -3,9 +3,9 @@
 .SYNOPSIS
   Sync source to Rhapsody QEMU guest and run remote builds (PuTTY plink/pscp).
 .EXAMPLE
-  pwsh -File vm\rhap-vm.ps1 sync
-  pwsh -File vm\rhap-vm.ps1 build world
-  pwsh -File vm\rhap-vm.ps1 ssh hostname
+  powershell -File vm\rhap-vm.ps1 sync
+  powershell -File vm\rhap-vm.ps1 build world
+  powershell -File vm\rhap-vm.ps1 ssh hostname
 #>
 param(
     [Parameter(Position = 0)]
@@ -136,7 +136,7 @@ $cfg = $null
 switch ($Command) {
     'help' {
         Write-Host @"
-Usage: pwsh -File vm\rhap-vm.ps1 <sync|build|ssh|help> [args...]
+Usage: powershell -File vm\rhap-vm.ps1 <sync|build|ssh|help> [args...]
 
   sync              Upload SyncPaths to RemoteRoot via pscp
   build [targets]   Remote make -C RemoteRoot/ninja (default: world)

@@ -62,6 +62,41 @@ def test_reads_legacy_i386_object_metadata_without_guessing_functions(tmp_path):
             "addend": 0,
         }
     ]
+    assert analysis["extensions"]["macho"]["sections"] == [
+        {"name": "__TEXT,__text", "address": 0x1000, "alignment_exponent": 2,
+         "alignment": 4, "flags": 0, "type": 0, "zero_fill": False,
+         "initialized": True},
+        {"name": "__DATA,__data", "address": 0x1004, "alignment_exponent": 2,
+         "alignment": 4, "flags": 0, "type": 0, "zero_fill": False,
+         "initialized": True},
+    ]
+    assert analysis["extensions"]["macho"]["relocations"] == [
+        {"address": 0x1000, "kind": "i386-vanilla-32-absolute",
+         "target": "_external", "addend": 0, "pc_relative": False,
+         "width": 4, "external": True, "section": "__TEXT,__text"}
+    ]
+
+
+def test_file_backed_section_at_offset_zero_is_not_guessed_as_zero_fill(tmp_path):
+    blob = bytearray(build_macho_fixture())
+    first_section_offset = HEADER.size + SEGMENT.size
+    struct.pack_into("<I", blob, first_section_offset + 40, 0)
+
+    analysis = read_macho(write_fixture(tmp_path, bytes(blob)))
+
+    metadata = analysis["extensions"]["macho"]["sections"][0]
+    assert metadata["type"] == 0
+    assert metadata["zero_fill"] is False
+    assert metadata["initialized"] is True
+
+
+def test_rejects_section_alignment_exponent_outside_i386_address_width(tmp_path):
+    blob = bytearray(build_macho_fixture())
+    first_section_offset = HEADER.size + SEGMENT.size
+    struct.pack_into("<I", blob, first_section_offset + 44, 32)
+
+    with pytest.raises(MachOFormatError, match="alignment exponent"):
+        read_macho(write_fixture(tmp_path, bytes(blob)))
 
 
 def test_unknown_thread_flavor_is_preserved_and_next_command_is_found(tmp_path):
@@ -245,6 +280,9 @@ def test_pc_relative_addend_is_signed_little_endian_displacement(tmp_path):
     relocation = read_macho(write_fixture(tmp_path, bytes(blob)))["relocations"][0]
 
     assert relocation["addend"] == -4
+    metadata = read_macho(write_fixture(tmp_path, bytes(blob)))["extensions"]["macho"]["relocations"][0]
+    assert metadata["pc_relative"] is True
+    assert metadata["width"] == 4
 
 
 @pytest.mark.parametrize("section_type", [0x1, 0xC, 0x12])
@@ -275,6 +313,11 @@ def test_zero_fill_sections_hash_logical_zeros_without_file_backing(
     assert section["size"] == logical_size
     assert section["offset"] == 0xFFFFFFF0
     assert section["sha256"] == digest.hexdigest().upper()
+    metadata = analysis["extensions"]["macho"]["sections"][0]
+    assert metadata["flags"] == section_type
+    assert metadata["type"] == section_type
+    assert metadata["zero_fill"] is True
+    assert metadata["initialized"] is False
 
 
 def test_rejects_load_command_range_larger_than_declared_table(tmp_path):

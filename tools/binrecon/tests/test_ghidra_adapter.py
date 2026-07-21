@@ -155,6 +155,66 @@ def test_process_start_error_keeps_diagnostic(configured, tmp_path):
     assert "launch denied" in destination.with_suffix(".json.ghidra.log").read_text(encoding="utf-8")
 
 
+def test_published_log_is_replaced_and_native_hardlink_is_not_followed(configured, tmp_path):
+    profile, identity, _, _ = configured
+    destination = tmp_path / "result.json"
+    log = destination.with_suffix(".json.ghidra.log")
+    log.write_text("PRIOR-SECRET\n" + "x" * (2 * 1024 * 1024), encoding="utf-8")
+    attacker = tmp_path / "attacker.log"
+    attacker.write_text("NATIVE-SECRET", encoding="utf-8")
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        native = Path(argv[argv.index("-log") + 1])
+        native.hardlink_to(attacker)
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "ok", "")
+    export_with_ghidra(profile, "reference", destination, runner=runner)
+    published = log.read_text(encoding="utf-8")
+    assert "PRIOR-SECRET" not in published
+    assert "NATIVE-SECRET" not in published
+    assert "unsafe diagnostic omitted" in published
+
+
+def test_native_loader_log_exact_rejection_retries_but_exporter_text_does_not(configured, tmp_path, monkeypatch):
+    profile, identity, _, _ = configured
+    monkeypatch.setattr("binrecon.adapters.ghidra._layout", lambda profile, identity: {
+        "schema_version": "ghidra-layout-v1", "language": "x86:LE:32:default",
+        "input": {"path": str(identity.path), "size": identity.size, "sha256": identity.sha256},
+        "image_base": 0, "sections": [], "symbols": [], "relocations": [], "entry_points": [],
+    })
+    calls = 0
+    def runner(argv, **kwargs):
+        nonlocal calls
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        calls += 1
+        native = Path(argv[argv.index("-log") + 1])
+        if calls == 1:
+            native.write_text("2026-01-01 00:00:00 ERROR No load spec found for import file (ProgramLoader)\n", encoding="utf-8")
+            return subprocess.CompletedProcess(argv, 1, "", "")
+        document = _analysis(identity)
+        document["extensions"]["ghidra"].update({
+            "fallback_sections": [], "fallback_symbols": [], "fallback_relocations": [],
+        })
+        Path(argv[argv.index("--output") + 1]).write_text(json.dumps(document), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    export_with_ghidra(profile, "reference", tmp_path / "retry.json", runner=runner)
+    assert calls == 2
+
+    calls = 0
+    def exporter_failure(argv, **kwargs):
+        nonlocal calls
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        calls += 1
+        return subprocess.CompletedProcess(argv, 1, "", "REPORT SCRIPT ERROR: Mach-O unsupported (HeadlessAnalyzer)")
+    with pytest.raises(GhidraAdapterError, match="exit code"):
+        export_with_ghidra(profile, "reference", tmp_path / "no-retry.json", runner=exporter_failure)
+    assert calls == 1
+
+
 def test_missing_stale_malformed_and_wrong_identity_outputs_fail(configured, tmp_path):
     profile, identity, _, _ = configured
     for mode, match in (("missing", "fresh"), ("malformed", "malformed"),
@@ -197,9 +257,38 @@ def test_schema_invalid_and_hardlinked_outputs_are_untrusted(configured, tmp_pat
 
 def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, monkeypatch):
     profile, identity, _, _ = configured
-    macho = {"sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
-                           "size": 4, "permissions": "rx", "sha256": "0" * 64}],
-             "symbols": [{"name": "entry", "address": 4096, "binding": "external", "section": "__TEXT,__text"}]}
+    macho = {
+        "sections": [
+            {"name": "__TEXT,__text", "address": 4096, "offset": 0,
+             "size": 4, "permissions": "rx", "sha256": "0" * 64},
+            {"name": "__DATA,__bss", "address": 8192, "offset": 0,
+             "size": 8, "permissions": "rw", "sha256": "0" * 64},
+        ],
+        "symbols": [
+            {"name": "entry", "address": 4096, "binding": "external", "section": "__TEXT,__text"},
+            {"name": "local_data", "address": 8192, "binding": "local", "section": "__DATA,__bss"},
+        ],
+        "relocations": [
+            {"address": 4096, "kind": "i386-vanilla-32-pc-relative",
+             "target": "entry", "addend": -4},
+            {"address": 4100, "kind": "i386-vanilla-16-absolute",
+             "target": "__DATA,__bss", "addend": 2},
+        ],
+        "extensions": {"macho": {
+            "sections": [
+                {"name": "__TEXT,__text", "address": 4096, "alignment_exponent": 2,
+                 "alignment": 4, "flags": 0, "type": 0, "zero_fill": False, "initialized": True},
+                {"name": "__DATA,__bss", "address": 8192, "alignment_exponent": 3,
+                 "alignment": 8, "flags": 1, "type": 1, "zero_fill": True, "initialized": False},
+            ],
+            "relocations": [
+                {"address": 4096, "kind": "i386-vanilla-32-pc-relative", "target": "entry",
+                 "addend": -4, "pc_relative": True, "width": 4, "external": True, "section": "__TEXT,__text"},
+                {"address": 4100, "kind": "i386-vanilla-16-absolute", "target": "__DATA,__bss",
+                 "addend": 2, "pc_relative": False, "width": 2, "external": False, "section": "__TEXT,__text"},
+            ],
+        }},
+    }
     monkeypatch.setattr("binrecon.adapters.ghidra.read_macho", lambda path: macho)
     commands = []
     def runner(argv, **kwargs):
@@ -207,11 +296,34 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
             return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
         commands.append(list(argv))
         if len(commands) == 1:
-            return subprocess.CompletedProcess(argv, 1, "", "Mach-O Loader: unsupported load command 0x5")
-        output = Path(argv[argv.index("--output") + 1])
-        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+            Path(argv[argv.index("-log") + 1]).write_text(
+                "ERROR No load spec found for import file (ProgramLoader)\n", encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(argv, 1, "", "")
         layout = Path(argv[argv.index("--layout") + 1])
-        assert json.loads(layout.read_text(encoding="utf-8"))["sections"][0]["address"] == 4096
+        layout_doc = json.loads(layout.read_text(encoding="utf-8"))
+        assert layout_doc["sections"][0]["initialized"] is True
+        assert layout_doc["sections"][1]["initialized"] is False
+        assert layout_doc["sections"][1]["flags"] == 1
+        assert layout_doc["symbols"][1]["binding"] == "local"
+        assert layout_doc["symbols"][1]["section"] == "__DATA,__bss"
+        assert layout_doc["relocations"][0]["pc_relative"] is True
+        assert layout_doc["relocations"][1]["external"] is False
+        document = _analysis(identity)
+        document["sections"] = macho["sections"]
+        document["symbols"] = layout_doc["symbols"]
+        document["relocations"] = [
+            {key: item[key] for key in ("address", "kind", "target", "addend")}
+            for item in layout_doc["relocations"]
+        ]
+        document["extensions"]["ghidra"].update({
+            "fallback_sections": layout_doc["sections"],
+            "fallback_symbols": layout_doc["symbols"],
+            "fallback_relocations": layout_doc["relocations"],
+        })
+        Path(argv[argv.index("--output") + 1]).write_text(
+            json.dumps(document), encoding="utf-8"
+        )
         return subprocess.CompletedProcess(argv, 0, "", "")
     export_with_ghidra(profile, "reference", tmp_path / "fallback.json", runner=runner)
     assert len(commands) == 2
@@ -270,11 +382,12 @@ def test_java_exporter_has_deterministic_safe_contract():
                      "x86:LE:32:default", "prepare", "export"):
         assert required in source
     assert "String.format(Locale.ROOT" in source
+    assert "import ghidra.program.database.mem.FileBytes;" in source
 
 
 def test_java_exporter_traverses_program_wide_references_and_indexes_instructions():
     source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
-    assert "getReferenceSourceIterator((AddressSetView)null, true)" in source
+    assert "getReferenceSourceIterator(currentProgram.getMemory(), true)" in source
     assert "referenceManager.getReferencesFrom(source)" in source
     assert "ReferenceExport" in source
     assert 'root.put("references", referenceExport.normalized)' in source
@@ -296,6 +409,18 @@ def test_java_exporter_serializes_recovered_c_and_pcode():
     assert "result.isTimedOut()" in source
     assert "result.getErrorMessage()" in source
     assert "decompiler.dispose()" in source
+
+
+def test_java_exporter_keeps_per_function_decompile_failures_and_fallback_metadata():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    assert 'summary.put("status","timeout")' in source
+    assert 'summary.put("status","failed")' in source
+    assert 'summary.put("status","missing-c")' in source
+    assert "decompile failed at" not in source
+    assert "MAX_DECOMPILED_C" in source and "MAX_DECOMPILE_MESSAGE" in source
+    for field in ("fallback_sections", "fallback_symbols", "fallback_relocations"):
+        assert field in source
+    assert "SourceType.ANALYSIS" in source
 
 
 def test_java_argument_parser_is_explicit_and_closed():

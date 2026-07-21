@@ -22,11 +22,11 @@ class GhidraAdapterError(RuntimeError):
 
 
 _MAX_OUTPUT = 16 * 1024 * 1024
+_MAX_DIAGNOSTIC = 1024 * 1024
 _CHUNK = 1024 * 1024
 _LANGUAGE = "x86:LE:32:default"
-_UNSUPPORTED_MACHO = re.compile(
-    r"(?is)(?:mach-o|macho).{0,160}(?:unsupported|not supported|reject|"
-    r"no (?:suitable|acceptable) loader)"
+_NATIVE_LOADER_REJECTION = re.compile(
+    r"^.*\bERROR\s+No load spec found for import file \(ProgramLoader\)\s*$"
 )
 
 
@@ -79,32 +79,70 @@ def _diagnostic(value) -> str:
     return str(value)
 
 
-def _append_log(path: Path, heading: str, stdout, stderr, native: Path,
-                script_log: Path) -> None:
-    previous = path.read_text(encoding="utf-8") if path.exists() else ""
-    native_text = ""
+def _bounded_diagnostic(value) -> str:
+    encoded = _diagnostic(value).encode("utf-8", errors="replace")
+    if len(encoded) > _MAX_DIAGNOSTIC:
+        encoded = encoded[:_MAX_DIAGNOSTIC] + b"\n[truncated]\n"
+    return encoded.decode("utf-8", errors="replace")
+
+
+def _read_diagnostic(path: Path) -> tuple[str, bool]:
+    """Read a bounded private regular diagnostic without following filesystem aliases."""
+    if path.is_symlink():
+        return "[unsafe diagnostic omitted]", False
+    flags = (os.O_RDONLY | getattr(os, "O_BINARY", 0) |
+             getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0))
     try:
-        native_bytes = native.read_bytes()
-        if len(native_bytes) > 4 * 1024 * 1024:
-            native_bytes = native_bytes[: 4 * 1024 * 1024] + b"\n[truncated]\n"
-        native_text = _diagnostic(native_bytes)
+        descriptor = os.open(path, flags)
     except FileNotFoundError:
-        pass
-    script_text = ""
+        return "", True
+    except OSError:
+        return "[unsafe diagnostic omitted]", False
     try:
-        script_bytes = script_log.read_bytes()
-        if len(script_bytes) > 4 * 1024 * 1024:
-            script_bytes = script_bytes[: 4 * 1024 * 1024] + b"\n[truncated]\n"
-        script_text = _diagnostic(script_bytes)
-    except FileNotFoundError:
-        pass
-    _atomic_text(
-        path,
-        previous + f"=== {heading}: native ===\n{native_text}\n"
+        initial = os.fstat(descriptor)
+        reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+        if (not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1 or
+                getattr(initial, "st_file_attributes", 0) & reparse):
+            return "[unsafe diagnostic omitted]", False
+        chunks = []
+        total = 0
+        while total <= _MAX_DIAGNOSTIC:
+            chunk = os.read(descriptor, min(_CHUNK, _MAX_DIAGNOSTIC + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        final = os.fstat(descriptor)
+        fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
+        if any(getattr(initial, field) != getattr(final, field) for field in fields):
+            return "[unsafe diagnostic omitted]", False
+        value = b"".join(chunks)
+        if len(value) > _MAX_DIAGNOSTIC:
+            value = value[:_MAX_DIAGNOSTIC] + b"\n[truncated]\n"
+        return value.decode("utf-8", errors="replace"), True
+    except OSError:
+        return "[unsafe diagnostic omitted]", False
+    finally:
+        os.close(descriptor)
+
+
+def _log_entry(heading: str, stdout, stderr, native: Path, script_log: Path) -> tuple[str, str]:
+    native_text, native_safe = _read_diagnostic(native)
+    script_text, _ = _read_diagnostic(script_log)
+    entry = (f"=== {heading}: native ===\n{native_text}\n"
         f"=== {heading}: script ===\n{script_text}\n"
-        f"=== {heading}: stdout ===\n{_diagnostic(stdout)}\n"
-        f"=== {heading}: stderr ===\n{_diagnostic(stderr)}\n",
-    )
+        f"=== {heading}: stdout ===\n{_bounded_diagnostic(stdout)}\n"
+        f"=== {heading}: stderr ===\n{_bounded_diagnostic(stderr)}\n")
+    return entry, native_text if native_safe else ""
+
+
+def _publish_log(path: Path, entries: list[str]) -> None:
+    _atomic_text(path, "".join(entries))
+
+
+def _is_native_loader_rejection(native_diagnostic: str) -> bool:
+    return any(_NATIVE_LOADER_REJECTION.fullmatch(line) is not None
+               for line in native_diagnostic.splitlines())
 
 
 def _reject_alias(path: Path, input_path: Path, label: str) -> None:
@@ -230,25 +268,26 @@ def _layout(profile, identity: InputIdentity) -> dict:
         macho = read_macho(identity.path)
     except (OSError, MachOFormatError) as error:
         raise GhidraAdapterError(f"cannot construct deterministic Mach-O fallback: {error}") from error
-    configured_regions = profile.document.get("regions", ())
-    regions = [dict(region) for region in configured_regions] if configured_regions else [
-        {key: section[key] for key in ("name", "address", "offset", "size", "permissions")}
-        for section in macho["sections"]
-    ]
-    macho_sections = {
-        (section["name"], section["address"], section["offset"], section["size"]): section
-        for section in macho["sections"]
+    extension = macho.get("extensions", {}).get("macho", {})
+    section_metadata = {
+        (item["name"], item["address"]): item for item in extension.get("sections", ())
     }
-    for region in regions:
-        matched = macho_sections.get((region["name"], region["address"],
-                                      region["offset"], region["size"]))
-        zero_fill = matched is not None and region["size"] > 0 and region["offset"] == 0
-        region["initialized"] = (
-            region["size"] == 0 or
-            (not zero_fill and region["offset"] + region["size"] <= identity.size)
-        )
-    symbols = [{"name": item["name"], "address": item["address"]}
-               for item in macho["symbols"] if item["name"]]
+    configured_regions = profile.document.get("regions", ())
+    source_regions = configured_regions if configured_regions else macho["sections"]
+    regions = []
+    for source in source_regions:
+        region = {key: source[key] for key in ("name", "address", "offset", "size", "permissions")}
+        try:
+            metadata = section_metadata[(region["name"], region["address"])]
+        except KeyError as error:
+            raise GhidraAdapterError(
+                f"fallback section lacks canonical Mach-O metadata: {region['name']!r}"
+            ) from error
+        region.update({key: metadata[key] for key in (
+            "alignment_exponent", "alignment", "flags", "type", "zero_fill", "initialized"
+        )})
+        regions.append(region)
+    symbols = [dict(item) for item in macho["symbols"] if item["name"]]
     by_name = {item["name"]: item["address"] for item in symbols}
     entries = []
     for entry in profile.document["comparison"].get("entry_points", ()):
@@ -264,13 +303,27 @@ def _layout(profile, identity: InputIdentity) -> dict:
         "input": {"path": str(identity.path), "size": identity.size,
                   "sha256": identity.sha256},
         "image_base": profile.document.get("image_base", 0),
-        "sections": sorted(regions, key=lambda item: (item["address"], item["offset"], item["name"])),
-        "symbols": sorted(symbols, key=lambda item: (item["address"], item["name"])),
+        "sections": sorted(regions, key=lambda item: (
+            item["address"], item["offset"], item["name"], item["size"],
+            item["permissions"], item["alignment_exponent"], item["alignment"],
+            item["flags"], item["type"], item["zero_fill"], item["initialized"],
+        )),
+        "symbols": sorted(symbols, key=lambda item: (
+            item["address"], item["name"], item["binding"], item["section"] or "",
+        )),
+        "relocations": sorted(
+            [dict(item) for item in extension.get("relocations", ())],
+            key=lambda item: (
+                item["address"], item["kind"], item["target"] or "", item["addend"],
+                item["section"], item["external"], item["pc_relative"], item["width"],
+            ),
+        ),
         "entry_points": sorted(entries, key=lambda item: (item["address"], item["name"])),
     }
 
 
-def _validate_output(document: dict, configuration: dict, identity: InputIdentity) -> None:
+def _validate_output(document: dict, configuration: dict, identity: InputIdentity,
+                     layout: dict | None = None) -> None:
     validate_document("analysis-v1", document)
     validate_analysis_semantics(document)
     analyzer = document["analyzer"]
@@ -285,6 +338,31 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
     extension = document.get("extensions", {}).get("ghidra", {})
     if extension.get("language") != _LANGUAGE:
         raise GhidraAdapterError("Ghidra output used the wrong processor language")
+    if layout is not None:
+        for name in ("sections", "symbols", "relocations"):
+            if extension.get(f"fallback_{name}") != layout[name]:
+                raise GhidraAdapterError(f"Ghidra output did not preserve fallback {name}")
+        section_fields = ("name", "address", "offset", "size", "permissions")
+        expected_sections = sorted(
+            [{key: item[key] for key in section_fields} for item in layout["sections"]],
+            key=lambda item: (item["address"], item["name"], item["offset"], item["size"],
+                              item["permissions"]),
+        )
+        actual_sections = sorted(
+            [{key: item[key] for key in section_fields} for item in document["sections"]],
+            key=lambda item: (item["address"], item["name"], item["offset"], item["size"],
+                              item["permissions"]),
+        )
+        if actual_sections != expected_sections:
+            raise GhidraAdapterError("Ghidra output fallback sections do not match layout")
+        if document["symbols"] != layout["symbols"]:
+            raise GhidraAdapterError("Ghidra output fallback symbols do not match layout")
+        expected_relocations = [
+            {key: item[key] for key in ("address", "kind", "target", "addend")}
+            for item in layout["relocations"]
+        ]
+        if document["relocations"] != expected_relocations:
+            raise GhidraAdapterError("Ghidra output fallback relocations do not match layout")
 
 
 def export_with_ghidra(profile, artifact: str, destination: Path, *,
@@ -325,6 +403,8 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
     script_log = workspace / "ghidra-script.log"
     layout_path = workspace / "layout.json"
     script = (Path(__file__).parents[2] / "adapters" / "ghidra" / "ExportAnalysis.java").resolve()
+    log_entries = []
+    layout_document = None
     try:
         command = _command(executable, workspace, f"native-{run_token}", identity, script, output,
                            native_log, script_log, None)
@@ -332,14 +412,18 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
             completed = runner(command, capture_output=True, text=True, timeout=timeout,
                                shell=False, check=False)
         except subprocess.TimeoutExpired as error:
-            _append_log(log_path, "native", error.stdout, error.stderr, native_log, script_log)
+            entry, _ = _log_entry("native", error.stdout, error.stderr, native_log, script_log)
+            log_entries.append(entry); _publish_log(log_path, log_entries)
             raise GhidraAdapterError(f"Ghidra timed out after {timeout} seconds") from error
         except OSError as error:
-            _append_log(log_path, "native", "", str(error), native_log, script_log)
+            entry, _ = _log_entry("native", "", str(error), native_log, script_log)
+            log_entries.append(entry); _publish_log(log_path, log_entries)
             raise GhidraAdapterError(f"could not start Ghidra: {error}") from error
-        _append_log(log_path, "native", completed.stdout, completed.stderr, native_log, script_log)
-        diagnostic = _diagnostic(completed.stdout) + "\n" + _diagnostic(completed.stderr)
-        native_needs_fallback = _UNSUPPORTED_MACHO.search(diagnostic) is not None
+        entry, native_diagnostic = _log_entry(
+            "native", completed.stdout, completed.stderr, native_log, script_log
+        )
+        log_entries.append(entry); _publish_log(log_path, log_entries)
+        native_needs_fallback = _is_native_loader_rejection(native_diagnostic)
         if completed.returncode != 0 or not output.is_file():
             if not native_needs_fallback:
                 if completed.returncode == 0:
@@ -358,19 +442,23 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
                 completed = runner(command, capture_output=True, text=True, timeout=timeout,
                                    shell=False, check=False)
             except subprocess.TimeoutExpired as error:
-                _append_log(log_path, "fallback", error.stdout, error.stderr, native_log, script_log)
+                entry, _ = _log_entry("fallback", error.stdout, error.stderr, native_log, script_log)
+                log_entries.append(entry); _publish_log(log_path, log_entries)
                 raise GhidraAdapterError(f"Ghidra fallback timed out after {timeout} seconds") from error
             except OSError as error:
-                _append_log(log_path, "fallback", "", str(error), native_log, script_log)
+                entry, _ = _log_entry("fallback", "", str(error), native_log, script_log)
+                log_entries.append(entry); _publish_log(log_path, log_entries)
                 raise GhidraAdapterError(f"could not start Ghidra fallback: {error}") from error
-            _append_log(log_path, "fallback", completed.stdout, completed.stderr, native_log, script_log)
+            entry, _ = _log_entry("fallback", completed.stdout, completed.stderr,
+                                  native_log, script_log)
+            log_entries.append(entry); _publish_log(log_path, log_entries)
             if completed.returncode != 0:
                 raise GhidraAdapterError(f"Ghidra fallback failed with exit code {completed.returncode}")
         if not output.is_file():
             raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
         try:
             document = _read_snapshot(output)
-            _validate_output(document, configuration, identity)
+            _validate_output(document, configuration, identity, layout_document)
         except GhidraAdapterError:
             raise
         except Exception as error:
@@ -391,7 +479,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
                 shutil.rmtree(workspace)
             except OSError as error:
                 try:
-                    previous = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
-                    _atomic_text(log_path, previous + f"=== cleanup ===\n{error}\n")
+                    log_entries.append(f"=== cleanup ===\n{_bounded_diagnostic(error)}\n")
+                    _publish_log(log_path, log_entries)
                 except OSError:
                     pass

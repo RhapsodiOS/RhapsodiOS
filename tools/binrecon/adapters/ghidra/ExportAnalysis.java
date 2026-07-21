@@ -12,6 +12,7 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.decompiler.DecompiledFunction;
 import ghidra.app.script.GhidraScript;
 import ghidra.framework.Application;
+import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.*;
 import ghidra.program.model.block.*;
 import ghidra.program.model.data.StringDataInstance;
@@ -26,6 +27,8 @@ import ghidra.util.exception.CancelledException;
 
 public final class ExportAnalysis extends GhidraScript {
     private static final String LANGUAGE = "x86:LE:32:default";
+    private static final int MAX_DECOMPILED_C = 1024 * 1024;
+    private static final int MAX_DECOMPILE_MESSAGE = 16 * 1024;
 
     @Override
     protected void run() throws Exception {
@@ -66,8 +69,7 @@ public final class ExportAnalysis extends GhidraScript {
     }
 
     @SuppressWarnings("unchecked")
-    private void prepare(Args args) throws Exception {
-        verifyLanguage();
+    private Map<String,Object> readLayout(Args args) throws Exception {
         Object parsed = new JsonParser(Files.readString(
             Paths.get(args.required("--layout")), StandardCharsets.UTF_8)).parse();
         if (!(parsed instanceof Map)) throw new IOException("layout root is not an object");
@@ -81,6 +83,12 @@ public final class ExportAnalysis extends GhidraScript {
                 Long.parseLong(args.required("--size")) != number(identity.get("size"))) {
             throw new IOException("layout identity mismatch");
         }
+        return layout;
+    }
+
+    private void prepare(Args args) throws Exception {
+        verifyLanguage();
+        Map<String,Object> layout = readLayout(args);
 
         Memory memory = currentProgram.getMemory();
         for (MemoryBlock block : memory.getBlocks()) memory.removeBlock(block, monitor);
@@ -118,8 +126,10 @@ public final class ExportAnalysis extends GhidraScript {
         SymbolTable symbols = currentProgram.getSymbolTable();
         for (Object item : array(layout.get("symbols"), "symbols")) {
             Map<String,Object> symbol = object(item, "symbol");
+            SourceType source = "local".equals(string(symbol.get("binding")))
+                ? SourceType.ANALYSIS : SourceType.IMPORTED;
             symbols.createLabel(space.getAddress(number(symbol.get("address"))),
-                string(symbol.get("name")), SourceType.IMPORTED);
+                string(symbol.get("name")), source);
         }
         for (Object item : array(layout.get("entry_points"), "entry_points")) {
             Map<String,Object> entry = object(item, "entry point");
@@ -134,11 +144,12 @@ public final class ExportAnalysis extends GhidraScript {
         if (currentProgram.getMemory().getBlocks().length == 0)
             throw new IOException("program has no memory layout");
         String executablePath = currentProgram.getExecutablePath();
-        if (executablePath == null || !Files.isSameFile(Paths.get(executablePath),
+        if (executablePath == null || !Files.isSameFile(programExecutablePath(executablePath),
                 Paths.get(args.required("--input")))) {
             throw new IOException("program executable identity does not match input");
         }
-        if (args.values.containsKey("--layout")) verifyPreparedLayout(args);
+        Map<String,Object> layout = args.values.containsKey("--layout") ? readLayout(args) : null;
+        if (layout != null) verifyPreparedLayout(layout);
         Map<String,Object> root = new LinkedHashMap<>();
         ReferenceManager referenceManager = currentProgram.getReferenceManager();
         if (referenceManager == null) throw new IOException("reference manager unavailable");
@@ -151,13 +162,13 @@ public final class ExportAnalysis extends GhidraScript {
         root.put("input", input);
         Map<String,Object> analyzer = map();
         analyzer.put("name", "Ghidra");
-        analyzer.put("version", Application.getApplicationVersion());
+        analyzer.put("version", analyzerVersion());
         analyzer.put("invocation", "analyzeHeadless ExportAnalysis.java");
         root.put("analyzer", analyzer);
 
         root.put("sections", exportSections());
-        root.put("symbols", exportSymbols());
-        root.put("relocations", exportRelocations());
+        root.put("symbols", exportSymbols(layout));
+        root.put("relocations", exportRelocations(layout));
         List<Object> imports = new ArrayList<>(), strings = new ArrayList<>(),
                      summaries = new ArrayList<>();
         ReferenceExport referenceExport = exportAllReferences(referenceManager);
@@ -172,14 +183,16 @@ public final class ExportAnalysis extends GhidraScript {
         ghidra.put("reference_metadata", referenceExport.metadata);
         ghidra.put("instruction_reference_indexes",
             referenceExport.instructionIndexes(currentProgram));
+        if (layout != null) {
+            ghidra.put("fallback_sections", array(layout.get("sections"), "sections"));
+            ghidra.put("fallback_symbols", array(layout.get("symbols"), "symbols"));
+            ghidra.put("fallback_relocations", array(layout.get("relocations"), "relocations"));
+        }
         extensions.put("ghidra", ghidra); root.put("extensions", extensions);
         writeAtomically(Paths.get(args.required("--output")), root);
     }
 
-    private void verifyPreparedLayout(Args args) throws Exception {
-        @SuppressWarnings("unchecked")
-        Map<String,Object> layout = (Map<String,Object>)new JsonParser(Files.readString(
-            Paths.get(args.required("--layout")), StandardCharsets.UTF_8)).parse();
+    private void verifyPreparedLayout(Map<String,Object> layout) throws Exception {
         if (!LANGUAGE.equals(layout.get("language")) ||
                 currentProgram.getImageBase().getOffset() != number(layout.get("image_base")))
             throw new IOException("prepared image base/language mismatch");
@@ -202,6 +215,18 @@ public final class ExportAnalysis extends GhidraScript {
                     block.isExecute() != permissions.contains("x"))
                 throw new IOException("prepared memory layout mismatch");
         }
+    }
+
+    private String analyzerVersion() throws IOException {
+        String version = Application.getApplicationVersion();
+        if (!version.matches("12\\.1(?:\\..*)?"))
+            throw new IOException("Ghidra 12.1 release line is required");
+        return "12.1";
+    }
+
+    private Path programExecutablePath(String value) {
+        if (File.separatorChar == '\\' && value.matches("^/[A-Za-z]:/.*")) value=value.substring(1);
+        return Paths.get(value);
     }
 
     private List<Object> exportSections() throws Exception {
@@ -236,12 +261,22 @@ public final class ExportAnalysis extends GhidraScript {
         return offset < 0 ? 0 : offset;
     }
 
-    private List<Object> exportSymbols() throws CancelledException {
+    private List<Object> exportSymbols(Map<String,Object> layout) throws CancelledException {
+        if (layout != null) {
+            List<Object> preserved = new ArrayList<>();
+            for (Object value : array(layout.get("symbols"), "symbols"))
+                preserved.add(new LinkedHashMap<>(object(value, "symbol")));
+            preserved.sort(Comparator.comparingLong(x->number(object(x,"symbol").get("address")))
+                .thenComparing(x->string(object(x,"symbol").get("name")))
+                .thenComparing(x->string(object(x,"symbol").get("binding")))
+                .thenComparing(x->String.valueOf(object(x,"symbol").get("section"))));
+            return preserved;
+        }
         List<Symbol> symbols = new ArrayList<>();
         SymbolIterator iterator = currentProgram.getSymbolTable().getAllSymbols(true);
         while (iterator.hasNext()) symbols.add(iterator.next());
         Collections.sort(symbols, Comparator.comparingLong((Symbol s)->s.getAddress().getOffset())
-            .thenComparing(Symbol::getName).thenComparing(s->s.getSymbolType().toString()));
+            .thenComparing((Symbol s)->s.getName()).thenComparing(s->s.getSymbolType().toString()));
         List<Object> out = new ArrayList<>();
         for (Symbol symbol : symbols) {
             monitor.checkCancelled();
@@ -255,13 +290,29 @@ public final class ExportAnalysis extends GhidraScript {
         return out;
     }
 
-    private List<Object> exportRelocations() throws CancelledException {
+    private List<Object> exportRelocations(Map<String,Object> layout) throws CancelledException {
+        if (layout != null) {
+            List<Object> out = new ArrayList<>();
+            for (Object value : array(layout.get("relocations"), "relocations")) {
+                Map<String,Object> source = object(value, "relocation"), item = map();
+                item.put("address", source.get("address")); item.put("kind", source.get("kind"));
+                item.put("target", source.get("target")); item.put("addend", source.get("addend"));
+                out.add(item);
+            }
+            out.sort(Comparator.comparingLong(x->number(object(x,"relocation").get("address")))
+                .thenComparing(x->string(object(x,"relocation").get("kind")))
+                .thenComparing(x->String.valueOf(object(x,"relocation").get("target")))
+                .thenComparingLong(x->number(object(x,"relocation").get("addend"))));
+            return out;
+        }
         List<Relocation> values = new ArrayList<>();
         Iterator<Relocation> iterator = currentProgram.getRelocationTable().getRelocations();
         while (iterator.hasNext()) values.add(iterator.next());
         Collections.sort(values, Comparator.comparingLong((Relocation r)->r.getAddress().getOffset())
             .thenComparingInt(Relocation::getType)
-            .thenComparing(r->String.valueOf(r.getSymbolName())));
+            .thenComparing(r->String.valueOf(r.getSymbolName()))
+            .thenComparing(r->Arrays.toString(r.getValues()))
+            .thenComparing(r->r.getStatus().toString()));
         List<Object> out = new ArrayList<>();
         for (Relocation relocation : values) {
             monitor.checkCancelled(); Map<String,Object> item=map();
@@ -316,7 +367,8 @@ public final class ExportAnalysis extends GhidraScript {
                 if(!edge.getDestinationAddress().isMemoryAddress()) continue;
                 Map<String,Object> successor=map(); successor.put("target",edge.getDestinationAddress().getOffset());
                 successor.put("kind",edge.getFlowType().toString()); successors.add(successor); }
-            successors.sort(Comparator.comparingLong(x->number(object(x,"successor").get("target"))));
+            successors.sort(Comparator.comparingLong(x->number(object(x,"successor").get("target")))
+                .thenComparing(x->string(object(x,"successor").get("kind"))));
             item.put("successors",successors); out.add(item); }
         return out;
     }
@@ -343,7 +395,7 @@ public final class ExportAnalysis extends GhidraScript {
     private ReferenceExport exportAllReferences(ReferenceManager referenceManager)
             throws CancelledException {
         TreeMap<ReferenceKey,ReferenceAggregate> collected = new TreeMap<>();
-        AddressIterator sources = referenceManager.getReferenceSourceIterator((AddressSetView)null, true);
+        AddressIterator sources = referenceManager.getReferenceSourceIterator(currentProgram.getMemory(), true);
         while (sources.hasNext()) {
             monitor.checkCancelled();
             Address source = sources.next();
@@ -379,24 +431,34 @@ public final class ExportAnalysis extends GhidraScript {
         out.sort(Comparator.comparingLong(x->number(object(x,"string").get("address")))); return out;
     }
 
-    private Map<String,Object> decompile(Function function,DecompInterface decompiler) throws Exception {
-        DecompileResults result=decompiler.decompileFunction(function,60,monitor);
-        if(result==null) throw new IOException("decompiler returned no result at "+function.getEntryPoint());
-        if(!result.decompileCompleted()||result.getHighFunction()==null){
-            String reason=result.isTimedOut()?"timeout":String.valueOf(result.getErrorMessage());
-            throw new IOException("decompile failed at "+function.getEntryPoint()+": "+reason);
-        }
-        DecompiledFunction recovered=result.getDecompiledFunction();
-        if(recovered==null||recovered.getC()==null) throw new IOException("decompiler returned no C at "+function.getEntryPoint());
-        HighFunction high=result.getHighFunction(); TreeMap<String,Long> counts=new TreeMap<>(); Iterator<PcodeOp> iterator=high.getPcodeOps();
-        while(iterator.hasNext()){ PcodeOp op=iterator.next(); String name=op.getMnemonic(); counts.put(name,counts.getOrDefault(name,0L)+1); }
+    private Map<String,Object> decompile(Function function,DecompInterface decompiler) {
         Map<String,Object> summary=map(); summary.put("address",function.getEntryPoint().getOffset());
-        summary.put("c",recovered.getC().replace("\r\n", "\n").replace("\r", "\n"));
-        String warning=result.getErrorMessage();
-        summary.put("status","success");
-        summary.put("message",warning==null?null:warning.replace("\r\n", "\n").replace("\r", "\n"));
-        summary.put("pcode_operations",counts); return summary;
+        summary.put("c",null); summary.put("status","failed"); summary.put("message",null);
+        TreeMap<String,Long> counts=new TreeMap<>(); summary.put("pcode_operations",counts);
+        DecompileResults result;
+        try {
+            result=decompiler.decompileFunction(function,60,monitor);
+        } catch (RuntimeException error) {
+            summary.put("message",bounded(error.getClass().getSimpleName()+": "+error.getMessage(),MAX_DECOMPILE_MESSAGE));
+            return summary;
+        }
+        if(result==null){summary.put("message","decompiler returned no result");return summary;}
+        HighFunction high=result.getHighFunction();
+        if(high!=null){Iterator<? extends PcodeOp> iterator=high.getPcodeOps();while(iterator.hasNext()){
+            PcodeOp op=iterator.next();String name=op.getMnemonic();counts.put(name,counts.getOrDefault(name,0L)+1);}}
+        String warning=bounded(result.getErrorMessage(),MAX_DECOMPILE_MESSAGE);
+        summary.put("message",warning);
+        if(result.isTimedOut()){summary.put("status","timeout");return summary;}
+        if(!result.decompileCompleted()){summary.put("status","failed");return summary;}
+        DecompiledFunction recovered=result.getDecompiledFunction();
+        if(recovered==null||recovered.getC()==null){summary.put("status","missing-c");return summary;}
+        summary.put("c",bounded(recovered.getC(),MAX_DECOMPILED_C));
+        summary.put("status","success"); return summary;
     }
+
+    private static String bounded(String value,int limit){if(value==null)return null;
+        String normalized=value.replace("\r\n", "\n").replace("\r", "\n");
+        return normalized.length()<=limit?normalized:normalized.substring(0,limit)+"\n[truncated]\n";}
 
     private static final class ReferenceKey implements Comparable<ReferenceKey> {
         final long source; final Long target; final String kind;

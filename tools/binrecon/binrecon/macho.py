@@ -196,13 +196,18 @@ def read_macho(path: Path) -> dict[str, Any]:
                     address,
                     size,
                     file_offset,
-                    _align,
+                    alignment_exponent,
                     relocation_offset,
                     relocation_count,
                     section_flags,
                     _reserved1,
                     _reserved2,
                 ) = section_values
+                if alignment_exponent > 31:
+                    raise MachOFormatError(
+                        f"{section_context}: alignment exponent exceeds i386 address width "
+                        f"at file offset 0x{section_offset:x}"
+                    )
                 if size > 0x1_0000_0000 - address:
                     raise MachOFormatError(
                         f"{section_context}: virtual range wraps 32-bit address space "
@@ -230,6 +235,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                         "relocation_offset": relocation_offset,
                         "relocation_count": relocation_count,
                         "flags": section_flags,
+                        "alignment_exponent": alignment_exponent,
                         "zero_fill": zero_fill,
                         "command_index": command_index,
                         "section_in_segment": section_in_segment,
@@ -276,7 +282,12 @@ def read_macho(path: Path) -> dict[str, Any]:
         )
 
     symbols, symbol_names = _read_symbols(data, symtab, raw_sections)
-    relocations = _read_relocations(data, raw_sections, symbol_names)
+    raw_relocations = _read_relocations(data, raw_sections, symbol_names)
+    relocation_fields = ("address", "kind", "target", "addend")
+    relocations = [
+        {key: relocation[key] for key in relocation_fields}
+        for relocation in raw_relocations
+    ]
     section_fields = ("name", "address", "offset", "size", "permissions", "sha256")
     sections = [
         {key: section[key] for key in section_fields} for section in raw_sections
@@ -297,15 +308,24 @@ def read_macho(path: Path) -> dict[str, Any]:
         },
         "sections": sorted(
             sections,
-            key=lambda item: (item["address"], item["offset"], item["name"]),
+            key=lambda item: (
+                item["address"], item["offset"], item["name"], item["size"],
+                item["permissions"], item["sha256"],
+            ),
         ),
-        "symbols": sorted(symbols, key=lambda item: (item["address"], item["name"])),
+        "symbols": sorted(
+            symbols,
+            key=lambda item: (
+                item["address"], item["name"], item["binding"], item["section"] or "",
+            ),
+        ),
         "relocations": sorted(
             relocations,
             key=lambda item: (
                 item["address"],
                 item["kind"],
                 item["target"] or "",
+                item["addend"],
             ),
         ),
         "functions": [],
@@ -319,6 +339,43 @@ def read_macho(path: Path) -> dict[str, Any]:
                     "flags": flags,
                 },
                 "unparsed_load_commands": unparsed,
+                "sections": sorted(
+                    [
+                        {
+                            "name": section["name"],
+                            "address": section["address"],
+                            "alignment_exponent": section["alignment_exponent"],
+                            "alignment": 1 << section["alignment_exponent"],
+                            "flags": section["flags"],
+                            "type": section["flags"] & 0xFF,
+                            "zero_fill": section["zero_fill"],
+                            "initialized": not section["zero_fill"],
+                        }
+                        for section in raw_sections
+                    ],
+                    key=lambda item: (
+                        item["address"], item["name"], item["alignment_exponent"],
+                        item["alignment"], item["flags"], item["type"],
+                        item["zero_fill"], item["initialized"],
+                    ),
+                ),
+                "relocations": sorted(
+                    [
+                        {
+                            key: relocation[key]
+                            for key in (
+                                "address", "kind", "target", "addend",
+                                "pc_relative", "width", "external", "section",
+                            )
+                        }
+                        for relocation in raw_relocations
+                    ],
+                    key=lambda item: (
+                        item["address"], item["kind"], item["target"] or "",
+                        item["addend"], item["section"], item["external"],
+                        item["pc_relative"], item["width"],
+                    ),
+                ),
             }
         },
     }
@@ -464,6 +521,10 @@ def _read_relocations(
                     "kind": f"i386-{type_name}-{width * 8}-{relative}",
                     "target": target,
                     "addend": addend,
+                    "pc_relative": pc_relative,
+                    "width": width,
+                    "external": external,
+                    "section": section["name"],
                 }
             )
     return result

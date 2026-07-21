@@ -126,8 +126,10 @@ function Invoke-Sync([hashtable]$Cfg) {
 
     foreach ($rel in $paths) {
         $local = Join-Path $Cfg.LocalRoot $rel
-        $remoteSpec = "$($Cfg.User)@$($Cfg.Host):$($Cfg.RemoteRoot)/$($rel.Replace('\','/'))"
-        Write-Host "rhap-vm: pscp $rel -> $remoteSpec"
+        # Upload into RemoteRoot (parent). pscp -r DIR host:RemoteRoot/DIR nests
+        # a second DIR level and leaves a stale top-level tree behind.
+        $remoteSpec = "$($Cfg.User)@$($Cfg.Host):$($Cfg.RemoteRoot)/"
+        Write-Host "rhap-vm: pscp $rel -> $remoteSpec$rel"
         $pscpArgs = @('-batch', '-r', '-pw', $Cfg.Password, $local, $remoteSpec)
         & $pscp @pscpArgs
         if ($LASTEXITCODE -ne 0) {

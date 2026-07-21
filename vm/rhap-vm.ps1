@@ -40,6 +40,7 @@ function Get-VmConfig {
         Plink      = 'plink.exe'
         Pscp       = 'pscp.exe'
         SyncPaths  = 'src;ninja'
+        Make       = 'gnumake'
     }
     Get-Content -LiteralPath $ConfPath | ForEach-Object {
         $line = $_.Trim()
@@ -139,8 +140,11 @@ function Invoke-Sync([hashtable]$Cfg) {
 function Invoke-Build([hashtable]$Cfg, [string[]]$Targets) {
     if (-not $Targets -or $Targets.Count -eq 0) { $Targets = @('world') }
     $targetStr = ($Targets -join ' ')
-    # Avoid make -C (plink and old BSD make both treat -C specially). Use sh -c + cd.
-    $remote = "sh -c 'cd $($Cfg.RemoteRoot)/ninja && make $targetStr'"
+    # ninja/ and samurai/ Makefiles need GNU make (ifeq, CURDIR). Rhapsody
+    # ships that as gnumake; plain make is BSD and fails on ifeq.
+    $make = $Cfg.Make
+    if ([string]::IsNullOrWhiteSpace($make)) { $make = 'gnumake' }
+    $remote = "sh -c 'cd $($Cfg.RemoteRoot)/ninja && $make $targetStr'"
     Write-Host "rhap-vm: $remote"
     Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $remote
     exit (Get-LastPlinkExitCode)

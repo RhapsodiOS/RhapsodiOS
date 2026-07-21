@@ -80,5 +80,8 @@ powershell -File vm\rhap-vm.ps1 ssh hostname
 ```
 
 Default `SyncPaths` are `src` and `ninja` only (not `vm/` binaries, not `.git`).
+Remote builds use **`gnumake`** (GNU Make) by default — Rhapsody’s BSD `make`
+cannot parse `ninja/samurai`’s `ifeq` directives. Override with `Make=` in `vm.conf`
+if needed.
 
 Password is passed with PuTTY `-pw` from `vm.conf` — fine for a local lab VM; do not commit `vm.conf`.

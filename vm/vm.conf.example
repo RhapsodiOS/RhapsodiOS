@@ -7,4 +7,5 @@ RemoteRoot=/build/source
 # LocalRoot=   (empty = parent directory of vm/)
 Plink=plink.exe
 Pscp=pscp.exe
+Make=gnumake
 SyncPaths=src;ninja

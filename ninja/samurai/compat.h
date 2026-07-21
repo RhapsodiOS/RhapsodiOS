@@ -1,11 +1,9 @@
 /* compat.h - C89 shims for old toolchains.
  *
  * Windows (MSVC / NT4): force-included via Makefile.nmake -FIcompat.h
- * Rhapsody / pre-C99 POSIX: force-included via Makefile -include compat.h
- *   with -DSAMU_COMPAT -DNO_POSIX_SPAWN -Icompat
- *
- * On POSIX, sources still #include <stdint.h> etc.; the compat/ stubs are
- * empty because this header already provided the types.
+ * Rhapsody / pre-C99 POSIX: Makefile uses -Icompat -DSAMU_COMPAT so that
+ *   #include <stdint.h> (etc.) hits compat/*.h stubs, which #include this file.
+ *   (Rhapsody's cc ignores gcc's -include flag.)
  */
 #ifndef SAMU_COMPAT_H
 #define SAMU_COMPAT_H

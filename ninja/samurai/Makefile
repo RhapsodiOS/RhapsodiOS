@@ -9,10 +9,10 @@ PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MANDIR=$(PREFIX)/share/man
 
-# Rhapsody cc is pre-C99. Reuse compat.h the same way Windows does
-# (Makefile.nmake -FIcompat.h): force-include + stub dir for #include <stdint.h>.
-# Also NO_POSIX_SPAWN (no posix_spawn on Rhapsody) and select-based poll.
-ALL_CFLAGS=$(CFLAGS) -Wall -Wno-unused-parameter -DSAMU_COMPAT -DNO_POSIX_SPAWN -Icompat -include compat.h
+# Rhapsody cc is pre-C99 and ignores gcc's -include. Put compat/ on the
+# include path so #include <stdint.h> etc. resolve to stubs that pull in
+# compat.h (same shims as Windows -FIcompat.h).
+ALL_CFLAGS=$(CFLAGS) -Wall -Wno-unused-parameter -DSAMU_COMPAT -DNO_POSIX_SPAWN -Icompat
 LDLIBS=
 OBJ=build.o deps.o env.o graph.o htab.o log.o parse.o samu.o scan.o tool.o tree.o util.o os-$(OS).o compat-posix.o
 HDR=arg.h build.h deps.h env.h graph.h htab.h log.h os.h parse.h scan.h tool.h tree.h util.h compat.h

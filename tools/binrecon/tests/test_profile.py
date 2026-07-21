@@ -79,6 +79,24 @@ def test_load_profile_expands_allowlisted_artifact_tokens_with_suffix(
     assert spec.path == (artifact_root / filename).resolve()
 
 
+@pytest.mark.parametrize(
+    "suffix", ["/dir/file", "\\dir\\file", "/dir\\file"]
+)
+def test_load_profile_normalizes_artifact_suffix_separators(tmp_path, suffix):
+    artifact_root = tmp_path / "artifact-root"
+    target = artifact_root / "dir" / "file"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"artifact")
+    document = _profile_document(reference=f"${{BINRECON_REFERENCE}}{suffix}")
+
+    profile = load_profile(
+        _write_profile(tmp_path, document),
+        {"BINRECON_REFERENCE": str(artifact_root)},
+    )
+
+    assert profile.reference.path == target.resolve()
+
+
 def test_load_profile_rejects_unset_allowlisted_variable(tmp_path):
     document = _profile_document(reference="${BINRECON_REFERENCE}/reference.bin")
 
@@ -108,6 +126,48 @@ def test_load_profile_rejects_nested_expansion_in_allowlisted_suffix(
 
 
 @pytest.mark.parametrize(
+    "suffix",
+    [
+        "/D:/outside.bin",
+        "//server/share/file",
+        "\\\\server\\share\\file",
+        "/../outside.bin",
+        "/./reference.bin",
+        "/dir//file",
+    ],
+)
+def test_load_profile_rejects_unsafe_allowlisted_suffix_components(tmp_path, suffix):
+    document = _profile_document(reference=f"${{BINRECON_REFERENCE}}{suffix}")
+
+    with pytest.raises(ProfileError, match="unsafe|escape|rooted|drive"):
+        load_profile(
+            _write_profile(tmp_path, document),
+            {"BINRECON_REFERENCE": str(tmp_path)},
+        )
+
+
+def test_load_profile_rejects_symlink_escape_from_artifact_root(tmp_path):
+    artifact_root = tmp_path / "artifact-root"
+    artifact_root.mkdir()
+    outside = tmp_path / "outside.bin"
+    outside.write_bytes(b"outside")
+    link = artifact_root / "link.bin"
+    try:
+        link.symlink_to(outside)
+    except OSError as error:
+        if isinstance(error, PermissionError) or getattr(error, "winerror", None) == 1314:
+            pytest.skip(f"symlink privilege unavailable: {error}")
+        raise
+    document = _profile_document(reference="${BINRECON_REFERENCE}/link.bin")
+
+    with pytest.raises(ProfileError, match="escapes.*root"):
+        load_profile(
+            _write_profile(tmp_path, document),
+            {"BINRECON_REFERENCE": str(artifact_root)},
+        )
+
+
+@pytest.mark.parametrize(
     "bad_path",
     [
         "${HOME}/reference.bin",
@@ -129,7 +189,7 @@ def test_load_profile_rejects_missing_artifact(tmp_path):
     profile_path = _write_profile(tmp_path)
     (tmp_path / "rebuilt.bin").unlink()
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ProfileError, match="rebuilt.*resolve"):
         load_profile(profile_path, {})
 
 

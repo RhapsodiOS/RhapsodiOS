@@ -1,5 +1,9 @@
 import hashlib
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -66,6 +70,62 @@ def test_validate_reports_mismatch_without_traceback(tmp_path, capsys):
     assert str(reference.resolve()) in captured.err
     assert "expected" in captured.err and "actual" in captured.err
     assert "Traceback" not in captured.err
+
+
+def _subprocess_environment():
+    environment = os.environ.copy()
+    package_root = str(Path(__file__).resolve().parents[1])
+    existing = environment.get("PYTHONPATH")
+    environment["PYTHONPATH"] = (
+        package_root if not existing else package_root + os.pathsep + existing
+    )
+    return environment
+
+
+def test_validate_module_entrypoint_succeeds_outside_repository_cwd(tmp_path):
+    profile_path, reference, rebuilt = _write_profile(tmp_path)
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "binrecon", "validate", "--profile", str(profile_path)],
+        cwd=working_dir,
+        env=_subprocess_environment(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert completed.stderr == ""
+    assert completed.stdout.splitlines() == [
+        f"reference {reference.resolve()} size=9 sha256={hashlib.sha256(b'reference').hexdigest().upper()}",
+        f"rebuilt {rebuilt.resolve()} size=7 sha256={hashlib.sha256(b'rebuilt').hexdigest().upper()}",
+    ]
+
+
+def test_validate_module_entrypoint_reports_invalid_profile_without_traceback(tmp_path):
+    profile_path, _, _ = _write_profile(tmp_path)
+    document = json.loads(profile_path.read_text(encoding="utf-8"))
+    del document["architecture"]
+    profile_path.write_text(json.dumps(document), encoding="utf-8")
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "binrecon", "validate", "--profile", str(profile_path)],
+        cwd=working_dir,
+        env=_subprocess_environment(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert completed.stdout == ""
+    assert completed.stderr.startswith("binrecon: ")
+    assert "architecture" in completed.stderr
+    assert "Traceback" not in completed.stderr
 
 
 @pytest.mark.parametrize("command", ["analyze", "consensus", "compare", "ledger"])

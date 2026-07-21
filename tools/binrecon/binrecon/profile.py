@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from types import MappingProxyType
 from typing import Mapping
 
@@ -41,10 +42,10 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
     base_dir = source_path.parent
 
     reference, reference_identity = _load_artifact(
-        document["reference"], base_dir, environ
+        "reference", document["reference"], base_dir, environ
     )
     rebuilt, rebuilt_identity = _load_artifact(
-        document["rebuilt"], base_dir, environ
+        "rebuilt", document["rebuilt"], base_dir, environ
     )
     output_dir = _resolve_from(base_dir, Path(document["output_dir"]), strict=False)
 
@@ -62,10 +63,17 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
 
 
 def _load_artifact(
-    document: dict, base_dir: Path, environ: Mapping[str, str]
+    label: str, document: dict, base_dir: Path, environ: Mapping[str, str]
 ) -> tuple[ArtifactSpec, InputIdentity]:
-    artifact_path = _expand_artifact_path(document["path"], environ)
-    resolved = _resolve_from(base_dir, artifact_path, strict=True)
+    try:
+        artifact_path = _expand_artifact_path(document["path"], environ, base_dir)
+        resolved = _resolve_from(base_dir, artifact_path, strict=True)
+    except ProfileError as error:
+        raise ProfileError(f"{label} artifact: {error}") from error
+    except OSError as error:
+        raise ProfileError(
+            f"{label} artifact path could not resolve {document['path']!r}: {error}"
+        ) from error
     expected_hash = document.get("expected_sha256")
     if expected_hash is not None:
         expected_hash = expected_hash.upper()
@@ -75,7 +83,9 @@ def _load_artifact(
     return spec, identity
 
 
-def _expand_artifact_path(value: str, environ: Mapping[str, str]) -> Path:
+def _expand_artifact_path(
+    value: str, environ: Mapping[str, str], base_dir: Path
+) -> Path:
     for variable in _ARTIFACT_VARIABLES:
         token = f"${{{variable}}}"
         if value == token or value.startswith(token + "/") or value.startswith(token + "\\"):
@@ -85,10 +95,28 @@ def _expand_artifact_path(value: str, environ: Mapping[str, str]) -> Path:
                 raise ProfileError(f"artifact variable {variable} is not set") from error
             if not root:
                 raise ProfileError(f"artifact variable {variable} is not set")
-            suffix = value[len(token) :].lstrip("/\\")
+            suffix = value[len(token) :]
+            if not suffix:
+                return Path(root)
             if "$" in suffix or "%" in suffix or "~" in suffix:
                 raise ProfileError(f"unsupported artifact path expansion: {value}")
-            return Path(root) / suffix if suffix else Path(root)
+            tail = suffix[1:]
+            if not tail or tail[0] in "/\\":
+                raise ProfileError(f"rooted artifact suffix is unsafe: {value}")
+            components = tail.replace("\\", "/").split("/")
+            if any(component in ("", ".", "..") for component in components):
+                raise ProfileError(f"unsafe artifact suffix component: {value}")
+            if re.match(r"^[A-Za-z]:", components[0]):
+                raise ProfileError(f"drive-qualified artifact suffix is unsafe: {value}")
+
+            root_path = Path(root)
+            if not root_path.is_absolute():
+                root_path = base_dir / root_path
+            root_path = root_path.resolve(strict=True)
+            candidate = root_path.joinpath(*components).resolve(strict=True)
+            if not candidate.is_relative_to(root_path):
+                raise ProfileError(f"artifact suffix escapes variable root: {value}")
+            return candidate
 
     if "$" in value or "%" in value or "~" in value:
         raise ProfileError(f"unsupported artifact path expansion: {value}")

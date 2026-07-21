@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import hashlib
+import os
 from pathlib import Path
+import stat
 
 
 _CHUNK_SIZE = 1024 * 1024
@@ -19,20 +21,37 @@ class IdentityMismatchError(ValueError):
 
 def identify(path: Path) -> InputIdentity:
     resolved = path.resolve(strict=True)
-    if not resolved.is_file():
-        raise ValueError(f"artifact is not a regular file: {resolved}")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+    try:
+        descriptor = os.open(resolved, flags)
+    except PermissionError:
+        if resolved.is_dir():
+            raise ValueError(f"artifact is not a regular file: {resolved}") from None
+        raise
+    try:
+        initial = os.fstat(descriptor)
+        if not stat.S_ISREG(initial.st_mode):
+            raise ValueError(f"artifact is not a regular file: {resolved}")
 
-    digest = hashlib.sha256()
-    size = 0
-    with resolved.open("rb") as stream:
+        digest = hashlib.sha256()
+        size = 0
         while True:
-            chunk = stream.read(_CHUNK_SIZE)
+            chunk = os.read(descriptor, _CHUNK_SIZE)
             if not chunk:
                 break
             digest.update(chunk)
             size += len(chunk)
 
-    return InputIdentity(resolved, size, digest.hexdigest().upper())
+        final = os.fstat(descriptor)
+        stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if size != final.st_size or any(
+            getattr(initial, field) != getattr(final, field) for field in stable_fields
+        ):
+            raise IdentityMismatchError(f"file changed during hashing: {resolved}")
+
+        return InputIdentity(resolved, size, digest.hexdigest().upper())
+    finally:
+        os.close(descriptor)
 
 
 def assert_identity(expected: InputIdentity) -> None:

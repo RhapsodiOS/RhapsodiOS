@@ -223,6 +223,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                     contents_hash = hashlib.sha256(contents).hexdigest().upper()
                 raw_sections.append(
                     {
+                        "ordinal": len(raw_sections) + 1,
                         "name": (
                             f"{_decode_fixed_name(segment_name_raw, section_context)},"
                             f"{_decode_fixed_name(section_name_raw, section_context)}"
@@ -343,7 +344,10 @@ def read_macho(path: Path) -> dict[str, Any]:
                     [
                         {
                             "name": section["name"],
+                            "ordinal": section["ordinal"],
                             "address": section["address"],
+                            "offset": section["offset"],
+                            "size": section["size"],
                             "alignment_exponent": section["alignment_exponent"],
                             "alignment": 1 << section["alignment_exponent"],
                             "flags": section["flags"],
@@ -355,7 +359,8 @@ def read_macho(path: Path) -> dict[str, Any]:
                     ],
                     key=lambda item: (
                         item["address"], item["name"], item["alignment_exponent"],
-                        item["alignment"], item["flags"], item["type"],
+                        item["ordinal"], item["offset"], item["size"], item["alignment"],
+                        item["flags"], item["type"],
                         item["zero_fill"], item["initialized"],
                     ),
                 ),
@@ -365,15 +370,18 @@ def read_macho(path: Path) -> dict[str, Any]:
                             key: relocation[key]
                             for key in (
                                 "address", "kind", "target", "addend",
-                                "pc_relative", "width", "external", "section",
+                                "type", "pc_relative", "width", "external", "section",
+                                "section_ordinal", "target_section_ordinal", "original_bytes",
                             )
                         }
                         for relocation in raw_relocations
                     ],
                     key=lambda item: (
                         item["address"], item["kind"], item["target"] or "",
-                        item["addend"], item["section"], item["external"],
-                        item["pc_relative"], item["width"],
+                        item["addend"], item["type"], item["section"],
+                        item["section_ordinal"], item["external"],
+                        -1 if item["target_section_ordinal"] is None else item["target_section_ordinal"],
+                        item["pc_relative"], item["width"], item["original_bytes"],
                     ),
                 ),
             }
@@ -488,6 +496,7 @@ def _read_relocations(
             pc_relative = bool(word & (1 << 24))
             external = bool(word & (1 << 27))
             relocation_type = (word >> 28) & 0xF
+            target_section_ordinal = None
             if external:
                 if symbol_number >= len(symbol_names):
                     raise MachOFormatError(
@@ -504,6 +513,7 @@ def _read_relocations(
                     )
                 else:
                     target = sections[symbol_number - 1]["name"]
+                    target_section_ordinal = symbol_number
             type_name = "vanilla" if relocation_type == 0 else f"type-{relocation_type}"
             relative = "pc-relative" if pc_relative else "absolute"
             if section["zero_fill"]:
@@ -521,10 +531,14 @@ def _read_relocations(
                     "kind": f"i386-{type_name}-{width * 8}-{relative}",
                     "target": target,
                     "addend": addend,
+                    "type": relocation_type,
                     "pc_relative": pc_relative,
                     "width": width,
                     "external": external,
                     "section": section["name"],
+                    "section_ordinal": section["ordinal"],
+                    "target_section_ordinal": target_section_ordinal,
+                    "original_bytes": field.hex().upper(),
                 }
             )
     return result

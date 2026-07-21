@@ -269,20 +269,51 @@ def _layout(profile, identity: InputIdentity) -> dict:
     except (OSError, MachOFormatError) as error:
         raise GhidraAdapterError(f"cannot construct deterministic Mach-O fallback: {error}") from error
     extension = macho.get("extensions", {}).get("macho", {})
-    section_metadata = {
-        (item["name"], item["address"]): item for item in extension.get("sections", ())
-    }
+    section_metadata = list(extension.get("sections", ()))
+    ordinals = [item.get("ordinal") for item in section_metadata]
+    if (any(not isinstance(value, int) or isinstance(value, bool) or value < 1
+            for value in ordinals) or len(set(ordinals)) != len(ordinals)):
+        raise GhidraAdapterError("fallback sections have missing or duplicate ordinals")
+    identity_fields = ("name", "address", "offset", "size")
+    core_by_identity = {}
+    for section in macho["sections"]:
+        key = tuple(section[field] for field in identity_fields)
+        core_by_identity.setdefault(key, []).append(section)
     configured_regions = profile.document.get("regions", ())
-    source_regions = configured_regions if configured_regions else macho["sections"]
     regions = []
-    for source in source_regions:
-        region = {key: source[key] for key in ("name", "address", "offset", "size", "permissions")}
-        try:
-            metadata = section_metadata[(region["name"], region["address"])]
-        except KeyError as error:
-            raise GhidraAdapterError(
-                f"fallback section lacks canonical Mach-O metadata: {region['name']!r}"
-            ) from error
+    selected = []
+    if configured_regions:
+        selected_ordinals = set()
+        for source in configured_regions:
+            identity_key = tuple(source[field] for field in identity_fields)
+            matches = [item for item in section_metadata
+                       if tuple(item[field] for field in identity_fields) == identity_key]
+            if len(matches) != 1:
+                raise GhidraAdapterError(
+                    f"fallback section metadata is missing or ambiguous: {source['name']!r}"
+                )
+            if matches[0]["ordinal"] in selected_ordinals:
+                raise GhidraAdapterError(
+                    f"fallback section metadata is ambiguous: {source['name']!r}"
+                )
+            selected_ordinals.add(matches[0]["ordinal"])
+            selected.append((source, matches[0]))
+    else:
+        for metadata in sorted(section_metadata, key=lambda item: item["ordinal"]):
+            identity_key = tuple(metadata[field] for field in identity_fields)
+            matches = core_by_identity.get(identity_key, [])
+            if not matches:
+                raise GhidraAdapterError(
+                    f"fallback section lacks canonical Mach-O identity: {metadata['name']!r}"
+                )
+            selected.append((matches.pop(0), metadata))
+        if any(matches for matches in core_by_identity.values()):
+            raise GhidraAdapterError("fallback section metadata is missing for a canonical section")
+    for source, metadata in selected:
+        region = {key: metadata[key] for key in ("ordinal", "name", "address", "offset", "size")}
+        region["permissions"] = source["permissions"]
+        if "sha256" in source:
+            region["sha256"] = source["sha256"]
         region.update({key: metadata[key] for key in (
             "alignment_exponent", "alignment", "flags", "type", "zero_fill", "initialized"
         )})
@@ -305,7 +336,7 @@ def _layout(profile, identity: InputIdentity) -> dict:
         "image_base": profile.document.get("image_base", 0),
         "sections": sorted(regions, key=lambda item: (
             item["address"], item["offset"], item["name"], item["size"],
-            item["permissions"], item["alignment_exponent"], item["alignment"],
+            item["ordinal"], item["permissions"], item["alignment_exponent"], item["alignment"],
             item["flags"], item["type"], item["zero_fill"], item["initialized"],
         )),
         "symbols": sorted(symbols, key=lambda item: (
@@ -315,7 +346,9 @@ def _layout(profile, identity: InputIdentity) -> dict:
             [dict(item) for item in extension.get("relocations", ())],
             key=lambda item: (
                 item["address"], item["kind"], item["target"] or "", item["addend"],
-                item["section"], item["external"], item["pc_relative"], item["width"],
+                item["type"], item["section"], item["section_ordinal"], item["external"],
+                -1 if item["target_section_ordinal"] is None else item["target_section_ordinal"],
+                item["pc_relative"], item["width"], item["original_bytes"],
             ),
         ),
         "entry_points": sorted(entries, key=lambda item: (item["address"], item["name"])),
@@ -363,6 +396,38 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
         ]
         if document["relocations"] != expected_relocations:
             raise GhidraAdapterError("Ghidra output fallback relocations do not match layout")
+        backing = extension.get("fallback_backing")
+        if not isinstance(backing, list) or len(backing) != len(layout["sections"]):
+            raise GhidraAdapterError("Ghidra output fallback backing metadata is missing")
+        by_ordinal = {item.get("ordinal"): item for item in backing if isinstance(item, dict)}
+        if len(by_ordinal) != len(backing):
+            raise GhidraAdapterError("Ghidra output fallback backing ordinals are invalid")
+        for section in layout["sections"]:
+            actual = by_ordinal.get(section["ordinal"])
+            expected_offset = section["offset"] if section["initialized"] and section["size"] else None
+            if (actual is None or actual.get("initialized") != section["initialized"] or
+                    actual.get("source_offset") != expected_offset):
+                raise GhidraAdapterError("Ghidra output fallback backing does not match layout")
+        statuses = extension.get("fallback_relocation_status")
+        if not isinstance(statuses, list) or len(statuses) != len(layout["relocations"]):
+            raise GhidraAdapterError("Ghidra output fallback relocation status is missing")
+        for index, (expected, actual) in enumerate(zip(layout["relocations"], statuses)):
+            if (actual.get("index") != index or actual.get("address") != expected["address"] or
+                    actual.get("type") != expected["type"] or
+                    actual.get("width") != expected["width"] or
+                    actual.get("original_bytes") != expected["original_bytes"] or
+                    actual.get("status") not in {
+                        "APPLIED", "APPLIED_OTHER", "SKIPPED", "UNSUPPORTED", "FAILURE", "PARTIAL"
+                    }):
+                raise GhidraAdapterError("Ghidra output fallback relocation status is invalid")
+            if actual["status"] in {"APPLIED", "APPLIED_OTHER"} and not actual.get("reference_targets"):
+                raise GhidraAdapterError("applied fallback relocation has no analysis reference")
+            instructions = [instruction for function in document["functions"]
+                            for instruction in function["instructions"]
+                            if instruction["address"] == expected["address"]]
+            if instructions and any(index not in instruction["relocations"]
+                                    for instruction in instructions):
+                raise GhidraAdapterError("fallback instruction relocation index is missing")
 
 
 def export_with_ghidra(profile, artifact: str, destination: Path, *,
@@ -391,13 +456,13 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
     _reject_alias(log_path, identity.path, "log path")
     _reject_peer_alias(destination, log_path)
     _verify_java21(_java_executable(), runner)
-    workspace = Path(tempfile.mkdtemp(prefix=f".{destination.name}.ghidra-work-",
+    workspace = Path(tempfile.mkdtemp(prefix="binrecon-ghidra-work-",
                                       dir=destination.parent))
     try:
         workspace.chmod(0o700)
     except OSError:
         pass
-    run_token = workspace.name.rsplit("-", 1)[-1]
+    run_token = "".join(character for character in workspace.name if character.isalnum())[-16:]
     output = workspace / "analysis.tmp.json"
     native_log = workspace / "ghidra-native.log"
     script_log = workspace / "ghidra-script.log"

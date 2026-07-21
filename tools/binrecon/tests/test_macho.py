@@ -63,17 +63,21 @@ def test_reads_legacy_i386_object_metadata_without_guessing_functions(tmp_path):
         }
     ]
     assert analysis["extensions"]["macho"]["sections"] == [
-        {"name": "__TEXT,__text", "address": 0x1000, "alignment_exponent": 2,
+        {"ordinal": 1, "name": "__TEXT,__text", "address": 0x1000, "offset": 0x114,
+         "size": 4, "alignment_exponent": 2,
          "alignment": 4, "flags": 0, "type": 0, "zero_fill": False,
          "initialized": True},
-        {"name": "__DATA,__data", "address": 0x1004, "alignment_exponent": 2,
+        {"ordinal": 2, "name": "__DATA,__data", "address": 0x1004, "offset": 0x118,
+         "size": 4, "alignment_exponent": 2,
          "alignment": 4, "flags": 0, "type": 0, "zero_fill": False,
          "initialized": True},
     ]
     assert analysis["extensions"]["macho"]["relocations"] == [
-        {"address": 0x1000, "kind": "i386-vanilla-32-absolute",
+        {"address": 0x1000, "kind": "i386-vanilla-32-absolute", "type": 0,
          "target": "_external", "addend": 0, "pc_relative": False,
-         "width": 4, "external": True, "section": "__TEXT,__text"}
+         "width": 4, "external": True, "section": "__TEXT,__text",
+         "section_ordinal": 1, "target_section_ordinal": None,
+         "original_bytes": "00000000"}
     ]
 
 
@@ -312,6 +316,9 @@ def test_zero_fill_sections_hash_logical_zeros_without_file_backing(
         remaining -= chunk_size
     assert section["size"] == logical_size
     assert section["offset"] == 0xFFFFFFF0
+    metadata = analysis["extensions"]["macho"]["sections"][0]
+    assert metadata["ordinal"] == 1
+    assert metadata["size"] == logical_size
     assert section["sha256"] == digest.hexdigest().upper()
     metadata = analysis["extensions"]["macho"]["sections"][0]
     assert metadata["flags"] == section_type

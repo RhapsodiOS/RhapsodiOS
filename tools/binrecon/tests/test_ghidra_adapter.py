@@ -7,7 +7,7 @@ import subprocess
 import pytest
 
 from binrecon.identity import identify
-from binrecon.adapters.ghidra import GhidraAdapterError, export_with_ghidra
+from binrecon.adapters.ghidra import GhidraAdapterError, _layout, export_with_ghidra
 
 
 def _analysis(identity, version="12.1"):
@@ -98,6 +98,21 @@ def test_deterministic_reruns_use_different_projects_but_identical_output(config
     assert destination.read_bytes() == first
     ghidra_calls = [argv for argv, _ in calls if not Path(argv[0]).name.lower().startswith("java")]
     assert ghidra_calls[0][1:3] != ghidra_calls[1][1:3]
+
+
+def test_workspace_and_project_components_are_legal_and_not_destination_derived(configured, tmp_path):
+    profile, identity, _, _ = configured
+    destination = tmp_path / ".unsafe destination name.json"
+    calls = []
+    export_with_ghidra(profile, "reference", destination,
+                       runner=_successful_runner(identity, calls))
+    argv = calls[-1][0]
+    workspace = Path(argv[1])
+    assert workspace.name.startswith("binrecon-ghidra-work-")
+    assert not workspace.name.startswith(".")
+    assert "unsafe" not in workspace.name
+    assert argv[2].startswith("native-")
+    assert all(character.isalnum() or character == "-" for character in argv[2])
 
 
 @pytest.mark.parametrize("bad_version", [None, "12.0", "12.1.1"])
@@ -197,6 +212,7 @@ def test_native_loader_log_exact_rejection_retries_but_exporter_text_does_not(co
         document = _analysis(identity)
         document["extensions"]["ghidra"].update({
             "fallback_sections": [], "fallback_symbols": [], "fallback_relocations": [],
+            "fallback_backing": [], "fallback_relocation_status": [],
         })
         Path(argv[argv.index("--output") + 1]).write_text(json.dumps(document), encoding="utf-8")
         return subprocess.CompletedProcess(argv, 0, "", "")
@@ -261,7 +277,7 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
         "sections": [
             {"name": "__TEXT,__text", "address": 4096, "offset": 0,
              "size": 4, "permissions": "rx", "sha256": "0" * 64},
-            {"name": "__DATA,__bss", "address": 8192, "offset": 0,
+            {"name": "__DATA,__bss", "address": 8192, "offset": 1234,
              "size": 8, "permissions": "rw", "sha256": "0" * 64},
         ],
         "symbols": [
@@ -276,16 +292,22 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
         ],
         "extensions": {"macho": {
             "sections": [
-                {"name": "__TEXT,__text", "address": 4096, "alignment_exponent": 2,
-                 "alignment": 4, "flags": 0, "type": 0, "zero_fill": False, "initialized": True},
+            {"name": "__TEXT,__text", "address": 4096, "alignment_exponent": 2,
+                 "ordinal": 1, "offset": 0, "size": 4, "alignment": 4, "flags": 0,
+                 "type": 0, "zero_fill": False, "initialized": True},
                 {"name": "__DATA,__bss", "address": 8192, "alignment_exponent": 3,
-                 "alignment": 8, "flags": 1, "type": 1, "zero_fill": True, "initialized": False},
+                 "ordinal": 2, "offset": 1234, "size": 8, "alignment": 8, "flags": 1,
+                 "type": 1, "zero_fill": True, "initialized": False},
             ],
             "relocations": [
                 {"address": 4096, "kind": "i386-vanilla-32-pc-relative", "target": "entry",
-                 "addend": -4, "pc_relative": True, "width": 4, "external": True, "section": "__TEXT,__text"},
+                 "addend": -4, "type": 0, "pc_relative": True, "width": 4,
+                 "external": True, "section": "__TEXT,__text", "section_ordinal": 1,
+                 "target_section_ordinal": None, "original_bytes": "FCFFFFFF"},
                 {"address": 4100, "kind": "i386-vanilla-16-absolute", "target": "__DATA,__bss",
-                 "addend": 2, "pc_relative": False, "width": 2, "external": False, "section": "__TEXT,__text"},
+                 "addend": 2, "type": 0, "pc_relative": False, "width": 2,
+                 "external": False, "section": "__TEXT,__text", "section_ordinal": 1,
+                 "target_section_ordinal": 2, "original_bytes": "0200"},
             ],
         }},
     }
@@ -304,6 +326,7 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
         layout_doc = json.loads(layout.read_text(encoding="utf-8"))
         assert layout_doc["sections"][0]["initialized"] is True
         assert layout_doc["sections"][1]["initialized"] is False
+        assert layout_doc["sections"][1]["offset"] == 1234
         assert layout_doc["sections"][1]["flags"] == 1
         assert layout_doc["symbols"][1]["binding"] == "local"
         assert layout_doc["symbols"][1]["section"] == "__DATA,__bss"
@@ -320,6 +343,18 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
             "fallback_sections": layout_doc["sections"],
             "fallback_symbols": layout_doc["symbols"],
             "fallback_relocations": layout_doc["relocations"],
+            "fallback_backing": [
+                {"ordinal": item["ordinal"], "initialized": item["initialized"],
+                 "source_offset": item["offset"] if item["initialized"] and item["size"] else None}
+                for item in layout_doc["sections"]
+            ],
+            "fallback_relocation_status": [
+                {"index": index, "address": item["address"], "status": "SKIPPED",
+                 "type": item["type"], "values": [item["addend"]],
+                 "original_bytes": item["original_bytes"], "width": item["width"],
+                 "reference_targets": []}
+                for index, item in enumerate(layout_doc["relocations"])
+            ],
         })
         Path(argv[argv.index("--output") + 1]).write_text(
             json.dumps(document), encoding="utf-8"
@@ -335,6 +370,37 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
     prepare_arguments = fallback[fallback.index("-preScript") + 2:fallback.index("-postScript")]
     assert "--layout" in prepare_arguments
     assert "--output" not in prepare_arguments
+
+
+def test_layout_uses_ordinals_for_duplicate_names_addresses_and_zero_size(configured, monkeypatch):
+    profile, identity, _, _ = configured
+    profile.document = {**profile.document, "comparison": {"entry_points": ()}}
+    core = [
+        {"name": "duplicate", "address": 4096, "offset": 10, "size": 0,
+         "permissions": "r", "sha256": hashlib.sha256(b"").hexdigest().upper()},
+        {"name": "duplicate", "address": 4096, "offset": 20, "size": 4,
+         "permissions": "rw", "sha256": "0" * 64},
+    ]
+    metadata = [
+        {"ordinal": 1, "name": "duplicate", "address": 4096, "offset": 10, "size": 0,
+         "alignment_exponent": 0, "alignment": 1, "flags": 0, "type": 0,
+         "zero_fill": False, "initialized": True},
+        {"ordinal": 2, "name": "duplicate", "address": 4096, "offset": 20, "size": 4,
+         "alignment_exponent": 2, "alignment": 4, "flags": 1, "type": 1,
+         "zero_fill": True, "initialized": False},
+    ]
+    monkeypatch.setattr("binrecon.adapters.ghidra.read_macho", lambda path: {
+        "sections": core, "symbols": [], "extensions": {"macho": {
+            "sections": metadata, "relocations": [],
+        }},
+    })
+    layout = _layout(profile, identity)
+    assert [(item["ordinal"], item["offset"], item["size"])
+            for item in layout["sections"]] == [(1, 10, 0), (2, 20, 4)]
+
+    profile.document = {**profile.document, "regions": (core[0], core[0])}
+    with pytest.raises(GhidraAdapterError, match="ambiguous"):
+        _layout(profile, identity)
 
 
 @pytest.mark.parametrize("message", ["Decompiler failed", "schema output invalid", "random failure",
@@ -421,6 +487,9 @@ def test_java_exporter_keeps_per_function_decompile_failures_and_fallback_metada
     for field in ("fallback_sections", "fallback_symbols", "fallback_relocations"):
         assert field in source
     assert "SourceType.ANALYSIS" in source
+    assert "getRelocationTable().add" in source
+    assert "addMemoryReference" in source
+    assert "fallback_relocation_status" in source
 
 
 def test_java_argument_parser_is_explicit_and_closed():

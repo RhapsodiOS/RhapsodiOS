@@ -29,6 +29,7 @@ public final class ExportAnalysis extends GhidraScript {
     private static final String LANGUAGE = "x86:LE:32:default";
     private static final int MAX_DECOMPILED_C = 1024 * 1024;
     private static final int MAX_DECOMPILE_MESSAGE = 16 * 1024;
+    private final Map<Long,List<Long>> relocationIndexesByAddress=new TreeMap<>();
 
     @Override
     protected void run() throws Exception {
@@ -102,7 +103,7 @@ public final class ExportAnalysis extends GhidraScript {
         }
         for (Object item : array(layout.get("sections"), "sections")) {
             Map<String,Object> section = object(item, "section");
-            String name = string(section.get("name"));
+            String name = blockName(section);
             long address = number(section.get("address"));
             long offset = number(section.get("offset"));
             long size = number(section.get("size"));
@@ -115,8 +116,7 @@ public final class ExportAnalysis extends GhidraScript {
                 block = memory.createInitializedBlock(name, space.getAddress(address),
                     fileBytes, offset, size, false);
             } else {
-                block = memory.createInitializedBlock(name, space.getAddress(address),
-                    size, (byte)0, monitor, false);
+                block = memory.createUninitializedBlock(name, space.getAddress(address), size, false);
             }
             String permissions = string(section.get("permissions"));
             block.setRead(permissions.contains("r"));
@@ -126,6 +126,11 @@ public final class ExportAnalysis extends GhidraScript {
         SymbolTable symbols = currentProgram.getSymbolTable();
         for (Object item : array(layout.get("symbols"), "symbols")) {
             Map<String,Object> symbol = object(item, "symbol");
+            if ("external".equals(string(symbol.get("binding"))) && symbol.get("section") == null) {
+                currentProgram.getExternalManager().addExtLocation(
+                    "UNKNOWN", string(symbol.get("name")), null, SourceType.IMPORTED);
+                continue;
+            }
             SourceType source = "local".equals(string(symbol.get("binding")))
                 ? SourceType.ANALYSIS : SourceType.IMPORTED;
             symbols.createLabel(space.getAddress(number(symbol.get("address"))),
@@ -137,7 +142,51 @@ public final class ExportAnalysis extends GhidraScript {
             symbols.createLabel(address, string(entry.get("name")), SourceType.IMPORTED);
             symbols.addExternalEntryPoint(address);
         }
+        installRelocations(layout, space);
     }
+
+    private String blockName(Map<String,Object> section) {
+        return "section-"+number(section.get("ordinal"));
+    }
+
+    private void installRelocations(Map<String,Object> layout, AddressSpace space) throws Exception {
+        Memory memory=currentProgram.getMemory(); SymbolTable symbols=currentProgram.getSymbolTable();
+        ReferenceManager references=currentProgram.getReferenceManager();
+        Map<Long,Address> sections=new HashMap<>();
+        for(Object value:array(layout.get("sections"),"sections")){Map<String,Object> section=object(value,"section");
+            sections.put(number(section.get("ordinal")),space.getAddress(number(section.get("address"))));}
+        Map<String,Map<String,Object>> symbolLayouts=new HashMap<>();
+        for(Object value:array(layout.get("symbols"),"symbols")){Map<String,Object> symbol=object(value,"symbol");symbolLayouts.put(string(symbol.get("name")),symbol);}
+        for(Object value:array(layout.get("relocations"),"relocations")){Map<String,Object> relocation=object(value,"relocation");
+            Address place=space.getAddress(number(relocation.get("address"))); int type=(int)number(relocation.get("type"));
+            int width=(int)number(relocation.get("width")); long addend=number(relocation.get("addend"));
+            String targetName=relocation.get("target")==null?null:string(relocation.get("target")); Address target=null; Symbol targetSymbol=null;
+            if(relocation.get("target_section_ordinal")!=null){target=sections.get(number(relocation.get("target_section_ordinal")));}
+            else if(targetName!=null){Map<String,Object> symbol=symbolLayouts.get(targetName);if(symbol!=null&&symbol.get("section")!=null){
+                    target=space.getAddress(number(symbol.get("address")));targetSymbol=symbols.getPrimarySymbol(target);
+                }else{for(Object sectionValue:array(layout.get("sections"),"sections")){Map<String,Object> section=object(sectionValue,"section");
+                    if(targetName.equals(section.get("name"))){target=sections.get(number(section.get("ordinal")));break;}}}}
+            Relocation.Status status; Long applied=null;
+            if(type!=0){status=Relocation.Status.UNSUPPORTED;}
+            else if(target==null){status=Relocation.Status.SKIPPED;}
+            else {long placeValue=place.getOffset(), targetValue=target.getOffset();
+                long computed=Boolean.TRUE.equals(relocation.get("pc_relative"))?targetValue+addend-placeValue:targetValue+addend;
+                if(!fitsRelocation(computed,width,Boolean.TRUE.equals(relocation.get("pc_relative")))) status=Relocation.Status.FAILURE;
+                else {byte[] bytes=littleEndian(computed,width);memory.setBytes(place,bytes);status=Relocation.Status.APPLIED;applied=computed;
+                    Reference reference=references.addMemoryReference(place,target,RefType.DATA,SourceType.IMPORTED,0);
+                    if(targetSymbol!=null)references.setAssociation(targetSymbol,reference);}}
+            long[] values=applied==null?new long[]{addend}:new long[]{applied,target.getOffset(),addend};
+            currentProgram.getRelocationTable().add(place,status,type,values,
+                unhex(string(relocation.get("original_bytes"))),targetName);
+        }
+    }
+
+    private static boolean fitsRelocation(long value,int width,boolean signed){if(width!=1&&width!=2&&width!=4)return false;
+        int bits=width*8;if(signed){long min=-(1L<<(bits-1)),max=(1L<<(bits-1))-1;return value>=min&&value<=max;}
+        long max=(1L<<bits)-1;return value>=0&&value<=max;}
+    private static byte[] littleEndian(long value,int width){byte[] out=new byte[width];for(int i=0;i<width;i++)out[i]=(byte)(value>>>(i*8));return out;}
+    private static byte[] unhex(String value){if((value.length()&1)!=0)throw new IllegalArgumentException("odd hex length");byte[] out=new byte[value.length()/2];
+        for(int i=0;i<out.length;i++){int high=Character.digit(value.charAt(i*2),16),low=Character.digit(value.charAt(i*2+1),16);if(high<0||low<0)throw new IllegalArgumentException("invalid hex");out[i]=(byte)((high<<4)|low);}return out;}
 
     private void export(Args args) throws Exception {
         verifyLanguage();
@@ -166,7 +215,8 @@ public final class ExportAnalysis extends GhidraScript {
         analyzer.put("invocation", "analyzeHeadless ExportAnalysis.java");
         root.put("analyzer", analyzer);
 
-        root.put("sections", exportSections());
+        List<Object> fallbackBacking=new ArrayList<>();
+        root.put("sections", exportSections(layout,fallbackBacking));
         root.put("symbols", exportSymbols(layout));
         root.put("relocations", exportRelocations(layout));
         List<Object> imports = new ArrayList<>(), strings = new ArrayList<>(),
@@ -187,6 +237,8 @@ public final class ExportAnalysis extends GhidraScript {
             ghidra.put("fallback_sections", array(layout.get("sections"), "sections"));
             ghidra.put("fallback_symbols", array(layout.get("symbols"), "symbols"));
             ghidra.put("fallback_relocations", array(layout.get("relocations"), "relocations"));
+            ghidra.put("fallback_backing", fallbackBacking);
+            ghidra.put("fallback_relocation_status", exportFallbackRelocationStatus(layout));
         }
         extensions.put("ghidra", ghidra); root.put("extensions", extensions);
         writeAtomically(Paths.get(args.required("--output")), root);
@@ -207,14 +259,25 @@ public final class ExportAnalysis extends GhidraScript {
             if (number(section.get("size")) == 0) continue;
             MemoryBlock block = actual.get(index++);
             String permissions = string(section.get("permissions"));
-            if (!block.getName().equals(string(section.get("name"))) ||
+            if (!block.getName().equals(blockName(section)) ||
                     block.getStart().getOffset() != number(section.get("address")) ||
                     block.getSize() != number(section.get("size")) ||
+                    block.isInitialized() != Boolean.TRUE.equals(section.get("initialized")) ||
                     block.isRead() != permissions.contains("r") ||
                     block.isWrite() != permissions.contains("w") ||
                     block.isExecute() != permissions.contains("x"))
                 throw new IOException("prepared memory layout mismatch");
         }
+        List<Object> relocations=array(layout.get("relocations"),"relocations");
+        if(currentProgram.getRelocationTable().getSize()!=relocations.size())
+            throw new IOException("prepared relocation count mismatch");
+        for(Object value:relocations){Map<String,Object> expectedRelocation=object(value,"relocation");
+            Address address=currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(number(expectedRelocation.get("address")));
+            List<Relocation> actualRelocations=currentProgram.getRelocationTable().getRelocations(address);
+            boolean matched=false;for(Relocation relocation:actualRelocations)if(relocation.getType()==number(expectedRelocation.get("type"))&&
+                Objects.equals(relocation.getSymbolName(),expectedRelocation.get("target"))&&relocation.getLength()==number(expectedRelocation.get("width"))&&
+                Arrays.equals(relocation.getBytes(),unhex(string(expectedRelocation.get("original_bytes")))))matched=true;
+            if(!matched)throw new IOException("prepared relocation table mismatch");}
     }
 
     private String analyzerVersion() throws IOException {
@@ -229,7 +292,15 @@ public final class ExportAnalysis extends GhidraScript {
         return Paths.get(value);
     }
 
-    private List<Object> exportSections() throws Exception {
+    private List<Object> exportSections(Map<String,Object> layout,List<Object> fallbackBacking) throws Exception {
+        if(layout!=null){List<Object> out=new ArrayList<>();for(Object value:array(layout.get("sections"),"sections")){
+            Map<String,Object> section=object(value,"section"),item=map(),backing=map();long size=number(section.get("size"));
+            MemoryBlock block=size==0?null:currentProgram.getMemory().getBlock(blockName(section));
+            item.put("name",section.get("name"));item.put("address",section.get("address"));item.put("offset",section.get("offset"));
+            item.put("size",section.get("size"));item.put("permissions",section.get("permissions"));item.put("sha256",blockHash(block,size));out.add(item);
+            backing.put("ordinal",section.get("ordinal"));backing.put("initialized",section.get("initialized"));
+            backing.put("source_offset",block==null||!Boolean.TRUE.equals(section.get("initialized"))?null:sourceOffset(block));fallbackBacking.add(backing);}
+            return out;}
         List<MemoryBlock> blocks = new ArrayList<>(Arrays.asList(currentProgram.getMemory().getBlocks()));
         Collections.sort(blocks, Comparator.comparingLong((MemoryBlock b) -> b.getStart().getOffset())
             .thenComparing(MemoryBlock::getName));
@@ -240,19 +311,15 @@ public final class ExportAnalysis extends GhidraScript {
             item.put("name", block.getName()); item.put("address", block.getStart().getOffset());
             item.put("offset", sourceOffset(block)); item.put("size", block.getSize());
             item.put("permissions", (block.isRead()?"r":"")+(block.isWrite()?"w":"")+(block.isExecute()?"x":""));
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] buffer = new byte[1024 * 1024]; long done = 0;
-            while (done < block.getSize()) {
-                int count = (int)Math.min(buffer.length, block.getSize() - done);
-                Address at = block.getStart().add(done);
-                if (block.isInitialized()) currentProgram.getMemory().getBytes(at, buffer, 0, count);
-                else Arrays.fill(buffer, 0, count, (byte)0);
-                digest.update(buffer, 0, count); done += count;
-            }
-            item.put("sha256", hex(digest.digest())); out.add(item);
+            item.put("sha256", blockHash(block,block.getSize())); out.add(item);
         }
         return out;
     }
+
+    private String blockHash(MemoryBlock block,long size) throws Exception {MessageDigest digest=MessageDigest.getInstance("SHA-256");
+        byte[] buffer=new byte[1024*1024];long done=0;while(done<size){int count=(int)Math.min(buffer.length,size-done);Address at=block.getStart().add(done);
+            if(block.isInitialized())currentProgram.getMemory().getBytes(at,buffer,0,count);else Arrays.fill(buffer,0,count,(byte)0);digest.update(buffer,0,count);done+=count;}
+        return hex(digest.digest());}
 
     private long sourceOffset(MemoryBlock block) {
         List<MemoryBlockSourceInfo> infos = block.getSourceInfos();
@@ -291,13 +358,15 @@ public final class ExportAnalysis extends GhidraScript {
     }
 
     private List<Object> exportRelocations(Map<String,Object> layout) throws CancelledException {
+        relocationIndexesByAddress.clear();
         if (layout != null) {
             List<Object> out = new ArrayList<>();
-            for (Object value : array(layout.get("relocations"), "relocations")) {
+            long index=0; for (Object value : array(layout.get("relocations"), "relocations")) {
                 Map<String,Object> source = object(value, "relocation"), item = map();
                 item.put("address", source.get("address")); item.put("kind", source.get("kind"));
                 item.put("target", source.get("target")); item.put("addend", source.get("addend"));
                 out.add(item);
+                relocationIndexesByAddress.computeIfAbsent(number(source.get("address")),ignored->new ArrayList<>()).add(index++);
             }
             out.sort(Comparator.comparingLong(x->number(object(x,"relocation").get("address")))
                 .thenComparing(x->string(object(x,"relocation").get("kind")))
@@ -320,10 +389,26 @@ public final class ExportAnalysis extends GhidraScript {
             item.put("kind",Integer.toString(relocation.getType()));
             item.put("target",relocation.getSymbolName());
             long[] relocationValues=relocation.getValues();
-            item.put("addend",relocationValues.length==0?0:relocationValues[0]); out.add(item);
+            item.put("addend",relocationValues.length==0?0:relocationValues[0]);
+            relocationIndexesByAddress.computeIfAbsent(relocation.getAddress().getOffset(),ignored->new ArrayList<>()).add((long)out.size());out.add(item);
         }
         return out;
     }
+
+    private List<Object> exportFallbackRelocationStatus(Map<String,Object> layout) throws CancelledException {
+        List<Object> out=new ArrayList<>();int index=0;for(Object value:array(layout.get("relocations"),"relocations")){
+            monitor.checkCancelled();Map<String,Object> expected=object(value,"relocation"),item=map();long addressValue=number(expected.get("address"));
+            Address address=currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(addressValue);Relocation matched=null;
+            for(Relocation relocation:currentProgram.getRelocationTable().getRelocations(address))if(relocation.getType()==number(expected.get("type"))&&Objects.equals(relocation.getSymbolName(),expected.get("target"))&&
+                Arrays.equals(relocation.getBytes(),unhex(string(expected.get("original_bytes"))))){matched=relocation;break;}
+            item.put("index",index++);item.put("address",addressValue);item.put("status",matched==null?"MISSING":matched.getStatus().toString());
+            item.put("type",matched==null?expected.get("type"):matched.getType());item.put("values",matched==null?List.of():longs(matched.getValues()));
+            item.put("original_bytes",matched==null?expected.get("original_bytes"):hex(matched.getBytes()));item.put("width",expected.get("width"));
+            TreeSet<Long> targets=new TreeSet<>();for(Reference reference:currentProgram.getReferenceManager().getReferencesFrom(address))if(reference.getToAddress().isMemoryAddress())targets.add(reference.getToAddress().getOffset());
+            item.put("reference_targets",new ArrayList<>(targets));out.add(item);}return out;
+    }
+
+    private static List<Long> longs(long[] values){List<Long> out=new ArrayList<>();for(long value:values)out.add(value);return out;}
 
     private List<Object> exportFunctions(List<Object> summaries) throws Exception {
         List<Function> functions = new ArrayList<>();
@@ -380,8 +465,7 @@ public final class ExportAnalysis extends GhidraScript {
             item.put("mnemonic",instruction.getMnemonicString());
             List<String> operands=new ArrayList<>(); for(int i=0;i<instruction.getNumOperands();i++) operands.add(instruction.getDefaultOperandRepresentation(i));
             String operandText=String.join(", ",operands); item.put("operands",operandText); item.put("normalized_operands",operandText);
-            List<Long> relocations=new ArrayList<>();
-            for(Relocation relocation:currentProgram.getRelocationTable().getRelocations(instruction.getAddress())) relocations.add(relocation.getAddress().getOffset());
+            List<Long> relocations=new ArrayList<>(relocationIndexesByAddress.getOrDefault(instruction.getAddress().getOffset(),List.of()));
             Collections.sort(relocations); item.put("relocations",relocations); out.add(item);
             for(Reference reference:instruction.getReferencesFrom()){
                 if(reference.getReferenceType().isCall()){ Map<String,Object> call=map(); call.put("address",instruction.getAddress().getOffset());

@@ -1,0 +1,10 @@
+# Copy to vm.conf (gitignored). Local Rhapsody guest over hecnet/VMnet8.
+
+Host=10.10.0.241
+User=root
+Password=abc123
+RemoteRoot=/build/source
+# LocalRoot=   (empty = parent directory of vm/)
+Plink=plink.exe
+Pscp=pscp.exe
+SyncPaths=src;ninja

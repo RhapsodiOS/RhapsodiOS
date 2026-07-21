@@ -32,3 +32,4 @@
 /vm/*.img
 /vm/pc-bios/
 /vm/bridge.conf
+/vm/vm.conf

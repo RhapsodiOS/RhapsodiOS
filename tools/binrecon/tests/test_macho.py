@@ -192,6 +192,22 @@ def test_rejects_relocation_field_crossing_section_end(tmp_path, address, length
         read_macho(write_fixture(tmp_path, bytes(blob)))
 
 
+def test_rejects_eight_byte_relocation_length_for_legacy_i386(tmp_path):
+    blob, relocation_offset, _ = relocation_fixture_parts()
+    first_section_offset = HEADER.size + SEGMENT.size
+    struct.pack_into("<I", blob, first_section_offset + 36, 8)
+    struct.pack_into("<iI", blob, relocation_offset, 0, (3 << 25) | (1 << 27))
+
+    with pytest.raises(
+        MachOFormatError,
+        match=(
+            r"load command 0 section 0.*global 0.*relocation 0"
+            rf".*file offset 0x{relocation_offset:x}.*length code 3.*i386"
+        ),
+    ):
+        read_macho(write_fixture(tmp_path, bytes(blob)))
+
+
 def test_local_absolute_relocation_uses_null_target(tmp_path):
     blob, relocation_offset, _ = relocation_fixture_parts()
     struct.pack_into("<iI", blob, relocation_offset, 0, 2 << 25)

@@ -417,6 +417,10 @@ def _read_relocations(
                     f"{entry_context}: scattered relocations are unsupported"
                 )
             length = (word >> 25) & 0x3
+            if length == 3:
+                raise MachOFormatError(
+                    f"{entry_context}: relocation length code 3 is invalid for i386"
+                )
             width = 1 << length
             section_size = section["size"]
             if section_size < width or address > section_size - width:

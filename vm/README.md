@@ -1,7 +1,7 @@
 # Rhapsody QEMU VM (Windows + hecnet)
 
 Phase 1: start the existing local QEMU stack and confirm networking / SSH.
-Sync/build automation is deferred (Approach 2).
+Phase 2: use `rhap-vm.ps1` for sync and remote build over SSH (see below).
 
 ## Prerequisites (local, not in git)
 
@@ -61,6 +61,24 @@ Not required for Phase 1. On the guest, `shell` / `login` in `/etc/inetd.conf` a
 
 Prefer `start-hecnet.cmd` + `start-vm.cmd` for daily use.
 
-## Next (Approach 2 — out of scope here)
+## Sync and remote build (Phase 2)
 
-Host helpers to `scp`/`rsync` the source tree into the guest and run remote `make -C ninja world` over SSH.
+Requires PuTTY (`plink.exe`, `pscp.exe` on PATH) and a running guest with SSH
+(see Quick start above). Known-good guest example: `10.10.0.241`.
+
+1. Copy `vm.conf.example` → `vm.conf` (gitignored). Adjust `Host` / password if needed.
+2. **One-time:** accept the SSH host key, e.g. run  
+   `pwsh -File vm\rhap-vm.ps1 ssh hostname`  
+   and confirm the PuTTY host-key prompt. Later `sync`/`build` use `-batch`.
+3. Ensure guest has `/build/source` parent writable as `root` (script runs `mkdir -p`).
+
+```powershell
+pwsh -File vm\rhap-vm.ps1 sync
+pwsh -File vm\rhap-vm.ps1 build          # make -C /build/source/ninja world
+pwsh -File vm\rhap-vm.ps1 build kernel
+pwsh -File vm\rhap-vm.ps1 ssh hostname
+```
+
+Default `SyncPaths` are `src` and `ninja` only (not `vm/` binaries, not `.git`).
+
+Password is passed with PuTTY `-pw` from `vm.conf` — fine for a local lab VM; do not commit `vm.conf`.

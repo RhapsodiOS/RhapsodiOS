@@ -87,6 +87,27 @@ def test_load_profile_rejects_unset_allowlisted_variable(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("artifact", "variable"),
+    [
+        ("reference", "BINRECON_REFERENCE"),
+        ("rebuilt", "BINRECON_REBUILT"),
+    ],
+)
+@pytest.mark.parametrize(
+    "suffix",
+    ["$HOME/file", "%HOME%/file", "~/file", "${UNSUPPORTED}/file"],
+)
+def test_load_profile_rejects_nested_expansion_in_allowlisted_suffix(
+    tmp_path, artifact, variable, suffix
+):
+    document = _profile_document()
+    document[artifact]["path"] = f"${{{variable}}}/{suffix}"
+
+    with pytest.raises(ProfileError, match="unsupported"):
+        load_profile(_write_profile(tmp_path, document), {variable: str(tmp_path)})
+
+
+@pytest.mark.parametrize(
     "bad_path",
     [
         "${HOME}/reference.bin",

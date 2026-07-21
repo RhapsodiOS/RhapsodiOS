@@ -86,6 +86,8 @@ def _expand_artifact_path(value: str, environ: Mapping[str, str]) -> Path:
             if not root:
                 raise ProfileError(f"artifact variable {variable} is not set")
             suffix = value[len(token) :].lstrip("/\\")
+            if "$" in suffix or "%" in suffix or "~" in suffix:
+                raise ProfileError(f"unsupported artifact path expansion: {value}")
             return Path(root) / suffix if suffix else Path(root)
 
     if "$" in value or "%" in value or "~" in value:

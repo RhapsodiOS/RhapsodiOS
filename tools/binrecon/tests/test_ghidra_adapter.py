@@ -1,0 +1,269 @@
+import hashlib
+import json
+from pathlib import Path
+from types import MappingProxyType, SimpleNamespace
+import subprocess
+
+import pytest
+
+from binrecon.identity import identify
+from binrecon.adapters.ghidra import GhidraAdapterError, export_with_ghidra
+
+
+def _analysis(identity, version="12.1"):
+    return {
+        "schema_version": "analysis-v1",
+        "input": {
+            "path": str(identity.path),
+            "size": identity.size,
+            "sha256": identity.sha256,
+            "architecture": "i386",
+            "endianness": "little",
+        },
+        "analyzer": {"name": "Ghidra", "version": version, "invocation": "headless"},
+        "sections": [], "symbols": [], "relocations": [], "functions": [],
+        "references": [], "imports": [], "strings": [],
+        "extensions": {"ghidra": {"language": "x86:LE:32:default"}},
+    }
+
+
+@pytest.fixture
+def configured(tmp_path, monkeypatch):
+    binary = tmp_path / "input with spaces.o"
+    binary.write_bytes(b"legacy-mach-o")
+    executable = tmp_path / "Ghidra 12.1" / "analyzeHeadless.bat"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    java = tmp_path / "Java 21" / "bin" / "java.exe"
+    java.parent.mkdir(parents=True)
+    java.write_text("stub", encoding="ascii")
+    monkeypatch.setenv("JAVA_HOME", str(java.parents[1]))
+    identity = identify(binary)
+    profile = SimpleNamespace(
+        reference_identity=identity,
+        rebuilt_identity=identity,
+        document=MappingProxyType({
+            "analyzers": MappingProxyType({"ghidra": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 17, "version": "12.1",
+            })}),
+            "image_base": 4096,
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (),
+        }),
+    )
+    return profile, identity, executable, java
+
+
+def _successful_runner(identity, calls):
+    def run(argv, **kwargs):
+        calls.append((list(argv), dict(kwargs)))
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21.0.4"')
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "ok", "")
+    return run
+
+
+def test_builds_shell_free_native_command_and_publishes_canonical_json(configured, tmp_path):
+    profile, identity, executable, _ = configured
+    destination = tmp_path / "out" / "ghidra.json"
+    calls = []
+    document = export_with_ghidra(profile, "reference", destination,
+                                  runner=_successful_runner(identity, calls))
+    argv, options = calls[-1]
+    assert argv[0] == str(executable.resolve())
+    assert argv[3:7] == ["-import", str(identity.path), "-processor", "x86:LE:32:default"]
+    assert "-postScript" in argv and "ExportAnalysis.java" in argv
+    assert Path(argv[argv.index("-scriptPath") + 1]).name == "ghidra"
+    assert argv[-1] == "-deleteProject"
+    assert options == {"capture_output": True, "text": True, "timeout": 17,
+                       "shell": False, "check": False}
+    assert document == _analysis(identity)
+    assert destination.read_text(encoding="utf-8") == json.dumps(
+        document, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ) + "\n"
+    assert not any(destination.parent.glob(".*ghidra-work-*"))
+
+
+def test_deterministic_reruns_use_different_projects_but_identical_output(configured, tmp_path):
+    profile, identity, _, _ = configured
+    calls = []
+    destination = tmp_path / "same.json"
+    runner = _successful_runner(identity, calls)
+    export_with_ghidra(profile, "reference", destination, runner=runner)
+    first = destination.read_bytes()
+    export_with_ghidra(profile, "reference", destination, runner=runner)
+    assert destination.read_bytes() == first
+    ghidra_calls = [argv for argv, _ in calls if not Path(argv[0]).name.lower().startswith("java")]
+    assert ghidra_calls[0][1:3] != ghidra_calls[1][1:3]
+
+
+@pytest.mark.parametrize("bad_version", [None, "12.0", "12.1.1"])
+def test_requires_exact_configured_ghidra_version(configured, tmp_path, bad_version):
+    profile, _, _, _ = configured
+    profile.document = {**profile.document, "analyzers": {"ghidra": {
+        **profile.document["analyzers"]["ghidra"], "version": bad_version}}}
+    with pytest.raises(GhidraAdapterError, match="Ghidra 12.1"):
+        export_with_ghidra(profile, "reference", tmp_path / "result.json")
+
+
+def test_rejects_java_other_than_21(configured, tmp_path):
+    profile, _, _, _ = configured
+    def runner(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "17.0.1"')
+    with pytest.raises(GhidraAdapterError, match="Java 21"):
+        export_with_ghidra(profile, "reference", tmp_path / "result.json", runner=runner)
+
+
+def test_missing_ghidra_and_java_fail_explicitly(configured, tmp_path, monkeypatch):
+    profile, _, executable, _ = configured
+    executable.unlink()
+    with pytest.raises(GhidraAdapterError, match="does not exist"):
+        export_with_ghidra(profile, "reference", tmp_path / "no-ghidra.json")
+    executable.write_text("stub", encoding="ascii")
+    monkeypatch.delenv("JAVA_HOME")
+    monkeypatch.setattr("binrecon.adapters.ghidra.shutil.which", lambda name: None)
+    with pytest.raises(GhidraAdapterError, match="Java 21 executable is missing"):
+        export_with_ghidra(profile, "reference", tmp_path / "no-java.json")
+
+
+def test_timeout_keeps_log_and_does_not_replace_destination(configured, tmp_path):
+    profile, _, _, _ = configured
+    destination = tmp_path / "result.json"
+    destination.write_text("old", encoding="ascii")
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        raise subprocess.TimeoutExpired(argv, 17, output="partial", stderr="stuck")
+    with pytest.raises(GhidraAdapterError, match="timed out"):
+        export_with_ghidra(profile, "reference", destination, runner=runner)
+    assert destination.read_text(encoding="ascii") == "old"
+    assert "partial" in destination.with_suffix(".json.ghidra.log").read_text(encoding="utf-8")
+
+
+def test_process_start_error_keeps_diagnostic(configured, tmp_path):
+    profile, _, _, _ = configured
+    destination = tmp_path / "result.json"
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        raise OSError("launch denied")
+    with pytest.raises(GhidraAdapterError, match="could not start"):
+        export_with_ghidra(profile, "reference", destination, runner=runner)
+    assert "launch denied" in destination.with_suffix(".json.ghidra.log").read_text(encoding="utf-8")
+
+
+def test_missing_stale_malformed_and_wrong_identity_outputs_fail(configured, tmp_path):
+    profile, identity, _, _ = configured
+    for mode, match in (("missing", "fresh"), ("malformed", "malformed"),
+                        ("identity", "identity"), ("version", "version")):
+        destination = tmp_path / f"{mode}.json"
+        def runner(argv, **kwargs):
+            if Path(argv[0]).name.lower().startswith("java"):
+                return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+            output = Path(argv[argv.index("--output") + 1])
+            if mode == "malformed": output.write_text("{", encoding="ascii")
+            elif mode == "identity":
+                doc = _analysis(identity); doc["input"]["sha256"] = "0" * 64
+                output.write_text(json.dumps(doc), encoding="utf-8")
+            elif mode == "version": output.write_text(json.dumps(_analysis(identity, "12.2")), encoding="utf-8")
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        with pytest.raises(GhidraAdapterError, match=match):
+            export_with_ghidra(profile, "reference", destination, runner=runner)
+        assert not destination.exists()
+
+
+def test_schema_invalid_and_hardlinked_outputs_are_untrusted(configured, tmp_path):
+    profile, identity, _, _ = configured
+    for mode, match in (("schema", "invalid"), ("hardlink", "private regular")):
+        destination = tmp_path / f"{mode}.json"
+        def runner(argv, **kwargs):
+            if Path(argv[0]).name.lower().startswith("java"):
+                return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+            output = Path(argv[argv.index("--output") + 1])
+            if mode == "schema":
+                document = _analysis(identity); del document["sections"]
+                output.write_text(json.dumps(document), encoding="utf-8")
+            else:
+                source = tmp_path / "attacker.json"
+                source.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+                output.hardlink_to(source)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        with pytest.raises(GhidraAdapterError, match=match):
+            export_with_ghidra(profile, "reference", destination, runner=runner)
+
+
+def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, monkeypatch):
+    profile, identity, _, _ = configured
+    macho = {"sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                           "size": 4, "permissions": "rx", "sha256": "0" * 64}],
+             "symbols": [{"name": "entry", "address": 4096, "binding": "external", "section": "__TEXT,__text"}]}
+    monkeypatch.setattr("binrecon.adapters.ghidra.read_macho", lambda path: macho)
+    commands = []
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        commands.append(list(argv))
+        if len(commands) == 1:
+            return subprocess.CompletedProcess(argv, 1, "", "Mach-O Loader: unsupported load command 0x5")
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        layout = Path(argv[argv.index("--layout") + 1])
+        assert json.loads(layout.read_text(encoding="utf-8"))["sections"][0]["address"] == 4096
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    export_with_ghidra(profile, "reference", tmp_path / "fallback.json", runner=runner)
+    assert len(commands) == 2
+    fallback = commands[1]
+    assert fallback.count("-import") == 1
+    assert fallback[fallback.index("-loader") + 1] == "BinaryLoader"
+    assert fallback.index("-preScript") < fallback.index("-postScript")
+    assert fallback[fallback.index("-preScript") + 2] == "prepare"
+
+
+@pytest.mark.parametrize("message", ["Decompiler failed", "schema output invalid", "random failure",
+                                     "Mach-O loader failed parsing load command table"])
+def test_does_not_retry_unrelated_errors(configured, tmp_path, message):
+    profile, _, _, _ = configured
+    calls = 0
+    def runner(argv, **kwargs):
+        nonlocal calls
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        calls += 1
+        return subprocess.CompletedProcess(argv, 1, "", message)
+    with pytest.raises(GhidraAdapterError, match="exit code"):
+        export_with_ghidra(profile, "reference", tmp_path / "result.json", runner=runner)
+    assert calls == 1
+
+
+def test_rejects_destination_or_log_aliasing_input(configured):
+    profile, identity, _, _ = configured
+    with pytest.raises(GhidraAdapterError, match="aliases"):
+        export_with_ghidra(profile, "reference", identity.path)
+    log_destination = identity.path.with_suffix("")
+    alias = log_destination.with_suffix(log_destination.suffix + ".ghidra.log")
+    alias.hardlink_to(identity.path)
+    with pytest.raises(GhidraAdapterError, match="aliases"):
+        export_with_ghidra(profile, "reference", log_destination)
+
+
+def test_rejects_destination_and_log_that_alias_each_other(configured, tmp_path):
+    profile, _, _, _ = configured
+    destination = tmp_path / "result.json"
+    destination.write_text("old", encoding="ascii")
+    destination.with_suffix(".json.ghidra.log").hardlink_to(destination)
+    with pytest.raises(GhidraAdapterError, match="destination and log"):
+        export_with_ghidra(profile, "reference", destination)
+
+
+def test_java_exporter_has_deterministic_safe_contract():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    for required in ("Application.getApplicationVersion()", "MessageDigest.getInstance(\"SHA-256\")",
+                     "DecompInterface", "PcodeOp", "BasicBlockModel", "ReferenceManager",
+                     "MemoryBlock", "Collections.sort", "Files.move", "ATOMIC_MOVE",
+                     "Double.isFinite", "\\\\b", "\\\\f", "\\\\u%04X",
+                     "x86:LE:32:default", "prepare", "export"):
+        assert required in source
+    assert "String.format(Locale.ROOT" in source

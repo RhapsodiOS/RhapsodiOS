@@ -49,14 +49,14 @@ def test_reads_legacy_i386_object_metadata_without_guessing_functions(tmp_path):
     ]
     assert analysis["sections"][0]["permissions"] == "rwx"
     assert analysis["sections"][0]["sha256"] == hashlib.sha256(
-        b"\x90\x90\x90\xC3"
+        b"\0" * 4
     ).hexdigest().upper()
     assert analysis["symbols"] == [
         {"name": "_external", "address": 0, "binding": "external", "section": None}
     ]
     assert analysis["relocations"] == [
         {
-            "address": 0x1001,
+            "address": 0x1000,
             "kind": "i386-vanilla-32-absolute",
             "target": "_external",
             "addend": 0,
@@ -139,7 +139,13 @@ def test_rejects_invalid_symbol_string_offset(tmp_path):
     symbol_offset = struct.unpack_from("<I", blob, symtab_command_offset + 8)[0]
     struct.pack_into("<I", blob, symbol_offset, 0xFFFFFFFF)
 
-    with pytest.raises(MachOFormatError, match=r"symbol 0.*string offset"):
+    with pytest.raises(
+        MachOFormatError,
+        match=(
+            rf"load command 1 symbol 0.*file offset 0x{symbol_offset:x}"
+            r".*string offset"
+        ),
+    ):
         read_macho(write_fixture(tmp_path, bytes(blob)))
 
 
@@ -149,8 +155,110 @@ def test_rejects_scattered_relocation(tmp_path):
     relocation_offset = struct.unpack_from("<I", blob, first_section_offset + 48)[0]
     struct.pack_into("<I", blob, relocation_offset, 0x80000001)
 
-    with pytest.raises(MachOFormatError, match=r"section 0 relocation 0.*scattered"):
+    with pytest.raises(
+        MachOFormatError,
+        match=(
+            r"load command 0 section 0.*global 0.*relocation 0"
+            rf".*file offset 0x{relocation_offset:x}.*scattered"
+        ),
+    ):
         read_macho(write_fixture(tmp_path, bytes(blob)))
+
+
+@pytest.mark.parametrize(
+    ("address", "length"),
+    [(3, 0), (2, 1), (0, 2)],
+)
+def test_accepts_relocation_ending_exactly_at_section_end(tmp_path, address, length):
+    blob, relocation_offset, _ = relocation_fixture_parts()
+    word = (length << 25) | (1 << 27)
+    struct.pack_into("<iI", blob, relocation_offset, address, word)
+
+    relocation = read_macho(write_fixture(tmp_path, bytes(blob)))["relocations"][0]
+
+    assert relocation["address"] == 0x1000 + address
+
+
+@pytest.mark.parametrize(
+    ("address", "length"),
+    [(4, 0), (3, 1), (1, 2)],
+)
+def test_rejects_relocation_field_crossing_section_end(tmp_path, address, length):
+    blob, relocation_offset, _ = relocation_fixture_parts()
+    word = (length << 25) | (1 << 27)
+    struct.pack_into("<iI", blob, relocation_offset, address, word)
+
+    with pytest.raises(MachOFormatError, match=r"relocation 0.*field.*section"):
+        read_macho(write_fixture(tmp_path, bytes(blob)))
+
+
+def test_local_absolute_relocation_uses_null_target(tmp_path):
+    blob, relocation_offset, _ = relocation_fixture_parts()
+    struct.pack_into("<iI", blob, relocation_offset, 0, 2 << 25)
+
+    analysis = read_macho(write_fixture(tmp_path, bytes(blob)))
+
+    validate_document("analysis-v1", analysis)
+    assert analysis["relocations"][0]["target"] is None
+
+
+def test_local_section_ordinal_resolves_to_section_name(tmp_path):
+    blob, relocation_offset, _ = relocation_fixture_parts()
+    struct.pack_into("<iI", blob, relocation_offset, 0, 2 | (2 << 25))
+
+    relocation = read_macho(write_fixture(tmp_path, bytes(blob)))["relocations"][0]
+
+    assert relocation["target"] == "__DATA,__data"
+
+
+def test_absolute_addend_is_unsigned_little_endian_field_value(tmp_path):
+    blob, _, text_offset = relocation_fixture_parts()
+    blob[text_offset : text_offset + 4] = b"\xFE\xFF\xFF\xFF"
+
+    relocation = read_macho(write_fixture(tmp_path, bytes(blob)))["relocations"][0]
+
+    assert relocation["addend"] == 0xFFFFFFFE
+
+
+def test_pc_relative_addend_is_signed_little_endian_displacement(tmp_path):
+    blob, relocation_offset, text_offset = relocation_fixture_parts()
+    blob[text_offset : text_offset + 4] = b"\xFC\xFF\xFF\xFF"
+    word = (1 << 24) | (2 << 25) | (1 << 27)
+    struct.pack_into("<iI", blob, relocation_offset, 0, word)
+
+    relocation = read_macho(write_fixture(tmp_path, bytes(blob)))["relocations"][0]
+
+    assert relocation["addend"] == -4
+
+
+@pytest.mark.parametrize("section_type", [0x1, 0xC, 0x12])
+def test_zero_fill_sections_hash_logical_zeros_without_file_backing(
+    tmp_path, section_type
+):
+    blob = bytearray(build_macho_fixture())
+    first_section_offset = HEADER.size + SEGMENT.size
+    logical_size = 16 * 1024 * 1024 + 3
+    struct.pack_into("<I", blob, HEADER.size + 28, logical_size + 4)
+    struct.pack_into("<I", blob, first_section_offset + 36, logical_size)
+    struct.pack_into("<I", blob, first_section_offset + 40, 0xFFFFFFF0)
+    struct.pack_into("<I", blob, first_section_offset + 56, section_type)
+    second_section_offset = first_section_offset + SECTION.size
+    struct.pack_into("<I", blob, second_section_offset + 32, 0x1000 + logical_size)
+
+    analysis = read_macho(write_fixture(tmp_path, bytes(blob)))
+    section = analysis["sections"][0]
+
+    validate_document("analysis-v1", analysis)
+    digest = hashlib.sha256()
+    remaining = logical_size
+    zeros = b"\0" * (1024 * 1024)
+    while remaining:
+        chunk_size = min(remaining, len(zeros))
+        digest.update(zeros[:chunk_size])
+        remaining -= chunk_size
+    assert section["size"] == logical_size
+    assert section["offset"] == 0xFFFFFFF0
+    assert section["sha256"] == digest.hexdigest().upper()
 
 
 def test_rejects_load_command_range_larger_than_declared_table(tmp_path):
@@ -165,3 +273,11 @@ def test_fixture_has_expected_header_for_test_sanity():
     magic, cpu, _, filetype, ncmds, sizeofcmds, _ = values
     assert (magic, cpu, filetype, ncmds) == (MH_MAGIC, CPU_TYPE_I386, MH_OBJECT, 3)
     assert sizeofcmds > SYMTAB.size
+
+
+def relocation_fixture_parts():
+    blob = bytearray(build_macho_fixture())
+    first_section_offset = HEADER.size + SEGMENT.size
+    text_offset = struct.unpack_from("<I", blob, first_section_offset + 40)[0]
+    relocation_offset = struct.unpack_from("<I", blob, first_section_offset + 48)[0]
+    return blob, relocation_offset, text_offset

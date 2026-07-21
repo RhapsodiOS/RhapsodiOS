@@ -21,7 +21,8 @@ def _name(value: str) -> bytes:
 
 
 def build_macho_fixture(*, extra_command: bytes = b"") -> bytes:
-    text = b"\x90\x90\x90\xC3"
+    # A four-byte vanilla relocation owns the complete field at offset zero.
+    text = b"\0" * 4
     data = b"DATA"
     strings = b"\0_external\0"
 
@@ -87,7 +88,7 @@ def build_macho_fixture(*, extra_command: bytes = b"") -> bytes:
     )
     nlist = NLIST.pack(1, 0x01, 0, 0, 0)
     relocation_word = 0 | (2 << 25) | (1 << 27)
-    relocation = RELOCATION.pack(1, relocation_word)
+    relocation = RELOCATION.pack(0, relocation_word)
     commands = segment + symtab + thread_command + extra_command
     header = HEADER.pack(
         MH_MAGIC,

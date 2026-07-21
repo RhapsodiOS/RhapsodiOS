@@ -13,6 +13,14 @@ MH_OBJECT = 1
 LC_SEGMENT = 1
 LC_SYMTAB = 2
 LC_UNIXTHREAD = 5
+S_ZEROFILL = 0x1
+S_GB_ZEROFILL = 0xC
+S_THREAD_LOCAL_ZEROFILL = 0x12
+
+_ZERO_FILL_TYPES = frozenset(
+    (S_ZEROFILL, S_GB_ZEROFILL, S_THREAD_LOCAL_ZEROFILL)
+)
+_HASH_CHUNK_SIZE = 1024 * 1024
 
 _MACH_HEADER = struct.Struct("<7I")
 _LOAD_COMMAND = struct.Struct("<2I")
@@ -71,6 +79,18 @@ def _permissions(protection: int) -> str:
     return "".join(
         letter for bit, letter in ((1, "r"), (2, "w"), (4, "x")) if protection & bit
     )
+
+
+def _hash_zeros(size: int) -> str:
+    """Hash logical zero-fill contents in bounded-memory chunks."""
+    digest = hashlib.sha256()
+    zeros = b"\0" * min(size, _HASH_CHUNK_SIZE)
+    remaining = size
+    while remaining:
+        chunk_size = min(remaining, len(zeros))
+        digest.update(zeros[:chunk_size])
+        remaining -= chunk_size
+    return digest.hexdigest().upper()
 
 
 def _command_record(
@@ -183,9 +203,19 @@ def read_macho(path: Path) -> dict[str, Any]:
                     _reserved1,
                     _reserved2,
                 ) = section_values
-                contents = _checked_slice(
-                    data, file_offset, size, f"{section_context} contents"
-                )
+                if size > 0x1_0000_0000 - address:
+                    raise MachOFormatError(
+                        f"{section_context}: virtual range wraps 32-bit address space "
+                        f"at file offset 0x{section_offset:x}"
+                    )
+                zero_fill = section_flags & 0xFF in _ZERO_FILL_TYPES
+                if zero_fill:
+                    contents_hash = _hash_zeros(size)
+                else:
+                    contents = _checked_slice(
+                        data, file_offset, size, f"{section_context} contents"
+                    )
+                    contents_hash = hashlib.sha256(contents).hexdigest().upper()
                 raw_sections.append(
                     {
                         "name": (
@@ -196,10 +226,11 @@ def read_macho(path: Path) -> dict[str, Any]:
                         "offset": file_offset,
                         "size": size,
                         "permissions": _permissions(initial_protection),
-                        "sha256": hashlib.sha256(contents).hexdigest().upper(),
+                        "sha256": contents_hash,
                         "relocation_offset": relocation_offset,
                         "relocation_count": relocation_count,
                         "flags": section_flags,
+                        "zero_fill": zero_fill,
                         "command_index": command_index,
                         "section_in_segment": section_in_segment,
                     }
@@ -303,30 +334,36 @@ def _read_symbols(
     command_index, symbol_offset, symbol_count, string_offset, string_size = symtab
     context = f"load command {command_index} symbol table"
     if symbol_count > len(data) // _NLIST.size:
-        raise MachOFormatError(f"{context}: symbol count is too large")
+        raise MachOFormatError(
+            f"{context}: symbol count is too large at file offset 0x{symbol_offset:x}"
+        )
     _checked_slice(data, symbol_offset, symbol_count * _NLIST.size, context)
     string_table = _checked_slice(data, string_offset, string_size, f"{context} strings")
     result: list[dict[str, Any]] = []
     names: list[str] = []
     for symbol_index in range(symbol_count):
         entry_offset = symbol_offset + symbol_index * _NLIST.size
+        entry_context = (
+            f"load command {command_index} symbol {symbol_index} at file offset "
+            f"0x{entry_offset:x}"
+        )
         string_index, symbol_type, section_number, _description, value = _unpack(
-            _NLIST, data, entry_offset, f"symbol {symbol_index}"
+            _NLIST, data, entry_offset, entry_context
         )
         if string_index >= len(string_table):
             raise MachOFormatError(
-                f"symbol {symbol_index}: string offset 0x{string_index:x} is outside table"
+                f"{entry_context}: string offset 0x{string_index:x} is outside table"
             )
         terminator = string_table.find(b"\0", string_index)
         if terminator < 0:
-            raise MachOFormatError(f"symbol {symbol_index}: string is not terminated")
+            raise MachOFormatError(f"{entry_context}: string is not terminated")
         try:
             name = string_table[string_index:terminator].decode("utf-8")
         except UnicodeDecodeError as error:
-            raise MachOFormatError(f"symbol {symbol_index}: name is not UTF-8") from error
+            raise MachOFormatError(f"{entry_context}: name is not UTF-8") from error
         if section_number > len(sections):
             raise MachOFormatError(
-                f"symbol {symbol_index}: invalid section index {section_number}"
+                f"{entry_context}: invalid section index {section_number}"
             )
         names.append(name)
         result.append(
@@ -350,10 +387,13 @@ def _read_relocations(
         count = section["relocation_count"]
         context = (
             f"load command {section['command_index']} section "
-            f"{section['section_in_segment']} relocations"
+            f"{section['section_in_segment']} (global {section_index}) relocations"
         )
         if count > len(data) // _RELOCATION_INFO.size:
-            raise MachOFormatError(f"{context}: relocation count is too large")
+            raise MachOFormatError(
+                f"{context}: relocation count is too large at file offset "
+                f"0x{section['relocation_offset']:x}"
+            )
         table_size = count * _RELOCATION_INFO.size
         _checked_slice(data, section["relocation_offset"], table_size, context)
         for relocation_index in range(count):
@@ -361,50 +401,65 @@ def _read_relocations(
                 section["relocation_offset"]
                 + relocation_index * _RELOCATION_INFO.size
             )
+            entry_context = (
+                f"load command {section['command_index']} section "
+                f"{section['section_in_segment']} (global {section_index}) relocation "
+                f"{relocation_index} at file offset 0x{entry_offset:x}"
+            )
             address, word = _unpack(
                 _RELOCATION_INFO,
                 data,
                 entry_offset,
-                f"section {section_index} relocation {relocation_index}",
+                entry_context,
             )
             if address < 0:
                 raise MachOFormatError(
-                    f"section {section_index} relocation {relocation_index}: scattered "
-                    f"relocations are unsupported at file offset 0x{entry_offset:x}"
+                    f"{entry_context}: scattered relocations are unsupported"
                 )
-            if address >= section["size"]:
+            length = (word >> 25) & 0x3
+            width = 1 << length
+            section_size = section["size"]
+            if section_size < width or address > section_size - width:
                 raise MachOFormatError(
-                    f"section {section_index} relocation {relocation_index}: address "
-                    f"outside section at file offset 0x{entry_offset:x}"
+                    f"{entry_context}: relocation field crosses owning section"
                 )
             symbol_number = word & 0x00FFFFFF
             pc_relative = bool(word & (1 << 24))
-            length = (word >> 25) & 0x3
             external = bool(word & (1 << 27))
             relocation_type = (word >> 28) & 0xF
             if external:
                 if symbol_number >= len(symbol_names):
                     raise MachOFormatError(
-                        f"section {section_index} relocation {relocation_index}: invalid "
-                        f"symbol index {symbol_number} at file offset 0x{entry_offset:x}"
+                        f"{entry_context}: invalid symbol index {symbol_number}"
                     )
                 target = symbol_names[symbol_number]
             else:
-                if symbol_number == 0 or symbol_number > len(sections):
+                if symbol_number == 0:
+                    # Mach-O's R_ABS pseudo-section means no relocation target.
+                    target = None
+                elif symbol_number > len(sections):
                     raise MachOFormatError(
-                        f"section {section_index} relocation {relocation_index}: invalid "
-                        f"section ordinal {symbol_number} at file offset 0x{entry_offset:x}"
+                        f"{entry_context}: invalid section ordinal {symbol_number}"
                     )
-                target = sections[symbol_number - 1]["name"]
+                else:
+                    target = sections[symbol_number - 1]["name"]
             type_name = "vanilla" if relocation_type == 0 else f"type-{relocation_type}"
-            width = 8 << length
             relative = "pc-relative" if pc_relative else "absolute"
+            if section["zero_fill"]:
+                field = b"\0" * width
+            else:
+                field_offset = section["offset"] + address
+                field = _checked_slice(data, field_offset, width, entry_context)
+            # Absolute fields model unsigned addresses. PC-relative fields model
+            # signed displacements; preserving that distinction gives downstream
+            # comparison a stable semantic addend without changing stored bits.
+            addend = int.from_bytes(field, "little", signed=pc_relative)
             result.append(
                 {
                     "address": section["address"] + address,
-                    "kind": f"i386-{type_name}-{width}-{relative}",
+                    "kind": f"i386-{type_name}-{width * 8}-{relative}",
                     "target": target,
-                    "addend": 0,
+                    "addend": addend,
                 }
             )
     return result

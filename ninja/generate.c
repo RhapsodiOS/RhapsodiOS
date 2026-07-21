@@ -1,7 +1,7 @@
 /*
  * generate - build.ninja generator for the RhapsodiOS source tree.
  *
- * Scans the source tree for */apk/PKGINFO, parses dependencies, and emits
+ * Scans the source tree for .../apk/PKGINFO, parses dependencies, and emits
  * a static build graph for samurai (samu) or ninja.
  */
 
@@ -9,6 +9,7 @@
 #include "util.h"
 
 #include <ctype.h>
+#include <sys/types.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -860,7 +861,7 @@ int generate_build_ninja(const struct config *cfg)
 	scan_tree(local.srcroot, "", 0);
 	if (nprojects == 0) {
 		fprintf(stderr, "rhap-build: no projects found under '%s' "
-			"(looked for */apk/PKGINFO)\n",
+			"(looked for .../apk/PKGINFO)\n",
 			local.srcroot);
 		return 1;
 	}

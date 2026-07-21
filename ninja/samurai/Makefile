@@ -1,43 +1,19 @@
 .POSIX:
 .PHONY: all install clean
 
+# Compatible with GNU make 3.74 (Rhapsody gnumake): no ?=, no tab-continued
+# variable lists (tabs look like recipes to 3.74).
+
 OS=posix
-PREFIX?=/usr/local
-BINDIR?=$(PREFIX)/bin
-MANDIR?=$(PREFIX)/share/man
+PREFIX=/usr/local
+BINDIR=$(PREFIX)/bin
+MANDIR=$(PREFIX)/share/man
 ALL_CFLAGS=$(CFLAGS) -std=c99 -Wall -Wextra -Wshadow -Wmissing-prototypes -Wpedantic -Wno-unused-parameter
-# librt carries clock_gettime/timer_* on Linux; on Darwin/Rhapsody they live in
-# libc and there is no librt. Default empty (portable for BSD and GNU make).
-# On Linux: make LDLIBS=-lrt
-LDLIBS?=
-OBJ=\
-	build.o\
-	deps.o\
-	env.o\
-	graph.o\
-	htab.o\
-	log.o\
-	parse.o\
-	samu.o\
-	scan.o\
-	tool.o\
-	tree.o\
-	util.o\
-	os-$(OS).o
-HDR=\
-	arg.h\
-	build.h\
-	deps.h\
-	env.h\
-	graph.h\
-	htab.h\
-	log.h\
-	os.h\
-	parse.h\
-	scan.h\
-	tool.h\
-	tree.h\
-	util.h
+# librt is Linux-only; Darwin/Rhapsody have clock_gettime in libc.
+# On Linux: gnumake LDLIBS=-lrt
+LDLIBS=
+OBJ=build.o deps.o env.o graph.o htab.o log.o parse.o samu.o scan.o tool.o tree.o util.o os-$(OS).o
+HDR=arg.h build.h deps.h env.h graph.h htab.h log.h os.h parse.h scan.h tool.h tree.h util.h
 
 all: samu
 

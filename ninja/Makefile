@@ -18,22 +18,22 @@
 #   make world SAMU=/usr/local/bin/samu
 ##
 
-CC       ?= cc
-CFLAGS   ?= -O -Wall
+CC       = cc
+CFLAGS   = -O -Wall
 
-# By default use the samurai build tool vendored under ninja/samurai.
-# $(CURDIR) is this directory (ninja), so this resolves to an absolute path
-# that survives the `cd ..` used when invoking samu from the repo root.
-SAMU     ?= $(CURDIR)/samurai/samu
+# Absolute path to vendored samu so it survives `cd ..` when running builds.
+# $(CURDIR) needs GNU make >= 3.77; $(shell pwd) works on Rhapsody gnumake 3.74.
+SAMU     = $(shell pwd)/samurai/samu
 
 # Staging locations (shared DSTROOT; per-project obj/sym/src bases).
-DSTROOT  ?= /tmp/rhapsody/dst
-OBJROOT  ?= /tmp/rhapsody/obj
-SYMROOT  ?= /tmp/rhapsody/sym
-SRCBASE  ?= /tmp/rhapsody/src
-TOOLROOT ?= $(DSTROOT)
-RC_ARCHS ?= ppc i386
-RC_OS    ?= teflon
+# Plain = (not ?=): GNU make 3.74 has no ?=; CLI overrides still win.
+DSTROOT  = /tmp/rhapsody/dst
+OBJROOT  = /tmp/rhapsody/obj
+SYMROOT  = /tmp/rhapsody/sym
+SRCBASE  = /tmp/rhapsody/src
+TOOLROOT = $(DSTROOT)
+RC_ARCHS = ppc i386
+RC_OS    = teflon
 
 GENFLAGS = --srcroot "src" \
 	   --dstroot "$(DSTROOT)" --objroot "$(OBJROOT)" \

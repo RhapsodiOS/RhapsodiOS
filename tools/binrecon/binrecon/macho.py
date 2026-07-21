@@ -1,0 +1,410 @@
+import hashlib
+from pathlib import Path
+import struct
+from typing import Any
+
+from . import __version__
+from .identity import identify
+
+
+MH_MAGIC = 0xFEEDFACE
+CPU_TYPE_I386 = 7
+MH_OBJECT = 1
+LC_SEGMENT = 1
+LC_SYMTAB = 2
+LC_UNIXTHREAD = 5
+
+_MACH_HEADER = struct.Struct("<7I")
+_LOAD_COMMAND = struct.Struct("<2I")
+_SEGMENT_COMMAND = struct.Struct("<II16sIIIIiiII")
+_SECTION = struct.Struct("<16s16sIIIIIIIII")
+_SYMTAB_COMMAND = struct.Struct("<6I")
+_NLIST = struct.Struct("<IBBHI")
+_RELOCATION_INFO = struct.Struct("<iI")
+
+
+class MachOFormatError(ValueError):
+    """Raised when an input is not a supported, well-formed Mach-O object."""
+
+
+def _checked_slice(
+    data: bytes,
+    offset: int,
+    size: int,
+    context: str,
+    *,
+    limit: int | None = None,
+) -> bytes:
+    boundary = len(data) if limit is None else limit
+    if offset < 0 or size < 0 or boundary < 0 or boundary > len(data):
+        raise MachOFormatError(
+            f"{context}: invalid range at file offset 0x{max(offset, 0):x}"
+        )
+    if offset > boundary or size > boundary - offset:
+        raise MachOFormatError(
+            f"{context}: range at file offset 0x{offset:x} extends beyond "
+            f"0x{boundary:x}"
+        )
+    return data[offset : offset + size]
+
+
+def _unpack(
+    layout: struct.Struct,
+    data: bytes,
+    offset: int,
+    context: str,
+    *,
+    limit: int | None = None,
+) -> tuple[Any, ...]:
+    return layout.unpack(_checked_slice(data, offset, layout.size, context, limit=limit))
+
+
+def _decode_fixed_name(raw: bytes, context: str) -> str:
+    value = raw.split(b"\0", 1)[0]
+    try:
+        return value.decode("ascii")
+    except UnicodeDecodeError as error:
+        raise MachOFormatError(f"{context}: name is not ASCII") from error
+
+
+def _permissions(protection: int) -> str:
+    return "".join(
+        letter for bit, letter in ((1, "r"), (2, "w"), (4, "x")) if protection & bit
+    )
+
+
+def _command_record(
+    command: int, offset: int, raw_command: bytes, reason: str
+) -> dict[str, Any]:
+    return {
+        "command": command,
+        "offset": offset,
+        "size": len(raw_command),
+        "bytes": raw_command.hex().upper(),
+        "reason": reason,
+    }
+
+
+def read_macho(path: Path) -> dict[str, Any]:
+    identity = identify(Path(path))
+    data = identity.path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest().upper()
+    if len(data) != identity.size or digest != identity.sha256:
+        raise MachOFormatError(f"input changed while reading: {identity.path}")
+
+    (
+        magic,
+        cpu_type,
+        cpu_subtype,
+        file_type,
+        command_count,
+        commands_size,
+        flags,
+    ) = _unpack(_MACH_HEADER, data, 0, "Mach-O header")
+    if magic != MH_MAGIC:
+        raise MachOFormatError(
+            f"unsupported Mach-O magic 0x{magic:08x}; expected 32-bit little-endian"
+        )
+    if cpu_type != CPU_TYPE_I386:
+        raise MachOFormatError(f"unsupported Mach-O CPU type {cpu_type}; expected i386")
+    if file_type != MH_OBJECT:
+        raise MachOFormatError(
+            f"unsupported Mach-O file type {file_type}; expected MH_OBJECT"
+        )
+
+    command_start = _MACH_HEADER.size
+    table_context = (
+        "load command 0 declared load-command table"
+        if command_count
+        else "declared load-command table"
+    )
+    _checked_slice(data, command_start, commands_size, table_context)
+    command_end = command_start + commands_size
+    cursor = command_start
+    raw_sections: list[dict[str, Any]] = []
+    symtab: tuple[int, int, int, int, int] | None = None
+    unparsed: list[dict[str, Any]] = []
+
+    for command_index in range(command_count):
+        context = f"load command {command_index}"
+        command, command_size = _unpack(
+            _LOAD_COMMAND, data, cursor, context, limit=command_end
+        )
+        if command_size < _LOAD_COMMAND.size:
+            raise MachOFormatError(
+                f"{context}: invalid size {command_size} at file offset 0x{cursor:x}"
+            )
+        raw_command = _checked_slice(
+            data,
+            cursor,
+            command_size,
+            f"{context} in declared load-command table",
+            limit=command_end,
+        )
+
+        if command == LC_SEGMENT:
+            values = _unpack(
+                _SEGMENT_COMMAND, data, cursor, context, limit=cursor + command_size
+            )
+            (_, _, _, _, _, _, _, _, initial_protection, section_count, _) = values
+            section_table_offset = cursor + _SEGMENT_COMMAND.size
+            available = command_size - _SEGMENT_COMMAND.size
+            if section_count > available // _SECTION.size:
+                raise MachOFormatError(
+                    f"{context}: section table does not fit command at file offset "
+                    f"0x{cursor:x}"
+                )
+            expected_size = _SEGMENT_COMMAND.size + section_count * _SECTION.size
+            if expected_size != command_size:
+                raise MachOFormatError(
+                    f"{context}: segment size does not match section count at file "
+                    f"offset 0x{cursor:x}"
+                )
+            for section_in_segment in range(section_count):
+                section_offset = section_table_offset + section_in_segment * _SECTION.size
+                section_context = f"{context} section {section_in_segment}"
+                section_values = _unpack(
+                    _SECTION,
+                    data,
+                    section_offset,
+                    section_context,
+                    limit=cursor + command_size,
+                )
+                (
+                    section_name_raw,
+                    segment_name_raw,
+                    address,
+                    size,
+                    file_offset,
+                    _align,
+                    relocation_offset,
+                    relocation_count,
+                    section_flags,
+                    _reserved1,
+                    _reserved2,
+                ) = section_values
+                contents = _checked_slice(
+                    data, file_offset, size, f"{section_context} contents"
+                )
+                raw_sections.append(
+                    {
+                        "name": (
+                            f"{_decode_fixed_name(segment_name_raw, section_context)},"
+                            f"{_decode_fixed_name(section_name_raw, section_context)}"
+                        ),
+                        "address": address,
+                        "offset": file_offset,
+                        "size": size,
+                        "permissions": _permissions(initial_protection),
+                        "sha256": hashlib.sha256(contents).hexdigest().upper(),
+                        "relocation_offset": relocation_offset,
+                        "relocation_count": relocation_count,
+                        "flags": section_flags,
+                        "command_index": command_index,
+                        "section_in_segment": section_in_segment,
+                    }
+                )
+        elif command == LC_SYMTAB:
+            if command_size != _SYMTAB_COMMAND.size:
+                raise MachOFormatError(
+                    f"{context}: invalid symtab command size at file offset 0x{cursor:x}"
+                )
+            if symtab is not None:
+                raise MachOFormatError(
+                    f"{context}: duplicate symbol table at file offset 0x{cursor:x}"
+                )
+            _, _, symbol_offset, symbol_count, string_offset, string_size = _unpack(
+                _SYMTAB_COMMAND, data, cursor, context, limit=cursor + command_size
+            )
+            symtab = (
+                command_index,
+                symbol_offset,
+                symbol_count,
+                string_offset,
+                string_size,
+            )
+        elif command == LC_UNIXTHREAD:
+            if command_size < 16:
+                raise MachOFormatError(
+                    f"{context}: truncated thread flavor at file offset 0x{cursor:x}"
+                )
+            unparsed.append(
+                _command_record(command, cursor, raw_command, "unknown-thread-flavor")
+            )
+        else:
+            unparsed.append(
+                _command_record(command, cursor, raw_command, "unknown-load-command")
+            )
+        cursor += command_size
+
+    if cursor != command_end:
+        raise MachOFormatError(
+            f"load commands consume 0x{cursor - command_start:x} bytes, but declared "
+            f"load-command table has 0x{commands_size:x} bytes at file offset "
+            f"0x{command_start:x}"
+        )
+
+    symbols, symbol_names = _read_symbols(data, symtab, raw_sections)
+    relocations = _read_relocations(data, raw_sections, symbol_names)
+    section_fields = ("name", "address", "offset", "size", "permissions", "sha256")
+    sections = [
+        {key: section[key] for key in section_fields} for section in raw_sections
+    ]
+    return {
+        "schema_version": "analysis-v1",
+        "input": {
+            "path": str(identity.path),
+            "size": identity.size,
+            "sha256": identity.sha256,
+            "architecture": "i386",
+            "endianness": "little",
+        },
+        "analyzer": {
+            "name": "binrecon-macho",
+            "version": __version__,
+            "invocation": "binrecon.macho.read_macho",
+        },
+        "sections": sorted(
+            sections,
+            key=lambda item: (item["address"], item["offset"], item["name"]),
+        ),
+        "symbols": sorted(symbols, key=lambda item: (item["address"], item["name"])),
+        "relocations": sorted(
+            relocations,
+            key=lambda item: (
+                item["address"],
+                item["kind"],
+                item["target"] or "",
+            ),
+        ),
+        "functions": [],
+        "extensions": {
+            "macho": {
+                "header": {
+                    "magic": magic,
+                    "cpu_type": cpu_type,
+                    "cpu_subtype": cpu_subtype,
+                    "file_type": file_type,
+                    "flags": flags,
+                },
+                "unparsed_load_commands": unparsed,
+            }
+        },
+    }
+
+
+def _read_symbols(
+    data: bytes,
+    symtab: tuple[int, int, int, int, int] | None,
+    sections: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if symtab is None:
+        return [], []
+    command_index, symbol_offset, symbol_count, string_offset, string_size = symtab
+    context = f"load command {command_index} symbol table"
+    if symbol_count > len(data) // _NLIST.size:
+        raise MachOFormatError(f"{context}: symbol count is too large")
+    _checked_slice(data, symbol_offset, symbol_count * _NLIST.size, context)
+    string_table = _checked_slice(data, string_offset, string_size, f"{context} strings")
+    result: list[dict[str, Any]] = []
+    names: list[str] = []
+    for symbol_index in range(symbol_count):
+        entry_offset = symbol_offset + symbol_index * _NLIST.size
+        string_index, symbol_type, section_number, _description, value = _unpack(
+            _NLIST, data, entry_offset, f"symbol {symbol_index}"
+        )
+        if string_index >= len(string_table):
+            raise MachOFormatError(
+                f"symbol {symbol_index}: string offset 0x{string_index:x} is outside table"
+            )
+        terminator = string_table.find(b"\0", string_index)
+        if terminator < 0:
+            raise MachOFormatError(f"symbol {symbol_index}: string is not terminated")
+        try:
+            name = string_table[string_index:terminator].decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise MachOFormatError(f"symbol {symbol_index}: name is not UTF-8") from error
+        if section_number > len(sections):
+            raise MachOFormatError(
+                f"symbol {symbol_index}: invalid section index {section_number}"
+            )
+        names.append(name)
+        result.append(
+            {
+                "name": name,
+                "address": value,
+                "binding": "external" if symbol_type & 0x01 else "local",
+                "section": sections[section_number - 1]["name"] if section_number else None,
+            }
+        )
+    return result, names
+
+
+def _read_relocations(
+    data: bytes,
+    sections: list[dict[str, Any]],
+    symbol_names: list[str],
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for section_index, section in enumerate(sections):
+        count = section["relocation_count"]
+        context = (
+            f"load command {section['command_index']} section "
+            f"{section['section_in_segment']} relocations"
+        )
+        if count > len(data) // _RELOCATION_INFO.size:
+            raise MachOFormatError(f"{context}: relocation count is too large")
+        table_size = count * _RELOCATION_INFO.size
+        _checked_slice(data, section["relocation_offset"], table_size, context)
+        for relocation_index in range(count):
+            entry_offset = (
+                section["relocation_offset"]
+                + relocation_index * _RELOCATION_INFO.size
+            )
+            address, word = _unpack(
+                _RELOCATION_INFO,
+                data,
+                entry_offset,
+                f"section {section_index} relocation {relocation_index}",
+            )
+            if address < 0:
+                raise MachOFormatError(
+                    f"section {section_index} relocation {relocation_index}: scattered "
+                    f"relocations are unsupported at file offset 0x{entry_offset:x}"
+                )
+            if address >= section["size"]:
+                raise MachOFormatError(
+                    f"section {section_index} relocation {relocation_index}: address "
+                    f"outside section at file offset 0x{entry_offset:x}"
+                )
+            symbol_number = word & 0x00FFFFFF
+            pc_relative = bool(word & (1 << 24))
+            length = (word >> 25) & 0x3
+            external = bool(word & (1 << 27))
+            relocation_type = (word >> 28) & 0xF
+            if external:
+                if symbol_number >= len(symbol_names):
+                    raise MachOFormatError(
+                        f"section {section_index} relocation {relocation_index}: invalid "
+                        f"symbol index {symbol_number} at file offset 0x{entry_offset:x}"
+                    )
+                target = symbol_names[symbol_number]
+            else:
+                if symbol_number == 0 or symbol_number > len(sections):
+                    raise MachOFormatError(
+                        f"section {section_index} relocation {relocation_index}: invalid "
+                        f"section ordinal {symbol_number} at file offset 0x{entry_offset:x}"
+                    )
+                target = sections[symbol_number - 1]["name"]
+            type_name = "vanilla" if relocation_type == 0 else f"type-{relocation_type}"
+            width = 8 << length
+            relative = "pc-relative" if pc_relative else "absolute"
+            result.append(
+                {
+                    "address": section["address"] + address,
+                    "kind": f"i386-{type_name}-{width}-{relative}",
+                    "target": target,
+                    "addend": 0,
+                }
+            )
+    return result

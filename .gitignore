@@ -33,3 +33,9 @@
 /vm/pc-bios/
 /vm/bridge.conf
 /vm/vm.conf
+
+# Binary reconstruction tooling
+/.venv-binrecon/
+/tools/binrecon/out/
+/tools/binrecon/.pytest_cache/
+/tools/binrecon/**/__pycache__/

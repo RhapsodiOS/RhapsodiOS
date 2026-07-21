@@ -7,12 +7,16 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 
 
 class ExportError(RuntimeError):
     """Raised when mandatory IDA data cannot be collected safely."""
+
+
+_HASH_CHUNK_SIZE = 1024 * 1024
 
 
 def _arguments(argv):
@@ -28,6 +32,7 @@ def _ida_modules():
     try:
         import ida_auto
         import ida_bytes
+        import ida_fixup
         import ida_funcs
         import ida_gdl
         import ida_ida
@@ -36,6 +41,7 @@ def _ida_modules():
         import ida_name
         import ida_nalt
         import ida_segment
+        import ida_ua
         import idaapi
         import idautils
         import idc
@@ -44,6 +50,7 @@ def _ida_modules():
     return {
         "ida_auto": ida_auto,
         "ida_bytes": ida_bytes,
+        "ida_fixup": ida_fixup,
         "ida_funcs": ida_funcs,
         "ida_gdl": ida_gdl,
         "ida_ida": ida_ida,
@@ -52,6 +59,7 @@ def _ida_modules():
         "ida_name": ida_name,
         "ida_nalt": ida_nalt,
         "ida_segment": ida_segment,
+        "ida_ua": ida_ua,
         "idaapi": idaapi,
         "idautils": idautils,
         "idc": idc,
@@ -75,12 +83,111 @@ def _permissions(segment, ida_segment):
     )
 
 
+def _hash_zeros(size):
+    digest = hashlib.sha256()
+    block = b"\0" * min(size, _HASH_CHUNK_SIZE)
+    remaining = size
+    while remaining:
+        amount = min(remaining, len(block))
+        digest.update(block[:amount])
+        remaining -= amount
+    return digest.hexdigest().upper()
+
+
+def _collect_relocations(modules):
+    ida_fixup = modules["ida_fixup"]
+    ida_name = modules["ida_name"]
+    bad_address = modules["idaapi"].BADADDR
+    type_names = {
+        getattr(ida_fixup, constant): constant.removeprefix("FIXUP_").lower()
+        for constant in (
+            "FIXUP_OFF8", "FIXUP_OFF16", "FIXUP_SEG16", "FIXUP_PTR16",
+            "FIXUP_OFF32", "FIXUP_PTR32", "FIXUP_HI8", "FIXUP_HI16",
+            "FIXUP_LOW8", "FIXUP_LOW16", "FIXUP_OFF64", "FIXUP_OFF8S",
+            "FIXUP_OFF16S", "FIXUP_OFF32S",
+        )
+    }
+    result = []
+    address = ida_fixup.get_first_fixup_ea()
+    previous = None
+    while address != bad_address:
+        if (
+            not isinstance(address, int)
+            or address < 0
+            or (previous is not None and address <= previous)
+        ):
+            raise ExportError("malformed IDA fixup enumeration")
+        data = ida_fixup.fixup_data_t()
+        if not ida_fixup.get_fixup(data, address):
+            raise ExportError(f"could not read fixup at {address:#x}")
+        type_ = data.get_type()
+        if (
+            not isinstance(type_, int)
+            or type_ >= ida_fixup.FIXUP_CUSTOM
+            or type_ not in type_names
+        ):
+            raise ExportError(f"unsupported fixup type {type_} at {address:#x}")
+        size = ida_fixup.calc_fixup_size(type_)
+        if not isinstance(size, int) or size <= 0:
+            raise ExportError(f"malformed fixup size at {address:#x}")
+        try:
+            addend = data.get_value(address)
+            target_address = data.off
+            relative = data.has_base()
+            if relative:
+                target_address += data.get_base()
+            external = data.is_extdef()
+        except Exception as error:
+            raise ExportError(f"could not interpret fixup at {address:#x}: {error}") from error
+        if (
+            not isinstance(addend, int)
+            or not isinstance(target_address, int)
+            or target_address < 0
+        ):
+            raise ExportError(f"malformed fixup fields at {address:#x}")
+        target_name = ida_name.get_name(target_address) or ""
+        if external:
+            target = target_name or f"external:{target_address:08X}"
+        else:
+            target = target_name or f"address:{target_address:08X}"
+        kind = f"ida-{type_names[type_]}-{size * 8}"
+        if relative:
+            kind += "-relative"
+        result.append({
+            "address": address,
+            "kind": kind,
+            "target": target,
+            "addend": addend,
+        })
+        previous = address
+        address = ida_fixup.get_next_fixup_ea(address)
+    return sorted(result, key=lambda item: (item["address"], item["kind"], item["target"]))
+
+
 def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
     """Collect an analysis-v1 document from the current IDA database."""
     modules = modules or _ida_modules()
     size, digest = _file_identity(input_path)
     if size != expected_size or digest != expected_sha256.upper():
         raise ExportError("input identity does not match host request")
+    try:
+        database_size = modules["ida_nalt"].retrieve_input_file_size()
+        database_sha = modules["ida_nalt"].retrieve_input_file_sha256()
+        processor = modules["ida_ida"].inf_get_procname()
+        exactly_32 = modules["ida_ida"].inf_is_32bit_exactly()
+        big_endian = modules["ida_ida"].inf_is_be()
+    except Exception as error:
+        raise ExportError(f"could not validate IDA database identity: {error}") from error
+    if database_size != expected_size:
+        raise ExportError("IDA database input size does not match host request")
+    if not isinstance(database_sha, bytes) or database_sha.hex().upper() != digest:
+        raise ExportError("IDA database input sha256 does not match host request")
+    if not isinstance(processor, str) or processor.lower() != "metapc":
+        raise ExportError(f"IDA processor is not metapc: {processor!r}")
+    if exactly_32 is not True:
+        raise ExportError("IDA database is not exactly 32-bit")
+    if big_endian is not False:
+        raise ExportError("IDA database is not little-endian")
     if not modules["ida_auto"].auto_wait():
         raise ExportError("IDA auto-analysis did not complete")
     ida_segment = modules["ida_segment"]
@@ -88,27 +195,48 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
     ida_funcs = modules["ida_funcs"]
     ida_gdl = modules["ida_gdl"]
     ida_loader = modules["ida_loader"]
+    ida_ua = modules["ida_ua"]
     idautils = modules["idautils"]
     idc = modules["idc"]
 
     sections = []
+    zero_fill_sections = []
     for start in idautils.Segments():
         segment = ida_segment.getseg(start)
         if segment is None:
             raise ExportError(f"could not read segment at {start:#x}")
-        contents = ida_bytes.get_bytes(segment.start_ea, segment.end_ea - segment.start_ea)
-        if contents is None:
-            raise ExportError(f"could not read segment bytes at {segment.start_ea:#x}")
+        segment_size = segment.end_ea - segment.start_ea
+        if segment_size < 0:
+            raise ExportError(f"segment at {segment.start_ea:#x} has invalid size")
         file_offset = int(ida_loader.get_fileregion_offset(segment.start_ea))
         if file_offset < 0:
-            raise ExportError(f"segment at {segment.start_ea:#x} has no file offset")
+            segment_class = ida_segment.get_segm_class(segment).upper()
+            if segment.type != ida_segment.SEG_BSS and segment_class not in ("BSS", "COMMON"):
+                raise ExportError(f"unbacked non-zero-fill segment at {segment.start_ea:#x}")
+            contents_hash = _hash_zeros(segment_size)
+            schema_offset = 0
+            zero_fill_sections.append({
+                "address": segment.start_ea,
+                "name": ida_segment.get_segm_name(segment),
+                "size": segment_size,
+            })
+        else:
+            if segment_size:
+                final_offset = ida_loader.get_fileregion_offset(segment.end_ea - 1)
+                if final_offset != file_offset + segment_size - 1:
+                    raise ExportError(f"partially backed segment at {segment.start_ea:#x}")
+            contents = ida_bytes.get_bytes(segment.start_ea, segment_size)
+            if contents is None or len(contents) != segment_size:
+                raise ExportError(f"could not read exact segment bytes at {segment.start_ea:#x}")
+            contents_hash = hashlib.sha256(contents).hexdigest().upper()
+            schema_offset = file_offset
         sections.append({
             "name": ida_segment.get_segm_name(segment),
             "address": segment.start_ea,
-            "offset": file_offset,
-            "size": segment.end_ea - segment.start_ea,
+            "offset": schema_offset,
+            "size": segment_size,
             "permissions": _permissions(segment, ida_segment),
-            "sha256": hashlib.sha256(contents).hexdigest().upper(),
+            "sha256": contents_hash,
         })
 
     symbols = []
@@ -127,6 +255,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
             references.append({"address": source, "target": target, "kind": "code"})
         for target in idautils.DataRefsFrom(source):
             references.append({"address": source, "target": target, "kind": "data"})
+
+    relocations = _collect_relocations(modules)
 
     functions = []
     for address in idautils.Functions():
@@ -147,9 +277,18 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
         instructions = []
         calls = []
         for item in idautils.FuncItems(address):
-            raw = ida_bytes.get_bytes(item, ida_bytes.get_item_size(item))
-            if not raw:
-                raise ExportError(f"could not read instruction bytes at {item:#x}")
+            flags = ida_bytes.get_flags(item)
+            if not ida_bytes.is_code(flags):
+                continue
+            item_size = ida_bytes.get_item_size(item)
+            if not isinstance(item_size, int) or item_size <= 0:
+                raise ExportError(f"invalid instruction size at {item:#x}")
+            raw = ida_bytes.get_bytes(item, item_size)
+            if raw is None or len(raw) != item_size:
+                raise ExportError(f"could not read exact instruction bytes at {item:#x}")
+            instruction = ida_ua.insn_t()
+            if ida_ua.decode_insn(instruction, item) != item_size:
+                raise ExportError(f"could not decode instruction at {item:#x}")
             mnemonic = idc.print_insn_mnem(item) or ""
             operand_values = []
             for operand_index in range(8):
@@ -164,7 +303,11 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
                 "mnemonic": mnemonic,
                 "operands": operands,
                 "normalized_operands": operands,
-                "relocations": [],
+                "relocations": [
+                    index
+                    for index, relocation in enumerate(relocations)
+                    if item <= relocation["address"] < item + len(raw)
+                ],
             })
             if mnemonic.lower().startswith("call"):
                 targets = sorted(idautils.CodeRefsFrom(item, False))
@@ -202,27 +345,67 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
 
         if ida_nalt.enum_import_names(module_index, add_import) <= 0:
             raise ExportError(f"could not enumerate imports for module {module_index}")
-    selector_names = sorted({
-        name
-        for _, name in idautils.Names()
-        if ":" in name or name.lower().startswith(("sel_", "selref_"))
-    })
-    version = str(modules["ida_kernwin"].get_kernel_version())
+    selector_names = []
+    for _, name in idautils.Names():
+        lowered = name.lower()
+        selector = None
+        for prefix in (
+            "selref_", "sel_", "_objc_selector_references_",
+            "objc_selector_references_",
+        ):
+            if lowered.startswith(prefix):
+                selector = name[len(prefix):] or None
+                break
+        if selector is None:
+            method = re.fullmatch(r"[+-]\[[^\s\]]+\s+([^\]]+)\]", name)
+            selector = method.group(1) if method else None
+        if selector:
+            selector_names.append(selector)
+    for string in strings:
+        segment = ida_segment.getseg(string["address"])
+        if segment is not None:
+            section_name = ida_segment.get_segm_name(segment).lower()
+            if "objc_methname" in section_name:
+                selector_names.append(string["value"])
+    selector_names = sorted(set(selector_names))
+    version = modules["ida_kernwin"].get_kernel_version()
+    if not isinstance(version, str) or not version:
+        raise ExportError("could not read IDA kernel version")
     return {
         "schema_version": "analysis-v1",
         "input": {
             "path": str(input_path.resolve()), "size": size, "sha256": digest,
             "architecture": "i386", "endianness": "little",
         },
-        "analyzer": {"name": "IDA", "version": version, "invocation": "IDAPython export_analysis.py"},
+        "analyzer": {
+            "name": "IDA", "version": version,
+            "invocation": "IDAPython export_analysis.py",
+        },
         "sections": sorted(sections, key=lambda item: (item["address"], item["name"])),
         "symbols": sorted(symbols, key=lambda item: (item["address"], item["name"])),
-        "relocations": [],
+        "relocations": relocations,
         "functions": sorted(functions, key=lambda item: item["address"]),
-        "references": sorted(references, key=lambda item: (item["address"], item["target"], item["kind"])),
-        "imports": sorted(imports, key=lambda item: (item["address"] if item["address"] is not None else -1, item["name"])),
-        "strings": sorted(strings, key=lambda item: (item["address"], item["value"], item["encoding"])),
-        "extensions": {"ida": {"selectors": selector_names}},
+        "references": sorted(
+            references,
+            key=lambda item: (item["address"], item["target"], item["kind"]),
+        ),
+        "imports": sorted(
+            imports,
+            key=lambda item: (
+                item["address"] if item["address"] is not None else -1,
+                item["name"],
+            ),
+        ),
+        "strings": sorted(
+            strings,
+            key=lambda item: (item["address"], item["value"], item["encoding"]),
+        ),
+        "extensions": {"ida": {
+            "selectors": selector_names,
+            "zero_fill_sections": sorted(
+                zero_fill_sections, key=lambda item: (item["address"], item["name"])
+            ),
+        }},
     }
 
 
@@ -232,6 +415,8 @@ def _atomic_write(path, document):
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
             json.dump(document, stream, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
             stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(name, path)
     except BaseException:
         try:
@@ -242,22 +427,34 @@ def _atomic_write(path, document):
 
 
 def main(argv=None):
-    arguments = _arguments(sys.argv[1:] if argv is None else argv)
     try:
+        if argv is None:
+            import idc
+
+            runtime_argv = getattr(idc, "ARGV", None)
+            if not isinstance(runtime_argv, (list, tuple)) or not runtime_argv:
+                raise ExportError("idc.ARGV is unavailable or malformed")
+            argv = list(runtime_argv[1:])
+        arguments = _arguments(argv)
         document = collect_analysis(
             arguments.input.resolve(strict=True), arguments.size, arguments.sha256
         )
         _atomic_write(arguments.output.resolve(strict=False), document)
         return 0
+    except SystemExit as error:
+        return int(error.code) if isinstance(error.code, int) else 2
     except Exception as error:
         print(f"IDA export failed: {error}", file=sys.stderr)
         return 1
 
 
+def ida_entrypoint():
+    result = main()
+    import ida_pro
+
+    ida_pro.qexit(result)
+    return result
+
+
 if __name__ == "__main__":
-    exit_code = main()
-    try:
-        import ida_pro
-        ida_pro.qexit(exit_code)
-    except ImportError:
-        raise SystemExit(exit_code)
+    ida_entrypoint()

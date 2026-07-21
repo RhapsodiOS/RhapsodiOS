@@ -12,7 +12,11 @@
     "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
     "symbols": {"type": "array", "items": {"$ref": "#/$defs/symbol"}},
     "relocations": {"type": "array", "items": {"$ref": "#/$defs/relocation"}},
-    "functions": {"type": "array", "items": {"$ref": "#/$defs/function"}}
+    "functions": {"type": "array", "items": {"$ref": "#/$defs/function"}},
+    "references": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+    "imports": {"type": "array", "items": {"$ref": "#/$defs/import"}},
+    "strings": {"type": "array", "items": {"$ref": "#/$defs/string"}},
+    "extensions": {"$ref": "#/$defs/extensions"}
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
@@ -99,7 +103,7 @@
       "required": ["address", "bytes", "mnemonic", "operands", "normalized_operands", "relocations"],
       "properties": {
         "address": {"$ref": "#/$defs/nonnegative_integer"},
-        "bytes": {"type": "string", "pattern": "^(?:[0-9A-Fa-f]{2})*$"},
+        "bytes": {"type": "string", "pattern": "^(?:[0-9A-Fa-f]{2})+$"},
         "mnemonic": {"type": "string"},
         "operands": {"type": "string"},
         "normalized_operands": {"type": "string"},
@@ -114,7 +118,7 @@
         "address": {"$ref": "#/$defs/nonnegative_integer"},
         "target": {
           "anyOf": [
-            {"type": "integer"},
+            {"$ref": "#/$defs/nonnegative_integer"},
             {"type": "null"}
           ]
         },
@@ -134,6 +138,50 @@
         "calls": {"type": "array", "items": {"$ref": "#/$defs/call"}},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1}
       }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "target", "kind"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "target": {
+          "anyOf": [
+            {"$ref": "#/$defs/nonnegative_integer"},
+            {"type": "null"}
+          ]
+        },
+        "kind": {"type": "string"}
+      }
+    },
+    "import": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address"],
+      "properties": {
+        "name": {"type": "string"},
+        "address": {
+          "anyOf": [
+            {"$ref": "#/$defs/nonnegative_integer"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "string": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "value", "encoding"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "value": {"type": "string"},
+        "encoding": {"type": "string"}
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {"type": "string", "minLength": 1},
+      "additionalProperties": {}
     }
   }
 }

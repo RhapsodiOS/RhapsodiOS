@@ -1,5 +1,6 @@
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -11,8 +12,11 @@ class SemanticValidationError(ValueError):
 
 _SCHEMA_FILES = {
     "analysis-v1": "analysis-v1.json",
+    "analysis-v1.json": "analysis-v1.json",
     "profile-v1": "profile-v1.json",
+    "profile-v1.json": "profile-v1.json",
     "ledger-v1": "ledger-v1.json",
+    "ledger-v1.json": "ledger-v1.json",
 }
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
@@ -31,9 +35,14 @@ def validate_document(schema_name: str, document: dict) -> None:
     except KeyError as error:
         raise ValueError(f"unknown schema name: {schema_name}") from error
 
+    _load_validator(filename).validate(document)
+
+
+@lru_cache(maxsize=None)
+def _load_validator(filename: str) -> Draft202012Validator:
     schema = load_json(Path(__file__).with_name("schema") / filename)
     Draft202012Validator.check_schema(schema)
-    Draft202012Validator(schema).validate(document)
+    return Draft202012Validator(schema)
 
 
 def validate_analysis_semantics(document: dict) -> None:
@@ -109,8 +118,10 @@ def _validate_function(function: dict) -> None:
 
     for instruction in function["instructions"]:
         instruction_address = instruction["address"]
+        instruction_end = instruction_address + len(instruction["bytes"]) // 2
         if not any(
-            block["address"] <= instruction_address < block["address"] + block["size"]
+            block["address"] <= instruction_address
+            and instruction_end <= block["address"] + block["size"]
             for block in function["blocks"]
         ):
             raise SemanticValidationError(

@@ -30,13 +30,23 @@ def test_analysis_requires_input_sha256():
         validate_document("analysis-v1", document)
 
 
-def test_call_target_accepts_any_integer_or_null():
+def test_call_target_accepts_null():
+    document = load_json(FIXTURE)
+    document["functions"][0]["calls"].append(
+        {"address": 4096, "target": None, "name": None}
+    )
+
+    validate_document("analysis-v1", document)
+
+
+def test_call_target_rejects_negative_address():
     document = load_json(FIXTURE)
     document["functions"][0]["calls"].append(
         {"address": 4096, "target": -1, "name": None}
     )
 
-    validate_document("analysis-v1", document)
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("analysis-v1", document)
 
 
 def test_analysis_rejects_duplicate_function_start_addresses():
@@ -90,6 +100,123 @@ def test_profile_rejects_unknown_keys(nested):
         validate_document("profile-v1", document)
 
 
+def test_analysis_rejects_empty_instruction_bytes():
+    document = load_json(FIXTURE)
+    document["functions"][0]["instructions"][0]["bytes"] = ""
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("analysis-v1", document)
+
+
+def test_analysis_extensions_accept_namespaced_analyzer_data():
+    document = load_json(FIXTURE)
+    document["extensions"] = {
+        "ida": {"decompiler": "return;"},
+        "angr": {"errors": []},
+    }
+
+    validate_document("analysis-v1", document)
+
+
+def test_analysis_extensions_reject_empty_namespace():
+    document = load_json(FIXTURE)
+    document["extensions"] = {"": {"data": True}}
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("analysis-v1", document)
+
+
+def test_analysis_accepts_stable_core_collections():
+    document = load_json(FIXTURE)
+    document["references"] = [{"address": 4096, "target": None, "kind": "data"}]
+    document["imports"] = [{"name": "puts", "address": None}]
+    document["strings"] = [
+        {"address": 8192, "value": "hello", "encoding": "utf-8"}
+    ]
+
+    validate_document("analysis-v1", document)
+
+
+def test_profile_accepts_raw_loader_and_symbolic_check_configuration():
+    document = minimal_profile()
+    document.update(
+        {
+            "endianness": "big",
+            "image_base": 4096,
+            "regions": [
+                {
+                    "name": ".text",
+                    "address": 4096,
+                    "offset": 0,
+                    "size": 4,
+                    "permissions": "rx",
+                }
+            ],
+            "aliases": {"_entry": ["entry"]},
+            "symbolic_checks": [
+                {
+                    "name": "entry returns",
+                    "function": "entry",
+                    "max_active_states": 8,
+                    "max_steps": 100,
+                    "input_bytes": 4,
+                    "hooks": [4096],
+                }
+            ],
+            "extensions": {"angr": {"solver": "z3"}},
+        }
+    )
+
+    validate_document("profile-v1", document)
+
+
+@pytest.mark.parametrize("container", ["regions", "symbolic_checks"])
+def test_profile_rejects_unknown_raw_configuration_keys(container):
+    document = minimal_profile()
+    if container == "regions":
+        document[container] = [
+            {
+                "name": ".text",
+                "address": 4096,
+                "offset": 0,
+                "size": 4,
+                "permissions": "rx",
+                "surprise": True,
+            }
+        ]
+    else:
+        document[container] = [
+            {
+                "name": "entry returns",
+                "function": "entry",
+                "max_active_states": 8,
+                "max_steps": 100,
+                "surprise": True,
+            }
+        ]
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("profile-v1", document)
+
+
+@pytest.mark.parametrize(
+    ("schema_name", "document_factory"),
+    [
+        ("analysis-v1.json", lambda: load_json(FIXTURE)),
+        ("profile-v1.json", lambda: minimal_profile()),
+        ("ledger-v1.json", lambda: minimal_ledger()),
+    ],
+)
+def test_validate_document_accepts_schema_filename(schema_name, document_factory):
+    validate_document(schema_name, document_factory())
+
+
+@pytest.mark.parametrize("schema_name", ["../analysis-v1.json", "schema/analysis-v1.json"])
+def test_validate_document_rejects_schema_paths(schema_name):
+    with pytest.raises(ValueError, match="unknown schema name"):
+        validate_document(schema_name, load_json(FIXTURE))
+
+
 def test_analysis_semantics_rejects_overlapping_nonempty_sections():
     document = load_json(FIXTURE)
     document["sections"].append(
@@ -120,7 +247,37 @@ def test_analysis_semantics_allows_zero_size_overlapping_section():
         }
     )
 
+    validate_document("analysis-v1", document)
     validate_analysis_semantics(document)
+
+
+def test_analysis_allows_zero_size_function_without_contents():
+    document = load_json(FIXTURE)
+    function = document["functions"][0]
+    function["size"] = 0
+    function["blocks"] = []
+    function["instructions"] = []
+
+    validate_document("analysis-v1", document)
+    validate_analysis_semantics(document)
+
+
+def test_analysis_zero_size_function_rejects_blocks():
+    document = load_json(FIXTURE)
+    document["functions"][0]["size"] = 0
+
+    with pytest.raises(SemanticValidationError, match="block.*4096.*outside function.*4096"):
+        validate_analysis_semantics(document)
+
+
+def test_analysis_zero_size_function_rejects_instructions():
+    document = load_json(FIXTURE)
+    function = document["functions"][0]
+    function["size"] = 0
+    function["blocks"] = []
+
+    with pytest.raises(SemanticValidationError, match="instruction.*4096.*outside every block"):
+        validate_analysis_semantics(document)
 
 
 def test_analysis_semantics_rejects_block_at_function_end():
@@ -148,6 +305,16 @@ def test_analysis_semantics_rejects_instruction_outside_blocks():
     document["functions"][0]["instructions"][0]["address"] = 4100
 
     with pytest.raises(SemanticValidationError, match="instruction.*4100.*outside every block"):
+        validate_analysis_semantics(document)
+
+
+def test_analysis_semantics_rejects_instruction_crossing_block_end():
+    document = load_json(FIXTURE)
+    instruction = document["functions"][0]["instructions"][0]
+    instruction["address"] = 4099
+    instruction["bytes"] = "00000000"
+
+    with pytest.raises(SemanticValidationError, match="instruction.*4099.*outside every block"):
         validate_analysis_semantics(document)
 
 
@@ -184,4 +351,13 @@ def minimal_profile():
             "entry_points": ["entry"],
         },
         "output_dir": "out/binrecon",
+    }
+
+
+def minimal_ledger():
+    return {
+        "schema_version": "ledger-v1",
+        "reference_sha256": "0" * 64,
+        "rebuilt_sha256": None,
+        "entries": [],
     }

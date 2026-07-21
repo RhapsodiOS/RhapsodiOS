@@ -13,7 +13,13 @@
     "rebuilt": {"$ref": "#/$defs/binary"},
     "analyzers": {"$ref": "#/$defs/analyzers"},
     "comparison": {"$ref": "#/$defs/comparison"},
-    "output_dir": {"type": "string"}
+    "output_dir": {"type": "string"},
+    "endianness": {"enum": ["little", "big"]},
+    "image_base": {"type": "integer", "minimum": 0},
+    "regions": {"type": "array", "items": {"$ref": "#/$defs/region"}},
+    "aliases": {"$ref": "#/$defs/aliases"},
+    "symbolic_checks": {"type": "array", "items": {"$ref": "#/$defs/symbolic_check"}},
+    "extensions": {"$ref": "#/$defs/extensions"}
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
@@ -58,6 +64,48 @@
         "ignore_metadata": {"type": "array", "items": {"type": "string"}},
         "entry_points": {"type": "array", "items": {"type": "string"}}
       }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "offset", "size", "permissions"],
+      "properties": {
+        "name": {"type": "string"},
+        "address": {"type": "integer", "minimum": 0},
+        "offset": {"type": "integer", "minimum": 0},
+        "size": {"type": "integer", "minimum": 0},
+        "permissions": {"type": "string"}
+      }
+    },
+    "aliases": {
+      "type": "object",
+      "propertyNames": {"type": "string", "minLength": 1},
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": "string", "minLength": 1}
+      }
+    },
+    "symbolic_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "function", "max_active_states", "max_steps"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "function": {"type": "string", "minLength": 1},
+        "max_active_states": {"type": "integer", "minimum": 1},
+        "max_steps": {"type": "integer", "minimum": 1},
+        "input_bytes": {"type": "integer", "minimum": 0},
+        "hooks": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {"type": "string", "minLength": 1},
+      "additionalProperties": {}
     }
   }
 }

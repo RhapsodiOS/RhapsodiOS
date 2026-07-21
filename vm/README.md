@@ -74,7 +74,7 @@ Requires PuTTY (`plink.exe`, `pscp.exe` on PATH) and a running guest with SSH
 
 ```powershell
 powershell -File vm\rhap-vm.ps1 sync
-powershell -File vm\rhap-vm.ps1 build          # make -C /build/source/ninja world
+powershell -File vm\rhap-vm.ps1 build          # cd /build/source/ninja && make world
 powershell -File vm\rhap-vm.ps1 build kernel
 powershell -File vm\rhap-vm.ps1 ssh hostname
 ```

@@ -77,7 +77,7 @@ function Invoke-Plink {
         [switch]$AllocateTty
     )
     $plink = Resolve-Tool $Cfg.Plink
-    # Do not use $args — it is PowerShell's automatic variable and breaks splatting.
+    # Do not use $args — it is PowerShell's automatic variable.
     $plinkArgs = @('-ssh')
     if ($Batch) { $plinkArgs += '-batch' }
     if ($AllocateTty) { $plinkArgs += '-t' }
@@ -92,8 +92,18 @@ function Invoke-Plink {
         }
         Write-Host "rhap-vm: debug plink $($shown -join ' ')"
     }
+    # Important: do not `return $LASTEXITCODE` — callers that assign the result
+    # would also capture plink stdout into that variable (hiding "OK", make logs, etc.).
     & $plink @plinkArgs
-    return $LASTEXITCODE
+    if ($null -eq $LASTEXITCODE) { return }
+    # Set a script-scoped copy for callers that need it without pipeline capture.
+    $script:LastPlinkExitCode = $LASTEXITCODE
+}
+
+function Get-LastPlinkExitCode {
+    if ($null -ne $script:LastPlinkExitCode) { return $script:LastPlinkExitCode }
+    if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
+    return 0
 }
 
 function Invoke-Sync([hashtable]$Cfg) {
@@ -109,7 +119,8 @@ function Invoke-Sync([hashtable]$Cfg) {
     }
 
     $mkdirCmd = "mkdir -p $($Cfg.RemoteRoot)"
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $mkdirCmd
+    Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $mkdirCmd
+    $ec = Get-LastPlinkExitCode
     if ($ec -ne 0) { Write-Die "remote mkdir failed (exit $ec): $mkdirCmd" }
 
     foreach ($rel in $paths) {
@@ -131,18 +142,18 @@ function Invoke-Build([hashtable]$Cfg, [string[]]$Targets) {
     # Avoid make -C (plink and old BSD make both treat -C specially). Use sh -c + cd.
     $remote = "sh -c 'cd $($Cfg.RemoteRoot)/ninja && make $targetStr'"
     Write-Host "rhap-vm: $remote"
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $remote
-    exit $ec
+    Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $remote
+    exit (Get-LastPlinkExitCode)
 }
 
 function Invoke-Ssh([hashtable]$Cfg, [string[]]$RemoteCmd) {
     if (-not $RemoteCmd -or $RemoteCmd.Count -eq 0) {
-        $ec = Invoke-Plink -Cfg $Cfg
-        exit $ec
+        Invoke-Plink -Cfg $Cfg
+        exit (Get-LastPlinkExitCode)
     }
     $joined = ($RemoteCmd -join ' ')
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $joined
-    exit $ec
+    Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $joined
+    exit (Get-LastPlinkExitCode)
 }
 
 $cfg = $null

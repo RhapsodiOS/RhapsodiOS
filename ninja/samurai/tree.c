@@ -8,7 +8,7 @@
 #define MAXH (sizeof(void *) * 8 * 3 / 2)
 
 void
-deltree(struct treenode *n, void delkey(void *), void delval(void *))
+deltree(struct treenode *n, void (*delkey)(void *), void (*delval)(void *))
 {
 	if (!n)
 		return;

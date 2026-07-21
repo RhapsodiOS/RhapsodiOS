@@ -12,7 +12,7 @@ struct hashtablekey {
 void htabkey(struct hashtablekey *, const char *, size_t);
 
 struct hashtable *mkhtab(size_t);
-void delhtab(struct hashtable *, void(void *));
+void delhtab(struct hashtable *, void (*)(void *));
 void **htabput(struct hashtable *, struct hashtablekey *);
 void *htabget(struct hashtable *, struct hashtablekey *);
 

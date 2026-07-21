@@ -260,7 +260,7 @@ parse(const char *name, struct environment *env)
 }
 
 void
-defaultnodes(void fn(struct node *))
+defaultnodes(void (*fn)(struct node *))
 {
 	struct edge *e;
 	struct node *n;

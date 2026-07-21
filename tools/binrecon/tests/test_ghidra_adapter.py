@@ -220,6 +220,9 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
     assert fallback[fallback.index("-loader") + 1] == "BinaryLoader"
     assert fallback.index("-preScript") < fallback.index("-postScript")
     assert fallback[fallback.index("-preScript") + 2] == "prepare"
+    prepare_arguments = fallback[fallback.index("-preScript") + 2:fallback.index("-postScript")]
+    assert "--layout" in prepare_arguments
+    assert "--output" not in prepare_arguments
 
 
 @pytest.mark.parametrize("message", ["Decompiler failed", "schema output invalid", "random failure",
@@ -267,3 +270,39 @@ def test_java_exporter_has_deterministic_safe_contract():
                      "x86:LE:32:default", "prepare", "export"):
         assert required in source
     assert "String.format(Locale.ROOT" in source
+
+
+def test_java_exporter_traverses_program_wide_references_and_indexes_instructions():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    assert "getReferenceSourceIterator((AddressSetView)null, true)" in source
+    assert "referenceManager.getReferencesFrom(source)" in source
+    assert "ReferenceExport" in source
+    assert 'root.put("references", referenceExport.normalized)' in source
+    assert 'ghidra.put("reference_metadata", referenceExport.metadata)' in source
+    assert 'ghidra.put("instruction_reference_indexes"' in source
+    for metadata in ("getOperandIndex()", "isPrimary()", "isExternalReference()",
+                     "getSource().toString()", "target_space"):
+        assert metadata in source
+    assert "TreeMap<ReferenceKey" in source
+
+
+def test_java_exporter_serializes_recovered_c_and_pcode():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    assert "result.getDecompiledFunction()" in source
+    assert ".getC()" in source
+    assert 'summary.put("c",' in source
+    assert 'summary.put("pcode_operations",counts)' in source
+    assert 'replace("\\r\\n", "\\n").replace("\\r", "\\n")' in source
+    assert "result.isTimedOut()" in source
+    assert "result.getErrorMessage()" in source
+    assert "decompiler.dispose()" in source
+
+
+def test_java_argument_parser_is_explicit_and_closed():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    for required in ("PREPARE_OPTIONS", "EXPORT_OPTIONS", "unknown option",
+                     "mode-incompatible option", "duplicate option", "missing value",
+                     "invalid mode", "invalid --size", "invalid --sha256",
+                     "boolean options are unsupported"):
+        assert required in source
+    assert "Set.of(" in source

@@ -9,6 +9,7 @@ import java.util.*;
 
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.DecompiledFunction;
 import ghidra.app.script.GhidraScript;
 import ghidra.framework.Application;
 import ghidra.program.model.address.*;
@@ -157,16 +158,20 @@ public final class ExportAnalysis extends GhidraScript {
         root.put("sections", exportSections());
         root.put("symbols", exportSymbols());
         root.put("relocations", exportRelocations());
-        List<Object> references = new ArrayList<>(), imports = new ArrayList<>(),
-                     strings = new ArrayList<>(), summaries = new ArrayList<>();
-        root.put("functions", exportFunctions(references, summaries));
-        root.put("references", exportReferences(references));
+        List<Object> imports = new ArrayList<>(), strings = new ArrayList<>(),
+                     summaries = new ArrayList<>();
+        ReferenceExport referenceExport = exportAllReferences(referenceManager);
+        root.put("functions", exportFunctions(summaries));
+        root.put("references", referenceExport.normalized);
         root.put("imports", exportImports(imports));
         root.put("strings", exportStrings(strings));
         Map<String,Object> extensions = map(), ghidra = map();
         ghidra.put("language", currentProgram.getLanguage().getLanguageID().toString());
         ghidra.put("image_base", currentProgram.getImageBase().getOffset());
         ghidra.put("decompiler_pcode", summaries);
+        ghidra.put("reference_metadata", referenceExport.metadata);
+        ghidra.put("instruction_reference_indexes",
+            referenceExport.instructionIndexes(currentProgram));
         extensions.put("ghidra", ghidra); root.put("extensions", extensions);
         writeAtomically(Paths.get(args.required("--output")), root);
     }
@@ -269,7 +274,7 @@ public final class ExportAnalysis extends GhidraScript {
         return out;
     }
 
-    private List<Object> exportFunctions(List<Object> allRefs, List<Object> summaries) throws Exception {
+    private List<Object> exportFunctions(List<Object> summaries) throws Exception {
         List<Function> functions = new ArrayList<>();
         FunctionIterator iterator=currentProgram.getFunctionManager().getFunctions(true);
         while(iterator.hasNext()) {
@@ -289,7 +294,7 @@ public final class ExportAnalysis extends GhidraScript {
                 Collections.sort(names); item.put("names",names);
                 item.put("blocks",exportBlocks(function));
                 List<Object> calls=new ArrayList<>();
-                item.put("instructions",exportInstructions(function,calls,allRefs)); item.put("calls",calls);
+                item.put("instructions",exportInstructions(function,calls)); item.put("calls",calls);
                 item.put("confidence",function.getSymbol().getSource()==SourceType.ANALYSIS?0.75:1.0);
                 out.add(item); summaries.add(decompile(function,decompiler));
             }
@@ -316,7 +321,7 @@ public final class ExportAnalysis extends GhidraScript {
         return out;
     }
 
-    private List<Object> exportInstructions(Function function,List<Object> calls,List<Object> refs) throws Exception {
+    private List<Object> exportInstructions(Function function,List<Object> calls) throws Exception {
         List<Object> out=new ArrayList<>(); InstructionIterator iterator=currentProgram.getListing().getInstructions(function.getBody(),true);
         while(iterator.hasNext()){ monitor.checkCancelled(); Instruction instruction=iterator.next(); Map<String,Object> item=map();
             item.put("address",instruction.getAddress().getOffset()); item.put("bytes",hex(instruction.getBytes()));
@@ -326,8 +331,7 @@ public final class ExportAnalysis extends GhidraScript {
             List<Long> relocations=new ArrayList<>();
             for(Relocation relocation:currentProgram.getRelocationTable().getRelocations(instruction.getAddress())) relocations.add(relocation.getAddress().getOffset());
             Collections.sort(relocations); item.put("relocations",relocations); out.add(item);
-            for(Reference reference:instruction.getReferencesFrom()){ Map<String,Object> ref=map(); ref.put("address",instruction.getAddress().getOffset());
-                ref.put("target",reference.getToAddress().isMemoryAddress()?reference.getToAddress().getOffset():null); ref.put("kind",reference.getReferenceType().toString()); refs.add(ref);
+            for(Reference reference:instruction.getReferencesFrom()){
                 if(reference.getReferenceType().isCall()){ Map<String,Object> call=map(); call.put("address",instruction.getAddress().getOffset());
                     call.put("target",reference.getToAddress().isMemoryAddress()?reference.getToAddress().getOffset():null);
                     Symbol target=currentProgram.getSymbolTable().getPrimarySymbol(reference.getToAddress()); call.put("name",target==null?null:target.getName()); calls.add(call); }} }
@@ -336,10 +340,24 @@ public final class ExportAnalysis extends GhidraScript {
             .thenComparing(x->String.valueOf(object(x,"call").get("name")))); return out;
     }
 
-    private List<Object> exportReferences(List<Object> refs){
-        refs.sort(Comparator.comparingLong((Object x)->number(object(x,"reference").get("address")))
-            .thenComparing(x->String.valueOf(object(x,"reference").get("target")))
-            .thenComparing(x->string(object(x,"reference").get("kind")))); return refs;
+    private ReferenceExport exportAllReferences(ReferenceManager referenceManager)
+            throws CancelledException {
+        TreeMap<ReferenceKey,ReferenceAggregate> collected = new TreeMap<>();
+        AddressIterator sources = referenceManager.getReferenceSourceIterator((AddressSetView)null, true);
+        while (sources.hasNext()) {
+            monitor.checkCancelled();
+            Address source = sources.next();
+            for (Reference reference : referenceManager.getReferencesFrom(source)) {
+                Address target = reference.getToAddress();
+                Long normalizedTarget = target.isMemoryAddress() ? target.getOffset() : null;
+                ReferenceKey key = new ReferenceKey(source.getOffset(), normalizedTarget,
+                    reference.getReferenceType().toString());
+                ReferenceAggregate aggregate = collected.computeIfAbsent(key,
+                    ignored -> new ReferenceAggregate(key));
+                aggregate.add(reference);
+            }
+        }
+        return new ReferenceExport(collected);
     }
 
     private List<Object> exportImports(List<Object> ignored) throws CancelledException {
@@ -363,10 +381,56 @@ public final class ExportAnalysis extends GhidraScript {
 
     private Map<String,Object> decompile(Function function,DecompInterface decompiler) throws Exception {
         DecompileResults result=decompiler.decompileFunction(function,60,monitor);
-        if(!result.decompileCompleted()||result.getHighFunction()==null) throw new IOException("decompile failed at "+function.getEntryPoint());
+        if(result==null) throw new IOException("decompiler returned no result at "+function.getEntryPoint());
+        if(!result.decompileCompleted()||result.getHighFunction()==null){
+            String reason=result.isTimedOut()?"timeout":String.valueOf(result.getErrorMessage());
+            throw new IOException("decompile failed at "+function.getEntryPoint()+": "+reason);
+        }
+        DecompiledFunction recovered=result.getDecompiledFunction();
+        if(recovered==null||recovered.getC()==null) throw new IOException("decompiler returned no C at "+function.getEntryPoint());
         HighFunction high=result.getHighFunction(); TreeMap<String,Long> counts=new TreeMap<>(); Iterator<PcodeOp> iterator=high.getPcodeOps();
         while(iterator.hasNext()){ PcodeOp op=iterator.next(); String name=op.getMnemonic(); counts.put(name,counts.getOrDefault(name,0L)+1); }
-        Map<String,Object> summary=map(); summary.put("address",function.getEntryPoint().getOffset()); summary.put("pcode_operations",counts); return summary;
+        Map<String,Object> summary=map(); summary.put("address",function.getEntryPoint().getOffset());
+        summary.put("c",recovered.getC().replace("\r\n", "\n").replace("\r", "\n"));
+        String warning=result.getErrorMessage();
+        summary.put("status","success");
+        summary.put("message",warning==null?null:warning.replace("\r\n", "\n").replace("\r", "\n"));
+        summary.put("pcode_operations",counts); return summary;
+    }
+
+    private static final class ReferenceKey implements Comparable<ReferenceKey> {
+        final long source; final Long target; final String kind;
+        ReferenceKey(long source,Long target,String kind){this.source=source;this.target=target;this.kind=kind;}
+        public int compareTo(ReferenceKey other){int value=Long.compare(source,other.source);if(value!=0)return value;
+            if(target==null&&other.target!=null)return 1;if(target!=null&&other.target==null)return -1;
+            if(target!=null&&(value=Long.compare(target,other.target))!=0)return value;return kind.compareTo(other.kind);}
+    }
+
+    private static final class ReferenceAggregate {
+        final ReferenceKey key; final TreeSet<Integer> operandIndexes=new TreeSet<>();
+        final TreeSet<String> sourceTypes=new TreeSet<>(),sourceSpaces=new TreeSet<>(),targetSpaces=new TreeSet<>(),targetDisplays=new TreeSet<>();
+        boolean primary,external;
+        ReferenceAggregate(ReferenceKey key){this.key=key;}
+        void add(Reference reference){operandIndexes.add(reference.getOperandIndex());sourceTypes.add(reference.getSource().toString());
+            sourceSpaces.add(reference.getFromAddress().getAddressSpace().getName());
+            targetSpaces.add(reference.getToAddress().getAddressSpace().getName());targetDisplays.add(reference.getToAddress().toString());
+            primary|=reference.isPrimary();external|=reference.isExternalReference();}
+        Map<String,Object> normalized(){Map<String,Object> value=map();value.put("address",key.source);value.put("target",key.target);value.put("kind",key.kind);return value;}
+        Map<String,Object> metadata(int index){Map<String,Object> value=map();value.put("index",index);value.put("operand_indexes",new ArrayList<>(operandIndexes));
+            value.put("source_types",new ArrayList<>(sourceTypes));value.put("source_spaces",new ArrayList<>(sourceSpaces));
+            value.put("target_space",new ArrayList<>(targetSpaces));value.put("target_displays",new ArrayList<>(targetDisplays));
+            value.put("primary",primary);value.put("external",external);return value;}
+    }
+
+    private static final class ReferenceExport {
+        final List<Object> normalized=new ArrayList<>(),metadata=new ArrayList<>();
+        final TreeMap<Long,List<Integer>> indexesBySource=new TreeMap<>();
+        ReferenceExport(TreeMap<ReferenceKey,ReferenceAggregate> collected){int index=0;for(ReferenceAggregate value:collected.values()){
+            normalized.add(value.normalized());metadata.add(value.metadata(index));indexesBySource.computeIfAbsent(value.key.source,ignored->new ArrayList<>()).add(index++);}}
+        List<Object> instructionIndexes(Program program){List<Object> out=new ArrayList<>();for(Map.Entry<Long,List<Integer>> entry:indexesBySource.entrySet()){
+            Address address=program.getAddressFactory().getDefaultAddressSpace().getAddress(entry.getKey());
+            if(program.getListing().getInstructionAt(address)==null)continue;Map<String,Object> value=map();value.put("address",entry.getKey());
+            value.put("reference_indexes",entry.getValue());out.add(value);}return out;}
     }
 
     private static void writeAtomically(Path output,Object value) throws Exception {
@@ -389,12 +453,24 @@ public final class ExportAnalysis extends GhidraScript {
     private static long number(Object value){if(!(value instanceof Number))throw new IllegalArgumentException("value is not a number");return ((Number)value).longValue();}
 
     private static final class Args {
+        private static final Set<String> COMMON_OPTIONS=Set.of("--input","--size","--sha256","--language");
+        private static final Set<String> PREPARE_OPTIONS=Set.of("--input","--size","--sha256","--language","--layout");
+        private static final Set<String> EXPORT_OPTIONS=Set.of("--input","--size","--sha256","--language","--output","--layout");
         final String mode; final Map<String,String> values;
         Args(String mode,Map<String,String> values){this.mode=mode;this.values=values;}
         String required(String key){String value=values.get(key);if(value==null||value.isEmpty())throw new IllegalArgumentException("missing "+key);return value;}
-        static Args parse(String[] args){if(args.length<1)throw new IllegalArgumentException("missing mode");Map<String,String> values=new HashMap<>();
-            for(int i=1;i<args.length;i+=2){if(i+1>=args.length||!args[i].startsWith("--")||values.put(args[i],args[i+1])!=null)throw new IllegalArgumentException("invalid or duplicate argument "+args[i]);}
-            return new Args(args[0],values);}
+        static Args parse(String[] args){if(args.length<1)throw new IllegalArgumentException("missing mode");String mode=args[0];
+            if(!"prepare".equals(mode)&&!"export".equals(mode))throw new IllegalArgumentException("invalid mode: "+mode);
+            Set<String> allowed="prepare".equals(mode)?PREPARE_OPTIONS:EXPORT_OPTIONS;Map<String,String> values=new HashMap<>();
+            for(int i=1;i<args.length;){String option=args[i++];if(!option.startsWith("--")||!allowed.contains(option))throw new IllegalArgumentException("unknown option or mode-incompatible option (boolean options are unsupported): "+option);
+                if(i>=args.length||args[i].startsWith("--"))throw new IllegalArgumentException("missing value for "+option);
+                if(values.put(option,args[i++])!=null)throw new IllegalArgumentException("duplicate option: "+option);}
+            Set<String> required=new HashSet<>(COMMON_OPTIONS);required.add("prepare".equals(mode)?"--layout":"--output");
+            if(!values.keySet().containsAll(required))throw new IllegalArgumentException("missing value for required option");
+            try{long size=Long.parseLong(values.get("--size"));if(size<0)throw new NumberFormatException();}catch(NumberFormatException error){throw new IllegalArgumentException("invalid --size",error);}
+            if(!values.get("--sha256").matches("(?i)[0-9a-f]{64}"))throw new IllegalArgumentException("invalid --sha256");
+            if(!LANGUAGE.equals(values.get("--language")))throw new IllegalArgumentException("invalid --language");
+            return new Args(mode,values);}
     }
 
     private static final class JsonWriter {

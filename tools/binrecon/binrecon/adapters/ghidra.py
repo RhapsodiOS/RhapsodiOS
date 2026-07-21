@@ -202,9 +202,10 @@ def _script_arguments(mode: str, output: Path, identity: InputIdentity,
     arguments = [mode]
     if layout is not None:
         arguments += ["--layout", str(layout)]
-    arguments += ["--output", str(output), "--input", str(identity.path),
-                  "--size", str(identity.size), "--sha256", identity.sha256,
-                  "--language", _LANGUAGE]
+    if mode == "export":
+        arguments += ["--output", str(output)]
+    arguments += ["--input", str(identity.path), "--size", str(identity.size),
+                  "--sha256", identity.sha256, "--language", _LANGUAGE]
     return arguments
 
 

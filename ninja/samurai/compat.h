@@ -85,12 +85,18 @@ typedef uint64_t uint_least64_t;
 #define PRIx32 "x"
 #endif
 
-/* <ctype.h> isblank (C99) */
+/* <ctype.h> isblank (C99) — only declare if the libc header did not */
 #ifndef isblank
 #ifdef SAMU_COMPAT
 int isblank(int c);
 #else
 #define isblank(c) ((c) == ' ' || (c) == '\t')
+#endif
+#endif
+
+#ifdef SAMU_COMPAT
+#ifndef strsignal
+const char *strsignal(int sig);
 #endif
 #endif
 
@@ -167,8 +173,6 @@ struct pollfd {
 };
 int poll(struct pollfd *fds, unsigned long nfds, int timeout);
 #endif
-
-const char *strsignal(int sig);
 
 #endif /* _WIN32 */
 

@@ -153,12 +153,15 @@ samu_strtoll(const char *s, char **end, int base)
 	return neg ? -(int64_t)u : (int64_t)u;
 }
 
+#ifndef isblank
 int
 isblank(int c)
 {
 	return c == ' ' || c == '\t';
 }
+#endif
 
+#ifndef strsignal
 const char *
 strsignal(int sig)
 {
@@ -166,3 +169,4 @@ strsignal(int sig)
 	sprintf(buf, "signal %d", sig);
 	return buf;
 }
+#endif

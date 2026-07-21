@@ -7,7 +7,9 @@ import subprocess
 import pytest
 
 from binrecon.identity import identify
-from binrecon.adapters.ghidra import GhidraAdapterError, _layout, export_with_ghidra
+from binrecon.adapters.ghidra import (
+    GhidraAdapterError, _layout, _validate_instruction_relocations, export_with_ghidra,
+)
 
 
 def _analysis(identity, version="12.1"):
@@ -339,6 +341,17 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
             {key: item[key] for key in ("address", "kind", "target", "addend")}
             for item in layout_doc["relocations"]
         ]
+        document["functions"] = [{
+            "address": 4096, "size": 4, "names": ["entry"],
+            "blocks": [{"address": 4096, "size": 4, "successors": []}],
+            "instructions": [{"address": 4096, "bytes": "00000000", "mnemonic": "ADD",
+                              "operands": "", "normalized_operands": "", "relocations": [0]}],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["references"] = [
+            {"address": 4096, "target": 4096, "kind": "DATA"},
+            {"address": 4100, "target": 8192, "kind": "DATA"},
+        ]
         document["extensions"]["ghidra"].update({
             "fallback_sections": layout_doc["sections"],
             "fallback_symbols": layout_doc["symbols"],
@@ -349,10 +362,11 @@ def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, m
                 for item in layout_doc["sections"]
             ],
             "fallback_relocation_status": [
-                {"index": index, "address": item["address"], "status": "SKIPPED",
-                 "type": item["type"], "values": [item["addend"]],
+                {"index": index, "address": item["address"], "status": "APPLIED",
+                 "type": item["type"], "values": [item["addend"]], "reference_source": item["address"],
                  "original_bytes": item["original_bytes"], "width": item["width"],
-                 "reference_targets": []}
+                 "reference_targets": [4096 if index == 0 else 8192],
+                 "external_symbols": [], "external_libraries": []}
                 for index, item in enumerate(layout_doc["relocations"])
             ],
         })
@@ -401,6 +415,29 @@ def test_layout_uses_ordinals_for_duplicate_names_addresses_and_zero_size(config
     profile.document = {**profile.document, "regions": (core[0], core[0])}
     with pytest.raises(GhidraAdapterError, match="ambiguous"):
         _layout(profile, identity)
+
+
+def test_instruction_relocation_links_use_exact_byte_containment():
+    layout = {"relocations": [
+        {"address": 0x1001}, {"address": 0x1005},
+    ]}
+    document = {"functions": [{"instructions": [
+        {"address": 0x1000, "bytes": "E800000000", "relocations": [0]},
+    ]}]}
+    _validate_instruction_relocations(document, layout)
+    document["functions"][0]["instructions"][0]["relocations"] = [1]
+    with pytest.raises(GhidraAdapterError, match="cross-boundary"):
+        _validate_instruction_relocations(document, layout)
+
+
+def test_overlapping_instruction_ranges_are_rejected_as_ambiguous():
+    layout = {"relocations": [{"address": 0x1002}]}
+    document = {"functions": [{"instructions": [
+        {"address": 0x1000, "bytes": "90909090", "relocations": [0]},
+        {"address": 0x1001, "bytes": "90909090", "relocations": [0]},
+    ]}]}
+    with pytest.raises(GhidraAdapterError, match="overlapping"):
+        _validate_instruction_relocations(document, layout)
 
 
 @pytest.mark.parametrize("message", ["Decompiler failed", "schema output invalid", "random failure",
@@ -490,6 +527,10 @@ def test_java_exporter_keeps_per_function_decompile_failures_and_fallback_metada
     assert "getRelocationTable().add" in source
     assert "addMemoryReference" in source
     assert "fallback_relocation_status" in source
+    for required in ("disassemble(address)", "createFunction(address",
+                     "getInstructionContaining", "addExternalReference",
+                     "getUniqueExternalLocation", "relocationIndexesByAddress.subMap"):
+        assert required in source
 
 
 def test_java_argument_parser_is_explicit_and_closed():

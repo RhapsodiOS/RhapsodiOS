@@ -355,6 +355,44 @@ def _layout(profile, identity: InputIdentity) -> dict:
     }
 
 
+def _validate_instruction_relocations(document: dict, layout: dict) -> None:
+    instructions = [instruction for function in document["functions"]
+                    for instruction in function["instructions"]]
+    ranges = []
+    for instruction in instructions:
+        try:
+            byte_count = len(bytes.fromhex(instruction["bytes"]))
+        except (TypeError, ValueError) as error:
+            raise GhidraAdapterError("instruction bytes are malformed") from error
+        start = instruction["address"]
+        end = start + byte_count
+        if byte_count == 0 or end > 0x1_0000_0000:
+            raise GhidraAdapterError("instruction range is empty or overflows i386")
+        indexes = instruction["relocations"]
+        if indexes != sorted(set(indexes)):
+            raise GhidraAdapterError("instruction relocation indexes are not sorted and unique")
+        ranges.append((start, end, instruction))
+    ranges.sort(key=lambda item: (item[0], item[1]))
+    for previous, current in zip(ranges, ranges[1:]):
+        if current[0] < previous[1]:
+            raise GhidraAdapterError("overlapping instruction ranges are ambiguous")
+    relocations = layout["relocations"]
+    for start, end, instruction in ranges:
+        for index in instruction["relocations"]:
+            if index < 0 or index >= len(relocations):
+                raise GhidraAdapterError("instruction relocation index is invalid")
+            address = relocations[index]["address"]
+            if not start <= address < end:
+                raise GhidraAdapterError("instruction relocation has a cross-boundary link")
+    for index, relocation in enumerate(relocations):
+        owners = [instruction for start, end, instruction in ranges
+                  if start <= relocation["address"] < end]
+        if len(owners) > 1:
+            raise GhidraAdapterError("relocation has overlapping instruction owners")
+        if owners and index not in owners[0]["relocations"]:
+            raise GhidraAdapterError("contained instruction relocation index is missing")
+
+
 def _validate_output(document: dict, configuration: dict, identity: InputIdentity,
                      layout: dict | None = None) -> None:
     validate_document("analysis-v1", document)
@@ -411,6 +449,7 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
         statuses = extension.get("fallback_relocation_status")
         if not isinstance(statuses, list) or len(statuses) != len(layout["relocations"]):
             raise GhidraAdapterError("Ghidra output fallback relocation status is missing")
+        symbol_sections = {symbol["name"]: symbol["section"] for symbol in layout["symbols"]}
         for index, (expected, actual) in enumerate(zip(layout["relocations"], statuses)):
             if (actual.get("index") != index or actual.get("address") != expected["address"] or
                     actual.get("type") != expected["type"] or
@@ -422,12 +461,27 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
                 raise GhidraAdapterError("Ghidra output fallback relocation status is invalid")
             if actual["status"] in {"APPLIED", "APPLIED_OTHER"} and not actual.get("reference_targets"):
                 raise GhidraAdapterError("applied fallback relocation has no analysis reference")
-            instructions = [instruction for function in document["functions"]
-                            for instruction in function["instructions"]
-                            if instruction["address"] == expected["address"]]
-            if instructions and any(index not in instruction["relocations"]
-                                    for instruction in instructions):
-                raise GhidraAdapterError("fallback instruction relocation index is missing")
+            unresolved_external = (expected["external"] and expected["target"] is not None and
+                                   expected.get("target_section_ordinal") is None and
+                                   symbol_sections.get(expected["target"]) is None)
+            if unresolved_external:
+                if expected["target"] not in actual.get("external_symbols", ()):
+                    raise GhidraAdapterError("external relocation symbol association is missing")
+                if not any(reference["address"] == actual.get("reference_source") and
+                           reference["target"] is None for reference in document["references"]):
+                    raise GhidraAdapterError("normalized external relocation reference is missing")
+        _validate_instruction_relocations(document, layout)
+        functions_by_address = {function["address"]: function for function in document["functions"]}
+        sections = layout["sections"]
+        for entry in layout["entry_points"]:
+            function = functions_by_address.get(entry["address"])
+            if function is None:
+                raise GhidraAdapterError("configured fallback entry point was not realized")
+            executable = any(section["size"] and "x" in section["permissions"] and
+                             section["address"] <= entry["address"] < section["address"] + section["size"]
+                             for section in sections)
+            if executable and not function["instructions"]:
+                raise GhidraAdapterError("configured executable entry has no instructions")
 
 
 def export_with_ghidra(profile, artifact: str, destination: Path, *,

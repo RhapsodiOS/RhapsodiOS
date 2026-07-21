@@ -29,7 +29,7 @@ public final class ExportAnalysis extends GhidraScript {
     private static final String LANGUAGE = "x86:LE:32:default";
     private static final int MAX_DECOMPILED_C = 1024 * 1024;
     private static final int MAX_DECOMPILE_MESSAGE = 16 * 1024;
-    private final Map<Long,List<Long>> relocationIndexesByAddress=new TreeMap<>();
+    private final NavigableMap<Long,List<Long>> relocationIndexesByAddress=new TreeMap<>();
 
     @Override
     protected void run() throws Exception {
@@ -136,13 +136,9 @@ public final class ExportAnalysis extends GhidraScript {
             symbols.createLabel(space.getAddress(number(symbol.get("address"))),
                 string(symbol.get("name")), source);
         }
-        for (Object item : array(layout.get("entry_points"), "entry_points")) {
-            Map<String,Object> entry = object(item, "entry point");
-            Address address = space.getAddress(number(entry.get("address")));
-            symbols.createLabel(address, string(entry.get("name")), SourceType.IMPORTED);
-            symbols.addExternalEntryPoint(address);
-        }
         installRelocations(layout, space);
+        realizeEntryPoints(layout, space);
+        linkRelocations(layout, space);
     }
 
     private String blockName(Map<String,Object> section) {
@@ -150,8 +146,7 @@ public final class ExportAnalysis extends GhidraScript {
     }
 
     private void installRelocations(Map<String,Object> layout, AddressSpace space) throws Exception {
-        Memory memory=currentProgram.getMemory(); SymbolTable symbols=currentProgram.getSymbolTable();
-        ReferenceManager references=currentProgram.getReferenceManager();
+        Memory memory=currentProgram.getMemory();
         Map<Long,Address> sections=new HashMap<>();
         for(Object value:array(layout.get("sections"),"sections")){Map<String,Object> section=object(value,"section");
             sections.put(number(section.get("ordinal")),space.getAddress(number(section.get("address"))));}
@@ -160,10 +155,10 @@ public final class ExportAnalysis extends GhidraScript {
         for(Object value:array(layout.get("relocations"),"relocations")){Map<String,Object> relocation=object(value,"relocation");
             Address place=space.getAddress(number(relocation.get("address"))); int type=(int)number(relocation.get("type"));
             int width=(int)number(relocation.get("width")); long addend=number(relocation.get("addend"));
-            String targetName=relocation.get("target")==null?null:string(relocation.get("target")); Address target=null; Symbol targetSymbol=null;
+            String targetName=relocation.get("target")==null?null:string(relocation.get("target")); Address target=null;
             if(relocation.get("target_section_ordinal")!=null){target=sections.get(number(relocation.get("target_section_ordinal")));}
             else if(targetName!=null){Map<String,Object> symbol=symbolLayouts.get(targetName);if(symbol!=null&&symbol.get("section")!=null){
-                    target=space.getAddress(number(symbol.get("address")));targetSymbol=symbols.getPrimarySymbol(target);
+                    target=space.getAddress(number(symbol.get("address")));
                 }else{for(Object sectionValue:array(layout.get("sections"),"sections")){Map<String,Object> section=object(sectionValue,"section");
                     if(targetName.equals(section.get("name"))){target=sections.get(number(section.get("ordinal")));break;}}}}
             Relocation.Status status; Long applied=null;
@@ -172,13 +167,39 @@ public final class ExportAnalysis extends GhidraScript {
             else {long placeValue=place.getOffset(), targetValue=target.getOffset();
                 long computed=Boolean.TRUE.equals(relocation.get("pc_relative"))?targetValue+addend-placeValue:targetValue+addend;
                 if(!fitsRelocation(computed,width,Boolean.TRUE.equals(relocation.get("pc_relative")))) status=Relocation.Status.FAILURE;
-                else {byte[] bytes=littleEndian(computed,width);memory.setBytes(place,bytes);status=Relocation.Status.APPLIED;applied=computed;
-                    Reference reference=references.addMemoryReference(place,target,RefType.DATA,SourceType.IMPORTED,0);
-                    if(targetSymbol!=null)references.setAssociation(targetSymbol,reference);}}
+                else {byte[] bytes=littleEndian(computed,width);memory.setBytes(place,bytes);status=Relocation.Status.APPLIED;applied=computed;}}
             long[] values=applied==null?new long[]{addend}:new long[]{applied,target.getOffset(),addend};
             currentProgram.getRelocationTable().add(place,status,type,values,
                 unhex(string(relocation.get("original_bytes"))),targetName);
         }
+    }
+
+    private void realizeEntryPoints(Map<String,Object> layout,AddressSpace space) throws Exception {
+        Memory memory=currentProgram.getMemory();FunctionManager functions=currentProgram.getFunctionManager();SymbolTable symbols=currentProgram.getSymbolTable();
+        for(Object value:array(layout.get("entry_points"),"entry points")){Map<String,Object> entry=object(value,"entry point");
+            Address address=space.getAddress(number(entry.get("address")));MemoryBlock block=memory.getBlock(address);
+            if(block==null||!block.isExecute())throw new IOException("entry point is unmapped or non-executable: "+address);
+            if(!disassemble(address)||currentProgram.getListing().getInstructionAt(address)==null)throw new IOException("entry point disassembly failed: "+address);
+            Function function=functions.getFunctionAt(address);if(function==null)function=createFunction(address,string(entry.get("name")));
+            if(function==null||!function.getEntryPoint().equals(address))throw new IOException("entry point function creation failed: "+address);
+            symbols.addExternalEntryPoint(address);}
+    }
+
+    private void linkRelocations(Map<String,Object> layout,AddressSpace space) throws Exception {
+        ReferenceManager references=currentProgram.getReferenceManager();SymbolTable symbols=currentProgram.getSymbolTable();
+        Map<Long,Address> sections=new HashMap<>();for(Object value:array(layout.get("sections"),"sections")){Map<String,Object> section=object(value,"section");sections.put(number(section.get("ordinal")),space.getAddress(number(section.get("address"))));}
+        Map<String,Map<String,Object>> symbolLayouts=new HashMap<>();for(Object value:array(layout.get("symbols"),"symbols")){Map<String,Object> symbol=object(value,"symbol");symbolLayouts.put(string(symbol.get("name")),symbol);}
+        for(Object value:array(layout.get("relocations"),"relocations")){Map<String,Object> relocation=object(value,"relocation");Address field=space.getAddress(number(relocation.get("address")));
+            Instruction owner=currentProgram.getListing().getInstructionContaining(field);Address source=owner==null?field:owner.getAddress();String targetName=relocation.get("target")==null?null:string(relocation.get("target"));
+            Address target=null;if(relocation.get("target_section_ordinal")!=null)target=sections.get(number(relocation.get("target_section_ordinal")));
+            else if(targetName!=null){Map<String,Object> symbol=symbolLayouts.get(targetName);if(symbol!=null&&symbol.get("section")!=null)target=space.getAddress(number(symbol.get("address")));}
+            RefType refType=owner!=null&&(owner.getFlowType().isCall()||owner.getFlowType().isJump())?owner.getFlowType():RefType.DATA;
+            if(target!=null){Reference reference=references.getReference(source,target,0);if(reference==null)reference=references.addMemoryReference(source,target,refType,SourceType.IMPORTED,0);
+                Symbol targetSymbol=symbols.getPrimarySymbol(target);if(targetSymbol!=null)references.setAssociation(targetSymbol,reference);}
+            else if(targetName!=null){ExternalLocation location=currentProgram.getExternalManager().getUniqueExternalLocation("UNKNOWN",targetName);
+                if(location==null)throw new IOException("external relocation target is missing: "+targetName);
+                boolean exists=false;for(Reference reference:references.getReferencesFrom(source))if(reference instanceof ExternalReference&&targetName.equals(((ExternalReference)reference).getLabel()))exists=true;
+                if(!exists)references.addExternalReference(source,0,location,SourceType.IMPORTED,refType);}}
     }
 
     private static boolean fitsRelocation(long value,int width,boolean signed){if(width!=1&&width!=2&&width!=4)return false;
@@ -199,6 +220,8 @@ public final class ExportAnalysis extends GhidraScript {
         }
         Map<String,Object> layout = args.values.containsKey("--layout") ? readLayout(args) : null;
         if (layout != null) verifyPreparedLayout(layout);
+        if (layout != null) linkRelocations(layout,
+            currentProgram.getAddressFactory().getDefaultAddressSpace());
         Map<String,Object> root = new LinkedHashMap<>();
         ReferenceManager referenceManager = currentProgram.getReferenceManager();
         if (referenceManager == null) throw new IOException("reference manager unavailable");
@@ -404,8 +427,11 @@ public final class ExportAnalysis extends GhidraScript {
             item.put("index",index++);item.put("address",addressValue);item.put("status",matched==null?"MISSING":matched.getStatus().toString());
             item.put("type",matched==null?expected.get("type"):matched.getType());item.put("values",matched==null?List.of():longs(matched.getValues()));
             item.put("original_bytes",matched==null?expected.get("original_bytes"):hex(matched.getBytes()));item.put("width",expected.get("width"));
-            TreeSet<Long> targets=new TreeSet<>();for(Reference reference:currentProgram.getReferenceManager().getReferencesFrom(address))if(reference.getToAddress().isMemoryAddress())targets.add(reference.getToAddress().getOffset());
-            item.put("reference_targets",new ArrayList<>(targets));out.add(item);}return out;
+            Instruction owner=currentProgram.getListing().getInstructionContaining(address);Address referenceSource=owner==null?address:owner.getAddress();item.put("reference_source",referenceSource.getOffset());
+            TreeSet<Long> targets=new TreeSet<>();TreeSet<String> externalSymbols=new TreeSet<>(),externalLibraries=new TreeSet<>();
+            for(Reference reference:currentProgram.getReferenceManager().getReferencesFrom(referenceSource)){if(reference.getToAddress().isMemoryAddress())targets.add(reference.getToAddress().getOffset());
+                if(reference instanceof ExternalReference){ExternalReference external=(ExternalReference)reference;externalSymbols.add(external.getLabel());externalLibraries.add(external.getLibraryName());}}
+            item.put("reference_targets",new ArrayList<>(targets));item.put("external_symbols",new ArrayList<>(externalSymbols));item.put("external_libraries",new ArrayList<>(externalLibraries));out.add(item);}return out;
     }
 
     private static List<Long> longs(long[] values){List<Long> out=new ArrayList<>();for(long value:values)out.add(value);return out;}
@@ -461,12 +487,15 @@ public final class ExportAnalysis extends GhidraScript {
     private List<Object> exportInstructions(Function function,List<Object> calls) throws Exception {
         List<Object> out=new ArrayList<>(); InstructionIterator iterator=currentProgram.getListing().getInstructions(function.getBody(),true);
         while(iterator.hasNext()){ monitor.checkCancelled(); Instruction instruction=iterator.next(); Map<String,Object> item=map();
-            item.put("address",instruction.getAddress().getOffset()); item.put("bytes",hex(instruction.getBytes()));
+            byte[] instructionBytes=instruction.getBytes();long instructionStart=instruction.getAddress().getOffset();
+            if(instructionBytes.length==0)throw new IOException("zero-length instruction at "+instruction.getAddress());
+            long instructionEnd=Math.addExact(instructionStart,instructionBytes.length);
+            item.put("address",instructionStart); item.put("bytes",hex(instructionBytes));
             item.put("mnemonic",instruction.getMnemonicString());
             List<String> operands=new ArrayList<>(); for(int i=0;i<instruction.getNumOperands();i++) operands.add(instruction.getDefaultOperandRepresentation(i));
             String operandText=String.join(", ",operands); item.put("operands",operandText); item.put("normalized_operands",operandText);
-            List<Long> relocations=new ArrayList<>(relocationIndexesByAddress.getOrDefault(instruction.getAddress().getOffset(),List.of()));
-            Collections.sort(relocations); item.put("relocations",relocations); out.add(item);
+            TreeSet<Long> relocationIndexes=new TreeSet<>();for(List<Long> indexes:relocationIndexesByAddress.subMap(instructionStart,true,instructionEnd,false).values())relocationIndexes.addAll(indexes);
+            item.put("relocations",new ArrayList<>(relocationIndexes)); out.add(item);
             for(Reference reference:instruction.getReferencesFrom()){
                 if(reference.getReferenceType().isCall()){ Map<String,Object> call=map(); call.put("address",instruction.getAddress().getOffset());
                     call.put("target",reference.getToAddress().isMemoryAddress()?reference.getToAddress().getOffset():null);

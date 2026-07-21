@@ -1,0 +1,53 @@
+{
+  "schema_version": "analysis-v1",
+  "input": {
+    "path": "build/minimal.bin",
+    "size": 4,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "architecture": "powerpc",
+    "endianness": "big"
+  },
+  "analyzer": {
+    "name": "fixture",
+    "version": "1.0",
+    "invocation": "fixture --analyze build/minimal.bin"
+  },
+  "sections": [
+    {
+      "name": ".text",
+      "address": 4096,
+      "offset": 0,
+      "size": 4,
+      "permissions": "rx",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "symbols": [],
+  "relocations": [],
+  "functions": [
+    {
+      "address": 4096,
+      "size": 4,
+      "names": ["entry"],
+      "blocks": [
+        {
+          "address": 4096,
+          "size": 4,
+          "successors": []
+        }
+      ],
+      "instructions": [
+        {
+          "address": 4096,
+          "bytes": "4e800020",
+          "mnemonic": "blr",
+          "operands": "",
+          "normalized_operands": "",
+          "relocations": []
+        }
+      ],
+      "calls": [],
+      "confidence": 1.0
+    }
+  ]
+}

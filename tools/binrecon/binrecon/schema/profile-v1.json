@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "profile-v1.json",
+  "title": "Binrecon profile, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "architecture", "reference", "rebuilt", "analyzers", "comparison", "output_dir"],
+  "properties": {
+    "schema_version": {"const": "profile-v1"},
+    "name": {"type": "string"},
+    "architecture": {"type": "string"},
+    "reference": {"$ref": "#/$defs/binary"},
+    "rebuilt": {"$ref": "#/$defs/binary"},
+    "analyzers": {"$ref": "#/$defs/analyzers"},
+    "comparison": {"$ref": "#/$defs/comparison"},
+    "output_dir": {"type": "string"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string"},
+        "expected_size": {"type": "integer", "minimum": 0},
+        "expected_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "executable": {"type": "string"},
+        "timeout_seconds": {"type": "integer", "minimum": 1},
+        "version": {"type": "string"}
+      }
+    },
+    "analyzers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ida": {"$ref": "#/$defs/analyzer"},
+        "ghidra": {"$ref": "#/$defs/analyzer"},
+        "angr": {"$ref": "#/$defs/analyzer"}
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptance", "ignore_metadata", "entry_points"],
+      "properties": {
+        "acceptance": {
+          "enum": ["exact-image", "exact-sections", "normalized-functions"]
+        },
+        "ignore_metadata": {"type": "array", "items": {"type": "string"}},
+        "entry_points": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

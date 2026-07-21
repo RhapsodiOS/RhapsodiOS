@@ -5,8 +5,8 @@
  *   #include <stdint.h> (etc.) hits compat/*.h stubs, which #include this file.
  *   (Rhapsody's cc ignores gcc's -include flag.)
  *
- * Rhapsody already provides signed int8_t..int64_t via bsd/*/types.h; we only
- * add what is missing (bool, uint*_t, poll, clock_gettime, …).
+ * Rhapsody already provides signed int8_t..int64_t via bsd/.../types.h; we only
+ * add what is missing (bool, uintN_t, poll, clock_gettime, etc.).
  */
 #ifndef SAMU_COMPAT_H
 #define SAMU_COMPAT_H

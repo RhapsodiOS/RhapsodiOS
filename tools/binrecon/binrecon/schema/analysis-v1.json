@@ -93,7 +93,7 @@
       "required": ["address", "size", "successors"],
       "properties": {
         "address": {"$ref": "#/$defs/nonnegative_integer"},
-        "size": {"$ref": "#/$defs/nonnegative_integer"},
+        "size": {"type": "integer", "minimum": 1},
         "successors": {"type": "array", "items": {"$ref": "#/$defs/successor"}}
       }
     },

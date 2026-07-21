@@ -1,6 +1,7 @@
 import json
 import re
 from functools import lru_cache
+from importlib.resources import files
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -40,7 +41,10 @@ def validate_document(schema_name: str, document: dict) -> None:
 
 @lru_cache(maxsize=None)
 def _load_validator(filename: str) -> Draft202012Validator:
-    schema = load_json(Path(__file__).with_name("schema") / filename)
+    schema_text = files("binrecon").joinpath("schema", filename).read_text(
+        encoding="utf-8"
+    )
+    schema = json.loads(schema_text)
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 

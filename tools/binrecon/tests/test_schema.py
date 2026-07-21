@@ -108,6 +108,14 @@ def test_analysis_rejects_empty_instruction_bytes():
         validate_document("analysis-v1", document)
 
 
+def test_analysis_rejects_zero_size_block():
+    document = load_json(FIXTURE)
+    document["functions"][0]["blocks"][0]["size"] = 0
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("analysis-v1", document)
+
+
 def test_analysis_extensions_accept_namespaced_analyzer_data():
     document = load_json(FIXTURE)
     document["extensions"] = {
@@ -160,7 +168,24 @@ def test_profile_accepts_raw_loader_and_symbolic_check_configuration():
                     "max_active_states": 8,
                     "max_steps": 100,
                     "input_bytes": 4,
-                    "hooks": [4096],
+                    "registers": {"r3": 1, "analyzer_specific_register": 2},
+                    "memory": [{"address": 8192, "bytes": "00ff"}],
+                    "hooks": [
+                        {
+                            "address": 4096,
+                            "handler": "return_constant",
+                            "returns": 0,
+                        }
+                    ],
+                    "assertions": [
+                        {"kind": "return-equals", "value": 0},
+                        {
+                            "kind": "memory-equals",
+                            "address": 8192,
+                            "bytes": "00ff",
+                        },
+                        {"kind": "return-equivalent", "artifact": "reference"},
+                    ],
                 }
             ],
             "extensions": {"angr": {"solver": "z3"}},
@@ -168,6 +193,48 @@ def test_profile_accepts_raw_loader_and_symbolic_check_configuration():
     )
 
     validate_document("profile-v1", document)
+
+
+@pytest.mark.parametrize("bad_bytes", ["", "0", "xyz0"])
+def test_profile_symbolic_check_rejects_bad_memory_hex(bad_bytes):
+    document = symbolic_profile()
+    document["symbolic_checks"][0]["memory"] = [
+        {"address": 8192, "bytes": bad_bytes}
+    ]
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("profile-v1", document)
+
+
+@pytest.mark.parametrize(
+    "assertion",
+    [
+        {"kind": "unknown", "value": 0},
+        {"kind": "return-equals", "value": 0, "surprise": True},
+    ],
+)
+def test_profile_symbolic_check_rejects_invalid_assertion(assertion):
+    document = symbolic_profile()
+    document["symbolic_checks"][0]["assertions"] = [assertion]
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("profile-v1", document)
+
+
+def test_profile_symbolic_check_rejects_integer_hook():
+    document = symbolic_profile()
+    document["symbolic_checks"][0]["hooks"] = [4096]
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("profile-v1", document)
+
+
+def test_profile_symbolic_check_rejects_empty_register_name():
+    document = symbolic_profile()
+    document["symbolic_checks"][0]["registers"] = {"": 0}
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate_document("profile-v1", document)
 
 
 @pytest.mark.parametrize("container", ["regions", "symbolic_checks"])
@@ -361,3 +428,20 @@ def minimal_ledger():
         "rebuilt_sha256": None,
         "entries": [],
     }
+
+
+def symbolic_profile():
+    document = minimal_profile()
+    document["symbolic_checks"] = [
+        {
+            "name": "entry returns",
+            "function": "entry",
+            "max_active_states": 8,
+            "max_steps": 100,
+            "registers": {"r3": 0},
+            "memory": [{"address": 8192, "bytes": "00"}],
+            "hooks": [{"address": 4096, "handler": "return_zero"}],
+            "assertions": [{"kind": "return-equals", "value": 0}],
+        }
+    ]
+    return document

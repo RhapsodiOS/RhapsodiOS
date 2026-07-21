@@ -58,10 +58,10 @@ samu:
 generate: rhap-build
 	cd .. && ninja/rhap-build generate $(GENFLAGS)
 
-world: samu
+world: samu rhap-build
 	cd .. && SAMU="$(SAMU)" ninja/rhap-build build buildworld
 
-kernel: samu
+kernel: samu rhap-build
 	cd .. && SAMU="$(SAMU)" ninja/rhap-build build buildkernel
 
 clean:

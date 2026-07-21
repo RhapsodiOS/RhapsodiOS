@@ -141,14 +141,16 @@ int samu_vsnprintf(char *buf, size_t size, const char *fmt, va_list ap);
 
 #else /* SAMU_COMPAT POSIX / Rhapsody */
 
+#include <sys/time.h>
 #include <time.h>
+/* Rhapsody has struct timespec in sys/time.h but no CLOCK_MONOTONIC/clock_gettime. */
 #ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
-struct timespec {
-	long tv_sec;
-	long tv_nsec;
-};
 int clock_gettime(int clk, struct timespec *ts);
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 /* poll(2) — implemented in compat-posix.c */

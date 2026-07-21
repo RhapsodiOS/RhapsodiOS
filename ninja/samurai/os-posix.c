@@ -74,7 +74,10 @@ osmtime(const char *name)
 			fatal("stat %s:", name);
 		return MTIME_MISSING;
 	} else {
-#ifdef __APPLE__
+#if defined(SAMU_COMPAT)
+		/* Rhapsody: second-resolution st_mtime only */
+		return (int64_t)st.st_mtime * (int64_t)1000000000;
+#elif defined(__APPLE__)
 		return (int64_t)st.st_mtime * 1000000000 + st.st_mtimensec;
 /*
 Illumos hides the members of st_mtim when you define _POSIX_C_SOURCE

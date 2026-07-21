@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 from typing import Callable
 
@@ -180,6 +181,31 @@ def _reject_input_alias(path: Path, input_path: Path, label: str) -> None:
         raise IdaAdapterError(f"could not validate {label} path: {error}") from error
 
 
+def _record_cleanup_failure(log_path: Path, primary: BaseException, error: OSError) -> None:
+    diagnostic = f"workspace cleanup failed: {error}"
+    primary.add_note(diagnostic)
+    try:
+        existing = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+        _atomic_text(log_path, existing + "\n=== workspace cleanup ===\n" + diagnostic + "\n")
+    except OSError as log_error:
+        primary.add_note(f"could not preserve cleanup diagnostic: {log_error}")
+
+
+def _cleanup_after_failure(workspace: Path, log_path: Path) -> None:
+    primary = sys.exc_info()[1]
+    try:
+        shutil.rmtree(workspace)
+        return
+    except OSError as error:
+        if primary is None:
+            raise
+        _record_cleanup_failure(log_path, primary, error)
+    try:
+        shutil.rmtree(workspace)
+    except OSError as retry_error:
+        _record_cleanup_failure(log_path, primary, retry_error)
+
+
 def export_with_ida(
     profile,
     artifact: str,
@@ -287,4 +313,4 @@ def export_with_ida(
         return document
     finally:
         if workspace is not None:
-            shutil.rmtree(workspace)
+            _cleanup_after_failure(workspace, log_path)

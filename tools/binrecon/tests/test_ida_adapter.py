@@ -251,6 +251,42 @@ def test_workspace_cleanup_failure_does_not_replace_valid_destination(
     assert destination.read_text(encoding="utf-8") == "known-good"
 
 
+def test_primary_ida_failure_survives_workspace_cleanup_failure(
+    tmp_path, monkeypatch
+):
+    import binrecon.adapters.ida as ida_adapter
+
+    input_path = tmp_path / "input.i64"
+    input_path.write_bytes(b"sample")
+    profile, _ = _profile(tmp_path, input_path)
+    destination = tmp_path / "analysis.json"
+    destination.write_text("known-good", encoding="utf-8")
+    real_rmtree = ida_adapter.shutil.rmtree
+    attempts = 0
+    workspace = None
+
+    def fail_once(path):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise OSError("cleanup collided")
+        real_rmtree(path)
+
+    monkeypatch.setattr(ida_adapter.shutil, "rmtree", fail_once)
+
+    def runner(argv, **kwargs):
+        nonlocal workspace
+        workspace = Path(next(arg for arg in argv if arg.startswith("-o"))[2:]).parent
+        return SimpleNamespace(returncode=23, stdout="primary failure", stderr="")
+
+    with pytest.raises(IdaAdapterError, match="exit code 23") as captured:
+        export_with_ida(profile, "reference", destination, runner=runner)
+    assert any("cleanup collided" in note for note in captured.value.__notes__)
+    assert "cleanup collided" in destination.with_suffix(".json.ida.log").read_text()
+    assert destination.read_text(encoding="utf-8") == "known-good"
+    assert workspace is not None and not workspace.exists()
+
+
 def test_timeout_preserves_diagnostics_and_final(tmp_path):
     input_path = tmp_path / "input.i64"
     input_path.write_bytes(b"sample")
@@ -486,25 +522,51 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             return "hello"
 
     class ObjcString:
-        ea = 0x3000
         strtype = 0
 
+        def __init__(self, address, value):
+            self.ea = address
+            self.value = value
+
         def __str__(self):
-            return "metadataOnly"
+            return self.value
 
     class ObjcSegment:
         pass
+
+    string_configuration = []
+
+    class ConfiguredStrings:
+        def __init__(self, default_setup=True):
+            string_configuration.append(("constructor", default_setup))
+
+        def setup(self, **options):
+            string_configuration.append(("setup", options))
+
+        def __iter__(self):
+            return iter([
+                String(),
+                ObjcString(0x3000, "plugAndPlaySwitch"),
+                ObjcString(0x3001, "init"),
+                ObjcString(0x3002, "free"),
+                ObjcString(0x3003, "coldBootToggled:"),
+            ])
 
     def enum_import_names(index, callback):
         callback(0x2000, "_printf", 1)
         return True
 
     class Fixup:
-        def __init__(self, type_=4, off=0, displacement=0, external=False):
+        def __init__(
+            self, type_=4, base=0, off=0, displacement=0,
+            external=False, relative=False,
+        ):
             self._type = type_
+            self._base = base
             self.off = off
             self.displacement = displacement
             self._external = external
+            self._relative = relative
 
         def get_type(self):
             return self._type
@@ -513,14 +575,17 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             return self._external
 
         def has_base(self):
-            return False
+            return self._relative
+
+        def get_base(self):
+            return self._base
 
         def get_value(self, address):
             return 7 + address - 0x1000
 
     fixups = {
-        0x1000: Fixup(off=0x2000, external=True),
-        0x1001: Fixup(off=0x1000),
+        0x1000: Fixup(base=0x1000, off=0x1000, external=True),
+        0x1001: Fixup(base=0x800, off=0x800, relative=True),
     }
 
     class EmptyFixup:
@@ -535,7 +600,11 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
     modules = {
         "ida_auto": SimpleNamespace(auto_wait=lambda: True),
         "ida_bytes": SimpleNamespace(
-            get_bytes=lambda address, size: b"\x90\xC3" if size == 2 else bytes([0x90 if address == 0x1000 else 0xC3]),
+            get_bytes=lambda address, size: (
+                b"\x90\xC3"
+                if size == 2
+                else bytes([0x90 if address == 0x1000 else 0xC3])
+            ),
             get_item_size=lambda address: 1,
             get_flags=lambda address: 1,
             is_code=lambda flags: flags == 1,
@@ -571,6 +640,7 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             ),
         ),
         "ida_nalt": SimpleNamespace(
+            STRTYPE_C=0,
             get_import_module_qty=lambda: 1,
             get_import_module_name=lambda index: "libSystem",
             enum_import_names=enum_import_names,
@@ -582,10 +652,10 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             SEG_BSS=2,
             getseg=lambda address: (
                 Segment() if 0x1000 <= address < 0x1002 else
-                ObjcSegment() if address == 0x3000 else None
+                ObjcSegment() if 0x3000 <= address <= 0x3003 else None
             ),
             get_segm_name=lambda segment: (
-                "__objc_methname" if isinstance(segment, ObjcSegment) else "__text"
+                "__meth_var_names" if isinstance(segment, ObjcSegment) else "__text"
             ),
             get_segm_class=lambda segment: "BSS" if segment.type == 2 else "CODE",
         ),
@@ -609,11 +679,13 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             DataRefsFrom=lambda address: [0x2000] if address == 0x1001 else [],
             Functions=lambda: [0x1000],
             FuncItems=lambda address: [0x1001, 0x1000],
-            Strings=lambda: [String(), ObjcString()],
+            Strings=ConfiguredStrings,
         ),
         "idc": SimpleNamespace(
             print_insn_mnem=lambda address: "call" if address == 0x1000 else "ret",
-            print_operand=lambda address, index: "callee" if address == 0x1000 and index == 0 else "",
+            print_operand=lambda address, index: (
+                "callee" if address == 0x1000 and index == 0 else ""
+            ),
             generate_disasm_line=lambda address, flags: "unused disassembly",
         ),
     }
@@ -630,23 +702,41 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
     assert first["imports"] == [{"name": "libSystem:_printf", "address": 0x2000}]
     assert first["relocations"] == [
         {"address": 0x1000, "kind": "ida-off32-32", "target": "_printf", "addend": 7},
-        {"address": 0x1001, "kind": "ida-off32-32", "target": "start", "addend": 8},
+        {
+            "address": 0x1001, "kind": "ida-off32-32-relative",
+            "target": "start", "addend": 8,
+        },
     ]
     assert first["functions"][0]["instructions"][0]["operands"] == "callee"
     assert first["functions"][0]["instructions"][0]["relocations"] == [0]
     assert first["functions"][0]["instructions"][1]["relocations"] == [1]
     assert first["functions"][0]["calls"][0]["target"] == 0x1001
     assert first["extensions"]["ida"]["selectors"] == [
+        "coldBootToggled:",
         "doThing",
+        "free",
         "init",
-        "metadataOnly",
         "play:volume:",
+        "plugAndPlaySwitch",
+    ]
+    assert string_configuration[:2] == [
+        ("constructor", False),
+        ("setup", {
+            "strtypes": [0], "minlen": 1, "only_7bit": True,
+            "ignore_instructions": True,
+            "display_only_existing_strings": False,
+        }),
     ]
 
     fixups[0x1000]._type = modules["ida_fixup"].FIXUP_CUSTOM
     with pytest.raises(module.ExportError, match="unsupported fixup"):
         module.collect_analysis(input_path, identity.size, identity.sha256, modules)
     fixups[0x1000]._type = modules["ida_fixup"].FIXUP_OFF32
+    saved_get_base = Fixup.get_base
+    Fixup.get_base = lambda self: (_ for _ in ()).throw(RuntimeError("no base"))
+    with pytest.raises(module.ExportError, match="interpret fixup"):
+        module.collect_analysis(input_path, identity.size, identity.sha256, modules)
+    Fixup.get_base = saved_get_base
 
     modules["idautils"].FuncItems = lambda address: [0x1000, 0x1002, 0x1001]
     modules["ida_bytes"].get_flags = lambda address: 0 if address == 0x1002 else 1
@@ -701,6 +791,36 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
     assert max(byte_reads) <= 2
     Segment.end_ea = 0x1002
     modules["ida_loader"].get_fileregion_offset = lambda address: address - 0x1000
+    modules["ida_bytes"].get_bytes = lambda address, size: (
+        b"\x90\xC3" if size == 2 else bytes([0x90 if address == 0x1000 else 0xC3])
+    )
+
+    backed_size = 3 * 1024 * 1024 + 7
+    Segment.end_ea = Segment.start_ea + backed_size
+    segment_reads = []
+
+    def bounded_backed_bytes(address, size):
+        segment_reads.append(size)
+        assert size <= 1024 * 1024
+        return b"Z" * size
+
+    modules["ida_bytes"].get_bytes = bounded_backed_bytes
+    backed = module.collect_analysis(input_path, identity.size, identity.sha256, modules)
+    expected_backed = hashlib.sha256()
+    for amount in (1024 * 1024, 1024 * 1024, 1024 * 1024, 7):
+        expected_backed.update(b"Z" * amount)
+    assert backed["sections"][0]["sha256"] == expected_backed.hexdigest().upper()
+    assert max(segment_reads) <= 1024 * 1024
+
+    def short_backed_bytes(address, size):
+        if size > 1:
+            return b"Z" * (size - 1)
+        return b"Z"
+
+    modules["ida_bytes"].get_bytes = short_backed_bytes
+    with pytest.raises(module.ExportError, match="segment bytes"):
+        module.collect_analysis(input_path, identity.size, identity.sha256, modules)
+    Segment.end_ea = 0x1002
     modules["ida_bytes"].get_bytes = lambda address, size: (
         b"\x90\xC3" if size == 2 else bytes([0x90 if address == 0x1000 else 0xC3])
     )
@@ -761,3 +881,50 @@ def test_rejects_wrong_analyzer_identity(tmp_path, field, value, message):
     with pytest.raises(IdaAdapterError, match=message):
         export_with_ida(profile, "reference", destination, runner=runner)
     assert destination.read_text(encoding="utf-8") == "known-good"
+
+
+def test_exporter_hashes_external_input_in_stable_bounded_chunks():
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location("binrecon_test_ida_hash", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    size = 3 * 1024 * 1024 + 7
+    initial = SimpleNamespace(
+        st_mode=stat.S_IFREG, st_nlink=1, st_size=size, st_dev=1, st_ino=2,
+        st_mtime_ns=3, st_ctime_ns=4,
+    )
+    stats = iter([initial, initial])
+    remaining = size
+    requests = []
+
+    def reader(descriptor, amount):
+        nonlocal remaining
+        requests.append(amount)
+        amount = min(amount, remaining)
+        remaining -= amount
+        return b"Z" * amount
+
+    actual_size, actual_digest = module._file_identity(
+        Path("ignored"), opener=lambda path, flags: 5,
+        fstat=lambda descriptor: next(stats), reader=reader,
+        closer=lambda descriptor: None,
+    )
+    digest = hashlib.sha256()
+    digest.update(b"Z" * (1024 * 1024))
+    digest.update(b"Z" * (1024 * 1024))
+    digest.update(b"Z" * (1024 * 1024))
+    digest.update(b"Z" * 7)
+    assert (actual_size, actual_digest) == (size, digest.hexdigest().upper())
+    assert max(requests) <= 1024 * 1024
+
+    changed = SimpleNamespace(**{**initial.__dict__, "st_ctime_ns": 9})
+    changed_stats = iter([initial, changed])
+    with pytest.raises(module.ExportError, match="changed while hashing"):
+        module._file_identity(
+            Path("ignored"), opener=lambda path, flags: 5,
+            fstat=lambda descriptor: next(changed_stats),
+            reader=lambda descriptor, amount: b"",
+            closer=lambda descriptor: None,
+        )

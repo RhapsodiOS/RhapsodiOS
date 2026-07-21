@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 import tempfile
 
@@ -66,9 +67,42 @@ def _ida_modules():
     }
 
 
-def _file_identity(path):
-    data = path.read_bytes()
-    return len(data), hashlib.sha256(data).hexdigest().upper()
+def _file_identity(
+    path,
+    *,
+    opener=os.open,
+    fstat=os.fstat,
+    reader=os.read,
+    closer=os.close,
+):
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+    try:
+        descriptor = opener(path, flags)
+    except OSError as error:
+        raise ExportError(f"could not open input for hashing: {error}") from error
+    try:
+        initial = fstat(descriptor)
+        if not stat.S_ISREG(initial.st_mode):
+            raise ExportError("input is not a regular file")
+        digest = hashlib.sha256()
+        size = 0
+        while True:
+            chunk = reader(descriptor, _HASH_CHUNK_SIZE)
+            if not chunk:
+                break
+            if len(chunk) > _HASH_CHUNK_SIZE:
+                raise ExportError("input reader returned an oversized chunk")
+            digest.update(chunk)
+            size += len(chunk)
+        final = fstat(descriptor)
+        stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if size != initial.st_size or any(
+            getattr(initial, field) != getattr(final, field) for field in stable_fields
+        ):
+            raise ExportError("input changed while hashing")
+        return size, digest.hexdigest().upper()
+    finally:
+        closer(descriptor)
 
 
 def _permissions(segment, ida_segment):
@@ -91,6 +125,27 @@ def _hash_zeros(size):
         amount = min(remaining, len(block))
         digest.update(block[:amount])
         remaining -= amount
+    return digest.hexdigest().upper()
+
+
+def _hash_backed_segment(start, size, file_offset, ida_bytes, ida_loader):
+    digest = hashlib.sha256()
+    consumed = 0
+    while consumed < size:
+        amount = min(_HASH_CHUNK_SIZE, size - consumed)
+        address = start + consumed
+        if ida_loader.get_fileregion_offset(address) != file_offset + consumed:
+            raise ExportError(f"discontiguous segment backing at {address:#x}")
+        if (
+            ida_loader.get_fileregion_offset(address + amount - 1)
+            != file_offset + consumed + amount - 1
+        ):
+            raise ExportError(f"partially backed segment chunk at {address:#x}")
+        contents = ida_bytes.get_bytes(address, amount)
+        if contents is None or len(contents) != amount:
+            raise ExportError(f"could not read exact segment bytes at {address:#x}")
+        digest.update(contents)
+        consumed += amount
     return digest.hexdigest().upper()
 
 
@@ -132,13 +187,24 @@ def _collect_relocations(modules):
             raise ExportError(f"malformed fixup size at {address:#x}")
         try:
             addend = data.get_value(address)
-            target_address = data.off
+            base = data.get_base()
+            offset = data.off
             relative = data.has_base()
-            if relative:
-                target_address += data.get_base()
             external = data.is_extdef()
         except Exception as error:
             raise ExportError(f"could not interpret fixup at {address:#x}: {error}") from error
+        if (
+            not isinstance(base, int)
+            or not isinstance(offset, int)
+            or base < 0
+            or offset < 0
+            or base == bad_address
+            or offset == bad_address
+            or base > 0xFFFFFFFF
+            or offset > 0xFFFFFFFF - base
+        ):
+            raise ExportError(f"malformed fixup target at {address:#x}")
+        target_address = base + offset
         if (
             not isinstance(addend, int)
             or not isinstance(target_address, int)
@@ -221,14 +287,9 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
                 "size": segment_size,
             })
         else:
-            if segment_size:
-                final_offset = ida_loader.get_fileregion_offset(segment.end_ea - 1)
-                if final_offset != file_offset + segment_size - 1:
-                    raise ExportError(f"partially backed segment at {segment.start_ea:#x}")
-            contents = ida_bytes.get_bytes(segment.start_ea, segment_size)
-            if contents is None or len(contents) != segment_size:
-                raise ExportError(f"could not read exact segment bytes at {segment.start_ea:#x}")
-            contents_hash = hashlib.sha256(contents).hexdigest().upper()
+            contents_hash = _hash_backed_segment(
+                segment.start_ea, segment_size, file_offset, ida_bytes, ida_loader
+            )
             schema_offset = file_offset
         sections.append({
             "name": ida_segment.get_segm_name(segment),
@@ -328,12 +389,20 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
             "confidence": 1.0,
         })
 
+    ida_nalt = modules["ida_nalt"]
+    string_list = idautils.Strings(default_setup=False)
+    string_list.setup(
+        strtypes=[ida_nalt.STRTYPE_C],
+        minlen=1,
+        only_7bit=True,
+        ignore_instructions=True,
+        display_only_existing_strings=False,
+    )
     strings = [
         {"address": int(item.ea), "value": str(item), "encoding": str(item.strtype)}
-        for item in idautils.Strings()
+        for item in string_list
     ]
     imports = []
-    ida_nalt = modules["ida_nalt"]
     for module_index in range(ida_nalt.get_import_module_qty()):
         module_name = ida_nalt.get_import_module_name(module_index) or ""
 
@@ -364,8 +433,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None):
     for string in strings:
         segment = ida_segment.getseg(string["address"])
         if segment is not None:
-            section_name = ida_segment.get_segm_name(segment).lower()
-            if "objc_methname" in section_name:
+            section_name = ida_segment.get_segm_name(segment).lower().split(",")[-1]
+            if section_name in ("__objc_methname", "__meth_var_names"):
                 selector_names.append(string["value"])
     selector_names = sorted(set(selector_names))
     version = modules["ida_kernwin"].get_kernel_version()

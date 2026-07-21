@@ -10,7 +10,7 @@ struct buffer {
 
 struct string {
 	size_t n;
-	char s[];
+	char s[1]; /* C89: was C99 flexible array char s[] */
 };
 
 /* an unevaluated string */

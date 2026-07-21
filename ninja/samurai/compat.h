@@ -4,6 +4,9 @@
  * Rhapsody / pre-C99 POSIX: Makefile uses -Icompat -DSAMU_COMPAT so that
  *   #include <stdint.h> (etc.) hits compat/*.h stubs, which #include this file.
  *   (Rhapsody's cc ignores gcc's -include flag.)
+ *
+ * Rhapsody already provides signed int8_t..int64_t via bsd/*/types.h; we only
+ * add what is missing (bool, uint*_t, poll, clock_gettime, …).
  */
 #ifndef SAMU_COMPAT_H
 #define SAMU_COMPAT_H
@@ -13,6 +16,8 @@
 #include <stddef.h>   /* size_t */
 #ifdef _WIN32
 #include <stdarg.h>   /* va_list for snprintf shims */
+#else
+#include <sys/types.h> /* Rhapsody: int8_t..int64_t */
 #endif
 
 /* <stdbool.h> / C99 _Bool */
@@ -23,7 +28,8 @@ typedef _Bool bool;
 #define false 0
 #endif
 
-/* <stdint.h> */
+/* <stdint.h> — platform-specific */
+#ifdef _WIN32
 #ifndef SAMU_COMPAT_STDINT_DONE
 #define SAMU_COMPAT_STDINT_DONE
 typedef signed char        int8_t;
@@ -32,20 +38,44 @@ typedef short              int16_t;
 typedef unsigned short     uint16_t;
 typedef int                int32_t;
 typedef unsigned int       uint32_t;
-#ifdef _WIN32
 typedef __int64            int64_t;
 typedef unsigned __int64   uint64_t;
 typedef int                ssize_t;
-#else
-typedef long long          int64_t;
-typedef unsigned long long uint64_t;
-#endif
 typedef uint32_t           uint_least32_t;
 typedef uint64_t           uint_least64_t;
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t)-1)
 #endif
 #endif /* SAMU_COMPAT_STDINT_DONE */
+#else /* SAMU_COMPAT POSIX / Rhapsody */
+#ifndef _UINT8_T
+#define _UINT8_T
+typedef unsigned char uint8_t;
+#endif
+#ifndef _UINT16_T
+#define _UINT16_T
+typedef unsigned short uint16_t;
+#endif
+#ifndef _UINT32_T
+#define _UINT32_T
+typedef unsigned int uint32_t;
+#endif
+#ifndef _UINT64_T
+#define _UINT64_T
+typedef unsigned long long uint64_t;
+#endif
+#ifndef _UINT_LEAST32_T
+#define _UINT_LEAST32_T
+typedef uint32_t uint_least32_t;
+#endif
+#ifndef _UINT_LEAST64_T
+#define _UINT_LEAST64_T
+typedef uint64_t uint_least64_t;
+#endif
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
+#endif /* _WIN32 */
 
 /* <inttypes.h> printf macros */
 #ifndef PRIu32

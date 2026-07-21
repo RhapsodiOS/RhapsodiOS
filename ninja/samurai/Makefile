@@ -1,19 +1,21 @@
 .POSIX:
 .PHONY: all install clean
 
-# Compatible with GNU make 3.74 (Rhapsody gnumake): no ?=, no tab-continued
-# variable lists (tabs look like recipes to 3.74).
+# Compatible with GNU make 3.74 (Rhapsody gnumake): no ?=, no ifeq, no
+# tab-continued variable lists.
 
 OS=posix
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MANDIR=$(PREFIX)/share/man
-ALL_CFLAGS=$(CFLAGS) -std=c99 -Wall -Wextra -Wshadow -Wmissing-prototypes -Wpedantic -Wno-unused-parameter
-# librt is Linux-only; Darwin/Rhapsody have clock_gettime in libc.
-# On Linux: gnumake LDLIBS=-lrt
+
+# Rhapsody cc is pre-C99. Reuse compat.h the same way Windows does
+# (Makefile.nmake -FIcompat.h): force-include + stub dir for #include <stdint.h>.
+# Also NO_POSIX_SPAWN (no posix_spawn on Rhapsody) and select-based poll.
+ALL_CFLAGS=$(CFLAGS) -Wall -Wno-unused-parameter -DSAMU_COMPAT -DNO_POSIX_SPAWN -Icompat -include compat.h
 LDLIBS=
-OBJ=build.o deps.o env.o graph.o htab.o log.o parse.o samu.o scan.o tool.o tree.o util.o os-$(OS).o
-HDR=arg.h build.h deps.h env.h graph.h htab.h log.h os.h parse.h scan.h tool.h tree.h util.h
+OBJ=build.o deps.o env.o graph.o htab.o log.o parse.o samu.o scan.o tool.o tree.o util.o os-$(OS).o compat-posix.o
+HDR=arg.h build.h deps.h env.h graph.h htab.h log.h os.h parse.h scan.h tool.h tree.h util.h compat.h
 
 all: samu
 

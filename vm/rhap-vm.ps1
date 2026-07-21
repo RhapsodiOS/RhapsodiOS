@@ -72,15 +72,27 @@ function Resolve-Tool([string]$NameOrPath) {
 function Invoke-Plink {
     param(
         [hashtable]$Cfg,
-        [string[]]$RemoteArgs,
-        [switch]$Batch
+        [string]$RemoteCommand,
+        [switch]$Batch,
+        [switch]$AllocateTty
     )
     $plink = Resolve-Tool $Cfg.Plink
-    $args = @()
-    if ($Batch) { $args += '-batch' }
-    $args += @('-pw', $Cfg.Password, "$($Cfg.User)@$($Cfg.Host)")
-    $args += $RemoteArgs
-    & $plink @args
+    # Do not use $args — it is PowerShell's automatic variable and breaks splatting.
+    $plinkArgs = @('-ssh')
+    if ($Batch) { $plinkArgs += '-batch' }
+    if ($AllocateTty) { $plinkArgs += '-t' }
+    $plinkArgs += @('-pw', $Cfg.Password, "$($Cfg.User)@$($Cfg.Host)")
+    if (-not [string]::IsNullOrWhiteSpace($RemoteCommand)) {
+        # One remote argv so plink options like -C are never parsed from the command.
+        $plinkArgs += $RemoteCommand
+    }
+    if ($env:RHAP_VM_DEBUG -eq '1') {
+        $shown = foreach ($a in $plinkArgs) {
+            if ($a -eq $Cfg.Password) { '<redacted>' } else { $a }
+        }
+        Write-Host "rhap-vm: debug plink $($shown -join ' ')"
+    }
+    & $plink @plinkArgs
     return $LASTEXITCODE
 }
 
@@ -97,7 +109,7 @@ function Invoke-Sync([hashtable]$Cfg) {
     }
 
     $mkdirCmd = "mkdir -p $($Cfg.RemoteRoot)"
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -RemoteArgs @($mkdirCmd)
+    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $mkdirCmd
     if ($ec -ne 0) { Write-Die "remote mkdir failed (exit $ec): $mkdirCmd" }
 
     foreach ($rel in $paths) {
@@ -116,19 +128,20 @@ function Invoke-Sync([hashtable]$Cfg) {
 function Invoke-Build([hashtable]$Cfg, [string[]]$Targets) {
     if (-not $Targets -or $Targets.Count -eq 0) { $Targets = @('world') }
     $targetStr = ($Targets -join ' ')
-    $remote = "make -C $($Cfg.RemoteRoot)/ninja $targetStr"
+    # Avoid make -C (plink and old BSD make both treat -C specially). Use sh -c + cd.
+    $remote = "sh -c 'cd $($Cfg.RemoteRoot)/ninja && make $targetStr'"
     Write-Host "rhap-vm: $remote"
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -RemoteArgs @($remote)
+    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $remote
     exit $ec
 }
 
 function Invoke-Ssh([hashtable]$Cfg, [string[]]$RemoteCmd) {
     if (-not $RemoteCmd -or $RemoteCmd.Count -eq 0) {
-        $ec = Invoke-Plink -Cfg $Cfg -RemoteArgs @()
+        $ec = Invoke-Plink -Cfg $Cfg
         exit $ec
     }
     $joined = ($RemoteCmd -join ' ')
-    $ec = Invoke-Plink -Cfg $Cfg -Batch -RemoteArgs @($joined)
+    $ec = Invoke-Plink -Cfg $Cfg -Batch -AllocateTty -RemoteCommand $joined
     exit $ec
 }
 
@@ -139,11 +152,12 @@ switch ($Command) {
 Usage: powershell -File vm\rhap-vm.ps1 <sync|build|ssh|help> [args...]
 
   sync              Upload SyncPaths to RemoteRoot via pscp
-  build [targets]   Remote make -C RemoteRoot/ninja (default: world)
+  build [targets]   Remote: cd RemoteRoot/ninja && make (default: world)
   ssh [command]     Interactive plink, or one-shot remote command
 
 Config: vm\vm.conf (copy from vm.conf.example)
 First connection: accept host key interactively once, then sync/build use -batch.
+Debug: set RHAP_VM_DEBUG=1 to print the plink argv (password redacted).
 "@
         exit 0
     }

@@ -5,6 +5,7 @@ from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 import subprocess
 import sys
+import threading
 
 import pytest
 
@@ -146,7 +147,12 @@ def test_host_rejects_peer_aliases_before_launch(configured, tmp_path):
 def test_host_streams_and_bounds_large_child_log(configured, tmp_path):
     profile, identity, _ = configured
     def runner(argv, **options):
-        options["stdout"].write(b"X" * (5 * 1024 * 1024)); options["stdout"].flush()
+        workspace = Path(argv[argv.index("--output") + 1]).parent
+        assert not (workspace / "process.log").exists()
+        producer = subprocess.run([sys.executable, "-c",
+            "import os; chunk=b'X'*65536; [os.write(1,chunk) for _ in range(96)]"],
+            stdout=options["stdout"], stderr=options["stderr"], timeout=20, check=False)
+        assert producer.returncode == 0
         Path(argv[argv.index("--output") + 1]).write_text(
             json.dumps(_analysis(identity)), encoding="utf-8")
         return subprocess.CompletedProcess(argv, 0)
@@ -154,6 +160,35 @@ def test_host_streams_and_bounds_large_child_log(configured, tmp_path):
     export_with_angr(profile, "reference", destination, runner=runner)
     log = destination.with_suffix(".json.angr.log").read_bytes()
     assert len(log) <= 4 * 1024 * 1024 + 64 and b"[truncated]" in log
+    assert not any(thread.name == "binrecon-angr-log-drain" and thread.is_alive()
+                   for thread in threading.enumerate())
+
+
+def test_timeout_with_active_pipe_writer_does_not_deadlock(configured, tmp_path):
+    profile, _, _ = configured
+    def runner(argv, **options):
+        subprocess.run([sys.executable, "-c",
+            "import os; chunk=b'Y'*65536\nwhile True: os.write(1,chunk)"],
+            stdout=options["stdout"], stderr=options["stderr"], timeout=0.2, check=False)
+    destination = tmp_path / "active-timeout.json"
+    with pytest.raises(AngrAdapterError, match="timed out"):
+        export_with_angr(profile, "reference", destination, runner=runner)
+    assert not destination.exists()
+    assert not any(thread.name == "binrecon-angr-log-drain" and thread.is_alive()
+                   for thread in threading.enumerate())
+
+
+def test_drain_failure_prevents_successful_publication(configured, tmp_path, monkeypatch):
+    profile, identity, _ = configured
+    destination = tmp_path / "drain.json"; destination.write_text("known-good", encoding="ascii")
+    def runner(argv, **options):
+        Path(argv[argv.index("--output") + 1]).write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+    monkeypatch.setattr(angr_host._BoundedPipeCapture, "finish",
+        lambda self: (_ for _ in ()).throw(OSError("drain failed")))
+    with pytest.raises(OSError, match="drain failed"):
+        export_with_angr(profile, "reference", destination, runner=runner)
+    assert destination.read_text(encoding="ascii") == "known-good"
 
 
 def test_timeout_keeps_primary_when_log_publication_fails(configured, tmp_path, monkeypatch):

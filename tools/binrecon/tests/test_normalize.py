@@ -355,10 +355,73 @@ def test_accepts_empty_present_status_tables_and_valid_unresolved_external_shape
         "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
         "external": True, "target_section_ordinal": None}]
     entry = _ghidra_status(); entry["external_symbols"] = ["_external"]
+    entry["external_libraries"] = ["libSystem"]
     ghidra["fallback_relocation_status"] = [entry]
     normalize_analysis(document)
     document = analysis(); document["extensions"]["bad"] = {"value": float("nan")}
     with pytest.raises(NormalizationError, match="finite"):
+        normalize_analysis(document)
+
+
+@pytest.mark.parametrize("status", ["SKIPPED", "PARTIAL", "FAILURE"])
+def test_nonapplied_ghidra_status_may_retain_instruction_reference_evidence(status):
+    document = analysis("Ghidra"); ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "callee",
+        "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
+        "external": False, "target_section_ordinal": 1}]
+    entry = _ghidra_status(); entry["status"] = status
+    ghidra["fallback_relocation_status"] = [entry]
+    normalize_analysis(document)
+
+
+def test_mixed_internal_external_siblings_share_instruction_scoped_evidence():
+    document = analysis("Ghidra"); document["symbols"] = []
+    document["relocations"].append({"address": 0x1005, "kind": "ida-off32-32-relative",
+        "target": "_external", "addend": 0})
+    instruction = document["functions"][0]["instructions"][0]
+    instruction.update(bytes="907856341278563412", operands="callee, _external",
+                       normalized_operands="callee, _external", relocations=[0, 1])
+    document["references"] = [{"address": 0x1000, "target": None, "kind": "call"}]
+    document["extensions"] = {"ghidra": {"fallback_relocations": [
+        {"address": 0x1001, "target": "callee", "width": 4, "pc_relative": True,
+         "type": 0, "original_bytes": "78563412", "external": False,
+         "target_section_ordinal": 1},
+        {"address": 0x1005, "target": "_external", "width": 4, "pc_relative": True,
+         "type": 0, "original_bytes": "78563412", "external": True,
+         "target_section_ordinal": None}], "fallback_relocation_status": []}}
+    evidence = {"reference_targets": [0x1020], "external_symbols": ["_external"],
+                "external_libraries": ["libSystem"]}
+    for index, address in enumerate((0x1001, 0x1005)):
+        entry = _ghidra_status(index, address); entry.update(evidence)
+        document["extensions"]["ghidra"]["fallback_relocation_status"].append(entry)
+    normalize_analysis(document)
+    contradictory = deepcopy(document)
+    contradictory["extensions"]["ghidra"]["fallback_relocation_status"][1][
+        "reference_targets"] = [0x1024]
+    with pytest.raises(NormalizationError, match="status"):
+        normalize_analysis(contradictory)
+
+
+@pytest.mark.parametrize("mutation", ["duplicate-reference", "unstable-reference",
+                                      "duplicate-external", "unstable-external",
+                                      "unpaired-external"])
+def test_rejects_noncanonical_ghidra_instruction_evidence(mutation):
+    document = analysis("Ghidra"); ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "callee",
+        "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
+        "external": False, "target_section_ordinal": 1}]
+    entry = _ghidra_status()
+    if mutation == "duplicate-reference": entry["reference_targets"] = [0x1020, 0x1020]
+    elif mutation == "unstable-reference": entry["reference_targets"] = [0x1024, 0x1020]
+    elif mutation == "duplicate-external":
+        entry["external_symbols"] = ["_a", "_a"]
+        entry["external_libraries"] = ["libA", "libA"]
+    elif mutation == "unstable-external":
+        entry["external_symbols"] = ["_z", "_a"]
+        entry["external_libraries"] = ["libZ", "libA"]
+    else: entry["external_symbols"] = ["_external"]
+    ghidra["fallback_relocation_status"] = [entry]
+    with pytest.raises(NormalizationError, match="status"):
         normalize_analysis(document)
 
 

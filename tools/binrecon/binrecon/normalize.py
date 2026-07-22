@@ -162,6 +162,7 @@ def _validate_ghidra_status_table(document: dict) -> None:
               "external_libraries"}
     allowed_statuses = {"APPLIED", "APPLIED_OTHER", "SKIPPED", "UNSUPPORTED",
                         "FAILURE", "PARTIAL"}
+    evidence_by_source = {}
     for position, (status, core, expected) in enumerate(zip(statuses, relocations, fallback)):
         if not isinstance(status, dict) or set(status) != fields:
             raise NormalizationError("Ghidra relocation status fields are invalid")
@@ -194,11 +195,17 @@ def _validate_ghidra_status_table(document: dict) -> None:
                 raise NormalizationError(f"Ghidra relocation status {name} is invalid")
         if any(not 0 <= target <= 0xFFFFFFFF for target in status["reference_targets"]):
             raise NormalizationError("Ghidra relocation status reference target is out of range")
+        for name in ("reference_targets", "external_symbols", "external_libraries"):
+            values = status[name]
+            if values != sorted(set(values)):
+                raise NormalizationError(
+                    f"Ghidra relocation status {name} is not stable and deduplicated")
+        if len(status["external_symbols"]) != len(status["external_libraries"]):
+            raise NormalizationError(
+                "Ghidra relocation status external symbol/library count mismatch")
         applied = status["status"] in {"APPLIED", "APPLIED_OTHER"}
         if applied and not status["reference_targets"]:
             raise NormalizationError("Ghidra applied relocation status lacks reference targets")
-        if not applied and status["reference_targets"]:
-            raise NormalizationError("Ghidra non-applied relocation status has reference targets")
         unresolved_external = (expected.get("external") is True and
             expected.get("target") is not None and
             expected.get("target_section_ordinal") is None)
@@ -208,8 +215,13 @@ def _validate_ghidra_status_table(document: dict) -> None:
             if not any(reference["address"] == status["reference_source"] and
                        reference["target"] is None for reference in document.get("references", [])):
                 raise NormalizationError("Ghidra relocation status lacks unresolved external reference")
-        elif status["external_symbols"] or status["external_libraries"]:
-            raise NormalizationError("Ghidra relocation status has contradictory external metadata")
+        evidence = (tuple(status["reference_targets"]),
+                    tuple(status["external_symbols"]),
+                    tuple(status["external_libraries"]))
+        previous = evidence_by_source.setdefault(status["reference_source"], evidence)
+        if previous != evidence:
+            raise NormalizationError(
+                "Ghidra relocation statuses have contradictory instruction evidence")
 
 
 def _location(address: int, sections: list[dict], document: dict | None = None) -> dict:

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
-import json
 import re
 
-from binrecon.normalize import NormalizationError, _range, normalize_analysis
+from binrecon.normalize import (
+    NormalizationError, _range, call_key, canonical_key, edge_key, endpoint_key,
+    instruction_key, integer_key, normalize_analysis, range_key, reference_key,
+    relocation_key, section_key,
+)
 
 
 class ConsensusError(ValueError):
@@ -14,6 +17,15 @@ class ConsensusError(ValueError):
 
 
 _DEFAULT_ANALYZERS = ("IDA", "Ghidra", "angr")
+
+
+def _claim_key(value: dict) -> tuple:
+    return (canonical_key(value["analyzer"]), range_key(value["range"]),
+            canonical_key(value["kind"]), canonical_key(value))
+
+
+def _group_key(value: dict) -> tuple:
+    return (section_key(value["section"]), value["start"], value["end"])
 
 
 def _reference_in_range(reference: dict, function_range: dict) -> bool:
@@ -42,24 +54,24 @@ def _content(claim: dict, *, omit_edges=False):
     value = {"blocks": claim["blocks"], "instructions": instructions, "calls": calls}
     if not omit_edges:
         value["edges"] = claim["edges"]
-    return repr(value)
+    return canonical_key(value)
 
 
 def _reference_differences(normalized: list[dict], expected: list[str]) -> list[str]:
     reasons = [f"missing analyzer: {name}" for name in expected
                if name not in {item["analyzer"]["name"] for item in normalized}]
-    reference_sets = [{repr(reference) for reference in item["references"]}
+    reference_sets = [{canonical_key(reference) for reference in item["references"]}
                       for item in normalized]
     if len({frozenset(items) for items in reference_sets}) > 1:
         by_source = {}
         for item in normalized:
             for reference in item["references"]:
-                by_source.setdefault(repr(reference["source"]), set()).add(
-                    (repr(reference["target"]), reference["kind"]))
+                by_source.setdefault(canonical_key(reference["source"]), set()).add(
+                    (canonical_key(reference["target"]), reference["kind"]))
         reasons.append("conflicting reference evidence" if any(
             len(values) > 1 for values in by_source.values()) else
             "incomplete reference evidence")
-    return reasons
+    return sorted(reasons, key=canonical_key)
 
 
 def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
@@ -86,7 +98,7 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
         raise ConsensusError("expected analyzer names must be nonempty strings")
     if len(set(requested)) != len(requested):
         raise ConsensusError("duplicate expected analyzer names")
-    expected = sorted(requested)
+    expected = sorted(requested, key=canonical_key)
     if not set(names) <= set(expected):
         raise ConsensusError("expected analyzers omit supplied analysis")
     claims = []
@@ -108,7 +120,7 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
                                "blocks": [], "instructions": [], "edges": [], "calls": [],
                                "references": []})
     # Connected overlap components, but only within an exact canonical section identity.
-    pending = sorted(claims, key=lambda c: (repr(c["range"]["section"]),
+    pending = sorted(claims, key=lambda c: (section_key(c["range"]["section"]),
                                             c["range"]["start"], c["range"]["end"],
                                             c["analyzer"], c["kind"]))
     components = []
@@ -128,8 +140,7 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
                 primary.extend(extra); components.remove(extra)
     groups = []
     for component in components:
-        component.sort(key=lambda c: (c["analyzer"], c["range"]["start"],
-                                      c["range"]["end"], c["kind"]))
+        component.sort(key=_claim_key)
         present = {claim["analyzer"] for claim in component}
         reasons = []
         kinds = {claim["kind"] for claim in component}
@@ -137,7 +148,8 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
         repeated = len(present) != len(component)
         if kinds == {"code", "data"}: reasons.append("code/data disagreement")
         if len(ranges) != 1 or repeated: reasons.append("incompatible boundaries")
-        for missing in sorted(set(expected) - present): reasons.append(f"missing analyzer: {missing}")
+        for missing in sorted(set(expected) - present, key=canonical_key):
+            reasons.append(f"missing analyzer: {missing}")
         code = [claim for claim in component if claim["kind"] == "code"]
         if code and len(ranges) == 1 and not repeated and kinds == {"code"}:
             without_edges = {_content(claim, omit_edges=True) for claim in code}
@@ -146,13 +158,13 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
                 reasons.append("incompatible code evidence")
             elif len(all_content) > 1:
                 reasons.append("incomplete CFG evidence")
-            reference_sets = [{repr(item) for item in claim["references"]} for claim in code]
+            reference_sets = [{canonical_key(item) for item in claim["references"]} for claim in code]
             if len({frozenset(items) for items in reference_sets}) > 1:
                 by_source = {}
                 for claim in code:
                     for reference in claim["references"]:
-                        by_source.setdefault(repr(reference["source"]), set()).add(
-                            (repr(reference["target"]), reference["kind"]))
+                        by_source.setdefault(canonical_key(reference["source"]), set()).add(
+                            (canonical_key(reference["target"]), reference["kind"]))
                 if any(len(values) > 1 for values in by_source.values()):
                     reasons.append("conflicting reference evidence")
                 else:
@@ -161,7 +173,9 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
             "code/data disagreement", "incompatible boundaries", "incompatible code evidence",
             "conflicting reference evidence"))
         status = "disputed" if disputed else ("partial" if reasons else "agreed")
-        aliases = sorted({alias for claim in component for alias in claim["aliases"]})
+        reasons.sort(key=canonical_key)
+        aliases = sorted({alias for claim in component for alias in claim["aliases"]},
+                         key=canonical_key)
         start = min(claim["range"]["start"] for claim in component)
         end = max(claim["range"]["end"] for claim in component)
         groups.append({"section": deepcopy(component[0]["range"]["section"]),
@@ -180,14 +194,15 @@ def build_consensus(documents: list[dict], expected_analyzers=None) -> dict:
                                      "version": item["analyzer"]["version"],
                                      "invocation": item["analyzer"]["invocation"],
                                      "extensions": deepcopy(item.get("extensions", {}))}
-                                    for item in normalized), key=lambda item: item["name"]),
+                                    for item in normalized),
+                                  key=lambda item: canonical_key(item["name"])),
               "reference_claims": sorted(({
                   "analyzer": item["analyzer"]["name"],
                   "references": deepcopy(item["references"])} for item in normalized),
-                  key=lambda item: item["analyzer"]),
+                  key=lambda item: canonical_key(item["analyzer"])),
               "reference_consensus": {"status": reference_status,
                                       "reasons": reference_reasons},
-              "groups": sorted(groups, key=lambda g: (repr(g["section"]), g["start"], g["end"]))}
+              "groups": sorted(groups, key=_group_key)}
     validate_consensus(result)
     return result
 
@@ -211,7 +226,8 @@ def validate_consensus(document: dict) -> None:
     if (not isinstance(document["expected_analyzers"], list) or
             any(not isinstance(name, str) or not name
                 for name in document["expected_analyzers"]) or
-            document["expected_analyzers"] != sorted(set(document["expected_analyzers"]))):
+            document["expected_analyzers"] != sorted(set(document["expected_analyzers"]),
+                                                     key=canonical_key)):
         raise ConsensusError("invalid expected analyzers")
     if not isinstance(document["analyzers"], list) or not isinstance(document["groups"], list):
         raise ConsensusError("invalid consensus collections")
@@ -227,7 +243,7 @@ def validate_consensus(document: dict) -> None:
                     for name in analyzer["extensions"])):
             raise ConsensusError("invalid analyzer extensions")
     analyzer_names = [item["name"] for item in document["analyzers"]]
-    if analyzer_names != sorted(set(analyzer_names)):
+    if analyzer_names != sorted(set(analyzer_names), key=canonical_key):
         raise ConsensusError("duplicate analyzer names")
     if not set(analyzer_names) <= set(document["expected_analyzers"]):
         raise ConsensusError("expected analyzers omit supplied analysis")
@@ -240,7 +256,7 @@ def validate_consensus(document: dict) -> None:
     for reference_claim in reference_claims:
         _exact(reference_claim, {"analyzer", "references"}, "reference claim")
         references = reference_claim["references"]
-        _evidence(references, _reference, "references")
+        _evidence(references, _reference, "references", key=reference_key)
         references_by_analyzer[reference_claim["analyzer"]] = references
     _exact(document["reference_consensus"], {"status", "reasons"},
            "reference consensus")
@@ -268,7 +284,7 @@ def validate_consensus(document: dict) -> None:
                         set(document["expected_analyzers"]) - group_analyzers)
         if (not isinstance(group["aliases"], list) or
                 any(not isinstance(alias, str) for alias in group["aliases"]) or
-                group["aliases"] != sorted(set(group["aliases"])) or
+                group["aliases"] != sorted(set(group["aliases"]), key=canonical_key) or
                 not isinstance(group["claims"], list) or not group["claims"]):
             raise ConsensusError("invalid consensus group collections")
         for claim in group["claims"]:
@@ -290,14 +306,14 @@ def validate_consensus(document: dict) -> None:
                 raise ConsensusError("invalid consensus claim range")
             if (not isinstance(claim["aliases"], list) or
                     any(not isinstance(alias, str) for alias in claim["aliases"]) or
-                    claim["aliases"] != sorted(set(claim["aliases"]))):
+                    claim["aliases"] != sorted(set(claim["aliases"]), key=canonical_key)):
                 raise ConsensusError("invalid consensus claim aliases")
-            _evidence(claim["blocks"], _range_contract, "blocks")
+            _evidence(claim["blocks"], _range_contract, "blocks", key=range_key)
             _evidence(claim["instructions"], _instruction, "instructions",
-                      key=lambda item: _endpoint_key(item["location"]))
-            _evidence(claim["edges"], _edge, "edges")
-            _evidence(claim["calls"], _call, "calls")
-            _evidence(claim["references"], _reference, "references")
+                      key=instruction_key)
+            _evidence(claim["edges"], _edge, "edges", key=edge_key)
+            _evidence(claim["calls"], _call, "calls", key=call_key)
+            _evidence(claim["references"], _reference, "references", key=reference_key)
             for block in claim["blocks"]:
                 if (block["section"] != claim_range["section"] or
                         block["start"] < claim_range["start"] or
@@ -327,16 +343,13 @@ def validate_consensus(document: dict) -> None:
         if (group["start"] != min(claim["range"]["start"] for claim in group["claims"]) or
                 group["end"] != max(claim["range"]["end"] for claim in group["claims"]) or
                 group["aliases"] != sorted({alias for claim in group["claims"]
-                                            for alias in claim["aliases"]})):
+                                            for alias in claim["aliases"]},
+                                           key=canonical_key)):
             raise ConsensusError("group summary does not match claims")
-        claim_keys = [(claim["analyzer"], claim["range"]["start"],
-                       claim["range"]["end"], claim["kind"],
-                       json.dumps(claim, sort_keys=True, separators=(",", ":")))
-                      for claim in group["claims"]]
+        claim_keys = [_claim_key(claim) for claim in group["claims"]]
         if claim_keys != sorted(set(claim_keys)):
             raise ConsensusError("unsorted or duplicate claims")
-    group_keys = [(json.dumps(group["section"], sort_keys=True), group["start"], group["end"])
-                  for group in document["groups"]]
+    group_keys = [_group_key(group) for group in document["groups"]]
     if group_keys != sorted(set(group_keys)):
         raise ConsensusError("unsorted or duplicate groups")
 
@@ -353,6 +366,8 @@ def _status_reasons(status, reasons, missing_analyzers=()) -> None:
                 (reason not in allowed and reason not in missing_reasons)
                 for reason in reasons)):
         raise ConsensusError("invalid consensus reasons")
+    if reasons != sorted(reasons, key=canonical_key):
+        raise ConsensusError("unsorted consensus reasons")
     if {reason for reason in reasons if reason.startswith("missing analyzer: ")} != missing_reasons:
         raise ConsensusError("missing analyzer reasons do not match claims")
     disputed = any(reason in {"code/data disagreement", "incompatible boundaries",
@@ -412,14 +427,6 @@ def _endpoint(value: dict) -> None:
         raise ConsensusError("invalid endpoint kind")
 
 
-def _endpoint_key(value: dict) -> tuple:
-    if value.get("kind") == "section":
-        return ("section", json.dumps(value["section"], sort_keys=True), value["offset"])
-    if value.get("kind") == "unmapped":
-        return ("unmapped", value["address"])
-    return (str(value.get("kind")), str(value.get("name", "")))
-
-
 def _range_contract(value: dict) -> None:
     _exact(value, {"section", "start", "end"}, "range")
     _section(value["section"])
@@ -445,7 +452,7 @@ def _operand(value: dict) -> None:
     if not isinstance(value["text"], str):
         raise ConsensusError("invalid operand text")
     _evidence(value["relocations"], _relocation, "operand relocations",
-              key=lambda item: item["index"])
+              key=relocation_key)
 
 
 def _instruction(value: dict) -> None:
@@ -465,10 +472,10 @@ def _instruction(value: dict) -> None:
     for name in ("relocations", "reference_indexes"):
         indexes = value[name]
         if (not isinstance(indexes, list) or any(not _integer(item) or item < 0 for item in indexes)
-                or indexes != sorted(set(indexes))):
+                or indexes != sorted(set(indexes), key=integer_key)):
             raise ConsensusError(f"invalid instruction {name}")
-    operand_indexes = sorted(item["index"] for operand in value["operands"]
-                             for item in operand["relocations"])
+    operand_indexes = sorted((item["index"] for operand in value["operands"]
+                              for item in operand["relocations"]), key=integer_key)
     if operand_indexes != value["relocations"]:
         raise ConsensusError("instruction relocation indexes disagree with operands")
     byte_length = len(value["bytes"]) // 2
@@ -501,7 +508,7 @@ def _evidence(values, validator, where: str, key=None) -> None:
         raise ConsensusError(f"invalid {where}")
     for value in values:
         validator(value)
-    sort_key = key or (lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")))
+    sort_key = key or canonical_key
     keys = [sort_key(item) for item in values]
     if keys != sorted(set(keys)):
         raise ConsensusError(f"unsorted or duplicate {where}")

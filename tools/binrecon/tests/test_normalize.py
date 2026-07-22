@@ -1,4 +1,6 @@
 from copy import deepcopy
+import json
+import random
 
 import pytest
 
@@ -155,6 +157,32 @@ def test_target_name_must_match_an_operand_token_not_a_substring():
                        normalized_operands="eax, callee_suffix")
     with pytest.raises(NormalizationError, match="operand"):
         normalize_analysis(document)
+
+
+def test_edges_use_shared_numeric_endpoint_order_not_repr_lexical_order():
+    document = analysis()
+    successors = document["functions"][0]["blocks"][0]["successors"]
+    successors[:] = [{"target": 0x1009, "kind": "a"},
+                     {"target": 0x1008, "kind": "z"}]
+    edges = normalize_analysis(document)["functions"][0]["edges"]
+    assert [(edge["target"]["offset"], edge["kind"]) for edge in edges] == [
+        (8, "z"), (9, "a")]
+
+
+def test_random_nested_input_permutations_produce_identical_canonical_json():
+    baseline = analysis()
+    baseline["functions"][0]["blocks"][0]["successors"] = [
+        {"target": 0x1009, "kind": "a"}, {"target": 0x1008, "kind": "z"}]
+    baseline["references"].append({"address": 0x1005, "target": 0x1024, "kind": "data"})
+    expected = json.dumps(normalize_analysis(baseline), sort_keys=True, separators=(",", ":"))
+    for seed in range(12):
+        candidate = deepcopy(baseline)
+        rng = random.Random(seed)
+        rng.shuffle(candidate["functions"][0]["instructions"])
+        rng.shuffle(candidate["functions"][0]["blocks"][0]["successors"])
+        rng.shuffle(candidate["references"])
+        actual = json.dumps(normalize_analysis(candidate), sort_keys=True, separators=(",", ":"))
+        assert actual == expected
 
 
 def test_load_base_changes_do_not_change_section_relative_function_identity():

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import re
 
 from binrecon.schema import validate_analysis_semantics, validate_document
@@ -10,6 +11,57 @@ from binrecon.schema import validate_analysis_semantics, validate_document
 
 class NormalizationError(ValueError):
     """Raised when analyzer evidence cannot be normalized unambiguously."""
+
+
+def canonical_key(value) -> str:
+    """Return the sole deterministic structural ordering/deduplication key."""
+    try:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"),
+                          ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise NormalizationError(f"value is not canonical JSON: {error}") from error
+
+
+def section_key(value: dict) -> tuple:
+    return (value["offset"], value["size"], value["permissions"], value["sha256"])
+
+
+def endpoint_key(value: dict) -> tuple:
+    kind = value["kind"]
+    if kind == "section": return (0, section_key(value["section"]), value["offset"])
+    if kind == "unmapped": return (1, value["address"])
+    if kind == "external": return (2, canonical_key(value["name"]))
+    return (3,)
+
+
+def range_key(value: dict) -> tuple:
+    return (section_key(value["section"]), value["start"], value["end"])
+
+
+def edge_key(value: dict) -> tuple:
+    return (endpoint_key(value["source"]), endpoint_key(value["target"]),
+            canonical_key(value["kind"]))
+
+
+def call_key(value: dict) -> tuple:
+    return (endpoint_key(value["source"]), endpoint_key(value["target"]),
+            canonical_key(value["name"]))
+
+
+def reference_key(value: dict) -> tuple:
+    return edge_key(value)
+
+
+def instruction_key(value: dict) -> tuple:
+    return (endpoint_key(value["location"]), canonical_key(value))
+
+
+def integer_key(value: int) -> int:
+    return value
+
+
+def relocation_key(value: dict) -> tuple:
+    return (value["field_offset"], value["index"], canonical_key(value))
 
 
 _WIDTH = re.compile(r"(?:^|[^0-9])(8|16|32)(?:[^0-9]|$)")
@@ -176,7 +228,7 @@ def _target(document: dict, target, sections: list[dict]) -> dict:
     for symbol in symbols:
         if symbol["section"] is not None:
             mapped.append(_location(symbol["address"], sections))
-    unique = {repr(item): item for item in mapped}
+    unique = {canonical_key(item): item for item in mapped}
     if len(unique) > 1:
         raise NormalizationError(f"relocation target {target!r} is ambiguous")
     if unique:
@@ -202,7 +254,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
             raise NormalizationError(f"relocation {index} has multiple instruction owners")
         ownership[index] = address
         fields.append((start, end, index, width, relative, relocation))
-    fields.sort()
+    fields.sort(key=lambda item: (item[0], item[1], item[2]))
     if any(right[0] < left[1] for left, right in zip(fields, fields[1:])):
         raise NormalizationError("relocation fields overlap")
     display_operands = _split_operands(instruction["operands"])
@@ -227,7 +279,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
             "mnemonic": instruction["mnemonic"].lower(), "operands": operands,
             "display_operands": instruction["operands"],
             "normalized_operands": instruction["normalized_operands"],
-            "relocations": list(instruction["relocations"]),
+            "relocations": sorted(set(instruction["relocations"]), key=integer_key),
             "reference_indexes": reference_indexes}
 
 
@@ -246,7 +298,8 @@ def normalize_analysis(document: dict) -> dict:
                                          if item["target"] is not None else
                                          {"kind": "external", "name": None}),
                               "kind": item["kind"]} for item in original_references]
-    indexed_references = sorted(enumerate(normalized_references), key=lambda item: repr(item[1]))
+    indexed_references = sorted(enumerate(normalized_references),
+                                key=lambda item: reference_key(item[1]))
     old_to_new = {old: new for new, (old, _) in enumerate(indexed_references)}
     normalized_references = [item for _, item in indexed_references]
     ownership: dict[int, int] = {}
@@ -257,7 +310,8 @@ def normalize_analysis(document: dict) -> dict:
                         for item in function["instructions"]]
         for instruction in instructions:
             instruction["reference_indexes"] = sorted(
-                old_to_new[index] for index in instruction["reference_indexes"])
+                {old_to_new[index] for index in instruction["reference_indexes"]},
+                key=integer_key)
         edges = [{"source": _location(block["address"], sections),
                   "target": _location(successor["target"], sections),
                   "kind": successor["kind"]}
@@ -268,14 +322,13 @@ def normalize_analysis(document: dict) -> dict:
                              {"kind": "external", "name": call["name"]}),
                   "name": call["name"]} for call in function["calls"]]
         functions.append({"range": _range(function["address"], function["size"], sections),
-                          "aliases": sorted(set(function["names"])),
+                          "aliases": sorted(set(function["names"]), key=canonical_key),
                           "confidence": function["confidence"],
                           "blocks": sorted((_range(b["address"], b["size"], sections)
-                                            for b in function["blocks"]), key=repr),
-                          "instructions": sorted(instructions, key=lambda item: (
-                              repr(item["location"].get("section")),
-                              item["location"].get("offset", item["location"].get("address", -1)))),
-                          "edges": sorted(edges, key=repr), "calls": sorted(calls, key=repr)})
+                                            for b in function["blocks"]), key=range_key),
+                          "instructions": sorted(instructions, key=instruction_key),
+                          "edges": sorted(edges, key=edge_key),
+                          "calls": sorted(calls, key=call_key)})
     # A relocation whose field intersects an instruction must be explicitly owned by it.
     all_instructions = [item for function in source["functions"] for item in function["instructions"]]
     for index, relocation in enumerate(source["relocations"]):
@@ -289,7 +342,9 @@ def normalize_analysis(document: dict) -> dict:
     return {"schema_version": "normalized-analysis-v1",
             "input": {**source["input"], "sha256": source["input"]["sha256"].upper()},
             "analyzer": deepcopy(source["analyzer"]),
-            "sections": sorted(normalized_sections, key=repr),
-            "functions": sorted(functions, key=lambda item: repr(item["range"])),
+            "sections": sorted(normalized_sections,
+                               key=lambda item: (section_key(item["identity"]),
+                                                 canonical_key(item["name"]))),
+            "functions": sorted(functions, key=lambda item: range_key(item["range"])),
             "references": normalized_references,
             "extensions": deepcopy(source.get("extensions", {}))}

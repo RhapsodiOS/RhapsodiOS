@@ -1,4 +1,6 @@
 from copy import deepcopy
+import json
+import random
 
 import pytest
 
@@ -202,3 +204,38 @@ def test_recursive_contract_rejects_invalid_reasons_aliases_indexes_and_group_ra
         group["claims"][0]["instructions"][0]["operands"][0]["relocations"][0]["field_offset"] = 99
     with pytest.raises(ConsensusError):
         validate_consensus(result)
+
+
+def test_section_groups_use_shared_semantic_order_despite_lexical_conflicts():
+    documents = analyses()
+    for document in documents:
+        document["sections"].append({"name": ".data", "address": 0x2000,
+            "offset": 64, "size": 2, "permissions": "a", "sha256": "B" * 64})
+        document["functions"].append({"address": 0x2000, "size": 1, "names": ["data_like"],
+            "blocks": [], "instructions": [], "calls": [], "confidence": .5})
+        document["sections"].reverse()
+        document["functions"].reverse()
+    groups = build_consensus(documents)["groups"]
+    assert [(group["section"]["offset"], group["section"]["permissions"])
+            for group in groups] == [(0, "rx"), (64, "a")]
+
+
+def test_random_consensus_input_and_nested_permutations_are_byte_stable_and_valid():
+    documents = analyses()
+    documents[0]["functions"][0]["blocks"][0]["successors"] = [
+        {"target": 0x1009, "kind": "a"}, {"target": 0x1008, "kind": "z"}]
+    for document in documents[1:]:
+        document["functions"][0]["blocks"][0]["successors"] = deepcopy(
+            documents[0]["functions"][0]["blocks"][0]["successors"])
+    expected = None
+    for seed in range(12):
+        candidate = deepcopy(documents)
+        rng = random.Random(seed); rng.shuffle(candidate)
+        for document in candidate:
+            rng.shuffle(document["functions"][0]["instructions"])
+            rng.shuffle(document["functions"][0]["blocks"][0]["successors"])
+            rng.shuffle(document["references"])
+        result = build_consensus(candidate); validate_consensus(result)
+        encoded = json.dumps(result, sort_keys=True, separators=(",", ":"))
+        expected = encoded if expected is None else expected
+        assert encoded == expected

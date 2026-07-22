@@ -141,7 +141,7 @@ def test_non_validate_commands_remain_not_implemented(command, capsys):
 def test_consensus_module_entrypoint_writes_deterministic_json(tmp_path):
     from test_normalize import analysis
     inputs = []
-    for name in ("ida", "ghidra", "angr"):
+    for name in ("IDA", "Ghidra", "angr"):
         path = tmp_path / f"{name}.json"
         path.write_text(json.dumps(analysis(name)), encoding="utf-8")
         inputs.append(path)
@@ -172,8 +172,8 @@ def test_consensus_entrypoint_rejects_unsafe_or_invalid_inputs_without_partial_o
     from test_normalize import analysis
     first = tmp_path / "one.json"
     second = tmp_path / "two.json"
-    first.write_text(json.dumps(analysis("ida")), encoding="utf-8")
-    other = analysis("ghidra")
+    first.write_text(json.dumps(analysis("IDA")), encoding="utf-8")
+    other = analysis("Ghidra")
     if mode == "malformed":
         second.write_text("{", encoding="utf-8")
     else:
@@ -189,3 +189,21 @@ def test_consensus_entrypoint_rejects_unsafe_or_invalid_inputs_without_partial_o
     assert completed.stdout == ""
     assert completed.stderr.startswith("binrecon: ")
     if mode != "alias": assert not output.exists()
+
+
+def test_consensus_cli_expected_analyzer_override_allows_two_way_agreement(tmp_path):
+    from test_normalize import analysis
+    inputs = []
+    for name in ("IDA", "Ghidra"):
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(analysis(name)), encoding="utf-8")
+        inputs.append(path)
+    output = tmp_path / "out.json"
+    completed = subprocess.run(
+        [sys.executable, "-m", "binrecon", "consensus",
+         *(part for path in inputs for part in ("--input", str(path))),
+         "--expected-analyzer", "IDA", "--expected-analyzer", "Ghidra",
+         "--output", str(output)], cwd=tmp_path, env=_subprocess_environment(),
+        capture_output=True, text=True, check=False)
+    assert completed.returncode == 0
+    assert json.loads(output.read_text())["groups"][0]["status"] == "agreed"

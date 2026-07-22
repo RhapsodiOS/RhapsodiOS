@@ -25,6 +25,8 @@ def build_parser() -> argparse.ArgumentParser:
         command_parser.add_argument("--profile", required=True)
     consensus = subparsers.add_parser("consensus")
     consensus.add_argument("--input", action="append", required=True, dest="inputs")
+    consensus.add_argument("--expected-analyzer", action="append",
+                           dest="expected_analyzers")
     consensus.add_argument("--output", required=True)
 
     return parser
@@ -59,7 +61,7 @@ def main(argv=None) -> int:
             for document in documents:
                 validate_document("analysis-v1", document)
                 validate_analysis_semantics(document)
-            report = build_consensus(documents)
+            report = build_consensus(documents, expected_analyzers=args.expected_analyzers)
             text = json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n"
             if output is None:
                 sys.stdout.write(text)

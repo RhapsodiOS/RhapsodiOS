@@ -200,9 +200,10 @@ def _validate_ghidra_status_table(document: dict) -> None:
             if values != sorted(set(values)):
                 raise NormalizationError(
                     f"Ghidra relocation status {name} is not stable and deduplicated")
-        if len(status["external_symbols"]) != len(status["external_libraries"]):
-            raise NormalizationError(
-                "Ghidra relocation status external symbol/library count mismatch")
+        for name in ("external_symbols", "external_libraries"):
+            if (len(status[name]) > MAX_REFERENCES or
+                    any(not value for value in status[name])):
+                raise NormalizationError(f"Ghidra relocation status {name} is invalid")
         applied = status["status"] in {"APPLIED", "APPLIED_OTHER"}
         if applied and not status["reference_targets"]:
             raise NormalizationError("Ghidra applied relocation status lacks reference targets")

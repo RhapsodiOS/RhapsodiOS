@@ -402,24 +402,52 @@ def test_mixed_internal_external_siblings_share_instruction_scoped_evidence():
         normalize_analysis(contradictory)
 
 
-@pytest.mark.parametrize("mutation", ["duplicate-reference", "unstable-reference",
-                                      "duplicate-external", "unstable-external",
-                                      "unpaired-external"])
-def test_rejects_noncanonical_ghidra_instruction_evidence(mutation):
-    document = analysis("Ghidra"); ghidra = document["extensions"].setdefault("ghidra", {})
-    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "callee",
+@pytest.mark.parametrize(("symbols", "libraries"), [
+    (["_external", "_other"], ["libSystem"]),
+    (["_external"], ["libA", "libSystem"]),
+])
+def test_accepts_independent_ghidra_external_sets(symbols, libraries):
+    document = analysis("Ghidra"); document["symbols"] = []
+    document["relocations"][0]["target"] = "_external"
+    document["extensions"]["macho"]["relocations"][0]["target"] = "_external"
+    document["references"][0]["target"] = None
+    ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "_external",
         "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
-        "external": False, "target_section_ordinal": 1}]
-    entry = _ghidra_status()
+        "external": True, "target_section_ordinal": None}]
+    entry = _ghidra_status(); entry["external_symbols"] = symbols
+    entry["external_libraries"] = libraries
+    ghidra["fallback_relocation_status"] = [entry]
+    normalize_analysis(document)
+
+
+@pytest.mark.parametrize("mutation", ["duplicate-reference", "unstable-reference",
+                                      "duplicate-symbol", "unstable-symbol",
+                                      "duplicate-library", "unstable-library",
+                                      "nonstring-symbol", "nonstring-library",
+                                      "empty-symbol", "empty-library", "missing-target"])
+def test_rejects_noncanonical_ghidra_instruction_evidence(mutation):
+    document = analysis("Ghidra"); document["symbols"] = []
+    document["relocations"][0]["target"] = "_external"
+    document["extensions"]["macho"]["relocations"][0]["target"] = "_external"
+    document["references"][0]["target"] = None
+    ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "_external",
+        "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
+        "external": True, "target_section_ordinal": None}]
+    entry = _ghidra_status(); entry["external_symbols"] = ["_external"]
+    entry["external_libraries"] = ["libSystem"]
     if mutation == "duplicate-reference": entry["reference_targets"] = [0x1020, 0x1020]
     elif mutation == "unstable-reference": entry["reference_targets"] = [0x1024, 0x1020]
-    elif mutation == "duplicate-external":
-        entry["external_symbols"] = ["_a", "_a"]
-        entry["external_libraries"] = ["libA", "libA"]
-    elif mutation == "unstable-external":
-        entry["external_symbols"] = ["_z", "_a"]
-        entry["external_libraries"] = ["libZ", "libA"]
-    else: entry["external_symbols"] = ["_external"]
+    elif mutation == "duplicate-symbol": entry["external_symbols"] = ["_external"] * 2
+    elif mutation == "unstable-symbol": entry["external_symbols"] = ["_z", "_external"]
+    elif mutation == "duplicate-library": entry["external_libraries"] = ["libSystem"] * 2
+    elif mutation == "unstable-library": entry["external_libraries"] = ["libZ", "libA"]
+    elif mutation == "nonstring-symbol": entry["external_symbols"] = [1]
+    elif mutation == "nonstring-library": entry["external_libraries"] = [1]
+    elif mutation == "empty-symbol": entry["external_symbols"] = ["", "_external"]
+    elif mutation == "empty-library": entry["external_libraries"] = [""]
+    else: entry["external_symbols"] = ["_other"]
     ghidra["fallback_relocation_status"] = [entry]
     with pytest.raises(NormalizationError, match="status"):
         normalize_analysis(document)

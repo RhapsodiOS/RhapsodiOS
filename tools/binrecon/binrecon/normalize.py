@@ -145,7 +145,11 @@ def _prepare_section_occurrences(document: dict) -> None:
 
 def _validate_ghidra_status_table(document: dict) -> None:
     ghidra = document.get("extensions", {}).get("ghidra", {})
-    if "fallback_relocation_status" not in ghidra:
+    has_fallback = "fallback_relocations" in ghidra
+    has_status = "fallback_relocation_status" in ghidra
+    if has_fallback != has_status:
+        raise NormalizationError("Ghidra relocation status and fallback keys must appear together")
+    if not has_status:
         return
     statuses = ghidra["fallback_relocation_status"]
     relocations = document["relocations"]
@@ -156,6 +160,8 @@ def _validate_ghidra_status_table(document: dict) -> None:
     fields = {"index", "address", "status", "type", "values", "reference_source",
               "original_bytes", "width", "reference_targets", "external_symbols",
               "external_libraries"}
+    allowed_statuses = {"APPLIED", "APPLIED_OTHER", "SKIPPED", "UNSUPPORTED",
+                        "FAILURE", "PARTIAL"}
     for position, (status, core, expected) in enumerate(zip(statuses, relocations, fallback)):
         if not isinstance(status, dict) or set(status) != fields:
             raise NormalizationError("Ghidra relocation status fields are invalid")
@@ -169,12 +175,16 @@ def _validate_ghidra_status_table(document: dict) -> None:
             raise NormalizationError("Ghidra relocation status width mismatch")
         if (type(status["type"]) is not int or status["type"] != expected.get("type")):
             raise NormalizationError("Ghidra relocation status type mismatch")
-        if (not isinstance(status["status"], str) or not status["status"] or
+        if (status["status"] not in allowed_statuses or
                 type(status["reference_source"]) is not int or
+                not 0 <= status["reference_source"] <= 0xFFFFFFFF or
                 not isinstance(status["original_bytes"], str) or
                 re.fullmatch(rf"[0-9A-Fa-f]{{{status['width'] * 2}}}",
                              status["original_bytes"]) is None):
             raise NormalizationError("Ghidra relocation status scalar is invalid")
+        if (not isinstance(expected.get("original_bytes"), str) or
+                status["original_bytes"].upper() != expected["original_bytes"].upper()):
+            raise NormalizationError("Ghidra relocation status original_bytes mismatch")
         list_types = (("values", int), ("reference_targets", int),
                       ("external_symbols", str), ("external_libraries", str))
         for name, item_type in list_types:
@@ -182,6 +192,24 @@ def _validate_ghidra_status_table(document: dict) -> None:
             if (not isinstance(values, list) or any(
                     type(value) is not item_type for value in values)):
                 raise NormalizationError(f"Ghidra relocation status {name} is invalid")
+        if any(not 0 <= target <= 0xFFFFFFFF for target in status["reference_targets"]):
+            raise NormalizationError("Ghidra relocation status reference target is out of range")
+        applied = status["status"] in {"APPLIED", "APPLIED_OTHER"}
+        if applied and not status["reference_targets"]:
+            raise NormalizationError("Ghidra applied relocation status lacks reference targets")
+        if not applied and status["reference_targets"]:
+            raise NormalizationError("Ghidra non-applied relocation status has reference targets")
+        unresolved_external = (expected.get("external") is True and
+            expected.get("target") is not None and
+            expected.get("target_section_ordinal") is None)
+        if unresolved_external:
+            if expected["target"] not in status["external_symbols"]:
+                raise NormalizationError("Ghidra relocation status external symbol mismatch")
+            if not any(reference["address"] == status["reference_source"] and
+                       reference["target"] is None for reference in document.get("references", [])):
+                raise NormalizationError("Ghidra relocation status lacks unresolved external reference")
+        elif status["external_symbols"] or status["external_libraries"]:
+            raise NormalizationError("Ghidra relocation status has contradictory external metadata")
 
 
 def _location(address: int, sections: list[dict], document: dict | None = None) -> dict:

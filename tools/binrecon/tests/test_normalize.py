@@ -118,7 +118,14 @@ def test_supports_two_distinct_or_shared_relocated_operands():
     ("IDA", "ida-off32-32-relative", {}),
     ("Ghidra", "4", {"ghidra": {"fallback_relocations": [
         {"address": 0x1001, "kind": "4", "target": "callee", "addend": -4,
-         "width": 4, "pc_relative": True}]}}),
+         "width": 4, "pc_relative": True, "type": 0,
+         "original_bytes": "78563412", "external": False,
+         "target_section_ordinal": 1}], "fallback_relocation_status": [{
+             "index": 0, "address": 0x1001, "status": "APPLIED", "type": 0,
+             "values": [-4], "reference_source": 0x1000,
+             "original_bytes": "78563412", "width": 4,
+             "reference_targets": [0x1020], "external_symbols": [],
+             "external_libraries": []}]}}),
     ("angr", "i386-vanilla-32-pcrel", {"macho": {"relocations": [
         {"address": 0x1001, "target": "callee", "width": 4,
          "pc_relative": True}]}}),
@@ -140,7 +147,14 @@ def test_ghidra_structured_operand_index_owns_numeric_relocation_operand():
                        operands="eax, 0x1020", normalized_operands="eax, 0x1020")
     document["extensions"] = {"ghidra": {
         "fallback_relocations": [{"address": 0x1001, "target": "callee",
-                                  "width": 4, "pc_relative": True}],
+                                  "width": 4, "pc_relative": True, "type": 0,
+                                  "original_bytes": "78563412", "external": False,
+                                  "target_section_ordinal": 1}],
+        "fallback_relocation_status": [{"index": 0, "address": 0x1001,
+            "status": "APPLIED", "type": 0, "values": [-4],
+            "reference_source": 0x1000, "original_bytes": "78563412", "width": 4,
+            "reference_targets": [0x1020], "external_symbols": [],
+            "external_libraries": []}],
         "reference_metadata": [{"index": 0, "operand_indexes": [1]}],
         "instruction_reference_indexes": [
             {"address": 0x1000, "reference_indexes": [0]}]}}
@@ -262,7 +276,9 @@ def test_validates_real_shaped_ghidra_relocation_status_table():
     document = analysis("Ghidra")
     document["extensions"].setdefault("ghidra", {}).update({
         "fallback_relocations": [{"address": 0x1001, "target": "callee",
-                                  "width": 4, "pc_relative": True, "type": 0}],
+                                  "width": 4, "pc_relative": True, "type": 0,
+                                  "original_bytes": "78563412", "external": False,
+                                  "target_section_ordinal": 1}],
         "fallback_relocation_status": [_ghidra_status()]})
     normalized = normalize_analysis(document)
     assert normalized["extensions"]["ghidra"]["fallback_relocation_status"][0]["index"] == 0
@@ -275,7 +291,8 @@ def test_rejects_malformed_ghidra_relocation_status_tables(mutation):
     ghidra = document["extensions"].setdefault("ghidra", {})
     ghidra["fallback_relocations"] = [
         {"address": 0x1001, "target": "callee", "width": 4,
-         "pc_relative": True, "type": 0}]
+         "pc_relative": True, "type": 0, "original_bytes": "78563412",
+         "external": False, "target_section_ordinal": 1}]
     ghidra["fallback_relocation_status"] = [_ghidra_status()]
     if mutation == "duplicate": ghidra["fallback_relocation_status"] *= 2
     elif mutation == "missing": ghidra["fallback_relocation_status"] = []
@@ -289,6 +306,57 @@ def test_rejects_malformed_ghidra_relocation_status_tables(mutation):
         document["relocations"] = []; ghidra["fallback_relocations"] = []
     with pytest.raises(NormalizationError, match="status"):
         normalize_analysis(document)
+
+
+@pytest.mark.parametrize("mutation", ["fallback-only", "status-only", "enum",
+                                      "applied-empty", "bytes"])
+def test_rejects_ghidra_status_annotation_integrity_gaps(mutation):
+    document = analysis("Ghidra"); ghidra = document["extensions"].setdefault("ghidra", {})
+    fallback = {"address": 0x1001, "target": "callee", "width": 4,
+                "pc_relative": True, "type": 0, "original_bytes": "78563412",
+                "external": False, "target_section_ordinal": 1}
+    ghidra.update(fallback_relocations=[fallback],
+                  fallback_relocation_status=[_ghidra_status()])
+    if mutation == "fallback-only": del ghidra["fallback_relocation_status"]
+    elif mutation == "status-only": del ghidra["fallback_relocations"]
+    elif mutation == "enum": ghidra["fallback_relocation_status"][0]["status"] = "MADE_UP"
+    elif mutation == "applied-empty": ghidra["fallback_relocation_status"][0]["reference_targets"] = []
+    else: ghidra["fallback_relocation_status"][0]["original_bytes"] = "00000000"
+    with pytest.raises(NormalizationError, match="status"):
+        normalize_analysis(document)
+
+
+@pytest.mark.parametrize("status", ["APPLIED", "APPLIED_OTHER", "SKIPPED",
+                                    "UNSUPPORTED", "FAILURE", "PARTIAL"])
+def test_accepts_exact_ghidra_status_enum_boundaries(status):
+    document = analysis("Ghidra"); ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "callee",
+        "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
+        "external": False, "target_section_ordinal": 1}]
+    entry = _ghidra_status(); entry["status"] = status
+    if status not in ("APPLIED", "APPLIED_OTHER"): entry["reference_targets"] = []
+    ghidra["fallback_relocation_status"] = [entry]
+    normalize_analysis(document)
+
+
+def test_accepts_empty_present_status_tables_and_valid_unresolved_external_shape():
+    empty = analysis("Ghidra"); empty["relocations"] = []
+    empty["functions"][0]["instructions"][0]["relocations"] = []
+    empty["extensions"] = {"ghidra": {"fallback_relocations": [],
+                                       "fallback_relocation_status": []}}
+    normalize_analysis(empty)
+
+    document = analysis("Ghidra"); document["symbols"] = []
+    document["relocations"][0]["target"] = "_external"
+    document["extensions"]["macho"]["relocations"][0]["target"] = "_external"
+    document["references"][0]["target"] = None
+    ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [{"address": 0x1001, "target": "_external",
+        "width": 4, "pc_relative": True, "type": 0, "original_bytes": "78563412",
+        "external": True, "target_section_ordinal": None}]
+    entry = _ghidra_status(); entry["external_symbols"] = ["_external"]
+    ghidra["fallback_relocation_status"] = [entry]
+    normalize_analysis(document)
     document = analysis(); document["extensions"]["bad"] = {"value": float("nan")}
     with pytest.raises(NormalizationError, match="finite"):
         normalize_analysis(document)

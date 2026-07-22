@@ -281,8 +281,12 @@ def test_real_shaped_relocation_status_is_not_cross_analyzer_semantics():
     documents = analyses()
     documents[1]["extensions"]["ghidra"] = {
         "fallback_relocations": [{"address": 0x1001, "target": "callee",
-                                  "width": 4, "pc_relative": True}],
-        "fallback_relocation_status": [{"address": 0x1001, "status": "APPLIED"}]}
+                                  "width": 4, "pc_relative": True, "type": 0}],
+        "fallback_relocation_status": [{"index": 0, "address": 0x1001,
+            "status": "APPLIED", "type": 0, "values": [-4],
+            "reference_source": 0x1000, "original_bytes": "78563412", "width": 4,
+            "reference_targets": [0x1020], "external_symbols": [],
+            "external_libraries": []}]}
     assert build_consensus(documents)["groups"][0]["status"] == "agreed"
     documents[2]["relocations"][0]["addend"] = 7
     assert build_consensus(documents)["groups"][0]["status"] == "disputed"

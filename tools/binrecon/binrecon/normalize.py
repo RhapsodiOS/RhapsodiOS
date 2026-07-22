@@ -143,6 +143,47 @@ def _prepare_section_occurrences(document: dict) -> None:
             section["__binrecon_occurrence"] = occurrence
 
 
+def _validate_ghidra_status_table(document: dict) -> None:
+    ghidra = document.get("extensions", {}).get("ghidra", {})
+    if "fallback_relocation_status" not in ghidra:
+        return
+    statuses = ghidra["fallback_relocation_status"]
+    relocations = document["relocations"]
+    fallback = ghidra.get("fallback_relocations")
+    if (not isinstance(statuses, list) or not isinstance(fallback, list) or
+            len(statuses) != len(relocations) or len(fallback) != len(relocations)):
+        raise NormalizationError("Ghidra relocation status count mismatch")
+    fields = {"index", "address", "status", "type", "values", "reference_source",
+              "original_bytes", "width", "reference_targets", "external_symbols",
+              "external_libraries"}
+    for position, (status, core, expected) in enumerate(zip(statuses, relocations, fallback)):
+        if not isinstance(status, dict) or set(status) != fields:
+            raise NormalizationError("Ghidra relocation status fields are invalid")
+        if type(status["index"]) is not int or status["index"] != position:
+            raise NormalizationError("Ghidra relocation status index is invalid")
+        if (type(status["address"]) is not int or status["address"] != core["address"] or
+                status["address"] != expected.get("address")):
+            raise NormalizationError("Ghidra relocation status address mismatch")
+        if (type(status["width"]) is not int or status["width"] not in (1, 2, 4) or
+                status["width"] != expected.get("width")):
+            raise NormalizationError("Ghidra relocation status width mismatch")
+        if (type(status["type"]) is not int or status["type"] != expected.get("type")):
+            raise NormalizationError("Ghidra relocation status type mismatch")
+        if (not isinstance(status["status"], str) or not status["status"] or
+                type(status["reference_source"]) is not int or
+                not isinstance(status["original_bytes"], str) or
+                re.fullmatch(rf"[0-9A-Fa-f]{{{status['width'] * 2}}}",
+                             status["original_bytes"]) is None):
+            raise NormalizationError("Ghidra relocation status scalar is invalid")
+        list_types = (("values", int), ("reference_targets", int),
+                      ("external_symbols", str), ("external_libraries", str))
+        for name, item_type in list_types:
+            values = status[name]
+            if (not isinstance(values, list) or any(
+                    type(value) is not item_type for value in values)):
+                raise NormalizationError(f"Ghidra relocation status {name} is invalid")
+
+
 def _location(address: int, sections: list[dict], document: dict | None = None) -> dict:
     matches = [section for section in sections
                if section["address"] <= address < section["address"] + section["size"]]
@@ -392,6 +433,7 @@ def normalize_analysis(document: dict) -> dict:
     except Exception as error:
         raise NormalizationError(f"invalid analysis: {error}") from error
     source = deepcopy(document)
+    _validate_ghidra_status_table(source)
     _prepare_section_occurrences(source)
     sections = source["sections"]
     original_references = source.get("references", [])

@@ -248,6 +248,47 @@ def test_extension_mapping_keys_canonicalize_but_ordered_lists_are_preserved():
     assert normalized["extensions"]["trace"]["ops"] == ["add", "sub"]
     assert normalize_analysis(first) == normalized
     assert normalize_analysis(second)["extensions"]["trace"]["ops"] == ["sub", "add"]
+
+
+def _ghidra_status(index=0, address=0x1001, width=4):
+    return {"index": index, "address": address, "status": "APPLIED", "type": 0,
+            "values": [-4], "reference_source": 0x1000,
+            "original_bytes": "78563412", "width": width,
+            "reference_targets": [0x1020], "external_symbols": [],
+            "external_libraries": []}
+
+
+def test_validates_real_shaped_ghidra_relocation_status_table():
+    document = analysis("Ghidra")
+    document["extensions"].setdefault("ghidra", {}).update({
+        "fallback_relocations": [{"address": 0x1001, "target": "callee",
+                                  "width": 4, "pc_relative": True, "type": 0}],
+        "fallback_relocation_status": [_ghidra_status()]})
+    normalized = normalize_analysis(document)
+    assert normalized["extensions"]["ghidra"]["fallback_relocation_status"][0]["index"] == 0
+
+
+@pytest.mark.parametrize("mutation", ["duplicate", "missing", "trailing", "address",
+                                      "width", "type", "bool-index", "unknown", "without"])
+def test_rejects_malformed_ghidra_relocation_status_tables(mutation):
+    document = analysis("Ghidra")
+    ghidra = document["extensions"].setdefault("ghidra", {})
+    ghidra["fallback_relocations"] = [
+        {"address": 0x1001, "target": "callee", "width": 4,
+         "pc_relative": True, "type": 0}]
+    ghidra["fallback_relocation_status"] = [_ghidra_status()]
+    if mutation == "duplicate": ghidra["fallback_relocation_status"] *= 2
+    elif mutation == "missing": ghidra["fallback_relocation_status"] = []
+    elif mutation == "trailing": ghidra["fallback_relocation_status"].append(_ghidra_status(1))
+    elif mutation == "address": ghidra["fallback_relocation_status"][0]["address"] += 1
+    elif mutation == "width": ghidra["fallback_relocation_status"][0]["width"] = 2
+    elif mutation == "type": ghidra["fallback_relocation_status"][0]["type"] = 7
+    elif mutation == "bool-index": ghidra["fallback_relocation_status"][0]["index"] = True
+    elif mutation == "unknown": ghidra["fallback_relocation_status"][0]["extra"] = 1
+    else:
+        document["relocations"] = []; ghidra["fallback_relocations"] = []
+    with pytest.raises(NormalizationError, match="status"):
+        normalize_analysis(document)
     document = analysis(); document["extensions"]["bad"] = {"value": float("nan")}
     with pytest.raises(NormalizationError, match="finite"):
         normalize_analysis(document)

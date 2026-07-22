@@ -280,3 +280,118 @@ def test_real_host_export_smoke_uses_pinned_angr(tmp_path):
     document = export_with_angr(profile, "reference", tmp_path / "analysis.json")
     assert document["analyzer"]["version"] == "9.3.0"
     assert any(function["address"] == 0x4000 for function in document["functions"])
+    assert document["sections"][0]["sha256"] == hashlib.sha256(
+        binary.read_bytes()).hexdigest().upper()
+
+
+@pytest.mark.skipif(importlib.util.find_spec("angr") is None, reason="angr not installed")
+def test_real_equivalence_uses_one_joint_symbolic_domain_and_honest_limits(tmp_path):
+    module = _load_script(); import angr
+    checksum = "8B5424048B4C240831C00202424975FAC3"
+    different = "8B5424048B4C2408B0010202424975FAC3"
+    def project(name, code):
+        path = tmp_path / name; path.write_bytes(bytes.fromhex(code))
+        return angr.Project(str(path), main_opts={"backend": "blob", "arch": "x86",
+            "base_addr": 0x4000, "entry_point": 0x4000}, auto_load_libs=False)
+    check = {"name": "checksum-equivalence", "function": "0x4000", "input_bytes": 8,
+        "max_active_states": 4, "max_steps": 40, "registers": {}, "memory": [],
+        "hooks": [], "assertions": [{"kind": "return-equivalent", "artifact": "rebuilt"}]}
+    reference = project("reference.bin", checksum)
+    assert module.run_equivalent_check(reference, project("same.bin", checksum), check)["status"] == "passed"
+    first = module.run_equivalent_check(reference, project("different.bin", different), check)
+    second = module.run_equivalent_check(reference, project("different2.bin", different), check)
+    assert first["status"] == "failed"
+    assert first["counterexample"] == second["counterexample"]
+    assert first["counterexample"]["reference_return"] != first["counterexample"]["rebuilt_return"]
+    assert len(first["counterexample"]["input_hex"]) == 16
+    loop = project("loop.bin", "EBFE")
+    assert module.run_equivalent_check(reference, loop, {**check, "max_steps": 2})["status"] == "limit-reached"
+    errored = project("errored.bin", "0F0B")
+    assert module.run_equivalent_check(reference, errored, check)["status"] == "unsupported"
+
+
+@pytest.mark.skipif(importlib.util.find_spec("angr") is None, reason="angr not installed")
+def test_real_host_runs_paired_equivalence_end_to_end(tmp_path):
+    checksum = bytes.fromhex("8B5424048B4C240831C00202424975FAC3")
+    reference = tmp_path / "reference.bin"; reference.write_bytes(checksum)
+    rebuilt = tmp_path / "rebuilt.bin"; rebuilt.write_bytes(checksum)
+    check = MappingProxyType({"name": "paired", "function": "0x4000", "input_bytes": 8,
+        "max_active_states": 4, "max_steps": 40, "registers": MappingProxyType({}),
+        "memory": (), "hooks": (), "assertions": (MappingProxyType({
+            "kind": "return-equivalent", "artifact": "rebuilt"}),)})
+    profile = SimpleNamespace(reference_identity=identify(reference), rebuilt_identity=identify(rebuilt),
+        document=MappingProxyType({"architecture": "i386", "endianness": "little",
+            "image_base": 0x4000, "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": sys.executable, "timeout_seconds": 30,
+                "version": "9.3.0"})}), "comparison": MappingProxyType({"entry_points": ()}),
+            "regions": (MappingProxyType({"name": "text", "address": 0x4000, "offset": 0,
+                "size": len(checksum), "permissions": "rx"}),), "symbolic_checks": (check,)}))
+    document = export_with_angr(profile, "reference", tmp_path / "paired.json")
+    assert document["extensions"]["angr"]["symbolic_checks"][0]["status"] == "passed"
+
+
+@pytest.mark.skipif(importlib.util.find_spec("angr") is None, reason="angr not installed")
+def test_symbolic_accounting_reports_actual_steps_and_all_terminal_stashes(tmp_path):
+    module = _load_script(); import angr
+    def project(name, code):
+        path = tmp_path / name; path.write_bytes(bytes.fromhex(code))
+        return angr.Project(str(path), main_opts={"backend": "blob", "arch": "x86",
+            "base_addr": 0x4000, "entry_point": 0x4000}, auto_load_libs=False)
+    base = {"name": "account", "function": "0x4000", "input_bytes": 0,
+        "max_active_states": 4, "max_steps": 20, "registers": {}, "memory": [], "hooks": []}
+    early = module.run_symbolic_check(project("early.bin", "B807000000C3"), {**base,
+        "assertions": [{"kind": "return-equals", "value": 7}]})
+    assert early["status"] == "passed" and 0 < early["steps"] < 20
+    multiple = project("multiple.bin", "8B4424048038007506B807000000C3B807000000C3")
+    result = module.run_symbolic_check(multiple, {**base, "input_bytes": 1,
+        "assertions": [{"kind": "return-equals", "value": 7}]})
+    assert result["status"] == "passed" and result["terminal_states"] == 2
+    unconstrained = project("unconstrained.bin", "8B442404FF20")
+    result = module.run_symbolic_check(unconstrained, {**base, "input_bytes": 4,
+        "assertions": [{"kind": "return-equals", "value": 0}]})
+    assert result["status"] == "unsupported" and "unconstrained" in result["reason"]
+    errored = module.run_symbolic_check(project("error.bin", "0F0B"), {**base,
+        "assertions": [{"kind": "return-equals", "value": 0}]})
+    assert errored["status"] == "unsupported" and "decode" in errored["reason"].lower()
+    mixed = project("mixed.bin", "8B4424048038007506B807000000C3FF20")
+    mixed_result = module.run_symbolic_check(mixed, {**base, "input_bytes": 4,
+        "assertions": [{"kind": "return-equals", "value": 7}]})
+    assert mixed_result["status"] == "unsupported" and "unconstrained" in mixed_result["reason"]
+
+
+@pytest.mark.skipif(importlib.util.find_spec("angr") is None, reason="angr not installed")
+def test_noncontiguous_fallback_maps_only_regions_and_cfg_excludes_gap(tmp_path):
+    module = _load_script(); import angr
+    binary = tmp_path / "regions.bin"; binary.write_bytes(b"\xC3\xC3")
+    layout = {"image_base": 0x3000, "entry_points": [0x4000, 0x5000], "sections": [
+        {"name": "one", "address": 0x4000, "offset": 0, "size": 1,
+         "permissions": "rx", "initialized": True, "ordinal": 1},
+        {"name": "two", "address": 0x5000, "offset": 1, "size": 1,
+         "permissions": "rx", "initialized": True, "ordinal": 2}]}
+    project = module.load_project(angr, binary, layout)
+    assert project.loader.main_object.mapped_base == 0x3000
+    assert 0x4000 in project.loader.memory
+    assert 0x4800 not in project.loader.memory
+    functions, _, _ = module.export_cfg(project, layout, {"symbols": [], "relocations": []})
+    assert {item["address"] for item in functions} == {0x4000, 0x5000}
+
+
+@pytest.mark.skipif(importlib.util.find_spec("angr") is None, reason="angr not installed")
+def test_cfg_exports_control_and_data_references_with_instruction_indexes(tmp_path):
+    module = _load_script(); import angr
+    code = bytes.fromhex("E80B000000A100500000C39090909090C3")
+    data = b"\x78\x56\x34\x12"
+    binary = tmp_path / "refs.bin"; binary.write_bytes(code + data)
+    stream, segments = module.build_region_stream(binary, {"sections": [
+        {"address": 0x4000, "offset": 0, "size": len(code), "permissions": "rx", "initialized": True},
+        {"address": 0x5000, "offset": len(code), "size": 4, "permissions": "r", "initialized": True}]})
+    project = angr.Project(stream, main_opts={"backend": "blob", "arch": "x86",
+        "base_addr": 0x4000, "entry_point": 0x4000, "segments": segments}, auto_load_libs=False)
+    functions, cfg, references = module.export_cfg(project,
+        {"entry_points": [0x4000], "sections": [
+            {"address": 0x4000, "size": len(code), "permissions": "rx"},
+            {"address": 0x5000, "size": 4, "permissions": "r"}]},
+        {"symbols": [], "relocations": []})
+    assert any(item["kind"] == "control-call" and item["target"] == 0x4010 for item in references)
+    assert any(item["kind"] == "data-read" and item["target"] == 0x5000 for item in references)
+    assert cfg["instruction_reference_indexes"]

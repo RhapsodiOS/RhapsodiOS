@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -66,9 +67,14 @@ def _layout(profile, identity: InputIdentity) -> dict:
         relocations = canonical["relocations"]
     except (MachOFormatError, KeyError, ValueError):
         sections = []
+        source = identity.path.read_bytes()
         for ordinal, region in enumerate(profile.document.get("regions", ()), 1):
             item = _thaw(region)
-            item.update({"ordinal": ordinal, "initialized": True, "sha256": ""})
+            offset, size = item["offset"], item["size"]
+            if offset > len(source) or size > len(source) - offset:
+                raise AngrAdapterError(f"profile region {item['name']!r} exceeds analyzed input")
+            item.update({"ordinal": ordinal, "initialized": True,
+                         "sha256": hashlib.sha256(source[offset:offset + size]).hexdigest().upper()})
             sections.append(item)
         symbols, relocations = [], []
     names = set(profile.document.get("comparison", {}).get("entry_points", ()))
@@ -197,7 +203,16 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
     output = workspace / "analysis.json"; config_path = workspace / "config.json"
     layout_path = workspace / "layout.json"
     script = Path(__file__).parents[2] / "adapters" / "angr" / "export_analysis.py"
-    config = {"profile": _thaw(profile.document), "artifact": artifact}
+    peer_artifact = "rebuilt" if artifact == "reference" else "reference"
+    peer_identity = _identity(profile, peer_artifact)
+    try: assert_identity(peer_identity)
+    except (OSError, ValueError) as error:
+        raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
+    config = {"profile": _thaw(profile.document), "artifact": artifact,
+              "peer_artifact": peer_artifact,
+              "peer_input": {"path": str(peer_identity.path), "size": peer_identity.size,
+                             "sha256": peer_identity.sha256},
+              "peer_layout": _layout(profile, peer_identity)}
     _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
     _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
                                         separators=(",", ":")) + "\n")
@@ -230,6 +245,8 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
             raise AngrAdapterError("angr output input identity does not match requested input")
         try: assert_identity(identity)
         except (OSError, ValueError) as error: raise AngrAdapterError(f"input identity changed during angr analysis: {error}") from error
+        try: assert_identity(peer_identity)
+        except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
         shutil.rmtree(workspace); workspace = None
         _atomic_text(destination, json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n")
         return document

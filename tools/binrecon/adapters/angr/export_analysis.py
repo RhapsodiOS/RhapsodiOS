@@ -44,27 +44,40 @@ def _loader_failure(error: BaseException) -> bool:
     return module.startswith("cle.") and ("error" in name or "compatib" in name)
 
 
-def _flat_image(path: Path, layout: dict) -> tuple[io.BytesIO, int, int]:
+def build_region_stream(path: Path, layout: dict) -> tuple[io.BytesIO, list[tuple[int, int, int]]]:
     sections = [item for item in layout.get("sections", []) if item.get("size", 0)]
     if not sections:
         raise ValueError("flat fallback requires at least one declared region")
-    base = min(item["address"] for item in sections)
-    end = max(item["address"] + item["size"] for item in sections)
-    if end < base or end - base > _MAX_FLAT_IMAGE:
-        raise ValueError("flat fallback image exceeds 64 MiB bound")
-    image = bytearray(end - base)
+    ordered = sorted(sections, key=lambda value: (value["address"], value.get("ordinal", 0)))
+    previous_end = -1
+    if sum(item["size"] for item in ordered) > _MAX_FLAT_IMAGE:
+        raise ValueError("flat fallback mapped content exceeds 64 MiB bound")
     source = path.read_bytes()
-    for item in sorted(sections, key=lambda value: (value["address"], value.get("ordinal", 0))):
-        start = item["address"] - base
+    packed = bytearray()
+    segments = []
+    for item in ordered:
+        if item["address"] < previous_end:
+            raise ValueError("flat fallback regions overlap")
         size = item["size"]
+        file_offset = len(packed)
         if item.get("initialized", True):
             offset = item["offset"]
             if offset > len(source) or size > len(source) - offset:
                 raise ValueError(f"section {item.get('name', '')!r} exceeds input")
-            image[start:start + size] = source[offset:offset + size]
+            packed.extend(source[offset:offset + size])
+        else:
+            packed.extend(b"\0" * size)
+        segments.append((file_offset, item["address"], size))
+        previous_end = item["address"] + size
+    return io.BytesIO(bytes(packed)), segments
+
+
+def _flat_image(path: Path, layout: dict) -> tuple[io.BytesIO, int, int, list[tuple[int, int, int]]]:
+    stream, segments = build_region_stream(path, layout)
+    base = int(layout.get("image_base", min(address for _, address, _ in segments)))
     entries = layout.get("entry_points", [])
     entry = entries[0] if entries else int(layout.get("image_base", base))
-    return io.BytesIO(bytes(image)), base, entry
+    return stream, base, entry, segments
 
 
 def load_project(angr_module, path: Path, layout: dict):
@@ -74,9 +87,9 @@ def load_project(angr_module, path: Path, layout: dict):
     except Exception as error:
         if not _loader_failure(error):
             raise
-    stream, base, entry = _flat_image(path, layout)
+    stream, base, entry, segments = _flat_image(path, layout)
     return angr_module.Project(stream, main_opts={"backend": "blob", "arch": "x86",
-        "base_addr": base, "entry_point": entry}, auto_load_libs=False)
+        "base_addr": base, "entry_point": entry, "segments": segments}, auto_load_libs=False)
 
 
 def function_starts(layout: dict, canonical: dict) -> list[int]:
@@ -95,17 +108,27 @@ def _instruction(insn, relocation_indexes: list[int]) -> dict:
 def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict, list[dict]]:
     starts = function_starts(layout, canonical)
     cfg_errors = []
+    executable = [(item["address"], item["address"] + item["size"])
+                  for item in layout.get("sections", [])
+                  if "x" in item.get("permissions", "") and item.get("size", 0)]
     cfg = project.analyses.CFGFast(normalize=True, function_starts=starts,
-        resolve_indirect_jumps=True)
-    functions, references = [], []
+        resolve_indirect_jumps=True, regions=executable or None,
+        exclude_sparse_regions=False, skip_unmapped_addrs=True)
+    functions, raw_references = [], []
     relocation_addresses = [item["address"] for item in canonical.get("relocations", [])]
     vex_summaries = []
+    def in_executable(address, size=1):
+        return not executable or any(start <= address and address + size <= end
+                                     for start, end in executable)
     for index, function in enumerate(sorted(cfg.kb.functions.values(), key=lambda value: value.addr)):
         if index >= _MAX_FUNCTIONS:
             cfg_errors.append("function limit reached"); break
         try:
+            if not in_executable(int(function.addr)):
+                continue
             blocks, instructions, calls = [], [], []
-            function_blocks = sorted(function.blocks, key=lambda value: value.addr)
+            function_blocks = [block for block in sorted(function.blocks, key=lambda value: value.addr)
+                               if in_executable(int(block.addr), int(block.size))]
             if len(function_blocks) > _MAX_BLOCKS: raise ValueError("block limit reached")
             maximum_end = int(function.addr)
             for block in function_blocks:
@@ -114,7 +137,8 @@ def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict
                 node = cfg.model.get_any_node(block.addr)
                 if node is not None:
                     for successor in cfg.model.get_successors(node):
-                        jumpkind = cfg.model.get_edge_data(node, successor).get("jumpkind", "")
+                        edge = cfg.graph.get_edge_data(node, successor) or {}
+                        jumpkind = edge.get("jumpkind", "")
                         successors.append({"target": int(successor.addr), "kind": str(jumpkind)})
                 blocks.append({"address": int(block.addr), "size": int(block.size),
                                "successors": sorted(successors, key=lambda x: (x["target"], x["kind"]))})
@@ -128,10 +152,34 @@ def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict
                     links = [i for i, address in enumerate(relocation_addresses)
                              if begin <= address < finish]
                     instructions.append(_instruction(insn, links))
+                if block.capstone.insns:
+                    source_address = int(block.capstone.insns[-1].address)
+                    for successor in successors:
+                        kind = "control-call" if "Call" in successor["kind"] else "control-branch"
+                        raw_references.append((source_address, successor["target"], kind))
+                current_instruction = int(block.addr)
+                for statement in block.vex.statements:
+                    if statement.tag == "Ist_IMark":
+                        current_instruction = int(statement.addr)
+                    expression = None
+                    kind = None
+                    if statement.tag == "Ist_Store":
+                        expression, kind = statement.addr, "data-write"
+                    elif statement.tag == "Ist_WrTmp" and getattr(statement.data, "tag", "") == "Iex_Load":
+                        expression, kind = statement.data.addr, "data-read"
+                    if expression is not None and getattr(expression, "tag", "") == "Iex_Const":
+                        target = int(expression.con.value)
+                        if target in project.loader.memory:
+                            raw_references.append((current_instruction, target, kind))
             for callsite in sorted(function.get_call_sites()):
                 target = function.get_call_target(callsite)
+                target_value = None if target is None else int(target)
+                target_function = cfg.kb.functions.get(target_value) if target_value is not None else None
                 calls.append({"address": int(callsite),
-                              "target": None if target is None else int(target), "name": None})
+                              "target": target_value,
+                              "name": getattr(target_function, "name", None)})
+                if target_value is not None:
+                    raw_references.append((int(callsite), target_value, "control-call"))
             names = sorted(set(filter(None, [getattr(function, "name", None)])))
             functions.append({"address": int(function.addr),
                 "size": max(0, maximum_end - int(function.addr)), "names": names,
@@ -141,8 +189,17 @@ def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict
                 "confidence": 1.0})
         except Exception as error:
             cfg_errors.append(f"0x{int(function.addr):X}: {type(error).__name__}: {str(error)[:160]}")
+    references = [{"address": address, "target": target, "kind": kind}
+                  for address, target, kind in sorted(set(raw_references),
+                      key=lambda item: (item[0], item[1], item[2]))]
+    indexes = {}
+    for index, reference in enumerate(references):
+        indexes.setdefault(str(reference["address"]), []).append(index)
+    instruction_indexes = [{"address": int(address), "references": indexes[address]}
+                           for address in sorted(indexes, key=int)]
     return functions, {"errors": sorted(cfg_errors), "vex_blocks": sorted(vex_summaries,
-        key=lambda x: x["address"])}, references
+        key=lambda x: x["address"]),
+        "instruction_reference_indexes": instruction_indexes}, references
 
 
 def unsupported_check(name: str, reason: str) -> dict:
@@ -163,13 +220,98 @@ def _resolve_function(project, value: str) -> int | None:
     return None if symbol is None else int(symbol.rebased_addr)
 
 
+def _lexicographic_model(solver, symbolic_bytes, expressions, constraint):
+    import claripy
+    combined = claripy.Solver()
+    if solver.constraints:
+        combined.add(*solver.constraints)
+    combined.add(constraint)
+    for byte in symbolic_bytes:
+        minimum = combined.min(byte)
+        combined.add(byte == minimum)
+    values = combined.batch_eval([*symbolic_bytes, *expressions], 1)[0]
+    if not combined.satisfiable():
+        raise ValueError("counterexample model became unsatisfiable")
+    return values
+
+
 def _counterexample(state, symbolic_bytes, expression=None, constraint=None) -> dict:
-    witness = state.copy()
-    if constraint is not None:
-        witness.add_constraints(constraint)
-    result = {"input_hex": bytes(witness.solver.eval(byte) for byte in symbolic_bytes).hex().upper()}
-    if expression is not None: result["actual"] = int(witness.solver.eval(expression))
+    expressions = [] if expression is None else [expression]
+    values = _lexicographic_model(state.solver, symbolic_bytes, expressions, constraint)
+    result = {"input_hex": bytes(values[:len(symbolic_bytes)]).hex().upper()}
+    if expression is not None: result["actual"] = int(values[-1])
     return result
+
+
+def _execute_symbolically(project, check: dict, symbolic_prefix: str) -> dict:
+    import angr
+    import claripy
+    name = check["name"]
+    address = _resolve_function(project, check["function"])
+    if address is None:
+        return {"status": "unsupported", "reason": f"function {check['function']!r} not found"}
+    for hook in check.get("hooks", []):
+        if hook["handler"] != "return-constant" or "returns" not in hook:
+            return {"status": "unsupported", "reason": f"unsupported hook handler {hook['handler']!r}"}
+    options = {angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
+               angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS}
+    count = int(check.get("input_bytes", 0)); pointer = 0x7FFF0000
+    symbolic = [claripy.BVS(f"{symbolic_prefix}_{index:04d}", 8, explicit_name=True)
+                for index in range(count)]
+    state = project.factory.call_state(address, pointer, count, add_options=options)
+    for index, byte in enumerate(symbolic): state.memory.store(pointer + index, byte)
+    for register, value in sorted(check.get("registers", {}).items()):
+        if not hasattr(state.regs, register):
+            return {"status": "unsupported", "reason": f"unknown register {register!r}"}
+        setattr(state.regs, register, value)
+    for memory in check.get("memory", []):
+        state.memory.store(memory["address"], bytes.fromhex(memory["bytes"]))
+    installed = []
+    def constant_procedure(return_value):
+        class ReturnConstant(angr.SimProcedure):
+            def run(self): return return_value
+        return ReturnConstant()
+    try:
+        for hook in check.get("hooks", []):
+            project.hook(hook["address"], constant_procedure(hook["returns"]))
+            installed.append(hook["address"])
+        manager = project.factory.simulation_manager(state)
+        steps = 0
+        state_cap = False
+        while manager.active and steps < check["max_steps"]:
+            if len(manager.active) > check["max_active_states"]:
+                state_cap = True; break
+            manager.step(); steps += 1
+            if len(manager.active) > check["max_active_states"]:
+                state_cap = True; break
+        errors = sorted(f"{type(item.error).__name__}: {str(item.error)[:160]}"
+                        for item in manager.errored)
+        unconstrained = list(manager.stashes.get("unconstrained", []))
+        obstructed = []
+        for stash in ("stashed", "pruned", "avoided"):
+            if manager.stashes.get(stash): obstructed.append(stash)
+        base = {"steps": steps, "terminal_states": len(manager.deadended),
+                "discarded_unsat_states": len(manager.stashes.get("unsat", [])),
+                "states": list(manager.deadended), "symbolic": symbolic}
+        if errors:
+            return {**base, "status": "unsupported", "reason": errors[0]}
+        if unconstrained:
+            return {**base, "status": "unsupported",
+                    "reason": f"unconstrained states: {len(unconstrained)}"}
+        if obstructed:
+            return {**base, "status": "unsupported",
+                    "reason": "nonterminal stashes: " + ",".join(obstructed)}
+        if state_cap:
+            return {**base, "status": "limit-reached", "reason": "active state cap reached"}
+        if manager.active:
+            return {**base, "status": "limit-reached", "reason": "maximum steps reached"}
+        if not manager.deadended:
+            return {**base, "status": "unsupported", "reason": "no terminal states"}
+        return {**base, "status": "passed"}
+    finally:
+        for hooked in installed:
+            try: project.unhook(hooked)
+            except Exception: pass
 
 
 def run_symbolic_check(project, check: dict) -> dict:
@@ -180,51 +322,17 @@ def run_symbolic_check(project, check: dict) -> dict:
     reachable terminal state; a satisfying model is a failure counterexample.
     """
     name = check["name"]
-    address = _resolve_function(project, check["function"])
-    if address is None: return unsupported_check(name, f"function {check['function']!r} not found")
-    for hook in check.get("hooks", []):
-        if hook["handler"] != "return-constant" or "returns" not in hook:
-            return unsupported_check(name, f"unsupported hook handler {hook['handler']!r}")
     for assertion in check.get("assertions", []):
         if assertion["kind"] == "return-equivalent":
             return unsupported_check(name, "return-equivalent requires paired artifact orchestration")
     try:
-        import angr
         import claripy
-        options = {angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
-                   angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS}
-        count = int(check.get("input_bytes", 0)); pointer = 0x7FFF0000
-        symbolic = [claripy.BVS(f"{name}_input_{index:04d}", 8) for index in range(count)]
-        state = project.factory.call_state(address, pointer, count, add_options=options)
-        for index, byte in enumerate(symbolic): state.memory.store(pointer + index, byte)
-        for register, value in sorted(check.get("registers", {}).items()):
-            if not hasattr(state.regs, register): return unsupported_check(name, f"unknown register {register!r}")
-            setattr(state.regs, register, value)
-        for memory in check.get("memory", []): state.memory.store(memory["address"], bytes.fromhex(memory["bytes"]))
-        installed = []
-        def constant_procedure(return_value):
-            class ReturnConstant(angr.SimProcedure):
-                def run(self): return return_value
-            return ReturnConstant()
-        for hook in check.get("hooks", []):
-            project.hook(hook["address"], constant_procedure(hook["returns"]))
-            installed.append(hook["address"])
-        manager = project.factory.simulation_manager(state)
-        hit_limit = False
-        for _ in range(check["max_steps"]):
-            if len(manager.active) > check["max_active_states"]:
-                hit_limit = True; break
-            if not manager.active: break
-            manager.step()
-        if manager.active: hit_limit = True
-        if len(manager.active) > check["max_active_states"]: hit_limit = True
-        errors = [f"{type(item.error).__name__}: {str(item.error)[:160]}" for item in manager.errored]
-        terminals = list(manager.deadended)
-        classification = classify_execution(terminals, errors, hit_limit=hit_limit)
-        result = {"name": name, **classification, "steps": min(check["max_steps"],
-                  getattr(manager, "_binrecon_steps", check["max_steps"])),
-                  "terminal_states": len(terminals)}
+        execution = _execute_symbolically(project, check, f"{name}_input")
+        result = {key: value for key, value in execution.items()
+                  if key not in ("states", "symbolic")}
+        result["name"] = name
         if result["status"] != "passed": return result
+        terminals, symbolic = execution["states"], execution["symbolic"]
         for terminal in terminals:
             for assertion in check.get("assertions", []):
                 kind = assertion["kind"]
@@ -243,10 +351,41 @@ def run_symbolic_check(project, check: dict) -> dict:
         return result
     except Exception as error:
         return unsupported_check(name, f"{type(error).__name__}: {str(error)[:180]}")
-    finally:
-        for hooked in locals().get("installed", []):
-            try: project.unhook(hooked)
-            except Exception: pass
+
+
+def run_equivalent_check(reference_project, rebuilt_project, check: dict) -> dict:
+    name = check["name"]
+    try:
+        import claripy
+        prefix = f"{name}_joint_input"
+        reference = _execute_symbolically(reference_project, check, prefix)
+        rebuilt = _execute_symbolically(rebuilt_project, check, prefix)
+        steps = {"reference": reference.get("steps", 0), "rebuilt": rebuilt.get("steps", 0)}
+        for side, execution in (("reference", reference), ("rebuilt", rebuilt)):
+            if execution["status"] != "passed":
+                return {"name": name, "status": execution["status"], "steps": steps,
+                        "reason": f"{side}: {execution.get('reason', execution['status'])}"}
+        symbolic = reference["symbolic"]
+        for reference_state in reference["states"]:
+            for rebuilt_state in rebuilt["states"]:
+                solver = claripy.Solver()
+                if reference_state.solver.constraints:
+                    solver.add(*reference_state.solver.constraints)
+                if rebuilt_state.solver.constraints:
+                    solver.add(*rebuilt_state.solver.constraints)
+                disequality = reference_state.regs.eax != rebuilt_state.regs.eax
+                if solver.satisfiable(extra_constraints=[disequality]):
+                    values = _lexicographic_model(solver, symbolic,
+                        [reference_state.regs.eax, rebuilt_state.regs.eax], disequality)
+                    return {"name": name, "status": "failed", "reason": "return-equivalent",
+                        "steps": steps, "counterexample": {
+                            "input_hex": bytes(values[:len(symbolic)]).hex().upper(),
+                            "reference_return": int(values[-2]), "rebuilt_return": int(values[-1])}}
+        return {"name": name, "status": "passed", "steps": steps,
+                "terminal_states": {"reference": len(reference["states"]),
+                                    "rebuilt": len(rebuilt["states"])}}
+    except Exception as error:
+        return unsupported_check(name, f"{type(error).__name__}: {str(error)[:180]}")
 
 
 def _atomic_json(path: Path, document: dict) -> None:
@@ -277,14 +416,40 @@ def main(argv=None) -> int:
         canonical = {"symbols": layout.get("symbols", []),
                      "relocations": layout.get("relocations", [])}
         functions, cfg, references = export_cfg(project, layout, canonical)
-        checks = [run_symbolic_check(project, check)
-                  for check in config["profile"].get("symbolic_checks", [])]
+        profile_checks = config["profile"].get("symbolic_checks", [])
+        needs_peer = any(any(assertion["kind"] == "return-equivalent"
+                             for assertion in check.get("assertions", []))
+                         for check in profile_checks)
+        peer_project = None
+        if needs_peer:
+            peer = config["peer_input"]
+            peer_path = Path(peer["path"]).resolve(strict=True)
+            peer_payload = peer_path.read_bytes()
+            peer_digest = hashlib.sha256(peer_payload).hexdigest().upper()
+            if len(peer_payload) != peer["size"] or peer_digest != peer["sha256"].upper():
+                raise ValueError("peer input identity does not match configuration")
+            peer_project = load_project(angr, peer_path, config["peer_layout"])
+        checks = []
+        for check in profile_checks:
+            equivalence = [assertion for assertion in check.get("assertions", [])
+                           if assertion["kind"] == "return-equivalent"]
+            if equivalence:
+                if len(equivalence) != len(check.get("assertions", [])):
+                    checks.append(unsupported_check(check["name"],
+                        "mixed return-equivalent and local assertions are unsupported"))
+                    continue
+                if config["artifact"] == "reference":
+                    checks.append(run_equivalent_check(project, peer_project, check))
+                else:
+                    checks.append(run_equivalent_check(peer_project, project, check))
+            else:
+                checks.append(run_symbolic_check(project, check))
         document = {"schema_version": "analysis-v1", "input": {"path": str(path),
             "size": len(payload), "sha256": digest, "architecture": "i386", "endianness": "little"},
             "analyzer": {"name": "angr", "version": angr.__version__,
                          "invocation": "binrecon-angr-export"},
             "sections": sorted([{key: item[key] for key in ("name", "address", "offset", "size", "permissions", "sha256")}
-                         for item in layout.get("sections", []) if item.get("sha256")],
+                         for item in layout.get("sections", [])],
                          key=lambda x: (x["address"], x["offset"], x["name"], x["size"])),
             "symbols": sorted(layout.get("symbols", []), key=lambda x: (x["address"], x["name"], x["binding"], x["section"] or "")),
             "relocations": sorted(layout.get("relocations", []), key=lambda x: (x["address"], x["kind"], x["target"] or "", x["addend"])),

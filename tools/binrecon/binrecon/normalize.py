@@ -69,7 +69,7 @@ def canonical_key(value) -> str:
 
 def section_key(value: dict) -> tuple:
     return (value["offset"], value["size"], value["permissions"], value["sha256"],
-            canonical_key(value["name"]), value.get("ordinal", 0))
+            canonical_key(value["name"]), value["occurrence"])
 
 
 def endpoint_key(value: dict) -> tuple:
@@ -108,33 +108,39 @@ def integer_key(value: int) -> int:
 
 def relocation_key(value: dict) -> tuple:
     return (value["field_offset"], value["width"], canonical_key(value["kind"]),
-            value["signed"], endpoint_key(value["target"]), value["addend"],
-            canonical_key(value["status"]))
+            value["signed"], endpoint_key(value["target"]), value["addend"])
 
 
 _WIDTH = re.compile(r"(?:^|[^0-9])(8|16|32)(?:[^0-9]|$)")
 
 
 def _section_identity(section: dict, document: dict | None = None) -> dict:
+    occurrence = section.get("__binrecon_occurrence")
+    if occurrence is None and document is not None:
+        base = (section["name"], section["offset"], section["size"],
+                section["permissions"], section["sha256"].upper())
+        matches = [(item["address"], index, item)
+                   for index, item in enumerate(document["sections"])
+                   if (item["name"], item["offset"], item["size"], item["permissions"],
+                       item["sha256"].upper()) == base]
+        ordered = [item for _, _, item in sorted(matches, key=lambda item: item[:2])]
+        occurrence = next((index for index, item in enumerate(ordered) if item is section), None)
+    if occurrence is None: raise NormalizationError("section occurrence is unavailable")
     result = {"name": section["name"], "offset": section["offset"], "size": section["size"],
-            "permissions": section["permissions"], "sha256": section["sha256"].upper()}
-    ordinals = set()
-    if document is not None:
-        extensions = document.get("extensions", {})
-        for metadata in (extensions.get("macho", {}).get("sections", []),
-                         extensions.get("ghidra", {}).get("fallback_sections", [])):
-            for item in metadata:
-                if (isinstance(item, dict) and item.get("name") == section["name"] and
-                        all(item.get(key) == section[key] for key in ("address", "offset", "size")) and
-                        "ordinal" in item):
-                    ordinals.add(item["ordinal"])
-    if len(ordinals) > 1: raise NormalizationError("section ordinal metadata conflicts")
-    if ordinals:
-        ordinal = next(iter(ordinals))
-        if type(ordinal) is not int or ordinal <= 0:
-            raise NormalizationError("section ordinal must be positive")
-        result["ordinal"] = ordinal
+            "permissions": section["permissions"], "sha256": section["sha256"].upper(),
+            "occurrence": occurrence}
     return result
+
+
+def _prepare_section_occurrences(document: dict) -> None:
+    groups = {}
+    for index, section in enumerate(document["sections"]):
+        base = (section["name"], section["offset"], section["size"],
+                section["permissions"], section["sha256"].upper())
+        groups.setdefault(base, []).append((section["address"], index, section))
+    for items in groups.values():
+        for occurrence, (_, _, section) in enumerate(sorted(items, key=lambda item: item[:2])):
+            section["__binrecon_occurrence"] = occurrence
 
 
 def _location(address: int, sections: list[dict], document: dict | None = None) -> dict:
@@ -162,7 +168,7 @@ def _range(address: int, size: int, sections: list[dict], document: dict | None 
     return {"section": _section_identity(section, document), "start": start, "end": start + size}
 
 
-def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[int, bool, str | None]:
+def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[int, bool]:
     widths, relatives = [], []
     extensions = document.get("extensions", {})
     sources = [extensions.get("macho", {}).get("relocations", []),
@@ -201,14 +207,12 @@ def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[
         raise NormalizationError(f"relocation {index} relative metadata conflicts with kind")
     statuses = document.get("extensions", {}).get("ghidra", {}).get(
         "fallback_relocation_status", [])
-    status = None
     if index < len(statuses):
         metadata = statuses[index]
         if (not isinstance(metadata, dict) or metadata.get("address") != relocation["address"] or
                 not isinstance(metadata.get("status"), str)):
             raise NormalizationError(f"relocation {index} has invalid status metadata")
-        status = metadata["status"]
-    return widths[0], (relatives[0] if relatives else kind_relative), status
+    return widths[0], (relatives[0] if relatives else kind_relative)
 
 
 def _split_operands(value: str) -> list[str]:
@@ -318,7 +322,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         if index >= len(document["relocations"]):
             raise NormalizationError(f"relocation index {index} is out of range")
         relocation = document["relocations"][index]
-        width, relative, status = _relocation_metadata(document, index, relocation)
+        width, relative = _relocation_metadata(document, index, relocation)
         start = relocation["address"]
         end = start + width
         if not (address <= start and end <= address + length):
@@ -326,7 +330,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         if index in ownership:
             raise NormalizationError(f"relocation {index} has multiple instruction owners")
         ownership[index] = address
-        fields.append((start, end, index, width, relative, status, relocation))
+        fields.append((start, end, index, width, relative, relocation))
     fields.sort(key=lambda item: (item[0], item[1], item[2]))
     if any(right[0] < left[1] for left, right in zip(fields, fields[1:])):
         raise NormalizationError("relocation fields overlap")
@@ -335,14 +339,14 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
     if len(display_operands) != len(normalized_operands):
         raise NormalizationError("display and normalized operand counts differ")
     operands = [{"text": text, "relocations": []} for text in display_operands]
-    for start, _, index, width, relative, status, relocation in fields:
+    for start, _, index, width, relative, relocation in fields:
         owner = _operand_owner(relocation, normalized_operands,
                                _ghidra_operand_owner(document, instruction, relocation))
         operands[owner]["relocations"].append({
             "field_offset": start - address, "width": width,
             "signed": relative, "kind": relocation["kind"],
             "target": _target(document, relocation["target"], sections),
-            "addend": relocation["addend"], "status": status})
+            "addend": relocation["addend"]})
     reference_indexes = [index for index, original in enumerate(original_references)
                          if address <= original["address"] < address + length]
     for operand in operands:
@@ -388,6 +392,7 @@ def normalize_analysis(document: dict) -> dict:
     except Exception as error:
         raise NormalizationError(f"invalid analysis: {error}") from error
     source = deepcopy(document)
+    _prepare_section_occurrences(source)
     sections = source["sections"]
     original_references = source.get("references", [])
     normalized_references = [{"source": _location(item["address"], sections, source),
@@ -429,7 +434,7 @@ def normalize_analysis(document: dict) -> dict:
     # A relocation whose field intersects an instruction must be explicitly owned by it.
     all_instructions = [item for function in source["functions"] for item in function["instructions"]]
     for index, relocation in enumerate(source["relocations"]):
-        width, _, _ = _relocation_metadata(source, index, relocation)
+        width, _ = _relocation_metadata(source, index, relocation)
         rstart, rend = relocation["address"], relocation["address"] + width
         if any(rstart < i["address"] + len(i["bytes"]) // 2 and i["address"] < rend
                for i in all_instructions) and index not in ownership:
@@ -451,6 +456,5 @@ def _canonicalize(value):
     if isinstance(value, dict):
         return {key: _canonicalize(value[key]) for key in sorted(value, key=canonical_key)}
     if isinstance(value, list):
-        items = [_canonicalize(item) for item in value]
-        return sorted(items, key=canonical_key)
+        return [_canonicalize(item) for item in value]
     return deepcopy(value)

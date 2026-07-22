@@ -277,6 +277,17 @@ def test_validator_rejects_duplicate_or_disconnected_claim_membership():
     with pytest.raises(ConsensusError): validate_consensus(result)
 
 
+def test_real_shaped_relocation_status_is_not_cross_analyzer_semantics():
+    documents = analyses()
+    documents[1]["extensions"]["ghidra"] = {
+        "fallback_relocations": [{"address": 0x1001, "target": "callee",
+                                  "width": 4, "pc_relative": True}],
+        "fallback_relocation_status": [{"address": 0x1001, "status": "APPLIED"}]}
+    assert build_consensus(documents)["groups"][0]["status"] == "agreed"
+    documents[2]["relocations"][0]["addend"] = 7
+    assert build_consensus(documents)["groups"][0]["status"] == "disputed"
+
+
 def test_interval_sweep_handles_many_disjoint_functions_without_quadratic_scan():
     documents = analyses()
     count = 600

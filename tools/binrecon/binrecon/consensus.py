@@ -412,8 +412,7 @@ def _exact(value, fields: set[str], where: str) -> None:
 
 def _section(value: dict) -> None:
     fields = set(value) if isinstance(value, dict) else set()
-    if fields not in ({"name", "offset", "size", "permissions", "sha256"},
-                      {"name", "ordinal", "offset", "size", "permissions", "sha256"}):
+    if fields != {"name", "occurrence", "offset", "size", "permissions", "sha256"}:
         raise ConsensusError("invalid section identity fields")
     if (not _integer(value["offset"]) or value["offset"] < 0 or
             not _integer(value["size"]) or value["size"] < 0 or
@@ -422,8 +421,8 @@ def _section(value: dict) -> None:
             not isinstance(value["sha256"], str) or
             re.fullmatch(r"[0-9A-F]{64}", value["sha256"]) is None):
         raise ConsensusError("invalid section identity")
-    if "ordinal" in value and (not _integer(value["ordinal"]) or value["ordinal"] <= 0):
-        raise ConsensusError("invalid section ordinal")
+    if not _integer(value["occurrence"]) or value["occurrence"] < 0:
+        raise ConsensusError("invalid section occurrence")
 
 
 def _endpoint(value: dict) -> None:
@@ -460,12 +459,11 @@ def _range_contract(value: dict) -> None:
 
 
 def _relocation(value: dict) -> None:
-    _exact(value, {"field_offset", "width", "signed", "kind", "target", "addend", "status"},
+    _exact(value, {"field_offset", "width", "signed", "kind", "target", "addend"},
            "relocation")
     if (not _integer(value["field_offset"]) or value["field_offset"] < 0 or
             value["width"] not in (1, 2, 4) or type(value["signed"]) is not bool or
-            not isinstance(value["kind"], str) or not _integer(value["addend"]) or
-            (value["status"] is not None and not isinstance(value["status"], str))):
+            not isinstance(value["kind"], str) or not _integer(value["addend"])):
         raise ConsensusError("invalid relocation")
     _endpoint(value["target"])
 

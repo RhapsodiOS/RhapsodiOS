@@ -58,7 +58,7 @@ def test_normalizes_only_the_exact_relocated_operand_and_preserves_semantics():
                           "signed": True, "kind": "i386-vanilla-32-pc-relative",
                           "target": {"kind": "section",
                                      "section": result["sections"][0]["identity"],
-                                     "offset": 0x20}, "addend": -4, "status": None}
+                                     "offset": 0x20}, "addend": -4}
     assert instructions[1]["operands"] == [
         {"text": "eax", "relocations": []},
         {"text": "0x12345678", "relocations": []}]
@@ -185,7 +185,7 @@ def test_random_nested_input_permutations_produce_identical_canonical_json():
         assert actual == expected
 
 
-def test_section_identity_requires_name_and_preserves_explicit_ordinal():
+def test_section_identity_requires_name_and_uses_core_occurrence_not_adapter_ordinal():
     first = analysis(); second = analysis()
     second["sections"][0]["name"] = ".other"
     assert (normalize_analysis(first)["sections"][0]["identity"] !=
@@ -195,8 +195,24 @@ def test_section_identity_requires_name_and_preserves_explicit_ordinal():
             "name": document["sections"][0]["name"], "address": 0x1000,
             "offset": 0, "size": 64, "ordinal": ordinal}], "relocations": [
                 {"address": 0x1001, "target": "callee", "width": 4}]}}
-    assert normalize_analysis(first)["sections"][0]["identity"]["ordinal"] == 1
-    assert normalize_analysis(second)["sections"][0]["identity"]["ordinal"] == 2
+    assert normalize_analysis(first)["sections"][0]["identity"]["occurrence"] == 0
+    assert normalize_analysis(second)["sections"][0]["identity"]["occurrence"] == 0
+    assert "ordinal" not in normalize_analysis(first)["sections"][0]["identity"]
+
+
+def test_duplicate_section_occurrences_align_across_adapter_metadata_and_rebase():
+    documents = [analysis("IDA", 0x1000), analysis("Ghidra", 0x5000), analysis("angr", 0x9000)]
+    for document in documents:
+        base = document["sections"][0]["address"]
+        duplicate = deepcopy(document["sections"][0]); duplicate["address"] = base + 0x100
+        document["sections"].append(duplicate)
+    documents[1]["extensions"]["ghidra"] = {"fallback_sections": [
+        {**documents[1]["sections"][1], "ordinal": 9},
+        {**documents[1]["sections"][0], "ordinal": 3}]}
+    identities = [[item["identity"] for item in normalize_analysis(document)["sections"]]
+                  for document in documents]
+    assert identities[0] == identities[1] == identities[2]
+    assert [item["occurrence"] for item in identities[0]] == [0, 1]
 
 
 def test_two_nonoverlapping_relocations_may_share_one_unique_operand_and_reorder_stably():
@@ -215,7 +231,7 @@ def test_two_nonoverlapping_relocations_may_share_one_unique_operand_and_reorder
     reordered = deepcopy(document)
     reordered["relocations"].reverse()
     reordered["extensions"]["macho"]["relocations"].reverse()
-    assert normalize_analysis(reordered) == first
+    assert normalize_analysis(reordered)["functions"] == first["functions"]
 
 
 def test_preflight_rejects_function_limit_and_nonfinite_extension():
@@ -223,6 +239,15 @@ def test_preflight_rejects_function_limit_and_nonfinite_extension():
     document["functions"] = [deepcopy(document["functions"][0]) for _ in range(MAX_FUNCTIONS + 1)]
     with pytest.raises(NormalizationError, match="function limit"):
         normalize_analysis(document)
+
+
+def test_extension_mapping_keys_canonicalize_but_ordered_lists_are_preserved():
+    first = analysis(); first["extensions"]["trace"] = {"z": 1, "ops": ["add", "sub"]}
+    second = analysis(); second["extensions"]["trace"] = {"ops": ["sub", "add"], "z": 1}
+    normalized = normalize_analysis(first)
+    assert normalized["extensions"]["trace"]["ops"] == ["add", "sub"]
+    assert normalize_analysis(first) == normalized
+    assert normalize_analysis(second)["extensions"]["trace"]["ops"] == ["sub", "add"]
     document = analysis(); document["extensions"]["bad"] = {"value": float("nan")}
     with pytest.raises(NormalizationError, match="finite"):
         normalize_analysis(document)

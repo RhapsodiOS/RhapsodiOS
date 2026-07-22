@@ -1,11 +1,13 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 import subprocess
 import sys
 import threading
+import time
 
 import pytest
 
@@ -189,6 +191,60 @@ def test_drain_failure_prevents_successful_publication(configured, tmp_path, mon
     with pytest.raises(OSError, match="drain failed"):
         export_with_angr(profile, "reference", destination, runner=runner)
     assert destination.read_text(encoding="ascii") == "known-good"
+
+
+def test_inherited_duplicate_writer_cannot_hold_export_open(configured, tmp_path):
+    profile, identity, _ = configured
+    writer_thread = None; writer_errors = []
+    def runner(argv, **options):
+        nonlocal writer_thread
+        duplicate = os.dup(options["stdout"].fileno())
+        def late_writer():
+            try:
+                for _ in range(1000):
+                    os.write(duplicate, b"late-writer\n")
+                    time.sleep(0.01)
+            except (BrokenPipeError, OSError) as error:
+                writer_errors.append(error)
+            finally:
+                os.close(duplicate)
+        writer_thread = threading.Thread(target=late_writer, name="test-late-writer")
+        writer_thread.start()
+        Path(argv[argv.index("--output") + 1]).write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+    destination = tmp_path / "inherited.json"
+    started = time.monotonic()
+    export_with_angr(profile, "reference", destination, runner=runner)
+    assert time.monotonic() - started < 2
+    writer_thread.join(2)
+    assert not writer_thread.is_alive() and writer_errors
+    assert not any(thread.name == "binrecon-angr-log-drain" and thread.is_alive()
+                   for thread in threading.enumerate())
+    assert len(destination.with_suffix(".json.angr.log").read_bytes()) <= 4 * 1024 * 1024 + 64
+
+
+def test_nonzero_exit_remains_primary_when_drain_fails(configured, tmp_path, monkeypatch):
+    profile, _, _ = configured
+    def runner(argv, **options): return subprocess.CompletedProcess(argv, 23)
+    monkeypatch.setattr(angr_host._BoundedPipeCapture, "finish",
+        lambda self: (_ for _ in ()).throw(OSError("drain failed after exit")))
+    with pytest.raises(AngrAdapterError, match="exit code 23") as captured:
+        export_with_angr(profile, "reference", tmp_path / "nonzero.json", runner=runner)
+    assert any("drain failed after exit" in note for note in captured.value.__notes__)
+
+
+def test_pipe_nonblocking_setup_failure_closes_both_descriptors(monkeypatch):
+    descriptors = []
+    original_pipe = angr_host.os.pipe
+    def pipe():
+        pair = original_pipe(); descriptors.extend(pair); return pair
+    monkeypatch.setattr(angr_host.os, "pipe", pipe)
+    monkeypatch.setattr(angr_host.os, "set_blocking",
+        lambda *args: (_ for _ in ()).throw(OSError("nonblocking denied")))
+    with pytest.raises(OSError, match="nonblocking denied"):
+        angr_host._BoundedPipeCapture()
+    for descriptor in descriptors:
+        with pytest.raises(OSError): os.fstat(descriptor)
 
 
 def test_timeout_keeps_primary_when_log_publication_fails(configured, tmp_path, monkeypatch):

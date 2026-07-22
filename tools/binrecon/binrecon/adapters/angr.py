@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from typing import Callable
 
 from binrecon.identity import InputIdentity, assert_identity
@@ -27,7 +28,9 @@ _MAX_OUTPUT = 16 * 1024 * 1024
 _MAX_LOG = 4 * 1024 * 1024
 _CHUNK = 1024 * 1024
 _TRUNCATION_MARKER = b"\n[truncated]\n"
-_DRAIN_JOIN_SECONDS = 5
+_DRAIN_GRACE_SECONDS = 0.25
+_DRAIN_POLL_SECONDS = 0.01
+_DRAIN_JOIN_SECONDS = 2
 
 
 class _BoundedPipeCapture:
@@ -35,19 +38,42 @@ class _BoundedPipeCapture:
 
     def __init__(self):
         read_descriptor, write_descriptor = os.pipe()
-        self._read_descriptor = read_descriptor
-        self.stdout = os.fdopen(write_descriptor, "wb", buffering=0)
-        self._buffer = bytearray()
-        self._truncated = False
-        self._error = None
-        self._thread = threading.Thread(target=self._drain,
-            name="binrecon-angr-log-drain", daemon=False)
-        self._thread.start()
+        try:
+            os.set_blocking(read_descriptor, False)
+            self._read_descriptor = read_descriptor
+            self.stdout = os.fdopen(write_descriptor, "wb", buffering=0)
+            write_descriptor = None
+            self._buffer = bytearray()
+            self._truncated = False
+            self._error = None
+            self._stop = threading.Event()
+            self._stop_deadline = None
+            self._thread = threading.Thread(target=self._drain,
+                name="binrecon-angr-log-drain", daemon=False)
+            self._thread.start()
+        except BaseException:
+            try: os.close(read_descriptor)
+            except OSError: pass
+            if write_descriptor is not None:
+                try: os.close(write_descriptor)
+                except OSError: pass
+            else:
+                try: self.stdout.close()
+                except BaseException: pass
+            raise
 
     def _drain(self):
         try:
             while True:
-                chunk = os.read(self._read_descriptor, _CHUNK)
+                if (self._stop.is_set() and self._stop_deadline is not None
+                        and time.monotonic() >= self._stop_deadline):
+                    break
+                try:
+                    chunk = os.read(self._read_descriptor, _CHUNK)
+                except BlockingIOError:
+                    if self._stop.is_set(): time.sleep(_DRAIN_POLL_SECONDS)
+                    else: self._stop.wait(_DRAIN_POLL_SECONDS)
+                    continue
                 if not chunk: break
                 remaining = _MAX_LOG - len(self._buffer)
                 if remaining > 0: self._buffer.extend(chunk[:remaining])
@@ -62,7 +88,13 @@ class _BoundedPipeCapture:
         if not self.stdout.closed:
             self.stdout.close()
 
+    def stop(self):
+        if not self._stop.is_set():
+            self._stop_deadline = time.monotonic() + _DRAIN_GRACE_SECONDS
+            self._stop.set()
+
     def finish(self) -> bytes:
+        self.stop()
         self._thread.join(_DRAIN_JOIN_SECONDS)
         if self._thread.is_alive():
             raise AngrAdapterError("angr diagnostic drain thread did not terminate")
@@ -75,11 +107,10 @@ class _BoundedPipeCapture:
         error = None
         try: self.close_writer()
         except BaseException as caught: error = caught
+        self.stop()
         self._thread.join(_DRAIN_JOIN_SECONDS)
-        if self._thread.is_alive():
-            try: os.close(self._read_descriptor)
-            except OSError: pass
-            self._thread.join(1)
+        if self._thread.is_alive() and error is None:
+            error = AngrAdapterError("angr diagnostic drain thread did not terminate")
         if error is not None: raise error
 
 
@@ -285,6 +316,8 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         try:
             completed = runner(argv, stdout=capture.stdout, stderr=subprocess.STDOUT,
                                timeout=timeout, shell=False, check=False)
+            if completed.returncode != 0:
+                primary = AngrAdapterError(f"angr failed with exit code {completed.returncode}")
         except subprocess.TimeoutExpired as error:
             primary = AngrAdapterError(f"angr timed out after {timeout} seconds"); cause = error
         except OSError as error:
@@ -296,6 +329,7 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
             except BaseException as close_error:
                 if primary is None: primary = close_error
                 else: primary.add_note(f"angr diagnostic pipe close failed: {close_error}")
+            capture.stop()
         drain_error = None
         try:
             captured = capture.finish()
@@ -313,10 +347,6 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
             raise primary
         if drain_error is not None: raise drain_error
         if cleanup_error is not None: raise cleanup_error
-        if completed.returncode != 0:
-            primary = AngrAdapterError(f"angr failed with exit code {completed.returncode}")
-            _preserve_primary_log(log_path, captured, primary)
-            raise primary
         _publish_log(log_path, captured)
         if not output.is_file(): raise AngrAdapterError("angr did not produce a fresh analysis output")
         try:

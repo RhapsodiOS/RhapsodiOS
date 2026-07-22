@@ -103,16 +103,36 @@ def _atomic_text(path: Path, text: str) -> None:
         raise
 
 
-def _bounded(value) -> str:
-    if value is None: return ""
-    if isinstance(value, bytes): value = value.decode("utf-8", errors="replace")
-    data = str(value).encode("utf-8", errors="replace")
-    if len(data) > _MAX_LOG: data = data[:_MAX_LOG] + b"\n[truncated]\n"
+def _read_bounded_log(path: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        initial = os.fstat(descriptor)
+        if not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1:
+            raise AngrAdapterError("angr process log is not a private regular file")
+        chunks, total = [], 0
+        while total <= _MAX_LOG:
+            chunk = os.read(descriptor, min(_CHUNK, _MAX_LOG + 1 - total))
+            if not chunk: break
+            chunks.append(chunk); total += len(chunk)
+        final = os.fstat(descriptor)
+        fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
+        if any(getattr(initial, field) != getattr(final, field) for field in fields):
+            raise AngrAdapterError("angr process log changed while reading")
+    finally: os.close(descriptor)
+    data = b"".join(chunks)
+    if initial.st_size > _MAX_LOG or len(data) > _MAX_LOG:
+        data = data[:_MAX_LOG] + b"\n[truncated]\n"
     return data.decode("utf-8", errors="replace")
 
 
-def _publish_log(path: Path, stdout, stderr) -> None:
-    _atomic_text(path, f"=== stdout ===\n{_bounded(stdout)}\n=== stderr ===\n{_bounded(stderr)}\n")
+def _publish_log(path: Path, raw_log: Path) -> None:
+    _atomic_text(path, _read_bounded_log(raw_log))
+
+
+def _preserve_primary_log(path: Path, raw_log: Path, primary: BaseException) -> None:
+    try: _publish_log(path, raw_log)
+    except BaseException as error: primary.add_note(f"could not publish angr log: {error}")
 
 
 def _reject_alias(path: Path, input_path: Path, label: str) -> None:
@@ -197,41 +217,52 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
     except (OSError, ValueError) as error: raise AngrAdapterError(f"input identity is no longer stable: {error}") from error
     destination = Path(destination).resolve(strict=False); destination.parent.mkdir(parents=True, exist_ok=True)
     log_path = destination.with_suffix(destination.suffix + ".angr.log")
-    _reject_alias(destination, identity.path, "destination"); _reject_alias(log_path, identity.path, "log path")
-    _reject_peer_alias(destination, log_path)
-    workspace = Path(tempfile.mkdtemp(prefix=f".{destination.name}.angr-work-", dir=destination.parent))
-    output = workspace / "analysis.json"; config_path = workspace / "config.json"
-    layout_path = workspace / "layout.json"
-    script = Path(__file__).parents[2] / "adapters" / "angr" / "export_analysis.py"
     peer_artifact = "rebuilt" if artifact == "reference" else "reference"
     peer_identity = _identity(profile, peer_artifact)
     try: assert_identity(peer_identity)
     except (OSError, ValueError) as error:
         raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
-    config = {"profile": _thaw(profile.document), "artifact": artifact,
-              "peer_artifact": peer_artifact,
-              "peer_input": {"path": str(peer_identity.path), "size": peer_identity.size,
-                             "sha256": peer_identity.sha256},
-              "peer_layout": _layout(profile, peer_identity)}
-    _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
-    _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
-                                        separators=(",", ":")) + "\n")
-    argv = [str(executable), str(script.resolve()), "--input", str(identity.path),
-            "--output", str(output), "--config", str(config_path), "--layout", str(layout_path),
-            "--size", str(identity.size),
-            "--sha256", identity.sha256]
+    _reject_alias(destination, identity.path, "destination"); _reject_alias(log_path, identity.path, "log path")
+    _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+    _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+    _reject_peer_alias(destination, log_path)
+    workspace = Path(tempfile.mkdtemp(prefix=f".{destination.name}.angr-work-", dir=destination.parent))
     try:
+        output = workspace / "analysis.json"; config_path = workspace / "config.json"
+        layout_path = workspace / "layout.json"; raw_log = workspace / "process.log"
+        for temporary, label in ((output, "output temporary"), (config_path, "config temporary"),
+                                 (layout_path, "layout temporary"), (raw_log, "log temporary")):
+            _reject_alias(temporary, identity.path, label)
+            _reject_alias(temporary, peer_identity.path, label + " (peer artifact)")
+        script = Path(__file__).parents[2] / "adapters" / "angr" / "export_analysis.py"
+        config = {"profile": _thaw(profile.document), "artifact": artifact,
+                  "peer_artifact": peer_artifact,
+                  "peer_input": {"path": str(peer_identity.path), "size": peer_identity.size,
+                                 "sha256": peer_identity.sha256},
+                  "peer_layout": _layout(profile, peer_identity)}
+        _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
+        _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
+                                            separators=(",", ":")) + "\n")
+        argv = [str(executable), str(script.resolve()), "--input", str(identity.path),
+                "--output", str(output), "--config", str(config_path), "--layout", str(layout_path),
+                "--size", str(identity.size), "--sha256", identity.sha256]
         try:
-            completed = runner(argv, capture_output=True, text=True, timeout=timeout,
-                               shell=False, check=False)
+            with raw_log.open("xb") as process_log:
+                completed = runner(argv, stdout=process_log, stderr=subprocess.STDOUT,
+                                   timeout=timeout, shell=False, check=False)
         except subprocess.TimeoutExpired as error:
-            _publish_log(log_path, error.stdout, error.stderr)
-            raise AngrAdapterError(f"angr timed out after {timeout} seconds") from error
+            primary = AngrAdapterError(f"angr timed out after {timeout} seconds")
+            _preserve_primary_log(log_path, raw_log, primary)
+            raise primary from error
         except OSError as error:
-            _publish_log(log_path, "", str(error))
-            raise AngrAdapterError(f"could not start angr: {error}") from error
-        _publish_log(log_path, completed.stdout, completed.stderr)
-        if completed.returncode != 0: raise AngrAdapterError(f"angr failed with exit code {completed.returncode}")
+            primary = AngrAdapterError(f"could not start angr: {error}")
+            _preserve_primary_log(log_path, raw_log, primary)
+            raise primary from error
+        if completed.returncode != 0:
+            primary = AngrAdapterError(f"angr failed with exit code {completed.returncode}")
+            _preserve_primary_log(log_path, raw_log, primary)
+            raise primary
+        _publish_log(log_path, raw_log)
         if not output.is_file(): raise AngrAdapterError("angr did not produce a fresh analysis output")
         try:
             document = _read_snapshot(output); validate_document("analysis-v1", document); validate_analysis_semantics(document)
@@ -243,11 +274,16 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         exported = document["input"]
         if exported["size"] != identity.size or exported["sha256"].upper() != identity.sha256 or Path(exported["path"]).resolve(strict=False) != identity.path:
             raise AngrAdapterError("angr output input identity does not match requested input")
+        shutil.rmtree(workspace); workspace = None
         try: assert_identity(identity)
         except (OSError, ValueError) as error: raise AngrAdapterError(f"input identity changed during angr analysis: {error}") from error
         try: assert_identity(peer_identity)
         except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
-        shutil.rmtree(workspace); workspace = None
+        _reject_alias(destination, identity.path, "destination")
+        _reject_alias(log_path, identity.path, "log path")
+        _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+        _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+        _reject_peer_alias(destination, log_path)
         _atomic_text(destination, json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n")
         return document
     finally:

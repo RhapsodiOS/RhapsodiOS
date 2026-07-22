@@ -16,6 +16,44 @@ import sys
 _MAX_FLAT_IMAGE = 64 * 1024 * 1024
 _MAX_FUNCTIONS = 100_000
 _MAX_BLOCKS = 1_000_000
+_MAX_CHECKS = 128
+_MAX_INPUT_BYTES = 256
+_MAX_TOTAL_INPUT_BYTES = 4096
+_MAX_MEMORY_SETUP = 64 * 1024
+_MAX_REGISTERS = 64
+_MAX_HOOKS = 64
+_MAX_ACTIVE_STATES = 128
+_MAX_STEPS = 10_000
+_MAX_ASSERTIONS = 64
+_MAX_PROOF_QUERIES = 1024
+_SOLVER_TIMEOUT_MS = 2_000
+
+
+class ProofLimit(RuntimeError):
+    pass
+
+
+def _limit_error(check: dict) -> str | None:
+    if check.get("input_bytes", 0) > _MAX_INPUT_BYTES: return "input_bytes resource limit exceeded"
+    if check.get("max_active_states", 0) > _MAX_ACTIVE_STATES: return "active-state resource limit exceeded"
+    if check.get("max_steps", 0) > _MAX_STEPS: return "step resource limit exceeded"
+    if len(check.get("hooks", [])) > _MAX_HOOKS: return "hook resource limit exceeded"
+    if len(check.get("registers", {})) > _MAX_REGISTERS: return "register setup resource limit exceeded"
+    if len(check.get("assertions", [])) > _MAX_ASSERTIONS: return "assertion resource limit exceeded"
+    if sum(len(item["bytes"]) // 2 for item in check.get("memory", [])) > _MAX_MEMORY_SETUP:
+        return "memory setup resource limit exceeded"
+    addresses = [item["address"] for item in check.get("hooks", [])]
+    if len(addresses) != len(set(addresses)): return "duplicate hook address"
+    return None
+
+
+def _validate_check_set(checks: list[dict]) -> None:
+    if len(checks) > _MAX_CHECKS: raise ValueError("symbolic check count resource limit exceeded")
+    if sum(check.get("input_bytes", 0) for check in checks) > _MAX_TOTAL_INPUT_BYTES:
+        raise ValueError("total symbolic input resource limit exceeded")
+    for check in checks:
+        error = _limit_error(check)
+        if error: raise ValueError(f"symbolic check {check.get('name', '')!r}: {error}")
 
 
 def parse_arguments(argv=None):
@@ -171,15 +209,25 @@ def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict
                         target = int(expression.con.value)
                         if target in project.loader.memory:
                             raw_references.append((current_instruction, target, kind))
+            blocks_by_address = {int(block.addr): block for block in function_blocks}
             for callsite in sorted(function.get_call_sites()):
+                call_block = blocks_by_address.get(int(callsite))
+                if call_block is None or not call_block.capstone.insns:
+                    cfg_errors.append(f"0x{int(callsite):X}: callsite block is unavailable")
+                    continue
+                call_instruction = call_block.capstone.insns[-1]
+                if not (call_instruction.mnemonic or "").lower().startswith("call"):
+                    cfg_errors.append(f"0x{int(callsite):X}: callsite does not end in a call")
+                    continue
+                call_address = int(call_instruction.address)
                 target = function.get_call_target(callsite)
                 target_value = None if target is None else int(target)
                 target_function = cfg.kb.functions.get(target_value) if target_value is not None else None
-                calls.append({"address": int(callsite),
+                calls.append({"address": call_address,
                               "target": target_value,
                               "name": getattr(target_function, "name", None)})
                 if target_value is not None:
-                    raw_references.append((int(callsite), target_value, "control-call"))
+                    raw_references.append((call_address, target_value, "control-call"))
             names = sorted(set(filter(None, [getattr(function, "name", None)])))
             functions.append({"address": int(function.addr),
                 "size": max(0, maximum_end - int(function.addr)), "names": names,
@@ -220,19 +268,24 @@ def _resolve_function(project, value: str) -> int | None:
     return None if symbol is None else int(symbol.rebased_addr)
 
 
+def _new_solver(constraints=()):
+    import claripy
+    solver = claripy.Solver(timeout=_SOLVER_TIMEOUT_MS)
+    if constraints: solver.add(*constraints)
+    return solver
+
+
 def _lexicographic_model(solver, symbolic_bytes, expressions, constraint):
     import claripy
-    combined = claripy.Solver()
-    if solver.constraints:
-        combined.add(*solver.constraints)
+    combined = _new_solver(solver.constraints)
     combined.add(constraint)
-    for byte in symbolic_bytes:
-        minimum = combined.min(byte)
-        combined.add(byte == minimum)
-    values = combined.batch_eval([*symbolic_bytes, *expressions], 1)[0]
-    if not combined.satisfiable():
-        raise ValueError("counterexample model became unsatisfiable")
-    return values
+    try:
+        for byte in symbolic_bytes:
+            minimum = combined.min(byte)
+            combined.add(byte == minimum)
+        return combined.batch_eval([*symbolic_bytes, *expressions], 1)[0]
+    except claripy.errors.ClaripySolverInterruptError as error:
+        raise ProofLimit("solver query timed out") from error
 
 
 def _counterexample(state, symbolic_bytes, expression=None, constraint=None) -> dict:
@@ -253,8 +306,10 @@ def _execute_symbolically(project, check: dict, symbolic_prefix: str) -> dict:
     for hook in check.get("hooks", []):
         if hook["handler"] != "return-constant" or "returns" not in hook:
             return {"status": "unsupported", "reason": f"unsupported hook handler {hook['handler']!r}"}
-    options = {angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
-               angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS}
+    limit = _limit_error(check)
+    if limit: return {"status": "unsupported", "reason": limit}
+    options = {angr.options.SYMBOL_FILL_UNCONSTRAINED_MEMORY,
+               angr.options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS}
     count = int(check.get("input_bytes", 0)); pointer = 0x7FFF0000
     symbolic = [claripy.BVS(f"{symbolic_prefix}_{index:04d}", 8, explicit_name=True)
                 for index in range(count)]
@@ -273,8 +328,10 @@ def _execute_symbolically(project, check: dict, symbolic_prefix: str) -> dict:
         return ReturnConstant()
     try:
         for hook in check.get("hooks", []):
-            project.hook(hook["address"], constant_procedure(hook["returns"]))
-            installed.append(hook["address"])
+            address = hook["address"]
+            prior = project.hooked_by(address) if project.is_hooked(address) else None
+            project.hook(address, constant_procedure(hook["returns"]), replace=True)
+            installed.append((address, prior))
         manager = project.factory.simulation_manager(state)
         steps = 0
         state_cap = False
@@ -309,9 +366,21 @@ def _execute_symbolically(project, check: dict, symbolic_prefix: str) -> dict:
             return {**base, "status": "unsupported", "reason": "no terminal states"}
         return {**base, "status": "passed"}
     finally:
-        for hooked in installed:
-            try: project.unhook(hooked)
+        for hooked, prior in reversed(installed):
+            try:
+                project.unhook(hooked)
+                if prior is not None:
+                    project.hook(hooked, prior, length=getattr(prior, "length", 0), replace=True)
             except Exception: pass
+
+
+def _undeclared_variables(execution: dict, expressions=()) -> list[str]:
+    allowed = set().union(*(item.variables for item in execution.get("symbolic", [])))
+    observed = set()
+    for state in execution.get("states", []):
+        for constraint in state.solver.constraints: observed.update(constraint.variables)
+    for expression in expressions: observed.update(getattr(expression, "variables", set()))
+    return sorted(observed - allowed)
 
 
 def run_symbolic_check(project, check: dict) -> dict:
@@ -322,6 +391,8 @@ def run_symbolic_check(project, check: dict) -> dict:
     reachable terminal state; a satisfying model is a failure counterexample.
     """
     name = check["name"]
+    limit = _limit_error(check)
+    if limit: return unsupported_check(name, limit)
     for assertion in check.get("assertions", []):
         if assertion["kind"] == "return-equivalent":
             return unsupported_check(name, "return-equivalent requires paired artifact orchestration")
@@ -333,6 +404,10 @@ def run_symbolic_check(project, check: dict) -> dict:
         result["name"] = name
         if result["status"] != "passed": return result
         terminals, symbolic = execution["states"], execution["symbolic"]
+        undeclared_paths = _undeclared_variables(execution)
+        if undeclared_paths:
+            return unsupported_check(name, "undeclared symbolic variables: " + ",".join(undeclared_paths))
+        query_count = 0
         for terminal in terminals:
             for assertion in check.get("assertions", []):
                 kind = assertion["kind"]
@@ -344,17 +419,33 @@ def run_symbolic_check(project, check: dict) -> dict:
                     expression = terminal.memory.load(assertion["address"], len(expected))
                     negated = expression != claripy.BVV(expected)
                 else: return unsupported_check(name, f"unsupported assertion {kind!r}")
-                if terminal.solver.satisfiable(extra_constraints=[negated]):
+                undeclared = _undeclared_variables(execution, [expression, negated])
+                if undeclared:
+                    return unsupported_check(name, "undeclared symbolic variables: " + ",".join(undeclared))
+                query_count += 1
+                if query_count > _MAX_PROOF_QUERIES:
+                    return {"name": name, "status": "limit-reached", "reason": "proof query limit reached"}
+                solver = _new_solver(terminal.solver.constraints)
+                try: satisfiable = solver.satisfiable(extra_constraints=[negated])
+                except claripy.errors.ClaripySolverInterruptError:
+                    return {"name": name, "status": "limit-reached", "reason": "solver query timed out"}
+                if satisfiable:
+                    if query_count + len(symbolic) + 1 > _MAX_PROOF_QUERIES:
+                        return {"name": name, "status": "limit-reached", "reason": "witness query limit reached"}
                     return {"name": name, "status": "failed", "reason": kind,
                             "counterexample": _counterexample(terminal, symbolic, expression, negated),
                             "terminal_states": len(terminals)}
         return result
+    except ProofLimit as error:
+        return {"name": name, "status": "limit-reached", "reason": str(error)}
     except Exception as error:
         return unsupported_check(name, f"{type(error).__name__}: {str(error)[:180]}")
 
 
 def run_equivalent_check(reference_project, rebuilt_project, check: dict) -> dict:
     name = check["name"]
+    limit = _limit_error(check)
+    if limit: return unsupported_check(name, limit)
     try:
         import claripy
         prefix = f"{name}_joint_input"
@@ -366,15 +457,25 @@ def run_equivalent_check(reference_project, rebuilt_project, check: dict) -> dic
                 return {"name": name, "status": execution["status"], "steps": steps,
                         "reason": f"{side}: {execution.get('reason', execution['status'])}"}
         symbolic = reference["symbolic"]
+        query_count = 0
         for reference_state in reference["states"]:
             for rebuilt_state in rebuilt["states"]:
-                solver = claripy.Solver()
-                if reference_state.solver.constraints:
-                    solver.add(*reference_state.solver.constraints)
-                if rebuilt_state.solver.constraints:
-                    solver.add(*rebuilt_state.solver.constraints)
+                undeclared = _undeclared_variables(reference, [reference_state.regs.eax])
+                undeclared += _undeclared_variables(rebuilt, [rebuilt_state.regs.eax])
+                if undeclared:
+                    return unsupported_check(name, "undeclared symbolic variables: " + ",".join(sorted(set(undeclared))))
+                solver = _new_solver([*reference_state.solver.constraints,
+                                      *rebuilt_state.solver.constraints])
                 disequality = reference_state.regs.eax != rebuilt_state.regs.eax
-                if solver.satisfiable(extra_constraints=[disequality]):
+                query_count += 1
+                if query_count > _MAX_PROOF_QUERIES:
+                    return {"name": name, "status": "limit-reached", "reason": "proof query limit reached"}
+                try: satisfiable = solver.satisfiable(extra_constraints=[disequality])
+                except claripy.errors.ClaripySolverInterruptError:
+                    return {"name": name, "status": "limit-reached", "reason": "solver query timed out"}
+                if satisfiable:
+                    if query_count + len(symbolic) + 1 > _MAX_PROOF_QUERIES:
+                        return {"name": name, "status": "limit-reached", "reason": "witness query limit reached"}
                     values = _lexicographic_model(solver, symbolic,
                         [reference_state.regs.eax, rebuilt_state.regs.eax], disequality)
                     return {"name": name, "status": "failed", "reason": "return-equivalent",
@@ -384,6 +485,8 @@ def run_equivalent_check(reference_project, rebuilt_project, check: dict) -> dic
         return {"name": name, "status": "passed", "steps": steps,
                 "terminal_states": {"reference": len(reference["states"]),
                                     "rebuilt": len(rebuilt["states"])}}
+    except ProofLimit as error:
+        return {"name": name, "status": "limit-reached", "reason": str(error)}
     except Exception as error:
         return unsupported_check(name, f"{type(error).__name__}: {str(error)[:180]}")
 
@@ -412,11 +515,12 @@ def main(argv=None) -> int:
             raise ValueError("input identity does not match command line")
         config = json.loads(Path(arguments.config).read_text(encoding="utf-8"))
         layout = json.loads(Path(arguments.layout).read_text(encoding="utf-8"))
+        profile_checks = config["profile"].get("symbolic_checks", [])
+        _validate_check_set(profile_checks)
         project = load_project(angr, path, layout)
         canonical = {"symbols": layout.get("symbols", []),
                      "relocations": layout.get("relocations", [])}
         functions, cfg, references = export_cfg(project, layout, canonical)
-        profile_checks = config["profile"].get("symbolic_checks", [])
         needs_peer = any(any(assertion["kind"] == "return-equivalent"
                              for assertion in check.get("assertions", []))
                          for check in profile_checks)

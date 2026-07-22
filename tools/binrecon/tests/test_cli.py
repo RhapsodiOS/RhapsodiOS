@@ -128,7 +128,7 @@ def test_validate_module_entrypoint_reports_invalid_profile_without_traceback(tm
     assert "Traceback" not in completed.stderr
 
 
-@pytest.mark.parametrize("command", ["analyze", "consensus", "compare", "ledger"])
+@pytest.mark.parametrize("command", ["analyze", "compare", "ledger"])
 def test_non_validate_commands_remain_not_implemented(command, capsys):
     result = main([command, "--profile", "unused.json"])
 
@@ -136,3 +136,56 @@ def test_non_validate_commands_remain_not_implemented(command, capsys):
     assert result == 2
     assert captured.out == f"binrecon: command not implemented: {command}\n"
     assert captured.err == ""
+
+
+def test_consensus_module_entrypoint_writes_deterministic_json(tmp_path):
+    from test_normalize import analysis
+    inputs = []
+    for name in ("ida", "ghidra", "angr"):
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(analysis(name)), encoding="utf-8")
+        inputs.append(path)
+    output = tmp_path / "consensus.json"
+    completed = subprocess.run(
+        [sys.executable, "-m", "binrecon", "consensus",
+         *(part for path in reversed(inputs) for part in ("--input", str(path))),
+         "--output", str(output)], cwd=tmp_path, env=_subprocess_environment(),
+        capture_output=True, text=True, check=False)
+    assert completed.returncode == 0
+    assert completed.stdout == ""
+    document = json.loads(output.read_text(encoding="utf-8"))
+    assert document["schema_version"] == "consensus-v1"
+    assert document["groups"][0]["status"] == "agreed"
+    first_bytes = output.read_bytes()
+    second_output = tmp_path / "consensus-reordered.json"
+    reordered = subprocess.run(
+        [sys.executable, "-m", "binrecon", "consensus",
+         *(part for path in inputs for part in ("--input", str(path))),
+         "--output", str(second_output)], cwd=tmp_path, env=_subprocess_environment(),
+        capture_output=True, text=True, check=False)
+    assert reordered.returncode == 0
+    assert second_output.read_bytes() == first_bytes
+
+
+@pytest.mark.parametrize("mode", ["malformed", "schema", "identity", "alias"])
+def test_consensus_entrypoint_rejects_unsafe_or_invalid_inputs_without_partial_output(tmp_path, mode):
+    from test_normalize import analysis
+    first = tmp_path / "one.json"
+    second = tmp_path / "two.json"
+    first.write_text(json.dumps(analysis("ida")), encoding="utf-8")
+    other = analysis("ghidra")
+    if mode == "malformed":
+        second.write_text("{", encoding="utf-8")
+    else:
+        if mode == "schema": del other["input"]["architecture"]
+        if mode == "identity": other["input"]["size"] += 1
+        second.write_text(json.dumps(other), encoding="utf-8")
+    output = first if mode == "alias" else tmp_path / "out.json"
+    completed = subprocess.run(
+        [sys.executable, "-m", "binrecon", "consensus", "--input", str(first),
+         "--input", str(second), "--output", str(output)], cwd=tmp_path,
+        env=_subprocess_environment(), capture_output=True, text=True, check=False)
+    assert completed.returncode == 1
+    assert completed.stdout == ""
+    assert completed.stderr.startswith("binrecon: ")
+    if mode != "alias": assert not output.exists()

@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from binrecon.normalize import NormalizationError, normalize_analysis
+from binrecon.normalize import MAX_FUNCTIONS, NormalizationError, normalize_analysis
 
 
 HASH = "A" * 64
@@ -54,11 +54,11 @@ def test_normalizes_only_the_exact_relocated_operand_and_preserves_semantics():
     assert source == before
     relocation = instructions[0]["operands"][0]["relocations"][0]
     assert instructions[0]["operands"][0]["text"] == "callee"
-    assert relocation == {"index": 0, "field_offset": 1, "width": 4,
+    assert relocation == {"field_offset": 1, "width": 4,
                           "signed": True, "kind": "i386-vanilla-32-pc-relative",
                           "target": {"kind": "section",
                                      "section": result["sections"][0]["identity"],
-                                     "offset": 0x20}, "addend": -4}
+                                     "offset": 0x20}, "addend": -4, "status": None}
     assert instructions[1]["operands"] == [
         {"text": "eax", "relocations": []},
         {"text": "0x12345678", "relocations": []}]
@@ -92,7 +92,7 @@ def test_relocation_annotates_only_owning_operand_for_immediate_and_memory():
     assert len(memory["operands"][1]["relocations"]) == 1
 
 
-def test_supports_two_distinct_relocated_operands_and_rejects_ambiguous_owner():
+def test_supports_two_distinct_or_shared_relocated_operands():
     document = analysis()
     document["symbols"].append({"name": "other", "address": 0x1024,
                                 "binding": "global", "section": ".text"})
@@ -110,8 +110,8 @@ def test_supports_two_distinct_relocated_operands_and_rejects_ambiguous_owner():
 
     document["relocations"][1]["target"] = "callee"
     document["extensions"]["macho"]["relocations"][1]["target"] = "callee"
-    with pytest.raises(NormalizationError, match="operand"):
-        normalize_analysis(document)
+    shared = normalize_analysis(document)["functions"][0]["instructions"][0]
+    assert [len(item["relocations"]) for item in shared["operands"]] == [2, 0]
 
 
 @pytest.mark.parametrize("analyzer,kind,extension", [
@@ -183,6 +183,49 @@ def test_random_nested_input_permutations_produce_identical_canonical_json():
         rng.shuffle(candidate["references"])
         actual = json.dumps(normalize_analysis(candidate), sort_keys=True, separators=(",", ":"))
         assert actual == expected
+
+
+def test_section_identity_requires_name_and_preserves_explicit_ordinal():
+    first = analysis(); second = analysis()
+    second["sections"][0]["name"] = ".other"
+    assert (normalize_analysis(first)["sections"][0]["identity"] !=
+            normalize_analysis(second)["sections"][0]["identity"])
+    for document, ordinal in ((first, 1), (second, 2)):
+        document["extensions"] = {"macho": {"sections": [{
+            "name": document["sections"][0]["name"], "address": 0x1000,
+            "offset": 0, "size": 64, "ordinal": ordinal}], "relocations": [
+                {"address": 0x1001, "target": "callee", "width": 4}]}}
+    assert normalize_analysis(first)["sections"][0]["identity"]["ordinal"] == 1
+    assert normalize_analysis(second)["sections"][0]["identity"]["ordinal"] == 2
+
+
+def test_two_nonoverlapping_relocations_may_share_one_unique_operand_and_reorder_stably():
+    document = analysis()
+    document["relocations"].append({"address": 0x1005,
+        "kind": "ida-off32-32-relative", "target": "callee", "addend": 1})
+    document["extensions"]["macho"]["relocations"].append(
+        {"address": 0x1005, "target": "callee", "width": 4})
+    instruction = document["functions"][0]["instructions"][0]
+    instruction.update(bytes="907856341278563412", mnemonic="pair",
+                       operands="[callee + callee]", normalized_operands="[callee + callee]",
+                       relocations=[0, 1])
+    first = normalize_analysis(document)
+    relocations = first["functions"][0]["instructions"][0]["operands"][0]["relocations"]
+    assert [item["field_offset"] for item in relocations] == [1, 5]
+    reordered = deepcopy(document)
+    reordered["relocations"].reverse()
+    reordered["extensions"]["macho"]["relocations"].reverse()
+    assert normalize_analysis(reordered) == first
+
+
+def test_preflight_rejects_function_limit_and_nonfinite_extension():
+    document = analysis()
+    document["functions"] = [deepcopy(document["functions"][0]) for _ in range(MAX_FUNCTIONS + 1)]
+    with pytest.raises(NormalizationError, match="function limit"):
+        normalize_analysis(document)
+    document = analysis(); document["extensions"]["bad"] = {"value": float("nan")}
+    with pytest.raises(NormalizationError, match="finite"):
+        normalize_analysis(document)
 
 
 def test_load_base_changes_do_not_change_section_relative_function_identity():

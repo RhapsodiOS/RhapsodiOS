@@ -207,3 +207,12 @@ def test_consensus_cli_expected_analyzer_override_allows_two_way_agreement(tmp_p
         capture_output=True, text=True, check=False)
     assert completed.returncode == 0
     assert json.loads(output.read_text())["groups"][0]["status"] == "agreed"
+
+
+def test_consensus_cli_rejects_nonfinite_json_constant(tmp_path):
+    source = tmp_path / "bad.json"; source.write_text('{"value":NaN}', encoding="utf-8")
+    completed = subprocess.run([sys.executable, "-m", "binrecon", "consensus",
+        "--input", str(source), "--output", str(tmp_path / "out.json")], cwd=tmp_path,
+        env=_subprocess_environment(), capture_output=True, text=True, check=False)
+    assert completed.returncode == 1
+    assert "non-finite" in completed.stderr

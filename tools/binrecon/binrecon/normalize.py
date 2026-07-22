@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import math
 import re
 
 from binrecon.schema import validate_analysis_semantics, validate_document
@@ -11,6 +12,50 @@ from binrecon.schema import validate_analysis_semantics, validate_document
 
 class NormalizationError(ValueError):
     """Raised when analyzer evidence cannot be normalized unambiguously."""
+
+
+MAX_ANALYZERS = 32
+MAX_SECTIONS = 4096
+MAX_FUNCTIONS = 4096
+MAX_BLOCKS = 65_536
+MAX_INSTRUCTIONS = 262_144
+MAX_EDGES = 262_144
+MAX_CALLS = 262_144
+MAX_REFERENCES = 262_144
+MAX_RELOCATIONS = 262_144
+MAX_CLAIMS = 131_072
+MAX_COLLECTION = 500_000
+MAX_NODES = 1_000_000
+MAX_DEPTH = 64
+MAX_STRING = 1_048_576
+
+
+def preflight_json(value, error_type=NormalizationError) -> None:
+    """Iteratively bound JSON structure before schema or recursive processing."""
+    stack = [(value, 0)]; nodes = 0
+    while stack:
+        item, depth = stack.pop(); nodes += 1
+        if nodes > MAX_NODES: raise error_type("JSON node limit exceeded")
+        if depth > MAX_DEPTH: raise error_type("JSON nesting depth limit exceeded")
+        if item is None or type(item) in (bool, int): continue
+        if isinstance(item, float):
+            if not math.isfinite(item): raise error_type("JSON numbers must be finite")
+            continue
+        if isinstance(item, str):
+            if len(item) > MAX_STRING: raise error_type("JSON string length limit exceeded")
+            continue
+        if isinstance(item, list):
+            if len(item) > MAX_COLLECTION: raise error_type("JSON collection length limit exceeded")
+            stack.extend((child, depth + 1) for child in item)
+            continue
+        if isinstance(item, dict):
+            if len(item) > MAX_COLLECTION: raise error_type("JSON collection length limit exceeded")
+            for key, child in item.items():
+                if not isinstance(key, str): raise error_type("JSON object keys must be strings")
+                if len(key) > MAX_STRING: raise error_type("JSON key length limit exceeded")
+                stack.append((child, depth + 1))
+            continue
+        raise error_type(f"unsupported JSON type: {type(item).__name__}")
 
 
 def canonical_key(value) -> str:
@@ -23,7 +68,8 @@ def canonical_key(value) -> str:
 
 
 def section_key(value: dict) -> tuple:
-    return (value["offset"], value["size"], value["permissions"], value["sha256"])
+    return (value["offset"], value["size"], value["permissions"], value["sha256"],
+            canonical_key(value["name"]), value.get("ordinal", 0))
 
 
 def endpoint_key(value: dict) -> tuple:
@@ -61,18 +107,37 @@ def integer_key(value: int) -> int:
 
 
 def relocation_key(value: dict) -> tuple:
-    return (value["field_offset"], value["index"], canonical_key(value))
+    return (value["field_offset"], value["width"], canonical_key(value["kind"]),
+            value["signed"], endpoint_key(value["target"]), value["addend"],
+            canonical_key(value["status"]))
 
 
 _WIDTH = re.compile(r"(?:^|[^0-9])(8|16|32)(?:[^0-9]|$)")
 
 
-def _section_identity(section: dict) -> dict:
-    return {"offset": section["offset"], "size": section["size"],
+def _section_identity(section: dict, document: dict | None = None) -> dict:
+    result = {"name": section["name"], "offset": section["offset"], "size": section["size"],
             "permissions": section["permissions"], "sha256": section["sha256"].upper()}
+    ordinals = set()
+    if document is not None:
+        extensions = document.get("extensions", {})
+        for metadata in (extensions.get("macho", {}).get("sections", []),
+                         extensions.get("ghidra", {}).get("fallback_sections", [])):
+            for item in metadata:
+                if (isinstance(item, dict) and item.get("name") == section["name"] and
+                        all(item.get(key) == section[key] for key in ("address", "offset", "size")) and
+                        "ordinal" in item):
+                    ordinals.add(item["ordinal"])
+    if len(ordinals) > 1: raise NormalizationError("section ordinal metadata conflicts")
+    if ordinals:
+        ordinal = next(iter(ordinals))
+        if type(ordinal) is not int or ordinal <= 0:
+            raise NormalizationError("section ordinal must be positive")
+        result["ordinal"] = ordinal
+    return result
 
 
-def _location(address: int, sections: list[dict]) -> dict:
+def _location(address: int, sections: list[dict], document: dict | None = None) -> dict:
     matches = [section for section in sections
                if section["address"] <= address < section["address"] + section["size"]]
     if len(matches) > 1:
@@ -80,11 +145,11 @@ def _location(address: int, sections: list[dict]) -> dict:
     if not matches:
         return {"kind": "unmapped", "address": address}
     section = matches[0]
-    return {"kind": "section", "section": _section_identity(section),
+    return {"kind": "section", "section": _section_identity(section, document),
             "offset": address - section["address"]}
 
 
-def _range(address: int, size: int, sections: list[dict]) -> dict:
+def _range(address: int, size: int, sections: list[dict], document: dict | None = None) -> dict:
     if size < 0:
         raise NormalizationError("negative range size")
     matches = [section for section in sections if
@@ -94,10 +159,10 @@ def _range(address: int, size: int, sections: list[dict]) -> dict:
         raise NormalizationError(f"range {address:#x}+{size:#x} does not map to one section")
     section = matches[0]
     start = address - section["address"]
-    return {"section": _section_identity(section), "start": start, "end": start + size}
+    return {"section": _section_identity(section, document), "start": start, "end": start + size}
 
 
-def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[int, bool]:
+def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[int, bool, str | None]:
     widths, relatives = [], []
     extensions = document.get("extensions", {})
     sources = [extensions.get("macho", {}).get("relocations", []),
@@ -134,7 +199,16 @@ def _relocation_metadata(document: dict, index: int, relocation: dict) -> tuple[
     if relatives and kind_relative != relatives[0] and any(
             token in tokens for token in ("relative", "pcrel", "pcrelative")):
         raise NormalizationError(f"relocation {index} relative metadata conflicts with kind")
-    return widths[0], (relatives[0] if relatives else kind_relative)
+    statuses = document.get("extensions", {}).get("ghidra", {}).get(
+        "fallback_relocation_status", [])
+    status = None
+    if index < len(statuses):
+        metadata = statuses[index]
+        if (not isinstance(metadata, dict) or metadata.get("address") != relocation["address"] or
+                not isinstance(metadata.get("status"), str)):
+            raise NormalizationError(f"relocation {index} has invalid status metadata")
+        status = metadata["status"]
+    return widths[0], (relatives[0] if relatives else kind_relative), status
 
 
 def _split_operands(value: str) -> list[str]:
@@ -197,7 +271,7 @@ def _ghidra_operand_owner(document: dict, instruction: dict, relocation: dict) -
     return next(iter(owners)) if owners else None
 
 
-def _operand_owner(relocation: dict, operands: list[str], assigned: set[int],
+def _operand_owner(relocation: dict, operands: list[str],
                    structured_owner: int | None = None) -> int:
     if len(operands) == 1:
         candidates = [0]
@@ -214,7 +288,6 @@ def _operand_owner(relocation: dict, operands: list[str], assigned: set[int],
         if candidates and structured_owner not in candidates:
             raise NormalizationError("structured and textual relocation operands conflict")
         candidates = [structured_owner]
-    candidates = [index for index in candidates if index not in assigned]
     if len(candidates) != 1:
         raise NormalizationError("relocation operand ownership is ambiguous")
     return candidates[0]
@@ -227,7 +300,7 @@ def _target(document: dict, target, sections: list[dict]) -> dict:
     mapped = []
     for symbol in symbols:
         if symbol["section"] is not None:
-            mapped.append(_location(symbol["address"], sections))
+            mapped.append(_location(symbol["address"], sections, document))
     unique = {canonical_key(item): item for item in mapped}
     if len(unique) > 1:
         raise NormalizationError(f"relocation target {target!r} is ambiguous")
@@ -245,7 +318,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         if index >= len(document["relocations"]):
             raise NormalizationError(f"relocation index {index} is out of range")
         relocation = document["relocations"][index]
-        width, relative = _relocation_metadata(document, index, relocation)
+        width, relative, status = _relocation_metadata(document, index, relocation)
         start = relocation["address"]
         end = start + width
         if not (address <= start and end <= address + length):
@@ -253,7 +326,7 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         if index in ownership:
             raise NormalizationError(f"relocation {index} has multiple instruction owners")
         ownership[index] = address
-        fields.append((start, end, index, width, relative, relocation))
+        fields.append((start, end, index, width, relative, status, relocation))
     fields.sort(key=lambda item: (item[0], item[1], item[2]))
     if any(right[0] < left[1] for left, right in zip(fields, fields[1:])):
         raise NormalizationError("relocation fields overlap")
@@ -262,29 +335,53 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
     if len(display_operands) != len(normalized_operands):
         raise NormalizationError("display and normalized operand counts differ")
     operands = [{"text": text, "relocations": []} for text in display_operands]
-    assigned = set()
-    for start, _, index, width, relative, relocation in fields:
-        owner = _operand_owner(relocation, normalized_operands, assigned,
+    for start, _, index, width, relative, status, relocation in fields:
+        owner = _operand_owner(relocation, normalized_operands,
                                _ghidra_operand_owner(document, instruction, relocation))
-        assigned.add(owner)
         operands[owner]["relocations"].append({
-            "index": index, "field_offset": start - address, "width": width,
+            "field_offset": start - address, "width": width,
             "signed": relative, "kind": relocation["kind"],
             "target": _target(document, relocation["target"], sections),
-            "addend": relocation["addend"]})
+            "addend": relocation["addend"], "status": status})
     reference_indexes = [index for index, original in enumerate(original_references)
                          if address <= original["address"] < address + length]
-    return {"location": _location(address, sections),
+    for operand in operands:
+        operand["relocations"].sort(key=relocation_key)
+    semantic_relocations = sorted(
+        (item for operand in operands for item in operand["relocations"]),
+        key=relocation_key)
+    return {"location": _location(address, sections, document),
             "bytes": instruction["bytes"].upper(),
             "mnemonic": instruction["mnemonic"].lower(), "operands": operands,
             "display_operands": instruction["operands"],
             "normalized_operands": instruction["normalized_operands"],
-            "relocations": sorted(set(instruction["relocations"]), key=integer_key),
+            "relocations": semantic_relocations,
             "reference_indexes": reference_indexes}
 
 
 def normalize_analysis(document: dict) -> dict:
     """Return a deterministic normalized copy of an ``analysis-v1`` document."""
+    preflight_json(document)
+    if isinstance(document, dict):
+        if len(document.get("sections", [])) > MAX_SECTIONS:
+            raise NormalizationError("section limit exceeded")
+        if len(document.get("functions", [])) > MAX_FUNCTIONS:
+            raise NormalizationError("function limit exceeded")
+        functions = document.get("functions", [])
+        counts = {
+            "block": sum(len(item.get("blocks", [])) for item in functions),
+            "instruction": sum(len(item.get("instructions", [])) for item in functions),
+            "edge": sum(len(block.get("successors", [])) for item in functions
+                        for block in item.get("blocks", [])),
+            "call": sum(len(item.get("calls", [])) for item in functions),
+            "reference": len(document.get("references", [])),
+            "relocation": len(document.get("relocations", [])),
+        }
+        limits = {"block": MAX_BLOCKS, "instruction": MAX_INSTRUCTIONS,
+                  "edge": MAX_EDGES, "call": MAX_CALLS,
+                  "reference": MAX_REFERENCES, "relocation": MAX_RELOCATIONS}
+        for name, count in counts.items():
+            if count > limits[name]: raise NormalizationError(f"{name} limit exceeded")
     try:
         validate_document("analysis-v1", document)
         validate_analysis_semantics(document)
@@ -293,8 +390,8 @@ def normalize_analysis(document: dict) -> dict:
     source = deepcopy(document)
     sections = source["sections"]
     original_references = source.get("references", [])
-    normalized_references = [{"source": _location(item["address"], sections),
-                              "target": (_location(item["target"], sections)
+    normalized_references = [{"source": _location(item["address"], sections, source),
+                              "target": (_location(item["target"], sections, source)
                                          if item["target"] is not None else
                                          {"kind": "external", "name": None}),
                               "kind": item["kind"]} for item in original_references]
@@ -312,19 +409,19 @@ def normalize_analysis(document: dict) -> dict:
             instruction["reference_indexes"] = sorted(
                 {old_to_new[index] for index in instruction["reference_indexes"]},
                 key=integer_key)
-        edges = [{"source": _location(block["address"], sections),
-                  "target": _location(successor["target"], sections),
+        edges = [{"source": _location(block["address"], sections, source),
+                  "target": _location(successor["target"], sections, source),
                   "kind": successor["kind"]}
                  for block in function["blocks"] for successor in block["successors"]]
-        calls = [{"source": _location(call["address"], sections),
-                  "target": (_location(call["target"], sections)
+        calls = [{"source": _location(call["address"], sections, source),
+                  "target": (_location(call["target"], sections, source)
                              if call["target"] is not None else
                              {"kind": "external", "name": call["name"]}),
                   "name": call["name"]} for call in function["calls"]]
-        functions.append({"range": _range(function["address"], function["size"], sections),
+        functions.append({"range": _range(function["address"], function["size"], sections, source),
                           "aliases": sorted(set(function["names"]), key=canonical_key),
                           "confidence": function["confidence"],
-                          "blocks": sorted((_range(b["address"], b["size"], sections)
+                          "blocks": sorted((_range(b["address"], b["size"], sections, source)
                                             for b in function["blocks"]), key=range_key),
                           "instructions": sorted(instructions, key=instruction_key),
                           "edges": sorted(edges, key=edge_key),
@@ -332,12 +429,12 @@ def normalize_analysis(document: dict) -> dict:
     # A relocation whose field intersects an instruction must be explicitly owned by it.
     all_instructions = [item for function in source["functions"] for item in function["instructions"]]
     for index, relocation in enumerate(source["relocations"]):
-        width, _ = _relocation_metadata(source, index, relocation)
+        width, _, _ = _relocation_metadata(source, index, relocation)
         rstart, rend = relocation["address"], relocation["address"] + width
         if any(rstart < i["address"] + len(i["bytes"]) // 2 and i["address"] < rend
                for i in all_instructions) and index not in ownership:
             raise NormalizationError(f"relocation {index} overlaps an instruction but is undeclared")
-    normalized_sections = [{"identity": _section_identity(section), "name": section["name"]}
+    normalized_sections = [{"identity": _section_identity(section, source), "name": section["name"]}
                            for section in sections]
     return {"schema_version": "normalized-analysis-v1",
             "input": {**source["input"], "sha256": source["input"]["sha256"].upper()},
@@ -347,4 +444,13 @@ def normalize_analysis(document: dict) -> dict:
                                                  canonical_key(item["name"]))),
             "functions": sorted(functions, key=lambda item: range_key(item["range"])),
             "references": normalized_references,
-            "extensions": deepcopy(source.get("extensions", {}))}
+            "extensions": _canonicalize(source.get("extensions", {}))}
+
+
+def _canonicalize(value):
+    if isinstance(value, dict):
+        return {key: _canonicalize(value[key]) for key in sorted(value, key=canonical_key)}
+    if isinstance(value, list):
+        items = [_canonicalize(item) for item in value]
+        return sorted(items, key=canonical_key)
+    return deepcopy(value)

@@ -10,6 +10,7 @@ from jsonschema import ValidationError
 
 from binrecon.profile import load_profile
 from binrecon.consensus import ConsensusError, build_consensus
+from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
 
 
@@ -59,10 +60,12 @@ def main(argv=None) -> int:
                 _reject_output_alias(output, inputs)
             documents = [_read_json_snapshot(path) for path in inputs]
             for document in documents:
+                preflight_json(document)
                 validate_document("analysis-v1", document)
                 validate_analysis_semantics(document)
             report = build_consensus(documents, expected_analyzers=args.expected_analyzers)
-            text = json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n"
+            text = json.dumps(report, sort_keys=True, separators=(",", ":"),
+                              allow_nan=False) + "\n"
             if output is None:
                 sys.stdout.write(text)
             else:
@@ -105,8 +108,10 @@ def _read_json_snapshot(path: Path) -> dict:
     finally:
         os.close(descriptor)
     try:
-        value = json.loads(b"".join(chunks).decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        value = json.loads(b"".join(chunks).decode("utf-8"),
+                           parse_constant=lambda token: (_ for _ in ()).throw(
+                               ValueError(f"non-finite JSON constant {token}")))
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as error:
         raise ValueError(f"input {path} is malformed JSON: {error}") from error
     if not isinstance(value, dict): raise ValueError(f"input {path} JSON root must be an object")
     return value

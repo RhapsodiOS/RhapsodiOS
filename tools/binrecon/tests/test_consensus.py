@@ -1,6 +1,7 @@
 from copy import deepcopy
 import json
 import random
+import time
 
 import pytest
 
@@ -239,3 +240,55 @@ def test_random_consensus_input_and_nested_permutations_are_byte_stable_and_vali
         encoded = json.dumps(result, sort_keys=True, separators=(",", ":"))
         expected = encoded if expected is None else expected
         assert encoded == expected
+
+
+def test_identical_zero_fill_sections_with_different_names_never_merge():
+    documents = analyses()
+    for document in documents:
+        document["sections"] = [
+            {"name": ".bss1", "address": 0x2000, "offset": 64, "size": 8,
+             "permissions": "rw", "sha256": "0" * 64},
+            {"name": ".bss2", "address": 0x3000, "offset": 64, "size": 8,
+             "permissions": "rw", "sha256": "0" * 64}]
+        document["functions"] = [
+            {"address": address, "size": 1, "names": [name], "blocks": [],
+             "instructions": [], "calls": [], "confidence": 1.0}
+            for address, name in ((0x2000, "one"), (0x3000, "two"))]
+        document["relocations"] = []; document["references"] = []
+        document["symbols"] = []; document["extensions"] = {document["analyzer"]["name"]: {}}
+    groups = build_consensus(documents)["groups"]
+    assert [group["section"]["name"] for group in groups] == [".bss1", ".bss2"]
+
+
+@pytest.mark.parametrize("mutation", ["mnemonic", "edge", "reference", "status", "reason"])
+def test_validator_reclassifies_claims_and_rejects_forged_semantics(mutation):
+    result = build_consensus(analyses()); group = result["groups"][0]
+    if mutation == "mnemonic": group["claims"][0]["instructions"][0]["mnemonic"] = "nop"
+    elif mutation == "edge": group["claims"][0]["edges"] = []
+    elif mutation == "reference": group["claims"][0]["references"] = []
+    elif mutation == "status": group["status"] = "partial"
+    else: group["reasons"] = ["incomplete CFG evidence"]; group["status"] = "partial"
+    with pytest.raises(ConsensusError): validate_consensus(result)
+
+
+def test_validator_rejects_duplicate_or_disconnected_claim_membership():
+    result = build_consensus(analyses()); group = result["groups"][0]
+    group["claims"].append(deepcopy(group["claims"][0]))
+    with pytest.raises(ConsensusError): validate_consensus(result)
+
+
+def test_interval_sweep_handles_many_disjoint_functions_without_quadratic_scan():
+    documents = analyses()
+    count = 600
+    for document in documents:
+        document["sections"][0].update(size=count * 2)
+        document["functions"] = [{"address": 0x1000 + index * 2, "size": 1,
+            "names": [f"f{index}"], "blocks": [], "instructions": [], "calls": [],
+            "confidence": 1.0} for index in range(count)]
+        document["relocations"] = []; document["references"] = []
+    started = time.perf_counter(); result = build_consensus(documents)
+    assert len(result["groups"]) == count
+    assert time.perf_counter() - started < 8.0
+    result = build_consensus(analyses()); claim = result["groups"][0]["claims"][0]
+    claim["range"]["start"] = 40; claim["range"]["end"] = 41
+    with pytest.raises(ConsensusError): validate_consensus(result)

@@ -1,7 +1,0 @@
-pkgname = gnudiff
-pkgver = 2.7
-pkgdesc = Diff utilities
-url = ftp://prep.ai.mit.edu/pub/gnu/diffutils-2.7.tar.gz
-license = unknown
-builddepend = build-base perl
-depend = 

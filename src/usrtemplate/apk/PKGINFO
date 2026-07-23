@@ -1,7 +1,0 @@
-pkgname = usrtemplate
-pkgver = 7.1
-pkgdesc = Template files
-url = 
-license = unknown
-builddepend = build-base
-depend = 

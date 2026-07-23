@@ -1,0 +1,60 @@
+uisetup called
+ui.parentui isnot None
+reposetup called for a
+ui == repo.ui
+Foo
+uisetup called
+ui.parentui is None
+reposetup called for a
+ui == repo.ui
+reposetup called for b
+ui == repo.ui
+updating working directory
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+uisetup called
+ui.parentui is None
+Bar
+% module/__init__.py-style
+uisetup called
+ui.parentui isnot None
+reposetup called for a
+ui == repo.ui
+Foo
+empty extension - empty cmdtable
+
+no commands defined
+debugextension extension - only debugcommands
+
+no commands defined
+debugextension extension - only debugcommands
+
+list of commands:
+
+ debugfoobar:
+      yet another debug command
+
+enabled extensions:
+
+ debugextension   only debugcommands
+
+global options:
+ -R --repository      repository root directory or symbolic path name
+    --cwd             change working directory
+ -y --noninteractive  do not prompt, assume 'yes' for any required answers
+ -q --quiet           suppress output
+ -v --verbose         enable additional output
+    --config          set/override config option
+    --debug           enable debugging output
+    --debugger        start debugger
+    --encoding        set the charset encoding (default: ascii)
+    --encodingmode    set the charset encoding mode (default: strict)
+    --lsprof          print improved command execution profile
+    --traceback       print traceback on exception
+    --time            time how long the command takes
+    --profile         print command execution profile
+    --version         output version information and exit
+ -h --help            display help and exit
+% issue811
+% show extensions
+debugissue811
+mq

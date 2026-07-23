@@ -1,7 +1,0 @@
-pkgname = gm4
-pkgver = 1.4
-pkgdesc = GNU macro processor
-url = ftp://prep.ai.mit.edu/pub/gnu/m4-1.4.tar.gz
-license = unknown
-builddepend = build-base perl
-depend = 

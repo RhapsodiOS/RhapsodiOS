@@ -1,7 +1,0 @@
-pkgname = libc
-pkgver = 78.8
-pkgdesc = C library
-url = 
-license = unknown
-builddepend = build-base driverkit-hdrs
-depend = 

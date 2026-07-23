@@ -1,7 +1,0 @@
-pkgname = drivertools
-pkgver = 24
-pkgdesc = Driverkit developer tools
-url = 
-license = unknown
-builddepend = build-base
-depend = 

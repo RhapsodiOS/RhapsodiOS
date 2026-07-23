@@ -1,7 +1,0 @@
-pkgname = libkvm
-pkgver = 9.1
-pkgdesc = Kernel virtual memory library
-url = 
-license = unknown
-builddepend = build-base
-depend = 

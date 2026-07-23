@@ -1,7 +1,0 @@
-pkgname = system-cmds
-pkgver = 51.1
-pkgdesc = System commands
-url = 
-license = unknown
-builddepend = build-base librpcsvc-hdrs libinfo-hdrs
-depend = 

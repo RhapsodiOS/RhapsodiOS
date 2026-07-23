@@ -1,0 +1,74 @@
+#!/bin/sh
+
+set -e
+
+echo % init
+hg init
+
+echo % committing changes
+count=0
+echo > a
+while test $count -lt 32 ; do
+    echo 'a' >> a
+    test $count -eq 0 && hg add
+    hg ci -m "msg $count" -d "$count 0"
+    echo % committed changeset $count
+    count=`expr $count + 1`
+done
+
+echo % log
+hg log
+
+echo % hg up -C
+hg up -C
+
+echo % bisect test
+hg bisect -r
+hg bisect -b
+hg bisect -g 1
+hg bisect -g
+echo skip
+hg bisect -s
+hg bisect -g
+hg bisect -g
+hg bisect -b
+hg bisect -g
+
+echo % bisect reverse test
+hg bisect -r
+hg bisect -b null
+hg bisect -g tip
+hg bisect -g
+echo skip
+hg bisect -s
+hg bisect -g
+hg bisect -g
+hg bisect -b
+hg bisect -g
+
+hg bisect -r
+hg bisect -g tip
+hg bisect -b tip || echo error
+
+hg bisect -r
+hg bisect -g null
+hg bisect -bU tip
+hg id
+
+echo % reproduce AssertionError, issue1228 and issue1182
+hg bisect -r
+hg bisect -b 4
+hg bisect -g 0
+hg bisect -s
+hg bisect -s
+hg bisect -s
+
+echo % reproduce non converging bisect, issue1182
+hg bisect -r
+hg bisect -g 0
+hg bisect -b 2
+hg bisect -s
+
+echo % test no action
+hg bisect -r
+hg bisect || echo failure

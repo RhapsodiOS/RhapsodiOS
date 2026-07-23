@@ -1,7 +1,0 @@
-pkgname = objc4
-pkgver = 174
-pkgdesc = Objective-C runtime
-url = 
-license = unknown
-builddepend = build-base libstreams-hdrs architecture-hdrs
-depend = 

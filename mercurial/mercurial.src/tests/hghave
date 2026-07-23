@@ -1,0 +1,229 @@
+#!/usr/bin/env python
+"""Test the running system for features availability. Exit with zero
+if all features are there, non-zero otherwise. If a feature name is
+prefixed with "no-", the absence of feature is tested.
+"""
+import optparse
+import os
+import re
+import sys
+import tempfile
+
+tempprefix = 'hg-hghave-'
+
+def matchoutput(cmd, regexp, ignorestatus=False):
+    """Return True if cmd executes successfully and its output
+    is matched by the supplied regular expression.
+    """
+    r = re.compile(regexp)
+    fh = os.popen(cmd)
+    s = fh.read()
+    ret = fh.close()
+    return (ignorestatus or ret is None) and r.search(s)
+
+def has_baz():
+    return matchoutput('baz --version 2>&1', r'baz Bazaar version')
+
+def has_bzr():
+    try:
+        import bzrlib
+        return True
+    except ImportError:
+        return False
+
+def has_cvs():
+    re = r'Concurrent Versions System.*?server'
+    return matchoutput('cvs --version 2>&1', re)
+
+def has_cvsps():
+    return matchoutput('cvsps -h -q 2>&1', r'cvsps version', True)
+
+def has_darcs():
+    return matchoutput('darcs', r'darcs version', True)
+
+def has_mtn():
+    return matchoutput('mtn --version', r'monotone', True) and not matchoutput(
+        'mtn --version', r'monotone 0\.(\d|[12]\d|3[01])[^\d]', True)
+
+def has_eol_in_paths():
+    try:
+        fd, path = tempfile.mkstemp(prefix=tempprefix, suffix='\n\r')
+        os.close(fd)
+        os.remove(path)
+        return True
+    except:
+        return False
+
+def has_executablebit():
+    fd, path = tempfile.mkstemp(prefix=tempprefix)
+    os.close(fd)
+    try:
+        s = os.lstat(path).st_mode
+        os.chmod(path, s | 0100)
+        return (os.lstat(path).st_mode & 0100 != 0)
+    finally:
+        os.remove(path)
+
+def has_icasefs():
+    # Stolen from mercurial.util
+    fd, path = tempfile.mkstemp(prefix=tempprefix)
+    os.close(fd)
+    try:
+        s1 = os.stat(path)
+        d, b = os.path.split(path)
+        p2 = os.path.join(d, b.upper())
+        if path == p2:
+            p2 = os.path.join(d, b.lower())
+        try:
+            s2 = os.stat(p2)
+            return s2 == s1
+        except:
+            return False
+    finally:
+        os.remove(path)
+
+def has_inotify():
+    try:
+        import hgext.inotify.linux.watcher
+        return True
+    except ImportError:
+        return False
+
+def has_fifo():
+    return hasattr(os, "mkfifo")
+
+def has_hotshot():
+    try:
+        # hotshot.stats tests hotshot and many problematic dependencies
+        # like profile.
+        import hotshot.stats
+        return True
+    except ImportError:
+        return False
+
+def has_lsprof():
+    try:
+        import _lsprof
+        return True
+    except ImportError:
+        return False
+
+def has_git():
+    return matchoutput('git --version 2>&1', r'^git version')
+
+def has_svn():
+    return matchoutput('svn --version 2>&1', r'^svn, version') and \
+        matchoutput('svnadmin --version 2>&1', r'^svnadmin, version')
+
+def has_svn_bindings():
+    try:
+        import svn.core
+        version = svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR
+        if version < (1, 4):
+            return False
+        return True
+    except ImportError:
+        return False
+
+def has_symlink():
+    return hasattr(os, "symlink")
+
+def has_tla():
+    return matchoutput('tla --version 2>&1', r'The GNU Arch Revision')
+
+def has_unix_permissions():
+    d = tempfile.mkdtemp(prefix=tempprefix, dir=".")
+    try:
+        fname = os.path.join(d, 'foo')
+        for umask in (077, 007, 022):
+            os.umask(umask)
+            f = open(fname, 'w')
+            f.close()
+            mode = os.stat(fname).st_mode
+            os.unlink(fname)
+            if mode & 0777 != ~umask & 0666:
+                return False
+        return True
+    finally:
+        os.rmdir(d)
+
+def has_pygments():
+    try:
+        import pygments
+        return True
+    except ImportError:
+        return False
+
+def has_outer_repo():
+    return matchoutput('hg root 2>&1', r'')
+
+checks = {
+    "baz": (has_baz, "GNU Arch baz client"),
+    "bzr": (has_bzr, "Canonical's Bazaar client"),
+    "cvs": (has_cvs, "cvs client/server"),
+    "cvsps": (has_cvsps, "cvsps utility"),
+    "darcs": (has_darcs, "darcs client"),
+    "eol-in-paths": (has_eol_in_paths, "end-of-lines in paths"),
+    "execbit": (has_executablebit, "executable bit"),
+    "fifo": (has_fifo, "named pipes"),
+    "git": (has_git, "git command line client"),
+    "hotshot": (has_hotshot, "python hotshot module"),
+    "icasefs": (has_icasefs, "case insensitive file system"),
+    "inotify": (has_inotify, "inotify extension support"),
+    "lsprof": (has_lsprof, "python lsprof module"),
+    "mtn": (has_mtn, "monotone client (> 0.31)"),
+    "outer-repo": (has_outer_repo, "outer repo"),
+    "pygments": (has_pygments, "Pygments source highlighting library"),
+    "svn": (has_svn, "subversion client and admin tools"),
+    "svn-bindings": (has_svn_bindings, "subversion python bindings"),
+    "symlink": (has_symlink, "symbolic links"),
+    "tla": (has_tla, "GNU Arch tla client"),
+    "unix-permissions": (has_unix_permissions, "unix-style permissions"),
+}
+
+def list_features():
+    for name, feature in checks.iteritems():
+        desc = feature[1]
+        print name + ':', desc
+
+parser = optparse.OptionParser("%prog [options] [features]")
+parser.add_option("--list-features", action="store_true",
+                  help="list available features")
+parser.add_option("-q", "--quiet", action="store_true",
+                  help="check features silently")
+
+if __name__ == '__main__':
+    options, args = parser.parse_args()
+    if options.list_features:
+        list_features()
+        sys.exit(0)
+
+    quiet = options.quiet
+
+    failures = 0
+
+    def error(msg):
+        global failures
+        if not quiet:
+            sys.stderr.write(msg + '\n')
+        failures += 1
+
+    for feature in args:
+        negate = feature.startswith('no-')
+        if negate:
+            feature = feature[3:]
+
+        if feature not in checks:
+            error('skipped: unknown feature: ' + feature)
+            continue
+
+        check, desc = checks[feature]
+        if not negate and not check():
+            error('skipped: missing feature: ' + desc)
+        elif negate and check():
+            error('skipped: system supports %s' % desc)
+
+    if failures != 0:
+        sys.exit(1)
+
+

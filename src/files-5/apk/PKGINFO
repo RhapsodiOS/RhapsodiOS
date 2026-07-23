@@ -1,7 +1,0 @@
-pkgname = files
-pkgver = 282.0
-pkgdesc = Miscellaneous system files
-url = 
-license = unknown
-builddepend = build-base adv-cmds
-depend = 

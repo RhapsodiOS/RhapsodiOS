@@ -1,0 +1,8 @@
+Package: drvetherexpress16
+Version: 5.00-1
+Section: Drivers
+Priority: optional
+Architecture: i386
+Maintainer: RhapsodiOS Project
+Description: Intel EtherExpress 16 Ethernet Driver
+ Driver for Intel EtherExpress 16 ISA Ethernet adapters.

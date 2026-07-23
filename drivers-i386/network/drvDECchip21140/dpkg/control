@@ -1,0 +1,8 @@
+Package: drvdecchip21140
+Version: 5.00-1
+Section: Drivers
+Priority: optional
+Architecture: i386
+Maintainer: RhapsodiOS Project
+Description: DEC 21140 Fast Ethernet Driver
+ Driver for DEC 21140 PCI Fast Ethernet adapters.

@@ -1,0 +1,6 @@
+Package: drvbusmouse
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 6
+Description: Bus Mouse device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

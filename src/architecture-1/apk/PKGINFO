@@ -1,7 +1,0 @@
-pkgname = architecture
-pkgver = 226
-pkgdesc = Architecture-specific headers.
-url = 
-license = unknown
-builddepend = build-base
-depend = 

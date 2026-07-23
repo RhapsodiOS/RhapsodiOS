@@ -1,7 +1,0 @@
-pkgname = enscript
-pkgver = 1.6.0
-pkgdesc = Text to PostScript (and other) formatter
-url = ftp://prep.ai.mit.edu/pub/gnu/enscript-1.6.0.tar.gz
-license = unknown
-builddepend = build-base bison flex
-depend = 

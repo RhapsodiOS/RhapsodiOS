@@ -1,7 +1,0 @@
-pkgname = boot
-pkgver = 64
-pkgdesc = Kernel booter
-url = 
-license = unknown
-builddepend = build-base adv-cmds gawk drivertools libc driverkit
-depend = 

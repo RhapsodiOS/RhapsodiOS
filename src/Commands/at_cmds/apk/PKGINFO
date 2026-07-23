@@ -1,7 +1,0 @@
-pkgname = at-cmds
-pkgver = 15.1
-pkgdesc = AppleTalk commands
-url = 
-license = unknown
-builddepend = build-base libcat libcurses-hdrs
-depend = 

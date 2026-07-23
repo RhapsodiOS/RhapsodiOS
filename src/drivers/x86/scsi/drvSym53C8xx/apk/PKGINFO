@@ -1,8 +1,0 @@
-pkgname = drvsym53c8xx
-pkgver = 17
-pkgdesc = Symbios Logic 53C8xx SCSI device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 
-arch = i386-apple-rhapsody

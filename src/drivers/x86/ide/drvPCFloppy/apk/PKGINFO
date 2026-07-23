@@ -1,8 +1,0 @@
-pkgname = drvpcfloppy
-pkgver = 5
-pkgdesc = PC Floppy device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 
-arch = i386-apple-rhapsody

@@ -1,2 +1,0 @@
-# Shell scripts must stay LF so `sh` can run them (repo has core.autocrlf=true).
-*.sh text eol=lf

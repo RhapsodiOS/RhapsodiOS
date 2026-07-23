@@ -1,7 +1,0 @@
-pkgname = libcat
-pkgver = 27.1
-pkgdesc = AppleTalk library
-url = 
-license = unknown
-builddepend = build-base
-depend = 

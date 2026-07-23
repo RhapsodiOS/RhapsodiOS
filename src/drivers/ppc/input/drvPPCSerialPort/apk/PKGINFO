@@ -1,7 +1,0 @@
-pkgname = drvbusmouse
-pkgver = 6
-pkgdesc = Bus Mouse device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 

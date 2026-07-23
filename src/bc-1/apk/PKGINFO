@@ -1,7 +1,0 @@
-pkgname = bc
-pkgver = 1.05
-pkgdesc = bc numeric processing language.
-url = ftp://prep.ai.mit.edu/pub/gnu/bc-1.05.tar.gz
-license = unknown
-builddepend = build-base flex perl
-depend = 

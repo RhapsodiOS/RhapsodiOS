@@ -1,0 +1,587 @@
+3:911600dab2ae
+requesting all changes
+adding changesets
+adding manifests
+adding file changes
+added 1 changesets with 3 changes to 3 files
+updating working directory
+3 files updated, 0 files merged, 0 files removed, 0 files unresolved
+
+Extension disabled for lack of a hook
+Pushing as user fred
+hgrc = """
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+updating the branch cache
+rolling back last transaction
+0:6675d58eff77
+
+Extension disabled for lack of acl.sources
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: changes have source "push" - skipping
+updating the branch cache
+rolling back last transaction
+0:6675d58eff77
+
+No [acl.allow]/[acl.deny]
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow not enabled
+acl: acl.deny not enabled
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: allowing changeset 911600dab2ae
+updating the branch cache
+rolling back last transaction
+0:6675d58eff77
+
+Empty [acl.allow]
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 0 entries for user fred
+acl: acl.deny not enabled
+acl: user fred not allowed on foo/file.txt
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset ef1ea85a6374
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset ef1ea85a6374
+no rollback information available
+0:6675d58eff77
+
+fred is allowed inside foo/
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user fred
+acl: acl.deny not enabled
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: user fred not allowed on quux/file.py
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset 911600dab2ae
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset 911600dab2ae
+no rollback information available
+0:6675d58eff77
+
+Empty [acl.deny]
+Pushing as user barney
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 0 entries for user barney
+acl: acl.deny enabled, 0 entries for user barney
+acl: user barney not allowed on foo/file.txt
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset ef1ea85a6374
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset ef1ea85a6374
+no rollback information available
+0:6675d58eff77
+
+fred is allowed inside foo/, but not foo/bar/ (case matters)
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user fred
+acl: acl.deny enabled, 1 entries for user fred
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: user fred not allowed on quux/file.py
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset 911600dab2ae
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset 911600dab2ae
+no rollback information available
+0:6675d58eff77
+
+fred is allowed inside foo/, but not foo/Bar/
+Pushing as user fred
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user fred
+acl: acl.deny enabled, 2 entries for user fred
+acl: allowing changeset ef1ea85a6374
+acl: user fred denied on foo/Bar/file.txt
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset f9cafe1212c8
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset f9cafe1212c8
+no rollback information available
+0:6675d58eff77
+
+barney is not mentioned => not allowed anywhere
+Pushing as user barney
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 0 entries for user barney
+acl: acl.deny enabled, 0 entries for user barney
+acl: user barney not allowed on foo/file.txt
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset ef1ea85a6374
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset ef1ea85a6374
+no rollback information available
+0:6675d58eff77
+
+barney is allowed everywhere
+Pushing as user barney
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+[acl.allow]
+** = barney
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user barney
+acl: acl.deny enabled, 0 entries for user barney
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: allowing changeset 911600dab2ae
+updating the branch cache
+rolling back last transaction
+0:6675d58eff77
+
+wilma can change files with a .txt extension
+Pushing as user wilma
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+[acl.allow]
+** = barney
+**/*.txt = wilma
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user wilma
+acl: acl.deny enabled, 0 entries for user wilma
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: user wilma not allowed on quux/file.py
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset 911600dab2ae
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset 911600dab2ae
+no rollback information available
+0:6675d58eff77
+
+file specified by acl.config does not exist
+Pushing as user barney
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+[acl.allow]
+** = barney
+**/*.txt = wilma
+[acl]
+config = ../acl.config
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+error: pretxnchangegroup.acl hook failed: unable to open ../acl.config: No such file or directory
+transaction abort!
+rollback completed
+abort: unable to open ../acl.config: No such file or directory
+no rollback information available
+0:6675d58eff77
+
+betty is allowed inside foo/ by a acl.config file
+Pushing as user betty
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+[acl.allow]
+** = barney
+**/*.txt = wilma
+[acl]
+config = ../acl.config
+"""
+acl.config = """
+[acl.allow]
+foo/** = betty
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user betty
+acl: acl.deny enabled, 0 entries for user betty
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: user betty not allowed on quux/file.py
+error: pretxnchangegroup.acl hook failed: acl: access denied for changeset 911600dab2ae
+transaction abort!
+rollback completed
+abort: acl: access denied for changeset 911600dab2ae
+no rollback information available
+0:6675d58eff77
+
+acl.config can set only [acl.allow]/[acl.deny]
+Pushing as user barney
+hgrc = """
+[hooks]
+pretxnchangegroup.acl = python:hgext.acl.hook
+[acl]
+sources = push
+[acl.allow]
+foo/** = fred
+[acl.deny]
+foo/bar/** = fred
+foo/Bar/** = fred
+[acl.allow]
+** = barney
+**/*.txt = wilma
+[acl]
+config = ../acl.config
+"""
+acl.config = """
+[acl.allow]
+foo/** = betty
+[hooks]
+changegroup.acl = false
+"""
+pushing to ../b
+searching for changes
+common changesets up to 6675d58eff77
+3 changesets found
+List of changesets:
+ef1ea85a6374b77d6da9dcda9541f498f2d17df7
+f9cafe1212c8c6fa1120d14a556e18cc44ff8bdd
+911600dab2ae7a9baff75958b84fe606851ce955
+adding changesets
+add changeset ef1ea85a6374
+add changeset f9cafe1212c8
+add changeset 911600dab2ae
+adding manifests
+adding file changes
+adding foo/Bar/file.txt revisions
+adding foo/file.txt revisions
+adding quux/file.py revisions
+added 3 changesets with 3 changes to 3 files
+calling hook pretxnchangegroup.acl: hgext.acl.hook
+acl: acl.allow enabled, 1 entries for user barney
+acl: acl.deny enabled, 0 entries for user barney
+acl: allowing changeset ef1ea85a6374
+acl: allowing changeset f9cafe1212c8
+acl: allowing changeset 911600dab2ae
+updating the branch cache
+rolling back last transaction
+0:6675d58eff77
+

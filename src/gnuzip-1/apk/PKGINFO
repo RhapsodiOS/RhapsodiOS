@@ -1,7 +1,0 @@
-pkgname = gnuzip
-pkgver = 1.2.4
-pkgdesc = GNU Zip compression tool
-url = ftp://prep.ai.mit.edu/pub/gnu/gzip-1.2.4.tar.gz
-license = unknown
-builddepend = build-base perl
-depend = 

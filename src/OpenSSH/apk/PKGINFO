@@ -1,7 +1,0 @@
-pkgname = openssh
-pkgver = 2.3.0p1
-pkgdesc = Secure Shell
-url = http://www.openssh.com/portable.html
-license = unknown
-builddepend = build-base openssl zlib perl
-depend = 

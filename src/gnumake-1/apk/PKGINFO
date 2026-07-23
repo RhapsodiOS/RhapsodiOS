@@ -1,7 +1,0 @@
-pkgname = gnumake
-pkgver = 67
-pkgdesc = NeXT make
-url = 
-license = unknown
-builddepend = build-base perl
-depend = 

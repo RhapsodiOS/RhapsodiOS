@@ -1,8 +1,0 @@
-pkgname = decchip21040
-pkgver = 21
-pkgdesc = DEC 21040 ethernet device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit kernload
-depend = 
-arch = i386-apple-rhapsody

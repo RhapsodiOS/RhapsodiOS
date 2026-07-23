@@ -1,8 +1,0 @@
-pkgname = drvdec21x4x
-pkgver = 5
-pkgdesc = DEC 21x4x ethernet device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit kernload
-depend = 
-arch = i386-apple-rhapsody

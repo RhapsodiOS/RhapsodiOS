@@ -1,7 +1,0 @@
-pkgname = hfs
-pkgver = 67.1
-pkgdesc = HFS/HFS+ commands
-url = 
-license = unknown
-builddepend = build-base diskdev-cmds kernload
-depend = 

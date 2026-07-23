@@ -1,7 +1,0 @@
-pkgname = libgpp
-pkgver = 100.1
-pkgdesc = GNU standard C++ library
-url = 
-license = unknown
-builddepend = 
-depend = 

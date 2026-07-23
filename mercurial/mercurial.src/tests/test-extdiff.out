@@ -1,0 +1,34 @@
+adding a
+adding b
+Only in a: a
+Only in a: b
+diffing a.000000000000 a
+hg falabala [OPTION]... [FILE]...
+
+use 'echo' to diff repository (or selected files)
+
+            Show differences between revisions for the specified
+            files, using the 'echo' program.
+
+            When two revision arguments are given, then changes are
+            shown between those revisions. If only one revision is
+            specified then that revision is compared to the working
+            directory, and, when no revisions are specified, the
+            working directory files are compared to its parent.
+
+options:
+
+ -o --option   pass option to comparison program
+ -r --rev      revision
+ -I --include  include names matching the given patterns
+ -X --exclude  exclude names matching the given patterns
+
+use "hg -v help falabala" to show global options
+diffing a.8a5febb7f867/a a.34eed99112ab/a
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+created new head
+1 files updated, 0 files merged, 1 files removed, 0 files unresolved
+1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+(branch merge, don't forget to commit)
+diff-like tools yield a non-zero exit code
+diffing a.34eed99112ab/c [tmp]/test-extdiff/a/c

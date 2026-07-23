@@ -1,0 +1,7 @@
+Package: gawk
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: GNU Project
+Version: 3.0.3
+URL: ftp://prep.ai.mit.edu/pub/gnu/gawk-3.0.3.tar.gz
+Description: No description available.
+Build-Depends: build-base

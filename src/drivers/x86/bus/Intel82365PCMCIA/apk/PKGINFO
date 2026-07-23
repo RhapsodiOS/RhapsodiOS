@@ -1,8 +1,0 @@
-pkgname = intel82365pcmcia
-pkgver = 13
-pkgdesc = Intel 82365 PCMCIA Controller Driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 
-arch = i386-apple-rhapsody

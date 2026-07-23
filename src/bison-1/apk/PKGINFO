@@ -1,7 +1,0 @@
-pkgname = bison
-pkgver = 1.25
-pkgdesc = Bison parser generator
-url = 
-license = unknown
-builddepend = build-base perl
-depend = 

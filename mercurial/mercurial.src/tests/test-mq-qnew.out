@@ -1,0 +1,30 @@
+adding a
+% qnew should refuse bad patch names
+abort: "series" cannot be used as the name of a patch
+abort: "status" cannot be used as the name of a patch
+abort: "guards" cannot be used as the name of a patch
+abort: ".hgignore" cannot be used as the name of a patch
+% qnew with uncommitted changes
+abort: local changes found, refresh first
+A somefile
+% qnew implies add
+A .hgignore
+A series
+A test.patch
+% qnew missing
+abort: missing: No such file or directory
+% qnew -m
+foo bar
+% qnew twice
+abort: patch "first.patch" already exists
+abort: patch "first.patch" already exists
+% qnew -f from a subdirectory
+Patch queue now empty
+adding d/b
+M d/b
+diff --git a/d/b b/d/b
+--- a/d/b
++++ b/d/b
+@@ -1,1 +1,2 @@
+ b
++b

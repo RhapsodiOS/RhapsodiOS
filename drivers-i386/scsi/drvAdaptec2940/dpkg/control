@@ -1,0 +1,6 @@
+Package: drvadaptec2940
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 17
+Description: Adaptec 2940 SCSI device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

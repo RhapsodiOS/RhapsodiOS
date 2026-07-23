@@ -1,6 +1,0 @@
-pkgname = depa
-pkgver = 1.0.0
-pkgdesc = dependency top A
-url = http://rhapsody.local/depa
-license = MIT
-depend = depb

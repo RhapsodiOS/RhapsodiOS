@@ -1,7 +1,0 @@
-pkgname = yacc
-pkgver = 1998.10.12
-pkgdesc = Yet Another Compiler Compiler
-url = http://www.netbsd.org/
-license = unknown
-builddepend = build-base
-depend = 

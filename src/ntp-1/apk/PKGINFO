@@ -1,7 +1,0 @@
-pkgname = ntp
-pkgver = 4.0.72j
-pkgdesc = Network time syncronizer
-url = http://www.eecis.udel.edu/~ntp/
-license = unknown
-builddepend = build-base libinfo-hdrs
-depend = 

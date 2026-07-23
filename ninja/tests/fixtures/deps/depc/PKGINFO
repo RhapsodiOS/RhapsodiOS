@@ -1,6 +1,0 @@
-pkgname = depc
-pkgver = 1.0.0
-pkgdesc = dependency leaf C
-url = http://rhapsody.local/depc
-license = MIT
-depend =

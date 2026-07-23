@@ -1,7 +1,0 @@
-pkgname = vi
-pkgver = 1.79
-pkgdesc = nvi text editor
-url = http://www.bostic.com/vi
-license = unknown
-builddepend = build-base libcurses
-depend = 

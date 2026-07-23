@@ -1,7 +1,0 @@
-pkgname = network-cmds
-pkgver = 57
-pkgdesc = Network commands
-url = 
-license = unknown
-builddepend = build-base yacc flex libcat librpcsvc-hdrs libinfo libcurses-hdrs libtelnet
-depend = 

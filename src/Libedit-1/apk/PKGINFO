@@ -1,7 +1,0 @@
-pkgname = libedit
-pkgver = 13
-pkgdesc = Editing library
-url = 
-license = unknown
-builddepend = build-base
-depend = 

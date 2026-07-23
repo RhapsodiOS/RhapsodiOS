@@ -1,7 +1,0 @@
-pkgname = drvscsitape
-pkgver = 28
-pkgdesc = SCSI tape device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 

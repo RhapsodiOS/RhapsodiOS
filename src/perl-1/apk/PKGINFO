@@ -1,7 +1,0 @@
-pkgname = perl
-pkgver = 5.004_04
-pkgdesc = Practical Extraction and Reporting Language
-url = http://www.perl.com/
-license = unknown
-builddepend = build-base
-depend = 

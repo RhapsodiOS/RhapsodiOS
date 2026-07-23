@@ -1,7 +1,0 @@
-pkgname = zsh
-pkgver = 3.1.5
-pkgdesc = Z-Shell
-url = http://www.zsh.org/pub/zsh-3.1.5.tar.gz
-license = unknown
-builddepend = build-base autoconf gnudiff gm4 perl bash
-depend = 

@@ -1,7 +1,0 @@
-pkgname = coreosmakefiles
-pkgver = 9.1
-pkgdesc = Core OS Makefiles
-url = 
-license = unknown
-builddepend = build-base
-depend = 

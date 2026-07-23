@@ -1,7 +1,0 @@
-pkgname = drvscsiserver
-pkgver = 3
-pkgdesc = SCSIServer device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit machkit kernload libstreams
-depend = 

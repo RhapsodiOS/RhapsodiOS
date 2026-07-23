@@ -1,0 +1,6 @@
+Package: soundblaster8
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 1
+Description: Sound Blaster and Sound Blaster Pro sound device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

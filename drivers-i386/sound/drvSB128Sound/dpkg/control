@@ -1,0 +1,6 @@
+Package: soundblaster128pci
+Maintainer: Jens Heise
+Vendor: https://github.com/heisej/SoundBlaster16PCI
+Version: 1.2
+Description: Sound Blaster 128, ES1371, and ES1373 sound device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

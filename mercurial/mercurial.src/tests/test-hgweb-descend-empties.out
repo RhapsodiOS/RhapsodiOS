@@ -1,0 +1,74 @@
+% Set up the repo
+adding a1/a2/a3/a4/foo
+adding b1/b2/b3/b4/foo
+adding b1/b2/c3/c4/foo
+adding d1/d2/d3/d4/foo
+adding d1/d2/foo
+% manifest with descending
+200 Script output follows
+
+<!-- quirksmode -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="icon" href="/static/hgicon.png" type="image/png">
+<meta name="robots" content="index, nofollow" />
+<link rel="stylesheet" href="/static/style-paper.css" type="text/css" />
+
+<title>test: 9087c84a0f5d /</title>
+</head>
+<body>
+
+<div class="container">
+<div class="menu">
+<div class="logo">
+<a href="http://www.selenic.com/mercurial/">
+<img src="/static/hglogo.png" width=75 height=90 border=0 alt="mercurial"></a>
+</div>
+<ul>
+<li><a href="/shortlog/9087c84a0f5d">log</a></li>
+<li><a href="/graph/9087c84a0f5d">graph</a></li>
+<li><a href="/tags">tags</a></li>
+</ul>
+<ul>
+<li><a href="/rev/9087c84a0f5d">changeset</a></li>
+<li class="active">browse</li>
+</ul>
+<ul>
+
+</ul>
+</div>
+
+<div class="main">
+<h2><a href="/">test</a></h2>
+<h3>directory / @ 0:9087c84a0f5d <span class="tag">tip</span> </h3>
+
+<form class="search" action="/log">
+
+<p><input name="rev" id="search1" type="text" size="30"></p>
+<span>find changesets by author, revision,
+files, or words in the commit message</span>
+</form>
+
+<table class="bigtable">
+<tr>
+  <th class="name">name</th>
+  <th class="size">size</th>
+  <th class="permissions">permissions</th>
+</tr>
+<tr class="fileline parity0">
+  <td class="name"><a href="/file/9087c84a0f5d/">[up]</a></td>
+  <td class="size"></td>
+  <td class="permissions">drwxr-xr-x</td>
+</tr>
+<tr class="fileline parity1"><td class="name"><a href="/file/9087c84a0f5d/a1"><img src="/static/coal-folder.png"> a1/</a> <a href="/file/9087c84a0f5d/a1/a2/a3/a4">a2/a3/a4</a><td class="size"></td><td class="permissions">drwxr-xr-x</td></tr><tr class="fileline parity0"><td class="name"><a href="/file/9087c84a0f5d/b1"><img src="/static/coal-folder.png"> b1/</a> <a href="/file/9087c84a0f5d/b1/b2">b2</a><td class="size"></td><td class="permissions">drwxr-xr-x</td></tr><tr class="fileline parity1"><td class="name"><a href="/file/9087c84a0f5d/d1"><img src="/static/coal-folder.png"> d1/</a> <a href="/file/9087c84a0f5d/d1/d2">d2</a><td class="size"></td><td class="permissions">drwxr-xr-x</td></tr>
+
+</table>
+</div>
+</div>
+
+
+</body>
+</html>
+
+% ERRORS ENCOUNTERED

@@ -1,7 +1,0 @@
-pkgname = awk
-pkgver = 1998.10.20
-pkgdesc = AWK programming language interpreter
-url = http://cm.bell-labs.com/who/bwk/awktar.gz
-license = unknown
-builddepend = build-base yacc
-depend = 

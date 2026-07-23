@@ -1,8 +1,0 @@
-pkgname = ne2k
-pkgver = 0.91b
-pkgdesc = NE2k device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit kernload
-depend = 
-arch = i386-apple-rhapsody

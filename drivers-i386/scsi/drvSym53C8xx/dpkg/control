@@ -1,0 +1,6 @@
+Package: drvsym53c8xx
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 17
+Description: Symbios Logic 53C8xx SCSI device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

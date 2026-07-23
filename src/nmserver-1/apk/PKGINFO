@@ -1,7 +1,0 @@
-pkgname = nmserver
-pkgver = 28
-pkgdesc = Mach network message server
-url = 
-license = unknown
-builddepend = build-base
-depend = 

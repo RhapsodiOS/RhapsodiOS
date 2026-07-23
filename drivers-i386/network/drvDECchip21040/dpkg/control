@@ -1,0 +1,6 @@
+Package: decchip21040
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer, Inc.
+Version: 21
+Description: DEC 21040 ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, kernload

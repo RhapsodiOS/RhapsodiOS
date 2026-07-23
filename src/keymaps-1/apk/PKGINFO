@@ -1,7 +1,0 @@
-pkgname = keymaps
-pkgver = 25.1
-pkgdesc = Key mappings
-url = 
-license = unknown
-builddepend = build-base
-depend = 

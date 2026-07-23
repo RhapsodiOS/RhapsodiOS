@@ -1,7 +1,0 @@
-pkgname = librpcsvc
-pkgver = 8
-pkgdesc = Remote procedure call library
-url = 
-license = unknown
-builddepend = build-base libinfo
-depend = 

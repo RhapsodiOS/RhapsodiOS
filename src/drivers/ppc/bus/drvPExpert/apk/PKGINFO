@@ -1,7 +1,0 @@
-pkgname = drvpexpert
-pkgver = 29
-pkgdesc = Platform Expert
-url = 
-license = unknown
-builddepend = build-base drivertools kernload
-depend = 

@@ -1,0 +1,6 @@
+Package: drvppcburgundy
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 2
+Description: Burgundy audio device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

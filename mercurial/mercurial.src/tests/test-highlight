@@ -1,0 +1,90 @@
+#!/bin/sh
+
+"$TESTDIR/hghave" pygments || exit 80
+
+cat <<EOF >> $HGRCPATH
+[extensions]
+hgext.highlight =
+[web]
+pygments_style = friendly
+EOF
+
+hg init test
+cd test
+cp $TESTDIR/get-with-headers.py ./
+
+# check for UnicodeDecodeError with iso-8859-1 file contents
+python -c 'fp = open("isolatin", "w"); fp.write("h\xFCbsch\n"); fp.close();'
+
+hg ci -Ama
+
+echo % hg serve
+hg serve -p $HGPORT -d -n test --pid-file=hg.pid -A access.log -E errors.log
+cat hg.pid >> $DAEMON_PIDS
+
+echo % hgweb filerevision, html
+("$TESTDIR/get-with-headers.py" localhost:$HGPORT '/file/tip/get-with-headers.py') \
+    | sed "s/class=\"k\"/class=\"kn\"/g"
+
+echo % hgweb filerevision, html
+("$TESTDIR/get-with-headers.py" localhost:$HGPORT '/file/tip/isolatin') \
+    | sed "s/class=\"k\"/class=\"kn\"/g"
+
+echo % hgweb fileannotate, html
+("$TESTDIR/get-with-headers.py" localhost:$HGPORT '/annotate/tip/get-with-headers.py') \
+    | sed "s/class=\"k\"/class=\"kn\"/g"
+
+echo % hgweb fileannotate, raw
+("$TESTDIR/get-with-headers.py" localhost:$HGPORT '/annotate/tip/get-with-headers.py?style=raw') \
+    | sed "s/test@//" > a
+
+echo "200 Script output follows" > b
+echo "" >> b
+echo "" >> b
+hg annotate "get-with-headers.py" >> b
+echo "" >> b
+echo "" >> b
+echo "" >> b
+echo "" >> b
+
+diff -u b a
+
+echo
+echo % hgweb filerevision, raw
+("$TESTDIR/get-with-headers.py" localhost:$HGPORT '/file/tip/get-with-headers.py?style=raw') \
+    > a
+
+echo "200 Script output follows" > b
+echo "" >> b
+hg cat get-with-headers.py >> b
+
+diff -u b a
+
+echo
+echo % hgweb highlightcss friendly
+"$TESTDIR/get-with-headers.py" localhost:$HGPORT '/highlightcss' > out
+head -n 4 out
+rm out
+
+echo % errors encountered
+cat errors.log
+kill `cat hg.pid`
+
+# Change the pygments style
+cat > .hg/hgrc <<EOF
+[web]
+pygments_style = fruity
+EOF
+
+echo % hg serve again
+hg serve -p $HGPORT -d -n test --pid-file=hg.pid -A access.log -E errors.log
+cat hg.pid >> $DAEMON_PIDS
+
+echo % hgweb highlightcss fruity
+"$TESTDIR/get-with-headers.py" localhost:$HGPORT '/highlightcss' > out
+head -n 4 out
+rm out
+
+echo % errors encountered
+cat errors.log
+

@@ -1,0 +1,117 @@
+#!/bin/sh
+
+fixheaders()
+{
+    sed -e 's/\(Message-Id:.*@\).*/\1/'  \
+        -e 's/\(In-Reply-To:.*@\).*/\1/' \
+        -e 's/\(References:.*@\).*/\1/'  \
+        -e 's/===.*/===/'
+}
+
+echo "[extensions]" >> $HGRCPATH
+echo "patchbomb=" >> $HGRCPATH
+
+hg init t
+cd t
+echo a > a
+hg commit -Ama -d '1 0'
+
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar tip | \
+  fixheaders
+
+echo b > b
+hg commit -Amb -d '2 0'
+
+hg email --date '1970-1-1 0:2' -n -f quux -t foo -c bar -s test 0:tip | \
+  fixheaders
+
+hg email -m test.mbox -f quux -t foo -c bar -s test 0:tip
+
+cd ..
+
+hg clone -q t t2
+cd t2
+echo c > c
+hg commit -Amc -d '3 0'
+
+cat > description <<EOF
+a multiline
+
+description
+EOF
+
+echo "% test bundle and description"
+hg email --date '1970-1-1 0:3' -n -f quux -t foo \
+    -c bar -s test -r tip -b --desc description | \
+    fixheaders
+
+echo "% utf-8 patch"
+python -c 'fp = open("utf", "wb"); fp.write("h\xC3\xB6mma!\n"); fp.close();'
+hg commit -A -d '4 0' -m 'charset=utf-8; content-transfer-encoding: base64'
+
+echo "% no mime encoding for email --test"
+hg email --date '1970-1-1 0:4' -f quux -t foo -c bar -r tip -n | fixheaders > mailtest
+echo "% md5sum of 8-bit output"
+$TESTDIR/md5sum.py mailtest
+rm mailtest
+
+echo "% mime encoded mbox"
+hg email --date '1970-1-1 0:4' -f quux -t foo -c bar -r tip -m mbox
+cat mbox | fixheaders
+rm mbox
+
+echo "% iso-8859-1 patch"
+python -c 'fp = open("isolatin", "wb"); fp.write("h\xF6mma!\n"); fp.close();'
+hg commit -A -d '5 0' -m 'charset=us-ascii; content-transfer-encoding: 8bit'
+
+echo "% fake ascii mbox"
+hg email --date '1970-1-1 0:5' -f quux -t foo -c bar -r tip -m mbox
+fixheaders < mbox > mboxfix
+echo "% md5sum of 8-bit output"
+$TESTDIR/md5sum.py mboxfix
+
+echo "% test diffstat for single patch"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -d -y 2 | \
+  fixheaders
+
+echo "% test diffstat for multiple patches"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -d -y 0:1 | \
+  fixheaders
+
+echo "% test inline for single patch"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -i 2 | \
+  fixheaders
+
+echo "% test inline for multiple patches"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -i 0:1 | \
+  fixheaders
+
+echo "% test attach for single patch"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -a 2 | \
+  fixheaders
+
+echo "% test attach for multiple patches"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -a 0:1 | \
+  fixheaders
+
+echo "% test intro for single patch"
+hg email --date '1970-1-1 0:1' -n --intro -f quux -t foo -c bar -s test 2 | \
+  fixheaders
+
+echo "% test intro for multiple patches"
+hg email --date '1970-1-1 0:1' -n --intro -f quux -t foo -c bar -s test 0:1 | \
+  fixheaders
+
+echo "% tagging csets"
+hg tag -r0 zero zero.foo
+hg tag -r1 one one.patch
+hg tag -r2 two two.diff
+
+echo "% test inline for single named patch"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -i 2 | \
+  fixheaders
+
+echo "% test inline for multiple named/unnamed patches"
+hg email --date '1970-1-1 0:1' -n -f quux -t foo -c bar -s test -i 0:1 | \
+  fixheaders
+

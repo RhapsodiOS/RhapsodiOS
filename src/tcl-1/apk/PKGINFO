@@ -1,7 +1,0 @@
-pkgname = tcl
-pkgver = 8.0.4
-pkgdesc = Tool Command Language
-url = http://www.scriptics.com/software/install.html
-license = unknown
-builddepend = build-base
-depend = 

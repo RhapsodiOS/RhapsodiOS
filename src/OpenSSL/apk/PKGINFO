@@ -1,7 +1,0 @@
-pkgname = openssl
-pkgver = 0.9.5a
-pkgdesc = SSL library
-url = http://www.openssl.org/
-license = unknown
-builddepend = build-base perl
-depend = 

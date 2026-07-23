@@ -1,7 +1,0 @@
-pkgname = gnutar
-pkgver = 1.12
-pkgdesc = GNU tape archive utility
-url = ftp://prep.ai.mit.edu/pub/gnu/tar-1.12.tar.gz
-license = unknown
-builddepend = build-base network-cmds perl
-depend = 

@@ -1,7 +1,0 @@
-pkgname = cctools
-pkgver = 295
-pkgdesc = Compiler tools
-url = 
-license = unknown
-builddepend = build-base adv-cmds libstreams-hdrs libc libm
-depend = 

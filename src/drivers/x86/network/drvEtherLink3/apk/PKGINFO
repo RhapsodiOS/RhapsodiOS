@@ -1,8 +1,0 @@
-pkgname = drvetherlink3
-pkgver = 16
-pkgdesc = 3Com EtherLink 3 ethernet device driver
-url = 
-license = unknown
-builddepend = build-base drivertools driverkit kernload
-depend = 
-arch = i386-apple-rhapsody

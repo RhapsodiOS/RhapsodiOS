@@ -1,0 +1,27 @@
+checking changesets
+checking manifests
+crosschecking files in changesets and manifests
+checking files
+1 files, 1 changesets, 1 total revisions
+changeset:   0:0acdaf898367
+tag:         tip
+user:        test
+date:        Mon Jan 12 13:46:40 1970 +0000
+summary:     test
+
+rolling back last transaction
+checking changesets
+checking manifests
+crosschecking files in changesets and manifests
+checking files
+0 files, 0 changesets, 0 total revisions
+A a
+% Test issue 902
+marked working directory as branch test
+rolling back last transaction
+default
+% Test rollback of hg before issue 902 was fixed
+marked working directory as branch test
+rolling back last transaction
+Named branch could not be reset, current branch still is: test
+test

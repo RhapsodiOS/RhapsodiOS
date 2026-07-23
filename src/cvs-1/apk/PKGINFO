@@ -1,7 +1,0 @@
-pkgname = cvs
-pkgver = 1.10
-pkgdesc = Concurrent Versions System
-url = http://www.cyclic.com/cvs/info.html
-license = unknown
-builddepend = build-base perl
-depend = 

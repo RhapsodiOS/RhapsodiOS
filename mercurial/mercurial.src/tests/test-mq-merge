@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# Test issue 529 - mq aborts when merging patch deleting files
+
+rewrite_path()
+{
+    sed -e 's:\\:/:g' -e 's:[^ ]*/t/::g'
+}
+
+checkundo()
+{
+    if [ -f .hg/store/undo ]; then
+	echo ".hg/store/undo still exists after $1"
+    fi
+}
+
+echo "[extensions]" >> $HGRCPATH
+echo "hgext.mq=" >> $HGRCPATH
+
+# Commit two dummy files in "init" changeset
+hg init t
+cd t
+echo a > a
+echo b > b
+hg ci -Am init
+hg tag -l init
+
+# Create a patch removing a
+hg qnew rm_a
+hg rm a
+hg qrefresh -m "rm a"
+
+# Save the patch queue so we can merge it later
+hg qsave -c -e 2>&1 | rewrite_path
+checkundo qsave
+
+# Update b and commit in an "update" changeset
+hg up -C init
+echo b >> b
+hg st
+hg ci -m update
+
+# Here, qpush used to abort with :
+# The system cannot find the file specified => a
+hg manifest
+hg qpush -a -m 2>&1 | rewrite_path
+checkundo 'qpush -m'
+hg manifest
+
+# ensure status is correct after merge
+hg qpop -a
+cd ..
+
+# Classic MQ merge sequence *with an explicit named queue*
+echo
+echo % init t2
+hg init t2
+cd t2
+echo a > a
+hg ci -Am init
+echo b >> a
+hg ci -m changea
+hg up -C 0
+echo c >> a
+hg qnew -f -e patcha
+echo % create the reference queue
+hg qsave -c -e -n refqueue 2> /dev/null
+hg up -C 1
+echo % merge
+hg qpush -m -n refqueue 2>&1 | \
+    sed 's/merging with queue at.*refqueue/merging with queue at refqueue/'
+cd ..
+

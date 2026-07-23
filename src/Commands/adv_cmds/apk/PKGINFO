@@ -1,7 +1,0 @@
-pkgname = adv-cmds
-pkgver = 24.1
-pkgdesc = Advanced user commands
-url = 
-license = unknown
-builddepend = build-base yacc flex libcurses-hdrs
-depend = 

@@ -1,7 +1,0 @@
-pkgname = system-config
-pkgver = 46
-pkgdesc = Device driver configuration
-url = 
-license = unknown
-builddepend = build-base
-depend = 

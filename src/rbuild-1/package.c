@@ -1,6 +1,6 @@
 #include "package.h"
 #include <string.h>
-#include <ctype.h>
+#include <stdio.h>
 
 void package_init(Package *p) {
     memset(p, 0, sizeof(*p));
@@ -103,10 +103,15 @@ void package_parse(Package *p, const char *data) {
 char *package_canon_version(const Package *p) {
     sbuf s;
     char *out;
+    /* Package.pm dies when both are set; fail loudly rather than emit an
+       ambiguous version (uses the codebase's fatal-error idiom). */
+    if (p->revision && p->package_revision) {
+        fprintf(stderr,
+            "rbuild: package has both revision and package_revision entries\n");
+        exit(2);
+    }
     sbuf_init(&s);
     sbuf_puts(&s, p->version ? p->version : "");
-    /* Perl dies if both revision and package_revision are set; here we
-       simply append whichever is present (order matches Package.pm). */
     if (p->package_revision) sbuf_puts(&s, p->package_revision);
     if (p->revision) sbuf_puts(&s, p->revision);
     out = sbuf_steal(&s);

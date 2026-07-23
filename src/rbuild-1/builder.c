@@ -285,18 +285,18 @@ void builder_buildflags(const Params *params, const char *target, strlist *out) 
     push_kv(out, "RC_ppc", "YES");
 }
 
-void builder_buildcmd(const Params *params, const char *srcroot,
+void builder_buildcmd(const Params *chroot_params, const Params *build_params,
                       const char *target, strlist *out) {
     size_t i;
     strlist flags;
     strlist_push(out, "chroot");
-    strlist_push(out, params->BUILDROOT);
+    strlist_push(out, chroot_params->BUILDROOT);
     strlist_push(out, "make");
     strlist_push(out, "-w");
     strlist_push(out, "-C");
-    strlist_push(out, srcroot);
+    strlist_push(out, build_params->SRCROOT);
     strlist_init(&flags);
-    builder_buildflags(params, target, &flags);
+    builder_buildflags(build_params, target, &flags);
     for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);
     strlist_free(&flags);
     strlist_push(out, target);
@@ -938,7 +938,7 @@ int builder_build(const char *srctype, const char *srcname,
 
     if (do_hdr) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, params.SRCROOT, "installhdrs", &cmd);
+        builder_buildcmd(&params, &bparams, "installhdrs", &cmd);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
@@ -946,7 +946,7 @@ int builder_build(const char *srctype, const char *srcname,
 
     if (do_bin) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, params.SRCROOT, "install", &cmd);
+        builder_buildcmd(&params, &bparams, "install", &cmd);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");

@@ -1,1 +1,5 @@
+# macOS Finder special file
 .DS_Store
+
+# generated plans/specs
+docs/superpowers

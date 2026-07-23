@@ -4,5 +4,7 @@
 /tests/test_package
 /tests/test_manifest
 /tests/test_builder
+/tests/test_exec
+/tests/test_pkginfo
 /tests/trace/*.log
 /tests/trace/*.out

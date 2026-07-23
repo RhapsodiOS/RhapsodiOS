@@ -1,7 +1,6 @@
 #include "exec.h"
 #include "strutil.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdarg.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -11,7 +10,8 @@ int exec_dry_run = 0;
 
 static int has_space(const char *s) {
     for (; *s; s++)
-        if (*s == ' ' || *s == '\t' || *s == '\n') return 1;
+        if (*s == ' ' || *s == '\t' || *s == '\n' ||
+            *s == '\r' || *s == '\f') return 1;
     return 0;
 }
 

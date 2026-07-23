@@ -29,4 +29,8 @@ int builder_match_pkgfile(const char *filename, const char *name);
 char *builder_exists(const Package *pkg, const char *type, const char *dir);
 char *builder_resolve_dependency(const char *name, const strlist *repository);
 
+void builder_getparams(const char *projectname, Params *out);
+void builder_canonparams(Params *p, const char *cwd);
+void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
+
 #endif

@@ -116,3 +116,99 @@ char *builder_exists(const Package *pkg, const char *type, const char *dir) {
     fprintf(stderr, "rbuild: invalid match type \"%s\"\n", type);
     return 0;
 }
+
+/* Return env value if set and non-empty, else NULL (mirrors Perl
+   defined($ENV{X} && $ENV{X})). */
+static const char *env_or_null(const char *name) {
+    const char *v = getenv(name);
+    if (v && v[0]) return v;
+    return 0;
+}
+
+static char *default_root(const char *buildroot, const char *project,
+                          const char *suffix) {
+    /* "<buildroot>/<project>.roots/<project><suffix>" */
+    return str_cats(buildroot, "/", project, ".roots/", project, suffix, (char *)0);
+}
+
+void builder_getparams(const char *project, Params *out) {
+    const char *buildroot = env_or_null("BUILDIT_DIR");
+    const char *ov;
+    if (!buildroot) buildroot = "/private/tmp/roots";
+
+    out->BUILDROOT = default_root(buildroot, project, ".root");
+    if ((ov = env_or_null("BUILDROOT")) != 0) { free(out->BUILDROOT); out->BUILDROOT = xstrdup(ov); }
+
+    out->SRCROOT = default_root(buildroot, project, "");
+    if ((ov = env_or_null("SRCROOT")) != 0) { free(out->SRCROOT); out->SRCROOT = xstrdup(ov); }
+
+    out->OBJROOT = default_root(buildroot, project, ".obj");
+    if ((ov = env_or_null("OBJROOT")) != 0) { free(out->OBJROOT); out->OBJROOT = xstrdup(ov); }
+
+    out->SYMROOT = default_root(buildroot, project, ".sym");
+    if ((ov = env_or_null("SYMROOT")) != 0) { free(out->SYMROOT); out->SYMROOT = xstrdup(ov); }
+
+    out->DSTROOT = default_root(buildroot, project, ".dst");
+    if ((ov = env_or_null("DSTROOT")) != 0) { free(out->DSTROOT); out->DSTROOT = xstrdup(ov); }
+
+    out->HDRROOT = default_root(buildroot, project, ".hdr");
+    if ((ov = env_or_null("HDRROOT")) != 0) { free(out->HDRROOT); out->HDRROOT = xstrdup(ov); }
+
+    out->LIBCOBJROOT = default_root(buildroot, project, ".cobj");
+    if ((ov = env_or_null("LIBCOBJROOT")) != 0) { free(out->LIBCOBJROOT); out->LIBCOBJROOT = xstrdup(ov); }
+
+    out->LOGFILE = default_root(buildroot, project, ".log");
+    if ((ov = env_or_null("LOGFILE")) != 0) { free(out->LOGFILE); out->LOGFILE = xstrdup(ov); }
+
+    out->SUBLIBROOTS = xstrdup("/usr/local/lib/objs");
+    if ((ov = env_or_null("SUBLIBROOTS")) != 0) { free(out->SUBLIBROOTS); out->SUBLIBROOTS = xstrdup(ov); }
+
+    out->PACKAGEROOT = default_root(buildroot, project, ".pkg");
+    if ((ov = env_or_null("PACKAGEROOT")) != 0) { free(out->PACKAGEROOT); out->PACKAGEROOT = xstrdup(ov); }
+}
+
+static void canon_one(char **field, const char *cwd) {
+    if (*field && (*field)[0] != '/') {
+        char *joined = path_join(cwd, *field);
+        free(*field);
+        *field = joined;
+    }
+}
+
+void builder_canonparams(Params *p, const char *cwd) {
+    canon_one(&p->BUILDROOT, cwd);
+    canon_one(&p->SRCROOT, cwd);
+    canon_one(&p->OBJROOT, cwd);
+    canon_one(&p->SYMROOT, cwd);
+    canon_one(&p->DSTROOT, cwd);
+    canon_one(&p->HDRROOT, cwd);
+    canon_one(&p->LIBCOBJROOT, cwd);
+    canon_one(&p->PACKAGEROOT, cwd);
+    canon_one(&p->LOGFILE, cwd);
+    canon_one(&p->SUBLIBROOTS, cwd);
+    canon_one(&p->SRCDIR, cwd);
+    canon_one(&p->PACKAGEDIR, cwd);
+}
+
+static char *prefixed(const char *buildroot, const char *path) {
+    if (!path) return 0;
+    return str_cats(buildroot, path, (char *)0);
+}
+
+void builder_chrootparams(const Params *in, const char *buildroot, Params *out) {
+    char *br = xstrdup(buildroot);
+    size_t n = strlen(br);
+    while (n > 0 && br[n - 1] == '/') br[--n] = '\0';
+
+    out->SRCROOT = prefixed(br, in->SRCROOT);
+    out->OBJROOT = prefixed(br, in->OBJROOT);
+    out->SYMROOT = prefixed(br, in->SYMROOT);
+    out->DSTROOT = prefixed(br, in->DSTROOT);
+    out->HDRROOT = prefixed(br, in->HDRROOT);
+    out->LIBCOBJROOT = prefixed(br, in->LIBCOBJROOT);
+    out->LOGFILE = prefixed(br, in->LOGFILE);
+    out->SUBLIBROOTS = prefixed(br, in->SUBLIBROOTS);
+    out->PACKAGEROOT = prefixed(br, in->PACKAGEROOT);
+    out->BUILDROOT = xstrdup(br);
+    free(br);
+}

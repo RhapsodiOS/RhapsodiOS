@@ -64,11 +64,55 @@ TEST(test_resolve_and_exists) {
     system("rm -rf /tmp/rbtest_repo");
 }
 
+TEST(test_getparams_defaults) {
+    Params p;
+    /* Ensure no env overrides interfere. */
+    unsetenv("BUILDIT_DIR"); unsetenv("BUILDROOT"); unsetenv("SRCROOT");
+    unsetenv("OBJROOT"); unsetenv("SYMROOT"); unsetenv("DSTROOT");
+    unsetenv("HDRROOT"); unsetenv("LIBCOBJROOT"); unsetenv("LOGFILE");
+    unsetenv("SUBLIBROOTS"); unsetenv("PACKAGEROOT");
+    params_init(&p);
+    builder_getparams("foo-1.0", &p);
+    CHECK_STR(p.BUILDROOT, "/private/tmp/roots/foo-1.0.roots/foo-1.0.root");
+    CHECK_STR(p.SRCROOT, "/private/tmp/roots/foo-1.0.roots/foo-1.0");
+    CHECK_STR(p.OBJROOT, "/private/tmp/roots/foo-1.0.roots/foo-1.0.obj");
+    CHECK_STR(p.DSTROOT, "/private/tmp/roots/foo-1.0.roots/foo-1.0.dst");
+    CHECK_STR(p.HDRROOT, "/private/tmp/roots/foo-1.0.roots/foo-1.0.hdr");
+    CHECK_STR(p.SUBLIBROOTS, "/usr/local/lib/objs");
+    params_free(&p);
+}
+
+TEST(test_canonparams) {
+    Params p;
+    params_init(&p);
+    p.SRCROOT = xstrdup("relative/src");
+    p.OBJROOT = xstrdup("/already/abs");
+    builder_canonparams(&p, "/cwd");
+    CHECK_STR(p.SRCROOT, "/cwd/relative/src");
+    CHECK_STR(p.OBJROOT, "/already/abs");
+    params_free(&p);
+}
+
+TEST(test_chrootparams) {
+    Params in, out;
+    params_init(&in); params_init(&out);
+    in.SRCROOT = xstrdup("/a/src");
+    in.DSTROOT = xstrdup("/a/dst");
+    builder_chrootparams(&in, "/build/", &out);
+    CHECK_STR(out.SRCROOT, "/build/a/src");
+    CHECK_STR(out.DSTROOT, "/build/a/dst");
+    CHECK_STR(out.BUILDROOT, "/build");
+    params_free(&in); params_free(&out);
+}
+
 static void run_all(void) {
     RUN(test_dir2name);
     RUN(test_pkgname);
     RUN(test_match_pkgfile);
     RUN(test_resolve_and_exists);
+    RUN(test_getparams_defaults);
+    RUN(test_canonparams);
+    RUN(test_chrootparams);
 }
 
 TEST_MAIN()

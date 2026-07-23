@@ -91,10 +91,23 @@ rm -rf "$projroot"
 # label -- a harmless print-string typo in the unmodified Perl itself; the
 # $ENV{'PATH'} assignment right above it is unaffected). Extract from
 # "chroot"/"make" onward so that cosmetic prefix never enters the diff.
+#
+# Both oracles' printcmd()/exec_printcmd() quote any argv word containing
+# whitespace in double quotes and leave the rest bare (exec.c:exec_printcmd,
+# Builder.pm:95 printcmd), with no embedded quotes/escaping in any flag
+# value we ever produce. That makes the traced line exactly reversible: a
+# quoted-or-bare-word tokenizer recovers the real argv, including
+# multi-word values like RC_CFLAGS/RC_ARCHS whose internal spacing (e.g.
+# the double space after "ppc") must be preserved, not collapsed, since
+# collapsing it would hide the very thing being compared.
 extract() {
   grep -oE '(chroot|make) .*' "$1" \
     | sed -f "$here/normalize.sed" \
-    | tr ' ' '\n' | grep -E '=' | sort -u
+    | perl -ne 'while (/"([^"]*)"|(\S+)/g) {
+          my $t = defined($1) ? $1 : $2;
+          print "$t\n" if $t =~ /=/;
+        }' \
+    | sort -u
 }
 extract /tmp/rb_trace_rbuild.log > /tmp/rb_trace_rbuild.flags
 extract /tmp/rb_trace_perl.log   > /tmp/rb_trace_perl.flags

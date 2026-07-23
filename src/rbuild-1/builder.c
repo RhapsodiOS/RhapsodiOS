@@ -273,7 +273,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out) 
 
     /* RC_CFLAGS = "-arch i386 -arch ppc" + " -D..." for each cflag. */
     sbuf_init(&s);
-    sbuf_puts(&s, "-arch i386 -arch ppc");
+    sbuf_puts(&s, "-arch i386 -arch ppc ");
     for (i = 0; cflags[i]; i++) { sbuf_putc(&s, ' '); sbuf_puts(&s, cflags[i]); }
     rc_cflags = sbuf_steal(&s);
     sbuf_free(&s);

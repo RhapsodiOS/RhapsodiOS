@@ -298,3 +298,97 @@ void builder_buildcmd(const Params *params, const char *srcroot,
     strlist_free(&flags);
     strlist_push(out, target);
 }
+
+static const char *DEFAULT_DESC = "No description available.";
+static const char *DEFAULT_MAINT =
+    "Anonymous <darwin-development@public.lists.apple.com>";
+static const char *ARCH = "universal-apple-rhapsody";
+
+static void makecontrol(Package *pkg, const char *pname) {
+    package_set(&pkg->package, pname);
+    package_set(&pkg->version, "0");
+    package_set(&pkg->architecture, ARCH);
+    package_set(&pkg->source, pname);
+    package_set(&pkg->description, DEFAULT_DESC);
+    package_set(&pkg->maintainer, DEFAULT_MAINT);
+    strlist_free(&pkg->build_depends);
+    strlist_init(&pkg->build_depends);
+    strlist_push(&pkg->build_depends, "build-base");
+    pkg->has_build_depends = 1;
+}
+
+/* Read <path> into a string; returns malloc'd or NULL. */
+static char *slurp_file(const char *path) {
+    FILE *f = fopen(path, "r");
+    sbuf s;
+    char buf[1024];
+    size_t n;
+    char *out;
+    if (!f) return 0;
+    sbuf_init(&s);
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) sbuf_putn(&s, buf, n);
+    fclose(f);
+    out = sbuf_steal(&s);
+    sbuf_free(&s);
+    return out;
+}
+
+/* Returns 0 and fills pkg on success; 1 if control missing/invalid. */
+static int readcontrol(Package *pkg, const char *control_path) {
+    char *data = slurp_file(control_path);
+    if (!data) return 1;
+    package_parse(pkg, data);
+    free(data);
+    if (!pkg->package) {
+        fprintf(stderr, "error: package file does not contain 'Package:' entry\n");
+        return 1;
+    }
+    if (!pkg->version) {
+        fprintf(stderr, "error: package file does not contain 'Version:' entry\n");
+        return 1;
+    }
+    if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
+    if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
+    package_set(&pkg->architecture, ARCH);
+    package_set(&pkg->source, pkg->package);
+    return 0;
+}
+
+int builder_scan_dir(const char *source, Package *pkg, Params *params) {
+    char *pbase = 0, *pname = 0, *rev = 0;
+    char *control_path;
+    char *projname;
+
+    builder_dir2name(source, &pbase, &pname, &rev);
+
+    control_path = str_cats(source, "/dpkg/control", (char *)0);
+    if (readcontrol(pkg, control_path) != 0) {
+        /* reset any partial parse and synthesize default */
+        package_free(pkg);
+        package_init(pkg);
+        makecontrol(pkg, pname);
+    }
+    free(control_path);
+
+    package_set(&pkg->source, pbase);
+    if (rev) {
+        char *nv = str_cats(pkg->version, "-", rev, (char *)0);
+        package_set(&pkg->version, nv);
+        free(nv);
+    }
+
+    projname = str_cats(pkg->package, "-", pkg->version, (char *)0);
+    builder_getparams(projname, params);
+    free(projname);
+
+    free(pbase); free(pname); free(rev);
+    return 0;
+}
+
+int builder_scan(const char *type, const char *source,
+                 Package *pkg, Params *params) {
+    if (strcmp(type, "dir") == 0)
+        return builder_scan_dir(source, pkg, params);
+    fprintf(stderr, "rbuild: invalid source type \"%s\"\n", type);
+    return 1;
+}

@@ -1,5 +1,6 @@
 #include "builder.h"
 #include "test.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 TEST(test_dir2name) {
@@ -133,6 +134,31 @@ TEST(test_buildflags) {
     params_free(&p);
 }
 
+TEST(test_scan_dir) {
+    Package pkg;
+    Params params;
+    int rc;
+    system("rm -rf /tmp/rbtest_src && mkdir -p /tmp/rbtest_src/objc4-174/dpkg");
+    {
+        FILE *f = fopen("/tmp/rbtest_src/objc4-174/dpkg/control", "w");
+        fputs("Package: objc4\nVersion: 174\n"
+              "Description: Objective-C runtime\n"
+              "Build-Depends: build-base\n", f);
+        fclose(f);
+    }
+    package_init(&pkg);
+    params_init(&params);
+    rc = builder_scan_dir("/tmp/rbtest_src/objc4-174", &pkg, &params);
+    CHECK_INT(rc, 0);
+    CHECK_STR(pkg.package, "objc4");
+    CHECK_STR(pkg.version, "174-174");   /* base version + "-" + revision */
+    CHECK_STR(pkg.source, "objc4");
+    CHECK(params.SRCROOT != 0);
+    package_free(&pkg);
+    params_free(&params);
+    system("rm -rf /tmp/rbtest_src");
+}
+
 static void run_all(void) {
     RUN(test_dir2name);
     RUN(test_pkgname);
@@ -142,6 +168,7 @@ static void run_all(void) {
     RUN(test_canonparams);
     RUN(test_chrootparams);
     RUN(test_buildflags);
+    RUN(test_scan_dir);
 }
 
 TEST_MAIN()

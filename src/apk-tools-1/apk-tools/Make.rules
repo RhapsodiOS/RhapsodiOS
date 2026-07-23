@@ -69,7 +69,11 @@ INSTALL		:= install
 INSTALLDIR	:= $(INSTALL) -d
 
 CFLAGS		?= -g
-CFLAGS_ALL	:= -Werror -Wall -Wstrict-prototypes -D_GNU_SOURCE -std=gnu99
+# Portability: -std=gnu99 is rejected by Apple's gcc 2.95; the GNU C used here
+# is accepted by the compiler default. -Werror is dropped during the port so
+# host/target warning differences don't abort the build. _GNU_SOURCE is a
+# glibc feature-test macro (no-op off-Linux); left off for portability.
+CFLAGS_ALL	:= -Wall -Wstrict-prototypes
 CFLAGS_ALL	+= $(CFLAGS)
 
 LDFLAGS		?= -g

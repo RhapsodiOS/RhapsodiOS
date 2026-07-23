@@ -9,9 +9,11 @@ CFLAGS_apk.o		:= -DAPK_VERSION=\"$(FULL_VERSION)\"
 progs-$(STATIC)		+= apk.static
 apk.static-objs		:= $(apk-objs)
 LDFLAGS_apk.static	:= -static
-LDFLAGS_apk		+= -nopie
 
-LIBS			:= /usr/lib/libz.a
+# -nopie is not portable to old ld / Darwin ld; drop it. zlib is linked via
+# -lz by default and overridable (make LIBS=...) so the target can point at
+# its own libz.
+LIBS			?= -lz
 
 install::
 	$(INSTALLDIR) $(DESTDIR)$(SBINDIR)

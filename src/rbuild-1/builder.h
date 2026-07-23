@@ -25,4 +25,8 @@ void params_free(Params *p);
 void builder_dir2name(const char *srcname, char **pbase, char **pname, char **rev);
 char *builder_pkgname(const char *pbase, const char *revision);
 
+int builder_match_pkgfile(const char *filename, const char *name);
+char *builder_exists(const Package *pkg, const char *type, const char *dir);
+char *builder_resolve_dependency(const char *name, const strlist *repository);
+
 #endif

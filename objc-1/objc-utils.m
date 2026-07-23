@@ -38,7 +38,7 @@
 #include <time.h>
 #include "objc-dispatch.h"
 
-#import "HashTable.h"
+#import "HashTableClass.h"
 
 
 /* Return time used so far, in microseconds.  */

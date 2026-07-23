@@ -4,7 +4,7 @@
  * Base class for logical disk operations (partitions, etc.)
  */
 
-#import "IODiskNEW.h"
+#import "IODiskNew.h"
 
 #ifdef	KERNEL
 #import <driverkit/kernelDiskMethods.h>

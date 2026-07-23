@@ -4,7 +4,7 @@
  * This file contains the category declarations for kernel-level disk operations.
  */
 
-#import "IODiskNEW.h"
+#import "IODiskNew.h"
 
 #ifdef KERNEL
 #import <bsd/sys/types.h>

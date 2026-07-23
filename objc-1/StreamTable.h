@@ -33,7 +33,7 @@
 #ifndef _OBJC_STREAMTABLE_H_
 #define _OBJC_STREAMTABLE_H_
 
-#import "HashTable.h"
+#import "HashTableClass.h"
 
 @interface StreamTable: HashTable 
 	

@@ -7,7 +7,7 @@
  * operations pertaining to a physical disk.
  */
 
-#import "IODiskNEW.h"
+#import "IODiskNew.h"
 #import "IOLogicalDiskNEW.h"
 #import <bsd/dev/disk_label.h>
 

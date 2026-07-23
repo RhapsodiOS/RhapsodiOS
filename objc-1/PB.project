@@ -3,7 +3,7 @@
     DYNAMIC_CODE_GEN = NO; 
     FILESTABLE = {
         CLASSES = (
-            HashTable.m, 
+            HashTableClass.m, 
             hashtable.m, 
             List.m, 
             maptable.m, 
@@ -36,7 +36,7 @@
         HEADERSEARCH = (., /System/Library/Frameworks/System.framework/PrivateHeaders); 
         H_FILES = (
             error.h, 
-            HashTable.h, 
+            HashTableClass.h, 
             hashtable.h, 
             List.h, 
             maptable.h, 

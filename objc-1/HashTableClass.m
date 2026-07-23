@@ -22,7 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
-	HashTable.m
+	HashTableClass.m
   	Copyright 1988, 1989 NeXT, Inc.
 	Written by Bertrand Serlet, Dec 88
 	Responsibility: Bertrand Serlet
@@ -35,7 +35,7 @@
 #import <stdlib.h>
 #import <stdio.h>
 #import <string.h>
-#import "HashTable.h"
+#import "HashTableClass.h"
 #import "NXStringTable.h"
 #import "objc-private.h"
 

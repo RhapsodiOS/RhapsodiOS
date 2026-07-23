@@ -34,7 +34,7 @@
 
 #import <mach/cthreads.h>
 #import "NXStringPrivate.h"
-#import "HashTable.h"
+#import "HashTableClass.h"
 
 /* Mutex for mucking around with global stuff */
 static struct mutex stringLock;

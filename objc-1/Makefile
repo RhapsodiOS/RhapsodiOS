@@ -13,7 +13,7 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Library
 LANGUAGE = English
 
-CLASSES = HashTable.m hashtable.m List.m maptable.m NXBundle.m\
+CLASSES = HashTableClass.m hashtable.m List.m maptable.m NXBundle.m\
           NXCharacterSet.m NXConstantString.m NXMutableString.m\
           NXPropertyList.m NXReadOnlyString.m NXReadOnlySubstring.m\
           NXReadWriteString.m NXSimpleReadOnlyString.m NXString.m\
@@ -22,7 +22,7 @@ CLASSES = HashTable.m hashtable.m List.m maptable.m NXBundle.m\
           objc-runtime.m objc-sel.m Object.m Protocol.m Storage.m\
           StreamTable.m typedstream.m
 
-HFILES = error.h HashTable.h hashtable.h List.h maptable.h NXBundle.h\
+HFILES = error.h HashTableClass.h hashtable.h List.h maptable.h NXBundle.h\
          NXBundlePrivate.h NXCharacterSet.h NXPropertyList.h NXString.h\
          NXStringPrivate.h NXStringTable.h objc-class.h objc-dispatch.h\
          objc-load.h objc-private.h objc-runtime.h objc.h Object.h\

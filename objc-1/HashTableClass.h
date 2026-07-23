@@ -22,11 +22,11 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*
-    HashTable.h
+    HashTableClass.h
     Copyright 1988, 1989 NeXT, Inc.
 	
     DEFINED AS: A common class
-    HEADER FILES: objc/HashTable.h
+    HEADER FILES: objc/HashTableClass.h
 
 */
 

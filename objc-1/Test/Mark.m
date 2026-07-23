@@ -23,7 +23,7 @@
  */
 
 #import <objc/Object.h>
-#import <objc/HashTable.h>
+#import <objc/HashTableClass.h>
 #import <float.h>
 #import <stdarg.h>
 

@@ -33,7 +33,7 @@
 #ifndef _OBJC_NXSTRINGTABLE_H_
 #define _OBJC_NXSTRINGTABLE_H_
 
-#import "HashTable.h"
+#import "HashTableClass.h"
 
 #define MAX_NXSTRINGTABLE_LENGTH	1024
 

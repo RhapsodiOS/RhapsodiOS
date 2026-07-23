@@ -24,7 +24,7 @@
 
 #import <objc/Storage.h>
 #import <objc/List.h>
-#import <objc/HashTable.h>
+#import <objc/HashTableClass.h>
 #import <objc/objc-runtime.h>
 
 

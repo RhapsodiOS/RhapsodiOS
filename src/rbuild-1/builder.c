@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 void params_init(Params *p) { memset(p, 0, sizeof(*p)); }
 
@@ -842,4 +843,141 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
 
     obj_match_free_all(head);
     return rc;
+}
+
+static char *cwd_dup(void) {
+    char buf[4096];
+    if (getcwd(buf, sizeof(buf)) == 0) return xstrdup(".");
+    return xstrdup(buf);
+}
+
+static int file_apk_exists(const char *dstdir, const char *canon) {
+    char *p = str_cats(dstdir, "/", canon, ".apk", (char *)0);
+    struct stat st;
+    int ok = (stat(p, &st) == 0);
+    free(p);
+    return ok;
+}
+
+static int run_make(strlist *cmd) {
+    char **argv;
+    size_t i;
+    int rc;
+    argv = (char **) xmalloc((cmd->count + 1) * sizeof(char *));
+    for (i = 0; i < cmd->count; i++) argv[i] = cmd->items[i];
+    argv[cmd->count] = 0;
+    setenv("UNAME_SYSNAME", "Rhapsody", 1);
+    setenv("PATH", "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin", 1);
+    printf("UNAME_SYSNAME=Rhapsody PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ");
+    exec_printcmd(argv);
+    rc = exec_run_checked(argv);
+    free(argv);
+    return rc;
+}
+
+int builder_build(const char *srctype, const char *srcname,
+                  const strlist *repository, const char *target,
+                  const char *dstdir, int clean) {
+    Package pkg, hdrpkg;
+    Params bparams, params;
+    char *hdrfilename, *filename;
+    char *cwd;
+    int rc = 0;
+    int do_hdr = (strcmp(target, "all") == 0 || strcmp(target, "headers") == 0);
+    int do_bin = (strcmp(target, "all") == 0 || strcmp(target, "binary") == 0);
+
+    package_init(&pkg);
+    params_init(&bparams);
+    if (builder_scan(srctype, srcname, &pkg, &bparams) != 0) {
+        package_free(&pkg); params_free(&bparams);
+        return 1;
+    }
+
+    /* hdrpackage = clone(pkg); name += "-hdrs" */
+    {
+        char *u = package_unparse(&pkg);
+        char *h;
+        package_init(&hdrpkg);
+        package_parse(&hdrpkg, u);
+        free(u);
+        h = str_cats(hdrpkg.package, "-hdrs", (char *)0);
+        package_set(&hdrpkg.package, h);
+        free(h);
+    }
+    hdrfilename = package_canon_name(&hdrpkg);
+    filename = package_canon_name(&pkg);
+
+    if (strcmp(target, "headers") == 0 && file_apk_exists(dstdir, hdrfilename)) {
+        printf("package file for \"%s\" already exists; not building\n", hdrfilename);
+        goto done_ok;
+    }
+    if (file_apk_exists(dstdir, filename)) {
+        printf("package file for \"%s\" already exists; not building\n", filename);
+        goto done_ok;
+    }
+
+    /* params = chrootparams(bparams, bparams.BUILDROOT) */
+    params_init(&params);
+    builder_chrootparams(&bparams, bparams.BUILDROOT, &params);
+
+    /* SRCDIR */
+    if (strcmp(srctype, "dir") == 0) params.SRCDIR = xstrdup(srcname);
+    else { fprintf(stderr, "rbuild: invalid source type \"%s\"\n", srctype); rc = 1; goto done; }
+    params.PACKAGEDIR = xstrdup(dstdir);
+
+    cwd = cwd_dup();
+    builder_canonparams(&params, cwd);
+    builder_canonparams(&bparams, cwd);
+    free(cwd);
+
+    printf("building %s from %s:\n\n", filename, params.SRCDIR);
+
+    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository) != 0) {
+        rc = 1; goto done;
+    }
+
+    if (do_hdr) {
+        strlist cmd; strlist_init(&cmd);
+        builder_buildcmd(&params, params.SRCROOT, "installhdrs", &cmd);
+        if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
+        strlist_free(&cmd);
+        printf("\n");
+    }
+
+    if (do_bin) {
+        strlist cmd; strlist_init(&cmd);
+        builder_buildcmd(&params, params.SRCROOT, "install", &cmd);
+        if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
+        strlist_free(&cmd);
+        printf("\n");
+
+        if (builder_harvest_objects(&pkg, &params, &bparams) != 0) { rc = 1; goto done; }
+        printf("\n");
+    }
+
+    if (do_hdr) {
+        if (builder_buildpackage(&pkg, &params, "headers") != 0) { rc = 1; goto done; }
+    }
+    if (do_bin) {
+        if (builder_buildpackage(&pkg, &params, "binary") != 0) { rc = 1; goto done; }
+        if (builder_buildpackage(&pkg, &params, "objects") != 0) { rc = 1; goto done; }
+        if (builder_buildpackage(&pkg, &params, "local") != 0) { rc = 1; goto done; }
+    }
+
+    if (clean) {
+        if (exec_runv("rm", "-rf", params.BUILDROOT, (char *)0) != 0) { rc = 1; goto done; }
+    }
+
+done:
+    params_free(&params);
+    free(hdrfilename); free(filename);
+    package_free(&pkg); package_free(&hdrpkg);
+    params_free(&bparams);
+    return rc;
+
+done_ok:
+    free(hdrfilename); free(filename);
+    package_free(&pkg); package_free(&hdrpkg);
+    params_free(&bparams);
+    return 0;
 }

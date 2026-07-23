@@ -52,4 +52,8 @@ int builder_buildpackage(const Package *spkg, const Params *params,
 int builder_harvest_objects(const Package *pkg, const Params *params,
                             const Params *bparams);
 
+int builder_build(const char *srctype, const char *srcname,
+                  const strlist *repository, const char *target,
+                  const char *dstdir, int clean);
+
 #endif

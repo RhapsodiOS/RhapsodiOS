@@ -18,21 +18,26 @@ rbuild: $(OBJS)
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-# Unit tests: each test binary links the module objects (except main.o).
-LIBOBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o
-
+# Unit tests: each test binary links ONLY the module objects it needs, so a
+# test can be built as soon as its modules exist (incremental TDD). As a
+# module grows new dependencies, extend the matching object list below.
 test: $(TESTS)
 	@fail=0; for t in $(TESTS); do echo "== $$t =="; ./$$t || fail=1; done; \
 		[ $$fail -eq 0 ] && echo "ALL TESTS PASSED" || (echo "TESTS FAILED"; exit 1)
 
-tests/test_strutil: tests/test_strutil.c $(LIBOBJS)
-	$(CC) $(CFLAGS) -I. -o $@ tests/test_strutil.c $(LIBOBJS)
-tests/test_package: tests/test_package.c $(LIBOBJS)
-	$(CC) $(CFLAGS) -I. -o $@ tests/test_package.c $(LIBOBJS)
-tests/test_manifest: tests/test_manifest.c $(LIBOBJS)
-	$(CC) $(CFLAGS) -I. -o $@ tests/test_manifest.c $(LIBOBJS)
-tests/test_builder: tests/test_builder.c $(LIBOBJS)
-	$(CC) $(CFLAGS) -I. -o $@ tests/test_builder.c $(LIBOBJS)
+test_strutil_OBJS = strutil.o
+test_package_OBJS = strutil.o package.o
+test_manifest_OBJS = strutil.o manifest.o
+test_builder_OBJS = strutil.o package.o builder.o
+
+tests/test_strutil: tests/test_strutil.c $(test_strutil_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_strutil.c $(test_strutil_OBJS)
+tests/test_package: tests/test_package.c $(test_package_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_package.c $(test_package_OBJS)
+tests/test_manifest: tests/test_manifest.c $(test_manifest_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_manifest.c $(test_manifest_OBJS)
+tests/test_builder: tests/test_builder.c $(test_builder_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_builder.c $(test_builder_OBJS)
 
 trace-test: rbuild
 	sh tests/trace/run.sh

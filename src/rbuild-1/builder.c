@@ -550,3 +550,41 @@ cleanup:
     strlist_free(&curdeps);
     return rc;
 }
+
+static int mkdirp(const char *path) {
+    return exec_runv("mkdir", "-p", path, (char *)0);
+}
+
+int builder_setupdirs(const Package *pkg, const Params *params,
+                      const char *srcname, const char *srctype,
+                      const strlist *repository) {
+    (void) srcname;   /* only used by the dropped cvs branch */
+
+    if (exec_check(mkdirp(params->OBJROOT))) return 1;
+    if (exec_check(mkdirp(params->SYMROOT))) return 1;
+    if (exec_check(mkdirp(params->DSTROOT))) return 1;
+    if (exec_check(mkdirp(params->HDRROOT))) return 1;
+    if (exec_check(mkdirp(params->PACKAGEROOT))) return 1;
+    if (exec_check(mkdirp(params->BUILDROOT))) return 1;
+
+    if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+
+    if (strcmp(srctype, "dir") == 0) {
+        char *cmd;
+        char *argv[4];
+        int rc;
+        if (exec_check(mkdirp(params->SRCROOT))) return 1;
+        cmd = str_cats("(cd '", params->SRCDIR,
+                       "' && rsync -avr . --exclude=CVS/ --exclude=.svn/ "
+                       "--exclude=.git/ '", params->SRCROOT, "')", (char *)0);
+        argv[0] = "sh"; argv[1] = "-c"; argv[2] = cmd; argv[3] = 0;
+        exec_printcmd(argv);
+        rc = exec_run_checked(argv);
+        free(cmd);
+        if (rc) return 1;
+    } else {
+        fprintf(stderr, "rbuild: unknown source type %s\n", srctype);
+        return 1;
+    }
+    return 0;
+}

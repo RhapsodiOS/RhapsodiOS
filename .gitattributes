@@ -56,4 +56,4 @@
 *.def -text
 # The Python email test reads this fixture in binary mode and asserts on
 # CRLF (see Lib/email/test/test_email.py); keep its CRLF intact.
-python/python/Lib/email/test/data/msg_26.txt -text
+src/python/python/Lib/email/test/data/msg_26.txt -text

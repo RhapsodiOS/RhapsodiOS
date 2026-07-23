@@ -658,15 +658,21 @@ int builder_buildpackage(const Package *spkg, const Params *params,
         return 1;
     }
 
-    /* Ensure the base package dir exists (Perl mkdir -p DEBIAN for binary). */
+    /* Ensure the base package dir exists (Perl mkdir -p DEBIAN for binary,
+       BEFORE the emptiness check -- this guarantees "binary" always proceeds
+       to packaging, matching Builder.pm:398-404). */
     if (strcmp(target, "binary") == 0) {
         if (exec_check(mkdirp(dstroot))) { rc = 1; goto done; }
     }
 
-    nonempty = dir_nonempty(dstroot);
-    if (nonempty <= 0) {
-        /* cannot open (no files) or empty -> nothing to package */
-        goto done;
+    /* Perl only creates the sentinel DEBIAN dir for "binary", so only
+       "headers" and "objects" are subject to the empty-dstroot skip. */
+    if (strcmp(target, "headers") == 0 || strcmp(target, "objects") == 0) {
+        nonempty = dir_nonempty(dstroot);
+        if (nonempty <= 0) {
+            /* cannot open (no files) or empty -> nothing to package */
+            goto done;
+        }
     }
 
     if (exec_runv("rm", "-rf",
@@ -721,19 +727,44 @@ done:
 }
 
 /* Object harvest: find directories containing a 'dynamic_obj' entry under
-   OBJROOT and copy them into LIBCOBJROOT (Builder.pm:778-896). */
-static int harvest_walk(const char *objroot_abs, const char *rel,
-                        const Package *pkg, const Params *params,
-                        const Params *bparams) {
+   OBJROOT and copy them into LIBCOBJROOT (Builder.pm:778-896).
+
+   Matches are collected first (mirroring Perl's @objs / unshift in
+   findobjs()), then copied in a separate pass (mirroring the separate
+   "for my $file (@objs)" loop in build()). */
+
+typedef struct obj_match {
+    char *file;             /* "./<rel>/dynamic_obj", matches Perl's
+                                "$File::Find::dir/$_" */
+    struct obj_match *next;
+} obj_match;
+
+static void obj_match_free_all(obj_match *head) {
+    obj_match *next;
+    while (head) {
+        next = head->next;
+        free(head->file);
+        free(head);
+        head = next;
+    }
+}
+
+/* Walks the ENTIRE tree rooted at objroot_abs/rel. Every directory is
+   inspected for a 'dynamic_obj' entry; if present, the match is prepended
+   to *phead (unshift order). Descent still proceeds into the directory's
+   OTHER subdirectories -- only the 'dynamic_obj' entry itself is pruned,
+   matching Perl's $File::Find::prune semantics (it stops recursion into
+   the pruned entry, not into its siblings). */
+static void harvest_walk(const char *objroot_abs, const char *rel,
+                         obj_match **phead) {
     char *dirpath = (rel[0] == '\0')
         ? xstrdup(objroot_abs)
         : path_join(objroot_abs, rel);
     DIR *d = opendir(dirpath);
     struct dirent *de;
-    int rc = 0;
     int found_obj = 0;
 
-    if (!d) { free(dirpath); return 0; }
+    if (!d) { free(dirpath); return; }
 
     /* First, does this directory contain 'dynamic_obj'? */
     while ((de = readdir(d)) != 0) {
@@ -744,9 +775,50 @@ static int harvest_walk(const char *objroot_abs, const char *rel,
     if (found_obj) {
         /* file = "./<rel>/dynamic_obj" relative form matching Perl
            $File::Find::dir/$_ */
-        char *file = (rel[0] == '\0')
+        obj_match *node = (obj_match *) xmalloc(sizeof(obj_match));
+        node->file = (rel[0] == '\0')
             ? xstrdup("./dynamic_obj")
             : str_cats("./", rel, "/dynamic_obj", (char *)0);
+        node->next = *phead;
+        *phead = node;
+    }
+
+    /* Descend into subdirectories other than 'dynamic_obj' itself, which
+       is pruned (not recursed into) whether or not it was just matched. */
+    while ((de = readdir(d)) != 0) {
+        char *child;
+        struct stat st;
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+        if (strcmp(de->d_name, "dynamic_obj") == 0)
+            continue;
+        child = path_join(dirpath, de->d_name);
+        if (stat(child, &st) == 0 && S_ISDIR(st.st_mode)) {
+            char *newrel = (rel[0] == '\0')
+                ? xstrdup(de->d_name)
+                : path_join(rel, de->d_name);
+            harvest_walk(objroot_abs, newrel, phead);
+            free(newrel);
+        }
+        free(child);
+    }
+    closedir(d);
+    free(dirpath);
+}
+
+int builder_harvest_objects(const Package *pkg, const Params *params,
+                            const Params *bparams) {
+    obj_match *head = 0;
+    obj_match *node;
+    int rc = 0;
+
+    printf("finding files in %s\n", params->OBJROOT);
+    fflush(stdout);
+
+    harvest_walk(params->OBJROOT, "", &head);
+
+    for (node = head; node != 0; node = node->next) {
+        char *file = node->file;
         char *objdest = str_cats("/usr/local/lib/objs/",
                                  pkg->source ? pkg->source : "", "/", file, (char *)0);
         char *dstdir = str_cats(params->LIBCOBJROOT, objdest, (char *)0);
@@ -765,38 +837,9 @@ static int harvest_walk(const char *objroot_abs, const char *rel,
             exec_printcmd(argv);
             if (exec_run_checked(argv)) rc = 1;
         }
-        free(file); free(objdest); free(dstdir); free(srcpath); free(cobjpath);
-        /* Perl prunes (does not descend) once dynamic_obj found. */
-        closedir(d);
-        free(dirpath);
-        return rc;
+        free(objdest); free(dstdir); free(srcpath); free(cobjpath);
     }
 
-    /* Otherwise descend into subdirectories. */
-    while ((de = readdir(d)) != 0) {
-        char *child;
-        struct stat st;
-        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
-            continue;
-        child = path_join(dirpath, de->d_name);
-        if (stat(child, &st) == 0 && S_ISDIR(st.st_mode)) {
-            char *newrel = (rel[0] == '\0')
-                ? xstrdup(de->d_name)
-                : path_join(rel, de->d_name);
-            if (harvest_walk(objroot_abs, newrel, pkg, params, bparams) != 0)
-                rc = 1;
-            free(newrel);
-        }
-        free(child);
-    }
-    closedir(d);
-    free(dirpath);
+    obj_match_free_all(head);
     return rc;
-}
-
-int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams) {
-    printf("finding files in %s\n", params->OBJROOT);
-    fflush(stdout);
-    return harvest_walk(params->OBJROOT, "", pkg, params, bparams);
 }

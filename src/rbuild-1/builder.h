@@ -47,4 +47,9 @@ int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository);
 
+int builder_buildpackage(const Package *spkg, const Params *params,
+                         const char *target);
+int builder_harvest_objects(const Package *pkg, const Params *params,
+                            const Params *bparams);
+
 #endif

@@ -1,4 +1,5 @@
 #include "builder.h"
+#include "pkginfo.h"
 #include "exec.h"
 #include <string.h>
 #include <ctype.h>
@@ -587,4 +588,215 @@ int builder_setupdirs(const Package *pkg, const Params *params,
         return 1;
     }
     return 0;
+}
+
+/* Count directory entries excluding . and .. ; -1 if cannot open. */
+static int dir_nonempty(const char *path) {
+    DIR *d = opendir(path);
+    struct dirent *de;
+    int n = 0;
+    if (!d) return -1;
+    while ((de = readdir(d)) != 0) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+        n++;
+    }
+    closedir(d);
+    return n;
+}
+
+static int file_exists(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+int builder_buildpackage(const Package *spkg, const Params *params,
+                         const char *target) {
+    Package pkg;
+    const char *dstroot;
+    char *pname;
+    char *unparsed;
+    char *canon;
+    char *pkginfo_path;
+    char *apk_path;
+    int nonempty;
+    int rc = 0;
+
+    if (strcmp(target, "local") == 0) return 0;
+
+    /* Clone spkg by round-tripping through unparse/parse (matches Perl). */
+    package_init(&pkg);
+    unparsed = package_unparse(spkg);
+    package_parse(&pkg, unparsed);
+    free(unparsed);
+    /* unparse drops arch/desc? No -- unparse includes them; re-set arch to
+       be safe if the round trip somehow left it unset. */
+    if (!pkg.architecture) package_set(&pkg.architecture, ARCH);
+
+    pname = xstrdup(pkg.package ? pkg.package : "");
+
+    if (strcmp(target, "binary") == 0) {
+        char *hdrs = str_cats(pname, "-hdrs", (char *)0);
+        dstroot = params->DSTROOT;
+        package_set(&pkg.package, pname);
+        package_set(&pkg.provides, hdrs);
+        package_set(&pkg.replaces, hdrs);
+        free(hdrs);
+    } else if (strcmp(target, "headers") == 0) {
+        char *hdrs = str_cats(pname, "-hdrs", (char *)0);
+        dstroot = params->HDRROOT;
+        package_set(&pkg.package, hdrs);
+        free(hdrs);
+    } else if (strcmp(target, "objects") == 0) {
+        char *obj = str_cats(pname, "-obj", (char *)0);
+        dstroot = params->LIBCOBJROOT;
+        package_set(&pkg.package, obj);
+        free(obj);
+    } else {
+        fprintf(stderr, "rbuild: bad target: \"%s\"\n", target);
+        free(pname); package_free(&pkg);
+        return 1;
+    }
+
+    /* Ensure the base package dir exists (Perl mkdir -p DEBIAN for binary). */
+    if (strcmp(target, "binary") == 0) {
+        if (exec_check(mkdirp(dstroot))) { rc = 1; goto done; }
+    }
+
+    nonempty = dir_nonempty(dstroot);
+    if (nonempty <= 0) {
+        /* cannot open (no files) or empty -> nothing to package */
+        goto done;
+    }
+
+    if (exec_runv("rm", "-rf",
+                  (canon = str_cats(dstroot, "/System/Developer/Source", (char *)0)),
+                  (char *)0) != 0) {
+        free(canon); rc = 1; goto done;
+    }
+    free(canon);
+
+    if (exec_check(mkdirp(dstroot))) { rc = 1; goto done; }
+
+    /* Write .PKGINFO into dstroot. */
+    pkginfo_path = str_cats(dstroot, "/.PKGINFO", (char *)0);
+    if (pkginfo_write(&pkg, pkginfo_path) != 0) { free(pkginfo_path); rc = 1; goto done; }
+    free(pkginfo_path);
+
+    /* For binary, copy present maintainer scripts into dstroot. */
+    if (strcmp(target, "binary") == 0 && params->SRCDIR) {
+        static const char *names[] =
+            { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
+        int i;
+        for (i = 0; names[i]; i++) {
+            char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
+            if (file_exists(extra)) {
+                char *dest = str_cats(dstroot, "/", names[i], (char *)0);
+                printf("copying %s\n", names[i]);
+                fflush(stdout);
+                if (exec_runv("cp", "-p", extra, dest, (char *)0) != 0) {
+                    free(extra); free(dest); rc = 1; goto done;
+                }
+                if (strcmp(names[i], "conffiles") == 0)
+                    exec_runv("chmod", "644", dest, (char *)0);
+                else
+                    exec_runv("chmod", "755", dest, (char *)0);
+                free(dest);
+            }
+            free(extra);
+        }
+    }
+
+    /* Assemble <PACKAGEDIR>/<canon_name>.apk */
+    canon = package_canon_name(&pkg);
+    apk_path = str_cats(params->PACKAGEDIR, "/", canon, ".apk", (char *)0);
+    rc = pkginfo_build_apk(dstroot, apk_path);
+    free(canon);
+    free(apk_path);
+
+done:
+    free(pname);
+    package_free(&pkg);
+    return rc;
+}
+
+/* Object harvest: find directories containing a 'dynamic_obj' entry under
+   OBJROOT and copy them into LIBCOBJROOT (Builder.pm:778-896). */
+static int harvest_walk(const char *objroot_abs, const char *rel,
+                        const Package *pkg, const Params *params,
+                        const Params *bparams) {
+    char *dirpath = (rel[0] == '\0')
+        ? xstrdup(objroot_abs)
+        : path_join(objroot_abs, rel);
+    DIR *d = opendir(dirpath);
+    struct dirent *de;
+    int rc = 0;
+    int found_obj = 0;
+
+    if (!d) { free(dirpath); return 0; }
+
+    /* First, does this directory contain 'dynamic_obj'? */
+    while ((de = readdir(d)) != 0) {
+        if (strcmp(de->d_name, "dynamic_obj") == 0) { found_obj = 1; break; }
+    }
+    rewinddir(d);
+
+    if (found_obj) {
+        /* file = "./<rel>/dynamic_obj" relative form matching Perl
+           $File::Find::dir/$_ */
+        char *file = (rel[0] == '\0')
+            ? xstrdup("./dynamic_obj")
+            : str_cats("./", rel, "/dynamic_obj", (char *)0);
+        char *objdest = str_cats("/usr/local/lib/objs/",
+                                 pkg->source ? pkg->source : "", "/", file, (char *)0);
+        char *dstdir = str_cats(params->LIBCOBJROOT, objdest, (char *)0);
+        char *srcpath = str_cats(bparams->OBJROOT, "/", file, (char *)0);
+        char *cobjpath = str_cats(bparams->LIBCOBJROOT, objdest, (char *)0);
+
+        printf("copying files from %s\n", file);
+        fflush(stdout);
+        exec_check(mkdirp(dstdir));
+        exec_runv("rmdir", dstdir, (char *)0);
+        {
+            char *argv[9];
+            argv[0] = "chroot"; argv[1] = params->BUILDROOT;
+            argv[2] = "cp"; argv[3] = "-rp";
+            argv[4] = srcpath; argv[5] = cobjpath; argv[6] = 0;
+            exec_printcmd(argv);
+            if (exec_run_checked(argv)) rc = 1;
+        }
+        free(file); free(objdest); free(dstdir); free(srcpath); free(cobjpath);
+        /* Perl prunes (does not descend) once dynamic_obj found. */
+        closedir(d);
+        free(dirpath);
+        return rc;
+    }
+
+    /* Otherwise descend into subdirectories. */
+    while ((de = readdir(d)) != 0) {
+        char *child;
+        struct stat st;
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+        child = path_join(dirpath, de->d_name);
+        if (stat(child, &st) == 0 && S_ISDIR(st.st_mode)) {
+            char *newrel = (rel[0] == '\0')
+                ? xstrdup(de->d_name)
+                : path_join(rel, de->d_name);
+            if (harvest_walk(objroot_abs, newrel, pkg, params, bparams) != 0)
+                rc = 1;
+            free(newrel);
+        }
+        free(child);
+    }
+    closedir(d);
+    free(dirpath);
+    return rc;
+}
+
+int builder_harvest_objects(const Package *pkg, const Params *params,
+                            const Params *bparams) {
+    printf("finding files in %s\n", params->OBJROOT);
+    fflush(stdout);
+    return harvest_walk(params->OBJROOT, "", pkg, params, bparams);
 }

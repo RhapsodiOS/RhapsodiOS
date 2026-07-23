@@ -28,7 +28,7 @@ test: $(TESTS)
 test_strutil_OBJS = strutil.o
 test_package_OBJS = strutil.o package.o
 test_manifest_OBJS = strutil.o manifest.o
-test_builder_OBJS = strutil.o package.o exec.o builder.o
+test_builder_OBJS = strutil.o package.o exec.o pkginfo.o builder.o
 test_exec_OBJS = strutil.o exec.o
 test_pkginfo_OBJS = strutil.o package.o exec.o pkginfo.o
 

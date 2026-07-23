@@ -1,0 +1,8 @@
+*.o
+/rbuild
+/tests/test_strutil
+/tests/test_package
+/tests/test_manifest
+/tests/test_builder
+/tests/trace/*.log
+/tests/trace/*.out

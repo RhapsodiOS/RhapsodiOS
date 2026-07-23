@@ -465,8 +465,11 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
     printf("Building build root:\n");
     fflush(stdout);
 
-    /* Expand build-depends (or basedeps) into a deduped set. */
-    if (pkg->has_build_depends && pkg->build_depends.count > 0) {
+    /* Expand build-depends (or basedeps) into a deduped set. Matches
+       Builder.pm's defined() check: an explicitly-declared build-depends
+       field (even empty) is honored as-is; only an ABSENT field falls back
+       to basedeps. */
+    if (pkg->has_build_depends) {
         for (i = 0; i < pkg->build_depends.count; i++) {
             const char *d = pkg->build_depends.items[i];
             if (strcmp(d, "build-base") == 0) {

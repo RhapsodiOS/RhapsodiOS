@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "gzip $*" >> "$RBUILD_TRACE"
+exit 0

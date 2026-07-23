@@ -32,4 +32,14 @@ void strlist_free(strlist *l);
 void strlist_push(strlist *l, const char *s);       /* copies */
 void strlist_push_owned(strlist *l, char *s);       /* takes ownership */
 
+char *str_chomp(char *s);
+void str_lowercase(char *s);
+char *str_trim(char *s);
+int str_has_prefix(const char *s, const char *prefix);
+int str_has_suffix(const char *s, const char *suffix);
+void str_split_ws(const char *s, strlist *out);
+void str_split_chars(const char *s, const char *seps, strlist *out);
+char *str_cats(const char *first, ...);
+char *path_join(const char *a, const char *b);
+
 #endif

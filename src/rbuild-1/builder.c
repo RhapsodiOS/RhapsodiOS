@@ -212,3 +212,89 @@ void builder_chrootparams(const Params *in, const char *buildroot, Params *out) 
     out->BUILDROOT = xstrdup(br);
     free(br);
 }
+
+static const char *cflags[] = {
+    "-Dunix", "-D__unix", "-D__unix__",
+    "-DNX_COMPILER_RELEASE_3_0=300", "-DNX_COMPILER_RELEASE_3_1=310",
+    "-DNX_COMPILER_RELEASE_3_2=320", "-DNX_COMPILER_RELEASE_3_3=330",
+    "-DNX_CURRENT_COMPILER_RELEASE=520",
+    "-DNS_TARGET=52", "-DNS_TARGET_MAJOR=5", "-DNS_TARGET_MINOR=2",
+    "-DNeXT", "-D__NeXT", "-D__NeXT__", "-D_NEXT_SOURCE", 0
+};
+
+/* baseflags as {key, value} pairs (value may be ""). */
+static const char *baseflags[][2] = {
+    { "RC_JASPER", "YES" },
+    { "RC_ARCHS", "i386 ppc" },
+    { "RC_CFLAGS", "" },
+    { "RC_hppa", "" }, { "RC_i386", "" }, { "RC_m68k", "" },
+    { "RC_ppc", "" }, { "RC_sparc", "" },
+    { "RC_KANJI", "" }, { "JAPANESE", "" },
+    { "RC_OS", "teflon" },
+    { "CURRENT_PROJECT_VERSION", "1" },
+    { "RC_RELEASE", "Rhapsody" },
+    { "NEXT_ROOT", "" },
+    { "GnuNoInstallSource", "YES" },
+    { "Install_Source", "" },
+    { 0, 0 }
+};
+
+static void push_kv(strlist *out, const char *k, const char *v) {
+    char *s = str_cats(k, "=", v ? v : "", (char *)0);
+    strlist_push_owned(out, s);
+}
+
+void builder_buildflags(const Params *params, const char *target, strlist *out) {
+    int i;
+    char *rc_cflags;
+    sbuf s;
+
+    /* Fixed base flags, but skip the ones we override below. */
+    for (i = 0; baseflags[i][0]; i++) {
+        const char *k = baseflags[i][0];
+        if (strcmp(k, "RC_CFLAGS") == 0 || strcmp(k, "RC_ARCHS") == 0 ||
+            strcmp(k, "RC_i386") == 0 || strcmp(k, "RC_ppc") == 0)
+            continue;
+        push_kv(out, k, baseflags[i][1]);
+    }
+
+    /* Path roots. */
+    push_kv(out, "SRCROOT", params->SRCROOT);
+    push_kv(out, "OBJROOT", params->OBJROOT);
+    push_kv(out, "SYMROOT", params->SYMROOT);
+    push_kv(out, "SUBLIBROOTS", params->SUBLIBROOTS);
+    if (strcmp(target, "installhdrs") == 0)
+        push_kv(out, "DSTROOT", params->HDRROOT);
+    else
+        push_kv(out, "DSTROOT", params->DSTROOT);
+
+    /* RC_CFLAGS = "-arch i386 -arch ppc" + " -D..." for each cflag. */
+    sbuf_init(&s);
+    sbuf_puts(&s, "-arch i386 -arch ppc");
+    for (i = 0; cflags[i]; i++) { sbuf_putc(&s, ' '); sbuf_puts(&s, cflags[i]); }
+    rc_cflags = sbuf_steal(&s);
+    sbuf_free(&s);
+    push_kv(out, "RC_CFLAGS", rc_cflags);
+    free(rc_cflags);
+
+    push_kv(out, "RC_ARCHS", "i386 ppc");
+    push_kv(out, "RC_i386", "YES");
+    push_kv(out, "RC_ppc", "YES");
+}
+
+void builder_buildcmd(const Params *params, const char *srcroot,
+                      const char *target, strlist *out) {
+    size_t i;
+    strlist flags;
+    strlist_push(out, "chroot");
+    strlist_push(out, params->BUILDROOT);
+    strlist_push(out, "make");
+    strlist_push(out, "-w");
+    strlist_push(out, "-C");
+    strlist_push(out, srcroot);
+    strlist_init(&flags);
+    builder_buildflags(params, target, &flags);
+    for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);
+    strlist_free(&flags);
+    strlist_push(out, target);
+}

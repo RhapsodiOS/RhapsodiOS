@@ -33,4 +33,8 @@ void builder_getparams(const char *projectname, Params *out);
 void builder_canonparams(Params *p, const char *cwd);
 void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
 
+void builder_buildflags(const Params *params, const char *target, strlist *out);
+void builder_buildcmd(const Params *params, const char *srcroot,
+                      const char *target, strlist *out);
+
 #endif

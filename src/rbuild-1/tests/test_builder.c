@@ -105,6 +105,34 @@ TEST(test_chrootparams) {
     params_free(&in); params_free(&out);
 }
 
+static int list_has(const strlist *l, const char *s) {
+    size_t i;
+    for (i = 0; i < l->count; i++) if (strcmp(l->items[i], s) == 0) return 1;
+    return 0;
+}
+
+TEST(test_buildflags) {
+    Params p;
+    strlist f;
+    params_init(&p);
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f);
+    CHECK(list_has(&f, "SRCROOT=/s"));
+    CHECK(list_has(&f, "DSTROOT=/d"));
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_i386=YES"));
+    strlist_free(&f);
+
+    strlist_init(&f);
+    builder_buildflags(&p, "installhdrs", &f);
+    CHECK(list_has(&f, "DSTROOT=/h"));   /* headers target uses HDRROOT */
+    strlist_free(&f);
+    params_free(&p);
+}
+
 static void run_all(void) {
     RUN(test_dir2name);
     RUN(test_pkgname);
@@ -113,6 +141,7 @@ static void run_all(void) {
     RUN(test_getparams_defaults);
     RUN(test_canonparams);
     RUN(test_chrootparams);
+    RUN(test_buildflags);
 }
 
 TEST_MAIN()

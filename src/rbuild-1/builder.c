@@ -1,4 +1,5 @@
 #include "builder.h"
+#include "exec.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -391,4 +392,158 @@ int builder_scan(const char *type, const char *source,
         return builder_scan_dir(source, pkg, params);
     fprintf(stderr, "rbuild: invalid source type \"%s\"\n", type);
     return 1;
+}
+
+/* Fixed base dependency set for the "build-base" meta-dependency
+   (Builder.pm:619-644). */
+static const char *basedeps[] = {
+    "cc", "cctools", "gnumake",
+    "pb-makefiles", "coreosmakefiles", "project-makefiles",
+    "zsh", "tcsh",
+    "file-cmds", "text-cmds", "shell-cmds", "developer-cmds",
+    "awk", "grep", "gnutar",
+    "libsystem", "libc-hdrs",
+    "architecture-hdrs", "kernel-hdrs",
+    "csu", "objc4-hdrs",
+    "files",
+    "basic-cmds", "bootstrap-cmds", "system-cmds",
+    0
+};
+
+/* strlist "set" helpers (linear; lists are small). */
+static int set_has(const strlist *l, const char *s) {
+    size_t i;
+    for (i = 0; i < l->count; i++) if (strcmp(l->items[i], s) == 0) return 1;
+    return 0;
+}
+
+static void set_add(strlist *l, const char *s) {
+    if (!set_has(l, s)) strlist_push(l, s);
+}
+
+/* basename without ".apk" suffix: "/a/b/foo-1.0.apk" -> "foo-1.0" */
+static char *deb_to_name(const char *path) {
+    const char *slash = strrchr(path, '/');
+    const char *base = slash ? slash + 1 : path;
+    char *out = xstrdup(base);
+    size_t n = strlen(out);
+    if (n >= 4 && strcmp(out + n - 4, ".apk") == 0) out[n - 4] = '\0';
+    return out;
+}
+
+/* Apk analog of "dpkg-deb -x <debfile> <buildroot>": an .apk is a gzipped
+   tar, so extract its payload (including the harmless .PKGINFO member)
+   directly into buildroot. */
+static int apk_extract(const char *apkfile, const char *buildroot) {
+    char *cmd = str_cats("gzip -dc '", apkfile, "' | tar -C '",
+                         buildroot, "' -xf -", (char *)0);
+    char *argv[4];
+    int rc;
+    argv[0] = "sh"; argv[1] = "-c"; argv[2] = cmd; argv[3] = 0;
+    rc = exec_run_checked(argv);
+    free(cmd);
+    return rc;
+}
+
+int builder_makeroot(const Package *pkg, const char *buildroot,
+                     const strlist *repository) {
+    strlist deps;       /* expanded, deduped dependency names */
+    strlist depnames;   /* resolved package basenames (no .apk) */
+    strlist depfiles;   /* resolved full paths, parallel to depnames */
+    strlist curdeps;    /* already-installed names from package-list */
+    size_t i;
+    char *listpath;
+    char *admdir;
+    FILE *f;
+    int rc = 0;
+
+    strlist_init(&deps);
+    strlist_init(&depnames);
+    strlist_init(&depfiles);
+    strlist_init(&curdeps);
+
+    printf("Building build root:\n");
+    fflush(stdout);
+
+    /* Expand build-depends (or basedeps) into a deduped set. */
+    if (pkg->has_build_depends && pkg->build_depends.count > 0) {
+        for (i = 0; i < pkg->build_depends.count; i++) {
+            const char *d = pkg->build_depends.items[i];
+            if (strcmp(d, "build-base") == 0) {
+                int j;
+                for (j = 0; basedeps[j]; j++) set_add(&deps, basedeps[j]);
+            } else {
+                set_add(&deps, d);
+            }
+        }
+    } else {
+        int j;
+        for (j = 0; basedeps[j]; j++) set_add(&deps, basedeps[j]);
+    }
+
+    /* Resolve each dep to a package file. */
+    for (i = 0; i < deps.count; i++) {
+        char *file = builder_resolve_dependency(deps.items[i], repository);
+        char *name;
+        if (!file) {
+            fprintf(stderr, "rbuild: unable to find dependency for \"%s\"\n",
+                    deps.items[i]);
+            rc = 1;
+            goto cleanup;
+        }
+        name = deb_to_name(file);
+        strlist_push_owned(&depnames, name);
+        strlist_push_owned(&depfiles, file);
+    }
+
+    /* Read existing package-list. */
+    listpath = str_cats(buildroot, "/var/adm/package-list", (char *)0);
+    f = fopen(listpath, "r");
+    if (f) {
+        char line[1024];
+        while (fgets(line, sizeof(line), f) != 0) {
+            str_chomp(line);
+            if (line[0]) set_add(&curdeps, line);
+        }
+        fclose(f);
+    }
+
+    /* Install any dep not already present. */
+    for (i = 0; i < depnames.count; i++) {
+        if (set_has(&curdeps, depnames.items[i])) {
+            printf("\talready have %s\n", depfiles.items[i]);
+        } else {
+            printf("\tinstalling %s\n", depfiles.items[i]);
+            fflush(stdout);
+            if (apk_extract(depfiles.items[i], buildroot) != 0) {
+                rc = 1;
+                free(listpath);
+                goto cleanup;
+            }
+        }
+    }
+
+    /* mkdir -p <buildroot>/var/adm and rewrite package-list. */
+    admdir = str_cats(buildroot, "/var/adm", (char *)0);
+    if (exec_runv("mkdir", "-p", admdir, (char *)0) != 0) {
+        rc = 1; free(admdir); free(listpath); goto cleanup;
+    }
+    free(admdir);
+
+    f = fopen(listpath, "w");
+    if (!f) {
+        fprintf(stderr, "rbuild: unable to open %s\n", listpath);
+        rc = 1; free(listpath); goto cleanup;
+    }
+    for (i = 0; i < depnames.count; i++)
+        fprintf(f, "%s\n", depnames.items[i]);
+    fclose(f);
+    free(listpath);
+
+cleanup:
+    strlist_free(&deps);
+    strlist_free(&depnames);
+    strlist_free(&depfiles);
+    strlist_free(&curdeps);
+    return rc;
 }

@@ -1,1 +1,59 @@
-* text eol=lf
+# Force Unix-style (LF) line endings for all text files, in the repository
+# and in the working tree, on every platform.
+#
+# `text=auto` lets Git auto-detect text vs. binary by content (NUL bytes),
+# so binary files are never line-ending converted. The explicit `binary`
+# rules below are a safety net for formats whose content can fool the
+# heuristic (e.g. audio/image data that happens to contain CRLF byte pairs).
+* text=auto eol=lf
+
+# --- Known binary formats: never touch ---
+# Audio
+*.snd   binary
+*.au    binary
+*.aiff  binary
+*.wav   binary
+# Raster images
+*.tiff  binary
+*.tif   binary
+*.gif   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.bmp   binary
+*.ico   binary
+*.icns  binary
+# Documents / vector with binary payloads
+*.eps   binary
+*.pdf   binary
+# Interface Builder archives (NeXT typedstream)
+*.nib   binary
+# Archives / compiled artifacts
+*.tar   binary
+*.gz    binary
+*.tgz   binary
+*.bz2   binary
+*.zip   binary
+*.Z     binary
+*.bin   binary
+*.a     binary
+*.o     binary
+*.so    binary
+*.dylib binary
+*.class binary
+*.jar   binary
+
+# --- Preserve original CRLF line endings (byte-for-byte, no conversion) ---
+# These file types conventionally require CRLF and are kept as-is:
+#   - Windows batch scripts (cmd.exe needs CRLF to execute reliably)
+#   - MSVC / Windows project and build files
+*.bat -text
+*.cmd -text
+*.dsp -text
+*.dsw -text
+*.sln -text
+*.mak -text
+*.def -text
+# The Python email test reads this fixture in binary mode and asserts on
+# CRLF (see Lib/email/test/test_email.py); keep its CRLF intact.
+python/python/Lib/email/test/data/msg_26.txt -text

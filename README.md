@@ -18,7 +18,8 @@ Things are a bit manual to get going:
    mkdir -p /build/built
    ```
  * Download the source files from the [RhapsodiOS GitHub repository](https://github.com/RhapsodiOS/RhapsodiOS) as a tarball and extract it to a directory on a supported system e.g. /build/source
- * Download the released set of packages from the [GitHub releases page](https://github.com/evolver56k/Darwin-0.3/releases/tag/v1.0) and extract it to a directory on a supported system e.g. /build/repo
+ * The `/build/repo` directory starts **empty** — the seed package set is built
+   from source in Stage 0 below (no pre-built package download required).
  * Mount the released iso cd and open Terminal and run the following commands to install dpkg and the build scripts
    ```
    cd /tmp
@@ -55,3 +56,31 @@ example: darwin-buildpackage --dir --target all /build/source/kernel-7 /build/re
 usage: darwin-buildall <srclist> <repository> <dstdir>
 example: darwin-buildall Manifest /build/repo /build/built
 ```
+
+## Bootstrapping from source (no pre-built packages)
+
+The build root that `rbuild` populates for every package needs a `build-base`
+set (cc, cctools, gnumake, libsystem, headers, makefile frameworks, core
+commands). Those packages are themselves built by `rbuild`, so a fresh
+`/build/repo` cannot build anything. Break the cycle with a three-stage
+from-source bootstrap on the Rhapsody host (which already has Apple's native
+toolchain):
+
+* **Stage 0 — native seed.** Build the `build-base` closure against the host
+  root (no chroot, no dependency install) and write the seed `.apk`s into the
+  repository:
+  ```
+  cd /build/source
+  rbuild bootstrap BootstrapManifest /build/repo /build/repo
+  ```
+* **Stage 1 — self-host.** Build the whole system in clean chroots seeded only
+  by Stage 0's output (this also rebuilds `build-base`, now self-hosted):
+  ```
+  rbuild buildall Manifest /build/repo /build/built
+  ```
+* **Stage 2 — self-consistency (optional).** Reseed from Stage 1's output and
+  rebuild; the `build-base` `.apk`s from Stage 1 and Stage 2 should match,
+  confirming the bootstrap is reproducible:
+  ```
+  rbuild buildall Manifest /build/built /build/built2
+  ```

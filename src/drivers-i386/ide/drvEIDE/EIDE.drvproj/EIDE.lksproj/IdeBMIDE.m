@@ -426,6 +426,7 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	if (IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)_prdTable.ptr,
 		&_tablePhyAddr) != IO_R_SUCCESS) {
 		IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
+		_prdTable.ptr = NULL;		/* prevent double-free in -free */
 		return NO;
 	}
 

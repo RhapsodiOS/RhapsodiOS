@@ -210,7 +210,7 @@ make_links::
 					continue;\
 				fi;\
 				if [ -f $$name/$${obj_dir}_obj/$$name.ofileList ]; then\
-					$(LN) $${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
+					$(LN) $$name/$${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
 				else\
 					echo "#####No $$name/$${obj_dir}_obj/$$name.ofileList";\
 					bail=YES;\

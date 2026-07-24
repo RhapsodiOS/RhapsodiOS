@@ -3,17 +3,24 @@
 set -e
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/build/tools/usr/local/bin
 
-echo "=== 1. /build/bin/ln (HFS hardlink -> cp fallback) ==="
+echo "=== 1. HFS-safe ln (shadow /bin/ln; Libc uses absolute /bin/ln) ==="
 mkdir -p /build/bin
+if [ ! -f /bin/ln.real ]; then
+	cp -p /bin/ln /bin/ln.real
+fi
 cat > /build/bin/ln << 'ENDLN'
 #!/bin/sh
-# HFS-safe ln: on hard-link failure, fall back to cp -p for the common cases.
+# HFS-safe ln: on hard-link failure, fall back to cp -p for files.
+# Directory targets use ln -s (cp -p cannot copy directories; Libsystem
+# make_links does ln <dir> <name>).
+REALLN=/bin/ln.real
+[ -x "$REALLN" ] || REALLN=/bin/ln
 for a in "$@"; do
 	case "$a" in
-	-s|-sf|-fs) exec /bin/ln "$@" ;;
+	-s|-sf|-fs) exec "$REALLN" "$@" ;;
 	esac
 done
-if /bin/ln "$@" 2>/dev/null; then
+if "$REALLN" "$@" 2>/dev/null; then
 	exit 0
 fi
 force=0
@@ -26,7 +33,10 @@ while [ $# -gt 0 ]; do
 done
 if [ $# -eq 2 ]; then
 	src=$1; dst=$2
-	[ "$force" = 1 ] && rm -f "$dst"
+	[ "$force" = 1 ] && rm -rf "$dst"
+	if [ -d "$src" ]; then
+		exec "$REALLN" -s "$src" "$dst"
+	fi
 	exec cp -p "$src" "$dst"
 fi
 if [ $# -ge 2 ]; then
@@ -36,8 +46,12 @@ if [ $# -ge 2 ]; then
 	while [ $i -lt $n ]; do
 		eval "src=\$$i"
 		base=`basename "$src"`
-		[ "$force" = 1 ] && rm -f "$dest/$base"
-		cp -p "$src" "$dest/$base" || exit 1
+		[ "$force" = 1 ] && rm -rf "$dest/$base"
+		if [ -d "$src" ]; then
+			"$REALLN" -s "$src" "$dest/$base" || exit 1
+		else
+			cp -p "$src" "$dest/$base" || exit 1
+		fi
 		i=`expr $i + 1`
 	done
 	exit 0
@@ -46,11 +60,20 @@ echo "ln: fallback failed" >&2
 exit 1
 ENDLN
 chmod 755 /build/bin/ln
+cp -p /build/bin/ln /bin/ln
+chmod 755 /bin/ln
 rm -f /big/hl_src /big/hl_dst
 echo hi > /big/hl_src
-/build/bin/ln -f /big/hl_src /big/hl_dst
+/bin/ln -f /big/hl_src /big/hl_dst
 cmp /big/hl_src /big/hl_dst
 rm -f /big/hl_src /big/hl_dst
+# Directory symlink fallback (Libsystem make_links)
+rm -rf /big/hl_dir /big/hl_dirlink
+mkdir -p /big/hl_dir
+echo x > /big/hl_dir/f
+/bin/ln /big/hl_dir /big/hl_dirlink
+test -f /big/hl_dirlink/f && echo ln-dir-fallback OK
+rm -rf /big/hl_dir /big/hl_dirlink
 echo "ln-fallback OK"
 
 echo "=== 1b. HFS-safe mv (shadow /bin/mv; build_gcc resets PATH) ==="
@@ -330,7 +353,239 @@ if [ -f /build/source/src/kernel-7/bsd/dev/kmreg_com.h ]; then
 fi
 ls -l /usr/include/mach/syscall_sw.h /usr/include/mach-o/rld.h /usr/include/dev/kmreg_com.h 2>&1 | head
 
-echo "=== 12. Prefer prior cctools *.NEW tools if present ==="
+echo "=== 11b. Seed libm.a from Darwin deb (dangling /tmp/rhapsody link) ==="
+for f in /usr/lib/libm.a /usr/local/lib/libm.a; do
+	if [ -L "$f" ]; then
+		tgt=`ls -l "$f" | sed 's/.*-> //'`
+		case "$tgt" in
+		/tmp/rhapsody/*) rm -f "$f"; echo "removed dangling $f" ;;
+		esac
+	fi
+done
+if [ ! -f /usr/lib/libm.a ] && [ -f /build/repo/libm_15-1_universal-apple-rhapsody.deb ]; then
+	rm -rf /tmp/libm-extract
+	mkdir -p /tmp/libm-extract
+	(
+		cd /tmp/libm-extract
+		ar x /build/repo/libm_15-1_universal-apple-rhapsody.deb
+		if [ -f data.tar.gz ]; then gnutar xzf data.tar.gz
+		elif [ -f data.tar ]; then gnutar xf data.tar
+		fi
+		found=`find . -name 'libm.a' -type f 2>/dev/null | head -1`
+		if [ -n "$found" ]; then
+			cp -p "$found" /usr/lib/libm.a
+			ranlib /usr/lib/libm.a 2>/dev/null || true
+			mkdir -p /usr/local/lib
+			cp -p /usr/lib/libm.a /usr/local/lib/libm.a
+			echo "installed libm.a from deb"
+		fi
+	)
+fi
+ls -l /usr/lib/libm.a 2>&1 | head
+
+echo "=== 11c. Seed machdep/*/features.h ==="
+SYS_MD=/System/Library/Frameworks/System.framework/Versions/B/Headers/machdep
+K_MD=/build/source/src/kernel-7/machdep
+mkdir -p "$SYS_MD/machine" "$SYS_MD/ppc" "$SYS_MD/i386" \
+	/usr/include/machdep/machine /usr/include/machdep/ppc /usr/include/machdep/i386
+if [ -f "$K_MD/machine/features.h" ]; then
+	cp -p "$K_MD/machine/features.h" "$SYS_MD/machine/features.h"
+	cp -p "$K_MD/machine/features.h" /usr/include/machdep/machine/features.h
+fi
+# Arch-specific headers are often missing from this kernel drop; seed stubs.
+for arch in ppc i386; do
+	src="$K_MD/$arch/features.h"
+	mkdir -p "$K_MD/$arch"
+	if [ ! -f "$src" ]; then
+		cat > "$src" << ENDFEAT
+#ifndef _MACHDEP_${arch}_FEATURES_H_
+#define _MACHDEP_${arch}_FEATURES_H_
+#define KERNEL_FEATURES 1
+#endif
+ENDFEAT
+	fi
+	cp -p "$src" "$SYS_MD/$arch/features.h"
+	cp -p "$src" /usr/include/machdep/$arch/features.h
+done
+echo "seeded features.h"
+ls -l "$SYS_MD/machine/features.h" "$SYS_MD/ppc/features.h" /usr/include/machdep/ppc/features.h
+
+echo "=== 11d. Patch migcom_untypd: use VERS_STRING stub (skip broken vers.ppc.o) ==="
+for preamble in \
+	/build/source/src/Commands/bootstrap_cmds/migcom_untypd.tproj/Makefile.preamble \
+	/build/source/src/bootstrap_cmds-1/migcom_untypd.tproj/Makefile.preamble
+do
+	[ -f "$preamble" ] || continue
+	sed -e 's/^VERS_OFILE.*/VERS_OFILE =/' \
+	    -e 's/^OTHER_OFILES =.*/OTHER_OFILES = migcom_untypd_vers_stub.o/' \
+	    -e 's/^OTHER_GENERATED_OFILES =.*/OTHER_GENERATED_OFILES =/' \
+	    -e 's/^# OTHER_GENERATED_OFILES =.*/OTHER_GENERATED_OFILES =/' \
+	    -e 's/^OTHER_SOURCEFILES =.*/OTHER_SOURCEFILES = migcom_untypd_vers_stub.c/' \
+	    -e 's/^OTHER_GARBAGE =.*/OTHER_GARBAGE =/' \
+		"$preamble" > /tmp/migcom_preamble && mv /tmp/migcom_preamble "$preamble"
+	dir=`dirname "$preamble"`
+	if [ ! -f "$dir/migcom_untypd_vers_stub.c" ]; then
+		cat > "$dir/migcom_untypd_vers_stub.c" << 'ENDSTUB'
+char migcom_untypd_VERS_STRING[] =
+    "@(#)PROGRAM:migcom_untypd  PROJECT:bootstrap_cmds-13.2\n";
+ENDSTUB
+	fi
+	echo "patched $preamble"
+	grep -n 'VERS_OFILE\|OTHER_OFILES\|OTHER_GENERATED\|OTHER_SOURCEFILES\|stub' "$preamble" | head -10
+done
+
+echo "=== 11e. Ensure cctools otool links with -lm (_finite) ==="
+# Single-file pscp sync drops nested paths; patch guest tree in place.
+for omf in \
+	/build/source/src/cctools-2/otool/Makefile \
+	/build/source/cctools-2/otool/Makefile
+do
+	[ -f "$omf" ] || continue
+	if grep -q -- '-lm -lc_static' "$omf"; then
+		echo "otool Makefile already has -lm: $omf"
+		continue
+	fi
+	sed -e 's/$(LIBSTUFF) -lc_static/$(LIBSTUFF) -lm -lc_static/' \
+		"$omf" > /tmp/otool_mf && mv /tmp/otool_mf "$omf"
+	echo "patched -lm into $omf"
+	grep -n 'lc_static\|-lm' "$omf" | head -5
+done
+
+echo "=== 11f. Seed /usr/local/lib/objs for Libsystem make_links ==="
+# Libsystem expects SUBLIBROOTS=/usr/local/lib/objs/<Proj>/dynamic_obj/ppc.
+# Prefer freshly built .cobj trees; fall back to Darwin *-obj debs.
+mkdir -p /usr/local/lib/objs
+seed_objs_from_cobj() {
+	src="$1"
+	[ -d "$src" ] || return 0
+	(cd "$src" && tar cf - usr/local/lib/objs) | (cd / && tar xf -)
+	echo "seeded objs from $src"
+}
+for cobj in /big/roots/libc-*.roots/*.cobj \
+	/big/roots/objc4-*.roots/*.cobj \
+	/big/roots/cctools-*.roots/*.cobj; do
+	[ -d "$cobj/usr/local/lib/objs" ] || continue
+	seed_objs_from_cobj "$cobj"
+done
+seed_objs_from_deb() {
+	deb="$1"
+	[ -f "$deb" ] || return 0
+	rm -rf /tmp/obj-extract
+	mkdir -p /tmp/obj-extract
+	(
+		cd /tmp/obj-extract
+		ar x "$deb"
+		if [ -f data.tar.gz ]; then gnutar xzf data.tar.gz
+		elif [ -f data.tar ]; then gnutar xf data.tar
+		else exit 0
+		fi
+		if [ -d usr/local/lib/objs ]; then
+			(cd . && tar cf - usr/local/lib/objs) | (cd / && tar xf -)
+			echo "seeded objs from `basename "$deb"`"
+		fi
+	)
+}
+for deb in /build/repo/libc-obj_*.deb \
+	/build/repo/objc4-obj_*.deb \
+	/build/repo/cctools-obj_*.deb \
+	/build/repo/libcurses-obj_*.deb \
+	/build/repo/libedit-obj_*.deb \
+	/build/repo/libinfo-obj_*.deb \
+	/build/repo/libkvm-obj_*.deb \
+	/build/repo/libm-obj_*.deb \
+	/build/repo/libstreams-obj_*.deb; do
+	seed_objs_from_deb "$deb"
+done
+# Show what Libsystem will look for (ppc subdir OR flat dynamic_obj)
+for p in Libc Libcurses Libedit Libinfo Libkvm Libm Libstreams objc4 \
+	cctools/libmacho cctools/ld cctools/libdyld; do
+	if [ -d /usr/local/lib/objs/$p/dynamic_obj/ppc ] || \
+	   [ -d /usr/local/lib/objs/$p/dynamic_obj ]; then
+		echo "OK $p/dynamic_obj"
+	else
+		echo "MISSING $p/dynamic_obj"
+		ls -la /usr/local/lib/objs/$p 2>&1 | head -5
+	fi
+done
+
+echo "=== 11g. Seed libkvm.a for system_cmds top (-lkvm) ==="
+# libkvm_*.deb payload is empty; build a static archive from harvested objs.
+if [ ! -f /usr/lib/libkvm.a ]; then
+	objs=
+	for d in /usr/local/lib/objs/Libkvm/dynamic_obj/ppc \
+		/usr/local/lib/objs/Libkvm/dynamic_obj; do
+		[ -d "$d" ] || continue
+		for o in "$d"/kvm.o "$d"/kvm_*.o; do
+			[ -f "$o" ] || continue
+			objs="$objs $o"
+		done
+		[ -n "$objs" ] && break
+	done
+	if [ -n "$objs" ]; then
+		rm -f /usr/lib/libkvm.a
+		ar rc /usr/lib/libkvm.a $objs
+		ranlib /usr/lib/libkvm.a 2>/dev/null || true
+		mkdir -p /usr/local/lib
+		cp -p /usr/lib/libkvm.a /usr/local/lib/libkvm.a
+		echo "built libkvm.a from objs:$objs"
+	else
+		echo "WARNING: no Libkvm objs to archive"
+	fi
+fi
+ls -l /usr/lib/libkvm.a 2>&1 | head || true
+
+echo "=== 11h. Patch Libsystem make_links ofileList path ==="
+# Upstream uses relative dynamic_obj/NAME.ofileList but links live under NAME/.
+for mf in /build/source/src/Libsystem-2/Makefile.postamble; do
+	[ -f "$mf" ] || continue
+	if grep -q 'name}/\$${obj_dir}_obj/\$$name.ofileList' "$mf" 2>/dev/null; then
+		echo "already patched $mf"
+		continue
+	fi
+	# Fix: $${obj_dir}_obj/$$name.ofileList -> $$name/$${obj_dir}_obj/$$name.ofileList
+	sed -e 's|$(LN) $${obj_dir}_obj/$$name.ofileList|$(LN) $$name/$${obj_dir}_obj/$$name.ofileList|' \
+		"$mf" > /tmp/libsys_post && mv /tmp/libsys_post "$mf"
+	echo "patched $mf"
+	grep -n 'ofileList' "$mf" | head -5
+done
+
+echo "=== 11i. Seed mach_debug headers+defs for system_cmds zprint ==="
+SYS_HDR=/System/Library/Frameworks/System.framework/Versions/B/Headers
+SYS_PRIV=/System/Library/Frameworks/System.framework/PrivateHeaders
+K_MD=/build/source/src/kernel-7/mach_debug
+# Stock System.framework often leaves broken /tmp/rhapsody symlinks here.
+# [ -e ] is false for dangling links, so mkdir -p still fails with File exists.
+for d in "$SYS_HDR/mach_debug" "$SYS_PRIV/mach_debug" /usr/include/mach_debug; do
+	if [ -L "$d" ]; then
+		rm -f "$d"
+	elif [ -e "$d" ] && [ ! -d "$d" ]; then
+		rm -f "$d"
+	fi
+	mkdir -p "$d"
+done
+if [ ! -f "$K_MD/mach_debug.h" ]; then
+	cat > "$K_MD/mach_debug.h" << 'ENDMDH'
+#ifndef _MACH_DEBUG_MACH_DEBUG_H_
+#define _MACH_DEBUG_MACH_DEBUG_H_
+#include <mach_debug/mach_debug_types.h>
+#endif
+ENDMDH
+fi
+for h in mach_debug.h mach_debug_types.h zone_info.h ipc_info.h hash_info.h host_machine_info.h; do
+	[ -f "$K_MD/$h" ] || continue
+	cp -p "$K_MD/$h" "$SYS_HDR/mach_debug/$h"
+	cp -p "$K_MD/$h" /usr/include/mach_debug/$h
+done
+# zprint MIG rule wants PrivateHeaders/mach_debug/mach_debug.defs;
+# mig also #includes <mach_debug/mach_debug_types.defs>.
+for d in mach_debug.defs mach_debug_types.defs; do
+	[ -f "$K_MD/$d" ] || continue
+	cp -p "$K_MD/$d" "$SYS_PRIV/mach_debug/$d"
+	cp -p "$K_MD/$d" "$SYS_HDR/mach_debug/$d"
+	cp -p "$K_MD/$d" /usr/include/mach_debug/$d
+done
+ls -l "$SYS_PRIV/mach_debug/mach_debug.defs" /usr/include/mach_debug/mach_debug.h /usr/include/mach_debug/zone_info.h
+
 mkdir -p /usr/local/bin
 for tool in indr nmedit strip lipo libtool nm size strings segedit; do
 	found=`find /big/roots/cctools-*.roots -name "${tool}.NEW" -type f 2>/dev/null | head -1`

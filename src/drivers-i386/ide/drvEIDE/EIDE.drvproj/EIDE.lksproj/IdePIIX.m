@@ -283,7 +283,6 @@ const ideChipsetOps_t ideIntelOps = {
 		_busMaster = YES;
 	else
 		_busMaster = NO;
-	if (_busMaster) _chipCaps.flags |= CHIP_FLAG_BUSMASTER;
 
 	/*
 	 * Fetch the corresponding primary/secondary IDETIM register and
@@ -325,6 +324,9 @@ const ideChipsetOps_t ideIntelOps = {
 			[self name]);
 		_busMaster = NO;
 	}
+
+	if (_busMaster)
+		_chipCaps.flags |= CHIP_FLAG_BUSMASTER;
 
 #if 0
 	IOLog("%s: PCI bus master DMA: %s\n",

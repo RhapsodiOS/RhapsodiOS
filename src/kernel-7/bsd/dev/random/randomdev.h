@@ -28,6 +28,7 @@ int random_close(dev_t dev, int flags, int mode, struct proc *pp);
 int random_read(dev_t dev, struct uio *uio, int ioflag);
 int random_write(dev_t dev, struct uio *uio, int ioflag);
 
+void random_init(void);
 u_long RandomULong();
 void read_random(void* buffer, u_int numBytes);
 

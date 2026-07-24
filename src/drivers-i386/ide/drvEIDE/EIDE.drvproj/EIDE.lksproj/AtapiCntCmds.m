@@ -56,6 +56,7 @@
 
 #import "AtapiCntCmds.h"
 #import "IdePIIX.h"
+#import "IdeBMIDE.h"
 
 //#define DEBUG
 
@@ -782,7 +783,7 @@
 	 # 3. The drive must be DMA capable.
 	 */
 	useDMA = ((_drives[_driveNum].transferType != IDE_TRANSFER_PIO) &&
-			 (((vm_offset_t)buffer & (PIIX_BUF_ALIGN - 1)) == 0) &&
+			 (((vm_offset_t)buffer & (BMIDE_BUF_ALIGN - 1)) == 0) &&
 			 ((cmd == 0x28) || (cmd == 0xa8) ||		// read 10 and read 12
               (cmd == 0x2a) || (cmd == 0xaa) ||		// write 10 and write 12
 			  (cmd == 0x2f) || (cmd == 0x2e)));		// write and verify

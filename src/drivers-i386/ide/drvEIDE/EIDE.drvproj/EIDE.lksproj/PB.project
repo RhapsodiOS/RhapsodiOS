@@ -9,8 +9,9 @@
             IdeCnt.m, 
             IdeCntCmds.m, 
             IdeCntInit.m, 
-            IdePIIX.m, 
-            IdeDisk.m, 
+            IdePIIX.m,
+            IdeBMIDE.m,
+            IdeDisk.m,
             IdeDiskInternal.m, 
             IdeKernel.m
         ); 

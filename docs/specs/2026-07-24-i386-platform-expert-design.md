@@ -143,7 +143,7 @@ Moving out of `src/kernel-7/machdep/i386`:
 | `i386_init.c` | `i386_init.c` + `identify_machine.c` + `mem_init.c` | split: sequencing / CPUID and `cpu_model` / `size_memory`, `alloc_cnvmem`, `mem_region[]`, msgbuf placement |
 | `intr.c`, `intr.h`, `intr_internal.h`, `intr_inline.h` | `interrupt.c` + `chips/i8259.{c,h}` | ipl and dispatch policy stays generic; register access becomes a chip |
 | `dma.c`, `dma_buf.c`, `dma*.h` | `chips/i8237.{c,h}` + `dma_buf.c` | the 8237 is a chip; the buffer allocator is platform policy |
-| `machine_clock.c` | `rtclock.c` + `chips/i8254.{c,h}` + `chips/mc146818.{c,h}` | PIT and CMOS RTC separated |
+| `machine_clock.c` | `rtclock.c` + `chips/i8254.{c,h}` | clock policy separated from PIT register access |
 | `bios.c`, `bios_asm.s` | `bios.c`, `bios_asm.s` | real-mode call thunk is a firmware service. Not to be confused with `drvEISABus`'s unrelated `bios.c`, which is deleted in P4 |
 | `APM_i386.c`, `APM_BIOS.h` | `apm.c`, `apm.h` | firmware service |
 | `io_prim.c` | `io_prim.c` | |
@@ -183,7 +183,7 @@ typedef struct i386_init {
     const char             *name;              /* "PC/AT", "PCI PC", "ACPI PC" */
     void                  (*configure_machine)(void);
     void                  (*initialize_interrupts)(void);
-    int                   (*initialize_rtclock)(void);
+    void                  (*initialize_rtclock)(void);
     void                  (*initialize_processors)(void);
     const pci_config_ops_t *pci_config;        /* NULL when the platform has no PCI */
 } i386_init_t;
@@ -215,7 +215,6 @@ Silicon only, no platform policy.
 
 - `i8259.{c,h}` — the PIC pair
 - `i8254.{c,h}` — the PIT
-- `mc146818.{c,h}` — CMOS RTC and NVRAM byte access
 - `i8237.{c,h}` — the ISA DMA controller pair
 - `pcicfg.{c,h}` — PCI configuration mechanisms #1 and #2
 - `bios32.{c,h}` — BIOS32 service directory and the PCI BIOS entry
@@ -371,8 +370,10 @@ The rule that decides every case: **if it pokes a port or decodes a firmware
 structure, it is PExpert. If it is an `IODeviceDescription`, a resource
 reservation, or a probe/match decision, it is the bus driver.**
 
-- **`drvPCIBus`** — delete `pci.c`; `PCIKernBus` calls `pexpert_pci_config_*`.
-  `PCIResourceDriver` unchanged.
+- **`drvPCIBus`** — replace the mechanism probes and configuration cycles in
+  `PCIKernBusPrivate.m:62-158` with `pexpert_pci_config_*`. `pci.c` is
+  *location-string* parsing (`PCIParsePrefix`, `PCIParseKeys`), which is driver
+  policy and stays; `PCIResourceDriver` unchanged.
 - **`drvEISABus`** — delete `eisa.c` and `bios.c`, and the inline asm in
   `EISAKernBus+PlugAndPlay.m` / `EISAKernBus+PlugAndPlayPrivate.m`. The `pnp*`
   and `PnPResource*` classes become thin DriverKit wrappers over structured
@@ -391,7 +392,7 @@ reservation, or a probe/match decision, it is the bus driver.**
 | | Scope | Boot gate |
 |---|---|---|
 | **P1** Skeleton and link | Project, `chips/` + `families/` directories, dpkg control, `MASTER.i386` / `Makefile.i386` wiring, Manifest entries for both architectures. Moves `i386_init.c` **whole** (its CPUID identification and memory-sizing code still inline), plus `io_prim.c`, `bios.c`, `bios_asm.s` | i386 kernel links against `pexperti386.o` and boots to login identically |
-| **P2** Extraction | `interrupt.c` + `chips/i8259` (controller vtable, mask widening), `rtclock.c` + `chips/i8254` + `chips/mc146818`, `chips/i8237` + `dma_buf.c`, `apm.c` | Boot to login; console diff against baseline; interrupt-heavy load (disk and network) exercised |
+| **P2** Extraction | `interrupt.c` + `chips/i8259` (controller vtable, mask widening), `rtclock.c` + `chips/i8254`, `chips/i8237` + `dma_buf.c`, `apm.c` | Boot to login; console diff against baseline; interrupt-heavy load (disk and network) exercised |
 | **P3** Discovery | Splits `identify_machine.c` and `mem_init.c` out of P1's `i386_init.c`; adds `bootinfo.c`, the firmware scan, `chips/isapnp`, `chips/eisa`, `chips/pcicfg`, `chips/bios32`, `pnp_resource.c`, `pnpbios.c`, `families/`, `pexpert_i386.h`, and the PCI config service | Boot plus a PExpert property dump matching known-good QEMU expectations; parser unit tests green |
 | **P4** Bus rehosting | `drvPCIBus`, `drvEISABus`, `drvPCMCIABus`, `Intel824X0PCI` | Boot with NE2000-PCI networking up and SSH reachable |
 

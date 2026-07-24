@@ -119,6 +119,18 @@ Everything below was verified in-tree rather than assumed.
   `"0x072015ad"` (VMware `15ad:0720`) and `"0x20001022"` (AMD `1022:2000`).
 - **Shared PCI IRQs are the norm:** `"Share IRQ Levels" = "YES"` appears in most
   PCI driver `Default.table` files.
+- **`sc_status_t` is defined in `src/kernel-7/bsd/dev/scsireg.h`** with 24
+  members. `SR_IOST_GOOD/SELTO/CHKSV/IOTO/BCOUNT/TABT/RESET/HW` all exist;
+  **there is no `SR_IOST_BUSY`.**
+- **`IOSCSIRequest` fields** (`driverkit/scsiRequest.h`) relevant here:
+  `driverStatus` (`sc_status_t`), `scsiStatus` (SCSI status byte),
+  `bytesTransferred`, `senseData` (valid only when `driverStatus ==
+  SR_IOST_CHKSV`), `timeoutLength` (I/O timeout in seconds), `maxTransfer`,
+  `cdbLength`.
+- **Valid `"Family"` values** in use across `drivers-i386/`: `Audio`, `Bus`,
+  `Disk`, `Display`, `Keyboard`, `Network`, `Other`, `Parallel`,
+  `Pointing Device`, `SCSI`, `SDSI`, `Serial`. The four this spec uses —
+  `SCSI`, `Disk`, `Network`, `Serial` — are all established.
 - **i386 has no kernel serial console.** `src/kernel-7/bsd/dev/i386/cons.c:195`
   notes serial output is the ppc path; i386 console is `km`/`VGAConsole`.
 
@@ -266,11 +278,27 @@ sense, followed by data-in.
 
 LUN encodes as `{1, target, 0x40 | (lun >> 8), lun & 0xff, 0, 0, 0, 0}`.
 
-Response mapping onto `sc_status_t`: `S_OK` with a good status →
-`SR_IOST_GOOD`; `S_OK` with a check condition → `SR_IOST_CHKSV` with sense
-copied into the request; `S_BAD_TARGET` → `SR_IOST_SELTO`; `S_RESET` →
-`SR_IOST_RESET`; `S_BUSY` → `SR_IOST_BUSY`; remaining failures →
-`SR_IOST_HW`.
+**Status mapping.** virtio reports two separate things and they map to two
+separate `IOSCSIRequest` fields (`driverkit/scsiRequest.h`): the `response` byte
+is host-adapter level and becomes `driverStatus`; the `status` byte is the SCSI
+status and is copied verbatim to `scsiStatus`. Residual becomes
+`bytesTransferred`.
+
+| virtio `response` | `driverStatus` |
+|---|---|
+| `S_OK`, SCSI status GOOD | `SR_IOST_GOOD` |
+| `S_OK`, SCSI status CHECK CONDITION | `SR_IOST_CHKSV`, sense copied to `senseData` |
+| `S_OK`, any other SCSI status | `SR_IOST_GOOD` — `scsiStatus` carries it upward |
+| `S_BAD_TARGET` | `SR_IOST_SELTO` |
+| `S_RESET` | `SR_IOST_RESET` |
+| `S_ABORTED` | `SR_IOST_TABT` |
+| `S_OVERRUN` | `SR_IOST_BCOUNT` |
+| all others | `SR_IOST_HW` |
+
+`senseData` is only meaningful when `driverStatus == SR_IOST_CHKSV`, which the
+header states explicitly. Note there is **no** `SR_IOST_BUSY` in the enum —
+a virtio `S_BUSY`, and a SCSI BUSY status, are distinct conditions and neither
+invents a host-level code.
 
 The caller's buffer is an address in a foreign `vm_task_t`, so it is translated
 page by page with `IOPhysicalFromVirtual(client, …)` into a scatter list and
@@ -360,9 +388,9 @@ qemu-system-i386 -M pc -m 512 \
   -device virtio-scsi-pci-transitional,id=scsi0 \
   -drive if=none,id=hd0,file=rhapsody.img,format=raw \
   -device scsi-hd,drive=hd0,bus=scsi0.0 \
-  -device virtio-blk-pci-transitional,drive=hd1 \
   -drive if=none,id=hd1,file=data.img,format=raw \
-  -device virtio-net-pci-transitional,netdev=n0 -netdev user,id=n0 \
+  -device virtio-blk-pci-transitional,drive=hd1 \
+  -netdev user,id=n0 -device virtio-net-pci-transitional,netdev=n0 \
   -device virtio-serial-pci-transitional \
   -chardev stdio,id=c0 -device virtconsole,chardev=c0
 ```
@@ -383,9 +411,10 @@ lingers.
 - A non-contiguous virtqueue allocation frees everything and fails the same way.
 - Shared interrupts: read the ISR first; on zero, return immediately having
   touched no state, because the interrupt belonged to another device.
-- Legacy virtio has no per-request timeout. The SCSI driver keeps its own timer;
-  expiry logs, resets the device, and fails outstanding requests as
-  `SR_IOST_IOTO` rather than hanging the stack.
+- Legacy virtio has no per-request timeout, but `IOSCSIRequest` supplies one:
+  `timeoutLength`, in seconds. The SCSI driver arms its own timer from that
+  value; expiry logs, resets the device, and completes outstanding requests with
+  `driverStatus = SR_IOST_IOTO` rather than hanging the stack.
 - Network: RX exhaustion drops and refills; TX-full returns an error so the
   layer above queues.
 - Console: TX-full applies normal tty flow control.

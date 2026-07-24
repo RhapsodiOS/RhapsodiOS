@@ -20,6 +20,26 @@
 - **Commit messages** start with `pexpert: `; one to two lines; no metadata.
 - **All boot testing uses a throwaway copy of `vm/rhapsody.vmdk`.**
 
+## Header bootstrap: unresolved, read before a packaged build
+
+This phase adds a **new** kernel-tree header, `machdep/i386/pexpert_i386.h`, and the platform expert compiles against it. That works in the manual guest workflow but not yet in a clean `rbuild buildall`, for a reason that is structural rather than a plan defect:
+
+- `HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep` resolves to **installed** headers, supplied by the `kernel-hdrs` package.
+- `kernel-hdrs` is listed in `basedeps[]` (`src/rbuild-1/builder.c:441`) and is therefore pulled in by every `build-base` dependency, including drvPExpert's.
+- No in-tree project currently produces it: `src/kernel-7/dpkg/` holds exactly one control file, `Package: kernel`. It is seeded.
+- rbuild *does* support producing it — a Manifest target of `headers` builds `<package>-hdrs` (`src/rbuild-1/builder.c:941`), so `dir kernel-7 headers` would yield `kernel-hdrs` from source.
+- But `builder_setupdirs()` runs unconditionally at `src/rbuild-1/builder.c:979`, **before** the `do_hdr` / `do_bin` split, so even a `headers` build installs the project's full `Build-Depends` — which for `kernel` includes `drvpexpert`. That closes a cycle: `kernel-hdrs` needs `drvpexpert`, and `drvpexpert` needs `kernel-hdrs`.
+
+Manifest ordering cannot break this, because rbuild reads one control file per project and cannot vary dependencies per target.
+
+**Phases 1 and 2 are unaffected** — they add no kernel headers and compile fine against the seeded `kernel-hdrs`. The decision is only needed before Task 1 of this phase lands in a packaged build. Options, in the order they should be considered:
+
+1. **Let the platform expert own and install `pexpert_i386.h`.** The PExpert defines and populates those structures, so it is the natural producer; the kernel and bus drivers become consumers. Removes the cycle outright and keeps one owner per header. Costs: the kernel gains an include path into a driver project, and the install must land in the same PrivateHeaders tree.
+2. **Drop `drvpexpert` from `kernel`'s `Build-Depends` and supply `pexperti386.o` another way** — for instance by having the kernel link against the object in the build tree rather than from the chroot. Removes the cycle at its source but changes how the kernel link is fed.
+3. **Teach rbuild to skip binary-only dependencies for `headers` targets.** The correct general fix, and the largest; it is a change to `builder_setupdirs()` and belongs in its own piece of work.
+
+Do not begin Task 1 of this phase in a packaged build until one of these is chosen and recorded here.
+
 ---
 
 ### Task 1: The public contract and the table arena
@@ -213,10 +233,17 @@ i386_firmware_info_t	i386_firmware_info;
 ```bash
 powershell -File vm/rhap-vm.ps1 sync
 powershell -File vm/rhap-vm.ps1 ssh "cd /build/source/src/kernel-7 && gnumake installhdrs DSTROOT=/"
-powershell -File vm/rhap-vm.ps1 ssh "ls -l /usr/local/include/machdep/i386/pexpert_i386.h"
+powershell -File vm/rhap-vm.ps1 ssh "ls -l '/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/machdep/i386/pexpert_i386.h'"
 ```
 
-Expected: the header is installed. If the install path differs, read the `i386_installhdrs` rule in `src/kernel-7/conf/Makefile.i386` and use the path it actually writes.
+The mechanism is `MACHINE_LCLEXPORT` in `src/kernel-7/conf/Makefile.i386`, which lists `machdep/i386` and installs its `*.h` into `LCLDIR` (`src/kernel-7/conf/Makefile.template:170`). It is **not** the `i386_installhdrs` rule, which installs only `${FEATURES}`.
+
+Two properties of that export path matter here and are already satisfied:
+
+- `MACHINE_LCLEXPORT` installs with a plain `install`, **no `unifdef`**. The stripping pass at `Makefile.template:977` (`-UKERNEL_PRIVATE -UDRIVER_PRIVATE`) belongs to `install_md_std_hdrs`, which iterates `MACHINE_EXPORT` — and `MACHINE_EXPORT` does not include `machdep/i386`. So `KERNEL_PRIVATE`-guarded content in `machdep/i386` headers survives into PrivateHeaders. This is what makes Phase 1's `-DKERNEL_PRIVATE` work for `bios.h`.
+- `pexpert_i386.h` as written is **not** wrapped in `#ifdef KERNEL_PRIVATE`, so it would survive either path. Keep it that way — bus drivers consume it.
+
+**Read the header-bootstrap note in this plan's preamble before running a packaged `rbuild` build**; the manual `installhdrs` above is sufficient for the `rhap-vm.ps1` workflow only.
 
 - [ ] **Step 6: Build, diff symbols, boot gate, commit**
 

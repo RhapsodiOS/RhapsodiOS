@@ -201,8 +201,10 @@ Maintainer: RhapsodiOS Developers <https://github.com/RhapsodiOS/RhapsodiOS>
 Vendor: RhapsodiOS
 Version: 1
 Description: i386 Platform Expert
-Build-Depends: build-base, drivertools, kernload, kernel-hdrs
+Build-Depends: build-base, drivertools, kernload
 ```
+
+Deliberately identical in shape to `src/drivers-ppc/bus/drvPExpert/dpkg/control`. Do **not** add `kernel-hdrs`: `build-base` expands to `basedeps[]` (`src/rbuild-1/builder.c:440-441`), which already contains it, and `set_add()` dedupes.
 
 The package name matches the ppc project deliberately: only one architecture's platform expert is ever built into a given repository, so `src/kernel-7/dpkg/control`'s existing `Build-Depends: … drvpexpert …` needs no change.
 
@@ -550,11 +552,24 @@ machdep/i386/io_prim.c		standard
 
 - [ ] **Step 4: Add both platform experts to the build manifest**
 
-In `src/Manifest`, add these two lines so they sort before `kernel-7` and are built before it:
+rbuild builds in **Manifest order** and resolves each `Build-Depends` entry to an already-built package file in the repository, hard-failing with "unable to find dependency" if it is absent (`src/rbuild-1/builder.c:521-528`). Order therefore matters for correctness, not tidiness.
+
+`drvpexpert` Build-Depends `kernload`, and `kernel` Build-Depends `drvpexpert`, so the required order is **kernload → drvPExpert → kernel-7**. Today `kernload-1` sits at `src/Manifest:45`, *after* `kernel-7` at line 44 — latent only because drvPExpert is not currently built at all.
+
+Move the `kernload-1` line ahead of `kernel-7`, then add the two platform experts between them:
 
 ```
+dir     kernload-1            all
 dir     drivers-i386/bus/drvPExpert  all
 dir     drivers-ppc/bus/drvPExpert   all
+dir     kernel-7              all
+```
+
+The manifest is otherwise alphabetical; this is a deliberate, commented exception. Add a comment line above the block:
+
+```
+# Build order, not alphabetical: kernload -> drvPExpert -> kernel-7.
+# kernel Build-Depends drvpexpert; drvpexpert Build-Depends kernload.
 ```
 
 The ppc entry is included deliberately: the i386 link would otherwise be the only consumer of a build path ppc also needs, and no platform expert has ever been built in-tree on either architecture.

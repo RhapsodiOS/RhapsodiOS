@@ -12,6 +12,8 @@
 
 - **Design spec:** `docs/specs/2026-07-24-i386-platform-expert-design.md`.
 - **Phase 1 must be complete.** `vm/baseline/mach_kernel.nm` and `vm/baseline/console.txt` must exist and the kernel must boot with `pexperti386.o` linked in.
+- **No new kernel-tree headers in this phase.** Every header this phase touches already exists and is already exported, so the platform expert compiles against the seeded `kernel-hdrs` without difficulty. The header-bootstrap problem documented in the Phase 3 plan does not apply here; do not let it block this phase.
+- **`genassym.c` is unaffected.** It imports no `intr`, `dma` or `timer` header (`src/kernel-7/machdep/i386/genassym.c:71-92`), so relocating those files cannot change `assym.h`. `machspl.h` is only `typedef int spl_t` and does not move.
 - **The verification loop is build + symbol diff + boot, not unit tests.** No kernel unit-test harness exists; real unit tests arrive in Phase 3.
 - **Move discipline:** except where a step shows the exact edit, moved files keep their contents. Every move commit must read cleanly under `git diff -M`.
 - **`intr_exported.h` must stay byte-identical.** It is the driver-facing contract; three bus drivers import it (`EISAKernBus.m:40`, `EISAKernBusInterrupt.m:34`, `PCMCIAKernBus.m:45`). If a step would change it, stop and escalate.
@@ -131,7 +133,9 @@ Expected: no differences.
 
 - [ ] **Step 6: Boot gate**
 
-Install onto a fresh throwaway image and boot. Expected: login prompt; console matches `vm/baseline/console.txt`. Floppy and any ISA sound device exercise DMA; if the guest has neither, note in the commit that DMA is link-verified but not exercised.
+Install onto a fresh throwaway image and boot. Expected: login prompt; console matches `vm/baseline/console.txt`.
+
+**DMA is exercisable on this harness.** QEMU provides a floppy controller, and `drvPCFloppy` consumes `dma_exported.h` (`Floppy.lksproj/FloppyArch.m`, `FloppyCmds.m`). After reaching login, confirm the floppy driver loaded and read a sector — that exercises `dma_assign_chan` / `dma_xfer` / `dma_xfer_done` end to end. `drvEISABus/EISAKernBusDMAChannel.m` is the other consumer and is not exercised until Phase 4.
 
 - [ ] **Step 7: Commit**
 

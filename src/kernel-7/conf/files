@@ -121,6 +121,8 @@ OPTIONS/cd9660				optional cd9660
 
 bsd/libkern/locc.c				standard
 bsd/libkern/random.c			standard
+bsd/dev/random/randomdev.c		standard
+bsd/dev/random/xoodyak.c		standard
 bsd/libkern/rindex.c			standard
 bsd/libkern/scanc.c				standard
 bsd/libkern/skpc.c				standard

@@ -134,6 +134,12 @@ const ideChipsetOps_t ideIntelOps = {
 	intelDetectCable
 };
 
+/* ICH drive number 0..3 = (channel<<1) | (drive&1). */
+static __inline__ unsigned char ichDriveNum(int channel, int unit)
+{
+	return (unsigned char)(((channel == PCI_CHANNEL_SECONDARY) ? 2 : 0) | (unit & 1));
+}
+
 @implementation IdeController(PIIX)
 
 /*
@@ -602,18 +608,29 @@ const ideChipsetOps_t ideIntelOps = {
 	 * Set timings for Drive 0 (Master drive).
 	 */
 	if (drv[0].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive0 > 2) modeDrive0 = 2;
-		switch (_ideChannel) {
-			case PCI_CHANNEL_PRIMARY:
-				udmactl->bits.psde0 = 1;
-				udmatim->bits.pct0 = modeDrive0;
-				break;
-			case PCI_CHANNEL_SECONDARY:
-				udmactl->bits.ssde0 = 1;
-				udmatim->bits.sct0 = modeDrive0;
-				break;
-			default:
-				break;
+		if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG)) {
+			/* PIIX4: UDMA capped at mode 2, existing UDMATIM path. */
+			if (modeDrive0 > 2) modeDrive0 = 2;
+		}
+		/*
+		 * SDMA_TIM 2-bit cycle-time value by UDMA mode m.
+		 * Verified vs. ICH datasheet 290655-003 §9.1.17:
+		 *   modes 0,1,2,3,4 -> 0,1,2,1,2 . (m5 -> 1 on ICH2+.)
+		 */
+		{
+			unsigned char utim = MIN(2 - (modeDrive0 & 1), modeDrive0);
+			switch (_ideChannel) {
+				case PCI_CHANNEL_PRIMARY:
+					udmactl->bits.psde0 = 1;
+					udmatim->bits.pct0 = utim;
+					break;
+				case PCI_CHANNEL_SECONDARY:
+					udmactl->bits.ssde0 = 1;
+					udmatim->bits.sct0 = utim;
+					break;
+				default:
+					break;
+			}
 		}
 	}
 	idetim->bits.isp = isp;
@@ -622,20 +639,60 @@ const ideChipsetOps_t ideIntelOps = {
 	/* Set timings for drive 1 (Slave drive).
 	 */
 	if (drv[1].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive1 > 2) modeDrive1 = 2;
-		switch (_ideChannel) {
-			case PCI_CHANNEL_PRIMARY:
-				udmactl->bits.psde1 = 1;
-				udmatim->bits.pct1 = modeDrive1;
-				break;
-			case PCI_CHANNEL_SECONDARY:
-				udmactl->bits.ssde1 = 1;
-				udmatim->bits.sct1 = modeDrive1;
-				break;
-			default:
-				break;
+		if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG)) {
+			/* PIIX4: UDMA capped at mode 2, existing UDMATIM path. */
+			if (modeDrive1 > 2) modeDrive1 = 2;
+		}
+		/*
+		 * SDMA_TIM 2-bit cycle-time value by UDMA mode m.
+		 * Verified vs. ICH datasheet 290655-003 §9.1.17:
+		 *   modes 0,1,2,3,4 -> 0,1,2,1,2 . (m5 -> 1 on ICH2+.)
+		 */
+		{
+			unsigned char utim = MIN(2 - (modeDrive1 & 1), modeDrive1);
+			switch (_ideChannel) {
+				case PCI_CHANNEL_PRIMARY:
+					udmactl->bits.psde1 = 1;
+					udmatim->bits.pct1 = utim;
+					break;
+				case PCI_CHANNEL_SECONDARY:
+					udmactl->bits.ssde1 = 1;
+					udmatim->bits.sct1 = utim;
+					break;
+				default:
+					break;
+			}
 		}
 	}
+
+	/*
+	 * ICH: program the IDE_CONFIG (0x54) base-clock bits for UDMA/66
+	 * and UDMA/100. IDE_CONFIG is shared between the primary and
+	 * secondary channels, so read-modify-write only this channel's
+	 * bits via a direct PCI config access rather than the local
+	 * configSpace snapshot.
+	 */
+	if (_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG) {
+		unsigned long icfg = 0;
+		int u;
+		[[self class] getPCIConfigData:&icfg atRegister:PIIX_IDE_CONFIG
+			withDeviceDescription:[self deviceDescription]];
+		for (u = 0; u < MAX_IDE_DRIVES; u++) {
+			unsigned char dn = ichDriveNum(_ideChannel, u);
+			unsigned int  clk66  = (1U << dn);          /* low byte  */
+			unsigned int  clk100 = (1U << (dn + 8));    /* high byte */
+			unsigned char m = ata_mode_to_num(drv[u].transferMode);
+			icfg &= ~(clk66 | clk100);
+			if (drv[u].ideInfo.type != 0 &&
+				drv[u].transferType == IDE_TRANSFER_ULTRA_DMA) {
+				if (m >= 3) icfg |= clk66;    /* ATA/66 (modes 3-4) */
+				if (m >= 5) icfg |= clk100;   /* ATA/100 (mode 5)  */
+			}
+		}
+		[[self class] setPCIConfigData:icfg atRegister:PIIX_IDE_CONFIG
+			withDeviceDescription:[self deviceDescription]];
+	}
+
 	if (idetim->bits.sitre) {
 		isp = PIIXGetISPForMode(modeDrive1, drv[1].transferType);
 		rct = PIIXGetRCTForMode(modeDrive1, drv[1].transferType);	
@@ -691,27 +748,31 @@ const ideChipsetOps_t ideIntelOps = {
  *
  * Purpose:
  * Detect the presence of an 80-wire cable. This is required for UDMA
- * modes greater than Mode 2 (ATA/33). Unfortunately, PIIX4 does not
- * provide a hardware mechanism to detect cable type. We assume a
- * 40-wire cable by default for safety.
- *
- * Note:
- * Some BIOS implementations may set a bit in a vendor-specific register,
- * but this is not standardized across all PIIX4 implementations.
- * Later chipsets (ICH and newer) provide proper cable detection via
- * the UDMA Control Register.
- *
- * For now, we conservatively assume 40-wire cable, which limits UDMA
- * to Mode 2 (33 MB/s). Users can potentially override this via a
- * configuration option if needed.
+ * modes greater than Mode 2 (ATA/33). PIIX4 provides no hardware
+ * mechanism to detect cable type, so we assume a 40-wire cable
+ * (UDMA limited to Mode 2). ICH and newer report cable type per
+ * channel via the IDE_CONFIG register (0x54).
  */
 - (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc
 {
-	if (_ide_debug) {
-		IOLog("%s: Cable detection: assuming 40-wire cable (UDMA limited to Mode 2)\n",
-			[self name]);
-	}
-	return NO;
+	unsigned long icfg = 0;
+	unsigned char mask;
+
+	if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG))
+		return NO;   /* PIIX4 has no cable report; assume 40-wire (UDMA<=2) */
+
+	if ([[self class] getPCIConfigData:&icfg atRegister:PIIX_IDE_CONFIG
+			withDeviceDescription:devDesc] != IO_R_SUCCESS)
+		return NO;
+
+	mask = (_ideChannel == PCI_CHANNEL_SECONDARY)
+		? PIIX_ICFG_CABLE_SEC : PIIX_ICFG_CABLE_PRI;
+
+	if (_ide_debug)
+		IOLog("%s: IDE_CONFIG 0x%04lx cable %s\n", [self name],
+			icfg & 0xffff, (icfg & mask) ? "80-wire" : "40-wire");
+
+	return (icfg & mask) ? YES : NO;
 }
 
 @end

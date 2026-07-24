@@ -85,6 +85,23 @@
 #define PIIX_SIDETIM	0x44	// (8)  Slave IDE timing register
 #define PIIX_UDMACTL	0x48	// (8)  Ultra DMA/33 control register
 #define PIIX_UDMATIM	0x4a	// (16) Ultra DMA/33 timing register
+#define PIIX_IDE_CONFIG	0x54	// (16) ICH IDE I/O config / cable report
+/*
+ * IDE_CONFIG (0x54), verified vs. ICH datasheet 290655-003 §9.1.18:
+ *   bit 0 PCB0 / bit 1 PCB1 / bit 2 SCB0 / bit 3 SCB1
+ *                              : 1 = 66MHz base clock for UDMA (modes 3-4);
+ *                                0 = 33MHz. i.e. bit (1<<dn) for drive dn.
+ *   bit 4 (pri master) / bit 5 (pri slave)
+ *                              : 80-conductor cable present, primary  (mask 0x30)
+ *   bit 6 (sec master) / bit 7 (sec slave)
+ *                              : 80-conductor cable present, secondary (mask 0xc0)
+ * where dn = (channel << 1) | (drive & 1), range 0..3.
+ * ICH0 (82801AB): all of bits 0-7 are Reserved (UDMA capped at mode 2).
+ * UDMA100 (mode 5) 100MHz-clock bits live in the 0x54 high byte on ICH2+
+ * (per Linux piix.c); not present on ICH/ICH0.
+ */
+#define PIIX_ICFG_CABLE_PRI	0x30
+#define PIIX_ICFG_CABLE_SEC	0xc0
 
 /*
  * PIIX PCI configuration space register definition.

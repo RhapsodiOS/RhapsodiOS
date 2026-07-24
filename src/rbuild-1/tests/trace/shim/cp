@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "cp $*" >> "$RBUILD_TRACE"
+exit 0

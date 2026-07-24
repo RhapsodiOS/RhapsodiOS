@@ -1,0 +1,5 @@
+Package: foo
+Maintainer: Test <t@x>
+Version: 1.0
+Description: Test package
+Build-Depends: build-base

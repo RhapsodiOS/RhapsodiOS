@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "make $*" >> "$RBUILD_TRACE"
+exit 0

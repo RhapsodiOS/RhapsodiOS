@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "rm $*" >> "$RBUILD_TRACE"
+exit 0

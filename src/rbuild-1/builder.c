@@ -924,8 +924,12 @@ int builder_build(const char *srctype, const char *srcname,
 
     /* params = chrootparams(bparams, bparams.BUILDROOT) */
     params_init(&params);
-    /* Native: prefix with "/" so params paths equal the (host) bparams paths
-       and BUILDROOT is empty -- there is no chroot in native mode. */
+    /* Native: prefix with "/" so params paths equal the (host) bparams paths.
+       There is no chroot in native mode, so params.BUILDROOT is unused: every
+       site that would touch it (setupdirs mkdir/makeroot, buildcmd chroot,
+       harvest_objects chroot, the clean teardown) is gated on !native. Do not
+       rely on its value under native -- builder_canonparams below rewrites the
+       empty string to "<cwd>/". */
     builder_chrootparams(&bparams, native ? "/" : bparams.BUILDROOT, &params);
 
     /* SRCDIR */

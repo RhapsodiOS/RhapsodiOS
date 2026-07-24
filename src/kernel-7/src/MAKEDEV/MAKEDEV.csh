@@ -79,6 +79,8 @@ std)
 	mknod dialup0	c 16 0  ; chmod 600 dialup0
 	mknod dialup1	c 16 1	; chmod 600 dialup1
 	mknod sound	c 36 0	; chmod 600 sound
+	mknod random	c 17 0	; chmod 644 random
+	mknod urandom	c 17 1	; chmod 644 urandom
 	;;
 
 od*|rd*|sd*|hd*)

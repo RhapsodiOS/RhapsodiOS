@@ -11,8 +11,9 @@ rm -rf "$work"; mkdir -p "$work/pkgroot" "$work/repo" "$work/extract"
 
 [ -x "$APK" ] || { echo "FAIL: apk binary not found at $APK"; exit 1; }
 
-# 1. Runs at all.
-"$APK" --version >/dev/null 2>&1 || "$APK" version >/dev/null 2>&1 || true
+# 1. Runs at all. Real gate: at least one version form must exit 0 (tolerates
+#    which CLI form pre12 uses; under set -e, both failing aborts the script).
+"$APK" --version >/dev/null 2>&1 || "$APK" version >/dev/null 2>&1
 echo "ok: apk executes"
 
 # 2. Hand-build a minimal rbuild-style .apk: .PKGINFO + a file, gzipped tar.

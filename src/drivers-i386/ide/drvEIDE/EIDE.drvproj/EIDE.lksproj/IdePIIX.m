@@ -282,9 +282,9 @@ const ideChipsetOps_t ideIntelOps = {
 	 * IRQ 14 - primary channel
 	 * IRQ 15 - secondary channel
 	 */
-	{
+	if (_chipsetOps == &ideIntelOps) {
 	unsigned int irq;
-	
+
 	irq = (_ideChannel == PCI_CHANNEL_PRIMARY) ? PIIX_P_IRQ : PIIX_S_IRQ;
 	if ([devDesc interrupt] != irq) {
 		IOLog("%s: Invalid IRQ: %d\n", [self name], [devDesc interrupt]);
@@ -316,6 +316,7 @@ const ideChipsetOps_t ideIntelOps = {
 	 * Fetch the corresponding primary/secondary IDETIM register and
 	 * verify that the individual channels are enabled.
 	 */
+	if (_chipsetOps == &ideIntelOps) {
     rtn = [self_class getPCIConfigData:&configReg atRegister:PIIX_IDETIM
 		withDeviceDescription:devDesc];
     if (rtn != IO_R_SUCCESS)	{
@@ -325,12 +326,13 @@ const ideChipsetOps_t ideIntelOps = {
 	if (_ideChannel == PCI_CHANNEL_SECONDARY)
 		configReg >>= 16;	// PIIX_IDETIM + 2 for secondary channel
 	idetim.word = (u_short)configReg;
-	
+
 	if (!idetim.bits.ide) {
 		IOLog("%s: %s PCI IDE channel is not enabled\n",
 			[self name],
 			(_ideChannel == PCI_CHANNEL_PRIMARY) ? "Primary" : "Secondary");
 		return NO;
+	}
 	}
 
 	/*

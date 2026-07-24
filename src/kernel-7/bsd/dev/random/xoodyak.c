@@ -161,6 +161,11 @@ xoodyak_init(xoodyak_t *c, const u_int8_t *key, unsigned keylen)
         u_int8_t buf[XOODYAK_RKIN];
         unsigned k;
 
+        /* interface contract is keylen <= 43; clamp defensively so
+         * buf[keylen] below can never write past the buffer. */
+        if (keylen > XOODYAK_RKIN - 1)
+            keylen = XOODYAK_RKIN - 1;
+
         c->mode = 1;
         c->rabsorb = XOODYAK_RKIN;
         c->rsqueeze = XOODYAK_RKOUT;

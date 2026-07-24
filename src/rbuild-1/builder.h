@@ -45,12 +45,12 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
-                      const strlist *repository);
+                      const strlist *repository, int native);
 
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target);
 int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams);
+                            const Params *bparams, int native);
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,

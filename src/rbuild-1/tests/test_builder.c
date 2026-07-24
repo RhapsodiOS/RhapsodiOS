@@ -164,6 +164,40 @@ TEST(test_buildcmd_native) {
     params_free(&cp); params_free(&bp);
 }
 
+TEST(test_setupdirs_native_skips_makeroot) {
+    Package pkg;
+    Params p;
+    strlist repo;               /* empty repository */
+    int rc_native, rc_normal;
+
+    exec_dry_run = 1;           /* mkdir/rsync become no-ops */
+    package_init(&pkg);         /* no build_depends -> basedeps fallback */
+    strlist_init(&repo);        /* nothing resolves */
+
+    params_init(&p);
+    p.BUILDROOT = xstrdup("/tmp/rb_nat/br");
+    p.OBJROOT = xstrdup("/tmp/rb_nat/obj");
+    p.SYMROOT = xstrdup("/tmp/rb_nat/sym");
+    p.DSTROOT = xstrdup("/tmp/rb_nat/dst");
+    p.HDRROOT = xstrdup("/tmp/rb_nat/hdr");
+    p.PACKAGEROOT = xstrdup("/tmp/rb_nat/pkg");
+    p.SRCROOT = xstrdup("/tmp/rb_nat/src");
+    p.SRCDIR = xstrdup("/tmp/rb_nat/srcdir");
+
+    /* native: makeroot skipped -> empty repo is fine -> success */
+    rc_native = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, 1);
+    CHECK_INT(rc_native, 0);
+
+    /* non-native: makeroot runs -> cannot resolve "cc" in empty repo -> fail */
+    rc_normal = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, 0);
+    CHECK_INT(rc_normal, 1);
+
+    exec_dry_run = 0;
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+}
+
 TEST(test_scan_dir) {
     Package pkg;
     Params params;
@@ -199,6 +233,7 @@ static void run_all(void) {
     RUN(test_chrootparams);
     RUN(test_buildflags);
     RUN(test_buildcmd_native);
+    RUN(test_setupdirs_native_skips_makeroot);
     RUN(test_scan_dir);
 }
 

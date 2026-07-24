@@ -561,7 +561,7 @@ static int mkdirp(const char *path) {
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
-                      const strlist *repository) {
+                      const strlist *repository, int native) {
     (void) srcname;   /* only used by the dropped cvs branch */
 
     if (exec_check(mkdirp(params->OBJROOT))) return 1;
@@ -569,9 +569,12 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     if (exec_check(mkdirp(params->DSTROOT))) return 1;
     if (exec_check(mkdirp(params->HDRROOT))) return 1;
     if (exec_check(mkdirp(params->PACKAGEROOT))) return 1;
-    if (exec_check(mkdirp(params->BUILDROOT))) return 1;
 
-    if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+    /* Native builds run on the host root: no chroot to create or populate. */
+    if (!native) {
+        if (exec_check(mkdirp(params->BUILDROOT))) return 1;
+        if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+    }
 
     if (strcmp(srctype, "dir") == 0) {
         char *cmd;
@@ -810,7 +813,7 @@ static void harvest_walk(const char *objroot_abs, const char *rel,
 }
 
 int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams) {
+                            const Params *bparams, int native) {
     obj_match *head = 0;
     obj_match *node;
     int rc = 0;
@@ -834,9 +837,10 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
         exec_runv("rmdir", dstdir, (char *)0);
         {
             char *argv[9];
-            argv[0] = "chroot"; argv[1] = params->BUILDROOT;
-            argv[2] = "cp"; argv[3] = "-rp";
-            argv[4] = srcpath; argv[5] = cobjpath; argv[6] = 0;
+            int a = 0;
+            if (!native) { argv[a++] = "chroot"; argv[a++] = params->BUILDROOT; }
+            argv[a++] = "cp"; argv[a++] = "-rp";
+            argv[a++] = srcpath; argv[a++] = cobjpath; argv[a] = 0;
             exec_printcmd(argv);
             if (exec_run_checked(argv)) rc = 1;
         }
@@ -934,7 +938,7 @@ int builder_build(const char *srctype, const char *srcname,
 
     printf("building %s from %s:\n\n", filename, params.SRCDIR);
 
-    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository) != 0) {
+    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, 0) != 0) {
         rc = 1; goto done;
     }
 
@@ -953,7 +957,7 @@ int builder_build(const char *srctype, const char *srcname,
         strlist_free(&cmd);
         printf("\n");
 
-        if (builder_harvest_objects(&pkg, &params, &bparams) != 0) { rc = 1; goto done; }
+        if (builder_harvest_objects(&pkg, &params, &bparams, 0) != 0) { rc = 1; goto done; }
         printf("\n");
     }
 

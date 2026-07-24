@@ -669,28 +669,25 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 	 * ICH: program the IDE_CONFIG (0x54) base-clock bits for UDMA/66
 	 * and UDMA/100. IDE_CONFIG is shared between the primary and
 	 * secondary channels, so read-modify-write only this channel's
-	 * bits via a direct PCI config access rather than the local
-	 * configSpace snapshot.
+	 * bits. This is done directly on the configSpace snapshot (like
+	 * IDETIM/SIDETIM/UDMACTL/UDMATIM above) since the caller commits
+	 * the whole snapshot back via setPCIConfigSpace: -- a separate
+	 * direct PCI config access here would be clobbered by that
+	 * trailing write-back.
 	 */
 	if (_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG) {
-		unsigned long icfg = 0;
 		int u;
-		[[self class] getPCIConfigData:&icfg atRegister:PIIX_IDE_CONFIG
-			withDeviceDescription:[self deviceDescription]];
 		for (u = 0; u < MAX_IDE_DRIVES; u++) {
 			unsigned char dn = ichDriveNum(_ideChannel, u);
-			unsigned int  clk66  = (1U << dn);          /* low byte  */
-			unsigned int  clk100 = (1U << (dn + 8));    /* high byte */
 			unsigned char m = ata_mode_to_num(drv[u].transferMode);
-			icfg &= ~(clk66 | clk100);
+			pci_space[PIIX_IDE_CONFIG] &= ~(1 << dn);
+			pci_space[PIIX_IDE_CONFIG + 1] &= ~(1 << dn);
 			if (drv[u].ideInfo.type != 0 &&
 				drv[u].transferType == IDE_TRANSFER_ULTRA_DMA) {
-				if (m >= 3) icfg |= clk66;    /* ATA/66 (modes 3-4) */
-				if (m >= 5) icfg |= clk100;   /* ATA/100 (mode 5)  */
+				if (m >= 3) pci_space[PIIX_IDE_CONFIG] |= (1 << dn);      /* ATA/66 (modes 3-4) */
+				if (m >= 5) pci_space[PIIX_IDE_CONFIG + 1] |= (1 << dn);  /* ATA/100 (mode 5)  */
 			}
 		}
-		[[self class] setPCIConfigData:icfg atRegister:PIIX_IDE_CONFIG
-			withDeviceDescription:[self deviceDescription]];
 	}
 
 	if (idetim->bits.sitre) {

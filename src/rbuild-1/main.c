@@ -11,6 +11,7 @@ static const char *USAGE =
     "  rbuild buildpackage [--dir] [--target {all|headers|objs|local}]"
     " <source> <repository> <dstdir>\n"
     "  rbuild buildall  <srclist> <repository> <dstdir>\n"
+    "  rbuild bootstrap <srclist> <repository> <dstdir>\n"
     "  rbuild missing   <srclist> <dstdir>\n"
     "  (global: -n/--dry-run)\n";
 
@@ -49,12 +50,12 @@ static int cmd_buildpackage(int argc, char **argv) {
     source = argv[i]; seeddir = argv[i + 1]; dstdir = argv[i + 2];
 
     make_repo(dstdir, seeddir, &repo);
-    rc = builder_build(type, source, &repo, target, dstdir, 0);
+    rc = builder_build(type, source, &repo, target, dstdir, 0, 0);
     strlist_free(&repo);
     return rc;
 }
 
-static int cmd_buildall(int argc, char **argv) {
+static int run_manifest(int argc, char **argv, int native) {
     const char *srclist, *seeddir, *dstdir;
     strlist repo;
     Manifest m;
@@ -87,7 +88,8 @@ static int cmd_buildall(int argc, char **argv) {
             printf("must build %s.apk using %s %s\n", canon, type, source);
             fflush(stdout);
             free(canon);
-            if (builder_build(type, source, &repo, targets, dstdir, 1) != 0)
+            if (builder_build(type, source, &repo, targets, dstdir,
+                              !native, native) != 0)
                 fprintf(stderr, "rbuild: build of \"%s\" failed; continuing\n",
                         source);
         } else {
@@ -100,6 +102,14 @@ static int cmd_buildall(int argc, char **argv) {
     manifest_free(&m);
     strlist_free(&repo);
     return 0;
+}
+
+static int cmd_buildall(int argc, char **argv) {
+    return run_manifest(argc, argv, 0);
+}
+
+static int cmd_bootstrap(int argc, char **argv) {
+    return run_manifest(argc, argv, 1);
 }
 
 static int cmd_missing(int argc, char **argv) {
@@ -164,6 +174,8 @@ int main(int argc, char **argv) {
         return cmd_buildpackage(argc - i, argv + i);
     if (strcmp(sub, "buildall") == 0)
         return cmd_buildall(argc - i, argv + i);
+    if (strcmp(sub, "bootstrap") == 0)
+        return cmd_bootstrap(argc - i, argv + i);
     if (strcmp(sub, "missing") == 0)
         return cmd_missing(argc - i, argv + i);
 

@@ -883,7 +883,7 @@ static int run_make(strlist *cmd) {
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
-                  const char *dstdir, int clean) {
+                  const char *dstdir, int clean, int native) {
     Package pkg, hdrpkg;
     Params bparams, params;
     char *hdrfilename, *filename;
@@ -924,7 +924,9 @@ int builder_build(const char *srctype, const char *srcname,
 
     /* params = chrootparams(bparams, bparams.BUILDROOT) */
     params_init(&params);
-    builder_chrootparams(&bparams, bparams.BUILDROOT, &params);
+    /* Native: prefix with "/" so params paths equal the (host) bparams paths
+       and BUILDROOT is empty -- there is no chroot in native mode. */
+    builder_chrootparams(&bparams, native ? "/" : bparams.BUILDROOT, &params);
 
     /* SRCDIR */
     if (strcmp(srctype, "dir") == 0) params.SRCDIR = xstrdup(srcname);
@@ -938,13 +940,13 @@ int builder_build(const char *srctype, const char *srcname,
 
     printf("building %s from %s:\n\n", filename, params.SRCDIR);
 
-    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, 0) != 0) {
+    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, native) != 0) {
         rc = 1; goto done;
     }
 
     if (do_hdr) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "installhdrs", &cmd, 0);
+        builder_buildcmd(&params, &bparams, "installhdrs", &cmd, native);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
@@ -952,12 +954,12 @@ int builder_build(const char *srctype, const char *srcname,
 
     if (do_bin) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "install", &cmd, 0);
+        builder_buildcmd(&params, &bparams, "install", &cmd, native);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
 
-        if (builder_harvest_objects(&pkg, &params, &bparams, 0) != 0) { rc = 1; goto done; }
+        if (builder_harvest_objects(&pkg, &params, &bparams, native) != 0) { rc = 1; goto done; }
         printf("\n");
     }
 
@@ -970,7 +972,8 @@ int builder_build(const char *srctype, const char *srcname,
         if (builder_buildpackage(&pkg, &params, "local") != 0) { rc = 1; goto done; }
     }
 
-    if (clean) {
+    /* No chroot BUILDROOT to remove in native mode (it is empty). */
+    if (clean && !native) {
         if (exec_runv("rm", "-rf", params.BUILDROOT, (char *)0) != 0) { rc = 1; goto done; }
     }
 

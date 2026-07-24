@@ -54,6 +54,6 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
-                  const char *dstdir, int clean);
+                  const char *dstdir, int clean, int native);
 
 #endif

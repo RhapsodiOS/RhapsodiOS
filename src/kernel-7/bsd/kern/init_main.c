@@ -177,6 +177,7 @@
 #import <sys/systm.h>
 #import <sys/vnode.h>
 #import <sys/conf.h>
+#import <dev/random/randomdev.h>
 #import <sys/buf.h>
 #import <sys/clist.h>
 #import <sys/user.h>
@@ -479,6 +480,9 @@ main()
 
 	/* Initialize syslog */
 	log_init();
+
+	/* Initialize the kernel CSPRNG (/dev/random) */
+	random_init();
 
 	/*
 	 * Initialize protocols.  Block reception of incoming packets

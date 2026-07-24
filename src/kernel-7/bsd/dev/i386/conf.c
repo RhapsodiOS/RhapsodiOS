@@ -42,6 +42,7 @@
 #import <sys/ioctl.h>
 #import <sys/tty.h>
 #import <sys/conf.h>
+#import <dev/random/randomdev.h>
 
 
 extern int	nulldev();
@@ -210,7 +211,11 @@ struct cdevsw	cdevsw[] =
 
 	/* 16 - 31 are reserved to the user */
     NO_CDEVICE,								/*16*/
-    NO_CDEVICE,								/*17*/
+    {
+	random_open,	random_close,	random_read,	random_write,	/*17*/
+	eno_ioctl,	nulldev,	nulldev,	0,		eno_select,
+	eno_mmap,	eno_strat,	eno_getc,	eno_putc,	0
+    },
     NO_CDEVICE,								/*18*/
     NO_CDEVICE,								/*19*/
     NO_CDEVICE,								/*20*/

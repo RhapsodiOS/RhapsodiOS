@@ -74,5 +74,17 @@ main(void)
         check("seedvec", out, 16, "85fa03e325ccbfbab48a5785ee3292c6");
     }
 
+    {
+        u_int8_t key2[16], msg[50];
+
+        for (i = 0; i < 16; i++) key2[i] = (u_int8_t)i;
+        for (i = 0; i < 50; i++) msg[i] = (u_int8_t)i;
+        xoodyak_init(&c, key2, 16);
+        xoodyak_absorb(&c, msg, 50);
+        xoodyak_squeeze(&c, out, 32);
+        check("absorb 2-block", out, 32,
+            "cc14a5fd760c59271d54060afa7c4075d19d6684a533e1d222df4e4901d479ad");
+    }
+
     return fail;
 }

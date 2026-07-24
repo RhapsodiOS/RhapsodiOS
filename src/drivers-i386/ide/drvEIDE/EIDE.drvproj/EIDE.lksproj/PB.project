@@ -11,6 +11,7 @@
             IdeCntInit.m, 
             IdePIIX.m,
             IdeBMIDE.m,
+            IdeGeneric.m,
             IdeDisk.m,
             IdeDiskInternal.m, 
             IdeKernel.m

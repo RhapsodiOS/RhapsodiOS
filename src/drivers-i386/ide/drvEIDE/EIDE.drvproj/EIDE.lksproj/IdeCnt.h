@@ -203,6 +203,7 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
 	const ideChipsetOps_t *_chipsetOps;	// selected back-end, NULL = legacy PIO
 	ideChipCaps_t		_chipCaps;		// capabilities for this controller
 	BOOL				_pollMode;		// YES: interrupts proven undeliverable
+	unsigned char		_progIf;		// PCI IDE programming-interface byte
 
     /*
      * Power management related ivars. 

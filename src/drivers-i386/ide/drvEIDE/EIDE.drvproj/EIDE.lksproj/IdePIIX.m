@@ -190,17 +190,45 @@ const ideChipsetOps_t ideIntelOps = {
 		return NO;
     }	  
 
-	if (intelMatch(_controllerID, 0 /* progIf filled in later */, &_chipCaps)) {
-		_chipsetOps = &ideIntelOps;
-	} else {
-		IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
-			[self name], _controllerID);
-		_controllerID = PCI_ID_NONE;
-		return NO;   /* Task 4 replaces this with the generic fallback */
+	{
+	unsigned long classReg;
+	unsigned char progIf, subClass, baseClass;
+
+	rtn = [self_class getPCIConfigData:&classReg atRegister:0x08
+		withDeviceDescription:devDesc];
+	if (rtn != IO_R_SUCCESS) {
+		IOLog("%s: PCI config space access error %d\n", [self name], rtn);
+		return NO;
 	}
-	IOLog("%s: %s PCI IDE Controller at Dev:%d Func:%d Bus:%d\n",
+	progIf    = (classReg >>  8) & 0xff;
+	subClass  = (classReg >> 16) & 0xff;
+	baseClass = (classReg >> 24) & 0xff;
+
+	if (baseClass != PCI_CLASS_MASS_STORAGE || subClass != PCI_SUBCLASS_IDE) {
+		IOLog("%s: not a PCI IDE controller (class 0x%02x/0x%02x)\n",
+			[self name], baseClass, subClass);
+		return NO;
+	}
+	_progIf = progIf;   /* new ivar, see IdeCnt.h */
+
+	if (intelMatch(_controllerID, progIf, &_chipCaps)) {
+		_chipsetOps = &ideIntelOps;
+	} else if (ideGenericOps.match(_controllerID, progIf, &_chipCaps)) {
+		_chipsetOps = &ideGenericOps;
+		IOLog("%s: Unlisted PCI IDE (0x%08lx); using generic driver\n",
+			[self name], _controllerID);
+	} else {
+		/* IDE-class but not bus-master: fall back to legacy PIO. */
+		_chipsetOps = NULL;
+		_controllerID = PCI_ID_NONE;
+		IOLog("%s: PCI IDE (0x%08lx) without bus-master; legacy PIO\n",
+			[self name], _controllerID);
+		return YES;
+	}
+	IOLog("%s: %s IDE Controller at Dev:%d Func:%d Bus:%d\n",
 		[self name], _chipsetOps->name, devNum, funcNum, busNum);
 	return ([self PIIXInitController:devDesc]);
+	}
 }
 
 /*
@@ -325,6 +353,7 @@ const ideChipsetOps_t ideIntelOps = {
 		_busMaster = NO;
 	}
 
+	_chipCaps.flags &= ~CHIP_FLAG_BUSMASTER;
 	if (_busMaster)
 		_chipCaps.flags |= CHIP_FLAG_BUSMASTER;
 
@@ -333,18 +362,22 @@ const ideChipsetOps_t ideIntelOps = {
 		[self name], busMaster ? "Enabled" : "Disabled");
 #endif
 
-	/*
-	 * Revert to default timing.
-	 */
-	[self PIIXResetTimings:devDesc];
+	if (_chipsetOps == &ideIntelOps) {
+		/*
+		 * Revert to default timing.
+		 */
+		[self PIIXResetTimings:devDesc];
 
-	/*
-	 * Detect 80-wire cable for UDMA modes > 2
-	 */
-	if ((_controllerID == PCI_ID_PIIX4) ||
-	    (_controllerID == PCI_ID_PIIX4E) ||
-	    (_controllerID == PCI_ID_PIIX4M)) {
-		_has80WireCable = [self PIIXDetect80WireCable:devDesc];
+		/*
+		 * Detect 80-wire cable for UDMA modes > 2
+		 */
+		if ((_controllerID == PCI_ID_PIIX4) ||
+		    (_controllerID == PCI_ID_PIIX4E) ||
+		    (_controllerID == PCI_ID_PIIX4M)) {
+			_has80WireCable = [self PIIXDetect80WireCable:devDesc];
+		} else {
+			_has80WireCable = NO;
+		}
 	} else {
 		_has80WireCable = NO;
 	}

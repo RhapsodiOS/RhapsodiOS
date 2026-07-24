@@ -1065,6 +1065,48 @@ ata_mode_to_mask(ata_mode_t mode)
 }
 
 /*
+ * Recovery used when a command fails. Reset the drives and re-apply the
+ * configuration we already negotiated. A software reset clears the drive's
+ * parameters, transfer mode and multi-sector block size, so those must be
+ * re-issued or our bookkeeping would no longer match the drive. Unlike
+ * resetAndInit this does not re-negotiate capabilities or run self-tests.
+ */
+- (void)recoverDrives
+{
+	unsigned char unit;
+
+	[self ideReset];
+
+	for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
+		if (_drives[unit].ideInfo.type == 0)
+			continue;
+
+		if ([self isAtapiDevice:unit] == YES) {
+			[self atapiSoftReset:unit];
+			continue;
+		}
+
+		_driveNum = unit;
+
+		[self ideSetParams:_drives[unit].ideInfo.sectors_per_trk
+			numHeads:_drives[unit].ideInfo.heads ForDrive:unit];
+
+		[self ideSetDriveFeature:FEATURE_SET_TRANSFER_MODE
+			value:_drives[unit].transferMode
+			transferType:_drives[unit].transferType];
+
+		if (_drives[unit].multiSector) {
+			ideRegsVal_t ideRegs;
+
+			bzero((unsigned char *)&ideRegs, sizeof(ideRegs));
+			if ([self ideSetMultiSectorMode:&ideRegs
+				numSectors:_drives[unit].multiSector] != IDER_SUCCESS)
+				_drives[unit].multiSector = 0;
+		}
+	}
+}
+
+/*
  * Method: resetController
  *
  * Reset the controller on the HOST side.

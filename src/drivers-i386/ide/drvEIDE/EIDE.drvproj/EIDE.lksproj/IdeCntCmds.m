@@ -1137,10 +1137,10 @@ static unsigned char unaligned_warnings;
 	IOLog("%s: ATA command %x failed. Retrying...\n", [self name], 
 		ideIoReq->cmd);
 	[self getIdeRegisters:NULL Print:"ATA Command"];
-	[self resetAndInit];
-	
+	[self recoverDrives];
+
 	/*
-	 * resetAndInit will change the value of _driveNum.
+	 * recoverDrives will change the value of _driveNum.
 	 * Revert _driveNum to the original value before retrying the
 	 * command.
 	 */

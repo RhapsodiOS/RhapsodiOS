@@ -436,7 +436,7 @@ static const char *basedeps[] = {
     "pb-makefiles", "coreosmakefiles", "project-makefiles",
     "zsh", "tcsh",
     "file-cmds", "text-cmds", "shell-cmds", "developer-cmds",
-    "awk", "grep", "gnutar",
+    "awk", "grep", "gnutar", "patch-cmds",
     "libsystem", "libc-hdrs",
     "architecture-hdrs", "kernel-hdrs",
     "csu", "objc4-hdrs",

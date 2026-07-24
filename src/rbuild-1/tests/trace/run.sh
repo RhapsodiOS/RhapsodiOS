@@ -25,8 +25,8 @@ rm -rf "$seed" "$dst"; mkdir -p "$seed" "$dst"
 # doesn't matter beyond satisfying each tool's own resolver.
 basedeps="cc cctools gnumake pb-makefiles coreosmakefiles project-makefiles \
 zsh tcsh file-cmds text-cmds shell-cmds developer-cmds awk grep gnutar \
-libsystem libc-hdrs architecture-hdrs kernel-hdrs csu objc4-hdrs files \
-basic-cmds bootstrap-cmds system-cmds"
+patch-cmds libsystem libc-hdrs architecture-hdrs kernel-hdrs csu objc4-hdrs \
+files basic-cmds bootstrap-cmds system-cmds"
 for d in $basedeps; do
   : > "$seed/$d-1.0.apk"
   : > "$seed/${d}_1.0.deb"

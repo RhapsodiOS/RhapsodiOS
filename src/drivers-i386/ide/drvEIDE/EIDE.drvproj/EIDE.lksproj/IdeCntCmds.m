@@ -1134,13 +1134,24 @@ static unsigned char unaligned_warnings;
 	 * The command failed to exceute properly but was accepted by the
 	 * drive. Reset the drives and try again. 
 	 */
-	IOLog("%s: ATA command %x failed. Retrying...\n", [self name], 
+	IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
 		ideIoReq->cmd);
 	[self getIdeRegisters:NULL Print:"ATA Command"];
-	[self recoverDrives];
 
 	/*
-	 * recoverDrives will change the value of _driveNum.
+	 * Light recovery is enough for a transient failure. Before the final
+	 * attempt, escalate to resetAndInit so that its transfer tests get a
+	 * chance to demote a mode which has started failing since we
+	 * configured it. Without that we would keep retrying the same broken
+	 * mode and fail the request instead of falling back to PIO.
+	 */
+	if (retry == (MAX_COMMAND_RETRY - 2))
+		[self resetAndInit];
+	else
+		[self recoverDrives];
+
+	/*
+	 * Both recovery paths will change the value of _driveNum.
 	 * Revert _driveNum to the original value before retrying the
 	 * command.
 	 */

@@ -121,7 +121,7 @@ TEST(test_buildflags) {
     p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
     p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
     strlist_init(&f);
-    builder_buildflags(&p, "install", &f);
+    builder_buildflags(&p, "install", &f, 0);
     CHECK(list_has(&f, "SRCROOT=/s"));
     CHECK(list_has(&f, "DSTROOT=/d"));
     CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
@@ -129,8 +129,15 @@ TEST(test_buildflags) {
     strlist_free(&f);
 
     strlist_init(&f);
-    builder_buildflags(&p, "installhdrs", &f);
+    builder_buildflags(&p, "installhdrs", &f, 0);
     CHECK(list_has(&f, "DSTROOT=/h"));   /* headers target uses HDRROOT */
+    strlist_free(&f);
+
+    /* native: host-arch only (compile-time RBUILD_HOST_ARCH) */
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f, 1);
+    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
     strlist_free(&f);
     params_free(&p);
 }

@@ -1,5 +1,6 @@
 CC = cc
-CFLAGS = -ansi -pedantic -Wall -O
+# Plain -ansi/-pedantic break Rhapsody System headers (__inline, u_int32_t).
+CFLAGS = -Wall -O
 
 d = $(DSTROOT)
 p = rbuild

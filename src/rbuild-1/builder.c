@@ -247,10 +247,24 @@ static void push_kv(strlist *out, const char *k, const char *v) {
     strlist_push_owned(out, s);
 }
 
-void builder_buildflags(const Params *params, const char *target, strlist *out) {
+/*
+ * Stage-0 native builds link against the host root, which only has the
+ * host architecture's crt/System. Fat i386+ppc links fail there. Chroot
+ * (stage 1+) builds keep the fat default once the seed provides both.
+ */
+#if defined(__i386__) || defined(i386)
+#define RBUILD_HOST_ARCH "i386"
+#else
+#define RBUILD_HOST_ARCH "ppc"
+#endif
+
+void builder_buildflags(const Params *params, const char *target, strlist *out,
+                        int native) {
     int i;
     char *rc_cflags;
     sbuf s;
+    const char *arch_cflags;
+    const char *archs;
 
     /* Fixed base flags, but skip the ones we override below. */
     for (i = 0; baseflags[i][0]; i++) {
@@ -271,18 +285,33 @@ void builder_buildflags(const Params *params, const char *target, strlist *out) 
     else
         push_kv(out, "DSTROOT", params->DSTROOT);
 
-    /* RC_CFLAGS = "-arch i386 -arch ppc" + " -D..." for each cflag. */
+    if (native) {
+        arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
+        archs = RBUILD_HOST_ARCH;
+    } else {
+        arch_cflags = "-arch i386 -arch ppc ";
+        archs = "i386 ppc";
+    }
+
+    /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
     sbuf_init(&s);
-    sbuf_puts(&s, "-arch i386 -arch ppc ");
+    sbuf_puts(&s, arch_cflags);
     for (i = 0; cflags[i]; i++) { sbuf_putc(&s, ' '); sbuf_puts(&s, cflags[i]); }
     rc_cflags = sbuf_steal(&s);
     sbuf_free(&s);
     push_kv(out, "RC_CFLAGS", rc_cflags);
     free(rc_cflags);
 
-    push_kv(out, "RC_ARCHS", "i386 ppc");
-    push_kv(out, "RC_i386", "YES");
-    push_kv(out, "RC_ppc", "YES");
+    push_kv(out, "RC_ARCHS", archs);
+    if (native) {
+        if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
+            push_kv(out, "RC_i386", "YES");
+        else
+            push_kv(out, "RC_ppc", "YES");
+    } else {
+        push_kv(out, "RC_i386", "YES");
+        push_kv(out, "RC_ppc", "YES");
+    }
 }
 
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
@@ -298,7 +327,7 @@ void builder_buildcmd(const Params *chroot_params, const Params *build_params,
     strlist_push(out, "-C");
     strlist_push(out, build_params->SRCROOT);
     strlist_init(&flags);
-    builder_buildflags(build_params, target, &flags);
+    builder_buildflags(build_params, target, &flags, native);
     for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);
     strlist_free(&flags);
     strlist_push(out, target);

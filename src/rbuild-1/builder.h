@@ -33,7 +33,8 @@ void builder_getparams(const char *projectname, Params *out);
 void builder_canonparams(Params *p, const char *cwd);
 void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
 
-void builder_buildflags(const Params *params, const char *target, strlist *out);
+void builder_buildflags(const Params *params, const char *target, strlist *out,
+                        int native);
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
                       const char *target, strlist *out, int native);
 

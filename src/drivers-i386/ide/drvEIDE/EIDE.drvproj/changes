@@ -66,8 +66,33 @@ changes from drvEIDE-28 to
 
 changes from drvEIDE-31 to
   Atlas    : drvEIDE-32
-  
+
   	-- Changed MAX_BLOCKS_PER_XFER to 256.
 	-- Removed 8GB limit for IDE devices.
 
 	5.0 version (v5.03)
+
+changes from drvEIDE-32 to
+  RhapsodiOS : drvEIDE-33
+
+	-- Split the generic SFF-8038i bus master code out of IdePIIX into
+	   IdeBMIDE, and moved chipset specifics behind a per-chipset op table.
+	-- PCI IDE controllers are now found by class code instead of a list of
+	   device IDs, and an IDE class device is never rejected: unknown bus
+	   master parts use a generic back end, the rest fall back to PIO.
+	-- Added support for the Intel ICH0 through ICH4 controllers, including
+	   UDMA/66 and UDMA/100 timing and 80 conductor cable detection.
+	-- Added a polled mode fallback for hosts where the IDE interrupt is not
+	   delivered, and recovery for a single lost interrupt, instead of
+	   failing the command.
+	-- Fixed a hang where a Read/Write Multiple issued with no multi sector
+	   block size transferred nothing and waited forever for an interrupt.
+	-- The command retry path no longer reconfigures the controller from
+	   scratch, which used to discard the settings it was recovering.
+	-- Without IOCHRDY support the legacy PIO ceiling is now mode 2, since
+	   modes 3 and 4 need host IORDY which the driver cannot detect.
+	-- Fixed a descriptor table leak and a double free on non PIIX parts,
+	   and added the new sources to the Makefile.
+	-- See docs/drivers/drvEIDE-issues.md for the full audit.
+
+	5.0 version (v5.04)

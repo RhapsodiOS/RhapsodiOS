@@ -15,11 +15,11 @@ LANGUAGE = English
 
 CLASSES = AtapiCnt.m AtapiCntCmds.m AtapiCntInternal.m DualEide.m\
           IdeCnt.m IdeCntCmds.m IdeCntInit.m\
-          IdePIIX.m IdeDisk.m IdeDiskInternal.m IdeKernel.m
+          IdePIIX.m IdeBMIDE.m IdeGeneric.m IdeDisk.m IdeDiskInternal.m IdeKernel.m
 
 HFILES = AtapiCnt.h AtapiCntCmds.h AtapiCntInternal.h AtapiCntPublic.h\
          atapi_extern.h ata_extern.h DualEide.h IdeCnt.h IdeCntCmds.h\
-         IdeCntInit.h IdePIIX.h IdeCntInline.h\
+         IdeCntInit.h IdePIIX.h IdeCntInline.h IdeBMIDE.h\
          IdeCntPublic.h IdeDDM.h IdeDisk.h IdeDiskInternal.h\
          IdeKernel.h IdeShared.h PIIXTiming.h PIIX.h
 

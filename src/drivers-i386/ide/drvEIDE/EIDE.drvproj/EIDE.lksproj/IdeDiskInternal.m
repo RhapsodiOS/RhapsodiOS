@@ -217,23 +217,13 @@ IOReturn iderToIo(ide_return_t);
 		[self printInfo:ideIdentifyInfo unit:unit];
     }
 
-    /* 
-     * Cache optimal data transfer command.
-     */
-
     if ([_cntrlr isDmaSupported:unit]) {
 		IOLog("%s: using DMA transfers.\n", [self name]);
-		_ideReadCommand = IDE_READ_DMA;
-		_ideWriteCommand = IDE_WRITE_DMA;
     } else if ([_cntrlr isMultiSectorAllowed:_driveNum]) {
-		IOLog("%s: using multisector (%d) transfers.\n", 
+		IOLog("%s: using multisector (%d) transfers.\n",
 			[self name], [_cntrlr getMultiSectorValue:unit]);
-        _ideReadCommand = IDE_READ_MULTIPLE;
-        _ideWriteCommand = IDE_WRITE_MULTIPLE;
     } else {
 		IOLog("%s: using single sector transfers.\n", [self name]);
-		_ideReadCommand = IDE_READ;
-		_ideWriteCommand = IDE_WRITE;
     }
 
     if ([self initIdeDrive] != IO_R_SUCCESS) {
@@ -664,7 +654,16 @@ void *ideThreadPtr;
 	currentBlockCnt = ((blocksToGo > MAX_BLOCKS_PER_XFER) ?
 			   MAX_BLOCKS_PER_XFER : blocksToGo);
 
-	ideIoReq.cmd = readFlag ? _ideReadCommand : _ideWriteCommand;
+	/*
+	 * Derive the command from the controller's current capabilities
+	 * rather than a value cached at initialization time.
+	 */
+	if ([_cntrlr isDmaSupported:_driveNum])
+	    ideIoReq.cmd = readFlag ? IDE_READ_DMA : IDE_WRITE_DMA;
+	else if ([_cntrlr isMultiSectorAllowed:_driveNum])
+	    ideIoReq.cmd = readFlag ? IDE_READ_MULTIPLE : IDE_WRITE_MULTIPLE;
+	else
+	    ideIoReq.cmd = readFlag ? IDE_READ : IDE_WRITE;
 
 	ideIoReq.addr = currentBuf;
 	ideIoReq.blkcnt = currentBlockCnt;

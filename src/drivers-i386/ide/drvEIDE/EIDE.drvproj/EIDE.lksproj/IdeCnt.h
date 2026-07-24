@@ -46,6 +46,7 @@
 #import <sys/types.h>
 #import "IdeCntPublic.h"
 #import "AtapiCntPublic.h"
+#import "IdeBMIDE.h"
 #import <driverkit/IOPower.h>
 #import <string.h>	// bzero
 // #import <stdlib.h>	// strtol
@@ -128,6 +129,7 @@ typedef struct {
 	ideIdentifyInfo_t	*ideIdentifyInfo;
 	u_short				dmaChannel;
 	u_short				multiSector;
+	BOOL				multiSectorDisabled;	/* test failed on this drive */
 	u_char				addressMode;	/* LBA or CHS */
 	txferModes_t		driveModes;		/* supported modes */
 	txferModes_t		driveMasks;		/* masks */
@@ -196,6 +198,13 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
 		PCI_CHANNEL_OTHER,
 	} _ideChannel;
 
+	/*
+	 * Chipset back-end and interrupt-mode state.
+	 */
+	const ideChipsetOps_t *_chipsetOps;	// selected back-end, NULL = legacy PIO
+	ideChipCaps_t		_chipCaps;		// capabilities for this controller
+	BOOL				_pollMode;		// YES: interrupts proven undeliverable
+
     /*
      * Power management related ivars. 
      */
@@ -234,6 +243,9 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
  * Controller status checks. 
  */
 - (ide_return_t)waitForNotBusy;
+- (ide_return_t)pollForCompletion:(unsigned char *)status;
+- (ide_return_t)recoverFromLostInterrupt:(unsigned char *)status
+			command:(unsigned int)command;
 - (ide_return_t)waitForDeviceReady;
 - (ide_return_t)waitForDataReady;
 - (ide_return_t)waitForDeviceIdle;
@@ -308,6 +320,10 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
  * This is actually quite a long time but it is mandated by the spec. 
  */
 #define IDE_INTR_TIMEOUT		(30*1000)	// thirty seconds
+
+/* Short timeout for normal disk commands and the probe-time IRQ health
+ * check; the 30s ceiling is reserved for long ATAPI operations. */
+#define IDE_INTR_TIMEOUT_FAST	(3*1000)
 
 #endif	_BSD_DEV_I386_IDECNT_H_
 

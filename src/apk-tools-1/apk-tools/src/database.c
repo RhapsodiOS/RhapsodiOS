@@ -14,9 +14,10 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
-#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/file.h>
 
 #include "apk_defines.h"

@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <zlib.h>
 
 #include "apk_defines.h"

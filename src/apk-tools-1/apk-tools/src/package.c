@@ -14,10 +14,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <limits.h>
-#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include "apk_defines.h"

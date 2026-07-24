@@ -12,7 +12,8 @@
 #ifndef APK_DEFINES_H
 #define APK_DEFINES_H
 
-#include <malloc.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))

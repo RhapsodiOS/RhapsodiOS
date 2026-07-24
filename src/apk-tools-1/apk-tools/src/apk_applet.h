@@ -36,10 +36,24 @@ struct apk_applet {
 	int (*main)(void *ctx, int argc, char **argv);
 };
 
+#if defined(__linux__)
 extern struct apk_applet *__start_apkapplets, *__stop_apkapplets;
+#else
+/* Mach-O has no auto-generated section boundary symbols like GNU ld;
+ * ld64 provides the equivalent via the section$start$/section$end$
+ * magic symbol names instead. */
+extern struct apk_applet *__start_apkapplets __asm("section$start$__DATA$apkapplets");
+extern struct apk_applet *__stop_apkapplets __asm("section$end$__DATA$apkapplets");
+#endif
 
+#if defined(__linux__)
 #define APK_DEFINE_APPLET(x) \
 	static struct apk_applet *__applet_##x \
 	__attribute__((__section__("apkapplets"))) __attribute((used)) = &x;
+#else
+#define APK_DEFINE_APPLET(x) \
+	static struct apk_applet *__applet_##x \
+	__attribute__((__section__("__DATA,apkapplets"))) __attribute((used)) = &x;
+#endif
 
 #endif

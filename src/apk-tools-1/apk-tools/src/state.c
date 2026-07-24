@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <malloc.h>
 
 #include "apk_state.h"
 #include "apk_database.h"

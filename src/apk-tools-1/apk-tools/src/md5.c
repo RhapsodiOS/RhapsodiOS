@@ -50,7 +50,17 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__linux__)
 #include <endian.h>
+#else
+#include <machine/endian.h>
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER    BYTE_ORDER
+#endif
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#endif
+#endif
 #include <sys/types.h>
 #if defined HAVE_LIMITS_H
 # include <limits.h>

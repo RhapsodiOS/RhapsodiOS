@@ -9,10 +9,23 @@
  * by the Free Software Foundation. See http://www.gnu.org/ for details.
  */
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "apk_blob.h"
+
+#if !defined(__linux__)
+/* memrchr() is a GNU/glibc extension; not available on BSD/Darwin libc. */
+static void *memrchr(const void *s, int c, size_t n)
+{
+	const unsigned char *p = (const unsigned char *) s;
+
+	while (n--)
+		if (p[n] == (unsigned char) c)
+			return (void *) (p + n);
+	return NULL;
+}
+#endif
 
 char *apk_blob_cstr(apk_blob_t blob)
 {

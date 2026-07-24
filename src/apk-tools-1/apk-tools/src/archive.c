@@ -15,10 +15,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <utime.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include "apk_defines.h"

@@ -243,6 +243,7 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
  * Controller status checks. 
  */
 - (ide_return_t)waitForNotBusy;
+- (ide_return_t)pollForCompletion:(unsigned char *)status;
 - (ide_return_t)waitForDeviceReady;
 - (ide_return_t)waitForDataReady;
 - (ide_return_t)waitForDeviceIdle;
@@ -317,6 +318,10 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
  * This is actually quite a long time but it is mandated by the spec. 
  */
 #define IDE_INTR_TIMEOUT		(30*1000)	// thirty seconds
+
+/* Short timeout for normal disk commands and the probe-time IRQ health
+ * check; the 30s ceiling is reserved for long ATAPI operations. */
+#define IDE_INTR_TIMEOUT_FAST	(3*1000)
 
 #endif	_BSD_DEV_I386_IDECNT_H_
 

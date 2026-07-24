@@ -548,6 +548,7 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	piix_status.byte = bmGetStatus(_bmRegs);
 	bmStopDMA(_bmRegs);
 
+/* Trust bus-master status even if the completion interrupt was missed. */
 #ifdef TRUST_PIIX
 	if ((piix_status.byte & BMIDE_STATUS_MASK) == BMIDE_STATUS_OK) {
 
@@ -667,6 +668,7 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 		status = inb(_ideRegsAddrs.status);
 	}
 
+/* Trust bus-master status even if the completion interrupt was missed. */
 #ifdef TRUST_PIIX
 	if ((piix_status.byte & BMIDE_STATUS_MASK) == BMIDE_STATUS_OK) {
 		if (rtn != IDER_SUCCESS) {

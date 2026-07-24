@@ -965,6 +965,40 @@ ata_mode_to_mask(ata_mode_t mode)
 	 * It seems that ATA-3 defined a IDENTIFY DEVICE DMA command, but they
 	 * no longer exist in ATA-4. Did they get dropped?
 	 */
+
+	/*
+	 * IRQ health check: run one interrupt-driven READ VERIFY on the first
+	 * present ATA drive with a short timeout. If it completes only when we
+	 * poll the status (no interrupt delivered), switch to polled mode so a
+	 * misrouted/native-mode IRQ does not hang every command.
+	 */
+	if (!_pollMode) {
+		int u;
+		for (u = 0; u < MAX_IDE_DRIVES; u++) {
+			unsigned char st;
+			unsigned int saved;
+			ideRegsVal_t rv;
+			if (_drives[u].ideInfo.type == 0 || [self isAtapiDevice:u])
+				continue;
+			_driveNum = u;
+			saved = [self interruptTimeOut];
+			[self setInterruptTimeOut:IDE_INTR_TIMEOUT_FAST];
+			[self clearInterrupts];
+			rv = [self logToPhys:0 numOfBlocks:1];
+			if ([self ideReadVerifySeekCommon:&rv command:IDE_READ_VERIFY]
+					!= IDER_SUCCESS) {
+				/* No interrupt within the short window. Did it finish anyway? */
+				if ([self pollForCompletion:&st] == IDER_SUCCESS) {
+					_pollMode = YES;
+					IOLog("%s: no IDE interrupt detected; using polled mode\n",
+						[self name]);
+				}
+			}
+			[self setInterruptTimeOut:saved];
+			break;
+		}
+	}
+
 	for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
 
 		_driveNum = unit;

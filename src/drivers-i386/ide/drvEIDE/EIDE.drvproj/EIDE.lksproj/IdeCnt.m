@@ -224,6 +224,9 @@ static unsigned short lastCommand = 0;
 - (ide_return_t)ideWaitForInterrupt:(unsigned int)command
 			  ideStatus:(unsigned char *)status
 {
+	if (_pollMode)
+		return [self pollForCompletion:status];
+
 #ifdef NO_IRQ_MSG
 	ide_return_t	ret;
 	u_int 			s;
@@ -390,6 +393,26 @@ static unsigned short lastCommand = 0;
 #endif undef
     }
 
+    return IDER_TIMEOUT;
+}
+
+- (ide_return_t)pollForCompletion:(unsigned char *)status
+{
+    int delay = MAX_BUSY_DELAY;
+    unsigned char s;
+    delay -= 2;
+    while (delay > 0) {
+	s = inb(_ideRegsAddrs.altStatus);   /* no interrupt ack */
+	if (!(s & BUSY)) {
+	    if (status != NULL)
+		*status = inb(_ideRegsAddrs.status);  /* ack */
+	    else
+		inb(_ideRegsAddrs.status);
+	    return IDER_SUCCESS;
+	}
+	if (delay % 1000) { IODelay(2); delay -= 2; }
+	else		  { IOSleep(1); delay -= 1000; }
+    }
     return IDER_TIMEOUT;
 }
 

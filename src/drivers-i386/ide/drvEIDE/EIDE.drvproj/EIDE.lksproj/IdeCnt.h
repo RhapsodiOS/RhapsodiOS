@@ -129,6 +129,7 @@ typedef struct {
 	ideIdentifyInfo_t	*ideIdentifyInfo;
 	u_short				dmaChannel;
 	u_short				multiSector;
+	BOOL				multiSectorDisabled;	/* test failed on this drive */
 	u_char				addressMode;	/* LBA or CHS */
 	txferModes_t		driveModes;		/* supported modes */
 	txferModes_t		driveMasks;		/* masks */

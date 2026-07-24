@@ -399,19 +399,18 @@ ata_mode_to_mask(ata_mode_t mode)
 		}
 	}
 
-#if 0
     /*
      * Does the host support IOCHRDY? There is no way for the driver to find
      * this out. The user has to set this flag.
      */
+	_IOCHRDYSupport = NO;
     params = [[deviceDescription configTable] 
     			valueForStringKey: HOST_IORDY_SUPPORT];
-
-    if ((params == NULL) || (strcmp(params, "Yes") != 0))
-	_IOCHRDYSupport = NO;
-    else
-	_IOCHRDYSupport = YES;  
-#endif /* 0 */
+	if (params) {
+		if ((*params == 'Y') || (*params == 'y'))
+			_IOCHRDYSupport = YES;
+		[configTable freeString:params];
+	}
 
     _transferWidth = IDE_TRANSFER_16_BIT;
 
@@ -609,8 +608,12 @@ ata_mode_to_mask(ata_mode_t mode)
 			(_chipCaps.maxUDMA != ATA_MODE_NUM_NONE))
 			_controllerModes.mode.udma = ata_mode_to_mask(1 << _chipCaps.maxUDMA);
 	} else {
-		/* Legacy ISA / unknown: assume PIO Mode 4 like the old code. */
-		_controllerModes.mode.pio = ata_mode_to_mask(ATA_MODE_4);
+		/* PIO modes 3 and 4 need host IORDY, which we cannot detect.
+		 * Trust the user's "IOCHRDY Support" setting; otherwise stay at
+		 * the fastest mode that needs no host timing programming.
+		 */
+		_controllerModes.mode.pio = ata_mode_to_mask(
+			_IOCHRDYSupport ? ATA_MODE_4 : ATA_MODE_2);
 	}
 }
 
@@ -1054,7 +1057,7 @@ ata_mode_to_mask(ata_mode_t mode)
 	    		addr:buf] != IDER_SUCCESS) {
 	    		IOLog("%s: Drive %d: Read Multiple test FAILED\n",
 					[self name], unit);
-				_multiSectorRequested = NO;
+				_drives[unit].multiSectorDisabled = YES;
 				retry = YES;
 	    	}
 	    	IOFree(buf, _drives[unit].multiSector * IDE_SECTOR_SIZE);
@@ -1291,6 +1294,8 @@ ata_mode_to_mask(ata_mode_t mode)
 	ide_return_t rtn;
     ideIdentifyInfo_t *infoPtr = _drives[unit].ideIdentifyInfo;
 
+    bzero((unsigned char *)&ideRegs, sizeof(ideRegs));
+
     _drives[unit].ideIdentifyInfoSupported = YES;
     bzero(infoPtr, sizeof(ideIdentifyInfo_t));
 
@@ -1381,7 +1386,8 @@ ata_mode_to_mask(ata_mode_t mode)
 	 */
 	nSectors = infoPtr->multipleSectors & IDE_MULTI_SECTOR_MASK;
 	if ((_drives[unit].transferType == IDE_TRANSFER_PIO) &&
-		(nSectors) && (_multiSectorRequested == YES)) {
+		(nSectors) && (_multiSectorRequested == YES) &&
+		(_drives[unit].multiSectorDisabled == NO)) {
 		if ([self ideSetMultiSectorMode:&ideRegs numSectors:nSectors] ==
 			IDER_SUCCESS) {
 			_drives[unit].multiSector = nSectors;

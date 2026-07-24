@@ -8,4 +8,4 @@ RemoteRoot=/build/source
 Plink=plink.exe
 Pscp=pscp.exe
 Make=gnumake
-SyncPaths=src;ninja
+SyncPaths=src

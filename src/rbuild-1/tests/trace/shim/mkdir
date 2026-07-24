@@ -1,0 +1,7 @@
+#!/bin/sh
+# Unlike the other tool shims, mkdir must actually create the directory:
+# both oracles later do direct (non-exec'd) fopen()/opendir() calls -- e.g.
+# writing $BUILDROOT/var/adm/package-list -- that require the tree to be
+# real, not merely logged.
+echo "mkdir $*" >> "$RBUILD_TRACE"
+exec /bin/mkdir "$@"

@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "cvs $*" >> "$RBUILD_TRACE"
+exit 0

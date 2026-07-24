@@ -1,0 +1,7 @@
+#!/bin/sh
+# Logs "chroot <args>" to $RBUILD_TRACE, then, so the caller's logic can
+# proceed, executes the *rest* of the command line through the shim PATH
+# when the pattern is "chroot <root> <cmd...>". For trace purposes we only
+# need the log line; we do NOT actually chroot.
+echo "chroot $*" >> "$RBUILD_TRACE"
+exit 0

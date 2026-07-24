@@ -1,0 +1,6 @@
+Package: netinfo
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer, Inc.
+Version: 2.6
+Description: NetInfo server daemon and tools
+Build-Depends: build-base

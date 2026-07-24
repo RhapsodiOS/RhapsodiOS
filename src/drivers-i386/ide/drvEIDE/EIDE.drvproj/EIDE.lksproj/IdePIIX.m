@@ -215,8 +215,6 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 			[self name], baseClass, subClass);
 		return NO;
 	}
-	_progIf = progIf;   /* new ivar, see IdeCnt.h */
-
 	if (intelMatch(_controllerID, progIf, &_chipCaps)) {
 		_chipsetOps = &ideIntelOps;
 	} else if (ideGenericOps.match(_controllerID, progIf, &_chipCaps)) {

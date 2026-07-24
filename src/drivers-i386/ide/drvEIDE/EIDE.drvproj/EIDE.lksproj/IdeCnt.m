@@ -345,15 +345,9 @@ static unsigned short lastCommand = 0;
 
 	[self resetController];
 			
-	if ((_controllerID == PCI_ID_PIIX) ||
-		(_controllerID == PCI_ID_PIIX3) ||
-		(_controllerID == PCI_ID_PIIX4) ||
-		(_controllerID == PCI_ID_PIIX4E) ||
-		(_controllerID == PCI_ID_PIIX4M)) {
-		if (_prdTable.ptr)
-			IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
-	}
-	
+	if (_prdTable.ptr)
+		IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
+
 	for (n = 0; n < MAX_IDE_DRIVES; n++) {
 		if (_drives[n].ideIdentifyInfo)
 			IOFree(_drives[n].ideIdentifyInfo, sizeof(ideIdentifyInfo_t));

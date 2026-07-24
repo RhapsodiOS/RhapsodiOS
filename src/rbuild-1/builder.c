@@ -286,11 +286,13 @@ void builder_buildflags(const Params *params, const char *target, strlist *out) 
 }
 
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
-                      const char *target, strlist *out) {
+                      const char *target, strlist *out, int native) {
     size_t i;
     strlist flags;
-    strlist_push(out, "chroot");
-    strlist_push(out, chroot_params->BUILDROOT);
+    if (!native) {
+        strlist_push(out, "chroot");
+        strlist_push(out, chroot_params->BUILDROOT);
+    }
     strlist_push(out, "make");
     strlist_push(out, "-w");
     strlist_push(out, "-C");
@@ -938,7 +940,7 @@ int builder_build(const char *srctype, const char *srcname,
 
     if (do_hdr) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "installhdrs", &cmd);
+        builder_buildcmd(&params, &bparams, "installhdrs", &cmd, 0);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
@@ -946,7 +948,7 @@ int builder_build(const char *srctype, const char *srcname,
 
     if (do_bin) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "install", &cmd);
+        builder_buildcmd(&params, &bparams, "install", &cmd, 0);
         if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");

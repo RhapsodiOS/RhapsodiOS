@@ -1,5 +1,6 @@
 #include "builder.h"
 #include "test.h"
+#include "exec.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -134,6 +135,35 @@ TEST(test_buildflags) {
     params_free(&p);
 }
 
+TEST(test_buildcmd_native) {
+    Params cp, bp;
+    strlist cmd;
+    params_init(&cp); params_init(&bp);
+    cp.BUILDROOT = xstrdup("/br");
+    bp.SRCROOT = xstrdup("/s"); bp.OBJROOT = xstrdup("/o");
+    bp.SYMROOT = xstrdup("/y"); bp.DSTROOT = xstrdup("/d");
+    bp.HDRROOT = xstrdup("/h"); bp.SUBLIBROOTS = xstrdup("/objs");
+
+    /* native: no chroot wrapper, make is first token, -C uses SRCROOT */
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, 1);
+    CHECK_STR(cmd.items[0], "make");
+    CHECK(!list_has(&cmd, "chroot"));
+    CHECK(!list_has(&cmd, "/br"));
+    CHECK(list_has(&cmd, "/s"));         /* -C <SRCROOT> */
+    strlist_free(&cmd);
+
+    /* non-native: chroot wrapper present */
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, 0);
+    CHECK_STR(cmd.items[0], "chroot");
+    CHECK_STR(cmd.items[1], "/br");
+    CHECK_STR(cmd.items[2], "make");
+    strlist_free(&cmd);
+
+    params_free(&cp); params_free(&bp);
+}
+
 TEST(test_scan_dir) {
     Package pkg;
     Params params;
@@ -168,6 +198,7 @@ static void run_all(void) {
     RUN(test_canonparams);
     RUN(test_chrootparams);
     RUN(test_buildflags);
+    RUN(test_buildcmd_native);
     RUN(test_scan_dir);
 }
 

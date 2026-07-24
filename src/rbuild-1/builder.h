@@ -35,7 +35,7 @@ void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
 
 void builder_buildflags(const Params *params, const char *target, strlist *out);
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
-                      const char *target, strlist *out);
+                      const char *target, strlist *out, int native);
 
 int builder_scan_dir(const char *source, Package *pkg, Params *params);
 int builder_scan(const char *type, const char *source, Package *pkg, Params *params);

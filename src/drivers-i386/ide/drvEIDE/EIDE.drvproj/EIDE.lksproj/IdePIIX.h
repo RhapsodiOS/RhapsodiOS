@@ -58,13 +58,7 @@
  */
 - (BOOL) probePCIController:(IOPCIDeviceDescription *)devDesc;
 
-- (void) getPCIControllerCapabilities:(txferModes_t *)modes;
-
-- (BOOL) setPCIControllerCapabilitiesForDrives:(driveInfo_t *)drives;
-
 - (ideTransferWidth_t) getPIOTransferWidth;
-
-- (void) resetPCIController;
 
 - (ide_return_t) performDMA:(ideIoReq_t *)ideIoReq;
 

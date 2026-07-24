@@ -60,6 +60,80 @@
 #define MAX(a,b)    ((a) > (b) ? (a) : (b))
 #endif  MAX
 
+/* Per-chip capabilities. Modes are ATA mode NUMBERS. */
+typedef struct {
+	unsigned long id;
+	const char   *name;
+	unsigned char maxPIO;    /* 4 for all these parts */
+	unsigned char maxMWDMA;  /* 2, or ATA_MODE_NUM_NONE */
+	unsigned char maxUDMA;   /* per chip, or ATA_MODE_NUM_NONE */
+	unsigned int  flags;     /* CHIP_FLAG_HAS_IDECONFIG for ICH */
+} intelChip_t;
+
+static const intelChip_t intelChips[] = {
+	{ 0x12308086, "PIIX",   4, 2, ATA_MODE_NUM_NONE, 0 },
+	{ 0x70108086, "PIIX3",  4, 2, ATA_MODE_NUM_NONE, 0 },
+	{ 0x71118086, "PIIX4",  4, 2, 2, 0 },
+	{ 0x71128086, "PIIX4E", 4, 2, 2, 0 },
+	{ 0x71138086, "PIIX4M", 4, 2, 2, 0 },
+	{ 0x24218086, "ICH0",   4, 2, 2, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24118086, "ICH",    4, 2, 4, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x244A8086, "ICH2-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x244B8086, "ICH2",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x248A8086, "ICH3-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x248B8086, "ICH3",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24CA8086, "ICH4-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24CB8086, "ICH4",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0, 0, 0, 0, 0, 0 }
+};
+
+static const intelChip_t *intelLookup(unsigned long id)
+{
+	const intelChip_t *c;
+	for (c = intelChips; c->id != 0; c++)
+		if (c->id == id) return c;
+	return NULL;
+}
+
+static BOOL intelMatch(unsigned long pciID, unsigned char progIf,
+	ideChipCaps_t *out)
+{
+	const intelChip_t *c = intelLookup(pciID);
+	if (c == NULL) return NO;
+	out->maxPIO   = c->maxPIO;
+	out->maxMWDMA = c->maxMWDMA;
+	out->maxUDMA  = c->maxUDMA;
+	out->flags    = c->flags | ((progIf & PCI_IDE_BUSMASTER) ? CHIP_FLAG_BUSMASTER : 0);
+	return YES;
+}
+
+static void intelSetTiming(id self, void *drives)
+{
+	IOPCIConfigSpace configSpace;
+	[self getPCIConfigSpace:&configSpace];
+	[self PIIXComputePCIConfigSpace:&configSpace forDrives:(driveInfo_t *)drives];
+	[self setPCIConfigSpace:&configSpace];
+}
+
+static void intelResetTiming(id self)
+{
+	[self PIIXInit];
+	[self PIIXResetTimings:[self deviceDescription]];
+}
+
+static BOOL intelDetectCable(id self)
+{
+	return [self PIIXDetect80WireCable:[self deviceDescription]];
+}
+
+const ideChipsetOps_t ideIntelOps = {
+	"Intel PIIX/ICH",
+	intelMatch,
+	intelSetTiming,
+	intelResetTiming,
+	intelDetectCable
+};
+
 @implementation IdeController(PIIX)
 
 /*
@@ -78,7 +152,6 @@
 {
     unsigned char 	devNum, funcNum, busNum;
     const char 		*value;
-	const char		*deviceName;
 	IOConfigTable 	*configTable;
     IOReturn 		rtn;
     const id self_class = [self class];
@@ -117,39 +190,16 @@
 		return NO;
     }	  
 
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-			deviceName = "PIIX";
-			break;
-		case PCI_ID_PIIX3:
-			deviceName = "PIIX3";
-			break;
-		case PCI_ID_PIIX4:
-			deviceName = "PIIX4";
-			break;
-		case PCI_ID_PIIX4E:
-			deviceName = "PIIX4E";
-			break;
-		case PCI_ID_PIIX4M:
-			deviceName = "PIIX4M";
-			break;
-		default:
-			IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
-				[self name], _controllerID);
-			_controllerID = PCI_ID_NONE;
-			return NO;
+	if (intelMatch(_controllerID, 0 /* progIf filled in later */, &_chipCaps)) {
+		_chipsetOps = &ideIntelOps;
+	} else {
+		IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
+			[self name], _controllerID);
+		_controllerID = PCI_ID_NONE;
+		return NO;   /* Task 4 replaces this with the generic fallback */
 	}
-
-	/*
-	 * Report the PCI controller found.
-	 */
 	IOLog("%s: %s PCI IDE Controller at Dev:%d Func:%d Bus:%d\n",
-		[self name], deviceName, devNum, funcNum, busNum);
-
-	/*
-	 * At this point, we are certain that we are dealing with a
-	 * Intel PIIX class controller.
-	 */
+		[self name], _chipsetOps->name, devNum, funcNum, busNum);
 	return ([self PIIXInitController:devDesc]);
 }
 
@@ -233,7 +283,8 @@
 		_busMaster = YES;
 	else
 		_busMaster = NO;
-	
+	if (_busMaster) _chipCaps.flags |= CHIP_FLAG_BUSMASTER;
+
 	/*
 	 * Fetch the corresponding primary/secondary IDETIM register and
 	 * verify that the individual channels are enabled.
@@ -300,33 +351,6 @@
 }
 
 /*
- * Method: getPCIControllerCapabilities
- *
- * Return the capability of the PCI IDE controller in 'm'.
- *
- */
-- (void) getPCIControllerCapabilities:(txferModes_t *)m
-{
-	m->mode.swdma = m->mode.mwdma = m->mode.udma = ATA_MODE_NONE;
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
-			if (_busMaster) {
-				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
-				if ((_controllerID == PCI_ID_PIIX4) ||
-				    (_controllerID == PCI_ID_PIIX4E) ||
-				    (_controllerID == PCI_ID_PIIX4M))
-					m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
-			}
-			break;
-	}
-}
-
-/*
  * Get the PIO port transfer width. This refers to the width of the
  * I/O transfer on the PIO port, the IDE bus width is always 16-bits.
  *
@@ -336,26 +360,6 @@
 - (ideTransferWidth_t) getPIOTransferWidth
 {
 	return (IDE_TRANSFER_32_BIT);
-}
-
-/*
- * Method: resetPCIController
- *
- * Not a true RESET, simply return the PCI controller to a quiescent state
- * and return all IDE ports to the default timing.
- */
-- (void) resetPCIController
-{
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			[self PIIXInit];
-			[self PIIXResetTimings:[self deviceDescription]];
-			break;
-	}
 }
 
 /*
@@ -469,39 +473,6 @@
 	IOLog("%s: Drive 1 Fast timing enable  : %s\n", [self name],
 		tim.bits.time1 ? "on" : "off");
 #endif 0
-}
-
-/*
- * Method: setPCIControllerCapabilities
- *
- * Purpose:
- * Based on the transfer modes and types for both IDE drives, setup the
- * controller to support those modes.
- *
- */
-- (BOOL) setPCIControllerCapabilitiesForDrives:(driveInfo_t *)drives
-{
-	IOPCIConfigSpace configSpace;
-
-	if (_controllerID == PCI_ID_NONE)
-		return NO;
-
-	[self getPCIConfigSpace:&configSpace];
-
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			[self PIIXComputePCIConfigSpace:&configSpace forDrives:drives];
-			break;
-		default:
-			return NO;
-	}
-
-	[self setPCIConfigSpace:&configSpace];
-    return YES;
 }
 
 /*

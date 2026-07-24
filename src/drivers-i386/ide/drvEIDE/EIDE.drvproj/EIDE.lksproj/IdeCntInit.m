@@ -595,20 +595,22 @@ ata_mode_to_mask(ata_mode_t mode)
  */
 - (void) getControllerCapability
 {
-	/*
-	 * Set default values.
-	 */
-	_controllerModes.mode.pio   = ATA_MODE_0;
+	_controllerModes.mode.pio   = ata_mode_to_mask(ATA_MODE_0);
 	_controllerModes.mode.swdma = ATA_MODE_NONE;
 	_controllerModes.mode.mwdma = ATA_MODE_NONE;
 	_controllerModes.mode.udma  = ATA_MODE_NONE;
-	
-	if (_controllerID != PCI_ID_NONE)
-		[self getPCIControllerCapabilities:(txferModes_t *)&_controllerModes];
-	else {
-		// Assume all IDE controllers are capable of PIO Mode 4
-		//
-		_controllerModes.mode.pio   = ata_mode_to_mask(ATA_MODE_4);
+
+	if (_chipsetOps != NULL) {
+		_controllerModes.mode.pio = ata_mode_to_mask(1 << _chipCaps.maxPIO);
+		if ((_chipCaps.flags & CHIP_FLAG_BUSMASTER) &&
+			(_chipCaps.maxMWDMA != ATA_MODE_NUM_NONE))
+			_controllerModes.mode.mwdma = ata_mode_to_mask(1 << _chipCaps.maxMWDMA);
+		if ((_chipCaps.flags & CHIP_FLAG_BUSMASTER) &&
+			(_chipCaps.maxUDMA != ATA_MODE_NUM_NONE))
+			_controllerModes.mode.udma = ata_mode_to_mask(1 << _chipCaps.maxUDMA);
+	} else {
+		/* Legacy ISA / unknown: assume PIO Mode 4 like the old code. */
+		_controllerModes.mode.pio = ata_mode_to_mask(ATA_MODE_4);
 	}
 }
 
@@ -1019,10 +1021,8 @@ ata_mode_to_mask(ata_mode_t mode)
  */
 - (void)resetController
 {
-	/*
-	 * Return the controller to the compatible timing mode.
-	 */
-	[self resetPCIController];
+	if (_chipsetOps != NULL && _chipsetOps->resetTiming != NULL)
+		_chipsetOps->resetTiming(self);
 }
 
 /*
@@ -1175,9 +1175,8 @@ ata_mode_to_mask(ata_mode_t mode)
  */
 - (BOOL) setControllerCapabilities
 {
-	if (_controllerID != PCI_ID_NONE) {
-		if ([self setPCIControllerCapabilitiesForDrives:_drives] == NO)
-			return NO;
+	if (_chipsetOps != NULL && _chipsetOps->setTiming != NULL) {
+		_chipsetOps->setTiming(self, _drives);
 		_transferWidth = [self getPIOTransferWidth];
 		return YES;
 	}

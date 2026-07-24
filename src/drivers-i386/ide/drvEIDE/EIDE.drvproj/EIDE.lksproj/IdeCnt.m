@@ -254,6 +254,9 @@ static unsigned short lastCommand = 0;
 		ret = IDER_SUCCESS;
     }
     else {
+		if ([self recoverFromLostInterrupt:status command:command] ==
+			IDER_SUCCESS)
+			return IDER_SUCCESS;
 		IOLog("%s: interrupt timeout, cmd: 0x%0x\n", [self name], command);
 		ret = IDER_CMD_ERROR;
 	}
@@ -293,6 +296,9 @@ static unsigned short lastCommand = 0;
 		return IDER_SUCCESS;
     }
     
+    if ([self recoverFromLostInterrupt:status command:command] == IDER_SUCCESS)
+		return IDER_SUCCESS;
+
     if (result == RCV_TIMED_OUT)
 		IOLog("%s: interrupt timeout, cmd: 0x%0x\n", [self name], command);
     else
@@ -408,6 +414,32 @@ static unsigned short lastCommand = 0;
 	else		  { IOSleep(1); delay -= 1000; }
     }
     return IDER_TIMEOUT;
+}
+
+/*
+ * Called after an interrupt wait has timed out. We have already waited the
+ * full timeout, so if the drive is no longer busy the command did complete
+ * and the interrupt simply never reached us (a misrouted or lost IRQ).
+ * Take the result and switch to polled mode so that we do not pay the
+ * timeout on every subsequent command.
+ */
+- (ide_return_t)recoverFromLostInterrupt:(unsigned char *)status
+			command:(unsigned int)command
+{
+	if (inb(_ideRegsAddrs.altStatus) & BUSY)
+		return IDER_CMD_ERROR;		/* really stuck */
+
+	if (status != NULL)
+		*status = inb(_ideRegsAddrs.status);	/* acknowledge */
+	else
+		inb(_ideRegsAddrs.status);
+
+	if (_pollMode == NO) {
+		_pollMode = YES;
+		IOLog("%s: lost IDE interrupt (cmd 0x%x); using polled mode\n",
+			[self name], command);
+	}
+	return IDER_SUCCESS;
 }
 
 - (ide_return_t)waitForDeviceReady

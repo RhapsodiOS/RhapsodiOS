@@ -243,6 +243,8 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
  */
 - (ide_return_t)waitForNotBusy;
 - (ide_return_t)pollForCompletion:(unsigned char *)status;
+- (ide_return_t)recoverFromLostInterrupt:(unsigned char *)status
+			command:(unsigned int)command;
 - (ide_return_t)waitForDeviceReady;
 - (ide_return_t)waitForDataReady;
 - (ide_return_t)waitForDeviceIdle;

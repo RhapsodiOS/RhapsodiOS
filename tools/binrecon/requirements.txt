@@ -1,0 +1,2 @@
+angr==9.3.0
+jsonschema==4.26.0

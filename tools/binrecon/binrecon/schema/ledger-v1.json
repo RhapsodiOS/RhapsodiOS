@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ledger-v1.json",
+  "title": "Binrecon ledger, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "reference_sha256", "rebuilt_sha256", "entries"],
+  "properties": {
+    "schema_version": {"const": "ledger-v1"},
+    "reference_sha256": {"$ref": "#/$defs/sha256"},
+    "rebuilt_sha256": {
+      "anyOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "names", "source_path", "source_line", "status", "analyzer_agreement", "artifacts", "reason", "reviewer"],
+      "properties": {
+        "address": {"type": "integer", "minimum": 0},
+        "size": {"type": "integer", "minimum": 0},
+        "names": {"type": "array", "items": {"type": "string"}},
+        "source_path": {"type": ["string", "null"]},
+        "source_line": {
+          "anyOf": [
+            {"type": "integer", "minimum": 1},
+            {"type": "null"}
+          ]
+        },
+        "status": {
+          "enum": ["unexamined", "signature-confirmed", "control-flow-confirmed", "assembly-matched", "intentional-mismatch"]
+        },
+        "analyzer_agreement": {},
+        "artifacts": {"type": "array"},
+        "reason": {"type": ["string", "null"]},
+        "reviewer": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

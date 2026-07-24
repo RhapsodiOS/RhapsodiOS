@@ -1,0 +1,51 @@
+{
+  "schema_version": "eisabus-analyzer-consistency-diagnostic-v1",
+  "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
+  "ida": {
+    "invalid_sections": [
+      {"name": "__text", "address": 0, "offset": 2396, "size": 28808, "analysis_sha256": "E06EC423F2529FF30460BCDA13F8344E257C738DDB774C4C537B78B137D79FBD", "artifact_sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E"},
+      {"name": "__bss", "address": 33024, "offset": 35420, "size": 56, "analysis_sha256": "38090A630FB9254225A1C802CD8F8F7B302A0A0C2690B2A52C1A683CCD6920F1", "artifact_sha256": "D4817AA5497628E7C77E6B606107042BBBA3130888C5F47A375E6179BE789FBB"},
+      {"name": "__common", "address": 33080, "offset": 35476, "size": 7880, "analysis_sha256": "F3F1ECA47EE60E170FCC59678645EEF0C667634C650D2E03FB984FFC26D980C8", "artifact_sha256": "AD5345954A23D42BBACD56D55A6E79C848369307B95FA96AC5CEFCBC3C271DE9"},
+      {"name": "UNDEF", "address": 57616, "offset": 60012, "size": 180, "analysis_sha256": "E08C7A0233FE3424E06449F8B19133016749482CBA857F59774D4B29267990E0", "artifact_sha256": "10B2A66888C58A54B277FE2E68FB6E87150C3CD2C537B7F6A2D84559017438C7"}
+    ],
+    "instruction_mismatch_count": 676,
+    "instruction_mismatches_with_relocation_count": 676,
+    "affected_function_count": 97,
+    "first_instruction_mismatch": {
+      "address": 49,
+      "file_offset": 2445,
+      "function": "-[EISAKernBusInterrupt initForResource:item:shareable:]",
+      "ida_bytes": "E86EE10000",
+      "artifact_bytes": "E8CAFFFFFF",
+      "relocation_index": 1,
+      "relocation": {"address": 50, "kind": "ida-off32-32", "target": "_objc_msgSendSuper", "addend": 57710}
+    },
+    "overlap_pair_count": 1,
+    "overlap_affected_function_count": 2,
+    "first_overlap": {
+      "outer": {"name": "__PnPEntry", "start": 28652, "end": 28755},
+      "inner": {"name": "push_arg", "start": 28708, "end": 28714},
+      "shared_instruction_bytes": false,
+      "shared_block_bytes": false
+    }
+  },
+  "angr": {
+    "function_count": 430,
+    "overlap_pair_count": 149,
+    "overlap_affected_function_count": 207,
+    "contained_pair_count": 149,
+    "partial_pair_count": 0,
+    "shared_instruction_byte_pair_count": 0,
+    "shared_block_byte_pair_count": 0,
+    "synthetic_overlap_function_count": 207,
+    "inner_fragment_count": 149,
+    "inner_fragment_size_counts": {"1": 56, "2": 41, "3": 52},
+    "inner_fragments_all_nop": true,
+    "first_overlap": {
+      "outer": {"name": "sub_110", "start": 272, "end": 397},
+      "inner": {"name": "sub_126", "start": 294, "end": 296, "instructions": ["90", "90"]},
+      "shared_instruction_bytes": false,
+      "shared_block_bytes": false
+    }
+  }
+}

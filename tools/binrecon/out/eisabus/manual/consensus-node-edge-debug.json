@@ -1,0 +1,411 @@
+{
+  "counts": [
+    {
+      "layer": "analysis",
+      "analyzer": "IDA",
+      "nodes": 143483,
+      "depth": 7,
+      "bytes": 2189342,
+      "cap": 1000000
+    },
+    {
+      "layer": "normalized",
+      "analyzer": "IDA",
+      "nodes": 430730,
+      "depth": 11,
+      "cap": 1000000
+    },
+    {
+      "layer": "analysis",
+      "analyzer": "Ghidra",
+      "nodes": 372489,
+      "depth": 7,
+      "bytes": 5638294,
+      "cap": 1000000
+    },
+    {
+      "layer": "normalized",
+      "analyzer": "Ghidra",
+      "nodes": 742912,
+      "depth": 10,
+      "cap": 1000000
+    },
+    {
+      "layer": "analysis",
+      "analyzer": "angr",
+      "nodes": 144372,
+      "depth": 7,
+      "bytes": 2161551,
+      "cap": 1000000
+    },
+    {
+      "layer": "normalized",
+      "analyzer": "angr",
+      "nodes": 449635,
+      "depth": 7,
+      "cap": 1000000
+    },
+    {
+      "layer": "consensus",
+      "analyzer": "aggregate",
+      "nodes": 1916833,
+      "depth": 13,
+      "groups": 602,
+      "cap": 1000000
+    }
+  ],
+  "duplicate_edge_functions": [
+    {
+      "analyzer": "Ghidra",
+      "function_index": 30,
+      "function_range": {
+        "section": {
+          "name": "__TEXT,__text",
+          "offset": 2396,
+          "size": 28808,
+          "permissions": "r-x",
+          "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+          "occurrence": 0
+        },
+        "start": 5560,
+        "end": 5787
+      },
+      "aliases": [
+        "_isolateCard"
+      ],
+      "duplicate_sets": [
+        [
+          [
+            1,
+            {
+              "source": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 5632
+              },
+              "target": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 0
+              },
+              "kind": "UNCONDITIONAL_CALL"
+            }
+          ],
+          [
+            2,
+            {
+              "source": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 5632
+              },
+              "target": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 0
+              },
+              "kind": "UNCONDITIONAL_CALL"
+            }
+          ],
+          [
+            3,
+            {
+              "source": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 5632
+              },
+              "target": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 0
+              },
+              "kind": "UNCONDITIONAL_CALL"
+            }
+          ]
+        ],
+        [
+          [
+            10,
+            {
+              "source": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 5692
+              },
+              "target": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 0
+              },
+              "kind": "UNCONDITIONAL_CALL"
+            }
+          ],
+          [
+            11,
+            {
+              "source": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 5692
+              },
+              "target": {
+                "kind": "section",
+                "section": {
+                  "name": "__TEXT,__text",
+                  "offset": 2396,
+                  "size": 28808,
+                  "permissions": "r-x",
+                  "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                  "occurrence": 0
+                },
+                "offset": 0
+              },
+              "kind": "UNCONDITIONAL_CALL"
+            }
+          ]
+        ]
+      ],
+      "out_of_order": []
+    }
+  ],
+  "first_duplicate": {
+    "analyzer": "Ghidra",
+    "function_index": 30,
+    "function_range": {
+      "section": {
+        "name": "__TEXT,__text",
+        "offset": 2396,
+        "size": 28808,
+        "permissions": "r-x",
+        "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+        "occurrence": 0
+      },
+      "start": 5560,
+      "end": 5787
+    },
+    "aliases": [
+      "_isolateCard"
+    ],
+    "duplicate_sets": [
+      [
+        [
+          1,
+          {
+            "source": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 5632
+            },
+            "target": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 0
+            },
+            "kind": "UNCONDITIONAL_CALL"
+          }
+        ],
+        [
+          2,
+          {
+            "source": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 5632
+            },
+            "target": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 0
+            },
+            "kind": "UNCONDITIONAL_CALL"
+          }
+        ],
+        [
+          3,
+          {
+            "source": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 5632
+            },
+            "target": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 0
+            },
+            "kind": "UNCONDITIONAL_CALL"
+          }
+        ]
+      ],
+      [
+        [
+          10,
+          {
+            "source": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 5692
+            },
+            "target": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 0
+            },
+            "kind": "UNCONDITIONAL_CALL"
+          }
+        ],
+        [
+          11,
+          {
+            "source": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 5692
+            },
+            "target": {
+              "kind": "section",
+              "section": {
+                "name": "__TEXT,__text",
+                "offset": 2396,
+                "size": 28808,
+                "permissions": "r-x",
+                "sha256": "A5FDD923E268DF0F4CCFDD0F32696D663DD097E267BDDDFE22905AA5BCD0861E",
+                "occurrence": 0
+              },
+              "offset": 0
+            },
+            "kind": "UNCONDITIONAL_CALL"
+          }
+        ]
+      ]
+    ],
+    "out_of_order": []
+  }
+}

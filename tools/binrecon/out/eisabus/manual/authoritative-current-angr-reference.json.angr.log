@@ -1,0 +1,2 @@
+ERROR    | 2026-07-22 07:07:33,945 | angr.state_plugins.unicorn_engine | failed loading "unicornlib.dll", unicorn support disabled ('NoneType' object has no attribute 'unicorn_py3')
+ERROR    | 2026-07-22 07:07:35,111 | cle.backends.macho.macho | Binary is not using MH_TWOLEVEL namespacing.This isn't properly implemented yet and will degrade results in unpredictable ways.Please open an issue if you encounter this with a binary you can share

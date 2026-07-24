@@ -1,0 +1,38 @@
+{
+  "schema_version": "profile-v1",
+  "name": "EISABus reconstruction example",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}"
+  },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.2/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.2"
+    },
+    "ghidra": {
+      "enabled": true,
+      "executable": "D:/ghidra/support/analyzeHeadless.bat",
+      "timeout_seconds": 900,
+      "version": "12.1"
+    },
+    "angr": {
+      "enabled": true,
+      "executable": ".venv-binrecon/Scripts/python.exe",
+      "timeout_seconds": 900,
+      "version": "9.3.0"
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/example"
+}

@@ -1,0 +1,160 @@
+=== IDA native log ===
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll: can't load file
+Possible file format: Mach-O file (PRELOAD). I386 (C:\Program Files\IDA Professional 9.2\loaders\macho.dll)
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+   524288    64 8192 allocating memory for b-tree...
+   401408    49 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+  1187840            total memory allocated
+
+Loading file 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.rebuilt-baseline\EISABus_reloc' into database...
+Detected file format: Mach-O file (PRELOAD). I386
+Loading processor module C:\Program Files\IDA Professional 9.2\procs\pc.dll for metapc...OK
+Autoanalysis subsystem has been initialized.
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll: can't load file
+Assuming __cdecl calling convention by default
+Type library 'macosx_sdk14' loaded. Applying types...
+Types applied to 0 names.
+  0. Creating a new segment  (00000000-00007088) ... ... OK
+  1. Creating a new segment  (00007088-00007EA4) ... ... OK
+  2. Creating a new segment  (00007EA4-00008000) ... ... OK
+  3. Creating a new segment  (00008000-00008100) ... ... OK
+  4. Creating a new segment  (00008100-00008138) ... ... OK
+  5. Creating a new segment  (00008138-0000A000) ... ... OK
+  6. Creating a new segment  (0000A000-0000A00C) ... ... OK
+  7. Creating a new segment  (0000A00C-0000A108) ... ... OK
+  8. Creating a new segment  (0000A108-0000A2F8) ... ... OK
+  9. Creating a new segment  (0000A2F8-0000A354) ... ... OK
+ 10. Creating a new segment  (0000A354-0000A624) ... ... OK
+ 11. Creating a new segment  (0000A624-0000A8F4) ... ... OK
+ 12. Creating a new segment  (0000A8F4-0000A984) ... ... OK
+ 13. Creating a new segment  (0000A984-0000AF9C) ... ... OK
+ 14. Creating a new segment  (0000AF9C-0000AFB0) ... ... OK
+ 15. Creating a new segment  (0000AFB0-0000B1F0) ... ... OK
+ 16. Creating a new segment  (0000B1F0-0000B5CF) ... ... OK
+ 17. Creating a new segment  (0000B5CF-0000C1C0) ... ... OK
+ 18. Creating a new segment  (0000C1C0-0000C1E8) ... ... OK
+ 19. Creating a new segment  (0000C1E8-0000C5AC) ... ... OK
+ 20. Creating a new segment  (0000C5AC-0000C60C) ... ... OK
+ 21. Creating a new segment  (0000C60C-0000E000) ... ... OK
+ 22. Creating a new segment  (0000E000-0000E007) ... ... OK
+ 23. Creating a new segment  (0000E007-0000E0AB) ... ... OK
+ 24. Creating a new segment  (0000E0AB-0000E0BB) ... ... OK
+ 25. Creating a new segment  (0000E0BB-0000E0BC) ... ... OK
+ 26. Creating a new segment  (0000E0C0-0000E110) ... ... OK
+ 27. Creating a new segment  (0000E110-0000E1C4) ... ... OK
+OBJC: Identified legacy Objective-C runtime
+[autohidden] Objective-C structures have been detected.
+Do you want to parse them and rename methods? -> Yes
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+Coherency check failed: (_listptr & 0x1) == 0
+OBJC: EISABus_reloc: applied 18 types, 144 methods, 0 properties, 1 protocols, 2 categories, 1 segments
+Marking typical code sequences...
+Flushing buffers, please wait...ok
+File 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.rebuilt-baseline\EISABus_reloc' has been successfully loaded into the database.
+Flushing buffers, please wait...ok
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\bindiff8_ida64.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll) error: The specified procedure could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida.dll: can't load file
+
+LoadLibrary(C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll) error: The specified module could not be found.
+C:\Users\raynorpat\AppData\Roaming\Hex-Rays\IDA Pro\plugins\binexport12_ida64.dll: can't load file
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+[MCP] Plugin loaded, use Edit -> Plugins -> MCP (Ctrl+Alt+M) to start the server
+IDA is analysing the input file...
+You may start to explore the input file right now.
+Propagating type information...
+Function argument information has been propagated
+lumina: bad signature
+The initial autoanalysis has been finished.
+Flushing buffers, please wait...ok
+Unloading IDP module C:\Program Files\IDA Professional 9.2\procs\pc.dll...
+=== stdout ===
+
+=== stderr ===

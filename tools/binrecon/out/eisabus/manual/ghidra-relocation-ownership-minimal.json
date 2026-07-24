@@ -1,0 +1,37 @@
+[
+  {
+    "function_index": 0,
+    "function_address": 0,
+    "function_names": [
+      "binrecon_symbol_0"
+    ],
+    "instruction_index": 13,
+    "instruction": {
+      "address": 26,
+      "bytes": "8B1508A10000",
+      "mnemonic": "MOV",
+      "normalized_operands": "EDX, dword ptr [0x0000a108]",
+      "operands": "EDX, dword ptr [0x0000a108]",
+      "relocations": [
+        0
+      ]
+    },
+    "error": "NormalizationError: relocation operand ownership is ambiguous",
+    "relocations": [
+      {
+        "index": 0,
+        "record": {
+          "addend": 0,
+          "address": 28,
+          "kind": "i386-vanilla-32-absolute",
+          "target": "__OBJC,__message_refs"
+        },
+        "structured_owner": null,
+        "split_operands": [
+          "EDX",
+          "dword ptr [0x0000a108]"
+        ]
+      }
+    ]
+  }
+]

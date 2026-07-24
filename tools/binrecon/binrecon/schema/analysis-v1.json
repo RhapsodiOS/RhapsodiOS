@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analysis-v1.json",
+  "title": "Binrecon analysis document, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "input", "analyzer", "sections", "symbols", "relocations", "functions"],
+  "properties": {
+    "schema_version": {"const": "analysis-v1"},
+    "input": {"$ref": "#/$defs/input"},
+    "analyzer": {"$ref": "#/$defs/analyzer"},
+    "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
+    "symbols": {"type": "array", "items": {"$ref": "#/$defs/symbol"}},
+    "relocations": {"type": "array", "items": {"$ref": "#/$defs/relocation"}},
+    "functions": {"type": "array", "items": {"$ref": "#/$defs/function"}},
+    "references": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+    "imports": {"type": "array", "items": {"$ref": "#/$defs/import"}},
+    "strings": {"type": "array", "items": {"$ref": "#/$defs/string"}},
+    "extensions": {"$ref": "#/$defs/extensions"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
+    "nonnegative_integer": {"type": "integer", "minimum": 0},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256", "architecture", "endianness"],
+      "properties": {
+        "path": {"type": "string"},
+        "size": {"$ref": "#/$defs/nonnegative_integer"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "architecture": {"type": "string"},
+        "endianness": {"type": "string"}
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "invocation"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "invocation": {"type": "string"}
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "offset", "size", "permissions", "sha256"],
+      "properties": {
+        "name": {"type": "string"},
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "offset": {"$ref": "#/$defs/nonnegative_integer"},
+        "size": {"$ref": "#/$defs/nonnegative_integer"},
+        "permissions": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "symbol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "binding", "section"],
+      "properties": {
+        "name": {"type": "string"},
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "binding": {"type": "string"},
+        "section": {"type": ["string", "null"]}
+      }
+    },
+    "relocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "kind", "target", "addend"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "kind": {"type": "string"},
+        "target": {"type": ["string", "null"]},
+        "addend": {"type": "integer"}
+      }
+    },
+    "successor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "kind"],
+      "properties": {
+        "target": {"$ref": "#/$defs/nonnegative_integer"},
+        "kind": {"type": "string"}
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "successors"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "size": {"type": "integer", "minimum": 1},
+        "successors": {"type": "array", "items": {"$ref": "#/$defs/successor"}}
+      }
+    },
+    "instruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "bytes", "mnemonic", "operands", "normalized_operands", "relocations"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "bytes": {"type": "string", "pattern": "^(?:[0-9A-Fa-f]{2})+$"},
+        "mnemonic": {"type": "string"},
+        "operands": {"type": "string"},
+        "normalized_operands": {"type": "string"},
+        "relocations": {"type": "array", "items": {"$ref": "#/$defs/nonnegative_integer"}}
+      }
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "target", "name"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "target": {
+          "anyOf": [
+            {"$ref": "#/$defs/nonnegative_integer"},
+            {"type": "null"}
+          ]
+        },
+        "name": {"type": ["string", "null"]}
+      }
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "names", "blocks", "instructions", "calls", "confidence"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "size": {"$ref": "#/$defs/nonnegative_integer"},
+        "names": {"type": "array", "items": {"type": "string"}},
+        "blocks": {"type": "array", "items": {"$ref": "#/$defs/block"}},
+        "instructions": {"type": "array", "items": {"$ref": "#/$defs/instruction"}},
+        "calls": {"type": "array", "items": {"$ref": "#/$defs/call"}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "target", "kind"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "target": {
+          "anyOf": [
+            {"$ref": "#/$defs/nonnegative_integer"},
+            {"type": "null"}
+          ]
+        },
+        "kind": {"type": "string"}
+      }
+    },
+    "import": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address"],
+      "properties": {
+        "name": {"type": "string"},
+        "address": {
+          "anyOf": [
+            {"$ref": "#/$defs/nonnegative_integer"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "string": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "value", "encoding"],
+      "properties": {
+        "address": {"$ref": "#/$defs/nonnegative_integer"},
+        "value": {"type": "string"},
+        "encoding": {"type": "string"}
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {"type": "string", "minLength": 1},
+      "additionalProperties": {}
+    }
+  }
+}

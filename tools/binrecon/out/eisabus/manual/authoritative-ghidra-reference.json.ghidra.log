@@ -1,0 +1,581 @@
+=== native: native ===
+2026-07-22 05:33:48 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-07-22 05:33:48 INFO  (LoggingInitialization) Using log file: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\ghidra-native.log  
+2026-07-22 05:33:48 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-07-22 05:33:48 INFO  (Preferences) Loading user preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-07-22 05:33:48 INFO  (Preferences) Loading previous preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_11.4.2_PUBLIC\preferences  
+2026-07-22 05:33:48 INFO  (ClassSearcher) Searching for classes...  
+2026-07-22 05:33:49 INFO  (ClassSearcher) Class search complete (1263 ms)  
+2026-07-22 05:33:49 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-07-22 05:33:49 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-07-22 05:33:49 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-07-22 05:33:49 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-07-22 05:33:51 INFO  (AnalyzeHeadless) Headless startup complete (4478 ms)  
+2026-07-22 05:33:51 INFO  (ClassSearcher) Class searcher loaded 59 extension points (20 false positives)  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\ghidra\Ghidra\Features\FileFormats\ghidra_scripts
+    \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra
+    D:\ghidra\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\PIC\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\JVM\ghidra_scripts
+    D:\ghidra\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BSim\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\8051\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\ghidra\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\ghidra\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\ghidra\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PDB\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Base\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\DATA\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BytePatterns\ghidra_scripts  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) Creating temporary project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (DefaultProject) Creating project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) REPORT: Processing input files:   
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer)      project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) IMPORTING: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Loader: Mac OS X Mach-O  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Language/Compiler: x86:LE:32:default:windows  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Library Search Path: [., C:\Windows\SysWOW64, C:\Program Files\Java\jdk-21.0.11\bin, C:\Windows\Sun\Java\bin, C:\Windows\system32, C:\Windows, C:\Users\raynorpat\.codex\tmp\arg0\codex-arg0ea1THl, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\override, C:\Program Files\Common Files\Oracle\Java\javapath, C:\VulkanSDK\1.4.341.1\Bin, C:\Program Files (x86)\Common Files\Oracle\Java\java8path, C:\Program Files (x86)\Common Files\Oracle\Java\javapath, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313, c:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Google\Chrome\Application, C:\Windows\System32\Wbem, C:\Windows\System32\WindowsPowerShell\v1.0\, C:\Windows\System32\OpenSSH\, C:\Users\raynorpat\AppData\Local\Microsoft\WindowsApps, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files\Tailscale\, C:\Program Files\Level, C:\Program Files\WinGet\Links, D:\BuildTools\bin, C:\Program Files\Microsoft SQL Server\170\Tools\Binn\, C:\Program Files\TortoiseHg\, C:\Program Files\BinDiff\bin, C:\Program Files\dotnet\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Users\raynorpat\.local\bin, C:\Program Files\PuTTY\, C:\Program Files\qemu, C:\Program Files\nodejs\, c:\program files\windowsapps\microsoft.desktopappinstaller_1.29.280.0_x64__8wekyb3d8bbwe, C:\Program Files\GnuPG\bin, C:\Program Files\CMake\bin, C:\Program Files\GitHub CLI\, C:\Program Files\Go\bin, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\, C:\Users\raynorpat\scoop\apps\vscode\current\bin, C:\Users\raynorpat\scoop\shims, C:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\raynorpat\AppData\Roaming\npm, C:\Users\raynorpat\AppData\Local\Programs\Zed\bin, C:\Users\raynorpat\.dotnet\tools, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe\ripgrep-15.1.0-x86_64-pc-windows-msvc, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\go\bin, C:\Users\raynorpat\AppData\Local\Programs\Git\cmd, C:\Users\raynorpat\AppData\Local\omp, C:\Users\raynorpat\AppData\Local\lemonade_server\bin\, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\Hugo.Hugo.Extended_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback, C:\Users\raynorpat\AppData\Local\OpenAI\Codex\bin\ada252862d154cdd, C:\Program Files\WindowsApps\OpenAI.Codex_26.715.8383.0_x64__2p2nqsd0c76g0\app\resources]  
+2026-07-22 05:33:53 INFO  (ProgramLoader) Additional info:
+Loading file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc?MD5=0f67991a69c5308999d115b211ff8fbc...
+------------------------------------------------
+
+  
+2026-07-22 05:33:53 INFO  (HeadlessAnalyzer) IMPORTING: Loaded 0 additional files  
+2026-07-22 05:33:53 INFO  (HeadlessAnalyzer) ANALYZING all memory and code: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:57 INFO  (PackedDatabaseCache) Packed database cache: C:\Users\raynorpat\AppData\Local\ghidra\packed-db-cache  
+2026-07-22 05:33:57 DEBUG (PackedDatabaseCache) Using cached packed database: D:\ghidra\Ghidra\Features\Base\data\typeinfo\mac_10.9\mac_osx.gdt  
+2026-07-22 05:33:57 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: mac_osx  
+2026-07-22 05:33:59 INFO  (AutoAnalysisManager) -----------------------------------------------------
+    ASCII Strings                              0.424 secs
+    Apply Data Archives                        0.488 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.004 secs
+    Create Address Tables                      0.030 secs
+    Create Address Tables - One Time           0.128 secs
+    Create Function                            0.128 secs
+    Data Reference                             0.035 secs
+    Decompiler Switch Analysis                 1.129 secs
+    Demangler GNU                              0.105 secs
+    Disassemble                                0.367 secs
+    Disassemble Entry Points                   0.444 secs
+    Disassemble Entry Points - One Time        0.008 secs
+    Embedded Media                             0.007 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.221 secs
+    Function Start Pre Search                  0.010 secs
+    Function Start Search                      0.019 secs
+    Function Start Search After Code           0.024 secs
+    Function Start Search After Data           0.009 secs
+    Mach-O Function Starts                     0.009 secs
+    Non-Returning Functions - Discovered       0.039 secs
+    Non-Returning Functions - Known            0.004 secs
+    Reference                                  0.067 secs
+    Shared Return Calls                        0.044 secs
+    Stack                                      0.765 secs
+    Subroutine References                      0.026 secs
+    X86 Function Callee Purge                  0.028 secs
+    x86 Constant Reference Analyzer            0.847 secs
+-----------------------------------------------------
+     Total Time   5 secs
+-----------------------------------------------------
+  
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) REPORT: Analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAnalysis.java 'export' '--output' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\analysis.tmp.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'   
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00010f00, pcode error at 00010f00: Unable to disassemble EXTERNAL block location: 00010f00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011000, pcode error at 00011000: Unable to disassemble EXTERNAL block location: 00011000  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011100, pcode error at 00011100: Unable to disassemble EXTERNAL block location: 00011100  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011200, pcode error at 00011200: Unable to disassemble EXTERNAL block location: 00011200  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011300, pcode error at 00011300: Unable to disassemble EXTERNAL block location: 00011300  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011400, pcode error at 00011400: Unable to disassemble EXTERNAL block location: 00011400  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011500, pcode error at 00011500: Unable to disassemble EXTERNAL block location: 00011500  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011600, pcode error at 00011600: Unable to disassemble EXTERNAL block location: 00011600  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011700, pcode error at 00011700: Unable to disassemble EXTERNAL block location: 00011700  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011800, pcode error at 00011800: Unable to disassemble EXTERNAL block location: 00011800  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011900, pcode error at 00011900: Unable to disassemble EXTERNAL block location: 00011900  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011a00, pcode error at 00011a00: Unable to disassemble EXTERNAL block location: 00011a00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011b00, pcode error at 00011b00: Unable to disassemble EXTERNAL block location: 00011b00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011c00, pcode error at 00011c00: Unable to disassemble EXTERNAL block location: 00011c00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011e00, pcode error at 00011e00: Unable to disassemble EXTERNAL block location: 00011e00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011f00, pcode error at 00011f00: Unable to disassemble EXTERNAL block location: 00011f00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012000, pcode error at 00012000: Unable to disassemble EXTERNAL block location: 00012000  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012100, pcode error at 00012100: Unable to disassemble EXTERNAL block location: 00012100  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012200, pcode error at 00012200: Unable to disassemble EXTERNAL block location: 00012200  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012300, pcode error at 00012300: Unable to disassemble EXTERNAL block location: 00012300  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012400, pcode error at 00012400: Unable to disassemble EXTERNAL block location: 00012400  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012500, pcode error at 00012500: Unable to disassemble EXTERNAL block location: 00012500  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012600, pcode error at 00012600: Unable to disassemble EXTERNAL block location: 00012600  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012700, pcode error at 00012700: Unable to disassemble EXTERNAL block location: 00012700  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012800, pcode error at 00012800: Unable to disassemble EXTERNAL block location: 00012800  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012900, pcode error at 00012900: Unable to disassemble EXTERNAL block location: 00012900  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012a00, pcode error at 00012a00: Unable to disassemble EXTERNAL block location: 00012a00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012b00, pcode error at 00012b00: Unable to disassemble EXTERNAL block location: 00012b00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012c00, pcode error at 00012c00: Unable to disassemble EXTERNAL block location: 00012c00  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) ANALYZING changes made by post scripts: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Post-analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:03 INFO  (LocalFileSystem) /EISABus_reloc: file created (raynorpat)  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for: /EISABus_reloc (native-idraworkjvbszvp0:/EISABus_reloc)  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Import succeeded  
+
+=== native: script ===
+
+=== native: stdout ===
+INFO  Using log config file: jar:file:/D:/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\ghidra-native.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences (Preferences)  
+INFO  Loading previous preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_11.4.2_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1263 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (4478 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    D:\ghidra\Ghidra\Features\FileFormats\ghidra_scripts
+    \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra
+    D:\ghidra\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\PIC\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\JVM\ghidra_scripts
+    D:\ghidra\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BSim\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\8051\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\ghidra\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\ghidra\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\ghidra\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PDB\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Base\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\DATA\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BytePatterns\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0 (HeadlessAnalyzer)  
+INFO  Creating project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0 (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0 (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
+INFO  Using Language/Compiler: x86:LE:32:default:windows (ProgramLoader)  
+INFO  Using Library Search Path: [., C:\Windows\SysWOW64, C:\Program Files\Java\jdk-21.0.11\bin, C:\Windows\Sun\Java\bin, C:\Windows\system32, C:\Windows, C:\Users\raynorpat\.codex\tmp\arg0\codex-arg0ea1THl, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\override, C:\Program Files\Common Files\Oracle\Java\javapath, C:\VulkanSDK\1.4.341.1\Bin, C:\Program Files (x86)\Common Files\Oracle\Java\java8path, C:\Program Files (x86)\Common Files\Oracle\Java\javapath, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313, c:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Google\Chrome\Application, C:\Windows\System32\Wbem, C:\Windows\System32\WindowsPowerShell\v1.0\, C:\Windows\System32\OpenSSH\, C:\Users\raynorpat\AppData\Local\Microsoft\WindowsApps, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files\Tailscale\, C:\Program Files\Level, C:\Program Files\WinGet\Links, D:\BuildTools\bin, C:\Program Files\Microsoft SQL Server\170\Tools\Binn\, C:\Program Files\TortoiseHg\, C:\Program Files\BinDiff\bin, C:\Program Files\dotnet\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Users\raynorpat\.local\bin, C:\Program Files\PuTTY\, C:\Program Files\qemu, C:\Program Files\nodejs\, c:\program files\windowsapps\microsoft.desktopappinstaller_1.29.280.0_x64__8wekyb3d8bbwe, C:\Program Files\GnuPG\bin, C:\Program Files\CMake\bin, C:\Program Files\GitHub CLI\, C:\Program Files\Go\bin, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\, C:\Users\raynorpat\scoop\apps\vscode\current\bin, C:\Users\raynorpat\scoop\shims, C:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\raynorpat\AppData\Roaming\npm, C:\Users\raynorpat\AppData\Local\Programs\Zed\bin, C:\Users\raynorpat\.dotnet\tools, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe\ripgrep-15.1.0-x86_64-pc-windows-msvc, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\go\bin, C:\Users\raynorpat\AppData\Local\Programs\Git\cmd, C:\Users\raynorpat\AppData\Local\omp, C:\Users\raynorpat\AppData\Local\lemonade_server\bin\, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\Hugo.Hugo.Extended_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback, C:\Users\raynorpat\AppData\Local\OpenAI\Codex\bin\ada252862d154cdd, C:\Program Files\WindowsApps\OpenAI.Codex_26.715.8383.0_x64__2p2nqsd0c76g0\app\resources] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc?MD5=0f67991a69c5308999d115b211ff8fbc...
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  Packed database cache: C:\Users\raynorpat\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
+INFO  -----------------------------------------------------
+    ASCII Strings                              0.424 secs
+    Apply Data Archives                        0.488 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.004 secs
+    Create Address Tables                      0.030 secs
+    Create Address Tables - One Time           0.128 secs
+    Create Function                            0.128 secs
+    Data Reference                             0.035 secs
+    Decompiler Switch Analysis                 1.129 secs
+    Demangler GNU                              0.105 secs
+    Disassemble                                0.367 secs
+    Disassemble Entry Points                   0.444 secs
+    Disassemble Entry Points - One Time        0.008 secs
+    Embedded Media                             0.007 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.221 secs
+    Function Start Pre Search                  0.010 secs
+    Function Start Search                      0.019 secs
+    Function Start Search After Code           0.024 secs
+    Function Start Search After Data           0.009 secs
+    Mach-O Function Starts                     0.009 secs
+    Non-Returning Functions - Discovered       0.039 secs
+    Non-Returning Functions - Known            0.004 secs
+    Reference                                  0.067 secs
+    Shared Return Calls                        0.044 secs
+    Stack                                      0.765 secs
+    Subroutine References                      0.026 secs
+    X86 Function Callee Purge                  0.028 secs
+    x86 Constant Reference Analyzer            0.847 secs
+-----------------------------------------------------
+     Total Time   5 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: ExportAnalysis.java 'export' '--output' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\analysis.tmp.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'  (HeadlessAnalyzer)  
+INFO  SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java (HeadlessAnalyzer)  
+WARN  Decompiling 00010f00, pcode error at 00010f00: Unable to disassemble EXTERNAL block location: 00010f00 (DecompileCallback)  
+WARN  Decompiling 00011000, pcode error at 00011000: Unable to disassemble EXTERNAL block location: 00011000 (DecompileCallback)  
+WARN  Decompiling 00011100, pcode error at 00011100: Unable to disassemble EXTERNAL block location: 00011100 (DecompileCallback)  
+WARN  Decompiling 00011200, pcode error at 00011200: Unable to disassemble EXTERNAL block location: 00011200 (DecompileCallback)  
+WARN  Decompiling 00011300, pcode error at 00011300: Unable to disassemble EXTERNAL block location: 00011300 (DecompileCallback)  
+WARN  Decompiling 00011400, pcode error at 00011400: Unable to disassemble EXTERNAL block location: 00011400 (DecompileCallback)  
+WARN  Decompiling 00011500, pcode error at 00011500: Unable to disassemble EXTERNAL block location: 00011500 (DecompileCallback)  
+WARN  Decompiling 00011600, pcode error at 00011600: Unable to disassemble EXTERNAL block location: 00011600 (DecompileCallback)  
+WARN  Decompiling 00011700, pcode error at 00011700: Unable to disassemble EXTERNAL block location: 00011700 (DecompileCallback)  
+WARN  Decompiling 00011800, pcode error at 00011800: Unable to disassemble EXTERNAL block location: 00011800 (DecompileCallback)  
+WARN  Decompiling 00011900, pcode error at 00011900: Unable to disassemble EXTERNAL block location: 00011900 (DecompileCallback)  
+WARN  Decompiling 00011a00, pcode error at 00011a00: Unable to disassemble EXTERNAL block location: 00011a00 (DecompileCallback)  
+WARN  Decompiling 00011b00, pcode error at 00011b00: Unable to disassemble EXTERNAL block location: 00011b00 (DecompileCallback)  
+WARN  Decompiling 00011c00, pcode error at 00011c00: Unable to disassemble EXTERNAL block location: 00011c00 (DecompileCallback)  
+WARN  Decompiling 00011e00, pcode error at 00011e00: Unable to disassemble EXTERNAL block location: 00011e00 (DecompileCallback)  
+WARN  Decompiling 00011f00, pcode error at 00011f00: Unable to disassemble EXTERNAL block location: 00011f00 (DecompileCallback)  
+WARN  Decompiling 00012000, pcode error at 00012000: Unable to disassemble EXTERNAL block location: 00012000 (DecompileCallback)  
+WARN  Decompiling 00012100, pcode error at 00012100: Unable to disassemble EXTERNAL block location: 00012100 (DecompileCallback)  
+WARN  Decompiling 00012200, pcode error at 00012200: Unable to disassemble EXTERNAL block location: 00012200 (DecompileCallback)  
+WARN  Decompiling 00012300, pcode error at 00012300: Unable to disassemble EXTERNAL block location: 00012300 (DecompileCallback)  
+WARN  Decompiling 00012400, pcode error at 00012400: Unable to disassemble EXTERNAL block location: 00012400 (DecompileCallback)  
+WARN  Decompiling 00012500, pcode error at 00012500: Unable to disassemble EXTERNAL block location: 00012500 (DecompileCallback)  
+WARN  Decompiling 00012600, pcode error at 00012600: Unable to disassemble EXTERNAL block location: 00012600 (DecompileCallback)  
+WARN  Decompiling 00012700, pcode error at 00012700: Unable to disassemble EXTERNAL block location: 00012700 (DecompileCallback)  
+WARN  Decompiling 00012800, pcode error at 00012800: Unable to disassemble EXTERNAL block location: 00012800 (DecompileCallback)  
+WARN  Decompiling 00012900, pcode error at 00012900: Unable to disassemble EXTERNAL block location: 00012900 (DecompileCallback)  
+WARN  Decompiling 00012a00, pcode error at 00012a00: Unable to disassemble EXTERNAL block location: 00012a00 (DecompileCallback)  
+WARN  Decompiling 00012b00, pcode error at 00012b00: Unable to disassemble EXTERNAL block location: 00012b00 (DecompileCallback)  
+WARN  Decompiling 00012c00, pcode error at 00012c00: Unable to disassemble EXTERNAL block location: 00012c00 (DecompileCallback)  
+INFO  ANALYZING changes made by post scripts: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  /EISABus_reloc: file created (raynorpat) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /EISABus_reloc (native-idraworkjvbszvp0:/EISABus_reloc) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
+
+=== native: stderr ===
+
+=== fallback: native ===
+2026-07-22 05:33:48 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-07-22 05:33:48 INFO  (LoggingInitialization) Using log file: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\ghidra-native.log  
+2026-07-22 05:33:48 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-07-22 05:33:48 INFO  (Preferences) Loading user preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-07-22 05:33:48 INFO  (Preferences) Loading previous preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_11.4.2_PUBLIC\preferences  
+2026-07-22 05:33:48 INFO  (ClassSearcher) Searching for classes...  
+2026-07-22 05:33:49 INFO  (ClassSearcher) Class search complete (1263 ms)  
+2026-07-22 05:33:49 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-07-22 05:33:49 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-07-22 05:33:49 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-07-22 05:33:49 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-07-22 05:33:51 INFO  (AnalyzeHeadless) Headless startup complete (4478 ms)  
+2026-07-22 05:33:51 INFO  (ClassSearcher) Class searcher loaded 59 extension points (20 false positives)  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\ghidra\Ghidra\Features\FileFormats\ghidra_scripts
+    \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra
+    D:\ghidra\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\PIC\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\JVM\ghidra_scripts
+    D:\ghidra\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BSim\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\8051\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\ghidra\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\ghidra\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\ghidra\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PDB\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Base\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\DATA\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BytePatterns\ghidra_scripts  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) Creating temporary project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (DefaultProject) Creating project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) REPORT: Processing input files:   
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer)      project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/native-idraworkjvbszvp0  
+2026-07-22 05:33:52 INFO  (HeadlessAnalyzer) IMPORTING: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Loader: Mac OS X Mach-O  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Language/Compiler: x86:LE:32:default:windows  
+2026-07-22 05:33:52 INFO  (ProgramLoader) Using Library Search Path: [., C:\Windows\SysWOW64, C:\Program Files\Java\jdk-21.0.11\bin, C:\Windows\Sun\Java\bin, C:\Windows\system32, C:\Windows, C:\Users\raynorpat\.codex\tmp\arg0\codex-arg0ea1THl, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\override, C:\Program Files\Common Files\Oracle\Java\javapath, C:\VulkanSDK\1.4.341.1\Bin, C:\Program Files (x86)\Common Files\Oracle\Java\java8path, C:\Program Files (x86)\Common Files\Oracle\Java\javapath, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313, c:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Google\Chrome\Application, C:\Windows\System32\Wbem, C:\Windows\System32\WindowsPowerShell\v1.0\, C:\Windows\System32\OpenSSH\, C:\Users\raynorpat\AppData\Local\Microsoft\WindowsApps, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files\Tailscale\, C:\Program Files\Level, C:\Program Files\WinGet\Links, D:\BuildTools\bin, C:\Program Files\Microsoft SQL Server\170\Tools\Binn\, C:\Program Files\TortoiseHg\, C:\Program Files\BinDiff\bin, C:\Program Files\dotnet\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Users\raynorpat\.local\bin, C:\Program Files\PuTTY\, C:\Program Files\qemu, C:\Program Files\nodejs\, c:\program files\windowsapps\microsoft.desktopappinstaller_1.29.280.0_x64__8wekyb3d8bbwe, C:\Program Files\GnuPG\bin, C:\Program Files\CMake\bin, C:\Program Files\GitHub CLI\, C:\Program Files\Go\bin, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\, C:\Users\raynorpat\scoop\apps\vscode\current\bin, C:\Users\raynorpat\scoop\shims, C:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\raynorpat\AppData\Roaming\npm, C:\Users\raynorpat\AppData\Local\Programs\Zed\bin, C:\Users\raynorpat\.dotnet\tools, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe\ripgrep-15.1.0-x86_64-pc-windows-msvc, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\go\bin, C:\Users\raynorpat\AppData\Local\Programs\Git\cmd, C:\Users\raynorpat\AppData\Local\omp, C:\Users\raynorpat\AppData\Local\lemonade_server\bin\, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\Hugo.Hugo.Extended_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback, C:\Users\raynorpat\AppData\Local\OpenAI\Codex\bin\ada252862d154cdd, C:\Program Files\WindowsApps\OpenAI.Codex_26.715.8383.0_x64__2p2nqsd0c76g0\app\resources]  
+2026-07-22 05:33:53 INFO  (ProgramLoader) Additional info:
+Loading file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc?MD5=0f67991a69c5308999d115b211ff8fbc...
+------------------------------------------------
+
+  
+2026-07-22 05:33:53 INFO  (HeadlessAnalyzer) IMPORTING: Loaded 0 additional files  
+2026-07-22 05:33:53 INFO  (HeadlessAnalyzer) ANALYZING all memory and code: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:57 INFO  (PackedDatabaseCache) Packed database cache: C:\Users\raynorpat\AppData\Local\ghidra\packed-db-cache  
+2026-07-22 05:33:57 DEBUG (PackedDatabaseCache) Using cached packed database: D:\ghidra\Ghidra\Features\Base\data\typeinfo\mac_10.9\mac_osx.gdt  
+2026-07-22 05:33:57 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: mac_osx  
+2026-07-22 05:33:59 INFO  (AutoAnalysisManager) -----------------------------------------------------
+    ASCII Strings                              0.424 secs
+    Apply Data Archives                        0.488 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.004 secs
+    Create Address Tables                      0.030 secs
+    Create Address Tables - One Time           0.128 secs
+    Create Function                            0.128 secs
+    Data Reference                             0.035 secs
+    Decompiler Switch Analysis                 1.129 secs
+    Demangler GNU                              0.105 secs
+    Disassemble                                0.367 secs
+    Disassemble Entry Points                   0.444 secs
+    Disassemble Entry Points - One Time        0.008 secs
+    Embedded Media                             0.007 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.221 secs
+    Function Start Pre Search                  0.010 secs
+    Function Start Search                      0.019 secs
+    Function Start Search After Code           0.024 secs
+    Function Start Search After Data           0.009 secs
+    Mach-O Function Starts                     0.009 secs
+    Non-Returning Functions - Discovered       0.039 secs
+    Non-Returning Functions - Known            0.004 secs
+    Reference                                  0.067 secs
+    Shared Return Calls                        0.044 secs
+    Stack                                      0.765 secs
+    Subroutine References                      0.026 secs
+    X86 Function Callee Purge                  0.028 secs
+    x86 Constant Reference Analyzer            0.847 secs
+-----------------------------------------------------
+     Total Time   5 secs
+-----------------------------------------------------
+  
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) REPORT: Analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAnalysis.java 'export' '--output' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\analysis.tmp.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'   
+2026-07-22 05:33:59 INFO  (HeadlessAnalyzer) SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00010f00, pcode error at 00010f00: Unable to disassemble EXTERNAL block location: 00010f00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011000, pcode error at 00011000: Unable to disassemble EXTERNAL block location: 00011000  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011100, pcode error at 00011100: Unable to disassemble EXTERNAL block location: 00011100  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011200, pcode error at 00011200: Unable to disassemble EXTERNAL block location: 00011200  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011300, pcode error at 00011300: Unable to disassemble EXTERNAL block location: 00011300  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011400, pcode error at 00011400: Unable to disassemble EXTERNAL block location: 00011400  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011500, pcode error at 00011500: Unable to disassemble EXTERNAL block location: 00011500  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011600, pcode error at 00011600: Unable to disassemble EXTERNAL block location: 00011600  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011700, pcode error at 00011700: Unable to disassemble EXTERNAL block location: 00011700  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011800, pcode error at 00011800: Unable to disassemble EXTERNAL block location: 00011800  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011900, pcode error at 00011900: Unable to disassemble EXTERNAL block location: 00011900  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011a00, pcode error at 00011a00: Unable to disassemble EXTERNAL block location: 00011a00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011b00, pcode error at 00011b00: Unable to disassemble EXTERNAL block location: 00011b00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011c00, pcode error at 00011c00: Unable to disassemble EXTERNAL block location: 00011c00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011e00, pcode error at 00011e00: Unable to disassemble EXTERNAL block location: 00011e00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00011f00, pcode error at 00011f00: Unable to disassemble EXTERNAL block location: 00011f00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012000, pcode error at 00012000: Unable to disassemble EXTERNAL block location: 00012000  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012100, pcode error at 00012100: Unable to disassemble EXTERNAL block location: 00012100  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012200, pcode error at 00012200: Unable to disassemble EXTERNAL block location: 00012200  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012300, pcode error at 00012300: Unable to disassemble EXTERNAL block location: 00012300  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012400, pcode error at 00012400: Unable to disassemble EXTERNAL block location: 00012400  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012500, pcode error at 00012500: Unable to disassemble EXTERNAL block location: 00012500  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012600, pcode error at 00012600: Unable to disassemble EXTERNAL block location: 00012600  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012700, pcode error at 00012700: Unable to disassemble EXTERNAL block location: 00012700  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012800, pcode error at 00012800: Unable to disassemble EXTERNAL block location: 00012800  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012900, pcode error at 00012900: Unable to disassemble EXTERNAL block location: 00012900  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012a00, pcode error at 00012a00: Unable to disassemble EXTERNAL block location: 00012a00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012b00, pcode error at 00012b00: Unable to disassemble EXTERNAL block location: 00012b00  
+2026-07-22 05:34:02 WARN  (DecompileCallback) Decompiling 00012c00, pcode error at 00012c00: Unable to disassemble EXTERNAL block location: 00012c00  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) ANALYZING changes made by post scripts: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Post-analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:03 INFO  (LocalFileSystem) /EISABus_reloc: file created (raynorpat)  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for: /EISABus_reloc (native-idraworkjvbszvp0:/EISABus_reloc)  
+2026-07-22 05:34:03 INFO  (HeadlessAnalyzer) REPORT: Import succeeded  
+2026-07-22 05:34:08 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-07-22 05:34:08 INFO  (LoggingInitialization) Using log file: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\ghidra-native.log  
+2026-07-22 05:34:08 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-07-22 05:34:08 INFO  (Preferences) Loading user preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-07-22 05:34:08 INFO  (Preferences) Loading previous preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_11.4.2_PUBLIC\preferences  
+2026-07-22 05:34:08 INFO  (ClassSearcher) Searching for classes...  
+2026-07-22 05:34:09 INFO  (ClassSearcher) Class search complete (1246 ms)  
+2026-07-22 05:34:09 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-07-22 05:34:09 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-07-22 05:34:09 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-07-22 05:34:09 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-07-22 05:34:12 INFO  (AnalyzeHeadless) Headless startup complete (4889 ms)  
+2026-07-22 05:34:12 INFO  (ClassSearcher) Class searcher loaded 92 extension points (46 false positives)  
+2026-07-22 05:34:12 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\ghidra\Ghidra\Features\FileFormats\ghidra_scripts
+    \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra
+    D:\ghidra\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\PIC\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\JVM\ghidra_scripts
+    D:\ghidra\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BSim\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\8051\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\ghidra\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\ghidra\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\ghidra\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PDB\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Base\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\DATA\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BytePatterns\ghidra_scripts  
+2026-07-22 05:34:12 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-07-22 05:34:12 INFO  (HeadlessAnalyzer) Creating temporary project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0  
+2026-07-22 05:34:12 INFO  (DefaultProject) Creating project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0  
+2026-07-22 05:34:13 INFO  (HeadlessAnalyzer) REPORT: Processing input files:   
+2026-07-22 05:34:13 INFO  (HeadlessAnalyzer)      project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0  
+2026-07-22 05:34:13 INFO  (HeadlessAnalyzer) IMPORTING: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:13 INFO  (ProgramLoader) Using Loader: Raw Binary  
+2026-07-22 05:34:13 INFO  (ProgramLoader) Using Language/Compiler: x86:LE:32:default:windows  
+2026-07-22 05:34:13 INFO  (ProgramLoader) Using Library Search Path: [., C:\Windows\SysWOW64, C:\Program Files\Java\jdk-21.0.11\bin, C:\Windows\Sun\Java\bin, C:\Windows\system32, C:\Windows, C:\Users\raynorpat\.codex\tmp\arg0\codex-arg0ea1THl, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\override, C:\Program Files\Common Files\Oracle\Java\javapath, C:\VulkanSDK\1.4.341.1\Bin, C:\Program Files (x86)\Common Files\Oracle\Java\java8path, C:\Program Files (x86)\Common Files\Oracle\Java\javapath, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313, c:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Google\Chrome\Application, C:\Windows\System32\Wbem, C:\Windows\System32\WindowsPowerShell\v1.0\, C:\Windows\System32\OpenSSH\, C:\Users\raynorpat\AppData\Local\Microsoft\WindowsApps, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files\Tailscale\, C:\Program Files\Level, C:\Program Files\WinGet\Links, D:\BuildTools\bin, C:\Program Files\Microsoft SQL Server\170\Tools\Binn\, C:\Program Files\TortoiseHg\, C:\Program Files\BinDiff\bin, C:\Program Files\dotnet\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Users\raynorpat\.local\bin, C:\Program Files\PuTTY\, C:\Program Files\qemu, C:\Program Files\nodejs\, c:\program files\windowsapps\microsoft.desktopappinstaller_1.29.280.0_x64__8wekyb3d8bbwe, C:\Program Files\GnuPG\bin, C:\Program Files\CMake\bin, C:\Program Files\GitHub CLI\, C:\Program Files\Go\bin, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\, C:\Users\raynorpat\scoop\apps\vscode\current\bin, C:\Users\raynorpat\scoop\shims, C:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\raynorpat\AppData\Roaming\npm, C:\Users\raynorpat\AppData\Local\Programs\Zed\bin, C:\Users\raynorpat\.dotnet\tools, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe\ripgrep-15.1.0-x86_64-pc-windows-msvc, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\go\bin, C:\Users\raynorpat\AppData\Local\Programs\Git\cmd, C:\Users\raynorpat\AppData\Local\omp, C:\Users\raynorpat\AppData\Local\lemonade_server\bin\, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\Hugo.Hugo.Extended_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback, C:\Users\raynorpat\AppData\Local\OpenAI\Codex\bin\ada252862d154cdd, C:\Program Files\WindowsApps\OpenAI.Codex_26.715.8383.0_x64__2p2nqsd0c76g0\app\resources]  
+2026-07-22 05:34:13 INFO  (HeadlessAnalyzer) IMPORTING: Loaded 0 additional files  
+2026-07-22 05:34:13 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAnalysis.java 'prepare' '--layout' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\layout.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'   
+2026-07-22 05:34:14 INFO  (HeadlessAnalyzer) SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java  
+2026-07-22 05:34:14 INFO  (HeadlessAnalyzer) ANALYZING all memory and code: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:14 DEBUG (AnalysisWorkerCommand) Invoking analysis worker (Mach-O Header Annotation): class ghidra.app.cmd.formats.MachoBinaryAnalysisCommand  
+2026-07-22 05:34:14 DEBUG (AutoAnalysisManager) Analysis worker completed (Mach-O Header Annotation): class ghidra.app.cmd.formats.MachoBinaryAnalysisCommand  
+2026-07-22 05:34:18 INFO  (PackedDatabaseCache) Packed database cache: C:\Users\raynorpat\AppData\Local\ghidra\packed-db-cache  
+2026-07-22 05:34:18 DEBUG (PackedDatabaseCache) Using cached packed database: D:\ghidra\Ghidra\Features\Base\data\typeinfo\generic\generic_clib.gdt  
+2026-07-22 05:34:19 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: generic_clib  
+2026-07-22 05:34:21 INFO  (AutoAnalysisManager) -----------------------------------------------------
+    ASCII Strings                              0.442 secs
+    Apply Data Archives                        0.380 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.005 secs
+    Create Address Tables                      0.031 secs
+    Create Address Tables - One Time           0.340 secs
+    Create Function                            0.137 secs
+    Data Reference                             0.363 secs
+    Decompiler Switch Analysis                 0.987 secs
+    Disassemble                                0.481 secs
+    Disassemble Entry Points                   0.412 secs
+    Disassemble Entry Points - One Time        0.015 secs
+    Embedded Media                             0.011 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.260 secs
+    Function Start Pre Search                  0.015 secs
+    Function Start Search                      0.062 secs
+    Function Start Search After Code           0.025 secs
+    Function Start Search After Data           0.006 secs
+    Mach-O Header Annotation                   0.011 secs
+    Non-Returning Functions - Discovered       0.042 secs
+    Reference                                  1.027 secs
+    Shared Return Calls                        0.060 secs
+    Stack                                      0.897 secs
+    Subroutine References                      0.030 secs
+    X86 Function Callee Purge                  0.029 secs
+    x86 Constant Reference Analyzer            1.015 secs
+-----------------------------------------------------
+     Total Time   7 secs
+-----------------------------------------------------
+  
+2026-07-22 05:34:21 INFO  (HeadlessAnalyzer) REPORT: Analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:21 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAnalysis.java 'export' '--layout' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\layout.json' '--output' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\analysis.tmp.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'   
+2026-07-22 05:34:21 INFO  (HeadlessAnalyzer) SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java  
+2026-07-22 05:34:28 INFO  (HeadlessAnalyzer) ANALYZING changes made by post scripts: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:28 INFO  (HeadlessAnalyzer) REPORT: Post-analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc  
+2026-07-22 05:34:28 INFO  (LocalFileSystem) /EISABus_reloc: file created (raynorpat)  
+2026-07-22 05:34:28 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for: /EISABus_reloc (fallback-idraworkjvbszvp0:/EISABus_reloc)  
+2026-07-22 05:34:28 INFO  (HeadlessAnalyzer) REPORT: Import succeeded  
+
+=== fallback: script ===
+
+=== fallback: stdout ===
+INFO  Using log config file: jar:file:/D:/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\ghidra-native.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences (Preferences)  
+INFO  Loading previous preferences: C:\Users\raynorpat\AppData\Roaming\ghidra\ghidra_11.4.2_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1246 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (4889 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 92 extension points (46 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    D:\ghidra\Ghidra\Features\FileFormats\ghidra_scripts
+    \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra
+    D:\ghidra\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\PIC\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\JVM\ghidra_scripts
+    D:\ghidra\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BSim\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\8051\ghidra_scripts
+    D:\ghidra\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\ghidra\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\ghidra\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\ghidra\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\ghidra\Ghidra\Features\PDB\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Base\ghidra_scripts
+    D:\ghidra\Ghidra\Processors\DATA\ghidra_scripts
+    D:\ghidra\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\ghidra\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\ghidra\Ghidra\Features\BytePatterns\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0 (HeadlessAnalyzer)  
+INFO  Creating project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0 (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: //10.10.1.20/Tech/RhapsodiOS/RhapsodiOS/tools/binrecon/out/eisabus/manual/binrecon-ghidra-work-jvbszvp0/fallback-idraworkjvbszvp0 (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  Using Loader: Raw Binary (ProgramLoader)  
+INFO  Using Language/Compiler: x86:LE:32:default:windows (ProgramLoader)  
+INFO  Using Library Search Path: [., C:\Windows\SysWOW64, C:\Program Files\Java\jdk-21.0.11\bin, C:\Windows\Sun\Java\bin, C:\Windows\system32, C:\Windows, C:\Users\raynorpat\.codex\tmp\arg0\codex-arg0ea1THl, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\override, C:\Program Files\Common Files\Oracle\Java\javapath, C:\VulkanSDK\1.4.341.1\Bin, C:\Program Files (x86)\Common Files\Oracle\Java\java8path, C:\Program Files (x86)\Common Files\Oracle\Java\javapath, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313, c:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Google\Chrome\Application, C:\Windows\System32\Wbem, C:\Windows\System32\WindowsPowerShell\v1.0\, C:\Windows\System32\OpenSSH\, C:\Users\raynorpat\AppData\Local\Microsoft\WindowsApps, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files\Tailscale\, C:\Program Files\Level, C:\Program Files\WinGet\Links, D:\BuildTools\bin, C:\Program Files\Microsoft SQL Server\170\Tools\Binn\, C:\Program Files\TortoiseHg\, C:\Program Files\BinDiff\bin, C:\Program Files\dotnet\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Users\raynorpat\.local\bin, C:\Program Files\PuTTY\, C:\Program Files\qemu, C:\Program Files\nodejs\, c:\program files\windowsapps\microsoft.desktopappinstaller_1.29.280.0_x64__8wekyb3d8bbwe, C:\Program Files\GnuPG\bin, C:\Program Files\CMake\bin, C:\Program Files\GitHub CLI\, C:\Program Files\Go\bin, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\raynorpat\AppData\Local\Programs\Python\Python313\, C:\Users\raynorpat\scoop\apps\vscode\current\bin, C:\Users\raynorpat\scoop\shims, C:\Users\raynorpat\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\raynorpat\AppData\Roaming\npm, C:\Users\raynorpat\AppData\Local\Programs\Zed\bin, C:\Users\raynorpat\.dotnet\tools, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe\ripgrep-15.1.0-x86_64-pc-windows-msvc, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\go\bin, C:\Users\raynorpat\AppData\Local\Programs\Git\cmd, C:\Users\raynorpat\AppData\Local\omp, C:\Users\raynorpat\AppData\Local\lemonade_server\bin\, C:\Users\raynorpat\AppData\Local\Microsoft\WinGet\Packages\Hugo.Hugo.Extended_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\raynorpat\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback, C:\Users\raynorpat\AppData\Local\OpenAI\Codex\bin\ada252862d154cdd, C:\Program Files\WindowsApps\OpenAI.Codex_26.715.8383.0_x64__2p2nqsd0c76g0\app\resources] (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: ExportAnalysis.java 'prepare' '--layout' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\layout.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'  (HeadlessAnalyzer)  
+INFO  SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  Packed database cache: C:\Users\raynorpat\AppData\Local\ghidra\packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
+INFO  -----------------------------------------------------
+    ASCII Strings                              0.442 secs
+    Apply Data Archives                        0.380 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.005 secs
+    Create Address Tables                      0.031 secs
+    Create Address Tables - One Time           0.340 secs
+    Create Function                            0.137 secs
+    Data Reference                             0.363 secs
+    Decompiler Switch Analysis                 0.987 secs
+    Disassemble                                0.481 secs
+    Disassemble Entry Points                   0.412 secs
+    Disassemble Entry Points - One Time        0.015 secs
+    Embedded Media                             0.011 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.260 secs
+    Function Start Pre Search                  0.015 secs
+    Function Start Search                      0.062 secs
+    Function Start Search After Code           0.025 secs
+    Function Start Search After Data           0.006 secs
+    Mach-O Header Annotation                   0.011 secs
+    Non-Returning Functions - Discovered       0.042 secs
+    Reference                                  1.027 secs
+    Shared Return Calls                        0.060 secs
+    Stack                                      0.897 secs
+    Subroutine References                      0.030 secs
+    X86 Function Callee Purge                  0.029 secs
+    x86 Constant Reference Analyzer            1.015 secs
+-----------------------------------------------------
+     Total Time   7 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: ExportAnalysis.java 'export' '--layout' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\layout.json' '--output' '\\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\out\eisabus\manual\binrecon-ghidra-work-jvbszvp0\analysis.tmp.json' '--input' 'C:\Users\raynorpat\Downloads\test\Drivers\i386\EISABus.config\EISABus_reloc' '--size' '100752' '--sha256' '8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23' '--language' 'x86:LE:32:default'  (HeadlessAnalyzer)  
+INFO  SCRIPT: \\10.10.1.20\Tech\RhapsodiOS\RhapsodiOS\tools\binrecon\adapters\ghidra\ExportAnalysis.java (HeadlessAnalyzer)  
+INFO  ANALYZING changes made by post scripts: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc (HeadlessAnalyzer)  
+INFO  /EISABus_reloc: file created (raynorpat) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /EISABus_reloc (fallback-idraworkjvbszvp0:/EISABus_reloc) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
+
+=== fallback: stderr ===
+

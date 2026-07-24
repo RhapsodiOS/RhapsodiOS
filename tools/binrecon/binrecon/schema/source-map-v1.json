@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-map-v1.json",
+  "title": "Binrecon source map, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reference_sha256",
+    "mapped",
+    "unmapped",
+    "duplicate_candidates",
+    "boundary_disputed"
+  ],
+  "properties": {
+    "schema_version": {"const": "source-map-v1"},
+    "reference_sha256": {"$ref": "#/$defs/sha256"},
+    "mapped": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/mapped_entry"}
+    },
+    "unmapped": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/unmapped_entry"}
+    },
+    "duplicate_candidates": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/duplicate_entry"}
+    },
+    "boundary_disputed": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/boundary_entry"}
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9A-F]{64}$"
+    },
+    "address": {"type": "integer", "minimum": 0},
+    "size": {"type": "integer", "minimum": 1},
+    "names": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "source_path": {"type": "string", "minLength": 1},
+    "source_line": {"type": "integer", "minimum": 1},
+    "mapped_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "reference_names", "source_path", "source_line"],
+      "properties": {
+        "address": {"$ref": "#/$defs/address"},
+        "size": {"$ref": "#/$defs/size"},
+        "reference_names": {"$ref": "#/$defs/names"},
+        "source_path": {"$ref": "#/$defs/source_path"},
+        "source_line": {"$ref": "#/$defs/source_line"}
+      }
+    },
+    "unmapped_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "reference_names"],
+      "properties": {
+        "address": {"$ref": "#/$defs/address"},
+        "size": {"$ref": "#/$defs/size"},
+        "reference_names": {"$ref": "#/$defs/names"}
+      }
+    },
+    "source_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_path", "source_line"],
+      "properties": {
+        "source_path": {"$ref": "#/$defs/source_path"},
+        "source_line": {"$ref": "#/$defs/source_line"}
+      }
+    },
+    "duplicate_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "reference_names", "candidates", "reasons"],
+      "properties": {
+        "address": {"$ref": "#/$defs/address"},
+        "size": {"$ref": "#/$defs/size"},
+        "reference_names": {"$ref": "#/$defs/names"},
+        "candidates": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/source_candidate"}
+        },
+        "reasons": {"$ref": "#/$defs/reasons"}
+      }
+    },
+    "boundary_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "size", "reference_names", "reasons"],
+      "dependentRequired": {
+        "source_path": ["source_line"],
+        "source_line": ["source_path"]
+      },
+      "properties": {
+        "address": {"$ref": "#/$defs/address"},
+        "size": {"$ref": "#/$defs/size"},
+        "reference_names": {"$ref": "#/$defs/names"},
+        "source_path": {"$ref": "#/$defs/source_path"},
+        "source_line": {"$ref": "#/$defs/source_line"},
+        "reasons": {"$ref": "#/$defs/reasons"}
+      }
+    }
+  }
+}

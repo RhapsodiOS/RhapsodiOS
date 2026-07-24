@@ -269,6 +269,7 @@ void SyncCore99NVRAM(void)
   unsigned char *nvramBuf = (unsigned char *)Core99NVRAM;
   unsigned long dataChecksum;
   unsigned char headerChecksum;
+  void *temp;
 
   if (!Core99NVRAMInited) {
     return;  /* NVRAM not initialized */
@@ -301,7 +302,7 @@ void SyncCore99NVRAM(void)
     eieio();
 
     /* Swap bank pointers - backup bank is now primary */
-    void *temp = Core99PrimaryBank;
+    temp = Core99PrimaryBank;
     Core99PrimaryBank = Core99BackupBank;
     Core99BackupBank = temp;
 

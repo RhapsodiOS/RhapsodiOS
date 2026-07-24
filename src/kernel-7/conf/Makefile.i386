@@ -61,7 +61,8 @@ LDFLAGS=-e _start  -segaddr __TEXT ${RELOC} \
 MACHINE=i386
 
 LIBS_P= -lcc
-LIBS= -lcc
+# Soft 64-bit helpers for linking on a PPC-only libcc.a host (see libcc_i386_helpers.c).
+LIBS= $(LIBOBJC_SOURCE)/libcc_i386_helpers.o -lcc
 
 PRELDDEPS=assym.h
 

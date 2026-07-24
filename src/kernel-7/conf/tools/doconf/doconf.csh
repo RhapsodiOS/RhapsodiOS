@@ -29,7 +29,8 @@ set prog=$0
 set prog=$prog:t
 set nonomatch
 set OBJDIR=../BUILD
-set CONFIG_DIR=/usr/local/bin
+# Prefer CONFIG_DIR from the environment (e.g. staged buildtools under /build/tools).
+if (! $?CONFIG_DIR) set CONFIG_DIR=/usr/local/bin
 
 unset domake
 unset doconfig

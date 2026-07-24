@@ -830,13 +830,29 @@ ata_mode_to_mask(ata_mode_t mode)
 	 */
 	[self getControllerCapability];
 
+	/*
+	 * Determine cable type and cap UDMA at mode 2 (ATA/33) unless an
+	 * 80-conductor cable is present. Required for UDMA modes 3-5.
+	 */
+	if (_chipsetOps != NULL && _chipsetOps->detectCable != NULL)
+		_has80WireCable = _chipsetOps->detectCable(self);
+	else
+		_has80WireCable = NO;
+
+	if (!_has80WireCable) {
+		ata_mask_t udma33 = ata_mode_to_mask(ATA_MODE_2);
+		_controllerModes.mode.udma &= udma33;
+		IOLog("%s: 40-wire cable (or none): UDMA limited to Mode 2\n",
+			[self name]);
+	}
+
 	/* Qualify the default mask for each drive with the
 	 * controller's mask.
 	 */
 	for (i = 0; i < MAX_IDE_DRIVES; i++) {
 		_drives[i].driveMasks.modes &= _controllerModes.modes;
 	}
-	
+
 	/*
 	 * Loops through one cycle of the configuration process:
 	 *

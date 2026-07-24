@@ -530,17 +530,24 @@
     unsigned int nSectors;
     unsigned char *taddr;
     unsigned int length;
+    unsigned int blockSize = _drives[_driveNum].multiSector;
+
+    if (blockSize == 0) {
+	IOLog("%s: Read Multiple without a multi-sector block size\n",
+		[self name]);
+	return IDER_REJECT;
+    }
 
     if (sec_cnt == 0)
 	sec_cnt = MAX_BLOCKS_PER_XFER;
-	
+
     taddr = xferAddr;
 
     rtn = [self waitForDeviceReady];
     if (rtn != IDER_SUCCESS) {
 	return (rtn);
     }
-    
+
     outb(_ideRegsAddrs.drHead, ideRegs->drHead);
     outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
     outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
@@ -592,10 +599,10 @@
 	*/
 
 	/*
-	 * All is well. Read in the data. 
+	 * All is well. Read in the data.
 	 */
-	if (sec_cnt > _drives[_driveNum].multiSector)
-	    nSectors = _drives[_driveNum].multiSector;
+	if (sec_cnt > blockSize)
+	    nSectors = blockSize;
 	else
 	    nSectors = sec_cnt;
 	    
@@ -634,23 +641,30 @@
     unsigned int nSectors;
     unsigned char *taddr;
     unsigned int length;
+    unsigned int blockSize = _drives[_driveNum].multiSector;
+
+    if (blockSize == 0) {
+	IOLog("%s: Write Multiple without a multi-sector block size\n",
+		[self name]);
+	return IDER_REJECT;
+    }
 
     if (sec_cnt == 0)
 	sec_cnt = MAX_BLOCKS_PER_XFER;
-	
+
     taddr = xferAddr;
 
     rtn = [self waitForDeviceReady];
     if (rtn != IDER_SUCCESS) {
 	return (rtn);
     }
-    
+
     outb(_ideRegsAddrs.drHead, ideRegs->drHead);
     outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
     outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
     outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
     outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
-    
+
     [self enableInterrupts];
     outb(_ideRegsAddrs.command, IDE_WRITE_MULTIPLE);
 
@@ -663,11 +677,11 @@
 	    return (rtn);
 	}
 	
-	if (sec_cnt > _drives[_driveNum].multiSector)
-	    nSectors = _drives[_driveNum].multiSector;
+	if (sec_cnt > blockSize)
+	    nSectors = blockSize;
 	else
 	    nSectors = sec_cnt;
-	    
+
 	sec_cnt -= nSectors;
 
 	ddm_ide_cmd("ideWriteMultiple: starting data transfer\n",1,2,3,4,5);
@@ -893,7 +907,38 @@ static unsigned char unaligned_warnings;
 
     ideIoReq->status = IDER_CMD_ERROR;
     ideIoReq->blocks_xfered = 0;
-	
+
+	/*
+	 * The disk object caches its preferred command when it is
+	 * initialized. Our capabilities can change afterwards (a failed DMA
+	 * or Read Multiple test masks a mode out), so re-qualify the command
+	 * against the drive's current configuration. In particular, a
+	 * Read/Write Multiple with no block size configured would transfer
+	 * nothing and never complete.
+	 */
+	switch (ideIoReq->cmd) {
+	  case IDE_READ_DMA:
+		if (_drives[drive].transferType == IDE_TRANSFER_PIO)
+			ideIoReq->cmd = _drives[drive].multiSector ?
+				IDE_READ_MULTIPLE : IDE_READ;
+		break;
+	  case IDE_WRITE_DMA:
+		if (_drives[drive].transferType == IDE_TRANSFER_PIO)
+			ideIoReq->cmd = _drives[drive].multiSector ?
+				IDE_WRITE_MULTIPLE : IDE_WRITE;
+		break;
+	  case IDE_READ_MULTIPLE:
+		if (_drives[drive].multiSector == 0)
+			ideIoReq->cmd = IDE_READ;
+		break;
+	  case IDE_WRITE_MULTIPLE:
+		if (_drives[drive].multiSector == 0)
+			ideIoReq->cmd = IDE_WRITE;
+		break;
+	  default:
+		break;
+	}
+
 	[self clearInterrupts];
 
 	switch (ideIoReq->cmd) {

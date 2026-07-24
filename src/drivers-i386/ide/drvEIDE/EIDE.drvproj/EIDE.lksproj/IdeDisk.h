@@ -135,12 +135,6 @@ typedef  struct {
      * commands. 
      */
     id			_cntrlr;
-    
-    /*
-     * Commands to read and write from the disk are cached here. 
-     */
-    unsigned 		_ideReadCommand;
-    unsigned 		_ideWriteCommand;
 
     ideDriveInfo_t	_ideInfo;
     unsigned		_driveNum;

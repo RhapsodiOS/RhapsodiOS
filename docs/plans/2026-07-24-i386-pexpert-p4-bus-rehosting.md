@@ -17,6 +17,7 @@
 - **The success gate for the phase is `vm/README.md`'s own criterion:** the guest boots with NE2000-PCI networking up and is reachable over SSH from the host.
 - **Commit messages** start with the driver name (`drvPCIBus: `, `drvEISABus: `, `drvPCMCIABus: `) or `pexpert: `.
 - **All boot testing uses a throwaway copy of `vm/rhapsody.vmdk`.**
+- **Every driver rehosted in this phase must gain `drvpexpert-hdrs` in its `dpkg/control` `Build-Depends`,** and includes the contract header as `#import <pexpert/pexpert_i386.h>`. The header is owned and installed by the PExpert project into `System.framework/Versions/B/Headers/pexpert`, following the `src/driverkit-3/driverkit/Makefile` convention — it is **not** in `machdep/i386`. The Phase 1 Manifest entry `dir drivers-i386/bus/drvPExpert all` already produces `drvpexpert-hdrs` alongside `drvpexpert` (`src/rbuild-1/builder.c:924`), so no ordering change is needed beyond the one Phase 1 made.
 
 ## Scope corrections inherited from the spec
 
@@ -39,7 +40,7 @@ Lowest risk and best verified: the QEMU guest's NE2000 is a PCI device, so a reg
 - Unchanged: `pci.c`, `pci.h`, `PCIResourceDriver.m`
 
 **Interfaces:**
-- Consumes: `pexpert_pci_config_read(bus, dev, fn, off, size, *val)` and `pexpert_pci_config_write(...)` from `machdep/i386/pexpert_i386.h`, plus `i386_firmware_info.pci_config_mechanism` and `pci_last_bus`.
+- Consumes: `pexpert_pci_config_read(bus, dev, fn, off, size, *val)` and `pexpert_pci_config_write(...)` from `<pexpert/pexpert_i386.h>`, plus `i386_firmware_info.pci_config_mechanism` and `pci_last_bus`.
 
 - [ ] **Step 1: Inventory the config-access call sites**
 
@@ -55,7 +56,7 @@ Record every hit. Expected: all inside `PCIKernBusPrivate.m`. **If any appear in
 The two probe functions in `PCIKernBusPrivate.m` (mechanism #1 at lines 62-84, mechanism #2 at lines 95-132) duplicate `pcicfg_probe_mechanism()`. Replace both bodies with a read of the published value:
 
 ```objc
-#import <machdep/i386/pexpert_i386.h>
+#import <pexpert/pexpert_i386.h>
 
 /*
  * The platform expert probes the configuration mechanism during early boot
@@ -263,7 +264,7 @@ Read the file first and match its actual heading style and status-annotation con
 In `docs/boot/boot-i386.md`, under "DriverKit, drivers, and service activation", add:
 
 ```markdown
-The i386 bus drivers no longer carry private discovery code. `PCIKernBus` obtains configuration cycles from `pexpert_pci_config_read`/`_write`; `EISAKernBus` obtains EISA slot data, the ISA Plug and Play protocol and PnP resource parsing from the platform expert. Discovery has already run by this point — it happens in `i386_identify()` before `pmap_bootstrap()`, not at driver load. **Source anchor:** `src/kernel-7/machdep/i386/pexpert_i386.h`; `src/drivers-i386/bus/drvPExpert/i386/identify_machine.c` `i386_identify()`.
+The i386 bus drivers no longer carry private discovery code. `PCIKernBus` obtains configuration cycles from `pexpert_pci_config_read`/`_write`; `EISAKernBus` obtains EISA slot data, the ISA Plug and Play protocol and PnP resource parsing from the platform expert. Discovery has already run by this point — it happens in `i386_identify()` before `pmap_bootstrap()`, not at driver load. **Source anchor:** `src/drivers-i386/bus/drvPExpert/i386/pexpert_i386.h`; `src/drivers-i386/bus/drvPExpert/i386/identify_machine.c` `i386_identify()`.
 ```
 
 - [ ] **Step 3: Commit**

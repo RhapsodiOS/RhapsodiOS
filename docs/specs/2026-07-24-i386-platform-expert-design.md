@@ -162,13 +162,32 @@ instead. As on ppc, the PExpert sequences and calls back into kernel mechanisms
 
 ### Headers
 
-- **Contract headers** — `intr_exported.h`, `dma_exported.h`, `io_inline.h`, and
-  the new `pexpert_i386.h` — live in `src/kernel-7/machdep/i386` and are
-  installed by the existing `i386_installhdrs` rule. The PExpert consumes them
-  via `HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep`, exactly as the ppc project
-  already does.
-- **Private headers** — `intr_internal.h`, `chips/*.h`, `families/*.h` — live in
-  the PExpert only and are installed nowhere.
+- **Pre-existing kernel contract headers** — `intr_exported.h`,
+  `dma_exported.h`, `io_inline.h`, `bios.h`, `timer.h` — stay in
+  `src/kernel-7/machdep/i386`, unchanged in path and content. They are exported
+  to `LCLDIR` by `MACHINE_LCLEXPORT`, which uses a plain `install` with no
+  `unifdef`, so their `KERNEL_PRIVATE`-guarded content survives. The PExpert
+  consumes them via `HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep`, exactly as the
+  ppc project already does.
+- **`pexpert_i386.h` is owned and installed by the PExpert project**, not by the
+  kernel, into its own `pexpert/` namespace
+  (`System.framework/Versions/B/Headers/pexpert`), following the convention in
+  `src/driverkit-3/driverkit/Makefile`. Consumers write
+  `#import <pexpert/pexpert_i386.h>`.
+
+  The PExpert defines and populates those structures, so it is their producer;
+  the kernel and the bus drivers are consumers. Placing the header in the kernel
+  tree instead would create an unbreakable build cycle: `KERNEL_HEADERS`
+  resolves to the *installed* `kernel-hdrs` package, which no in-tree project
+  produces today, and `builder_setupdirs()` installs a project's full
+  `Build-Depends` regardless of build target
+  (`src/rbuild-1/builder.c:979`) — so producing `kernel-hdrs` would require
+  `drvpexpert`, which requires `kernel-hdrs`. Owning the header in the PExpert
+  removes the cycle rather than working around it, and a Manifest target of
+  `all` already produces both `drvpexpert-hdrs` and `drvpexpert` in one pass
+  (`src/rbuild-1/builder.c:924`).
+- **Private headers** — `intr_internal.h`, `arena.h`, `chips/*.h`,
+  `families/*.h` — live in the PExpert only and are installed nowhere.
 
 Net effect: one owner per header, existing driver-visible headers unchanged in
 path and content, and no third-party driver source changes as a consequence of

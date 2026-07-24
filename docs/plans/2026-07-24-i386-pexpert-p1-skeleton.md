@@ -206,6 +206,8 @@ Build-Depends: build-base, drivertools, kernload
 
 Deliberately identical in shape to `src/drivers-ppc/bus/drvPExpert/dpkg/control`. Do **not** add `kernel-hdrs`: `build-base` expands to `basedeps[]` (`src/rbuild-1/builder.c:440-441`), which already contains it, and `set_add()` dedupes.
 
+Keeping this dependency list free of anything kernel-produced is load-bearing, not incidental. Phase 3 makes the PExpert the owner and installer of `pexpert_i386.h`, which works only because drvPExpert never depends on the kernel. See "Header ownership" in the Phase 3 plan.
+
 The package name matches the ppc project deliberately: only one architecture's platform expert is ever built into a given repository, so `src/kernel-7/dpkg/control`'s existing `Build-Depends: … drvpexpert …` needs no change.
 
 - [ ] **Step 4: Move io_prim.c into the project**
@@ -867,7 +869,7 @@ git commit -m "docs: retarget i386 boot trace anchors at the platform expert"
 
 All must hold before Phase 2 begins:
 
-1. `src/drivers-i386/bus/drvPExpert` builds `pexperti386.o` and installs it to `/usr/local/lib`.
+1. `src/drivers-i386/bus/drvPExpert` builds `pexperti386.o` and installs it to `/usr/local/lib`, and its Manifest entry produces both `drvpexpert` and an (as yet empty) `drvpexpert-hdrs` package — a target of `all` sets both `do_hdr` and `do_bin` (`src/rbuild-1/builder.c:924`).
 2. `src/kernel-7` links against it via `LIBPEXPERT`, with `machdep/i386` no longer containing `i386_init.c`, `io_prim.c`, `bios.c` or `bios_asm.s`.
 3. `nm -g mach_kernel | sort` is byte-identical to `vm/baseline/mach_kernel.nm`.
 4. The kernel boots to a login prompt on a throwaway image, with console output matching `vm/baseline/console.txt`.

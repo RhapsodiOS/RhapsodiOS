@@ -20,37 +20,33 @@
 - **Commit messages** start with `pexpert: `; one to two lines; no metadata.
 - **All boot testing uses a throwaway copy of `vm/rhapsody.vmdk`.**
 
-## Header bootstrap: unresolved, read before a packaged build
+## Header ownership: the PExpert owns pexpert_i386.h
 
-This phase adds a **new** kernel-tree header, `machdep/i386/pexpert_i386.h`, and the platform expert compiles against it. That works in the manual guest workflow but not yet in a clean `rbuild buildall`, for a reason that is structural rather than a plan defect:
+`pexpert_i386.h` is installed by the **PExpert project**, into its own `pexpert/` namespace, and consumers write `#import <pexpert/pexpert_i386.h>`.
 
-- `HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep` resolves to **installed** headers, supplied by the `kernel-hdrs` package.
-- `kernel-hdrs` is listed in `basedeps[]` (`src/rbuild-1/builder.c:441`) and is therefore pulled in by every `build-base` dependency, including drvPExpert's.
-- No in-tree project currently produces it: `src/kernel-7/dpkg/` holds exactly one control file, `Package: kernel`. It is seeded.
-- rbuild *does* support producing it — a Manifest target of `headers` builds `<package>-hdrs` (`src/rbuild-1/builder.c:941`), so `dir kernel-7 headers` would yield `kernel-hdrs` from source.
-- But `builder_setupdirs()` runs unconditionally at `src/rbuild-1/builder.c:979`, **before** the `do_hdr` / `do_bin` split, so even a `headers` build installs the project's full `Build-Depends` — which for `kernel` includes `drvpexpert`. That closes a cycle: `kernel-hdrs` needs `drvpexpert`, and `drvpexpert` needs `kernel-hdrs`.
+This is a deliberate departure from the pre-existing kernel contract headers (`intr_exported.h`, `dma_exported.h`, `bios.h`), which stay in `src/kernel-7/machdep/i386` untouched. Two reasons:
 
-Manifest ordering cannot break this, because rbuild reads one control file per project and cannot vary dependencies per target.
+**It is the correct owner.** The PExpert defines and populates `i386_platform_info`, `i386_firmware_info`, `pci_config_ops_t` and `i386_init_t`. The kernel and the bus drivers read them.
 
-**Phases 1 and 2 are unaffected** — they add no kernel headers and compile fine against the seeded `kernel-hdrs`. The decision is only needed before Task 1 of this phase lands in a packaged build. Options, in the order they should be considered:
+**Putting it in the kernel tree would deadlock the packaged build.** `HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep` resolves to *installed* headers from the `kernel-hdrs` package. `kernel-hdrs` is in `basedeps[]` (`src/rbuild-1/builder.c:441`) so every `build-base` dependant pulls it, but no in-tree project produces it — `src/kernel-7/dpkg/` holds exactly one control file, `Package: kernel`. rbuild *can* produce it (`dir kernel-7 headers` yields `<package>-hdrs`, `src/rbuild-1/builder.c:941`), but `builder_setupdirs()` runs unconditionally at `src/rbuild-1/builder.c:979`, before the `do_hdr`/`do_bin` split, so even a headers-only build installs the project's full `Build-Depends` — which for `kernel` includes `drvpexpert`. Cycle: `kernel-hdrs` needs `drvpexpert` needs `kernel-hdrs`. Manifest ordering cannot break it, because rbuild reads one control file per project and cannot vary dependencies per target.
 
-1. **Let the platform expert own and install `pexpert_i386.h`.** The PExpert defines and populates those structures, so it is the natural producer; the kernel and bus drivers become consumers. Removes the cycle outright and keeps one owner per header. Costs: the kernel gains an include path into a driver project, and the install must land in the same PrivateHeaders tree.
-2. **Drop `drvpexpert` from `kernel`'s `Build-Depends` and supply `pexperti386.o` another way** — for instance by having the kernel link against the object in the build tree rather than from the chroot. Removes the cycle at its source but changes how the kernel link is fed.
-3. **Teach rbuild to skip binary-only dependencies for `headers` targets.** The correct general fix, and the largest; it is a change to `builder_setupdirs()` and belongs in its own piece of work.
+Owning the header in the PExpert removes the cycle instead of working around it. drvPExpert's own dependencies are `build-base, drivertools, kernload` — none of which reach the kernel. And no extra Manifest entry is needed: a target of `all` sets **both** `do_hdr` and `do_bin` (`src/rbuild-1/builder.c:924`), so the `dir drivers-i386/bus/drvPExpert all` line added in Phase 1 already produces `drvpexpert-hdrs` alongside `drvpexpert`.
 
-Do not begin Task 1 of this phase in a packaged build until one of these is chosen and recorded here.
+Consumers that gain a `drvpexpert-hdrs` build dependency: `kernel` (Phase 3), and `drvPCIBus`, `drvEISABus`, `drvPCMCIABus`, `Intel824X0PCI` (Phase 4).
+
+The remaining rbuild limitation — that `builder_setupdirs()` cannot skip binary-only dependencies for `headers` targets — is real but no longer blocks this work. It is worth fixing on its own merits; it is not in scope here.
 
 ---
 
 ### Task 1: The public contract and the table arena
 
 **Files:**
-- Create: `src/kernel-7/machdep/i386/pexpert_i386.h`
+- Create: `src/drivers-i386/bus/drvPExpert/i386/pexpert_i386.h`
 - Create: `src/drivers-i386/bus/drvPExpert/i386/arena.c`
 - Create: `src/drivers-i386/bus/drvPExpert/i386/arena.h`
-- Modify: `src/drivers-i386/bus/drvPExpert/i386/Makefile`, `PB.project`
+- Modify: `src/drivers-i386/bus/drvPExpert/i386/Makefile`, `Makefile.postamble`, `PB.project`
 
-`pexpert_i386.h` goes in the **kernel tree**, not the platform expert: it is a contract header, installed by the existing `i386_installhdrs` rule, and the platform expert reaches it through `HEADER_PATHS`. This is the deliberate no-duplication rule from the spec — the ppc project's duplicated `powermac.h` has already drifted 22 lines.
+`pexpert_i386.h` lives in and is installed by the **PExpert project** — see "Header ownership" above for why. There is still exactly one copy of it; the ppc project's duplicated `powermac.h`, which has already drifted 22 lines, is the anti-pattern being avoided.
 
 **Interfaces:**
 - Produces `pexpert_i386.h` with `i386_platform_info_t`, `i386_firmware_info_t`, the `I386_CLASS_*` and `I386_HV_*` constants, and the two `extern` globals.
@@ -58,7 +54,7 @@ Do not begin Task 1 of this phase in a packaged build until one of these is chos
 
 - [ ] **Step 1: Write the public contract header**
 
-`src/kernel-7/machdep/i386/pexpert_i386.h`:
+`src/drivers-i386/bus/drvPExpert/i386/pexpert_i386.h`:
 
 ```c
 /*
@@ -219,38 +215,57 @@ pexpert_arena_report(void)
 Add to `src/drivers-i386/bus/drvPExpert/i386/i386_init.c`, near the other globals:
 
 ```c
-#import <machdep/i386/pexpert_i386.h>
+#import "pexpert_i386.h"
 
 i386_platform_info_t	i386_platform_info;
 i386_firmware_info_t	i386_firmware_info;
 ```
 
-- [ ] **Step 5: Register in the build and confirm the header installs**
+Files **inside** the PExpert include it by quoted relative path (`"pexpert_i386.h"`, or `"../pexpert_i386.h"` from `chips/` and `families/`), not through the installed location — the project must build before its own header is installed. Files **outside** the PExpert use `#import <pexpert/pexpert_i386.h>`.
 
-`Makefile`: add `arena.c` to `CFILES`, `arena.h` to `HFILES`.
-`PB.project`: add both to `OTHER_LINKED` / `H_FILES`.
+- [ ] **Step 5: Add the header install rule**
+
+Append to `src/drivers-i386/bus/drvPExpert/i386/Makefile.postamble`, keeping the existing `PROJTYPE_CFLAGS` line:
+
+```make
+PEXPERT_HDRDIR = $(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/Headers/pexpert
+
+after_installhdrs:
+	$(MKDIRS) $(DSTROOT)$(PEXPERT_HDRDIR)
+	install -c -m 644 pexpert_i386.h $(DSTROOT)$(PEXPERT_HDRDIR)
+```
+
+Modelled on `src/driverkit-3/driverkit/Makefile:14,53-56`, which installs the driverkit headers into the sibling `Headers/driverkit` directory that every driver reaches as `<driverkit/…>`.
+
+**Verify the hook name before relying on it.** `after_<target>` is the NeXT `pb_makefiles` convention, but confirm that `kernelserver.make` actually honours `after_installhdrs`:
+
+```bash
+powershell -File vm/rhap-vm.ps1 ssh "grep -n 'after_installhdrs\|installhdrs' \$(gnumake -p 2>/dev/null | sed -n 's/^MAKEFILEDIR = //p' | head -1)/kernelserver.make /usr/local/lib/pb_makefiles/common.make 2>/dev/null | head"
+```
+
+If the hook is not honoured, add an explicit `installhdrs::` double-colon rule in the postamble instead — do **not** edit the generated `Makefile`, which Project Builder owns.
+
+- [ ] **Step 6: Register in the build and confirm the header installs**
+
+`Makefile`: add `arena.c` to `CFILES`, and `arena.h pexpert_i386.h` to `HFILES`.
+`PB.project`: add `arena.c` to `OTHER_LINKED`, `arena.h` to `H_FILES`, and `pexpert_i386.h` to `PUBLIC_HEADERS`.
 
 ```bash
 powershell -File vm/rhap-vm.ps1 sync
-powershell -File vm/rhap-vm.ps1 ssh "cd /build/source/src/kernel-7 && gnumake installhdrs DSTROOT=/"
-powershell -File vm/rhap-vm.ps1 ssh "ls -l '/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/machdep/i386/pexpert_i386.h'"
+powershell -File vm/rhap-vm.ps1 ssh "cd /build/source/src/drivers-i386/bus/drvPExpert && gnumake installhdrs DSTROOT=/"
+powershell -File vm/rhap-vm.ps1 ssh "ls -l '/System/Library/Frameworks/System.framework/Versions/B/Headers/pexpert/pexpert_i386.h'"
 ```
 
-The mechanism is `MACHINE_LCLEXPORT` in `src/kernel-7/conf/Makefile.i386`, which lists `machdep/i386` and installs its `*.h` into `LCLDIR` (`src/kernel-7/conf/Makefile.template:170`). It is **not** the `i386_installhdrs` rule, which installs only `${FEATURES}`.
+Expected: the header is installed and a consumer outside the project can reach it as `<pexpert/pexpert_i386.h>`.
 
-Two properties of that export path matter here and are already satisfied:
-
-- `MACHINE_LCLEXPORT` installs with a plain `install`, **no `unifdef`**. The stripping pass at `Makefile.template:977` (`-UKERNEL_PRIVATE -UDRIVER_PRIVATE`) belongs to `install_md_std_hdrs`, which iterates `MACHINE_EXPORT` — and `MACHINE_EXPORT` does not include `machdep/i386`. So `KERNEL_PRIVATE`-guarded content in `machdep/i386` headers survives into PrivateHeaders. This is what makes Phase 1's `-DKERNEL_PRIVATE` work for `bios.h`.
-- `pexpert_i386.h` as written is **not** wrapped in `#ifdef KERNEL_PRIVATE`, so it would survive either path. Keep it that way — bus drivers consume it.
-
-**Read the header-bootstrap note in this plan's preamble before running a packaged `rbuild` build**; the manual `installhdrs` above is sufficient for the `rhap-vm.ps1` workflow only.
+Do **not** wrap `pexpert_i386.h` in `#ifdef KERNEL_PRIVATE`. Headers installed into the public `Headers` tree are subject to `unifdef -UKERNEL_PRIVATE` stripping on the kernel's export path, and bus drivers must be able to read the whole file regardless.
 
 - [ ] **Step 6: Build, diff symbols, boot gate, commit**
 
 Expected symbol additions: `_i386_platform_info`, `_i386_firmware_info`, `_pexpert_arena_copy`, `_pexpert_arena_report`. Boot to login.
 
 ```bash
-git add src/kernel-7/machdep/i386/pexpert_i386.h src/drivers-i386/bus/drvPExpert
+git add src/drivers-i386/bus/drvPExpert
 git commit -m "pexpert: add the i386 platform expert public contract and table arena"
 ```
 
@@ -788,7 +803,7 @@ git commit -m "pexpert: split memory sizing out of i386_init"
 
 - [ ] **Step 1: Add pci_config_ops_t to the public header**
 
-Insert into `src/kernel-7/machdep/i386/pexpert_i386.h`, above the `pexpert_pci_config_read` declarations:
+Insert into `src/drivers-i386/bus/drvPExpert/i386/pexpert_i386.h`, above the `pexpert_pci_config_read` declarations:
 
 ```c
 typedef struct pci_config_ops {
@@ -822,7 +837,7 @@ Scan `0xE0000`–`0xFFFFF` on 16-byte boundaries for the `_32_` signature, valid
 - [ ] **Step 5: Write pci_config.c**
 
 ```c
-#import <machdep/i386/pexpert_i386.h>
+#import "pexpert_i386.h"
 
 #import "chips/pcicfg.h"
 
@@ -854,7 +869,7 @@ pexpert_pci_config_write(int bus, int dev, int fn, int off,
 The gate here is that the kernel still boots and `drvPCIBus` still finds devices through its own unmodified `pci.c` — nothing consumes the new service until Phase 4.
 
 ```bash
-git add src/kernel-7/machdep/i386/pexpert_i386.h src/drivers-i386/bus/drvPExpert
+git add src/drivers-i386/bus/drvPExpert
 git commit -m "pexpert: add boot-info collection and a unified PCI config service"
 ```
 
@@ -950,7 +965,7 @@ Use the `$PnP` installation-check structure published by Task 8, and the Phase 1
 Each is a struct literal reusing shared function pointers, following `families/gossamer.c` in the ppc project. `atpc.c`:
 
 ```c
-#import <machdep/i386/pexpert_i386.h>
+#import "pexpert_i386.h"
 
 #import "atpc.h"
 #import "../chips/i8259.h"
@@ -1037,7 +1052,7 @@ Boot on the QEMU guest and compare the dump against expectations: `I386_CLASS_AC
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/kernel-7/machdep/i386/pexpert_i386.h src/drivers-i386/bus/drvPExpert
+git add src/drivers-i386/bus/drvPExpert
 git commit -m "pexpert: add ISA PnP, PnP BIOS, family selection and a boot property dump
 
 ISA PnP isolation defaults off pending real-hardware validation."
@@ -1055,7 +1070,7 @@ ISA PnP isolation defaults off pending real-hardware validation."
 Add to "Architecture entry and early machine setup", after the `i386_init()` paragraph:
 
 ```markdown
-`i386_init()` calls `i386_identify()` before `pmap_bootstrap()`. Discovery reads CPUID, the boot struct's EISA and PCI fields, the PCI configuration mechanism, BIOS32, and then scans for the MP Floating Pointer, `$PIR`, `$PnP` and the ACPI RSDP, copying each validated table into an 8 KB platform-expert arena. It then selects one of three platform families — `atpc`, `pcipc`, `acpipc` — and publishes `i386_init_p`. Nothing acts on the MP or MADT tables yet; they are discovered and published only. **Source anchor:** `src/drivers-i386/bus/drvPExpert/i386/identify_machine.c` `i386_identify()`; `src/drivers-i386/bus/drvPExpert/i386/firmware_scan.c`; `src/kernel-7/machdep/i386/pexpert_i386.h`.
+`i386_init()` calls `i386_identify()` before `pmap_bootstrap()`. Discovery reads CPUID, the boot struct's EISA and PCI fields, the PCI configuration mechanism, BIOS32, and then scans for the MP Floating Pointer, `$PIR`, `$PnP` and the ACPI RSDP, copying each validated table into an 8 KB platform-expert arena. It then selects one of three platform families — `atpc`, `pcipc`, `acpipc` — and publishes `i386_init_p`. Nothing acts on the MP or MADT tables yet; they are discovered and published only. **Source anchor:** `src/drivers-i386/bus/drvPExpert/i386/identify_machine.c` `i386_identify()`; `src/drivers-i386/bus/drvPExpert/i386/firmware_scan.c`; `src/drivers-i386/bus/drvPExpert/i386/pexpert_i386.h`.
 ```
 
 - [ ] **Step 2: Commit**

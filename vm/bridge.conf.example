@@ -1,0 +1,11 @@
+# Copy to bridge.conf and edit.
+# Run ethlist.exe to list NPF devices; pick the VMnet8 (or desired) adapter.
+# Do not commit bridge.conf — it is machine-specific.
+
+[bridge]
+VMnet8 \Device\NPF_{YOUR-GUID-HERE}
+update  127.0.0.1:5001
+
+[tcpip]
+update
+VMnet8

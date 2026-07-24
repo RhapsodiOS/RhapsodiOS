@@ -72,7 +72,7 @@ conservative subtype and keeps a boot-time escape hatch.
 
 ## Scope
 
-Two files:
+Two kernel files:
 
 - `src/kernel-7/machdep/i386/kern_machdep.c` — rewrite subtype grading.
 - `src/kernel-7/machdep/i386/i386_init.c` — restore CPU detection, remove the
@@ -80,6 +80,13 @@ Two files:
 
 No changes to `mach/machine.h`, `kern/mach_fat.c`, `kern/mach_loader.c`,
 `bsd/kern/kern_sysctl.c`, or anything under `src/cctools-2/`.
+
+Plus one host-side addition outside the kernel: `tools/cpusubtype-test/`, a
+regression test that compiles the real `kern_machdep.c` on the development host
+and asserts the grading table. The grading logic is pure integer arithmetic over
+the `CPU_SUBTYPE_*` macros, so it is verifiable without target hardware — and
+this bug stayed latent for 27 years precisely because nothing checked it.
+`tools/` is already the tracked home for host-side tooling with its own tests.
 
 ## Design
 

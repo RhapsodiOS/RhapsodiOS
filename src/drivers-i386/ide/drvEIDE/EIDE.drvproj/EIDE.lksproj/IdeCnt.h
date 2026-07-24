@@ -46,6 +46,7 @@
 #import <sys/types.h>
 #import "IdeCntPublic.h"
 #import "AtapiCntPublic.h"
+#import "IdeBMIDE.h"
 #import <driverkit/IOPower.h>
 #import <string.h>	// bzero
 // #import <stdlib.h>	// strtol
@@ -195,6 +196,13 @@ __private_extern__ ata_mask_t ata_mode_to_mask(ata_mode_t mode);
 		PCI_CHANNEL_SECONDARY,				// 0x170, 15
 		PCI_CHANNEL_OTHER,
 	} _ideChannel;
+
+	/*
+	 * Chipset back-end and interrupt-mode state.
+	 */
+	const ideChipsetOps_t *_chipsetOps;	// selected back-end, NULL = legacy PIO
+	ideChipCaps_t		_chipCaps;		// capabilities for this controller
+	BOOL				_pollMode;		// YES: interrupts proven undeliverable
 
     /*
      * Power management related ivars. 

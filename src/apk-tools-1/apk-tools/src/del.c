@@ -58,11 +58,9 @@ out:
 	return r;
 }
 
-static struct apk_applet apk_del = {
+struct apk_applet apk_del = {
 	.name = "del",
 	.usage = "apkname...",
 	.main = del_main,
 };
-
-APK_DEFINE_APPLET(apk_del);
 

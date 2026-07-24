@@ -31,11 +31,9 @@ static int update_main(void *ctx, int argc, char **argv)
 	return 0;
 }
 
-static struct apk_applet apk_update = {
+struct apk_applet apk_update = {
 	.name = "update",
 	.usage = "",
 	.main = update_main,
 };
-
-APK_DEFINE_APPLET(apk_update);
 

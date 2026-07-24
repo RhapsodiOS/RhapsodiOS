@@ -174,7 +174,7 @@ static struct option fetch_options[] = {
 	{ "output",	required_argument,	NULL, 'o' },
 };
 
-static struct apk_applet apk_fetch = {
+struct apk_applet apk_fetch = {
 	.name = "fetch",
 	.usage = "[-R|--recursive|--stdout] [-o dir] apkname...",
 	.context_size = sizeof(struct fetch_ctx),
@@ -183,6 +183,4 @@ static struct apk_applet apk_fetch = {
 	.parse = fetch_parse,
 	.main = fetch_main,
 };
-
-APK_DEFINE_APPLET(apk_fetch);
 

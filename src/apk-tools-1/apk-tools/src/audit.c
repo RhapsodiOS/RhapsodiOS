@@ -132,7 +132,7 @@ static struct option audit_options[] = {
 	{ "backup",	no_argument,		NULL, 0x10000 },
 };
 
-static struct apk_applet apk_audit = {
+struct apk_applet apk_audit = {
 	.name = "audit",
 	.usage = "--backup",
 	.context_size = sizeof(struct audit_ctx),
@@ -141,6 +141,4 @@ static struct apk_applet apk_audit = {
 	.parse = audit_parse,
 	.main = audit_main,
 };
-
-APK_DEFINE_APPLET(apk_audit);
 

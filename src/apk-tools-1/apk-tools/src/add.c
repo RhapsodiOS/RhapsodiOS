@@ -191,7 +191,7 @@ static struct option add_options[] = {
 	{ "virtual",	required_argument,	NULL, 't' },
 };
 
-static struct apk_applet apk_add = {
+struct apk_applet apk_add = {
 	.name = "add",
 	.usage = "[--initdb] [--upgrade|-u] [--virtual metaname] apkname...",
 	.context_size = sizeof(struct add_ctx),
@@ -200,6 +200,4 @@ static struct apk_applet apk_add = {
 	.parse = add_parse,
 	.main = add_main,
 };
-
-APK_DEFINE_APPLET(apk_add);
 

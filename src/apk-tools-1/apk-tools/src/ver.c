@@ -112,7 +112,7 @@ static struct option ver_options[] = {
 	{ "check", 	no_argument,	NULL, 'c' },
 };
 
-static struct apk_applet apk_ver = {
+struct apk_applet apk_ver = {
 	.name = "version",
 	.usage = "[-t version1 version2]",
 	.context_size = sizeof(struct ver_ctx),
@@ -121,6 +121,4 @@ static struct apk_applet apk_ver = {
 	.parse = ver_parse,
 	.main = ver_main,
 };
-
-APK_DEFINE_APPLET(apk_ver);
 

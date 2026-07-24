@@ -264,7 +264,7 @@ static struct option info_options[] = {
 	{ "rdepends",	no_argument,		NULL, 'r' },
 };
 
-static struct apk_applet apk_info = {
+struct apk_applet apk_info = {
 	.name = "info",
 	.usage = "",
 	.context_size = sizeof(struct info_ctx),
@@ -273,6 +273,4 @@ static struct apk_applet apk_info = {
 	.parse = info_parse,
 	.main = info_main,
 };
-
-APK_DEFINE_APPLET(apk_info);
 

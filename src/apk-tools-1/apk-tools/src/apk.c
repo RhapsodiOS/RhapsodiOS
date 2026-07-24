@@ -21,6 +21,14 @@
 #include "apk_defines.h"
 #include "apk_applet.h"
 
+extern struct apk_applet apk_add, apk_del, apk_audit, apk_index,
+    apk_fetch, apk_search, apk_info, apk_update, apk_ver;
+struct apk_applet *apk_applets[] = {
+	&apk_add, &apk_del, &apk_audit, &apk_index, &apk_fetch,
+	&apk_search, &apk_info, &apk_update, &apk_ver,
+};
+const int apk_num_applets = sizeof(apk_applets) / sizeof(apk_applets[0]);
+
 const char *apk_root;
 struct apk_repository_url apk_repository_list;
 int apk_verbosity = 1, apk_cwd_fd;
@@ -45,13 +53,14 @@ int version(void)
 }
 int usage(void)
 {
-	struct apk_applet **a, *applet;
+	struct apk_applet *applet;
+	int i;
 
 	version();
 	printf("\nUsage:\n");
 
-	for (a = &__start_apkapplets; a < &__stop_apkapplets; a++) {
-		applet = *a;
+	for (i = 0; i < apk_num_applets; i++) {
+		applet = apk_applets[i];
 		printf("    apk %s %s\n",
 		       applet->name, applet->usage);
 	}
@@ -62,13 +71,13 @@ int usage(void)
 
 static struct apk_applet *find_applet(const char *name)
 {
-	struct apk_applet **a;
+	int i;
 
-	for (a = &__start_apkapplets; a < &__stop_apkapplets; a++) {
-		if (strcmp(name, (*a)->name) == 0)
-			return *a;
+	for (i = 0; i < apk_num_applets; i++) {
+		if (strcmp(name, apk_applets[i]->name) == 0)
+			return apk_applets[i];
 	}
-	
+
 	return NULL;
 }
 

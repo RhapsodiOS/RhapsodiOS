@@ -135,7 +135,7 @@ static struct option search_options[] = {
 	{ "description",	no_argument,		NULL, 'd' },
 };
 
-static struct apk_applet apk_search = {
+struct apk_applet apk_search = {
 	.name = "search",
 	.usage = "[--description|-d] [search_pattern]",
 	.context_size = sizeof(struct search_ctx),
@@ -144,6 +144,4 @@ static struct apk_applet apk_search = {
 	.parse = search_parse,
 	.main = search_main,
 };
-
-APK_DEFINE_APPLET(apk_search);
 

@@ -117,7 +117,7 @@ static struct option index_options[] = {
 	{ "delete",	required_argument,	NULL, 'd' },
 };
 
-static struct apk_applet apk_index = {
+struct apk_applet apk_index = {
 	.name = "index",
 	.usage = "[-d indexfile] apkname...",
 	.context_size = sizeof(struct index_ctx),
@@ -126,6 +126,4 @@ static struct apk_applet apk_index = {
 	.parse = index_parse,
 	.main = index_main,
 };
-
-APK_DEFINE_APPLET(apk_index);
 

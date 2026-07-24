@@ -68,13 +68,14 @@ BUILD_OFILES_LIST_ONLY =
 
 # Additional relocatables to be linked into this project
 VERS_OFILE=migcom_untyped_vers.o
-OTHER_OFILES = $(VERS_OFILE)
+OTHER_OFILES =
 
 # Additional libraries to link against
 OTHER_LIBS = 
 # To include a version string, project source must exist in a directory named 
 # $(NAME).%d[.%d][.%d] and the following line must be uncommented.
-# OTHER_GENERATED_OFILES = $(VERS_OFILE)
+# Use OTHER_GENERATED_OFILES so arch-suffixed .ppc.o rules are generated.
+OTHER_GENERATED_OFILES = $(VERS_OFILE)
 
 ## Configure how things get built here.  Additional dependencies, source files, 
 ## derived files, and build order should be specified here.

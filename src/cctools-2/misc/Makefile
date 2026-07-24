@@ -183,6 +183,10 @@ nmedit.NEW: nmedit.o vers.o
 		$(OFILE_DIR)/nmedit.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/nmedit.NEW \
 		$(OFILE_DIR)/nmedit.private.o
+	# Stage-0: libdyld needs nmedit on PATH before cctools install finishes
+	rm -f /usr/local/bin/nmedit
+	cp -p $(SYMROOT)/nmedit.NEW /usr/local/bin/nmedit
+	chmod 755 /usr/local/bin/nmedit
 
 nmedit.o: strip.c
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -c -MD -dependency-file $(OFILE_DIR)/$*.d \

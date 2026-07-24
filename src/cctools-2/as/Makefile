@@ -370,7 +370,7 @@ common_install:
 	install -c -s -m 555 $(SYMROOT)/ahppa_dir/as \
 		$(DSTROOT)$(LOCLIBDIR)/hppa/as
 	$(MKDIRS) $(DSTROOT)$(LOCLIBDIR)/i860
-	install -s -m 555 $(SYMROOT)/a860_dir/as \
+	install -c -s -m 555 $(SYMROOT)/a860_dir/as \
 		$(DSTROOT)$(LOCLIBDIR)/i860/as
 
 $(OFILE_DIRS) $(SYM_DIRS):

@@ -75,7 +75,7 @@ make= `if [ -f /bin/gnumake ]; then echo /bin/gnumake; else echo make; fi` \
 ## bootstrap target must have been run before this.  
 ##
 debug: obj.clone 
-	./build_gcc --thins \
+	sh ./build_gcc --thins \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -109,7 +109,7 @@ obj.unclone:
 	$(RM) -f obj.clone
 
 config: 
-	./build_gcc --configure \
+	sh ./build_gcc --configure \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -119,7 +119,7 @@ config:
 		--targets="$(TARGETS)"
 
 build: build_bison
-	./build_gcc --thins \
+	sh ./build_gcc --thins \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -139,7 +139,7 @@ build: build_bison
 
 install_no_src: install_bison
 	if [ "$(TARGET_OS)" = nextstep -o "$(TARGET_OS)" = teflon ]; then \
-	    ./build_gcc --fats \
+	    sh ./build_gcc --fats \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -176,7 +176,7 @@ install: installhdrs build install_no_src
 ## build compilers for target=$(RC_ARCHS), and host=`arch`
 ##
 bootstrap: bootstrap_bison
-	./build_gcc --fats \
+	sh ./build_gcc --fats \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -186,7 +186,7 @@ bootstrap: bootstrap_bison
 		--targets="$(RC_ARCHS)"
 
 clean: clean_bison
-	./build_gcc --clean \
+	sh ./build_gcc --clean \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
@@ -349,7 +349,7 @@ clean_bison:
 	fi
 
 lib_ofiles:
-	./build_gcc --lib_ofiles \
+	sh ./build_gcc --lib_ofiles \
 		--srcroot=$(SRC) \
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \

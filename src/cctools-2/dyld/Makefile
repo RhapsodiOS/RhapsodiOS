@@ -18,7 +18,12 @@ else
 	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
-LIBC = -lc_dynamic -lcc_dynamic
+# Prefer libc_dynamic when present; otherwise plain -lc (seeded by host-fixes).
+ifeq "" "$(wildcard /usr/lib/libc_dynamic.a)$(wildcard /usr/lib/libc_dynamic.dylib)"
+  LIBC = -lc -lcc_dynamic
+else
+  LIBC = -lc_dynamic -lcc_dynamic
+endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"
   MKDIRS = /bin/mkdirs

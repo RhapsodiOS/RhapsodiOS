@@ -138,6 +138,7 @@ TEST(test_buildflags) {
     builder_buildflags(&p, "install", &f, 1);
     CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
+    CHECK(list_has(&f, "LN=/build/bin/ln"));
     strlist_free(&f);
     params_free(&p);
 }

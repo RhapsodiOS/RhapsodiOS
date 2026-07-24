@@ -9,7 +9,9 @@ OBJROOT = .
 LIBDIR = /lib
 LOCLIBDIR = /usr/local/lib
 DSTDIRS = $(DSTROOT)$(LIBDIR) $(DSTROOT)$(LOCLIBDIR)
-DYLD = $(NEXT_ROOT)/usr/lib/dyld
+# Host dyld is often incompatible for -r merge into crt1 ("indirect symbol
+# table entry past the end"). Skip merging it; crt0 products still build.
+DYLD =
 CC = /usr/bin/cc
 INDR = /usr/local/bin/indr
 ifneq "$(wildcard /bin/pax)" ""

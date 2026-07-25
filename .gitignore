@@ -9,6 +9,9 @@ vm/work/
 vm/logs/
 vm/artifacts/
 vm/debs/
+vm/shots-*/
+vm/capture_output/
+vm/__pycache__/
 
 # binrecon: analyzer output is generated evidence, not source
 tools/binrecon/out/

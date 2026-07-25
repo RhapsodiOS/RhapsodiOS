@@ -510,6 +510,8 @@ hc0: interrupt timeout, cmd: 0xec
 ideReadGetInfoCommon: ideWaitForInterrupt
 ATA: ideReadGetInfoCommon failed.
 hc0: ATA drive 0 is not present.
+hc0: interrupt timeout, cmd: 0x10
+hc0: Restore: error=0x0 secCnt=0x1 secNum=0x1 cyl=0x0 drhd=0xe0 status=0x50
 ```
 
 **New fact this reveals:** after the `0xc4` timeout, the driver's reset path
@@ -529,6 +531,45 @@ visible - there is no `_ide_debug` logging on the successful path immediately
 before it wedges, only on failure - so this narrows the unknown to "the
 recovery path also can't get an interrupt" without yet explaining why the
 first one was lost.
+
+**The next command in the same reset sequence times out too, and shows a
+different status shape.** Immediately after the `ATA drive 0 is not present`
+line, the driver issues `cmd: 0x10` (RESTORE, part of the retry loop after
+the failed IDENTIFY) and it also gets `hc0: interrupt timeout, cmd: 0x10` -
+no interrupt again. But the status word left behind, `status=0x50`, is not
+the `0x58` shape seen in every other timeout quoted in this document. By the
+decoding already established above (`0x58` = `DRDY | DSC | DRQ`), `0x50` is
+`DRDY | DSC` with neither `DRQ` nor `ERR` set: the drive reports itself ready
+and idle, not sitting with data pending. That reads as a command the device
+had already finished, with nothing left in-flight, rather than the
+in-progress data-transfer handshake `0x58` represents elsewhere in this file.
+RESTORE also has no data phase to begin with, so there is no transfer for it
+to be "stuck" in the middle of.
+
+This is worth flagging as a lead, not a conclusion. Every other case in this
+document is the "device holding data, host never told" shape; this is a
+"command already completed, no interrupt arrived to say so" shape instead.
+If that distinction holds up under more observation, it would point more
+toward IRQ 14 delivery itself being lost - independent of what the command
+was doing - rather than something specific to the read/multisector transfer
+path. But it is a single instance from one debug capture, in a system this
+document has already documented as varying between runs, and it does not by
+itself explain why interrupts stop arriving.
+
+The exact `cmd: 0x10` / `status=0x50` pairing (same register values:
+`secCnt=0x1 secNum=0x1 cyl=0x0 drhd=0xe0`) also appears in the other
+full-length debug capture, `vm/shots-task11-boot1/serial.log` (lines 60-61),
+so it is not a one-off within this run either - it reproduced across the two
+captures that got far enough to reach it. It did not appear in the two
+shorter captures (`vm/shots-task11-debug`, `vm/shots-task11-debug2`), which
+wedged earlier during initial drive setup and never reach this retry stage,
+nor in the non-`_ide_debug` captures (`vm/shots-task11-panic`,
+`-panic2`, `-serial0`). Notably, a *second* `cmd: 0x10` timeout later in the
+same `shots-task11-debug3` run (lines 74-75) instead shows `status=0x58` -
+so a RESTORE timeout does not always land on `0x50`; the two shapes can both
+occur for the same command within one boot. With only two runs reaching this
+stage, this is not enough to call the `0x50` shape reproducible in general,
+only that it has been seen more than once.
 
 One caveat worth recording plainly: two earlier, shorter capture attempts
 with the identical `"Debug" = "Yes"` config wedged much earlier and on

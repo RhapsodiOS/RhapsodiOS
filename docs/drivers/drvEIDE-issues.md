@@ -340,6 +340,48 @@ command it uses. This does **not** change Tasks 8-11: the sacrificial-inode
 graft and rebuilt-driver injection plan stands, since no config-table
 workaround alone resolves the wedge.
 
+### Task 9 result: the rebuilt driver survives longer, but multisector still wedges
+
+The i386 `drvEIDE` (findings A-G above) was built on the PPC toolchain host
+as unstripped `kl_ld` output (`EIDE_reloc`, 856,404 bytes — about 7x the
+stock 121,056-byte binary; the userspace `PostLoad` helper did not link on
+that host, so only `EIDE_reloc` was replaced). It replaced the image's
+installed **`drvEIDE-28` / version `5.01`** (`Instance0.table`'s `Driver
+Version` string: `PROGRAM:EIDE PROJECT:drvEIDE-28 DEVELOPER:root
+BUILT:Sat Mar 28 22:23:22 PST 1998`). Since it exceeds the target's
+121,856-byte writable bound, it was installed via the sacrificial-inode
+graft from Task 8, onto `InterfaceBuilderGuide.pdf` (kept separate from the
+donor Task 11 uses for the kernel), and verified byte-for-byte identical
+after a read-back.
+
+**With `"Multiple Sectors" = "No"`**, the rebuilt driver's boot trace is
+identical to Task 7's stock-driver baseline: `using single sector
+transfers.`, then `hc0: interrupt timeout, cmd: 0x20` shortly after
+`rootdev 300, howto 40000`, cycling through resets/retries with no boot
+inside 180 seconds. The larger unstripped binary loads and runs with no
+regression.
+
+**With `"Multiple Sectors" = "Yes"` — the real test — the driver gets
+substantially further before wedging, but still wedges.** `hd0: using
+multisector (16) transfers.` appears and, unlike the original reference
+failure (which hangs on the very next `0xC4`), the boot continues through
+device-attribute printing, serial/keyboard/PCI/EISA registration, and into
+`rootdev 300, howto 40000` — all without an interrupt timeout. The wedge
+then reappears at the start of root-device I/O, with the same signature as
+the original reference failure: `hc0: interrupt timeout, cmd: 0xc4`,
+`status=0x58` (`DRDY|DSC|DRQ`, `error=0x0`), followed by the same permanent
+reset/retry cycle (`RESTORE`/`READ MULTIPLE`/`ATA drive 0 is not present`)
+with no progress through 180 seconds.
+
+**Reading:** findings A-G's recovery logic (particularly C,
+`-recoverFromLostInterrupt:command:`) lets the boot survive well past where
+the stock driver hung, but does not fix the root cause QEMU's IDE trace
+identified — IRQ 14 simply stops being reasserted for a `cmd: 0xc4`, and no
+amount of driver-side recovery logic can wait out an interrupt the device
+model never raises. The serial console in Tasks 10-11 remains the priority
+for `IOLog` visibility into exactly where in `-recoverFromLostInterrupt:` or
+the retry path this instance of the wedge is being hit.
+
 ---
 
 ## 3. Verification status

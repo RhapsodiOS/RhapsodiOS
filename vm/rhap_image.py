@@ -265,3 +265,58 @@ Image.listdir = _listdir
 Image.lookup = _lookup
 Image.resolve = _resolve
 Image.max_writable = _max_writable
+
+
+def _fmt_stat(img, path):
+    ino = img.resolve(path)
+    if ino is None:
+        return "%s: not found" % path
+    n = img.inode(ino)
+    frags = img.frags(n)
+    holes = sum(1 for f in frags if f == 0)
+    return (
+        "%s\n  inode      %d\n  mode       0%o\n  nlink      %d\n"
+        "  size       %d\n  di_blocks  %d (x1024 = %d bytes)\n"
+        "  writable   %d (slack %d)\n  holes      %d"
+        % (
+            path, ino, n.mode, n.nlink, n.size, n.blocks, n.blocks * 1024,
+            img.max_writable(n), img.max_writable(n) - n.size, holes,
+        )
+    )
+
+
+def main(argv):
+    if len(argv) < 4:
+        print("usage: rhap_image.py <image> {ls|stat|cat|slack} <path>")
+        return 2
+    path_img, cmd, path = argv[1], argv[2], argv[3]
+    img = Image(path_img)
+    if cmd == "ls":
+        for name, ino, dtype in img.listdir(path):
+            kind = {4: "dir", 8: "reg", 10: "lnk"}.get(dtype, str(dtype))
+            print("  %-32s ino=%-9d %s" % (name, ino, kind))
+    elif cmd == "stat":
+        print(_fmt_stat(img, path))
+    elif cmd == "cat":
+        ino = img.resolve(path)
+        if ino is None:
+            print("%s: not found" % path)
+            return 1
+        import sys as _sys
+        _sys.stdout.buffer.write(img.read_file(ino))
+    elif cmd == "slack":
+        ino = img.resolve(path)
+        if ino is None:
+            print("%s: not found" % path)
+            return 1
+        n = img.inode(ino)
+        print("%d %d %d" % (n.size, img.max_writable(n), img.max_writable(n) - n.size))
+    else:
+        print("unknown command: %s" % cmd)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    raise SystemExit(main(sys.argv))

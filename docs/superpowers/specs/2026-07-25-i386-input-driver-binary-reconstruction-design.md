@@ -260,7 +260,7 @@ src/drivers-i386/input/drvPS2Mouse/reconstruction/
 Also committed: one reference-only profile per driver at
 `tools/binrecon/profiles/{ps2mouse,serialpointingdevice,ps2keyboard,parallelport,busmouse}.json`,
 copied from the existing `pcmciabus.json` with `output_dir` set to
-`../out/<driver>`; and `vm/build-i386-input-drivers.sh`, modelled on the
+`../out/<driver>`; and `vm/build-i386-input-recon.sh`, modelled on the
 committed `vm/build-i386-bus-drivers.sh`.
 
 ### 3.2 Not committed
@@ -377,7 +377,7 @@ divergent.
 
 **Verification.** Three checks per driver, each against the rebuilt `_reloc`:
 
-1. **Compiles.** `vm/build-i386-input-drivers.sh` exits 0 and a `_reloc` lands on
+1. **Compiles.** `vm/build-i386-input-recon.sh` exits 0 and a `_reloc` lands on
    disk. For drvPCParallel, `InstallPPDev` and `RemovePPDev` must also build.
    Warnings are captured to a log and reviewed, but do not gate.
 
@@ -417,7 +417,7 @@ Ascending difficulty rather than ascending size, one driver carried all the way
 through before the next starts.
 
 **Phase 0 — tooling.** Write the five profiles. Write
-`vm/build-i386-input-drivers.sh` with a `build_one` line per driver and the five
+`vm/build-i386-input-recon.sh` with a `build_one` line per driver and the five
 resulting paths in its closing summary.
 
 *Verify:* `binrecon validate --profile tools/binrecon/profiles/<driver>.json`
@@ -567,7 +567,7 @@ drvBusMouse:
 
 Repository-wide:
 
-- `vm/build-i386-input-drivers.sh`
+- `vm/build-i386-input-recon.sh`
 - `PB.project` for `PCParallelPort.drvproj` and for `PCParallelPort.lksproj`
 - `src/drivers-i386/README` status lines updated for all five
 

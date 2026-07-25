@@ -153,7 +153,7 @@ Tasks 4, 6, 8, 10 and 12 all follow this.
 **Step A — baseline build, before any source edit.** Inside the Rhapsody guest:
 
 ```bash
-sh /build/source/vm/build-i386-input-drivers.sh <drv>
+sh /build/source/vm/build-i386-input-recon.sh <drv>
 ```
 
 Expected: `=== input-drivers done fail=0 built: <drv> ===` and a `_reloc` staged under `/build/out/i386/<drv>/`. Record the size. If the baseline fails, repairing that breakage is a separate commit landed **before** any divergence fix, so a pre-existing failure is never misattributed to this work.
@@ -197,12 +197,12 @@ An `intentional-mismatch` requires both `--reason` and `--reviewer`; the CLI rej
 - Create: `tools/binrecon/profiles/ps2keyboard.json`
 - Create: `tools/binrecon/profiles/parallelport.json`
 - Create: `tools/binrecon/profiles/busmouse.json`
-- Create: `vm/build-i386-input-drivers.sh`
+- Create: `vm/build-i386-input-recon.sh`
 - Reference: `tools/binrecon/profiles/pcmciabus.json`, `vm/build-i386-bus-drivers.sh`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: five profile paths named `tools/binrecon/profiles/<name>.json` where `<name>` is `ps2mouse`, `serialpointingdevice`, `ps2keyboard`, `parallelport`, `busmouse` — the lower-cased reference server name, not the `drv` directory name, matching the existing `pcibus.json` / `pcmciabus.json` convention. Each sets `output_dir` to `../out/<name>`, resolved relative to the `profiles` directory, so analyzer output lands in `tools/binrecon/out/<name>`. Also produces `vm/build-i386-input-drivers.sh`, invoked as `sh vm/build-i386-input-drivers.sh [<drv> …]`, which with no arguments builds all five and with arguments builds only the named `drv*` directories.
+- Produces: five profile paths named `tools/binrecon/profiles/<name>.json` where `<name>` is `ps2mouse`, `serialpointingdevice`, `ps2keyboard`, `parallelport`, `busmouse` — the lower-cased reference server name, not the `drv` directory name, matching the existing `pcibus.json` / `pcmciabus.json` convention. Each sets `output_dir` to `../out/<name>`, resolved relative to the `profiles` directory, so analyzer output lands in `tools/binrecon/out/<name>`. Also produces `vm/build-i386-input-recon.sh`, invoked as `sh vm/build-i386-input-recon.sh [<drv> …]`, which with no arguments builds all five and with arguments builds only the named `drv*` directories.
 
 - [ ] **Step 1: Write the five profiles**
 
@@ -275,7 +275,7 @@ Expected: five blocks, each printing the resolved absolute reference path, its s
 
 - [ ] **Step 3: Write the build script**
 
-`vm/build-i386-input-drivers.sh`, modelled on `vm/build-i386-bus-drivers.sh`. The `build_one` body is identical to the bus script's; only `INPUT` replaces `BUS` and the driver list differs.
+`vm/build-i386-input-recon.sh`, modelled on `vm/build-i386-bus-drivers.sh`. The `build_one` body is identical to the bus script's; only `INPUT` replaces `BUS` and the driver list differs.
 
 ```sh
 #!/bin/sh
@@ -380,7 +380,7 @@ EOF
 }
 
 # With no arguments, build every driver. Otherwise build only those named,
-# by directory name, e.g. `sh build-i386-input-drivers.sh drvPS2Mouse`.
+# by directory name, e.g. `sh build-i386-input-recon.sh drvPS2Mouse`.
 want() {
 	[ $# -eq 1 ] && return 0
 	target=$1
@@ -434,7 +434,7 @@ Note the `drv` directory name and the reference `_reloc` name differ for two dri
 The guest may be unavailable, but a syntax error is catchable on the host:
 
 ```bash
-sh -n vm/build-i386-input-drivers.sh && echo "syntax OK"
+sh -n vm/build-i386-input-recon.sh && echo "syntax OK"
 ```
 
 Expected: `syntax OK`.
@@ -444,7 +444,7 @@ Expected: `syntax OK`.
 ```bash
 git add tools/binrecon/profiles/ps2mouse.json tools/binrecon/profiles/serialpointingdevice.json \
         tools/binrecon/profiles/ps2keyboard.json tools/binrecon/profiles/parallelport.json \
-        tools/binrecon/profiles/busmouse.json vm/build-i386-input-drivers.sh
+        tools/binrecon/profiles/busmouse.json vm/build-i386-input-recon.sh
 git commit -m "binrecon: add i386 input driver profiles and build harness
 
 Reference-only profiles for the five input drivers plus a build script
@@ -908,14 +908,14 @@ git commit -m "drivers-i386: record the drvPS2Mouse parity ledger and divergence
 - Stage (untracked): `out/i386/drvPS2Mouse/PS2Mouse.config/PS2Mouse_reloc`
 
 **Interfaces:**
-- Consumes: `divergences.md` and `ledger.json` from Task 3; `vm/build-i386-input-drivers.sh` from Task 1.
+- Consumes: `divergences.md` and `ledger.json` from Task 3; `vm/build-i386-input-recon.sh` from Task 1.
 - Produces: a drvPS2Mouse whose `__cstring` set contains every reference string, and a ledger with no `unexamined` entry left.
 
 **Standard fix pass procedure values:** `<name>` = `ps2mouse`, `<drv>` = `drvPS2Mouse`, `<Config>` = `PS2Mouse`.
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvPS2Mouse`. Expected `fail=0` and a staged `PS2Mouse_reloc`. Record its size — it will exceed the reference's 30204 bytes because our build is unstripped, which is expected and not a finding.
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvPS2Mouse`. Expected `fail=0` and a staged `PS2Mouse_reloc`. Record its size — it will exceed the reference's 30204 bytes because our build is unstripped, which is expected and not a finding.
 
 If the guest is unavailable, say so and continue to Step 3; Steps 1, 2 and 6 then report as unrun.
 
@@ -1097,7 +1097,7 @@ git commit -m "drivers-i386: record the drvSerialPointingDevice parity ledger an
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvSerialPointingDevice`.
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice`.
 
 - [ ] **Step 2: Baseline parity**
 
@@ -1287,7 +1287,7 @@ git commit -m "drivers-i386: record the drvPS2Keyboard parity ledger and diverge
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvPS2Keyboard`.
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvPS2Keyboard`.
 
 - [ ] **Step 2: Baseline parity**
 
@@ -1473,7 +1473,7 @@ git commit -m "drivers-i386: record the drvPCParallel parity ledger and divergen
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvPCParallel`. This driver has never been built, and its `Load_Commands.sect` was present all along, so this baseline establishes for the first time whether it compiles. Record in `divergences.md` whether the build succeeds and whether the `Loaded Server,Load Commands` section is present at Apple's 164 bytes:
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvPCParallel`. This driver has never been built, and its `Load_Commands.sect` was present all along, so this baseline establishes for the first time whether it compiles. Record in `divergences.md` whether the build succeeds and whether the `Loaded Server,Load Commands` section is present at Apple's 164 bytes:
 
 ```bash
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
@@ -1686,7 +1686,7 @@ Rewrites all 11 hand-written functions against the reference disassembly. This i
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvBusMouse`. drvBusMouse already has its `Load_Commands.sect` and both `PB.project` files, so nothing from Task 2 changed its buildability.
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvBusMouse`. drvBusMouse already has its `Load_Commands.sect` and both `PB.project` files, so nothing from Task 2 changed its buildability.
 
 - [ ] **Step 2: Baseline parity**
 

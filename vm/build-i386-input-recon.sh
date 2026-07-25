@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the i386 input drivers; stage reloc bundles.
+# Build the i386 input drivers under reconstruction; stage reloc bundles.
 # Userspace helpers (PreLoad/PostLoad) may fail on a PPC host — accept
 # success when the loadable *_reloc exists.
 set -e
@@ -141,5 +141,5 @@ done
 for d in $built; do
 	find "$OUT/$d" -name '*_reloc' -type f -exec file {} \; 2>&1 || true
 done
-echo "=== input-drivers done fail=$fail built:$built ==="
+echo "=== input-recon done fail=$fail built:$built ==="
 exit $fail

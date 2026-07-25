@@ -84,7 +84,7 @@ static char * FindEmptyMemoryRange(void)
  * Map attribute memory for PCMCIA socket
  * Finds empty memory range, maps it, and configures PCIC window
  */
-unsigned long long MapAttributeMemory(int socket)
+void MapAttributeMemory(int socket)
 {
     unsigned char regValue;
     unsigned char regOffset;
@@ -124,9 +124,6 @@ unsigned long long MapAttributeMemory(int socket)
     /* Enable window (set bit 0 = window enable) */
     outb(reg_base, regOffset);
     outb(reg_base + 1, (regValue & 0xE0) | 1);
-
-    /* Return the final register value written */
-    return ((regValue & 0xE0) | 1);
 }
 
 /*

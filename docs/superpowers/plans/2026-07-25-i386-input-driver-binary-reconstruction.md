@@ -1126,7 +1126,8 @@ Last bounded by `__text` size 4468.
 **Known divergences to confirm and resolve:**
 
 - **`_mouseTypeList` slot 3.** The reference has six `char *` at `__DATA,__data:8192` (24 bytes, ending where `_protocolList` starts at 8216) holding `C`, `W3`, `W`, `V3`, `M`, `UNKNOWN`. Our `mouseTypeNames` at `SerialPointingDevice.m:41` has `UNKNOWN`, `M`, `V3`, `M`, `W3`, `C` — reverse order, which is expected since `__cstring` emission is reversed, but with `M` where the reference has `W`. Resolve from the disassembly of `-[SerialPointingDevice detect]` (1876, 1380 bytes) what `W` denotes and how `detect` reaches it. Our `detect` looks for the `M3` signature at `SerialPointingDevice.m:121` and has no `W` path at all. If the disassembly cannot settle it, the entry becomes `intentional-mismatch` with the reason recorded — do not guess.
-- **Four linkage divergences.** The reference exports `_mainLoop` (`__text:0`), `_mouseTypeList` (8192), `_protocolList` (8216) and `_active` (8240) as `external`. Ours declares all four `static` — `mainLoop` at `SerialPointingDevice.m:65`, `mouseTypeNames` at 41, `protocolList` at 51, `active` at 60. `_active` is 1 byte, confirming `BOOL`; `__DATA,__data` totals 49 bytes = 24 + 24 + 1. Precedent for the fix is commit b27e22b8 in drvPCMCIABus.
+- **Three linkage divergences.** The reference exports `_mainLoop` (`__text:0`), `_mouseTypeList` (8192) and `_protocolList` (8216) as `external`. Ours declares them `static` — `mainLoop`, `mouseTypeNames` and `protocolList` near the top of `SerialPointingDevice.m`. Precedent for the fix is commit b27e22b8 in drvPCMCIABus.
+- **`_active` (8240) is `local` in the reference and must NOT be de-staticised.** Our `static BOOL active` already matches. Both published analyzers report it `local`, and a direct read of the reference symbol table confirms it. An earlier draft of this plan and of spec §2.4 listed it as a fourth external; that was a misreading. De-staticising it would introduce an export the reference lacks. Its 1-byte width is confirmed by the store encoding `C6 05 …` (`mov byte ptr`), not by section-size arithmetic.
 - **Two extra log strings.** Ours emits `%s: MSProtocol started` and `%s: FiveBProtocol started`; the reference has neither. Establish from the disassembly of `MSProtocol` (3256) and `FiveBProtocol` (3724) whether the reference has any logging there.
 - **One dropped space.** Reference: `%s: No resolution in config table.  Defaulting to %d`. Ours has one space after the period.
 - **`protocolList` matches** the reference exactly. Expected `assembly-matched` on whatever function indexes it.
@@ -1201,7 +1202,7 @@ git commit -m "drivers-i386: record the drvSerialPointingDevice parity ledger an
 
 **Interfaces:**
 - Consumes: Task 5's `divergences.md` and `ledger.json`; Task 1's build script.
-- Produces: a driver whose `__text` symbol set includes `_mainLoop` and whose `__DATA,__data` exports `_mouseTypeList`, `_protocolList` and `_active`, with no `unexamined` ledger entry.
+- Produces: a driver whose `__text` symbol set includes `_mainLoop` and whose `__DATA,__data` exports `_mouseTypeList` and `_protocolList`, with `_active` still `local`, and no `unexamined` ledger entry.
 
 **Standard fix pass procedure values:** `<name>` = `serialpointingdevice`, `<drv>` = `drvSerialPointingDevice`, `<Config>` = `SerialPointingDevice`.
 
@@ -1213,7 +1214,7 @@ Standard fix pass Step A: `sh /build/source/vm/build-i386-input-recon.sh drvSeri
 
 Standard fix pass Step B. Expect `missing_symbols` to include `_mainLoop` — ours is `static`, so it emits no `__text` symbol at all — and `missing_strings` to include the two-space resolution message.
 
-- [ ] **Step 3: Fix the four linkage divergences**
+- [ ] **Step 3: Fix the three linkage divergences**
 
 Remove `static` from `mainLoop` (`SerialPointingDevice.m:65`), `mouseTypeNames` (41), `protocolList` (51) and `active` (60), so each emits an `external` symbol as the reference does. Rename `mouseTypeNames` to `mouseTypeList` to match the reference symbol `_mouseTypeList`; the other three already carry the reference's names. Add declarations to `SerialPointingDevice.h` only if the file's existing convention requires them — the reference gives no evidence either way, and adding unneeded declarations is scope creep.
 

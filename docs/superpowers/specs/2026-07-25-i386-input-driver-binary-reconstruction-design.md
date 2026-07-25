@@ -142,7 +142,7 @@ All 11 hand-written functions — `_GetIRQFromBoard`, `_MouseIntHandler`,
 `_BusMouseThread`, and the eight `BusMouse` methods — are rewritten from the
 reference disassembly.
 
-### 2.4 drvSerialPointingDevice has a table bug and four linkage divergences
+### 2.4 drvSerialPointingDevice has a table bug and three linkage divergences
 
 The reference's `_mouseTypeList` is six `char *` at `__DATA,__data:8192` holding
 `C`, `W3`, `W`, `V3`, `M`, `UNKNOWN`. Our `mouseTypeNames`
@@ -150,11 +150,17 @@ The reference's `_mouseTypeList` is six `char *` at `__DATA,__data:8192` holding
 mouse type is misnamed and `-[SerialPointingDevice detect]` has no notion of it.
 `protocolList` matches the reference exactly.
 
-The reference exports `_mouseTypeList` (8192), `_protocolList` (8216), `_active`
-(8240) and `_mainLoop` (`__text:0`) as `external`. Our source declares all four
-`static`. This is the same static-versus-external divergence commit b27e22b8
-resolved in `drvPCMCIABus` by renaming our source to match Apple's; that
+The reference exports **three** symbols as `external`: `_mouseTypeList` (8192),
+`_protocolList` (8216) and `_mainLoop` (`__text:0`). Our source declares all
+three `static`. This is the same static-versus-external divergence commit
+b27e22b8 resolved in `drvPCMCIABus` by renaming our source to match Apple's; that
 precedent is followed here.
+
+`_active` (8240) is **`local`** in the reference, so our `static BOOL active`
+already matches and must be left alone. An earlier draft of this section listed
+it as a fourth external symbol; that was a misreading of the scoping output,
+which reports it as `local`. De-staticising it would introduce an export the
+reference does not have.
 
 Our source also emits two log strings the reference does not —
 `%s: MSProtocol started` and `%s: FiveBProtocol started` — and drops one space
@@ -484,7 +490,7 @@ per §4.2. Establishes the `PCPointer` subclass shape — `mouseInit:`,
 *Verify:* `load_source_map` passes.
 
 **Phase 5 — drvSerialPointingDevice fix pass.** Fix the `_mouseTypeList` slot,
-the four linkage divergences, the two extra log strings, and the dropped space
+the three linkage divergences, the two extra log strings, and the dropped space
 (§2.4).
 
 *Verify:* the three §4.3 checks.

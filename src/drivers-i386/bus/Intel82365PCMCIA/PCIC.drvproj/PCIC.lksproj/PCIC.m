@@ -32,6 +32,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/i386/IOPCIDirectDevice.h>
 #import <machdep/i386/io_inline.h>
 #import <objc/List.h>
 #import <bsd/sys/types.h>
@@ -43,6 +44,46 @@ unsigned int reg_base = 0;
 static char socketIsValid(unsigned int socket);
 static unsigned char checkForCirrusChip(void);
 static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
+
+@implementation PCIC_PCI
+
+/*
+ * Initialize from device description
+ * Reads the bridge's I/O base out of PCI base address register 0, publishes it
+ * as the port range, and lets PCIC drive the adapter from there
+ */
+- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
+{
+    unsigned char device, bus;
+    IORange range;
+
+    /* Locate the bridge; the function number is not wanted */
+    if ([deviceDescription getPCIdevice:&device function:0 bus:&bus]) {
+        return [super free];
+    }
+
+    IOLog("PCIC: PCMCIA->PCI Bus Bridge Detected (Dev=%d, Bus=%d)\n",
+          device, bus);
+
+    /* BAR0 carries the I/O base; mask off the two base address type bits */
+    [IODirectDevice getPCIConfigData:(unsigned long *)&reg_base
+                          atRegister:0x10
+               withDeviceDescription:deviceDescription];
+    reg_base &= 0xfffc;
+
+    /* The PD6832 exposes four ports, not the two the ISA path asks for */
+    range.start = reg_base;
+    range.size = 4;
+    [deviceDescription setPortRangeList:&range num:1];
+
+    if (![super initFromDeviceDescription:deviceDescription]) {
+        return [super free];
+    }
+
+    return self;
+}
+
+@end
 
 @implementation PCIC
 

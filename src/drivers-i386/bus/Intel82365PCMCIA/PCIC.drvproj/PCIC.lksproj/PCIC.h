@@ -31,6 +31,7 @@
 
 #import <driverkit/IODirectDevice.h>
 #import <driverkit/IODeviceDescription.h>
+#import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
@@ -80,6 +81,17 @@
 /* Socket and window list access */
 - sockets;
 - windows;
+
+@end
+
+/*
+ * PCMCIA adapter behind a PCI-to-PCMCIA bridge (Cirrus Logic PD6832)
+ * Recovers the adapter's I/O base from PCI configuration space, then defers
+ * to PCIC for everything else
+ */
+@interface PCIC_PCI : PCIC
+
+- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
 
 @end
 

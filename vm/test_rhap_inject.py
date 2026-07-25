@@ -1,5 +1,6 @@
 import hashlib
 import os
+import subprocess
 import tempfile
 import unittest
 
@@ -174,10 +175,33 @@ class TestRoundTrip(unittest.TestCase):
 
 DONOR = ("/System/Documentation/Developer/YellowBox/TasksAndConcepts"
          "/PB/ProjectBuilder.pdf")
+DONOR2 = "/private/Drivers/i386/EIDE.config/EIDE_reloc"
+
+RESET_CMD = os.path.join(HERE, "reset-image.cmd")
 
 
+def _reset_work_image():
+    """Recreate work/test.img from golden.img via reset-image.cmd."""
+    subprocess.run(["cmd.exe", "/c", RESET_CMD], check=True,
+                    capture_output=True, text=True)
+
+
+# NOTE: TestGraft mutates work/test.img (it grafts over /mach_kernel and
+# other names). It sorts alphabetically ahead of the other test classes in
+# this module, so it runs first and would otherwise leave the working image
+# modified for the remainder of the run. setUpClass/tearDownClass reset the
+# image via reset-image.cmd before and after this class runs; run
+# reset-image.cmd manually if a test in this class is interrupted.
 @unittest.skipUnless(os.path.exists(WORK), "work/test.img not built yet")
 class TestGraft(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _reset_work_image()
+
+    @classmethod
+    def tearDownClass(cls):
+        _reset_work_image()
+
     def test_donor_is_large_and_hole_free(self):
         img = rhap_image.Image(WORK)
         try:
@@ -215,5 +239,73 @@ class TestGraft(unittest.TestCase):
                 rhap_inject.graft_file(
                     img, "/mach_kernel", TABLE, b"x" * 100000
                 )
+        finally:
+            img.close()
+
+    def test_graft_refuses_donor_not_regular_file(self):
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.graft_file(
+                    img, "/mach_kernel",
+                    "/private/Drivers/i386/EIDE.config", b"x" * 100
+                )
+        finally:
+            img.close()
+
+    def test_graft_refuses_donor_with_nlink_greater_than_one(self):
+        # /mach_kernel itself has nlink 2 (/private/tftpboot/mach_kernel is a
+        # second hard link to the same inode); it makes a convenient real
+        # already-linked donor. Use it only as a donor here, never as target.
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            donor_ino = img.resolve("/mach_kernel")
+            self.assertEqual(img.inode(donor_ino).nlink, 2)
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.graft_file(img, TABLE, "/mach_kernel", b"x" * 100)
+        finally:
+            img.close()
+
+    def test_graft_refuses_target_that_does_not_exist(self):
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.graft_file(
+                    img, "/no_such_target_xyz", DONOR, b"x" * 100
+                )
+        finally:
+            img.close()
+
+    def test_graft_regrafts_same_target_idempotently(self):
+        payload1 = b"FIRST" + b"\0" * (50000 - 5)
+        payload2 = b"SECOND" + b"\1" * (50000 - 6)
+        self.assertNotEqual(payload1, payload2)
+
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            donor_ino = img.resolve(DONOR2)
+            rhap_inject.graft_file(img, "/mach_kernel", DONOR2, payload1)
+        finally:
+            img.close()
+
+        img = rhap_image.Image(WORK)
+        try:
+            self.assertEqual(img.resolve("/mach_kernel"), donor_ino)
+            self.assertEqual(img.read_file(donor_ino), payload1)
+            nlink_after_first = img.inode(donor_ino).nlink
+        finally:
+            img.close()
+
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            rhap_inject.graft_file(img, "/mach_kernel", DONOR2, payload2)
+        finally:
+            img.close()
+
+        img = rhap_image.Image(WORK)
+        try:
+            self.assertEqual(img.resolve("/mach_kernel"), donor_ino)
+            self.assertEqual(img.read_file(donor_ino), payload2)
+            self.assertEqual(img.inode(donor_ino).nlink, nlink_after_first)
         finally:
             img.close()

@@ -206,6 +206,15 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
     its di_nlink is bumped so the extra name is a legitimate hard link, and the
     target's directory entry d_ino is repointed.
 
+    Re-grafting the same target onto the same donor (the normal case in a
+    rebuild -> inject -> boot -> rebuild loop, where a newer binary replaces
+    the previous graft) is idempotent: the donor's blocks and di_size are
+    rewritten as usual, but di_nlink is left untouched and the directory entry
+    is not rewritten, since it already points at the donor. A fresh donor must
+    have di_nlink exactly 1 (see below); a donor already grafted to this
+    target legitimately has di_nlink 2, so that check only applies to the
+    first graft of a given donor.
+
     This does not go through write_file: write_file refuses any write that
     would change a file's fragment count, but grafting always changes the
     donor's effective size (that's the point), so it does its own bounds and
@@ -218,6 +227,14 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
     working around that would require building one - out of scope for this
     tool. It is acceptable because vm/work/test.img is a disposable scratch
     image recreated by reset-image.cmd, never anything durable.
+
+    The inode previously named by target_path is left completely untouched,
+    including its di_nlink: this module never decrements link counts, so
+    after a graft that inode's di_nlink is one higher than the number of
+    names that now actually point at it. That is a useful recovery route: for
+    example, grafting over /mach_kernel leaves the original mach_kernel inode
+    intact and reachable via /private/tftpboot/mach_kernel, which still names
+    it.
     """
     check_target(img.path)
 
@@ -237,16 +254,25 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
     if any(f == 0 for f in frags):
         raise SafetyError("donor %s has holes; refusing" % donor_path)
 
-    parent = "/" + target_path.strip("/").rsplit("/", 1)[0] if "/" in target_path.strip("/") else "/"
-    leaf = target_path.strip("/").rsplit("/", 1)[-1]
+    stripped = target_path.strip("/")
+    if "/" in stripped:
+        parent_part, leaf = stripped.rsplit("/", 1)
+        parent = "/" + parent_part
+    else:
+        parent, leaf = "/", stripped
     parent_ino = img.resolve(parent)
     if parent_ino is None:
         raise SafetyError("parent of %s does not exist" % target_path)
     ent_off, old_ino = _find_dirent(img, parent_ino, leaf)
     if ent_off is None:
         raise SafetyError("%s does not exist; graft cannot create names" % target_path)
-    if old_ino == donor_ino:
-        raise SafetyError("%s already points at the donor inode" % target_path)
+
+    regrafting = old_ino == donor_ino
+    if not regrafting and donor.nlink != 1:
+        raise SafetyError(
+            "donor %s has nlink %d; a graft donor must be a private, "
+            "single-named file" % (donor_path, donor.nlink)
+        )
 
     # 1. Fill the donor's blocks.
     payload = bytearray(data)
@@ -257,18 +283,26 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
         img._f.write(bytes(payload[i * img.fsize:(i + 1) * img.fsize]))
     img._f.flush()
 
-    # 2. Set the donor's size and link count.
+    # 2. Set the donor's size, and bump its link count unless this is a
+    # re-graft (the link already exists; bumping again would be wrong).
     _write_inode_fields(img, donor_ino, size=len(data),
                         mtime=mtime if mtime is not None else donor.mtime,
-                        nlink=max(2, donor.nlink + 1))
+                        nlink=None if regrafting else max(2, donor.nlink + 1))
 
-    # 3. Repoint the target's directory entry (4 bytes).
-    dir_frags = img.frags(img.inode(parent_ino))
-    frag_index = ent_off // img.fsize
-    within = ent_off % img.fsize
-    img._f.seek(img.frag_offset(dir_frags[frag_index]) + within)
-    img._f.write(struct.pack("<I", donor_ino))
-    img._f.flush()
+    # 3. Repoint the target's directory entry (4 bytes) - unless this is a
+    # re-graft, where it already points at the donor.
+    if not regrafting:
+        dir_frags = img.frags(img.inode(parent_ino))
+        frag_index = ent_off // img.fsize
+        within = ent_off % img.fsize
+        dir_frag = dir_frags[frag_index]
+        if dir_frag == 0:
+            raise SafetyError(
+                "%s: directory entry falls in a hole" % target_path
+            )
+        img._f.seek(img.frag_offset(dir_frag) + within)
+        img._f.write(struct.pack("<I", donor_ino))
+        img._f.flush()
 
     check = rhap_image.Image(img.path)
     try:

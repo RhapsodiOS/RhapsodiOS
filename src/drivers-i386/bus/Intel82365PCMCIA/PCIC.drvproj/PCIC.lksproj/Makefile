@@ -16,7 +16,7 @@ LANGUAGE = English
 CLASSES = PCIC.m PCICDebug.m PCICInternal.m PCICSocket.m PCICWindow.m \
           PCICWindowAttributes.m
 
-HFILES = PCIC.h PCICInternal.h PCICSocket.h PCICWindow.h
+HFILES = PCIC.h PCICSocket.h PCICWindow.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

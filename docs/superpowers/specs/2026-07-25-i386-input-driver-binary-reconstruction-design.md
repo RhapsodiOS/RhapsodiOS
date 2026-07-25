@@ -94,17 +94,37 @@ class of one-string load blocker as `Intel824X0`'s `"Auto Detect_IDs"` typo.
 `PS2Mouse.m:328` reads `[configTable valueForStringKey:"SkipDetection"]` where
 the reference reads `Force Detection`. The shipped `Default.table` supplies
 `"Force Detection" = "No"`, so the key our code asks for is absent from the table
-it is handed — and the two names carry opposite sense, so simply renaming the key
-without inverting the test would introduce a second bug.
+it is handed, and the value therefore always parses as `NO`.
 
-### 2.2 drvPCParallel reads the wrong config key
+Whether the consuming test also has to invert is **not** determinable from the
+strings. `PS2Mouse.m:414` reads `if (!skipDetection) { …presence check… }`, so
+`SkipDetection = Yes` bypasses the check and lets the driver attach anyway. If
+`Force Detection = Yes` means "attach even though detection failed", it is the
+same operation under a different name and no inversion is needed; if it means
+"run the check that would otherwise be skipped", the sense is opposite. Settling
+this needs the disassembly of `-[PS2Mouse readConfigTable:]` (684) and
+`-[PS2Mouse initWithController:]` (332), so the key rename happens in the table
+pass and the sense question is resolved in drvPS2Mouse's report pass.
+
+### 2.2 drvPCParallel never reads its minor device number key
 
 `IOParallelPort.m:100` logs
 `Nonzero Minor Device Number - only one dev this version`, matching the reference
-byte for byte, but `IOParallelPort.m:158` reads `"Location"` to get the value it
-tests. The reference reads `Minor Device Number` with `0` as its default string,
-and has no `Location` string anywhere in `__cstring`. `Default.table` supplies
-`"Minor Device Number" = "0"`.
+byte for byte. But the value it tests does not come from the config table: lines
+95 through 99 take the last character of `[deviceDescription name]` and `strcmp`
+it against `"0"`. The reference reads the `Minor Device Number` key — it is in
+`__cstring` alongside `0` — and `Default.table` supplies
+`"Minor Device Number" = "0"`. The same name-derived value also feeds the
+`sprintf(nameBuffer, "%s%s", "pp", minorDevStr)` at line 149, whose `pp` and
+`%s%s` literals both match the reference, so the table read has to supply both
+uses.
+
+`IOParallelPort.m:158` separately reads `"Location"` and passes it to
+`setLocation:`. That is not part of this finding: the reference `Default.table`
+carries `"Location" = "System Baseboard"`. The reference's `__cstring` has no
+`Location` entry, which suggests it does not read that key, but whether it calls
+`setLocation:` by some other route is a report-pass question, not a table-pass
+one.
 
 ### 2.3 drvBusMouse's logic is invented
 
@@ -259,20 +279,21 @@ them.
 The complete list:
 
 1. `PS2KeyboardController` → `PS2Controller` in `PS2Mouse.m:512` (§2.1).
-2. `"SkipDetection"` → `"Force Detection"` in `PS2Mouse.m:328`, with the test
-   inverted so that `Yes` forces detection rather than skipping it, matching the
-   reference (§2.1).
-3. `"Location"` → `"Minor Device Number"` with default `"0"` in
-   `IOParallelPort.m:158` (§2.2).
+2. `"SkipDetection"` → `"Force Detection"` in `PS2Mouse.m:328`, key name only.
+   The sense of the consuming test at `PS2Mouse.m:414` is left as it is and
+   resolved in drvPS2Mouse's report pass (§2.1).
+3. `IOParallelPort.m:95-99` reads `"Minor Device Number"` from the config table,
+   defaulting to `"0"`, instead of deriving the value from the device name suffix
+   (§2.2). The `"Location"` read at line 158 is not touched.
 4. The four missing `"Version"` lines (§2.6).
 5. drvPCParallel's `Load_Commands.sect` and two `PB.project` files (§2.7).
 
 Nothing else. Every other finding in §2 waits for its driver's report pass.
 
 *Verify:* `binrecon validate --profile …` prints each reference identity with no
-rebuilt artifact; `PS2KeyboardController`, `SkipDetection` and the `"Location"`
-read appear nowhere else in the five drivers; each `Default.table` differs from
-the reference only in `"Driver Version"`.
+rebuilt artifact; `PS2KeyboardController` and `SkipDetection` appear nowhere in
+the five drivers; `IOParallelPort.m` reads `"Minor Device Number"`; each
+`Default.table` differs from the reference only in `"Driver Version"`.
 
 ### 4.2 Report pass
 

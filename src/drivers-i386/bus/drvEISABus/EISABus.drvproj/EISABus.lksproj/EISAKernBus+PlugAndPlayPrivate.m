@@ -353,23 +353,31 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     char vendorStr[8];
     const char *errorStr;
 
-    /* Error string table for BIOS error codes */
-    static const char *biosErrors[] = {
-        "SUCCESS",                          /* 0x00 */
-        "not supported",                    /* 0x81 */
-        "invalid function",                 /* 0x82 */
-        "function not supported",           /* 0x83 */
-        "invalid parameter",                /* 0x84 */
-        "set failed",                       /* 0x85 */
-        "events not supported",             /* 0x86 */
-        "hardware error",                   /* 0x87 */
-        "invalid CSN",                      /* 0x88 */
-        "can't set CSN",                    /* 0x89 */
-        "buffer too small",                 /* 0x8a */
-        "no ISA PnP cards",                 /* 0x8b */
-        "unable to determine dock status",  /* 0x8c */
-        "config change failed (docked)",    /* 0x8d */
-        "config change failed (too many)"   /* 0x8e */
+    /*
+     * PnP BIOS return-code names, indexed by [code - 0x80].
+     *
+     * The reference table holds only the fifteen 0x81..0x8f entries; its
+     * "PNPB_R_SUCCESS" string is emitted into __cstring but has no code or
+     * data reference, so its original site is unrecoverable.  It is kept
+     * here as the 0x80 slot, which is never selected by the guard below.
+     */
+    static const char *errorstrings[] = {
+        "PNPB_R_SUCCESS",                               /* 0x80 */
+        "PNPB_R_UNKNOWN_FUNCTION",                      /* 0x81 */
+        "PNPB_R_FUNCTION_NOT_SUPPORTED",                /* 0x82 */
+        "PNPB_R_INVALID_HANDLE",                        /* 0x83 */
+        "PNPB_R_BAD_PARAMETER",                         /* 0x84 */
+        "PNPB_R_SET_FAILED",                            /* 0x85 */
+        "PNPB_R_EVENTS_NOT_PENDING",                    /* 0x86 */
+        "PNPB_R_SYSTEM_NOT_DOCKED",                     /* 0x87 */
+        "PNPB_R_NO_ISA_PNP_CARDS",                      /* 0x88 */
+        "PNPB_R_UNABLE_TO_DETERMINE_DOCK_CAPABILITIES", /* 0x89 */
+        "PNPB_R_CONFIG_CHANGE_FAILED_NO_BATTERY",       /* 0x8a */
+        "PNPB_R_CONFIG_CHANGE_FAILED_RESOURCE_CONFLICT",/* 0x8b */
+        "PNPB_R_BUFFER_TOO_SMALL",                      /* 0x8c */
+        "PNPB_R_USE_ESCD_SUPPORT",                      /* 0x8d */
+        "PNPB_R_MESSAGE_NOT_SUPPORTED",                 /* 0x8e */
+        "PNPB_R_HARDWARE_ERROR"                         /* 0x8f */
     };
 
     /* Check if PnP is disabled in config table */
@@ -404,15 +412,13 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             return NO;
         }
     } else {
-        IOLog("PnP: Plug and Play BIOS present\n");
-
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
 
         if (biosResult != 0) {
             /* BIOS call failed */
             if ((biosResult >= 0x81) && (biosResult <= 0x8f)) {
-                errorStr = biosErrors[biosResult - 0x81 + 1];
+                errorStr = errorstrings[biosResult - 0x80];
             }
             else {
                 errorStr = "unknown error code";
@@ -439,6 +445,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             /* BIOS call succeeded - extract configuration from result */
             maxPnPCard = *((unsigned char *)configData + 1);
             pnpReadPort = *((unsigned short *)configData + 1);
+            IOLog("PnP: Plug and Play BIOS present\n");
         }
     }
 

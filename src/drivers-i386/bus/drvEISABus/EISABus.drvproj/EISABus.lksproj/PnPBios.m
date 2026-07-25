@@ -310,7 +310,7 @@ typedef struct {
     /* Allocate 64KB buffer for PnP BIOS data transfers */
     _kData = IOMalloc(0x10000);
     if (_kData == NULL) {
-        IOLog("PnPBios: Failed to allocate kernel buffer\n");
+        IOLog("PnPBios: IOMalloc failed\n");
         return [self free];
     }
 

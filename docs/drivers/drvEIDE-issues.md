@@ -151,6 +151,71 @@ polled mode instead of failing. Fixes **A** and **B** remove the zero-progress
 loop that made the failure permanent, and **D** stops the retry path from
 destroying the configuration it is supposed to be recovering.
 
+### QEMU trace evidence: IRQ 14 is never reasserted after the failing command
+
+Reproduced under `vm/start-vm.cmd -trace` (`ide_*`/`pci_cfg_*` trace events plus
+`-d int`), correlated against the guest console captured headlessly with
+`vm/qemu-shot.py`, sampled to 140s wall-clock. Three candidate mechanisms were
+in play: (a) QEMU never raises IRQ 14 again after the failing command; (b) it
+raises it but the driver never reads the primary Status register to acknowledge
+it; (c) the driver sets `nIEN` (bit 1 of the Device Control register, port
+`0x3F6`) and leaves it set.
+
+**(c) is ruled out.** The `ide_ctrl_write` immediately before the failing
+command is issued clears the Device Control register, not sets it:
+
+```
+ide_ctrl_write IDE PIO wr @ 0x3f6 (Device Control); val 0x00; bus 000002bcfa720b40
+ide_ioport_write IDE PIO wr @ 0x1f7 (Command); val 0xc4; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc4
+ide_sector_read sector=97120 nsectors=16
+```
+
+`nIEN` is clear (`val 0x00`, interrupts enabled) at the moment the fatal Read
+Multiple is issued.
+
+**The trace supports (a).** QEMU's PIC emulation logs `Servicing hardware
+INT=0x4e` every time it actually delivers IRQ 14 to the CPU (identified by
+correlation: this line fires immediately after every *successful* `cmd 0xc4`'s
+`ide_sector_read`, 25 times total across the boot). The last one appears two
+lines before the setup for the command that hangs:
+
+```
+ide_sector_read sector=97488 nsectors=2
+Servicing hardware INT=0x4e
+```
+
+That is the last IRQ 14 ever delivered in the entire trace. After it, the
+driver sets up and issues the command that wedges (`sector=97120 nsectors=16`,
+matching the console's `secNum=0x70 cyl=0x17b` after the 16-sector
+auto-increment), and `Servicing hardware INT=0x4e` does not appear again
+anywhere in the remaining ~205,000 lines — through the timeout, the software
+reset, the IDENTIFY retry, and a subsequent RECALIBRATE retry. This is not a
+general interrupt-delivery failure: IRQ 0 (`Servicing hardware INT=0x40`) fires
+over 10,000 more times, and one IRQ 15 (`0x4f`) fires, in that same span, so the
+PIC and CPU interrupt path are demonstrably still live.
+
+During the timeout the driver's poll loop also only ever reads the **Alternate**
+Status register at `0x3F6`, never the primary Status register at port `0x1F7`:
+
+```
+ide_ioport_read IDE PIO rd @ 0x1f6 (Device/Head); val 0xe0; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+ide_status_read IDE PIO rd @ 0x3f6 (Alt Status); val 0x58; bus 000002bcfa720b40; IDEState 000002bcfa720bc8
+```
+
+repeated twice before the driver gives up and writes SRST
+(`ide_ctrl_write ... val 0x04`, producing the console's `Resetting drives...`).
+Reading Alt Status does not clear a pending INTRQ per the ATA spec, so this is
+a real, independently worth-fixing gap in the timeout path — but since QEMU
+never asserts IRQ 14 for this command in the first place, there is no pending
+interrupt here for that read to fail to acknowledge. The evidence points at
+(a): the device model stops reasserting the line, rather than the driver
+missing an interrupt that was actually raised. It does not explain *why*
+QEMU's IDE model stops — nothing in the `ide_*`/`-d int` trace surface used
+here exposes the model's internal DRQ/INTRQ bookkeeping, so the §2
+sector-vs-block accounting hypothesis remains plausible but unconfirmed. This
+is TCG-emulated PIIX3 IDE only; real hardware is not addressed by this trace.
+
 ---
 
 ## 3. Verification status

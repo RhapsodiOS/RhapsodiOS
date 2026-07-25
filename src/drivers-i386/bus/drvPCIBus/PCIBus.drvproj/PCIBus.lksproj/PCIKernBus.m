@@ -37,6 +37,7 @@
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOConfigTable.h>
 #import <machdep/i386/intr_internal.h>
+#import <machdep/i386/kernBootStruct.h>
 
 #import <string.h>
 #import <stdlib.h>
@@ -82,22 +83,22 @@
     unsigned int subsystemId;
     unsigned char bus, dev, func;
     const char *bios16Str, *bios32Str, *cm1Str, *cm2Str, *sc1Str, *sc2Str;
+    KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;
 
     /* Initialize instance variables from configuration data */
-    /* TODO: Read these from PCI BIOS if available */
-    _maxBusNum = 0;  /* Default to single bus, could be read from BIOS */
+    _maxBusNum = kernbootstruct->pciInfo.maxBusNum;
     _maxDevNum = 0;  /* Will be set based on config mechanism */
-    _pciVersionMajor = 2;  /* PCI 2.x */
-    _pciVersionMinor = 1;
-    _bios16Present = YES;  /* Assume BIOS present for now */
+    _pciVersionMajor = kernbootstruct->pciInfo.majorVersion;
+    _pciVersionMinor = kernbootstruct->pciInfo.minorVersion;
+    _bios16Present = kernbootstruct->pciInfo.BIOSPresent;
     _bios32Present = NO;
     _reserved = NULL;
 
-    /* Initialize feature flags - will be detected */
-    _configMech1 = NO;
-    _configMech2 = NO;
-    _specialCycle1 = NO;
-    _specialCycle2 = NO;
+    /* Initialize feature flags from the boot-time PCI BIOS probe */
+    _configMech1 = kernbootstruct->pciInfo.u_bus.s.configMethod1;
+    _configMech2 = kernbootstruct->pciInfo.u_bus.s.configMethod2;
+    _specialCycle1 = kernbootstruct->pciInfo.u_bus.s.specialCycle1;
+    _specialCycle2 = kernbootstruct->pciInfo.u_bus.s.specialCycle2;
 
     /* Test for configuration mechanisms */
     if (!_configMech1 && !_configMech2 && _bios16Present) {

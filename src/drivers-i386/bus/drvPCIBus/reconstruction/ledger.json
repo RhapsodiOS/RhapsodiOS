@@ -44,7 +44,7 @@
       "size": 854,
       "source_line": 79,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 892,

@@ -332,11 +332,14 @@ Rhapsody i386 kernel (likely something set by the kernel's own PCI BIOS32
 detection during early boot); that is follow-up work beyond this analysis pass, but
 this pass pins down exactly which five bytes and which four ivars are involved.
 
-**Outcome:** not applied. Identifying what kernel structure lives at `0x130F0` in
-the original Rhapsody i386 kernel is follow-up work beyond this analysis pass;
-guessing an address would be worse than leaving the existing
-`/* TODO: Read these from PCI BIOS if available */` comment in place. Source and
-ledger status (`unexamined`) left unchanged.
+**Outcome:** applied. `0x130F0` is `KERNSTRUCT_ADDR->pciInfo`, the `PCI_bus_info_t`
+member of `KERNBOOTSTRUCT` declared in `kernBootStruct.h` — `pciInfo` sits at offset
+`0x20F0` within the struct, and `KERNSTRUCT_ADDR` is `0x11000`, giving `0x130F0`
+exactly. `-[PCIKernBus init]` now reads `_maxBusNum`, `_pciVersionMajor`,
+`_pciVersionMinor`, `_bios16Present` and the `_configMech1`/`_configMech2`/
+`_specialCycle1`/`_specialCycle2` bits from `kernbootstruct->pciInfo` via
+`KERNSTRUCT_ADDR`, matching the reference. Source and ledger status
+(`control-flow-confirmed`) updated.
 
 ## Finding 6: `_LookForID` at 0xE6C
 

@@ -150,3 +150,46 @@ python -m unittest test_qemu_shot -v
 
 Tests that need `golden.img` / `work/test.img` skip automatically if those
 files haven't been built yet.
+
+## Driving the guest console
+
+`guest-console.py` types into the guest over QMP and reads the framebuffer
+back. The kernel serial console is output-only, so anything interactive — a
+single-user shell, the boot prompt, a getty — has to be driven this way.
+
+```bash
+python guest-console.py --probe        # boot single-user, screenshot the prompt
+python guest-console.py --test-mouse   # boot multi-user, check the cursor moves
+```
+
+Writes are discarded by default (`-snapshot`); pass `--persist` to let them
+reach `work/test.img`.
+
+## Things that are not obvious
+
+**Never run `fsck` on an image with a grafted file.** Grafting deliberately
+leaves the donor's blocks allocated but unreferenced. `fsck` correctly regards
+that as an error and frees them, after which the allocator can hand those
+blocks to a later write. Observed consequence: `fsck` followed by a `cp`
+removed `/mach_kernel`'s directory entry outright and left the image
+unbootable. Recover with `reset-image.cmd` and re-graft.
+
+**A grafted inode will not survive a normal multi-user boot.** `/etc/rc.boot`
+runs `fsck -p`, which rejects the grafted inode with `UNKNOWN FILE TYPE` and
+drops to `Reboot failed - serious errors`. Grafting is therefore fine for
+*boot-testing* a kernel — the boot loader reads it before any `fsck` — but a
+system that must come up multi-user needs the file installed by the guest's own
+allocator, or the boot-time `fsck` disabled. The working image currently has it
+disabled in `/private/etc/rc.boot`.
+
+**Which drivers load is decided centrally**, not by what is present in
+`/private/Drivers/i386`. The list lives in
+`System.config/Instance0.table` under the keys `"Boot Drivers"` and
+`"Active Drivers"`. Adding or removing a bundle's `Instance0.table` does
+nothing on its own — a driver absent from those lists is never instantiated,
+and one present in them loads regardless. This is how `drvBusMouse` was
+swapped for `drvPS2Mouse` to get a working pointer under QEMU.
+
+**`rhap_image.py` does not follow symlinks.** `/etc`, `/private/Devices` and
+`/usr/Devices` are all symlinks; use the real paths (`/private/etc`,
+`/private/Drivers/i386`).

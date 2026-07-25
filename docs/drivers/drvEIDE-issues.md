@@ -206,15 +206,97 @@ ide_status_read IDE PIO rd @ 0x3f6 (Alt Status); val 0x58; bus 000002bcfa720b40;
 repeated twice before the driver gives up and writes SRST
 (`ide_ctrl_write ... val 0x04`, producing the console's `Resetting drives...`).
 Reading Alt Status does not clear a pending INTRQ per the ATA spec, so this is
-a real, independently worth-fixing gap in the timeout path — but since QEMU
-never asserts IRQ 14 for this command in the first place, there is no pending
-interrupt here for that read to fail to acknowledge. The evidence points at
-(a): the device model stops reasserting the line, rather than the driver
-missing an interrupt that was actually raised. It does not explain *why*
-QEMU's IDE model stops — nothing in the `ide_*`/`-d int` trace surface used
-here exposes the model's internal DRQ/INTRQ bookkeeping, so the §2
-sector-vs-block accounting hypothesis remains plausible but unconfirmed. This
-is TCG-emulated PIIX3 IDE only; real hardware is not addressed by this trace.
+a real, independently worth-fixing gap in the timeout path. That gap does not,
+however, leave room for a competing theory in which the wedge is really a
+*stale*, unacknowledged INTRQ left over from the previous command rather than
+QEMU failing to reassert the line for this one. On an edge-triggered ISA IRQ,
+the device only deasserts INTRQ when the host reads the **primary** Status
+register at `0x1F7`; reading Alternate Status (`0x3F6`) does not. Had the
+driver's interrupt handler never read `0x1F7` for the *preceding* command, the
+line would have stayed asserted and no new edge could ever be generated for
+the next one — a failure mode that looks identical to (a) in the
+interrupt-timeout evidence alone. It did not: immediately after the last
+`Servicing hardware INT=0x4e` at line 1748253, the driver's handler for that
+(successful) command reads primary Status:
+
+```
+1748273: ide_ioport_read IDE PIO rd @ 0x1f7 (Status); val 0x58; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+```
+
+That is the correct acknowledgement register, so INTRQ was properly deasserted
+going into the command that hangs. A stale, unread INTRQ is therefore ruled
+out as the cause of the missing interrupt. The evidence points at (a): the
+device model itself stops reasserting the line for the failing command, rather
+than the driver missing an interrupt that was actually raised or leaving a
+prior one unacknowledged. It does not explain *why* QEMU's IDE model stops —
+nothing in the `ide_*`/`-d int` trace surface used here exposes the model's
+internal DRQ/INTRQ bookkeeping, so the §2 sector-vs-block accounting
+hypothesis remains plausible but unconfirmed. This is TCG-emulated PIIX3 IDE
+only; real hardware is not addressed by this trace.
+
+### Addendum: was SET MULTIPLE MODE (0xC6) ever issued?
+
+The console prints `hd0: using multisector (16) transfers.`, which only
+happens if the driver believes multi-sector transfers were successfully
+negotiated. That requires **SET MULTIPLE MODE** (`0xC6`) to have been issued
+first — QEMU's IDE model tracks the negotiated block size in `mult_sectors`,
+and a READ MULTIPLE (`0xC4`) issued without a prior, accepted `0xC6` is
+operating against an unconfigured value.
+
+**`0xC6` was issued, once, on the primary channel.** Searching the full trace
+for `ide_bus_exec_cmd` events with `cmd 0xc6`, and for `0x1f7 (Command)`
+writes with `val 0xc6`, both find exactly one hit, at line 1694036 (port
+write at line 1694035):
+
+```
+1694035: ide_ioport_write IDE PIO wr @ 0x1f7 (Command); val 0xc6; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1694036: ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc6
+```
+
+The Sector Count register (`0x1F2`), which for `0xC6` carries the requested
+block size, was written immediately before it:
+
+```
+1694033: ide_ioport_write IDE PIO wr @ 0x1f2 (Sector Count); val 0x10; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+```
+
+`0x10` = 16, matching the console's "multisector (16)". The command also
+completed cleanly: an IRQ 14 fires immediately (`Servicing hardware
+INT=0x4e`, line 1694037) and the following Status reads are `0x50`
+(`DRDY | DSC`, no `ERR`, no `DRQ`) — a normal successful completion, not a
+rejection.
+
+**This weakens, rather than supports, the "multisector was never configured"
+explanation.** `0xC6` was issued once, accepted, and matches the sector count
+the driver later uses. It is not the case that `0xC4` is being sent to a
+device with `mult_sectors` unset.
+
+For the record, what QEMU's model did immediately after the fatal `0xc4` at
+line 1748798 (`ide_bus_exec_cmd`, cmd 0xc4) — the next `ide_*` trace event of
+any kind does not appear until line 1808840, roughly 60,000 lines later, when
+the driver's timeout handler starts polling:
+
+```
+1748798: ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc4
+1748799: ide_sector_read sector=97120 nsectors=16
+1808840: ide_ioport_read IDE PIO rd @ 0x1f1 (Error); val 0x00; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808841: ide_ioport_read IDE PIO rd @ 0x1f2 (Sector Count); val 0x00; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808842: ide_ioport_read IDE PIO rd @ 0x1f3 (Sector Number); val 0x70; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808843: ide_ioport_read IDE PIO rd @ 0x1f4 (Cylinder Low); val 0x7b; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808844: ide_ioport_read IDE PIO rd @ 0x1f5 (Cylinder High); val 0x01; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808845: ide_ioport_read IDE PIO rd @ 0x1f6 (Device/Head); val 0xe0; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808846: ide_status_read IDE PIO rd @ 0x3f6 (Alt Status); val 0x58; bus 000002bcfa720b40; IDEState 000002bcfa720bc8
+```
+
+So on this trace surface QEMU does not abort the command, does not report an
+error, and generates no further logged IDE bus activity at all after setting
+up the sector read — it is simply silent (`ide_*` trace points do not cover
+internal DRQ/`mult_sectors` state transitions). When the driver eventually
+polls, the device is still sitting at `DRDY | DSC | DRQ`, unchanged from the
+state described earlier in this section. This is consistent with, but does
+not by itself prove, an internal `mult_sectors`/block-boundary accounting
+issue in QEMU's read-multiple path — a hypothesis to be tested by Task 7
+(disable multi-sector transfers), not an established conclusion here.
 
 ---
 

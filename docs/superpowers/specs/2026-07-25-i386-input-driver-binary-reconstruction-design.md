@@ -200,12 +200,27 @@ The project lacks the `PB.project` for `PCParallelPort.drvproj` and for
 `PCParallelPort.lksproj` that every other driver in the tree has. Both are added.
 Nothing else in the build system is touched.
 
-An earlier draft of this section also claimed `PCParallelPort.lksproj/Makefile:20`
-named a `Load_Commands.sect` that did not exist, and concluded the driver could
-not build. That was wrong: the file has been present and tracked since
-`3a0ab68f`, carrying the `WIRE` content the Makefile's `OTHERSRCS` expects.
-Whether drvPCParallel builds is therefore an open question that its fix pass
-answers, not a known failure.
+An earlier draft of this section claimed `PCParallelPort.lksproj/Makefile:20`
+named a `Load_Commands.sect` that did not exist, and concluded from that the
+driver could not build. The premise was wrong — the file has been present and
+tracked since `3a0ab68f`, carrying the `WIRE` content the Makefile's `OTHERSRCS`
+expects — but the conclusion happens to be right for an unrelated reason.
+
+A baseline build on the Rhapsody guest confirms drvPCParallel does not compile:
+
+```
+IOParallelPortKern.h:110: parse error before `portObject'
+IOParallelPortKern.h:99: previous declaration of `seltrue'
+  conflicting with bsd/sys/systm.h:136
+gnumake: *** [all@PCParallelPort.drvproj] Error 2
+```
+
+Repairing that is an explicit, separately committed step ahead of drvPCParallel's
+divergence fixes, per §4.3's "baseline first" rule.
+
+The same baseline run established the other four: drvBusMouse, drvPS2Keyboard,
+drvPS2Mouse and drvSerialPointingDevice all compile and stage a `_reloc` today.
+`drvISASerialPort`, which is out of scope, also fails.
 
 Two adjacent gaps are recorded as findings only, with no change made.
 drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice have no

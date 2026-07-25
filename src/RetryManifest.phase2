@@ -1,0 +1,10 @@
+# Phase 2: packages needing indr / headers from phase 1
+#       Project[-Version]     Target
+#------ --------------------- -------
+dir     Csu-1                 all
+dir     objc4-1               all
+dir     Libc-1                all
+dir     Libsystem-2           all
+dir     bootstrap_cmds-1      all
+dir     system_cmds-2         all
+dir     zsh-1                 all

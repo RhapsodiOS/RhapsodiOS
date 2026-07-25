@@ -103,7 +103,8 @@
 link-hashtable:
 ifeq ("$(PLATFORM_OS)", "nextstep")
 	$(RM) -f $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/hashtable.h
-	$(LN) $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/hashtable2.h $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/hashtable.h
+	# HFS volumes cannot hard-link; copy instead of $(LN).
+	cp -p $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/hashtable2.h $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/hashtable.h
 	$(RM) -f $(DSTROOT)$(PUBLIC_HEADER_DIR)$(PUBLIC_HEADER_DIR_SUFFIX)/zone.h
 endif
 ifeq ("$(PLATFORM_OS)", "solaris")

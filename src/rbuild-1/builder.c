@@ -308,6 +308,8 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
             push_kv(out, "RC_i386", "YES");
         else
             push_kv(out, "RC_ppc", "YES");
+        /* HFS /build has no hard links; prefer the /build/bin/ln fallback. */
+        push_kv(out, "LN", "/build/bin/ln");
     } else {
         push_kv(out, "RC_i386", "YES");
         push_kv(out, "RC_ppc", "YES");
@@ -434,7 +436,7 @@ static const char *basedeps[] = {
     "pb-makefiles", "coreosmakefiles", "project-makefiles",
     "zsh", "tcsh",
     "file-cmds", "text-cmds", "shell-cmds", "developer-cmds",
-    "awk", "grep", "gnutar",
+    "awk", "grep", "gnutar", "patch-cmds",
     "libsystem", "libc-hdrs",
     "architecture-hdrs", "kernel-hdrs",
     "csu", "objc4-hdrs",
@@ -902,8 +904,9 @@ static int run_make(strlist *cmd) {
     for (i = 0; i < cmd->count; i++) argv[i] = cmd->items[i];
     argv[cmd->count] = 0;
     setenv("UNAME_SYSNAME", "Rhapsody", 1);
-    setenv("PATH", "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin", 1);
-    printf("UNAME_SYSNAME=Rhapsody PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ");
+    /* /build/bin first: HFS-safe ln wrapper (hard link -> cp fallback). */
+    setenv("PATH", "/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin", 1);
+    printf("UNAME_SYSNAME=Rhapsody PATH=/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ");
     exec_printcmd(argv);
     rc = exec_run_checked(argv);
     free(argv);

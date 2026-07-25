@@ -23,8 +23,14 @@ SIGNAL = /usr/include/sys/signal.h
 sigdesc.h: sigconv.awk $(SIGNAL)
 	$(AWK) -f sigconv.awk $(SIGNAL) >sigdesc.h
 
-# Make sure sigdesc.h is built before compiling commands.c
-$(OFILE_DIR)/commands.o: sigdesc.h
+# Make sure sigdesc.h is built before compiling commands.c.
+commands.o $(OFILE_DIR)/commands.o commands.ppc.o $(OFILE_DIR)/commands.ppc.o: sigdesc.h
+
+# NeXT make VPATH-qualifies most ofiles on the link line but leaves bare
+# commands.o; place a real copy in cwd so cc can open it.
+ensure-commands-o: $(OFILE_DIR)/commands.ppc.o
+	$(RM) -f ./commands.o
+	$(CP) -p $(OFILE_DIR)/commands.ppc.o ./commands.o
 
 # Additional clean targets
 clean:

@@ -67,14 +67,16 @@ OTHER_RESOURCES =
 BUILD_OFILES_LIST_ONLY = 
 
 # Additional relocatables to be linked into this project
-VERS_OFILE=migcom_untyped_vers.o
-OTHER_OFILES = $(VERS_OFILE)
+# Do not use VERS_OFILE: arch-suffixed migcom_untypd_vers.ppc.o has no
+# working generate+compile rule here. Stub supplies VERS_STRING instead.
+VERS_OFILE =
+OTHER_OFILES = migcom_untypd_vers_stub.o
 
 # Additional libraries to link against
 OTHER_LIBS = 
 # To include a version string, project source must exist in a directory named 
 # $(NAME).%d[.%d][.%d] and the following line must be uncommented.
-# OTHER_GENERATED_OFILES = $(VERS_OFILE)
+OTHER_GENERATED_OFILES =
 
 ## Configure how things get built here.  Additional dependencies, source files, 
 ## derived files, and build order should be specified here.
@@ -84,9 +86,9 @@ OTHER_PRODUCT_DEPENDS =
 # Built *before* building subprojects/bundles
 OTHER_INITIAL_TARGETS = 
 # Other source files maintained by .pre/postamble
-OTHER_SOURCEFILES = 
+OTHER_SOURCEFILES = migcom_untypd_vers_stub.c
 # Additional files to be removed by `make clean' 
-OTHER_GARBAGE =  $(VERS_OFILE)
+OTHER_GARBAGE =
 
 # Targets to build before installation
 OTHER_INSTALL_DEPENDS =	

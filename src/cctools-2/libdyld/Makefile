@@ -201,7 +201,12 @@ dyld.o: images.o bind.o register_funcs.o objc_modules.o
 dyld_debug.o: debug.o _dyld_debugUser.o _dyld_eventServer.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r -o $@ \
 	    debug.o _dyld_debugUser.o _dyld_eventServer.o
-	nmedit -arch all -s $(SRCROOT)/dyld_debug_api $@
+	# Prefer just-built nmedit.NEW (host PATH may have a dangling symlink)
+	if [ -x $(SYMROOT)/../misc/nmedit.NEW ]; then \
+		$(SYMROOT)/../misc/nmedit.NEW -arch all -s $(SRCROOT)/dyld_debug_api $@; \
+	else \
+		nmedit -arch all -s $(SRCROOT)/dyld_debug_api $@; \
+	fi
 
 dyld_event_server.o: _dyld_eventServer.o private_callback.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r -o $@ \

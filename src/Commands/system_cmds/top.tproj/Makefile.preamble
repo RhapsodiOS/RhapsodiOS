@@ -67,7 +67,7 @@ BUNDLE_LIBS =
 ## derived files, and build order should be specified here.
 
 # Other dependencies of this project
-OTHER_PRODUCT_DEPENDS =	sigdesc.h
+OTHER_PRODUCT_DEPENDS =	sigdesc.h ensure-commands-o
 # Built *before* building subprojects/bundles
 OTHER_INITIAL_TARGETS = sigdesc.h
 # Other source files maintained by .pre/postamble

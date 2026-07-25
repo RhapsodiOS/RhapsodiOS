@@ -1,0 +1,5 @@
+# Still-failing after LN / host-fix pass (cmds + kernel-hdrs already OK)
+#       Project[-Version]     Target
+#------ --------------------- -------
+dir     cc-1                  all
+dir     cctools-2             all

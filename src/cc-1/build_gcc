@@ -7,7 +7,8 @@
 
 MKDIRS=mkdirs
 if [ -f /usr/bin/arch ]; then	# otherwise, OS is probably not nextstep
-  PATH=/bin:/usr/bin:/usr/ucb
+  # /build/bin first: HFS-safe mv/ln wrappers (rename-over fails with Device busy)
+  PATH=/build/bin:/bin:/usr/bin:/usr/ucb
   export PATH
   if [ ! -f /bin/mkdirs ]; then MKDIRS="mkdir -p"; fi
 fi

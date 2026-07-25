@@ -1,22 +1,13 @@
+# Retry manifest for packages that failed the first stage-0 pass.
 #       Project[-Version]     Target
 #------ --------------------- -------
-dir     CoreOSMakefiles-1     all
-dir     pb_makefiles-1        all
-dir     project_makefiles-1   all
 dir     cc-1                  all
 dir     cctools-2             all
-dir     gnumake-1             all
-dir     gnutar-1              all
-dir     awk-1                 all
-dir     grep-1                all
-dir     patch-1               all
 dir     Csu-1                 all
 dir     objc4-1               all
 dir     Libc-1                all
 dir     Libsystem-2           all
-dir     architecture-1        all
 dir     kernel-7              headers
-dir     files-5               all
 dir     basic_cmds-1          all
 dir     bootstrap_cmds-1      all
 dir     system_cmds-2         all
@@ -25,4 +16,3 @@ dir     file_cmds-1           all
 dir     text_cmds-1           all
 dir     developer_cmds-1      all
 dir     zsh-1                 all
-dir     tcsh-1                all

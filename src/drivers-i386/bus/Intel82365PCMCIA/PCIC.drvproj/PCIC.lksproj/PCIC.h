@@ -36,6 +36,7 @@
 #import <driverkit/kernelDriver.h>
 
 /* Forward declarations */
+@class List;
 @class PCMCIAKernBus;
 @class PCICSocket;
 @class PCICWindow;
@@ -51,13 +52,10 @@
 
 @interface PCIC : IODirectDevice
 {
-    unsigned int basePort;
-    unsigned int numSockets;
-    unsigned int irqLevel;
-    BOOL isCirrusChip;         /* Flag indicating Cirrus Logic chip detection */
-    id socketList;             /* List of PCICSocket instances */
-    id windowList;             /* List of PCICWindow instances */
-    id statusChangeHandler;    /* Status change handler object (offset 0x134) */
+    BOOL CirrusCompatible;     /* Flag indicating Cirrus Logic chip detection (offset 0x128) */
+    List *sockets;             /* List of PCICSocket instances (offset 0x12C) */
+    List *windows;             /* List of PCICWindow instances (offset 0x130) */
+    id statusHandler;          /* Status change handler object (offset 0x134) */
 }
 
 /* Class methods */

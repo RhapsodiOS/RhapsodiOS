@@ -55,11 +55,11 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
     windowNumber = number;
 
     /* Store memory window flag at offset 0x14 */
-    memoryWindow = (unsigned char)memWindow;
+    memoryWindow = memWindow;
 
     /* Create list of valid sockets and add the socket to it (offset 8) */
-    validSocketsList = [[List alloc] init];
-    [validSocketsList addObject:socket];
+    validSockets = [[List alloc] init];
+    [validSockets addObject:socket];
 
     return self;
 }
@@ -180,11 +180,11 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
 
 /*
  * Get valid sockets
- * Returns validSocketsList from offset 8
+ * Returns validSockets from offset 8
  */
 - validSockets
 {
-    return validSocketsList;
+    return validSockets;
 }
 
 /*

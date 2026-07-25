@@ -31,19 +31,19 @@
 
 #import <objc/Object.h>
 
+/* Forward declarations */
+@class List;
+
 @interface PCICWindow : Object
 {
     id socket;                  /* Parent socket object (offset 4) */
-    id validSocketsList;        /* List of sockets this window is valid for (offset 8) */
-    unsigned int socketNumber;  /* Cached socket number (offset 12/0xc) */
-    unsigned int windowNumber;  /* Window number (offset 16/0x10) */
-    unsigned char memoryWindow; /* Memory window/interface flag (0=memory, 1=I/O) (offset 20/0x14) */
+    List *validSockets;         /* List of sockets this window is valid for (offset 8) */
+    int socketNumber;           /* Cached socket number (offset 12/0xc) */
+    int windowNumber;           /* Window number (offset 16/0x10) */
+    char memoryWindow;          /* Memory window/interface flag (0=memory, 1=I/O) (offset 20/0x14) */
     unsigned int systemAddress; /* System address mapping */
     unsigned int cardAddress;   /* Card address mapping (offset 28/0x1c) */
     unsigned int mapSize;       /* Size of mapping (offset 32/0x20) */
-    unsigned int enabled;       /* Window enabled state */
-    unsigned int attrMemFlag;   /* Attribute memory flag (cached) */
-    unsigned int is16Bit;       /* 16-bit data path flag */
 }
 
 /* Initialization */

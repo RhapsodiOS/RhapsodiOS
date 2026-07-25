@@ -126,14 +126,14 @@ static char socketIsValid(unsigned int socket)
     outb(dataPort, 0);
 
     /* Create window list with capacity for 7 windows (offset 0x10 = 16) */
-    windowList = [[List alloc] initCount:7];
-    windowList = [windowList init];
+    windows = [[List alloc] initCount:7];
+    windows = [windows init];
 
     /* Create 1 memory window (memoryWindow = 0) */
     for (i = 0; i < 1; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:0 number:i];
         window = [window init];
-        [windowList addObject:window];
+        [windows addObject:window];
 
         /* Configure memory window registers */
         windowOffset = (char)i * 4;
@@ -163,7 +163,7 @@ static char socketIsValid(unsigned int socket)
     for (i = 0; i < 5; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:1 number:i];
         window = [window init];
-        [windowList addObject:window];
+        [windows addObject:window];
 
         /* Configure I/O window registers */
         windowOffset = (char)i * 8;
@@ -198,7 +198,7 @@ static char socketIsValid(unsigned int socket)
  */
 - windows
 {
-    return windowList;
+    return windows;
 }
 
 /*
@@ -318,9 +318,9 @@ static char socketIsValid(unsigned int socket)
  * Get status change mask
  * Returns mask from offset 0xc
  */
-- (unsigned int)statusChangeMask
+- (PCMCIAStatus)statusChangeMask
 {
-    return statusChangeMask;
+    return statusMask;
 }
 
 /*
@@ -336,8 +336,9 @@ static char socketIsValid(unsigned int socket)
  * Get socket status
  * Reads and reformats Interface Status register
  */
-- (unsigned int)status
+- (PCMCIAStatus)status
 {
+    PCMCIAStatus status;
     unsigned char regValue;
     char socketOffset;
 
@@ -346,16 +347,16 @@ static char socketIsValid(unsigned int socket)
     outb(reg_base, socketOffset + 0x01);
     regValue = inb(reg_base + 1);
 
-    /* Reformat status bits:
-     * bit 0: Card detect (1 if both CD bits 2-3 are set)
-     * bits 4-5: Battery status (from register bits 0-1)
-     * bit 6: From register bit 4
-     * bit 7: Ready status (from register bit 5)
-     */
-    return ((regValue & 0x0C) == 0x0C) |           /* bit 0: CD status */
-           ((unsigned char)(regValue & 3) << 4) |   /* bits 4-5: battery */
-           ((unsigned char)((regValue >> 4) & 1) << 6) |  /* bit 6 */
-           ((unsigned char)((regValue >> 5) & 1) << 7);   /* bit 7: ready */
+    /* Reformat status bits */
+    status.present = ((regValue & 0x0C) == 0x0C);   /* both CD bits 2-3 set */
+    status.locked = 0;
+    status.ejectRequest = 0;
+    status.insertRequest = 0;
+    status.batteryStatus = regValue & 3;            /* register bits 0-1 */
+    status.writeProtect = (regValue >> 4) & 1;      /* register bit 4 */
+    status.ready = (regValue >> 5) & 1;             /* register bit 5 */
+
+    return status;
 }
 
 /*
@@ -502,7 +503,7 @@ static char socketIsValid(unsigned int socket)
  * Set status change mask
  * Configures Card Status Change Interrupt Enable register
  */
-- (void)setStatusChangeMask:(unsigned int)mask
+- (void)setStatusChangeMask:(PCMCIAStatus)mask
 {
     unsigned char readyBit;
     unsigned char batteryBits;
@@ -510,13 +511,13 @@ static char socketIsValid(unsigned int socket)
     char socketOffset;
 
     /* Store mask at offset 0xc */
-    statusChangeMask = mask;
+    statusMask = mask;
 
     /* Extract bit 7 (READY status change) */
-    readyBit = (unsigned char)(mask >> 7) & 1;
+    readyBit = mask.ready;
 
     /* Check if bits 4-5 are set (battery status changes) */
-    batteryBits = ((unsigned char)mask & 0x30) != 0;
+    batteryBits = mask.batteryStatus != 0;
 
     /* Get IRQ number from adapter */
     irq = (unsigned char)[adapter interrupt];
@@ -533,7 +534,7 @@ static char socketIsValid(unsigned int socket)
      * bits 4-7: IRQ number
      */
     outb(reg_base + 1,
-         (((unsigned char)mask & 1) != 0) << 3 |  /* CD change */
+         (mask.present != 0) << 3 |               /* CD change */
          readyBit << 2 |                           /* READY change */
          batteryBits << 1 |                        /* Battery warning */
          batteryBits |                             /* Battery dead */

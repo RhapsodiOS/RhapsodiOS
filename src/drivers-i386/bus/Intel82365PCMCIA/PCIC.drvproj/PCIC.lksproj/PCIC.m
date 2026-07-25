@@ -128,10 +128,6 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     range = [(IOEISADeviceDescription *)deviceDescription portRangeList];
     reg_base = range->start;
 
-    /* Carried until the ivar pass drops basePort and moves
-     * interruptOccurred onto reg_base */
-    basePort = reg_base;
-
     /* Validate socket 0 exists (basic hardware check) */
     if (!socketIsValid(0)) {
         IOLog("PCIC: No device at base address 0x%04x\n", reg_base);
@@ -148,8 +144,8 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     [self setDeviceKind:"PCMCIA Adapter"];
     [self setUnit:0];
 
-    socketList = [[List alloc] init];
-    windowList = [[List alloc] init];
+    sockets = [[List alloc] init];
+    windows = [[List alloc] init];
 
     /* Create up to 4 sockets and collect their windows */
     for (i = 0; i < 4; i++) {
@@ -159,24 +155,24 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
         }
 
         /* Add socket to socket list */
-        [socketList addObject:socket];
+        [sockets addObject:socket];
 
         /* Append the socket's windows to the master window list */
-        [windowList appendList:[socket windows]];
+        [windows appendList:[socket windows]];
     }
 
     /* No socket answered: give the list back and fail */
-    if ([socketList count] == 0) {
-        [socketList free];
+    if ([sockets count] == 0) {
+        [sockets free];
         [self free];
         return nil;
     }
 
     /* Check for Cirrus Logic chip */
-    isCirrusChip = checkForCirrusChip();
+    CirrusCompatible = checkForCirrusChip();
 
     /* Set up status change interrupts for each socket */
-    for (i = 0; i < [socketList count]; i++) {
+    for (i = 0; i < [sockets count]; i++) {
         setStatusChangeInterrupt(i, [deviceDescription interrupt]);
     }
 
@@ -211,19 +207,19 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     unsigned char regOffset;
 
     /* Get number of sockets */
-    count = [socketList count];
+    count = [sockets count];
 
     /* Check each socket for status changes */
     for (i = 0; i < count; i++) {
         /* Get socket object */
-        socket = [socketList objectAt:i];
+        socket = [sockets objectAt:i];
 
         /* Calculate register offset: socket * 0x40 + 0x04 (Card Status Change register) */
         regOffset = (i << 6) + 0x04;
 
         /* Read from base port with calculated offset */
-        outb(basePort, regOffset);
-        statusByte = inb(basePort + 1);
+        outb(reg_base, regOffset);
+        statusByte = inb(reg_base + 1);
 
         /* If any status change bits are set */
         if (statusByte != 0) {
@@ -239,8 +235,8 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
                            (((statusByte >> 1) & 1) | (statusByte & 1)) << 4;  /* bits 0,1 -> bit 4 */
 
             /* Call status change handler if registered */
-            if (statusChangeHandler) {
-                [statusChangeHandler statusChangedForSocket:socket changedStatus:changedStatus];
+            if (statusHandler) {
+                [statusHandler statusChangedForSocket:socket changedStatus:changedStatus];
             }
         }
     }
@@ -264,7 +260,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - sockets
 {
-    return socketList;
+    return sockets;
 }
 
 /*
@@ -273,7 +269,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - windows
 {
-    return windowList;
+    return windows;
 }
 
 /*
@@ -283,7 +279,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - (void)setStatusChangeHandler:handler
 {
-    statusChangeHandler = handler;
+    statusHandler = handler;
 }
 
 /*
@@ -310,9 +306,9 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     /* If power state is 3 (sleep/suspend), disable everything */
     if (powerState == 3) {
         /* Disable all sockets */
-        count = [socketList count];
+        count = [sockets count];
         for (i = 0; i < count; i++) {
-            socket = [socketList objectAt:i];
+            socket = [sockets objectAt:i];
 
             /* Disable card */
             [socket setCardEnabled:0];
@@ -321,9 +317,9 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
             [socket setCardVccPower:0];
 
             /* Disable all windows for this socket */
-            windowCount = [windowList count];
+            windowCount = [windows count];
             for (j = 0; j < windowCount; j++) {
-                window = [windowList objectAt:j];
+                window = [windows objectAt:j];
                 [window setEnabled:0];
             }
         }

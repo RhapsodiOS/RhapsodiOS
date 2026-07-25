@@ -278,6 +278,103 @@ def test_source_sites_skips_multiline_c_prototype_and_finds_multiline_definition
     assert sites["_Get_ConfigSpace"] == [("src/driver/PCIResourceDriver.c", 14)]
 
 
+def test_source_sites_finds_c_function_defined_inside_implementation(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bus.m").write_text(
+        "@implementation FooBus (Private)\n"
+        "\n"
+        "- (void)someMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "BOOL getCardConfig(unsigned int csn)\n"
+        "{\n"
+        "    return YES;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_getCardConfig"] == [("src/driver/Bus.m", 7)]
+
+
+def test_source_sites_skips_c_prototype_inside_implementation(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bus.m").write_text(
+        "@implementation FooBus (Private)\n"
+        "\n"
+        "BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length);\n"
+        "\n"
+        "BOOL getCardConfig(unsigned int csn, void *buffer, unsigned int *length)\n"
+        "{\n"
+        "    return YES;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_getCardConfig"] == [("src/driver/Bus.m", 5)]
+
+
+def test_source_sites_still_finds_methods_alongside_c_definition_in_same_block(
+    tmp_path,
+):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bus.m").write_text(
+        "@implementation FooBus (Private)\n"
+        "\n"
+        "BOOL getCardConfig(unsigned int csn)\n"
+        "{\n"
+        "    return YES;\n"
+        "}\n"
+        "\n"
+        "- (void)someMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_getCardConfig"] == [("src/driver/Bus.m", 3)]
+    assert sites["-[FooBus(Private) someMethod]"] == [("src/driver/Bus.m", 8)]
+
+
+def test_source_sites_finds_c_function_defined_after_implementation_end(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bus.m").write_text(
+        "@implementation FooBus\n"
+        "\n"
+        "- (void)someMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n"
+        "\n"
+        "int helperAfterEnd(int x)\n"
+        "{\n"
+        "    return x;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_helperAfterEnd"] == [("src/driver/Bus.m", 9)]
+
+
 def _analysis(functions, sha256="A" * 64):
     return {"input": {"sha256": sha256}, "functions": functions}
 

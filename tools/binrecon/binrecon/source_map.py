@@ -70,43 +70,41 @@ def source_sites(repo_root, source_dir):
                 index += 1
                 continue
 
-            if current_class is not None:
-                method = _METHOD.match(line)
-                if method:
-                    declaration = [line]
-                    found_brace = "{" in line
-                    found_semicolon = not found_brace and line.rstrip().endswith(";")
-                    end = min(total, index + _METHOD_DECLARATION_LIMIT)
-                    scan = index
-                    while not found_brace and not found_semicolon and scan + 1 < end:
-                        candidate = lines[scan + 1]
-                        if (
-                            _END.match(candidate)
-                            or _IMPLEMENTATION.match(candidate)
-                            or _METHOD.match(candidate)
-                        ):
-                            # A structural boundary, or the start of another
-                            # method declaration, before any brace/semicolon
-                            # means this was never a real declaration; stop
-                            # without consuming the line so the outer loop can
-                            # process it on its own (updating current_class,
-                            # or scanning it as its own declaration).
-                            break
-                        scan += 1
-                        declaration.append(candidate)
-                        if "{" in candidate:
-                            found_brace = True
-                        elif candidate.rstrip().endswith(";"):
-                            found_semicolon = True
+            method = _METHOD.match(line) if current_class is not None else None
+            if method:
+                declaration = [line]
+                found_brace = "{" in line
+                found_semicolon = not found_brace and line.rstrip().endswith(";")
+                end = min(total, index + _METHOD_DECLARATION_LIMIT)
+                scan = index
+                while not found_brace and not found_semicolon and scan + 1 < end:
+                    candidate = lines[scan + 1]
+                    if (
+                        _END.match(candidate)
+                        or _IMPLEMENTATION.match(candidate)
+                        or _METHOD.match(candidate)
+                    ):
+                        # A structural boundary, or the start of another
+                        # method declaration, before any brace/semicolon
+                        # means this was never a real declaration; stop
+                        # without consuming the line so the outer loop can
+                        # process it on its own (updating current_class,
+                        # or scanning it as its own declaration).
+                        break
+                    scan += 1
+                    declaration.append(candidate)
+                    if "{" in candidate:
+                        found_brace = True
+                    elif candidate.rstrip().endswith(";"):
+                        found_semicolon = True
 
-                    if found_brace and not found_semicolon:
-                        selector = _selector(" ".join(declaration))
-                        if selector:
-                            key = f"{method.group(1)}[{current_class} {selector}]"
-                            sites.setdefault(key, []).append((relative, number))
+                if found_brace and not found_semicolon:
+                    selector = _selector(" ".join(declaration))
+                    if selector:
+                        key = f"{method.group(1)}[{current_class} {selector}]"
+                        sites.setdefault(key, []).append((relative, number))
 
-                    index = scan
-                index += 1
+                index = scan + 1
                 continue
 
             if line.rstrip().endswith(";") or line.startswith((" ", "\t", "#", "}")):
@@ -125,12 +123,14 @@ def source_sites(repo_root, source_dir):
                         _IMPLEMENTATION.match(candidate)
                         or _END.match(candidate)
                         or _C_DEFINITION.match(candidate)
+                        or (current_class is not None and _METHOD.match(candidate))
                     ):
-                        # A structural boundary, or the start of another
-                        # top-level declaration, before any brace/semicolon
-                        # means this prototype/definition never resolved;
-                        # stop without consuming the line so the outer loop
-                        # can process it on its own.
+                        # A structural boundary, the start of another
+                        # top-level declaration, or (inside an
+                        # @implementation) the start of a method, before any
+                        # brace/semicolon means this prototype/definition
+                        # never resolved; stop without consuming the line so
+                        # the outer loop can process it on its own.
                         break
                     scan += 1
                     declaration.append(candidate)

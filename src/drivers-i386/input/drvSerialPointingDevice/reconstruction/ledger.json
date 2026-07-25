@@ -153,7 +153,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; both compares, both unconditional sends to target and both verbose logs match, but the no-match return is IO_R_UNSUPPORTED not IO_R_INVALID_ARG (divergences.md Findings 1, 16)"
+          "full disassembly read instruction by instruction against source; both compares, both unconditional sends to target and both verbose logs match. The Task 6 fix pass initially missed this site's no-match return (still IO_R_INVALID_ARG); a follow-up fix corrected it and the rebuilt SerialPointingDevice_reloc was disassembled directly (capstone, __TEXT,__text offset 0xa96 in that build) to confirm it now emits mov eax, 0xfffffd39, matching the reference's constant at 1448 (divergences.md Findings 1, 16). The rebuilt function is 312 bytes against the reference's 263 due to ordinary codegen differences elsewhere in the body, so the two instruction streams are not byte-identical and this stays control-flow-confirmed rather than assembly-matched"
         ],
         "status": "agreed"
       },

@@ -1151,10 +1151,13 @@ Neither method touches `count` in the reference, and neither does ours.
 branch on the specific `IOReturn` would observe the difference. Same class of finding as
 drvPS2Mouse's Finding 9.
 
-**Resolution (Task 6):** fixed. Both no-match paths return `IO_R_UNSUPPORTED`. The comparison
-loops, the unconditional sends to `target` and the verbose logs are untouched. The local that
-held the key string in both methods was renamed `key`, because `target` is now the inherited
-ivar these methods message — the same rename drvPS2Mouse's fix pass made.
+**Resolution (Task 6):** the original fix-pass commit only fixed the `getIntValues:` no-match
+path; the `setIntValues:` no-match path was missed and still returned `IO_R_INVALID_ARG`. A
+follow-up fix (post-review) corrected `setIntValues:` to also return `IO_R_UNSUPPORTED`, so both
+no-match paths now match the reference. The comparison loops, the unconditional sends to `target`
+and the verbose logs are untouched. The local that held the key string in both methods was
+renamed `key`, because `target` is now the inherited ivar these methods message — the same rename
+drvPS2Mouse's fix pass made.
 
 ## Observations that are not findings
 

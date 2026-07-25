@@ -508,7 +508,7 @@ IOThreadFunc mainLoop(id driver)
 
     if (!match) {
         /* Unknown parameter */
-        return IO_R_INVALID_ARG;
+        return IO_R_UNSUPPORTED;
     }
 
     /* Set inverted value */

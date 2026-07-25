@@ -8,6 +8,9 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+extern unsigned int page_size;
+extern unsigned int page_mask;
+
 @implementation IODiskPartitionNEW
 
 /*
@@ -386,9 +389,9 @@
 		goto cleanup;
 	}
 
-	// Set timestamp
+	// Set timestamp (stock disk_label has no dl_label_time; keep probeTime)
 	IOGetTimestamp(&timestamp);
-	label_p->dl_label_time = (unsigned)timestamp;
+	(void)timestamp;
 
 	// Clear checksum and block offset
 	label_p->dl_label_blkno = 0;

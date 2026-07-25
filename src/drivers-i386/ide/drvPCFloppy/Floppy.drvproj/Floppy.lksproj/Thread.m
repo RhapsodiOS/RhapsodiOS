@@ -24,10 +24,10 @@
  *   - Iterates through each character until null terminator
  *   - For each character, checks if it's uppercase (A-Z)
  *   - Uses the check: (char + 0xBF) < 0x1A
- *     - 'A' (0x41) + 0xBF = 0x100 (overflow), result = 0x00 < 0x1A ✓
- *     - 'Z' (0x5A) + 0xBF = 0x119 (overflow), result = 0x19 < 0x1A ✓
- *     - '[' (0x5B) + 0xBF = 0x11A (overflow), result = 0x1A NOT < 0x1A ✗
- *     - 'a' (0x61) + 0xBF = 0x120 (overflow), result = 0x20 NOT < 0x1A ✗
+ *     - 'A' (0x41) + 0xBF = 0x100 (overflow), result = 0x00 < 0x1A â
+ *     - 'Z' (0x5A) + 0xBF = 0x119 (overflow), result = 0x19 < 0x1A â
+ *     - '[' (0x5B) + 0xBF = 0x11A (overflow), result = 0x1A NOT < 0x1A â
+ *     - 'a' (0x61) + 0xBF = 0x120 (overflow), result = 0x20 NOT < 0x1A â
  *   - If uppercase, adds 32 (space character value) to convert to lowercase
  */
 static void _strlower(char *str)
@@ -319,11 +319,12 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	unsigned int **nextOp;
 	unsigned int **prevOp;
 	unsigned int **linkPtr;
+	unsigned int *firstOp;
 
 	// Process ascending queue - move operations that should be in descending queue
 	operation = (unsigned int *)*ascendingQueue;
 	while (operation != (unsigned int *)ascendingQueue) {
-		unsigned int *firstOp = (unsigned int *)*ascendingQueue;
+		firstOp = (unsigned int *)*ascendingQueue;
 
 		// Check if operation should stay in ascending queue
 		// Stay if: cylinder <= current AND (not same OR direction == descending)
@@ -364,7 +365,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 			return;  // Done - reached end of descending queue
 		}
 
-		unsigned int *firstOp = (unsigned int *)*descendingQueue;
+		firstOp = (unsigned int *)*descendingQueue;
 
 		// Check if operation should stay in descending queue
 		// Stay if: cylinder > current OR (same AND direction == ascending)
@@ -632,7 +633,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	if (modeString != NULL) {
 		// Copy to local buffer (max 20 chars)
 		strncpy(modeBuffer, modeString, 0x14);
-		modeBuffer[19] = ' ';
+		modeBuffer[19] = '\0';
 
 		// Convert to lowercase
 		strlower(modeBuffer);
@@ -661,7 +662,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown "Read Mode" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Read Mode\" setting in the configuration table.", diskName);
 		}
 	}
 
@@ -691,7 +692,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	if (modeString != NULL) {
 		// Copy to local buffer (max 20 chars)
 		strncpy(modeBuffer, modeString, 0x14);
-		modeBuffer[19] = ' ';
+		modeBuffer[19] = '\0';
 
 		// Convert to lowercase
 		strlower(modeBuffer);
@@ -734,9 +735,11 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown "Write Mode" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Write Mode\" setting in the configuration table.", diskName);
 		}
 	}
+
+	return writeMode;
 }
 
 - (void)_operationThread

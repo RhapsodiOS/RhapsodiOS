@@ -454,7 +454,7 @@ static unsigned int _motorChangeCount = 0;
 		if ((((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x20) != 0 &&
 		    ((unsigned char *)((char *)cmdParams + 0x28))[4] == 0 &&
 		    (((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x10) == 0) {
-			_field_140 = 0;
+			_lastErrorCode = 0;
 			goto cleanup;
 		}
 		break;
@@ -463,12 +463,12 @@ static unsigned int _motorChangeCount = 0;
 		// Check seek status
 		if ((((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x20) != 0) {
 			if (((unsigned char *)((char *)cmdParams + 0x0c))[3] >= 0x80) {
-				_field_140 = 0xffff;
+				_lastErrorCode = 0xffff;
 				goto cleanup;
 			}
 			if (((unsigned char *)((char *)cmdParams + 0x0c))[5] ==
 			    ((unsigned char *)((char *)cmdParams + 0x28))[4]) {
-				_field_140 = ((unsigned char *)((char *)cmdParams + 0x0c))[5];
+				_lastErrorCode = ((unsigned char *)((char *)cmdParams + 0x0c))[5];
 				goto cleanup;
 			}
 		}
@@ -492,7 +492,7 @@ cleanup:
 
 	// Mark controller state as bad on error
 	if (result != 0) {
-		_field_140 = 0xffff;
+		_lastErrorCode = 0xffff;
 	}
 
 	return result;

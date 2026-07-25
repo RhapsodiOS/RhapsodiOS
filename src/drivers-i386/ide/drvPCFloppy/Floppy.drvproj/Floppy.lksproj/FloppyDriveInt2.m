@@ -8,12 +8,21 @@
 #import "FloppyDriveInt2.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/driverTypes.h>
 #import "FloppyVm.h"
+
+/* Geometry.m tables / helpers */
+extern unsigned int fdDiskInfo[];
+extern unsigned int fdDensityInfo[];
+extern const IONamedValue fdrValues[];
+extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // External VM functions
 extern void *vm_map_pmap(vm_map_t map);
 extern unsigned int pmap_resident_extract(void *pmap, vm_address_t va);
 extern unsigned int page_size;
+extern void _fdTimer(id drive);
+extern IOReturn fdrToIo(unsigned int fdcStatus);
 
 /*
  * _physContBlocks - Calculate physically contiguous blocks
@@ -530,7 +539,7 @@ transfer_done:
 	fdcStatus = *(int *)status;
 
 	// Find name for FDC status value in fdrValues table
-	statusString = (const char *)IOFindNameForValue(fdcStatus, &fdrValues, (const char *)operation);
+	statusString = IOFindNameForValue(fdcStatus, fdrValues);
 
 	// Set operation type based on read flag
 	operationType = readFlag ? "Read" : "Write";
@@ -586,7 +595,7 @@ transfer_done:
 	    ((currentTimeHigh == timeoutTimeHigh) && (currentTimeLow < timeoutTimeLow))) {
 		// Timeout not reached, reschedule timer
 		_motorTimerActive = _motorTimerActive | 1;
-		IOScheduleFunc(fdTimer, self, 2);
+		IOScheduleFunc(_fdTimer, self, 2);
 	} else {
 		// Timeout reached, turn off motor
 		bzero(cmdBuffer, 0x60);

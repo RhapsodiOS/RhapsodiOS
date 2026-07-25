@@ -438,7 +438,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Execute an I/O request.
  * From decompiled code: breaks request into subrequests and executes them.
  */
-- (void)_executeRequest:(id)request
+- (IOReturn)_executeRequest:(id)request
 {
 	id operationLock;
 	id geometry;
@@ -483,7 +483,7 @@ static void _doCopy(vm_map_t sourceMap,
 		// Invalid cylinder range
 		[operationLock unlock];
 		*(IOReturn *)((char *)request + 0x1c) = IO_R_INVALID_ARG;
-		return;
+		return IO_R_INVALID_ARG;
 	}
 
 	// Process all subrequests - check state and either queue or prepare for execution
@@ -594,7 +594,7 @@ static void _doCopy(vm_map_t sourceMap,
 			// Request was aborted
 			[operationLock unlock];
 			*(IOReturn *)((char *)request + 0x1c) = IO_R_IO;
-			return;
+			return IO_R_IO;
 		}
 
 		// Check if all subrequests completed
@@ -618,6 +618,7 @@ static void _doCopy(vm_map_t sourceMap,
 
 	// Unlock and return final status
 	[operationLock unlock];
+	return *(IOReturn *)((char *)request + 0x1c);
 }
 
 

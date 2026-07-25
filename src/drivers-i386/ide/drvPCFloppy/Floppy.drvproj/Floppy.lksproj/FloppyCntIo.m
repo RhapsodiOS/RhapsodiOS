@@ -340,7 +340,7 @@
 	}
 
 	// Set up message header for receiving interrupt
-	msg.msg_local_port = _interruptPort;  // Port at offset 0x134
+	msg.msg_local_port = _fdcInterruptPort;  // Port at offset 0x134
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Wait for interrupt message with timeout
@@ -533,7 +533,7 @@ set_error_flag:
 	IOReturn getByteResult;
 
 	// Set up message header for receiving interrupt
-	msg.msg_local_port = _interruptPort;  // Port at offset 0x134
+	msg.msg_local_port = _fdcInterruptPort;  // Port at offset 0x134
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Try to receive interrupt message with no timeout (non-blocking)

@@ -35,16 +35,16 @@ typedef struct {
  */
 @interface FloppyController : IODirectDevice
 {
-@private
+@public
 	id                  _fcCmdLock;         // offset 0x128: Lock for controller access (NXConditionLock)
 	id                  _requestQueue;      // offset 0x130: Request queue head pointer
 	port_t              _fdcInterruptPort;  // offset 0x134: Interrupt port
 	unsigned char       _flags;             // offset 0x138: Controller flags
-	unsigned char       _field_139;         // offset 0x139: Unknown field
+	unsigned char       _currentDensity;    // offset 0x139: Current density/data-rate select
 	unsigned char       _dorRegister;       // offset 0x13a: Digital Output Register (DOR) cache
-	unsigned char       _field_13b;         // offset 0x13b: Unknown field
+	unsigned char       _dataRateChangeCount; // offset 0x13b: Data-rate change counter
 	void               *_dmaBuffer;         // offset 0x13c: DMA transfer buffer
-	unsigned int        _field_140;         // offset 0x140: Unknown field (initialized to 0xffff)
+	unsigned int        _lastErrorCode;     // offset 0x140: Last error / status word
 
 	// Request queue (offset 300 / 0x12c)
 	id                  _queueHead;         // Circular queue for I/O requests

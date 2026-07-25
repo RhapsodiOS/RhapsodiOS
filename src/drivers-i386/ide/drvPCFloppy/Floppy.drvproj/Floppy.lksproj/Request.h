@@ -36,7 +36,7 @@
 /*
  * Execute an I/O request.
  */
-- (void)_executeRequest:(id)request;
+- (IOReturn)_executeRequest:(id)request;
 
 /*
  * Execute a subrequest.
@@ -61,7 +61,7 @@
 /*
  * Remove imposed cylinder state for a subrequest.
  */
-- (void)_unimposeCylinderStateForSubrequest:(id)subrequest;
+- (IOReturn)_unimposeCylinderStateForSubrequest:(id)subrequest;
 
 @end
 

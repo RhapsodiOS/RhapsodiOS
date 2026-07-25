@@ -199,6 +199,41 @@ unsigned int fdDensityInfo[] = {
     0x00000000, 0x000b4000, 0x00000001,
 };
 
+/*
+ * fdGetSectSizeInfo - look up sector-size info for a density code.
+ */
+unsigned int *
+fdGetSectSizeInfo(unsigned int density)
+{
+	unsigned int *entry;
+
+	entry = fdDensitySectsize;
+	while (entry[0] != 0 || entry[1] != 0) {
+		if (entry[0] == density || entry[0] == 0) {
+			return (unsigned int *)entry[1];
+		}
+		entry += 2;
+	}
+	return _ssi_1mb;
+}
+
+/*
+ * fdrValues - FDC status → string map for IOFindNameForValue.
+ */
+const IONamedValue fdrValues[] = {
+	{ 0x00, "OK" },
+	{ 0x01, "I/O error" },
+	{ 0x02, "Write protected" },
+	{ 0x03, "Not readable" },
+	{ 0x04, "Not formatted" },
+	{ 0x05, "Media error" },
+	{ 0x0d, "DMA error" },
+	{ 0x14, "Timeout" },
+	{ 0x15, "Device error" },
+	{ 0x16, "No media" },
+	{ 0, (const char *)0 },
+};
+
 // FDC ioctl handler mapping table
 // Maps ioctl command codes to handler function pointers
 // Structure: Array of pairs [ioctlCode, handlerAddress]

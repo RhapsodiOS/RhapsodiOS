@@ -5,6 +5,7 @@
  */
 
 #import "IOFloppyDrive.h"
+#import "IOFloppyDisk.h"
 #import "VolCheck.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>

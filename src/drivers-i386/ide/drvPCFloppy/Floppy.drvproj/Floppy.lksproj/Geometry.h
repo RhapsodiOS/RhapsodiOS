@@ -5,6 +5,14 @@
  */
 
 #import <driverkit/return.h>
+#import <driverkit/driverTypes.h>
+
+/* Geometry lookup tables (Geometry.m) */
+extern unsigned int fdDiskInfo[];
+extern unsigned int fdDensityInfo[];
+extern unsigned int fdDensitySectsize[];
+extern const IONamedValue fdrValues[];
+extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // Forward declaration
 @class IOFloppyDisk;

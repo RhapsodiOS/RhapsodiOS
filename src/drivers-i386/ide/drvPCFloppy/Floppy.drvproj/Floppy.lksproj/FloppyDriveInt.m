@@ -6,6 +6,7 @@
 
 #import "IOFloppyDrive.h"
 #import "FloppyDriveInt.h"
+#import "IOFloppyDisk.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import "FloppyVm.h"
@@ -103,7 +104,7 @@ static void *floppyMalloc(unsigned int size,
  *   - Bit 0 set: timer is active/pending
  *   - Bit 0 clear: timer has fired or is inactive
  */
-static void _fdTimer(id drive)
+void _fdTimer(id drive)
 {
 	unsigned char *timerFlagPtr;
 
@@ -146,7 +147,7 @@ static void _fdTimer(id drive)
  *   0x16 -> IO_R_NO_MEDIA (0xfffffd2c = -724)
  *   default -> IO_R_INVALID (0xfffffd37 = -713)
  */
-static IOReturn fdrToIo(unsigned int fdrCode)
+IOReturn fdrToIo(unsigned int fdrCode)
 {
 	switch (fdrCode) {
 	case 0x00:
@@ -673,12 +674,12 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 		// Clear motor timer active flag (bit 0 at offset 0x178)
 		_motorTimerActive = _motorTimerActive & 0xfe;
 		// Unschedule motor off timer
-		IOUnscheduleFunc(fdTimer, self);
+		IOUnscheduleFunc(_fdTimer, self);
 	} else if ((_motorTimerActive & 1) == 0) {
 		// Set motor timer active flag
 		_motorTimerActive = _motorTimerActive | 1;
 		// Schedule motor off timer for 2 seconds
-		IOScheduleFunc(fdTimer, self, 2);
+		IOScheduleFunc(_fdTimer, self, 2);
 	}
 	
 	return result;

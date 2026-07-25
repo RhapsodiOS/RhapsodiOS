@@ -5,8 +5,12 @@
  */
 
 #import "IOFloppyDrive.h"
+#import "IOFloppyDisk.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+
+extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
+                          unsigned int *allocSizeOut);
 
 @implementation IOFloppyDrive
 
@@ -173,11 +177,13 @@
 	int driveNumber;
 	char name[20];
 	IOReturn result;
+	vm_address_t allocAddr;
+	unsigned allocSize;
 	
 	// Store device description, controller, and unit
 	_deviceDescription = deviceDescription;    // offset 0x160
 	_fdController = controller;                // offset 0x164
-	_unit = unit;                              // offset 0x168
+	[self setUnit:unit];
 	
 	// Initialize disk object pointer
 	_nextLogicalDisk = nil;                    // offset 0x108
@@ -198,8 +204,6 @@
 	_motorTimerActive = _motorTimerActive & 0xfe;  // offset 0x178
 	
 	// Allocate bounce buffer (1024 bytes = 0x400)
-	vm_address_t allocAddr;
-	unsigned allocSize;
 	_bounceBuffer = (void *)floppyMalloc(0x400, &allocAddr, &allocSize);
 	
 	if (_bounceBuffer == NULL) {

@@ -216,7 +216,7 @@ BOOL _numFloppyDrives(void)
 
 	// Initialize controller state fields
 	_dorRegister = 0;
-	_field_13b = 0;
+	_dataRateChangeCount = 0;
 
 	// Set bit 1 of flags (0x02)
 	_flags = _flags | 0x02;
@@ -224,13 +224,13 @@ BOOL _numFloppyDrives(void)
 	// Clear bit 3 of flags (0xf7 mask clears bit 3)
 	_flags = _flags & 0xf7;
 
-	_field_139 = 0;
+	_currentDensity = 0;
 
 	// Clear bit 2 of flags (0xfb mask clears bit 2)
 	_flags = _flags & 0xfb;
 
 	// Set field_140 to 0xffff
-	_field_140 = 0xffff;
+	_lastErrorCode = 0xffff;
 
 	// Clear bit 0 of flags (0xfe mask clears bit 0)
 	_flags = _flags & 0xfe;

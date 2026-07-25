@@ -140,10 +140,17 @@ here.
 
 ### 2.6 `_socketIsValid` is defined twice in the reference
 
-At 1488, inside `PCIC.m`'s address run, and at 2816, inside `PCICDebug.m`'s. Our
-source has a single definition in `PCIC.m` plus an `extern` in `PCICSocket.m`.
-Two same-named statics in different objects must be disambiguated by link order,
-not by name.
+At 1488 and again at 2816. Our source has a single definition in `PCIC.m` plus an
+`extern` in `PCICSocket.m`.
+
+The first copy is unambiguous: it sits between `-[PCIC setPowerManagement:]`
+(1476) and `_checkForCirrusChip` (1564), so it is the tail of `PCIC.m` — the same
+place our source puts it. The second is ambiguous. It sits between
+`-[PCIC(Internal) writeRegister:socket:value:]` (2748) and
+`-[PCICSocket initWithAdapter:socketNumber:]` (2892), so it is either the tail of
+`PCICInternal.m` or the head of `PCICSocket.m`, and link order alone cannot
+decide. The report pass resolves it from the disassembly; until it does, the
+entry belongs in `duplicate_candidates` rather than being guessed.
 
 ### 2.7 `PCICDebug.m` is in good shape
 
@@ -320,8 +327,9 @@ They are never read as "function absent".
 acceptance. The runner refuses to accept leftover output from an earlier run as
 evidence.
 
-**The two `_socketIsValid` must be disambiguated by link order**, not by name.
-Absent that, they belong in `duplicate_candidates` rather than being guessed.
+**The second `_socketIsValid` cannot be placed by link order alone** (§2.6). It
+must be resolved from the disassembly; absent that it belongs in
+`duplicate_candidates` rather than being guessed.
 
 **The Rhapsody guest may be unavailable.** Both report passes still deliver in
 full; only the fix passes block.

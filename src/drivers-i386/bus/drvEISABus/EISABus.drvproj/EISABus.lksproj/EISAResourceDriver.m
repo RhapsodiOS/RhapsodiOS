@@ -203,7 +203,13 @@ static const char *keys[] = {
             *(unsigned short *)parameterArray = (unsigned short)portValue;
             return IO_R_SUCCESS;
         } else if (*count == 4) {
-            portValue = inw(portAddr);
+            /*
+             * 32-bit port read.  inl() in <machdep/i386/io_inline.h> issues
+             * "inl" but is declared to return unsigned short, so the value
+             * reaching the caller is already narrowed; the reference keeps
+             * the resulting mask (in eax, dx / and eax, 0xFFFF) and so do we.
+             */
+            portValue = inl(portAddr);
             *(unsigned int *)parameterArray = portValue & 0xFFFF;
             return IO_R_SUCCESS;
         }
@@ -357,8 +363,13 @@ static const char *keys[] = {
             outw(portValue16, *(unsigned short *)parameterArray);
             return IO_R_SUCCESS;
         } else if (count == 4) {
-            /* Write 4 bytes (dword) - uses 2-byte writes on i386 */
-            outw(portValue16, *(unsigned short *)parameterArray);
+            /*
+             * 32-bit port write.  outl() in <machdep/i386/io_inline.h> issues
+             * "outl" but takes its datum as unsigned short, so only the low
+             * half of the parameter reaches the bus -- which is exactly what
+             * the reference does (mov ax, [ecx] / out dx, eax).
+             */
+            outl(portValue16, *(unsigned short *)parameterArray);
             return IO_R_SUCCESS;
         }
     } else {

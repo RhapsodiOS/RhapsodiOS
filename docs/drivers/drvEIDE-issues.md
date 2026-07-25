@@ -651,3 +651,22 @@ Hang fixes (§2):
 | `b4d49e08` | D — lightweight `recoverDrives` in the command retry path |
 | `12907a6e` | E, F, G — legacy PIO cap, zeroed taskfile, per-drive multisector disable |
 | `61886ca9` | D — escalate to full reinit before the final retry so a failing mode still demotes |
+
+### Resolved: the interrupt loss is a kernel PIC bug, not a driver bug
+
+The `interrupt timeout` failures documented above are not caused by `drvEIDE`.
+QEMU's PIC state at the wedge shows the master 8259's in-service register with
+the cascade bit (IRQ 2) set and never cleared, which blocks every slave
+interrupt (IRQ 8-15) while the higher-priority IRQ 0 keeps being delivered. The
+disk is asserting IRQ 14 and the slave has it pending and unmasked; the master
+simply refuses to forward it.
+
+The defect is in `machdep/i386/intr.c`: a spurious slave interrupt (IRQ 15)
+returned without acknowledging the cascade the master had already accepted.
+
+Full evidence and the fix are in
+[`docs/kernel/i8259-spurious-slave-irq.md`](../kernel/i8259-spurious-slave-irq.md).
+
+This also explains why none of the driver-side experiments helped: disabling
+multi-sector transfers only moved which command was in flight when the PIC
+wedged, and the rebuilt driver could not fix an interrupt that never arrives.

@@ -79,6 +79,24 @@ send_eoi(
 		    });
 }
 
+/*
+ * Send an EOI to the master PIC only.
+ */
+static inline
+void
+send_master_eoi(
+    void
+)
+{
+    send_master_eoi_command((intr_ocw2_t) {
+			0,		/* no level	*/
+			0,		/* must be	*/
+			TRUE,		/* EOI		*/
+			FALSE,		/* non-specific	*/
+			FALSE		/* no rotation	*/
+		    });
+}
+
 static inline
 void
 set_elcr(
@@ -659,12 +677,32 @@ intr_handler(
 
     /*
      * Check for phantom interrupt.
+     *
+     * A spurious interrupt leaves no in-service bit set in the PIC that
+     * reported it, which is how it is recognised here.  The master and
+     * slave cases are not symmetric.
+     *
+     * A spurious IRQ 7 needs no acknowledgement: the master has nothing
+     * in service.  A spurious IRQ 15 does, because the master already
+     * acknowledged the cascade and set its IRQ 2 in-service bit before
+     * the slave reported the interrupt as spurious.  Returning without
+     * clearing that bit leaves the cascade permanently in service, and
+     * the master then refuses every later slave interrupt (IRQ 8-15)
+     * while continuing to deliver the higher-priority IRQ 0.
      */
-    if (((irq == INTR_MASTER_PHANTOM_IRQ && 
-		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0)) ||
-	((irq == INTR_SLAVE_PHANTOM_IRQ &&
-		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0)) ) {
+    if (irq == INTR_MASTER_PHANTOM_IRQ &&
+		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
 	 intr_cnt.phantom++;
+	 if (intr_cnt.phantom <= 8)
+	     printf("intr: phantom IRQ %d\n", irq);
+	 return;
+    }
+    if (irq == INTR_SLAVE_PHANTOM_IRQ &&
+		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
+	 intr_cnt.phantom++;
+	 if (intr_cnt.phantom <= 8)
+	     printf("intr: phantom IRQ %d, EOI to master\n", irq);
+	 send_master_eoi();
 	 return;
     }
 

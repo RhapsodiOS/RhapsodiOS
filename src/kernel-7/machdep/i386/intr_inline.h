@@ -130,6 +130,25 @@ send_eoi_command(
     outb(INTR2_PRIMARY_PORT, tconv.iodata);
 }
 
+/*
+ * Send a command to the master PIC only.  Needed when the master has
+ * acknowledged a cascaded interrupt which the slave then reported as
+ * spurious: the slave has nothing in service, but the master's cascade
+ * in-service bit must still be cleared.
+ */
+static inline
+void
+send_master_eoi_command(
+    intr_ocw2_t		ocw2
+)
+{
+    cw_conv_t		tconv;
+
+    tconv.ocw2 = ocw2;
+
+    outb(INTR_PRIMARY_PORT, tconv.iodata);
+}
+
 static inline
 void
 set_master_mask(

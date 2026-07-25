@@ -1,0 +1,742 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 224,
+      "reference_names": [
+        "+[PCIC probe:]"
+      ],
+      "size": 53,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 280,
+      "reference_names": [
+        "+[PCIC deviceStyle]"
+      ],
+      "size": 9,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 292,
+      "reference_names": [
+        "-[PCIC initFromDeviceDescription:]"
+      ],
+      "size": 639,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 932,
+      "reference_names": [
+        "-[PCIC sockets]"
+      ],
+      "size": 16,
+      "source_line": 260,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 948,
+      "reference_names": [
+        "-[PCIC windows]"
+      ],
+      "size": 16,
+      "source_line": 269,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 964,
+      "reference_names": [
+        "-[PCIC setStatusChangeHandler:]"
+      ],
+      "size": 19,
+      "source_line": 279,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 984,
+      "reference_names": [
+        "-[PCIC interruptOccurred]"
+      ],
+      "size": 226,
+      "source_line": 200,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1212,
+      "reference_names": [
+        "-[PCIC interrupt]"
+      ],
+      "size": 39,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1252,
+      "reference_names": [
+        "-[PCIC getPowerState:]"
+      ],
+      "size": 12,
+      "source_line": 343,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1264,
+      "reference_names": [
+        "-[PCIC setPowerState:]"
+      ],
+      "size": 200,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1464,
+      "reference_names": [
+        "-[PCIC getPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 334,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1476,
+      "reference_names": [
+        "-[PCIC setPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 288,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1488,
+      "reference_names": [
+        "_socketIsValid"
+      ],
+      "size": 74,
+      "source_line": 359,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1564,
+      "reference_names": [
+        "_checkForCirrusChip"
+      ],
+      "size": 119,
+      "source_line": 388,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1684,
+      "reference_names": [
+        "_setStatusChangeInterrupt"
+      ],
+      "size": 76,
+      "source_line": 428,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 1760,
+      "reference_names": [
+        "_FindEmptyMemoryRange"
+      ],
+      "size": 111,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICDebug.m"
+    },
+    {
+      "address": 1872,
+      "reference_names": [
+        "_setWindow"
+      ],
+      "size": 436,
+      "source_line": 136,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICDebug.m"
+    },
+    {
+      "address": 2308,
+      "reference_names": [
+        "_MapAttributeMemory"
+      ],
+      "size": 231,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICDebug.m"
+    },
+    {
+      "address": 2540,
+      "reference_names": [
+        "-[PCIC readAttributeMemory:forSocket:]"
+      ],
+      "size": 145,
+      "source_line": 153,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICDebug.m"
+    },
+    {
+      "address": 2688,
+      "reference_names": [
+        "-[PCIC spoofInterrupt]"
+      ],
+      "size": 9,
+      "source_line": 200,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICDebug.m"
+    },
+    {
+      "address": 2700,
+      "reference_names": [
+        "-[PCIC readRegister:socket:]"
+      ],
+      "size": 46,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICInternal.m"
+    },
+    {
+      "address": 2748,
+      "reference_names": [
+        "-[PCIC writeRegister:socket:value:]"
+      ],
+      "size": 68,
+      "source_line": 59,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICInternal.m"
+    },
+    {
+      "address": 2816,
+      "reference_names": [
+        "_socketIsValid_0"
+      ],
+      "size": 74,
+      "source_line": 359,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 2892,
+      "reference_names": [
+        "-[PCICSocket initWithAdapter:socketNumber:]"
+      ],
+      "size": 896,
+      "source_line": 48,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 3788,
+      "reference_names": [
+        "-[PCICSocket adapter]"
+      ],
+      "size": 13,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 3804,
+      "reference_names": [
+        "-[PCICSocket socketNumber]"
+      ],
+      "size": 13,
+      "source_line": 181,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 3820,
+      "reference_names": [
+        "-[PCICSocket windows]"
+      ],
+      "size": 13,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 3836,
+      "reference_names": [
+        "-[PCICSocket status]"
+      ],
+      "size": 143,
+      "source_line": 312,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 3980,
+      "reference_names": [
+        "-[PCICSocket setStatusChangeMask:]"
+      ],
+      "size": 184,
+      "source_line": 478,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4164,
+      "reference_names": [
+        "-[PCICSocket statusChangeMask]"
+      ],
+      "size": 13,
+      "source_line": 294,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4180,
+      "reference_names": [
+        "-[PCICSocket cardEnabled]"
+      ],
+      "size": 54,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4236,
+      "reference_names": [
+        "-[PCICSocket setCardEnabled:]"
+      ],
+      "size": 131,
+      "source_line": 338,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4368,
+      "reference_names": [
+        "-[PCICSocket cardAutoPower]"
+      ],
+      "size": 49,
+      "source_line": 246,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4420,
+      "reference_names": [
+        "-[PCICSocket setCardAutoPower:]"
+      ],
+      "size": 133,
+      "source_line": 398,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4556,
+      "reference_names": [
+        "-[PCICSocket cardVccPower]"
+      ],
+      "size": 49,
+      "source_line": 214,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4608,
+      "reference_names": [
+        "-[PCICSocket setCardVccPower:]"
+      ],
+      "size": 127,
+      "source_line": 358,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4736,
+      "reference_names": [
+        "-[PCICSocket cardVppPower]"
+      ],
+      "size": 46,
+      "source_line": 230,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4784,
+      "reference_names": [
+        "-[PCICSocket setCardVppPower:]"
+      ],
+      "size": 124,
+      "source_line": 378,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4908,
+      "reference_names": [
+        "-[PCICSocket cardIRQ]"
+      ],
+      "size": 46,
+      "source_line": 262,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 4956,
+      "reference_names": [
+        "-[PCICSocket setCardIRQ:]"
+      ],
+      "size": 124,
+      "source_line": 418,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5080,
+      "reference_names": [
+        "-[PCICSocket memoryInterface]"
+      ],
+      "size": 51,
+      "source_line": 278,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5132,
+      "reference_names": [
+        "-[PCICSocket setMemoryInterface:]"
+      ],
+      "size": 135,
+      "source_line": 456,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5268,
+      "reference_names": [
+        "-[PCICSocket reset]"
+      ],
+      "size": 7,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5276,
+      "reference_names": [
+        "-[PCICSocket powerStates]"
+      ],
+      "size": 9,
+      "source_line": 303,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5288,
+      "reference_names": [
+        "-[PCICSocket setCardReset:]"
+      ],
+      "size": 80,
+      "source_line": 438,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.m"
+    },
+    {
+      "address": 5368,
+      "reference_names": [
+        "-[PCICWindow initWithSocket:memoryWindow:number:]"
+      ],
+      "size": 111,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5480,
+      "reference_names": [
+        "-[PCICWindow validSockets]"
+      ],
+      "size": 13,
+      "source_line": 185,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5496,
+      "reference_names": [
+        "-[PCICWindow socket]"
+      ],
+      "size": 13,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5512,
+      "reference_names": [
+        "-[PCICWindow setSocket:]"
+      ],
+      "size": 29,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5544,
+      "reference_names": [
+        "-[PCICWindow systemAddress]"
+      ],
+      "size": 13,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5560,
+      "reference_names": [
+        "-[PCICWindow cardAddress]"
+      ],
+      "size": 13,
+      "source_line": 113,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5576,
+      "reference_names": [
+        "-[PCICWindow mapSize]"
+      ],
+      "size": 13,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5592,
+      "reference_names": [
+        "-[PCICWindow setMapWithSize:systemAddress:cardAddress:]"
+      ],
+      "size": 82,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5676,
+      "reference_names": [
+        "-[PCICWindow attributeMemory]"
+      ],
+      "size": 61,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5740,
+      "reference_names": [
+        "-[PCICWindow setAttributeMemory:]"
+      ],
+      "size": 161,
+      "source_line": 269,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5904,
+      "reference_names": [
+        "-[PCICWindow enabled]"
+      ],
+      "size": 83,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 5988,
+      "reference_names": [
+        "-[PCICWindow setEnabled:]"
+      ],
+      "size": 163,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 6152,
+      "reference_names": [
+        "-[PCICWindow memoryInterface]"
+      ],
+      "size": 14,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 6168,
+      "reference_names": [
+        "-[PCICWindow setMemoryInterface:]"
+      ],
+      "size": 29,
+      "source_line": 336,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 6200,
+      "reference_names": [
+        "-[PCICWindow is16Bit]"
+      ],
+      "size": 124,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 6324,
+      "reference_names": [
+        "-[PCICWindow set16Bit:]"
+      ],
+      "size": 295,
+      "source_line": 291,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m"
+    },
+    {
+      "address": 6620,
+      "reference_names": [
+        "_setMemoryWindow"
+      ],
+      "size": 461,
+      "source_line": 496,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 7084,
+      "reference_names": [
+        "_setIoWindow"
+      ],
+      "size": 229,
+      "source_line": 452,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m"
+    },
+    {
+      "address": 7316,
+      "reference_names": [
+        "-[PCICWindow canUse8Bit]"
+      ],
+      "size": 12,
+      "source_line": 60,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7328,
+      "reference_names": [
+        "-[PCICWindow canUse16Bit]"
+      ],
+      "size": 12,
+      "source_line": 52,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7340,
+      "reference_names": [
+        "-[PCICWindow mustBePowerOfTwo]"
+      ],
+      "size": 9,
+      "source_line": 108,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7352,
+      "reference_names": [
+        "-[PCICWindow writeProtectable]"
+      ],
+      "size": 12,
+      "source_line": 156,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7364,
+      "reference_names": [
+        "-[PCICWindow firstSystemAddress]"
+      ],
+      "size": 12,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7376,
+      "reference_names": [
+        "-[PCICWindow lastSystemAddress]"
+      ],
+      "size": 12,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7388,
+      "reference_names": [
+        "-[PCICWindow minimumSize]"
+      ],
+      "size": 12,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7400,
+      "reference_names": [
+        "-[PCICWindow maximumSize]"
+      ],
+      "size": 12,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7412,
+      "reference_names": [
+        "-[PCICWindow sizeAlignment]"
+      ],
+      "size": 12,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7424,
+      "reference_names": [
+        "-[PCICWindow baseAlignment]"
+      ],
+      "size": 12,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7436,
+      "reference_names": [
+        "-[PCICWindow offsetAlignment]"
+      ],
+      "size": 12,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7448,
+      "reference_names": [
+        "-[PCICWindow slowestSpeed]"
+      ],
+      "size": 9,
+      "source_line": 132,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7460,
+      "reference_names": [
+        "-[PCICWindow fastestSpeed]"
+      ],
+      "size": 9,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7472,
+      "reference_names": [
+        "-[PCICWindow addressLinesDecoded]"
+      ],
+      "size": 12,
+      "source_line": 36,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7484,
+      "reference_names": [
+        "-[PCICWindow supportsIO]"
+      ],
+      "size": 22,
+      "source_line": 140,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    },
+    {
+      "address": 7508,
+      "reference_names": [
+        "-[PCICWindow supportsMemory]"
+      ],
+      "size": 14,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindowAttributes.m"
+    }
+  ],
+  "reference_sha256": "80360707448AF7E4E100CE24993E0728F5DDC688D1D31DA5161478B0BCC3A208",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "-[PCIC_PCI initFromDeviceDescription:]"
+      ],
+      "size": 221
+    },
+    {
+      "address": 7524,
+      "reference_names": [
+        "+[PCICKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7536,
+      "reference_names": [
+        "+[PCICVersion driverKitVersionForPCIC]"
+      ],
+      "size": 12
+    }
+  ]
+}

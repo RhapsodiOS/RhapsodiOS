@@ -78,7 +78,7 @@ IOThreadFunc mainLoop(id driver)
  */
 - (BOOL)detect
 {
-    unsigned char byte;
+    char byte;
     unsigned char version = 0;
     unsigned char supports9600 = 0;
     unsigned char supportsX = 0;
@@ -526,7 +526,7 @@ IOThreadFunc mainLoop(id driver)
 /*
  * getResolution - Get the current resolution setting
  */
-- (unsigned int)getResolution
+- (int)getResolution
 {
     return resolution;
 }
@@ -534,30 +534,33 @@ IOThreadFunc mainLoop(id driver)
 /*
  * setEventTarget: - Set the event target for mouse events
  */
-- (void)setEventTarget:(id)target
+- (BOOL)setEventTarget:(id)eventTarget
 {
     BOOL result;
 
     /* Call superclass method first */
-    result = [super setEventTarget:target];
+    result = [super setEventTarget:eventTarget];
 
     /* If successful, save the target */
     if (result) {
-        target = target;
+        target = eventTarget;
+        return YES;
     }
+
+    return NO;
 }
 
 /*
  * getByte:sleep: - Read a byte from the serial port
  */
-- (BOOL)getByte:(unsigned char *)byte sleep:(BOOL)shouldSleep
+- (BOOL)getByte:(char *)byte sleep:(BOOL)shouldSleep
 {
     IOReturn ret;
     int eventType;
     unsigned char data;
 
-    /* Loop while active */
-    while (active) {
+    /* One dequeue is always attempted; active is consulted at the bottom */
+    do {
         /* Try to dequeue an event from the serial port */
         ret = [portDevice dequeueEvent:&eventType data:&data sleep:shouldSleep];
 
@@ -578,7 +581,7 @@ IOThreadFunc mainLoop(id driver)
         }
 
         /* Other event types - continue looping */
-    }
+    } while (active);
 
     /* Driver is no longer active */
     return NO;
@@ -587,7 +590,7 @@ IOThreadFunc mainLoop(id driver)
 /*
  * mainLoop: - Main thread loop for processing serial mouse data
  */
-- (void)mainLoop:(id)arg
+- (IOThreadFunc)mainLoop:(id)arg
 {
     if (verbose) {
         IOLog("%s: Main thread started.\n", [self name]);
@@ -638,6 +641,8 @@ IOThreadFunc mainLoop(id driver)
     if (verbose) {
         IOLog("SerialPorintingDevice: Main thread terminated.\n");
     }
+
+    return 0;
 }
 
 /*
@@ -645,22 +650,15 @@ IOThreadFunc mainLoop(id driver)
  */
 - (void)MSProtocol
 {
-    unsigned char byte;
+    char byte;
     unsigned char maskedByte;
     unsigned char leftButton = 0;
     unsigned char rightButton = 0;
     unsigned int xDelta = 0;
     unsigned int yDelta = 0;
-    unsigned int lastTimestampLow = 0;
-    unsigned int lastTimestampHigh = 0;
-    unsigned int currentTimestampLow;
-    unsigned int currentTimestampHigh;
+    ns_time_t lastTimeStamp = 0;
+    ns_time_t currentTimeStamp = 0;
     int byteIndex = 0;
-    BOOL shouldDispatch;
-
-    if (verbose) {
-        IOLog("%s: MSProtocol started\n", [self name]);
-    }
 
     /* Main protocol loop - processes 3-byte packets */
     while (1) {
@@ -681,7 +679,7 @@ IOThreadFunc mainLoop(id driver)
         switch (byteIndex) {
             case 0:
                 /* First byte: sync byte with button states and high movement bits */
-                IOGetTimestamp((ns_time_t *)&lastTimestampLow);
+                IOGetTimestamp(&lastTimeStamp);
 
                 /* Must have bit 6 set to be valid sync byte */
                 if ((byte & 0x40) == 0) {
@@ -710,40 +708,28 @@ IOThreadFunc mainLoop(id driver)
 
             case 2:
                 /* Third byte: low 6 bits of Y movement, complete packet */
-                IOGetTimestamp((ns_time_t *)&currentTimestampLow);
+                IOGetTimestamp(&currentTimeStamp);
 
                 yDelta = yDelta | (maskedByte & 0x3F);
 
                 /* Build event structure */
-                mouseEvent.timestamp_low = lastTimestampLow;
-                mouseEvent.timestamp_high = lastTimestampHigh;
+                pointerEvent.timeStamp = lastTimeStamp;
 
                 /* Set button states */
-                mouseEvent.buttons = (mouseEvent.buttons & 0xFE) | (leftButton != 0);
-                mouseEvent.buttons = (mouseEvent.buttons & 0xFD) | ((rightButton != 0) * 2);
-                mouseEvent.buttons = mouseEvent.buttons & 3;
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFE) | (leftButton != 0);
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFD) | ((rightButton != 0) * 2);
+                pointerEvent.data.buf[0] = pointerEvent.data.buf[0] & 3;
 
                 /* Set deltas (X as-is, Y negated) */
-                mouseEvent.deltaX = (char)xDelta;
-                mouseEvent.deltaY = -(char)yDelta;
+                pointerEvent.data.buf[1] = (char)xDelta;
+                pointerEvent.data.buf[2] = -(char)yDelta;
 
-                /* Dispatch event if we have a target and timing is good */
+                /* Dispatch only if the packet assembled in under 40ms */
                 if (target != nil) {
-                    /* Check timestamp ordering and delta */
-                    shouldDispatch = NO;
-
-                    if (currentTimestampHigh == lastTimestampHigh) {
-                        /* Same high timestamp - check low timestamp delta */
-                        if (currentTimestampLow - lastTimestampLow < 40000000) {
-                            shouldDispatch = YES;
-                        }
-                    } else if (currentTimestampHigh > lastTimestampHigh) {
-                        /* High timestamp advanced - always dispatch */
-                        shouldDispatch = YES;
-                    }
-
-                    if (shouldDispatch) {
-                        [target dispatchPointerEvent:&mouseEvent];
+                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                        [target dispatchPointerEvent:&pointerEvent];
                     }
                 }
 
@@ -784,20 +770,13 @@ IOThreadFunc mainLoop(id driver)
  */
 - (void)FiveBProtocol
 {
-    unsigned char byte;
+    char byte;
     unsigned char leftButton = 0;
     unsigned char rightButton = 0;
     unsigned char savedByte = 0;
-    unsigned int lastTimestampLow = 0;
-    unsigned int lastTimestampHigh = 0;
-    unsigned int currentTimestampLow;
-    unsigned int currentTimestampHigh;
+    ns_time_t lastTimeStamp = 0;
+    ns_time_t currentTimeStamp = 0;
     int byteIndex = 0;
-    BOOL shouldDispatch;
-
-    if (verbose) {
-        IOLog("%s: FiveBProtocol started\n", [self name]);
-    }
 
     /* Main protocol loop */
     while (1) {
@@ -809,7 +788,7 @@ IOThreadFunc mainLoop(id driver)
         switch (byteIndex) {
             case 0:
                 /* First byte: sync byte with button states */
-                IOGetTimestamp((ns_time_t *)&lastTimestampLow);
+                IOGetTimestamp(&lastTimeStamp);
 
                 /* Check for sync byte pattern (bits 7-3 = 10000) */
                 if ((byte & 0xF8) == 0x80) {
@@ -830,49 +809,36 @@ IOThreadFunc mainLoop(id driver)
             case 2:
             case 4:
                 /* Bytes 3 and 5: complete packet, dispatch event */
-                IOGetTimestamp((ns_time_t *)&currentTimestampLow);
+                IOGetTimestamp(&currentTimeStamp);
 
                 /* Build event structure */
-                mouseEvent.timestamp_low = lastTimestampLow;
-                mouseEvent.timestamp_high = lastTimestampHigh;
+                pointerEvent.timeStamp = lastTimeStamp;
 
                 /* Set button states */
-                mouseEvent.buttons = (mouseEvent.buttons & 0xFE) | (leftButton != 0);
-                mouseEvent.buttons = (mouseEvent.buttons & 0xFD) | ((rightButton != 0) * 2);
-                mouseEvent.buttons = mouseEvent.buttons & 3;
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFE) | (leftButton != 0);
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFD) | ((rightButton != 0) * 2);
+                pointerEvent.data.buf[0] = pointerEvent.data.buf[0] & 3;
 
                 /* Set deltas */
-                mouseEvent.deltaX = savedByte;
-                mouseEvent.deltaY = byte;
+                pointerEvent.data.buf[1] = savedByte;
+                pointerEvent.data.buf[2] = byte;
 
-                /* Dispatch event if we have a target and timing is good */
+                /* Dispatch only if the packet assembled in under 40ms */
                 if (target != nil) {
-                    /* Check timestamp ordering and delta */
-                    shouldDispatch = NO;
-
-                    if (currentTimestampHigh == lastTimestampHigh) {
-                        /* Same high timestamp - check low timestamp delta */
-                        if (currentTimestampLow - lastTimestampLow < 40000000) {
-                            shouldDispatch = YES;
-                        }
-                    } else if (currentTimestampHigh > lastTimestampHigh) {
-                        /* High timestamp advanced - always dispatch */
-                        shouldDispatch = YES;
-                    }
-
-                    if (shouldDispatch) {
-                        [target dispatchPointerEvent:&mouseEvent];
+                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                        [target dispatchPointerEvent:&pointerEvent];
                     }
                 }
 
-                /* Update last timestamp */
-                lastTimestampLow = currentTimestampLow;
-                lastTimestampHigh = currentTimestampHigh;
-
-                /* After byte 5, reset to start */
+                /* After byte 5, reset to start.  Only the byte-3 case restarts
+                 * the packet clock; byte 5 leaves it for case 0 to retake.
+                 */
                 if (byteIndex == 4) {
                     byteIndex = 0;
                 } else {
+                    lastTimeStamp = currentTimeStamp;
                     byteIndex++;
                 }
                 break;

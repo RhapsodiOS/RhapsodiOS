@@ -9,3 +9,6 @@ vm/work/
 vm/logs/
 vm/artifacts/
 vm/debs/
+
+# binrecon: analyzer output is generated evidence, not source
+tools/binrecon/out/

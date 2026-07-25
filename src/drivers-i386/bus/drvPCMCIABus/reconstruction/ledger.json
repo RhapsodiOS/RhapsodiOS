@@ -1112,7 +1112,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; confirmed divergence: see divergences.md Finding 5 (unsigned char status<0 is dead code; our compiled binary never tests socket status at all)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; confirmed divergence: see divergences.md Finding 5 (unsigned char status<0 is dead code; our compiled binary never tests socket status at all); fix applied, status is now plain char matching the reference's signed test and the sibling enableSocket: copy of this loop"
         ],
         "status": "agreed"
       },
@@ -1125,7 +1125,7 @@
       "size": 71,
       "source_line": 56,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 15396,

@@ -370,6 +370,12 @@ hardware state, after an unconditional ~50ms delay each call. This is the most
 severe divergence found in this pass; `enableSocket:`'s independent, correctly-typed
 copy of the same wait loop is unaffected.
 
+**Outcome:** fixed. `status` in `waitForSocketReady` is now declared plain `char`,
+matching the correctly-typed `char status` in the sibling `enableSocket:` loop; the
+loop and retry algorithm are unchanged. Not recompiled, so the resulting object
+code was not re-disassembled and compared against the reference. Ledger status
+advanced from `unexamined` to `control-flow-confirmed`.
+
 ## Finding 6: `-[PCMCIAKernBus init]` guards a global list that can never actually be nil
 
 **Source:** `PCMCIAKernBus.m:339`

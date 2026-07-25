@@ -55,7 +55,7 @@ extern port_t create_dev_port(KernDevice *kernDevice);
  */
 static BOOL waitForSocketReady(id socket)
 {
-    unsigned char status;
+    char status;
     int retries;
 
     retries = 100;

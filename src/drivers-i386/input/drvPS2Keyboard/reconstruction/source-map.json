@@ -1,0 +1,447 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_lock_controller"
+      ],
+      "size": 54,
+      "source_line": 301,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 56,
+      "reference_names": [
+        "_unlock_controller"
+      ],
+      "size": 32,
+      "source_line": 334,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 88,
+      "reference_names": [
+        "+[PS2Controller probe:]"
+      ],
+      "size": 117,
+      "source_line": 143,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 208,
+      "reference_names": [
+        "-[PS2Controller initFromDeviceDescription:]"
+      ],
+      "size": 273,
+      "source_line": 175,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 484,
+      "reference_names": [
+        "_keyboardDataPresent"
+      ],
+      "size": 37,
+      "source_line": 475,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 524,
+      "reference_names": [
+        "_reallyGetKeyboardData"
+      ],
+      "size": 50,
+      "source_line": 346,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 576,
+      "reference_names": [
+        "_enqueueKeyboardData"
+      ],
+      "size": 155,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 732,
+      "reference_names": [
+        "-[PS2Controller interruptOccurred]"
+      ],
+      "size": 24,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 756,
+      "reference_names": [
+        "_isEscape"
+      ],
+      "size": 206,
+      "source_line": 842,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 964,
+      "reference_names": [
+        "_resetEscapes"
+      ],
+      "size": 56,
+      "source_line": 996,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1020,
+      "reference_names": [
+        "_undoEscape"
+      ],
+      "size": 78,
+      "source_line": 950,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1100,
+      "reference_names": [
+        "_doEscape"
+      ],
+      "size": 190,
+      "source_line": 400,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1292,
+      "reference_names": [
+        "_interruptHandler"
+      ],
+      "size": 93,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1388,
+      "reference_names": [
+        "-[PS2Controller getHandler:level:argument:forInterrupt:]"
+      ],
+      "size": 39,
+      "source_line": 274,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1428,
+      "reference_names": [
+        "-[PS2Controller controllerAccessFunctions]"
+      ],
+      "size": 12,
+      "source_line": 292,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1440,
+      "reference_names": [
+        "-[PS2Controller setMouseObject:]"
+      ],
+      "size": 15,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1456,
+      "reference_names": [
+        "-[PS2Controller setKeyboardObject:]"
+      ],
+      "size": 15,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1472,
+      "reference_names": [
+        "-[PS2Controller setLEDs:]"
+      ],
+      "size": 79,
+      "source_line": 247,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1552,
+      "reference_names": [
+        "-[PS2Controller setManualDataHandling:]"
+      ],
+      "size": 53,
+      "source_line": 233,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1608,
+      "reference_names": [
+        "_getKeyboardData"
+      ],
+      "size": 158,
+      "source_line": 770,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1768,
+      "reference_names": [
+        "_getKeyboardDataIfPresent"
+      ],
+      "size": 54,
+      "source_line": 689,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1824,
+      "reference_names": [
+        "_getMouseData"
+      ],
+      "size": 67,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1892,
+      "reference_names": [
+        "_getMouseDataIfPresent"
+      ],
+      "size": 66,
+      "source_line": 715,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 1960,
+      "reference_names": [
+        "_clearOutputBuffer"
+      ],
+      "size": 43,
+      "source_line": 376,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2004,
+      "reference_names": [
+        "_sendControllerData"
+      ],
+      "size": 79,
+      "source_line": 607,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2084,
+      "reference_names": [
+        "_resendControllerData"
+      ],
+      "size": 45,
+      "source_line": 644,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2132,
+      "reference_names": [
+        "_sendControllerCommand"
+      ],
+      "size": 73,
+      "source_line": 570,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2208,
+      "reference_names": [
+        "_sendMouseCommand"
+      ],
+      "size": 53,
+      "source_line": 751,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2264,
+      "reference_names": [
+        "_disableMouse"
+      ],
+      "size": 26,
+      "source_line": 930,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2292,
+      "reference_names": [
+        "_enableMouse"
+      ],
+      "size": 26,
+      "source_line": 940,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
+    },
+    {
+      "address": 2320,
+      "reference_names": [
+        "_NewStealKeyboardEvent"
+      ],
+      "size": 83,
+      "source_line": 593,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2404,
+      "reference_names": [
+        "+[PS2Keyboard deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2416,
+      "reference_names": [
+        "+[PS2Keyboard requiredProtocols]"
+      ],
+      "size": 12,
+      "source_line": 93,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2428,
+      "reference_names": [
+        "+[PS2Keyboard probe:]"
+      ],
+      "size": 160,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2588,
+      "reference_names": [
+        "-[PS2Keyboard readConfigTable:]"
+      ],
+      "size": 170,
+      "source_line": 372,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2760,
+      "reference_names": [
+        "-[PS2Keyboard initWithController:]"
+      ],
+      "size": 208,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 2968,
+      "reference_names": [
+        "-[PS2Keyboard interruptOccurred]"
+      ],
+      "size": 171,
+      "source_line": 257,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 3140,
+      "reference_names": [
+        "-[PS2Keyboard dispatchKeyboardEvents]"
+      ],
+      "size": 224,
+      "source_line": 306,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 3364,
+      "reference_names": [
+        "__PS2KeyboardNumKeysDown"
+      ],
+      "size": 56,
+      "source_line": 447,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 3420,
+      "reference_names": [
+        "-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]"
+      ],
+      "size": 99,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 3520,
+      "reference_names": [
+        "_scancodeToKeyEvent"
+      ],
+      "size": 818,
+      "source_line": 488,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4340,
+      "reference_names": [
+        "-[PS2Keyboard interfaceId]"
+      ],
+      "size": 16,
+      "source_line": 440,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4356,
+      "reference_names": [
+        "-[PS2Keyboard handlerId]"
+      ],
+      "size": 16,
+      "source_line": 434,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4372,
+      "reference_names": [
+        "-[PS2Keyboard setAlphaLockFeedback:]"
+      ],
+      "size": 43,
+      "source_line": 416,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4416,
+      "reference_names": [
+        "-[PS2Keyboard becomeOwner:]"
+      ],
+      "size": 215,
+      "source_line": 157,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4632,
+      "reference_names": [
+        "-[PS2Keyboard relinquishOwnership:]"
+      ],
+      "size": 196,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    },
+    {
+      "address": 4828,
+      "reference_names": [
+        "-[PS2Keyboard desireOwnership:]"
+      ],
+      "size": 98,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m"
+    }
+  ],
+  "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 4928,
+      "reference_names": [
+        "+[PS2KeyboardKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4940,
+      "reference_names": [
+        "+[PS2KeyboardVersion driverKitVersionForPS2Keyboard]"
+      ],
+      "size": 12
+    }
+  ]
+}

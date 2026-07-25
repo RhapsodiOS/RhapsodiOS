@@ -149,6 +149,26 @@ def source_sites(repo_root, source_dir):
     return sites
 
 
+def _overlapping_addresses(functions):
+    """Return the addresses of every function whose range overlaps another's.
+
+    Ranges are compared as [address, address + size). Overlap is transitive
+    in effect even though this only checks pairs directly: in a chain where A
+    overlaps B and B overlaps C, both pairwise checks fire and all three
+    addresses end up in the result.
+    """
+    ordered = sorted(functions, key=lambda function: function["address"])
+    overlapping = set()
+    for index, function in enumerate(ordered):
+        end = function["address"] + function["size"]
+        for other in ordered[index + 1:]:
+            if other["address"] >= end:
+                break
+            overlapping.add(function["address"])
+            overlapping.add(other["address"])
+    return overlapping
+
+
 def build_source_map(reference_analysis, macho_document, sites, *, disputed=None):
     """Partition every reference function into exactly one source-map bucket."""
     disputed = set() if disputed is None else disputed
@@ -162,6 +182,7 @@ def build_source_map(reference_analysis, macho_document, sites, *, disputed=None
             f"{unmatched_disputed}"
         )
     symbols = defined_symbols(macho_document)
+    overlapping = _overlapping_addresses(reference_analysis["functions"])
     mapped, unmapped, duplicates, boundary = [], [], [], []
 
     for function in reference_analysis["functions"]:
@@ -182,10 +203,16 @@ def build_source_map(reference_analysis, macho_document, sites, *, disputed=None
         lookup = set(names) | set(symbols.get(address, []))
         candidates = sorted({site for name in lookup for site in sites.get(name, [])})
 
+        reasons = []
         if address in disputed:
-            boundary.append(
-                {**entry, "reasons": ["analyzers disagree on function extent"]}
+            reasons.append("analyzers disagree on function extent")
+        if address in overlapping:
+            reasons.append(
+                "function range overlaps another; symbol may be an interior label"
             )
+
+        if reasons:
+            boundary.append({**entry, "reasons": sorted(set(reasons))})
         elif len(candidates) == 1:
             path, line = candidates[0]
             mapped.append({**entry, "source_path": path, "source_line": line})

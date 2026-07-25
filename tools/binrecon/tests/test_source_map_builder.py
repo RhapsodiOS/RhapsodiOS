@@ -426,3 +426,100 @@ def test_build_source_map_rejects_disputed_address_not_in_analysis():
 
     with pytest.raises(ValueError, match="disputed addresses"):
         build_source_map(analysis, macho, {}, disputed={0x9999})
+
+
+def test_build_source_map_auto_disputes_overlapping_function_pair():
+    # __PnPEntry (0x6fec, size 103, ends 0x704b) overlaps push_arg
+    # (0x7024, size 6), the real drvEISABus case: push_arg is an interior
+    # label inside the hand-written thunk, not a separate function.
+    analysis = _analysis(
+        [
+            _function(0x6FEC, 103, ["__PnPEntry"]),
+            _function(0x7024, 6, ["push_arg"]),
+        ]
+    )
+    macho = {"symbols": []}
+
+    document = build_source_map(analysis, macho, {})
+
+    assert [entry["address"] for entry in document["boundary_disputed"]] == [
+        0x6FEC,
+        0x7024,
+    ]
+    for entry in document["boundary_disputed"]:
+        assert entry["reasons"] == [
+            "function range overlaps another; symbol may be an interior label"
+        ]
+    assert document["mapped"] == []
+    assert document["unmapped"] == []
+    assert document["duplicate_candidates"] == []
+
+
+def test_build_source_map_auto_disputes_a_three_function_overlap_chain():
+    # A overlaps B, and B overlaps C, but A does not overlap C directly.
+    # Every function touched by any overlap must end up disputed.
+    analysis = _analysis(
+        [
+            _function(0x1000, 0x20, ["_a"]),   # 0x1000..0x1020
+            _function(0x1010, 0x20, ["_b"]),   # 0x1010..0x1030, overlaps _a
+            _function(0x1028, 0x10, ["_c"]),   # 0x1028..0x1038, overlaps _b only
+        ]
+    )
+    macho = {"symbols": []}
+
+    document = build_source_map(analysis, macho, {})
+
+    assert [entry["address"] for entry in document["boundary_disputed"]] == [
+        0x1000,
+        0x1010,
+        0x1028,
+    ]
+    assert document["mapped"] == []
+    assert document["unmapped"] == []
+    assert document["duplicate_candidates"] == []
+
+
+def test_build_source_map_composes_explicit_disputed_with_auto_detected_overlap():
+    analysis = _analysis(
+        [
+            _function(0x1000, 0x10, ["_explicit"]),
+            _function(0x2000, 0x10, ["_overlap_a"]),
+            _function(0x2008, 0x10, ["_overlap_b"]),
+        ]
+    )
+    macho = {"symbols": []}
+
+    document = build_source_map(
+        analysis, macho, {}, disputed={0x1000}
+    )
+
+    boundary_by_address = {
+        entry["address"]: entry for entry in document["boundary_disputed"]
+    }
+    assert set(boundary_by_address) == {0x1000, 0x2000, 0x2008}
+    assert boundary_by_address[0x1000]["reasons"] == [
+        "analyzers disagree on function extent"
+    ]
+    assert boundary_by_address[0x2000]["reasons"] == [
+        "function range overlaps another; symbol may be an interior label"
+    ]
+    assert boundary_by_address[0x2008]["reasons"] == [
+        "function range overlaps another; symbol may be an interior label"
+    ]
+
+
+def test_build_source_map_leaves_non_overlapping_functions_unaffected():
+    analysis = _analysis(
+        [
+            _function(0x1000, 0x10, ["-[PCIKernBus init]"]),
+            _function(0x1010, 0x10, ["_PCIBus_VERS_NUM"]),
+        ]
+    )
+    macho = {"symbols": []}
+    sites = {"-[PCIKernBus init]": [("src/driver/Bus.m", 12)]}
+
+    document = build_source_map(analysis, macho, sites)
+
+    assert document["boundary_disputed"] == []
+    assert [entry["address"] for entry in document["mapped"]] == [0x1000]
+    assert [entry["address"] for entry in document["unmapped"]] == [0x1010]

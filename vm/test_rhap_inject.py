@@ -95,6 +95,43 @@ class TestSafety(unittest.TestCase):
             img.close()
 
 
+class TestReplaceTableKeyParsing(unittest.TestCase):
+    """Exercises the pure parse/replace helper against in-memory byte
+    strings, so the malformed-input cases don't need to touch any image."""
+
+    def test_duplicated_key_refused(self):
+        text = b'"Multiple Sectors" = "Yes";\n"Multiple Sectors" = "Yes";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Multiple Sectors", "No")
+
+    def test_escaped_quote_value_refused(self):
+        text = b'"Debug" = "va\\"lue";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Debug", "Yes")
+
+    def test_missing_key_refused(self):
+        text = b'"Other" = "Yes";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Multiple Sectors", "No")
+
+    def test_unterminated_entry_refused(self):
+        text = b'"Multiple Sectors" = "Yes"\n'  # no trailing ; after the quote
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Multiple Sectors", "No")
+
+    def test_normal_key_rewritten_with_shorter_value(self):
+        text = b'"Multiple Sectors" = "Yes";\n'
+        old, updated = rhap_inject._replace_table_key(text, "Multiple Sectors", "No")
+        self.assertEqual(old, "Yes")
+        self.assertEqual(updated, b'"Multiple Sectors" = "No";\n')
+
+    def test_normal_key_rewritten_with_longer_value(self):
+        text = b'"Debug" = "No";\n'
+        old, updated = rhap_inject._replace_table_key(text, "Debug", "AbsolutelyYes")
+        self.assertEqual(old, "No")
+        self.assertEqual(updated, b'"Debug" = "AbsolutelyYes";\n')
+
+
 @unittest.skipUnless(os.path.exists(WORK), "work/test.img not built yet")
 class TestRoundTrip(unittest.TestCase):
     def test_write_then_read_back(self):

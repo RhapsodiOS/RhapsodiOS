@@ -140,23 +140,54 @@ def write_file(img, path, data, mtime=None):
     return len(data)
 
 
+def _replace_table_key(text, key, value):
+    """Pure parse/replace step for set_table_key.
+
+    Takes the raw table file contents and returns (old_value, updated_text).
+    Raises SafetyError on anything that is not a single, unambiguous,
+    well-formed entry: a missing key, a duplicated key (ambiguous - a human
+    should look at it), a value containing an escaped quote (this tool never
+    needs to write one, so it refuses rather than mis-locating the terminator),
+    or an entry not terminated by '";' immediately after the closing quote.
+    """
+    needle = b'"%s" = "' % key.encode()
+    count = text.count(needle)
+    if count == 0:
+        raise SafetyError("key %r not present" % (key,))
+    if count > 1:
+        raise SafetyError(
+            "key %r appears %d times; ambiguous table entry" % (key, count)
+        )
+    start = text.find(needle)
+    vstart = start + len(needle)
+    vend = text.find(b'"', vstart)
+    if vend < 0:
+        raise SafetyError("malformed entry for %r: no closing quote found" % (key,))
+    if text[vend - 1:vend] == b"\\":
+        raise SafetyError(
+            "malformed entry for %r: value contains an escaped quote" % (key,)
+        )
+    if text[vend:vend + 2] != b'";':
+        raise SafetyError(
+            "malformed entry for %r: entry not terminated by \";" % (key,)
+        )
+    old_value = text[vstart:vend].decode()
+    updated = text[:vstart] + value.encode() + text[vend:]
+    return old_value, updated
+
+
 def set_table_key(img, path, key, value):
     """Rewrite one "key" = "value"; line in a DriverKit config table."""
     ino = img.resolve(path)
     if ino is None:
         raise SafetyError("%s does not exist" % path)
     text = img.read_file(ino)
-    needle = b'"%s" = "' % key.encode()
-    start = text.find(needle)
-    if start < 0:
-        raise SafetyError("%s: key %r not present" % (path, key))
-    vstart = start + len(needle)
-    vend = text.find(b'"', vstart)
-    if vend < 0:
-        raise SafetyError("%s: malformed entry for %r" % (path, key))
-    updated = text[:vstart] + value.encode() + text[vend:]
+    try:
+        old_value, updated = _replace_table_key(text, key, value)
+    except SafetyError as e:
+        raise SafetyError("%s: %s" % (path, e))
     write_file(img, path, updated)
-    return text[vstart:vend].decode(), value
+    return old_value, value
 
 
 def main(argv):

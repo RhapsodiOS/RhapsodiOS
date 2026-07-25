@@ -138,6 +138,11 @@ This is the same divergence found in `drvPCMCIABus`, where commit b27e22b8
 resolved it by renaming our source to match Apple's. That precedent is followed
 here.
 
+One of the eight also diverges in linkage. All are `local` in the reference
+except `_MapAttributeMemory`, which is `external`; our `PCICDebug.m` declares it
+`static`. The linkage is fixed alongside the rename, since both are properties of
+the same declaration.
+
 ### 2.6 `_socketIsValid` is defined twice in the reference
 
 At 1488 and again at 2816. Our source has a single definition in `PCIC.m` plus an
@@ -279,11 +284,15 @@ No other adjacent cleanup, no refactoring of code that is not divergent.
    captured to a log and reviewed, but do not gate.
 
 2. **String parity.** Compare the rebuilt `__TEXT,__cstring` set against the
-   reference's, using `binrecon.macho.read_macho`. This is the check that would
-   have caught §2.2 immediately, and it costs nothing.
+   reference's. This is the check that would have caught §2.2 immediately, and it
+   costs nothing.
 
 3. **Symbol parity.** Compare the rebuilt `__TEXT,__text` symbol names against the
    reference's. Catches the §2.5 underscore group and confirms `PCIC_PCI` landed.
+
+Checks 2 and 3 run four times — two drivers, baseline and post-fix — so they get
+a small committed script, `tools/binrecon/parity_check.py`, built on
+`binrecon.macho.read_macho`, rather than a repeated shell heredoc.
 
 Checks 2 and 3 are reported, not gated: our build is unstripped and will carry
 extras. A reference string or symbol missing from our build is a finding; an
@@ -384,5 +393,6 @@ Per driver:
 
 Repository-wide:
 
+- `tools/binrecon/parity_check.py`, the string and symbol parity checker
 - `vm/build-i386-bus-drivers.sh` extended to both drivers
 - `src/drivers-i386/README` status lines updated for both drivers

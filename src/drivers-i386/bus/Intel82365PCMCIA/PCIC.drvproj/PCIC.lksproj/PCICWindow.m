@@ -365,6 +365,7 @@ static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned i
 {
     unsigned char socketOffset;
     unsigned char windowOffset;
+    unsigned char regValue;
     unsigned int startAddr;
     unsigned int stopAddr;
     unsigned int cardOffset;
@@ -388,25 +389,38 @@ static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned i
     /* Memory addresses are shifted right by 12 bits (4KB pages) */
     startAddr = sysAddr >> 12;
     stopAddr = (sysAddr + size - 1) >> 12;
-    cardOffset = cardAddr >> 12;
 
-    /* Write system start address */
+    /* The card offset register holds a displacement that is added to the
+     * system address to reach the card address; 0x400000 is the 4MB wrap
+     * constant that keeps the field positive */
+    cardOffset = (cardAddr + 0x400000 - sysAddr) >> 12;
+
+    /* Write system start address; the high register also carries the timing
+     * set select and the 16-bit data path bit, so preserve bits 4-7 */
     outb(reg_base, socketOffset + windowOffset);
     outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
     outb(reg_base, socketOffset + windowOffset + 1);
-    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0x0F));
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (regValue & 0xF0) | (unsigned char)((startAddr >> 8) & 0x0F));
 
-    /* Write system stop address */
+    /* Write system stop address; the high register also carries the wait
+     * state and timing set bits, so preserve bits 4-7 */
     outb(reg_base, socketOffset + windowOffset + 2);
     outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
     outb(reg_base, socketOffset + windowOffset + 3);
-    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0x0F));
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (regValue & 0xF0) | (unsigned char)((stopAddr >> 8) & 0x0F));
 
-    /* Write card offset address */
+    /* Write card offset address; the high register also carries the write
+     * protect and register select bits, so preserve bits 6-7 */
     outb(reg_base, socketOffset + windowOffset + 4);
     outb(reg_base + 1, (unsigned char)(cardOffset & 0xFF));
     outb(reg_base, socketOffset + windowOffset + 5);
-    outb(reg_base + 1, (unsigned char)((cardOffset >> 8) & 0x3F));
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 5);
+    outb(reg_base + 1, (regValue & 0xC0) | (unsigned char)((cardOffset >> 8) & 0x3F));
 }
 
 /*

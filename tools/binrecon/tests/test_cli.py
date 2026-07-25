@@ -545,3 +545,139 @@ def test_source_map_command_writes_validated_document(tmp_path, monkeypatch):
     assert document["schema_version"] == "source-map-v1"
     assert document["mapped"][0]["source_path"] == "src/driver/bus.c"
     assert document["mapped"][0]["source_line"] == 1
+
+
+def test_source_map_command_rejects_malformed_analysis_without_traceback(tmp_path, capsys):
+    import json
+
+    from binrecon.cli import main
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    analysis_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "analysis-v1",
+                "input": {"path": "x", "size": 16, "sha256": "B" * 64,
+                          "architecture": "i386", "endianness": "little"},
+                "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+                "sections": [],
+                "symbols": [],
+                "relocations": [],
+                # "functions" intentionally omitted: valid JSON, invalid analysis-v1.
+            }
+        ),
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    assert "Traceback" not in captured.err
+    assert not output_path.exists()
+
+
+def test_source_map_command_rejects_reference_sha256_mismatch_and_writes_nothing_usable(
+    tmp_path, monkeypatch, capsys
+):
+    import json
+
+    from binrecon.cli import main
+    from binrecon.schema import SemanticValidationError, load_source_map
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    # A lowercase input sha256: build_source_map stores its upper() form as
+    # reference_sha256, which then fails the semantic cross-check against this
+    # (unmodified, lowercase) analysis document -- a real mismatch the command
+    # must catch instead of reporting success.
+    analysis_document = {
+        "schema_version": "analysis-v1",
+        "input": {"path": "x", "size": 16, "sha256": "b" * 64,
+                  "architecture": "i386", "endianness": "little"},
+        "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+        "sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                      "size": 16, "permissions": "rx", "sha256": "B" * 64}],
+        "symbols": [],
+        "relocations": [],
+        "functions": [
+            {
+                "address": 4096,
+                "size": 16,
+                "names": ["_testSlotForID"],
+                "blocks": [],
+                "instructions": [],
+                "calls": [],
+                "confidence": 1.0,
+            }
+        ],
+    }
+    analysis_path.write_text(json.dumps(analysis_document), encoding="utf-8")
+    monkeypatch.setattr("binrecon.cli.read_macho", lambda path: {"symbols": []})
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    if output_path.exists():
+        with pytest.raises(SemanticValidationError):
+            load_source_map(
+                output_path,
+                reference_analysis=analysis_document,
+                repo_root=tmp_path,
+            )
+
+
+def test_source_map_command_rejects_missing_source_dir(tmp_path, capsys):
+    from binrecon.cli import main
+
+    missing_source_dir = tmp_path / "does-not-exist"
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(tmp_path / "reference.analysis.json"),
+            "--binary", str(tmp_path / "binary"),
+            "--source-dir", str(missing_source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    assert str(missing_source_dir) in captured.err
+    assert not output_path.exists()

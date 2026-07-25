@@ -206,8 +206,14 @@ def main(argv=None) -> int:
 def _source_map_command(arguments) -> int:
     from binrecon.schema import load_json, load_source_map
 
+    source_dir = Path(arguments.source_dir)
+    if not source_dir.is_dir():
+        raise ValueError(f"--source-dir {source_dir} is not an existing directory")
+
     analysis = load_json(Path(arguments.reference_analysis))
-    sites = source_sites(Path(arguments.repo_root), Path(arguments.source_dir))
+    validate_document("analysis-v1", analysis)
+    validate_analysis_semantics(analysis)
+    sites = source_sites(Path(arguments.repo_root), source_dir)
     document = build_source_map(analysis, read_macho(Path(arguments.binary)), sites)
     output = Path(arguments.output)
     output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")

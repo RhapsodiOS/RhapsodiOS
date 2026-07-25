@@ -1,0 +1,267 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[PCIKernBus initialize]"
+      ],
+      "size": 35,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 36,
+      "reference_names": [
+        "-[PCIKernBus init]"
+      ],
+      "size": 854,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 892,
+      "reference_names": [
+        "-[PCIKernBus free]"
+      ],
+      "size": 41,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 936,
+      "reference_names": [
+        "-[PCIKernBus maxBusNum]"
+      ],
+      "size": 13,
+      "source_line": 447,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 952,
+      "reference_names": [
+        "-[PCIKernBus maxDevNum]"
+      ],
+      "size": 13,
+      "source_line": 452,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 968,
+      "reference_names": [
+        "-[PCIKernBus isPCIPresent]"
+      ],
+      "size": 25,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 996,
+      "reference_names": [
+        "-[PCIKernBus testIDs:dev:fun:bus:]"
+      ],
+      "size": 429,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 1428,
+      "reference_names": [
+        "-[PCIKernBus configAddress:device:function:bus:]"
+      ],
+      "size": 687,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 2116,
+      "reference_names": [
+        "-[PCIKernBus getRegister:device:function:bus:data:]"
+      ],
+      "size": 173,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 2292,
+      "reference_names": [
+        "-[PCIKernBus setRegister:device:function:bus:data:]"
+      ],
+      "size": 170,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 2464,
+      "reference_names": [
+        "-[PCIKernBus allocateResourcesForDeviceDescription:]"
+      ],
+      "size": 73,
+      "source_line": 461,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
+    },
+    {
+      "address": 2540,
+      "reference_names": [
+        "-[PCIKernBus test_M1]"
+      ],
+      "size": 116,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
+    },
+    {
+      "address": 2656,
+      "reference_names": [
+        "-[PCIKernBus Method1:device:function:bus:data:write:]"
+      ],
+      "size": 153,
+      "source_line": 140,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
+    },
+    {
+      "address": 2812,
+      "reference_names": [
+        "-[PCIKernBus test_M2]"
+      ],
+      "size": 136,
+      "source_line": 91,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
+    },
+    {
+      "address": 2948,
+      "reference_names": [
+        "-[PCIKernBus Method2:device:function:bus:data:write:]"
+      ],
+      "size": 174,
+      "source_line": 186,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
+    },
+    {
+      "address": 3124,
+      "reference_names": [
+        "_Get_Maximums"
+      ],
+      "size": 89,
+      "source_line": 291,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 3216,
+      "reference_names": [
+        "_Get_ConfigReg"
+      ],
+      "size": 99,
+      "source_line": 347,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 3316,
+      "reference_names": [
+        "_Get_ConfigSpace"
+      ],
+      "size": 143,
+      "source_line": 313,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 3460,
+      "reference_names": [
+        "_Set_ConfigReg"
+      ],
+      "size": 84,
+      "source_line": 493,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 3544,
+      "reference_names": [
+        "_Set_ConfigSpace"
+      ],
+      "size": 147,
+      "source_line": 453,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 3692,
+      "reference_names": [
+        "_LookForID"
+      ],
+      "size": 384,
+      "source_line": 371,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 4076,
+      "reference_names": [
+        "+[PCIResourceDriver probe:]"
+      ],
+      "size": 116,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 4192,
+      "reference_names": [
+        "-[PCIResourceDriver initFromDeviceDescription:]"
+      ],
+      "size": 122,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 4316,
+      "reference_names": [
+        "-[PCIResourceDriver getCharValues:forParameter:count:]"
+      ],
+      "size": 731,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 5048,
+      "reference_names": [
+        "-[PCIResourceDriver setCharValues:forParameter:count:]"
+      ],
+      "size": 409,
+      "source_line": 226,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m"
+    },
+    {
+      "address": 5460,
+      "reference_names": [
+        "_PCIParsePrefix"
+      ],
+      "size": 75,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/pci.c"
+    },
+    {
+      "address": 5536,
+      "reference_names": [
+        "_PCIParseKeys"
+      ],
+      "size": 906,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/pci.c"
+    }
+  ],
+  "reference_sha256": "3EFAC8A41B87C5B4D77358C2892E38A1F0A0821D7EDC18021182954B3C1A1451",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 6444,
+      "reference_names": [
+        "+[PCIBusKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 6456,
+      "reference_names": [
+        "+[PCIBusVersion driverKitVersionForPCIBus]"
+      ],
+      "size": 12
+    }
+  ]
+}

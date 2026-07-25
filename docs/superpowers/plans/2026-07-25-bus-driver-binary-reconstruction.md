@@ -979,11 +979,15 @@ Expected: the `unmapped` list contains `+[PCIBusKernelServerInstance kernelServe
 
 Resolve every `duplicate_candidates` entry by hand: pick the correct site, move the entry to `mapped` with that `source_path`/`source_line`, and re-run Step 1's validation via the loader. Keep each array sorted by `(address, reference_names)`.
 
-- [ ] **Step 3: Decompile-diff every mapped function**
+- [ ] **Step 3: Disassembly-diff every mapped function**
 
-Work in batches, one source file at a time, in this order: `pci.c`, `PCIKernBus.m`, `PCIKernBusPrivate.m`, `PCIResourceDriver.m`.
+The analyses contain **disassembly, not C decompilation**. Each function carries `instructions` (address, `bytes`, `mnemonic`, `operands`, `normalized_operands`, `relocations`), `blocks` for control flow, and `calls` with resolved targets. Ghidra additionally exposes `extensions.ghidra.decompiler_pcode`, which is p-code IR rather than C. Compare at the instruction level — it is more precise than decompiled C, not less.
 
-For each mapped function, compare the reference decompilation against our source on: control-flow shape, literal constants, I/O port addresses, struct field offsets, and call targets. The reference decompilation for address `A` comes from the published IDA and Ghidra analyses; where the two disagree on a function's body, record the disagreement rather than choosing one.
+Work one source file at a time, in this order: `pci.c`, `PCIKernBus.m`, `PCIKernBusPrivate.m`, `PCIResourceDriver.m`.
+
+For each mapped function compare: control-flow shape (`blocks` count and branch structure), literal constants, I/O port addresses, struct field offsets, and `calls` targets — against what our source says it should compile to. Where IDA and Ghidra disagree about a body, record the disagreement rather than choosing one.
+
+Reading the disassembly against Objective-C source: a method's arguments arrive on the stack (`[ebp+self]`, `[ebp+arg]`), instance variables load as fixed offsets off `self`, and message sends appear as `calls` to `objc_msgSend` or direct `IMP` targets. For example `-[PCIKernBus maxBusNum]` is 7 instructions — load `self`, load `[eax+0x10]`, return — which corresponds to returning the instance variable at offset `0x10`. Confirm the offset matches the field's position in the `@interface` declaration; a mismatch there is a genuine ABI divergence and exactly the kind of finding this pass exists to catch.
 
 A function matches at one of three levels, which become its ledger status:
 - `signature-confirmed` — name and signature agree, body not yet compared.

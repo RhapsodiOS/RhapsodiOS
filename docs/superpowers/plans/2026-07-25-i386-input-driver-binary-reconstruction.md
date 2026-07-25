@@ -150,13 +150,52 @@ drvPCParallel's `divergences.md` records instead that its two `PB.project` files
 
 Tasks 4, 6, 8, 10 and 12 all follow this.
 
-**Step A — baseline build, before any source edit.** Inside the Rhapsody guest:
+**Step A — baseline build, before any source edit.**
+
+The guest is a separate Rhapsody 5.6 PPC machine; connection details are in `vm/vm.conf` (host, user, password, `RemoteRoot=/build/source`). Reach it with `plink`/`pscp` from `C:\Program Files\PuTTY\`.
+
+**Sync only this driver's directory.** Do not use `vm/rhap-vm.ps1 sync` — it uploads all of `src/`, which would carry a concurrent session's uncommitted work onto the shared build host:
+
+```bash
+cd /d/RhapsodiOS
+PW=$(grep -i '^Password=' vm/vm.conf | cut -d= -f2)
+HOST=$(grep -i '^Host=' vm/vm.conf | cut -d= -f2)
+"/c/Program Files/PuTTY/pscp.exe" -batch -r -pw "$PW"   src/drivers-i386/input/<drv> root@$HOST:/build/source/src/drivers-i386/input/
+"/c/Program Files/PuTTY/pscp.exe" -batch -pw "$PW"   vm/build-i386-input-recon.sh root@$HOST:/build/source/vm/
+```
+
+Then strip CR (Windows checkouts carry CRLF, and Rhapsody's `gnumake` treats CR as part of target names) and build:
+
+```bash
+"/c/Program Files/PuTTY/plink.exe" -batch -pw "$PW" root@$HOST   'tr -d "
+" < /build/source/vm/build-i386-input-recon.sh > /tmp/br && mv /tmp/br /build/source/vm/build-i386-input-recon.sh; sh /build/source/vm/build-i386-input-recon.sh <drv>' > /tmp/bld.log 2>&1
+echo "EXIT=$?"
+tail -3 /tmp/bld.log
+```
+
+The guest's root shell is `tcsh` and `/bin/sh` is a 1999 Bourne shell: **no `2>&1` inside the remote command string, and no nested double quotes.** Redirect on the local side as shown.
+
+Expected on success: `EXIT=0` and a final line `=== input-recon done fail=0 built: <drv> ===`. On failure: `EXIT=1` and `FAILED: no <Name>_reloc for <Name>`. Both paths are verified working.
+
+**Baselines already established by the controller**, before any fix-pass edits:
+
+| Driver | Baseline | Note |
+| --- | --- | --- |
+| drvPS2Mouse | builds, `EXIT=0` | staged `_reloc` 103316 bytes (unstripped; reference is 30204) |
+| drvSerialPointingDevice | builds, `EXIT=0` | |
+| drvPS2Keyboard | builds, `EXIT=0` | |
+| drvBusMouse | builds, `EXIT=0` | |
+| drvPCParallel | **fails**, `EXIT=1` | `IOParallelPortKern.h:110: parse error before 'portObject'`; `IOParallelPortKern.h:99` `seltrue` conflicts with `bsd/sys/systm.h:136`. Task 10 must repair this in its own commit *before* any divergence fix. |
+
+Re-run your driver's baseline anyway — the tree has changed since — but a result disagreeing with this table is itself a finding.
+
+Inside the guest the equivalent single command is:
 
 ```bash
 sh /build/source/vm/build-i386-input-recon.sh <drv>
 ```
 
-Expected: `=== input-drivers done fail=0 built: <drv> ===` and a `_reloc` staged under `/build/out/i386/<drv>/`. Record the size. If the baseline fails, repairing that breakage is a separate commit landed **before** any divergence fix, so a pre-existing failure is never misattributed to this work.
+Expected: `=== input-recon done fail=0 built: <drv> ===` and a `_reloc` staged under `/build/out/i386/<drv>/`. Record the size. If the baseline fails, repairing that breakage is a separate commit landed **before** any divergence fix, so a pre-existing failure is never misattributed to this work.
 
 **Step B — baseline parity.** Copy the staged `_reloc` to the host, then:
 
@@ -424,6 +463,8 @@ done
 echo "=== input-drivers done fail=$fail built:$built ==="
 exit $fail
 ```
+
+**This listing is the original Task 1 text and is now out of date.** The committed script is `vm/build-i386-input-recon.sh` (renamed from `build-i386-input-drivers.sh`, which another effort owns). Two changes were forced by the guest shell and are recorded in commit `fafda5c1`: `set -e` is gone entirely, and the `want()` predicate was replaced by a `case` dispatch. Rhapsody's 1999 Bourne `/bin/sh` applies `set -e` to *any* function returning nonzero — including one called from an `if` condition — so `want()` returning "no" killed the whole script on the first non-matching driver. Read the committed file, not this listing.
 
 The closing `exit $fail` is required. `vm/build-i386-bus-drivers.sh:141` has it, and without it the script always exits 0 — which would make the "Expected: exit 0" gate in the Standard fix pass procedure's Steps A and E vacuous, letting a failed driver build pass every check.
 

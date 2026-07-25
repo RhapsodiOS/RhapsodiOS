@@ -154,9 +154,8 @@ typedef struct {
  *
  * Validation performed:
  * 1. Signature check ("$PnP")
- * 2. Length field validation
- * 3. Checksum verification (sum of all bytes must equal 0)
- * 4. Version check (must be >= 1.0)
+ * 2. Checksum verification (sum of the first length bytes must equal 0)
+ * 3. Version check (must be >= 1.0)
  */
 + (BOOL)Present:(void **)pnpStructPtr
 {
@@ -175,13 +174,15 @@ typedef struct {
         if (check->fields.signature != PNP_SIGNATURE)
             continue;
 
-        /* Validate structure length */
+        /*
+         * The reference does not validate the length field at all.  It reads
+         * it only as the span of the checksum, and when it is zero the sum
+         * loop is skipped outright, leaving a sum of zero -- so a zero-length
+         * header passes.  Rejecting it here would deny PnP BIOS service to
+         * any machine whose BIOS reports an odd length, so match the
+         * reference and let the checksum be the only gate.
+         */
         length = check->fields.length;
-        if (length == 0) {
-            IOLog("PnPBios: Found signature at 0x%08x but invalid length (0)\n",
-                  (unsigned int)check);
-            continue;
-        }
 
         /* Calculate checksum - sum of all bytes should be 0 */
         sum = 0;

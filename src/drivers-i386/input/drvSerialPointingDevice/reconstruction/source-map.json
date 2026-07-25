@@ -8,7 +8,7 @@
         "_mainLoop"
       ],
       "size": 26,
-      "source_line": 71,
+      "source_line": 68,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[SerialPointingDevice mouseInit:]"
       ],
       "size": 880,
-      "source_line": 280,
+      "source_line": 277,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[SerialPointingDevice free]"
       ],
       "size": 105,
-      "source_line": 258,
+      "source_line": 256,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[SerialPointingDevice getResolution]"
       ],
       "size": 16,
-      "source_line": 532,
+      "source_line": 529,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[SerialPointingDevice setEventTarget:]"
       ],
       "size": 72,
-      "source_line": 540,
+      "source_line": 537,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[SerialPointingDevice getIntValues:forParameter:count:]"
       ],
       "size": 93,
-      "source_line": 404,
+      "source_line": 401,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[SerialPointingDevice setIntValues:forParameter:count:]"
       ],
       "size": 263,
-      "source_line": 460,
+      "source_line": 457,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[SerialPointingDevice detect]"
       ],
       "size": 1379,
-      "source_line": 81,
+      "source_line": 79,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[SerialPointingDevice MSProtocol]"
       ],
       "size": 442,
-      "source_line": 649,
+      "source_line": 651,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -107,7 +107,7 @@
         "-[SerialPointingDevice MPlusProtocol]"
       ],
       "size": 22,
-      "source_line": 779,
+      "source_line": 762,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -116,7 +116,7 @@
         "-[SerialPointingDevice FiveBProtocol]"
       ],
       "size": 598,
-      "source_line": 788,
+      "source_line": 771,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -125,7 +125,7 @@
         "-[SerialPointingDevice MMProtocol]"
       ],
       "size": 40,
-      "source_line": 767,
+      "source_line": 750,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -134,7 +134,7 @@
         "-[SerialPointingDevice RBProtocol]"
       ],
       "size": 40,
-      "source_line": 893,
+      "source_line": 856,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -143,7 +143,7 @@
         "-[SerialPointingDevice UnknownProtocol]"
       ],
       "size": 40,
-      "source_line": 905,
+      "source_line": 868,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     }
   ],

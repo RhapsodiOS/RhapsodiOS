@@ -3,19 +3,18 @@
 Reference: `SerialPointingDevice_reloc`, SHA-256 `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`
 Analyses: IDA 9.2, angr 9.3.0
 
-## Line numbers: working tree, not HEAD
+## Line numbers: resolved in the fix pass
 
-**All `source_line` values in `source-map.json` and `ledger.json` are against the current
-working tree, not against `HEAD`.** A concurrent session has uncommitted C89 fixes to
-`SerialPointingDevice.m` — repairing malformed selector syntax such as
-`executeEvent:data:0x0B data:0x78` to `executeEvent:0x0B data:0x78` — that shift every line
-number in the file. All 16 mapped entries in both artifacts differ between the working tree and
-`HEAD`. `load_source_map` therefore passes only while those uncommitted changes remain present in
-the working tree; running it against a clean checkout of `HEAD` will fail. **The driver's fix
-pass must regenerate `source-map.json` and every `source_line` in `ledger.json` once those
-changes are committed, as its final step.** Regenerating against `HEAD` now would encode numbers
-that go stale the moment those fixes land, and would point the map at a file that cannot compile;
-that regeneration is deliberately deferred, not done here.
+The report pass left every `source_line` in `source-map.json` and `ledger.json` pinned to an
+uncommitted working tree, because a concurrent session held C89 fixes to `SerialPointingDevice.m`
+that shifted every line in the file.
+
+**Resolution (Task 6):** those fixes are committed, and the fix pass then shifted the lines again.
+Both artifacts were relined against the post-fix file as the fix pass's final step: the map was
+regenerated to scratch with `binrecon source-map`, its bucket counts checked against the committed
+map (16 / 2 / 0 / 0 both times), and `source_line` / `source_path` copied across by `address` into
+`source-map.json` and `ledger.json` while the hand-resolved bucket assignments were kept. All 16
+mapped entries moved. `load_source_map` prints `source map OK` against `HEAD`.
 
 ## Stated limitation: two analyzers, not three
 
@@ -40,29 +39,64 @@ existing state rather than re-running it. `run-summary.json` reports `complete: 
 
 ## Baseline build
 
-**No baseline build is recorded here.** The driver compiles today, but the fix pass (Task 6)
-establishes the baseline properly — staged `SerialPointingDevice_reloc` size and the four
-`parity_check.py` counts — and no size is invented in this document.
+The report pass recorded no baseline. **The fix pass established one before any source edit**
+(`sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice` on the Rhapsody guest):
 
-Three scaffolding facts are recorded now so the fix pass can check them:
+| | Baseline | After the fix |
+| --- | --- | --- |
+| build | `EXIT=0`, `fail=0` | `EXIT=0`, `fail=0` |
+| staged `SerialPointingDevice_reloc` | 112064 bytes | 112072 bytes |
+| `missing_strings` | 2 | **0** |
+| `missing_symbols` | 0 | 0 |
+| `extra_strings` | 3 | **0** |
+| `extra_symbols` | 21 | 21 |
+
+The reference is 39928 bytes; ours is larger because the guest build is unstripped. The 21
+`extra_symbols` are stabs debugging entries and the two file-name symbols, all artefacts of the
+unstripped build, and are the same 21 before and after.
+
+`missing_symbols` was **0 even at baseline**, which does not agree with the plan's expectation
+that `_mainLoop` would be missing. The reason is that `parity_check.py` compares symbol *names*:
+our unstripped build emits `_mainLoop` as a **local** symbol, so the name is present while the
+binding is wrong. The linkage fix therefore has to be checked by reading the binding directly,
+which this pass does — see Finding 4.
+
+Three scaffolding facts the report pass recorded for the fix pass to check:
 
 - `Load_Commands.sect` **is** present in
   `SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/` and is named in that directory's
-  `Makefile` `OTHERSRCS`, so the plan's blanket note that this driver has no such file is out of
-  date. It is **163 bytes** where the reference's `Loaded Server,Load Commands` section is
-  **164**. See Finding 14.
+  `Makefile` `OTHERSRCS`. The report pass measured it at **163 bytes**; it is **164** — see
+  Finding 14.
 - The reference carries a `Loaded Server,Unload Commands` section of **102 bytes**
   (`"# \n# This loadable kernel driver is not unloadable. (I think) this file\n# is still
-  necessary.\n#\n\n\n\n\n\n\n"`). Nothing in this repository produces that section. Closing the
-  gap is a build-system change the spec puts out of scope; recorded, not fixed.
+  necessary.\n#\n\n\n\n\n\n\n"`). The report pass put closing that gap out of scope; spec §2.7a
+  has since brought it into scope, and **the fix pass closed it** — see the `Loaded Server`
+  section below.
 - The reference carries a `__TEXT,__const` section of **170 bytes** holding
   `_SerialPointingDevice_VERS_STRING` (160 bytes at 5330) and `_SerialPointingDevice_VERS_NUM`
   (10 bytes at 5490). Those are emitted by NeXT's `vers_string` machinery, not written by hand,
-  and no driver in this repository produces them. Same class of gap as `Unload Commands`;
-  recorded, not fixed.
+  and no driver in this repository produces them. Still recorded, not fixed: unlike the section
+  gaps it is not reachable from `OTHERSRCS`.
 
-The reference's other `Loaded Server` sections are `Server Name` 20 (`SerialPointingDevice`),
-`Instance Var` 29 (`SerialPointingDevice_instance`) and `Server Version` 1 (`2`).
+## `Loaded Server` sections: exact parity
+
+Spec §2.7a. `kernelserver.make` emits each section purely from a filename appearing in the
+project's `OTHERSRCS`. `Unload_Commands.sect` was created in the `.lksproj` directory with the
+reference's 102 bytes (byte-identical to drvPS2Mouse's, which was verified against its own
+reference) and added to `Makefile`'s `OTHERSRCS`. All five sections now match the reference
+exactly, read back from the rebuilt `_reloc`:
+
+| Section | Reference | Ours |
+| --- | --- | --- |
+| `Server Name` | 20 | 20 |
+| `Load Commands` | 164 | 164 |
+| `Unload Commands` | 102 | **102** (was absent) |
+| `Instance Var` | 29 | 29 |
+| `Server Version` | 1 | 1 |
+
+The same rebuild also required `-DDRIVER_PRIVATE` in the `Makefile`'s `NEXTSTEP_PB_CFLAGS`, since
+`PCPointer.h` and `PCPointerDefs.h` are both guarded by it. drvPS2Mouse's `Makefile` carries the
+same flag for the same reason.
 
 ## Summary
 
@@ -78,6 +112,15 @@ The reference's other `Loaded Server` sections are `Server Name` 20 (`SerialPoin
 with its relocation targets (selector names, string literals, data symbols and ivar offsets),
 and compared line by line against `SerialPointingDevice.m`. Nothing in this driver was reviewed
 at control-flow level only, and nothing was reviewed by grep or by name.
+
+**Ledger state after the fix pass (Task 6): 5 `assembly-matched`, 11 `control-flow-confirmed`,
+2 `intentional-mismatch`, 0 `unexamined`.** Every one of the 16 findings below is resolved, 15 by
+changing our source and one (Finding 14) by verifying it was already correct. No finding was
+accepted as an `intentional-mismatch`; the only two entries carrying that status are the
+build-generated glue methods, unchanged from the report pass. The 11 repaired functions are
+`control-flow-confirmed` rather than `assembly-matched` because this pass did not disassemble the
+rebuilt binary and compare it instruction by instruction — what it verified directly is the
+metadata, the string set, the symbol bindings and the section sizes.
 
 Of the 16 mapped functions, **5** have instruction streams that reproduce the reference exactly
 and are `assembly-matched` in the ledger:
@@ -99,11 +142,14 @@ Once the `PCPointer` re-parent lands, these offsets match exactly, which is why 
 difference, and is disclosed here rather than hidden. `_active`'s linkage needs no such
 contingency: it is `local` in the reference and already `static` in ours (Finding 4), so it is not
 a dependency of these five at all. `getResolution` additionally carries the declaration-level
-return-type divergence recorded under Finding 2.
+return-type divergence recorded under Finding 2. **Task 6 landed Finding 1, so the contingency is
+discharged and Finding 2's `getResolution` return type is corrected; all five stand
+unconditionally.**
 
-The remaining **11** each carry at least one confirmed body divergence and stay `unexamined` in
-the ledger, per the convention that a diverging function is left for the fix pass. The 2 unmapped
-glue methods are `intentional-mismatch`.
+The remaining **11** each carried at least one confirmed body divergence and stayed `unexamined`
+in the ledger for the fix pass, per the convention that a diverging function is left for it.
+**Task 6 repaired all 11 and advanced them to `control-flow-confirmed`.** The 2 unmapped glue
+methods are `intentional-mismatch`.
 
 Beyond the function bodies, the object's Objective-C metadata was decoded directly from the
 Mach-O (`__class`, `__meta_class`, `__instance_vars`, `__inst_meth`, `__cls_meth`,
@@ -280,6 +326,24 @@ supplies `PCPatoi` (Finding 6), supplies the `PCPointerEvent` type, and supplies
 its layout is confirmed against the binary. **It must land in the same change as Finding 2**, for
 the reason Finding 2 gives.
 
+**Resolution (Task 6):** fixed. `SerialPointingDevice.h` now reads
+`@interface SerialPointingDevice : PCPointer` with exactly the reference's six ivars —
+`verbose`, `mainThread`, `mouseType`, `protocol`, `portDevice`, `pointerEvent` — and the
+hand-rolled `MouseEvent` typedef is gone in favour of `PCPointerEvent`. `target`, `resolution`
+and `inverted` are now inherited. Decoding the rebuilt `__OBJC,__class` and
+`__OBJC,__instance_vars` reproduces the reference exactly: `SerialPointingDevice : PCPointer`
+with `instance_size` 356, and six ivars whose names, type encodings and offsets (0x144, 0x148,
+0x14c, 0x150, 0x154, 0x158) are identical to the reference's, `pointerEvent` included at
+`{?="timeStamp"Q"data"(?)}`. `-DDRIVER_PRIVATE` was added to the `Makefile` so the two kernel
+headers are visible. This landed in the same commit as Finding 2's `mouseInit:` polarity flip, as
+required.
+
+One consequence not visible in the reference: `-[SerialPointingDevice detect]` declares a local
+`protocol` for the `*?` reply's protocol field, which would now shadow the ivar of that name. It
+is renamed `protocolField`. The ivar is what the two `mouseType`/`protocol` writes at 2461 and
+3189 target; the `*?` field is a frame slot in the reference and is used only by the `verbose`
+log, so the split is what the disassembly shows.
+
 ## Finding 2: method return types, signatures and the `mainLoop` return value
 
 **Source:** `SerialPointingDevice.h:62`–`92` and `SerialPointingDevice.m:71`, `:280`, `:532`,
@@ -364,6 +428,22 @@ duplicate-instance rejection as a success. `PCPointer.h` also declares
 types, so all three corrections arrive with the re-parenting and **must land in the same change
 as Finding 1**, not after it.
 
+**Resolution (Task 6):** fixed, and `mouseInit:`'s flip landed in the same commit as Finding 1.
+`mouseInit:` returns `BOOL`, `YES` on the single success path and `NO` on all six failure paths
+— duplicate instance, missing config table, missing `Port Device`, unregistered port, failed
+`acquire:`, and no mouse detected. `setEventTarget:` returns `BOOL`, propagating what
+`[super setEventTarget:]` returned through an explicit `return YES` / `return NO` pair.
+`getResolution` returns `int`. `mainLoop:` returns `IOThreadFunc` and ends `return 0`, and the C
+function `mainLoop` does the same. `getByte:sleep:`'s first parameter is `char *`, and the three
+callers' `byte` locals became `char` to suit — every mask in them is a low-8-bit mask, so no
+test changes value.
+
+The rebuilt `__OBJC,__inst_meth` name/type-encoding set is now **equal to the reference's as a
+set**, all 15 entries, including `c12@8:12@16` for both `mouseInit:` and `setEventTarget:`,
+`i8@8:12` for `getResolution`, `c13@8:12*16c20` for `getByte:sleep:` and `^?12@8:12@16` for
+`mainLoop:`. `IOThreadFunc` is `void (*)(void *)`, which is what encodes as `^?`; only the list
+order differs, and that follows declaration order rather than the reference.
+
 ## Finding 3: `_mouseTypeList` slot 3 is `W`, not `M` — SETTLED from `detect`
 
 **Source:** `SerialPointingDevice.m:50`
@@ -440,6 +520,10 @@ extended mouse is logged as `M`, indistinguishable from a plain Microsoft mouse 
 
 **Disposition:** fix — change slot 3 to `"W"`. The disassembly settles it; nothing is guessed.
 
+**Resolution (Task 6):** fixed. Slot 3 is `"W"`. No code path changed — `detect` already reached
+it correctly — and `W` is now present in our `__cstring`, which is one of the two strings the
+baseline `parity_check.py` reported missing. No `intentional-mismatch` was needed.
+
 ## Finding 4: three `static`-versus-`external` linkage divergences (`_active` already matches)
 
 **Source:** `SerialPointingDevice.m:46` (`mouseTypeNames`), `:56` (`protocolList`), `:71`
@@ -482,6 +566,22 @@ wrong with it is the `static`.
 **`active` must not be touched.** It is already `static`, the reference already has it `local`,
 and de-staticising it would introduce an export the reference does not have.
 
+**Resolution (Task 6):** fixed, all three and only those three. `static` was removed from
+`mainLoop` and `protocolList`, and `mouseTypeNames` was both de-staticised and renamed
+`mouseTypeList`. **`active` was left `static` and is untouched.** Read back from the rebuilt
+`_reloc`, the four bindings are now identical to the reference's:
+
+| Symbol | Reference | Baseline | After |
+| --- | --- | --- | --- |
+| `_mainLoop` (`__TEXT,__text`) | external | local | **external** |
+| `_mouseTypeList` (`__DATA,__data`) | external | absent (`_mouseTypeNames`, local) | **external** |
+| `_protocolList` (`__DATA,__data`) | external | local | **external** |
+| `_active` (`__DATA,__data`) | local | local | local — unchanged |
+
+`__DATA,__data` is 49 bytes in both. `parity_check.py` cannot see this fix — it compares symbol
+*names*, and the unstripped build emitted the names all along — which is why the bindings are
+read directly here.
+
 ## Finding 5: `mouseInit:` acquires the serial port with `nil`, not `self`
 
 **Source:** `SerialPointingDevice.m:339`
@@ -514,6 +614,9 @@ value and the wrong kind of value; the driver would be asking the port to block 
 fail fast.
 
 **Disposition:** fix
+
+**Resolution (Task 6):** fixed. `[portDevice acquire:nil]`. The success test was already
+identical and is unchanged.
 
 ## Finding 6: `mouseInit:` parses the resolution with `PCPatoi`, not `atoi`
 
@@ -555,6 +658,9 @@ not (Finding 13).
 **Rationale:** `PCPatoi` arrives for free with Finding 1's re-parenting, since `PCPointer.h`
 declares it. The `<stdlib.h>` import becomes unused for this purpose.
 
+**Resolution (Task 6):** fixed. `resolution = PCPatoi((char *)resolutionStr);`, and the
+`#import <stdlib.h>` that only `atoi` needed is removed.
+
 ## Finding 7: `free` does not clear the port device after releasing it
 
 **Source:** `SerialPointingDevice.m:270`
@@ -591,6 +697,10 @@ and the `objc_msgSendSuper` to `free` whose result is returned.
 
 **Disposition:** fix — it is one line, and the object is about to be deallocated, so nothing
 depends on the store.
+
+**Resolution (Task 6):** fixed. The `portDevice = nil;` after the `release` is gone; the nil
+check, the release and the `[super free]` return are unchanged. The store on `mouseInit:`'s
+`acquire:` failure path is a different site and was not flagged, so it stays.
 
 ## Finding 8: `getByte:sleep:` is a `do`/`while`, not a `while`
 
@@ -651,6 +761,9 @@ port); ours returns immediately. It also matters at start-up if `detect` is ever
 
 **Disposition:** fix
 
+**Resolution (Task 6):** fixed. The `while (active) { … }` is now `do { … } while (active);`, so
+one dequeue is always attempted before `active` is consulted. The loop body is untouched.
+
 ## Finding 9: `detect`'s baud-rate sweep runs a fourth iteration
 
 **Source:** `SerialPointingDevice.m:150`
@@ -702,6 +815,11 @@ else in the sweep matches: the `executeEvent:0x3B data:0x10` that precedes it (2
 test, and the `enqueueEvent:0x55 data:0x55` / `data:0x52` / `protocol = 3` epilogue at 3139–3189.
 
 **Disposition:** fix
+
+**Resolution (Task 6):** fixed. The sweep is now `do { … } while (baudRate <= 9600);`, so it
+runs four iterations with `baudRate` 1200, 2400, 4800 and 9600 and sends `executeEvent:0x33`
+with 2400, 4800, 9600 and 19200. A 19200-baud Mouse Systems mouse is now reachable. Nothing
+inside the loop changed.
 
 ## Finding 10: the event-dispatch timing gate is a single 64-bit unsigned compare
 
@@ -764,6 +882,22 @@ button masking (`and 0xFE` / `or left`, `and 0xFD` / `or right*2`, `and 3`), the
 against 40000000, which is also what Finding 1's `PCPointerEvent`/`ns_time_t` types make natural
 to write.
 
+**Resolution (Task 6):** fixed in both handlers. The four `unsigned int` halves became two
+`ns_time_t` locals, `lastTimeStamp` and `currentTimeStamp`, `IOGetTimestamp` takes their
+addresses directly rather than through a cast, and the whole gate is now
+
+```objc
+if (target != nil) {
+    if (currentTimeStamp - lastTimeStamp < 40000000) {
+        [target dispatchPointerEvent:&pointerEvent];
+    }
+}
+```
+
+which is the reference's single unsigned 64-bit compare, borrow included. The inverted
+high-word case is gone: an event more than ~4.29 s stale is now suppressed, as Apple does,
+rather than dispatched. `shouldDispatch` is removed as a consequence.
+
 ## Finding 11: `FiveBProtocol` updates `lastTimestamp` after the third byte only
 
 **Source:** `SerialPointingDevice.m:872`–`873`
@@ -816,6 +950,12 @@ the `byteIndex = 0` after case 4 versus `byteIndex++` after case 2.
 
 **Disposition:** fix
 
+**Resolution (Task 6):** fixed. The `lastTimeStamp = currentTimeStamp` moved inside the
+`byteIndex != 4` arm of the tail, so it runs on case 2 and not on case 4 — the reference's
+shape. (The case-4 update was in any event dead, since case 0 retakes the timestamp
+unconditionally; the point of the change is to stop diverging from the reference, not to alter
+an outcome.)
+
 ## Finding 12: the reference logs nothing in `MSProtocol` or `FiveBProtocol` — SETTLED
 
 **Source:** `SerialPointingDevice.m:664`–`666` and `:801`–`803`
@@ -844,6 +984,10 @@ reference's `__cstring` (Finding 13), and there is no `verbose` test or `_IOLog`
 function to hold them.
 
 **Disposition:** fix — delete both blocks.
+
+**Resolution (Task 6):** fixed. Both `verbose`-gated `IOLog` blocks are deleted, and both
+handlers now go straight from their local initializations into the `getByte:sleep:YES` loop, as
+the reference does. Neither format string survives in our `__cstring`.
 
 ## Finding 13: string set
 
@@ -899,6 +1043,12 @@ reproduced exactly.
 
 **Disposition:** fix
 
+**Resolution (Task 6):** fixed, and verified rather than asserted. `W` is added by Finding 3, the
+second space is restored, and the two `…Protocol started` strings are deleted by Finding 12.
+`parity_check.py` against the rebuilt `_reloc` now reports **`missing_strings` 0 and
+`extra_strings` 0** — our `__TEXT,__cstring` set is exactly the reference's, the reference's own
+typo `SerialPorintingDevice: Main thread terminated.` included.
+
 ## Finding 14: `Load_Commands.sect` is one byte short
 
 **Source:** `SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/Load_Commands.sect`
@@ -920,6 +1070,13 @@ That single missing space is the whole 164-versus-163 difference; the remaining 
 identical. Identical to drvPS2Mouse's Finding 12.
 
 **Disposition:** fix
+
+**Resolution (Task 6):** **no change needed — the finding was already stale when it was
+written.** `Load_Commands.sect` on disk is 164 bytes and its first line is `# `, hash-space-
+newline; commit `a1c5e295` landed that. The baseline build, taken before any edit in this pass,
+already emitted a 164-byte `Loaded Server,Load Commands` section. The report pass's 163 is a
+measurement error, and this finding is closed by verification rather than by an edit. The
+genuinely missing section was `Unload Commands`, which is covered above.
 
 ## Finding 15: `MSProtocol` and `FiveBProtocol` leave the current timestamp uninitialized
 
@@ -948,6 +1105,11 @@ rather than live. It is recorded because it is a real, confirmed difference from
 and because Finding 10 rewrites this region anyway.
 
 **Disposition:** fix, as part of Finding 10.
+
+**Resolution (Task 6):** fixed, as part of Finding 10. Both handlers now declare
+`ns_time_t lastTimeStamp = 0;` and `ns_time_t currentTimeStamp = 0;`. The
+`'currentTimestampHigh' might be used uninitialized` warning the baseline build emitted twice is
+gone from the rebuild.
 
 ## Finding 16: `getIntValues:`/`setIntValues:` return `IO_R_UNSUPPORTED`, not `IO_R_INVALID_ARG`
 
@@ -989,6 +1151,11 @@ Neither method touches `count` in the reference, and neither does ours.
 branch on the specific `IOReturn` would observe the difference. Same class of finding as
 drvPS2Mouse's Finding 9.
 
+**Resolution (Task 6):** fixed. Both no-match paths return `IO_R_UNSUPPORTED`. The comparison
+loops, the unconditional sends to `target` and the verbose logs are untouched. The local that
+held the key string in both methods was renamed `key`, because `target` is now the inherited
+ivar these methods message — the same rename drvPS2Mouse's fix pass made.
+
 ## Observations that are not findings
 
 Three differences were confirmed in the disassembly and deliberately **not** raised as findings,
@@ -1027,3 +1194,21 @@ Every question the brief raised was resolved from the disassembly:
 
 The one thing this pass **cannot** claim is three-analyzer corroboration of the function
 partition, for the reason given in the stated-limitation section at the top.
+
+## What the fix pass verified, and what it did not
+
+Verified directly against the rebuilt `SerialPointingDevice_reloc`:
+
+- the driver builds on the Rhapsody guest, `EXIT=0` / `fail=0`, before and after;
+- `__TEXT,__cstring` is exactly the reference's set — 0 missing, 0 extra;
+- `_mainLoop`, `_mouseTypeList` and `_protocolList` are `external` and `_active` is `local`,
+  matching the reference symbol for symbol;
+- `__OBJC,__class` gives `SerialPointingDevice : PCPointer` with `instance_size` 356, and
+  `__OBJC,__instance_vars` reproduces all six ivars' names, encodings and offsets;
+- `__OBJC,__inst_meth`'s 15 name/type-encoding pairs equal the reference's as a set;
+- all five `Loaded Server` sections match the reference's sizes.
+
+**Not** verified, and therefore not claimed anywhere in the ledger: an instruction-level
+comparison of the rebuilt functions against the reference. `binrecon` was not asked to analyze
+the rebuilt artifact — spec §1.3 puts that out of scope — so no function's status was raised to
+`assembly-matched` on the strength of this pass's work.

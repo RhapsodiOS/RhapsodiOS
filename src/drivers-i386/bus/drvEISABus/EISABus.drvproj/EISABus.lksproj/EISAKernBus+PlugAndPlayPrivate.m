@@ -385,19 +385,19 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
     }
 
-    IOLog("PnP: Initializing Plug and Play support\n");
+    IOLog("PnP: Plug and Play support enabled\n");
 
     /* Try to initialize PnP BIOS */
     pnpBios = [[PnPBios alloc] init];
     if (pnpBios == nil) {
-        IOLog("PnP: Plug and Play support not found\n");
-
         /* No BIOS support - fall back to manual enumeration */
         result = [self initializeNoBIOS];
         if (result == NO) {
             return NO;
         }
-    } else {      
+    } else {
+        IOLog("PnP: Plug and Play BIOS present\n");
+
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
 
@@ -414,16 +414,24 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             [pnpBios free];
             pnpBios = nil;
 
-            /* Fall back to manual enumeration (which does its own setup and returns) */
+            /*
+             * Fall back to isolating cards over the ISA PnP protocol, then
+             * continue down the common path.  initializeNoBIOS only performs
+             * the isolation -- it sets maxPnPCard and pnpReadPort and returns.
+             * Returning here instead would skip setReadPort:, the device
+             * table and the enumeration loop below, so any cards it did find
+             * would be isolated and then silently discarded.
+             */
             result = [self initializeNoBIOS];
-            return result;
+            if (result == NO) {
+                return NO;
+            }
         }
-
-        /* BIOS call succeeded - extract configuration from result */
-        maxPnPCard = *((unsigned char *)configData + 1);
-        pnpReadPort = *((unsigned short *)configData + 1);
-
-        IOLog("PnP: Plug and Play support enabled\n");
+        else {
+            /* BIOS call succeeded - extract configuration from result */
+            maxPnPCard = *((unsigned char *)configData + 1);
+            pnpReadPort = *((unsigned short *)configData + 1);
+        }
     }
 
     /* Log configuration */

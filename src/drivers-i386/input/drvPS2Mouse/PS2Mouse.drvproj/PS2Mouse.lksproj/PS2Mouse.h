@@ -42,7 +42,7 @@
     BOOL inverted;
     id mouseEventPort;
     id controller;
-    BOOL skipDetection;  /* Skip mouse presence detection if YES */
+    BOOL forceDetection;  /* Skip mouse presence detection if YES */
 }
 
 /* Configuration */

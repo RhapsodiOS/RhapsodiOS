@@ -92,8 +92,11 @@ static void *pp_softc = NULL;
     // Get device name (like "ParallelPort0")
     deviceName = [deviceDescription name];
 
-    // Extract minor device number (last character)
-    minorDevStr = deviceName + strlen(deviceName) - 1;
+    // Get minor device number from the config table
+    minorDevStr = [configTable valueForStringKey:"Minor Device Number"];
+    if (minorDevStr == NULL) {
+        minorDevStr = "0";
+    }
 
     // Check if minor device number is "0"
     if (strcmp(minorDevStr, "0") != 0) {

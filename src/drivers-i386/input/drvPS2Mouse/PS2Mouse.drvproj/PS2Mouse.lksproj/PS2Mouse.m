@@ -309,7 +309,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 - (BOOL)readConfigTable:(IODeviceDescription *)deviceDescription
 {
     IOConfigTable *configTable;
-    const char *skipDetectionStr;
+    const char *forceDetectionStr;
     const char *invertedStr;
     const char *resolutionStr;
 
@@ -322,15 +322,15 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Get config table from device description */
     configTable = [deviceDescription configTable];
 
-    /* Read "SkipDetection" parameter (offset 0x148)
-     * If set to 'y' or 'Y', skip mouse presence detection
+    /* Read "Force Detection" parameter (offset 0x148)
+     * If set to 'y' or 'Y', bypass mouse presence detection
      */
-    skipDetectionStr = [configTable valueForStringKey:"SkipDetection"];
-    if ((skipDetectionStr == NULL) ||
-        ((*skipDetectionStr != 'y') && (*skipDetectionStr != 'Y'))) {
-        skipDetection = NO;
+    forceDetectionStr = [configTable valueForStringKey:"Force Detection"];
+    if ((forceDetectionStr == NULL) ||
+        ((*forceDetectionStr != 'y') && (*forceDetectionStr != 'Y'))) {
+        forceDetection = NO;
     } else {
-        skipDetection = YES;
+        forceDetection = YES;
     }
 
     /* Read "Inverted" parameter (offset 0x130)
@@ -408,10 +408,10 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
         ((void (*)(void))controllerFunctions->reserved[3])();
     }
 
-    /* Check if mouse is present (only if skipDetection is not set)
-     * Offset 0x148 is the skipDetection flag
+    /* Check if mouse is present (only if forceDetection is not set)
+     * Offset 0x148 is the forceDetection flag
      */
-    if (!skipDetection) {
+    if (!forceDetection) {
         mousePresent = [self isMousePresent];
         if (!mousePresent) {
             /* No mouse detected - disable manual handling and fail */
@@ -506,10 +506,10 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Set default values for instance variables */
     resolution = 0x96;
     inverted = NO;
-    skipDetection = NO;
+    forceDetection = NO;
 
     /* Get the PS2 keyboard controller device */
-    result = IOGetObjectForDeviceName("PS2KeyboardController", &controllerObject);
+    result = IOGetObjectForDeviceName("PS2Controller", &controllerObject);
 
     if (result == IO_R_SUCCESS) {
         /* Get config table from device description */

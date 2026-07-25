@@ -208,6 +208,75 @@ Prints `missing_strings`, `missing_symbols`, `extra_strings`, `extra_symbols` wi
 
 **Step C — fix each finding.** Work through `divergences.md` in order. Every finding resolves one of two ways: source changed to match the reference, or accepted as `intentional-mismatch`. Nothing is left undecided.
 
+
+**Step C2 — close the `Loaded Server` section gaps.** Approved in the spec's §2.7a after drvPS2Mouse's fix pass proved the cost is one file plus one word. `kernelserver.make` emits each section purely from a filename appearing in the project's `.lksproj/Makefile` `OTHERSRCS`:
+
+```make
+LOAD_SECTION   = Load_Commands.sect
+UNLOAD_SECTION = Unload_Commands.sect
+```
+
+Create whichever the driver lacks, in its `.lksproj` directory beside the sources, and add the filename to that Makefile's `OTHERSRCS`.
+
+`Load_Commands.sect` — 164 bytes exactly:
+
+```
+# 
+# This loadable kernel driver does not use a Mig-generated interface,
+# so no handler or server interface is specified.
+#
+# This driver must be wired down.
+WIRE
+```
+
+`Unload_Commands.sect` — 102 bytes exactly. All four references carrying this section have byte-identical content. Write it with Python so the trailing blank lines survive, and assert the length:
+
+```bash
+cd /d/RhapsodiOS
+./.venv-binrecon/Scripts/python.exe -c "
+from pathlib import Path
+content = '# 
+# This loadable kernel driver is not unloadable. (I think) this file
+# is still necessary.
+#
+
+
+
+
+
+
+'
+b = content.encode('ascii')
+assert len(b) == 102, len(b)
+Path('src/drivers-i386/input/<drv>/<proj>.drvproj/<proj>.lksproj/Unload_Commands.sect').write_bytes(b)
+print('wrote 102 bytes')
+"
+```
+
+Which driver needs what:
+
+| Driver | `Load_Commands.sect` | `Unload_Commands.sect` |
+| --- | --- | --- |
+| drvPS2Mouse | done in Task 4 | done, commit `7d4a46a9` |
+| drvSerialPointingDevice | **create** | **create** |
+| drvPS2Keyboard | **create** | **create** |
+| drvBusMouse | already present | **create** |
+| drvPCParallel | already present | **none** — its reference has no such section |
+
+Verify after the rebuild that the emitted sizes are 164 and 102:
+
+```bash
+./.venv-binrecon/Scripts/python.exe -c "
+import sys; from pathlib import Path
+sys.path.insert(0,'tools/binrecon')
+from binrecon.macho import read_macho
+d = read_macho(Path('out/i386/<drv>/<Config>.config/<Config>_reloc'))
+for s in d['sections']:
+    if s['name'].startswith('Loaded Server'):
+        print(s['name'], s['size'])
+"
+```
+
 **Step D — advance the ledger.** For each fixed function, set the status the new evidence supports. For each accepted divergence:
 
 ```bash

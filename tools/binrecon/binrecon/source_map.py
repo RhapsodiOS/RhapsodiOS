@@ -122,6 +122,15 @@ def source_sites(repo_root, source_dir):
 def build_source_map(reference_analysis, macho_document, sites, *, disputed=None):
     """Partition every reference function into exactly one source-map bucket."""
     disputed = set() if disputed is None else disputed
+    function_addresses = {
+        function["address"] for function in reference_analysis["functions"]
+    }
+    unmatched_disputed = sorted(disputed - function_addresses)
+    if unmatched_disputed:
+        raise ValueError(
+            "disputed addresses do not match any analysis function: "
+            f"{unmatched_disputed}"
+        )
     symbols = defined_symbols(macho_document)
     mapped, unmapped, duplicates, boundary = [], [], [], []
 

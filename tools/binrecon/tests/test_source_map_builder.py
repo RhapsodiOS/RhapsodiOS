@@ -343,17 +343,32 @@ def _full_analysis(functions, sha256="A" * 64):
 
 
 def test_build_source_map_document_passes_the_semantic_validator(tmp_path):
+    # The analysis names this function "sub_1000" (no symbol info recovered),
+    # while the Mach-O symbol table has the real name "_realName" at the same
+    # address. This divergence is what makes the test a real guard: the old
+    # (pre-fix) build_source_map merged the two into reference_names, which
+    # the semantic validator rejects because it must equal the analysis's
+    # names exactly.
     source_dir = tmp_path / "src" / "driver"
     source_dir.mkdir(parents=True)
     (source_dir / "Bus.m").write_text("\n" * 20, encoding="utf-8")
 
-    analysis = _full_analysis(
-        [_function(0x1000, 0x10, ["-[PCIKernBus init]"])]
-    )
-    macho = {"symbols": []}
-    sites = {"-[PCIKernBus init]": [("src/driver/Bus.m", 12)]}
+    analysis = _full_analysis([_function(0x1000, 0x10, ["sub_1000"])])
+    macho = {
+        "symbols": [
+            {
+                "name": "_realName",
+                "address": 0x1000,
+                "binding": "local",
+                "section": "__TEXT,__text",
+            }
+        ]
+    }
+    sites = {"_realName": [("src/driver/Bus.m", 12)]}
 
     document = build_source_map(analysis, macho, sites)
+
+    assert document["mapped"][0]["reference_names"] == ["sub_1000"]
 
     output_path = tmp_path / "source-map.json"
     output_path.write_text(json.dumps(document), encoding="utf-8")
@@ -363,3 +378,11 @@ def test_build_source_map_document_passes_the_semantic_validator(tmp_path):
     )
 
     assert loaded == document
+
+
+def test_build_source_map_rejects_disputed_address_not_in_analysis():
+    analysis = _analysis([_function(0x1000, 0x10, ["_known"])])
+    macho = {"symbols": []}
+
+    with pytest.raises(ValueError, match="disputed addresses"):
+        build_source_map(analysis, macho, {}, disputed={0x9999})

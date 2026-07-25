@@ -242,18 +242,53 @@ implementation does anything like it, and keeping a speculative mitigation
 alongside a principled fix would make the next measurement impossible to
 attribute.
 
-## Verifying
+## Result: the metric could not resolve any of these changes
 
-Re-run the measurement and compare against the 227 baseline:
+Measured after the change, then repeated twice more on the *same* build and the
+same image to establish a noise floor:
 
-```bash
-cd vm && python pic-probe.py     # or a -d int boot, counting 0x4F
-```
+| configuration | spurious / disk | rate |
+|---|---|---|
+| non-specific EOI to both PICs (original) | 227 / 4,197 | 5.4% |
+| + IR2 mask bracketing | 190 / 4,200 | 4.5% |
+| specific EOI, slave-then-master | 257 / 4,193 | 6.1% |
+| *same build, run 2* | 209 / 4,201 | 5.0% |
+| *same build, run 3* | 228 / 4,208 | 5.4% |
 
-The Part 1 `printf` is a cheap proxy: it reports the first eight phantom
-interrupts, so a boot that no longer prints eight of them has improved. The
-counter `intr_cnt.phantom` holds the true total.
+The identical configuration produces **209, 228 and 257** — a spread of 48,
+roughly 23% of the mean. Every figure in the table sits inside that band.
 
-If the count does not fall, the remaining exposure is the one Part 1's result
-section describes — the whole elevated-IPL window, not the mask write — and the
-honest answer is to accept it, as Linux does.
+**No change measured in this investigation had a demonstrable effect on the
+spurious interrupt rate.** The earlier claim that IR2 bracketing reduced it from
+227 to 190 was reading noise; so was the apparent regression to 257. Single-run
+comparisons of a timing-dependent race were never capable of resolving
+differences of this size, and should not have been presented as results.
+
+The rate is roughly 5% of disk interrupts across every configuration tried.
+
+## Conclusion: the spurious interrupts are inherent, and that is fine
+
+This matches what the reference implementations imply. Masking on every
+interrupt entry is required for correct 8259 behaviour — Linux says so
+explicitly — and masking a slave input while the master holds a latched cascade
+request is what produces the spurious vector. The two cannot be separated
+without abandoning mask-on-the-fly, which exists so level-triggered inputs work.
+
+Linux's answer is simply to acknowledge spurious interrupts and carry on, which
+is what this kernel now does after Part 1. Each one costs a trap, a register
+read and two `outb`s. At ~5% of disk interrupts that is not worth further
+surgery.
+
+**The specific-EOI change is kept**, but on correctness grounds rather than
+because it moved this number: sending a non-specific EOI to both PICs could
+clear an in-service bit belonging to an unrelated interrupt, which is a real
+defect independent of spurious accounting, and specific-EOI-per-PIC is what both
+Linux and NetBSD do.
+
+## If this is revisited
+
+Any future attempt needs a better metric than a single boot. Either run each
+configuration five or more times and compare distributions rather than single
+values, or instrument `intr_cnt.phantom` directly against a fixed, deterministic
+disk workload instead of a full desktop boot, whose I/O pattern varies between
+runs.

@@ -186,6 +186,19 @@ these five bodies (all present, small, and fully disassembled in the reference) 
 follow-up implementation work, not something this analysis pass does, but it is the
 single highest-priority gap found.
 
+**Outcome:** fixed. All five functions were reconstructed from the reference
+disassembly (`analysis-reference-ida.json`, cross-checked against
+`analysis-reference-ghidra.json` for block/call-count agreement) and placed beside
+their sole callers: `_stringForFunctionID` in `PCMCIAid.m` (a 10-entry function-ID
+name table plus a 0xFE "Vendor Specific" case), `configTableLookupServerAttribute`
+in `PCMCIAKernBus.m` (a boot-config-string scan matching "Server Name"/"Instance"
+against `busName`/`busId`, the same shape as drvEISABus's own two-argument copy of
+this function), and `_parsePrefix`/`_parsenum`/`_LookForPCMCIAID` in
+`PCMCIAResourceDriver.m`. None of the five could be compiled or rebuilt as part of
+this pass; block structure and call targets were matched against the disassembly,
+not verified instruction-for-instruction. Ledger status advanced from `unexamined`
+to `control-flow-confirmed` for all five.
+
 ## Finding 2: four tuple parsers add verbose-gated logging the reference never had
 
 **Source:** `_parse_VERS_1` (`PCMCIAKernBusParsing.m:124`), `_parse_CONFIG`

@@ -31,7 +31,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (jump table of 10 function-ID name strings plus a 0xFE vendor-specific case), block structure matched, not compiled"
         ],
         "status": "agreed"
       },
@@ -42,9 +42,9 @@
       "reason": null,
       "reviewer": null,
       "size": 74,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 189,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 132,
@@ -261,7 +261,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (boot config string scan matching Server Name/Instance against busName/busId), same shape as drvEISABus's own configTableLookupServerAttribute, block structure matched, not compiled"
         ],
         "status": "agreed"
       },
@@ -272,9 +272,9 @@
       "reason": null,
       "reviewer": null,
       "size": 341,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1836,
@@ -1640,7 +1640,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (NULL guard, strncmp against prefix length, then a literal '(' check), block structure matched, not compiled"
         ],
         "status": "agreed"
       },
@@ -1651,9 +1651,9 @@
       "reason": null,
       "reviewer": null,
       "size": 75,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 41,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 19976,
@@ -1663,7 +1663,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (leading-digit-run accumulator that advances *strPtr), block structure matched, not compiled"
         ],
         "status": "agreed"
       },
@@ -1674,9 +1674,9 @@
       "reason": null,
       "reviewer": null,
       "size": 58,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 66,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 20036,
@@ -1686,7 +1686,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1)"
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (scans sockets 0-3 via testIDs:ForAdapter:andSocket: for the Nth matching card, formats \"Socket %d\"), block structure matched, not compiled"
         ],
         "status": "agreed"
       },
@@ -1697,9 +1697,9 @@
       "reason": null,
       "reviewer": null,
       "size": 151,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 95,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 20188,

@@ -41,6 +41,7 @@
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
 #import <driverkit/IODevice.h>
+#import <driverkit/IOConfigTable.h>
 #import <kernserv/i386/spl.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
@@ -62,6 +63,14 @@ unsigned int biosBitmap[3];
 
 /* External function to look up server configuration attributes */
 extern char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute);
+
+/* Forward declaration for undocumented IOConfigTable method */
+@interface IOConfigTable (UndocumentedMethods)
++ newForConfigData:(const char *)configData;
+@end
+
+/* External function in the Kernel */
+extern const char *findBootConfigString(int index);
 
  /*
  * The protocol we need as an indirect device.
@@ -147,6 +156,80 @@ static void findBIOSMemoryRange(void *bitmap)
             scanPtr += 0x800;
         }
     } while (scanPtr < (unsigned char *)0xF0000);
+}
+
+/*
+ * configTableLookupServerAttribute
+ * Look up an attribute for a named, instance-numbered server in the boot
+ * configuration
+ *
+ * @param busName  The name of the server to look up
+ * @param busId    The instance number of the server to look up
+ * @param attribute  The attribute key to retrieve
+ * @return  Allocated string with the attribute value, or NULL if not found
+ *          Caller must free the returned string with IOFree
+ */
+char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute)
+{
+    int found;
+    int configIndex;
+    const char *configData;
+    id configTable;
+    char *serverName;
+    char *instanceStr;
+    char *attributeValue;
+    char *result;
+    unsigned int length;
+    int instance;
+
+    found = 0;
+    result = NULL;
+    configIndex = 1;
+
+    while (1) {
+        configData = findBootConfigString(configIndex);
+        if (configData == NULL) {
+            return result;
+        }
+
+        configTable = [IOConfigTable newForConfigData:configData];
+        serverName = (char *)[configTable valueForStringKey:"Server Name"];
+        instanceStr = (char *)[configTable valueForStringKey:"Instance"];
+
+        instance = 0;
+        if (instanceStr != NULL) {
+            instance = strtol(instanceStr, NULL, 0);
+        }
+
+        if (strcmp(serverName, busName) == 0 && busId == instance) {
+            found = 1;
+
+            attributeValue = (char *)[configTable valueForStringKey:attribute];
+            if (attributeValue != NULL) {
+                length = strlen(attributeValue);
+                result = (char *)IOMalloc(length + 1);
+                if (result != NULL) {
+                    strcpy(result, attributeValue);
+                }
+                [configTable freeString:attributeValue];
+            }
+        }
+
+        if (serverName != NULL) {
+            [configTable freeString:serverName];
+        }
+        if (instanceStr != NULL) {
+            [configTable freeString:instanceStr];
+        }
+
+        [configTable free];
+
+        configIndex++;
+
+        if (found) {
+            return result;
+        }
+    }
 }
 
 @implementation PCMCIAKernBus

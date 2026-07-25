@@ -67,6 +67,20 @@ static const char *PCMCIAidFieldLabels[] = {
     "Version 2:"
 };
 
+/* Human-readable names for the standard PCMCIA_TPLFID_FUNCTION codes (0-9) */
+static const char *PCMCIAFunctionIDNames[] = {
+    "Multiple Function",
+    "Memory",
+    "Serial Port/Modem",
+    "Parallel Port",
+    "Fixed Disk",
+    "Video Adapter",
+    "Local Area Network",
+    "AIMS",
+    "SCSI Bridge",
+    "CardBus"
+};
+
 /* Helper function to free a string field */
 static void _freeString(char **stringPtr)
 {
@@ -165,6 +179,27 @@ static char *_sanitizeStringCopy(char *str)
     result[validCount] = '\0';
 
     return result;
+}
+
+/*
+ * Return a human-readable name for a PCMCIA_TPLFID_FUNCTION code string
+ * Codes 0-9 map to the standard function names; 0xFE is "Vendor Specific";
+ * anything else returns NULL
+ */
+const char *_stringForFunctionID(const char *funcID)
+{
+    long value;
+
+    value = strtol(funcID, NULL, 0);
+
+    if ((unsigned long)value > 9) {
+        if (value == 0xFE) {
+            return "Vendor Specific";
+        }
+        return NULL;
+    }
+
+    return PCMCIAFunctionIDNames[value];
 }
 
 @implementation PCMCIAid

@@ -543,19 +543,39 @@ def test_build_source_map_buckets_every_function():
     assert [entry["address"] for entry in document["boundary_disputed"]] == [0x1030]
 
 
-def test_build_source_map_merges_symbol_table_names():
-    analysis = _analysis([_function(0x2000, 0x10, [])])
+def test_symbol_table_names_drive_lookup_without_entering_reference_names():
+    """The analysis calls it sub_2000; the symbol table knows it as _helper.
+
+    Lookup must succeed via the symbol-table name, but reference_names must
+    still mirror the analysis exactly or schema.py:267 rejects the document.
+    """
+    analysis = _analysis([_function(0x2000, 0x10, ["sub_2000"])])
     macho = {
         "symbols": [
-            {"name": "_helper", "address": 0x2000, "binding": "local", "section": "__text"}
+            {
+                "name": "_helper",
+                "address": 0x2000,
+                "binding": "local",
+                "section": "__TEXT,__text",
+            }
         ]
     }
 
     document = build_source_map(analysis, macho, {"_helper": [("src/driver/x.c", 4)]})
 
-    assert document["mapped"][0]["reference_names"] == ["_helper"]
+    assert document["mapped"][0]["reference_names"] == ["sub_2000"]
+    assert document["mapped"][0]["source_path"] == "src/driver/x.c"
     assert document["mapped"][0]["source_line"] == 4
+
+
+def test_build_source_map_rejects_a_nameless_analysis_function():
+    analysis = _analysis([_function(0x3000, 0x10, [])])
+
+    with pytest.raises(ValueError, match="has no names"):
+        build_source_map(analysis, {"symbols": []}, {})
 ```
+
+Add `import pytest` at the top of the test file if it is not already there.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -578,16 +598,24 @@ def build_source_map(reference_analysis, macho_document, sites, *, disputed=None
 
     for function in reference_analysis["functions"]:
         address = function["address"]
-        names = sorted(set(function["names"]) | set(symbols.get(address, [])))
+        # reference_names must mirror the analysis exactly: schema.py:267 requires
+        # entry["reference_names"] == sorted(expected["names"]). Symbol-table names
+        # still drive site lookup, they just don't enter the output field.
+        names = sorted(function["names"])
         if not names:
-            names = [f"sub_{address:x}"]
+            raise ValueError(
+                f"analysis function at address {address} has no names; "
+                "source-map-v1 requires at least one and the semantic validator "
+                "requires an exact match against the analysis"
+            )
         entry = {
             "address": address,
             "size": function["size"],
             "reference_names": names,
         }
 
-        candidates = sorted({site for name in names for site in sites.get(name, [])})
+        lookup = set(names) | set(symbols.get(address, []))
+        candidates = sorted({site for name in lookup for site in sites.get(name, [])})
 
         if address in disputed:
             boundary.append(

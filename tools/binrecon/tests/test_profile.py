@@ -228,3 +228,23 @@ def test_loaded_profile_document_is_deeply_immutable(tmp_path):
         profile.document["reference"]["path"] = "changed.bin"
     with pytest.raises(AttributeError):
         profile.document["comparison"]["entry_points"].append("entry")
+
+
+def test_load_profile_allows_missing_rebuilt(tmp_path):
+    document = _profile_document()
+    del document["rebuilt"]
+    profile_path = _write_profile(tmp_path, document)
+
+    profile = load_profile(profile_path, {})
+
+    assert profile.rebuilt is None
+    assert profile.rebuilt_identity is None
+    assert profile.reference.path == (tmp_path / "reference.bin").resolve()
+
+
+def test_load_profile_still_loads_rebuilt_when_present(tmp_path):
+    profile = load_profile(_write_profile(tmp_path), {})
+
+    assert profile.rebuilt is not None
+    assert profile.rebuilt.path == (tmp_path / "rebuilt.bin").resolve()
+    assert profile.rebuilt_identity is not None

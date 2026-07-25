@@ -4,7 +4,7 @@
   "title": "Binrecon profile, version 1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "name", "architecture", "reference", "rebuilt", "analyzers", "comparison", "output_dir"],
+  "required": ["schema_version", "name", "architecture", "reference", "analyzers", "comparison", "output_dir"],
   "properties": {
     "schema_version": {"const": "profile-v1"},
     "name": {"type": "string"},

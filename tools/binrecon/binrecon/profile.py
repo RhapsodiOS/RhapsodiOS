@@ -24,11 +24,11 @@ class Profile:
     name: str
     architecture: str
     reference: ArtifactSpec
-    rebuilt: ArtifactSpec
+    rebuilt: ArtifactSpec | None
     output_dir: Path
     document: Mapping[str, object]
     reference_identity: InputIdentity
-    rebuilt_identity: InputIdentity
+    rebuilt_identity: InputIdentity | None
 
 
 class ProfileError(ValueError):
@@ -44,9 +44,12 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
     reference, reference_identity = _load_artifact(
         "reference", document["reference"], base_dir, environ
     )
-    rebuilt, rebuilt_identity = _load_artifact(
-        "rebuilt", document["rebuilt"], base_dir, environ
-    )
+    if "rebuilt" in document:
+        rebuilt, rebuilt_identity = _load_artifact(
+            "rebuilt", document["rebuilt"], base_dir, environ
+        )
+    else:
+        rebuilt, rebuilt_identity = None, None
     output_dir = _resolve_from(base_dir, Path(document["output_dir"]), strict=False)
 
     return Profile(

@@ -263,7 +263,7 @@
         "_setBit"
       ],
       "size": 87,
-      "source_line": 225,
+      "source_line": 435,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -272,7 +272,7 @@
         "_computeChecksum"
       ],
       "size": 40,
-      "source_line": 273,
+      "source_line": 483,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -281,7 +281,7 @@
         "_clearPnPConfigRegisters"
       ],
       "size": 367,
-      "source_line": 125,
+      "source_line": 335,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -290,7 +290,7 @@
         "_readIsolationBit"
       ],
       "size": 42,
-      "source_line": 205,
+      "source_line": 415,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -299,7 +299,7 @@
         "_isolateCard"
       ],
       "size": 227,
-      "source_line": 295,
+      "source_line": 505,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -479,7 +479,7 @@
         "+[PnPBios setVerbose:]"
       ],
       "size": 16,
-      "source_line": 361,
+      "source_line": 209,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -488,7 +488,7 @@
         "+[PnPBios Present:]"
       ],
       "size": 99,
-      "source_line": 297,
+      "source_line": 145,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -497,7 +497,7 @@
         "-[PnPBios setupSegments]"
       ],
       "size": 587,
-      "source_line": 621,
+      "source_line": 478,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -506,7 +506,7 @@
         "-[PnPBios releaseSegments]"
       ],
       "size": 111,
-      "source_line": 762,
+      "source_line": 612,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -515,8 +515,17 @@
         "-[PnPBios free]"
       ],
       "size": 93,
-      "source_line": 486,
+      "source_line": 327,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
+    },
+    {
+      "address": 14464,
+      "reference_names": [
+        "_call_bios"
+      ],
+      "size": 71,
+      "source_line": 306,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
       "address": 14536,
@@ -524,7 +533,7 @@
         "-[PnPBios getPnPConfig:]"
       ],
       "size": 158,
-      "source_line": 580,
+      "source_line": 433,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -533,7 +542,7 @@
         "-[PnPBios getNumNodes:AndSize:]"
       ],
       "size": 191,
-      "source_line": 543,
+      "source_line": 390,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -542,7 +551,7 @@
         "-[PnPBios getDeviceNode:ForHandle:]"
       ],
       "size": 215,
-      "source_line": 507,
+      "source_line": 348,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -551,8 +560,44 @@
         "-[PnPBios init]"
       ],
       "size": 166,
-      "source_line": 374,
+      "source_line": 222,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
+    },
+    {
+      "address": 15272,
+      "reference_names": [
+        "-[PnPArgStack initWithData:Selector:]"
+      ],
+      "size": 79,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPArgStack.m"
+    },
+    {
+      "address": 15352,
+      "reference_names": [
+        "-[PnPArgStack reset]"
+      ],
+      "size": 37,
+      "source_line": 54,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPArgStack.m"
+    },
+    {
+      "address": 15392,
+      "reference_names": [
+        "-[PnPArgStack push:]"
+      ],
+      "size": 84,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPArgStack.m"
+    },
+    {
+      "address": 15476,
+      "reference_names": [
+        "-[PnPArgStack pushFarPtr:]"
+      ],
+      "size": 108,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPArgStack.m"
     },
     {
       "address": 15584,
@@ -1413,41 +1458,6 @@
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 14464,
-      "reference_names": [
-        "_call_bios"
-      ],
-      "size": 71
-    },
-    {
-      "address": 15272,
-      "reference_names": [
-        "-[PnPArgStack initWithData:Selector:]"
-      ],
-      "size": 79
-    },
-    {
-      "address": 15352,
-      "reference_names": [
-        "-[PnPArgStack reset]"
-      ],
-      "size": 37
-    },
-    {
-      "address": 15392,
-      "reference_names": [
-        "-[PnPArgStack push:]"
-      ],
-      "size": 84
-    },
-    {
-      "address": 15476,
-      "reference_names": [
-        "-[PnPArgStack pushFarPtr:]"
-      ],
-      "size": 108
-    },
     {
       "address": 28762,
       "reference_names": [

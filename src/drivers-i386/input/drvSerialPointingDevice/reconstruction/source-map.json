@@ -1,0 +1,168 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_mainLoop"
+      ],
+      "size": 26,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 28,
+      "reference_names": [
+        "-[SerialPointingDevice mouseInit:]"
+      ],
+      "size": 880,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 908,
+      "reference_names": [
+        "-[SerialPointingDevice free]"
+      ],
+      "size": 105,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1016,
+      "reference_names": [
+        "-[SerialPointingDevice getResolution]"
+      ],
+      "size": 16,
+      "source_line": 532,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1032,
+      "reference_names": [
+        "-[SerialPointingDevice setEventTarget:]"
+      ],
+      "size": 72,
+      "source_line": 540,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1104,
+      "reference_names": [
+        "-[SerialPointingDevice getIntValues:forParameter:count:]"
+      ],
+      "size": 93,
+      "source_line": 404,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1200,
+      "reference_names": [
+        "-[SerialPointingDevice setIntValues:forParameter:count:]"
+      ],
+      "size": 263,
+      "source_line": 460,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1464,
+      "reference_names": [
+        "-[SerialPointingDevice mainLoop:]"
+      ],
+      "size": 305,
+      "source_line": 593,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1772,
+      "reference_names": [
+        "-[SerialPointingDevice getByte:sleep:]"
+      ],
+      "size": 103,
+      "source_line": 556,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 1876,
+      "reference_names": [
+        "-[SerialPointingDevice detect]"
+      ],
+      "size": 1379,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 3256,
+      "reference_names": [
+        "-[SerialPointingDevice MSProtocol]"
+      ],
+      "size": 442,
+      "source_line": 649,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 3700,
+      "reference_names": [
+        "-[SerialPointingDevice MPlusProtocol]"
+      ],
+      "size": 22,
+      "source_line": 779,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 3724,
+      "reference_names": [
+        "-[SerialPointingDevice FiveBProtocol]"
+      ],
+      "size": 598,
+      "source_line": 788,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 4324,
+      "reference_names": [
+        "-[SerialPointingDevice MMProtocol]"
+      ],
+      "size": 40,
+      "source_line": 767,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 4364,
+      "reference_names": [
+        "-[SerialPointingDevice RBProtocol]"
+      ],
+      "size": 40,
+      "source_line": 893,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    },
+    {
+      "address": 4404,
+      "reference_names": [
+        "-[SerialPointingDevice UnknownProtocol]"
+      ],
+      "size": 40,
+      "source_line": 905,
+      "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
+    }
+  ],
+  "reference_sha256": "59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 4444,
+      "reference_names": [
+        "+[SerialPointingDeviceKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4456,
+      "reference_names": [
+        "+[SerialPointingDeviceVersion driverKitVersionForSerialPointingDevice]"
+      ],
+      "size": 12
+    }
+  ]
+}

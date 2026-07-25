@@ -34,9 +34,9 @@
 /* External reference to global reg_base from PCIC.m */
 extern unsigned int reg_base;
 
-/* External helper functions */
-extern void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
-extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+/* Internal helper functions */
+static void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
 
 @implementation PCICWindow
 
@@ -344,3 +344,99 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
 }
 
 @end
+
+/*
+ * Configure a memory window
+ * Sets up PCIC registers for memory window mapping
+ */
+static void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned int startAddr;
+    unsigned int stopAddr;
+    unsigned int cardOffset;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x10 + (window * 8) for memory windows */
+    /* Each memory window uses 8 registers:
+     * +0: Memory window start address low (bits 12-19)
+     * +1: Memory window start address high (bits 20-23)
+     * +2: Memory window stop address low (bits 12-19)
+     * +3: Memory window stop address high (bits 20-23)
+     * +4: Card offset address low (bits 12-19)
+     * +5: Card offset address high (bits 20-25) + flags
+     * +6: Reserved
+     * +7: Reserved
+     */
+    windowOffset = 0x10 + (window * 8);
+
+    /* Memory addresses are shifted right by 12 bits (4KB pages) */
+    startAddr = sysAddr >> 12;
+    stopAddr = (sysAddr + size - 1) >> 12;
+    cardOffset = cardAddr >> 12;
+
+    /* Write system start address */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0x0F));
+
+    /* Write system stop address */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0x0F));
+
+    /* Write card offset address */
+    outb(reg_base, socketOffset + windowOffset + 4);
+    outb(reg_base + 1, (unsigned char)(cardOffset & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 5);
+    outb(reg_base + 1, (unsigned char)((cardOffset >> 8) & 0x3F));
+}
+
+/*
+ * Configure an I/O window
+ * Sets up PCIC registers for I/O window mapping
+ */
+static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned short startAddr;
+    unsigned short stopAddr;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x08 + (window * 4) for I/O windows */
+    /* Each I/O window uses 4 registers:
+     * +0: I/O window start address low
+     * +1: I/O window start address high
+     * +2: I/O window stop address low
+     * +3: I/O window stop address high
+     */
+    windowOffset = 0x08 + (window * 4);
+
+    /* Calculate start and stop addresses */
+    startAddr = (unsigned short)sysAddr;
+    stopAddr = (unsigned short)(sysAddr + size - 1);
+
+    /* Write start address low byte */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+
+    /* Write start address high byte */
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0xFF));
+
+    /* Write stop address low byte */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+
+    /* Write stop address high byte */
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0xFF));
+}

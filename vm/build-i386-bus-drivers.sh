@@ -1,55 +1,106 @@
 #!/bin/sh
-# Build the i386 bus drivers on the Rhapsody guest; stage artifacts.
-# Usage: build-i386-bus-drivers.sh drvPCIBus [drvPCMCIABus ...]
+# Build i386 drvPCIBus, drvEISABus, drvPCMCIABus; stage reloc bundles.
+# Userspace helpers (PostLoad/PnPDump) often fail on a PPC host — accept
+# success when the loadable *_reloc exists.
 set -e
-export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/build/tools/usr/bin:/bin:/usr/bin:/sbin:/usr/sbin
-
-if [ $# -eq 0 ]; then
-	echo "usage: $0 drvPCIBus [drvPCMCIABus ...]" >&2
-	exit 1
-fi
-
-if [ -x /usr/bin/gnumake ] && [ ! -x /usr/local/bin/make ]; then
-	mkdir -p /usr/local/bin
-	ln -sf /usr/bin/gnumake /usr/local/bin/make
-fi
-
+export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
+BUS=/build/source/src/drivers-i386/bus
 mkdir -p "$OUT"
 
-for driver in "$@"; do
-	D=/build/source/src/drivers-i386/bus/$driver
-	if [ ! -f "$D/Makefile" ]; then
-		echo "missing $D/Makefile" >&2
-		exit 1
-	fi
+# Ensure framework PrivateHeaders symlink (from prior kernel build session).
+FW=/System/Library/Frameworks/System.framework
+if [ ! -L "$FW/PrivateHeaders" ]; then
+	echo "WARNING: PrivateHeaders is not a symlink; builds may miss kern headers"
+fi
 
-	# Strip CR from makefiles under this tree (Windows sync).
-	find "$D" -type f \( -name Makefile -o -name 'Makefile.*' -o -name '*.make' \) -print |
+build_one() {
+	name="$1"	# PCIBus / EISABus / PCMCIABus
+	dir="$2"	# drvPCIBus / ...
+	proj="$3"	# PCIBus.drvproj / ...
+	src="$BUS/$dir"
+	if [ ! -f "$src/Makefile" ]; then
+		echo "MISSING $src/Makefile" >&2
+		return 1
+	fi
+	echo "======== build $name ($dir) ========"
+	cd "$src"
+	# Strip CR from makefiles
+	find . -type f \( -name Makefile -o -name 'Makefile.*' \) -print |
 	while read f; do
 		tr -d '\r' < "$f" > /tmp/rhap_cr && mv /tmp/rhap_cr "$f"
 	done
 
-	echo "=== build $driver ==="
-	cd "$D"
-	rm -rf "/tmp/$driver-dst"
-	mkdir -p "/tmp/$driver-dst"
-	gnumake clean 2>/dev/null || true
-	gnumake DSTROOT="/tmp/$driver-dst" install 2>&1 | tee "$OUT/$driver-build.log"
+	# Best-effort build; ignore overall make status if reloc lands.
+	set +e
+	gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 2>&1
+	ec=$?
+	set -e
+	echo "make exit=$ec for $name"
 
-	mkdir -p "$OUT/$driver"
-	find "/tmp/$driver-dst" -type d -name '*.config' -print > /tmp/found
-	if [ ! -s /tmp/found ]; then
-		echo "no .config produced for $driver" >&2
-		find "/tmp/$driver-dst" | head -80 >&2
-		exit 1
+	reloc=
+	# Prefer freshly built .config next to project
+	for cand in \
+		"$src/$name.config/${name}_reloc" \
+		"$src/$proj/$name.config/${name}_reloc" \
+		"$src/${name}.config/${name}_reloc"
+	do
+		if [ -f "$cand" ]; then
+			reloc=$cand
+			break
+		fi
+	done
+	if [ -z "$reloc" ]; then
+		reloc=`find "$src" -name "${name}_reloc" -type f 2>/dev/null | head -1`
 	fi
-	while read d; do
-		echo "found $d"
-		cp -rp "$d" "$OUT/$driver/"
-	done < /tmp/found
-done
+	if [ -z "$reloc" ] || [ ! -f "$reloc" ]; then
+		echo "FAILED: no ${name}_reloc for $name" >&2
+		find "$src" \( -name '*reloc*' -o -name '*.config' \) 2>/dev/null | head -40 >&2 || true
+		return 1
+	fi
+	file "$reloc"
 
-echo "=== artifacts ==="
-find "$OUT" -name '*_reloc' -print | sort
-echo "=== build-i386-bus-drivers done ==="
+	dst="$OUT/$dir/$name.config"
+	rm -rf "$dst"
+	mkdir -p "$dst"
+	cp -p "$reloc" "$dst/"
+	# Tables / strings from drvproj
+	if [ -d "$src/$proj" ]; then
+		for f in "$src/$proj"/*.table; do
+			[ -f "$f" ] || continue
+			cp -p "$f" "$dst/"
+		done
+		if [ -d "$src/$proj/English.lproj" ]; then
+			cp -rp "$src/$proj/English.lproj" "$dst/"
+		fi
+	fi
+	if [ ! -f "$dst/Default.table" ] && [ -f "$src/$proj/Default.table" ]; then
+		cp -p "$src/$proj/Default.table" "$dst/"
+	fi
+
+	cat > "$OUT/$dir/README.txt" <<EOF
+i386 $name ($dir)
+-----------------
+${name}_reloc is the i386 loadable kernel server (kl_ld).
+Userspace helpers (PostLoad / PnPDump) may be absent: they need i386
+crt/libDriver which this PPC guest does not provide.
+make exit status was: $ec
+EOF
+	echo "staged $dst"
+	ls -la "$dst"
+	return 0
+}
+
+fail=0
+# Under set -e, use `|| fail=1` so a failed driver does not abort the script.
+build_one PCIBus drvPCIBus PCIBus.drvproj || fail=1
+build_one EISABus drvEISABus EISABus.drvproj || fail=1
+build_one PCMCIABus drvPCMCIABus PCMCIABus.drvproj || fail=1
+
+echo "======== summary ========"
+find "$OUT/drvPCIBus" "$OUT/drvEISABus" "$OUT/drvPCMCIABus" -type f 2>/dev/null | sort || true
+file "$OUT/drvPCIBus/PCIBus.config/PCIBus_reloc" \
+	"$OUT/drvEISABus/EISABus.config/EISABus_reloc" \
+	"$OUT/drvPCMCIABus/PCMCIABus.config/PCMCIABus_reloc" 2>&1 || true
+echo "=== bus-drivers done fail=$fail ==="
+exit $fail

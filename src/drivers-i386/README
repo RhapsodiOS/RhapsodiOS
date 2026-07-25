@@ -5,8 +5,8 @@ bus
  * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
  * drvPCIBus - complete; reconstructed against the reference binary
  * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * Intel824X0PCI - complete
- * Intel82365PCMCIA - needs compiled and then tested
+ * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
+ * Intel82365PCMCIA - reconstructed against the reference binary, fixes applied except the four PCMCIA protocol adoptions, not yet compiled or tested
 
 ide
  * drvEIDE - complete

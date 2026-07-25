@@ -109,12 +109,25 @@ unsigned short  kernDataSel = 0;
  *   __bios32PnP  0x6faa   mov edx, [0x80dc]      ; expects bb, gets bb->edx
  *
  * Both slots are address 0x80dc; IDA and Ghidra agree on all four
- * instructions.  _PnPEntry therefore destroys the stashed `bb` pointer
- * before the BIOS is even entered, and on return __bios32PnP writes the
- * whole output register block through whatever bb->edx happened to be.
- * bb->edx is zero on every call this driver makes (setupSegments zeroes
- * the block and nothing sets edx), so the reference writes to addresses
- * 0x04..0x28 - a null-page store.
+ * instructions.
+ *
+ * The one way this could have been harmless is if _PnPEntry ran with a
+ * different DS, so that ds:save_edx named a different linear byte.  It does
+ * not.  __bios32PnP loads DS from bb+0x22 (the "popw %ds" below), and
+ * -[PnPBios setupSegments] sets that field to 0x10 - "mov word ptr
+ * [esi+2Ah], 10h" at reference 0x3730, with _bb at ivar offset 8.  0x10 is
+ * KDS_SEL, the flat kernel data selector, which is also the DS the C caller
+ * was already running with; the pop is a reload of the same selector.  Both
+ * stores therefore hit the same address, and the collision is real.  (This
+ * also explains why _PnPEntry can reach _PnPEntry_argStackBase in __DATA and
+ * targ_addr in __TEXT at their ordinary relocated addresses.)
+ *
+ * So _PnPEntry destroys the stashed `bb` pointer before the BIOS is even
+ * entered, and on return __bios32PnP writes the whole output register block
+ * through whatever bb->edx happened to be.  bb->edx is zero on every call
+ * this driver makes (setupSegments zeroes the block and nothing sets edx),
+ * so the reference stores to kernel virtual 0x04..0x28 - an unmapped
+ * null-page write on every single BIOS call.
  *
  * save_edx is the only one of the seven scratch slots with this overlap;
  * save_eax, save_ecx, save_es, save_flag, new_eax and new_edx are each
@@ -123,6 +136,12 @@ unsigned short  kernDataSel = 0;
  * slot, save_bb, and _PnPEntry keeps save_edx exactly as the reference
  * has it.  All fourteen reference symbol names are still emitted; save_bb
  * is one additional local.
+ *
+ * TO RESTORE BYTE-EXACT FIDELITY TO APPLE'S BINARY: change the two lines
+ * below marked "save_bb divergence" to use save_edx instead of save_bb
+ * (that is, "movl %edx, save_edx" and "movl save_edx, %edx"), and drop the
+ * save_bb slot from the .data block.  Nothing else changes.  Expect the
+ * null-page store described above on the first PnP BIOS call.
  */
 
 __asm__(
@@ -152,7 +171,8 @@ __asm__(
     "    movl  0x0c(%edx), %ecx\n"       /* bb->ecx                        */
     "    movl  0x14(%edx), %edi\n"       /* bb->edi                        */
     "    movl  0x18(%edx), %esi\n"       /* bb->esi                        */
-    "    movl  %edx, save_bb\n"          /* stash bb itself - see note     */
+    "    movl  %edx, save_bb\n"          /* save_bb divergence (1 of 2):   */
+                                         /* reference has save_edx here    */
     "    movl  0x04(%edx), %eax\n"
     "    movl  %eax, new_eax\n"          /* bb->eax staged                 */
     "    movl  0x10(%edx), %eax\n"
@@ -191,7 +211,8 @@ __asm__(
     "    movw  %ax, save_es\n"
 
     "    movl  %edx, new_edx\n"
-    "    movl  save_bb, %edx\n"          /* recover bb - see note          */
+    "    movl  save_bb, %edx\n"          /* save_bb divergence (2 of 2):   */
+                                         /* reference has save_edx here    */
     "    movl  new_edx, %eax\n"
     "    movl  %eax, 0x10(%edx)\n"       /* bb->edx                        */
     "    movl  save_eax, %eax\n"

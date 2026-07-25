@@ -77,6 +77,17 @@
  *                                  its selector is the BiosSelector argument)
  * - GDT 19 (0x98): 32-bit code   -> _PnPEntry (aliases the thunk to offset 0)
  *
+ * DESCRIPTOR BASES ARE LINEAR ADDRESSES:
+ * Segmentation happens before paging, so a descriptor base is a linear
+ * address, not a kernel virtual one.  This kernel maps its own virtual range
+ * at KERNEL_LINEAR_BASE (machdep/i386/pmap.h; gdt_init gives KCS_SEL/KDS_SEL
+ * exactly that base), so kernel_virtual + KERNEL_LINEAR_BASE == linear.  The
+ * two descriptors below whose base is a kernel pointer - GDT 17 (_kData) and
+ * GDT 19 (_PnPEntry) - therefore add KERNEL_LINEAR_BASE.  The two whose base
+ * comes out of the $PnP installation-check structure - GDT 16 (pm16cseg) and
+ * GDT 18 (pm16dseg) - are already segment base addresses as the PnP BIOS
+ * Specification defines them and must NOT be translated.
+ *
  * WHY GDT 19 IS CRITICAL:
  * The 16-bit BIOS returns with a far return that only pops a 16-bit IP.  By
  * giving GDT 19 a base of _PnPEntry, the thunk appears at offset 0 of that
@@ -507,6 +518,12 @@ typedef struct {
      * Setup GDT 16 (PNP_CODE16_SEL) - 16-bit code segment for BIOS
      * Base: _biosCodeSegAddr (pm16cseg from PnP BIOS structure)
      * Limit: 0xFFFF (64KB), Granularity: byte, Size: 16-bit
+     *
+     * No KERNEL_LINEAR_BASE here: this base arrives from the $PnP structure
+     * already in the form the PnP BIOS Specification wants installed in a
+     * descriptor.  The reference agrees - -[PnPBios setupSegments] at 0x35d3
+     * is a bare "mov edx, [esi+38h]" with no add, and -[PnPBios init] at
+     * 0x3b60 stores the raw dword from $PnP+0x13 into that ivar.
      */
     base = _biosCodeSegAddr;
     entryPnPCode16->limitLow = 0xFFFF;
@@ -523,6 +540,10 @@ typedef struct {
      *
      * This descriptor's selector is the BiosSelector argument every PnP
      * BIOS function takes as its last parameter.
+     *
+     * No KERNEL_LINEAR_BASE here either, for the same reason as GDT 16: the
+     * reference reads "mov edx, [esi+40h]" at 0x361f with no add, and -init
+     * at 0x3b69 stores the raw dword from $PnP+0x1D.
      */
     base = _dataSegAddr;
     entryPnPData32->limitLow = 0xFFFF;
@@ -541,8 +562,12 @@ typedef struct {
      *
      * This is the segment half of every far pointer PnPArgStack pushes, so
      * the 16-bit BIOS dereferences it; it must be a 16-bit descriptor.
+     *
+     * _kData is an IOMalloc'd kernel virtual pointer, so it needs the linear
+     * translation.  The reference does exactly this: 0x36c6 "mov edx,
+     * [esi+48h]" followed at 0x36c9 by "add edx, 0C0000000h".
      */
-    base = (unsigned int)_kData;
+    base = (unsigned int)_kData + KERNEL_LINEAR_BASE;
     entryKData->limitLow = 0xFFFF;
     entryKData->baseLow = (unsigned short)base;
     entryKData->baseMid = (unsigned char)(base >> 16);
@@ -557,8 +582,15 @@ typedef struct {
      *
      * This segment makes _PnPEntry appear at offset 0, so the 16-bit far
      * return address it pushes for the BIOS fits in 16 bits.
+     *
+     * _PnPEntry is a kernel text address, so it needs the linear translation
+     * too.  The reference stores the constant 0xC0006FEC at 0x3675/0x3684;
+     * 0x6FEC is __PnPEntry's link-time address and both immediates carry a
+     * scattered i386 absolute relocation against __TEXT,__text, so the linker
+     * relocates the symbol part and the 0xC0000000 bias survives.  Written
+     * symbolically here rather than as a baked-in constant.
      */
-    base = (unsigned int)_PnPEntry;
+    base = (unsigned int)_PnPEntry + KERNEL_LINEAR_BASE;
     entryPnPCS32->limitLow = 0xFFFF;
     entryPnPCS32->baseLow = (unsigned short)base;
     entryPnPCS32->baseMid = (unsigned char)(base >> 16);

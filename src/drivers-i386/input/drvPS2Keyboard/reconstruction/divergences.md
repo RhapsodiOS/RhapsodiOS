@@ -1,0 +1,1205 @@
+# drvPS2Keyboard divergences
+
+Reference: `PS2Keyboard_reloc`, SHA-256 `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A`
+Analyses: IDA 9.2, angr 9.3.0
+Source tree: committed `HEAD` on `qemu-debug-loop`, working tree clean for
+`src/drivers-i386/input/drvPS2Keyboard/**` at the start of this pass.
+
+This is a report pass. It changed no driver source. Every finding below is Task 8's work.
+
+## Stated limitation: two analyzers, not three
+
+**Ghidra is disabled in this driver's profile** (`tools/binrecon/profiles/ps2keyboard.json`,
+`analyzers.ghidra.enabled: false`). With Ghidra enabled, normalization aborts with
+`Ghidra relocation operand metadata is ambiguous`. That is a known binrecon limitation, approved
+by the user, and not something this pass works around. The consequences for the evidence here:
+
+- `tools/binrecon/out/ps2keyboard/published/` holds `analysis-reference-ida.json`,
+  `analysis-reference-angr.json` and `consensus-reference.json`. There is **no**
+  `analysis-reference-ghidra.json`.
+- `run-summary.json`'s `analyzers` list has two entries, and every `analyzer_agreement.analyzers`
+  in `ledger.json` reads `["IDA", "angr"]`.
+- The analyzer-disagreement section below compares **IDA against angr only**. Every partition
+  claim in this document rests on two analyzers, not three.
+
+The analyze run was performed and verified by the controller; this pass confirmed the existing
+state rather than re-running it. `run-summary.json` reports `complete: true` and
+`reference_sha256` `AB413CA3…`, matching the brief. It exits 1 on this reference-only profile
+because acceptance needs a rebuilt artifact; the gate is `complete: true`, never the exit code.
+
+## No baseline build
+
+This pass established no baseline and did not build. Task 8 establishes the baseline before its
+first source edit, with `vm/build-i386-input-recon.sh`. No size is asserted here. The reference
+`__TEXT,__text` is 4952 bytes and the whole reference file is 27441 bytes on disk, but our build
+is unstripped and is not comparable without a measured baseline.
+
+## Examination depth
+
+All 49 reference functions were partitioned; **47 are mapped to source, 2 are build-generated
+glue.** For every one of the 47 mapped functions the **complete IDA instruction listing was read**
+— there is no function in this driver whose body was skimmed. The 19 jump-table case bodies of
+`_scancodeToKeyEvent` were additionally verified programmatically by decoding
+`jpt_E25` at `__TEXT,__text:3628` and reading each target's store, rather than by eye.
+
+Ledger status then follows the convention: a function with a `divergences.md` entry stays
+`unexamined` however carefully it was read.
+
+| Status | Count | Meaning here |
+| --- | --- | --- |
+| `assembly-matched` | 8 | full listing read instruction by instruction, no divergence found |
+| `unexamined` | 39 | full listing read, but the function carries at least one finding below |
+| `intentional-mismatch` | 2 | build-generated Kernel Server glue, not present in source |
+
+No entry is marked `control-flow-confirmed` or `signature-confirmed`: nothing in this driver was
+examined only to block shape.
+
+The eight `assembly-matched` functions are `-[PS2Controller getHandler:level:argument:forInterrupt:]`
+(1388), `-[PS2Controller setLEDs:]` (1472), `_clearOutputBuffer` (1960), `+[PS2Keyboard deviceStyle]`
+(2404), `-[PS2Keyboard interfaceId]` (4340), `-[PS2Keyboard handlerId]` (4356),
+`-[PS2Keyboard setAlphaLockFeedback:]` (4372) and `-[PS2Keyboard relinquishOwnership:]` (4632).
+
+## Function partition: sizes
+
+IDA's extents run 0–3 bytes under the symbol-to-symbol gap because the linker pads with `nop`.
+Measured across all 49: 15 functions have no padding, 13 have 1 byte, 13 have 2 and 8 have 3.
+This is normal and is **not** an analyzer disagreement. The brief's symbol-gap table was used to
+identify functions, never to assert sizes.
+
+## Analyzer disagreement: none on the partition
+
+IDA and angr agree **exactly** on all 49 function start addresses and on all 49 sizes. There are
+zero size disagreements and zero IDA-only addresses.
+
+angr reports 120 functions to IDA's 49. The 71 extra entries are not a partition dispute:
+
+- 69 are interior addresses of functions IDA had already delimited — branch targets and the
+  instruction after a `retn` in the inter-function `nop` padding. Examples: 54 (inside
+  `_lock_controller`), 2038 (inside `_sendControllerData`), 3907–4019 (the `_scancodeToKeyEvent`
+  jump-table case bodies).
+- 2 are not code at all: 5418 and 5578 are `_PS2Keyboard_VERS_STRING` and `_PS2Keyboard_VERS_NUM`
+  in `__TEXT,__const`, which angr's recovery mistook for function starts.
+
+angr also splits basic blocks more finely than IDA in 32 of the 49 functions while recording the
+same call targets. **IDA is authoritative for the partition**, per the effort's convention, and
+the disagreement is recorded rather than resolved.
+
+## Configuration table
+
+`PS2Keyboard.drvproj/Default.table` already matched the reference before Task 2 and is unchanged.
+
+Its `"Driver Version"` line is a verbatim copy of Apple's build stamp:
+
+```
+"Driver Version" = "PROGRAM:PS2Keyboard  PROJECT:drvPS2Keyboard-11  DEVELOPER:root  BUILT:Sat Mar 28 22:03:53 PST 1998";
+```
+
+That line is **out of the comparison** and is deliberately left alone rather than widening the
+diff — a rebuild cannot reproduce a 1998 timestamp, and rewriting it would only add noise.
+
+**Correction to the brief.** The brief states drvPS2Keyboard is the only one of the five drivers
+in this effort carrying such a stamp in checked-in source. That is not so:
+`src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/Default.table` carries one too
+(`BUILT:Sat Mar 28 22:08:58 PST 1998`). Of the five, **two** carry a verbatim stamp —
+drvPS2Keyboard and Intel82365PCMCIA — and the other three (Intel824X0PCI, drvPS2Mouse,
+drvSerialPointingDevice) do not. Both stamped tables are left alone on the same reasoning.
+
+## Unmapped: build-generated
+
+Two functions have no source and are expected to have none. Both are emitted by the Kernel Server
+project type together with `Load_Commands.sect`:
+
+- `+[PS2KeyboardKernelServerInstance kernelServerInstance]` (4928, 12 bytes), typed
+  `^^{?}8@8:12`, returns `&_PS2Keyboard_instance` (`__DATA,__common:8920`).
+- `+[PS2KeyboardVersion driverKitVersionForPS2Keyboard]` (4940, 12 bytes), typed `i8@8:12`,
+  returns the DriverKit version 500.
+
+Both are `intentional-mismatch` in the ledger. `Load_Commands.sect` is present in
+`PS2Keyboard.drvproj/PS2Keyboard.lksproj/`, is named in that directory's `Makefile` `OTHERSRCS`,
+and is 164 bytes — matching the reference's `Loaded Server,Load Commands` section byte count of
+164. No action needed.
+
+## File boundary: confirmed, with two functions on the wrong side
+
+The brief's link-order boundary is confirmed. Reference addresses 0–2404 are `PS2Controller`
+material and 2404–4952 are `PS2Keyboard` material, and the boundary sits between
+`_NewStealKeyboardEvent` (2320) and `+[PS2Keyboard deviceStyle]` (2404).
+
+Of the 47 mapped functions, **45 sit on the side the boundary predicts.** All 25 functions the
+map resolved automatically land correctly. Two do not — see Finding 18.
+
+## Summary
+
+| # | Finding | Where |
+| --- | --- | --- |
+| 1 | `PS2Controller` keeps its state in file-scope globals, not ivars | class + 9 functions |
+| 2 | `becomeOwner:` and `desireOwnership:` return `int`, not `BOOL` | 4416, 4828 |
+| 3 | `_ownerLock` is never initialized; there is no `NXLock` class | 2760, ownership trio |
+| 4 | Thirteen C functions are spelled one underscore too deep, not fourteen | both files |
+| 5 | Nine functions are `static` in the reference; `_exported_funcs` is not | both files |
+| 6 | `_keyboardDataPresent` ignores the software queue and tests the wrong bits | 484 |
+| 7 | `+[PS2Keyboard probe:]` passes a literal `0x910`, not `&_NewStealKeyboardEvent` | 2428 |
+| 8 | `EscapeSequence` is 12 words with an inline sequence array | 756, 964, 1100 |
+| 9 | `KeySequenceEntry` field 0 is the key count, not `next` — ours is 0 | data |
+| 10 | The escape table has two entries, not four | data |
+| 11 | `enqueueKeyEvent:` swaps the timestamp words and inverts `goingDown` | 3420 |
+| 12 | The NumLock check reads `__kbdBitVector`, not a separate `_keyboardState` | 3520 |
+| 13 | `initWithController:` performs no ownership or counter initialization | 2760 |
+| 14 | Two `readConfigTable:` log strings differ; behaviour confirmed identical | 2588 |
+| 15 | `_sendControllerCommand` does not record `_lastSent` | 2132 |
+| 16 | The port counter is `lock inc` on `_xxx.86`; our `LOCK()` is empty | 2004, 2132 |
+| 17 | `requiredProtocols` returns a list holding `PS2ControllerExported` | 2416, data |
+| 18 | Two functions are in the wrong source file | 484, 2320 |
+| 19 | `interruptOccurred` does not dispatch when the event queue is full | 2968 |
+| 20 | `PS2Keyboard` ivar names differ and ours has one extra ivar | class |
+| 21 | `dispatchKeyboardEvents` calls `bcopy` unconditionally on the else path | 3140 |
+| 22 | Data symbols are spelled one-to-two underscores too deep, some misscoped | both files |
+| 23 | The access-functions struct is tagged `controller_funcs` | 1428 |
+
+Findings 1, 2, 3, 8, 9 and 10 are structural and should land together; the rest are local.
+
+---
+
+## Finding 1: `PS2Controller` keeps its state in file-scope globals, not ivars
+
+This is the largest finding in the driver and the form in which the drvPS2Mouse /
+drvSerialPointingDevice structural pattern repeats here.
+
+The superclass half of that pattern does **not** repeat. Both classes are parented exactly as our
+source declares them:
+
+| Class | Reference superclass | Our superclass | Verdict |
+| --- | --- | --- | --- |
+| `PS2Controller` | `IODirectDevice` | `IODirectDevice` | matches |
+| `PS2Keyboard` | `IODevice` | `IODevice` | matches |
+
+There is no `PCPointer` re-parent to do. The ivar half, however, diverges completely for
+`PS2Controller`. From `__OBJC,__class` at 16624 and `__OBJC,__instance_vars` at 18612:
+
+```
+PS2Controller   super IODirectDevice   instance_size 308   ivar_count 3
+   [296] portSet          'i'
+   [300] mouseObject      '@'
+   [304] pendingLEDVal    'i'
+```
+
+Our `PS2Controller.h:34-43` declares an entirely different set:
+
+```objc
+@interface PS2Controller : IODirectDevice
+{
+    id keyboardObject;
+    BOOL manualDataHandling;
+    PS2QueueElement keyboardFreeQueue;
+    PS2QueueElement keyboardQueue;
+    PS2QueueElement keyboardQueueElements[KEYBOARD_QUEUE_SIZE];
+}
+```
+
+None of those five are ivars in the reference. All of them are **file-scope statics**, and the
+symbol table names them directly:
+
+| Reference symbol | Section | Address | Our source |
+| --- | --- | --- | --- |
+| `_keyboardQueue` | `__DATA,__bss` | 8472 | ivar `keyboardQueue` |
+| `_keyboardFreeQueue` | `__DATA,__bss` | 8480 | ivar `keyboardFreeQueue` |
+| `_keyboardObject` | `__DATA,__bss` | 8488 | ivar `keyboardObject` |
+| `_manualDataHandling` | `__DATA,__bss` | 8492 | ivar `manualDataHandling` |
+| `_keyboardQueueElements` | `__DATA,__common` | 8536 (384 bytes) | ivar `keyboardQueueElements[32]` |
+
+384 bytes is 32 elements of 12 bytes, matching `KEYBOARD_QUEUE_SIZE`.
+
+Conversely the reference's three real ivars — `portSet`, `mouseObject` and `pendingLEDVal` — do
+not exist in our source at all. `portSet` and `pendingLEDVal` are never read or written by any
+function in the binary; they are declared and unused. `mouseObject` is likewise unused as an ivar,
+because the mouse is tracked through the `__mouse` static instead.
+
+The consequence shows up in nine functions, which reach the state as absolute addresses rather
+than through `self`:
+
+```
+ 732  -[PS2Controller interruptOccurred]        mov  eax, ds:_keyboardObject      ; 8488
+1456  -[PS2Controller setKeyboardObject:]       mov  ds:_keyboardObject, eax      ; 8488
+1552  -[PS2Controller setManualDataHandling:]   mov  ds:_manualDataHandling, al   ; 8492
+1292  _interruptHandler                         cmp  ds:_manualDataHandling, 0    ; 8492
+ 484  _keyboardDataPresent                      cmp  ds:_keyboardQueue, offset _keyboardQueue
+ 576  _enqueueKeyboardData                      cmp  ds:_keyboardFreeQueue, offset _keyboardFreeQueue
+1608  _getKeyboardData                          cmp  ds:_keyboardQueue, offset _keyboardQueue
+ 208  -[PS2Controller initFromDeviceDescription:] mov ds:_keyboardFreeQueue, offset _keyboardFreeQueue
+1440  -[PS2Controller setMouseObject:]          mov  ds:__mouse, eax              ; 8460
+```
+
+Ours indexes off the receiver instead — for example `-[PS2Controller interruptOccurred]` at
+`PS2Controller.m:271` sends to the ivar `keyboardObject`.
+
+Because the state is global, three of our functions carry a `___controller` nil check that the
+reference does not have and cannot need: `_enqueueKeyboardData` (`PS2Controller.m:477`),
+`_getKeyboardData` (`PS2Controller.m:781`) and `interruptHandler` (`PS2Controller.m:535`). The
+reference dereferences nothing and tests nothing.
+
+**Task 8** must move all five members out of the `@interface` into file-scope statics with the
+reference's names, drop the three nil checks, and add the reference's three unused ivars so that
+`instance_size` comes out at 308. Ours currently computes to roughly 712.
+
+## Finding 2: `becomeOwner:` and `desireOwnership:` return `int`, not `BOOL`
+
+The return-type polarity half of the drvPS2Mouse / drvSerialPointingDevice pattern **does** repeat,
+on two of the three ownership methods.
+
+Method type encodings from `__OBJC,__inst_meth` at 17048:
+
+| Selector | Reference encoding | Reference return | Our declaration | Verdict |
+| --- | --- | --- | --- | --- |
+| `becomeOwner:` | `i12@8:12@16` | `int` | `- (BOOL)becomeOwner:` | **diverges** |
+| `desireOwnership:` | `i12@8:12@16` | `int` | `- (BOOL)desireOwnership:` | **diverges** |
+| `relinquishOwnership:` | `i12@8:12@16` | `int` | `- (int)relinquishOwnership:` | matches |
+
+The disassembly confirms the values. `-[PS2Keyboard becomeOwner:]` keeps its result in `ebx` and
+returns it unconverted:
+
+```
+4571: BB2BFDFFFF     mov      ebx, 0FFFFFD2Bh        ; -725
+4598: 31DB           xor      ebx, ebx               ; 0 on success
+4619: 89D8           mov      eax, ebx
+```
+
+`-[PS2Keyboard desireOwnership:]` is the same shape at 4878 / 4894 / 4915. There is no `setnz`,
+no `test`/`sete`, and no truncation to a byte anywhere in either function.
+
+So the reference's convention is **0 means success, -725 (`0xFFFFFD2B`) means failure**. Ours
+inverts it: `PS2Keyboard.m:195` and `PS2Keyboard.m:218` both end `return (result == 0);`, which
+yields **1 on success and 0 on failure**. A caller written against the reference and given our
+driver reads success as failure and failure as success.
+
+`relinquishOwnership:` already returns the raw `int` (`PS2Keyboard.m:254`) and needs no change.
+Its internal logic matches the reference instruction for instruction; it is one of the eight
+`assembly-matched` functions.
+
+**Task 8** must change both declarations and both `return` statements, in `PS2Keyboard.h:44-45`
+and `PS2Keyboard.m:157/198`. This must land together with Finding 1, because both change the
+class's compiled shape.
+
+One further signature divergence, on the same class:
+
+| Selector | Reference | Ours |
+| --- | --- | --- |
+| `enqueueKeyEvent:goingDown:atTime:` | `v24@8:12i16c20Q24` | `v24@8:12I16c20Q24` |
+
+The reference types `keyCode` as `int` (`i`); ours types it `unsigned int` (`I`). See Finding 11.
+
+## Finding 3: `_ownerLock` is never initialized, and there is no `NXLock` class
+
+The reference's imports are exactly:
+
+```
+.objc_class_name_IODevice          .objc_class_name_IODirectDevice
+.objc_class_name_Object            .objc_class_name_PS2Controller
+.objc_class_name_PS2Keyboard       .objc_class_name_PS2KeyboardKernelServerInstance
+.objc_class_name_PS2KeyboardVersion .objc_class_name_Protocol
+```
+
+There is **no `.objc_class_name_NXLock`**, and `__OBJC,__cls_refs` is zero bytes, so no class is
+referenced by name anywhere in the binary.
+
+That is not because the reference has no lock ivar. It has one:
+
+```
+PS2Keyboard   super IODevice   instance_size 548   ivar_count 8
+   [536] _owner         '@'
+   [540] _desiredOwner  '@'
+   [544] _ownerLock     '@'
+```
+
+`_ownerLock` is object-typed and is messaged `lock` and `unlock` in all three ownership methods —
+`becomeOwner:` at 4435 and 4607, `relinquishOwnership:` at 4651 and 4700, `desireOwnership:` at
+4846 and 4903.
+
+**But it is never assigned.** Every access to `+220h` across the whole binary is a load:
+
+```
+4435  mov edx, [esi+220h]     becomeOwner:
+4607  mov esi, [esi+220h]     becomeOwner:
+4651  mov edx, [ebx+220h]     relinquishOwnership:
+4700  mov edx, [ebx+220h]     relinquishOwnership:
+4846  mov edx, [esi+220h]     desireOwnership:
+4903  mov esi, [esi+220h]     desireOwnership:
+```
+
+There is no store to `+220h` in any of the 49 functions, and `-[PS2Keyboard initWithController:]`
+(2760) does not touch it. `alloc` zeroes the instance, so **`_ownerLock` is `nil` for the driver's
+entire lifetime**, and `[nil lock]` / `[nil unlock]` are no-ops. The locking in Apple's shipped
+driver is vestigial: the ivar and the messages are present, the mutual exclusion is not.
+
+Our tree reaches the same net behaviour by a different and much heavier route. `NXLock.m` is a
+stub whose methods do nothing:
+
+```objc
+@implementation NXLock
+- lock { return self; }
+- unlock { return self; }
+@end
+```
+
+and `PS2Keyboard.m:111` really allocates one: `ownerLock = [[NXLock alloc] init];`.
+
+**Disposition.** This is a different order of divergence from an extra local symbol, because
+`NXLock.m` compiles four whole classes — `NXLock`, `NXConditionLock`, `NXSpinLock` and
+`NXRecursiveLock` — into the driver. The reference's `__OBJC,__class` is 160 bytes, exactly four
+40-byte class structures (`PS2Controller`, `PS2Keyboard`, `PS2KeyboardVersion`,
+`PS2KeyboardKernelServerInstance`). Ours would emit eight, doubling that section, and would add
+matching `__meta_class`, `__inst_meth`, `__class_names` and `__module_info` records. No amount of
+symbol-name parity hides that.
+
+The recommendation is therefore: **keep the `_ownerLock` ivar, drop the allocation, and drop
+`NXLock` from the driver.** Renaming the ivar to `_ownerLock` (Finding 20) and deleting
+`PS2Keyboard.m:111` reproduces the reference's behaviour exactly — a nil lock that swallows
+`lock` and `unlock` — without compiling a single extra class. `NXLock.h`/`NXLock.m` would then
+come out of `CLASSES`/`HFILES` in the `Makefile` and out of `PB.project`.
+
+That is a judgement call about a file the build-repair effort added deliberately, so Task 8
+should confirm it before removing anything. What is **not** a judgement call is that keeping the
+allocation is wrong: with a real (if stubbed) object in `_ownerLock`, our binary's class list,
+metaclass list and method lists all diverge from the reference's, and the ivar holds a non-nil
+pointer where the reference holds nil.
+
+## Finding 4: thirteen C functions are spelled one underscore too deep, not fourteen
+
+Our source spells these functions with a leading underscore that the reference does not have.
+The compiler adds one underscore, so a source name `_getKeyboardData` becomes the symbol
+`__getKeyboardData`, one deeper than the reference's `_getKeyboardData`.
+
+| Address | Reference symbol | Implied C name | Our source | Our symbol |
+| --- | --- | --- | --- | --- |
+| 484 | `_keyboardDataPresent` | `keyboardDataPresent` | `_keyboardDataPresent` | `__keyboardDataPresent` |
+| 1608 | `_getKeyboardData` | `getKeyboardData` | `_getKeyboardData` | `__getKeyboardData` |
+| 1768 | `_getKeyboardDataIfPresent` | `getKeyboardDataIfPresent` | `_getKeyboardDataIfPresent` | `__getKeyboardDataIfPresent` |
+| 1824 | `_getMouseData` | `getMouseData` | `_getMouseData` | `__getMouseData` |
+| 1892 | `_getMouseDataIfPresent` | `getMouseDataIfPresent` | `_getMouseDataIfPresent` | `__getMouseDataIfPresent` |
+| 2004 | `_sendControllerData` | `sendControllerData` | `_sendControllerData` | `__sendControllerData` |
+| 2084 | `_resendControllerData` | `resendControllerData` | `_resendControllerData` | `__resendControllerData` |
+| 2132 | `_sendControllerCommand` | `sendControllerCommand` | `_sendControllerCommand` | `__sendControllerCommand` |
+| 2208 | `_sendMouseCommand` | `sendMouseCommand` | `_sendMouseCommand` | `__sendMouseCommand` |
+| 2264 | `_disableMouse` | `disableMouse` | `_disableMouse` | `__disableMouse` |
+| 2292 | `_enableMouse` | `enableMouse` | `_enableMouse` | `__enableMouse` |
+| 2320 | `_NewStealKeyboardEvent` | `NewStealKeyboardEvent` | `_NewStealKeyboardEvent` | `__NewStealKeyboardEvent` |
+| 3520 | `_scancodeToKeyEvent` | `scancodeToKeyEvent` | `_scancodeToKeyEvent` | `__scancodeToKeyEvent` |
+
+**Correction to the brief: that is thirteen, not fourteen.** The brief's table lists
+`_clearOutputBuffer` (1960) as a fourteenth, but our source already spells it correctly —
+`void clearOutputBuffer(void)` at `PS2Controller.m:376`, declared `void clearOutputBuffer(void);`
+at `PS2Controller.h:108`. It is the one member of the group that already matches, which is why it
+was the only one of the group the source map resolved automatically. It needs no rename.
+
+**The fifteenth external symbol does need one, in the other direction.** `__PS2KeyboardNumKeysDown`
+at 3364 implies the C name `_PS2KeyboardNumKeysDown`, with a genuine single leading underscore in
+source. The brief says not to "fix" it, meaning do not strip that underscore to zero — but our
+tree is not at one underscore, it is at two:
+
+```
+PS2Keyboard.m:447   int __PS2KeyboardNumKeysDown(void)      -> symbol ___PS2KeyboardNumKeysDown
+PS2Controller.h:124 int __PS2KeyboardNumKeysDown(void);
+PS2Controller.m:914 numKeysDown = __PS2KeyboardNumKeysDown();
+```
+
+So it is one underscore too deep like the other thirteen, and must be renamed to
+`_PS2KeyboardNumKeysDown` — **to one underscore, not to zero.**
+
+The same one-too-deep spelling also affects six functions that are `static` in the reference and
+so do not appear in the fourteen-symbol group: `_lock_controller`, `_unlock_controller`,
+`_reallyGetKeyboardData`, `_enqueueKeyboardData`, `_isEscape`, `_resetEscapes`, `_undoEscape` and
+`_doEscape` (reference names `lock_controller`, `unlock_controller`, `reallyGetKeyboardData`,
+`enqueueKeyboardData`, `isEscape`, `resetEscapes`, `undoEscape`, `doEscape`). `interruptHandler`
+(1292) already matches.
+
+Renames must be applied to the definitions, to the declarations in `PS2Controller.h:97-124` and
+`PS2Keyboard.m:17-19`, to every call site, and to the `_exported_funcs` initializer at
+`PS2Controller.m:130-139`.
+
+## Finding 5: nine functions are `static` in the reference; `_exported_funcs` is not
+
+`parity_check.py` compares symbol **names** only, so a `static`-versus-`external` linkage
+divergence is completely invisible to it. **Task 8 must verify every item in this finding by
+reading the rebuilt binary's nlist directly — `nm` output or `read_macho`'s `binding` field — not
+by parity counts.** A rebuild can show `missing_symbols` 0 and `extra_symbols` unchanged while
+every linkage below is still wrong.
+
+The reference's `__TEXT,__text` has exactly **15 external symbols**; every other text symbol is
+`local`. Ours declares nine of those locals with external linkage:
+
+| Address | Symbol | Reference binding | Our storage class | Action |
+| --- | --- | --- | --- | --- |
+| 0 | `_lock_controller` | `local` | extern (`PS2Controller.m:301`) | add `static` |
+| 56 | `_unlock_controller` | `local` | extern (`PS2Controller.m:334`) | add `static` |
+| 524 | `_reallyGetKeyboardData` | `local` | extern (`PS2Controller.m:346`) | add `static` |
+| 576 | `_enqueueKeyboardData` | `local` | extern (`PS2Controller.m:469`) | add `static` |
+| 756 | `_isEscape` | `local` | extern (`PS2Controller.m:842`) | add `static` |
+| 964 | `_resetEscapes` | `local` | extern (`PS2Controller.m:996`) | add `static` |
+| 1020 | `_undoEscape` | `local` | extern (`PS2Controller.m:950`) | add `static` |
+| 1100 | `_doEscape` | `local` | extern (`PS2Controller.m:400`) | add `static` |
+| 1292 | `_interruptHandler` | `local` | extern (`PS2Controller.m:528`) | add `static` |
+
+Adding `static` means the matching prototypes in `PS2Controller.h:97-121` must move into
+`PS2Controller.m` above their first use, since a `static` function cannot be declared in a header
+that other translation units include.
+
+`_interruptHandler` deserves a note: it is taken by address in
+`-[PS2Controller getHandler:level:argument:forInterrupt:]` (`mov dword ptr [eax], offset
+_interruptHandler` at 1400), which is exactly why it can be `static` and still reach the kernel.
+
+**One divergence runs the other way.** `_exported_funcs` at `__DATA,__data:8192` is **external**
+in the reference, but `PS2Controller.m:130` declares it `static PS2ControllerFunctions
+_exported_funcs`. That `static` must be removed. It is the only data symbol in the driver whose
+linkage is too narrow rather than too wide.
+
+## Finding 6: `_keyboardDataPresent` ignores the software queue and tests the wrong bits
+
+`_keyboardDataPresent` (484, 37 bytes) is 11 instructions and diverges from ours in both branches.
+
+```
+ 484: 55             push ebp
+ 485: 89E5           mov  ebp, esp
+ 487: 813D...        cmp  ds:_keyboardQueue, offset _keyboardQueue
+ 497: 750D           jnz  loc_200                 ; queue non-empty -> return 1
+ 499: BA64000000     mov  edx, 64h
+ 504: EC             in   al, dx
+ 505: 83E001         and  eax, 1
+ 508: 89EC           mov  esp, ebp
+ 510: 5D             pop  ebp
+ 511: C3             retn
+ 512: B801000000     mov  eax, 1                  ; loc_200
+ 517: 89EC           mov  esp, ebp
+ 519: 5D             pop  ebp
+ 520: C3             retn
+```
+
+The reference answers **"is there a byte for the keyboard to read"** in two steps: if the software
+queue `_keyboardQueue` is not empty (its head does not point at itself), return 1 immediately
+without touching the hardware; otherwise read the status register at 0x64 and return bit 0.
+
+Ours (`PS2Keyboard.m:475-485`) does neither correctly:
+
+```c
+BOOL _keyboardDataPresent(void)
+{
+    /* TODO: Implement from decompiled code */
+    unsigned char status = inb(0x64);
+    return ((status & 0x01) != 0 && (status & 0x20) == 0);
+}
+```
+
+Two defects, and the `TODO` comment marks it as knowingly unfinished:
+
+1. **The queue is never consulted.** `_enqueueKeyboardData` (576) is the only place interrupt-time
+   bytes are parked, and `_getKeyboardData` (1608) drains that queue in preference to the
+   hardware. With our version, a byte sitting in `_keyboardQueue` while the hardware buffer is
+   empty reports "no data present", so `-[PS2Keyboard interruptOccurred]`'s
+   `while (_keyboardDataPresent())` loop exits and the queued scancode is never delivered. Keys
+   pressed during an escape-sequence undo (Finding 8) are exactly the bytes that get parked there.
+2. **Bit 5 is tested and must not be.** Ours additionally requires `(status & 0x20) == 0`. The
+   reference masks with `1` only. Testing the auxiliary-device bit here makes the function
+   silently report "no keyboard data" whenever the controller happens to have mouse data pending,
+   which is the job of `_getMouseDataIfPresent` (1892), not this function.
+
+Both callers are affected: `-[PS2Keyboard interruptOccurred]` (2976) and
+`_getKeyboardDataIfPresent` (1780).
+
+## Finding 7: `+[PS2Keyboard probe:]` passes a literal `0x910`, not `&_NewStealKeyboardEvent`
+
+The reference builds a two-word structure on the stack and hands it to
+`_register_keyboard_entries`:
+
+```
+2552: C745F800000000  mov  [ebp+var_8], 0
+2559: C745FC10090000  mov  [ebp+var_4], offset _NewStealKeyboardEvent
+2566: 8D45F8          lea  eax, [ebp+var_8]
+2569: 50              push eax
+2570: E8F1F5FFFF      call _register_keyboard_entries
+```
+
+The second word is a **relocated function pointer** to `_NewStealKeyboardEvent`, whose address
+happens to be 2320 — that is, `0x910`. Our source at `PS2Keyboard.m:83-86` took the resolved
+address for a numeric constant:
+
+```c
+keyboardEntries[0] = 0;
+keyboardEntries[1] = 0x910;  /* 2320 decimal */
+_register_keyboard_entries(keyboardEntries);
+```
+
+The comment `/* 2320 decimal */` records the confusion exactly. As written, our driver hands the
+kernel's keyboard layer the integer 2320 as a callback address. In a rebuilt binary
+`_NewStealKeyboardEvent` will not be at 2320, and even if it were, a hard-coded address defeats
+relocation. The kernel would call into whatever sits at offset 2320 the first time it tried to
+steal a keyboard event — in practice, the middle of `_NewStealKeyboardEvent`'s neighbour.
+
+`keyboardEntries` must be typed to hold a function pointer, and the second slot must be
+`&NewStealKeyboardEvent` (post-rename, per Finding 4).
+
+This also explains why `_NewStealKeyboardEvent` is external in the reference despite having no
+other caller in the driver: its address is published to the kernel here, and the kernel resolves
+it by name through `Load_Commands.sect`.
+
+## Finding 8: `EscapeSequence` is 12 words with an inline sequence array
+
+Our `EscapeSequence` (`PS2Controller.h:74-94`) declares 19 pointer-sized fields — 76 bytes. The
+reference's structure is **48 bytes, 12 words**, and the disassembly pins every field.
+
+Stride, from both loops that walk the table:
+
+```
+1007  _resetEscapes    83C230          add edx, 30h        ; 48
+1270  _doEscape        83C330          add ebx, 30h        ; 48
+```
+
+Field offsets, from `_doEscape`'s callback invocation at 1185-1200 and `_isEscape`'s state
+accesses:
+
+| Byte offset | Word | Field | Evidence |
+| --- | --- | --- | --- |
+| 0–20 | 0–5 | inline array of up to 6 `KeySequenceEntry *`, NULL-terminated | `_isEscape` 796-830 walks `[ebp+var_4]` from `escape` upward in steps of 4 |
+| 24 | 6 | `callback` | `1197: mov eax, [ebx+18h]` then `1200: call eax` |
+| 28 | 7 | `arg1` | `1193: mov ecx, [ebx+1Ch]` (pushed last, so first parameter) |
+| 32 | 8 | `arg2` | `1189: mov ecx, [ebx+20h]` |
+| 36 | 9 | `arg3` | `1185: mov ecx, [ebx+24h]` |
+| 40 | 10 | `currentSequence` | `768: cmp dword ptr [esi+28h], 0` |
+| 44 | 11 | `field11` (matched sequence) | `920: mov [esi+2Ch], ebx` |
+
+Two things follow that our source gets wrong.
+
+**The sequence array is inline, not a pointer.** Our field 0 is `KeySequenceEntry **sequences`, a
+pointer to a separate array. The reference stores the sequence pointers directly in words 0–5 of
+the escape entry. `_isEscape` at 774 copies `esi` (the escape pointer itself) into the cursor and
+then walks it:
+
+```
+ 774: 8975FC   mov  [ebp+var_4], esi        ; cursor = escape, not *escape
+ 777: 833E00   cmp  dword ptr [esi], 0      ; first slot
+ 796: 8B4DFC   mov  ecx, [ebp+var_4]
+ 799: 8B19     mov  ebx, [ecx]              ; one dereference, not two
+ 826: 8345FC04 add  [ebp+var_4], 4          ; next slot, in place
+```
+
+Our `PS2Controller.m:864` reads `sequenceArray = escape->sequences;` — one dereference too many.
+
+**The loop terminator is the `callback` field, not a separate `terminator`.** Both walkers guard
+on byte offset 24:
+
+```
+ 972  _resetEscapes  cmp ds:off_2078, 0     ; 8312 = _escapes + 24
+1010  _resetEscapes  cmp dword ptr [edx+18h], 0
+1240  _doEscape      cmp ds:off_2078, 0
+1273  _doEscape      cmp dword ptr [ebx+18h], 0
+```
+
+Word 6 is `callback`. A table entry with a NULL callback ends the table. Our source instead
+declares a `terminator` at word 18 and tests `escapePtr[0x12]` (`PS2Controller.m:1011-1030`) —
+which, with a 12-word stride, reads 24 bytes into the **following** entry. Our own file is
+internally inconsistent here: `_resetEscapes` strides by `0xc` words (48 bytes, correct) while
+indexing a field at word 18 that lies outside a 48-byte entry.
+
+Our fields `field1`–`field5` are the remaining five inline sequence slots, and `field12`–`field17`
+plus `terminator` do not exist at all.
+
+## Finding 9: `KeySequenceEntry` field 0 is the key count, not `next`
+
+The four sequence tables are 16 bytes each and are plain data, with no relocations:
+
+```
+8224 _lalt_ralt_numlock   3  0   38 00 38 01   45 00 00 00
+8240 _ralt_lalt_numlock   3  0   38 01 38 00   45 00 00 00
+8256 _lalt_numlock        2  0   38 00 45 00   00 00 00 00
+8272 _ralt_numlock        2  0   38 01 45 00   00 00 00 00
+```
+
+The layout is `{ int count; int index; unsigned char keys[8]; }`. Word 0 holds **3, 3, 2, 2** —
+the number of key pairs in each sequence, matching the `(scancode, extended)` pairs that follow:
+`_lalt_ralt_numlock` is Left Alt, Right Alt, Num Lock; `_lalt_numlock` is Left Alt, Num Lock.
+
+`_isEscape` reads word 0 as the length and compares it against the running index:
+
+```
+874: FF4304   inc dword ptr [ebx+4]     ; index++
+877: 8B4304   mov eax, [ebx+4]
+880: 3903     cmp [ebx], eax            ; count vs index
+882: 7F42     jg  loc_3B6               ; still short -> not complete
+905: 8B03     mov eax, [ebx]
+907: 48       dec eax                   ; count - 1
+908: 39C2     cmp edx, eax              ; vs __PS2KeyboardNumKeysDown()
+```
+
+`_undoEscape` reads it the same way at 1037 (`cmp [esi], ebx`).
+
+Our header declares word 0 as `void *next` (`PS2Controller.h:68`), and although our `_isEscape`
+does read it as a length (`PS2Controller.m:904`, `sequenceLength = *(int *)((unsigned char *)currentSeq + 0)`),
+**our initializers set it to `NULL`** — `PS2Controller.m:47`, `60`, `73`, `87` all begin
+`NULL,  /* next */`.
+
+Every sequence therefore has length 0 in our build. Trace the consequence: on the first matching
+key, `index` becomes 1, `cmp [ebx], eax` compares 0 against 1, `jg` is not taken, so the sequence
+is declared complete immediately; then `count - 1` is `-1`, which
+`__PS2KeyboardNumKeysDown()` can never equal, so `_isEscape` returns 0. **No escape sequence can
+ever fire**, and the mini-monitor hotkeys are dead.
+
+The fix is to rename the field to `count` and set it to 2 or 3 to match each table.
+
+## Finding 10: the escape table has two entries, not four
+
+`_escapes` at `__DATA,__data:8288` is **144 bytes** — three 48-byte entries, of which the third is
+all zeros and terminates the table. So the reference defines **two** escape sequences:
+
+| Entry | Inline sequences (words 0–5) | callback | arg1 | arg2 | arg3 |
+| --- | --- | --- | --- | --- | --- |
+| 0 @8288 | `_lalt_numlock`, `_ralt_numlock` | `_mini_mon` | `"restart"` | `"Restart"` | NULL |
+| 1 @8336 | `_lalt_ralt_numlock`, `_ralt_lalt_numlock` | `_mini_mon` | `""` | `"Mini-Monitor"` | NULL |
+| 2 @8384 | all zero — terminator | | | | |
+
+Each entry groups **two alternative key sequences** that trigger the same action, which is what
+the inline six-slot array in Finding 8 is for.
+
+Our `PS2Controller.m:102-126` declares **five** entries — four singles plus a terminator — at 76
+bytes each, 380 bytes total, and distributes the arguments differently:
+
+| Ours | Sequence | callback | arg1 | arg2 | arg3 |
+| --- | --- | --- | --- | --- | --- |
+| 0 | `_lalt_numlock` | `mini_mon` | `"restart"` | NULL | NULL |
+| 1 | `_ralt_numlock` | `mini_mon` | `"Restart"` | NULL | NULL |
+| 2 | `_lalt_ralt_numlock` | `mini_mon` | NULL | NULL | NULL |
+| 3 | `_ralt_lalt_numlock` | `mini_mon` | `""` | `""` | `"Mini-Monitor"` |
+
+So Left Alt + Num Lock and Right Alt + Num Lock are two separate entries for us and one grouped
+entry for the reference; the `"Restart"` string moves from arg1 of entry 1 to arg2 of entry 0; and
+entry 3's three arguments `("", "", "Mini-Monitor")` become entry 1's `("", "Mini-Monitor", NULL)`.
+
+The argument order is fixed by the call sequence at 1185-1200, which pushes word 9 first and word
+7 last, so word 7 (`arg1`) is `mini_mon`'s first parameter.
+
+There is also a `KeySequenceEntry` indirection to remove: our source declares four
+`_..._seq` structures and four two-element pointer arrays that point at them
+(`PS2Controller.m:46-97`). The reference has only the four 16-byte structures, named
+`_lalt_ralt_numlock`, `_ralt_lalt_numlock`, `_lalt_numlock` and `_ralt_numlock` — the names our
+source gives to the *arrays*. There are no `_..._seq` symbols in the reference at all.
+
+## Finding 11: `enqueueKeyEvent:` swaps the timestamp words and inverts `goingDown`
+
+`-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (3420) stores four words into the event slot:
+
+```
+3450: 8B5518  mov edx, dword ptr [ebp+arg_10]      ; timestamp low
+3453: 8955F0  mov [ebp+var_10], edx
+3456: 8B551C  mov edx, dword ptr [ebp+arg_10+4]    ; timestamp high
+3459: 8955F4  mov [ebp+var_C], edx
+...
+3473: 8B4DF0  mov ecx, [ebp+var_10]
+3476: 898A10010000  mov [edx+110h], ecx            ; slot +0  <- LOW word
+3482: 8B4DF4  mov ecx, [ebp+var_C]
+3485: 898A14010000  mov [edx+114h], ecx            ; slot +4  <- HIGH word
+3491: 8B4DF8  mov ecx, [ebp+var_8]
+3494: 898A18010000  mov [edx+118h], ecx            ; slot +8  <- keyCode
+3500: 8B4DFC  mov ecx, [ebp+var_4]
+3503: 898A1C010000  mov [edx+11Ch], ecx            ; slot +12 <- goingDown
+```
+
+This is a plain little-endian 64-bit store, consistent with the ivar encoding
+`[16{?="timeStamp"Q"keyCode"I"goingDown"c}]` — the element type is
+`{ unsigned long long timeStamp; unsigned int keyCode; char goingDown; }`, padded to 16 bytes.
+
+Two divergences against `PS2Keyboard.m:345-370`.
+
+**The timestamp words are swapped.** Our `PS2KeyboardEvent` (`PS2Keyboard.h:13-18`) declares
+`timestamp_high` first and `timestamp_low` second, and `PS2Keyboard.m:361-362` assigns to match:
+
+```c
+eventQueue[index].timestamp_high = (unsigned int)(timestamp >> 32);
+eventQueue[index].timestamp_low  = (unsigned int)(timestamp & 0xFFFFFFFF);
+```
+
+Our slot +0 therefore receives the **high** word where the reference puts the **low** word. Any
+consumer reading the 16-byte record as a `ns_time_t` gets the two halves transposed — timestamps
+off by a factor of 2^32. The cleanest fix is to declare the field as a single
+`unsigned long long timeStamp` and assign it directly, which also matches the ivar encoding.
+
+**`goingDown` is inverted.** The reference copies the parameter byte straight through: `dl` is
+loaded from `arg_C` at 3429, parked in `var_4` at 3447, and stored unmodified at 3503. Ours
+computes the opposite at `PS2Keyboard.m:358`:
+
+```c
+flags = goingDown ? 0 : 1;  /* 0 = key down, 1 = key up */
+```
+
+The reference's fourth word is 1 when the key is going down; ours is 0. The field is named
+`goingDown` in the reference's ivar encoding and `flags` in ours, and the comment records the
+inverted intent explicitly. Every key-down event our driver enqueues is delivered as a key-up.
+
+Also, per Finding 2, the `keyCode` parameter is `int` in the reference and `unsigned int` in ours.
+
+## Finding 12: the NumLock check reads `__kbdBitVector`, not a separate `_keyboardState`
+
+`_scancodeToKeyEvent` special-cases keycode 0x6F:
+
+```
+4186: 833D3C2100006F  cmp  ds:dword_213C, 6Fh          ; _event.keyCode == 0x6F
+4193: 7510            jnz  loc_1073
+4195: F6055521000080  test ds:byte_2155, 80h           ; 8533
+4202: 0F94C0          setz al
+4205: 880540210000    mov  ds:byte_2140, al            ; _event.flags
+```
+
+Address 8533 falls inside `__kbdBitVector`, which runs 8520–8536. The offset is 13 bytes, and bit
+7 of byte 13 is bit **111** of the vector — which is 0x6F, the Num Lock keycode itself. So the
+reference is asking "is Num Lock already recorded as down in the key bitmap", and inverting it.
+
+Ours (`PS2Keyboard.m:560-563`) reaches into a different array entirely:
+
+```c
+if (keyCode == 0x6F) {
+    isKeyDown = (_keyboardState[0x18] & 0x80) == 0;
+}
+```
+
+`_keyboardState` is a 32-byte file-scope array declared at `PS2Keyboard.m:40` with the comment
+"appears to be at a higher offset". It has **no counterpart in the reference's symbol table** —
+it is an artifact of the original reconstruction, and it is never written anywhere in our source,
+so it stays zero and the test always yields `isKeyDown = 1`.
+
+The correct expression indexes the existing bit vector, and `_keyboardState` should be deleted.
+
+Everything else in this 818-byte function matches. In particular the extended-scancode
+translation is exact: the jump table at `__TEXT,__text:3628` was decoded and all **19** cases map
+scancode to keycode identically to `PS2Keyboard.m:519-541`, with no case present in one and absent
+in the other:
+
+```
+1C->62  1D->60  35->63  37->6E  38->61  45->6F  47->6C  48->64  49->6A  4B->66
+4D->67  4F->6D  50->65  51->6B  52->68  53->69  5B->70  5C->71  5D->72
+```
+
+The 0xE0 and 0xE1 prefix handling, the `_extendCount` countdown, the `(scancode >> 7) ^ 1`
+key-direction computation, the already-down auto-repeat rejection and the bit set/clear (the
+reference clears with `mov eax, 0FFFFFFFEh; rol eax, cl; and`, equivalent to `& ~(1 << n)`) all
+match instruction for instruction.
+
+## Finding 13: `initWithController:` performs no ownership or counter initialization
+
+`-[PS2Keyboard initWithController:]` (2760, 208 bytes) goes straight from storing the controller
+to clearing the output buffer:
+
+```
+2797: call _objc_msgSendSuper            ; [super init]
+2802: 899E08010000  mov [esi+108h], ebx  ; controller = arg
+2808: call _clearOutputBuffer
+```
+
+Ours inserts six assignments in between (`PS2Keyboard.m:110-120`):
+
+```c
+ownerLock = [[NXLock alloc] init];
+keyboardOwner = nil;
+desiredOwner = nil;
+eventCount = 0;
+interfaceID = 0;
+handlerID = 0;
+```
+
+None of these appear in the reference, which relies on `alloc` having zeroed the instance. The
+`ownerLock` allocation is the substantive one and is covered by Finding 3; the other five are
+redundant stores that add instructions without changing behaviour, and should come out for parity.
+
+The rest of the method matches: `clearOutputBuffer()`, `_sendControllerCommand(0x20)`,
+`_getKeyboardData()`, the command-byte edit, `_sendControllerCommand(0x60)`,
+`_sendControllerData(...)`, `[controller setKeyboardObject:self]`,
+`[self setAlphaLockFeedback:NO]`, `[self setUnit:0]`, `[self setName:"PCKeyboard0"]`,
+`[self setDeviceKind:"PS2Keyboard"]`, `[self registerDevice]`, `return self`.
+
+## Finding 14: two `readConfigTable:` log strings differ; the behaviour is confirmed identical
+
+| Reference | Ours (`PS2Keyboard.m:389`, `:403`) |
+| --- | --- |
+| `PS2Keyboard kbdInit: no Interface ID; use default\n` | `PS2Keyboard kbdInit: no Interface key in config table\n` |
+| `PS2Keyboard kbdInit: no Handler ID; use default\n` | `PS2Keyboard kbdInit: no Handler ID key in config table\n` |
+
+The brief flags "use default" as a behavioural claim rather than wording, so it was checked
+against `-[PS2Keyboard readConfigTable:]` (2588, 170 bytes). **The driver does continue**, in both
+cases:
+
+```
+2645: 682F140000  push offset aPs2keyboardKbd_0    ; 'no Interface ID; use default'
+2650: E8A1F5FFFF  call _IOLog
+2655: C7861002000003000000  mov dword ptr [esi+210h], 3   ; interfaceId = 3
+2665: EB0D        jmp  loc_A78                     ; fall through to the Handler ID read
+
+2708: 686D140000  push offset aPs2keyboardKbd_1    ; 'no Handler ID; use default'
+2713: E862F5FFFF  call _IOLog
+2718: C7861402000000000000  mov dword ptr [esi+214h], 0   ; handlerId = 0
+2728: EB0E        jmp  loc_AB8
+2744: B801000000  mov  eax, 1                      ; return YES
+```
+
+Neither branch returns early; both install a default (3 for Interface, 0 for Handler ID) and carry
+on to `return YES` at 2744. Our source does exactly the same thing (`PS2Keyboard.m:390`, `:404`,
+`:413`), so **only the wording differs** — the behavioural claim is satisfied and no logic change
+is needed. The one genuinely early return is the `configTable == nil` case at 2603-2615, which
+logs `PS2Keyboard kbdInit: no configuration table\n` (matching ours) and returns 0.
+
+The ivar offsets confirm the class layout: `+210h` is 528 (`interfaceId`) and `+214h` is 532
+(`handlerId`).
+
+## Finding 15: `_sendControllerCommand` does not record `_lastSent`
+
+`_sendControllerData` (2004) records the byte it sent; `_sendControllerCommand` (2132) does not.
+
+```
+_sendControllerData @2004
+  2050: BA60000000    mov  edx, 60h
+  2055: 88D8          mov  al, bl
+  2057: EE            out  dx, al
+  2058: F0FF05F8200000 lock inc ds:_xxx.86
+  2065: 881D10210000  mov  ds:_lastSent, bl        <- present
+  2071: call _unlock_controller
+
+_sendControllerCommand @2132
+  2178: BA64000000    mov  edx, 64h
+  2183: 88D8          mov  al, bl
+  2185: EE            out  dx, al
+  2186: F0FF05F8200000 lock inc ds:_xxx.86
+  2193: call _unlock_controller                    <- no _lastSent store
+```
+
+Our `PS2Controller.m:600` adds one to the command path:
+
+```c
+    /* Track the last byte sent */
+    _lastSent = command;
+```
+
+That line must go. It is not cosmetic: `_lastSent` is what `_resendControllerData` (2084) replays
+when the keyboard asks for a resend. In the reference only *data* bytes are replayable, which is
+correct for the PS/2 protocol — a controller command written to port 0x64 must never be re-sent as
+data to port 0x60. Ours would replay the last command byte through `_sendControllerData`, writing
+a command opcode to the data port.
+
+## Finding 16: the port counter is `lock inc` on `_xxx.86`; our `LOCK()` is empty
+
+Two related divergences in the same two functions.
+
+**The `lock` prefix is missing.** `PS2Controller.m:23-24` defines both atomicity macros as
+nothing:
+
+```c
+#define LOCK()
+#define UNLOCK()
+```
+
+So `PS2Controller.m:595-597` and `:632-634`,
+
+```c
+    LOCK();
+    _portAccessCount++;
+    UNLOCK();
+```
+
+compile to a bare non-atomic `inc`, where the reference emits `F0 FF 05 ...` — `lock inc`.
+
+The same emptiness affects the spinlock. `_lock_controller` (0) uses an `xchg`, which is
+implicitly atomic on x86:
+
+```
+  29: B801000000  mov  eax, 1
+  34: 8702        xchg eax, [edx]      ; atomic test-and-set
+  36: 83F001      xor  eax, 1
+```
+
+and `_unlock_controller` (56) releases with `xchg` too:
+
+```
+  67: 31D2        xor  edx, edx
+  69: 8710        xchg edx, [eax]
+```
+
+Our `PS2Controller.m:321-324` writes the read and the store as two separate statements wrapped in
+the empty macros, which compiles to a non-atomic load/store pair. The spinlock does not actually
+exclude anything. It should be an `xchg`, either via inline assembly or via a `LOCK()` macro that
+expands to `asm volatile("lock")`.
+
+**The counter's name and scope differ.** The reference symbol is `_xxx.86` at `__DATA,__bss:8440`
+— GCC's mangling for a static named `xxx`. Ours calls it `_portAccessCount`
+(`PS2Controller.m:35`). Both `_sendControllerData` and `_sendControllerCommand` increment the same
+one. The reference also has `_xxx.89` (8444) and `_xxx.92` (8448) which nothing in the binary
+reads or writes.
+
+Our `_portCountLock` (`PS2Controller.m:36`) has no counterpart in the reference and is never used,
+since `LOCK()` is empty. It should be deleted.
+
+## Finding 17: `requiredProtocols` returns a list holding `PS2ControllerExported`
+
+`+[PS2Keyboard requiredProtocols]` (2416) returns `_protocols` at `__DATA,__data:8432`, which is 8
+bytes — one entry plus a NULL terminator. The entry relocates to `__OBJC,__protocol+40`, and the
+protocol structure's name field reads **`PS2ControllerExported`**.
+
+Our `PS2Keyboard.m:25-27` declares an empty list:
+
+```c
+static Protocol *protocols[] = {
+	nil
+};
+```
+
+with the comment "PCKeyboardExported lives in the kernel tree; empty list is fine for probe."
+Both halves of that comment are wrong: the protocol the reference names is
+`PS2ControllerExported`, not `PCKeyboardExported`, and it is not empty. As an indirect device,
+`PS2Keyboard` declares that it requires its direct device to conform to `PS2ControllerExported` —
+which is how DriverKit matches it to the `PS2Controller` instance. With an empty list the matching
+constraint is simply absent.
+
+Task 8 needs `@protocol(PS2ControllerExported)` in the array, which means the protocol declaration
+must be available to this translation unit.
+
+## Finding 18: two functions are in the wrong source file
+
+Link order places `PS2Controller.m`'s text at 0–2404 and `PS2Keyboard.m`'s at 2404–4952. Two
+functions our source puts in `PS2Keyboard.m` have addresses inside the `PS2Controller` block:
+
+| Address | Function | Reference file (by link order) | Our file |
+| --- | --- | --- | --- |
+| 484 | `_keyboardDataPresent` | `PS2Controller.m` | `PS2Keyboard.m:475` |
+| 2320 | `_NewStealKeyboardEvent` | `PS2Controller.m` | `PS2Keyboard.m:593` |
+
+This is the same class of file-placement finding the Intel spec found in `PCIC`.
+
+The placement is corroborated by what the two functions actually touch. `_keyboardDataPresent`
+reads `_keyboardQueue` (Finding 6) — a `PS2Controller` static that no other `PS2Keyboard`-side
+function references. `_NewStealKeyboardEvent` calls `_getKeyboardDataIfPresent` (1768) and
+`_resendControllerData` (2084), both `PS2Controller` functions, and sits at 2320 immediately below
+the boundary, with `+[PS2Keyboard deviceStyle]` at 2404 immediately above it.
+
+Moving them is required for address parity: as long as they are compiled into `PS2Keyboard.m`,
+every function in the driver after 484 is displaced.
+
+`__PS2KeyboardNumKeysDown` (3364) is **not** affected — it is at 3364, correctly inside the
+`PS2Keyboard` block, and `PS2Controller.m:914` calls it across the file boundary through the
+declaration at `PS2Controller.h:124`, which is exactly the arrangement the reference implies.
+
+## Finding 19: `interruptOccurred` does not dispatch when the event queue is full
+
+`-[PS2Keyboard interruptOccurred]` (2968) reaches `dispatchKeyboardEvents` from two of its three
+paths, not three:
+
+```
+3044: 85D2      test edx, edx
+3046: 743D      jz   loc_C25          ; event == NULL   -> 3109, dispatch
+3048: 83BB0C01000010  cmp dword ptr [ebx+10Ch], 10h
+3055: 74AF      jz   loc_BA0          ; queue full      -> 2976, poll again, NO dispatch
+      ... store event, inc count ...
+3109: 8B0DCC400000  mov ecx, ds:paDispatchkeyboa
+3117: call _objc_msgSend              ; [self dispatchKeyboardEvents]
+3125: E966FFFFFF    jmp loc_BA0
+```
+
+When `_scancodeToKeyEvent` returns an event but the 16-slot queue is already full, the reference
+jumps straight back to the `_keyboardDataPresent` test at 2976 and drops the event without
+dispatching.
+
+Ours calls `[self dispatchKeyboardEvents]` unconditionally at the bottom of every loop iteration
+(`PS2Keyboard.m:302`), because the call sits outside the `if (event != NULL)` block and there is no
+early continue for the full-queue case.
+
+Our behaviour is arguably the better one — it drains the queue instead of spinning on a full one —
+but this is a parity effort and the reference's control flow is what it is. Recorded rather than
+silently kept.
+
+## Finding 20: `PS2Keyboard` ivar names differ and ours has one extra ivar
+
+The reference's `PS2Keyboard` has 8 ivars and `instance_size` 548:
+
+| Offset | Reference name | Encoding | Our name (`PS2Keyboard.h:24-32`) |
+| --- | --- | --- | --- |
+| 264 | `controller` | `@` | `controller` |
+| 268 | `numEvents` | `I` | `eventCount` |
+| 272 | `pendingEvents` | `[16{?="timeStamp"Q"keyCode"I"goingDown"c}]` | `eventQueue` |
+| 528 | `interfaceId` | `I` | `interfaceID` |
+| 532 | `handlerId` | `I` | `handlerID` |
+| 536 | `_owner` | `@` | `keyboardOwner` |
+| 540 | `_desiredOwner` | `@` | `desiredOwner` |
+| 544 | `_ownerLock` | `@` | `ownerLock` |
+
+Only `controller` matches. Seven need renaming, and the element type of the event array needs the
+`timeStamp`/`keyCode`/`goingDown` member names and types from Finding 11.
+
+Ours also declares a **ninth** ivar the reference does not have — `BOOL alphaLockLED`
+(`PS2Keyboard.h:32`). It is never read or written anywhere in our source; `setAlphaLockFeedback:`
+(`PS2Keyboard.m:416-432`) computes the LED byte from its argument and forwards it to the
+controller without recording it, exactly as the reference does at 4372-4406. The extra ivar pushes
+`instance_size` from 548 to 552 and must be deleted.
+
+Note the offsets are also evidence for Finding 3's recommendation: `_ownerLock` sits at 544 and the
+class ends at 548, so keeping the ivar and dropping only the allocation preserves the layout.
+
+## Finding 21: `dispatchKeyboardEvents` calls `bcopy` unconditionally on the else path
+
+`-[PS2Keyboard dispatchKeyboardEvents]` (3140) branches on `numEvents == 1` and, when it is not 1,
+falls into the `bcopy` with no further test:
+
+```
+3167: 83BE0C01000001  cmp dword ptr [esi+10Ch], 1
+3174: 7534            jnz loc_C9C            ; -> 3228, bcopy
+      ... single-event fast path, four word copies ...
+3224: EB22            jmp loc_CBC
+3228: 8B860C010000    mov eax, [esi+10Ch]
+3234: C1E004          shl eax, 4
+3237: 50              push eax               ; count * 16, may be 0
+3238: lea/push dst; 3245: lea/push src
+3252: call _bcopy
+```
+
+Ours guards it (`PS2Keyboard.m:323`): `else if (eventCount > 0) { bcopy(...); }`.
+
+The effect is identical — a `bcopy` of length 0 copies nothing — so this is a codegen divergence
+rather than a behavioural one. It is recorded because a rebuilt binary will differ here, and
+because it is the only difference in an otherwise instruction-for-instruction match: the
+`splx(6)` entry, the single-event fast path, the `numEvents = 0` reset, the `splx(saved)` restore,
+the `_owner != nil` guard and the dispatch loop all correspond exactly.
+
+## Finding 22: data symbols are spelled too deep, and two are misscoped
+
+The same underscore inflation as Finding 4 affects the file-scope data, sometimes by two levels:
+
+| Reference symbol | Implied C name | Our source | Our symbol | Depth error |
+| --- | --- | --- | --- | --- |
+| `__controller` (8456) | `_controller` | `___controller` (`PS2Controller.m:31`) | `____controller` | +2 |
+| `__mouse` (8460) | `_mouse` | `__mouse` (`PS2Controller.m:30`) | `___mouse` | +1 |
+| `__kbdBitVector` (8520) | `_kbdBitVector` | `__kbdBitVector` (`PS2Keyboard.m:31`) | `___kbdBitVector` | +1 |
+
+The comment at `PS2Controller.m:31`, "Note: triple underscore in original", is mistaken — the
+reference symbol has two underscores, which implies **one** in source.
+
+**Two statics are function-scoped in the reference and file-scoped in ours.** GCC's `.NNN` suffix
+marks a static declared inside a function:
+
+| Reference symbol | Address | Used by | Our declaration |
+| --- | --- | --- | --- |
+| `_lastExtended.117` | 8452 | `_doEscape` only | file-scope, `PS2Controller.m:40` |
+| `_lastKey.118` | 8453 | `_doEscape` only | file-scope, `PS2Controller.m:41` |
+| `_event.100` | 8500 | `_scancodeToKeyEvent` only | file-scope, `PS2Keyboard.m:34` |
+| `_extendCount.101` | 8516 | `_scancodeToKeyEvent` only | file-scope, `PS2Keyboard.m:37` |
+
+Each is referenced by exactly one function in the binary, consistent with a function-level
+`static`. Moving them inside `doEscape` and `scancodeToKeyEvent` respectively reproduces the
+mangled names.
+
+`_lastKey.118` is one byte after `_lastExtended.117` and is accessed as a 16-bit value
+(`mov ds:_lastKey_118, si` at 1228, `cmp byte ptr ds:_lastKey_118+1, al` at 1168), matching our
+`unsigned short`.
+
+Two of our statics have no counterpart at all and should be deleted: `__escapeState`
+(`PS2Controller.m:32`, written once in `initFromDeviceDescription:` and never read) and
+`_keyboardState` (`PS2Keyboard.m:40`, see Finding 12). `_portCountLock` is covered by Finding 16.
+
+## Finding 23: the access-functions struct is tagged `controller_funcs`
+
+The method type encoding for `-[PS2Controller controllerAccessFunctions]` names the struct:
+
+```
+controllerAccessFunctions   ^{controller_funcs=^?^?^?^?^?^?^?^?}8@8:12
+```
+
+The tag is `controller_funcs` with eight function-pointer members. Ours uses an untagged struct
+typedef'd to `PS2ControllerFunctions` (`PS2Controller.h:23-32`), which encodes as `^{?=...}` and
+loses the tag. The struct needs the tag `controller_funcs`; the typedef name can stay, since it
+does not appear in the encoding.
+
+The function body itself matches exactly (`mov eax, offset _exported_funcs; ret` at 1428-1439).
+
+## `_exported_funcs`: settled
+
+`_exported_funcs` at `__DATA,__data:8192` is 32 bytes — eight pointers, since `_lalt_ralt_numlock`
+begins at 8224 — so it publishes eight of the fifteen exported C functions. **Which eight, and in
+what order, is settled** from the eight `i386-vanilla-32-absolute` relocations against
+`__TEXT,__text` at 8192, 8196, …, 8220, whose addends name the targets unambiguously:
+
+| Slot | Offset | Addend | Target |
+| --- | --- | --- | --- |
+| 0 | +0 | 2132 | `_sendControllerCommand` |
+| 1 | +4 | 1608 | `_getKeyboardData` |
+| 2 | +8 | 1768 | `_getKeyboardDataIfPresent` |
+| 3 | +12 | 1960 | `_clearOutputBuffer` |
+| 4 | +16 | 2004 | `_sendControllerData` |
+| 5 | +20 | 2208 | `_sendMouseCommand` |
+| 6 | +24 | 1824 | `_getMouseData` |
+| 7 | +28 | 1892 | `_getMouseDataIfPresent` |
+
+Raw bytes at 8192: `5408 0000 4806 0000 E806 0000 A807 0000 D407 0000 A008 0000 2007 0000 6407 0000`.
+
+**Our `PS2ControllerFunctions` already declares these eight members in exactly this order**
+(`PS2Controller.h:23-32`), and `_exported_funcs` already initializes them in exactly this order
+(`PS2Controller.m:130-139`). Nothing about the membership or ordering needs to change.
+
+The seven exported functions **not** published through this struct are `_keyboardDataPresent`,
+`_resendControllerData`, `_disableMouse`, `_enableMouse`, `_NewStealKeyboardEvent`,
+`__PS2KeyboardNumKeysDown` and `_scancodeToKeyEvent`. They are external for other reasons —
+`_NewStealKeyboardEvent` because its address goes to `_register_keyboard_entries` (Finding 7),
+`__PS2KeyboardNumKeysDown` because `PS2Controller.m` calls it across the file boundary.
+
+The two changes this struct still needs are its linkage (Finding 5: external, not `static`), its
+tag (Finding 23), and the member names once the underscore renames land (Finding 4).
+
+## Observations that are not findings
+
+**The command-byte edit is equivalent, not divergent.** `initWithController:` computes the new
+controller command byte as
+
+```
+2827: 80CB40  or  bl, 40h
+2830: 80E3EF  and bl, 0EFh
+2833: 80CB01  or  bl, 1
+```
+
+that is `((x | 0x40) & 0xEF) | 0x01`. Ours writes `commandByte & 0xEF | 0x41`
+(`PS2Keyboard.m:136`). Since `0x40 & 0xEF == 0x40`, both reduce to `(x & 0xEF) | 0x41`. The
+instruction sequences differ but the result is identical for every input, so no change is
+required; a rebuilt binary may or may not reproduce the three-instruction form depending on the
+compiler.
+
+**"Write to Auxiliary Device" is a comment, not a literal.** The brief asks whether the string at
+`PS2Controller.m:753` — now line 755 after the build-repair shifted the file — is a string
+constant the reference lacks. It is not:
+
+```c
+    /* Send the "Write to Auxiliary Device" command (0xD4) to controller */
+    _sendControllerCommand(0xD4);
+```
+
+It is inside a `/* … */` comment and never reaches `__TEXT,__cstring`. **Not a finding**, and no
+action for Task 8.
+
+**`_isEscape`, `_undoEscape` and `_getMouseDataIfPresent` have extra NULL guards.** The reference
+begins `_isEscape` at 756 with `mov esi, [ebp+arg_4]; cmp dword ptr [esi+28h], 0` — it dereferences
+the escape pointer immediately, with no null test. `_undoEscape` (1020) likewise loads `[eax+2Ch]`
+at once, and `_getMouseDataIfPresent` (1892) calls `_lock_controller` before touching `data`. Ours
+tests for NULL first in all three (`PS2Controller.m:853`, `:958`, `:720`). These are folded into
+Findings 8 and the function entries rather than listed separately, but Task 8 should remove them
+for instruction parity.
+
+**`_enqueueKeyboardData` leaves the data byte in `eax`.** The reference ends with
+`movzx eax, [ebp+var_4]` at 718 even though the function is used as `void`. This is dead code the
+compiler emitted, not a return value any caller reads — `_undoEscape` and `_interruptHandler` both
+discard it. No action.
+
+**The reference declares three unused ivars and two unused statics.** `portSet` and
+`pendingLEDVal` on `PS2Controller`, and `_xxx.89` / `_xxx.92` in `__bss`, are never read or
+written by any of the 49 functions. They still have to be declared to reproduce
+`instance_size` 308 and the `__bss` layout, but no code uses them.
+
+## What is unsettled
+
+Nothing material. Three items are worth naming so Task 8 does not re-derive them:
+
+1. **The two `PS2Controller` ivars `portSet` and `pendingLEDVal` have no observable semantics.**
+   Their names come from `__OBJC,__instance_vars` and their types from the encodings (`i` and
+   `i`), but since nothing reads them their meaning is inferred from the names alone. Declaring
+   them as `int` at offsets 296 and 304 reproduces the layout regardless.
+2. **`_xxx.86`'s source name is `xxx`**, from GCC's `.NNN` mangling — the original really did
+   name it that. The `.86`, `.89`, `.92` suffixes are compiler-assigned sequence numbers that a
+   rebuild will not necessarily reproduce, so exact symbol-name parity on these three is not
+   achievable and should not be chased.
+3. **Whether `NXLock.h`/`NXLock.m` should be deleted outright or merely unused** is a judgement
+   call for Task 8 (Finding 3). The evidence settles what the reference does — a nil `_ownerLock`
+   — but not what the build-repair effort intends for the file.

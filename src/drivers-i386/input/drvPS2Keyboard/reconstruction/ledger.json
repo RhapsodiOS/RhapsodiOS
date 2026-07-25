@@ -1,0 +1,1183 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the spln(6) entry, the xchg test-and-set and the saved-SPL store all match, but the source name is one underscore too deep, the linkage is external where the reference is static, and our empty LOCK()/UNLOCK() macros make the test-and-set non-atomic (divergences.md Findings 4, 5, 16)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_lock_controller"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 54,
+      "source_line": 301,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 56,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the xchg release and the splx restore match, but the source name is one underscore too deep and the linkage is external where the reference is static (divergences.md Findings 4, 5, 16)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_unlock_controller"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 32,
+      "source_line": 334,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 88,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the alloc, the kalloc(8), the lock-flag clear and the initFromDeviceDescription: setnz all match, but the controller and mouse globals are spelled too deep and the reference assigns the controller before the mouse (divergences.md Finding 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2Controller probe:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 117,
+      "source_line": 143,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 208,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; super init, setName, setDeviceKind, registerDevice, the 32-iteration free-queue loop and startIOThread all match, but the queues are file-scope globals in the reference rather than ivars, and our extra controller and escape-state stores have no counterpart (divergences.md Findings 1, 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 273,
+      "source_line": 175,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 484,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the reference tests the software queue first and then masks the status byte with 1, where ours consults no queue and additionally tests bit 5, and the function is compiled into the wrong source file (divergences.md Findings 6, 18)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_keyboardDataPresent"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 37,
+      "source_line": 475,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 524,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the status-poll loop, both IODelay(7) calls and the port-0x60 read match exactly, but the source name is one underscore too deep and the linkage is external where the reference is static (divergences.md Findings 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_reallyGetKeyboardData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 50,
+      "source_line": 346,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 576,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the free-queue unlink and both tail-insert paths match, but the reference reaches the queues as file-scope globals and has no controller nil check (divergences.md Findings 1, 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_enqueueKeyboardData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 155,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 732,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the forwarded interruptOccurred message matches, but the reference loads the receiver from the global keyboard-object rather than an ivar (divergences.md Finding 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller interruptOccurred]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 24,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 756,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the two match paths, the index advance, the completion test against the sequence count and the numKeysDown comparison all match, but the escape structure is 12 words with an inline sequence array and the reference has no null guard (divergences.md Findings 4, 5, 8, 9)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_isEscape"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 206,
+      "source_line": 842,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 964,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the 48-byte stride matches, but the loop guard reads the callback at byte offset 24 where ours reads a separate terminator at word 18 (divergences.md Findings 4, 5, 8)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_resetEscapes"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 56,
+      "source_line": 996,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1020,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the release-code synthesis and the 0xE0 prefix enqueue match, but word 0 of the sequence is the key count rather than a next pointer and the reference has no null guard (divergences.md Findings 4, 5, 9)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_undoEscape"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 78,
+      "source_line": 950,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1100,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the 0xE0 prefix handling, the duplicate-key suppression and the callback invocation match, but the escape structure and table differ and the two tracking statics are function-scoped in the reference (divergences.md Findings 4, 5, 8, 10, 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_doEscape"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 190,
+      "source_line": 400,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1292,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the manual-handling gate, the lock/read/unlock, the doEscape test and the IOSendInterrupt call all match, but the reference reads the manual-handling global, has no controller nil check, and the function is static (divergences.md Findings 1, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_interruptHandler"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 93,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1388,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the handler store, the level 6, the zero argument and the YES return all match with no divergence"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller getHandler:level:argument:forInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 39,
+      "source_line": 274,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1428,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the body is a single load of the exported-functions address and matches, but the method type encoding names the struct tag controller_funcs where ours is untagged (divergences.md Finding 23)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller controllerAccessFunctions]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 292,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1440,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the store to the mouse global matches, but the symbol is spelled one underscore too deep in our source (divergences.md Finding 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller setMouseObject:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 15,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1456,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the store matches, but the reference writes the keyboard-object global rather than an ivar (divergences.md Finding 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller setKeyboardObject:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 15,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1472,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; setManualDataHandling:YES, the 0xED command, both acknowledgement reads, the LED byte and setManualDataHandling:NO all match with no divergence"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller setLEDs:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 79,
+      "source_line": 247,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the flag store and both interrupt-toggle branches match, but the reference writes the manual-handling global rather than an ivar (divergences.md Finding 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Controller setManualDataHandling:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 53,
+      "source_line": 233,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1608,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the empty-queue fallthrough, the dequeue unlink and both free-queue return paths match, but the reference reaches the queues as globals and has no controller nil check or early return (divergences.md Findings 1, 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getKeyboardData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 158,
+      "source_line": 770,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1768,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the lock, the presence test and both unlock paths match exactly, but the source name is one underscore too deep and the linkage is external where the reference is static (divergences.md Findings 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getKeyboardDataIfPresent"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 54,
+      "source_line": 689,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1824,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the IODelay(50000), the 0x21 status wait, the IODelay(7) and the port-0x60 read match exactly, but the source name is one underscore too deep (divergences.md Finding 4)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getMouseData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 67,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1892,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the 0x20 auxiliary-bit test and both unlock paths match, but the reference has no null guard on the output pointer and the source name is one underscore too deep (divergences.md Finding 4)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getMouseDataIfPresent"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 66,
+      "source_line": 715,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1960,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the lock, the 0x21 status test, the conditional IODelay(7) and discard read, and the unlock all match with no divergence; this is the one member of the exported C group whose source name already matches"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_clearOutputBuffer"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 43,
+      "source_line": 376,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2004,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the input-buffer wait, the port-0x60 write and the last-sent store all match, but the counter increment carries a lock prefix ours loses and the counter is named differently (divergences.md Findings 4, 5, 16)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_sendControllerData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 79,
+      "source_line": 607,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2084,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the pending-acknowledgement test, the log string and the replay of the last sent byte all match, but the source name is one underscore too deep and the linkage is external where the reference is static (divergences.md Findings 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_resendControllerData"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 45,
+      "source_line": 644,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2132,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the input-buffer wait and the port-0x64 write match, but the reference does not record the last sent byte on the command path and the counter increment carries a lock prefix (divergences.md Findings 4, 5, 15, 16)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_sendControllerCommand"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 73,
+      "source_line": 570,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2208,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the 0xD4 command, the data byte and the 0xFA acknowledgement test match exactly, but the source name is one underscore too deep (divergences.md Findings 4, 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_sendMouseCommand"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 53,
+      "source_line": 751,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2264,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the mouse-present test and the 0xF5 command match, but the source name and the mouse global are spelled too deep (divergences.md Findings 4, 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_disableMouse"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 26,
+      "source_line": 930,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2292,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the mouse-present test and the 0xF4 command match, but the source name and the mouse global are spelled too deep (divergences.md Findings 4, 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_enableMouse"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 26,
+      "source_line": 940,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2320,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the non-blocking read, both the ACK and RESEND paths and the scancode-conversion tail call match exactly, but the source name is one underscore too deep and the function is compiled into the wrong source file (divergences.md Findings 4, 18)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_NewStealKeyboardEvent"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 83,
+      "source_line": 593,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2404,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; returns the device style 1, matching source exactly"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2Keyboard deviceStyle]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2416,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the body returns the protocol list address and matches, but the reference's list holds PS2ControllerExported where ours holds only nil (divergences.md Finding 17)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2Keyboard requiredProtocols]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 93,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2428,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the directDevice fetch, the alloc and initWithController:, the configTable read and the free-on-failure path all match, but the second keyboard entry is a relocated function pointer where ours passes a literal constant (divergences.md Finding 7)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2Keyboard probe:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 160,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2588,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the nil-table early return, both PCPatoi parses, both defaults and the YES return all match, and the use-default continuation was confirmed at 2655 and 2718; only the two log strings diverge (divergences.md Finding 14)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard readConfigTable:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 170,
+      "source_line": 372,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2760,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; super init, the controller store, the buffer clear, both controller commands, the command-byte edit, setKeyboardObject:, setAlphaLockFeedback:, setUnit:, setName:, setDeviceKind: and registerDevice all match, but our six extra initialization stores including the NXLock allocation have no counterpart (divergences.md Findings 3, 13)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard initWithController:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 208,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2968,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the presence loop, the ACK and RESEND handling, the event copy and the count increment all match, but the reference does not dispatch when the event queue is full (divergences.md Finding 19)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard interruptOccurred]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 171,
+      "source_line": 257,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3140,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the splx(6) entry, the single-event fast path, the count reset, the splx restore, the owner guard and the dispatch loop all match; the only difference is that the reference calls bcopy unconditionally on the else path (divergences.md Finding 21)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard dispatchKeyboardEvents]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 224,
+      "source_line": 306,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3364,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the 128-iteration scan, the word index, the bit mask and the count all match, but our source name carries two leading underscores where the reference implies one (divergences.md Finding 4)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "__PS2KeyboardNumKeysDown"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 56,
+      "source_line": 447,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3420,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the full-queue guard, the slot address computation and the count increment match, but the reference stores the timestamp low word first and copies the going-down flag through unmodified where ours swaps the words and inverts the flag (divergences.md Findings 2, 11)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 99,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3520,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction, with the 19 jump-table case bodies additionally decoded from the table at 3628 and verified to map scancode to keycode identically to source; the 0xE0 and 0xE1 prefixes, the extend countdown, the key-direction computation and the bit set and clear all match, but the NumLock special case reads a spurious state array where the reference reads the NumLock bit of the key bit vector (divergences.md Findings 4, 12, 22)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_scancodeToKeyEvent"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 818,
+      "source_line": 488,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4340,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; returns the ivar at offset 528, matching source exactly; the ivar's name differs but the body does not (divergences.md Finding 20)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard interfaceId]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 16,
+      "source_line": 440,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4356,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; returns the ivar at offset 532, matching source exactly; the ivar's name differs but the body does not (divergences.md Finding 20)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard handlerId]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 16,
+      "source_line": 434,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4372,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the zero-or-four LED byte and the forwarded setLEDs: match with no divergence, and the reference records nothing locally either"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard setAlphaLockFeedback:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 43,
+      "source_line": 416,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4416,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the lock, the respondsTo: check, the two-argument IOLog, the relinquishment request and the owner store all match, but the reference returns the raw int with 0 for success where ours returns a BOOL with 1 for success (divergences.md Findings 2, 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard becomeOwner:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 215,
+      "source_line": 157,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4632,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the lock, the owner comparison, the -725 failure code, the unlock, the desired-owner notification and the raw int return all match with no divergence"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard relinquishOwnership:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 196,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4828,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; the lock, the nil-or-same desired-owner test and the -725 conflict code all match, but the reference returns the raw int with 0 for success where ours returns a BOOL with 1 for success (divergences.md Findings 2, 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Keyboard desireOwnership:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 98,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4928,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; returns the driver instance address (__DATA,__common, 8920)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2KeyboardKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns the address of the driver instance in __DATA,__common at 8920 and is typed ^^{?}8@8:12 on the generated PS2KeyboardKernelServerInstance : Object class",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 4940,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely and additionally reports interior addresses as function starts, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
+          "full disassembly read instruction by instruction; returns the DriverKit version 500 (0x1F4)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2KeyboardVersion driverKitVersionForPS2Keyboard]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns the DriverKit version 500 and is typed i8@8:12 on the generated PS2KeyboardVersion : IODevice class",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
+  "schema_version": "ledger-v1"
+}

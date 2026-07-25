@@ -40,9 +40,9 @@
 unsigned int reg_base = 0;
 
 /* Internal helper functions */
-static char _socketIsValid(unsigned int socket);
-static unsigned char _checkForCirrusChip(void);
-static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
+static char socketIsValid(unsigned int socket);
+static unsigned char checkForCirrusChip(void);
+static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 
 @implementation PCIC
 
@@ -96,7 +96,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     reg_base = basePort;
 
     /* Validate socket 0 exists (basic hardware check) */
-    if (!_socketIsValid(0)) {
+    if (!socketIsValid(0)) {
         IOLog("PCIC: Hardware validation failed at port 0x%x\n", basePort);
         [self free];
         return nil;
@@ -163,11 +163,11 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     numSockets = [socketList count];
 
     /* Check for Cirrus Logic chip */
-    isCirrusChip = _checkForCirrusChip();
+    isCirrusChip = checkForCirrusChip();
 
     /* Set up status change interrupts for each socket */
     for (i = 0; i < [socketList count]; i++) {
-        _setStatusChangeInterrupt(i, irqLevel);
+        setStatusChangeInterrupt(i, irqLevel);
     }
 
     /* Enable all interrupts */
@@ -356,7 +356,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Returns 1 if valid, 0 if invalid
  * Based on decompiled implementation
  */
-static char _socketIsValid(unsigned int socket)
+static char socketIsValid(unsigned int socket)
 {
     unsigned char regValue;
     unsigned char regOffset;
@@ -385,7 +385,7 @@ static char _socketIsValid(unsigned int socket)
  * Check for Cirrus Logic chip
  * Returns 1 if Cirrus chip detected, 0 otherwise
  */
-static unsigned char _checkForCirrusChip(void)
+static unsigned char checkForCirrusChip(void)
 {
     unsigned char value;
     unsigned short dataPort;
@@ -425,7 +425,7 @@ static unsigned char _checkForCirrusChip(void)
  * Set status change interrupt for a socket
  * Configures the interrupt handling for card status changes
  */
-static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
+static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
 {
     unsigned char regOffset;
     unsigned char value;

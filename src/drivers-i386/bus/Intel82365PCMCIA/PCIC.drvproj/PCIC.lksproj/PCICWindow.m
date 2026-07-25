@@ -35,8 +35,8 @@
 extern unsigned int reg_base;
 
 /* Internal helper functions */
-static void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
-static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+static void setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
 
 @implementation PCICWindow
 
@@ -255,10 +255,10 @@ static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int 
     /* Call appropriate window setup function based on window type
      * Note: The function calls appear inverted but match the decompiled binary */
     if (memoryWindow == 0) {
-        _setIoWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
+        setIoWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
     }
     else {
-        _setMemoryWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
+        setMemoryWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
     }
 }
 
@@ -349,7 +349,7 @@ static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int 
  * Configure a memory window
  * Sets up PCIC registers for memory window mapping
  */
-static void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
 {
     unsigned char socketOffset;
     unsigned char windowOffset;
@@ -401,7 +401,7 @@ static void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
  * Configure an I/O window
  * Sets up PCIC registers for I/O window mapping
  */
-static void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+static void setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
 {
     unsigned char socketOffset;
     unsigned char windowOffset;

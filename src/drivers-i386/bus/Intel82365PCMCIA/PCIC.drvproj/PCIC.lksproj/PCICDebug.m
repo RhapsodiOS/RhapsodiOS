@@ -37,17 +37,17 @@ extern unsigned int reg_base;
 /* Global variables for memory mapping */
 static char *__memory = NULL;
 
-/* Forward declaration of _setWindow function */
-static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
-                           unsigned int size, unsigned int physicalAddr,
-                           unsigned int offset, unsigned int flags,
-                           int windowType, int enable);
+/* Forward declaration of setWindow function */
+static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
+                          unsigned int size, unsigned int physicalAddr,
+                          unsigned int offset, unsigned int flags,
+                          int windowType, int enable);
 
 /*
  * Find empty memory range in upper memory (0xCC000-0xF0000)
  * Scans for BIOS ROM signatures (0xAA55) and finds unused space
  */
-static char * _FindEmptyMemoryRange(void)
+static char * FindEmptyMemoryRange(void)
 {
     unsigned char *ptr;
     unsigned char biosLength;
@@ -84,7 +84,7 @@ static char * _FindEmptyMemoryRange(void)
  * Map attribute memory for PCMCIA socket
  * Finds empty memory range, maps it, and configures PCIC window
  */
-static unsigned long long _MapAttributeMemory(int socket)
+unsigned long long MapAttributeMemory(int socket)
 {
     unsigned char regValue;
     unsigned char regOffset;
@@ -92,7 +92,7 @@ static unsigned long long _MapAttributeMemory(int socket)
     vm_task_t task;
 
     /* Find and store empty memory range in global */
-    __memory = _FindEmptyMemoryRange();
+    __memory = FindEmptyMemoryRange();
 
     /* Get VM task */
     task = IOVmTaskSelf();
@@ -118,7 +118,7 @@ static unsigned long long _MapAttributeMemory(int socket)
      * Parameters: socket, window 0, base 0, size 0x2000 (8KB),
      *            physical address, offset 0, flags 0, type 1, enable 0
      */
-    _setWindow(socket, 0, 0, 0x2000, physicalAddr, 0, 0, 1, 0);
+    setWindow(socket, 0, 0, 0x2000, physicalAddr, 0, 0, 1, 0);
 
     /* Enable window (set bit 0 = window enable) */
     outb(reg_base, regOffset);
@@ -133,10 +133,10 @@ static unsigned long long _MapAttributeMemory(int socket)
  * Configures a PCMCIA memory or I/O window
  * Implementation to be filled in from decompiled code
  */
-static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
-                           unsigned int size, unsigned int physicalAddr,
-                           unsigned int offset, unsigned int flags,
-                           int windowType, int enable)
+static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
+                          unsigned int size, unsigned int physicalAddr,
+                          unsigned int offset, unsigned int flags,
+                          int windowType, int enable)
 {
     /* Placeholder implementation */
     /* This would configure PCIC window registers for the specified parameters */
@@ -159,7 +159,7 @@ static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
 
     /* Initialize attribute memory mapping on first call */
     if (__init_117 == 0) {
-        _MapAttributeMemory(0);
+        MapAttributeMemory(0);
         __init_117 = 1;
     }
 

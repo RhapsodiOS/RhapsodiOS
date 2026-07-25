@@ -36,8 +36,35 @@
 /* External reference to global reg_base from PCIC.m */
 extern unsigned int reg_base;
 
-/* External reference to _socketIsValid function from PCIC.m */
-extern char _socketIsValid(unsigned int socket);
+/*
+ * Check if socket is valid by reading hardware
+ * Returns 1 if valid, 0 if invalid
+ * Based on decompiled implementation
+ */
+static char socketIsValid(unsigned int socket)
+{
+    unsigned char regValue;
+    unsigned char regOffset;
+
+    /* Calculate register offset: socket * 0x40 */
+    regOffset = socket << 6;
+
+    /* Write register offset to index port */
+    outb(reg_base, regOffset);
+
+    /* Read register value from data port */
+    regValue = inb(reg_base + 1);
+
+    /* Check if socket is valid:
+     * - Lower 4 bits must be > 1
+     * - Bits 4-5 must be 0
+     */
+    if (((regValue & 0x0F) > 1) && ((regValue & 0x30) == 0)) {
+        return 1;
+    }
+
+    return 0;
+}
 
 @implementation PCICSocket
 
@@ -59,7 +86,7 @@ extern char _socketIsValid(unsigned int socket);
     socketNumber = number;
 
     /* Validate socket hardware */
-    socketValid = _socketIsValid(number);
+    socketValid = socketIsValid(number);
     if (socketValid == 0) {
         [self free];
         return nil;

@@ -127,12 +127,10 @@ static char socketIsValid(unsigned int socket)
 
     /* Create window list with capacity for 7 windows (offset 0x10 = 16) */
     windows = [[List alloc] initCount:7];
-    windows = [windows init];
 
     /* Create 1 memory window (memoryWindow = 0) */
     for (i = 0; i < 1; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:0 number:i];
-        window = [window init];
         [windows addObject:window];
 
         /* Configure memory window registers */
@@ -162,7 +160,6 @@ static char socketIsValid(unsigned int socket)
     /* Create 5 I/O windows (memoryWindow = 1) */
     for (i = 0; i < 5; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:1 number:i];
-        window = [window init];
         [windows addObject:window];
 
         /* Configure I/O window registers */

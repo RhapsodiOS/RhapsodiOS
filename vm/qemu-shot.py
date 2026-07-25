@@ -25,6 +25,16 @@ import zlib
 DEFAULT_AT = [5, 15, 30, 60, 90, 120]
 DEFAULT_KEYS_AT = 3.0
 
+# RTC base date/time passed to QEMU's -rtc. Must land strictly after the
+# root filesystem's fs_time (epoch 894585442 = 1998-05-07T23:57:22Z) and
+# within 2 days of it, or src/kernel-7/bsd/kern/kern_time.c's inittodr()
+# prints a clock warning at boot (see kern_time.c ~line 264). Twelve hours
+# after fs_time stays inside that window while tolerating up to 12 hours of
+# negative timezone skew in how QEMU interprets the RTC base.
+# vm/start-vm.cmd's -rtc must be kept in sync with this literal value.
+RTC_BASE = "1998-05-08T12:00:00"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
 # Minimal character -> QMP qcode(s) mapping. Only covers what is needed to
 # type "-v" and a kernel filename like "mach_kernel" at the boot prompt;
 # not an exhaustive keymap.
@@ -162,7 +172,7 @@ def find_free_port():
     return port
 
 
-def build_qemu_args(image, qmp_port, trace, outdir):
+def build_qemu_args(image, qmp_port, trace):
     args = [
         "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
         "-m", "128", "-k", "en-us",
@@ -170,12 +180,12 @@ def build_qemu_args(image, qmp_port, trace, outdir):
         "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
         "-netdev", "user,id=n0", "-device", "ne2k_pci,netdev=n0",
         "-serial", "null", "-serial", "null",
-        "-rtc", "base=1999-01-01",
+        "-rtc", "base=%s" % RTC_BASE,
         "-boot", "order=c",
         "-qmp", "tcp:127.0.0.1:%d,server,nowait" % qmp_port,
     ]
     if trace:
-        logs_dir = os.path.join(outdir, "logs")
+        logs_dir = os.path.join(_HERE, "logs")
         os.makedirs(logs_dir, exist_ok=True)
         trace_log = os.path.join(logs_dir, "qemu-trace.log")
         args += [
@@ -202,7 +212,7 @@ def run(image, outdir, at_points, keys, keys_at, trace):
     os.makedirs(outdir, exist_ok=True)
 
     qmp_port = find_free_port()
-    qemu_args = build_qemu_args(image, qmp_port, trace, outdir)
+    qemu_args = build_qemu_args(image, qmp_port, trace)
 
     proc = subprocess.Popen(qemu_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     start = time.monotonic()

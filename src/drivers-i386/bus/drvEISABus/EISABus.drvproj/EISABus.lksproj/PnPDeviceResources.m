@@ -373,8 +373,8 @@ static unsigned short readPort = 0;
             case 5:  /* 32-bit Memory Range Descriptor */
             case 6:  /* 32-bit Fixed Memory Range Descriptor */
             {
-                pnpMemory *memory = [[[objc_getClass("pnpMemory") alloc]
-                                     initFrom:data Length:largeLength Type:(tag & 0x7F)] init];
+                pnpMemory *memory = [[pnpMemory alloc]
+                                     initFrom:data Length:largeLength Type:(tag & 0x7F)];
                 if (memory == nil) {
                     IOLog("failed to init memory\n");
                     return nil;
@@ -466,7 +466,7 @@ static unsigned short readPort = 0;
             case 2:  /* Logical Device ID */
             {
                 /* Allocate new logical device */
-                logicalDevice = (PnPLogicalDevice *)[[[objc_getClass("PnPLogicalDevice") alloc] init] init];
+                logicalDevice = [[PnPLogicalDevice alloc] init];
                 if (logicalDevice == nil) {
                     IOLog("PnPDeviceResources: allocate PnPLogicalDevice failed\n");
                     return nil;
@@ -544,7 +544,7 @@ static unsigned short readPort = 0;
             }
             case 4:  /* IRQ Format */
             {
-                pnpIRQ *irq = [[[objc_getClass("pnpIRQ") alloc] initFrom:data Length:itemLength] init];
+                pnpIRQ *irq = [[pnpIRQ alloc] initFrom:data Length:itemLength];
                 if (irq == nil) {
                     IOLog("PnPDeviceResources: failed to parse IRQ\n");
                     return nil;
@@ -558,7 +558,7 @@ static unsigned short readPort = 0;
             }
             case 5:  /* DMA Format */
             {
-                pnpDMA *dma = [[[objc_getClass("pnpDMA") alloc] initFrom:data Length:itemLength] init];
+                pnpDMA *dma = [[pnpDMA alloc] initFrom:data Length:itemLength];
                 if (dma == nil) {
                     IOLog("PnPDeviceResources: failed to parse DMA\n");
                     return nil;
@@ -578,7 +578,7 @@ static unsigned short readPort = 0;
                 depthCounter++;
 
                 /* Allocate dependent resources object */
-                depResources = (PnPDependentResources *)[[[objc_getClass("PnPDependentResources") alloc] init] init];
+                depResources = [[PnPDependentResources alloc] init];
                 if (depResources == nil) {
                     IOLog("PnPDeviceResources: failed to alloc depResources\n");
                     return nil;
@@ -620,8 +620,8 @@ static unsigned short readPort = 0;
             case 8:  /* I/O Port Descriptor */
             case 9:  /* Fixed I/O Port Descriptor */
             {
-                pnpIOPort *ioPort = [[[objc_getClass("pnpIOPort") alloc]
-                                     initFrom:data Length:itemLength Type:itemType] init];
+                pnpIOPort *ioPort = [[pnpIOPort alloc]
+                                     initFrom:data Length:itemLength Type:itemType];
                 if (ioPort == nil) {
                     IOLog("PnPDeviceResources: failed to parse ioPort\n");
                     return nil;

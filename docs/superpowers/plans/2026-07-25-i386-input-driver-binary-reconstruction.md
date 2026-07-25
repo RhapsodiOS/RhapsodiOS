@@ -78,6 +78,12 @@ If a staging directory named `binrecon-run-*` is left under `tools/binrecon/out/
 
 Two adapter behaviours are automatic and are not errors: Ghidra first tries its Mach-O loader and falls back to deterministic raw i386 import using parsed Mach-O sections when that loader rejects a legacy input, and angr's `CFGFast` records unresolved indirect control flow as CFG errors. Neither means a function is absent.
 
+**Three drivers run two analyzers, not three.** `serialpointingdevice`, `ps2keyboard` and `parallelport` have `analyzers.ghidra.enabled: false` in their profiles. With Ghidra enabled they abort normalization with `Ghidra relocation operand metadata is ambiguous` (`normalize.py:432`), producing `complete: false` and no consensus. This is deliberate and approved — see the spec's Failure modes section. `ps2mouse` and `busmouse` keep all three. Do not re-enable Ghidra to "fix" a two-analyzer run.
+
+Consequences for the affected three: the `published/` directory holds `analysis-reference-ida.json`, `analysis-reference-angr.json` and `consensus-reference.json` but **no** `analysis-reference-ghidra.json`, and `run-summary.json`'s `analyzers` list has two entries. Each affected driver's `divergences.md` must state the reduced analyzer set as a stated limitation of its evidence, and its analyzer-disagreement section covers IDA against angr only.
+
+**All five analyze runs have already been performed and verified by the controller.** Confirm the existing state rather than re-running; re-run only if files are missing or a SHA-256 disagrees.
+
 **Step B — build the source map.** IDA is authoritative for the function partition, per the drvPCIBus convention:
 
 ```bash
@@ -1021,7 +1027,7 @@ Standard report pass Step A with `<name>` = `serialpointingdevice` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\SerialPointingDevice.config\SerialPointingDevice_reloc'
 ```
 
-Expected: exit 1 (see Step A — reference-only profiles always fail acceptance) and `"complete": true` with `reference_sha256` `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`.
+Expected: exit 1 (see Step A — reference-only profiles always fail acceptance) and `"complete": true` with `reference_sha256` `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`. **This driver runs IDA + angr only** — `analyzers` has two entries and there is no `analysis-reference-ghidra.json`. Already run and verified by the controller; confirm rather than re-run.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1203,7 +1209,7 @@ Standard report pass Step A with `<name>` = `ps2keyboard` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\PS2Keyboard.config\PS2Keyboard_reloc'
 ```
 
-Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A`.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A`. **This driver runs IDA + angr only** — `analyzers` has two entries and there is no `analysis-reference-ghidra.json`. Already run and verified by the controller; confirm rather than re-run.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1391,7 +1397,7 @@ Standard report pass Step A with `<name>` = `parallelport` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\ParallelPort.config\ParallelPort_reloc'
 ```
 
-Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2`. Expect a non-empty angr CFG error list; that does not make the run incomplete.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2`. Expect a non-empty angr CFG error list; that does not make the run incomplete. **This driver runs IDA + angr only** — `analyzers` has two entries and there is no `analysis-reference-ghidra.json`, so the analyzer-disagreement section compares IDA against angr alone. Already run and verified by the controller; confirm rather than re-run.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1604,7 +1610,7 @@ Standard report pass Step A with `<name>` = `busmouse` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\BusMouse.config\BusMouse_reloc'
 ```
 
-Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864`.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864`, and all three analyzers (`IDA`, `Ghidra`, `angr`). Already run and verified by the controller; confirm rather than re-run.
 
 - [ ] **Step 2: Generate the source map**
 

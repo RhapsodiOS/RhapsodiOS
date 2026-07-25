@@ -14,7 +14,7 @@
       "version": "9.2"
     },
     "ghidra": {
-      "enabled": true,
+      "enabled": false,
       "executable": "D:/ghidra/support/analyzeHeadless.bat",
       "timeout_seconds": 900,
       "version": "12.1"

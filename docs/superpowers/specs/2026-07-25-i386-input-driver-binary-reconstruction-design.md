@@ -495,7 +495,30 @@ function discovery are claims, not truth. Conflicting boundaries go to
 `boundary_disputed` for human resolution.
 
 **Ghidra rejecting legacy Mach-O input** falls back to deterministic raw i386
-import using parsed Mach-O sections. Java 21 and Ghidra 12.1 remain mandatory.
+import using parsed Mach-O sections. Java 21 and Ghidra 12.1 remain mandatory
+for the two drivers that still use Ghidra.
+
+**Ghidra normalization fails outright on three of the five drivers, and they run
+with two analyzers instead.** `drvSerialPointingDevice`, `drvPS2Keyboard` and
+`drvPCParallel` all abort normalization with
+`Ghidra relocation operand metadata is ambiguous` (`normalize.py:432`), leaving
+`complete: false` and no reference consensus. The cause is specific instruction
+forms, not scale: `Intel82365PCMCIA` is larger than `ParallelPort` and normalizes
+cleanly with all three. The disambiguation those three fall outside of was added
+by commit `d34b04a6` for this same class of problem.
+
+Ghidra is therefore disabled in those three profiles and they run IDA + angr,
+which was verified to produce `complete: true` with a valid reference consensus.
+`drvPS2Mouse` and `drvBusMouse` keep all three analyzers. Each affected driver's
+`divergences.md` states the reduced analyzer set as a limitation of its evidence.
+
+This is a real weakening: the effort's premise is multi-analyzer corroboration
+with disagreement preserved rather than voted away. It is tolerable because IDA
+is already authoritative for the function partition by the convention drvPCIBus
+established, and angr still supplies an independent second opinion — so what is
+lost is one corroborating source on three drivers, not the evidence base. Fixing
+`normalize.py` is the better answer and belongs to its own effort, because five
+already-committed reconstructions depend on that code.
 
 **angr `CFGFast` misses on indirect control flow** are recorded as CFG errors,
 never read as "function absent". `IOParallelPortKern.m` dispatches through

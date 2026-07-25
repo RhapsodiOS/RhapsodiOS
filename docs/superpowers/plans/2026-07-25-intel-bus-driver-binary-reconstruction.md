@@ -1115,7 +1115,11 @@ git commit -m "Intel82365PCMCIA: add the Version line the reference PCI.table ca
 
 Skip this step entirely if Task 8 Step 6 returned no-go; the ledger entry is already `intentional-mismatch` and the class becomes its own spec.
 
-Otherwise create `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC_PCI.m` implementing `-[PCIC_PCI initFromDeviceDescription:]` from the reference disassembly, per Task 8's finding. Constraints:
+**CORRECTED BY TASK 8.** Task 8 decoded `__OBJC,__module_info` and established that Apple compiled `PCIC_PCI` **inside `PCIC.m`**, ahead of `@implementation PCIC` — module 0 is `PCIC.m` with `cls_def 2`, and the class at 17352 is `PCIC_PCI` with its one method's `IMP` at address 0. There is no separate `PCIC_PCI.m` in Apple's build.
+
+So: add `@implementation PCIC_PCI` to the **top** of `PCIC.m`, before `@implementation PCIC`. It must come first for the `__cstring` order to match (`PCIC: PCMCIA->PCI…` at 7548 precedes `PCIC: No device…` at 7604). **No new file, and no `PB.project` change.** Declare the class in `PCIC.h` alongside `PCIC`.
+
+Implement `-[PCIC_PCI initFromDeviceDescription:]` from the reference disassembly, per Task 8's finding. Constraints:
 
 - The class subclasses `PCIC`; `.objc_class_name_PCIC` is referenced from the reference's `PCIC_PCI` object.
 - Its one log string is `PCIC: PCMCIA->PCI Bus Bridge Detected (Dev=%d, Bus=%d)`, so it reads the PCI device and bus numbers and logs both.
@@ -1155,7 +1159,11 @@ unused PCICInternal.h."
 
 - [ ] **Step 5: Drop the leading underscores and commit**
 
-Rename all eight C functions so the compiled symbols match Apple's, per §2.5. Our source declares `_socketIsValid`, which compiles to `__socketIsValid`; the reference symbol is `_socketIsValid`, so the C identifier must be `socketIsValid`.
+**CORRECTED BY TASK 8 — renaming alone is not enough, and this step fixes a load failure.** Task 8 found the staged artifact carries an unresolved `N_UNDF|N_EXT` `__socketIsValid`: `PCIC.m` defines it `static` while `PCICSocket.m` declares it `extern`. It is the only undefined symbol beyond the expected kernel/runtime externals, and `ld -r` does not diagnose it — which is why the build reports `exit status 0` while **the driver cannot load**.
+
+Apple's shape is two *separate* `static` copies, one per translation unit: both are `n_type=0x0e`, at 1488 in `PCIC.m` and 2816 in `PCICSocket.m`, with byte-identical bodies differing only in which per-TU `io_inline.h` counter they touch (bss 8192 versus 8236). So `PCICSocket.m` gets its own `static` definition and drops the `extern`. Do not "fix" this by dropping `static` from `PCIC.m`'s copy — that would diverge from the reference's linkage.
+
+Then rename all eight C functions so the compiled symbols match Apple's, per §2.5. Our source declares `_socketIsValid`, which compiles to `__socketIsValid`; the reference symbol is `_socketIsValid`, so the C identifier must be `socketIsValid`.
 
 | Our identifier | Correct identifier |
 | --- | --- |

@@ -24,7 +24,7 @@ this work read the reference symbol, string, and config-table data directly,
 before any analyzer run, and found two drivers that cannot work at all because
 they read a config key or device name that does not exist (§2.1, §2.2), one whose
 logic is an invention rather than a reconstruction (§2.3), one with a mislabelled
-mouse-type table (§2.4), and one that does not build (§2.7).
+mouse-type table (§2.4), and one missing both its `PB.project` files (§2.7).
 
 Unlike the Intel effort, every reference function has a name-level counterpart in
 our tree. Nothing is missing wholesale. This is a parity and divergence effort,
@@ -194,14 +194,18 @@ Apple's `"Driver Version"` build stamp in checked-in source. That line is out of
 the comparison (§1.2) and our build regenerates it, so it is recorded in
 `divergences.md` and left alone rather than widening the diff.
 
-### 2.7 drvPCParallel does not build
+### 2.7 drvPCParallel is missing both its `PB.project` files
 
-`PCParallelPort.lksproj/Makefile:20` names `Load_Commands.sect` in `OTHERSRCS`
-and the file is absent. The project also lacks the `PB.project` for
-`PCParallelPort.drvproj` and for `PCParallelPort.lksproj` that every other driver
-in the tree has.
+The project lacks the `PB.project` for `PCParallelPort.drvproj` and for
+`PCParallelPort.lksproj` that every other driver in the tree has. Both are added.
+Nothing else in the build system is touched.
 
-Those three files are added. Nothing else in the build system is touched.
+An earlier draft of this section also claimed `PCParallelPort.lksproj/Makefile:20`
+named a `Load_Commands.sect` that did not exist, and concluded the driver could
+not build. That was wrong: the file has been present and tracked since
+`3a0ab68f`, carrying the `WIRE` content the Makefile's `OTHERSRCS` expects.
+Whether drvPCParallel builds is therefore an open question that its fix pass
+answers, not a known failure.
 
 Two adjacent gaps are recorded as findings only, with no change made.
 drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice have no
@@ -286,7 +290,7 @@ The complete list:
    defaulting to `"0"`, instead of deriving the value from the device name suffix
    (§2.2). The `"Location"` read at line 158 is not touched.
 4. The four missing `"Version"` lines (§2.6).
-5. drvPCParallel's `Load_Commands.sect` and two `PB.project` files (§2.7).
+5. drvPCParallel's two `PB.project` files (§2.7).
 
 Nothing else. Every other finding in §2 waits for its driver's report pass.
 
@@ -526,9 +530,8 @@ drvBusMouse:
 Repository-wide:
 
 - `vm/build-i386-input-drivers.sh`
-- `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/Load_Commands.sect`
 - `PB.project` for `PCParallelPort.drvproj` and for `PCParallelPort.lksproj`
 - `src/drivers-i386/README` status lines updated for all five
 
 Not deliverables: any change to `drvISASerialPort`, any `Unload_Commands.sect`,
-any `Load_Commands.sect` beyond drvPCParallel's, and any boot test.
+any `Load_Commands.sect` at all, and any boot test.

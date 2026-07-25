@@ -107,7 +107,7 @@ Two scaffolding gaps are recorded here, with **no change made** — the spec's �
 - For drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice: the project has no `Load_Commands.sect` and its `.lksproj/Makefile` does not name one, so the built `Loaded Server,Load Commands` section will not match Apple's 164 bytes. Record the section sizes our build actually produces once the fix pass has a binary, or state that they are unmeasured if the guest was unavailable.
 - For drvPS2Keyboard, drvPS2Mouse, drvSerialPointingDevice and drvBusMouse: the reference carries a `Loaded Server,Unload Commands` section of 102 bytes that nothing in this repository produces, including the three already-reconstructed bus drivers. Closing it would mean a build-system change plus a retrofit, which the spec puts out of scope.
 
-drvPCParallel's `divergences.md` records instead that its `Load_Commands.sect` and two `PB.project` files were added in Task 2, and what the resulting section sizes are.
+drvPCParallel's `divergences.md` records instead that its two `PB.project` files were added in Task 2, that its `Load_Commands.sect` was already present and tracked since `3a0ab68f`, and what section sizes the build actually produces.
 
 **Step H — write `ledger.json`.** `schema-version` `ledger-v1`, `reference_sha256` from the table above, `rebuilt_sha256` `null`. One entry per reference function with `address`, `names`, `size`, `source_path`, `source_line`, `status`, `reason`, `reviewer`, `artifacts`, and `analyzer_agreement` (`{analyzers, reasons, status}`). Build-generated glue gets `intentional-mismatch` with a reason naming the Kernel Server project type and a reviewer. Verify with:
 
@@ -438,7 +438,6 @@ Lands the five fixes whose evidence is a direct diff of our checked-in source ag
 - Modify: `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/Default.table`
 - Modify: `src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/Default.table`
 - Modify: `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/Default.table`
-- Create: `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/Load_Commands.sect`
 - Create: `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PB.project`
 - Create: `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/PB.project`
 
@@ -1424,13 +1423,13 @@ git commit -m "drivers-i386: record the drvPCParallel parity ledger and divergen
 
 **Interfaces:**
 - Consumes: Task 9's `divergences.md` and `ledger.json`; Task 1's build script; Task 2's three new project files.
-- Produces: a driver whose `__cstring` set contains every reference string, and the first evidence of whether the missing `Load_Commands.sect` was a hard build failure or a silent section omission.
+- Produces: a driver whose `__cstring` set contains every reference string, and the first evidence of whether drvPCParallel builds at all.
 
 **Standard fix pass procedure values:** `<name>` = `parallelport`, `<drv>` = `drvPCParallel`, `<Config>` = `ParallelPort`.
 
 - [ ] **Step 1: Baseline build**
 
-Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvPCParallel`. Because Task 2 added the missing `Load_Commands.sect` and both `PB.project` files, this is a baseline of the *repaired* project, not of the broken one. Record in `divergences.md` whether the build succeeds and whether the `Loaded Server,Load Commands` section is present at Apple's 164 bytes:
+Standard fix pass Step A: `sh /build/source/vm/build-i386-input-drivers.sh drvPCParallel`. This driver has never been built, and its `Load_Commands.sect` was present all along, so this baseline establishes for the first time whether it compiles. Record in `divergences.md` whether the build succeeds and whether the `Loaded Server,Load Commands` section is present at Apple's 164 bytes:
 
 ```bash
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "

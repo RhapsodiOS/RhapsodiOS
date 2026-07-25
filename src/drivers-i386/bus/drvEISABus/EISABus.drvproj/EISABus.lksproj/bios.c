@@ -59,6 +59,11 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
                                 unsigned short arg6, unsigned short arg7)
 {
     unsigned short status;
+    /* NeXT i386 cc rejects '|' inside asm constraint expressions. */
+    unsigned int eax_in = ((unsigned int)func) | (((unsigned int)arg1) << 16);
+    unsigned int ebx_in = ((unsigned int)arg2) | (((unsigned int)arg3) << 16);
+    unsigned int ecx_in = ((unsigned int)arg4) | (((unsigned int)arg5) << 16);
+    unsigned int edx_in = ((unsigned int)arg6) | (((unsigned int)arg7) << 16);
 
     __asm__ __volatile__(
         "pushl  %%ebp\n\t"
@@ -82,10 +87,10 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
         "popl   %%edi\n\t"
         "popl   %%ebp\n\t"
         : "=a" (status) /* output: status in AX */
-        : "0" ((func) | (((unsigned int)arg1) << 16)), /* input 0: EAX */
-          "b" ((arg2) | (((unsigned int)arg3) << 16)), /* input 1: EBX */
-          "c" ((arg4) | (((unsigned int)arg5) << 16)), /* input 2: ECX */
-          "d" ((arg6) | (((unsigned int)arg7) << 16))  /* input 3: EDX */
+        : "0" (eax_in), /* input 0: EAX */
+          "b" (ebx_in), /* input 1: EBX */
+          "c" (ecx_in), /* input 2: ECX */
+          "d" (edx_in)  /* input 3: EDX */
         : "memory" /* clobber memory */
     );
 

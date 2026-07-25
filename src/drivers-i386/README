@@ -2,9 +2,9 @@ Current list of drivers to be implemented and the status of re-implementation
 =====================================================
 
 bus
- * drvEISABus - crashing, needs debugging
- * drvPICBus - complete
- * drvPCMCIABus - needs compiled and then tested
+ * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
+ * drvPCIBus - complete; reconstructed against the reference binary
+ * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * Intel824X0PCI - complete
  * Intel82365PCMCIA - needs compiled and then tested
 

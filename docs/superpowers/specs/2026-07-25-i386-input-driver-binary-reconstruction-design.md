@@ -213,17 +213,31 @@ driver could not build. The premise was wrong — the file has been present and
 tracked since `3a0ab68f`, carrying the `WIRE` content the Makefile's `OTHERSRCS`
 expects — but the conclusion happens to be right for an unrelated reason.
 
-A baseline build on the Rhapsody guest confirms drvPCParallel does not compile:
+A baseline build on the Rhapsody guest initially failed to compile:
 
 ```
 IOParallelPortKern.h:110: parse error before `portObject'
 IOParallelPortKern.h:99: previous declaration of `seltrue'
   conflicting with bsd/sys/systm.h:136
-gnumake: *** [all@PCParallelPort.drvproj] Error 2
 ```
 
-Repairing that is an explicit, separately committed step ahead of drvPCParallel's
-divergence fixes, per §4.3's "baseline first" rule.
+A concurrent build-repair effort has since fixed both — `IOParallelPortThread`
+now takes `void *` rather than `id`, and the `enodev`/`seltrue`/`IOExitThread`/
+`msg_receive` redeclarations that conflicted with `System.framework` are gone.
+`kl_ld` now links a 185032-byte `ParallelPort_reloc`.
+
+What remains is a packaging rule, not a compile error: `post_copy_tables` runs
+`chmod` on `$(NAME).config/*.table`, which does not exist because the table lives
+in the `.drvproj` directory, so `gnumake` still exits 2 after a successful link.
+The build harness stages the table separately and accepts the run because the
+`_reloc` exists. drvPCParallel's fix pass decides whether to repair that rule or
+record it.
+
+That effort also removed `PostLoad.tproj` and `PreLoad.tproj` from the
+`.drvproj` Makefile's `TOOLS`, on the grounds that those user-space helpers
+cannot build on a PPC cross-host. §1.3 says `InstallPPDev` and `RemovePPDev` are
+compiled during drvPCParallel's fix pass; that is now blocked by the host, so the
+fix pass records it as an environment limitation rather than restoring the line.
 
 The same baseline run established the other four: drvBusMouse, drvPS2Keyboard,
 drvPS2Mouse and drvSerialPointingDevice all compile and stage a `_reloc` today.

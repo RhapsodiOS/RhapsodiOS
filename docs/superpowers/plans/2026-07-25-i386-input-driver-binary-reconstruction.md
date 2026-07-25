@@ -291,6 +291,32 @@ An `intentional-mismatch` requires both `--reason` and `--reviewer`; the CLI rej
 
 **Step E — rebuild and re-check parity.** Repeat Steps A and B. `missing_strings` and `missing_symbols` must be at or below the baseline, and every string or symbol named in a fixed finding must be gone from the missing lists. Extras are not automatically findings — our build is unstripped.
 
+**Step E2 — reline the source map. MANDATORY, and the step most easily forgotten.**
+
+Any fix pass that adds or removes source lines invalidates every `source_line` in `source-map.json` and `ledger.json`. This has already bitten twice: drvPS2Mouse's rewrite shrank `PS2Mouse.m` from 689 to 628 lines and left the map pointing past the end of the file, and drvSerialPointingDevice's map was pinned to an uncommitted tree. **Regenerate before committing, every time.**
+
+```bash
+cd /d/RhapsodiOS
+export PYTHONPATH=tools/binrecon
+export BINRECON_REFERENCE='<this driver's reference path>'
+./.venv-binrecon/Scripts/python.exe -m binrecon source-map   --reference-analysis tools/binrecon/out/<name>/published/analysis-reference-ida.json   --binary "$BINRECON_REFERENCE"   --source-dir src/drivers-i386/input/<drv>/<lksproj>   --repo-root . --output "$SCRATCH/<name>-fresh.json"
+```
+
+Write it to scratch, **not** over the committed map — the fresh one has no hand-resolved bucket assignments. Then copy `source_line` and `source_path` across by `address` into both `source-map.json` and `ledger.json`, keeping the committed bucket assignments. If the fresh run's bucket counts differ from the committed map's, stop: the fix changed the function partition and that needs a human look, not an automatic merge.
+
+Confirm with the report-pass gate, which must print `source map OK`:
+
+```bash
+PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+from pathlib import Path
+from binrecon.schema import load_json, load_source_map
+a = load_json(Path('tools/binrecon/out/<name>/published/analysis-reference-ida.json'))
+load_source_map(Path('src/drivers-i386/input/<drv>/reconstruction/source-map.json'),
+                reference_analysis=a, repo_root=Path.cwd())
+print('source map OK')
+"
+```
+
 **Step F — commit.** One commit for the source fixes, one for the ledger and `divergences.md` update.
 
 **Guest dependency.** Steps A, B and E need the Rhapsody DR2 guest. If it is unavailable, the source fixes and ledger work still land, and the task reports explicitly which of the three §4.3 checks went unrun. Do not claim a check passed that was not run.

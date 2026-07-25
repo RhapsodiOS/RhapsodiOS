@@ -275,6 +275,15 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         readPort = 0x20B;
 
         do {
+            /*
+             * isolateCard() samples the isolation bits through
+             * readIsolationBit(), which reads the *global* pnpReadPort --
+             * not the candidate passed down here.  The reference makes
+             * pnpReadPort itself the loop variable, so publish the
+             * candidate before running the protocol.
+             */
+            pnpReadPort = readPort;
+
             /* Send PnP initiation sequence */
             sendPnPInitiationKey();
 
@@ -285,7 +294,6 @@ static int isolateCardsWithReadPort(unsigned short readPort)
 
             /* If we found cards, we're done */
             if (cardsFound != 0) {
-                pnpReadPort = readPort;
                 break;
             }
 

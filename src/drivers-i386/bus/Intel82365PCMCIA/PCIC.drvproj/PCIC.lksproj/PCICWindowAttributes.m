@@ -33,7 +33,7 @@
 /*
  * Get number of address lines decoded
  */
-- (unsigned int)addressLinesDecoded
+- (int)addressLinesDecoded
 {
     return 0x10;
 }
@@ -41,7 +41,7 @@
 /*
  * Get base address alignment requirement
  */
-- (unsigned int)baseAlignment
+- (int)baseAlignment
 {
     return 0x1000;
 }
@@ -49,7 +49,7 @@
 /*
  * Check if 16-bit mode is supported
  */
-- (unsigned int)canUse16Bit
+- (char)canUse16Bit
 {
     return 1;
 }
@@ -57,7 +57,7 @@
 /*
  * Check if 8-bit mode is supported
  */
-- (unsigned int)canUse8Bit
+- (char)canUse8Bit
 {
     return 1;
 }
@@ -65,7 +65,7 @@
 /*
  * Get fastest access speed
  */
-- (unsigned int)fastestSpeed
+- (int)fastestSpeed
 {
     return 0;
 }
@@ -89,7 +89,7 @@
 /*
  * Get maximum window size
  */
-- (unsigned int)maximumSize
+- (int)maximumSize
 {
     return 0x1000000;
 }
@@ -97,7 +97,7 @@
 /*
  * Get minimum window size
  */
-- (unsigned int)minimumSize
+- (int)minimumSize
 {
     return 0x1000;
 }
@@ -105,7 +105,7 @@
 /*
  * Check if size must be power of two
  */
-- (unsigned int)mustBePowerOfTwo
+- (char)mustBePowerOfTwo
 {
     return 0;
 }
@@ -113,7 +113,7 @@
 /*
  * Get offset alignment requirement
  */
-- (unsigned int)offsetAlignment
+- (int)offsetAlignment
 {
     return 0x1000;
 }
@@ -121,7 +121,7 @@
 /*
  * Get size alignment requirement
  */
-- (unsigned int)sizeAlignment
+- (int)sizeAlignment
 {
     return 0x1000;
 }
@@ -129,7 +129,7 @@
 /*
  * Get slowest access speed
  */
-- (unsigned int)slowestSpeed
+- (int)slowestSpeed
 {
     return 0;
 }
@@ -137,7 +137,7 @@
 /*
  * Check if I/O windows are supported
  */
-- (unsigned int)supportsIO
+- (char)supportsIO
 {
     return memoryWindow == 0;
 }
@@ -145,7 +145,7 @@
 /*
  * Check if memory windows are supported
  */
-- (unsigned int)supportsMemory
+- (char)supportsMemory
 {
     return memoryWindow;
 }
@@ -153,7 +153,7 @@
 /*
  * Check if write protection is supported
  */
-- (unsigned int)writeProtectable
+- (char)writeProtectable
 {
     return 1;
 }

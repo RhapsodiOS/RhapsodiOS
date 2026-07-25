@@ -47,26 +47,26 @@
 }
 
 /* Initialization */
-- initWithSocket:theSocket memoryWindow:(int)memoryWindow number:(int)number;
+- initWithSocket:theSocket memoryWindow:(char)memoryWindow number:(int)number;
 
 /* Window getters */
 - socket;
-- (unsigned int)enabled;
+- (char)enabled;
 - (unsigned int)systemAddress;
 - (unsigned int)cardAddress;
 - (unsigned int)mapSize;
-- (unsigned int)attributeMemory;
-- (unsigned int)is16Bit;
-- (unsigned int)memoryInterface;
+- (char)attributeMemory;
+- (char)is16Bit;
+- (char)memoryInterface;
 - validSockets;
 
 /* Window setters */
-- (void)setSocket:theSocket;
-- (void)setEnabled:(unsigned int)enabled;
-- (void)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr;
-- (void)setAttributeMemory:(unsigned int)attrMem;
-- (void)set16Bit:(unsigned int)is16;
-- (void)setMemoryInterface:(unsigned int)interface;
+- (char)setSocket:theSocket;
+- (char)setEnabled:(char)enabled;
+- (char)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr;
+- (char)setAttributeMemory:(char)attrMem;
+- (char)set16Bit:(char)is16;
+- (char)setMemoryInterface:(char)interface;
 
 @end
 

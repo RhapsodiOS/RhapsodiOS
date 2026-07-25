@@ -57,41 +57,41 @@ typedef struct {
 }
 
 /* Initialization */
-- initWithAdapter:theAdapter socketNumber:(unsigned int)number;
+- initWithAdapter:theAdapter socketNumber:(int)number;
 
 /* Window management */
 - windows;
 
 /* Socket information */
-- (unsigned int)socketNumber;
+- (int)socketNumber;
 - adapter;
 
 /* Power management getters */
-- (unsigned int)cardEnabled;
+- (char)cardEnabled;
 - (unsigned int)cardVccPower;
 - (unsigned int)cardVppPower;
-- (unsigned int)cardAutoPower;
-- (unsigned int)powerStates;
+- (char)cardAutoPower;
+- powerStates;
 
 /* Card configuration getters */
 - (unsigned int)cardIRQ;
-- (unsigned int)memoryInterface;
+- (char)memoryInterface;
 - (PCMCIAStatus)statusChangeMask;
 
 /* Status */
 - (PCMCIAStatus)status;
 
 /* Power management setters */
-- (void)setCardEnabled:(unsigned int)enabled;
-- (void)setCardVccPower:(unsigned int)power;
-- (void)setCardVppPower:(unsigned int)power;
-- (void)setCardAutoPower:(unsigned int)autoPower;
+- (char)setCardEnabled:(char)enabled;
+- (char)setCardVccPower:(unsigned int)power;
+- (char)setCardVppPower:(unsigned int)power;
+- (char)setCardAutoPower:(char)autoPower;
 
 /* Card configuration setters */
-- (void)setCardIRQ:(unsigned int)irq;
-- (void)setCardReset:(unsigned int)reset;
-- (void)setMemoryInterface:(unsigned int)interface;
-- (void)setStatusChangeMask:(PCMCIAStatus)mask;
+- (char)setCardIRQ:(unsigned int)irq;
+- (void)setCardReset:(char)reset;
+- (char)setMemoryInterface:(char)interface;
+- (char)setStatusChangeMask:(PCMCIAStatus)mask;
 
 /* Reset */
 - (void)reset;

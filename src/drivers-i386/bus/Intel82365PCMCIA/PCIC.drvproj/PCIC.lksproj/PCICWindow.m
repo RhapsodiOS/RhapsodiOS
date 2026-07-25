@@ -43,7 +43,7 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
 /*
  * Initialize window with socket, memory window type, and number
  */
-- initWithSocket:theSocket memoryWindow:(int)memWindow number:(int)number
+- initWithSocket:theSocket memoryWindow:(char)memWindow number:(int)number
 {
     /* Store socket at offset 4 */
     socket = theSocket;
@@ -77,7 +77,7 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
  * Get enabled state
  * Checks bit in Address Window Enable register
  */
-- (unsigned int)enabled
+- (char)enabled
 {
     unsigned char regValue;
     char bitOffset;
@@ -128,7 +128,7 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
  * Get attribute memory flag
  * Reads bit 6 from window control register
  */
-- (unsigned int)attributeMemory
+- (char)attributeMemory
 {
     unsigned char regValue;
 
@@ -144,7 +144,7 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
  * Get 16-bit data path flag
  * Reads different registers based on window type
  */
-- (unsigned int)is16Bit
+- (char)is16Bit
 {
     unsigned char regValue;
 
@@ -173,7 +173,7 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
  * Get memory interface type
  * Returns memoryWindow flag from offset 0x14
  */
-- (unsigned int)memoryInterface
+- (char)memoryInterface
 {
     return memoryWindow;
 }
@@ -191,21 +191,23 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
  * Set parent socket
  * Validates that the socket matches the current socket
  */
-- (void)setSocket:theSocket
+- (char)setSocket:theSocket
 {
     /* Check if the requested socket matches current socket */
     if (socket != theSocket) {
         /* Socket mismatch - cannot change socket */
-        return;
+        return 0;
     }
     /* Socket matches - no action needed */
+
+    return 1;
 }
 
 /*
  * Set enabled state
  * Sets or clears bit in Address Window Enable register
  */
-- (void)setEnabled:(unsigned int)isEnabled
+- (char)setEnabled:(char)isEnabled
 {
     unsigned char regValue;
     unsigned char bitPosition;
@@ -239,13 +241,15 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
     regOffset = (char)(socketNumber << 6);
     outb(reg_base, regOffset + 0x06);
     outb(reg_base + 1, regValue);
+
+    return 1;
 }
 
 /*
  * Set mapping with size, system address, and card address
  * Stores parameters and calls appropriate window configuration function
  */
-- (void)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr
+- (char)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr
 {
     /* Store parameters at their respective offsets */
     systemAddress = sysAddr;   /* Offset 0x18 */
@@ -260,13 +264,15 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
     else {
         setMemoryWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
     }
+
+    return 1;
 }
 
 /*
  * Set attribute memory flag
  * Sets bit 6 in window control register
  */
-- (void)setAttributeMemory:(unsigned int)attrMem
+- (char)setAttributeMemory:(char)attrMem
 {
     unsigned char regValue;
     char regOffset;
@@ -282,13 +288,15 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
     regOffset = (char)socketNumber * 64 + 0x15 + (char)windowNumber * 8;
     outb(reg_base, regOffset);
     outb(reg_base + 1, (regValue & 0xBF) | ((attrMem & 1) << 6));
+
+    return 1;
 }
 
 /*
  * Set 16-bit data path flag
  * Writes to different registers based on window type
  */
-- (void)set16Bit:(unsigned int)is16
+- (char)set16Bit:(char)is16
 {
     unsigned char regValue;
     char regOffset;
@@ -327,20 +335,24 @@ static void setIoWindow(unsigned int socket, unsigned int window, unsigned int c
 
     /* Write the value */
     outb(reg_base + 1, regValue);
+
+    return 1;
 }
 
 /*
  * Set memory interface type
  * Validates that the interface matches the window type
  */
-- (void)setMemoryInterface:(unsigned int)interface
+- (char)setMemoryInterface:(char)interface
 {
     /* Check if the requested interface matches current window type */
     if (memoryWindow != interface) {
         /* Interface mismatch - cannot change window type */
-        return;
+        return 0;
     }
     /* Interface matches - no action needed */
+
+    return 1;
 }
 
 @end

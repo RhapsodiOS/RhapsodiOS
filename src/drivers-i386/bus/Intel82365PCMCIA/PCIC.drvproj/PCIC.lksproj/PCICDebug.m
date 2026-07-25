@@ -150,7 +150,7 @@ static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
  * On first call, initializes attribute memory mapping
  * Waits for card ready status before reading
  */
-- (unsigned char)readAttributeMemory:(unsigned int)address forSocket:(unsigned int)socket
+- (unsigned char)readAttributeMemory:(int)address forSocket:(int)socket
 {
     static int __init_117 = 0;
     unsigned char statusReg;

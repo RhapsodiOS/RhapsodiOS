@@ -31,6 +31,8 @@
 #import "EISAKernBus+PlugAndPlay.h"
 #import "EISAKernBus+PlugAndPlayPrivate.h"
 #import "EISAKernBusInterrupt.h"
+#import "EISAKernBusDMAChannel.h"
+#import "EISAKernBusPortRange.h"
 #import "eisa.h"
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/KernDeviceDescription.h>
@@ -109,7 +111,6 @@ static const char *resourceNameStrings[] = {
 - init
 {
     id resource;
-    id resourceClass;
     int busId;
 
     /* Call superclass init */
@@ -124,36 +125,42 @@ static const char *resourceNameStrings[] = {
         _initialized = (BOOL)[self initializePnP];
     }
 
+    /*
+     * Resource classes are referenced directly rather than looked up by
+     * name.  KernBusItemResource, KernBusRangeResource and
+     * KernBusMemoryRange live in the kernel, and objc_getClass() does not
+     * find kernel classes from a loadable server -- it returns nil, so
+     * every resource inserted below would be nil and each driver's later
+     * resource lookup would fail with "Couldn't locate resource object".
+     * A direct reference is resolved by the loader instead.
+     */
+
     /* Register IRQ resource - 16 IRQ lines */
-    resourceClass = [objc_getClass("EISAKernBusInterrupt") class];
-    resource = [[[objc_getClass("KernBusItemResource") alloc]
+    resource = [[KernBusItemResource alloc]
                  initWithItemCount:16
-                          itemKind:resourceClass
-                             owner:self] init];
+                          itemKind:[EISAKernBusInterrupt class]
+                             owner:self];
     [self _insertResource:resource withKey:IRQ_LEVELS_KEY];
 
     /* Register DMA channel resource - 8 DMA channels */
-    resourceClass = [objc_getClass("EISAKernBusDMAChannel") class];
-    resource = [[[objc_getClass("KernBusItemResource") alloc]
+    resource = [[KernBusItemResource alloc]
                  initWithItemCount:8
-                          itemKind:resourceClass
-                             owner:self] init];
+                          itemKind:[EISAKernBusDMAChannel class]
+                             owner:self];
     [self _insertResource:resource withKey:DMA_CHANNELS_KEY];
 
     /* Register memory resource - Full 4GB address space (extent 0-0 means full range) */
-    resourceClass = [objc_getClass("KernBusMemoryRange") class];
-    resource = [[[objc_getClass("KernBusRangeResource") alloc]
+    resource = [[KernBusRangeResource alloc]
                  initWithExtent:(Range){0, 0}
-                           kind:resourceClass
-                          owner:self] init];
+                           kind:[KernBusMemoryRange class]
+                          owner:self];
     [self _insertResource:resource withKey:MEM_MAPS_KEY];
 
     /* Register I/O port resource - 64KB port space (0x0000-0xFFFF) */
-    resourceClass = [objc_getClass("EISAKernBusPortRange") class];
-    resource = [[[objc_getClass("KernBusRangeResource") alloc]
+    resource = [[KernBusRangeResource alloc]
                  initWithExtent:(Range){0, IO_PORT_MAX}
-                           kind:resourceClass
-                          owner:self] init];
+                           kind:[EISAKernBusPortRange class]
+                          owner:self];
     [self _insertResource:resource withKey:IO_PORTS_KEY];
 
     /* Set bus ID and register with KernBus system */

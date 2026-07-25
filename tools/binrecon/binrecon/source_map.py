@@ -127,16 +127,21 @@ def build_source_map(reference_analysis, macho_document, sites, *, disputed=None
 
     for function in reference_analysis["functions"]:
         address = function["address"]
-        names = sorted(set(function["names"]) | set(symbols.get(address, [])))
+        names = sorted(function["names"])
         if not names:
-            names = [f"sub_{address:x}"]
+            raise ValueError(
+                f"analysis function at address {address} has no names; "
+                "source-map-v1 requires at least one and the semantic validator "
+                "requires an exact match against the analysis"
+            )
         entry = {
             "address": address,
             "size": function["size"],
             "reference_names": names,
         }
 
-        candidates = sorted({site for name in names for site in sites.get(name, [])})
+        lookup = set(names) | set(symbols.get(address, []))
+        candidates = sorted({site for name in lookup for site in sites.get(name, [])})
 
         if address in disputed:
             boundary.append(

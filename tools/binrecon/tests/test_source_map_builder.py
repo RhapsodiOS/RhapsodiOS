@@ -1,5 +1,9 @@
+import json
 from pathlib import Path
 
+import pytest
+
+import binrecon.schema as schema
 from binrecon.source_map import build_source_map, defined_symbols, source_sites
 
 
@@ -284,8 +288,8 @@ def test_build_source_map_buckets_every_function():
     assert [entry["address"] for entry in document["boundary_disputed"]] == [0x1030]
 
 
-def test_build_source_map_merges_symbol_table_names():
-    analysis = _analysis([_function(0x2000, 0x10, [])])
+def test_build_source_map_keeps_analysis_names_verbatim_but_resolves_via_symbol_table():
+    analysis = _analysis([_function(0x2000, 0x10, ["sub_2000"])])
     macho = {
         "symbols": [
             {"name": "_helper", "address": 0x2000, "binding": "local", "section": "__text"}
@@ -294,5 +298,68 @@ def test_build_source_map_merges_symbol_table_names():
 
     document = build_source_map(analysis, macho, {"_helper": [("src/driver/x.c", 4)]})
 
-    assert document["mapped"][0]["reference_names"] == ["_helper"]
+    assert document["mapped"][0]["reference_names"] == ["sub_2000"]
+    assert document["mapped"][0]["source_path"] == "src/driver/x.c"
     assert document["mapped"][0]["source_line"] == 4
+
+
+def test_build_source_map_rejects_nameless_analysis_function():
+    analysis = _analysis([_function(0x3000, 0x10, [])])
+    macho = {"symbols": []}
+
+    with pytest.raises(ValueError, match="has no names"):
+        build_source_map(analysis, macho, {})
+
+
+def _full_analysis(functions, sha256="A" * 64):
+    return {
+        "schema_version": "analysis-v1",
+        "input": {
+            "path": "build/drvPCIBus",
+            "size": 0x40,
+            "sha256": sha256,
+            "architecture": "i386",
+            "endianness": "little",
+        },
+        "analyzer": {
+            "name": "fixture",
+            "version": "1.0",
+            "invocation": "fixture --analyze build/drvPCIBus",
+        },
+        "sections": [
+            {
+                "name": "__TEXT,__text",
+                "address": 0x1000,
+                "offset": 0,
+                "size": 0x40,
+                "permissions": "rx",
+                "sha256": "B" * 64,
+            }
+        ],
+        "symbols": [],
+        "relocations": [],
+        "functions": functions,
+    }
+
+
+def test_build_source_map_document_passes_the_semantic_validator(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bus.m").write_text("\n" * 20, encoding="utf-8")
+
+    analysis = _full_analysis(
+        [_function(0x1000, 0x10, ["-[PCIKernBus init]"])]
+    )
+    macho = {"symbols": []}
+    sites = {"-[PCIKernBus init]": [("src/driver/Bus.m", 12)]}
+
+    document = build_source_map(analysis, macho, sites)
+
+    output_path = tmp_path / "source-map.json"
+    output_path.write_text(json.dumps(document), encoding="utf-8")
+
+    loaded = schema.load_source_map(
+        output_path, reference_analysis=analysis, repo_root=tmp_path
+    )
+
+    assert loaded == document

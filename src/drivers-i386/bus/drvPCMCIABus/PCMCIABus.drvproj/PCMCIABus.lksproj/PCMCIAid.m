@@ -82,7 +82,7 @@ static const char *PCMCIAFunctionIDNames[] = {
 };
 
 /* Helper function to free a string field */
-static void _freeString(char **stringPtr)
+static void freeString(char **stringPtr)
 {
     if (*stringPtr != NULL) {
         IOFree(*stringPtr, strlen(*stringPtr) + 1);
@@ -109,7 +109,7 @@ static char isValidPCMCIA_IDChar(char c)
  * Sanitize and copy a string, filtering out invalid characters
  * Returns NULL if input is NULL or contains no valid characters
  */
-static char *_sanitizeStringCopy(char *str)
+static char *sanitizeStringCopy(char *str)
 {
     char c;
     char *scanPtr;
@@ -186,7 +186,7 @@ static char *_sanitizeStringCopy(char *str)
  * Codes 0-9 map to the standard function names; 0xFE is "Vendor Specific";
  * anything else returns NULL
  */
-const char *_stringForFunctionID(const char *funcID)
+const char *stringForFunctionID(const char *funcID)
 {
     long value;
 
@@ -221,7 +221,7 @@ const char *_stringForFunctionID(const char *funcID)
         str = [description stringForKey:PCMCIAidDescriptionKeys[i]];
 
         /* Sanitize and copy the string */
-        fields[i] = _sanitizeStringCopy(str);
+        fields[i] = sanitizeStringCopy(str);
     }
 
     return self;
@@ -340,7 +340,7 @@ const char *_stringForFunctionID(const char *funcID)
 
     /* Free all 5 string fields */
     for (i = 0; i < 5; i++) {
-        _freeString(&fields[i]);
+        freeString(&fields[i]);
     }
 
     return [super free];
@@ -401,7 +401,7 @@ const char *_stringForFunctionID(const char *funcID)
     int i;
     const char *value;
     const char *functionName;
-    extern const char *_stringForFunctionID(const char *funcID);
+    extern const char *stringForFunctionID(const char *funcID);
 
     /* Loop through all 5 ID fields */
     for (i = 0; i < 5; i++) {
@@ -411,7 +411,7 @@ const char *_stringForFunctionID(const char *funcID)
         if (value != NULL) {
             if (i == 0) {
                 /* Field 0 is function type - convert to human-readable string */
-                functionName = _stringForFunctionID(value);
+                functionName = stringForFunctionID(value);
                 IOLog("PCMCIABus: %s %s (%s)\n",
                        PCMCIAidFieldLabels[i], functionName, value);
             } else {

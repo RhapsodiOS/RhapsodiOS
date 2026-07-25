@@ -91,6 +91,52 @@ how the identifiers were spelled in our source vs. Apple's), but it is not evide
 that the bodies underneath are equivalent — roughly a third of them are not, for
 reasons unrelated to naming.
 
+## Naming divergence: RESOLVED (see below)
+
+**Status: fixed.** The naming divergence described above (and the fourth instance
+found among the five helpers added for Finding 1 — `_parsePrefix`, `_parsenum`,
+`_LookForPCMCIAID`, `_stringForFunctionID` all carried the same extra-underscore
+pattern; the fifth, `configTableLookupServerAttribute`, was already spelled
+correctly and was left alone) has been renamed to match Apple's source exactly:
+
+- 13 C functions lost their leading underscore: `addString`, `addStrings`,
+  `freeString`, `sanitizeStringCopy`, `parse_VERS_1`, `parse_MANFID`,
+  `parse_CONFIG`, `parse_CFTABLE_ENTRY`, `parse_FUNCID` (`PCMCIAKernBusParsing.m`),
+  `sanitizeStringCopy`/`freeString`/`stringForFunctionID` (`PCMCIAid.m`), and
+  `parsePrefix`/`parsenum`/`LookForPCMCIAID` (`PCMCIAResourceDriver.m`).
+- 2 classes gained a leading underscore: `PCMCIAPool` -> `_PCMCIAPool`,
+  `PCMCIAPoolElement` -> `_PCMCIAPoolElement` (`PCMCIAPool.h/.m`,
+  `PCMCIAPoolElement.h/.m`, plus every call site and the one comment reference in
+  `PCMCIAKernBus.h`). This fixes the mangled symbol for all 13 Pool/PoolElement
+  methods without touching their selectors.
+- 2 category selectors on `PCMCIAKernBus(Parsing)` lost their leading underscore:
+  `allocResourcesForDescription:fromTupleList:` and
+  `parseTuple:intoDeviceDescription:`.
+
+Every declaration, definition, call site, `@interface`/`@implementation`, the
+`tupleParserTable` dispatch table, and the `[Class alloc]` receivers were updated
+together; `grep -rn` for each old name across `drvPCMCIABus` after the change
+returns nothing outside this `reconstruction/` directory (which still records the
+old names as history, by design — `ledger.json` and `source-map.json` were left
+untouched and will need regenerating against the renamed source).
+
+**Newly discovered risk, left as-is (out of scope for a naming-only pass):**
+`PCMCIAKernBusPrivate.m:1207` (`(Private)` category) has always had its own
+`- (BOOL)parseTuple:tuple intoDeviceDescription:deviceDesc { // TODO: Implement
+based on decompiled code; return NO; }` — a stub not present in the reference
+binary at all (confirmed: the reference has no `PCMCIAKernBus(Private)
+parseTuple:...` symbol). Before this rename, `PCMCIAKernBus.m:813`'s call
+`[self parseTuple:tuple intoDeviceDescription:...]` (already spelled without the
+underscore) could only resolve to this dead stub, since the real
+`(Parsing)`-category implementation was named `_parseTuple:...` at the time. Now
+that the `(Parsing)` category's selector has been renamed to match, both
+categories define the same selector on the same class — an Objective-C category
+method collision the reference does not have. Which implementation wins is
+runtime/load-order dependent (undefined by this driver's own code), so this is a
+real risk that `PCMCIAKernBus.m:813` keeps calling the dead stub instead of the
+dispatch-table parser, same as before the rename. Renaming or removing the stub
+is a logic change, not a rename, so it was left untouched; flagging for follow-up.
+
 ## Unmapped: build-generated
 
 `+[PCMCIABusKernelServerInstance kernelServerInstance]` and

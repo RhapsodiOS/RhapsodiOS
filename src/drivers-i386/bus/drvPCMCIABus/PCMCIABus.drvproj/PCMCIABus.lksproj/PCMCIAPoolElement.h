@@ -33,7 +33,7 @@
 
 #ifdef DRIVER_PRIVATE
 
-@interface PCMCIAPoolElement : Object
+@interface _PCMCIAPoolElement : Object
 {
 @private
     void *_elementData;  /* Points to structure containing pool and object pointers */

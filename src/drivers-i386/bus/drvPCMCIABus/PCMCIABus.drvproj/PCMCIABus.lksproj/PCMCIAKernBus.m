@@ -576,7 +576,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         bzero(socketInfo, 0x18);
 
         /* Create pool for this socket */
-        pool = [[PCMCIAPool alloc] init];
+        pool = [[_PCMCIAPool alloc] init];
         socketInfo->pool = pool;
 
         /* Add windows from socket to pool */

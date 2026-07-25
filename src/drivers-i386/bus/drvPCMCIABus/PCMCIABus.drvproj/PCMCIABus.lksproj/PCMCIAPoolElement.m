@@ -35,7 +35,7 @@ typedef struct {
     id object;  /* The wrapped object */
 } ElementData;
 
-@implementation PCMCIAPoolElement
+@implementation _PCMCIAPoolElement
 
 - initWithPCMCIAPool:pool object:object
 {

@@ -41,7 +41,7 @@ typedef struct {
     unsigned char   flag1;          // Offset 4
     unsigned char   probed;         // Offset 5 - Card has been probed
     unsigned short  padding;        // Offset 6
-    id              pool;           // Offset 8 - PCMCIAPool
+    id              pool;           // Offset 8 - _PCMCIAPool
     id              tupleList;      // Offset 12 - List of PCMCIATuple objects
     id              deviceDesc;     // Offset 16 - KernDeviceDescription
     id              cardID;         // Offset 20 - PCMCIAid

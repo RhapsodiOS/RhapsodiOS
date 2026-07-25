@@ -37,7 +37,7 @@ typedef struct {
     id objectList;   /* List for allocated objects */
 } PoolData;
 
-@implementation PCMCIAPool
+@implementation _PCMCIAPool
 
 - init
 {
@@ -107,8 +107,8 @@ typedef struct {
     object = [self allocObject];
 
     if (object != nil) {
-        /* Wrap it in a PCMCIAPoolElement */
-        element = [[PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
+        /* Wrap it in a _PCMCIAPoolElement */
+        element = [[_PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
     }
 
     return element;
@@ -152,8 +152,8 @@ typedef struct {
     /* Add to object list (tracking) */
     [poolData->objectList addObject:object];
 
-    /* Wrap in PCMCIAPoolElement */
-    element = [[PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
+    /* Wrap in _PCMCIAPoolElement */
+    element = [[_PCMCIAPoolElement alloc] initWithPCMCIAPool:self object:object];
 
     return element;
 }

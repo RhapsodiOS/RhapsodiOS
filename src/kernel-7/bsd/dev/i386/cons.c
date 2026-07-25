@@ -201,6 +201,10 @@ slave_cnenable()
 void
 kprintf( const char *format, ...)
 {
+	/*
+	 * prf() with TOSTR is unbounded; callers must keep formatted
+	 * output under sizeof(buf) or it overruns.
+	 */
 	char	buf[256];
 	char	*bp = buf;
 	va_list	ap;

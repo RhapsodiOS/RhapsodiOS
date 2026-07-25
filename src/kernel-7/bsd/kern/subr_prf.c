@@ -738,11 +738,17 @@ putchar(c, flags, tp)
 	}
 #if defined(i386)
 	/*
-	 * Mirror console and log traffic to the debug UART.  TOLOG matters:
-	 * once syslogd opens /dev/klog, log() stops falling back to TOCONS,
-	 * so a TOCONS-only tap would go silent for IOLog output.
+	 * Mirror console and log traffic to the debug UART.  vlog()/addlog()
+	 * make a TOLOG pass and then, only while !log_open, a redundant
+	 * TOCONS pass over the same text; without the log_open check both
+	 * passes would hit this tap and every IOLog line would be doubled
+	 * on the wire.  Consulting log_open keeps the regimes exclusive:
+	 * before syslogd opens /dev/klog the TOCONS pass carries the
+	 * output, and once log_open is set the TOLOG pass does, so exactly
+	 * one pass emits here in either case.
 	 */
-	if ((flags & (TOCONS|TOLOG)) && c != '\0' && serial_dbg_port)
+	if (((flags & TOCONS) || ((flags & TOLOG) && log_open)) &&
+	    c != '\0' && serial_dbg_port)
 		serial_dbg_putc((char)c);
 #endif
 	return 0;

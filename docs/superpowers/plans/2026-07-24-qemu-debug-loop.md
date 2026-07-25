@@ -630,13 +630,27 @@ def _frags(self, inode):
     if len(out) < need and inode.ib[1]:
         l1 = self.read_frag(inode.ib[1], self.bsize)
         for b1 in struct.unpack_from("<%di" % self.nindir, l1, 0):
-            if len(out) >= need or not b1:
+            if len(out) >= need:
                 break
+            if not b1:
+                # A zero entry here is a hole spanning nindir blocks, not the end.
+                for _ in range(self.nindir):
+                    if len(out) >= need:
+                        break
+                    take(0)
+                continue
             l2 = self.read_frag(b1, self.bsize)
             for b in struct.unpack_from("<%di" % self.nindir, l2, 0):
                 if len(out) >= need:
                     break
                 take(b)
+
+    if len(out) < need:
+        raise ValueError(
+            "inode %d: block list resolved %d of %d fragments; "
+            "file may need triple-indirect blocks, which are not supported"
+            % (inode.ino, len(out), need)
+        )
 
     return out[:need]
 

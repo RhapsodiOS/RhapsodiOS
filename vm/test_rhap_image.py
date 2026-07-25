@@ -1,4 +1,5 @@
 import os
+import struct
 import unittest
 
 import rhap_image
@@ -113,3 +114,89 @@ class TestInodes(unittest.TestCase):
         data = self.img.read_file(self.img.resolve(p))
         self.assertEqual(len(data), 121056)
         self.assertEqual(data[:4], b"\xce\xfa\xed\xfe")  # Mach-O, little-endian
+
+
+@unittest.skipUnless(os.path.exists(IMAGE), "golden.img not built yet")
+class TestDoubleIndirectBlocks(unittest.TestCase):
+    def setUp(self):
+        self.img = rhap_image.Image(IMAGE)
+
+    def tearDown(self):
+        self.img.close()
+
+    def test_pdf_double_indirect_frags_and_read_are_complete(self):
+        # ProjectBuilder.pdf is 23,221,465 bytes, past the ~16.9 MB
+        # single-indirect ceiling (12*frag + nindir*frag fragments), so
+        # reading it exercises the double-indirect branch of _frags().  A
+        # truncating walk would make len(frags) < need and read_file()
+        # would come back short.
+        p = "/System/Documentation/Developer/YellowBox/TasksAndConcepts/PB/ProjectBuilder.pdf"
+        ino = self.img.resolve(p)
+        self.assertIsNotNone(ino)
+        inode = self.img.inode(ino)
+        self.assertEqual(inode.size, 23221465)
+        need = (inode.size + self.img.fsize - 1) // self.img.fsize
+        frags = self.img.frags(inode)
+        self.assertEqual(len(frags), need)
+        data = self.img.read_file(ino)
+        self.assertEqual(len(data), inode.size)
+
+
+class TestFragsFirstLevelIndirectHole(unittest.TestCase):
+    """A zero entry at the first double-indirect level is a hole spanning
+    nindir blocks, not the end of the file.  No file in golden.img has this
+    layout, so this stubs out Image.read_frag() to synthesize one.
+    """
+
+    FSIZE = 1024
+    FRAG = 8
+    NINDIR = 2048
+
+    class FakeImage(object):
+        """Duck-typed stand-in for Image: supplies just what _frags() reads."""
+
+        def __init__(self, fsize, frag, nindir, blocks):
+            self.fsize = fsize
+            self.frag = frag
+            self.nindir = nindir
+            self.bsize = frag * fsize
+            self._blocks = blocks  # {frag_no: raw indirect-table bytes}
+
+        def read_frag(self, frag_no, nbytes):
+            return self._blocks[frag_no]
+
+    class FakeInode(object):
+        def __init__(self, ino, size, db, ib):
+            self.ino = ino
+            self.size = size
+            self.db = db
+            self.ib = ib
+
+    def test_hole_at_first_indirect_level_is_skipped_not_end_of_file(self):
+        fsize, frag, nindir = self.FSIZE, self.FRAG, self.NINDIR
+
+        # l1 (pointed to by ib[1]=500): entry 0 is a hole, entry 1 points at l2.
+        l1 = struct.pack("<%di" % nindir, *([0, 600] + [0] * (nindir - 2)))
+        # l2 (pointed to by l1[1]=600): two real blocks, 1000 and 2000.
+        l2 = struct.pack("<%di" % nindir, *([1000, 2000] + [0] * (nindir - 2)))
+        img = self.FakeImage(fsize, frag, nindir, {500: l1, 600: l2})
+
+        direct_frags = rhap_image.NDADDR * frag
+        hole_frags = nindir * frag
+        extra_real_frags = 2 * frag  # two real blocks in l2
+        need = direct_frags + hole_frags + extra_real_frags
+
+        inode = self.FakeInode(
+            ino=999, size=need * fsize, db=[0] * rhap_image.NDADDR, ib=[0, 500, 0]
+        )
+
+        frags = rhap_image.Image.frags(img, inode)
+
+        self.assertEqual(len(frags), need)
+        # Direct blocks are holes, and the first l1 entry is also a hole:
+        # both must come back as zero rather than truncating the walk.
+        self.assertEqual(frags[:direct_frags + hole_frags], [0] * (direct_frags + hole_frags))
+        # The second l1 entry points at real data past the hole.
+        tail = frags[direct_frags + hole_frags:]
+        self.assertTrue(all(tail))
+        self.assertEqual(tail, list(range(1000, 1008)) + list(range(2000, 2008)))

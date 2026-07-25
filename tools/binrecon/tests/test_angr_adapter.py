@@ -165,6 +165,36 @@ def test_host_rejects_peer_aliases_before_launch(configured, tmp_path):
         export_with_angr(profile, "reference", destination)
 
 
+def test_host_reference_only_profile_skips_peer_identity_checks(tmp_path):
+    binary = tmp_path / "input.o"
+    binary.write_bytes(b"legacy-mach-o")
+    executable = tmp_path / "python.exe"
+    executable.write_text("stub", encoding="ascii")
+    identity = identify(binary)
+    profile = SimpleNamespace(
+        reference_identity=identity, rebuilt_identity=None,
+        document=MappingProxyType({
+            "architecture": "i386", "endianness": "little", "image_base": 0x1000,
+            "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 19, "version": "9.3.0"})}),
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (), "symbolic_checks": (),
+        }),
+    )
+    destination = tmp_path / "analysis.json"
+
+    def runner(argv, **options):
+        options["stdout"].write(b"stdout")
+        options["stdout"].flush()
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+
+    document = export_with_angr(profile, "reference", destination, runner=runner)
+    assert document == _analysis(identity)
+
+
 def test_host_streams_and_bounds_large_child_log(configured, tmp_path):
     profile, identity, _ = configured
     def runner(argv, **options):

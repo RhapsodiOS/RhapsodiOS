@@ -285,12 +285,14 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
     log_path = destination.with_suffix(destination.suffix + ".angr.log")
     peer_artifact = "rebuilt" if artifact == "reference" else "reference"
     peer_identity = _identity(profile, peer_artifact)
-    try: assert_identity(peer_identity)
-    except (OSError, ValueError) as error:
-        raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
+    if peer_identity is not None:
+        try: assert_identity(peer_identity)
+        except (OSError, ValueError) as error:
+            raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
     _reject_alias(destination, identity.path, "destination"); _reject_alias(log_path, identity.path, "log path")
-    _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
-    _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+    if peer_identity is not None:
+        _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+        _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
     _reject_peer_alias(destination, log_path)
     workspace = Path(tempfile.mkdtemp(prefix=f".{destination.name}.angr-work-", dir=destination.parent))
     try:
@@ -299,13 +301,14 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         for temporary, label in ((output, "output temporary"), (config_path, "config temporary"),
                                  (layout_path, "layout temporary")):
             _reject_alias(temporary, identity.path, label)
-            _reject_alias(temporary, peer_identity.path, label + " (peer artifact)")
+            if peer_identity is not None:
+                _reject_alias(temporary, peer_identity.path, label + " (peer artifact)")
         script = Path(__file__).parents[2] / "adapters" / "angr" / "export_analysis.py"
         config = {"profile": _thaw(profile.document), "artifact": artifact,
                   "peer_artifact": peer_artifact,
-                  "peer_input": {"path": str(peer_identity.path), "size": peer_identity.size,
-                                 "sha256": peer_identity.sha256},
-                  "peer_layout": _layout(profile, peer_identity)}
+                  "peer_input": None if peer_identity is None else {"path": str(peer_identity.path),
+                                 "size": peer_identity.size, "sha256": peer_identity.sha256},
+                  "peer_layout": None if peer_identity is None else _layout(profile, peer_identity)}
         _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
         _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
                                             separators=(",", ":")) + "\n")
@@ -364,12 +367,14 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         shutil.rmtree(workspace); workspace = None
         try: assert_identity(identity)
         except (OSError, ValueError) as error: raise AngrAdapterError(f"input identity changed during angr analysis: {error}") from error
-        try: assert_identity(peer_identity)
-        except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
+        if peer_identity is not None:
+            try: assert_identity(peer_identity)
+            except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
         _reject_alias(destination, identity.path, "destination")
         _reject_alias(log_path, identity.path, "log path")
-        _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
-        _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+        if peer_identity is not None:
+            _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+            _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
         _reject_peer_alias(destination, log_path)
         _atomic_text(destination, json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n")
         return document

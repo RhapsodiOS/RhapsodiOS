@@ -24,12 +24,21 @@
   "duplicate_candidates": [],
   "mapped": [
     {
+      "address": 0,
+      "reference_names": [
+        "-[EISAKernBusInterrupt initForResource:item:shareable:]"
+      ],
+      "size": 197,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
+    },
+    {
       "address": 200,
       "reference_names": [
         "-[EISAKernBusInterrupt dealloc]"
       ],
       "size": 70,
-      "source_line": 38,
+      "source_line": 97,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -38,7 +47,7 @@
         "-[EISAKernBusInterrupt attachDeviceInterrupt:]"
       ],
       "size": 125,
-      "source_line": 53,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -47,7 +56,7 @@
         "-[EISAKernBusInterrupt attachDeviceInterrupt:atLevel:]"
       ],
       "size": 191,
-      "source_line": 84,
+      "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -56,7 +65,7 @@
         "-[EISAKernBusInterrupt detachDeviceInterrupt:]"
       ],
       "size": 115,
-      "source_line": 129,
+      "source_line": 188,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -65,7 +74,7 @@
         "-[EISAKernBusInterrupt suspend]"
       ],
       "size": 104,
-      "source_line": 151,
+      "source_line": 210,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -74,7 +83,16 @@
         "-[EISAKernBusInterrupt resume]"
       ],
       "size": 108,
-      "source_line": 173,
+      "source_line": 232,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
+    },
+    {
+      "address": 920,
+      "reference_names": [
+        "__EISAKernBusInterruptDispatch"
+      ],
+      "size": 62,
+      "source_line": 56,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m"
     },
     {
@@ -245,7 +263,7 @@
         "_setBit"
       ],
       "size": 87,
-      "source_line": 214,
+      "source_line": 225,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -254,7 +272,7 @@
         "_computeChecksum"
       ],
       "size": 40,
-      "source_line": 262,
+      "source_line": 273,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -263,7 +281,7 @@
         "_clearPnPConfigRegisters"
       ],
       "size": 367,
-      "source_line": 114,
+      "source_line": 125,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -272,7 +290,7 @@
         "_readIsolationBit"
       ],
       "size": 42,
-      "source_line": 194,
+      "source_line": 205,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -281,7 +299,7 @@
         "_isolateCard"
       ],
       "size": 227,
-      "source_line": 284,
+      "source_line": 295,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
@@ -479,7 +497,16 @@
         "-[PnPBios setupSegments]"
       ],
       "size": 587,
-      "source_line": 615,
+      "source_line": 621,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
+    },
+    {
+      "address": 14256,
+      "reference_names": [
+        "-[PnPBios releaseSegments]"
+      ],
+      "size": 111,
+      "source_line": 762,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -488,7 +515,7 @@
         "-[PnPBios free]"
       ],
       "size": 93,
-      "source_line": 492,
+      "source_line": 486,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -497,7 +524,7 @@
         "-[PnPBios getPnPConfig:]"
       ],
       "size": 158,
-      "source_line": 578,
+      "source_line": 580,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -506,7 +533,7 @@
         "-[PnPBios getNumNodes:AndSize:]"
       ],
       "size": 191,
-      "source_line": 545,
+      "source_line": 543,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -515,7 +542,7 @@
         "-[PnPBios getDeviceNode:ForHandle:]"
       ],
       "size": 215,
-      "source_line": 513,
+      "source_line": 507,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m"
     },
     {
@@ -1386,27 +1413,6 @@
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 0,
-      "reference_names": [
-        "-[EISAKernBusInterrupt initForResource:item:shareable:]"
-      ],
-      "size": 197
-    },
-    {
-      "address": 920,
-      "reference_names": [
-        "__EISAKernBusInterruptDispatch"
-      ],
-      "size": 62
-    },
-    {
-      "address": 14256,
-      "reference_names": [
-        "-[PnPBios releaseSegments]"
-      ],
-      "size": 111
-    },
     {
       "address": 14464,
       "reference_names": [

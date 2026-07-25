@@ -8,7 +8,7 @@
         "+[PCIKernBus initialize]"
       ],
       "size": 35,
-      "source_line": 73,
+      "source_line": 74,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[PCIKernBus init]"
       ],
       "size": 854,
-      "source_line": 79,
+      "source_line": 80,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[PCIKernBus free]"
       ],
       "size": 41,
-      "source_line": 182,
+      "source_line": 183,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[PCIKernBus maxBusNum]"
       ],
       "size": 13,
-      "source_line": 447,
+      "source_line": 448,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[PCIKernBus maxDevNum]"
       ],
       "size": 13,
-      "source_line": 452,
+      "source_line": 453,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[PCIKernBus isPCIPresent]"
       ],
       "size": 25,
-      "source_line": 194,
+      "source_line": 195,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[PCIKernBus testIDs:dev:fun:bus:]"
       ],
       "size": 429,
-      "source_line": 364,
+      "source_line": 365,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -71,7 +71,7 @@
         "-[PCIKernBus configAddress:device:function:bus:]"
       ],
       "size": 687,
-      "source_line": 206,
+      "source_line": 207,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[PCIKernBus getRegister:device:function:bus:data:]"
       ],
       "size": 173,
-      "source_line": 314,
+      "source_line": 315,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[PCIKernBus setRegister:device:function:bus:data:]"
       ],
       "size": 170,
-      "source_line": 341,
+      "source_line": 342,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[PCIKernBus allocateResourcesForDeviceDescription:]"
       ],
       "size": 73,
-      "source_line": 461,
+      "source_line": 462,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m"
     },
     {
@@ -116,7 +116,7 @@
         "-[PCIKernBus Method1:device:function:bus:data:write:]"
       ],
       "size": 153,
-      "source_line": 140,
+      "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
     },
     {
@@ -125,7 +125,7 @@
         "-[PCIKernBus test_M2]"
       ],
       "size": 136,
-      "source_line": 91,
+      "source_line": 94,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
     },
     {
@@ -134,7 +134,7 @@
         "-[PCIKernBus Method2:device:function:bus:data:write:]"
       ],
       "size": 174,
-      "source_line": 186,
+      "source_line": 189,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m"
     },
     {

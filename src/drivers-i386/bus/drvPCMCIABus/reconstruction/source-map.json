@@ -3,12 +3,39 @@
   "duplicate_candidates": [],
   "mapped": [
     {
+      "address": 0,
+      "reference_names": [
+        "_freeString"
+      ],
+      "size": 53,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
+    },
+    {
+      "address": 56,
+      "reference_names": [
+        "_stringForFunctionID"
+      ],
+      "size": 74,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
+    },
+    {
       "address": 132,
       "reference_names": [
         "_isValidPCMCIA_IDChar"
       ],
       "size": 70,
-      "source_line": 83,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
+    },
+    {
+      "address": 204,
+      "reference_names": [
+        "_sanitizeStringCopy"
+      ],
+      "size": 211,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -17,7 +44,7 @@
         "+[PCMCIAid IOLogCardInformation:]"
       ],
       "size": 124,
-      "source_line": 364,
+      "source_line": 399,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -26,7 +53,7 @@
         "-[PCMCIAid free]"
       ],
       "size": 72,
-      "source_line": 298,
+      "source_line": 333,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -35,7 +62,7 @@
         "-[PCMCIAid initFromDescription:]"
       ],
       "size": 104,
-      "source_line": 172,
+      "source_line": 207,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -44,7 +71,7 @@
         "-[PCMCIAid IOLog]"
       ],
       "size": 67,
-      "source_line": 345,
+      "source_line": 380,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -53,7 +80,7 @@
         "-[PCMCIAid initFromIDString:]"
       ],
       "size": 420,
-      "source_line": 195,
+      "source_line": 230,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -62,7 +89,7 @@
         "-[PCMCIAid matchesID:]"
       ],
       "size": 77,
-      "source_line": 314,
+      "source_line": 349,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m"
     },
     {
@@ -75,12 +102,21 @@
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
+      "address": 1492,
+      "reference_names": [
+        "_configTableLookupServerAttribute"
+      ],
+      "size": 341,
+      "source_line": 173,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
+    },
+    {
       "address": 1836,
       "reference_names": [
         "-[PCMCIAKernBus setBusRange:]"
       ],
       "size": 22,
-      "source_line": 589,
+      "source_line": 673,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -89,7 +125,7 @@
         "-[PCMCIAKernBus setVerbose:]"
       ],
       "size": 16,
-      "source_line": 598,
+      "source_line": 682,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -98,7 +134,7 @@
         "+[PCMCIAKernBus initialize]"
       ],
       "size": 148,
-      "source_line": 154,
+      "source_line": 238,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -107,7 +143,7 @@
         "+[PCMCIAKernBus requiredProtocols]"
       ],
       "size": 12,
-      "source_line": 212,
+      "source_line": 296,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -116,7 +152,7 @@
         "+[PCMCIAKernBus deviceStyle]"
       ],
       "size": 12,
-      "source_line": 203,
+      "source_line": 287,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -125,7 +161,7 @@
         "+[PCMCIAKernBus probe:]"
       ],
       "size": 488,
-      "source_line": 221,
+      "source_line": 305,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -134,7 +170,7 @@
         "+[PCMCIAKernBus configureDriverWithTable:]"
       ],
       "size": 128,
-      "source_line": 178,
+      "source_line": 262,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -143,7 +179,7 @@
         "-[PCMCIAKernBus init]"
       ],
       "size": 227,
-      "source_line": 339,
+      "source_line": 423,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -152,7 +188,7 @@
         "-[PCMCIAKernBus free]"
       ],
       "size": 175,
-      "source_line": 375,
+      "source_line": 459,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -161,7 +197,7 @@
         "-[PCMCIAKernBus memoryRangeResource]"
       ],
       "size": 270,
-      "source_line": 423,
+      "source_line": 507,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -170,7 +206,7 @@
         "-[PCMCIAKernBus addAdapter:]"
       ],
       "size": 393,
-      "source_line": 463,
+      "source_line": 547,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -179,7 +215,7 @@
         "-[PCMCIAKernBus removeAdapter:]"
       ],
       "size": 192,
-      "source_line": 532,
+      "source_line": 616,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -188,7 +224,7 @@
         "-[PCMCIAKernBus allocMemoryWindowForSocket:]"
       ],
       "size": 67,
-      "source_line": 403,
+      "source_line": 487,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -197,7 +233,7 @@
         "-[PCMCIAKernBus allocIOWindowForSocket:]"
       ],
       "size": 67,
-      "source_line": 569,
+      "source_line": 653,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -206,7 +242,7 @@
         "-[PCMCIAKernBus statusChangedForSocket:changedStatus:]"
       ],
       "size": 1113,
-      "source_line": 606,
+      "source_line": 690,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -215,7 +251,7 @@
         "-[PCMCIAKernBus freeMemoryWindowElement:]"
       ],
       "size": 55,
-      "source_line": 1297,
+      "source_line": 1288,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -224,7 +260,7 @@
         "-[PCMCIAKernBus enableSocket:]"
       ],
       "size": 243,
-      "source_line": 1216,
+      "source_line": 1207,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -233,7 +269,7 @@
         "-[PCMCIAKernBus disableSocket:]"
       ],
       "size": 106,
-      "source_line": 1272,
+      "source_line": 1263,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -242,7 +278,7 @@
         "-[PCMCIAKernBus mapMemory:ForSocket:ToCardAddress:]"
       ],
       "size": 173,
-      "source_line": 1340,
+      "source_line": 1331,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -251,7 +287,7 @@
         "-[PCMCIAKernBus mapAttributeMemory:ForSocket:CardBase:]"
       ],
       "size": 89,
-      "source_line": 1316,
+      "source_line": 1307,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -260,7 +296,7 @@
         "-[PCMCIAKernBus findAndReserveRangeBase:Length:AlignedTo:]"
       ],
       "size": 285,
-      "source_line": 1779,
+      "source_line": 1770,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -278,7 +314,7 @@
         "-[PCMCIAKernBus testIDs:ForAdapter:andSocket:]"
       ],
       "size": 365,
-      "source_line": 1536,
+      "source_line": 1527,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -305,7 +341,7 @@
         "-[PCMCIAKernBus probeDevice:withDescription:]"
       ],
       "size": 924,
-      "source_line": 1373,
+      "source_line": 1364,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -332,7 +368,7 @@
         "-[PCMCIAKernBus entry:matchesUserIOPorts:]"
       ],
       "size": 436,
-      "source_line": 1623,
+      "source_line": 1614,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -341,7 +377,7 @@
         "-[PCMCIAKernBus reserveIOPorts:UsingEntry:]"
       ],
       "size": 238,
-      "source_line": 1715,
+      "source_line": 1706,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
@@ -386,7 +422,7 @@
         "_markRange"
       ],
       "size": 71,
-      "source_line": 81,
+      "source_line": 91,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -395,7 +431,7 @@
         "_findBIOSMemoryRange"
       ],
       "size": 176,
-      "source_line": 107,
+      "source_line": 117,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m"
     },
     {
@@ -408,12 +444,237 @@
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m"
     },
     {
+      "address": 15396,
+      "reference_names": [
+        "_addString"
+      ],
+      "size": 71,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 15468,
+      "reference_names": [
+        "_addStrings"
+      ],
+      "size": 83,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 15552,
+      "reference_names": [
+        "_parse_VERS_1"
+      ],
+      "size": 336,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 15888,
+      "reference_names": [
+        "_parse_MANFID"
+      ],
+      "size": 81,
+      "source_line": 667,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 15972,
+      "reference_names": [
+        "_parse_CONFIG"
+      ],
+      "size": 152,
+      "source_line": 244,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 16124,
+      "reference_names": [
+        "_parse_CFTABLE_ENTRY"
+      ],
+      "size": 2430,
+      "source_line": 299,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 18556,
+      "reference_names": [
+        "_parse_FUNCID"
+      ],
+      "size": 54,
+      "source_line": 699,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 18612,
+      "reference_names": [
+        "-[PCMCIAKernBus allocResourcesForDescription:fromTupleList:]"
+      ],
+      "size": 116,
+      "source_line": 728,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 18728,
+      "reference_names": [
+        "-[PCMCIAKernBus parseTuple:intoDeviceDescription:]"
+      ],
+      "size": 121,
+      "source_line": 753,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m"
+    },
+    {
+      "address": 18852,
+      "reference_names": [
+        "-[_PCMCIAPool init]"
+      ],
+      "size": 137,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 18992,
+      "reference_names": [
+        "-[_PCMCIAPool free]"
+      ],
+      "size": 93,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19088,
+      "reference_names": [
+        "-[_PCMCIAPool addObject:]"
+      ],
+      "size": 38,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19128,
+      "reference_names": [
+        "-[_PCMCIAPool addList:]"
+      ],
+      "size": 38,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19168,
+      "reference_names": [
+        "-[_PCMCIAPool removeObject:]"
+      ],
+      "size": 32,
+      "source_line": 241,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19200,
+      "reference_names": [
+        "-[_PCMCIAPool allocObject]"
+      ],
+      "size": 65,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19268,
+      "reference_names": [
+        "-[_PCMCIAPool allocElement]"
+      ],
+      "size": 76,
+      "source_line": 101,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19344,
+      "reference_names": [
+        "-[_PCMCIAPool allocObjectByMethod:]"
+      ],
+      "size": 136,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19480,
+      "reference_names": [
+        "-[_PCMCIAPool allocElementByMethod:]"
+      ],
+      "size": 176,
+      "source_line": 117,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19656,
+      "reference_names": [
+        "-[_PCMCIAPool releaseObject:]"
+      ],
+      "size": 71,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m"
+    },
+    {
+      "address": 19728,
+      "reference_names": [
+        "-[_PCMCIAPoolElement initWithPCMCIAPool:object:]"
+      ],
+      "size": 73,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m"
+    },
+    {
+      "address": 19804,
+      "reference_names": [
+        "-[_PCMCIAPoolElement free]"
+      ],
+      "size": 78,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m"
+    },
+    {
+      "address": 19884,
+      "reference_names": [
+        "-[_PCMCIAPoolElement object]"
+      ],
+      "size": 16,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m"
+    },
+    {
+      "address": 19900,
+      "reference_names": [
+        "_parsePrefix"
+      ],
+      "size": 75,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
+    },
+    {
+      "address": 19976,
+      "reference_names": [
+        "_parsenum"
+      ],
+      "size": 58,
+      "source_line": 66,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
+    },
+    {
+      "address": 20036,
+      "reference_names": [
+        "_LookForPCMCIAID"
+      ],
+      "size": 151,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
+    },
+    {
       "address": 20188,
       "reference_names": [
         "+[PCMCIAResourceDriver probe:]"
       ],
       "size": 61,
-      "source_line": 36,
+      "source_line": 126,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
     },
     {
@@ -422,7 +683,7 @@
         "-[PCMCIAResourceDriver initFromDeviceDescription:]"
       ],
       "size": 112,
-      "source_line": 56,
+      "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
     },
     {
@@ -431,7 +692,7 @@
         "-[PCMCIAResourceDriver getCharValues:forParameter:count:]"
       ],
       "size": 428,
-      "source_line": 80,
+      "source_line": 170,
       "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m"
     },
     {
@@ -483,209 +744,6 @@
   "reference_sha256": "B0D8A35E4C55DD7DF2F77B7F8BC07A453D843C24814B874C47B737B3425607ED",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 0,
-      "reference_names": [
-        "_freeString"
-      ],
-      "size": 53
-    },
-    {
-      "address": 56,
-      "reference_names": [
-        "_stringForFunctionID"
-      ],
-      "size": 74
-    },
-    {
-      "address": 204,
-      "reference_names": [
-        "_sanitizeStringCopy"
-      ],
-      "size": 211
-    },
-    {
-      "address": 1492,
-      "reference_names": [
-        "_configTableLookupServerAttribute"
-      ],
-      "size": 341
-    },
-    {
-      "address": 15396,
-      "reference_names": [
-        "_addString"
-      ],
-      "size": 71
-    },
-    {
-      "address": 15468,
-      "reference_names": [
-        "_addStrings"
-      ],
-      "size": 83
-    },
-    {
-      "address": 15552,
-      "reference_names": [
-        "_parse_VERS_1"
-      ],
-      "size": 336
-    },
-    {
-      "address": 15888,
-      "reference_names": [
-        "_parse_MANFID"
-      ],
-      "size": 81
-    },
-    {
-      "address": 15972,
-      "reference_names": [
-        "_parse_CONFIG"
-      ],
-      "size": 152
-    },
-    {
-      "address": 16124,
-      "reference_names": [
-        "_parse_CFTABLE_ENTRY"
-      ],
-      "size": 2430
-    },
-    {
-      "address": 18556,
-      "reference_names": [
-        "_parse_FUNCID"
-      ],
-      "size": 54
-    },
-    {
-      "address": 18612,
-      "reference_names": [
-        "-[PCMCIAKernBus allocResourcesForDescription:fromTupleList:]"
-      ],
-      "size": 116
-    },
-    {
-      "address": 18728,
-      "reference_names": [
-        "-[PCMCIAKernBus parseTuple:intoDeviceDescription:]"
-      ],
-      "size": 121
-    },
-    {
-      "address": 18852,
-      "reference_names": [
-        "-[_PCMCIAPool init]"
-      ],
-      "size": 137
-    },
-    {
-      "address": 18992,
-      "reference_names": [
-        "-[_PCMCIAPool free]"
-      ],
-      "size": 93
-    },
-    {
-      "address": 19088,
-      "reference_names": [
-        "-[_PCMCIAPool addObject:]"
-      ],
-      "size": 38
-    },
-    {
-      "address": 19128,
-      "reference_names": [
-        "-[_PCMCIAPool addList:]"
-      ],
-      "size": 38
-    },
-    {
-      "address": 19168,
-      "reference_names": [
-        "-[_PCMCIAPool removeObject:]"
-      ],
-      "size": 32
-    },
-    {
-      "address": 19200,
-      "reference_names": [
-        "-[_PCMCIAPool allocObject]"
-      ],
-      "size": 65
-    },
-    {
-      "address": 19268,
-      "reference_names": [
-        "-[_PCMCIAPool allocElement]"
-      ],
-      "size": 76
-    },
-    {
-      "address": 19344,
-      "reference_names": [
-        "-[_PCMCIAPool allocObjectByMethod:]"
-      ],
-      "size": 136
-    },
-    {
-      "address": 19480,
-      "reference_names": [
-        "-[_PCMCIAPool allocElementByMethod:]"
-      ],
-      "size": 176
-    },
-    {
-      "address": 19656,
-      "reference_names": [
-        "-[_PCMCIAPool releaseObject:]"
-      ],
-      "size": 71
-    },
-    {
-      "address": 19728,
-      "reference_names": [
-        "-[_PCMCIAPoolElement initWithPCMCIAPool:object:]"
-      ],
-      "size": 73
-    },
-    {
-      "address": 19804,
-      "reference_names": [
-        "-[_PCMCIAPoolElement free]"
-      ],
-      "size": 78
-    },
-    {
-      "address": 19884,
-      "reference_names": [
-        "-[_PCMCIAPoolElement object]"
-      ],
-      "size": 16
-    },
-    {
-      "address": 19900,
-      "reference_names": [
-        "_parsePrefix"
-      ],
-      "size": 75
-    },
-    {
-      "address": 19976,
-      "reference_names": [
-        "_parsenum"
-      ],
-      "size": 58
-    },
-    {
-      "address": 20036,
-      "reference_names": [
-        "_LookForPCMCIAID"
-      ],
-      "size": 151
-    },
     {
       "address": 20984,
       "reference_names": [

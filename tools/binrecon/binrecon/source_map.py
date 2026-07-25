@@ -11,7 +11,7 @@ import re
 
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)(?:\s*\(\s*(\w+)\s*\))?")
 _END = re.compile(r"^@end")
-_METHOD = re.compile(r"^\s*([-+])\s+(.*)$")
+_METHOD = re.compile(r"^\s*([-+])(?:\s+|(?=\())(.*)$")
 _C_DEFINITION = re.compile(r"^[A-Za-z_][A-Za-z_0-9 \t*]*?\b(\w+)\s*\(")
 
 _METHOD_DECLARATION_LIMIT = 20

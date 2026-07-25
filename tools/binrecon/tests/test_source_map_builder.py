@@ -165,3 +165,70 @@ def test_source_sites_stops_lookahead_at_next_method_in_same_block(tmp_path):
 
     assert sites["-[Foo legitMethod]"] == [("src/driver/Bad2.m", 3)]
     assert "-[Foo badMethod1]" not in sites
+
+
+def test_source_sites_finds_no_space_method_declaration(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "VBoxVideo.m").write_text(
+        "@implementation VBoxVideo\n"
+        "\n"
+        "-(unsigned long) getVideoRAMAddress\n"
+        "{\n"
+        "    return videoRAMAddress;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[VBoxVideo getVideoRAMAddress]"] == [
+        ("src/driver/VBoxVideo.m", 3)
+    ]
+
+
+def test_source_sites_joins_wrapped_no_space_selector(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "NE2K.m").write_text(
+        "@implementation NE2K\n"
+        "\n"
+        "-(void) _NS8390TriggerSend:(unsigned int) len\n"
+        "                    startPage:(int) start_page\n"
+        "{\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[NE2K _NS8390TriggerSend:startPage:]"] == [
+        ("src/driver/NE2K.m", 3)
+    ]
+
+
+def test_source_sites_ignores_bare_arithmetic_inside_a_method_body(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Arith.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "-(void) compute\n"
+        "{\n"
+        "    int total = a\n"
+        "        - b\n"
+        "        + c;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites == {"-[Foo compute]": [("src/driver/Arith.m", 3)]}

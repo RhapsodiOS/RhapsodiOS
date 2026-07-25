@@ -12,6 +12,7 @@ from macho_fixture import (
     MH_MAGIC,
     MH_OBJECT,
     MH_PRELOAD,
+    MH_BUNDLE,
     SECTION,
     SEGMENT,
     SYMTAB,
@@ -97,6 +98,19 @@ def test_reads_preloaded_i386_image_with_zero_based_section_addresses(tmp_path):
     assert [(section["name"], section["address"]) for section in analysis["sections"]] == [
         ("__TEXT,__text", 0),
         ("__DATA,__data", 4),
+    ]
+
+
+def test_reads_bundle_file_type(tmp_path):
+    path = write_fixture(tmp_path, build_macho_fixture(file_type=MH_BUNDLE))
+
+    analysis = read_macho(path)
+
+    validate_document("analysis-v1", analysis)
+    assert analysis["extensions"]["macho"]["header"]["file_type"] == MH_BUNDLE
+    assert [section["name"] for section in analysis["sections"]] == [
+        "__TEXT,__text",
+        "__DATA,__data",
     ]
 
 

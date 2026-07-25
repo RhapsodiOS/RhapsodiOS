@@ -10,6 +10,7 @@ loader computes at src/boot-2/i386/libsaio/disk.c:381.
 """
 
 import struct
+import sys
 
 LABEL_OFFSETS = (7680, 15360, 23040, 30720)
 LABEL_MAGIC = b"dlV3"
@@ -267,10 +268,7 @@ Image.resolve = _resolve
 Image.max_writable = _max_writable
 
 
-def _fmt_stat(img, path):
-    ino = img.resolve(path)
-    if ino is None:
-        return "%s: not found" % path
+def _fmt_stat(img, path, ino):
     n = img.inode(ino)
     frags = img.frags(n)
     holes = sum(1 for f in frags if f == 0)
@@ -290,33 +288,37 @@ def main(argv):
         print("usage: rhap_image.py <image> {ls|stat|cat|slack} <path>")
         return 2
     path_img, cmd, path = argv[1], argv[2], argv[3]
-    img = Image(path_img)
-    if cmd == "ls":
-        for name, ino, dtype in img.listdir(path):
-            kind = {4: "dir", 8: "reg", 10: "lnk"}.get(dtype, str(dtype))
-            print("  %-32s ino=%-9d %s" % (name, ino, kind))
-    elif cmd == "stat":
-        print(_fmt_stat(img, path))
-    elif cmd == "cat":
-        ino = img.resolve(path)
-        if ino is None:
-            print("%s: not found" % path)
-            return 1
-        import sys as _sys
-        _sys.stdout.buffer.write(img.read_file(ino))
-    elif cmd == "slack":
-        ino = img.resolve(path)
-        if ino is None:
-            print("%s: not found" % path)
-            return 1
-        n = img.inode(ino)
-        print("%d %d %d" % (n.size, img.max_writable(n), img.max_writable(n) - n.size))
-    else:
+    if cmd not in ("ls", "stat", "cat", "slack"):
         print("unknown command: %s" % cmd)
         return 2
+    try:
+        opened = Image(path_img)
+    except (OSError, ValueError) as e:
+        print("%s: %s" % (path_img, e), file=sys.stderr)
+        return 1
+    with opened as img:
+        if cmd == "ls":
+            for name, ino, dtype in img.listdir(path):
+                kind = {4: "dir", 8: "reg", 10: "lnk"}.get(dtype, str(dtype))
+                print("  %-32s ino=%-9d %s" % (name, ino, kind))
+            return 0
+        ino = img.resolve(path)
+        if ino is None:
+            print("%s: not found" % path, file=sys.stderr)
+            return 1
+        if cmd == "stat":
+            print(_fmt_stat(img, path, ino))
+        elif cmd == "cat":
+            n = img.inode(ino)
+            if not n.is_reg():
+                print("%s: not a regular file" % path, file=sys.stderr)
+                return 1
+            sys.stdout.buffer.write(img.read_file(ino))
+        elif cmd == "slack":
+            n = img.inode(ino)
+            print("%d %d %d" % (n.size, img.max_writable(n), img.max_writable(n) - n.size))
     return 0
 
 
 if __name__ == "__main__":
-    import sys
     raise SystemExit(main(sys.argv))

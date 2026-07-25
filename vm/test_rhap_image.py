@@ -1,5 +1,8 @@
+import contextlib
+import io
 import os
 import struct
+import sys
 import unittest
 
 import rhap_image
@@ -240,3 +243,66 @@ class TestFragsFullySparseFile(unittest.TestCase):
 
         self.assertEqual(len(frags), need)
         self.assertEqual(frags, [0] * need)
+
+
+class _FakeStdout(object):
+    """Stand-in for sys.stdout that captures both print() text and the raw
+    bytes written via sys.stdout.buffer.write(), as the cat command does."""
+
+    def __init__(self):
+        self.buffer = io.BytesIO()
+
+    def write(self, s):
+        pass
+
+    def flush(self):
+        pass
+
+
+def _run_main(args):
+    """Invoke rhap_image.main() directly, capturing stdout bytes and stderr
+    text without spawning a subprocess."""
+    fake_out = _FakeStdout()
+    old_stdout = sys.stdout
+    sys.stdout = fake_out
+    try:
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            rc = rhap_image.main(args)
+    finally:
+        sys.stdout = old_stdout
+    return rc, fake_out.buffer.getvalue(), err.getvalue()
+
+
+class TestMainNonexistentImage(unittest.TestCase):
+    def test_nonexistent_image_path_returns_nonzero_without_raising(self):
+        rc, out, err = _run_main(
+            ["rhap_image.py", "/no/such/image.img", "stat", "/"]
+        )
+        self.assertNotEqual(rc, 0)
+        self.assertEqual(out, b"")
+
+
+@unittest.skipUnless(os.path.exists(IMAGE), "golden.img not built yet")
+class TestMainCLI(unittest.TestCase):
+    def test_cat_on_directory_fails_without_writing_stdout(self):
+        rc, out, _err = _run_main(
+            ["rhap_image.py", IMAGE, "cat", "/private/Drivers/i386/EIDE.config"]
+        )
+        self.assertNotEqual(rc, 0)
+        self.assertEqual(out, b"")
+
+    def test_cat_on_regular_file_returns_zero_and_exact_bytes(self):
+        p = "/private/Drivers/i386/EIDE.config/Instance0.table"
+        rc, out, _err = _run_main(["rhap_image.py", IMAGE, "cat", p])
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(out), 890)
+
+    def test_not_found_exit_codes_are_consistent(self):
+        missing = "/no/such/path"
+        codes = set()
+        for cmd in ("stat", "cat", "slack"):
+            rc, out, _err = _run_main(["rhap_image.py", IMAGE, cmd, missing])
+            self.assertNotEqual(rc, 0)
+            self.assertEqual(out, b"")
+            codes.add(rc)
+        self.assertEqual(len(codes), 1)

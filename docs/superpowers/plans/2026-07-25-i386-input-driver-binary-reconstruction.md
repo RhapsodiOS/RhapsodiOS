@@ -395,7 +395,10 @@ for d in $built; do
 	find "$OUT/$d" -name '*_reloc' -type f -exec file {} \; 2>&1 || true
 done
 echo "=== input-drivers done fail=$fail built:$built ==="
+exit $fail
 ```
+
+The closing `exit $fail` is required. `vm/build-i386-bus-drivers.sh:141` has it, and without it the script always exits 0 — which would make the "Expected: exit 0" gate in the Standard fix pass procedure's Steps A and E vacuous, letting a failed driver build pass every check.
 
 Note the `drv` directory name and the reference `_reloc` name differ for two drivers: `drvPCParallel` builds `ParallelPort` from `PCParallelPort.drvproj`, and `drvSerialPointingDevice` builds `SerialPointingDevice` from `SerialPointingDevice.drvproj`. The `build_one name dir proj` argument order above is correct for all five; do not reorder it.
 

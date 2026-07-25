@@ -142,3 +142,4 @@ for d in $built; do
 	find "$OUT/$d" -name '*_reloc' -type f -exec file {} \; 2>&1 || true
 done
 echo "=== input-drivers done fail=$fail built:$built ==="
+exit $fail

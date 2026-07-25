@@ -1,8 +1,11 @@
+import contextlib
 import hashlib
+import io
 import os
 import subprocess
 import tempfile
 import unittest
+import unittest.mock as mock
 
 import rhap_image
 import rhap_inject
@@ -119,6 +122,25 @@ class TestReplaceTableKeyParsing(unittest.TestCase):
         text = b'"Multiple Sectors" = "Yes"\n'  # no trailing ; after the quote
         with self.assertRaises(rhap_inject.SafetyError):
             rhap_inject._replace_table_key(text, "Multiple Sectors", "No")
+
+    def test_replacement_value_with_double_quote_refused(self):
+        # Injecting a quote could terminate the entry early and open a new,
+        # unrelated table key - e.g. smuggling in an extra entry.
+        text = b'"Multiple Sectors" = "Yes";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(
+                text, "Multiple Sectors", 'No"; "Other" = "Pwned'
+            )
+
+    def test_replacement_value_with_semicolon_refused(self):
+        text = b'"Multiple Sectors" = "Yes";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Multiple Sectors", "No;Extra")
+
+    def test_replacement_value_with_newline_refused(self):
+        text = b'"Multiple Sectors" = "Yes";\n'
+        with self.assertRaises(rhap_inject.SafetyError):
+            rhap_inject._replace_table_key(text, "Multiple Sectors", "No\nExtra")
 
     def test_normal_key_rewritten_with_shorter_value(self):
         text = b'"Multiple Sectors" = "Yes";\n'
@@ -266,6 +288,47 @@ class TestGraft(unittest.TestCase):
         finally:
             img.close()
 
+    def test_graft_refuses_target_that_is_not_a_regular_file(self):
+        # A mistyped target could repoint a directory's name at a regular
+        # file's inode; the existing target inode must be a regular file.
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.graft_file(
+                    img, "/private/Drivers/i386/EIDE.config", DONOR2, b"x" * 100
+                )
+        finally:
+            img.close()
+
+    def test_graft_shrunk_donor_refusal_message_is_honest(self):
+        # After a first graft, the donor's addressable size drops to that
+        # payload's size. A later, larger payload must be refused with a
+        # message that names the current limit and points at the recovery
+        # path, not one that reads as "donor too small" in general.
+        # Reset first so this test does not depend on donor/nlink state left
+        # by other TestGraft methods running earlier in alphabetical order.
+        _reset_work_image()
+        first = b"x" * 50000
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            donor_ino = img.resolve(DONOR2)
+            rhap_inject.graft_file(img, "/mach_kernel", DONOR2, first)
+            limit = img.max_writable(img.inode(donor_ino))
+        finally:
+            img.close()
+
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            with self.assertRaises(rhap_inject.SafetyError) as ctx:
+                rhap_inject.graft_file(
+                    img, "/mach_kernel", DONOR2, b"y" * (limit + 1)
+                )
+        finally:
+            img.close()
+        msg = str(ctx.exception)
+        self.assertIn(str(limit), msg)
+        self.assertIn("reset-image.cmd", msg)
+
     def test_graft_refuses_target_that_does_not_exist(self):
         img = rhap_image.Image(WORK, writable=True)
         try:
@@ -309,3 +372,51 @@ class TestGraft(unittest.TestCase):
             self.assertEqual(img.inode(donor_ino).nlink, nlink_after_first)
         finally:
             img.close()
+
+
+def _run_main(args):
+    """Invoke rhap_inject.main() directly, capturing stdout/stderr text
+    without spawning a subprocess."""
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        rc = rhap_inject.main(args)
+    return rc, out.getvalue(), err.getvalue()
+
+
+class TestMainCLI(unittest.TestCase):
+    """Mirrors rhap_image.py's reader-CLI hardening: a refused image,
+    missing arguments, and a nonexistent image must all return non-zero
+    without raising, and the image must never be opened for write before
+    check_target has approved it."""
+
+    def test_missing_all_arguments_returns_nonzero_without_raising(self):
+        rc, out, err = _run_main(["rhap_inject.py"])
+        self.assertNotEqual(rc, 0)
+
+    def test_missing_set_key_value_returns_nonzero_without_raising(self):
+        rc, out, err = _run_main(
+            ["rhap_inject.py", WORK, "set-key", TABLE, "Multiple Sectors"]
+        )
+        self.assertNotEqual(rc, 0)
+
+    def test_missing_put_local_file_returns_nonzero_without_raising(self):
+        rc, out, err = _run_main(["rhap_inject.py", WORK, "put", TABLE])
+        self.assertNotEqual(rc, 0)
+
+    def test_refused_image_returns_nonzero_without_raising(self):
+        # GOLDEN is a real image but not vm/work/test.img, so check_target
+        # must refuse it before rhap_image.Image() ever opens it for write.
+        rc, out, err = _run_main(
+            ["rhap_inject.py", GOLDEN, "set-key", TABLE, "Multiple Sectors", "No"]
+        )
+        self.assertNotEqual(rc, 0)
+
+    def test_nonexistent_image_returns_nonzero_without_raising(self):
+        # Bypass check_target (which validates the path, not existence) so
+        # this exercises rhap_image.Image()'s FileNotFoundError being caught
+        # instead of propagating as a raw traceback.
+        with mock.patch.object(rhap_inject, "check_target", return_value=True):
+            rc, out, err = _run_main(
+                ["rhap_inject.py", "/no/such/image.img", "set-key", "/x", "k", "v"]
+            )
+        self.assertNotEqual(rc, 0)

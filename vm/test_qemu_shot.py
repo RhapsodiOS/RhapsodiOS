@@ -8,6 +8,7 @@ import os
 import struct
 import tempfile
 import unittest
+import unittest.mock as mock
 import zlib
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +95,47 @@ class TestCharsToQcodes(unittest.TestCase):
     def test_rejects_unmapped_character(self):
         with self.assertRaises(ValueError):
             qemu_shot.chars_to_qcodes("@")
+
+
+class TestBuildQemuArgs(unittest.TestCase):
+    def test_snapshot_and_serial_log_are_present(self):
+        args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log")
+        self.assertIn("-snapshot", args)
+
+        serial_positions = [i for i, a in enumerate(args) if a == "-serial"]
+        self.assertEqual(len(serial_positions), 2)
+        # COM1 belongs to the guest's drvISASerialPort and stays discarded;
+        # COM2 is where the kernel serial console writes.
+        self.assertEqual(args[serial_positions[0] + 1], "null")
+        self.assertEqual(args[serial_positions[1] + 1], "file:out/serial.log")
+
+
+class TestImageGuard(unittest.TestCase):
+    """Finding 1: qemu-shot.py must refuse any image that is not
+    vm/work/test.img via the same check rhap_inject.py's writer uses, and
+    must never launch QEMU for a refused image."""
+
+    def test_refuses_non_work_image_before_launching_qemu(self):
+        decoy = os.path.join(_HERE, "golden.img")
+
+        with mock.patch.object(
+            qemu_shot.subprocess, "Popen",
+            side_effect=AssertionError("QEMU must not be launched for a refused image"),
+        ):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with self.assertRaises(SystemExit):
+                    qemu_shot.run(decoy, tmpdir, [5], None, 3.0, False)
+
+    def test_refuses_vmdk_before_launching_qemu(self):
+        decoy = os.path.join(_HERE, "rhapsody.vmdk")
+
+        with mock.patch.object(
+            qemu_shot.subprocess, "Popen",
+            side_effect=AssertionError("QEMU must not be launched for a refused image"),
+        ):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with self.assertRaises(SystemExit):
+                    qemu_shot.run(decoy, tmpdir, [5], None, 3.0, False)
 
 
 class TestFixKeysArg(unittest.TestCase):

@@ -3,12 +3,25 @@
 as PNG screenshots, so boot progress can be checked without a human
 watching the VGA window.
 
+Also captures the guest's serial console: COM2 (0x2f8), where the kernel's
+serial debug console writes, is redirected to OUTDIR/serial.log. COM1 is
+left as -serial null because it belongs to the guest's drvISASerialPort.
+
 Usage:
     python qemu-shot.py IMAGE OUTDIR [--at SECONDS[,SECONDS...]]
                          [--keys STRING] [--keys-at SECONDS] [--trace]
 
 IMAGE must be a writable raw working image (e.g. vm/work/test.img), never
-the original vm/rhapsody.vmdk.
+the original vm/rhapsody.vmdk or vm/golden.img; this is enforced by
+rhap_inject.check_target (the same check rhap_inject.py's writer CLI uses,
+so there is exactly one implementation of which image may be touched). The
+drive is additionally opened with -snapshot, so even a permitted boot can
+never write through to the backing file - this harness only observes boots,
+it never needs to persist one.
+
+Screenshot filenames encode host wall-clock seconds (e.g. shot-30s.png), not
+guest boot progress. Under TCG these are not comparable between runs and
+must not be read as a measure of how far the guest got.
 
 Standard library only. No pip installs.
 """
@@ -21,6 +34,8 @@ import subprocess
 import sys
 import time
 import zlib
+
+import rhap_inject
 
 DEFAULT_AT = [5, 15, 30, 60, 90, 120]
 DEFAULT_KEYS_AT = 3.0
@@ -172,14 +187,15 @@ def find_free_port():
     return port
 
 
-def build_qemu_args(image, qmp_port, trace):
+def build_qemu_args(image, qmp_port, trace, serial_log):
     args = [
         "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
         "-m", "128", "-k", "en-us",
         "-nodefaults", "-vga", "cirrus", "-display", "none",
         "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
+        "-snapshot",
         "-netdev", "user,id=n0", "-device", "ne2k_pci,netdev=n0",
-        "-serial", "null", "-serial", "null",
+        "-serial", "null", "-serial", "file:%s" % serial_log,
         "-rtc", "base=%s" % RTC_BASE,
         "-boot", "order=c",
         "-qmp", "tcp:127.0.0.1:%d,server,nowait" % qmp_port,
@@ -202,17 +218,23 @@ def fmt_seconds(t):
 
 
 def run(image, outdir, at_points, keys, keys_at, trace):
-    if os.path.basename(image).lower() == "rhapsody.vmdk" or image.lower().endswith(".vmdk"):
-        raise SystemExit("refusing to boot %r: rhapsody.vmdk must never be opened for write; "
-                          "pass a raw working image (e.g. vm/work/test.img) instead" % image)
+    try:
+        rhap_inject.check_target(image)
+    except rhap_inject.SafetyError as e:
+        raise SystemExit(str(e))
 
     if keys is not None:
         chars_to_qcodes(keys)  # fail fast on an unmapped character
 
     os.makedirs(outdir, exist_ok=True)
 
+    serial_log = os.path.join(outdir, "serial.log")
+    print("serial console (COM2) log: %s" % serial_log)
+    print("note: capture times are host wall-clock seconds, not guest boot "
+          "progress; under TCG they are not comparable between runs")
+
     qmp_port = find_free_port()
-    qemu_args = build_qemu_args(image, qmp_port, trace)
+    qemu_args = build_qemu_args(image, qmp_port, trace, serial_log)
 
     proc = subprocess.Popen(qemu_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     start = time.monotonic()

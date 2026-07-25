@@ -11,6 +11,7 @@ something questionable.
 
 import os
 import struct
+import sys
 
 import rhap_image
 
@@ -148,8 +149,16 @@ def _replace_table_key(text, key, value):
     well-formed entry: a missing key, a duplicated key (ambiguous - a human
     should look at it), a value containing an escaped quote (this tool never
     needs to write one, so it refuses rather than mis-locating the terminator),
-    or an entry not terminated by '";' immediately after the closing quote.
+    an entry not terminated by '";' immediately after the closing quote, or a
+    replacement value containing a double quote, semicolon, or newline (this
+    table format has no escaping for those; letting one through would either
+    terminate the entry early or inject an unrelated extra entry).
     """
+    if '"' in value or ";" in value or "\n" in value:
+        raise SafetyError(
+            "replacement value %r contains a double quote, semicolon, or "
+            "newline; refusing" % (value,)
+        )
     needle = b'"%s" = "' % key.encode()
     count = text.count(needle)
     if count == 0:
@@ -208,12 +217,23 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
 
     Re-grafting the same target onto the same donor (the normal case in a
     rebuild -> inject -> boot -> rebuild loop, where a newer binary replaces
-    the previous graft) is idempotent: the donor's blocks and di_size are
-    rewritten as usual, but di_nlink is left untouched and the directory entry
-    is not rewritten, since it already points at the donor. A fresh donor must
-    have di_nlink exactly 1 (see below); a donor already grafted to this
-    target legitimately has di_nlink 2, so that check only applies to the
-    first graft of a given donor.
+    the previous graft) is idempotent ONLY for a payload that still fits the
+    donor's *current* size: the first graft sets the donor's di_size to that
+    payload's size, and img.max_writable() derives the writable limit from
+    di_size, so every later graft onto that donor is capped there too - not
+    at the donor's original size - even though most of its original blocks
+    are still allocated. A rebuild that grows past that shrunk limit is
+    refused (see the size check below); it cannot be grafted onto the same
+    donor again. Recovering requires recreating the working image
+    (reset-image.cmd) and re-applying injections from scratch, not another
+    graft.
+
+    When a re-graft does fit, the donor's blocks and di_size are rewritten as
+    usual, but di_nlink is left untouched and the directory entry is not
+    rewritten, since it already points at the donor. A fresh donor must have
+    di_nlink exactly 1 (see below); a donor already grafted to this target
+    legitimately has di_nlink 2, so that check only applies to the first
+    graft of a given donor.
 
     This does not go through write_file: write_file refuses any write that
     would change a file's fragment count, but grafting always changes the
@@ -248,7 +268,12 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
     limit = img.max_writable(donor)
     if len(data) > limit:
         raise SafetyError(
-            "donor %s holds %d bytes; payload is %d" % (donor_path, limit, len(data))
+            "donor %s currently addresses only %d bytes; payload is %d bytes. "
+            "If this donor was previously grafted, that graft reduced its "
+            "addressable size to its own payload - re-grafting a larger "
+            "payload onto the same donor is not possible. Run reset-image.cmd "
+            "and re-apply injections to restore full donor capacity."
+            % (donor_path, limit, len(data))
         )
     frags = img.frags(donor)
     if any(f == 0 for f in frags):
@@ -266,6 +291,10 @@ def graft_file(img, target_path, donor_path, data, mtime=None):
     ent_off, old_ino = _find_dirent(img, parent_ino, leaf)
     if ent_off is None:
         raise SafetyError("%s does not exist; graft cannot create names" % target_path)
+    if not img.inode(old_ino).is_reg():
+        raise SafetyError(
+            "%s is not a regular file; refusing to repoint it" % target_path
+        )
 
     regrafting = old_ino == donor_ino
     if not regrafting and donor.nlink != 1:
@@ -322,7 +351,24 @@ def main(argv):
         print("       rhap_inject.py <image> put <path> <local-file>")
         return 2
     image, cmd = argv[1], argv[2]
-    img = rhap_image.Image(image, writable=True)
+    if cmd == "set-key" and len(argv) < 6:
+        print("usage: rhap_inject.py <image> set-key <path> <key> <value>")
+        return 2
+    if cmd == "put" and len(argv) < 5:
+        print("usage: rhap_inject.py <image> put <path> <local-file>")
+        return 2
+
+    try:
+        check_target(image)
+    except SafetyError as e:
+        print(e, file=sys.stderr)
+        return 1
+
+    try:
+        img = rhap_image.Image(image, writable=True)
+    except (FileNotFoundError, ValueError) as e:
+        print("%s: %s" % (image, e), file=sys.stderr)
+        return 1
     try:
         if cmd == "set-key":
             path, key, value = argv[3], argv[4], argv[5]
@@ -343,5 +389,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    import sys
     raise SystemExit(main(sys.argv))

@@ -81,12 +81,17 @@
  * Segmentation happens before paging, so a descriptor base is a linear
  * address, not a kernel virtual one.  This kernel maps its own virtual range
  * at KERNEL_LINEAR_BASE (machdep/i386/pmap.h; gdt_init gives KCS_SEL/KDS_SEL
- * exactly that base), so kernel_virtual + KERNEL_LINEAR_BASE == linear.  The
- * two descriptors below whose base is a kernel pointer - GDT 17 (_kData) and
- * GDT 19 (_PnPEntry) - therefore add KERNEL_LINEAR_BASE.  The two whose base
- * comes out of the $PnP installation-check structure - GDT 16 (pm16cseg) and
- * GDT 18 (pm16dseg) - are already segment base addresses as the PnP BIOS
- * Specification defines them and must NOT be translated.
+ * exactly that base), so kernel_virtual + KERNEL_LINEAR_BASE == linear.  All
+ * four descriptors below therefore add KERNEL_LINEAR_BASE.
+ *
+ * The reference only biases the two whose base is a kernel pointer - GDT 17
+ * (_kData, from IOMalloc) and GDT 19 (_PnPEntry) - and leaves the two that
+ * come from the $PnP installation-check structure raw.  That rule is
+ * internally consistent but wrong: $PnP+0x13 and $PnP+0x1D are *physical*
+ * segment bases per PnP BIOS Specification 1.0a, and physical low memory is
+ * reachable only at linear physical + KERNEL_LINEAR_BASE under this kernel's
+ * mapping.  Installed raw those two descriptors address the user linear
+ * range rather than the BIOS ROM.  See "GDT base divergence" below.
  *
  * WHY GDT 19 IS CRITICAL:
  * The 16-bit BIOS returns with a far return that only pops a 16-bit IP.  By
@@ -519,13 +524,22 @@ typedef struct {
      * Base: _biosCodeSegAddr (pm16cseg from PnP BIOS structure)
      * Limit: 0xFFFF (64KB), Granularity: byte, Size: 16-bit
      *
-     * No KERNEL_LINEAR_BASE here: this base arrives from the $PnP structure
-     * already in the form the PnP BIOS Specification wants installed in a
-     * descriptor.  The reference agrees - -[PnPBios setupSegments] at 0x35d3
-     * is a bare "mov edx, [esi+38h]" with no add, and -[PnPBios init] at
-     * 0x3b60 stores the raw dword from $PnP+0x13 into that ivar.
+     * GDT base divergence (1 of 2).  The reference does NOT bias this base:
+     * -[PnPBios setupSegments] at 0x35d3 is a bare "mov edx, [esi+38h]" with
+     * no add, and -[PnPBios init] at 0x3b60 stores the raw dword from
+     * $PnP+0x13.  We diverge deliberately.  Per PnP BIOS Specification 1.0a
+     * that dword is a *physical* segment base, but a descriptor base is a
+     * *linear* address, and this kernel maps virtual 0..VM_MAX_KERNEL_ADDRESS
+     * at linear KERNEL_LINEAR_BASE (gdt_init gives KCS_SEL/KDS_SEL exactly
+     * that base).  Installed raw, this descriptor addresses the user linear
+     * range instead of the BIOS ROM.  The reference biases the two bases that
+     * are kernel pointers (_kData, _PnPEntry) but not the two that come from
+     * $PnP - a rule that is internally consistent and still wrong.
+     *
+     * To restore exact fidelity, drop the "+ KERNEL_LINEAR_BASE" here and in
+     * divergence 2 of 2 below.
      */
-    base = _biosCodeSegAddr;
+    base = _biosCodeSegAddr + KERNEL_LINEAR_BASE;
     entryPnPCode16->limitLow = 0xFFFF;
     entryPnPCode16->baseLow = (unsigned short)base;
     entryPnPCode16->baseMid = (unsigned char)(base >> 16);
@@ -541,11 +555,12 @@ typedef struct {
      * This descriptor's selector is the BiosSelector argument every PnP
      * BIOS function takes as its last parameter.
      *
-     * No KERNEL_LINEAR_BASE here either, for the same reason as GDT 16: the
-     * reference reads "mov edx, [esi+40h]" at 0x361f with no add, and -init
-     * at 0x3b69 stores the raw dword from $PnP+0x1D.
+     * GDT base divergence (2 of 2).  Same reasoning as divergence 1 of 2
+     * above: the reference reads "mov edx, [esi+40h]" at 0x361f with no add
+     * and -init at 0x3b69 stores the raw dword from $PnP+0x1D, but that is a
+     * physical base and a descriptor needs a linear one.
      */
-    base = _dataSegAddr;
+    base = _dataSegAddr + KERNEL_LINEAR_BASE;
     entryPnPData32->limitLow = 0xFFFF;
     entryPnPData32->baseLow = (unsigned short)base;
     entryPnPData32->baseMid = (unsigned char)(base >> 16);

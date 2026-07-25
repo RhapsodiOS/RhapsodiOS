@@ -95,17 +95,16 @@ Spurious slave interrupts are rare on real hardware, and the window that
 produces them is timing-dependent. A machine could run for years without
 hitting it. QEMU's timing makes it reproducible within a minute or two of boot.
 
-## Related, not yet changed
+## Related, not changed
 
-`send_eoi_command()` writes EOI to the master **before** the slave. The
-conventional order is slave-then-master. The reversed order leaves a window in
-which the slave can re-raise the cascade after the master has been EOI'd but
-before the slave has, which is a plausible way to manufacture the very spurious
-slave interrupt described above.
+`send_eoi_command()` writes EOI to the master **before** the slave, where the
+conventional order is slave-then-master. This was initially suspected of
+manufacturing the spurious slave interrupts described above, and was left alone
+so the effect of the fix could be measured on its own.
 
-This was deliberately left alone so the effect of the root-cause fix could be
-measured on its own. If spurious IRQ 15 reports continue to appear frequently
-after the fix, reversing the order is the next thing to try.
+Part 2 below measures it and **disproves that suspicion** — the spurious
+interrupts are preceded by the timer, not by the completion of a slave
+interrupt. The ordering remains unchanged and is not believed to be implicated.
 
 ---
 

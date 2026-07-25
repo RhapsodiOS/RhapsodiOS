@@ -1,0 +1,123 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "-[PS2Mouse mouseInit:]"
+      ],
+      "size": 179,
+      "source_line": 478,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 180,
+      "reference_names": [
+        "-[PS2Mouse isMousePresent]"
+      ],
+      "size": 109,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 292,
+      "reference_names": [
+        "-[PS2Mouse resetMouse]"
+      ],
+      "size": 37,
+      "source_line": 362,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 332,
+      "reference_names": [
+        "-[PS2Mouse initWithController:]"
+      ],
+      "size": 350,
+      "source_line": 382,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 684,
+      "reference_names": [
+        "-[PS2Mouse readConfigTable:]"
+      ],
+      "size": 214,
+      "source_line": 309,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 900,
+      "reference_names": [
+        "_PS2MouseIntHandler"
+      ],
+      "size": 525,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 1428,
+      "reference_names": [
+        "-[PS2Mouse interruptOccurred]"
+      ],
+      "size": 50,
+      "source_line": 549,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 1480,
+      "reference_names": [
+        "-[PS2Mouse getHandler:level:argument:forInterrupt:]"
+      ],
+      "size": 39,
+      "source_line": 537,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 1520,
+      "reference_names": [
+        "-[PS2Mouse getResolution]"
+      ],
+      "size": 16,
+      "source_line": 684,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 1536,
+      "reference_names": [
+        "-[PS2Mouse getIntValues:forParameter:count:]"
+      ],
+      "size": 93,
+      "source_line": 569,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    },
+    {
+      "address": 1632,
+      "reference_names": [
+        "-[PS2Mouse setIntValues:forParameter:count:]"
+      ],
+      "size": 146,
+      "source_line": 618,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
+    }
+  ],
+  "reference_sha256": "4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1780,
+      "reference_names": [
+        "+[PS2MouseKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 1792,
+      "reference_names": [
+        "+[PS2MouseVersion driverKitVersionForPS2Mouse]"
+      ],
+      "size": 12
+    }
+  ]
+}

@@ -290,5 +290,6 @@ Repository-wide:
 
 - `tools/binrecon/out/` gitignored and untracked
 - Reference-only mode in `profile-v1.json` and `profile.py`
+- `binrecon.source_map` builder and the `binrecon source-map` subcommand
 - `vm/build-i386-bus-drivers.sh`
 - `src/drivers-i386/README` status lines updated for the three drivers

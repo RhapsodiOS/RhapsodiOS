@@ -31,6 +31,9 @@
 #define _PNPBIOS_H_
 
 #import <objc/Object.h>
+#import "bios.h"
+
+@class PnPArgStack;
 
 /*
  * PnP BIOS Installation Check Structure
@@ -65,22 +68,29 @@ typedef union pnp_bios_install_struct pnp_bios_install_struct;
 /* PnP BIOS signature: "$PnP" */
 #define PNP_SIGNATURE   (('$' << 0) + ('P' << 8) + ('n' << 16) + ('P' << 24))
 
-/* PnPBios - BIOS interface */
+/*
+ * PnPBios - BIOS interface
+ *
+ * The ivar offsets below match the reference binary exactly (0x04 argStack,
+ * 0x08 register block, 0x38/0x3c/0x3e/0x40/0x44/0x48/0x4c scalars, 0x50
+ * onwards the saved GDT descriptors).
+ */
 @interface PnPBios : Object
 {
     @private
-    unsigned char _bb[48];                  /* BIOS call structure */
-    unsigned int _biosCodeSegAddr;          /* BIOS code segment base address */
-    unsigned short _biosEntryOffset;        /* BIOS entry point offset */
-    unsigned int _dataSegAddr;              /* BIOS data segment base address */
-    pnp_bios_install_struct *_pnpBios;      /* PnP BIOS installation structure */
-    void *_kData;                           /* 64KB buffer for PnP operations */
-    unsigned short _kDataSelector;          /* Buffer selector */
-    void *_kStack;                          /* 4KB stack for 16-bit BIOS calls */
-    unsigned int _saveGDTBiosCode[2];       /* Saved GDT entry 16 */
-    unsigned int _saveGDTBiosEntry[2];      /* Saved GDT entry 18 */
-    unsigned int _saveGDTKData[2];          /* Saved GDT entry 19 */
-    unsigned int _saveGDTBiosData[2];       /* Saved GDT entry 17 */
+    PnPArgStack *_argStack;                 /* 0x04: argument marshaller */
+    struct pnp_bios_regs _bb;               /* 0x08: BIOS call structure */
+    unsigned int _biosCodeSegAddr;          /* 0x38: BIOS code segment base address */
+    unsigned short _biosEntryOffset;        /* 0x3c: BIOS entry point offset */
+    unsigned short _biosSelector;           /* 0x3e: BiosSelector argument */
+    unsigned int _dataSegAddr;              /* 0x40: BIOS data segment base address */
+    pnp_bios_install_struct *_pnpBios;      /* 0x44: PnP BIOS installation structure */
+    void *_kData;                           /* 0x48: 64KB buffer for PnP operations */
+    unsigned short _kDataSelector;          /* 0x4c: Buffer selector */
+    unsigned int _saveGDTBiosCode[2];       /* 0x50: Saved GDT entry 16 */
+    unsigned int _saveGDTBiosEntry[2];      /* 0x58: Saved GDT entry 18 */
+    unsigned int _saveGDTKData[2];          /* 0x60: Saved GDT entry 19 */
+    unsigned int _saveGDTBiosData[2];       /* 0x68: Saved GDT entry 17 */
 }
 
 /*
@@ -101,9 +111,12 @@ typedef union pnp_bios_install_struct pnp_bios_install_struct;
 - (int)getPnPConfig:(void **)buffer;
 
 /*
- * Segment setup
+ * Segment setup.  -setupSegments borrows GDT[16..19] and lazily creates the
+ * argument stack; it returns NO if the argument stack could not be created,
+ * in which case the call must not be attempted.  -releaseSegments gives the
+ * four GDT slots back.
  */
-- setupSegments;
+- (BOOL)setupSegments;
 - releaseSegments;
 
 @end

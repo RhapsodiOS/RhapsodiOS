@@ -910,9 +910,15 @@ Expected: prints the reference absolute path, size `41360`, and its SHA-256. No 
 BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PCIBus.config/PCIBus_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/pcibus.json
 ```
 
-Expected: exit code 0 and `tools/binrecon/out/pcibus/run-summary.json` with `"complete": true` and `"rebuilt_sha256": null`. Runtime is minutes, not seconds.
+Expected: **exit code 1**, with `run-summary.json` showing `"complete": true`, `"rebuilt_sha256": null`, `"comparisons": []`, and `"acceptance": {"passed": false, ...}`.
 
-If Ghidra's Mach-O loader rejects the input, the adapter falls back to deterministic raw i386 import — that is expected and not a failure. If a run times out, the summary is marked `"complete": false`; fix the cause and re-run rather than proceeding.
+Exit 1 is the correct outcome for every reference-only run and is not a failure. [runner.py:259](tools/binrecon/binrecon/runner.py:259) computes `expected_pass = bool(comparisons) and all(...)`, so with nothing compared the acceptance is `false`, and line 262 *enforces* that it stay `false` — the tool refuses to report acceptance as passed when no comparison happened. That conservatism is deliberate and is exactly what the stale eisabus run lacked.
+
+**The real gate for this task** is therefore: `"complete": true`, a `published/` directory holding `analysis-reference-{ida,ghidra,angr}.json` plus `consensus-reference.json`, and `"reference"` non-null for all three analyzers. Judge success on those, not the exit code.
+
+If Ghidra's Mach-O loader rejects the input, the adapter falls back to deterministic raw i386 import — expected, not a failure. If a run times out, the summary is marked `"complete": false`; fix the cause and re-run rather than proceeding.
+
+**Do not launch `analyze` from a subagent that then exits** — the run is a long-lived child process and dies with its parent. Run it as a detached background task owned by the session.
 
 - [ ] **Step 4: Confirm the published output**
 
@@ -1269,7 +1275,7 @@ BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PCMCIABus.con
 BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PCMCIABus.config/PCMCIABus_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/pcmciabus.json
 ```
 
-Expected: `validate` reports size `92192`; `analyze` exits 0 with `"complete": true`.
+Expected: `validate` reports size `92192`; `analyze` exits **1** with `"complete": true` and `"acceptance": {"passed": false}` — see Task 6 Step 3 for why exit 1 is the correct outcome of a reference-only run. Gate on `complete` and the published artifacts, not the exit code.
 
 - [ ] **Step 3: Generate the source map**
 
@@ -1423,7 +1429,7 @@ BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.confi
 BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/EISABus.config/EISABus_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/eisabus.json
 ```
 
-Expected: `validate` reports size `100752` and SHA-256 `8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23`; `analyze` exits 0 with `"complete": true` and `"rebuilt_sha256": null`.
+Expected: `validate` reports size `100752` and SHA-256 `8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23`; `analyze` exits **1** with `"complete": true` and `"rebuilt_sha256": null` — see Task 6 Step 3 for why exit 1 is the correct outcome of a reference-only run. Gate on `complete` and the published artifacts.
 
 - [ ] **Step 3: Generate the source map**
 

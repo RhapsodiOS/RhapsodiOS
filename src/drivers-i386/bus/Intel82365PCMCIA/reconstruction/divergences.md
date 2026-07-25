@@ -86,8 +86,59 @@ reconstructed with different text.
 
 ## Post-fix parity
 
-**Not applicable.** This is the report pass; no source file was changed. Task 9
-applies the fixes.
+**Not run, and post-fix parity is unverified.** The fix pass had no transport to a
+Rhapsody build host, so **no build was performed and no post-fix artifact exists**.
+`parity_check.py` was not re-run: it would only have re-measured the same unchanged
+staged binary described under § Baseline build and reported the pre-fix numbers,
+which would be worse than no number at all. No parity output is recorded here, and
+none is estimated or guessed.
+
+What this leaves unverified is worth naming plainly: **every source change recorded
+in the `**Outcome:**` lines below is uncompiled.** Nothing here establishes that
+the six `.m` files still build, that the thirteen `missing_symbols` are now
+present, that the two `missing_strings` now appear verbatim, that the eight
+`extra_strings` are gone, or that the rewritten `-[PCIC
+initFromDeviceDescription:]` and the newly written `_setWindow` and
+`-[PCIC_PCI initFromDeviceDescription:]` are anywhere near the reference's 639,
+436 and 221 bytes. That is also why no ledger entry is `assembly-matched`: that
+status requires instruction-level evidence from a rebuilt binary, and the ceiling
+for a source-only change is `control-flow-confirmed`.
+
+### Unresolved build-time risk: the return convention of `-[PCICSocket status]`
+
+**Whoever gets a build first must check this before anything else.**
+
+`-[PCICSocket status]` now returns `PCMCIAStatus`, a 4-byte bitfield struct, which
+is what the reference's type encoding declares (Finding 11(f)). `drvPCMCIABus`
+separately declares the *same selector* as `- (unsigned int)status` in its
+`Object(PCMCIASocketWindowMethods)` category at
+`src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.h:32-37`
+(the declaration itself is line 36), and calls it at `PCMCIAKernBus.m:724`,
+`PCMCIAKernBusPrivate.m:64` and `PCMCIAKernBusPrivate.m:1242`.
+
+Apple's binary returns the value in `eax` with no hidden struct-return pointer —
+verified by reading the reference at address 3836: its first argument slot
+`[ebp+8]` holds `self` (`8B 55 08` then `8B 52 08`, reading `socketNumber` from
+ivar +8), so nothing is displaced by a hidden buffer pointer; it loads the result
+with `89 F0` (`mov eax, esi`); and it ends `8D 65 F4 5B 5E 89 EC 5D C3`, a plain
+`ret` rather than the `ret $4` a callee-popped struct pointer would need. That is the
+`-freg-struct-return` convention, under which the two declarations agree at the
+ABI level and the call across the driver boundary is safe.
+
+Under `-fpcc-struct-return` it is not. The callee would use the stret convention —
+a caller-allocated buffer passed as a hidden first argument, popped by the callee
+— while `drvPCMCIABus`, which sees a scalar return type, emits a plain
+`objc_msgSend` and reads `eax`. Nothing diagnoses this: the two translation units
+are compiled from different headers in different projects and the linker sees only
+`objc_msgSend`. The result would be a silently corrupted status value and a
+misaligned stack at every one of the three call sites.
+
+**Check to perform on the first build:** disassemble the emitted
+`-[PCICSocket status]` and confirm it takes no hidden struct pointer (two
+arguments, `self` and `_cmd`, and a plain `ret`). If it does take one, either the
+compiler must be given `-freg-struct-return` for this project or `drvPCMCIABus`'s
+declaration must be brought into agreement. This was not resolvable without a
+compiler and is recorded here rather than guessed at.
 
 ## Summary
 
@@ -132,6 +183,15 @@ build-generated glue recorded as `intentional-mismatch`.
 
 Twenty findings follow, ordered by severity. Three are accepted; the other
 seventeen are marked `fix`.
+
+*Updated by the fix pass:* **sixteen of the seventeen `fix` findings were applied
+in full; the seventeenth, Finding 13, was applied in part.** See the `**Outcome:**`
+line on each finding for what changed, which commit changed it, and the ledger
+status that resulted. The ledger now stands at 76 `control-flow-confirmed` and 6
+`intentional-mismatch`, with nothing left `unexamined`. Nothing is
+`assembly-matched` and nothing can be until a build exists; see § Post-fix parity,
+which also records an unresolved build-time risk in `-[PCICSocket status]` that
+must be checked on the first build.
 
 The headline is that the *register-level* reconstruction of this driver is
 remarkably good — PCIC index/data port protocol, socket stride of 0x40, every
@@ -322,6 +382,16 @@ entirely (Finding 6). So the naming divergence is itself cosmetic, but — as in
 **Disposition:** fix. Rename all twelve to match Apple's spelling. Note that for
 `socketIsValid` the rename is *not* sufficient on its own; see Finding 1.
 
+**Outcome:** fixed, all twelve. The eight C functions lost their leading
+underscore in commit `3b7f8935`, so the compiler now renders them with exactly one
+(`socketIsValid` -> `_socketIsValid`, and so on down the table). The four category
+selectors lost theirs in `c22d05b4`: `PCIC(Debug)` now declares
+`readAttributeMemory:forSocket:` and `spoofInterrupt`, and `PCIC(Internal)`
+declares `readRegister:socket:` and `writeRegister:socket:value:`, matching the
+`__meth_var_names` entries at 19903, 19888, 19962 and 19934. Both commits changed
+declarations and call sites together. The rename is source-level only; that the
+emitted symbol table now matches has not been measured, because no build was run.
+
 ## File placement
 
 `_setMemoryWindow` (address 6620) and `_setIoWindow` (address 7084) sit inside
@@ -337,6 +407,14 @@ file. Both reference symbols are `n_type=0x0e`, i.e. `static`.
 **Disposition:** fix — approved in the spec, applied in Task 9 Step 4. Moving
 them also resolves half of Finding 9, because a `static` in `PCICWindow.m` needs
 no `extern` declaration and no external linkage.
+
+**Outcome:** fixed in commit `cc01a6a4`. Both functions were cut from the bottom of
+`PCIC.m` and pasted into `PCICWindow.m` after `-[PCICWindow set16Bit:]`, where the
+reference has them, and both were made `static`. They now sit at
+`PCICWindow.m:364` (`setMemoryWindow`) and `PCICWindow.m:430` (`setIoWindow`). The
+two `extern` declarations at the top of `PCICWindow.m` went away with the move, as
+predicted. Ledger addresses 6620 and 7084 -> `control-flow-confirmed`, and both
+source-map entries were repointed from `PCIC.m` to `PCICWindow.m`.
 
 ## Fidelity principle
 
@@ -424,6 +502,19 @@ This report recommends the first, because reproducing Apple's source layout is
 the point of the exercise and the duplication is Apple's own. Task 9 should
 record which it chose.
 
+**Outcome:** fixed in commit `3b7f8935`, and **the first option was chosen** — the
+one that matches Apple. The `extern` declaration and its comment were deleted from
+`PCICSocket.m` and a second file-local `static char socketIsValid(unsigned int)`
+was defined there at `PCICSocket.m:44`, ahead of `@implementation PCICSocket`,
+mirroring the reference's two independent definitions. `PCIC.m` keeps its own at
+`PCIC.m:360`. Both lost the leading underscore in the same commit (§ Naming
+divergence). The undefined `__socketIsValid` this finding is about therefore has no
+source left to come from, though that has not been re-measured: no build was run,
+so the claim rests on the C language rules rather than on a fresh symbol table.
+Ledger addresses 1488 and 2816 -> `control-flow-confirmed`, and the source map now
+maps them to `PCIC.m:360` and `PCICSocket.m:44` respectively instead of both to
+`PCIC.m`.
+
 ## Finding 2: `_setWindow` is an empty placeholder; the reference is 436 bytes of register programming
 
 **Source:** `.../PCICDebug.m:136-144`
@@ -492,6 +583,19 @@ writes, every shift and mask visible — so this is directly implementable. Leav
 it stubbed means the driver's attribute-memory path silently does nothing, which
 is worse than an error.
 
+**Outcome:** fixed in commit `6604e364`. The placeholder body was replaced with the
+six register writes the reference performs, in the reference's order and with its
+arithmetic: `cardOffset = cardAddress + 0x400000 - systemAddress`, window base
+`(socket << 6) + (window << 3) + 0x10`, then the system start low byte, the system
+start high nibble ORed with `is16Bit << 7`, the stop page from `systemAddress +
+size - 1`, its high nibble ORed with `extraWaitState << 6`, the card offset low
+byte, and the card offset high six bits ORed with the attribute-memory bit and the
+write-protect bit. The nine parameters were also renamed from the invented
+`baseAddr`/`physicalAddr`/`offset`/`flags`/`windowType`/`enable` to what each one
+actually is, so the one live call from `MapAttributeMemory` now reads correctly.
+Ledger address 1872 -> `control-flow-confirmed`; it is not `assembly-matched`
+because the 436 bytes have not been rebuilt and compared.
+
 ## Finding 3: the `PCIC_PCI` class is absent
 
 **Source:** absent from `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/`
@@ -502,6 +606,21 @@ our config table advertises a class our code does not define. See § PCIC_PCI:
 go/no-go for the full reference reconstruction and the verdict.
 
 **Disposition:** fix
+
+**Outcome:** fixed in commit `3e7f1b25`. `@implementation PCIC_PCI` was written into
+`PCIC.m` at line 49, **ahead of** `@implementation PCIC`, which is where
+`__OBJC,__module_info` and the address-0 `IMP` put it, and `@interface PCIC_PCI :
+PCIC` was added to `PCIC.h`. The body follows the reconstruction in § PCIC_PCI:
+go/no-go exactly: the `getPCIdevice:function:bus:` probe with a null `function:`,
+the `PCIC: PCMCIA->PCI Bus Bridge Detected (Dev=%d, Bus=%d)\n` log, the class-side
+`getPCIConfigData:atRegister:withDeviceDescription:` on `IODirectDevice` reading
+BAR0 into `reg_base`, the `& 0xFFFC` mask, the four-byte `IORange` handed to
+`setPortRangeList:num:`, and both failure paths sending `free` to `super`. The
+class declares no ivars of its own, so its instance size follows `PCIC`'s 312.
+Ledger address 0 -> `control-flow-confirmed`, and the source map moved it out of
+`unmapped` into `mapped` at `PCIC.m:56`. One of the report's two `missing_strings`
+now exists in our source; that it lands in `__cstring` byte for byte has not been
+measured, because no build was run.
 
 ## Finding 4: all three classes have the wrong instance-variable layout
 
@@ -579,6 +698,33 @@ unused trailing ivars.
 subclass of `IODirectDevice` and a superclass of `PCIC_PCI` (Finding 3), so
 getting the size wrong propagates. The invented ivars are also the visible
 symptom of Finding 5 — they exist to hold values Apple's driver never keeps.
+
+**Outcome:** fixed in commit `2a99753a`, all three layouts rewritten to the
+reference's exact names, types and order, giving instance sizes 312, 20 and 36:
+
+- **`PCIC`** now declares exactly `CirrusCompatible`, `sockets`, `windows`,
+  `statusHandler` at +296/+300/+304/+308. `basePort`, `numSockets` and `irqLevel`
+  were deleted; `basePort` in particular had no replacement, so every read of it
+  was repointed at the global `reg_base`, including the one in
+  `-[PCIC interruptOccurred]`. The declaration order now agrees with the
+  `0x12C`/`0x130`/`0x134` comments that previously contradicted it.
+- **`PCICSocket`** now declares `adapter`, `socketNumber` (`int`, not `unsigned`),
+  the `PCMCIAStatus` bitfield `statusMask` at +12, and `windows` at +16. The six
+  never-read shadow ivars (`cardEnabled`, `cardVccPower`, `cardVppPower`,
+  `cardIRQ`, `cardAutoPower`, `memoryInterface`) and the separate
+  `statusChangeMask` were deleted. `PCMCIAStatus` is declared in `PCICSocket.h`
+  with the reference's eight fields in the reference's order and widths.
+- **`PCICWindow`** renamed `validSocketsList` to `validSockets`, made
+  `socketNumber` and `windowNumber` `int`, made `memoryWindow` `char`, and dropped
+  the three unused trailing ivars `enabled`, `attrMemFlag`, `is16Bit`.
+
+This finding touched every method that reads or writes an ivar, which is why the
+four functions § Summary lists as having no write-up of their own — `-[PCIC
+sockets]` (932), `-[PCIC windows]` (948), `-[PCIC setStatusChangeHandler:]` (964)
+and `-[PCICSocket windows]` (3820) — advance on this outcome alone, to
+`control-flow-confirmed`. The sizes 312/20/36 are what the source now describes;
+they have not been read back out of a rebuilt `__OBJC,__class`, because no build
+was run.
 
 ## Finding 5: `-[PCIC initFromDeviceDescription:]` was reconstructed from the wrong premises
 
@@ -694,6 +840,24 @@ with a `break` on nil; `addObject:` then `appendList:[socket windows]`; the
 are behaviour differences on real hardware, not cosmetics, and points 2, 9 and
 the `isCirrusChip` naming are what force the `PCIC` ivar layout in Finding 4.
 
+**Outcome:** fixed in commit `314591cd`; the method was rewritten against the
+reconstruction above and all eleven numbered differences are gone. Point by point:
+the port base now comes from `[deviceDescription portRangeList]` and the first
+`IORange`'s `start` is assigned straight into the global `reg_base`, with no
+`resourcesForKey:"I/O Ports"` and no NULL check (1, 2); the failure message is
+`PCIC: No device at base address 0x%04x\n` with `reg_base` (3), which is the second
+of the report's two `missing_strings`; the failure return is `return [self free];`
+rather than an explicit `nil` (4); `[deviceDescription interrupt]` is re-sent
+inside the loop with no cached `irqLevel` and no default of 5 (5); the two
+`[[List alloc] init]` results are stored without being tested (6); `appendList:`
+is sent unguarded (7); the no-sockets path does `[sockets free]; [self free];
+return nil;` (8); `numSockets` is gone (9); `enableAllInterrupts` failure logs and
+**falls through to `startIOThread`** instead of being fatal (10); and the invented
+success banner and its ` (Cirrus)` suffix were deleted (11). With them went all
+six invented log strings and both remaining `extra_strings` that belonged to this
+method. Ledger address 292 -> `control-flow-confirmed`. Whether the rewritten body
+comes out near the reference's 639 bytes is unmeasured: no build was run.
+
 ## Finding 6: `spoofInterrupt` is a software interrupt, not a message send
 
 **Source:** `.../PCICDebug.m:200-204`
@@ -738,6 +902,12 @@ the reference exactly.
 
 Note the type encodings already agree (`v8@8:12` on both sides), so only the
 body and the selector's leading underscore need to change.
+
+**Outcome:** fixed in commit `2fa7466b`. The body is now a single
+`asm volatile("int $0x45");`, which is the reference's `CD 45` and nothing else,
+and the whole interrupt delivery path is exercised again. The selector lost its
+underscore in `c22d05b4` (§ Naming divergence). Ledger address 2688 ->
+`control-flow-confirmed`.
 
 ## Finding 7: `_setMemoryWindow` omits three read-modify-write cycles and computes the card offset differently
 
@@ -807,6 +977,17 @@ low-byte writes.
 pass exists to catch. Zeroing the timing bits mis-times every memory window;
 programming an absolute address into an offset register maps the wrong card page.
 
+**Outcome:** fixed in commit `cce22ccc`. Registers `base+1`, `base+3` and `base+5`
+are now read-modify-writes: each does an `inb` on the data port and ORs the new
+value into the bits the reference preserves — `& 0xF0` for the two high address
+nibbles and `& 0xC0` for the card-offset high bits — so the timing-set, 16-bit
+data path, wait-state, write-protect and register-select bits survive. The card
+offset is now `(cardAddr + 0x400000 - sysAddr) >> 12`, the same expression
+`setWindow` computes at 1899, instead of the absolute `cardAddr >> 12`. The
+function moved to `PCICWindow.m` in the same pass (§ File placement), so ledger
+address 6620 -> `control-flow-confirmed` with its source path repointed to
+`PCICWindow.m:364`.
+
 ## Finding 8: the naming divergence group
 
 See § Naming divergence for the full table and evidence. Twelve identifiers, eight
@@ -818,6 +999,15 @@ in the staged artifact's symbol table.
 **Rationale:** cosmetic in isolation, but the whole point of this effort is that
 the symbol table should match, and for `socketIsValid` the rename is entangled
 with Finding 1's linkage failure.
+
+**Outcome:** fixed; see the `**Outcome:**` line under § Naming divergence for the
+detail. Eight C functions renamed in commit `3b7f8935`, four category selectors in
+`c22d05b4`, all twelve declarations and call sites together. The
+`socketIsValid` half is completed by Finding 1's second `static` definition in
+`PCICSocket.m`, without which the rename alone would still have left an
+unresolved external. Ledger addresses 1488, 1564, 1684, 1760, 1872, 2308, 2540,
+2688, 2700, 2748, 2816, 6620 and 7084 all -> `control-flow-confirmed` (several of
+them on other findings' outcomes as well).
 
 ## Finding 9: three linkage divergences
 
@@ -864,12 +1054,28 @@ placement — once they live in `PCICWindow.m` next to their only caller they ca
 and should be `static`, which also lets the two `extern` declarations at
 `PCICWindow.m:38-39` go away.
 
+**Outcome:** fixed, in three commits. `MapAttributeMemory` lost its `static` in
+`3b7f8935`, matching the reference's lone `n_type=0x0f` export, and its bogus
+`unsigned long long` return became `void` in `1b37b611`, which also deleted the
+`return ((regValue & 0xE0) | 1);` — the function now ends on the `outb` that writes
+that value, as the reference does, and its one caller never wanted a result.
+`setMemoryWindow` and `setIoWindow` became `static` when they moved into
+`PCICWindow.m` in `cc01a6a4`, and the two `extern` declarations went away with
+them exactly as predicted. Ledger addresses 2308, 6620 and 7084 ->
+`control-flow-confirmed`. The `n_type` values that would confirm this are
+unmeasured; no build was run.
+
 ## Finding 10: `_setMemoryWindow` and `_setIoWindow` are defined in the wrong file
 
 See § File placement. Both belong in `PCICWindow.m`; our tree has them at the
 bottom of `PCIC.m`.
 
 **Disposition:** fix — approved in the spec, applied in Task 9 Step 4.
+
+**Outcome:** fixed in commit `cc01a6a4`; see the `**Outcome:**` line under § File
+placement. Both now sit in `PCICWindow.m` after `-[PCICWindow set16Bit:]` and both
+are `static`. Ledger addresses 6620 and 7084 -> `control-flow-confirmed`, source
+paths repointed from `PCIC.m` to `PCICWindow.m`.
 
 ## Finding 11: 42 of the 73 Objective-C methods have divergent type encodings
 
@@ -950,6 +1156,30 @@ a caller that goes through the protocol will read the wrong-width return value.
 Sixteen of the 43 also change the emitted instructions (the thirteen missing
 `return YES`s, plus the three `movsx` sites, plus the byte compare at 5288).
 
+**Outcome:** fixed in commit `091c8f3a`, all 42. Group by group: the thirteen
+setters in (a) now return `char` and end `return YES;` (the two at 5512 and 6168
+return the reference's 1-or-0); the thirteen getters in (b) return `char`; the
+nine in (c) return `int`; the nine arguments in (d) are declared `char`, including
+`-[PCICWindow initWithSocket:memoryWindow:number:]`'s `memoryWindow`; the two in
+(e) take `int`; the three in (f) use the `PCMCIAStatus` bitfield struct that
+Finding 4 added to `PCICSocket.h`; and `-[PCICSocket powerStates]` (g) returns
+`id` with a `nil` body. Every declaration in the four headers and
+`PCICWindowAttributes.m` was changed together with its implementation, so
+`__meth_var_types` should now agree on all 71 hand-written methods — "should",
+because the type strings have not been decoded out of a rebuilt binary. The
+`assembly-matched` claim that would need is unavailable this pass. Ledger: all 42
+addresses -> `control-flow-confirmed`, except 5368 and 5904, which are terminal
+`intentional-mismatch` on Findings 20 and 14 respectively.
+
+**One consequence of group (f) is an unresolved build-time risk**, discovered in
+review and recorded in full under § Post-fix parity: `-[PCICSocket status]` now
+returns a 4-byte struct while `drvPCMCIABus` declares the same selector as
+`- (unsigned int)status` and calls it at three sites. The reference returns in
+`eax` with no hidden struct pointer, which is correct under
+`-freg-struct-return`; under `-fpcc-struct-return` the two would silently
+disagree across the driver boundary. Whoever gets a build first must check the
+emitted function for a hidden argument.
+
 ## Finding 12: `-[PCICSocket initWithAdapter:socketNumber:]` sends two extra `init` messages
 
 **Source:** `.../PCICSocket.m:102-103`, `:107-108`
@@ -997,6 +1227,15 @@ register 6 set to `0x20`; register 7 cleared; one window with `memoryWindow:0`
 programming registers `0x08`–`0x0B` to `0xFF, 7, 0xFF, 7`; five windows with
 `memoryWindow:1` programming `0x10`–`0x13` to the same values; `return self`.
 
+**Outcome:** fixed in commit `575ea479`. Both `[... init]` re-sends were deleted:
+the window list is now built as `[[List alloc] initCount:7]` and each window as
+`[[PCICWindow alloc] initWithSocket:self memoryWindow:… number:i]`, two sends
+each, as the reference does. Nothing else in the method changed under this
+finding; its socket-number argument became `int` under Finding 11(e), its ivar
+accesses moved under Finding 4, and the `socketIsValid` it calls is now the
+file-local copy Finding 1 added to the same file. Ledger address 2892 ->
+`control-flow-confirmed`.
+
 ## Finding 13: protocol adoption is absent, and `PCMCIAStatusChange` is invented
 
 **Source:** `.../PCIC.h:45-49`, `:51`; `.../PCICSocket.h:37`; `.../PCICWindow.h:34`
@@ -1043,6 +1282,50 @@ signatures matter: the signatures Apple used are the protocols' signatures.
 
 This finding is the one most likely to expand Task 9's scope, because it depends
 on headers outside this driver.
+
+**Outcome: partially applied — this is the one incomplete item in the fix pass.**
+
+**Done,** in commit `8e1633ea`: `PCIC` now declares `<IOPower>`, which is the
+second of the two protocols the reference's class structure names for it, and the
+invented `@protocol PCMCIAStatusChange` was deleted along with the typed use of
+it. `-[PCIC interruptOccurred]` sends `statusChangedForSocket:changedStatus:` to
+an untyped `id` again, which is what the reference does.
+
+**Not done:** the four `PCMCIA*` protocol adoptions —
+`PCMCIAAdapter` on `PCIC`, `PCMCIASocket` on `PCICSocket`, `PCMCIAWindow` on
+`PCICWindow`, `PCMCIAWindowAttributes` on `PCICWindow(Attributes)`.
+
+**Why.** Three of the four do not exist anywhere in `src/`. Searching the whole
+tree, there is no declaration of `PCMCIASocket`, `PCMCIAWindow` or
+`PCMCIAWindowAttributes` at all. The fourth, `PCMCIAAdapter`, does exist — at
+`src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.h:66`
+— but it sits inside that header's `#ifdef DRIVER_PRIVATE` block and that project
+is not on this driver's include path, so adopting it here would have meant either
+exporting a private header across two driver projects or copying the declaration.
+Adopting the other three would have meant **inventing Apple's protocol
+declarations** — guessing which selectors each protocol contains and what their
+signatures are — and writing that guess into `drvPCMCIABus` as though it were
+recovered. That was refused: this effort's whole value is that what it writes down
+came off Apple's binary.
+
+**The follow-up,** for whoever picks this up: the selector lists are recoverable.
+The reference's `__OBJC,__protocol` section holds five protocol records, and each
+one carries an instance-method description list naming every selector and its type
+encoding. Decoding those five records gives the three missing protocols exactly,
+with no guessing, and they should then be declared in `drvPCMCIABus` alongside
+`PCMCIAAdapter` and adopted from there. Finding 11's signatures are the other half
+of the same job — the signatures Apple used *are* these protocols' signatures — and
+they are already applied, so the adoptions can be added without disturbing the
+method declarations again.
+
+**Ledger effect: none, in either direction.** Protocol adoption is recorded in
+`__OBJC,__protocol` and in the class and category structures' protocol-list
+pointers. It emits no code into `__TEXT,__text` and changes no method's type
+encoding, so no ledger entry advances on it and none is blocked by it. This is
+worth stating explicitly because it means the ledger reaching 76
+`control-flow-confirmed` and 6 `intentional-mismatch` **does not** mean the driver
+matches the reference: the four protocol records are still missing from what our
+build would emit, and that gap is invisible to a per-function ledger.
 
 ## Finding 14: `-[PCICWindow enabled]` uses OR in the reference and always reports enabled (accepted)
 
@@ -1102,6 +1385,16 @@ Recorded rather than fixed, and flagged for Task 9 in case the reviewer takes th
 opposite view: if byte-level parity is ever wanted for this function it will have
 to reintroduce the OR.
 
+**Outcome: accepted, nothing changed.** The reviewer did not take the opposite
+view. `-[PCICWindow enabled]` still performs the AND and still returns the
+window's actual enable bit, and the reference's `09 D0` was not reintroduced. The
+only thing that changed about this method in the fix pass is its return type,
+which became `char` under Finding 11(b). Ledger address 5904 ->
+`intentional-mismatch`, reviewer Pat Raynor, with the reason recording that the
+reference is buggy here and that per § Fidelity principle we reproduce Apple's
+form but not Apple's defects. That status is terminal, so this function will not
+be revisited by a later parity pass unless the decision itself is reopened.
+
 ## Finding 15: `PCICInternal.h` is dead
 
 **Source:** `.../PCICInternal.h`
@@ -1121,6 +1414,11 @@ Its two non-static declarations at `:40-41` duplicate the ones
 also actively misleading, since a `static` declaration in a header is a bug
 waiting for someone to include it. **Not deleted by this pass** — this is a
 report.
+
+**Outcome:** fixed. `PCICInternal.h` was deleted in commit `cc01a6a4`, together
+with its entry in `PB.project`, and its stale `HFILES` reference was removed from
+the project `Makefile` in `2cdbb926`. Nothing imported it, so nothing else had to
+change. No ledger entry covers a header, so no status moved for this.
 
 ## Finding 16: `PCI.table` is missing the `Version` line
 
@@ -1142,6 +1440,11 @@ The reference's other extra line,
 BUILT:Sat Mar 28 22:08:58 PST 1998";`, is stamped in by the build and carries
 Apple's build host and timestamp. **Accepted**; it should not be added by hand —
 see Finding 17 for why that matters here.
+
+**Outcome:** fixed in commit `d458ea6c`. `PCI.table` now ends `"Version" = "5.00";`
+and is otherwise unchanged, so it matches the reference on all sixteen lines it
+should carry. `"Driver Version"` was deliberately not added, per the paragraph
+above. No ledger entry covers a config table, so no status moved for this.
 
 ## Finding 17: `Default.table` is malformed and misuses `Server Name`
 
@@ -1196,6 +1499,15 @@ not a transcription error in this report.
 **Rationale:** point 1 is a functional defect in the driver's own configuration.
 Points 2 and 3 are cleanup that should go with it.
 
+**Outcome:** fixed in commit `87748390`, all three points. `"Server Name"` now
+holds `"PCIC"`, matching the four bytes in the reference's `Loaded Server,Server
+Name` section; the enclosing braces are gone, so the file is a bare sequence of
+key/value lines like every other `.table` in `drivers-i386`; and the hardcoded
+`"Driver Version"` line carrying Apple's `DEVELOPER:root` and March 1998 timestamp
+was deleted, leaving that value for our own build to stamp in. `"Version" =
+"5.00";` stays. The other twelve lines were already correct and were not touched.
+No ledger entry covers a config table, so no status moved for this.
+
 ## Finding 18: `DriverInfo` diverges in every value
 
 **Source:** `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/DriverInfo`
@@ -1248,6 +1560,16 @@ DEFAULT_DRIVER_VERSION="5.01";
 **Rationale:** point 1 is user-visible, point 2 is a version number that
 contradicts the config tables, point 3 is dead configuration.
 
+**Outcome:** fixed in commit `87748390`, and **`DriverInfo` is now byte-identical
+to the reference.** `DRIVER_NAME` is `"Intel 82365 PCMCIA Adapter"`,
+`DEFAULT_DRIVER_VERSION` is `"5.00"` in agreement with both config tables, the four
+dead `DRIVER_VERSION_*` lines are gone, and — per § Fidelity principle, since a
+comment is non-behavioural — Apple's grammatical slip `is the names which appears`
+was restored. This is the only file in the driver that a byte-level comparison
+would now pass, and it is the one place in this pass where a difference was
+resolved by making our file *worse* English on purpose. No ledger entry covers
+`DriverInfo`, so no status moved for this.
+
 ## Finding 19: `-[PCIC interruptOccurred]` and `-[PCIC setPowerState:]` cache counts the reference re-sends each iteration (accepted)
 
 **Source:** `.../PCIC.m:209`, `:237-239`, `:298`
@@ -1291,6 +1613,19 @@ this method also has is already Finding 4's. Recorded because it is real and
 confirmed, not because it needs changing. If Task 9 pursues byte-level parity it
 will have to revisit both.
 
+**Outcome: accepted, nothing changed under this finding.** Both methods still
+cache their counts in locals before the loop, and `-[PCIC interruptOccurred]`
+still guards the handler send with `if (statusHandler)`. What did change in both,
+under Finding 4, is which ivars they touch: `interruptOccurred` no longer reads
+the deleted `basePort` and takes the port base from the global `reg_base` instead,
+and both now go through `sockets`, `windows` and `statusHandler` at the
+reference's offsets. Ledger addresses 984 and 1264 -> `intentional-mismatch`,
+reviewer Pat Raynor, each with a reason recording that the list does not change
+during the loop and that `objc_msgSend` to `nil` is a no-op, so behaviour is
+identical. Both statuses are terminal; a later byte-level parity pass that wants
+these two functions to match instruction for instruction would have to reopen the
+decision, not merely re-examine them.
+
 ## Finding 20: `-[PCICWindow initWithSocket:memoryWindow:number:]` builds its list in two statements (accepted)
 
 **Source:** `.../PCICWindow.m:61-62`
@@ -1326,6 +1661,15 @@ at +12, `number` at +16, `memoryWindow` as a byte at +20, `return self`. The
 `memoryWindow` argument type divergence is Finding 11's, and the ivar name is
 Finding 4's.
 
+**Outcome: accepted, nothing changed under this finding.** The list is still built
+in two statements. The method did change under the other two findings it appears
+in: the ivar it assigns is now called `validSockets` rather than
+`validSocketsList` (Finding 4, commit `2a99753a`) and the `memoryWindow` argument
+is now declared `char` (Finding 11(d), commit `091c8f3a`). Ledger address 5368 ->
+`intentional-mismatch`, reviewer Pat Raynor, with a reason recording that
+`-[List addObject:]` returns `self` so both forms leave the same object in the
+ivar. Terminal, as above.
+
 ## Functions examined with no divergence found
 
 Eighteen hand-written functions match at every level examined — same symbol name,
@@ -1355,6 +1699,16 @@ only ones this pass advanced past `unexamined`:
 
 These sit at `control-flow-confirmed` in the ledger, not `assembly-matched`: that
 claim needs a rebuilt binary diffed against the reference, and no build was run.
+
+*Updated by the fix pass:* the other 62 entries were advanced too, once their
+findings were applied — 58 to `control-flow-confirmed` and 4 to
+`intentional-mismatch` (984, 1264, 5368, 5904, the three accepted findings). Each
+transited `signature-confirmed` on the way, because the ledger tool refuses to
+skip states. The two build-generated entries were left at `intentional-mismatch`.
+**Nothing was raised to `assembly-matched` and nothing can be** until a build
+exists; the eighteen functions above have exactly the same evidence behind them
+now as they did at report time, and the 58 newly advanced ones have less, since
+their source was rewritten and never compiled. Nothing is left `unexamined`.
 
 Separately, and worth recording positively even though the enclosing functions
 diverge for other reasons: **every register number, bit position and mask in
@@ -1479,6 +1833,12 @@ with those exact signatures. The first two are used identically by
 `Intel824X0PCI` and `drvPCIBus`, so they are present; `setPortRangeList:num:` was
 not separately verified during this pass.
 
+*Updated by the fix pass:* the class was written, in commit `3e7f1b25`, into
+`PCIC.m` at line 49 ahead of `@implementation PCIC` as recommended. See Finding 3's
+`**Outcome:**` line. The caveat above stands unresolved in one respect: whether the
+three DriverKit signatures the body depends on are present *as used* has still not
+been checked by a compiler, because no build was run.
+
 ## Apple's source ordering, per file
 
 Function addresses give Apple's source order directly. Ours differs in five of
@@ -1577,6 +1937,17 @@ The README was **not** edited as part of this pass — this is a report, and the
 later README task owns that file so all the reconstructed drivers get one
 consistent rewording.
 
+*Updated by the fix pass:* the wording suggested above is now out of date — the
+fixes *are* applied, the unresolved symbol and the missing `PCIC_PCI` class are
+both gone from the source — but it cannot be replaced by "complete" either, since
+nothing was compiled and nothing was booted. The README task rewrote the line as
+
+```
+ * Intel82365PCMCIA - reconstructed against the reference binary, fixes applied except the four PCMCIA protocol adoptions, not yet compiled or tested
+```
+
+which is what the evidence in this document supports and no more.
+
 ## Uncertainty and limits of this pass
 
 - **No build was run and no baseline parity of record exists.** The parity output
@@ -1602,6 +1973,19 @@ consistent rewording.
   declared somewhere outside this driver, most likely in `drvPCMCIABus`; this
   pass did not go looking for them, so it cannot say how much work adopting them
   is. Task 9 should scope that before committing to it.
+
+  *Scoped by the fix pass, and left undone.* Only one of the four,
+  `PCMCIAAdapter`, exists in the tree at all, and it is behind `DRIVER_PRIVATE`
+  in `drvPCMCIABus`. The other three would have had to be invented. See Finding
+  13's `**Outcome:**` line for the recovery route: decode the reference's five
+  `__OBJC,__protocol` records and land the results in `drvPCMCIABus`.
+
+- **A build-time hazard was found in review and could not be settled without a
+  compiler.** `-[PCICSocket status]` now returns a 4-byte struct while
+  `drvPCMCIABus` declares the same selector as returning `unsigned int`. Under
+  `-freg-struct-return` — which is what Apple's binary uses — the two agree;
+  under `-fpcc-struct-return` they would silently disagree across a driver
+  boundary. Recorded in full under § Post-fix parity, with the check to perform.
 - **Apple's original *source text* is inferred in places.** The reconstructions
   in Findings 2, 5, 7 and § PCIC_PCI: go/no-go are certain at the machine level
   and only probable at the source level — particularly the argument names and

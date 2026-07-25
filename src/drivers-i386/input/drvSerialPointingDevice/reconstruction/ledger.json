@@ -81,7 +81,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly. The declared return type differs (unsigned int vs int) and the ivar offset 0x12c depends on divergences.md Finding 1; neither appears in the instruction stream (divergences.md Finding 2)"
+          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly. The declared return type differs (unsigned int vs int, divergences.md Finding 2); the match on the ivar offset 0x12c is contingent on divergences.md Finding 1 (the PCPointer re-parent) landing, since our header currently lacks _reserved[4]"
         ],
         "status": "agreed"
       },
@@ -321,7 +321,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly: executeEvent:5 data:0 to the port ivar, then a byte store of 0 to _active. The 0x154 offset depends on divergences.md Finding 1 and _active's linkage on Finding 4; neither appears in the instruction stream"
+          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly: executeEvent:5 data:0 to the port ivar, then a byte store of 0 to _active. The match on the 0x154 offset is contingent on divergences.md Finding 1 (the PCPointer re-parent) landing, since our header currently lacks _reserved[4] and compiles serialPortObject at roughly 0x140 rather than 0x154; _active's linkage already matches (divergences.md Finding 4) and needs no fix"
         ],
         "status": "agreed"
       },
@@ -345,7 +345,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 and Finding 4 caveats"
+          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 contingency; no Finding 4 caveat applies since _active's linkage already matches"
         ],
         "status": "agreed"
       },
@@ -369,7 +369,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 and Finding 4 caveats"
+          "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 contingency; no Finding 4 caveat applies since _active's linkage already matches"
         ],
         "status": "agreed"
       },

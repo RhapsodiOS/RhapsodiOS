@@ -3,6 +3,20 @@
 Reference: `SerialPointingDevice_reloc`, SHA-256 `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`
 Analyses: IDA 9.2, angr 9.3.0
 
+## Line numbers: working tree, not HEAD
+
+**All `source_line` values in `source-map.json` and `ledger.json` are against the current
+working tree, not against `HEAD`.** A concurrent session has uncommitted C89 fixes to
+`SerialPointingDevice.m` — repairing malformed selector syntax such as
+`executeEvent:data:0x0B data:0x78` to `executeEvent:0x0B data:0x78` — that shift every line
+number in the file. All 16 mapped entries in both artifacts differ between the working tree and
+`HEAD`. `load_source_map` therefore passes only while those uncommitted changes remain present in
+the working tree; running it against a clean checkout of `HEAD` will fail. **The driver's fix
+pass must regenerate `source-map.json` and every `source_line` in `ledger.json` once those
+changes are committed, as its final step.** Regenerating against `HEAD` now would encode numbers
+that go stale the moment those fixes land, and would point the map at a file that cannot compile;
+that regeneration is deliberately deferred, not done here.
+
 ## Stated limitation: two analyzers, not three
 
 **Ghidra is disabled in this driver's profile** (`tools/binrecon/profiles/serialpointingdevice.json`,
@@ -76,11 +90,16 @@ and are `assembly-matched` in the ledger:
 | 4364 | `-[SerialPointingDevice RBProtocol]` |
 | 4404 | `-[SerialPointingDevice UnknownProtocol]` |
 
-All five nonetheless depend on Finding 1 for their ivar offsets (`0x12c` in `getResolution`,
-`0x154` in the three terminating protocol handlers) and on Finding 4 for `_active`'s linkage;
-neither of those differences appears in the emitted instruction stream, which is why the status
-is `assembly-matched` rather than `unexamined`. `getResolution` additionally carries the
-declaration-level return-type divergence recorded under Finding 2.
+Four of the five (`getResolution`, `MMProtocol`, `RBProtocol`, `UnknownProtocol`) nonetheless
+match the reference only **contingent on Finding 1 landing**: `getResolution` reads `0x12c` and
+the three terminating protocol handlers read `0x154`, and our header currently lacks
+`_reserved[4]`, so it compiles `serialPortObject` at roughly `0x140` rather than `0x154` today.
+Once the `PCPointer` re-parent lands, these offsets match exactly, which is why the status is
+`assembly-matched` rather than `unexamined` — the divergence is declaration-level, not a body
+difference, and is disclosed here rather than hidden. `_active`'s linkage needs no such
+contingency: it is `local` in the reference and already `static` in ours (Finding 4), so it is not
+a dependency of these five at all. `getResolution` additionally carries the declaration-level
+return-type divergence recorded under Finding 2.
 
 The remaining **11** each carry at least one confirmed body divergence and stay `unexamined` in
 the ledger, per the convention that a diverging function is left for the fix pass. The 2 unmapped
@@ -421,10 +440,10 @@ extended mouse is logged as `M`, indistinguishable from a plain Microsoft mouse 
 
 **Disposition:** fix — change slot 3 to `"W"`. The disassembly settles it; nothing is guessed.
 
-## Finding 4: four `static`-versus-`external` linkage divergences
+## Finding 4: three `static`-versus-`external` linkage divergences (`_active` already matches)
 
-**Source:** `SerialPointingDevice.m:46` (`mouseTypeNames`), `:56` (`protocolList`), `:66`
-(`active`), `:71` (`mainLoop`)
+**Source:** `SerialPointingDevice.m:46` (`mouseTypeNames`), `:56` (`protocolList`), `:71`
+(`mainLoop`); `:66` (`active`) is confirmed correct as-is and must not change.
 
 **Reference symbols**
 
@@ -433,25 +452,35 @@ extended mouse is logged as `M`, indistinguishable from a plain Microsoft mouse 
 | `_mainLoop` | 0 | `__TEXT,__text` | **external** | 26 |
 | `_mouseTypeList` | 8192 | `__DATA,__data` | **external** | 24 |
 | `_protocolList` | 8216 | `__DATA,__data` | **external** | 24 |
-| `_active` | 8240 | `__DATA,__data` | **external** | 1 |
+| `_active` | 8240 | `__DATA,__data` | **local** | 1 |
 
-`__DATA,__data` totals **49 bytes** = 24 + 24 + 1, so there is nothing else in it and `_active`
-is confirmed 1 byte wide — a `BOOL`, not an `int`. Every one of the fifteen Objective-C methods
-is `local`; these four are the only external definitions the object contributes.
+IDA reports `__DATA,__data` as **52 bytes** (8192 through 8244); `_active`'s 1-byte width is
+established by its store encoding, not by section arithmetic — every write to it is `C6 05 …`
+(`mov byte ptr`), e.g. at 940 in `free`, confirming a `BOOL`, not an `int`. `_active` is **local**
+in the reference: both published analyzers agree — `analysis-reference-ida.json` reports
+`{"name":"_active","binding":"local"}`, and the angr analysis is explicit that `_mainLoop`,
+`_mouseTypeList`, `_protocolList` and `_SerialPointingDevice_instance` are `external` while
+`_active` is `local`. Every one of the fifteen Objective-C methods is also `local`. `_mainLoop`,
+`_mouseTypeList` and `_protocolList` are **not** the object's only external definitions —
+`_SerialPointingDevice_VERS_STRING`, `_SerialPointingDevice_VERS_NUM` and
+`_SerialPointingDevice_instance` are external too (see "Unmapped: build-generated" above).
 
-**Our source** declares all four `static`, and names the first `mouseTypeNames` rather than
-`mouseTypeList`.
+**Our source** declares `mouseTypeNames`, `protocolList` and `mainLoop` all `static`, and names
+the first `mouseTypeNames` rather than `mouseTypeList`. `active` is declared `static BOOL active`
+— which **already matches** the reference's `local` binding and 1-byte width.
 
-**Difference:** linkage, and one name. `static` emits no symbol-table entry at all, so our object
-cannot reproduce the reference's four external definitions. The emitted instruction streams are
-unaffected. Precedent for the fix is commit `b27e22b8` in drvPCMCIABus.
+**Difference:** linkage on three symbols, and one name. `static` emits no symbol-table entry at
+all, so our object cannot reproduce the reference's three external definitions. The emitted
+instruction streams are unaffected. Precedent for the fix is commit `b27e22b8` in drvPCMCIABus.
 
 `_protocolList` itself **matches the reference exactly** — 8216 through 8236 decode to
 `UNKNOWN`, `MS`, `M+`, `5B`, `MM`, `RB`, which is our `protocolList` verbatim, and
 `-[SerialPointingDevice mainLoop:]` indexes it at 1579 exactly as our source does. The only thing
 wrong with it is the `static`.
 
-**Disposition:** fix
+**Disposition:** fix — `_mainLoop`, `mouseTypeNames`/`mouseTypeList` and `protocolList` only.
+**`active` must not be touched.** It is already `static`, the reference already has it `local`,
+and de-staticising it would introduce an export the reference does not have.
 
 ## Finding 5: `mouseInit:` acquires the serial port with `nil`, not `self`
 
@@ -989,9 +1018,10 @@ Every question the brief raised was resolved from the disassembly:
 - **`_mouseTypeList` slot 3** — settled, Finding 3. `W` is the 2-button member of the extended
   `W`/`W3` family, reached from `detect` at 2829 when a mouse that sent a bare `M` answers the
   `*?` query. No `intentional-mismatch` is needed and nothing is guessed.
-- **The four linkage divergences** — settled, Finding 4. All four are `external` in the reference
-  and `static` in ours; `_active` is confirmed 1 byte, and `__DATA,__data`'s 49 bytes account for
-  all three data objects exactly.
+- **The linkage divergences** — settled, Finding 4. `_mainLoop`, `_mouseTypeList` and
+  `_protocolList` are `external` in the reference and `static` in ours. `_active` is `local` in
+  the reference and already `static` in ours — no fix needed there; it is confirmed 1 byte by its
+  `C6 05 …` store encoding, not by section arithmetic.
 - **Logging in `MSProtocol` and `FiveBProtocol`** — settled, Finding 12. Neither function calls
   `_IOLog` or tests `verbose`; our two strings are additions.
 

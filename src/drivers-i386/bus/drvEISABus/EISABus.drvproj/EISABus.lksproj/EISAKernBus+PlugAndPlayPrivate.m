@@ -442,17 +442,13 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             pnpBios = nil;
 
             /*
-             * Fall back to isolating cards over the ISA PnP protocol, then
-             * continue down the common path.  initializeNoBIOS only performs
-             * the isolation -- it sets maxPnPCard and pnpReadPort and returns.
-             * Returning here instead would skip setReadPort:, the device
-             * table and the enumeration loop below, so any cards it did find
-             * would be isolated and then silently discarded.
+             * The reference gives up here: it logs, frees the PnPBios and
+             * returns NO directly, with no fall back to initializeNoBIOS and
+             * no other cleanup on this path.  A BIOS that answered the
+             * installation check but then failed the configuration call is
+             * not one we go behind the back of.
              */
-            result = [self initializeNoBIOS];
-            if (result == NO) {
-                return NO;
-            }
+            return NO;
         }
         else {
             /* BIOS call succeeded - extract configuration from result */

@@ -1,8 +1,12 @@
 """In-place writer for the Rhapsody disk image.
 
-Never allocates.  Only the contents of already-mapped fragments, di_size,
-di_mtime, d_ino and di_nlink are ever modified.  Every refusal raises
-SafetyError rather than writing something questionable.
+Never allocates.  Only the contents of already-mapped fragments and di_size
+are ever modified; di_mtime is preserved rather than advanced (write_file's
+default mtime=None writes the old value back).  This module does not touch
+directory entries or link counts (d_ino, di_nlink) at all; the sacrificial-
+inode graft that does is a separate, later addition with its own
+justification.  Every refusal raises SafetyError rather than writing
+something questionable.
 """
 
 import os
@@ -16,16 +20,47 @@ class SafetyError(Exception):
 
 
 def check_target(image_path):
-    """Refuse to write anything but vm/work/test.img."""
-    norm = os.path.normpath(os.path.abspath(image_path)).replace("\\", "/")
-    if not norm.endswith("/work/test.img"):
+    """Refuse to write anything but vm/work/test.img.
+
+    Both sides are resolved with os.path.realpath (follows symlinks and
+    Windows junctions/hardlinks) and normalised with os.path.normcase (folds
+    case and separators on Windows) before comparison. This is canonical-path
+    equality, not a suffix match: an unrelated directory that merely ends in
+    "work/test.img" is refused, and a differently-spelled path to the real
+    file (mixed separators, redundant "." or ".." components, different case)
+    is accepted.
+
+    As a second, independent check, the resolved target is also refused if it
+    is the same underlying file as golden.img or rhapsody.vmdk (e.g. reached
+    via a link), even though its path resolved to the expected location.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    canonical_target = os.path.normcase(
+        os.path.realpath(os.path.join(here, "work", "test.img"))
+    )
+    resolved = os.path.normcase(os.path.realpath(image_path))
+    if resolved != canonical_target:
         raise SafetyError(
             "refusing to write %s; only vm/work/test.img may be modified" % image_path
         )
+
+    for name in ("golden.img", "rhapsody.vmdk"):
+        protected = os.path.join(here, name)
+        if not os.path.exists(protected) or not os.path.exists(image_path):
+            continue
+        try:
+            if os.path.samefile(image_path, protected):
+                raise SafetyError(
+                    "refusing to write %s; it is the same file as %s"
+                    % (image_path, protected)
+                )
+        except OSError:
+            pass
     return True
 
 
 def _write_inode_fields(img, ino, size=None, mtime=None, nlink=None):
+    check_target(img.path)
     frag, entry = rhap_image._inode_location(img, ino)
     off = img.frag_offset(frag) + entry
     img._f.seek(off)
@@ -62,6 +97,15 @@ def write_file(img, path, data, mtime=None):
         raise SafetyError(
             "%s: payload %d bytes exceeds allocated %d bytes (slack %d)"
             % (path, len(data), limit, limit - inode.size)
+        )
+
+    current_frags = (inode.size + img.fsize - 1) // img.fsize
+    new_frags = (len(data) + img.fsize - 1) // img.fsize
+    if new_frags != current_frags:
+        raise SafetyError(
+            "%s: payload needs %d fragment(s) but the file currently occupies "
+            "%d fragment(s); writes that change fragment count are refused"
+            % (path, new_frags, current_frags)
         )
 
     frags = img.frags(inode)

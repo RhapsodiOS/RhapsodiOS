@@ -285,6 +285,22 @@ mode than an argument-marshalling bug, and one that could manifest as instabilit
 and code from the actual PnP BIOS call site, which is consistent with something described as
 simply "crashing" rather than a function returning a wrong value.
 
+**Outcome:** fixed. `-init` no longer calls `[self setupSegments]`; `setupSegments` now saves the
+pre-existing GDT[16], GDT[18], GDT[19], GDT[17] entries into the `_saveGDTBiosCode`/
+`_saveGDTBiosEntry`/`_saveGDTKData`/`_saveGDTBiosData` ivars (already declared in `PnPBios.h` in
+exactly this 16/18/19/17 order -- matching the reference's own save order at ivar offsets
+0x50/0x58/0x60/0x68 -- but never wired up before this fix) immediately before overwriting them, and
+each of `getPnPConfig:`/`getNumNodes:AndSize:`/`getDeviceNode:ForHandle:` now calls
+`[self setupSegments]` as its first statement and `[self releaseSegments]` immediately after
+`call_pnp_bios` returns. A new `-releaseSegments` method restores GDT[16], GDT[18], GDT[19], GDT[17]
+from those same ivars. `-free` was left unchanged (it already did not touch the GDT, matching the
+reference). GDT 20 (our own dedicated 16-bit stack segment for `pnp_bios_callfunc`, which the
+reference's differently-structured thunk has no counterpart for at all) is still configured by
+`setupSegments` on every call and is not saved/restored, since there is nothing in the reference to
+match its lifecycle against; `-init` still allocates the `_kStack` buffer that segment points at.
+Ledger status advanced from `unexamined` to `control-flow-confirmed` for `setupSegments`,
+`releaseSegments`, and `init`.
+
 ## Finding 3: no interrupt disabling around the real/PM16-mode transition
 
 **Source:** `bios.c:56` (`call_pnp_bios`); `PnPBios.m` imports

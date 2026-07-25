@@ -1257,7 +1257,7 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "confirmed divergence: reference setupSegments saves the pre-existing GDT[16..19] entries and lazily allocates PnPArgStack; called before every BIOS call, not once at init (see divergences.md Finding 2 and Finding 3)"
+          "confirmed divergence: reference setupSegments saves the pre-existing GDT[16..19] entries and lazily allocates PnPArgStack; called before every BIOS call, not once at init (see divergences.md Finding 2 and Finding 3); fix applied for Finding 2 -- our setupSegments now saves GDT[16], GDT[18], GDT[19], GDT[17] into _saveGDTBiosCode/_saveGDTBiosEntry/_saveGDTKData/_saveGDTBiosData before overwriting them, and is called from each of the three PnP-call methods rather than once at init; PnPArgStack (Finding 1) remains unimplemented"
         ],
         "status": "agreed"
       },
@@ -1270,7 +1270,7 @@
       "size": 587,
       "source_line": 615,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 14256,
@@ -1281,7 +1281,7 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions, blocks and call targets are byte-identical",
-          "genuinely absent from our source: no releaseSegments method exists on PnPBios at all, consistent with setupSegments never being called per-call in our reimplementation (see divergences.md Finding 2)"
+          "was genuinely absent from our source (no releaseSegments method existed on PnPBios), consistent with setupSegments never being called per-call in our reimplementation (see divergences.md Finding 2); fix applied -- PnPBios now has a -releaseSegments method that restores GDT[16], GDT[18], GDT[19], GDT[17] from the ivars -setupSegments saves them into, called from each of the three PnP-call methods immediately after call_pnp_bios, matching the reference's restore order"
         ],
         "status": "agreed"
       },
@@ -1292,9 +1292,9 @@
       "reason": null,
       "reviewer": null,
       "size": 111,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 762,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 14368,
@@ -1425,7 +1425,7 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "confirmed divergence: reference init() only reads the PnP BIOS install fields and allocates the 64KB buffer; it does not call setupSegments or allocate a stack buffer at init time (see divergences.md Finding 2)"
+          "confirmed divergence: reference init() only reads the PnP BIOS install fields and allocates the 64KB buffer; it does not call setupSegments or allocate a stack buffer at init time (see divergences.md Finding 2); partially fixed -- init no longer calls setupSegments (matches reference), but still allocates a 4KB _kStack buffer for GDT 20, which the reference has no counterpart for at all (that GDT slot is our own trampoline design, not part of Finding 2's scope)"
         ],
         "status": "agreed"
       },
@@ -1438,7 +1438,7 @@
       "size": 166,
       "source_line": 374,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 15272,

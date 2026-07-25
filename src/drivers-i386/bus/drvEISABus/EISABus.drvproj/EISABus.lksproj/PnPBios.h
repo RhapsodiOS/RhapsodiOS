@@ -104,6 +104,7 @@ typedef union pnp_bios_install_struct pnp_bios_install_struct;
  * Segment setup
  */
 - setupSegments;
+- releaseSegments;
 
 @end
 

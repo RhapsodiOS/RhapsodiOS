@@ -457,12 +457,6 @@ __asm__(
         return [self free];
     }
 
-    /* Setup GDT segments for PnP BIOS calls (one-time setup) */
-    if ([self setupSegments] == nil) {
-        IOLog("PnPBios: Failed to setup segments\n");
-        return [self free];
-    }
-
 #if 1
     /* Test BIOS call with Function 0x00 (Get Number of Nodes) */
     {
@@ -515,6 +509,8 @@ __asm__(
     unsigned char *pnpBuf;
     int result;
 
+    [self setupSegments];
+
     /* Get pointer to PnP buffer */
     pnpBuf = (unsigned char *)_kData;
 
@@ -533,6 +529,8 @@ __asm__(
         0, 0, 0                     /* Unused arguments */
     );
 
+    [self releaseSegments];
+
     IOLog("PnPBios: GetDeviceNode result: 0x%x\n", result);
 
     return result;
@@ -546,6 +544,8 @@ __asm__(
 {
     unsigned short *pnpBuf;
     int result;
+
+    [self setupSegments];
 
     /* Get pointer to PnP buffer (as short array) */
     pnpBuf = (unsigned short *)_kData;
@@ -561,6 +561,8 @@ __asm__(
         2,                      /* DI = offset for MaxNodeSize */
         0, 0, 0                 /* Unused arguments */
     );
+
+    [self releaseSegments];
 
     IOLog("PnPBios: GetNumNodes result: 0x%x\n", result);
 
@@ -579,6 +581,8 @@ __asm__(
 {
     int result;
 
+    [self setupSegments];
+
     /* Set output buffer pointer to PnP buffer */
     *(void **)buffer = _kData;
 
@@ -592,6 +596,8 @@ __asm__(
         0,                                                   /* BX = buffer offset */
         0, 0, 0, 0, 0                                        /* Unused arguments */
     );
+
+    [self releaseSegments];
 
     IOLog("PnPBios: GetPnPConfig returned, result=0x%x\n", result);
 
@@ -631,6 +637,16 @@ __asm__(
     entryPnPData32 = (GDTEntry *)(gdtBase + PNP_DATA32_SEL);   /* 0x90 */
     entryPnPCS32 = (GDTEntry *)(gdtBase + PNP_CS32_SEL);       /* 0x98 */
     entryStack16 = (GDTEntry *)(gdtBase + PNP_STACK16_SEL);     /* 0xA0 */
+
+    /*
+     * Save the pre-existing contents of GDT[16..19] before overwriting them,
+     * so -releaseSegments can restore them after the BIOS call completes
+     * (see reconstruction/divergences.md Finding 2).
+     */
+    memcpy(_saveGDTBiosCode, entryPnPCode16, sizeof(GDTEntry));
+    memcpy(_saveGDTBiosEntry, entryPnPData32, sizeof(GDTEntry));
+    memcpy(_saveGDTBiosData, entryKData, sizeof(GDTEntry));
+    memcpy(_saveGDTKData, entryPnPCS32, sizeof(GDTEntry));
 
     /*
      * Setup GDT 16 (PNP_CODE16_SEL) - 16-bit code segment for BIOS
@@ -731,6 +747,37 @@ __asm__(
     IOLog("PnPBios: Callpoint = %04x:%04x (struct @ 0x%08x)\n",
           pnp_bios_callpoint.segment, pnp_bios_callpoint.offset,
           (unsigned int)&pnp_bios_callpoint);
+
+    return self;
+}
+
+/*
+ * Restore the GDT[16..19] entries saved by -setupSegments.
+ *
+ * Called immediately after each PnP BIOS call, undoing exactly the four
+ * installs -setupSegments performs (GDT 20, our own dedicated 16-bit stack
+ * segment, has no reference counterpart and is left alone -- see
+ * reconstruction/divergences.md Finding 2).
+ */
+- releaseSegments
+{
+    unsigned char *gdtBase;
+    GDTEntry *entryPnPCode16;
+    GDTEntry *entryKData;
+    GDTEntry *entryPnPData32;
+    GDTEntry *entryPnPCS32;
+
+    gdtBase = (unsigned char *)gdt;
+
+    entryPnPCode16 = (GDTEntry *)(gdtBase + PNP_CODE16_SEL);   /* 0x80 */
+    entryKData = (GDTEntry *)(gdtBase + PNP_KDATA_SEL);         /* 0x88 */
+    entryPnPData32 = (GDTEntry *)(gdtBase + PNP_DATA32_SEL);   /* 0x90 */
+    entryPnPCS32 = (GDTEntry *)(gdtBase + PNP_CS32_SEL);       /* 0x98 */
+
+    memcpy(entryPnPCode16, _saveGDTBiosCode, sizeof(GDTEntry));
+    memcpy(entryPnPData32, _saveGDTBiosEntry, sizeof(GDTEntry));
+    memcpy(entryKData, _saveGDTBiosData, sizeof(GDTEntry));
+    memcpy(entryPnPCS32, _saveGDTKData, sizeof(GDTEntry));
 
     return self;
 }

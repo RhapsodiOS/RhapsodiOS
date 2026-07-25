@@ -150,7 +150,7 @@ static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
  * On first call, initializes attribute memory mapping
  * Waits for card ready status before reading
  */
-- (unsigned char)_readAttributeMemory:(unsigned int)address forSocket:(unsigned int)socket
+- (unsigned char)readAttributeMemory:(unsigned int)address forSocket:(unsigned int)socket
 {
     static int __init_117 = 0;
     unsigned char statusReg;
@@ -197,7 +197,7 @@ static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
  * Spoof interrupt for testing
  * Simulates an interrupt by directly calling the interrupt handler
  */
-- (void)_spoofInterrupt
+- (void)spoofInterrupt
 {
     /* Call the interrupt handler directly to simulate an interrupt */
     [self interruptOccurred];

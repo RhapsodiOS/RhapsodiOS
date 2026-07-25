@@ -106,3 +106,78 @@ slave interrupt described above.
 This was deliberately left alone so the effect of the root-cause fix could be
 measured on its own. If spurious IRQ 15 reports continue to appear frequently
 after the fix, reversing the order is the next thing to try.
+
+---
+
+# Part 2: where the spurious IRQ 15s come from
+
+Part 1 made spurious slave interrupts *harmless*. This part addresses why they
+happen at all.
+
+## Measurement
+
+With the Part 1 fix in place the guest boots, so the rate can be measured
+directly. Booting under `-d int` and counting delivered vectors (slave
+`irq_base` is 0x48, so IRQ 14 is 0x4E and IRQ 15 is 0x4F) over one boot to the
+desktop:
+
+| vector | count | |
+|---|---|---|
+| 0x40 | 28,514 | IRQ 0, timer |
+| 0x4E | 4,197 | IRQ 14, disk |
+| **0x4F** | **227** | **IRQ 15, spurious** |
+
+227 spurious against 4,197 real disk interrupts — a **5.4%** rate.
+
+## The generator
+
+The ordering is unambiguous. Of the 227 spurious interrupts:
+
+- **100%** are immediately preceded by vector 0x40, the timer.
+- **96%** are immediately followed by 0x4E, the real disk interrupt.
+- None occur consecutively.
+
+So the sequence is always *disk asserts → timer preempts → spurious IRQ 15 →
+real disk interrupt*.
+
+That identifies the mechanism as mask-on-the-fly, not anything about EOI. When
+the disk asserts, the slave raises INT and the master latches a cascade request
+in IRR bit 2. If the clock — higher priority, on the master — preempts before
+that cascade is acknowledged, `intr_dispatch()` calls `set_masked_ipl()` for the
+clock's IPL, and `set_irq_mask()` rewrites **both** PICs' mask registers,
+masking IRQ 14 in the slave. The master's latched cascade request is still
+outstanding. When it is finally acknowledged, the slave has nothing unmasked to
+report and answers with its IRQ 7 vector, which arrives as IRQ 15.
+
+An earlier hypothesis blamed the EOI ordering in `send_eoi_command()`
+(master-before-slave, where convention is slave-first). **The measurement
+disproves it** — the spurious interrupts are preceded by the timer, not by the
+completion of a slave interrupt. That ordering is left unchanged.
+
+## Fix
+
+`set_irq_mask()` now masks the master's IR2 across the update:
+
+    master IMR |= cascade bit     -- hold off cascade acknowledgement
+    slave  IMR  = new value
+    master IMR  = new value       -- release
+
+The cascade request stays latched in the master's IRR throughout, so no
+interrupt is lost; only its acknowledgement is deferred until the slave's mask
+is consistent. Cost is one extra `outb` per mask change.
+
+## Verifying
+
+Re-run the measurement and compare against the 227 baseline:
+
+```bash
+cd vm && python pic-probe.py     # or a -d int boot, counting 0x4F
+```
+
+The Part 1 `printf` is a cheap proxy: it reports the first eight phantom
+interrupts, so a boot that no longer prints eight of them has improved. The
+counter `intr_cnt.phantom` holds the true total.
+
+If the rate does not fall, this hypothesis is wrong too, and the next candidate
+is the mask-before-acknowledge sequence in `intr_dispatch()` itself — which
+exists to make level-triggered inputs work and so cannot simply be removed.

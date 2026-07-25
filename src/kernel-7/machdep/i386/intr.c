@@ -158,12 +158,31 @@ set_irq_mask(
 
     if (new_mask.full.mask != current_irq_mask.mask) {
 	current_irq_mask = new_mask.full;
-    
+
+	/*
+	 * Hold off cascade delivery while the slave's mask changes.
+	 *
+	 * The master latches a cascade request as soon as the slave
+	 * raises INT.  If the slave's mask is rewritten while such a
+	 * request is still outstanding -- which happens whenever a
+	 * higher priority interrupt such as the clock preempts a
+	 * pending slave interrupt -- the master eventually acknowledges
+	 * the cascade and finds the slave with nothing unmasked left to
+	 * report.  The slave answers with its IRQ 7 vector, which
+	 * arrives as a spurious IRQ 15.
+	 *
+	 * Masking IR2 across the update defers that acknowledgement
+	 * until the slave's mask has settled.  The request itself is
+	 * latched in the master's IRR, so nothing is lost.
+	 */
 	set_master_mask((intr_ocw1_t) {
-					    new_mask.master.half });
-	
+			    new_mask.master.half | INTR_CASCADE_IRQ_MASK });
+
 	set_slave_mask((intr_ocw1_t) {
 					    new_mask.slave.half });
+
+	set_master_mask((intr_ocw1_t) {
+					    new_mask.master.half });
     }
 }
 

@@ -2,7 +2,7 @@
 # Build the i386 input drivers under reconstruction; stage reloc bundles.
 # Userspace helpers (PreLoad/PostLoad) may fail on a PPC host — accept
 # success when the loadable *_reloc exists.
-set -e
+
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
 INPUT=/build/source/src/drivers-i386/input
@@ -29,10 +29,10 @@ build_one() {
 		tr -d '\r' < "$f" > /tmp/rhap_cr && mv /tmp/rhap_cr "$f"
 	done
 
-	set +e
+
 	gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 2>&1
 	ec=$?
-	set -e
+
 	echo "make exit=$ec for $name"
 
 	reloc=
@@ -100,39 +100,47 @@ EOF
 }
 
 # With no arguments, build every driver. Otherwise build only those named,
-# by directory name, e.g. `sh build-i386-input-drivers.sh drvPS2Mouse`.
-want() {
-	[ $# -eq 1 ] && return 0
-	target=$1
-	shift
-	for arg in "$@"; do
-		[ "$arg" = "$target" ] && return 0
-	done
-	return 1
-}
+# by directory name, e.g. `sh build-i386-input-recon.sh drvPS2Mouse`.
+#
+# This dispatches through `case` rather than a want()-returns-status helper.
+# Rhapsody's 1999 Bourne /bin/sh applies `set -e` to *any* function that returns
+# nonzero, including one called from an `if` condition, so a predicate function
+# that answers "no" terminates the whole script. That is also why `set -e` is
+# not used above: a driver that fails to build must not abort the loop, it must
+# set fail=1 and let the remaining drivers run.
+if [ $# -eq 0 ]; then
+	TARGETS="drvPS2Mouse drvSerialPointingDevice drvPS2Keyboard drvPCParallel drvBusMouse"
+else
+	TARGETS="$*"
+fi
 
 fail=0
 built=
-if want drvPS2Mouse "$@"; then
-	build_one PS2Mouse drvPS2Mouse PS2Mouse.drvproj || fail=1
-	built="$built drvPS2Mouse"
-fi
-if want drvSerialPointingDevice "$@"; then
-	build_one SerialPointingDevice drvSerialPointingDevice SerialPointingDevice.drvproj || fail=1
-	built="$built drvSerialPointingDevice"
-fi
-if want drvPS2Keyboard "$@"; then
-	build_one PS2Keyboard drvPS2Keyboard PS2Keyboard.drvproj || fail=1
-	built="$built drvPS2Keyboard"
-fi
-if want drvPCParallel "$@"; then
-	build_one ParallelPort drvPCParallel PCParallelPort.drvproj || fail=1
-	built="$built drvPCParallel"
-fi
-if want drvBusMouse "$@"; then
-	build_one BusMouse drvBusMouse BusMouse.drvproj || fail=1
-	built="$built drvBusMouse"
-fi
+for d in $TARGETS; do
+	case "$d" in
+	drvPS2Mouse)
+		build_one PS2Mouse drvPS2Mouse PS2Mouse.drvproj || fail=1
+		;;
+	drvSerialPointingDevice)
+		build_one SerialPointingDevice drvSerialPointingDevice SerialPointingDevice.drvproj || fail=1
+		;;
+	drvPS2Keyboard)
+		build_one PS2Keyboard drvPS2Keyboard PS2Keyboard.drvproj || fail=1
+		;;
+	drvPCParallel)
+		build_one ParallelPort drvPCParallel PCParallelPort.drvproj || fail=1
+		;;
+	drvBusMouse)
+		build_one BusMouse drvBusMouse BusMouse.drvproj || fail=1
+		;;
+	*)
+		echo "unknown driver: $d" >&2
+		fail=1
+		continue
+		;;
+	esac
+	built="$built $d"
+done
 
 echo "======== summary ========"
 for d in $built; do

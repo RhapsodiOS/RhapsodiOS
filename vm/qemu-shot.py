@@ -60,6 +60,7 @@ for _c in "0123456789":
     KEY_MAP[_c] = [_c]
 KEY_MAP["-"] = ["minus"]
 KEY_MAP["_"] = ["shift", "minus"]
+KEY_MAP["="] = ["equal"]
 KEY_MAP[" "] = ["spc"]
 KEY_MAP["\n"] = ["ret"]
 KEY_MAP["\r"] = ["ret"]

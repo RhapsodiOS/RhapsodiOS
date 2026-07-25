@@ -90,7 +90,7 @@ class TestParsePpm(unittest.TestCase):
 
 class TestCharsToQcodes(unittest.TestCase):
     def test_accepts_boot_prompt_characters(self):
-        qemu_shot.chars_to_qcodes("-v\nmach_kernel")  # must not raise
+        qemu_shot.chars_to_qcodes("-v\nmach_kernel rootdev=9999")  # must not raise
 
     def test_rejects_unmapped_character(self):
         with self.assertRaises(ValueError):

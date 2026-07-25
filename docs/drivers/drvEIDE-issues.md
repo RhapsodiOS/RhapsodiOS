@@ -439,6 +439,110 @@ priority for `IOLog` visibility into exactly where in
 `-recoverFromLostInterrupt:` or the retry path this instance of the wedge is
 being hit.
 
+### Task 11 result: serial console verified; driver debug log adds one new fact
+
+The Task 10 kernel (with the polled i386 serial console and `printf`/`panic`/
+`IOLog` routed to it) was grafted onto `/mach_kernel` (sacrificial-inode graft
+onto `ProjectBuilder.pdf`, same mechanism as Task 9) and booted headlessly
+with `vm/qemu-shot.py`, which now also captures COM2 to `serial.log`.
+
+**Checkpoint 1 (banner before any VGA output) passes.** `serial.log`'s first
+line, before anything else, is `serial_dbg: i386 kernel console up`.
+
+**Checkpoint 2 (`printf` reaches serial) passes, and serial carries more than
+the screen does.** The full boot trace - PCI enumeration, `hc0`/`hd0`
+registration, `rootdev 300, howto 40000`, and the `interrupt timeout, cmd:
+0xc4` wedge - appears in `serial.log`, matching the reference failure in this
+section exactly. It does **not** all appear on VGA: once boot reaches the
+graphical "Starting Rhapsody" splash (around the time `hc0` starts
+registering), the text console is replaced by a static bitmap, so the PCI
+list, disk registration and the entire interrupt-timeout/reset/retry loop are
+visible **only** on serial from that point on. Serial is not a redundant
+mirror here - for this failure mode it is the only channel that shows
+anything past the splash.
+
+**Checkpoint 3 (panic reaches serial) could not be produced, and should not
+be assumed passing.** Booting `mach_kernel rootdev=9999 -v` does not panic
+this kernel: `getargs()` (`machdep/i386/i386_init.c`) parses a purely-numeric
+`rootdev=` value as an integer via its `kernargs` table and stores the raw 4
+bytes into `swapgeneric.m`'s `char rootdevice[8]`, not the string `"9999"`.
+`setconf()` then fails to match any of `sd`/`hd`/`fd`/`en`/`tr` against those
+bytes and falls into `bsd/kern/init_main.c`'s mountroot loop, which sets
+`RB_ASKNAME` and retries indefinitely rather than calling `panic()` - the
+observed console text is an interactive `root device?` prompt, repeating
+forever, not a crash. This is correct, intentional kernel behavior, not a
+bug. An attempt to force a real crash by overflowing `setconf()`'s unbounded
+`gets()` into a 128-byte stack buffer (400 characters typed at the `root
+device?` prompt) produced no fault either - the loop is re-entered before the
+corrupted frame is ever returned from. What **is** confirmed by code
+inspection: `panic()` (`bsd/kern/subr_prf.c`) formats into `"panic: %s"` and
+calls `prf(..., TOCONS, ...)`, which reaches `putchar()`'s serial tap through
+the exact same `TOCONS` path already verified live in Checkpoint 2 - so a
+panic reaching serial is architecturally expected, but this is inference from
+the shared code path, not a directly observed `panic:` line, and should be
+reported as such rather than assumed.
+
+**Checkpoint 4 (`serial=0` disables output) passes.** Booting `mach_kernel
+serial=0 -v` produces a `serial.log` of 0 bytes while the VGA console
+continues showing the normal verbose boot text, including the `cmd: 0xc4`
+failure.
+
+**Checkpoint 5 (`IOLog` after `syslogd` opens `/dev/klog`) is unreachable**,
+as expected: the guest never leaves single-user boot because of the disk
+wedge, so `syslogd` never runs and `/dev/klog` is never opened. This was not
+attempted and is not claimed to have passed.
+
+**Checkpoint 5a: the driver's own debug output was captured for the first
+time.** With `"Debug" = "Yes"` set on
+`/private/Drivers/i386/EIDE.config/Instance0.table`, a full boot to well past
+the wedge was captured. The extra lines are all `IOLog` calls gated on the
+driver's own `_ide_debug` flag (`IdeCntCmds.m`, `IdeDiskInternal.m`), and they
+reach serial pre-`syslogd` via the same `!log_open` `TOCONS` fallback pass
+described in `bsd/kern/subr_prf.c`'s `putchar()`. Around the failure:
+
+```
+hc0: interrupt timeout, cmd: 0xc4
+hc0: Read Multiple: error=0x0 secCnt=0x0 secNum=0x42 cyl=0x85 drhd=0xe0 status=0x58
+hc0: ATA command c4 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0x0 secNum=0x42 cyl=0x85 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc0: interrupt timeout, cmd: 0xec
+ideReadGetInfoCommon: ideWaitForInterrupt
+ATA: ideReadGetInfoCommon failed.
+hc0: ATA drive 0 is not present.
+```
+
+**New fact this reveals:** after the `0xc4` timeout, the driver's reset path
+retries with `cmd: 0xec` (IDENTIFY DEVICE, issued through
+`ideReadGetInfoCommon:client:addr:command:` as part of re-probing the drive),
+and that recovery command **also** times out waiting for an interrupt -
+`ideReadGetInfoCommon: ideWaitForInterrupt` fires from the `_ide_debug`
+branch at `IdeCntCmds.m:357`, immediately followed by `IdeCntInit.m`'s `ATA:
+ideReadGetInfoCommon failed.` when the caller gives up. This is the first
+direct, driver-side confirmation - previously only inferred from the QEMU
+`ide_*` trace in the "QEMU trace evidence" subsection above - that QEMU stops
+delivering IRQ 14 for the guest generally after the failing command, not only
+for the specific command that first wedged: even the driver's own recovery
+IDENTIFY, issued moments later, gets no interrupt either. What the driver
+*believed* was happening going into the original `0xc4` timeout is still not
+visible - there is no `_ide_debug` logging on the successful path immediately
+before it wedges, only on failure - so this narrows the unknown to "the
+recovery path also can't get an interrupt" without yet explaining why the
+first one was lost.
+
+One caveat worth recording plainly: two earlier, shorter capture attempts
+with the identical `"Debug" = "Yes"` config wedged much earlier and on
+different commands - `interrupt timeout, cmd: 0x91` (SET PARAMS), `cmd: 0xc6`
+(SET MULTIPLE MODE) and `cmd: 0xef` (SET FEATURES), all during initial drive
+setup, before multisector was even negotiated (`hd0: using single sector
+transfers.` instead of the usual multisector line). A full-length rerun of
+the same configuration reproduced the standard `rootdev`-time `cmd: 0xc4`
+baseline exactly instead. `vm/README.md` already notes that QEMU TCG timing
+is not comparable between runs; this is a concrete instance of that
+non-determinism reaching far enough to change *which* command loses its
+interrupt, not just when. It is reported here as an observation, not a new
+conclusion about root cause.
+
 ---
 
 ## 3. Verification status

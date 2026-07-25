@@ -63,7 +63,13 @@ Headless capture harness, standard library only:
   `null`, same reasoning as `start-vm.cmd`.
 - `--keys STRING` sends keystrokes at the boot prompt via QMP `send-key` at
   `--keys-at` seconds (default 3.0), e.g. `--keys="mach_kernel -v"` to pick a
-  kernel and boot verbosely.
+  kernel and boot verbosely. Supported characters: `a-z`, `0-9`, `-`, `_`,
+  `=`, space, and `\n`/`\r` for Return. Typing *any* character at the boot
+  prompt cancels its 10-second auto-boot countdown, so a custom command line
+  (e.g. one with `rootdev=...` or `serial=...`) needs an explicit trailing
+  `\n` in `--keys` to actually submit it - `--keys="-v"` alone still
+  auto-boots after the countdown, but `--keys="mach_kernel rootdev=9999 -v"`
+  without a trailing newline just sits at the prompt forever.
 - `--trace` adds the same tracing `start-vm.cmd -trace` does.
 
 ## rhap_image.py (read-only inspector)
@@ -118,6 +124,18 @@ mach_kernel -v serial=0x2f8
   already COM2/0x2f8; `serial=0x3f8` would use COM1 instead, `serial=0`
   disables it).
 - `-v` boots verbosely.
+- `rootdev=9999` does **not** panic the kernel: `getargs()` parses a
+  purely-numeric `rootdev=` value as an integer and stores its raw bytes
+  into `swapgeneric.m`'s `rootdevice` buffer (see `i386_init.c`'s
+  `kernargs` table), which then fails `setconf()`'s name match and drops
+  into an interactive `root device?` retry loop (`bsd/kern/init_main.c`'s
+  mountroot loop) rather than calling `panic()`. Useful for exercising that
+  code path, not for producing a `panic:` line.
+- A driver's own `IOLog` output reaches serial before `syslogd` opens
+  `/dev/klog` too, via the same `putchar()` tap's `TOCONS` pass (see
+  `bsd/kern/subr_prf.c`) - so `"Debug" = "Yes"` in a driver's `.table` (e.g.
+  `set-key /private/Drivers/i386/EIDE.config/Instance0.table "Debug" Yes`)
+  is visible on serial from early boot, not just after login.
 
 ## Tests
 

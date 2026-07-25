@@ -121,3 +121,47 @@ def test_source_sites_joins_wrapped_multiline_selector(tmp_path):
     assert sites["-[PCIKernBus configAddress:device:function:bus:]"] == [
         ("src/driver/PCIKernBus.m", 3)
     ]
+
+
+def test_source_sites_stops_lookahead_at_structural_boundary(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Boundary.m").write_text(
+        "@implementation Foo\n"
+        "- badMethodNoBody\n"
+        "@end\n"
+        "\n"
+        "@implementation Bar\n"
+        "- (void)bar\n"
+        "{\n"
+        "}\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[Bar bar]"] == [("src/driver/Boundary.m", 6)]
+    assert "-[Foo badMethodNoBody]" not in sites
+    assert not any(
+        key.startswith("-[Foo") or key.startswith("+[Foo") for key in sites
+    )
+
+
+def test_source_sites_stops_lookahead_at_next_method_in_same_block(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Bad2.m").write_text(
+        "@implementation Foo\n"
+        "- badMethod1\n"
+        "- (void)legitMethod\n"
+        "{\n"
+        "}\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[Foo legitMethod]"] == [("src/driver/Bad2.m", 3)]
+    assert "-[Foo badMethod1]" not in sites

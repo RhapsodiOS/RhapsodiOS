@@ -79,12 +79,24 @@ def source_sites(repo_root, source_dir):
                     end = min(total, index + _METHOD_DECLARATION_LIMIT)
                     scan = index
                     while not found_brace and not found_semicolon and scan + 1 < end:
+                        candidate = lines[scan + 1]
+                        if (
+                            _END.match(candidate)
+                            or _IMPLEMENTATION.match(candidate)
+                            or _METHOD.match(candidate)
+                        ):
+                            # A structural boundary, or the start of another
+                            # method declaration, before any brace/semicolon
+                            # means this was never a real declaration; stop
+                            # without consuming the line so the outer loop can
+                            # process it on its own (updating current_class,
+                            # or scanning it as its own declaration).
+                            break
                         scan += 1
-                        next_line = lines[scan]
-                        declaration.append(next_line)
-                        if "{" in next_line:
+                        declaration.append(candidate)
+                        if "{" in candidate:
                             found_brace = True
-                        elif next_line.rstrip().endswith(";"):
+                        elif candidate.rstrip().endswith(";"):
                             found_semicolon = True
 
                     if found_brace and not found_semicolon:

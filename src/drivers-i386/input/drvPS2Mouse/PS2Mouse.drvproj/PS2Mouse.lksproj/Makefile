@@ -17,7 +17,7 @@ CLASSES = PS2Mouse.m
 
 HFILES = PS2Mouse.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect Unload_Commands.sect
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

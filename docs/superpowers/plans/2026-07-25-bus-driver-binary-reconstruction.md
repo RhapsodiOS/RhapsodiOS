@@ -684,6 +684,31 @@ Makes the report passes reproducible from the command line instead of ad-hoc scr
 - Consumes: `build_source_map`, `source_sites` from Tasks 3-4; `binrecon.macho.read_macho`.
 - Produces: CLI `binrecon source-map --reference-analysis PATH --binary PATH --source-dir PATH --repo-root PATH --output PATH`, writing a validated `source-map-v1` document and exiting 0.
 
+- [ ] **Step 0: Fix `validate` crashing on a reference-only profile**
+
+Task 1 made `rebuilt_identity` optional but did not update the `validate` command, which iterates both identities and dereferences `identity.path`. Against a profile with no `rebuilt`, it prints the reference line and then dies:
+
+```
+AttributeError: 'NoneType' object has no attribute 'path'
+```
+
+at `cli.py:73`. Task 6 Step 2 runs exactly this command, so it must be fixed first. In `main`, skip a `None` identity:
+
+```python
+        for label, identity in (
+            ("reference", profile.reference_identity),
+            ("rebuilt", profile.rebuilt_identity),
+        ):
+            if identity is None:
+                continue
+            print(
+                f"{label} {identity.path} size={identity.size} "
+                f"sha256={identity.sha256}"
+            )
+```
+
+Add a test in `tools/binrecon/tests/test_cli.py` that `validate` on a profile without `rebuilt` returns 0 and prints only a `reference ...` line. Confirm the test fails before the fix.
+
 - [ ] **Step 1: Write the failing test**
 
 Append to `tools/binrecon/tests/test_cli.py`:

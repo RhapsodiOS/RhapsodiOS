@@ -98,15 +98,21 @@ applies the fixes.
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-**All 82 reference functions were examined at instruction level.** The whole
-`__TEXT,__text` section is 7548 bytes, small enough that a complete read was
-affordable, and none was deferred. Concretely:
+**All 82 reference functions were read at instruction level; not all 82 carry a
+per-function write-up.** The whole `__TEXT,__text` section is 7548 bytes, small
+enough that a complete read was affordable, and none was deferred. Concretely:
 
-- **82 examined at instruction level** — full IDA disassembly read side by side
+- **82 read at instruction level** — full IDA disassembly read side by side
   with the corresponding source text, every register offset, bit mask, branch
   condition and message send checked.
 - **0 examined at control-flow level only.**
 - **0 left unexamined** beyond confirming existence.
+- Per-function findings are recorded for every one of the 82 that diverges on
+  its own. Four do not get one: `-[PCIC sockets]` (932), `-[PCIC windows]`
+  (948), `-[PCIC setStatusChangeHandler:]` (964) and `-[PCICSocket windows]`
+  (3820) diverge only through the ivar offsets they read or write (reference
+  +300/+304/+308/+16, ours +312/+316/+320/+12), which is already fully
+  recorded in Finding 4.
 
 Two honesty qualifications on that claim. First, for ten of the `PCICSocket`
 accessors (addresses 4368, 4420, 4556, 4608, 4736, 4784, 4908, 4956, 5080, 5132)
@@ -229,8 +235,9 @@ rather than 2700 being the second of two `(Internal)` methods.
 
 The evidence decides, and decides cleanly.
 
-The two bodies are byte-identical over all 74 bytes **except for one four-byte
-relocation target**:
+The two bodies are byte-identical over all 74 bytes **except for one byte, at
+body offset 25** (`00` versus `2C`; the two relocation targets share their
+three high bytes):
 
 ```
 ; 1488  _socketIsValid                     ; 2816  _socketIsValid (second copy)
@@ -330,6 +337,21 @@ file. Both reference symbols are `n_type=0x0e`, i.e. `static`.
 **Disposition:** fix — approved in the spec, applied in Task 9 Step 4. Moving
 them also resolves half of Finding 9, because a `static` in `PCICWindow.m` needs
 no `extern` declaration and no external linkage.
+
+## Fidelity principle
+
+Stated once here because two findings below apply it in what would otherwise
+read as opposite directions: **reproduce Apple's form, not Apple's defects.**
+Where the reference is demonstrably buggy, keep our correct behaviour and record
+the divergence as an intentional mismatch, with its evidence, rather than
+reintroducing the bug. Match Apple exactly on everything non-behavioural —
+symbol names, string literals, file placement, comments, including cosmetic
+typos.
+
+Finding 14 (`-[PCICWindow enabled]`) keeps our correct `and` rather than Apple's
+`or`, because the reference is buggy there. Finding 18's comment-typo item
+restores Apple's grammatical slip, because a comment is non-behavioural. Both
+dispositions follow from this one rule.
 
 ## Finding 1: `PCICSocket.m` references `socketIsValid` through an `extern` that does not link
 
@@ -442,8 +464,12 @@ setWindow(socket, window, cardAddress, size, systemAddress,
 2174  reg[base+4]  <- (cardOffset >> 12) & 0xFF         ; card offset, low
 2226  reg[base+5]  <- ((cardOffset >> 20) & 0x3F)
                       | ((attributeMemory & 1) << 6)
+2251                 & 0x7Fh                            ; and bl, 7Fh, clears bit 7
                       | (writeProtect << 7)
 ```
+
+(Abridged for readability — implement from the disassembly in the analyses,
+not from this listing.)
 
 **Difference:** all of it. Our stub touches no hardware. `_MapAttributeMemory`
 calls it as `setWindow(socket, 0, 0, 0x2000, physicalAddress, 0, 0, 1, 0)` — the
@@ -512,10 +538,11 @@ count, and re-reads `[deviceDescription interrupt]` at each use.
 | 16 | `windows` (`@"List"`) | `cardEnabled` (`I`) |
 | 20–40 | — | `cardVccPower`, `cardVppPower`, `cardIRQ`, `cardAutoPower`, `memoryInterface`, `statusChangeMask` |
 
-The window list and the status mask are **swapped**, and six further ivars exist
-that shadow accessor names but are never read or written by any method — every
-`PCICSocket` accessor in both binaries goes to the hardware, not to an ivar. The
-reference's `statusMask` type is worth quoting in full because it names the status
+Our `PCICSocket` has no `statusMask` ivar at all: our `windowList` sits at +12,
+where the reference has `statusMask`, and our separate `statusChangeMask` sits at
++40. Six further ivars exist that shadow accessor names but are never read or
+written by any method — every `PCICSocket` accessor in both binaries goes to the
+hardware, not to an ivar. The reference's `statusMask` type is worth quoting in full because it names the status
 bits:
 
 ```
@@ -734,8 +761,8 @@ body and the selector's leading underscore need to change.
 6996  reg[base+5]  <-  (read & 0xC0) | ((cardOffset >> 20) & 0x3F)  ; READ-MODIFY-WRITE
 ```
 
-The three read-modify-writes are unmistakable in the disassembly: at 6753, 6892
-and 7024 the function does `in al, dx` on the data port *before* writing, and
+The three read-modify-writes are unmistakable in the disassembly: at 6755, 6894
+and 7026 the function does `in al, dx` on the data port *before* writing, and
 masks the value it read (`and bl, 0F0h` twice, `and bl, 0C0h` once).
 
 **Our source**
@@ -844,14 +871,18 @@ bottom of `PCIC.m`.
 
 **Disposition:** fix — approved in the spec, applied in Task 9 Step 4.
 
-## Finding 11: 43 of the 73 Objective-C methods have divergent type encodings
+## Finding 11: 42 of the 73 Objective-C methods have divergent type encodings
 
 **Source:** `.../PCICSocket.h`, `.../PCICWindow.h`, `.../PCIC.h`,
 `.../PCICWindowAttributes.m`, `.../PCICDebug.m`
 
 Measured objectively by decoding `__OBJC,__meth_var_types` in both binaries and
-comparing per selector: **30 agree, 43 differ.** The complete list of differences,
-grouped:
+comparing per selector, out of 73: **28 agree, 42 differ, 1 is absent from our
+build** (`-[PCIC_PCI initFromDeviceDescription:]`, previously miscounted here as
+a type divergence — see Finding 3), **and 2 are build-generated methods skipped**
+(`+[PCICKernelServerInstance kernelServerInstance]`,
+`+[PCICVersion driverKitVersionForPCIC]`; see § Unmapped: build-generated). The
+complete list of differences, grouped:
 
 **(a) Setters that return `BOOL` in the reference and `void` in ours (13).** Each
 of these ends `mov eax, 1` in the reference — an instruction our source has no
@@ -885,7 +916,7 @@ Three of these change the emitted code as well as the metadata: at 4180, 6152 an
 `sizeAlignment` (7412), `baseAlignment` (7424), `offsetAlignment` (7436),
 `slowestSpeed` (7448), `fastestSpeed` (7460), `addressLinesDecoded` (7472).
 
-**(d) Arguments declared `unsigned int` where the reference takes `char` (7).**
+**(d) Arguments declared `unsigned int` where the reference takes `char` (9).**
 
 `setCardEnabled:` (4236), `setCardAutoPower:` (4420),
 `-[PCICSocket setMemoryInterface:]` (5132), `setCardReset:` (5288),
@@ -1027,12 +1058,16 @@ on headers outside this driver.
 5951 BA06000000 mov edx, 6                    ; memory windows start at bit 6
 5956 25FF000000 and eax, 0FFh
 5961 035110     add edx, [ecx+10h]            ; + windowNumber
+5964 89D1       mov ecx, edx
 5966 BA01000000 mov edx, 1
 5971 D3E2       shl edx, cl                   ; 1 << bit
 5973 09D0       or  eax, edx                  ; <-- OR, not AND
 5975 0F95C0     setnz al
 5978 25FF000000 and eax, 0FFh
 ```
+
+(Abridged for readability — implement from the disassembly in the analyses,
+not from this listing.)
 
 `or eax, edx` where `edx` is `1 << bit` can never be zero, so `setnz al` always
 sets 1. **Apple's `-[PCICWindow enabled]` unconditionally returns YES.**
@@ -1059,7 +1094,9 @@ source rather than an intent.
 would make the accessor useless and would silently break any caller that asks
 whether a window is enabled. Fidelity to a shipped binary does not extend to
 copying its bugs, and nothing else in the driver reads this accessor, so keeping
-our version costs no compatibility.
+our version costs no compatibility. Per § Fidelity principle: the reference is
+demonstrably buggy here, so we keep our correct behaviour and record the
+divergence instead of reproducing it.
 
 Recorded rather than fixed, and flagged for Task 9 in case the reviewer takes the
 opposite view: if byte-level parity is ever wanted for this function it will have
@@ -1202,16 +1239,18 @@ DEFAULT_DRIVER_VERSION="5.01";
    `is the names which appears` — our version fixes Apple's grammar. Recorded
    because a byte-level comparison will flag it; whether to reintroduce the typo
    is a judgement call for Task 9. This report's view is that the comment should
-   match, since the goal is fidelity and the file is otherwise verbatim.
+   match, since the goal is fidelity and the file is otherwise verbatim. Per
+   § Fidelity principle: a comment is non-behavioural, so the cosmetic typo
+   should be reproduced exactly, not corrected.
 
 **Disposition:** fix
 
 **Rationale:** point 1 is user-visible, point 2 is a version number that
 contradicts the config tables, point 3 is dead configuration.
 
-## Finding 19: `-[PCIC interruptOccurred]` caches the socket count and guards the handler send (accepted)
+## Finding 19: `-[PCIC interruptOccurred]` and `-[PCIC setPowerState:]` cache counts the reference re-sends each iteration (accepted)
 
-**Source:** `.../PCIC.m:209`, `:237-239`
+**Source:** `.../PCIC.m:209`, `:237-239`, `:298`
 
 **Reference behaviour.** The loop re-sends `count` to the socket list at the top
 of every iteration (996–1024), and sends
@@ -1231,6 +1270,19 @@ reformatting is worth stating because it is the driver's translation from PCIC
 hardware bits to PCMCIA status bits: register `(i << 6) + 4`, then bit 2 of the
 value to bit 7, bit 3 to bit 0, and `(bit 1 | bit 0)` to bit 4. Our source
 reproduces all four mappings.
+
+**`-[PCIC setPowerState:]`** (address 1264, 200 bytes) has the same shape in
+both of its loops. The reference re-sends `count` at the top of each:
+
+```
+blocks: (1288,30,[1318,1452]) ... (1444,6,[1288])   ; back-edge re-sends [sockets count]
+        (1376,26,[1402,1444]) ... (1402,41,[1376])  ; back-edge re-sends [windows count]
+```
+
+Our `PCIC.m` (around line 298) caches `count` and `windowCount` in locals before
+each loop instead of re-sending `[socketList count]`/`[windowList count]` on
+every iteration. Neither list changes during the loop, so this is the same
+no-behavioural-consequence divergence as `interruptOccurred`'s.
 
 **Disposition:** accept
 

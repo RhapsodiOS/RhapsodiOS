@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from binrecon.source_map import defined_symbols, source_sites
+from binrecon.source_map import build_source_map, defined_symbols, source_sites
 
 
 def test_defined_symbols_groups_names_and_drops_undefined():
@@ -232,3 +232,67 @@ def test_source_sites_ignores_bare_arithmetic_inside_a_method_body(tmp_path):
     sites = source_sites(tmp_path, source_dir)
 
     assert sites == {"-[Foo compute]": [("src/driver/Arith.m", 3)]}
+
+
+def _analysis(functions, sha256="A" * 64):
+    return {"input": {"sha256": sha256}, "functions": functions}
+
+
+def _function(address, size, names):
+    return {
+        "address": address,
+        "size": size,
+        "names": names,
+        "blocks": [],
+        "instructions": [],
+        "calls": [],
+        "confidence": 1.0,
+    }
+
+
+def test_build_source_map_buckets_every_function():
+    analysis = _analysis(
+        [
+            _function(0x1000, 0x10, ["-[PCIKernBus init]"]),
+            _function(0x1010, 0x10, ["_PCIBus_VERS_NUM"]),
+            _function(0x1020, 0x10, ["_ambiguous"]),
+            _function(0x1030, 0x10, ["_disputed"]),
+        ]
+    )
+    macho = {"symbols": []}
+    sites = {
+        "-[PCIKernBus init]": [("src/driver/Bus.m", 12)],
+        "_ambiguous": [("src/driver/a.c", 3), ("src/driver/b.c", 7)],
+        "_disputed": [("src/driver/c.c", 5)],
+    }
+
+    document = build_source_map(analysis, macho, sites, disputed={0x1030})
+
+    assert document["schema_version"] == "source-map-v1"
+    assert document["reference_sha256"] == "A" * 64
+    assert document["mapped"] == [
+        {
+            "address": 0x1000,
+            "size": 0x10,
+            "reference_names": ["-[PCIKernBus init]"],
+            "source_path": "src/driver/Bus.m",
+            "source_line": 12,
+        }
+    ]
+    assert [entry["address"] for entry in document["unmapped"]] == [0x1010]
+    assert [entry["address"] for entry in document["duplicate_candidates"]] == [0x1020]
+    assert [entry["address"] for entry in document["boundary_disputed"]] == [0x1030]
+
+
+def test_build_source_map_merges_symbol_table_names():
+    analysis = _analysis([_function(0x2000, 0x10, [])])
+    macho = {
+        "symbols": [
+            {"name": "_helper", "address": 0x2000, "binding": "local", "section": "__text"}
+        ]
+    }
+
+    document = build_source_map(analysis, macho, {"_helper": [("src/driver/x.c", 4)]})
+
+    assert document["mapped"][0]["reference_names"] == ["_helper"]
+    assert document["mapped"][0]["source_line"] == 4

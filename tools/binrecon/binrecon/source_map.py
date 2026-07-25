@@ -117,3 +117,60 @@ def source_sites(repo_root, source_dir):
                 sites.setdefault("_" + definition.group(1), []).append((relative, number))
             index += 1
     return sites
+
+
+def build_source_map(reference_analysis, macho_document, sites, *, disputed=None):
+    """Partition every reference function into exactly one source-map bucket."""
+    disputed = set() if disputed is None else disputed
+    symbols = defined_symbols(macho_document)
+    mapped, unmapped, duplicates, boundary = [], [], [], []
+
+    for function in reference_analysis["functions"]:
+        address = function["address"]
+        names = sorted(set(function["names"]) | set(symbols.get(address, [])))
+        if not names:
+            names = [f"sub_{address:x}"]
+        entry = {
+            "address": address,
+            "size": function["size"],
+            "reference_names": names,
+        }
+
+        candidates = sorted({site for name in names for site in sites.get(name, [])})
+
+        if address in disputed:
+            boundary.append(
+                {**entry, "reasons": ["analyzers disagree on function extent"]}
+            )
+        elif len(candidates) == 1:
+            path, line = candidates[0]
+            mapped.append({**entry, "source_path": path, "source_line": line})
+        elif candidates:
+            duplicates.append(
+                {
+                    **entry,
+                    "candidates": [
+                        {"source_path": path, "source_line": line}
+                        for path, line in candidates
+                    ],
+                    "reasons": ["symbol name resolves to multiple definitions"],
+                }
+            )
+        else:
+            unmapped.append(entry)
+
+    return {
+        "schema_version": "source-map-v1",
+        "reference_sha256": reference_analysis["input"]["sha256"].upper(),
+        "mapped": _canonical(mapped),
+        "unmapped": _canonical(unmapped),
+        "duplicate_candidates": _canonical(duplicates),
+        "boundary_disputed": _canonical(boundary),
+    }
+
+
+def _canonical(entries):
+    """Sort entries the way the semantic validator requires."""
+    return sorted(
+        entries, key=lambda entry: (entry["address"], tuple(entry["reference_names"]))
+    )

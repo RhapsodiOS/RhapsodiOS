@@ -744,7 +744,9 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         ),
         "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
         "ida_ua": SimpleNamespace(
-            insn_t=type("Instruction", (), {}),
+            insn_t=type("Instruction", (), {
+                "ops": [SimpleNamespace(offb=index) for index in range(8)],
+            }),
             decode_insn=lambda instruction, address: 1,
         ),
         "idautils": SimpleNamespace(
@@ -793,6 +795,9 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
          "zero_fill": True, "initialized": False},
         {"name": "UNDEF", "address": 0x3000, "offset": 0, "size": 3,
          "zero_fill": True, "initialized": False},
+    ]
+    assert first["extensions"]["ida"]["instruction_operand_offsets"] == [
+        {"address": 0x1000, "operands": [{"index": 0, "offset": 0}]},
     ]
     validate_document("analysis-v1", first)
     validate_analysis_semantics(first)

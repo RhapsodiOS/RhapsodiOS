@@ -358,7 +358,7 @@ def _has_valid_scattered_addend(document: dict, metadata_entries: list[dict],
 
 
 def _ghidra_operand_owner(document: dict, instruction: dict, relocation: dict,
-                          relocation_index: int) -> int | None:
+                          relocation_index: int, width: int, relative: bool) -> int | None:
     ghidra = document.get("extensions", {}).get("ghidra", {})
     entries = [item for item in ghidra.get("instruction_reference_indexes", [])
                if item.get("address") == instruction["address"]]
@@ -383,14 +383,15 @@ def _ghidra_operand_owner(document: dict, instruction: dict, relocation: dict,
     if target_sections and (section_target or not target_symbols):
         section = target_sections[0]
         target = section["address"] + relocation["addend"]
-        if not section["address"] <= target < section["address"] + section["size"]:
+        resolved_target = target + (width if relative else 0)
+        if not section["address"] <= resolved_target < section["address"] + section["size"]:
             if not _has_valid_scattered_addend(
                     document, extension_entries, relocation, section):
                 if "-scattered-" in relocation["kind"]:
                     raise NormalizationError("Ghidra scattered relocation evidence is invalid")
                 raise NormalizationError("Ghidra relocation addend is outside target section")
-        target_address_groups = [{target}]
-        if target != section["address"]:
+        target_address_groups = [{resolved_target}]
+        if resolved_target != section["address"]:
             target_address_groups.append({section["address"]})
     else:
         target_addresses = {symbol["address"] for symbol in target_symbols}
@@ -505,13 +506,13 @@ def _angr_operand_owner(document: dict, instruction: dict, relocation: dict,
     if target_sections and (section_target or not target_symbols):
         section = target_sections[0]
         target = section["address"] + relocation["addend"]
-        if not section["address"] <= target < section["address"] + section["size"]:
+        resolved_target = target + (width if relative else 0)
+        if not section["address"] <= resolved_target < section["address"] + section["size"]:
             if not _has_valid_scattered_addend(
                     document, extension_entries, relocation, section):
                 if "-scattered-" in relocation["kind"]:
                     raise NormalizationError("angr scattered relocation evidence is invalid")
                 raise NormalizationError("angr relocation addend is outside target section")
-        resolved_target = target + (width if relative else 0)
         resolved_address_groups = [{resolved_target}]
         encoded_address_groups = [{target - relocation["address"] if relative else target}]
     elif target_symbols:
@@ -555,6 +556,28 @@ def _angr_operand_owner(document: dict, instruction: dict, relocation: dict,
         if owners:
             return next(iter(owners))
     raise NormalizationError("angr relocation operand metadata has no matching owner")
+
+
+def _ida_operand_owner(document: dict, instruction: dict, relocation: dict) -> int | None:
+    ida = document.get("extensions", {}).get("ida", {})
+    entries = [item for item in ida.get("instruction_operand_offsets", [])
+              if item.get("address") == instruction["address"]]
+    if not entries:
+        return None
+    if len(entries) != 1:
+        raise NormalizationError("IDA instruction operand offset metadata is ambiguous")
+    field_offset = relocation["address"] - instruction["address"]
+    owners = set()
+    for operand in entries[0].get("operands", []):
+        index, offset = operand.get("index"), operand.get("offset")
+        if (type(index) is not int or index < 0 or
+                type(offset) is not int or offset < 0):
+            raise NormalizationError("IDA instruction operand offset metadata is invalid")
+        if offset == field_offset:
+            owners.add(index)
+    if len(owners) > 1:
+        raise NormalizationError("IDA relocation operand metadata is ambiguous")
+    return next(iter(owners)) if owners else None
 
 
 def _operand_owner(relocation: dict, operands: list[str],
@@ -623,11 +646,14 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         raise NormalizationError("display and normalized operand counts differ")
     operands = [{"text": text, "relocations": []} for text in display_operands]
     for start, _, index, width, relative, relocation in fields:
-        structured_owner = _ghidra_operand_owner(document, instruction, relocation, index)
+        structured_owner = _ghidra_operand_owner(
+            document, instruction, relocation, index, width, relative)
         if structured_owner is None:
             structured_owner = _angr_operand_owner(
                 document, instruction, relocation, index, width, relative,
                 angr_operand_metadata)
+        if structured_owner is None:
+            structured_owner = _ida_operand_owner(document, instruction, relocation)
         owner = _operand_owner(relocation, normalized_operands, structured_owner)
         operands[owner]["relocations"].append({
             "field_offset": start - address, "width": width,

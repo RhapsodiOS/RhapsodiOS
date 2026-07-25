@@ -231,6 +231,26 @@ def test_ghidra_section_target_rejects_out_of_bounds_addend_before_base_fallback
         normalize_analysis(document)
 
 
+def test_ghidra_pc_relative_call_to_section_start_addend_resolves_before_bounds_check():
+    # Bug B repro: the raw (uncorrected) PC-relative addend undershoots the
+    # section by exactly one field width (addend=-4, width=4), which is
+    # rejected as "outside target section" unless the +width PC-relative
+    # correction is applied *before* the bounds check. The corrected target
+    # lands exactly on the section's first byte -- the section edge, and the
+    # exact shape of the diagnosed bug (a call to the very first byte of its
+    # own section).
+    document = analysis("Ghidra")
+    document["relocations"][0]["target"] = ".text"
+    document["extensions"] = {"ghidra": {
+        "instruction_reference_indexes": [{"address": 0x1000, "reference_indexes": []}]}}
+
+    result = normalize_analysis(document)
+
+    relocations = result["functions"][0]["instructions"][0]["operands"][0]["relocations"]
+    assert len(relocations) == 1
+    assert relocations[0]["addend"] == -4
+
+
 @pytest.mark.parametrize("section_address,addend,reference_target,original_bytes", [
     (0x8000, -444, 0x7E44, "447E0000"),
     (0, 3221254124, 0, "EC6F00C0"),
@@ -503,6 +523,28 @@ def test_angr_section_target_resolution_fails_closed(mutation):
         normalize_analysis(document)
 
 
+def test_angr_pc_relative_call_to_section_start_addend_resolves_before_bounds_check():
+    # Bug B repro (angr side): same shape as the Ghidra case above -- the raw
+    # PC-relative addend undershoots the section start by exactly one field
+    # width, and only resolves to a valid in-bounds target (the section's
+    # first byte, a section edge) once the +width correction is applied
+    # before the bounds check rather than after.
+    document = analysis("angr")
+    document["relocations"][0]["target"] = ".text"
+    document["extensions"]["macho"]["relocations"][0].update(
+        address=0x1001, target=".text", width=4, pc_relative=True)
+    document["extensions"]["angr"] = {"cfg": {"instruction_operand_metadata": [
+        {"address": 0x1000, "operands": [
+            {"index": 0, "kind": "immediate", "resolved_address": 0x1000,
+             "field_offset": 1, "field_width": 4}]}]}}
+
+    result = normalize_analysis(document)
+
+    relocations = result["functions"][0]["instructions"][0]["operands"][0]["relocations"]
+    assert len(relocations) == 1
+    assert relocations[0]["addend"] == -4
+
+
 def test_angr_validated_scattered_relocation_matches_encoded_field_address():
     document = _section_targeted_angr_analysis(
         addend=-444, resolved_address=0x7E44)
@@ -569,6 +611,73 @@ def test_target_name_must_match_an_operand_token_not_a_substring():
                        operands="eax, callee_suffix",
                        normalized_operands="eax, callee_suffix")
     with pytest.raises(NormalizationError, match="operand"):
+        normalize_analysis(document)
+
+
+def _dotted_local_static_ida_document():
+    # Mirrors the diagnosed shape exactly: IDA renders the compiler's dotted
+    # local-static disambiguator name (`_protocols.96`) with the dot swapped
+    # for an underscore (`_protocols_96`), so the relocation's `target` string
+    # can never appear verbatim in either operand's display text.
+    document = analysis("IDA")
+    document["symbols"][0]["name"] = "_protocols.96"
+    document["relocations"][0]["kind"] = "ida-off32-32"
+    document["relocations"][0]["target"] = "_protocols.96"
+    instruction = document["functions"][0]["instructions"][0]
+    instruction.update(bytes="B850800000", mnemonic="mov",
+                       operands="eax, offset _protocols_96",
+                       normalized_operands="eax, offset _protocols_96")
+    document["extensions"] = {}
+    return document
+
+
+def test_ida_text_matching_alone_cannot_resolve_a_dot_mangled_local_static_name():
+    document = _dotted_local_static_ida_document()
+    with pytest.raises(NormalizationError, match="ownership is ambiguous"):
+        normalize_analysis(document)
+
+
+def test_ida_structured_operand_offset_resolves_the_dot_mangled_local_static_name():
+    document = _dotted_local_static_ida_document()
+    document["extensions"] = {"ida": {"instruction_operand_offsets": [
+        {"address": 0x1000, "operands": [
+            {"index": 0, "offset": 0}, {"index": 1, "offset": 1}]}]}}
+
+    instruction = normalize_analysis(document)["functions"][0]["instructions"][0]
+
+    assert instruction["operands"][0]["relocations"] == []
+    assert len(instruction["operands"][1]["relocations"]) == 1
+
+
+@pytest.mark.parametrize("mutation", [
+    "duplicate-instruction-entry", "same-offset-both-operands",
+    "invalid-index-type", "invalid-offset-type",
+])
+def test_ida_structured_operand_offset_metadata_fails_closed(mutation):
+    document = _dotted_local_static_ida_document()
+    entry = {"address": 0x1000, "operands": [
+        {"index": 0, "offset": 0}, {"index": 1, "offset": 1}]}
+    if mutation == "duplicate-instruction-entry":
+        document["extensions"] = {"ida": {
+            "instruction_operand_offsets": [entry, deepcopy(entry)]}}
+        expected = "IDA instruction operand offset metadata is ambiguous"
+    elif mutation == "same-offset-both-operands":
+        entry = deepcopy(entry)
+        entry["operands"][0]["offset"] = 1
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [entry]}}
+        expected = "IDA relocation operand metadata is ambiguous"
+    elif mutation == "invalid-index-type":
+        entry = deepcopy(entry)
+        entry["operands"][1]["index"] = "1"
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [entry]}}
+        expected = "IDA instruction operand offset metadata is invalid"
+    else:
+        entry = deepcopy(entry)
+        entry["operands"][1]["offset"] = None
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [entry]}}
+        expected = "IDA instruction operand offset metadata is invalid"
+
+    with pytest.raises(NormalizationError, match=expected):
         normalize_analysis(document)
 
 

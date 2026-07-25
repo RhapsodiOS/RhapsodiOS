@@ -465,6 +465,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
 
     functions = []
     seen_functions = set()
+    instruction_operand_offsets = []
     for address in idautils.Functions():
         function = ida_funcs.get_func(address)
         if function is None:
@@ -506,12 +507,21 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
                 raise ExportError(f"could not decode instruction at {item:#x}")
             mnemonic = idc.print_insn_mnem(item) or ""
             operand_values = []
+            operand_offsets = []
             for operand_index in range(8):
                 operand = idc.print_operand(item, operand_index) or ""
                 if not operand:
                     break
                 operand_values.append(operand)
+                operand_offsets.append({
+                    "index": operand_index,
+                    "offset": instruction.ops[operand_index].offb,
+                })
             operands = ", ".join(operand_values)
+            if operand_offsets:
+                instruction_operand_offsets.append({
+                    "address": item, "operands": operand_offsets,
+                })
             instructions.append({
                 "address": item,
                 "bytes": raw.hex().upper(),
@@ -625,6 +635,9 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         ),
         "extensions": {"ida": {
             "selectors": selector_names,
+            "instruction_operand_offsets": sorted(
+                instruction_operand_offsets, key=lambda item: item["address"]
+            ),
             "sections": sorted(
                 section_backing, key=lambda item: (item["address"], item["name"])
             ),

@@ -235,12 +235,12 @@ static void setWindow(int socket, int window, unsigned int cardAddress,
 
 /*
  * Spoof interrupt for testing
- * Simulates an interrupt by directly calling the interrupt handler
+ * Raises the IRQ 5 vector, so the whole delivery path is exercised: IDT
+ * entry, kernel dispatch, DriverKit interrupt message and I/O thread
  */
 - (void)spoofInterrupt
 {
-    /* Call the interrupt handler directly to simulate an interrupt */
-    [self interruptOccurred];
+    asm volatile("int $0x45");
 }
 
 @end

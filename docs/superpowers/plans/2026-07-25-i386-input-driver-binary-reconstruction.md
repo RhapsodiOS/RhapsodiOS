@@ -53,7 +53,26 @@ export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\<Confi
   --output tools/binrecon/out/<name>/run-summary.json
 ```
 
-Expected: exit 0. Produces `tools/binrecon/out/<name>/published/analysis-reference-ida.json`, `-ghidra.json`, `-angr.json`, `consensus-reference.json`, and `run-summary.json`. A run that times out or fails writes `complete: false` and `acceptance.passed: false`; that is not a pass and must not be worked around by reusing an earlier run's output — the runner refuses leftover output from an earlier run as evidence, and so must you.
+**Expected: exit 1, and that is success here.** `binrecon analyze` returns 0 only when the profile's acceptance level passes, and `normalized-functions` acceptance compares a reference against a *rebuilt* artifact. These are reference-only profiles with no `rebuilt` key, so acceptance can never pass and the last line always reads `normalized-functions=FAIL`. The three bus drivers' committed runs (`tools/binrecon/out/{pcibus,pcmciabus,eisabus}/run-summary.json`) all show the same `acceptance.passed: false`. Do not treat this as a failure, and do not add a `rebuilt` key to make it go away.
+
+**The real gate is the summary, not the exit code:**
+
+```bash
+./.venv-binrecon/Scripts/python.exe -c "
+import json
+d = json.load(open('tools/binrecon/out/<name>/run-summary.json'))
+assert d['complete'] is True, d
+assert d['consensus']['reference'] is not None, d
+print('complete:', d['complete'], 'sha:', d['reference_sha256'])
+"
+ls tools/binrecon/out/<name>/published/
+```
+
+Expected: `complete: True`, the SHA-256 matching this task's row in the Global Constraints table, and four files — `analysis-reference-ida.json`, `-ghidra.json`, `-angr.json`, `consensus-reference.json`.
+
+A run that times out or genuinely fails writes `complete: false` and no reference consensus. *That* is a failure, and it must not be worked around by reusing an earlier run's output — the runner refuses leftover output from an earlier run as evidence, and so must you.
+
+Note also that piping this command through `tail` or `head` makes `$?` report the pipe's last stage, not binrecon's. Redirect to a file if you need the exit code.
 
 If a staging directory named `binrecon-run-*` is left under `tools/binrecon/out/<name>/` with no `published/` beside it, the run did not finish. `tools/binrecon/out/intel824x0/` is in exactly that state from an earlier, unrelated effort; do not mistake such a directory for output.
 
@@ -784,13 +803,30 @@ Standard report pass Step A with `<name>` = `ps2mouse` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\PS2Mouse.config\PS2Mouse_reloc'
 ```
 
-Expected: exit 0, and `tools/binrecon/out/ps2mouse/run-summary.json` reporting `"complete": true` with three analyzer records and a reference consensus. Verify:
+Expected: exit 1 (see Step A — reference-only profiles always fail acceptance), and `tools/binrecon/out/ps2mouse/run-summary.json` reporting `"complete": true` with three analyzer records and a reference consensus.
+
+**This run has already been performed and verified by the controller.** `tools/binrecon/out/ps2mouse/published/` holds all four documents and the summary reports `complete: true` with `reference_sha256` `4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E`. Confirm that state rather than re-running; re-run only if the files are missing or the SHA-256 disagrees.
+
+Verify:
 
 ```bash
-./.venv-binrecon/Scripts/python.exe -c "import json;d=json.load(open('tools/binrecon/out/ps2mouse/run-summary.json'));print(d['complete'], d['reference_sha256'], [a['analyzer'] for a in d['analyzers']])"
+cd /d/RhapsodiOS
+./.venv-binrecon/Scripts/python.exe -c "
+import json
+d = json.load(open('tools/binrecon/out/ps2mouse/run-summary.json'))
+print(d['complete'], d['reference_sha256'],
+      [(a['name'], a['version']) for a in d['analyzers']],
+      d['consensus']['reference'] is not None)
+"
 ```
 
-Expected: `True 4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E ['IDA', 'Ghidra', 'angr']` — analyzer key naming may differ; the assertions that matter are `complete` true, the SHA-256 matching the Global Constraints table, and all three analyzers present.
+Expected exactly:
+
+```
+True 4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E [('IDA', '9.2'), ('Ghidra', '12.1'), ('angr', '9.3.0')] True
+```
+
+Each entry in `run-summary.json`'s `analyzers` list has keys `name`, `version`, `reference` (with `path` and `sha256`) and `rebuilt` (`null` here). The analyzer's name is under `name` — there is no `analyzer` key.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -985,7 +1021,7 @@ Standard report pass Step A with `<name>` = `serialpointingdevice` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\SerialPointingDevice.config\SerialPointingDevice_reloc'
 ```
 
-Expected: exit 0 and `"complete": true` with `reference_sha256` `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`.
+Expected: exit 1 (see Step A — reference-only profiles always fail acceptance) and `"complete": true` with `reference_sha256` `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1167,7 +1203,7 @@ Standard report pass Step A with `<name>` = `ps2keyboard` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\PS2Keyboard.config\PS2Keyboard_reloc'
 ```
 
-Expected: exit 0, `"complete": true`, `reference_sha256` `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A`.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A`.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1355,7 +1391,7 @@ Standard report pass Step A with `<name>` = `parallelport` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\ParallelPort.config\ParallelPort_reloc'
 ```
 
-Expected: exit 0, `"complete": true`, `reference_sha256` `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2`. Expect a non-empty angr CFG error list; that does not make the run incomplete.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2`. Expect a non-empty angr CFG error list; that does not make the run incomplete.
 
 - [ ] **Step 2: Generate the source map**
 
@@ -1568,7 +1604,7 @@ Standard report pass Step A with `<name>` = `busmouse` and
 export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\BusMouse.config\BusMouse_reloc'
 ```
 
-Expected: exit 0, `"complete": true`, `reference_sha256` `A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864`.
+Expected: exit 1 (see Step A), `"complete": true`, `reference_sha256` `A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864`.
 
 - [ ] **Step 2: Generate the source map**
 

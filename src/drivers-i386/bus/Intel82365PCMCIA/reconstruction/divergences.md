@@ -144,8 +144,8 @@ compiler and is recorded here rather than guessed at.
 
 | Bucket | Count |
 | --- | --- |
-| mapped | 79 |
-| unmapped | 3 |
+| mapped | 80 |
+| unmapped | 2 |
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
@@ -1153,7 +1153,7 @@ part of the binary, so none of these is invisible. More importantly the driver
 declares conformance to DriverKit's PCMCIA protocols (Finding 13), and a protocol
 method whose signature does not match the protocol's is a real interface defect —
 a caller that goes through the protocol will read the wrong-width return value.
-Sixteen of the 43 also change the emitted instructions (the thirteen missing
+Sixteen of the 42 also change the emitted instructions (the thirteen missing
 `return YES`s, plus the three `movsx` sites, plus the byte compare at 5288).
 
 **Outcome:** fixed in commit `091c8f3a`, all 42. Group by group: the thirteen
@@ -1741,8 +1741,10 @@ push ebp / mov ebp, esp / mov eax, 1F4h / mov esp, ebp / pop ebp / retn
 `1F4h` is 500, the DriverKit version the build stamps in; it is unrelated to the
 `"Version" = "5.00"` strings in Findings 16 to 18, which are config-table values.
 
-The third unmapped entry, `-[PCIC_PCI initFromDeviceDescription:]` at 0, is
-Finding 3.
+`-[PCIC_PCI initFromDeviceDescription:]` at 0 was the third unmapped entry in
+the report pass (Finding 3); it is now implemented and mapped following that
+finding's fix, leaving only the two build-generated functions above
+unmapped.
 
 ## PCIC_PCI: go/no-go
 

@@ -11,7 +11,7 @@
 #import <bsd/dev/i386/PCPointer.h>
 #import <bsd/dev/i386/kbd_entries.h>
 #import <mach/mach_traps.h>
-#import <objc/NXLock.h>
+#import "NXLock.h"
 
 /* Forward declarations for functions in this file */
 BOOL _keyboardDataPresent(void);
@@ -20,10 +20,9 @@ PS2KeyboardEvent *_NewStealKeyboardEvent(void);
 
  /*
  * The protocol we need as an indirect device.
+ * (PCKeyboardExported lives in the kernel tree; empty list is fine for probe.)
  */
 static Protocol *protocols[] = {
-	@protocol(PS2Controller),
-	@protocol(PCKeyboard),
 	nil
 };
 

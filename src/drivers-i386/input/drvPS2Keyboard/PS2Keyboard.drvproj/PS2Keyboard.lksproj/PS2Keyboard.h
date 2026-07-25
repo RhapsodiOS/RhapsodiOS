@@ -6,7 +6,7 @@
 #import <driverkit/IODevice.h>
 #import <driverkit/IODeviceDescription.h>
 #import <objc/Object.h>
-#import <objc/NXLock.h>
+#import "NXLock.h"
 #import "PS2Controller.h"
 
 /* Keyboard event structure - 16 bytes (4 ints) */

@@ -95,8 +95,6 @@ int pp_kern_enable_interrupts(unsigned int portNum);
 int pp_kern_disable_interrupts(unsigned int portNum);
 
 // Character device interface functions
-int enodev(void);
-int seltrue(void);
 int ppopen(dev_t dev, int flags, int devtype, void *p);
 int ppclose(dev_t dev, int flags, int devtype, void *p);
 int ppread(dev_t dev, void *uio, int ioflag);
@@ -107,15 +105,11 @@ void ppminphys(void *bp);
 
 // Internal helper functions
 void IOParallelPortInterruptHandler(unsigned int param1, unsigned int param2, int portNum);
-void IOParallelPortThread(id portObject);
+void IOParallelPortThread(void *portObject);
 int _strobeChar(int portNum, unsigned int delay, char useSpl);
 
-// Message and interrupt handling
-void IOSendInterrupt(unsigned int param1, unsigned int param2, int msgType);
-void IOExitThread(void);
-
-// Mach message receive
-int msg_receive(void *msg, int option, int timeout);
+// Message and interrupt handling — use System.framework declarations.
+// (Do not redeclare IOExitThread / msg_receive / enodev / seltrue; they conflict.)
 
 // Software control structure
 extern void *pp_softc;

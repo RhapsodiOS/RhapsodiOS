@@ -20,8 +20,8 @@
 #define PS2_STATUS_INPUT_FULL   0x02  /* Input buffer full */
 
 /* Inline assembly macros for atomic operations */
-#define LOCK()   __asm__ volatile ("" ::: "memory")
-#define UNLOCK() __asm__ volatile ("" ::: "memory")
+#define LOCK()
+#define UNLOCK()
 
 /* Forward declarations */
 void interruptHandler(void *identity, void *state, unsigned int arg);
@@ -97,6 +97,8 @@ static KeySequenceEntry *_ralt_lalt_numlock[] = {
 };
 
 /* Escape sequences array - defines special key combinations and their actions */
+extern void mini_mon();
+
 static EscapeSequence _escapes[] = {
     /* Left Alt + Num Lock - Enter mini-monitor with "restart" */
     { _lalt_numlock, NULL, NULL, NULL, NULL, NULL,

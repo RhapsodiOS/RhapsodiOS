@@ -187,7 +187,9 @@ static unsigned int MouseIntHandler(unsigned int param_1, unsigned int param_2)
             mouseEvent.deltaY = accumulatedDeltaY + yDelta;
 
             higherLevelsBusy = 1;
-            returnValue = IOSendInterrupt(param_1, param_2, IO_DEVICE_INTERRUPT_MSG);
+            /* IOSendInterrupt is void; do not use its "return" value. */
+            IOSendInterrupt((void *)param_1, (void *)param_2, IO_DEVICE_INTERRUPT_MSG);
+            returnValue = 0;
 
             accumulatedDeltaX = 0;
             accumulatedDeltaY = 0;

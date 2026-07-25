@@ -13,11 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = PS2Keyboard.m PS2Controller.m
+CLASSES = PS2Keyboard.m PS2Controller.m NXLock.m
 
-HFILES = PS2Keyboard.h PS2Controller.h
+HFILES = PS2Keyboard.h PS2Controller.h NXLock.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

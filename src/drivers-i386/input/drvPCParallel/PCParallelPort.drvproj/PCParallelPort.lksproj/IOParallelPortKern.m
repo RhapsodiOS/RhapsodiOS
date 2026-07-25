@@ -30,6 +30,7 @@
 #ifdef KERNEL
 
 #import "IOParallelPortKern.h"
+#import "IOParallelPort.h"
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/KernDevice.h>
@@ -524,25 +525,7 @@ int pp_kern_disable_interrupts(unsigned int portNum)
 
 void *pp_softc = NULL;
 
-//
-// Standard error functions
-//
-
-int enodev(void)
-{
-    // Return "operation not supported by device" error
-    return ENODEV;
-}
-
-int seltrue(void)
-{
-    // Always returns true for select operations
-    return 1;
-}
-
-//
-// Character device interface
-//
+// Character device interface — use system enodev from <sys/systm.h>
 
 int ppopen(dev_t dev, int flags, int devtype, void *p)
 {
@@ -1102,7 +1085,7 @@ void IOParallelPortInterruptHandler(unsigned int param1, unsigned int param2, in
     IOSendInterrupt(param1, param2, interruptMsg);
 }
 
-void IOParallelPortThread(id portObject)
+void IOParallelPortThread(void *portObject)
 {
     SEL sel;
     pp_interrupt_msg_t interruptMsg;

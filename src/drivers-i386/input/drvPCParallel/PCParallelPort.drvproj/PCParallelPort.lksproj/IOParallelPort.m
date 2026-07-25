@@ -35,10 +35,17 @@
 #import <driverkit/align.h>
 #import <driverkit/devsw.h>
 #import <driverkit/generalFuncs.h>
+#import <sys/systm.h>
 #import <objc/objc.h>
 #import <objc/objc-runtime.h>
 #import <string.h>
-#import <stdio.h>
+
+/* Parallel-port specific return; not in stock driverkit/return.h */
+#ifndef IO_R_NO_PAPER
+#define IO_R_NO_PAPER (-737)
+#endif
+/* Kernel sprintf lives in <sys/systm.h>; do not import <stdio.h> (conflicts). */
+extern int sprintf(char *str, const char *fmt, ...);
 
 // Global pointer to parallel port software control structure
 static void *pp_softc = NULL;
@@ -137,9 +144,11 @@ static void *pp_softc = NULL;
             return nil;
         }
 
-        // Add to character device switch
+        // Add to character device switch (11 IOSwitchFunc args)
         majorDev = IOAddToCdevsw((void *)ppopen, (void *)ppclose, (void *)enodev,
-                                 (void *)ppwrite, (void *)ppioctl, (void *)enodev);
+                                 (void *)ppwrite, (void *)ppioctl, (void *)enodev,
+                                 (void *)enodev, (void *)enodev, (void *)enodev,
+                                 (void *)enodev, (void *)enodev);
         if (majorDev < 0) {
             IOLog("IOParallelPort: could not add to device switch\n");
             [self free];

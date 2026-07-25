@@ -5,7 +5,7 @@
 
 #import <driverkit/i386/IOEISADeviceDescription.h>
 #import <driverkit/i386/IOPCIDeviceDescription.h>
-#import <driverkit/i386/IODirectDevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/IODevice.h>
@@ -67,7 +67,7 @@ typedef void (*EscapeCallback)(void *arg1, void *arg2, void *arg3);
 typedef struct _KeySequenceEntry {
     void *next;                     /* Offset 0: Next entry or NULL */
     int index;                      /* Offset 4: Current index in sequence */
-    unsigned char keys[];           /* Offset 8: Array of key bytes (scancode, extended) */
+    unsigned char keys[8];      /* Offset 8: key bytes (scancode / extended) */
 } KeySequenceEntry;
 
 /* Escape sequence structure */

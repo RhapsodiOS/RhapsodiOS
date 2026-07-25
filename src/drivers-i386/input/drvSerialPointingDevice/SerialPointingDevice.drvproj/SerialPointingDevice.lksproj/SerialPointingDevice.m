@@ -29,6 +29,7 @@
 #import "SerialPointingDevice.h"
 
 #import <driverkit/generalFuncs.h>
+#import <driverkit/return.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/i386/ioPorts.h>
@@ -36,6 +37,10 @@
 #import <kernserv/prototypes.h>
 #import <mach/message.h>
 #import <stdlib.h>
+
+#ifndef IO_R_NOT_FOUND
+#define IO_R_NOT_FOUND IO_R_NO_DEVICE
+#endif
 
 /* Mouse type names for logging */
 static const char *mouseTypeNames[] = {
@@ -91,26 +96,26 @@ static void mainLoop(id driver)
     }
 
     /* Configure serial port parameters */
-    [serialPortObject executeEvent:data:0x0B data:0x78];    // Set parameter
-    [serialPortObject executeEvent:data:0x0F data:0x78];    // Set parameter
-    [serialPortObject executeEvent:data:0x1B data:0x50];    // Set parameter
-    [serialPortObject executeEvent:data:0x1F data:0x50];    // Set parameter
-    [serialPortObject executeEvent:data:0x13 data:0x28];    // Set parameter
-    [serialPortObject executeEvent:data:0x17 data:0x28];    // Set parameter
-    [serialPortObject executeEvent:data:0x33 data:0x960];   // Set baud rate (2400 baud)
-    [serialPortObject executeEvent:data:0x3B data:0x0E];    // Set parameter
-    [serialPortObject executeEvent:data:0x43 data:1];       // Set parameter
-    [serialPortObject executeEvent:data:0xF3 data:2];       // Set parameter
-    [serialPortObject executeEvent:data:0x53 data:0];       // Set parameter
+    [serialPortObject executeEvent:0x0B data:0x78];    // Set parameter
+    [serialPortObject executeEvent:0x0F data:0x78];    // Set parameter
+    [serialPortObject executeEvent:0x1B data:0x50];    // Set parameter
+    [serialPortObject executeEvent:0x1F data:0x50];    // Set parameter
+    [serialPortObject executeEvent:0x13 data:0x28];    // Set parameter
+    [serialPortObject executeEvent:0x17 data:0x28];    // Set parameter
+    [serialPortObject executeEvent:0x33 data:0x960];   // Set baud rate (2400 baud)
+    [serialPortObject executeEvent:0x3B data:0x0E];    // Set parameter
+    [serialPortObject executeEvent:0x43 data:1];       // Set parameter
+    [serialPortObject executeEvent:0xF3 data:2];       // Set parameter
+    [serialPortObject executeEvent:0x53 data:0];       // Set parameter
 
     /* Configure port state */
-    [serialPortObject setState:mask:6 mask:6];              // Set DTR and RTS
+    [serialPortObject setState:6 mask:6];              // Set DTR and RTS
     IOSleep(100);
-    [serialPortObject setState:mask:0 mask:4];              // Clear RTS
-    [serialPortObject executeEvent:data:5 data:1];          // Enable receiver
-    [serialPortObject setState:mask:1 mask:1];              // Set state
+    [serialPortObject setState:0 mask:4];              // Clear RTS
+    [serialPortObject executeEvent:5 data:1];          // Enable receiver
+    [serialPortObject setState:1 mask:1];              // Set state
     IOSleep(100);
-    [serialPortObject setState:mask:4 mask:4];              // Set RTS
+    [serialPortObject setState:4 mask:4];              // Set RTS
     IOSleep(300);
 
     /* Listen for identification bytes */
@@ -139,12 +144,12 @@ static void mainLoop(id driver)
     /* If no Microsoft mouse detected, try other protocols */
     if (mouseType == 0) {
         /* Try different baud rates to detect Mouse Systems mouse */
-        [serialPortObject executeEvent:data:0x3B data:0x10];
+        [serialPortObject executeEvent:0x3B data:0x10];
 
         baudRate = 1200;
         while (baudRate < 9600) {
-            [serialPortObject executeEvent:data:0x33 data:(baudRate * 2)];
-            [serialPortObject enqueueEvent:data:sleep:0x55 data:0x73 sleep:0];
+            [serialPortObject executeEvent:0x33 data:(baudRate * 2)];
+            [serialPortObject enqueueEvent:0x55 data:0x73 sleep:0];
             IOSleep(100);
 
             if ([self getByte:&byte sleep:NO]) {
@@ -160,8 +165,8 @@ static void mainLoop(id driver)
 
         /* Configure Mouse Systems mouse if detected */
         if (mouseType == 5) {
-            [serialPortObject enqueueEvent:data:sleep:0x55 data:0x55 sleep:0];
-            [serialPortObject enqueueEvent:data:sleep:0x55 data:0x52 sleep:0];
+            [serialPortObject enqueueEvent:0x55 data:0x55 sleep:0];
+            [serialPortObject enqueueEvent:0x55 data:0x52 sleep:0];
             protocolType = 3;
         }
     } else {
@@ -170,8 +175,8 @@ static void mainLoop(id driver)
             IOLog("%s: Sending *? Command {", [self name]);
         }
 
-        [serialPortObject enqueueEvent:data:sleep:0x55 data:'*' sleep:0];
-        [serialPortObject enqueueEvent:data:sleep:0x55 data:'?' sleep:0];
+        [serialPortObject enqueueEvent:0x55 data:'*' sleep:0];
+        [serialPortObject enqueueEvent:0x55 data:'?' sleep:0];
         IOSleep(200);
 
         /* Parse the response */
@@ -241,7 +246,7 @@ static void mainLoop(id driver)
 
     /* Disable receiver if no mouse detected */
     if (mouseType == 0) {
-        [serialPortObject executeEvent:data:5 data:0];
+        [serialPortObject executeEvent:5 data:0];
     }
 
     return (mouseType != 0);
@@ -543,8 +548,6 @@ static void mainLoop(id driver)
     if (result) {
         mouseEventPort = target;
     }
-
-    return result;
 }
 
 /*
@@ -764,7 +767,7 @@ static void mainLoop(id driver)
 - (void)MMProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:data:5 data:0];
+    [serialPortObject executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;
@@ -890,7 +893,7 @@ static void mainLoop(id driver)
 - (void)RBProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:data:5 data:0];
+    [serialPortObject executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;
@@ -902,7 +905,7 @@ static void mainLoop(id driver)
 - (void)UnknownProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:data:5 data:0];
+    [serialPortObject executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;

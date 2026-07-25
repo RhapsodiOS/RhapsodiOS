@@ -102,6 +102,10 @@
 #include <machine/cpu.h>	/* for cpu_number() */
 #include <machine/spl.h>
 
+#if defined(i386)
+#import <machdep/i386/serial_dbg.h>
+#endif
+
 /*
  * In case console is off,
  * panicstr contains argument to last
@@ -732,6 +736,15 @@ putchar(c, flags, tp)
 		**sp = c;
 		(*sp)++;
 	}
+#if defined(i386)
+	/*
+	 * Mirror console and log traffic to the debug UART.  TOLOG matters:
+	 * once syslogd opens /dev/klog, log() stops falling back to TOCONS,
+	 * so a TOCONS-only tap would go silent for IOLog output.
+	 */
+	if ((flags & (TOCONS|TOLOG)) && c != '\0' && serial_dbg_port)
+		serial_dbg_putc((char)c);
+#endif
 	return 0;
 }
 

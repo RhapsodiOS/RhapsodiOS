@@ -37,6 +37,7 @@ machdep/i386/machdep_call.c	standard
 machdep/i386/machine_clock.c	standard
 machdep/i386/pcb.c		standard
 machdep/i386/pmap.c		standard
+machdep/i386/serial_dbg.c	standard
 machdep/i386/swapgeneric.m	standard
 machdep/i386/sys_machdep.c	standard
 machdep/i386/trap.c		standard

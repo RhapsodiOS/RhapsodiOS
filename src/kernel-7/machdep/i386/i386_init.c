@@ -46,6 +46,7 @@
 #import <machdep/i386/idt.h>
 #import <machdep/i386/configure.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <machdep/i386/serial_dbg.h>
 #include <sys/reboot.h>
 #include <sys/errno.h>
 #import "uxpr.h"
@@ -68,6 +69,7 @@ struct kernargs {
 	"subtype", &subtype,
 	"srv", &srv,
 	"ncl", &ncl,
+	"serial", &serial_dbg_port,
 	0,0,
 };
 
@@ -120,6 +122,9 @@ i386_init(void)
     zero_fill_data();
 
     getargs(kernBootStruct->bootString);
+
+    serial_dbg_init();
+    serial_dbg_puts("\nserial_dbg: i386 kernel console up\n");
 
     // Figure out what kind of cpu is present
 

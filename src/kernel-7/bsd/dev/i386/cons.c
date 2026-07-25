@@ -43,6 +43,7 @@
 #import <sys/tty.h>
 #import <sys/proc.h>
 #import <sys/uio.h>
+#import <machdep/i386/serial_dbg.h>
 
 struct tty	cons;
 struct tty	*constty;		/* current console device */
@@ -189,11 +190,26 @@ slave_cnenable()
 }
 #endif	NCPUS > 1
 
+#include <stdarg.h>
+#include <sys/subr_prf.h>
+
+/*
+ * Formats to a stack buffer and writes straight to the debug UART.  It
+ * deliberately avoids cnputc() and the tty layer so it stays usable in early
+ * boot, in interrupt context and during panic.
+ */
 void
 kprintf( const char *format, ...)
 {
-        /* on PPC this outputs to the serial line */
-        /* nop on intel ... umeshv@apple.com */
+	char	buf[256];
+	char	*bp = buf;
+	va_list	ap;
 
+	va_start(ap, format);
+	prf(format, ap, TOSTR, (struct tty *)&bp);
+	va_end(ap);
+	*bp = '\0';
+
+	serial_dbg_puts(buf);
 }
 

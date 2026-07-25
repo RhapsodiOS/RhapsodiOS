@@ -64,16 +64,19 @@
         /* Verify address was written correctly */
         verifyAddress = inl(PCI_CONFIG_ADDRESS);
 
-        if (verifyAddress == testAddress) {
-            /* Read from CONFIG_DATA */
-            dataValue = inl(PCI_CONFIG_DATA);
+        if (verifyAddress != testAddress) {
+            /* Readback mismatch - Mechanism #1 not present, bail out immediately */
+            return NO;
+        }
 
-            /* Check if we got a valid device (not 0xFFFFFFFF or 0x00000000) */
-            if (dataValue != 0xFFFFFFFF && dataValue != 0x00000000) {
-                /* Found a valid device - Mechanism #1 is present */
-                outl(PCI_CONFIG_ADDRESS, 0);
-                return YES;
-            }
+        /* Read from CONFIG_DATA */
+        dataValue = inl(PCI_CONFIG_DATA);
+
+        /* Check if we got a valid device (not 0xFFFFFFFF or 0x00000000) */
+        if (dataValue != 0xFFFFFFFF && dataValue != 0x00000000) {
+            /* Found a valid device - Mechanism #1 is present */
+            outl(PCI_CONFIG_ADDRESS, 0);
+            return YES;
         }
 
         /* Try next device address (increment by 0x800) */

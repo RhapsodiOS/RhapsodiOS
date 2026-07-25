@@ -261,7 +261,7 @@
           "IDA"
         ],
         "reasons": [
-          "Ghidra has no function at this address (see divergences.md analyzer-disagreement note); IDA instructions traced against source, found a divergence (see divergences.md Finding 1)"
+          "Ghidra has no function at this address (see divergences.md analyzer-disagreement note); IDA instructions traced against source, found a divergence (see divergences.md Finding 1); fix applied, block structure re-matched against reference control flow"
         ],
         "status": "agreed"
       },
@@ -274,7 +274,7 @@
       "size": 116,
       "source_line": 50,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 2656,
@@ -468,7 +468,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 6)"
+          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 6); fix applied, return code literal now matches reference control flow"
         ],
         "status": "agreed"
       },
@@ -481,7 +481,7 @@
       "size": 384,
       "source_line": 371,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4076,
@@ -537,7 +537,7 @@
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 7)"
+          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 7); fix applied, return code literal now matches reference control flow"
         ],
         "status": "agreed"
       },
@@ -550,7 +550,7 @@
       "size": 731,
       "source_line": 105,
       "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5048,

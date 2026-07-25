@@ -104,6 +104,11 @@ succeeds, so this rarely changes observed behaviour, but it is a real control-fl
 divergence: our reimplementation is more permissive (keeps scanning) than the
 reference binary (bails out on the first readback mismatch).
 
+**Outcome:** fixed. `test_M1` now returns `NO` immediately on a CONFIG_ADDRESS
+readback mismatch, without incrementing `testAddress` or clearing CONFIG_ADDRESS on
+that path; the loop-exhausted and device-found exits are untouched. Ledger status
+advanced from `unexamined` to `control-flow-confirmed`.
+
 ## Finding 2: `-[PCIKernBus test_M2]` at 0xAFC
 
 **Source:** `src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m:91`
@@ -327,6 +332,12 @@ Rhapsody i386 kernel (likely something set by the kernel's own PCI BIOS32
 detection during early boot); that is follow-up work beyond this analysis pass, but
 this pass pins down exactly which five bytes and which four ivars are involved.
 
+**Outcome:** not applied. Identifying what kernel structure lives at `0x130F0` in
+the original Rhapsody i386 kernel is follow-up work beyond this analysis pass;
+guessing an address would be worse than leaving the existing
+`/* TODO: Read these from PCI BIOS if available */` comment in place. Source and
+ledger status (`unexamined`) left unchanged.
+
 ## Finding 6: `_LookForID` at 0xE6C
 
 **Source:** `src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m:371`
@@ -370,6 +381,12 @@ the right code for "no device matched this ID pattern anywhere on the bus" — m
 specific than the generic `IO_R_INVALID_ARG`, and callers that branch on the
 specific `IOReturn` value would observe the difference.
 
+**Outcome:** fixed. `_LookForID`'s "scanned every bus and found nothing" exit now
+returns `IO_R_NOT_ATTACHED` instead of `IO_R_INVALID_ARG`. `IO_R_NOT_ATTACHED` is
+reachable in `PCIResourceDriver.m` via its existing `#import
+<driverkit/generalFuncs.h>`, which pulls in `driverkit/return.h`; no new include
+was needed. Ledger status advanced from `unexamined` to `control-flow-confirmed`.
+
 ## Finding 7: `-[PCIResourceDriver getCharValues:forParameter:count:]` at 0x10DC
 
 **Source:** `src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m:187`
@@ -408,6 +425,11 @@ what the switch's other fallthrough paths in this same function correctly use, a
 code in the reference binary, and it is the second of exactly two places in this
 driver where our source's `return IO_R_INVALID_ARG;` should instead be
 `return IO_R_NOT_ATTACHED;`.
+
+**Outcome:** fixed. The `PCI_ID(` case's empty-`_nameBuffer[0]` branch now returns
+`IO_R_NOT_ATTACHED` instead of `IO_R_INVALID_ARG`; the switch's other
+`IO_R_INVALID_ARG` returns are untouched. Ledger status advanced from
+`unexamined` to `control-flow-confirmed`.
 
 ## Functions examined with no divergence found
 

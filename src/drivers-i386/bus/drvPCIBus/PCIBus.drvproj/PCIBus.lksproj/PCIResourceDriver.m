@@ -187,7 +187,7 @@ static void Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
     case 5:  /* PCI_ID( */
         if (*count >= 80) {
             if (_nameBuffer[0] == '\0') {
-                return IO_R_INVALID_ARG;
+                return IO_R_NOT_ATTACHED;
             }
             idValue = strtoul(parsedStr, &parsedStr, 0);
             return LookForID(idValue, _nameBuffer, values, count);
@@ -389,7 +389,7 @@ static IOReturn LookForID(unsigned long idValue, char *nameBuffer,
         if (bus > maxBus) {
             /* Not found */
             *count = 0;
-            return IO_R_INVALID_ARG;
+            return IO_R_NOT_ATTACHED;
         }
 
         maxDev = [pciBus maxDevNum];

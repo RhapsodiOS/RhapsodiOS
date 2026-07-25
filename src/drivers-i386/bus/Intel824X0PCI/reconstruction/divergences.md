@@ -89,7 +89,7 @@ What this leaves unverified is worth naming plainly: the source changes recorded
 in the `**Outcome:**` lines below **have not been compiled**. Nothing here
 establishes that the file still builds, that the nine reference `__cstring`
 entries now appear verbatim, or that `-[Intel824X0 initFromDeviceDescription:]`
-still fits inside the reference's 460 bytes of code. The replacement strings were
+still fits inside the reference's 459 bytes of code. The replacement strings were
 written to match the enumerated `__cstring` table character for character,
 including the absent trailing newline on `%s: Detected `, but matching intent is
 not the same evidence as a parity run. Steps 4 to 6 of the Task 6 brief should be
@@ -683,7 +683,19 @@ already correct — the reference's `jz` reaches the BIOS-already-disabled messa
 and falls through to the disabling path, so the two source branches sit in the
 opposite textual order from the reference's blocks while testing the same bit with
 the same polarity. Inverting the source to match block order would be a
-code-generation guess this finding does not support. Ledger address 64 →
+code-generation guess this finding does not support. A second, independent
+signal was found during review: the reference binary's `__TEXT,__cstring`
+section enumerates its nine string literals in a specific order, seven of
+which appear in exactly the same order as the literals in our source text.
+The only two that do not match are precisely this pair — the reference lists
+`%s: Disabling PCI-to-Memory write posting.\n` before `%s: PCI-to-Memory write
+posting disabled by BIOS.\n`, while our source has them reversed. This ordering
+consistency suggests that the compiler emits `__cstring` entries in source-text
+order, which would mean Apple wrote `if (configData & 1) { Disabling... } else
+{ ...disabled by BIOS }`. Behaviour is identical either way; `parity_check.py`
+compares strings as a set and will not flag this difference. The change was
+correctly not made in this pass because the finding's disposition confined the
+fix to the two string literals themselves, not their sequencing. Ledger address 64 →
 `control-flow-confirmed`.
 
 ## Finding 8: the return values are computed differently (accepted)
@@ -883,9 +895,9 @@ replaceable by "complete" — the fixes are applied but uncompiled and unverifie
   that is `N_SECT` with the `N_EXT` bit clear, i.e. local. The reference has 16
   symbols of which exactly 12 are `N_EXT`, and the list is entirely
   `.objc_class_name_*`, `_Intel824X0_VERS_STRING`, `_Intel824X0_VERS_NUM`,
-  `_Intel824X0_instance` and the four undefined imports (`_IOLog`,
-  `_objc_msgSend`, `_objc_msgSendSuper` and the three inherited class-name
-  references). No Objective-C method symbol is among them. The same read of our
+  `_Intel824X0_instance` and the six undefined symbols: `_IOLog`,
+  `_objc_msgSend`, `_objc_msgSendSuper`, and the three inherited class-name
+  references. No Objective-C method symbol is among them. The same read of our
   staged artifact gives `n_type = 0x0e` for both methods as well, so the two
   binaries **agree**. The `binding: global` on entry 0 comes from
   `analysis-reference-ida.json`, where IDA reports its own name flags for the

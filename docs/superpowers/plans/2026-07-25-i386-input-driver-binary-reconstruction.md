@@ -134,7 +134,9 @@ Two scaffolding gaps are recorded here, with **no change made** — the spec's �
 
 drvPCParallel's `divergences.md` records instead that its two `PB.project` files were added in Task 2, that its `Load_Commands.sect` was already present and tracked since `3a0ab68f`, and what section sizes the build actually produces.
 
-**Step H — write `ledger.json`.** `schema-version` `ledger-v1`, `reference_sha256` from the table above, `rebuilt_sha256` `null`. One entry per reference function with `address`, `names`, `size`, `source_path`, `source_line`, `status`, `reason`, `reviewer`, `artifacts`, and `analyzer_agreement` (`{analyzers, reasons, status}`). Build-generated glue gets `intentional-mismatch` with a reason naming the Kernel Server project type and a reviewer. Verify with:
+**Step H — write `ledger.json`.** `binrecon ledger` resolves the profile's reference artifact, so `BINRECON_REFERENCE` must still be exported in the shell when you run it — the same value Step A used.
+
+ `schema-version` `ledger-v1`, `reference_sha256` from the table above, `rebuilt_sha256` `null`. One entry per reference function with `address`, `names`, `size`, `source_path`, `source_line`, `status`, `reason`, `reviewer`, `artifacts`, and `analyzer_agreement` (`{analyzers, reasons, status}`). Build-generated glue gets `intentional-mismatch` with a reason naming the Kernel Server project type and a reviewer. Verify with:
 
 ```bash
 ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
@@ -780,7 +782,7 @@ files were missing."
 | 1780 | 12 | `+[PS2MouseKernelServerInstance kernelServerInstance]` |
 | 1792 | 12 | `+[PS2MouseVersion driverKitVersionForPS2Mouse]` |
 
-Sizes are the gaps between consecutive addresses, with the last bounded by `__text` size 1804. Confirm each against the IDA partition; where IDA disagrees, IDA wins for the partition and the disagreement is recorded.
+Sizes above are the gaps between consecutive symbol addresses, with the last bounded by `__text` size 1804. **IDA's function extents run 1-3 bytes shorter than these gaps** because the linker pads between functions with `nop`; that is normal and is not an analyzer disagreement. IDA's extent is what the source map records — `load_source_map` checks against the IDA analysis, not against these gaps. Use the table above to identify functions, not to assert sizes.
 
 **Reference `__cstring` set**, for the string comparison:
 

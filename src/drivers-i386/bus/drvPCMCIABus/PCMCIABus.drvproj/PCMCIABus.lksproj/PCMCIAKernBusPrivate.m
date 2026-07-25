@@ -1202,15 +1202,6 @@ done:
 }
 
 /*
- * Parse tuple into device description
- */
-- (BOOL)parseTuple:tuple intoDeviceDescription:deviceDesc
-{
-    // TODO: Implement based on decompiled code
-    return NO;
-}
-
-/*
  * Enable socket
  */
 - (BOOL)enableSocket:socket

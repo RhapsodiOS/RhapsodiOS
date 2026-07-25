@@ -35,6 +35,7 @@
 #import <driverkit/KernLock.h>
 #import "PCMCIAKernBus.h"
 #import "PCMCIAKernBusPrivate.h"
+#import "PCMCIAKernBusParsing.h"
 #import "PCMCIAPool.h"
 #import "PCMCIATuple.h"
 #import "PCMCIAid.h"

@@ -58,7 +58,6 @@
 /* Tuple management */
 - copyTupleList:tupleList;
 - tupleListFromSocket:socket mappedAddress:(unsigned int)address;
-- (BOOL)parseTuple:tuple intoDeviceDescription:deviceDesc;
 
 /* Socket control */
 - (BOOL)enableSocket:socket;

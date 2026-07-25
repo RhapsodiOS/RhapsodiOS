@@ -80,7 +80,8 @@ def write_file(img, path, data, mtime=None):
     """Overwrite an existing file in place.
 
     Refuses if the path does not exist, if the payload exceeds the file's
-    already-allocated fragments, or if the file has holes.
+    already-allocated fragments, if the payload would change the file's
+    fragment count, or if the file has holes.
     """
     check_target(img.path)
 

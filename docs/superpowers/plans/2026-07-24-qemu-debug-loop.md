@@ -620,30 +620,47 @@ def _frags(self, inode):
             break
         take(b)
 
-    if len(out) < need and inode.ib[0]:
-        ind = self.read_frag(inode.ib[0], self.bsize)
-        for b in struct.unpack_from("<%di" % self.nindir, ind, 0):
-            if len(out) >= need:
-                break
-            take(b)
-
-    if len(out) < need and inode.ib[1]:
-        l1 = self.read_frag(inode.ib[1], self.bsize)
-        for b1 in struct.unpack_from("<%di" % self.nindir, l1, 0):
-            if len(out) >= need:
-                break
-            if not b1:
-                # A zero entry here is a hole spanning nindir blocks, not the end.
-                for _ in range(self.nindir):
-                    if len(out) >= need:
-                        break
-                    take(0)
-                continue
-            l2 = self.read_frag(b1, self.bsize)
-            for b in struct.unpack_from("<%di" % self.nindir, l2, 0):
+    # Single indirect: covers nindir blocks.  An absent pointer is a hole
+    # spanning that whole range, not the end of the file.
+    if len(out) < need:
+        if inode.ib[0]:
+            ind = self.read_frag(inode.ib[0], self.bsize)
+            for b in struct.unpack_from("<%di" % self.nindir, ind, 0):
                 if len(out) >= need:
                     break
                 take(b)
+        else:
+            for _ in range(self.nindir):
+                if len(out) >= need:
+                    break
+                take(0)
+
+    # Double indirect: covers nindir * nindir blocks.  An absent pointer is
+    # a hole spanning that whole range; an absent level-2 pointer is a hole
+    # spanning nindir blocks.
+    if len(out) < need:
+        if inode.ib[1]:
+            l1 = self.read_frag(inode.ib[1], self.bsize)
+            for b1 in struct.unpack_from("<%di" % self.nindir, l1, 0):
+                if len(out) >= need:
+                    break
+                if not b1:
+                    # A zero entry here is a hole spanning nindir blocks, not the end.
+                    for _ in range(self.nindir):
+                        if len(out) >= need:
+                            break
+                        take(0)
+                    continue
+                l2 = self.read_frag(b1, self.bsize)
+                for b in struct.unpack_from("<%di" % self.nindir, l2, 0):
+                    if len(out) >= need:
+                        break
+                    take(b)
+        else:
+            for _ in range(self.nindir * self.nindir):
+                if len(out) >= need:
+                    break
+                take(0)
 
     if len(out) < need:
         raise ValueError(

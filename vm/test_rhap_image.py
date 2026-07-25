@@ -182,9 +182,16 @@ class TestFragsFirstLevelIndirectHole(unittest.TestCase):
         img = self.FakeImage(fsize, frag, nindir, {500: l1, 600: l2})
 
         direct_frags = rhap_image.NDADDR * frag
-        hole_frags = nindir * frag
+        # ib[0]=0: the whole single-indirect range (nindir blocks) is a hole too.
+        single_indirect_hole_frags = nindir * frag
+        double_indirect_hole_frags = nindir * frag
         extra_real_frags = 2 * frag  # two real blocks in l2
-        need = direct_frags + hole_frags + extra_real_frags
+        need = (
+            direct_frags
+            + single_indirect_hole_frags
+            + double_indirect_hole_frags
+            + extra_real_frags
+        )
 
         inode = self.FakeInode(
             ino=999, size=need * fsize, db=[0] * rhap_image.NDADDR, ib=[0, 500, 0]
@@ -193,10 +200,43 @@ class TestFragsFirstLevelIndirectHole(unittest.TestCase):
         frags = rhap_image.Image.frags(img, inode)
 
         self.assertEqual(len(frags), need)
-        # Direct blocks are holes, and the first l1 entry is also a hole:
-        # both must come back as zero rather than truncating the walk.
-        self.assertEqual(frags[:direct_frags + hole_frags], [0] * (direct_frags + hole_frags))
+        # Direct blocks, the absent single-indirect pointer, and the first l1
+        # entry are all holes: none of them may truncate the walk.
+        all_hole_frags = direct_frags + single_indirect_hole_frags + double_indirect_hole_frags
+        self.assertEqual(frags[:all_hole_frags], [0] * all_hole_frags)
         # The second l1 entry points at real data past the hole.
-        tail = frags[direct_frags + hole_frags:]
+        tail = frags[all_hole_frags:]
         self.assertTrue(all(tail))
         self.assertEqual(tail, list(range(1000, 1008)) + list(range(2000, 2008)))
+
+
+class TestFragsFullySparseFile(unittest.TestCase):
+    """A file whose size extends past the direct blocks but whose single-
+    and double-indirect pointers are both zero is a legitimately sparse
+    file: the kernel never allocated indirect blocks just to hold a table
+    of zero pointers.  frags() must fill the whole range with holes rather
+    than raising.
+    """
+
+    FSIZE = TestFragsFirstLevelIndirectHole.FSIZE
+    FRAG = TestFragsFirstLevelIndirectHole.FRAG
+    NINDIR = TestFragsFirstLevelIndirectHole.NINDIR
+
+    def test_fully_sparse_file_returns_all_holes(self):
+        fsize, frag, nindir = self.FSIZE, self.FRAG, self.NINDIR
+        img = TestFragsFirstLevelIndirectHole.FakeImage(fsize, frag, nindir, {})
+
+        # Past the 12 direct blocks and the whole single-indirect range, well
+        # into the double-indirect range: several megabytes, fully sparse.
+        direct_frags = rhap_image.NDADDR * frag
+        single_indirect_frags = nindir * frag
+        need = direct_frags + single_indirect_frags + 10 * frag
+
+        inode = TestFragsFirstLevelIndirectHole.FakeInode(
+            ino=998, size=need * fsize, db=[0] * rhap_image.NDADDR, ib=[0, 0, 0]
+        )
+
+        frags = rhap_image.Image.frags(img, inode)
+
+        self.assertEqual(len(frags), need)
+        self.assertEqual(frags, [0] * need)

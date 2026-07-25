@@ -36,24 +36,21 @@
 #import <driverkit/i386/directDevice.h>
 #import <kernserv/prototypes.h>
 #import <mach/message.h>
-#import <stdlib.h>
 
-#ifndef IO_R_NOT_FOUND
-#define IO_R_NOT_FOUND IO_R_NO_DEVICE
-#endif
-
-/* Mouse type names for logging */
-static const char *mouseTypeNames[] = {
+/* Mouse type names for logging.  Slots 3 and 4 are the 2-button and 3-button
+ * members of the extended family that answers the "*?" capability query.
+ */
+const char *mouseTypeList[] = {
     "UNKNOWN",
     "M",
     "V3",
-    "M",
+    "W",
     "W3",
     "C"
 };
 
 /* Protocol names for logging */
-static const char *protocolList[] = {
+const char *protocolList[] = {
     "UNKNOWN",
     "MS",
     "M+",
@@ -68,9 +65,10 @@ static BOOL active = NO;
 /*
  * mainLoop - Thread function for processing serial mouse data
  */
-static void mainLoop(id driver)
+IOThreadFunc mainLoop(id driver)
 {
     [driver mainLoop:driver];
+    return 0;
 }
 
 @implementation SerialPointingDevice
@@ -85,7 +83,7 @@ static void mainLoop(id driver)
     unsigned char supports9600 = 0;
     unsigned char supportsX = 0;
     unsigned char subtype = 0;
-    unsigned char protocol = 0;
+    unsigned char protocolField = 0;
     unsigned int buttons = 0;
     unsigned char resolution = 0;
     int byteCount;
@@ -96,26 +94,26 @@ static void mainLoop(id driver)
     }
 
     /* Configure serial port parameters */
-    [serialPortObject executeEvent:0x0B data:0x78];    // Set parameter
-    [serialPortObject executeEvent:0x0F data:0x78];    // Set parameter
-    [serialPortObject executeEvent:0x1B data:0x50];    // Set parameter
-    [serialPortObject executeEvent:0x1F data:0x50];    // Set parameter
-    [serialPortObject executeEvent:0x13 data:0x28];    // Set parameter
-    [serialPortObject executeEvent:0x17 data:0x28];    // Set parameter
-    [serialPortObject executeEvent:0x33 data:0x960];   // Set baud rate (2400 baud)
-    [serialPortObject executeEvent:0x3B data:0x0E];    // Set parameter
-    [serialPortObject executeEvent:0x43 data:1];       // Set parameter
-    [serialPortObject executeEvent:0xF3 data:2];       // Set parameter
-    [serialPortObject executeEvent:0x53 data:0];       // Set parameter
+    [portDevice executeEvent:0x0B data:0x78];    // Set parameter
+    [portDevice executeEvent:0x0F data:0x78];    // Set parameter
+    [portDevice executeEvent:0x1B data:0x50];    // Set parameter
+    [portDevice executeEvent:0x1F data:0x50];    // Set parameter
+    [portDevice executeEvent:0x13 data:0x28];    // Set parameter
+    [portDevice executeEvent:0x17 data:0x28];    // Set parameter
+    [portDevice executeEvent:0x33 data:0x960];   // Set baud rate (2400 baud)
+    [portDevice executeEvent:0x3B data:0x0E];    // Set parameter
+    [portDevice executeEvent:0x43 data:1];       // Set parameter
+    [portDevice executeEvent:0xF3 data:2];       // Set parameter
+    [portDevice executeEvent:0x53 data:0];       // Set parameter
 
     /* Configure port state */
-    [serialPortObject setState:6 mask:6];              // Set DTR and RTS
+    [portDevice setState:6 mask:6];              // Set DTR and RTS
     IOSleep(100);
-    [serialPortObject setState:0 mask:4];              // Clear RTS
-    [serialPortObject executeEvent:5 data:1];          // Enable receiver
-    [serialPortObject setState:1 mask:1];              // Set state
+    [portDevice setState:0 mask:4];              // Clear RTS
+    [portDevice executeEvent:5 data:1];          // Enable receiver
+    [portDevice setState:1 mask:1];              // Set state
     IOSleep(100);
-    [serialPortObject setState:4 mask:4];              // Set RTS
+    [portDevice setState:4 mask:4];              // Set RTS
     IOSleep(300);
 
     /* Listen for identification bytes */
@@ -130,7 +128,7 @@ static void mainLoop(id driver)
         if (mouseType == 0 && byte == 'M') {
             /* Found 'M' - could be Microsoft mouse */
             mouseType = 1;
-            protocolType = 1;
+            protocol = 1;
         } else if (mouseType == 1 && byte == '3') {
             /* Found '3' after 'M' - confirmed Microsoft mouse */
             mouseType = 2;
@@ -144,12 +142,12 @@ static void mainLoop(id driver)
     /* If no Microsoft mouse detected, try other protocols */
     if (mouseType == 0) {
         /* Try different baud rates to detect Mouse Systems mouse */
-        [serialPortObject executeEvent:0x3B data:0x10];
+        [portDevice executeEvent:0x3B data:0x10];
 
         baudRate = 1200;
-        while (baudRate < 9600) {
-            [serialPortObject executeEvent:0x33 data:(baudRate * 2)];
-            [serialPortObject enqueueEvent:0x55 data:0x73 sleep:0];
+        do {
+            [portDevice executeEvent:0x33 data:(baudRate * 2)];
+            [portDevice enqueueEvent:0x55 data:0x73 sleep:0];
             IOSleep(100);
 
             if ([self getByte:&byte sleep:NO]) {
@@ -161,13 +159,13 @@ static void mainLoop(id driver)
             }
 
             baudRate *= 2;
-        }
+        } while (baudRate <= 9600);
 
         /* Configure Mouse Systems mouse if detected */
         if (mouseType == 5) {
-            [serialPortObject enqueueEvent:0x55 data:0x55 sleep:0];
-            [serialPortObject enqueueEvent:0x55 data:0x52 sleep:0];
-            protocolType = 3;
+            [portDevice enqueueEvent:0x55 data:0x55 sleep:0];
+            [portDevice enqueueEvent:0x55 data:0x52 sleep:0];
+            protocol = 3;
         }
     } else {
         /* Send "*?" command to query mouse capabilities */
@@ -175,8 +173,8 @@ static void mainLoop(id driver)
             IOLog("%s: Sending *? Command {", [self name]);
         }
 
-        [serialPortObject enqueueEvent:0x55 data:'*' sleep:0];
-        [serialPortObject enqueueEvent:0x55 data:'?' sleep:0];
+        [portDevice enqueueEvent:0x55 data:'*' sleep:0];
+        [portDevice enqueueEvent:0x55 data:'?' sleep:0];
         IOSleep(200);
 
         /* Parse the response */
@@ -211,7 +209,7 @@ static void mainLoop(id driver)
                 case 2:
                     /* Third byte: more capabilities */
                     buttons = (byte & 0x38) >> 3;
-                    protocol = byte & 7;
+                    protocolField = byte & 7;
                     break;
 
                 case 3:
@@ -231,7 +229,7 @@ static void mainLoop(id driver)
                               supports9600 ? "YES" : "NO",
                               supportsX ? "YES" : "NO",
                               subtype,
-                              protocol,
+                              protocolField,
                               buttons,
                               resolution);
                     }
@@ -246,7 +244,7 @@ static void mainLoop(id driver)
 
     /* Disable receiver if no mouse detected */
     if (mouseType == 0) {
-        [serialPortObject executeEvent:5 data:0];
+        [portDevice executeEvent:5 data:0];
     }
 
     return (mouseType != 0);
@@ -265,9 +263,8 @@ static void mainLoop(id driver)
     active = NO;
 
     /* Release serial port if acquired */
-    if (serialPortObject != nil) {
-        [serialPortObject release];
-        serialPortObject = nil;
+    if (portDevice != nil) {
+        [portDevice release];
     }
 
     /* Call superclass free */
@@ -277,7 +274,7 @@ static void mainLoop(id driver)
 /*
  * mouseInit: - Initialize the serial mouse/pointing device
  */
-- (IOReturn)mouseInit:(IODeviceDescription *)deviceDescription
+- (BOOL)mouseInit:(IODeviceDescription *)deviceDescription
 {
     IOConfigTable *configTable;
     const char *portDeviceName;
@@ -290,7 +287,7 @@ static void mainLoop(id driver)
     /* Check for duplicate instance */
     if (active) {
         IOLog("SerialPointingDevice: Duplicate instance aborting.\n");
-        return IO_R_BUSY;
+        return NO;
     }
 
     /* Initialize instance variables */
@@ -298,10 +295,10 @@ static void mainLoop(id driver)
     verbose = NO;
     inverted = NO;
     resolution = 0;
-    serialPortObject = nil;
+    portDevice = nil;
     mouseType = 0;
-    protocolType = 0;
-    mainLoopThread = NULL;
+    protocol = 0;
+    mainThread = NULL;
 
     /* Set device name and kind */
     [self setName:"SerialPointingDevice"];
@@ -311,7 +308,7 @@ static void mainLoop(id driver)
     configTable = [[self deviceDescription] configTable];
     if (configTable == nil) {
         IOLog("%s: Missing configuration table.\n", [self name]);
-        return IO_R_INVALID_ARG;
+        return NO;
     }
 
     /* Check for verbose mode */
@@ -325,22 +322,22 @@ static void mainLoop(id driver)
     portDeviceName = [configTable valueForStringKey:"Port Device"];
     if (portDeviceName == NULL) {
         IOLog("%s: No Serial Port specified in config table.\n", [self name]);
-        return IO_R_INVALID_ARG;
+        return NO;
     }
 
     /* Get the serial port object */
-    ret = IOGetObjectForDeviceName(portDeviceName, &serialPortObject);
+    ret = IOGetObjectForDeviceName(portDeviceName, &portDevice);
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: \"%s\" is not a registered port.\n", [self name], portDeviceName);
-        return IO_R_NOT_FOUND;
+        return NO;
     }
 
     /* Acquire the serial port */
-    ret = [serialPortObject acquire:self];
+    ret = [portDevice acquire:nil];
     if (ret != IO_R_SUCCESS) {
-        serialPortObject = nil;
+        portDevice = nil;
         IOLog("%s: Serial Port \"%s\" is already in use.\n", [self name], portDeviceName);
-        return IO_R_BUSY;
+        return NO;
     }
 
     if (verbose) {
@@ -363,9 +360,9 @@ static void mainLoop(id driver)
     resolutionStr = [configTable valueForStringKey:"Resolution"];
     if (resolutionStr == NULL) {
         resolution = 200;
-        IOLog("%s: No resolution in config table. Defaulting to %d\n", [self name], 200);
+        IOLog("%s: No resolution in config table.  Defaulting to %d\n", [self name], 200);
     } else {
-        resolution = atoi(resolutionStr);
+        resolution = PCPatoi((char *)resolutionStr);
         if (verbose) {
             IOLog("%s: Resolution = %d\n", [self name], resolution);
         }
@@ -385,17 +382,17 @@ static void mainLoop(id driver)
     /* Check if mouse was detected */
     if (mouseType != 0) {
         IOLog("%s: Detected mouse type %s on serial port %s.\n",
-              [self name], mouseTypeNames[mouseType], portDeviceName);
+              [self name], mouseTypeList[mouseType], portDeviceName);
 
         /* Fork the main loop thread */
-        mainLoopThread = (void *)IOForkThread((IOThreadFunc)mainLoop, self);
+        mainThread = (void *)IOForkThread((IOThreadFunc)mainLoop, self);
 
-        return IO_R_SUCCESS;
+        return YES;
     }
 
     /* No mouse detected */
     IOLog("%s: No mouse detected on serial port %s.\n", [self name], portDeviceName);
-    return IO_R_NOT_FOUND;
+    return NO;
 }
 
 /*
@@ -408,20 +405,20 @@ static void mainLoop(id driver)
     int i;
     BOOL match;
     const char *param;
-    const char *target;
+    const char *key;
     unsigned int value;
 
     /* Check for "Resolution" parameter (11 characters) */
     i = 11;
     match = YES;
     param = parameterName;
-    target = "Resolution";
+    key = "Resolution";
     do {
         if (i == 0) break;
         i = i - 1;
-        match = (*param == *target);
+        match = (*param == *key);
         param = param + 1;
-        target = target + 1;
+        key = key + 1;
     } while (match);
 
     if (match) {
@@ -432,18 +429,18 @@ static void mainLoop(id driver)
         i = 9;
         match = YES;
         param = parameterName;
-        target = "Inverted";
+        key = "Inverted";
         do {
             if (i == 0) break;
             i = i - 1;
-            match = (*param == *target);
+            match = (*param == *key);
             param = param + 1;
-            target = target + 1;
+            key = key + 1;
         } while (match);
 
         if (!match) {
             /* Unknown parameter */
-            return IO_R_INVALID_ARG;
+            return IO_R_UNSUPPORTED;
         }
 
         /* Return inverted flag */
@@ -464,7 +461,7 @@ static void mainLoop(id driver)
     int i;
     BOOL match;
     const char *param;
-    const char *target;
+    const char *key;
     unsigned int resolutionValue;
     char invertedValue;
 
@@ -472,13 +469,13 @@ static void mainLoop(id driver)
     i = 11;
     match = YES;
     param = parameterName;
-    target = "Resolution";
+    key = "Resolution";
     do {
         if (i == 0) break;
         i = i - 1;
-        match = (*param == *target);
+        match = (*param == *key);
         param = param + 1;
-        target = target + 1;
+        key = key + 1;
     } while (match);
 
     if (match) {
@@ -487,7 +484,7 @@ static void mainLoop(id driver)
 
         /* Get the resolution back and update the event port */
         resolutionValue = [self getResolution];
-        [mouseEventPort setResolution:resolutionValue];
+        [target setResolution:resolutionValue];
 
         if (verbose) {
             IOLog("%s: Resolution = %d\n", [self name], resolution);
@@ -500,13 +497,13 @@ static void mainLoop(id driver)
     i = 9;
     match = YES;
     param = parameterName;
-    target = "Inverted";
+    key = "Inverted";
     do {
         if (i == 0) break;
         i = i - 1;
-        match = (*param == *target);
+        match = (*param == *key);
         param = param + 1;
-        target = target + 1;
+        key = key + 1;
     } while (match);
 
     if (!match) {
@@ -517,7 +514,7 @@ static void mainLoop(id driver)
     /* Set inverted value */
     invertedValue = *(char *)parameterArray;
     inverted = invertedValue;
-    [mouseEventPort setInverted:invertedValue];
+    [target setInverted:invertedValue];
 
     if (verbose) {
         IOLog("%s: Invert = %s\n", [self name], inverted ? "YES" : "NO");
@@ -546,7 +543,7 @@ static void mainLoop(id driver)
 
     /* If successful, save the target */
     if (result) {
-        mouseEventPort = target;
+        target = target;
     }
 }
 
@@ -562,7 +559,7 @@ static void mainLoop(id driver)
     /* Loop while active */
     while (active) {
         /* Try to dequeue an event from the serial port */
-        ret = [serialPortObject dequeueEvent:&eventType data:&data sleep:shouldSleep];
+        ret = [portDevice dequeueEvent:&eventType data:&data sleep:shouldSleep];
 
         if (ret != IO_R_SUCCESS) {
             /* Error occurred */
@@ -611,12 +608,12 @@ static void mainLoop(id driver)
         if (verbose) {
             IOLog("%s: Detected Mouse Type %s, %s Protocol.\n",
                   [self name],
-                  mouseTypeNames[mouseType],
-                  protocolList[protocolType]);
+                  mouseTypeList[mouseType],
+                  protocolList[protocol]);
         }
 
-        /* Dispatch to appropriate protocol handler based on protocolType */
-        switch (protocolType) {
+        /* Dispatch to appropriate protocol handler based on protocol */
+        switch (protocol) {
             case 1:
                 [self MSProtocol];
                 break;
@@ -731,7 +728,7 @@ static void mainLoop(id driver)
                 mouseEvent.deltaY = -(char)yDelta;
 
                 /* Dispatch event if we have a target and timing is good */
-                if (mouseEventPort != nil) {
+                if (target != nil) {
                     /* Check timestamp ordering and delta */
                     shouldDispatch = NO;
 
@@ -746,7 +743,7 @@ static void mainLoop(id driver)
                     }
 
                     if (shouldDispatch) {
-                        [mouseEventPort dispatchPointerEvent:&mouseEvent];
+                        [target dispatchPointerEvent:&mouseEvent];
                     }
                 }
 
@@ -767,7 +764,7 @@ static void mainLoop(id driver)
 - (void)MMProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:5 data:0];
+    [portDevice executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;
@@ -849,7 +846,7 @@ static void mainLoop(id driver)
                 mouseEvent.deltaY = byte;
 
                 /* Dispatch event if we have a target and timing is good */
-                if (mouseEventPort != nil) {
+                if (target != nil) {
                     /* Check timestamp ordering and delta */
                     shouldDispatch = NO;
 
@@ -864,7 +861,7 @@ static void mainLoop(id driver)
                     }
 
                     if (shouldDispatch) {
-                        [mouseEventPort dispatchPointerEvent:&mouseEvent];
+                        [target dispatchPointerEvent:&mouseEvent];
                     }
                 }
 
@@ -893,7 +890,7 @@ static void mainLoop(id driver)
 - (void)RBProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:5 data:0];
+    [portDevice executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;
@@ -905,7 +902,7 @@ static void mainLoop(id driver)
 - (void)UnknownProtocol
 {
     /* Disable receiver */
-    [serialPortObject executeEvent:5 data:0];
+    [portDevice executeEvent:5 data:0];
 
     /* Mark driver as inactive */
     active = NO;

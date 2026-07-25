@@ -1,0 +1,46 @@
+SerialPointingDeviceInspector = {
+    ACTIONS = {
+	"invertDirections:" = "invertDirections:"; 
+	"setResolutionFromSlider:" = "setResolutionFromSlider:"; 
+	"setResolutionFromTextField:" = "setResolutionFromTextField:"; 
+	"setSerialPortFromTextField:" = "setSerialPortFromTextField:"; 
+    }; 
+    OUTLETS = {
+	fastText = fastText; 
+	invertedSwitch = invertedSwitch; 
+	resolutionBox = resolutionBox; 
+	resolutionField = resolutionField; 
+	resolutionSlider = resolutionSlider; 
+	serialPointingDeviceView = serialPointingDeviceView; 
+	serialPortBox = serialPortBox; 
+	serialPortField = serialPortField; 
+	slowText = slowText; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

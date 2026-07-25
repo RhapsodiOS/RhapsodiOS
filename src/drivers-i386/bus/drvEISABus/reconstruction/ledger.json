@@ -9,7 +9,7 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "genuinely absent from our source: EISAKernBusInterrupt has no initForResource:item:shareable: override at all (relies entirely on the inherited KernBusInterrupt initializer); reference registers the IRQ and sets its trigger mode here (see divergences.md Finding 5)"
+          "was genuinely absent from our source (EISAKernBusInterrupt had no initForResource:item:shareable: override at all, relying entirely on the inherited generic KernBusInterrupt initializer, which was traced and found to do only generic attached-interrupt-list/lock bookkeeping with no IRQ-specific registration at all); fix applied -- EISAKernBusInterrupt now overrides initForResource:item:shareable:, stores the IRQ, registers _EISAKernBusInterruptDispatch via intr_register_irq and sets trigger mode via intr_change_mode (skipping both for IRQ 2, the 8259 cascade), and allocates a KernLock at level 7 (see divergences.md Finding 5)"
         ],
         "status": "agreed"
       },
@@ -20,9 +20,9 @@
       "reason": null,
       "reviewer": null,
       "size": 197,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 200,
@@ -177,7 +177,7 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "genuinely absent from our source: no dispatch trampoline or auto-disable-on-unclaimed-interrupt logic exists anywhere in EISAKernBusInterrupt.m (see divergences.md Finding 5)"
+          "was genuinely absent from our source (no dispatch trampoline or auto-disable-on-unclaimed-interrupt logic existed anywhere in EISAKernBusInterrupt.m); fix applied -- added a static C trampoline (named _EISAKernBusInterruptDispatch, single leading underscore, matching this driver's own C helper naming convention rather than the reference's compiler-generated double-underscore symbol) that calls the generic KernBusInterruptDispatch() and, if unclaimed, acquires the EISALock, calls intr_disable_irq, and clears the enabled flag (see divergences.md Finding 5)"
         ],
         "status": "agreed"
       },
@@ -188,9 +188,9 @@
       "reason": null,
       "reviewer": null,
       "size": 62,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 56,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 984,

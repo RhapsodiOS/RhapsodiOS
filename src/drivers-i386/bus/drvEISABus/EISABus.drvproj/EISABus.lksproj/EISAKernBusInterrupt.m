@@ -33,7 +33,66 @@
 #import <driverkit/KernLock.h>
 #import <machdep/i386/intr_exported.h>
 
+/*
+ * Private ivar layout, needed so the C dispatch trampoline below (which
+ * intr_register_irq calls directly, not via objc_msgSend) can reach the
+ * @private instance variables -- the same pattern
+ * driverkit/KernBusInterruptPrivate.h uses for the generic
+ * KernBusInterruptDispatch().
+ */
+typedef struct EISAKernBusInterrupt_ {
+    @defs(EISAKernBusInterrupt)
+} EISAKernBusInterrupt_;
+
+/*
+ * _EISAKernBusInterruptDispatch - IRQ dispatch trampoline
+ *
+ * Registered with intr_register_irq() as the handler for this object's
+ * IRQ. Calls the generic KernBusInterruptDispatch() to run any attached
+ * device interrupt handlers; if none of them claim the interrupt, disables
+ * the IRQ line to prevent an interrupt storm from an unclaimed/shared line
+ * (see reconstruction/divergences.md Finding 5).
+ */
+static void _EISAKernBusInterruptDispatch(unsigned int which, void *state, int old_ipl)
+{
+    EISAKernBusInterrupt_ *interrupt = (EISAKernBusInterrupt_ *)which;
+
+    if (!KernBusInterruptDispatch((KernBusInterrupt *)interrupt, state)) {
+        KernLock *lock = (KernLock *)interrupt->_EISALock;
+
+        [lock acquire];
+        intr_disable_irq(interrupt->_irq);
+        interrupt->_irqEnabled = NO;
+        [lock release];
+    }
+}
+
 @implementation EISAKernBusInterrupt
+
+/*
+ * Initialize an EISA interrupt resource
+ *
+ * Registers the dispatch trampoline for this IRQ (unless it is IRQ 2, the
+ * 8259 slave/cascade line, which has no device behind it to dispatch to),
+ * sets the trigger mode from the shareable argument, and allocates the
+ * lock used to serialize IRQ enable/disable (see
+ * reconstruction/divergences.md Finding 5).
+ */
+- initForResource:resource item:(unsigned int)item shareable:(BOOL)shareable
+{
+    [super initForResource:resource item:item shareable:shareable];
+
+    _irq = (int)item;
+
+    if (_irq != 2) {
+        intr_register_irq(_irq, _EISAKernBusInterruptDispatch, (unsigned int)self, 3);
+        intr_change_mode(_irq, shareable);
+    }
+
+    _EISALock = [[KernLock alloc] initWithLevel:7];
+
+    return self;
+}
 
 - dealloc
 {

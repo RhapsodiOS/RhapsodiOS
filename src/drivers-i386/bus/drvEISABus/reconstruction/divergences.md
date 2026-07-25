@@ -250,6 +250,15 @@ plausible, not certain -- I cannot verify against the actual BIOS ROM code, and 
 the real PM16 entry convention tolerates the extra/missing padding in a way I have not identified.
 Recorded as the strongest concrete, verified calling-convention divergence found in this pass.
 
+**Outcome:** not applied, by design. This finding's own disposition says it needs the real PnP
+BIOS PM16 specification cross-referenced to confirm the exact per-function argument frame before
+a fix can be written; guessing a frame layout for a real-mode BIOS call neither this reconstruction
+nor our source has access to would risk delivering plausible-looking but wrong arguments to
+firmware, which is worse than the current, at-least-consistently-wrong 8-word packing. Left for a
+follow-up pass once the PM16 spec (or the 11 unmapped `PnPArgStack`/`_call_bios`/`__PnPEntry`/
+`bios_rtn` symbols this task also left out of scope) can be cross-referenced. Source and ledger
+status (`unexamined`) left unchanged.
+
 ## Finding 2: GDT lifecycle -- permanent installation vs. per-call borrow-and-restore
 
 **Source:** `PnPBios.m` `-init` (line 374), `-setupSegments` (line 615), `-free` (line 492).
@@ -410,6 +419,44 @@ system to appear hung/crashed. I have not traced what the generic `KernBusInterr
 actually does at `-init` time (out of scope for this pass), so I cannot say registration is
 *absent* versus merely *generic* -- only that the EISA-specific trigger-mode and self-disabling
 dispatch behaviour the reference clearly has is entirely missing from our override set.
+
+**Superclass tracing (prerequisite for the fix):** `src/kernel-7/driverkit/KernBusInterrupt.m`'s
+`-initForResource:item:withHandler:shareable:` (and the 3-arg `-initForResource:item:shareable:`
+that forwards to it with `handler:nil`) calls `[super initForResource:resource item:item
+shareable:shareable]` (superclass `KernBusItem`, which just records `_resource`/`_item`/
+`_shareable`), then allocates a generic attached-interrupt list (`_attachedInterrupts`) and two
+`KernLock`s (`_interruptLock`, `_suspendLock`) used purely for the shared attach/detach/suspend/
+resume bookkeeping every `KernBusInterrupt` subclass gets for free. **It does not call
+`intr_register_irq`, `intr_change_mode`, or touch any hardware IRQ vector at all** -- it has no
+concept of an IRQ number distinct from the generic `item` value, and no dispatch trampoline of its
+own; `KernBusInterruptDispatch()` (the generic C function it exposes) only walks the attached
+device list and reports whether any of them claimed the interrupt, it does not get called by
+anything unless something registers it with the interrupt controller first. This confirms
+registration is genuinely **absent**, not merely generic: nothing in the class hierarchy above
+`EISAKernBusInterrupt` ever calls `intr_register_irq` for any bus. This changed what was
+implemented: instead of guessing whether to duplicate superclass behaviour, the fix below adds
+only the EISA-specific pieces (IRQ storage, `intr_register_irq`/`intr_change_mode`, the dispatch
+trampoline, and the lock) and continues to call `[super initForResource:item:shareable:]` first so
+the generic list/lock bookkeeping still runs exactly as it does for every other `KernBusInterrupt`
+subclass.
+
+**Outcome:** fixed. `EISAKernBusInterrupt` now has an `-initForResource:item:shareable:` override
+(`EISAKernBusInterrupt.m:81`) that calls `[super initForResource:item:shareable:]`, stores `_irq`
+from `item`, and -- skipping both calls for IRQ 2, the 8259 cascade -- calls `intr_register_irq`
+with a new static trampoline `_EISAKernBusInterruptDispatch` at priority 3, then
+`intr_change_mode(_irq, shareable)`, then allocates `_EISALock` via `[[KernLock alloc]
+initWithLevel:7]`. The trampoline (`EISAKernBusInterrupt.m:56`) calls the generic
+`KernBusInterruptDispatch()` and, if unclaimed, acquires `_EISALock`, calls `intr_disable_irq`, and
+clears `_irqEnabled` -- the same auto-disable-on-unclaimed-interrupt behaviour the reference has.
+The existing (previously dead) `-dealloc`, which already called `intr_unregister_irq(_irq)` and
+`[_EISALock free]` on ivars nothing ever initialized, is now operating on real values and needed no
+changes itself. `intr_register_irq`, `intr_change_mode`, `intr_disable_irq`, and `KernLock`
+(`-initWithLevel:`) were all confirmed present in `src/kernel-7/machdep/i386/intr_exported.h` and
+`src/kernel-7/driverkit/KernLock.h` with the signatures used. `_irqAttached` (declared in the
+header) remains unused, matching the reference, which the 197-byte `initForResource:item:shareable:`
+disassembly summary does not mention touching either. Ledger status advanced from `unexamined` to
+`control-flow-confirmed` for both `-[EISAKernBusInterrupt initForResource:item:shareable:]` and
+`__EISAKernBusInterruptDispatch`.
 
 ## Finding 6: missing diagnostic-access counter in the raw PnP register accessors (cosmetic)
 

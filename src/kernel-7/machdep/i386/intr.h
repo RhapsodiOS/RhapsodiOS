@@ -169,8 +169,3 @@ typedef struct {
 #define INTR_MASTER_PHANTOM_IRQ	7
 #define INTR_SLAVE_PHANTOM_IRQ	15
 #define INTR_PHANTOM_IRQ_MASK	(1 << 7)
-
-/*
- * The master's IR2 input, to which the slave's INT is cascaded.
- */
-#define INTR_CASCADE_IRQ_MASK	(1 << 2)

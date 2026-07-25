@@ -62,39 +62,49 @@ static intr_irq_mask_t	current_irq_mask, disabled_irq_mask;
 static intr_irq_mask_t	current_elcr;
 
 /*
- * Send an EOI (end of interrupt) to both PICs.
+ * A specific EOI for one input of one PIC.
  */
 static inline
-void
-send_eoi(
-    void
+intr_ocw2_t
+specific_eoi(
+    int			level
 )
 {
-    send_eoi_command((intr_ocw2_t) {
-			0,		/* no level	*/
-			0,		/* must be	*/
-			TRUE,		/* EOI		*/
-			FALSE,		/* non-specific	*/
-			FALSE		/* no rotation	*/
+    return ((intr_ocw2_t) {
+			level,		/* input on this PIC	*/
+			0,		/* must be zero		*/
+			TRUE,		/* EOI			*/
+			TRUE,		/* specific		*/
+			FALSE		/* no rotation		*/
 		    });
 }
 
 /*
- * Send an EOI to the master PIC only.
+ * Acknowledge an interrupt.
+ *
+ * Specific rather than non-specific, and for a cascaded interrupt the
+ * slave is acknowledged before the master's cascade input.  This is the
+ * sequence Linux and NetBSD both use.
+ *
+ * Both details matter.  A non-specific EOI clears whichever in-service
+ * bit currently has the highest priority, which is not necessarily the
+ * interrupt being finished once interrupts nest.  Worse, the previous
+ * code sent one to *both* PICs regardless of where the interrupt came
+ * from, so finishing an interrupt on the master would also clear an
+ * unrelated slave interrupt that was still in service.
  */
 static inline
 void
-send_master_eoi(
-    void
+send_eoi(
+    int			irq
 )
 {
-    send_master_eoi_command((intr_ocw2_t) {
-			0,		/* no level	*/
-			0,		/* must be	*/
-			TRUE,		/* EOI		*/
-			FALSE,		/* non-specific	*/
-			FALSE		/* no rotation	*/
-		    });
+    if (irq >= INTR_NIRQ / 2) {
+	send_slave_eoi_command(specific_eoi(irq - INTR_NIRQ / 2));
+	send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
+    }
+    else
+	send_master_eoi_command(specific_eoi(irq));
 }
 
 static inline
@@ -159,30 +169,11 @@ set_irq_mask(
     if (new_mask.full.mask != current_irq_mask.mask) {
 	current_irq_mask = new_mask.full;
 
-	/*
-	 * Hold off cascade delivery while the slave's mask changes.
-	 *
-	 * The master latches a cascade request as soon as the slave
-	 * raises INT.  If the slave's mask is rewritten while such a
-	 * request is still outstanding -- which happens whenever a
-	 * higher priority interrupt such as the clock preempts a
-	 * pending slave interrupt -- the master eventually acknowledges
-	 * the cascade and finds the slave with nothing unmasked left to
-	 * report.  The slave answers with its IRQ 7 vector, which
-	 * arrives as a spurious IRQ 15.
-	 *
-	 * Masking IR2 across the update defers that acknowledgement
-	 * until the slave's mask has settled.  The request itself is
-	 * latched in the master's IRR, so nothing is lost.
-	 */
 	set_master_mask((intr_ocw1_t) {
-			    new_mask.master.half | INTR_CASCADE_IRQ_MASK });
+					    new_mask.master.half });
 
 	set_slave_mask((intr_ocw1_t) {
 					    new_mask.slave.half });
-
-	set_master_mask((intr_ocw1_t) {
-					    new_mask.master.half });
     }
 }
 
@@ -721,7 +712,7 @@ intr_handler(
 	 intr_cnt.phantom++;
 	 if (intr_cnt.phantom <= 8)
 	     printf("intr: phantom IRQ %d, EOI to master\n", irq);
-	 send_master_eoi();
+	 send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
 	 return;
     }
 
@@ -736,7 +727,7 @@ intr_handler(
      * Acknowledge by sending
      * an EOI command to the PICs.
      */
-    send_eoi();  
+    send_eoi(irq);
 
     /*
      * Leave this interrupt

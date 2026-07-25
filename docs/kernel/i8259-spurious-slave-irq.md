@@ -153,59 +153,94 @@ An earlier hypothesis blamed the EOI ordering in `send_eoi_command()`
 disproves it** — the spurious interrupts are preceded by the timer, not by the
 completion of a slave interrupt. That ordering is left unchanged.
 
+## How Linux and the BSDs handle this
+
+Before changing anything further, the reference implementations were read.
+
+**Linux** (`arch/x86/kernel/i8259.c`, `mask_and_ack_8259A`) masks the IRQ in the
+PIC on *every* interrupt entry, exactly as this kernel does, and its comment
+says that is mandatory:
+
+> Careful! The 8259A is a fragile beast, it pretty much _has_ to be done
+> exactly like this (mask it first, _then_ send the EOI...)
+
+So mask-on-the-fly is not the defect. Linux acknowledges with **specific** EOI,
+and for a slave IRQ sends two of them — the slave, then the master's cascade
+input:
+
+```c
+outb(0x60+(irq&7), PIC_SLAVE_CMD);         /* specific EOI to slave  */
+outb(0x60+PIC_CASCADE_IR, PIC_MASTER_CMD); /* specific EOI to master */
+```
+
+When it detects a spurious interrupt it does **not** return early — it jumps to
+`handle_real_irq` and sends the same EOI pair anyway:
+
+> Theoretically we do not have to handle this IRQ, but in Linux this does not
+> cause problems and is simpler for us.
+
+**NetBSD** (`sys/arch/x86/include/i8259.h`) does the same thing, and its comment
+is explicit about the order:
+
+```
+#define	i8259_asm_ack2(num) 	movb	$(0x60|(num%8)),%al	/* specific EOI */		;	outb	%al,$IO_ICU2		/* do the second ICU first */	;	movb	$(0x60|IRQ_SLAVE),%al	/* specific EOI for IRQ2 */	;	outb	%al,$IO_ICU1
+```
+
+**FreeBSD** (`sys/x86/isa/atpic.c`) takes a different approach: it does not mask
+on every entry, masking only level-triggered sources when a source is disabled,
+and uses non-specific EOI. `AUTO_EOI_1`/`AUTO_EOI_2` are not defined by default.
+
+The consensus of the two implementations whose design matches this kernel's is
+therefore: **mask on entry, acknowledge with specific EOI, slave before master,
+and acknowledge spurious interrupts rather than dropping them.**
+
+## What this kernel was doing
+
+`send_eoi()` took no argument. It sent a **non-specific** EOI to **both** PICs,
+unconditionally, regardless of which PIC the interrupt came from:
+
+```c
+    outb(INTR_PRIMARY_PORT, tconv.iodata);
+    outb(INTR2_PRIMARY_PORT, tconv.iodata);
+```
+
+That is wrong in two independent ways.
+
+A non-specific EOI clears whichever in-service bit currently has the highest
+priority, which is not necessarily the interrupt being finished once interrupts
+nest. And because it was sent to both PICs, **finishing an interrupt on the
+master also cleared an unrelated slave interrupt that was still in service** —
+so every clock tick that preempted a pending disk interrupt would clear the
+slave's in-service bit for it.
+
+That is a correctness bug in its own right, independent of any spurious-interrupt
+counting, and it is a strong candidate for the remaining 190: prematurely
+clearing the slave's in-service bit lets the slave re-raise INT for an interrupt
+that is still being handled, producing exactly the extra cascade requests that
+turn into spurious IRQ 15 when the input is masked.
+
 ## Fix
 
-`set_irq_mask()` now masks the master's IR2 across the update:
+`send_eoi()` now takes the IRQ and acknowledges the way Linux and NetBSD do:
 
-    master IMR |= cascade bit     -- hold off cascade acknowledgement
-    slave  IMR  = new value
-    master IMR  = new value       -- release
+```c
+    if (irq >= INTR_NIRQ / 2) {
+	send_slave_eoi_command(specific_eoi(irq - INTR_NIRQ / 2));
+	send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
+    }
+    else
+	send_master_eoi_command(specific_eoi(irq));
+```
 
-The cascade request stays latched in the master's IRR throughout, so no
-interrupt is lost; only its acknowledgement is deferred until the slave's mask
-is consistent. Cost is one extra `outb` per mask change.
+`send_eoi_command()`, which wrote to both PICs, is gone; `send_master_eoi_command()`
+and `send_slave_eoi_command()` replace it. The spurious-slave path from Part 1 now
+sends a specific cascade EOI rather than a non-specific one.
 
-## Result: partial, and the hypothesis was incomplete
-
-Measured after the change, on a comparably-loaded boot (4,200 disk interrupts
-against the baseline's 4,197):
-
-| | baseline | with IR2 bracketing |
-|---|---|---|
-| IRQ 14 (disk) | 4,197 | 4,200 |
-| IRQ 15 (spurious) | **227** | **190** |
-| rate | 5.4% | 4.5% |
-
-A reduction, but nowhere near elimination — and this is one run against one
-run, with no variance data, so the drop should be read as suggestive rather
-than established.
-
-All 190 remaining are still immediately preceded by the timer, so the
-mechanism is unchanged. The fix addressed the wrong window. Bracketing the
-mask *write* only closes a few microseconds; the real exposure is the whole
-time the slave IRQ stays masked:
-
-1. Disk asserts; the master latches the cascade in IRR2.
-2. The clock preempts and raises the IPL, masking IRQ 14 in the slave.
-3. The clock handler finishes and EOIs, clearing the master's ISR bit 0.
-4. The master now delivers the still-latched cascade — but IRQ 14 remains
-   masked, because the IPL is not lowered until the handler returns.
-5. The slave has nothing unmasked to report and answers with IRQ 7.
-
-Closing that properly would mean holding IR2 masked for the entire elevated-IPL
-window, which is not acceptable: masking IR2 blocks *every* slave interrupt,
-including higher-IPL ones that should still be delivered. It would trade a
-benign spurious interrupt for broken interrupt priority.
-
-The remaining options are to restructure mask-on-the-fly entirely — the
-`set_masked_ipl()` call in `intr_dispatch()` exists so level-triggered inputs
-work, so it cannot simply be dropped — or to accept the spurious interrupts.
-They are correctly handled by the Part 1 fix and cost one cheap trap each, so
-accepting them is the reasonable engineering answer at roughly 4.5% of disk
-interrupts.
-
-The IR2 bracketing is kept: it is correct, costs one `outb` per mask change,
-and narrows a genuine race. It is simply not sufficient on its own.
+**The IR2 bracketing described earlier has been reverted.** It was justified by a
+hypothesis the measurement showed to be incomplete, neither reference
+implementation does anything like it, and keeping a speculative mitigation
+alongside a principled fix would make the next measurement impossible to
+attribute.
 
 ## Verifying
 
@@ -219,6 +254,6 @@ The Part 1 `printf` is a cheap proxy: it reports the first eight phantom
 interrupts, so a boot that no longer prints eight of them has improved. The
 counter `intr_cnt.phantom` holds the true total.
 
-If the rate does not fall, this hypothesis is wrong too, and the next candidate
-is the mask-before-acknowledge sequence in `intr_dispatch()` itself — which
-exists to make level-triggered inputs work and so cannot simply be removed.
+If the count does not fall, the remaining exposure is the one Part 1's result
+section describes — the whole elevated-IPL window, not the mask write — and the
+honest answer is to accept it, as Linux does.

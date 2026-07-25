@@ -70,6 +70,9 @@ build_one() {
 			[ -f "$f" ] || continue
 			cp -p "$f" "$dst/"
 		done
+		if [ -f "$src/$proj/DriverInfo" ]; then
+			cp -p "$src/$proj/DriverInfo" "$dst/"
+		fi
 		if [ -d "$src/$proj/English.lproj" ]; then
 			cp -rp "$src/$proj/English.lproj" "$dst/"
 		fi
@@ -91,16 +94,48 @@ EOF
 	return 0
 }
 
+# With no arguments, build every driver. Otherwise build only those named,
+# by directory name, e.g. `sh build-i386-bus-drivers.sh Intel824X0PCI`.
+want() {
+	[ $# -eq 1 ] && return 0
+	target=$1
+	shift
+	for arg in "$@"; do
+		[ "$arg" = "$target" ] && return 0
+	done
+	return 1
+}
+
 fail=0
+built=
 # Under set -e, use `|| fail=1` so a failed driver does not abort the script.
-build_one PCIBus drvPCIBus PCIBus.drvproj || fail=1
-build_one EISABus drvEISABus EISABus.drvproj || fail=1
-build_one PCMCIABus drvPCMCIABus PCMCIABus.drvproj || fail=1
+if want drvPCIBus "$@"; then
+	build_one PCIBus drvPCIBus PCIBus.drvproj || fail=1
+	built="$built drvPCIBus"
+fi
+if want drvEISABus "$@"; then
+	build_one EISABus drvEISABus EISABus.drvproj || fail=1
+	built="$built drvEISABus"
+fi
+if want drvPCMCIABus "$@"; then
+	build_one PCMCIABus drvPCMCIABus PCMCIABus.drvproj || fail=1
+	built="$built drvPCMCIABus"
+fi
+if want Intel824X0PCI "$@"; then
+	build_one Intel824X0 Intel824X0PCI Intel824X0.drvproj || fail=1
+	built="$built Intel824X0PCI"
+fi
+if want Intel82365PCMCIA "$@"; then
+	build_one PCIC Intel82365PCMCIA PCIC.drvproj || fail=1
+	built="$built Intel82365PCMCIA"
+fi
 
 echo "======== summary ========"
-find "$OUT/drvPCIBus" "$OUT/drvEISABus" "$OUT/drvPCMCIABus" -type f 2>/dev/null | sort || true
-file "$OUT/drvPCIBus/PCIBus.config/PCIBus_reloc" \
-	"$OUT/drvEISABus/EISABus.config/EISABus_reloc" \
-	"$OUT/drvPCMCIABus/PCMCIABus.config/PCMCIABus_reloc" 2>&1 || true
-echo "=== bus-drivers done fail=$fail ==="
+for d in $built; do
+	find "$OUT/$d" -type f 2>/dev/null | sort || true
+done
+for d in $built; do
+	find "$OUT/$d" -name '*_reloc' -type f -exec file {} \; 2>&1 || true
+done
+echo "=== bus-drivers done fail=$fail built:$built ==="
 exit $fail

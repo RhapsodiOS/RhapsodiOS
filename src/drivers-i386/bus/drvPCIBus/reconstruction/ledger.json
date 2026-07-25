@@ -1,0 +1,672 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCIKernBus initialize]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 35,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 36,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 854,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 892,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 41,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 936,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; matches source ivar offset 0x10"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus maxBusNum]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 447,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 952,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; matches source ivar offset 0x14"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus maxDevNum]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 452,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 968,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; instruction-level comparison against source found a divergence (see divergences.md Finding 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus isPCIPresent]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 25,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; control-flow traced against source, not verified instruction by instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus testIDs:dev:fun:bus:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 429,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1428,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; control-flow traced against source, not verified instruction by instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus configAddress:device:function:bus:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 687,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2116,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source including IO_R_INVALID_ARG/IO_R_NO_DEVICE literals"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus getRegister:device:function:bus:data:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 173,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2292,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source including IO_R_INVALID_ARG/IO_R_NO_DEVICE literals"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus setRegister:device:function:bus:data:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 170,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2464,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus allocateResourcesForDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 73,
+      "source_line": 461,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2540,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function at this address (see divergences.md analyzer-disagreement note); IDA instructions traced against source, found a divergence (see divergences.md Finding 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus test_M1]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 116,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2656,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; instruction-level comparison against source found a divergence (see divergences.md Finding 4)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus Method1:device:function:bus:data:write:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 153,
+      "source_line": 140,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2812,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; instruction-level comparison against source found a divergence (see divergences.md Finding 2)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus test_M2]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 136,
+      "source_line": 91,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2948,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIKernBus Method2:device:function:bus:data:write:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 174,
+      "source_line": 186,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBusPrivate.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3124,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_Get_Maximums"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 89,
+      "source_line": 291,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3216,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_Get_ConfigReg"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 99,
+      "source_line": 347,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3316,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_Get_ConfigSpace"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 143,
+      "source_line": 313,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3460,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_Set_ConfigReg"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 84,
+      "source_line": 493,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3544,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_Set_ConfigSpace"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 147,
+      "source_line": 453,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3692,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 6)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_LookForID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 384,
+      "source_line": 371,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4076,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCIResourceDriver probe:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 116,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4192,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIResourceDriver initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 122,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4316,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; instruction-level comparison against source found a divergence (see divergences.md Finding 7)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIResourceDriver getCharValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 731,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5048,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; checked by grep for return-code literals plus block/call-count summary, not read line by line"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCIResourceDriver setCharValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 409,
+      "source_line": 226,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5460,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_PCIParsePrefix"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 75,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/pci.c",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size/calls agree; jump-table dispatch and representative state transitions traced against source, not every case verified"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_PCIParseKeys"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 906,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/pci.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6444,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForPCIBus), not present in source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCIBusKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 6456,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForPCIBus), not present in source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCIBusVersion driverKitVersionForPCIBus]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "3EFAC8A41B87C5B4D77358C2892E38A1F0A0821D7EDC18021182954B3C1A1451",
+  "schema_version": "ledger-v1"
+}

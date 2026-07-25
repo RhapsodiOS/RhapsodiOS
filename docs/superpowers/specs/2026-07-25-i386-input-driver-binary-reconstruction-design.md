@@ -73,7 +73,8 @@ function-level comparison.
 No boot testing, no QEMU run, and no binrecon comparison of a rebuilt artifact
 against the reference. Verification of the fix passes is defined in §4.3.
 
-No `Unload_Commands.sect` work (§2.7).
+`src/kernel-7` is untouched, including the second in-kernel `PS2Mouse.m` and
+`PCPointer.h` that the drivers subclass.
 
 ## 2. Findings that shaped this design
 
@@ -222,15 +223,54 @@ The same baseline run established the other four: drvBusMouse, drvPS2Keyboard,
 drvPS2Mouse and drvSerialPointingDevice all compile and stage a `_reloc` today.
 `drvISASerialPort`, which is out of scope, also fails.
 
-Two adjacent gaps are recorded as findings only, with no change made.
-drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice have no
-`Load_Commands.sect` and do not reference one, so their `Loaded Server,Load
-Commands` section will not match Apple's 164 bytes. And the reference binaries
-for BusMouse, PS2Keyboard, PS2Mouse and SerialPointingDevice each carry a
-`Loaded Server,Unload Commands` section of 102 bytes that nothing in this
-repository produces — including the three already-reconstructed bus drivers, so
-closing it would mean a build-system change plus a retrofit, which is out of
-scope.
+### 2.7a The `Loaded Server` section gaps are closed
+
+An earlier draft of this spec put both of the following out of scope and recorded
+them as findings only. Evidence from drvPS2Mouse's fix pass changed that: closing
+them costs one file and one word per driver, and produces exact section parity.
+Both are now in scope.
+
+`src/driverTools-1/KernelServerProjectType/kernelserver.make` emits each section
+purely from whether a filename appears in the project's `OTHERSRCS`:
+
+```make
+LOAD_SECTION   = Load_Commands.sect
+UNLOAD_SECTION = Unload_Commands.sect
+...
+ifneq "" "$(filter $(LOAD_SECTION), $(OTHERSRCS))"
+    KL_LDFLAGS_LOAD_COMMANDS = -l $(LOAD_SECTION)
+endif
+ifneq "" "$(filter $(UNLOAD_SECTION), $(OTHERSRCS))"
+    KL_LDFLAGS_UNLOAD_COMMANDS = -u $(UNLOAD_SECTION)
+endif
+```
+
+**`Load_Commands.sect`.** drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice
+lacked one, so their `Loaded Server,Load Commands` section could not match
+Apple's 164 bytes. drvPS2Mouse's fix pass added it and reached 164 exactly. The
+other two get the same treatment in their fix passes. drvBusMouse, drvPCParallel
+and drvISASerialPort already have the file.
+
+**`Unload_Commands.sect`.** The reference binaries for BusMouse, PS2Keyboard,
+PS2Mouse and SerialPointingDevice each carry a 102-byte
+`Loaded Server,Unload Commands` section that nothing in this repository produces.
+All four get one, with the reference content:
+
+```
+# 
+# This loadable kernel driver is not unloadable. (I think) this file
+# is still necessary.
+#
+```
+
+followed by the reference's trailing blank lines to reach exactly 102 bytes.
+ISASerialPort and ParallelPort have no such section in their references and must
+not gain one.
+
+The three already-reconstructed bus drivers also lack `Unload_Commands.sect`.
+Retrofitting them is deliberately **not** part of this effort — it belongs to
+whichever effort revisits those drivers — so the tree is knowingly left
+inconsistent on this point until then.
 
 ### 2.8 The build-generated residue is the same as before
 
@@ -570,6 +610,12 @@ Repository-wide:
 - `vm/build-i386-input-recon.sh`
 - `PB.project` for `PCParallelPort.drvproj` and for `PCParallelPort.lksproj`
 - `src/drivers-i386/README` status lines updated for all five
+- `Load_Commands.sect` for drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice,
+  each named in its `.lksproj/Makefile` `OTHERSRCS` (§2.7a)
+- `Unload_Commands.sect` for drvBusMouse, drvPS2Keyboard, drvPS2Mouse and
+  drvSerialPointingDevice, likewise named in `OTHERSRCS` (§2.7a)
 
-Not deliverables: any change to `drvISASerialPort`, any `Unload_Commands.sect`,
-any `Load_Commands.sect` at all, and any boot test.
+Not deliverables: any change to `drvISASerialPort`, any change under
+`src/kernel-7`, an `Unload_Commands.sect` for drvPCParallel or drvISASerialPort
+(neither reference has that section), a retrofit of `Unload_Commands.sect` onto
+the three already-reconstructed bus drivers, and any boot test.

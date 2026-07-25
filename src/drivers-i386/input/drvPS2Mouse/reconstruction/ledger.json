@@ -21,9 +21,9 @@
       "reason": null,
       "reviewer": null,
       "size": 179,
-      "source_line": 478,
+      "source_line": 450,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 180,
@@ -43,12 +43,12 @@
       "names": [
         "-[PS2Mouse isMousePresent]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The reference loads _func_list and dereferences it immediately, with no test against zero anywhere in the binary. The guard turns a would-be null dereference into a quiet NO and cannot change behaviour when the pointer is valid. Every other divergence in this function was fixed; the emitted body is otherwise the reference shape.",
+      "reviewer": "Pat Raynor",
       "size": 109,
-      "source_line": 268,
+      "source_line": 248,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 292,
@@ -68,12 +68,12 @@
       "names": [
         "-[PS2Mouse resetMouse]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The return type was corrected to void per Finding 2 and the 0xF6/0xF4 command pair already matched; the null guard is the only remaining difference from the reference.",
+      "reviewer": "Pat Raynor",
       "size": 37,
-      "source_line": 362,
+      "source_line": 337,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 332,
@@ -93,12 +93,12 @@
       "names": [
         "-[PS2Mouse initWithController:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 13, accepted: our source keeps six per-slot func_list != NULL guards that the reference does not have, so a partially populated table would silently skip hardware initialization rather than fault. Findings 2 and 7 were fixed (BOOL return, 8042 command bytes 0x20 and 0x60); Finding 4 confirmed the force_detection gate already matches and it was deliberately left uninverted.",
+      "reviewer": "Pat Raynor",
       "size": 350,
-      "source_line": 382,
+      "source_line": 355,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 684,
@@ -121,9 +121,9 @@
       "reason": null,
       "reviewer": null,
       "size": 214,
-      "source_line": 309,
+      "source_line": 289,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 900,
@@ -143,12 +143,12 @@
       "names": [
         "_PS2MouseIntHandler"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Findings 13 and 14, accepted: our source keeps a controllerFunctions == NULL early return the reference does not have, and the handler is declared to return unsigned int and returns 0 where the reference returns void and never writes eax. DriverKit discards the handler return value, so it is inert. Findings 5 and 11 were fixed: the three event buffers are now 12-byte PCPointerEvent objects in the reference bss order and both log strings match.",
+      "reviewer": "Pat Raynor",
       "size": 525,
-      "source_line": 122,
+      "source_line": 115,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1428,
@@ -171,9 +171,9 @@
       "reason": null,
       "reviewer": null,
       "size": 50,
-      "source_line": 549,
+      "source_line": 494,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1480,
@@ -196,7 +196,7 @@
       "reason": null,
       "reviewer": null,
       "size": 39,
-      "source_line": 537,
+      "source_line": 482,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -221,7 +221,7 @@
       "reason": null,
       "reviewer": null,
       "size": 16,
-      "source_line": 684,
+      "source_line": 623,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -246,9 +246,9 @@
       "reason": null,
       "reviewer": null,
       "size": 93,
-      "source_line": 569,
+      "source_line": 508,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1632,
@@ -268,12 +268,12 @@
       "names": [
         "-[PS2Mouse setIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 10, accepted: our source guards both dispatches with a target != nil test that the reference does not have, messaging target unconditionally in both branches. Objective-C messages to nil are no-ops returning 0, so the guarded and unguarded forms behave identically. Finding 9 was fixed: the no-match path now returns IO_R_UNSUPPORTED.",
+      "reviewer": "Pat Raynor",
       "size": 146,
-      "source_line": 618,
+      "source_line": 557,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1780,

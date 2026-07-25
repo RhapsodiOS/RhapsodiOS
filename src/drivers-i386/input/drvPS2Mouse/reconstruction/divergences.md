@@ -22,6 +22,44 @@ now so the fix pass can check them:
   the three already-reconstructed bus drivers. Closing that gap is a build-system change the
   spec puts out of scope; recorded, not fixed.
 
+### Baseline established by the fix pass (Task 4)
+
+The driver builds clean on the Rhapsody guest: `EXIT=0`, `fail=0`, staging a **103316-byte**
+`PS2Mouse_reloc`. That is far larger than the reference's 30204 because our build is
+unstripped; the size gap is expected and is not a finding. Baseline
+`parity_check.py`: `missing_strings` **5**, `missing_symbols` **0**, `extra_strings` **5**,
+`extra_symbols` **16**.
+
+After the fix pass the staged `_reloc` is 95068 bytes and parity is `missing_strings` **0**,
+`missing_symbols` **0**, `extra_strings` **0**, `extra_symbols` **16**. The 16 extras are
+`__TEXT,__text` local and stabs symbols that only exist because our build is unstripped, plus
+the two build-generated glue methods; the reference has no local symbol table at all.
+
+**Section sizes after the fix pass: 28 of the reference's 31 sections match byte for byte**,
+including every `__OBJC` section (`__class` 120, `__meta_class` 120, `__cls_meth` 40,
+`__inst_meth` 128, `__class_names` 111, `__meth_var_types` 116, `__meth_var_names` 528,
+`__instance_vars` 28, `__module_info` 32, `__symbols` 36, `__message_refs` 72),
+`__TEXT,__cstring` 355, `__DATA,__data` 0, `__DATA,__bss` 56, `__DATA,__common` 4, and all
+four `Loaded Server` sections our build emits. Three differ:
+
+| Section | Reference | Ours | Why |
+| --- | --- | --- | --- |
+| `__TEXT,__text` | 1804 | 1956 | the defensive guards accepted under Findings 10 and 13, and the handler return value accepted under Finding 14 |
+| `__TEXT,__const` | 170 | *absent* | `_PS2Mouse_VERS_STRING` (160 bytes) and `_PS2Mouse_VERS_NUM` (10 bytes) |
+| `Loaded Server,Unload Commands` | 102 | *absent* | recorded above |
+
+The `__const` gap is new information from the fix pass and is the same class of build-system
+gap as `Unload Commands`: those two symbols are emitted by NeXT's `vers_string` machinery, not
+written by hand, and **no driver in this repository produces them** — of the twelve `_reloc`
+artifacts currently staged under `out/i386/`, the only ones with a `__TEXT,__const` section at
+all (drvEIDE, drvISASerialPort, drvPCMCIABus) have it for ordinary `const` data of their own,
+not for version constants. Recorded, not fixed; out of scope for the same reason.
+
+`__DATA,__bss` reaching the reference's 56 bytes required dropping the explicit `= NULL`
+initializer on the `controllerFunctions` file static. NeXT's compiler places an explicitly
+initialized static in `__DATA,__data` even when the initializer is zero, which left our
+`__data` at 4 bytes and `__bss` at 50 against the reference's 0 and 56.
+
 ## Summary
 
 | Bucket | Count |
@@ -39,9 +77,20 @@ Of the 11 mapped functions, **2** have instruction streams that match our source
 (`-[PS2Mouse getHandler:level:argument:forInterrupt:]` and `-[PS2Mouse getResolution]`, both
 `assembly-matched`); both nonetheless carry declaration-level divergences recorded under
 Finding 2, which do not appear in the emitted code. The remaining **9** each carry at least one
-confirmed body divergence and stay `unexamined` in the ledger, per the convention that a
+confirmed body divergence and stayed `unexamined` in the ledger, per the convention that a
 diverging function is left for the fix pass. The 2 unmapped glue methods are
 `intentional-mismatch`.
+
+**Fix pass (Task 4) outcome.** All 9 were resolved. Four became `control-flow-confirmed` with
+no residual divergence (`mouseInit:`, `readConfigTable:`, `interruptOccurred`,
+`getIntValues:forParameter:count:`); five carry a divergence this document accepts under
+Finding 10, 13 or 14 and are `intentional-mismatch`, reviewed by Pat Raynor
+(`isMousePresent`, `resetMouse`, `initWithController:`, `_PS2MouseIntHandler`,
+`setIntValues:forParameter:count:`). No entry is `assembly-matched` on the strength of the fix
+pass: the rebuilt object was compared against the reference at the level of section sizes,
+Objective-C metadata, the string set and the symbol set — all of which now agree — but its
+`__text` was not disassembled and re-compared instruction for instruction, so that claim is
+not made.
 
 Beyond the function bodies, the object's Objective-C metadata was decoded directly from the
 Mach-O (`__class`, `__instance_vars`, `__inst_meth`, `__cls_meth`, `__meth_var_types`,
@@ -182,6 +231,19 @@ inherited) and supplies `PCPatoi` (Finding 8) and the `RESOLUTION`/`INVERTED` ke
 work is not speculative: the base class is already in the tree and its layout is confirmed
 against the binary.
 
+**Resolution (Task 4):** fixed. `PS2Mouse.h` now declares `@interface PS2Mouse : PCPointer`
+and imports `<bsd/dev/i386/PCPointer.h>` and `<bsd/dev/i386/PCPointerDefs.h>`; the lksproj
+`Makefile` gained `-DDRIVER_PRIVATE` so those headers expose their contents, matching the
+convention the three bus drivers already use. `resolution`, `inverted` and `mouseEventPort`
+were deleted as own ivars — the first two are now inherited and the third is PCPointer's
+`target` — leaving exactly `controller` and `force_detection`, and the ivar was renamed from
+`forceDetection` to `force_detection` to match `__instance_vars`. Verified in our rebuilt
+object: `__class` reports `instance_size = 332`, `__instance_vars` is 28 bytes, the class name
+list is `PS2Mouse`/`PCPointer`/`Object` with no `IODirectDevice` reference in the Objective-C
+metadata, and the debug symbols place `controller` at bit offset 2592 (0x144) and
+`force_detection` at 2624 (0x148). Ledger: `control-flow-confirmed` across the affected
+entries.
+
 ## Finding 2: method return types and signatures
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.h:49`
@@ -245,6 +307,14 @@ what calls `mouseInit:`, and `PCPointer.h:70` declares it `- (BOOL)mouseInit:dev
 Once Finding 1 re-parents the class, our current `IOReturn` return would report every
 successful probe as a failure and every `IO_R_NOT_ATTACHED` failure as a success. This must be
 fixed in the same change as Finding 1, not after it.
+
+**Resolution (Task 4):** fixed, in the same commit as Finding 1 as its rationale requires.
+`mouseInit:`, `initWithController:` and `readConfigTable:` now return `BOOL` with 1 = success;
+every `IO_R_SUCCESS` return on those paths became `YES` and every `IO_R_NOT_ATTACHED` /
+`IO_R_INVALID_ARG` became `NO`. `resetMouse` returns `void`, `getResolution` returns `int`, and
+`getHandler:`'s `argument:` parameter is now `unsigned int *`. Verified in the rebuilt object:
+`__meth_var_types` is 116 bytes as in the reference and carries `c12@8:12@16`, `v8@8:12`,
+`i8@8:12` and `^^?16^I20^I24I28`, with no `I8@8:12` and no `^^v` encoding.
 
 ## Finding 3: `readConfigTable:` takes the config table, not the device description
 
@@ -315,6 +385,11 @@ in `mouseInit:`. The nil-check semantics differ too: a valid device description 
 configuration table passes our check and fails the reference's.
 
 **Disposition:** fix
+
+**Resolution (Task 4):** fixed. `readConfigTable:` now takes an `IOConfigTable *` and
+nil-checks that, and `mouseInit:` sends `configTable` exactly once, passing the result
+straight through: `[self readConfigTable:[deviceDescription configTable]]`. The unused local
+in `mouseInit:` is gone.
 
 ## Finding 4: `Force Detection` sense — RESOLVED, no inversion needed
 
@@ -396,6 +471,11 @@ question arose; the code is unambiguous.
 
 **Disposition:** accept — our source already matches the reference. No change required.
 
+**Resolution (Task 4):** accepted unchanged, as this finding directs. `PS2Mouse.m`'s
+`if (!force_detection) { …presence check… }` was **not** inverted. The only edit in that
+region was renaming the ivar to `force_detection` (Finding 1) and returning `NO` instead of
+`IO_R_NOT_ATTACHED` (Finding 2); the sense of the test is exactly as it was.
+
 ## Finding 5: static-storage layout and the event struct
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:36`–`61`
@@ -466,6 +546,17 @@ static int lastTimeStamp_high = 0;
 **Rationale:** this is not merely cosmetic — Finding 6 is a live bug that falls directly out
 of it.
 
+**Resolution (Task 4):** fixed. The three event buffers are now single
+`PCPointerEvent` objects — `currentEvent`, `pendingEvent`, `summedEvent` — the type
+`<bsd/dev/i386/PCPointerDefs.h>` already declares as an 8-byte `ns_time_t timeStamp` followed
+by a 4-byte union whose `data.buf[0..2]` are the buttons and the X and Y deltas, exactly the
+12-byte shape the reference's accesses imply. The two loose `char` accumulators became
+`summedEvent.data.buf[1]`/`[2]`, the split `lastTimeStamp_low`/`_high` pair became one
+`ns_time_t lastTimeStamp`, and `seqBeingProcessed`/`seqInProgress` became `BOOL`. Declaration
+order now follows the reference's `__bss` order. Verified: `__DATA,__bss` is 56 bytes and
+`__DATA,__data` is 0, both matching the reference (see the baseline-build section for the
+`= NULL` initializer that had to be dropped to get there).
+
 ## Finding 6: `interruptOccurred` dispatches the wrong memory
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:562`
@@ -510,6 +601,12 @@ executes on both the nil and non-nil paths.
 **Rationale:** a real defect, not a stylistic difference. Every dispatched pointer event
 carries garbage buttons and deltas. It is fixed by Finding 5 (declare the 12-byte event struct
 and pass `&currentEvent`), and should not be patched independently.
+
+**Resolution (Task 4):** fixed, as a consequence of Finding 5 rather than independently.
+`interruptOccurred` now reads `[target dispatchPointerEvent:&currentEvent]` — the inherited
+`PCPointer` ivar at 0x128, and the whole 12-byte event whose timestamp, buttons and deltas are
+contiguous. The live defect is gone: dispatched events no longer carry the low bytes of an
+unrelated object as their buttons and deltas.
 
 ## Finding 7: `initWithController:` sends the wrong 8042 command bytes
 
@@ -574,6 +671,11 @@ ordering all match.
 **Rationale:** this determines whether IRQ12 is ever enabled on the controller. Getting the
 command bytes wrong means the mouse never delivers interrupts.
 
+**Resolution (Task 4):** fixed. The first `func_list[0]` call now passes
+`K8042_READ_COMMAND_BYTE` (0x20) and the second passes `K8042_WRITE_COMMAND_BYTE` (0x60), two
+new defines beside the existing PS/2 command defines. The argument-less first call is gone.
+IRQ12 is now actually enabled on the controller.
+
 ## Finding 8: `readConfigTable:` parses the resolution with `strtoul`, not `PCPatoi`
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:356`
@@ -620,6 +722,11 @@ image. The default-value path and the `0x96` literal match; only the log text di
 **Rationale:** `PCPatoi` arrives for free with Finding 1's re-parenting, since `PCPointer.h`
 declares it.
 
+**Resolution (Task 4):** fixed. `resolution = PCPatoi((char *)resolutionStr);` replaces
+the `strtoul` call. `PCPatoi` is declared by `PCPointer.h`, so it arrived with Finding 1 as
+predicted; the build produces no implicit-declaration warning for it and the reference's
+`_PCPatoi` UNDEF is reproduced.
+
 ## Finding 9: `getIntValues:`/`setIntValues:` return `IO_R_UNSUPPORTED`, not `IO_R_INVALID_ARG`
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:609`
@@ -660,6 +767,10 @@ the only values it ever holds (0 and 1) these are identical. Neither method touc
 **Rationale:** "this driver does not know that parameter" is `IO_R_UNSUPPORTED`, and callers
 that branch on the specific `IOReturn` would observe the difference. Same class of finding as
 drvPCIBus's Findings 6 and 7.
+
+**Resolution (Task 4):** fixed. Both no-match paths now return `IO_R_UNSUPPORTED`. The
+two `repe cmpsb`-shaped compare loops and the sign-extending read of `inverted` were left
+exactly as they were, since the report pass confirmed both already match.
 
 ## Finding 10: `setIntValues:` nil-checks the event port; the reference does not
 
@@ -708,6 +819,10 @@ unguarded forms behave identically. Recorded because it is a real, confirmed con
 difference from the reference, and because it is the only place our added guards are provably
 free of behavioural effect.
 
+**Resolution (Task 4):** accepted unchanged. Both `target` nil checks in `setIntValues:`
+remain. Ledger: `-[PS2Mouse setIntValues:forParameter:count:]` is `intentional-mismatch`,
+reviewed by Pat Raynor, for exactly this reason.
+
 ## Finding 11: string set
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m`, various
@@ -753,6 +868,11 @@ spaces in the reference and must be reproduced exactly.
 
 **Disposition:** fix
 
+**Resolution (Task 4):** fixed. All five strings replaced with the reference's text,
+including the two-space run in `no resolution in config table.  Default is %d`. Verified:
+`parity_check.py` reports `missing_strings` 0 and `extra_strings` 0 against the reference, and
+our `__TEXT,__cstring` is 355 bytes — the reference's size exactly.
+
 ## Finding 12: `Load_Commands.sect` is one byte short
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/Load_Commands.sect`
@@ -780,6 +900,10 @@ byte-exact section and a near-miss. The `Loaded Server,Unload Commands` section 
 remains unproduced by anything in this repository, as recorded in the baseline-build note
 above; that one is out of scope.
 
+**Resolution (Task 4):** fixed. `Load_Commands.sect`'s first line is now `# `. Verified:
+the file is 164 bytes and our `Loaded Server,Load Commands` section is 164 bytes, matching the
+reference.
+
 ## Finding 13: defensive null guards the reference does not have
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:132`,
@@ -801,6 +925,12 @@ into a quiet failure, which is strictly safer and cannot change behaviour when t
 valid. Recorded because it is real added code the reference does not contain, and because the
 per-slot guards in `initWithController:` mean a partially-populated table would silently skip
 hardware initialization rather than fault — worth knowing if that path is ever suspected.
+
+**Resolution (Task 4):** accepted unchanged. All four early returns and all six per-slot
+guards remain. This is most of the 152-byte `__TEXT,__text` excess our build carries over the
+reference. Ledger: `-[PS2Mouse isMousePresent]`, `-[PS2Mouse resetMouse]`,
+`-[PS2Mouse initWithController:]` and `_PS2MouseIntHandler` are `intentional-mismatch`,
+reviewed by Pat Raynor, for this reason.
 
 ## Finding 14: `_PS2MouseIntHandler` return value and `mouseInit:` initialization set
 
@@ -850,6 +980,16 @@ buffers are fully overwritten before they are ever read (`_indexInSequence` is z
 handler always fills byte 0 first). Recorded because both are real, confirmed differences from
 the reference; neither is worth a source change on its own, and Finding 5 will rewrite this
 region anyway.
+
+**Resolution (Task 4):** split. The `mouseInit:` half was **fixed** — since Finding 5
+rewrote this region anyway, the dead stores went with it, and `mouseInit:` now initializes
+exactly the reference's six locations (`seqInProgress`, `seqBeingProcessed`,
+`indexInSequence`, `summedEvent.data.buf[2]`, `summedEvent.data.buf[1]`, `resolution = 0x96`)
+and no longer pre-sets `inverted` or `force_detection` or clears the event buffers. The
+handler-return half was **accepted unchanged**: `PS2MouseIntHandler` still returns
+`unsigned int` and still returns 0, which DriverKit discards. Ledger: `_PS2MouseIntHandler`
+is `intentional-mismatch` (jointly with Finding 13); `-[PS2Mouse mouseInit:]` is
+`control-flow-confirmed` with no residual divergence.
 
 ## Functions examined with no divergence found
 

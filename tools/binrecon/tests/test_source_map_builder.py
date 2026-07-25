@@ -238,6 +238,46 @@ def test_source_sites_ignores_bare_arithmetic_inside_a_method_body(tmp_path):
     assert sites == {"-[Foo compute]": [("src/driver/Arith.m", 3)]}
 
 
+def test_source_sites_skips_multiline_c_prototype_and_finds_multiline_definition(
+    tmp_path,
+):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "PCIResourceDriver.c").write_text(
+        "#include <stdio.h>\n"
+        "\n"
+        "static int Get_Maximums(int x);\n"
+        "\n"
+        "static int Get_ConfigSpace(unsigned int *count, char *values,\n"
+        "                           unsigned int dev, unsigned int func,\n"
+        "                           unsigned int bus);\n"
+        "\n"
+        "static int Get_Maximums(int x)\n"
+        "{\n"
+        "    return x;\n"
+        "}\n"
+        "\n"
+        "static int Get_ConfigSpace(unsigned int *count, char *values,\n"
+        "                           unsigned int dev, unsigned int func,\n"
+        "                           unsigned int bus)\n"
+        "{\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    # Single-line prototype (line 3) is skipped; the single-line definition
+    # (line 9) is the one and only recorded site.
+    assert sites["_Get_Maximums"] == [("src/driver/PCIResourceDriver.c", 9)]
+    # Multi-line prototype (lines 5-7, terminating in ";" on a continuation
+    # line) is skipped; the multi-line definition (lines 14-17, wrapped
+    # parameters before the "{") is recorded at its first line, not the
+    # prototype's line.
+    assert sites["_Get_ConfigSpace"] == [("src/driver/PCIResourceDriver.c", 14)]
+
+
 def _analysis(functions, sha256="A" * 64):
     return {"input": {"sha256": sha256}, "functions": functions}
 

@@ -114,7 +114,37 @@ def source_sites(repo_root, source_dir):
                 continue
             definition = _C_DEFINITION.match(line)
             if definition:
-                sites.setdefault("_" + definition.group(1), []).append((relative, number))
+                declaration = [line]
+                found_brace = "{" in line
+                found_semicolon = not found_brace and line.rstrip().endswith(";")
+                end = min(total, index + _METHOD_DECLARATION_LIMIT)
+                scan = index
+                while not found_brace and not found_semicolon and scan + 1 < end:
+                    candidate = lines[scan + 1]
+                    if (
+                        _IMPLEMENTATION.match(candidate)
+                        or _END.match(candidate)
+                        or _C_DEFINITION.match(candidate)
+                    ):
+                        # A structural boundary, or the start of another
+                        # top-level declaration, before any brace/semicolon
+                        # means this prototype/definition never resolved;
+                        # stop without consuming the line so the outer loop
+                        # can process it on its own.
+                        break
+                    scan += 1
+                    declaration.append(candidate)
+                    if "{" in candidate:
+                        found_brace = True
+                    elif candidate.rstrip().endswith(";"):
+                        found_semicolon = True
+
+                if found_brace and not found_semicolon:
+                    sites.setdefault(
+                        "_" + definition.group(1), []
+                    ).append((relative, number))
+
+                index = scan
             index += 1
     return sites
 

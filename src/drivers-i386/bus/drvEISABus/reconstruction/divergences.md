@@ -315,6 +315,19 @@ is a real, confirmed, structural gap relative to the reference's explicit `cli`/
 and that it is a plausible crash mechanism -- I cannot say it *does* cause the observed crash
 without a live repro, which is out of scope for this analysis pass.
 
+**Outcome:** fixed. `call_pnp_bios` now brackets its inline-asm `lcall` with
+`splhigh()`/`splx()` (added `#include <kernserv/i386/spl.h>` to `bios.c`; the
+declarations were already visible to `PnPBios.m` in this same driver, just unused),
+matching the codebase's own idiom for this exact purpose elsewhere in
+`drivers-i386` (e.g. `IdeCnt.m`, `ISASerialPort.m`, `PS2Controller.m`) rather than
+inlining `cli`/`pushfd`/`popfd` into the existing hand-tuned asm block, so the
+inline-asm constraints touched by commit `778e0df4` are untouched. `splhigh()`
+raises to IPL 7 (the highest level), which is at least as strong as the reference's
+bare `cli`. No ledger entry corresponds to this fix: `call_pnp_bios`'s reference
+counterpart is `__bios32PnP`, which -- per the central finding above -- has no IDA
+function object and so was never added to `source-map.json`/`ledger.json` at all;
+there is nothing in the ledger to advance.
+
 ## Finding 4: `_getCardConfig`'s minimum-length check skips the Wait-for-Key cleanup
 
 **Source:** `EISAKernBus+PlugAndPlayPrivate.m:984` (`getCardConfig`) -- **note:** this function is

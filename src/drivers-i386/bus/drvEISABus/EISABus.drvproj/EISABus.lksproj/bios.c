@@ -29,6 +29,7 @@
 
 #include "bios.h"
 #include <driverkit/generalFuncs.h>
+#include <kernserv/i386/spl.h>
 
 /* Global PnP read port - set during initialization */
 extern unsigned short pnpReadPort;
@@ -59,11 +60,19 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
                                 unsigned short arg6, unsigned short arg7)
 {
     unsigned short status;
+    int s;
     /* NeXT i386 cc rejects '|' inside asm constraint expressions. */
     unsigned int eax_in = ((unsigned int)func) | (((unsigned int)arg1) << 16);
     unsigned int ebx_in = ((unsigned int)arg2) | (((unsigned int)arg3) << 16);
     unsigned int ecx_in = ((unsigned int)arg4) | (((unsigned int)arg5) << 16);
     unsigned int edx_in = ((unsigned int)arg6) | (((unsigned int)arg7) << 16);
+
+    /*
+     * Disable interrupts across the real/PM16 mode transition, matching
+     * the reference's cli-before/popfd-after bracket around __bios32PnP's
+     * callf into __PnPEntry (see reconstruction/divergences.md Finding 3).
+     */
+    s = splhigh();
 
     __asm__ __volatile__(
         "pushl  %%ebp\n\t"
@@ -93,6 +102,8 @@ int call_pnp_bios(unsigned short func, unsigned short arg1,
           "d" (edx_in)  /* input 3: EDX */
         : "memory" /* clobber memory */
     );
+
+    splx(s);
 
     return status;
 }

@@ -269,10 +269,23 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     /* Try to get PnP read port from config table */
     configPort = configTableLookupServerAttribute("EISABus", "PnP Read Port");
     if (configPort == NULL) {
-        /* No config attribute - auto-scan for read port */
-        /* Try read ports from 0x20B to 0x277 in steps of 4 */
-        /* Note: 0x203 is what the PnP Spec says to start with, but things like a standard joystick occupy the lower port addresses. */
-        readPort = 0x20B;
+        /*
+         * No config attribute - auto-scan for read port.
+         * The reference scans 0x203 through 0x277 inclusive in steps of 4,
+         * which is what the PnP Specification prescribes.
+         *
+         * Hazard: the first two candidates overlap the standard PC gameport,
+         * which decodes 0x200-0x207, so 0x203 and 0x207 are read from the
+         * joystick if one is installed.  That is a real concern -- reading
+         * those ports is harmless, but a joystick answering them can make a
+         * candidate look live.  What keeps it safe is the isolation protocol
+         * itself: isolateCard() reads 64 identifier bits, accumulates the
+         * running checksum over them, then reads the 8 checksum bits the
+         * card sends and rejects the card unless the two agree.  A gameport
+         * answering these ports cannot satisfy that, so a bad read port
+         * isolates no cards and the scan simply moves on.
+         */
+        readPort = 0x203;
 
         do {
             /*

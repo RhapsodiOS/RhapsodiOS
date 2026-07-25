@@ -11,13 +11,15 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
+from binrecon.macho import read_macho
 from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
+from binrecon.source_map import build_source_map, source_sites
 
 
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger")
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
     consensus.add_argument("--expected-analyzer", action="append",
                            dest="expected_analyzers")
     consensus.add_argument("--output", required=True)
+    source_map = subparsers.add_parser("source-map")
+    source_map.add_argument("--reference-analysis", required=True)
+    source_map.add_argument("--binary", required=True)
+    source_map.add_argument("--source-dir", required=True)
+    source_map.add_argument("--repo-root", required=True)
+    source_map.add_argument("--output", required=True)
 
     return parser
 
@@ -69,6 +77,8 @@ def main(argv=None) -> int:
             ("reference", profile.reference_identity),
             ("rebuilt", profile.rebuilt_identity),
         ):
+            if identity is None:
+                continue
             print(
                 f"{label} {identity.path} size={identity.size} "
                 f"sha256={identity.sha256}"
@@ -182,8 +192,31 @@ def main(argv=None) -> int:
             print(f"binrecon: {error}", file=sys.stderr); return 1
         return 0 if report["selected"]["passed"] else 1
 
+    if args.command == "source-map":
+        try:
+            return _source_map_command(args)
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
     print(f"binrecon: command not implemented: {args.command}")
     return 2
+
+
+def _source_map_command(arguments) -> int:
+    from binrecon.schema import load_json, load_source_map
+
+    analysis = load_json(Path(arguments.reference_analysis))
+    sites = source_sites(Path(arguments.repo_root), Path(arguments.source_dir))
+    document = build_source_map(analysis, read_macho(Path(arguments.binary)), sites)
+    output = Path(arguments.output)
+    output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    load_source_map(
+        output,
+        reference_analysis=analysis,
+        repo_root=Path(arguments.repo_root),
+    )
+    return 0
 
 
 _MAX_JSON = 16 * 1024 * 1024

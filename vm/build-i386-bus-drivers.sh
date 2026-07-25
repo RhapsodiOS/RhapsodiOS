@@ -1,8 +1,10 @@
 #!/bin/sh
-# Build i386 drvPCIBus, drvEISABus, drvPCMCIABus; stage reloc bundles.
+# Build i386 drvPCIBus, drvEISABus, drvPCMCIABus, Intel824X0PCI,
+# Intel82365PCMCIA; stage reloc bundles.
 # Userspace helpers (PostLoad/PnPDump) often fail on a PPC host — accept
 # success when the loadable *_reloc exists.
-set -e
+# Do not use set -e: NeXT /bin/sh treats `return 1` from a function as fatal
+# even when the call sits in `if want ...; then`, which aborts selective builds.
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
 BUS=/build/source/src/drivers-i386/bus
@@ -32,10 +34,8 @@ build_one() {
 	done
 
 	# Best-effort build; ignore overall make status if reloc lands.
-	set +e
 	gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 2>&1
 	ec=$?
-	set -e
 	echo "make exit=$ec for $name"
 
 	reloc=
@@ -97,18 +97,23 @@ EOF
 # With no arguments, build every driver. Otherwise build only those named,
 # by directory name, e.g. `sh build-i386-bus-drivers.sh Intel824X0PCI`.
 want() {
-	[ $# -eq 1 ] && return 0
+	# Use if/fi (not cmd && return) so a non-match does not trip set -e.
+	if [ $# -eq 1 ]; then
+		return 0
+	fi
 	target=$1
 	shift
 	for arg in "$@"; do
-		[ "$arg" = "$target" ] && return 0
+		if [ "$arg" = "$target" ]; then
+			return 0
+		fi
 	done
 	return 1
 }
 
 fail=0
 built=
-# Under set -e, use `|| fail=1` so a failed driver does not abort the script.
+# Use `|| fail=1` so one driver's failure does not stop the others from building.
 if want drvPCIBus "$@"; then
 	build_one PCIBus drvPCIBus PCIBus.drvproj || fail=1
 	built="$built drvPCIBus"

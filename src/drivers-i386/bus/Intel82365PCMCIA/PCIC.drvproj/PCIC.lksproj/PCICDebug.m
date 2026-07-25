@@ -38,10 +38,10 @@ extern unsigned int reg_base;
 static char *__memory = NULL;
 
 /* Forward declaration of setWindow function */
-static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
-                          unsigned int size, unsigned int physicalAddr,
-                          unsigned int offset, unsigned int flags,
-                          int windowType, int enable);
+static void setWindow(int socket, int window, unsigned int cardAddress,
+                      unsigned int size, unsigned int systemAddress,
+                      char is16Bit, char extraWaitState,
+                      char attributeMemory, char writeProtect);
 
 /*
  * Find empty memory range in upper memory (0xCC000-0xF0000)
@@ -115,8 +115,9 @@ unsigned long long MapAttributeMemory(int socket)
     outb(reg_base + 1, regValue & 0xE0);
 
     /* Configure the window
-     * Parameters: socket, window 0, base 0, size 0x2000 (8KB),
-     *            physical address, offset 0, flags 0, type 1, enable 0
+     * Parameters: socket, window 0, card address 0, size 0x2000 (8KB),
+     *            system address, 8-bit path, no extra wait state,
+     *            attribute memory, no write protect
      */
     setWindow(socket, 0, 0, 0x2000, physicalAddr, 0, 0, 1, 0);
 
@@ -130,17 +131,59 @@ unsigned long long MapAttributeMemory(int socket)
 
 /*
  * Set window configuration
- * Configures a PCMCIA memory or I/O window
- * Implementation to be filled in from decompiled code
+ * Programs the six registers of one memory window: the system start and stop
+ * addresses, the card offset, and the flags that ride in the high bits of the
+ * three odd registers
  */
-static IOReturn setWindow(int socket, int window, unsigned int baseAddr,
-                          unsigned int size, unsigned int physicalAddr,
-                          unsigned int offset, unsigned int flags,
-                          int windowType, int enable)
+static void setWindow(int socket, int window, unsigned int cardAddress,
+                      unsigned int size, unsigned int systemAddress,
+                      char is16Bit, char extraWaitState,
+                      char attributeMemory, char writeProtect)
 {
-    /* Placeholder implementation */
-    /* This would configure PCIC window registers for the specified parameters */
-    return IO_R_SUCCESS;
+    unsigned int cardOffset;
+    unsigned int stopAddress;
+    unsigned int socketOffset;
+    unsigned int windowOffset;
+    unsigned char regValue;
+
+    /* The card offset register holds a displacement that is added to the
+     * system address to reach the card address; 0x400000 is the 4MB wrap
+     * constant that keeps the field positive */
+    cardOffset = cardAddress + 0x400000 - systemAddress;
+
+    /* Window register base: (socket * 64) + 0x10 + (window * 8) */
+    windowOffset = window << 3;
+    socketOffset = socket << 6;
+
+    /* +0: system start address, bits 12-19 */
+    outb(reg_base, socketOffset + windowOffset + 0x10);
+    outb(reg_base + 1, (unsigned char)((systemAddress >> 12) & 0xFF));
+
+    /* +1: system start address bits 20-23, plus the 16-bit data path */
+    regValue = ((systemAddress >> 20) & 0x0F) | (is16Bit << 7);
+    outb(reg_base, socketOffset + windowOffset + 0x11);
+    outb(reg_base + 1, regValue);
+
+    /* +2: system stop address, bits 12-19 */
+    stopAddress = systemAddress + size - 1;
+    outb(reg_base, socketOffset + windowOffset + 0x12);
+    outb(reg_base + 1, (unsigned char)((stopAddress >> 12) & 0xFF));
+
+    /* +3: system stop address bits 20-23, plus the extra wait state */
+    regValue = ((stopAddress >> 20) & 0x0F) | (extraWaitState << 6);
+    outb(reg_base, socketOffset + windowOffset + 0x13);
+    outb(reg_base + 1, regValue);
+
+    /* +4: card offset address, bits 12-19 */
+    outb(reg_base, socketOffset + windowOffset + 0x14);
+    outb(reg_base + 1, (unsigned char)((cardOffset >> 12) & 0xFF));
+
+    /* +5: card offset bits 20-25, the attribute memory select and the
+     * write protect bit */
+    regValue = ((cardOffset >> 20) & 0x3F) | ((attributeMemory & 1) << 6);
+    regValue = (regValue & 0x7F) | (writeProtect << 7);
+    outb(reg_base, socketOffset + windowOffset + 0x15);
+    outb(reg_base + 1, regValue);
 }
 
 @implementation PCIC(Debug)

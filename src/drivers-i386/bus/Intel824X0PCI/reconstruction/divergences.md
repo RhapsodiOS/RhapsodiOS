@@ -77,6 +77,24 @@ strings of our own invention. The `extra_symbols` entries are stabs debug symbol
 and the empty string, i.e. the expected consequence of comparing an unstripped
 object against a stripped one, and are not findings.
 
+## Post-fix parity
+
+**Not run.** The fix pass had no transport to a Rhapsody build host either, so no
+rebuild was performed and there is no post-fix artifact to compare. Running
+`parity_check.py` again would only have re-measured the same unchanged staged
+binary described above and reported the pre-fix result, which would be worse than
+no number at all. No parity output is recorded here, and none is estimated.
+
+What this leaves unverified is worth naming plainly: the source changes recorded
+in the `**Outcome:**` lines below **have not been compiled**. Nothing here
+establishes that the file still builds, that the nine reference `__cstring`
+entries now appear verbatim, or that `-[Intel824X0 initFromDeviceDescription:]`
+still fits inside the reference's 460 bytes of code. The replacement strings were
+written to match the enumerated `__cstring` table character for character,
+including the absent trailing newline on `%s: Detected `, but matching intent is
+not the same evidence as a parity run. Steps 4 to 6 of the Task 6 brief should be
+run before this driver is called done.
+
 ## Summary
 
 | Bucket | Count |
@@ -101,6 +119,11 @@ drvPCMCIABus passes: a function known to diverge is written up here rather than
 given a positive status it has not earned. Ten findings follow; seven concern
 `-[Intel824X0 initFromDeviceDescription:]` (one of which is accepted), one concerns
 `+[Intel824X0 probe:]`, and two concern `Default.table`.
+
+*Updated by the fix pass:* the nine `fix` findings have been applied and both
+mapped functions now sit at `control-flow-confirmed`. See the `**Outcome:**` line
+on each finding, and `## Post-fix parity` for what that status does and does not
+rest on.
 
 The headline is that our `-[Intel824X0 initFromDeviceDescription:]` has the right
 *shape* — the same message sends in the same order, the same PCI registers, the
@@ -242,6 +265,13 @@ nothing observable changes. Worth doing anyway because it is the *only* remainin
 difference in an otherwise instruction-for-instruction match, and the one-token
 change buys byte-level parity for the whole function.
 
+**Outcome:** fixed. `[self alloc]` became `[Intel824X0 alloc]` at
+`Intel824X0.m:50`, which is what makes the compiler emit an `__OBJC,__cls_refs`
+load instead of an `[ebp+self]` load. `+[Intel824X0 probe:]` (ledger address 0)
+advanced `unexamined` → `signature-confirmed` → `control-flow-confirmed`. It is
+not `assembly-matched`: that claim needs a rebuilt binary, and no build was run
+this pass.
+
 ## Finding 2: both PCI device IDs are attributed to the wrong chipsets
 
 **Source:** `.../Intel824X0.m:36-38`, `:97-120`
@@ -292,6 +322,13 @@ identity. It is not merely cosmetic even though it only affects console output:
 anyone reading the boot log to work out which host bridge the machine has would be
 told the wrong answer, and the driver's own name (`Intel824X0` — a 824*X*0 family
 part, i.e. 82424/82434, not 8244x) contradicts our labelling.
+
+**Outcome:** fixed. `INTEL_82440FX_DEVID` and `INTEL_82443FX_DEVID` were deleted
+and replaced by `INTEL_82424ZX_ID 0x04838086` and `INTEL_82434LX_ID 0x04A38086`,
+whole 32-bit config-register-0 dwords rather than device-ID halves, so the two
+comparisons now read as the single `cmp` each that the reference emits instead of
+being reassembled from a shift and an or. Ledger address 64 →
+`control-flow-confirmed`.
 
 ## Finding 3: the detection banner is one composed line in the reference and three independent lines in ours
 
@@ -351,6 +388,15 @@ getPCIConfigData:&configData atRegister:0]`, then `[self name]`, then `IOLog` �
 so this is a string-and-newline change, not a restructuring. Fixing it is a
 prerequisite for Findings 4 and 6, which describe the tails of the line this
 finding establishes.
+
+**Outcome:** fixed. The banner is now `IOLog("%s: Detected ", [self name]);` with
+no trailing newline, and the three tails supply the rest of the line. The
+`deviceName` local was dropped and `[self name]` is called inline at all three
+sites, matching the reference, which pushes the `objc_msgSend` result straight
+into the `IOLog` argument list and keeps no such local: its frame is exactly
+`objc_super` + `configData` + the flag (`lea esp, [ebp-1Ch]` at 513 over three
+saved registers). The `vendorID`, `deviceID` and `revisionID` locals were dropped
+for the same reason. Ledger address 64 → `control-flow-confirmed`.
 
 ## Finding 4: the 82434 stepping letter uses `0x0C`/`0x0E` and `%d` where the reference uses `'L'`/`'N'` and `%c`
 
@@ -441,6 +487,15 @@ a varargs call whose format string under-consumes its arguments. Combined with
 Finding 2 the whole branch currently reports a chipset that is not present and a
 stepping value that was never read.
 
+**Outcome:** fixed. The branch is now a single `IOLog("Intel 82434%cX
+Host-Bridge (step A-%d)\n", (configData & 0x10) ? 'N' : 'L', configData & 0x0F);`
+— two conversions, two arguments, so the arity bug is gone. The ternary replaces
+the if/else pair, which is what the reference's `mov eax, 4Ch` / conditional `mov
+eax, 4Eh` at 314–325 is: one value selected, one call site. The separate
+`revisionID` local was dropped and the arming test rewritten as `(configData &
+0xFF) == 0x10`, the byte compare the reference performs at 344. Ledger address 64
+→ `control-flow-confirmed`.
+
 ## Finding 5: `setDeviceKind:` passes a descriptive string where the reference passes `"Other"`
 
 **Source:** `.../Intel824X0.m:71`
@@ -475,6 +530,11 @@ source also does.
 `IODeviceDescription`; a driver reporting a different kind than the reference is a
 real, externally visible behaviour difference, however small. It is also a
 one-string change.
+
+**Outcome:** fixed. `[self setDeviceKind:"Intel 824X0 PCI Host Bridge"]` became
+`[self setDeviceKind:"Other"]`, agreeing with `"Family" = "Other";` in
+`Default.table` as the reference does. Ledger address 64 →
+`control-flow-confirmed`.
 
 ## Finding 6: the unrecognised-device path composes `"Intel "` + `"Host-Bridge\n"` instead of logging two unrelated lines
 
@@ -524,6 +584,12 @@ reference has no `%04x` anywhere in `__cstring`; the value is simply not reporte
 and only the strings need replacing, but "Unknown or unsupported chipset" actively
 misinforms: the reference treats an unrecognised Intel host bridge as a perfectly
 normal outcome and says so neutrally.
+
+**Outcome:** fixed. The branch now reads `if ((configData & 0xFFFF) ==
+INTEL_VENDOR_ID) IOLog("Intel ");` followed by an unconditional
+`IOLog("Host-Bridge\n");`. The `deviceID` value we used to format is no longer
+computed or printed, matching the reference, which has no `%04x` anywhere in
+`__cstring`. Ledger address 64 → `control-flow-confirmed`.
 
 ## Finding 7: the write-posting log strings differ (the register, bit and polarity do not)
 
@@ -607,6 +673,19 @@ write posting disabled by BIOS.`, and `Write-posting enabled, disabling...` vers
 regardless of reconstruction fidelity, and since the surrounding logic is already
 correct the fix is confined to two string literals.
 
+**Outcome:** fixed. The two literals became `"%s: Disabling PCI-to-Memory write
+posting.\n"` and `"%s: PCI-to-Memory write posting disabled by BIOS.\n"`, losing
+the doubled `Intel824X0: ` prefix. The `deviceName` local was dropped here too and
+`[self name]` moved inline into each `IOLog`, which is what the reference does at
+420–439 and 472–491. Deliberately *not* changed: the `if ((configData &
+DRAMC_WP_ENABLE) == 0) { … } else { … }` sense, which this finding records as
+already correct — the reference's `jz` reaches the BIOS-already-disabled message
+and falls through to the disabling path, so the two source branches sit in the
+opposite textual order from the reference's blocks while testing the same bit with
+the same polarity. Inverting the source to match block order would be a
+code-generation guess this finding does not support. Ledger address 64 →
+`control-flow-confirmed`.
+
 ## Finding 8: the return values are computed differently (accepted)
 
 **Source:** `.../Intel824X0.m:74-83`, `:147`
@@ -676,6 +755,9 @@ constructions produce identical values on every path. The difference is in how
 Apple's source happened to be spelled, not in what the function does. Recorded
 because it is real and confirmed, not because it needs changing.
 
+**Outcome:** accepted, no change. `return self;` and the two `[self free]; return
+nil;` failure paths are as they were.
+
 Everything else in this prologue matches exactly, and is worth stating positively:
 `objc_msgSendSuper` with a stack-built `objc_super`, the nil test on its result,
 the `getPCIdevice:function:bus:` probe sent to **`deviceDescription`** (not to
@@ -702,6 +784,9 @@ auto-matched to the host bridge no matter how correct the code is. Confirmed
 present in the staged build's copy of the table as well, so it is not a
 transcription error in the report.
 
+**Outcome:** fixed. `Default.table:8` now reads `"Auto Detect IDs"`. No ledger
+entry covers `Default.table`, so no status moved for this.
+
 ## Finding 10: `Default.table` is missing the `Version` line
 
 **Source:** `src/drivers-i386/bus/Intel824X0PCI/Intel824X0.drvproj/Default.table`
@@ -719,6 +804,10 @@ transcription error in the report.
 back by driver-management tooling. No evidence was found either way about whether
 its absence breaks loading, so it is recorded as a straightforward gap rather than
 a severity claim.
+
+**Outcome:** fixed. `"Version" = "5.01";` was inserted between `"Instance" = "0";`
+and the first `"Server Name" = "Intel824X0";`, the position the reference uses.
+`"Driver Version"` was deliberately not added; see the section below.
 
 ## Accepted: `Default.table` `"Driver Version"`
 
@@ -738,6 +827,11 @@ seconds earlier). Accepted; nothing to do.
 None. Both hand-written functions carry at least one confirmed divergence and stay
 `unexamined` in the ledger. The two build-generated functions are recorded as
 `intentional-mismatch`.
+
+*Updated by the fix pass:* both hand-written functions were moved to
+`control-flow-confirmed` once their divergences were applied, transiting
+`signature-confirmed` on the way because the ledger tool refuses to skip states.
+The two build-generated entries were left at `intentional-mismatch`.
 
 ## README status
 
@@ -768,6 +862,12 @@ drivers in the same file:
 The README was **not** edited as part of this pass — this is a report, and Task 6
 applies the changes.
 
+*Updated by the fix pass:* the fix pass did not edit `src/drivers-i386/README`
+either. Ownership of that file moved to the later README task so that all the
+reconstructed drivers get one consistent rewording, and because the wording
+suggested above ("fixes not yet applied") is now out of date without being
+replaceable by "complete" — the fixes are applied but uncompiled and unverified.
+
 ## Uncertainty and limits of this pass
 
 - No build was run and no baseline parity of record exists; see the two sections
@@ -776,6 +876,25 @@ applies the changes.
 - `+[Intel824X0 probe:]` carries symbol binding `global` in the reference while
   `-[Intel824X0 initFromDeviceDescription:]` carries `local`. Why the two differ
   was not investigated; it does not affect any finding.
+
+  *Resolved by the fix pass: there is no divergence, and the `global` label is an
+  IDA artifact.* Reading the reference's Mach-O symbol table directly, all four
+  `__text` symbols — including `+[Intel824X0 probe:]` — have `n_type = 0x0e`,
+  that is `N_SECT` with the `N_EXT` bit clear, i.e. local. The reference has 16
+  symbols of which exactly 12 are `N_EXT`, and the list is entirely
+  `.objc_class_name_*`, `_Intel824X0_VERS_STRING`, `_Intel824X0_VERS_NUM`,
+  `_Intel824X0_instance` and the four undefined imports (`_IOLog`,
+  `_objc_msgSend`, `_objc_msgSendSuper` and the three inherited class-name
+  references). No Objective-C method symbol is among them. The same read of our
+  staged artifact gives `n_type = 0x0e` for both methods as well, so the two
+  binaries **agree**. The `binding: global` on entry 0 comes from
+  `analysis-reference-ida.json`, where IDA reports its own name flags for the
+  function at address 0 rather than the Mach-O `N_EXT` bit; `binrecon.macho`
+  reads the symbol table itself and calls it `local` in both binaries. Nothing
+  was changed. Even had the binaries genuinely differed, the binding of an
+  Objective-C method label is chosen by the compiler's ObjC emitter, not
+  expressible in the method's source text, so it would not have been actionable
+  here.
 - The reference's `-[Intel824X0 initFromDeviceDescription:]` was read as 149
   instructions across 21 basic blocks, which IDA and Ghidra agree on exactly. No
   instruction in it was left unaccounted for by the findings above, but the

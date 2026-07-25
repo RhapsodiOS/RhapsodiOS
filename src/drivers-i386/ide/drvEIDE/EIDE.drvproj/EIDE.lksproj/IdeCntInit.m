@@ -399,19 +399,18 @@ ata_mode_to_mask(ata_mode_t mode)
 		}
 	}
 
-#if 0
     /*
      * Does the host support IOCHRDY? There is no way for the driver to find
      * this out. The user has to set this flag.
      */
+	_IOCHRDYSupport = NO;
     params = [[deviceDescription configTable] 
     			valueForStringKey: HOST_IORDY_SUPPORT];
-
-    if ((params == NULL) || (strcmp(params, "Yes") != 0))
-	_IOCHRDYSupport = NO;
-    else
-	_IOCHRDYSupport = YES;  
-#endif /* 0 */
+	if (params) {
+		if ((*params == 'Y') || (*params == 'y'))
+			_IOCHRDYSupport = YES;
+		[configTable freeString:params];
+	}
 
     _transferWidth = IDE_TRANSFER_16_BIT;
 
@@ -595,20 +594,26 @@ ata_mode_to_mask(ata_mode_t mode)
  */
 - (void) getControllerCapability
 {
-	/*
-	 * Set default values.
-	 */
-	_controllerModes.mode.pio   = ATA_MODE_0;
+	_controllerModes.mode.pio   = ata_mode_to_mask(ATA_MODE_0);
 	_controllerModes.mode.swdma = ATA_MODE_NONE;
 	_controllerModes.mode.mwdma = ATA_MODE_NONE;
 	_controllerModes.mode.udma  = ATA_MODE_NONE;
-	
-	if (_controllerID != PCI_ID_NONE)
-		[self getPCIControllerCapabilities:(txferModes_t *)&_controllerModes];
-	else {
-		// Assume all IDE controllers are capable of PIO Mode 4
-		//
-		_controllerModes.mode.pio   = ata_mode_to_mask(ATA_MODE_4);
+
+	if (_chipsetOps != NULL) {
+		_controllerModes.mode.pio = ata_mode_to_mask(1 << _chipCaps.maxPIO);
+		if ((_chipCaps.flags & CHIP_FLAG_BUSMASTER) &&
+			(_chipCaps.maxMWDMA != ATA_MODE_NUM_NONE))
+			_controllerModes.mode.mwdma = ata_mode_to_mask(1 << _chipCaps.maxMWDMA);
+		if ((_chipCaps.flags & CHIP_FLAG_BUSMASTER) &&
+			(_chipCaps.maxUDMA != ATA_MODE_NUM_NONE))
+			_controllerModes.mode.udma = ata_mode_to_mask(1 << _chipCaps.maxUDMA);
+	} else {
+		/* PIO modes 3 and 4 need host IORDY, which we cannot detect.
+		 * Trust the user's "IOCHRDY Support" setting; otherwise stay at
+		 * the fastest mode that needs no host timing programming.
+		 */
+		_controllerModes.mode.pio = ata_mode_to_mask(
+			_IOCHRDYSupport ? ATA_MODE_4 : ATA_MODE_2);
 	}
 }
 
@@ -828,13 +833,29 @@ ata_mode_to_mask(ata_mode_t mode)
 	 */
 	[self getControllerCapability];
 
+	/*
+	 * Determine cable type and cap UDMA at mode 2 (ATA/33) unless an
+	 * 80-conductor cable is present. Required for UDMA modes 3-5.
+	 */
+	if (_chipsetOps != NULL && _chipsetOps->detectCable != NULL)
+		_has80WireCable = _chipsetOps->detectCable(self);
+	else
+		_has80WireCable = NO;
+
+	if (!_has80WireCable) {
+		ata_mask_t udma33 = ata_mode_to_mask(ATA_MODE_2);
+		_controllerModes.mode.udma &= udma33;
+		IOLog("%s: 40-wire cable (or none): UDMA limited to Mode 2\n",
+			[self name]);
+	}
+
 	/* Qualify the default mask for each drive with the
 	 * controller's mask.
 	 */
 	for (i = 0; i < MAX_IDE_DRIVES; i++) {
 		_drives[i].driveMasks.modes &= _controllerModes.modes;
 	}
-	
+
 	/*
 	 * Loops through one cycle of the configuration process:
 	 *
@@ -963,6 +984,40 @@ ata_mode_to_mask(ata_mode_t mode)
 	 * It seems that ATA-3 defined a IDENTIFY DEVICE DMA command, but they
 	 * no longer exist in ATA-4. Did they get dropped?
 	 */
+
+	/*
+	 * IRQ health check: run one interrupt-driven READ VERIFY on the first
+	 * present ATA drive with a short timeout. If it completes only when we
+	 * poll the status (no interrupt delivered), switch to polled mode so a
+	 * misrouted/native-mode IRQ does not hang every command.
+	 */
+	if (!_pollMode) {
+		int u;
+		for (u = 0; u < MAX_IDE_DRIVES; u++) {
+			unsigned char st;
+			unsigned int saved;
+			ideRegsVal_t rv;
+			if (_drives[u].ideInfo.type == 0 || [self isAtapiDevice:u])
+				continue;
+			_driveNum = u;
+			saved = [self interruptTimeOut];
+			[self setInterruptTimeOut:IDE_INTR_TIMEOUT_FAST];
+			[self clearInterrupts];
+			rv = [self logToPhys:0 numOfBlocks:1];
+			if ([self ideReadVerifySeekCommon:&rv command:IDE_READ_VERIFY]
+					!= IDER_SUCCESS) {
+				/* No interrupt within the short window. Did it finish anyway? */
+				if ([self pollForCompletion:&st] == IDER_SUCCESS) {
+					_pollMode = YES;
+					IOLog("%s: no IDE interrupt detected; using polled mode\n",
+						[self name]);
+				}
+			}
+			[self setInterruptTimeOut:saved];
+			break;
+		}
+	}
+
 	for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
 
 		_driveNum = unit;
@@ -1002,7 +1057,7 @@ ata_mode_to_mask(ata_mode_t mode)
 	    		addr:buf] != IDER_SUCCESS) {
 	    		IOLog("%s: Drive %d: Read Multiple test FAILED\n",
 					[self name], unit);
-				_multiSectorRequested = NO;
+				_drives[unit].multiSectorDisabled = YES;
 				retry = YES;
 	    	}
 	    	IOFree(buf, _drives[unit].multiSector * IDE_SECTOR_SIZE);
@@ -1013,16 +1068,56 @@ ata_mode_to_mask(ata_mode_t mode)
 }
 
 /*
+ * Recovery used when a command fails. Reset the drives and re-apply the
+ * configuration we already negotiated. A software reset clears the drive's
+ * parameters, transfer mode and multi-sector block size, so those must be
+ * re-issued or our bookkeeping would no longer match the drive. Unlike
+ * resetAndInit this does not re-negotiate capabilities or run self-tests.
+ */
+- (void)recoverDrives
+{
+	unsigned char unit;
+
+	[self ideReset];
+
+	for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
+		if (_drives[unit].ideInfo.type == 0)
+			continue;
+
+		if ([self isAtapiDevice:unit] == YES) {
+			[self atapiSoftReset:unit];
+			continue;
+		}
+
+		_driveNum = unit;
+
+		[self ideSetParams:_drives[unit].ideInfo.sectors_per_trk
+			numHeads:_drives[unit].ideInfo.heads ForDrive:unit];
+
+		[self ideSetDriveFeature:FEATURE_SET_TRANSFER_MODE
+			value:_drives[unit].transferMode
+			transferType:_drives[unit].transferType];
+
+		if (_drives[unit].multiSector) {
+			ideRegsVal_t ideRegs;
+
+			bzero((unsigned char *)&ideRegs, sizeof(ideRegs));
+			if ([self ideSetMultiSectorMode:&ideRegs
+				numSectors:_drives[unit].multiSector] != IDER_SUCCESS)
+				_drives[unit].multiSector = 0;
+		}
+	}
+}
+
+/*
  * Method: resetController
  *
  * Reset the controller on the HOST side.
  */
 - (void)resetController
 {
-	/*
-	 * Return the controller to the compatible timing mode.
-	 */
-	[self resetPCIController];
+	if (_chipsetOps != NULL && _chipsetOps->resetTiming != NULL)
+		_chipsetOps->resetTiming(self);
 }
 
 /*
@@ -1175,9 +1270,8 @@ ata_mode_to_mask(ata_mode_t mode)
  */
 - (BOOL) setControllerCapabilities
 {
-	if (_controllerID != PCI_ID_NONE) {
-		if ([self setPCIControllerCapabilitiesForDrives:_drives] == NO)
-			return NO;
+	if (_chipsetOps != NULL && _chipsetOps->setTiming != NULL) {
+		_chipsetOps->setTiming(self, _drives);
 		_transferWidth = [self getPIOTransferWidth];
 		return YES;
 	}
@@ -1199,6 +1293,8 @@ ata_mode_to_mask(ata_mode_t mode)
     unsigned char nSectors;
 	ide_return_t rtn;
     ideIdentifyInfo_t *infoPtr = _drives[unit].ideIdentifyInfo;
+
+    bzero((unsigned char *)&ideRegs, sizeof(ideRegs));
 
     _drives[unit].ideIdentifyInfoSupported = YES;
     bzero(infoPtr, sizeof(ideIdentifyInfo_t));
@@ -1290,7 +1386,8 @@ ata_mode_to_mask(ata_mode_t mode)
 	 */
 	nSectors = infoPtr->multipleSectors & IDE_MULTI_SECTOR_MASK;
 	if ((_drives[unit].transferType == IDE_TRANSFER_PIO) &&
-		(nSectors) && (_multiSectorRequested == YES)) {
+		(nSectors) && (_multiSectorRequested == YES) &&
+		(_drives[unit].multiSectorDisabled == NO)) {
 		if ([self ideSetMultiSectorMode:&ideRegs numSectors:nSectors] ==
 			IDER_SUCCESS) {
 			_drives[unit].multiSector = nSectors;

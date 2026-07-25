@@ -68,7 +68,14 @@
  * Initializes the IDE interface by sending commands to controller. 
  */
 - (void)resetAndInit;
-		
+
+/*
+ * Lightweight recovery used when a command fails. Resets the drives and
+ * re-applies the already-negotiated configuration, without re-running
+ * capability negotiation or self-tests.
+ */
+- (void)recoverDrives;
+
 - (ide_return_t)setATADriveCapabilities:(unsigned int)unit	
 		withBIOSInfo:(BOOL)biosInfo;
 

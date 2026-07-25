@@ -43,22 +43,12 @@
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
-#import <driverkit/interruptMsg.h>
-#import <mach/mach_interface.h>
-#import <machdep/i386/io_inline.h>
 #import <string.h>
 #import <stdio.h>
-#import "IdeDDM.h"
 #import "PIIX.h"
 #import "PIIXTiming.h"
 #import "IdeShared.h"
-
-// XXX get rid of this
-#if (IO_DRIVERKIT_VERSION != 330)
-#import <machdep/machine/pmap.h>
-#endif
-
-extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_offset_t va);
+#import "IdeBMIDE.h"
 
 //#define DEBUG
 
@@ -70,47 +60,84 @@ extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_offset_t va);
 #define MAX(a,b)    ((a) > (b) ? (a) : (b))
 #endif  MAX
 
-/*
- * Function: IOMallocPage
- *
- * Purpose:
- *   Returns a pointer to a page-aligned memory block of size >= PAGE_SIZE.
- *   Note that on Intel, the hardware page size of 4K. However, MACH's
- *   notion of a page is 8K, which is comprised of two contiguous
- *   (physical/virtual) hardware pages.
- *
- * Return:
- *   Actual pointer and size of block returned in actual_ptr and actual_size.
- *   Use these as arguments to IOFree: IOFree(*actual_ptr, *actual_size);
- */
-static void *
-IOMallocPage(int request_size, void ** actual_ptr,
-				 int * actual_size)
-{
-    void * mem_ptr;
-    
-	/*
-	 * Minimize memory use by first trying to allocate the requested size
-	 * without any padding.
-	 */
-	*actual_size = round_page(request_size);
-	mem_ptr = IOMalloc(*actual_size);
-	if (mem_ptr == NULL)
-		return NULL;
-	
-	/*
-	 * Check alignment of this page.
-	 */
-	if ((vm_offset_t)mem_ptr & (PAGE_SIZE - 1)) {	// NOT page aligned.
-		IOFree(mem_ptr, *actual_size);
-		*actual_size = round_page(request_size) + PAGE_SIZE;
-		mem_ptr = IOMalloc(*actual_size);
-		if (mem_ptr == NULL)
-			return NULL;		
-	}
+/* Per-chip capabilities. Modes are ATA mode NUMBERS. */
+typedef struct {
+	unsigned long id;
+	const char   *name;
+	unsigned char maxPIO;    /* 4 for all these parts */
+	unsigned char maxMWDMA;  /* 2, or ATA_MODE_NUM_NONE */
+	unsigned char maxUDMA;   /* per chip, or ATA_MODE_NUM_NONE */
+	unsigned int  flags;     /* CHIP_FLAG_HAS_IDECONFIG for ICH */
+} intelChip_t;
 
-	*actual_ptr = mem_ptr;
-	return ((void *)round_page(mem_ptr));		
+static const intelChip_t intelChips[] = {
+	{ 0x12308086, "PIIX",   4, 2, ATA_MODE_NUM_NONE, 0 },
+	{ 0x70108086, "PIIX3",  4, 2, ATA_MODE_NUM_NONE, 0 },
+	{ 0x71118086, "PIIX4",  4, 2, 2, 0 },
+	{ 0x71128086, "PIIX4E", 4, 2, 2, 0 },
+	{ 0x71138086, "PIIX4M", 4, 2, 2, 0 },
+	{ 0x24218086, "ICH0",   4, 2, 2, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24118086, "ICH",    4, 2, 4, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x244A8086, "ICH2-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x244B8086, "ICH2",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x248A8086, "ICH3-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x248B8086, "ICH3",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24CA8086, "ICH4-M", 4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0x24CB8086, "ICH4",   4, 2, 5, CHIP_FLAG_HAS_IDECONFIG },
+	{ 0, 0, 0, 0, 0, 0 }
+};
+
+static const intelChip_t *intelLookup(unsigned long id)
+{
+	const intelChip_t *c;
+	for (c = intelChips; c->id != 0; c++)
+		if (c->id == id) return c;
+	return NULL;
+}
+
+static BOOL intelMatch(unsigned long pciID, unsigned char progIf,
+	ideChipCaps_t *out)
+{
+	const intelChip_t *c = intelLookup(pciID);
+	if (c == NULL) return NO;
+	out->maxPIO   = c->maxPIO;
+	out->maxMWDMA = c->maxMWDMA;
+	out->maxUDMA  = c->maxUDMA;
+	out->flags    = c->flags | ((progIf & PCI_IDE_BUSMASTER) ? CHIP_FLAG_BUSMASTER : 0);
+	return YES;
+}
+
+static void intelSetTiming(id self, void *drives)
+{
+	IOPCIConfigSpace configSpace;
+	[self getPCIConfigSpace:&configSpace];
+	[self PIIXComputePCIConfigSpace:&configSpace forDrives:(driveInfo_t *)drives];
+	[self setPCIConfigSpace:&configSpace];
+}
+
+static void intelResetTiming(id self)
+{
+	[self PIIXInit];
+	[self PIIXResetTimings:[self deviceDescription]];
+}
+
+static BOOL intelDetectCable(id self)
+{
+	return [self PIIXDetect80WireCable:[self deviceDescription]];
+}
+
+const ideChipsetOps_t ideIntelOps = {
+	"Intel PIIX/ICH",
+	intelMatch,
+	intelSetTiming,
+	intelResetTiming,
+	intelDetectCable
+};
+
+/* ICH drive number 0..3 = (channel<<1) | (drive&1). */
+static __inline__ unsigned char ichDriveNum(int channel, int unit)
+{
+	return (unsigned char)(((channel == PCI_CHANNEL_SECONDARY) ? 2 : 0) | (unit & 1));
 }
 
 @implementation IdeController(PIIX)
@@ -131,7 +158,6 @@ IOMallocPage(int request_size, void ** actual_ptr,
 {
     unsigned char 	devNum, funcNum, busNum;
     const char 		*value;
-	const char		*deviceName;
 	IOConfigTable 	*configTable;
     IOReturn 		rtn;
     const id self_class = [self class];
@@ -170,40 +196,43 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		return NO;
     }	  
 
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-			deviceName = "PIIX";
-			break;
-		case PCI_ID_PIIX3:
-			deviceName = "PIIX3";
-			break;
-		case PCI_ID_PIIX4:
-			deviceName = "PIIX4";
-			break;
-		case PCI_ID_PIIX4E:
-			deviceName = "PIIX4E";
-			break;
-		case PCI_ID_PIIX4M:
-			deviceName = "PIIX4M";
-			break;
-		default:
-			IOLog("%s: Unknown PCI IDE controller (0x%08lx)\n",
-				[self name], _controllerID);
-			_controllerID = PCI_ID_NONE;
-			return NO;
+	{
+	unsigned long classReg;
+	unsigned char progIf, subClass, baseClass;
+
+	rtn = [self_class getPCIConfigData:&classReg atRegister:0x08
+		withDeviceDescription:devDesc];
+	if (rtn != IO_R_SUCCESS) {
+		IOLog("%s: PCI config space access error %d\n", [self name], rtn);
+		return NO;
 	}
+	progIf    = (classReg >>  8) & 0xff;
+	subClass  = (classReg >> 16) & 0xff;
+	baseClass = (classReg >> 24) & 0xff;
 
-	/*
-	 * Report the PCI controller found.
-	 */
-	IOLog("%s: %s PCI IDE Controller at Dev:%d Func:%d Bus:%d\n",
-		[self name], deviceName, devNum, funcNum, busNum);
-
-	/*
-	 * At this point, we are certain that we are dealing with a
-	 * Intel PIIX class controller.
-	 */
+	if (baseClass != PCI_CLASS_MASS_STORAGE || subClass != PCI_SUBCLASS_IDE) {
+		IOLog("%s: not a PCI IDE controller (class 0x%02x/0x%02x)\n",
+			[self name], baseClass, subClass);
+		return NO;
+	}
+	if (intelMatch(_controllerID, progIf, &_chipCaps)) {
+		_chipsetOps = &ideIntelOps;
+	} else if (ideGenericOps.match(_controllerID, progIf, &_chipCaps)) {
+		_chipsetOps = &ideGenericOps;
+		IOLog("%s: Unlisted PCI IDE (0x%08lx); using generic driver\n",
+			[self name], _controllerID);
+	} else {
+		/* IDE-class but not bus-master: fall back to legacy PIO. */
+		_chipsetOps = NULL;
+		_controllerID = PCI_ID_NONE;
+		IOLog("%s: PCI IDE (0x%08lx) without bus-master; legacy PIO\n",
+			[self name], _controllerID);
+		return YES;
+	}
+	IOLog("%s: %s IDE Controller at Dev:%d Func:%d Bus:%d\n",
+		[self name], _chipsetOps->name, devNum, funcNum, busNum);
 	return ([self PIIXInitController:devDesc]);
+	}
 }
 
 /*
@@ -257,9 +286,9 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 * IRQ 14 - primary channel
 	 * IRQ 15 - secondary channel
 	 */
-	{
+	if (_chipsetOps == &ideIntelOps) {
 	unsigned int irq;
-	
+
 	irq = (_ideChannel == PCI_CHANNEL_PRIMARY) ? PIIX_P_IRQ : PIIX_S_IRQ;
 	if ([devDesc interrupt] != irq) {
 		IOLog("%s: Invalid IRQ: %d\n", [self name], [devDesc interrupt]);
@@ -286,11 +315,12 @@ IOMallocPage(int request_size, void ** actual_ptr,
 		_busMaster = YES;
 	else
 		_busMaster = NO;
-	
+
 	/*
 	 * Fetch the corresponding primary/secondary IDETIM register and
 	 * verify that the individual channels are enabled.
 	 */
+	if (_chipsetOps == &ideIntelOps) {
     rtn = [self_class getPCIConfigData:&configReg atRegister:PIIX_IDETIM
 		withDeviceDescription:devDesc];
     if (rtn != IO_R_SUCCESS)	{
@@ -300,83 +330,65 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	if (_ideChannel == PCI_CHANNEL_SECONDARY)
 		configReg >>= 16;	// PIIX_IDETIM + 2 for secondary channel
 	idetim.word = (u_short)configReg;
-	
+
 	if (!idetim.bits.ide) {
 		IOLog("%s: %s PCI IDE channel is not enabled\n",
 			[self name],
 			(_ideChannel == PCI_CHANNEL_PRIMARY) ? "Primary" : "Secondary");
 		return NO;
 	}
+	}
 
 	/*
 	 * Register and record the location of our Bus Master 
 	 * interface registers.
 	 */
-	if (_busMaster && ([self PIIXRegisterBMRange:devDesc] == NO)) {
+	if (_busMaster && ([self bmRegisterRange:devDesc] == NO)) {
 		IOLog("%s: Bus master I/O range registration failed\n",
 			[self name]);
 		_busMaster = NO;
 	}
-	
+
 	/*
 	 * Allocate a 4K-page (perhaps 8K) aligned page of memory for
 	 * the PRD table.
 	 */
-	if (_busMaster && ([self PIIXInitPRDTable] == NO)) {
+	if (_busMaster && ([self bmInitPRDTable] == NO)) {
 		IOLog("%s: cannot allocate memory for descriptor table\n",
 			[self name]);
 		_busMaster = NO;
 	}
+
+	_chipCaps.flags &= ~CHIP_FLAG_BUSMASTER;
+	if (_busMaster)
+		_chipCaps.flags |= CHIP_FLAG_BUSMASTER;
 
 #if 0
 	IOLog("%s: PCI bus master DMA: %s\n",
 		[self name], busMaster ? "Enabled" : "Disabled");
 #endif
 
-	/*
-	 * Revert to default timing.
-	 */
-	[self PIIXResetTimings:devDesc];
+	if (_chipsetOps == &ideIntelOps) {
+		/*
+		 * Revert to default timing.
+		 */
+		[self PIIXResetTimings:devDesc];
 
-	/*
-	 * Detect 80-wire cable for UDMA modes > 2
-	 */
-	if ((_controllerID == PCI_ID_PIIX4) ||
-	    (_controllerID == PCI_ID_PIIX4E) ||
-	    (_controllerID == PCI_ID_PIIX4M)) {
-		_has80WireCable = [self PIIXDetect80WireCable:devDesc];
+		/*
+		 * Detect 80-wire cable for UDMA modes > 2
+		 */
+		if ((_controllerID == PCI_ID_PIIX4) ||
+		    (_controllerID == PCI_ID_PIIX4E) ||
+		    (_controllerID == PCI_ID_PIIX4M)) {
+			_has80WireCable = [self PIIXDetect80WireCable:devDesc];
+		} else {
+			_has80WireCable = NO;
+		}
 	} else {
 		_has80WireCable = NO;
 	}
 
     return YES;
-}
-
-/*
- * Method: getPCIControllerCapabilities
- *
- * Return the capability of the PCI IDE controller in 'm'.
- *
- */
-- (void) getPCIControllerCapabilities:(txferModes_t *)m
-{
-	m->mode.swdma = m->mode.mwdma = m->mode.udma = ATA_MODE_NONE;
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			m->mode.pio   = ata_mode_to_mask(ATA_MODE_4);
-			if (_busMaster) {
-				m->mode.mwdma = ata_mode_to_mask(ATA_MODE_2);
-				if ((_controllerID == PCI_ID_PIIX4) ||
-				    (_controllerID == PCI_ID_PIIX4E) ||
-				    (_controllerID == PCI_ID_PIIX4M))
-					m->mode.udma = ata_mode_to_mask(ATA_MODE_2);
-			}
-			break;
-	}
 }
 
 /*
@@ -389,26 +401,6 @@ IOMallocPage(int request_size, void ** actual_ptr,
 - (ideTransferWidth_t) getPIOTransferWidth
 {
 	return (IDE_TRANSFER_32_BIT);
-}
-
-/*
- * Method: resetPCIController
- *
- * Not a true RESET, simply return the PCI controller to a quiescent state
- * and return all IDE ports to the default timing.
- */
-- (void) resetPCIController
-{
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			[self PIIXInit];
-			[self PIIXResetTimings:[self deviceDescription]];
-			break;
-	}
 }
 
 /*
@@ -474,101 +466,6 @@ IOMallocPage(int request_size, void ** actual_ptr,
 }
 
 /*
- * Method: PIIXRegisterBMRange:
- *
- * Purpose:
- * Add the 8-byte Bus-Master control registers to the portRangeList in
- * the deviceDescription. The base address for the registers resides in
- * PCI config space location 0x20. The first 8 bytes are for the primary
- * IDE channel, the next eight bytes are for the secondary IDE channel.
- *
- * Note:
- * This must be called before [super init...] because that's when the
- * resources are registered.
- */
-- (BOOL) PIIXRegisterBMRange:(IOPCIDeviceDescription *)devDesc
-{
-    IOReturn 		rtn;
-	unsigned long	bmiba;
-	IORange 		io_range[2];
-	
-    rtn = [[self class] getPCIConfigData:&bmiba atRegister:PIIX_BMIBA
-		withDeviceDescription:devDesc];
-    if (rtn != IO_R_SUCCESS) {
-    	IOLog("%s: PCI config space access error %d\n", [self name], rtn);
-		return NO;
-    }
-	
-	/*
-	 * Sanity check. Make sure this is an I/O range.
-	 */
-	if ((bmiba & 0x01) == 0) {
-		IOLog("%s: PCI memory range 0x%02x (0x%08lx) is not an I/O range\n",
-			[self name], PIIX_BMIBA, bmiba);
-		return NO;
-	}
-	
-	_bmRegs = bmiba & PIIX_BM_MASK;
-
-	if (_bmRegs == 0)	// uninitialized range
-		return NO;
-
-	if (_ideChannel == PCI_CHANNEL_SECONDARY)
-		_bmRegs += PIIX_BM_OFFSET;
-	
-	/*
-	 * Add this range to our device description's port range list.
-	 */
-	io_range[0] = [devDesc portRangeList][0];
-	io_range[1].start = _bmRegs;
-	io_range[1].size  = PIIX_BM_SIZE;
-	if ([devDesc setPortRangeList:io_range num:2] != IO_R_SUCCESS) {
-		IOLog("%s: setPortRangeList failed\n", [self name]);
-		return NO;
-	}
-	
-	return YES;
-}
-
-/*
- * Method: PIIXInitPRDTable
- *
- * Purpose:
- * Initialize a "page-aligned" page of memory for the PRD descriptors
- * used by the bus master IDE controller.
- *
- * FIXME: Need to free the _prdTable memory.
- */
-- (BOOL) PIIXInitPRDTable
-{
-	_prdTable.size = PAGE_SIZE;
-	_prdTable.ptr = (void *)IOMallocPage(
-						_prdTable.size,
-						&_prdTable.ptrReal,
-						&_prdTable.sizeReal
-						);
-
-	/*
-	 * _prdTable->ptr should now points to a physically contiguous block
-	 * of PAGE_SIZE bytes.
-	 */
-    if (_prdTable.ptr == NULL)
-		return NO;
-	
-	/*
-	 * cache the physical address of the descriptor table to _tablePhyAddr.
-	 */
-	if (IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)_prdTable.ptr,
-		&_tablePhyAddr) != IO_R_SUCCESS) {
-		IOFree(_prdTable.ptrReal, _prdTable.sizeReal);
-		return NO;
-	}
-
-	bzero(_prdTable.ptr, _prdTable.size);
-	return YES;
-}
-
-/*
  * Method: PIIXReportTimings:slaveTiming:isPrimary:
  *
  * Purpose:
@@ -617,39 +514,6 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	IOLog("%s: Drive 1 Fast timing enable  : %s\n", [self name],
 		tim.bits.time1 ? "on" : "off");
 #endif 0
-}
-
-/*
- * Method: setPCIControllerCapabilities
- *
- * Purpose:
- * Based on the transfer modes and types for both IDE drives, setup the
- * controller to support those modes.
- *
- */
-- (BOOL) setPCIControllerCapabilitiesForDrives:(driveInfo_t *)drives
-{
-	IOPCIConfigSpace configSpace;
-
-	if (_controllerID == PCI_ID_NONE)
-		return NO;
-
-	[self getPCIConfigSpace:&configSpace];
-
-	switch (_controllerID) {
-		case PCI_ID_PIIX:
-		case PCI_ID_PIIX3:
-		case PCI_ID_PIIX4:
-		case PCI_ID_PIIX4E:
-		case PCI_ID_PIIX4M:
-			[self PIIXComputePCIConfigSpace:&configSpace forDrives:drives];
-			break;
-		default:
-			return NO;
-	}
-
-	[self setPCIConfigSpace:&configSpace];
-    return YES;
 }
 
 /*
@@ -742,18 +606,29 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	 * Set timings for Drive 0 (Master drive).
 	 */
 	if (drv[0].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive0 > 2) modeDrive0 = 2;
-		switch (_ideChannel) {
-			case PCI_CHANNEL_PRIMARY:
-				udmactl->bits.psde0 = 1;
-				udmatim->bits.pct0 = modeDrive0;
-				break;
-			case PCI_CHANNEL_SECONDARY:
-				udmactl->bits.ssde0 = 1;
-				udmatim->bits.sct0 = modeDrive0;
-				break;
-			default:
-				break;
+		if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG)) {
+			/* PIIX4: UDMA capped at mode 2, existing UDMATIM path. */
+			if (modeDrive0 > 2) modeDrive0 = 2;
+		}
+		/*
+		 * SDMA_TIM 2-bit cycle-time value by UDMA mode m.
+		 * Verified vs. ICH datasheet 290655-003 §9.1.17:
+		 *   modes 0,1,2,3,4 -> 0,1,2,1,2 . (m5 -> 1 on ICH2+.)
+		 */
+		{
+			unsigned char utim = MIN(2 - (modeDrive0 & 1), modeDrive0);
+			switch (_ideChannel) {
+				case PCI_CHANNEL_PRIMARY:
+					udmactl->bits.psde0 = 1;
+					udmatim->bits.pct0 = utim;
+					break;
+				case PCI_CHANNEL_SECONDARY:
+					udmactl->bits.ssde0 = 1;
+					udmatim->bits.sct0 = utim;
+					break;
+				default:
+					break;
+			}
 		}
 	}
 	idetim->bits.isp = isp;
@@ -762,20 +637,57 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	/* Set timings for drive 1 (Slave drive).
 	 */
 	if (drv[1].transferType == IDE_TRANSFER_ULTRA_DMA) {
-		if (modeDrive1 > 2) modeDrive1 = 2;
-		switch (_ideChannel) {
-			case PCI_CHANNEL_PRIMARY:
-				udmactl->bits.psde1 = 1;
-				udmatim->bits.pct1 = modeDrive1;
-				break;
-			case PCI_CHANNEL_SECONDARY:
-				udmactl->bits.ssde1 = 1;
-				udmatim->bits.sct1 = modeDrive1;
-				break;
-			default:
-				break;
+		if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG)) {
+			/* PIIX4: UDMA capped at mode 2, existing UDMATIM path. */
+			if (modeDrive1 > 2) modeDrive1 = 2;
+		}
+		/*
+		 * SDMA_TIM 2-bit cycle-time value by UDMA mode m.
+		 * Verified vs. ICH datasheet 290655-003 §9.1.17:
+		 *   modes 0,1,2,3,4 -> 0,1,2,1,2 . (m5 -> 1 on ICH2+.)
+		 */
+		{
+			unsigned char utim = MIN(2 - (modeDrive1 & 1), modeDrive1);
+			switch (_ideChannel) {
+				case PCI_CHANNEL_PRIMARY:
+					udmactl->bits.psde1 = 1;
+					udmatim->bits.pct1 = utim;
+					break;
+				case PCI_CHANNEL_SECONDARY:
+					udmactl->bits.ssde1 = 1;
+					udmatim->bits.sct1 = utim;
+					break;
+				default:
+					break;
+			}
 		}
 	}
+
+	/*
+	 * ICH: program the IDE_CONFIG (0x54) base-clock bits for UDMA/66
+	 * and UDMA/100. IDE_CONFIG is shared between the primary and
+	 * secondary channels, so read-modify-write only this channel's
+	 * bits. This is done directly on the configSpace snapshot (like
+	 * IDETIM/SIDETIM/UDMACTL/UDMATIM above) since the caller commits
+	 * the whole snapshot back via setPCIConfigSpace: -- a separate
+	 * direct PCI config access here would be clobbered by that
+	 * trailing write-back.
+	 */
+	if (_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG) {
+		int u;
+		for (u = 0; u < MAX_IDE_DRIVES; u++) {
+			unsigned char dn = ichDriveNum(_ideChannel, u);
+			unsigned char m = ata_mode_to_num(drv[u].transferMode);
+			pci_space[PIIX_IDE_CONFIG] &= ~(1 << dn);
+			pci_space[PIIX_IDE_CONFIG + 1] &= ~(1 << dn);
+			if (drv[u].ideInfo.type != 0 &&
+				drv[u].transferType == IDE_TRANSFER_ULTRA_DMA) {
+				if (m >= 3) pci_space[PIIX_IDE_CONFIG] |= (1 << dn);      /* ATA/66 (modes 3-4) */
+				if (m >= 5) pci_space[PIIX_IDE_CONFIG + 1] |= (1 << dn);  /* ATA/100 (mode 5)  */
+			}
+		}
+	}
+
 	if (idetim->bits.sitre) {
 		isp = PIIXGetISPForMode(modeDrive1, drv[1].transferType);
 		rct = PIIXGetRCTForMode(modeDrive1, drv[1].transferType);	
@@ -815,254 +727,6 @@ IOMallocPage(int request_size, void ** actual_ptr,
 	return;
 }
 
-/*************************************************************************
- *
- * Intel PIIX/PIIX3/PIIX4 Bus-Mastering IDE DMA support
- *
- *************************************************************************/
-
-/*
- * Function: PIIXVirtualToPhysical
- *
- * Similar to IOPhysicalFromVirtual but with no SPLVM/SPLX and locking.
- */
-static __inline__ vm_offset_t
-PIIXVirtualToPhysical(struct vm_map *map, vm_offset_t vaddr)
-{
-	return (vm_offset_t)pmap_resident_extract(
-			(pmap_t)vm_map_pmap_EXTERNAL(map),
-			vaddr);
-}
-
-/*
- * Function: PIIXStartDMA
- *
- * Purpose:
- * Start the bus master by writing a 1 to the SSBM bit in BMICX register.
- *
- * Argument:
- * piix_base - base address of the I/O space mapped bus master registers
- */
-static __inline__ void
-PIIXStartDMA(u_short piix_base)
-{
-	piix_bmicx_u piix_cmd;
-	
-	/*
-	 * Engage the bus master by writing 1 to the start bit in the
-	 * Command Register.
-	 */
-	piix_cmd.byte = inb(piix_base + PIIX_BMICX);
-	piix_cmd.bits.ssbm = 1;
-	outb(piix_base + PIIX_BMICX, piix_cmd.byte);
-}
-
-/*
- * Function: PIIXStopDMA
- *
- * Purpose:
- * Stop the bus master by clearing the SSBM bit in BMICX register.
- *
- * Argument:
- * piix_base - base address of the I/O space mapped bus master registers
- */
-static __inline__ void
-PIIXStopDMA(u_short piix_base)
-{
-	piix_bmicx_u piix_cmd;
-	
-	/*
-	 * Stop the bus master by writing 0 to the start bit in the
-	 * Command Register.
-	 */
-	piix_cmd.byte = inb(piix_base + PIIX_BMICX);
-	piix_cmd.bits.ssbm = 0;
-	outb(piix_base + PIIX_BMICX, piix_cmd.byte);	
-}
-
-/*
- * Function: PIIXGetStatus
- *
- * Purpose:
- * Return the PIIX BMISX (bus master IDE status register).
- *
- * Argument:
- * piix_base - base address of the I/O space mapped bus master registers
- */
-static __inline__ u_char
-PIIXGetStatus(u_short piix_base)
-{
-	return (inb(piix_base + PIIX_BMISX));
-}
-			
-/*
- * Function: PIIXSetupPRDTable
- *
- * Purpose:
- * Setup the PRD (descriptor) table for the current IDE transfer.
- * This table must be aligned on a DWord (4 byte) boundary.
- *
- * Arguments:
- * table    - points to the start of the PRD table
- * size     - max number of PRD entries that the table can hold
- * vaddr	- virtual address of the start of memory buffer
- * size		- size of memory buffer in bytes
- * map		- vm_map for the memory buffer
- *
- * Return:
- *	YES: table is setup and ready for use
- *	NO : table full or alignment error
- *
- */
-static __inline__ BOOL
-PIIXSetupPRDTable(piix_prd_t *table, u_int table_size, vm_offset_t vaddr,
-	u_int size, struct vm_map *map)
-{
-	vm_offset_t vaddr_next;
-	vm_offset_t paddr;
-	vm_offset_t paddr_next;
-	vm_offset_t paddr_start;
-	const char *name = "PIIXSetupPRDTable";
-	u_int len_prd;
-	u_int index;
-
-#ifdef DEBUG	
-	piix_prd_t *table_saved = table;
-#endif DEBUG
-
-	ddm_ide_dma("  PIIXSetupPRDTable: vaddr:%08x size:%d\n",
-		(u_int)vaddr, (u_int)size, 3, 4, 5);
-
-	if (vaddr & (PIIX_BUF_ALIGN - 1)) {
-		IOLog("%s: buffer is not %d byte aligned\n", name, PIIX_BUF_ALIGN);
-		return NO;
-	}
-	
-	if (size == 0) {
-		IOLog("%s: zero length DMA buffer\n", name);
-		return NO;
-	}
-	
-	index = len_prd = 0;
-	paddr = PIIXVirtualToPhysical(map, vaddr);
-	paddr_start = paddr;
-	do {
-		u_int len;
-
-		vaddr_next = trunc_page(vaddr) + PAGE_SIZE;		// next virtual page
-		paddr_next = trunc_page(paddr) + PAGE_SIZE;		// next phys page
-		vaddr      = vaddr_next;
-		
-		len = paddr_next - paddr;		// length to transfer in this page
-		if (len > size) len = size;		// take the minimum
-		size  -= len;					// decrement total remaining bytes
-		len_prd += len;					// increment current PRD counter
-
-		/*
-		 * If there are more bytes remaining, try to append the next
-		 * page into the same PRD. We must check that the next page
-		 * is physically contiguous with the current one.
-		 *
-		 * Each PRD cannot cross 64K boundary, and is limited to 64K per PRD.
-		 */
-		if (size && 
-		(paddr_next == (paddr = PIIXVirtualToPhysical(map, vaddr))) &&
-		((paddr_start & ~(PIIX_BUF_BOUND-1))==(paddr & ~(PIIX_BUF_BOUND-1))) &&
-		(len_prd <= (PIIX_BUF_LIMIT - PAGE_SIZE))) {
-		continue;
-		}
-
-		/*
-		 * Setup PRD entry
-		 *
-		 * For the length field in PRD, 0 is used to denote the max
-		 * transfer size of 64K.
-		 */
-		table->base = paddr_start;
-		table->count = (len_prd == PIIX_BUF_LIMIT) ? 0 : len_prd;
-		table->eot = 0;
-		table++;
-
-		len_prd = 0;
-		paddr_start = paddr;
-
-	} while (size && (++index < table_size));
-	
-	if (size) {
-		IOLog("%s: PRD table exhausted\n", name);
-		return NO;
-	} 
-	
-	/*
-	 * Set the 'end-of-table' bit on the last PRD entry.
-	 */
-	--table;
-	table->eot = 1;
-
-#ifdef DEBUG
-	{
-	int i = 0;
-	u_int *ip = (u_int *)&table_saved[0];
-	do {
-		ddm_ide_dma("    table[%d]  %08x:%08x\n", i, *ip, *(ip+1), 4, 5);
-		ip += 2;
-	} while (i++ < index);
-	}
-#endif DEBUG
-
-	return YES;
-}
-
-/*
- * Function: PIIXPrepareDMA
- *
- * Purpose:
- * Prepare the PIIX bus master for a DMA transfer.
- *
- * Arguments:
- *  piix_base - base address of the I/O space mapped bus master registers
- *  table     - points to the start of the PRD table
- *  tableAddr - physical address of the table
- *  isRead    - YES for read transfers (from device to host)
- */
-static __inline__ BOOL
-PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
-{
-	piix_bmicx_u piix_cmd;
-	piix_bmisx_u piix_status;
-
-	/*
-	 * Provide the starting address of the PRD table by loading the
-	 * PRD Table Pointer Register.
-	 *
-	 * For some reason, outl(piix_base + PIIX_BMIDTPX, tableAddr)
-	 * will only write the lower 16-bit WORD. That's why we use
-	 * two outw instructions.
-	 */	
-	outw(piix_base + PIIX_BMIDTPX, tableAddr & 0xffff);
-	outw(piix_base + PIIX_BMIDTPX + 2, (tableAddr >> 16) & 0xffff);
-
-	/*
-	 * Set the R/W bit depending on the direction of the transfer.
-	 * The controller is also STOP'ed.
-	 *
-	 * Arghh!!! Why does the Intel PIIX3 and PIIX4 doc have this backwards?
-	 */
-	piix_cmd.byte = 0;
-	piix_cmd.bits.rwcon = isRead ? 1 : 0;
-	outb(piix_base + PIIX_BMICX, piix_cmd.byte);
-	
-	/*
-	 * Clear interrupt and error bits in the Status Register.
-	 */
-	piix_status.byte = inb(piix_base + PIIX_BMISX);
-	piix_status.bits.err = piix_status.bits.ideints = 1;
-//	piix_status.bits.dma0cap = piix_status.bits.dma1cap = 1;
-	outb(piix_base + PIIX_BMISX, piix_status.byte);
-	
-	return YES;
-}
-
 /*
  * Method: PIIXInit
  *
@@ -1071,286 +735,7 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  */
 - (void) PIIXInit
 {
-	return (PIIXStopDMA(_bmRegs));
-}
-
-/*
- * Even if an interrupt is missed, consider the transfer operation
- * successful if the PIIX status flags says so.
- */
-#define TRUST_PIIX	1
-
-/*
- * Method: PIIXPerformDMA
- *
- * Purpose:
- * Program the PIIX controller to perform DMA READ/WRITE transfers
- * based on the transfer request ideIoReq. The entire transfer is
- * translated into one or more PRD entries in the PRD table. We will
- * get a single interrupt when the entire transfer is complete.
- *
- * Note:
- * The PIIX status register should have bit 2 and bit 0 set at the
- * conclusion of the transfer. This corresponds to the case when the
- * IDE device generated an interrupt and the size of the PRD is equal
- * to the IDE device transfer size.
- *
- * If bit 1 is set, meaning that the controller encountered a target
- * or master abort, it is very likely that we told it to DMA to/from
- * an invalid piece of memory. Perhaps due to an incorrect virtual
- * to physical map conversion.
- */
-- (ide_return_t) performDMA:(ideIoReq_t *)ideIoReq
-{
-	ideRegsVal_t	*ideRegs = &(ideIoReq->regValues);
-	ideRegsAddrs_t	*rp = &_ideRegsAddrs;
-    unsigned char	status;
-	piix_bmisx_u	piix_status;
-	ide_return_t	rtn = IDER_SUCCESS;
-	unsigned 		cmd = ideIoReq->cmd;
-
-	ddm_ide_dma("DMA block:%d count:%d read:%d map:%d rp:%x\n",
-		ideIoReq->block,
-		ideIoReq->blkcnt,
-		(ideIoReq->cmd == IDE_READ_DMA),
-		ideIoReq->map,
-		rp->data);
-
-	if ((cmd != IDE_READ_DMA) && (cmd != IDE_WRITE_DMA)) {
-		IOLog("%s: ideDmaRwCommon: unknown command %d\n", [self name], cmd);
-		return IDER_REJECT;
-	}
-
-	/*
-	 * wait for BSY = 0 and DRDY = 1
-	 */
-    rtn = [self waitForDeviceReady];
-    if (rtn != IDER_SUCCESS) {
-		IOLog("%s: drive not ready\n", [self name]);
-		return (rtn);
-    }
-
-	/*
-	 * Set up PRD descriptor table
-	 */
-	if (PIIXSetupPRDTable(_prdTable.ptr,
-		PIIX_DT_BOUND/sizeof(piix_prd_t),
-		(vm_offset_t)ideIoReq->addr,
-		ideIoReq->blkcnt * IDE_SECTOR_SIZE,
-		(struct vm_map *)ideIoReq->map) == NO) {
-		return NO;
-	}
-
-	/*
-	 * Prepare the PIIX controller for the current transfer.
-	 */
-	if (PIIXPrepareDMA(_bmRegs, _tablePhyAddr,
-		(ideIoReq->cmd == IDE_READ_DMA)) == NO) {
-		IOLog("%s: PIIXPrepareDMA error\n", [self name]);
-		return IDER_CMD_ERROR;
-	}
-	
-	/*
-	 * Program the drive (task file).
-	 * Recall that _driveNum must be set prior to calling logToPhys.
-	 * This is already done in the method ideExecuteCmd which calls
-	 * this method. testDMA also calls this method with _driveNum set.
-	 */
-	*ideRegs = [self logToPhys:ideIoReq->block numOfBlocks:ideIoReq->blkcnt];
-    outb(rp->drHead,  ideRegs->drHead);
-    outb(rp->sectNum, ideRegs->sectNum);
-    outb(rp->sectCnt, ideRegs->sectCnt);
-    outb(rp->cylLow,  ideRegs->cylLow);
-    outb(rp->cylHigh, ideRegs->cylHigh);
-
-	ddm_ide_dma(
-		"DMA drHead:%02x sectNum:%02x sectCnt:%02x cylLow:%02x cylHigh:%02x\n",
-		ideRegs->drHead,
-		ideRegs->sectNum,
-		ideRegs->sectCnt,
-		ideRegs->cylLow,
-		ideRegs->cylHigh);
-
-	/*
-	 * Issue DMA READ/WRITE command to drive.
-	 */
-//	[self enableInterrupts];
-//	[self clearInterrupts];
-    outb(rp->command, cmd);
-
-	/*
-	 * Start the PIIX bus master.
-	 */
-	PIIXStartDMA(_bmRegs);
-	
-	/* Wait for interrupt to signal the completion of the transfer.
-	 */
-    rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];	
-	piix_status.byte = PIIXGetStatus(_bmRegs);
-	PIIXStopDMA(_bmRegs);
-	
-#ifdef TRUST_PIIX
-	if ((piix_status.byte & PIIX_STATUS_MASK) == PIIX_STATUS_OK) {
-
-			if (rtn != IDER_SUCCESS) {
-				/* Interrupt timed-out, but PIIX claims that transaction
-				 * was completed without errors.
-				 * This may require more testing. Always trust PIIX?
-				 * First, read status from the drive.
-				 */
-				if ((rtn = [self waitForNotBusy]) != IDER_SUCCESS)
-					return IDER_CMD_ERROR;
-				status = inb(rp->status);
-			}			 
-#else
-	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) == 
-		PIIX_STATUS_OK)) {
-#endif TRUST_PIIX
-
-		    if (status & (ERROR | WRITE_FAULT)) {
-				[self getIdeRegisters:ideRegs Print:"DMA error"];
-				return IDER_CMD_ERROR;
-	    	}
-
-	    	if (status & ERROR_CORRECTED) {
-				IOLog("%s: Error during data transfer (corrected).\n", 
-			    	[self name]);
-		    }
-	}
-	else {
-		[self getIdeRegisters:ideRegs Print:NULL];
-		IOLog("%s: PIIX status:0x%02x error code:%d\n",
-			[self name], piix_status.byte, rtn);
-		rtn = IDER_CMD_ERROR;
-	}
-
-	ddm_ide_dma(
-		"END drHead:%02x sectNum:%02x sectCnt:%02x cylLow:%02x cylHigh:%02x\n",
-    	inb(rp->drHead),
-    	inb(rp->sectNum),
-    	inb(rp->sectCnt),
-    	inb(rp->cylLow),
-    	inb(rp->cylHigh));
-
-	return (rtn);
-}
-
-#define MAX_BUSY_WAIT 				(1000*100)
-
-/*
- * Perform DMA transfers for ATAPI devices.
- */
-- (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
-	buffer:(void *)buffer 
-	client:(struct vm_map *)client
-{
-	piix_bmisx_u piix_status;
-	unsigned char cmd = atapiIoReq->atapiCmd[0];
-	ide_return_t	rtn;
-    unsigned char	status;
-	ideRegsAddrs_t	*rp = &_ideRegsAddrs;
-	int	i;
-
-	//IOLog("DMA transfer\n");
-
-	atapiIoReq->bytesTransferred = 0;
-	
-	/*
-	 * Set up PRD descriptor table
-	 */
-	if (PIIXSetupPRDTable(_prdTable.ptr,
-		PIIX_DT_BOUND/sizeof(piix_prd_t),
-		(vm_offset_t)buffer,
-		atapiIoReq->maxTransfer,
-		client) == NO)
-		{
-		atapiIoReq->scsiStatus = STAT_CHECK;
-		return SR_IOST_CMDREJ;
-	}
-
-	if (PIIXPrepareDMA(_bmRegs, _tablePhyAddr, atapiIoReq->read) == NO) {
-		IOLog("%s: PIIXPrepareDMA error\n", [self name]);
-		atapiIoReq->scsiStatus = STAT_CHECK;
-		return SR_IOST_CMDREJ;
-	}
-
-	/*
-	 * Start the PIIX bus master.
-	 */
-	PIIXStartDMA(_bmRegs);
-
-	if (atapiIoReq->timeout > IDE_INTR_TIMEOUT) {
-		u_int current_timeout = [self interruptTimeOut];
-		
-		//IOLog("using SCSI timeout:%d\n", atapiIoReq->timeout);
-		[self setInterruptTimeOut:atapiIoReq->timeout];
-		rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
-		[self setInterruptTimeOut:current_timeout];
-	}
-	else {
-		rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
-	}
-
-	piix_status.byte = PIIXGetStatus(_bmRegs);
-	PIIXStopDMA(_bmRegs);
-
-	/*
-	 * This is stupid but the Chinon drive fires off an interrupt first
-	 * and then updates the status register. It appears that any drive
-	 * based on Western Digital chipset will do this. At any rate, this
-	 * code is harmless and should be left here. 
-	 */
-	for (i = 0; i < MAX_BUSY_WAIT; i++)	{
-		if (status & BUSY)
-			IODelay(10);
-		else
-			break;
-		status = inb(_ideRegsAddrs.status);	
-	}
-
-#ifdef TRUST_PIIX
-	if ((piix_status.byte & PIIX_STATUS_MASK) == PIIX_STATUS_OK) {
-		if (rtn != IDER_SUCCESS) {
-			/* Interrupt timed-out, but PIIX claims that transaction
-			 * was completed without errors.
-			 * This may require more testing. Always trust PIIX?
-			 * First, read status from the drive.
-			 */
-			if ((rtn = [self waitForNotBusy]) != IDER_SUCCESS) {
-				IOLog("%s: FATAL: ATAPI Drive: %d Command %x failed.\n", 
-					[self name], _driveNum, atapiIoReq->atapiCmd[0]);
-				[self getIdeRegisters:NULL Print:"ATAPI DMA"];
-				IOLog("%s: transfer size: %d\n",
-					[self name], atapiIoReq->maxTransfer);
-				[self atapiSoftReset:_driveNum];
-				atapiIoReq->scsiStatus = STAT_CHECK;
-				return SR_IOST_CHKSNV;
-			}
-			status = inb(rp->status);
-		}
-#else
-	if ((rtn == IDER_SUCCESS) && ((piix_status.byte & PIIX_STATUS_MASK) == 
-		PIIX_STATUS_OK)) {
-#endif TRUST_PIIX
-
-		if (status & ERROR) {
-			atapiIoReq->scsiStatus = STAT_CHECK;
-			return SR_IOST_CHKSNV;	
-		}
-	}
-	else {
-		[self getIdeRegisters:NULL Print:"ATAPI DMA"];
-		IOLog("%s: PIIX status:0x%02x error code:%d\n",
-			[self name], piix_status.byte, rtn);
-		IOLog("%s: transfer size: %d\n", [self name], atapiIoReq->maxTransfer);
-		[self atapiSoftReset:_driveNum];
-		atapiIoReq->scsiStatus = STAT_CHECK;
-		return SR_IOST_CHKSNV;
-	}
-
-	atapiIoReq->bytesTransferred = atapiIoReq->maxTransfer;
-	atapiIoReq->scsiStatus = STAT_GOOD;
-	return SR_IOST_GOOD;
+	return (bmStopDMA(_bmRegs));
 }
 
 /*
@@ -1358,27 +743,31 @@ PIIXPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  *
  * Purpose:
  * Detect the presence of an 80-wire cable. This is required for UDMA
- * modes greater than Mode 2 (ATA/33). Unfortunately, PIIX4 does not
- * provide a hardware mechanism to detect cable type. We assume a
- * 40-wire cable by default for safety.
- *
- * Note:
- * Some BIOS implementations may set a bit in a vendor-specific register,
- * but this is not standardized across all PIIX4 implementations.
- * Later chipsets (ICH and newer) provide proper cable detection via
- * the UDMA Control Register.
- *
- * For now, we conservatively assume 40-wire cable, which limits UDMA
- * to Mode 2 (33 MB/s). Users can potentially override this via a
- * configuration option if needed.
+ * modes greater than Mode 2 (ATA/33). PIIX4 provides no hardware
+ * mechanism to detect cable type, so we assume a 40-wire cable
+ * (UDMA limited to Mode 2). ICH and newer report cable type per
+ * channel via the IDE_CONFIG register (0x54).
  */
 - (BOOL) PIIXDetect80WireCable:(IOPCIDeviceDescription *)devDesc
 {
-	if (_ide_debug) {
-		IOLog("%s: Cable detection: assuming 40-wire cable (UDMA limited to Mode 2)\n",
-			[self name]);
-	}
-	return NO;
+	unsigned long icfg = 0;
+	unsigned char mask;
+
+	if (!(_chipCaps.flags & CHIP_FLAG_HAS_IDECONFIG))
+		return NO;   /* PIIX4 has no cable report; assume 40-wire (UDMA<=2) */
+
+	if ([[self class] getPCIConfigData:&icfg atRegister:PIIX_IDE_CONFIG
+			withDeviceDescription:devDesc] != IO_R_SUCCESS)
+		return NO;
+
+	mask = (_ideChannel == PCI_CHANNEL_SECONDARY)
+		? PIIX_ICFG_CABLE_SEC : PIIX_ICFG_CABLE_PRI;
+
+	if (_ide_debug)
+		IOLog("%s: IDE_CONFIG 0x%04lx cable %s\n", [self name],
+			icfg & 0xffff, (icfg & mask) ? "80-wire" : "40-wire");
+
+	return (icfg & mask) ? YES : NO;
 }
 
 @end

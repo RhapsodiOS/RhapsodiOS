@@ -85,6 +85,23 @@
 #define PIIX_SIDETIM	0x44	// (8)  Slave IDE timing register
 #define PIIX_UDMACTL	0x48	// (8)  Ultra DMA/33 control register
 #define PIIX_UDMATIM	0x4a	// (16) Ultra DMA/33 timing register
+#define PIIX_IDE_CONFIG	0x54	// (16) ICH IDE I/O config / cable report
+/*
+ * IDE_CONFIG (0x54), verified vs. ICH datasheet 290655-003 §9.1.18:
+ *   bit 0 PCB0 / bit 1 PCB1 / bit 2 SCB0 / bit 3 SCB1
+ *                              : 1 = 66MHz base clock for UDMA (modes 3-4);
+ *                                0 = 33MHz. i.e. bit (1<<dn) for drive dn.
+ *   bit 4 (pri master) / bit 5 (pri slave)
+ *                              : 80-conductor cable present, primary  (mask 0x30)
+ *   bit 6 (sec master) / bit 7 (sec slave)
+ *                              : 80-conductor cable present, secondary (mask 0xc0)
+ * where dn = (channel << 1) | (drive & 1), range 0..3.
+ * ICH0 (82801AB): all of bits 0-7 are Reserved (UDMA capped at mode 2).
+ * UDMA100 (mode 5) 100MHz-clock bits live in the 0x54 high byte on ICH2+
+ * (per Linux piix.c); not present on ICH/ICH0.
+ */
+#define PIIX_ICFG_CABLE_PRI	0x30
+#define PIIX_ICFG_CABLE_SEC	0xc0
 
 /*
  * PIIX PCI configuration space register definition.
@@ -184,90 +201,9 @@ typedef union {
 } piix_udmatim_u;
 
 /*
- * PIIX IO space register offsets. Base address is set in PIIX_BMIBA.
- * Register size (bits) in parenthesis.
- *
- * Note:
- * For the primary channel, the base address is stored in PIIX_BMIBA.
- * For the secondary channel, the base address is equal to
- * (PIIX_BMIBA + PIIX_BM_OFFSET).
+ * NOTE: the standard SFF-8038i bus-master IO space register offsets,
+ * their bit definitions, and the PRD table format used to live here.
+ * They are chipset-independent and have moved to IdeBMIDE.h (as
+ * BMIDE_*/bmide_*). PIIX_BMIBA above is duplicated there as
+ * BMIDE_BMIBA for use by the generic code.
  */
-#define PIIX_BMICX		0x00	// (8) Bus master IDE command register
-#define PIIX_BMISX		0x02	// (8) Bus master IDE status register
-#define PIIX_BMIDTPX	0x04	// (32) Descriptor table pointer register
-#define PIIX_BM_OFFSET	0x08	// offset to secondary channel registers
-#define PIIX_BM_SIZE	0x08	// size of the BM registers for each channel
-#define PIIX_BM_MASK	0xfff0	// mask BMIBA to get register base address
-
-/*
- * PIIX IO space register definition.
- *
- * BMICX - Bus master IDE command register
- */
-typedef union {
-	struct {
-		u_char
-			ssbm	:1,		// start/stop bus master
-			rsvd1	:2,		// RESERVED
-			rwcon	:1,		// Bus master read/write control
-			rsvd2	:4;		// RESERVED
-	} bits;
-	u_char byte;
-} piix_bmicx_u;
-
-/*
- * PIIX IO space register definition.
- *
- * PIIX_BMISX - Bus master IDE status register
- */
-typedef union {
-	struct {
-		u_char
-			bmidea	:1,		// Bus master IDE active
-			err		:1,		// IDE DMA error
-			ideints	:1,		// IDE interrupt status
-			rsvd1	:2,		// RESERVED
-			dma0cap	:1,		// drive 0 DMA capable
-			dma1cap	:1,		// drive 1 DMA capable
-			rsvd2	:1;		// RESERVED (hardwired to 0)
-	} bits;
-	u_char byte;
-} piix_bmisx_u;
-
-#define PIIX_STATUS_MASK	0x07
-#define PIIX_STATUS_OK		0x04
-#define PIIX_STATUS_ERROR	0x02
-#define PIIX_STATUS_ACTIVE	0x01
-
-/*
- * PIIX Bus Master alignment/boundary requirements.
- *
- * Intel nomemclature:
- * WORD  - 16-bit
- * DWord - 32-bit
- *
- * NOTE:
- * Boundary limit implies that the entire region is physically
- * contiguous.
- *
- * There is an error in the manual regarding DT alignment and boundary
- * restrictions. The "Intel 82371AB (PIIX4) Specification Update" has a
- * clarification to this issue.
- */
-#define PIIX_DT_ALIGN	4			// descriptor table must be DWord aligned.
-#define PIIX_DT_BOUND	(4 * 1024)	// cannot cross 4K boundary. (or 64K ?)
-
-#define PIIX_BUF_ALIGN	4			// memory buffer must be DWord aligned.
-#define PIIX_BUF_BOUND	(64 * 1024)	// cannot cross 64K boundary.
-#define PIIX_BUF_LIMIT	(64 * 1024) // limited to 64K in size
-
-/*
- * PIIX Bus Master Physical Region Descriptor (PRD) format.
- *
- */
-typedef struct {
-	u_int	base;				// base address
-	u_int	count	:16,		// byte count
-			rsvd	:15,
-			eot		:1;			// final PRD indication bit
-} piix_prd_t;

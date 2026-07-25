@@ -58,19 +58,17 @@
  */
 - (BOOL) probePCIController:(IOPCIDeviceDescription *)devDesc;
 
-- (void) getPCIControllerCapabilities:(txferModes_t *)modes;
-
-- (BOOL) setPCIControllerCapabilitiesForDrives:(driveInfo_t *)drives;
-
 - (ideTransferWidth_t) getPIOTransferWidth;
-
-- (void) resetPCIController;
 
 - (ide_return_t) performDMA:(ideIoReq_t *)ideIoReq;
 
 - (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
-	buffer:(void *)buffer 
+	buffer:(void *)buffer
 	client:(struct vm_map *)client;
+
+- (BOOL) bmRegisterRange:(IOPCIDeviceDescription *)devDesc;
+
+- (BOOL) bmInitPRDTable;
 
 /*
  * PIIX specific (private) methods. They all start with the 'PIIX' prefix.
@@ -82,10 +80,6 @@
 
 - (void) PIIXComputePCIConfigSpace:(IOPCIConfigSpace *)configSpace
          forDrives:(driveInfo_t *)drv;
-
-- (BOOL) PIIXRegisterBMRange:(IOPCIDeviceDescription *)devDesc;
-
-- (BOOL) PIIXInitPRDTable;
 
 - (void) PIIXReportTimings:(piix_idetim_u)tim
               slaveTiming:(piix_sidetim_u)stim

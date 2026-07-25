@@ -4,15 +4,16 @@
  * Floppy disk drive class for PC floppy controller
  */
 
-#import <driverkit/IODrive.h>
+#import "IODriveNEW.h"
 #import <driverkit/return.h>
+#import "FloppyVm.h"
 
-@interface IOFloppyDrive : IODrive
+@interface IOFloppyDrive : IODriveNEW
 {
 	// Device and controller information
 	IODeviceDescription *_deviceDescription;  // offset 0x160
 	id _fdController;                          // offset 0x164
-	unsigned _unit;                            // offset 0x168
+	/* _unit inherited from IODevice */
 	unsigned char _regFlags;                   // offset 0x16c (registration/volcheck flags)
 
 	// Motor control

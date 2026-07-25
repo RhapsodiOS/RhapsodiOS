@@ -6,7 +6,7 @@
 
 #import "IODriveNEW.h"
 #import <driverkit/return.h>
-#import <mach/vm_types.h>
+#import "FloppyVm.h"
 
 // Forward declarations
 @class IOFloppyDrive;

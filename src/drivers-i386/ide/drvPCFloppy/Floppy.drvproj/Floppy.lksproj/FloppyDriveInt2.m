@@ -8,6 +8,7 @@
 #import "FloppyDriveInt2.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import "FloppyVm.h"
 
 // External VM functions
 extern void *vm_map_pmap(vm_map_t map);

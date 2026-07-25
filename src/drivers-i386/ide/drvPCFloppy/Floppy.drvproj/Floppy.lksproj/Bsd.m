@@ -10,11 +10,11 @@
 #import <driverkit/kernelDriver.h>
 #import <sys/buf.h>
 #import <sys/uio.h>
+#import "FloppyVm.h"
 
 // External BSD functions
 extern int physio(int (*strategy)(struct buf *), struct buf *bp, dev_t dev, int flags,
                   u_int (*minphys)(struct buf *), struct uio *uio, int blocksize);
-extern vm_map_t IOVmTaskForBuf(struct buf *bp);
 
 // Forward declaration for detached disk identification
 static id _identifyDetachedDiskIdFromBsdDev(dev_t dev);
@@ -835,7 +835,7 @@ static void _HandleBsdStrategy(struct buf *bp)
 
 				// If flag 0x4040000 == 0x40000, get task from buffer
 				if ((bufFlags & 0x4040000) == 0x40000) {
-					vmTask = IOVmTaskForBuf(bp);
+					vmTask = (vm_map_t)IOVmTaskForBuf(bp);
 				}
 
 				// Check if this is a read or write operation

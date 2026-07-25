@@ -13,7 +13,7 @@
 #import <bsd/sys/systm.h>
 #import <mach/message.h>
 #import <mach/mach_error.h>
-#import <stdio.h>
+/* Use kernel printf from <sys/systm.h>; do not import <stdio.h>. */
 
 @implementation FloppyController(IO)
 

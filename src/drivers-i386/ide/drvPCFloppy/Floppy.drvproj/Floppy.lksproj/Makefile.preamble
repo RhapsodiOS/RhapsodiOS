@@ -5,9 +5,10 @@
 #  This makefile is included at the beginning of the common makefile.
 ###############################################################################
 
-# Flags to pass to compiler
+INCLUDED_ARCHS = i386
 
-OTHER_CFLAGS = -DDRIVER_PRIVATE -Wno-format
+# Flags to pass to compiler
+OTHER_CFLAGS = -DDRIVER_PRIVATE -Wno-format -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep
 OTHER_MFLAGS =
 OTHER_LDFLAGS =
 

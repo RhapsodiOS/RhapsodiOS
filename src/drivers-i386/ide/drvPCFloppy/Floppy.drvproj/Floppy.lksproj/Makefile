@@ -17,15 +17,17 @@ CLASSES = Bsd.m FloppyArch.m FloppyCmds.m FloppyCnt.m FloppyCntIo.m\
           FloppyDriveInt.m FloppyDriveInt2.m Geometry.m\
           IODiskNew.m IODiskPartitionNEW.m IODriveNEW.m\
           IOFloppyDisk.m IOFloppyDrive.m IOLogicalDiskNEW.m\
-          kernelDiskMethodsNEW.m Request.m Support.m Thread.m VolCheck.m
+          kernelDiskMethodsNEW.m NXLock.m Request.m Support.m Thread.m\
+          VolCheck.m
 
 HFILES = Bsd.h FloppyArch.h FloppyCmds.h FloppyCnt.h FloppyCntIo.h\
-         FloppyDriveInt.h FloppyDriveInt2.h Geometry.h\
+         FloppyDriveInt.h FloppyDriveInt2.h FloppyVm.h Geometry.h\
          IODiskNew.h IODiskPartitionNEW.h IODriveNEW.h\
          IOFloppyDisk.h IOFloppyDrive.h IOLogicalDiskNEW.h\
-         kernelDiskMethodsNEW.h Request.h Support.h Thread.h VolCheck.h
+         kernelDiskMethodsNEW.h NXLock.h Request.h Support.h Thread.h\
+         VolCheck.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble Load_Commands.sect
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

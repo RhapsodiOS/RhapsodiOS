@@ -6,11 +6,31 @@
 
 #import "FloppyCnt.h"
 #import "IOFloppyDrive.h"
+#import "NXLock.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
 #import <kern/lock.h>
 #import <mach/mach_interface.h>
+
+/* NeXT cc rejects empty asm constraint lists; CMOS access is already serialized. */
+#ifndef LOCK
+#define LOCK()
+#endif
+#ifndef UNLOCK
+#define UNLOCK()
+#endif
+
+/*
+ * Request structure for the controller queue.
+ * This structure represents a queued I/O request.
+ */
+typedef struct _RequestNode {
+	void *cmdParams;        // offset 0x00: Command parameters (or 0 for exit)
+	id    lock;             // offset 0x04: Lock to signal completion
+	struct _RequestNode *prev;  // offset 0x08: Previous node in queue
+	struct _RequestNode *next;  // offset 0x0c: Next node in queue
+} RequestNode;
 
 /*
  * Forward declaration of the floppy controller thread function
@@ -50,7 +70,7 @@ extern int __xxx;
  *   0x71 = CMOS data port
  *   Address 0x10 = Floppy drive types
  */
-static unsigned char _floppyDriveType(int driveNumber)
+unsigned char _floppyDriveType(int driveNumber)
 {
 	unsigned char driveTypeByte;
 	unsigned char driveType;
@@ -110,7 +130,7 @@ static unsigned char _floppyDriveType(int driveNumber)
  *   0x71 = CMOS data port
  *   Address 0x14 = Equipment byte (bits 6-7 = number of floppies - 1)
  */
-static BOOL _numFloppyDrives(void)
+BOOL _numFloppyDrives(void)
 {
 	unsigned char equipmentByte;
 	unsigned char numDrives;
@@ -195,7 +215,7 @@ static BOOL _numFloppyDrives(void)
 	}
 
 	// Initialize controller state fields
-	_field_13a = 0;
+	_dorRegister = 0;
 	_field_13b = 0;
 
 	// Set bit 1 of flags (0x02)
@@ -612,17 +632,6 @@ static BOOL _numFloppyDrives(void)
 }
 
 @end
-
-/*
- * Request structure for the controller queue.
- * This structure represents a queued I/O request.
- */
-typedef struct _RequestNode {
-	void *cmdParams;        // offset 0x00: Command parameters (or 0 for exit)
-	id    lock;             // offset 0x04: Lock to signal completion
-	struct _RequestNode *prev;  // offset 0x08: Previous node in queue
-	struct _RequestNode *next;  // offset 0x0c: Next node in queue
-} RequestNode;
 
 /*
  * Floppy controller thread.

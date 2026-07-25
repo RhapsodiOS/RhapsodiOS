@@ -115,10 +115,10 @@ extern IOReturn _IOForkThread(void (*threadFunc)(void *), void *arg);
 extern void _IOExitThread(void);
 
 /*
- * Floppy drive detection functions
+ * Floppy drive detection functions (defined in FloppyCnt.m)
  */
-extern int _numFloppyDrives(void);
-extern int _floppyDriveType(int driveNum);
+unsigned char _floppyDriveType(int driveNum);
+BOOL _numFloppyDrives(void);
 
 #endif // _BSD_DEV_I386_FLOPPYCNT_H_
 

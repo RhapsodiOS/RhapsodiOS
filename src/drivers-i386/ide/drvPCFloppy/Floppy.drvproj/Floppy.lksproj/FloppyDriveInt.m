@@ -8,6 +8,7 @@
 #import "FloppyDriveInt.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import "FloppyVm.h"
 
 // External references for VM functions
 extern unsigned int __page_size;

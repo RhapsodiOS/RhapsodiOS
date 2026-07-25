@@ -9,13 +9,19 @@
 #import "FloppyCnt.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/directDevice.h>
-#import <driverkit/i386/dma.h>
-#import <kernserv/kern_server_types.h>
-#import <mach/vm_map.h>
+#import <i386/dma_exported.h>
+#import "FloppyVm.h"
 
-// External kernel variables
-extern kern_server_t kernel_map;
+/* Decompiled names → real machdep/i386 DMA exports */
+#define _dma_mask_chan		dma_mask_chan
+#define _dma_chan_xfer_mode	dma_chan_xfer_mode
+#define _is_dma_done		is_dma_done
+#define _get_dma_count		get_dma_count
+
 extern unsigned int page_size;
+/* Decompiled VM helpers used by this file (1-arg extract). */
+extern unsigned int _vm_map_pmap_EXTERNAL(unsigned int map, unsigned int addr);
+extern unsigned int _pmap_resident_extract(unsigned int pmap);
 
 @implementation FloppyController(Arch)
 
@@ -132,7 +138,7 @@ extern unsigned int page_size;
 		_dma_chan_xfer_mode(2, !isEISA);
 
 		// Start the DMA transfer
-		result = _dma_xfer_chan(2, dmaStruct);
+		result = dma_xfer_chan(2, (dma_xfer_t *)dmaStruct);
 
 		if (result != 1) {
 			// Transfer failed
@@ -239,7 +245,7 @@ extern unsigned int page_size;
 	}
 
 	// Complete the DMA transfer
-	_dma_xfer_done(dmaStruct);
+	dma_xfer_done((dma_xfer_t *)dmaStruct);
 
 	// Release the DMA lock
 	[self releaseDMALock];

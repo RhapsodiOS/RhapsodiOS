@@ -744,8 +744,9 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         ),
         "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
         "ida_ua": SimpleNamespace(
+            o_void=0,
             insn_t=type("Instruction", (), {
-                "ops": [SimpleNamespace(offb=index) for index in range(8)],
+                "ops": [SimpleNamespace(type=1, offb=index) for index in range(8)],
             }),
             decode_insn=lambda instruction, address: 1,
         ),
@@ -901,6 +902,190 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
     modules["ida_kernwin"].get_kernel_version = lambda: None
     with pytest.raises(module.ExportError, match="kernel version"):
         module.collect_analysis(input_path, identity.size, identity.sha256, modules)
+
+
+def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_one(tmp_path):
+    # Real IDA evidence (probed directly against the drvPCMCIABus reference
+    # binary) for `div ds:_page_size` at 0xC7D in
+    # -[PCMCIAKernBus memoryRangeResource]: IDA's own decoder reports TWO
+    # operand slots -- slot 0 is `div`'s implicit accumulator (type=o_reg,
+    # offb=0, but idc.print_operand() renders it as "") and slot 1 is the
+    # real, relocatable divisor (type=o_mem, offb=2, "ds:_page_size"). The
+    # old "break on first blank operand text" loop stopped at slot 0 and
+    # silently discarded slot 1 -- the operand the relocation actually
+    # belongs to -- leaving the instruction with zero display operands.
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(
+        "binrecon_test_ida_implicit_operand", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(bytes.fromhex("F73500000000"))
+    identity = identify(input_path)
+
+    class Segment:
+        start_ea = 0x2000
+        end_ea = 0x2006
+        perm = 5
+        type = 2
+
+    class Function:
+        start_ea = 0x2000
+        end_ea = 0x2006
+
+    class Block:
+        start_ea = 0x2000
+        end_ea = 0x2006
+
+        def succs(self):
+            return []
+
+    class EmptyStrings:
+        def __init__(self, default_setup=True):
+            pass
+
+        def setup(self, **options):
+            pass
+
+        def __iter__(self):
+            return iter([])
+
+    class EmptyFixup:
+        pass
+
+    class Fixup:
+        def __init__(self, type_=4, base=0, off=0, external=False, relative=False):
+            self._type = type_
+            self._base = base
+            self.off = off
+            self._external = external
+            self._relative = relative
+
+        def get_type(self):
+            return self._type
+
+        def is_extdef(self):
+            return self._external
+
+        def has_base(self):
+            return self._relative
+
+        def get_base(self):
+            return self._base
+
+        def get_value(self, address):
+            return 0
+
+    fixup_source = Fixup(type_=4, base=0, off=0x9000)
+
+    def get_fixup(target, address):
+        target.__dict__.update(fixup_source.__dict__)
+        target.__class__ = Fixup
+        return True
+
+    modules = {
+        "artifact_mapping": {
+            "schema_version": "ida-mapping-v1",
+            "input": {"size": identity.size, "sha256": identity.sha256,
+                      "architecture": "i386", "endianness": "little"},
+            "runs": [{"address": 0x2000, "offset": 0, "size": 6}],
+        },
+        "ida_auto": SimpleNamespace(auto_wait=lambda: True),
+        "ida_bytes": SimpleNamespace(
+            get_item_size=lambda address: 6,
+            get_flags=lambda address: 1,
+            is_code=lambda flags: flags == 1,
+        ),
+        "ida_funcs": SimpleNamespace(get_func=lambda address: Function()),
+        "ida_fixup": SimpleNamespace(
+            FIXUP_OFF8=13, FIXUP_OFF16=1, FIXUP_SEG16=2, FIXUP_PTR16=3,
+            FIXUP_OFF32=4, FIXUP_PTR32=5, FIXUP_HI8=6, FIXUP_HI16=7,
+            FIXUP_LOW8=8, FIXUP_LOW16=9, FIXUP_OFF64=12,
+            FIXUP_OFF8S=14, FIXUP_OFF16S=15, FIXUP_OFF32S=16,
+            FIXUP_CUSTOM=0x8000,
+            fixup_data_t=EmptyFixup,
+            get_first_fixup_ea=lambda: 0x2002,
+            get_next_fixup_ea=lambda address: 0xFFFFFFFFFFFFFFFF,
+            get_fixup=get_fixup,
+            calc_fixup_size=lambda type_: 4,
+        ),
+        "ida_gdl": SimpleNamespace(FC_NOEXT=2, FlowChart=lambda function, flags=0: [Block()]),
+        "ida_ida": SimpleNamespace(
+            inf_get_procname=lambda: "metapc",
+            inf_is_32bit_exactly=lambda: True,
+            inf_is_be=lambda: False,
+        ),
+        "ida_kernwin": SimpleNamespace(get_kernel_version=lambda: "9.2"),
+        "ida_loader": SimpleNamespace(get_fileregion_offset=lambda address: -1),
+        "ida_name": SimpleNamespace(
+            is_public_name=lambda address: False,
+            get_name=lambda address: "_page_size" if address == 0x9000 else "",
+        ),
+        "ida_nalt": SimpleNamespace(
+            STRTYPE_C=0,
+            get_import_module_qty=lambda: 0,
+            get_import_module_name=lambda index: "",
+            enum_import_names=lambda index, callback: True,
+            retrieve_input_file_size=lambda: identity.size,
+            retrieve_input_file_sha256=lambda: bytes.fromhex(identity.sha256),
+        ),
+        "ida_segment": SimpleNamespace(
+            SEGPERM_READ=1, SEGPERM_WRITE=2, SEGPERM_EXEC=4,
+            SEG_BSS=9, SEG_XTRN=1,
+            getseg=lambda address: Segment() if 0x2000 <= address < 0x2006 else None,
+            get_segm_name=lambda segment: "__text",
+            get_segm_class=lambda segment: "CODE",
+        ),
+        "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
+        "ida_ua": SimpleNamespace(
+            o_void=0,
+            insn_t=type("Instruction", (), {
+                "ops": (
+                    [SimpleNamespace(type=1, offb=0), SimpleNamespace(type=2, offb=2)]
+                    + [SimpleNamespace(type=0, offb=0) for _ in range(6)]
+                ),
+            }),
+            decode_insn=lambda instruction, address: 6,
+        ),
+        "idautils": SimpleNamespace(
+            Segments=lambda: [0x2000],
+            Names=lambda: [(0x2000, "start")],
+            Heads=lambda: [0x2000],
+            CodeRefsFrom=lambda address, flow: [],
+            DataRefsFrom=lambda address: [],
+            Functions=lambda: [0x2000],
+            FuncItems=lambda address: [0x2000],
+            Strings=EmptyStrings,
+        ),
+        "idc": SimpleNamespace(
+            print_insn_mnem=lambda address: "div",
+            print_operand=lambda address, index: "ds:_page_size" if index == 1 else "",
+            generate_disasm_line=lambda address, flags: "div     ds:_page_size",
+        ),
+    }
+
+    result = module.collect_analysis(input_path, identity.size, identity.sha256, modules)
+
+    validate_document("analysis-v1", result)
+    validate_analysis_semantics(result)
+    instruction = result["functions"][0]["instructions"][0]
+    assert instruction["mnemonic"] == "div"
+    assert instruction["operands"] == "ds:_page_size"
+    assert instruction["normalized_operands"] == "ds:_page_size"
+    assert instruction["relocations"] == [0]
+    assert result["relocations"] == [
+        {"address": 0x2002, "kind": "ida-off32-32", "target": "_page_size", "addend": 0}]
+    assert result["extensions"]["ida"]["instruction_operand_offsets"] == [
+        {"address": 0x2000, "operands": [{"index": 0, "offset": 2}]}]
+
+    from binrecon.normalize import normalize_analysis
+    normalized = normalize_analysis(result)
+    operands = normalized["functions"][0]["instructions"][0]["operands"]
+    assert len(operands) == 1
+    assert len(operands[0]["relocations"]) == 1
 
 
 @pytest.mark.parametrize(

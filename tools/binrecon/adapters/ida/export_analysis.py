@@ -509,14 +509,25 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
             operand_values = []
             operand_offsets = []
             for operand_index in range(8):
+                # `type == o_void` is IDA's own signal that this operand slot
+                # does not exist; that is the correct loop terminator. Blank
+                # *text* on an otherwise real slot is not the same thing --
+                # e.g. div/idiv/mul/neg/not decode an implicit accumulator
+                # operand (real type, offb, addr) that IDA deliberately never
+                # renders because it is not written in assembly syntax. Such
+                # a slot must be skipped, not mistaken for the end of the
+                # operand list, or a real, later, relocatable operand (e.g.
+                # the divisor in `div ds:_page_size`) is silently dropped.
+                if instruction.ops[operand_index].type == ida_ua.o_void:
+                    break
                 operand = idc.print_operand(item, operand_index) or ""
                 if not operand:
-                    break
-                operand_values.append(operand)
+                    continue
                 operand_offsets.append({
-                    "index": operand_index,
+                    "index": len(operand_values),
                     "offset": instruction.ops[operand_index].offb,
                 })
+                operand_values.append(operand)
             operands = ", ".join(operand_values)
             if operand_offsets:
                 instruction_operand_offsets.append({

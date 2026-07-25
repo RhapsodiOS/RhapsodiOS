@@ -138,3 +138,53 @@ def write_file(img, path, data, mtime=None):
         raise SafetyError("%s: read-back mismatch after write" % path)
 
     return len(data)
+
+
+def set_table_key(img, path, key, value):
+    """Rewrite one "key" = "value"; line in a DriverKit config table."""
+    ino = img.resolve(path)
+    if ino is None:
+        raise SafetyError("%s does not exist" % path)
+    text = img.read_file(ino)
+    needle = b'"%s" = "' % key.encode()
+    start = text.find(needle)
+    if start < 0:
+        raise SafetyError("%s: key %r not present" % (path, key))
+    vstart = start + len(needle)
+    vend = text.find(b'"', vstart)
+    if vend < 0:
+        raise SafetyError("%s: malformed entry for %r" % (path, key))
+    updated = text[:vstart] + value.encode() + text[vend:]
+    write_file(img, path, updated)
+    return text[vstart:vend].decode(), value
+
+
+def main(argv):
+    if len(argv) < 3:
+        print("usage: rhap_inject.py <image> set-key <path> <key> <value>")
+        print("       rhap_inject.py <image> put <path> <local-file>")
+        return 2
+    image, cmd = argv[1], argv[2]
+    img = rhap_image.Image(image, writable=True)
+    try:
+        if cmd == "set-key":
+            path, key, value = argv[3], argv[4], argv[5]
+            old, new = set_table_key(img, path, key, value)
+            print("%s: %r %r -> %r" % (path, key, old, new))
+        elif cmd == "put":
+            path, local = argv[3], argv[4]
+            with open(local, "rb") as fh:
+                data = fh.read()
+            n = write_file(img, path, data)
+            print("%s: wrote %d bytes" % (path, n))
+        else:
+            print("unknown command: %s" % cmd)
+            return 2
+    finally:
+        img.close()
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    raise SystemExit(main(sys.argv))

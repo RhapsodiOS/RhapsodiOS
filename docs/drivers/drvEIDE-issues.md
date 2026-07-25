@@ -298,6 +298,48 @@ not by itself prove, an internal `mult_sectors`/block-boundary accounting
 issue in QEMU's read-multiple path — a hypothesis to be tested by Task 7
 (disable multi-sector transfers), not an established conclusion here.
 
+### Task 7 result: disabling multi-sector transfers does not fix the boot
+
+`vm/rhap_inject.py set-key` was used to flip `"Multiple Sectors"` from
+`"Yes"` to `"No"` in
+`/private/Drivers/i386/EIDE.config/Instance0.table` on a reset working
+image, and the guest was booted headlessly with `vm/qemu-shot.py`,
+capturing the VGA console out to 180 seconds.
+
+The write landed and took effect: the console now prints `hd0: using
+single sector transfers.` in place of `hd0: using multisector (16)
+transfers.`, confirming the driver reads the table key rather than
+falling back to a compiled-in default.
+
+**The guest still does not boot — outcome 2, a different failure.** The
+`0xC4` (READ MULTIPLE) timeout is gone, but a new one appears on `0x20`
+(READ SECTOR(S)) shortly afterward:
+
+```
+hd0: using single sector transfers.
+...
+rootdev 300, howto 40000
+hc0: interrupt timeout, cmd: 0x20
+hc0: ATA command 20 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0xd secNum=0x53 cyl=0x5 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc0: interrupt timeout, cmd: 0xec
+hc0: ATA drive 0 is not present.
+```
+
+After this the driver cycles indefinitely through `RESTORE` (`0x10`),
+`READ SECTOR(S)` (`0x20`) and drive resets, each attempt timing out the
+same way, with no further progress visible through 180 seconds.
+
+**Reading:** the multisector hypothesis was at least partly right — the
+specific command that stops getting an IRQ changed from `0xC4` to `0x20`
+once multi-sector was disabled — but the underlying mechanism is not
+command-specific. Something about the driver's read path past
+`rootdev`/root-mount time stops receiving IRQ 14 regardless of which read
+command it uses. This does **not** change Tasks 8-11: the sacrificial-inode
+graft and rebuilt-driver injection plan stands, since no config-table
+workaround alone resolves the wedge.
+
 ---
 
 ## 3. Verification status

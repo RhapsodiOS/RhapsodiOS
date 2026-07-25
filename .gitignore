@@ -15,3 +15,5 @@ vm/__pycache__/
 
 # binrecon: analyzer output is generated evidence, not source
 tools/binrecon/out/
+# Rebuilt driver artifacts staged from the Rhapsody guest; never committed.
+out/

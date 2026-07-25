@@ -171,6 +171,19 @@ Its three log strings — `BIOS at %x, length %x`, `No BIOS at %x`,
 emitted by the Kernel Server project type and `Load_Commands.sect`, not written
 by hand, and are expected to be absent from source.
 
+### 2.9 `PCICInternal.h` is dead and unusable
+
+No `.m` file imports it, though `PB.project` lists it under `H_FILES`. It declares
+`socketIsValid`, `checkForCirrusChip`, and `setStatusChangeInterrupt` as `static`,
+so any translation unit that did include it would declare three static functions it
+never defines. The file could never have been used successfully.
+
+This is pre-existing dead code that the reconstruction did not create, so
+`CLAUDE.md` §3 would normally leave it alone with a note. The user reviewed it
+during the plan's pre-flight check and instructed that it be deleted, which is the
+explicit ask that section reserves the deletion for. The fix pass removes the file
+and its `PB.project` entry.
+
 ## 3. Artifact layout
 
 ### 3.1 Committed
@@ -271,9 +284,9 @@ a reviewer — the ledger CLI requires both. Accepted by default: build-generate
 glue, compiler-emitted statics, and anything whose reference form depends on
 Apple's toolchain rather than on our source.
 
-**Discipline.** Fixes touch only code the ledger flags. The one deliberate
-exception is the §2.3 cross-file move, which is approved as part of this design.
-No other adjacent cleanup, no refactoring of code that is not divergent.
+**Discipline.** Fixes touch only code the ledger flags. Two deliberate exceptions
+are approved: the §2.3 cross-file move, and deleting `PCICInternal.h` (§2.9). No
+other adjacent cleanup, no refactoring of code that is not divergent.
 
 **Verification.** Three checks per driver, each against the rebuilt `_reloc`:
 

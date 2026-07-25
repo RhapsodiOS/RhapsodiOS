@@ -27,7 +27,7 @@
 - Ledger status vocabulary is exactly: `unexamined`, `signature-confirmed`, `control-flow-confirmed`, `assembly-matched`, `intentional-mismatch`. There is no "fix" state. `rebuilt_sha256` stays `null` throughout.
 - A diverging function stays `unexamined` in the report pass and is written up in `divergences.md`. The fix pass advances it. This is the drvPCIBus convention; do not invent a weaker positive status for a function you know diverges.
 - Commit messages: short, subsystem-prefixed (`binrecon: `, `Intel824X0PCI: `, `Intel82365PCMCIA: `, `vm: `, `drivers-i386: `), one to two lines, no metadata.
-- Fixes touch only code the ledger flags. The single approved exception is the cross-file move in Task 9 Step 4. No other adjacent cleanup or refactoring.
+- Fixes touch only code the ledger flags. Exactly two exceptions are approved, both in Task 9 Step 4: the cross-file move of `setIoWindow`/`setMemoryWindow`, and the deletion of the dead `PCICInternal.h`. No other adjacent cleanup or refactoring.
 
 ## Reference identities
 
@@ -86,7 +86,7 @@ Recorded here so every task can assert against them rather than re-deriving.
 | `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCI.table` | Add `"Version"` |
 | `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC.m` | Rewrite `initFromDeviceDescription:`; move out the two window functions; drop leading underscores |
 | `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICWindow.m` | Receive the two window functions; drop the externs |
-| `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICInternal.h` | Drop the moved prototypes; drop leading underscores |
+| `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICInternal.h` | **Deleted** — imported by nothing, and declares `static` functions no translation unit defines |
 | `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/{PCICDebug,PCICSocket}.m` | Drop leading underscores |
 | `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PB.project` | Register `PCIC_PCI.m` |
 | `src/drivers-i386/README` | Update both status lines |
@@ -1088,7 +1088,8 @@ git commit -m "Intel82365PCMCIA: add reconstruction source map, ledger and diver
 **Files:**
 - Create: `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCIC_PCI.m` (only if Task 8 Step 6 returned go)
 - Modify: `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCI.table`
-- Modify: `.../PCIC.lksproj/{PCIC.m,PCICDebug.m,PCICInternal.h,PCICSocket.m,PCICWindow.m,PB.project}`
+- Modify: `.../PCIC.lksproj/{PCIC.m,PCICDebug.m,PCICSocket.m,PCICWindow.m,PB.project}`
+- Delete: `.../PCIC.lksproj/PCICInternal.h`
 - Modify: `src/drivers-i386/bus/Intel82365PCMCIA/reconstruction/{ledger.json,divergences.md}`
 
 **Interfaces:**
@@ -1136,18 +1137,21 @@ missing from our tree."
 Move `setIoWindow` and `setMemoryWindow` from `PCIC.m` (currently at lines 452 and 496) into `PCICWindow.m`, placing them after `-[PCICWindow set16Bit:]` and before the end of the file, matching the reference's 6620/7084 ordering. Then:
 
 - Delete the two `extern` declarations at `PCICWindow.m:38-39`.
-- Delete the two prototypes at `PCICInternal.h:40-41`.
 - Make both functions `static`. Both reference symbols have **local** binding, and nothing outside `PCICWindow.m` calls them once the move is done.
+- **Delete `PCICInternal.h`** and its entry in `PB.project`'s `H_FILES` list. No `.m` file imports it, and the three `static` prototypes it declares have no definition in any translation unit that could include it — it is unusable, not merely unused. This is pre-existing dead code, deleted here on an explicit instruction from the user rather than on our own initiative.
 - `-[PCICWindow setMapWithSize:systemAddress:cardAddress:]` calls both at `PCICWindow.m:258` and `:261`, which is *above* their new position at the end of the file. Add `static` forward declarations near the top of `PCICWindow.m`, in place of the two deleted `extern` lines, so the calls still see a prototype.
 
 This is the one approved cross-file change. Do not clean up anything else in either file while you are in there.
 
 ```bash
-git add src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj
+git add -A src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj
 git commit -m "Intel82365PCMCIA: move setIoWindow and setMemoryWindow into PCICWindow.m
 
-Restores the file boundaries the reference link order shows."
+Restores the file boundaries the reference link order shows and drops the
+unused PCICInternal.h."
 ```
+
+`git add -A` rather than `git add`, so the `PCICInternal.h` deletion is staged.
 
 - [ ] **Step 5: Drop the leading underscores and commit**
 
@@ -1164,9 +1168,9 @@ Rename all eight C functions so the compiled symbols match Apple's, per §2.5. O
 | `_setMemoryWindow` | `setMemoryWindow` |
 | `_setIoWindow` | `setIoWindow` |
 
-Every definition, prototype, and call site across `PCIC.m`, `PCICDebug.m`, `PCICInternal.h`, `PCICSocket.m`, and `PCICWindow.m` changes together.
+Every definition, prototype, and call site across `PCIC.m`, `PCICDebug.m`, `PCICSocket.m`, and `PCICWindow.m` changes together. (`PCICInternal.h` is gone as of Step 4.)
 
-**One linkage change belongs with the renames.** Every helper in the table above has **local** binding in the reference except `_MapAttributeMemory`, which is **external**. Our `PCICDebug.m:87` declares it `static`. Drop the `static` so its linkage matches, and add a prototype for it to `PCICInternal.h` alongside the ones that stay. The other seven keep `static`.
+**One linkage change belongs with the renames.** Every helper in the table above has **local** binding in the reference except `_MapAttributeMemory`, which is **external**. Our `PCICDebug.m:87` declares it `static`. Drop the `static` so its linkage matches. Do not add a prototype anywhere — nothing outside `PCICDebug.m` calls it, and the reference's own object exports it without any caller in this binary either. The other seven keep `static`.
 
 Verify no old name is left:
 

@@ -12,7 +12,8 @@
 
 ## Global Constraints
 
-- Python 3.12 is the supported runtime. Pinned deps: angr 9.3.0, jsonschema 4.26.0, pytest 9.1.1.
+- Python 3.13.9 is the runtime. The binrecon README names 3.12, but 3.12 is not installed on this host and angr 9.3.0, jsonschema 4.26.0, and pytest 9.1.1 all install and pass on 3.13.9 at their pinned versions. Do not change the pins.
+- **Known pre-existing test failure:** `tools/binrecon/tests/test_source_map.py::test_loader_validates_the_committed_eisabus_source_map_schema_and_semantics` fails at `test_source_map.py:320`, which expects a committed source map at the pre-`src/` path `src/drivers/x86/bus/drvEISABus/reconstruction/source-map.json`. No such file has ever existed in git history. Baseline is **607 passed, 4 skipped, 1 failed**. Task 12 fixes it. Do not attribute it to your change, and do not "fix" it outside Task 12.
 - IDA `version` must be `9.2`; Ghidra `version` must be `12.1` with a Java 21 `java.exe`. The adapters reject other versions.
 - Reference binaries live at `C:\Users\raynorpat\Downloads\test\Drivers\i386` and are **never** committed.
 - **Never point a profile's `rebuilt` at the reference.** That is what produced the false `exact-image` pass in `tools/binrecon/out/eisabus/`.
@@ -69,25 +70,24 @@ The runner already handles a null rebuilt artifact end to end — it selects `ar
 - Consumes: nothing.
 - Produces: `Profile.rebuilt: ArtifactSpec | None` and `Profile.rebuilt_identity: InputIdentity | None`, both `None` when the profile document has no `rebuilt` key.
 
-- [ ] **Step 1: Create the virtualenv and install dependencies**
+- [ ] **Step 1: Confirm the virtualenv is present**
 
-Run from the repository root:
+`.venv-binrecon` has already been created on Python 3.13.9 with all pinned dependencies installed. Verify rather than recreate:
 
 ```bash
-py -3.12 -m venv .venv-binrecon
-./.venv-binrecon/Scripts/python.exe -m pip install --upgrade pip
-./.venv-binrecon/Scripts/python.exe -m pip install -r tools/binrecon/requirements-dev.txt
+./.venv-binrecon/Scripts/python.exe --version
+./.venv-binrecon/Scripts/python.exe -m pip show angr jsonschema pytest | grep -E "^(Name|Version)"
 ```
 
-Expected: `Successfully installed ... angr-9.3.0 ... jsonschema-4.26.0 ... pytest-9.1.1`.
+Expected: `Python 3.13.9`, then `angr 9.3.0`, `jsonschema 4.26.0`, `pytest 9.1.1`.
 
-- [ ] **Step 2: Confirm the existing suite is green before touching anything**
+- [ ] **Step 2: Record the baseline test result before touching anything**
 
 ```bash
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: all tests pass. If any fail now, stop and report — a pre-existing failure must not be attributed to this change.
+Expected: **607 passed, 4 skipped, 1 failed**. The one failure is the known pre-existing `test_loader_validates_the_committed_eisabus_source_map_schema_and_semantics` described in Global Constraints. Any *other* failure means stop and report.
 
 - [ ] **Step 3: Write the failing test**
 
@@ -194,7 +194,7 @@ The `Profile(...)` construction at lines 57 and 61 already passes these names th
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: all tests pass, including both new ones. The runner and CLI tests must stay green — they already exercise the rebuilt-present path.
+Expected: **609 passed, 4 skipped, 1 failed** — the two new tests added to the 607 baseline, with the known pre-existing failure unchanged. The runner and CLI tests must stay green; they already exercise the rebuilt-present path.
 
 - [ ] **Step 8: Commit**
 
@@ -777,7 +777,7 @@ If `binrecon.schema` has no `write_json`, use `Path(arguments.output).write_text
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: all tests pass.
+Expected: the running total plus your new test, with only the known pre-existing failure still red.
 
 - [ ] **Step 6: Commit**
 
@@ -1092,15 +1092,23 @@ find "$OUT" -name '*_reloc' -print | sort
 echo "=== build-i386-bus-drivers done ==="
 ```
 
-- [ ] **Step 2: Run the drvPCIBus baseline build**
+- [ ] **Step 2: Record the existing baseline**
 
-Run on the Rhapsody guest, before any source edits:
+All three drivers have **already been built clean** and staged to `out/i386/` outside this plan:
+
+| Driver | Artifact | Size |
+| --- | --- | --- |
+| drvPCIBus | `out/i386/drvPCIBus/PCIBus.config/PCIBus_reloc` | 155312 |
+| drvPCMCIABus | `out/i386/drvPCMCIABus/PCMCIABus.config/PCMCIABus_reloc` | 344196 |
+| drvEISABus | `out/i386/drvEISABus/EISABus.config/EISABus_reloc` | 577656 |
+
+These are larger than the references because they are unstripped; the plan never compares them byte-for-byte. Their existence satisfies the baseline gate for all three drivers — **drvPCMCIABus does compile**, contrary to the README's "needs compiled and then tested".
+
+Confirm they are still present, then record a `## Baseline build` section in each driver's `divergences.md` noting the artifact and size. Do not run a guest build in this task — the QEMU guest is currently in use by another session.
 
 ```bash
-sh /build/source/vm/build-i386-bus-drivers.sh drvPCIBus
+find out/i386 -name '*_reloc' -exec ls -la {} \;
 ```
-
-Expected: exit 0 and `/build/out/i386/drvPCIBus/PCIBus.config/PCIBus_reloc` listed in the artifacts section. Record the outcome — pass or fail — in `divergences.md` under a `## Baseline build` heading. If it fails, repairing that breakage is a separate commit **before** any divergence fix.
 
 - [ ] **Step 3: Add the builder to the spec's deliverables**
 
@@ -1418,11 +1426,37 @@ print('source map valid')
 
 Expected: `source map valid`.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Repoint the committed-source-map test**
+
+`tools/binrecon/tests/test_source_map.py:320` expects the EISABus source map at the pre-`src/` path and has been failing since the tooling landed — no such file has ever existed in git history. The map produced by this task is exactly what it wants. Change line 320 from:
+
+```python
+    source_map = repo_root / "src/drivers/x86/bus/drvEISABus/reconstruction/source-map.json"
+```
+
+to:
+
+```python
+    source_map = repo_root / "src/drivers-i386/bus/drvEISABus/reconstruction/source-map.json"
+```
+
+Leave the `reference_sha256` assertion alone — `8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23` is the correct `EISABus_reloc` hash and your source map must already carry it.
+
+- [ ] **Step 9: Confirm the suite is fully green**
 
 ```bash
-git add tools/binrecon/profiles/eisabus.json src/drivers-i386/bus/drvEISABus/reconstruction
-git commit -m "drvEISABus: add reconstruction source map, ledger and divergence report"
+PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
+```
+
+Expected: **zero failures** — this is the task that clears the long-standing baseline failure. If it still fails, the source map is at the wrong path or carries the wrong hash.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add tools/binrecon/profiles/eisabus.json tools/binrecon/tests/test_source_map.py src/drivers-i386/bus/drvEISABus/reconstruction
+git commit -m "drvEISABus: add reconstruction source map, ledger and divergence report
+
+Also repoints the committed-source-map test at the current tree layout."
 ```
 
 ---

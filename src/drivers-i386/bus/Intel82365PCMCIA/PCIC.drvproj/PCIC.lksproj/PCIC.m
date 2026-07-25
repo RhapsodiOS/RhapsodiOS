@@ -286,7 +286,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Set power management flags
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)setPowerManagement:(int)flags
+- (IOReturn)setPowerManagement:(PMPowerManagementState)flags
 {
     return IO_R_UNSUPPORTED;
 }
@@ -296,7 +296,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Based on decompiled implementation
  * Power state 3 disables all sockets and windows
  */
-- (IOReturn)setPowerState:(int)powerState
+- (IOReturn)setPowerState:(PMPowerState)powerState
 {
     unsigned int i, count;
     unsigned int j, windowCount;
@@ -332,7 +332,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Get power management flags
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)getPowerManagement:(int *)flags
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)flags
 {
     return IO_R_UNSUPPORTED;
 }
@@ -341,7 +341,7 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Get power state
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)getPowerState:(int *)state
+- (IOReturn)getPowerState:(PMPowerState *)state
 {
     return IO_R_UNSUPPORTED;
 }

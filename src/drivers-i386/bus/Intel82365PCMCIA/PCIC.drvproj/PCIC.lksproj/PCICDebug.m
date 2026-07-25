@@ -178,6 +178,7 @@ static void setWindow(int socket, int window, unsigned int cardAddress,
     /* +5: card offset bits 20-25, the attribute memory select and the
      * write protect bit */
     regValue = ((cardOffset >> 20) & 0x3F) | ((attributeMemory & 1) << 6);
+    /* & 0x7F is a no-op here (bit 7 already clear); kept for parity with the reference's `and bl, 7Fh` at 2251 */
     regValue = (regValue & 0x7F) | (writeProtect << 7);
     outb(reg_base, socketOffset + windowOffset + 0x15);
     outb(reg_base + 1, regValue);

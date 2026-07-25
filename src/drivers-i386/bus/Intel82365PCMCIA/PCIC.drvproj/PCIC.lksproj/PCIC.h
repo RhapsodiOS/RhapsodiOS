@@ -63,10 +63,10 @@
 - (void)setStatusChangeHandler:handler;
 
 /* Power management */
-- (IOReturn)setPowerState:(int)powerState;
-- (IOReturn)getPowerState:(int *)state;
-- (IOReturn)setPowerManagement:(int)flags;
-- (IOReturn)getPowerManagement:(int *)flags;
+- (IOReturn)setPowerState:(PMPowerState)powerState;
+- (IOReturn)getPowerState:(PMPowerState *)state;
+- (IOReturn)setPowerManagement:(PMPowerManagementState)flags;
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)flags;
 
 /* Socket and window list access */
 - sockets;

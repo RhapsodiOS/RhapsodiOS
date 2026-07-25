@@ -165,9 +165,15 @@ typedef struct {
     unsigned char length;
     unsigned char version;
 
-    /* Scan BIOS ROM from 0xF0000 to 0xFFFF0 in 16-byte increments */
+    /*
+     * Scan BIOS ROM from 0xF0000 to 0xFFFF0 inclusive, in 16-byte increments.
+     * The reference tests its bound after the increment -- "add ebx, 10h;
+     * cmp ebx, 0FFFFEh; jbe" at 0x354c -- so 0xFFFF0 is the last paragraph
+     * examined, not the first one skipped.  The comparison here is therefore
+     * "<=", not "<".
+     */
     for (check = (pnp_bios_install_struct *)0xF0000;
-         check < (pnp_bios_install_struct *)0xFFFF0;
+         check <= (pnp_bios_install_struct *)0xFFFF0;
          check = (pnp_bios_install_struct *)((unsigned char *)check + 0x10))
     {
         /* Check for "$PnP" signature (0x506E5024) */
@@ -196,16 +202,18 @@ typedef struct {
             continue;
         }
 
-        /* Validate version (must be >= 1.0) */
-        version = check->fields.version;
-        if (version < 0x10) {
-            IOLog("PnPBios: Found PnP BIOS v%x.%x at 0x%08x, but need >= v1.0\n",
-                  version >> 4, version & 0x0F, (unsigned int)check);
-            continue;
-        }
+        /*
+         * No version gate.  The reference's +Present: is 99 bytes end to end
+         * and contains only the signature compare and the checksum loop --
+         * there is no counterpart to a "version >= 1.0" test anywhere in it.
+         * Rejecting a structure the reference accepts would deny PnP BIOS
+         * service on hardware Apple's driver served, so the checksum is the
+         * only gate here too.  The version byte is read for diagnostics only.
+         */
 
         /* All validation passed */
 #ifdef PNPBIOSDEBUG
+        version = check->fields.version;
         IOLog("PnPBios: Found valid PnP BIOS v%x.%x at 0x%08x\n",
               version >> 4, version & 0x0F, (unsigned int)check);
         IOLog("PnPBios: Length: 0x%02x, Control: 0x%04x\n",

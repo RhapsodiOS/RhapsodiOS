@@ -285,6 +285,24 @@
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c"
     },
     {
+      "address": 5788,
+      "reference_names": [
+        "_getCardConfig"
+      ],
+      "size": 999,
+      "source_line": 984,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m"
+    },
+    {
+      "address": 6788,
+      "reference_names": [
+        "_getDeviceCfg"
+      ],
+      "size": 700,
+      "source_line": 1062,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m"
+    },
+    {
       "address": 7488,
       "reference_names": [
         "-[EISAKernBus maxPnPCard]"
@@ -1381,20 +1399,6 @@
         "__EISAKernBusInterruptDispatch"
       ],
       "size": 62
-    },
-    {
-      "address": 5788,
-      "reference_names": [
-        "_getCardConfig"
-      ],
-      "size": 999
-    },
-    {
-      "address": 6788,
-      "reference_names": [
-        "_getDeviceCfg"
-      ],
-      "size": 700
     },
     {
       "address": 14256,

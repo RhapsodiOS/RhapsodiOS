@@ -34,6 +34,7 @@
 #import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/IOPower.h>
 
 /* Forward declarations */
 @class List;
@@ -41,16 +42,7 @@
 @class PCICSocket;
 @class PCICWindow;
 
-/*
- * Protocol for PCMCIA status change notifications
- */
-@protocol PCMCIAStatusChange
-
-- statusChangedForSocket:socket changedStatus:(unsigned int)status;
-
-@end
-
-@interface PCIC : IODirectDevice
+@interface PCIC : IODirectDevice <IOPower>
 {
     BOOL CirrusCompatible;     /* Flag indicating Cirrus Logic chip detection (offset 0x128) */
     List *sockets;             /* List of PCICSocket instances (offset 0x12C) */

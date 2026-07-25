@@ -83,3 +83,154 @@ class Image(object):
 
     def read_frag(self, frag_no, nbytes):
         return self._read_at(self.frag_offset(frag_no), nbytes)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+NDADDR = 12
+NIADDR = 3
+
+
+class Inode(object):
+    def __init__(self, ino, buf):
+        self.ino = ino
+        self.mode, self.nlink = struct.unpack_from("<Hh", buf, 0)
+        self.size = struct.unpack_from("<Q", buf, 8)[0]
+        self.mtime = struct.unpack_from("<i", buf, 24)[0]
+        self.db = list(struct.unpack_from("<%di" % NDADDR, buf, 40))
+        self.ib = list(struct.unpack_from("<%di" % NIADDR, buf, 88))
+        self.blocks = struct.unpack_from("<i", buf, 104)[0]
+
+    def is_dir(self):
+        return (self.mode & 0o170000) == 0o040000
+
+    def is_reg(self):
+        return (self.mode & 0o170000) == 0o100000
+
+
+def _cgstart(img, c):
+    return img.fpg * c + img.cgoffset * (c & ~img.cgmask)
+
+
+def _inode_location(img, ino):
+    cg = ino // img.ipg
+    off = ino % img.ipg
+    frag = _cgstart(img, cg) + img.iblkno + (off // img.inopb) * img.frag
+    return frag, (off % img.inopb) * DINODE_SIZE
+
+
+def _inode(self, ino):
+    frag, entry = _inode_location(self, ino)
+    blk = self.read_frag(frag, self.bsize)
+    return Inode(ino, blk[entry:entry + DINODE_SIZE])
+
+
+def _frags(self, inode):
+    """Fragment numbers covering the file.  Holes appear as 0."""
+    need = (inode.size + self.fsize - 1) // self.fsize
+    out = []
+
+    def take(frag_of_block):
+        # A block covers fs_frag fragments with consecutive numbers.
+        for k in range(self.frag):
+            if len(out) >= need:
+                return
+            out.append(frag_of_block + k if frag_of_block else 0)
+
+    for b in inode.db:
+        if len(out) >= need:
+            break
+        take(b)
+
+    if len(out) < need and inode.ib[0]:
+        ind = self.read_frag(inode.ib[0], self.bsize)
+        for b in struct.unpack_from("<%di" % self.nindir, ind, 0):
+            if len(out) >= need:
+                break
+            take(b)
+
+    if len(out) < need and inode.ib[1]:
+        l1 = self.read_frag(inode.ib[1], self.bsize)
+        for b1 in struct.unpack_from("<%di" % self.nindir, l1, 0):
+            if len(out) >= need or not b1:
+                break
+            l2 = self.read_frag(b1, self.bsize)
+            for b in struct.unpack_from("<%di" % self.nindir, l2, 0):
+                if len(out) >= need:
+                    break
+                take(b)
+
+    return out[:need]
+
+
+def _read_file(self, ino):
+    inode = self.inode(ino) if isinstance(ino, int) else ino
+    buf = bytearray()
+    for f in self.frags(inode):
+        buf += self.read_frag(f, self.fsize) if f else bytes(self.fsize)
+    return bytes(buf[:inode.size])
+
+
+def _iter_dir(self, ino):
+    data = self.read_file(ino)
+    p = 0
+    while p < len(data):
+        d_ino, d_reclen = struct.unpack_from("<IH", data, p)
+        d_type = data[p + 6]
+        d_namlen = data[p + 7]
+        if d_reclen == 0:
+            break
+        if d_ino:
+            name = data[p + 8:p + 8 + d_namlen].decode("ascii", "replace")
+            yield name, d_ino, d_type, p
+        p += d_reclen
+
+
+def _listdir(self, path):
+    ino = self.resolve(path)
+    if ino is None:
+        raise FileNotFoundError(path)
+    return [(n, i, t) for n, i, t, _ in self.iter_dir(ino)]
+
+
+def _lookup(self, dir_ino, name):
+    for n, i, _t, _off in self.iter_dir(dir_ino):
+        if n == name:
+            return i
+    return None
+
+
+def _resolve(self, path):
+    ino = 2
+    for part in path.strip("/").split("/"):
+        if not part:
+            continue
+        ino = self.lookup(ino, part)
+        if ino is None:
+            return None
+    return ino
+
+
+def _max_writable(self, ino):
+    """Bytes that may be overwritten in place.
+
+    Rounded up to a fragment because FFS packs several files' tails into one
+    block: writing past this file's own fragment count would corrupt an
+    unrelated file.
+    """
+    inode = self.inode(ino) if isinstance(ino, int) else ino
+    return ((inode.size + self.fsize - 1) // self.fsize) * self.fsize
+
+
+Image.inode = _inode
+Image.frags = _frags
+Image.read_file = _read_file
+Image.iter_dir = _iter_dir
+Image.listdir = _listdir
+Image.lookup = _lookup
+Image.resolve = _resolve
+Image.max_writable = _max_writable

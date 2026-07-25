@@ -170,3 +170,50 @@ class TestRoundTrip(unittest.TestCase):
             self.assertEqual(img.inode(img.resolve(TABLE)).size, len(original))
         finally:
             img.close()
+
+
+DONOR = ("/System/Documentation/Developer/YellowBox/TasksAndConcepts"
+         "/PB/ProjectBuilder.pdf")
+
+
+@unittest.skipUnless(os.path.exists(WORK), "work/test.img not built yet")
+class TestGraft(unittest.TestCase):
+    def test_donor_is_large_and_hole_free(self):
+        img = rhap_image.Image(WORK)
+        try:
+            ino = img.resolve(DONOR)
+            self.assertIsNotNone(ino)
+            n = img.inode(ino)
+            self.assertGreater(img.max_writable(n), 8 * 1024 * 1024)
+            self.assertTrue(all(f for f in img.frags(n)))
+        finally:
+            img.close()
+
+    def test_graft_repoints_name_and_content(self):
+        payload = b"GRAFTED" + b"\0" * (2 * 1024 * 1024 - 7)
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            donor_ino = img.resolve(DONOR)
+            rhap_inject.graft_file(img, "/mach_kernel", DONOR, payload)
+        finally:
+            img.close()
+
+        img = rhap_image.Image(WORK)
+        try:
+            self.assertEqual(img.resolve("/mach_kernel"), donor_ino)
+            got = img.read_file(img.resolve("/mach_kernel"))
+            self.assertEqual(len(got), len(payload))
+            self.assertEqual(got[:7], b"GRAFTED")
+            self.assertGreaterEqual(img.inode(donor_ino).nlink, 2)
+        finally:
+            img.close()
+
+    def test_graft_refuses_donor_too_small(self):
+        img = rhap_image.Image(WORK, writable=True)
+        try:
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.graft_file(
+                    img, "/mach_kernel", TABLE, b"x" * 100000
+                )
+        finally:
+            img.close()

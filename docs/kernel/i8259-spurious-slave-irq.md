@@ -165,6 +165,48 @@ The cascade request stays latched in the master's IRR throughout, so no
 interrupt is lost; only its acknowledgement is deferred until the slave's mask
 is consistent. Cost is one extra `outb` per mask change.
 
+## Result: partial, and the hypothesis was incomplete
+
+Measured after the change, on a comparably-loaded boot (4,200 disk interrupts
+against the baseline's 4,197):
+
+| | baseline | with IR2 bracketing |
+|---|---|---|
+| IRQ 14 (disk) | 4,197 | 4,200 |
+| IRQ 15 (spurious) | **227** | **190** |
+| rate | 5.4% | 4.5% |
+
+A reduction, but nowhere near elimination — and this is one run against one
+run, with no variance data, so the drop should be read as suggestive rather
+than established.
+
+All 190 remaining are still immediately preceded by the timer, so the
+mechanism is unchanged. The fix addressed the wrong window. Bracketing the
+mask *write* only closes a few microseconds; the real exposure is the whole
+time the slave IRQ stays masked:
+
+1. Disk asserts; the master latches the cascade in IRR2.
+2. The clock preempts and raises the IPL, masking IRQ 14 in the slave.
+3. The clock handler finishes and EOIs, clearing the master's ISR bit 0.
+4. The master now delivers the still-latched cascade — but IRQ 14 remains
+   masked, because the IPL is not lowered until the handler returns.
+5. The slave has nothing unmasked to report and answers with IRQ 7.
+
+Closing that properly would mean holding IR2 masked for the entire elevated-IPL
+window, which is not acceptable: masking IR2 blocks *every* slave interrupt,
+including higher-IPL ones that should still be delivered. It would trade a
+benign spurious interrupt for broken interrupt priority.
+
+The remaining options are to restructure mask-on-the-fly entirely — the
+`set_masked_ipl()` call in `intr_dispatch()` exists so level-triggered inputs
+work, so it cannot simply be dropped — or to accept the spurious interrupts.
+They are correctly handled by the Part 1 fix and cost one cheap trap each, so
+accepting them is the reasonable engineering answer at roughly 4.5% of disk
+interrupts.
+
+The IR2 bracketing is kept: it is correct, costs one `outb` per mask change,
+and narrows a genuine race. It is simply not sufficient on its own.
+
 ## Verifying
 
 Re-run the measurement and compare against the 227 baseline:

@@ -340,7 +340,58 @@ command it uses. This does **not** change Tasks 8-11: the sacrificial-inode
 graft and rebuilt-driver injection plan stands, since no config-table
 workaround alone resolves the wedge.
 
-### Task 9 result: the rebuilt driver survives longer, but multisector still wedges
+### Pre-branch baseline: the stock driver's original console failure
+
+Before any change on this branch, the guest was booted once with the stock
+kernel and the stock `drvEIDE-28` / `5.01` to establish what the unmodified
+failure actually looked like. This was **observed on the guest console under
+QEMU, transcribed from screenshots rather than captured to a log file** — no
+`qemu-shot.py`/serial-log tooling was in use yet at that point in the branch's
+history. Two limitations follow directly from that: it is a manual
+transcription, not a machine-captured log, and the earlier part of the boot
+had already scrolled off-screen before the failure was captured, so the
+device bring-up shown below is the tail of what was still on screen, not the
+full sequence from power-on.
+
+What was still visible of the normal bring-up:
+
+```
+hd0: using multisector (16) transfers.
+hd0: Device Capacity: 8063 MB
+hd0: Disk Label: Disk
+```
+
+along with controller/drive detection on `hc1`, and registration of
+`ISASerialPort0` (`Base=0x03f8, IRQ=4, Type=16550AF/C/CF, FIFO=16`),
+`PS2Controller`, `PCI0`, `EISA0`, `event0`, and `kmDevice0`.
+
+The failure itself:
+
+```
+rootdev 300, howto 40000
+WARNING: preposterous time in Real Time Clock -- CHECK AND RESET THE DATE!
+hc0: interrupt timeout, cmd: 0xc4
+hc0: Read Multiple: error=0x0 secCnt=0x30 secNum=0xe0 cyl=0x373 drhd=0xe0 status=0x58
+hc0: ATA command c4 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0x30 secNum=0xe0 cyl=0x373 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc1: interrupt timeout, cmd: 0x0
+hc1: FATAL: ATAPI Drive: 0 Command 0 failed.
+hc1: ATAPI Command: error=0x20 secCnt=0x3 secNum=0x1 cyl=0x800 drhd=0xe0 status=0x41
+hc0: interrupt timeout, cmd: 0xec
+hc1: interrupt timeout, cmd: 0x0
+hc1: FATAL: ATAPI Drive: 0 Command 0 failed.
+hc1: ATAPI Command: error=0x20 secCnt=0x3 secNum=0x1 cyl=0x800 drhd=0xe0 status=0x41
+hc0: ATA drive 0 is not present.
+```
+
+**The significant detail this establishes: the original, stock-driver failure
+had already reached `rootdev 300, howto 40000`** — i.e. root-device I/O had
+begun — before wedging on `cmd: 0xc4` with `status=0x58`. This is the fact
+against which any later "did the rebuilt driver get further" claim must be
+checked, and it is the baseline used in the Task 9 comparison below.
+
+### Task 9 result: the rebuilt driver does not fix the multisector wedge
 
 The i386 `drvEIDE` (findings A-G above) was built on the PPC toolchain host
 as unstripped `kl_ld` output (`EIDE_reloc`, 856,404 bytes — about 7x the
@@ -361,26 +412,32 @@ transfers.`, then `hc0: interrupt timeout, cmd: 0x20` shortly after
 inside 180 seconds. The larger unstripped binary loads and runs with no
 regression.
 
-**With `"Multiple Sectors" = "Yes"` — the real test — the driver gets
-substantially further before wedging, but still wedges.** `hd0: using
-multisector (16) transfers.` appears and, unlike the original reference
-failure (which hangs on the very next `0xC4`), the boot continues through
+**With `"Multiple Sectors" = "Yes"` — the real test.** `hd0: using
+multisector (16) transfers.` appears, and the boot continues through
 device-attribute printing, serial/keyboard/PCI/EISA registration, and into
 `rootdev 300, howto 40000` — all without an interrupt timeout. The wedge
-then reappears at the start of root-device I/O, with the same signature as
-the original reference failure: `hc0: interrupt timeout, cmd: 0xc4`,
-`status=0x58` (`DRDY|DSC|DRQ`, `error=0x0`), followed by the same permanent
-reset/retry cycle (`RESTORE`/`READ MULTIPLE`/`ATA drive 0 is not present`)
-with no progress through 180 seconds.
+then appears at the start of root-device I/O: `hc0: interrupt timeout, cmd:
+0xc4`, `status=0x58` (`DRDY|DSC|DRQ`, `error=0x0`), followed by the same
+permanent reset/retry cycle (`RESTORE`/`READ MULTIPLE`/`ATA drive 0 is not
+present`) with no progress through 180 seconds.
 
-**Reading:** findings A-G's recovery logic (particularly C,
-`-recoverFromLostInterrupt:command:`) lets the boot survive well past where
-the stock driver hung, but does not fix the root cause QEMU's IDE trace
-identified — IRQ 14 simply stops being reasserted for a `cmd: 0xc4`, and no
-amount of driver-side recovery logic can wait out an interrupt the device
-model never raises. The serial console in Tasks 10-11 remains the priority
-for `IOLog` visibility into exactly where in `-recoverFromLostInterrupt:` or
-the retry path this instance of the wedge is being hit.
+**Reading, against the pre-branch baseline recorded above:** the baseline's
+stock-driver failure had also already reached `rootdev 300, howto 40000`
+before wedging on `cmd: 0xc4` with the same `status=0x58`. The rebuilt
+driver reaches that same point and fails on the same command with the same
+status. **The rebuilt `drvEIDE` (drvEIDE-33 / v5.04, replacing the image's
+drvEIDE-28 / v5.01) does not fix this failure under QEMU.** Two things are
+genuinely established, though: the 856,404-byte unstripped binary loaded and
+initialised correctly, so binary size was not a barrier to booting; and with
+multi-sector disabled, it reproduced the prior (Task 7) baseline exactly.
+Findings A-G's recovery logic (particularly C,
+`-recoverFromLostInterrupt:command:`) does not resolve the root cause QEMU's
+IDE trace identified — IRQ 14 simply stops being reasserted for a `cmd:
+0xc4`, and no amount of driver-side recovery logic can wait out an interrupt
+the device model never raises. The serial console in Tasks 10-11 remains the
+priority for `IOLog` visibility into exactly where in
+`-recoverFromLostInterrupt:` or the retry path this instance of the wedge is
+being hit.
 
 ---
 

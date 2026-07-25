@@ -3,3 +3,6 @@
 
 # vm directory
 vm/
+vm/work/
+vm/golden.img
+vm/logs/

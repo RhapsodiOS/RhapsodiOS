@@ -214,9 +214,9 @@ static void _freeRingBuffer(void *queueBase)
  */
 static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    unsigned int oldIRQL;
     ISASerialPort *self = (ISASerialPort *)spec;
     (void)call;
-    unsigned int oldIRQL;
 
     // Raise interrupt level
     oldIRQL = spl4();
@@ -244,9 +244,9 @@ static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
  */
 static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    unsigned int oldIRQL;
     ISASerialPort *self = (ISASerialPort *)spec;
     (void)call;
-    unsigned int oldIRQL;
 
     // Raise interrupt level
     oldIRQL = spl4();
@@ -975,6 +975,7 @@ static void _PCMCIA_yanked(ISASerialPort *self)
  */
 static IOReturn _activatePort(ISASerialPort *self)
 {
+    unsigned int flowState;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
     unsigned int txState, rxState;
@@ -1058,7 +1059,7 @@ static IOReturn _activatePort(ISASerialPort *self)
     }
 
     // Recalculate flow control state
-    unsigned int flowState = _flowMachine(self);
+    flowState = _flowMachine(self);
 
     // Update state with flow control bits
     oldState = self->currentState;
@@ -1256,6 +1257,8 @@ static IOReturn _activatePort(ISASerialPort *self)
  */
 static IOReturn _deactivatePort(ISASerialPort *self)
 {
+    unsigned int eventMask;
+    unsigned int flowState;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
 
@@ -1301,7 +1304,6 @@ static IOReturn _deactivatePort(ISASerialPort *self)
 
     // Enqueue state change event if any watched state bits changed
     // Read stateEventMask as part of uint at offset 0xe0
-    unsigned int eventMask;
     memcpy(&eventMask, &self->flowControlMode, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
         _RX_enqueueLongEvent(self, EVENT_STATE_CHANGE,
@@ -1313,7 +1315,7 @@ static IOReturn _deactivatePort(ISASerialPort *self)
     _freeRingBuffer((char *)self + 0x18); // RX queue at offset 0x18
 
     // Recalculate flow control state
-    unsigned int flowState = _flowMachine(self);
+    flowState = _flowMachine(self);
 
     // Update state, keeping only specific bits from flow control and clearing others
     oldState = self->currentState;
@@ -1510,9 +1512,10 @@ static IOReturn _RX_dequeueEvent(ISASerialPort *self, unsigned char *eventType, 
 
             // Handle overflow condition
             if (self->rxQueueOverflow != 0) {
+                unsigned short *writePtr;
                 self->rxQueueOverflow = 0;
                 // Enqueue overflow marker
-                unsigned short *writePtr = (unsigned short *)self->rxQueueWrite;
+                writePtr = (unsigned short *)self->rxQueueWrite;
                 *writePtr++ = EVENT_OVERFLOW;
                 if ((void *)writePtr >= self->rxQueueEnd) {
                     writePtr = (unsigned short *)self->rxQueueStart;
@@ -1822,7 +1825,8 @@ static IOReturn _TX_enqueueEvent(ISASerialPort *self, unsigned int event, unsign
                 }
 
                 // Notify RX queue of state change if mask matches
-                if (self->stateChangeMask & (changedBits << 16)) {
+                // (flowControlMode overlays stateEventMask at offset 0xe0 as uint32)
+                if ((*(unsigned int *)&self->flowControlMode) & (changedBits << 16)) {
                     _RX_enqueueLongEvent(self, 0x53, oldState | (changedBits << 16));
                 }
             }
@@ -2035,15 +2039,16 @@ static IOReturn _RX_dequeueData(ISASerialPort *self, unsigned char *byteOut, BOO
  */
 static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
+    unsigned int oldIRQL;
     ISASerialPort *self = (ISASerialPort *)spec;
     (void)call;
-    unsigned int oldIRQL;
 
     // Raise interrupt level
     oldIRQL = spl4();
 
     // Check if port is active and not yanked
     if ((self->currentState & STATE_ACTIVE) && (self->pcmciaYanked == 0)) {
+        tvalspec_t deadline;
         // Call interrupt handler if heartbeat not already pending
         if (self->heartBeatPending == 0) {
             // Call appropriate interrupt handler based on FIFO capability
@@ -2060,7 +2065,7 @@ static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
         self->heartBeatPending = 0;
 
         // Schedule next heartbeat
-        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
+        deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->heartBeatInterval & 0xFFFFFFFF),
             (unsigned int)(self->heartBeatInterval >> 32));
         thread_call_enter_delayed(self->heartBeatCallout, deadline);
@@ -2077,6 +2082,7 @@ static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
  */
 static void _NonFIFOIntHandler(void *identity, void *state, ISASerialPort *self)
 {
+    unsigned int matchBits;
     unsigned char lsr, msr, iir;
     unsigned char dataByte;
     unsigned char eventType;
@@ -2143,9 +2149,10 @@ static void _NonFIFOIntHandler(void *identity, void *state, ISASerialPort *self)
 
             // Process received data if RX enabled
             if (newState & STATE_RX_ENABLED) {
+                unsigned char errorBits;
                 self->bytesReceived++;
 
-                unsigned char errorBits = lsr & 0x1C;  // Parity, Framing, Break errors
+                errorBits = lsr & 0x1C;  // Parity, Framing, Break errors
 
                 if (errorBits == 0x04) {
                     // Parity error - check for software flow control character
@@ -2342,6 +2349,7 @@ data_processed:
                                 unsigned int preventMask = *(unsigned int *)&self->flowControlMode;
                                 preventMask = (preventMask & 0x168) | 0x20000000;
                                 if ((preventMask & ~newState) == 0) {
+                                    unsigned char wordLen;
                                     // Dequeue and transmit
                                     readPtr = (unsigned short *)self->txQueueRead;
                                     dataWord = *readPtr++;
@@ -2352,7 +2360,7 @@ data_processed:
                                     self->txQueueUsed--;
 
                                     eventType = (unsigned char)dataWord;
-                                    unsigned char wordLen = eventType & 3;
+                                    wordLen = eventType & 3;
 
                                     if (wordLen == 1) {
                                         eventData = (dataWord >> 8);
@@ -2367,6 +2375,7 @@ data_processed:
                                         self->txQueueUsed--;
                                         eventData = dataWord;
                                     } else if (wordLen == 3) {
+                                        unsigned short highWord;
                                         unsigned short lowWord = *readPtr++;
                                         if ((void *)readPtr >= self->txQueueEnd) {
                                             readPtr = (unsigned short *)self->txQueueStart;
@@ -2374,7 +2383,7 @@ data_processed:
                                         self->txQueueRead = readPtr;
                                         self->txQueueUsed--;
 
-                                        unsigned short highWord = *readPtr++;
+                                        highWord = *readPtr++;
                                         if ((void *)readPtr >= self->txQueueEnd) {
                                             readPtr = (unsigned short *)self->txQueueStart;
                                         }
@@ -2395,6 +2404,7 @@ data_processed:
                                 // Not ready for event processing
                                 timerNeeded = 1;
                             } else {
+                                unsigned char wordLen;
                                 // Execute dequeued event
                                 timerNeeded = 0;
                                 if (self->timerPending != 0) {
@@ -2412,7 +2422,7 @@ data_processed:
                                 self->txQueueUsed--;
 
                                 eventType = (unsigned char)dataWord;
-                                unsigned char wordLen = eventType & 3;
+                                wordLen = eventType & 3;
 
                                 if (wordLen == 1) {
                                     eventData = (dataWord >> 8);
@@ -2427,6 +2437,7 @@ data_processed:
                                     self->txQueueUsed--;
                                     eventData = dataWord;
                                 } else if (wordLen == 3) {
+                                    unsigned short highWord;
                                     unsigned short lowWord = *readPtr++;
                                     if ((void *)readPtr >= self->txQueueEnd) {
                                         readPtr = (unsigned short *)self->txQueueStart;
@@ -2434,7 +2445,7 @@ data_processed:
                                     self->txQueueRead = readPtr;
                                     self->txQueueUsed--;
 
-                                    unsigned short highWord = *readPtr++;
+                                    highWord = *readPtr++;
                                     if ((void *)readPtr >= self->txQueueEnd) {
                                         readPtr = (unsigned short *)self->txQueueStart;
                                     }
@@ -2482,8 +2493,9 @@ data_processed:
 
     // Schedule timer if needed
     if ((timerNeeded != 0) && (self->timerPending == 0)) {
+        tvalspec_t deadline;
         self->timerPending = 1;
-        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
+        deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->charTimeNS & 0xFFFFFFFF),
             (unsigned int)(self->charTimeFracNS));
         thread_call_enter_delayed(self->timerCallout, deadline);
@@ -2533,7 +2545,7 @@ data_processed:
 
     // Enqueue state change event if mask matches
     stateChangeMask = *(unsigned int *)&self->flowControlMode;
-    unsigned int matchBits = (changedBits << 16) & stateChangeMask;
+    matchBits = (changedBits << 16) & stateChangeMask;
     if (matchBits != 0) {
         if ((self->rxQueueCapacity - self->rxQueueUsed) < 3) {
             if (self->rxQueueUsed >= self->rxQueueCapacity) {
@@ -2569,6 +2581,7 @@ data_processed:
  */
 static void _FIFOIntHandler(void *identity, void *state, ISASerialPort *self)
 {
+    unsigned int matchBits;
     unsigned char lsr, msr, iir;
     unsigned char dataByte;
     unsigned char eventType;
@@ -2625,6 +2638,7 @@ static void _FIFOIntHandler(void *identity, void *state, ISASerialPort *self)
 
             // Process received data if RX enabled
             if (newState & STATE_RX_ENABLED) {
+                unsigned char errorBits;
                 // Update statistics on first RX interrupt
                 if (firstRXInt && (lsr & 0x01)) {
                     firstRXInt = FALSE;
@@ -2638,7 +2652,7 @@ static void _FIFOIntHandler(void *identity, void *state, ISASerialPort *self)
                     overrunCounter = chipCapTable[self->chipType].fifoSize;
                 }
 
-                unsigned char errorBits = lsr & 0x1C;  // Parity, Framing, Break errors
+                errorBits = lsr & 0x1C;  // Parity, Framing, Break errors
 
                 if (errorBits == 0x04) {
                     // Parity error - check for software flow control character
@@ -2836,12 +2850,13 @@ enqueue_normal_data_fifo:
             // Check hardware flow control state
             if (((self->flowControlMode & FLOW_HW_ENABLED) == 0) || (self->flowControlState < 1)) {
                 if ((newState & 0x1000) == 0) {
+                    char peekChar;
                     // Peek at next TX queue entry
                     char *peekPtr = (char *)self->txQueueRead;
                     if ((void *)peekPtr >= self->txQueueEnd) {
                         peekPtr = (char *)self->txQueueStart;
                     }
-                    char peekChar = (self->txQueueUsed != 0) ? *peekPtr : '\0';
+                    peekChar = (self->txQueueUsed != 0) ? *peekPtr : '\0';
 
                     if (peekChar != 0) {
                         if (peekChar == 'U') {
@@ -2851,14 +2866,16 @@ enqueue_normal_data_fifo:
                             if ((preventMask & ~newState) == 0) {
                                 // Can transmit - check if TEMT set for burst mode
                                 if ((lsr & 0x40) == 0) {
+                                    char peek2Char;
                                     // Transmitter not empty - peek ahead for next byte
                                     char *peek2Ptr = (char *)((unsigned short *)self->txQueueRead + 1);
                                     if ((void *)peek2Ptr >= self->txQueueEnd) {
                                         peek2Ptr = (char *)self->txQueueStart;
                                     }
-                                    char peek2Char = (self->txQueueUsed >= 2) ? *peek2Ptr : '\0';
+                                    peek2Char = (self->txQueueUsed >= 2) ? *peek2Ptr : '\0';
 
                                     if (peek2Char == 'U') {
+                                        unsigned char wordLen;
                                         // Next is also data - setup FIFO burst
                                         fifoRemaining = chipCapTable[self->chipType].fifoSize - 1;
                                         timerNeeded = 0;
@@ -2877,7 +2894,7 @@ enqueue_normal_data_fifo:
                                         self->txQueueUsed--;
 
                                         eventType = (unsigned char)dataWord;
-                                        unsigned char wordLen = eventType & 3;
+                                        wordLen = eventType & 3;
 
                                         if (wordLen == 1) {
                                             eventData = (dataWord >> 8);
@@ -2892,6 +2909,7 @@ enqueue_normal_data_fifo:
                                             self->txQueueUsed--;
                                             eventData = dataWord;
                                         } else if (wordLen == 3) {
+                                            unsigned short highWord;
                                             unsigned short lowWord = *readPtr++;
                                             if ((void *)readPtr >= self->txQueueEnd) {
                                                 readPtr = (unsigned short *)self->txQueueStart;
@@ -2899,7 +2917,7 @@ enqueue_normal_data_fifo:
                                             self->txQueueRead = readPtr;
                                             self->txQueueUsed--;
 
-                                            unsigned short highWord = *readPtr++;
+                                            highWord = *readPtr++;
                                             if ((void *)readPtr >= self->txQueueEnd) {
                                                 readPtr = (unsigned short *)self->txQueueStart;
                                             }
@@ -2927,6 +2945,7 @@ enqueue_normal_data_fifo:
 
                                 // Transmit remaining FIFO bytes
                                 while (fifoRemaining != 0) {
+                                    unsigned char wordLen;
                                     // Peek at next entry
                                     peekPtr = (char *)self->txQueueRead;
                                     if ((void *)peekPtr >= self->txQueueEnd) {
@@ -2946,7 +2965,7 @@ enqueue_normal_data_fifo:
                                     self->txQueueUsed--;
 
                                     eventType = (unsigned char)dataWord;
-                                    unsigned char wordLen = eventType & 3;
+                                    wordLen = eventType & 3;
 
                                     if (wordLen == 1) {
                                         eventData = (dataWord >> 8);
@@ -2961,6 +2980,7 @@ enqueue_normal_data_fifo:
                                         self->txQueueUsed--;
                                         eventData = dataWord;
                                     } else if (wordLen == 3) {
+                                        unsigned short highWord;
                                         unsigned short lowWord = *readPtr++;
                                         if ((void *)readPtr >= self->txQueueEnd) {
                                             readPtr = (unsigned short *)self->txQueueStart;
@@ -2968,7 +2988,7 @@ enqueue_normal_data_fifo:
                                         self->txQueueRead = readPtr;
                                         self->txQueueUsed--;
 
-                                        unsigned short highWord = *readPtr++;
+                                        highWord = *readPtr++;
                                         if ((void *)readPtr >= self->txQueueEnd) {
                                             readPtr = (unsigned short *)self->txQueueStart;
                                         }
@@ -2990,6 +3010,7 @@ enqueue_normal_data_fifo:
                                 goto tx_done_fifo;
                             }
                         } else if ((lsr & 0x40) != 0) {
+                            unsigned char wordLen;
                             // Non-data event and TEMT set - execute it
                             timerNeeded = 0;
                             if (self->timerPending != 0) {
@@ -3007,7 +3028,7 @@ enqueue_normal_data_fifo:
                             self->txQueueUsed--;
 
                             eventType = (unsigned char)dataWord;
-                            unsigned char wordLen = eventType & 3;
+                            wordLen = eventType & 3;
 
                             if (wordLen == 1) {
                                 eventData = (dataWord >> 8);
@@ -3022,6 +3043,7 @@ enqueue_normal_data_fifo:
                                 self->txQueueUsed--;
                                 eventData = dataWord;
                             } else if (wordLen == 3) {
+                                unsigned short highWord;
                                 unsigned short lowWord = *readPtr++;
                                 if ((void *)readPtr >= self->txQueueEnd) {
                                     readPtr = (unsigned short *)self->txQueueStart;
@@ -3029,7 +3051,7 @@ enqueue_normal_data_fifo:
                                 self->txQueueRead = readPtr;
                                 self->txQueueUsed--;
 
-                                unsigned short highWord = *readPtr++;
+                                highWord = *readPtr++;
                                 if ((void *)readPtr >= self->txQueueEnd) {
                                     readPtr = (unsigned short *)self->txQueueStart;
                                 }
@@ -3082,8 +3104,9 @@ tx_done_fifo:
 
     // Schedule timer if needed
     if ((timerNeeded != 0) && (self->timerPending == 0)) {
+        tvalspec_t deadline;
         self->timerPending = 1;
-        tvalspec_t deadline = _ISASerialPortDeadlineFromParts(
+        deadline = _ISASerialPortDeadlineFromParts(
             (unsigned int)(self->charTimeNS & 0xFFFFFFFF),
             (unsigned int)(self->charTimeFracNS));
         thread_call_enter_delayed(self->timerCallout, deadline);
@@ -3133,7 +3156,7 @@ tx_done_fifo:
 
     // Enqueue state change event if mask matches
     stateChangeMask = *(unsigned int *)&self->flowControlMode;
-    unsigned int matchBits = (changedBits << 16) & stateChangeMask;
+    matchBits = (changedBits << 16) & stateChangeMask;
     if (matchBits != 0) {
         if ((self->rxQueueCapacity - self->rxQueueUsed) < 3) {
             if (self->rxQueueUsed >= self->rxQueueCapacity) {
@@ -3467,6 +3490,13 @@ static void _executeEvent(ISASerialPort *self, unsigned char eventType,
 unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
                              unsigned int divisor_lo, unsigned int divisor_hi)
 {
+    unsigned char norm_shift;
+    unsigned char denorm_shift;
+    unsigned long long norm_divisor;
+    unsigned long long norm_dividend;
+    unsigned long long remainder;
+    unsigned long long product;
+    unsigned long long rem_and_low;
     unsigned long long dividend, divisor, quotient;
     unsigned int shift;
     unsigned long long temp;
@@ -3478,15 +3508,18 @@ unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
     if (divisor_hi == 0) {
         // Check if dividend also fits in 32 bits or divisor > dividend_hi
         if (divisor_lo <= dividend_hi) {
+            unsigned int quot_hi;
+            unsigned long long remainder_and_low;
+            unsigned int quot_lo;
             // Need to do 64-bit division
             if (divisor_lo == 0) {
                 // Division by zero - trigger exception
                 divisor_lo = 1 / 0;  // This will cause a divide-by-zero exception
             }
             // Divide high word first, then combine with low word
-            unsigned int quot_hi = dividend_hi / divisor_lo;
-            unsigned long long remainder_and_low = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
-            unsigned int quot_lo = remainder_and_low / divisor_lo;
+            quot_hi = dividend_hi / divisor_lo;
+            remainder_and_low = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
+            quot_lo = remainder_and_low / divisor_lo;
             return ((unsigned long long)quot_hi << 32) | quot_lo;
         } else {
             // Simple 64/32 division
@@ -3518,24 +3551,24 @@ unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
     }
 
     // Normalize divisor and dividend
-    unsigned char norm_shift = (unsigned char)(shift ^ 31);
-    unsigned char denorm_shift = 32 - norm_shift;
+    norm_shift = (unsigned char)(shift ^ 31);
+    denorm_shift = 32 - norm_shift;
 
     // Normalize divisor
-    unsigned long long norm_divisor = (divisor_hi << norm_shift) | (divisor_lo >> denorm_shift);
+    norm_divisor = (divisor_hi << norm_shift) | (divisor_lo >> denorm_shift);
 
     // Normalize dividend
-    unsigned long long norm_dividend =
+    norm_dividend =
         ((unsigned long long)(dividend_hi >> denorm_shift) << 32) |
         ((dividend_hi << norm_shift) | (dividend_lo >> denorm_shift));
 
     // Estimate quotient
     quotient = norm_dividend / norm_divisor;
-    unsigned long long remainder = norm_dividend % norm_divisor;
+    remainder = norm_dividend % norm_divisor;
 
     // Refine quotient if necessary
-    unsigned long long product = ((unsigned long long)(divisor_lo << norm_shift) * quotient);
-    unsigned long long rem_and_low = ((remainder << 32) | (dividend_lo << norm_shift));
+    product = ((unsigned long long)(divisor_lo << norm_shift) * quotient);
+    rem_and_low = ((remainder << 32) | (dividend_lo << norm_shift));
 
     if (rem_and_low < product) {
         quotient--;
@@ -3568,11 +3601,12 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Simple modulo
             return dividend % divisor_lo;
         } else {
+            unsigned long long temp;
             // Need to compute (dividend_hi % divisor) * 2^32 + dividend_lo) % divisor
             if (divisor_lo == 0) {
                 divisor_lo = 1 / 0;  // Division by zero
             }
-            unsigned long long temp = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
+            temp = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
             return temp % divisor_lo;
         }
     }
@@ -3588,6 +3622,13 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         }
 
         if ((shift ^ 31) != 0) {
+            unsigned int quot_estimate;
+            unsigned int rem_estimate;
+            unsigned long long product;
+            unsigned long long rem_and_low;
+            unsigned int rem_hi;
+            unsigned int borrow;
+            unsigned int rem_lo;
             // Normalize
             unsigned char norm_shift = (unsigned char)(shift ^ 31);
             unsigned char denorm_shift = 32 - norm_shift;
@@ -3601,12 +3642,12 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
                 ((dividend_hi << norm_shift) | (dividend_lo >> denorm_shift));
 
             // Estimate quotient and remainder
-            unsigned int quot_estimate = (unsigned int)(norm_dividend / norm_divisor_hi);
-            unsigned int rem_estimate = (unsigned int)(norm_dividend % norm_divisor_hi);
+            quot_estimate = (unsigned int)(norm_dividend / norm_divisor_hi);
+            rem_estimate = (unsigned int)(norm_dividend % norm_divisor_hi);
 
             // Compute product
-            unsigned long long product = (unsigned long long)norm_divisor_lo * quot_estimate;
-            unsigned long long rem_and_low = ((unsigned long long)rem_estimate << 32) | norm_dividend_lo;
+            product = (unsigned long long)norm_divisor_lo * quot_estimate;
+            rem_and_low = ((unsigned long long)rem_estimate << 32) | norm_dividend_lo;
 
             // Adjust if needed
             if (rem_and_low < product) {
@@ -3615,10 +3656,10 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             }
 
             // Compute final remainder
-            unsigned int rem_hi = rem_estimate - (unsigned int)(product >> 32);
-            unsigned int borrow = (norm_dividend_lo < (unsigned int)product) ? 1 : 0;
+            rem_hi = rem_estimate - (unsigned int)(product >> 32);
+            borrow = (norm_dividend_lo < (unsigned int)product) ? 1 : 0;
             rem_hi = rem_hi - borrow;
-            unsigned int rem_lo = norm_dividend_lo - (unsigned int)product;
+            rem_lo = norm_dividend_lo - (unsigned int)product;
 
             // Denormalize
             remainder = ((unsigned long long)(rem_hi >> norm_shift) << 32) |
@@ -4027,6 +4068,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         checkMask = self->currentState & 0x80000000;
 
         if (checkMask == 0) {
+            unsigned int txLowWater;
+            unsigned int rxLowWater;
             // Port not acquired - proceed with acquisition
 
             // Set initial state to 0xA0400018
@@ -4081,7 +4124,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Low watermark = (capacity * 2) / 3
             // Med watermark = low / 2
             self->txQueueHighWater = self->txQueueCapacity;
-            unsigned int txLowWater = (self->txQueueCapacity * 2) / 3;
+            txLowWater = (self->txQueueCapacity * 2) / 3;
             self->txQueueLowWater = txLowWater;
             self->txQueueMedWater = txLowWater >> 1;
 
@@ -4093,7 +4136,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Low watermark = (capacity * 2) / 3
             // Target = low watermark
             self->rxQueueHighWater = self->rxQueueCapacity;
-            unsigned int rxLowWater = (self->rxQueueCapacity * 2) / 3;
+            rxLowWater = (self->rxQueueCapacity * 2) / 3;
             self->rxQueueLowWater = rxLowWater;
             self->rxQueueTarget = rxLowWater;
 
@@ -4203,7 +4246,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
- *   0xFFFFFFD33 if port was not acquired
+ *   0xFFFFFD33 if port was not acquired
  */
 - (IOReturn)release
 {
@@ -4299,7 +4342,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     } else {
         // Port was not acquired
         splx(oldIRQL);
-        return 0xFFFFFFD33;
+        return 0xFFFFFD33;
     }
 }
 
@@ -4856,7 +4899,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         changedBits = 0;
         newState = self->currentState;
 
-        result = _executeEvent(self, (unsigned char)event, data, &newState, &changedBits);
+        _executeEvent(self, (unsigned char)event, data, &newState, &changedBits);
+        result = 0;
 
         // Update state with changes
         oldState = self->currentState;
@@ -5089,7 +5133,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Returns:
  *   IO_R_SUCCESS (0) on success
  *   0xFFFFFFD3E if invalid state bits are set
- *   0xFFFFFFD33 if port not acquired
+ *   0xFFFFFD33 if port not acquired
  */
 - (IOReturn)setState:(unsigned int)state
                 mask:(unsigned int)mask
@@ -5155,7 +5199,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         return IO_R_SUCCESS;
     } else {
         splx(oldIRQL);
-        return 0xFFFFFFD33;  // Port not acquired
+        return 0xFFFFFD33;  // Port not acquired
     }
 }
 
@@ -5169,7 +5213,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
- *   0xFFFFFFD33 if port not acquired
+ *   0xFFFFFD33 if port not acquired
  *   0xFFFFFD36 if interrupted while waiting
  *   Other errors from _watchState
  */
@@ -5196,7 +5240,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         splx(oldIRQL);
     } else {
         splx(oldIRQL);
-        result = 0xFFFFFFD33;  // Port not acquired
+        result = 0xFFFFFD33;  // Port not acquired
     }
 
     return result;

@@ -11,7 +11,7 @@
 ###############################################################################
 
 # Any custom compiler flags you want to use
-# CFLAGS +=
+OTHER_CFLAGS = -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep -Wno-format
 
 # Any custom linker flags you want to use
 # LDFLAGS +=

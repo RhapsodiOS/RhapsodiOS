@@ -34,7 +34,15 @@
 #import <driverkit/driverTypes.h>
 #import <driverkit/IODevice.h>
 #import <driverkit/generalFuncs.h>
+#import <driverkit/i386/IOEISADeviceDescription.h>
 #import <sys/types.h>
+
+#ifndef IO_R_NO_RESOURCES
+#define IO_R_NO_RESOURCES IO_R_RESOURCE
+#endif
+#ifndef IO_R_NO_PAPER
+#define IO_R_NO_PAPER (-737)
+#endif
 
 // UART Register Offsets
 #define UART_RBR        0   // Receive Buffer Register (read)
@@ -127,6 +135,7 @@
 
 @interface ISASerialPort : IODevice
 {
+@public
     IOEISADeviceDescription *deviceDescription;
     unsigned short basePort;        // Base I/O port address (offset 0x88)
     unsigned int chipType;          // Detected UART chip type (offset 0x90)

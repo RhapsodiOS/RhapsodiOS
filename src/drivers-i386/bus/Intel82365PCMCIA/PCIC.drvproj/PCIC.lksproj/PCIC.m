@@ -32,6 +32,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/i386/IOEISADeviceDescription.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import <machdep/i386/io_inline.h>
 #import <objc/List.h>
@@ -121,32 +122,25 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 {
     IORange *range;
     id socket;
-    id socketWindows;
     int i;
 
-    /* Get port range list and validate */
-    range = [deviceDescription resourcesForKey:"I/O Ports"];
-    if (!range) {
-        IOLog("PCIC: No I/O port range specified\n");
-        [self free];
-        return nil;
-    }
-    basePort = range->start;
+    /* The adapter's index/data pair is the first port range */
+    range = [(IOEISADeviceDescription *)deviceDescription portRangeList];
+    reg_base = range->start;
 
-    /* Set global base register for internal functions */
-    reg_base = basePort;
+    /* Carried until the ivar pass drops basePort and moves
+     * interruptOccurred onto reg_base */
+    basePort = reg_base;
 
     /* Validate socket 0 exists (basic hardware check) */
     if (!socketIsValid(0)) {
-        IOLog("PCIC: Hardware validation failed at port 0x%x\n", basePort);
-        [self free];
-        return nil;
+        IOLog("PCIC: No device at base address 0x%04x\n", reg_base);
+        return [self free];
     }
 
     /* Call superclass initialization */
     if (![super initFromDeviceDescription:deviceDescription]) {
-        [super free];
-        return nil;
+        return [super free];
     }
 
     /* Set device name and properties */
@@ -154,27 +148,8 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     [self setDeviceKind:"PCMCIA Adapter"];
     [self setUnit:0];
 
-    /* Get IRQ level */
-    irqLevel = [deviceDescription interrupt];
-    if (irqLevel == 0) {
-        irqLevel = 5; /* Default IRQ */
-    }
-
-    /* Create socket list */
     socketList = [[List alloc] init];
-    if (!socketList) {
-        IOLog("PCIC: Failed to create socket list\n");
-        [self free];
-        return nil;
-    }
-
-    /* Create window list */
     windowList = [[List alloc] init];
-    if (!windowList) {
-        IOLog("PCIC: Failed to create window list\n");
-        [self free];
-        return nil;
-    }
 
     /* Create up to 4 sockets and collect their windows */
     for (i = 0; i < 4; i++) {
@@ -186,36 +161,28 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
         /* Add socket to socket list */
         [socketList addObject:socket];
 
-        /* Get socket's window list and append to master window list */
-        socketWindows = [socket windows];
-        if (socketWindows) {
-            [windowList appendList:socketWindows];
-        }
+        /* Append the socket's windows to the master window list */
+        [windowList appendList:[socket windows]];
     }
 
-    /* Check if we successfully created any sockets */
+    /* No socket answered: give the list back and fail */
     if ([socketList count] == 0) {
-        IOLog("PCIC: Failed to create any sockets\n");
+        [socketList free];
         [self free];
         return nil;
     }
-
-    /* Store actual number of sockets created */
-    numSockets = [socketList count];
 
     /* Check for Cirrus Logic chip */
     isCirrusChip = checkForCirrusChip();
 
     /* Set up status change interrupts for each socket */
     for (i = 0; i < [socketList count]; i++) {
-        setStatusChangeInterrupt(i, irqLevel);
+        setStatusChangeInterrupt(i, [deviceDescription interrupt]);
     }
 
-    /* Enable all interrupts */
+    /* Interrupt enabling is not fatal; the IO thread starts either way */
     if ([self enableAllInterrupts] != IO_R_SUCCESS) {
         IOLog("PCIC: couldn't enable interrupts\n");
-        [self free];
-        return nil;
     }
 
     /* Start I/O thread */
@@ -227,9 +194,6 @@ static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 
     /* Register device with system */
     [self registerDevice];
-
-    IOLog("PCIC: Initialized at port 0x%x, IRQ %d, %d sockets%s\n",
-          basePort, irqLevel, numSockets, isCirrusChip ? " (Cirrus)" : "");
 
     return self;
 }

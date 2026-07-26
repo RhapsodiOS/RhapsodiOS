@@ -19,7 +19,8 @@ CFILES = VGAModes.c
 
 HFILES = VGA.h VGAModes.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect\
+            Unload_Commands.sect
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

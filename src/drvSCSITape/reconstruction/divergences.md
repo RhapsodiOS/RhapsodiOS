@@ -55,6 +55,23 @@ rather than filtered out of sight.
 Server build from the project's own settings, exactly as `SCSIServer`'s pair
 were. They remain `unmapped` permanently.
 
+## The analyzer gap at address 0
+
+`+[SCSITape deviceStyle]` occupies address 0: `__OBJC,__cls_meth` lists it
+(`i4@4:8`, alongside `probe:` and `requiredProtocols`) with `imp = 0x0`, and
+the four bytes at address 0 are `9421ffe0 38600001 38210020 4e800020` —
+`stwu r1,-0x20(r1)` / `li r3,1` / `addi r1,r1,0x20` / `blr`, i.e. `return 1`
+(`IO_IndirectDevice`), exactly matching `SCSITape.m:49-52`'s
+`+ (IODeviceStyle) deviceStyle { return IO_IndirectDevice; }`. IDA emits no
+function entry at address 0 (the same analyzer artifact `SCSIServer`'s
+reconstruction hit for its own `deviceStyle`), so this method is missing from
+both `analysis.named.json` and every ledger under
+`src/drvSCSITape/reconstruction/` — confirmed by `grep` finding no
+`deviceStyle` hits anywhere in the ledger. Our source implements this method
+correctly; its absence from the ledger is an analyzer artifact, not a missing
+function, and it means the ledger is not a complete coverage map of the real
+class.
+
 ## SCSITape accessors and lifecycle block
 
 Task 2 read the 20 functions at addresses 16-2591 (`analysis.named.json`)
@@ -82,92 +99,99 @@ into an opaque `sub_XXXX` island.
 | 2196 | `-[SCSITape blockSize]` | `assembly-matched` | 4-instruction leaf; `lwz r3, 0x114(r3)` — same offset `isFixedBlock` reads |
 | 2212 | `-[SCSITape suppressIllegalLength]` | `assembly-matched` | 5-instruction leaf; `lbz`/`extsb` at `0x123(r3)` — same offset `setSuppressIllegalLength:` writes |
 | 2232 | `-[SCSITape setSuppressIllegalLength:]` | `assembly-matched` | 4-instruction leaf; `stb r5, 0x123(r3)` — matches the getter's offset |
-| 2248 | `-[SCSITape setIgnoreCheckCondition:]` | `unexamined` | Finding: writes to `0x225(r3)`, not the `0x126` the accessor block's own offset progression predicts |
+| 2248 | `-[SCSITape setIgnoreCheckCondition:]` | `unexamined` | Finding: writes to `0x225(r3)` — resolved via `__OBJC,__instance_vars` as the separate `_ignoreOpenCheckCondition` ivar, not `_ignoreCheckCondition`; see finding below |
 | 2264 | `-[SCSITape majorDevNum]` | `assembly-matched` | 4-instruction leaf; `lwz r3, 0x110(r3)` |
 | 2280 | `-[SCSITape acquireDevice]` | `unexamined` | Finding: calls `[_controller reserveTarget:lun:forOwner:]` and `[self reserveAllLuns]`, neither of which our source calls |
 | 2464 | `-[SCSITape releaseDevice]` | `unexamined` | Finding: calls `[self releaseAllLuns]` and `[_controller releaseTarget:lun:forOwner:]`, neither of which our source calls |
 
-**The recovered ivar table.** Thirteen of the fourteen 16-24 byte accessors at
-2028-2264 are single-load or single-store leaves reading or writing one fixed
-offset each, and every one of those thirteen offsets is consistent with a
-single, non-overlapping layout that matches `SCSITape.h:20-47`'s `@interface`
-field order exactly, including the two bytes of padding GCC inserts after the
-two adjacent `u_char` fields to re-align the following `int` on a 4-byte
-boundary:
+**The recovered ivar table.** The offset table below is not inferred from
+accessor bodies at all — it is parsed directly from `SCSITape_reloc`'s own
+Objective-C class metadata: `__OBJC,__instance_vars` (vaddr 20848) is the
+class's ivar list, 15 `{name, type, offset}` triples (184 bytes), and
+`__OBJC,__class` (vaddr 16752) gives `instance_size = 556`. That metadata is
+authoritative for layout, and it is what the thirteen accessors below are
+checked *against*, not the other way around:
 
-| Offset | Size | Ivar | Confirmed by |
-| --- | --- | --- | --- |
-| `0x108` (264) | 4 | `_controller` | `-controller` (2060); `-acquireDevice`/`-releaseDevice` read the same offset for the `reserveTarget:`/`releaseTarget:` receiver |
-| `0x10C` (268) | 1 | `_target` | `-target` (2028); also read by `-acquireDevice`/`-releaseDevice` |
-| `0x10D` (269) | 1 | `_lun` | `-lun` (2044); also read by `-acquireDevice`/`-releaseDevice` |
-| `0x10E`-`0x10F` | 2 | *(padding)* | — |
-| `0x110` (272) | 4 | `_majorDevNum` | `-majorDevNum` (2264) |
-| `0x114` (276) | 4 | `_blockSize` | `-blockSize` (2196); same offset tested by `-isFixedBlock` (2116) |
-| `0x118` (280) | 4 | `_senseDataPtr` | `-senseDataPtr` (2180); same offset freed by `-free` (1544) |
-| `0x11C` (284) | 4 | `_devLock` | `-free`'s conditional `[_devLock free]`; `-acquireDevice`/`-releaseDevice`'s `[_devLock lock]`/`[_devLock unlock]` |
-| `0x120` (288) | 1 | `_isInitialized` | `-isInitialized` (2076) |
-| `0x121` (289) | 1 | `_devAcquired` | not directly accessor-mapped, but read/written identically by `-free`, `-acquireDevice` and `-releaseDevice` (see findings below) |
-| `0x122` (290) | 1 | `_didWrite` | `-didWrite` (2096) |
-| `0x123` (291) | 1 | `_suppressIllegalLength` | `-suppressIllegalLength` (2212) / `-setSuppressIllegalLength:` (2232) |
-| `0x124` (292) | 1 | `_senseDataValid` | `-senseDataValid` (2140) / `-forceSenseDataInvalid` (2160) |
-| `0x125` (293) | 1 | `_reservedTargetLun` | inferred by elimination (next single byte in `@interface` order); no examined function reads or writes it directly |
-| `0x126` (294) *(expected)* | 1 | `_ignoreCheckCondition` | **not observed** — see the `setIgnoreCheckCondition:` finding below |
+| Offset | Size | Type encoding | Ivar | Source |
+| --- | --- | --- | --- | --- |
+| `0x108` (264) | 4 | `@` (id) | `_controller` | `__OBJC,__instance_vars`; matches `-controller` (2060); `-acquireDevice`/`-releaseDevice` read the same offset for the `reserveTarget:`/`releaseTarget:` receiver |
+| `0x10C` (268) | 1 | `C` (unsigned char) | `_target` | `__OBJC,__instance_vars`; matches `-target` (2028); also read by `-acquireDevice`/`-releaseDevice` |
+| `0x10D` (269) | 1 | `C` (unsigned char) | `_lun` | `__OBJC,__instance_vars`; matches `-lun` (2044); also read by `-acquireDevice`/`-releaseDevice` |
+| `0x10E`-`0x10F` | 2 | — | *(padding)* | — |
+| `0x110` (272) | 4 | `i` (int) | `_majorDevNum` | `__OBJC,__instance_vars`; matches `-majorDevNum` (2264) |
+| `0x114` (276) | 4 | `i` (int) | `_blockSize` | `__OBJC,__instance_vars`; matches `-blockSize` (2196); same offset tested by `-isFixedBlock` (2116) |
+| `0x118` (280) | 4 | `^{?}` (opaque struct pointer) | `_senseDataPtr` | `__OBJC,__instance_vars`; matches `-senseDataPtr` (2180); same offset freed by `-free` (1544) |
+| `0x11C` (284) | 4 | `@` (id) | `_devLock` | `__OBJC,__instance_vars`; matches `-free`'s conditional `[_devLock free]`; `-acquireDevice`/`-releaseDevice`'s `[_devLock lock]`/`[_devLock unlock]` |
+| `0x120` (288) | 1 | `c` (char/BOOL) | `_isInitialized` | `__OBJC,__instance_vars`; matches `-isInitialized` (2076) |
+| `0x121` (289) | 1 | `c` (char/BOOL) | `_devAcquired` | `__OBJC,__instance_vars`; not directly accessor-mapped, but read/written identically by `-free`, `-acquireDevice` and `-releaseDevice` (see findings below) |
+| `0x122` (290) | 1 | `c` (char/BOOL) | `_didWrite` | `__OBJC,__instance_vars`; matches `-didWrite` (2096) |
+| `0x123` (291) | 1 | `c` (char/BOOL) | `_suppressIllegalLength` | `__OBJC,__instance_vars`; matches `-suppressIllegalLength` (2212) / `-setSuppressIllegalLength:` (2232) |
+| `0x124` (292) | 1 | `c` (char/BOOL) | `_senseDataValid` | `__OBJC,__instance_vars`; matches `-senseDataValid` (2140) / `-forceSenseDataInvalid` (2160) |
+| `0x125` (293) | 256 | `[32[8c]]` (`char[32][8]`) | `_ignoreCheckCondition` | `__OBJC,__instance_vars` — a per-target/per-lun matrix (32 targets × 8 luns), not the single `BOOL` our `@interface` declares; see finding below |
+| `0x225` (549) | 1 | `c` (char/BOOL) | `_ignoreOpenCheckCondition` | `__OBJC,__instance_vars` — absent from our `@interface` entirely; this is the ivar `setIgnoreCheckCondition:` (2248) actually writes, see finding below |
+| `0x228` (552) | 4 | `I` (unsigned int) | `_lunsReserved` | `__OBJC,__instance_vars` — absent from our `@interface` entirely; almost certainly the bitmask the absent `reserveAllLuns`/`releaseAllLuns` methods (ledger addresses 7012/7280, see findings below) manipulate |
 
-Our `@interface`'s ivar order (`SCSITape.h:26-46`) agrees with the reference for
-every offset actually observed, `_controller` through `_reservedTargetLun`.
-The one ivar this block cannot confirm by direct observation is
-`_ignoreCheckCondition` itself, because its only accessor in the 20-function
-set, `setIgnoreCheckCondition:`, writes to an offset wildly outside this
-range — see the finding immediately below, which is this block's headline
-result per the brief's Step 1 instructions.
+`instance_size` is 556; ivar count is 15. All offsets and the
+`assembly-matched` verdicts on the thirteen accessors above assume `IODevice`'s
+instance size in our tree is 264 (0x108), matching the reference's ivar base —
+only the *relative* layout from that base was checked, not that absolute
+assumption itself.
 
-## Finding: `-[SCSITape setIgnoreCheckCondition:]` writes 255 bytes past where the accessor block's own layout puts `_ignoreCheckCondition`
+Our `@interface`'s ivar order (`SCSITape.h:26-46`) agrees with the reference
+only through `_senseDataValid` at `0x124` (292) — the ten ivars `_controller`
+through `_senseDataValid` match exactly, offset for offset. From `0x125` (293)
+on, our header diverges completely: we declare a single 1-byte
+`_reservedTargetLun` (293) followed by a single 1-byte
+`_ignoreCheckCondition` (294), for a total instance size of about 296 bytes
+(264 + 32, 4-byte aligned). The reference has no `_reservedTargetLun` ivar at
+all — `0x125` is the start of the 256-byte `_ignoreCheckCondition` matrix,
+followed by two ivars we don't declare at all (`_ignoreOpenCheckCondition` at
+549, `_lunsReserved` at 552), for `instance_size = 556`. This is a 260-byte
+tail divergence (556 − 296 = 260) in the layout from `0x125` onward, not one
+unexplained accessor as the previous pass characterized it.
 
-**Source:** `SCSITape.h:46` (`_ignoreCheckCondition` field declaration),
-`SCSITape.m:435-439` (`setIgnoreCheckCondition:`).
+## Finding: `-[SCSITape setIgnoreCheckCondition:]` writes to `_ignoreOpenCheckCondition`, a distinct ivar 256 bytes past `_ignoreCheckCondition`
+
+**Source:** `SCSITape.h:45-46` (`_reservedTargetLun`/`_ignoreCheckCondition`
+field declarations), `SCSITape.m:435-439` (`setIgnoreCheckCondition:`).
 
 **Reference behaviour:** the function (address 2248, 16 bytes) is a 4-instruction
 leaf identical in shape to every other one-line setter in this block —
-`stwu`/`stb r5, 0x225(r3)`/`addi r1`/`blr` — except the displacement is
-`0x225` (549 decimal), not `0x126` (294) that the surrounding offset table
-predicts (`0x124` = `_senseDataValid`, and `0x125` would be `_reservedTargetLun`
-by elimination, leaving `0x126` for the next declared field,
-`_ignoreCheckCondition`). `0x225 - 0x126 = 0xFF` (255 bytes). This displacement
-is a bare 16-bit immediate baked into the `stb` opcode, not a relocated symbol
-reference, so there is no relocation-table alternative reading to check — the
-compiler genuinely emitted offset 549 for this store.
+`stwu`/`stb r5, 0x225(r3)`/`addi r1`/`blr`. `__OBJC,__instance_vars` (see the
+ivar table above) answers what `0x225` (549) actually is: `_ignoreCheckCondition`
+sits at `0x125` (293) but is typed `[32[8c]]` — a `char[32][8]` matrix, 256
+bytes — not the single `BOOL` our `@interface` declares. `293 + 256 = 549 =
+0x225`, which is exactly the *next* ivar, `_ignoreOpenCheckCondition` (a
+`char`/`BOOL`). `_lunsReserved` (`unsigned int`) follows immediately after at
+552 (`0x228`). There is no mystery left: `setIgnoreCheckCondition:` writes
+`_ignoreOpenCheckCondition`, a real, separate field the reference class
+declares that ours does not, at the offset the matrix's true size predicts.
 
-The other thirteen accessors in this same address range (2028-2264) are
-internally consistent with each other and with `SCSITape.h`'s declared order
-with no gaps large enough to hide 255 bytes — the entire observed span from
-`_controller` (264) to `_reservedTargetLun` (293, by elimination) is only 30
-bytes. Nothing else in the 20-function set touches any offset between 294 and
-549 either, so this task cannot determine what the reference class actually
-keeps in that stretch — only that whatever it is, it pushes
-`_ignoreCheckCondition` far outside the block our own `@interface` places it
-in.
+**Our source:** `SCSITape.h:45-46` declares `_reservedTargetLun` and
+`_ignoreCheckCondition` as single-byte `BOOL`s, and `SCSITape.m:435-439` stores
+directly into `_ignoreCheckCondition` at what the compiler would place at
+`0x126` (294) given that declaration — 255 bytes before where the reference's
+compiled setter actually writes, and typed as a single flag rather than a
+32×8 matrix.
 
-**Our source:** `SCSITape.m:435-439` stores directly into `_ignoreCheckCondition`,
-which the compiler would place at `0x126` given `SCSITape.h`'s declared field
-order — 255 bytes before where the reference's compiled setter actually writes.
-
-**Consequence:** this is exactly the class of bug the brief warns about — each
-accessor reads as individually correct, but `setIgnoreCheckCondition:` and (if
-our reimplementation ever adds one) a `-ignoreCheckCondition` getter would
-silently read and write the wrong storage relative to the reference's memory
-layout on a real PowerPC rebuild. Left `unexamined`; this task could not
-establish *why* the offset is 255 bytes further out (whether the real Apple
-`@interface` declares additional, larger fields between
-`_reservedTargetLun`/`_ignoreCheckCondition` and the rest of the block, was
-compiled against a different superclass size, or something else) — flagging
-this for whoever fixes Phase 2 rather than guessing. Note also that
-`-[SCSITape ignoreCheckCondition]` (the getter), `-[SCSITape
-setReservedTargetLun:]` and `-[SCSITape reservedTargetLun]` — all three
-declared in `SCSITape.h:74-77` — have no compiled counterpart anywhere in
+**Consequence:** this is exactly the class of bug the brief warns about — the
+accessor reads as individually correct in isolation, but on a real rebuild it
+would write the wrong storage relative to the reference's memory layout. The
+repair is now well-defined rather than speculative: retype
+`_ignoreCheckCondition` in `SCSITape.h` as a per-target/per-lun matrix
+(`char _ignoreCheckCondition[32][8]` or equivalent, indexed by
+target/lun), and add the two missing ivars, `_ignoreOpenCheckCondition`
+(`BOOL`) and `_lunsReserved` (`unsigned int`), immediately after it and before
+the rest of the header's tail. `_lunsReserved` is almost certainly the bitmask
+the absent `reserveAllLuns`/`releaseAllLuns` methods (ledger addresses
+7012/7280, see the `acquireDevice`/`releaseDevice` findings below) manipulate —
+one bit per LUN, matching the `[8c]` inner dimension of the matrix. Left
+`unexamined`; the fix pass should apply this retyping alongside adding the two
+ivars. Note also that `-[SCSITape ignoreCheckCondition]` (the getter),
+`-[SCSITape setReservedTargetLun:]` and `-[SCSITape reservedTargetLun]` — all
+three declared in `SCSITape.h:74-77` — have no compiled counterpart anywhere in
 `SCSITape_reloc`'s 50 named functions at all (Task 7's absent-methods pass
-should account for this alongside the offset anomaly, since a getter for
-`_ignoreCheckCondition` would be the most direct way to cross-check the real
-offset).
+should account for this).
 
 ## Finding: `+[SCSITape probe:]` queries the controller for its target count and never reserves a target/lun
 
@@ -194,13 +218,25 @@ the `switch(irtn)` in `SCSITape.m:128-156`) goes straight from the
 `STR_GOOD`/`STR_SELECTTO`/default branch decisions to the loop increment with
 no intervening call at all in the default/error case.
 
-The inner (lun) loop's bound test (addresses 364-372: `addi r0,r30,1` /
-`andi. r30,r0,0xFF` / `beq- cr0,loc_DC`) is a mask-and-test-zero idiom, not a
-`cmpwi` against a small immediate — this task could not fully establish
-whether it reflects a compile-time `SCSI_NLUNS` of 1 (tape units are
-conventionally LUN-0-only, which would make this codegen's apparent
-one-iteration-per-target behavior plausible) or some other transform; flagged
-as uncertain rather than asserted.
+The inner (lun) loop's bound is now resolved. The back-edge instruction at
+address 372 is `0x41a2ff68` (confirmed against the raw bytes): `bc` with
+`BO=13`, `BI=2` (`CR0.EQ`) and a 14-bit displacement of `-38` words
+(`-152` bytes), branching to address `220` (`372 - 152 = 220`) — matching the
+disassembly's own `beq- cr0,loc_DC` at addresses 364-372 (`addi r0,r30,1` /
+`andi. r30,r0,0xFF` / `beq- cr0,loc_DC`). With `stLun` a `u_char`, this is a
+post-test `do`-loop: it runs the body once for `stLun == 0`, then increments
+to 1, masks to a byte (`1 & 0xFF == 1`, non-zero), and does *not* branch back
+— so the loop body executes for LUN 0 only and stops; the mask-and-test-zero
+form only re-enters on a full byte wraparound (`stLun == 0xFF` incrementing to
+`0x100 & 0xFF == 0`), which never happens starting from 0. The bound is 1, not
+`SCSI_NLUNS`: the `_ignoreCheckCondition` matrix's `[8c]` inner dimension (see
+the ivar table above) proves `SCSI_NLUNS == 8` in Apple's build, so `probe:`
+scans LUN 0 only regardless of that constant — tape devices are LUN-0-only by
+design, independent of how many LUNs the class's own storage budgets for. The
+matrix's outer `[32]` dimension likewise proves `SCSI_NTARGETS == 32` in
+Apple's build, which is also exactly the clamp value `probe:`'s outer loop
+applies to `[controllerId numberOfTargets]` above — direct corroboration that
+the 32 clamp and the ivar matrix come from the same build-time constant.
 
 **Our source:** `SCSITape.m:85-86` loops `stTarget` and `stLun` over the
 compile-time constants `SCSI_NTARGETS` (8, `src/kernel-7/bsd/dev/scsireg.h:732`)
@@ -212,10 +248,16 @@ plus `setReservedTargetLun:NO` in the failure case — none of which the
 reference's `probe:` does at all.
 
 **Consequence:** two independent, non-cosmetic divergences. (1) Our fixed
-8-target loop bound could scan fewer targets than a controller advertising
-more than 8 (though `SCSI_NTARGETS`/`SCSI_NLUNS` are also the values
-`IOSCSIController` itself is built against elsewhere in this tree, so the
-practical impact needs checking against that class, not asserted here).
+8-target loop bound (our `SCSI_NTARGETS`) is genuinely smaller than the
+reference's compile-time 32 (recovered from the ivar matrix and corroborated
+by the 32 clamp above) — our `probe:` could scan fewer targets than a
+controller advertising more than 8. `SCSI_NLUNS` (8 in our tree, also 8 in
+Apple's build per the matrix's `[8c]` dimension) is not the divergence here;
+the reference's *loop bound* is 1 regardless of `SCSI_NLUNS`, so this is not
+actually a target/lun-count mismatch on the LUN side, only on the target side
+(though `SCSI_NTARGETS`/`SCSI_NLUNS` are also the values `IOSCSIController`
+itself is built against elsewhere in this tree, so the practical impact needs
+checking against that class, not asserted here).
 (2) The reservation calls our `probe:`/`free` make have no reference
 counterpart in `probe:`/`free` at all — the reference defers actual
 target/lun reservation to `-acquireDevice`/`-releaseDevice` (see the findings
@@ -231,7 +273,8 @@ Left `unexamined` for Task 3/the fix pass.
 order: `if (_senseDataPtr /* 0x118 */) IOFree(_senseDataPtr, 0x1C)`
 (addresses 1564-1580, `0x1C` = 28 = `sizeof(struct esense_reply)`, matching);
 `if (_devAcquired /* 0x121 */) [self releaseDevice]` (addresses 1584-1608,
-`paReleasedevice` resolves via `read_macho` to `sel_releaseDevice`); `if
+`paReleasedevice` resolves via `read_macho` to `sel_releaseDevice`) — **before**
+`_devLock` is freed; `if
 (_devLock /* 0x11C */) [_devLock free]` (addresses 1612-1632); then
 unconditionally builds an `objc_super` (receiver = self, class =
 `stru_4170.super_class`) and calls `[super free]` (addresses 1636-1668).
@@ -258,6 +301,14 @@ finding: it passes `_controller` as `forOwner:`, which does not match
 no such call here at all, this task cannot compare it against a reference
 argument list and records it only as an internal inconsistency worth Task
 3/fix-pass attention. Left `unexamined`.
+
+**Ordering hazard for the fix pass:** the reference calls `[self
+releaseDevice]` *before* `[_devLock free]`, and `-releaseDevice` (see below)
+itself locks and unlocks `_devLock`. A fix that adds the `releaseDevice` call
+to our `free` by simply appending it after the existing `[_devLock free]`
+line, rather than inserting it before, would have `-releaseDevice` lock an
+already-freed `_devLock` — a use-after-free. The fix pass must preserve the
+reference's ordering, not just add the missing call anywhere in the function.
 
 ## Finding: `-[SCSITape acquireDevice]` reserves the target/lun and all LUNs with the controller; our source only flips a flag
 

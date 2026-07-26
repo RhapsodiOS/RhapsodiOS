@@ -72,46 +72,6 @@ unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
 unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
                              unsigned int divisor_lo, unsigned int divisor_hi);
 
-// Chip type names - indexed by chip type
-static const char *chipTypeNames[] = {
-    "Auto",      // CHIP_UNKNOWN - will be auto-detected
-    "8250",      // CHIP_8250
-    "16450",     // CHIP_16450
-    "16550",     // CHIP_16550
-    "16550?",    // CHIP_UNKNOWN_FIFO
-    "16550A",    // CHIP_16550A
-    "16650",     // CHIP_16650
-    "16750",     // CHIP_16750
-    "16950"      // CHIP_16950
-};
-
-// Chip capability table - indexed by chip type
-typedef struct {
-    unsigned int maxBaudRate;  // Offset 0: Maximum baud rate
-    unsigned int fifoSize;     // Offset 4: FIFO size (0 for non-FIFO chips)
-    unsigned int reserved[3];  // 20 bytes total per entry
-} ChipCapabilities;
-
-static const ChipCapabilities chipCapTable[] = {
-    { 9600,   0 },    // CHIP_UNKNOWN
-    { 9600,   0 },    // CHIP_8250 - no FIFO
-    { 19200,  0 },    // CHIP_16450 - no FIFO
-    { 38400,  0 },    // CHIP_16550 - broken FIFO
-    { 38400,  0 },    // CHIP_UNKNOWN_FIFO
-    { 115200, 16 },   // CHIP_16550A - 16-byte FIFO
-    { 230400, 32 },   // CHIP_16650 - 32-byte FIFO
-    { 460800, 64 },   // CHIP_16750 - 64-byte FIFO
-    { 921600, 128 }   // CHIP_16950 - 128-byte FIFO
-};
-
-// MSR (Modem Status Register) delta bits to state bits lookup table
-// Indexed by MSR high nibble (delta bits)
-// Maps MSR delta bits to currentState modem signal bits (bits 5-8)
-static const unsigned char _msr_state_lut[16] = {
-    0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
-    0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf
-};
-
 // RX event type markers (in addition to EVENT_OVERFLOW and EVENT_STATE_CHANGE)
 #define EVENT_OVERRUN_ERROR     0x68    // Overrun error event
 #define EVENT_VALID_DATA        0x55    // Valid data byte marker ('U')
@@ -136,6 +96,40 @@ static void _executeEvent(Port *port, unsigned char eventType, unsigned int even
                          unsigned int *statePtr, unsigned int *changedBitsPtr);
 static void _NonFIFOIntHandler(void *identity, void *state, Port *port);
 static void _FIFOIntHandler(void *identity, void *state, Port *port);
+
+/*
+ * The chip table, nine rows of 20 bytes at the head of __DATA,__data.  It is
+ * here rather than in the chip translation unit because IntHandler names the
+ * two static interrupt handlers declared just above; the parts that only read
+ * MaxBaud and FIFOsize reach it through ISASerialPortInternal.h.
+ *
+ * MaxBaud is half-bits per second.  Rows 2, 3 and 4 all report themselves as
+ * "16450" to the "Chip Type" key even though they are three different parts,
+ * and rows 5 and 6 likewise share "16550".
+ */
+ChipInfo Chip[9] = {
+/*    MaxBaud  FIFO  IntHandler           ShortName  LongName */
+    {       0,   0,  _NonFIFOIntHandler,  "Auto",    "Unknown"                   },
+    {   38400,   0,  _NonFIFOIntHandler,  "8250",    "8250"                      },
+    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "8250A or 16450"            },
+    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "16C1450"                   },
+    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "16550 with defective FIFO" },
+    {  230400,  16,  _FIFOIntHandler,     "16550",   "16550AF/C/CF"              },
+    {  230400,  16,  _FIFOIntHandler,     "16550",   "16C1550"                   },
+    {  921600,  32,  _FIFOIntHandler,     "16650",   "ST16C650"                  },
+    {  230400,   4,  _NonFIFOIntHandler,  "82510",   "82510"                     }
+};
+
+/*
+ * MSR high nibble -> the modem bits of State.  Bits 1 and 3 swap and bits 0
+ * and 2 are left alone, which turns the hardware order (CTS, DSR, RI, DCD)
+ * into the driver's (CTS, DCD, RI, DSR).  Read as
+ * State = (State & ~0x1E0) | (msr_state_lut[MSR >> 4] << 5).
+ */
+unsigned char msr_state_lut[16] = {
+    0x00, 0x01, 0x08, 0x09, 0x04, 0x05, 0x0C, 0x0D,
+    0x02, 0x03, 0x0A, 0x0B, 0x06, 0x07, 0x0E, 0x0F
+};
 
 /*
  * Frame timeout handler.
@@ -378,360 +372,6 @@ static void _dataLatTOHandler(Port *port)
 }
 
 /*
- * Identify UART chip type.
- * Returns the chip type constant (CHIP_8250, CHIP_16450, etc.)
- */
-int identifyChip(Port *port)
-{
-    unsigned char val, val2, val3;
-    unsigned int base = port->Base;
-
-    // Enable DLAB to access divisor latch and scratch register
-    OUTB(base + UART_LCR, LCR_DLAB);
-    IODelay(1);
-
-    // Test scratch register with 0x5A
-    OUTB(base + UART_DLL, 0x5A);
-    IODelay(1);
-    val = INB(base + UART_DLL);
-
-    if (val != 0x5A) {
-        return CHIP_UNKNOWN;  // No UART detected
-    }
-
-    // Test scratch register with 0xA5
-    OUTB(base + UART_DLL, 0xA5);
-    IODelay(1);
-    val = INB(base + UART_DLL);
-
-    if (val != 0xA5) {
-        return CHIP_UNKNOWN;  // No UART detected
-    }
-
-    // Disable DLAB
-    OUTB(base + UART_LCR, 0);
-    IODelay(1);
-
-    // Test scratch register at offset 7 with 0x5A
-    OUTB(base + UART_SCR, 0x5A);
-    IODelay(1);
-    val = INB(base + UART_SCR);
-
-    if (val != 0x5A) {
-        return CHIP_8250;  // 8250 - no scratch register
-    }
-
-    // Test scratch register at offset 7 with 0xA5
-    OUTB(base + UART_SCR, 0xA5);
-    IODelay(1);
-    val = INB(base + UART_SCR);
-
-    if (val != 0xA5) {
-        return CHIP_8250;  // 8250 - no scratch register
-    }
-
-    // Test FIFO Control Register
-    OUTB(base + UART_FCR, FCR_FIFO_ENABLE | FCR_RCVR_RESET | FCR_XMIT_RESET);
-    IODelay(1);
-
-    val = INB(base + UART_IIR);
-    val2 = val & 0xC0;  // Check FIFO enabled bits
-
-    // Disable FIFO
-    OUTB(base + UART_FCR, 0);
-    IODelay(1);
-
-    if (val2 == 0x00) {
-        // No FIFO - could be 16450, 16550 (broken FIFO), or 16650
-
-        // Test for 16950 (extended FIFO trigger levels)
-        OUTB(base + UART_FCR, 0x60);
-        IODelay(1);
-        val = INB(base + UART_IIR);
-        OUTB(base + UART_FCR, 0);
-        IODelay(1);
-
-        if ((val & 0x60) == 0x60) {
-            return CHIP_16950;  // 16950
-        }
-
-        // Test for 16650 (EFR register)
-        OUTB(base + UART_MCR, 0x80);
-        IODelay(1);
-        val = INB(base + UART_MCR);
-        OUTB(base + UART_MCR, 0);
-        IODelay(1);
-
-        if ((val & 0x80) == 0x80) {
-            return CHIP_16550;  // 16550 with broken FIFO
-        }
-
-        return CHIP_16450;  // 16450 - no FIFO
-    }
-    else if (val2 == 0x40) {
-        // FIFO enabled but not working properly
-        return CHIP_UNKNOWN_FIFO;
-    }
-    else if (val2 == 0x80) {
-        // FIFO working - could be 16550A, 16650, or 16750
-
-        // Test for 16750 (64-byte FIFO)
-        OUTB(base + UART_LCR, 0);
-        IODelay(1);
-        OUTB(base + UART_SCR, 0xDE);
-        IODelay(1);
-        OUTB(base + UART_LCR, LCR_DLAB);
-        IODelay(1);
-        OUTB(base + UART_SCR, 0xA9);
-        IODelay(1);
-
-        val = INB(base + UART_SCR);
-        OUTB(base + UART_LCR, 0);
-        IODelay(1);
-        val2 = INB(base + UART_SCR);
-
-        if (val2 == 0xDE && val == 0xA9) {
-            return CHIP_16750;  // 16750
-        }
-
-        // Test for 16650 (sleep mode support)
-        val = INB(base + UART_MCR);
-        OUTB(base + UART_MCR, 0);
-        IODelay(1);
-
-        if ((val & 0x80) == 0x80) {
-            return CHIP_16650;  // 16650
-        }
-
-        return CHIP_16550A;  // 16550A
-    }
-
-    return CHIP_16550A;  // Default to 16550A if we got here
-}
-
-/*
- * Initialize UART chip with default settings.
- * Sets up 8N1 (8 data bits, no parity, 1 stop bit) at 19200 baud.
- */
-void initChip(Port *port)
-{
-    // Set default serial port parameters
-    port->CharLength = 16;          // 8 data bits (encoded as 16)
-    port->StopBits = 2;           // 1 stop bit (encoded as 2)
-    port->TX_Parity = PARITY_NONE;   // No parity
-    port->RX_Parity = 0;        // No flow control
-    port->BaudRate = 19200;       // 19200 baud (0x4b00)
-    port->DLRimage = 0;            // Will be calculated by _programChip
-    port->FCRimage = 0;           // FIFO control value
-
-    // Only initialize if we detected a valid chip
-    if (port->Type != CHIP_UNKNOWN) {
-        // Reset Line Control Register
-        OUTB(port->Base + UART_LCR, 0);
-        IODelay(1);
-
-        // Disable all interrupts
-        OUTB(port->Base + UART_IER, 0);
-        IODelay(1);
-
-        // Reset Modem Control Register
-        OUTB(port->Base + UART_MCR, 0);
-        IODelay(1);
-
-        // Program the chip with default settings
-        programChip(port);
-    }
-}
-
-/*
- * Program UART chip with current settings.
- * Configures data bits, stop bits, parity, baud rate, and FIFO.
- */
-void programChip(Port *port)
-{
-    unsigned char lcr = 0;
-    unsigned short newDivisor;
-    int totalBits;
-    int charTime;
-    int triggerLevel;
-
-    // Validate and normalize data bits (must be 10, 12, 14, or 16)
-    if (port->CharLength < 10) {
-        port->CharLength = 10;
-    } else if (port->CharLength > 16) {
-        port->CharLength = 16;
-    }
-    port->CharLength &= 0xFFFFFFFE;  // Make even
-
-    // Set data bits in LCR and RX FIFO mask
-    switch (port->CharLength) {
-        case 10:  // 5 data bits
-            lcr = 0;
-            port->RBRmask = 0x1F;  // 31 bytes
-            break;
-        case 12:  // 6 data bits
-            lcr = 1;
-            port->RBRmask = 0x3F;  // 63 bytes
-            break;
-        case 14:  // 7 data bits
-            lcr = 2;
-            port->RBRmask = 0x7F;  // 127 bytes
-            break;
-        case 16:  // 8 data bits
-            lcr = 3;
-            port->RBRmask = 0xFF;  // 255 bytes
-            break;
-    }
-
-    // Set stop bits in LCR
-    if (port->StopBits < 3) {
-        port->StopBits = 2;  // 1 stop bit
-    } else {
-        lcr |= 0x04;  // Set bit 2 for 2 stop bits
-        if (port->CharLength == 10) {
-            port->StopBits = 3;  // 1.5 stop bits for 5 data bits
-        } else {
-            port->StopBits = 4;  // 2 stop bits for 6-8 data bits
-        }
-    }
-
-    // Set parity in LCR
-    switch (port->TX_Parity) {
-        case PARITY_ODD:
-            lcr |= 0x08;  // Enable parity, odd
-            break;
-        case PARITY_EVEN:
-            lcr |= 0x18;  // Enable parity, even
-            break;
-        case PARITY_MARK:
-            lcr |= 0x28;  // Enable parity, mark (stick 1)
-            break;
-        case PARITY_SPACE:
-            lcr |= 0x38;  // Enable parity, space (stick 0)
-            break;
-    }
-
-    // Set break enable if flag is set
-    if (port->State & 0x00000800) {
-        lcr |= 0x40;
-    }
-
-    // Validate baud rate against chip capabilities
-    if (port->Type < (sizeof(chipCapTable) / sizeof(ChipCapabilities))) {
-        if (port->BaudRate > chipCapTable[port->Type].maxBaudRate) {
-            port->BaudRate = chipCapTable[port->Type].maxBaudRate;
-        }
-    }
-    if (port->BaudRate < 100) {
-        port->BaudRate = 100;
-    }
-
-    // Calculate baud rate divisor
-    newDivisor = (unsigned short)(port->MasterClock / (port->BaudRate * 8));
-
-    // Only reprogram if divisor changed
-    if (port->DLRimage != newDivisor) {
-        // Calculate character time in nanoseconds
-        totalBits = port->CharLength + port->StopBits;
-        if (port->TX_Parity != PARITY_NONE) {
-            totalBits += 2;  // Add parity bit
-        } else {
-            totalBits += 4;  // Add extra for timing
-        }
-
-        // Character time = (totalBits * 1000000000) / baudRate
-        charTime = (1000000000 / port->BaudRate) * totalBits;
-        port->FrameInterval.tv_sec = charTime / 1000000000;
-        port->FrameInterval.tv_nsec = charTime % 1000000000;
-
-        // Set DLAB to access divisor registers
-        OUTB(port->Base + UART_LCR, lcr | LCR_DLAB);
-        IODelay(1);
-
-        port->DLRimage = newDivisor;
-
-        // Program divisor latch
-        OUTB(port->Base + UART_DLL, (unsigned char)port->DLRimage);
-        IODelay(1);
-        OUTB(port->Base + UART_DLM, (unsigned char)(port->DLRimage >> 8));
-        IODelay(1);
-
-        // Program FIFO based on chip type
-        switch (port->Type) {
-            case CHIP_UNKNOWN_FIFO:
-            case CHIP_16550:
-                // These chips have broken FIFOs, disable them
-                port->FCRimage = 0;
-                OUTB(port->Base + UART_FCR, 0);
-                IODelay(1);
-                break;
-
-            case CHIP_16550A:
-            case CHIP_16650:
-                if (port->MinLatency) {
-                    port->FCRimage = FCR_FIFO_ENABLE;
-                } else {
-                    // Calculate optimal FIFO trigger level
-                    // Time for 16 chars at current baud rate
-                    triggerLevel = (charTime * -3 + 10000000) / charTime;
-
-                    // Adjust trigger to give at least 2ms margin
-                    while ((17 - triggerLevel) * charTime < 2000000 && triggerLevel > 0) {
-                        triggerLevel--;
-                    }
-
-                    if (triggerLevel < 4) {
-                        port->FCRimage = FCR_FIFO_ENABLE;  // 1 byte trigger
-                    } else if (triggerLevel < 8) {
-                        port->FCRimage = FCR_FIFO_ENABLE | FCR_TRIGGER_4;  // 4 byte trigger
-                    } else {
-                        port->FCRimage = FCR_FIFO_ENABLE | FCR_TRIGGER_8;  // 8 byte trigger
-                    }
-                }
-                OUTB(port->Base + UART_FCR, port->FCRimage);
-                IODelay(1);
-                break;
-
-            case CHIP_16750:
-                if (port->MinLatency) {
-                    port->FCRimage = 0;
-                } else {
-                    // Calculate optimal FIFO trigger level for 64-byte FIFO
-                    triggerLevel = (charTime * -3 + 10000000) / charTime;
-
-                    while ((17 - triggerLevel) * charTime < 2000000 && triggerLevel > 0) {
-                        triggerLevel--;
-                    }
-
-                    if (triggerLevel < 0 && port->BaudRate < 19200) {
-                        port->FCRimage = 0;  // Disable FIFO for very slow speeds
-                    } else if (triggerLevel < 16) {
-                        port->FCRimage = FCR_FIFO_ENABLE;  // 1 byte trigger
-                    } else if (triggerLevel < 24) {
-                        port->FCRimage = FCR_FIFO_ENABLE | FCR_TRIGGER_4;  // 16 byte trigger
-                    } else {
-                        port->FCRimage = FCR_FIFO_ENABLE | FCR_TRIGGER_8;  // 32 byte trigger
-                    }
-                }
-                OUTB(port->Base + UART_FCR, port->FCRimage);
-                IODelay(1);
-                break;
-
-            default:
-                // No FIFO support
-                port->FCRimage = 0;
-                break;
-        }
-    }
-
-    // Clear DLAB and set final LCR value
-    OUTB(port->Base + UART_LCR, lcr);
-    IODelay(1);
-
-    port->LCRimage = lcr;
-}
-
-/*
  * Handle PCMCIA card removal.
  * Called when the PCMCIA card is hot-removed from the system.
  */
@@ -794,8 +434,9 @@ static IOReturn _activatePort(Port *port)
     // Program the UART chip with current settings
     programChip(port);
 
-    // If chip has FIFO (chipType > CHIP_16550), reset FIFO
-    if (port->Type > CHIP_16550) {
+    // If the part has a usable FIFO, reset it.  Type > 4 is exactly
+    // Chip[Type].FIFOsize != 0.
+    if (port->Type > 4) {
         // Write FCR with reset bits (0x06 = RCVR_RESET | XMIT_RESET)
         outb(port->Base + UART_FCR, port->FCRimage | 0x06);
         // Atomic increment of statistics counter (LOCK/UNLOCK omitted)
@@ -1427,7 +1068,7 @@ data_processed:
         if (msr & 0x0F) {  // Any delta bits set
             port->Stats.mdmInts++;
             // Update modem signal state bits (5-8) using lookup table
-            newState = (newState & 0xFFFFFE1F) | (_msr_state_lut[msr >> 4] << 5);
+            newState = (newState & 0xFFFFFE1F) | (msr_state_lut[msr >> 4] << 5);
             changedBits |= ((newState ^ port->State) & 0x1E0);
         }
 
@@ -1751,7 +1392,7 @@ static void _FIFOIntHandler(void *identity, void *state, Port *port)
 
                 // Check for overrun error and update counter
                 if ((lsr & 0x02) && (overrunCounter == 0)) {
-                    overrunCounter = chipCapTable[port->Type].fifoSize;
+                    overrunCounter = Chip[port->Type].FIFOsize;
                 }
 
                 errorBits = lsr & 0x1C;  // Parity, Framing, Break errors
@@ -1939,7 +1580,7 @@ enqueue_normal_data_fifo:
 
         // Handle Modem Status Register changes
         msr = INB(port->Base + UART_MSR);
-        newState = (newState & 0xFFFFFE1F) | (_msr_state_lut[msr >> 4] << 5);
+        newState = (newState & 0xFFFFFE1F) | (msr_state_lut[msr >> 4] << 5);
         changedBits |= ((newState ^ port->State) & 0x1E0);
 
         // Handle Transmitter Holding Register Empty (LSR bit 5 or FIFO counter)
@@ -1979,7 +1620,7 @@ enqueue_normal_data_fifo:
                                     if (peek2Char == 'U') {
                                         unsigned char wordLen;
                                         // Next is also data - setup FIFO burst
-                                        fifoRemaining = chipCapTable[port->Type].fifoSize - 1;
+                                        fifoRemaining = Chip[port->Type].FIFOsize - 1;
                                         timerNeeded = 0;
                                         if (port->WaitingForTXIdle != 0) {
                                             thread_call_cancel(port->FrameTOEntry);
@@ -2037,7 +1678,7 @@ enqueue_normal_data_fifo:
                                     }
                                 } else {
                                     // TEMT set - can do FIFO burst transmission
-                                    fifoRemaining = chipCapTable[port->Type].fifoSize;
+                                    fifoRemaining = Chip[port->Type].FIFOsize;
                                     timerNeeded = 0;
                                     if (port->WaitingForTXIdle != 0) {
                                         thread_call_cancel(port->FrameTOEntry);
@@ -2937,7 +2578,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     if (chipTypeStr != NULL) {
         // Try to match chip type string
         for (i = 0; i < 9; i++) {
-            if (strcmp(chipTypeNames[i], chipTypeStr) == 0) {
+            if (strcmp(Chip[i].ShortName, chipTypeStr) == 0) {
                 break;
             }
         }
@@ -3062,9 +2703,9 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
               [self name],
               *(unsigned int *)((char *)self + 0x1b0),
               *(unsigned int *)((char *)self + 0x1b4),
-              chipTypeNames[*(unsigned int *)((char *)self + 0x1b8)],
+              Chip[*(unsigned int *)((char *)self + 0x1b8)].LongName,
               (*(unsigned char *)((char *)self + 0x1e3) ? " (PCMCIA)" : ""),
-              chipCapTable[*(unsigned int *)((char *)self + 0x1b8)].fifoSize);
+              Chip[*(unsigned int *)((char *)self + 0x1b8)].FIFOsize);
         return self;
     }
 
@@ -3259,7 +2900,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             msrValue = inb(self->Port.Base + UART_MSR);
 
             // Convert MSR delta bits to state bits using lookup table
-            msrStateBits = _msr_state_lut[msrValue >> 4];
+            msrStateBits = msr_state_lut[msrValue >> 4];
 
             // Update state with flow control and MSR bits
             oldState = self->Port.State;

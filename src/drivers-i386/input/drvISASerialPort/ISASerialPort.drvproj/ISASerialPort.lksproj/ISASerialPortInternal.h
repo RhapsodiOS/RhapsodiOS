@@ -72,16 +72,17 @@
 #define FCR_TRIGGER_8   0x80
 #define FCR_TRIGGER_14  0xC0
 
-// UART Chip Types
-#define CHIP_UNKNOWN    0
-#define CHIP_8250       1
-#define CHIP_16450      2
-#define CHIP_16550      3
-#define CHIP_UNKNOWN_FIFO 4
-#define CHIP_16550A     5
-#define CHIP_16650      6
-#define CHIP_16750      7
-#define CHIP_16950      8
+// UART Chip Types -- these are row numbers in Chip[], nothing else, and each
+// one names the part the reference's LongName names.  0 means "no UART here".
+#define CHIP_UNKNOWN        0   // "Unknown", selected by the "Auto" key
+#define CHIP_8250           1   // "8250"
+#define CHIP_16450          2   // "8250A or 16450"
+#define CHIP_16C1450        3   // "16C1450"
+#define CHIP_16550_BADFIFO  4   // "16550 with defective FIFO"
+#define CHIP_16550AF        5   // "16550AF/C/CF"
+#define CHIP_16C1550        6   // "16C1550"
+#define CHIP_ST16C650       7   // "ST16C650"
+#define CHIP_82510          8   // "82510"
 
 // Parity types
 #define PARITY_NONE     1
@@ -216,6 +217,42 @@ typedef struct {
         unsigned int    rxChars;        /* 300 */
     } Stats;
 } Port;                                 /* 304 */
+
+/*
+ * One row of the chip table, 20 bytes.  Port.Type indexes it, so the nine rows
+ * are the whole set of parts this driver knows about.
+ *
+ * MaxBaud is in half-bits per second, the same units as Port.BaudRate, so the
+ * 230400 on a 16550AF is 115200 bps.  FIFOsize is the usable FIFO depth and is
+ * zero on every part that has none; FIFOsize != 0 is exactly Type > 4, which is
+ * the form the test takes at _activatePort and _executeEvent.  ShortName is
+ * what the "Chip Type" Instance-table key is matched against and LongName is
+ * what the startup banner prints.
+ */
+typedef struct {
+    unsigned long   MaxBaud;        /*  0 - half-bits/s */
+    unsigned int    FIFOsize;       /*  4 */
+    void          (*IntHandler)(void *identity, void *state, Port *port); /* 8 */
+    char           *ShortName;      /* 12 */
+    char           *LongName;       /* 16 */
+} ChipInfo;                         /* 20 */
+
+/*
+ * Nine rows, external and not const, at the head of __DATA,__data.  The
+ * definition is in ISASerialPort.m rather than in the chip translation unit
+ * because IntHandler names that file's two static interrupt handlers, and
+ * msr_state_lut sits directly behind it for the same reason its only readers
+ * are there.  Together they are the whole of the reference's 196-byte
+ * __DATA,__data.
+ */
+extern ChipInfo Chip[9];
+
+/*
+ * MSR high nibble -> the modem bits of State, shifted into place by 5.  It
+ * swaps bits 1 and 3, mapping the hardware order (CTS, DSR, RI, DCD) onto the
+ * driver's (CTS, DCD, RI, DSR).
+ */
+extern unsigned char msr_state_lut[16];
 
 /*
  * The reference defines this as a static in the header its translation units

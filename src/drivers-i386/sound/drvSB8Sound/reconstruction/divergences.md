@@ -9,14 +9,35 @@ on this driver, so no analyzer was disabled and no profile change was needed.
 
 ## Baseline build
 
-There is no rebuilt drvSB8Sound artifact on disk: `out/i386/` contains no `drvSB8Sound`
-directory, so the driver has not been built in the guest during this pass. Every
-statement below is derived from the reference binary and from our source text, not from a
-rebuilt binary. The `Loaded Server` section sizes our build actually produces are
-therefore **unmeasured**.
+**Superseded by the fix pass (Task 6): drvSB8Sound now builds.** At report time there was
+no rebuilt artifact on disk and every statement below was derived from the reference
+binary and from our source text alone. The fix pass built the driver in the guest for the
+first time and measured it.
 
-Reference `Loaded Server` sections, for the fix pass to compare against once a build
-exists:
+The first build attempt aborted before compiling anything — the top-level
+`Makefile.preamble` and `Makefile.postamble` carried NEXTSTEP-era *driver*-project rules
+sitting at the *aggregate* level, redefining `all` with a double colon against
+`common.make`'s single-colon `all:` and hard-including `/NextDeveloper/Makefiles/driverkit/
+Makefile.bundle_postamble`, a path Rhapsody does not have. Both files were replaced with
+the same boilerplate drvES1x88Sound and drvSB16Sound carry. That is a pre-existing tree
+defect, not a reconstruction divergence, and it landed in its own commit.
+
+With that repaired the build succeeds: `SoundBlaster8_reloc` is 202888 bytes, unstripped,
+against the reference's stripped 53552. **Every section matches the reference in address
+and size except `__TEXT,__const`** (reference 190 bytes, ours 20). The 170-byte difference
+is `_SoundBlaster8_VERS_STRING` and `_SoundBlaster8_VERS_NUM` — the SGS build stamp
+`@(#)PROGRAM:SoundBlaster8  PROJECT:drvSB8Sound-11  DEVELOPER:root  BUILT:Sat Mar 28
+22:05:26 PST 1998`, the same content as the `"Driver Version"` line the Global Constraints
+put out of every comparison. Emitted by Apple's build, not by source; not a finding.
+
+`__TEXT,__text` is 8896 bytes on both sides and **all 29 functions match the reference
+size exactly**, byte for byte, with nothing missing and nothing larger. Parity is
+`missing_strings 0 / missing_symbols 0 / extra_strings 0 / extra_symbols 34`; the 34
+extras are all stabs from our unstripped build. `extra_strings 0` also confirms the guest
+build leaves `DEBUG` undefined, matching the reference.
+
+Reference `Loaded Server` sections, which our build reproduces at the same addresses and
+sizes:
 
 | Section | Size | Content |
 | --- | --- | --- |
@@ -73,6 +94,9 @@ skipped or assumed.
 
 All 27 are recorded `assembly-matched` in the ledger. The two build-generated glue
 methods are `intentional-mismatch`. Nothing is left `unexamined`.
+
+Task 6's rebuild corroborated all 27 rather than contradicting any: every one of the 29
+functions comes out at the reference's exact size, and no ledger status changed.
 
 Ghidra's decompiler was used as an independent cross-check on `_writeToDSP`,
 `_readFromDSP`, `_clearInterrupts`, `-[SoundBlaster8 acceptsContinuousSamplingRates]` and
@@ -303,6 +327,11 @@ Both are `local` in the raw Mach-O nlist (`read_macho` reports `binding: local` 
 matching `static`. IDA's analysis JSON reports `_writeToDSP`'s binding as `global`; that
 is the same adapter artifact drvBeepSound recorded for `+[Beep probe:]`, and the raw nlist
 is authoritative.
+
+**Confirmed against the rebuilt binary in Task 6.** Both appear `local` in
+`__TEXT,__text` at exactly the reference's addresses and gap sizes — `_writeToDSP` at 0,
+40 bytes and `_readFromDSP` at 40, 32 bytes. The plain `static` declaration reproduces
+Apple's out-of-line emission with no source change.
 
 **There is nothing for the fix pass to do here.** Do not remove `inline` — there is none
 to remove. Do not add `__attribute__((noinline))` — the reference has no source for it,
@@ -746,19 +775,18 @@ So the anomaly is our *bundle name*, not the table value: `SB8_3_31.rtfd` follow
 `_3_31` convention that Apple used for SB16 but not for SB8. Our copy most likely came
 from a different revision of the driver.
 
-**Disposition:** the two available resolutions are not equivalent.
+**Disposition: RESOLVED in Task 6 by renaming our bundle.**
+`English.lproj/DriverHelp/SB8_3_31.rtfd` → `English.lproj/DriverHelp/SB8.rtfd`. That makes
+our tree self-consistent *and* matches Apple's shipped layout on both the table value and
+the bundle name, so it diverges from Apple in neither. The alternative — changing the
+table back to `"SB8_3_31.rtfd"` — was rejected: it would reintroduce the very
+`Default.table` divergence Task 2 removed, and would be a choice to diverge rather than a
+forced one.
 
-- **Rename the bundle** `English.lproj/DriverHelp/SB8_3_31.rtfd` →
-  `English.lproj/DriverHelp/SB8.rtfd`. This makes our tree self-consistent *and* matches
-  Apple's shipped layout on both the table value and the bundle name. This is the
-  parity-preserving fix and is the one I recommend.
-- **Change the table** back to `"SB8_3_31.rtfd"`. This also makes the tree
-  self-consistent, but it reintroduces a divergence from Apple's `Default.table` — the
-  one Task 2 removed — and would have to be recorded as an `intentional-mismatch` with a
-  reason.
+`DriverHelp/TableOfContents.rtf` was the only other reference to the old name; its
+`\linkFilename` now reads `SB8.rtfd`, matching Apple's shipped table of contents. The
+project's `LOCAL_RESOURCES` names the `DriverHelp` directory rather than the bundle inside
+it, so no makefile needed touching, and the rebuilt bundle stages as
+`SoundBlaster8.config/English.lproj/DriverHelp/SB8.rtfd`.
 
-The task brief anticipates the second and asks Task 6 to record it as
-`intentional-mismatch`. That disposition is available, but note that it is a *choice to
-diverge*, not a forced one: the first option costs nothing and diverges from Apple in
-neither the table nor the bundle name. Neither option affects any of the 29 functions, so
-this finding has no ledger entry either way.
+This finding never touched any of the 29 functions, so it has no ledger entry.

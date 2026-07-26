@@ -107,6 +107,7 @@
 #define TX_STATE_BELOW_MED  0x02000000  // Below medium watermark
 #define TX_STATE_BELOW_HIGH 0x00000000  // Below high watermark
 #define TX_STATE_ABOVE_HIGH 0x01000000  // Above high watermark
+#define TX_STATE_CRITICAL   0x01800000  // Above capacity-3, mirrors RX_STATE_CRITICAL
 
 // RX queue state levels (bits 16-19 in state)
 #define RX_STATE_MASK       0x000F0000

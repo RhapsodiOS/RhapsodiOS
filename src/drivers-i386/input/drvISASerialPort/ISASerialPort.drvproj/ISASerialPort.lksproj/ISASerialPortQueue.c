@@ -46,7 +46,6 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                          unsigned int data, BOOL sleep)
 {
     unsigned short *writePtr;
-    unsigned int spaceNeeded;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
     unsigned int watchMask;
@@ -58,9 +57,6 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
     }
 
     do {
-        // Calculate space needed based on event type (low 2 bits)
-        spaceNeeded = 1 + (event & 3);  // 1-4 entries
-
         // Check if we have space (need at least 3 free for safety)
         if ((port->TX.Size - port->TX.Count) > 2) {
             writePtr = (unsigned short *)port->TX.Input;
@@ -75,8 +71,9 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
 
             // Write additional words based on event type
             if ((event & 3) > 1) {
-                // Write second word (bytes 1-2 of data)
-                *writePtr++ = (unsigned short)(data >> 8);
+                // Write second word: bits 0-15 of data, which deliberately
+                // repeats byte 0 already carried in the header cell's high byte
+                *writePtr++ = (unsigned short)data;
                 if ((char *)writePtr >= port->TX.End) {
                     writePtr = (unsigned short *)port->TX.Base;
                 }
@@ -103,10 +100,10 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                         port->TX.Enqueue = port->TX.Size - 3;
                         if (port->TX.Count > (port->TX.Size - 3)) {
                             port->TX.Dequeue = port->TX.Size;
-                            newState = TX_STATE_ABOVE_HIGH;
+                            newState = TX_STATE_CRITICAL;
                         } else {
                             port->TX.Dequeue = port->TX.HighWater;
-                            newState = TX_STATE_BELOW_LOW;
+                            newState = TX_STATE_ABOVE_HIGH;
                         }
                     } else {
                         // Between med and low watermarks
@@ -140,14 +137,13 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                 // Update hardware modem control signals if RTS/DTR changed
                 if (changedBits & 0x06) {  // Bits 1-2 changed
                     mcrValue = MCR_OUT2;  // Always keep OUT2 set
-                    if (oldState & 0x02) {  // DTR state
+                    if (newState & 0x02) {  // DTR state
                         mcrValue |= MCR_DTR;
                     }
-                    if (oldState & 0x04) {  // RTS state
+                    if (newState & 0x04) {  // RTS state
                         mcrValue |= MCR_RTS;
                     }
                     outb(port->Base + UART_MCR, mcrValue);
-                    IODelay(1);
                 }
 
                 // Schedule timer callback if not already pending
@@ -156,9 +152,9 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                 }
 
                 // Notify RX queue of state change if mask matches
-                // (flowControlMode overlays stateEventMask at offset 0xe0 as uint32)
-                if ((*(unsigned int *)&port->FlowControl) & (changedBits << 16)) {
-                    _RX_enqueueLongEvent(port, 0x53, oldState | (changedBits << 16));
+                if (port->FlowControl & (changedBits << 16)) {
+                    _RX_enqueueLongEvent(port, 0x53,
+                                       (newState & 0xFFFF) | (changedBits << 16));
                 }
             }
 
@@ -178,6 +174,7 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
 
     return result;
 }
+
 /*
  * RX dequeue event.
  * Dequeues variable-length events from the receive queue.
@@ -277,23 +274,21 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
                         port->RX.Enqueue = port->RX.LowWater;
                     }
 
-                    // Handle flow control - assert RTS/DTR when queue drains
-                    if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-                        if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                            if (port->FlowControl & FLOW_DTR_ENABLED) {
-                                newState |= STATE_DTR;
-                            }
-                        } else {
-                            newState |= STATE_RTS;
-                            // Update flow control state machine
-                            if (port->RXOstate == -1) {
-                                port->RXOstate = 2;
-                            } else if (port->RXOstate == 1) {
-                                port->RXOstate = -2;
-                            }
-                        }
-                    } else {
+                    // Handle flow control - assert RTS/DTR when queue drains.
+                    // Exactly one arm runs: RTS wins over hardware, hardware
+                    // over DTR.
+                    if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                         newState |= STATE_RTS;
+                    } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                        newState |= 0x10;  // Hardware flow control bit
+                        // Update flow control state machine
+                        if (port->RXOstate == -1) {
+                            port->RXOstate = 2;
+                        } else if (port->RXOstate == 1) {
+                            port->RXOstate = -2;
+                        }
+                    } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                        newState |= STATE_DTR;
                     }
                 } else if (port->RX.Count > port->RX.HighWater) {
                     // Above high watermark
@@ -309,22 +304,18 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
                     }
 
                     // Handle flow control - deassert RTS/DTR when queue fills
-                    if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-                        if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                            if (port->FlowControl & FLOW_DTR_ENABLED) {
-                                newState &= ~STATE_DTR;
-                            }
-                        } else {
-                            newState &= ~STATE_RTS;
-                            // Update flow control state machine
-                            if (port->RXOstate == -2 || port->RXOstate == 0) {
-                                port->RXOstate = 1;
-                            } else if (port->RXOstate == 2) {
-                                port->RXOstate = -1;
-                            }
-                        }
-                    } else {
+                    if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                         newState &= ~STATE_RTS;
+                    } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                        newState &= ~0x10;
+                        // Update flow control state machine
+                        if (port->RXOstate == -2 || port->RXOstate == 0) {
+                            port->RXOstate = 1;
+                        } else if (port->RXOstate == 2) {
+                            port->RXOstate = -1;
+                        }
+                    } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                        newState &= ~STATE_DTR;
                     }
                 } else {
                     // Between watermarks
@@ -332,9 +323,11 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
                     port->RX.Dequeue = port->RX.LowWater;
                 }
 
-                // Update state and detect changes
+                // Update state and detect changes.  The mask on newState is
+                // the RX level bits plus the flow bits it may have touched;
+                // the reference narrows it the same way (and eax, 0F017Eh).
                 oldState = port->State;
-                newState = (oldState & 0xFFF0FE81) | newState;  // Preserve high bits and certain low bits
+                newState = (oldState & 0xFFF0FE81) | (newState & 0x000F017E);
                 changedBits = newState ^ oldState;
                 port->State = newState;
 
@@ -353,7 +346,6 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
                         mcrValue |= MCR_RTS;
                     }
                     outb(port->Base + UART_MCR, mcrValue);
-                    IODelay(1);
                 }
 
                 // Schedule timer callback if not already pending
@@ -385,13 +377,14 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
         }
     }
 }
+
 /*
  * RX dequeue data byte.
  * Dequeues a single data byte from RX ring buffer.
  * Data is stored as 2-byte words: low byte = 'U' marker (0x55), high byte = actual data.
  * param byteOut: Pointer to store the dequeued byte
  * param sleep: If TRUE, wait for data; if FALSE, return error if no data
- * Returns: IO_R_SUCCESS on success, IO_R_OFFLINE if no data (and not sleeping)
+ * Returns: IO_R_SUCCESS on success, IO_R_RESOURCE if no data (and not sleeping)
  */
 IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
 {
@@ -409,7 +402,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
 
             // Verify marker byte (low byte should be 'U' = 0x55)
             if ((*(unsigned char *)readPtr) != 'U') {
-                return IO_R_OFFLINE;  // -702 (-0x2be)
+                return IO_R_RESOURCE;  // -702 (0xfffffd42)
             }
 
             // Read 2-byte word from RX queue
@@ -448,11 +441,12 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                             port->RX.Enqueue = port->RX.LowWater;
                         }
 
-                        // Update flow control - turn ON (assert signals when queue drains)
+                        // Update flow control - turn ON (assert signals when
+                        // queue drains).  Exactly one arm runs: RTS wins over
+                        // hardware, hardware over DTR.
                         if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                             newState |= STATE_RTS;
-                        }
-                        if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                             newState |= 0x10;  // Hardware flow control bit
                             // Update flow control state machine
                             if (port->RXOstate == -1) {
@@ -460,8 +454,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                             } else if (port->RXOstate == 1) {
                                 port->RXOstate = -2;
                             }
-                        }
-                        if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                             newState |= STATE_DTR;
                         }
                     } else if (port->RX.Count > port->RX.HighWater) {
@@ -478,11 +471,11 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                             port->RX.Dequeue = port->RX.HighWater;
                         }
 
-                        // Update flow control - turn OFF (de-assert signals when queue fills)
+                        // Update flow control - turn OFF (de-assert signals
+                        // when queue fills), the same chain in reverse.
                         if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                             newState &= ~STATE_RTS;
-                        }
-                        if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                             newState &= ~0x10;
                             // Update flow control state machine
                             if (port->RXOstate == -2 || port->RXOstate == 0) {
@@ -490,8 +483,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                             } else if (port->RXOstate == 2) {
                                 port->RXOstate = -1;
                             }
-                        }
-                        if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                             newState &= ~STATE_DTR;
                         }
                     } else {
@@ -502,7 +494,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
 
                     // Update current state and calculate changed bits
                     oldState = port->State;
-                    newState = (oldState & 0xfff0fe81) | newState;
+                    newState = (oldState & 0xfff0fe81) | (newState & 0x000f017e);
                     changedBits = newState ^ oldState;
                     port->State = newState;
 
@@ -521,9 +513,6 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                             mcrValue |= MCR_RTS;
                         }
                         outb(port->Base + UART_MCR, mcrValue);
-                        IOEnterCriticalSection();
-                        // Increment some global counter (placeholder)
-                        IOExitCriticalSection();
                     }
 
                     // Schedule timer callback if not already pending
@@ -532,7 +521,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
                     }
 
                     // Notify RX queue of state change if flow control mode matches
-                    if ((port->FlowControl & (changedBits >> 16)) != 0) {
+                    if ((port->FlowControl & (changedBits << 16)) != 0) {
                         _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
                                            (newState & 0xFFFF) | (changedBits << 16));
                     }
@@ -557,7 +546,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
 
         // No data available
         if (!sleep) {
-            return IO_R_OFFLINE;  // -702
+            return IO_R_RESOURCE;  // -702 (0xfffffd42)
         }
 
         // Wait for RX data
@@ -568,6 +557,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
         }
     } while (1);
 }
+
 /*
  * Validate and normalize ring buffer size.
  * Returns a clamped size value between minimum and maximum limits.
@@ -593,131 +583,86 @@ unsigned int validateRingBufferSize(unsigned int requestedSize, Queue *q)
 
     return size;
 }
+
 /*
  * Free ring buffer memory.
  * Deallocates a ring buffer (RX or TX) and resets all related pointers.
  *
+ * IOMalloc and IOFree are size-matched, so the block has to go back exactly as
+ * it came: AllocBase and AllocSize, not Base and End - Base.  Base can sit one
+ * byte inside the block, and the allocation is Size * 2 + 2 rather than
+ * Size * 2.
+ *
+ * Size, the watermarks, Enqueue, Dequeue and DefaultSize deliberately survive:
+ * allocateRingBuffer calls this first and then reads q->Size as the requested
+ * size, so clearing Size would silently force every buffer to DefaultSize.
+ *
  * Parameters:
- *   q - Pointer to the base of queue structure (either &rxQueueCapacity or &txQueueCapacity)
+ *   q - Pointer to the queue whose ring buffer is being released
  */
 void freeRingBuffer(Queue *q)
 {
-    // Queue structure layout (relative to q):
-    // +0x00: capacity (uint)
-    // +0x04: used (uint)
-    // +0x18: start (void*)
-    // +0x1c: end (void*)
-
-    unsigned int *capacity = (unsigned int *)q;
-    void **start = (void **)((char *)q + 0x18);
-    void **end = (void **)((char *)q + 0x1c);
-
-    // Check if ring buffer is allocated (check start pointer)
-    if (*start != NULL) {
-        // Free the buffer memory
-        IOFree(*start, (unsigned int)((char *)*end - (char *)*start));
+    // The guard is on Base, not AllocBase
+    if (q->Base != NULL) {
+        IOFree(q->AllocBase, q->AllocSize);
     }
 
-    // Clear capacity and used fields
-    *capacity = 0;
-    *((unsigned int *)((char *)q + 0x04)) = 0; // used
-
-    // Clear all pointer fields
-    *end = NULL;
-    *start = NULL;
-    *((void **)((char *)q + 0x20)) = NULL; // write pointer
-    *((void **)((char *)q + 0x24)) = NULL; // read pointer
-
-    // Clear watermark fields (offsets vary between RX and TX)
-    *((unsigned int *)((char *)q + 0x08)) = 0;
-    *((unsigned int *)((char *)q + 0x0c)) = 0;
-    *((unsigned int *)((char *)q + 0x10)) = 0;
+    q->AllocBase = NULL;
+    q->Base = NULL;
+    q->End = NULL;
+    q->Output = NULL;
+    q->Input = NULL;
+    q->AllocSize = 0;
+    q->OverRun = 0;
+    q->Count = 0;
 }
+
 /*
  * Allocate ring buffer.
  * Allocates memory for a ring buffer (RX or TX) with proper alignment.
  *
+ * Cells are 2 bytes, so the block is Size * 2 + 2: the spare 2 bytes let Base
+ * be nudged up to an even address when IOMalloc returns an odd one.  AllocBase
+ * and AllocSize keep the block as it was handed out so freeRingBuffer can
+ * return it unchanged.
+ *
  * Parameters:
- *   q - Pointer to the base of queue structure (either &rxQueueCapacity or &txQueueCapacity)
  *   q - Pointer to the queue whose ring buffer is being allocated
  *
  * Returns:
  *   1 on success, 0 on failure (a BOOL, not an IOReturn)
- *
- * Queue structure layout (relative to q):
- * +0x00: capacity (uint) - requested size, will be validated
- * +0x04: used (uint)
- * +0x08-0x10: watermarks
- * +0x18: start (void*) - aligned start pointer
- * +0x1c: end (void*) - end of buffer
- * +0x20: write (void*)
- * +0x24: read (void*)
- * +0x30: allocStart (void*) - raw allocated pointer (for freeing)
  */
 int allocateRingBuffer(Queue *q)
 {
-    unsigned int *capacity = (unsigned int *)q;
-    unsigned int *used = (unsigned int *)((char *)q + 0x04);
-    void **allocStart = (void **)((char *)q + 0x30);
-    void **start = (void **)((char *)q + 0x18);
-    void **end = (void **)((char *)q + 0x1c);
-    void **write = (void **)((char *)q + 0x20);
-    void **read = (void **)((char *)q + 0x24);
-    unsigned int *watermarkTarget = (unsigned int *)((char *)q + 0x0c);
-    unsigned int validatedSize;
-    unsigned int allocSize;
-    void *buffer;
-
-    // First free any existing buffer
+    // Release whatever is there; this leaves q->Size alone
     freeRingBuffer(q);
 
-    // Validate the requested size
-    validatedSize = validateRingBufferSize(*capacity, q);
-    *capacity = validatedSize;
+    // Validate the requested size, which q->Size carries in
+    q->Size = validateRingBufferSize(q->Size, q);
 
-    // Calculate allocation size: capacity * 2 bytes per entry + 2 for alignment
-    allocSize = (validatedSize * 2) + 2;
+    q->AllocSize = (q->Size * 2) + 2;
+    q->AllocBase = (char *)IOMalloc(q->AllocSize);
 
-    // Store allocation size at offset 0x30 (temporarily, will be overwritten with pointer)
-    *allocStart = (void *)allocSize;
-
-    // Allocate memory
-    buffer = IOMalloc(allocSize);
-    *allocStart = buffer;
-
-    if (buffer == NULL) {
-        // Allocation failed
+    if (q->AllocBase == NULL) {
         return 0;
     }
 
-    // Align start pointer to even address if needed
-    if (((unsigned int)buffer & 1) == 0) {
-        // Already aligned
-        *start = buffer;
+    // Round the ring itself up to an even address
+    if (((unsigned int)q->AllocBase & 1) != 0) {
+        q->Base = q->AllocBase + 1;
     } else {
-        // Not aligned, advance by 1 byte
-        *start = (void *)((char *)buffer + 1);
+        q->Base = q->AllocBase;
     }
 
-    // Calculate end pointer (capacity * 2 bytes from aligned start)
-    *end = (void *)((char *)*start + (validatedSize * 2));
+    q->End = q->Base + (q->Size * 2);
+    q->Output = q->Base;
+    q->Input = q->Base;
+    q->OverRun = 0;
+    q->Count = 0;
 
-    // Initialize read and write pointers to start
-    *write = *start;
-    *read = *start;
-
-    // Clear overflow flag (at offset 0x28 from q)
-    *((unsigned int *)((char *)q + 0x28)) = 0;
-
-    // Clear used count
-    *used = 0;
-
-    // Set target watermark to low watermark (at offset 0x0c)
-    // Low watermark is at offset 0x08
-    *watermarkTarget = *((unsigned int *)((char *)q + 0x08));
-
-    // Set current watermark (at offset 0x14) to zero
-    *((unsigned int *)((char *)q + 0x14)) = 0;
+    // Report the next state change when the queue drains to the low watermark
+    q->Enqueue = q->LowWater;
+    q->Dequeue = 0;
 
     return 1;
 }

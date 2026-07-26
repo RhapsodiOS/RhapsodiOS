@@ -59,7 +59,7 @@
 // Forward declarations for this translation unit's private functions.
 // The eleven the driver exports are declared in ISASerialPortInternal.h.
 static IOReturn activatePort(Port *port);
-static IOReturn deactivatePort(Port *port);
+static void deactivatePort(Port *port);
 // The four callout handlers take the Port * thread_call_allocate was given as
 // its spec, and nothing else; each is cast to thread_call_func_t at its
 // allocation site.
@@ -162,7 +162,6 @@ static void dataLatTOHandler(Port *port)
     unsigned int spaceFree;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
-    unsigned int eventMask;
 
     // Raise interrupt level
     oldIRQL = spl4();
@@ -170,20 +169,18 @@ static void dataLatTOHandler(Port *port)
     // Calculate free space in RX queue
     spaceFree = port->RX.Size - port->RX.Count;
 
-    // Check if we have less than 3 bytes of space available
-    if (spaceFree < 3) {
-        // Queue is nearly full or completely full
-        if (port->RX.Size <= port->RX.Count) {
-            // Queue is completely full - set overflow flag
-            port->RX.OverRun = 1;
-        } else {
-            // Nearly full - write overflow marker event (0x6c)
-            *(unsigned short *)port->RX.Input = EVENT_OVERFLOW;
-            // No advance needed, fall through to common advance code
-        }
-    } else {
-        // We have at least 3 bytes available - write a 3-word event
-        // Event type 0x4f (likely "queue has room" notification)
+    /*
+     * Three capacity cases, and the completely-full one advances nothing.  The
+     * reference tests Size - Count > 2 at 9434, then Size > Count at 9442, and
+     * on the completely-full path sets RX.OverRun and jumps straight to the
+     * state block at 9568 (9447-9454) - past every pointer advance.  Writing
+     * the advance once after the if/else would bump Input and Count past the
+     * end of a full ring.  The trailing advance is spelled out in both of the
+     * other two arms; gcc's cross-jumping merges them, which is what produces
+     * the reference's jump from 9467 into the shared advance at 9547.
+     */
+    if (spaceFree > 2) {
+        // Room for the whole three-cell event: type, then two zero cells
         *(unsigned short *)port->RX.Input = 0x4f;
         port->RX.Input = (char *)port->RX.Input + 2;
         if (port->RX.Input >= port->RX.End) {
@@ -201,19 +198,28 @@ static void dataLatTOHandler(Port *port)
 
         // Write second zero word
         *(unsigned short *)port->RX.Input = 0;
-        // Fall through to common advance code
+        port->RX.Input = (char *)port->RX.Input + 2;
+        if (port->RX.Input >= port->RX.End) {
+            port->RX.Input = port->RX.Base;
+        }
+        port->RX.Count++;
+    } else if (port->RX.Size > port->RX.Count) {
+        // One cell left: report the overflow marker instead
+        *(unsigned short *)port->RX.Input = EVENT_OVERFLOW;
+        port->RX.Input = (char *)port->RX.Input + 2;
+        if (port->RX.Input >= port->RX.End) {
+            port->RX.Input = port->RX.Base;
+        }
+        port->RX.Count++;
+    } else {
+        // Completely full - record the overrun and advance nothing
+        port->RX.OverRun = 1;
     }
 
-    // Common: advance write pointer for final word
-    port->RX.Input = (char *)port->RX.Input + 2;
-    if (port->RX.Input >= port->RX.End) {
-        port->RX.Input = port->RX.Base;
-    }
-    port->RX.Count++;
-
-    // Now update state based on queue levels
-    if (port->RX.Count <= port->RX.Enqueue) {
-        // Queue is below or at target level
+    // Now update state based on queue levels.  The gate is Enqueue <= Count -
+    // the next level at which a change must be reported has been reached
+    // (reference 9568-9574: eax = RX.Count, cmp RX.Enqueue, eax, ja exit).
+    if (port->RX.Enqueue <= port->RX.Count) {
         // Start with base state (keep certain bits)
         newState = port->State & 0x17E;
 
@@ -231,31 +237,27 @@ static void dataLatTOHandler(Port *port)
                 port->RX.Enqueue = port->RX.LowWater;
             }
 
-            // Update flow control based on mode
-            if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-                if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                    if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
-                        newState |= STATE_DTR;
-                    }
-                } else {
-                    // Hardware flow control enabled
-                    newState |= STATE_RTS;
-                    if (port->RXOstate == -1) {
-                        port->RXOstate = 2;
-                    } else if (port->RXOstate == 1) {
-                        port->RXOstate = -2;
-                    }
-                }
-            } else {
-                // RTS flow control enabled
+            // Room again: assert whichever signal this port throttles with.
+            // The hardware-flow arm sets bit 0x10, not RTS - reference 9669 is
+            // `or cl, 10h` and its mirror at 9829 is `and cl, 0EFh`.
+            if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                 newState |= STATE_RTS;
+            } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                newState |= 0x10;
+                if (port->RXOstate == -1) {
+                    port->RXOstate = 2;
+                } else if (port->RXOstate == 1) {
+                    port->RXOstate = -2;
+                }
+            } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                newState |= STATE_DTR;
             }
 
         } else if (port->RX.HighWater < port->RX.Count) {
             // Above high watermark - apply back pressure
             port->RX.Enqueue = port->RX.Size - 3;
 
-            if (port->RX.Size - 3 < port->RX.Count) {
+            if (port->RX.Count > port->RX.Size - 3) {
                 // Critical level (capacity - 3 or more used)
                 newState |= RX_STATE_CRITICAL;
                 port->RX.Dequeue = port->RX.Size;
@@ -265,24 +267,18 @@ static void dataLatTOHandler(Port *port)
                 port->RX.Dequeue = port->RX.HighWater;
             }
 
-            // Update flow control - turn OFF DTR/RTS to signal back pressure
-            if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-                if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                    if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
-                        newState &= ~STATE_DTR;
-                    }
-                } else {
-                    // Hardware flow control - clear RTS
-                    newState &= ~STATE_RTS;
-                    if ((port->RXOstate == -2) || (port->RXOstate == 0)) {
-                        port->RXOstate = 1;
-                    } else if (port->RXOstate == 2) {
-                        port->RXOstate = -1;
-                    }
-                }
-            } else {
-                // RTS flow control - clear RTS
+            // Filling up: drop the same signal to apply back pressure.
+            if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                 newState &= ~STATE_RTS;
+            } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                newState &= ~0x10;
+                if ((port->RXOstate == -2) || (port->RXOstate == 0)) {
+                    port->RXOstate = 1;
+                } else if (port->RXOstate == 2) {
+                    port->RXOstate = -1;
+                }
+            } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                newState &= ~STATE_DTR;
             }
 
         } else {
@@ -320,9 +316,10 @@ static void dataLatTOHandler(Port *port)
             thread_call_enter(port->FrameTOEntry);
         }
 
-        // Enqueue state change event if any watched state bits changed
-        memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-        if (eventMask & (changedBits << 16)) {
+        // Enqueue state change event if any watched state bits changed.
+        // Reference 10043 tests Port.FlowControl in place - `test [ebx+0E0h],
+        // edi` - with no staging local.
+        if (port->FlowControl & (changedBits << 16)) {
             RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
                                 (newState & 0xFFFF) | (changedBits << 16));
         }
@@ -351,7 +348,8 @@ static void PCMCIA_yanked(Port *port)
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
- *   0xFFFFFD42 on failure (unable to allocate buffers)
+ *   IO_R_RESOURCE (-702) if either ring buffer cannot be allocated, or if the
+ *   PCMCIA card has already been pulled
  */
 static IOReturn activatePort(Port *port)
 {
@@ -359,7 +357,6 @@ static IOReturn activatePort(Port *port)
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
     unsigned int txState, rxState;
-    unsigned int eventMask;
 
     // Check if already active (statusFlags bit 0x40)
     if ((port->State & 0x40000000) != 0) {
@@ -369,19 +366,19 @@ static IOReturn activatePort(Port *port)
 
     // Check if PCMCIA card has been removed
     if (port->PCMCIA_yanked != 0) {
-        return 0xFFFFFD42; // -702, IO_R_RESOURCE
+        return IO_R_RESOURCE;
     }
 
     // Allocate TX ring buffer (at offset 0x50)
     if (allocateRingBuffer(&port->TX) == 0) {
-        return 0xFFFFFD42; // Allocation failed
+        return IO_R_RESOURCE;
     }
 
     // Allocate RX ring buffer (at offset 0x18)
     if (allocateRingBuffer(&port->RX) == 0) {
         // Free TX buffer and fail
         freeRingBuffer(&port->TX);
-        return 0xFFFFFD42; // Allocation failed
+        return IO_R_RESOURCE;
     }
 
     // Clear statistics counters
@@ -414,13 +411,16 @@ static IOReturn activatePort(Port *port)
         thread_wakeup_prim(&port->WatchStateMask, 0, 4);
     }
 
-    // Update DTR/RTS hardware signals if they changed
+    // Update DTR/RTS hardware signals if they changed.  The reference builds
+    // the MCR out of the NEW state here (3245/3255 test edi, the value just
+    // stored), not out of the old one; the two only agree because this merge
+    // touches nothing below bit 30.
     if (changedBits & STATE_FLOW_MASK) {
         mcrValue = MCR_OUT2;
-        if (oldState & STATE_DTR) {
+        if (newState & STATE_DTR) {
             mcrValue |= MCR_DTR;
         }
-        if (oldState & STATE_RTS) {
+        if (newState & STATE_RTS) {
             mcrValue |= MCR_RTS;
         }
         outb(port->Base + UART_MCR, mcrValue);
@@ -433,10 +433,9 @@ static IOReturn activatePort(Port *port)
     }
 
     // Enqueue state change event if watched
-    memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-    if (eventMask & (changedBits << 16)) {
+    if (port->FlowControl & (changedBits << 16)) {
         RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                            (oldState & 0xFFFF) | (changedBits << 16));
+                            (newState & 0xFFFF) | (changedBits << 16));
     }
 
     // Recalculate flow control state
@@ -456,10 +455,10 @@ static IOReturn activatePort(Port *port)
     // Update DTR/RTS if they changed
     if (changedBits & STATE_FLOW_MASK) {
         mcrValue = MCR_OUT2;
-        if (flowState & STATE_DTR) {
+        if (newState & STATE_DTR) {
             mcrValue |= MCR_DTR;
         }
-        if (flowState & STATE_RTS) {
+        if (newState & STATE_RTS) {
             mcrValue |= MCR_RTS;
         }
         outb(port->Base + UART_MCR, mcrValue);
@@ -472,45 +471,42 @@ static IOReturn activatePort(Port *port)
     }
 
     // Enqueue flow control state change event
-    memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-    if (eventMask & (changedBits << 16)) {
+    if (port->FlowControl & (changedBits << 16)) {
         RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                            (oldState & 0xFFE9) | (flowState & 0x16) | (changedBits << 16));
+                            (newState & 0xFFFF) | (changedBits << 16));
     }
 
-    // Calculate initial TX queue state based on current usage
-    if (port->TX.LowWater < port->TX.Count) {
-        // Used > medWater
-        if (port->TX.HighWater < port->TX.Count) {
-            // Used > lowWater (above high watermark)
-            port->TX.Enqueue = port->TX.Size - 3;
-            if (port->TX.Size - 3 < port->TX.Count) {
-                // Critical level
-                port->TX.Dequeue = port->TX.Size;
-                txState = 0x1800000;
-            } else {
-                // Above high
-                port->TX.Dequeue = port->TX.HighWater;
-                txState = 0x1000000;
-            }
-        } else {
-            // medWater < used <= lowWater
-            port->TX.Enqueue = port->TX.HighWater;
-            port->TX.Dequeue = port->TX.LowWater;
-            txState = 0;
-        }
-    } else {
-        // Used <= medWater
+    // Calculate initial TX queue state based on current usage.  This is the
+    // same ladder TX_updateState spells out, written the same way: reference
+    // 3482 is `cmp [TX.LowWater], eax` / `jb`, which is what a leading
+    // `Count <= LowWater` test compiles to, and 3536 is `cmp [TX.HighWater],
+    // eax` / `jnb`.
+    if (port->TX.Count <= port->TX.LowWater) {
         port->TX.Dequeue = 0;
+
         if (port->TX.Count == 0) {
-            // Empty
             port->TX.Enqueue = 0;
             txState = TX_STATE_EMPTY;
         } else {
-            // Below medium watermark
             port->TX.Enqueue = port->TX.LowWater;
             txState = TX_STATE_BELOW_MED;
         }
+
+    } else if (port->TX.HighWater < port->TX.Count) {
+        port->TX.Enqueue = port->TX.Size - 3;
+
+        if (port->TX.Count > port->TX.Size - 3) {
+            port->TX.Dequeue = port->TX.Size;
+            txState = TX_STATE_CRITICAL;
+        } else {
+            port->TX.Dequeue = port->TX.HighWater;
+            txState = TX_STATE_ABOVE_HIGH;
+        }
+
+    } else {
+        port->TX.Enqueue = port->TX.HighWater;
+        port->TX.Dequeue = port->TX.LowWater;
+        txState = TX_STATE_BELOW_HIGH;
     }
 
     // Calculate initial RX queue state based on current usage
@@ -529,28 +525,26 @@ static IOReturn activatePort(Port *port)
             port->RX.Enqueue = port->RX.LowWater;
         }
 
-        // Enable flow control (ready to receive)
-        if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-            if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
-                    rxState |= STATE_DTR;
-                }
-            } else {
-                rxState |= STATE_RTS;
-                if (port->RXOstate == -1) {
-                    port->RXOstate = 2;
-                } else if (port->RXOstate == 1) {
-                    port->RXOstate = -2;
-                }
-            }
-        } else {
+        // Room again: assert whichever signal this port throttles with.  The
+        // hardware-flow arm sets bit 0x10, not RTS - reference 3705 is
+        // `or dl, 10h` and its mirror at 3865 is `and dl, 0EFh`.
+        if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
             rxState |= STATE_RTS;
+        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+            rxState |= 0x10;
+            if (port->RXOstate == -1) {
+                port->RXOstate = 2;
+            } else if (port->RXOstate == 1) {
+                port->RXOstate = -2;
+            }
+        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+            rxState |= STATE_DTR;
         }
 
     } else if (port->RX.HighWater < port->RX.Count) {
         // Above high watermark
         port->RX.Enqueue = port->RX.Size - 3;
-        if (port->RX.Size - 3 < port->RX.Count) {
+        if (port->RX.Count > port->RX.Size - 3) {
             // Critical
             rxState |= RX_STATE_CRITICAL;
             port->RX.Dequeue = port->RX.Size;
@@ -560,22 +554,18 @@ static IOReturn activatePort(Port *port)
             port->RX.Dequeue = port->RX.HighWater;
         }
 
-        // Disable flow control (apply back pressure)
-        if ((port->FlowControl & FLOW_RTS_ENABLED) == 0) {
-            if ((port->FlowControl & FLOW_HW_ENABLED) == 0) {
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
-                    rxState &= ~STATE_DTR;
-                }
-            } else {
-                rxState &= ~STATE_RTS;
-                if ((port->RXOstate == -2) || (port->RXOstate == 0)) {
-                    port->RXOstate = 1;
-                } else if (port->RXOstate == 2) {
-                    port->RXOstate = -1;
-                }
-            }
-        } else {
+        // Filling up: drop the same signal to apply back pressure.
+        if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
             rxState &= ~STATE_RTS;
+        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+            rxState &= ~0x10;
+            if ((port->RXOstate == -2) || (port->RXOstate == 0)) {
+                port->RXOstate = 1;
+            } else if (port->RXOstate == 2) {
+                port->RXOstate = -1;
+            }
+        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+            rxState &= ~STATE_DTR;
         }
 
     } else {
@@ -598,10 +588,10 @@ static IOReturn activatePort(Port *port)
     // Update DTR/RTS
     if (changedBits & STATE_FLOW_MASK) {
         mcrValue = MCR_OUT2;
-        if (rxState & STATE_DTR) {
+        if (newState & STATE_DTR) {
             mcrValue |= MCR_DTR;
         }
-        if (rxState & STATE_RTS) {
+        if (newState & STATE_RTS) {
             mcrValue |= MCR_RTS;
         }
         outb(port->Base + UART_MCR, mcrValue);
@@ -614,8 +604,7 @@ static IOReturn activatePort(Port *port)
     }
 
     // Enqueue state change event
-    memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-    if (eventMask & (changedBits << 16)) {
+    if (port->FlowControl & (changedBits << 16)) {
         RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
                             (newState & 0xFFFF) | (changedBits << 16));
     }
@@ -625,7 +614,10 @@ static IOReturn activatePort(Port *port)
         thread_call_enter(port->FrameTOEntry);
     }
 
-    // Enable UART interrupts (write lower 4 bits of ierValue)
+    // Arm the four standard UART interrupt enables.  The `& 0x0F` is the
+    // reference's own - `and al, 0Fh` at 4134 - and it keeps all four defined
+    // IER bits including modem status (0x08); only the 82510's reserved high
+    // nibble is dropped.
     outb(port->Base + UART_IER, port->IERmask & 0x0F);
     // Atomic increment
 
@@ -635,17 +627,20 @@ static IOReturn activatePort(Port *port)
 /*
  * Deactivate the serial port.
  * Shuts down the UART, disables interrupts, frees ring buffers, and updates state.
+ *
+ * This is void, unlike its activate counterpart: the reference's early-out at
+ * 4169 branches straight to the epilogue without setting eax, and no call site
+ * reads a result.
  */
-static IOReturn deactivatePort(Port *port)
+static void deactivatePort(Port *port)
 {
-    unsigned int eventMask;
     unsigned int flowState;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
 
     // Only deactivate if port is currently active (bit 0x40 in statusFlags)
     if ((port->State & 0x40000000) == 0) {
-        return IO_R_SUCCESS;
+        return;
     }
 
     // Disable most UART interrupts (keep only bit 3 if set)
@@ -684,9 +679,7 @@ static IOReturn deactivatePort(Port *port)
     }
 
     // Enqueue state change event if any watched state bits changed
-    // Read Port.FlowControl, offset 0xe0 from the Port
-    memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-    if (eventMask & (changedBits << 16)) {
+    if (port->FlowControl & (changedBits << 16)) {
         RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
                             (newState & 0xFFFF) | (changedBits << 16));
     }
@@ -712,10 +705,10 @@ static IOReturn deactivatePort(Port *port)
     // Update DTR/RTS signals if they changed
     if (changedBits & STATE_FLOW_MASK) {
         mcrValue = MCR_OUT2;
-        if (flowState & STATE_DTR) {
+        if (newState & STATE_DTR) {
             mcrValue |= MCR_DTR;
         }
-        if (flowState & STATE_RTS) {
+        if (newState & STATE_RTS) {
             mcrValue |= MCR_RTS;
         }
         outb(port->Base + UART_MCR, mcrValue);
@@ -727,13 +720,10 @@ static IOReturn deactivatePort(Port *port)
     }
 
     // Enqueue state change event for flow control changes if watched
-    memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
-    if (eventMask & (changedBits << 16)) {
+    if (port->FlowControl & (changedBits << 16)) {
         RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
                             (newState & 0xFFFF) | (changedBits << 16));
     }
-
-    return IO_R_SUCCESS;
 }
 
 /*
@@ -2904,8 +2894,11 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
- *   0xFFFFFD3B if PCMCIA card was removed
- *   0xFFFFFD36 or other errors from watchState if interrupted while sleeping
+ *   IO_R_EXCLUSIVE_ACCESS (-709) if the PCMCIA card was pulled, or if the port
+ *   is already held and the caller asked not to sleep
+ *   any other error watchState reports, e.g. IO_R_IPC_FAILURE (-703) when the
+ *   sleep was aborted.  IO_R_IO (-714) is not returned: it means the port went
+ *   inactive underneath us and is the retry sentinel for the loop below.
  */
 - (IOReturn)acquire:(BOOL)sleep
 {
@@ -2916,7 +2909,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned char msrValue;
     unsigned int flowState;
     unsigned int msrStateBits;
-    unsigned int eventMask;
+    unsigned long long heartBeat;
     IOReturn result;
     int i;
 
@@ -2958,9 +2951,19 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
                 thread_wakeup_prim(&self->Port.WatchStateMask, 0, 4);
             }
 
-            // Update DTR/RTS if they changed
+            // Update DTR/RTS if they changed.  The reference keeps both tests
+            // against the literal newState rather than folding them - 4635 and
+            // 4649 materialise 0A0400018h and mask it - so this is written the
+            // same way every other copy of the tail is.
             if (changedBits & STATE_FLOW_MASK) {
-                outb(self->Port.Base + UART_MCR, MCR_OUT2);
+                mcrValue = MCR_OUT2;
+                if (newState & STATE_DTR) {
+                    mcrValue |= MCR_DTR;
+                }
+                if (newState & STATE_RTS) {
+                    mcrValue |= MCR_RTS;
+                }
+                outb(self->Port.Base + UART_MCR, mcrValue);
                 // Atomic increment (LOCK/UNLOCK omitted)
             }
 
@@ -2970,10 +2973,9 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             }
 
             // Enqueue state change event
-            memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
-            if (eventMask & (changedBits << 16)) {
+            if (self->Port.FlowControl & (changedBits << 16)) {
                 RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                    (changedBits << 16) | 0x18);
+                                    (newState & 0xFFFF) | (changedBits << 16));
             }
 
             // Clear character filter bitmap (8 words at offset 0x1e8)
@@ -3035,9 +3037,14 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             // Convert MSR delta bits to state bits using lookup table
             msrStateBits = msr_state_lut[msrValue >> 4];
 
-            // Update state with flow control and MSR bits
+            // Update state with flow control and MSR bits.  The reference ORs
+            // the shifted LUT value into the flow result first and masks the
+            // combination with 0x1F6 (5171-5188); masking the two separately is
+            // numerically identical, because 0xF << 5 = 0x1E0 is a subset of
+            // 0x1F6, but this is the shape the binary has.
             oldState = self->Port.State;
-            newState = (oldState & 0xFFFFFE09) | (flowState & 0x1F6) | (msrStateBits << 5);
+            newState = (oldState & 0xFFFFFE09) |
+                       ((flowState | (msrStateBits << 5)) & 0x1F6);
             changedBits = oldState ^ newState;
             self->Port.State = newState;
 
@@ -3049,10 +3056,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             // Update DTR/RTS if changed
             if (changedBits & STATE_FLOW_MASK) {
                 mcrValue = MCR_OUT2;
-                if (flowState & STATE_DTR) {
+                if (newState & STATE_DTR) {
                     mcrValue |= MCR_DTR;
                 }
-                if (flowState & STATE_RTS) {
+                if (newState & STATE_RTS) {
                     mcrValue |= MCR_RTS;
                 }
                 outb(self->Port.Base + UART_MCR, mcrValue);
@@ -3065,16 +3072,23 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             }
 
             // Enqueue state change event
-            memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
-            if (eventMask & (changedBits << 16)) {
+            if (self->Port.FlowControl & (changedBits << 16)) {
                 RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                    ((oldState & 0xFE09) | (flowState & 0x1F6) | (msrStateBits << 5)) |
-                                   (changedBits << 16));
+                                    (newState & 0xFFFF) | (changedBits << 16));
             }
 
-            // Start heartbeat timer if interval is set
-            // Check if Port.HeartBeatInterval is non-zero
-            if ((self->Port.HeartBeatInterval.tv_sec != 0 || self->Port.HeartBeatInterval.tv_nsec != 0)) {
+            /*
+             * Poll on the heartbeat timer if an interval was configured, on the
+             * frame timer otherwise.  The reference does not test the two
+             * tvalspec fields separately: it forms tv_sec * 1e9 + (int)tv_nsec
+             * as one 64-bit value and tests that (5331-5375, mul by 3B9ACA00h,
+             * cdq on tv_nsec, add/adc, then test lo / test hi).  tv_nsec is
+             * signed, so the two spellings are not identical for a malformed
+             * tvalspec, and the binary's is the specification.
+             */
+            heartBeat = (unsigned long long)self->Port.HeartBeatInterval.tv_sec * 1000000000ULL
+                        + (long long)(int)self->Port.HeartBeatInterval.tv_nsec;
+            if (heartBeat != 0) {
                 thread_call_enter(self->Port.HeartBeatTOEntry);
             } else {
                 // Use frame timeout timer instead
@@ -3101,9 +3115,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
         splx(oldIRQL);
 
-        // Check result of watchState
+        // Check result of watchState.  -714 is watchState's "the port went
+        // inactive while you were waiting" report, not an error: the reference
+        // compares against it at 4785 and falls into the same retry as success.
         if (result == 0xFFFFFD36) {
-            // Interrupted - try again
             continue;
         }
 
@@ -4032,9 +4047,15 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned int newState, oldState, changedBits;
     unsigned char mcrValue;
 
-    // Check for invalid high bits (bits in 0xc000100000000000 when viewed as 64-bit)
-    // In 32-bit world, this checks the high dword passed on stack
-    // For now, we'll just proceed with the low 32 bits
+    /*
+     * Three bits may not be driven through this entry point: the two high State
+     * gates 0x80000000 (acquired) and 0x40000000 (active), and the private bit
+     * 0x1000 that getState and watchState:mask: both strip.  Reference
+     * 6027-6040 tests the MASK, not the value, and does it before raising spl.
+     */
+    if (mask & 0xC0001000) {
+        return 0xFFFFFD3E;  // -706, IO_R_INVALID_ARG
+    }
 
     oldIRQL = spl4();
 

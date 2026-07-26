@@ -1221,18 +1221,33 @@ invented.
 the threshold does not, and our enum is not the reference's index space (Finding 7). `Type > 4` is
 exactly `_Chip[Type].FIFOsize != 0`.
 
-**Finding 68 — `_activatePort`'s final IER write is masked in ours and not in the reference.**
-`ISASerialPort.m:1248`. Reference 4119-4136: `outb(Base + 1, port->IERmask)`. Ours:
+**Finding 68 — ~~`_activatePort`'s final IER write is masked in ours and not in the reference.~~
+FALSE. RETRACTED IN TASK 10a.**
+~~`ISASerialPort.m:1248`. Reference 4119-4136: `outb(Base + 1, port->IERmask)`. Ours:
 `outb(basePort + UART_IER, self->ierValue & 0x0F)`. `IERmask` is set to `0xFF` or `0xFB` by
 `initFromDeviceDescription:` (2227, 2267), so the `& 0x0F` discards the top nibble — including the
-MSR-interrupt enable the `"Enable MSR Interrupts"` key exists to control.
+MSR-interrupt enable the `"Enable MSR Interrupts"` key exists to control.~~
 
-**Finding 69 — `_activatePort` and `_deactivatePort` return types.**
+> **RETRACTED.** The reference *does* mask, with exactly the same constant we use. 4128 is
+> `mov al, [ebx+0B0h]` and **4134 is `24 0F` = `and al, 0Fh`** — `0x24` is `AND AL, imm8`, so there
+> is no other reading. The claim's second half is wrong too: IER bit `0x08` **is** the modem-status
+> enable and `0x0F` keeps it; what `& 0x0F` drops is the 82510's reserved high nibble. Our
+> `outb(port->Base + UART_IER, port->IERmask & 0x0F)` was correct all along and is unchanged. This
+> is the third finding in this effort to be retracted as false, after 94 and 102, and the second
+> whose retraction came from re-reading the bytes rather than the prose.
+
+**Finding 69 — `_activatePort` and `_deactivatePort` return types. RESOLVED in Task 10a.**
 `ISASerialPort.m:976, 1258`. `_activatePort` genuinely returns an `IOReturn` — `_executeEvent`
 captures it at 10921 — and returns `0xFFFFFD42` = −702 = `IO_R_RESOURCE` on allocation failure
 (3076-3081). Ours matches the value but writes the raw hex literal under a comment reading "device
 not available"; the name is `IO_R_RESOURCE`. `_deactivatePort` is **`void`** — no call site reads
 `eax` — where ours returns `IOReturn`.
+
+> **RESOLVED.** `deactivatePort` is now `static void`, forward declaration included, and both
+> `return IO_R_SUCCESS;` are gone. The reference's early-out at 4169 jumps to the epilogue **without
+> setting `eax`**, which settles it; our four call sites (`PCMCIA_yanked`, `_executeEvent`'s `0x05`
+> arm, `acquire:`'s already-open teardown and `release`) all discard the value. `_activatePort`'s
+> three `0xFFFFFD42` literals are now spelled `IO_R_RESOURCE`.
 
 **Finding 70 — `_deactivatePort`'s structure, confirmed.** Reference 4156-4500, all 116
 instructions read: early-out unless `State & 0x40000000`; `outb(Base + 1, IERmask & 8)`; clear
@@ -1246,18 +1261,31 @@ wake/MCR/timer/event tail. Note the merge mask is `0xFFFFFFE9` — `and dl, 0E9h
 byte. Our source reproduces the shape; the divergences are the return type (Finding 69), the
 parameter type (section 5) and the `State` split (Finding 8).
 
-**Finding 71 — `_dataLatTOHandler`'s entry gate is inverted.**
+**Finding 71 — `_dataLatTOHandler`'s entry gate is inverted. VERIFIED AND FIXED in Task 10a.**
 `ISASerialPort.m:330`. Reference 9568-9574: `eax = RX.Count; cmp [RX.Enqueue], eax; ja exit` — the
 whole state-update block runs only when **`RX.Enqueue <= RX.Count`**. Ours runs it when
 `rxQueueUsed <= rxQueueTarget`, i.e. `Count <= Enqueue`. Inverted except when equal.
 
+> **VERIFIED against the bytes and FIXED.** 9568 `8B431C` loads `RX.Count` into `eax`, 9571
+> `394328` compares `RX.Enqueue` against it and 9574 `ja` leaves for the `splx` at 10068, so the
+> block runs on `Enqueue <= Count`. The gate now reads
+> `if (port->RX.Enqueue <= port->RX.Count)`.
+
 **Finding 72 — `_dataLatTOHandler` advances the ring on the completely-full path and the reference
-does not.** `ISASerialPort.m:293, 322-327`. Reference 9447-9454: on
+does not. VERIFIED AND FIXED in Task 10a.** `ISASerialPort.m:293, 322-327`. Reference 9447-9454: on
 `RX.Size <= RX.Count` it sets `RX.OverRun = 1` and jumps straight to 9568, **skipping every pointer
 advance**. Ours sets `rxQueueOverflow = 1` and then falls through to the common advance, bumping
 `rxQueueWrite` and `rxQueueUsed` past the end of a full ring. The `0x4F`/`0`/`0` three-cell path
 (9472-9565) and the one-advance `0x6C` path (9456-9467, jumping into the third advance block at
 9547) both match ours.
+
+> **VERIFIED against the bytes and FIXED.** The ladder is three cases, not two: 9434 `cmp eax, 2` /
+> `ja` on `Size - Count`, then 9442 `cmp [RX.Size], eax` / `ja` on `Size` against `Count`, then the
+> fall-through at 9447 which is `mov dword ptr [ebx+40h], 1` followed by `EB70` — a **jump to
+> 9568**, past all three advance blocks. Our source had the advance written once after the `if`,
+> which is why the full case reached it. It is now spelled out in each of the two arms that need it
+> and omitted from the third; gcc's cross-jumping merges the two copies, which is exactly how the
+> reference gets its jump from 9467 into the shared advance at 9547.
 
 **Finding 73 — the `Size - 3` watermark ladder is real, is inlined at 44 sites, and ours is
 correct.** Recorded because an earlier reading of this binary wrongly concluded the reference had no
@@ -1348,12 +1376,21 @@ silently aliases an unrelated DriverKit error. Neither symbol is referenced anyw
 `ISASerialPort.m` and neither value appears in the reference. Both should go. The identical
 invented `IO_R_NO_PAPER` appears in `drvPCParallel`, so this is a pattern copied between drivers.
 
-**Finding 79 — `setState:mask:` is missing its argument rejection.**
+**Finding 79 — `setState:mask:` is missing its argument rejection. VERIFIED AND FIXED in Task 10a.**
 `ISASerialPort.m:5150-5155`. Reference 6027-6040: `if (mask & 0xC0001000) return IO_R_INVALID_ARG;`
 — the two high `State` gates and the private bit 12 may not be set through this entry point. Our
 source has no such check and a comment saying "For now, we'll just proceed with the low 32 bits".
 Everything else in the method matches, including the `mask &= (0xFFFF0000 | ~FlowControl)`
 narrowing, the `State < 0` open test, and the whole inlined state-change tail.
+
+> **VERIFIED and FIXED.** 6027 is `F7C6 001000C0` = `test esi, 0C0001000h` where `esi` was loaded
+> from `[ebp+arg_C]` at 6024 — that is `ebp+0x14`, the **mask**, not the state at `ebp+0x10` (which
+> 6122 reads as `[ebp+arg_8]`). The test comes **before** `spl4` at 6048, so the rejection needs no
+> `splx`. Added verbatim, returning `0xFFFFFD3E` = −706 = `IO_R_INVALID_ARG`. Everything else in the
+> method was re-read instruction by instruction and confirmed, including the detail that
+> `FlowControl` is reached **through `self`** at 6088 (`[ebx+208h]`, `ebx` = `self`) for the mask
+> narrowing but **through the `port` ivar** at 6233 (`[ebx+0E0h]`, `ebx` reloaded at 6109) for the
+> event test — the same field by two different paths, which our source already reproduced.
 
 ### `initFromDeviceDescription:`, `acquire:`, `release` and the Instance table
 
@@ -1526,6 +1563,25 @@ never populates (Finding 89), so ours always takes the `FrameTOEntry` branch. Ou
 `_flowMachine`'s result and the LUT contribution separately instead of masking the combination with
 `0x1F6` is numerically identical, since `0xF << 5 = 0x1E0` is a subset of `0x1F6`.
 
+> **CLOSED in Task 10a**, on a full re-read of all 257 instructions. Task 8 had already fixed the
+> `FlowControl`/`MasterClock` crossing, both ring sizes, `RXOstate`, `RX.OverRun` and `DLRimage`, and
+> the reviewer walked the write order field by field; this pass confirmed the whole reset block again
+> and closed the three residues:
+> - the mask is now applied to the **combination** — `(oldState & 0xFFFFFE09) | ((flowState |
+>   (msrStateBits << 5)) & 0x1F6)` — matching 5171 `or esi, eax` before 5182 `and esi, 1F6h`;
+> - the heartbeat test is now the reference's 64-bit form (see Finding 89);
+> - the first state-change tail no longer hand-folds `State = 0xA0400018`. The reference keeps both
+>   MCR tests live against the literal (4635 and 4649 each materialise `0A0400018h` and mask it) and
+>   takes the event data from it (4717 `mov ecx, 0A0400018h` / 4722 `and ecx, 0FFFFh`), so the tail
+>   is written like every other copy rather than collapsed to `outb(Base + 4, 8)` and `| 0x18`.
+>
+> Also confirmed, so nobody re-derives them: `sleep` is read as a byte at 4516; the retry sentinel
+> comparison at 4785 is against `0xFFFFFD36` and both `r == −714` and `r == 0` fall into the same
+> retry; the two `(2 * Size) / 3` divides really do share one `ecx = 3` (4972, reused at 5027);
+> `RX.LowWater` comes from the surviving quotient in `eax` (4989 `shr eax, 1`) while `TX.LowWater`
+> comes from a fresh copy in `ecx` (5037-5039); and the eight `SWspecial` stores are a real loop
+> (`cmp ebx, 7` / `jle`), not unrolled.
+
 **Finding 89 — `HeartBeatInterval` and the three other intervals are `tvalspec_t` pairs, not 64-bit
 nanosecond counts.** `ISASerialPort.h:154-155, 202-204`; `ISASerialPort.m:47-67, 3921-3939,
 2068-2070, 3109-3111, 2498-2501, 4384-4385`.
@@ -1541,6 +1597,18 @@ The four intervals at `Port+248/256/264/272` are each `{tv_sec I, tv_nsec i}` an
 stores the parsed value at `0x230`/`0x234`, which is `CharLatInterval` — clobbering it. Also note
 `charTimeNS`/`charTimeFracNS` are `FrameInterval.tv_sec`/`.tv_nsec`, and `charTimeOverrideLow`/
 `charTimeOverrideHigh` are `DataLatInterval.tv_sec`/`.tv_nsec`.
+
+> **`acquire:`'s half CLOSED in Task 10a.** The struct/ivar half was closed earlier — the four
+> intervals are `tvalspec_t` in `ISASerialPortInternal.h` and `acquire:` reads
+> `Port.HeartBeatInterval`, i.e. reference `[edi+238h]`/`[edi+23Ch]` — but the **test** was still
+> `tv_sec != 0 || tv_nsec != 0`. The reference forms one 64-bit value and tests that: 5331
+> `mov ebx, 3B9ACA00h`, 5336 `mov eax, [edi+238h]`, 5342 `mul ebx`, then 5348-5356 `mov edx,
+> [edi+23Ch]` / `mov eax, edx` / `cdq` and 5363-5366 `add`/`adc`, then 5369 `test ebx, ebx` and 5373
+> `test esi, esi`. Because `tv_nsec` is **signed** and sign-extended by that `cdq`, the two spellings
+> disagree for a malformed `tvalspec` (a negative `tv_nsec` can cancel `tv_sec * 1e9`), so this is
+> not merely stylistic. Now written as
+> `(unsigned long long)tv_sec * 1000000000ULL + (long long)(int)tv_nsec`, the same spelling Task 8
+> used for `requestEvent:`'s `0x4B`/`0x4F`.
 
 **Finding 90 — `dequeueData:` arms the wrong callout, and `minCount` is a sleep budget.**
 `ISASerialPort.m:4436, 4444, 4384-4385`. Reference 9024-9406, all 121 instructions. `minCount` is
@@ -3394,3 +3462,364 @@ nothing else, or leave them.
   0 duplicate candidates, 0 boundary disputed.
 - `binrecon ledger` validates with **45 entries**.
 - All touched files LF-only per `git ls-files --eol`.
+
+## Addendum 10 — Task 10a: the port and state group, read
+
+Six bodies, all `unexamined`, read instruction by instruction against the reference:
+`_activatePort` 3012–4155 (311 instructions), `_deactivatePort` 4156–4500 (116),
+`-[ISASerialPort acquire:]` 4504–5447 (257), `-[ISASerialPort setState:mask:]` 6012–6278 (86),
+`-[ISASerialPort watchState:mask:]` 6300–6399 (37) and `_dataLatTOHandler` 9408–10086 (186). That
+last one is the reason this task's brief named it: its own ledger entry admitted only **90 of 186**
+instructions had ever been read.
+
+Nine recorded findings were re-verified from the bytes before anything was touched. **Seven were
+real, one was already correct in our tree, and one — Finding 68 — is outright false.** Three new
+divergences were found, one of them a real behavioural defect.
+
+### The ledger status was predictive of defect location, for the third time
+
+This is the result worth stating plainly, because it is the argument for reading bodies rather than
+relabelling them.
+
+The reference contains **nine copies** of the RX flow-control ladder. Every copy asserts and drops
+the throttling signal with the same three-way triple — `or 4` / `or 0x10` / `or 2` on the way down,
+`and 0xFB` / `and 0xEF` / `and 0xFD` on the way up. **Seven of our nine copies already used the
+right bit in the hardware-flow arm.** The two that did not were `_activatePort` and
+`_dataLatTOHandler` — *precisely the two of the nine that were `unexamined`.*
+
+That is now three for three:
+
+| task | function | status when the defect was found | defect |
+|---|---|---|---|
+| 8 | `acquire:` | `unexamined` | `0x126` into `MasterClock`, zero baud divisor on every open |
+| 8 | both interrupt handlers | `signature-confirmed`, body unread | inverted watermark comparisons, dead RX gate, wrong ring wrap |
+| **10a** | `_activatePort`, `_dataLatTOHandler` | **`unexamined`** | **wrong State bit in the hardware-flow arm (Finding 110)** |
+
+`unexamined` was never bookkeeping in this reconstruction. It marked where the bugs were, and it did
+so accurately enough that a defect class present in nine places was wrong in exactly the two places
+the ledger said had not been checked. Task 10b's five bodies carry the same status.
+
+### Finding 68 is FALSE, and acting on it would have broken correct code
+
+Finding 68 claimed `_activatePort`'s final IER write is *"masked in ours and not in the reference"*
+and that our `& 0x0F` *"discards the top nibble — including the MSR-interrupt enable."* Both halves
+are wrong.
+
+```
+4119  mov  dx, [ebx+88h]      ; Port.Base
+4126  inc  dx                 ; Base + 1 = IER
+4128  mov  al, [ebx+0B0h]     ; Port.IERmask
+4134  24 0F                   ; and al, 0Fh   <-- 0x24 is AND AL, imm8
+4136  out  dx, al
+```
+
+`24 0F` admits no other reading: **the reference masks with exactly the `0x0F` we always used.** And
+IER bit `0x08` *is* the modem-status enable — `0x0F` keeps all four defined enables (RDA, THRE, RLS,
+MS) and drops only the 82510's reserved high nibble. Our
+`outb(port->Base + UART_IER, port->IERmask & 0x0F)` was correct all along and is unchanged; only its
+comment was, and that now cites 4134.
+
+**A finding whose only possible action would have introduced a defect into correct code.** That is
+the same shape as Finding 10, which claimed a single substitution where two distinct constants were
+needed and would have broken two working sites while fixing three.
+
+### The verification tally, stated as a number
+
+Across Tasks 8, 9 and 10a, every recorded finding touching a body being read has been re-derived
+from the disassembly before being acted on. The outcome:
+
+| verdict | findings |
+|---|---|
+| outright **false** | **3** — 94, 102, **68** |
+| **half wrong**, in a way that would have broken working code | **1** — 10 |
+| real, and shipped unfixed anyway until a later pass | 2 — 24, 71/72 |
+| real and closed | the rest |
+
+Three false and one half wrong out of the recorded set is not an anecdote about the "verify before
+acting" rule; it is the rule's justification. Two of the three falsehoods were caught by re-reading
+bytes rather than prose, and the third (102) by a set comparison. Prose review did not catch any of
+them — it produced two of them.
+
+### Finding 110 (new) — the hardware-flow arm sets State bit `0x10`, not RTS
+
+Reference `or dl, 10h` at 3705 (`_activatePort`) and `or cl, 10h` at 9669 (`_dataLatTOHandler`),
+with the mirrors `and dl, 0EFh` at 3865 and `and cl, 0EFh` at 9829. Our two copies used
+`STATE_RTS` = `0x04`.
+
+The census is the evidence. Across the reference's `__text` the ladder's three arms appear as:
+
+| function | RTS arm | HW arm | DTR arm | and the clears |
+|---|---|---|---|---|
+| `_activatePort` | 3685 | **3705** | 3773 | 3849 / **3865** / 3933 |
+| `_dataLatTOHandler` | 9649 | **9669** | 9737 | 9813 / **9829** / 9897 |
+| `_executeEvent` | 11336, 11694, 12464 | **11353, 12213, 12481** | 11421, 12549 | 11496 / **11509, 12321, 12637** / 11577, 12705 |
+| `_FIFOIntHandler` | 13904 | **13921** | 13989 | 14064 / **14077** / 14145 |
+| `_NonFIFOIntHandler` | 16980 | **16997** | 17065 | 17140 / **17153** / 17221 |
+| `_RX_dequeueEvent` | 21829 | **21849** | 21917 | 21993 / **22009** / 22077 |
+| `_RX_dequeueData` | 22509 | **22529** | 22597 | 22673 / **22689** / 22757 |
+| `_flowMachine` | 23466 | **23497** | 23433, 23567 | 23472 / **23528** / 23440, 23572 |
+
+`0x10` is a reported-only State bit: the merge masks carry it (`0xF0016`, `0x78F0016`, `0x1F6`) but
+the MCR rebuild tests only `0x02` and `0x04`. So the wrong constant did two things at once — it
+failed to report the hardware-flow state, and it **drove the real RTS line in the Modem Control
+Register** on a port configured with `FlowControl & 0x10` and not `& 0x04`. Not reachable at
+`acquire:`'s default `FlowControl = 0x126`, which carries `0x04` and takes the RTS arm first, but
+reachable the moment the flow mode is changed through `executeEvent:`.
+
+Both fixed. Both nested chains were also flattened to the reference's `else if` form: the nested
+spelling `if ((FC & 4) == 0) { if ((FC & 0x10) == 0) { … } else { … } } else { … }` is logically
+identical but inverts every branch sense, where the flat chain compiles to the reference's
+`test / jz` / `test / jz` / `test / jz`. In the rebuilt binary the three tests now sit at our 488,
+508 and 572 inside `_dataLatTOHandler` against the reference's 9640, 9660 and 9724 — **the same two
+intervals, 20 and 64, to the byte.**
+
+### Finding 111 (new) — the `eventMask` staging local is a decompilation artifact
+
+Eleven sites read `Port.FlowControl` into a local before testing it:
+
+```c
+memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
+if (eventMask & (changedBits << 16)) { … }
+```
+
+The reference tests the field in place, one instruction — `test [ebx+0E0h], edi` at 10043,
+`test [ebx+0E0h], esi` at 3308, `test [esi+0E0h], ebx` at 4308 and so on. The `memcpy` inlines to a
+load plus a store, so each site cost a wasted `mov` to a stack slot, and the local it staged into
+occupied a frame slot of its own: `_activatePort`'s prologue drops from `sub esp, 0Ch` to
+`sub esp, 4` on its removal, three slots to one, against a reference that needs none. There was
+never a type problem to work around: `FlowControl` is a 32-bit `unsigned long` and
+`port->FlowControl & (changedBits << 16)` is an ordinary expression.
+
+Removed at the **seven** sites inside this task's six functions. **Three remain, and they are
+recorded here rather than fixed because they are outside this task's scope:**
+
+| site | owner |
+|---|---|
+| `enqueueData:bufferSize:transferCount:sleep:` | Task 10b |
+| `executeEvent:data:` ×2 | **nobody's current scope** |
+
+`executeEvent:data:` is flagged explicitly so it does not fall through the gap between 10a and 10b.
+It is `control-flow-confirmed` from Task 6b and already carries **Finding 109** from Task 9 for the
+duplicated `RX_enqueueLongEvent` tail, so it now has two open items and no owner.
+
+### Finding 112 (new, recorded and deliberately not fixed) — `allocateRingBuffer` returns `BOOL`
+
+`_activatePort`'s two calls test the return value as a **byte**:
+
+```
+3049  add  esp, 4
+3052  84 C0                   ; test al, al
+3054  jz   loc_C09
+```
+
+`84 C0` is `TEST AL, AL`. A function declared `int` would be tested as `test eax, eax`; the
+reference's caller therefore saw a prototype returning `BOOL` (`signed char`) or `char`. Our
+`extern int allocateRingBuffer(Queue *q)` makes our build emit `85 C0` = `test eax, eax` at both
+sites — the same two bytes' worth of instruction, so **zero size effect and zero behavioural
+effect**, but a different instruction than the reference's.
+
+**Not fixed, on scope grounds.** The change is to the declaration in `ISASerialPortInternal.h` and
+the definition in `ISASerialPortQueue.c` — `_allocateRingBuffer` @23068, a different ledger entry,
+`control-flow-confirmed`. This task's brief says not to touch anything outside its six. The doc
+comment in `ISASerialPortQueue.c` already says *"1 on success, 0 on failure (a BOOL, not an
+IOReturn)"*, so the intent was known and only the declared type lags. Whoever next owns TU 3 can
+close it from the evidence above; the callee's own `mov eax, 1` at 23186 is consistent with either
+type, so **the call site is the only discriminator** and it is unambiguous.
+
+### `-[ISASerialPort watchState:mask:]` needed no change at all
+
+Stated affirmatively, because a function verified as already correct is a result and should not read
+as an omission. All 37 instructions of reference 6300–6399 match ours:
+
+- the `spl4` / `splx` bracket, with `splx` on both exits;
+- the `Port.State < 0` open test read **through the `port` ivar** (`[ebx+258h]` at 6326, then
+  `cmp dword ptr [eax+0Ch], 0` / `jge`), not through `self`;
+- `mask &= 0xFFFFEFFF` before the call **and** `*state &= 0xFFFFEFFF` after it — two separate
+  narrowings, 6338 and 6354;
+- `_watchState(port, statePtr, mask)` at 6347 receiving the **`Port *`**, which was Finding 76's
+  complaint and is already fixed;
+- `IO_R_NOT_OPEN` (−717, `0xFFFFFD33`) on the not-open exit at 6385.
+
+Ours is 88 bytes against 100. The whole 12-byte difference is register allocation: the reference
+spills `spl4`'s result to `[ebp+var_4]` and needs `sub esp, 4`, where ours keeps it in `edi`; and the
+reference masks the mask in a register it loaded at entry (`and esi, 0FFFFEFFFh`, 6 bytes) where ours
+re-reads the argument and masks the high byte (`mov eax, [ebp+0x14]` / `and ah, 0EFh`). No
+instruction is missing and none is extra.
+
+### The seven findings that were real
+
+| finding | evidence re-derived | disposition |
+|---|---|---|
+| **71** `_dataLatTOHandler` entry gate inverted | 9568 `8B431C` loads `RX.Count`, 9571 `394328` compares `RX.Enqueue` against it, 9574 `ja` exits | **fixed** — `if (port->RX.Enqueue <= port->RX.Count)` |
+| **72** advances the ring on the completely-full path | 9447 `C743 40 01000000` sets `RX.OverRun`, then `EB 70` jumps to **9568**, past all three advance blocks | **fixed** — three arms, advance in the two that need it, absent from the third |
+| **69** `_deactivatePort` is `void`; raw `0xFFFFFD42` | 4169 `jz` goes to the epilogue **without setting `eax`** | **fixed** — `static void`, and three literals now `IO_R_RESOURCE` |
+| **79** `setState:mask:` missing its argument rejection | 6027 `F7C6 001000C0` tests `[ebp+arg_C]` = `ebp+0x14` = the **mask**, before `spl4` at 6048 | **fixed** — `if (mask & 0xC0001000) return -706;` |
+| **88** `acquire:`'s reset block, three residues | 5171 `or esi, eax` precedes 5182 `and esi, 1F6h`; 4635/4649/4717 keep the `0xA0400018` tail live | **fixed** — see below |
+| **89** the heartbeat test | 5331–5375: `mul 3B9ACA00h` on `tv_sec`, `cdq` on `tv_nsec`, `add`/`adc`, `test`/`test` | **fixed** — and it is behavioural, see below |
+| **67, 70, 73, 3, 12, 76** | re-derived in full | already correct, untouched |
+
+**Finding 89's remaining half was substance, not style.** The struct half was closed earlier — the
+intervals are `tvalspec_t` and `acquire:` reads `Port.HeartBeatInterval` at `[edi+238h]`/`[edi+23Ch]`
+— but the *test* was still `tv_sec != 0 || tv_nsec != 0`. The reference forms one 64-bit value and
+tests that, and `tv_nsec` is `clock_res_t`, a **signed** type that 5356's `cdq` sign-extends. A
+negative `tv_nsec` can therefore cancel `tv_sec * 1e9` and produce a zero the field-wise test would
+call non-zero. Now written
+`(unsigned long long)tv_sec * 1000000000ULL + (long long)(int)tv_nsec`, the spelling Task 8
+established for `requestEvent:`'s `0x4B`/`0x4F`.
+
+**Finding 88's third residue was a hand-folded constant.** `acquire:`'s first state-change tail
+stores the literal `State = 0xA0400018`, and our source had folded the consequences by hand —
+`outb(Base + 4, MCR_OUT2)` with no tests, and event data `(changedBits << 16) | 0x18`. The reference
+does not fold: 4635 and 4649 each materialise `0A0400018h` and mask it before branching, and 4717
+does `mov ecx, 0A0400018h` / `and ecx, 0FFFFh`. The tail is now written like the other five copies.
+
+### Made literal where the value was already right
+
+All of these were verified value-equivalent before being changed, so none is a behaviour fix; each
+removes a spelling that disagreed with a sibling copy of the same block, which is the hazard that
+produced Critical C4.
+
+| site | was | now | why equivalent |
+|---|---|---|---|
+| `_activatePort` tail 1 MCR + event data | `oldState` | `newState` | the merge only sets bit 30; bits 0–15 identical |
+| `_activatePort` tail 2, `_deactivatePort` tail 2 | `flowState` | `newState` | mask `0xFFFFFFE9` clears `0x02`/`0x04`, which `flowState & 0x16` then supplies |
+| `_activatePort` tail 3 | `rxState` | `newState` | mask `0xF870FFE9` clears `0x02`/`0x04`/`0x10`; `txState ⊂ 0x7800000` |
+| `acquire:` tail 2 | `flowState` | `newState` | mask `0xFFFFFE09` clears `0x02`/`0x04`; `msr << 5 ⊆ 0x1E0` cannot touch them |
+| `acquire:` `newState` | `(flow & 0x1F6) \| (msr << 5)` | `((flow \| (msr << 5)) & 0x1F6)` | `0xF << 5 = 0x1E0 ⊂ 0x1F6`, so the mask is a no-op on the LUT term |
+| `_activatePort` TX ladder | nested, raw hex `0x1800000`/`0x1000000` | `TX_updateState`'s flat form, named constants | same predicate; and `Count <= LowWater` first is what compiles to the reference's `cmp [TX.LowWater], eax` / `jb` at 3482 |
+| both `Size - 3` tests | `Size - 3 < Count` | `Count > Size - 3` | reference 3811 and 9775 are both `cmp [RX.Count], eax` / `jbe`, i.e. `Count` is the left operand |
+
+### Measured after this commit
+
+The build was run **after** the last source edit, on a guest with the stale `_reloc` deleted first,
+so these describe the object this commit produces.
+
+| metric | before Task 10a | after Task 10a |
+|---|---|---|
+| `make` | exit 0, 0 errors | exit 0, 0 errors |
+| build warnings | 5 | **5** (identical set) |
+| external-undefined imports | 27, 0 ours-only, 0 reference-only | **27, 0 ours-only, 0 reference-only** |
+| sections matching | 28/30 | 28/30 |
+| byte-identical sections | 13 | 13 |
+| `missing_strings` / `missing_symbols` / `extra_strings` | 0 / 0 / 0 | 0 / 0 / 0 |
+| `__TEXT,__text` | 23244 | **23260** |
+| gap to reference 24412 | −1168 | **−1152** |
+
+−1152 is the narrowest the gap has been, and again it closed on a pass whose purpose was
+correctness. `__TEXT,__const` remains absent — the permanent understood absence.
+
+The five warnings are unchanged and none is new: three `thread_wakeup_prim` implicit declarations
+(`ISASerialPort.m:298`, `ISASerialPortFlow.c:200`, `ISASerialPortQueue.c:135`), the `thread_sleep`
+argument-2 pointer type at `ISASerialPortFlow.c:186`, and `RX_enqueueLongEvent defined but not used`
+at `ISASerialPortQueue.h:54`. Per Addendum 9's rule, each implicit declaration was re-checked against
+the reference's import list rather than assumed benign: `_thread_wakeup_prim` is one of Apple's 27, so
+those three are missing prototypes only.
+
+### Per-function extents
+
+Measured with capstone over the rebuilt `__text` by parsing the Mach-O nlist and **excluding
+`N_STAB` entries by `n_type`** — 45 non-stab `__text` symbols, matching the reference's 45.
+
+| function | reference | before | after | delta before | delta after |
+|---|---|---|---|---|---|
+| `_activatePort` | 1144 | 1180 | **1168** | +36 | **+24** |
+| `_deactivatePort` | 345 | 380 | **352** | +35 | **+7** |
+| `-[ISASerialPort acquire:]` | 944 | 892 | **920** | −52 | **−24** |
+| `-[ISASerialPort setState:mask:]` | 267 | 232 | **256** | −35 | **−11** |
+| `-[ISASerialPort watchState:mask:]` | 100 | 88 | 88 | −12 | −12 |
+| `_dataLatTOHandler` | 679 | 672 | **676** | −7 | **−3** |
+| **the six** | 3479 | 3444 | **3460** | **−35** | **−19** |
+
+**Every byte of the movement is inside the six.** The other 39 extents are unchanged, and the six
+sum to exactly +16, which is the whole of 23260 − 23244. Five of the six moved toward the reference;
+`watchState:mask:` did not move because it needed no change.
+
+**The accounting closes both ways, exactly.** The 45 per-function deltas over IDA extents sum to
+**−1099**, and 24359 − 23260 = 1099 to the byte. Subtracting the 53 bytes of reference
+inter-function padding IDA does not count (24412 − 24359) gives **−1152**, the measured `__text` gap.
+No residual.
+
+### Corroboration from the rebuilt stream
+
+Not a full rebuilt-versus-reference diff — that is what `assembly-matched` would require and it was
+not done — but four structural checks were made against the rebuilt bytes rather than the source:
+
+- `_dataLatTOHandler`'s capacity ladder is three arms with the full path advancing nothing:
+  our 286 `cmp eax, 2` / `jbe` on `Size - Count`, then 364–370 `mov eax, [RX.Size]` /
+  `cmp [RX.Count], eax` / `jae`, then 408 `mov dword ptr [ebx+40h], 1` falling straight into the
+  state gate at 415 with no advance in between. Structurally the reference's 9434 / 9442 / 9447. gcc
+  chose the opposite operand order for the second test than the reference did — ours computes
+  `Count − Size` and branches `jae`, the reference computes `Size − Count` at 9442 and branches `ja`
+  — which are the two encodings of the same `Size > Count`.
+- the entry gate is now 415 `mov eax, [RX.Enqueue]` / `cmp [RX.Count], eax` / `jb` to the `splx`,
+  i.e. the block runs on `Enqueue <= Count`, against the reference's 9568–9574.
+- **gcc's cross-jumping did merge the trailing advance**, as predicted: our 361 `jmp 0x17c` sends the
+  `0x4F` arm into the `0x6C` arm's advance at 380, the mirror of the reference's 9467 → 9547. The two
+  arms are written out in full in the source and the compiler shares them, which is why writing them
+  out was the right way to express it.
+- the flow chain's three tests sit at our 488 / 508 / 572, the reference's at 9640 / 9660 / 9724 —
+  the same intervals of 20 and 64. Ours emits `or esi, 0x10` where the reference emits `or cl, 10h`,
+  because our `newState` landed in `esi`, which has no byte-addressable low half; both encode in
+  3 bytes.
+- `setState:mask:`'s new rejection is `F7C7 001000C0` / `74 0D` / `mov eax, 0FFFFFD3Eh` / `jmp`
+  against the reference's `F7C6 001000C0` / `74 0D` / same / same — identical but for the register.
+
+### Ledger
+
+All six advance `unexamined` → `signature-confirmed` → `control-flow-confirmed`, stepping through
+each state because skipping is forbidden. **`control-flow-confirmed` is the ceiling and the pass
+stops there deliberately**: the *reference* stream was read instruction by instruction, and four
+structural spot-checks were made against the rebuilt stream, but no full rebuilt-versus-reference
+instruction diff was performed, which is what `assembly-matched` requires. Nothing in this
+reconstruction is `assembly-matched` and these six are not either.
+
+`entries=45`, control-flow-confirmed 30 → **36**, `unexamined` 11 → **5**, signature-confirmed 2,
+intentional-mismatch 2, assembly-matched 0.
+
+The five that remain `unexamined` are exactly Task 10b's scope: `requestEvent:data:`,
+`enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`,
+`enqueueData:bufferSize:transferCount:sleep:` and
+`dequeueData:bufferSize:transferCount:minCount:`. Spec §4.2 and plan Task 6 Step 8 require
+`unexamined: 0`; after this pass the departure is down from 11 to 5 and 10b closes it.
+
+### Re-lining
+
+`source_line` values were re-derived by Addendum 9's method, which is the one to keep using: re-lined
+**once** through a `difflib` opcode alignment of the `HEAD` version of each source file against the
+final working-tree version, mapping each entry through the `equal` runs and **asserting that the
+destination line's text is byte-identical to the source line's**, refusing to move any entry whose
+line text changed. Done last, after every source edit, because doing it earlier has gone stale twice
+in this effort. Rather than resetting the two JSON files to `HEAD` first, the script asserts for every
+entry that its `(source_path, source_line)` still equals `HEAD`'s before mapping it — the same
+guarantee, and it also proves that this pass's status and reason edits did not disturb a line number.
+
+**52 values moved across the two files, 0 unmappable, 0 refused — and the rule earned its keep by
+refusing one.** `_deactivatePort`'s `source_line` pointed at its own definition line, and Finding 69
+rewrote that line from `static IOReturn deactivatePort(Port *port)` to
+`static void deactivatePort(Port *port)`. The byte-identical assertion fired, exactly as designed. It
+is the only entry retargeted outside the alignment, and the override is **checked rather than
+trusted**: the script asserts the `HEAD` line still has the old text, and that the new text occurs
+**exactly once** in the working tree, before accepting 639 → 635. Had it matched zero or two lines,
+the reline would have aborted rather than guessed.
+
+The thirteen `source_line` values that point at a doc-comment line rather than a definition line are
+**preserved exactly**, as Addendum 9 recorded them. Two of the thirteen belong to this task's six —
+`setState:mask:` and `watchState:mask:` — and re-lining is only verifiable if it reproduces the
+previous target, so they were not "improved" here either. Fix all thirteen in a pass that does
+nothing else, or leave them.
+
+### Gates
+
+Both run after the reline, on the committed state.
+
+```
+source map OK: mapped 43 unmapped 2 duplicate 0 disputed 0
+ledger … entries=45 control-flow-confirmed=36 intentional-mismatch=2 signature-confirmed=2 unexamined=5
+```
+
+- `load_source_map(...)` prints `source map OK`; the partition is **unchanged at 43 mapped /
+  2 unmapped**, 0 duplicate candidates, 0 boundary disputed. **No function entered or left the mapped
+  set.**
+- `binrecon ledger` validates with **45 entries**.
+- All touched files LF-only per `git ls-files --eol`; the three records are `i/lf w/lf`.
+- `ledger.json.lock` is recreated by every `binrecon ledger` run and stays untracked.

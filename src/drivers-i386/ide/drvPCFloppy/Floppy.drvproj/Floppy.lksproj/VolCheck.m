@@ -117,17 +117,23 @@
 {
 	id characterDev;
 	id blockDev;
-	
+
 	// Get character device for this drive
 	characterDev = [IOFloppyDisk characterDevOfDrive:self];
-	
+
 	// Get block device for this drive
 	blockDev = [IOFloppyDisk blockDevOfDrive:self];
-	
-	// Register with volume check subsystem
-	volCheckRegister(self, blockDev);
-	
-	return IO_R_SUCCESS;
+
+	// Register with volume check subsystem. The disassembly pushes
+	// characterDev as a third argument that the two-argument call here
+	// used to drop: volCheckRegister(self, blockDev, characterDev).
+	volCheckRegister(self, blockDev, characterDev);
+
+	// The disassembly never sets eax after this call, so the method's
+	// true return value is whatever volCheckRegister (declared void)
+	// happened to leave behind -- not a meaningful IO_R_SUCCESS. Left
+	// unresolved rather than guessing; no caller in this driver inspects
+	// registerVolCheck's return value.
 }
 
 /*
@@ -138,8 +144,10 @@
 {
 	// Unregister from volume check subsystem
 	volCheckUnregister(self);
-	
-	return IO_R_SUCCESS;
+
+	// As in registerVolCheck, the disassembly sets no explicit return
+	// value after this void call; not asserting IO_R_SUCCESS here since
+	// that isn't what the binary does. No caller inspects the result.
 }
 
 /*

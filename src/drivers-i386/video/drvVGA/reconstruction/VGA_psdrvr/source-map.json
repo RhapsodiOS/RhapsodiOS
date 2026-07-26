@@ -1,0 +1,269 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [],
+  "reference_sha256": "E785BA22F1121EAAE140A2340C5068AE1FC23EBC3309F02E7705D8775E47C1F4",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1882201908,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 20
+    },
+    {
+      "address": 1882201928,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882203272,
+      "reference_names": [
+        "_Start",
+        "_VGAStart"
+      ],
+      "size": 637
+    },
+    {
+      "address": 1882203912,
+      "reference_names": [
+        "_VGASysHideCursor"
+      ],
+      "size": 29
+    },
+    {
+      "address": 1882203944,
+      "reference_names": [
+        "_VGASysShowCursor"
+      ],
+      "size": 107
+    },
+    {
+      "address": 1882204052,
+      "reference_names": [
+        "_VGACheckShield"
+      ],
+      "size": 178
+    },
+    {
+      "address": 1882204232,
+      "reference_names": [
+        "_VGASetCursor"
+      ],
+      "size": 554
+    },
+    {
+      "address": 1882204788,
+      "reference_names": [
+        "_VGAHideCursor"
+      ],
+      "size": 44
+    },
+    {
+      "address": 1882204832,
+      "reference_names": [
+        "_VGAShowCursor"
+      ],
+      "size": 44
+    },
+    {
+      "address": 1882204876,
+      "reference_names": [
+        "_VGAObscureCursor"
+      ],
+      "size": 66
+    },
+    {
+      "address": 1882204944,
+      "reference_names": [
+        "_VGARevealCursor"
+      ],
+      "size": 63
+    },
+    {
+      "address": 1882205008,
+      "reference_names": [
+        "_VGAShieldCursor"
+      ],
+      "size": 78
+    },
+    {
+      "address": 1882205088,
+      "reference_names": [
+        "_VGAUnshieldCursor"
+      ],
+      "size": 73
+    },
+    {
+      "address": 1882206252,
+      "reference_names": [
+        "_set_colormap"
+      ],
+      "size": 196
+    },
+    {
+      "address": 1882206624,
+      "reference_names": [
+        "_get_addr_range"
+      ],
+      "size": 117
+    },
+    {
+      "address": 1882206744,
+      "reference_names": [
+        "_fill_64K_plane"
+      ],
+      "size": 120
+    },
+    {
+      "address": 1882206864,
+      "reference_names": [
+        "_vga_at_mode12_bpp2_to_bpp4"
+      ],
+      "size": 932
+    },
+    {
+      "address": 1882207796,
+      "reference_names": [
+        "_read_bpp4planar_to_bpp2packed"
+      ],
+      "size": 402
+    },
+    {
+      "address": 1882208200,
+      "reference_names": [
+        "_write_bpp2packed_to_bpp4planar"
+      ],
+      "size": 124
+    },
+    {
+      "address": 1882208564,
+      "reference_names": [
+        "_VGASetStdRegs"
+      ],
+      "size": 401
+    },
+    {
+      "address": 1882209417,
+      "reference_names": [
+        "_NXRegisterScreen"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209443,
+      "reference_names": [
+        "_os_malloc"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209469,
+      "reference_names": [
+        "__IOMapEISADevicePorts"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209495,
+      "reference_names": [
+        "_thread_self"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209521,
+      "reference_names": [
+        "__IOMapEISADeviceMemory"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209547,
+      "reference_names": [
+        "__IOSetIntValues"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209573,
+      "reference_names": [
+        "__IOLookupByDeviceName"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209599,
+      "reference_names": [
+        "_device_master_self"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209625,
+      "reference_names": [
+        "_LookupFrameBufferDevicePort"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209651,
+      "reference_names": [
+        "_os_fprintf"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209677,
+      "reference_names": [
+        "__IOGetIntValues"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209703,
+      "reference_names": [
+        "_ev_unlock"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209729,
+      "reference_names": [
+        "_bcopy"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209755,
+      "reference_names": [
+        "_ev_lock"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209781,
+      "reference_names": [
+        "_BM12Convert32to2"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209807,
+      "reference_names": [
+        "_BM12Convert16to2"
+      ],
+      "size": 14
+    },
+    {
+      "address": 1882209833,
+      "reference_names": [
+        "_BM12Convert8to2"
+      ],
+      "size": 14
+    }
+  ]
+}

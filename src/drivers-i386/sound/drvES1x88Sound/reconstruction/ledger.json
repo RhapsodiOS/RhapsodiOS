@@ -200,7 +200,7 @@
           "angr"
         ],
         "reasons": [
-          "Finding 11 resolved in source, all three inverted predicates corrected and verified in the rebuilt disassembly, and the cached deviceDescription send corrected in the selector-reference fix pass; the B8h write, the (channelCount == 2) boolean and the paired IRQ and DMA control bytes have all since been reproduced from source; the entry is intentional-mismatch for register allocation the source cannot reach, and names one open source-construct difference, 100h minus the quotient against a negation, that has not been built yet. See the reason field.",
+          "Finding 11 resolved in source, all three inverted predicates corrected and verified in the rebuilt disassembly, and the cached deviceDescription send corrected in the selector-reference fix pass; the B8h write, the (channelCount == 2) boolean, the paired IRQ and DMA control bytes and the 100h-minus-quotient form have all since been reproduced from source, and no source-construct difference remains open; the entry is intentional-mismatch for register allocation and padding, which the source cannot reach. See the reason field.",
           "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
         ],
         "status": "agreed"
@@ -209,7 +209,7 @@
       "names": [
         "-[ES1x88AudioDriver configureHardwareForDataTransfer:]"
       ],
-      "reason": "Resolved in source across four passes; divergences.md carries the disassembly for each. (1) Finding 11's three inverted predicates: DMA_DIRECTION_IN now selects 0Eh for the B8h write and the and 0F8h mask, the mode-command group is chosen on Linear8, and the B6h write is gated on == DMA_DIRECTION_OUT so it emits cmp 1 as at 5292. (2) The cached [self deviceDescription], removed in the pass that fixed reset; the ordered __OBJC,__message_refs loads now agree entry for entry, 601c 6018 6020 6018 6064 6068 606c. (3) The B8h write, which the reference emits inside both arms of the direction test, joining only at the shared out at 4616. Duplicating the two statements into each arm was built on the guest and gcc kept them duplicated rather than cross-jumping them back as it did with setAnalogInputSource:; out, call, push and lock inc are now 27, 35, 46 and 27 on both sides. (4) The (channelCount == 2) boolean: the reference builds it at 4500-4511 and never keeps channelCount, so it is a source local, and stereo = ([self channelCount] == 2) reproduces cmp edx, 2 / sete al / and eax, 0FFh / mov [mem], eax; the two tests are written as the compare constants demand, if (stereo == 1) at 4738 and if (stereo == 0) with the mono group first at 5202. (5) The paired IRQ and DMA control bytes, which two earlier passes declined on a misread of the control flow: or dl, 50h at 5525 is not part of the irq == 10 arm, every arm jumps to it, and the DMA block converges the same way on or [ebp-28h], 50h at 5638, so those two bits are shared; 50h is bits 4 and 6, not adjacent, so never one field. The arms then determine the decomposition, since or dl, 4 followed by and dl, 0F7h at 5490-5493 is two one-bit stores where a single two-bit field would emit and 0F3h then or value. es1x88ControlRegister_t was declared on the mixer-shadow precedent, select0 and select1 at bits 2 and 3, fixed4 and fixed6 at 4 and 6, one type for both B1h and B2h; the whole-value assignments became select pairs, the 0x50 our source folded into the outb argument became fixed4 = 1 / fixed6 = 1 on the variable, and both bytes are zeroed together ahead of the IRQ chain as at 5465-5467. gcc merges or 4 / or 8 into or 0Ch and or 10h / or 40h into or 50h, and reproduces even the mov dl, [ebp-28h] in the irq == 9 arm. Both blocks now match instruction for instruction and or is 11 on both sides. Accepted residual, register allocation and not reachable from source: the reference allocates irqControl to dl, the low half of the register that mov dx, [400ch] needs, so it spills the byte before every port write, and edx, 0FFh / mov [ebp-2Ch], edx at 5528-5534 and movzx eax, byte [ebp-28h] / mov [ebp-30h], eax at 5642-5646, where our build picks bl and needs no spill; that is the whole of and -2, movzx -2 and four of the mov deficit, the same class as the ebx-versus-cl note on setAnalogInputSource:. Also accepted: the reference reads currentDMADirection through a register, mov esi, [edi+184h] at 4529 then test esi, esi at 4538 and 4720, where we compare the ivar in memory, which is the whole of the test -2 / cmp +2 delta; not a cached local, because it re-reads the ivar at 5196. Open and not yet decided, found while accounting for the control-byte result and not yet built: the reference computes both negated bytes as 100h minus the quotient in 32 bits, mov ebx, 100h / sub ebx, eax at 4909-4914 and the same at 4995-5000, where our source writes -(CONST / rate) and emits neg. The byte reaching the port is the same, so this is not a behaviour bug, but it is a source-construct difference and it accounts for neg +2 / sub -2. Rebuilt size 1240 against the reference's 1328.",
+      "reason": "Resolved in source across five passes; divergences.md carries the disassembly for each. (1) Finding 11's three inverted predicates: DMA_DIRECTION_IN now selects 0Eh for the B8h write and the and 0F8h mask, the mode-command group is chosen on Linear8, and the B6h write is gated on == DMA_DIRECTION_OUT so it emits cmp 1 as at 5292. (2) The cached [self deviceDescription], removed in the pass that fixed reset; the ordered __OBJC,__message_refs loads now agree entry for entry, 601c 6018 6020 6018 6064 6068 606c. (3) The B8h write, which the reference emits inside both arms of the direction test, joining only at the shared out at 4616; duplicating the two statements into each arm was built on the guest and gcc kept them duplicated rather than cross-jumping them back as it did with setAnalogInputSource:, so out, call, push and lock inc are now 27, 35, 46 and 27 on both sides. (4) The (channelCount == 2) boolean: the reference builds it at 4500-4511 and never keeps channelCount, so it is a source local, and stereo = ([self channelCount] == 2) reproduces cmp edx, 2 / sete al / and eax, 0FFh / mov [mem], eax; the two tests are written as the compare constants demand, if (stereo == 1) at 4738 and if (stereo == 0) with the mono group first at 5202. (5) The paired IRQ and DMA control bytes, which two earlier passes declined on a misread: or dl, 50h at 5525 is not part of the irq == 10 arm, every arm jumps to it, and the DMA block converges the same way at 5638, so those bits are shared, and 50h is bits 4 and 6, not adjacent, so never one field. The arms then determine the decomposition, since or dl, 4 followed by and dl, 0F7h at 5490-5493 is two one-bit stores where a single two-bit field would emit and 0F3h then or value. es1x88ControlRegister_t was declared on the mixer-shadow precedent, select0 and select1 at bits 2 and 3 and fixed4 and fixed6 at 4 and 6, one type for both B1h and B2h; gcc merges or 4 / or 8 into or 0Ch and or 10h / or 40h into or 50h, and reproduces even the mov dl, [ebp-28h] in the irq == 9 arm. (6) The negated bytes: the reference computes 100h minus the quotient in 32-bit registers and never uses neg. The tell is the 80h block at 4885-4892, which our source already wrote as a subtraction but which came out 8-bit because sampleRateByte was unsigned char; at byte width 100h - x is indistinguishable from -x and gcc folds it to neg, so only int width separates the forms. sampleRateByte was widened to unsigned int and written 0x100 - (...), which reproduced 4885-4892 and 4909-4916 exactly, or bl, 80h byte form included. The filter site needed a variable as well, because outb takes an unsigned char and narrows an expression passed straight to it; filterByte was added alongside sampleRateByte and computed ahead of the A2h command write, matching mov ecx, eax / mov ebx, 100h / sub ebx, ecx at 4993-5000. sub is now 4 on both sides and neg 0 on both. Accepted residual, all of it register allocation or padding and none of it reachable from source: the reference allocates irqControl to dl, the low half of the register that mov dx, [400ch] needs, so it spills the byte before every port write, and edx, 0FFh / mov [ebp-2Ch], edx at 5528-5534 and movzx eax, byte [ebp-28h] / mov [ebp-30h], eax at 5642-5646, where our build picks bl and needs no spill, which is and -2, movzx -2 and part of the mov deficit; the reference reads currentDMADirection into a register before testing it where we compare the ivar in memory, which is the test -2 / cmp +2 delta, and it is not a cached local because it re-reads the ivar at 5196; at 4750-4767 the reference does add esi, eax / div esi, clobbering sampleRate because it is dead after that point, where ours spills the product and divides by memory; nop -8 is branch-target alignment; and the rest is the systemic codegen class recorded for every function in this binary. Rebuilt size 1252 against the reference's 1328. Not advanced past intentional-mismatch: that would need the full 1328 bytes read instruction by instruction, which five passes of block-level work is not.",
       "reviewer": "Pat Raynor",
       "size": 1325,
       "source_line": 521,
@@ -235,7 +235,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 41,
-      "source_line": 707,
+      "source_line": 709,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -258,7 +258,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 41,
-      "source_line": 713,
+      "source_line": 715,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -282,7 +282,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1578,
-      "source_line": 719,
+      "source_line": 721,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -305,7 +305,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 540,
-      "source_line": 884,
+      "source_line": 886,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -328,7 +328,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 48,
-      "source_line": 947,
+      "source_line": 949,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -374,7 +374,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 941,
+      "source_line": 943,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -398,7 +398,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 360,
-      "source_line": 967,
+      "source_line": 969,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -422,7 +422,7 @@
       "reason": "divergences.md Finding 13, resolved in source: the method tests 0C8h then 0C9h with the default sharing the microphone arm, and keeps the sourceValue local that the reference holds in cl. Accepted residual, and the reason this entry is no longer assembly-matched: the rebuilt function is 104 bytes against the reference's 136 and the two do not agree instruction for instruction. The reference programs the mixer inside each arm and joins only at mov al, cl (8417); our build hoists the whole port sequence into a shared tail and joins at its head. Our gcc also allocates sourceValue to bl, paying a prologue push ebx and an epilogue mov ebx, [ebp-4], where the reference uses cl and saves nothing. Writing the port sequence out inside all three arms was built and the rebuilt function came out byte-identical, because our gcc cross-jumps it straight back, so no source form reaches the reference's shape. Task 8 advanced this entry to assembly-matched on the strength of that negative experiment; a 24 percent size gap and a different join point do not support that status, so it is downgraded here.",
       "reviewer": "Pat Raynor",
       "size": 133,
-      "source_line": 1001,
+      "source_line": 1003,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "intentional-mismatch"
     },
@@ -445,7 +445,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 1033,
+      "source_line": 1035,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -468,7 +468,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 25,
-      "source_line": 1038,
+      "source_line": 1040,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -491,7 +491,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 53,
-      "source_line": 1045,
+      "source_line": 1047,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -515,7 +515,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 32,
-      "source_line": 1056,
+      "source_line": 1058,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -538,7 +538,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 1064,
+      "source_line": 1066,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },

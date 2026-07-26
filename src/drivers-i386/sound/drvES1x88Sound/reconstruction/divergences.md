@@ -1884,6 +1884,75 @@ bug, but it is a source-construct difference of exactly the kind the last three 
 been closing, and it accounts for `neg` +2 / `sub` −2. The third `sub` site, the
 `0x80 - (...)` at 4890, our source already writes as a subtraction and it already matches.
 
-This one is left undecided rather than fixed, because it was found while accounting for the
-control-byte result and has not been through a build. Entry 4388 stays `intentional-mismatch`
-on the register-allocation ground, with this named in its reason as open.
+This one was left undecided at the end of that pass, having not been through a build. It was
+settled in the pass below.
+
+## `100h - x` against `-x`, and the width that makes it visible
+
+**Resolved in source.** The reference computes both negated bytes by subtracting the
+quotient from 100h in 32-bit registers, never with `neg`:
+
+```
+        REFERENCE                          OURS, BEFORE
+4885:   mov ebx, 80h                4664:  mov bl, 80h
+4890:   sub ebx, eax                4666:  sub bl, al
+4892:   and ebx, 7Fh                4668:  and bl, 7Fh
+
+4909:   mov ebx, 100h               4685:  mov bl, al
+4914:   sub ebx, eax                4687:  neg bl
+4916:   or  bl, 80h                 4689:  or  bl, 80h
+
+4995:   mov ebx, 100h               4792:  mov ecx, eax
+5000:   sub ebx, ecx                4794:  neg cl
+```
+
+The first block is the tell, and it is about width, not about the operator. Our source
+already wrote that one as `0x80 - (...)` and it already produced a subtraction — but an
+8-bit one, because `sampleRateByte` was declared `unsigned char`. The reference's is 32-bit
+throughout. So the reference's variable is `int`-width, and that is what makes the other two
+sites legible: truncated to 8 bits `100h - x` *is* `-x`, so with a `char` destination `gcc`
+folds the subtraction back into `neg` and the two forms are indistinguishable. Only at
+`int` width do they separate.
+
+Widening `sampleRateByte` to `unsigned int` and writing `0x100 - (...)` reproduced the first
+two blocks exactly, `or bl, 80h` byte form included.
+
+The filter site needed one thing more. `outb` is declared
+
+```c
+outb(IOEISAPortAddress port, unsigned char data)
+```
+
+in `driverkit/i386/ioPorts.h`, so an expression passed straight as its argument is narrowed
+at the call and `gcc` folded `0x100 - x` back to `neg cl` again. The reference keeps that
+value 32-bit through the subtraction, which it can only do if the source assigned it to an
+`int` variable first. Adding `filterByte` alongside `sampleRateByte`, and computing it ahead
+of the `A2h` command write where the reference computes it, closes the site:
+
+```
+        REFERENCE                          OURS, AFTER
+4993:   mov ecx, eax                4770:  mov ecx, eax
+4995:   mov ebx, 100h               4772:  mov ebx, 100h
+5000:   sub ebx, ecx                4777:  sub ebx, ecx
+```
+
+`sub` is now 4 on both sides and `neg` 0 on both. Rebuilt size 1252 against the reference's
+1328. Parity unchanged at `missing_strings` 0 / `missing_symbols` 0, and no other function's
+size moved.
+
+### What is left in this function, after five passes
+
+Nothing that the source reaches. The whole remaining delta is register allocation and
+padding:
+
+| class | delta | why |
+| --- | --- | --- |
+| `and` −2, `movzx` −2, part of `mov` | | the reference allocates `irqControl` to `dl`, which collides with the `dx` port load, so it spills the byte before every port write; ours picks `bl` and does not |
+| `cmp` +2, `test` −2 | | the reference reads `currentDMADirection` into a register before testing it; ours compares the ivar in memory. Not a cached local — it re-reads the ivar at 5196 |
+| `mov` +1 here, memory `div` operand | | at 4750-4767 the reference does `add esi, eax` / `div esi`, clobbering `sampleRate`, which is dead after that point; ours spills the product to `[ebp-24h]` and divides by memory |
+| `nop` −8 | | branch-target alignment padding |
+| `movzx` −1, the rest of `mov` −14 | | the systemic codegen class recorded for every function in this binary |
+
+Entry 4388 stays `intentional-mismatch` on those grounds. It is not advanced past that: the
+status would need the full 1328 bytes read instruction by instruction against our 1252, and
+five passes of block-level work is not the same evidence.

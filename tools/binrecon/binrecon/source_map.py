@@ -12,7 +12,12 @@ import re
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)(?:\s*\(\s*(\w+)\s*\))?")
 _END = re.compile(r"^@end")
 _METHOD = re.compile(r"^\s*([-+])(?:\s+|(?=\())(.*)$")
-_C_DEFINITION = re.compile(r"^[A-Za-z_][A-Za-z_0-9 \t*]*?\b(\w+)\s*\(")
+# The leading group is the return type and storage class. It is optional
+# because K&R definitions put the return type on its own line, leaving the
+# name alone at the start of the next: "static int\nbpf_movein(uio, mp)".
+_C_DEFINITION = re.compile(
+    r"^(?:[A-Za-z_][A-Za-z_0-9 \t*]*?\b)?([A-Za-z_]\w*)\s*\("
+)
 
 _METHOD_DECLARATION_LIMIT = 20
 
@@ -115,6 +120,10 @@ def source_sites(repo_root, source_dir):
                 declaration = [line]
                 found_brace = "{" in line
                 found_semicolon = not found_brace and line.rstrip().endswith(";")
+                # A closed parameter list with no ";" may be a K&R definition,
+                # whose indented parameter declarations each end in ";". Those
+                # must not be read as a prototype's terminator.
+                kandr = line.rstrip().endswith(")")
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
                 while not found_brace and not found_semicolon and scan + 1 < end:
@@ -136,7 +145,9 @@ def source_sites(repo_root, source_dir):
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";"):
+                    elif candidate.rstrip().endswith(";") and not (
+                        kandr and candidate[:1].isspace()
+                    ):
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:

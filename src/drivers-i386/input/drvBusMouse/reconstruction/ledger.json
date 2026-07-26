@@ -18,12 +18,12 @@
       "names": [
         "_GetIRQFromBoard"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Rebuilt stream disassembled and compared against the reference: same 44-instruction sequence, same port 0x23E, same 0xF000 count, same masked-copy and 5/4/3/2/0 ladder. Residual: gcc spills the masked nibble copy to [ebp-8] where the reference keeps it in cl, costing 8 extra instructions and 12 bytes (124 vs 112). Register allocation only; no structural difference remains.",
+      "reviewer": "Pat Raynor",
       "size": 109,
-      "source_line": 76,
+      "source_line": 71,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 112,
@@ -46,9 +46,9 @@
       "reason": null,
       "reviewer": null,
       "size": 129,
-      "source_line": 256,
+      "source_line": 111,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 244,
@@ -68,12 +68,12 @@
       "names": [
         "_MouseIntHandler"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Rebuilt stream disassembled and compared against the reference: all ten port accesses, the doubled outb(0x23E,0x80), the split-nibble X, the negated Y, the four-way change test, the busy-accumulate and post-and-clear paths and every _bss offset match. Residual: ours is 8 bytes SMALLER (400 vs 408) because gcc widens the left-button value after the XOR rather than before and keeps the right-button intermediate in a register where the reference spilled it to [ebp-8], offset by one extra mask in the rightButton bitfield store.",
+      "reviewer": "Pat Raynor",
       "size": 406,
-      "source_line": 116,
+      "source_line": 147,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 652,
@@ -96,9 +96,9 @@
       "reason": null,
       "reviewer": null,
       "size": 53,
-      "source_line": 375,
+      "source_line": 208,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 708,
@@ -121,9 +121,9 @@
       "reason": null,
       "reviewer": null,
       "size": 123,
-      "source_line": 209,
+      "source_line": 220,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 832,
@@ -146,9 +146,9 @@
       "reason": null,
       "reviewer": null,
       "size": 392,
-      "source_line": 297,
+      "source_line": 244,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1224,
@@ -171,7 +171,7 @@
       "reason": null,
       "reviewer": null,
       "size": 41,
-      "source_line": 251,
+      "source_line": 298,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
       "status": "assembly-matched"
     },
@@ -196,7 +196,7 @@
       "reason": null,
       "reviewer": null,
       "size": 39,
-      "source_line": 364,
+      "source_line": 303,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
       "status": "assembly-matched"
     },
@@ -221,9 +221,9 @@
       "reason": null,
       "reviewer": null,
       "size": 16,
-      "source_line": 486,
+      "source_line": 314,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1324,
@@ -246,9 +246,9 @@
       "reason": null,
       "reviewer": null,
       "size": 93,
-      "source_line": 383,
+      "source_line": 319,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1420,
@@ -268,12 +268,12 @@
       "names": [
         "-[BusMouse setIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Rebuilt stream disassembled and compared against the reference: both repe cmpsb comparisons at 11 and 9 bytes, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual: ours is 12 bytes SMALLER (136 vs 148) because gcc hoists the parameterArray load and keeps the compare count immediate where the reference spilled both to the stack.",
+      "reviewer": "Pat Raynor",
       "size": 146,
-      "source_line": 432,
+      "source_line": 337,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1568,

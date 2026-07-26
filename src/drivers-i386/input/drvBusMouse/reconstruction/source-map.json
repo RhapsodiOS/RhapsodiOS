@@ -8,7 +8,7 @@
         "_GetIRQFromBoard"
       ],
       "size": 109,
-      "source_line": 76,
+      "source_line": 71,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[BusMouse validConfiguration:]"
       ],
       "size": 129,
-      "source_line": 256,
+      "source_line": 111,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -26,7 +26,7 @@
         "_MouseIntHandler"
       ],
       "size": 406,
-      "source_line": 116,
+      "source_line": 147,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[BusMouse interruptHandler]"
       ],
       "size": 53,
-      "source_line": 375,
+      "source_line": 208,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -44,7 +44,7 @@
         "_BusMouseThread"
       ],
       "size": 123,
-      "source_line": 209,
+      "source_line": 220,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[BusMouse mouseInit:]"
       ],
       "size": 392,
-      "source_line": 297,
+      "source_line": 244,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[BusMouse free]"
       ],
       "size": 41,
-      "source_line": 251,
+      "source_line": 298,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -71,7 +71,7 @@
         "-[BusMouse getHandler:level:argument:forInterrupt:]"
       ],
       "size": 39,
-      "source_line": 364,
+      "source_line": 303,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[BusMouse getResolution]"
       ],
       "size": 16,
-      "source_line": 486,
+      "source_line": 314,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[BusMouse getIntValues:forParameter:count:]"
       ],
       "size": 93,
-      "source_line": 383,
+      "source_line": 319,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[BusMouse setIntValues:forParameter:count:]"
       ],
       "size": 146,
-      "source_line": 432,
+      "source_line": 337,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
     }
   ],

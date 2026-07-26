@@ -13,12 +13,13 @@ Analyses: IDA 9.2, Ghidra 12.1, angr 9.3.0 (all three enabled; `run-summary.json
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-Ledger status distribution: **2 `assembly-matched`** (`-[BusMouse free]`,
-`-[BusMouse getHandler:level:argument:forInterrupt:]`), **9 `unexamined`** (each with at least
-one confirmed body divergence, per the convention that a diverging function is left for the fix
-pass), **2 `intentional-mismatch`** (the build-generated glue).
+Ledger status distribution **after Task 12's fix pass**: **8 `assembly-matched`**,
+**5 `intentional-mismatch`**, **0 `unexamined`**. The report pass that produced everything
+above this line left 2 `assembly-matched`, 9 `unexamined` and 2 `intentional-mismatch`. See
+the "Fix pass (Task 12): results" section at the end of this document for the resolution of
+every finding, the per-function size comparison and the emitted section sizes.
 
-**This is a report pass with no fix pass behind it. Task 12 rewrites all 11 hand-written
+**The body of this document is the report pass. Task 12 rewrote all 11 hand-written
 functions as a unit** under the spec's §4.3 approved exception. The reason is stated plainly:
 the reference's ten `__cstring` entries and our source's ten share only three
 (`BusMouse`, `Inverted`, `Resolution`), and all three are keys or names rather than messages.
@@ -70,9 +71,9 @@ be able to write `BusMouse.m` from that section without opening the binary again
 
 ## Baseline build
 
-**No build has been attempted for this driver in this pass and none is required.** Task 12
-establishes the baseline. drvBusMouse builds clean today; no size, section table or parity
-count is invented here.
+**No build was attempted in the report pass and none was required.** Task 12 established the
+baseline: `EXIT=0`, `make exit=0`, a staged `_reloc` of 108416 bytes, `missing_strings` 7 and
+`missing_symbols` 0 — matching what this section predicted.
 
 Two scaffolding facts are recorded now so the fix pass can check them:
 
@@ -91,10 +92,10 @@ For reference, the sizes Task 12's build should be measured against:
 | --- | --- |
 | `__TEXT,__text` | 1592 |
 | `__TEXT,__cstring` | 340 |
-| `__TEXT,__const` | 6260 (170 bytes of content, zero-filled to the `__bss` page boundary) |
+| `__TEXT,__const` | 170 |
 | `__DATA,__bss` | 48 |
 | `__DATA,__common` | 4 |
-| `__DATA,__data` | *absent* |
+| `__DATA,__data` | present, size 0 |
 | `__OBJC,__message_refs` | 60 |
 | `__OBJC,__class` | 120 |
 | `__OBJC,__meta_class` | 120 |
@@ -104,7 +105,7 @@ For reference, the sizes Task 12's build should be measured against:
 | `__OBJC,__meth_var_types` | 112 |
 | `__OBJC,__meth_var_names` | 389 |
 | `__OBJC,__module_info` | 32 |
-| `__OBJC,__instance_vars` | *absent* |
+| `__OBJC,__instance_vars` | present, size 0 |
 | `Loaded Server,Server Name` | 8 (`BusMouse`) |
 | `Loaded Server,Load Commands` | 164 |
 | `Loaded Server,Unload Commands` | 102 |
@@ -116,6 +117,22 @@ The 170 bytes of `__TEXT,__const` content are `_BusMouse_VERS_STRING` (160 bytes
 zero-padded) and `_BusMouse_VERS_NUM` (10 bytes, `6`). As drvPS2Mouse recorded, no driver in
 this repository emits NeXT's `vers_string` symbols; that gap is out of scope and is not a
 finding.
+
+## Required `__text` function order
+
+The reference lays the thirteen functions out in this order, and `source-map.json`'s addresses
+are only comparable if `BusMouse.m` defines them in it:
+
+```
+GetIRQFromBoard, validConfiguration:, MouseIntHandler, interruptHandler,
+BusMouseThread, mouseInit:, free, getHandler:, getResolution,
+getIntValues:, setIntValues:
+```
+
+The two `static` C functions are **interleaved among the methods**, inside the
+`@implementation` block, which C and Objective-C both allow. Confirmation independent of the
+`__text` addresses: `__OBJC,__inst_meth` stores the eight methods in exactly the reverse of
+that order, which is how the compiler emits a method list.
 
 ## Function partition: sizes
 
@@ -202,8 +219,9 @@ BusMouseVersion              : IODevice    instance_size = 264 (0x108)
 BusMouseKernelServerInstance : Object      instance_size =   4
 ```
 
-**There is no `__OBJC,__instance_vars` section in the object at all.** `BusMouse`'s `ivars`
-field is a null pointer. The three UNDEF Objective-C class references are
+**`__OBJC,__instance_vars` is present in the object at size 0** — the NeXT compiler always
+emits the section and IDA simply drops zero-size sections, which is what an earlier draft of
+this document mistook for absence. `BusMouse`'s `ivars` field is a null pointer. The three UNDEF Objective-C class references are
 `.objc_class_name_PCPointer`, `.objc_class_name_IODevice` and `.objc_class_name_Object` —
 there is no reference to `IODirectDevice` anywhere.
 
@@ -1488,3 +1506,176 @@ in the driver whose emitted instruction streams reproduce the reference exactly 
 (`argument:` is `unsigned int *`, not `void **`), which does not appear in the code.
 
 No function in this driver was reviewed at control-flow level only.
+
+---
+
+# Fix pass (Task 12): results
+
+All eleven hand-written functions were rewritten from the specification above and the file was
+reordered to the reference's `__text` order. Build, parity and per-function sizes below are
+measured against `out/i386/drvBusMouse/BusMouse.config/BusMouse_reloc` as produced by
+`sh vm/build-i386-input-recon.sh drvBusMouse` on the Rhapsody guest.
+
+## Build and parity
+
+| | Baseline | After |
+| --- | --- | --- |
+| harness | `EXIT=0` | `EXIT=0` |
+| `gnumake` | `make exit=0` | `make exit=0` |
+| `_reloc` size | 108416 | 99120 |
+| `missing_strings` | **7** | **0** |
+| `missing_symbols` | 0 | 0 |
+| `extra_strings` | **7** | **0** |
+| `extra_symbols` | 19 | 17 |
+| `parity_check.py` | exit 1 | exit **0** |
+
+The 17 remaining `extra_symbols` are all debug stabs of an unstripped build (`BusMouse.m`,
+`io_inline.h`, the generated `BusMouse_instance.m`, and one `:fNN` line-number stab per
+function). The reference is stripped to 13 `__text` symbols.
+
+## Per-function sizes against the reference partition
+
+Sizes are the gaps between consecutive `__TEXT,__text` symbol addresses, the same convention
+the brief's partition table uses.
+
+| function | ref addr | ref size | our size | delta |
+| --- | ---: | ---: | ---: | ---: |
+| `_GetIRQFromBoard` | 0 | 112 | 124 | **+12** |
+| `-[BusMouse validConfiguration:]` | 112 | 132 | 132 | +0 |
+| `_MouseIntHandler` | 244 | 408 | 400 | -8 |
+| `-[BusMouse interruptHandler]` | 652 | 56 | 56 | +0 |
+| `_BusMouseThread` | 708 | 124 | 124 | +0 |
+| `-[BusMouse mouseInit:]` | 832 | 392 | 392 | +0 |
+| `-[BusMouse free]` | 1224 | 44 | 44 | +0 |
+| `-[BusMouse getHandler:level:argument:forInterrupt:]` | 1268 | 40 | 40 | +0 |
+| `-[BusMouse getResolution]` | 1308 | 16 | 16 | +0 |
+| `-[BusMouse getIntValues:forParameter:count:]` | 1324 | 96 | 96 | +0 |
+| `-[BusMouse setIntValues:forParameter:count:]` | 1420 | 148 | 136 | -12 |
+| `+[BusMouseKernelServerInstance kernelServerInstance]` | 1568 | 12 | 12 | +0 |
+| `+[BusMouseVersion driverKitVersionForBusMouse]` | 1580 | 12 | 12 | +0 |
+| **total** | | **1592** | **1584** | **-8** |
+
+**One function overshoots, by 12 bytes.** Ten of thirteen match the reference size exactly and
+two come in smaller. The overfit guard is satisfied: nothing here is structure that was
+invented rather than reconstructed, and the three residuals are named individually below.
+
+## Instruction-stream comparison
+
+Both binaries were disassembled with capstone and compared instruction by instruction, with
+link-time addresses normalized away (the two images place `__cstring` at different bases and
+ours runs 12 bytes long from `_GetIRQFromBoard` onward). **Ten of the thirteen functions
+reproduce the reference's instruction stream exactly.** The three that do not:
+
+- **`_GetIRQFromBoard`** - 52 instructions against the reference's 44. gcc spills the masked
+  low-nibble copy to `[ebp-8]` and reloads it before each of the three later bit tests, where
+  the reference keeps it in `cl` and puts the result in `ebx`. Every other instruction
+  corresponds one for one. Register allocation, not structure; `unsigned char` and
+  `unsigned int` spellings of the copy were both tried and both cost the same 12 bytes.
+- **`_MouseIntHandler`** - 115 instructions against 117, and 8 bytes shorter. Two places where
+  the reference is looser: it widens the left-button value to 32 bits *before* the `xor 1`
+  where ours does the `xor` at byte width, and it spills the shifted right-button byte to
+  `[ebp-8]` where ours keeps it in a register. One place where ours is looser: an extra
+  `and al, 1` in the `rightButton` bitfield store, because gcc did not prove the value was
+  already 0 or 1. All ten port accesses, both `__bss` paths and every offset match.
+- **`-[BusMouse setIntValues:forParameter:count:]`** - 52 instructions against 56, 12 bytes
+  shorter. The reference spills both the `parameterArray` pointer and the compare count to the
+  stack (`sub esp, 4`); ours hoists the load and keeps the count immediate. Both `repe cmpsb`
+  comparisons, both ivar stores, the shared unguarded `objc_msgSend` tail and
+  `IO_R_UNSUPPORTED` all match.
+
+## Emitted sections against the reference
+
+| Section | Reference | Ours |
+| --- | ---: | ---: |
+| `__TEXT,__text` | 1592 | 1584 |
+| `__TEXT,__cstring` | 340 | **340** |
+| `__TEXT,__const` | 170 | *absent* |
+| `__DATA,__bss` | 48 | **48** |
+| `__DATA,__common` | 4 | **4** |
+| `__OBJC,__message_refs` | 60 | **60** |
+| `__OBJC,__class` | 120 | **120** |
+| `__OBJC,__meta_class` | 120 | **120** |
+| `__OBJC,__cls_meth` | 40 | **40** |
+| `__OBJC,__inst_meth` | 104 | **104** |
+| `__OBJC,__class_names` | 111 | **111** |
+| `__OBJC,__meth_var_types` | 112 | **112** |
+| `__OBJC,__meth_var_names` | 389 | **389** |
+| `__OBJC,__module_info` | 32 | **32** |
+| `__OBJC,__symbols` | 36 | **36** |
+| `Loaded Server,Server Name` | 8 | **8** |
+| `Loaded Server,Load Commands` | 164 | **164** |
+| `Loaded Server,Unload Commands` | 102 | **102** |
+| `Loaded Server,Instance Var` | 17 | **17** |
+| `Loaded Server,Server Version` | 1 | **1** |
+
+Every section matches but `__text` and `__TEXT,__const`. The `__const` gap is
+`_BusMouse_VERS_STRING` and `_BusMouse_VERS_NUM`; as recorded above, no driver in this
+repository emits NeXT's `vers_string` symbols, and that remains out of scope.
+
+Stronger than the sizes: all four string tables are **identical sets** - `__TEXT,__cstring`,
+`__OBJC,__class_names`, `__OBJC,__meth_var_types` and `__OBJC,__meth_var_names`.
+`__DATA,__bss` is identical **symbol for symbol at identical addresses**: `_xxx.86`,
+`_xxx.89`, `_xxx.92`, `_higherLevelsBusy`, `_event`, `_summedEvent`, `_lastRightButton`,
+`_lastLeftButton`, then `_BusMouse_instance` in `__common`. And decoding `__OBJC,__class` and
+`__OBJC,__meta_class` out of both images gives the same six records: `instance_size` 324 with
+`ivars = 0x0` for `BusMouse`, 264 for `BusMouseVersion`, 4 for
+`BusMouseKernelServerInstance`, and `methodLists = NULL` on `BusMouse`'s meta-class.
+
+## Resolution of each finding
+
+| Finding | Resolution |
+| --- | --- |
+| 1 - derives from `PCPointer`, no own ivars | **Fixed.** `@interface BusMouse : PCPointer` with no ivar block; `-DDRIVER_PRIVATE` added to the `.lksproj` Makefile. Verified in the rebuilt binary: `instance_size` 324, `ivars = 0x0`, `__instance_vars` empty, and every ivar access at 0x128/0x12c/0x130. |
+| 2 - return types, `mouseInit:` polarity, `+probe:` | **Fixed, in the same commit as Finding 1.** `mouseInit:` and `validConfiguration:` return `BOOL` (1 = success); `getResolution` returns `int`; `argument:` is `unsigned int *`; `+probe:` removed. Verified: `__meth_var_types` is an identical set including `c12@8:12@16` and `i8@8:12`, `__cls_meth` is 40 bytes, and the meta-class `methodLists` is NULL. |
+| 3 - `__DATA,__bss` layout | **Fixed.** The five statics are declared in the reference's order with no initializers, `_event` and `_summedEvent` as `PCPointerEvent`. `__bss` is 48 bytes with identical symbols at identical addresses, and `__DATA,__data` is gone. |
+| 4 - the `__cstring` set | **Fixed.** All ten strings reproduced byte for byte, including `Bus Mouse : ` with the space in exactly the two `validConfiguration:` strings, the two spaces after the period, and `Bus mouse running`. `missing_strings` and `extra_strings` are both 0 and the section is 340 bytes. |
+| 5 - `_GetIRQFromBoard` is global | **Fixed.** `static` dropped. Verified at nlist level: the symbol is `external` in `__TEXT,__text`; `_MouseIntHandler` and `_BusMouseThread` remain `local`. |
+| 6 - `ioPortCount` is decompiler residue | **Fixed.** The static, its four increment statements and the empty `LOCK()`/`UNLOCK()` macros are gone. The rebuilt binary emits `lock incl ds:_xxx.86` from `outb()` alone, ten times, and carries no counter object. |
+| 7 - `MouseIntHandler` returns a value | **Fixed.** Now `static void MouseIntHandler(void *identity, void *state, unsigned int arg)`; `arg` is never read, matching the reference's untouched `[ebp+10h]`. |
+| 8 - the invented `interrupt_msg_t` | **Fixed.** A bare `msg_header_t msg, *msgPtr = &msg;` - 24 bytes, `msg_size` at +4, `msg_local_port` at +0x0C, `msg_id` at +0x14 - and the failure test is against `RCV_SUCCESS`. |
+| 9 - 30 us where the reference waits 30 ms | **Fixed.** `IODelay(30)` replaced by `us_spin(30000)` through a local `extern void us_spin(unsigned int);`. `_us_spin` is an undefined import of the rebuilt object and neither `_IODelay` nor `_IOSleep` is. |
+| 10 - `IO_R_UNSUPPORTED`, not `IO_R_INVALID_ARG` | **Fixed** at both sites. `mov eax, 0FFFFFD39h` in both methods. |
+| 11 - `setIntValues:` messages `target` unguarded | **Kept, deliberately.** drvPS2Mouse's `if (target != nil)` guards were **not** copied across. Verified: both branches converge on one `mov ebx,[ebx+128h]; push ebx; call _objc_msgSend` with no test. |
+| 12 - `PCPatoi`, not `strtoul` | **Fixed.** `_PCPatoi` is an undefined import; `strtoul` and `<libkern/libkern.h>` are gone. |
+| 13 - the set of statics `mouseInit:` initializes | **Fixed.** Seven stores in the reference's order: `higherLevelsBusy = 0`, `summedEvent.data.buf[2]`, `buf[1]`, `summedEvent.timeStamp`, then both trackers to -1. `_event` is not touched. |
+| 14 - the doubled port-0x23E command | **Accepted; both writes kept.** The rebuilt binary emits `out dx,al` twice from the same `dx` and `al`. |
+| 15 - `Load_Commands.sect` one byte short | **Fixed.** First line is now `#`, space, newline; the file is 164 bytes and the emitted section is 164. |
+| 16 - `Unload_Commands.sect` absent | **Fixed.** Copied byte for byte from drvPS2Mouse's (102 bytes, six trailing blank lines intact) and added to the `.lksproj` Makefile's `OTHERSRCS`; `kernelserver.make`'s `UNLOAD_SECTION = Unload_Commands.sect` picks it up. The emitted section is 102 bytes. |
+
+## Three findings the fix pass discovered
+
+**Finding 17 - the `Inverted` parse is written in the positive form.** The reference branches
+`test ecx,ecx; jz(set 0)`, `cmp [ecx],'y'; jz(set 1)`, `cmp [ecx],'Y'; jnz(set 0)`, and places
+the `mov byte [esi+130h], 1` block *before* the `0` block. That is
+`if (str != NULL && (*str == 'y' || *str == 'Y')) inverted = YES; else inverted = NO;`. The
+negated form this document and drvPS2Mouse both use mirrors the two blocks. Fixed; `mouseInit:`
+now reproduces the reference's stream exactly.
+
+**Finding 18 - `getIntValues:`/`setIntValues:` compare with an inlined `strcmp`, not a loop.**
+The reference's `cld; repe cmpsb` with `ecx` = 11 and 9 is gcc's expansion of
+`strcmp(name, "Resolution")` against a constant string when the result is only tested for
+zero, the count being `strlen + 1`. The unrolled `do`/`while` compare loops this document
+recommended taking from drvPS2Mouse are a decompiler rendering of that expansion, and they
+build 32 and 36 bytes over the reference. Rewritten as `strcmp(...) == 0`, which gcc inlines
+with no `_strcmp` import: `getIntValues:` lands on 96 bytes exactly and `setIntValues:` on 136.
+**This is the one place where following drvPS2Mouse was wrong**, and it is worth checking
+against drvPS2Mouse's own reference.
+
+**Finding 19 - `validConfiguration:` shares one `return NO`.** The reference tests the failure
+case first and lets both failure paths fall into a single `xor eax, eax`:
+`if (signature != 0xa5) { IOLog(...); } else { ...; if (equal) return YES; IOLog(...); }`
+followed by `return NO;`. Writing the two failures as early returns duplicates the
+`xor eax, eax` and changes the block order. Fixed; the function now reproduces the reference's
+stream exactly.
+
+## Ledger
+
+13 entries, **0 `unexamined`**: 8 `assembly-matched`, 5 `intentional-mismatch`.
+
+- `assembly-matched` - the rebuilt instruction stream was disassembled and compared against the
+  reference's and is identical once link-time addresses are normalized:
+  `validConfiguration:`, `interruptHandler`, `BusMouseThread`, `mouseInit:`, `free`,
+  `getHandler:level:argument:forInterrupt:`, `getResolution`, `getIntValues:forParameter:count:`.
+- `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler` and
+  `setIntValues:forParameter:count:` for the register-allocation differences described above,
+  plus the two build-generated glue methods, which keep task 11's reviewer.

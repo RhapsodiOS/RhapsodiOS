@@ -31,5 +31,11 @@
     "ignore_metadata": [],
     "entry_points": []
   },
-  "output_dir": "../out/kernel-driverkit"
+  "output_dir": "../out/kernel-driverkit",
+  "analysis_scope": [
+    {
+      "start": 2085076,
+      "end": 2088160
+    }
+  ]
 }

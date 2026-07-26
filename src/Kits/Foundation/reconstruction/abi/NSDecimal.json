@@ -1,0 +1,21 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSDecimal.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSDecimalAdd",
+  "_NSDecimalCompact",
+  "_NSDecimalCompare",
+  "_NSDecimalCopy",
+  "_NSDecimalDivide",
+  "_NSDecimalMultiply",
+  "_NSDecimalMultiplyByPowerOf10",
+  "_NSDecimalNormalize",
+  "_NSDecimalPower",
+  "_NSDecimalRound",
+  "_NSDecimalString",
+  "_NSDecimalSubtract"
+ ]
+}

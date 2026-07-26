@@ -720,11 +720,17 @@ the compiler uses the destination itself as the target of both the mask and the 
 of two separate compound assignments. On that reading Apple's construct here is
 `volVoc.reg.left = volumeValue;`, not our expression.
 
-**This could not be settled from the reference.** The binary shows the emitted
-instructions only, and both constructs are candidate sources for them; deciding between
-them needs the period compiler, which this pass did not have. The earlier confident claim
-that our hand-written masks reproduce the reference is therefore withdrawn — it is
-unproven in either direction.
+**This could not be settled from the reference by Task 7**, which had no compiler: the
+binary shows the emitted instructions only, and both constructs are candidate sources for
+them. The earlier confident claim that our hand-written masks reproduce the reference was
+therefore withdrawn as unproven in either direction.
+
+**The question is now settled. See "Finding 5 settled: the masked expression does not
+produce the paired form" below.** Task 8's brief carried an instruction to leave it open;
+Task 8's own rebuild — this driver's first ever — superseded that instruction, because it
+supplied exactly the evidence the question was waiting for, and the review pass that
+followed acted on it. Recording the supersession here rather than obeying the stale
+instruction is the correct disposition.
 
 Two consequences for Task 8. First, **the question is not specific to `volVoc`**: the
 identical construct produces the identical instructions for `_volLine`, `_volMic` and
@@ -1161,9 +1167,17 @@ behaviour matches. It is the same signal Finding 9 turns on for `numChannels` (`
 evidence for their `unsigned int gain`.
 
 **Disposition for Task 8:** declare `attenuation` as `unsigned int` at `:625` and `:665`.
-Nothing else in either method changes; both `lea`s and the `54h` divisor already match.
 Note that this is the only reason both entries are held `unexamined`; the open question in
 Finding 5 about the `_volVoc` masks is recorded there and is not a finding.
+
+**Correction after the rebuild.** This disposition claimed "both `lea`s and the `54h`
+divisor already match". Only the divisor did. The `54h` divisor and the `xor edx, edx /
+div ecx` pair match after the signedness fix, but the `lea` pair does not: the reference
+folds the `0FCh` offset into the first address computation, `lea edx, [edx+edx*2+0FCh]`
+then `lea edx, [edx+edx*4]`, while our gcc distributes it into the second,
+`lea edx, [edx+edx*2]` then `lea edx, [edx+edx*4+4ECh]`. The values agree; the
+instructions do not. See "One negative result worth recording" below for the two source
+forms that were built against this.
 
 ---
 
@@ -1188,17 +1202,17 @@ errors, repaired in their own commit before any divergence work:
 
 ## Gate results
 
-| Gate | Baseline | After |
-| --- | --- | --- |
-| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0` |
-| `missing_strings` | 0 | 0 |
-| `missing_symbols` | 0 | 0 |
-| `extra_strings` | 12 | **0** |
-| `extra_symbols` | 38 | 30 |
-| staged `_reloc` | 190328 bytes | 179264 bytes |
-| source-map buckets | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 |
-| `load_source_map` | not run | `source map OK` |
-| `binrecon ledger` | not run | accepted, `entries=25` |
+| Gate | Baseline | After fix pass | After review pass |
+| --- | --- | --- | --- |
+| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0` | `EXIT=0`, `fail=0` |
+| `missing_strings` | 0 | 0 | 0 |
+| `missing_symbols` | 0 | 0 | 0 |
+| `extra_strings` | 12 | **0** | 0 |
+| `extra_symbols` | 38 | 30 | 30 |
+| staged `_reloc` | 190328 bytes | 179264 bytes | 179332 bytes |
+| source-map buckets | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 |
+| `load_source_map` | not run | `source map OK` | `source map OK` |
+| `binrecon ledger` | not run | accepted, `entries=25` | accepted, `entries=25` |
 
 All 30 remaining `extra_symbols` are stabs from our unstripped build: `''`, the two source
 filenames, the `ioPorts.h` and `ES1x88AudioDriver_instance.m` paths, and the `:fNN` N_FUN
@@ -1213,12 +1227,17 @@ Ours is unstripped and its stabs share addresses inside `__TEXT,__text`, which c
 every computed size to zero; the helper filters them, which is a no-op on the reference.
 25 functions on both sides, none missing, none extra, none flagged `LARGER`.
 
-Exact matches: `+probe:` 300, `updateOutputAttenuationLeft` 368,
-`updateOutputAttenuationRight` 368, `timeoutOccurred` 360, `getDataEncodings:count:` 32,
-`interruptOccurredForInput:forOutput:` 48, `getSamplingRates:count:` 56,
-`getSamplingRatesLow:high:` 28, `enableAllInterrupts` 44, `disableAllInterrupts` 44,
-`channelCountLimit` 12, `acceptsContinuousSamplingRates` 12, `interruptClearFunc` 12 and
-both glue methods 12.
+Exact matches after the review pass: `+probe:` 300, `timeoutOccurred` 360,
+`getDataEncodings:count:` 32, `interruptOccurredForInput:forOutput:` 48,
+`getSamplingRates:count:` 56, `getSamplingRatesLow:high:` 28, `enableAllInterrupts` 44,
+`disableAllInterrupts` 44, `channelCountLimit` 12, `acceptsContinuousSamplingRates` 12,
+`interruptClearFunc` 12 and both glue methods 12.
+
+The two attenuation methods were 368 against 368 after the first fix pass and are 356
+against 368 after the review pass. **That earlier equality was a coincidence and was the
+whole of the evidence the first pass offered for `assembly-matched` on both entries** — 95
+reference instructions against 100 built. Size alone is the weakest signal available here
+and is not, on its own, grounds for that status.
 
 **A systemic code-generation difference accounts for the remainder**, and it is not a
 source divergence. Our gcc omits the `movzx` zero-extension the reference emits before
@@ -1235,18 +1254,18 @@ evidence of a source difference.
 | 1 | Source. `reset` sends `[[[self deviceDescription] configTable] valueForStringKey:"Input Source"]`; the `stringValue` send and the `configTable` local are gone. |
 | 2 | Source. `IO_Single` became `IO_Demand` at the `setTransferMode:forChannel:` call. |
 | 3 | Source. `recordSourceValue` dropped from `reset` and `startDMAForChannel:`; both write `sbRecordSource` to the port. **Not applied to `setAnalogInputSource:`**, per Finding 13. |
-| 4 | Source. The five volume shadows are written as `reg.left` then `reg.right` and read back for the port write. One residual, see below. |
-| 5 | Partly source, partly open. The seven `__DATA,__data` declarations were reordered to `volMaster, volFM, volLine, volVoc, volCD, volMic, sbRecordSource`, and `volVoc` was retyped to `sb16MonoMixerRegister_t`, which Finding 4 required at its `initializeHardware` site. `essHardware` and `essChipRevision` lost their `= 0` initialisers, the part this report called proved. **The expression-versus-bitfield question is deliberately left open** and was not resolved by changing source. |
+| 4 | Source. The six volume shadows are written as `reg.left` then `reg.right` and read back for the port write. One residual, see below. |
+| 5 | Source. The seven `__DATA,__data` declarations were reordered to `volMaster, volFM, volLine, volVoc, volCD, volMic, sbRecordSource`, and `volVoc` was retyped to `sb16MonoMixerRegister_t`, which Finding 4 required at its `initializeHardware` site. `essHardware` and `essChipRevision` lost their `= 0` initialisers, the part this report called proved. The expression-versus-bitfield question was left open by the first fix pass and **settled by the review pass**, against the expression form; `volMic` was retyped and every remaining masked expression became a bitfield store. See the section below. |
 | 6 | Source. `sbAck8bitInterrupt`, `sbAck16bitInterrupt`, the four `lastStageGain*`, `sbBufferCounter` and `sbStartDMAMode` removed, with the two `assignDSPRegAddresses()` assignments. `sbStartDMACommand` and `sb16CardType` were dead **before** this pass and were left; see "Pre-existing dead code". |
 | 7 | Source. `is16BitTransfer`, `dma8Channel`, `dma16Channel` and `numDMAChannels` removed, restoring `hardwareName` to 396 and `inputSource` to 400. |
 | 8 | Source. Both DSP wait helpers are called for effect in `initializeHardware`, `startDMAForChannel:` and `timeoutOccurred`; no early return, no `IOLog` on their failure. |
 | 9 | Source. `numChannels` is `unsigned int` in `+probe:`. |
-| 10 | Source. `updateOutputMute` stores `![self isOutputMuted]` and carries `D1h`/`D3h` inside their branches. |
+| 10 | Source, in two steps. The first pass put `D1h`/`D3h` inside their branches, which the rebuild confirms; it did **not** produce the stored negated flag, because with one use of `enableOutput` our gcc folded the `!` into a reversed branch. The review pass made the speaker write a second `if (enableOutput)`, and the rebuild then emits `sete`. See below. |
 | 11 | Source. `ES_MODE_INPUT` is `0x0E` and `ES_MODE_OUTPUT` is `0x04`; the `0xF8`/`0xFC` masks are swapped; the mode-command group keys on `Linear8`. Verified in the rebuilt disassembly: `mov al, 0xe` on the IN arm, `mov al, 4` on the other, matching 4576 and 4614. |
 | 12 | Source. The `(char)` cast dropped at all three sites and `initializeHardware`'s `dspVersion` is `unsigned char`. |
-| 13 | Source. Two tests, `0C8h` then `0C9h`, default sharing the microphone arm. **`sourceValue` kept.** |
+| 13 | Source. Two tests, `0C8h` then `0C9h`, default sharing the microphone arm. **`sourceValue` kept.** Entry `8360` is `intentional-mismatch`, not `assembly-matched`: the join point and the register allocation still differ, see below. |
 | 14 | Source. `encodings[0]` is `Linear8`, `encodings[1]` is `Linear16`. |
-| 15 | Source. `attenuation` is `unsigned int` at both sites. |
+| 15 | Source, in part. `attenuation` is `unsigned int` at both sites, which fixes the division. The `lea` pair is **not** fixed and holds both entries at `intentional-mismatch`. |
 | 16 | Source. New; see below. |
 
 ## Finding 16: `reset` passed string literals where the reference passes the statics
@@ -1260,31 +1279,72 @@ were the two `extra_strings` this report did not predict.
 `reset` now passes `codecDeviceName` and `codecDeviceKind`. That removed both extras and is
 what closed `extra_strings` to zero.
 
-## The two entries held as `intentional-mismatch`
+## The entries held as `intentional-mismatch`
 
 **`initializeHardware` (1396).** Findings 4 and 8 are resolved in source. The reference
 emits the `and 0Fh` / `or 0A0h` pair for `_volMic` **twice** at 2536-2557 with no port write
-following; our single masked assignment emits it once. This report recorded the duplication
+following; our `volMic.reg.left = 0xA` emits it once. This report recorded the duplication
 as an unexplained observation rather than a prescription, and no source construct that
 produces it can be derived from the binary. Writing the statement twice would be inventing
 structure, so the divergence is accepted.
 
+The first fix pass wrote that our `volMic = (volMic & 0x0F) | 0xA0` "produces the pair
+once". It did not produce the pair at all — it produced the register form
+`mov al, [0x4025] / and al, 0Fh / or al, 0A0h / mov [0x4025], al`. The review pass retyped
+`volMic` to `sb16MonoMixerRegister_t` and the bitfield store now emits the pair. **Only the
+duplication is underivable; the instruction form is not.**
+
 **`configureHardwareForDataTransfer:` (4388).** Finding 11 is resolved in source and
 verified in the rebuilt disassembly, and the `B6h` write is now gated on
 `== DMA_DIRECTION_OUT` so it emits `cmp 1` as the reference does at 5292. Two construct
-differences remain, both the bitfield idiom Finding 5 leaves open: the reference caches
-`(channelCount == 2)` as a boolean in a stack slot at 4500-4511, and it builds the IRQ and
-DMA control bytes with paired `or`/`and` operations at 5490-5525 and 5600-5638 rather than
-whole-value assignments. Reproducing either needs Apple's declarations, not the binary.
+differences remain: the reference caches `(channelCount == 2)` as a boolean in a stack slot
+at 4500-4511, and it builds the IRQ and DMA control bytes with paired bit operations on a
+local byte at 5490-5525 and 5600-5638 rather than whole-value assignments.
 
-## One negative result worth recording
+The first fix pass wrote that reproducing either "needs Apple's declarations, not the
+binary". **That is withdrawn**: the review pass's rebuild reproduces the paired form for
+the mixer shadows from bitfield members alone, so the construct is derivable in general.
+What blocks it here is narrower. Unlike the mixer shadows, whose two 4-bit halves the
+`0Fh`/`0F0h` masks pin down exactly, the binary does not determine the field decomposition
+of these two control bytes: `or dl, 50h` at 5525 sets two bits in one instruction, and a
+single two-bit field cannot be told apart from two one-bit fields. The type would be
+invented rather than derived, so it was not written.
 
-Finding 13's remaining 32-byte gap in `setAnalogInputSource:` is **not** a source
-difference. The reference programs the mixer inside each arm and joins only at
-`mov al, cl`; our build hoists the port sequence into a shared tail. Writing the whole port
-sequence out in all three arms was tried and the rebuilt function came out
-**byte-identical** - our gcc cross-jumps it straight back. The simpler shared-tail form was
-therefore kept, and the gap is recorded as tail-merging aggressiveness.
+**`updateOutputAttenuationLeft` (3652) and `updateOutputAttenuationRight` (4020).** Held
+for the `lea` reassociation; see the Finding 15 correction above and the negative result
+below.
+
+**`setAnalogInputSource:` (8360).** Held for the join point and the `ebx` allocation; see
+the negative result below.
+
+## Negative results worth recording
+
+**`setAnalogInputSource:`.** Finding 13's remaining 32-byte gap is not reachable from
+source. The reference programs the mixer inside each arm and joins only at `mov al, cl`
+(8417); our build hoists the port sequence into a shared tail and joins at its head.
+Writing the whole port sequence out in all three arms was built and the rebuilt function
+came out **byte-identical** — our gcc cross-jumps it straight back. The simpler shared-tail
+form was therefore kept. Our gcc also allocates `sourceValue` to `bl`, paying a prologue
+`push ebx` and an epilogue `mov ebx, [ebp-4]` that the reference, using `cl`, does not.
+
+The first fix pass advanced this entry to `assembly-matched` on the strength of the
+negative experiment alone. A 104-against-136 size gap and a different join point do not
+support that status, and the review pass downgraded it to `intentional-mismatch`.
+
+**The attenuation `lea` pair.** Two source forms were built against the reassociation, both
+on the guest, neither of which reproduced the reference's fold:
+
+- a named `unsigned int scaledAttenuation = attenuation * 3 + 252;` with
+  `(scaledAttenuation * 5) / 84` as the next statement — emitted the identical
+  `lea edx, [edx+edx*2]` / `lea edx, [edx+edx*4+4ECh]` as the single expression;
+- a further split putting `scaledAttenuation = scaledAttenuation * 5;` in its own statement
+  — still folded, and **worse**, because it also dropped the `mov dword ptr [ebp-4], edx`
+  spill store that both the reference and the single-expression form emit.
+
+The single-expression form was therefore kept, and the divergence is accepted as a
+code-generation difference between our gcc and Apple's. Unlike the `movzx` shortfall it has
+not been shown to be systemic, so it is recorded as a divergence rather than as noise, and
+both entries are `intentional-mismatch` rather than `assembly-matched`.
 
 ## Pre-existing dead code, left in place and reported
 
@@ -1305,3 +1365,121 @@ The first two draw a `defined but not used` warning from the guest compiler.
 `Load_Commands.sect` is still 144 bytes. `ES1x88_3_30.rtfd` was not renamed. The `__data`
 symbol addresses now match the reference exactly: `_volMaster` 0x4020, `_volVoc` 0x4023,
 `_volMic` 0x4025, `_sbRecordSource` 0x4026, and `_essHardware` moved to `__DATA,__bss`.
+
+---
+
+# Finding 5 settled: the masked expression does not produce the paired form
+
+Task 7 could not decide whether `x = (x & 0x0F) | v` or a bitfield member store produces
+the reference's paired memory read-modify-write, and left the question open. Task 8's fix
+pass produced this driver's first rebuild with the period compiler and left the question
+open anyway. **The rebuild answers it.** Both forms were present in the same rebuilt
+binary, so the comparison needed no new experiment — only reading it.
+
+## The two constructs, from the two binaries
+
+Take `updateInputGainLeft`. The reference writes three shadows as paired
+read-modify-writes on the destination byte:
+
+```
+2684: C0E204          shl  dl, 4
+2687: 8025224000000F  and  ds:_volLine, 0Fh
+2694: 081522400000    or   ds:_volLine, dl
+```
+
+The masked-expression source that produced our first-pass build,
+`volLine.rawValue = (volLine.rawValue & ES_VOLUME_BITS) | (gainValue << 4);`, emitted the
+**register form** instead — one load, a register `and`, a register `or`, one store:
+
+```
+mov  al, byte ptr [0x4022]
+and  al, 0Fh
+or   al, dl
+mov  byte ptr [0x4022], al
+```
+
+Three such quads appeared, at `0x4022`, `0x4025` and `0x4024`, with no `and byte ptr` or
+`or byte ptr` anywhere in the function.
+
+The counter-construct was already in the same binary. `initializeHardware` writes
+`volMaster.reg.left = 0xA; volMaster.reg.right = 0xA;` through the union's **bitfield
+members**, and that emitted the reference's form exactly:
+
+```
+and byte ptr [0x4020], 0Fh
+or  byte ptr [0x4020], 0A0h
+and byte ptr [0x4020], 0F0h
+or  byte ptr [0x4020], 0Ah
+```
+
+with the matching quads at `0x4024`, `0x4022` and `0x4023`. One source file, one compiler,
+one build: **the bitfield member store produces the paired memory form and the masked
+expression does not.** No further experiment can be needed.
+
+## What changed as a consequence
+
+Every remaining masked expression over a mixer shadow became a bitfield store, and `volMic`
+was retyped from `unsigned char` to `sb16MonoMixerRegister_t` so that it could be one. The
+union is one byte wide either way, so `__DATA,__data` is unchanged and `_volMic` stays at
+`0x4025`. `startDMAForChannel:` reads it as `volMic.rawValue`.
+
+| Site | Was | Now |
+| --- | --- | --- |
+| `initializeHardware` | `volMic = (volMic & 0x0F) \| 0xA0;` | `volMic.reg.left = 0xA;` |
+| `updateInputGainLeft` | three `(x & 0x0F) \| (gainValue << 4)` | `volLine`, `volMic`, `volCD` `.reg.left = gainValue;` |
+| `updateInputGainRight` | three `(x & 0xF0) \| (gainValue & 0x0F)` | the same three `.reg.right = gainValue;` |
+| `updateOutputAttenuationLeft` | four `(x & 0x0F) \| volInUpperNibble`, plus the `volInUpperNibble` local | `volCD`, `volMaster`, `volLine`, `volVoc` `.reg.left = volumeValue;` |
+| `updateOutputAttenuationRight` | four `(x & 0xF0) \| volumeValue`, plus a `volumeValue &= 0x0F` statement | the same four `.reg.right = volumeValue;` |
+
+The rebuild then emits `and byte ptr [addr], 0Fh` / `or byte ptr [addr], reg` — or the
+`0F0h` form for the right nibble — at every one of those fifteen sites, in the reference's
+order and with the reference's masks. The 4-bit field also emits the
+`and reg, 0Fh` truncation that the right-hand methods previously wrote out by hand, so both
+hand-written masking statements are gone.
+
+Consistency mattered here: the identical construct backed `updateInputGainLeft`,
+`updateInputGainRight`, both attenuation methods and `initializeHardware`'s `volMic` site.
+Holding two of them and advancing the others is what produced the review finding, so all
+five moved together.
+
+## `updateOutputMute`: the flag, not the commands
+
+Finding 10 has two halves. The first fix pass fixed one and claimed both.
+
+The `D1h`/`D3h` speaker commands were genuinely moved inside their own branches, joining at
+`out dx, al`, matching the reference at 3613 and 3627. The negated flag was not: with the
+single trailing `outb` inside each arm, `enableOutput` had exactly one use and our gcc
+folded the `!` straight into a reversed branch, emitting `test dl, dl` / `jne` with no
+`sete` and no stack slot at all. The reference emits
+
+```
+3129: 0F94C0    sete al
+3132: 8845FC    mov  [ebp+var_4], al
+...
+3600: 807DFC00  cmp  byte ptr [ebp+var_4], 0
+```
+
+— it materialises the flag and re-tests it after the mixer block. The ledger reason
+asserting that our method "computes and stores the negated flag" was contradicted by our
+own rebuild.
+
+The fix is structural, not an annotation: the speaker write became a **second**
+`if (enableOutput)` after the mixer block, which is what makes the flag live across it. The
+rebuild now emits `sete bl`, tests it for the mixer block and re-tests it with
+`test bl, bl` before the `D1h`/`D3h` pair. Our gcc keeps the flag in `bl` where the
+reference spills it to `[ebp-4]`; that is register allocation, not a source construct.
+
+## The `movzx` shortfall is unchanged
+
+Our gcc still omits the `movzx ebx, byte ptr [addr]` zero-extension the reference emits
+before `out dx, al`, and so needs no `push ebx` where the reference has one. That accounts
+for the residual size gaps in `updateInputGainLeft` and `updateInputGainRight` (216 against
+232 each) and contributes to the rest. It is systemic across functions whose source is not
+in question, so it is not evidence of a source difference.
+
+## `drvSB16Sound`'s `IO_16Bit` line number
+
+The review pass was asked to correct this report's citation of the `IO_16Bit` bug from
+`SoundBlaster16.m:270` to `:269`. It was checked directly: the file has no CRLF, and the
+sole occurrence of `IO_16Bit` is on line 270. **`:270` is correct and was left alone.** The
+bug itself belongs to Task 10 and was not touched.

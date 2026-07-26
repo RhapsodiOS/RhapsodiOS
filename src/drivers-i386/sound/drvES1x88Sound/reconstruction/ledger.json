@@ -56,7 +56,7 @@
           "angr"
         ],
         "reasons": [
-          "Findings 4 and 8 resolved in source; the entry is intentional-mismatch for the unexplained _volMic duplication the reference emits at 2536-2557. See the reason field.",
+          "Findings 4 and 8 resolved in source; the entry is intentional-mismatch for the unexplained _volMic duplication the reference emits at 2536-2557, not for the instruction form, which the rebuild now reproduces. See the reason field.",
           "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
         ],
         "status": "agreed"
@@ -65,7 +65,7 @@
       "names": [
         "-[ES1x88AudioDriver initializeHardware]"
       ],
-      "reason": "divergences.md Findings 4 and 8, resolved in source: the five volume shadows are now written as two 4-bit bitfield assignments each (reg.left then reg.right) and read back for the port write, and both DSP wait helpers are called for effect with no early return. Accepted residual: the reference emits the and 0Fh / or 0A0h pair for _volMic twice at 2536-2557 with no port write following, and our single volMic = (volMic & 0x0F) | 0xA0 emits it once. Task 7 recorded the duplication as an unexplained observation rather than a prescription, and no source construct that produces it can be derived from the binary; writing the statement twice would be inventing structure. Finding 5's question, whether a masked expression or a bitfield store produces the paired read-modify-write, remains open for the same reason and is not resolved here. Rebuilt size 1208 against the reference's 1240.",
+      "reason": "divergences.md Findings 4 and 8, resolved in source: the six volume shadows are written as 4-bit bitfield assignments, reg.left then reg.right, and read back for the port write, and both DSP wait helpers are called for effect with no early return. volMic was retyped to sb16MonoMixerRegister_t in the Task 8 fix-review pass, so volMic.reg.left = 0xA now emits the reference's paired memory read-modify-write, and byte ptr [0x4025], 0Fh / or byte ptr [0x4025], 0A0h. Accepted residual: the reference emits that pair twice at 2536-2557 with no port write following, and ours emits it once. Only the duplication is underivable; the instruction form is not. The earlier reason claiming our masked expression emitted the pair once was wrong on both counts - that expression emitted the register form, mov al / and al / or al / mov back, and not the pair at all. Task 7 recorded the duplication as an unexplained observation rather than a prescription and writing the statement twice would be inventing structure, so the divergence is accepted. Rebuilt size 1204 against the reference's 1240.",
       "reviewer": "Pat Raynor",
       "size": 1237,
       "source_line": 209,
@@ -80,7 +80,8 @@
           "angr"
         ],
         "reasons": [
-          "read instruction by instruction against ES1x88AudioDriver.m:497-526: inputGainLeft, gain ? (gain*15)>>15 : 0 as lea/lea/shr 0Fh, high-nibble update of _volLine, _volMic and _volCD in that order, then mixer writes to 3Eh and 38h. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "read instruction by instruction against the reference: inputGainLeft, then gain ? (gain*15)>>15 : 0 as lea/lea/shr 0Fh, then the high-nibble update of _volLine (0x4022), _volMic (0x4025) and _volCD (0x4024) in that order, then the mixer writes to 3Eh and 38h. The Task 8 fix-review pass settled Finding 5 against the masked expression: the old volLine.rawValue = (volLine.rawValue & 0x0F) | (gainValue << 4) built the register form, mov al, [0x4022] / and al, 0Fh / or al, dl / mov [0x4022], al, where the reference emits and byte ptr [0x4022], 0Fh / or byte ptr [0x4022], dl. The three writes are now volLine, volMic and volCD .reg.left = gainValue, and the rebuilt function emits the reference's paired form at all three addresses, with the same masks and in the same order; volMic was retyped to sb16MonoMixerRegister_t to allow it. Two residuals, both code generation and neither a source construct: our gcc omits the movzx ebx, byte ptr [0x4022] zero-extension before out dx, al and so needs no push ebx, the systemic shortfall this driver records across reset and startDMAForChannel:; and it keeps one copy of gainValue << 4 where the reference keeps two, one in dl and one spilled to [ebp-4]. Rebuilt size 216 against the reference's 232."
         ],
         "status": "agreed"
       },
@@ -89,7 +90,7 @@
         "-[ES1x88AudioDriver updateInputGainLeft]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-7",
+      "reviewer": "Pat Raynor",
       "size": 229,
       "source_line": 319,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
@@ -103,7 +104,8 @@
           "angr"
         ],
         "reasons": [
-          "read instruction by instruction against ES1x88AudioDriver.m:528-557: the mirror of updateInputGainLeft writing the low nibble, including the and 0Fh that our & ES_VOLUME_BITS produces. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "read instruction by instruction against the reference: the mirror of updateInputGainLeft writing the low nibble. The three shadow writes are now volLine, volMic and volCD .reg.right = gainValue, and the rebuilt function emits the reference's and byte ptr [0x4022], 0F0h / or byte ptr [0x4022], dl and the matching pairs at 0x4025 and 0x4024, together with the and dl, 0Fh truncation the 4-bit field produces and that the old & ES_VOLUME_BITS produced by hand. The same two code-generation residuals as the left method: the omitted movzx before out dx, al, and one copy of the field value where the reference keeps two. Rebuilt size 216 against the reference's 232."
         ],
         "status": "agreed"
       },
@@ -112,7 +114,7 @@
         "-[ES1x88AudioDriver updateInputGainRight]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-7",
+      "reviewer": "Pat Raynor",
       "size": 229,
       "source_line": 350,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
@@ -127,7 +129,7 @@
         ],
         "reasons": [
           "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
-          "Task 7 read this function instruction by instruction against the reference and enumerated its divergences; Task 8 changed the source to account for each, rebuilt on the Rhapsody guest and re-checked. Finding 10 resolved: the method computes and stores the negated flag (!isOutputMuted) and carries the D1h and D3h speaker commands inside their own branches, rather than a single trailing outb of a speakerCommand variable. Rebuilt size 532 against the reference's 552."
+          "read instruction by instruction against the reference. Finding 10 has two halves and the Task 8 fix-review pass had to finish the first. The D1h and D3h speaker commands were already inside their own branches, joining at out dx, al, matching the reference at 3613 and 3627. The negated flag was not: with the single trailing outb inside each arm, enableOutput had one use and our gcc folded the ! into a reversed branch, emitting test dl, dl / jne with no sete and no stack slot, where the reference emits sete al / mov byte ptr [ebp-4], al at 3129-3132 and re-tests at cmp byte ptr [ebp-4], 0 (3600). The speaker write is now a second if (enableOutput) after the mixer block, which is what makes the flag live across it. The rebuilt function emits sete bl, tests it for the mixer block and re-tests it with test bl, bl before the D1h/D3h pair, reproducing the reference's shape. Residual: our gcc keeps the flag in bl where the reference spills it to [ebp-4], and omits the movzx before out dx, al. Both are allocation and code generation, not source. Rebuilt size 528 against the reference's 552."
         ],
         "status": "agreed"
       },
@@ -159,12 +161,12 @@
       "names": [
         "-[ES1x88AudioDriver updateOutputAttenuationLeft]"
       ],
-      "reason": null,
+      "reason": "divergences.md Findings 5 and 15. Finding 15 is resolved in source: attenuation is unsigned int, so the division emits xor edx, edx / div ecx at 3696-3698 as the reference does. Finding 5 is now settled and also resolved in source: this pass's rebuild establishes that the reference's paired memory read-modify-write comes from a bitfield member store, not from a masked expression, so the four shadow writes are now volCD, volMaster, volLine and volVoc .reg.left = volumeValue. The rebuilt function emits and byte ptr [0x4024], 0Fh / or byte ptr [0x4024], al and the matching pairs at 0x4020, 0x4022 and 0x4023, in the reference's order and with the reference's masks. Accepted residual: our gcc reassociates the attenuation arithmetic. The reference folds the offset into the first address computation, lea edx, [edx+edx*2+0FCh] then lea edx, [edx+edx*4]; ours distributes it into the second, lea edx, [edx+edx*2] then lea edx, [edx+edx*4+4ECh]. The computed values are identical. Two source forms were built against this: a named unsigned intermediate for attenuation*3+252, and a further split putting the multiply by 5 in its own statement. Neither blocked the fold, and the second was further from the reference because it also dropped the spill store the reference emits, so the single-expression form was kept. No source form that reproduces the reference's fold could be found. Rebuilt size 356 against the reference's 368.",
       "reviewer": "Pat Raynor",
       "size": 367,
-      "source_line": 444,
+      "source_line": 445,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4020,
@@ -183,12 +185,12 @@
       "names": [
         "-[ES1x88AudioDriver updateOutputAttenuationRight]"
       ],
-      "reason": null,
+      "reason": "divergences.md Findings 5 and 15, as in updateOutputAttenuationLeft. Finding 15 is resolved in source: attenuation is unsigned int and the division emits xor edx, edx / div ecx. Finding 5 is resolved in source: the four shadow writes are now volCD, volMaster, volLine and volVoc .reg.right = volumeValue, and the rebuilt function emits and byte ptr [0x4024], 0F0h / or byte ptr [0x4024], al and the matching pairs at 0x4020, 0x4022 and 0x4023, with the and al, 0Fh truncation the 4-bit field produces. The separate volumeValue = volumeValue & ES_VOLUME_BITS statement is gone; the bitfield store emits that mask itself. Accepted residual: the same arithmetic reassociation as the left method. The reference emits lea edx, [edx+edx*2+0FCh] then lea edx, [edx+edx*4]; ours emits lea edx, [edx+edx*2] then lea edx, [edx+edx*4+4ECh]. The computed values are identical, two source forms were built and neither blocked the fold, and no source form that reproduces the reference's fold could be found. Rebuilt size 356 against the reference's 368.",
       "reviewer": "Pat Raynor",
       "size": 367,
-      "source_line": 484,
+      "source_line": 483,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4388,
@@ -198,7 +200,7 @@
           "angr"
         ],
         "reasons": [
-          "Finding 11 resolved in source, all three inverted predicates corrected and verified in the rebuilt disassembly; the entry is intentional-mismatch for the reference's cached (channelCount == 2) boolean and its paired or/and IRQ and DMA byte construction. See the reason field.",
+          "Finding 11 resolved in source, all three inverted predicates corrected and verified in the rebuilt disassembly; the entry is intentional-mismatch for the cached (channelCount == 2) boolean and for the two control bytes whose bitfield decomposition the binary does not determine. See the reason field.",
           "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
         ],
         "status": "agreed"
@@ -207,10 +209,10 @@
       "names": [
         "-[ES1x88AudioDriver configureHardwareForDataTransfer:]"
       ],
-      "reason": "divergences.md Finding 11, resolved in source: all three inverted predicates are corrected. currentDMADirection == DMA_DIRECTION_IN now selects 0Eh for the B8h write and the and 0F8h mask, and the mode-command group is chosen on NX_SoundStreamDataEncoding_Linear8; the rebuilt function emits mov al, 0Eh on the IN arm and mov al, 4 on the other, matching the reference at 4576 and 4614. The B6h write is now gated on == DMA_DIRECTION_OUT so it emits cmp 1 as the reference does at 5292. Accepted residual: the reference caches (channelCount == 2) as a boolean in a stack slot at 4500-4511 and builds the IRQ and DMA control bytes with paired or/and bit operations at 5490-5525 and 5600-5638, where our source tests channelCount directly and assigns whole values. Both are the bitfield idiom Finding 5 leaves open, and reproducing them needs Apple's declarations rather than the binary. Rebuilt size 1160 against the reference's 1328.",
+      "reason": "divergences.md Finding 11, resolved in source: all three inverted predicates are corrected. currentDMADirection == DMA_DIRECTION_IN now selects 0Eh for the B8h write and the and 0F8h mask, and the mode-command group is chosen on NX_SoundStreamDataEncoding_Linear8; the rebuilt function emits mov al, 0Eh on the IN arm and mov al, 4 on the other, matching the reference at 4576 and 4614. The B6h write is gated on == DMA_DIRECTION_OUT so it emits cmp 1 as the reference does at 5292. Accepted residual: the reference caches (channelCount == 2) as a boolean in a stack slot at 4500-4511 where our source tests channelCount directly, and it builds the IRQ and DMA control bytes with paired bit operations on a local byte - or dl, 4 / and dl, 0F7h at 5490-5493, and byte ptr [ebp-28h], 0FBh / or byte ptr [ebp-28h], 8 at 5618-5622 - where our source assigns whole values. The Task 8 fix-review pass settled what produces that form: a bitfield member store. The earlier claim here, that reproducing it needs Apple's declarations rather than the binary, is withdrawn; the same rebuild reproduces the form for the mixer shadows from bitfield members alone. What blocks it here is narrower. Unlike the mixer shadows, the binary does not determine the field decomposition of these two control bytes: or dl, 50h at 5525 sets two bits in one instruction, and a single two-bit field cannot be told apart from two one-bit fields. The type would be invented rather than derived, so it was not written. Rebuilt size 1160 against the reference's 1328.",
       "reviewer": "Pat Raynor",
       "size": 1325,
-      "source_line": 527,
+      "source_line": 525,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "intentional-mismatch"
     },
@@ -233,7 +235,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 41,
-      "source_line": 704,
+      "source_line": 702,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -256,7 +258,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 41,
-      "source_line": 710,
+      "source_line": 708,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -280,7 +282,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1578,
-      "source_line": 716,
+      "source_line": 714,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -303,7 +305,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 540,
-      "source_line": 881,
+      "source_line": 879,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -326,7 +328,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 48,
-      "source_line": 944,
+      "source_line": 942,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -372,7 +374,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 938,
+      "source_line": 936,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -396,7 +398,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 360,
-      "source_line": 964,
+      "source_line": 962,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -417,12 +419,12 @@
       "names": [
         "-[ES1x88AudioDriver setAnalogInputSource:]"
       ],
-      "reason": null,
+      "reason": "divergences.md Finding 13, resolved in source: the method tests 0C8h then 0C9h with the default sharing the microphone arm, and keeps the sourceValue local that the reference holds in cl. Accepted residual, and the reason this entry is no longer assembly-matched: the rebuilt function is 104 bytes against the reference's 136 and the two do not agree instruction for instruction. The reference programs the mixer inside each arm and joins only at mov al, cl (8417); our build hoists the whole port sequence into a shared tail and joins at its head. Our gcc also allocates sourceValue to bl, paying a prologue push ebx and an epilogue mov ebx, [ebp-4], where the reference uses cl and saves nothing. Writing the port sequence out inside all three arms was built and the rebuilt function came out byte-identical, because our gcc cross-jumps it straight back, so no source form reaches the reference's shape. Task 8 advanced this entry to assembly-matched on the strength of that negative experiment; a 24 percent size gap and a different join point do not support that status, so it is downgraded here.",
       "reviewer": "Pat Raynor",
       "size": 133,
-      "source_line": 998,
+      "source_line": 996,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 8496,
@@ -443,7 +445,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 1030,
+      "source_line": 1028,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -466,7 +468,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 25,
-      "source_line": 1035,
+      "source_line": 1033,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -489,7 +491,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 53,
-      "source_line": 1042,
+      "source_line": 1040,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -513,7 +515,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 32,
-      "source_line": 1053,
+      "source_line": 1051,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },
@@ -536,7 +538,7 @@
       "reason": null,
       "reviewer": "binrecon-task-7",
       "size": 12,
-      "source_line": 1061,
+      "source_line": 1059,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
       "status": "assembly-matched"
     },

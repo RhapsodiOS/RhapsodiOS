@@ -512,13 +512,13 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build READ ID command (0x0A)
-	cmdBuffer[0x24] = 0x0A |                        // READ ID command
+	cmdBuffer[0x0c] = 0x0A |                        // READ ID command
 	                  ((_writePrecomp & 1) << 6);   // Write precomp flag (offset 0x198)
-	cmdBuffer[0x24] = cmdBuffer[0x24] & 0x80 | 10 | ((_writePrecomp & 1) << 6);
-	
+	cmdBuffer[0x0c] = cmdBuffer[0x0c] & 0x80 | 10 | ((_writePrecomp & 1) << 6);
+
 	// Set head selection
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 0xfb;       // Clear bit 2
-	cmdBuffer[0x25] = cmdBuffer[0x25] | ((head & 1) << 2);  // Head select
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 0xfb;       // Clear bit 2
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] | ((head & 1) << 2);  // Head select
 	
 	// Set command parameters
 	*(unsigned *)(cmdBuffer + 4) = 20000;           // Timeout (20000ms)
@@ -566,12 +566,12 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build RECALIBRATE command (0x07)
-	cmdBuffer[0x24] = 7;  // RECALIBRATE command
-	
+	cmdBuffer[0x0c] = 7;  // RECALIBRATE command
+
 	// Get unit number and set in command byte 1
 	unit = [self unit];
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 3;  // Clear upper bits
-	cmdBuffer[0x25] = (cmdBuffer[0x25] & 0xfc) | (unit & 3);  // Set unit bits
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 3;  // Clear upper bits
+	cmdBuffer[0x0d] = (cmdBuffer[0x0d] & 0xfc) | (unit & 3);  // Set unit bits
 	
 	// Set command parameters
 	*(unsigned *)(cmdBuffer + 4) = 20000;   // Timeout (20000ms)
@@ -607,14 +607,14 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build SEEK command (0x0F)
-	cmdBuffer[0x24] = 0x0F;  // SEEK command
-	
+	cmdBuffer[0x0c] = 0x0F;  // SEEK command
+
 	// Set head and unit in command byte 1
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 3;  // Clear upper bits
-	cmdBuffer[0x25] = cmdBuffer[0x25] | ((head & 1) << 2);  // Set head bit
-	
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 3;  // Clear upper bits
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] | ((head & 1) << 2);  // Set head bit
+
 	// Set track/cylinder in command byte 2
-	cmdBuffer[0x26] = (unsigned char)track;
+	cmdBuffer[0x0e] = (unsigned char)track;
 	
 	// Get FDC number from offset 400 (_fdcNumber), default to 2 if 0
 	fdcNumber = _fdcNumber;

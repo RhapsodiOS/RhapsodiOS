@@ -43,7 +43,7 @@ SYMDIR=$(SYMROOT)/syms
 #
 # Directories containing 'mode-dependent' source.
 #
-SOURCE_DIRS= User Kernel ppc i386 eisa pci
+SOURCE_DIRS= User Kernel ppc i386 eisa pci pcmcia
 
 AR= ar
 LD= ld

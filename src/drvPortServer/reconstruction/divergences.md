@@ -4816,3 +4816,122 @@ not size.
 driver — including `__text`, where 113 function extents are already mapped in
 `ledger.json`. That is a whole-binary relayout and it needs its own pass with the ledger
 re-validated afterwards, not a tail-end edit here.
+
+## 18. Whole-`__text` instruction comparison — 47 of 111 functions match
+
+The `waiting` read in §17's residual is repaired: `- unlock` now reads the flag into a local
+`char waiters` before testing it, which is what produces the reference's
+`mov al, [ebx+0x12] / test al, al` instead of our `cmp byte ptr [ebx+0x12], 0`. Needs a
+rebuild to confirm.
+
+Chasing "and any other differences" turned into the first whole-`__text` comparison this
+reconstruction has had, so the result is recorded here rather than buried in a commit
+message.
+
+**Method.** Disassemble every function present in both binaries, normalise away absolute
+addresses and immediates above 0x1000 (our build's `-g` shifts every address), strip
+trailing padding `nop`s, and compare the mnemonic+operand-shape sequences. Function extents
+come from the symbol table; our binary's stabs entries share addresses with the real
+symbols, so boundaries are taken only from names that exist in both.
+
+**Result: 111 functions compared, 47 identical, 64 differing.**
+
+This is a materially harder gate than the ledger's per-entry statuses, which were set by
+reading the reference alone. A `control-flow-confirmed` entry can still differ instruction
+for instruction — the whole point of that status was that nobody had a rebuilt binary to
+check against. Now there is one.
+
+### What the divergences actually are
+
+Two were sampled in detail. Neither is a logic error; both are code *layout*.
+
+`-[IOPortSession setState:mask:]` (ref 26 insns, ours 20). The reference emits the
+early-out as a **separate tail block** after the epilogue:
+
+```
+ref:   cmp dword ptr [eax+8], 0 / jne <tail>     ... <tail>: mov eax,[edx+4]
+                                                             mov eax,[eax+8]
+                                                             mov esp,ebp / pop ebp / ret
+ours:  mov eax,[edx+8] / test eax,eax / jne <shared epilogue>
+```
+
+`-[IOPortSession(IOPortSessionKern) getIntValues:…]` (ref 28, ours 27) shows the *same*
+class in the opposite direction — there the reference inlines the early-out at the top and
+ours puts it in a tail block.
+
+So the residual work is per-function: expressing each early-return in the source form that
+makes this gcc lay the blocks out the way Apple's did, plus matching its load and register
+scheduling. It is not a bulk transform, and it is not something the warning list or the
+symbol diff can find — only this comparison can.
+
+### The 64
+
+      +[IOPortSession(IOPortSessionKern) iopsKernClose           ref   25 / ours   24
+      +[IOPortSession(IOPortSessionKern) iopsKernDequeue         ref   74 / ours   92
+      +[IOPortSession(IOPortSessionKern) iopsKernEnqueue         ref   71 / ours   89
+      +[IOPortSession(IOPortSessionKern) iopsKernFree]           ref   36 / ours   35
+      +[IOPortSession(IOPortSessionKern) iopsKernInitIoctl       ref   55 / ours   49
+      +[IOPortSession(IOPortSessionKern) iopsKernMsgIoctl        ref  200 / ours  207
+      +[IOPortSession(IOPortSessionKern) iopsKernOpen            ref   26 / ours   27
+      +[IOPortSession(IOPortSessionKern) iopsServerIoctlCommand  ref  107 / ours  104
+      +[PDPseudo probe                                           ref   24 / ours   25
+      +[PortServer probe                                         ref   64 / ours   61
+      -[AppleIOPSSafeCondLock lockTry]                           ref   26 / ours   25
+      -[AppleIOPSSafeCondLock lockWhen                           ref   48 / ours   49
+      -[AppleIOPSSafeCondLock lock]                              ref   60 / ours   53
+      -[AppleIOPSSafeCondLock setCondition                       ref   16 / ours   16
+      -[AppleIOPSSafeCondLock unlock]                            ref   36 / ours   35
+      -[IOPortSession acquire                                    ref   22 / ours   20
+      -[IOPortSession acquireAudit                               ref   22 / ours   20
+      -[IOPortSession dequeueData                                ref   37 / ours   32
+      -[IOPortSession dequeueEvent                               ref   38 / ours   31
+      -[IOPortSession enqueueData                                ref   40 / ours   33
+      -[IOPortSession enqueueEvent                               ref   38 / ours   31
+      -[IOPortSession executeEvent                               ref   26 / ours   20
+      -[IOPortSession free]                                      ref   30 / ours   30
+      -[IOPortSession getState]                                  ref   13 / ours   13
+      -[IOPortSession initForDevice                              ref  146 / ours  146
+      -[IOPortSession locked]                                    ref   18 / ours   18
+      -[IOPortSession name]                                      ref   20 / ours   20
+      -[IOPortSession nextEvent]                                 ref   21 / ours   22
+      -[IOPortSession release]                                   ref   26 / ours   26
+      -[IOPortSession requestEvent                               ref   26 / ours   20
+      -[IOPortSession setState                                   ref   26 / ours   20
+      -[IOPortSession watchState                                 ref   33 / ours   28
+      -[IOPortSession(IOPortSessionKern) getCharValues           ref   28 / ours   27
+      -[IOPortSession(IOPortSessionKern) getIntValues            ref   28 / ours   27
+      -[IOPortSession(IOPortSessionKern) setCharValues           ref   29 / ours   27
+      -[IOPortSession(IOPortSessionKern) setIntValues            ref   28 / ours   27
+      -[IOPortSession(Private) acquirePort                       ref  175 / ours  175
+      -[IOPortSession(Private) getType                           ref   89 / ours   91
+      -[IOPortSession(Private) releasePort]                      ref   83 / ours   86
+      -[IOPortSession(Private) requestType                       ref  181 / ours  163
+      -[PDPseudo initFromDeviceDescription                       ref   52 / ours   53
+      -[PortServer initFromDeviceDescription                     ref  159 / ours  167
+      -[PortServer setIntValues                                  ref   61 / ours   64
+      _ttyiops_dcddelay                                          ref   26 / ours   28
+      _ttyiops_attachDevice                                      ref   30 / ours   39
+      _ttyiops_convertFlowCtrl                                   ref   32 / ours   32
+      _ttyiops_start                                             ref   34 / ours   30
+      _ttyiops_stop                                              ref   53 / ours   52
+      _ttyiops_rxFunc                                            ref   54 / ours   57
+      _ttyiops_waitForDCD                                        ref   56 / ours   52
+      _ttyiops_optimiseInput                                     ref   71 / ours   70
+      _ttyiops_procEvent                                         ref   75 / ours   82
+      _ttyiops_control_ioctl                                     ref   85 / ours  110
+      _ttyiops_txload                                            ref   92 / ours   88
+      _portServerioctl                                           ref   96 / ours  104
+      _ttyiops_getData                                           ref   96 / ours   95
+      _ttyiops_mctl                                              ref  115 / ours  116
+      _ttyiops_txFunc                                            ref  121 / ours  122
+      _ttyiops_close                                             ref  143 / ours  137
+      _ttyiops_init                                              ref  187 / ours  165
+      _ttyiops_open                                              ref  194 / ours  189
+      _ttyiops_acquireSession                                    ref  195 / ours  189
+      _ttyiops_param                                             ref  199 / ours  190
+      _ttyiops_ioctl                                             ref  227 / ours  213
+
+**Not repaired.** Recorded as the measured state. The `waiting` read is the only one of the
+64 addressed in this pass; the rest want a function-at-a-time pass with a rebuild between
+batches, and `ledger.json` should be re-scored against this comparison rather than against
+a reading of the reference alone.

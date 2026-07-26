@@ -240,6 +240,8 @@ id AIOPSSCL_unlock(id lock)
  */
 - unlock
 {
+    char waiters;
+
     /* Acquire the sleep interlock */
     simple_lock((simple_lock_t)&sleep_interlock);
 
@@ -249,8 +251,12 @@ id AIOPSSCL_unlock(id lock)
     /* Clear the lock held flag */
     want_lock = 0;
 
-    /* If there are waiters, wake them */
-    if (waiting != '\0') {
+    /* If there are waiters, wake them.  The reference loads the flag into a
+     * register and tests it (mov al, [ebx+0x12] / test al, al) rather than
+     * comparing it in place, so it is read into a local here.
+     */
+    waiters = waiting;
+    if (waiters != '\0') {
         /* Clear the waiter flag */
         waiting = 0;
 

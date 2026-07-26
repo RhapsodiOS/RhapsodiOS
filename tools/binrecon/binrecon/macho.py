@@ -9,7 +9,6 @@ from .identity import identify
 
 
 MH_MAGIC = 0xFEEDFACE
-CPU_TYPE_I386 = 7
 MH_OBJECT = 1
 MH_EXECUTE = 2
 MH_PRELOAD = 5

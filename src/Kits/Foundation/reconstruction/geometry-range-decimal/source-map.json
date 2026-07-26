@@ -1,5 +1,25 @@
 {
   "boundary_disputed": [],
+  "by_module": {
+    "NSDecimal.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 12,
+      "unmapped": 0
+    },
+    "NSGeometry.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 26,
+      "unmapped": 0
+    },
+    "NSRange.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 5,
+      "unmapped": 0
+    }
+  },
   "duplicate_candidates": [],
   "mapped": [
     {

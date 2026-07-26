@@ -20,6 +20,8 @@ LC_UNIXTHREAD = 5
 S_ZEROFILL = 0x1
 S_GB_ZEROFILL = 0xC
 S_THREAD_LOCAL_ZEROFILL = 0x12
+FAT_MAGIC = 0xCAFEBABE
+_FAT_ARCH = struct.Struct(">5I")
 
 _ZERO_FILL_TYPES = frozenset(
     (S_ZEROFILL, S_GB_ZEROFILL, S_THREAD_LOCAL_ZEROFILL)
@@ -118,12 +120,72 @@ def _command_record(
     }
 
 
-def read_macho(path: Path) -> dict[str, Any]:
+def _architecture_name(cpu_type: int) -> str:
+    """Name a fat entry's architecture from its CPU type alone.
+
+    ``architecture_for_cpu_type`` requires the caller to already know the byte
+    order and rejects a mismatch, but a fat table entry carries only the CPU
+    type — the slice's own header decides its endianness. Try both.
+    """
+    for endianness in ("little", "big"):
+        try:
+            return architecture_for_cpu_type(cpu_type, endianness).name
+        except ArchitectureError:
+            continue
+    return f"cpu-type-{cpu_type}"
+
+
+def is_fat(data: bytes) -> bool:
+    """Report whether an image is a fat container rather than a thin Mach-O."""
+    if len(data) < 8:
+        return False
+    (magic,) = struct.unpack_from(">I", data, 0)
+    return magic == FAT_MAGIC
+
+
+def extract_slice(data: bytes, architecture: str) -> bytes:
+    """Return the bytes of a fat container's named architecture slice.
+
+    A slice is a complete Mach-O whose internal offsets are relative to its own
+    start, so the returned bytes parse exactly like a thin image.
+    """
+    if not is_fat(data):
+        raise MachOFormatError("input is not a fat Mach-O container")
+    (_, count) = struct.unpack_from(">2I", data, 0)
+    if 8 + count * _FAT_ARCH.size > len(data):
+        raise MachOFormatError("fat header declares more slices than the file holds")
+    present = []
+    for index in range(count):
+        cpu_type, _subtype, offset, size, _align = _FAT_ARCH.unpack_from(
+            data, 8 + index * _FAT_ARCH.size
+        )
+        name = _architecture_name(cpu_type)
+        present.append(name)
+        if name != architecture:
+            continue
+        if offset + size > len(data):
+            raise MachOFormatError(
+                f"fat slice {name} runs past end of file at offset {offset}"
+            )
+        return data[offset:offset + size]
+    raise MachOFormatError(
+        f"fat container has no {architecture} slice; it holds "
+        + ", ".join(sorted(present))
+    )
+
+
+def load_image(path: Path) -> tuple[bytes, dict[str, Any]]:
     identity = identify(Path(path))
     data = identity.path.read_bytes()
     digest = hashlib.sha256(data).hexdigest().upper()
     if len(data) != identity.size or digest != identity.sha256:
         raise MachOFormatError(f"input changed while reading: {identity.path}")
+
+    if is_fat(data):
+        raise MachOFormatError(
+            f"{identity.path} is a fat Mach-O container; extract a thin slice "
+            "first with 'binrecon extract-slice' and point the profile at that"
+        )
 
     architecture = _select_architecture(data)
     layouts = architecture.layouts
@@ -315,7 +377,7 @@ def read_macho(path: Path) -> dict[str, Any]:
     sections = [
         {key: section[key] for key in section_fields} for section in raw_sections
     ]
-    return {
+    document = {
         "schema_version": "analysis-v1",
         "input": {
             "path": str(identity.path),
@@ -408,6 +470,13 @@ def read_macho(path: Path) -> dict[str, Any]:
             }
         },
     }
+    return data, document
+
+
+def read_macho(path: Path) -> dict[str, Any]:
+    """Return the analysis document for an image, discarding its raw payload."""
+    _payload, document = load_image(path)
+    return document
 
 
 _MODULE_INFO_SECTION = "__OBJC,__module_info"

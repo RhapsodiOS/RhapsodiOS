@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
-from binrecon.macho import objc_method_index, read_macho
+from binrecon.macho import extract_slice, load_image, objc_method_index, read_macho
 from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
@@ -19,7 +20,8 @@ from binrecon.runner import RunnerError, run_analysis
 from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map")
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
+            "extract-slice")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,6 +69,10 @@ def build_parser() -> argparse.ArgumentParser:
     source_map.add_argument("--scope-to-objc", action="store_true",
                             help="restrict the analysis to the Objective-C methods "
                                  "found by --objc-methods")
+    extract = subparsers.add_parser("extract-slice")
+    extract.add_argument("--input", required=True)
+    extract.add_argument("--architecture", required=True)
+    extract.add_argument("--output", required=True)
 
     return parser
 
@@ -202,6 +208,19 @@ def main(argv=None) -> int:
     if args.command == "source-map":
         try:
             return _source_map_command(args)
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "extract-slice":
+        try:
+            payload = extract_slice(
+                Path(args.input).read_bytes(), args.architecture
+            )
+            Path(args.output).write_bytes(payload)
+            digest = hashlib.sha256(payload).hexdigest().upper()
+            print(f"wrote {args.output} size={len(payload)} sha256={digest}")
+            return 0
         except (OSError, ValueError, ValidationError) as error:
             print(f"binrecon: {error}", file=sys.stderr)
             return 1

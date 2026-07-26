@@ -419,11 +419,13 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     /* Try to initialize PnP BIOS */
     pnpBios = [[PnPBios alloc] init];
     if (pnpBios == nil) {
-        /* No BIOS support - fall back to manual enumeration */
-        result = [self initializeNoBIOS];
-        if (result == NO) {
-            return NO;
-        }
+        /*
+         * No BIOS support - fall back to manual enumeration.  There is
+         * nothing to test here: initializeNoBIOS returns (maxPnPCard != 0),
+         * so the common test below decides, once the read port has been
+         * logged as the reference does.
+         */
+        [self initializeNoBIOS];
     } else {
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
@@ -461,11 +463,12 @@ static int isolateCardsWithReadPort(unsigned short readPort)
              * pnpReadPort.  Returning here instead would skip setReadPort:,
              * the device table and the enumeration loop, so any cards it found
              * would be isolated and then silently discarded.
+             *
+             * Its return value is (maxPnPCard != 0), which the common test
+             * below already makes, so it is not checked here -- that keeps the
+             * read port logged on this path exactly as the reference logs it.
              */
-            result = [self initializeNoBIOS];
-            if (result == NO) {
-                return NO;
-            }
+            [self initializeNoBIOS];
         }
         else {
             /* BIOS call succeeded - extract configuration from result */

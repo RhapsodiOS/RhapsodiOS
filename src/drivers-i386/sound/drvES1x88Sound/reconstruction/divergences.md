@@ -1202,17 +1202,22 @@ errors, repaired in their own commit before any divergence work:
 
 ## Gate results
 
-| Gate | Baseline | After fix pass | After review pass |
-| --- | --- | --- | --- |
-| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0` | `EXIT=0`, `fail=0` |
-| `missing_strings` | 0 | 0 | 0 |
-| `missing_symbols` | 0 | 0 | 0 |
-| `extra_strings` | 12 | **0** | 0 |
-| `extra_symbols` | 38 | 30 | 30 |
-| staged `_reloc` | 190328 bytes | 179264 bytes | 179332 bytes |
-| source-map buckets | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 |
-| `load_source_map` | not run | `source map OK` | `source map OK` |
-| `binrecon ledger` | not run | accepted, `entries=25` | accepted, `entries=25` |
+| Gate | Baseline | After fix pass | After review pass | After selector-reference pass |
+| --- | --- | --- | --- | --- |
+| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0` | `EXIT=0`, `fail=0` | `EXIT=0`, `fail=0` |
+| `missing_strings` | 0 | 0 | 0 | 0 |
+| `missing_symbols` | 0 | 0 | 0 | 0 |
+| `extra_strings` | 12 | **0** | 0 | 0 |
+| `extra_symbols` | 38 | 30 | 30 | 30 |
+| staged `_reloc` | 190328 bytes | 179264 bytes | 179244 bytes | 179156 bytes |
+| source-map buckets | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 |
+| `load_source_map` | not run | `source map OK` | `source map OK` | `source map OK` |
+| `binrecon ledger` | not run | accepted, `entries=25` | accepted, `entries=25` | accepted, `entries=25` |
+
+The "After review pass" `_reloc` figure was recorded as 179332; the artifact that pass
+staged is 179244 bytes. That was a transcription slip in this table alone — the `__text`
+figure and every per-function size in this document match the artifact exactly — and it is
+corrected above.
 
 All 30 remaining `extra_symbols` are stabs from our unstripped build: `''`, the two source
 filenames, the `ioPorts.h` and `ES1x88AudioDriver_instance.m` paths, and the `:fNN` N_FUN
@@ -1483,3 +1488,88 @@ The review pass was asked to correct this report's citation of the `IO_16Bit` bu
 `SoundBlaster16.m:270` to `:269`. It was checked directly: the file has no CRLF, and the
 sole occurrence of `IO_16Bit` is on line 270. **`:270` is correct and was left alone.** The
 bug itself belongs to Task 10 and was not touched.
+
+# Selector-reference pass: the four `objc_msgSend` calls `reset` was missing
+
+`reset` was `assembly-matched`, but our build omitted four `objc_msgSend` calls the
+reference makes. The evidence is an ordered comparison of the `__OBJC,__message_refs`
+loads per function across both binaries. Both sections sit at `0x6000` and are 132 bytes,
+and the 33 slots hold the same selectors in the same order except that `free` and
+`initFromDeviceDescription:` are swapped at `0x6010`/`0x6014`, so the addresses are
+directly comparable. `0x6018` is `deviceDescription` and `0x601c` is `channelList` on both
+sides.
+
+Before:
+
+```
+REF   0x601c 0x6018 0x600c 0x6018 0x6020 0x6018 0x6024 0x6028 0x601c 0x6018 0x602c ...  (22)
+OURS  0x6018 0x601c        0x600c        0x6020 0x6024 0x6028               0x602c ...  (18)
+```
+
+The reference sends `deviceDescription` five times and `channelList` twice; our source
+cached both in locals at `:85`–`:86` and sent them twice and once. `gcc` cannot elide an
+`objc_msgSend` — it is an opaque external call — so this was a source-construct
+difference, not code generation, and it accounted exactly for the entry's `call: -4` /
+`push: -8` deficit, which the ledger reason had misattributed to the systemic `movzx` and
+tail-merge shortfall.
+
+Apple caches nothing here. Reading the reference's load order outward — `gcc` loads the
+outer selector first, as Finding 1's quoted block shows — the groups are
+`[[self deviceDescription] channelList]`, `[[self deviceDescription] numChannels]`,
+`[[self deviceDescription] interrupt]`, then `setName:` and `setDeviceKind:`, then a second
+`[[self deviceDescription] channelList]` for `channelList[1]`. The two locals were dropped
+and the four sites written out. This is Finding 1's own observation applied to the rest of
+the method; Task 8 had fixed only the site Finding 1 named.
+
+`configureHardwareForDataTransfer:` had the same defect at `:541` and the same fix applies:
+one missing `0x6018` send, now `[[self deviceDescription] channelList]` and
+`[[self deviceDescription] interrupt]`.
+
+After, both functions agree entry for entry:
+
+```
+reset                             REF/OURS  0x601c 0x6018 0x600c 0x6018 0x6020 0x6018 0x6024
+                                            0x6028 0x601c 0x6018 0x602c 0x6034 0x6030 0x6018
+                                            0x6038 0x603c 0x6040 0x6044 0x6048 0x604c 0x6048
+                                            0x6038                                       (22)
+configureHardwareForDataTransfer: REF/OURS  0x601c 0x6018 0x6020 0x6018 0x6064 0x6068 0x606c
+```
+
+No other function in the binary differs in its selector sequence, before or after.
+
+`reset`'s `call` and `push` counts are now identical to the reference's, 33 and 46, and its
+`out` and `lock inc` counts already were. What remains is the codegen classes already
+recorded: `mov` −24, `nop` −7, `jmp` −5, `xor` −3, `movzx` −2, and the branch-form shifts
+that follow from tail merging. Rebuilt size 1008 against the reference's 1096; it fell by
+20 because the two stack locals went with the fix.
+
+## One new residual in `configureHardwareForDataTransfer:`
+
+The selector fix closed the `objc_msgSend` gap but not the port-write gap: the rebuilt
+function emits 26 `out` against the reference's 27. The whole of the difference is the
+`B8h` write. The reference emits it **inside both arms** of the direction test —
+
+```
+4540: jne  4580                    ; not IN
+4542: mov  dx, [0x400c]            ; IN arm
+4549: mov  al, 0xb8
+4551: out  dx, al
+4559: push 0x19                    ; IODelay(25)
+4576: mov  al, 0xe                 ; ES_MODE_INPUT
+4578: jmp  4616
+4580: mov  dx, [0x400c]            ; OUT arm
+4587: mov  al, 0xb8
+4589: out  dx, al
+4597: push 0x19                    ; IODelay(25)
+4614: mov  al, 4                   ; ES_MODE_OUTPUT
+4616: out  dx, al                  ; shared
+```
+
+— joining only at the shared `out` at 4616. Our source writes `B8h` and delays once ahead
+of the test, so our build emits that block once, costing one `out`, one `IODelay` call, one
+`push` and one `lock inc`. Whether Apple's source duplicated the two statements into each
+arm or Apple's `gcc` duplicated the block cannot be told from the binary, so the source was
+left alone rather than restructured on a guess. The entry is already
+`intentional-mismatch`; its reason now names this alongside the `(channelCount == 2)` stack
+boolean and the paired IRQ/DMA byte construction. Rebuilt size 1180 against the
+reference's 1328.

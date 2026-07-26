@@ -558,6 +558,7 @@ public final class ExportAnalysis extends GhidraScript {
         while (sources.hasNext()) {
             monitor.checkCancelled();
             Address source = sources.next();
+            if (!inScope(source.getOffset())) continue;
             for (Reference reference : referenceManager.getReferencesFrom(source)) {
                 Address target = reference.getToAddress();
                 Long normalizedTarget = target.isMemoryAddress() ? target.getOffset() : null;

@@ -476,6 +476,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
 
     references = []
     for source in idautils.Heads():
+        if not _in_scope(source, scope):
+            continue
         for target in idautils.CodeRefsFrom(source, False):
             references.append({"address": source, "target": target, "kind": "code"})
         for target in idautils.DataRefsFrom(source):

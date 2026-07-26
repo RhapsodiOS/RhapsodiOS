@@ -63,46 +63,6 @@
 - (const char *)stringFromReturn : (IOReturn)rtn;
 - (void)unlockLogicalDisks;
 
-/*
- * Private methods to get and set disk parameters.
- */
-
-/*
- * Eject method.
- */
-
-/*
- * Get/set parameters used by subclasses.
- */
-
-/*
- * Drive association.
- */
-
-/*
- * For gathering cumulative statistics.
- */
-
-/*
- * Register a connection with LogicalDisk.
- */
-
-/*
- * Lock/Unlock device for LogicalDisk-specific methods.
- */
-
-/*
- * Convert an IOReturn to text.
- */
-
-/*
- * Convert an IOReturn to errno.
- */
-
-/*
- * Free method.
- */
-
 @end
 
 /* End of IODiskNEW interface. */

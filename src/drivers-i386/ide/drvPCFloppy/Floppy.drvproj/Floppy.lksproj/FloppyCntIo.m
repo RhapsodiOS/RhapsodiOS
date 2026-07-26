@@ -34,6 +34,7 @@ static unsigned char cf2_efifo = 0;
  */
 #define FC_TIMEOUT	1	/* fcWaitPio:/fcWaitIntr:timeout: gave up waiting */
 #define FC_BAD_PHASE	10	/* fcWaitPio: saw the wrong DIO direction (phase error) */
+#define FC_NO_RESULTS	0x12	/* sendCmd: got no result bytes back from the FDC */
 
 @implementation FloppyController(IO)
 
@@ -467,7 +468,8 @@ static unsigned char cf2_efifo = 0;
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if interrupt handled successfully
- *     1 (IO_R_TIMEOUT) if timeout waiting for controller ready
+ *     1 (FC_TIMEOUT) if timeout waiting for controller ready
+ *     otherwise the raw FDC status code fcSendByte: failed with
  *
  * Command parameters structure offsets used:
  *   0x28 - Result bytes buffer (stores interrupt result byte at offset 3)
@@ -496,7 +498,7 @@ static unsigned char cf2_efifo = 0;
 	// Check if we timed out
 	if (retryCount == 10000) {
 		// Timeout - set error flag
-		result = IO_R_TIMEOUT;
+		result = FC_TIMEOUT;
 		goto set_error_flag;
 	}
 
@@ -638,6 +640,7 @@ set_error_flag:
 	unsigned char motorBit;
 	unsigned char dirByte;
 	unsigned char cmdBuffer[96];
+	unsigned char writeProtectBit;
 	IOReturn result;
 	int density;
 
@@ -695,36 +698,28 @@ set_error_flag:
 	// Send the command
 	result = [self sendCmd:cmdBuffer];
 
-	// Check result
-	if (result == IO_R_TIMEOUT) {
-		goto handle_timeout_or_phase_error;
-	} else if (result == IO_R_VM_FAILURE) {  // 10 = phase error
-		goto handle_timeout_or_phase_error;
-	} else if (result != IO_R_SUCCESS) {
-		goto handle_error;
-	}
-
-	// Success path
-	goto get_write_protect_status;
-
-handle_timeout_or_phase_error:
-	if ((result != IO_R_NO_DEVICE) && (result != IO_R_VM_FAILURE)) {
-		goto handle_error;
-	}
-	// Set error flag (bit 0 of _flags)
-	_flags |= 0x01;
-
-handle_error:
-	if (result == IO_R_TIMEOUT) {
+	// Check result: disassembly (0x2c19-0x2c30) branches on the raw FDC
+	// status codes sendCmd: returns, not driverkit constants. FC_TIMEOUT
+	// sets only the timeout flag; FC_NO_RESULTS/FC_BAD_PHASE set only the
+	// controller-hung flag. Any other result (including success) skips
+	// straight to the write-protect check below.
+	if (result == FC_TIMEOUT) {
 		// Set timeout flag (bit 2 of _flags)
 		_flags |= 0x04;
+	} else if (result == FC_NO_RESULTS || result == FC_BAD_PHASE) {
+		// Set error/hung flag (bit 0 of _flags)
+		_flags |= 0x01;
+	} else {
+		// Success path
+		goto get_write_protect_status;
 	}
 
 	// Clear bits 0-1 of status flags
 	*statusFlagsPtr &= 0xfc;
 	// Clear bit 2 (motor status)
 	*statusFlagsPtr &= 0xfb;
-	// Turn off motor
+	// Turn off motor (always returns IO_R_SUCCESS, which is what the
+	// disassembly leaves in eax here)
 	[self doMotorOff:driveNum];
 	return IO_R_SUCCESS;
 
@@ -756,17 +751,22 @@ get_write_protect_status:
 	result = [self sendCmd:cmdBuffer];
 
 	if (result != IO_R_SUCCESS) {
-		return IO_R_SUCCESS;
+		return result;
 	}
 
 	// Clear bit 3 of status flags
 	*statusFlagsPtr &= 0xf7;
 
 	// Extract write protect bit (bit 3 of ST3 at offset 0x40 in cmdBuffer)
-	// and set bit 3 of status flags if write protected
-	*statusFlagsPtr |= (*(unsigned char *)(cmdBuffer + 0x40) >> 3) & 0x08;
+	// and set bit 3 of status flags if write protected. Disassembly
+	// (0x2cca-0x2cd5) leaves this same byte (0 or 8) in eax at the
+	// epilogue instead of an explicit IO_R_SUCCESS; every caller of
+	// getDriveStatus: discards the return value, so this is otherwise
+	// inert, but it is what the reference actually returns.
+	writeProtectBit = (*(unsigned char *)(cmdBuffer + 0x40) >> 3) & 0x08;
+	*statusFlagsPtr |= writeProtectBit;
 
-	return IO_R_SUCCESS;
+	return writeProtectBit;
 }
 
 /*

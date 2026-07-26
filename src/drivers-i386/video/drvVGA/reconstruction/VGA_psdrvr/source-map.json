@@ -20,6 +20,83 @@
       "size": 14
     },
     {
+      "address": 1882201944,
+      "reference_names": [
+        "sub_70301F58"
+      ],
+      "size": 127
+    },
+    {
+      "address": 1882202072,
+      "reference_names": [
+        "sub_70301FD8"
+      ],
+      "size": 96
+    },
+    {
+      "address": 1882202168,
+      "reference_names": [
+        "sub_70302038"
+      ],
+      "size": 7
+    },
+    {
+      "address": 1882202176,
+      "reference_names": [
+        "sub_70302040"
+      ],
+      "size": 521
+    },
+    {
+      "address": 1882202700,
+      "reference_names": [
+        "sub_7030224C"
+      ],
+      "size": 36
+    },
+    {
+      "address": 1882202736,
+      "reference_names": [
+        "sub_70302270"
+      ],
+      "size": 57
+    },
+    {
+      "address": 1882202796,
+      "reference_names": [
+        "sub_703022AC"
+      ],
+      "size": 45
+    },
+    {
+      "address": 1882202844,
+      "reference_names": [
+        "sub_703022DC"
+      ],
+      "size": 29
+    },
+    {
+      "address": 1882202876,
+      "reference_names": [
+        "sub_703022FC"
+      ],
+      "size": 111
+    },
+    {
+      "address": 1882202988,
+      "reference_names": [
+        "sub_7030236C"
+      ],
+      "size": 223
+    },
+    {
+      "address": 1882203212,
+      "reference_names": [
+        "sub_7030244C"
+      ],
+      "size": 58
+    },
+    {
       "address": 1882203272,
       "reference_names": [
         "_Start",
@@ -98,11 +175,39 @@
       "size": 73
     },
     {
+      "address": 1882205164,
+      "reference_names": [
+        "sub_70302BEC"
+      ],
+      "size": 603
+    },
+    {
+      "address": 1882205768,
+      "reference_names": [
+        "sub_70302E48"
+      ],
+      "size": 481
+    },
+    {
       "address": 1882206252,
       "reference_names": [
         "_set_colormap"
       ],
       "size": 196
+    },
+    {
+      "address": 1882206448,
+      "reference_names": [
+        "sub_703030F0"
+      ],
+      "size": 81
+    },
+    {
+      "address": 1882206532,
+      "reference_names": [
+        "sub_70303144"
+      ],
+      "size": 92
     },
     {
       "address": 1882206624,
@@ -138,6 +243,13 @@
         "_write_bpp2packed_to_bpp4planar"
       ],
       "size": 124
+    },
+    {
+      "address": 1882208324,
+      "reference_names": [
+        "sub_70303844"
+      ],
+      "size": 240
     },
     {
       "address": 1882208564,

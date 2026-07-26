@@ -256,6 +256,20 @@
         "_emu486"
       ],
       "size": 8088
+    },
+    {
+      "address": 15640,
+      "reference_names": [
+        "sub_00003D18"
+      ],
+      "size": 81
+    },
+    {
+      "address": 15721,
+      "reference_names": [
+        "sub_00003D69"
+      ],
+      "size": 37
     }
   ]
 }

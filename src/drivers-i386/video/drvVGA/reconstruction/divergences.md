@@ -153,6 +153,31 @@ sizes from symbol gaps — it gives `_VGAUnshieldCursor` 1164 bytes where IDA
 gives 73, because the gap silently absorbed `0x70302BEC` and `0x70302E48`.
 Phase 3a has to cover these sixteen bodies whether or not the map lists them.
 
+### Correction: the partition rule is containment, not naming
+
+§4.3's rule ("a function is an entry IDA names") was drawn from `VGA_reloc`,
+where the unnamed entries really are `_emu486`'s per-opcode jump-table
+fragments. Applied to `VGA_psdrvr` it excluded 2807 of 7057 `__text` bytes of
+ordinary `static` code, including both cursor blitters. The corrected rule
+(§4.3, commit `1055b9cd`): a function is any entry not wholly contained
+within another entry's extent. A contained entry is a basic block of its
+container and is excluded; a standalone unnamed entry is a `static` function
+and is included, under a synthesized `sub_<ADDRESS>` name.
+
+`tools/binrecon/filter_contained_fragments.py` implements this and both
+source maps were regenerated from its output:
+
+- `VGA_reloc`: 38 entries (36 named + 2 standalone unnamed at `0x3D18`/81
+  bytes and `0x3D69`/37 bytes). The other 67 unnamed fragments, 1161 bytes
+  total, remain excluded — they lie inside `_emu486`'s extent and stay its
+  internals.
+- `VGA_psdrvr`: 53 entries (37 named + all 16 unnamed). All sixteen statics
+  in the table above, including both cursor blitters and the eleven-entry
+  driver vector table, are now covered by the map.
+
+Both regenerated maps still land every entry in `unmapped` — our sources are
+still disjoint from Apple's — and `load_source_map` accepts both.
+
 ### Baseline and rebuilt build
 
 The driver had never been built in this tree. It builds now.

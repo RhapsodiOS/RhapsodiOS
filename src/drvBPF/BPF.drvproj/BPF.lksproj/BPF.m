@@ -76,8 +76,8 @@ extern int enodev(void);
                                         reset:(IOSwitchFunc)nulldev
                                        select:(IOSwitchFunc)bpf_select
                                          mmap:(IOSwitchFunc)enodev
-                                     strategy:(IOSwitchFunc)enodev
-                                      getstat:(IOSwitchFunc)enodev];
+                                         getc:(IOSwitchFunc)enodev
+                                         putc:(IOSwitchFunc)enodev];
 
     if (result == YES) {
         instance = [[self alloc] initFromDeviceDescription:deviceDescription];

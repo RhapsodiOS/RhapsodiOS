@@ -1018,7 +1018,7 @@ bpf_select(dev, rw, p)
 #ifdef BPFDRV
 void
 bpf_tap(arg, pkt, pktlen)
-	struct ifnet *ifp;
+	caddr_t arg;
 	register u_char *pkt;
 	register u_int pktlen;
 {

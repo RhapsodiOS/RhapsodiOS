@@ -755,7 +755,7 @@ void removeReservation(id session, int target_high, int target_low,
             prev = (int *)current[1];  /* current->prev */
 
             /* Unlink from list: prev->next = next, next->prev = prev */
-            *(int **)(next + 4) = prev;   /* next->prev = prev */
+            next[1] = (int)prev;           /* next->prev = prev */
             *prev = (int)next;             /* prev->next = next */
 
             /* Free the reservation entry (0x18 = 24 bytes) */

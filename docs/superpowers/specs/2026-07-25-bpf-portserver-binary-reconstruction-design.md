@@ -126,7 +126,32 @@ that scoping wrongly anticipated.
 `src/kernel-7/bsd/net/bpf.c` is a 180-line stub and is not a source for this
 work.
 
-### 2.2 PortServer.m does not compile
+### 2.2 drvPortServer does not compile — five files, not one
+
+Scoping found the NUL bytes described below. The report pass found that they are
+one of several independent structural defects, and that **five of the six `.m`
+files in `PortServer.lksproj` cannot compile as committed**:
+
+| File | Defect | Evidence |
+| --- | --- | --- |
+| `AppleIOPSSafeCondLock.m` | missing closing brace on `-setCondition:` (line 361); orphaned comment tail at 487–489 with no opening `/*` | brace delta `+1` |
+| `PDPseudo.m` | one extra closing brace (near line 209) | brace delta `-1` |
+| `ttyiops.m` | two unclosed braces | brace delta `+2` |
+| `IOPortSessionKern.m` | raw newline inside a string literal at 472–473 | odd quote count |
+| `PortServer.m` | two literal NUL bytes (below), plus a raw newline inside a string literal at 101–102 | `file(1)` reports `data` |
+
+Only `IOPortSession.m` is structurally clean. All of this predates the
+reconstruction. It is repaired in a single dedicated pass ahead of the
+divergence fixes, on the same rationale that §4.2 already grants the NUL repair:
+it is pre-existing breakage, not a divergence, and folding it into the
+divergence commits would obscure both.
+
+The `AppleIOPSSafeCondLock.m` brace damage is also what produced the three
+`duplicate_candidates` entries in the source map — the scanner saw two apparent
+definitions of `setCondition:` and `unlockWith:` because the first was never
+closed.
+
+### 2.2.1 The NUL bytes specifically
 
 `src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m` contains
 two literal NUL bytes, at file offsets 5972 and 6685, where `'\0'` was intended.
@@ -186,9 +211,17 @@ and the divergences are behavioural rather than cosmetic:
 | `PortServer.config/Default.table` | `"Help File" = "PortServer_Main.rtfd";` | `"...rtf"` |
 | `PortServer.config/English.lproj/Localizable.strings` | `"PortServer" = "Port Server";` | `"Port Server" = "Port Server";` |
 
-The `Localizable.strings` key is the lookup key, so ours resolves nothing. The
-`Support Dialin` capitalisation is a config-table key the driver reads by exact
-name. Both `Default.table` files also carry a `"Driver Version"` line recording
+The `Localizable.strings` key is the lookup key, so ours resolves nothing.
+
+The `Support Dialin` capitalisation was described here as "a config-table key the
+driver reads by exact name". Execution could not substantiate that: the string
+`Support Dialin` occurs in no file under `src/` and in none of the three shipped
+binaries (`PortServer_reloc`, `PortServer`, `pdservd`). Whatever consumes the key
+does so from outside this driver — presumably the DriverKit configuration layer.
+The divergence from Apple's shipped table is real and worth correcting for parity,
+but no behavioural consequence is demonstrated, and none should be claimed.
+
+Both `Default.table` files also carry a `"Driver Version"` line recording
 Apple's 1998 build host; that is build-generated and correctly absent from ours.
 
 Separately, `PortServer.drvproj/English.lproj/DriverHelp/` contains only

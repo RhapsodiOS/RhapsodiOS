@@ -951,7 +951,25 @@ git commit -m "drvPortServer: record the parity ledger and divergences against t
 
 ---
 
-### Task 7: Repair the NUL bytes in PortServer.m
+### Task 7: Repair drvPortServer's pre-existing compile blockers
+
+**Scope widened during execution.** This task was written to repair two NUL bytes in
+`PortServer.m`. The Task 6 report pass found that five of the six `.m` files in
+`PortServer.lksproj` cannot compile as committed, all of it predating this work:
+
+| File | Defect | Signal |
+| --- | --- | --- |
+| `AppleIOPSSafeCondLock.m` | missing `}` on `-setCondition:` (~line 361); orphaned comment tail 487-489 | brace delta `+1` |
+| `PDPseudo.m` | one extra `}` (~line 209) | brace delta `-1` |
+| `ttyiops.m` | two unclosed braces | brace delta `+2` |
+| `IOPortSessionKern.m` | raw newline inside a string literal, lines 472-473 | odd quote count |
+| `PortServer.m` | two literal NUL bytes (below) **and** a raw newline in a string literal, lines 101-102 | `file(1)` says `data` |
+
+Only `IOPortSession.m` is clean. Repair all of it in this task, each file in its own
+commit, before any divergence fix. Verify with a brace/NUL/quote scan, not by eye.
+The NUL-specific steps below remain exactly as written.
+
+#### Task 7 original scope: the NUL bytes in PortServer.m
 
 Spec §2.2. This is the one approved change outside the ledger's findings, because it is a pre-existing compile blocker rather than a divergence. It gets its own commit ahead of the fix pass.
 

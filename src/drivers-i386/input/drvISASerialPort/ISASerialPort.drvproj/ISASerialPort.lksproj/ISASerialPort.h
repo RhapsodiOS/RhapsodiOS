@@ -32,7 +32,7 @@
 
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/IOEISADeviceDescription.h>
 #import <sys/types.h>
@@ -46,7 +46,49 @@
 #define IO_R_NO_PAPER (-737)
 #endif
 
-@interface ISASerialPort : IODevice
+/*
+ * The protocol every port device conforms to, and the one the reference's
+ * __OBJC,__protocol record names.  It is declared here because the only copy
+ * in the tree lives in a private PortServer header this project cannot reach.
+ * The twelve methods and their signatures are the reference's, read out of its
+ * protocol method-description list.
+ */
+@protocol PortDevices
+
+- (IOReturn)dequeueData:(unsigned char *)buffer
+             bufferSize:(unsigned int)size
+          transferCount:(unsigned int *)count
+               minCount:(unsigned int)minCount;
+- (IOReturn)enqueueData:(unsigned char *)buffer
+             bufferSize:(unsigned int)size
+          transferCount:(unsigned int *)count
+                  sleep:(BOOL)sleep;
+- (IOReturn)dequeueEvent:(unsigned long *)event
+                    data:(unsigned long *)data
+                   sleep:(BOOL)sleep;
+- (IOReturn)enqueueEvent:(unsigned long)event
+                    data:(unsigned long)data
+                   sleep:(BOOL)sleep;
+- (IOReturn)requestEvent:(unsigned long)event
+                    data:(unsigned long *)data;
+- (IOReturn)executeEvent:(unsigned long)event
+                    data:(unsigned long)data;
+- (unsigned long)nextEvent;
+- (IOReturn)watchState:(unsigned long *)state
+                  mask:(unsigned long)mask;
+- (unsigned long)getState;
+- (IOReturn)setState:(unsigned long)state
+                mask:(unsigned long)mask;
+- (IOReturn)release;
+- (IOReturn)acquire:(BOOL)sleep;
+
+@end
+
+/*
+ * IODirectDevice, not IODevice: its six ivars plus the reserved int[2] are the
+ * 32 bytes that put Port at object offset 296 and make instance_size 604.
+ */
+@interface ISASerialPort : IODirectDevice <PortDevices>
 {
 @public
     Port  Port;         // all per-port state, at object offset 296
@@ -62,7 +104,7 @@
 /*
  * Acquire the serial port.
  */
-- (IOReturn)acquire:(void *)refCon;
+- (IOReturn)acquire:(BOOL)sleep;
 
 /*
  * Release the serial port.
@@ -77,7 +119,7 @@
 /*
  * Free the instance.
  */
-- (void)free;
+- free;
 
 /*
  * Dequeue data from the serial port.
@@ -90,8 +132,8 @@
 /*
  * Dequeue an event from the serial port.
  */
-- (IOReturn)dequeueEvent:(unsigned int *)event
-                    data:(unsigned int *)data
+- (IOReturn)dequeueEvent:(unsigned long *)event
+                    data:(unsigned long *)data
                    sleep:(BOOL)sleep;
 
 /*
@@ -105,43 +147,43 @@
 /*
  * Enqueue an event to the serial port.
  */
-- (IOReturn)enqueueEvent:(unsigned int)event
-                    data:(unsigned int)data
+- (IOReturn)enqueueEvent:(unsigned long)event
+                    data:(unsigned long)data
                    sleep:(BOOL)sleep;
 
 /*
  * Execute an event.
  */
-- (IOReturn)executeEvent:(unsigned int)event
-                    data:(unsigned int)data;
+- (IOReturn)executeEvent:(unsigned long)event
+                    data:(unsigned long)data;
 
 /*
  * Request an event.
  */
-- (IOReturn)requestEvent:(unsigned int)event
-                    data:(unsigned int *)data;
+- (IOReturn)requestEvent:(unsigned long)event
+                    data:(unsigned long *)data;
 
 /*
  * Get the next event.
  */
-- (unsigned int)nextEvent;
+- (unsigned long)nextEvent;
 
 /*
  * Get the current state.
  */
-- (unsigned int)getState;
+- (unsigned long)getState;
 
 /*
  * Set the state with mask.
  */
-- (IOReturn)setState:(unsigned int)state
-                mask:(unsigned int)mask;
+- (IOReturn)setState:(unsigned long)state
+                mask:(unsigned long)mask;
 
 /*
  * Watch state with mask.
  */
-- (IOReturn)watchState:(unsigned int *)state
-                  mask:(unsigned int)mask;
+- (IOReturn)watchState:(unsigned long *)state
+                  mask:(unsigned long)mask;
 
 /*
  * Get character values for a parameter.
@@ -151,12 +193,14 @@
                     count:(unsigned int *)count;
 
 /*
- * Get interrupt handler information.
+ * Get interrupt handler information.  IODirectDevice(IOInterrupts) declares
+ * this returning BOOL with an unsigned int * argument, and so does the
+ * reference.
  */
-- (IOReturn)getHandler:(IOInterruptHandler *)handler
-                 level:(unsigned int *)level
-              argument:(void **)argument
-          forInterrupt:(unsigned int)interruptType;
+- (BOOL)getHandler:(IOInterruptHandler *)handler
+             level:(unsigned int *)level
+          argument:(unsigned int *)argument
+      forInterrupt:(unsigned int)interruptType;
 
 @end
 

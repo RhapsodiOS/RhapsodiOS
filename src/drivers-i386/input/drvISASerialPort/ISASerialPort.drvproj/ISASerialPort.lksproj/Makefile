@@ -17,7 +17,7 @@ CLASSES = ISASerialPort.m
 
 CFILES = ISASerialPortFlow.c ISASerialPortQueue.c ISASerialPortChip.c
 
-HFILES = ISASerialPort.h ISASerialPortInternal.h
+HFILES = ISASerialPort.h ISASerialPortInternal.h ISASerialPortQueue.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

@@ -33,6 +33,10 @@
  * plain C translation units.  Nothing in this header may depend on the
  * @interface.
  *
+ * The ring-buffer helper the queue-touching units share lives in
+ * ISASerialPortQueue.h, not here, because a static in this header would reach
+ * the chip unit too and the reference has no copy there.
+ *
  * HISTORY
  */
 
@@ -104,7 +108,6 @@
 // TX queue state levels (bits 24-27 in state)
 #define TX_STATE_MASK       0x07800000
 #define TX_STATE_EMPTY      0x06000000  // Queue empty
-#define TX_STATE_BELOW_LOW  0x04000000  // Below low watermark
 #define TX_STATE_BELOW_MED  0x02000000  // Below medium watermark
 #define TX_STATE_BELOW_HIGH 0x00000000  // Below high watermark
 #define TX_STATE_ABOVE_HIGH 0x01000000  // Above high watermark
@@ -165,13 +168,18 @@ typedef struct {
  * 32-bit word and FlowControl likewise; Self points back at the owning
  * Objective-C object, which is how a C translation unit reaches the object
  * when it genuinely must.
+ *
+ * The twelve fields spelled `unsigned long` are the ones the reference's ivar
+ * type encoding spells `L`: same width as `unsigned int` on i386 and so zero
+ * codegen difference, but the encoding the runtime publishes is then
+ * byte-identical to the reference's.
  */
 typedef struct {
     id              Self;               /*   0 */
     unsigned int    Instance;           /*   4 */
     char           *PortName;           /*   8 */
-    unsigned int    State;              /*  12 */
-    unsigned int    WatchStateMask;     /*  16 */
+    unsigned long   State;              /*  12 */
+    unsigned long   WatchStateMask;     /*  16 */
     struct { unsigned int locked; } WatchLock;   /* 20 */
     Queue           RX;                 /*  24 */
     Queue           TX;                 /*  80 */
@@ -183,13 +191,13 @@ typedef struct {
     unsigned int    TX_Parity;          /* 156 */
     unsigned int    RX_Parity;          /* 160 */
     unsigned int    BreakLength;        /* 164 */
-    unsigned int    BaudRate;           /* 168 - half-bits/s, 19200 == 9600 bps */
+    unsigned long   BaudRate;           /* 168 - half-bits/s, 19200 == 9600 bps */
     unsigned short  DLRimage;           /* 172 */
     unsigned char   LCRimage;           /* 174 */
     unsigned char   FCRimage;           /* 175 */
     unsigned char   IERmask;            /* 176 */
     unsigned char   RBRmask;            /* 177 */
-    unsigned int    MasterClock;        /* 180 */
+    unsigned long   MasterClock;        /* 180 */
     signed char     MinLatency;         /* 184 */
     signed char     WaitingForTXIdle;   /* 185 */
     signed char     JustDoneInterrupt;  /* 186 */
@@ -197,8 +205,8 @@ typedef struct {
     signed char     PCMCIA_yanked;      /* 188 */
     unsigned char   XONchar;            /* 189 */
     unsigned char   XOFFchar;           /* 190 */
-    unsigned int    SWspecial[8];       /* 192 - 256-bit character bitmap */
-    unsigned int    FlowControl;        /* 224 */
+    unsigned long   SWspecial[8];       /* 192 - 256-bit character bitmap */
+    unsigned long   FlowControl;        /* 224 */
     int             RXOstate;           /* 228 */
     void           *FrameTOEntry;       /* 232 */
     void           *DataLatTOEntry;     /* 236 */
@@ -209,12 +217,12 @@ typedef struct {
     tvalspec_t      CharLatInterval;    /* 264 */
     tvalspec_t      HeartBeatInterval;  /* 272 */
     struct {
-        unsigned int    ints;           /* 280 */
-        unsigned int    txInts;         /* 284 */
-        unsigned int    rxInts;         /* 288 */
-        unsigned int    mdmInts;        /* 292 */
-        unsigned int    txChars;        /* 296 */
-        unsigned int    rxChars;        /* 300 */
+        unsigned long   ints;           /* 280 */
+        unsigned long   txInts;         /* 284 */
+        unsigned long   rxInts;         /* 288 */
+        unsigned long   mdmInts;        /* 292 */
+        unsigned long   txChars;        /* 296 */
+        unsigned long   rxChars;        /* 300 */
     } Stats;
 } Port;                                 /* 304 */
 
@@ -254,66 +262,6 @@ extern ChipInfo Chip[9];
  */
 extern unsigned char msr_state_lut[16];
 
-/*
- * The reference defines this as a static in the header its translation units
- * share, so every unit that references it emits its own copy: three in the
- * reference, at 0, 20684 and 23200, byte-identical over 193 bytes.  Defining
- * it here rather than in one .c reproduces that, and puts the copy ahead of
- * everything else in each unit, which is where the reference has it.
- *
- * RX enqueue long event (3-word event: type + data low + data high).
- * Used for state change events and other long data events.
- */
-static IOReturn _RX_enqueueLongEvent(Port *port, unsigned int event, unsigned int data)
-{
-    unsigned short *writePtr = (unsigned short *)port->RX.Input;
-    unsigned int spaceAvailable = port->RX.Size - port->RX.Count;
-
-    // Check if we have space for 3 entries
-    if (spaceAvailable < 3) {
-        // Not enough space for long event
-        if (port->RX.Count < port->RX.Size) {
-            // Queue not full - enqueue overflow marker
-            *writePtr++ = EVENT_OVERFLOW;
-            if ((char *)writePtr >= port->RX.End) {
-                writePtr = (unsigned short *)port->RX.Base;
-            }
-            port->RX.Input = (char *)writePtr;
-            port->RX.Count++;
-        } else {
-            // Queue completely full - set overflow flag
-            port->RX.OverRun = 1;
-        }
-        return IO_R_SUCCESS;
-    }
-
-    // Enqueue event type
-    *writePtr++ = (unsigned short)event;
-    if ((char *)writePtr >= port->RX.End) {
-        writePtr = (unsigned short *)port->RX.Base;
-    }
-    port->RX.Input = (char *)writePtr;
-    port->RX.Count++;
-
-    // Enqueue data low word
-    *writePtr++ = (unsigned short)data;
-    if ((char *)writePtr >= port->RX.End) {
-        writePtr = (unsigned short *)port->RX.Base;
-    }
-    port->RX.Input = (char *)writePtr;
-    port->RX.Count++;
-
-    // Enqueue data high word
-    *writePtr++ = (unsigned short)(data >> 16);
-    if ((char *)writePtr >= port->RX.End) {
-        writePtr = (unsigned short *)port->RX.Base;
-    }
-    port->RX.Input = (char *)writePtr;
-    port->RX.Count++;
-
-    return IO_R_SUCCESS;
-}
-
 /* ISASerialPortChip.c */
 extern int identifyChip(Port *port);
 extern void initChip(Port *port);
@@ -323,7 +271,7 @@ extern void programChip(Port *port);
 extern IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                                 unsigned int data, BOOL sleep);
 extern IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
-                                unsigned int *eventData, BOOL sleep);
+                                unsigned long *eventData, BOOL sleep);
 extern IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep);
 extern unsigned int validateRingBufferSize(unsigned int requestedSize, Queue *q);
 extern void freeRingBuffer(Queue *q);
@@ -331,6 +279,6 @@ extern int allocateRingBuffer(Queue *q);
 
 /* ISASerialPortFlow.c */
 extern unsigned int flowMachine(Port *port);
-extern IOReturn watchState(Port *port, unsigned int *state, unsigned int mask);
+extern IOReturn watchState(Port *port, unsigned long *state, unsigned long mask);
 
 #endif /* _BSD_DEV_I386_ISASERIALPORTINTERNAL_H_ */

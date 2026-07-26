@@ -31,6 +31,7 @@
  */
 
 #import "ISASerialPortInternal.h"
+#import "ISASerialPortQueue.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/ioPorts.h>
 #import <kernserv/prototypes.h>
@@ -48,7 +49,7 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
     unsigned short *writePtr;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
-    unsigned int watchMask;
+    unsigned long watchMask;
     IOReturn result;
 
     // If event is 0, return immediately
@@ -153,8 +154,8 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
 
                 // Notify RX queue of state change if mask matches
                 if (port->FlowControl & (changedBits << 16)) {
-                    _RX_enqueueLongEvent(port, 0x53,
-                                       (newState & 0xFFFF) | (changedBits << 16));
+                    RX_enqueueLongEvent(port, 0x53,
+                                        (newState & 0xFFFF) | (changedBits << 16));
                 }
             }
 
@@ -181,14 +182,14 @@ IOReturn TX_enqueueEvent(Port *port, unsigned char event,
  * param sleep: If TRUE, wait for event; if FALSE, return immediately if empty
  */
 IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
-                         unsigned int *eventData, BOOL sleep)
+                         unsigned long *eventData, BOOL sleep)
 {
     unsigned short *readPtr;
     unsigned short firstWord, dataWord;
     unsigned int eventLen;
     unsigned int newState, oldState, changedBits;
     unsigned char mcrValue;
-    unsigned int watchMask;
+    unsigned long watchMask;
     IOReturn result;
 
     while (1) {
@@ -355,7 +356,7 @@ IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
 
                 // Notify of state change if mask matches
                 if (port->FlowControl & (changedBits << 16)) {
-                    _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE, (newState & 0xFFFF) | (changedBits << 16));
+                    RX_enqueueLongEvent(port, EVENT_STATE_CHANGE, (newState & 0xFFFF) | (changedBits << 16));
                 }
             }
 
@@ -392,7 +393,7 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
     unsigned short *readPtr;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
-    unsigned int watchMask;
+    unsigned long watchMask;
     IOReturn result;
 
     do {
@@ -522,8 +523,8 @@ IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep)
 
                     // Notify RX queue of state change if flow control mode matches
                     if ((port->FlowControl & (changedBits << 16)) != 0) {
-                        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                                           (newState & 0xFFFF) | (changedBits << 16));
+                        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                                            (newState & 0xFFFF) | (changedBits << 16));
                     }
                 }
             } else {

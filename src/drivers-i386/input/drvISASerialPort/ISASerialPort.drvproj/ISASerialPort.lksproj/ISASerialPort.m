@@ -28,6 +28,7 @@
  */
 
 #import "ISASerialPort.h"
+#import "ISASerialPortQueue.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/i386/directDevice.h>
@@ -66,12 +67,6 @@ _ISASerialPortDeadlineFromParts(unsigned int low, unsigned int high)
     return deadline_from_interval(_ISASerialPortIntervalFromNanoseconds(nanoseconds));
 }
 
-// Forward declarations for 64-bit arithmetic helper functions
-unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
-                             unsigned int divisor_lo, unsigned int divisor_hi);
-unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
-                             unsigned int divisor_lo, unsigned int divisor_hi);
-
 // RX event type markers (in addition to EVENT_OVERFLOW and EVENT_STATE_CHANGE)
 #define EVENT_OVERRUN_ERROR     0x68    // Overrun error event
 #define EVENT_VALID_DATA        0x55    // Valid data byte marker ('U')
@@ -86,16 +81,16 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
 
 // Forward declarations for this translation unit's private functions.
 // The eleven the driver exports are declared in ISASerialPortInternal.h.
-static IOReturn _activatePort(Port *port);
-static IOReturn _deactivatePort(Port *port);
-static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call);
-static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call);
-static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call);
-static void _dataLatTOHandler(Port *port);
-static void _executeEvent(Port *port, unsigned char eventType, unsigned int eventData,
+static IOReturn activatePort(Port *port);
+static IOReturn deactivatePort(Port *port);
+static void heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call);
+static void frameTOHandler(thread_call_spec_t spec, thread_call_t call);
+static void delayTOHandler(thread_call_spec_t spec, thread_call_t call);
+static void dataLatTOHandler(Port *port);
+static void executeEvent(Port *port, unsigned char eventType, unsigned int eventData,
                          unsigned int *statePtr, unsigned int *changedBitsPtr);
-static void _NonFIFOIntHandler(void *identity, void *state, Port *port);
-static void _FIFOIntHandler(void *identity, void *state, Port *port);
+static void NonFIFOIntHandler(void *identity, void *state, Port *port);
+static void FIFOIntHandler(void *identity, void *state, Port *port);
 
 /*
  * The chip table, nine rows of 20 bytes at the head of __DATA,__data.  It is
@@ -108,16 +103,16 @@ static void _FIFOIntHandler(void *identity, void *state, Port *port);
  * and rows 5 and 6 likewise share "16550".
  */
 ChipInfo Chip[9] = {
-/*    MaxBaud  FIFO  IntHandler           ShortName  LongName */
-    {       0,   0,  _NonFIFOIntHandler,  "Auto",    "Unknown"                   },
-    {   38400,   0,  _NonFIFOIntHandler,  "8250",    "8250"                      },
-    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "8250A or 16450"            },
-    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "16C1450"                   },
-    {   76800,   0,  _NonFIFOIntHandler,  "16450",   "16550 with defective FIFO" },
-    {  230400,  16,  _FIFOIntHandler,     "16550",   "16550AF/C/CF"              },
-    {  230400,  16,  _FIFOIntHandler,     "16550",   "16C1550"                   },
-    {  921600,  32,  _FIFOIntHandler,     "16650",   "ST16C650"                  },
-    {  230400,   4,  _NonFIFOIntHandler,  "82510",   "82510"                     }
+/*    MaxBaud  FIFO  IntHandler         ShortName  LongName */
+    {       0,   0,  NonFIFOIntHandler, "Auto",    "Unknown"                   },
+    {   38400,   0,  NonFIFOIntHandler, "8250",    "8250"                      },
+    {   76800,   0,  NonFIFOIntHandler, "16450",   "8250A or 16450"            },
+    {   76800,   0,  NonFIFOIntHandler, "16450",   "16C1450"                   },
+    {   76800,   0,  NonFIFOIntHandler, "16450",   "16550 with defective FIFO" },
+    {  230400,  16,  FIFOIntHandler,    "16550",   "16550AF/C/CF"              },
+    {  230400,  16,  FIFOIntHandler,    "16550",   "16C1550"                   },
+    {  921600,  32,  FIFOIntHandler,    "16650",   "ST16C650"                  },
+    {  230400,   4,  NonFIFOIntHandler, "82510",   "82510"                     }
 };
 
 /*
@@ -136,7 +131,7 @@ unsigned char msr_state_lut[16] = {
  * Timer callback that triggers interrupt handler when frame timeout occurs.
  * Used for detecting end of transmission or processing delayed events.
  */
-static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void frameTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
     unsigned int oldIRQL;
     Port *port = (Port *)spec;
@@ -152,9 +147,9 @@ static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
     // The function pointer table is indexed by chipType * 5
     if ((port->Type > 4)) {
         // Call FIFO interrupt handler (stub for now)
-        // _FIFOIntHandler(0, 0, port);
+        // FIFOIntHandler(0, 0, port);
     } else {
-        _NonFIFOIntHandler(0, 0, port);
+        NonFIFOIntHandler(0, 0, port);
     }
 
     // Restore interrupt level
@@ -166,7 +161,7 @@ static void _frameTOHandler(thread_call_spec_t spec, thread_call_t call)
  * Timer callback for delayed operations. Clears the delay bit from state
  * and triggers the appropriate interrupt handler.
  */
-static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void delayTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
     unsigned int oldIRQL;
     Port *port = (Port *)spec;
@@ -180,9 +175,9 @@ static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call)
 
     // Call appropriate interrupt handler based on chip type
     if ((port->Type > 4)) {
-        _FIFOIntHandler(0, 0, port);
+        FIFOIntHandler(0, 0, port);
     } else {
-        _NonFIFOIntHandler(0, 0, port);
+        NonFIFOIntHandler(0, 0, port);
     }
 
     // Restore interrupt level
@@ -195,7 +190,7 @@ static void _delayTOHandler(thread_call_spec_t spec, thread_call_t call)
  * This is called when the RX queue reaches critical levels and needs to signal overflow
  * or adjust flow control to prevent data loss.
  */
-static void _dataLatTOHandler(Port *port)
+static void dataLatTOHandler(Port *port)
 {
     unsigned int oldIRQL;
     unsigned int spaceFree;
@@ -362,8 +357,8 @@ static void _dataLatTOHandler(Port *port)
         // Enqueue state change event if any watched state bits changed
         memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
         if (eventMask & (changedBits << 16)) {
-            _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                               (newState & 0xFFFF) | (changedBits << 16));
+            RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                                (newState & 0xFFFF) | (changedBits << 16));
         }
     }
 
@@ -375,13 +370,13 @@ static void _dataLatTOHandler(Port *port)
  * Handle PCMCIA card removal.
  * Called when the PCMCIA card is hot-removed from the system.
  */
-static void _PCMCIA_yanked(Port *port)
+static void PCMCIA_yanked(Port *port)
 {
     // Set flag indicating card was removed
     port->PCMCIA_yanked = 1;
 
     // Deactivate the port to prevent further access
-    _deactivatePort(port);
+    deactivatePort(port);
 }
 
 /*
@@ -392,7 +387,7 @@ static void _PCMCIA_yanked(Port *port)
  *   IO_R_SUCCESS (0) on success
  *   0xFFFFFD42 on failure (unable to allocate buffers)
  */
-static IOReturn _activatePort(Port *port)
+static IOReturn activatePort(Port *port)
 {
     unsigned int flowState;
     unsigned int oldState, newState, changedBits;
@@ -474,8 +469,8 @@ static IOReturn _activatePort(Port *port)
     // Enqueue state change event if watched
     memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
-        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                           (oldState & 0xFFFF) | (changedBits << 16));
+        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                            (oldState & 0xFFFF) | (changedBits << 16));
     }
 
     // Recalculate flow control state
@@ -513,8 +508,8 @@ static IOReturn _activatePort(Port *port)
     // Enqueue flow control state change event
     memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
-        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                           (oldState & 0xFFE9) | (flowState & 0x16) | (changedBits << 16));
+        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                            (oldState & 0xFFE9) | (flowState & 0x16) | (changedBits << 16));
     }
 
     // Calculate initial TX queue state based on current usage
@@ -546,9 +541,9 @@ static IOReturn _activatePort(Port *port)
             port->TX.Enqueue = 0;
             txState = TX_STATE_EMPTY;
         } else {
-            // Below low watermark
+            // Below medium watermark
             port->TX.Enqueue = port->TX.LowWater;
-            txState = TX_STATE_BELOW_LOW;
+            txState = TX_STATE_BELOW_MED;
         }
     }
 
@@ -655,8 +650,8 @@ static IOReturn _activatePort(Port *port)
     // Enqueue state change event
     memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
-        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                           (newState & 0xFFFF) | (changedBits << 16));
+        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                            (newState & 0xFFFF) | (changedBits << 16));
     }
 
     // Final timer callout trigger
@@ -675,7 +670,7 @@ static IOReturn _activatePort(Port *port)
  * Deactivate the serial port.
  * Shuts down the UART, disables interrupts, frees ring buffers, and updates state.
  */
-static IOReturn _deactivatePort(Port *port)
+static IOReturn deactivatePort(Port *port)
 {
     unsigned int eventMask;
     unsigned int flowState;
@@ -726,8 +721,8 @@ static IOReturn _deactivatePort(Port *port)
     // Read stateEventMask as part of uint at offset 0xe0
     memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
-        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                           (newState & 0xFFFF) | (changedBits << 16));
+        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                            (newState & 0xFFFF) | (changedBits << 16));
     }
 
     // Free both TX and RX ring buffers
@@ -768,8 +763,8 @@ static IOReturn _deactivatePort(Port *port)
     // Enqueue state change event for flow control changes if watched
     memcpy(&eventMask, &port->FlowControl, sizeof(unsigned int));
     if (eventMask & (changedBits << 16)) {
-        _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                           (newState & 0xFFFF) | (changedBits << 16));
+        RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                            (newState & 0xFFFF) | (changedBits << 16));
     }
 
     return IO_R_SUCCESS;
@@ -780,7 +775,7 @@ static IOReturn _deactivatePort(Port *port)
  * Timer callback that polls the UART by calling the interrupt handler.
  * Used for chips without reliable interrupts or for periodic monitoring.
  */
-static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
 {
     unsigned int oldIRQL;
     Port *port = (Port *)spec;
@@ -797,10 +792,10 @@ static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
             // Call appropriate interrupt handler based on FIFO capability
             if ((port->Type > 4)) {
                 // Call FIFO interrupt handler (stub for now)
-                // _FIFOIntHandler(0, 0, port);
+                // FIFOIntHandler(0, 0, port);
             } else {
                 // Call non-FIFO interrupt handler (stub for now)
-                // _NonFIFOIntHandler(0, 0, port);
+                // NonFIFOIntHandler(0, 0, port);
             }
         }
 
@@ -823,7 +818,7 @@ static void _heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
  * Handles all UART interrupts for 8250/16450 chips without FIFO.
  * This is called at interrupt level and must be fast.
  */
-static void _NonFIFOIntHandler(void *identity, void *state, Port *port)
+static void NonFIFOIntHandler(void *identity, void *state, Port *port)
 {
     unsigned int matchBits;
     unsigned char lsr, msr, iir;
@@ -886,7 +881,7 @@ static void _NonFIFOIntHandler(void *identity, void *state, Port *port)
 
             // Check for PCMCIA card removal (all 1's)
             if ((lsr == 0xFF) && (dataByte == 0xFF) && (port->PCMCIA != 0)) {
-                _PCMCIA_yanked(port);
+                PCMCIA_yanked(port);
                 return;
             }
 
@@ -1198,7 +1193,7 @@ data_processed:
                                     eventData = ((unsigned int)highWord << 16) | lowWord;
                                 }
 
-                                _executeEvent(port, eventType, eventData, &newState, &changedBits);
+                                executeEvent(port, eventType, eventData, &newState, &changedBits);
                                 continueLoop = TRUE;
                             }
                         }
@@ -1303,8 +1298,8 @@ data_processed:
                 port->RX.Count++;
             }
         } else {
-            _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                               (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
+            RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                                (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
         }
     }
 
@@ -1322,7 +1317,7 @@ data_processed:
  * Handles all UART interrupts for 16550A+ chips with FIFO.
  * This is called at interrupt level and processes multiple bytes per interrupt.
  */
-static void _FIFOIntHandler(void *identity, void *state, Port *port)
+static void FIFOIntHandler(void *identity, void *state, Port *port)
 {
     unsigned int matchBits;
     unsigned char lsr, msr, iir;
@@ -1342,7 +1337,7 @@ static void _FIFOIntHandler(void *identity, void *state, Port *port)
     // Check if FIFO is actually enabled
     if ((port->FCRimage & FCR_FIFO_ENABLE) == 0) {
         // FIFO not enabled - use non-FIFO handler
-        _NonFIFOIntHandler(identity, state, port);
+        NonFIFOIntHandler(identity, state, port);
         return;
     }
 
@@ -1375,7 +1370,7 @@ static void _FIFOIntHandler(void *identity, void *state, Port *port)
 
             // Check for PCMCIA card removal (all 1's)
             if ((lsr == 0xFF) && (dataByte == 0xFF) && (port->PCMCIA != 0)) {
-                _PCMCIA_yanked(port);
+                PCMCIA_yanked(port);
                 return;
             }
 
@@ -1804,7 +1799,7 @@ enqueue_normal_data_fifo:
                                 eventData = ((unsigned int)highWord << 16) | lowWord;
                             }
 
-                            _executeEvent(port, eventType, eventData, &newState, &changedBits);
+                            executeEvent(port, eventType, eventData, &newState, &changedBits);
                             continueLoop = TRUE;
                             goto tx_done_fifo;
                         }
@@ -1914,8 +1909,8 @@ tx_done_fifo:
                 port->RX.Count++;
             }
         } else {
-            _RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                               (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
+            RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
+                                (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
         }
     }
 
@@ -1929,7 +1924,7 @@ tx_done_fifo:
 }
 
 /*
- * _executeEvent - Execute an event command on the serial port
+ * executeEvent - Execute an event command on the serial port
  *
  * This function implements the event dispatcher for serial port control commands.
  * It handles configuration changes, queue management, and state control.
@@ -1941,7 +1936,7 @@ tx_done_fifo:
  *   statePtr - Pointer to state value (output parameter)
  *   changedBitsPtr - Pointer to changed bits mask (output parameter)
  */
-static void _executeEvent(Port *port, unsigned char eventType,
+static void executeEvent(Port *port, unsigned char eventType,
                          unsigned int eventData, unsigned int *statePtr,
                          unsigned int *changedBitsPtr)
 {
@@ -1960,11 +1955,11 @@ static void _executeEvent(Port *port, unsigned char eventType,
         case 0x05:  // Activate/Deactivate port
             if (eventData != 0) {
                 // Activate port
-                _activatePort(port);
+                activatePort(port);
                 newState |= STATE_ACTIVE;
             } else {
                 // Deactivate port
-                _deactivatePort(port);
+                deactivatePort(port);
                 newState &= ~STATE_ACTIVE;
             }
             changedBits = STATE_ACTIVE;
@@ -2048,8 +2043,10 @@ static void _executeEvent(Port *port, unsigned char eventType,
                 }
                 // Calculate: (tempValue * 1000000000) / baudRate
                 // Use 64-bit arithmetic to avoid overflow
-                port->FrameInterval.tv_sec = __udivdi3(tempValue * 1000000000, 0, eventData, 0);
-                port->FrameInterval.tv_nsec = __umoddi3(tempValue * 1000000000, 0, eventData, 0);
+                port->FrameInterval.tv_sec =
+                    (unsigned long long)(tempValue * 1000000000) / eventData;
+                port->FrameInterval.tv_nsec =
+                    (unsigned long long)(tempValue * 1000000000) % eventData;
             }
             break;
 
@@ -2223,204 +2220,169 @@ static void _executeEvent(Port *port, unsigned char eventType,
 }
 
 /*
- * __udivdi3 - GCC helper function for 64-bit unsigned division on 32-bit systems
+ * The 64-bit division helpers.  gcc lowers an ordinary `unsigned long long'
+ * divide or modulo into a call to __udivdi3 or __umoddi3; on this system those
+ * live in /usr/lib/libcc.a, which is a PowerPC archive and cannot be linked
+ * for -arch i386, so the driver carries its own.  The reference does the same,
+ * defining both locally at 23800 and 24064.
  *
- * Divides a 64-bit unsigned integer by another 64-bit unsigned integer.
- * Parameters are passed as two 32-bit halves (low, high).
+ * The names carry one underscore, not two: a C function called __udivdi3
+ * compiles to the symbol ___udivdi3, which is not the symbol a lowered divide
+ * relocates against, so such a definition is never called.  _udivdi3 emits
+ * __udivdi3, which is.
  *
- * Returns: 64-bit quotient as two 32-bit values
+ * Neither body may use 64-bit division, because gcc would lower that straight
+ * back into a call to the function being defined.  What follows is libgcc2.c's
+ * __udivmoddi4 with longlong.h's i386 macros, which is what the reference's two
+ * bodies are: no call instructions, five `divl', one `mull', one `bsrl'.
  */
-unsigned long long __udivdi3(unsigned int dividend_lo, unsigned int dividend_hi,
-                             unsigned int divisor_lo, unsigned int divisor_hi)
+#define udiv_qrnnd(q, r, n1, n0, d)                                     \
+    asm ("divl %4"                                                      \
+         : "=a" (q), "=d" (r)                                           \
+         : "0" (n0), "1" (n1), "rm" (d))
+
+#define umul_ppmm(w1, w0, u, v)                                         \
+    asm ("mull %3"                                                      \
+         : "=a" (w0), "=d" (w1)                                         \
+         : "%0" (u), "rm" (v))
+
+#define sub_ddmmss(sh, sl, ah, al, bh, bl)                              \
+    asm ("subl %5,%1\n\tsbbl %3,%0"                                     \
+         : "=r" (sh), "=&r" (sl)                                        \
+         : "0" (ah), "g" (bh), "1" (al), "g" (bl))
+
+#define count_leading_zeros(count, x)                                   \
+    do {                                                                \
+        unsigned int __cbtmp;                                           \
+        asm ("bsrl %1,%0" : "=r" (__cbtmp) : "rm" (x));                 \
+        (count) = __cbtmp ^ 31;                                         \
+    } while (0)
+
+typedef union {
+    struct { unsigned int low, high; } s;
+    unsigned long long ll;
+} DIunion;
+
+static inline unsigned long long
+udivmoddi4(unsigned long long n, unsigned long long d, unsigned long long *rp)
 {
-    unsigned char norm_shift;
-    unsigned char denorm_shift;
-    unsigned long long norm_divisor;
-    unsigned long long norm_dividend;
-    unsigned long long remainder;
-    unsigned long long product;
-    unsigned long long rem_and_low;
-    unsigned long long dividend, divisor, quotient;
-    unsigned int shift;
-    unsigned long long temp;
+    DIunion ww, nn, dd, rr;
+    unsigned int d0, d1, n0, n1, n2;
+    unsigned int q0, q1;
+    unsigned int b, bm;
 
-    dividend = ((unsigned long long)dividend_hi << 32) | dividend_lo;
-    divisor = ((unsigned long long)divisor_hi << 32) | divisor_lo;
+    nn.ll = n;
+    dd.ll = d;
 
-    // Fast path: divisor high word is zero
-    if (divisor_hi == 0) {
-        // Check if dividend also fits in 32 bits or divisor > dividend_hi
-        if (divisor_lo <= dividend_hi) {
-            unsigned int quot_hi;
-            unsigned long long remainder_and_low;
-            unsigned int quot_lo;
-            // Need to do 64-bit division
-            if (divisor_lo == 0) {
-                // Division by zero - trigger exception
-                divisor_lo = 1 / 0;  // This will cause a divide-by-zero exception
-            }
-            // Divide high word first, then combine with low word
-            quot_hi = dividend_hi / divisor_lo;
-            remainder_and_low = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
-            quot_lo = remainder_and_low / divisor_lo;
-            return ((unsigned long long)quot_hi << 32) | quot_lo;
+    d0 = dd.s.low;
+    d1 = dd.s.high;
+    n0 = nn.s.low;
+    n1 = nn.s.high;
+
+    if (d1 == 0) {
+        if (d0 > n1) {
+            /* 0q = nn / 0D -- remainder in n0 */
+            udiv_qrnnd(q0, n0, n1, n0, d0);
+            q1 = 0;
         } else {
-            // Simple 64/32 division
-            return dividend / divisor_lo;
+            /* qq = NN / 0d -- remainder in n0 */
+            if (d0 == 0) {
+                d0 = 1 / d0;    /* divide intentionally by zero */
+            }
+            udiv_qrnnd(q1, n1, 0, n1, d0);
+            udiv_qrnnd(q0, n0, n1, n0, d0);
+        }
+
+        if (rp != 0) {
+            rr.s.low = n0;
+            rr.s.high = 0;
+            *rp = rr.ll;
+        }
+    } else {
+        if (d1 > n1) {
+            /* 00 = nn / DD -- remainder in n1n0 */
+            q0 = 0;
+            q1 = 0;
+
+            if (rp != 0) {
+                rr.s.low = n0;
+                rr.s.high = n1;
+                *rp = rr.ll;
+            }
+        } else {
+            /* 0q = NN / dd */
+            count_leading_zeros(bm, d1);
+            if (bm == 0) {
+                /*
+                 * n1 >= d1 and the top bit of d1 is set, so the top bit of n1
+                 * is set too and the quotient digit is 0 or 1.  A necessary
+                 * special case, not an optimisation: shift counts of 32 are
+                 * undefined.
+                 */
+                if (n1 > d1 || n0 >= d0) {
+                    q0 = 1;
+                    sub_ddmmss(n1, n0, n1, n0, d1, d0);
+                } else {
+                    q0 = 0;
+                }
+
+                q1 = 0;
+
+                if (rp != 0) {
+                    rr.s.low = n0;
+                    rr.s.high = n1;
+                    *rp = rr.ll;
+                }
+            } else {
+                unsigned int m1, m0;
+
+                /* Normalise. */
+                b = 32 - bm;
+
+                d1 = (d1 << bm) | (d0 >> b);
+                d0 = d0 << bm;
+                n2 = n1 >> b;
+                n1 = (n1 << bm) | (n0 >> b);
+                n0 = n0 << bm;
+
+                udiv_qrnnd(q0, n1, n2, n1, d1);
+                umul_ppmm(m1, m0, q0, d0);
+
+                if (m1 > n1 || (m1 == n1 && m0 > n0)) {
+                    q0--;
+                    sub_ddmmss(m1, m0, m1, m0, d1, d0);
+                }
+
+                q1 = 0;
+
+                /* Remainder in (n1n0 - m1m0) >> bm. */
+                if (rp != 0) {
+                    sub_ddmmss(n1, n0, n1, n0, m1, m0);
+                    rr.s.low = (n1 << b) | (n0 >> bm);
+                    rr.s.high = n1 >> bm;
+                    *rp = rr.ll;
+                }
+            }
         }
     }
 
-    // divisor_hi != 0
-    if (dividend_hi < divisor_hi) {
-        // Quotient is zero
-        return 0;
-    }
-
-    // Find the position of the most significant bit in divisor_hi
-    shift = 31;
-    if (divisor_hi != 0) {
-        while ((divisor_hi >> shift) == 0) {
-            shift--;
-        }
-    }
-
-    // If shift is 31 (divisor_hi has only low bit set), special case
-    if ((shift ^ 31) == 0) {
-        // Check if dividend >= divisor
-        if ((dividend_hi <= divisor_hi) && (dividend_lo < divisor_lo)) {
-            return 0;
-        }
-        return 1;
-    }
-
-    // Normalize divisor and dividend
-    norm_shift = (unsigned char)(shift ^ 31);
-    denorm_shift = 32 - norm_shift;
-
-    // Normalize divisor
-    norm_divisor = (divisor_hi << norm_shift) | (divisor_lo >> denorm_shift);
-
-    // Normalize dividend
-    norm_dividend =
-        ((unsigned long long)(dividend_hi >> denorm_shift) << 32) |
-        ((dividend_hi << norm_shift) | (dividend_lo >> denorm_shift));
-
-    // Estimate quotient
-    quotient = norm_dividend / norm_divisor;
-    remainder = norm_dividend % norm_divisor;
-
-    // Refine quotient if necessary
-    product = ((unsigned long long)(divisor_lo << norm_shift) * quotient);
-    rem_and_low = ((remainder << 32) | (dividend_lo << norm_shift));
-
-    if (rem_and_low < product) {
-        quotient--;
-    }
-
-    return quotient;
+    ww.s.low = q0;
+    ww.s.high = q1;
+    return ww.ll;
 }
 
-/*
- * __umoddi3 - GCC helper function for 64-bit unsigned modulo on 32-bit systems
- *
- * Computes remainder of 64-bit unsigned division.
- * Parameters are passed as two 32-bit halves (low, high).
- *
- * Returns: 64-bit remainder as two 32-bit values
- */
-unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
-                             unsigned int divisor_lo, unsigned int divisor_hi)
+unsigned long long _udivdi3(unsigned long long n, unsigned long long d)
 {
-    unsigned long long dividend, divisor;
-    unsigned int shift;
-    unsigned long long remainder;
+    return udivmoddi4(n, d, (unsigned long long *)0);
+}
 
-    dividend = ((unsigned long long)dividend_hi << 32) | dividend_lo;
-    divisor = ((unsigned long long)divisor_hi << 32) | divisor_lo;
+unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
+{
+    unsigned long long w;
 
-    // Fast path: divisor high word is zero
-    if (divisor_hi == 0) {
-        if (dividend_hi < divisor_lo) {
-            // Simple modulo
-            return dividend % divisor_lo;
-        } else {
-            unsigned long long temp;
-            // Need to compute (dividend_hi % divisor) * 2^32 + dividend_lo) % divisor
-            if (divisor_lo == 0) {
-                divisor_lo = 1 / 0;  // Division by zero
-            }
-            temp = ((unsigned long long)(dividend_hi % divisor_lo) << 32) | dividend_lo;
-            return temp % divisor_lo;
-        }
-    }
+    (void)udivmoddi4(u, v, &w);
 
-    // divisor_hi != 0
-    if (divisor_hi <= dividend_hi) {
-        // Find the position of the most significant bit in divisor_hi
-        shift = 31;
-        if (divisor_hi != 0) {
-            while ((divisor_hi >> shift) == 0) {
-                shift--;
-            }
-        }
-
-        if ((shift ^ 31) != 0) {
-            unsigned int quot_estimate;
-            unsigned int rem_estimate;
-            unsigned long long product;
-            unsigned long long rem_and_low;
-            unsigned int rem_hi;
-            unsigned int borrow;
-            unsigned int rem_lo;
-            // Normalize
-            unsigned char norm_shift = (unsigned char)(shift ^ 31);
-            unsigned char denorm_shift = 32 - norm_shift;
-
-            unsigned int norm_divisor_hi = (divisor_hi << norm_shift) | (divisor_lo >> denorm_shift);
-            unsigned int norm_divisor_lo = divisor_lo << norm_shift;
-            unsigned int norm_dividend_lo = dividend_lo << norm_shift;
-
-            unsigned long long norm_dividend =
-                ((unsigned long long)(dividend_hi >> denorm_shift) << 32) |
-                ((dividend_hi << norm_shift) | (dividend_lo >> denorm_shift));
-
-            // Estimate quotient and remainder
-            quot_estimate = (unsigned int)(norm_dividend / norm_divisor_hi);
-            rem_estimate = (unsigned int)(norm_dividend % norm_divisor_hi);
-
-            // Compute product
-            product = (unsigned long long)norm_divisor_lo * quot_estimate;
-            rem_and_low = ((unsigned long long)rem_estimate << 32) | norm_dividend_lo;
-
-            // Adjust if needed
-            if (rem_and_low < product) {
-                unsigned long long norm_divisor_full = ((unsigned long long)norm_divisor_hi << 32) | norm_divisor_lo;
-                product = product - norm_divisor_full;
-            }
-
-            // Compute final remainder
-            rem_hi = rem_estimate - (unsigned int)(product >> 32);
-            borrow = (norm_dividend_lo < (unsigned int)product) ? 1 : 0;
-            rem_hi = rem_hi - borrow;
-            rem_lo = norm_dividend_lo - (unsigned int)product;
-
-            // Denormalize
-            remainder = ((unsigned long long)(rem_hi >> norm_shift) << 32) |
-                       ((rem_hi << denorm_shift) | (rem_lo >> norm_shift));
-            return remainder;
-        }
-
-        // divisor is almost 2^63, check if we need to subtract
-        if ((divisor_hi < dividend_hi) || (divisor_lo <= dividend_lo)) {
-            // Subtract divisor from dividend
-            unsigned int borrow = (dividend_lo < divisor_lo) ? 1 : 0;
-            dividend_lo = dividend_lo - divisor_lo;
-            dividend_hi = (dividend_hi - divisor_hi) - borrow;
-        }
-    }
-
-    // Return remainder
-    return ((unsigned long long)dividend_hi << 32) | dividend_lo;
+    return w;
 }
 
 @implementation ISASerialPort
@@ -2455,22 +2417,26 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  */
 - (id)initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
-    const char *portNumStr, *chipTypeStr, *portTypeStr;
-    const char *rxBufStr, *txBufStr, *clockRateStr, *heartBeatStr;
-    long portNum;
+    IOConfigTable *configTable;
+    const char *instanceStr, *chipTypeStr, *busTypeStr;
+    const char *txBufStr, *rxBufStr, *chipClockStr, *heartBeatStr;
+    long instance;
     unsigned int *portRanges;
     unsigned int *irqList;
     unsigned int chipType;
+    unsigned int masterClock;
+    unsigned int heartBeatUS;
+    unsigned long long heartBeatNS;
     unsigned int i;
     char portName[32];
     IOReturn result;
-    unsigned long long hbInterval;
-    unsigned int hbIntervalUS;
-    BOOL disableFIFO;
 
-    // Initialize offset 0x258 with pointer to offset 0x128
-    *(void **)((char *)self + 0x258) = (char *)self + 0x128;
-    *(id *)((char *)self + 0x128) = self;
+    // ivar 1 points at ivar 0, and ivar 0's first word points back at us.  The
+    // raw offsets below are the reference's, which is why the class has to
+    // subclass IODirectDevice: Port sits at 296 (0x128) and port at 600 (0x258)
+    // only once IODirectDevice's 32 bytes are in front of them.
+    self->port = &self->Port;
+    self->Port.Self = self;
 
     // Initialize all fields at specific offsets to zero
     *(unsigned int *)((char *)self + 300) = 0;      // 0x12c - port number
@@ -2534,22 +2500,28 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         *(unsigned int *)((char *)self + 0x1e8 + i * 4) = 0;
     }
 
-    // Get port number from device description
-    portNumStr = [deviceDescription valueForStringKey:"PortNum"];
-    if (portNumStr == NULL) {
-        IOLog("%s: Could not get port number from device description\n", [self name]);
+    // Every key this driver reads comes out of the Instance table, reached
+    // through the device description's config table.  Without one there is
+    // nothing to configure from.
+    configTable = [deviceDescription configTable];
+    if (configTable == nil) {
+        IOLog("ISASerialPort: Invalid Config Table\n");
         [self free];
         return nil;
     }
 
-    portNum = strtol(portNumStr, NULL, 10);
-    *(long *)((char *)self + 300) = portNum;
+    // "Instance" is the port number.  It feeds Port.Instance and names the
+    // device, which is why the reference reads it before anything else and
+    // does not guard against its absence.
+    instanceStr = [configTable valueForStringKey:"Instance"];
+    instance = strtol(instanceStr, NULL, 10);
+    self->Port.Instance = instance;
 
     // Create port name like "ISASerialPort0"
-    sprintf(portName, "ISASerialPort%ld", portNum);
+    sprintf(portName, "ISASerialPort%d", (int)instance);
     [self setName:portName];
-    [self setDeviceKind:"SerialPort"];
-    *(const char **)((char *)self + 0x130) = [self name];
+    [self setDeviceKind:"Serial"];
+    self->Port.PortName = (char *)[self name];
 
     // Get and validate Port configuration (base I/O address)
     if ([deviceDescription numPortRanges] != 1) {
@@ -2559,24 +2531,24 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     }
 
     portRanges = (unsigned int *)[deviceDescription portRangeList];
-    *(unsigned int *)((char *)self + 0x1b0) = portRanges[0];  // basePort
+    self->Port.Base = portRanges[0];
 
     // Check that base port is aligned and size is 8
     if ((portRanges[0] & 3) != 0 || portRanges[1] != 8) {
-        IOLog("%s: Port range 0x%04x size %d is invalid\n",
-              [self name], portRanges[0], portRanges[1]);
+        IOLog("%s: Invalid Port configuration\n", [self name]);
         [self free];
         return nil;
     }
 
     // Get and validate IRQ
     irqList = (unsigned int *)[deviceDescription interruptList];
-    *(unsigned int *)((char *)self + 0x1b4) = irqList[0];  // IRQ number
+    self->Port.IRQ = irqList[0];
 
-    // Get chip type from configuration if specified
-    chipTypeStr = [deviceDescription valueForStringKey:"ChipType"];
+    // "Chip Type" names a part, and is matched against the nine ShortNames in
+    // Chip[].  Row 0 is "Auto", which means "detect it", so a match there is
+    // silently ignored and leaves Type at 0 for the probe below.
+    chipTypeStr = [configTable valueForStringKey:"Chip Type"];
     if (chipTypeStr != NULL) {
-        // Try to match chip type string
         for (i = 0; i < 9; i++) {
             if (strcmp(Chip[i].ShortName, chipTypeStr) == 0) {
                 break;
@@ -2584,34 +2556,32 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         }
 
         if (i == 9) {
-            // Unknown chip type string
-            IOLog("%s: Unknown chip type '%s'\n", [self name], chipTypeStr);
-        } else {
-            if (i != 0) {  // Not "Auto"
-                *(unsigned int *)((char *)self + 0x1b8) = i;  // Set chipType
-                IOLog("%s: Chip type forced to %s\n", [self name], chipTypeStr);
-            }
+            IOLog("%s: Ignoring invalid Chip Type \"%s\" from Instance table\n",
+                  [self name], chipTypeStr);
+        } else if (i != 0) {
+            self->Port.Type = i;
+            IOLog("%s: Using Chip Type \"%s\" from Instance table\n",
+                  [self name], chipTypeStr);
         }
     }
 
     // Auto-detect chip type if not specified
-    if (*(unsigned int *)((char *)self + 0x1b8) == 0) {
+    if (self->Port.Type == 0) {
         chipType = identifyChip(self->port);
-        *(unsigned int *)((char *)self + 0x1b8) = chipType;
+        self->Port.Type = chipType;
         if (chipType == 0) {
-            IOLog("%s: No UART detected at base 0x%04x\n",
-                  [self name], *(unsigned int *)((char *)self + 0x1b0));
+            IOLog("%s: Unable to determine chip type at I/O base 0x%x\n",
+                  [self name], self->Port.Base);
             [self free];
             return nil;
         }
     }
 
-    // Check for PCMCIA port type
-    portTypeStr = [deviceDescription valueForStringKey:"PortType"];
-    if (portTypeStr != NULL) {
-        if (strncmp(portTypeStr, "PCMCIA", 7) == 0) {
-            *(unsigned char *)((char *)self + 0x1e3) = 1;  // pcmciaDetect = TRUE
-        }
+    // "Bus Type" of "PCMCIA" marks the port as removable, which is what
+    // PCMCIA_yanked and the banner's prefix key off.
+    busTypeStr = [configTable valueForStringKey:"Bus Type"];
+    if (busTypeStr != NULL && strncmp("PCMCIA", busTypeStr, 7) == 0) {
+        self->Port.PCMCIA = 1;
     }
 
     // Initialize chip with default settings
@@ -2620,73 +2590,78 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     // Allocate timer callout objects
     *(void **)((char *)self + 0x210) = thread_call_allocate(NULL, NULL);
     *(void **)((char *)self + 0x214) = thread_call_allocate(NULL, NULL);
-    *(void **)((char *)self + 0x218) = thread_call_allocate(_delayTOHandler, self->port);
-    *(void **)((char *)self + 0x21c) = thread_call_allocate(_heartBeatTOHandler, self->port);
+    *(void **)((char *)self + 0x218) = thread_call_allocate(delayTOHandler, self->port);
+    *(void **)((char *)self + 0x21c) = thread_call_allocate(heartBeatTOHandler, self->port);
 
     if (*(void **)((char *)self + 0x210) == NULL ||
         *(void **)((char *)self + 0x214) == NULL ||
         *(void **)((char *)self + 0x218) == NULL ||
         *(void **)((char *)self + 0x21c) == NULL) {
-        IOLog("%s: Failed to allocate timer callouts\n", [self name]);
+        IOLog("%s: Unable to allocate callout entries\n", [self name]);
         [self free];
         return nil;
     }
 
-    // Read RX buffer size from config
-    rxBufStr = [deviceDescription valueForStringKey:"RXBufSize"];
-    *(unsigned int *)((char *)self + 0x1a4) = 0x4b0;  // Default 1200
-    if (rxBufStr != NULL) {
-        unsigned int rxSize = (unsigned int)strtol(rxBufStr, NULL, 10);
-        rxSize = validateRingBufferSize(rxSize, &self->Port.TX);
-        *(unsigned int *)((char *)self + 0x1a4) = rxSize;
-    }
-
-    // Read TX buffer size from config
-    txBufStr = [deviceDescription valueForStringKey:"TXBufSize"];
-    *(unsigned int *)((char *)self + 0x16c) = 0x4b0;  // Default 1200
+    // "TX Buffer Size" and "RX Buffer Size" are in characters, while the ring
+    // buffers count 2-byte cells, so the requested size doubles on its way to
+    // validateRingBufferSize.  Each key feeds its own queue's DefaultSize and
+    // is validated against its own queue: crossing them over would silently
+    // apply one direction's default to the other.
+    txBufStr = [configTable valueForStringKey:"TX Buffer Size"];
+    self->Port.TX.DefaultSize = 0x4b0;  // Default 1200
     if (txBufStr != NULL) {
-        unsigned int txSize = (unsigned int)strtol(txBufStr, NULL, 10);
-        txSize = validateRingBufferSize(txSize, &self->Port.RX);
-        *(unsigned int *)((char *)self + 0x16c) = txSize;
+        self->Port.TX.DefaultSize = validateRingBufferSize(
+            (unsigned int)strtol(txBufStr, NULL, 10) * 2, &self->Port.TX);
     }
 
-    // Read clock rate from config
-    clockRateStr = [deviceDescription valueForStringKey:"ClockRate"];
-    if (clockRateStr == NULL || (unsigned int)strtol(clockRateStr, NULL, 10) < 1000) {
-        *(unsigned int *)((char *)self + 0x1dc) = 0x1c2000;  // Default 1843200
+    rxBufStr = [configTable valueForStringKey:"RX Buffer Size"];
+    self->Port.RX.DefaultSize = 0x4b0;  // Default 1200
+    if (rxBufStr != NULL) {
+        self->Port.RX.DefaultSize = validateRingBufferSize(
+            (unsigned int)strtol(rxBufStr, NULL, 10) * 2, &self->Port.RX);
+    }
+
+    // "Chip Clock" is the UART's input clock in hz and feeds MasterClock, from
+    // which programChip derives the divisor.  Anything under 1000 is discarded
+    // in favour of the 1.8432 MHz a standard part runs at.
+    chipClockStr = [configTable valueForStringKey:"Chip Clock"];
+    masterClock = 0;
+    if (chipClockStr != NULL) {
+        masterClock = (unsigned int)strtol(chipClockStr, NULL, 10);
+    }
+    if (masterClock > 999) {
+        self->Port.MasterClock = masterClock;
+        IOLog("%s: Master Clock set to %ld hz.\n", [self name], (long)masterClock);
     } else {
-        unsigned int clkRate = (unsigned int)strtol(clockRateStr, NULL, 10);
-        *(unsigned int *)((char *)self + 0x1dc) = clkRate;
-        IOLog("%s: Clock rate set to %d\n", [self name], clkRate);
+        self->Port.MasterClock = 0x1c2000;  // Default 1843200
     }
 
-    // Read heartbeat interval from config
-    heartBeatStr = [deviceDescription valueForStringKey:"HeartBeat"];
+    // "Heart Beat Interval" is in microseconds and defaults to 11000.  It is
+    // clamped so that the nanosecond product still fits in 32 bits, then split
+    // into the seconds/nanoseconds pair heartBeatTOHandler rearms from.
+    heartBeatStr = [configTable valueForStringKey:"Heart Beat Interval"];
     if (heartBeatStr != NULL) {
-        hbIntervalUS = (unsigned int)strtol(heartBeatStr, NULL, 10);
-        IOLog("%s: Heart Beat Interval set to %ld us.\n", [self name], (long)hbIntervalUS);
-        // Convert microseconds to nanoseconds (multiply by 1000)
-        // Store as 64-bit value at offsets 0x230 (low) and 0x234 (high)
-        hbInterval = (unsigned long long)hbIntervalUS * 1000ULL;
-        *(unsigned int *)((char *)self + 0x230) = (unsigned int)hbInterval;
-        *(unsigned int *)((char *)self + 0x234) = (unsigned int)(hbInterval >> 32);
-    }
-
-    // Calculate some 64-bit division values (purpose unclear from decompiled code)
-    {
-        unsigned int result_lo = __udivdi3(0, 0, 0, 0);
-        unsigned int result_hi = __umoddi3(0, 0, 0, 0);
-        *(unsigned int *)((char *)self + 0x238) = result_lo;
-        *(unsigned int *)((char *)self + 0x23c) = result_hi;
-    }
-
-    // Check for FIFO disable flag
-    disableFIFO = ([deviceDescription numFlagStrings] == 0);
-    if (disableFIFO) {
-        *(unsigned char *)((char *)self + 0x1d8) = 0xfb;  // Disable FIFO
+        heartBeatUS = (unsigned int)strtol(heartBeatStr, NULL, 10);
+        IOLog("%s: Heart Beat Interval set to %ld us.\n",
+              [self name], (long)heartBeatUS);
     } else {
-        *(unsigned char *)((char *)self + 0x1d8) = 0xff;  // Enable FIFO
-        IOLog("%s: FIFO enabled by config\n", [self name]);
+        heartBeatUS = 11000;
+    }
+    if (heartBeatUS > 0x418937) {
+        heartBeatUS = 0x418937;     // 4294967 us, the most that survives * 1000
+    }
+    heartBeatNS = (unsigned long long)(heartBeatUS * 1000);
+    self->Port.HeartBeatInterval.tv_sec = heartBeatNS / 1000000000;
+    self->Port.HeartBeatInterval.tv_nsec = heartBeatNS % 1000000000;
+
+    // "Enable MSR Interrupts" is a bare presence flag: with it the IER mask
+    // keeps every bit, without it the modem-status interrupt enable (0x04) is
+    // masked off for the life of the port.
+    if ([configTable valueForStringKey:"Enable MSR Interrupts"] != NULL) {
+        self->Port.IERmask = 0xff;
+        IOLog("%s: MSR Interrupts enabled.\n", [self name]);
+    } else {
+        self->Port.IERmask = 0xfb;
     }
 
     // Call superclass init
@@ -2718,7 +2693,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Free the instance.
  * Cleans up all resources and deallocates the instance.
  */
-- (void)free
+- free
 {
     unsigned int oldIRQL;
     void **timer1Ptr, **timer2Ptr, **timer3Ptr, **timer4Ptr;
@@ -2727,7 +2702,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     oldIRQL = spl4();
 
     // Deactivate the port (disables interrupts, frees ring buffers)
-    _deactivatePort(self->port);
+    deactivatePort(self->port);
 
     // Disable all interrupts at hardware level
     [self disableAllInterrupts];
@@ -2763,7 +2738,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     splx(oldIRQL);
 
     // Call superclass free
-    [super free];
+    return [super free];
 }
 
 /*
@@ -2771,17 +2746,17 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Sets up default serial port parameters and prepares the port for use.
  *
  * Parameters:
- *   refCon - Reference context (used as boolean sleep flag: 0 = don't sleep, 1 = sleep if busy)
+ *   sleep - NO: fail if the port is already open; YES: wait for it to close
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
  *   0xFFFFFD3B if PCMCIA card was removed
  *   0xFFFFFD36 or other errors from watchState if interrupted while sleeping
  */
-- (IOReturn)acquire:(void *)refCon
+- (IOReturn)acquire:(BOOL)sleep
 {
     unsigned int oldIRQL;
-    unsigned int checkMask;
+    unsigned long checkMask;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
     unsigned char msrValue;
@@ -2790,7 +2765,6 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     unsigned int eventMask;
     IOReturn result;
     int i;
-    BOOL sleep = (refCon != NULL);
 
     // Acquisition state tracking
     // Note: offset 0x134 in decompiled code - using currentState's high bit as acquired flag
@@ -2841,8 +2815,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Enqueue state change event
             memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
             if (eventMask & (changedBits << 16)) {
-                _RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                   (changedBits << 16) | 0x18);
+                RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
+                                    (changedBits << 16) | 0x18);
             }
 
             // Clear character filter bitmap (8 words at offset 0x1e8)
@@ -2934,8 +2908,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Enqueue state change event
             memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
             if (eventMask & (changedBits << 16)) {
-                _RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                   ((oldState & 0xFE09) | (flowState & 0x1F6) | (msrStateBits << 5)) |
+                RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
+                                    ((oldState & 0xFE09) | (flowState & 0x1F6) | (msrStateBits << 5)) |
                                    (changedBits << 16));
             }
 
@@ -3046,7 +3020,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         programChip(*(Port **)((char *)self + 600));
 
         // Deactivate port (pass value at offset 600)
-        _deactivatePort(*(Port **)((char *)self + 600));
+        deactivatePort(*(Port **)((char *)self + 600));
 
         // Update state and wake waiting threads
         selfPtr = *(Port **)((char *)self + 600);
@@ -3071,7 +3045,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
 
         // Enqueue state change event if mask matches
         if ((*(unsigned int *)((char *)selfPtr + 0xe0) & (changedBits << 16)) != 0) {
-            _RX_enqueueLongEvent(selfPtr, 0x53, changedBits << 16);
+            RX_enqueueLongEvent(selfPtr, 0x53, changedBits << 16);
         }
 
         // Disable UART interrupts (IER = 0)
@@ -3206,8 +3180,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   0xFFFFFD33 if port is not active
  *   Other errors from _RX_dequeueEvent
  */
-- (IOReturn)dequeueEvent:(unsigned int *)event
-                    data:(unsigned int *)data
+- (IOReturn)dequeueEvent:(unsigned long *)event
+                    data:(unsigned long *)data
                    sleep:(BOOL)sleep
 {
     unsigned int oldIRQL;
@@ -3267,7 +3241,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
     unsigned int chunkSize;
     unsigned int spaceToEnd;
     unsigned int i;
-    unsigned int checkMask;
+    unsigned long checkMask;
     IOReturn result;
     unsigned int txState;
     unsigned int oldState, newState, changedBits;
@@ -3391,7 +3365,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
                 } else {
                     // Below medium watermark
                     self->Port.TX.Enqueue = self->Port.TX.LowWater;
-                    txState = TX_STATE_BELOW_LOW;
+                    txState = TX_STATE_BELOW_MED;
                 }
             }
 
@@ -3427,8 +3401,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Enqueue state change event
             memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
             if (eventMask & (changedBits << 16)) {
-                _RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                   (oldState & 0xFFFF) | (changedBits << 16));
+                RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
+                                    (oldState & 0xFFFF) | (changedBits << 16));
             }
         }
 
@@ -3457,8 +3431,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   0xFFFFFD33 if port is not active
  *   Other errors from _TX_enqueueEvent
  */
-- (IOReturn)enqueueEvent:(unsigned int)event
-                    data:(unsigned int)data
+- (IOReturn)enqueueEvent:(unsigned long)event
+                    data:(unsigned long)data
                    sleep:(BOOL)sleep
 {
     unsigned int oldIRQL;
@@ -3502,10 +3476,10 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   IO_R_SUCCESS (0) on success
  *   0xFFFFFD33 if port is not acquired
  *   0xFFFFFD2B if trying to change buffer size while port is active
- *   Other errors from _executeEvent
+ *   Other errors from executeEvent
  */
-- (IOReturn)executeEvent:(unsigned int)event
-                    data:(unsigned int)data
+- (IOReturn)executeEvent:(unsigned long)event
+                    data:(unsigned long)data
 {
     unsigned int oldIRQL;
     IOReturn result;
@@ -3575,10 +3549,10 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             }
         }
     } else if (event == 0x4B) {
-        // Set heartbeat interval (event 0x4B from _executeEvent)
+        // Set heartbeat interval (event 0x4B from executeEvent)
         // Convert from microseconds to nanoseconds and store as 64-bit value
-        heartbeatLo = __udivdi3(data * 1000, 0, 1000000000, 0);
-        heartbeatHi = __umoddi3(data * 1000, 0, 1000000000, 0);
+        heartbeatLo = (unsigned long long)(data * 1000) / 1000000000;
+        heartbeatHi = (unsigned long long)(data * 1000) % 1000000000;
         // Store at offsets 0x230 and 0x234
         // These seem to be different from heartBeatInterval (0x110)
         // Likely charTimeOverrideLow/High or similar
@@ -3633,16 +3607,16 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Enqueue state change event
             memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
             if (eventMask & (changedBits << 16)) {
-                _RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                   ((oldState & 0xFFE9) | (flowState & 0x16)) | (changedBits << 16));
+                RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
+                                    ((oldState & 0xFFE9) | (flowState & 0x16)) | (changedBits << 16));
             }
         }
     } else {
-        // All other events - call _executeEvent
+        // All other events - call executeEvent
         changedBits = 0;
         newState = self->Port.State;
 
-        _executeEvent(self->port, (unsigned char)event, data, &newState, &changedBits);
+        executeEvent(self->port, (unsigned char)event, data, &newState, &changedBits);
         result = 0;
 
         // Update state with changes
@@ -3677,8 +3651,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
         // Enqueue state change event
         memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
         if (eventMask & (changedBits << 16)) {
-            _RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                               (newState & 0xFFFF) | (changedBits << 16));
+            RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
+                                (newState & 0xFFFF) | (changedBits << 16));
         }
     }
 
@@ -3698,8 +3672,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   IO_R_SUCCESS (0) on success
  *   0xFFFFFD3E if data pointer is NULL or event type is unknown
  */
-- (IOReturn)requestEvent:(unsigned int)event
-                    data:(unsigned int *)data
+- (IOReturn)requestEvent:(unsigned long)event
+                    data:(unsigned long *)data
 {
     unsigned long long timeValue;
     unsigned int result;
@@ -3773,17 +3747,13 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
 
         case 0x4B: // Heartbeat interval (offset 0x230-0x234, 64-bit ns, convert to us)
             timeValue = *(unsigned long long *)((char *)self + 0x230);
-            result = __udivdi3((unsigned int)(timeValue * 1000000000ULL),
-                              (unsigned int)((timeValue * 1000000000ULL) >> 32),
-                              1000, 0);
+            result = (unsigned int)(timeValue * 1000000000ULL / 1000);
             *data = result;
             return 0;
 
         case 0x4F: // Character time override (offset 0x228-0x22c, 64-bit ns, convert to us)
             timeValue = *(unsigned long long *)((char *)self + 0x228);
-            result = __udivdi3((unsigned int)(timeValue * 1000000000ULL),
-                              (unsigned int)((timeValue * 1000000000ULL) >> 32),
-                              1000, 0);
+            result = (unsigned int)(timeValue * 1000000000ULL / 1000);
             *data = result;
             return 0;
 
@@ -3828,7 +3798,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Returns:
  *   Event type byte if an event is queued, 0 otherwise
  */
-- (unsigned int)nextEvent
+- (unsigned long)nextEvent
 {
     unsigned int oldIRQL;
     unsigned char eventByte = 0;
@@ -3860,7 +3830,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Returns the current port state word containing all status flags.
  * Note: Bit 0x1000 is masked off before returning.
  */
-- (unsigned int)getState
+- (unsigned long)getState
 {
     return self->Port.State & ~0x1000;
 }
@@ -3878,8 +3848,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   0xFFFFFFD3E if invalid state bits are set
  *   0xFFFFFD33 if port not acquired
  */
-- (IOReturn)setState:(unsigned int)state
-                mask:(unsigned int)mask
+- (IOReturn)setState:(unsigned long)state
+                mask:(unsigned long)mask
 {
     unsigned int oldIRQL;
     Port *selfPtr;
@@ -3934,7 +3904,7 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
             // Enqueue state change event if monitored bits changed
             // Check stateEventMask at offset 0xe0 against changed bits shifted left 16
             if ((*(unsigned int *)((char *)selfPtr + 0xe0) & (changedBits << 16)) != 0) {
-                _RX_enqueueLongEvent(selfPtr, 0x53, (newState & 0xffff) | (changedBits << 16));
+                RX_enqueueLongEvent(selfPtr, 0x53, (newState & 0xffff) | (changedBits << 16));
             }
         }
 
@@ -3960,8 +3930,8 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  *   0xFFFFFD36 if interrupted while waiting
  *   Other errors from _watchState
  */
-- (IOReturn)watchState:(unsigned int *)state
-                  mask:(unsigned int)mask
+- (IOReturn)watchState:(unsigned long *)state
+                  mask:(unsigned long)mask
 {
     unsigned int oldIRQL;
     Port *selfPtr;
@@ -4060,23 +4030,23 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
  * Parameters:
  *   handler - Output: pointer to interrupt handler function
  *   level - Output: IRQ level (always 3 for ISA serial ports)
- *   argument - Output: argument to pass to handler (value at offset 0x258)
+ *   argument - Output: argument to pass to handler (the Port *)
  *   interruptType - Type of interrupt (unused for serial ports)
  *
  * Returns:
- *   1 (true) - handler is valid
+ *   YES - handler is valid
  */
-- (IOReturn)getHandler:(IOInterruptHandler *)handler
-                 level:(unsigned int *)level
-              argument:(void **)argument
-          forInterrupt:(unsigned int)interruptType
+- (BOOL)getHandler:(IOInterruptHandler *)handler
+             level:(unsigned int *)level
+          argument:(unsigned int *)argument
+      forInterrupt:(unsigned int)interruptType
 {
     // Return the appropriate interrupt handler based on FIFO capability
     // hasFIFO is at offset 0x1b8 (used as index: 0 for non-FIFO, 1 for FIFO)
     if ((self->Port.Type > 4)) {
-        *handler = (IOInterruptHandler)_FIFOIntHandler;
+        *handler = (IOInterruptHandler)FIFOIntHandler;
     } else {
-        *handler = (IOInterruptHandler)_NonFIFOIntHandler;
+        *handler = (IOInterruptHandler)NonFIFOIntHandler;
     }
 
     // Set IRQ level to 3
@@ -4084,9 +4054,9 @@ unsigned long long __umoddi3(unsigned int dividend_lo, unsigned int dividend_hi,
 
     // Pass value at offset 0x258 as the argument
     // (This is the interrupt handler context pointer)
-    *argument = *(void **)((char *)self + 0x258);
+    *argument = (unsigned int)self->port;
 
-    return 1; // Return true
+    return YES;
 }
 
 @end

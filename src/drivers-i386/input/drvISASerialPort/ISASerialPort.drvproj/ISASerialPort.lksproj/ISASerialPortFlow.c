@@ -30,6 +30,7 @@
  */
 
 #import "ISASerialPortInternal.h"
+#import "ISASerialPortQueue.h"
 #import <driverkit/generalFuncs.h>
 #import <kernserv/prototypes.h>
 /*
@@ -121,7 +122,7 @@ unsigned int flowMachine(Port *port)
  * WatchStateMask and wakes the other threads sleeping on it.  Returning around
  * that block leaves those waiters blocked forever.
  */
-IOReturn watchState(Port *port, unsigned int *state, unsigned int mask)
+IOReturn watchState(Port *port, unsigned long *state, unsigned long mask)
 {
     BOOL needsActiveCheck = NO;
     unsigned int desiredState = *state;

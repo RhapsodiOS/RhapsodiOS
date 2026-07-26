@@ -15,7 +15,7 @@ LANGUAGE = English
 
 CLASSES = ISASerialPort.m
 
-CFILES = ISASerialPortFlow.c
+CFILES = ISASerialPortFlow.c ISASerialPortQueue.c
 
 HFILES = ISASerialPort.h ISASerialPortInternal.h
 

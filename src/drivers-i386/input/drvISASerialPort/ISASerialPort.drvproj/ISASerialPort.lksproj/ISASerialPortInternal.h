@@ -216,6 +216,66 @@ typedef struct {
     } Stats;
 } Port;                                 /* 304 */
 
+/*
+ * The reference defines this as a static in the header its translation units
+ * share, so every unit that references it emits its own copy: three in the
+ * reference, at 0, 20684 and 23200, byte-identical over 193 bytes.  Defining
+ * it here rather than in one .c reproduces that, and puts the copy ahead of
+ * everything else in each unit, which is where the reference has it.
+ *
+ * RX enqueue long event (3-word event: type + data low + data high).
+ * Used for state change events and other long data events.
+ */
+static IOReturn _RX_enqueueLongEvent(Port *port, unsigned int event, unsigned int data)
+{
+    unsigned short *writePtr = (unsigned short *)port->RX.Input;
+    unsigned int spaceAvailable = port->RX.Size - port->RX.Count;
+
+    // Check if we have space for 3 entries
+    if (spaceAvailable < 3) {
+        // Not enough space for long event
+        if (port->RX.Count < port->RX.Size) {
+            // Queue not full - enqueue overflow marker
+            *writePtr++ = EVENT_OVERFLOW;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+        } else {
+            // Queue completely full - set overflow flag
+            port->RX.OverRun = 1;
+        }
+        return IO_R_SUCCESS;
+    }
+
+    // Enqueue event type
+    *writePtr++ = (unsigned short)event;
+    if ((char *)writePtr >= port->RX.End) {
+        writePtr = (unsigned short *)port->RX.Base;
+    }
+    port->RX.Input = (char *)writePtr;
+    port->RX.Count++;
+
+    // Enqueue data low word
+    *writePtr++ = (unsigned short)data;
+    if ((char *)writePtr >= port->RX.End) {
+        writePtr = (unsigned short *)port->RX.Base;
+    }
+    port->RX.Input = (char *)writePtr;
+    port->RX.Count++;
+
+    // Enqueue data high word
+    *writePtr++ = (unsigned short)(data >> 16);
+    if ((char *)writePtr >= port->RX.End) {
+        writePtr = (unsigned short *)port->RX.Base;
+    }
+    port->RX.Input = (char *)writePtr;
+    port->RX.Count++;
+
+    return IO_R_SUCCESS;
+}
+
 /* ISASerialPortChip.c */
 extern int identifyChip(Port *port);
 extern void initChip(Port *port);

@@ -204,8 +204,8 @@ static unsigned int _motorChangeCount = 0;
 	unsigned char byte;
 	unsigned char st0, st1, st2;
 
-	// Get command opcode (offset 0x0c + 3) and mask to 5 bits
-	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0f) & 0x1f;
+	// Get command opcode (offset 0x0c) and mask to 5 bits
+	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0c) & 0x1f;
 
 	// Initialize result fields
 	*(unsigned int *)((char *)cmdParams + 0x40) = 0xffffffff;  // Result status
@@ -253,7 +253,7 @@ static unsigned int _motorChangeCount = 0;
 	}
 
 	// Send command bytes
-	cmdBytesPtr = (unsigned char *)((char *)cmdParams + 0x0c + 3);
+	cmdBytesPtr = (unsigned char *)((char *)cmdParams + 0x0c);
 	cmdByteCount = *(unsigned int *)((char *)cmdParams + 0x1c);
 
 	for (i = 0; i < cmdByteCount; i++) {
@@ -298,7 +298,7 @@ static unsigned int _motorChangeCount = 0;
 	// Read result bytes
 	resultByteCount = *(unsigned int *)((char *)cmdParams + 0x38);
 	resultBytesPtr = (unsigned char *)((char *)cmdParams + 0x28) +
-	                 *(unsigned int *)((char *)cmdParams + 0x4c) + 3;
+	                 *(unsigned int *)((char *)cmdParams + 0x4c);
 
 	for (i = *(unsigned int *)((char *)cmdParams + 0x4c); i < resultByteCount; i++) {
 		result = [self fcGetByte:resultBytesPtr];
@@ -348,9 +348,9 @@ static unsigned int _motorChangeCount = 0;
 		}
 
 		// Get status registers
-		st0 = ((unsigned char *)((char *)cmdParams + 0x28))[3];
-		st1 = ((unsigned char *)((char *)cmdParams + 0x28))[4];
-		st2 = ((unsigned char *)((char *)cmdParams + 0x28))[5];
+		st0 = ((unsigned char *)((char *)cmdParams + 0x28))[0];
+		st1 = ((unsigned char *)((char *)cmdParams + 0x28))[1];
+		st2 = ((unsigned char *)((char *)cmdParams + 0x28))[2];
 
 		// Check ST0 bits 7-6 (error bits)
 		if ((st0 & 0xc0) == 0) {

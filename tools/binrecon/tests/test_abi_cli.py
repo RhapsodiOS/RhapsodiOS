@@ -1,5 +1,3 @@
-import json
-
 from binrecon.objc_abi import attach_symbols
 from binrecon.schema import validate_document
 

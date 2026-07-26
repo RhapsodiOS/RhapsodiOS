@@ -25,7 +25,6 @@ class ObjcReader:
         # was rewritten by prebinding to an address outside this image.
         self.method_names = method_names or {}
         self.prefix = _PREFIX[endianness]
-        self._word = struct.Struct(f"{self.prefix}I")
         self._spans = [
             (section["address"], section["size"], section["offset"])
             for section in sections
@@ -195,7 +194,8 @@ def read_modules_from_sections(payload, sections, endianness, method_names=None)
 
 
 def attach_symbols(modules, assignment, symbols):
-    """Record each module's exported C symbols, split by segment.
+    """Record each module's exported C symbols, bucketed by whether their
+    section is exactly ``__TEXT,__text``.
 
     ``assignment`` maps a module name to the symbol names it owns. C functions
     carry no module attribution in the image (spec §2.1), so the assignment is

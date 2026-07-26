@@ -1,5 +1,3 @@
-import pytest
-
 from binrecon.abi_check import diff_abi, external_symbols
 
 

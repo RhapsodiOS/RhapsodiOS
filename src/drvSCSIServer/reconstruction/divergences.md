@@ -543,10 +543,20 @@ The `@protocol(IOSCSIControllerExported)` used by `initForDevice` (address 3028)
 confirmed by walking `__OBJC,__protocol` (base 21424, two 20-byte `Protocol` records — the first is
 the `IOSCSIController` protocol from the Task 3 `requiredProtocols` finding, the second, at offset 20,
 is this one) through to its `protocol_name` field, which reads `"IOSCSIControllerExported"` — matching
-our source's literal text exactly, even though (see Finding below) that protocol is never declared.
+our source's literal text exactly, even though (see Finding: `-[IOSCSISession initForDevice:result:]` wrapper (address 3028) uses an undeclared protocol name) that protocol is never declared.
 **No wrong-selector finding exists in this block** — the spec's warning that "a wrapper dispatching a
 different selector than ours is a plausible finding here" did not materialize for any of the 18; the
 defect this block actually has (below) is a different species entirely.
+
+## Finding: `-[IOSCSISession initForDevice:result:]` wrapper (address 3028) uses an undeclared protocol name
+
+**Source:** `IOSCSISession.m:1086` (`_IOSCSISession_initForDevice`), which calls `objc_msgSend(conformsTo:, @protocol(IOSCSIControllerExported))`.
+
+**Reference behaviour:** the dispatch at address 3028 loads a protocol pointer from `__OBJC,__protocol` and passes it as the argument to `conformsTo:`. The reference binary's `__OBJC,__protocol` section (base 21424) contains two 20-byte `Protocol` struct records. The first, at offset 0, describes the `IOSCSIController` protocol (matching the finding in Task 3's `requiredProtocols` analysis). The second, at offset 20, contains a `protocol_name` field that reads exactly `"IOSCSIControllerExported"` — the name the reference passes to the conformance check.
+
+**Our source:** declares and uses `@protocol(IOSCSIControllerExported)` at `IOSCSISession.m:1086` but does not declare the protocol itself anywhere in the source tree. The only protocol declaration in `IOSCSISession.h` is `@protocol IOSCSIController` (line 19), a different name. Similarly, `SCSIServer.m:21` declares `extern Protocol *objc_protocol_IOSCSIController;` to reference the compiled protocol struct by its mangled name, but there is no declaration of `objc_protocol_IOSCSIControllerExported`.
+
+**Consequence:** on a PPC rebuild, `@protocol(IOSCSIControllerExported)` expands to a reference to an identifier that does not exist in any scope — the symbol table will have no `_objc_protocol_IOSCSIControllerExported` or equivalent to link to. This is a **compile error**, not a runtime mismatch: the preprocessor or compiler must resolve `@protocol(X)` to a symbol-table entry at build time. The reference clearly uses `IOSCSIControllerExported` (not `IOSCSIController`), so the fix is to declare `extern Protocol *objc_protocol_IOSCSIControllerExported;` to reference the compiled protocol struct — the same pattern used for `objc_protocol_IOSCSIController` in `SCSIServer.m:21`. This belongs in the same category as the two type errors already recorded (missing `notify_port` argument, `void`/`int` mismatch) — it is not merely a naming divergence but a compile error. Left `unexamined`; Task 12 should add a declaration like `extern Protocol *objc_protocol_IOSCSIControllerExported;` to `IOSCSISession.m`, matching the reference's compiled protocol, and review the source to ensure `IOSCSIControllerExported` is the protocol Apple intended to test (not `IOSCSIController`).
 
 **The six execute variants read together (Step 3 of the brief).** `executeRequest` (4288),
 `executeRequestScatter` (4828) and `executeRequestOOLScatter` (4544), and their `executeSCSI3*`

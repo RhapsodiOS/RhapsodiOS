@@ -139,6 +139,18 @@ extents:
 The offsets above are derived from the bundle's prebound `__TEXT` addresses,
 which start at `0x70320000`. The source map records absolute addresses.
 
+> **The sizes in this table are gap-derived and several are wrong**, in the same
+> way §1.1's `VGA_reloc` table was before Task 7 corrected it. Sixteen `static`
+> functions carry no symbol, so each one inflates the size attributed to whatever
+> named symbol precedes it. `_VGAUnshieldCursor` is the worst case: 1164 bytes
+> here against IDA's 73, having absorbed both cursor blitters. IDA also reports
+> 17 PIC symbol stubs in `__TEXT,__picsymbol_stub` that no symbol names. The
+> authoritative inventory is the committed source map, which after Task 9's
+> correction holds 53 entries: 19 hand-written symbols over 18 bodies, 2 dyld
+> glue routines, 17 PIC stubs and 16 unnamed statics. This table is left as it
+> stood because it is what the symbol table alone shows, and the gap between the
+> two is itself the point.
+
 ### 1.2 The `VGA` version bundle is out of scope
 
 `VGA.config/VGA` is a third Mach-O file, 16672 bytes, MH_BUNDLE. Its `__text` is
@@ -508,13 +520,30 @@ Per binary:
    then hand-resolve the residue. Every reference function lands in exactly one
    bucket: `mapped`, `unmapped`, `boundary_disputed`, or `duplicate_candidates`.
 
-   **A function is an entry IDA names.** The Mach-O symbol table alone
-   undercounts, because it names none of the six `vidBIOS` methods (§2.4); IDA's
-   raw function list alone overcounts, because its boundary heuristics promote
-   `_emu486`'s 69 per-opcode handlers to functions (§1.1). Named entries are the
-   intersection that matches what a person actually reconstructs: 36 for
-   `VGA_reloc`, 22 for `VGA_psdrvr`. The excluded fragments are recorded in
-   `divergences.md` as part of `_emu486`'s structure, not dropped silently.
+   **A function is any IDA entry that is not contained within another one.** The
+   Mach-O symbol table alone undercounts, because it names none of the six
+   `vidBIOS` methods (§2.4). IDA's named entries alone also undercount, because a
+   `static` C function carries no symbol and gets no name. What IDA's raw list
+   overcounts is only the fragments its boundary heuristics carve *inside* an
+   already-named function — `_emu486`'s per-opcode handlers. So the rule is
+   containment, not naming: an unnamed entry lying wholly inside a named
+   function's extent is one of its basic blocks and is excluded; an unnamed entry
+   standing on its own is a `static` function and is included, under a
+   synthesized `sub_<ADDRESS>` name because `source-map-v1` requires at least one.
+
+   That yields **38 entries for `VGA_reloc`** — the 36 named plus two unnamed
+   fragments of 81 and 37 bytes at 15640 and 15721, which sit past `_emu486`'s
+   end — and **53 for `VGA_psdrvr`**: 37 named plus 16 unnamed statics.
+
+   > **Corrected after Task 9.** An earlier draft of this rule said simply "a
+   > function is an entry IDA names," which was drawn from `VGA_reloc`, where the
+   > unnamed entries really are jump-table fragments. Applied to `VGA_psdrvr` it
+   > excluded 2807 of that binary's 7057 `__text` bytes — 40% — including both
+   > cursor blitters, at 603 and 481 bytes, and the eleven-entry driver vector
+   > table `_VGAStart` installs. A rewrite built from that partition would have
+   > produced a driver that draws no cursor. The excluded fragments under the
+   > corrected rule are 1161 bytes inside `_emu486`, and they are recorded in
+   > `divergences.md` as part of its structure rather than dropped silently.
 
    Because our source is disjoint from Apple's, each binary's report-pass map
    puts all of its hand-written symbols in `unmapped` — 28 for `VGA_reloc`, 19
@@ -541,8 +570,13 @@ rewrite starts:
 
 - the exact `VGAShmem_t` layout, which the kernel side validates — the reference
   logs `%s: shmem_size > sizeof (VGAShmem_t)(%d<>%d)`;
-- the `IO_Framebuffer_*` get/set parameter protocol, which appears in the
-  `__cstring` of both binaries;
+- the `IO_Framebuffer_*` get/set parameter protocol. An earlier draft of this
+  section said it "appears in the `__cstring` of both binaries", which Task 9
+  disproved: the bundle carries only `IO_Framebuffer_Register`,
+  `IO_Framebuffer_SetDimensions`, `IOGetDisplayInfo` and `Set VGA VESA Mode`. It
+  never sends `Map`, `Unmap`, `Dimensions` or `Unregister`, and maps the frame
+  buffer itself through `_IOMapEISADeviceMemory`. The kernel side implements
+  parameters the Window Server side does not use;
 - the cursor state machine that `_VGADisplayCursor`/`_VGARemoveCursor` implement
   on the kernel side and `_VGAShieldCursor`/`_VGAUnshieldCursor` on the Window
   Server side.

@@ -85,8 +85,9 @@ typedef struct {
 - (void)reset;
 - powerStates;
 
-- (PCMCIAStatus)statusChangeMask;
+/* Setter first here, unlike the pairs below; that is the reference's order. */
 - (char)setStatusChangeMask:(PCMCIAStatus)mask;
+- (PCMCIAStatus)statusChangeMask;
 
 - (char)cardEnabled;
 - (char)setCardEnabled:(char)enabled;

@@ -1364,11 +1364,37 @@ types, parameter types and all. That is an independent confirmation of Finding
 11's fix pass from a source it did not use: Finding 11 worked from the class
 method lists' type encodings, and these are the protocols' encodings.
 
-**One thing here is reasoned rather than measured.** Method lists are emitted in
-reverse source order, which is why `PCMCIA.h` reverses them; protocol *adoption*
-lists are built by appending rather than prepending, so `<PCMCIAAdapter,
-IOPower>` should emit in that order — matching the reference. If a rebuilt
-driver's protocol list for `PCIC` comes out reversed, that assumption is why.
+**The ordering reasoning was checked against a build, and held.** Method lists
+are emitted in reverse source order, which is why `PCMCIA.h` reverses them;
+protocol *adoption* lists are built by appending rather than prepending, so
+`<PCMCIAAdapter, IOPower>` should emit in that order. Measured in a rebuilt
+`PCIC_reloc` (266508 bytes, 2026-07-26 19:08), it does.
+
+### The verifying build
+
+`__OBJC,__protocol` is **100 bytes, the reference's size exactly** — five
+records where our build previously emitted none. Comparing the two binaries'
+Objective-C metadata:
+
+- The five protocols appear in the same section order, with the same names.
+- Four of the five — `PCMCIAAdapter`, `IOPower`, `PCMCIAWindow` and
+  `PCMCIAWindowAttributes` — are identical in every selector *and* every type
+  encoding, in order.
+- All three class adoptions match, `PCIC`'s two-protocol list included and in
+  the reference's order.
+- `__OBJC,__category` is 72 bytes in both, and `PCICWindow(Attributes)` adopts
+  `PCMCIAWindowAttributes` in both — so the inline-protocol-list layout
+  described above is reproduced too.
+
+**One discrepancy, since fixed.** `PCMCIASocket` had `statusChangeMask` and
+`setStatusChangeMask:` in the opposite order to the reference — same 21
+selectors, same 21 type encodings, one adjacent pair transposed. The cause was a
+transcription slip rather than a wrong theory: reversing the reference's list
+gives `setStatusChangeMask:` before `statusChangeMask`, the one place in that
+protocol where Apple put a setter ahead of its getter, and `PCMCIA.h` had
+regularised it to the getter-first convention used by the other nine pairs. The
+header now carries Apple's order, with a comment saying why it looks
+inconsistent. A rebuild should make all five protocols identical.
 
 **Ledger effect: still none**, for the reason given above — adoption emits no
 code into `__TEXT,__text`. What it does close is the gap that paragraph warns

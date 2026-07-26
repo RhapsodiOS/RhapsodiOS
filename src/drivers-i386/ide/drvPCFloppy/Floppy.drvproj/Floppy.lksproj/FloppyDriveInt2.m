@@ -446,14 +446,14 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 					// Give up after 6 recalibrations
 					[self logRwErr:"FATAL"
 						      block:currentBlock
-						     status:(unsigned char *)&fdcStatus
+						     status:fdcStatus
 						   readFlag:isRead];
 					goto transfer_done;
 				}
 
 				[self logRwErr:"RECALIBRATING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 
 				[self fdRecal];
@@ -461,7 +461,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			} else {
 				[self logRwErr:"RETRYING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 			}
 
@@ -478,7 +478,7 @@ update_stats:
 		default:  // Fatal error
 			[self logRwErr:"FATAL"
 				      block:currentBlock
-				     status:(unsigned char *)&fdcStatus
+				     status:fdcStatus
 				   readFlag:isRead];
 			goto transfer_done;
 		}
@@ -525,21 +525,17 @@ transfer_done:
  * Log read/write error.
  * From decompiled code: logs FDC error with operation type and status.
  */
-- (void)logRwErr : (unsigned)operation
+- (void)logRwErr : (const char *)operation
 	      block : (unsigned)block
-	     status : (unsigned char *)status
+	     status : (unsigned)status
 	   readFlag : (BOOL)readFlag
 {
 	const char *statusString;
 	const char *operationType;
 	const char *driveName;
-	int fdcStatus;
-
-	// Get FDC status value
-	fdcStatus = *(int *)status;
 
 	// Find name for FDC status value in fdrValues table
-	statusString = IOFindNameForValue(fdcStatus, fdrValues);
+	statusString = IOFindNameForValue(status, fdrValues);
 
 	// Set operation type based on read flag
 	operationType = readFlag ? "Read" : "Write";
@@ -547,10 +543,12 @@ transfer_done:
 	// Get drive name
 	driveName = [self name];
 
-	// Log the error
+	// Log the error. The disassembly's argument order puts statusString
+	// before operation (the leftover push from the IOFindNameForValue
+	// call ends up as the last IOLog vararg).
 	IOLog("%s: Sector %d cmd = %s; %s: %s\n",
 	      driveName, block, operationType,
-	      (const char *)operation, statusString);
+	      statusString, operation);
 }
 
 

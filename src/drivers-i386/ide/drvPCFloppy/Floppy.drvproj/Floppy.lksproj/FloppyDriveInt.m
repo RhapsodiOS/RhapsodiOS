@@ -12,9 +12,9 @@
 #import "FloppyVm.h"
 
 // External references for VM functions
-extern unsigned int __page_size;
-extern unsigned int __page_mask;
-extern vm_map_t __kernel_map;
+extern unsigned int page_size;
+extern unsigned int page_mask;
+extern vm_map_t kernel_map;
 extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
 extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 
@@ -54,7 +54,7 @@ static void *floppyMalloc(unsigned int size,
 	int offsetToNextPage;
 
 	// Check if requested size exceeds page size
-	if (__page_size < size) {
+	if (page_size < size) {
 		return NULL;
 	}
 
@@ -68,14 +68,14 @@ static void *floppyMalloc(unsigned int size,
 	*allocSizeOut = allocSize;
 
 	// Get physical address of the allocation
-	pmap = vm_map_pmap_EXTERNAL(__kernel_map, allocAddr);
+	pmap = vm_map_pmap_EXTERNAL(kernel_map, allocAddr);
 	physAddr = pmap_resident_extract(pmap, allocAddr);
 
 	// Calculate offset from physical address to next page boundary
-	// (-__page_size & physAddr) rounds down to page boundary
-	// Adding __page_size gives next page boundary
+	// (-page_size & physAddr) rounds down to page boundary
+	// Adding page_size gives next page boundary
 	// Subtracting physAddr gives offset to next boundary
-	offsetToNextPage = ((-__page_size & physAddr) + __page_size) - physAddr;
+	offsetToNextPage = ((-page_size & physAddr) + page_size) - physAddr;
 
 	// If the offset to the next page boundary is less than the requested size,
 	// we need to move forward to ensure the buffer doesn't cross a page

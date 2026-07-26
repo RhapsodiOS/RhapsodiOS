@@ -11,8 +11,8 @@
 #import "FloppyVm.h"
 
 // External references for VM functions
-extern unsigned int __page_size;
-extern unsigned int __page_mask;
+extern unsigned int page_size;
+extern unsigned int page_mask;
 extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
 extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
@@ -31,8 +31,8 @@ extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_addres
  *   wireFlag  - 0 to unwire (make pageable), non-zero to wire (make resident)
  *
  * Implementation details:
- *   - Start address is aligned down: address & ~__page_mask
- *   - End address is aligned up: (address + size + __page_mask) & ~__page_mask
+ *   - Start address is aligned down: address & ~page_mask
+ *   - End address is aligned up: (address + size + page_mask) & ~page_mask
  *   - Wiring when wireFlag != 0 (new_pageable = FALSE)
  *   - Unwiring when wireFlag == 0 (new_pageable = TRUE)
  */
@@ -46,12 +46,12 @@ static void dowire(vm_map_t map,
 	boolean_t newPageable;
 
 	// Calculate page-aligned start address (round down)
-	startAddr = address & ~__page_mask;
+	startAddr = address & ~page_mask;
 
 	// Calculate page-aligned end address (round up)
-	// address + size + __page_mask rounds up to next page boundary
-	// Then & ~__page_mask aligns it
-	endAddr = (address + size + __page_mask) & ~__page_mask;
+	// address + size + page_mask rounds up to next page boundary
+	// Then & ~page_mask aligns it
+	endAddr = (address + size + page_mask) & ~page_mask;
 
 	// Convert wire flag to pageable flag
 	// wireFlag == 0 means unwire (make pageable = TRUE)
@@ -101,10 +101,10 @@ static void docopy(vm_map_t sourceMap,
 	// Process all bytes
 	while (byteCount != 0) {
 		// Calculate bytes remaining to end of source page
-		// __page_mask contains the page offset mask (e.g., 0xFFF for 4KB pages)
-		// sourceAddr & __page_mask gives offset within page
-		// __page_size - offset gives bytes to page boundary
-		sourceBytesRemaining = __page_size - (sourceAddr & __page_mask);
+		// page_mask contains the page offset mask (e.g., 0xFFF for 4KB pages)
+		// sourceAddr & page_mask gives offset within page
+		// page_size - offset gives bytes to page boundary
+		sourceBytesRemaining = page_size - (sourceAddr & page_mask);
 
 		// Start with minimum of bytes remaining and source page boundary
 		chunkSize = byteCount;
@@ -113,7 +113,7 @@ static void docopy(vm_map_t sourceMap,
 		}
 
 		// Also limit by destination page boundary
-		destBytesRemaining = __page_size - (destAddr & __page_mask);
+		destBytesRemaining = page_size - (destAddr & page_mask);
 		if (destBytesRemaining < chunkSize) {
 			chunkSize = destBytesRemaining;
 		}

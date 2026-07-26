@@ -111,8 +111,8 @@ typedef struct {
  * Forward declarations for external functions
  */
 extern void *alloc_cnvmem(unsigned int size, unsigned int align);
-extern IOReturn _IOForkThread(void (*threadFunc)(void *), void *arg);
-extern void _IOExitThread(void);
+extern IOReturn IOForkThread(void (*threadFunc)(void *), void *arg);
+extern void IOExitThread(void);
 
 /*
  * Floppy drive detection functions (defined in FloppyCnt.m)

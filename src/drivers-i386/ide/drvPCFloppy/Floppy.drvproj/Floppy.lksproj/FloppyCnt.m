@@ -249,7 +249,7 @@ BOOL numFloppyDrives(void)
 	}
 
 	// Fork the floppy controller thread
-	threadResult = _IOForkThread(FloppyControllerThread, self);
+	threadResult = IOForkThread(FloppyControllerThread, self);
 
 	// Clear bit 4 of flags
 	_flags = _flags & 0xef;
@@ -696,7 +696,7 @@ static void FloppyControllerThread(void *arg)
 			if (cmdParams == NULL) {
 				// Exit request - unlock the request lock and exit thread
 				[requestLock unlockWith:0];
-				_IOExitThread();
+				IOExitThread();
 				return;  // Thread terminates
 			}
 

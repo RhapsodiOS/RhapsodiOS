@@ -270,7 +270,8 @@ def _verify_java21(java: Path, runner: Callable) -> None:
 
 
 def _script_arguments(mode: str, output: Path, identity: InputIdentity,
-                      layout: Path | None = None) -> list[str]:
+                      layout: Path | None = None,
+                      scope: tuple[tuple[int, int], ...] = ()) -> list[str]:
     arguments = [mode]
     if layout is not None:
         arguments += ["--layout", str(layout)]
@@ -278,22 +279,27 @@ def _script_arguments(mode: str, output: Path, identity: InputIdentity,
         arguments += ["--output", str(output)]
     arguments += ["--input", str(identity.path), "--size", str(identity.size),
                   "--sha256", identity.sha256, "--language", _LANGUAGE]
+    if mode == "export" and scope:
+        arguments += ["--analysis-scope", json.dumps(
+            [{"start": start, "end": end} for start, end in scope],
+            separators=(",", ":"))]
     return arguments
 
 
 def _command(executable: Path, workspace: Path, project: str,
              identity: InputIdentity, script: Path, output: Path,
-             native_log: Path, script_log: Path, layout: Path | None) -> list[str]:
+             native_log: Path, script_log: Path, layout: Path | None,
+             scope: tuple[tuple[int, int], ...] = ()) -> list[str]:
     argv = [str(executable), str(workspace), project, "-import", str(identity.path)]
     if layout is not None:
         argv += ["-loader", "BinaryLoader", "-processor", _LANGUAGE,
                  "-preScript", script.name,
-                 *_script_arguments("prepare", output, identity, layout)]
+                 *_script_arguments("prepare", output, identity, layout, scope)]
     else:
         argv += ["-processor", _LANGUAGE]
     argv += ["-scriptPath", str(script.parent), "-log", str(native_log), "-scriptlog", str(script_log),
              "-postScript", script.name,
-             *_script_arguments("export", output, identity, layout), "-deleteProject"]
+             *_script_arguments("export", output, identity, layout, scope), "-deleteProject"]
     return argv
 
 
@@ -565,6 +571,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         assert_identity(identity)
     except (OSError, ValueError) as error:
         raise GhidraAdapterError(f"input identity is no longer stable: {error}") from error
+    scope = analysis_scope(profile)
 
     destination = Path(destination).resolve(strict=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -589,7 +596,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
     layout_document = None
     try:
         command = _command(executable, workspace, f"native-{run_token}", identity, script, output,
-                           native_log, script_log, None)
+                           native_log, script_log, None, scope)
         try:
             completed = runner(command, capture_output=True, text=True, timeout=timeout,
                                shell=False, check=False)
@@ -628,7 +635,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
             _atomic_text(layout_path, json.dumps(layout_document, ensure_ascii=False,
                                                   sort_keys=True, separators=(",", ":")) + "\n")
             command = _command(executable, workspace, f"fallback-{run_token}", identity, script, output,
-                               native_log, script_log, layout_path)
+                               native_log, script_log, layout_path, scope)
             try:
                 completed = runner(command, capture_output=True, text=True, timeout=timeout,
                                    shell=False, check=False)

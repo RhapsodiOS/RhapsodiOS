@@ -87,17 +87,18 @@ public final class ExportAnalysis extends GhidraScript {
                 Long.parseLong(args.required("--size")) != number(identity.get("size"))) {
             throw new IOException("layout identity mismatch");
         }
-        Object declaredScope = layout.get("analysis_scope");
-        if (declaredScope != null) {
-            for (Object item : array(declaredScope, "analysis_scope")) {
-                Map<String,Object> range = object(item, "analysis_scope range");
-                long start = number(range.get("start"));
-                long end = number(range.get("end"));
-                if (end <= start) throw new IOException("analysis scope range is empty or inverted");
-                scope.add(new long[]{start, end});
-            }
-        }
         return layout;
+    }
+
+    private void parseScope(String value) throws IOException {
+        Object parsed = new JsonParser(value).parse();
+        for (Object item : array(parsed, "analysis-scope")) {
+            Map<String,Object> range = object(item, "analysis-scope range");
+            long start = number(range.get("start"));
+            long end = number(range.get("end"));
+            if (end <= start) throw new IOException("analysis scope range is empty or inverted");
+            scope.add(new long[]{start, end});
+        }
     }
 
     private boolean inScope(long address) {
@@ -253,6 +254,7 @@ public final class ExportAnalysis extends GhidraScript {
         if (layout != null) verifyPreparedLayout(layout);
         if (layout != null) linkRelocations(layout,
             currentProgram.getAddressFactory().getDefaultAddressSpace());
+        if (args.values.containsKey("--analysis-scope")) parseScope(args.values.get("--analysis-scope"));
         Map<String,Object> root = new LinkedHashMap<>();
         ReferenceManager referenceManager = currentProgram.getReferenceManager();
         if (referenceManager == null) throw new IOException("reference manager unavailable");
@@ -677,7 +679,7 @@ public final class ExportAnalysis extends GhidraScript {
     private static final class Args {
         private static final Set<String> COMMON_OPTIONS=Set.of("--input","--size","--sha256","--language");
         private static final Set<String> PREPARE_OPTIONS=Set.of("--input","--size","--sha256","--language","--layout");
-        private static final Set<String> EXPORT_OPTIONS=Set.of("--input","--size","--sha256","--language","--output","--layout");
+        private static final Set<String> EXPORT_OPTIONS=Set.of("--input","--size","--sha256","--language","--output","--layout","--analysis-scope");
         final String mode; final Map<String,String> values;
         Args(String mode,Map<String,String> values){this.mode=mode;this.values=values;}
         String required(String key){String value=values.get(key);if(value==null||value.isEmpty())throw new IllegalArgumentException("missing "+key);return value;}

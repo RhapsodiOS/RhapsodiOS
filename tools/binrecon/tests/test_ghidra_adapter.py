@@ -91,6 +91,23 @@ def test_builds_shell_free_native_command_and_publishes_canonical_json(configure
     assert not any(destination.parent.glob(".*ghidra-work-*"))
 
 
+def test_analysis_scope_reaches_the_export_script_on_the_native_path(configured, tmp_path):
+    profile, identity, _, _ = configured
+    profile.document = MappingProxyType({
+        **profile.document, "analysis_scope": [{"start": 4096, "end": 4112}],
+    })
+    destination = tmp_path / "scoped.json"
+    calls = []
+    export_with_ghidra(profile, "reference", destination,
+                       runner=_successful_runner(identity, calls))
+    argv = calls[-1][0]
+    assert "-loader" not in argv and "-preScript" not in argv
+    assert "--analysis-scope" in argv
+    assert argv[argv.index("--analysis-scope") + 1] == json.dumps(
+        [{"start": 4096, "end": 4112}], separators=(",", ":")
+    )
+
+
 def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
     import binrecon.adapters.ghidra as ghidra_adapter
 

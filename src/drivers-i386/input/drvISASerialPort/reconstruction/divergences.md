@@ -2637,8 +2637,14 @@ fixed, and the section table moved from 25/30 to 28/30.
 | `__TEXT,__cstring` | 799 | **742** | 742 | byte-identical |
 | `__OBJC,__meth_var_names` | 602 | **632** | 632 | |
 | `__OBJC,__message_refs` | 68 | **76** | 76 | |
-| `__TEXT,__text` | 22164 | **23088** | 24412 | −1324 |
+| `__TEXT,__text` | 22164 | **23080** | 24412 | −1332 |
 | `__TEXT,__const` | absent | absent | 682 | see below |
+
+All figures in this addendum are measured against the build of commit `57e57119`, **not**
+against the first 6b build. The distinction matters: `57e57119`'s own EISA-typing change shrank
+`initFromDeviceDescription:` by 8 bytes, so the numbers first written here — 23088 text and
+−157 on init — described a binary that the same commit had already superseded. They have been
+re-derived and corrected.
 
 `missing_strings`, `missing_symbols` and `extra_strings` are all **0**. Thirteen sections are
 byte-identical; every `__OBJC` section now matches by size. The two that remain are `__text`
@@ -2671,6 +2677,13 @@ helpers in `ISASerialPort.m`, so no copy is emitted at all.
 Reproducing 512 bytes of provably unread data, and a banner containing someone else's build
 timestamp, would be moving a size number and nothing else. **`__TEXT,__const` is recorded as a
 permanent, understood absence.**
+
+One qualification on "cannot be reproduced": that is true of the banner's *content*, not of the
+section's *existence*. `VERS_STRING` and `VERS_NUM` are 170 of the 682 bytes, and they are
+emitted by the build system into a generated `*_vers.c`. If this project's `pb_makefiles`
+carried the `vers_string` rule, `__TEXT,__const` would appear at 170 bytes with different text
+rather than being absent altogether. That is a build-system question, not a driver-source one,
+and it is left open rather than answered here.
 
 ### The `lock incl` lead was wrong, and the correction is measured
 
@@ -2793,6 +2806,76 @@ the struct straight to `deadline_from_interval` — verified at 9295–9301 in `
 10280–10294 in `heartBeatTOHandler`. The three helper functions that existed only to perform
 that round trip were deleted.
 
+**That verification covered the interval and not the callout, and the callout was also wrong.**
+Finding 90 names both halves; 6b's first pass fixed one and left the reader of Addendum 7 to
+assume the site was closed. `dequeueData:` armed and cancelled `Port.DelayTOEntry`
+(Port+0xF0), where the reference reads `[edx+0ECh]` — `Port.DataLatTOEntry` — at both 9327
+(`thread_call_enter_delayed`) and 9374 (`thread_call_cancel`). The allocation sites decide it:
+1586 binds `dataLatTOHandler` to `[esi+214h]` = Port+0xEC and 1603 binds `delayTOHandler` to
+`[esi+218h]` = Port+0xF0. Across the whole reference `[+0ECh]` appears **only** in
+`dequeueData:` and `[+0F0h]` **only** in `_executeEvent`'s 0x4B arm, so there is no ambiguity.
+The consequence of the old code was that a read carrying a data-latency interval armed the
+delay timer: `delayTOHandler` would fire instead of `dataLatTOHandler`, clearing `State` bit
+0x1000 and driving the interrupt handler, and any delay timer event 0x4B had set was first
+clobbered and then cancelled. **Both identifiers are now `DataLatTOEntry`**, and Finding 90's
+callout half is closed. The ledger entry for `dequeueData:` stays `unexamined`: the fix is
+evidenced, but the body as a whole has still not been read.
+
+### `requestEvent:data:` — the comments were crossed the same way, the code was not
+
+The sibling of the method 6b de-crossed carries the effort's known-bad pattern in its purest
+form: **every RX/TX label in its switch is backwards, and every offset and expression is
+right.** All 24 cases were checked against 7816–8004; nothing in the code changed. Corrected
+labels, against Addendum 6's table:
+
+| case | comment said | offset is |
+| --- | --- | --- |
+| 0x0B | RX buffer capacity | `Port.TX.Size` |
+| 0x0F | TX buffer capacity | `Port.RX.Size` |
+| 0x13 | RX low watermark | `Port.TX.LowWater` |
+| 0x17 | TX med watermark | `Port.RX.LowWater` |
+| 0x1B | RX high watermark | `Port.TX.HighWater` |
+| 0x1F | TX low watermark | `Port.RX.HighWater` |
+| 0x23 | RX available count | `Port.TX.Size − Port.TX.Count` |
+| 0x43 | Flow control | `Port.TX_Parity` |
+| 0x47 | Flow control state? | `Port.RX_Parity` |
+| 0x4B | Heartbeat interval | `Port.CharLatInterval`, not `HeartBeatInterval` (0x238) |
+| 0x4F | Character time override | `Port.DataLatInterval` |
+| 0x53 | State event mask | `Port.FlowControl` |
+| 0xF3 | Parity | `Port.StopBits` |
+
+Case `0x27` is a **fourth original bug**, already reproduced: the reference computes
+`[0x140] − [0x17C]` at 7932–7938, which is `RX.Size − TX.Count` — the RX twin of case 0x23 with
+one substitution missed, the same shape as `_executeEvent`'s case `0x1B`. The comment now says
+so.
+
+### Two findings opened, deliberately not fixed
+
+1. **`requestEvent:` cases 0x4B and 0x4F compute the wrong number.** This is arithmetic, not
+   style. Ours reads the `tvalspec` pair as one little-endian `unsigned long long` — which is
+   `tv_sec | (tv_nsec << 32)` — and then multiplies by 1e9 before dividing by 1000. The
+   reference at 7704–7808 loads the two words separately, computes
+   `(unsigned long long)tv_sec * 1000000000 + (long long)(int)tv_nsec` (`mul`, then `cdq` to
+   sign-extend `tv_nsec`, then `add`/`adc`), and divides that by 1000 through `__udivdi3`.
+   Finding 95 states the correct formula but frames the item as a call-site *style* question;
+   nothing in the record said the result was wrong. It is. Left for the pass that takes
+   `requestEvent:data:` as a whole.
+2. **Finding 10 is half wrong and would break code if applied literally.** It says
+   `STATE_RX_ENABLED` should be `0x00400000` rather than `0x00080000`. `0x00080000` is
+   *correct* where it is used — as the `watchState` mask, which the reference pushes as
+   `80000h` at 21443 and 22292 (against `800000h` at 20937). `0x00400000` is a **different**
+   bit: the handler-internal RX gate, tested as `test byte ptr [ebp+var_C+2], 40h` at 13237,
+   16340 and 16449. **Two constants are needed, not one substitution.** A future pass following
+   Finding 10 as written would change `ISASerialPortQueue.c:375` and `:555` and break them.
+
+### A known non-literal equivalence, left alone
+
+`executeEvent:data:`'s 0x53 arm builds the MCR byte from `flowState` where the reference builds
+it from `newState` (6718 and 6728). These are the same value in the bits that matter:
+`newState = (oldState & 0xFFFFFFE9) | (flowState & 0x16)`, and the mask clears exactly 0x02 and
+0x04, so both bits can only have come from `flowState`. Recorded so a later reader does not
+mistake it for a divergence.
+
 ### What is left, measured per function
 
 Per-function sizes were taken from the rebuilt object with capstone against the `nlist`,
@@ -2803,7 +2886,7 @@ of inter-function alignment, which is why several exact matches read `+1` to `+3
 | --- | --- | --- | --- |
 | `_FIFOIntHandler` | 3172 | 2652 | **−520** |
 | `_NonFIFOIntHandler` | 2472 | 2128 | **−344** |
-| `initFromDeviceDescription:` | 2273 | 2116 | −157 |
+| `initFromDeviceDescription:` | 2273 | 2108 | −165 |
 | `_RX_dequeueEvent` | 852 | 780 | −72 |
 | `_programChip` | 1148 | 1080 | −68 |
 | `acquire:` | 944 | 880 | −64 |
@@ -2817,13 +2900,23 @@ of inter-function alignment, which is why several exact matches read `+1` to `+3
 | `_deactivatePort` | 345 | 380 | +35 |
 | `requestEvent:data:` | 746 | 768 | +22 |
 
-The matched deltas sum to −1271 of the section's −1324; the remainder is inter-function
-padding, which our build spends more of (49 alignment `nop`s inside `_NonFIFOIntHandler` alone
-against the reference's 2).
+**The accounting closes exactly.** The per-function deltas sum to **−1279**, not to the
+section's −1332, and the 53-byte difference is not a remainder — it is the reference's own
+inter-function padding. Our sizes are symbol-gap derived and therefore tile the section, so
+they already contain our padding; IDA's reference sizes are function extents and exclude the
+reference's, whose 45 functions total 24359 against a 24412-byte section. So
+
+    −1279  (per-function, ours gap-derived against IDA extents)
+    −   53  (reference padding IDA does not count: 24412 − 24359)
+    = −1332  (the section delta)
+
+Our build also spends its padding differently — 49 alignment `nop`s inside `_NonFIFOIntHandler`
+alone, against the reference's 2 — which is why several functions that are otherwise exact read
+`+1` to `+3`.
 
 ### The two interrupt handlers: deliberately not fixed, with the reason
 
-`_FIFOIntHandler` and `_NonFIFOIntHandler` carry −864 of the remaining −1324 and are left at
+`_FIFOIntHandler` and `_NonFIFOIntHandler` carry −864 of the remaining −1332 and are left at
 `signature-confirmed`. The signature is verified — `void (void *identity, void *state,
 Port *port)`, the `Port *` arriving as `arg_8` and matching the three-argument indirect call the
 timeout handlers make through `Chip[Type].IntHandler`. **The bodies were not verified**, and the
@@ -2861,6 +2954,15 @@ advanced to `signature-confirmed` only. The eleven still `unexamined` are `_acti
 **Nothing is `assembly-matched` and nothing claims to be.** Task 6b did diff rebuilt
 instruction streams, but only in aggregate — mnemonic histograms and call-target sets — not
 instruction by instruction, which is what that status requires.
+
+The reason string `"full disassembly read instruction by instruction"` was inherited by 34
+entries, nine of them `unexamined` and two of them the interrupt handlers whose own reason says
+the body was **not** verified. Read literally it claims a rebuilt-versus-reference diff, which
+is the class of overstatement that cost two entries their status in the 6a review. On all
+thirteen entries that are neither `control-flow-confirmed` nor `intentional-mismatch` it has
+been replaced with wording that says what actually happened — the *reference* was read, and no
+rebuilt comparison was made. It is left in place only where the entry's status is consistent
+with it.
 
 The source map is unchanged in shape: **43 mapped, 2 unmapped**, no duplicates and no disputed
 boundaries. Twenty-nine `source_line` values moved because the rewrite shifted the file; each

@@ -3199,18 +3199,24 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         (*count)++;
         writePtr++;
 
-        // Schedule character timeout timer after first byte if enabled
+        // Arm the data-latency timer after the first byte.  DataLatTOEntry
+        // (Port+0xEC), not DelayTOEntry (Port+0xF0): the reference reads
+        // [edx+0ECh] at 9327 and 9374, and 0xEC is the entry
+        // initFromDeviceDescription: bound to dataLatTOHandler.  Arming
+        // DelayTOEntry here would run delayTOHandler instead - clearing State
+        // bit 0x1000 and driving the interrupt handler - and would clobber any
+        // delay timer event 0x4B had set (Finding 90).
         if (timerScheduled > 0) {
             thread_call_enter_delayed(
-                self->Port.DelayTOEntry,
+                self->Port.DataLatTOEntry,
                 deadline_from_interval(self->Port.DataLatInterval));
             timerScheduled = -1;  // Mark as scheduled
         }
     }
 
-    // Cancel character timeout timer if it was scheduled
+    // Cancel the data-latency timer if it was armed
     if (timerScheduled < 0) {
-        thread_call_cancel(self->Port.DelayTOEntry);
+        thread_call_cancel(self->Port.DataLatTOEntry);
     }
 
     splx(oldIRQL);
@@ -3731,43 +3737,44 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
     // Handle different query types based on event low byte
     switch (event & 0xFF) {
-        case 0x05: // TX Enable state (bit 30 of currentState)
+        case 0x05: // Port.State bit 30 (0x40000000), the port-active flag
             *data = (*(unsigned int *)((char *)self + 0x134) >> 30) & 1;
             return 0;
 
-        case 0x0B: // RX buffer capacity (offset 0x178)
+        case 0x0B: // Port.TX.Size (0x178)
             *data = *(unsigned int *)((char *)self + 0x178);
             return 0;
 
-        case 0x0F: // TX buffer capacity (offset 0x140)
+        case 0x0F: // Port.RX.Size (0x140)
             *data = *(unsigned int *)((char *)self + 0x140);
             return 0;
 
-        case 0x13: // RX low watermark (offset 0x184)
+        case 0x13: // Port.TX.LowWater (0x184)
             *data = *(unsigned int *)((char *)self + 0x184);
             return 0;
 
-        case 0x17: // TX med watermark (offset 0x14c)
+        case 0x17: // Port.RX.LowWater (0x14c)
             *data = *(unsigned int *)((char *)self + 0x14c);
             return 0;
 
-        case 0x1B: // RX high watermark (offset 0x180)
+        case 0x1B: // Port.TX.HighWater (0x180)
             *data = *(unsigned int *)((char *)self + 0x180);
             return 0;
 
-        case 0x1F: // TX low watermark (offset 0x148)
+        case 0x1F: // Port.RX.HighWater (0x148)
             *data = *(unsigned int *)((char *)self + 0x148);
             return 0;
 
-        case 0x23: // RX available data count (RX capacity - used)
+        case 0x23: // Port.TX.Size - Port.TX.Count, the free space in TX
             *data = *(int *)((char *)self + 0x178) - *(int *)((char *)self + 0x17c);
             return 0;
 
-        case 0x27: // TX free space count (TX capacity - used)
+        case 0x27: // Port.RX.Size - Port.TX.Count.  The reference really does
+                   // mix the two queues here (7932-7938); reproduced.
             *data = *(int *)((char *)self + 0x140) - *(int *)((char *)self + 0x17c);
             return 0;
 
-        case 0x33: // Baud rate (offset 0x1d0)
+        case 0x33: // Port.BaudRate (0x1d0)
             *data = *(unsigned int *)((char *)self + 0x1d0);
             return 0;
 
@@ -3775,7 +3782,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             *data = 0;
             return 0;
 
-        case 0x3B: // Data bits (offset 0x1bc)
+        case 0x3B: // Port.CharLength (0x1bc)
             *data = *(unsigned int *)((char *)self + 0x1bc);
             return 0;
 
@@ -3783,43 +3790,45 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             *data = 0;
             return 0;
 
-        case 0x43: // Flow control (offset 0x1c4)
+        case 0x43: // Port.TX_Parity (0x1c4)
             *data = *(unsigned int *)((char *)self + 0x1c4);
             return 0;
 
-        case 0x47: // Flow control state? (offset 0x1c8)
+        case 0x47: // Port.RX_Parity (0x1c8)
             *data = *(unsigned int *)((char *)self + 0x1c8);
             return 0;
 
-        case 0x4B: // Heartbeat interval (offset 0x230-0x234, 64-bit ns, convert to us)
+        case 0x4B: // Port.CharLatInterval (0x230/0x234), NOT HeartBeatInterval
+                   // (0x238).  The arithmetic below is wrong; see Addendum 7.
             timeValue = *(unsigned long long *)((char *)self + 0x230);
             result = (unsigned int)(timeValue * 1000000000ULL / 1000);
             *data = result;
             return 0;
 
-        case 0x4F: // Character time override (offset 0x228-0x22c, 64-bit ns, convert to us)
+        case 0x4F: // Port.DataLatInterval (0x228/0x22c).  Same broken
+                   // arithmetic as 0x4B; see Addendum 7.
             timeValue = *(unsigned long long *)((char *)self + 0x228);
             result = (unsigned int)(timeValue * 1000000000ULL / 1000);
             *data = result;
             return 0;
 
-        case 0x53: // State event mask (offset 0x208)
+        case 0x53: // Port.FlowControl (0x208)
             *data = *(unsigned int *)((char *)self + 0x208);
             return 0;
 
-        case 0xE5: // Some boolean flag (offset 0x1e0, return 0 or 1)
+        case 0xE5: // Port.MinLatency (0x1e0), reported as 0 or 1
             *data = (unsigned int)(*(char *)((char *)self + 0x1e0) != 0);
             return 0;
 
-        case 0xE9: // XOFF character (offset 0x1e6)
+        case 0xE9: // Port.XOFFchar (0x1e6)
             *data = (unsigned int)*(unsigned char *)((char *)self + 0x1e6);
             return 0;
 
-        case 0xED: // XON character (offset 0x1e5)
+        case 0xED: // Port.XONchar (0x1e5)
             *data = (unsigned int)*(unsigned char *)((char *)self + 0x1e5);
             return 0;
 
-        case 0xF3: // Parity (offset 0x1c0)
+        case 0xF3: // Port.StopBits (0x1c0)
             *data = *(unsigned int *)((char *)self + 0x1c0);
             return 0;
 
@@ -3827,7 +3836,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             *data = 0;
             return 0;
 
-        case 0xF9: // RX Enable state (bit 11 of currentState)
+        case 0xF9: // Port.State bit 11 (0x800), the break flag event 0xF9 sets
             *data = (*(unsigned int *)((char *)self + 0x134) >> 11) & 1;
             return 0;
 

@@ -1726,11 +1726,8 @@ says, and this effort's rule is that the binary decides.
 
 ### What is left in this function
 
-One accepted residual: `and` −6 / `or` −6 from the paired IRQ and DMA control-byte
-construction. The entry stays `intentional-mismatch` on that ground alone. The reason why
-stands as written — `or dl, 50h` at 5525 sets two bits in one instruction, so a single
-two-bit field cannot be told apart from two one-bit fields, and the type would be invented
-rather than derived.
+One residual at that point: `and` −6 / `or` −6 from the paired IRQ and DMA control-byte
+construction, settled in the section after this one.
 
 The rest is codegen class, but one item in it is worth naming because it is *not* obviously
 codegen. The reference tests `currentDMADirection` through a register — `mov esi,
@@ -1741,3 +1738,152 @@ not a cached local: the reference re-reads the ivar at 5196 rather than holding 
 across, so the source is reading `currentDMADirection` at each site exactly as ours does,
 and why `gcc` loaded it to a register first is not determined by the source we can see. Left
 alone, and not counted as a construct difference.
+
+## The paired control-byte construction: the earlier refusal rested on a misread
+
+**Resolved in source.** Two fix passes declined this one, the second on the grounds that
+`or dl, 50h` at 5525 "sets two bits in one instruction, and a single two-bit field cannot be
+told apart from two one-bit fields." That reasoning was built on a misread of the control
+flow. `or dl, 50h` is not part of the `irq == 10` arm. Every arm of the chain jumps to it:
+
+```
+5471: cmp [ebp-14h], 9
+5475: jne 5484
+5477: mov dl, [ebp-28h]        ; = 0
+5480: jmp 5525                 -----+
+5484: cmp [ebp-14h], 5              |
+5488: jne 5500                      |
+5490: or  dl, 4                     |
+5493: and dl, 0F7h                  |
+5496: jmp 5525                 -----+
+5500: cmp [ebp-14h], 7              |
+5504: jne 5516                      |
+5506: and dl, 0FBh                  |
+5509: or  dl, 8                     |
+5512: jmp 5525                 -----+
+5516: cmp [ebp-14h], 0Ah             |
+5520: jne 5525                 -----+
+5522: or  dl, 0Ch                   |
+5525: or  dl, 50h              <----+  shared by all four
+5528: and edx, 0FFh
+5534: mov [ebp-2Ch], edx
+```
+
+`0Ah` jumps to 5525, not past it, and so do 9, 5 and 7. The DMA block at 5594-5646 is the
+same shape, with every arm converging on `or [ebp-28h], 50h` at 5638. Once the arms are read
+that way the decomposition is determined, not invented:
+
+| arm | reference | means |
+| --- | --- | --- |
+| `irq == 5` | `or dl, 4` then `and dl, 0F7h` | bit 2 := 1, bit 3 := 0 |
+| `irq == 7` | `and dl, 0FBh` then `or dl, 8` | bit 2 := 0, bit 3 := 1 |
+| `irq == 10` | `or dl, 0Ch` | bit 2 := 1, bit 3 := 1 |
+| `irq == 9` | `mov dl, <a known zero>` | bit 2 := 0, bit 3 := 0 |
+| shared | `or dl, 50h` | bits 4 and 6 := 1 |
+
+A single two-bit field at 2-3 stores as `and 0F3h` then `or <value>` — one clear of the whole
+field, then one set. It cannot produce `or 4` followed by `and 0F7h`, which clears and sets
+*different* bits in the wrong order for that form. Two one-bit fields assigned in source
+order do produce exactly that. And `50h` is bits 4 and 6, which are not adjacent, so that one
+was never a candidate for a single field either.
+
+`or dl, 0Ch` and `or dl, 50h` are each two same-op stores that this `gcc` merges — `or 4` /
+`or 8` and `or 10h` / `or 40h`. The merge is not an assumption: the rebuild does it.
+
+The type follows the mixer-shadow precedent already in
+`ES1x88AudioDriverRegisters.h`, and one declaration covers both registers, which share a
+layout:
+
+```c
+typedef union {
+    struct {
+        unsigned char
+                reserved0:2,
+                select0:1,
+                select1:1,
+                fixed4:1,
+                reserved5:1,
+                fixed6:1,
+                reserved7:1;
+    }       reg;
+    unsigned char rawValue;
+}       es1x88ControlRegister_t;
+```
+
+`irqBits` and `dmaBits` became `irqControl` and `dmaControl`, the four whole-value
+assignments became `select0`/`select1` pairs, and the `| 0x50` that our source had folded
+into the `outb` argument became `fixed4 = 1; fixed6 = 1;` on the variable, which is where the
+reference puts it. Both are zeroed together ahead of the IRQ chain, as the reference's
+`xor dl, dl` at 5465 and `mov byte [ebp-28h], 0` at 5467 show.
+
+The rebuilt blocks match instruction for instruction:
+
+```
+        REFERENCE                          OURS
+5465:   xor dl, dl                  5196:  xor bl, bl
+5467:   mov byte [ebp-28h], 0       5198:  mov byte [ebp-14h], 0
+5471:   cmp [ebp-14h], 9            5205:  cmp [ebp-8], 9
+5477:   mov dl, [ebp-28h]           5211:  mov bl, [ebp-14h]
+5490:   or  dl, 4                   5222:  or  bl, 4
+5493:   and dl, 0F7h                5225:  and bl, 0F7h
+5506:   and dl, 0FBh                5238:  and bl, 0FBh
+5509:   or  dl, 8                   5241:  or  bl, 8
+5522:   or  dl, 0Ch                 5254:  or  bl, 0Ch
+5525:   or  dl, 50h                 5257:  or  bl, 50h
+
+5600:   or  [ebp-28h], 4            5320:  or  [ebp-14h], 4
+5604:   and [ebp-28h], 0F7h         5324:  and [ebp-14h], 0F7h
+5618:   and [ebp-28h], 0FBh         5338:  and [ebp-14h], 0FBh
+5622:   or  [ebp-28h], 8            5342:  or  [ebp-14h], 8
+5634:   or  [ebp-28h], 0Ch          5354:  or  [ebp-14h], 0Ch
+5638:   or  [ebp-28h], 50h          5358:  or  [ebp-14h], 50h
+```
+
+Including the `mov dl, [ebp-28h]` oddity in the `irq == 9` arm, which our rebuild reproduces
+for the same reason the reference has it: both control bytes are zeroed adjacently, so when
+the arm needs a zero `gcc` copies the other variable's known-zero slot rather than clearing
+the register.
+
+`or` is now 11 on both sides and `and` closes from −6 to −2. Rebuilt size 1240 against the
+reference's 1328. Parity unchanged at `missing_strings` 0 / `missing_symbols` 0, and no other
+function's size moved.
+
+### What is left in this function, after three passes
+
+Two things, one accepted and one newly open.
+
+**Accepted — register allocation.** The reference allocates `irqControl` to `dl`, which is
+the low half of the register the port load `mov dx, [400ch]` needs, so it must spill the byte
+before every port write: `and edx, 0FFh` / `mov [ebp-2Ch], edx` at 5528-5534, and
+`movzx eax, byte [ebp-28h]` / `mov [ebp-30h], eax` at 5642-5646. Ours picks `bl`, which does
+not collide with `dx`, and needs no spill. That is the whole of `and` −2, `movzx` −2 and four
+of the `mov` deficit, and it is the same class as the `ebx`-versus-`cl` note on
+`setAnalogInputSource:`. Nothing in the source produces it.
+
+Also accepted, and recorded above: the `test` −2 / `cmp` +2 from the reference reading
+`currentDMADirection` through a register.
+
+**Newly open, and not yet decided — `256 - x` against `-x`.** This became visible only once
+the larger differences were cleared. The reference computes both negated bytes by
+subtracting from 100h in 32 bits:
+
+```
+        REFERENCE                          OURS
+4909:   mov ebx, 100h               4685:  mov bl, al
+4914:   sub ebx, eax                4687:  neg bl
+4916:   or  bl, 80h                 4689:  or  bl, 80h
+
+4995:   mov ebx, 100h               4792:  mov ecx, eax
+5000:   sub ebx, ecx                4794:  neg cl
+```
+
+Our source writes `-(ES_SAMPLE_RATE_CONST_HIGH / sampleRate)` and
+`-(ES_FILTER_CONST / (sampleRate * ES_FILTER_DIVISOR))`; the reference's form is
+`256 - (...)`. The two agree in the byte that reaches the port, so this is not a behaviour
+bug, but it is a source-construct difference of exactly the kind the last three passes have
+been closing, and it accounts for `neg` +2 / `sub` −2. The third `sub` site, the
+`0x80 - (...)` at 4890, our source already writes as a subtraction and it already matches.
+
+This one is left undecided rather than fixed, because it was found while accounting for the
+control-byte result and has not been through a build. Entry 4388 stays `intentional-mismatch`
+on the register-allocation ground, with this named in its reason as open.

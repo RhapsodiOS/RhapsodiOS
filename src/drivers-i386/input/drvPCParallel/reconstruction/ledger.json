@@ -33,7 +33,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the control-byte assembly, both outb sequences, the _waitForDevice:isReady: call, the controlRegisterDefaults store and all five status-word arms match, but statusWord is manipulated 32 bits wide where ours is unsigned short, ours sets an initialized ivar the reference does not have, and the reference builds the control byte from uninitialised stack (divergences.md Findings 10, 52, 53)"
+          "full disassembly read; the control-byte assembly, both outb sequences, the _waitForDevice:isReady: call, the controlRegisterDefaults store and all five status-word bit arms match, but three of the six returned values diverge because our IO_R_* names do not expand to their commented values - the reference returns -737, -738, -725, -714, 0 and -726 where ours compiles to -737, -727, -725, -726, 0 and -728 - and statusWord is manipulated 32 bits wide where ours is unsigned short, ours sets an initialized ivar the reference does not have, and the reference builds the control byte from uninitialised stack (divergences.md Findings 10, 52, 53, 58)"
         ],
         "status": "agreed"
       },
@@ -1257,7 +1257,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the command-buffer setup, the status masking and the errorFlag tail match, but the reference sets the writing ivar at 0x129 where ours sets inUse at 0x128, and the reference returns 0 for NOT_READY, OFFLINE, NO_PAPER and BUSY where ours returns the error code (divergences.md Findings 30, 31)"
+          "full disassembly read; the command-buffer setup, the status masking and the errorFlag tail match, but the reference sets the writing ivar at 0x129 where ours sets inUse at 0x128, the reference returns 0 for the -726, -738, -737 and -725 arms and propagates the return code only for -714 and the default where ours returns the error code, and our switch labels select the wrong arms because IO_R_NOT_READY is -728 and IO_R_OFFLINE is -727, while -726 is routed to the propagate arm instead of the 0x10 arm (divergences.md Findings 30, 31, 59)"
         ],
         "status": "agreed"
       },
@@ -1305,7 +1305,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction, including all 23 entries of the jump table at 3520 decoded from the binary; the base adjustment of msgType-0x232323, the range check against 0x16 and every arm (0x232323 to -726, 0x232325 to 0, 0x232336 to -714, 0x232337 to -737, 0x232338 to -725, 0x232339 to -738, default -714) match our switch exactly"
+          "full disassembly read instruction by instruction, including all 23 entries of the jump table at 3520 decoded from the binary; the base adjustment of msgType-0x232323 and the range check against 0x16 match, and the reference's arms are 0x232323 to -726, 0x232325 to 0, 0x232336 to -714, 0x232337 to -737, 0x232338 to -725, 0x232339 to -738 and default -714, but four of our seven arms return a different value because the IO_R_* macros our source names do not hold the values its comments claim: IO_R_NOT_READY is -728 not -726, IO_R_TIMEOUT is -726 not -714 and IO_R_OFFLINE is -727 not -738 in src/driverkit-3/driverkit/return.h, so 0x232323, 0x232336, 0x232339 and the default all diverge. Previously recorded as assembly-matched on the strength of those comments (divergences.md Finding 57)"
         ],
         "status": "agreed"
       },
@@ -1318,7 +1318,7 @@
       "size": 197,
       "source_line": 1044,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "unexamined"
     },
     {
       "address": 3692,

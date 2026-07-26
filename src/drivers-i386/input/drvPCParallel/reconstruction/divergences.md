@@ -20,9 +20,9 @@ build-generated Kernel Server glue. All 73 are mapped; the 2 glue functions are
 
 | Depth | Count | What was done |
 |---|---|---|
-| `assembly-matched` | 30 | Every instruction read, and no divergence found |
+| `assembly-matched` | 29 | Every instruction read, and no divergence found |
 | `control-flow-confirmed` | 1 | Block shape and every call target checked; a short stretch not read instruction by instruction |
-| `unexamined` | 42 | Every instruction read, **and a divergence found** — these carry a finding below |
+| `unexamined` | 43 | Every instruction read, **and a divergence found** — these carry a finding below |
 | `intentional-mismatch` | 2 | Build-generated glue, not present in source |
 
 **Every one of the 73 mapped functions had its full instruction stream read**, including
@@ -56,6 +56,19 @@ inferred from disassembly.
   `static`-versus-`external` linkage divergences in Finding 54. Task 10 must verify those
   by reading the rebuilt binary's nlist directly — `binrecon.macho.read_macho`, checking
   each symbol's `binding` and `section` — and **not** by parity counts.
+- **Our source's `IO_R_*` comments are not to be trusted.** The first pass over this driver
+  compared the reference's numeric constants against the `// -726`-style comments beside
+  the `IO_R_*` names in our source rather than against what those macros expand to. Several
+  of those comments are wrong. The authoritative values are in
+  `src/driverkit-3/driverkit/return.h`: `IO_R_IO` is **−714**, `IO_R_BUSY` **−725**,
+  `IO_R_TIMEOUT` **−726**, `IO_R_OFFLINE` **−727**, `IO_R_NOT_READY` **−728**; `return.h`
+  has no name at all for −738, and −737 is `IO_R_MSG_TOO_LARGE` (which our source
+  re-`#define`s locally as `IO_R_NO_PAPER`, `IOParallelPort.m:44-45`). This mistake
+  produced three wrong verdicts, now recorded as Findings 57, 58 and 59. **All 30 entries
+  originally marked `assembly-matched` were re-audited against `return.h` and every other
+  macro their justification rests on; exactly one — `msgTypeToIOReturn:` at 3492 — did not
+  hold and has been downgraded to `unexamined`. The remaining 29 were confirmed.**
+  Task 10 must fix Findings 57-59 **by value, not by constant name**.
 
 ## 3. Analyzer agreement
 
@@ -334,9 +347,13 @@ class through a compiler-emitted `__cls_refs` entry (16640), which puts the name
 `__class_names`, not `__cstring`. Our two `objc_getClass` calls put `NXConditionLock` into
 `__cstring`, where `parity_check.py` will see it.
 
-**Finding 29 — roughly thirty `sel_getUid("…")` literals emit `__cstring` entries the
-reference does not have.** Throughout `IOParallelPortKern.m`. The reference's 476-byte
-`__cstring` contains exactly fifteen entries and **not one is a selector**; every message
+**Finding 29 — 37 distinct `sel_getUid("…")` literals emit `__cstring` entries the
+reference does not have.** Throughout `IOParallelPortKern.m`: 55 call sites naming **37
+distinct** selector strings, all in that one file (`IOParallelPort.m` has none). Counting
+every distinct string literal in our two sources and discarding the two `#import` header
+names, which emit nothing, our `__cstring` would carry **54** entries — those 37 selector
+strings plus 17 others — against the reference's **15**. The reference's 476-byte
+`__cstring` contains exactly those fifteen entries and **not one is a selector**; every message
 send in the reference goes through one of the 64 `__message_refs` entries. The table pass
 recorded that `IOThreadDelay` appearing as both a selector string and a method name was
 "consistent with it being `__OBJC` material on both sides" — that conclusion was wrong.
@@ -369,12 +386,13 @@ Finding 19's `Location`, Finding 28 and Finding 29.
 handler's gate is driven by the wrong flag.
 
 **Finding 31 — `writeToPort` returns the error code where the reference returns 0.**
-`IOParallelPort.m:536`. The reference initialises its return value to `0` at 3268 and only
-assigns `cmdBuffer->returnCode` in the `IO_R_TIMEOUT` arm (3403) and the default arm. For
-`IO_R_NOT_READY`, `IO_R_OFFLINE`, `IO_R_NO_PAPER` and `IO_R_BUSY` it sets the status bit
-and **returns 0**. Ours assigns `returnCode = cmdBuffer->returnCode` before the switch and
-so returns the error. This changes what `_ppstrategy` sees and hence the `errno` the
-caller gets.
+`IOParallelPort.m:536`. The reference initialises its return value to `0` at 3268 (`xor
+edi, edi`) and only assigns `cmdBuffer->returnCode` in the **−714** arm (3403) and the
+default arm. For **−726**, **−738**, **−737** and **−725** it sets the status bit and
+**returns 0**. Ours assigns `returnCode = cmdBuffer->returnCode` before the switch and so
+returns the error. This changes what `_ppstrategy` sees and hence the `errno` the caller
+gets. (The arms are stated by value deliberately — our source's case labels do not select
+the arms their names suggest; see Finding 59.)
 
 **Finding 32 — the two size setters guard on each other's ivar.**
 `IOParallelPort.m:669` and `:714`. The reference's `-setBlockSize:` (3024) compares the
@@ -487,12 +505,16 @@ msg = 0x232339;                 /* SELECT clear -> 0x232339 */
 ```
 
 Ours assigns `0x232336` when SELECT is **clear** and `0x232339` when it is set — exactly
-the opposite. Because `msgTypeToIOReturn:` maps `0x232336` to `IO_R_TIMEOUT` (-714) and
-`0x232339` to `IO_R_OFFLINE` (-738), our version reports a timeout when the printer goes
-offline. The `#define` names in `IOParallelPortKern.h`/`.m` compound the confusion:
-`PP_INT_MSG_OFFLINE` is `0x232336`, which the reference's own switch maps to *timeout*.
-The rest of the decode — the `(status & 0x28) == 0x08` arm, the busy test and the
-paper-out test — matches.
+the opposite. Because the reference's `msgTypeToIOReturn:` maps `0x232336` to **−714** and
+`0x232339` to **−738**, our version reports −714 when the printer goes offline and −738
+when it is selected. The `#define` names compound the confusion at both ends:
+`IOParallelPortKern.m:59` calls `0x232336` `PP_INT_MSG_OFFLINE`, and `IOParallelPort.h:71`
+calls the same code `PP_MSG_TIMEOUT`, while what the reference actually returns for it is
+−714 — which `return.h` names `IO_R_IO`, not `IO_R_TIMEOUT` (−726). Likewise −738, the
+code for `0x232339`, has no `IO_R_*` name in `return.h` at all; our source's
+`IO_R_OFFLINE` is −727. Task 10 must reproduce these codes **by value**. The rest of the
+decode — the `(status & 0x28) == 0x08` arm, the busy test and the paper-out test —
+matches.
 
 **Finding 45 — the interrupt handler's read path stores before advancing; the reference
 advances first.** `IOParallelPortKern.m:1065-1068`. The reference at 5454-5476 does
@@ -593,24 +615,81 @@ the second pattern where ours preserves them. Our behaviour is arguably better; 
 recorded because it is a real difference and because reproducing the reference exactly
 would mean reproducing a bug.
 
+### `IO_R_*` constant values
+
+The three findings below share one cause: our source names return codes with `IO_R_*`
+macros whose comments claim values the macros do not have. `src/driverkit-3/driverkit/return.h`
+gives `IO_R_IO` −714, `IO_R_BUSY` −725, `IO_R_TIMEOUT` −726, `IO_R_OFFLINE` −727,
+`IO_R_NOT_READY` −728, `IO_R_MSG_TOO_LARGE` −737; there is no macro for −738.
+`IOParallelPort.m:44-45` adds `IO_R_NO_PAPER (-737)` locally, which is correct.
+**Task 10 must fix these by value. Fixing them by constant name would target the wrong
+arms, because the names in our source are wrong.**
+
+**Finding 57 — four of `msgTypeToIOReturn:`'s seven arms return the wrong value.**
+`IOParallelPort.m:1044-1067`. The reference (3492, jump table at 3520, all 23 entries
+decoded from the binary) dispatches on `msgType - 0x232323` with a range check against
+0x16. Its arms and ours:
+
+| `msgType` | Source case | Reference returns | Our source names | Which compiles to | Verdict |
+|---|---|---|---|---|---|
+| `0x232323` | `PP_MSG_NOT_READY` | **−726** | `IO_R_NOT_READY` (comment says −726) | **−728** | diverges |
+| `0x232325` | `PP_MSG_SUCCESS` | 0 | `IO_R_SUCCESS` | 0 | matches |
+| `0x232336` | `PP_MSG_TIMEOUT` | **−714** | `IO_R_TIMEOUT` (comment says −714) | **−726** | diverges |
+| `0x232337` | `PP_MSG_NO_PAPER` | −737 | `IO_R_NO_PAPER` | −737 | matches |
+| `0x232338` | `PP_MSG_BUSY` | −725 | `IO_R_BUSY` | −725 | matches |
+| `0x232339` | `PP_MSG_OFFLINE` | **−738** | `IO_R_OFFLINE` (comment says −738) | **−727** | diverges |
+| default | `default` | **−714** | `IO_R_TIMEOUT` | **−726** | diverges |
+
+The 20 unlisted table indices (`0x232324`, `0x232326`-`0x232335`) all target the default
+arm, so the reference's default really is −714. This entry was previously recorded as
+`assembly-matched` on the strength of the comments; it is now `unexamined`.
+
+**Finding 58 — three of `initDevice`'s six return values are wrong.**
+`IOParallelPort.m:276-352`. The reference (112) returns, from its five error paths and its
+success path: paper-out **−737** (281), offline **−738** (301), busy **−725** (321),
+ready-during-wait **−714** (344), success `0` (365) and not-ready **−726** (382). Ours
+returns `IO_R_NO_PAPER` (−737, matches), `IO_R_OFFLINE` (**−727**, wants −738), `IO_R_BUSY`
+(−725, matches), `IO_R_TIMEOUT` (**−726**, wants −714), `IO_R_SUCCESS` (0, matches) and
+`IO_R_NOT_READY` (**−728**, wants −726). The status-word bit for each arm — 0x04, 0x08,
+0x02, 0x10, 0x01 and a full 32-bit clear — matches throughout; only the returned values
+diverge. This matters at the callers: `ppopen` (Finding 39) and `ppwrite` (Finding 49)
+accept exactly `{0, −725, −726, −737, −738}` from `initDevice`, so under our constants an
+offline or not-ready printer falls through to the `EIO` path.
+
+**Finding 59 — `writeToPort`'s switch labels select the wrong arms.**
+`IOParallelPort.m:538-568`. The reference (3212) switches `cmdBuffer->returnCode` on
+−726 → status bit 0x10, −738 → 0x08, −737 → 0x04, −714 → 0x20 **and propagate the return
+code**, −725 → 0x02, 0 → no bit, default → propagate. Ours labels those cases
+`IO_R_NOT_READY`, `IO_R_OFFLINE`, `IO_R_NO_PAPER`, `IO_R_TIMEOUT`, `IO_R_BUSY` — which
+compile to −728, −727, −737, −726 and −725. So −737 and −725 land correctly, −728 and −727
+are codes nothing ever produces, and −726 — which the reference sends to the 0x10 arm —
+is instead routed to the 0x20 "propagate" arm. The `PP_SW_*` bit values themselves are all
+correct (`IOParallelPort.h:61-66`).
+
 ### Linkage and packaging
 
 **Finding 54 — linkage differs, and `parity_check.py` cannot see it.** Reading the
-reference's nlist:
+reference's nlist with `binrecon.macho.read_macho`: 110 symbols, 76 `local` and 34
+`external`. Of the 34 externals, 28 are undefined imports with no section; the reference
+therefore has exactly **six externally defined symbols**, and these are all of them —
+`__strobeChar`, `_IOParallelPortThread`, `_IOParallelPortInterruptHandler`,
+`_ParallelPort_VERS_STRING`, `_ParallelPort_VERS_NUM`, `_ParallelPort_instance`.
 
-- `-[IOParallelPort _waitForDevice:isReady:]` (0) is **`global`**; all 61 other instance
-  methods and `+probe:` are `local`. This is an artefact of it being the first symbol in
-  `__text`, but Task 10 should confirm rather than assume.
+- `-[IOParallelPort _waitForDevice:isReady:]` (0) is **`local`**, like every other instance
+  method and `+probe:`. Being the first symbol in `__text` confers nothing. Our source
+  already declares it as an ordinary method, so **no linkage change is needed here** —
+  do not de-staticise it.
 - `__strobeChar` (4232), `_IOParallelPortThread` (4512) and
-  `_IOParallelPortInterruptHandler` (5240) are **`global`**.
+  `_IOParallelPortInterruptHandler` (5240) are the only **`global`** `__text` symbols.
 - All seven `cdevsw` entry points — `_ppopen` (5520), `_ppclose` (5652), `_ppread` (5692),
   `_ppwrite` (5828), `_ppminphys` (6252), `_ppstrategy` (6304), `_ppioctl` (6708) — are
   **`local`**, i.e. declared `static` in the reference source. Ours declares all seven in
   `IOParallelPortKern.h:98-104`, making them external.
 - `_pp_softc` (8192) is `local`; ours has one `static` and one external definition
   (Finding 37).
-- `_ParallelPort_instance` (8216, `__common`, `global`) and the three `_xxx.NNN` counters
-  in `__bss` are compiler- and glue-generated.
+- `_ParallelPort_instance` (8216, `__common`, `external`) and the two `__const` version
+  symbols `_ParallelPort_VERS_STRING` (7892) and `_ParallelPort_VERS_NUM` (8052) are
+  glue-generated, as are the three `_xxx.NNN` counters in `__bss` (which are `local`).
 
 **`parity_check.py` compares symbol names only and will report all of these as matching.**
 Task 10 must verify them by reading the rebuilt binary's nlist directly with
@@ -650,9 +729,6 @@ which the build injects. No finding.
 
 ## Unresolved
 
-- Whether `-[IOParallelPort _waitForDevice:isReady:]`'s `global` binding is meaningful or
-  merely an artefact of being the first `__text` symbol. Task 10 can settle it by checking
-  whether our rebuilt binary reproduces it without any source change.
 - The reference ivar `dataRegisterData` (`C`, 0x134) is never read or written by any of the
   75 functions. Its purpose is unknown; it is presumably vestigial. Ours has no
   counterpart, and adding one is needed only for layout fidelity.

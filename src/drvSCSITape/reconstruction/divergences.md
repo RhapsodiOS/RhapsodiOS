@@ -873,3 +873,112 @@ Five of the nine reached `assembly-matched`; four (`_st_devsw_init`,
 `_st_rw`, `_stioctl`, `_st_doiocsrq`) carry findings above and stay
 `unexamined`. Every finding corresponds to exactly one of those four entries,
 and every one of those four entries has at least one finding.
+
+## The three user-space helpers: PreLoad, PostLoad, stblocksize
+
+Task 6 read the five mapped functions across `PreLoad`, `PostLoad` and
+`stblocksize` instruction by instruction against their `.tproj` sources, and
+additionally dumped each binary's raw `__TEXT,__cstring` bytes (offset/size
+from `read_macho`'s section list, read directly from the reference file since
+`analysis.named.json` strips string contents) to check every `printf`/`usage`
+format and option letter verbatim, per the brief's Step 1 focus.
+
+### PreLoad
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 7496 | `_main` | `assembly-matched` | Full trace against `PreLoad.m:26-53`: outer `for(iUnit=0;iUnit<NST;iUnit++)` (`cmpwi cr1,r30,3`/`ble-`, `NST`=4 matching `SCSITapeTypes.h`); `bzero(path,10)`+`sprintf(path,"%s%s%d","/dev/","st",iUnit)`; inner `for(i=0;i<NTAPE_NAMES;i++)` (`cmpwi cr1,r29,3`/`ble-`) indexing `scsiTapeNames[i]` via `lwzx r6,r9,r0` (`r0=i*4`); `unlink(path)`, and on failure `errno!=ENOENT(2)`→`printf`+`iRet=-1` (`r28`); returns `r28`. Every string confirmed byte-for-byte in `__TEXT,__cstring` at file offset 3676 (240 bytes): `"%s%s%d"` (0x1ef8), `"/dev/"` (0x1f00), `"st"` (0x1f08), `"%s: could not delete old %s.  Errno is %d\n"` (0x1f0c, matches the source's literal format exactly), `"SCSI Tape PreLoad"` (0x1f38, matches `ST_PRELOAD_ERR_STRING`) |
+
+### PostLoad
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 10972 | `_main` | `assembly-matched` | Full trace against `PostLoad.m:34-124`: `[IODeviceMaster new]` via `objc_msgSend`; outer `iUnit` loop (`NST`=4) building `path` and calling `[devMaster lookUpByDeviceName:path+5 objectNumber:&tag deviceKind:&kind]` (`addi r5,r5,5` = `path + strlen(DEV_STRING)`, `strlen("/dev/")`=5); the `iUnit==0` special-case block (`cmpwi cr1,r27,0`) with its own `ret!=IO_R_SUCCESS`→`printf`+`iRet=-1` and the `getIntValues:forParameter:"IOMajorDevice"` query with its own failure `printf`+`iRet=-1`; inner `i` loop (`NTAPE_NAMES`=4) indexing `scsiTapeNames[i]`/`scsiTapeDevFlags[i]`, `unlink`+`errno!=ENOENT`→`printf`+`iRet=-1`, then (gated on `ret==IO_R_SUCCESS`, `r28==0`) `minor=(iUnit<<3)\|scsiTapeDevFlags[i]` (`slwi r25,r27,3`/`or`), `umask(0)`, `mknod(path, 0x21B6, (major<<8)\|minor)` — `0x21B6` = octal `020666` = `DEV_MOD`, confirmed by direct octal-to-hex conversion — and on failure `printf`+`iRet=-1`; returns `r26`. Every string confirmed in `__TEXT,__cstring` at file offset 7468 (400 bytes): `"%s%s%d"`, `"/dev/"`, `"st"`, `"%s: couldn't find driver. Returned %d\n"`, `"Error initializing SCSI Tape driver"` (matches `ST_INIT_ERR_STRING`), `"IOMajorDevice"`, `"%s: couldn't get major number:  Returned %d.\n"`, `"%s: could not delete old %s.  Errno is %d\n"`, `"%s: could not create %s.  Errno is %d\n"` — all match `PostLoad.m`'s literals exactly |
+
+### stblocksize
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 6300 | `_main` | `assembly-matched` | Full trace against `stblocksize.c:26-128`: the `argc<2 \|\| argc>5` check compiles to a single unsigned range test (`addi r0,r28,-2`/`cmplwi cr1,r0,3`/`ble`) — `(argc-2)` underflows to a huge unsigned value for `argc<2`, so one `<=3` unsigned compare captures both halves of the source's `\|\|`; this is a compiler idiom, not a divergence (the same class noted for other range checks elsewhere in this reconstruction). The `for(i=1;i<argc-1;i++)` option loop: `strcmp(argv[i],"-v")==0`→`verbose=1`(`r25`); else `strcmp(argv[i],"-s")==0`→`manualsize=1`(`r27`), then an inner byte loop calling `isdigit()` via the `__DefaultRuneLocale` table (`r24 = &__DefaultRuneLocale + 0x34`, indexed by the signed-extended character and masked/shifted to a bit test) on every character of `argv[i]`, `usage()`+return `-1` on the first non-digit, else `atoi(argv[i])`→`blocksize`; else (neither flag) `usage()`+return `-1`. `fd=open(argv[last],O_RDWR(2),0x309)` — `0x309` = decimal `777` read as a plain (non-octal) literal, confirming the source's unprefixed `777` third argument is used verbatim, not reinterpreted as octal `0777`; on failure, `printf("Cannot open %s\n",...)`+return `-1`. `if(!manualsize) read_block_limits(&maxblocksize,&minblocksize)`, failure→`printf`+return `-1`; `maxblocksize==minblocksize`→`blocksize=minblocksize`, else `blocksize=0`. The verbose block matches the nested `if(verbose){ if(!manualsize) printf(...min/max...); printf("Setting...")}` exactly. `ioctl(fd,MTIOCFIXBLK,&blocksize)` — constant `0x80046D05` confirmed against the `MTIOCFIXBLK` decode already recorded in the `_stioctl` table above; failure→`printf("Cannot set block size 0x%x for %s\n",...)`+return `-1`; success→`close(fd)`+return `0`. Every string confirmed in `__TEXT,__cstring` (file offset 3260, 536 bytes): `"-v"`, `"-s"`, `"Cannot open %s\n"`, `"Error reading block size parameters for %s\n"`, `"Tape device %s block limits: min = %d, max = %d\n"`, `"Setting %s blocksize to %d.\n"`, `"Cannot set block size 0x%x for %s\n"` — all match `stblocksize.c`'s literals and both option letters exactly |
+| 6924 | `_read_block_limits` | `assembly-matched` | Full trace against `stblocksize.c:131-167`: `bzero(cdbp,12)` (`sizeof(union cdb)`); `cdbp->c6_opcode=5` (`C6OP_RDBLKLIMS`); `sr.sr_dma_dir=0` (`SR_DMA_RD`), `sr.sr_addr=&rbsr`, `sr.sr_dma_max=8` (`sizeof(struct read_blk_sz_reply)`), `sr.sr_ioto=10` — all at the offsets (0xC/0x10/0x14/0x18 relative to the struct base, i.e. immediately after the 12-byte `sr_cdb`) already established by Task 5's `scsi_req_t` layout work; `do_ioc(&sr)`, nonzero→return `-1`; else the confirmed-active `__BIG_ENDIAN__` branch: `*maxp = rbsr.rsbr_max_bll` (`clrlwi r0,r0,8`, masking off `rbsr_rsvd:8` to leave the low-24-bit bitfield) and `*minp = rbsr.rsbr_min_bll` (`lhz`, the `u_short` immediately following the first 4-byte bitfield word) — matches `stblocksize.c:154-156` exactly; returns `0` |
+| 7300 | `_usage` | `assembly-matched` | 3-instruction body: a single `printf` call with no other logic — matches `stblocksize.c:194-200`'s `void usage() { printf("Usage: ..."); return; }`. String confirmed verbatim in `__TEXT,__cstring`: `"Usage: stblocksize [-v] [-s <blocksize>] <dev-full-pathname>\n"` (0x1e94) — matches the source's two-line concatenated literal exactly, including both option letters and the argument description |
+
+## Finding: `_do_ioc` is not absent from source — it matches `stblocksize.c`'s `do_ioc()` exactly, and the "unmapped" appearance in the ledger/source-map is a tooling gap, not a missing function
+
+**Source:** `src/drvSCSITape/stblocksize.tproj/stblocksize.c:169-191` (`do_ioc()`).
+
+Task 1's `source_map.py` seeded `_do_ioc` (address 7072, 228 bytes) into
+`stblocksize/source-map.json`'s `unmapped` list, and the brief for this task
+was written on the assumption that the function is genuinely absent from our
+source tree, with a later task (Task 10) expected to write its body from a
+Task-6 description with no compiler to check it against. That assumption is
+incorrect: `stblocksize.c` already contains a `do_ioc()` function, and it
+matches the reference `_do_ioc` instruction for instruction.
+
+**Why the tool missed it:** `source_map.py`'s `source_sites()` scans K&R-style
+C definitions (the style this whole tree uses — return type on its own line,
+name and parameter list at column zero, then indented parameter
+declarations, e.g. `ahaTimeout(void *arg)` in the module's own docstring
+example). Its loop-termination guard explicitly protects an indented
+parameter-declaration line (ending in `;`) from being mistaken for the end of
+a prototype — `candidate[:1].isspace()` — but `do_ioc(srp)`'s own parameter
+declaration, `struct scsi_req *srp;` on the very next line, is **not**
+indented (it starts at column zero, unlike every neighbouring K&R definition
+in this file). The guard therefore fails to recognize it as a parameter
+declaration, the scanner treats the line as a bare prototype terminator, never
+finds the following `{`, and silently drops `do_ioc` from the site index —
+so `_do_ioc`'s only lookup key (`sel_do_ioc`... i.e. the exported name via
+`defined_symbols`) has no match and the function falls into `unmapped`. This
+is a source_map.py parsing limitation specific to an unindented K&R parameter
+line, not evidence about the binary or the source.
+
+**What `_do_ioc` actually does, confirmed against the disassembly and
+`scsireg.h`'s `struct scsi_req`/`esense_reply_t` layouts (Task 5's offset
+table):** `ioctl(fd, MTIOCSRQ, srp)` (`fd` the file-scope global, `MTIOCSRQ` =
+`0xC0586D0B` = `_IOWR('m',11,88)`, confirmed against the constant table in the
+`SCSITapeKern.m` section above); if the call returns negative: prints
+`"..Error executing ioctl\n"`, `"errno = %d\n"` (with the global `errno`),
+calls `perror("ioctl (MTIOCSRQ)")`, and returns `1`. Otherwise it loads
+`srp->sr_io_status` (offset `0x1C` = 28, confirmed: `sr_cdb`(12)+`sr_dma_dir`(4)
++`sr_addr`(4)+`sr_ioto`... — the same running offset sum Task 5 established
+ends at `0x1C` for `sr_io_status`); if nonzero: prints `"sr_io_status =
+0x%X\n"`; if it equals `2` (`SR_IOST_CHKSV`, `scsireg.h:779`) also prints
+`"   sense key = %02XH   sense code = %02XH\n"` with `er_sensekey` (a 4-bit
+field extracted via `extrwi r4,r4,4,20` from the aligned word at `sr_esense`'s
+base, offset `0x24` = 36 = `0x20`(`sr_scsi_status`'s offset, itself right
+after `sr_io_status`)+4 padding — bits 20-23 of that word are exactly where
+`esense_reply_t`'s big-endian `er_sensekey:4` bitfield sits per
+`scsireg.h:429-433`) and `er_addsensecode` (a plain byte at offset `0x30` = 48,
+confirmed as `sr_esense`(0x24)+12, matching `esense_reply_t`'s layout: the
+first 4-byte word, then `er_info:24`/`er_addsenselen:8` (4 bytes), then
+`er_rsvd8` (4 bytes), then `er_addsensecode` at byte 12); either way it then
+prints `"SCSI status = %02XH\n"` with `srp->sr_scsi_status` (offset `0x20` =
+32, a plain byte) and returns `1`. If `sr_io_status` was zero, returns `0`.
+Every offset, constant, and format string above matches `do_ioc()`
+(`stblocksize.c:169-191`) exactly, and every string was independently
+confirmed byte-for-byte in `__TEXT,__cstring`. There is no undetermined call,
+argument, return value, or error path in this function — the description
+above is complete and the existing source needs no rewriting.
+
+**Consequence for later tasks:** Task 10 ("write stblocksize `_do_ioc`") does
+not need to author a new function body — `do_ioc()` already exists, compiles
+to (as far as this analysis can tell without a PowerPC compiler) the
+reference's exact behaviour, and is now dispositioned `assembly-matched` in
+`stblocksize/ledger.json` with `source_path`/`source_line` set by hand via
+`--source-path`/`--source-line` (the CLI supports this independently of
+`source-map.json`, which this task was not authorized to regenerate or hand-edit).
+`source-map.json` itself still shows `_do_ioc` as `unmapped` and was left
+unchanged, since the brief scopes this task's writable files to the three
+`ledger.json` files and this document — regenerating `source-map.json` needs
+either a fix to `source_map.py`'s K&R parameter-line guard or a rerun of
+Task 1's seeding step, both out of this task's scope. Flagging this
+prominently since it changes what Task 10 has to do: verify/carry this
+disposition forward rather than write fresh, uncompiled code from a
+from-scratch description.
+
+Per-binary tallies after this task: `PreLoad` 1 `assembly-matched` + 11
+`intentional-mismatch` (12 total, matching the 12 named entries in the
+starting-state table); `PostLoad` 1 `assembly-matched` + 15
+`intentional-mismatch` (16 total); `stblocksize` 4 `assembly-matched` + 16
+`intentional-mismatch` (20 total). No entry in any of the three ledgers is
+left `unexamined`.

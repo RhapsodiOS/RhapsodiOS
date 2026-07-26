@@ -13,6 +13,7 @@ import sys
 import tempfile
 from typing import Callable
 
+from binrecon.arch import ArchitectureError, architecture_for_name
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
 from binrecon.profile import analysis_scope
@@ -68,6 +69,14 @@ def _script_command(script: Path, output: Path, identity: InputIdentity,
     )
 
 
+def _architecture(profile):
+    name = profile.document.get("architecture", "i386")
+    try:
+        return architecture_for_name(name)
+    except ArchitectureError as error:
+        raise IdaAdapterError(str(error)) from error
+
+
 def _mapping_manifest(profile, identity: InputIdentity) -> dict:
     try:
         macho = read_macho(identity.path)
@@ -81,10 +90,12 @@ def _mapping_manifest(profile, identity: InputIdentity) -> dict:
                   key=lambda item: (item["address"], item["offset"], item["size"]))
     if not runs:
         raise IdaAdapterError("no authoritative artifact mapping runs are available")
+    architecture = _architecture(profile)
     manifest = {"schema_version": "ida-mapping-v1",
                 "input": {"size": identity.size, "sha256": identity.sha256,
-                          "architecture": profile.document.get("architecture", "i386"),
-                          "endianness": profile.document.get("endianness", "little")},
+                          "architecture": architecture.name,
+                          "endianness": architecture.endianness,
+                          "ida_processor": architecture.ida_processor},
                 "runs": runs}
     scope = analysis_scope(profile)
     if scope:
@@ -314,7 +325,8 @@ def export_with_ida(
         _atomic_text(mapping, mapping_raw.decode("utf-8"))
         mapping_sha256 = hashlib.sha256(mapping_raw).hexdigest().upper()
         argv = [
-            str(executable), "-c", "-A", "-pmetapc", f"-o{database}", f"-L{native_log}",
+            str(executable), "-c", "-A", f"-p{_architecture(profile).ida_processor}",
+            f"-o{database}", f"-L{native_log}",
             "-S" + _script_command(script.resolve(), temporary, identity, mapping,
                                     mapping_sha256),
             str(identity.path),

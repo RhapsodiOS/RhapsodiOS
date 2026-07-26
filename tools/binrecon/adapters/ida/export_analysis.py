@@ -212,9 +212,12 @@ def _validate_mapping(mapping, size, digest):
         raise ExportError("artifact mapping manifest is malformed")
     identity = mapping["input"]
     if (not isinstance(identity, dict) or
-            set(identity) != {"size", "sha256", "architecture", "endianness"} or
+            set(identity) != {"size", "sha256", "architecture", "endianness",
+                              "ida_processor"} or
             identity["size"] != size or str(identity["sha256"]).upper() != digest or
-            identity["architecture"] != "i386" or identity["endianness"] != "little"):
+            not isinstance(identity["architecture"], str) or
+            identity["endianness"] not in ("little", "big") or
+            not isinstance(identity["ida_processor"], str)):
         raise ExportError("artifact mapping identity does not match analyzed input")
     runs = mapping["runs"]
     if not isinstance(runs, list) or not runs or len(runs) > 4096:
@@ -401,12 +404,19 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         raise ExportError("IDA database input size does not match host request")
     if not isinstance(database_sha, bytes) or database_sha.hex().upper() != digest:
         raise ExportError("IDA database input sha256 does not match host request")
-    if not isinstance(processor, str) or processor.lower() != "metapc":
-        raise ExportError(f"IDA processor is not metapc: {processor!r}")
+    expected_processor = mapping["input"]["ida_processor"]
+    expected_big_endian = mapping["input"]["endianness"] == "big"
+    if not isinstance(processor, str) or processor.lower() != expected_processor.lower():
+        raise ExportError(
+            f"IDA processor is not {expected_processor}: {processor!r}"
+        )
     if exactly_32 is not True:
         raise ExportError("IDA database is not exactly 32-bit")
-    if big_endian is not False:
-        raise ExportError("IDA database is not little-endian")
+    if big_endian is not expected_big_endian:
+        raise ExportError(
+            "IDA database endianness does not match the requested "
+            f"{mapping['input']['endianness']}-endian analysis"
+        )
     if not modules["ida_auto"].auto_wait():
         raise ExportError("IDA auto-analysis did not complete")
     ida_segment = modules["ida_segment"]
@@ -661,7 +671,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         "schema_version": "analysis-v1",
         "input": {
             "path": str(input_path.resolve()), "size": size, "sha256": digest,
-            "architecture": "i386", "endianness": "little",
+            "architecture": mapping["input"]["architecture"],
+            "endianness": mapping["input"]["endianness"],
         },
         "analyzer": {
             "name": "IDA", "version": version,

@@ -725,7 +725,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
 /*
  * Allocate resources for description from tuple list
  */
-- _allocResourcesForDescription:description fromTupleList:tupleList
+- allocResourcesForDescription:description fromTupleList:tupleList
 {
     unsigned int count;
     unsigned int i;
@@ -740,7 +740,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
     count = [tupleList count];
     for (i = 0; i < count; i++) {
         tuple = [tupleList objectAt:i];
-        [self _parseTuple:tuple intoDeviceDescription:description];
+        [self parseTuple:tuple intoDeviceDescription:description];
     }
 
     return description;
@@ -750,7 +750,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
  * Parse a single tuple into device description
  * Uses dispatch table to find appropriate parser
  */
-- (void)_parseTuple:tuple intoDeviceDescription:description
+- parseTuple:tuple intoDeviceDescription:description
 {
     unsigned char code;
     TupleParserEntry *entry;
@@ -767,11 +767,12 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
             length = [tuple length];
             data = [tuple data];
             entry->handler(_verbose, description, data, length);
-            return;
+            return description;
         }
     }
 
     /* No handler found - tuple type not supported */
+    return description;
 }
 
 @end

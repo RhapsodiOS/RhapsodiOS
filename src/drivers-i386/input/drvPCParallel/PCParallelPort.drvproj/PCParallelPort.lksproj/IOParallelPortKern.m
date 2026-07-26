@@ -56,9 +56,11 @@
 #define PP_INT_MSG_ERROR        0x232339
 
 /*
- * Error return codes, by value.  The IO_R_* names in <driverkit/return.h> do
- * not line up with three of these, so they are spelled out here: -703 has no
- * name, -738 has no name, and -737 is IO_R_MSG_TOO_LARGE there.
+ * Error return codes, by value, because the IO_R_* names in
+ * <driverkit/return.h> do not describe two of them: -738 has no name there at
+ * all, and -737 is IO_R_MSG_TOO_LARGE, not a paper-out code.  The other three
+ * values are named: -703 is IO_R_IPC_FAILURE, -726 is IO_R_TIMEOUT and -725 is
+ * IO_R_BUSY.
  */
 #define PP_IO_ERROR             (-703)
 #define PP_OFFLINE_ERROR        (-738)
@@ -66,8 +68,9 @@
 #define PP_TIMEOUT_ERROR        (-726)
 #define PP_BUSY_ERROR           (-725)
 
-// Message receive options and return codes
-#define MSG_OPTION_RCV_LARGE    0x500
+// Message receive options and return codes.  0x500 is RCV_TIMEOUT|RCV_INTERRUPT
+// from <mach/message.h>; it does not include RCV_LARGE, which is 0x1000.
+#define MSG_OPTION_RCV_TIMEOUT_INTR     0x500
 #define MSG_RCV_INTERRUPTED     (-207)
 #define MSG_RCV_TIMED_OUT       (-203)
 
@@ -436,9 +439,9 @@ void IOParallelPortInterruptHandler(void *identity, void *state, unsigned int po
 
     // Decode status register to determine error condition
     if ((statusByte & 0x28) == 0x08) {
-        // Error bit set, select and paper-out bits clear
+        // Mask is ERROR|PAPER_OUT: error bit set, paper-out bit clear
         if ((char)statusByte >= 0) {
-            // Not busy
+            // Busy: PP_STATUS_BUSY is inverted, so a clear bit 7 means busy
             interruptMsg = PP_INT_MSG_DEVICE_BUSY;
         }
     } else {
@@ -572,7 +575,7 @@ void IOParallelPortThread(void *portObject)
                 }
 
                 // Receive interrupt message
-                msgResult = msg_receive(interruptMsg, MSG_OPTION_RCV_LARGE, timeout);
+                msgResult = msg_receive(interruptMsg, MSG_OPTION_RCV_TIMEOUT_INTR, timeout);
 
                 if (msgResult == 0) {
                     // Message received successfully

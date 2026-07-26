@@ -110,7 +110,9 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
  *
  * @param param_1 - Device parameter (passed to IOSendInterrupt)
  * @param param_2 - Context parameter (passed to IOSendInterrupt)
- * @return 0 on success, non-zero on error
+ * @return always 0.  Every exit path returns 0; there is no error return.  The
+ *         reference is void and never writes eax, and DriverKit discards the
+ *         value either way (divergences.md Finding 14).
  */
 static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
 {
@@ -374,8 +376,8 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Enable manual data handling mode (bypass automatic processing) */
     [controller setManualDataHandling:YES];
 
-    /* Reset/initialize the mouse hardware via function table
-     * This is function at index 3 in the decompiled code
+    /* Drain any stale byte out of the 8042 output buffer via the function
+     * table.  Slot 3 is clearOutputBuffer (see PS2Controller.h).
      */
     if (controllerFunctions != NULL && controllerFunctions->reserved[3] != NULL) {
         ((void (*)(void))controllerFunctions->reserved[3])();
@@ -397,16 +399,16 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Enable the auxiliary device interrupt on the 8042: read the command
      * byte, clear bit 5 (un-gate the mouse clock), set bit 1 (enable IRQ12),
      * and write it back.  Functions from the function table:
-     * [0] = send command to command port
-     * [1] = read status
-     * [4] = write to data port
+     * [0] = sendControllerCommand, write to the command port 0x64
+     * [1] = getKeyboardData, read the data port 0x60
+     * [4] = sendControllerData, write to the data port 0x60
      */
     if (controllerFunctions != NULL) {
         if (controllerFunctions->reserved[0] != NULL) {
             ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_READ_COMMAND_BYTE);
         }
 
-        /* Read controller status byte */
+        /* Read the command byte back off the data port */
         if (controllerFunctions->reserved[1] != NULL) {
             statusByte = ((unsigned char (*)(void))controllerFunctions->reserved[1])();
         } else {

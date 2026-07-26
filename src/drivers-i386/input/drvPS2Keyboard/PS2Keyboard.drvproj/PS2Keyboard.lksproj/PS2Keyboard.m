@@ -206,7 +206,9 @@ static unsigned int _kbdBitVector[4];
     int savedSPL;
     unsigned int i;
 
-    /* Raise to IPL 6 (IPL_BIO) and save previous level */
+    /* Raise to IPL 6 -- IPLDMA/IPLCLOCK/IPLSCHED in <kernserv/i386/spl.h>, not
+     * IPLBIO, which is 3 -- and save previous level
+     */
     savedSPL = splx(6);
 
     /* Copy events from the queue to the local buffer atomically */

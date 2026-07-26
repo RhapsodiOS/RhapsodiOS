@@ -132,7 +132,9 @@ static void lock_controller(void)
     int lockValue;
     volatile int *lockPtr;
 
-    /* Set interrupt priority level to 6 (IPL_BIO) and save old level */
+    /* Set interrupt priority level to 6 -- IPLDMA/IPLCLOCK/IPLSCHED in
+     * <kernserv/i386/spl.h>, not IPLBIO, which is 3 -- and save old level
+     */
     savedSPL = spln(6);
 
     /* Point to the lock flag at controller_lock[1] */
@@ -509,7 +511,9 @@ static void interruptHandler(void *identity, void *state, unsigned int arg)
     /* Set the interrupt handler function */
     *handler = (IOInterruptHandler)interruptHandler;
 
-    /* Set interrupt priority level to 6 (IPL_BIO) */
+    /* Set interrupt priority level to 6 -- IPLDMA/IPLCLOCK/IPLSCHED in
+     * <kernserv/i386/spl.h>, not IPLBIO, which is 3
+     */
     *level = 6;
 
     /* Set handler argument to 0 */

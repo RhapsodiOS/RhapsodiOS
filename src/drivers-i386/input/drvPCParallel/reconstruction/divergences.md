@@ -576,9 +576,12 @@ offline / signed-negative / busy — **does** match ours exactly, including the 
 **Finding 48 — `_IOParallelPortThread` discards `[self interruptMessage]` and uses a stack
 local.** `IOParallelPortKern.m:1108-1109` and the `pp_interrupt_msg_t interruptMsg` local
 at `:1091`. The reference (4524-4537) saves the returned pointer and passes *that buffer*
-— the 8192-byte `IOMalloc` from init — to `msg_receive` with `MSG_OPTION_RCV_LARGE`. Ours
-calls the accessor for its side effect and then hands `msg_receive` a small stack struct,
-which is what `RCV_LARGE` is meant to avoid. Everything else in the loop matches,
+— the 8192-byte `IOMalloc` from init — to `msg_receive`. Ours calls the accessor for its
+side effect and then hands `msg_receive` a small stack struct, so a message larger than
+that struct would overrun it. The receive option is `0x500` in both — the only `push`
+of that shape in the reference's `__text`, at 4929 — which is
+`RCV_TIMEOUT|RCV_INTERRUPT`, **not** `RCV_LARGE` (0x1000); our macro is now named
+`MSG_OPTION_RCV_TIMEOUT_INTR` accordingly. Everything else in the loop matches,
 including the `0x2000` message size, the 500 ms / `ioTimeout` clamp, the `-207` and `-203`
 arms, the `IOLog` argument order and the `msgTypeToIOReturn:` tail.
 

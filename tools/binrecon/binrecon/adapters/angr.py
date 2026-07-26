@@ -17,6 +17,7 @@ from typing import Callable
 
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
+from binrecon.profile import analysis_scope
 from binrecon.schema import validate_analysis_semantics, validate_document
 
 
@@ -169,10 +170,15 @@ def _layout(profile, identity: InputIdentity) -> dict:
     entry_points = sorted({item["address"] for item in symbols if item["name"] in names})
     if not entry_points and sections:
         entry_points = [int(profile.document.get("image_base", sections[0]["address"]))]
-    return {"image_base": int(profile.document.get("image_base", 0)),
+    document = {"image_base": int(profile.document.get("image_base", 0)),
             "entry_points": entry_points, "sections": sections,
             "symbols": symbols, "relocations": relocations,
             "relocation_metadata": relocation_metadata}
+    scope = analysis_scope(profile)
+    if scope:
+        document["analysis_scope"] = [{"start": start, "end": end}
+                                      for start, end in scope]
+    return document
 
 
 def _atomic_text(path: Path, text: str) -> None:

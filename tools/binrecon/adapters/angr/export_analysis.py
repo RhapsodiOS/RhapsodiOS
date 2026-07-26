@@ -13,6 +13,10 @@ import tempfile
 import sys
 
 
+class ExportError(RuntimeError):
+    """Raised when the angr export cannot produce a trustworthy analysis."""
+
+
 _MAX_FLAT_IMAGE = 64 * 1024 * 1024
 _MAX_FUNCTIONS = 100_000
 _MAX_BLOCKS = 1_000_000
@@ -182,6 +186,15 @@ def export_cfg(project, layout: dict, canonical: dict) -> tuple[list[dict], dict
     executable = [(item["address"], item["address"] + item["size"])
                   for item in layout.get("sections", [])
                   if "x" in item.get("permissions", "") and item.get("size", 0)]
+    scope = [(int(item["start"]), int(item["end"]))
+             for item in layout.get("analysis_scope", ())]
+    if scope:
+        executable = [(max(low, start), min(high, end))
+                      for low, high in executable
+                      for start, end in scope
+                      if max(low, start) < min(high, end)]
+        if not executable:
+            raise ExportError("analysis scope matched no executable region")
     cfg = project.analyses.CFGFast(normalize=True, function_starts=starts,
         resolve_indirect_jumps=True, regions=executable or None,
         exclude_sparse_regions=False, skip_unmapped_addrs=True)
@@ -589,6 +602,8 @@ def main(argv=None) -> int:
                     checks.append(run_equivalent_check(peer_project, project, check))
             else:
                 checks.append(run_symbolic_check(project, check))
+        scope = [(int(item["start"]), int(item["end"]))
+                 for item in layout.get("analysis_scope", ())]
         document = {"schema_version": "analysis-v1", "input": {"path": str(path),
             "size": len(payload), "sha256": digest, "architecture": "i386", "endianness": "little"},
             "analyzer": {"name": "angr", "version": angr.__version__,
@@ -603,7 +618,10 @@ def main(argv=None) -> int:
                 "relocations": layout.get("relocation_metadata", []),
                 "loader": {"sections": [{"address": x["address"], "size": x["size"],
                     "permissions": x["permissions"], "initialized": x.get("initialized", True)}
-                    for x in layout.get("sections", [])]}}}}
+                    for x in layout.get("sections", [])]}},
+                           **({"binrecon": {"analysis_scope":
+                                [{"start": start, "end": end} for start, end in scope]}}
+                              if scope else {})}}
         _atomic_json(Path(arguments.output), document)
         return 0
     except Exception as error:

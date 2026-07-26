@@ -15,7 +15,7 @@
 extern unsigned int page_size;
 extern unsigned int page_mask;
 extern vm_map_t kernel_map;
-extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map);
 extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 
 /*
@@ -68,7 +68,7 @@ void *floppyMalloc(unsigned int size,
 	*allocSizeOut = allocSize;
 
 	// Get physical address of the allocation
-	pmap = vm_map_pmap_EXTERNAL(kernel_map, allocAddr);
+	pmap = vm_map_pmap_EXTERNAL(kernel_map);
 	physAddr = pmap_resident_extract(pmap, allocAddr);
 
 	// Calculate offset from physical address to next page boundary

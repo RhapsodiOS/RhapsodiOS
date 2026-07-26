@@ -18,9 +18,9 @@
 #define _is_dma_done		is_dma_done
 
 extern unsigned int page_size;
-/* Decompiled VM helpers used by this file (1-arg extract). */
-extern unsigned int vm_map_pmap_EXTERNAL(unsigned int map, unsigned int addr);
-extern unsigned int pmap_resident_extract(unsigned int pmap);
+/* Decompiled VM helpers used by this file (1-arg pmap lookup, 2-arg extract). */
+extern unsigned int vm_map_pmap_EXTERNAL(unsigned int map);
+extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 
 @implementation FloppyController(Arch)
 
@@ -65,8 +65,8 @@ extern unsigned int pmap_resident_extract(unsigned int pmap);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address from virtual address
-	pmap = vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap);
+	physAddr = (void *)pmap_resident_extract(pmap, bufferAddr);
 
 	result = 0;
 
@@ -100,9 +100,8 @@ extern unsigned int pmap_resident_extract(unsigned int pmap);
 			}
 
 			// Get physical address of bounce buffer
-			pmap = vm_map_pmap_EXTERNAL((unsigned int)kernel_map,
-			                              (unsigned int)_dmaBuffer);
-			physAddrInt = pmap_resident_extract(pmap);
+			pmap = vm_map_pmap_EXTERNAL((unsigned int)kernel_map);
+			physAddrInt = pmap_resident_extract(pmap, (unsigned int)_dmaBuffer);
 			dmaStruct->physAddr = physAddrInt;
 		} else {
 			// EISA - use buffer directly
@@ -189,8 +188,8 @@ extern unsigned int pmap_resident_extract(unsigned int pmap);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address
-	pmap = vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap);
+	physAddr = (void *)pmap_resident_extract(pmap, bufferAddr);
 
 	// Wait for DMA to complete (up to 2 retries with 2ms delay)
 	retries = 2;

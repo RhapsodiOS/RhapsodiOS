@@ -18,7 +18,7 @@ extern const IONamedValue fdrValues[];
 extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // External VM functions
-extern void *vm_map_pmap(vm_map_t map);
+extern void *vm_map_pmap_EXTERNAL(vm_map_t map);
 extern unsigned int pmap_resident_extract(void *pmap, vm_address_t va);
 extern unsigned int page_size;
 extern void fdTimer(id drive);
@@ -63,7 +63,7 @@ static int physContBlocks(vm_address_t address, vm_map_t map,
 	contiguousBytes = 0;
 
 	// Get the physical map for this VM map
-	pmap = vm_map_pmap(map);
+	pmap = vm_map_pmap_EXTERNAL(map);
 
 	// Get physical address for the starting virtual address
 	physAddr = pmap_resident_extract(pmap, address);
@@ -182,11 +182,11 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		chunkSize = destPageRemaining;
 
 		// Get physical address for destination
-		destPmap = vm_map_pmap(destMap);
+		destPmap = vm_map_pmap_EXTERNAL(destMap);
 		destPhys = (void *)pmap_resident_extract(destPmap, destAddr);
 
 		// Get physical address for source
-		srcPmap = vm_map_pmap(srcMap);
+		srcPmap = vm_map_pmap_EXTERNAL(srcMap);
 		srcPhys = (void *)pmap_resident_extract(srcPmap, srcAddr);
 
 		// Copy chunk using physical addresses

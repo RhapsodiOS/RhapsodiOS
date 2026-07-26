@@ -13,7 +13,7 @@
 // External references for VM functions
 extern unsigned int page_size;
 extern unsigned int page_mask;
-extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map);
 extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
 
@@ -120,10 +120,10 @@ static void docopy(vm_map_t sourceMap,
 
 		// Get physical addresses for this chunk
 		// First get the pmap (physical map) for each address space
-		destPmap = vm_map_pmap_EXTERNAL(destMap, destAddr);
+		destPmap = vm_map_pmap_EXTERNAL(destMap);
 		destPhys = pmap_resident_extract(destPmap, destAddr);
 
-		sourcePmap = vm_map_pmap_EXTERNAL(sourceMap, sourceAddr);
+		sourcePmap = vm_map_pmap_EXTERNAL(sourceMap);
 		sourcePhys = pmap_resident_extract(sourcePmap, sourceAddr);
 
 		// Copy the chunk using physical addresses

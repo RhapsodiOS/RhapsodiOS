@@ -33,33 +33,39 @@
 
 #import "ttyiops.h"
 
-/* Speed table for baud rate conversion */
-int ttyiops_speeds[] = {
-    0,      // B0
-    50,     // B50
-    75,     // B75
-    110,    // B110
-    134,    // B134
-    150,    // B150
-    200,    // B200
-    300,    // B300
-    600,    // B600
-    1200,   // B1200
-    1800,   // B1800
-    2400,   // B2400
-    4800,   // B4800
-    9600,   // B9600
-    19200,  // B19200
-    38400,  // B38400
-    7200,   // B7200
-    14400,  // B14400
-    28800,  // B28800
-    57600,  // B57600
-    76800,  // B76800
-    115200, // B115200
-    230400, // B230400
-    -1      // End marker
+/*
+ * Speed table for baud rate conversion.  ttspeedtab() reads this as
+ * { sp_speed, sp_code } pairs; sp_code is the half-bit-time value the
+ * PD_E_DATA_RATE event takes, which is twice the baud rate.
+ */
+struct speedtab ttyiops_speeds[] = {
+    { 0,       0 },
+    { 50,      100 },
+    { 75,      150 },
+    { 110,     220 },
+    { 134,     269 },
+    { 150,     300 },
+    { 200,     400 },
+    { 300,     600 },
+    { 600,     1200 },
+    { 1200,    2400 },
+    { 1800,    3600 },
+    { 2400,    4800 },
+    { 4800,    9600 },
+    { 9600,    19200 },
+    { 19200,   38400 },
+    { 38400,   76800 },
+    { 57600,   115200 },
+    { 115200,  230400 },
+    { 230400,  460800 },
+    { 460800,  921600 },
+    { 921600,  1843200 },
+    { 1843200, 3686400 },
+    { -1,      -1 }
 };
+
+/* Minimum time DTR must stay down before it may be raised again */
+static const struct timeval dtrDownDelay = { 2, 0 };
 
 /* Extended tty structure used by PortServer */
 typedef struct {
@@ -830,8 +836,9 @@ void ttyiops_init(struct tty *tp)
         target_time.tv_sec = ((long *)tp)[0x14c/sizeof(long)];
         target_time.tv_usec = ((long *)tp)[0x150/sizeof(long)];
 
-        /* Add 2 seconds to target time */
-        target_time.tv_sec += 2;
+        /* Add the minimum DTR-down delay */
+        target_time.tv_sec += dtrDownDelay.tv_sec;
+        target_time.tv_usec += dtrDownDelay.tv_usec;
 
         /* Handle microsecond overflow */
         if (target_time.tv_usec > 999999) {

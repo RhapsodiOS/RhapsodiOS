@@ -509,45 +509,14 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
             forParameter:(IOParameterName)parameterName
                    count:(unsigned *)count
 {
-    int i;
-    BOOL match;
-    const char *param;
-    const char *key;
     unsigned int value;
 
-    /* Check for "Resolution" parameter */
-    i = 11;
-    match = YES;
-    param = parameterName;
-    key = "Resolution";
-    do {
-        if (i == 0) break;
-        i = i - 1;
-        match = (*param == *key);
-        param = param + 1;
-        key = key + 1;
-    } while (match);
-
-    if (match) {
+    if (strcmp(parameterName, RESOLUTION) == 0) {
         value = resolution;
-    } else {
-        /* Check for "Inverted" parameter */
-        i = 9;
-        match = YES;
-        param = parameterName;
-        key = "Inverted";
-        do {
-            if (i == 0) break;
-            i = i - 1;
-            match = (*param == *key);
-            param = param + 1;
-            key = key + 1;
-        } while (match);
-
-        if (!match) {
-            return IO_R_UNSUPPORTED;
-        }
+    } else if (strcmp(parameterName, INVERTED) == 0) {
         value = (unsigned int)inverted;
+    } else {
+        return IO_R_UNSUPPORTED;
     }
 
     *parameterArray = value;
@@ -558,27 +527,10 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count
 {
-    int i;
-    BOOL match;
-    const char *param;
-    const char *key;
     unsigned int resolutionValue;
     char invertedValue;
 
-    /* Check for "Resolution" parameter */
-    i = 11;
-    match = YES;
-    param = parameterName;
-    key = "Resolution";
-    do {
-        if (i == 0) break;
-        i = i - 1;
-        match = (*param == *key);
-        param = param + 1;
-        key = key + 1;
-    } while (match);
-
-    if (match) {
+    if (strcmp(parameterName, RESOLUTION) == 0) {
         /* Set the resolution value */
         resolution = *parameterArray;
 
@@ -586,35 +538,16 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
         resolutionValue = [self getResolution];
 
         /* Update the event target with the new resolution */
-        if (target != nil) {
-            [target setResolution:resolutionValue];
-        }
-    } else {
-        /* Check for "Inverted" parameter */
-        i = 9;
-        match = YES;
-        param = parameterName;
-        key = "Inverted";
-        do {
-            if (i == 0) break;
-            i = i - 1;
-            match = (*param == *key);
-            param = param + 1;
-            key = key + 1;
-        } while (match);
-
-        if (!match) {
-            return IO_R_UNSUPPORTED;
-        }
-
+        [target setResolution:resolutionValue];
+    } else if (strcmp(parameterName, INVERTED) == 0) {
         /* Set the inverted flag */
         invertedValue = *(char *)parameterArray;
         inverted = invertedValue;
 
         /* Update the event target with the new inverted setting */
-        if (target != nil) {
-            [target setInverted:invertedValue];
-        }
+        [target setInverted:invertedValue];
+    } else {
+        return IO_R_UNSUPPORTED;
     }
 
     return IO_R_SUCCESS;

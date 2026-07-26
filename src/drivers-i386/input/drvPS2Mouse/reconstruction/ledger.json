@@ -221,7 +221,7 @@
       "reason": null,
       "reviewer": null,
       "size": 16,
-      "source_line": 623,
+      "source_line": 556,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -235,6 +235,7 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure",
+          "fix pass: the hand-unrolled character-compare loop was replaced with strcmp against RESOLUTION and INVERTED, which is what the reference compiles from. The rebuilt stream was disassembled and read against the reference at 1536-1628: identical instruction sequence and identical encoding lengths throughout, including repe cmpsb with ecx = 11 then ecx = 9, resolution read from +0x12C and inverted sign-extended from the byte at +0x130. The only byte differences are the scratch register gcc picked for the value (eax where the reference used edx) and the __cstring addresses. Size is now exactly the reference's 96, down from 128 (divergences.md Finding 15)",
           "full disassembly read instruction by instruction against source; both repe cmpsb compares match, but the no-match return is IO_R_UNSUPPORTED not IO_R_INVALID_ARG (divergences.md Finding 9)"
         ],
         "status": "agreed"
@@ -248,7 +249,7 @@
       "size": 93,
       "source_line": 508,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1632,
@@ -260,6 +261,7 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure",
+          "fix pass: rebuilt stream disassembled and compared instruction by instruction against the reference; only the reference's stack spill of the compare count and of parameterArray remains (divergences.md Findings 15, 16)",
           "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 9, 10)"
         ],
         "status": "agreed"
@@ -268,10 +270,10 @@
       "names": [
         "-[PS2Mouse setIntValues:forParameter:count:]"
       ],
-      "reason": "divergences.md Finding 10, accepted: our source guards both dispatches with a target != nil test that the reference does not have, messaging target unconditionally in both branches. Objective-C messages to nil are no-ops returning 0, so the guarded and unguarded forms behave identically. Finding 9 was fixed: the no-match path now returns IO_R_UNSUPPORTED.",
+      "reason": "Finding 16 fixed: the target != nil guards around both dispatches were removed, because the reference messages target unconditionally on both branches and merges them into one shared objc_msgSend tail. Finding 15 fixed: the compares are now strcmp. The rebuilt stream was disassembled and read against the reference at 1632-1777; every instruction corresponds, including repe cmpsb at 11 and 9, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual, accepted: ours is 12 bytes SMALLER (136 against 148) because gcc hoists the parameterArray load and keeps the compare count as an immediate where the reference spilled both to the stack. This is a code-generation difference with no source-level counterpart; drvBusMouse's verified setIntValues: lands on the same 136. Down from 204.",
       "reviewer": "Pat Raynor",
       "size": 146,
-      "source_line": 557,
+      "source_line": 526,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "intentional-mismatch"
     },

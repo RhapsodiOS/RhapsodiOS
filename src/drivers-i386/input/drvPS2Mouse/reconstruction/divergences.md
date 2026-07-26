@@ -44,7 +44,7 @@ four `Loaded Server` sections our build emits. Three differ:
 
 | Section | Reference | Ours | Why |
 | --- | --- | --- | --- |
-| `__TEXT,__text` | 1804 | 1956 | the defensive guards accepted under Findings 10 and 13, and the handler return value accepted under Finding 14 |
+| `__TEXT,__text` | 1804 | 1956 → **1856** | see the follow-up pass below; the residual 52 bytes are the null guards accepted under Finding 13 |
 | `__TEXT,__const` | 170 | *absent* | `_PS2Mouse_VERS_STRING` (160 bytes) and `_PS2Mouse_VERS_NUM` (10 bytes) |
 | `Loaded Server,Unload Commands` | 102 | *absent* | recorded above |
 
@@ -54,6 +54,31 @@ written by hand, and **no driver in this repository produces them** — of the t
 artifacts currently staged under `out/i386/`, the only ones with a `__TEXT,__const` section at
 all (drvEIDE, drvISASerialPort, drvPCMCIABus) have it for ordinary `const` data of their own,
 not for version constants. Recorded, not fixed; out of scope for the same reason.
+
+### Follow-up pass: the `__text` overshoot was mis-attributed
+
+The fix pass blamed the whole 152-byte `__text` excess on the guards accepted under Findings 10,
+13 and 14. That attribution was wrong. **88 of those 152 bytes were two defects in the parameter
+methods**, found when drvBusMouse — same `PCPointer` superclass, same two methods — disassembled
+its own rebuilt binary, and confirmed here against `PS2Mouse_reloc` before any edit. They are
+recorded as Findings 15 and 16 and are now fixed. Per-function extents, measured from real
+function symbols (our build carries 284 `__TEXT,__text` symbols including debug stabs, several
+sharing an address, so a naive symbol-gap walk gives wrong answers):
+
+| Function | Reference | Before | After |
+| --- | --- | --- | --- |
+| `-[PS2Mouse getIntValues:forParameter:count:]` | 96 | 128 | **96** |
+| `-[PS2Mouse setIntValues:forParameter:count:]` | 148 | 204 | **136** |
+| `__TEXT,__text` total | 1804 | 1956 | **1856** |
+
+The driver still builds clean on the guest (`EXIT=0`, `fail=0`), staging a 94632-byte `_reloc`,
+and `parity_check.py` still reports `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**.
+
+The residual +52 is: `initWithController:` +60, `isMousePresent` +8 and `resetMouse` +8 — the
+null guards accepted under Finding 13 — less `_PS2MouseIntHandler` −8, `mouseInit:` −4 and
+`setIntValues:` −12, all three of which are code-generation differences, not source ones.
+Finding 13's guards are therefore the only *source-level* excess left in this driver.
 
 `__DATA,__bss` reaching the reference's 56 bytes required dropping the explicit `= NULL`
 initializer on the `controllerFunctions` file static. NeXT's compiler places an explicitly
@@ -91,6 +116,16 @@ pass: the rebuilt object was compared against the reference at the level of sect
 Objective-C metadata, the string set and the symbol set — all of which now agree — but its
 `__text` was not disassembled and re-compared instruction for instruction, so that claim is
 not made.
+
+**Follow-up pass outcome.** Findings 15 and 16 were fixed and Finding 10's acceptance was
+reversed. The rebuilt `__text` for both parameter methods *was* disassembled and re-compared
+instruction for instruction against the reference, so `-[PS2Mouse getIntValues:forParameter:
+count:]` advances from `control-flow-confirmed` to `assembly-matched` (now exactly the
+reference's 96 bytes), and `-[PS2Mouse setIntValues:forParameter:count:]` stays
+`intentional-mismatch` with its reason rewritten: the nil guards are gone, and the only residual
+is the reference's stack spill of the compare count and of `parameterArray`, which leaves ours
+12 bytes smaller. Counts are now `assembly-matched` 3, `control-flow-confirmed` 3,
+`intentional-mismatch` 7.
 
 Beyond the function bodies, the object's Objective-C metadata was decoded directly from the
 Mach-O (`__class`, `__instance_vars`, `__inst_meth`, `__cls_meth`, `__meth_var_types`,
@@ -823,6 +858,12 @@ free of behavioural effect.
 remain. Ledger: `-[PS2Mouse setIntValues:forParameter:count:]` is `intentional-mismatch`,
 reviewed by Pat Raynor, for exactly this reason.
 
+**Resolution (follow-up pass): superseded and FIXED — see Finding 16.** Accepting these guards
+was a mistake. They are 32 of the 56 bytes by which `setIntValues:` overshot the reference, and
+parity with the shipped binary is the point of this reconstruction; drvBusMouse's
+`setIntValues:`, verified against its own reference, sends unconditionally. Both guards were
+removed.
+
 ## Finding 11: string set
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m`, various
@@ -932,6 +973,12 @@ reference. Ledger: `-[PS2Mouse isMousePresent]`, `-[PS2Mouse resetMouse]`,
 `-[PS2Mouse initWithController:]` and `_PS2MouseIntHandler` are `intentional-mismatch`,
 reviewed by Pat Raynor, for this reason.
 
+**Correction (follow-up pass):** the sentence above was wrong when written. The guards were 76
+of the 152 bytes, not "most" of them; the other 88 belonged to Findings 15 and 16 in the two
+parameter methods, now fixed. With those gone the guards are 76 bytes against a 52-byte residual
+overshoot — the only source-level excess left in the driver. The disposition is unchanged: still
+accepted, still `intentional-mismatch`.
+
 ## Finding 14: `_PS2MouseIntHandler` return value and `mouseInit:` initialization set
 
 **Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:122`
@@ -991,12 +1038,97 @@ handler-return half was **accepted unchanged**: `PS2MouseIntHandler` still retur
 is `intentional-mismatch` (jointly with Finding 13); `-[PS2Mouse mouseInit:]` is
 `control-flow-confirmed` with no residual divergence.
 
+## Finding 15: the parameter-name compares are `strcmp`, not a hand-unrolled loop
+
+**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:508`
+and `PS2Mouse.m:526`
+
+**Reference behaviour** — `getIntValues:` at 1536, verified by disassembling `PS2Mouse_reloc`:
+
+```
+1553  mov  edi, 0x7e0           ; "Resolution"
+1558  mov  ecx, 0xb             ; strlen("Resolution") + 1
+1563  cld
+1564  test al, 0
+1566  repe cmpsb
+1568  jne  0x62c
+...
+1582  mov  edi, 0x7d7           ; "Inverted"
+1587  mov  ecx, 9               ; strlen("Inverted") + 1
+1592  cld
+1593  test al, 0
+1595  repe cmpsb
+1597  je   0x648
+```
+
+`setIntValues:` at 1632 does the same, except that gcc spilled the first count: `mov [ebp-4],
+0xb; mov ecx, [ebp-4]`. `RESOLUTION` and `INVERTED` resolve, in `src/kernel-7/bsd/dev/i386/
+PCPointer.h:42-43`, to `"Resolution"` and `"Inverted"` — 11 and 9 bytes with the terminating NUL.
+
+**Our source (before):** a hand-unrolled character-compare loop — `i = 11; do { if (i == 0)
+break; i--; match = (*param == *key); param++; key++; } while (match);` — which gcc emitted as
+`dec ebx; mov al,[ecx]; cmp [edx],al; sete al`.
+
+**Difference:** a fixed-length `repe cmpsb` whose result is tested only for zero is gcc inlining
+`strcmp` against a string constant. Our loop reproduced the semantics but not the code: it cost
+`getIntValues:` +32 bytes and `setIntValues:` +32 of its +56.
+
+**Disposition:** FIX
+
+**Resolution (follow-up pass):** fixed. Both methods now use `strcmp(parameterName, RESOLUTION)
+== 0` / `strcmp(parameterName, INVERTED) == 0`, the same shape as drvBusMouse. The rebuilt
+`getIntValues:` is **exactly** the reference's 96 bytes and its instruction stream matches the
+reference one for one — same opcodes, same encoding lengths, `repe cmpsb` at 11 then 9 — the only
+byte differences being the scratch register gcc chose for the value (`eax` where the reference
+used `edx`) and the `__cstring` addresses. Ledger: `assembly-matched`.
+
+## Finding 16: `setIntValues:` messages `target` unconditionally
+
+**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:526`
+(the guards were at `:589` and `:615` before the fix)
+
+This is Finding 10 re-decided. Finding 10 recorded the divergence correctly and then accepted it;
+the follow-up pass rejects that acceptance.
+
+**Reference behaviour** — both branches of `setIntValues:` fall through to one shared tail at
+1753 that loads `target` from `[ebx+0x128]` and calls `objc_msgSend`. There is no `test` or `cmp`
+of that ivar anywhere in the function; the `Resolution` branch jumps straight into the tail from
+1702 and the `Inverted` branch falls into it from 1751.
+
+**Our source (before):** `if (target != nil) { [target setResolution:…]; }` and
+`if (target != nil) { [target setInverted:…]; }`.
+
+**Difference:** two branches the reference does not have — the remaining +24 of `setIntValues:`'s
++56, on top of Finding 15's +32.
+
+**Disposition:** FIX
+
+**Rationale:** the guards are behaviourally inert (messages to `nil` are no-ops returning 0), so
+this is purely a parity question, and parity with the shipped binary is the object of the
+exercise. drvBusMouse's `setIntValues:`, verified against its own reference, sends
+unconditionally.
+
+**Resolution (follow-up pass):** fixed. Both guards removed. `setIntValues:` went from 204 bytes
+to 136 and its rebuilt stream was disassembled and read against the reference at 1632–1777: every
+instruction corresponds — `repe cmpsb` at 11 and 9, `resolution` written to `+0x12C` and re-read
+through `[self getResolution]`, `inverted` written to `+0x130` and forwarded sign-extended, and
+the single unguarded `objc_msgSend` to `target` at `+0x128` shared by both branches.
+
+**Residual, accepted:** ours is now 12 bytes **smaller** than the reference's 148, because gcc
+hoists the `parameterArray` load into the prologue and keeps the compare count as an immediate
+where the reference spilled both to the stack (`sub esp,4`; `mov [ebp-4],0xb`; `mov ecx,[ebp-4]`;
+and two reloads of `[ebp+0x10]`). That is a code-generation difference with no source-level
+counterpart, and drvBusMouse's verified `setIntValues:` lands on the identical 136. Ledger:
+`-[PS2Mouse setIntValues:forParameter:count:]` stays `intentional-mismatch`, reviewed by Pat
+Raynor, with its reason rewritten from the now-obsolete nil-guard text to this one.
+
 ## Functions examined with no divergence found
 
 Instruction-level match (`assembly-matched` in the ledger):
-`-[PS2Mouse getHandler:level:argument:forInterrupt:]` (1480) and
-`-[PS2Mouse getResolution]` (1520). These are the only two functions in the driver whose
-emitted instruction streams reproduce the reference exactly. Both still carry declaration-level
+`-[PS2Mouse getHandler:level:argument:forInterrupt:]` (1480),
+`-[PS2Mouse getResolution]` (1520), and — since the follow-up pass —
+`-[PS2Mouse getIntValues:forParameter:count:]` (1536), whose stream was re-read against the
+reference after Finding 15 was fixed. The first two still carry declaration-level
 divergences recorded under Finding 2 (`getResolution` returns `int` not `unsigned int`;
 `getHandler:`'s `argument:` is `unsigned int *` not `void **`), and `getResolution`'s single
 `mov eax, [eax+0x12c]` only lands on the right ivar once Finding 1 is applied. Neither

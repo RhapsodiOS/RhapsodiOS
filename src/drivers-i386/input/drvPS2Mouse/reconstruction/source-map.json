@@ -80,7 +80,7 @@
         "-[PS2Mouse getResolution]"
       ],
       "size": 16,
-      "source_line": 623,
+      "source_line": 556,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[PS2Mouse setIntValues:forParameter:count:]"
       ],
       "size": 146,
-      "source_line": 557,
+      "source_line": 526,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m"
     }
   ],

@@ -244,7 +244,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			driveName = [self name];
 
 			// Log the error
-			IOLog("%s seek: %s; %s", driveName, errorString, errorType);
+			IOLog("%s seek: %s; %s\n", driveName, errorString, errorType);
 
 			// If fatal, return the error
 			if (isFatal) {
@@ -548,7 +548,7 @@ transfer_done:
 	driveName = [self name];
 
 	// Log the error
-	IOLog("%s: Sector %d cmd = %s; %s: %s",
+	IOLog("%s: Sector %d cmd = %s; %s: %s\n",
 	      driveName, block, operationType,
 	      (const char *)operation, statusString);
 }
@@ -743,7 +743,7 @@ transfer_done:
 	// Get drive status
 	result = [self fdGetStatus:&status];
 	if (result != IO_R_SUCCESS) {
-		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED");
+		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED\n");
 		return;
 	}
 

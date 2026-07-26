@@ -475,7 +475,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		diskName = [self name];
 		operationName = isFormatted ? "read" : "format";
 
-		IOLog("%s: Unable to %s cylinder %d of disk (on drive %d).",
+		IOLog("%s: Unable to %s cylinder %d of disk (on drive %d).\n",
 		      diskName, operationName, cylinderNumber, unit);
 	}
 
@@ -593,7 +593,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		unit = [self unit];
 		diskName = [self name];
 
-		IOLog("%s: Unable to commit cylinder %d to disk (on drive %d).",
+		IOLog("%s: Unable to commit cylinder %d to disk (on drive %d).\n",
 		      diskName, cylinderNumber, unit);
 
 		// Lock again to restore dirty flag

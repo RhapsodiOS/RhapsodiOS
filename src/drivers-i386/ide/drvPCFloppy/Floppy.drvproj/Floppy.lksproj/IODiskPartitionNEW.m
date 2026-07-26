@@ -377,7 +377,7 @@ extern unsigned int page_mask;
 	} else {
 		// Bad label version
 		name = (const char *)[self name];
-		IOLog("%s writeLabel: BAD LABEL", name);
+		IOLog("%s writeLabel: BAD LABEL\n", name);
 		result = (IOReturn)0xfffffd3e;
 		goto cleanup;
 	}
@@ -411,7 +411,7 @@ extern unsigned int page_mask;
 	checkResult = check_label(buffer, 0);
 	if (checkResult != 0) {
 		name = (const char *)[self name];
-		IOLog("%s writeLabel: BAD LABEL : %s", name, checkResult);
+		IOLog("%s writeLabel: BAD LABEL : %s\n", name, checkResult);
 		result = (IOReturn)0xfffffd3e;
 		goto cleanup;
 	}
@@ -662,7 +662,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Read attempt with no valid label", name);
+	IOLog("%s: Read attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -690,7 +690,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Read attempt with no valid label", name);
+	IOLog("%s: Read attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -718,7 +718,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Write attempt with no valid label", name);
+	IOLog("%s: Write attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -746,7 +746,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Write attempt with no valid label", name);
+	IOLog("%s: Write attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -774,7 +774,7 @@ cleanup:
 	// Must be partition 0 to free partitions (offset 0x150)
 	if (_partition != 0) {
 		name = (const char *)[self name];
-		IOLog("%s: _freePartitions on partition != 0", name);
+		IOLog("%s: _freePartitions on partition != 0\n", name);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
@@ -786,7 +786,7 @@ cleanup:
 	// Check if the next disk is open
 	if ([nextDisk isOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: _freePartitions with open partitions", name);
+		IOLog("%s: _freePartitions with open partitions\n", name);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
@@ -908,21 +908,21 @@ cleanup:
 	// Must be partition 0 for destructive operations (offset 0x150)
 	if (_partition != 0) {
 		name = (const char *)[self name];
-		IOLog("%s: %s on partition != 0", name, operation);
+		IOLog("%s: %s on partition != 0\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
 	// Check if any block devices are open
 	if ([self isAnyBlockDevOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: %s with open block devices", name, operation);
+		IOLog("%s: %s with open block devices\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
 	// Check if any other partitions are open
 	if ([self isAnyOtherOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: %s with other partitions open", name, operation);
+		IOLog("%s: %s with other partitions open\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 

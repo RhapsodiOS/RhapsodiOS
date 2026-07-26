@@ -27,10 +27,14 @@
 /* ========================================================================
  * IOSCSIControllerExported Protocol - conformance check used by
  * IOSCSISession_initForDevice
+ *
+ * driverkit/scsiTypes.h already declares the real IOSCSIControllerExported
+ * protocol, with exactly the methods this driver's stubbed wrapper calls
+ * send (executeRequest:buffer:client:, reserveTarget:lun:forOwner:, etc.);
+ * import it rather than re-declaring an empty forward reference.
  * ======================================================================== */
 
-@protocol IOSCSIControllerExported
-@end
+#import <driverkit/scsiTypes.h>
 
 /* ========================================================================
  * IOSCSISession Class Definition

@@ -42,9 +42,9 @@ extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
  *   3. Calculating the offset to the next page boundary
  *   4. Returning a pointer that ensures the requested size fits in one page
  */
-static void *floppyMalloc(unsigned int size,
-                          vm_address_t *allocAddrOut,
-                          unsigned int *allocSizeOut)
+void *floppyMalloc(unsigned int size,
+                    vm_address_t *allocAddrOut,
+                    unsigned int *allocSizeOut)
 {
 	vm_address_t allocAddr;
 	vm_address_t returnAddr;

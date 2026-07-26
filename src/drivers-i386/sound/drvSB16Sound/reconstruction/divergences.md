@@ -29,6 +29,10 @@ gitignored analyzer output.
 
 ## Baseline build
 
+*(Superseded by "Task 10 fix-pass resolutions" at the end of this document: the driver now
+compiles cleanly and has a measured baseline. The paragraph below records the state this
+report pass found.)*
+
 **Unmeasured, and the driver does not currently compile.**
 `SoundBlaster16.m:270` reads
 
@@ -84,7 +88,8 @@ All 28 reference functions land in exactly one bucket and every one carries a le
 Ledger status counts as this report pass leaves them: `assembly-matched` 11,
 `unexamined` 15, `intentional-mismatch` 2. The fifteen `unexamined` entries are the fifteen
 functions carrying a divergence; per the drvPCIBus convention their status is held here and
-advancing it is Task 10's job.
+advancing it is Task 10's job. **Task 10 advanced all fifteen to `assembly-matched`**, so
+the ledger now reads `assembly-matched` 26, `intentional-mismatch` 2, `unexamined` 0.
 
 **The asymmetry runs one way and it is small.** There is no reference function our source
 lacks, and — unlike drvES1x88Sound — **there is no method in our source without a reference
@@ -1703,3 +1708,195 @@ This shifts every function address downstream of 288 and is worth fixing before 
 address-level comparison of a rebuilt binary, but it changes no behaviour.
 
 **Disposition for Task 10:** move `-initializeDMAChannels` above `-reset`.
+
+---
+
+# Task 10 fix-pass resolutions
+
+All twenty-five findings resolved by changing the source to match the reference. No
+finding was accepted as an `intentional-mismatch`; the only two entries carrying that
+status remain the build-generated kernel-server glue methods. Nothing is left undecided
+and the ledger has no `unexamined` entry.
+
+## The baseline this driver had never had
+
+`drvSB16Sound` had never been compiled. The first build failed on one pre-existing error,
+repaired in its own commit before any divergence work: `SoundBlaster16.m:270` used
+`IO_16Bit`, which is not an `IOEISADMATransferWidth` enumerator. The correct value is
+`IO_16BitByteCount`, which is also the `2` the reference pushes (Finding 13). No makefile
+defect was present — this driver carries none of drvSB8Sound's NEXTSTEP-era residue, and
+its `Makefile.preamble` files are clean.
+
+The baseline build after that repair produced a 198504-byte `_reloc` and 20 compiler
+warnings, all of them consequences of findings this pass then closed (the `stringValue`
+receiver type, the `BOOL is16BitTransfer` range comparisons and the unused
+`stopDMAForChannel:read:` locals). The final build emits **no warnings at all**.
+
+## Gate results
+
+| Gate | Baseline | After fix pass |
+| --- | --- | --- |
+| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0`, no warnings |
+| `missing_strings` | 2 | **0** |
+| `missing_symbols` | 0 | 0 |
+| `extra_strings` | 8 | **0** |
+| `extra_symbols` | 37 | 33 |
+| staged `_reloc` | 198504 bytes | 254668 bytes |
+| our `__text` | — | **13784** against the reference's 13572 |
+| `check_mixer.py` | not run | 35 symbols compared, **no `MISMATCH`** |
+| source-map buckets | 26 / 2 / 0 / 0 = 28 | 26 / 2 / 0 / 0 = 28 |
+| `load_source_map` | not run | `source map OK` |
+| `binrecon ledger` | not run | accepted, `entries=28`, `assembly-matched=26`, `intentional-mismatch=2` |
+
+The two strings that were missing are Q2's `SoundBlaster16: DSP read error.` and
+`SoundBlaster16: SoundBlaster not detected at address 0x%0x.`; both are now emitted, from
+the functions Q2 identified. The eight that were extra are the six from the two dead inline
+helpers Finding 23 removed plus the two card-name literals Finding 1 removed — note that
+these six *did* reach `__cstring` in our build even though their functions are uncalled,
+which the report pass expected not to happen. All 33 remaining `extra_symbols` are stabs
+from our unstripped build: `''`, the two source filenames, the `ioPorts.h` and
+`SoundBlaster16_instance.m` paths, and the `:fNN` N_FUN entries. No entry moved from
+`mapped` to `unmapped`.
+
+**The `_reloc` grew because the driver now does the work Apple's does.** Our unstripped
+build is several times the reference size and that comparison is not meaningful; `__text`
+is, and 13784 against 13572 is 1.6 percent over.
+
+## The source-map bucket count needs one word of explanation
+
+A fresh `binrecon source-map` run against the fixed tree reports **25 mapped and 3
+unmapped**, not the committed 26 and 2. This is **not** a partition change caused by the
+fix. `source_sites` globs `*.m` and `*.c` only, so it has never been able to resolve
+`_clearInterrupts`, whose body is in `SoundBlaster16Inline.h`; the committed map's
+assignment of that address to `SoundBlaster16.m:23` — the `#import` site — was
+hand-resolved by Task 9 and is recorded above under *Weaker evidence*. Per the shared
+procedure only `source_line` and `source_path` were copied from the fresh run, and the
+committed bucket assignments were kept, so the totals are unchanged at 26 / 2. The
+definition itself moved from `SoundBlaster16Inline.h:470` to `:425`.
+
+## Per-function sizes, gap-to-next-symbol
+
+Ours is unstripped and its stabs share addresses inside `__TEXT,__text`, which collapses
+every computed size to zero; the helper filters them, which is a no-op on the reference.
+28 functions on both sides, **none missing, none extra, none flagged `LARGER`.**
+
+Exact matches: `+probe:` 288, `updateOutputAttenuationLeft` 312,
+`updateOutputAttenuationRight` 312, `getDataEncodings:count:` 32, `getSamplingRates:count:`
+60, `getSamplingRatesLow:high:` 28, `enableAllInterrupts` 44, `disableAllInterrupts` 44,
+`setBufferCount:` 16, `setAnalogInputSource:` 8, `channelCountLimit` 12,
+`acceptsContinuousSamplingRates` 12, `interruptClearFunc` 12 and both glue methods 12.
+
+The largest relative excess is `initializeHardware` at 3144 against 2992 and
+`timeoutOccurred` at 3184 against 3032, both 5 percent. `initializeDMAChannels` is the only
+function materially *smaller* than the reference, 856 against 988, because our gcc
+jump-threads the `BOOL status` flag that the reference materialises with
+`xor edx, edx` / `mov edx, 1` / `test dl, dl` at each of its four validation sites.
+
+## Two independent per-function reference sweeps, both exact
+
+Beyond the size table this pass ran two whole-binary checks that are far more sensitive
+than size, both counting 4-byte values inside each function body that point into a named
+section:
+
+- **`__OBJC,__message_refs`** — the selector-reference count. Equal in **all 28 functions**,
+  including `initializeDMAChannels` at 24 on both sides. Finding 10's tail-merge exception
+  held: all seven `[self name]` sends and all seven `IOLog` calls are in the source, and our
+  gcc merged the two `setAutoinitialize:` arms exactly as Apple's did, so the emitted
+  `paName` count is six on both sides.
+- **`__TEXT,__cstring`** — the string-reference count. Equal in **all 28 functions**, which
+  is what proves the two newly added strings landed in the functions Q2 named rather than
+  wherever was convenient: `initializeHardware` 8, `timeoutOccurred` 9,
+  `startDMAForChannel:` 10, `stopDMAForChannel:read:` 4, `updateSampleRate` 3,
+  `initializeDMAChannels` 12, `reset` 5.
+
+## Instruction-level comparison of the rebuilt binary
+
+Every function was disassembled from the rebuilt `_reloc` with capstone and aligned against
+the reference's IDA instruction stream on `(mnemonic, operands)` with absolute addresses
+normalised. Eleven functions align **100 percent**, including `+[SoundBlaster16 probe:]` at
+91 of 91, which validates the comparison itself. The remaining seventeen align between 55
+and 85 percent and **every differing hunk was read**. All of them are our compiler's, not
+the source's:
+
+- our gcc schedules the post-`IODelay` `add esp, 4` before the next load, where Apple's
+  puts it after — this alone accounts for two hunks per `IODelay` call, and there are
+  roughly ninety;
+- different register allocation throughout (`esi`/`ebx` swapped in `reset`,
+  `initializeDMAChannels` and `stopDMAForChannel:read:`), and stack spills where Apple's
+  keeps a value in a register;
+- an extra `mov cl, bl` before every `mov al, cl` feeding an `out dx, al`;
+- a shadow read widened to `mov eax, dword ptr ds:_x` / `lea ebx, [eax*8]` where Apple's
+  narrows to `mov bl, byte ptr ds:_x` / `shl bl, 3`;
+- our gcc's elimination of `BOOL` flags Apple's materialises, its folding of
+  `version == 1 || version == 2` into `dec eax` / `cmp eax, 1` / `jbe` where Apple's builds
+  a compare tree, and Apple's alignment `nop`s.
+
+**The byte-narrowing was tested, not assumed.** Routing every shifted shadow write through
+an explicit `unsigned char regValue` temp — the form Finding 16 blesses in
+`updateInputGainRight` — was implemented and measured: our gcc added a stack store rather
+than narrowing the load, and `initializeHardware` grew from 3144 to 3292 and
+`timeoutOccurred` from 3184 to 3332. The direct `outbIXMixer(reg, shadow << 3)` form of
+Finding 16's disposition is kept because it is measurably closer.
+
+Two source-visible residuals are worth naming rather than hiding:
+
+1. **`resetDSP()`'s `detected` flag.** Our gcc emits `mov byte ptr [ebp-4], 0` for it; the
+   reference has no such store, having threaded the three probe tests directly onto the
+   shared failure block. The flag is kept because the alternative — three separate
+   `IOLog("… not detected …")` sites — risks three `__cstring` references where the
+   reference has one, and the cstring sweep above would then fail.
+2. **`clearInterrupts()`'s second test.** Finding 20's fix is in the source: the 8-bit arm
+   reads the `interruptStatus` global. Our gcc forwards the store that immediately precedes
+   it and emits `test bl, 1`, where the reference emits
+   `test byte ptr ds:_interruptStatus, 1`. The source construct is the reference's; the
+   forwarding is not ours to control.
+
+## Finding by finding
+
+| # | Resolution |
+| --- | --- |
+| 1 | Source. `sb16CardParameters_t` is `version`, `majorVersion`, `minorVersion` — 12 bytes, offsets 0/4/8. `name`, `mixerPresent`, `supports16Bit` and `supportsAWE` are gone with the two card-name literals, and `sb16CardType` carries a `= {0}` initialiser so it lands in `__DATA,__data`. |
+| 2 | Source. The five unions and eleven `unsigned char` shadows became the reference's twenty-three `unsigned int` variables, in the reference's `__data` order, with its initialisers. `inputGainLeft`/`Right` and `outputGainLeft`/`Right` are deleted as duplicates of the `lastStageGain*` set. `sb16MonoMixerRegister_t` was orphaned by this change and removed; `sb16MonoMixerRegister5bit_t` and `sb16StereoMixerRegister_t` were dead before this pass and are left. |
+| 3 | Source. `SB16_ADDRESS_WRITE_DELAY` 10 → 15, `SB16_DATA_READ_DELAY` 10 → 30, the trailing `IODelay(SB16_RESET_DELAY)` dropped from every reset pulse (`SB16_RESET_DELAY` itself removed), and both post-mixer-reset delays 100 → 50. |
+| 4 | Source. `dspReadWait()`/`dspWriteWait()` are `void`, loop to 10000, read before delaying, and log `SoundBlaster16: DSP read error.` / `DSP write error.` unconditionally on the `i == 10000` post-test. `writeToDSP()`/`readFromDSP()` are `static __inline__` with no status, so no out-of-line copy is emitted, matching the reference's absence of both symbols. |
+| 5 | Source, wholesale. `resetDSP()` runs the two `DC16_INVERT_BYTE` probes — `E0h 43h` → `BCh` and `E0h 94h` → `6Bh` — through a `writeInvertByte()` helper that puts both bytes behind one write wait, and emits `SoundBlaster16: SoundBlaster not detected at address 0x%0x.` when any of the three tests fails. |
+| 6 | Source, wholesale. The version-number classification is replaced by `probeMixerRegisters()`, which writes `((reg + 0xD5) & 0xFF) << 3` to CT1745 `30h`–`3Ah` and reads back masked with `0xF8`. `version` is `SB_8BIT` once the DSP answers and is upgraded to `SB16_BASIC` only if the probe succeeds. |
+| 7 | Source. `IOSleep(1)` removed, both version digits masked with `0x0F`, no wait before the second read (it is a bare `inb(sbReadDataReg)` + `IODelay(30)`), and the DSP responses are `unsigned char` locals compared as bytes. This is what brings the wait count in `initializeHardware` to the reference's seven. |
+| 8 | Source, wholesale. `initMixerRegisters()` writes the reference's twenty-four CT1745 registers in its order, with the four shift groups: `30h`–`3Ah` left 3, `3Bh` and `3Fh`–`42h` left 6, `44h`–`47h` left 4, `3Ch`/`3Dh`/`3Eh` unshifted, `43h` the literal `0`. `3Bh` is `volPCSpeaker << 6`. No shadow is assigned inside the block. |
+| 9 | Source. `resetHardware()` gates on `cardType->version != SB16_NONE` and `resetMixer()` moved inside the gate, ahead of the register probe and the register writes. |
+| 10 | Source. `deviceDesc` and `numChannels` dropped; `[[self deviceDescription] numChannels]` is sent twice and `deviceDescription` four times. **All seven `[self name]` sends kept** — see the selector sweep above. |
+| 11 | Source. `is16BitTransfer` is `unsigned int currentEncoding`, `numDMAChannels` is `dmaChannelsAvailable`, and `dma8Channel`/`dma16Channel` are locals of `initializeDMAChannels` with `dma16Channel = 99` at the declaration. Four ivars at 0x184, 0x188, 0x18C, 0x190. |
+| 12 | Source. `IO_Single` → `IO_Demand` at both `setTransferMode:forChannel:` sites. |
+| 13 | Source, in the baseline-build repair commit. `IO_16Bit` → `IO_16BitByteCount`. |
+| 14 | Source. The `stringValue` send is gone and `stringValue` no longer appears anywhere; `deviceDescription` and `configTable` are re-sent for the second key; the bound test is on an `unsigned char` local so it emits `add`/`cmp 3`/`ja`; and the stores are a chained assignment, right channel first. |
+| 15 | Source. `updateInputGainRight` gains its `volLineLeft` store and `updateOutputAttenuationRight` its `volMasterLeft` store, so each writes the same shadow set as its left-channel counterpart. |
+| 16 | Source. No shared `regValue`; every port write names its own shadow. See the byte-narrowing note above for the one thing this does not reproduce. |
+| 17 | Source. `updateOutputMute` tests `[self isOutputMuted]` un-negated with the four zero writes inline and the restore in the `else`. |
+| 18 | Source, all five. The `interruptTimedOut = NO` store removed; `actualChannel` defaults to `localChannel`; `[self channelCount]` is sent inside the first `if (isRead)`; the DMA command is built with separate `|=` statements and the playback arm clears `DMA_MODE_ADC` with `&= ~`; the `IODelay(50)` removed. The buffer-counter adjustment and the four DSP writes are duplicated inside both `isRead` arms, which is what the reference's eight write-wait expansions require — the rebuilt function has all eight. |
+| 19 | Source, all three. `stopDMATransfer()` is called from both arms of `if (isRead)` and contains one write wait and one read wait, so the two call sites produce the reference's four expansions at 9363, 9575, 9619 and 9827; `actualChannel` defaults to `localChannel`; the mono-record restore writes `inputMixerSwitchLeft`, not the literal `0x15`. |
+| 20 | Source. `interruptCount` removed with its declaration; the 8-bit arm tests the `interruptStatus` global. |
+| 21 | Source. `interruptStatus = status;` moved above the acknowledge block in `interruptOccurredForInput:forOutput:`, and its second arm tests the global, as `clearInterrupts()` does. |
+| 22 | Source. `channelCount` replaced by a `stereo` flag computed once at the top and tested against `YES`; `currentDMADirection` read once into a local. `stereo` is `unsigned int`, not `BOOL` — the reference's `setz al` / `and eax, 0FFh` / `mov [ebp+var_8], eax` is a dword store and a `char` cannot produce it. |
+| 23 | Source. `resetDSPQuick()` and `checkSelectedDMAAndIRQ()` removed with all six of their string literals, including the `IRQ must be 2, 5, 7, or 10.` message that contradicted `Default.table` and `-[SoundBlaster16 reset]`. |
+| 24 | Source. `sb16CardType` gained `= {0}`; `sbBufferCounter` and `interruptStatus` lost their `= 0`, so the first is in `__data` and the other two in `__bss` as the reference has them. Their `__bss` order was left alone, per this finding's own instruction not to restructure on the strength of the inference. |
+| 25 | Source. `-initializeDMAChannels` moved above `-reset`. |
+
+## Pre-existing dead code, raised rather than removed
+
+Nothing is left. The two uncalled helpers of Finding 23 were the only dead code in this
+driver's sources, and that finding's disposition removed them, because
+`checkSelectedDMAAndIRQ()`'s `IRQ must be 2, 5, 7, or 10.` message actively contradicted
+the shipped `Default.table` and `-[SoundBlaster16 reset]`.
+
+## The IRQ question, closed
+
+Q1's conclusion stands and needed no code change: `-[SoundBlaster16 reset]` already
+implemented Apple's `{5, 7, 9, 10}` exactly, and the wrong message lived only in the
+uncalled `checkSelectedDMAAndIRQ()`, which is now gone. The `SoundBlaster16: Audio IRQ must
+be one of 5, 7, 9, 10.` string was already in our source and was already in the reference's
+`__cstring`; it was never among the missing strings.
+
+## Tables
+
+All four tables were re-diffed against Apple's shipped copies after the fix pass and remain
+clean, differing only in the `"Driver Version"` line. `SB16_3_31.rtfd` was not renamed.

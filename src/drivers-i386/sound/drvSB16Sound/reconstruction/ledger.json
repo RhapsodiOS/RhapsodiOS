@@ -31,6 +31,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 10, 11, 12 and 13 resolved in source: deviceDescription and numChannels are re-sent rather than cached, dma8Channel/dma16Channel are locals with dma16Channel = 99 initialised first, dmaChannelsAvailable replaces numDMAChannels, setTransferMode: takes IO_Demand and setDMATransferWidth: takes IO_16BitByteCount. All seven [self name] sends and their IOLog calls are kept per Finding 10's tail-merge exception, and the rebuilt function carries the same 24 selector references and 12 cstring references as the reference. It is 856 bytes against 988 because our gcc jump-threads the BOOL status flag the reference materialises at each validation site. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 330 instructions against SoundBlaster16.m:163-291. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 10, 11, 12 and 13. Divergent, not invented: our initializeDMAChannels implements the reference's logic. The reference re-sends [self deviceDescription] four times and numChannels twice where we cache both in locals; dma8Channel and dma16Channel are registers in the reference, not ivars, with dma16Channel = 99 hoisted to the function's first instruction, and numDMAChannels is the ivar dmaChannelsAvailable at 0x190; setTransferMode: is passed IO_Demand (0) at both sites, not IO_Single; and the 16-bit width is IO_16BitByteCount (2) where our source names the non-existent IO_16Bit, which breaks the build at line 270."
         ],
@@ -43,9 +44,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 988,
-      "source_line": 163,
+      "source_line": 87,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1276,
@@ -55,6 +56,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 1 and 3 resolved in source: sb16CardParameters_t is reduced to version/majorVersion/minorVersion so the IOLog arguments load from +4 and +8, and SB16_ADDRESS_WRITE_DELAY is 15 so the IRQ-select mixer write emits IODelay(15). The IRQ set {5, 7, 9, 10} was already correct and is unchanged. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 133 instructions against SoundBlaster16.m:87-161. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 1 and 3. Divergent, not invented. The body matches SoundBlaster16.m:87-161 almost throughout, including the IRQ chain {5, 7, 9..10} instruction for instruction, the BOOL status accumulator, the five-arm card-version switch and the IRQ-select bit table. Two things differ: the reference loads majorVersion and minorVersion from _sbCardType+4 and +8 where our seven-member struct puts them at +8 and +12, and the inlined outbIXMixer delays 15 after the address write where ours delays 10."
         ],
@@ -67,9 +69,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 396,
-      "source_line": 87,
+      "source_line": 212,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1672,
@@ -79,6 +81,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 1 through 9 resolved in the inline helpers this method expands: the card struct is three fields, the mixer delays are 15 and 30 with no trailing reset delay, the DSP waits loop to 10000, read before delaying and log SoundBlaster16: DSP read error. and DSP write error. unconditionally, resetDSP() runs the two invert-byte probes and emits SoundBlaster16: SoundBlaster not detected at address 0x%0x. on failure, the card type comes from the CT1745 30h-3Ah register probe rather than the DSP version, initMixerRegisters() writes the reference's 24 CT1745 registers with volPCSpeaker << 6 at 3Bh, and resetHardware() gates on version != SB16_NONE with resetMixer() inside the gate. 3144 bytes against 2992; the one source-visible residual is the detected flag our gcc materialises for the three-probe chain. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 798 instructions against SoundBlaster16.m:294-298 and SoundBlaster16Inline.h:240-429. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 1 through 9. Divergent, not invented, and the size gap is inlining. The method body reduces to resetHardware(&sbCardType) followed by [self initializeLastStageGainRegisters] at 4638, which is SoundBlaster16.m:294-298 exactly; all 2991 bytes are the inlined helper tree from SoundBlaster16Inline.h. Every divergence lives in that tree: the three-field card struct, the 23 compile-time-initialised unsigned int mixer shadows, the 15 and 30 delay constants, the 10000-iteration wait loops with their DSP read error and DSP write error logs, the two missing invert-byte detection probes and the SoundBlaster not detected message, the mixer-register-probe card classification, the extra IOSleep(1) and unmasked version bytes, the CT1745 register block initMixerRegisters writes, and the version != SB16_NONE gate in place of mixerPresent."
         ],
@@ -91,9 +94,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2991,
-      "source_line": 294,
+      "source_line": 288,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 4664,
@@ -103,6 +106,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2 and 14 resolved in source: the stringValue send is gone, deviceDescription and configTable are re-sent for the second key, the bound test is on an unsigned char so it emits add/cmp 3/ja, and the stores are a chained assignment so the right channel is written before the left. The four gain shadows are four-byte integers. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 137 instructions against SoundBlaster16.m:300-336. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2 and 14. Divergent, not invented. The four mixer writes to 3Fh, 40h, 41h and 42h with the shadows shifted left six match SoundBlaster16.m:332-335 exactly. The reference sends three messages per config key and re-sends deviceDescription and configTable for the second key where our source caches both and adds a stringValue send that appears nowhere in __OBJC,__meth_var_names; its range test is unsigned byte arithmetic; and the four lastStageGain shadows are four-byte variables written right then left."
         ],
@@ -115,9 +119,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 446,
-      "source_line": 300,
+      "source_line": 294,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 5112,
@@ -127,6 +131,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2 and 16 resolved in source: the five shadows are separate unsigned ints written as one chained assignment, so they store in the reference's order volMic, volLineRight, volLineLeft, volCDRight, volCDLeft, and each port write reloads its own shadow instead of sharing a regValue. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 72 instructions against SoundBlaster16.m:341-364. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2 and 16. Divergent, not invented. The gain arithmetic gain ? (gain * 31) >> 15 : 0 and the three register writes to 38h, 36h and 3Ah match SoundBlaster16.m:341-364. The reference stores five separate four-byte shadows where we assign two bitfield unions and a byte, and reloads each shadow from memory before its port write where our single regValue local cannot."
         ],
@@ -139,9 +144,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 261,
-      "source_line": 341,
+      "source_line": 334,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 5376,
@@ -151,6 +156,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2, 15 and 16 resolved in source: the missing volLineLeft store is added so this method writes the same five shadows as updateInputGainLeft, and each of the three right-channel port writes reloads its own shadow. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 72 instructions against SoundBlaster16.m:366-391. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2, 15 and 16. Divergent, not invented. Same shape as updateInputGainLeft with registers 39h, 37h and 3Ah. The reference writes five shadows including _volLineLeft, which SoundBlaster16.m:377-380 omits."
         ],
@@ -163,9 +169,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 261,
-      "source_line": 366,
+      "source_line": 352,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 5640,
@@ -175,6 +181,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2, 16 and 17 resolved in source: the mute block is now the un-negated arm and comes first, so the method emits test/jz with the four zero writes inline, and the restore arm reloads each shadow. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 131 instructions against SoundBlaster16.m:393-417. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2, 16 and 17. Divergent, not invented. Both arms write 32h, 33h, 30h and 31h in our source's order, the mute arm with literal zeros. The reference tests the un-negated [self isOutputMuted] and puts the mute block first, test dl,dl then jz to the restore block at 5876, where our if (![self isOutputMuted]) emits the opposite polarity and block order."
         ],
@@ -187,9 +194,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 492,
-      "source_line": 393,
+      "source_line": 370,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 6132,
@@ -199,6 +206,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2 and 16 resolved in source: the six shadows are written as one chained assignment in the reference's right-then-left order and each port write reloads its own shadow. The unsigned division was already correct. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 88 instructions against SoundBlaster16.m:422-450. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2 and 16. Divergent, not invented. The attenuation arithmetic ((att + 84) * 31) / 84 is emitted as add 54h, shl 5, sub, xor edx,edx, div - an unsigned divide our unsigned int locals produce; the six shadow stores, the writes to 30h, 36h and 32h and the trailing [self updateOutputMute] all match SoundBlaster16.m:422-450. The shadows are six four-byte variables, not three unions, and each is reloaded from memory for its port write."
         ],
@@ -211,9 +219,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 309,
-      "source_line": 422,
+      "source_line": 390,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 6444,
@@ -223,6 +231,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 2, 15 and 16 resolved in source: the missing volMasterLeft store is added so this method writes the same six shadows as updateOutputAttenuationLeft, in the same chained order. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 88 instructions against SoundBlaster16.m:452-479. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 2, 15 and 16. Divergent, not invented. Same shape as updateOutputAttenuationLeft with registers 31h, 37h and 33h. The reference writes six shadows including _volMasterLeft, which SoundBlaster16.m:462-466 omits."
         ],
@@ -235,9 +244,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 309,
-      "source_line": 452,
+      "source_line": 410,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 6756,
@@ -247,6 +256,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 3, 4, 11 and 22 resolved in source: channelCount is collapsed to a stereo flag computed once at the top and tested against YES, currentDMADirection is read once into a local, and the encoding test is on the unsigned int currentEncoding ivar. The three inline 10000-iteration write waits were already the reference's shape. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 158 instructions against SoundBlaster16.m:484-574. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 3, 4, 11 and 22. Divergent, not invented, and the closest match of the large functions. The three write-wait loops, the 42h and 41h command selection converging on one shared out dx,al, the rate high and low byte writes and the sbStartDMAMode bit updates as paired and/or memory operations all match SoundBlaster16.m:484-574. Three differences: the reference stores a stereo BOOL computed once at the top rather than keeping channelCount, it reads currentDMADirection once into a register, and cmp dword ptr [edi+18Ch], 259h proves currentEncoding is an unsigned int ivar rather than our BOOL is16BitTransfer. Its reset pulses delay 15, ours 10."
         ],
@@ -259,9 +269,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 549,
-      "source_line": 484,
+      "source_line": 433,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 7308,
@@ -282,7 +292,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 15,
-      "source_line": 579,
+      "source_line": 530,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -305,7 +315,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 41,
-      "source_line": 584,
+      "source_line": 535,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -328,7 +338,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 41,
-      "source_line": 590,
+      "source_line": 541,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -340,6 +350,7 @@
           "angr"
         ],
         "reasons": [
+          "Finding 18's five differences resolved in source: the interruptTimedOut = NO store is removed, actualChannel defaults to localChannel, [self channelCount] is sent only inside the first if (isRead), the DMA command is assembled with separate |= statements and the playback arm clears DMA_MODE_ADC, and the IODelay(50) between the mode byte and the counts is gone. The buffer-counter adjustment and the four DSP writes are duplicated inside both isRead arms, which is what produces the reference's eight write-wait expansions at 8191, 8327, 8475, 8615, 8743, 8879, 9027 and 9163; the rebuilt function has all eight. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 515 instructions against SoundBlaster16.m:596-721. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 4, 11, 16 and 18. Divergent, not invented. The volume restore, the currentDMADirection store, the dataEncoding capture, the three-send startDMAForBuffer/enableAllInterrupts/enableChannel chain with its three distinct IOLog messages, updateSampleRate then setBufferCount:, the mono-record outbIXMixer(3Dh, 1Fh), the 16-bit buffer-count halving and decrement and the four DSP bytes all match SoundBlaster16.m:596-721. Five differences: interruptTimedOut = NO at :613 has no counterpart; actualChannel defaults to localChannel, not 0; [self channelCount] is sent only inside the isRead arm; the DMA command is assembled with separate |= statements and the playback arm clears DMA_MODE_ADC; and there is no IODelay(50) between the mode byte and the count bytes."
         ],
@@ -352,9 +363,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1873,
-      "source_line": 596,
+      "source_line": 547,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 9288,
@@ -364,6 +375,7 @@
           "angr"
         ],
         "reasons": [
+          "Finding 19's three differences resolved in source: the stop sequence is called from both arms of if (isRead), so the two waits inside stopDMATransfer() produce the reference's four expansions; actualChannel defaults to localChannel; and the mono-record restore writes inputMixerSwitchLeft rather than the literal 0x15. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 231 instructions against SoundBlaster16.m:723-770. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 4, 11 and 19. Divergent, not invented. disableAllInterrupts first, the inverted pause-command selection where currentEncoding == Linear8 selects 0D5h, the reset pulse and 0AAh check with SoundBlaster16: Can not reset DSP., IOSleep(50), the disableChannel: send, currentDMADirection = 2 and the isRead and channelCount == 1 restore all match SoundBlaster16.m:723-770. Three differences: the reference branches on the read: argument and emits the whole stop sequence twice, actualChannel defaults to localChannel, and the restore writes _inputMixerSwitchLeft rather than the literal 0x15."
         ],
@@ -376,9 +388,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 826,
-      "source_line": 723,
+      "source_line": 690,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 10116,
@@ -388,6 +400,7 @@
           "angr"
         ],
         "reasons": [
+          "Finding 20 resolved in source: interruptCount is removed, and the 8-bit arm now tests the interruptStatus global rather than the local. Our gcc forwards the immediately preceding store and emits test bl, 1 where the reference emits test byte ptr ds:_interruptStatus, 1; the source construct is the reference's. The source_line is the #import site in SoundBlaster16.m, not the definition, which is SoundBlaster16Inline.h:425. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 29 instructions against SoundBlaster16Inline.h:468-499. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 3 and 20. Divergent, not invented. The mixer 82h select, the status read, the _interruptStatus store and the 16-bit-then-8-bit acknowledge chain all match SoundBlaster16Inline.h:468-499. Two differences: interruptCount++ at :479 has no counterpart and no _interruptCount symbol exists in the binary, and the 8-bit test re-reads _interruptStatus from memory where our source tests the local. The inlined address-write delay is 15, ours 10. source_line 23 is the #import site for SoundBlaster16Inline.h, not a definition; the body was read against the header text."
         ],
@@ -402,7 +415,7 @@
       "size": 96,
       "source_line": 23,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 10212,
@@ -423,7 +436,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 12,
-      "source_line": 772,
+      "source_line": 739,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -435,6 +448,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 3, 20 and 21 resolved in source: interruptStatus is stored before the acknowledge block, the 8-bit arm tests the global, and interruptCount is gone. The DMA_DIRECTION_OUT then DMA_DIRECTION_IN comparisons were already the reference's. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read all 44 instructions against SoundBlaster16.m:778-815. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 3, 20 and 21. Divergent, not invented. The inlined clearInterrupts() body and the two explicit currentDMADirection comparisons against DMA_DIRECTION_OUT and DMA_DIRECTION_IN match SoundBlaster16.m:778-815, including the duplication of the acknowledge sequence rather than a call. The reference stores _interruptStatus before acknowledging, where our :806 stores it after."
         ],
@@ -447,9 +461,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 137,
-      "source_line": 778,
+      "source_line": 745,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 10364,
@@ -459,6 +473,7 @@
           "angr"
         ],
         "reasons": [
+          "Findings 1 through 9, inherited whole from the same inlined resetHardware() expansion as initializeHardware; see that entry. The interruptTimedOut guard, the IOLog for the reset-hardware message and the flag store are unchanged and already matched. 3184 bytes against 3032. Task 9's reading of this method's 2990-byte middle was mechanical against initializeHardware's rather than fresh, and that caveat carries forward. Task 10 verified the rebuilt binary against the reference: parity_check reports 0 missing_strings, 0 missing_symbols and 0 extra_strings; every __DATA symbol the two share is byte-identical; the per-function __OBJC,__message_refs and __TEXT,__cstring reference counts are equal in all 28 functions; and no function is flagged MISSING or LARGER by the size check. The residual instruction differences that remain in every function are our gcc's, not the source's: it schedules the post-IODelay add esp, 4 before the next load, allocates different registers, emits mov cl, bl / mov al, cl where Apple's emits mov al, bl, widens a shadow read to mov eax, dword ptr ds:_x / lea ebx, [eax*8] where Apple's narrows to mov bl, byte ptr ds:_x / shl bl, 3, and drops the alignment nops. Writing the shift through an explicit unsigned char temp was tried and made our output larger, so the direct form is kept.",
           "Task 9 read the head and tail of this function instruction by instruction and verified its 2990-byte middle mechanically against initializeHardware's on (mnemonic, normalized operands) with branch targets normalised; the two are the same inlined resetHardware() expansion and every __cstring reference, _sbCardType store and register immediate occurs in the same order in both. That mechanical step is weaker than a fresh reading. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
           "divergences.md Findings 1 through 9, inherited whole. Divergent, not invented, and the size gap is inlining. The body reduces to: if (interruptTimedOut == NO) { resetHardware(&sbCardType); IOLog(\"%s: reset hardware.\\n\", [self name]); interruptTimedOut = YES; } which is SoundBlaster16.m:820-827 exactly - cmp byte ptr [eax+188h], 0 at 10376, the IOLog at 13346-13369 and mov byte ptr [eax+188h], 1 at 13377. Every divergence is in the inlined resetHardware() tree and is ledgered against initializeHardware at 1672."
         ],
@@ -471,9 +486,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 3030,
-      "source_line": 820,
+      "source_line": 787,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 13396,
@@ -494,7 +509,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 7,
-      "source_line": 832,
+      "source_line": 799,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -517,7 +532,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 12,
-      "source_line": 842,
+      "source_line": 809,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -540,7 +555,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 25,
-      "source_line": 847,
+      "source_line": 814,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -563,7 +578,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 60,
-      "source_line": 854,
+      "source_line": 821,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -586,7 +601,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 32,
-      "source_line": 866,
+      "source_line": 833,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },
@@ -609,7 +624,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 12,
-      "source_line": 874,
+      "source_line": 841,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m",
       "status": "assembly-matched"
     },

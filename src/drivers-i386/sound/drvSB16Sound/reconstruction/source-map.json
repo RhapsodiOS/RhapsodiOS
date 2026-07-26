@@ -17,7 +17,7 @@
         "-[SoundBlaster16 initializeDMAChannels]"
       ],
       "size": 988,
-      "source_line": 163,
+      "source_line": 87,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[SoundBlaster16 reset]"
       ],
       "size": 396,
-      "source_line": 87,
+      "source_line": 212,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[SoundBlaster16 initializeHardware]"
       ],
       "size": 2991,
-      "source_line": 294,
+      "source_line": 288,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[SoundBlaster16 initializeLastStageGainRegisters]"
       ],
       "size": 446,
-      "source_line": 300,
+      "source_line": 294,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[SoundBlaster16 updateInputGainLeft]"
       ],
       "size": 261,
-      "source_line": 341,
+      "source_line": 334,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[SoundBlaster16 updateInputGainRight]"
       ],
       "size": 261,
-      "source_line": 366,
+      "source_line": 352,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -71,7 +71,7 @@
         "-[SoundBlaster16 updateOutputMute]"
       ],
       "size": 492,
-      "source_line": 393,
+      "source_line": 370,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[SoundBlaster16 updateOutputAttenuationLeft]"
       ],
       "size": 309,
-      "source_line": 422,
+      "source_line": 390,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[SoundBlaster16 updateOutputAttenuationRight]"
       ],
       "size": 309,
-      "source_line": 452,
+      "source_line": 410,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[SoundBlaster16 updateSampleRate]"
       ],
       "size": 549,
-      "source_line": 484,
+      "source_line": 433,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -107,7 +107,7 @@
         "-[SoundBlaster16 setBufferCount:]"
       ],
       "size": 15,
-      "source_line": 579,
+      "source_line": 530,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -116,7 +116,7 @@
         "-[SoundBlaster16 enableAllInterrupts]"
       ],
       "size": 41,
-      "source_line": 584,
+      "source_line": 535,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -125,7 +125,7 @@
         "-[SoundBlaster16 disableAllInterrupts]"
       ],
       "size": 41,
-      "source_line": 590,
+      "source_line": 541,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -134,7 +134,7 @@
         "-[SoundBlaster16 startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
       ],
       "size": 1873,
-      "source_line": 596,
+      "source_line": 547,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -143,7 +143,7 @@
         "-[SoundBlaster16 stopDMAForChannel:read:]"
       ],
       "size": 826,
-      "source_line": 723,
+      "source_line": 690,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -161,7 +161,7 @@
         "-[SoundBlaster16 interruptClearFunc]"
       ],
       "size": 12,
-      "source_line": 772,
+      "source_line": 739,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -170,7 +170,7 @@
         "-[SoundBlaster16 interruptOccurredForInput:forOutput:]"
       ],
       "size": 137,
-      "source_line": 778,
+      "source_line": 745,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -179,7 +179,7 @@
         "-[SoundBlaster16 timeoutOccurred]"
       ],
       "size": 3030,
-      "source_line": 820,
+      "source_line": 787,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -188,7 +188,7 @@
         "-[SoundBlaster16 setAnalogInputSource:]"
       ],
       "size": 7,
-      "source_line": 832,
+      "source_line": 799,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -197,7 +197,7 @@
         "-[SoundBlaster16 acceptsContinuousSamplingRates]"
       ],
       "size": 12,
-      "source_line": 842,
+      "source_line": 809,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -206,7 +206,7 @@
         "-[SoundBlaster16 getSamplingRatesLow:high:]"
       ],
       "size": 25,
-      "source_line": 847,
+      "source_line": 814,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -215,7 +215,7 @@
         "-[SoundBlaster16 getSamplingRates:count:]"
       ],
       "size": 60,
-      "source_line": 854,
+      "source_line": 821,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -224,7 +224,7 @@
         "-[SoundBlaster16 getDataEncodings:count:]"
       ],
       "size": 32,
-      "source_line": 866,
+      "source_line": 833,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     },
     {
@@ -233,7 +233,7 @@
         "-[SoundBlaster16 channelCountLimit]"
       ],
       "size": 12,
-      "source_line": 874,
+      "source_line": 841,
       "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
     }
   ],

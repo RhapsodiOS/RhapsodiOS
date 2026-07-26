@@ -1795,3 +1795,145 @@ symbol names** — `__udivdi3`/`__umoddi3` — so both the linkage and the name 
 `static` would close half of it in one token but would land a change inside code Task 6 owns,
 so it is deferred alongside the other underscore renames.
 
+
+## Addendum 3: Task 4 outcome — TU 3 split out and its findings closed
+
+**The ring buffer is its own translation unit.** `TX_enqueueEvent`, `RX_dequeueEvent`,
+`RX_dequeueData`, `validateRingBufferSize`, `freeRingBuffer` and `allocateRingBuffer` moved
+from `ISASerialPort.m` to `ISASerialPortQueue.c`, in the reference's link order — 20884,
+21400, 22252, 22932, 22976, 23068 — with `CFILES = ISASerialPortFlow.c ISASerialPortQueue.c`
+in the `Makefile`. `ISASerialPort.m` lost 747 lines. All six ledger entries are now
+`control-flow-confirmed`.
+
+**The three `_RX_enqueueLongEvent` copies are confirmed, and the shared-header theory with
+them.** The definition moved from `ISASerialPort.m` into `ISASerialPortInternal.h`, still
+`static`. The rebuilt nlist now carries **three** copies against the reference's three, one
+per translation unit that references it, and in TU 3 the copy precedes `TX_enqueueEvent`
+exactly as 20684 precedes 20884. `parity_check.py` reporting "ours 0" is only the name: our
+source still spells it `_RX_enqueueLongEvent`, so the emitted symbol is
+`__RX_enqueueLongEvent` — one of the fifteen renames Task 6 owns.
+
+This also settles why TU 1's copy sits at address **0**. A definition at source line 1506 of
+the `.m` cannot be emitted ahead of everything else in the unit; a `static` in a header
+imported at the top is. Section 9 item 1's hypothesis is now the explanation rather than a
+guess. Entries 0, 20684 and 23200 are `signature-confirmed`; Finding 59 stays open.
+
+**`__DATA,__bss` narrowed, not settled.** 12 → **24** against the reference's 48.
+`ISASerialPortQueue.c` imports `ioPorts.h` and calls `outb`, so it contributes one group of
+the three `xxx` statics — two of four groups now. Task 5 adds TU 2's, making three. The
+fourth therefore **cannot** be TU 4: `ISASerialPortFlow.c` does no port I/O and the reference's
+TU 4 shows no `out` instruction either. Section 9 item 1's remaining two hypotheses reduce to
+one — the build-generated `ISASerialPort_instance.m` — but the binary still cannot prove it,
+so leave it open and do not force it.
+
+**`__TEXT,__text` is now 984 bytes under the reference (23428 against 24412), having been
+over.** The Task 4 edits account for part of the drop: removing `IODelay(1)` from two MCR
+sites, the `IOEnterCriticalSection`/`IOExitCriticalSection` pair from a third, and the dead
+`spaceNeeded` local all deleted instructions the reference does not have, which is progress
+even though the number moved away from parity in absolute terms. The residual shortfall is
+overwhelmingly TU 1: `initFromDeviceDescription:` and the two interrupt handlers still have
+stubbed-out call sites (`// _FIFOIntHandler(0, 0, port);` and its siblings are commented out),
+and twenty-five of the TU 1 entries are still `unexamined`, so their bodies have not been read instruction by instruction.
+**Do not treat the 984 bytes as a TU 3 debt.**
+
+### Findings closed
+
+**Finding 53 — closed.** `allocateRingBuffer` returns `1` on success, matching `mov eax, 1` at
+23186; failure still returns 0 as 23113 does. Both call sites' `== 0` test is the same
+predicate as the reference's `test al, al`, so neither needed touching. The port can be opened.
+
+**Finding 54 — closed.** `AllocSize` goes to `Queue+48` (23097) and `AllocBase` to `Queue+52`
+(23106), two distinct fields, through the named `Queue` members Task 3 introduced rather than
+raw offsets.
+
+**Finding 55 — closed.** `q->Enqueue = q->LowWater` (23173-23176). `LowWater` is no longer
+clobbered.
+
+**Finding 56 — closed.** `IOFree(q->AllocBase, q->AllocSize)` (22989-22997), guarded on
+`q->Base != NULL` as 22983 is. No more heap corruption on deactivate.
+
+**Finding 57 — closed.** Exactly the reference's eight fields are zeroed, in its order:
+`AllocBase`, `Base`, `End`, `Output`, `Input`, `AllocSize`, `OverRun`, `Count` (23002-23051).
+`Size` survives, so `allocateRingBuffer`'s `q->Size` read at 23082 sees what
+`executeEvent:data:` asked for.
+
+**Finding 58 — closed for TU 3.** `validateRingBufferSize` needed no change: the `DefaultSize`
+read from `Queue+44` (22945), the `0x40000` ceiling and the `0x12` floor all match, and the
+`Queue *` second parameter is the reference's. Its two **call sites** in `ISASerialPort.m`
+(now lines 2999 and 3008) still pass `&self->Port.TX` for the RX size and `&self->Port.RX` for
+the TX size — Task 6's, and see the addendum note on Apple's own RX/TX slip at 0x1b70.
+
+**Finding 60 — closed.** The second TX data cell stores `(unsigned short)data`, bits 0-15
+(21040), not `data >> 8`.
+
+**Finding 61 — closed.** The MCR byte is built from the **new** state (21299-21319) and the
+event payload is `(newState & 0xFFFF) | (changedBits << 16)` (21372-21377). The same
+`oldState`-for-`newState` pair in `enqueueData:` is TU 1's and still open.
+
+**Finding 62 — closed.** The dead `spaceNeeded` local is gone. The reference gates only on
+`(event & 3) <= 1` (21036) and `== 3` (21077).
+
+**Finding 63 — closed.** The hardware-flow arm sets `0x10` (21849, and `and cl, 0EFh` at
+22009), not `STATE_RTS`. `RX_dequeueEvent` and `RX_dequeueData` now agree with each other and
+with the reference. The third instance, `_dataLatTOHandler` against reference 9669, is TU 1's and
+still open.
+
+**Finding 64 — closed.** Both `RX_dequeueData` exits return `IO_R_RESOURCE` (−702, 22328), not
+`IO_R_OFFLINE` (−727, `return.h:66`). Short reads convert to success at 9257 again. The
+comments were right and the constants were wrong, for the second time on this driver after
+Finding 76.
+
+### New findings from the Task 4 read
+
+**Finding 97 — two of the four TX level constants were values the reference never uses.**
+`ISASerialPortInternal.h:104-110`. The reference's TX quartet is `0x06000000`, `0x02000000`,
+`0x01800000`, `0x01000000`, and it is the **same at all six sites**: `_activatePort`
+3510/3526/3570/3586, `enqueueData:` 8701/8714/8758/8774, `_executeEvent` 11741-11814 and
+12926-13002, `_FIFOIntHandler` 15846-15922, `_NonFIFOIntHandler` 18319-18394,
+`_TX_enqueueEvent` 21153/21166/21210/21226. `0x04000000` appears **nowhere in the binary**.
+`TX_STATE_ABOVE_HIGH` (`0x01000000`) is the right value for the above-high-water case, and the
+critical case — `Count > Size - 3` — needs `0x01800000`, which had no name. Added
+`TX_STATE_CRITICAL 0x01800000`, mirroring `RX_STATE_CRITICAL`, and used both correctly in
+`TX_enqueueEvent`. **`TX_STATE_BELOW_LOW 0x04000000` was left in the header because
+`ISASerialPort.m` still uses it twice; those two uses are wrong and are Task 6's** — the value
+should not survive the rename pass.
+
+**Finding 98 — three MCR writes carried invented delay and critical-section calls.**
+`ISASerialPortQueue.c`, formerly `ISASerialPort.m:1469, 1668, 1836-1838`. The reference's
+inlined state change goes straight from `out dx, al` plus the `outb` inline's
+`inc ds:_xxx_86_1` to the `test byte ptr [x+0Fh], 10h` that guards `thread_call_enter`:
+21332-21340, 22186-22194, 22866-22874. Ours had `IODelay(1)` after two of the three writes and,
+after the third, `IOEnterCriticalSection(); /* placeholder */ IOExitCriticalSection();`.
+Finding 75 already established the reference calls neither critical-section routine anywhere.
+All three removed. `IODelay` sites elsewhere in `ISASerialPort.m` were not audited and remain
+Task 5's and Task 6's.
+
+**Finding 99 — the RX state merge was missing its narrowing mask.** Both dequeue functions.
+The reference computes `(State & 0xFFF0FE81) | (accumulated & 0x000F017E)` —
+`and eax, 0F017Eh` at 22107 and 22787 — where ours ORed the accumulator in unmasked. The mask
+is redundant given how the accumulator is built, so this is a codegen difference rather than a
+behavioural one, but the reference emits the instruction and now so does our source.
+
+**Finding 100 — `RX_dequeueData`'s flow-control arms were independent tests, and it shifted the
+delta the wrong way.** Formerly `ISASerialPort.m:1764-1778` and `1794-1808`, and `:1847`.
+The reference is an exclusive chain in both arms — RTS (22500, 22664) beats hardware (22520,
+22680) beats DTR (22584, 22748) — so at most one of the three bits is touched per transition.
+Ours ran all three tests, so an RTS-plus-DTR configuration set both. `RX_dequeueEvent`'s
+nested form already meant the chain and was rewritten to read like it. Separately, ours tested
+`FlowControl & (changedBits >> 16)` where the reference shifts the delta **up** into the event
+mask before testing it (`shl edi, 10h` at 22895, matching 22215 in `RX_dequeueEvent`), so the
+state-change event fired on the wrong bits or not at all. Both fixed.
+
+### Still open in TU 3
+
+**Finding 59 stays open.** `_RX_enqueueLongEvent` is `void` in the reference and takes an
+`unsigned char event` masked with `and edx, 0FFh` at 90; ours returns `IOReturn` and takes an
+`unsigned int`. Neither change would touch a call site — all fifteen discard the result and all
+pass a byte-sized event — but it would change the codegen of TU 1's and TU 4's copies as well,
+so it is left with the underscore rename that Task 6 owns.
+
+The six functions are `control-flow-confirmed` rather than `assembly-matched` for one reason:
+every reference instruction has been read and our source matches it branch for branch and
+constant for constant, but **our rebuilt object has not been disassembled and compared**.
+`ledger.json`'s `rebuilt_sha256` is still `null`. Whoever runs that comparison should be able
+to close all six.

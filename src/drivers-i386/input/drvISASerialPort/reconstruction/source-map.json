@@ -8,8 +8,8 @@
         "_RX_enqueueLongEvent"
       ],
       "size": 197,
-      "source_line": 1506,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 230,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h"
     },
     {
       "address": 200,
@@ -17,7 +17,7 @@
         "+[ISASerialPort probe:]"
       ],
       "size": 61,
-      "source_line": 3540,
+      "source_line": 2793,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[ISASerialPort initFromDeviceDescription:]"
       ],
       "size": 2273,
-      "source_line": 3562,
+      "source_line": 2815,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[ISASerialPort free]"
       ],
       "size": 233,
-      "source_line": 3827,
+      "source_line": 3080,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[ISASerialPort getHandler:level:argument:forInterrupt:]"
       ],
       "size": 63,
-      "source_line": 5175,
+      "source_line": 4428,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[ISASerialPort getCharValues:forParameter:count:]"
       ],
       "size": 172,
-      "source_line": 5111,
+      "source_line": 4364,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -62,7 +62,7 @@
         "_activatePort"
       ],
       "size": 1144,
-      "source_line": 823,
+      "source_line": 755,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -71,7 +71,7 @@
         "_deactivatePort"
       ],
       "size": 345,
-      "source_line": 1105,
+      "source_line": 1037,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[ISASerialPort acquire:]"
       ],
       "size": 944,
-      "source_line": 3887,
+      "source_line": 3140,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[ISASerialPort release]"
       ],
       "size": 561,
-      "source_line": 4100,
+      "source_line": 3353,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[ISASerialPort setState:mask:]"
       ],
       "size": 267,
-      "source_line": 4987,
+      "source_line": 4240,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -107,7 +107,7 @@
         "-[ISASerialPort getState]"
       ],
       "size": 19,
-      "source_line": 4969,
+      "source_line": 4222,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -116,7 +116,7 @@
         "-[ISASerialPort watchState:mask:]"
       ],
       "size": 100,
-      "source_line": 5069,
+      "source_line": 4322,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -125,7 +125,7 @@
         "-[ISASerialPort nextEvent]"
       ],
       "size": 70,
-      "source_line": 4937,
+      "source_line": 4190,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -134,7 +134,7 @@
         "-[ISASerialPort executeEvent:data:]"
       ],
       "size": 866,
-      "source_line": 4613,
+      "source_line": 3866,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -143,7 +143,7 @@
         "-[ISASerialPort requestEvent:data:]"
       ],
       "size": 746,
-      "source_line": 4807,
+      "source_line": 4060,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -152,7 +152,7 @@
         "-[ISASerialPort enqueueEvent:data:sleep:]"
       ],
       "size": 120,
-      "source_line": 4566,
+      "source_line": 3819,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -161,7 +161,7 @@
         "-[ISASerialPort dequeueEvent:data:sleep:]"
       ],
       "size": 117,
-      "source_line": 4315,
+      "source_line": 3568,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -170,7 +170,7 @@
         "-[ISASerialPort enqueueData:bufferSize:transferCount:sleep:]"
       ],
       "size": 696,
-      "source_line": 4364,
+      "source_line": 3617,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -179,7 +179,7 @@
         "-[ISASerialPort dequeueData:bufferSize:transferCount:minCount:]"
       ],
       "size": 383,
-      "source_line": 4214,
+      "source_line": 3467,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -188,7 +188,7 @@
         "_dataLatTOHandler"
       ],
       "size": 679,
-      "source_line": 272,
+      "source_line": 204,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -197,7 +197,7 @@
         "_frameTOHandler"
       ],
       "size": 60,
-      "source_line": 213,
+      "source_line": 145,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -206,7 +206,7 @@
         "_delayTOHandler"
       ],
       "size": 60,
-      "source_line": 243,
+      "source_line": 175,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -215,7 +215,7 @@
         "_heartBeatTOHandler"
       ],
       "size": 123,
-      "source_line": 1889,
+      "source_line": 1142,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -224,7 +224,7 @@
         "_PCMCIA_yanked"
       ],
       "size": 23,
-      "source_line": 806,
+      "source_line": 738,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -233,7 +233,7 @@
         "_executeEvent"
       ],
       "size": 2704,
-      "source_line": 3050,
+      "source_line": 2303,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -242,7 +242,7 @@
         "_FIFOIntHandler"
       ],
       "size": 3172,
-      "source_line": 2431,
+      "source_line": 1684,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -251,7 +251,7 @@
         "_NonFIFOIntHandler"
       ],
       "size": 2472,
-      "source_line": 1932,
+      "source_line": 1185,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -260,7 +260,7 @@
         "_identifyChip"
       ],
       "size": 684,
-      "source_line": 452,
+      "source_line": 384,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -269,7 +269,7 @@
         "_initChip"
       ],
       "size": 148,
-      "source_line": 584,
+      "source_line": 516,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -278,7 +278,7 @@
         "_programChip"
       ],
       "size": 1148,
-      "source_line": 618,
+      "source_line": 550,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -287,8 +287,8 @@
         "_RX_enqueueLongEvent_0"
       ],
       "size": 197,
-      "source_line": 1506,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 230,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h"
     },
     {
       "address": 20884,
@@ -296,8 +296,8 @@
         "_TX_enqueueEvent"
       ],
       "size": 514,
-      "source_line": 1563,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 45,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 21400,
@@ -305,8 +305,8 @@
         "_RX_dequeueEvent"
       ],
       "size": 852,
-      "source_line": 1299,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 183,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 22252,
@@ -314,8 +314,8 @@
         "_RX_dequeueData"
       ],
       "size": 680,
-      "source_line": 1708,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 389,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 22932,
@@ -323,8 +323,8 @@
         "_validateRingBufferSize"
       ],
       "size": 42,
-      "source_line": 145,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 565,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 22976,
@@ -332,8 +332,8 @@
         "_freeRingBuffer"
       ],
       "size": 89,
-      "source_line": 174,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 603,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 23068,
@@ -341,8 +341,8 @@
         "_allocateRingBuffer"
       ],
       "size": 130,
-      "source_line": 1226,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 635,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c"
     },
     {
       "address": 23200,
@@ -350,8 +350,8 @@
         "_RX_enqueueLongEvent_1"
       ],
       "size": 197,
-      "source_line": 1506,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
+      "source_line": 230,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h"
     },
     {
       "address": 23400,
@@ -377,7 +377,7 @@
         "__udivdi3"
       ],
       "size": 264,
-      "source_line": 3339,
+      "source_line": 2592,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     },
     {
@@ -386,7 +386,7 @@
         "__umoddi3"
       ],
       "size": 348,
-      "source_line": 3437,
+      "source_line": 2690,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m"
     }
   ],

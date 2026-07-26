@@ -67,9 +67,12 @@ of every comparison by the Global Constraints.
 
 All 25 reference functions land in exactly one bucket and every one carries a ledger entry.
 
-Ledger status counts: `assembly-matched` 12, `unexamined` 11, `intentional-mismatch` 2.
-The eleven `unexamined` entries are the eleven functions carrying a divergence; per the
-drvPCIBus convention their status is held here and advancing it is Task 8's job.
+Ledger status counts **as this report pass left them**: `assembly-matched` 12,
+`unexamined` 11, `intentional-mismatch` 2. The eleven `unexamined` entries are the eleven
+functions carrying a divergence; per the drvPCIBus convention their status was held here
+and advancing it was Task 8's job. **Task 8 has since run**; the counts are now
+`assembly-matched` 21 and `intentional-mismatch` 4, and the outcome of every finding is
+recorded in "Task 8 fix-pass resolutions" at the end of this document.
 
 **The asymmetry runs one way.** There is no reference function our source lacks. Both
 `unmapped` entries are build-generated glue. The four extra methods our source carries
@@ -1161,3 +1164,144 @@ evidence for their `unsigned int gain`.
 Nothing else in either method changes; both `lea`s and the `54h` divisor already match.
 Note that this is the only reason both entries are held `unexamined`; the open question in
 Finding 5 about the `_volVoc` masks is recorded there and is not a finding.
+
+---
+
+# Task 8 fix-pass resolutions
+
+Every finding above resolved one of two ways: the source changed to match the reference, or
+the ledger entry became `intentional-mismatch` with a reason and a reviewer. Nothing is
+left undecided.
+
+## The baseline this driver had never had
+
+`drvES1x88Sound` had never been compiled. The first build failed on two pre-existing
+errors, repaired in their own commit before any divergence work:
+
+- `sb16MonoMixerRegister_t` named its byte member `data` while all 33 use sites in
+  `ES1x88AudioDriver.m` said `.rawValue`.
+- `IO_16Bit` is not an `IODMATransferWidth` enumerator; the type is
+  `IO_8Bit`/`IO_16BitWordCount`/`IO_16BitByteCount`
+  (`src/driverkit-3/driverkit/i386/directDevice.h:164`). The one use was inside
+  `initializeDMAChannels`, which this pass then removed. `drvSB16Sound.m:270` carries the
+  same error and is Task 10's to repair.
+
+## Gate results
+
+| Gate | Baseline | After |
+| --- | --- | --- |
+| guest build | `EXIT=0`, `fail=0` (after the repair commit) | `EXIT=0`, `fail=0` |
+| `missing_strings` | 0 | 0 |
+| `missing_symbols` | 0 | 0 |
+| `extra_strings` | 12 | **0** |
+| `extra_symbols` | 38 | 30 |
+| staged `_reloc` | 190328 bytes | 179264 bytes |
+| source-map buckets | 23 / 2 / 0 / 0 = 25 | 23 / 2 / 0 / 0 = 25 |
+| `load_source_map` | not run | `source map OK` |
+| `binrecon ledger` | not run | accepted, `entries=25` |
+
+All 30 remaining `extra_symbols` are stabs from our unstripped build: `''`, the two source
+filenames, the `ioPorts.h` and `ES1x88AudioDriver_instance.m` paths, and the `:fNN` N_FUN
+entries. No entry moved from `mapped` to `unmapped`.
+
+The 12 strings that were extra are exactly the ten this report predicted plus `Audio` and
+`ES1x88AudioDriver`; see Finding 16.
+
+## Per-function sizes, gap-to-next-symbol
+
+Ours is unstripped and its stabs share addresses inside `__TEXT,__text`, which collapses
+every computed size to zero; the helper filters them, which is a no-op on the reference.
+25 functions on both sides, none missing, none extra, none flagged `LARGER`.
+
+Exact matches: `+probe:` 300, `updateOutputAttenuationLeft` 368,
+`updateOutputAttenuationRight` 368, `timeoutOccurred` 360, `getDataEncodings:count:` 32,
+`interruptOccurredForInput:forOutput:` 48, `getSamplingRates:count:` 56,
+`getSamplingRatesLow:high:` 28, `enableAllInterrupts` 44, `disableAllInterrupts` 44,
+`channelCountLimit` 12, `acceptsContinuousSamplingRates` 12, `interruptClearFunc` 12 and
+both glue methods 12.
+
+**A systemic code-generation difference accounts for the remainder**, and it is not a
+source divergence. Our gcc omits the `movzx` zero-extension the reference emits before
+`out dx, al`, and it tail-merges further. `reset` has 1 `movzx` where the reference has 3;
+`startDMAForChannel:` has 0 where the reference has 10. The same shortfall appears in
+`updateInputGainLeft`, `updateInputGainRight` and `stopDMAForChannel:`, which this report
+pass already recorded `assembly-matched` on instruction-level reading, so it cannot be
+evidence of a source difference.
+
+## Finding by finding
+
+| # | Resolution |
+| --- | --- |
+| 1 | Source. `reset` sends `[[[self deviceDescription] configTable] valueForStringKey:"Input Source"]`; the `stringValue` send and the `configTable` local are gone. |
+| 2 | Source. `IO_Single` became `IO_Demand` at the `setTransferMode:forChannel:` call. |
+| 3 | Source. `recordSourceValue` dropped from `reset` and `startDMAForChannel:`; both write `sbRecordSource` to the port. **Not applied to `setAnalogInputSource:`**, per Finding 13. |
+| 4 | Source. The five volume shadows are written as `reg.left` then `reg.right` and read back for the port write. One residual, see below. |
+| 5 | Partly source, partly open. The seven `__DATA,__data` declarations were reordered to `volMaster, volFM, volLine, volVoc, volCD, volMic, sbRecordSource`, and `volVoc` was retyped to `sb16MonoMixerRegister_t`, which Finding 4 required at its `initializeHardware` site. `essHardware` and `essChipRevision` lost their `= 0` initialisers, the part this report called proved. **The expression-versus-bitfield question is deliberately left open** and was not resolved by changing source. |
+| 6 | Source. `sbAck8bitInterrupt`, `sbAck16bitInterrupt`, the four `lastStageGain*`, `sbBufferCounter` and `sbStartDMAMode` removed, with the two `assignDSPRegAddresses()` assignments. `sbStartDMACommand` and `sb16CardType` were dead **before** this pass and were left; see "Pre-existing dead code". |
+| 7 | Source. `is16BitTransfer`, `dma8Channel`, `dma16Channel` and `numDMAChannels` removed, restoring `hardwareName` to 396 and `inputSource` to 400. |
+| 8 | Source. Both DSP wait helpers are called for effect in `initializeHardware`, `startDMAForChannel:` and `timeoutOccurred`; no early return, no `IOLog` on their failure. |
+| 9 | Source. `numChannels` is `unsigned int` in `+probe:`. |
+| 10 | Source. `updateOutputMute` stores `![self isOutputMuted]` and carries `D1h`/`D3h` inside their branches. |
+| 11 | Source. `ES_MODE_INPUT` is `0x0E` and `ES_MODE_OUTPUT` is `0x04`; the `0xF8`/`0xFC` masks are swapped; the mode-command group keys on `Linear8`. Verified in the rebuilt disassembly: `mov al, 0xe` on the IN arm, `mov al, 4` on the other, matching 4576 and 4614. |
+| 12 | Source. The `(char)` cast dropped at all three sites and `initializeHardware`'s `dspVersion` is `unsigned char`. |
+| 13 | Source. Two tests, `0C8h` then `0C9h`, default sharing the microphone arm. **`sourceValue` kept.** |
+| 14 | Source. `encodings[0]` is `Linear8`, `encodings[1]` is `Linear16`. |
+| 15 | Source. `attenuation` is `unsigned int` at both sites. |
+| 16 | Source. New; see below. |
+
+## Finding 16: `reset` passed string literals where the reference passes the statics
+
+This report stated under "Positive result" that `reset` passing `offset _codecDeviceName`
+and `offset _codecDeviceKind` matches `:93`-`:94`. It did not: `:93`-`:94` passed the
+literals `"ES1x88AudioDriver"` and `"Audio"`, which our build emitted into `__cstring`
+while `codecDeviceName` and `codecDeviceKind` sat unreferenced in `__TEXT,__const`. They
+were the two `extra_strings` this report did not predict.
+
+`reset` now passes `codecDeviceName` and `codecDeviceKind`. That removed both extras and is
+what closed `extra_strings` to zero.
+
+## The two entries held as `intentional-mismatch`
+
+**`initializeHardware` (1396).** Findings 4 and 8 are resolved in source. The reference
+emits the `and 0Fh` / `or 0A0h` pair for `_volMic` **twice** at 2536-2557 with no port write
+following; our single masked assignment emits it once. This report recorded the duplication
+as an unexplained observation rather than a prescription, and no source construct that
+produces it can be derived from the binary. Writing the statement twice would be inventing
+structure, so the divergence is accepted.
+
+**`configureHardwareForDataTransfer:` (4388).** Finding 11 is resolved in source and
+verified in the rebuilt disassembly, and the `B6h` write is now gated on
+`== DMA_DIRECTION_OUT` so it emits `cmp 1` as the reference does at 5292. Two construct
+differences remain, both the bitfield idiom Finding 5 leaves open: the reference caches
+`(channelCount == 2)` as a boolean in a stack slot at 4500-4511, and it builds the IRQ and
+DMA control bytes with paired `or`/`and` operations at 5490-5525 and 5600-5638 rather than
+whole-value assignments. Reproducing either needs Apple's declarations, not the binary.
+
+## One negative result worth recording
+
+Finding 13's remaining 32-byte gap in `setAnalogInputSource:` is **not** a source
+difference. The reference programs the mixer inside each arm and joins only at
+`mov al, cl`; our build hoists the port sequence into a shared tail. Writing the whole port
+sequence out in all three arms was tried and the rebuilt function came out
+**byte-identical** - our gcc cross-jumps it straight back. The simpler shared-tail form was
+therefore kept, and the gap is recorded as tail-merging aggressiveness.
+
+## Pre-existing dead code, left in place and reported
+
+None of these was orphaned by this pass; all were already unreferenced before it.
+
+- `sb16CardType` (`ES1x88AudioDriver.m:19`) with its `sb16CardParameters_t` and
+  `sb16CardVersion_t` types (`ES1x88AudioDriverRegisters.h`).
+- `sbStartDMACommand` (`ES1x88AudioDriverInline.h`), which this report notes is "touched by
+  nothing at all, even in our tree".
+- `es1x88MixerRegister_t` (`ES1x88AudioDriverRegisters.h`), a duplicate of
+  `sb16MonoMixerRegister_t` that nothing declares.
+
+The first two draw a `defined but not used` warning from the guest compiler.
+
+## What did not change
+
+`Default.table` and `ESPnP.table` still diff clean against Apple's shipped copies.
+`Load_Commands.sect` is still 144 bytes. `ES1x88_3_30.rtfd` was not renamed. The `__data`
+symbol addresses now match the reference exactly: `_volMaster` 0x4020, `_volVoc` 0x4023,
+`_volMic` 0x4025, `_sbRecordSource` 0x4026, and `_essHardware` moved to `__DATA,__bss`.

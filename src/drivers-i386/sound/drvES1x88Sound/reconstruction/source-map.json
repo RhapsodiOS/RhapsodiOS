@@ -26,7 +26,7 @@
         "-[ES1x88AudioDriver initializeHardware]"
       ],
       "size": 1237,
-      "source_line": 346,
+      "source_line": 209,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[ES1x88AudioDriver updateInputGainLeft]"
       ],
       "size": 229,
-      "source_line": 497,
+      "source_line": 319,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[ES1x88AudioDriver updateInputGainRight]"
       ],
       "size": 229,
-      "source_line": 528,
+      "source_line": 350,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[ES1x88AudioDriver updateOutputMute]"
       ],
       "size": 551,
-      "source_line": 559,
+      "source_line": 381,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[ES1x88AudioDriver updateOutputAttenuationLeft]"
       ],
       "size": 367,
-      "source_line": 623,
+      "source_line": 444,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -71,7 +71,7 @@
         "-[ES1x88AudioDriver updateOutputAttenuationRight]"
       ],
       "size": 367,
-      "source_line": 663,
+      "source_line": 484,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[ES1x88AudioDriver configureHardwareForDataTransfer:]"
       ],
       "size": 1325,
-      "source_line": 801,
+      "source_line": 527,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -89,7 +89,7 @@
         "-[ES1x88AudioDriver enableAllInterrupts]"
       ],
       "size": 41,
-      "source_line": 986,
+      "source_line": 704,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -98,7 +98,7 @@
         "-[ES1x88AudioDriver disableAllInterrupts]"
       ],
       "size": 41,
-      "source_line": 992,
+      "source_line": 710,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -107,7 +107,7 @@
         "-[ES1x88AudioDriver startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
       ],
       "size": 1578,
-      "source_line": 998,
+      "source_line": 716,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -116,7 +116,7 @@
         "-[ES1x88AudioDriver stopDMAForChannel:read:]"
       ],
       "size": 540,
-      "source_line": 1172,
+      "source_line": 881,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -125,7 +125,7 @@
         "-[ES1x88AudioDriver interruptOccurredForInput:forOutput:]"
       ],
       "size": 48,
-      "source_line": 1235,
+      "source_line": 944,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -143,7 +143,7 @@
         "-[ES1x88AudioDriver interruptClearFunc]"
       ],
       "size": 12,
-      "source_line": 1229,
+      "source_line": 938,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -152,7 +152,7 @@
         "-[ES1x88AudioDriver timeoutOccurred]"
       ],
       "size": 360,
-      "source_line": 1255,
+      "source_line": 964,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -161,7 +161,7 @@
         "-[ES1x88AudioDriver setAnalogInputSource:]"
       ],
       "size": 133,
-      "source_line": 1294,
+      "source_line": 998,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -170,7 +170,7 @@
         "-[ES1x88AudioDriver acceptsContinuousSamplingRates]"
       ],
       "size": 12,
-      "source_line": 1323,
+      "source_line": 1030,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -179,7 +179,7 @@
         "-[ES1x88AudioDriver getSamplingRatesLow:high:]"
       ],
       "size": 25,
-      "source_line": 1328,
+      "source_line": 1035,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -188,7 +188,7 @@
         "-[ES1x88AudioDriver getSamplingRates:count:]"
       ],
       "size": 53,
-      "source_line": 1335,
+      "source_line": 1042,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -197,7 +197,7 @@
         "-[ES1x88AudioDriver getDataEncodings:count:]"
       ],
       "size": 32,
-      "source_line": 1346,
+      "source_line": 1053,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     },
     {
@@ -206,7 +206,7 @@
         "-[ES1x88AudioDriver channelCountLimit]"
       ],
       "size": 12,
-      "source_line": 1354,
+      "source_line": 1061,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m"
     }
   ],

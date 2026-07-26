@@ -1,0 +1,123 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_GetIRQFromBoard"
+      ],
+      "size": 109,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 112,
+      "reference_names": [
+        "-[BusMouse validConfiguration:]"
+      ],
+      "size": 129,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 244,
+      "reference_names": [
+        "_MouseIntHandler"
+      ],
+      "size": 406,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 652,
+      "reference_names": [
+        "-[BusMouse interruptHandler]"
+      ],
+      "size": 53,
+      "source_line": 375,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 708,
+      "reference_names": [
+        "_BusMouseThread"
+      ],
+      "size": 123,
+      "source_line": 209,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 832,
+      "reference_names": [
+        "-[BusMouse mouseInit:]"
+      ],
+      "size": 392,
+      "source_line": 297,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 1224,
+      "reference_names": [
+        "-[BusMouse free]"
+      ],
+      "size": 41,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 1268,
+      "reference_names": [
+        "-[BusMouse getHandler:level:argument:forInterrupt:]"
+      ],
+      "size": 39,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 1308,
+      "reference_names": [
+        "-[BusMouse getResolution]"
+      ],
+      "size": 16,
+      "source_line": 486,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 1324,
+      "reference_names": [
+        "-[BusMouse getIntValues:forParameter:count:]"
+      ],
+      "size": 93,
+      "source_line": 383,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    },
+    {
+      "address": 1420,
+      "reference_names": [
+        "-[BusMouse setIntValues:forParameter:count:]"
+      ],
+      "size": 146,
+      "source_line": 432,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m"
+    }
+  ],
+  "reference_sha256": "A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1568,
+      "reference_names": [
+        "+[BusMouseKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 1580,
+      "reference_names": [
+        "+[BusMouseVersion driverKitVersionForBusMouse]"
+      ],
+      "size": 12
+    }
+  ]
+}

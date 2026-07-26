@@ -167,7 +167,7 @@ Candidate causes that were checked and **ruled out**:
   `driverkit/KernBusMemory.h`, `driverkit/KernDevice.h`,
   `driverkit/IODirectDevicePrivate.h`,
   `driverkit/i386/IOEISADeviceDescriptionPrivate.h`,
-  `driverkit/i386/IOPCMCIATuplePrivate.h`, `objc/List.h` (at `src/objc-1/List.h`).
+  `driverkit/i386/IOPCMCIATuplePrivate.h`, `objc/List.h` (at `src/cc-791/cc/objc/List.h`).
 - *`PCMCIA_SOCKET_LIST` and friends undefined.* They are defined in
   `src/kernel-7/driverkit/i386/PCMCIAKernBus.h`, but only inside
   `#ifdef DRIVER_PRIVATE`, and the three `.m` files define `KERNEL_PRIVATE`
@@ -484,11 +484,20 @@ walking `__OBJC,__module_info` in the reference `PCMCIABus_reloc` shows the bus
 driver declares no window class at all. The only declarations of the two
 selectors anywhere in the tree are `- (char)memoryInterface` and
 `- (char)attributeMemory` on `PCICWindow`, in the 82365 adapter driver, which
-`libDriver` cannot see. Whatever DR2 header put those signatures in scope is not
-attested by any metadata available here, so declaring them kernel-side would mean
-inventing an interface rather than recovering one, and that was not done. Ledger
-`0x1FD8C4` stays `unexamined`, per the convention that a method known to diverge
-is written up rather than given a status it has not earned.
+`libDriver` cannot see. Their return types are not invented, though: `PCIC_reloc`,
+in the same reference directory as this kernel's `mach_kernel_dr2_x86`, attests
+`-[PCICWindow memoryInterface]`, `-[PCICWindow attributeMemory]` and
+`-[PCICSocket memoryInterface]`, all encoded `c8@8:12` there, so a `char` return
+is recoverable, not guessed. What is genuinely missing is a kernel-visible class
+to hang them on — `PCMCIABus_reloc` declares no window or socket class at all,
+and `window` here is an adapter-supplied object outside `PCMCIAKernBus`'s own
+interface — so declaring `memoryInterface`/`attributeMemory` on `PCMCIAKernBus`
+would still mean inventing a home the reference does not have, and that was not
+done. `src/kernel-7/driverkit/i386/PCMCIA.h`, a two-line `// TODO` stub in the
+same directory already imported by `autoconf_i386.m`, is the likely home if a
+kernel-visible window/socket interface is ever added. Ledger `0x1FD8C4` stays
+`unexamined`, per the convention that a method known to diverge is written up
+rather than given a status it has not earned.
 
 ## Finding 4: `-[IOPCMCIATuple data]` carries a stray semicolon and does not map
 
@@ -754,8 +763,12 @@ Two encodings needed a decision:
 - `-[PCMCIAKernBus setBusRange:]` takes `{?=II}`, and the class's own `busRange`
   ivar encodes as `{?="base"I"length"I}`. That is `Range` from
   `src/kernel-7/driverkit/KernBus.h:113`, field names included, so the existing
-  type is used rather than a new one. The anonymous `?` tag is the same GCC
-  typedef collapse already documented above for `IOPCIConfigSpace`.
+  type is used rather than a new one. The anonymous `?` tag here is not the
+  `IOPCIConfigSpace` collapse — GCC emits `{_Range=...}` for a tagged struct, so
+  a bare `?` means the type had no tag at all. Apple's `Range` was apparently an
+  anonymous-struct typedef, where ours is `struct _Range` (`KernBus.h:113`): a
+  real but harmless encoding-only divergence between the two `Range` definitions,
+  not a GCC collapse.
 
 Everything else maps directly: `C` to `unsigned char`, `L` to `unsigned long`,
 `^L` to `unsigned long *`, `c` to `BOOL`, `i` to `int` (or `IOReturn`, which is
@@ -772,9 +785,10 @@ would create a divergence to maintain for no gain.
 
 The metadata read for the headers also answers a question nobody had asked: does
 our `drvPCIBus` and `drvPCMCIABus` implement what Apple declared? Mostly yes —
-twenty-three of the twenty-six methods agree exactly. Three do not. **Nothing was
-changed on either side**; forcing agreement without evidence about which side is
-right would hide the divergence rather than settle it.
+twenty-three of the twenty-six methods agree exactly. Three do not, and two of
+the three are settled: our own source shows they are bugs in our drivers, not
+alternate valid signatures. **Nothing was changed on either side in this pass**
+— `drvPCIBus` and `drvPCMCIABus` were outside its scope.
 
 | Method | Reference | Ours |
 | --- | --- | --- |
@@ -782,14 +796,30 @@ right would hide the divergence rather than settle it.
 | `-[PCIKernBus testIDs:dev:fun:bus:]` | `c21@8:12r*16C20C24C28`, so `(const char *)ids` and three `unsigned char` | `(unsigned int *)ids` and three `unsigned int` |
 | `-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` | `{?=b1b1b1b1b2b1b1}`, the `PCMCIAStatus` bitfield | `(unsigned int)status` |
 
-The first is a type-checking divergence only; `int` and `unsigned int` return in
-`eax` identically. The second and third are real: a caller written against
-Apple's `testIDs:` passes a byte string where ours expects an `unsigned int *`,
-and a caller written against Apple's `statusChangedForSocket:changedStatus:`
-passes a bitfield where ours reads an integer mask. Neither is reachable across
-that boundary today — `testIDs:` is sent only from inside `drvPCIBus`, and our
-PCMCIA stack is self-consistent because the 82365 driver's
-`PCMCIAStatusChange` protocol also declares `(unsigned int)status`.
+The first is genuinely ABI-identical — `int` and `unsigned int` return in `eax`
+identically — and needs no follow-up. The other two are not open questions: our
+own source proves the reference is right in both cases.
+
+`PCIKernBus.m:366` opens `- (BOOL)testIDs:(unsigned int *)ids dev:...` with
+`const char *idStr = (const char *)ids;` and then string-parses it character by
+character — the body only ever treats `ids` as a byte string. All three call
+sites (`PCIKernBus.m:247`, `:277`, and `PCIResourceDriver.m:411`) cast a `char`
+buffer *to* `(unsigned int *)` purely to satisfy our wrong prototype. Apple's
+`const char *` plus three `unsigned char` is unambiguously correct; ours is a
+mis-reconstruction, not an alternate signature.
+
+`PCMCIAKernBus.m:705` does `if ((changedStatus & 1) == 0)` — literally testing
+`status.present`, the first bit of the `PCMCIAStatus` bitfield. Apple's bitfield
+parameter is correct; our `(unsigned int)status` is not. Neither divergence is
+reachable across the affected boundary today — `testIDs:` is sent only from
+inside `drvPCIBus`, and our PCMCIA stack is self-consistent because the 82365
+driver's `PCMCIAStatusChange` protocol also declares `(unsigned int)status` —
+but that reflects the current callers, not evidence the signatures are right.
+
+Correcting `testIDs:dev:fun:bus:` on `PCIKernBus` and
+`statusChangedForSocket:changedStatus:` on `PCMCIAKernBus` to match the
+reference is follow-up work for `drvPCIBus`'s and `drvPCMCIABus`'s own
+reconstruction passes.
 
 Our ivar *names* diverge too, though the layouts do not. The reference's
 `PCIKernBus` names them `maxBusNum`, `maxDevNum`, `BIOS16Present`,
@@ -819,7 +849,7 @@ compile. In place of a build, the following were checked by reading:
   or newly added: `IOReturn` from `driverkit/return.h` (added to `PCIKernBus.h`),
   `IODeviceStyle` from `driverkit/driverTypes.h` (added to `PCMCIAKernBus.h`),
   `Range` and `KernBus` from `driverkit/KernBus.h`, `Protocol` from the
-  `@class Protocol` in `objc/Object.h` that `KernBus.h` already pulls in. Both
+  `@class Protocol` at `objc/objc.h:136` that `KernBus.h` already pulls in. Both
   additions are headers all five translation units already include transitively.
 - No selector declared in either header is declared elsewhere in a reachable
   header with a different signature. The four class methods that are also

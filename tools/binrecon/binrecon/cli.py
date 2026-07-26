@@ -249,6 +249,7 @@ def main(argv=None) -> int:
             for module in args.module:
                 if module not in modules:
                     raise ValueError(f"image defines no module {module}")
+                validate_document("abi-v1", modules[module])
                 target = output / (module.removesuffix(".m") + ".json")
                 target.write_text(
                     json.dumps(modules[module], indent=1, sort_keys=True) + "\n"

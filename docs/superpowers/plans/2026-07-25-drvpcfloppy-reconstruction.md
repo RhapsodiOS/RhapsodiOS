@@ -683,12 +683,14 @@ to:
 
 - [ ] **Step 5: Reshape the geometry method**
 
+This method still carries its leading underscore: Task 4 renamed only selectors whose de-underscored form matches a reference name, and `cylinderFromBlockNumber:head:sector:` does not — the reference selector has empty keywords. So this step drops the underscore *and* reshapes, in one edit.
+
 In `$LKS/Geometry.m` at line 673 and `$LKS/Geometry.h:78`, change:
 
 ```objc
-- (unsigned)cylinderFromBlockNumber:(unsigned)blockNumber
-                               head:(unsigned *)head
-                             sector:(unsigned *)sector
+- (unsigned)_cylinderFromBlockNumber:(unsigned)blockNumber
+                                head:(unsigned *)head
+                              sector:(unsigned *)sector
 ```
 
 to:
@@ -699,11 +701,17 @@ to:
                                    :(unsigned *)sector
 ```
 
-Then update both sends at `$LKS/Request.m:349` and `:350` from `[self cylinderFromBlockNumber:blockStart head:NULL sector:NULL]` to `[self cylinderFromBlockNumber:blockStart :NULL :NULL]`.
+Then update both sends at `$LKS/Request.m:349` and `:350` from `[self _cylinderFromBlockNumber:blockStart head:NULL sector:NULL]` to `[self cylinderFromBlockNumber:blockStart :NULL :NULL]`.
 
-- [ ] **Step 6: Correct the category name**
+- [ ] **Step 6: Correct the category name and `_diskParamCommon`**
 
-The reference category is `IOLogicalDiskNEW(private)`, lower case. Change `@interface IOLogicalDiskNEW(Private)` at `$LKS/IOLogicalDiskNEW.h:98` and `@implementation IOLogicalDiskNEW(Private)` at `$LKS/IOLogicalDiskNEW.m:322` to `(private)`.
+Two changes to the same method, which Task 4 could not touch for the same reason as Step 5: its de-underscored form did not match the reference, because the *category* differs too.
+
+First, the reference category is `IOLogicalDiskNEW(private)`, lower case. Change `@interface IOLogicalDiskNEW(Private)` at `$LKS/IOLogicalDiskNEW.h:98` and `@implementation IOLogicalDiskNEW(Private)` at `$LKS/IOLogicalDiskNEW.m:322` to `(private)`.
+
+Second, the reference selector is `_diskParamCommon:length:deviceOffset:bytesToMove:` — one leading underscore. Ours has two. The keyword arity is already correct, so this is a one-underscore drop, not a reshape. Change the declaration at `$LKS/IOLogicalDiskNEW.h:103` and the definition at `$LKS/IOLogicalDiskNEW.m:328` from `__diskParamCommon` to `_diskParamCommon`, and update the four sends at `$LKS/IOLogicalDiskNEW.m:183`, `:217`, `:258` and `:299`, each of which reads `result = [self __diskParamCommon:offset`.
+
+Leave every other keyword alone — only the first component loses an underscore.
 
 - [ ] **Step 7: Verify only the build-generated names remain missing**
 

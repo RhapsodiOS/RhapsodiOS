@@ -14,10 +14,12 @@
 /* Get a string value from the configuration table */
 - (const char *)valueForStringKey:(const char *)key
 {
+    IOConfigTable *configTable;
     const char *value;
 
-    value = [self configTable] != 0 ?
-        [self configTable]->valueForStringKey(key) : 0;
+    configTable = [[self deviceDescription] configTable];
+    value = configTable != 0 ?
+        [configTable valueForStringKey:key] : 0;
 
     return value;
 }
@@ -29,12 +31,14 @@
 	count:(int)count
 {
     int paramCount = 0;
+    IOConfigTable *configTable;
     const char *value;
 
-    if ([self configTable] == 0)
+    configTable = [[self deviceDescription] configTable];
+    if (configTable == 0)
         return 0;
 
-    value = [self configTable]->valueForStringKey(key);
+    value = [configTable valueForStringKey:key];
     if (value != 0) {
         /* Parse the value string and extract parameters */
         /* This is a simplified implementation */
@@ -51,12 +55,14 @@
 /* Get a boolean value from the configuration table */
 - (BOOL)booleanForStringKey:(const char *)key withDefault:(BOOL)defaultValue
 {
+    IOConfigTable *configTable;
     const char *value;
 
-    if ([self configTable] == 0)
+    configTable = [[self deviceDescription] configTable];
+    if (configTable == 0)
         return defaultValue;
 
-    value = [self configTable]->valueForStringKey(key);
+    value = [configTable valueForStringKey:key];
     if (value == 0)
         return defaultValue;
 

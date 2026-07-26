@@ -32,6 +32,7 @@ public final class ExportAnalysis extends GhidraScript {
     private static final int MAX_DECOMPILE_MESSAGE = 16 * 1024;
     private final NavigableMap<Long,List<Long>> relocationIndexesByAddress=new TreeMap<>();
     private final Map<String,String> internalSymbolNames=new HashMap<>();
+    private final List<long[]> scope = new ArrayList<>();
 
     @Override
     protected void run() throws Exception {
@@ -86,7 +87,23 @@ public final class ExportAnalysis extends GhidraScript {
                 Long.parseLong(args.required("--size")) != number(identity.get("size"))) {
             throw new IOException("layout identity mismatch");
         }
+        Object declaredScope = layout.get("analysis_scope");
+        if (declaredScope != null) {
+            for (Object item : array(declaredScope, "analysis_scope")) {
+                Map<String,Object> range = object(item, "analysis_scope range");
+                long start = number(range.get("start"));
+                long end = number(range.get("end"));
+                if (end <= start) throw new IOException("analysis scope range is empty or inverted");
+                scope.add(new long[]{start, end});
+            }
+        }
         return layout;
+    }
+
+    private boolean inScope(long address) {
+        if (scope.isEmpty()) return true;
+        for (long[] range : scope) if (address >= range[0] && address < range[1]) return true;
+        return false;
     }
 
     private void prepare(Args args) throws Exception {
@@ -277,6 +294,17 @@ public final class ExportAnalysis extends GhidraScript {
             ghidra.put("fallback_backing", fallbackBacking);
             ghidra.put("fallback_relocation_status", exportFallbackRelocationStatus(layout));
         }
+        if (!scope.isEmpty()) {
+            List<Object> declaredScope = new ArrayList<>();
+            for (long[] range : scope) {
+                Map<String,Object> item = map();
+                item.put("start", range[0]); item.put("end", range[1]);
+                declaredScope.add(item);
+            }
+            Map<String,Object> binrecon = map();
+            binrecon.put("analysis_scope", declaredScope);
+            extensions.put("binrecon", binrecon);
+        }
         extensions.put("ghidra", ghidra); root.put("extensions", extensions);
         writeAtomically(Paths.get(args.required("--output")), root);
     }
@@ -455,8 +483,11 @@ public final class ExportAnalysis extends GhidraScript {
         FunctionIterator iterator=currentProgram.getFunctionManager().getFunctions(true);
         while(iterator.hasNext()) {
             Function function = iterator.next();
-            if (function.getEntryPoint().isMemoryAddress()) functions.add(function);
+            if (function.getEntryPoint().isMemoryAddress()
+                    && inScope(function.getEntryPoint().getOffset())) functions.add(function);
         }
+        if (!scope.isEmpty() && functions.isEmpty())
+            throw new IOException("analysis scope matched no functions");
         Collections.sort(functions,Comparator.comparingLong(f->f.getEntryPoint().getOffset()));
         DecompInterface decompiler=new DecompInterface();
         if(!decompiler.openProgram(currentProgram)) throw new IOException("decompiler initialization failed");

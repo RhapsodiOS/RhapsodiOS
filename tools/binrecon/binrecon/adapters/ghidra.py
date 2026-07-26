@@ -14,6 +14,7 @@ from typing import Callable
 
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
+from binrecon.profile import analysis_scope
 from binrecon.schema import SemanticValidationError, validate_analysis_semantics, validate_document
 
 
@@ -356,7 +357,7 @@ def _layout(profile, identity: InputIdentity) -> dict:
                 entries.append({"name": entry, "address": int(entry, 0)})
             except (TypeError, ValueError) as error:
                 raise GhidraAdapterError(f"fallback entry point is unknown: {entry!r}") from error
-    return {
+    document = {
         "schema_version": "ghidra-layout-v1", "language": _LANGUAGE,
         "input": {"path": str(identity.path), "size": identity.size,
                   "sha256": identity.sha256},
@@ -380,6 +381,11 @@ def _layout(profile, identity: InputIdentity) -> dict:
         ),
         "entry_points": sorted(entries, key=lambda item: (item["address"], item["name"])),
     }
+    scope = analysis_scope(profile)
+    if scope:
+        document["analysis_scope"] = [{"start": start, "end": end}
+                                      for start, end in scope]
+    return document
 
 
 def _validate_instruction_relocations(document: dict, layout: dict) -> None:

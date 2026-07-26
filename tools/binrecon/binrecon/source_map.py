@@ -12,7 +12,29 @@ import re
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)(?:\s*\(\s*(\w+)\s*\))?")
 _END = re.compile(r"^@end")
 _METHOD = re.compile(r"^\s*([-+])(?:\s+|(?=\())(.*)$")
-_C_DEFINITION = re.compile(r"^[A-Za-z_][A-Za-z_0-9 \t*]*?\b(\w+)\s*\(")
+"""A C definition at column zero.
+
+Two shapes occur in this tree.  The common one puts the return type and the
+name on one line -- "static int foo(".  The other is the K&R style NeXT and
+BSD sources favour, where the type sits on its own line and the name starts
+at column zero:
+
+    static void
+    ahaTimeout(void *arg)
+    {
+
+The first alternative below matches the one-line form; it requires at least
+one character before the name so that a bare "name(" cannot satisfy it by
+consuming nothing.  The second matches the wrapped form.  Keeping them
+separate rather than making the leading run optional matters: an optional
+run would also match a call statement at column zero, which is a phantom
+definition.  The caller only reaches this on lines that are not indented and
+do not end in a semicolon, which is what keeps ordinary calls out.
+"""
+_C_DEFINITION = re.compile(
+    r"^[A-Za-z_][A-Za-z_0-9 \t*]*?[ \t*]\b(\w+)\s*\("
+    r"|^(\w+)\s*\("
+)
 
 _METHOD_DECLARATION_LIMIT = 20
 
@@ -140,9 +162,11 @@ def source_sites(repo_root, source_dir):
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:
-                    sites.setdefault(
-                        "_" + definition.group(1), []
-                    ).append((relative, number))
+                    # The name comes from whichever _C_DEFINITION alternative
+                    # matched: group 1 for "static int foo(", group 2 for the
+                    # wrapped form where "foo(" starts the line.
+                    name = definition.group(1) or definition.group(2)
+                    sites.setdefault("_" + name, []).append((relative, number))
 
                 index = scan
             index += 1

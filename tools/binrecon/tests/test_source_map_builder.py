@@ -675,3 +675,60 @@ def test_scope_analysis_keeps_only_the_named_addresses_and_the_identity():
     assert [f["address"] for f in scoped["functions"]] == [0x2000]
     assert scoped["input"] == analysis["input"]
     assert [f["address"] for f in analysis["functions"]] == [0x1000, 0x2000]
+
+
+def test_source_sites_finds_a_definition_whose_return_type_is_on_its_own_line(tmp_path):
+    """K&R style: the type sits alone and the name starts at column zero.
+
+    NeXT and BSD sources use this widely -- drvAdaptec1542B's ahaTimeout is
+    written this way -- and the reference binaries carry the symbol, so a
+    scanner that only understood "static void foo(" reported it missing.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Thread.m").write_text(
+        "static void ahaTimeout(void *arg);\n"
+        "\n"
+        "static void\n"
+        "ahaTimeout(void *arg)\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "int\n"
+        "otherThing(void)\n"
+        "{\n"
+        "    ahaTimeout(0);\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_ahaTimeout"] == [("src/driver/Thread.m", 4)]
+    assert sites["_otherThing"] == [("src/driver/Thread.m", 9)]
+
+
+def test_source_sites_does_not_treat_a_column_zero_call_as_a_definition(tmp_path):
+    """The wrapped-form alternative must not match an ordinary call.
+
+    A call at column zero inside a function body ends in a semicolon, and the
+    scanner skips those before the pattern is tried; assert that directly so
+    the guard cannot be removed silently.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Call.m").write_text(
+        "int\n"
+        "realThing(void)\n"
+        "{\n"
+        "someCall(1);\n"
+        "return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_realThing"] == [("src/driver/Call.m", 2)]
+    assert "_someCall" not in sites

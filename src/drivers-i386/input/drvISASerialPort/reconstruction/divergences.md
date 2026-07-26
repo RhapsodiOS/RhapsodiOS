@@ -2267,3 +2267,267 @@ arithmetic is useless on our unstripped build: `identifyChip` **656** against th
 684, `initChip` **148** against 148 — exact — and `programChip` **1077** against 1148. All at
 or below the reference, so the overfit guard passes.
 
+
+## Addendum 5: Task 6a outcome — the class layout is exact, and where the two section regressions come from
+
+Task 6 was split; 6a landed the eight coupled structural changes and Step 4's protocol
+conformance. `make exit=0`, zero errors, and the inline assembly the report flagged as the
+main build risk compiled without complaint.
+
+**Six sections now match the reference exactly that did not before**, and the class layout is
+byte-identical:
+
+| | before 6a | after 6a | reference |
+| --- | --- | --- | --- |
+| `instance_size` | 572 | **604** | 604 |
+| ivar 0 / ivar 1 offset | 264 / 568 | **296 / 600** | 296 / 600 |
+| `__OBJC,__meth_var_types` | 1217 | **1214** | 1214 |
+| `__OBJC,__cat_inst_meth` | 0 | **100** | 100 |
+| `__OBJC,__cat_cls_meth` | 0 | **12** | 12 |
+| `__OBJC,__protocol` | 0 | **20** | 20 |
+| `__OBJC,__class_names` | 126 | **153** | 153 |
+| `_RX_enqueueLongEvent` copies | 4 | **3** | 3 |
+| `missing_symbols` | 13 | **0** | — |
+| `missing_strings` | 21 | **3** | — |
+| sections matching | 20/30 | **25/30** | — |
+
+`__OBJC,__instance_vars` held at 28 and `__inst_meth` at 200 through the change.
+
+### Resolution, one line per structural change
+
+1. **Finding 96 — closed.** `@interface ISASerialPort : IODirectDevice <PortDevices>`.
+   `IODirectDevice`'s six ivars plus its reserved `int[2]` are the 32 bytes, and
+   `instance_size` and both ivar offsets are now the reference's exactly. The 161 raw
+   `self+offset` accesses needed no arithmetic change because they were always the
+   *reference's* offsets; all 141 that survive were checked mechanically to land on the start
+   of a real `Port` field, 61 distinct offsets with nothing out of range and nothing
+   mid-field. The two that had been writing past the end of the old 572-byte object are now
+   `self->port = &self->Port;` and `self->Port.Self = self;`.
+
+2. **The twelve `unsigned long` fields — closed, and the count includes `FlowControl`.**
+   `State`, `WatchStateMask`, `BaudRate`, `MasterClock`, `SWspecial[8]`, `FlowControl` and the
+   six `Stats` members. Zero codegen change on i386; ivar 0's type encoding is now
+   byte-identical.
+
+3. **The fifteen renames — closed.** Ten TU 1 statics, the `RX_enqueueLongEvent` definition
+   and the two division helpers each lost one leading underscore. Twelve of the fifteen now
+   auto-match in `binrecon source-map`, which took the fresh run from 28 mapped to 40; see
+   the note on the map below for the three that still cannot.
+
+4. **The division helpers — closed, and the fix is larger than a rename.** Section below.
+
+5. **Finding 101 — closed.** The queue header split: `ISASerialPortQueue.h` carries the
+   `static void RX_enqueueLongEvent(...)`, included by `ISASerialPort.m`,
+   `ISASerialPortQueue.c` and `ISASerialPortFlow.c` and **not** by `ISASerialPortChip.c`.
+   Four copies became three, the reference's TU-1/3/4-but-not-2 pattern, and TU 4's copy is
+   still unreferenced exactly as the reference's at 23200 is.
+
+6. **Finding 97's leftover — closed.** `TX_STATE_BELOW_LOW` is deleted from the header and its
+   two uses are `TX_STATE_BELOW_MED`. The whole five-way ladder was re-read at both sites
+   (`_activatePort` 3482-3610 and `enqueueData:` 8674-8796) rather than trusting the
+   constant's name: empty `0x06000000`, below-med `0x02000000`, below-high `0`, above-high
+   `0x01000000`, critical `0x01800000`. `0x04000000` now appears nowhere in the source either.
+
+7. **Finding 59 — closed.** `RX_enqueueLongEvent` is `void` and takes `unsigned char event`.
+   The rebuilt body carries the `and reg, 0FFh` the reference has at 90. None of the eighteen
+   call sites needed touching.
+
+8. **The nine config keys — closed.** Section below.
+
+### The division helpers: the rename alone would have created the bug Findings 94 and 102 imagined
+
+Addendum 4's diagnosis was right — the problem was the symbol name — but its prescription was
+incomplete, and taken literally it would have been actively harmful.
+
+Our old bodies were written with ordinary `unsigned long long` division: three such
+expressions in `__udivdi3`, two in `__umoddi3`. gcc lowers each of those into a call to
+`__udivdi3`/`__umoddi3`. While our definitions were misnamed `___udivdi3`/`___umoddi3` those
+calls went out to the kernel's export, which is why nothing recursed. **Rename the functions
+and the same calls become self-recursive**, and the fast path recurses on arguments identical
+to its own — genuinely unbounded. Findings 94 and 102 described a real hazard; they simply
+attributed it to the wrong build.
+
+So the bodies had to lose their 64-bit division, and the reference tells us what they should
+be instead: `__udivdi3` and `__umoddi3` contain **no call instructions at all**, and five
+`div`, one `mul` and one `bsr` each. That is `libgcc2.c`'s `__udivmoddi4`, which is
+`static inline` when compiled for `L_udivdi3` or `L_umoddi3` and so collapses into exactly one
+call-free function per helper. Both `libgcc2.c` and `longlong.h` are in this tree under
+`src/cc-1/cc`, so the bodies were reconstructed from them rather than invented:
+`udiv_qrnnd` → `divl`, `umul_ppmm` → `mull`, `count_leading_zeros` → `bsrl`,
+`sub_ddmmss` → `subl`/`sbbl`. `UDIV_NEEDS_NORMALIZATION` is undefined on i386, so the
+non-normalising arm is live, which is what makes the count five `divl` including the
+deliberate `1 / d0`.
+
+**Verified against the rebuilt object, not just argued.** Both reference streams were read in
+full and compared instruction by instruction with ours:
+
+- `__udivdi3`: 105 reference instructions, **branch sequence identical** — fourteen
+  conditional branches in the same order with the same predicates — and the mnemonic multiset
+  differs by a single `mov` the reference spills. **260 bytes against 264.**
+- `__umoddi3`: 135 reference instructions. Two differences, both gcc layout rather than
+  source: the reference tests `d1 > n1` and branches to the remainder-is-the-dividend arm
+  where ours tests `d1 <= n1` and falls through to it, inverting one branch and adding one
+  `jmp`; and the reference spills `n1` to a stack slot where ours keeps it in `ebx`, which
+  accounts for eight `mov`s. **328 bytes against 348.**
+
+The rebuilt object now defines both symbols locally as the reference does and carries **no
+undefined `__udivdi3`**, so it no longer depends on the kernel export at `0x00218bac`. Both
+ledger entries are `control-flow-confirmed`.
+
+Spec §2.8's reasoning is unchanged: the helpers stay because `/usr/lib/libcc.a` is a PowerPC
+archive that cannot link for `-arch i386`. What changed is that they are now reachable.
+
+### The nine config keys, and the inversion that was waiting in two of them
+
+The mechanism was wrong before the names were. The reference reads every key from
+`[deviceDescription configTable]`, not from the device description, and logs
+`ISASerialPort: Invalid Config Table` and bails when there is none. Reconstructed from the 585
+instructions at address 264 plus the whole of `__TEXT,__cstring`, which turns out to be one
+contiguous run of this function's literals in source order.
+
+| Key | Feeds | Was |
+| --- | --- | --- |
+| `Instance` | `Port.Instance`, and `sprintf("ISASerialPort%d")` → `setName:` → `Port.PortName` | `PortNum`, with a NULL guard and log the reference does not have |
+| `Chip Type` | `Port.Type`, matched against `Chip[i].ShortName`; row 0 ("Auto") matches but is ignored | `ChipType`, with two invented log strings |
+| `Bus Type` | `Port.PCMCIA`, when `strncmp("PCMCIA", v, 7) == 0` | `PortType` |
+| `TX Buffer Size` | `Port.TX.DefaultSize`, as `validateRingBufferSize(n * 2, &Port.TX)` | **`RXBufSize`** |
+| `RX Buffer Size` | `Port.RX.DefaultSize`, as `validateRingBufferSize(n * 2, &Port.RX)` | **`TXBufSize`** |
+| `Chip Clock` | `Port.MasterClock`; ≤ 999 falls back to 1843200 | `ClockRate` |
+| `Heart Beat Interval` | `Port.HeartBeatInterval`, µs → ns, default 11000, clamped to 0x418937 | `HeartBeat`, written to **`CharLatInterval`** |
+| `Enable MSR Interrupts` | `Port.IERmask`: present → 0xFF, absent → 0xFB | not read; `numFlagStrings` stood in |
+| `Serial` | **not a key** — the `setDeviceKind:` argument | `"SerialPort"` |
+
+**The two buffer keys were crossed, and this is exactly the failure the task was warned
+about.** Our `RXBufSize` wrote `self+0x1a4`, which is `TX.DefaultSize`, validated against
+`&Port.TX`; our `TXBufSize` wrote `self+0x16c` = `RX.DefaultSize` against `&Port.RX`. Each
+site was internally consistent, so a naive rename of `RXBufSize` → `RX Buffer Size` would have
+carried the crossing forward and quietly applied one direction's default to the other. The
+reference's `TX Buffer Size` is the key that writes `0x1a4`, so the fix is to swap which key
+reads which; the field and the queue argument were already right. Both also gained the `* 2`
+our source had dropped — the keys are in characters and the queues count 2-byte cells.
+
+**`Heart Beat Interval` was writing the wrong field entirely.** Ours stored the nanosecond
+value into `self+0x230`/`0x234`, which is `CharLatInterval`, and filled `HeartBeatInterval`
+from `__udivdi3(0, 0, 0, 0)`. The reference zeroes `0x230`/`0x234` in the init block and never
+touches them here; it clamps the µs value to `0x418937` — 4294967, the largest whose `* 1000`
+survives 32 bits — and splits the product into `HeartBeatInterval.tv_sec`/`.tv_nsec`.
+
+`Enable MSR Interrupts`'s polarity happened to match what the `numFlagStrings` code did, so
+nothing needed inverting there; only the source of the flag and the log string were wrong.
+
+`Serial` is the trap in the other direction: it sits in the cstring list beside the keys and
+looks like one, and it is the `setDeviceKind:` argument. The shipped `Default.table`
+corroborates the whole set — it supplies `"Instance" = "0"`, `"Bus Type" = "EISA"` and
+`"Family" = "Serial"` and none of the other seven keys, so every key the driver reads is now
+either supplied or correctly defaulted.
+
+### Three corrections to the Task 6a brief, accepted by the controller
+
+1. **The twelve `unsigned long` fields include `FlowControl`.** The brief's list named
+   `State`, `WatchStateMask`, `BaudRate`, `MasterClock`, the `SWspecial[]` array and the six
+   `Stats` members, which is eleven. The reference's ivar-0 encoding spells `"FlowControl"L`.
+2. **`Serial` is not a config key**, it is `setDeviceKind:"Serial"`.
+3. **"Keep the bodies" could not be taken literally for the division helpers**, for the reason
+   above. The controller has recorded the departure as correct.
+
+### Where the two section regressions come from
+
+**`__TEXT,__cstring` 716 → 799 against 742, and it decomposes exactly.** Four extra strings
+and three missing ones, and their byte counts close the gap to the byte:
+
+| | bytes | disposition |
+| --- | --- | --- |
+| extra `%s: Invalid port configuration\n` | 32 | pairs with the missing `%s: Invalid configuration\n` |
+| extra `%s: superclass initFromDeviceDescription failed\n` | 49 | the reference logs nothing here |
+| extra `" (PCMCIA)"` | 10 | Finding 87, pairs with the missing `"PCMCIA/"` |
+| extra `%s: Failed to register interrupt\n` | 34 | pairs with the missing `%s: Unable to enable interrupts\n` |
+| missing `%s: Invalid configuration\n` | 27 | |
+| missing `%s: Unable to enable interrupts\n` | 33 | |
+| missing `"PCMCIA/"` | 8 | |
+
+125 extra less 68 missing is **+57**, which is precisely 799 − 742. **None of it comes from the
+config-key work** — every key name and every key log string 6a added is present in the
+reference. All four extras belong to the four TU 1 divergences 6a deliberately left open, and
+closing them lands the section on 742 exactly. The section rose because the reference's own
+strings are long: `%s: Ignoring invalid Chip Type "%s" from Instance table\n` alone is 57
+bytes, and 6a removed 17 wrong strings while adding 18 right ones.
+
+**`__TEXT,__text` 23516 → 22164 against 24412.** The gap is now −2248 and it is almost entirely
+TU 1's. Measured per function with capstone against the nlist, filtering the debug stabs that
+make symbol-gap arithmetic useless on our unstripped build:
+
+| unit | reference | ours | delta |
+| --- | --- | --- | --- |
+| TU 1, the class | 18704 | 16768 | **−1936** |
+| TU 3, the ring buffer | 2516 | 2360 | −156 |
+| TU 2, the chip | 1980 | 1884 | −96 |
+| TU 4, the flow machine | 576 | 540 | −36 |
+| the two division helpers | 612 | 588 | −24 |
+| build-generated | 24 | 24 | 0 |
+
+Within TU 1 the four largest bodies carry **−2092** between them — `_executeEvent` −1236,
+`_FIFOIntHandler` −404, `_NonFIFOIntHandler` −232, `initFromDeviceDescription:` −220 — while
+the remaining twenty-seven TU 1 functions net **+156**, several of them over the reference
+(`dequeueData:` +80, `_heartBeatTOHandler` +92, `enqueueData:` +44, `_activatePort` +36).
+So the whole gap lives in the four bodies whose call sites are still commented out, and all
+four are among the twenty-five entries still `unexamined`.
+
+**Why the gap widened rather than narrowed, and why that is not a regression.** The movement is
+−1352 and it cannot be decomposed per function, because the pre-6a `_reloc` was overwritten by
+this build and `out/` is not tracked. What can be said:
+
+- The old `___udivdi3`/`___umoddi3` were **dead code under names nothing referenced**, written
+  entirely in 64-bit expressions that gcc 2.7 spills heavily on i386. They inflated the byte
+  count towards the reference for the wrong reason. They are gone, replaced by 588 bytes that
+  are actually called and within 24 bytes of the reference's 612.
+- Dropping the fourth `RX_enqueueLongEvent` copy is **−140** exactly, our per-copy size.
+- Everything else in 6a is either zero-codegen on i386 (the superclass, the field widths, the
+  method-signature widening, the renames) or close to size-neutral.
+
+Subtracting the −140 leaves ≈1212 for the helper replacement, implying the old pair weighed
+≈1800 bytes against the 588 that replaced it. That figure is **inferred by subtraction, not
+measured**, and is recorded as such. The direction is the same one Task 4 saw when it deleted
+invented `IODelay` calls: section size moved away from parity while structural correctness
+moved decisively towards it.
+
+**A real TU 3/TU 4 residual worth knowing.** Our `RX_enqueueLongEvent` is 140 bytes against the
+reference's 197, −57 per copy and −171 across the three, and reading all 69 reference
+instructions shows why: the reference re-reads `RX.Input` from memory before each of the four
+stores and writes the advance back with `add dword ptr [x+0x38], 2`, where our compiler keeps
+the pointer in a register; and the reference emits a separate advance-and-wrap block for the
+overflow marker where ours tail-merges it into the last cell, so the rebuilt stream has seven
+branches where the reference has eight. Every constant and every `Queue` field offset matches.
+This is the optimisation-level ceiling section 9 of this document already describes, not a
+source divergence, and it is not worth chasing.
+
+### The source map, and why three entries are still relined by hand
+
+The renames did what Addendum 2 predicted: the fresh `binrecon source-map` run went from 28
+mapped to **40**, and `fresh-only` is empty. The partition is unchanged at **43 mapped, 2
+unmapped** and `load_source_map` passes.
+
+The two permanently unmapped are the build-generated
+`+[ISASerialPortKernelServerInstance kernelServerInstance]` and
+`+[ISASerialPortVersion driverKitVersionForISASerialPort]`, which have no source in this tree.
+
+The three `RX_enqueueLongEvent` copies are still carried by hand, but **not for a naming
+reason any more** — `source_map.source_sites` globs only `*.m` and `*.c`
+(`tools/binrecon/binrecon/source_map.py:84`), so a `static` defined in a header is structurally
+invisible to the generator. They now point at `ISASerialPortQueue.h:53` instead of
+`ISASerialPortInternal.h:267`. Addendum 2's expectation that the rename would make the
+workaround unnecessary was half right: it removed twelve of the fifteen, and the remaining
+three need the generator to glob headers.
+
+### Ledger state after 6a
+
+45 entries: 2 `assembly-matched`, **14** `control-flow-confirmed`, 2 `signature-confirmed`,
+2 `intentional-mismatch`, **25 `unexamined`**. The five that advanced are the three
+`RX_enqueueLongEvent` copies and the two division helpers, each on a full instruction-by-
+instruction read of the reference against the rebuilt stream. Nothing reached
+`assembly-matched`: the streams are isomorphic but not identical, differing in register
+allocation, spill slots and block ordering, and `ledger.json`'s `rebuilt_sha256` is still
+`null`.
+
+The 25 remaining are TU 1 bodies and they are 6b's, together with essentially the whole
+`__TEXT,__text` gap and all four extra cstrings. `__TEXT,__const` is still absent against the
+reference's 682 and stays recorded rather than chased.

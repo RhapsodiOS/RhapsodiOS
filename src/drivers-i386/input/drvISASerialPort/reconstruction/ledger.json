@@ -10,6 +10,7 @@
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "fix pass Task 4: the definition moved from ISASerialPort.m to ISASerialPortInternal.h, still static, so every translation unit that references it emits its own copy the way the reference does. The rebuilt nlist now carries three copies against the reference three, and the copy in TU 3 precedes TX_enqueueEvent just as 20684 precedes 20884. This also explains TU 1 copy sitting at address 0: a definition at source line 1506 of the .m could not land ahead of everything else in the unit, but a static in a header imported at the top does. Finding 59 is still open - the reference is void and takes an unsigned char event, masked with and edx, 0FFh at 90, where ours returns IOReturn and takes an unsigned int - and the leading underscore our name still carries is one of the fifteen renames Task 6 owns, which is why the emitted symbol is __RX_enqueueLongEvent rather than _RX_enqueueLongEvent (divergences.md Finding 59, addendum 2)",
+          "fix pass Task 6a: the definition moved out of ISASerialPortInternal.h into a queue-specific ISASerialPortQueue.h that the class, the ring buffer and the flow machine include and the chip unit does not, which takes the emitted copies from four to the reference three and closes Finding 101. Finding 59 closes with it: the function is now void and takes an unsigned char event, so the rebuilt body carries the and reg, 0FFh the reference has at 90. All 69 reference instructions between 0 and 196 have now been read; every constant (0x6C, the space-for-three test, the 2-byte stride, the 16-bit shift) and every Queue field offset (0x18, 0x1C, 0x30, 0x34, 0x38, 0x40) matches. Our copy is 140 bytes against the reference 197 for two reasons, both gcc layout rather than source divergence: the reference re-reads RX.Input from memory before each of the four stores and writes the advance back with add dword ptr [x+0x38], 2 where our compiler keeps the pointer in a register, and the reference emits a separate advance-and-wrap block for the overflow marker where ours tail-merges it into the last cell. That is the optimisation-level ceiling divergences.md already records, and it is why the rebuilt stream has 7 branches where the reference has 8",
           "full disassembly read instruction by instruction",
           "report pass: diverges. Reference is void (Port *port, unsigned char event, unsigned int data); the event parameter is loaded as a byte and masked with 'and edx, 0FFh' at 90. Ours returns IOReturn and takes an unsigned int event, and its first parameter is an ISASerialPort * where the reference takes a Port * (divergences.md Finding 59, and section 4.1 for the layout). The algorithm itself matches exactly: Size-Count>2 writes three cells, else Size>Count writes one 0x6C cell, else OverRun=1, with Input+=2, wrap when Input>=End and Count++ per cell. This is TU 1's copy of a static defined in a shared header; all three copies (0, 20684, 23200) are byte-identical over 193 instruction bytes"
         ],
@@ -22,9 +23,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 267,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
-      "status": "signature-confirmed"
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.h",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 200,
@@ -47,7 +48,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 61,
-      "source_line": 2434,
+      "source_line": 2396,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -72,7 +73,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2273,
-      "source_line": 2456,
+      "source_line": 2418,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -97,7 +98,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 233,
-      "source_line": 2721,
+      "source_line": 2696,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -122,7 +123,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 63,
-      "source_line": 4069,
+      "source_line": 4039,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -147,7 +148,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 172,
-      "source_line": 4005,
+      "source_line": 3975,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -172,7 +173,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1144,
-      "source_line": 395,
+      "source_line": 390,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -197,7 +198,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 345,
-      "source_line": 678,
+      "source_line": 673,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -222,7 +223,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 944,
-      "source_line": 2781,
+      "source_line": 2756,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -247,7 +248,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 561,
-      "source_line": 2994,
+      "source_line": 2968,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "assembly-matched"
     },
@@ -272,7 +273,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 267,
-      "source_line": 3881,
+      "source_line": 3851,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -297,7 +298,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 3863,
+      "source_line": 3833,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -322,7 +323,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 100,
-      "source_line": 3963,
+      "source_line": 3933,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -347,7 +348,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 70,
-      "source_line": 3831,
+      "source_line": 3801,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "assembly-matched"
     },
@@ -372,7 +373,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 866,
-      "source_line": 3507,
+      "source_line": 3481,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -397,7 +398,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 746,
-      "source_line": 3701,
+      "source_line": 3675,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -422,7 +423,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 120,
-      "source_line": 3460,
+      "source_line": 3434,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -447,7 +448,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 3209,
+      "source_line": 3183,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -472,7 +473,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 696,
-      "source_line": 3258,
+      "source_line": 3232,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -497,7 +498,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 383,
-      "source_line": 3108,
+      "source_line": 3082,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -522,7 +523,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 679,
-      "source_line": 198,
+      "source_line": 193,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -547,7 +548,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 60,
-      "source_line": 139,
+      "source_line": 134,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -572,7 +573,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 60,
-      "source_line": 169,
+      "source_line": 164,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -597,7 +598,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 123,
-      "source_line": 783,
+      "source_line": 778,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -622,7 +623,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 23,
-      "source_line": 378,
+      "source_line": 373,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -647,7 +648,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2704,
-      "source_line": 1944,
+      "source_line": 1939,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -672,7 +673,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 3172,
-      "source_line": 1325,
+      "source_line": 1320,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -697,7 +698,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2472,
-      "source_line": 826,
+      "source_line": 821,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -789,6 +790,7 @@
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "fix pass Task 4: the definition moved from ISASerialPort.m to ISASerialPortInternal.h, still static, so every translation unit that references it emits its own copy the way the reference does. The rebuilt nlist now carries three copies against the reference three, and the copy in TU 3 precedes TX_enqueueEvent just as 20684 precedes 20884. This also explains TU 1 copy sitting at address 0: a definition at source line 1506 of the .m could not land ahead of everything else in the unit, but a static in a header imported at the top does. Finding 59 is still open - the reference is void and takes an unsigned char event, masked with and edx, 0FFh at 90, where ours returns IOReturn and takes an unsigned int - and the leading underscore our name still carries is one of the fifteen renames Task 6 owns, which is why the emitted symbol is __RX_enqueueLongEvent rather than _RX_enqueueLongEvent (divergences.md Finding 59, addendum 2)",
+          "fix pass Task 6a: the definition moved out of ISASerialPortInternal.h into a queue-specific ISASerialPortQueue.h that the class, the ring buffer and the flow machine include and the chip unit does not, which takes the emitted copies from four to the reference three and closes Finding 101. Finding 59 closes with it: the function is now void and takes an unsigned char event, so the rebuilt body carries the and reg, 0FFh the reference has at 90. All 69 reference instructions between 0 and 196 have now been read; every constant (0x6C, the space-for-three test, the 2-byte stride, the 16-bit shift) and every Queue field offset (0x18, 0x1C, 0x30, 0x34, 0x38, 0x40) matches. Our copy is 140 bytes against the reference 197 for two reasons, both gcc layout rather than source divergence: the reference re-reads RX.Input from memory before each of the four stores and writes the advance back with add dword ptr [x+0x38], 2 where our compiler keeps the pointer in a register, and the reference emits a separate advance-and-wrap block for the overflow marker where ours tail-merges it into the last cell. That is the optimisation-level ceiling divergences.md already records, and it is why the rebuilt stream has 7 branches where the reference has 8",
           "full disassembly read instruction by instruction",
           "report pass: diverges. TU 3's copy of the same static as address 0; byte-identical to it and to the copy at 23200 over all 193 instruction bytes. Same divergences: void versus our IOReturn, and the event parameter read as a byte and masked with 0FFh where ours takes an unsigned int (divergences.md Finding 59). This is the copy that _TX_enqueueEvent, _RX_dequeueEvent and _RX_dequeueData call, which is part of the evidence pinning TU 3's boundaries"
         ],
@@ -801,9 +803,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 267,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
-      "status": "signature-confirmed"
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.h",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 20884,
@@ -827,7 +829,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 514,
-      "source_line": 45,
+      "source_line": 46,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -853,7 +855,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 852,
-      "source_line": 183,
+      "source_line": 184,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -879,7 +881,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 680,
-      "source_line": 389,
+      "source_line": 390,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -905,7 +907,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 42,
-      "source_line": 565,
+      "source_line": 566,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -931,7 +933,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 89,
-      "source_line": 603,
+      "source_line": 604,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -957,7 +959,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 130,
-      "source_line": 635,
+      "source_line": 636,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.c",
       "status": "control-flow-confirmed"
     },
@@ -971,6 +973,7 @@
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "fix pass Task 4: the definition moved from ISASerialPort.m to ISASerialPortInternal.h, still static, so every translation unit that references it emits its own copy the way the reference does. The rebuilt nlist now carries three copies against the reference three, and the copy in TU 3 precedes TX_enqueueEvent just as 20684 precedes 20884. This also explains TU 1 copy sitting at address 0: a definition at source line 1506 of the .m could not land ahead of everything else in the unit, but a static in a header imported at the top does. Finding 59 is still open - the reference is void and takes an unsigned char event, masked with and edx, 0FFh at 90, where ours returns IOReturn and takes an unsigned int - and the leading underscore our name still carries is one of the fifteen renames Task 6 owns, which is why the emitted symbol is __RX_enqueueLongEvent rather than _RX_enqueueLongEvent (divergences.md Finding 59, addendum 2)",
+          "fix pass Task 6a: the definition moved out of ISASerialPortInternal.h into a queue-specific ISASerialPortQueue.h that the class, the ring buffer and the flow machine include and the chip unit does not, which takes the emitted copies from four to the reference three and closes Finding 101. Finding 59 closes with it: the function is now void and takes an unsigned char event, so the rebuilt body carries the and reg, 0FFh the reference has at 90. All 69 reference instructions between 0 and 196 have now been read; every constant (0x6C, the space-for-three test, the 2-byte stride, the 16-bit shift) and every Queue field offset (0x18, 0x1C, 0x30, 0x34, 0x38, 0x40) matches. Our copy is 140 bytes against the reference 197 for two reasons, both gcc layout rather than source divergence: the reference re-reads RX.Input from memory before each of the four stores and writes the advance back with add dword ptr [x+0x38], 2 where our compiler keeps the pointer in a register, and the reference emits a separate advance-and-wrap block for the overflow marker where ours tail-merges it into the last cell. That is the optimisation-level ceiling divergences.md already records, and it is why the rebuilt stream has 7 branches where the reference has 8",
           "full disassembly read instruction by instruction",
           "report pass: diverges. TU 4's copy of the same static as addresses 0 and 20684; byte-identical to both. Same divergences: void versus our IOReturn, and the byte-width event parameter. This copy is never called from within TU 4 - neither _flowMachine nor _watchState calls it - yet it is emitted, which is part of the evidence for the four-TU split and is flagged as unresolved item 1 in divergences.md (see also Finding 59 and section 4.4)"
         ],
@@ -983,9 +986,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 267,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
-      "status": "signature-confirmed"
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortQueue.h",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 23400,
@@ -1009,7 +1012,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 181,
-      "source_line": 49,
+      "source_line": 50,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortFlow.c",
       "status": "signature-confirmed"
     },
@@ -1035,7 +1038,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 191,
-      "source_line": 124,
+      "source_line": 125,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortFlow.c",
       "status": "signature-confirmed"
     },
@@ -1096,6 +1099,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "fix pass Task 6a: renamed from __udivdi3 to _udivdi3 so the compiler emits the ABI symbol __udivdi3 rather than ___udivdi3. Before this the definition was dead code under a name nothing referenced while the lowered divides resolved against the kernel export at 0x00218bac; the rebuilt object now defines the symbol locally as the reference does and carries no undefined __udivdi3. The body was rewritten as libgcc2.c static inline __udivmoddi4 with longlong.h i386 macros, both in this tree under src/cc-1/cc, because the old body used 64-bit division that gcc lowers back into a call to the function being defined -- under the corrected name that would have been the unbounded recursion Findings 94 and 102 wrongly attributed to the old build. All 105 reference instructions between 23800 and 24063 have been read against the rebuilt stream: the branch sequence is identical, 14 conditional branches in the same order with the same predicates, five divl, one mull and one bsrl on both sides and no call on either. 260 bytes against 264, the difference being one spill the reference keeps",
           "reference body NOT read instruction by instruction: only the mnemonic inventory, relocation list and block count were examined",
           "report pass: diverges. Our hand-written body at ISASerialPort.m:3490 declares unsigned long long locals and then divides with the / operator at two points, which gcc lowers to a call to __udivdi3 itself; the recursive call re-enters with divisor_hi == 0 and takes the same branch, so the recursion does not terminate and the first 64-bit divide overflows the kernel stack. The reference body is libgcc's and uses bsr plus 32-bit div and mul only, with no 64-bit division operator, no recursion and no relocations. The helper must stay, because libcc.a on the guest is a PPC archive that cannot link for -arch i386, but it must be rewritten with 32-bit division only; the explicit four-argument call sites in our source are a decompiler artifact of the 32-bit ABI for two 64-bit arguments (divergences.md Findings 94, 95)"
         ],
@@ -1108,9 +1112,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 264,
-      "source_line": 2233,
+      "source_line": 2374,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 24064,
@@ -1121,6 +1125,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "fix pass Task 6a: renamed from __umoddi3 to _umoddi3 for the same reason as 23800, and rewritten from the same libgcc2.c __udivmoddi4 with the remainder pointer live. All 135 reference instructions between 24064 and 24411 have been read against the rebuilt stream, with the same predicates and the same constants throughout. The two differences are gcc layout, not source: the reference tests d1 > n1 and branches to the remainder-is-the-dividend arm where ours tests d1 <= n1 and falls through to it, which inverts one branch and adds one jmp, and the reference spills n1 to a stack slot where ours holds it in ebx, which accounts for eight movs. 328 bytes against 348",
           "reference body NOT read instruction by instruction: only the mnemonic inventory, relocation list and block count were examined",
           "report pass: diverges. Same finding as __udivdi3 at 23800: our hand-written body needs the same audit for 64-bit division operators that gcc would lower into a self-recursive call, and the reference body is libgcc's bsr-plus-32-bit-div implementation with no relocations. The two unreferenced 256-byte ___clz_tab copies in __TEXT,__const belong to these two objects and are never read by either, which is why 512 of the reference's 682 __TEXT,__const bytes are structurally unreachable for us (divergences.md Findings 94, 95, and stated limitations)"
         ],
@@ -1133,9 +1138,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 348,
-      "source_line": 2331,
+      "source_line": 2379,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     }
   ],
   "rebuilt_sha256": null,

@@ -32,13 +32,11 @@
 
 #ifdef KERNEL
 
+#import <objc/objc.h>
 #import <sys/types.h>
 #import <sys/errno.h>
 
-// Kernel-level parallel port constants
-#define PP_KERN_DATA_SIZE     1024
-#define PP_KERN_MAX_PORTS     4
-#define PP_KERN_TIMEOUT_MS    5000
+struct buf;
 
 // IOCTL command codes
 #define PP_IOCTL_GET_STATUS_WORD          0x40047000
@@ -59,60 +57,37 @@
 #define PP_IOCTL_GET_CONTROL_REG_CONTENTS 0x40047011
 #define PP_IOCTL_GET_CONTROL_REG_DEFAULTS 0x40047012
 
-// Parallel port modes
-typedef enum {
-    PP_MODE_SPP = 0,    // Standard Parallel Port
-    PP_MODE_EPP,        // Enhanced Parallel Port
-    PP_MODE_ECP,        // Extended Capabilities Port
-    PP_MODE_COMPATIBLE  // Compatibility mode
-} pp_mode_t;
-
-// Parallel port status
-typedef struct {
-    unsigned char status;
-    unsigned char control;
-    unsigned char data;
-    unsigned char reserved;
-} pp_port_state_t;
-
-// Function prototypes for kernel-level operations
-void pp_kern_init(void);
-int pp_kern_probe(unsigned int baseAddr);
-int pp_kern_reset(unsigned int portNum);
-int pp_kern_set_mode(unsigned int portNum, pp_mode_t mode);
-int pp_kern_get_mode(unsigned int portNum, pp_mode_t *mode);
-int pp_kern_read_data(unsigned int portNum, unsigned char *data);
-int pp_kern_write_data(unsigned int portNum, unsigned char data);
-int pp_kern_read_status(unsigned int portNum, unsigned char *status);
-int pp_kern_read_control(unsigned int portNum, unsigned char *control);
-int pp_kern_write_control(unsigned int portNum, unsigned char control);
-int pp_kern_get_state(unsigned int portNum, pp_port_state_t *state);
-int pp_kern_set_state(unsigned int portNum, const pp_port_state_t *state);
-void pp_kern_delay(unsigned int microseconds);
-int pp_kern_wait_busy(unsigned int portNum, unsigned int timeout_ms);
-int pp_kern_strobe(unsigned int portNum);
-int pp_kern_enable_interrupts(unsigned int portNum);
-int pp_kern_disable_interrupts(unsigned int portNum);
-
 // Character device interface functions
 int ppopen(dev_t dev, int flags, int devtype, void *p);
 int ppclose(dev_t dev, int flags, int devtype, void *p);
 int ppread(dev_t dev, void *uio, int ioflag);
 int ppwrite(dev_t dev, void *uio, int ioflag);
 int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p);
-void ppstrategy(void *bp);
-void ppminphys(void *bp);
+int ppstrategy(struct buf *bp);
+unsigned int ppminphys(struct buf *bp);
 
 // Internal helper functions
-void IOParallelPortInterruptHandler(unsigned int param1, unsigned int param2, int portNum);
+void IOParallelPortInterruptHandler(void *identity, void *state, unsigned int portNum);
 void IOParallelPortThread(void *portObject);
 int _strobeChar(int portNum, unsigned int delay, char useSpl);
 
 // Message and interrupt handling — use System.framework declarations.
 // (Do not redeclare IOExitThread / msg_receive / enodev / seltrue; they conflict.)
 
-// Software control structure
-extern void *pp_softc;
+/*
+ * Software control structure.  The reference's _pp_softc is a 12-byte array
+ * in __DATA,__data with a single element — one device per driver, which is
+ * what the "only one dev this version" refusal in
+ * -initFromDeviceDescription: enforces.  Every access site indexes it as
+ * pp_softc[minor(dev)].
+ */
+typedef struct {
+    id              device;   // +0x00
+    int             count;    // +0x04  bytes left in the current transfer
+    unsigned char  *data;     // +0x08  next byte to move
+} pp_softc_t;
+
+extern pp_softc_t pp_softc[1];
 
 #endif /* KERNEL */
 

@@ -15,7 +15,7 @@ LANGUAGE = English
 
 LOCAL_RESOURCES = Localizable.strings DriverHelp
 
-GLOBAL_RESOURCES =
+GLOBAL_RESOURCES = Default.table
 
 CLASSES =
 

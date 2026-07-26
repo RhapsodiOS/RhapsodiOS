@@ -387,8 +387,12 @@ void IOReleaseNotifyForFunc(mach_port_t deathPort, id session)
         if ((client_entry[0] == (int)deathPort) &&
             (notifClientObjects[i] == session)) {
 
-            /* Dereference the client task (decrements reference count) */
-            IODereferenceClientTask(&notifClients[i * 2]);
+            /* Dereference the client task (decrements reference count).
+             * The reference passes the value held in the slot (a
+             * _clientReferences slot pointer), not the slot's own
+             * address: `mr r3, r9` at address 9092, where r9 was loaded
+             * from the slot via `lwzx r9, r3, r29`. */
+            IODereferenceClientTask((int *)client_entry[0]);
 
             /* Clear the entry (8 bytes = 2 ints) */
             memset(client_entry, 0, 8);

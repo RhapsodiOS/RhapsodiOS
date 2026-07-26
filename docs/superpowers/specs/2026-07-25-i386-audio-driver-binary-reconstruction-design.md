@@ -96,13 +96,27 @@ comparison; the reference body has to be read.
 Three further divergences in the same driver, none of them behavioural on their
 own:
 
-**The sequence table is already exact.** The reference `_defaultBeepSequences`
-occupies `__DATA,__data:8204` for 96 bytes — six 16-byte records. Decoded, they
-are `Blip {1, 1, 1}`, `Plain {2, 3, 4}`, `Up {8, 17, 16}`, `Down {8, 15, 16}`,
+**The sequence table has its first two names swapped.** The reference
+`_defaultBeepSequences` occupies `__DATA,__data:8204` for 96 bytes — six 16-byte
+records. Resolving each record's name pointer against `__TEXT,__cstring` gives
+`Plain {1, 1, 1}`, `Blip {2, 3, 4}`, `Up {8, 17, 16}`, `Down {8, 15, 16}`,
 `Octave {2, 2, 1}` and the null terminator, in that order. Our
-`defaultBeepSequences` in `Beep.m:66` agrees on every field and on the ordering.
-This is the strongest single piece of evidence in the effort that drvBeepSound is
-a real reconstruction rather than an invention.
+`defaultBeepSequences` in `Beep.m:66` has the same five value triples in the same
+order, but labels the first two `Blip` and `Plain` — the reverse of Apple's.
+
+This is behavioural, not cosmetic. `Default.table` ships `"Style" = "Plain"`, so
+our driver plays Apple's `Blip` when asked for `Plain`, and every index
+`stringToStyle` returns for those two names is swapped with respect to the
+reference.
+
+An earlier draft of this section claimed the table matched Apple byte for byte
+and cited it as the effort's strongest evidence that drvBeepSound is a real
+reconstruction. That was a scoping error: the value triples were compared against
+our array's ordering without resolving the name pointers, which happen to be laid
+out in `__cstring` in the reverse of source order. drvBeepSound's report pass
+(§5, Phase 2) caught it. The three remaining triples are correctly labelled, so
+the driver is still a reconstruction rather than an invention — but the table is
+not the clean evidence it was presented as.
 
 The reference exports it `external`; ours is `static`. That is the
 static-versus-external divergence commit `b27e22b8` resolved in `drvPCMCIABus` by

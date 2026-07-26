@@ -1139,7 +1139,9 @@ Follow Standard report pass procedure Step E. Four questions must be answered ex
 
 4. **`_beepDeviceName` (`__DATA,__data:8192`, `Beep`) and `_beepDeviceKind` (`:8197`, `Audio`).** Confirm `-[Beep initFromDeviceDescription:]` passes them to `setName:` and `setDeviceKind:`. Our `Beep.m:176` and `:179` pass string literals instead.
 
-Also confirm the two things scoping already established, so Task 4 does not re-litigate them: `_defaultBeepSequences` at `__DATA,__data:8204` is 96 bytes holding `Blip {1,1,1}`, `Plain {2,3,4}`, `Up {8,17,16}`, `Down {8,15,16}`, `Octave {2,2,1}` and a null terminator, matching `Beep.m:66` field for field; and it is `external` in the reference where ours is `static`, while `_stringToStyle` is `local`, matching our `static`.
+Also settle `_defaultBeepSequences` at `__DATA,__data:8204`, 96 bytes of six 16-byte records. **Resolve each record's name pointer against `__TEXT,__cstring` — do not match value triples against our array's ordering.** The strings are laid out in `__cstring` in the reverse of source order, and comparing triples alone produces a false match. The reference is `Plain {1,1,1}`, `Blip {2,3,4}`, `Up {8,17,16}`, `Down {8,15,16}`, `Octave {2,2,1}`, null; our `Beep.m:66` labels the first two the other way round. Record the swap as a finding — it is behavioural, since `Default.table` ships `"Style" = "Plain"`.
+
+The symbol is `external` in the reference where ours is `static`, while `_stringToStyle` is `local`, matching our `static`.
 
 - [ ] **Step 5: Compare the table**
 
@@ -1236,6 +1238,63 @@ BeepSequence defaultBeepSequences[] = {
 ```
 
 Leave `static int stringToStyle(...)` at `Beep.m:81` alone — the reference's `_stringToStyle` is `local`, so our `static` already matches.
+
+- [ ] **Step 4a: Swap the `Blip` and `Plain` labels**
+
+Task 3 established that the reference's first two records are `Plain {1,1,1}` and `Blip {2,3,4}`, where ours are `Blip {1,1,1}` and `Plain {2,3,4}`. Swap the two names, leaving the value triples and the ordering alone:
+
+```objc
+BeepSequence defaultBeepSequences[] = {
+    /* Plain style: single short beep */
+    { "Plain", 1, 1, 1 },
+    /* Blip style: two-tone, frequency ratio 3:4 (perfect fifth down) */
+    { "Blip", 2, 3, 4 },
+```
+
+Update the two comments to describe the sequence each name now labels — the existing ones describe the values, so leaving them attached to the swapped names would make them wrong. Do not touch the `Up`, `Down` or `Octave` records.
+
+Confirm against the reference rather than by reading the source back:
+
+```bash
+cd /d/RhapsodiOS
+cat > "$SCRATCH/check_seq.py" <<'PY'
+import struct
+import sys
+from pathlib import Path
+sys.path.insert(0, 'tools/binrecon')
+from binrecon.macho import read_macho
+
+def table(p):
+    p = Path(p)
+    d = read_macho(p)
+    raw = p.read_bytes()
+    sec = {s['name']: s for s in d['sections']}
+    cs = sec['__TEXT,__cstring']
+    strings, addr = {}, cs['address']
+    for chunk in raw[cs['offset']:cs['offset'] + cs['size']].split(b'\0'):
+        if chunk:
+            strings[addr] = chunk.decode()
+            addr += len(chunk) + 1
+    ds = sec['__DATA,__data']
+    sym = next(s['address'] for s in d['symbols']
+               if s['name'] == '_defaultBeepSequences')
+    blob = raw[ds['offset']:ds['offset'] + ds['size']]
+    seqs = blob[sym - ds['address']:]
+    out = []
+    for i in range(0, len(seqs) - 15, 16):
+        ptr, a, b, c = struct.unpack('<4i', seqs[i:i + 16])
+        out.append((strings.get(ptr), a, b, c))
+    return out
+
+ref, built = table(sys.argv[1]), table(sys.argv[2])
+for i, (r, b) in enumerate(zip(ref, built)):
+    print(f'{i}: ref={r}  ours={b}  {"OK" if r == b else "<-- MISMATCH"}')
+PY
+./.venv-binrecon/Scripts/python.exe "$SCRATCH/check_seq.py" \
+  "$BINRECON_REFERENCE" out/i386/drvBeepSound/Beep.config/Beep_reloc
+```
+
+Expected after the rebuild in Step 8: `OK` on every row.
 
 - [ ] **Step 5: Move the device name and kind into data symbols**
 

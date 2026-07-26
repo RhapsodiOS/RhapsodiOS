@@ -73,8 +73,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
 - (BOOL)reset
 {
-    IODeviceDescription *deviceDescription;
-    unsigned int *channelList;
     unsigned int dmaChannel1, dmaChannel2;
     unsigned int numChannels;
     unsigned int interrupt;
@@ -82,11 +80,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     BOOL valid = YES;
     const char *inputSourceStr;
 
-    deviceDescription = [self deviceDescription];
-    channelList = (unsigned int *)[deviceDescription channelList];
-    dmaChannel1 = channelList[0];
-    numChannels = [deviceDescription numChannels];
-    interrupt = [deviceDescription interrupt];
+    dmaChannel1 = ((unsigned int *)[[self deviceDescription] channelList])[0];
+    numChannels = [[self deviceDescription] numChannels];
+    interrupt = [[self deviceDescription] interrupt];
 
     [self setName:codecDeviceName];
     [self setDeviceKind:codecDeviceKind];
@@ -94,7 +90,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     /* Get second DMA channel if dual-channel mode */
     dmaChannel2 = dmaChannel1;
     if (numChannels > 1) {
-        dmaChannel2 = channelList[1];
+        dmaChannel2 = ((unsigned int *)[[self deviceDescription] channelList])[1];
     }
 
     /* Validate first DMA channel (must be 0, 1, or 3) */
@@ -524,8 +520,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
  */
 - (void)configureHardwareForDataTransfer:(unsigned int)transferCount
 {
-    IODeviceDescription *deviceDescription;
-    unsigned int *channelList;
     unsigned int dmaChannel;
     unsigned int irq;
     unsigned int sampleRate;
@@ -538,10 +532,8 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     unsigned char modeData;
     unsigned short transferCountNeg;
 
-    deviceDescription = [self deviceDescription];
-    channelList = (unsigned int *)[deviceDescription channelList];
-    dmaChannel = channelList[0];
-    irq = [deviceDescription interrupt];
+    dmaChannel = ((unsigned int *)[[self deviceDescription] channelList])[0];
+    irq = [[self deviceDescription] interrupt];
     sampleRate = [self sampleRate];
     channelCount = [self channelCount];
     dataEncoding = [self dataEncoding];

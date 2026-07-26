@@ -1,8 +1,21 @@
-# drvPCMCIABus divergences against the DR2 reference
+# drvPCMCIABus signature divergences against the DR2 reference
 
-Scope: the Objective-C interface of `PCMCIAKernBus` and its `(Private)` and
-`(Parsing)` categories as declared in `PCMCIABus.drvproj/PCMCIABus.lksproj/`,
-compared against Apple's shipped driver.
+Scope: the Objective-C **interface** of `PCMCIAKernBus` and its `(Private)` and
+`(Parsing)` categories as declared in `PCMCIABus.drvproj/PCMCIABus.lksproj/` —
+method type encodings and ivar layout — compared against Apple's shipped driver.
+
+Companion to `divergences.md` in this directory, which covers the *implementation*
+at function level and is backed by `ledger.json`, `source-map.json` and a clean
+build. The two are complementary: that pass explicitly deprioritised the large
+`PCMCIAKernBus(Private)` methods and left
+`-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` unexamined, which is
+where most of this record's findings sit.
+
+Two findings were reached independently by both passes and agree: the dead
+`parseTuple:` stub (Finding 8 here) and the broken ready-check in
+`waitForSocketReady` (recorded here, fixed there). Where the two records state a
+signature differently, this one is derived directly from `__meth_var_types` and
+should be preferred.
 
 ## Reference
 
@@ -115,15 +128,18 @@ comes back in `al`. Our `enableSocket:` reads it as a signed byte and tests bit
 being the top bit — so that code works by arithmetic coincidence, not by
 contract.
 
-The same idiom one file up is outright broken, and is the sharpest argument for
-finishing this properly. `waitForSocketReady()` declares `unsigned char status`
-(`PCMCIAKernBusPrivate.m:58`) and then tests `if (status < 0)` (`:67`), with the
-comment "Signed char < 0 means bit 7 is set". An `unsigned char` is never
-negative, so that branch is unreachable and the function polls its full 100
-iterations and returns `NO` for every card, ready or not. A real `PCMCIAStatus`
-with a named `ready` bit removes the whole class of error. **This bug is
-pre-existing and was left unchanged** — it is outside this pass's scope and
-deserves its own fix and test.
+The same idiom one file up was outright broken, and is the sharpest argument for
+finishing this properly. `waitForSocketReady()` declared `unsigned char status`
+and then tested `if (status < 0)`, with the comment "Signed char < 0 means bit 7
+is set". An `unsigned char` is never negative, so that branch was unreachable
+and the function polled its full 100 iterations and returned `NO` for every
+card, ready or not. This pass found it but left it alone as out of scope; the
+implementation pass found it independently and fixed it by making `status` a
+plain `char` (see Finding 5 of `divergences.md`).
+
+That fix is correct but still leans on plain `char` being signed. A real
+`PCMCIAStatus` with a named `ready` bit removes the whole class of error, which
+is the standing argument for adopting the type.
 
 ## Findings 2-8 — private-category signatures: **fixed**
 

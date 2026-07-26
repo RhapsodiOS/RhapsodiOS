@@ -1,8 +1,15 @@
-# drvPCIBus divergences against the DR2 reference
+# drvPCIBus signature divergences against the DR2 reference
 
-Scope: the Objective-C interface of `PCIKernBus`, `PCIKernBus(Private)` and
-`PCIResourceDriver` as declared in
-`PCIBus.drvproj/PCIBus.lksproj/`, compared against Apple's shipped driver.
+Scope: the Objective-C **interface** of `PCIKernBus`, `PCIKernBus(Private)` and
+`PCIResourceDriver` as declared in `PCIBus.drvproj/PCIBus.lksproj/` — method
+type encodings and ivar layout — compared against Apple's shipped driver.
+
+Companion to `divergences.md` in this directory, which covers the *implementation*
+of the same driver at function level (control flow, ivar initialisation, error
+codes) and is backed by `ledger.json`, `source-map.json` and a clean build. The
+two do not overlap: that pass examined function bodies, this one examines the
+`__OBJC` metadata that declares them. Both cite the same reference binary and
+the same SHA-256.
 
 ## Reference
 

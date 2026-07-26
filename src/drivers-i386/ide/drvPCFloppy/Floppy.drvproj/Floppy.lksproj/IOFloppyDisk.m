@@ -8,6 +8,7 @@
 #import "IOFloppyDrive.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 
 /*
  * Thread startup function.
@@ -99,7 +100,7 @@ extern unsigned int _FloppyGeometry[];
 		operation[0] = 4;  // Type 4: abort and exit thread
 
 		// Allocate completion lock
-		completionLock = [objc_getClass("NXConditionLock") alloc];
+		completionLock = [NXConditionLock alloc];
 		[completionLock initWith:1];
 		operation[4] = (unsigned)completionLock;
 
@@ -186,7 +187,7 @@ extern unsigned int _FloppyGeometry[];
 	_metadataSize = 0;
 
 	// Allocate operation lock (NXSpinLock)
-	_operationLock = [objc_getClass("NXSpinLock") alloc];
+	_operationLock = [NXSpinLock alloc];
 
 	// Set capacity
 	_capacity = capacity;
@@ -196,7 +197,7 @@ extern unsigned int _FloppyGeometry[];
 	_geometry = geometry;
 
 	// Allocate queue lock (NXConditionLock)
-	_queueLock = [objc_getClass("NXConditionLock") alloc];
+	_queueLock = [NXConditionLock alloc];
 
 	// Clear thread port flag (bit 0)
 	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;

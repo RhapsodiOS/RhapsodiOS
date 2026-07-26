@@ -8,6 +8,7 @@
 #import "Request.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 #import "FloppyVm.h"
 
 // External references for VM functions
@@ -368,7 +369,7 @@ static void docopy(vm_map_t sourceMap,
 	*((unsigned char *)request + 0x0c) = 0;                // +0x0c: abort flag
 	
 	// Allocate lock object
-	lockObject = [objc_getClass("NXConditionLock") alloc];
+	lockObject = [NXConditionLock alloc];
 	*(id *)((char *)request + 0x18) = lockObject;          // +0x18: lock
 	*(unsigned *)((char *)request + 0x20) = numCylinders;  // +0x20: num subrequests
 	*(unsigned *)((char *)request + 0x1c) = 0;             // +0x1c: completed count

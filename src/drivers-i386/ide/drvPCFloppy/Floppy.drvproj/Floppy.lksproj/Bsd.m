@@ -8,6 +8,7 @@
 #import "Bsd.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 #import <sys/buf.h>
 #import <sys/uio.h>
 #import "FloppyVm.h"
@@ -325,7 +326,7 @@ static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 		*(unsigned int *)operation = 2;  // Type 2: eject
 
 		// Allocate completion lock
-		lock = [[objc_getClass("NXConditionLock") alloc] initWith:1];
+		lock = [[NXConditionLock alloc] initWith:1];
 		*(id *)((char *)operation + 0xc) = lock;
 
 		// Lock queue and add operation

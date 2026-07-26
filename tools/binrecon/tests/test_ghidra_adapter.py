@@ -133,6 +133,32 @@ def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_pa
     assert preserved.read_bytes() == payload
 
 
+def test_failure_logs_are_preserved_for_inspection(configured, tmp_path):
+    profile, identity, executable, java = configured
+    staging = tmp_path / "out" / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "ghidra.json"
+
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21.0.4"')
+        native_log = Path(argv[argv.index("-log") + 1])
+        script_log = Path(argv[argv.index("-scriptlog") + 1])
+        native_log.write_text("native diagnostic\n", encoding="utf-8")
+        script_log.write_text("script diagnostic\n", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    with pytest.raises(GhidraAdapterError, match="did not produce a fresh analysis output"):
+        export_with_ghidra(profile, "reference", destination, runner=runner)
+
+    log = tmp_path / "out" / "failed-ghidra-reference.log"
+    script = tmp_path / "out" / "failed-ghidra-reference-script.log"
+    assert log.is_file()
+    assert script.is_file()
+    assert "native diagnostic" in log.read_text(encoding="utf-8")
+    assert "script diagnostic" in script.read_text(encoding="utf-8")
+
+
 def test_deterministic_reruns_use_different_projects_but_identical_output(configured, tmp_path):
     profile, identity, _, _ = configured
     calls = []

@@ -193,6 +193,37 @@ def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str
     return f"{base_message}; rejected output saved to {preserved}"
 
 
+def _preserve_failure_logs(log_path: Path, script_log: Path, artifact: str) -> list[Path]:
+    """Copy Ghidra's aggregated and script logs into the run's output directory.
+
+    The run's staging directory (holding the aggregated log and the raw
+    script log) is deleted once the run ends, so without this the only
+    evidence of a Ghidra failure is the raised error message. Copies by
+    streaming; swallows any failure so a diagnostic never masks the
+    original error.
+    """
+    preserved = []
+    output_directory = log_path.parent.parent
+    for source, name in (
+        (log_path, f"failed-ghidra-{artifact}.log"),
+        (script_log, f"failed-ghidra-{artifact}-script.log"),
+    ):
+        try:
+            target = output_directory / name
+            shutil.copyfile(source, target)
+        except OSError:
+            continue
+        preserved.append(target)
+    return preserved
+
+
+def _failure_error_message(base_message: str, log_path: Path, script_log: Path, artifact: str) -> str:
+    preserved = _preserve_failure_logs(log_path, script_log, artifact)
+    if not preserved:
+        return base_message
+    return f"{base_message}; logs saved to {', '.join(str(path) for path in preserved)}"
+
+
 def _read_snapshot(path: Path, artifact: str) -> dict:
     if path.is_symlink():
         raise GhidraAdapterError("Ghidra output is a symlink")
@@ -603,7 +634,9 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         except subprocess.TimeoutExpired as error:
             entry, _ = _log_entry("native", error.stdout, error.stderr, native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
-            raise GhidraAdapterError(f"Ghidra timed out after {timeout} seconds") from error
+            raise GhidraAdapterError(_failure_error_message(
+                f"Ghidra timed out after {timeout} seconds", log_path, script_log, artifact
+            )) from error
         except OSError as error:
             entry, _ = _log_entry("native", "", str(error), native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
@@ -614,7 +647,12 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         log_entries.append(entry); _publish_log(log_path, log_entries)
         native_needs_fallback = _is_native_loader_rejection(native_diagnostic)
         if completed.returncode == 0 and output.is_file() and not native_needs_fallback:
-            native_document = _read_snapshot(output, artifact)
+            try:
+                native_document = _read_snapshot(output, artifact)
+            except GhidraAdapterError as error:
+                raise GhidraAdapterError(_failure_error_message(
+                    str(error), log_path, script_log, artifact
+                )) from error
             try:
                 _validate_output(native_document, configuration, identity)
             except SemanticValidationError as error:
@@ -625,8 +663,12 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         if completed.returncode != 0 or not output.is_file() or native_needs_fallback:
             if not native_needs_fallback:
                 if completed.returncode == 0:
-                    raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
-                raise GhidraAdapterError(f"Ghidra failed with exit code {completed.returncode}")
+                    raise GhidraAdapterError(_failure_error_message(
+                        "Ghidra did not produce a fresh analysis output", log_path, script_log, artifact
+                    ))
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra failed with exit code {completed.returncode}", log_path, script_log, artifact
+                ))
             try:
                 output.unlink(missing_ok=True)
             except OSError as error:
@@ -642,7 +684,9 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
             except subprocess.TimeoutExpired as error:
                 entry, _ = _log_entry("fallback", error.stdout, error.stderr, native_log, script_log)
                 log_entries.append(entry); _publish_log(log_path, log_entries)
-                raise GhidraAdapterError(f"Ghidra fallback timed out after {timeout} seconds") from error
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra fallback timed out after {timeout} seconds", log_path, script_log, artifact
+                )) from error
             except OSError as error:
                 entry, _ = _log_entry("fallback", "", str(error), native_log, script_log)
                 log_entries.append(entry); _publish_log(log_path, log_entries)
@@ -651,16 +695,25 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
                                   native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
             if completed.returncode != 0:
-                raise GhidraAdapterError(f"Ghidra fallback failed with exit code {completed.returncode}")
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra fallback failed with exit code {completed.returncode}",
+                    log_path, script_log, artifact
+                ))
         if not output.is_file():
-            raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
+            raise GhidraAdapterError(_failure_error_message(
+                "Ghidra did not produce a fresh analysis output", log_path, script_log, artifact
+            ))
         try:
             document = _read_snapshot(output, artifact)
             _validate_output(document, configuration, identity, layout_document)
-        except GhidraAdapterError:
-            raise
+        except GhidraAdapterError as error:
+            raise GhidraAdapterError(_failure_error_message(
+                str(error), log_path, script_log, artifact
+            )) from error
         except Exception as error:
-            raise GhidraAdapterError(f"Ghidra output is invalid: {error}") from error
+            raise GhidraAdapterError(_failure_error_message(
+                f"Ghidra output is invalid: {error}", log_path, script_log, artifact
+            )) from error
         try:
             assert_identity(identity)
         except (OSError, ValueError) as error:

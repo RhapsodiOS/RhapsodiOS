@@ -319,7 +319,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     [self disableChannel: 1];
 
     if ([self isEISAPresent]) {
-        ioReturn = [self setDMATransferWidth:IO_16Bit forChannel:1];
+        ioReturn = [self setDMATransferWidth:IO_16BitWordCount forChannel:1];
         if (ioReturn != IO_R_SUCCESS) {
             IOLog("%s: could not set transfer width to 16 bits, error %d.\n",
                   [self name], ioReturn);

@@ -187,7 +187,7 @@ typedef union {
                 right:4,
                 left:4;
     }       reg;
-    unsigned char data;
+    unsigned char rawValue;
 }       sb16MonoMixerRegister_t;
 
 typedef union {

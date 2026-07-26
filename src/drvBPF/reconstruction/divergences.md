@@ -498,7 +498,8 @@ with `)`. Both conditions are needed; neither alone is sufficient.
 
 Verification, not assertion:
 
-- `tools/binrecon/tests`: **662 passed, 4 skipped** — unchanged.
+- `tools/binrecon/tests`: **665 passed, 4 skipped** — the 662 baseline plus the three
+  regression tests that pin the scanner fix described in §7. No existing test changed.
 - `source_sites` output was dumped across every source directory referenced by every
   committed `source-map.json` in the repo, before and after the change, and diffed. The
   diff is **additive only, everywhere**: **172 sites added across 16 driver source

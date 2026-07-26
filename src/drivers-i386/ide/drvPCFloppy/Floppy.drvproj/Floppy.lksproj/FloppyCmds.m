@@ -480,7 +480,7 @@ static unsigned int _motorChangeCount = 0;
 cleanup:
 	// Abort DMA if still active
 	if (dmaActive) {
-		_dma_mask_chan(2);
+		dma_mask_chan(2);
 		dma_xfer_abort(&dmaStruct);
 		[self releaseDMALock];
 	}

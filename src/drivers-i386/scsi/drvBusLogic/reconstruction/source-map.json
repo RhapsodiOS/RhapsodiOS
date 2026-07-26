@@ -1,0 +1,329 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[BLCController probe:]"
+      ],
+      "size": 426,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 428,
+      "reference_names": [
+        "-[BLCController initFromDeviceDescription:]"
+      ],
+      "size": 1099,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1528,
+      "reference_names": [
+        "-[BLCController maxTransfer]"
+      ],
+      "size": 15,
+      "source_line": 215,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1564,
+      "reference_names": [
+        "-[BLCController free]"
+      ],
+      "size": 170,
+      "source_line": 224,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[BLCController numQueueSamples]"
+      ],
+      "size": 16,
+      "source_line": 247,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1752,
+      "reference_names": [
+        "-[BLCController sumQueueLengths]"
+      ],
+      "size": 16,
+      "source_line": 253,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1768,
+      "reference_names": [
+        "-[BLCController maxQueueLength]"
+      ],
+      "size": 16,
+      "source_line": 259,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1784,
+      "reference_names": [
+        "-[BLCController resetStats]"
+      ],
+      "size": 40,
+      "source_line": 265,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1824,
+      "reference_names": [
+        "-[BLCController executeRequest:buffer:client:]"
+      ],
+      "size": 58,
+      "source_line": 276,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1884,
+      "reference_names": [
+        "-[BLCController resetSCSIBus]"
+      ],
+      "size": 40,
+      "source_line": 300,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 1924,
+      "reference_names": [
+        "-[BLCController interruptOccurred]"
+      ],
+      "size": 330,
+      "source_line": 318,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 2256,
+      "reference_names": [
+        "-[BLCController interruptOccurredAt:]"
+      ],
+      "size": 41,
+      "source_line": 374,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 2300,
+      "reference_names": [
+        "-[BLCController otherOccurred:]"
+      ],
+      "size": 41,
+      "source_line": 379,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 2344,
+      "reference_names": [
+        "-[BLCController receiveMsg]"
+      ],
+      "size": 69,
+      "source_line": 384,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 2416,
+      "reference_names": [
+        "-[BLCController timeoutOccurred]"
+      ],
+      "size": 307,
+      "source_line": 400,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 2724,
+      "reference_names": [
+        "-[BLCController commandRequestOccurred]"
+      ],
+      "size": 391,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 3116,
+      "reference_names": [
+        "-[BLCController probeAtPortBase:]"
+      ],
+      "size": 336,
+      "source_line": 524,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 3452,
+      "reference_names": [
+        "-[BLCController executeCmdBuf:]"
+      ],
+      "size": 303,
+      "source_line": 587,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicController.m"
+    },
+    {
+      "address": 4232,
+      "reference_names": [
+        "_blc_probe_cmd"
+      ],
+      "size": 367,
+      "source_line": 55,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicRoutines.m"
+    },
+    {
+      "address": 4600,
+      "reference_names": [
+        "_blc_reset_board"
+      ],
+      "size": 72,
+      "source_line": 22,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicRoutines.m"
+    },
+    {
+      "address": 4672,
+      "reference_names": [
+        "_blc_setup_mb_area"
+      ],
+      "size": 481,
+      "source_line": 117,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicRoutines.m"
+    },
+    {
+      "address": 5228,
+      "reference_names": [
+        "-[BLCController threadExecuteRequest:]"
+      ],
+      "size": 255,
+      "source_line": 52,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 5484,
+      "reference_names": [
+        "-[BLCController threadResetBus:]"
+      ],
+      "size": 291,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 5776,
+      "reference_names": [
+        "-[BLCController ccbFromCmd:ccb:]"
+      ],
+      "size": 1104,
+      "source_line": 150,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 6880,
+      "reference_names": [
+        "-[BLCController runPendingCommands]"
+      ],
+      "size": 372,
+      "source_line": 344,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 7252,
+      "reference_names": [
+        "-[BLCController commandCompleted:reason:]"
+      ],
+      "size": 478,
+      "source_line": 390,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 7892,
+      "reference_names": [
+        "-[BLCController freeCcb:]"
+      ],
+      "size": 102,
+      "source_line": 543,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 7996,
+      "reference_names": [
+        "-[BLCController completeDMA:length:]"
+      ],
+      "size": 58,
+      "source_line": 557,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 8056,
+      "reference_names": [
+        "-[BLCController abortDMA:length:]"
+      ],
+      "size": 58,
+      "source_line": 573,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    },
+    {
+      "address": 8116,
+      "reference_names": [
+        "_blcTimeout"
+      ],
+      "size": 95,
+      "source_line": 596,
+      "source_path": "src/drivers-i386/scsi/drvBusLogic/BusLogic.drvproj/BusLogic.lksproj/BusLogicThread.m"
+    }
+  ],
+  "reference_sha256": "4CF3A04BC07B7C1B41186BB057EF8376844C7AFA223EE46367418DE466564BC4",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1544,
+      "reference_names": [
+        "-[BLCController numberOfTargets]"
+      ],
+      "size": 17
+    },
+    {
+      "address": 3756,
+      "reference_names": [
+        "_parseConfigSpace"
+      ],
+      "size": 442
+    },
+    {
+      "address": 4200,
+      "reference_names": [
+        "_blc_start_scsi"
+      ],
+      "size": 29
+    },
+    {
+      "address": 5156,
+      "reference_names": [
+        "_blc_unlock_mb"
+      ],
+      "size": 69
+    },
+    {
+      "address": 7732,
+      "reference_names": [
+        "-[BLCController allocCcb]"
+      ],
+      "size": 157
+    },
+    {
+      "address": 8212,
+      "reference_names": [
+        "+[BusLogicSCSIDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8224,
+      "reference_names": [
+        "+[BusLogicSCSIDriverVersion driverKitVersionForBusLogicSCSIDriver]"
+      ],
+      "size": 12
+    }
+  ]
+}

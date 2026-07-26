@@ -368,16 +368,20 @@ def _collect_relocations(modules):
         # not a real fixup.
         if offset >> 32 not in (0, 0xFFFFFFFF):
             raise ExportError(f"malformed fixup target at {address:#x}")
-        # Recover the true signed 32-bit displacement from the low 32 bits,
-        # then add it to base with ordinary (non-modular) arithmetic and
-        # range-check the result. This keeps the integrity property a mask
-        # would discard: a target that actually leaves the 32-bit address
-        # space -- e.g. base=0x2000 with a sub-2**32 offset of 0xFFFF0000,
-        # whose signed value is -0x10000 -- is still rejected instead of
-        # silently wrapping into range.
-        signed = offset & 0xFFFFFFFF
-        if signed >= 0x80000000:
-            signed -= 0x100000000
+        # The sign lives in the upper word, not in bit 31 of the low word:
+        # when the upper word is all ones the value is a negative
+        # displacement sign-extended across all 64 bits, so the true signed
+        # value is recovered from the low 32 bits. When the upper word is
+        # zero, `offset` is already a plain non-negative 32-bit displacement
+        # -- e.g. +0xFFFF0000 -- whose bit 31 is a value bit, not a sign bit,
+        # and must not be reinterpreted as negative. Either way the result is
+        # added to base with ordinary (non-modular) arithmetic and
+        # range-checked, so a target that genuinely leaves the 32-bit address
+        # space is still rejected instead of silently wrapping into range.
+        if offset >> 32 == 0xFFFFFFFF:
+            signed = (offset & 0xFFFFFFFF) - 0x100000000
+        else:
+            signed = offset
         target_address = base + signed
         if not 0 <= target_address <= 0xFFFFFFFF:
             raise ExportError(f"malformed fixup target at {address:#x}")

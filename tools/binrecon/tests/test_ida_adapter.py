@@ -1223,19 +1223,34 @@ def test_relocation_still_rejects_an_offset_that_is_not_a_32bit_sign_extension()
         module._collect_relocations(modules)
 
 
-def test_relocation_still_rejects_a_subrange_offset_whose_sum_with_base_wraps():
-    # Not every large-looking offset is a legitimate 64-bit sign-extension
-    # of a negative 32-bit PowerPC displacement. off=0xFFFF0000 is itself
-    # already a sub-2**32 value (offset >> 32 == 0, same as any ordinary
-    # i386 offset), but as a *signed* 32-bit displacement it is -0x10000,
-    # and base=0x2000 + -0x10000 is negative -- outside the 32-bit address
-    # space. The old masking arithmetic ((base + offset) & 0xFFFFFFFF)
-    # would have silently wrapped this into a plausible-looking in-range
-    # address instead of catching the fact that the target fell out of
-    # range; the range-checked signed arithmetic must still reject it.
-    module = _load_export_analysis_module("binrecon_test_ida_relocation_subrange_wrap")
+def test_relocation_accepts_a_large_positive_offset_with_bit_31_set():
+    # The sign of a legitimate `off` lives in the *upper* word, not in bit 31
+    # of the low word. off=0xFFFF0000 has its upper 32 bits all zero (offset
+    # >> 32 == 0), so it is a plain non-negative 32-bit displacement,
+    # +0xFFFF0000, not a sign-extended negative one -- bit 31 being set here
+    # is a value bit, not a sign bit. base=0x2000 + 0xFFFF0000 = 0xFFFF2000,
+    # which is in range and must be accepted rather than misread as -0x10000
+    # and rejected as malformed.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_large_positive")
     modules = _relocation_fixup_modules({
         0x2E34: _RelocationFixup(type_=4, base=0x2000, off=0xFFFF0000),
+    })
+
+    relocations = module._collect_relocations(modules)
+
+    assert len(relocations) == 1
+    assert relocations[0]["target"] == "address:FFFF2000"
+
+
+def test_relocation_still_rejects_a_sign_extended_negative_offset_that_underflows():
+    # A genuinely out-of-range target: off=0xFFFFFFFFFFFF0000 has its upper
+    # 32 bits all one, so it is a 64-bit sign-extension of a negative 32-bit
+    # displacement, signed value -0x10000. base=0x100 + -0x10000 is negative
+    # -- outside the 32-bit address space -- and must still be rejected by
+    # the range check rather than silently wrapping into range.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_underflow")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x100, off=0xFFFFFFFFFFFF0000),
     })
 
     with pytest.raises(module.ExportError, match="malformed fixup target"):

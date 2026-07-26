@@ -298,5 +298,7 @@ methods). Without `--scope-to-objc` it fails: IDA's PPC linker glue stub for
 external calls (`_objc_msgSend`, `_IOLog`, ...) has no name, and
 `source-map-v1` requires every analyzed function to have one.
 
-Full suite: 745 passed, 4 skipped (741 baseline + 3 tests from the SECTDIFF
-fix + 1 test pinning the range-check hardening).
+Full suite: 746 passed, 4 skipped (741 baseline + 3 tests from the SECTDIFF
+fix + 1 test pinning the range-check hardening + 1 test pinning that the
+displacement's sign is taken from the fixup's upper word, not bit 31 of the
+low word).

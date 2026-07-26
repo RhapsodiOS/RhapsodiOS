@@ -1396,12 +1396,15 @@ helper is the obvious cleanup to reach for, and doing it as written would silent
 the post-write delay and stop matching the reference. Anyone calling it must pass `25`
 explicitly, or fix the macro first.
 
-CLAUDE.md §3 says to remove functions your own changes orphan, so by that rule the excision
-commit should have taken this one with it. Removing it now is binary-neutral — with no
-callers it emits nothing either way, so no gate would move — but it was not done here,
-because these four drivers are already built, parity-checked and ledger-accepted, and this
-document's fix pass does not reopen source. Recording it is the disposition; the removal is
-left as a separate, source-touching change.
+CLAUDE.md §3 says to remove functions your own changes orphan, so the excision commit should
+have taken this one with it. **It has since been removed**, in its own commit, restoring the
+header to the state the excision should have left it in.
+
+The removal is provably binary-neutral and moves no gate. `outbIXMixer` is
+`static __inline__` with zero callers, so the compiler emits nothing for it: the symbol is
+absent from the staged `ES1x88AudioDriver_reloc` both before and after, and `__TEXT,__text`
+is unchanged. That is why it was safe to do without rebuilding, on a driver already built,
+parity-checked and ledger-accepted.
 
 ## What did not change
 

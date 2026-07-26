@@ -620,3 +620,40 @@ def test_build_source_map_leaves_non_overlapping_functions_unaffected():
     assert document["boundary_disputed"] == []
     assert [entry["address"] for entry in document["mapped"]] == [0x1000]
     assert [entry["address"] for entry in document["unmapped"]] == [0x1010]
+
+
+def test_extra_names_resolve_a_source_site_the_symbol_table_cannot():
+    analysis = _analysis([_function(0x2000, 0x10, ["sub_2000"])])
+    macho = {"symbols": []}
+    sites = {"-[Thing doThing]": [("src/thing.m", 12)]}
+
+    document = build_source_map(
+        analysis, macho, sites, extra_names={0x2000: ["-[Thing doThing]"]}
+    )
+
+    assert document["mapped"] == [
+        {
+            "address": 0x2000,
+            "size": 0x10,
+            "reference_names": ["sub_2000"],
+            "source_path": "src/thing.m",
+            "source_line": 12,
+        }
+    ]
+
+
+def test_extra_names_are_merged_with_the_symbol_table_not_substituted_for_it():
+    analysis = _analysis([_function(0x2000, 0x10, ["sub_2000"])])
+    macho = {
+        "symbols": [
+            {"name": "_helper", "address": 0x2000, "binding": "local", "section": "__text"}
+        ]
+    }
+    sites = {"_helper": [("src/thing.c", 3)], "-[Thing doThing]": [("src/thing.m", 12)]}
+
+    document = build_source_map(
+        analysis, macho, sites, extra_names={0x2000: ["-[Thing doThing]"]}
+    )
+
+    # Both names resolve to a site, so the address is genuinely ambiguous.
+    assert [entry["address"] for entry in document["duplicate_candidates"]] == [0x2000]

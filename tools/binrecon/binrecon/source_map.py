@@ -169,7 +169,9 @@ def _overlapping_addresses(functions):
     return overlapping
 
 
-def build_source_map(reference_analysis, macho_document, sites, *, disputed=None):
+def build_source_map(
+    reference_analysis, macho_document, sites, *, disputed=None, extra_names=None
+):
     """Partition every reference function into exactly one source-map bucket."""
     disputed = set() if disputed is None else disputed
     function_addresses = {
@@ -182,6 +184,11 @@ def build_source_map(reference_analysis, macho_document, sites, *, disputed=None
             f"{unmatched_disputed}"
         )
     symbols = defined_symbols(macho_document)
+    if extra_names:
+        merged = {address: set(names) for address, names in symbols.items()}
+        for address, names in extra_names.items():
+            merged.setdefault(address, set()).update(names)
+        symbols = {address: sorted(names) for address, names in merged.items()}
     overlapping = _overlapping_addresses(reference_analysis["functions"])
     mapped, unmapped, duplicates, boundary = [], [], [], []
 

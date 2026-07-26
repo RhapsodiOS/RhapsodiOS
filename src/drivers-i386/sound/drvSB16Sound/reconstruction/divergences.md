@@ -678,7 +678,8 @@ never produces. Our enum's `SB16_BASIC = 1`, `SB16_VIBRA = 2`, `SB_8BIT = 3`,
 
 # Findings
 
-Twenty-five. None is a Task 2 defect.
+Twenty-eight. None is a Task 2 defect. Findings 26 to 28 were added by the review pass and
+appear after the size and instruction sections rather than in numeric order here.
 
 ## Finding 1: `sb16CardParameters_t` has seven members; the reference's has three
 
@@ -1741,8 +1742,8 @@ receiver type, the `BOOL is16BitTransfer` range comparisons and the unused
 | `missing_symbols` | 0 | 0 |
 | `extra_strings` | 8 | **0** |
 | `extra_symbols` | 37 | 33 |
-| staged `_reloc` | 198504 bytes | 254668 bytes |
-| our `__text` | — | **13784** against the reference's 13572 |
+| staged `_reloc` | 198504 bytes | 255328 bytes |
+| our `__text` | — | **13804** against the reference's 13572 |
 | `check_mixer.py` | not run | 35 symbols compared, **no `MISMATCH`** |
 | source-map buckets | 26 / 2 / 0 / 0 = 28 | 26 / 2 / 0 / 0 = 28 |
 | `load_source_map` | not run | `source map OK` |
@@ -1760,7 +1761,13 @@ from our unstripped build: `''`, the two source filenames, the `ioPorts.h` and
 
 **The `_reloc` grew because the driver now does the work Apple's does.** Our unstripped
 build is several times the reference size and that comparison is not meaningful; `__text`
-is, and 13784 against 13572 is 1.6 percent over.
+is, and 13804 against 13572 is 1.7 percent over.
+
+Every figure in this section was re-derived from the staged
+`out/i386/drvSB16Sound/SoundBlaster16.config/SoundBlaster16_reloc` after the final source
+change. An earlier revision recorded 254668 and 13784, which were measured before the
+`stopDMAForChannel:read:` and `updateSampleRate` command-selection fixes (Findings 26 and
+27) added their twenty bytes.
 
 ## The source-map bucket count needs one word of explanation
 
@@ -1779,6 +1786,14 @@ definition itself moved from `SoundBlaster16Inline.h:470` to `:425`.
 Ours is unstripped and its stabs share addresses inside `__TEXT,__text`, which collapses
 every computed size to zero; the helper filters them, which is a no-op on the reference.
 28 functions on both sides, **none missing, none extra, none flagged `LARGER`.**
+
+Every number below was re-derived from the final staged `_reloc` — 8869 of its 8952 nlist
+entries are stabs, leaving 83, of which 28 sit in `__TEXT,__text`. Each figure quoted here
+came back unchanged from the run that first recorded it, so the twenty bytes Findings 26
+and 27 added to `__text` fell in functions this section does not quote. Note that the
+reference sizes are gap-to-next-symbol on that side too, so they are IDA's exact extents
+rounded up to the next 4-byte boundary — 2992 for `initializeHardware`'s 2991, 3032 for
+`timeoutOccurred`'s 3030, 288 for `+probe:`'s 285.
 
 Exact matches: `+probe:` 288, `updateOutputAttenuationLeft` 312,
 `updateOutputAttenuationRight` 312, `getDataEncodings:count:` 32, `getSamplingRates:count:`

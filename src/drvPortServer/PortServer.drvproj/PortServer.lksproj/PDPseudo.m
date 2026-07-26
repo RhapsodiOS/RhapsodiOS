@@ -206,8 +206,6 @@ static char _PseudoDeviceLoaded = '\0';
     /* Note: Decompiled shows return 0xfffffd42 but signature is void */
 }
 
-}
-
 /*
  * enqueueEvent:data:sleep: - Enqueue event with data
  * event: Event code

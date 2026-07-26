@@ -6,7 +6,9 @@ import pytest
 
 from binrecon.schema import (
     SemanticValidationError,
+    json_node_counts,
     load_json,
+    preflight_json,
     validate_analysis_semantics,
     validate_document,
 )
@@ -55,6 +57,32 @@ def test_analysis_rejects_duplicate_function_start_addresses():
 
     with pytest.raises(SemanticValidationError, match="duplicate function.*4096"):
         validate_analysis_semantics(document)
+
+
+def test_json_node_counts_breakdown_and_total_match_preflight_traversal():
+    document = {"a": [1, 2, 3], "b": {"x": 1, "y": 2}}
+
+    total, breakdown = json_node_counts(document)
+
+    assert breakdown == {"a": 4, "b": 3}
+    assert total == 1 + sum(breakdown.values())
+
+    preflight_json(document, max_nodes=total)
+    with pytest.raises(ValueError, match="JSON node limit exceeded"):
+        preflight_json(document, max_nodes=total - 1)
+
+
+def test_json_node_counts_non_dict_root_returns_empty_breakdown():
+    document = [1, [2, 3], "x"]
+
+    total, breakdown = json_node_counts(document)
+
+    assert breakdown == {}
+    assert total == 6
+
+    preflight_json(document, max_nodes=total)
+    with pytest.raises(ValueError, match="JSON node limit exceeded"):
+        preflight_json(document, max_nodes=total - 1)
 
 
 def test_ledger_rejects_unknown_status():

@@ -68,6 +68,29 @@ def preflight_json(value, error_type=ValueError, *,
         raise error_type(f"unsupported JSON type: {type(item).__name__}")
 
 
+def json_node_counts(value):
+    """Return (total_nodes, {top_level_key: nodes}) for a JSON-like document.
+
+    Diagnostic only: counts the same nodes preflight_json counts, so a caller
+    can report which part of a rejected document dominates.
+    """
+    if not isinstance(value, dict):
+        return _count_nodes(value), {}
+    breakdown = {key: _count_nodes(child) for key, child in value.items()}
+    return 1 + sum(breakdown.values()), breakdown
+
+
+def _count_nodes(value) -> int:
+    stack = [value]; count = 0
+    while stack:
+        item = stack.pop(); count += 1
+        if isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, dict):
+            stack.extend(item.values())
+    return count
+
+
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as stream:
         document = json.load(stream)

@@ -60,8 +60,10 @@ covers their functions, not the kernel's other ~4100 symbols.
 The PPC kernel (`mach_kernel`, 2983828 bytes) is big-endian and is not a
 comparison target for this i386 work.
 
-Diagnosing why our build omits the three PCMCIA modules (§2.1) is tracked
-separately — see §5. No boot testing and no QEMU run.
+Adding the three PCMCIA modules to the kernel build is out of scope. Their
+absence is an upstream Darwin 0.3 omission (§2.1), not a defect here, so putting
+them in is a feature decision for its own effort. No boot testing and no QEMU
+run.
 
 ## 2. Findings that shaped this design
 
@@ -255,9 +257,11 @@ the only source of truth, so a bug in it produces confidently wrong mappings.
 Cross-check the recovered IMPs against the analyzers' independently discovered
 function boundaries; they should coincide.
 
-**The PCMCIA half cannot be parity-checked against our kernel** until the build
-gap in §2.1 is closed, because those three modules are absent from our binary.
-The report pass is unaffected — it compares Apple's binary against our source.
+**The PCMCIA half cannot be parity-checked against our kernel**, because those
+three modules are absent from our binary — an upstream Darwin 0.3 omission
+(§2.1), so this limitation is permanent rather than something a fix will lift.
+Those methods can only be compared one-sided, against Apple's binary and our
+source. The report pass is otherwise unaffected.
 
 **Struct-return and calling-convention assumptions** carried over from the driver
 work remain unverified without a build host.
@@ -286,9 +290,10 @@ ledger.
 *Verify:* the three §4 checks from the driver effort, to the extent a build host
 allows.
 
-**Phase 4 — the build gap.** Record what is known about §2.1 in the divergence
-document and decide whether fixing it belongs here or in its own effort. Fix the
-`SOURCE_DIRS` omission, which is independent and safe.
+**Phase 4 — the missing modules.** Record §2.1 in the divergence document. The
+cause is now known — an upstream Darwin 0.3 omission — so nothing is to be
+diagnosed here; adding the modules to the kernel build is a separate feature
+decision. Fix the `SOURCE_DIRS` omission, which is independent and safe.
 
 ## 7. Deliverables
 

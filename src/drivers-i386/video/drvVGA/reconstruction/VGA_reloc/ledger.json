@@ -1,0 +1,918 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 0, size 227, 6 basic blocks and 78 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 1; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay _registerWithED]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 227,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 228,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 228, size 237, 1 basic blocks and 70 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 2; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_SetET4000Brightness"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 237,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree on address 468, size 103 and 36 instructions, and disagree only on basic-block count (IDA 8, Ghidra 6): IDA splits the if (colr_mode) diamond one edge finer. angr is disabled for this profile, so this is a two-analyzer consensus; the Mach-O symbol table independently names this address.",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 3; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "_select_read_segment"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 103,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 572,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree on address 572, size 102 and 36 instructions, and disagree only on basic-block count (IDA 7, Ghidra 6): IDA splits the if (colr_mode) diamond one edge finer. angr is disabled for this profile, so this is a two-analyzer consensus; the Mach-O symbol table independently names this address.",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 4; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "_select_write_segment"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 102,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 676,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 676, size 110, 1 basic blocks and 39 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 5; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_select_read_plane"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 110,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 788,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 788, size 127, 1 basic blocks and 44 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 6; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_select_write_plane"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 127,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 916,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 916, size 407, 1 basic blocks and 151 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 7; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_vga_read_bpp4planar_to_bpp2packed32"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 407,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 1324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 1324, size 428, 1 basic blocks and 160 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 8; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_vga_write_bpp2packed32_to_bpp4planar"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 428,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 1752,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 1752, size 816, 16 basic blocks and 271 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 9; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_VGADisplayCursor"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 816,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 2568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 2568, size 660, 16 basic blocks and 216 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 10; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_VGARemoveCursor"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 660,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 3228,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 3228, size 100, 5 basic blocks and 38 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 11; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay hideCursor:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 100,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 3328,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 3328, size 517, 25 basic blocks and 167 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 12; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay moveCursor:frame:token:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 517,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 3848,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 3848, size 453, 20 basic blocks and 147 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 13; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay showCursor:frame:token:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 453,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4304,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4304, size 47, 1 basic blocks and 15 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 14; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay generateNameAndUnit:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 47,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4352,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4352, size 9, 1 basic blocks and 6 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 15; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay map]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 9,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4364,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4364, size 84, 4 basic blocks and 39 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 16; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay unmap]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 84,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4448,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4448, size 144, 1 basic blocks and 53 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 17; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[IOVGADisplay probe:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 144,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4592,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4592, size 41, 1 basic blocks and 15 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 18; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 41,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4636,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4636, size 358, 17 basic blocks and 110 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 19; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 358,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 4996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 4996, size 64, 3 basic blocks and 27 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 20; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay setBrightness:token:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 64,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 5060,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 5060, size 437, 20 basic blocks and 139 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 21; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay getIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 437,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 5500,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 5500, size 295, 14 basic blocks and 104 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 22; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay setIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 295,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 5796,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 5796, size 29, 1 basic blocks and 12 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 23; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay allocateConsoleInfo]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 29,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 5828,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 5828, size 114, 3 basic blocks and 42 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 24; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay enterSVGAMode:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 114,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 5944,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 5944, size 166, 1 basic blocks and 59 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 25; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay int10:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 166,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6112,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6112, size 106, 13 basic blocks and 51 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 26; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_find_parameter"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 106,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6220,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6220, size 149, 20 basic blocks and 59 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 27; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IOVGADisplay didBootWithDefaultConfig]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 149,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6372,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra does not recover a function at 6372 at all. IDA does, and the Mach-O symbol table names this address with the next symbol at 6384, so the 12-byte extent is not in doubt; but with angr disabled for this profile the entry rests on IDA plus the linker-emitted symbol table rather than on two analyzers. Recorded as reduced coverage (divergences.md, VGA_reloc finding 28).",
+          "No source counterpart exists and none will be written: this entry is emitted by the Kernel Server project type, not by hand (divergences.md, VGA_reloc finding 28). The source map places it in unmapped under the build-generated reason class."
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "+[VGAKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "The Kernel Server project type generates this method from the .lksproj's NAME; it returns the address of the __common symbol _VGA_instance that the same project type names in the Loaded Server 'Instance Var' section. It is not hand-written source and cannot be reproduced by writing any, so it is recorded as an intentional mismatch rather than left for the rewrite (divergences.md, VGA_reloc finding 28).",
+      "reviewer": "Pat Raynor",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 6384,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6384, size 12, 1 basic blocks and 6 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists and none will be written: this entry is emitted by the Kernel Server project type, not by hand (divergences.md, VGA_reloc finding 29). The source map places it in unmapped under the build-generated reason class."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[VGAVersion driverKitVersionForVGA]"
+      ],
+      "reason": "The Kernel Server project type generates this method from the project's DriverKitVersion; it returns the constant 500. It is not hand-written source and cannot be reproduced by writing any, so it is recorded as an intentional mismatch rather than left for the rewrite (divergences.md, VGA_reloc finding 29).",
+      "reviewer": "Pat Raynor",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 6396,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6396, size 267, 11 basic blocks and 82 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 30; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 267,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6664,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6664, size 107, 5 basic blocks and 34 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 31; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 107,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6772,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 6772, size 696, 21 basic blocks and 232 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 32; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:smmport:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 696,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 7468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 7468, size 44, 1 basic blocks and 19 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 33; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 44,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 7512,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 7512, size 16, 1 basic blocks and 8 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 34; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS scratchSegment]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 7528,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 7528, size 22, 1 basic blocks and 10 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 35; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[vidBIOS realToVirtual::]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 22,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 7552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra disagree on this function's extent: IDA gives the primary chunk 8088 bytes and 1431 instructions, Ghidra 6931 and 1408, and they fragment the remainder along entirely different boundaries. angr numerically agreed with IDA on 7552/8088 but produced a phantom six-byte function at 7760 that misdisassembled bytes both other tools read correctly, which is why it is disabled for this profile. The size recorded here is IDA's, which is what the source map uses. No analyzer's interior boundaries are trusted; the 67 unnamed fragments inside the extent (1161 bytes, 7912-15206) are the per-opcode handlers and the 2288 bytes from 15760 to the end of __text are dispatch tables (divergences.md, VGA_reloc finding 36).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 36; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "_emu486"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 8088,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15640,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA gives this 81 bytes and 37 instructions, reaching the last ret of the sixteen setcc stubs; Ghidra gives 17 bytes and 5, taking only the dispatch head and treating each stub as a separate body. The source map and this ledger use IDA's 81, which is the extent the jump table jpt_3D22 at 17984 covers. angr is disabled for this profile (divergences.md, VGA_reloc finding 37).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 37; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "sub_00003D18"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 81,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15721,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra agree exactly on address 15721, size 37, 3 basic blocks and 12 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 38; no replacement source has been written, so the status is unexamined."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "sub_00003D69"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 37,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "489D86652B8718237052F10A551FC6615B4B045F6614DCB790CFB73272C15B96",
+  "schema_version": "ledger-v1"
+}

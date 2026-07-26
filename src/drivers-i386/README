@@ -39,14 +39,16 @@ network
  * drvVMwareVMXNet - complete
 
 scsi
- * drvAdaptec6X60 - needs compiled and then tested
- * drvAdaptec1542B - needs compiled and then tested
- * drvAdaptec2940 - needs compiled and then tested
+ (see docs/drivers/scsi-reconstruction.md - four of these are stubs on the
+  wrong hardware model, not partial reconstructions)
+ * drvAdaptec6X60 - stub on the wrong architecture; reconstruction in progress
+ * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
+ * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
  * drvAMDPCSCSIDriver - complete
- * drvBusLogic - needs compiled and then tested
- * drvBusLogicFP - needs compiled and then tested
- * drvDPT2000 - needs compiled and then tested
- * drvSym53C8xx - needs compiled and then tested
+ * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
+ * drvBusLogicFP - stub, 7/123 reference functions
+ * drvDPT2000 - stub, 10/55 reference functions; missing the whole EATASCSIBus class
+ * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
 
 sound
  * drvBeepSound - needs compiled and then tested

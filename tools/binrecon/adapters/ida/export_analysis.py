@@ -464,7 +464,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         zero_fill = (
             segment.type == ida_segment.SEG_BSS
             or segment.type == getattr(ida_segment, "SEG_XTRN", None)
-            or segment_class in ("BSS", "COMMON", "XTRN", "EXTERN")
+            or segment_class in ("BSS", "COMMON", "XTRN", "EXTERN", "ABS")
         )
         if zero_fill:
             contents_hash = _hash_zeros(segment_size)

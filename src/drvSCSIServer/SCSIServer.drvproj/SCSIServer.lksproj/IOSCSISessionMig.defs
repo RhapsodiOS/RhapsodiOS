@@ -1,0 +1,151 @@
+/*
+ * IOSCSISessionMig.defs
+ *
+ * MiG interface for the SCSIServer IOSCSISession Mach RPC surface.
+ * Reconstructed from the reference binary's 18 __XIOSCSISession_* server
+ * stubs (base message ID 4242) and cross-checked against the hand-written
+ * IOSCSISession_* wrappers already in this tree. See
+ * src/drvSCSIServer/reconstruction/divergences.md and task-9-report.md
+ * for the evidence behind each routine's signature.
+ *
+ * The subsystem name must be IOSCSISessionMig (not IOSCSISession) so that
+ * pb_makefiles generates IOSCSISessionMig.h rather than a colliding
+ * IOSCSISession.h.
+ */
+
+subsystem IOSCSISessionMig 4242;
+
+#include <mach/std_types.defs>
+
+/* A device name, passed in as a bounded C string (max 80 chars, matching
+ * the reference's own message-size check: msgh_size - 0x1C <= 0x50). */
+type IOSCSIDeviceName_t = c_string[*:80];
+
+/* A 64-bit SCSI-3 target or LUN identifier, transmitted as a pair of
+ * 32-bit words (high, low) - matches the reference's fixed 8-byte
+ * argument slot and the wrapper header's "unsigned int *" (2-element)
+ * signature. */
+type IOSCSITargetLUN_t = struct[2] of unsigned;
+
+/* Legacy (pre-SCSI-3) request structure, opaque to MiG - only the size
+ * (88 bytes) is recovered, from the reference's fixed msgh_size checks. */
+type IOSCSIRequest_t = array[88] of char;
+
+/* SCSI-3 request structure, opaque to MiG - size (108 bytes) recovered
+ * the same way. */
+type IOSCSI3Request_t = array[108] of char;
+
+/* An I/O range {start, size}; see driverkit/driverTypes.h's IORange and
+ * libDriver/driverServer.defs's IOPPCMemoryRange for the same struct[2]
+ * of int convention already used in this tree. */
+type IORange = struct[2] of unsigned;
+
+/* Scatter-gather range lists. The two scatter routines have different
+ * maximum element counts because the reference bounds the *total*
+ * message size, and the legacy and SCSI-3 request structures leave a
+ * different amount of room: legacy scatter allows up to 0x380 (896)
+ * bytes of range data (112 elements); SCSI-3 scatter allows up to
+ * 0x368 (872) bytes (109 elements). Both bounds are transcribed as
+ * found, not rounded to a common value. */
+type IORangeArray112_t = array[*:112] of IORange;
+type IORangeArray109_t = array[*:109] of IORange;
+
+/*
+ * free - the reference's __XIOSCSISession_free unconditionally stores
+ * MIG_NO_REPLY (-305) as the retcode on its success path, discarding the
+ * implementation call's actual return value entirely (every other
+ * routine below propagates the real result). That is the standard MiG
+ * signature of a simpleroutine, consistent with a session-destroying
+ * call whose reply port may not survive to receive a reply.
+ */
+simpleroutine IOSCSISession_free(
+        server          : mach_port_t);
+
+routine IOSCSISession_initForDevice(
+        server          : mach_port_t;
+    in  deviceName      : IOSCSIDeviceName_t);
+
+routine IOSCSISession_releaseAllUnits(
+        server          : mach_port_t);
+
+routine IOSCSISession_reserveTarget(
+        server          : mach_port_t;
+    in  target          : char;
+    in  lun             : char);
+
+routine IOSCSISession_releaseTarget(
+        server          : mach_port_t;
+    in  target          : char;
+    in  lun             : char);
+
+routine IOSCSISession_reserveSCSI3Target(
+        server          : mach_port_t;
+    in  target          : IOSCSITargetLUN_t;
+    in  lun             : IOSCSITargetLUN_t);
+
+routine IOSCSISession_releaseSCSI3Target(
+        server          : mach_port_t;
+    in  target          : IOSCSITargetLUN_t;
+    in  lun             : IOSCSITargetLUN_t);
+
+routine IOSCSISession_numberOfTargets(
+        server          : mach_port_t;
+    out numTargets      : unsigned);
+
+routine IOSCSISession_executeRequest(
+        server          : mach_port_t;
+    inout request       : IOSCSIRequest_t;
+    in  client          : mach_port_t;
+    in  bufferSize      : int;
+    out result          : int);
+
+routine IOSCSISession_executeSCSI3Request(
+        server          : mach_port_t;
+    inout request       : IOSCSI3Request_t;
+    in  client          : mach_port_t;
+    in  bufferSize      : int;
+    out result          : int);
+
+routine IOSCSISession_executeRequestScatter(
+        server          : mach_port_t;
+    inout request       : IOSCSIRequest_t;
+    in  client          : mach_port_t;
+    in  ioRanges        : IORangeArray112_t;
+    out result          : int);
+
+routine IOSCSISession_executeSCSI3RequestScatter(
+        server          : mach_port_t;
+    inout request       : IOSCSI3Request_t;
+    in  client          : mach_port_t;
+    in  ioRanges        : IORangeArray109_t;
+    out result          : int);
+
+routine IOSCSISession_executeRequestOOLScatter(
+        server          : mach_port_t;
+    inout request       : IOSCSIRequest_t;
+    in  client          : mach_port_t;
+    in  oolData         : pointer_t;
+    out result          : int);
+
+routine IOSCSISession_executeSCSI3RequestOOLScatter(
+        server          : mach_port_t;
+    inout request       : IOSCSI3Request_t;
+    in  client          : mach_port_t;
+    in  oolData         : pointer_t;
+    out result          : int);
+
+routine IOSCSISession_resetSCSIBus(
+        server          : mach_port_t;
+    out result          : unsigned);
+
+routine IOSCSISession_returnFromScStatus(
+        server          : mach_port_t;
+    in  scStatus        : unsigned);
+
+routine IOSCSISession_maxTransfer(
+        server          : mach_port_t;
+    out maxTransfer     : unsigned);
+
+routine IOSCSISession_getDMAAlignment(
+        server          : mach_port_t;
+    out alignment       : unsigned);

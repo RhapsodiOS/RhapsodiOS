@@ -13,7 +13,8 @@
             Makefile,
             Makefile.preamble,
             Makefile.driver_preamble,
-            Makefile.postamble
+            Makefile.postamble,
+            IOSCSISessionMig.defs
         );
         PUBLIC_HEADERS = ();
     };

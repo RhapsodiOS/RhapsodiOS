@@ -957,6 +957,7 @@ void ttyiops_start(struct tty *tp)
         objc_msgSend(portSession, @selector(setState:mask:),
                      0x8000000, 0x8000000);
     }
+}
 
 /*
  * ttyiops_stop - Stop output on the TTY device
@@ -1776,21 +1777,6 @@ void ttyiops_optimiseInput(struct tty *tp, struct termios *t)
     /* Execute second event: 0x55 with the determined event2 data */
     objc_msgSend(portSession, @selector(executeEvent:data:), 0x55, event2);
 }
-
-/*
- * ttyiops_waitForDCD - Wait for DCD (carrier detect) signal
- * Stub function - implementation needed
- */
-int ttyiops_waitForDCD(struct tty *tp, int flag)
-{
-    /* TODO: Implement DCD waiting logic */
-    /* This function should:
-     * - Check current DCD state
-     * - Sleep waiting for carrier if needed
-     * - Handle CLOCAL flag (local mode, ignore carrier)
-     * - Return appropriate error codes
-     */
-    return 0;
 
 /*
  * ttyiops_read - Read from TTY device

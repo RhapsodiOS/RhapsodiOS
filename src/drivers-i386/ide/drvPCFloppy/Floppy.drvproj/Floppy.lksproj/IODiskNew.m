@@ -200,7 +200,7 @@
 	_nextLogicalDisk = nil;
 	
 	// Create a new NXLock for logical disk operations (offset 0x11c)
-	_LogicalDiskLock = [[NXLock alloc] init];
+	_LogicalDiskLock = [NXLock new];
 	
 	// Call superclass registerDevice
 	result = [super registerDevice];

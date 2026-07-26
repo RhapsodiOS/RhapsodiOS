@@ -3262,14 +3262,22 @@ cannot register a character device.
 scope in `ttyiops.m`, before `portServeropen`. Coordinate with part 2's finding
 on `_portServeropen`, which is what consumes it.
 
-**Outcome (Task 8):** Applied, but **in `PortServer.m` rather than `ttyiops.m`, deliberately.** The
-symbol is `local` and its consumers are the three wrappers Finding 42 moves into
-`PortServer.m`, so a `static` definition in `ttyiops.m` would be unreachable from them;
-§5.7's own "honest limit" flags this exact ambiguity and Finding 42's `__module_info`
-evidence resolves it. The 14 slots are §5.7's decode, spelled with `conf.h`'s own `eno_*`
-macros, `(reset_fcn_t *)nulldev` for `d_reset`, literal `0` for `d_ttys` and `D_TTY` for
-`d_type`. Data transcribed from the relocation table, not re-read from the file image; it
-sets no ledger status.
+**Outcome (Task 8):** Applied. The 14 slots are §5.7's decode, spelled with `conf.h`'s own
+`eno_*` macros, `(reset_fcn_t *)nulldev` for `d_reset`, literal `0` for `d_ttys` and
+`D_TTY` for `d_type`. Data transcribed from the relocation table, not re-read from the
+file image; it sets no ledger status.
+
+The Task 8 pass first put the definition in `PortServer.m`, `static`, arguing that the
+symbol was `local` and so a definition in `ttyiops.m` would be unreachable from the
+wrappers Finding 42 moved into `PortServer.m`. **That rationale was backwards and the
+placement has been corrected: the definition is now in `ttyiops.m`, non-`static`, declared
+`extern struct cdevsw ttyiops_devsw;` in `ttyiops.h`, and `PortServer.m` only references
+it.** See Section 13's `N_PEXT` bullet for the symbol-table evidence. In short:
+`_ttyiops_devsw` is one of the reference's five `N_PEXT` symbols — non-`static` in Apple's
+source — while all seven `ttyiops_*` entry points whose addresses it takes are `0x0e`,
+i.e. genuinely `static`. A static function's address can only be taken inside its own
+translation unit, so the table had to be defined in `ttyiops.m`, and non-`static`
+precisely so `PortServer.m` could name it. The 14 slot values are unchanged by the move.
 
 ---
 
@@ -4318,6 +4326,32 @@ report pass's original claim and its correction both stay on the record.
   bytes. `struct tty *` would have made every one of those writes out of bounds of the
   pointed-to type.
 
+- **`local` in this document does not mean `static`; three of the data symbols §5.5 calls
+  `static` are `N_PEXT`.** §5.5's "Every one of these is `local` (i.e. `static`)" and
+  §5.7's closing paragraph are both wrong, and Section 12's open question "Whether
+  `ttyiops_devsw` should be `static`" is answered by reading `n_type` rather than the
+  analyzer's coarse `local`/`external` binding. The reference's symbol table has exactly
+  **five** `N_PEXT` (`0x1e`) symbols — private-external, i.e. non-`static` in Apple's
+  source and made file-local only by the static link:
+
+  ```
+  _portServerMajor       0x1e  __data  32772
+  _ttyiopsMap            0x1e  __data  32776
+  _ttyiops_attachDevice  0x1e  __text   8768
+  _ttyiops_devsw         0x1e  __data  33072
+  __divdi3               0x1e  __text  15752
+  ```
+
+  By contrast `_ttyiops_open`, `_ttyiops_close`, `_ttyiops_read`, `_ttyiops_write`,
+  `_ttyiops_ioctl`, `_ttyiops_stop` and `_ttyiops_select` are all `0x0e` — `N_SECT` with
+  neither `N_EXT` nor `N_PEXT` — and so were genuinely `static`. Since `ttyiops_devsw`
+  takes the address of all seven, and a `static` function's address can only be taken
+  inside its own translation unit, **Apple defined `ttyiops_devsw` in `ttyiops.m`,
+  non-`static`.** Corroborating: `_ttyiops_speeds` is at 32888 and is 23 × 8 = 184 bytes,
+  ending at exactly 33072 where `_ttyiops_devsw` begins — adjacent in `__data`, hence the
+  same translation unit, in that order. This supersedes Finding 60's first outcome and
+  Section 14's `_ttyiopsMap` / `_portServerMajor` acceptance bullet.
+
 - **A twelfth defensive NULL guard the Finding 79 table missed.** `ttyiops_init`'s
   `if (tp == NULL) return;` is not in the table and was therefore left in place. 12260–12420
   was never read, so whether the reference's prologue also lacks a test is unknown.
@@ -4330,10 +4364,11 @@ next pass inherits.
 - **`+serverMajor:`'s argument spelling — the last piece of Finding 36.** The reference
   loads eight of its eleven arguments out of `ttyiops_devsw`'s fields (`mov ds:off_81xx`);
   ours passes the same eight functions by name. Part 2 recorded the by-name spelling as a
-  considered choice while `ttyiops_devsw` did not exist; part 3 created `ttyiops_devsw` in
-  the same file, which makes the field spelling possible, but declined to overturn part 2's
-  decision on part 2's own finding. 4692 is held at `control-flow-confirmed` for exactly
-  this reason.
+  considered choice while `ttyiops_devsw` did not exist; part 3 created `ttyiops_devsw`,
+  which makes the field spelling possible, but declined to overturn part 2's decision on
+  part 2's own finding. The table now lives in `ttyiops.m` and is declared in `ttyiops.h`,
+  so it is still in scope in `PortServer.m` and the field spelling remains available. 4692
+  is held at `control-flow-confirmed` for exactly this reason.
 
 - **`ttyiops.m`'s roughly 120 literal byte offsets.** `ttyiops.m` still reaches
   `ttyiops_state`'s fields as `((unsigned char *)tp)[0x15c]`, `((id *)tp)[0xe8/4]` and so
@@ -4353,14 +4388,20 @@ next pass inherits.
   `_portListLock`, 33164 `_portList`) is meant to be reproduced by declaration order, a
   one-line swap is still owed.
 
-- **Two accepted divergences that no ledger entry can carry.** `_ttyiopsMap` (Finding 45)
-  and `_portServerMajor` (part 3's out-of-list repair) are `local` in the reference but must
-  stay non-`static` in our tree while two translation units reference them. Both are data
-  symbols, and `ledger.json` has entries only for the 113 functions, so these acceptances
-  live here and nowhere else. `_portServerMajor` also fixed a pre-existing link break that
-  no finding raised: `ttyiops.h` declared `extern int portServerMajor;` while `PortServer.m`
-  defined `static int _portServerMajor` — two different C identifiers, the second not
-  externally visible, so `ttyiops.m`'s six references resolved to nothing.
+- ~~**Two accepted divergences that no ledger entry can carry.**~~ **Withdrawn — there was
+  never anything to accept.** The Task 8 pass booked `_ttyiopsMap` (Finding 45) and
+  `_portServerMajor` (part 3's out-of-list repair) as accepted divergences on the grounds
+  that they are "`local` in the reference but must stay non-`static` in our tree". Both are
+  `N_PEXT`, i.e. **non-`static` in Apple's source** (see Section 13); our non-`static`
+  spelling therefore *matches* the reference and no divergence exists. Nothing was booked in
+  `ledger.json` — it has entries only for the 113 functions — so no ledger entry needed
+  correcting either.
+
+  What remains true, and is a repair rather than an acceptance: `_portServerMajor` fixed a
+  pre-existing link break that no finding raised. `ttyiops.h` declared
+  `extern int portServerMajor;` while `PortServer.m` defined `static int _portServerMajor`
+  — two different C identifiers, the second not externally visible, so `ttyiops.m`'s six
+  references resolved to nothing.
 
 - **No compile gate anywhere in Tasks 7 or 8.** Nothing in this driver has been built. Every
   claim in this document and in `ledger.json` rests on reading the reference disassembly.

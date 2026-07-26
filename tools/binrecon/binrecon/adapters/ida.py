@@ -78,8 +78,14 @@ def _architecture(profile):
 
 
 def _mapping_manifest(profile, identity: InputIdentity) -> dict:
+    architecture = _architecture(profile)
     try:
         macho = read_macho(identity.path)
+        if macho["input"]["architecture"] != architecture.name:
+            raise IdaAdapterError(
+                f"profile architecture {architecture.name!r} does not match "
+                f"artifact architecture {macho['input']['architecture']!r}"
+            )
         sources = macho["extensions"]["macho"]["segments"]
         runs = [{"address": item["address"], "offset": item["offset"],
                  "size": min(item["size"], item["file_size"])} for item in sources]
@@ -90,7 +96,6 @@ def _mapping_manifest(profile, identity: InputIdentity) -> dict:
                   key=lambda item: (item["address"], item["offset"], item["size"]))
     if not runs:
         raise IdaAdapterError("no authoritative artifact mapping runs are available")
-    architecture = _architecture(profile)
     manifest = {"schema_version": "ida-mapping-v1",
                 "input": {"size": identity.size, "sha256": identity.sha256,
                           "architecture": architecture.name,

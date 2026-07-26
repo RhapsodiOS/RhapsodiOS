@@ -319,4 +319,4 @@ def test_ppc_profiles_are_reference_only_ida_runs(path):
     assert document["analyzers"]["ida"]["enabled"] is True
     assert document["analyzers"]["ghidra"]["enabled"] is False
     assert document["analyzers"]["angr"]["enabled"] is False
-    assert document["output_dir"].startswith("../out/")
+    assert document["output_dir"] == f"../out/{path.stem}"

@@ -325,6 +325,24 @@ def test_i386_mapping_manifest_still_names_metapc(tmp_path):
     assert manifest["input"]["ida_processor"] == "metapc"
 
 
+def test_ppc_profile_against_an_i386_artifact_is_rejected(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="i386", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path, architecture="ppc", endianness="big")
+
+    with pytest.raises(IdaAdapterError, match="ppc.*i386"):
+        ida_host._mapping_manifest(profile, profile.reference_identity)
+
+
+def test_i386_profile_against_a_ppc_artifact_is_rejected(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path)
+
+    with pytest.raises(IdaAdapterError, match="i386.*ppc"):
+        ida_host._mapping_manifest(profile, profile.reference_identity)
+
+
 def test_stale_temp_cannot_be_used_when_ida_does_not_write(tmp_path):
     input_path = tmp_path / "input.i64"
     input_path.write_bytes(b"sample")
@@ -1471,7 +1489,7 @@ def test_exporter_rejects_a_little_endian_database_for_a_ppc_manifest(tmp_path):
 
     script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
     spec = importlib.util.spec_from_file_location(
-        "binrecon_test_ida_exporter_ppc_wrong_processor", script)
+        "binrecon_test_ida_exporter_ppc_wrong_endian", script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -1479,10 +1497,12 @@ def test_exporter_rejects_a_little_endian_database_for_a_ppc_manifest(tmp_path):
     input_path.write_bytes(b"\x00\x00\x00\x00")
     identity = identify(input_path)
 
-    modules = _fake_modules(identity, procname="metapc", is_be=False)
+    # Processor matches ("ppc"); only endianness disagrees with the manifest,
+    # so this pins the endianness branch rather than the processor branch.
+    modules = _fake_modules(identity, procname="ppc", is_be=False)
     mapping = _mapping(identity, architecture="ppc", endianness="big", ida_processor="ppc")
 
-    with pytest.raises(module.ExportError, match="processor"):
+    with pytest.raises(module.ExportError, match="endian"):
         module.collect_analysis(
             input_path, identity.size, identity.sha256, modules=modules, mapping=mapping
         )

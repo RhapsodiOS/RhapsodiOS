@@ -292,13 +292,58 @@ starts at 0x10). Both are candidates for a future reconstruction's
 scattered/difference-form relocations and all HI16/HA16-LO16 pairs in both
 binaries still agree.
 
+### Hand-verified relocation sites (§5.3)
+
+Ten `lis`/`addi`/`ori`/`bl` sites in `SCSIServer_reloc`'s `__TEXT,__text`
+(offset = 2492 + address) were disassembled by hand and checked against
+`read_macho`'s fused `relocations` output. `__DATA,__bss` starts at address
+16524 (`_server` at +0, `_sSessionIndex` at +4); `__TEXT,__const` starts at
+14084.
+
+| # | Address | Kind(s) | Target | Halves combine to | Fused addend | Agrees |
+|---|---|---|---|---|---|---|
+| 1–2 | 0x48 / 0x4c | HA16 + LO16 | `_server` | `0x408C` = 16524 | 0 | yes |
+| 3 | 0x50 | lone LO16 | `_server` | reuses site 1's `lis` | 0 | yes |
+| 4–5 | 0x98 / 0xa0 | HA16 + LO16 | `_server` | `0x408C` = 16524 | 0 | yes |
+| 6–7 | 0x4e4 / 0x4e8 | HA16 + LO16 | `_sSessionIndex` | `0x4090` = 16528 | 4 | yes |
+| 8 | 0x570 | lone LO16 | `_sSessionIndex` | reuses site 6's `lis` | 4 | yes |
+| 9 | 0x64 | external JBSR | `_objc_msgSend` | pair carries the true target (0) | 0 | yes |
+| 10 | 0x3538 / 0x353c | scattered HA16 + LO16 | `__TEXT,__const` | `0xFFFFF55C` = -2724 | -16808 / 4294950488 (same 32-bit value) | yes |
+
+All ten sites: the instruction halves read directly from the file combine to
+the same value the fused record reports. The one invariant-check mismatch
+below (a symbol at an address IDA did not recognize as a function start) is
+unrelated to relocation decoding — all HI16/HA16-LO16 pairs and
+scattered/difference relocations agree in both binaries.
+
 `binrecon source-map --objc-methods --scope-to-objc` runs to completion
 against `scsiserver-ppc`'s analysis (0 mapped, 14 unmapped Objective-C
 methods). Without `--scope-to-objc` it fails: IDA's PPC linker glue stub for
 external calls (`_objc_msgSend`, `_IOLog`, ...) has no name, and
 `source-map-v1` requires every analyzed function to have one.
 
-Full suite: 746 passed, 4 skipped (741 baseline + 3 tests from the SECTDIFF
-fix + 1 test pinning the range-check hardening + 1 test pinning that the
-displacement's sign is taken from the fixup's upper word, not bit 31 of the
-low word).
+### Ledger smoke test (§5.4 item 6)
+
+`binrecon analyze --ledger` was run against a PPC analysis for the first time:
+
+```
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/ppc/SCSIServer.config/SCSIServer_reloc" \
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon analyze \
+  --profile tools/binrecon/profiles/scsiserver-ppc.json \
+  --ledger tools/binrecon/out/scsiserver-ppc/ledger.json \
+  --output tools/binrecon/out/scsiserver-ppc/run-summary.json
+```
+
+Exit 1, as expected for a reference-only profile (no rebuilt artifact, so
+`normalized-functions` acceptance is unsatisfiable). `run-summary.json` shows
+`"complete":true` and `"ledger":{"updated":true}`. The written `ledger.json`
+is schema-valid `ledger-v1` with 206 entries, one per `SCSIServer_reloc`
+`__text` function IDA recovered; every entry's `status` is `"unexamined"`
+(206/206) and every entry's `analyzer_agreement.status` is `"agreed"`, since
+this run has only one analyzer and no rebuilt artifact to compare against —
+consistent with spec 1's scope (no source map or ledger review is produced
+here; that is spec 2's job).
+
+Full suite: 750 passed, 4 skipped (746 baseline + 2 tests rejecting PowerPC
+relocations with `r_length != 2` + 2 tests rejecting a profile/artifact
+architecture mismatch).

@@ -19,8 +19,11 @@ _PREFIX = {"little": "<", "big": ">"}
 class ObjcReader:
     """Random access to an image by virtual address."""
 
-    def __init__(self, payload, sections, endianness):
+    def __init__(self, payload, sections, endianness, method_names=None):
         self.payload = payload
+        # imp address -> "-[Class selector]", consulted when a selector pointer
+        # was rewritten by prebinding to an address outside this image.
+        self.method_names = method_names or {}
         self.prefix = _PREFIX[endianness]
         self._word = struct.Struct(f"{self.prefix}I")
         self._spans = [
@@ -66,12 +69,31 @@ class ObjcReader:
         _obsolete, count = self.at(address, 2)
         methods = []
         for index in range(count):
-            selector, types, _imp = self.at(address + 8 + 12 * index, 3)
+            selector, types, imp = self.at(address + 8 + 12 * index, 3)
             methods.append({
-                "selector": self.cstring(selector),
+                "selector": self.selector(selector, imp),
                 "types": self.cstring(types),
             })
         return methods
+
+    def selector(self, address, imp):
+        """Name a method's selector, tolerating prebound selector pointers.
+
+        The reference is a prebound dylib: the static linker rewrote 369 of its
+        3,253 method-name pointers to uniqued selectors in the shared runtime's
+        table, at addresses outside this image. Those are recovered from the
+        symbol table, where the method is named ``-[Class selector]`` or
+        ``+[Class(Category) selector]``.
+        """
+        if self.offset_of(address) is not None:
+            return self.cstring(address)
+        symbol = self.method_names.get(imp)
+        if symbol is None:
+            raise ObjcAbiError(
+                f"selector pointer 0x{address:x} is outside the image and no "
+                f"symbol names the method implemented at 0x{imp:x}"
+            )
+        return symbol[symbol.index(" ") + 1:-1]
 
     def ivar_list(self, address):
         """Return ``[{name, type, offset}]`` for an ``objc_ivar_list``."""
@@ -87,6 +109,19 @@ class ObjcReader:
                 "offset": offset,
             })
         return ivars
+
+
+def method_symbol_index(document):
+    """Map each method's implementation address to its symbol name.
+
+    Used to recover selectors whose pointers prebinding moved outside the image.
+    """
+    return {
+        symbol["address"]: symbol["name"]
+        for symbol in document["symbols"]
+        if symbol["section"] is not None
+        and symbol["name"].startswith(("-[", "+["))
+    }
 
 
 def read_classes(reader, symtab_address):

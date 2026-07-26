@@ -1,5 +1,7 @@
 import struct
 
+import pytest
+
 from binrecon.objc_abi import ObjcReader, read_classes
 
 BASE = 0x1000
@@ -67,3 +69,44 @@ def test_reads_class_layout_and_ivars():
 def test_reads_big_endian_the_same_way():
     reader = ObjcReader(build_blob(">"), SECTIONS, "big")
     assert read_classes(reader, BASE + 0x20)[0]["name"] == "Thing"
+
+
+def test_recovers_a_prebound_selector_from_the_symbol_table():
+    """A selector pointer outside the image is resolved via the symbol table."""
+    blob = bytearray(build_blob())
+    # Point the instance method's selector at an address no section backs.
+    struct.pack_into("<I", blob, 0xA8, 0x41406990)
+
+    reader = ObjcReader(bytes(blob), SECTIONS, "little",
+                        method_names={0x2000: "-[Thing doThing]"})
+
+    assert read_classes(reader, BASE + 0x20)[0]["instance_methods"] == [
+        {"selector": "doThing", "types": "v8@8:12"}
+    ]
+
+
+def test_an_unresolvable_prebound_selector_is_an_error():
+    from binrecon.objc_abi import ObjcAbiError
+
+    blob = bytearray(build_blob())
+    struct.pack_into("<I", blob, 0xA8, 0x41406990)
+    reader = ObjcReader(bytes(blob), SECTIONS, "little")
+
+    with pytest.raises(ObjcAbiError, match="outside the image"):
+        read_classes(reader, BASE + 0x20)
+
+
+def test_method_symbol_index_keys_on_implementation_address():
+    from binrecon.objc_abi import method_symbol_index
+
+    document = {"symbols": [
+        {"name": "-[Thing doThing]", "address": 0x2000, "section": "__TEXT,__text"},
+        {"name": "+[Thing(Extra) make]", "address": 0x2100, "section": "__TEXT,__text"},
+        {"name": "_NotAMethod", "address": 0x2200, "section": "__TEXT,__text"},
+        {"name": "-[Thing imported]", "address": 0, "section": None},
+    ]}
+
+    assert method_symbol_index(document) == {
+        0x2000: "-[Thing doThing]",
+        0x2100: "+[Thing(Extra) make]",
+    }

@@ -60,7 +60,8 @@ void IOTaskUnwireMemory(unsigned int address, int length);
 int IOReferenceClientTask(int **clientReferenceSlot);
 
 /* Decrement reference count for a client task
- * clientEntry: Pointer to client entry (death port at offset +0, refcount at offset +4)
+ * clientEntry: Pointer to a _clientReferences[0..31] slot (a bare int
+ *   refcount; offset +0 is the entire entry, there is no offset +4 field)
  * Returns: 0 on success, result of cleanup function if refcount reaches 0, 4 on error
  */
 int IODereferenceClientTask(int *clientEntry);

@@ -301,7 +301,8 @@ int IOReferenceClientTask(int **clientReferenceSlot)
 
 /*
  * IODereferenceClientTask - Decrement reference count for a client task
- * clientEntry: Pointer to client entry (death port at offset +0, refcount at offset +4)
+ * clientEntry: Pointer to a _clientReferences[0..31] slot (a bare int
+ *   refcount; offset +0 is the entire entry, there is no offset +4 field)
  * Returns: 0 on success, result of cleanup function if refcount reaches 0, 4 on error
  *
  * This function:
@@ -314,21 +315,19 @@ int IODereferenceClientTask(int *clientEntry)
     int refcount;
     int result;
 
-    /* Validate pointer is within notifClients array
-     * Range check: &notifClients[1] <= clientEntry <= &notifClients[33]
-     * (Actually checking the reference count field, which is at offset +4)
-     *
-     * The decompiled code checks:
-     * (&UNK_00004007 < param_1 && param_1 <= &UNK_00004087)
-     * This appears to check if pointer is within the notifClients array
+    /* Validate pointer is within the _clientReferences table
+     * Range check: &_clientReferences[0] <= clientEntry <= &_notifyThread,
+     * the same bounds IOReferenceClientTask uses for the same table
+     * (_clientReferences[i] is a bare int refcount, offset +0 is the
+     * entire entry -- there is no offset +4 field here)
      */
-    if ((clientEntry < &notifClients[0]) ||
-        (clientEntry > &notifClients[64])) {
+    if ((clientEntry < &_clientReferences[0]) ||
+        (clientEntry > &_notifyThread)) {
         return 4;  /* Invalid pointer */
     }
 
-    /* Get reference count from offset +4 (second int in entry) */
-    refcount = clientEntry[1];
+    /* Get reference count from offset +0 (the entry itself) */
+    refcount = *clientEntry;
 
     /* Check if reference count is positive */
     if (refcount <= 0) {
@@ -336,10 +335,10 @@ int IODereferenceClientTask(int *clientEntry)
     }
 
     /* Decrement reference count */
-    clientEntry[1] = refcount - 1;
+    *clientEntry = refcount - 1;
 
     /* If refcount reached 0, call cleanup function */
-    if (clientEntry[1] == 0) {
+    if (*clientEntry == 0) {
         /* Call function from entry table at offset 0xa4
          * This appears to be a Mach port cleanup function
          * FUN_00001c88(*(undefined4 *)(_entry + 0xa4))

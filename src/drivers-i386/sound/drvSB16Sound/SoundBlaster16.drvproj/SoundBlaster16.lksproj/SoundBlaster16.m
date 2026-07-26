@@ -15,7 +15,7 @@
 static const char codecDeviceName[] = "SoundBlaster16";
 static const char codecDeviceKind[] = "Audio";
 
-static  sb16CardParameters_t sb16CardType = {0}; // hardware type
+static  sb16CardParameters_t sbCardType = {0}; // hardware type
 
 /*
  * Include inline functions.
@@ -243,14 +243,14 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
     /*
      * Check card type and reject unsupported cards
      */
-    if (sb16CardType.version == SB16_BASIC ||
-        sb16CardType.version == SB16_VIBRA) {
+    if (sbCardType.version == SB16_BASIC ||
+        sbCardType.version == SB16_VIBRA) {
         /* Card types 1 and 2 are supported (16-bit capable) */
         IOLog("%s hardware version is %d.%d\n",
               [self name],
-              sb16CardType.majorVersion,
-              sb16CardType.minorVersion);
-    } else if (sb16CardType.version == 3) {
+              sbCardType.majorVersion,
+              sbCardType.minorVersion);
+    } else if (sbCardType.version == 3) {
         /* Card type 3 is 8-bit only */
         IOLog("%s: This driver does not support 8-bit Sound Blaster cards.\n", [self name]);
         return NO;
@@ -287,7 +287,7 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
 
 - (void) initializeHardware
 {
-    resetHardware(&sb16CardType);
+    resetHardware(&sbCardType);
     [self initializeLastStageGainRegisters];
 }
 
@@ -435,20 +435,12 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
     unsigned int rate;
     unsigned int stereo;
     unsigned int dmaDirection;
-    unsigned char command;
     int timeout;
     char status;
 
     rate = [self sampleRate];
     stereo = ([self channelCount] == 2);
     dmaDirection = currentDMADirection;
-
-    // Determine command based on DMA direction
-    if (dmaDirection == DMA_DIRECTION_IN) {
-        command = DC16_SET_SAMPLE_RATE_INPUT;   // 0x42
-    } else {
-        command = DC16_SET_SAMPLE_RATE_OUTPUT;  // 0x41
-    }
 
     // Write command with timeout check
     timeout = 0;
@@ -467,8 +459,14 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
         IOLog("SoundBlaster16: DSP write error.\n");
     }
 
-    outb(sbWriteDataOrCommandReg, command);
-    IODelay(SB16_DATA_WRITE_DELAY);
+    // Send the command the DMA direction selects
+    if (dmaDirection == DMA_DIRECTION_IN) {
+        outb(sbWriteDataOrCommandReg, DC16_SET_SAMPLE_RATE_INPUT);   // 0x42
+        IODelay(SB16_DATA_WRITE_DELAY);
+    } else {
+        outb(sbWriteDataOrCommandReg, DC16_SET_SAMPLE_RATE_OUTPUT);  // 0x41
+        IODelay(SB16_DATA_WRITE_DELAY);
+    }
 
     // Write high byte of sample rate with timeout check
     timeout = 0;
@@ -701,12 +699,11 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
 
     /*
      * Stop DMA transfer (sends pause command and resets DSP)
-     * Note: The original uses 16-bit pause for 8-bit transfers and vice versa
      */
     if (isRead) {
-        stopDMATransfer(currentEncoding == NX_SoundStreamDataEncoding_Linear8);
+        stopDMATransfer(currentEncoding);
     } else {
-        stopDMATransfer(currentEncoding == NX_SoundStreamDataEncoding_Linear8);
+        stopDMATransfer(currentEncoding);
     }
 
     /* Sleep to let hardware settle */
@@ -787,7 +784,7 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
 - (void) timeoutOccurred
 {
     if (interruptTimedOut == NO) {
-        resetHardware(&sb16CardType);
+        resetHardware(&sbCardType);
         IOLog("%s: reset hardware.\n", [self name]);
         interruptTimedOut = YES;
     }

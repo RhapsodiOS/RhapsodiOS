@@ -391,17 +391,18 @@ resetHardware(sb16CardParameters_t *cardType)
  */
 static __inline__
 void
-stopDMATransfer(BOOL is16Bit)
+stopDMATransfer(unsigned int encoding)
 {
-    unsigned char pauseCommand;
+    dspWriteWait();
 
-    /* Send appropriate pause command based on bit depth */
-    if (is16Bit) {
-        pauseCommand = DC16_PAUSE_16BIT_DMA;
+    /* The 16-bit pause stops an 8-bit encoding and vice versa */
+    if (encoding == NX_SoundStreamDataEncoding_Linear8) {
+        outbV(sbWriteDataOrCommandReg, DC16_PAUSE_16BIT_DMA);
+        IODelay(SB16_DATA_WRITE_DELAY);
     } else {
-        pauseCommand = DC16_PAUSE_8BIT_DMA;
+        outbV(sbWriteDataOrCommandReg, DC16_PAUSE_8BIT_DMA);
+        IODelay(SB16_DATA_WRITE_DELAY);
     }
-    writeToDSP(pauseCommand);
 
     /* Perform full DSP reset to ensure clean stop */
     outbV(sbResetReg, 0x01);

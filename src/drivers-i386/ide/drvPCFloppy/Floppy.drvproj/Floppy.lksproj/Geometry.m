@@ -63,41 +63,6 @@ unsigned int appleBandLayout1600[] = {
     0x00000000, 0x00000000, 0x00000018,  // Band 4: Cyl  0-15, 24 sect/cyl (12/track/side)
 };
 
-/*
- * FDC density and MID (Media IDentifier) lookup tables.
- *
- * These tables map density codes to FDC configuration values. Each table
- * contains pairs of values terminated by a {0, 0} entry.
- *
- * Structure: Array of pairs [value, densityCode]
- * - value: Configuration value or pointer (usage TBD)
- * - densityCode: Density identifier (0=terminator, 1=DD, 2=HD, 3=ED)
- *
- * Note: The first value in each pair appears to be in the 0x99xx range,
- * suggesting it may be a pointer or encoded parameter value.
- */
-
-// Density values table
-// Maps density codes to configuration parameters
-unsigned int densityValues[] = {
-    0x00000000, 0x00000000,  // Entry 0: padding/reserved
-    0x000099ab, 0x00000001,  // Entry 1: DD (Double Density) - 250 Kbps
-    0x000099a1, 0x00000002,  // Entry 2: HD (High Density) - 500 Kbps
-    0x00009997, 0x00000003,  // Entry 3: ED (Extra Density) - 1 Mbps
-    0x0000998d, 0x00000000,  // Entry 4: terminator
-};
-
-// MID (Media IDentifier) values table
-// Similar to densityValues but in different order (ED, HD, DD)
-// Used for media detection or format identification
-unsigned int midValues[] = {
-    0x00000000, 0x00000000,  // Entry 0: padding/reserved
-    0x000099d9, 0x00000003,  // Entry 1: ED (Extra Density) - 1 Mbps
-    0x000099ce, 0x00000002,  // Entry 2: HD (High Density) - 500 Kbps
-    0x000099c3, 0x00000001,  // Entry 3: DD (Double Density) - 250 Kbps
-    0x000099b8, 0x00000000,  // Entry 4: terminator
-};
-
 // FDC disk physical parameter table
 // Maps density codes to physical disk geometry parameters
 // Structure: Array of 4-word entries [densityCode, numHeads, numCylinders, ?]
@@ -252,12 +217,30 @@ const IONamedValue fdrValues[] = {
 };
 
 /*
- * fdDensityNameValues - FD_DENS_* density code -> string map for
+ * fdCommandValues - FDCMD_* drive command code -> string map for
+ * IOFindNameForValue, recovered byte-for-byte from the reference binary's
+ * __DATA segment (_fdCommandValues). Matches the cmdType values switched on
+ * in FloppyCnt.m's fcCmdXfrExecute:. No caller of IOFindNameForValue against
+ * this table could be found in the reference disassembly; kept here for
+ * string-table parity.
+ */
+static const IONamedValue fdCommandValues[] = {
+	{ 0x00, "FDCMD_BAD" },
+	{ 0x01, "FDCMD_CMD_XFR" },
+	{ 0x02, "FDCMD_EJECT" },
+	{ 0x03, "FDCMD_MOTOR_ON" },
+	{ 0x04, "FDCMD_MOTOR_OFF" },
+	{ 0x05, "FDCMD_GET_STATUS" },
+	{ 0, (const char *)0 },
+};
+
+/*
+ * densityValues - FD_DENS_* density code -> string map for
  * IOFindNameForValue, recovered byte-for-byte from the reference binary's
  * __DATA segment. No caller of IOFindNameForValue against this table could
  * be found in the reference disassembly; kept here for string-table parity.
  */
-static const IONamedValue fdDensityNameValues[] = {
+static const IONamedValue densityValues[] = {
 	{ 0x00, "FD_DENS_NONE" },
 	{ 0x01, "FD_DENS_1" },
 	{ 0x02, "FD_DENS_2" },
@@ -266,12 +249,12 @@ static const IONamedValue fdDensityNameValues[] = {
 };
 
 /*
- * fdMidNameValues - FD_MID_* media-ID code -> string map for
+ * midValues - FD_MID_* media-ID code -> string map for
  * IOFindNameForValue, recovered byte-for-byte from the reference binary's
  * __DATA segment. No caller of IOFindNameForValue against this table could
  * be found in the reference disassembly; kept here for string-table parity.
  */
-static const IONamedValue fdMidNameValues[] = {
+static const IONamedValue midValues[] = {
 	{ 0x00, "FD_MID_NONE" },
 	{ 0x03, "FD_MID_1MB" },
 	{ 0x02, "FD_MID_2MB" },
@@ -298,20 +281,6 @@ unsigned int fdIoctlValues[] = {
     0x40346601, 0x000099f3,  // Entry 11: Unknown ioctl (0x40346601) -> handler at 0x99f3
     0x4020660a, 0x000099e5,  // Entry 12: DKIOCGETFORMATCAPACITIES (0x4020660a) -> handler at 0x99e5
     0x00000000, 0x00000000,  // Terminator
-};
-
-// FDC command configuration values table
-// Maps command IDs to FDC parameters and flags
-// Structure: Array of triplets [padding, paramValue, commandId]
-// Used for FDC command execution with timing/control parameters
-unsigned int fdCommandValues[] = {
-    0x00000000, 0x0000988b, 0x00000001,  // Entry 0: Cmd 1, param 0x988b
-    0x00000000, 0x0000987d, 0x00000002,  // Entry 1: Cmd 2, param 0x987d
-    0x00000000, 0x00009871, 0x00000003,  // Entry 2: Cmd 3, param 0x9871
-    0x00000000, 0x00009862, 0x00000004,  // Entry 3: Cmd 4, param 0x9862
-    0x00000000, 0x00009852, 0x00000005,  // Entry 4: Cmd 5, param 0x9852
-    0x00000000, 0x00009841, 0x00000006,  // Entry 5: Cmd 6, param 0x9841
-    0x00000000, 0x00000000, 0x00000000,  // Terminator
 };
 
 // FDC opcode/command configuration values table

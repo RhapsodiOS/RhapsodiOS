@@ -1,0 +1,224 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 2085076,
+      "reference_names": [
+        "+[IODirectDevice isPCIPresent]"
+      ],
+      "size": 62,
+      "source_line": 57,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085140,
+      "reference_names": [
+        "-[IODirectDevice isPCIPresent]"
+      ],
+      "size": 62,
+      "source_line": 65,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085204,
+      "reference_names": [
+        "+[IODirectDevice getPCIConfigSpace:withDeviceDescription:]"
+      ],
+      "size": 178,
+      "source_line": 79,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085384,
+      "reference_names": [
+        "-[IODirectDevice getPCIConfigSpace:]"
+      ],
+      "size": 64,
+      "source_line": 105,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085448,
+      "reference_names": [
+        "+[IODirectDevice setPCIConfigSpace:withDeviceDescription:]"
+      ],
+      "size": 180,
+      "source_line": 117,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085628,
+      "reference_names": [
+        "-[IODirectDevice setPCIConfigSpace:]"
+      ],
+      "size": 64,
+      "source_line": 143,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085692,
+      "reference_names": [
+        "+[IODirectDevice getPCIConfigData:atRegister:withDeviceDescription:]"
+      ],
+      "size": 157,
+      "source_line": 154,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085852,
+      "reference_names": [
+        "-[IODirectDevice getPCIConfigData:atRegister:]"
+      ],
+      "size": 73,
+      "source_line": 174,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2085928,
+      "reference_names": [
+        "+[IODirectDevice setPCIConfigData:atRegister:withDeviceDescription:]"
+      ],
+      "size": 157,
+      "source_line": 188,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2086088,
+      "reference_names": [
+        "-[IODirectDevice setPCIConfigData:atRegister:]"
+      ],
+      "size": 73,
+      "source_line": 208,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m"
+    },
+    {
+      "address": 2086164,
+      "reference_names": [
+        "-[IOPCIDeviceDescription _initWithDelegate:]"
+      ],
+      "size": 176,
+      "source_line": 67,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDeviceDescription.m"
+    },
+    {
+      "address": 2086340,
+      "reference_names": [
+        "-[IOPCIDeviceDescription free]"
+      ],
+      "size": 56,
+      "source_line": 91,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDeviceDescription.m"
+    },
+    {
+      "address": 2086396,
+      "reference_names": [
+        "-[IOPCIDeviceDescription getPCIdevice:function:bus:]"
+      ],
+      "size": 70,
+      "source_line": 108,
+      "source_path": "src/driverkit-3/libDriver/pci/IOPCIDeviceDescription.m"
+    },
+    {
+      "address": 2086468,
+      "reference_names": [
+        "-[IODirectDevice mapAttributeMemoryTo:findSpace:]"
+      ],
+      "size": 639,
+      "source_line": 53,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADirectDevice.m"
+    },
+    {
+      "address": 2087108,
+      "reference_names": [
+        "-[IODirectDevice unmapAttributeMemory]"
+      ],
+      "size": 329,
+      "source_line": 122,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADirectDevice.m"
+    },
+    {
+      "address": 2087440,
+      "reference_names": [
+        "-[IOPCMCIADeviceDescription _initWithDelegate:]"
+      ],
+      "size": 81,
+      "source_line": 54,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADeviceDescription.m"
+    },
+    {
+      "address": 2087524,
+      "reference_names": [
+        "-[IOPCMCIADeviceDescription free]"
+      ],
+      "size": 123,
+      "source_line": 70,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADeviceDescription.m"
+    },
+    {
+      "address": 2087648,
+      "reference_names": [
+        "-[IOPCMCIADeviceDescription numTuples]"
+      ],
+      "size": 37,
+      "source_line": 86,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADeviceDescription.m"
+    },
+    {
+      "address": 2087688,
+      "reference_names": [
+        "-[IOPCMCIADeviceDescription tupleList]"
+      ],
+      "size": 183,
+      "source_line": 97,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIADeviceDescription.m"
+    },
+    {
+      "address": 2087872,
+      "reference_names": [
+        "-[IOPCMCIATuple initWithKernTuple:]"
+      ],
+      "size": 157,
+      "source_line": 41,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIATuple.m"
+    },
+    {
+      "address": 2088032,
+      "reference_names": [
+        "-[IOPCMCIATuple free]"
+      ],
+      "size": 79,
+      "source_line": 62,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIATuple.m"
+    },
+    {
+      "address": 2088112,
+      "reference_names": [
+        "-[IOPCMCIATuple code]"
+      ],
+      "size": 17,
+      "source_line": 71,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIATuple.m"
+    },
+    {
+      "address": 2088132,
+      "reference_names": [
+        "-[IOPCMCIATuple length]"
+      ],
+      "size": 16,
+      "source_line": 77,
+      "source_path": "src/driverkit-3/libDriver/pcmcia/IOPCMCIATuple.m"
+    }
+  ],
+  "reference_sha256": "BE98A33F71B80AEE00A6921333943DA02D0B676C8AF056843EB868C14EBB497C",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 2088148,
+      "reference_names": [
+        "-[IOPCMCIATuple data]"
+      ],
+      "size": 67
+    }
+  ]
+}

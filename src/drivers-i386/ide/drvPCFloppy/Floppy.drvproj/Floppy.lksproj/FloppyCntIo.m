@@ -368,7 +368,9 @@ static unsigned char cf2_efifo = 0;
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Wait for interrupt message with timeout
-	msgResult = msg_receive(&msg, MSG_OPTION_NONE, timeout);
+	/* RCV_TIMEOUT, not MSG_OPTION_NONE (0x2f6c: push 100h): without it
+	   msg_receive ignores the timeout and waits forever. */
+	msgResult = msg_receive(&msg, RCV_TIMEOUT, timeout);
 
 	// A message arrived if the receive succeeded, or if it failed only
 	// because our buffer was too small for it (0x2f81: cmp eax, -204).
@@ -566,7 +568,9 @@ set_error_flag:
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Try to receive interrupt message with no timeout (non-blocking)
-	msgResult = msg_receive(&msg, MSG_OPTION_NONE, 0);
+	/* RCV_TIMEOUT with a zero timeout is what makes this poll rather than
+	   block (0x2e9a: push 100h, 0x2e98: push 0). */
+	msgResult = msg_receive(&msg, RCV_TIMEOUT, 0);
 
 	// A message arrived if the receive succeeded, or if it failed only
 	// because our buffer was too small for it (0x2eaf: cmp eax, -204).

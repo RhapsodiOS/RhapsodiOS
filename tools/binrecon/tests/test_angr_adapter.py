@@ -783,3 +783,35 @@ def test_callsite_uses_terminating_call_instruction_not_block_start(tmp_path):
     assert call["address"] == 0x4005
     assert not any(item["kind"] == "control-call" and item["address"] == 0x4000
                    for item in references)
+
+
+def _profile(tmp_path, input_path):
+    executable = tmp_path / "Python 3.13" / "python.exe"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    identity = identify(input_path)
+    profile = SimpleNamespace(
+        reference_identity=identity, rebuilt_identity=identity,
+        document=MappingProxyType({
+            "architecture": "i386", "endianness": "little", "image_base": 0x1000,
+            "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 19, "version": "9.3.0"})}),
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (), "symbolic_checks": (),
+        }),
+    )
+    return profile
+
+
+def test_rejects_non_i386_profile_before_running_angr(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile = _profile(tmp_path, input_path)
+    profile.document = {**profile.document, "architecture": "ppc"}
+
+    def runner(*args, **kwargs):
+        raise AssertionError("angr must not be started for a ppc profile")
+
+    with pytest.raises(AngrAdapterError, match="i386-only"):
+        export_with_angr(profile, "reference", tmp_path / "out.json", runner=runner)

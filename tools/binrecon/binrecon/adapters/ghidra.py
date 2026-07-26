@@ -310,10 +310,9 @@ def _script_arguments(mode: str, output: Path, identity: InputIdentity,
         arguments += ["--output", str(output)]
     arguments += ["--input", str(identity.path), "--size", str(identity.size),
                   "--sha256", identity.sha256, "--language", _LANGUAGE]
-    if mode == "export" and scope:
-        arguments += ["--analysis-scope", json.dumps(
-            [{"start": start, "end": end} for start, end in scope],
-            separators=(",", ":"))]
+    if mode == "export":
+        for start, end in scope:
+            arguments += ["--analysis-scope", f"{start}-{end}"]
     return arguments
 
 

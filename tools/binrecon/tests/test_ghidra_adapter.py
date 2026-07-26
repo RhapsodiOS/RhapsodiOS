@@ -103,9 +103,24 @@ def test_analysis_scope_reaches_the_export_script_on_the_native_path(configured,
     argv = calls[-1][0]
     assert "-loader" not in argv and "-preScript" not in argv
     assert "--analysis-scope" in argv
-    assert argv[argv.index("--analysis-scope") + 1] == json.dumps(
-        [{"start": 4096, "end": 4112}], separators=(",", ":")
-    )
+    assert argv[argv.index("--analysis-scope") + 1] == "4096-4112"
+
+
+def test_multiple_analysis_scope_ranges_emit_repeated_arguments(configured, tmp_path):
+    profile, identity, _, _ = configured
+    profile.document = MappingProxyType({
+        **profile.document, "analysis_scope": [
+            {"start": 4096, "end": 4112}, {"start": 8192, "end": 8320},
+        ],
+    })
+    destination = tmp_path / "scoped-multi.json"
+    calls = []
+    export_with_ghidra(profile, "reference", destination,
+                       runner=_successful_runner(identity, calls))
+    argv = calls[-1][0]
+    indexes = [index for index, value in enumerate(argv) if value == "--analysis-scope"]
+    assert len(indexes) == 2
+    assert [argv[index + 1] for index in indexes] == ["4096-4112", "8192-8320"]
 
 
 def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):

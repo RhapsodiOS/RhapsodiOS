@@ -90,12 +90,18 @@ public final class ExportAnalysis extends GhidraScript {
         return layout;
     }
 
-    private void parseScope(String value) throws IOException {
-        Object parsed = new JsonParser(value).parse();
-        for (Object item : array(parsed, "analysis-scope")) {
-            Map<String,Object> range = object(item, "analysis-scope range");
-            long start = number(range.get("start"));
-            long end = number(range.get("end"));
+    private void parseScope(List<String> values) throws IOException {
+        for (String value : values) {
+            String[] parts = value.split("-", -1);
+            if (parts.length != 2 || !parts[0].matches("[0-9]+") || !parts[1].matches("[0-9]+"))
+                throw new IOException("analysis scope range is malformed: " + value);
+            long start, end;
+            try {
+                start = Long.parseLong(parts[0]);
+                end = Long.parseLong(parts[1]);
+            } catch (NumberFormatException error) {
+                throw new IOException("analysis scope range is malformed: " + value);
+            }
             if (end <= start) throw new IOException("analysis scope range is empty or inverted");
             scope.add(new long[]{start, end});
         }
@@ -254,7 +260,7 @@ public final class ExportAnalysis extends GhidraScript {
         if (layout != null) verifyPreparedLayout(layout);
         if (layout != null) linkRelocations(layout,
             currentProgram.getAddressFactory().getDefaultAddressSpace());
-        if (args.values.containsKey("--analysis-scope")) parseScope(args.values.get("--analysis-scope"));
+        if (!args.analysisScope.isEmpty()) parseScope(args.analysisScope);
         Map<String,Object> root = new LinkedHashMap<>();
         ReferenceManager referenceManager = currentProgram.getReferenceManager();
         if (referenceManager == null) throw new IOException("reference manager unavailable");
@@ -680,21 +686,24 @@ public final class ExportAnalysis extends GhidraScript {
         private static final Set<String> COMMON_OPTIONS=Set.of("--input","--size","--sha256","--language");
         private static final Set<String> PREPARE_OPTIONS=Set.of("--input","--size","--sha256","--language","--layout");
         private static final Set<String> EXPORT_OPTIONS=Set.of("--input","--size","--sha256","--language","--output","--layout","--analysis-scope");
-        final String mode; final Map<String,String> values;
-        Args(String mode,Map<String,String> values){this.mode=mode;this.values=values;}
+        private static final String REPEATABLE_OPTION="--analysis-scope";
+        final String mode; final Map<String,String> values; final List<String> analysisScope;
+        Args(String mode,Map<String,String> values,List<String> analysisScope){this.mode=mode;this.values=values;this.analysisScope=analysisScope;}
         String required(String key){String value=values.get(key);if(value==null||value.isEmpty())throw new IllegalArgumentException("missing "+key);return value;}
         static Args parse(String[] args){if(args.length<1)throw new IllegalArgumentException("missing mode");String mode=args[0];
             if(!"prepare".equals(mode)&&!"export".equals(mode))throw new IllegalArgumentException("invalid mode: "+mode);
-            Set<String> allowed="prepare".equals(mode)?PREPARE_OPTIONS:EXPORT_OPTIONS;Map<String,String> values=new HashMap<>();
+            Set<String> allowed="prepare".equals(mode)?PREPARE_OPTIONS:EXPORT_OPTIONS;Map<String,String> values=new HashMap<>();List<String> analysisScope=new ArrayList<>();
             for(int i=1;i<args.length;){String option=args[i++];if(!option.startsWith("--")||!allowed.contains(option))throw new IllegalArgumentException("unknown option or mode-incompatible option (boolean options are unsupported): "+option);
                 if(i>=args.length||args[i].startsWith("--"))throw new IllegalArgumentException("missing value for "+option);
-                if(values.put(option,args[i++])!=null)throw new IllegalArgumentException("duplicate option: "+option);}
+                String value=args[i++];
+                if(REPEATABLE_OPTION.equals(option)){analysisScope.add(value);continue;}
+                if(values.put(option,value)!=null)throw new IllegalArgumentException("duplicate option: "+option);}
             Set<String> required=new HashSet<>(COMMON_OPTIONS);required.add("prepare".equals(mode)?"--layout":"--output");
             if(!values.keySet().containsAll(required))throw new IllegalArgumentException("missing value for required option");
             try{long size=Long.parseLong(values.get("--size"));if(size<0)throw new NumberFormatException();}catch(NumberFormatException error){throw new IllegalArgumentException("invalid --size",error);}
             if(!values.get("--sha256").matches("(?i)[0-9a-f]{64}"))throw new IllegalArgumentException("invalid --sha256");
             if(!LANGUAGE.equals(values.get("--language")))throw new IllegalArgumentException("invalid --language");
-            return new Args(mode,values);}
+            return new Args(mode,values,analysisScope);}
     }
 
     private static final class JsonWriter {

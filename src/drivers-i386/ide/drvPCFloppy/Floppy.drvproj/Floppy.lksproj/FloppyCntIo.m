@@ -25,6 +25,16 @@
 static unsigned char cf2_fifo_value = 8;
 static unsigned char cf2_efifo = 0;
 
+/*
+ * Raw FDC I/O result codes. These are not driverkit IOReturn values --
+ * fcWaitPio:/fcWaitIntr:timeout: pass them straight through fcGetByte:/
+ * fcSendByte:/floppyInterrupt: up to sendCmd: in FloppyCmds.m, which
+ * compares against these same literal ints directly (see its own
+ * "// Bad phase" / "// Timeout" comments).
+ */
+#define FC_TIMEOUT	1	/* fcWaitPio:/fcWaitIntr:timeout: gave up waiting */
+#define FC_BAD_PHASE	10	/* fcWaitPio: saw the wrong DIO direction (phase error) */
+
 @implementation FloppyController(IO)
 
 /*
@@ -43,6 +53,7 @@ static unsigned char cf2_efifo = 0;
 {
 	unsigned char local_buffer[96];
 	unsigned char result_byte;
+	IOReturn result;
 	int outer_loop;
 	int inner_loop;
 
@@ -53,16 +64,18 @@ static unsigned char cf2_efifo = 0;
 	for (outer_loop = 0; outer_loop < 4; outer_loop++) {
 		// Read 2 result bytes (ST0 and PCN from previous SENSE INTERRUPT STATUS)
 		for (inner_loop = 0; inner_loop < 2; inner_loop++) {
-			[self fcGetByte:&result_byte];
+			result = [self fcGetByte:&result_byte];
 		}
 
 		// Send SENSE INTERRUPT STATUS command (0x08) for first 3 iterations
 		if (outer_loop < 3) {
-			[self fcSendByte:0x08];
+			result = [self fcSendByte:0x08];
 		}
 	}
 
-	return IO_R_SUCCESS;
+	// Reference has no explicit return here; it just falls off the end
+	// with whatever the last fcGetByte:/fcSendByte: call left in eax.
+	return result;
 }
 
 /*
@@ -333,7 +346,7 @@ static unsigned char cf2_efifo = 0;
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if interrupt received
- *     1 (IO_R_TIMEOUT) if timeout occurred
+ *     1 (FC_TIMEOUT) if timeout occurred
  */
 - (IOReturn)fcWaitIntr:(void *)cmdParams timeout:(unsigned int)timeout
 {
@@ -362,7 +375,7 @@ static unsigned char cf2_efifo = 0;
 		result = [self floppyInterrupt:cmdParams];
 	} else {
 		// Message receive error (timeout)
-		result = IO_R_TIMEOUT;
+		result = FC_TIMEOUT;
 	}
 
 	return result;
@@ -384,8 +397,8 @@ static unsigned char cf2_efifo = 0;
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if controller ready
- *     1 (IO_R_TIMEOUT) if timeout occurred
- *     10 (IO_R_VM_FAILURE) if DIO direction mismatch (phase error)
+ *     1 (FC_TIMEOUT) if timeout occurred
+ *     10 (FC_BAD_PHASE) if DIO direction mismatch (phase error)
  *
  * I/O Registers:
  *   0x3F4 - Main Status Register (MSR)
@@ -417,7 +430,7 @@ static unsigned char cf2_efifo = 0;
 			// Controller is ready, check DIO bit direction
 			if (dioMask != (msrByte & 0x40)) {
 				// DIO direction mismatch - phase error
-				result = IO_R_VM_FAILURE;  // 10
+				result = FC_BAD_PHASE;  // 10
 			}
 			break;
 		}
@@ -434,7 +447,7 @@ static unsigned char cf2_efifo = 0;
 
 	// Check if we timed out
 	if (timeRemaining == 0) {
-		result = IO_R_TIMEOUT;  // 1
+		result = FC_TIMEOUT;  // 1
 	}
 
 	return result;

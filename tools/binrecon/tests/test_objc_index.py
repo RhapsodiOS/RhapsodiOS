@@ -116,3 +116,27 @@ def test_recovers_methods_from_big_endian_metadata():
 
 def test_big_endian_metadata_read_as_little_endian_finds_nothing():
     assert objc_methods_from_sections(_build(">"), SECTIONS) == {}
+
+
+def test_resolves_a_prebound_selector_outside_the_image():
+    """A selector pointer prebinding rewrote to an address outside the image
+    is recovered from ``method_names`` (imp -> symbol), the same fallback
+    ``objc_abi.ObjcReader.selector`` uses."""
+    blob = bytearray(_build())
+    # Point doThing's selector at an address no section backs.
+    struct.pack_into("<I", blob, 0xA0 + 8, 0x9000)
+
+    index = objc_methods_from_sections(
+        bytes(blob), SECTIONS, method_names={0x2000: "-[Thing doThing]"}
+    )
+
+    assert index[0x2000] == ["-[Thing doThing]"]
+
+
+def test_drops_a_prebound_selector_with_no_matching_symbol():
+    blob = bytearray(_build())
+    struct.pack_into("<I", blob, 0xA0 + 8, 0x9000)
+
+    index = objc_methods_from_sections(bytes(blob), SECTIONS)
+
+    assert 0x2000 not in index

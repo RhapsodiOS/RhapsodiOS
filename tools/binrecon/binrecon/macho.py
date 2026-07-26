@@ -6,6 +6,7 @@ from typing import Any
 from . import __version__
 from .arch import Architecture, ArchitectureError, architecture_for_cpu_type
 from .identity import identify
+from .objc_abi import ObjcAbiError, ObjcReader, method_symbol_index
 
 
 MH_MAGIC = 0xFEEDFACE
@@ -391,7 +392,7 @@ def load_image(path: Path) -> tuple[bytes, dict[str, Any]]:
         "analyzer": {
             "name": "binrecon-macho",
             "version": __version__,
-            "invocation": "binrecon.macho.read_macho",
+            "invocation": "binrecon.macho.load_image",
         },
         "sections": sorted(
             sections,
@@ -492,13 +493,17 @@ _OBJC_STRUCTS = {
 }
 
 
-def objc_methods_from_sections(payload, sections, endianness="little"):
+def objc_methods_from_sections(payload, sections, endianness="little", method_names=None):
     """Map each Objective-C method implementation address to its names.
 
     A linked executable names no methods in its symbol table, so the runtime
-    metadata is the only source of address-to-name for them.
+    metadata is the only source of address-to-name for them. Selector
+    pointers that prebinding rewrote outside the image are resolved via
+    ``method_names`` (imp address -> "-[Class sel]"/"+[Class(Category) sel]"),
+    reusing ``objc_abi.ObjcReader.selector``'s fallback so both agree.
     """
     layout = _OBJC_STRUCTS[endianness]
+    reader = ObjcReader(payload, sections, endianness, method_names)
     spans = [s for s in sections if s.get("size")]
 
     def offset_of(address):
@@ -537,8 +542,11 @@ def objc_methods_from_sections(payload, sections, endianness="little"):
             if base + 12 > len(payload):
                 return
             selector_address, _types, imp = layout["method"].unpack_from(payload, base)
-            selector = text(selector_address)
-            if not selector or not imp:
+            if not imp:
+                continue
+            try:
+                selector = reader.selector(selector_address, imp)
+            except ObjcAbiError:
                 continue
             index.setdefault(imp, set()).add(f"{sign}[{owner} {selector}]")
 
@@ -601,6 +609,7 @@ def objc_method_index(path):
     return objc_methods_from_sections(
         Path(path).read_bytes(), document["sections"],
         endianness=document["input"]["endianness"],
+        method_names=method_symbol_index(document),
     )
 
 

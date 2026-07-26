@@ -292,3 +292,31 @@ def test_analysis_scope_rejects_overlapping_ranges():
 
     with pytest.raises(ProfileError):
         analysis_scope(profile)
+
+
+PPC_PROFILES = sorted(
+    (Path(__file__).parents[1] / "profiles").glob("*-ppc.json")
+)
+
+
+def test_seven_ppc_profiles_exist():
+    assert [path.name for path in PPC_PROFILES] == [
+        "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
+        "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
+        "scsitape-ppc.json", "scsitape-preload-ppc.json", "stblocksize-ppc.json",
+    ]
+
+
+@pytest.mark.parametrize("path", PPC_PROFILES, ids=lambda path: path.name)
+def test_ppc_profiles_are_reference_only_ida_runs(path):
+    document = json.loads(path.read_text(encoding="utf-8"))
+
+    assert document["schema_version"] == "profile-v1"
+    assert document["architecture"] == "ppc"
+    assert document["endianness"] == "big"
+    assert document["reference"] == {"path": "${BINRECON_REFERENCE}"}
+    assert "rebuilt" not in document
+    assert document["analyzers"]["ida"]["enabled"] is True
+    assert document["analyzers"]["ghidra"]["enabled"] is False
+    assert document["analyzers"]["angr"]["enabled"] is False
+    assert document["output_dir"].startswith("../out/")

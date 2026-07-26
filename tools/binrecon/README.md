@@ -48,6 +48,29 @@ paths. An unset variable is an error. Relative paths are resolved from the
 profile directory; analyzer executable paths are resolved by the host process,
 so run the example from the repository root.
 
+## PowerPC targets
+
+Binrecon reads 32-bit big-endian PowerPC Mach-O (`CPU_TYPE_POWERPC`, 18) in
+addition to i386. Set `"architecture": "ppc"` and `"endianness": "big"` in the
+profile; the reader picks its byte order from the file header and the IDA
+adapter runs `idat -pppc`.
+
+Only IDA analyses PowerPC. The Ghidra and angr adapters are i386-only and
+reject a PowerPC profile before starting any subprocess, because they replay
+the Mach-O layout and apply relocations themselves, and neither knows how to
+encode PowerPC instruction fields.
+
+PowerPC relocations are decoded as paired fixups. `extensions.macho.relocations`
+keeps one record per file entry, `PAIR` entries included; the top-level
+`relocations` list fuses each principal with its pair into a single record whose
+addend is the reconstructed 32-bit value relative to its target. `HA16`'s signed
+low half is applied, so `HA16` and `HI16` yield different addends for the same
+halves.
+
+The seven PowerPC profiles (`profiles/*-ppc.json`) are reference-only: the
+repository cannot build PowerPC drivers today, so there is no rebuilt artifact
+to compare against.
+
 ## Commands
 
 Show the installed interface at any time with

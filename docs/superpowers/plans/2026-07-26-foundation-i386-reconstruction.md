@@ -2164,7 +2164,10 @@ with substantial algorithmic content. Eleven are behaviourally testable now;
 
 `NSDecimal` is `{signed exponent:8; unsigned length:4; unsigned isNegative:1;
 unsigned isCompact:1; unsigned reserved:18; unsigned short mantissa[8]}` — a
-base-10000 little-endian mantissa scaled by `10^exponent`. A `length` of 0 with
+base-65536 little-endian mantissa (a plain multi-word binary integer, one
+`unsigned short` per digit) scaled by `10^exponent` — verified against the
+reference in Task 12; an earlier draft of this plan said base-10000, which is
+wrong. A `length` of 0 with
 `isNegative` set is NaN.
 
 Create `src/Kits/Foundation/reconstruction/tests/test_decimal.c`:
@@ -2188,7 +2191,7 @@ static int failures = 0;
         } \
     } while (0)
 
-/*  Build a decimal from a base-10000 mantissa, most significant word last.  */
+/*  Build a decimal from a base-65536 mantissa, least significant word first.  */
 static NSDecimal make(int negative, int exponent, int length,
                       unsigned short w0, unsigned short w1)
 {

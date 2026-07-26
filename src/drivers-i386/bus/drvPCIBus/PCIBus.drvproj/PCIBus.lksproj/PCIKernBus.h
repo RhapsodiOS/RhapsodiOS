@@ -39,8 +39,8 @@
 @interface PCIKernBus : KernBus
 {
     @private
-    unsigned int _maxBusNum;
-    unsigned int _maxDevNum;
+    int _maxBusNum;
+    int _maxDevNum;
     BOOL _bios16Present;
     BOOL _configMech1;
     BOOL _configMech2;
@@ -48,8 +48,8 @@
     BOOL _specialCycle2;
     BOOL _bios32Present;
     void *_reserved;
-    unsigned int _pciVersionMajor;
-    unsigned int _pciVersionMinor;
+    int _pciVersionMajor;
+    int _pciVersionMinor;
 }
 
 /*
@@ -66,8 +66,8 @@
 /*
  * PCI bus and device number limits
  */
-- (unsigned int)maxBusNum;
-- (unsigned int)maxDevNum;
+- (int)maxBusNum;
+- (int)maxDevNum;
 
 - allocateResourcesForDeviceDescription:descr;
 
@@ -91,7 +91,7 @@
                     bus:(unsigned char)busNum
                    data:(unsigned long)data;
 
-- (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus;
+- (BOOL)testIDs:(const char *)ids dev:(unsigned char)dev fun:(unsigned char)func bus:(unsigned char)bus;
 
 @end
 

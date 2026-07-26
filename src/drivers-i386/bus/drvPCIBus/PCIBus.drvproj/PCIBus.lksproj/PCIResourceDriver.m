@@ -408,7 +408,7 @@ static IOReturn LookForID(unsigned long idValue, char *nameBuffer,
                 /* Check if device exists */
                 if (vendorDeviceID != 0xFFFF && vendorDeviceID != 0) {
                     /* Test if this device matches the ID pattern */
-                    if ([pciBus testIDs:(unsigned int *)nameBuffer
+                    if ([pciBus testIDs:nameBuffer
                                     dev:dev
                                     fun:func
                                     bus:bus]) {

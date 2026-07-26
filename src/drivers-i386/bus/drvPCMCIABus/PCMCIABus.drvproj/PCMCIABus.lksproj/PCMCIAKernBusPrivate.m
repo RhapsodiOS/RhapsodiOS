@@ -138,7 +138,7 @@ static void printDescription(id deviceDesc)
 /*
  * Allocate shared memory for socket
  */
-- allocateSharedMemory:(unsigned int)size
+- allocateSharedMemory:configEntry
         ForDescription:deviceDesc
              AndSocket:socket
 {
@@ -165,7 +165,7 @@ static void printDescription(id deviceDesc)
     memoryMapList = [deviceDesc resourcesForKey:"Memory Maps"];
 
     /* Get memory range count from device description (offset 0x104) */
-    memoryRangeCount = *(int *)((char *)size + 0x104);
+    memoryRangeCount = *(int *)((char *)configEntry + 0x104);
 
     /* Allocate check list (2 bytes per range) */
     checkList = IOMalloc(memoryRangeCount * 2);
@@ -186,7 +186,7 @@ static void printDescription(id deviceDesc)
         [memoryMapList setAvailableCapacity:memoryRangeCount];
 
         /* Process fixed-base memory ranges (offset 0x108 is start of array) */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             base = rangePtr[0];
             length = rangePtr[1];
@@ -222,7 +222,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Process shared/any-base memory ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             length = rangePtr[1];
             cardBase = rangePtr[2];
@@ -269,7 +269,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Match fixed-base ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             base = rangePtr[0];
             length = rangePtr[1];
@@ -311,7 +311,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Match shared/any-base ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             length = rangePtr[1];
             isShared = *(unsigned char *)(&rangePtr[3]);
@@ -353,7 +353,7 @@ static void printDescription(id deviceDesc)
     }
 
     /* Map all memory ranges */
-    rangePtr = (unsigned int *)((char *)size + 0x108);
+    rangePtr = (unsigned int *)((char *)configEntry + 0x108);
     for (i = 0; i < memoryRangeCount; i++) {
         cardBase = rangePtr[2];
 
@@ -369,8 +369,8 @@ static void printDescription(id deviceDesc)
             goto cleanup_and_fail;
         }
 
-        /* Set 16-bit mode (offset 0x71 in size parameter) */
-        [[window object] set16Bit:*(unsigned char *)((char *)size + 0x71)];
+        /* Set 16-bit mode (offset 0x71 in the config entry) */
+        [[window object] set16Bit:*(unsigned char *)((char *)configEntry + 0x71)];
 
         [windowList addObject:window];
 
@@ -506,7 +506,7 @@ cleanup_and_fail:
 /*
  * Configure socket
  */
-- (BOOL)configureSocket:socket
+- (void)configureSocket:socket
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
@@ -529,7 +529,7 @@ cleanup_and_fail:
     while (YES) {
         count = [_driverConfigTables count];
         if (count <= i) {
-            return NO;
+            return;
         }
 
         table = [_driverConfigTables objectAt:i];
@@ -558,8 +558,6 @@ cleanup_and_fail:
 
     /* Mark socket as probed (offset 4 in SocketInfo) */
     socketInfo->probed = 1;
-
-    return YES;
 }
 
 /*
@@ -1260,7 +1258,7 @@ done:
 /*
  * Disable socket
  */
-- (BOOL)disableSocket:socket
+- (void)disableSocket:socket
 {
     /* Disable card */
     [socket setCardEnabled:NO];
@@ -1278,14 +1276,12 @@ done:
 
     /* Wait for reset to take effect */
     IOSleep(100);
-
-    return YES;
 }
 
 /*
  * Free memory window element
  */
-- freeMemoryWindowElement:element
+- (void)freeMemoryWindowElement:element
 {
     id window;
 
@@ -1297,8 +1293,6 @@ done:
 
     /* Free the pool element (auto-releases window back to pool) */
     [element free];
-
-    return self;
 }
 
 /*
@@ -1524,7 +1518,7 @@ cleanup_and_fail:
 /*
  * Test IDs for adapter and socket
  */
-- (BOOL)testIDs:idList ForAdapter:adapter andSocket:socket
+- (BOOL)testIDs:(char *)idList ForAdapter:(int)adapter andSocket:(int)socket
 {
     int adapterIndex;
     int socketIndex;
@@ -1540,8 +1534,8 @@ cleanup_and_fail:
     BOOL matched;
     id tempID;
 
-    adapterIndex = (int)adapter;
-    socketIndex = (int)socket;
+    adapterIndex = adapter;
+    socketIndex = socket;
     socketInfo = NULL;
 
     /* Validate adapter index */
@@ -1576,7 +1570,7 @@ cleanup_and_fail:
     }
 
     /* Test IDs */
-    idString = (char *)idList;
+    idString = idList;
     matched = NO;
 
     if (idString == NULL) {
@@ -1611,7 +1605,7 @@ cleanup_and_fail:
 /*
  * Check if entry matches user I/O ports
  */
-- (BOOL)entry:entry matchesUserIOPorts:(const char *)portList
+- (BOOL)entry:entry matchesUserIOPorts:portList
 {
     int numRanges;
     int userCount;
@@ -1632,7 +1626,7 @@ cleanup_and_fail:
 
     if (numRanges == 0) {
         /* Single range with alignment based on address lines */
-        userCount = [(id)portList count];
+        userCount = [portList count];
         if (userCount != 1) {
             if (_verbose) {
                 IOLog("PKB: port range count must be 1\n");
@@ -1640,7 +1634,7 @@ cleanup_and_fail:
             goto done;
         }
 
-        rangeResource = [(id)portList objectAt:0];
+        rangeResource = [portList objectAt:0];
         range = [rangeResource range];
 
         /* Check address lines (offset 0x6c) */
@@ -1661,7 +1655,7 @@ cleanup_and_fail:
         }
     } else {
         /* Multiple ranges - must match exactly */
-        userCount = [(id)portList count];
+        userCount = [portList count];
         if (numRanges != userCount) {
             if (_verbose) {
                 IOLog("PKB: port range counts differ\n");
@@ -1676,7 +1670,7 @@ cleanup_and_fail:
             entryBase = rangesPtr[0];
             entryLength = rangesPtr[1];
 
-            rangeResource = [(id)portList objectAt:i];
+            rangeResource = [portList objectAt:i];
             range = [rangeResource range];
 
             if (range.base != entryBase || range.length != entryLength) {
@@ -1703,7 +1697,7 @@ done:
 /*
  * Reserve I/O ports using entry
  */
-- (BOOL)reserveIOPorts:(const char *)portList UsingEntry:entry
+- (BOOL)reserveIOPorts:portList UsingEntry:entry
 {
     id eisaBus;
     id ioPortsResource;
@@ -1746,12 +1740,12 @@ done:
             rangeResource = [ioPortsResource reserveRange:range];
             if (rangeResource == nil) {
                 /* Reservation failed - free all previously allocated ranges */
-                [(id)portList freeObjects:@selector(free)];
+                [portList freeObjects:@selector(free)];
                 return NO;
             }
 
             /* Add to port range list */
-            [(id)portList addObject:rangeResource];
+            [portList addObject:rangeResource];
 
             rangesPtr += 2;  /* Move to next range (8 bytes) */
         }

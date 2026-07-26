@@ -244,8 +244,8 @@
                     /* Validate parsed values */
                     if (dev <= _maxDevNum && func < 8 && busNum_local <= _maxBusNum) {
                         /* Test if device with these IDs exists at this location */
-                        if ([self testIDs:(unsigned int *)autoDetectIDs
-                                      dev:(unsigned int)dev fun:func bus:busNum_local]) {
+                        if ([self testIDs:autoDetectIDs
+                                      dev:dev fun:func bus:busNum_local]) {
                             locationFound = YES;
                         }
                     }
@@ -274,8 +274,8 @@
                 for (dev = 0; dev <= _maxDevNum; dev++) {
                     for (func = 0; func < 8; func++) {
                         /* Test if this device matches the auto-detect IDs */
-                        if ([self testIDs:(unsigned int *)autoDetectIDs
-                                      dev:(unsigned int)dev fun:func bus:busNum_local]) {
+                        if ([self testIDs:autoDetectIDs
+                                      dev:dev fun:func bus:busNum_local]) {
                             /* Found a matching device */
                             if (instance == 0) {
                                 /* This is the instance we're looking for */
@@ -362,9 +362,9 @@
     return IO_R_NO_DEVICE;
 }
 
-- (BOOL)testIDs:(unsigned int *)ids dev:(unsigned int)dev fun:(unsigned int)func bus:(unsigned int)bus
+- (BOOL)testIDs:(const char *)ids dev:(unsigned char)dev fun:(unsigned char)func bus:(unsigned char)bus
 {
-    const char *idStr = (const char *)ids;
+    const char *idStr = ids;
     char *prevPtr = NULL;
     char *ptr;
     unsigned int vendorDeviceID = 0;
@@ -445,12 +445,12 @@
  * PCI bus and device limits
  */
 
-- (unsigned int)maxBusNum
+- (int)maxBusNum
 {
     return _maxBusNum;
 }
 
-- (unsigned int)maxDevNum
+- (int)maxDevNum
 {
     return _maxDevNum;
 }

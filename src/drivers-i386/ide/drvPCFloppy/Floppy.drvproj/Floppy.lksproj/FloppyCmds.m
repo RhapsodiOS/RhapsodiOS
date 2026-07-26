@@ -72,18 +72,10 @@ static unsigned int _motorChangeCount = 0;
 	//
 	// The reference picks which of the actions below apply via two
 	// compiler-generated jump tables (jpt_17E2 gating the drive-select
-	// merge, jpt_188E gating the motor-on/seek step); the disassembly
-	// resolves each table's reachable blocks but not its raw
-	// case-to-opcode bytes, so the exact per-opcode membership below is
-	// NOT verified byte-for-byte against the reference. It reproduces
-	// the observed effect of each reachable block, grouped by the
-	// standard i82077 command formats this file's own
-	// doConfigure:/doSpecify:/seek:head:density:/recal already use
-	// (which opcodes carry a real cylinder/head in command bytes 2/3,
-	// which are drive-targeted at all, which are controller-only) and
-	// cross-checked against sendCmd:'s own settled opcode groupings.
-	// If the raw jump-table bytes ever surface, re-verify the three
-	// switch statements below against them.
+	// merge, jpt_188E gating the motor-on/seek step). Both tables, and
+	// their default (out-of-range) targets, have since been recovered
+	// byte-for-byte from the reference binary, and the case lists below
+	// are verified against them.
 	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0c) & 0x1f;
 	cmdBytePtr = (unsigned char *)cmdParams + 0x0c;
 	density = *(unsigned char *)cmdParams;
@@ -122,12 +114,12 @@ static unsigned int _motorChangeCount = 0;
 
 	// Blocks 0x188e/0x18ec/0x1910/0x193c: spin up the drive for any
 	// command that touches it. For commands whose command bytes 2/3
-	// carry a real cylinder/head (read/write/verify), seek there first
-	// if the cached cylinder doesn't already match; SEEK/RECALIBRATE and
-	// the remaining drive commands (whose byte 2 isn't a cylinder) just
-	// get the motor turned on.
+	// carry a real cylinder/head (read track/write/read/write deleted/
+	// read deleted), seek there first if the cached cylinder doesn't
+	// already match; RECALIBRATE/READ ID/FORMAT TRACK/SEEK/VERIFY (whose
+	// byte 2 isn't a cylinder to seek to) just get the motor turned on.
 	switch (cmdOpcode) {
-	case 0x05: case 0x06: case 0x09: case 0x0c: case 0x16:
+	case 0x02: case 0x05: case 0x06: case 0x09: case 0x0c:
 		[self doMotorOn:driveNum];
 
 		targetTrack = cmdBytePtr[2];
@@ -143,7 +135,7 @@ static unsigned int _motorChangeCount = 0;
 		}
 		break;
 
-	case 0x02: case 0x04: case 0x07: case 0x0a: case 0x0d: case 0x0f:
+	case 0x07: case 0x0a: case 0x0d: case 0x0f: case 0x16:
 		[self doMotorOn:driveNum];
 		break;
 

@@ -144,8 +144,32 @@ def _diagnostic_text(value) -> str:
     return str(value)
 
 
+def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
+    """Copy a rejected oversized output into the run's output directory.
+
+    The staging workspace is deleted after rejection, so without this the
+    only evidence of an oversized analyzer output is its byte count. Copies
+    by streaming; swallows any failure so a diagnostic never masks the
+    original size error.
+    """
+    try:
+        preserved = path.parent.parent / f"rejected-ida-{artifact}.json"
+        shutil.copyfile(path, preserved)
+        return preserved
+    except OSError:
+        return None
+
+
+def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str:
+    preserved = _preserve_oversized_output(path, artifact)
+    if preserved is None:
+        return base_message
+    return f"{base_message}; rejected output saved to {preserved}"
+
+
 def _read_analysis_snapshot(
     path: Path,
+    artifact: str,
     *,
     opener=os.open,
     fstat=os.fstat,
@@ -174,10 +198,10 @@ def _read_analysis_snapshot(
         if getattr(initial, "st_file_attributes", 0) & reparse_flag:
             raise IdaAdapterError("IDA output is a reparse point")
         if initial.st_size > _MAX_ANALYSIS_BYTES:
-            raise IdaAdapterError(
+            raise IdaAdapterError(_oversize_error_message(
                 f"IDA output exceeds maximum JSON size ({initial.st_size:,} bytes; "
-                f"cap {_MAX_ANALYSIS_BYTES:,})"
-            )
+                f"cap {_MAX_ANALYSIS_BYTES:,})", path, artifact
+            ))
         chunks = []
         total = 0
         while True:
@@ -187,10 +211,10 @@ def _read_analysis_snapshot(
             chunks.append(chunk)
             total += len(chunk)
             if total > _MAX_ANALYSIS_BYTES:
-                raise IdaAdapterError(
+                raise IdaAdapterError(_oversize_error_message(
                     f"IDA output exceeds maximum JSON size (more than {_MAX_ANALYSIS_BYTES:,} bytes; "
-                    f"cap {_MAX_ANALYSIS_BYTES:,})"
-                )
+                    f"cap {_MAX_ANALYSIS_BYTES:,})", path, artifact
+                ))
         final = fstat(descriptor)
         stable_fields = (
             "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink"
@@ -317,7 +341,7 @@ def export_with_ida(
         if not temporary.is_file():
             raise IdaAdapterError("IDA did not produce a fresh analysis output")
         try:
-            document = _read_analysis_snapshot(temporary)
+            document = _read_analysis_snapshot(temporary, artifact)
             validate_document("analysis-v1", document)
             validate_analysis_semantics(document)
         except Exception as error:

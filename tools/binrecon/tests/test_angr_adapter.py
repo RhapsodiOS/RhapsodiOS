@@ -86,6 +86,27 @@ def test_host_uses_shell_free_unique_files_and_atomically_publishes(configured, 
     assert not any(tmp_path.glob(".*angr-work-*"))
 
 
+def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
+    profile, identity, executable = configured
+    destination = tmp_path / "analysis.json"
+    monkeypatch.setattr(angr_host, "_MAX_OUTPUT", 128)
+    payload = b"x" * 129
+
+    def runner(argv, **options):
+        options["stdout"].write(b"stdout")
+        options["stdout"].flush()
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_bytes(payload)
+        return subprocess.CompletedProcess(argv, 0)
+
+    with pytest.raises(AngrAdapterError, match="rejected output saved to"):
+        export_with_angr(profile, "reference", destination, runner=runner)
+
+    preserved = tmp_path / "rejected-angr-reference.json"
+    assert preserved.is_file()
+    assert preserved.read_bytes() == payload
+
+
 def test_host_layout_preserves_canonical_relocation_metadata(tmp_path):
     binary = tmp_path / "input.o"
     binary.write_bytes(build_macho_fixture())

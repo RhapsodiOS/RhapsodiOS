@@ -369,7 +369,7 @@ def test_descriptor_snapshot_rejects_mutation():
 
     with pytest.raises(IdaAdapterError, match="changed while reading"):
         _read_analysis_snapshot(
-            Path("ignored"), opener=lambda path, flags: 9,
+            Path("ignored"), "reference", opener=lambda path, flags: 9,
             fstat=lambda descriptor: next(stats),
             reader=lambda descriptor, size: next(reads), closer=lambda descriptor: None,
         )
@@ -414,6 +414,29 @@ def test_oversize_analyzer_output_is_rejected(tmp_path, monkeypatch):
     with pytest.raises(IdaAdapterError, match="maximum JSON size"):
         export_with_ida(profile, "reference", destination, runner=runner)
     assert not destination.exists()
+
+
+def test_oversize_analyzer_output_is_preserved_for_inspection(tmp_path, monkeypatch):
+    import binrecon.adapters.ida as ida_adapter
+
+    input_path = tmp_path / "input.i64"
+    input_path.write_bytes(b"sample")
+    profile, _ = _profile(tmp_path, input_path)
+    destination = tmp_path / "analysis.json"
+    monkeypatch.setattr(ida_adapter, "_MAX_ANALYSIS_BYTES", 128)
+    payload = b"x" * 129
+
+    def runner(argv, **kwargs):
+        arguments = _script_args(argv)
+        Path(arguments[arguments.index("--output") + 1]).write_bytes(payload)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    with pytest.raises(IdaAdapterError, match="rejected output saved to"):
+        export_with_ida(profile, "reference", destination, runner=runner)
+
+    preserved = tmp_path / "rejected-ida-reference.json"
+    assert preserved.is_file()
+    assert preserved.read_bytes() == payload
 
 
 def test_symlinked_analyzer_output_is_rejected(tmp_path):

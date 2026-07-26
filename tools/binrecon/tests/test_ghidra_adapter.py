@@ -91,6 +91,29 @@ def test_builds_shell_free_native_command_and_publishes_canonical_json(configure
     assert not any(destination.parent.glob(".*ghidra-work-*"))
 
 
+def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
+    import binrecon.adapters.ghidra as ghidra_adapter
+
+    profile, identity, executable, java = configured
+    destination = tmp_path / "out" / "ghidra.json"
+    monkeypatch.setattr(ghidra_adapter, "_MAX_OUTPUT", 128)
+    payload = b"x" * 129
+
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21.0.4"')
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_bytes(payload)
+        return subprocess.CompletedProcess(argv, 0, "ok", "")
+
+    with pytest.raises(GhidraAdapterError, match="rejected output saved to"):
+        export_with_ghidra(profile, "reference", destination, runner=runner)
+
+    preserved = destination.parent / "rejected-ghidra-reference.json"
+    assert preserved.is_file()
+    assert preserved.read_bytes() == payload
+
+
 def test_deterministic_reruns_use_different_projects_but_identical_output(configured, tmp_path):
     profile, identity, _, _ = configured
     calls = []

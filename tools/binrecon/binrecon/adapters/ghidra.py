@@ -170,7 +170,30 @@ def _reject_peer_alias(first: Path, second: Path) -> None:
         raise GhidraAdapterError(f"could not validate destination and log paths: {error}") from error
 
 
-def _read_snapshot(path: Path) -> dict:
+def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
+    """Copy a rejected oversized output into the run's output directory.
+
+    The staging workspace is deleted after rejection, so without this the
+    only evidence of an oversized analyzer output is its byte count. Copies
+    by streaming; swallows any failure so a diagnostic never masks the
+    original size error.
+    """
+    try:
+        preserved = path.parent.parent / f"rejected-ghidra-{artifact}.json"
+        shutil.copyfile(path, preserved)
+        return preserved
+    except OSError:
+        return None
+
+
+def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str:
+    preserved = _preserve_oversized_output(path, artifact)
+    if preserved is None:
+        return base_message
+    return f"{base_message}; rejected output saved to {preserved}"
+
+
+def _read_snapshot(path: Path, artifact: str) -> dict:
     if path.is_symlink():
         raise GhidraAdapterError("Ghidra output is a symlink")
     flags = (os.O_RDONLY | getattr(os, "O_BINARY", 0) |
@@ -187,10 +210,10 @@ def _read_snapshot(path: Path) -> dict:
         if getattr(initial, "st_file_attributes", 0) & reparse:
             raise GhidraAdapterError("Ghidra output is a reparse point")
         if initial.st_size > _MAX_OUTPUT:
-            raise GhidraAdapterError(
+            raise GhidraAdapterError(_oversize_error_message(
                 f"Ghidra output exceeds maximum JSON size ({initial.st_size:,} bytes; "
-                f"cap {_MAX_OUTPUT:,})"
-            )
+                f"cap {_MAX_OUTPUT:,})", path, artifact
+            ))
         chunks = []
         total = 0
         while True:
@@ -200,10 +223,10 @@ def _read_snapshot(path: Path) -> dict:
             chunks.append(chunk)
             total += len(chunk)
             if total > _MAX_OUTPUT:
-                raise GhidraAdapterError(
+                raise GhidraAdapterError(_oversize_error_message(
                     f"Ghidra output exceeds maximum JSON size (more than {_MAX_OUTPUT:,} bytes; "
-                    f"cap {_MAX_OUTPUT:,})"
-                )
+                    f"cap {_MAX_OUTPUT:,})", path, artifact
+                ))
         final = os.fstat(descriptor)
         fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
         if total != initial.st_size or any(
@@ -584,7 +607,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         log_entries.append(entry); _publish_log(log_path, log_entries)
         native_needs_fallback = _is_native_loader_rejection(native_diagnostic)
         if completed.returncode == 0 and output.is_file() and not native_needs_fallback:
-            native_document = _read_snapshot(output)
+            native_document = _read_snapshot(output, artifact)
             try:
                 _validate_output(native_document, configuration, identity)
             except SemanticValidationError as error:
@@ -625,7 +648,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         if not output.is_file():
             raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
         try:
-            document = _read_snapshot(output)
+            document = _read_snapshot(output, artifact)
             _validate_output(document, configuration, identity, layout_document)
         except GhidraAdapterError:
             raise

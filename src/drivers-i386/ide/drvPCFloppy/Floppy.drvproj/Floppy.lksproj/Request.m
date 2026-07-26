@@ -656,9 +656,13 @@ static void docopy(vm_map_t sourceMap,
 	// Check if error flag is set (bit 0)
 	if ((*flagsPtr & 1) != 0) {
 		// Cylinder has an error - fail the operation
+		/* 0x7cb8 stores -721 (IO_R_MEDIA) here, not IO_R_IO_ERROR. The
+		   reference then jumps straight to the epilogue, which never sets
+		   eax, so its return value on this path is incidental; we return
+		   the same code we recorded. */
 		parentRequest = *(id *)((char *)subrequest + 0x08);
-		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_IO_ERROR;
-		return IO_R_IO_ERROR;
+		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_MEDIA;
+		return IO_R_MEDIA;
 	}
 
 	// Get block start and calculate cache pointer

@@ -65,6 +65,32 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
     )
 
 
+def analysis_scope(profile):
+    """Return the profile's analysis scope as sorted (start, end) pairs.
+
+    An empty tuple means the profile declares no scope, so everything is
+    analyzed. ``start`` is inclusive and ``end`` exclusive.
+    """
+    declared = profile.document.get("analysis_scope")
+    if not declared:
+        return ()
+    ranges = []
+    for item in declared:
+        start, end = int(item["start"]), int(item["end"])
+        if end <= start:
+            raise ProfileError(
+                f"analysis_scope range {start}..{end} is empty or inverted"
+            )
+        ranges.append((start, end))
+    ranges.sort()
+    for (_, previous_end), (next_start, _) in zip(ranges, ranges[1:]):
+        if next_start < previous_end:
+            raise ProfileError(
+                f"analysis_scope ranges overlap at {next_start}"
+            )
+    return tuple(ranges)
+
+
 def _load_artifact(
     label: str, document: dict, base_dir: Path, environ: Mapping[str, str]
 ) -> tuple[ArtifactSpec, InputIdentity]:

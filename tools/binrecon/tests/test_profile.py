@@ -1,12 +1,13 @@
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import jsonschema
 import pytest
 
 from binrecon.identity import IdentityMismatchError
-from binrecon.profile import ProfileError, load_profile
+from binrecon.profile import ProfileError, analysis_scope, load_profile
 
 
 def _profile_document(reference="reference.bin", rebuilt="rebuilt.bin"):
@@ -248,3 +249,46 @@ def test_load_profile_still_loads_rebuilt_when_present(tmp_path):
     assert profile.rebuilt is not None
     assert profile.rebuilt.path == (tmp_path / "rebuilt.bin").resolve()
     assert profile.rebuilt_identity is not None
+
+
+def test_analysis_scope_is_empty_when_absent():
+    profile = SimpleNamespace(document={})
+
+    assert analysis_scope(profile) == ()
+
+
+def test_analysis_scope_returns_sorted_pairs():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x2000, "end": 0x3000},
+                           {"start": 0x1000, "end": 0x1500}]
+    })
+
+    assert analysis_scope(profile) == ((0x1000, 0x1500), (0x2000, 0x3000))
+
+
+def test_analysis_scope_rejects_an_inverted_range():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x3000, "end": 0x2000}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)
+
+
+def test_analysis_scope_rejects_an_empty_range():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x2000, "end": 0x2000}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)
+
+
+def test_analysis_scope_rejects_overlapping_ranges():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x2000},
+                           {"start": 0x1800, "end": 0x2400}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)

@@ -64,7 +64,8 @@ def main(argv=None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     Path(argv[2]).write_text(
-        json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(document, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+        encoding="utf-8",
     )
     print(f"{len(document['entries'])} entries")
     return 0

@@ -49,17 +49,78 @@ instruction by instruction against `SCSIServer.m`.
 
 | Address | Function | Status | Reason |
 | --- | --- | --- | --- |
-| 16 | `+[SCSIServer requiredProtocols]` | `assembly-matched` | trivial 5-instruction leaf, no divergence |
+| 16 | `+[SCSIServer requiredProtocols]` | `assembly-matched` (data divergence found; see Finding below — ledger CLI refuses the backward transition to `unexamined`) | trivial 5-instruction leaf, no divergence in the *code*; the *data* it returns diverges |
 | 36 | `+[SCSIServer probe:]` | `unexamined` | Finding: extra IOLog calls |
-| 228 | `-[SCSIServer initFromDeviceDescription:]` | `unexamined` | Finding: wrong registerSCSIController: argument; Finding: extra IOLog call |
+| 228 | `-[SCSIServer initFromDeviceDescription:]` | `unexamined` | Finding: wrong registerSCSIController: argument; Finding: extra IOLog call; Finding: extra objc_getClass call |
 | 480 | `-[SCSIServer registerSCSIController:]` | `unexamined` | Finding: extra IOLog call |
-| 632 | `-[SCSIServer serverConnect:taskPort:]` | `unexamined` | Finding: wrong selector name |
-| 772 | `-[SCSIServer getCharValues:forParameter:count:]` | `unexamined` | Finding: extra bounds guard absent from reference |
+| 632 | `-[SCSIServer serverConnect:taskPort:]` | `unexamined` | Finding: wrong selector name; Finding: extra objc_getClass call |
+| 772 | `-[SCSIServer getCharValues:forParameter:count:]` | `unexamined` | Finding: extra bounds guard absent from reference; Finding: extra objc_getClass call |
 
-Only `requiredProtocols` (address 16) accounts for every reference instruction with no unexplained
-difference. The other five each have at least one real, non-cosmetic divergence from the reference
-disassembly, so per the ledger convention they stay `unexamined` rather than being marked
-`control-flow-confirmed`; the findings below are for Task 12 to repair.
+`requiredProtocols` (address 16) accounts for every reference *instruction* with no unexplained
+difference, but the *data* the five instructions return does diverge (see the Finding immediately
+below) — a review caught this after the original disposition, and the ledger CLI refuses to move
+the entry back to `unexamined` (backward transitions are forbidden by design), so the status field
+still reads `assembly-matched` even though the divergence is real and unresolved. The other five
+functions each have at least one real, non-cosmetic divergence from the reference disassembly, so
+per the ledger convention they stay `unexamined` rather than being marked `control-flow-confirmed`;
+the findings below are for Task 12 to repair.
+
+## Finding: `+[SCSIServer requiredProtocols]` returns an array with the wrong pointer indirection, backed by a static of the wrong storage class
+
+**Source:** `SCSIServer.m:21-25` (declaration of `_scsiServerProtocols` and its initializer),
+returned by `SCSIServer.m:118-121`.
+
+**Reference behaviour:** the function (address 16, 20 bytes, `assembly-matched`) computes the
+address of `_protocols.26` and returns it — that part was already confirmed instruction-for-instruction.
+What was not checked in the original pass is the *data* at that address:
+
+- `_protocols.26` sits at address 16384 in `__DATA,__data` (symbol table: `{'name':
+  '_protocols.26', 'address': 16384, 'binding': 'local', 'section': '__DATA,__data'}`).
+- A relocation at address 16384 rewrites the first element to point into `__OBJC,__protocol`:
+  `{'address': 16384, 'kind': 'ppc-vanilla-32-absolute', 'target': '__OBJC,__protocol', 'addend': 0}`.
+  The `__OBJC,__protocol` section itself starts at address 21424 (`{'name': '__OBJC,__protocol',
+  'address': 21424, 'offset': 23916, 'size': 40, ...}`), so after relocation `protocols[0] ==
+  21424` — a pointer directly *to* the `Protocol` struct, i.e. `protocols` has type `Protocol *[]`.
+- `_protocols.26` is gcc's standard mangling for a **function-local static** (the `.26` suffix
+  disambiguates a local named `protocols` from other locals across the translation unit) — meaning
+  Apple declared `static Protocol *protocols[] = {...}` *inside* `+requiredProtocols` itself, not at
+  file scope.
+
+**Our source:** `SCSIServer.m:21-25` declares `extern Protocol
+*objc_protocol_IOSCSIController;` and initializes the array as
+`static Protocol *_scsiServerProtocols[] = { &objc_protocol_IOSCSIController, NULL };` — i.e.
+`&objc_protocol_IOSCSIController` is the address of the *pointer variable*
+`objc_protocol_IOSCSIController`, not the address of the `Protocol` struct it points to. That makes
+our element type `Protocol **`, one indirection level off from the reference's `Protocol *`.
+Separately, `_scsiServerProtocols` is declared at file scope (`SCSIServer.m:22`), not as a
+function-local static the way the mangled reference symbol name implies.
+
+**Consequence:** on the eventual PPC rebuild, `protocols[0]` would hold the address of the
+`objc_protocol_IOSCSIController` pointer cell rather than the address of the protocol struct itself
+— any runtime code that dereferences `requiredProtocols()[0]` expecting a `Protocol *` (e.g. `class_conforms_to:` /
+`respondsTo:` machinery, or IOKit's own protocol-conformance checks) would read the wrong bytes. This
+is a real divergence, not a cosmetic one, so per the project's own convention ("a divergence that is
+not intentional is not a status") it should not be left recorded as `assembly-matched`.
+
+**Ledger status:** the entry could not be moved back to `unexamined` to reflect this. Attempted:
+
+```
+$ BINRECON_REFERENCE="$REF" PYTHONPATH=tools/binrecon $PY -m binrecon ledger \
+  --profile tools/binrecon/profiles/scsiserver-ppc.json --ledger "$RECON/ledger.json" \
+  --address 16 --status unexamined --reviewer claude --reason "..."
+binrecon: backward ledger transition is forbidden
+```
+
+`binrecon.ledger.transition()` enforces a strictly non-decreasing state order
+(`unexamined -> signature-confirmed -> control-flow-confirmed -> assembly-matched`) and raises
+`LedgerError("backward ledger transition is forbidden")` for any attempt to move an entry earlier in
+that order — there is no CLI-supported way to un-confirm an entry once `assembly-matched` is
+reached. Per this task's constraint against hand-editing `ledger.json`, the entry's `status` field
+was left as `assembly-matched` and is **not** an accurate signal that this function is fully
+resolved; this Finding is the authoritative record that address 16 has an unresolved divergence
+Task 12 must fix (correct the indirection to `Protocol *_scsiServerProtocols[]` initialized with
+`objc_protocol_IOSCSIController` directly, not `&objc_protocol_IOSCSIController` — and decide whether
+to also relocate the array to function-local scope to match the reference's storage class).
 
 ## Finding: `+[SCSIServer probe:]` logs where the reference has no log calls
 
@@ -117,6 +178,10 @@ against the wrong device's `directDevice`/`name`. Left `unexamined`; Task 12 sho
 to `[self registerSCSIController:deviceDescription]` and address the extra `IOLog` call the same way
 as the `probe:` finding.
 
+This function also has a third divergence, of the same species as the wrong-selector-name finding
+below: it calls `objc_getClass("IODevice")` where the reference loads a static reference instead —
+see "Finding: our source calls `objc_getClass()` where the reference loads static references" below.
+
 ## Finding: `-[SCSIServer registerSCSIController:]` logs where the reference has no log call
 
 **Source:** `SCSIServer.m:218` (`registerSCSIController:`).
@@ -158,6 +223,10 @@ is scoped to fix project-wide; this instance is called out here because it sits 
 function and blocks a `assembly-matched`/`control-flow-confirmed` disposition for address 632. Left
 `unexamined`.
 
+This function also calls `objc_getClass("IOSCSISession")` where the reference loads a static
+`__cls_refs` entry instead — see "Finding: our source calls `objc_getClass()` where the reference
+loads static references" below.
+
 ## Finding: `-[SCSIServer getCharValues:forParameter:count:]` adds a bounds guard the reference does not have
 
 **Source:** `SCSIServer.m:342` (`getCharValues:forParameter:count:`), specifically lines 421-423.
@@ -179,3 +248,51 @@ skips the terminator write in the edge case where the reference would perform (a
 underflow write. Whether to reproduce the reference's underflow write or keep our guard is a Task 12
 decision (compare `## Apple's own defects` conventions used by sibling reconstructions — reproduce
 by default unless there's a reason not to). Left `unexamined`.
+
+This function also calls `objc_getClass("IODevice")` where the reference loads a static reference
+instead — see "Finding: our source calls `objc_getClass()` where the reference loads static
+references" below.
+
+## Finding: our source calls `objc_getClass()` where the reference loads static references
+
+**Source:** `SCSIServer.m:177` and `SCSIServer.m:362` (both `objc_getClass("IODevice")`, building an
+`objc_super` struct for a super-call), and `SCSIServer.m:298` (`objc_getClass("IOSCSISession")`,
+building the receiver for `+alloc`).
+
+**Reference behaviour:** none of the three call sites resolve to a `bl` in the reference. `_objc_getClass`
+does not appear anywhere among the reference binary's 34 imports (checked the full import list, not
+just the string table, so this rules out an unresolved-by-the-exporter false negative). Instead:
+
+- Inside `-[SCSIServer initFromDeviceDescription:]` (address 228), at addresses 328-336, the
+  `superStruct.class` field is filled by loading `stru_5198.super_class` directly (`lis r9,
+  stru_5198.super_class@ha` / `lwz r9, stru_5198.super_class@l(r9)` / `stw r9, ...`) — a static,
+  already-resolved `objc_super`-style class reference, not a runtime `objc_getClass()` call.
+- Inside `-[SCSIServer getCharValues:forParameter:count:]` (address 772), the identical
+  three-instruction sequence recurs at addresses 1004-1012, loading the same
+  `stru_5198.super_class` field for its own super-call.
+- Inside `-[SCSIServer serverConnect:taskPort:]` (address 632), at addresses 672-680, r3 (the first
+  `objc_msgSend` argument, the receiver for `+alloc`) is loaded from the `__cls_refs` entry
+  `paIoscsisession` (symbol table address 20880) — `lis r3, paIoscsisession@ha` / `lwz r3,
+  paIoscsisession@l(r3)` — immediately followed (addresses 676-684) by loading `paAlloc` into r4 and
+  the `bl sub_2F4` (`objc_msgSend`). `paIoscsisession`'s class-name string (verified in the named
+  export's `strings` table) reads `"IOSCSISession"` at address 21544, confirming it is the class
+  reference for `IOSCSISession`, resolved at link time, not looked up at runtime.
+
+**Our source:** all three sites call `objc_getClass("IODevice")` / `objc_getClass("IOSCSISession")`
+to obtain the same class pointers at runtime instead of reading them from build-time-resolved
+references (`SCSIServer.m:177`, `SCSIServer.m:298`, `SCSIServer.m:362`).
+
+**Consequence:** this is the same species of defect already recorded three times above for the added
+`IOLog` calls — a call our source makes at a site the reference does not call anything — except here
+the pattern is `objc_getClass()` instead of `IOLog()`, and it recurs at three of the six sites in
+this block (`initFromDeviceDescription:`, `serverConnect:taskPort:`, `getCharValues:forParameter:count:`).
+Functionally `objc_getClass("X")` and a resolved class/`super_class` reference to the same class
+should produce the same pointer at runtime, so this is lower-severity than the wrong-argument or
+wrong-selector-name findings above, but it is still behaviour the reference does not have (an extra
+runtime call, and a reliance on `_objc_getClass` being importable at all — which the reference does
+not need, since it is not among its imports). All three functions are already left `unexamined` for
+other reasons (see the findings above, each cross-referencing this one), so no ledger status changes
+because of this finding by itself; Task 12 should replace all three call sites with build-time class
+references the same way the reference does, consistent with how `SCSIServer.m` already declares
+`extern Protocol *objc_protocol_IOSCSIController` for the protocol-array case above rather than
+looking that up at runtime either.

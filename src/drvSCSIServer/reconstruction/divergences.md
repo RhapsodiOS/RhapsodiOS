@@ -1175,45 +1175,94 @@ Behaviour, traced instruction-for-instruction with every `bl` resolved via reloc
 
 1. Calls `_IOTaskPortAllocate(&localPort)` (the sibling function documented below, address 6588). On
    failure (non-zero result), logs `IOLog("_io_task_notification: IOTaskPortAllocate - %d\n", result)`
-   and jumps straight to the shared cleanup/exit tail (step 4).
-2. On success, calls the imported `task_set_special_port_EXTERNAL(_IOTask_kern, 2, localPort)` —
-   installs the newly allocated port as special-port slot `2` of the global kernel-task handle
-   `_IOTask_kern` (the same external our source's own `_entry`/`IOTask_kern` groundwork already reads
-   in the seven mapped plumbing functions). On failure, logs
-   `"_io_task_notification: task_set_special_port - %d\n"` and jumps to the same cleanup/exit tail.
-3. On success, enters what is effectively an unbounded server loop: builds a Mach message buffer and
-   calls the imported `_msg_receive(buffer, 0x100, 0xEA60)` repeatedly.
-   - A result of `-0xCB` (-203) retries the receive (this numeric value is consistent with a
-     Mach IPC "receive timed out" status, but no import or string in the reference names it, so this
-     reading is inferred from the retry behaviour, not confirmed by a symbol).
+   and jumps straight to the drain phase (step 4; address 7692's `b loc_1F14` targets address 7956,
+   the drain phase's own entry point, not the cleanup/exit tail directly).
+2. On success, calls the imported `task_set_special_port_EXTERNAL(_IOTask, 2, localPort)` — installs
+   the newly allocated port as special-port slot `2` (`TASK_NOTIFY_PORT`, `src/kernel-7/mach/task_special_ports.h:93`,
+   "Task receives kernel IPC notifications here") of the global task handle **`_IOTask`** — not
+   `_IOTask_kern`. This is a distinct undefined external: the relocations at the load site (addresses
+   7696/7700) name `_IOTask` directly, confirmed by dumping every `IOTask`-containing relocation target
+   in `__TEXT,__text`:
+   ```
+   PYTHONPATH=tools/binrecon $PY -c "
+   from binrecon.macho import read_macho
+   import os
+   d = read_macho(os.environ['REF'])
+   for r in d['extensions']['macho']['relocations']:
+       if r['section'] == '__TEXT,__text' and 'IOTask' in str(r['target']):
+           print(r['address'], r['target'])
+   "
+   ```
+   Of the 27 `IOTask*`-named relocations in `__TEXT,__text`, exactly four — 7696, 7700 (this call) and
+   8176, 8180 (the mirror-image reset in step 4) — name `_IOTask`; the other 23 (across the seven
+   already-mapped plumbing functions and `_IOConvertTaskPortToVMTask`/`_IORequestNotifyForClientTask`
+   below) all name `_IOTask_kern`. `_IOTask` and `_IOTask_kern` are therefore two different undefined
+   globals, and `__io_task_notification` is the *only* function in the reference that reads `_IOTask`;
+   nothing here confirms it is the same external our source's `_entry`/`IOTask_kern` groundwork reads
+   in the seven mapped plumbing functions, so that claim is withdrawn. On failure, logs
+   `"_io_task_notification: task_set_special_port - %d\n"` and jumps to the drain phase (7736's
+   `b loc_1F14` also targets 7956).
+3. On success, enters what is effectively an unbounded server loop: builds a Mach message buffer with
+   `msg_size` set to `0x20` (32) at offset `+4` of the header, and calls the imported
+   `_msg_receive(hdr, 0x100, 0xEA60)` repeatedly. `0x100` is `RCV_TIMEOUT`
+   (`src/kernel-7/mach/message.h:762`, "Terminate on timeout elapsed"); `0xEA60` (60000) is the
+   millisecond timeout paired with it.
+   - A result of `-0xCB` (-203) is `RCV_TIMED_OUT` (`message.h:800`) and retries the receive.
    - Any other non-zero result logs `"_io_task_notification: msg_receive - %d\n"` and falls into the
-     same cleanup/exit tail.
-   - A result of `0` (message received) scans the 32-entry, 8-byte-stride `_notifClients` array — the
-     same global `_IOReleaseNotifyForFunc` (address 8988, already examined in Task 6) walks — comparing
-     each entry's first field against the just-received message's source port field. On a match, it
-     calls `_IODereferenceClientTask` (address 7156, already mapped) with the entry's first field,
-     `bzero`s the 8-byte entry, decrements `_notifClientCnt`, and calls `_msg_send` once (an
+     drain phase (7752's `b loc_1F14` also targets 7956).
+   - A result of `0` (message received) first checks `_notifClientCnt`: if it is already `0`, control
+     jumps straight past the drain phase to the cleanup/exit tail (address 8176; nothing to drain).
+     Otherwise it scans the 32-entry, 8-byte-stride `_notifClients` array — the same global
+     `_IOReleaseNotifyForFunc` (address 8988, already examined in Task 6) walks — comparing each
+     entry's first field against the just-received message's source port field. On a match, it calls
+     `_IODereferenceClientTask` (address 7156, already mapped) with the entry's first field, `bzero`s
+     the 8-byte entry, decrements `_notifClientCnt`, and calls `_msg_send` once (an
      acknowledgement/reply). Whether or not slot `i` matched, the scan advances to `i+1`; when
      `_notifClientCnt` reaches zero mid-scan, or the scan exhausts all 32 slots, control returns to the
      top of the loop and calls `_msg_receive` again for the next notification. The function does not
      return in the ordinary case — it is a permanent per-notification-thread server loop.
-4. The cleanup/exit tail (reached from every error path above, and from the main loop once
-   `_notifClientCnt` has dropped to zero): resets special-port slot `2` back to
-   `task_set_special_port_EXTERNAL(_IOTask_kern, 2, 0)` (undoing step 2), calls
-   `_IOTaskPortDeallocate` (address 6652, already mapped) on the locally allocated port unless it is
-   already `0`, zeroes the global `_notifyThread` (marking "no notification thread is running" — the
-   same global `_IORequestNotifyForClientTask` below checks before forking a new one), then calls the
-   imported `_IOExitThread()`, which does not return; the disassembler's own epilogue bytes after that
-   call are unreachable.
+4. **The drain phase (addresses 7956-8172), skipped entirely by the earlier pass.** Every error path
+   above (`b loc_1F14` at 7692, 7736, 7752) branches here, and the main loop falls into it after every
+   successfully received message. It is a *second*, independent 32-slot pass over `_notifClients`, run
+   whenever the thread is about to exit (any error, or the loop's own `_notifClientCnt == 0` check
+   already routes around it — see above) — its job is to synthesize a "this session's notification is
+   gone" broadcast to every client still registered, not to process one received message:
+   - 7956-7968: if `_notifClientCnt` is already `0`, skip straight to the cleanup/exit tail (8176); no
+     clients to notify.
+   - 7972-8044: builds a fresh message header on the stack: `msg_size = 0x20` (32, address
+     7980/7984), and `msg_id = 0x41` (`li r0, 0x41` / `stw r0, hdr+0x14` at 8000/8004) — `0x41` is
+     `NOTIFY_PORT_DELETED` (`src/kernel-7/mach/notify.h:152-153`, `NOTIFY_FIRST` (`0100` = 0x40) `+ 1`,
+     "A send or send-once right was deleted"), plus a `msg_type_t`/NDR-style bitfield built at
+     8008-8044 for the message body.
+   - 8048-8172: `i = 0`; while `i <= 31` and `_notifClientCnt != 0`: if `_notifClients[i]`'s first field
+     is `0` (empty), skip to `i+1`. Otherwise: store `_notifClients[i]`'s second field (offset `+4`,
+     loaded at 8100) into the header's `msg_remote_port` field, call
+     `_IODereferenceClientTask(_notifClients[i][0])` (the entry's first field), `bzero` the 8-byte
+     entry, decrement `_notifClientCnt`, call `_msg_send(hdr, 1, 0)`, then advance to `i+1`. When the
+     loop exits (count reached zero or all 32 slots scanned), control falls into the cleanup/exit tail
+     at 8176.
 
-**Could not determine:** the exact symbolic meaning of special-port slot `2` (which Mach special-port
-ID `task_set_special_port`'s "which" argument names); the precise semantics of the `0x100` option and
-`0xEA60` (60000) timeout constants passed to `_msg_receive` beyond their raw values; and whether the
-`_notifClients[i]`'s first field, compared here against a received message's port, is a bare Mach port
-name or (per the existing `_IOReleaseNotifyForFunc` finding) the value of a `_clientReferences` slot
-pointer that also happens to serve as this comparison key — `_IORequestNotifyForClientTask` below
-(which populates this same array) is consistent with either reading, and disassembling the imported
-Mach kernel routines themselves is out of this project's scope.
+   A source written from the earlier description (which jumped straight from the error paths to the
+   8176-8228 exit tail) would silently drop this entire client-teardown broadcast.
+5. The cleanup/exit tail (address 8176-8231, reached from the drain phase above and from the loop's own
+   `_notifClientCnt == 0` short-circuit): resets special-port slot `2` back to
+   `task_set_special_port_EXTERNAL(_IOTask, 2, 0)` (undoing step 2 — confirmed `_IOTask`, not
+   `_IOTask_kern`, by the same relocation dump above: addresses 8176/8180 are the other two of the four
+   `_IOTask` uses in the whole binary), calls `_IOTaskPortDeallocate` (address 6652, already mapped) on
+   the locally allocated port unless it is already `0`, zeroes the global `_notifyThread` (marking "no
+   notification thread is running" — the same global `_IORequestNotifyForClientTask` below checks
+   before forking a new one), then calls the imported `_IOExitThread()`, which does not return; the
+   disassembler's own epilogue bytes after that call are unreachable.
+
+Special-port slot `2`, the `_msg_receive`/`_msg_send` option and notification-ID constants above are
+all now named from this tree's own Mach headers (`task_special_ports.h`, `message.h`, `notify.h`), so
+none of them are "could not determine" any longer. The one thing that remains genuinely unresolved:
+whether `_notifClients[i]`'s first field, compared here against a received message's port, is a bare
+Mach port name or (per the existing `_IOReleaseNotifyForFunc` finding) the value of a
+`_clientReferences` slot pointer that also happens to serve as this comparison key —
+`_IORequestNotifyForClientTask` below (which populates this same array) is consistent with either
+reading, and disassembling the imported Mach kernel routines themselves is out of this project's
+scope.
 
 ### `_IORequestNotifyForClientTask` (address 8412, 480 bytes)
 
@@ -1227,9 +1276,14 @@ field-for-field):
 - param1 (`r3`, kept on the stack) — the `task` argument, a task port, passed unchanged into two Mach
   IPC "compat" calls described below.
 - param2 (`r4`, saved in `r26`) — stored, unmodified, into the new `_notifClients[i]` entry's second
-  field (offset `+4`) once registration succeeds. Our call site passes `self` (cast through
-  `mach_port_t`) here, confirming this field really is "session identity", matching the existing
-  `_IOReleaseNotifyForFunc` finding's reading of that same field.
+  field (offset `+4`, addresses 8704/8708) once registration succeeds. The reference itself is the
+  evidence here: it stores param2 into the entry's offset `+4`, which `__io_task_notification`'s drain
+  phase (above) and `_IOReleaseNotifyForFunc` both load as `msg_remote_port` — i.e. a **send-right port
+  name used as the `msg_send` destination** — not merely "session identity" inferred from our own call
+  site. Our call site passes `self` here (cast through `mach_port_t`); that our source happens to pass
+  the same kind of value does not itself establish what the reference's field means — the direction of
+  evidence runs from the reference's own use (a message destination) to a judgement about our source's
+  divergence, not the other way around.
 - param3 (`r5`, saved in `r29`) — an in/out `int **`, passed *as-is* to `_IOReferenceClientTask`
   (address 6908, already mapped; matches that function's own recovered `int
   **clientReferenceSlot` signature exactly), *dereferenced* to obtain the value stored into
@@ -1245,10 +1299,18 @@ Behaviour:
 2. Marks the found slot reserved (`stwx -1, ...`) and increments `_notifClientCnt` up front (so a
    concurrent scan will not reuse the same slot while this call is still in progress).
 3. Calls the imported `_ipc_object_copyout_compat(_IOTask_kern->port_funcs, param1, 0x11,
-   clientReferenceSlot)`. On failure, un-reserves the slot (`stwx 0`) and returns the error.
+   clientReferenceSlot)`. `0x11` (17) is `MACH_MSG_TYPE_MOVE_SEND`
+   (`src/kernel-7/mach/message.h:275`, "Must hold send rights") — the copyout is moving a send right
+   for `param1` (the task port) out of the caller's space. On failure, un-reserves the slot (`stwx 0`,
+   address 8592-8596) and returns the error — **without decrementing `_notifClientCnt`** (see the
+   leak noted below).
 4. Calls `_IOReferenceClientTask(clientReferenceSlot)` (address 6908). On failure, calls the imported
    `_ipc_object_copyin_compat(port_funcs, *clientReferenceSlot, 6, 0, &param1-stack-copy)` (undoing
-   step 3's copyout), un-reserves the slot, and returns the error.
+   step 3's copyout; `6` is `MSG_TYPE_PORT`, `src/kernel-7/mach/message.h:716`, matching
+   `_IOConvertTaskPortToVMTask`'s own use of the same constant for the same
+   `ipc_object_copyin_compat(space, name, msgt_name, dealloc, objectp)` call, defined at
+   `src/kernel-7/ipc/ipc_object.c:963`), un-reserves the slot (8656-8672), and returns the error —
+   again **without decrementing `_notifClientCnt`**.
 5. On success, commits: stores `*clientReferenceSlot` into the entry's first field, stores `param2`
    (session) into the entry's second field.
 6. Checks the global `_notifyThread`; if a notification thread is already running, skips straight to
@@ -1257,17 +1319,29 @@ Behaviour:
 7. Otherwise calls the imported `_IOForkThread(&__io_task_notification, 0)` and stores the result into
    `_notifyThread`. If the fork failed (result still `0`), unwinds everything: calls
    `_ipc_object_copyin_compat` again (the same release as step 4), calls `_IODereferenceClientTask`,
-   writes `0` back through `clientReferenceSlot`, `bzero`s the entry, decrements `_notifClientCnt`, and
+   writes `0` back through `clientReferenceSlot`, `bzero`s the entry, **decrements `_notifClientCnt`**
+   (address 8820-8836 — this third failure path, unlike the two above, does clean up the count), and
    returns a distinct error code `-0x2BF` (-703).
 8. On any success path, returns `0`.
 
-**Could not determine:** the exact semantics of the `0x11` (17) and `6` "type" constants passed to
-`_ipc_object_copyout_compat`/`_ipc_object_copyin_compat` (these are Mach IPC compatibility-layer
-kernel routines, not part of this binary, so their own bodies are out of scope for this project); and
-the precise reason the same stack slot that held `param1` on entry is reused as the *output* parameter
-of the `ipc_object_copyin_compat` cleanup calls (steps 4 and 7) rather than a fresh local — the
-disassembly is consistent with this being an ordinary "throwaway output, never read again" pattern,
-but that is an inference, not a confirmed fact.
+**Finding: the two early failure paths leak `_notifClientCnt`.** Steps 3 and 4's failure returns
+(addresses 8592 and 8656) un-reserve the slot they just claimed (`_notifClients[i][0] = 0`) but do
+**not** decrement `_notifClientCnt`, even though step 2 (address 8548-8552) already incremented it
+before either call ran. Only the third failure path (step 7, address 8820-8836) decrements. This is a
+real bug in the reference itself — every `ipc_object_copyout_compat`/`IOReferenceClientTask` failure
+permanently inflates `_notifClientCnt` by one relative to the number of live entries in
+`_notifClients`, which `__io_task_notification`'s drain-phase loop and its own `_notifClientCnt != 0`
+gating condition both trust as an accurate count. It is Apple's own defect, not a reconstruction bug to
+introduce independently — a reimplementer should reproduce it (matching this project's convention of
+reproducing Apple's own defects by default) rather than silently "fixing" it and diverging from the
+reference's observable behaviour.
+
+Both "type" constants passed to `_ipc_object_copyout_compat`/`_ipc_object_copyin_compat` are now named
+above; the one remaining open question is the precise reason the same stack slot that held `param1` on
+entry is reused as the *output* parameter of the `ipc_object_copyin_compat` cleanup calls (steps 4 and
+7) rather than a fresh local — the disassembly is consistent with this being an ordinary "throwaway
+output, never read again" pattern, but that is an inference, not a confirmed fact, and is out of scope
+to resolve further since it depends on the internal semantics of an imported Mach kernel routine.
 
 ### `_serverThreadFunc` (address 2672, 276 bytes)
 
@@ -1276,46 +1350,128 @@ as the receiver of `objc_msgSend(session, free)` (selector resolved via the refe
 `__OBJC,__message_refs`/`__OBJC,__meth_var_names` relocation chain, the same technique Task 5 used,
 to the literal string `"free"`) at three different points in the function.
 
-Behaviour: prepares a large (`0x1400` = 5120-byte) request buffer and a second, smaller reply buffer
-on the stack, writes the session pointer into the request buffer at the same byte offset (`+0xC`,
-i.e. word index 3) that every MiG handler in our own source reads as `session = (id)request[3];`
-(e.g. `IOSCSISession.m:534` and every other handler between lines 526-892), then loops: calls the
-imported `_msg_receive(requestBuffer,
-0x1400, 0)`, and on a successfully received message calls `_IOSCSISessionMig_server(requestBuffer,
-replyBuffer)` (address 13520, already `intentional-mismatch`) to dispatch it. If the dispatch call
-returns non-zero, or a special reply code appears in the reply buffer, the function logs
-`"SS%d: Server Thread Receive Error(%d) - terminating\n"` or
-`"SS%d: Server Thread Send Error(%d) - terminating\n"` (both via `_IOLog`), sends `objc_msgSend(session,
-free)`, and returns — tearing down the session and ending the thread. Otherwise it loops back and
-calls `_msg_receive` again for the next request. This is, structurally, the per-session counterpart to
-`__io_task_notification` above: one is the RPC-request server loop, the other is the death-notification
-listener loop, and `_IORequestNotifyForClientTask` (above) is what forks the latter.
+**`0x1400` is an option word, not a buffer size — the earlier pass had this backwards.** The function
+allocates two stack buffers exactly `0x400` (1024) bytes apart (`r30` at `r1+0x850-0x818`, `r29` at
+`r1+0x850-0x418`; `0x818 - 0x418 = 0x400`). The *first* buffer's `msg_size` field (offset `+4`) is set
+to `0x400` at addresses 2720/2724 (`li r0, 0x400` / `stw r0, 4(r30)`) — that is the actual receive
+buffer size. `0x1400` is loaded separately, into `r4`, as the third argument of the
+`_msg_receive(requestBuffer, 0x1400, 0)` call at address 2732/2740 — the *option* word, exactly the
+same argument position Critical finding 3 already reads as an option in `__io_task_notification`
+(where the option is `0x100`), so the earlier description of `_serverThreadFunc` contradicted its own
+reading of the sibling function. `0x1400 = RCV_LARGE (0x1000) | RCV_INTERRUPT (0x400)`
+(`src/kernel-7/mach/message.h:765` and `:764`): receive into a buffer that may be reallocated if the
+incoming message is larger than provided, and terminate the receive on a software interrupt. The
+receive timeout argument is `0`.
 
-**Could not determine:** the precise meaning of two specific values (`0x41` and `0x45`) the function
-tests after a successful dispatch, each triggering the extra `IOLog`+`free`+return handling described
-above instead of looping back for the next message — these numbers do not match the MiG message-ID
-range this project's demux uses (`0x1092`-`0x10A3`), and no import or string in the reference names
-them, so I could not determine what field of the reply buffer is being read at that offset or what
-those two specific values represent (dead-name notification IDs and MiG-internal error codes are both
-plausible given their magnitude, but neither is confirmed). Task 10/11 should treat this as an open
-question rather than a value to guess at when writing this function's replacement.
+Behaviour, corrected against the full disassembly (address 2672-2944):
+
+1. Prologue (2672-2696) saves `r28`-`r31` and `lr`; allocates the `0x850`-byte frame described above.
+   `r31` = session (entry `r3`); `r30` = &requestBuffer; `r29` = &replyBuffer; `r28` = the `"free"`
+   selector reference.
+2. Loop top (address 2716): stores the session pointer into `requestBuffer+0xC` (word index 3 — the
+   same offset every MiG handler in our own source reads as `session = (id)request[3];`, e.g.
+   `IOSCSISession.m:534` and every other handler between lines 526-892), sets `requestBuffer.msg_size =
+   0x400`, then calls `_msg_receive(requestBuffer, 0x1400, 0)` as described above.
+3. **On `_msg_receive` failure** (addresses 2752-2780): logs
+   `"SS%d: Server Thread Receive Error(%d) - terminating\n"` via `IOLog`, then calls
+   `objc_msgSend(session, free)`. `-[IOSCSISession free]` (already documented above, address 1732)
+   calls `_IOExitThread()` whenever the session's `session_object_id` field is non-zero — true for a
+   live per-session server thread — so this call does not return; the thread exits inside it. The
+   disassembler still emits the following instructions (they are not physically removed), but they are
+   unreachable in the ordinary case.
+4. **On `_msg_receive` success** (address 2784, also the fallthrough after step 3's *unreachable*
+   instructions): calls `_IOSCSISessionMig_server(requestBuffer, replyBuffer)` (address 13520, already
+   `intentional-mismatch`).
+5. **The `Mig_server` return-polarity is the opposite of what the earlier pass recorded.** At address
+   2796/2800: `cmpwi cr1, r3, 0` / `bne cr1, loc_B2C` (2860) — **non-zero means the message was
+   handled**, and branches to the reply-send path (step 7); the earlier description had this
+   inverted. Falling through (`r3 == 0`, "not dispatched") goes to the notification-ID guard next.
+6. **The notification-ID guard** (addresses 2804-2832), reached only when `Mig_server` returned `0`:
+   reads `requestBuffer.msg_id` (offset `+0x14`, the same header field `__io_task_notification`'s
+   drain phase writes) into `r9`, then `addi r0, r9, -0x41` / `cmplwi cr1, r0, 0xB` / `bgt cr1,
+   loc_B2C` — i.e. `msg_id - 0x41 <=u 11`, the inclusive range `0x41`-`0x4C`. Outside that range,
+   control falls through to the reply-send path (step 7) anyway. Inside the range: if `msg_id == 0x41`
+   (`NOTIFY_PORT_DELETED`, `src/kernel-7/mach/notify.h:152-153`) or `msg_id == 0x45`
+   (`NOTIFY_PORT_DESTROYED`, `notify.h:157`, `NOTIFY_FIRST + 5`), both converge on the same handling
+   (address 2836-2856): zero the word at offset `+0x10` of the structure pointed to by `session+4` (the
+   same anchor pointer the "Groundwork" note above documents), then `objc_msgSend(session, free)` —
+   again ending the thread via `_IOExitThread()`, the same way step 3 does. Any other value in
+   `0x41`-`0x4C` (neither `0x41` nor `0x45`) branches back to the loop top (address 2716) without
+   replying at all — the message is silently ignored. These two constants are the same
+   `NOTIFY_PORT_DELETED`/`NOTIFY_PORT_DESTROYED` notification IDs `__io_task_notification`'s drain
+   phase sends (`0x41`); they are Mach kernel notification IDs about the death of a port this thread
+   holds, not MiG message IDs, which is why they don't fit this project's `0x1092`-`0x10A3` demux
+   range — that mismatch is exactly what earlier flagged them as unidentifiable.
+7. **The reply half, entirely missing from the earlier pass** (address 2860-2908, `loc_B2C`), reached
+   either because `Mig_server` returned non-zero (handled) or because `msg_id` fell outside the
+   notification range: reads `replyBuffer.RetCode` (offset `0x1C`) and tests it against two MiG status
+   constants before sending the reply. `RetCode == -0x131` (`MIG_NO_REPLY`) branches back to the loop
+   top (2716) *without* sending any reply at all. Otherwise, `RetCode == -0x12F` (`MIG_BAD_ID`) is
+   rewritten in place to `-0x2C6` before falling through. Either way (unless `MIG_NO_REPLY` looped
+   away), the function calls `_msg_send(replyBuffer, 5, 0)` — option `5 = SEND_TIMEOUT (0x0001) |
+   SEND_INTERRUPT (0x0004)` (`message.h:755`/`:758`), timeout `0`.
+8. **On `_msg_send` success** (address 2908): branches back to the loop top (2716) for the next
+   request.
+9. **On `_msg_send` failure** (addresses 2912-2940): logs
+   `"SS%d: Server Thread Send Error(%d) - terminating\n"` via `IOLog`, then
+   `objc_msgSend(session, free)` — again ending the thread via `_IOExitThread()`, the same as step 3.
+10. **The function has no epilogue and never executes a `blr`.** Its last instruction (address 2944) is
+    `b loc_A9C` (2716), an unconditional branch back to the loop top — not a return. The only two ways
+    this function's execution ever ends are the two `_IOExitThread()` calls inside `[session free]`
+    (steps 3 and 6/9); the disassembler-visible instruction at 2944 is dead code reachable only if
+    `[session free]` were somehow to return, which it does not for a live session.
+
+This is, structurally, the per-session counterpart to `__io_task_notification` above: one is the
+RPC-request server loop, the other is the death-notification listener loop, and
+`_IORequestNotifyForClientTask` (above) is what forks the latter.
+
+The two values (`0x41`/`0x45`) the earlier pass could not identify are now named — `NOTIFY_PORT_DELETED`
+and `NOTIFY_PORT_DESTROYED` (`src/kernel-7/mach/notify.h:152-158`) — and the reply half, the
+`Mig_server` polarity, the buffer-size/option-word confusion, and the no-return ending are all
+corrected above.
 
 ### `_IOConvertTaskPortToVMTask` (address 7320, 160 bytes)
 
-Single argument (`r3`) — a task port. The function copies its own argument onto the stack and passes
-*the address of that local copy* to `_IOReferenceClientTask` (address 6908) — i.e. it fabricates a
-throwaway `int *` slot for the call rather than reusing a persistent one, since it has no
-`_clientReferences`-style slot of its own to offer. If that call fails, returns `0` immediately.
-Otherwise: calls the imported `_ipc_object_copyin_compat(_IOTask_kern->port_funcs, taskPort, 6, 0,
-&outObject)`; on failure, falls to a cleanup path (returns `0`, after presumably dropping the reference
-— the disassembly for this specific failure edge was not traced in full detail given the time budget,
-so Task 10/11 should re-check it directly rather than trust this summary blindly for that one edge).
-On success, calls the imported `_convert_port_to_map(outObject)` and keeps the result; calls the
-imported `_ipc_port_release_send(outObject)`; calls `_IODereferenceClientTask(taskPort)` to drop the
-reference obtained earlier. If that dereference call itself fails, calls the imported
-`_vm_map_deallocate` on the map just obtained and returns `0` instead (discarding the map rather than
-handing back something whose reference bookkeeping is now inconsistent). Otherwise returns the
-`vm_map_t` obtained from `_convert_port_to_map`.
+Single argument (`r3`) — a task port, saved to a stack slot (`saved_r3`) at entry. The function passes
+*the address of that stack slot* to `_IOReferenceClientTask(&saved_r3)` (address 6908) — i.e. it
+fabricates a throwaway `int *` slot for the call rather than reusing a persistent one, since it has no
+`_clientReferences`-style slot of its own to offer. If that call fails (address 7356), returns `0`
+immediately (address 7360-7364).
+
+**The dereference call at the end uses the possibly-modified local copy, not the original `taskPort` —
+this needs stating explicitly, since `_IOReferenceClientTask`'s own recovered signature (above) writes
+back through its argument.** `_IOReferenceClientTask(int **clientReferenceSlot)` finds a free
+`_clientReferences` slot and writes that slot's address back through `*clientReferenceSlot` whenever
+the slot doesn't already point inside the table — true here, since `saved_r3` starts out holding a raw
+task port name, not a `_clientReferences`-range pointer. So after this call, `saved_r3` no longer holds
+the original `taskPort` value; it holds the found slot's address. Every later use of `saved_r3` in this
+function — the `ipc_object_copyin_compat` call below (address 7380, `lwz r4,
+0x50+saved_r3(r1)`) and the final `_IODereferenceClientTask` call (address 7428, `lwz r3,
+0x50+saved_r3(r1)`) — reads this modified value, not the raw port. A reimplementer must reuse the
+same stack cell `_IOReferenceClientTask` was given, not re-read the caller's original argument, to
+reproduce this.
+
+On success, calls the imported `_ipc_object_copyin_compat(_IOTask_kern->port_funcs, savedSlotValue, 6,
+0, &outObject)` (address 7376-7396; `_IOTask_kern` confirmed by the relocation dump above — this call
+site is one of the 23 that name `_IOTask_kern`, not one of the four that name `_IOTask`; `port_funcs`
+at offset `0xA4` is the `ipc_space_t space` argument of `ipc_object_copyin_compat(ipc_space_t space,
+mach_port_t name, mach_msg_type_name_t msgt_name, boolean_t dealloc, ipc_object_t *objectp)`,
+`src/kernel-7/ipc/ipc_object.c:963`; `6` is `MSG_TYPE_PORT`, `message.h:716`).
+
+**The failure-path gap the earlier pass flagged as untraced is three instructions, now confirmed
+directly.** On `ipc_object_copyin_compat` failure (`bne cr1, loc_1D04` at address 7404), control jumps
+straight to address 7428 — skipping the `convert_port_to_map`/save-into-`r31`/`ipc_port_release_send`
+sequence at 7408-7424 entirely, so `r31` (the eventual return value) is still `0` from the function's
+own initialization (address 7340). Address 7428 (`lwz r3, 0x50+saved_r3(r1)`) is also where the
+success path falls through to after 7424, so both paths converge there: it reloads the (possibly
+slot-rewritten) `saved_r3` value and calls `_IODereferenceClientTask(savedSlotValue)` unconditionally,
+dropping the reference obtained earlier regardless of whether the copyin succeeded. If that dereference
+call itself fails (address 7440 not taken), the function calls the imported `_vm_map_deallocate` on
+whatever is in `r31` (`0` on the copyin-failure path, traced above; the real map on the success path)
+and forces `r31 = 0` before returning. Otherwise it returns `r31` unchanged — `0` on the
+copyin-failure path (there was never a map to return), or the `vm_map_t` obtained from
+`_convert_port_to_map` on the full success path. The earlier "not traced in full detail" caveat for
+this edge is withdrawn; the three-instruction gap above is the complete failure-path behaviour.
 
 ### `_IOTaskPortAllocate` (address 6588, 48 bytes)
 

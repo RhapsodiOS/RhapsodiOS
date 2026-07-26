@@ -98,8 +98,10 @@ the six `vidBIOS` methods it does not:
 
 IDA additionally carves 69 unnamed fragments totalling 1279 bytes out of the
 range 7912 to 15758, which lies inside `_emu486`. They are its per-opcode
-handlers, not functions: each performs one operation and jumps back to a shared
-dispatch point at `0x1E20`. They are excluded from the function partition (§4.3).
+handlers, not functions, and they are excluded from the function partition
+(§4.3). Thirty-four of the 69 return to a shared dispatch point at `0x1E20`; the
+rest jump elsewhere, so the handler table is not uniform and its control flow has
+to be read rather than assumed.
 A further 2290 bytes from 15758 to the end of `__text` at 18048 are claimed by no
 function at all and are presumably the emulator's dispatch tables.
 

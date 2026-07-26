@@ -28,6 +28,8 @@
 #import <sys/tty.h>
 #import <sys/conf.h>
 #import <sys/dkstat.h>
+#import <sys/proc.h>    /* struct proc, and p_ucred, which is a macro */
+#import <sys/systm.h>   /* timeout_fcn_t, timeout(), untimeout() */
 #import <kern/assert.h>
 #import <driverkit/generalFuncs.h>
 
@@ -1273,13 +1275,13 @@ void ttyiops_txFunc(struct tty *tp)
                 
                 /* Schedule timeout to process DCD change, after the tick
                  * count ttyiops_init computed at offset 0x158 */
-                timeout((timeout_func_t)ttyiops_dcddelay, tp,
+                timeout((timeout_fcn_t)ttyiops_dcddelay, tp,
                         ((int *)tp)[0x158/4]);
             }
             else {
                 /* DCD delay already pending - cancel it */
                 ((unsigned char *)tp)[0x15d] = ((unsigned char *)tp)[0x15d] & 0xfd;
-                untimeout((timeout_func_t)ttyiops_dcddelay, tp);
+                untimeout((timeout_fcn_t)ttyiops_dcddelay, tp);
             }
         }
         
@@ -1319,7 +1321,7 @@ void ttyiops_txFunc(struct tty *tp)
         ((unsigned char *)tp)[0x15d] = ((unsigned char *)tp)[0x15d] & 0xfd;
         
         /* Cancel timeout */
-        untimeout((timeout_func_t)ttyiops_dcddelay, tp);
+        untimeout((timeout_fcn_t)ttyiops_dcddelay, tp);
     }
     
     /* Clear TX thread handle at offset 0xf0 */
@@ -1953,7 +1955,7 @@ int ttyiops_open(unsigned int dev, int flag, int mode, struct proc *p)
         /* Check if exclusive use flag is set and verify permission */
         if ((((unsigned char *)tp)[0x69] & 4) != 0) {
             /* suser() checks if user has superuser privileges */
-            error = suser(((struct proc *)p)->p_ucred->cr_uid, &p->p_acflag);
+            error = suser(p->p_ucred, &p->p_acflag);
             if (error == 0) {
                 return 0x10;  /* EBUSY */
             }

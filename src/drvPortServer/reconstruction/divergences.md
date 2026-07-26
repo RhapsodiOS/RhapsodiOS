@@ -4413,8 +4413,12 @@ next pass inherits.
   `src/kernel-7/bsd/sys/ucred.h:90` also declares
   `int suser(struct ucred *cred, u_short *acflag)`, which `:1953` violates by passing a
   `uid_t`. **Conclusion: `ttyiops.m:661` matches the reference and is correct; `:1953`'s
-  `->cr_uid` is wrong and should be dropped.** Not repaired here — this section is
-  disclosure only.
+  `->cr_uid` is wrong and should be dropped.**
+
+  **Repaired.** `ttyiops_open` now writes `suser(p->p_ucred, &p->p_acflag)` (`ttyiops.m:1958`),
+  identical to `ttyiops_control_ioctl`'s call at `:666`. The two call sites now agree with
+  each other, with `ucred.h:90`'s prototype and with the two-load argument setup in the
+  reference.
 
 - **Finding 16's `_portList` / `_portListLock` declaration order.** Left alone because the
   finding is self-contradictory about it. If the reference `__bss` order (33160
@@ -4439,11 +4443,10 @@ next pass inherits.
 - **No compile gate anywhere in Tasks 7 or 8.** Nothing in this driver has been built. Every
   claim in this document and in `ledger.json` rests on reading the reference disassembly.
 
-- **Two compile blockers this branch walked past without disclosing them.** Both are
-  **pre-existing**, both are in `ttyiops.m`, and **neither was repaired** — they are outside
-  this branch's remit and belong to a follow-up. They are recorded here because §14 had
-  previously said only that there was no compile gate, without naming anything that would
-  actually fail one.
+- **Two compile blockers this branch walked past without disclosing them.** Both were
+  **pre-existing**, both are in `ttyiops.m`, and both are **now repaired** (see the
+  follow-up note below each). They are recorded here because §14 had previously said only
+  that there was no compile gate, without naming anything that would actually fail one.
 
   1. **`timeout_func_t` is not defined anywhere under `src/`.** `ttyiops.m:1273`, `:1279` and
      `:1319` cast through it:
@@ -4460,6 +4463,16 @@ next pass inherits.
      actually spells, and differs from ours by one letter. **This branch touched line 1273**
      (commit `46236c13`, Finding 46's DCD-delay repair) and left the undefined type in place.
 
+     **Repaired.** All three casts now spell `timeout_fcn_t`, and `ttyiops.m` imports
+     `<sys/systm.h>` for it. `timeout_fcn_t` sits outside every conditional in that header,
+     so it is visible to a kernel-server build. The same import also supplies the real
+     prototypes for `timeout`, `untimeout`, `bcopy` and `bzero`, all of which `ttyiops.m`
+     calls and none of which were declared before. `PortServer.m` already imported
+     `<sys/systm.h>`, so the include chain (which reaches `sys/vm.h` and
+     `libkern/libkern.h`) is already proven in this driver. It does not reach `sys/kernel.h`,
+     so `ttyiops.h:110`'s `extern long hz;` does not collide with `kernel.h:92`'s
+     `extern int hz;` — see the separate note below.
+
   2. **`sys/proc.h` is never included, so `struct proc` is incomplete where it is
      dereferenced.** `ttyiops.m` names `struct proc *` in four prototypes (`:614`, `:904`,
      `:1535`, `:1915`) and dereferences it at `:661` (`p->p_ucred`, `p->p_acflag`) and
@@ -4467,3 +4480,38 @@ next pass inherits.
      declaration and every one of those member accesses is an error. Note that `p_ucred` is
      a macro rather than a member (`proc.h:116`), so the header is required for the
      expansion as well as for the layout.
+
+     **Repaired.** `ttyiops.m` now imports `<sys/proc.h>`. `struct proc`, `struct pcred` and
+     the `p_ucred` macro all sit ahead of that header's `#ifdef _KERNEL` at `proc.h:303`, so
+     they are visible to a kernel-server build. `p_ucred` is the only identifier the header
+     and `ttyiops.m` share, and that sharing is the point — there is no collision.
+     `drvEIDE`'s `IdeKernel.m:59` imports the same header from the same kind of project, so
+     the spelling is proven.
+
+- **What the two imports do *not* fix, and why they are left alone.** `sys/proc.h` and
+  `sys/ucred.h` both put `tsleep`, `wakeup` and `suser` behind `#ifdef _KERNEL`
+  (`proc.h:303`, `ucred.h:79`), and `_KERNEL` is defined only by
+  `src/kernel-7/conf/Makefile.template:103` when building the kernel itself.
+  `project_makefiles-1/common.make:212` gives kernel-server projects `-DKERNEL` alone, so
+  those three stay implicitly declared in this driver. Under `-Wmost` and no `-Werror` that
+  is a warning, not an error, and it is the state every other kernel-server driver in the
+  tree is in. Defining `_KERNEL` here to silence it would be a tree-wide policy change on
+  no finding's authority.
+
+- **`ttyiops.h:110` declares `extern long hz;`, but the kernel's `hz` is `int`
+  (`sys/kernel.h:92`).** Harmless on i386, where both are 32 bits, and no translation unit
+  in this driver sees both declarations. Recorded rather than changed: Finding 80 already
+  accepted our 32-bit `(hz + 50) / 100` against the reference's `__divdi3`, and the
+  declaration's width is entangled with that acceptance.
+
+- **Audit for further blockers of the same kind — none found.** Every identifier used in
+  call position across the six `.m` files resolves either to a definition in the driver or
+  to a declaration under `kernel-7`, `driverkit-3`, `machkit-1` or `objc-1`; every `_t` type
+  and `struct` tag named resolves; every imported header exists in the tree
+  (`machkit/NXLock.h` is `machkit-1/NXLock.h`, `objc/objc-runtime.h` is
+  `objc-1/objc-runtime.h`); every prototype in the `.h` files matches its definition
+  verbatim; and every call site's argument count matches its callee's. `timeout_func_t` was
+  the only invented identifier.
+
+- **Still no compile gate.** The three repairs above were derived by reading the headers
+  they depend on, not by building. Nothing in this driver has been compiled.

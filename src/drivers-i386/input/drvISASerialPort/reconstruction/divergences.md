@@ -1937,3 +1937,50 @@ every reference instruction has been read and our source matches it branch for b
 constant for constant, but **our rebuilt object has not been disassembled and compared**.
 `ledger.json`'s `rebuilt_sha256` is still `null`. Whoever runs that comparison should be able
 to close all six.
+
+## Addendum 3: the fourth `__bss` group is settled, and three record corrections
+
+**The `__DATA,__bss` question is closed, and an earlier hypothesis in this document was
+wrong.** Addendum 2 said the fourth `outb` static group might belong to the build-generated
+`ISASerialPort_instance.m`, and Task 4's report went further and said it "cannot be TU 4"
+because `ISASerialPortFlow.c` performs no port I/O. Both were wrong.
+
+The reference's `__DATA,__bss` is 48 bytes at 0x80c4 holding **four** groups of
+`_xxx.86`/`_xxx.89`/`_xxx.92`, twelve bytes apart, at 0x80c4, 0x80d0, 0x80dc and 0x80e8 —
+exactly one per translation unit. TU 4's group is emitted because the reference's TU 4
+**includes `<driverkit/i386/ioPorts.h>`** and is simply never incremented, since that unit
+does no port I/O. The mechanism is the same one that produces the unreferenced
+`_RX_enqueueLongEvent` copy at 23200 in the same unit: a header contributes its statics
+whether or not the including unit uses them.
+
+Confirmed empirically. Adding that import to `ISASerialPortFlow.c` moved our
+`__DATA,__bss` from **24 to 36** — a third group — with `make exit=0` and no new warnings.
+Task 5's TU 2 split should supply the fourth and bring it to 48. The
+`ISASerialPort_instance.m` hypothesis is unnecessary and is withdrawn.
+
+**Correction to Finding 97.** The record says the reference uses those four TX level constants
+"at all six sites". There are **seven** — `_executeEvent` accounts for two. And "`0x04000000`
+appears nowhere in the binary" is true of *immediates*, which is what matters, but that byte
+pattern does occur 25 times as a displacement; the claim should be stated as
+"no exact-immediate occurrence".
+
+**Correction to the `__TEXT,__text` attribution.** Task 4's report put the shortfall at 984
+bytes and outside TU 3 entirely. The gap is **1028** bytes (24412 − 23384), and TU 3 carries
+**−140** of it, about 14%: `_RX_enqueueLongEvent` −68, `RX_dequeueEvent` −72,
+`TX_enqueueEvent` −24, `RX_dequeueData` −4, `allocateRingBuffer` **+28**, with
+`validateRingBufferSize` and `freeRingBuffer` byte-size identical to the reference at 44 and
+92. So −888 lies outside TU 3, which does support the conclusion that the bulk is TU 1 and
+TU 2 — but `RX_dequeueEvent`'s −72 is a real TU 3 residual, not zero.
+
+**Finding 59 is behavioural, not cosmetic.** It was deferred to Task 6 alongside the
+underscore rename, which is the right call because the single `static` in
+`ISASerialPortInternal.h` drives all three per-TU copies at once. But Task 6 should treat it
+as a **behaviour fix**: the reference masks with `and edx, 0FFh` at 20774 where ours performs
+an unmasked 16-bit load, and the three copies account for roughly 204 bytes of the text gap.
+
+**A ceiling on achievable text parity, worth knowing before anyone chases the last bytes.**
+The reference uses memory read-modify-write (`add dword ptr [ecx+0x38], 2`) and separate
+per-path epilogues, where our compiler keeps the pointer in a register and tail-merges. That
+is an optimisation-level difference rather than a source divergence, and it limits byte parity
+independently of correctness.
+

@@ -32,6 +32,14 @@
 #import "ISASerialPortInternal.h"
 #import <driverkit/generalFuncs.h>
 #import <kernserv/prototypes.h>
+/*
+ * The reference's fourth translation unit includes <driverkit/i386/ioPorts.h>
+ * even though it performs no port I/O: the reference emits four groups of the
+ * outb() inline-asm statics (_xxx.86/.89/.92 at 0x80c4, 0x80d0, 0x80dc, 0x80e8,
+ * 48 bytes of __DATA,__bss), one per translation unit, and TU 4's group is
+ * never incremented. Including it here reproduces that group.
+ */
+#import <driverkit/i386/ioPorts.h>
 
 /*
  * Flow control state machine.

@@ -11,12 +11,12 @@
 ## Global Constraints
 
 - Spec of record: [docs/superpowers/specs/2026-07-26-foundation-i386-reconstruction-design.md](../specs/2026-07-26-foundation-i386-reconstruction-design.md).
-- Reference container: `$BINRECON_REFERENCE` = `C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation`, SHA-256 `215935DFAB3C083AB97E24F6B74B76C4AE668783892510F02D71AD9BFDE5192B`, size 3,425,564.
-- Slice of record: i386, `cputype` 7, offset 8192, size 1,630,488, SHA-256 `1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6`.
+- Shipped fat container (input to `extract-slice` only): `C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation`, SHA-256 `215935DFAB3C083AB97E24F6B74B76C4AE668783892510F02D71AD9BFDE5192B`, size 3,425,564.
+- **Reference of record:** the extracted thin i386 slice at `C:/Users/raynorpat/Downloads/test/Foundation-i386`, size **1,630,488**, SHA-256 **`1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6`**. This is what `$BINRECON_REFERENCE` points at and what every profile, analysis and comparison uses. `runner.py:312` cross-checks the analyzer's reported input identity against the profile's, so the container is never handed to an analyzer.
 - **No header under `src/Kits/Foundation` may be modified.** If reconstruction appears to need a header change, stop and report.
 - **No decompiler-generated identifiers in committed source.** No `param_1`, `v3`, `sub_42501428`, or decompiler comments. Source is written from an understanding of the behaviour, in the idiom of the surrounding headers.
 - **Working directory is the worktree** `D:\RhapsodiOS\.claude\worktrees\foundation-recon` (branch `foundation-recon`). Run every command from there.
-- **The venv lives at the main repo root and is gitignored, so the worktree has none.** Use the absolute interpreter path `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe` with `PYTHONPATH=tools/binrecon`, which resolves `binrecon` to the worktree's copy. Anywhere this plan writes `./.venv-binrecon/Scripts/python.exe`, substitute the absolute path.
+- **The venv lives at the main repo root and is gitignored, so the worktree has none.** Use the absolute interpreter path `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe` with `PYTHONPATH=tools/binrecon`, which resolves `binrecon` to the worktree's copy. Anywhere this plan writes `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe`, substitute the absolute path.
 - Test command: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 - **The full suite takes about 5 minutes** (753 passed, 4 skipped at baseline). During a red/green cycle run only the focused test file — those finish in seconds. Run the full suite once before committing.
 - Commit messages: start with the subsystem (`binrecon: `, `Foundation: `, `docs: `), one to two lines, describe behaviour not files, no metadata or trailers.
@@ -106,7 +106,7 @@ def test_reads_a_dylib(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_macho.py::test_reads_a_dylib -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_macho.py::test_reads_a_dylib -q`
 
 Expected: FAIL with `ImportError: cannot import name 'MH_DYLIB'`.
 
@@ -138,7 +138,7 @@ Then replace the file-type check:
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 
 Expected: PASS, no regressions.
 
@@ -151,22 +151,36 @@ git commit -m "binrecon: read MH_DYLIB images"
 
 ---
 
-### Task 3: Select an architecture slice from a fat container
+### Task 3: Read fat containers and extract a slice
+
+Apple ships Foundation as a fat container holding an i386 and a ppc slice.
+Everything downstream — the IDA adapter, `runner.py`'s identity check, `compare`,
+`source-map` — works on a thin Mach-O and cross-checks the analyzer's reported
+`input.sha256`/`size`/`path` against `profile.reference_identity`
+(`tools/binrecon/binrecon/runner.py:312`). Making the reader silently report a
+slice's identity while the profile names the container would break that check.
+
+So the container is **materialized into a thin slice file once**, and the profile
+points at that file. binrecon learns to read fat containers and to write a slice
+out; it does not learn to pretend a container is a slice.
 
 **Files:**
-- Modify: `tools/binrecon/binrecon/macho.py` (add `FAT_MAGIC`, `load_image`, reshape `read_macho`)
-- Modify: `tools/binrecon/binrecon/schema/analysis-v1.json` (`$defs/input` gains `container`)
-- Modify: `tools/binrecon/binrecon/schema/profile-v1.json` (`$defs/binary` gains `slice`)
-- Modify: `tools/binrecon/binrecon/profile.py` (carry `slice` onto `ArtifactSpec`)
+- Modify: `tools/binrecon/binrecon/macho.py` (add `FAT_MAGIC`, `extract_slice`, fat rejection in `load_image`, split `read_macho`)
+- Modify: `tools/binrecon/binrecon/cli.py` (register `extract-slice`)
 - Test: `tools/binrecon/tests/test_macho_fat.py` (create)
 
 **Interfaces:**
 - Consumes: `MH_DYLIB` from Task 2.
 - Produces:
-  - `binrecon.macho.load_image(path, *, slice_architecture=None) -> tuple[bytes, dict]` — returns the image payload (the slice's bytes for a fat container, the whole file otherwise) and the analysis document.
-  - `binrecon.macho.read_macho(path, *, slice_architecture=None) -> dict` — unchanged return, now a wrapper over `load_image`.
-  - `binrecon.profile.ArtifactSpec.slice_architecture: str | None`.
-  - Analysis documents for a slice carry `input.container = {"sha256": ..., "size": ..., "slice": "i386"}`.
+  - `binrecon.macho.is_fat(data: bytes) -> bool`.
+  - `binrecon.macho.extract_slice(data: bytes, architecture: str) -> bytes` — the named slice's bytes, raising `MachOFormatError` naming the architectures present when there is no match.
+  - `binrecon.macho.load_image(path) -> tuple[bytes, dict]` — the image payload and its analysis document. Raises `MachOFormatError` on a fat input, directing the caller to `extract-slice`.
+  - `binrecon.macho.read_macho(path) -> dict` — unchanged signature and return, now a wrapper over `load_image`.
+  - CLI `binrecon extract-slice --input PATH --architecture NAME --output PATH`.
+
+**No schema changes.** `profile-v1` gains no `slice` field and `analysis-v1`
+gains no `container` block: the profile's reference *is* a thin Mach-O, exactly
+as for every existing driver target.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -177,72 +191,77 @@ import struct
 
 import pytest
 
-from binrecon.macho import MH_DYLIB, MachOFormatError, load_image, read_macho
+from binrecon.macho import (
+    MH_DYLIB, MachOFormatError, extract_slice, is_fat, load_image, read_macho,
+)
 from macho_fixture import build_macho_fixture
 
 
 def _fat(*slices):
     """Pack (cpu_type, payload) pairs into a fat container."""
     header = struct.pack(">2I", 0xCAFEBABE, len(slices))
-    offset = 4096
-    entries, blob = b"", b""
+    entries, blob, offset = b"", b"", 4096
     for cpu_type, payload in slices:
         entries += struct.pack(">5I", cpu_type, 0, offset, len(payload), 12)
-        blob += b"\0" * (offset - (4096 + len(blob))) + payload
+        blob += payload
         offset += len(payload)
-    return header + entries + b"\0" * (4096 - len(header) - len(entries)) + blob
+    padding = 4096 - len(header) - len(entries)
+    assert padding >= 0, "fat header table does not fit before the first slice"
+    return header + entries + b"\0" * padding + blob
 
 
-def test_selects_the_named_slice(tmp_path):
+def test_recognizes_a_fat_container():
+    assert is_fat(_fat((7, build_macho_fixture(file_type=MH_DYLIB))))
+    assert not is_fat(build_macho_fixture(file_type=MH_DYLIB))
+
+
+def test_extracts_the_named_slice():
     i386 = build_macho_fixture(file_type=MH_DYLIB, architecture="i386")
     ppc = build_macho_fixture(file_type=MH_DYLIB, architecture="ppc")
-    path = tmp_path / "Fat"
-    path.write_bytes(_fat((7, i386), (18, ppc)))
 
-    payload, document = load_image(path, slice_architecture="i386")
-
-    assert payload == i386
-    assert document["input"]["architecture"] == "i386"
-    assert document["input"]["size"] == len(i386)
-    assert document["input"]["container"]["slice"] == "i386"
+    assert extract_slice(_fat((7, i386), (18, ppc)), "i386") == i386
+    assert extract_slice(_fat((7, i386), (18, ppc)), "ppc") == ppc
 
 
-def test_fat_input_without_a_slice_is_an_error(tmp_path):
+def test_missing_slice_names_what_is_present():
+    ppc = build_macho_fixture(file_type=MH_DYLIB, architecture="ppc")
+
+    with pytest.raises(MachOFormatError, match="ppc"):
+        extract_slice(_fat((18, ppc)), "i386")
+
+
+def test_a_slice_running_past_the_file_is_an_error():
+    truncated = _fat((7, build_macho_fixture(file_type=MH_DYLIB)))[:-16]
+
+    with pytest.raises(MachOFormatError, match="past end of file"):
+        extract_slice(truncated, "i386")
+
+
+def test_load_image_rejects_a_fat_container(tmp_path):
     path = tmp_path / "Fat"
     path.write_bytes(_fat((7, build_macho_fixture(file_type=MH_DYLIB))))
 
-    with pytest.raises(MachOFormatError, match="declare a slice"):
+    with pytest.raises(MachOFormatError, match="extract-slice"):
         read_macho(path)
 
 
-def test_slice_on_a_thin_input_is_an_error(tmp_path):
+def test_load_image_returns_the_payload_and_document(tmp_path):
+    thin = build_macho_fixture(file_type=MH_DYLIB)
     path = tmp_path / "Thin"
-    path.write_bytes(build_macho_fixture(file_type=MH_DYLIB))
+    path.write_bytes(thin)
 
-    with pytest.raises(MachOFormatError, match="not a fat"):
-        read_macho(path, slice_architecture="i386")
+    payload, document = load_image(path)
 
-
-def test_missing_slice_names_what_is_present(tmp_path):
-    path = tmp_path / "Fat"
-    path.write_bytes(_fat((18, build_macho_fixture(file_type=MH_DYLIB, architecture="ppc"))))
-
-    with pytest.raises(MachOFormatError, match="ppc"):
-        read_macho(path, slice_architecture="i386")
-
-
-def test_thin_input_carries_no_container_block(tmp_path):
-    path = tmp_path / "Thin"
-    path.write_bytes(build_macho_fixture(file_type=MH_DYLIB))
-
-    assert "container" not in read_macho(path)["input"]
+    assert payload == thin
+    assert document["input"]["architecture"] == "i386"
+    assert document["input"]["size"] == len(thin)
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_macho_fat.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_macho_fat.py -q`
 
-Expected: FAIL with `ImportError: cannot import name 'load_image'`.
+Expected: FAIL with `ImportError: cannot import name 'extract_slice'`.
 
 - [ ] **Step 3: Add fat parsing to macho.py**
 
@@ -253,7 +272,7 @@ FAT_MAGIC = 0xCAFEBABE
 _FAT_ARCH = struct.Struct(">5I")
 ```
 
-Add these helpers above `read_macho`:
+Add these above `read_macho`:
 
 ```python
 def _architecture_name(cpu_type: int) -> str:
@@ -271,18 +290,24 @@ def _architecture_name(cpu_type: int) -> str:
     return f"cpu-type-{cpu_type}"
 
 
-def _is_fat(data: bytes) -> bool:
+def is_fat(data: bytes) -> bool:
+    """Report whether an image is a fat container rather than a thin Mach-O."""
     if len(data) < 8:
         return False
     (magic,) = struct.unpack_from(">I", data, 0)
     return magic == FAT_MAGIC
 
 
-def _extract_slice(data: bytes, slice_architecture: str) -> bytes:
-    """Return the bytes of the named architecture's slice."""
+def extract_slice(data: bytes, architecture: str) -> bytes:
+    """Return the bytes of a fat container's named architecture slice.
+
+    A slice is a complete Mach-O whose internal offsets are relative to its own
+    start, so the returned bytes parse exactly like a thin image.
+    """
+    if not is_fat(data):
+        raise MachOFormatError("input is not a fat Mach-O container")
     (_, count) = struct.unpack_from(">2I", data, 0)
-    table = 8 + count * _FAT_ARCH.size
-    if table > len(data):
+    if 8 + count * _FAT_ARCH.size > len(data):
         raise MachOFormatError("fat header declares more slices than the file holds")
     present = []
     for index in range(count):
@@ -291,7 +316,7 @@ def _extract_slice(data: bytes, slice_architecture: str) -> bytes:
         )
         name = _architecture_name(cpu_type)
         present.append(name)
-        if name != slice_architecture:
+        if name != architecture:
             continue
         if offset + size > len(data):
             raise MachOFormatError(
@@ -299,167 +324,135 @@ def _extract_slice(data: bytes, slice_architecture: str) -> bytes:
             )
         return data[offset:offset + size]
     raise MachOFormatError(
-        f"fat container has no {slice_architecture} slice; it holds "
+        f"fat container has no {architecture} slice; it holds "
         + ", ".join(sorted(present))
     )
 ```
 
-`_architecture_name` resolves a name from the CPU type alone; the slice's own
-header decides its real endianness when `_select_architecture` parses it.
+- [ ] **Step 4: Split read_macho into load_image plus a wrapper**
 
-- [ ] **Step 4: Reshape read_macho into load_image**
-
-Rename the existing `def read_macho(path: Path) -> dict[str, Any]:` to:
+Rename `def read_macho(path: Path) -> dict[str, Any]:` to:
 
 ```python
-def load_image(
-    path: Path, *, slice_architecture: str | None = None
-) -> tuple[bytes, dict[str, Any]]:
+def load_image(path: Path) -> tuple[bytes, dict[str, Any]]:
 ```
 
-Replace its first block (currently the `identity` / `data` / `digest` / `_select_architecture` lines) with:
+Immediately after its existing `digest` guard, before `_select_architecture`,
+insert the fat rejection:
 
 ```python
-    identity = identify(Path(path))
-    data = identity.path.read_bytes()
-    digest = hashlib.sha256(data).hexdigest().upper()
-    if len(data) != identity.size or digest != identity.sha256:
-        raise MachOFormatError(f"input changed while reading: {identity.path}")
-
-    container = None
-    if _is_fat(data):
-        if slice_architecture is None:
-            raise MachOFormatError(
-                f"{identity.path} is a fat Mach-O; the profile must declare a slice"
-            )
-        container = {
-            "sha256": digest,
-            "size": len(data),
-            "slice": slice_architecture,
-        }
-        data = _extract_slice(data, slice_architecture)
-        digest = hashlib.sha256(data).hexdigest().upper()
-    elif slice_architecture is not None:
+    if is_fat(data):
         raise MachOFormatError(
-            f"{identity.path} is not a fat Mach-O, but the profile declares "
-            f"slice {slice_architecture!r}"
+            f"{identity.path} is a fat Mach-O container; extract a thin slice "
+            "first with 'binrecon extract-slice' and point the profile at that"
         )
-
-    architecture = _select_architecture(data)
 ```
 
-Every subsequent use of `data` in the function now refers to the slice, which is
-correct: a fat slice is a complete Mach-O whose internal offsets are relative to
-its own start.
-
-In the returned document, change the `input` block to use the slice's size and
-digest and to carry the container:
+Bind the returned document to a name and return the pair — change the function's
+final `return {` to `document = {`, and after the closing brace add:
 
 ```python
-        "input": {
-            "path": str(identity.path),
-            "size": len(data),
-            "sha256": digest,
-            "architecture": architecture.name,
-            "endianness": architecture.endianness,
-            **({"container": container} if container else {}),
-        },
-```
-
-Change the function's final `return {` to bind the document first and return the
-pair:
-
-```python
-    document = {
-        ...unchanged body...
-    }
     return data, document
 ```
 
 Then add the wrapper immediately after:
 
 ```python
-def read_macho(
-    path: Path, *, slice_architecture: str | None = None
-) -> dict[str, Any]:
-    """Return the analysis document for an image, ignoring its raw payload."""
-    _payload, document = load_image(path, slice_architecture=slice_architecture)
+def read_macho(path: Path) -> dict[str, Any]:
+    """Return the analysis document for an image, discarding its raw payload."""
+    _payload, document = load_image(path)
     return document
 ```
 
-- [ ] **Step 5: Allow the container block in the analysis schema**
+- [ ] **Step 5: Register the extract-slice command**
 
-In `tools/binrecon/binrecon/schema/analysis-v1.json`, inside `$defs/input/properties`, add:
-
-```json
-   "container": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": ["sha256", "size", "slice"],
-    "properties": {
-     "sha256": { "$ref": "#/$defs/sha256" },
-     "size": { "$ref": "#/$defs/nonnegative_integer" },
-     "slice": { "type": "string" }
-    }
-   }
-```
-
-- [ ] **Step 6: Allow slice in the profile schema**
-
-In `tools/binrecon/binrecon/schema/profile-v1.json`, inside `$defs/binary/properties`, add:
-
-```json
-    "slice": {
-     "type": "string"
-    }
-```
-
-- [ ] **Step 7: Carry the slice through the profile**
-
-In `tools/binrecon/binrecon/profile.py`, add `slice_architecture` to the
-`ArtifactSpec` dataclass with a `None` default, and set it in `_load_artifact`:
+In `tools/binrecon/binrecon/cli.py`, add `"extract-slice"` to the `COMMANDS`
+tuple and register the parser beside the others:
 
 ```python
-    spec = ArtifactSpec(
-        resolved,
-        document.get("expected_size"),
-        expected_hash,
-        document.get("slice"),
-    )
+    extract = subparsers.add_parser("extract-slice")
+    extract.add_argument("--input", required=True)
+    extract.add_argument("--architecture", required=True)
+    extract.add_argument("--output", required=True)
 ```
 
-`_load_artifact` calls `identify(resolved)` and `verify_expected` against the
-*container*, which stays correct: `expected_sha256` in a profile refers to the
-file on disk. Slice identity is asserted separately, in Task 10's `validate` run.
+Add to the import block at the top of `cli.py`:
 
-- [ ] **Step 8: Run tests to verify they pass**
+```python
+from binrecon.macho import extract_slice, load_image
+```
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+`main` dispatches with inline `if args.command == ...` blocks, each wrapping its
+work in a try/except that prints `binrecon: {error}` to stderr and returns 1.
+`os`, `sys`, `json` and `Path` are already imported at module level. Follow that
+shape:
 
-Expected: PASS. If existing tests fail on the `read_macho` return shape, they
-were calling the renamed function — they should still pass through the wrapper;
-fix any that unpacked a tuple by mistake.
+```python
+    if args.command == "extract-slice":
+        try:
+            payload = extract_slice(
+                Path(args.input).read_bytes(), args.architecture
+            )
+            Path(args.output).write_bytes(payload)
+            digest = hashlib.sha256(payload).hexdigest().upper()
+            print(f"wrote {args.output} size={len(payload)} sha256={digest}")
+            return 0
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+```
 
-- [ ] **Step 9: Verify against the real container**
+`hashlib` is not currently imported in `cli.py`; add `import hashlib` to the
+import block.
+
+- [ ] **Step 6: Run tests to verify they pass**
+
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_macho_fat.py tools/binrecon/tests/test_macho.py -q`
+
+Expected: PASS.
+
+Then the full suite once:
+
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+
+Expected: PASS, no regressions. Existing callers of `read_macho` are unaffected —
+the wrapper preserves its signature and return.
+
+- [ ] **Step 7: Extract the real slice and verify its identity**
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon extract-slice --input "C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" --architecture i386 --output "C:/Users/raynorpat/Downloads/test/Foundation-i386"
+```
+
+Expected exactly:
+
+```
+wrote C:/Users/raynorpat/Downloads/test/Foundation-i386 size=1630488 sha256=1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6
+```
+
+If the size or hash differs, stop — the slice is the reference of record for
+every later task and its identity is fixed by spec §1.1.
+
+Then confirm the reader accepts it:
+
+```bash
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 from binrecon.macho import read_macho
-d = read_macho(r'C:\Users\raynorpat\Downloads\test\DR2\Frameworks\Foundation.framework\Versions\C\Foundation', slice_architecture='i386')
-print(d['input']['sha256'], d['input']['size'])
-print(d['input']['container'])
+d = read_macho(r'C:\Users\raynorpat\Downloads\test\Foundation-i386')
+print(d['input']['architecture'], d['input']['size'])
+print(len([s for s in d['sections'] if s['name'].startswith('__OBJC')]), 'OBJC sections')
 "
 ```
 
-Expected: `1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6 1630488`
-and a container block whose `sha256` is `215935DF...` and `size` is 3425564.
+Expected: `i386 1630488` and `21 OBJC sections`.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add tools/binrecon/binrecon/macho.py tools/binrecon/binrecon/profile.py tools/binrecon/binrecon/schema/analysis-v1.json tools/binrecon/binrecon/schema/profile-v1.json tools/binrecon/tests/test_macho_fat.py
-git commit -m "binrecon: select an architecture slice from a fat Mach-O container"
+git add tools/binrecon/binrecon/macho.py tools/binrecon/binrecon/cli.py tools/binrecon/tests/test_macho_fat.py
+git commit -m "binrecon: read fat Mach-O containers and extract a named slice"
 ```
+---
 
 ---
 
@@ -555,7 +548,7 @@ def test_reads_big_endian_the_same_way():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
 
 Expected: FAIL with `ModuleNotFoundError: No module named 'binrecon.objc_abi'`.
 
@@ -681,7 +674,7 @@ def read_classes(reader, symtab_address):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
 
 Expected: PASS, 2 tests.
 
@@ -703,7 +696,7 @@ git commit -m "binrecon: extract Objective-C class layouts and ivars from __OBJC
 **Interfaces:**
 - Consumes: `ObjcReader`, `read_classes` from Task 4; `load_image` from Task 3.
 - Produces:
-  - `binrecon.objc_abi.read_modules(path, *, slice_architecture=None) -> dict[str, dict]` mapping module name (e.g. `"NSGeometry.m"`) to an `abi-v1` document.
+  - `binrecon.objc_abi.read_modules(path) -> dict[str, dict]` mapping module name (e.g. `"NSGeometry.m"`) to an `abi-v1` document.
   - Document shape: `{"schema_version": "abi-v1", "module", "classes", "categories", "text_symbols", "data_symbols"}`.
   - Category records: `{"name", "class", "instance_methods", "class_methods"}`.
 
@@ -777,7 +770,7 @@ def test_reads_a_module_with_a_category():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py::test_reads_a_module_with_a_category -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py::test_reads_a_module_with_a_category -q`
 
 Expected: FAIL with `ImportError: cannot import name 'read_modules_from_sections'`.
 
@@ -832,11 +825,11 @@ def read_modules_from_sections(payload, sections, endianness):
     return modules
 
 
-def read_modules(path, *, slice_architecture=None):
+def read_modules(path):
     """Return ``{module name: abi-v1 document}`` for an image on disk."""
     from .macho import load_image
 
-    payload, document = load_image(path, slice_architecture=slice_architecture)
+    payload, document = load_image(path)
     return read_modules_from_sections(
         payload, document["sections"], document["input"]["endianness"]
     )
@@ -844,16 +837,16 @@ def read_modules(path, *, slice_architecture=None):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_objc_abi.py -q`
 
 Expected: PASS, 3 tests.
 
 - [ ] **Step 5: Verify against the real reference**
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 from binrecon.objc_abi import read_modules
-m = read_modules(r'C:\Users\raynorpat\Downloads\test\DR2\Frameworks\Foundation.framework\Versions\C\Foundation', slice_architecture='i386')
+m = read_modules(r'C:\Users\raynorpat\Downloads\test\Foundation-i386')
 print(len(m), 'modules')
 g = m['NSGeometry.m']
 print(g['classes'], len(g['categories']))
@@ -935,7 +928,7 @@ def test_unknown_symbol_is_an_error():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_cli.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_cli.py -q`
 
 Expected: FAIL with `ImportError: cannot import name 'attach_symbols'`.
 
@@ -971,7 +964,7 @@ def attach_symbols(modules, assignment, symbols):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_cli.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_cli.py -q`
 
 Expected: PASS, 2 tests.
 
@@ -1075,10 +1068,7 @@ shape — add this block beside the others:
     if args.command == "abi":
         try:
             profile = load_profile(Path(args.profile), os.environ)
-            payload, document = load_image(
-                profile.reference.path,
-                slice_architecture=profile.reference.slice_architecture,
-            )
+            payload, document = load_image(profile.reference.path)
             modules = read_modules_from_sections(
                 payload, document["sections"], document["input"]["endianness"]
             )
@@ -1108,7 +1098,7 @@ undefined one. `attach_symbols` above relies on exactly that.
 
 - [ ] **Step 7: Run the full suite**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 
 Expected: PASS.
 
@@ -1120,7 +1110,6 @@ git commit -m "binrecon: emit per-module Objective-C ABI documents"
 ```
 
 ---
-
 ### Task 7: Verify a build against committed ABI with `binrecon abi-check`
 
 **Files:**
@@ -1129,17 +1118,40 @@ git commit -m "binrecon: emit per-module Objective-C ABI documents"
 - Test: `tools/binrecon/tests/test_abi_check.py` (create)
 
 **Interfaces:**
-- Consumes: `read_modules_from_sections` from Task 5.
+- Consumes: `read_modules_from_sections` and `ObjcAbiError` from Task 5; `load_image` from Task 3.
 - Produces:
-  - `binrecon.abi_check.diff_abi(expected, actual) -> list[str]` returning human-readable divergence lines, empty when the two agree.
-  - CLI `binrecon abi-check --abi-dir DIR --built PATH [--built PATH ...]`, exit 0 on agreement, 1 on any divergence.
+  - `binrecon.abi_check.external_symbols(document) -> set[str]` — the names of every externally-visible defined symbol in a built object.
+  - `binrecon.abi_check.module_from_object(payload, document, module) -> dict` — an `abi-v1` document describing one compiled object, tolerating objects with no Objective-C content.
+  - `binrecon.abi_check.diff_abi(expected, actual) -> list[str]` — one line per divergence, empty when the two agree.
+  - CLI `binrecon abi-check --abi-dir DIR --built MODULE=PATH [--built MODULE=PATH ...]`, exit 0 on agreement, 1 on any divergence.
+
+Two things this task must get right, both of which an earlier draft got wrong:
+
+**One `.o` is one translation unit,** so its external defined symbols *are* that
+module's C symbols. They are compared for real. Do not copy the expected symbol
+lists onto the actual document — that would make the check pass by construction.
+
+**A compiled object may have no `__OBJC` segment at all.** `NSRange.m` and
+`NSDecimal.m` define no classes or categories, so their objects carry no
+`__module_info` section and `read_modules_from_sections` raises. With no
+`__module_info` there is also no way to infer which module an object is, which is
+why `--built` takes an explicit `MODULE=PATH` pair rather than a bare path.
+
+**Symbol comparison is by name set, not by section.** The committed
+`abi/<Module>.json` records `text_symbols` and `data_symbols` separately because
+that is where Apple's linker put them, but whether a `const NSRect` lands in
+`__DATA,__data` or `__TEXT,__const` is a codegen choice, not ABI. `diff_abi`
+compares the union of the two lists against the object's external defined
+symbols; it does not enforce the split.
 
 - [ ] **Step 1: Write the failing tests**
 
 Create `tools/binrecon/tests/test_abi_check.py`:
 
 ```python
-from binrecon.abi_check import diff_abi
+import pytest
+
+from binrecon.abi_check import diff_abi, external_symbols
 
 
 def _module(**overrides):
@@ -1157,7 +1169,7 @@ def _module(**overrides):
         }],
         "categories": [],
         "text_symbols": ["_NSThingHelper"],
-        "data_symbols": [],
+        "data_symbols": ["_NSThingZero"],
     }
     document.update(overrides)
     return document
@@ -1202,15 +1214,45 @@ def test_reports_a_changed_type_encoding():
 
 
 def test_reports_a_missing_c_symbol():
-    actual = _module()
-    actual["text_symbols"] = []
+    actual = _module(text_symbols=[], data_symbols=["_NSThingZero"])
 
-    assert diff_abi(_module(), actual) == ["NSThing.m: missing text symbol _NSThingHelper"]
+    assert diff_abi(_module(), actual) == [
+        "NSThing.m: missing exported symbol _NSThingHelper"
+    ]
+
+
+def test_reports_an_unexpected_c_symbol():
+    actual = _module(text_symbols=["_NSThingHelper", "_NSThingSurprise"])
+
+    assert diff_abi(_module(), actual) == [
+        "NSThing.m: unexpected exported symbol _NSThingSurprise"
+    ]
+
+
+def test_symbols_may_move_between_text_and_data():
+    """Section placement of a constant is codegen, not ABI."""
+    actual = _module(text_symbols=["_NSThingHelper", "_NSThingZero"],
+                     data_symbols=[])
+
+    assert diff_abi(_module(), actual) == []
+
+
+def test_external_symbols_ignores_local_and_undefined():
+    document = {"symbols": [
+        {"name": "_public", "address": 0x1000, "binding": "external",
+         "section": "__TEXT,__text"},
+        {"name": "_helper", "address": 0x1040, "binding": "local",
+         "section": "__TEXT,__text"},
+        {"name": "_imported", "address": 0, "binding": "external",
+         "section": None},
+    ]}
+
+    assert external_symbols(document) == {"_public"}
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_check.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_check.py -q`
 
 Expected: FAIL with `ModuleNotFoundError: No module named 'binrecon.abi_check'`.
 
@@ -1219,12 +1261,61 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'binrecon.abi_check'`.
 Create `tools/binrecon/binrecon/abi_check.py`:
 
 ```python
-"""Compare a rebuilt image's Objective-C ABI against committed evidence.
+"""Compare a rebuilt object's Objective-C ABI against committed evidence.
 
 Instruction-level divergence between our build and Apple's is expected and
 tolerated (spec §3.2). ABI divergence is not: client code is compiled against
 these offsets, sizes and encodings.
 """
+
+from .objc_abi import ObjcAbiError, read_modules_from_sections
+
+
+def external_symbols(document):
+    """Return the names of a built object's externally-visible definitions.
+
+    Local symbols are static helpers, which are ours to choose. Symbols with no
+    section are imports, which are not definitions.
+    """
+    return {
+        symbol["name"] for symbol in document["symbols"]
+        if symbol["binding"] == "external" and symbol["section"] is not None
+    }
+
+
+def module_from_object(payload, document, module):
+    """Describe one compiled object as an ``abi-v1`` document.
+
+    A translation unit that defines no classes or categories produces an object
+    with no ``__OBJC,__module_info`` section; that is not an error, it is an
+    empty Objective-C surface.
+    """
+    try:
+        modules = read_modules_from_sections(
+            payload, document["sections"], document["input"]["endianness"]
+        )
+    except ObjcAbiError:
+        modules = {}
+
+    if len(modules) > 1:
+        raise ObjcAbiError(
+            f"{module}: object defines more than one module: "
+            + ", ".join(sorted(modules))
+        )
+    found = next(iter(modules.values()), None)
+    if found is not None and found["module"] != module:
+        raise ObjcAbiError(
+            f"{module}: object declares module {found['module']}"
+        )
+
+    return {
+        "schema_version": "abi-v1",
+        "module": module,
+        "classes": [] if found is None else found["classes"],
+        "categories": [] if found is None else found["categories"],
+        "text_symbols": sorted(external_symbols(document)),
+        "data_symbols": [],
+    }
 
 
 def _method_map(methods, sign):
@@ -1275,6 +1366,10 @@ def _diff_class(findings, expected, actual):
                   actual["class_methods"], "+")
 
 
+def _exported(document):
+    return set(document["text_symbols"]) | set(document["data_symbols"])
+
+
 def diff_abi(expected, actual):
     """Return one line per divergence; an empty list means the ABI matches."""
     findings = []
@@ -1302,35 +1397,38 @@ def diff_abi(expected, actual):
                 _diff_methods(findings, owner, wanted[name]["class_methods"],
                               found[name]["class_methods"], "+")
 
-    for key, label in (("text_symbols", "text symbol"), ("data_symbols", "data symbol")):
-        for name in sorted(set(expected[key]) - set(actual[key])):
-            findings.append(f"{module}: missing {label} {name}")
-        for name in sorted(set(actual[key]) - set(expected[key])):
-            findings.append(f"{module}: unexpected {label} {name}")
+    # Section placement of a constant is a codegen choice, not ABI; compare the
+    # union of the two buckets rather than each bucket separately.
+    wanted_symbols, found_symbols = _exported(expected), _exported(actual)
+    for name in sorted(wanted_symbols - found_symbols):
+        findings.append(f"{module}: missing exported symbol {name}")
+    for name in sorted(found_symbols - wanted_symbols):
+        findings.append(f"{module}: unexpected exported symbol {name}")
 
     return findings
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_check.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_abi_check.py -q`
 
-Expected: PASS, 6 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Register the CLI command**
 
-In `tools/binrecon/binrecon/cli.py`, add `"abi-check"` to `COMMANDS` and:
+Add `"abi-check"` to `COMMANDS` and register the parser:
 
 ```python
     abi_check = subparsers.add_parser("abi-check")
     abi_check.add_argument("--abi-dir", required=True)
-    abi_check.add_argument("--built", action="append", required=True)
+    abi_check.add_argument("--built", action="append", required=True,
+                           metavar="MODULE=PATH")
 ```
 
 Add to the import block:
 
 ```python
-from binrecon.abi_check import diff_abi
+from binrecon.abi_check import diff_abi, module_from_object
 ```
 
 Handler, in the same inline style as the others:
@@ -1339,26 +1437,27 @@ Handler, in the same inline style as the others:
     if args.command == "abi-check":
         try:
             built = {}
-            for path in args.built:
+            for pair in args.built:
+                module, separator, path = pair.partition("=")
+                if not separator or not module or not path:
+                    raise ValueError(
+                        f"--built expects MODULE=PATH, got {pair!r}"
+                    )
                 payload, document = load_image(Path(path))
-                built.update(read_modules_from_sections(
-                    payload, document["sections"], document["input"]["endianness"]
-                ))
+                built[module] = module_from_object(payload, document, module)
 
             findings = []
             for expected_path in sorted(Path(args.abi_dir).glob("*.json")):
                 expected = json.loads(expected_path.read_text())
-                actual = built.get(expected["module"])
+                actual = built.pop(expected["module"], None)
                 if actual is None:
                     findings.append(
-                        f"{expected['module']}: not present in the built objects"
+                        f"{expected['module']}: no --built object was supplied"
                     )
                     continue
-                # C symbol attribution is declared, not derivable from a .o.
-                actual = dict(actual)
-                actual["text_symbols"] = expected["text_symbols"]
-                actual["data_symbols"] = expected["data_symbols"]
                 findings.extend(diff_abi(expected, actual))
+            for module in sorted(built):
+                findings.append(f"{module}: no committed ABI document to check")
 
             for line in findings:
                 print(f"abi-check: {line}")
@@ -1372,15 +1471,12 @@ Handler, in the same inline style as the others:
             return 1
 ```
 
-Note the deliberate carve-out: the built `.o` files do carry their C symbols, but
-mapping them back to a module is the declared assignment from Task 6, not
-something re-derivable. Gate 1 therefore checks Objective-C ABI against the build
-and C symbols against the committed list, which Task 11 verifies against the
-reference directly.
+`ObjcAbiError` must be importable in `cli.py`; Task 6 already added it to the
+import block.
 
 - [ ] **Step 6: Run the full suite and commit**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 
 Expected: PASS.
 
@@ -1388,6 +1484,7 @@ Expected: PASS.
 git add tools/binrecon/binrecon/abi_check.py tools/binrecon/binrecon/cli.py tools/binrecon/tests/test_abi_check.py
 git commit -m "binrecon: check a build's Objective-C ABI against committed evidence"
 ```
+---
 
 ---
 
@@ -1446,7 +1543,7 @@ def test_an_unknown_symbol_is_an_error():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_module_scope.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_module_scope.py -q`
 
 Expected: FAIL with `ModuleNotFoundError: No module named 'binrecon.module_scope'`.
 
@@ -1497,7 +1594,7 @@ def function_ranges(symbols, text_section, names):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_module_scope.py -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_module_scope.py -q`
 
 Expected: PASS, 4 tests.
 
@@ -1527,10 +1624,7 @@ and are filtered out:
     if args.command == "module-scope":
         try:
             profile = load_profile(Path(args.profile), os.environ)
-            payload, document = load_image(
-                profile.reference.path,
-                slice_architecture=profile.reference.slice_architecture,
-            )
+            payload, document = load_image(profile.reference.path)
             modules = read_modules_from_sections(
                 payload, document["sections"], document["input"]["endianness"]
             )
@@ -1573,7 +1667,7 @@ and are filtered out:
 
 - [ ] **Step 6: Run the full suite and commit**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 
 Expected: PASS.
 
@@ -1642,7 +1736,7 @@ that the summary ignores functions outside the stage's modules.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_source_map.py::test_summarizes_buckets_by_owning_module -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_source_map.py::test_summarizes_buckets_by_owning_module -q`
 
 Expected: FAIL with `ImportError: cannot import name 'summarize_by_module'`.
 
@@ -1726,7 +1820,7 @@ optional property:
 
 - [ ] **Step 5: Run the full suite and commit**
 
-Run: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+Run: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 
 Expected: PASS.
 
@@ -1792,9 +1886,8 @@ Create `tools/binrecon/profiles/foundation-i386.json`:
   "endianness": "little",
   "reference": {
     "path": "${BINRECON_REFERENCE}",
-    "slice": "i386",
-    "expected_size": 3425564,
-    "expected_sha256": "215935DFAB3C083AB97E24F6B74B76C4AE668783892510F02D71AD9BFDE5192B"
+    "expected_size": 1630488,
+    "expected_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6"
   },
   "analyzers": {
     "ida": {
@@ -1815,18 +1908,31 @@ Create `tools/binrecon/profiles/foundation-i386.json`:
 }
 ```
 
+The reference is the **thin i386 slice** extracted in Task 3 Step 7, not the fat
+container. `runner.py:312` requires the analyzer's reported input identity to
+equal `profile.reference_identity`, so the profile and the analyzer must see the
+same file — which is why the slice is materialized rather than sliced on the fly.
+
 - [ ] **Step 3: Validate**
 
+If Task 3's extraction is no longer on disk, redo it:
+
 ```bash
-BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon validate --profile tools/binrecon/profiles/foundation-i386.json
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon extract-slice --input "C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" --architecture i386 --output "C:/Users/raynorpat/Downloads/test/Foundation-i386"
 ```
 
-Expected: success, printing the resolved absolute path.
+```bash
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon validate --profile tools/binrecon/profiles/foundation-i386.json
+```
+
+Expected: `reference ...Foundation-i386 size=1630488 sha256=1165B906...`. A
+size or hash mismatch means `expected_sha256` in the profile disagrees with the
+extracted slice — stop and reconcile.
 
 - [ ] **Step 4: Generate the scope**
 
 ```bash
-BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon module-scope --profile tools/binrecon/profiles/foundation-i386.json --module NSGeometry.m --module NSRange.m --module NSDecimal.m --symbols src/Kits/Foundation/reconstruction/symbols.json
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon module-scope --profile tools/binrecon/profiles/foundation-i386.json --module NSGeometry.m --module NSRange.m --module NSDecimal.m --symbols src/Kits/Foundation/reconstruction/symbols.json
 ```
 
 Expected: a JSON array and `# 43 ranges` on stderr. **If the count is not 43,
@@ -1838,7 +1944,7 @@ Paste the array into the profile as `"analysis_scope"`.
 - [ ] **Step 5: Analyse, timing the run**
 
 ```bash
-BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/foundation-i386.json
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/foundation-i386.json
 ```
 
 Expected: `complete: true` and a populated `tools/binrecon/out/foundation-i386/published/`.
@@ -1850,7 +1956,7 @@ with a single `--module`, and record the split in Step 7's note.
 - [ ] **Step 6: Confirm the export**
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 import json
 d = json.load(open('tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json'))
 print(d['input']['sha256'])
@@ -1886,13 +1992,13 @@ git commit -m "binrecon: add the Foundation i386 profile and record the stage 1 
 - [ ] **Step 1: Emit the three documents**
 
 ```bash
-BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon abi --profile tools/binrecon/profiles/foundation-i386.json --module NSGeometry.m --module NSRange.m --module NSDecimal.m --symbols src/Kits/Foundation/reconstruction/symbols.json --output src/Kits/Foundation/reconstruction/abi
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon abi --profile tools/binrecon/profiles/foundation-i386.json --module NSGeometry.m --module NSRange.m --module NSDecimal.m --symbols src/Kits/Foundation/reconstruction/symbols.json --output src/Kits/Foundation/reconstruction/abi
 ```
 
 - [ ] **Step 2: Verify the contents against the spec**
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 import json, pathlib
 for name in ('NSGeometry', 'NSRange', 'NSDecimal'):
     d = json.loads(pathlib.Path(f'src/Kits/Foundation/reconstruction/abi/{name}.json').read_text())
@@ -1918,7 +2024,7 @@ gate is measured against.
 Then validate all three against the schema written in Task 6:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 import json, pathlib, jsonschema
 schema = json.loads(pathlib.Path('tools/binrecon/binrecon/schema/abi-v1.json').read_text())
 for path in sorted(pathlib.Path('src/Kits/Foundation/reconstruction/abi').glob('*.json')):
@@ -2279,7 +2385,7 @@ for function in sorted(document["functions"], key=lambda f: f["address"]):
 Then:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSDecimal
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSDecimal
 ```
 
 For pseudocode rather than disassembly, open the slice in IDA at the addresses
@@ -2516,7 +2622,7 @@ Expected: FAILED.
 Using `dump.py` from Task 12:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSEqual _NSIsEmpty _NSInset _NSIntegral _NSUnionRect _NSIntersectionRect _NSIntersectsRect _NSContains _NSDivide _NSOffset _NSPointIn _NSMouseIn _NSStringFromPoint _NSStringFromSize _NSStringFromRect _NSPointFrom _NSSizeFrom _NSRectFrom '-[NSCoder'
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSEqual _NSIsEmpty _NSInset _NSIntegral _NSUnionRect _NSIntersectionRect _NSIntersectsRect _NSContains _NSDivide _NSOffset _NSPointIn _NSMouseIn _NSStringFromPoint _NSStringFromSize _NSStringFromRect _NSPointFrom _NSSizeFrom _NSRectFrom '-[NSCoder'
 ```
 
 Pay particular attention to `NSIntegralRect`'s rounding direction and
@@ -2661,7 +2767,7 @@ Expected: FAILED.
 Using `dump.py` from Task 12:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSUnionRange _NSIntersectionRange _NSIntersectsRange _NSStringFromRange _NSRangeFromString
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe src/Kits/Foundation/reconstruction/tests/dump.py _NSUnionRange _NSIntersectionRange _NSIntersectsRange _NSStringFromRange _NSRangeFromString
 ```
 
 - [ ] **Step 4: Write the implementations**
@@ -2704,7 +2810,7 @@ git commit -m "Foundation: reconstruct NSRange against the DR2 reference"
 Build the three modules to objects in the guest, then:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon abi-check --abi-dir src/Kits/Foundation/reconstruction/abi --built /tmp/NSGeometry.o --built /tmp/NSRange.o --built /tmp/NSDecimal.o
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon abi-check --abi-dir src/Kits/Foundation/reconstruction/abi --built NSGeometry.m=/tmp/NSGeometry.o --built NSRange.m=/tmp/NSRange.o --built NSDecimal.m=/tmp/NSDecimal.o
 ```
 
 Expected: `abi-check: ABI matches`, exit 0. This is spec §4 gate 1.
@@ -2726,26 +2832,16 @@ functions.
 `source-map` takes the analysis and the binary directly, not a profile:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" --source-dir src/Kits/Foundation --repo-root . --objc-methods --output src/Kits/Foundation/reconstruction/geometry-range-decimal/source-map.json
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Foundation-i386" --source-dir src/Kits/Foundation --repo-root . --objc-methods --output src/Kits/Foundation/reconstruction/geometry-range-decimal/source-map.json
 ```
 
 `--objc-methods` is required here: the six `NSGeometryCoding` methods are named
 by `__OBJC` metadata, and without it they resolve to nothing.
 
-If `--binary` rejects the fat container, pass the slice — extract it once with:
-
-```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
-import pathlib
-source = pathlib.Path(r'C:\Users\raynorpat\Downloads\test\DR2\Frameworks\Foundation.framework\Versions\C\Foundation')
-pathlib.Path('/tmp/Foundation-i386').write_bytes(source.read_bytes()[8192:8192 + 1630488])
-"
-```
-
 Then check the result:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -c "
 import json
 d = json.load(open('src/Kits/Foundation/reconstruction/geometry-range-decimal/source-map.json'))
 print({k: len(v) for k, v in d.items() if isinstance(v, list)})
@@ -2758,7 +2854,7 @@ Expected: all 43 functions in `mapped`, and `unmapped`,
 - [ ] **Step 4: Run compare and build the ledger**
 
 ```bash
-BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/DR2/Frameworks/Foundation.framework/Versions/C/Foundation" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon compare --profile tools/binrecon/profiles/foundation-i386.json --reference-analysis tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json --rebuilt-analysis tools/binrecon/out/foundation-i386/published/analysis-rebuilt-ida.json --output src/Kits/Foundation/reconstruction/geometry-range-decimal/ledger.json
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon compare --profile tools/binrecon/profiles/foundation-i386.json --reference-analysis tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json --rebuilt-analysis tools/binrecon/out/foundation-i386/published/analysis-rebuilt-ida.json --output src/Kits/Foundation/reconstruction/geometry-range-decimal/ledger.json
 ```
 
 This is spec §4 gate 3, **evidence only**. Instruction divergence is expected —
@@ -2798,7 +2894,7 @@ Expected: empty output. This is spec §4 item 9 and a Global Constraint.
 - [ ] **Step 7: Run the binrecon suite one final time**
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
 Expected: PASS. This is spec §4 item 8.

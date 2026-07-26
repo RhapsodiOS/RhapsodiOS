@@ -1386,15 +1386,40 @@ Objective-C metadata:
   `PCMCIAWindowAttributes` in both — so the inline-protocol-list layout
   described above is reproduced too.
 
-**One discrepancy, since fixed.** `PCMCIASocket` had `statusChangeMask` and
-`setStatusChangeMask:` in the opposite order to the reference — same 21
-selectors, same 21 type encodings, one adjacent pair transposed. The cause was a
-transcription slip rather than a wrong theory: reversing the reference's list
-gives `setStatusChangeMask:` before `statusChangeMask`, the one place in that
-protocol where Apple put a setter ahead of its getter, and `PCMCIA.h` had
-regularised it to the getter-first convention used by the other nine pairs. The
-header now carries Apple's order, with a comment saying why it looks
-inconsistent. A rebuild should make all five protocols identical.
+**One discrepancy, since fixed and verified.** `PCMCIASocket` had
+`statusChangeMask` and `setStatusChangeMask:` in the opposite order to the
+reference — same 21 selectors, same 21 type encodings, one adjacent pair
+transposed. The cause was a transcription slip rather than a wrong theory:
+reversing the reference's list gives `setStatusChangeMask:` before
+`statusChangeMask`, the one place in that protocol where Apple put a setter
+ahead of its getter, and `PCMCIA.h` had regularised it to the getter-first
+convention used by the other nine pairs.
+
+**Finding 13 is now closed against a build.** In `PCIC_reloc` of 2026-07-26
+19:49, all **five protocol records are identical to the reference** — every
+selector and every type encoding, in order — the section lists them in the
+reference's order, and all four adoptions match, `PCICWindow(Attributes)`
+included.
+
+**The fix took three rebuilds to land, for a reason worth recording.**
+`PCMCIA.h` exists **twice** in this tree:
+
+```
+src/kernel-7/driverkit/i386/PCMCIA.h
+src/driverkit-3/driverkit/i386/PCMCIA.h
+```
+
+Driver projects compile against the driverkit-3 copy. The ordering fix went to
+the kernel-7 copy, and the driverkit-3 copy — created separately, from the
+version before that fix — kept the old order, so two rebuilds reproduced the
+same transposition exactly. The symptom was diagnostic in hindsight: four of
+five protocols were already correct and the only wrong one was the only one that
+commit had touched, which is the signature of a stale *source*, not a stale
+object or a wrong theory. Both copies are now byte-identical and each names the
+other in a comment.
+
+A related trap: this fix changes no section's size, so an unchanged file size is
+not evidence that a rebuild did nothing. Only the metadata content settles it.
 
 **Ledger effect: still none**, for the reason given above — adoption emits no
 code into `__TEXT,__text`. What it does close is the gap that paragraph warns

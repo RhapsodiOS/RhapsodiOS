@@ -10,7 +10,7 @@
 #import <driverkit/kernelDriver.h>
 
 /*
- * _strlower - Convert string to lowercase in-place
+ * strlower - Convert string to lowercase in-place
  * From decompiled code: converts all uppercase ASCII characters to lowercase.
  *
  * This function converts a null-terminated string to lowercase by modifying
@@ -30,7 +30,7 @@
  *     - 'a' (0x61) + 0xBF = 0x120 (overflow), result = 0x20 NOT < 0x1A â
  *   - If uppercase, adds 32 (space character value) to convert to lowercase
  */
-static void _strlower(char *str)
+static void strlower(char *str)
 {
 	char currentChar;
 
@@ -59,7 +59,7 @@ static void _strlower(char *str)
 }
 
 /*
- * _queueOperationAscending - Insert operation into queue in ascending order
+ * queueOperationAscending - Insert operation into queue in ascending order
  * From decompiled code: inserts operation into sorted queue (low to high).
  *
  * This function inserts an operation into a doubly-linked circular queue,
@@ -84,7 +84,7 @@ static void _strlower(char *str)
  *   - queueHead[1] = last element
  *   - Empty queue: queueHead[0] == queueHead
  */
-static BOOL _queueOperationAscending(id *queueHead, unsigned int *operation)
+static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
 {
 	id *current;
 	unsigned int *lastOp;
@@ -174,7 +174,7 @@ static BOOL _queueOperationAscending(id *queueHead, unsigned int *operation)
  *   1 - Operation inserted successfully
  *   0 - Duplicate operation found and freed
  *
- * Note: Identical to _queueOperationAscending except comparison is reversed
+ * Note: Identical to queueOperationAscending except comparison is reversed
  *       (checks if current[1] < operation[1] instead of operation[1] < current[1])
  */
 static BOOL _queueOperationDescending(id *queueHead, unsigned int *operation)
@@ -248,7 +248,7 @@ static BOOL _queueOperationDescending(id *queueHead, unsigned int *operation)
 }
 
 /*
- * _sweepQueueInsert - Insert operation into appropriate sweep queue
+ * sweepQueueInsert - Insert operation into appropriate sweep queue
  * From decompiled code: inserts operation into ascending or descending queue based on sweep direction.
  *
  * This function implements an elevator algorithm for disk I/O scheduling. It maintains
@@ -268,7 +268,7 @@ static BOOL _queueOperationDescending(id *queueHead, unsigned int *operation)
  *   - Otherwise
  *     -> Insert into descending queue (will be processed on current/next downward sweep)
  */
-static void _sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
+static void sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
                               unsigned int *operation, unsigned int currentCylinder,
                               int sweepDirection)
 {
@@ -282,7 +282,7 @@ static void _sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
 	    ((currentCylinder != operationCylinder) || (sweepDirection != 1))) {
 		// Operation is behind current position or we're sweeping down
 		// Insert into ascending queue for next upward sweep
-		_queueOperationAscending(ascendingQueue, operation);
+		queueOperationAscending(ascendingQueue, operation);
 		return;
 	}
 
@@ -293,7 +293,7 @@ static void _sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
 }
 
 /*
- * _sweepQueueReorder - Reorder queues when sweep direction changes
+ * sweepQueueReorder - Reorder queues when sweep direction changes
  * From decompiled code: moves operations between queues when head changes direction.
  *
  * This function is called when the disk head changes sweep direction. It moves
@@ -312,7 +312,7 @@ static void _sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
  *   2. Move operations from descending queue to ascending queue if they're
  *      now behind the current position (when sweeping down)
  */
-static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
+static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
                                unsigned int currentCylinder, int sweepDirection)
 {
 	unsigned int *operation;
@@ -397,7 +397,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		*linkPtr = (id)nextOp;
 
 		// Insert into ascending queue
-		_queueOperationAscending(ascendingQueue, firstOp);
+		queueOperationAscending(ascendingQueue, firstOp);
 
 		// Get next operation to check
 		operation = (unsigned int *)*descendingQueue;

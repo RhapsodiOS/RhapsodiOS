@@ -117,8 +117,8 @@ extern void _IOExitThread(void);
 /*
  * Floppy drive detection functions (defined in FloppyCnt.m)
  */
-unsigned char _floppyDriveType(int driveNum);
-BOOL _numFloppyDrives(void);
+unsigned char floppyDriveType(int driveNum);
+BOOL numFloppyDrives(void);
 
 #endif // _BSD_DEV_I386_FLOPPYCNT_H_
 

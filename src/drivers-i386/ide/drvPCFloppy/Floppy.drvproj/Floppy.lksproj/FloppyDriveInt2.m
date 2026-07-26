@@ -21,11 +21,11 @@ extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 extern void *vm_map_pmap(vm_map_t map);
 extern unsigned int pmap_resident_extract(void *pmap, vm_address_t va);
 extern unsigned int page_size;
-extern void _fdTimer(id drive);
+extern void fdTimer(id drive);
 extern IOReturn fdrToIo(unsigned int fdcStatus);
 
 /*
- * _physContBlocks - Calculate physically contiguous blocks
+ * physContBlocks - Calculate physically contiguous blocks
  * From decompiled code: determines how many blocks are physically contiguous in memory.
  *
  * This function checks how many blocks starting from a given virtual address
@@ -47,7 +47,7 @@ extern IOReturn fdrToIo(unsigned int fdcStatus);
  *   - Stops when a non-contiguous page is encountered
  *   - Returns the count of contiguous blocks found
  */
-static int _physContBlocks(vm_address_t address, vm_map_t map,
+static int physContBlocks(vm_address_t address, vm_map_t map,
                            int blockCount, int blockSize)
 {
 	int totalBytes;
@@ -118,7 +118,7 @@ static int _physContBlocks(vm_address_t address, vm_map_t map,
 }
 
 /*
- * _vFloppyCopy - Copy data between virtual addresses with page boundary handling
+ * vFloppyCopy - Copy data between virtual addresses with page boundary handling
  * From decompiled code: copies data between two virtual address spaces page-by-page.
  *
  * This function copies data from one virtual address space to another, handling
@@ -142,7 +142,7 @@ static int _physContBlocks(vm_address_t address, vm_map_t map,
  *     5. Copy chunk using bcopy on physical addresses
  *     6. Advance addresses and decrease remaining bytes
  */
-static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
+static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
                          vm_address_t destAddr, vm_map_t destMap,
                          unsigned int size)
 {
@@ -340,7 +340,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		}
 
 		// Check if buffer is physically contiguous
-		isContiguous = _physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
+		isContiguous = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
 
 		// If not contiguous, can only transfer 1 block at a time
 		if (!isContiguous) {
@@ -374,7 +374,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 
 			// For write, copy data to bounce buffer
 			if (!isRead) {
-				_vFloppyCopy(currentBuffer, client, bounceBuffer, kernel_map, sectorSize);
+				vFloppyCopy(currentBuffer, client, bounceBuffer, kernel_map, sectorSize);
 			}
 		}
 
@@ -397,7 +397,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 
 		// For read with bounce buffer, copy data back
 		if ((blocksToTransfer != 0) && (!isContiguous) && isRead) {
-			_vFloppyCopy(bounceBuffer, kernel_map, currentBuffer, client, sectorSize);
+			vFloppyCopy(bounceBuffer, kernel_map, currentBuffer, client, sectorSize);
 		}
 
 		// Update counters
@@ -595,7 +595,7 @@ transfer_done:
 	    ((currentTimeHigh == timeoutTimeHigh) && (currentTimeLow < timeoutTimeLow))) {
 		// Timeout not reached, reschedule timer
 		_motorTimerActive = _motorTimerActive | 1;
-		IOScheduleFunc(_fdTimer, self, 2);
+		IOScheduleFunc(fdTimer, self, 2);
 	} else {
 		// Timeout reached, turn off motor
 		bzero(cmdBuffer, 0x60);

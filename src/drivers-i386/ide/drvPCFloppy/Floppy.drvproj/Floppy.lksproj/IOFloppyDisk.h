@@ -12,7 +12,7 @@
 @class IOFloppyDrive;
 
 // Thread startup function
-void _OperationThreadStartup(id self);
+void OperationThreadStartup(id self);
 
 /*
  * IOFloppyDisk - Floppy disk device with cylinder caching

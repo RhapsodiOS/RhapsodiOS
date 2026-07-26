@@ -35,7 +35,7 @@ typedef struct _RequestNode {
 /*
  * Forward declaration of the floppy controller thread function
  */
-static void _FloppyControllerThread(void *arg);
+static void FloppyControllerThread(void *arg);
 
 /*
  * Global controller unit counter
@@ -46,7 +46,7 @@ static int _fcUnitNum = 0;
 extern int __xxx;
 
 /*
- * _floppyDriveType - Read floppy drive type from CMOS
+ * floppyDriveType - Read floppy drive type from CMOS
  * From decompiled code: reads CMOS to determine drive type.
  *
  * This function reads the CMOS RAM location 0x10 which contains the
@@ -70,7 +70,7 @@ extern int __xxx;
  *   0x71 = CMOS data port
  *   Address 0x10 = Floppy drive types
  */
-unsigned char _floppyDriveType(int driveNumber)
+unsigned char floppyDriveType(int driveNumber)
 {
 	unsigned char driveTypeByte;
 	unsigned char driveType;
@@ -114,7 +114,7 @@ unsigned char _floppyDriveType(int driveNumber)
 }
 
 /*
- * _numFloppyDrives - Get number of floppy drives from CMOS
+ * numFloppyDrives - Get number of floppy drives from CMOS
  * From decompiled code: reads CMOS to determine how many drives are present.
  *
  * This function reads the CMOS RAM location 0x14 which contains the
@@ -130,7 +130,7 @@ unsigned char _floppyDriveType(int driveNumber)
  *   0x71 = CMOS data port
  *   Address 0x14 = Equipment byte (bits 6-7 = number of floppies - 1)
  */
-BOOL _numFloppyDrives(void)
+BOOL numFloppyDrives(void)
 {
 	unsigned char equipmentByte;
 	unsigned char numDrives;
@@ -249,7 +249,7 @@ BOOL _numFloppyDrives(void)
 	}
 
 	// Fork the floppy controller thread
-	threadResult = _IOForkThread(_FloppyControllerThread, self);
+	threadResult = _IOForkThread(FloppyControllerThread, self);
 
 	// Clear bit 4 of flags
 	_flags = _flags & 0xef;
@@ -465,11 +465,11 @@ BOOL _numFloppyDrives(void)
 	_fcUnitNum = _fcUnitNum + 1;
 
 	// Probe for floppy drives
-	numDrives = _numFloppyDrives();
+	numDrives = numFloppyDrives();
 
 	for (driveIndex = 0; driveIndex < numDrives; driveIndex++) {
 		// Check if drive is present
-		driveType = _floppyDriveType(driveIndex);
+		driveType = floppyDriveType(driveIndex);
 
 		if (driveType != 0) {
 			// Allocate and initialize the drive
@@ -499,7 +499,7 @@ BOOL _numFloppyDrives(void)
  * Execute a command transfer in the controller thread.
  * From decompiled code: this is the actual command execution in thread context.
  *
- * This method is called by the controller thread (via _FloppyControllerThread)
+ * This method is called by the controller thread (via FloppyControllerThread)
  * to execute commands that have been queued via fcCmdXfr:.
  *
  * Parameters:
@@ -640,7 +640,7 @@ BOOL _numFloppyDrives(void)
  * The thread waits on the command lock (condition = 1 means work available),
  * processes all requests in the queue, then waits again.
  */
-static void _FloppyControllerThread(void *arg)
+static void FloppyControllerThread(void *arg)
 {
 	FloppyController *controller = (FloppyController *)arg;
 	RequestNode *queueHead;

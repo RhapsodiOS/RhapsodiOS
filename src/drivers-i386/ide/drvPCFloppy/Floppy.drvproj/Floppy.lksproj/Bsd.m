@@ -17,10 +17,10 @@ extern int physio(int (*strategy)(struct buf *), struct buf *bp, dev_t dev, int 
                   u_int (*minphys)(struct buf *), struct uio *uio, int blocksize);
 
 // Forward declaration for detached disk identification
-static id _identifyDetachedDiskIdFromBsdDev(dev_t dev);
+static id identifyDetachedDiskIdFromBsdDev(dev_t dev);
 
 /*
- * _HandleBsdIoctl - BSD ioctl handler
+ * HandleBsdIoctl - BSD ioctl handler
  * From decompiled code: handles ioctl commands from BSD layer.
  *
  * This function implements various ioctl commands for floppy disk control,
@@ -41,7 +41,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev);
  *   DKIOCEJECT (0x20006415)  - Eject disk
  *   And many more...
  */
-static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
+static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 {
 	id drive;
 	id disk;
@@ -69,7 +69,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 	unsigned int formatState;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for invalid device or block device (bit 0 set in partition flags)
 	if (identifyResult == 0) {
@@ -377,7 +377,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 }
 
 /*
- * _HandleBsdOpen - BSD open handler
+ * HandleBsdOpen - BSD open handler
  * From decompiled code: handles open operations from BSD layer.
  *
  * This function is called when a user process opens a floppy device node.
@@ -389,7 +389,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
  * Returns:
  *   0 on success, ENXIO (6) on error
  */
-static int _HandleBsdOpen(dev_t dev)
+static int HandleBsdOpen(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -399,7 +399,7 @@ static int _HandleBsdOpen(dev_t dev)
 	unsigned char *partFlags;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check if device is invalid or result > 2
 	if ((identifyResult == 0) || (identifyResult > 2)) {
@@ -414,7 +414,7 @@ static int _HandleBsdOpen(dev_t dev)
 		}
 
 		// Re-identify after polling (disk may now be available)
-		_identifyBsdDev(dev, &drive, &disk, &partition);
+		identifyBsdDev(dev, &drive, &disk, &partition);
 	}
 
 	// If result is 2 (normal case), set the open flag
@@ -435,7 +435,7 @@ static int _HandleBsdOpen(dev_t dev)
 }
 
 /*
- * _HandleBsdClose - BSD close handler
+ * HandleBsdClose - BSD close handler
  * From decompiled code: handles close operations from BSD layer.
  *
  * This function is called when a user process closes a floppy device node.
@@ -447,7 +447,7 @@ static int _HandleBsdOpen(dev_t dev)
  * Returns:
  *   0 on success, ENXIO (6) on error
  */
-static int _HandleBsdClose(dev_t dev)
+static int HandleBsdClose(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -456,7 +456,7 @@ static int _HandleBsdClose(dev_t dev)
 	unsigned char *partFlags;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Special case: if result is 1, just return success
 	if (identifyResult == 1) {
@@ -470,7 +470,7 @@ static int _HandleBsdClose(dev_t dev)
 
 	// If no disk object, try to get detached disk
 	if (disk == nil) {
-		disk = _identifyDetachedDiskIdFromBsdDev(dev);
+		disk = identifyDetachedDiskIdFromBsdDev(dev);
 	}
 
 	// If we have a disk object, clear the open flag
@@ -514,7 +514,7 @@ static u_int fdminphys(struct buf *bp)
 }
 
 /*
- * _identifyBsdDev - Identify BSD device components from dev_t
+ * identifyBsdDev - Identify BSD device components from dev_t
  * From decompiled code: extracts drive, disk, and partition from device number.
  *
  * This function decodes a BSD device number (dev_t) into its component parts:
@@ -537,7 +537,7 @@ static u_int fdminphys(struct buf *bp)
  *   minor & 7 = partition (0 or 1)
  *   dev >> 8 = major number
  */
-static unsigned int _identifyBsdDev(dev_t dev,
+static unsigned int identifyBsdDev(dev_t dev,
                                      id *driveOut,
                                      id *diskOut,
                                      void **partOut)
@@ -619,11 +619,11 @@ static unsigned int _identifyBsdDev(dev_t dev,
 }
 
 /*
- * _identifyDetachedDiskIdFromBsdDev - Get disk object from detached device
+ * identifyDetachedDiskIdFromBsdDev - Get disk object from detached device
  * From decompiled code: retrieves disk object for a detached BSD device.
  *
  * This function is used to get the disk object for a device that has been
- * detached from the BSD interface. It's similar to _identifyBsdDev but only
+ * detached from the BSD interface. It's similar to identifyBsdDev but only
  * returns the disk object and only works when the disk is NOT currently
  * attached (bit 2 is clear).
  *
@@ -639,7 +639,7 @@ static unsigned int _identifyBsdDev(dev_t dev,
  *   minor & 7 = partition (0 or 1)
  *   dev >> 8 = major number
  */
-static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
+static id identifyDetachedDiskIdFromBsdDev(dev_t dev)
 {
 	unsigned int driveNumber;
 	unsigned int partition;
@@ -699,7 +699,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
 }
 
 /*
- * _fakeStrategySuccess - Fake strategy routine that always succeeds
+ * fakeStrategySuccess - Fake strategy routine that always succeeds
  * From decompiled code: used for handling detaching disks.
  *
  * This function is used as a strategy routine when a disk is being detached.
@@ -712,7 +712,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
  * Returns:
  *   0 (success)
  */
-static int _fakeStrategySuccess(struct buf *bp)
+static int fakeStrategySuccess(struct buf *bp)
 {
 	id drive;
 	id disk;
@@ -725,7 +725,7 @@ static int _fakeStrategySuccess(struct buf *bp)
 	dev = bp->b_dev;
 
 	// Identify the BSD device components
-	_identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Get drive number
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
@@ -742,7 +742,7 @@ static int _fakeStrategySuccess(struct buf *bp)
 }
 
 /*
- * _HandleBsdSize - BSD partition size handler
+ * HandleBsdSize - BSD partition size handler
  * From decompiled code: returns the size of a disk partition.
  *
  * This function is called by the BSD layer to get the size of a disk partition
@@ -754,7 +754,7 @@ static int _fakeStrategySuccess(struct buf *bp)
  * Returns:
  *   Number of blocks in partition, or error code (6 = ENXIO, 0 = no disk)
  */
-static int _HandleBsdSize(dev_t dev)
+static int HandleBsdSize(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -763,7 +763,7 @@ static int _HandleBsdSize(dev_t dev)
 	int blockSize;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for invalid device
 	if (identifyResult == 0) {
@@ -784,7 +784,7 @@ static int _HandleBsdSize(dev_t dev)
 }
 
 /*
- * _HandleBsdStrategy - BSD strategy handler
+ * HandleBsdStrategy - BSD strategy handler
  * From decompiled code: handles block I/O requests from BSD layer.
  *
  * This function is the strategy routine for block device I/O. It processes
@@ -796,7 +796,7 @@ static int _HandleBsdSize(dev_t dev)
  * Returns:
  *   void (errors reported via completeTransfer)
  */
-static void _HandleBsdStrategy(struct buf *bp)
+static void HandleBsdStrategy(struct buf *bp)
 {
 	id drive;
 	id disk;
@@ -814,7 +814,7 @@ static void _HandleBsdStrategy(struct buf *bp)
 	dev = bp->b_dev;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	if (identifyResult == 0) {
 		result = -0x2c0;  // ENXIO (different encoding)
@@ -874,7 +874,7 @@ static void _HandleBsdStrategy(struct buf *bp)
 }
 
 /*
- * _HandleBsdRead - BSD read handler
+ * HandleBsdRead - BSD read handler
  * From decompiled code: handles read operations from BSD layer.
  *
  * This function is called by the BSD layer to perform read operations on
@@ -887,7 +887,7 @@ static void _HandleBsdStrategy(struct buf *bp)
  * Returns:
  *   BSD error code (0 = success, errno on failure)
  */
-static int _HandleBsdRead(dev_t dev, struct uio *uio)
+static int HandleBsdRead(dev_t dev, struct uio *uio)
 {
 	id drive;
 	id disk;
@@ -902,7 +902,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 	struct buf *deviceBuf;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Get drive number
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
@@ -928,7 +928,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 		deviceBuf = *(struct buf **)(0xc030 + (driveNumber * 0x34));
 
 		// Perform I/O using fake strategy (always succeeds)
-		result = physio((int (*)(struct buf *))_fakeStrategySuccess,
+		result = physio((int (*)(struct buf *))fakeStrategySuccess,
 		                deviceBuf,
 		                dev,
 		                0x100000,  // B_READ flag
@@ -957,7 +957,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 	deviceBuf = *(struct buf **)(0xc030 + (driveNumber * 0x34));
 
 	// Perform I/O using real strategy
-	result = physio((int (*)(struct buf *))_HandleBsdStrategy,
+	result = physio((int (*)(struct buf *))HandleBsdStrategy,
 	                deviceBuf,
 	                dev,
 	                0x100000,  // B_READ flag
@@ -969,7 +969,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 }
 
 /*
- * _HandleBsdWrite - BSD write handler
+ * HandleBsdWrite - BSD write handler
  * From decompiled code: handles write operations from BSD layer.
  *
  * This function is called by the BSD layer to perform write operations on
@@ -983,7 +983,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
  * Returns:
  *   BSD error code (0 = success, errno on failure)
  */
-static int _HandleBsdWrite(dev_t dev, struct uio *uio)
+static int HandleBsdWrite(dev_t dev, struct uio *uio)
 {
 	id drive;
 	id disk;
@@ -996,7 +996,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	int result;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for errors
 	if ((identifyResult == 0) || (identifyResult > 2) || (disk == NULL)) {
@@ -1020,7 +1020,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 
 	// Perform I/O using strategy routine
 	// Flag 0 = write (no B_READ flag)
-	result = physio((int (*)(struct buf *))_HandleBsdStrategy,
+	result = physio((int (*)(struct buf *))HandleBsdStrategy,
 	                deviceBuf,
 	                dev,
 	                0,  // 0 = write (no B_READ flag)
@@ -1246,11 +1246,11 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 		// Add to character device switch table (major 41 = 0x29)
 		result = IOAddToCdevswAt(
 			0x29,                     // Major number 41 (character device)
-			(int)&_HandleBsdOpen,     // d_open at 0x448
-			(int)&_HandleBsdClose,    // d_close at 0x4e4
-			(int)&_HandleBsdRead,     // d_read at 0x5ec
-			(int)&_HandleBsdWrite,    // d_write at 0x74c
-			(int)&_HandleBsdIoctl,    // d_ioctl at 0x908
+			(int)&HandleBsdOpen,     // d_open at 0x448
+			(int)&HandleBsdClose,    // d_close at 0x4e4
+			(int)&HandleBsdRead,     // d_read at 0x5ec
+			(int)&HandleBsdWrite,    // d_write at 0x74c
+			(int)&HandleBsdIoctl,    // d_ioctl at 0x908
 			(int)&enodev,             // d_stop
 			(int)&nulldev,            // d_reset
 			(int)&seltrue,            // d_select
@@ -1269,12 +1269,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 		// Add to block device switch table (major 1)
 		result = IOAddToBdevswAt(
 			1,                         // Major number 1 (block device)
-			(int)&_HandleBsdOpen,      // d_open at 0x448
-			(int)&_HandleBsdClose,     // d_close at 0x4e4
-			(int)&_HandleBsdStrategy,  // d_strategy at 0x7f8
-			(int)&_HandleBsdIoctl,     // d_ioctl at 0x908
+			(int)&HandleBsdOpen,      // d_open at 0x448
+			(int)&HandleBsdClose,     // d_close at 0x4e4
+			(int)&HandleBsdStrategy,  // d_strategy at 0x7f8
+			(int)&HandleBsdIoctl,     // d_ioctl at 0x908
 			(int)&enodev,              // d_dump
-			(int)&_HandleBsdSize,      // d_psize
+			(int)&HandleBsdSize,      // d_psize
 			0                          // d_flags
 		);
 

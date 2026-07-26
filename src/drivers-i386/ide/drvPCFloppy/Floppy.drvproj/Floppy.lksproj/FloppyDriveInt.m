@@ -90,7 +90,7 @@ static void *floppyMalloc(unsigned int size,
 }
 
 /*
- * _fdTimer - Timer callback for floppy motor control
+ * fdTimer - Timer callback for floppy motor control
  * From decompiled code: timer callback that checks motor state.
  *
  * This function is called by the system timer to handle motor timeout.
@@ -104,7 +104,7 @@ static void *floppyMalloc(unsigned int size,
  *   - Bit 0 set: timer is active/pending
  *   - Bit 0 clear: timer has fired or is inactive
  */
-void _fdTimer(id drive)
+void fdTimer(id drive)
 {
 	unsigned char *timerFlagPtr;
 
@@ -674,12 +674,12 @@ IOReturn fdrToIo(unsigned int fdrCode)
 		// Clear motor timer active flag (bit 0 at offset 0x178)
 		_motorTimerActive = _motorTimerActive & 0xfe;
 		// Unschedule motor off timer
-		IOUnscheduleFunc(_fdTimer, self);
+		IOUnscheduleFunc(fdTimer, self);
 	} else if ((_motorTimerActive & 1) == 0) {
 		// Set motor timer active flag
 		_motorTimerActive = _motorTimerActive | 1;
 		// Schedule motor off timer for 2 seconds
-		IOScheduleFunc(_fdTimer, self, 2);
+		IOScheduleFunc(fdTimer, self, 2);
 	}
 	
 	return result;

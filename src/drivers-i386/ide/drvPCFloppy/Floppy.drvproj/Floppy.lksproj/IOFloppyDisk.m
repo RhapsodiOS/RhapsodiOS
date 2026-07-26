@@ -20,7 +20,7 @@
  * Parameters:
  *   self - The IOFloppyDisk object instance
  */
-void _OperationThreadStartup(id self)
+void OperationThreadStartup(id self)
 {
 	// Call the operation thread method (runs the main loop)
 	[self operationThread];
@@ -259,7 +259,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Fork operation thread
-	threadResult = IOForkThread((IOThreadFunc)_OperationThreadStartup, self);
+	threadResult = IOForkThread((IOThreadFunc)OperationThreadStartup, self);
 
 	// Set thread port flag based on result
 	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;

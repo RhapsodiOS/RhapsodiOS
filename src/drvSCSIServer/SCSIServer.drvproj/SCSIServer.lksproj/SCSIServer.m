@@ -128,7 +128,7 @@ static Protocol *_scsiServerProtocols[] = {
  * Sets up the SCSI server instance and registers it as a device.
  *
  * The decompiled code shows this sequence:
- * 1. Call [self registerSCSIController:] with self as argument - if fails, return [self free]
+ * 1. Call [self registerSCSIController:] with deviceDescription as argument - if fails, return [self free]
  * 2. Set name to "SCSI Server"
  * 3. Set device kind to "SCSI Server"
  * 4. Call [super initFromDeviceDescription:]
@@ -141,17 +141,14 @@ static Protocol *_scsiServerProtocols[] = {
     struct objc_super superStruct;
     id initResult;
 
-    /* Register self as SCSI controller
+    /* Register self as SCSI controller with deviceDescription
      * iVar1 = FUN_000001d0(param_1, s_registerSCSIController:_000059a8)
-     * This appears to be [self registerSCSIController:self] but that doesn't make sense.
-     * Actually, looking at the decompiled code, this checks if registration is possible.
-     * The return value check (iVar1 != 0) suggests this is a capability check.
-     *
-     * However, registerSCSIController: expects a controller object, not self.
-     * This might be checking some capability or doing self-registration.
-     * For now, let's interpret this as a registration capability check.
+     * The reference disassembly leaves r3/r5 (self/deviceDescription) untouched
+     * between entry and this call, so the argument is the incoming
+     * deviceDescription, matching probe:'s own use of registerSCSIController:
+     * on subsequent probes.
      */
-    registerResult = (int)[self registerSCSIController:self];
+    registerResult = (int)[self registerSCSIController:deviceDescription];
 
     if (registerResult == 0) {
         /* Registration check failed - free and return */
@@ -274,7 +271,7 @@ static Protocol *_scsiServerProtocols[] = {
  * The decompiled code shows this:
  * 1. Initializes *connection to 0
  * 2. Allocates IOSCSISession via [IOSCSISession alloc]
- * 3. Initializes session via _initServerWithTask:sendPort:
+ * 3. Initializes session via initServerWithTask:sendPort:
  * 4. Returns -702 on failure (iVar2 == 0), 0 on success
  *
  * The error code calculation: -(uint)(iVar2 == 0) & 0xfffffd42
@@ -299,14 +296,14 @@ static Protocol *_scsiServerProtocols[] = {
 
     /* Initialize the session with task and send port
      * iVar2 = FUN_000002f4(uVar1, s_initServerWithTask:sendPort:_00005a38, param_4, param_3)
-     * This is [sessionAlloc _initServerWithTask:taskPort sendPort:connection]
+     * This is [sessionAlloc initServerWithTask:taskPort sendPort:connection]
      *
      * The connection pointer is passed as the sendPort output parameter.
      * On success, this returns the session object (non-zero).
      * On failure, this returns the result of [self free] (could be non-zero).
      */
     session_result = (int)objc_msgSend(sessionAlloc,
-                                       @selector(_initServerWithTask:sendPort:),
+                                       @selector(initServerWithTask:sendPort:),
                                        taskPort,
                                        connection);
 

@@ -25,6 +25,18 @@
 #define IOSCSIDevice IOSCSIController
 
 /* ========================================================================
+ * IOSCSIControllerExported Protocol - conformance check used by
+ * IOSCSISession_initForDevice
+ *
+ * driverkit/scsiTypes.h already declares the real IOSCSIControllerExported
+ * protocol, with exactly the methods this driver's stubbed wrapper calls
+ * send (executeRequest:buffer:client:, reserveTarget:lun:forOwner:, etc.);
+ * import it rather than re-declaring an empty forward reference.
+ * ======================================================================== */
+
+#import <driverkit/scsiTypes.h>
+
+/* ========================================================================
  * IOSCSISession Class Definition
  * ======================================================================== */
 
@@ -76,14 +88,7 @@
  * sendPort: Pointer to send port (output parameter)
  * Returns: self on success, result of [self free] on failure
  */
-- (int)_initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort;
-
-/* Private: Reserve a SCSI target and LUN for this session
- * target: SCSI target ID
- * lun: SCSI logical unit number
- * Returns: 0 on success, error code on failure
- */
-- (int)_reserveTarget:(unsigned char)target lun:(unsigned char)lun;
+- (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort;
 
 @end
 
@@ -117,9 +122,13 @@ int IOSCSISession_free(id session);
 /* Initialize SCSI session for a device
  * session: IOSCSISession object
  * deviceName: Name of the SCSI device
+ * deviceNameCnt: Byte count of deviceName, as passed by the MiG-generated
+ *   IOSCSISessionMigServer.c (the array[*:80] of char argument's implicit
+ *   count parameter)
  * Returns: 0 on success, error code on failure
  */
-int IOSCSISession_initForDevice(id session, const char *deviceName);
+int IOSCSISession_initForDevice(id session, const char *deviceName,
+                                unsigned int deviceNameCnt);
 
 /* Get DMA alignment requirements for SCSI transfers
  * session: IOSCSISession object
@@ -134,28 +143,6 @@ int IOSCSISession_getDMAAlignment(id session, unsigned int *alignment);
  * Returns: 0 (always)
  */
 int IOSCSISession_maxTransfer(id session, unsigned int *maxTransfer);
-
-/* Wire memory in task's address space for DMA
- * address: Virtual address to wire
- * length: Length of memory region in bytes
- */
-void IOTaskWireMemory(unsigned int address, int length);
-
-/* Unwire previously wired memory
- * address: Virtual address to unwire
- * length: Length of memory region in bytes
- */
-void IOTaskUnwireMemory(unsigned int address, int length);
-
-/* Deallocate a Mach port in the task
- * port: Mach port to deallocate
- */
-void IOTaskPortDeallocate(mach_port_t port);
-
-/* Allocate and assign a name to a Mach port
- * name: Port name to assign
- */
-void IOTaskPortAllocateName(mach_port_t name);
 
 /* Execute a SCSI-3 request
  * session: IOSCSISession object

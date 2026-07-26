@@ -9,6 +9,9 @@
 #import "AppleIOPSSafeCondLock.h"
 #import "ttyiops.h"
 #import <string.h>
+#import <sys/conf.h>
+#import <sys/systm.h>
+#import <driverkit/kernelDriver.h>
 /* Global ttyiops map and lock - defined here */
 static id _ttyiopsMapLock = NULL;       /* AppleIOPSSafeCondLock for ttyiops map access */
 id _ttyiopsMap[26] = { NULL };          /* Array of 26 PortServer instances (one per letter a-z) */
@@ -17,16 +20,124 @@ static id _pseudoUnit = NULL;           /* PDPseudo unit instance */
 /* Global port server major device number */
 int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
 
+/*
+ * The character device switch entry this driver installs.  serverMajor: hands
+ * the same entry points to addToCdevswFromDescription:, and the three wrappers
+ * below dispatch through this table rather than naming ttyiops_* directly.
+ */
+static struct cdevsw ttyiops_devsw = {
+    (open_close_fcn_t *)ttyiops_open,
+    (open_close_fcn_t *)ttyiops_close,
+    (read_write_fcn_t *)ttyiops_read,
+    (read_write_fcn_t *)ttyiops_write,
+    (ioctl_fcn_t *)ttyiops_ioctl,
+    (stop_fcn_t *)ttyiops_stop,
+    (reset_fcn_t *)nulldev,
+    0,
+    (select_fcn_t *)ttyiops_select,
+    eno_mmap,
+    eno_strat,
+    eno_getc,
+    eno_putc,
+    D_TTY
+};
+
+/* ========================================================================
+ * Character Device Switch Wrappers
+ *
+ * Minor numbers with both bits 6 and 7 set (0xC0) are the pseudo device the
+ * kernel session layer hands out; everything else is a real tty and goes
+ * through ttyiops_devsw.  Every exit reports through IOSetUNIXError().
+ * ======================================================================== */
+
+/*
+ * portServeropen - Character device open
+ */
+static int portServeropen(unsigned int dev, int flag, int mode, struct proc *p)
+{
+    int rtn = 0;
+
+    if ((dev & 0xc0) != 0xc0) {
+        rtn = (*ttyiops_devsw.d_open)(dev, flag, mode, p);
+    } else if ((dev & 0x3f) != 0) {
+        rtn = [IOPortSession iopsKernOpen:(dev & 0x3f)];
+    }
+
+    IOSetUNIXError(rtn);
+    return rtn;
+}
+
+/*
+ * portServerclose - Character device close
+ */
+static int portServerclose(unsigned int dev, int flag, int mode, struct proc *p)
+{
+    int rtn = 0;
+
+    if ((dev & 0xc0) != 0xc0) {
+        rtn = (*ttyiops_devsw.d_close)(dev, flag, mode, p);
+    } else if ((dev & 0x3f) != 0) {
+        rtn = [IOPortSession iopsKernClose:(dev & 0x3f)];
+    }
+
+    IOSetUNIXError(rtn);
+    return rtn;
+}
+
+/*
+ * portServerioctl - Character device ioctl
+ *
+ * On the pseudo device, minor 0 answers the name lookup (0xC0547004) and the
+ * server commands; the other minors carry the per-session init and message
+ * ioctls.
+ */
+static int portServerioctl(unsigned int dev, unsigned int cmd, void *data,
+                           int flag, struct proc *p)
+{
+    int rtn = 0;
+    unsigned int target;
+    ttyiops_state *st;
+
+    if ((dev & 0xc0) != 0xc0) {
+        rtn = (*ttyiops_devsw.d_ioctl)(dev, cmd, data, flag, p);
+    } else if ((dev & 0x3f) == 0) {
+        if (cmd == 0xc0547004) {
+            /* Return the IOPortSession name of the tty named in the request */
+            target = *(unsigned int *)((char *)data + 0x50);
+            st = NULL;
+
+            if (_portServerMajor == *(unsigned char *)((char *)data + 0x51) &&
+                (target & 0xc0) != 0xc0 &&
+                _ttyiopsMap[target & 0x1f] != NULL) {
+                st = (ttyiops_state *)((char *)_ttyiopsMap[target & 0x1f] + 0x108);
+            }
+
+            if (st == NULL) {
+                rtn = 6;    /* ENXIO */
+            } else {
+                strcpy((char *)data, (char *)[st->iops name]);
+            }
+        } else {
+            rtn = [IOPortSession iopsServerIoctlCommand:cmd data:(char *)data];
+        }
+    } else if (cmd == 0xc0587003) {
+        rtn = [IOPortSession iopsKernInitIoctl:(dev & 0x3f) data:(char *)data];
+    } else if (cmd == 0xc0187002) {
+        rtn = [IOPortSession iopsKernMsgIoctl:(dev & 0x3f) data:(char *)data];
+    } else {
+        rtn = 0x16;         /* EINVAL */
+    }
+
+    IOSetUNIXError(rtn);
+    return rtn;
+}
+
 /* Protocol array for PortServer - _protocols.102 in the reference */
 Protocol *_protocols_102[] = {
     @protocol(PortDevices),
     0
 };
 
-
-/* Character device switch functions supplied to addToCdevswFromDescription: */
-extern int nulldev();
-extern int enodev();
 
 /* External IOLog function */
 extern void IOLog(const char *format, ...);

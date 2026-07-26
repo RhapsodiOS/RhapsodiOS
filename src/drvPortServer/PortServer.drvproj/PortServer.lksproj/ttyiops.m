@@ -2130,35 +2130,3 @@ send_to_line_discipline:
         (*linesw[tp->t_line].l_rint)(event_data, tp);
     }
 }
-
-
-/* ========================================================================
- * Character Device Switch Wrappers
- * ======================================================================== */
-
-/*
- * portServeropen - Character device open wrapper
- * Simply calls ttyiops_open
- */
-int portServeropen(unsigned int dev, int flag, int mode, struct proc *p)
-{
-    return ttyiops_open(dev, flag, mode, p);
-}
-
-/*
- * portServerclose - Character device close wrapper
- * Simply calls ttyiops_close
- */
-int portServerclose(unsigned int dev, int flag)
-{
-    return ttyiops_close(dev, flag);
-}
-
-/*
- * portServerioctl - Character device ioctl wrapper
- * Simply calls ttyiops_ioctl
- */
-int portServerioctl(unsigned int dev, unsigned int cmd, void *data, int flag, struct proc *p)
-{
-    return ttyiops_ioctl(dev, cmd, data, flag, p);
-}

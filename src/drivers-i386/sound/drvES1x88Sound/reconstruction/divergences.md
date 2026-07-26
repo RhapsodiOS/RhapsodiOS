@@ -1306,6 +1306,11 @@ differences remain: the reference caches `(channelCount == 2)` as a boolean in a
 at 4500-4511, and it builds the IRQ and DMA control bytes with paired bit operations on a
 local byte at 5490-5525 and 5600-5638 rather than whole-value assignments.
 
+**Superseded on the first of those two.** The stack boolean was reproduced from source in a
+later pass; see "The `(channelCount == 2)` stack boolean is derivable after all" at the end
+of this report. Only the control-byte construction is still accepted. The paragraph below
+stands as written for the control bytes.
+
 The first fix pass wrote that reproducing either "needs Apple's declarations, not the
 binary". **That is withdrawn**: the review pass's rebuild reproduces the paired form for
 the mixer shadows from bitfield members alone, so the construct is derivable in general.
@@ -1628,11 +1633,11 @@ sequence matches entry for entry and no port-write difference remains. Rebuilt s
 against the reference's 1328; per-function sizes elsewhere in the binary are unchanged, and
 parity stays at `missing_strings` 0 / `missing_symbols` 0.
 
-What still separates this function from the reference is only the two accepted residuals:
-`and` −7 / `or` −6 from the paired IRQ and DMA byte construction, `sete` −1 / `test` −2 /
-`mov` −12 from the cached `(channelCount == 2)` stack boolean, and `movzx` −3 from the
-systemic codegen class. The entry stays `intentional-mismatch` on those two grounds; the
-`B8h` write is struck from its reason.
+What still separated this function from the reference at that point was the two accepted
+residuals — `and` −7 / `or` −6 from the paired IRQ and DMA byte construction, `sete` −1 /
+`test` −2 / `mov` −12 from the cached `(channelCount == 2)` stack boolean — plus `movzx` −3
+from the systemic codegen class. The `B8h` write was struck from the entry's reason; the
+stack boolean is settled in the section below.
 
 Set against `setAnalogInputSource:`, the two experiments differ in where the duplicate sits.
 There the duplicated port sequence was the tail of each arm, ahead of a shared `mov al, cl`,
@@ -1641,3 +1646,98 @@ arms continue past it into distinct `mov al` values, so there is nothing to merg
 final shared `out`. Two data points do not make a rule, but they are enough to say a
 duplication hypothesis is worth building on the guest rather than declining on the strength
 of the earlier negative.
+
+## The `(channelCount == 2)` stack boolean is derivable after all
+
+**Resolved in source.** The first fix pass declined this one on the grounds that the cached
+boolean was a code-generation artefact. It is not: it is a source local, and both the
+construction and the two tests were reproduced on the guest.
+
+The reference builds it immediately after the `channelCount` send and never keeps
+`channelCount` itself — `edx` is clobbered on the next line:
+
+```
+4490: call _objc_msgSend           ; [self channelCount]
+4495: mov  edx, eax
+4500: cmp  edx, 2
+4503: sete al
+4506: and  eax, 0xff
+4511: mov  [ebp-8], eax
+4514: mov  eax, [0x606c]           ; the dataEncoding send follows straight on
+```
+
+Our source kept `channelCount` in a local and tested `channelCount == 2` at each of the two
+sites. Replacing the local with the boolean —
+
+```c
+unsigned int stereo;
+...
+stereo = ([self channelCount] == 2);
+```
+
+— reproduces `cmp edx, 2 / sete al / and eax, 0xff / mov [mem], eax` exactly. `and eax, 0FFh`
+rather than `movzx` is this `gcc`'s zero-extension idiom for storing a boolean into an `int`,
+so the reference's slot is a plain `int`/`unsigned int`, not a `char` or a bitfield.
+
+That alone was not enough. The reference tests the slot in two different forms, and writing
+`if (stereo)` at both sites gave `cmp mem, 0 / je` at both, against the reference's `cmp
+mem, 1 / jne` at 4738 and `cmp mem, 0 / jne` at 5202. This `gcc` renders `if (x == K)` as
+`cmp x, K / jne <else>` with the then-block falling through, and `if (x)` as `cmp x, 0 /
+je <else>`, so the two compare constants and the two branch senses pin the source forms
+down the same way Finding 11's predicates were pinned down:
+
+- site 1 (`4738`, the stereo/mono bit) is `if (stereo == 1) { |= STEREO } else { |= MONO }`;
+- site 2 (`5202`, the mode-command group) is `if (stereo == 0) { mono group } else { stereo
+  group }` — the arms are the other way round from ours, which is why the reference jumps
+  to the stereo group rather than falling into it.
+
+Written that way, both sites come out matching:
+
+```
+             REFERENCE                        OURS
+site 1  4738: cmp [ebp-8], 1            4523: cmp [ebp-0xc], 1
+        4742: jne 4752                  4527: jne 4536
+        4744: or  bl, 1                 4529: or  bl, 1
+        4747: jmp 4755                  4532: jmp 4539
+        4752: or  bl, 2                 4536: or  bl, 2
+
+site 2  5202: cmp [ebp-8], 0            4951: cmp [ebp-0xc], 0
+        5206: jne 5252                  4955: jne 4992
+        5208: cmp [ebp-0xc], 0x259      4957: cmp [ebp-0x10], 0x259
+        5215: jne 5236                  4964: jne 4980
+        5217: mov ebx, 0x80             4966: mov bl, 0x80
+        ...   esi 0x51 / edi 0xd0       ...   0x51 / 0xd0    (mono, Linear8)
+        5236: xor ebx, ebx              4980: xor bl, bl
+        ...   esi 0x71 / edi 0xf4       ...   0x71 / 0xf4    (mono, Linear16)
+        5252: cmp [ebp-0xc], 0x259      4992: cmp [ebp-0x10], 0x259
+        ...   0x80 / 0x51 / 0x98        ...   0x80 / 0x51 / 0x98   (stereo, Linear8)
+```
+
+Same block order, same compare constants, same values in the same order. Ours keeps the two
+mode commands in stack bytes where the reference has them in `esi`/`edi`, which is register
+allocation, not source.
+
+`sete` is now 1 on both sides, `and` closes from −7 to −6 and `mov` from −12 to −11. Rebuilt
+size 1216 against the reference's 1328; parity unchanged at `missing_strings` 0 /
+`missing_symbols` 0, and no other function's size moved.
+
+`if (stereo == 1)` is not how this would be written from scratch. It is what the binary
+says, and this effort's rule is that the binary decides.
+
+### What is left in this function
+
+One accepted residual: `and` −6 / `or` −6 from the paired IRQ and DMA control-byte
+construction. The entry stays `intentional-mismatch` on that ground alone. The reason why
+stands as written — `or dl, 50h` at 5525 sets two bits in one instruction, so a single
+two-bit field cannot be told apart from two one-bit fields, and the type would be invented
+rather than derived.
+
+The rest is codegen class, but one item in it is worth naming because it is *not* obviously
+codegen. The reference tests `currentDMADirection` through a register — `mov esi,
+[edi+184h]` at 4529 then `test esi, esi` at 4538 and again at 4720, and `mov edx,
+[edi+184h]` at 5196 then `cmp edx, 1` at 5292 — where we compare the ivar in memory
+directly, `cmp [edi+184h], 0`. That is the whole of the `test` −2 / `cmp` +2 delta. It is
+not a cached local: the reference re-reads the ivar at 5196 rather than holding one value
+across, so the source is reading `currentDMADirection` at each site exactly as ours does,
+and why `gcc` loaded it to a register first is not determined by the source we can see. Left
+alone, and not counted as a construct difference.

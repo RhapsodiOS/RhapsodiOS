@@ -39,9 +39,11 @@ our source.
 
 **Every 36-byte `__picsymbol_stub` entry.** 5 in `PreLoad`, 9 in `PostLoad`, 10
 in `stblocksize` — confirmed against each binary's stub-section size (180, 324
-and 360 bytes, all exact multiples of 36), and matching the libc names one for
-one (`_printf`, `_ioctl`, `_open`, `_atoi`, `_strlen`, `_strcmp`, `_bzero`,
-`_close`, `_exit`, `_perror`, `_sprintf`, `_unlink`).
+and 360 bytes, all exact multiples of 36). These bind dynamically to the C
+library and Objective-C runtime:
+- `PreLoad`: `_bzero`, `_exit`, `_printf`, `_sprintf`, `_unlink`
+- `PostLoad`: `__objcInit`, `_bzero`, `_exit`, `_mknod`, `_objc_msgSend`, `_printf`, `_sprintf`, `_umask`, `_unlink`
+- `stblocksize`: `_atoi`, `_bzero`, `_close`, `_exit`, `_ioctl`, `_open`, `_perror`, `_printf`, `_strcmp`, `_strlen`
 
 Unlike the jump islands these are *named*, so `filter_named_functions.py` cannot
 remove them and they stay in the `unmapped` bucket. They are explained here

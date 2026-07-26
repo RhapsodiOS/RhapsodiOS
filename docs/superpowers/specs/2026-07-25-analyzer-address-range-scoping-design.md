@@ -131,6 +131,33 @@ scope is present. When it is absent, behaviour is byte-for-byte what it is today
 
 `adapters/ida/export_analysis.py:209`'s key-set check gains the optional key.
 
+### 3.35 Which collections a scope narrows
+
+**Scoping the function list alone does not bound the output.** Discovered during
+implementation: with the function filter working correctly, the kernel export
+still exceeded the cap, because the exporters also emit whole-binary tables.
+
+The IDA exporter builds `references` by walking `idautils.Heads()` across the
+entire image, emitting an entry per code and data reference from every head —
+on the order of 10⁵ entries for a 1.4 MB kernel, several MB of JSON. Ghidra does
+the same via `exportAllReferences`. angr does not: its references are collected
+inside the per-function loop, so they are already scoped by the function filter.
+
+**A scope narrows `references`, by source address.** A reference is kept when the
+address it originates from is in scope. Those are the references that describe
+what the scoped code does.
+
+**`symbols`, `strings` and `imports` stay whole-binary.** Two reasons: they are
+small — roughly 0.37 MB, 0.6 MB and less respectively for this kernel, nowhere
+near the cap — and they are what lets the scoped code's call targets and string
+loads resolve to names. Narrowing them would leave a call into an out-of-scope
+kernel routine unresolvable, degrading exactly the comparison the reconstruction
+needs.
+
+References *into* the scope from outside are not kept. They would require the
+whole-binary scan this change exists to avoid, and the inbound-caller question is
+better answered from the symbol table than from a scoped analysis.
+
 ### 3.4 Recording the scope in the output
 
 The emitted analysis records the scope it was produced under. Without this a

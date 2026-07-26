@@ -353,14 +353,30 @@ def _collect_relocations(modules):
             or base == bad_address
             or offset == bad_address
             or base > 0xFFFFFFFF
-            or offset > 0xFFFFFFFF - base
         ):
             raise ExportError(f"malformed fixup target at {address:#x}")
-        target_address = base + offset
+        # IDAPython exposes the signed `off` field as the raw, non-negative
+        # two's-complement bit pattern of a 64-bit value, so a negative
+        # displacement -- as produced by PowerPC PPC_RELOC_SECTDIFF
+        # switch-table fixups (e.g. SCSITape's __TEXT,__const jump table,
+        # base=0x2E34, off=-6696 surfacing as 0xFFFFFFFFFFFFE5D8) -- arrives
+        # sign-extended across all 64 bits rather than as a small unsigned
+        # 32-bit value. A legitimate offset therefore has its upper 32 bits
+        # either all zero (non-negative) or all one (a sign-extended
+        # negative 32-bit displacement); anything else is corruption.
+        if offset >> 32 not in (0, 0xFFFFFFFF):
+            raise ExportError(f"malformed fixup target at {address:#x}")
+        # Compute the target with explicit 32-bit modular arithmetic --
+        # Python's arbitrary-precision `&` mask gives the correct low 32
+        # bits whether offset is small or 64-bit sign-extended -- and
+        # validate the resulting target rather than an intermediate
+        # overflow.
+        target_address = (base + offset) & 0xFFFFFFFF
         if (
             not isinstance(addend, int)
             or not isinstance(target_address, int)
             or target_address < 0
+            or target_address > 0xFFFFFFFF
         ):
             raise ExportError(f"malformed fixup fields at {address:#x}")
         target_name = ida_name.get_name(target_address) or ""

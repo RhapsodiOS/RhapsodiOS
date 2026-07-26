@@ -1105,6 +1105,124 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         module.collect_analysis(input_path, identity.size, identity.sha256, modules)
 
 
+class _RelocationFixup:
+    def __init__(self, type_=4, base=0, off=0, external=False, relative=False):
+        self._type = type_
+        self._base = base
+        self.off = off
+        self._external = external
+        self._relative = relative
+
+    def get_type(self):
+        return self._type
+
+    def is_extdef(self):
+        return self._external
+
+    def has_base(self):
+        return self._relative
+
+    def get_base(self):
+        return self._base
+
+    def get_value(self, address):
+        return 0
+
+
+def _relocation_fixup_modules(fixups):
+    """A minimal fake IDA environment covering only what
+    _collect_relocations touches: ida_fixup, ida_name, idaapi."""
+
+    class EmptyFixup:
+        pass
+
+    def get_fixup(target, address):
+        source = fixups[address]
+        target.__dict__.update(source.__dict__)
+        target.__class__ = _RelocationFixup
+        return True
+
+    addresses = sorted(fixups)
+    return {
+        "ida_fixup": SimpleNamespace(
+            FIXUP_OFF8=13, FIXUP_OFF16=1, FIXUP_SEG16=2, FIXUP_PTR16=3,
+            FIXUP_OFF32=4, FIXUP_PTR32=5, FIXUP_HI8=6, FIXUP_HI16=7,
+            FIXUP_LOW8=8, FIXUP_LOW16=9, FIXUP_OFF64=12,
+            FIXUP_OFF8S=14, FIXUP_OFF16S=15, FIXUP_OFF32S=16,
+            FIXUP_CUSTOM=0x8000,
+            fixup_data_t=EmptyFixup,
+            get_first_fixup_ea=lambda: addresses[0],
+            get_next_fixup_ea=lambda address: next(
+                (item for item in addresses if item > address), 0xFFFFFFFFFFFFFFFF
+            ),
+            get_fixup=get_fixup,
+            calc_fixup_size=lambda type_: 4,
+        ),
+        "ida_name": SimpleNamespace(get_name=lambda address: ""),
+        "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
+    }
+
+
+def _load_export_analysis_module(name):
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(name, script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_relocation_accepts_32bit_wrapping_powerpc_sectdiff_fixup():
+    # Real IDA fixup dump (probed directly against IDA 9.2, idat64) for one
+    # of SCSITape_reloc's switch-table fixups: base=0x2E34, off=-6696.
+    # IDAPython's SWIG binding surfaces the signed `off` field as its raw
+    # 64-bit two's-complement bit pattern, so this negative displacement
+    # arrives as 18446744073709544920 (0xFFFFFFFFFFFFE5D8), sign-extended
+    # across all 64 bits rather than as a small unsigned 32-bit value. The
+    # 32-bit modular sum (base + off) is the real target, 0x140C, which
+    # lands inside SCSITape's __TEXT,__text -- this is how PowerPC
+    # PPC_RELOC_SECTDIFF switch-table fixups are represented, not
+    # corruption.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_wrap")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(
+            type_=4, base=0x2E34, off=0xFFFFFFFFFFFFE5D8, relative=True
+        ),
+    })
+
+    relocations = module._collect_relocations(modules)
+
+    assert len(relocations) == 1
+    assert relocations[0]["address"] == 0x2E34
+    assert relocations[0]["target"] == "address:0000140C"
+
+
+def test_relocation_still_rejects_a_fixup_with_a_bad_address_base():
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_malformed")
+    bad_address = 0xFFFFFFFFFFFFFFFF
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=bad_address, off=0),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
+def test_relocation_still_rejects_an_offset_that_is_not_a_32bit_sign_extension():
+    # A legitimate `off` is either a small non-negative value or a 64-bit
+    # sign-extension of a negative 32-bit displacement (upper 32 bits all
+    # zero or all one). An offset whose upper 32 bits are neither -- e.g. a
+    # stray high word -- is not a real fixup and must still be rejected.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_garbage_offset")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x2E34, off=0x1234567800000000),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
 def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_one(tmp_path):
     # Real IDA evidence (probed directly against the drvPCMCIABus reference
     # binary) for `div ds:_page_size` at 0xC7D in

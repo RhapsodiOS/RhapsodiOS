@@ -481,11 +481,14 @@ that rename is a `pb_makefiles` convention, not a divergence, and `BPF.rtfd`,
 Task 4 should not be surprised by it.
 
 `binrecon.source_map.source_sites` could not see any C function in `bpf.c` or
-`bpf_filter.c`. These are BSD sources in K&R style, and two things defeated the scanner:
+`bpf_filter.c`. The underlying bug is not K&R-specific — it is that the scanner could
+not handle a definition whose **return type sits on its own line**, which is broader
+than K&R and also affects plain ANSI definitions. Two things defeated the scanner:
 
-1. `_C_DEFINITION` could not match a bare K&R header such as
-   `bpf_movein(uio, linktype, mp, sockp, datlen)`, because the return type sits on the
-   preceding line and the regex required a prefix before the function name.
+1. `_C_DEFINITION` could not match a bare header such as
+   `bpf_movein(uio, linktype, mp, sockp, datlen)` (K&R) or a wrapped ANSI definition,
+   because the return type sits on the preceding line and the regex required a prefix
+   before the function name on the same line.
 2. K&R parameter declarations (`register struct uio *uio;`) each end in `;`, which the
    forward scan read as a prototype terminator and rejected the definition.
 
@@ -498,8 +501,17 @@ Verification, not assertion:
 - `tools/binrecon/tests`: **662 passed, 4 skipped** — unchanged.
 - `source_sites` output was dumped across every source directory referenced by every
   committed `source-map.json` in the repo, before and after the change, and diffed. The
-  diff is **purely additive and entirely within drvBPF**: 30 new keys, zero changed, zero
-  removed. No other driver's mapping moves.
+  diff is **additive only, everywhere**: **172 sites added across 16 driver source
+  directories, 0 removed and 0 changed anywhere.** Only 30 of the 172 additions are
+  drvBPF's; the return-type-on-its-own-line pattern is common across the tree,
+  including plain ANSI definitions such as `IOMallocPage`, `ide_block_char_majors` and
+  `inb`, not just K&R. The largest gainers besides drvBPF were MatroxMGA (+37),
+  IntelAC97 (+22), drvEIDE (+20), drvSCSITape (+14) and SMC16 (+12). None of the other
+  15 directories has a committed `source-map.json` in this repo, so no committed
+  artifact besides drvBPF's is invalidated by this change; the 10 that do exist belong
+  to drvEISABus, drvPCIBus, drvPCMCIABus, Intel82365PCMCIA, Intel824X0PCI, drvBusMouse,
+  drvPCParallel, drvPS2Keyboard, drvPS2Mouse and drvSerialPointingDevice — none of which
+  is among the 16.
 
 Before the change `source-map.json` had `mapped` 3 / `unmapped` 27. After it has
 `mapped` 28, `unmapped` 2, `duplicate_candidates` 0, `boundary_disputed` 0 — exactly

@@ -380,6 +380,82 @@ def test_source_sites_finds_c_function_defined_after_implementation_end(tmp_path
     assert sites["_helperAfterEnd"] == [("src/driver/Bus.m", 9)]
 
 
+def test_source_sites_finds_kandr_definition_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """K&R style: the return type is alone on one line; the name and
+    parameter list start the next; each indented parameter declaration ends
+    in ';' and must not be mistaken for the definition's own terminator.
+
+    Known limitation, not fixed here: `kandr` is set from
+    `line.rstrip().endswith(")")` on the header line itself. If the header's
+    own parameter list instead wraps across multiple lines, `kandr` is never
+    set, and the K&R parameter declarations that follow are misread as a
+    prototype's ';' terminator, dropping the definition. Not exercised here
+    - reproducing it would pin the bug, not the fix.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bpf.c").write_text(
+        "static int\n"
+        "bpf_movein(uio, mp)\n"
+        "\tstruct uio *uio;\n"
+        "\tstruct mbuf **mp;\n"
+        "{\n"
+        "\treturn 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_bpf_movein"] == [("src/driver/bpf.c", 2)]
+
+
+def test_source_sites_finds_ansi_definition_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """Not K&R: a plain ANSI parameter list, but the return type is still
+    wrapped onto its own line, which the old (mandatory-prefix) regex could
+    not handle either."""
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "ide.c").write_text(
+        "int\n"
+        "ide_block_char_majors(int a, int b)\n"
+        "{\n"
+        "    return a + b;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_ide_block_char_majors"] == [("src/driver/ide.c", 2)]
+
+
+def test_source_sites_still_skips_forward_declaration_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """A genuine prototype - ending in ';', no body - must still be rejected
+    now that _C_DEFINITION's return-type prefix is optional. This is the
+    property most at risk from that change: without this test, a scanner
+    that recorded every parenthesized, ';'-terminated line as a definition
+    would make the two tests above pass too, while badly over-reporting.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "ide.c").write_text(
+        "int\n"
+        "ide_block_char_majors(int a, int b);\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "_ide_block_char_majors" not in sites
+
+
 def _analysis(functions, sha256="A" * 64):
     return {"input": {"sha256": sha256}, "functions": functions}
 

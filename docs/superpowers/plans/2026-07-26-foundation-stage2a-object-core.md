@@ -46,7 +46,7 @@
   failure is an environment gap, not a defect in your code.
 - **A root class must implement `+initialize`.** Task 1's probe crashed with
   `objc: ProbeRoot: Does not recognize selector forward::` until one was added.
-  `NSObject` and `NSProxy` both define it in the reference, so reconstructing
+  `NSObject` and `NSProxy` each define `+initialize` in the reference (verified against `__OBJC`: both list it among their class methods; `NSAutoreleasePool`, `_NSZombie` and `_NSAutoreleasedMallocMemory` do not, and inherit it — only a root class needs its own), so reconstructing
   them faithfully satisfies this — but a test helper class that omits it will
   fail in a way whose error message points nowhere near the cause.
 - **The guest login shell is tcsh.** Bash-style `2>&1` silently kills a command with no output. Use `>&` and `$status`.

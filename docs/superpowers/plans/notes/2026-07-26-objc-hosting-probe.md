@@ -309,11 +309,14 @@ throwaway probe's deliberately minimal `ProbeRoot`.
   sends `+initialize`; a root class with no superclass has no inherited
   no-op to fall back on. Skipping it is fatal — `ProbeRoot` aborted with
   `objc: ProbeRoot: Does not recognize selector forward::`, logged only to
-  `/var/log/system.log`, nowhere near the actual cause. `NSObject` and
-  `NSProxy` both define `+initialize` in the reference, so a faithful
-  reconstruction satisfies this automatically and Tasks 7-10 are not
-  expected to hit it — but any minimal test scaffolding built along the way
-  must remember to add it, or it will fail with a misleading error.
+  `/var/log/system.log`, nowhere near the actual cause. **Verified against the
+  reference's `__OBJC` metadata:** `NSObject` and `NSProxy` each list
+  `+initialize` among their class methods, while `NSAutoreleasePool`,
+  `_NSZombie` and `_NSAutoreleasedMallocMemory` do not — they inherit it, since
+  only a root class needs its own. A faithful reconstruction therefore satisfies
+  this automatically and Tasks 7-10 are not expected to hit it — but any minimal
+  test scaffolding built along the way must remember to add one, or it will fail
+  with a misleading error.
 - **Command forms later tasks should reuse**, unchanged from stage 1's own
   split (see "Build split" above for the reasoning):
   - Behavioural test binaries (linked and run): `cc -x objective-c -I..

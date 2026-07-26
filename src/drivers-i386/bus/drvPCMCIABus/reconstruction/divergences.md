@@ -416,24 +416,39 @@ immediately once the card reports ready, rather than always waiting out the full
 
 **Disposition:** fix
 
-**Rationale:** this is not cosmetic — it is a type bug (should be `signed char` or
-`char`, matching the correctly-typed `char status` in the sibling function
-`-[PCMCIAKernBus enableSocket:]` at `PCMCIAKernBusPrivate.m:1219`, which uses the
-identical `status < 0` idiom correctly because there `status` is declared plain
-`char`). Every caller of `waitForSocketReady` — `-[PCMCIAKernBus
+**Rationale:** this is not cosmetic — the intended test is on bit 7 of the socket
+status byte, and `status < 0` only ever expressed that indirectly, via the sign bit
+of a signed 8-bit type. Every caller of `waitForSocketReady` — `-[PCMCIAKernBus
 configureSocket:withDriverTable:]` and three call sites inside
 `-[PCMCIAKernBus tupleListFromSocket:mappedAddress:]` — treats a `0` return as "the
 socket never became ready" and logs an error / aborts the read. As built today, this
 driver's `waitForSocketReady` **always** returns that failure, regardless of actual
 hardware state, after an unconditional ~50ms delay each call. This is the most
-severe divergence found in this pass; `enableSocket:`'s independent, correctly-typed
-copy of the same wait loop is unaffected.
+severe divergence found in this pass. The sibling wait loop in
+`-[PCMCIAKernBus enableSocket:]` (`PCMCIAKernBusPrivate.m:1219`) is an independent
+copy that does *not* misbehave — it uses the same `status < 0` idiom but declares
+`status` as plain `char`, so the sign-bit test resolves as intended. That is a
+latent fragility rather than a live bug: it holds only because plain `char` is
+signed on i386, not because the code says what it means. Making the bit test
+explicit in both loops is therefore preferable to correcting the type in
+`waitForSocketReady` alone — see **Outcome**.
 
-**Outcome:** fixed. `status` in `waitForSocketReady` is now declared plain `char`,
-matching the correctly-typed `char status` in the sibling `enableSocket:` loop; the
-loop and retry algorithm are unchanged. Not recompiled, so the resulting object
-code was not re-disassembled and compared against the reference. Ledger status
-advanced from `unexamined` to `control-flow-confirmed`.
+**Outcome:** fixed. `waitForSocketReady` now tests the ready bit explicitly —
+`if (status & 0x80)` instead of `if (status < 0)` — with `status` left `unsigned
+char`, which preserves the reference's byte-wide test (`test al, al`) while removing
+the dependence on signedness entirely. The sibling loop in `enableSocket:` was made
+consistent at the same time (`char status` -> `unsigned char status`, `(char)` cast
+-> `(unsigned char)`, `status < 0` -> `status & 0x80`); it was already correct, but
+only because plain `char` happens to be signed on i386. Both loops and their retry
+algorithms are otherwise unchanged. The mask value is confirmed by
+`-[PCICSocket status]` (`Intel82365PCMCIA/.../PCICSocket.m:331`), which packs the
+Interface Status register's ready bit into bit 7 of its `unsigned int` return, and
+`& 0x80` matches the prevailing idiom in `PCMCIAKernBusParsing.m`. Adopting the
+reference's `PCMCIAStatus` bitfield (whose top bit is named `ready`) would remove
+this class of error at the source, but that is a cross-driver change and was not
+attempted here. Not recompiled, so the resulting object code was not re-disassembled
+and compared against the reference. Ledger status advanced from `unexamined` to
+`control-flow-confirmed`.
 
 ## Finding 6: `-[PCMCIAKernBus init]` guards a global list that can never actually be nil
 

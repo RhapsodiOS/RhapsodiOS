@@ -265,7 +265,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	bzero(cmdBuffer, 0x60);
 
 	// Set command type 4 (motor off/eject)
-	*(unsigned *)(cmdBuffer + 0x5c) = 4;
+	*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 	// Send command to FDC
 	[self fdSendCmd:cmdBuffer];
@@ -599,7 +599,7 @@ transfer_done:
 		bzero(cmdBuffer, 0x60);
 
 		// Set command type 4 (motor off)
-		*(unsigned *)(cmdBuffer + 0x5c) = 4;
+		*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 		// Send command to FDC
 		[self fdSendCmd:cmdBuffer];

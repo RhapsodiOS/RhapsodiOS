@@ -278,17 +278,18 @@ static void sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
 	operationCylinder = operation[1];
 
 	// Determine which queue to insert into based on sweep direction and position
-	if ((operationCylinder <= currentCylinder) &&
-	    ((currentCylinder != operationCylinder) || (sweepDirection != 1))) {
-		// Operation is behind current position or we're sweeping down
-		// Insert into ascending queue for next upward sweep
-		queueOperationAscending(ascendingQueue, operation);
+	if ((operationCylinder < currentCylinder) ||
+	    ((operationCylinder == currentCylinder) && (sweepDirection == 1))) {
+		// Operation is behind current position, or exactly under the head
+		// while sweeping up (already serviced on this pass) - queue it for
+		// the next downward sweep.
+		queueOperationDecending(descendingQueue, operation);
 		return;
 	}
 
-	// Operation is ahead of current position or we're sweeping up
-	// Insert into descending queue for current/next downward sweep
-	queueOperationDecending(descendingQueue, operation);
+	// Operation is ahead of current position, or exactly under the head
+	// while sweeping down - queue it for the next upward sweep.
+	queueOperationAscending(ascendingQueue, operation);
 	return;
 }
 
@@ -510,16 +511,22 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		nextPtr = (unsigned int *)queueEntry[9];  // offset 0x24 (9 * 4)
 
 		// Unlink entry from queue - update prev->next
+		// prevPtr actually holds the entry's *next* link (offset 0x20); when
+		// it is not the queue head itself, its prev field (offset 0x24, i.e.
+		// index 9) must be retargeted - that is 8 words, not 4, past prevPtr.
 		linkPtr = (unsigned int *)queue;
 		if (queue != prevPtr) {
-			linkPtr = prevPtr + 4;  // Point to next field
+			linkPtr = prevPtr + 8;  // Point to prev field (offset 0x24)
 		}
 		*(unsigned int **)((char *)linkPtr + 4) = nextPtr;
 
 		// Unlink entry from queue - update next->prev
+		// nextPtr actually holds the entry's *prev* link (offset 0x24); when
+		// it is not the queue head itself, its next field (offset 0x20, i.e.
+		// index 8) must be retargeted - that is 8 words past nextPtr.
 		linkPtr = (unsigned int *)queue;
 		if (queue != nextPtr) {
-			linkPtr = nextPtr + 4;  // Point to prev field
+			linkPtr = nextPtr + 8;  // Point to next field (offset 0x20)
 		}
 		*(unsigned int **)linkPtr = prevPtr;
 
@@ -527,8 +534,8 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		operationType = *queueEntry;
 
 		// Process based on operation type
-		if (operationType == 1) {
-			// Type 1: Free the operation structure (0x28 = 40 bytes)
+		if (operationType <= 1) {
+			// Type 0 or 1: Free the operation structure (0x28 = 40 bytes)
 			IOFree(queueEntry, 0x28);
 		}
 		else if (operationType == 2) {
@@ -662,7 +669,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown \"Read Mode\" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Read Mode\" setting in the configuration table.\n", diskName);
 		}
 	}
 
@@ -735,7 +742,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown \"Write Mode\" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Write Mode\" setting in the configuration table.\n", diskName);
 		}
 	}
 

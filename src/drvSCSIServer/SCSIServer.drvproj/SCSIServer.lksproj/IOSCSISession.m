@@ -94,8 +94,8 @@ extern void blastAllReservations(id session);
  * If session object ID exists, calls an unknown cleanup function.
  *
  * Session structure (at offset +4, size 0x1c bytes):
- * offset +0: prev pointer (circular list)
- * offset +4: next pointer (circular list)
+ * offset +0: next pointer (circular list)
+ * offset +4: prev pointer (circular list)
  * offset +8: object pointer (for releaseAllUnitsForOwner:)
  * offset +c: notify port
  * offset +10: death port
@@ -206,8 +206,8 @@ extern void blastAllReservations(id session);
  * Sets up the Mach messaging infrastructure for SCSI communication.
  *
  * Session structure (at offset +4, size 0x1c bytes):
- * offset +0: prev pointer (circular list)
- * offset +4: next pointer (circular list)
+ * offset +0: next pointer (circular list)
+ * offset +4: prev pointer (circular list)
  * offset +8: (unused/reserved)
  * offset +c: notify port (from IOTaskPortAllocateName)
  * offset +10: death port (from IORequestNotifyForClientTask)

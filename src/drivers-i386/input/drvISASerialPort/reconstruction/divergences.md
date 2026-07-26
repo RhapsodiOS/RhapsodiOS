@@ -1701,9 +1701,16 @@ a match, not a defect.
 ## Addendum 2: Task 3 outcome, and a finding the reline exposed
 
 **Task 3 landed the structural change.** `__OBJC,__instance_vars` went from 820 bytes to
-**28 — an exact match**. Our scattered ivars are now one embedded 304-byte `Port` struct at
-offset 296 plus a `Port *` at 600, carrying Apple's 43 recovered field names with every
-offset verified. `__OBJC,__module_info` held at **32**, so the `.c` decision paid off.
+**28 — an exact match**. Our scattered ivars are now one embedded `Port` struct plus a
+`Port *`, carrying Apple's field names. A reviewer decoded ivar 0's type encoding out of both
+binaries: they are 964 characters each and differ in exactly **12** characters, every one
+`L` in the reference against `I` in ours — the same width on i386. All 42 field names, their
+order, the nesting and the `[8L]` array are byte-identical, and `sizeof(Port)` is 304 in both.
+
+**Correction to an earlier draft of this addendum.** It said the struct sits at offset 296
+with the pointer at 600. That is the *reference's* layout, not ours. Our rebuilt binary puts
+ivar 0 at **264**, ivar 1 at **568**, with `instance_size` **572**; the reference is
+296 / 600 / 604. The 32-byte delta is explained by Finding 96 below. `__OBJC,__module_info` held at **32**, so the `.c` decision paid off.
 `missing_symbols` fell 24 → 13; sections matching went 17/30 → **18/30**.
 `reference-only` externals is **empty**: all 11 exported functions now exist with the
 reference's linkage. `ours-only` is `___udivdi3`/`___umoddi3`, our libgcc substitutes, which
@@ -1742,4 +1749,49 @@ generator will match them directly and this workaround becomes unnecessary.
 port I/O and does not import `ioPorts.h`, so it contributes no `outb` static group. Tasks 4
 and 5 will each add one, which is the decisive test of whether the fourth group belongs to
 TU 4 or to the build-generated `ISASerialPort_instance.m`. Do not force it either way.
+
+## Finding 96 — the superclass diverges, and it explains the 32-byte offset gap
+
+**The reference subclasses `IODirectDevice`; ours subclasses `IODevice`.** The reference's
+symbol table carries an undefined `.objc_class_name_IODirectDevice` that our `_reloc` does
+not — verified directly in both binaries.
+
+`IODirectDevice.h` adds exactly 32 bytes of instance variables: `_deviceDescription`,
+`_interruptPort`, `_ioThread`, `_deviceDescriptionDelegate`, `_busPrivate`, `_private` and an
+`int[2]`. So 264 + 32 = **296**, which is precisely the reference's ivar 0 offset.
+Independently, `ISASerialPortVersion`'s `instance_size` is 264 in **both** binaries, so
+`IODevice` is the same size on both sides and the entire delta is the superclass.
+
+This is the fifth driver in this effort to carry a superclass divergence, and it has three
+consequences:
+
+1. **Every raw-offset access in `initFromDeviceDescription:` is 32 bytes short.** There are
+   161 of them, spanning `self+0x128` to `self+0x23c`, plus `self+0x258`. With our 572-byte
+   object, `self+0x258` (600) writes **past the end**. This is pre-existing rather than a
+   Task 3 regression — the old scattered ivar block was about 250 bytes, so `self+600` was
+   already out of bounds — but no offset-based claim about this driver is sound until the
+   superclass is corrected.
+2. It plausibly also accounts for `__OBJC,__protocol` at 20 in the reference against 0 in
+   ours, and `__cat_cls_meth` 12/0 and `__cat_inst_meth` 100/0.
+3. It is why our source already implements `getHandler:level:argument:forInterrupt:`, which
+   is an `IODirectDevice(IOInterrupts)` method.
+
+**Task 6 owns the `: IODirectDevice` change**, together with the two items below, because all
+three touch the same declaration and should land as one coherent change.
+
+**Also for Task 6, from the same review.** Twelve `Port` fields should be `unsigned long`
+rather than `unsigned int` — `State`, `WatchStateMask`, `BaudRate`, `MasterClock`, the
+`SWspecial[]` array and the six `Stats` members. On i386 that is zero codegen change, and it
+makes ivar 0's type encoding byte-identical to the reference's. Note the field count is 42,
+not the 43 an earlier draft claimed.
+
+And `watchState`'s lost-lock-race path uses `continue` inside a `do…while`, which jumps to the
+loop condition and reads `waitResult` uninitialised. The reference retries at its spin label
+(23705 → 23688), not at the outer loop (23640). Pre-existing, and correctly still open as part
+of Finding 75.
+
+**On `___udivdi3`/`___umoddi3`:** in the reference these are `local` **and carry different
+symbol names** — `__udivdi3`/`__umoddi3` — so both the linkage and the name diverge. Adding
+`static` would close half of it in one token but would land a change inside code Task 6 owns,
+so it is deferred alongside the other underscore renames.
 

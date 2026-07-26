@@ -64,7 +64,7 @@ static BOOL waitForSocketReady(id socket)
         status = [socket status];
 
         /* Check if ready bit is set (bit 7 = 0x80) */
-        if (status < 0) {  /* Signed char < 0 means bit 7 is set */
+        if (status & 0x80) {
             return YES;
         }
 
@@ -1216,7 +1216,7 @@ done:
 - (BOOL)enableSocket:socket
 {
     int retries;
-    char status;
+    unsigned char status;
     unsigned int socketNum;
 
     /* Assert reset */
@@ -1248,8 +1248,8 @@ done:
     /* Wait for card to become ready (check bit 7 of status) */
     retries = 100;
     do {
-        status = (char)[socket status];
-        if (status < 0) {
+        status = (unsigned char)[socket status];
+        if (status & 0x80) {
             /* Card is ready (bit 7 set) */
             IOSleep(20);
             break;

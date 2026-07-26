@@ -67,7 +67,7 @@ struct _pci_private {
 - _initWithDelegate:delegate
 {
     struct _pci_private *private;
-    id	thePCIBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
+    PCIKernBus	*thePCIBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];
 
     [super _initWithDelegate:delegate];
 

@@ -584,8 +584,9 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
      */
     actualChannel = localChannel;
     if (dmaChannelsAvailable == 2) {
-        actualChannel =
-            (encoding == NX_SoundStreamDataEncoding_Linear16) ? 1 : 0;
+        actualChannel = 0;
+        if (encoding == NX_SoundStreamDataEncoding_Linear16)
+            actualChannel = 1;
     }
 
     /*
@@ -716,8 +717,9 @@ static  sb16CardParameters_t sb16CardType = {0}; // hardware type
      */
     actualChannel = localChannel;
     if (dmaChannelsAvailable == 2) {
-        actualChannel =
-            (currentEncoding == NX_SoundStreamDataEncoding_Linear16) ? 1 : 0;
+        actualChannel = 0;
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16)
+            actualChannel = 1;
     }
 
     [self disableChannel: actualChannel];

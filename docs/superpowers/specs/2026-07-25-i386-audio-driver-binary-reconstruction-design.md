@@ -146,10 +146,16 @@ Every one of the reference's nine `__cstring` entries appears in our source.
 
 Our `SoundBlaster16.m` logs `SoundBlaster16: IRQ must be 2, 5, 7, or 10.`; the
 reference logs `SoundBlaster16: Audio IRQ must be one of 5, 7, 9, 10.`. The two
-sets differ in both directions: we admit IRQ 2, which Apple does not, and reject
-IRQ 9, which Apple accepts. The shipped `Default.table` and all three variant
-tables set `"IRQ Levels" = "5"`, so the disagreement is invisible in the default
-configuration and appears only when a user selects IRQ 9 in Configure.app.
+sets differ in both directions: the string admits IRQ 2, which Apple does not,
+and rejects IRQ 9, which Apple accepts.
+
+**But the string is in dead code.** The report pass found the divergence confined
+to `checkSelectedDMAAndIRQ()`, which nothing calls. Our `-[SoundBlaster16 reset]`
+already implements Apple's set exactly, compiling to the reference's own
+`cmp esi,5 / jz / cmp esi,7 / jz / lea eax,[esi-9] / cmp eax,1 / jbe` at
+1352–1368. So the shipped behaviour was never wrong, and this is a stale-code
+finding rather than a validation bug. The `Default.table` reading below still
+holds and is what made the contradiction visible.
 
 Two reference strings are absent from our source entirely:
 `SoundBlaster16: DSP read error.` and
@@ -162,11 +168,27 @@ against Apple's `8-Bit DMA channel must be one of 0, 1 and 3` — and we emit an
 `8-bit and 16-bit DMA channels must be different` check the reference has no
 string for. These are wording-and-behaviour claims, not just wording.
 
-**Structurally the driver is closer to an invention than a divergence.** Apple's
-`-[SoundBlaster16 initializeHardware]` is 2992 bytes and its
-`-[SoundBlaster16 timeoutOccurred]` is 3032; ours are six and twelve lines
-respectively. Together those two methods are 44 percent of the reference
-`__text`. Whatever they do, our source does not do it, or does it somewhere else.
+**~~Structurally the driver is closer to an invention than a divergence.~~**
+Retracted. Apple's `-[SoundBlaster16 initializeHardware]` is 2992 bytes and its
+`-[SoundBlaster16 timeoutOccurred]` is 3032 against our six and twelve lines —
+together 44 percent of the reference `__text` — and this section concluded from
+that size gap that our source does not implement their logic.
+
+drvSB16Sound's report pass (§5, Phase 8) refuted it. Both methods are one
+inlined `resetHardware()` expansion out of `SoundBlaster16Inline.h`: taking
+`initializeHardware` from 1681 and `timeoutOccurred` from 10389, the two bodies
+run 792 instructions of which **780 are byte-identical**, diverging first at
+index 780. This was reproduced independently during review. Neither method is
+invented, and the same size-gap-means-invention inference had already failed
+once in this effort on drvSB8Sound, whose 2176-byte `initializeHardware` against
+ten source lines turned out to have no divergences at all.
+
+**No method in any of the four drivers was classified invented**, so the
+conditional rewrite authorisation §4.3 grants was never exercised. Three
+*sub-blocks* inside `SoundBlaster16Inline.h` do lack counterparts and are
+replaced wholesale — the two invert-byte DSP probes, the mixer-register-probe
+card classification, and `initMixerRegisters()`'s register set — but those are
+recorded findings against a helper, not a rewrite of a method.
 
 The reference `__DATA,__data` carries initialised mixer defaults from offset 52
 that our source will have to match. Decoded: `_volMasterLeft` and

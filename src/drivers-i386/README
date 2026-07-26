@@ -3,8 +3,8 @@ Current list of drivers to be implemented and the status of re-implementation
 
 bus
  * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
- * drvPCIBus - complete; reconstructed against the reference binary
- * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPCIBus - reconstructed against the reference binary; the kernel DriverKit pass found its testIDs:dev:fun:bus: prototype diverges from Apple's, not yet reconciled
+ * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; the kernel DriverKit pass found its statusChangedForSocket:changedStatus: prototype diverges from Apple's, not yet reconciled
  * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
  * Intel82365PCMCIA - reconstructed against the reference binary, fixes applied except the four PCMCIA protocol adoptions, not yet compiled or tested
 

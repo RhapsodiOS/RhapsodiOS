@@ -137,7 +137,7 @@ extern void blastAllReservations(id session);
         /* Deallocate task port at offset +c */
         notify_port = *(int *)(*(int *)((char *)self + 4) + 0xc);
         if (notify_port != 0) {
-            IOTaskPortDeallocate();
+            IOTaskPortDeallocate(notify_port);
             *(int *)(*(int *)((char *)self + 4) + 0xc) = 0;
         }
 
@@ -171,7 +171,7 @@ extern void blastAllReservations(id session);
         }
     }
 
-    return self;
+    return nil;
 }
 
 /*

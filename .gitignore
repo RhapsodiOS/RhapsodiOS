@@ -17,3 +17,5 @@ vm/__pycache__/
 tools/binrecon/out/
 # Rebuilt driver artifacts staged from the Rhapsody guest; never committed.
 out/
+# binrecon reconstruction ledgers: the lock file is a transient, not source
+**/reconstruction/*.lock

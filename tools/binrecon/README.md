@@ -172,6 +172,51 @@ from an earlier run exists.
   access widths, calls, and control-flow shape still must agree. It does not
   imply exact section layout or byte-for-byte image identity.
 
+## Writing the reconstructed source
+
+Guidance from reconstructing i386 kernel loadable servers (`drvEISABus`,
+`drvEIDE`). These are about the source you write from the analysis, not about
+the analyzers.
+
+**Reference Objective-C classes directly. Never `objc_getClass("Name")`.**
+Write `[[KernBusItemResource alloc] init...]`, not
+`[[objc_getClass("KernBusItemResource") alloc] init...]`.
+
+A direct reference becomes a link-time class reference the loader resolves; the
+string lookup is a runtime call that returns **nil** for a class that lives in
+the kernel rather than in the module. `[nil alloc]` then propagates nil silently
+and the failure surfaces far away from its cause. In `drvEISABus` this made
+every bus resource nil, so each driver's later lookup failed with
+`IRQ Levels: Couldn't locate resource object`, no disk driver could attach, and
+the boot ended at `ufs_mountroot failed: 19` — with nothing pointing back at the
+bus driver.
+
+The shipped modules do not call `objc_getClass` at all. Two cheap checks:
+
+```bash
+# rebuilt module should have no objc_getClass, matching the reference
+python -c "print(b'objc_getClass' in open('EISABus_reloc','rb').read())"
+
+# every class the reference links must also be linked by the rebuild
+python -c "
+r=open('rebuilt','rb').read(); o=open('reference','rb').read()
+for n in [b'KernBusItemResource', b'KernBusRangeResource', b'KernBusMemoryRange']:
+    s=b'.objc_class_name_'+n
+    print(n.decode(), 'rebuilt=', s in r, 'reference=', s in o)
+"
+```
+
+A class present in the reference's `.objc_class_name_*` symbols but absent from
+the rebuild's means a link-time reference was replaced by a runtime lookup.
+Classes defined *inside* the module keep their symbol either way, so the
+symptom appears only for classes owned by the kernel — which is precisely the
+case that fails at runtime. Run this comparison before boot-testing a
+reconstructed module; it is far cheaper than reading a boot log.
+
+**Do not double-initialise.** `[[[X alloc] initFrom:...] init]` re-runs `-init`
+on an already-initialised object. The pattern shows up when a decompiled
+constructor chain is transcribed literally; write `[[X alloc] initFrom:...]`.
+
 Run the complete test suite with:
 
 ```powershell

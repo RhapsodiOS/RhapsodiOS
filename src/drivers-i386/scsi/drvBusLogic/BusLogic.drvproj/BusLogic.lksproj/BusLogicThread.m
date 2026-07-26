@@ -20,6 +20,8 @@
 
 static void blcTimeout(void *arg);
 
+extern void blc_start_scsi(IOEISAPortAddress portBase);
+
 #define AUTO_SENSE_ENABLE	1
 
 /*
@@ -56,7 +58,7 @@ static msg_header_t timeoutMsgTemplate = {
 
 	ddm_thr("threadExecuteRequest cmdBuf 0x%x\n", cmdBuf, 2,3,4,5);
 
-	ccb = [self allocCcb:(scsiReq->maxTransfer ? YES : NO)];
+	ccb = [self allocCcb];
 	if(ccb == NULL) {
 		return 1;
 	}
@@ -365,7 +367,7 @@ static msg_header_t timeoutMsgTemplate = {
 		 *  Let 'er rip...
 		 */
 		ccb->mb_out->mb_stat = BL_MB_OUT_START;
-		bl_start_scsi(ioBase);
+		blc_start_scsi(ioBase);
 
 		/*
 		 *  Accumulate some simple statistics: the max queue length
@@ -492,7 +494,7 @@ static msg_header_t timeoutMsgTemplate = {
  * If we can't find one, return NULL - caller will have to try
  * again later.
  */
-- (struct ccb *)allocCcb : (BOOL)doDMA
+- (struct ccb *)allocCcb
 {
 	struct ccb *ccb;
 	int i;
@@ -524,14 +526,14 @@ static msg_header_t timeoutMsgTemplate = {
 	}
 
 	/*
-	 * Acquire the reentrant DMA lock. This is a nop on EISA machines.
+	 * Acquire the reentrant DMA lock. Only ISA boards drive the machine's
+	 * DMA controller, so this is skipped entirely on EISA, VL and PCI.
 	 *
 	 * Although -reserveDMALock is reentrant for multiple threads on
 	 * one device, it is *not* reentrant for one thread. Thus we should
 	 * only call it if we don't already hold the lock.
-	 * Also, avoid this if we're not going to do any DMA.
 	 */
-	if(doDMA && (++dmaLockCount == 1)) {
+	if((++dmaLockCount == 1) && (busType == BL_BUS_ISA)) {
 		ddm_thr("allocCcb: calling reserveDMALock\n", 1,2,3,4,5);
 		[super reserveDMALock];
 	}
@@ -542,12 +544,10 @@ static msg_header_t timeoutMsgTemplate = {
 
 - (void)freeCcb : (struct ccb *)ccb
 {
-	BOOL	didDMA = (ccb->total_xfer_len ? YES : NO);
-
 	ddm_thr("freeCcb: ccb 0x%x\n", ccb, 2,3,4,5);
 	ccb->in_use = FALSE;
 	numFreeCcbs++;
-	if(didDMA && (--dmaLockCount == 0)) {
+	if((--dmaLockCount == 0) && (busType == BL_BUS_ISA)) {
 		ddm_thr("freeCcb: calling releaseDMALock\n",
 			1,2,3,4,5);
 		[super releaseDMALock];

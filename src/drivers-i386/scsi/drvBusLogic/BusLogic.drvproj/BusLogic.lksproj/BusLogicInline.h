@@ -80,12 +80,6 @@ bl_put_cmd(IOEISAPortAddress portBase, bl_cmd_reg_t cmd)
 	outb(portBase + BL_CMD_REG_OFF, cmd);
 }
 
-static __inline__ void
-bl_start_scsi(IOEISAPortAddress portBase)
-{
-	bl_put_cmd(portBase, BL_CMD_START_SCSI);
-}
-
 /*
  * Wait for board to be idle.
  */

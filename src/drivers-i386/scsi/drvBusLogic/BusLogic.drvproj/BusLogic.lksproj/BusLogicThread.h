@@ -20,7 +20,7 @@
 - runPendingCommands;
 - (void)commandCompleted	: (struct ccb *)ccb
 			  reason : (completeStatus)reason;
-- (struct ccb *)allocCcb	: (BOOL)doDMA;
+- (struct ccb *)allocCcb;
 - (void)freeCcb			: (struct ccb *)ccb;
 - (void)completeDMA		: (IOEISADMABuffer *)dmaList
 			  length : (unsigned int)xferLen;

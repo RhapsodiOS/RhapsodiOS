@@ -116,10 +116,14 @@ functions are not contiguous**:
 Across all modules: **1,273 disjoint runs**. `NSString.m`'s methods make up 2.5%
 of the functions in the address span they occupy.
 
-This matters because the existing `analysis_scope` field, added by
+The existing `analysis_scope` field, added by
 [2026-07-25-analyzer-address-range-scoping-design.md](2026-07-25-analyzer-address-range-scoping-design.md),
-is a single address range. That was the right shape for the DR2 kernel, whose
-subsystems are contiguous. It cannot isolate a Foundation module. §3.6 extends it.
+already accepts a list of disjoint ranges rather than one range
+(`tools/binrecon/binrecon/profile.py:68` validates and sorts them, and the IDA
+exporter's `_in_scope` matches an address against any of them). So fragmentation
+costs no new schema — it means a stage's scope is many small ranges instead of
+one large one, and that those ranges must be generated rather than written by
+hand. §3.6 covers the generator.
 
 A few modules are exceptions — `NSAbsoluteURL.m` is a single run, `NSURL.m` is
 three — but they are rare enough not to change the mechanism.
@@ -301,32 +305,45 @@ against source by name. With `__module_info` every method's owning `.m` file is
 known, so the mapped/unmapped report becomes per-module. Bucket semantics are
 unchanged.
 
-### 3.6 `analysis_scope` gains an address allowlist
+### 3.6 Module scope generation
 
-Because of §2.1, `analysis_scope` grows a second form: an explicit list of
-function entry-point addresses, alongside the existing single range. The IDA
-exporter already skips functions whose entry point falls outside the scope; this
-changes the predicate from *outside the range* to *not in the set*, not the
-plumbing.
+`analysis_scope` needs no schema change (§2.1). What is new is a generator, since
+hand-listing a stage's ranges would be unmaintainable and wrong within a stage —
+stage 3's scope alone would be 65 ranges for `NSString.m`.
 
-The list is **derived, never hand-maintained**: binrecon computes it from
-`__module_info` plus the symbol table given a set of module names. Hand-listing
-1,273 ranges would be unmaintainable and wrong within a stage.
+A new `binrecon module-scope` command takes the profile and a set of module
+names, and emits the `analysis_scope` array to paste into the profile. It derives
+the ranges from `__module_info` (which names each module's classes and
+categories) plus the symbol table (which gives each method's and each C
+function's address), emitting one `{start, end}` per function.
 
-Stage 1's allowlist is 37 addresses.
+Stage 1's generated scope is 43 ranges.
 
 ### 3.7 Proof slice
 
 Three modules, chosen because they define no classes and one category, so the ABI
-surface is small but nonzero, and because at 37 functions the group is smaller
+surface is small but nonzero, and because at 43 functions the group is smaller
 than the SCSIServer driver (68) — a proven scale.
 
-| Module | Functions | Bytes |
-| --- | --- | --- |
-| NSGeometry.m | 20 | 3,408 |
-| NSRange.m | 5 | 636 |
-| NSDecimal.m | 12 | 4,356 |
-| **Total** | **37** | **8,400** |
+| Module | C functions | Category methods | Bytes |
+| --- | --- | --- | --- |
+| NSGeometry.m | 20 | 6 | 3,792 |
+| NSRange.m | 5 | 0 | 636 |
+| NSDecimal.m | 12 | 0 | 4,356 |
+| **Total** | **37** | **6** | **8,784** |
+
+`NSGeometry.m`'s single category is `NSCoder (NSGeometryCoding)` —
+`encodePoint:`, `decodePoint`, `encodeSize:`, `decodeSize`, `encodeRect:` and
+`decodeRect`, 384 bytes in total. It compiles against `NSCoder.h` without
+`NSCoder` being implemented, which is what makes it usable as stage 1's ABI
+surface.
+
+The `NSValue` categories declared in `NSRange.h` and `NSGeometry.h` are *not*
+part of these modules — `__module_info` places them in `NSValue.m`, so they
+belong to stage 5.
+
+`NSGeometry.m` also exports three data symbols: `NSZeroPoint`, `NSZeroSize` and
+`NSZeroRect`.
 
 All three exist as stubs in the tree, so this replaces file contents rather than
 adding files.
@@ -338,12 +355,15 @@ reconstructed and recorded in `divergences.md` as an undeclared export.
 extract `abi/` for the three modules → run `source-map` for the baseline →
 reconstruct the three files → build → verify against the three gates.
 
-**Test coverage is partial by construction.** Nine of the 37 functions return or
-parse an `NSString`: `NSStringFromPoint`, `NSStringFromSize`, `NSStringFromRect`,
-`NSStringFromRange`, `NSPointFromString`, `NSSizeFromString`, `NSRectFromString`,
-`NSRangeFromString`, and `NSDecimalString`. `NSString` does not exist yet. These
-nine are reconstructed and ABI-checked in stage 1, but their behavioural tests are
-deferred to stage 3.
+**Test coverage is partial by construction.** 15 of the 43 functions are written
+and ABI-checked in stage 1 but cannot be behaviourally tested there:
+
+- **Nine** return or parse an `NSString` — `NSStringFromPoint`,
+  `NSStringFromSize`, `NSStringFromRect`, `NSStringFromRange`,
+  `NSPointFromString`, `NSSizeFromString`, `NSRectFromString`,
+  `NSRangeFromString` and `NSDecimalString`. Their tests are deferred to stage 3.
+- **Six** are the `NSGeometryCoding` category methods, which drive `NSCoder`'s
+  encoding machinery. Their tests are deferred to stage 2.
 
 The remaining **28 are tested in stage 1**: all 11 non-string `NSDecimal*`
 functions and the 17 pure struct-math geometry and range functions. These are
@@ -355,9 +375,10 @@ mantissa-length limits.
 ### 3.8 New profile
 
 `tools/binrecon/profiles/foundation-i386.json`: architecture i386, endianness
-little, `reference.slice: "i386"`, IDA only, `analysis_scope` set to stage 1's
-derived allowlist. The IDA timeout is set well above the 900 s default; the plan
-records observed wall-clock so later stages can size theirs from data.
+little, `reference.slice: "i386"`, IDA only, `analysis_scope` set to the 37
+ranges generated by `binrecon module-scope`. The IDA timeout is set well above
+the 900 s default; the plan records observed wall-clock so later stages can size
+theirs from data.
 
 ## 4. Verification
 
@@ -367,18 +388,19 @@ Stage 1 is complete when all of the following hold:
    resolves the fat container, selects the i386 slice, and reports slice SHA-256
    `1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6`.
 2. `binrecon analyze` completes with `complete: true` and a populated
-   `published/` directory, having exported exactly the 37 allowlisted functions.
+   `published/` directory, having exported exactly the 43 scoped functions.
 3. `abi/NSGeometry.json`, `abi/NSRange.json` and `abi/NSDecimal.json` are
-   committed and describe one category and 37 exported C symbols.
+   committed and describe the `NSCoder (NSGeometryCoding)` category with its six
+   methods, 37 exported text symbols and 3 exported data symbols.
 4. `binrecon abi-check` against the built objects exits zero.
 5. The 28-function test suite passes.
-6. `binrecon source-map` reports all 37 reference functions mapped for the three
+6. `binrecon source-map` reports all 43 reference functions mapped for the three
    modules.
 7. `ledger.json` is committed with every entry reviewed, and every divergence is
    dispositioned in `divergences.md`.
 8. binrecon's own test suite passes, including new tests for `MH_DYLIB`
    acceptance, fat slice selection, missing-`slice` rejection, `__OBJC`
-   extraction, `abi-check` divergence detection, and allowlist scoping.
+   extraction, `abi-check` divergence detection, and `module-scope` generation.
 9. No header under `src/Kits/Foundation` is modified.
 
 ## 5. Risks

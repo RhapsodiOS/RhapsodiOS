@@ -1,0 +1,69 @@
+import struct
+
+from binrecon.objc_abi import ObjcReader, read_classes
+
+BASE = 0x1000
+
+
+def build_blob(prefix="<"):
+    """One class with a superclass, two ivars, one instance and one class method."""
+    blob = bytearray(0x300)
+
+    def put(offset, *values):
+        struct.pack_into(f"{prefix}{len(values)}I", blob, offset, *values)
+
+    def put_str(offset, text):
+        raw = text.encode("ascii") + b"\0"
+        blob[offset:offset + len(raw)] = raw
+
+    # objc_symtab: sel_ref_cnt, refs, then cls_def_cnt/cat_def_cnt as u16 pair
+    put(0x20, 0, 0)
+    struct.pack_into(f"{prefix}HH", blob, 0x28, 1, 0)
+    put(0x2C, BASE + 0x40)
+    # objc_class: isa, super, name, version, info, instance_size, ivars, methodList
+    put(0x40, BASE + 0x60, BASE + 0x1C0, BASE + 0x110, 0, 1, 12, BASE + 0x200, BASE + 0xA0)
+    # metaclass: isa, super, name, version, info, instance_size, ivars, methodList
+    put(0x60, 0, 0, BASE + 0x110, 0, 2, 0, 0, BASE + 0xC0)
+    # method lists: obsolete, count, then (sel, types, imp)
+    put(0xA0, 0, 1, BASE + 0x130, BASE + 0x140, 0x2000)
+    put(0xC0, 0, 1, BASE + 0x150, BASE + 0x140, 0x2100)
+    # objc_ivar_list: count, then (name, type, offset)
+    put(0x200, 2)
+    put(0x204, BASE + 0x170, BASE + 0x180, 4)
+    put(0x210, BASE + 0x190, BASE + 0x1A0, 8)
+
+    put_str(0x110, "Thing")
+    put_str(0x130, "doThing")
+    put_str(0x140, "v8@8:12")
+    put_str(0x150, "makeThing:")
+    put_str(0x170, "_count")
+    put_str(0x180, "I")
+    put_str(0x190, "_name")
+    put_str(0x1A0, "@")
+    put_str(0x1C0, "NSObject")
+    return bytes(blob)
+
+
+SECTIONS = [{"name": "__OBJC,__blob", "address": BASE, "size": 0x300, "offset": 0}]
+
+
+def test_reads_class_layout_and_ivars():
+    reader = ObjcReader(build_blob(), SECTIONS, "little")
+
+    assert read_classes(reader, BASE + 0x20) == [{
+        "name": "Thing",
+        "superclass": "NSObject",
+        "instance_size": 12,
+        "info": 1,
+        "ivars": [
+            {"name": "_count", "type": "I", "offset": 4},
+            {"name": "_name", "type": "@", "offset": 8},
+        ],
+        "instance_methods": [{"selector": "doThing", "types": "v8@8:12"}],
+        "class_methods": [{"selector": "makeThing:", "types": "v8@8:12"}],
+    }]
+
+
+def test_reads_big_endian_the_same_way():
+    reader = ObjcReader(build_blob(">"), SECTIONS, "big")
+    assert read_classes(reader, BASE + 0x20)[0]["name"] == "Thing"

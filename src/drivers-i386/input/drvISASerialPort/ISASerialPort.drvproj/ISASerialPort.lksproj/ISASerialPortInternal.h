@@ -41,6 +41,9 @@
 
 #import <objc/objc.h>
 #import <driverkit/return.h>
+// <kern/thread_call.h> uses boolean_t without importing it, so a translation
+// unit that reaches this header first would not have the type yet.
+#import <mach/boolean.h>
 #import <kern/thread_call.h>
 
 // UART Register Offsets

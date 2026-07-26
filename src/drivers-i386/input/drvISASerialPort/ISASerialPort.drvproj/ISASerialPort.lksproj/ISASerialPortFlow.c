@@ -142,8 +142,9 @@ IOReturn watchState(Port *port, unsigned int *state, unsigned int mask)
 
             // If we were checking for active state and it changed
             if (needsActiveCheck && (changedBits & STATE_ACTIVE)) {
-                // Port became inactive (PCMCIA yanked or closed)
-                result = IO_R_NO_DEVICE;  // -714 (0xfffffd36)
+                // Port became inactive (PCMCIA yanked or closed).
+                // acquire: compares against this value as its retry sentinel.
+                result = IO_R_IO;  // -714 (0xfffffd36)
             }
 
             goto wakeWaiters;
@@ -178,7 +179,7 @@ IOReturn watchState(Port *port, unsigned int *state, unsigned int mask)
     } while (waitResult == 4);
 
     // Wait failed (timeout or other error)
-    result = IO_R_TIMEOUT;  // -703 (0xfffffd41)
+    result = IO_R_IPC_FAILURE;  // -703 (0xfffffd41)
 
 wakeWaiters:
     // Cleanup: clear watch mask and wake any other waiters

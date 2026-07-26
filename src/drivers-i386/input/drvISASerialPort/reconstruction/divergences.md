@@ -1663,3 +1663,37 @@ byte-identical** to the reference's `Loaded Server,Load Commands` section (both 
    rests on our side of the comparison plus the reference's mnemonic inventory.
 5. **Whether `_identifyChip`'s missing MCR write (section 6 item 1) was intentional.** It is
    certainly what the binary does; whether Apple meant it is unknowable from here.
+
+## Addendum: three points settled after the report pass
+
+**The exported-symbol count is 11, not 12.** An independent verification pass read
+`_RX_enqueueLongEvent` (address 0) as a twelfth `global` symbol. It is not. Decoding the
+Mach-O nlist directly with `binrecon.macho.read_macho` gives exactly **11** externally
+defined `__TEXT,__text` symbols — `identifyChip`, `initChip`, `programChip`,
+`TX_enqueueEvent`, `RX_dequeueEvent`, `RX_dequeueData`, `validateRingBufferSize`,
+`freeRingBuffer`, `allocateRingBuffer`, `flowMachine`, `watchState` — and **all three**
+`_RX_enqueueLongEvent` copies report `binding=local`.
+
+The `global` reading comes from `analysis-reference-ida.json`, which mislabels the copy at
+address 0. This is the second time IDA's linkage metadata has disagreed with the nlist on
+this driver, so treat the nlist as authoritative for every linkage question and never the
+analysis JSON. `ISASerialPortInternal.h` declares **11** functions.
+
+**`_programChip` has five call sites, not six**: 0xc51, 0x13c7, 0x1686, 0x2bb3, 0x4c47. The
+top-level `references` entry for 0x4c50 lists exactly those five and no data references.
+
+**Two incidental findings worth carrying into Task 6.**
+
+`Port+0` holds a back-pointer to the owning Objective-C object.
+`-[ISASerialPort initFromDeviceDescription:]` at 0x0123-0x0126 does
+`mov edi,[ebp+self]` / `mov [esi+128h], edi`, having already stored `self+0x128` into
+`self+0x258` at 0x011d. So the `Port` struct knows its owner, which is how the exported C
+functions reach anything that genuinely needs the object.
+
+`-[ISASerialPort executeEvent:data:]` at 0x1b70-0x1b80 looks like an original Apple bug: it
+passes the **RX** queue (`lea edx,[edi+140h]`) to `validateRingBufferSize` but stores the
+result into the **TX** size field (`mov [edi+178h], eax`). Harmless unless the requested
+size is 0, in which case the RX default is applied to TX. The sibling site at 0x1b14 is
+self-consistent RX/RX. Reproduce the reference's behaviour rather than correcting it, and
+record the disposition — this is a parity effort, and an Apple bug faithfully reproduced is
+a match, not a defect.

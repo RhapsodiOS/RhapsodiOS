@@ -1535,6 +1535,13 @@ address for every floppy DMA transfer. Corrected in the same pass.
   against our 0, so what is missing is a `@protocol` declaration, which is
   generic-disk-family work. Converting the `objc_getClass` sites restores
   `NXSpinLock` only, taking `missing_imports` from 3 to 2 rather than to 1.
+- **`-[FloppyController fcWaitIntr:timeout:]`** (line 303) says the
+  `msg_receive` success branch (routing to `floppyInterrupt:`) is gated on
+  `KERN_SUCCESS` or `RCV_TIMED_OUT` (-203), which is what the source's own
+  check tests and what the note calls a match. The disassembly's actual
+  comparison at `2f81 cmp eax, 0FFFFFF34h` is against -204, `RCV_TOO_LARGE`
+  (`src/kernel-7/mach/message.h:801`), not -203. The source's `RCV_TIMED_OUT`
+  check is therefore wrong, not confirmed.
 
 ### Scope of the "no function is absent" claim
 

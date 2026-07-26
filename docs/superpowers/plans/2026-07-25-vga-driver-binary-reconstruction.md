@@ -603,8 +603,10 @@ Expected: exactly the files this task lists, no `VGA_reloc.tproj` or `VGA_psdrvr
 - [ ] **Step 8: Verify no source content changed**
 
 ```bash
-cd /d/RhapsodiOS && git diff --cached -M --stat -- src/drivers-i386/video/drvVGA
+cd /d/RhapsodiOS && git diff --cached -M --stat -- src/drivers-i386/video/drvVGA src/drivers-i386/video/vga
 ```
+
+Both the old and the new path must be in the pathspec. Restricting it to `drvVGA` alone leaves git unable to pair the deleted old paths with the added new ones, so it reports every file as a pure addition and the check silently proves nothing.
 
 Expected: every `.m`, `.c`, `.h`, `.table`, `.strings`, `.rtf` and `.sect` entry shows a pure rename with `0` insertions and `0` deletions. Any content change here is a defect — Task 6 is where content changes.
 

@@ -4989,3 +4989,54 @@ Those show the same signature in the comparison — `executeEvent:`, `requestEve
 shared idiom looks like.
 
 Do not apply the rewrite to the rest until the rebuild shows these three land.
+
+## 20. Batch result: the hoisting idiom is confirmed, block ordering is not
+
+Rebuilt and re-measured: **52 identical / 59 differing**, up from 51/60.
+
+- **`-[IOPortSession getState]` — landed.** It has dropped out of the differing list
+  entirely and is now instruction-identical. Finding 88's hoisting idiom is **confirmed**:
+  evaluating the cached IMP in call position rather than assigning it to a local is what
+  makes gcc load it after the argument pushes.
+- **`-[IOPortSession setState:mask:]` — half landed.** Length went from 26/20 to **26/26**
+  and the instruction content is now right, so testing the error field in place and
+  re-reading it on the error path were both correct. What remains is purely **block order**:
+  the reference emits `jne +44` with the call path inline and the error return as a tail
+  block; ours emits `je +24` with the error return inline and the call path at +24. 18
+  instructions still differ, all of it that inversion.
+- **`-[IOPortSession name]` — did not move.** Byte-for-byte the same divergence as before.
+  The `port_name` local was not the cause, so that hypothesis was wrong.
+
+### Finding 89 — block ordering does not follow source order in our build
+
+`name` and `setState:mask:` disprove the obvious explanation. In **both**, the reference's
+layout is exactly its source order:
+
+```
+name:      if (_priv == NULL) return NULL;   -> nil block inline, body at +20   (jne +20)
+setState:  if (err == 0) return call(...);   -> call inline, error tail at +44  (jne +44)
+```
+
+and in **both**, ours is the inversion of the same source. Note that these two are opposite
+to each other — the reference inlines the *early return* in `name` and the *main path* in
+`setState:mask:` — so there is no "the reference always inlines X" rule to code to. Our
+compiler is inverting the branch in both cases regardless of how the source is written,
+which is why rewriting the source did not help.
+
+That points away from source shape and toward **build configuration**: our kernel-server
+build compiles with `-O` (`project_makefiles-1/common.make:204`,
+`OPTIMIZATION_CFLAG = -O`). If Apple built at a different level, or with different
+block-reordering behaviour, it would show up exactly like this — as a systematic branch
+polarity difference in functions whose instruction content already matches. 52 functions
+being identical says the compiler is otherwise very close.
+
+**Next experiment, one rebuild:** build with `-O2` (and, if that does not do it, with no
+`-O` at all) and re-run `compare_text.py`. A flag change that moves a large block of the 59
+at once is worth ruling in or out before any more per-function source rewriting, because
+every source-level fix attempted so far has been fighting this.
+
+**What is safe to do now regardless:** apply the confirmed hoisting idiom to the remaining
+accessors that share `getState`'s and `setState:`'s fingerprint — `executeEvent:`,
+`requestEvent:`, `nextEvent`, `watchState:mask:`, `enqueueEvent:`, `dequeueEvent:`,
+`enqueueData:`, `dequeueData:`, `acquire:`, `acquireAudit:`, `release`. That part is
+confirmed by `getState` and is independent of the ordering question.

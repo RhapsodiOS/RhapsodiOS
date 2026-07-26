@@ -629,12 +629,30 @@ for register mask. Both headers are load-bearing for Phase 3b.
 
 ### Where Apple's translation-unit boundaries fall
 
-**Five translation units.** The evidence is the compiler's own private-name
-numbering plus link order, which is consistent across `__text`, `__const`,
-`__data` and `__bss` simultaneously.
+**Four translation units, and the binary names them outright.**
+`__OBJC,__module_info` is 48 bytes: three 16-byte `objc_module` records
+(`{version, size, char *name, struct objc_symtab *symtab}`), each carrying a
+`name` pointer into `__OBJC,__class_names`. Read directly, the three names
+are `IOVGADisplay.m`, `VGA_instance.m` and `vidBIOS.m`. `__OBJC,__symbols` is
+56 bytes, which is exactly three 12-byte `objc_symtab` headers plus five
+4-byte class/category `defs` pointers (`3*12 + 4*5 = 56`), and those five
+defs split 1 class + 1 category for `IOVGADisplay.m`'s symtab, 2 classes for
+`VGA_instance.m`'s, and 1 class for `vidBIOS.m`'s — exactly the four
+`__OBJC,__class` records below, with none left over.
 
-The decisive datum is `_xxx.100`, `_xxx.103` and `_xxx.106` at `__bss`
-24764/24768/24772. They are not three variables named `xxx` in three files:
+**`VGAVersion` and `VGAKernelServerInstance` are both defined by
+`VGA_instance.m`, one translation unit, not two.** What earlier passes
+counted as two separate build-generated stubs — `__text` 6372–6383 and
+6384–6395 — is a single unit spanning 6372–6395.
+
+So there are four translation units: `IOVGADisplay.m` (`__text` 0–6371),
+`VGA_instance.m` (`__text` 6372–6395, build-generated), `vidBIOS.m` (`__text`
+6396–7551), and the emulator's assembly (`__text` 7552 onward).
+
+This is corroborated, not established, by the compiler's own private-name
+numbering plus link order, which is consistent across `__text`, `__const`,
+`__data` and `__bss` simultaneously. `_xxx.100`, `_xxx.103` and `_xxx.106` at
+`__bss` 24764/24768/24772 are not three variables named `xxx` in three files:
 they are the `static int xxx;` inside `outb()`, `outw()` and `outl()` in
 `src/driverkit-3/driverkit/i386/ioPorts.h`, emitted once per translation unit
 that includes that header. **There is exactly one such triple in the whole
@@ -659,8 +677,8 @@ of the functions that reference it:
 | `_vramBuf.129` | `__bss` 24784 | `_VGARemoveCursor` (2568) | 129 |
 | `_ports.168` | `__const` 18920 | `-[IOVGADisplay(VESAMode) int10:]` (5944) | 168 |
 
-100 → 168 with no restart, spanning text addresses 228 → 6006. So
-**`-[IOVGADisplay _registerWithED]` at 0 through
+100 → 168 with no restart, spanning text addresses 228 → 6006, corroborating
+that **`-[IOVGADisplay _registerWithED]` at 0 through
 `-[IOVGADisplay(VESAMode) didBootWithDefaultConfig]` at 6220 are one file.**
 The unnumbered file-scope statics `_svga_bios_mode`, `_vesaMode`, `_bios`,
 `_nextVGAUnit` and `_nameBuf`, and the exported globals `_colr_mode`,
@@ -673,8 +691,16 @@ corroborated by `__OBJC`: `__cat_inst_meth` at 32768 precedes `__message_refs`
 at 32812, i.e. the category's method list was emitted by the same compilation
 that emitted the class's selector references.
 
-The remaining four boundaries follow from address order and from the sections
-each unit contributes:
+**The strongest independent proof that `IOVGADisplay.m` is one file** is
+neither of the above: the nine C helpers are interleaved between
+Objective-C method bodies in `__text` — C from 228 to 3227, Objective-C from
+3228 to 6111, `_find_parameter` at 6112, then the `(VESAMode)` category from
+6220. A linker concatenating whole object-file contributions cannot produce
+that interleaving across separate files; it only falls out of one
+compilation emitting all of it in source order.
+
+The remaining three boundaries follow from address order and from the
+sections each unit contributes:
 
 1. **`IOVGADisplay.m`** — `__text` 0 … 6371; `__const` `_ports.168`;
    `__data` `_svga_bios_mode` … `_mask_array.128` (24576–24672);
@@ -686,25 +712,33 @@ each unit contributes:
    method lists by prepending, so list order is reverse source order, and here
    it is also reverse address order. The C helpers sit between
    `_registerWithED` and `hideCursor:` in the file.
-2. **the Kernel Server instance stub** — `__text` 6372 … 6383;
-   `__common` `_VGA_instance`. Build-generated (§2.9).
-3. **the version stub** — `__text` 6384 … 6395; `__const` `_VGA_VERS_STRING`
-   (18928) and `_VGA_VERS_NUM` (19088), both *after* `_ports.168` in
-   `__const`, which fixes its position after unit 1 in link order.
-   Build-generated. `_VGA_VERS_STRING` is
+2. **`VGA_instance.m`** — `__text` 6372 … 6395; `__common` `_VGA_instance`;
+   `__const` `_VGA_VERS_STRING` (18928) and `_VGA_VERS_NUM` (19088), both
+   *after* `_ports.168` in `__const`, consistent with linking after unit 1.
+   Build-generated (§2.9), from the `.lksproj`'s `NAME` and
+   `DriverKitVersion`, and confirmed as one unit by `__module_info` and
+   `__symbols` above. `_VGA_VERS_STRING` is
    `"@(#)PROGRAM:VGA  PROJECT:vga-18  DEVELOPER:root  BUILT:Sat Apr 4 04:34:41 PST 1998"`
    and `_VGA_VERS_NUM` is 14385.
-4. **`vidBIOS.m`** — `__text` 6396 … 7551. Contributes no `__data`, no
+3. **`vidBIOS.m`** — `__text` 6396 … 7551. Contributes no `__data`, no
    `__bss`, no `__const` and no statics of any kind, which is why it leaves no
    trace in the numbering; its position is fixed by address order alone.
-5. **`emu486.s`** — `__text` 7552 … 18048; `__data` 24672 … 24764, the
-   emulator's 92-byte state block, immediately after unit 1's
-   `_mask_array.128` and last in the section. See the `_emu486` subsection for
-   why this is assembly.
+
+The fourth unit, the assembly at `__text` 7552 … 18048 (`__data` 24672 …
+24764, the emulator's 92-byte state block, immediately after unit 1's
+`_mask_array.128` and last in the section), is not named by `__module_info`:
+that section covers Objective-C compilation units only, so it cannot
+arbitrate whether the assembly is a separate object file or an `asm()` blob
+embedded inside `vidBIOS.m`. That it *is* hand-written assembly is solid —
+see the `_emu486` subsection's seven independent observations. That it is a
+*separate file*, conventionally named `emu486.s`, is a reasonable inference
+from `vidBIOS.m`'s C body ending cleanly at 7551 with no interior asm
+markers, not a fact any metadata section states outright.
 
 **Therefore `VGA.lksproj`'s `sources` should name three hand-written files:**
-`IOVGADisplay.m`, `vidBIOS.m` and `emu486.s`. Units 2 and 3 are emitted by the
-Kernel Server project type and must not be written by hand.
+`IOVGADisplay.m`, `vidBIOS.m` and the assembly file (`emu486.s`, by
+inference). The `VGA_instance.m` unit is emitted by the Kernel Server project
+type and must not be written by hand.
 
 ### The four classes in `__OBJC,__class`
 
@@ -797,8 +831,8 @@ itself, when `[[vidBIOS alloc] init]` comes back nil.
 
 ### `_emu486`
 
-**`_emu486` is hand-written i386 assembly, not compiled C.** Six independent
-observations, any two of which would be suggestive and all six of which
+**`_emu486` is hand-written i386 assembly, not compiled C.** Seven independent
+observations, any two of which would be suggestive and all seven of which
 together are not:
 
 1. **No frame pointer.** It opens `push ebx / push esi / push edi` and reads
@@ -824,6 +858,12 @@ together are not:
 6. **Table-driven computed jumps** — `jmp ds:jpt_1E45[edx*4]` on the raw
    opcode byte, `jmp ds:off_43B0[edx]` on a masked modrm `/reg` field,
    `jmp ds:off_4190[ecx]` on a rotated modrm.
+7. **The 92-byte state block is all zeros, yet lives in `__DATA,__data`
+   rather than `__bss`.** The bytes at `__data` 24672–24764 are entirely
+   `0x00`. A zero-initialised C static of any scope — file, function, or
+   block — is emitted into `__bss` (or `__common`); explicit zero bytes
+   placed in the initialized-data section is a `.data` plus `.space N`
+   assembler idiom, not something a C compiler emits.
 
 **Entry contract**, read from `-[vidBIOS int10:outregs:iorange:ionum:smmport:]`
 at 7157–7190 and from the prologue at 7552:
@@ -902,9 +942,9 @@ chunk 6931 bytes and fragments along entirely different boundaries; angr
 misdisassembled six bytes at 7760 and had to be switched off. Those 67
 fragments are not functions and are excluded from the partition — they are the
 per-opcode handlers, and of the 67 only 34 return to the shared dispatch point
-at `0x1E20`, 11 to `0x38F8`, 6 to `0x3A46`, 4 to `0x1E28`, 2 each to `0x2180`
-and `0x1E58`, one each to `0x2008` and `0x201B`, and 7 end in `retn`. A
-transcription that assumed one uniform handler shape would be wrong.
+at `0x1E20`, 11 to `0x38F8`, 6 to `0x3A46`, 4 to `0x1E28`, 2 to `0x2180`, one
+each to `0x1E58`, `0x2008` and `0x201B`, and 7 end in `retn`. A transcription
+that assumed one uniform handler shape would be wrong.
 
 The two fragments the partition *does* keep, at 15640 and 15721, lie past
 `_emu486`'s IDA extent and are described as findings 37 and 38.
@@ -1465,8 +1505,14 @@ As finding 19 records, this method's answer never changes anything.
 
 **28. `+[VGAKernelServerInstance kernelServerInstance]` — 6372, 12 bytes.**
 
-`return &VGA_instance;` — returns the address of the 7948-byte `__common`
-symbol `_VGA_instance`. Emitted by the Kernel Server project type from the
+`return &VGA_instance;` — returns the address of the 4-byte `__common`
+symbol `_VGA_instance`: `__DATA,__common` is 4 bytes, address 24820–24824,
+holding exactly this one symbol. 7948 is `32768 − 24820`, the gap to the
+next section (`__OBJC,__cat_inst_meth`) — a gap-derived size, the same
+failure mode this document warns about elsewhere (the spec's §1.1 psdrvr
+sizes, above). The method's own type encoding, `^^{?}8@8:12`, corroborates a
+4-byte pointee: `_VGA_instance` is itself a pointer, and `&_VGA_instance` is
+a pointer to a pointer. Emitted by the Kernel Server project type from the
 `.lksproj`'s `NAME`, together with the `Instance Var` section that names it.
 `intentional-mismatch` in the ledger, not hand-written source.
 

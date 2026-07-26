@@ -422,7 +422,9 @@ def test_oversize_analyzer_output_is_preserved_for_inspection(tmp_path, monkeypa
     input_path = tmp_path / "input.i64"
     input_path.write_bytes(b"sample")
     profile, _ = _profile(tmp_path, input_path)
-    destination = tmp_path / "analysis.json"
+    staging = tmp_path / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "analysis.json"
     monkeypatch.setattr(ida_adapter, "_MAX_ANALYSIS_BYTES", 128)
     payload = b"x" * 129
 

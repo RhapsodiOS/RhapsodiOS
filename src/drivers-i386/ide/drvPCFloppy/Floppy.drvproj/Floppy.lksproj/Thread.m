@@ -155,7 +155,7 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
 }
 
 /*
- * _queueOperationDescending - Insert operation into queue in descending order
+ * queueOperationDecending - Insert operation into queue in descending order
  * From decompiled code: inserts operation into sorted queue (high to low).
  *
  * This function inserts an operation into a doubly-linked circular queue,
@@ -177,7 +177,7 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
  * Note: Identical to queueOperationAscending except comparison is reversed
  *       (checks if current[1] < operation[1] instead of operation[1] < current[1])
  */
-static BOOL _queueOperationDescending(id *queueHead, unsigned int *operation)
+static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
 {
 	id *current;
 	unsigned int *lastOp;
@@ -288,7 +288,7 @@ static void sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
 
 	// Operation is ahead of current position or we're sweeping up
 	// Insert into descending queue for current/next downward sweep
-	_queueOperationDescending(descendingQueue, operation);
+	queueOperationDecending(descendingQueue, operation);
 	return;
 }
 
@@ -352,7 +352,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		*linkPtr = (id)nextOp;
 
 		// Insert into descending queue
-		_queueOperationDescending(descendingQueue, firstOp);
+		queueOperationDecending(descendingQueue, firstOp);
 
 		// Get next operation to check
 		operation = (unsigned int *)*ascendingQueue;

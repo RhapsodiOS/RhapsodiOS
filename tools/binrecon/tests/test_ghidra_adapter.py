@@ -95,7 +95,9 @@ def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_pa
     import binrecon.adapters.ghidra as ghidra_adapter
 
     profile, identity, executable, java = configured
-    destination = tmp_path / "out" / "ghidra.json"
+    staging = tmp_path / "out" / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "ghidra.json"
     monkeypatch.setattr(ghidra_adapter, "_MAX_OUTPUT", 128)
     payload = b"x" * 129
 
@@ -109,7 +111,7 @@ def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_pa
     with pytest.raises(GhidraAdapterError, match="rejected output saved to"):
         export_with_ghidra(profile, "reference", destination, runner=runner)
 
-    preserved = destination.parent / "rejected-ghidra-reference.json"
+    preserved = tmp_path / "out" / "rejected-ghidra-reference.json"
     assert preserved.is_file()
     assert preserved.read_bytes() == payload
 

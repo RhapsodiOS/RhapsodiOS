@@ -237,7 +237,7 @@ def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
     original size error.
     """
     try:
-        preserved = path.parent.parent / f"rejected-angr-{artifact}.json"
+        preserved = path.parent.parent.parent / f"rejected-angr-{artifact}.json"
         shutil.copyfile(path, preserved)
         return preserved
     except OSError:

@@ -18,7 +18,7 @@ extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
 extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
 
 /*
- * _doWire - Wire or unwire memory pages
+ * dowire - Wire or unwire memory pages
  * From decompiled code: wires or unwires memory pages in a VM map.
  *
  * This function makes memory pages resident (wired) or pageable (unwired) by
@@ -36,7 +36,7 @@ extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_addre
  *   - Wiring when wireFlag != 0 (new_pageable = FALSE)
  *   - Unwiring when wireFlag == 0 (new_pageable = TRUE)
  */
-static void _doWire(vm_map_t map,
+static void dowire(vm_map_t map,
                     vm_address_t address,
                     vm_size_t size,
                     int wireFlag)
@@ -63,7 +63,7 @@ static void _doWire(vm_map_t map,
 }
 
 /*
- * _doCopy - Low-level page-by-page memory copy utility
+ * docopy - Low-level page-by-page memory copy utility
  * From decompiled code: copies memory between address spaces page by page.
  *
  * This function performs a low-level copy operation between potentially different
@@ -84,7 +84,7 @@ static void _doWire(vm_map_t map,
  *   - Copies data using bcopy on physical addresses
  *   - Handles source and destination page boundaries separately
  */
-static void _doCopy(vm_map_t sourceMap,
+static void docopy(vm_map_t sourceMap,
                     vm_address_t sourceAddr,
                     vm_map_t destMap,
                     vm_address_t destAddr,
@@ -669,24 +669,24 @@ static void _doCopy(vm_map_t sourceMap,
 	byteCount = sectorSize * blockCount;
 
 	// Wire the cache memory (make pages resident)
-	_doWire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
+	dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
 
 	// Get write flag and buffer info
 	isWrite = *(BOOL *)subrequest;
 	buffer = *(void **)((char *)subrequest + 0x1c);
 	bufferMap = *(vm_task_t *)((char *)subrequest + 0x20);
 
-	// Perform the copy operation using _doCopy
+	// Perform the copy operation using docopy
 	if (!isWrite) {
 		// Read operation: copy from cache to user buffer
-		_doCopy(kernel_map,
+		docopy(kernel_map,
 		        (vm_address_t)cachePointer,
 		        bufferMap,
 		        (vm_address_t)buffer,
 		        byteCount);
 	} else {
 		// Write operation: copy from user buffer to cache
-		_doCopy(bufferMap,
+		docopy(bufferMap,
 		        (vm_address_t)buffer,
 		        kernel_map,
 		        (vm_address_t)cachePointer,
@@ -694,7 +694,7 @@ static void _doCopy(vm_map_t sourceMap,
 	}
 
 	// Unwire the cache memory (make pages pageable again)
-	_doWire(kernel_map, (vm_address_t)cachePointer, byteCount, 0);
+	dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 0);
 
 	return IO_R_SUCCESS;
 }

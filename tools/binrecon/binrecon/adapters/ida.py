@@ -153,7 +153,7 @@ def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
     original size error.
     """
     try:
-        preserved = path.parent.parent / f"rejected-ida-{artifact}.json"
+        preserved = path.parent.parent.parent / f"rejected-ida-{artifact}.json"
         shutil.copyfile(path, preserved)
         return preserved
     except OSError:

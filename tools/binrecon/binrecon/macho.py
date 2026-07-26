@@ -410,17 +410,23 @@ def read_macho(path: Path) -> dict[str, Any]:
 
 
 _MODULE_INFO_SECTION = "__OBJC,__module_info"
-_OBJC_MODULE = struct.Struct("<4I")
-_OBJC_CLASS = struct.Struct("<8I")
-_OBJC_CATEGORY = struct.Struct("<4I")
+_OBJC_STRUCTS = {
+    "little": {"module": struct.Struct("<4I"), "klass": struct.Struct("<8I"),
+               "category": struct.Struct("<4I"), "counts": struct.Struct("<HH"),
+               "list_header": struct.Struct("<2I"), "method": struct.Struct("<3I")},
+    "big": {"module": struct.Struct(">4I"), "klass": struct.Struct(">8I"),
+            "category": struct.Struct(">4I"), "counts": struct.Struct(">HH"),
+            "list_header": struct.Struct(">2I"), "method": struct.Struct(">3I")},
+}
 
 
-def objc_methods_from_sections(payload, sections):
+def objc_methods_from_sections(payload, sections, endianness="little"):
     """Map each Objective-C method implementation address to its names.
 
     A linked executable names no methods in its symbol table, so the runtime
     metadata is the only source of address-to-name for them.
     """
+    layout = _OBJC_STRUCTS[endianness]
     spans = [s for s in sections if s.get("size")]
 
     def offset_of(address):
@@ -453,12 +459,12 @@ def objc_methods_from_sections(payload, sections):
         offset = offset_of(list_address)
         if offset is None or offset + 8 > len(payload):
             return
-        _, count = struct.unpack_from("<2I", payload, offset)
+        _, count = layout["list_header"].unpack_from(payload, offset)
         for entry in range(count):
             base = offset + 8 + entry * 12
             if base + 12 > len(payload):
                 return
-            selector_address, _types, imp = struct.unpack_from("<3I", payload, base)
+            selector_address, _types, imp = layout["method"].unpack_from(payload, base)
             selector = text(selector_address)
             if not selector or not imp:
                 continue
@@ -470,25 +476,27 @@ def objc_methods_from_sections(payload, sections):
     if module_section is None:
         return {}
 
-    for ordinal in range(module_section["size"] // _OBJC_MODULE.size):
-        module_offset = module_section["offset"] + ordinal * _OBJC_MODULE.size
-        if module_offset + _OBJC_MODULE.size > len(payload):
+    for ordinal in range(module_section["size"] // layout["module"].size):
+        module_offset = module_section["offset"] + ordinal * layout["module"].size
+        if module_offset + layout["module"].size > len(payload):
             break
-        _version, _size, _name, symtab = _OBJC_MODULE.unpack_from(payload, module_offset)
+        _version, _size, _name, symtab = layout["module"].unpack_from(payload, module_offset)
         symtab_offset = offset_of(symtab) if symtab else None
         if symtab_offset is None:
             continue
         if symtab_offset + 12 > len(payload):
             continue
-        class_count, category_count = struct.unpack_from("<HH", payload, symtab_offset + 8)
+        class_count, category_count = layout["counts"].unpack_from(payload, symtab_offset + 8)
         total = class_count + category_count
         if symtab_offset + 12 + total * 4 > len(payload):
             continue
-        definitions = struct.unpack_from(f"<{total}I", payload, symtab_offset + 12) if total else ()
+        definitions = struct.unpack_from(
+            f"{'>' if endianness == 'big' else '<'}{total}I", payload, symtab_offset + 12
+        ) if total else ()
 
         for position, definition in enumerate(definitions):
             if position < class_count:
-                fields = read(_OBJC_CLASS, definition)
+                fields = read(layout["klass"], definition)
                 if fields is None:
                     continue
                 isa, _super, name_address = fields[0], fields[1], fields[2]
@@ -496,11 +504,11 @@ def objc_methods_from_sections(payload, sections):
                 if not owner:
                     continue
                 collect(fields[7], owner, "-")
-                metaclass = read(_OBJC_CLASS, isa) if isa else None
+                metaclass = read(layout["klass"], isa) if isa else None
                 if metaclass is not None:
                     collect(metaclass[7], owner, "+")
             else:
-                fields = read(_OBJC_CATEGORY, definition)
+                fields = read(layout["category"], definition)
                 if fields is None:
                     continue
                 category_name, class_name, instance_methods, class_methods = fields
@@ -518,7 +526,10 @@ def objc_methods_from_sections(payload, sections):
 def objc_method_index(path):
     """Map each Objective-C method implementation address to its names."""
     document = read_macho(path)
-    return objc_methods_from_sections(Path(path).read_bytes(), document["sections"])
+    return objc_methods_from_sections(
+        Path(path).read_bytes(), document["sections"],
+        endianness=document["input"]["endianness"],
+    )
 
 
 def _read_symbols(

@@ -5,12 +5,12 @@ from binrecon.macho import objc_methods_from_sections
 BASE = 0x1000
 
 
-def _build():
+def _build(prefix="<"):
     """One class with an instance and a class method, plus one category."""
     blob = bytearray(0x200)
 
     def put(offset, *values):
-        struct.pack_into(f"<{len(values)}I", blob, offset, *values)
+        struct.pack_into(f"{prefix}{len(values)}I", blob, offset, *values)
 
     def put_str(offset, text):
         raw = text.encode("ascii") + b"\0"
@@ -20,7 +20,7 @@ def _build():
     put(0x00, 0, 16, BASE + 0x100, BASE + 0x20)
     # objc_symtab: sel_ref_cnt, refs, then cls_def_cnt/cat_def_cnt as u16 pair
     put(0x20, 0, 0)
-    struct.pack_into("<HH", blob, 0x28, 1, 1)
+    struct.pack_into(f"{prefix}HH", blob, 0x28, 1, 1)
     put(0x2C, BASE + 0x40, BASE + 0x80)
     # objc_class: isa, super, name, version, info, instance_size, ivars, methodList
     put(0x40, BASE + 0x60, 0, BASE + 0x110, 0, 0, 0, 0, BASE + 0xA0)
@@ -101,3 +101,18 @@ def test_objc_method_index_is_empty_for_a_binary_with_no_objc(tmp_path):
     target.write_bytes(build_macho_fixture())
 
     assert objc_method_index(target) == {}
+
+
+def test_recovers_methods_from_big_endian_metadata():
+    index = objc_methods_from_sections(_build(">"), SECTIONS, endianness="big")
+
+    assert index == {
+        0x2000: ["-[Thing doThing]"],
+        0x2100: ["+[Thing makeThing:]"],
+        0x2200: ["-[Thing(Extra) extraThing]"],
+        0x2300: ["+[Thing(Extra) makeExtra]"],
+    }
+
+
+def test_big_endian_metadata_read_as_little_endian_finds_nothing():
+    assert objc_methods_from_sections(_build(">"), SECTIONS) == {}

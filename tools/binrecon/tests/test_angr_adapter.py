@@ -88,7 +88,9 @@ def test_host_uses_shell_free_unique_files_and_atomically_publishes(configured, 
 
 def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
     profile, identity, executable = configured
-    destination = tmp_path / "analysis.json"
+    staging = tmp_path / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "analysis.json"
     monkeypatch.setattr(angr_host, "_MAX_OUTPUT", 128)
     payload = b"x" * 129
 

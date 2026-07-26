@@ -286,12 +286,15 @@ reach the call site without a new import.
 The fix itself is the receiver's type at line 137:
 
 ```objc
-id <PCMCIAWindow, PCMCIAWindowAttributes>	window;
+id <PCMCIAWindow>	window;
 ```
 
-`memoryInterface`, `setEnabled:` and `socket` come from `PCMCIAWindow`;
-`attributeMemory` and `setAttributeMemory:` from `PCMCIAWindowAttributes`. The
-split is Apple's, and it matches this call site exactly.
+All five selectors this method sends to a window — `memoryInterface`,
+`attributeMemory`, `setAttributeMemory:`, `setEnabled:` and `socket` — are
+`PCMCIAWindow`'s. `PCMCIAWindowAttributes` is not involved: despite its name it
+holds no attribute-memory accessor, only the sixteen capability getters that
+describe what a window can map (`supportsMemory`, `minimumSize`,
+`addressLinesDecoded` and so on).
 
 **This is a prediction, not yet a measurement.** It asserts that a
 protocol-qualified `id <P>` reaches the declared `char` return where a bare `id`

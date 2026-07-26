@@ -30,11 +30,12 @@
 #define _PCIC_WINDOW_H_
 
 #import <objc/Object.h>
+#import <driverkit/i386/PCMCIA.h>
 
 /* Forward declarations */
 @class List;
 
-@interface PCICWindow : Object
+@interface PCICWindow : Object <PCMCIAWindow>
 {
     id socket;                  /* Parent socket object (offset 4) */
     List *validSockets;         /* List of sockets this window is valid for (offset 8) */
@@ -67,6 +68,15 @@
 - (char)setAttributeMemory:(char)attrMem;
 - (char)set16Bit:(char)is16;
 - (char)setMemoryInterface:(char)interface;
+
+@end
+
+/*
+ * What this window can map.  The protocol declares all sixteen,
+ * so they are not repeated here.
+ */
+
+@interface PCICWindow(Attributes) <PCMCIAWindowAttributes>
 
 @end
 

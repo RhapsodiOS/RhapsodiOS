@@ -134,8 +134,8 @@
 	    resourcesForKey:PCMCIA_WINDOW_LIST];
 	
 	for (i=0; i < [windowList count]; i++) {
-	    id <PCMCIAWindow, PCMCIAWindowAttributes>	window;
-	    id						windowElement;
+	    id <PCMCIAWindow>	window;
+	    id			windowElement;
 
 	    windowElement = [windowList objectAt:i];
 	    window = [windowElement object];

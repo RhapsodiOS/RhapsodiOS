@@ -1283,7 +1283,10 @@ signatures matter: the signatures Apple used are the protocols' signatures.
 This finding is the one most likely to expand Task 9's scope, because it depends
 on headers outside this driver.
 
-**Outcome: partially applied — this is the one incomplete item in the fix pass.**
+**Outcome: fully applied.** It was the one incomplete item in the fix pass; the
+protocols have since been recovered and all four adoptions made. The account
+below is kept in the order it happened, because the reason the second half
+waited is the substance of the finding.
 
 **Done,** in commit `8e1633ea`: `PCIC` now declares `<IOPower>`, which is the
 second of the two protocols the reference's class structure names for it, and the
@@ -1331,18 +1334,45 @@ which resolves the include-path objection above: that file installs into
 exporting a private header across projects. `PCMCIAStatus` moved there too, from
 `PCMCIAKernBus.h`.
 
-**The adoptions are still not done** — that is this driver's work, not the
-kernel's, and it remains the open item. Two things to know before doing it:
+**The adoptions are now done**, and this finding is closed. Each one was read
+off the reference's class and category structures rather than inferred from the
+protocol names:
 
-- Declaration order in `PCMCIA.h` is the reverse of the binary's, because GCC
-  emits protocol method lists in reverse source order. That was verified against
-  `PCICWindow`'s own class method list, which reverses into clean getter/setter
-  pairs ending at `initWithSocket:memoryWindow:number:`. Adopting should reproduce
-  the reference's `__OBJC,__protocol` layout, so if the emitted order comes out
-  backwards, this is why.
-- `PCICSocket.h:49` declares its own `PCMCIAStatus` with the same eight bits.
-  Importing `PCMCIA.h` into this driver will collide with it, and the duplicate
-  should be dropped in favour of the shared one.
+| Adopter | Adopts | Source of the mapping |
+| --- | --- | --- |
+| `PCIC` | `PCMCIAAdapter`, `IOPower` | protocol list at `0x4000` |
+| `PCICSocket` | `PCMCIASocket` | protocol list at `0x4010` |
+| `PCICWindow` | `PCMCIAWindow` | protocol list at `0x401c` |
+| `PCICWindow(Attributes)` | `PCMCIAWindowAttributes` | category record's protocol list at `0x513c` |
+
+That last one took some untangling: `__OBJC,__category` is not a flat array. It
+holds two 20-byte category records, then a 12-byte `objc_protocol_list` inline,
+then the third record — whose `protocols` field points back at that inline list,
+which names the fifth protocol record, `PCMCIAWindowAttributes`.
+
+`PCICWindow(Attributes)` had no `@interface` at all, only an
+`@implementation` in `PCICWindowAttributes.m`, so a category interface was added
+to `PCICWindow.h` to carry the adoption. It declares no methods: the protocol
+declares all sixteen.
+
+`PCICSocket.h`'s duplicate `PCMCIAStatus` was dropped in favour of the shared
+one, as anticipated.
+
+**Every signature already agreed.** Adoption makes the compiler check our
+declarations against Apple's, and all 3 + 21 + 15 + 16 of them match — return
+types, parameter types and all. That is an independent confirmation of Finding
+11's fix pass from a source it did not use: Finding 11 worked from the class
+method lists' type encodings, and these are the protocols' encodings.
+
+**One thing here is reasoned rather than measured.** Method lists are emitted in
+reverse source order, which is why `PCMCIA.h` reverses them; protocol *adoption*
+lists are built by appending rather than prepending, so `<PCMCIAAdapter,
+IOPower>` should emit in that order — matching the reference. If a rebuilt
+driver's protocol list for `PCIC` comes out reversed, that assumption is why.
+
+**Ledger effect: still none**, for the reason given above — adoption emits no
+code into `__TEXT,__text`. What it does close is the gap that paragraph warns
+about: the four protocol records missing from what our build emits.
 
 **Ledger effect: none, in either direction.** Protocol adoption is recorded in
 `__OBJC,__protocol` and in the class and category structures' protocol-list

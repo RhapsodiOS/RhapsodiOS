@@ -222,8 +222,8 @@ static unsigned int _motorChangeCount = 0;
 	// Start DMA if byte count > 0
 	if (dmaByteCount > 0) {
 		result = [self dmaStart:cmdParams dmaStruct:&dmaStruct];
-		_get_dma_addr(2);  // Debug/verify
-		_get_dma_count(2); // Debug/verify
+		get_dma_addr(2);  // Debug/verify
+		get_dma_count(2); // Debug/verify
 
 		if (result != 0) {
 			goto cleanup;
@@ -318,8 +318,8 @@ static unsigned int _motorChangeCount = 0;
 	// Complete DMA if active
 	if (dmaActive) {
 		result = [self dmaDone:cmdParams dmaStruct:&dmaStruct];
-		_get_dma_addr(2);  // Debug/verify
-		_get_dma_count(2); // Debug/verify
+		get_dma_addr(2);  // Debug/verify
+		get_dma_count(2); // Debug/verify
 		dmaActive = NO;
 
 		if (result != 0) {
@@ -481,7 +481,7 @@ cleanup:
 	// Abort DMA if still active
 	if (dmaActive) {
 		_dma_mask_chan(2);
-		_dma_xfer_abort(&dmaStruct);
+		dma_xfer_abort(&dmaStruct);
 		[self releaseDMALock];
 	}
 

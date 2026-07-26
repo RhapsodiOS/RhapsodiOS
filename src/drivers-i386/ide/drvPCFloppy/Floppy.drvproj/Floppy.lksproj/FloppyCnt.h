@@ -110,7 +110,7 @@ typedef struct {
 /*
  * Forward declarations for external functions
  */
-extern void *_alloc_cnvmem(unsigned int size, unsigned int align);
+extern void *alloc_cnvmem(unsigned int size, unsigned int align);
 extern IOReturn _IOForkThread(void (*threadFunc)(void *), void *arg);
 extern void _IOExitThread(void);
 

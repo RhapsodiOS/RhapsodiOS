@@ -204,7 +204,7 @@ BOOL numFloppyDrives(void)
 		// Allocate conventional memory for DMA buffer (page-aligned)
 		// Uses page_size for both size and alignment
 		extern unsigned int page_size;
-		_dmaBuffer = _alloc_cnvmem(page_size, page_size);
+		_dmaBuffer = alloc_cnvmem(page_size, page_size);
 
 		if (_dmaBuffer == NULL) {
 			return [self free];

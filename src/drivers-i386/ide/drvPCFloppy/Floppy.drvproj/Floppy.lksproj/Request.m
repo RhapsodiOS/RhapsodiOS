@@ -13,16 +13,16 @@
 // External references for VM functions
 extern unsigned int __page_size;
 extern unsigned int __page_mask;
-extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
-extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
-extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
+extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
 
 /*
  * dowire - Wire or unwire memory pages
  * From decompiled code: wires or unwires memory pages in a VM map.
  *
  * This function makes memory pages resident (wired) or pageable (unwired) by
- * calling _vm_map_pageable. It automatically page-aligns the address range.
+ * calling vm_map_pageable. It automatically page-aligns the address range.
  *
  * Parameters:
  *   map       - VM map containing the memory
@@ -59,7 +59,7 @@ static void dowire(vm_map_t map,
 	newPageable = (wireFlag == 0);
 
 	// Wire or unwire the memory range
-	_vm_map_pageable(map, startAddr, endAddr, newPageable);
+	vm_map_pageable(map, startAddr, endAddr, newPageable);
 }
 
 /*
@@ -79,8 +79,8 @@ static void dowire(vm_map_t map,
  *
  * Implementation details:
  *   - Processes data in chunks that don't cross page boundaries
- *   - Uses _vm_map_pmap_EXTERNAL to get pmap from vm_map
- *   - Uses _pmap_resident_extract to get physical addresses
+ *   - Uses vm_map_pmap_EXTERNAL to get pmap from vm_map
+ *   - Uses pmap_resident_extract to get physical addresses
  *   - Copies data using bcopy on physical addresses
  *   - Handles source and destination page boundaries separately
  */
@@ -120,11 +120,11 @@ static void docopy(vm_map_t sourceMap,
 
 		// Get physical addresses for this chunk
 		// First get the pmap (physical map) for each address space
-		destPmap = _vm_map_pmap_EXTERNAL(destMap, destAddr);
-		destPhys = _pmap_resident_extract(destPmap, destAddr);
+		destPmap = vm_map_pmap_EXTERNAL(destMap, destAddr);
+		destPhys = pmap_resident_extract(destPmap, destAddr);
 
-		sourcePmap = _vm_map_pmap_EXTERNAL(sourceMap, sourceAddr);
-		sourcePhys = _pmap_resident_extract(sourcePmap, sourceAddr);
+		sourcePmap = vm_map_pmap_EXTERNAL(sourceMap, sourceAddr);
+		sourcePhys = pmap_resident_extract(sourcePmap, sourceAddr);
 
 		// Copy the chunk using physical addresses
 		bcopy((void *)sourcePhys, (void *)destPhys, chunkSize);

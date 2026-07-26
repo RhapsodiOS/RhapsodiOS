@@ -94,7 +94,7 @@ before any analyzer run.
 ### 2.1 A systematic underscore rename breaks every override
 
 Of 234 method definitions in our tree, 56 match a reference selector exactly,
-**161 match only after dropping exactly one leading underscore**, and 17 match
+161 match only after dropping exactly one leading underscore, and 17 match
 neither. The rename is present in headers and implementations alike:
 
 ```objc
@@ -121,6 +121,23 @@ them. Four reference selectors legitimately begin with an underscore:
 Our tree writes these as `__freePartitions`, `__initPartition:`, `__probeLabel:`
 and `__diskParamCommon:`, so the single-drop rule lands them correctly while a
 strip-all rule would break them.
+
+**Those 161 are not 161 renames.** Twenty-seven of them already have a
+correctly-named sibling defined in the same `@implementation` block, so renaming
+them would produce duplicate definitions that do not compile. They split:
+
+- **134 true renames** — the underscored method is the class's only definition
+  of that selector.
+- **27 duplicates to delete** — 25 in `IODiskNew.m:344-553` and 2 in
+  `IODiskPartitionNEW.m` (`_isBlockDeviceOpen` at 492-495, `_isRawDeviceOpen`
+  at 524-527).
+
+The duplicates are dead code layered below the real implementations. `IODiskNEW`
+defines a substantive `registerDevice` at `IODiskNew.m:188` — it gates on
+`_isPhysical`, allocates `_LogicalDiskLock` and calls `super` — and then a
+`_registerDevice` at 344 whose whole body is `// TODO: Implement registration`.
+The reference's `IODiskNEW` carries exactly the 25 non-underscored names, which
+confirms which of each pair is the reconstruction and which is the residue.
 
 ### 2.2 Ninety-four reference strings are missing
 
@@ -151,12 +168,16 @@ sweepQueueInsert         sweepQueueReorder        vFloppyCopy
 Eleven other reference C functions are present. `HandleBsdWrite` being the one
 absent member of an otherwise complete `HandleBsd*` set is itself a signal.
 
-### 2.4 Nine methods are unimplemented stubs
+### 2.4 One method is an unimplemented stub
 
-`IODiskNew.m` leaves `registerDevice`, `free`, `eject`,
-`getIntValues:forParameter:count:`, `errnoFromReturn:`, `stringFromReturn:`,
-`lockLogicalDisks` and `unlockLogicalDisks` as `TODO: Implement …`; `FloppyCnt.m`
-leaves command-transfer execution the same way.
+The tree carries nine `// TODO: Implement …` bodies, but eight of them are inside
+the duplicate block of §2.1 (`IODiskNew.m` lines 346, 355, 500, 511, 522, 533,
+542 and 551) and disappear when it is deleted. Their correctly-named siblings
+higher in the same file are implemented.
+
+The only genuine stub is `FloppyCmds.m:44`, in
+`-[FloppyController(Cmds) _doCmdXfr:]` — a true rename by §2.1, so it survives
+the pre-pass and must be written. It belongs to fix phase 1.
 
 ### 2.5 Three selector shapes and one category name are wrong
 
@@ -287,7 +308,8 @@ Each step is its own commit and each ends with a green build.
 
 | Step | Change | Verify |
 |---|---|---|
-| 0a | Drop exactly one leading underscore from the 161 renamed method declarations, definitions and call sites (§2.1) | No underscore-prefixed selector remains except the four listed in §2.1; build exits 0 |
+| 0a | Delete the 27 duplicate definitions of §2.1 — `IODiskNew.m:344-553` and the two in `IODiskPartitionNEW.m` — together with their header declarations | Each deleted selector still has its non-underscored sibling; build exits 0 |
+| 0a′ | Drop exactly one leading underscore from the 134 true renames of §2.1: declarations, definitions and message-send sites | No underscore-prefixed selector remains except the four listed in §2.1; ivars keep their underscores; build exits 0 |
 | 0b | Reshape the three selectors to Apple's empty-keyword form and correct the category name to `(private)` (§2.5) | All four names appear in the rebuilt symbol table |
 | 0c | Delete `NXLock.m` and `NXLock.h`, drop them from the `Makefile`, import `machkit/NXLock.h` and link the kernel's classes; drop `NXRecursiveLock` (§2.6) | Rebuild imports `.objc_class_name_NXLock`, `NXConditionLock` and `NXSpinLock` and defines none of them |
 | 0d | `Default.table`: add `"Version" = "5.10";`, change `"Boot Driver" = "";` to the bare `"Boot Driver";` (§2.7) | Diff against the reference table is empty but for `"Driver Version"` |
@@ -296,9 +318,12 @@ Each step is its own commit and each ends with a green build.
 Step 0c gates everything after it and is attempted first within the pre-pass, for
 the reason given in §6.
 
-Expected after 0a–0e: `parity_check.py` `missing_symbols` falls from 163 to about
-20 — the 17 absent C functions of §2.3 plus the 3 build-generated entries of
-§1.3.
+Expected after 0a–0e: `missing_symbols` falls from 163 to roughly 24 — the 17
+absent C functions of §2.3, the 3 build-generated entries of §1.3, and the 4
+selector-shape and category names of §2.5 if 0b is deferred. The exact figure is
+recorded when 0e completes rather than predicted here; the gate is that every
+remaining missing symbol is attributable to §2.3, §1.3 or §2.5, and that none is
+a name the pre-pass was supposed to have restored.
 
 ### 4.2 Report pass
 
@@ -357,13 +382,13 @@ The order is bottom-up by dependency. The controller layer comes first because i
 is the smallest phase and depends on nothing, which makes it a cheap pilot for
 the fix-verify loop. The generic disk family comes second rather than fourth
 because `IOFloppyDisk` and `IOFloppyDrive` inherit from `IODiskNEW` and
-`IODriveNEW`, and all nine stubs of §2.4 live in that family; repairing a
-subclass whose superclass is still a stub cannot be validated.
+`IODriveNEW`; repairing a subclass against a superclass whose own divergences are
+unresolved cannot be validated.
 
 | # | Phase | Files | Functions | `__text` bytes | Carries |
 |---|---|---|---|---|---|
-| 1 | Controller | `FloppyCnt.m`, `FloppyCntIo.m`, `FloppyCmds.m`, `FloppyArch.m` | 28 | 7,132 | `FloppyControllerThread`, `fdTimer`, the `FCCMD_*` and error-string tables |
-| 2 | Generic disk family | `IODiskNew.m`, `IODriveNEW.m`, `IOLogicalDiskNEW.m`, `IODiskPartitionNEW.m`, `kernelDiskMethodsNEW.m` | 83 | 7,508 | all nine stubs of §2.4, the `DKIOC*` and disk-label strings |
+| 1 | Controller | `FloppyCnt.m`, `FloppyCntIo.m`, `FloppyCmds.m`, `FloppyArch.m` | 28 | 7,132 | `FloppyControllerThread`, `fdTimer`, the `FCCMD_*` and error-string tables, and the `doCmdXfr:` stub of §2.4 |
+| 2 | Generic disk family | `IODiskNew.m`, `IODriveNEW.m`, `IOLogicalDiskNEW.m`, `IODiskPartitionNEW.m`, `kernelDiskMethodsNEW.m` | 83 | 7,508 | the `DKIOC*` and disk-label strings |
 | 3 | Drive | `IOFloppyDrive.m`, `FloppyDriveInt.m`, `FloppyDriveInt2.m`, `VolCheck.m` | 50 | 6,824 | `floppyDriveType`, `numFloppyDrives`, the `FDCMD_*`, `FD_DENS_*` and `FD_MID_*` tables |
 | 4 | Disk and geometry | `IOFloppyDisk.m`, `Geometry.m`, `Request.m`, `Thread.m`, `Support.m` | 50 | 11,612 | `OperationThreadStartup`, `queueOperationAscending`, `queueOperationDecending`, `sweepQueueInsert`, `sweepQueueReorder`, and the DMA bounce path of §2.9 |
 | 5 | BSD | `Bsd.m` | 11 | 4,360 | `HandleBsdWrite`, `identifyBsdDev`, `identifyDetachedDiskIdFromBsdDev`, `fakeStrategySuccess` |
@@ -453,7 +478,7 @@ findings, and `divergences.md` records the split.
 - `tools/binrecon/profiles/floppy.json`.
 - `src/drivers-i386/ide/drvPCFloppy/reconstruction/source-map.json`,
   `ledger.json` and `divergences.md`.
-- The five pre-pass commits of §4.1.
+- The six pre-pass commits of §4.1.
 - The five fix-phase commit series of §4.3.
 - `src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/English.lproj/` with
   `Localizable.strings` and `Help/Floppy.rtfd`.

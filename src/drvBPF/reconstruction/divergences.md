@@ -10,6 +10,13 @@ Line numbers are against the current committed tree (`BPF.m` 132 lines,
 `bpf.c` 1291, `bpf_filter.c` 565, `BPF.h` 47), verified with `git status`
 before the pass began.
 
+**Task 4 has since applied Findings 1-8.** The line numbers quoted in each finding are
+the pre-fix ones and are left as written; the post-fix locations are in the
+`**Outcome:**` lines and in the regenerated `source-map.json`. The depth table in
+Section 1 likewise describes the report pass; the post-fix counts are 27
+`assembly-matched`, 1 `control-flow-confirmed`, 0 `unexamined` and 2
+`intentional-mismatch`.
+
 ---
 
 ## 1. Coverage and examination depth
@@ -189,6 +196,12 @@ exists in this tree.
 **Rationale:** largest structural finding in the driver, and the same pattern already
 confirmed in `drvPCParallel`.
 
+**Outcome:** fixed. `BPF.h:35` now imports `<driverkit/IODirectDevice.h>` and `BPF.h:37`
+declares `@interface BPF : IODirectDevice`. No ivars were added, so `instance_size` stays
+`IODirectDevice`'s own 296. This is class metadata rather than a function, so it carries
+no ledger entry of its own; it is corroborated by the `stru_2024.super_class` loads in the
+two `objc_msgSendSuper` sites at 219 and 383, both of which were re-read.
+
 ### `-[BPF initFromDeviceDescription:]` (156)
 
 **Finding 2 — the driver never installs its `bpfops` hooks.**
@@ -240,6 +253,15 @@ differs — `setName:"bpf"`, the `objc_msgSendSuper` to `initFromDeviceDescripti
 `:296` define `BPF_TAP` and `BPF_MTAP` as `{if (bpfops.bpf_tap != NULL) ...}`, so with
 `bpfops` left null **every network driver's tap call is a no-op and the BPF driver
 captures nothing at all**. The driver would load, register, and silently never work.
+
+**Outcome:** fixed. `BPF.m:95-97` now opens the method body with
+`bpfops.bpf_tap = bpf_tap;` and `bpfops.bpf_mtap = bpf_mtap;`, ahead of the `setName:`
+send, matching the reference's order. To declare `bpfops` the file gained
+`#define _KERNEL`, a `struct mbuf;` forward declaration and `#import <net/bpf.h>`
+(`BPF.m:40-42`), plus `extern` prototypes for `bpf_tap` and `bpf_mtap` in the existing
+external-function block (`BPF.m:52-53`). All 105 bytes at 156-260 were re-read after the
+edit and every instruction now has a counterpart in our source. Ledger 156 advanced
+`unexamined` → `assembly-matched`.
 
 ### `-[BPF getIntValues:forParameter:count:]` (264)
 
@@ -300,6 +322,16 @@ in that order.
 the reference's source plainly said. Whether our compiler chooses `repe cmpsb` or a
 call is its business; the point is to stop hand-rolling it.
 
+**Outcome:** fixed. The `expected`/`p1`/`p2` loop is gone; `BPF.m:111` now reads
+`if (strcmp(parameterName, "BpfMajorMinor") == 0 && *count == 2) {`, and `BPF.m:38` adds
+`#import <string.h>` for the declaration, matching the convention other `.m` files in
+this tree use. All 147 bytes at 264-410 were re-read after the edit. **The status was
+held at `control-flow-confirmed`, not advanced to `assembly-matched`**: the reference
+expands the compare inline as `repe cmpsb` at 281-301, and with no compiler available
+there is no way to confirm our `strcmp` call compiles to that expansion rather than a
+`call _strcmp`. Everything else in the function was matched instruction for instruction.
+Ledger 264 advanced `unexamined` → `control-flow-confirmed`.
+
 **Finding 4 — `parameterArray` is typed `int *`; the reference types it
 `unsigned int *`.** `BPF.m:95`. Reference `__OBJC,__meth_var_types` entry at 8663 is
 `i20@8:12^I16*20^I24`: return `i` (`IOReturn`, which
@@ -315,6 +347,14 @@ encodes as `^i`. The other two arguments already agree: `IOParameterName` is
 it is a one-character change and it makes `__meth_var_types` match byte for byte.
 The other two method signatures (`c12@8:12@16` for `+probe:`, `@12@8:12@16` for
 `-initFromDeviceDescription:`) already match ours exactly.
+
+**Outcome:** fixed. `parameterArray` is now `unsigned int *` in both the `@interface`
+(`BPF.h:41`) and the `@implementation` (`BPF.m:106`), so `__meth_var_types` encodes `^I`
+at offset 16. Both `parameterArray` stores remain 32-bit writes, so no instruction
+changed. This finding shares ledger entry 264 with Finding 3 and is covered by that
+entry's `control-flow-confirmed` status; the type-encoding change itself is fully
+confirmed, and only Finding 3's `repe cmpsb` question holds the entry short of
+`assembly-matched`.
 
 ### `_bpf_movein` (420)
 
@@ -376,6 +416,17 @@ all five `sa_family`/`hlen` arms (`DLT_SLIP` → `AF_INET`/0, `DLT_PPP` and `DLT
 `m_retryhdr` import makes the reading unambiguous. Task 4 should make this change
 deliberately and with the tradeoff recorded, not silently.
 
+**Outcome:** fixed, deliberately and with the tradeoff above understood. `bpf.c:232`
+is now `MGET(m, M_WAIT, MT_DATA)`, `bpf.c:235` tests `len > MLEN`, and both
+`m->m_pkthdr.len` statements (the `= len` after the cluster path and the `-= hlen` inside
+the link-header block) are deleted. Nothing else in the function was touched. All 534
+bytes at 420-953 were re-read after the edit: `m_flags = 0` at 678, the `_m_retry` call
+at 692, `cmp [ebp+var_4], 6Ch` at 716, the single `m_len` store at 856 and the lone
+`m_len -= hlen` at 871 now all follow from our source, and the function writes
+`m_pkthdr` nowhere. The known consequence stands: `bpfwrite` hands the result to
+`(*ifp->if_output)` without `M_PKTHDR`, exactly as the shipped binary does. Ledger 420
+advanced `unexamined` → `assembly-matched`.
+
 ### `_bpf_attachd` (956) and `_bpf_detachd` (988)
 
 **Finding 6 — `*bp->bif_driverp = bp` is commented out.** `bpf.c:291`.
@@ -404,6 +455,12 @@ deliberately and with the tradeoff recorded, not silently.
 three preceding stores match exactly (0x1C, 0, +4).
 
 **Disposition:** fix.
+
+**Outcome:** fixed. `bpf.c:289` is now the live statement `*bp->bif_driverp = bp;`; the
+comment markers are gone and the surrounding comment block is untouched. All 29 bytes at
+956-984 were re-read after the edit and every store maps to a statement in order, ending
+with the `[edx+8]` load and `[eax]` store at 976-979. Ledger 956 advanced `unexamined` →
+`assembly-matched`.
 
 **Finding 7 — `*d->bd_bif->bif_driverp = 0` is commented out.** `bpf.c:331`.
 
@@ -445,6 +502,16 @@ clears it, which is how a driver learns whether any listener is attached. With b
 commented out the field is never touched. Combined with Finding 2 this is why the
 driver, as committed, cannot capture a packet.
 
+**Outcome (Finding 7):** fixed. `bpf.c:329` is now the live statement
+`*d->bd_bif->bif_driverp = 0;` guarded by the existing `if (bp->bif_dlist == 0)`, so the
+`if` no longer guards an empty statement; the explanatory comment between them is
+unchanged. Note the reference reloads `d->bd_bif` from `[esi+1Ch]` at 1088 rather than
+using the `bp` already in `edi`, which is why the statement is written through `d` and
+not through `bp`. All 129 bytes at 988-1116 were re-read after the edit. Ledger 988
+advanced `unexamined` → `assembly-matched`.
+
+Findings 6 and 7 were applied together, as the report pass required.
+
 ### Configuration table
 
 **Finding 8 — `Default.table` lacks the `Version` key.**
@@ -466,6 +533,12 @@ The first is ours to add.
 
 **Disposition:** fix — add `"Version" = "1.0";` after the `"Driver Name"` line, matching
 the reference's key order.
+
+**Outcome:** fixed. `Default.table:5` is now `"Version" = "1.0";`, between
+`"Driver Name"` and `"Post-Load"`. `"Driver Version"` was deliberately not added, as it
+is build-generated and would bake in Apple's 1998 build host. The table now differs from
+the reference's by that one build-generated line only. `Default.table` carries no ledger
+entry.
 
 `English.lproj/Localizable.strings` is **identical** to the reference. The reference's
 `.config` has `English.lproj/Help/` where our source has `English.lproj/DriverHelp/`;

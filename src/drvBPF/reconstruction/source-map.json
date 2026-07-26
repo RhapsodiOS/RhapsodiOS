@@ -8,7 +8,7 @@
         "+[BPF probe:]"
       ],
       "size": 156,
-      "source_line": 57,
+      "source_line": 64,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[BPF initFromDeviceDescription:]"
       ],
       "size": 105,
-      "source_line": 86,
+      "source_line": 93,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[BPF getIntValues:forParameter:count:]"
       ],
       "size": 147,
-      "source_line": 95,
+      "source_line": 106,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
     },
     {
@@ -53,7 +53,7 @@
         "_bpf_attachd"
       ],
       "size": 29,
-      "source_line": 278,
+      "source_line": 276,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -62,7 +62,7 @@
         "_bpf_detachd"
       ],
       "size": 129,
-      "source_line": 298,
+      "source_line": 296,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -71,7 +71,7 @@
         "_bpfopen"
       ],
       "size": 88,
-      "source_line": 343,
+      "source_line": 341,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -80,7 +80,7 @@
         "_bpfclose"
       ],
       "size": 67,
-      "source_line": 372,
+      "source_line": 370,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -89,7 +89,7 @@
         "_bpfread"
       ],
       "size": 239,
-      "source_line": 442,
+      "source_line": 440,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -98,7 +98,7 @@
         "_bpfwrite"
       ],
       "size": 159,
-      "source_line": 536,
+      "source_line": 534,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -107,7 +107,7 @@
         "_reset_d"
       ],
       "size": 57,
-      "source_line": 580,
+      "source_line": 578,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -116,7 +116,7 @@
         "_bpfioctl"
       ],
       "size": 795,
-      "source_line": 612,
+      "source_line": 610,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -125,7 +125,7 @@
         "_bpf_setf"
       ],
       "size": 195,
-      "source_line": 816,
+      "source_line": 814,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -134,7 +134,7 @@
         "_bpf_setif"
       ],
       "size": 249,
-      "source_line": 863,
+      "source_line": 861,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -143,7 +143,7 @@
         "_bpf_ifname"
       ],
       "size": 41,
-      "source_line": 936,
+      "source_line": 934,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -152,7 +152,7 @@
         "_bpf_select"
       ],
       "size": 98,
-      "source_line": 971,
+      "source_line": 969,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -161,7 +161,7 @@
         "_bpf_tap"
       ],
       "size": 79,
-      "source_line": 1022,
+      "source_line": 1020,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -170,7 +170,7 @@
         "_bpf_mcopy"
       ],
       "size": 92,
-      "source_line": 1049,
+      "source_line": 1047,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -179,7 +179,7 @@
         "_bpf_mtap"
       ],
       "size": 92,
-      "source_line": 1077,
+      "source_line": 1075,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -188,7 +188,7 @@
         "_catchpacket"
       ],
       "size": 243,
-      "source_line": 1109,
+      "source_line": 1107,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -197,7 +197,7 @@
         "_bpf_allocbufs"
       ],
       "size": 95,
-      "source_line": 1181,
+      "source_line": 1179,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -206,7 +206,7 @@
         "_bpf_freed"
       ],
       "size": 93,
-      "source_line": 1203,
+      "source_line": 1201,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {
@@ -215,7 +215,7 @@
         "_ifpromisc"
       ],
       "size": 98,
-      "source_line": 1235,
+      "source_line": 1233,
       "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
     },
     {

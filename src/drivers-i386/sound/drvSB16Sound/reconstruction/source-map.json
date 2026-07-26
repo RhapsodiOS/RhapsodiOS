@@ -1,0 +1,258 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[SoundBlaster16 probe:]"
+      ],
+      "size": 285,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 288,
+      "reference_names": [
+        "-[SoundBlaster16 initializeDMAChannels]"
+      ],
+      "size": 988,
+      "source_line": 163,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 1276,
+      "reference_names": [
+        "-[SoundBlaster16 reset]"
+      ],
+      "size": 396,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 1672,
+      "reference_names": [
+        "-[SoundBlaster16 initializeHardware]"
+      ],
+      "size": 2991,
+      "source_line": 294,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 4664,
+      "reference_names": [
+        "-[SoundBlaster16 initializeLastStageGainRegisters]"
+      ],
+      "size": 446,
+      "source_line": 300,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 5112,
+      "reference_names": [
+        "-[SoundBlaster16 updateInputGainLeft]"
+      ],
+      "size": 261,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 5376,
+      "reference_names": [
+        "-[SoundBlaster16 updateInputGainRight]"
+      ],
+      "size": 261,
+      "source_line": 366,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 5640,
+      "reference_names": [
+        "-[SoundBlaster16 updateOutputMute]"
+      ],
+      "size": 492,
+      "source_line": 393,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 6132,
+      "reference_names": [
+        "-[SoundBlaster16 updateOutputAttenuationLeft]"
+      ],
+      "size": 309,
+      "source_line": 422,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 6444,
+      "reference_names": [
+        "-[SoundBlaster16 updateOutputAttenuationRight]"
+      ],
+      "size": 309,
+      "source_line": 452,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 6756,
+      "reference_names": [
+        "-[SoundBlaster16 updateSampleRate]"
+      ],
+      "size": 549,
+      "source_line": 484,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 7308,
+      "reference_names": [
+        "-[SoundBlaster16 setBufferCount:]"
+      ],
+      "size": 15,
+      "source_line": 579,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 7324,
+      "reference_names": [
+        "-[SoundBlaster16 enableAllInterrupts]"
+      ],
+      "size": 41,
+      "source_line": 584,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 7368,
+      "reference_names": [
+        "-[SoundBlaster16 disableAllInterrupts]"
+      ],
+      "size": 41,
+      "source_line": 590,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 7412,
+      "reference_names": [
+        "-[SoundBlaster16 startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "size": 1873,
+      "source_line": 596,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 9288,
+      "reference_names": [
+        "-[SoundBlaster16 stopDMAForChannel:read:]"
+      ],
+      "size": 826,
+      "source_line": 723,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 10116,
+      "reference_names": [
+        "_clearInterrupts"
+      ],
+      "size": 96,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 10212,
+      "reference_names": [
+        "-[SoundBlaster16 interruptClearFunc]"
+      ],
+      "size": 12,
+      "source_line": 772,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 10224,
+      "reference_names": [
+        "-[SoundBlaster16 interruptOccurredForInput:forOutput:]"
+      ],
+      "size": 137,
+      "source_line": 778,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 10364,
+      "reference_names": [
+        "-[SoundBlaster16 timeoutOccurred]"
+      ],
+      "size": 3030,
+      "source_line": 820,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13396,
+      "reference_names": [
+        "-[SoundBlaster16 setAnalogInputSource:]"
+      ],
+      "size": 7,
+      "source_line": 832,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13404,
+      "reference_names": [
+        "-[SoundBlaster16 acceptsContinuousSamplingRates]"
+      ],
+      "size": 12,
+      "source_line": 842,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13416,
+      "reference_names": [
+        "-[SoundBlaster16 getSamplingRatesLow:high:]"
+      ],
+      "size": 25,
+      "source_line": 847,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13444,
+      "reference_names": [
+        "-[SoundBlaster16 getSamplingRates:count:]"
+      ],
+      "size": 60,
+      "source_line": 854,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13504,
+      "reference_names": [
+        "-[SoundBlaster16 getDataEncodings:count:]"
+      ],
+      "size": 32,
+      "source_line": 866,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    },
+    {
+      "address": 13536,
+      "reference_names": [
+        "-[SoundBlaster16 channelCountLimit]"
+      ],
+      "size": 12,
+      "source_line": 874,
+      "source_path": "src/drivers-i386/sound/drvSB16Sound/SoundBlaster16.drvproj/SoundBlaster16.lksproj/SoundBlaster16.m"
+    }
+  ],
+  "reference_sha256": "08EC130B85B64E289B17DC32DBE9D69D56FF48DAA9E4CD26FA935DDFC52A9001",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 13548,
+      "reference_names": [
+        "+[SoundBlaster16KernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 13560,
+      "reference_names": [
+        "+[SoundBlaster16Version driverKitVersionForSoundBlaster16]"
+      ],
+      "size": 12
+    }
+  ]
+}

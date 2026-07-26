@@ -467,7 +467,17 @@ git commit -m "binrecon: read fat Mach-O containers and extract a named slice"
 - Produces:
   - `binrecon.objc_abi.ObjcReader(payload, sections, endianness)` with methods `cstring(address)`, `at(address, count)`, `method_list(address)`.
   - `binrecon.objc_abi.read_classes(reader, symtab_address) -> list[dict]` returning class records shaped `{"name", "superclass", "instance_size", "info", "ivars", "instance_methods", "class_methods"}`.
+  - `binrecon.objc_abi.method_symbol_index(document) -> dict[int, str]` mapping a method's implementation address to its `-[Class selector]` symbol name, built from an analysis document's `symbols` list.
   - ivar records shaped `{"name", "type", "offset"}`; method records shaped `{"selector", "types"}`.
+
+**The reference is a prebound dylib.** Measured on the real slice: 369 of its
+3,253 method entries carry a selector pointer that the static linker rewrote to
+a uniqued selector in the shared runtime's table, at an address outside this
+image — spread over 56 of the 80 modules. Naively dereferencing those pointers
+raises. All 369 are recoverable from the symbol table, which names every method
+`-[Class selector]`; zero are unresolvable. `ObjcReader` therefore takes an
+optional `method_names` index and falls back to it. This is not an edge case to
+defer: Task 5 walks every module, so it is hit immediately.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -544,7 +554,52 @@ def test_reads_class_layout_and_ivars():
 def test_reads_big_endian_the_same_way():
     reader = ObjcReader(build_blob(">"), SECTIONS, "big")
     assert read_classes(reader, BASE + 0x20)[0]["name"] == "Thing"
+
+
+def test_recovers_a_prebound_selector_from_the_symbol_table():
+    """A selector pointer outside the image is resolved via the symbol table."""
+    blob = bytearray(build_blob())
+    # Point the instance method's selector at an address no section backs.
+    struct.pack_into("<I", blob, 0xA8, 0x41406990)
+
+    reader = ObjcReader(bytes(blob), SECTIONS, "little",
+                        method_names={0x2000: "-[Thing doThing]"})
+
+    assert read_classes(reader, BASE + 0x20)[0]["instance_methods"] == [
+        {"selector": "doThing", "types": "v8@8:12"}
+    ]
+
+
+def test_an_unresolvable_prebound_selector_is_an_error():
+    from binrecon.objc_abi import ObjcAbiError
+
+    blob = bytearray(build_blob())
+    struct.pack_into("<I", blob, 0xA8, 0x41406990)
+    reader = ObjcReader(bytes(blob), SECTIONS, "little")
+
+    with pytest.raises(ObjcAbiError, match="outside the image"):
+        read_classes(reader, BASE + 0x20)
+
+
+def test_method_symbol_index_keys_on_implementation_address():
+    from binrecon.objc_abi import method_symbol_index
+
+    document = {"symbols": [
+        {"name": "-[Thing doThing]", "address": 0x2000, "section": "__TEXT,__text"},
+        {"name": "+[Thing(Extra) make]", "address": 0x2100, "section": "__TEXT,__text"},
+        {"name": "_NotAMethod", "address": 0x2200, "section": "__TEXT,__text"},
+        {"name": "-[Thing imported]", "address": 0, "section": None},
+    ]}
+
+    assert method_symbol_index(document) == {
+        0x2000: "-[Thing doThing]",
+        0x2100: "+[Thing(Extra) make]",
+    }
 ```
+
+The offset `0xA8` is the instance method list's first `selector` field: the list
+header sits at `0xA0` and is two words, so the first method record begins at
+`0xA8`. `pytest` must be imported at the top of the test file.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -578,8 +633,11 @@ _PREFIX = {"little": "<", "big": ">"}
 class ObjcReader:
     """Random access to an image by virtual address."""
 
-    def __init__(self, payload, sections, endianness):
+    def __init__(self, payload, sections, endianness, method_names=None):
         self.payload = payload
+        # imp address -> "-[Class selector]", consulted when a selector pointer
+        # was rewritten by prebinding to an address outside this image.
+        self.method_names = method_names or {}
         self.prefix = _PREFIX[endianness]
         self._word = struct.Struct(f"{self.prefix}I")
         self._spans = [
@@ -625,12 +683,31 @@ class ObjcReader:
         _obsolete, count = self.at(address, 2)
         methods = []
         for index in range(count):
-            selector, types, _imp = self.at(address + 8 + 12 * index, 3)
+            selector, types, imp = self.at(address + 8 + 12 * index, 3)
             methods.append({
-                "selector": self.cstring(selector),
+                "selector": self.selector(selector, imp),
                 "types": self.cstring(types),
             })
         return methods
+
+    def selector(self, address, imp):
+        """Name a method's selector, tolerating prebound selector pointers.
+
+        The reference is a prebound dylib: the static linker rewrote 369 of its
+        3,253 method-name pointers to uniqued selectors in the shared runtime's
+        table, at addresses outside this image. Those are recovered from the
+        symbol table, where the method is named ``-[Class selector]`` or
+        ``+[Class(Category) selector]``.
+        """
+        if self.offset_of(address) is not None:
+            return self.cstring(address)
+        symbol = self.method_names.get(imp)
+        if symbol is None:
+            raise ObjcAbiError(
+                f"selector pointer 0x{address:x} is outside the image and no "
+                f"symbol names the method implemented at 0x{imp:x}"
+            )
+        return symbol[symbol.index(" ") + 1:-1]
 
     def ivar_list(self, address):
         """Return ``[{name, type, offset}]`` for an ``objc_ivar_list``."""
@@ -646,6 +723,19 @@ class ObjcReader:
                 "offset": offset,
             })
         return ivars
+
+
+def method_symbol_index(document):
+    """Map each method's implementation address to its symbol name.
+
+    Used to recover selectors whose pointers prebinding moved outside the image.
+    """
+    return {
+        symbol["address"]: symbol["name"]
+        for symbol in document["symbols"]
+        if symbol["section"] is not None
+        and symbol["name"].startswith(("-[", "+["))
+    }
 
 
 def read_classes(reader, symtab_address):
@@ -797,9 +887,9 @@ def read_categories(reader, symtab_address):
     return categories
 
 
-def read_modules_from_sections(payload, sections, endianness):
+def read_modules_from_sections(payload, sections, endianness, method_names=None):
     """Return ``{module name: abi-v1 document}`` for an image's ``__OBJC``."""
-    reader = ObjcReader(payload, sections, endianness)
+    reader = ObjcReader(payload, sections, endianness, method_names)
     info = next(
         (s for s in sections if s["name"] == "__OBJC,__module_info" and s.get("size")),
         None,
@@ -831,7 +921,8 @@ def read_modules(path):
 
     payload, document = load_image(path)
     return read_modules_from_sections(
-        payload, document["sections"], document["input"]["endianness"]
+        payload, document["sections"], document["input"]["endianness"],
+        method_symbol_index(document),
     )
 ```
 
@@ -1056,7 +1147,9 @@ Add these to the existing import block at the top of `cli.py`:
 
 ```python
 from binrecon.macho import load_image
-from binrecon.objc_abi import ObjcAbiError, attach_symbols, read_modules_from_sections
+from binrecon.objc_abi import (
+    ObjcAbiError, attach_symbols, method_symbol_index, read_modules_from_sections,
+)
 ```
 
 `main` dispatches with inline `if args.command == ...` blocks, each wrapping its
@@ -1070,7 +1163,8 @@ shape — add this block beside the others:
             profile = load_profile(Path(args.profile), os.environ)
             payload, document = load_image(profile.reference.path)
             modules = read_modules_from_sections(
-                payload, document["sections"], document["input"]["endianness"]
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
             )
             assignment = json.loads(Path(args.symbols).read_text())
             attach_symbols(modules, assignment, document["symbols"])
@@ -1292,7 +1386,8 @@ def module_from_object(payload, document, module):
     """
     try:
         modules = read_modules_from_sections(
-            payload, document["sections"], document["input"]["endianness"]
+            payload, document["sections"], document["input"]["endianness"],
+            method_symbol_index(document),
         )
     except ObjcAbiError:
         modules = {}
@@ -1626,7 +1721,8 @@ and are filtered out:
             profile = load_profile(Path(args.profile), os.environ)
             payload, document = load_image(profile.reference.path)
             modules = read_modules_from_sections(
-                payload, document["sections"], document["input"]["endianness"]
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
             )
             assignment = json.loads(Path(args.symbols).read_text())
             text_names = {

@@ -586,6 +586,11 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
 def export_with_ghidra(profile, artifact: str, destination: Path, *,
                        runner: Callable = subprocess.run) -> dict:
     """Run Ghidra headlessly and atomically publish validated canonical JSON."""
+    architecture = profile.document.get("architecture", "i386")
+    if architecture != "i386":
+        raise GhidraAdapterError(
+            f"the Ghidra adapter is i386-only and cannot analyse {architecture}"
+        )
     configuration = _configuration(profile)
     executable_value = configuration.get("executable")
     if not executable_value:

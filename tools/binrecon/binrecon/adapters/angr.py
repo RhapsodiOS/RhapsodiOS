@@ -310,6 +310,11 @@ def _validate_angr_contract(document: dict) -> None:
 
 def export_with_angr(profile, artifact: str, destination: Path, *,
                      runner: Callable = subprocess.run) -> dict:
+    architecture = profile.document.get("architecture", "i386")
+    if architecture != "i386":
+        raise AngrAdapterError(
+            f"the angr adapter is i386-only and cannot analyse {architecture}"
+        )
     configuration = _configuration(profile)
     executable = Path(configuration.get("executable", "")).resolve(strict=False)
     if not executable.is_file(): raise AngrAdapterError(f"angr Python executable does not exist: {executable}")

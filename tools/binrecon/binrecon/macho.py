@@ -824,6 +824,17 @@ def _ppc_entries(data, section, section_index, architecture):
     return entries, context
 
 
+def _require_ppc_length(entry, section, where):
+    """Reject any relocation whose field is not the four-byte width every
+    entry in the reference binaries uses (spec §3.2); decoding anything else
+    would read a fraction of an instruction as if it were the full field."""
+    if entry["length"] != 2:
+        raise MachOFormatError(
+            f"{where}: relocation length code {entry['length']} is invalid for "
+            f"ppc in section {section['name']!r}"
+        )
+
+
 def _ppc_instruction(data, section, entry, context):
     """Return the four-byte word the relocation patches."""
     if section["zero_fill"]:
@@ -857,6 +868,7 @@ def _decode_ppc_relocations(data, sections, symbol_names, architecture):
                     f"{context}: unsupported relocation type {kind} at file offset "
                     f"0x{entry['offset']:x}"
                 )
+            _require_ppc_length(entry, section, where)
             pair = None
             if kind in _PPC_PAIRED:
                 pair = entries[index + 1] if index + 1 < len(entries) else None
@@ -864,6 +876,9 @@ def _decode_ppc_relocations(data, sections, symbol_names, architecture):
                     raise MachOFormatError(
                         f"{where}: {_PPC_TYPE_NAMES[kind]} requires a PAIR entry"
                     )
+                _require_ppc_length(
+                    pair, section, f"{context} at file offset 0x{pair['offset']:x}"
+                )
             if entry["address"] > section["size"] - 4 or section["size"] < 4:
                 raise MachOFormatError(f"{where}: relocation field crosses owning section")
 

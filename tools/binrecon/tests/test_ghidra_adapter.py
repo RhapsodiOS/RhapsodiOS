@@ -813,3 +813,41 @@ def test_java_argument_parser_is_explicit_and_closed():
                      "boolean options are unsupported"):
         assert required in source
     assert "Set.of(" in source
+
+
+def _profile(tmp_path, input_path):
+    executable = tmp_path / "Ghidra 12.1" / "analyzeHeadless.bat"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    java = tmp_path / "Java 21" / "bin" / "java.exe"
+    java.parent.mkdir(parents=True)
+    java.write_text("stub", encoding="ascii")
+    identity = identify(input_path)
+    profile = SimpleNamespace(
+        reference_identity=identity,
+        rebuilt_identity=identity,
+        document=MappingProxyType({
+            "analyzers": MappingProxyType({"ghidra": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 17, "version": "12.1",
+            })}),
+            "image_base": 4096,
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (),
+            "architecture": "i386",
+        }),
+    )
+    return profile
+
+
+def test_rejects_non_i386_profile_before_running_ghidra(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile = _profile(tmp_path, input_path)
+    profile.document = {**profile.document, "architecture": "ppc"}
+
+    def runner(*args, **kwargs):
+        raise AssertionError("Ghidra must not be started for a ppc profile")
+
+    with pytest.raises(GhidraAdapterError, match="i386-only"):
+        export_with_ghidra(profile, "reference", tmp_path / "out.json", runner=runner)

@@ -128,43 +128,36 @@ extern unsigned int page_mask;
 				// Probe label and create partitions
 				[logicalDisk _probeLabel:(BOOL)label];
 			} else {
-				IOLog("%s: No Valid Disk Label
-", deviceName);
+				IOLog("%s: No Valid Disk Label\n", deviceName);
 				// Set default parameters for partition 'a'
 				[logicalDisk setBlockSize:blockSize];
 				[logicalDisk setDiskSize:[directDevice diskSize]];
 			}
 		} else {
-			IOLog("%s: Disk Unformatted
-", deviceName);
+			IOLog("%s: Disk Unformatted\n", deviceName);
 		}
 	} else {
-		IOLog("%s: Disk Not Ready
-", deviceName);
+		IOLog("%s: Disk Not Ready\n", deviceName);
 	}
 	
 	// Log disk information
 	if (hasValidDisk) {
-		IOLog("%s: Device Block Size: %u bytes
-", deviceName, blockSize);
+		IOLog("%s: Device Block Size: %u bytes\n", deviceName, blockSize);
 		
 		// Calculate capacity
 		capacityKB = (diskSize >> 10) * blockSize;
 		if (capacityKB < 0x2801) {  // Less than ~10 MB
 			capacityKB = diskSize * blockSize;
-			capacityUnit = "%s: Device Capacity:   %u KB
-";
+			capacityUnit = "%s: Device Capacity:   %u KB\n";
 		} else {
-			capacityUnit = "%s: Device Capacity:   %u MB
-";
+			capacityUnit = "%s: Device Capacity:   %u MB\n";
 		}
 		IOLog(capacityUnit, deviceName, capacityKB >> 10);
 	}
 	
 	if (hasValidLabel) {
 		// Log disk label name (at offset 0xc in disk_label_t)
-		IOLog("%s: Disk Label:        %s
-", deviceName, (char *)label + 0xc);
+		IOLog("%s: Disk Label:        %s\n", deviceName, (char *)label + 0xc);
 	}
 	
 	// Free label buffer if allocated

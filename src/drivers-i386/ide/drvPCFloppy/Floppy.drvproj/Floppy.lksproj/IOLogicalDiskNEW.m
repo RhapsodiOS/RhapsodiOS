@@ -346,8 +346,7 @@
 	
 	// Check if length is a multiple of logical block size
 	if (length % logicalBlockSize != 0) {
-		IOLog("%s: Bytes requested not multiple of block size
-", name);
+		IOLog("%s: Bytes requested not multiple of block size\n", name);
 		return (IOReturn)0xfffffd3e;
 	}
 	

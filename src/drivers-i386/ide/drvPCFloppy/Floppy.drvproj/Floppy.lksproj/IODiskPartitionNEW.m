@@ -908,7 +908,7 @@ cleanup:
 			}
 		}
 	} else {
-		IOLog("%s: _probeLabel on partition != 0",
+		IOLog("%s:  _probeLabel on partition != 0\n",
 		      (const char *)[self name]);
 	}
 

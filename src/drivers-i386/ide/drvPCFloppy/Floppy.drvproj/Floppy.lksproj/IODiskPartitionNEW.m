@@ -72,7 +72,7 @@ extern unsigned int page_mask;
 	logicalDisk = [directDevice nextLogicalDisk];
 	if (logicalDisk == nil) {
 		// Create new partition 'a'
-		logicalDisk = [[IODiskPartitionNEW alloc] init];
+		logicalDisk = [IODiskPartitionNEW new];
 		
 		// Set partition name (e.g., "fd0a")
 		sprintf(partitionName, "%sa", deviceName);

@@ -335,7 +335,7 @@ extern unsigned int page_mask;
 	int i;
 	unsigned writeOffset;
 	unsigned actualLength;
-	int checkResult;
+	char *checkResult;
 	ns_time_t timestamp;
 	const char *name;
 
@@ -368,12 +368,12 @@ extern unsigned int page_mask;
 		// NeXT or dlV2 label (0x4e655854 or 0x646c5632)
 		checksumSize = 0x1c48;
 		checksumOffset = 0x1c46;
-		checksumPtr = (unsigned short *)((char *)label_p + checksumOffset);
+		checksumPtr = &label_p->dl_checksum;
 	} else if (label_p->dl_version == DL_V3) {
 		// dlV3 label (0x646c5633)
 		checksumSize = 0x230;
 		checksumOffset = 0x22e;
-		checksumPtr = (unsigned short *)((char *)label_p + checksumOffset);
+		checksumPtr = &label_p->dl_v3_checksum;
 	} else {
 		// Bad label version
 		name = (const char *)[self name];
@@ -382,9 +382,9 @@ extern unsigned int page_mask;
 		goto cleanup;
 	}
 
-	// Set timestamp (stock disk_label has no dl_label_time; keep probeTime)
+	// Tag label with current time
 	IOGetTimestamp(&timestamp);
-	(void)timestamp;
+	label_p->dl_tag = (unsigned)timestamp;
 
 	// Clear checksum and block offset
 	label_p->dl_label_blkno = 0;
@@ -411,7 +411,7 @@ extern unsigned int page_mask;
 	checkResult = check_label(buffer, 0);
 	if (checkResult != 0) {
 		name = (const char *)[self name];
-		IOLog("%s writeLabel: BAD LABEL", name);
+		IOLog("%s writeLabel: BAD LABEL : %s", name, checkResult);
 		result = (IOReturn)0xfffffd3e;
 		goto cleanup;
 	}

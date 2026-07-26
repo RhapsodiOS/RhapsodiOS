@@ -44,29 +44,6 @@
 #define OUTB(port, val) outb(port, val)
 #define INB(port) inb(port)
 
-// Helper utilities to bridge legacy nanosecond interval encoding with thread_call API
-static inline unsigned long long
-_ISASerialPortCombineParts(unsigned int low, unsigned int high)
-{
-    return ((unsigned long long)high << 32) | (unsigned long long)low;
-}
-
-static inline tvalspec_t
-_ISASerialPortIntervalFromNanoseconds(unsigned long long nanoseconds)
-{
-    tvalspec_t interval;
-    interval.tv_sec = (unsigned int)(nanoseconds / NSEC_PER_SEC);
-    interval.tv_nsec = (clock_res_t)(nanoseconds % NSEC_PER_SEC);
-    return interval;
-}
-
-static inline tvalspec_t
-_ISASerialPortDeadlineFromParts(unsigned int low, unsigned int high)
-{
-    unsigned long long nanoseconds = _ISASerialPortCombineParts(low, high);
-    return deadline_from_interval(_ISASerialPortIntervalFromNanoseconds(nanoseconds));
-}
-
 // RX event type markers (in addition to EVENT_OVERFLOW and EVENT_STATE_CHANGE)
 #define EVENT_OVERRUN_ERROR     0x68    // Overrun error event
 #define EVENT_VALID_DATA        0x55    // Valid data byte marker ('U')
@@ -83,12 +60,15 @@ _ISASerialPortDeadlineFromParts(unsigned int low, unsigned int high)
 // The eleven the driver exports are declared in ISASerialPortInternal.h.
 static IOReturn activatePort(Port *port);
 static IOReturn deactivatePort(Port *port);
-static void heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call);
-static void frameTOHandler(thread_call_spec_t spec, thread_call_t call);
-static void delayTOHandler(thread_call_spec_t spec, thread_call_t call);
+// The four callout handlers take the Port * thread_call_allocate was given as
+// its spec, and nothing else; each is cast to thread_call_func_t at its
+// allocation site.
+static void heartBeatTOHandler(Port *port);
+static void frameTOHandler(Port *port);
+static void delayTOHandler(Port *port);
 static void dataLatTOHandler(Port *port);
-static void executeEvent(Port *port, unsigned char eventType, unsigned int eventData,
-                         unsigned int *statePtr, unsigned int *changedBitsPtr);
+static IOReturn executeEvent(Port *port, unsigned int eventType, unsigned int eventData,
+                             unsigned int *statePtr, unsigned int *maskPtr);
 static void NonFIFOIntHandler(void *identity, void *state, Port *port);
 static void FIFOIntHandler(void *identity, void *state, Port *port);
 
@@ -131,11 +111,9 @@ unsigned char msr_state_lut[16] = {
  * Timer callback that triggers interrupt handler when frame timeout occurs.
  * Used for detecting end of transmission or processing delayed events.
  */
-static void frameTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void frameTOHandler(Port *port)
 {
     unsigned int oldIRQL;
-    Port *port = (Port *)spec;
-    (void)call;
 
     // Raise interrupt level
     oldIRQL = spl4();
@@ -143,14 +121,8 @@ static void frameTOHandler(thread_call_spec_t spec, thread_call_t call)
     // Clear timer pending flag
     port->WaitingForTXIdle = 0;
 
-    // Call appropriate interrupt handler based on chip type
-    // The function pointer table is indexed by chipType * 5
-    if ((port->Type > 4)) {
-        // Call FIFO interrupt handler (stub for now)
-        // FIFOIntHandler(0, 0, port);
-    } else {
-        NonFIFOIntHandler(0, 0, port);
-    }
+    // The handler comes out of the chip table, not out of a FIFO test.
+    Chip[port->Type].IntHandler(0, 0, port);
 
     // Restore interrupt level
     splx(oldIRQL);
@@ -161,11 +133,9 @@ static void frameTOHandler(thread_call_spec_t spec, thread_call_t call)
  * Timer callback for delayed operations. Clears the delay bit from state
  * and triggers the appropriate interrupt handler.
  */
-static void delayTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void delayTOHandler(Port *port)
 {
     unsigned int oldIRQL;
-    Port *port = (Port *)spec;
-    (void)call;
 
     // Raise interrupt level
     oldIRQL = spl4();
@@ -173,12 +143,8 @@ static void delayTOHandler(thread_call_spec_t spec, thread_call_t call)
     // Clear delay state bit (0x1000) from currentState
     port->State &= ~0x1000;
 
-    // Call appropriate interrupt handler based on chip type
-    if ((port->Type > 4)) {
-        FIFOIntHandler(0, 0, port);
-    } else {
-        NonFIFOIntHandler(0, 0, port);
-    }
+    // The handler comes out of the chip table, not out of a FIFO test.
+    Chip[port->Type].IntHandler(0, 0, port);
 
     // Restore interrupt level
     splx(oldIRQL);
@@ -775,38 +741,27 @@ static IOReturn deactivatePort(Port *port)
  * Timer callback that polls the UART by calling the interrupt handler.
  * Used for chips without reliable interrupts or for periodic monitoring.
  */
-static void heartBeatTOHandler(thread_call_spec_t spec, thread_call_t call)
+static void heartBeatTOHandler(Port *port)
 {
     unsigned int oldIRQL;
-    Port *port = (Port *)spec;
-    (void)call;
 
     // Raise interrupt level
     oldIRQL = spl4();
 
-    // Check if port is active and not yanked
-    if ((port->State & STATE_ACTIVE) && (port->PCMCIA_yanked == 0)) {
-        tvalspec_t deadline;
-        // Call interrupt handler if heartbeat not already pending
+    // The port must be acquired - State's sign bit - and the card still there.
+    if ((int)port->State < 0 && port->PCMCIA_yanked == 0) {
+        // Poll the chip unless a real interrupt has just done it for us.
         if (port->JustDoneInterrupt == 0) {
-            // Call appropriate interrupt handler based on FIFO capability
-            if ((port->Type > 4)) {
-                // Call FIFO interrupt handler (stub for now)
-                // FIFOIntHandler(0, 0, port);
-            } else {
-                // Call non-FIFO interrupt handler (stub for now)
-                // NonFIFOIntHandler(0, 0, port);
-            }
+            Chip[port->Type].IntHandler(0, 0, port);
         }
 
         // Clear pending flag
         port->JustDoneInterrupt = 0;
 
-        // Schedule next heartbeat
-        deadline = _ISASerialPortDeadlineFromParts(
-            port->HeartBeatInterval.tv_sec,
-            (unsigned int)port->HeartBeatInterval.tv_nsec);
-        thread_call_enter_delayed(port->HeartBeatTOEntry, deadline);
+        // Rearm.  HeartBeatInterval is already a tvalspec, so this needs no
+        // nanosecond arithmetic and no 64-bit division.
+        thread_call_enter_delayed(port->HeartBeatTOEntry,
+                                  deadline_from_interval(port->HeartBeatInterval));
     }
 
     // Restore interrupt level
@@ -1231,12 +1186,9 @@ data_processed:
 
     // Schedule timer if needed
     if ((timerNeeded != 0) && (port->WaitingForTXIdle == 0)) {
-        tvalspec_t deadline;
         port->WaitingForTXIdle = 1;
-        deadline = _ISASerialPortDeadlineFromParts(
-            port->FrameInterval.tv_sec,
-            (unsigned int)port->FrameInterval.tv_nsec);
-        thread_call_enter_delayed(port->FrameTOEntry, deadline);
+        thread_call_enter_delayed(port->FrameTOEntry,
+                                  deadline_from_interval(port->FrameInterval));
     }
 
     // Update TX watermark state
@@ -1842,12 +1794,9 @@ tx_done_fifo:
 
     // Schedule timer if needed
     if ((timerNeeded != 0) && (port->WaitingForTXIdle == 0)) {
-        tvalspec_t deadline;
         port->WaitingForTXIdle = 1;
-        deadline = _ISASerialPortDeadlineFromParts(
-            port->FrameInterval.tv_sec,
-            (unsigned int)port->FrameInterval.tv_nsec);
-        thread_call_enter_delayed(port->FrameTOEntry, deadline);
+        thread_call_enter_delayed(port->FrameTOEntry,
+                                  deadline_from_interval(port->FrameInterval));
     }
 
     // Update TX watermark state
@@ -1924,299 +1873,386 @@ tx_done_fifo:
 }
 
 /*
+ * Recompute the RX half of the reported state from the RX queue's occupancy.
+ *
+ * Three call sites inline this in the reference (events 0x17, 0x1F and 0x2F),
+ * and each one clears the RX level and flow bits out of *statePtr, rebuilds
+ * them from Port.State's low bits, and reports 0xF0016 as touched.  The
+ * watermarks Enqueue and Dequeue are the next levels at which a state change
+ * must be raised, which is why every arm rewrites both.
+ */
+static inline void RX_updateState(Port *port, unsigned int *statePtr,
+                                  unsigned int *maskPtr)
+{
+    unsigned int rxState;
+
+    *statePtr &= 0xFFF0FFE9;
+    rxState = port->State & 0x17E;
+
+    if (port->RX.Count < port->RX.LowWater) {
+        port->RX.Dequeue = 0;
+
+        if (port->RX.Count == 0) {
+            rxState |= RX_STATE_EMPTY;
+            port->RX.Enqueue = 0;
+        } else {
+            rxState |= RX_STATE_BELOW_LOW;
+            port->RX.Enqueue = port->RX.LowWater;
+        }
+
+        // Room again: assert whichever signal this port throttles with.
+        if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
+            rxState |= STATE_RTS;
+        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+            rxState |= 0x10;
+            if (port->RXOstate == -1) {
+                port->RXOstate = 2;
+            } else if (port->RXOstate == 1) {
+                port->RXOstate = -2;
+            }
+        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+            rxState |= STATE_DTR;
+        }
+
+    } else if (port->RX.HighWater < port->RX.Count) {
+        port->RX.Enqueue = port->RX.Size - 3;
+
+        if (port->RX.Count > port->RX.Size - 3) {
+            rxState |= RX_STATE_CRITICAL;
+            port->RX.Dequeue = port->RX.Size;
+        } else {
+            rxState |= RX_STATE_ABOVE_HIGH;
+            port->RX.Dequeue = port->RX.HighWater;
+        }
+
+        // Filling up: drop the same signal to apply back pressure.
+        if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
+            rxState &= ~STATE_RTS;
+        } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+            rxState &= ~0x10;
+            if (port->RXOstate == -2 || port->RXOstate == 0) {
+                port->RXOstate = 1;
+            } else if (port->RXOstate == 2) {
+                port->RXOstate = -1;
+            }
+        } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+            rxState &= ~STATE_DTR;
+        }
+
+    } else {
+        port->RX.Enqueue = port->RX.HighWater;
+        port->RX.Dequeue = port->RX.LowWater;
+    }
+
+    *statePtr |= rxState;
+    *maskPtr |= 0xF0016;
+}
+
+/*
+ * Recompute the TX half of the reported state.  Inlined at events 0x13, 0x1B
+ * and 0x28.  Note the first comparison: the TX arm takes the empty/below-med
+ * path when Count is less than OR EQUAL to LowWater, where the RX arm above
+ * uses a strict less-than.  The reference's two tests really do differ.
+ */
+static inline void TX_updateState(Port *port, unsigned int *statePtr,
+                                  unsigned int *maskPtr)
+{
+    unsigned int txState;
+
+    *statePtr &= 0xF87FFFFF;
+
+    if (port->TX.Count <= port->TX.LowWater) {
+        port->TX.Dequeue = 0;
+
+        if (port->TX.Count == 0) {
+            port->TX.Enqueue = 0;
+            txState = TX_STATE_EMPTY;
+        } else {
+            port->TX.Enqueue = port->TX.LowWater;
+            txState = TX_STATE_BELOW_MED;
+        }
+
+    } else if (port->TX.HighWater < port->TX.Count) {
+        port->TX.Enqueue = port->TX.Size - 3;
+
+        if (port->TX.Count > port->TX.Size - 3) {
+            port->TX.Dequeue = port->TX.Size;
+            txState = TX_STATE_CRITICAL;
+        } else {
+            port->TX.Dequeue = port->TX.HighWater;
+            txState = TX_STATE_ABOVE_HIGH;
+        }
+
+    } else {
+        port->TX.Enqueue = port->TX.HighWater;
+        port->TX.Dequeue = port->TX.LowWater;
+        txState = TX_STATE_BELOW_HIGH;
+    }
+
+    *statePtr |= txState;
+    *maskPtr |= TX_STATE_MASK;
+}
+
+/*
  * executeEvent - Execute an event command on the serial port
  *
- * This function implements the event dispatcher for serial port control commands.
- * It handles configuration changes, queue management, and state control.
+ * The event machine behind -executeEvent:data:.  It does NOT compute a final
+ * state itself: *statePtr arrives holding Port.State and *maskPtr holding
+ * zero, each case edits the bits it owns in *statePtr and records them in
+ * *maskPtr, and the caller merges the two.  Anything this function does not
+ * touch therefore keeps its current value.
+ *
+ * Every arm that changes a line parameter calls programChip unconditionally;
+ * none of them recomputes DLRimage or LCRimage, because programChip derives
+ * both from the fields set here.
  *
  * Parameters:
  *   port - Pointer to the port's state block
  *   eventType - Event type identifier (determines action to take)
  *   eventData - Event-specific data parameter
- *   statePtr - Pointer to state value (output parameter)
- *   changedBitsPtr - Pointer to changed bits mask (output parameter)
+ *   statePtr - In/out: the state being assembled
+ *   maskPtr - Out: which bits of *statePtr this call is reporting
+ *
+ * Returns IO_R_SUCCESS, IO_R_NOT_OPEN when the port is not acquired, or
+ * 0xFFFFFD3E (IO_R_INVALID_ARG) for an unknown event or an out-of-range value.
  */
-static void executeEvent(Port *port, unsigned char eventType,
-                         unsigned int eventData, unsigned int *statePtr,
-                         unsigned int *changedBitsPtr)
+static IOReturn executeEvent(Port *port, unsigned int eventType,
+                             unsigned int eventData, unsigned int *statePtr,
+                             unsigned int *maskPtr)
 {
-    unsigned int oldState;
-    unsigned int newState;
-    unsigned int changedBits;
+    IOReturn result;
     unsigned int tempValue;
-    unsigned int bitIndex;
-    unsigned int byteIndex;
+    unsigned char mcrValue;
+    unsigned long long intervalNS;
+    tvalspec_t interval;
 
-    oldState = port->State;
-    newState = oldState;
-    changedBits = 0;
+    result = IO_R_SUCCESS;
+
+    // Every event needs the port acquired; State's sign bit is that flag.
+    if ((int)port->State >= 0) {
+        return 0xFFFFFD33;
+    }
 
     switch (eventType) {
-        case 0x05:  // Activate/Deactivate port
-            if (eventData != 0) {
-                // Activate port
-                activatePort(port);
-                newState |= STATE_ACTIVE;
-            } else {
-                // Deactivate port
-                deactivatePort(port);
-                newState &= ~STATE_ACTIVE;
-            }
-            changedBits = STATE_ACTIVE;
-            break;
+    case 0x05:  // Activate / deactivate the port
+        if ((unsigned char)eventData != 0) {
+            result = activatePort(port);
+        } else {
+            deactivatePort(port);
+        }
+        break;
 
-        case 0x13:  // Set TX medium watermark
-            if (eventData <= port->TX.Size) {
-                port->TX.LowWater = eventData;
-            }
-            break;
+    case 0x13:  // TX low watermark
+        port->TX.LowWater = eventData;
+        if (eventData > port->TX.HighWater - 3) {
+            port->TX.LowWater = port->TX.HighWater - 3;
+        }
+        if (port->TX.LowWater <= 2) {
+            port->TX.LowWater = 3;
+        }
+        TX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x17:  // Set RX low watermark
-            if (eventData <= port->RX.Size) {
-                port->RX.LowWater = eventData;
-                // Recalculate flow control if needed
-                tempValue = flowMachine(port);
-                changedBits = tempValue ^ oldState;
-                newState = tempValue;
-            }
-            break;
+    case 0x17:  // RX low watermark
+        port->RX.LowWater = eventData;
+        if (eventData > port->RX.HighWater - 3) {
+            port->RX.LowWater = port->RX.HighWater - 3;
+        }
+        if (port->RX.LowWater <= 2) {
+            port->RX.LowWater = 3;
+        }
+        RX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x1B:  // Set TX low watermark
-            if (eventData <= port->TX.Size) {
-                port->TX.HighWater = eventData;
-            }
-            break;
+    case 0x1B:  // TX high watermark.  The reference stores the requested value
+                // into RX.HighWater here and then clamps TX.HighWater against
+                // TX.Size, which is an original bug; it is reproduced rather
+                // than corrected (see divergences.md).
+        port->RX.HighWater = eventData;
+        if (port->TX.HighWater > port->TX.Size - 3) {
+            port->TX.HighWater = port->TX.Size - 3;
+        }
+        if (port->TX.HighWater <= 5) {
+            port->TX.HighWater = 6;
+        }
+        if (port->TX.LowWater > port->TX.HighWater - 3) {
+            port->TX.LowWater = port->TX.HighWater - 3;
+        }
+        TX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x1F:  // Set RX high watermark
-            if (eventData <= port->RX.Size) {
-                port->RX.HighWater = eventData;
-                // Recalculate flow control if needed
-                tempValue = flowMachine(port);
-                changedBits = tempValue ^ oldState;
-                newState = tempValue;
-            }
-            break;
+    case 0x1F:  // RX high watermark
+        port->RX.HighWater = eventData;
+        if (eventData > port->RX.Size - 3) {
+            port->RX.HighWater = port->RX.Size - 3;
+        }
+        if (port->RX.HighWater <= 5) {
+            port->RX.HighWater = 6;
+        }
+        if (port->RX.LowWater > port->RX.HighWater - 3) {
+            port->RX.LowWater = port->RX.HighWater - 3;
+        }
+        RX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x28:  // Flush TX queue
-            // Reset TX ring buffer
-            port->TX.Output = port->TX.Base;
-            port->TX.Input = port->TX.Base;
-            port->TX.Count = 0;
-            // Update TX state to empty
-            newState = (newState & ~TX_STATE_MASK) | TX_STATE_EMPTY;
-            changedBits = TX_STATE_MASK;
-            break;
+    case 0x28:  // Flush the TX queue
+        port->TX.Output = port->TX.Base;
+        port->TX.Input = port->TX.Base;
+        port->TX.Count = 0;
+        if (port->Type > 4) {
+            outb(port->Base + UART_FCR, port->FCRimage | FCR_XMIT_RESET);
+        }
+        TX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x2F:  // Flush RX queue
-            // Reset RX ring buffer
-            port->RX.Output = port->RX.Base;
-            port->RX.Input = port->RX.Base;
-            port->RX.Count = 0;
-            port->RX.OverRun = 0;
-            // Update RX state to empty
-            newState = (newState & ~RX_STATE_MASK) | RX_STATE_EMPTY;
-            changedBits = RX_STATE_MASK;
-            // Recalculate flow control
-            tempValue = flowMachine(port);
-            changedBits |= tempValue ^ newState;
-            newState = tempValue;
-            break;
+    case 0x2F:  // Flush the RX queue
+        port->RX.Output = port->RX.Base;
+        port->RX.Input = port->RX.Base;
+        port->RX.OverRun = 0;
+        port->RX.Count = 0;
+        if (port->Type > 4) {
+            outb(port->Base + UART_FCR, port->FCRimage | FCR_RCVR_RESET);
+        }
+        RX_updateState(port, statePtr, maskPtr);
+        break;
 
-        case 0x33:  // Set baud rate
-            if (eventData != 0 && eventData != port->BaudRate) {
-                port->BaudRate = eventData;
-                // Calculate new divisor
-                port->DLRimage = (unsigned short)(port->MasterClock / (eventData << 3));
-                if (port->DLRimage == 0) {
-                    port->DLRimage = 1;
-                }
-                // Reprogram chip if active
-                if (oldState & STATE_ACTIVE) {
-                    programChip(port);
-                }
-                // Calculate character time in nanoseconds
-                // Character time = (dataBits + stopBits + 1 for start bit + parity) * bit_time
-                // bit_time = 1000000000 / baud_rate nanoseconds
-                tempValue = port->CharLength + port->StopBits + 2; // +2 for start bit and parity
-                if (port->TX_Parity == PARITY_NONE) {
-                    tempValue--; // No parity bit
-                }
-                // Calculate: (tempValue * 1000000000) / baudRate
-                // Use 64-bit arithmetic to avoid overflow
-                port->FrameInterval.tv_sec =
-                    (unsigned long long)(tempValue * 1000000000) / eventData;
-                port->FrameInterval.tv_nsec =
-                    (unsigned long long)(tempValue * 1000000000) % eventData;
-            }
+    case 0x33:  // Baud rate, in half-bits per second
+        if (eventData <= 99 || Chip[port->Type].MaxBaud < eventData) {
+            result = 0xFFFFFD3E;
             break;
+        }
+        port->BaudRate = eventData;
+        programChip(port);
+        break;
 
-        case 0x3B:  // Set data bits (10=5 bits, 12=6 bits, 14=7 bits, 16=8 bits)
-            if (eventData >= 10 && eventData <= 16 && (eventData & 1) == 0) {
-                port->CharLength = eventData;
-                // Update LCR value
-                port->LCRimage = (port->LCRimage & 0xFC) | ((eventData - 10) >> 1);
-                // Reprogram chip if active
-                if (oldState & STATE_ACTIVE) {
-                    programChip(port);
-                }
-            }
-            break;
+    case 0x37:  // Reserved: accepted only as a no-op
+    case 0x3F:
+    case 0xF7:
+        if (eventData != 0) {
+            result = 0xFFFFFD3E;
+        }
+        break;
 
-        case 0x43:  // Set parity
-            if (eventData >= PARITY_NONE && eventData <= PARITY_SPACE) {
-                port->TX_Parity = eventData;
-                // Update LCR value based on parity type
-                tempValue = port->LCRimage & 0xC7; // Clear parity bits
-                if (eventData != PARITY_NONE) {
-                    tempValue |= 0x08; // Enable parity
-                    switch (eventData) {
-                        case PARITY_ODD:
-                            // Odd parity: bit 4 = 0
-                            break;
-                        case PARITY_EVEN:
-                            tempValue |= 0x10; // Even parity: bit 4 = 1
-                            break;
-                        case PARITY_MARK:
-                            tempValue |= 0x20; // Mark parity: bit 5 = 1
-                            break;
-                        case PARITY_SPACE:
-                            tempValue |= 0x30; // Space parity: bits 4,5 = 1
-                            break;
-                    }
-                }
-                port->LCRimage = (unsigned char)tempValue;
-                // Reprogram chip if active
-                if (oldState & STATE_ACTIVE) {
-                    programChip(port);
-                }
-            }
+    case 0x3B:  // Character length, half-bit units, 10..16 even
+        if (eventData - 10 > 6 || (eventData & 1) != 0) {
+            result = 0xFFFFFD3E;
             break;
+        }
+        port->CharLength = eventData;
+        programChip(port);
+        break;
 
-        case 0x47:  // Set flow control
-            port->RX_Parity = eventData;
-            // Update flow control mode flags
-            port->FlowControl &= ~(FLOW_DTR_ENABLED | FLOW_RTS_ENABLED | FLOW_HW_ENABLED);
-            if (eventData & 0x02) {
-                port->FlowControl |= FLOW_DTR_ENABLED;
-            }
-            if (eventData & 0x04) {
-                port->FlowControl |= FLOW_RTS_ENABLED;
-            }
-            if (eventData & 0x10) {
-                port->FlowControl |= FLOW_HW_ENABLED;
-            }
-            // Recalculate flow control state
-            tempValue = flowMachine(port);
-            changedBits = tempValue ^ oldState;
-            newState = tempValue;
+    case 0x43:  // Parity, PARITY_NONE..PARITY_SPACE
+        if (eventData == 0 || eventData > PARITY_SPACE) {
+            result = 0xFFFFFD3E;
             break;
+        }
+        port->TX_Parity = eventData;
+        port->RX_Parity = 0;
+        programChip(port);
+        break;
 
-        case 0x4B:  // Set delay timeout
-            // Cancel existing delay timeout if active
-            if (port->DelayTOEntry != NULL) {
-                thread_call_cancel(port->DelayTOEntry);
-            }
-            // Set new delay timeout if non-zero
-            if (eventData != 0) {
-                tvalspec_t deadline = _ISASerialPortDeadlineFromParts(eventData, 0);
-                thread_call_enter_delayed(port->DelayTOEntry, deadline);
-            }
+    case 0x47:  // RX parity checking: off, or 6 for "report errors"
+        if (eventData != 0 && eventData != 6) {
+            result = 0xFFFFFD3E;
             break;
+        }
+        port->RX_Parity = eventData;
+        break;
 
-        case 0x4F:  // Set character time override
-            port->DataLatInterval.tv_sec = eventData & 0xFFFF;
-            port->DataLatInterval.tv_nsec = (eventData >> 16) & 0xFFFF;
-            break;
-
-        case 0x53:  // External state change
-            // This is used to inject external state changes
-            newState = eventData;
-            changedBits = newState ^ oldState;
-            break;
-
-        case 0x55:  // Unmark character (remove from filter)
-            if (eventData <= 0xFF) {
-                bitIndex = eventData & 0x1F;  // Bit position within word
-                byteIndex = eventData >> 5;   // Word index (0-7)
-                port->SWspecial[byteIndex] &= ~(1 << bitIndex);
+    case 0x4B:  // Arm the delay timer, microseconds
+        if (eventData != 0) {
+            if (eventData > 0x418937) {
+                eventData = 0x418937;
             }
-            break;
+            *statePtr |= 0x1000;
+            intervalNS = (unsigned long long)(eventData * 1000);
+            interval.tv_sec = intervalNS / 1000000000;
+            interval.tv_nsec = intervalNS % 1000000000;
+            thread_call_enter_delayed(port->DelayTOEntry,
+                                      deadline_from_interval(interval));
+        }
+        break;
 
-        case 0x59:  // Mark character (add to filter)
-            if (eventData <= 0xFF) {
-                bitIndex = eventData & 0x1F;  // Bit position within word
-                byteIndex = eventData >> 5;   // Word index (0-7)
-                port->SWspecial[byteIndex] |= (1 << bitIndex);
-            }
-            break;
+    case 0x4F:  // Data-latency interval, microseconds in, sec/nsec out
+        intervalNS = (unsigned long long)(eventData * 1000);
+        port->DataLatInterval.tv_sec = intervalNS / 1000000000;
+        port->DataLatInterval.tv_nsec = intervalNS % 1000000000;
+        break;
 
-        case 0xE5:  // Force FIFO disable
-            port->MinLatency = (eventData != 0) ? 1 : 0;
-            // Reinitialize chip if active
-            if (oldState & STATE_ACTIVE) {
-                initChip(port);
-            }
-            break;
+    case 0x53:  // Externally driven flow-signal change
+        // Only the bits this port does not manage itself may be driven from
+        // outside, hence the mask against ~FlowControl.
+        tempValue = ((eventData >> 16) & 0x16) & ~port->FlowControl;
+        *maskPtr |= tempValue;
+        *statePtr &= ~tempValue;
+        *statePtr |= tempValue & eventData;
 
-        case 0xE9:  // Set XON character
-            if (eventData <= 0xFF) {
-                port->XONchar = (unsigned char)eventData;
-            }
-            break;
+        if ((tempValue & 0x10) != 0) {
+            port->RXOstate = (eventData & 0x10) ? 2 : 1;
+        }
 
-        case 0xED:  // Set XOFF character
-            if (eventData <= 0xFF) {
-                port->XOFFchar = (unsigned char)eventData;
-            }
-            break;
+        mcrValue = MCR_OUT2;
+        if (*statePtr & STATE_DTR) {
+            mcrValue |= MCR_DTR;
+        }
+        if (*statePtr & STATE_RTS) {
+            mcrValue |= MCR_RTS;
+        }
+        outb(port->Base + UART_MCR, mcrValue);
+        break;
 
-        case 0xF3:  // Set stop bits (2=1 stop bit, 3+=2 stop bits)
-            if (eventData >= 2 && eventData <= 4) {
-                port->StopBits = eventData;
-                // Update LCR value
-                if (eventData == 2) {
-                    port->LCRimage &= ~0x04; // 1 stop bit
-                } else {
-                    port->LCRimage |= 0x04;  // 2 stop bits
-                }
-                // Reprogram chip if active
-                if (oldState & STATE_ACTIVE) {
-                    programChip(port);
-                }
-            }
-            break;
+    case 0x55:  // Unmark a character in the special-character bitmap
+        port->SWspecial[eventData >> 5] &= ~(1 << (eventData & 0x1F));
+        break;
 
-        case 0xF9:  // Set break state
-            if (eventData != 0) {
-                // Set break
-                port->LCRimage |= 0x40;
-            } else {
-                // Clear break
-                port->LCRimage &= ~0x40;
-            }
-            // Write to LCR register if active
-            if (oldState & STATE_ACTIVE) {
-                outb(port->Base + UART_LCR, port->LCRimage);
-            }
-            break;
+    case 0x59:  // Mark a character in the special-character bitmap
+        port->SWspecial[eventData >> 5] |= 1 << (eventData & 0x1F);
+        break;
 
-        default:
-            // Unknown event type - ignore
+    case 0xE5:  // Minimum-latency mode: no FIFO trigger delay
+        port->MinLatency = (eventData != 0);
+        port->DLRimage = 0;
+        programChip(port);
+        break;
+
+    case 0xE9:  // XOFF character
+        port->XOFFchar = (unsigned char)eventData;
+        break;
+
+    case 0xED:  // XON character
+        port->XONchar = (unsigned char)eventData;
+        break;
+
+    case 0xF3:  // Stop bits, half-bit units, 2..4
+        if (eventData - 2 > 2) {
+            result = 0xFFFFFD3E;
             break;
+        }
+        port->StopBits = eventData;
+        programChip(port);
+        break;
+
+    case 0xF9:  // Break state, driven straight at the LCR
+        *statePtr &= ~0x800;
+        if ((unsigned char)eventData != 0) {
+            port->LCRimage |= 0x40;
+            tempValue = 0x800;
+        } else {
+            port->LCRimage &= ~0x40;
+            tempValue = 0;
+        }
+        outb(port->Base + UART_LCR, port->LCRimage);
+        *statePtr |= tempValue;
+        *maskPtr |= 0x800;
+        break;
+
+    default:
+        result = 0xFFFFFD3E;
+        break;
     }
 
-    // Update state if changed
-    if (newState != oldState) {
-        port->State = newState;
-    }
-
-    // Return values through pointers
-    if (statePtr != NULL) {
-        *statePtr = newState;
-    }
-    if (changedBitsPtr != NULL) {
-        *changedBitsPtr = changedBits;
-    }
+    return result;
 }
 
 /*
@@ -2391,6 +2427,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
  * Probe for device presence.
  * Attempts to create an instance with the device description to verify device compatibility.
  *
+ * The instance is deliberately NOT freed: initFromDeviceDescription: has already
+ * called registerDevice, so the object probe built is the live driver and freeing
+ * it would tear down the device that was just published (Finding 85).
+ *
  * Returns YES if device is compatible, NO otherwise.
  */
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
@@ -2402,8 +2442,6 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
     // If initialization succeeded, the device is compatible
     if (instance != nil) {
-        // Free the test instance
-        [instance free];
         return YES;
     }
 
@@ -2429,7 +2467,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned long long heartBeatNS;
     unsigned int i;
     char portName[32];
-    IOReturn result;
+    id result;
 
     // ivar 1 points at ivar 0, and ivar 0's first word points back at us.  The
     // raw offsets below are the reference's, which is why the class has to
@@ -2469,24 +2507,24 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     *(void **)((char *)self + 0x214) = NULL;        // timer callout 2
     *(void **)((char *)self + 0x220) = NULL;
     *(unsigned int *)((char *)self + 0x224) = 0;
-    *(unsigned int *)((char *)self + 0x228) = 0;    // charTimeOverrideLow
-    *(unsigned int *)((char *)self + 0x22c) = 0;    // charTimeOverrideHigh
-    *(unsigned int *)((char *)self + 0x230) = 0;    // heartBeatInterval low
-    *(unsigned int *)((char *)self + 0x234) = 0;    // heartBeatInterval high
-    *(unsigned int *)((char *)self + 0x238) = 0;
-    *(unsigned int *)((char *)self + 0x23c) = 0;
-    *(unsigned int *)((char *)self + 0x134) = 0x60c0000;  // currentState
+    *(unsigned int *)((char *)self + 0x228) = 0;    // Port.DataLatInterval.tv_sec
+    *(unsigned int *)((char *)self + 0x22c) = 0;    // Port.DataLatInterval.tv_nsec
+    *(unsigned int *)((char *)self + 0x230) = 0;    // Port.CharLatInterval.tv_sec
+    *(unsigned int *)((char *)self + 0x234) = 0;    // Port.CharLatInterval.tv_nsec
+    *(unsigned int *)((char *)self + 0x238) = 0;    // Port.HeartBeatInterval.tv_sec
+    *(unsigned int *)((char *)self + 0x23c) = 0;    // Port.HeartBeatInterval.tv_nsec
+    *(unsigned int *)((char *)self + 0x134) = 0x60c0000;  // Port.State
     *(unsigned int *)((char *)self + 0x138) = 0;
     *(unsigned int *)((char *)self + 0x13c) = 0;
-    *(unsigned int *)((char *)self + 0x208) = 0x126;   // stateEventMask
-    *(unsigned int *)((char *)self + 0x1a4) = 0x4b0;   // rxQueueCapacity default = 1200
+    *(unsigned int *)((char *)self + 0x208) = 0x126;   // Port.FlowControl
+    *(unsigned int *)((char *)self + 0x1a4) = 0x4b0;   // Port.TX.DefaultSize = 1200
     *(unsigned int *)((char *)self + 0x194) = 0;
     *(unsigned int *)((char *)self + 0x198) = 0;
     *(unsigned int *)((char *)self + 0x19c) = 0;
     *(unsigned int *)((char *)self + 400) = 0;
     *(unsigned int *)((char *)self + 0x178) = 0;
     *(unsigned int *)((char *)self + 0x17c) = 0;
-    *(unsigned int *)((char *)self + 0x16c) = 0x4b0;   // txQueueCapacity default = 1200
+    *(unsigned int *)((char *)self + 0x16c) = 0x4b0;   // Port.RX.DefaultSize = 1200
     *(unsigned int *)((char *)self + 0x15c) = 0;
     *(unsigned int *)((char *)self + 0x160) = 0;
     *(unsigned int *)((char *)self + 0x164) = 0;
@@ -2506,8 +2544,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     configTable = [deviceDescription configTable];
     if (configTable == nil) {
         IOLog("ISASerialPort: Invalid Config Table\n");
-        [self free];
-        return nil;
+        return [self free];
     }
 
     // "Instance" is the port number.  It feeds Port.Instance and names the
@@ -2523,21 +2560,23 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     [self setDeviceKind:"Serial"];
     self->Port.PortName = (char *)[self name];
 
-    // Get and validate Port configuration (base I/O address)
-    if ([deviceDescription numPortRanges] != 1) {
-        IOLog("%s: Invalid port configuration\n", [self name]);
-        [self free];
-        return nil;
+    // The shape of the description itself: exactly one port range, exactly one
+    // interrupt and no DMA channels.  All three are checked before any of them
+    // is read, and they share one log string.
+    if ([deviceDescription numPortRanges] != 1 ||
+        [deviceDescription numInterrupts] != 1 ||
+        [(IOEISADeviceDescription *)deviceDescription numChannels] != 0) {
+        IOLog("%s: Invalid configuration\n", [self name]);
+        return [self free];
     }
 
     portRanges = (unsigned int *)[deviceDescription portRangeList];
     self->Port.Base = portRanges[0];
 
     // Check that base port is aligned and size is 8
-    if ((portRanges[0] & 3) != 0 || portRanges[1] != 8) {
+    if ((self->Port.Base & 3) != 0 || portRanges[1] != 8) {
         IOLog("%s: Invalid Port configuration\n", [self name]);
-        [self free];
-        return nil;
+        return [self free];
     }
 
     // Get and validate IRQ
@@ -2572,8 +2611,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         if (chipType == 0) {
             IOLog("%s: Unable to determine chip type at I/O base 0x%x\n",
                   [self name], self->Port.Base);
-            [self free];
-            return nil;
+            return [self free];
         }
     }
 
@@ -2587,19 +2625,24 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     // Initialize chip with default settings
     initChip(self->port);
 
-    // Allocate timer callout objects
-    *(void **)((char *)self + 0x210) = thread_call_allocate(NULL, NULL);
-    *(void **)((char *)self + 0x214) = thread_call_allocate(NULL, NULL);
-    *(void **)((char *)self + 0x218) = thread_call_allocate(delayTOHandler, self->port);
-    *(void **)((char *)self + 0x21c) = thread_call_allocate(heartBeatTOHandler, self->port);
+    // The four callout entries, each bound to its own handler with &self->Port
+    // as the parameter.  FrameTOEntry and DataLatTOEntry are not spare slots:
+    // the reference allocates them against frameTOHandler and dataLatTOHandler.
+    self->Port.FrameTOEntry =
+        thread_call_allocate((thread_call_func_t)frameTOHandler, self->port);
+    self->Port.DataLatTOEntry =
+        thread_call_allocate((thread_call_func_t)dataLatTOHandler, self->port);
+    self->Port.DelayTOEntry =
+        thread_call_allocate((thread_call_func_t)delayTOHandler, self->port);
+    self->Port.HeartBeatTOEntry =
+        thread_call_allocate((thread_call_func_t)heartBeatTOHandler, self->port);
 
-    if (*(void **)((char *)self + 0x210) == NULL ||
-        *(void **)((char *)self + 0x214) == NULL ||
-        *(void **)((char *)self + 0x218) == NULL ||
-        *(void **)((char *)self + 0x21c) == NULL) {
+    if (self->Port.FrameTOEntry == NULL ||
+        self->Port.DataLatTOEntry == NULL ||
+        self->Port.DelayTOEntry == NULL ||
+        self->Port.HeartBeatTOEntry == NULL) {
         IOLog("%s: Unable to allocate callout entries\n", [self name]);
-        [self free];
-        return nil;
+        return [self free];
     }
 
     // "TX Buffer Size" and "RX Buffer Size" are in characters, while the ring
@@ -2664,29 +2707,32 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         self->Port.IERmask = 0xfb;
     }
 
-    // Call superclass init
+    // Call superclass init.  Its result, not self, is what this method returns.
     result = [super initFromDeviceDescription:deviceDescription];
-    if (!result) {
-        IOLog("%s: superclass initFromDeviceDescription failed\n", [self name]);
-        [self free];
-        return nil;
+    if (result == nil) {
+        return [self free];
     }
 
-    // Register interrupts (returns 0 on success based on decompiled code)
-    if ([self registerInterrupt:0] == 0) {
-        IOLog("%s: Base=0x%04x, IRQ=%d, Type=%s%s, FIFO=%d\n",
-              [self name],
-              *(unsigned int *)((char *)self + 0x1b0),
-              *(unsigned int *)((char *)self + 0x1b4),
-              Chip[*(unsigned int *)((char *)self + 0x1b8)].LongName,
-              (*(unsigned char *)((char *)self + 0x1e3) ? " (PCMCIA)" : ""),
-              Chip[*(unsigned int *)((char *)self + 0x1b8)].FIFOsize);
-        return self;
+    // enableAllInterrupts is IODirectDevice's, returns an IOReturn, and is what
+    // actually attaches the handler getHandler:level:argument:forInterrupt:
+    // hands out.  registerDevice then publishes the port.
+    if ([self enableAllInterrupts] != IO_R_SUCCESS) {
+        IOLog("%s: Unable to enable interrupts\n", [self name]);
+        return [self free];
     }
 
-    IOLog("%s: Failed to register interrupt\n", [self name]);
-    [self free];
-    return nil;
+    [self registerDevice];
+
+    // The PCMCIA marker is a prefix on the chip name, not a suffix on the line.
+    IOLog("%s: Base=0x%04x, IRQ=%d, Type=%s%s, FIFO=%d\n",
+          [self name],
+          self->Port.Base,
+          self->Port.IRQ,
+          (self->Port.PCMCIA ? "PCMCIA/" : ""),
+          Chip[self->Port.Type].LongName,
+          Chip[self->Port.Type].FIFOsize);
+
+    return result;
 }
 
 /*
@@ -3090,7 +3136,6 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned int remainingMin;
     int timerScheduled;
     unsigned int charTimeLo, charTimeHi;
-    tvalspec_t deadline = { 0, 0 };
 
     // Validate parameters
     if (count == NULL || buffer == NULL || size < minCount) {
@@ -3150,8 +3195,9 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
         // Schedule character timeout timer after first byte if enabled
         if (timerScheduled > 0) {
-            deadline = _ISASerialPortDeadlineFromParts(charTimeLo, charTimeHi);
-            thread_call_enter_delayed(self->Port.DelayTOEntry, deadline);
+            thread_call_enter_delayed(
+                self->Port.DelayTOEntry,
+                deadline_from_interval(self->Port.DataLatInterval));
             timerScheduled = -1;  // Mark as scheduled
         }
     }
@@ -3489,7 +3535,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned int flowState;
     unsigned int eventMask;
     unsigned int validatedSize;
-    unsigned int heartbeatLo, heartbeatHi;
+    unsigned long long charLatNS;
 
     result = IO_R_SUCCESS;
 
@@ -3502,70 +3548,61 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         return 0xFFFFFD33; // Port not acquired
     }
 
-    // Handle special event types
-    if (event == 0x0F) {
-        // Set RX buffer size (offset 0x140 = txQueueCapacity in wrong place?)
-        // Actually this seems to be setting a different buffer size
-        // Based on offset 0x140, this is setting TX queue capacity
+    switch (event) {
+    case 0x0F:
+        // Resize the RX ring: 0x140 is Port.RX.Size, 0x148/0x14c its high and
+        // low watermarks.  Only while the port is inactive.
         if ((self->Port.State & 0x40000000) != 0) {
-            // Port is active - cannot change buffer size
             result = 0xFFFFFD2B;
         } else {
-            // Port not active - can change buffer size
-            validatedSize = validateRingBufferSize(data, &self->Port.TX);
-            // Store at offset 0x140 - this appears to be txQueueCapacity field
-            self->Port.TX.Size = validatedSize;
-
-            // Adjust high watermark if necessary
-            if ((validatedSize - 3) < self->Port.TX.HighWater) {
-                self->Port.TX.HighWater = validatedSize - 3;
-            }
-
-            // Adjust medium watermark if necessary
-            if ((self->Port.TX.HighWater - 3) < self->Port.TX.LowWater) {
-                self->Port.TX.LowWater = self->Port.TX.HighWater - 3;
-            }
-        }
-    } else if (event == 0x0B) {
-        // Set TX buffer size (offset 0x178 = rxQueueCapacity)
-        // Actually setting RX queue capacity based on offset
-        if ((self->Port.State & 0x40000000) != 0) {
-            // Port is active - cannot change buffer size
-            result = 0xFFFFFD2B;
-        } else {
-            // Port not active - can change buffer size
             validatedSize = validateRingBufferSize(data, &self->Port.RX);
-            // Store at offset 0x178 - this is rxQueueCapacity
             self->Port.RX.Size = validatedSize;
 
-            // Adjust high watermark if necessary
-            if ((validatedSize - 3) < self->Port.RX.HighWater) {
+            if (self->Port.RX.HighWater > validatedSize - 3) {
                 self->Port.RX.HighWater = validatedSize - 3;
             }
-
-            // Adjust low watermark if necessary
-            if ((self->Port.RX.HighWater - 3) < self->Port.RX.LowWater) {
+            if (self->Port.RX.LowWater > self->Port.RX.HighWater - 3) {
                 self->Port.RX.LowWater = self->Port.RX.HighWater - 3;
             }
         }
-    } else if (event == 0x4B) {
-        // Set heartbeat interval (event 0x4B from executeEvent)
-        // Convert from microseconds to nanoseconds and store as 64-bit value
-        heartbeatLo = (unsigned long long)(data * 1000) / 1000000000;
-        heartbeatHi = (unsigned long long)(data * 1000) % 1000000000;
-        // Store at offsets 0x230 and 0x234
-        // These seem to be different from heartBeatInterval (0x110)
-        // Likely charTimeOverrideLow/High or similar
-        *((unsigned int *)((char *)self + 0x230)) = heartbeatLo;
-        *((unsigned int *)((char *)self + 0x234)) = heartbeatHi;
-    } else if (event == 0x53) {
-        // External state change event
-        // Update state event mask at offset 0x208
-        changedBits = data ^ *((unsigned int *)((char *)self + 0x208));
-        *((unsigned int *)((char *)self + 0x208)) = data & 0xFFFF017E;
+        break;
+
+    case 0x0B:
+        // Resize the TX ring: 0x178 is Port.TX.Size, 0x180/0x184 its high and
+        // low watermarks.  The queue handed to validateRingBufferSize is
+        // &Port.RX in BOTH arms; that is what the reference does at 7024, and
+        // it is reproduced rather than corrected (see divergences.md).
+        if ((self->Port.State & 0x40000000) != 0) {
+            result = 0xFFFFFD2B;
+        } else {
+            validatedSize = validateRingBufferSize(data, &self->Port.RX);
+            self->Port.TX.Size = validatedSize;
+
+            if (self->Port.TX.HighWater > validatedSize - 3) {
+                self->Port.TX.HighWater = validatedSize - 3;
+            }
+            if (self->Port.TX.LowWater > self->Port.TX.HighWater - 3) {
+                self->Port.TX.LowWater = self->Port.TX.HighWater - 3;
+            }
+        }
+        break;
+
+    case 0x4B:
+        // Character-latency interval, microseconds in, seconds/nanoseconds out.
+        // 0x230/0x234 is Port.CharLatInterval, NOT HeartBeatInterval (0x238);
+        // verified against the reference at 6889/6898.
+        charLatNS = (unsigned long long)(data * 1000);
+        self->Port.CharLatInterval.tv_sec = charLatNS / 1000000000;
+        self->Port.CharLatInterval.tv_nsec = charLatNS % 1000000000;
+        break;
+
+    case 0x53:
+        // External state change event.  0x208 is Port.FlowControl.
+        changedBits = (data ^ self->Port.FlowControl) & 0x16;
+        self->Port.FlowControl = data & 0xFFFF017E;
 
         // If flow control bits changed
-        if ((changedBits & 0x16) != 0) {
+        if (changedBits != 0) {
             // If hardware flow control bit (0x10) changed
             if ((changedBits & 0x10) != 0) {
                 // Reset flow control state
@@ -3608,16 +3645,18 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
             if (eventMask & (changedBits << 16)) {
                 RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                    ((oldState & 0xFFE9) | (flowState & 0x16)) | (changedBits << 16));
+                                    (newState & 0xFFFF) | (changedBits << 16));
             }
         }
-    } else {
-        // All other events - call executeEvent
+        break;
+
+    default:
+        // Everything else goes to the shared event machine, which reports the
+        // bits it touched through the mask and the new values through state.
         changedBits = 0;
         newState = self->Port.State;
 
-        executeEvent(self->port, (unsigned char)event, data, &newState, &changedBits);
-        result = 0;
+        result = executeEvent(self->port, event, data, &newState, &changedBits);
 
         // Update state with changes
         oldState = self->Port.State;
@@ -3654,6 +3693,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
                                 (newState & 0xFFFF) | (changedBits << 16));
         }
+        break;
     }
 
     splx(oldIRQL);
@@ -3976,31 +4016,18 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
              forParameter:(IOParameterName)parameter
                     count:(unsigned int *)count
 {
-    id configTable;
-    id paramValue;
     const char *stringValue;
-    unsigned int len;
-    const char *p;
 
     // Validate parameters
     if (values == NULL || count == NULL || *count == 0) {
         return [super getCharValues:values forParameter:parameter count:count];
     }
 
-    // Get config table from device description
-    configTable = [[self deviceDescription] configTable];
-    if (configTable == nil) {
-        return [super getCharValues:values forParameter:parameter count:count];
-    }
-
-    // Look up parameter in config table
-    paramValue = [configTable valueForStringKey:parameter];
-    if (paramValue == nil) {
-        return [super getCharValues:values forParameter:parameter count:count];
-    }
-
-    // Get string value
-    stringValue = [paramValue stringValue];
+    // valueForStringKey: already returns the string, so the whole lookup is one
+    // chain of three messages with no intermediate checks: messaging nil returns
+    // nil, so a missing device description or config table falls out here too.
+    stringValue = [[[self deviceDescription] configTable]
+                       valueForStringKey:parameter];
     if (stringValue == NULL) {
         return [super getCharValues:values forParameter:parameter count:count];
     }
@@ -4009,17 +4036,8 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     strncpy((char *)values, stringValue, *count - 1);
     values[*count - 1] = '\0';
 
-    // Calculate actual length (including null terminator)
-    // This mimics the decompiled strlen loop
-    len = 0;
-    p = (const char *)values;
-    while (*p != '\0') {
-        len++;
-        p++;
-    }
-    len++; // Include null terminator
-
-    *count = len;
+    // Report the length including the null terminator
+    *count = strlen((char *)values) + 1;
     return IO_R_SUCCESS;
 }
 
@@ -4041,13 +4059,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
           argument:(unsigned int *)argument
       forInterrupt:(unsigned int)interruptType
 {
-    // Return the appropriate interrupt handler based on FIFO capability
-    // hasFIFO is at offset 0x1b8 (used as index: 0 for non-FIFO, 1 for FIFO)
-    if ((self->Port.Type > 4)) {
-        *handler = (IOInterruptHandler)FIFOIntHandler;
-    } else {
-        *handler = (IOInterruptHandler)NonFIFOIntHandler;
-    }
+    // The handler comes out of the chip table, not out of a FIFO test: the
+    // 82510 (row 8) reports a four-byte FIFO and still uses NonFIFOIntHandler,
+    // so Type > 4 would hand that part the wrong handler.
+    *handler = (IOInterruptHandler)Chip[self->Port.Type].IntHandler;
 
     // Set IRQ level to 3
     *level = 3;

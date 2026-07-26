@@ -10,6 +10,7 @@ from .identity import identify
 MH_MAGIC = 0xFEEDFACE
 CPU_TYPE_I386 = 7
 MH_OBJECT = 1
+MH_EXECUTE = 2
 MH_PRELOAD = 5
 MH_BUNDLE = 8
 LC_SEGMENT = 1
@@ -129,10 +130,10 @@ def read_macho(path: Path) -> dict[str, Any]:
         )
     if cpu_type != CPU_TYPE_I386:
         raise MachOFormatError(f"unsupported Mach-O CPU type {cpu_type}; expected i386")
-    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE):
+    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE):
         raise MachOFormatError(
             f"unsupported Mach-O file type {file_type}; "
-            "expected MH_OBJECT, MH_PRELOAD or MH_BUNDLE"
+            "expected MH_OBJECT, MH_PRELOAD, MH_BUNDLE or MH_EXECUTE"
         )
 
     command_start = _MACH_HEADER.size

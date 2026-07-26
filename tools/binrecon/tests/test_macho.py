@@ -157,7 +157,7 @@ def test_unknown_thread_flavor_is_preserved_and_next_command_is_found(tmp_path):
     [
         (0, 0, "magic"),
         (4, CPU_TYPE_I386 + 1, "CPU"),
-        (12, MH_OBJECT + 1, "file type"),
+        (12, MH_BUNDLE + 1, "file type"),
     ],
 )
 def test_rejects_unsupported_header_identity(tmp_path, header_offset, value, message):
@@ -436,3 +436,12 @@ def relocation_fixture_parts():
     text_offset = struct.unpack_from("<I", blob, first_section_offset + 40)[0]
     relocation_offset = struct.unpack_from("<I", blob, first_section_offset + 48)[0]
     return blob, relocation_offset, text_offset
+
+
+def test_read_macho_accepts_a_linked_executable(tmp_path):
+    path = write_fixture(tmp_path, build_macho_fixture(file_type=2))
+
+    document = read_macho(path)
+
+    assert document["input"]["architecture"] == "i386"
+    assert any(section["name"] == "__TEXT,__text" for section in document["sections"])

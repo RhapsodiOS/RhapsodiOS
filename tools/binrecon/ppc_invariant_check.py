@@ -1,8 +1,9 @@
 """Cross-check a PowerPC Mach-O read against properties a correct decode implies.
 
 Fixtures prove the decoder against hand-written arithmetic. This proves it
-against the reference binaries: a byte-order or HA16 mistake scatters
-reconstructed values outside every section, which shows up here.
+against the reference binaries: a byte-order mistake scatters reconstructed
+values outside every section, and an HA16 sign-extension mistake makes a
+scattered HI16/HA16 half disagree with its LO16 partner -- both show up here.
 """
 
 import argparse
@@ -16,6 +17,13 @@ from binrecon.macho import read_macho
 
 _PAIRED_KINDS = ("hi16", "ha16", "lo16", "jbsr", "sectdiff")
 
+# Objective-C 1.0 method-list sections whose objc_method struct
+# (SEL name; char *types; IMP imp;) legitimately points its third field into
+# __TEXT,__text -- the only __OBJC sections where that is true. Verified
+# against SCSIServer_reloc and SCSITape_reloc: every __OBJC vanilla
+# relocation naming __TEXT,__text lives in one of these three.
+_OBJC_METHOD_LIST_SECTIONS = ("__OBJC,__cls_meth", "__OBJC,__inst_meth", "__OBJC,__cat_inst_meth")
+
 # Scattered HI16/HA16/LO16 relocations and SECTDIFF (macho.py's
 # "ppc-scattered-*-32-absolute" / "ppc-sectdiff-32-absolute" kinds) store a
 # *difference* (target - anchor) in their addend, not an address -- that is
@@ -26,6 +34,45 @@ _DIFFERENCE_FORM_PREFIXES = ("ppc-scattered-", "ppc-sectdiff-")
 
 def _is_difference_form(kind):
     return kind.startswith(_DIFFERENCE_FORM_PREFIXES)
+
+
+# A PowerPC PIC address load stores the same 32-bit value twice: once as the
+# high half of a "lis" (HI16, unrounded, or HA16, sign-adjusted for the
+# addi/lwz/stw that follows) and once as the low half of that following
+# instruction (LO16). Both scattered halves carry the *same* reconstructed
+# value -- that's the one thing we can cross-check for difference-form
+# relocations without knowing the anchor. A byte-order or sign-extension bug
+# in either half's decode shows up as a disagreement here.
+_HA_HI_SCATTERED_KINDS = ("ppc-scattered-hi16-32-absolute", "ppc-scattered-ha16-32-absolute")
+_LO16_SCATTERED_KIND = "ppc-scattered-lo16-32-absolute"
+
+# The real HA16/LO16 pairs in SCSIServer_reloc and SCSITape_reloc sit exactly
+# 4 bytes apart (the "lis"/"addi" instruction pair). This window is
+# deliberately wider than that -- it tolerates the compiler reordering the
+# two instructions or inserting one intervening instruction -- while still
+# being small enough not to pair relocations that merely share a target
+# section by coincidence.
+_PAIR_WINDOW = 8
+
+
+def _difference_form_pairs(relocations):
+    """Pair each scattered HI16/HA16 relocation with the nearest scattered
+    LO16 relocation that names the same target and sits within
+    _PAIR_WINDOW bytes of it. Only pairs actually found are returned -- a
+    half with no nearby partner is not reported as anything.
+    """
+    hi_halves = [r for r in relocations if r["kind"] in _HA_HI_SCATTERED_KINDS]
+    lo_halves = [r for r in relocations if r["kind"] == _LO16_SCATTERED_KIND]
+    pairs = []
+    for hi in hi_halves:
+        candidates = [
+            lo for lo in lo_halves
+            if lo["target"] == hi["target"]
+            and abs(lo["address"] - hi["address"]) <= _PAIR_WINDOW
+        ]
+        if candidates:
+            pairs.append((hi, min(candidates, key=lambda lo: abs(lo["address"] - hi["address"]))))
+    return pairs
 
 
 def _sections(document):
@@ -61,6 +108,11 @@ def check_document(document):
             # check is the thing the scattered format's redundant r_value
             # already pinned during decode (_ppc_section_of in macho.py):
             # that the target it named is a real section in this document.
+            # NOTE: macho.py's own decode already raises MachOFormatError if
+            # a scattered relocation's r_value falls outside every section,
+            # so this branch can never fire on a document read_macho can
+            # actually produce today. It stays as a guard against future
+            # changes to how macho.py emits these raw records.
             if target is None or target not in section_names:
                 violations.append(
                     f"{relocation['kind']} at 0x{relocation['address']:x} names "
@@ -91,18 +143,39 @@ def check_document(document):
             # Method lists (__cls_meth, __inst_meth, __cat_*_meth) carry an IMP
             # field alongside the selector/types pointers, and IMP addresses
             # code in __TEXT,__text -- a legitimate third destination the
-            # brief's two-way rule didn't anticipate.
-            if owner is not None and not (owner.startswith("__OBJC")
-                                          or owner in ("__TEXT,__cstring", "__TEXT,__text")):
+            # brief's two-way rule didn't anticipate. Verified against both
+            # reference binaries: every __OBJC vanilla relocation that names
+            # __TEXT,__text lives in one of these three method-list
+            # sections, so the allowance is scoped to them rather than to
+            # every __OBJC section.
+            if owner is not None and not (
+                owner.startswith("__OBJC")
+                or owner == "__TEXT,__cstring"
+                or (owner == "__TEXT,__text"
+                    and entry["section"] in _OBJC_METHOD_LIST_SECTIONS)
+            ):
                 violations.append(
                     f"__OBJC pointer at 0x{entry['address']:x} points into {owner}"
                 )
+
+    for hi, lo in _difference_form_pairs(document["relocations"]):
+        if (hi["addend"] & 0xFFFFFFFF) != (lo["addend"] & 0xFFFFFFFF):
+            violations.append(
+                f"{hi['kind']} at 0x{hi['address']:x} and {lo['kind']} at 0x{lo['address']:x} "
+                f"reconstruct different values (0x{hi['addend'] & 0xFFFFFFFF:x} vs "
+                f"0x{lo['addend'] & 0xFFFFFFFF:x})"
+            )
 
     principals = sum(1 for entry in raw
                      if any(f"ppc-{kind}" in entry["kind"] or
                             f"scattered-{kind}" in entry["kind"]
                             for kind in _PAIRED_KINDS))
     pairs = sum(1 for entry in raw if entry["kind"] == "ppc-pair-16-absolute")
+    # NOTE: macho.py raises MachOFormatError itself if a paired principal's
+    # PAIR entry is missing (or an orphan PAIR appears without one), so this
+    # branch can never fire on a document read_macho can actually produce
+    # today either. It stays as a guard against future changes to raw-record
+    # emission.
     if principals != pairs:
         violations.append(
             f"{principals} paired principals but {pairs} PAIR records"
@@ -151,6 +224,9 @@ def main(argv=None):
                     if _is_difference_form(relocation["kind"]))
     print(f"{scattered} scattered/difference-form relocations "
           "(target section verified, field is a difference, not an address)")
+    pairs = _difference_form_pairs(document["relocations"])
+    print(f"{len(pairs)} HI16/HA16-LO16 pairs checked "
+          "(reconstructed values must agree)")
     print(f"{len(document['relocations'])} fused relocations, "
           f"{len(violations)} violations")
     return 1 if violations else 0

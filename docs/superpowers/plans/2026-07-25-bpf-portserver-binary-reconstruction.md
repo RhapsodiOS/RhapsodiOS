@@ -14,9 +14,11 @@
 
 ## Global Constraints
 
-- Python is 3.13.9 at `./.venv-binrecon/Scripts/python.exe`. The binrecon README names 3.12; 3.12 is not installed on this host and the pinned dependencies all install and pass on 3.13.9. **Do not change the pins.**
-- Every binrecon invocation needs `PYTHONPATH=tools/binrecon` and runs from the repository root.
-- **Test baseline is 659 passed, 4 skipped, 0 failed.** Verify with `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`. Any failure you see is yours.
+- **This plan executes in a git worktree at `D:/RhapsodiOS/.claude/worktrees/bpf-portserver-reconstruction` on branch `bpf-portserver-reconstruction`,** branched from `748c0be9`. A second session is concurrently editing `binrecon`'s analyzer adapters in the main tree; the worktree exists to keep this plan's analyses and review diffs uncontaminated. Do not `cd` to `D:/RhapsodiOS`, and do not merge or rebase onto `qemu-debug-loop` during execution.
+- Python is 3.13.9. The venv is untracked and lives only in the main tree, so invoke it by **absolute path**: `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe`. Wherever a step below writes `./.venv-binrecon/Scripts/python.exe`, use the absolute path instead. The binrecon README names 3.12; 3.12 is not installed on this host and the pinned dependencies all install and pass on 3.13.9. **Do not change the pins.**
+- Every binrecon invocation needs `PYTHONPATH=tools/binrecon` and runs from the worktree root. With that set, the main tree's interpreter loads the worktree's `binrecon` package — verified.
+- **Test baseline is 662 passed, 4 skipped, 0 failed (666 collected).** Verify with `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`. Any failure you see is yours.
+- **This plan adds no tests, by design** — it adds no code to `binrecon`. A task that ends with the baseline unchanged is correct, not a coverage gap.
 - IDA `version` must be `9.2`; Ghidra `version` must be `12.1` with a Java 21 `java.exe`. The adapters reject other versions.
 - Reference binaries live under `C:\Users\raynorpat\Downloads\test\Drivers\i386` and are **never** committed.
 - **Never point a profile's `rebuilt` at the reference.** That is what produced the false `exact-image` pass in the retired `tools/binrecon/out/eisabus/` run. Both profiles here are reference-only: they omit `rebuilt` entirely.
@@ -266,7 +268,7 @@ If either prints a different hash, the reference file on disk is not the one thi
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `659 passed, 4 skipped`.
+Expected: `662 passed, 4 skipped`.
 
 - [ ] **Step 6: Commit**
 
@@ -1236,7 +1238,7 @@ git status --porcelain
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `git status` shows only `src/drivers-i386/README`, and nothing under `tools/binrecon/out/`. The suite reports `659 passed, 4 skipped` — this plan adds no tests, because it adds no code to `binrecon`.
+Expected: `git status` shows only `src/drivers-i386/README`, and nothing under `tools/binrecon/out/`. The suite reports `662 passed, 4 skipped` — this plan adds no tests, because it adds no code to `binrecon`.
 
 - [ ] **Step 4: Commit**
 

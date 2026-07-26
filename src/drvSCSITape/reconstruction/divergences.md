@@ -1115,7 +1115,7 @@ left unchanged, for the same out-of-scope reason `_do_ioc`'s finding gives:
 fixing the scanner or rerunning Task 1's seeding step is not authorized by
 this task's brief.
 
-### `-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]` (address 524, 908 bytes; `SCSITape.m:177-315`)
+## Finding: `-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]` (address 524, 908 bytes; `SCSITape.m:177-315`) — the transient reserve/release cycle, ivar zeroing, and final `IOLog` all diverge
 
 **Signature:** `- (stInitReturn_t) initSCSITape:(int)iunit target:(u_char)stTarget
 lun:(u_char)stLun controller:controllerId majorDeviceNumber:(int)major` — confirmed
@@ -1195,10 +1195,15 @@ reference and class-name tables instead of the message-ref tables.
 10. `_devLock = [[NXLock alloc] init]; _devAcquired = 0;` (`0x11C`/`0x121`) —
     matches `SCSITape.m:264-265`.
 11. Builds the compressed drive-type string via three `_moveString` calls
-    (vendor ID 8 bytes, product ID 16 bytes, revision 4 bytes, each followed
-    by the "insert a trailing space if the last output byte wasn't already
-    one" check) into the `deviceName`-sized stack buffer at `var_F4`
-    (matching source's `driveType`), `sprintf`s `"Target %d LUN %d at %s"`
+    (vendor ID 8 bytes, product ID 16 bytes, revision 4 bytes) into the
+    `deviceName`-sized stack buffer at `var_F4` (matching source's
+    `driveType`). Only the **first two** calls are followed by the "insert a
+    trailing space if the last output byte wasn't already one" check
+    (addresses 1048-1068 after the vendor-ID call, 1100-1120 after the
+    product-ID call). The **third** call (revision, 4 bytes) is followed
+    instead by an unconditional NUL-byte store at addresses 1152-1156 (`li
+    r0, 0` / `stbx r0, r31, r3`) terminating the buffer — there is no
+    trailing-space check after it. `sprintf`s `"Target %d LUN %d at %s"`
     into a second buffer at `var_84` using `_target`/`_lun`/`[controllerId
     name]` (matching source's `location`), calls `[self setLocation:...]`
     with it, and then `IOLog("%s: %s at %s\n", deviceName, driveType,
@@ -1276,7 +1281,7 @@ transient reserve/release pair inside `initSCSITape:` itself, matching the
 ordering in steps 1-13 above, rather than trying to fold it into `probe:`'s
 existing (different) reservation call.
 
-### `-[SCSITape executeRequest:buffer:client:senseBuf:]` (address 5836, 832 bytes; `SCSITape.m:938-1076`)
+## Finding: `-[SCSITape executeRequest:buffer:client:senseBuf:]` (address 5836, 832 bytes; `SCSITape.m:938-1076`) — the `rtn == GOOD` if/else sits outside the ignore-check guard, and the reference never returns the controller's own status
 
 **Signature:** `- (sc_status_t) executeRequest:(IOSCSIRequest *)scsiReq
 buffer:(void *)buffer client:(vm_task_t)client senseBuf:(esense_reply_t
@@ -1288,14 +1293,29 @@ call in step 1, since nothing between function entry and that call clobbers
 
 **What it calls, resolved through the relocation table:** `objc_msgSend`
 (five sites: the initial `[_controller executeRequest:...]`, `[self
-requestSense:]`, twice `[self name]`, `[self isFixedBlock]`), `_IOLog` (four
-sites), `_IOFindNameForValue` (three sites, against `_IOSCSIOpcodeStrings`
-twice and `_IOScStatusStrings` once — both external data symbols, confirmed
-by relocation, not `objc_msgSend` targets), and two internal `bl`s resolved
-via `read_macho` to this same binary's already-`assembly-matched` C helpers:
-`sub_1A3C` → `_cdb_c6s_len_value` (address 6952 — itself still `unexamined`
-per its own finding above) and `sub_1A2C` → `_er_info_value` (address 6992,
-`assembly-matched`).
+requestSense:]`, twice `[self name]`, `[self isFixedBlock]`), `_IOLog`
+(**three** sites — addresses 6400, 6556, 6588, confirmed by relocation, not
+four), `_IOFindNameForValue` (three sites, confirmed by relocation against
+`_IOScStatusStrings` at **6372 and 6524** and `_IOSCSIOpcodeStrings` at
+**6504** — both external data symbols, not `objc_msgSend` targets), and two
+internal `bl`s resolved via `read_macho` to this same binary's already-
+`assembly-matched` C helpers: `sub_1A3C` → `_cdb_c6s_len_value` (address
+6952 — itself still `unexamined` per its own finding above) and `sub_1A2C` →
+`_er_info_value` (address 6992, `assembly-matched`).
+
+**Control-flow evidence (the reason the if/else is not nested inside the
+guard):** the guard at step 3 below has exactly three false-exit branches —
+`bgt cr1, loc_1800` at address 6056, `bne cr1, loc_1800` at address 6088,
+and `bne cr1, loc_1800` at address 6100 — and all three name the identical
+target, `loc_1800` = address **6144**, which disassembles to `cmpwi cr1,
+r27, 0`: the head of the `rtn == SR_IOST_GOOD` test (step 5 below). The
+guard's own *pass* path (step 4, both sub-branches) also falls through to
+that same address 6144. So every exit from step 3 — pass or fail — lands on
+the same instruction, and the `rtn == GOOD`/else split at 6144 applies
+unconditionally to whatever `rtn` holds at that point, not only to values
+the guard let through. The block past the split is address 6408 (`loc_1908`,
+step 6's shared-tail entry, `lbz r0, 0x120(r28)`); none of the three guard
+exits target 6408 — they all target 6144, one instruction before the split.
 
 **Body, in exact reference order (matches `SCSITape.m:938-1076` in
 structure, with the divergences below):**
@@ -1303,30 +1323,45 @@ structure, with the divergences below):**
 1. `_senseDataValid = NO;` (`0x124`), then `rtn = [_controller
    executeRequest:scsiReq buffer:buffer client:client];` — matches
    `SCSITape.m:945,957-959`. `rtn == SR_IOST_GOOD` (0) skips directly to
-   step 6's tail.
+   step 6's shared tail (address 6408).
 2. `rtn == SR_IOST_CHKSV` (2): copies `scsiReq->senseData` (28 bytes, at
    `scsiReq` offset `0x3C`/60 — a new offset this task establishes;
    `60 + 28 = 88 = sizeof(IOSCSIRequest)`, so `senseData` is the struct's
    final field, immediately confirming `driverkit/scsiRequest.h`'s field
    order) into both `*_senseDataPtr` and `*senseBuf`, then `_senseDataValid =
-   YES;` — matches `SCSITape.m:972-978`.
-3. `rtn == SR_IOST_CHKSV || rtn == SR_IOST_CHKSNV` (a single unsigned
-   range-check compiler idiom, `(rtn-2) <= 1` — the same class already
-   documented elsewhere in this project, not a divergence) **and**
+   YES;` — matches `SCSITape.m:972-978`. Either way (`rtn == CHKSV` or not),
+   execution falls through into step 3's guard.
+3. **Guard, gating only step 4, not the if/else in step 5:** `rtn ==
+   SR_IOST_CHKSV || rtn == SR_IOST_CHKSNV` (a single unsigned range-check
+   compiler idiom, `(rtn-2) <= 1` — the same class already documented
+   elsewhere in this project, not a divergence) **and**
    `_ignoreCheckCondition[scsiReq->target][scsiReq->lun] == 0` **and**
-   `_ignoreOpenCheckCondition == 0`: this is the guard for the whole
-   request-sense block (`SCSITape.m:980-981`'s `!_ignoreCheckCondition`).
-   **Divergence:** the reference indexes the matrix by `scsiReq->target`/
-   `scsiReq->lun` (offsets 0/1 of `IOSCSIRequest`, the caller-supplied
-   request's own target/lun) and separately checks `_ignoreOpenCheckCondition`
-   — two real ivars our source collapses into the single scalar
-   `_ignoreCheckCondition` it declares (per Task 2's ivar-layout finding).
-   This is the *same* underlying layout divergence already recorded, not a
-   new bug, but it recurs at three separate call sites inside this one
-   function (this is the first).
-4. If `rtn == SR_IOST_CHKSV`: `rtn = SR_IOST_GOOD;`. Else (`rtn ==
-   SR_IOST_CHKSNV`): `rtn = [self requestSense:senseBuf];`.
-5. If the (possibly reassigned) `rtn == SR_IOST_GOOD`: checks
+   `_ignoreOpenCheckCondition == 0`. If **any** of the three tests fails, `rtn`
+   is left exactly as it was after step 2 and execution jumps straight to
+   step 5's `cmpwi cr1, r27, 0` (address 6144) — it does **not** skip step 5;
+   it skips only step 4. **Divergence (layout):** the reference indexes the
+   matrix by `scsiReq->target`/`scsiReq->lun` (offsets 0/1 of
+   `IOSCSIRequest`, the caller-supplied request's own target/lun) and
+   separately checks `_ignoreOpenCheckCondition` — two real ivars our source
+   collapses into the single scalar `_ignoreCheckCondition` it declares (per
+   Task 2's ivar-layout finding). This is the *same* underlying layout
+   divergence already recorded, not a new bug, but it recurs at three
+   separate call sites inside this one function (this is the first).
+   **Divergence (control flow, Critical):** our source (`SCSITape.m:980-1029`)
+   nests the entire `if (rtn == SR_IOST_GOOD) {...} else {...}` inside this
+   guard (`if (!_ignoreCheckCondition) { ... }`), so a status the guard's
+   condition rejects — `SR_IOST_SELTO` (1), any status `>= 4`, or a
+   `CHKSV`/`CHKSNV` status with either ignore flag set — returns from our
+   source unchanged. The reference instead runs the `rtn == GOOD` test
+   (step 5) on every path regardless of whether the guard passed, per the
+   control-flow evidence above.
+4. Guard passed: if `rtn == SR_IOST_CHKSV`: `rtn = SR_IOST_GOOD;`. Else
+   (`rtn == SR_IOST_CHKSNV`): `rtn = [self requestSense:senseBuf];`. Either
+   way, falls through into step 5.
+5. **Reached unconditionally from every guard exit (pass or fail) in step
+   3-4, at address 6144:** tests the *current* `rtn` (either the value step 4
+   just computed, or the original post-step-2 value if the guard failed)
+   against `SR_IOST_GOOD`. If equal: checks
    `scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ` (0x08, at `scsiReq+4`) *and*
    `senseBuf->er_filemark` (bit `0x8000` of `senseBuf`'s first word) — matches
    `SCSITape.m:994-995`. Both true: `transferLength =
@@ -1338,26 +1373,33 @@ structure, with the divergences below):**
    `SCSITape.m:1001-1018` field-for-field, using the same `IOSCSIRequest`
    offsets Task 4's structure table already established. Either half of the
    `&&` failing: `rtn = SR_IOST_CHKSV;` — matches `SCSITape.m:1028-1029`.
-6. If (from step 4) `rtn != SR_IOST_GOOD`: reads `_isInitialized` (`0x120`),
-   and if true, checks `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]`
-   and `_ignoreOpenCheckCondition` again (second occurrence of the same
-   compound check as step 3); only if `_isInitialized` is true and both
+   If `rtn != SR_IOST_GOOD` instead (whether that came from `requestSense:`,
+   from an unmodified `CHKSV`/`CHKSNV` with an ignore flag set, or from any
+   other original controller status the guard's range check rejected): reads
+   `_isInitialized` (`0x120`), and if true, checks
+   `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]` and
+   `_ignoreOpenCheckCondition` again (second occurrence of the same compound
+   check as step 3); only if `_isInitialized` is true and both
    check-condition ivars are clear does it call `IOLog("%s: Request Sense on
    target %d lun %d failed (%s)\n", [self name], _target, _lun,
    IOFindNameForValue(rtn, IOScStatusStrings))` (using **self's own**
    `_target`/`_lun` ivars here, not `scsiReq`'s — a different field than the
    matrix-index check just before it uses). Either way, `rtn =
-   SR_IOST_CHKSNV;` at the end. **Divergence:** our source's equivalent
-   (`SCSITape.m:1032-1040`) gates this specific log on `_isInitialized`
-   alone — it has no `_ignoreCheckCondition`/`_ignoreOpenCheckCondition` check
-   at this call site at all, so our source logs this failure whenever
-   `_isInitialized` is true regardless of either check-condition flag, while
-   the reference additionally suppresses it when either flag is set. Same
-   root-cause ivar-layout finding as step 3, second recurrence.
-7. Shared tail (reached from steps 1's direct-good path, step 5's corrected
-   path, and step 6's `SR_IOST_CHKSNV` path alike): if `_isInitialized` is
-   true *and* the (final) `rtn != SR_IOST_GOOD` *and* (third occurrence of
-   the same `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]` +
+   SR_IOST_CHKSNV;` at address 6404 (`li r27, 3`) — this fires for *every*
+   `rtn != SR_IOST_GOOD` path through this branch, including ones the guard
+   in step 3 never let reach step 4 at all. **Divergence:** our source's
+   equivalent (`SCSITape.m:1032-1040`) gates this specific log on
+   `_isInitialized` alone — it has no
+   `_ignoreCheckCondition`/`_ignoreOpenCheckCondition` check at this call
+   site at all, so our source logs this failure whenever `_isInitialized` is
+   true regardless of either check-condition flag, while the reference
+   additionally suppresses it when either flag is set. Same root-cause
+   ivar-layout finding as step 3, second recurrence.
+6. Shared tail, address 6408 (reached from step 1's direct-good path, step
+   5's corrected `rtn == GOOD` path, and step 5's `rtn != GOOD` →
+   `SR_IOST_CHKSNV` path alike): if `_isInitialized` is true *and* the
+   (final) `rtn != SR_IOST_GOOD` *and* (third occurrence of the same
+   `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]` +
    `_ignoreOpenCheckCondition` compound check) both check-condition ivars are
    clear: `IOLog("%s, target %d, lun %d: op %s returned %s\n", [self name],
    _target, _lun, IOFindNameForValue(scsiReq->cdb.cdb_opcode,
@@ -1367,71 +1409,132 @@ structure, with the divergences below):**
    senseBuf->er_sensekey, senseBuf->er_addsensecode)` (`er_addsensecode` at
    `senseBuf+0xC`/12, matching the `_do_ioc` finding's own offset for the
    same field) — matches `SCSITape.m:1047-1060` exactly, modulo the same
-   ivar-layout divergence as steps 3 and 6 (third recurrence).
-8. `_didWrite` tail: reference re-tests `scsiReq->cdb.cdb_opcode ==
-   C6OP_WRITE` (0x0A) to decide `_didWrite` (`0x122`) whenever this shared
-   tail is reached with the *final* `rtn == SR_IOST_GOOD` (whether that came
-   from never entering the `if(rtn != SR_IOST_GOOD)` branch at all, or from
-   step 5's filemark-correction setting it back to `SR_IOST_GOOD`) — matching
-   our source's `else { _didWrite = (opcode==C6OP_WRITE); }` branch
-   (`SCSITape.m:1066-1073`). When the tail is reached with final `rtn !=
-   SR_IOST_GOOD` instead, `_didWrite` is set unconditionally to `NO` with no
-   opcode test — matching our source's `_didWrite = NO;`
-   (`SCSITape.m:1063`). **Structural note, not a behavioral bug:** the
-   compiler reaches this decision by testing the *final* `rtn` value at the
-   merged tail rather than remembering which of source's two original
-   branches (`if`/`else` at line 968) was taken, so the filemark-correction
-   path (step 5, `rtn` forced back to `SR_IOST_GOOD`) is routed through the
-   opcode-test side rather than through an unconditional `NO` — but that path
-   is only reachable when `scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ`
-   (step 5's own guard), which can never equal `C6OP_WRITE`, so the opcode
-   test always evaluates to `NO` there too. Likewise the `!_isInitialized`
-   early skip in step 6/7 routes straight to this same opcode-test tail
-   regardless of `rtn`; since `executeRequest:buffer:client:senseBuf:` is only
-   reached with `_isInitialized == NO` during `initSCSITape:`'s own
-   `stTestReady`/`stInquiry:` probing (neither of which ever builds a
-   `C6OP_WRITE` CDB), this too is unobservable in practice. Recorded because
-   it is a genuine structural difference from our source's branch shape, even
-   though no reachable input makes it produce a different `_didWrite` value
-   than our source would.
+   ivar-layout divergence as steps 3 and 5 (third recurrence).
+7. `_didWrite` tail: the four branches out of step 6's log guard — `beq cr1,
+   loc_19C4` at address 6416 (`!_isInitialized`), `beq cr1, loc_19C4` at 6424
+   (`rtn == SR_IOST_GOOD`), and `bne cr1, loc_19C4` at 6456 and 6468 (either
+   check-condition ivar set) — all four target address 6596 (`loc_19C4`),
+   which re-tests `scsiReq->cdb.cdb_opcode == C6OP_WRITE` (0x0A) and sets
+   `_didWrite` (`0x122`) to 1 or 0 accordingly. The log path itself (taken
+   only when `_isInitialized && rtn != SR_IOST_GOOD` and both check-condition
+   ivars are clear) never reaches that opcode test at all: it falls through
+   to `_didWrite = 0` unconditionally (address 6616, `loc_19D8`) after
+   logging — matching our source's `_didWrite = NO;` (`SCSITape.m:1063`)
+   for that one specific combination of conditions. But our source's
+   `_didWrite = NO;` at line 1063 is unconditional for *every* `rtn !=
+   SR_IOST_GOOD` case, not only the one the reference's log-guard covers —
+   see the separate finding below on why treating the WRITE-opcode side of
+   this tail as unreachable for every `rtn != SR_IOST_GOOD` path is wrong.
 
-**Return value:** `sc_status_t rtn`, one of `SR_IOST_GOOD` (0),
-`SR_IOST_CHKSV` (2, only if the filemark-correction path's `&&` fails at
-step 5, i.e. non-read op or no filemark), `SR_IOST_CHKSNV` (3, if
-`requestSense:` itself did not return `SR_IOST_GOOD`), or the controller's
-original non-`GOOD` status when `rtn` was never 2 (i.e. `CHKSV`/`CHKSNV`) in
-the first place at step 1.
+**Return value:** `sc_status_t rtn`, and — because the `rtn == GOOD` test in
+step 5 runs unconditionally rather than only on the guard's pass path — only
+**three** values are ever actually returned: `SR_IOST_GOOD` (0, direct
+success or filemark-corrected success), `SR_IOST_CHKSV` (2, the
+filemark-correction path's `&&` failing at step 5), or `SR_IOST_CHKSNV` (3,
+every other case — `requestSense:` not returning `GOOD`, or any status the
+guard's range check or ignore-flag checks rejected, all funnelled through
+step 5's `else` to the unconditional `rtn = 3` at address 6404). **The
+reference never returns the controller's original status unless that status
+already happened to be exactly 0, 2, or 3** — an `SR_IOST_SELTO` (1) or any
+status `>= 4` is always rewritten to `SR_IOST_CHKSNV` (3) before returning.
+Our source's nested if/else (per the control-flow divergence above) instead
+returns the controller's original, unrewritten status whenever
+`_ignoreCheckCondition` is set (in our source's single-scalar sense) or the
+status isn't `CHKSV`/`CHKSNV` — a real return-value divergence, not only a
+structural one.
 
 **Error handling:** every non-`SR_IOST_GOOD` controller status triggers the
-request-sense/logging machinery in steps 2-7; there is no path that discards
+request-sense/logging machinery in steps 2-6; there is no path that discards
 an error silently, though the three `_ignoreCheckCondition`/
-`_ignoreOpenCheckCondition` recurrences (steps 3, 6, 7) mean the reference
+`_ignoreOpenCheckCondition` recurrences (steps 3, 5, 6) mean the reference
 can *suppress the logging* (never the underlying `rtn` computation) more
 aggressively than our source does today.
 
-### `-[SCSITape reserveAllLuns]` (address 7012, 236 bytes) — genuinely absent
+## Finding: correcting the `_didWrite` "unreachable" proof — the WRITE-opcode path is reachable through the ignore-flag exits, not only through `!_isInitialized`
+
+**Source:** `SCSITape.m:1032-1073` (`executeRequest:buffer:client:senseBuf:`'s
+`_didWrite` tail), compared against the branch targets traced in step 7
+above.
+
+**The earlier proof:** a previous pass characterized the WRITE-opcode side of
+the reference's merged `_didWrite` tail (address 6596) as reachable only
+through the `!_isInitialized` early-skip and through step 5's
+filemark-correction path setting `rtn` back to `SR_IOST_GOOD` — and, since
+neither of those combinations can produce `cdb_opcode == C6OP_WRITE` in
+practice (`!_isInitialized` only occurs during `initSCSITape:`'s own
+non-write probing; the filemark path requires `C6OP_READ`), concluded the
+opcode test always evaluates to `NO` when reached from any conditon other
+than a clean `rtn == SR_IOST_GOOD`, so no reachable input makes `_didWrite`
+differ from what our source already computes.
+
+**What the proof missed:** address 6596 (`loc_19C4`) has **four** incoming
+branches, not two — `beq cr1, loc_19C4` at 6416 (`!_isInitialized`), `beq
+cr1, loc_19C4` at 6424 (`rtn == SR_IOST_GOOD`), **and `bne cr1, loc_19C4` at
+6456 (`_ignoreCheckCondition[scsiReq->target][scsiReq->lun] != 0`) and 6468
+(`_ignoreOpenCheckCondition != 0`)**. The last two fire whenever
+`_isInitialized` is true, `rtn != SR_IOST_GOOD`, and *either* check-condition
+ivar is set — a live combination: a caller that has set
+`_ignoreOpenCheckCondition` (via `_st_doiocsrq`'s `MTIOCSRQ` save/restore, see
+that finding above) or has a per-target/lun `_ignoreCheckCondition` bit set,
+issues a `C6OP_WRITE` request that the controller fails with a non-`GOOD`
+status. That path skips the log (correctly, matching the ignore flag's
+purpose) but **also skips straight to the opcode test**, which evaluates
+`cdb_opcode == C6OP_WRITE` as true and sets `_didWrite = YES` — the reference
+genuinely does set `_didWrite` for a failed write when an ignore flag is set,
+contradicting the earlier "no reachable input differs" conclusion.
+
+**Disposition, corrected reasoning, same outcome:** this does not add a new,
+separately-actionable divergence for Task 9/11 to fix on top of what is
+already recorded. The reachable case requires
+`_ignoreCheckCondition`/`_ignoreOpenCheckCondition` to be meaningfully
+distinguishable from `rtn == SR_IOST_GOOD`, which is exactly the ivar-layout
+divergence (Task 2's finding, recurring at steps 3/5/6 above) and the
+control-flow divergence (this finding's own Critical fix, the guard no
+longer wrapping the `rtn == GOOD` test) that Task 9/11 must already repair
+for this same function. Once those two fixes land — the real
+`_ignoreCheckCondition`/`_ignoreOpenCheckCondition` ivars restored and the
+guard's exits routed exactly as traced above — the `_didWrite` tail's shape
+falls out of that same restructuring automatically; it does not need its own
+separate patch. What changes here is only the proof: the WRITE-opcode side
+of this tail is reachable, and the fix pass must not skip re-deriving
+`_didWrite`'s tail when it rewrites the surrounding control flow on the
+assumption that "no source change" meant "leave this branch shape alone."
+
+## Finding: `-[SCSITape reserveAllLuns]` (address 7012, 236 bytes) — genuinely absent, `void`-returning, declared in a category
 
 **No source exists anywhere in this tree** — `grep` for `reserveAllLuns`
 across `src/drvSCSITape` finds only the mentions already in this document.
 Task 9 must write this method from the description below.
 
-**Signature:** `- reserveAllLuns` (no arguments beyond the implicit
-self/`_cmd`; `r3`=self, kept in `r31`). Objective-C methods with no explicit
-`return` statement leave `r3` holding whatever the last call happened to
-return — see the return-value note below — so this is effectively declared
-to return `id` and its result is not meaningful.
+**Signature, confirmed from the class metadata, not inferred from register
+state:** `__OBJC,__cat_inst_meth` (vaddr 16384) lists `reserveAllLuns` with
+`imp = 7012` and type encoding **`v4@4:8`** — return type `void`, not `id`.
+`__OBJC,__category` (vaddr 20828) is a single 20-byte category record whose
+first two fields resolve (via `__OBJC,__class_names`) to `category_name =
+"private"`, `class_name = "SCSITape"`, and whose `instance_methods` field
+points at 16384 — the same `__cat_inst_meth` list. So `reserveAllLuns` is
+declared `- (void)reserveAllLuns` in a category, `SCSITape(private)`, not in
+the main `@implementation SCSITape`. **Our tree has no such category today:**
+`SCSITape.h:20` declares `@interface SCSITape: IODevice` and `SCSITape.m:47`
+`@implementation SCSITape`, each with a single `@end` — Task 9 must add a
+separate `@interface SCSITape(private)` (with both absent methods declared
+`- (void)`) and `@implementation SCSITape(private)` ... `@end`, not fold
+these into the main class body with an inferred `id` return.
 
 **What it calls, resolved through the relocation table:** `objc_msgSend` at
-three call sites — `[self name]` before the loop (step 1, only reached if
-`_lun != 0`), `[_controller reserveTarget:lun:forOwner:]` once per loop
-iteration (step 3), and `[self name]` again inside the loop's failure branch
-(step 3) — and `_IOLog` at two call sites, one per warning below.
+three call sites — `[_controller name]` before the loop (step 1, only
+reached if `_lun != 0`; the receiver load at address 7056 is `lwz r3,
+0x108(r31)`, and `0x108` is `_controller`, not self), `[_controller
+reserveTarget:lun:forOwner:]` once per loop iteration (step 3), and
+`[_controller name]` again inside the loop's failure branch (step 3; the
+receiver load at address 7144 is the same `lwz r3, 0x108(r31)`) — and
+`_IOLog` at two call sites, one per warning below.
 
 **Body, in exact reference order:**
 
 1. `if (_lun != 0)` (`0x10D`): `IOLog("%s: SCSITape (target %d, lun %d)
-   expects lun 0\n", [self name], _target, _lun);` — a sanity warning; the
-   method proceeds regardless of `_lun`'s value.
+   expects lun 0\n", [_controller name], _target, _lun);` — a sanity
+   warning; the method proceeds regardless of `_lun`'s value.
 2. `_lunsReserved = 0;` (`0x228`, unconditional — confirms Task 2's
    ivar-table conjecture that `_lunsReserved` is the bitmask this method
    manipulates).
@@ -1444,31 +1547,40 @@ iteration (step 3), and `[self name]` again inside the loop's failure branch
    `if ([_controller reserveTarget:_target lun:lun forOwner:self] == 0)
    { _lunsReserved |= (1 << lun); }
    else { IOLog("%s: SCSITape (target %d) can't reserve, lun %d\n",
-   [self name], _target, lun); }` — `_target` read once per iteration
+   [_controller name], _target, lun); }` — `_target` read once per iteration
    (`0x10C`), `_controller` once (`0x108`). The bit position is exactly the
    LUN number, confirming the `char[32][8]` `_ignoreCheckCondition` matrix's
    inner `[8]` dimension (LUNs 0-7) and this bitmask share the same
    numbering.
 
-**Return value:** not meaningful — no explicit `return`; `r3` on exit holds
-whichever of `reserveTarget:lun:forOwner:`'s or `IOLog`'s result happened to
-run last (lun 7's iteration). Every caller this task has found
-(`initSCSITape:`, `acquireDevice`, per the findings above) discards the
-return value, consistent with this reading.
+**Return value:** none — the method is declared `- (void)reserveAllLuns` (per
+the type encoding above), so there is no return value to discard; whatever
+happens to be left in `r3` at the epilogue is not a return value at all, just
+leftover register state. Every caller this task has found (`initSCSITape:`,
+`acquireDevice`, per the findings above) is consistent with a `void` call —
+none of them use the result.
 
 **Error handling:** a failed `reserveTarget:lun:forOwner:` for any individual
 LUN only logs a warning and continues to the next LUN — it does not abort
 the loop, does not clear any bit already set, and does not surface the
 failure to the caller in any way (per the return-value note above).
 
-### `-[SCSITape releaseAllLuns]` (address 7280, 128 bytes) — genuinely absent
+## Finding: `-[SCSITape releaseAllLuns]` (address 7280, 128 bytes) — genuinely absent, `void`-returning, declared in a category
 
 **No source exists anywhere in this tree** — same `grep` result as
 `reserveAllLuns`. Task 9 must write this method from the description below.
 
-**Signature:** `- releaseAllLuns` (no arguments; `r3`=self, kept in `r30`).
-Same "no meaningful return value" situation as `reserveAllLuns` — no
-explicit `return`, `r3` on exit holds whichever call ran last.
+**Signature, confirmed from the class metadata, not inferred from register
+state:** the same `__OBJC,__cat_inst_meth` list (vaddr 16384) that carries
+`reserveAllLuns` also lists `releaseAllLuns` with `imp = 7280` and type
+encoding **`v4@4:8`** — return type `void`, same as its sibling. The same
+`__OBJC,__category` record (vaddr 20828, `category_name = "private"`,
+`class_name = "SCSITape"`) owns it, since both methods sit in the one
+`instance_methods` list the category points at. This is `-
+(void)releaseAllLuns`, declared in `SCSITape(private)`, not `id` in the main
+`@implementation` — see `reserveAllLuns`'s finding above for the
+`@interface`/`@implementation SCSITape(private)` addition Task 9 must make;
+both methods belong in that one category.
 
 **What it calls, resolved through the relocation table:** `objc_msgSend`
 (once per loop iteration where a bit is set: `releaseTarget:lun:forOwner:`).
@@ -1491,7 +1603,8 @@ exactly (not add a clear this method's own reference disassembly does not
 have), since inventing a "more correct" version here is not what this
 project's fix passes are for.
 
-**Return value:** not meaningful, same as `reserveAllLuns`.
+**Return value:** none — `- (void)releaseAllLuns`, same as `reserveAllLuns`;
+whatever is left in `r3` at the epilogue is not a return value.
 
 **Error handling:** none — a failed `releaseTarget:lun:forOwner:` for any
 individual LUN has no visible effect (no log, no return-value check); the

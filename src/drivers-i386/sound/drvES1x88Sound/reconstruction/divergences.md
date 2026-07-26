@@ -129,11 +129,20 @@ by instruction against the header text; only the line number is indirect.
 Our `clearInterrupts()` is `static __inline__`, yet the reference emits it out of line at
 7972. That is not a divergence: `-[ES1x88AudioDriver interruptClearFunc]` takes its
 address (`mov eax, offset _clearInterrupts` at 7991), which forces an out-of-line copy.
-The symbol is `local` in the raw nlist, matching `static`. Every other helper in that
-header — `assignDSPRegAddresses`, `assignMixerRegAddresses`, `outbIXMixer`,
-`waitForDSPDataAvailable`, `waitForDSPWriteReady` — is inlined into its callers and has no
-symbol, which is what our `static __inline__` qualifiers predict. `programDMASelect()` has
-no counterpart anywhere; see the excision gate.
+The symbol is `local` in the raw nlist, matching `static`. `assignDSPRegAddresses`,
+`assignMixerRegAddresses`, `waitForDSPDataAvailable` and `waitForDSPWriteReady` are inlined
+into their callers and have no symbol, which is what our `static __inline__` qualifiers
+predict. `programDMASelect()` has no counterpart anywhere; see the excision gate.
+
+**`outbIXMixer` is not evidence of anything and an earlier revision of this section wrongly
+listed it as such.** It has **zero callers** — `grep -rn outbIXMixer` over the driver
+returns exactly one hit, its own definition at `ES1x88AudioDriverInline.h:87`. Every mixer
+write in `ES1x88AudioDriver.m` is spelled out at the site instead, `outb(sbMixerAddressReg,
+…)` / `IODelay(10)` / `outb(sbMixerDataReg, …)` / `IODelay(25)`, as at `:151`–`:154` and at
+forty-four further sites. A function with no callers is absent from the symbol table
+whether it is `__inline__` or not, so its absence predicts nothing about the qualifier. It
+is dead code, and unlike this driver's other dead code it was orphaned by this pass; see
+the dead-code section below.
 
 ## Unmapped
 
@@ -1369,6 +1378,31 @@ None of these was orphaned by this pass; all were already unreferenced before it
 
 The first two draw a `defined but not used` warning from the guest compiler.
 
+## Dead code this pass created: `outbIXMixer`
+
+One helper does *not* belong in the list above, and an earlier revision of this document
+omitted it altogether. `outbIXMixer` (`ES1x88AudioDriverInline.h:85`–`:93`) had five
+callers before this pass: the four last-stage-gain writes at `ES1x88AudioDriver.m:488`–`:491`
+and `programDMASelect()` in the same header. The §2.3 excision commit `22c6821f` removed all
+five — the four gain methods have no symbol in the reference, and `programDMASelect()` has
+no counterpart anywhere — and left the helper behind. It has had **zero callers** ever
+since, which is why it emits no symbol.
+
+**It carries a latent trap.** Its second delay is `IODelay(SB16_DATA_WRITE_DELAY)`, and
+`ES1x88AudioDriverRegisters.h:33` defines `SB16_DATA_WRITE_DELAY` as **75** — inherited
+from the SB16 driver along with the rest of this header's `sb16` residue. Every live mixer
+site in this driver uses **25**. Folding the forty-five open-coded mixer writes into this
+helper is the obvious cleanup to reach for, and doing it as written would silently triple
+the post-write delay and stop matching the reference. Anyone calling it must pass `25`
+explicitly, or fix the macro first.
+
+CLAUDE.md §3 says to remove functions your own changes orphan, so by that rule the excision
+commit should have taken this one with it. Removing it now is binary-neutral — with no
+callers it emits nothing either way, so no gate would move — but it was not done here,
+because these four drivers are already built, parity-checked and ledger-accepted, and this
+document's fix pass does not reopen source. Recording it is the disposition; the removal is
+left as a separate, source-touching change.
+
 ## What did not change
 
 `Default.table` and `ESPnP.table` still diff clean against Apple's shipped copies.
@@ -1943,15 +1977,20 @@ size moved.
 ### What is left in this function, after five passes
 
 Nothing that the source reaches. The whole remaining delta is register allocation and
-padding:
+padding. `mov` is **−14 overall**, and the rows below split that one total three ways — an
+earlier revision quoted −14 again on the last row, which double-counted it:
 
 | class | delta | why |
 | --- | --- | --- |
 | `and` −2, `movzx` −2, part of `mov` | | the reference allocates `irqControl` to `dl`, which collides with the `dx` port load, so it spills the byte before every port write; ours picks `bl` and does not |
 | `cmp` +2, `test` −2 | | the reference reads `currentDMADirection` into a register before testing it; ours compares the ivar in memory. Not a cached local — it re-reads the ivar at 5196 |
-| `mov` +1 here, memory `div` operand | | at 4750-4767 the reference does `add esi, eax` / `div esi`, clobbering `sampleRate`, which is dead after that point; ours spills the product to `[ebp-24h]` and divides by memory |
+| `mov` +1 here, memory `div` operand | | the reference does `add esi, eax` at 4980 and `div esi` at 4991, clobbering `sampleRate`, which is dead after that point; ours, at **our** 4750-4767, spills the product to `[ebp-24h]` and divides by memory |
 | `nop` −8 | | branch-target alignment padding |
-| `movzx` −1, the rest of `mov` −14 | | the systemic codegen class recorded for every function in this binary |
+| `movzx` −1, the rest of `mov` | | the systemic codegen class recorded for every function in this binary |
+
+Addresses in this table are the reference's unless marked otherwise; our
+`configureHardwareForDataTransfer:` starts at 4184 where the reference's starts at 4388, so
+the two address spaces do not line up and a bare number is ambiguous.
 
 Entry 4388 stays `intentional-mismatch` on those grounds. It is not advanced past that: the
 status would need the full 1328 bytes read instruction by instruction against our 1252, and

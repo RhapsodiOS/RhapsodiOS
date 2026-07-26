@@ -197,51 +197,38 @@ unsigned int tiotors232(unsigned int tio_flags)
 }
 
 /*
- * ttyiops_attachDevice - Initialize tty device settings and attach to map
- * portServerObj: PortServer object instance
- * unit: Unit index (0-25 for ttyd a-z)
+ * ttyiops_attachDevice - Initialize the default termios settings for a port
+ * state: the PortServer instance's state block (the caller does the offsetting)
  *
- * Sets up the default termios structure and stores the PortServer object in _ttyiopsMap
+ * Fills in the dial-in termios, defaults its control characters, copies it over
+ * the dial-out termios and clears the DTR-down timestamp.  The _ttyiopsMap store
+ * is the caller's, not this function's.
  */
-void ttyiops_attachDevice(id portServerObj, unsigned int unit)
+void ttyiops_attachDevice(ttyiops_state *state)
 {
-    struct tty *tp;
     int i;
     unsigned int *src, *dst;
 
-    if (portServerObj == NULL || unit > 25) {
-        return;
-    }
-
-    /* Store PortServer object in map */
-    _ttyiopsMap[unit] = portServerObj;
-
-    /* Get tty structure at offset +0x108 */
-    tp = (struct tty *)((char *)portServerObj + 0x108);
-
-    /* Initialize termios structure at offset 0x120 */
-    /* These offsets correspond to the t_termios structure fields */
-    ((unsigned int *)tp)[0x120/4] = 0;          // c_iflag
-    ((unsigned int *)tp)[0x124/4] = 0;          // c_oflag
-    ((unsigned int *)tp)[0x128/4] = 0x4b00;     // c_cflag (19200 baud, CS8, etc)
-    ((unsigned int *)tp)[300/4] = 0;            // c_lflag
-    ((unsigned int *)tp)[0x148/4] = 0x2580;     // c_ospeed (9600 baud)
-    ((unsigned int *)tp)[0x144/4] = 0x2580;     // c_ispeed (9600 baud)
+    state->it_in.c_iflag = 0;
+    state->it_in.c_oflag = 0;
+    state->it_in.c_cflag = 0x4b00;
+    state->it_in.c_lflag = 0;
+    state->it_in.c_ospeed = 0x2580;     /* 9600 baud */
+    state->it_in.c_ispeed = 0x2580;
 
     /* Set default termios control characters */
-    termioschars(&tp->t_termios);
+    termioschars(&state->it_in);
 
-    /* Copy termios structure from offset 0x120 to offset 0xf4 */
-    /* This copies 11 dwords (44 bytes) */
-    src = &((unsigned int *)tp)[0x120/4];
-    dst = &((unsigned int *)tp)[0xf4/4];
+    /* Copy the dial-in termios over the dial-out one - 11 dwords (44 bytes) */
+    src = (unsigned int *)&state->it_in;
+    dst = (unsigned int *)&state->it_out;
 
     for (i = 0; i < 11; i++) {
         *dst++ = *src++;
     }
 
-    /* Clear 8 bytes at offset 0x14c (struct winsize) */
-    bzero(&((unsigned char *)tp)[0x14c], 8);
+    /* Clear the DTR-down timestamp */
+    bzero(&state->dtr_down_time, 8);
 }
 
 /*
@@ -422,8 +409,8 @@ int ttyiops_close(unsigned int dev, int flag)
     unsigned int minor;
 
     /* Validate device and find corresponding tty structure */
-    /* Check if major number matches portServerMajor */
-    if ((portServerMajor == ((dev >> 8) & 0xff)) && 
+    /* Check if major number matches _portServerMajor */
+    if ((_portServerMajor == ((dev >> 8) & 0xff)) && 
         ((dev & 0xc0) != 0xc0)) {
         minor = dev & 0x1f;
         if (_ttyiopsMap[minor] != NULL) {
@@ -896,8 +883,8 @@ int ttyiops_select(unsigned int dev, int which, struct proc *p)
     int result;
     
     /* Validate device and get tty structure */
-    /* Check major number matches portServerMajor */
-    if (portServerMajor != ((dev >> 8) & 0xff)) {
+    /* Check major number matches _portServerMajor */
+    if (_portServerMajor != ((dev >> 8) & 0xff)) {
         tp = NULL;
     }
     /* Check that device is not 0xc0 (invalid combination) */
@@ -1164,8 +1151,8 @@ int ttyiops_write(unsigned int dev, struct uio *uio, int flag)
     int error;
     
     /* Validate device and get tty structure */
-    /* Check major number matches portServerMajor */
-    if (portServerMajor != ((dev >> 8) & 0xff)) {
+    /* Check major number matches _portServerMajor */
+    if (_portServerMajor != ((dev >> 8) & 0xff)) {
         tp = NULL;
     }
     /* Check that device is not 0xc0 (invalid combination) */
@@ -1532,7 +1519,7 @@ int ttyiops_ioctl(unsigned int dev, unsigned int cmd, void *data, int flag, stru
     unsigned int how;
 
     /* Validate device and find corresponding tty structure */
-    if ((portServerMajor == ((dev >> 8) & 0xff)) && 
+    if ((_portServerMajor == ((dev >> 8) & 0xff)) && 
         ((dev & 0xc0) != 0xc0)) {
         minor = dev & 0x1f;
         if (_ttyiopsMap[minor] != NULL) {
@@ -1791,8 +1778,8 @@ int ttyiops_read(unsigned int dev, struct uio *uio, int flag)
     int canq_size;
     
     /* Validate device and get tty structure */
-    /* Check major number matches portServerMajor */
-    if (portServerMajor != ((dev >> 8) & 0xff)) {
+    /* Check major number matches _portServerMajor */
+    if (_portServerMajor != ((dev >> 8) & 0xff)) {
         tp = NULL;
     }
     /* Check that device is not 0xc0 (invalid combination) */
@@ -1916,8 +1903,8 @@ int ttyiops_open(unsigned int dev, int flag, int mode, struct proc *p)
     void *thread_id;
     
     /* Validate device and get tty structure */
-    /* Check major number matches portServerMajor */
-    if (portServerMajor != ((dev >> 8) & 0xff)) {
+    /* Check major number matches _portServerMajor */
+    if (_portServerMajor != ((dev >> 8) & 0xff)) {
         tp = NULL;
     }
     /* Check that device is not 0xc0 (invalid combination) */
@@ -2014,7 +2001,7 @@ int ttyiops_open(unsigned int dev, int flag, int mode, struct proc *p)
                     
                     /* If last close, clean up */
                     if (*open_count_ptr == 0) {
-                        ttyiops_close(dev, flag, mode, (int)p);
+                        ttyiops_close(dev, flag);
                         return 4;
                     }
                     

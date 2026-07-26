@@ -8,19 +8,17 @@
 
 #import <driverkit/IODevice.h>
 
+#import "ttyiops.h"
+
 /* ========================================================================
  * PortServer Class Definition
  * ======================================================================== */
 
 @interface PortServer : IODevice
 {
-    /* Instance variables
-     *
-     * The reference declares one ivar here, "state" of type ttyiops_state at
-     * offset 264, which is what the +0x108/+0x1f0/+0x264 literals below reach.
-     * ttyiops_state is not declared anywhere in this tree yet; the ivar and the
-     * offsets stay as they are until ttyiops.h carries the type.
-     */
+    /* The reference declares exactly one ivar, at offset 264, which is what
+     * takes instance_size from IODevice's 264 to 616. */
+    ttyiops_state state;
 }
 
 /* Class methods */
@@ -52,7 +50,7 @@
 - (const char *)iopsName;
 
 /* State management */
-- (int)state;
+- (ttyiops_state *)state;
 
 /* Parameter access */
 - (int)getIntValues:(unsigned int *)values

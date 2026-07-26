@@ -15,7 +15,7 @@ id _ttyiopsMap[26] = { NULL };          /* Array of 26 PortServer instances (one
 static id _pseudoUnit = NULL;           /* PDPseudo unit instance */
 
 /* Global port server major device number */
-static int _portServerMajor = 0;
+int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
 
 /* Protocol array for PortServer - _protocols.102 in the reference */
 Protocol *_protocols_102[] = {
@@ -211,11 +211,11 @@ extern void IOLog(const char *format, ...);
         port_session = [[IOPortSession alloc] initForDevice:(char *)device_name
                                                      result:&result_code];
 
-        /* Store IOPortSession at offset +0x1f0 */
-        *(id *)((char *)self + 0x1f0) = port_session;
+        /* Store IOPortSession in the state block */
+        state.iops = port_session;
 
         /* Attach device to ttyiops system - the reference passes &self->state */
-        ttyiops_attachDevice((struct tty *)((char *)self + 0x108));
+        ttyiops_attachDevice(&state);
     }
 
     /* Set unit number */
@@ -258,25 +258,20 @@ init_failed:
 - (const char *)iopsName
 {
     const char *name;
-    id port_session;
 
-    /* Get IOPortSession object at offset +0x1f0 */
-    port_session = *(id *)((char *)self + 0x1f0);
-
-    /* Get name from IOPortSession */
-    name = [port_session name];
+    /* Get name from the IOPortSession this port was opened on */
+    name = [state.iops name];
 
     return name;
 }
 
 /*
  * state - Get current driver state
- * Returns: Pointer to ttyiops state structure at offset +0x108
+ * Returns: Pointer to this instance's ttyiops state block
  */
-- (int)state
+- (ttyiops_state *)state
 {
-    /* Return pointer to offset +0x108 */
-    return (int)((char *)self + 0x108);
+    return &state;
 }
 
 /*
@@ -308,12 +303,11 @@ init_failed:
         /* Set count to 1 */
         *count = 1;
 
-        /* Get current flag value (bit 0 at offset +0x264) */
-        *values = *(unsigned char *)((char *)self + 0x264) & 1;
+        /* Get current flag value */
+        *values = state.is_post_loaded;
 
-        /* Set bit 0 at offset +0x264 */
-        *(unsigned char *)((char *)self + 0x264) =
-            *(unsigned char *)((char *)self + 0x264) | 1;
+        /* Set the flag */
+        state.is_post_loaded = 1;
 
         /* Unlock the ttyiops map */
         [_ttyiopsMapLock unlock];
@@ -326,8 +320,8 @@ init_failed:
         /* Set count to 1 */
         *count = 1;
 
-        /* Return pointer to offset +0x108 */
-        *values = (unsigned int)((char *)self + 0x108);
+        /* Return pointer to the state block */
+        *values = (unsigned int)&state;
 
         return 0;
     }
@@ -371,15 +365,11 @@ init_failed:
                 result = [_ttyiopsMapLock lock];
             } while (result != 0);
 
-            /* Set flag at offset +0x264 based on *values */
+            /* Set the flag based on *values */
             if (*values == 0) {
-                /* Clear bit 0 */
-                *(unsigned char *)((char *)self + 0x264) =
-                    *(unsigned char *)((char *)self + 0x264) & 0xfe;
+                state.is_post_loaded = 0;
             } else {
-                /* Set bit 0 */
-                *(unsigned char *)((char *)self + 0x264) =
-                    *(unsigned char *)((char *)self + 0x264) | 1;
+                state.is_post_loaded = 1;
             }
 
             /* Unlock the ttyiops map */

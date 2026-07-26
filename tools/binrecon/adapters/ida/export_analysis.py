@@ -206,7 +206,8 @@ def _hash_backed_segment(start, size, snapshot, runs):
 
 
 def _validate_mapping(mapping, size, digest):
-    if (not isinstance(mapping, dict) or set(mapping) != {"schema_version", "input", "runs"}
+    if (not isinstance(mapping, dict)
+            or set(mapping) - {"analysis_scope"} != {"schema_version", "input", "runs"}
             or mapping["schema_version"] != "ida-mapping-v1"):
         raise ExportError("artifact mapping manifest is malformed")
     identity = mapping["input"]
@@ -237,6 +238,24 @@ def _validate_mapping(mapping, size, digest):
            for left, right in zip(by_file, by_file[1:])):
         raise ExportError("artifact mapping file runs overlap")
     return _MappingRuns(ordered)
+
+
+def _scope_from_mapping(mapping):
+    """Return sorted (start, end) pairs, or () when the manifest has no scope."""
+    declared = mapping.get("analysis_scope")
+    if not declared:
+        return ()
+    ranges = []
+    for item in declared:
+        start, end = int(item["start"]), int(item["end"])
+        if end <= start:
+            raise ExportError(f"analysis scope range {start}..{end} is empty or inverted")
+        ranges.append((start, end))
+    return tuple(sorted(ranges))
+
+
+def _in_scope(address, scope):
+    return not scope or any(start <= address < end for start, end in scope)
 
 
 def _load_mapping(path, expected_sha256, *, opener=os.open, fstat=os.fstat,
@@ -369,6 +388,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         raise ExportError("input identity does not match host request")
     mapping = mapping if mapping is not None else modules.get("artifact_mapping")
     runs = _validate_mapping(mapping, size, digest)
+    scope = _scope_from_mapping(mapping)
     try:
         database_size = modules["ida_nalt"].retrieve_input_file_size()
         database_sha = modules["ida_nalt"].retrieve_input_file_sha256()
@@ -471,6 +491,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         if function is None:
             raise ExportError(f"could not read function at {address:#x}")
         canonical_entry = function.start_ea
+        if not _in_scope(canonical_entry, scope):
+            continue
         if canonical_entry in seen_functions:
             continue
         seen_functions.add(canonical_entry)
@@ -615,6 +637,24 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
     version = modules["ida_kernwin"].get_kernel_version()
     if not isinstance(version, str) or not version:
         raise ExportError("could not read IDA kernel version")
+    if scope and not functions:
+        raise ExportError("analysis scope matched no functions")
+    extensions = {"ida": {
+        "selectors": selector_names,
+        "instruction_operand_offsets": sorted(
+            instruction_operand_offsets, key=lambda item: item["address"]
+        ),
+        "sections": sorted(
+            section_backing, key=lambda item: (item["address"], item["name"])
+        ),
+        "zero_fill_sections": sorted(
+            zero_fill_sections, key=lambda item: (item["address"], item["name"])
+        ),
+    }}
+    if scope:
+        extensions["binrecon"] = {
+            "analysis_scope": [{"start": start, "end": end} for start, end in scope]
+        }
     return {
         "schema_version": "analysis-v1",
         "input": {
@@ -644,18 +684,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
             strings,
             key=lambda item: (item["address"], item["value"], item["encoding"]),
         ),
-        "extensions": {"ida": {
-            "selectors": selector_names,
-            "instruction_operand_offsets": sorted(
-                instruction_operand_offsets, key=lambda item: item["address"]
-            ),
-            "sections": sorted(
-                section_backing, key=lambda item: (item["address"], item["name"])
-            ),
-            "zero_fill_sections": sorted(
-                zero_fill_sections, key=lambda item: (item["address"], item["name"])
-            ),
-        }},
+        "extensions": extensions,
     }
 
 

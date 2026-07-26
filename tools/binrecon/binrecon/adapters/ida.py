@@ -15,6 +15,7 @@ from typing import Callable
 
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
+from binrecon.profile import analysis_scope
 from binrecon.schema import (
     validate_analysis_semantics,
     validate_document,
@@ -79,11 +80,16 @@ def _mapping_manifest(profile, identity: InputIdentity) -> dict:
                   key=lambda item: (item["address"], item["offset"], item["size"]))
     if not runs:
         raise IdaAdapterError("no authoritative artifact mapping runs are available")
-    return {"schema_version": "ida-mapping-v1",
-            "input": {"size": identity.size, "sha256": identity.sha256,
-                      "architecture": profile.document.get("architecture", "i386"),
-                      "endianness": profile.document.get("endianness", "little")},
-            "runs": runs}
+    manifest = {"schema_version": "ida-mapping-v1",
+                "input": {"size": identity.size, "sha256": identity.sha256,
+                          "architecture": profile.document.get("architecture", "i386"),
+                          "endianness": profile.document.get("endianness", "little")},
+                "runs": runs}
+    scope = analysis_scope(profile)
+    if scope:
+        manifest["analysis_scope"] = [{"start": start, "end": end}
+                                      for start, end in scope]
+    return manifest
 
 
 def _write_log(path: Path, native_log: Path, stdout, stderr) -> None:

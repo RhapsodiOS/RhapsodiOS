@@ -21,7 +21,7 @@
     },
     "angr": {
       "enabled": true,
-      "executable": ".venv-binrecon/Scripts/python.exe",
+      "executable": "D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe",
       "timeout_seconds": 900,
       "version": "9.3.0"
     }

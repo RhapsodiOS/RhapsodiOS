@@ -49,6 +49,8 @@ Both are `MH_PRELOAD` (Mach-O file type 5), i386, little-endian.
 
 Sizes below are derived from the gap to the next `__TEXT,__text` symbol. IDA's own `size` field is authoritative where the two disagree; a disagreement between IDA and angr is a `boundary_disputed` entry, not something to average.
 
+**Measured, Task 2:** IDA's 30 addresses match this table exactly. 22 of the 30 sizes are 1–3 bytes *smaller* than the gap-derived figure, because the gap includes padding to the next 4-byte boundary and IDA reports true function extent. Use IDA's sizes. A gap-vs-IDA size difference of 1–3 bytes on a correctly aligned successor is padding and is **not** a `boundary_disputed` entry — reserve that bucket for genuine IDA-versus-angr disagreement. The same will hold for `PortServer_reloc` in Task 5.
+
 ### `BPF_reloc`, `__TEXT,__text` = 6296 bytes, 30 functions
 
 | Address | Symbol | Size | Source file |
@@ -187,7 +189,7 @@ Create `tools/binrecon/profiles/bpf.json`. This is `profiles/pcmciabus.json` wit
     },
     "angr": {
       "enabled": true,
-      "executable": ".venv-binrecon/Scripts/python.exe",
+      "executable": "D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe",
       "timeout_seconds": 900,
       "version": "9.3.0"
     }
@@ -231,7 +233,7 @@ Create `tools/binrecon/profiles/portserver.json`, identical but for two fields:
     },
     "angr": {
       "enabled": true,
-      "executable": ".venv-binrecon/Scripts/python.exe",
+      "executable": "D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe",
       "timeout_seconds": 900,
       "version": "9.3.0"
     }

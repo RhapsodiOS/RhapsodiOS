@@ -25,6 +25,14 @@
 #define IOSCSIDevice IOSCSIController
 
 /* ========================================================================
+ * IOSCSIControllerExported Protocol - conformance check used by
+ * IOSCSISession_initForDevice
+ * ======================================================================== */
+
+@protocol IOSCSIControllerExported
+@end
+
+/* ========================================================================
  * IOSCSISession Class Definition
  * ======================================================================== */
 

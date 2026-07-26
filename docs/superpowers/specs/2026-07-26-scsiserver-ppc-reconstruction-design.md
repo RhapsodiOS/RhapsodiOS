@@ -336,9 +336,20 @@ The work is done when all of the following hold, with output shown:
 1. `selector_check.py` exits 0 — renames and duplicates both empty. It reports
    1 rename today. The 2 missing entries remain (build-generated, §1.3) and the
    1 extra is dispositioned.
-2. The regenerated `source-map.json` reports 66 mapped, 2 unmapped, 0
-   duplicate_candidates, 0 boundary_disputed — the 2 unmapped being the
-   build-generated classes.
+2. The regenerated `source-map.json` reports **48 mapped, 20 unmapped**, 0
+   duplicate_candidates, 0 boundary_disputed.
+
+   The 48 are the 41 that map today plus the seven this work supplies: the
+   renamed `initServerWithTask:sendPort:`, `_serverThreadFunc`, and the five
+   absent plumbing functions of §2.4. The 20 are the 2 build-generated classes
+   plus the 18 `__XIOSCSISession_*` stubs.
+
+   The stubs stay unmapped for a mechanical reason worth stating rather than
+   discovering: `source-map` maps a reference function to a *source site in the
+   tree*, and MiG's generated `IOSCSISessionMigServer.c` does not exist here
+   because MiG cannot run in this environment. Recovering the `.defs` is what
+   makes those stubs correct; it cannot make them mapped. A build pass that runs
+   MiG would move all 18 into `mapped` and take the totals to 66/2.
 3. `load_source_map` accepts the checked-in map against the reference analysis
    and the files on disk, validating the exact function partition, names, sizes
    and source-line bounds.

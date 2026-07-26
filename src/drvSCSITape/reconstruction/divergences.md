@@ -481,15 +481,17 @@ table — they are plain C functions named `_moveString`,
 
 **The compiler-defined-macro check.** Three of these five bit-field
 functions turn on `#if __BIG_ENDIAN__` / `#if __NATURAL_ALIGNMENT__` pairs in
-`scsireg.h`, and the reference disassembly can only be explained by knowing
-which branch a real ppc build takes. `src/cc-1/cc/config/rs6000/apple.h:135-141`
-and the identical block in `src/cc-791/cc/config/rs6000/apple.h` give the
-ppc `CPP_PREDEFINES` directly: `-D__ppc__ -D__NATURAL_ALIGNMENT__
--D__MACH__ -D__BIG_ENDIAN__ -D__APPLE__` (and the `-Dppc` variant
-alongside it) — both `__BIG_ENDIAN__` and `__NATURAL_ALIGNMENT__` are
-compiler-predefined for every ppc target in this tree, unconditionally, not
-opt-in. Every struct branch below assumes both are true, and the recovered
-bit layouts confirm it.
+`scsireg.h`. `src/cc-1/cc/config/rs6000/apple.h:135-141` defines three
+branches of `CPP_PREDEFINES`: the `MAC_OS_X_SERVER_1_0` branch predefines
+`-DNATURAL_ALIGNMENT` (no underscores), while the `MAC_OS_X` and default
+branches predefine `-D__NATURAL_ALIGNMENT__` (double underscores). The
+recovered disassembly itself — not the macro — settles which branch Apple's
+build took: the three `stb` instructions in `_assign_cdb_c6s_len` (6872) at
+byte offsets 2, 3, and 4 can only be explained by the `u_char c6s_len[3]`
+array form, which requires the `__NATURAL_ALIGNMENT__` test (with double
+underscores) to be true. Apple's build therefore took either the `MAC_OS_X`
+branch or the default branch, not the `MAC_OS_X_SERVER_1_0` branch. The
+recovered bit layouts confirm this.
 
 **The recovered bit-layout table.**
 

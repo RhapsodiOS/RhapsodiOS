@@ -498,9 +498,8 @@ cleanup:
 	// Set block device open flag (offset 0x155)
 	_blockDeviceOpen = (openFlag != 0);
 
-	// Update instance open status based on whether any devices are open
-	// Check if _labelValid (0x154) or other flags indicate open devices
-	[self setInstanceOpen:(_labelValid != 0)];
+	// Update instance open status based on whether either device is open
+	[self setInstanceOpen:(_blockDeviceOpen || _rawDeviceOpen)];
 }
 
 
@@ -514,9 +513,8 @@ cleanup:
 	// Set raw device open flag (offset 0x156)
 	_rawDeviceOpen = (openFlag != 0);
 
-	// Update instance open status based on whether any devices are open
-	// Check if _labelValid (0x154) or other flags indicate open devices
-	[self setInstanceOpen:(_labelValid != 0)];
+	// Update instance open status based on whether either device is open
+	[self setInstanceOpen:(_blockDeviceOpen || _rawDeviceOpen)];
 }
 
 /*

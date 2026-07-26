@@ -265,18 +265,22 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	
 	// Get ejectable flag from bit 2 of flags (offset 0x18c)
 	isEjectable = (_flags >> 2) & 1;
-	
+
 	// Allocate IOFloppyDisk object
 	// Call: [[IOFloppyDisk alloc] initFromDeviceDescription::::]
 	diskObject = [[IOFloppyDisk alloc] initFromDeviceDescription:_deviceDescription
 	                                                            :self
 	                                                            :diskType
 	                                                            :isEjectable];
-	
+
 	// Store disk object at offset 0x108
 	_nextLogicalDisk = diskObject;
-	
-	return (diskObject != nil) ? IO_R_SUCCESS : IO_R_NO_MEMORY;
+
+	// Disassembly (0x39a3-0x39a8) returns a plain boolean: 1 if diskObject was
+	// allocated, 0 if not (setnz al). IO_R_SUCCESS is 0, so returning it here
+	// on success made the caller's "if (allocated)" check read success as
+	// failure. Return the boolean the caller actually expects.
+	return (diskObject != nil);
 }
 
 /*
@@ -324,33 +328,31 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters at specific offsets
-	cmdBuffer[0] = _fdcNumber;                      // FDC controller number (offset 400)
+	cmdBuffer[0] = _fdcNumber;                      // FDC controller number
 	*(unsigned *)(cmdBuffer + 4) = 5000;            // Timeout (5000ms)
-	*(unsigned *)(cmdBuffer + 8) = 1;               // Command length
-	*(unsigned *)(cmdBuffer + 0x14) = 6;            // Phase: format track
+	*(unsigned *)(cmdBuffer + 8) = 1;               // fcCmdXfr: op selector (1 = raw FDC bytes)
+	*(unsigned *)(cmdBuffer + 0x1c) = 6;            // Command byte count (6 for FORMAT TRACK)
+	*(unsigned char **)(cmdBuffer + 0x20) = formatBuffer;  // Buffer pointer
+	*(int *)(cmdBuffer + 0x24) = bufferSize;        // Expected byte count
 	*(unsigned *)(cmdBuffer + 0x58) = kernel_map;   // Kernel memory map
-	*(unsigned *)(cmdBuffer + 0x5c) = 7;            // Result bytes expected
-	*(unsigned *)(cmdBuffer + 0x60) = 0;            // Initial result value
-	
+	*(unsigned *)(cmdBuffer + 0x38) = 7;            // Result bytes expected
+	*(unsigned *)(cmdBuffer + 0x3c) = 0;            // Initial result value
+
 	// FDC command bytes
-	cmdBuffer[0x24] = 0x0D |                        // FORMAT TRACK command
+	cmdBuffer[0x0c] = 0x0D |                        // FORMAT TRACK command
 	                  ((_writePrecomp & 1) << 6);   // Write precomp flag (offset 0x198)
-	cmdBuffer[0x25] = ((unsigned char)head & 1) << 2; // Head select
-	cmdBuffer[0x26] = _sectorSizeCode;              // N - sector size code (offset 0x1a0)
-	cmdBuffer[0x27] = _sectorsPerTrack;             // Sectors per track (offset 0x1a4)
-	cmdBuffer[0x28] = _formatGapLength;             // Gap length (offset 0x1a9)
-	cmdBuffer[0x29] = 0x5A;                         // Fill byte (format pattern)
-	
-	// Set buffer pointer and size
-	*(unsigned char **)(cmdBuffer + 0x30) = formatBuffer;
-	*(int *)(cmdBuffer + 0x34) = bufferSize;
-	
+	cmdBuffer[0x0d] = ((unsigned char)head & 1) << 2; // Head select
+	cmdBuffer[0x0e] = _sectorSizeCode;              // N - sector size code (offset 0x1a0)
+	cmdBuffer[0x0f] = _sectorsPerTrack;             // Sectors per track (offset 0x1a4)
+	cmdBuffer[0x10] = _formatGapLength;             // Gap length (offset 0x1a9)
+	cmdBuffer[0x11] = 0x5A;                         // Fill byte (format pattern)
+
 	// Send command to FDC
 	result = [self fdSendCmd:cmdBuffer];
-	
+
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
-		result = fdrToIo(*(unsigned *)(cmdBuffer + 0x58));
+		result = fdrToIo(*(unsigned *)(cmdBuffer + 0x40));
 	}
 	
 	// Free format buffer
@@ -373,10 +375,10 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	unsigned char unit;
 	unsigned char command;
 
-	// The command bytes are at offset 0x9 + 3 in the structure
-	// Based on decompiled code: field3_0x9[3..11] are the FDC command bytes
-	// This corresponds to offset 0x24 in the command buffer (matching format track)
-	cmdBytes = cmdStruct + 0x24;
+	// Disassembly: "lea esi, [edi+0Ch]" - the command bytes start at +0x0C,
+	// the same base fdFormatTrack:head:, fdRecal, fdSeek:head: and
+	// fdReadId:statp: use, not +0x24.
+	cmdBytes = cmdStruct + 0x0c;
 
 	// Clear 9 bytes of command
 	bzero(cmdBytes, 9);
@@ -446,17 +448,17 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters
-	// Offset 0x5c (local_5c): command type = 5 (SENSE DRIVE STATUS)
-	// Offset 0x60 (local_60): timeout = 5000ms
-	*(unsigned *)(cmdBuffer + 0x5c) = 5;
-	*(unsigned *)(cmdBuffer + 0x60) = 5000;
-	
+	// Offset 0x08: fcCmdXfr: op selector = 5 (SENSE DRIVE STATUS)
+	// Offset 0x04: timeout = 5000ms
+	*(unsigned *)(cmdBuffer + 0x08) = 5;
+	*(unsigned *)(cmdBuffer + 0x04) = 5000;
+
 	// Send command to FDC
 	result = [self fdSendCmd:cmdBuffer];
-	
-	// Copy status from offset 0x14 (local_14) to output parameter
+
+	// Copy status from offset 0x50 to output parameter
 	if (status != NULL) {
-		*status = cmdBuffer[0x14];
+		*status = cmdBuffer[0x50];
 	}
 	
 	return result;

@@ -11,6 +11,24 @@
 extern unsigned int page_size;
 extern unsigned int page_mask;
 
+/*
+ * diskLabelValues - disk-label IOReturn code -> string map for
+ * IOFindNameForValue, recovered byte-for-byte from the reference binary's
+ * __DATA segment. The codes are the same ones returned as raw hex
+ * (0xfffffbb0-0xfffffbb4) by NeXTpartitionOffset, readLabel: and
+ * writeLabel: below. No caller of IOFindNameForValue against this table
+ * could be found in the reference disassembly; kept here for string-table
+ * parity.
+ */
+static const IONamedValue diskLabelValues[] = {
+	{ -0x44c, "No Label" },
+	{ -0x44d, "Disk Not Formatted" },
+	{ -0x44e, "Disk Not Present" },
+	{ -0x44f, "Can't Read Block 0" },
+	{ -0x450, "No NeXT partition" },
+	{ 0, (const char *)0 },
+};
+
 @implementation IODiskPartitionNEW
 
 /*

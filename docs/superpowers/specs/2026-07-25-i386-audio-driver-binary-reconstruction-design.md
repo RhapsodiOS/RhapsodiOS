@@ -209,12 +209,26 @@ every string of ours the reference lacks sits under `#ifdef DEBUG` in
 `SoundBlaster8.m` or `SoundBlaster8Inline.h`. Our method set matches the
 reference method set name for name.
 
-One linkage question. The reference defines `_writeToDSP` at `__text:0` (40
-bytes) and `_readFromDSP` at `__text:40` (32 bytes) as out-of-line `local`
-functions. Ours are `static inline` in `SoundBlaster8Inline.h:153` and `:170`.
-Whether a given compiler emits an out-of-line copy of a `static inline` function
-is a toolchain property, so this may not be reproducible from source; §6 records
-the fallback.
+The reference defines `_writeToDSP` at `__text:0` (40 bytes) and `_readFromDSP`
+at `__text:40` (32 bytes) as out-of-line `local` functions, and our source
+already matches: both are declared plain `static` at
+`SoundBlaster8Inline.h:151` and `:169`, alone among the twenty-two functions in
+that header, every other one of which is `static __inline__`. Apple made the
+same distinction we did, which is why the compiler emits these two out of line
+and inlines the rest.
+
+An earlier draft of this section claimed ours were `static inline` and treated
+reproducing Apple's out-of-line emission as an open risk. That was a scoping
+error — the qualifier was read from the surrounding functions rather than from
+these two. drvSB8Sound's report pass (§5, Phase 4) caught it. There is nothing
+to change and no fallback to record.
+
+Our help bundle is misnamed. `Default.table` names `"Help File" = "SB8.rtfd"`,
+matching Apple's table exactly, but our tree carries the bundle as
+`English.lproj/DriverHelp/SB8_3_31.rtfd`, so the key resolves to nothing.
+Apple's shipped `SoundBlaster8.config/English.lproj/Help/SB8.rtfd` settles the
+correct name. drvSB16Sound's `SB16_3_31.rtfd` and drvES1x88Sound's
+`ES1x88_3_30.rtfd` both already match their references and must not be renamed.
 
 ### 2.5 Three of the four table sets have gaps
 
@@ -565,11 +579,10 @@ the reference imports `assert_wait`, `thread_set_timeout`, `thread_block` and
 argument computation. If `-[Beep beep]` (444 bytes) does not settle it, the
 finding is recorded rather than guessed.
 
-**Apple's out-of-line `_writeToDSP` and `_readFromDSP` may not be reproducible.**
-Whether a compiler emits an out-of-line copy of a `static inline` function is a
-toolchain property, not a source property. If removing `inline` does not
-reproduce them at the reference sizes, the entry becomes `intentional-mismatch`
-with the reason recorded.
+**~~Apple's out-of-line `_writeToDSP` and `_readFromDSP` may not be
+reproducible.~~** Retired. This risk rested on the misreading corrected in §2.4:
+both functions are already plain `static` in our source and already emit out of
+line at Apple's sizes.
 
 **Ghidra may reject these binaries.** Three of the five input drivers aborted
 normalization with `Ghidra relocation operand metadata is ambiguous`

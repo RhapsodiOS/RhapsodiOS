@@ -1480,23 +1480,9 @@ Follow Standard fix pass procedure Step B. Record all four counts.
 
 - [ ] **Step 3: Try to reproduce the out-of-line DSP helpers**
 
-`SoundBlaster8Inline.h:153` and `:170` currently declare:
+**This step is a confirmation, not an edit.** An earlier revision claimed our `writeToDSP` and `readFromDSP` were `static __inline__` and told this step to remove the qualifier. They are not: both are declared plain `static` at `SoundBlaster8Inline.h:151` and `:169`, alone among the twenty-two functions in that header, every other one of which is `static __inline__`. That is exactly why the compiler already emits these two out of line, matching the reference's `local` `_writeToDSP` at `__text:0` (40 bytes) and `_readFromDSP` at `:40` (32 bytes).
 
-```c
-static __inline__ void
-writeToDSP(unsigned int dataOrCommand)
-```
-
-Remove the inline qualifier from both so the compiler must emit an out-of-line copy, matching the reference's `local` `_writeToDSP` at `__text:0` and `_readFromDSP` at `:40`:
-
-```c
-static void
-writeToDSP(unsigned int dataOrCommand)
-```
-
-Read the file to confirm the exact current qualifier before editing — it may be `static inline`, `static __inline__`, or `__inline__ static`, and the edit must preserve everything else on the line.
-
-Rebuild, then check whether the symbols appear and at what size:
+Confirm that against the rebuilt binary and change nothing:
 
 ```bash
 cd /d/RhapsodiOS
@@ -1525,13 +1511,25 @@ PY
   out/i386/drvSB8Sound/SoundBlaster8.config/SoundBlaster8_reloc
 ```
 
-If `_writeToDSP` and `_readFromDSP` appear as `local` in `__TEXT,__text`, the change worked; keep it. If they do not — the compiler may still inline a `static` function used once, or may emit them at sizes far from 40 and 32 bytes — **revert the edit** and record the entry as `intentional-mismatch` with the reason that out-of-line emission of a `static` function is a toolchain property our source cannot control. Do not force it with `__attribute__((noinline))`; the reference has no such annotation and adding one would be inventing source Apple did not write.
+Expected: both appear as `local` in `__TEXT,__text` at 40 and 32 bytes, matching the reference. If they do, record that in the report and move on — there is no source change to make.
+
+If they do **not** appear, something has changed since Task 5 read the header. Investigate before editing, and do not force the match with `__attribute__((noinline))`: the reference has no such annotation and adding one would be inventing source Apple did not write.
 
 - [ ] **Step 4: Fix the remaining findings**
 
 Follow Standard fix pass procedure Step C, working through `divergences.md` in order. Every finding resolves to a source change or to `intentional-mismatch` with a reason and a reviewer.
 
-The `SB8.rtfd` help-file key recorded in Task 5 is resolved here as `intentional-mismatch`: the table matches Apple byte for byte, and renaming our help bundle to suit would change a file the reference comparison does not cover.
+The `SB8.rtfd` help-file mismatch recorded in Task 5 is resolved by **renaming our bundle**, not by accepting the divergence. An earlier revision of this step said to accept it; that was wrong. Apple ships `SoundBlaster8.config/English.lproj/Help/SB8.rtfd`, so `SB8.rtfd` is the correct bundle name, our `Default.table` already names it, and our tree's `English.lproj/DriverHelp/SB8_3_31.rtfd` resolves to nothing today:
+
+```bash
+cd /d/RhapsodiOS
+git mv src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/English.lproj/DriverHelp/SB8_3_31.rtfd \
+       src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/English.lproj/DriverHelp/SB8.rtfd
+```
+
+Check whether anything else in the project references the old name — `TableOfContents.rtf` in the same directory is the likely place — and update it if so.
+
+**Do not rename drvSB16Sound's `SB16_3_31.rtfd` or drvES1x88Sound's `ES1x88_3_30.rtfd`.** Apple ships both under exactly those names, so they already match and a rename would break them.
 
 - [ ] **Step 5: Rebuild, re-check parity, and size-check**
 

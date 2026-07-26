@@ -37,6 +37,7 @@
 #import <driverkit/generalFuncs.h>
 
 #import "ttyiops.h"
+#import "IOPortSession.h"	/* for the [IOPortSession alloc] class reference */
 
 /*
  * Speed table for baud rate conversion.  ttspeedtab() reads this as
@@ -273,7 +274,6 @@ int ttyiops_acquireSession(struct tty *tp, unsigned int session_flags)
     int acquire_result;
     id newSession;
     id deviceName;
-    id ioPortSessionClass;
     unsigned int current_session;
 
     /* Session acquisition loop with sleep/retry logic */
@@ -341,11 +341,8 @@ acquire_session:
             /* Get device name */
             deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name));
 
-            /* Get IOPortSession class */
-            ioPortSessionClass = objc_getClass("IOPortSession");
-
             /* Allocate and initialize new session */
-            newSession = objc_msgSend(ioPortSessionClass, @selector(alloc));
+            newSession = [IOPortSession alloc];
             newSession = objc_msgSend(newSession, @selector(initForDevice:result:), 
                                      deviceName, &acquire_result);
 
@@ -387,11 +384,8 @@ acquire_session:
         /* Get device name */
         deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name));
 
-        /* Get IOPortSession class */
-        ioPortSessionClass = objc_getClass("IOPortSession");
-
         /* Allocate and initialize new session */
-        newSession = objc_msgSend(ioPortSessionClass, @selector(alloc));
+        newSession = [IOPortSession alloc];
         newSession = objc_msgSend(newSession, @selector(initForDevice:result:), 
                                  deviceName, &acquire_result);
 

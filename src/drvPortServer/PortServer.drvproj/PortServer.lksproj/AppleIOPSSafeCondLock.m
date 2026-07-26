@@ -8,6 +8,7 @@
 #import "AppleIOPSSafeCondLock.h"
 #import <objc/objc-runtime.h>
 #import <kern/lock.h>
+#import <mach/machine/simple_lock.h>	/* the real inline simple_lock/simple_unlock */
 #import <kern/thread.h>
 
 /* ========================================================================
@@ -239,23 +240,9 @@ id AIOPSSCL_unlock(id lock)
  */
 - unlock
 {
-    unsigned int *spinlock_ptr;
-    unsigned int spinlock_value;
 
     /* Acquire the sleep interlock */
-    spinlock_ptr = &sleep_interlock.locked;
-    do {
-        /* Spin while spinlock is held */
-        while (*spinlock_ptr != 0) {
-            /* Busy wait */
-        }
-
-        /* Try to acquire spinlock atomically */
-        LOCK();
-        spinlock_value = *spinlock_ptr;
-        *spinlock_ptr = 1;
-        UNLOCK();
-    } while (spinlock_value == 1);
+    simple_lock((simple_lock_t)&sleep_interlock);
 
     /* Wake one thread waiting on the condition variable */
     thread_wakeup_prim((char *)&conditionVar, 1, 0);
@@ -278,9 +265,7 @@ id AIOPSSCL_unlock(id lock)
     }
 
     /* Release the sleep interlock */
-    LOCK();
-    sleep_interlock.locked = 0;
-    UNLOCK();
+    simple_unlock((simple_lock_t)&sleep_interlock);
 
     return self;
 }
@@ -305,51 +290,21 @@ id AIOPSSCL_unlockWith(id lock, int condition)
  */
 - unlockWith:(int)condition
 {
-    unsigned int *spinlock_ptr;
-    unsigned int spinlock_value;
 
     /* Acquire the sleep interlock */
-    spinlock_ptr = &sleep_interlock.locked;
-    do {
-        /* Spin while spinlock is held */
-        while (*spinlock_ptr != 0) {
-            /* Busy wait */
-        }
-
-        /* Try to acquire spinlock atomically */
-        LOCK();
-        spinlock_value = *spinlock_ptr;
-        *spinlock_ptr = 1;
-        UNLOCK();
-    } while (spinlock_value == 1);
+    simple_lock((simple_lock_t)&sleep_interlock);
 
     /* Acquire the condition interlock */
-    spinlock_ptr = &cond_interlock.locked;
-    do {
-        /* Spin while spinlock is held */
-        while (*spinlock_ptr != 0) {
-            /* Busy wait */
-        }
-
-        /* Try to acquire spinlock atomically */
-        LOCK();
-        spinlock_value = *spinlock_ptr;
-        *spinlock_ptr = 1;
-        UNLOCK();
-    } while (spinlock_value == 1);
+    simple_lock((simple_lock_t)&cond_interlock);
 
     /* Update the condition value */
     conditionVar = condition;
 
     /* Release the condition interlock */
-    LOCK();
-    cond_interlock.locked = 0;
-    UNLOCK();
+    simple_unlock((simple_lock_t)&cond_interlock);
 
     /* Release the sleep interlock */
-    LOCK();
-    sleep_interlock.locked = 0;
-    UNLOCK();
+    simple_unlock((simple_lock_t)&sleep_interlock);
 
     /* Call unlock to wake waiting threads and clear the lock held flag */
     return AIOPSSCL_unlock(self);
@@ -376,49 +331,24 @@ int AIOPSSCL_lock(id lock)
  */
 - (int)lock
 {
-    unsigned int *spinlock_ptr;
-    unsigned int spinlock_value;
     int result;
 
     result = 0;
-    spinlock_ptr = &sleep_interlock.locked;
 
     /* Acquire spinlock using test-and-set pattern */
-    do {
-        /* Spin while spinlock is held */
-        while (*spinlock_ptr != 0) {
-            /* Busy wait */
-        }
-
-        /* Try to acquire spinlock atomically */
-        LOCK();
-        spinlock_value = *spinlock_ptr;
-        *spinlock_ptr = 1;
-        UNLOCK();
-    } while (spinlock_value == 1);
+    simple_lock((simple_lock_t)&sleep_interlock);
 
     /* If lock is already held, we need to wait */
     if (want_lock != '\0') {
-        spinlock_ptr = &sleep_interlock.locked;
-
         do {
             /* Mark that we're waiting */
             waiting = 1;
 
             /* Sleep on the lock object */
-            thread_sleep(self, spinlock_ptr, interuptable);
+            thread_sleep(self, (simple_lock_t)&sleep_interlock, interuptable);
 
             /* Re-acquire spinlock after waking */
-            do {
-                while (*spinlock_ptr != 0) {
-                    /* Busy wait */
-                }
-
-                LOCK();
-                spinlock_value = *spinlock_ptr;
-                *spinlock_ptr = 1;
-                UNLOCK();
-            } while (spinlock_value == 1);
+            simple_lock((simple_lock_t)&sleep_interlock);
 
             /* Check if we were interrupted */
             result = thread_wait_result();
@@ -432,9 +362,7 @@ int AIOPSSCL_lock(id lock)
     }
 
     /* Release spinlock */
-    LOCK();
-    sleep_interlock.locked = 0;
-    UNLOCK();
+    simple_unlock((simple_lock_t)&sleep_interlock);
 
     /* If result != 0, lock acquisition failed (interrupted) */
     return result;
@@ -462,25 +390,10 @@ int AIOPSSCL_lockTry(id lock)
  */
 - (BOOL)lockTry
 {
-    unsigned int *spinlock_ptr;
-    unsigned int spinlock_value;
     BOOL acquired;
 
-    spinlock_ptr = &sleep_interlock.locked;
-
     /* Acquire spinlock using test-and-set pattern */
-    do {
-        /* Spin while spinlock is held */
-        while (*spinlock_ptr != 0) {
-            /* Busy wait */
-        }
-
-        /* Try to acquire spinlock atomically */
-        LOCK();
-        spinlock_value = *spinlock_ptr;
-        *spinlock_ptr = 1;
-        UNLOCK();
-    } while (spinlock_value == 1);
+    simple_lock((simple_lock_t)&sleep_interlock);
 
     /* Check if lock is free */
     acquired = (want_lock == '\0');
@@ -491,9 +404,7 @@ int AIOPSSCL_lockTry(id lock)
     }
 
     /* Release spinlock */
-    LOCK();
-    sleep_interlock.locked = 0;
-    UNLOCK();
+    simple_unlock((simple_lock_t)&sleep_interlock);
 
     return acquired;
 }
@@ -519,8 +430,6 @@ int AIOPSSCL_lockWhen(id lock, int condition)
  */
 - (int)lockWhen:(int)condition
 {
-    unsigned int *spinlock_ptr;
-    unsigned int spinlock_value;
     int result;
 
     while (1) {
@@ -539,25 +448,13 @@ int AIOPSSCL_lockWhen(id lock, int condition)
 
         /* Condition doesn't match, need to wait */
         /* Acquire the condition interlock */
-        spinlock_ptr = &cond_interlock.locked;
-        do {
-            /* Spin while spinlock is held */
-            while (*spinlock_ptr != 0) {
-                /* Busy wait */
-            }
-
-            /* Try to acquire spinlock atomically */
-            LOCK();
-            spinlock_value = *spinlock_ptr;
-            *spinlock_ptr = 1;
-            UNLOCK();
-        } while (spinlock_value == 1);
+        simple_lock((simple_lock_t)&cond_interlock);
 
         /* Release the main lock before sleeping */
         AIOPSSCL_unlock(self);
 
         /* Sleep on the condition variable, protected by cond_interlock */
-        thread_sleep((char *)&conditionVar, (char *)&cond_interlock, interuptable);
+        thread_sleep((char *)&conditionVar, (simple_lock_t)&cond_interlock, interuptable);
 
         /* Check if we were interrupted */
         result = thread_wait_result();

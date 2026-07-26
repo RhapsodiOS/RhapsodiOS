@@ -7,6 +7,9 @@
 #import <objc/objc-runtime.h>
 #import <machkit/NXLock.h>
 #import <kern/assert.h>
+#import <string.h>			/* memset */
+#import <driverkit/generalFuncs.h>	/* IOMalloc, IOFree */
+#import <driverkit/kernelDriver.h>	/* IOGetObjectForDeviceName */
 
 /* Global port list structures */
 static struct {

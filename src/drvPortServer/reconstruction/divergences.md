@@ -4481,22 +4481,40 @@ next pass inherits.
      a macro rather than a member (`proc.h:116`), so the header is required for the
      expansion as well as for the layout.
 
-     **Repaired.** `ttyiops.m` now imports `<sys/proc.h>`. `struct proc`, `struct pcred` and
-     the `p_ucred` macro all sit ahead of that header's `#ifdef _KERNEL` at `proc.h:303`, so
-     they are visible to a kernel-server build. `p_ucred` is the only identifier the header
-     and `ttyiops.m` share, and that sharing is the point — there is no collision.
-     `drvEIDE`'s `IdeKernel.m:59` imports the same header from the same kind of project, so
-     the spelling is proven.
+     **Repaired, but `<sys/proc.h>` on its own is not enough.** The first attempt imported
+     only `<sys/proc.h>` and *failed the build* — `sys/proc.h` includes just `select.h`,
+     `queue.h` and `lock.h`, and leaves the rest of what it needs to its includer:
 
-- **What the two imports do *not* fix, and why they are left alone.** `sys/proc.h` and
-  `sys/ucred.h` both put `tsleep`, `wakeup` and `suser` behind `#ifdef _KERNEL`
-  (`proc.h:303`, `ucred.h:79`), and `_KERNEL` is defined only by
-  `src/kernel-7/conf/Makefile.template:103` when building the kernel itself.
-  `project_makefiles-1/common.make:212` gives kernel-server projects `-DKERNEL` alone, so
-  those three stay implicitly declared in this driver. Under `-Wmost` and no `-Werror` that
-  is a warning, not an error, and it is the state every other kernel-server driver in the
-  tree is in. Defining `_KERNEL` here to silence it would be a tree-wide policy change on
-  no finding's authority.
+     ```
+     In file included from ttyiops.m:32:
+     .../bsd/sys/proc.h:81:  `MAXLOGNAME' undeclared here (not in a function)
+     .../bsd/sys/proc.h:144: field `p_realtimer' has incomplete type
+     .../bsd/sys/proc.h:145: field `p_rtime' has incomplete type
+     .../bsd/sys/proc.h:177: `MAXCOMLEN' undeclared here (not in a function)
+     ```
+
+     The working set, in this order, is `<sys/param.h>` (for `MAXCOMLEN` and `MAXLOGNAME`),
+     `<sys/time.h>` (for the `struct itimerval`/`struct timeval` members), `<sys/signal.h>`
+     (for the `sigset_t` fields) and then `<sys/proc.h>`. `struct proc`, `struct pcred` and
+     the `p_ucred` macro sit ahead of that header's `#ifdef _KERNEL`, and `p_ucred` is the
+     only identifier the header and `ttyiops.m` share — that sharing is the point, and there
+     is no collision.
+
+     Note also that `<sys/param.h>` includes `<sys/ucred.h>`, which is what finally declares
+     `suser`. The build's own `-D_KERNEL` (see the next bullet) makes that declaration
+     visible, so the `implicit declaration of function 'suser'` warning the first attempt
+     produced is gone.
+
+- **Correction: kernel-server builds *do* get `-D_KERNEL`.** An earlier revision of this
+  section claimed `_KERNEL` was defined only by `src/kernel-7/conf/Makefile.template:103`
+  for the kernel proper, and that `suser`, `tsleep` and `wakeup` would therefore stay
+  implicitly declared here. **That was wrong.** Every `cc` line in the guest build carries
+  `-static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=PortServer_instance`.
+  The flags come from the kernel-server makefile installed at `$(MAKEFILEPATH)/pb_makefiles`
+  in the guest, which is not the copy this repo tracks in `src/pb_makefiles-1/` — that is
+  why reading the repo's makefiles alone gave the wrong answer. With `_KERNEL` defined and
+  `ucred.h` reached through `param.h`, all three prototypes are visible and none of them
+  warns.
 
 - **`ttyiops.h:110` declares `extern long hz;`, but the kernel's `hz` is `int`
   (`sys/kernel.h:92`).** Harmless on i386, where both are 32 bits, and no translation unit
@@ -4513,5 +4531,139 @@ next pass inherits.
   verbatim; and every call site's argument count matches its callee's. `timeout_func_t` was
   the only invented identifier.
 
-- **Still no compile gate.** The three repairs above were derived by reading the headers
-  they depend on, not by building. Nothing in this driver has been compiled.
+- **There is now a compile gate, and the driver builds.** `vm/build-i386-portserver.sh` runs
+  `gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386` in the Rhapsody guest; the log is
+  `vm/shots-portserver/PortServer.log`. All six `.m` files compile, `kl_ld` links
+  `PortServer_reloc`, make exits 0, and the result is staged to
+  `out/i386/drvPortServer/PortServer.config/`. This supersedes §14's "No compile gate
+  anywhere in Tasks 7 or 8" — that statement was true when written and is now spent.
+
+  Three source changes outside the three repairs were needed to get there, and they are
+  build plumbing rather than reconstruction:
+
+  - `Load_Commands.sect` did not exist. `kl_ld` is invoked with `-l Load_Commands.sect`, so
+    the link failed without it. It declares no Mig interface and `WIRE`s the driver down.
+  - `Makefile`'s `OTHERSRCS` now lists `Load_Commands.sect`.
+  - `Makefile.preamble`'s `OTHER_CFLAGS` now carries `-DDRIVER_PRIVATE -Wno-format`. Its
+    `INCLUDED_ARCHS` was briefly narrowed to `i386` for the guest loop and has been restored
+    to `i386 ppc`: `build-i386-portserver.sh:20-21` passes `INCLUDED_ARCHS=i386` on the
+    `gnumake` command line, which overrides the file assignment, so the i386-only guest
+    build works without the driver's own preamble dropping ppc. This matches
+    `build-i386-floppy.sh:18-19`.
+
+  What the successful build still warns about, none of it from the three repairs:
+
+  - `ttyiops.m` is down to one warning: `unused variable 'current_session'` at `:277`. The
+    local is declared in `ttyiops_acquireSession` and never read. Left alone — it is
+    pre-existing dead code, not something these repairs introduced.
+  - `IOPortSession.m`: 10 `assignment from incompatible pointer type`, 7 `assignment makes
+    integer from pointer without a cast`, and implicit declarations of `IOMalloc`, `IOFree`,
+    `memset` and `IOGetObjectForDeviceName`.
+  - `AppleIOPSSafeCondLock.m`: 8 incompatible-pointer assignments, 2 pointer-to-integer
+    casts of different size, 2 bad `thread_sleep` arg-2 types, and implicit `LOCK`, `UNLOCK`
+    and `thread_wait_result`.
+  - `IOPortSessionKern.m`: `strcpy` conflicting with the built-in, and `getCharValues:`/
+    `setCharValues:` redeclared with `char *`/`int` where `driverkit/IODevice.h` has
+    `unsigned char *`/`IOReturn`.
+
+  The pointer/integer warnings in the first two files are worth a finding of their own — a
+  32-bit-only coincidence is holding them up — but no existing finding covers them and they
+  are outside this pass.
+
+## 15. Undefined-symbol diff against the reference — the driver could not have loaded
+
+Now that both binaries exist, the sharpest available check is not the warning list but the
+set of **undefined external symbols**, which is what the kernel's loader has to resolve.
+`kl_ld` does not resolve them at build time, so a build exiting 0 says nothing about whether
+the driver loads.
+
+Comparing `out/i386/drvPortServer/PortServer.config/PortServer_reloc` against Apple's
+`PortServer_reloc` (sha256 `d724803…`, the ledger's `reference_sha256`): 59 undefined
+symbols in the reference, 62 in ours, **59 shared**. The reference needs nothing we do not
+provide. We had **three extra**, and each is a real reconstruction defect.
+
+### Finding 83 — `LOCK()`/`UNLOCK()` are invented; the reference inlines `simple_lock`
+
+`AppleIOPSSafeCondLock.m` called `LOCK()` and `UNLOCK()` at 12 sites. Nothing declares them
+anywhere under `src/`, so they compiled as implicit declarations and left `_LOCK` and
+`_UNLOCK` undefined in the output. **The driver would have failed to load**, and no compile
+warning says so — only the symbol diff does.
+
+The reference settles what they stand for. `-[AppleIOPSSafeCondLock unlock]` at 592:
+
+```
+ 599: lea  edx, [ebx+0xc]        ; &sleep_interlock  (matches the header's +0xc)
+ 604: cmp  dword ptr [edx], 0    ; \  simple_lock: do { while (slock->locked) continue; }
+ 607: jne  604                   ; /
+ 609: mov  eax, 1                ; \
+ 614: xchg dword ptr [edx], eax  ;  |  simple_lock_try: "xchgl %1,%0; xorl %3,%0"
+ 616: xor  eax, 1                ;  |
+ 619: test eax, eax              ;  |
+ 621: je   604                   ; /  while (!simple_lock_try(slock));
+ ...
+ 664: xor  eax, eax              ; \  simple_unlock: "xchgl %1,%0" with "0" (FALSE)
+ 666: xchg dword ptr [ebx+0xc], eax ; /
+```
+
+That is `src/kernel-7/mach/i386/simple_lock.h` inlined verbatim — `simple_lock` at
+`:75-87` and `simple_unlock` at `:89-101`, both `static __inline__`, which is why no
+`_simple_lock` appears undefined in the reference either.
+
+Our expansion was wrong on three counts beyond the undefined symbols. It hand-rolled the
+spin as `spinlock_value = *p; *p = 1;` — **a non-atomic read-modify-write** where the
+reference has a single bus-locked `xchg`, so two CPUs could both acquire. It released with a
+plain store (`sleep_interlock.locked = 0;`) where the reference uses `xchg`. And it passed
+`unsigned int *` as `thread_sleep`'s second argument, which wants `simple_lock_t` — the
+source of the `passing arg 2 of 'thread_sleep' from incompatible pointer type` warnings.
+
+**Fixed.** All 12 sites are now `simple_lock((simple_lock_t)&X)` / `simple_unlock(...)`,
+both `thread_sleep` call sites pass `simple_lock_t`, the orphaned `spinlock_ptr` /
+`spinlock_value` locals are gone, and the file imports `<mach/machine/simple_lock.h>`.
+
+One caveat that only a rebuild can settle: `kern/lock.h` defines `simple_lock(l)` as an
+**empty macro** when `MACH_SLOCKS` is off (`kern/lock.h:101-107`), and `kern/thread.h:77`
+drags `kern/lock.h` in regardless of our import list. If the guest's headers are in that
+configuration, the import is placed after `<kern/lock.h>` so the `static __inline__`
+definition is macro-expanded and the compile fails loudly rather than silently emitting no
+locking. The reference contains the `xchg`, so Apple's configuration was not that one.
+**Verify by disassembling the rebuilt binary and confirming the `xchg` is present.**
+
+### Finding 84 — `objc_getClass("IOPortSession")` where the reference uses a class reference
+
+`ttyiops_acquireSession` obtained the class by string lookup at two sites and then sent
+`alloc` to the result, leaving `_objc_getClass` undefined in our binary. The reference never
+calls it: `.objc_class_name_IOPortSession` is an undefined external there, and both binaries
+carry an identical 24-byte `__OBJC,__cls_refs` (6 entries), so the class is reached through
+the class-reference machinery, not by name.
+
+**Fixed.** Both sites are now `[IOPortSession alloc]`, the `ioPortSessionClass` local is
+gone, and `ttyiops.m` imports `IOPortSession.h` (it previously had only `ttyiops.h`'s
+`@class` forward declaration, which is not enough for a class message).
+
+### Finding 85 — `IOPortSession.m`'s four implicit declarations
+
+`IOMalloc`, `IOFree` (`driverkit/generalFuncs.h`), `IOGetObjectForDeviceName`
+(`driverkit/kernelDriver.h`) and `memset` were all implicitly declared. Unlike the two above
+this cost no symbol divergence — `_IOMalloc`, `_IOFree`, `_IOGetObjectForDeviceName` and
+`_memset` are all undefined externals in the reference too, so Apple's build emitted the
+same calls, and `memset` in particular was not expanded inline there.
+
+**Fixed** by importing the three headers. Note this is the one case where an implicit
+declaration was harmless: had the reference inlined `memset`, the missing `<string.h>` would
+have been a codegen divergence rather than a warning.
+
+### Not repaired, and why
+
+- **The `assignment from incompatible pointer type` / `makes integer from pointer` warnings**
+  (10 + 7 in `IOPortSession.m`, 8 in `AppleIOPSSafeCondLock.m`). All are `objc_msgSend`'s
+  `id` return being stored into a differently-typed local — `IMP`, `int`, `char`. On i386
+  every one is a 32-bit move either way, so the emitted code is identical and no symbol
+  changes. Cosmetic; repairing 25 sites would swamp the substantive fixes above.
+- **`IOPortSessionKern.m`'s `getCharValues:`/`setCharValues:` redeclarations.** Ours use
+  `char *`/`int` where `driverkit/IODevice.h:211,219` have `unsigned char *`/`IOReturn`.
+  This one is *not* obviously cosmetic — it is a method-signature mismatch against a
+  superclass, so the `@encode` in the category metadata may differ from the reference's.
+  It deserves a finding of its own and a metadata comparison, which this pass did not do.
+- **`strcpy` conflicting with the built-in** (`IOPortSessionKern.m:29`). A local prototype
+  disagreeing with gcc's builtin. `_strcpy` is an undefined external in both binaries, so
+  no divergence; left alone.

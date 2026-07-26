@@ -35,7 +35,9 @@ Ledger status:
 > status had never been earned (`rebuilt_sha256` is `null`; `nextEvent` is 70 bytes
 > against our 80 and the streams differ structurally; `release` is 561 against 544).
 > **Nothing in this reconstruction has ever been `assembly-matched`.** The live counts
-> are in Addendum 7's ledger section; read them, not this table.
+> are in the last addendum's ledger section; read them, not this table. **The prose in
+> the rest of this section is the Task 1 snapshot too** — where it says either function
+> "is `assembly-matched`", read "matches the reference at control-flow depth".
 
 | Status | Count | Meaning here |
 |---|---|---|
@@ -44,7 +46,8 @@ Ledger status:
 | ~~`assembly-matched`~~ | ~~2~~ | **RETRACTED — see the note above** |
 | `control-flow-confirmed` | 0 | — |
 
-**Only two of the 43 mapped functions match, and that is the honest result.** The other 41 diverge,
+**Only two of the 43 mapped functions match, and that is the honest result** *(as of Task 1 —
+neither was `assembly-matched`; see the note above)*. The other 41 diverge,
 because the divergence is structural and global: the reference keeps all driver state in
 one 304-byte `Port` struct reached through a single pointer ivar, and our source spreads that state
 across 68 invented instance variables (section 4.1). Every C function's first parameter and every
@@ -54,9 +57,12 @@ it is right.
 **The two exceptions are `-[ISASerialPort nextEvent]` (6400) and `-[ISASerialPort release]`
 (5448), and they are exceptions for the same reason: neither reads a single named ivar.** Both
 reach every field through raw `(char *)self` offset casts that never consult `ISASerialPort.h`, so
-the layout change cannot touch them, and both already reproduce the reference. They are
-`assembly-matched` now, not after the layout fix. `release`'s comments mislabel three fields
-(Finding 91) but comments do not reach the assembly. **Tasks 3-6 must not rewrite either body.**
+the layout change cannot touch them, and both already reproduce the reference. ~~They are
+`assembly-matched` now, not after the layout fix.~~ **RETRACTED — see the note above. Both are
+`control-flow-confirmed`; neither instruction stream was ever compared against a rebuilt one, and
+both differ in size from the reference.** `release`'s comments mislabelled three fields
+(Finding 91, fixed in Task 8) but comments do not reach the assembly.
+**Tasks 3-6 must not rewrite either body.**
 
 Several other functions — `_flowMachine`, `_watchState`, `-[ISASerialPort free]`,
 `-[ISASerialPort requestEvent:data:]`, `-[ISASerialPort dequeueEvent:data:sleep:]` — have
@@ -290,8 +296,9 @@ named ivars (which all need rewriting). Do not convert the raw-offset half to na
 **The raw-offset half is not waiting on the layout fix; it is already emitting the reference's
 offsets.** A raw `*(T *)((char *)self + N)` never consults `ISASerialPort.h`, so replacing 68 ivars
 with two changes nothing about what it compiles to. That is why `nextEvent` (6400) and `release`
-(5448) are `assembly-matched` **now** — they use raw casts exclusively and no named ivar at all
-(Findings 91, 92). `requestEvent:data:` is in the same style but has independent divergences
+(5448) ~~are `assembly-matched` **now**~~ **already match the reference's control flow** — they use
+raw casts exclusively and no named ivar at all (Findings 91, 92). *(Neither was ever
+`assembly-matched`; see the retraction in section 1 and Addendum 6.)* `requestEvent:data:` is in the same style but has independent divergences
 (Findings 31 and 92) and so is not yet matched.
 
 **Fields the reference does not have at all**, and which our header invents: `hasFIFO`,
@@ -1564,16 +1571,24 @@ every field access in the body is a raw `(char *)self` or `(char *)selfPtr` offs
 anywhere in it**, so changing `ISASerialPort.h` cannot affect the generated code. What is wrong is
 only the commentary: it mislabels `0x1CC` as `stopBits` (it is `BreakLength`) and `0x1C4` as
 `flowControl` (it is `TX_Parity`), and it labels the `0x140/0x148/0x14C` block TX and
-`0x178/0x180/0x184` RX — they are RX and TX respectively. **Fix the comments; leave the code
-alone.**
+`0x178/0x180/0x184` RX — they are RX and TX respectively. ~~**Fix the comments; leave the code
+alone.**~~ **RESOLVED in Task 8 (`365a526b`):** all three mislabels plus the RX/TX block crossing
+were corrected and the four locals renamed; the code was not touched, and was re-verified against
+reference 5569-5753 afterwards.
 
 **Finding 92 — `nextEvent` is already done; `getState` and the three other near-matches are not.**
-`-[ISASerialPort nextEvent]` (reference 6400-6469, our 5088-5111) reproduces the reference
-instruction for instruction — `spl4`; `if (RX.Count) { p = RX.Output; if (p >= RX.End) p -= RX.Size * 2; b = *p; }` —
+`-[ISASerialPort nextEvent]` (reference 6400-6469, our 5088-5111) ~~reproduces the reference
+instruction for instruction~~ **matches the reference's control flow** — `spl4`; `if (RX.Count) { p = RX.Output; if (p >= RX.End) p -= RX.Size * 2; b = *p; }` —
 including the `>=` wrap direction and the `Size * 2` stride, and it peeks without advancing
 `Output`.
 
-**`nextEvent` is correct as it stands and is `assembly-matched` now — it is not waiting on the
+> **CORRECTION (Task 6a review, commit `fed2f5bd`).** "Instruction for instruction" was false and
+> was never measured when written. The reference body is 70 bytes; ours is 80, and the streams
+> differ structurally — ours emits `sub esp,4` plus a `[ebp-4]` staging slot, addresses the fields
+> directly where the reference works off a single `lea` base, and inverts the sense of the first
+> branch. The entry is `control-flow-confirmed`, not `assembly-matched`.
+
+**`nextEvent` is correct as it stands and needs no work — it is not waiting on the
 layout fix and it is not a cheap win, it is zero work.** The reference reads
 `cmp dword ptr [ebx+144h], 0` for the count and then, off the `lea eax, [ebx+140h]` base,
 `[eax+24h]` (`Output`), `[eax+1Ch]` (`End`) and `[eax]` (`Size`). Our lines 5097-5104 use the same

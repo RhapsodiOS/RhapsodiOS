@@ -2993,7 +2993,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         if (!sleep) {
             // Not sleeping - return error immediately
             splx(oldIRQL);
-            return 0xFFFFFD3B; // -709, the PCMCIA-card-removed return
+            // -709 IO_R_EXCLUSIVE_ACCESS: the port is already held. The reference shares
+            // this return site with the PCMCIA-removed path at 5405; the value is the same,
+            // the meaning here is not.
+            return 0xFFFFFD3B;
         }
 
         // Sleep until port becomes available

@@ -296,18 +296,61 @@ holds no attribute-memory accessor, only the sixteen capability getters that
 describe what a window can map (`supportsMemory`, `minimumSize`,
 `addressLinesDecoded` and so on).
 
-**This is a prediction, not yet a measurement.** It asserts that a
-protocol-qualified `id <P>` reaches the declared `char` return where a bare `id`
-did not — which is the documented purpose of protocol qualification, but the
-same class of claim that six builds falsified earlier in this document. It is
-confirmed when a rebuilt kernel's `-[IODirectDevice unmapAttributeMemory]`
-contains two `84 c0` and no `85 c0`. Until then no ledger entry advances, and
-Finding 3 stays `unexamined`.
+### The verifying build
 
-Because `pb_makefiles` tracks no header dependencies and libDriver reads its
-headers from the installed `System.framework` tree, verifying this needs the
-kernel headers reinstalled and `pcmcia/*.m` touched before the build — the
-omission that produced several of the false negatives recorded above.
+The prediction held. Measured in `out/i386/mach_kernel`, 1472800 bytes, SHA-256
+`797B98878998D3E04D5643357C368245992C41C079CF1890CCB08E132A1DA64F`, built
+2026-07-26 18:37 with the kernel headers reinstalled:
+
+`-[IODirectDevice(IOPCMCIADirectDevice) unmapAttributeMemory]` moved to
+`0x20aff8` and now carries exactly the reference's three `test` instructions, at
+the same offsets from the method's entry:
+
+| Offset | `0x1fd8c4` (reference) | `0x20aff8` (rebuilt) |
+| --- | --- | --- |
+| +39 | `85 c0` `test eax, eax` | `85 c0` `test eax, eax` |
+| +161 | `84 c0` `test al, al` | `84 c0` `test al, al` |
+| +181 | `84 c0` `test al, al` | `84 c0` `test al, al` |
+
+The surviving `85 c0` at +39 is correct in both: it is the `resourcesForKey:`
+nil test, whose receiver is an `id` and whose result genuinely is `id`-sized.
+Only the two that read a `char` return changed. **Finding 3 is closed**, and the
+mechanism established for Findings 1 and 2 is confirmed a third time, now in its
+protocol-qualified form: `id <PCMCIAWindow>` reaches a declared `char` return
+where a bare `id` does not.
+
+### All 24, measured
+
+The same build was compared method by method against the reference, pairing by
+name rather than address and disassembling each from its own binary:
+
+**All 24 decode to identical instruction sequences.** None is missing, none
+differs in instruction count, and no operand differs except addresses.
+
+That last clause was audited rather than assumed, because the comparison
+normalises operands that look like addresses and such a mask can hide a real
+difference. Of 297 masked operand values, 269 are branch targets or memory
+references. The remaining 28 are all benign, and individually checked:
+`mov eax, 0xfffffd40` is **identical** on both sides and was masked only for its
+magnitude, and every `push` of a constant resolves to the same string on both
+sides — `"PCI"`, `"IOEISADeviceDescription"`, `"PCMCIA"`,
+`"PCMCIA_DEVICE_ATTR_MAPPING"`.
+
+The one earlier caveat is unchanged and remains cosmetic:
+`-[IOPCIDeviceDescription getPCIdevice:function:bus:]` is followed by `00 00`
+padding in the reference and `90 90` in ours, after its `ret`.
+
+**The ledger now reads 24 of 24 `assembly-matched`**, and its `rebuilt_sha256`
+is bound for the first time — it had been `null`, the ledger having been created
+reference-only. That binding is what makes the claim falsifiable: any future
+kernel that is not this one will fail validation rather than silently inherit
+these statuses.
+
+The evidence class is worth stating precisely. This is a direct disassembly
+comparison, not a `binrecon compare` verdict — the comparator still cannot
+certify a linked executable, for the reasons under The formal parity run. Two
+independent measurements now agree, one over binrecon's published IDA analyses
+and one over raw capstone output.
 
 ## Summary
 

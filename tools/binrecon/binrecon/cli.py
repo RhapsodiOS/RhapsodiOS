@@ -74,6 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
     source_map.add_argument("--scope-to-objc", action="store_true",
                             help="restrict the analysis to the Objective-C methods "
                                  "found by --objc-methods")
+    source_map.add_argument("--ownership",
+                            help="JSON file mapping a function name to its owning "
+                                 "module; when given, the output gains a by_module "
+                                 "breakdown")
     extract = subparsers.add_parser("extract-slice")
     extract.add_argument("--input", required=True)
     extract.add_argument("--architecture", required=True)
@@ -380,8 +384,13 @@ def _source_map_command(arguments) -> int:
         for key, locations in source_sites(Path(arguments.repo_root), source_dir).items():
             sites.setdefault(key, []).extend(locations)
 
+    ownership = None
+    if arguments.ownership:
+        ownership = load_json(Path(arguments.ownership))
+
     document = build_source_map(
-        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names
+        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names,
+        ownership=ownership,
     )
     output = Path(arguments.output)
     output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")

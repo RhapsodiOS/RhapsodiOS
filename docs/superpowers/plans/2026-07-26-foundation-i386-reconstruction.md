@@ -2568,9 +2568,12 @@ static int failures = 0;
         } \
     } while (0)
 
-#define CHECK_RECT(r, x, y, w, h) \
-    CHECK((r).origin.x == (x) && (r).origin.y == (y) && \
-          (r).size.width == (w) && (r).size.height == (h))
+/*  The parameter names must not collide with the struct field names used in
+    the body: naming them x/y/w/h makes the preprocessor rewrite `.origin.x`
+    into `.origin.<argument>`, silently mangling every use.  */
+#define CHECK_RECT(r, ex, ey, ew, eh) \
+    CHECK((r).origin.x == (ex) && (r).origin.y == (ey) && \
+          (r).size.width == (ew) && (r).size.height == (eh))
 
 static void test_zero_constants(void)
 {
@@ -2743,8 +2746,10 @@ copyright header. It must define:
 - the 20 out-of-line functions from `symbols.json`;
 - `@implementation NSCoder (NSGeometryCoding)` with `encodePoint:`,
   `decodePoint`, `encodeSize:`, `decodeSize`, `encodeRect:` and `decodeRect`,
-  each driving `NSCoder`'s `encodeValueOfObjCType:at:` /
-  `decodeValueOfObjCType:at:` as the reference does.
+  each driving `NSCoder`'s **variadic** `encodeValuesOfObjCTypes:` /
+  `decodeValuesOfObjCTypes:` — one address per float field — as the reference
+  does. An earlier draft named the singular `encodeValueOfObjCType:at:` pair;
+  Task 13 established the variadic selectors from the binary's own symbol names.
 
 The category compiles against `NSCoder.h` without `NSCoder` being implemented,
 which is what makes it stage 1's ABI surface. Do not stub its methods.

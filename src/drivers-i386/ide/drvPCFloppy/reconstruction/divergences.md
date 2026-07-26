@@ -59,6 +59,11 @@ recorded as `rebuilt_sha256` in `ledger.json`:
 | `missing_symbols` | 163 | 1 |
 | `missing_strings` | 94 | 92 |
 | `missing_imports` | 7 | 3 |
+| `unresolvable_imports` | 10 | 0 |
+
+`unresolvable_imports` counts symbols our build references that the kernel does
+not export — relocations that can never bind. At 0, the driver can load. See the
+addendum for how these went undetected until the final review.
 
 **Symbol parity is closed.** The single remaining entry is `__udivdi3`, libgcc's
 64-bit division helper, which no source in this project writes. Every function

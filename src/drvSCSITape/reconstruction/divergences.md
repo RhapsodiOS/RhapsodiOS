@@ -562,3 +562,306 @@ split `assign_cdb_c6s_len` already has, with the array-form side reading
 `(cdbp->c6s_len[0] << 16) | (cdbp->c6s_len[1] << 8) | cdbp->c6s_len[2]`
 (matching the reference exactly) instead of `return (cdbp->c6s_len);`. Left
 `unexamined`; Task 7/the fix pass should apply this.
+
+## SCSITapeKern.m
+
+Task 5 read the nine BSD kernel device-switch functions at addresses
+7424-11320 (`analysis.named.json`) instruction by instruction against
+`SCSITapeKern.m:87-747`. This completes `SCSITape_reloc`'s 44 mapped
+functions.
+
+### Device-switch slot mapping (spec's Step 1 check)
+
+`_st_devsw_init` (address 7424) builds its `IOAddToCdevsw` call by loading
+`r3`-`r10` and three stack slots in argument order, confirmed by resolving
+every load through `read_macho`'s relocation table rather than trusting IDA's
+`sub_XXXX` labels:
+
+| Register/stack slot | Argument (per `driverkit/devsw.h`) | Value loaded | Relocation target |
+| --- | --- | --- | --- |
+| `r3` | `openFunc` | `_stopen` | `__TEXT,__text` (internal) |
+| `r4` | `closeFunc` | `_stclose` | `__TEXT,__text` (internal) |
+| `r5` | `readFunc` | `_stread` | `__TEXT,__text` (internal) |
+| `r6` | `writeFunc` | `_stwrite` | `__TEXT,__text` (internal) |
+| `r7` | `ioctlFunc` | `_stioctl` | `__TEXT,__text` (internal) |
+| `r8` | `stopFunc` | `_enodev` | external, confirmed by relocation at address 7456 |
+| `r9` | `resetFunc` | `_nulldev` | external, confirmed by relocation at address 7516 |
+| `r10` | `selectFunc` | `_nulldev` (copy of `r9`) | same value as `resetFunc` |
+| stack +0 | `mmapFunc` | `_enodev` (copy of `r8`, pre-stored at address 7464) | same value as `stopFunc` |
+| stack +4 | `getcFunc` | `_enodev` | same |
+| stack +8 | `putcFunc` | `_enodev` | same |
+
+`IOAddToCdevswAt`'s own body (`src/driverkit-3/libDriver/Kernel/devswAndVfssw.m:166-176`)
+assigns its eleven parameters straight across to `struct cdevsw`'s eleven
+switch-function fields (`src/kernel-7/bsd/sys/conf.h:150-165`) in the exact
+same order the header declares them — no indirection between the parameter
+list and the struct fields. Combined with the table above: **every slot our
+source installs (`SCSITapeKern.m:98-108`) lands in the position the reference
+uses** — `stopen`/`stclose`/`stread`/`stwrite`/`stioctl` in the five primary
+slots, `nulldev` in `reset`/`select`, and an `enodev`-class stub in
+`stop`/`mmap`/`getc`/`putc`. There is no transposition anywhere in this table;
+the slot-mapping check the brief called out as the critical risk is clean.
+
+### Finding: `_st_devsw_init` installs `_enodev`, but our source passes `nodev`, an identifier with no definition anywhere in this tree
+
+**Source:** `SCSITapeKern.m:81-82` (`extern int nodev();` declaration),
+`SCSITapeKern.m:103,106-108` (the four `(IOSwitchFunc) nodev` arguments to
+`IOAddToCdevsw`).
+
+**Reference behaviour:** as the table above shows, the `stop`/`mmap`/`getc`/
+`putc` slots are all loaded from a single external relocation to `_enodev`
+(confirmed at addresses 7456-7460; the same loaded value is stored to the
+three stack-passed argument slots and left live in `r8` for the register
+argument, so all four slots get the identical stub).
+
+**Our source:** declares and calls `nodev()`, not `enodev()`. `grep` across
+`src/kernel-7/bsd` finds no function named `nodev` anywhere — only `enodev`
+(`src/kernel-7/bsd/kern/subr_xxx.c:82`, returns `ENODEV`) and `nulldev`
+(`src/kernel-7/bsd/kern/subr_xxx.c:155`, returns 0) exist as real kernel
+stubs. `src/kernel-7/bsd/sys/systm.h:129,131` prototypes both `enodev` and
+`nulldev` but never `nodev`. The only other reference to a function spelled
+`nodev` in the entire tree is `src/driverkit-3/Examples/KStub/IOStubKernLoad.m`,
+an example that has the identical undefined-symbol problem.
+
+**Consequence:** as written, `SCSITapeKern.m` cannot link against this tree's
+kernel — `nodev` resolves to nothing. This is distinct from the slot-mapping
+check above (which is clean): the four affected slots are in the *right
+position*, they just name a stub that doesn't exist. Given the reference's
+`_enodev` and our tree's `nulldev`/`enodev` pair, `nodev` was almost certainly
+meant to be `enodev` (an `ENODEV`-returning stub is exactly the correct
+semantics for `stop`/`mmap`/`getc`/`putc` on a tape device). Left
+`unexamined`; this is squarely Task 8's "naming and compile errors" scope,
+but it surfaced here because Step 1 required resolving every slot's actual
+target.
+
+## Finding: `_st_rw`'s read path unconditionally forces `setSuppressIllegalLength:` and `C6OPT_SIL`, with no getter check at all
+
+**Source:** `SCSITapeKern.m:337-352` (the `suppressIllegalLength` branch
+inside `st_rw`, called from `stread`/`stwrite` at lines 252-260).
+
+**Reference behaviour:** `_st_rw` (address 8544) branches on `rw_flag` at
+address 9032 (`cmpwi cr1,r25,0` / `bne` to address 9084 for writes, skipping
+this whole section). For reads, execution falls into a single 40-byte basic
+block (addresses 9040-9079) with **no internal branch at all**: it calls
+`objc_msgSend` through the message-ref at `__OBJC,__message_refs` offset 148
+(address 16688) with `r5=1` — the identical message-ref address used by
+`_stopen`'s confirmed `[scsiTape setSuppressIllegalLength: YES]` call at
+address 7888 (both resolve to the same relocation target, confirmed via
+`read_macho`) — and then unconditionally performs a read-modify-write OR of
+`C6OPT_SIL` (2) into `cdbp->c6s_opt` (addresses 9060-9080). There is no
+comparison of any return value anywhere in this block; both the setter call
+and the `c6s_opt` OR execute on every single read, regardless of the tape
+object's prior `_suppressIllegalLength` state.
+
+**Our source:** calls the *getter* `[scsiTape suppressIllegalLength]` and
+only performs `cdbp->c6s_opt |= C6OPT_SIL;` when it returns true; when false,
+it takes an else branch that (outside `#ifdef DEBUG`) does nothing. It never
+calls `setSuppressIllegalLength:` from `st_rw` at all — that setter is only
+ever invoked from `stopen`'s Exabyte setup path (line 167) in our source.
+
+**Consequence:** real, non-cosmetic, and unconditional — not merely a
+different check order. The reference silently latches
+`_suppressIllegalLength` to `YES` as a side effect of the *first* read (or
+write, since `stwrite` also calls `st_rw`, though the write path never
+reaches this block) and, independent of that ivar, unconditionally suppresses
+illegal-length errors on every read's CDB. Our source instead honours
+whatever `_suppressIllegalLength` already was, never changes it from within
+`st_rw`, and only sets `C6OPT_SIL` when that pre-existing flag was already
+true. A caller that never explicitly called `setSuppressIllegalLength:` (the
+common case outside Exabyte's `stopen` path) gets different CDB bytes and a
+different persistent ivar value than the reference produces on every read.
+Left `unexamined`; Task 11/the fix pass should replace the conditional with
+the reference's unconditional setter call + OR.
+
+## Finding: `_stioctl`'s `MTIOCGET` case writes `MT_ISEXB`, an identifier with no definition anywhere in this tree
+
+**Source:** `SCSITapeKern.m:484-485` (`if(ST_EXABYTE(dev)) mgp->mt_type =
+MT_ISEXB;`).
+
+**Reference behaviour:** address 9928 (`li r0, 0xC`) stores `0xC` (12) into
+`mgp->mt_type` on the Exabyte branch; address 9936 (`li r0, 0x14`) stores
+`0x14` (20, confirmed equal to `MT_ISGS` in `src/kernel-7/bsd/sys/mtio.h:141`)
+on the generic branch.
+
+**Our source:** writes `MT_ISEXB`, which — unlike `MT_ISGS` — is not defined
+anywhere in `src/kernel-7/bsd/sys/mtio.h` or anywhere else in this tree
+(`grep` finds only this one use site). `mtio.h:128-129` defines
+`MT_ISEXABYTE` and `MT_ISEXA8200`, both `0xc`, which numerically match what
+the reference stores, but neither is spelled `MT_ISEXB`.
+
+**Consequence:** same class as the `nodev` finding above — this is a missing
+macro definition, not a value or control-flow mismatch (the reference's
+constant, `0xC`, agrees with `MT_ISEXABYTE`/`MT_ISEXA8200`), but the file as
+written will not compile. Every other case in this switch was checked against
+the reference's decision-tree constants (see below) and matches exactly. Left
+`unexamined`; Task 8's scope, surfaced here for the same reason as `nodev`.
+
+**The switch's decision tree (spec's error-path check).** `_stioctl` compares
+`cmd` (r4) against nine 32-bit ioctl codes via a signed-comparison binary
+search rather than a jump table (the codes are too sparse for one). Every
+comparison constant was decoded from its `lis`/`ori` pair and checked against
+`_IO`/`_IOR`/`_IOW`/`_IOWR` (`src/kernel-7/bsd/sys/ioccom.h:88-92`) applied to
+each `MTIOC*` macro in `src/kernel-7/bsd/sys/mtio.h` and
+`src/kernel-7/bsd/dev/scsireg.h:994-1004`:
+
+| Constant compared | Encodes | Matches |
+| --- | --- | --- |
+| `0xC0586D0B` | `_IOWR('m',11,88)` | `MTIOCSRQ` (`scsi_req_t`, confirmed 88 bytes below) |
+| `0x80086D01` | `_IOW('m',1,8)` | `MTIOCTOP` (`struct mtop`, 8 bytes) |
+| `0x80046D05` | `_IOW('m',5,4)` | `MTIOCFIXBLK` (`int`) |
+| `0x80406D07` | `_IOW('m',7,64)` | `MTIOCMODSEL` (`struct modesel_parms`, 64 bytes) |
+| `0xC0406D08` | `_IOWR('m',8,64)` | `MTIOCMODSEN` |
+| `0x20006D09` | `_IO('m',9)` | `MTIOCINILL` |
+| `0x20006D06` | `_IO('m',6)` | `MTIOCVARBLK` |
+| `0x20006D0A` | `_IO('m',10)` | `MTIOCALILL` |
+| `0x403C6D02` | `_IOR('m',2,60)` | `MTIOCGET` (`struct mtget`, 60 bytes) |
+
+All nine constants match their macros exactly (group `'m'`=0x6D and opcode
+number both confirmed per constant), every `beq` lands in the case body that
+implements the matching source `case`, and the final catch-all (`b loc_27F8`,
+address 10232) sets `error = EINVAL` — matching `default: error = EINVAL;`
+(`SCSITapeKern.m:548-549`). No case is misrouted and no case is missing.
+
+**The `MTIOCMODSEL`/`MTIOCMODSEN`/`MTIOCSRQ` fall-through is real in both the
+reference and our source, not a divergence.** `SCSITapeKern.m:526-546`'s
+`MTIOCMODSEL` and `MTIOCMODSEN` cases have no `break;` after their success
+path, so on success each one falls into the next case's body. The reference
+reproduces this exactly: address 10200 (`beq cr1,loc_27E4`) branches *into*
+the `MTIOCSRQ` case body (address 10212) only when `stModeSense:` succeeds,
+and the `MTIOCMODSEL` case's own success path (address 10172, not taken on
+failure) falls straight into `MTIOCMODSEN`'s body (address 10176) with no
+intervening test. Both cases' error paths (`error = EIO; break;`) go through
+the same shared block (address 10204) as the `requestSense:` failure path in
+`MTIOCGET`. This is a faithfully-reproduced quirk (or bug) in the original
+driver, confirmed present in both the reference binary and our source's
+current text — not something Task 5 is flagging as a divergence.
+
+## Finding: `_st_doiocsrq` never reads `srp->sr_discon_disable` or `srp->sr_ignore_chkcond`, both of which the reference honours
+
+**Source:** `SCSITapeKern.m:574-732` (`st_doiocsrq`), compared against
+`scsi_req_t` (`src/kernel-7/bsd/dev/scsireg.h:826-886`), whose non-`m68k`
+branch (lines 857-884) declares, immediately after `sr_exec_time`:
+```
+u_char sr_cdb_length;
+u_char sr_discon_disable:1, sr_cmd_queue_disable:1, sr_sync_disable:1,
+       sr_ignore_chkcond:1, sr_pad1:4;
+u_char sr_pad2;
+u_char sr_flags;
+queue_chain_t sr_io_q;
+```
+the comment on `sr_ignore_chkcond` reads "specifically used for MTIOCSRQ
+requests" — i.e. this field exists precisely for this function.
+
+**Reference behaviour (disconnect):** after `bzero(&scsiReq, 88)` and the
+`target`/`lun`/`cdb` copies, `_st_doiocsrq` (address 10332) reads the packed
+word at `srp+0x4C` (addresses 10796-10828, `sr_cdb_length`/the bitfield
+byte/`sr_pad2`/`sr_flags` packed into one big-endian word — `sr_cdb_length`
+at offset 0x4C is confirmed by summing every preceding field's offset:
+`sr_cdb`(12)+`sr_dma_dir`(4)+`sr_addr`(4)+`sr_dma_max`(4)+`sr_ioto`(4)+
+`sr_io_status`(4)+`sr_scsi_status`(1, padded to 4)+`sr_esense`(28)+
+`sr_dma_xfr`(4)+`sr_exec_time`(8) = 0x4C, and every one of those offsets is
+independently confirmed by a load/store at that exact offset elsewhere in
+this same function). It tests bit `0x00800000` of that word — bit 8 of a
+32-bit big-endian word, i.e. the *first* bit of the second byte, exactly
+where `sr_discon_disable` sits — and sets `scsiReq.disconnect` (the bitfield
+word at `scsiReq+28`, per `IOSCSIRequest`'s layout in
+`src/driverkit-3/driverkit/scsiRequest.h:56`, whose first bit is `disconnect`
+too) to the *inverse*: bit clear (`sr_discon_disable`==0) sets
+`disconnect`=1; bit set clears it to 0.
+
+**Reference behaviour (ignore check condition):** it then tests bit
+`0x00100000` of the same word — bit 11, exactly where `sr_ignore_chkcond`
+sits — and if set (addresses 10832-10908): reads
+`scsiTape`'s own `_ignoreCheckCondition[target][lun]` matrix entry (the
+`char[32][8]` ivar at offset `0x125`, recovered in Task 2; indexed here by
+`scsiReq.target`/`scsiReq.lun`, i.e. the `SCSITape` object's own `target`/
+`lun`, not `srp`'s) and `_ignoreOpenCheckCondition` (offset `0x225`), saves
+both old values (`r21`, `r22`), forces both to `1`, calls `executeRequest:`,
+then (addresses 10944-10980, gated on re-testing the same bit) restores both
+ivars to their saved values. If the bit is clear, none of this save/set/
+restore runs — `executeRequest:` is called directly with the ivars
+untouched.
+
+**Our source:** hardcodes `scsiReq.disconnect = 1;` (`SCSITapeKern.m:689`)
+unconditionally and never reads `srp->sr_discon_disable`. It never reads
+`srp->sr_ignore_chkcond`, never touches `_ignoreCheckCondition` or
+`_ignoreOpenCheckCondition`, anywhere in `st_doiocsrq`.
+
+**Consequence:** two independent, real divergences reachable through the
+`MTIOCSRQ` ioctl (the raw SCSI passthrough path used by, e.g., `stblocksize`
+and `sdform`-style tools): (1) a caller that sets `sr_discon_disable` to
+request "no disconnect during this command" is silently ignored — our source
+always allows disconnect; (2) a caller that sets `sr_ignore_chkcond` (the
+field's own comment says this is its purpose) to suppress check-condition
+handling for one passthrough command gets no suppression at all, and the
+`SCSITape` object's ivar state is left completely alone rather than
+temporarily overridden and restored. Both are silent (no error returned) —
+the caller has no way to detect that its request was not honoured. Left
+`unexamined`; the fix pass must preserve the reference's save/restore
+ordering (set before `executeRequest:`, restore after, and only when the bit
+was actually set) to avoid leaking a forced `_ignoreCheckCondition` state
+into later use of the same `SCSITape` object.
+
+## Finding: `_st_doiocsrq` diverges from source for `srp->sr_dma_max == 0`, passing `srp->sr_addr`/`IOVmTaskCurrent()` instead of the declared `NULL` defaults
+
+**Source:** `SCSITapeKern.m:576-581` (initial declarations: `alignedPtr =
+NULL`, `alignedLen = 0`, `didAlign = NO`, `client = NULL`), `:596-672` (the
+`if(srp->sr_dma_max != 0) { ... }` block that is the only place these four
+variables are assigned).
+
+**Reference behaviour:** address 10460 tests `srp->sr_dma_max == 0` and, if
+true, branches to address 10672 — a block that runs `alignedLen =
+srp->sr_dma_max` (0), **`alignedPtr = srp->sr_addr`**, calls
+**`_IOVmTaskCurrent()`** (confirmed via `read_macho`'s relocation at address
+10680) for `client`, and sets `didAlign = NO`. This is the exact body of our
+source's `else` clause at `SCSITapeKern.m:667-671` — but the reference
+reaches it specifically on the `sr_dma_max == 0` path, and it is the *only*
+place in the whole function that sets `alignedPtr`/`client` to anything other
+than the values computed inside the aligned-copy path (confirmed: the
+aligned-copy path, after its own `copyin` handling, branches directly to the
+`bzero`/`scsiReq` setup at address 10692, never through address 10672).
+
+**Our source:** the `if(srp->sr_dma_max != 0)` block (`:596-672`) contains an
+inner `if(...) { ... } else { alignedLen = srp->sr_dma_max; alignedPtr =
+srp->sr_addr; client = IOVmTaskCurrent(); didAlign = NO; }` whose condition
+ends in a literal `|| YES` (`:626-631`, with the comment explaining this is
+deliberate — "Prevent DMA from user space for now"), making the inner
+condition always true and that `else` clause **unreachable dead code** in our
+source as written. When the *outer* `if(srp->sr_dma_max != 0)` is false
+(`sr_dma_max == 0`), our source skips the entire block, leaving `alignedPtr`,
+`client`, `alignedLen`, and `didAlign` at their declared initial values
+(`NULL`, `NULL`, `0`, `NO`) — it never executes the code the reference
+executes for this case.
+
+**Consequence:** for an `MTIOCSRQ` request with `sr_dma_max == 0` (a valid
+no-data-phase SCSI command, e.g. `TEST UNIT READY` through the raw
+passthrough), our source calls `executeRequest:buffer:NULL client:NULL
+senseBuf:...`, while the reference calls `executeRequest:buffer:srp->sr_addr
+client:IOVmTaskCurrent() senseBuf:...`. Since `alignedLen`/`maxTransfer` is 0
+either way, whether this is observable depends on whether `executeRequest:`
+or anything it calls dereferences `client`/`buffer` when `maxTransfer` is 0 —
+not established by this task. What is established is that our source's
+control-flow structure (the always-true `|| YES` making the sibling `else`
+genuinely unreachable) cannot produce the reference's `sr_dma_max == 0`
+behaviour no matter how it is compiled; the defaulting logic needs to move
+outside the `if(srp->sr_dma_max != 0)` gate, or be duplicated for the
+`sr_dma_max == 0` case, to match. Left `unexamined`.
+
+### Per-function disposition
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 7424 | `_st_devsw_init` | `unexamined` | Slot-mapping table above (clean); `nodev`/`_enodev` finding above |
+| 7640 | `_stopen` | `assembly-matched` | Full instruction-level trace: `ST_UNIT`/`stIdMap` lookup, `acquireDevice`/`IO_R_BUSY`→`EBUSY` short-circuit-return (bypassing `IOSetUNIXError`/`IOFree`, matching a bare `return`), `unit>=NST \|\| isInitialized==NO` short-circuit→`releaseDevice`+`ENXIO`, `setIgnoreCheckCondition:`/`stTestReady` bracket, the Exabyte block's `IOMalloc(0x40)`/`msp_bcount=0x11`(`sizeof(mode_sel_hdr)+sizeof(mode_sel_bd)+MSP_VU_EXABYTE`=4+8+5)/`evudp` offset `0xC`/`msh_wp`-only-bit-clear/`msh_bufmode=1` insert/EBD-bit pattern (`0xE00`<<16 matching `nd=0,ebd=1,pe=1,nbe=1` = bits4-6 set, bit2 cleared)/`setBlockSize:`,`stModeSense:`,`stModeSelect:` each with matching `IOFree`+`releaseDevice`+`EIO` failure paths — no divergence |
+| 8228 | `_stclose` | `assembly-matched` | `didWrite==YES`→`stCloseFile`→branchless `rtn=(result!=SR_IOST_GOOD)?EIO:0` (verified by simulating the `srawi`/`xor`/`subf`/`srawi`/`andi.` sequence for all inputs); `ST_RETURN(dev)==0`→`stRewind`→same `EIO`-on-failure pattern; unconditional `releaseDevice`; `return(rtn)` — no divergence |
+| 8440 | `_stread` | `assembly-matched` | 9-instruction wrapper; tail-calls `_st_rw` (confirmed via relocation, target address 8544) with `r5=0` (`SR_DMA_RD`, confirmed `=0` in `scsireg.h:818`) |
+| 8492 | `_stwrite` | `assembly-matched` | Same wrapper shape, `r5=1` (`SR_DMA_WR=1`, `scsireg.h:819`) |
+| 8544 | `_st_rw` | `unexamined` | Full trace against `SCSITapeKern.m:265-426`: `unit>=NST`/`uio_iovcnt!=1`/`iov_len==0` triple bare-return (all three share one epilogue target that bypasses `IOFree`/`IOSetUNIXError`, matching plain `return` vs. `goto out`); nested `[[scsiTape controller] allocateBufferOfLength:...]` call shape; `bzero(&scsiReq,0x58)`; `IOAlign`-vs-plain `maxTransfer`; `disconnect` OR-in; `isFixedBlock`→`howmany()` calling `blockSize` **twice** (matches the macro's literal double-expansion, confirmed via `src/kernel-7/bsd/sys/types.h:150`, not a divergence); read/write opcode+`scsiReq.read` setup; `C6S_MAXLEN`→`EINVAL`; `copyin`-on-write→`EIO`; `executeRequest:`→`EIO`; post-read `copyout`; `driverStatus`→`EIO`; `out:` (`uio_resid`/`IOFree`/`IOSetUNIXError`/return) — all matched **except** the `suppressIllegalLength` finding above |
+| 9544 | `_stioctl` | `unexamined` | Full decision-tree decode (table above, clean) and every case body traced (`MTIOCTOP`'s `SR_IOST_CMDREJ`→`EINVAL`/else `EIO` branchless-then-branch pattern; `MTIOCGET`'s `senseDataValid`/`requestSense:` guard and all seven `mgp` field stores against `esense_reply_t` offsets 2/0xC/0x13/0x14/0x15/0x16, and the inlined `er_info` extraction (`lwz`+`srwi 8`) matching the confirmed `__BIG_ENDIAN__` branch; `MTIOCFIXBLK`/`MTIOCVARBLK` shared `setBlockSize:`+`errnoFromReturn:` tail; `MTIOCINILL`/`MTIOCALILL`; the real `MTIOCMODSEL`→`MTIOCMODSEN`→`MTIOCSRQ` fall-through, confirmed present in both; `unit>=NST` bare-return) — all matched **except** the `MT_ISEXB` finding above |
+| 10332 | `_st_doiocsrq` | `unexamined` | Full trace against `SCSITapeKern.m:574-732`: `sr_dma_max>maxTransfer`→bare-return `EINVAL`; `getDMAAlignment:`/`alignLength` selection (confirmed the `alignStart`/`IOIsAligned`/`stForcePageAlign` computation is entirely absent from the reference, consistent with the `\|\| YES` making it compile-time dead); `allocateBufferOfLength:`/`copyin`-on-write→`EFAULT`-to-`err_exit`; `scsi_req_t`→`IOSCSIRequest` field copy (offsets 0xC/0x10/0x14/0x18/0x1C/0x20/0x24/0x40/0x44/0x4C, all self-consistently confirmed against `scsireg.h:826-886`'s field layout); `executeRequest:` call; `sr_io_status`/`sr_scsi_status`/`sr_dma_xfr`-with-clamp/`ns_time_to_timeval`; final conditional `copyout`; `err_exit:`'s `didAlign`-gated `IOFree` — matched **except** the three findings above (`sr_discon_disable`, `sr_ignore_chkcond`, `sr_dma_max==0` defaults) |
+| 11300 | `_read_er_info_low_24` | `assembly-matched` | 5-instruction leaf: `lwz r3,4(r3)` + `srwi r3,r3,8`, exactly the `__BIG_ENDIAN__` branch's `return ((unsigned int) erp->er_info);` (`SCSITapeKern.m:741-742`) — the function's only caller in source is inside the dead `#elif __LITTLE_ENDIAN__` branch of `stioctl` (`:497-498`), so it is uncalled in this build, but its own compiled body matches the source it would compile to |
+
+Five of the nine reached `assembly-matched`; four (`_st_devsw_init`,
+`_st_rw`, `_stioctl`, `_st_doiocsrq`) carry findings above and stay
+`unexamined`. Every finding corresponds to exactly one of those four entries,
+and every one of those four entries has at least one finding.

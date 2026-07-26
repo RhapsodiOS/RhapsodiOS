@@ -8,7 +8,32 @@
  * Oct 1998	Created.
  */
 
+#import <driverkit/debugging.h>
 #import <machkit/NXLock.h>
+
+/*
+ * DDM masks and macros.
+ *
+ * SYM53c8Controller.m and SYM53c8Thread.m call ddm_init/ddm_exp/ddm_thr but
+ * nothing defined them, so they compiled as implicit functions and could not
+ * link.  The other SCSI drivers that use these carry the definitions in their
+ * own private header -- see AHAControllerPrivate.h and
+ * AIC6X60ControllerPrivate.h -- and all of them take slot 2 in IODDMMasks[].
+ */
+#define SYM_DDM_INDEX	2
+
+#define DDM_EXPORTED	0x00000001	/* exported methods */
+#define DDM_IOTHREAD	0x00000002	/* I/O thread methods */
+#define DDM_INIT	0x00000004	/* initialization */
+
+#define ddm_exp(x, a, b, c, d, e)					\
+	IODEBUG(SYM_DDM_INDEX, DDM_EXPORTED, x, a, b, c, d, e)
+
+#define ddm_thr(x, a, b, c, d, e)					\
+	IODEBUG(SYM_DDM_INDEX, DDM_IOTHREAD, x, a, b, c, d, e)
+
+#define ddm_init(x, a, b, c, d, e)					\
+	IODEBUG(SYM_DDM_INDEX, DDM_INIT, x, a, b, c, d, e)
 
 /*
  * Command buffer operations

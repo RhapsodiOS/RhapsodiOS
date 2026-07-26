@@ -1,0 +1,21 @@
+{
+ "NSGeometry.m": [
+  "_NSZeroPoint", "_NSZeroSize", "_NSZeroRect",
+  "_NSEqualPoints", "_NSEqualSizes", "_NSEqualRects",
+  "_NSIsEmptyRect", "_NSInsetRect", "_NSIntegralRect", "_NSUnionRect",
+  "_NSIntersectionRect", "_NSIntersectsRect", "_NSContainsRect",
+  "_NSDivideRect", "_NSOffsetRect", "_NSPointInRect", "_NSMouseInRect",
+  "_NSStringFromPoint", "_NSStringFromSize", "_NSStringFromRect",
+  "_NSPointFromString", "_NSSizeFromString", "_NSRectFromString"
+ ],
+ "NSRange.m": [
+  "_NSUnionRange", "_NSIntersectionRange", "_NSIntersectsRange",
+  "_NSStringFromRange", "_NSRangeFromString"
+ ],
+ "NSDecimal.m": [
+  "_NSDecimalCopy", "_NSDecimalCompact", "_NSDecimalCompare",
+  "_NSDecimalRound", "_NSDecimalNormalize", "_NSDecimalAdd",
+  "_NSDecimalSubtract", "_NSDecimalMultiply", "_NSDecimalDivide",
+  "_NSDecimalPower", "_NSDecimalMultiplyByPowerOf10", "_NSDecimalString"
+ ]
+}

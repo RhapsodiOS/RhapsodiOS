@@ -26,7 +26,8 @@ class IdaAdapterError(RuntimeError):
     """Raised when IDA cannot produce a trustworthy analysis snapshot."""
 
 
-_MAX_ANALYSIS_BYTES = 16 * 1024 * 1024
+# Bounds raw analyzer output read into memory, sized for ~1.4 MB kernel images.
+_MAX_ANALYSIS_BYTES = 64 * 1024 * 1024
 _READ_CHUNK_SIZE = 1024 * 1024
 
 

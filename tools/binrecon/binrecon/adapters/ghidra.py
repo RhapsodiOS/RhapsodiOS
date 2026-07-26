@@ -22,7 +22,8 @@ class GhidraAdapterError(RuntimeError):
     """Raised when Ghidra cannot produce a trustworthy analysis snapshot."""
 
 
-_MAX_OUTPUT = 16 * 1024 * 1024
+# Bounds raw analyzer output read into memory, sized for ~1.4 MB kernel images.
+_MAX_OUTPUT = 64 * 1024 * 1024
 _MAX_DIAGNOSTIC = 1024 * 1024
 _CHUNK = 1024 * 1024
 _LANGUAGE = "x86:LE:32:default"

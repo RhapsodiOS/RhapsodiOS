@@ -25,7 +25,8 @@ class AngrAdapterError(RuntimeError):
     """Raised when angr cannot produce a trustworthy analysis snapshot."""
 
 
-_MAX_OUTPUT = 16 * 1024 * 1024
+# Bounds raw analyzer output read into memory, sized for ~1.4 MB kernel images.
+_MAX_OUTPUT = 64 * 1024 * 1024
 _MAX_LOG = 4 * 1024 * 1024
 _CHUNK = 1024 * 1024
 _TRUNCATION_MARKER = b"\n[truncated]\n"

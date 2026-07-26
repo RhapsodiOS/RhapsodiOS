@@ -881,7 +881,7 @@ cleanup:
 			partEntry = &dt->d_partitions[i];
 
 			if (partEntry->p_size > 0) {
-				partition = [[IODiskPartitionNEW alloc] init];
+				partition = [IODiskPartitionNEW new];
 				[partition connectToPhysicalDisk:physicalDisk];
 				[partition _initPartition:i disktab:dt];
 				[partition init];

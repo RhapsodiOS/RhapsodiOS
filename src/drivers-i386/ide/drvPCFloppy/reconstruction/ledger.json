@@ -665,12 +665,12 @@
       "names": [
         "-[IOFloppyDrive fdRecal]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 133,
       "source_line": 557,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 12840,
@@ -679,12 +679,12 @@
       "names": [
         "-[IOFloppyDrive fdSeek:head:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 170,
       "source_line": 597,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13012,
@@ -693,12 +693,12 @@
       "names": [
         "-[IOFloppyDrive fdGetStatus:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 69,
       "source_line": 440,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13084,
@@ -707,12 +707,12 @@
       "names": [
         "-[IOFloppyDrive fdReadId:statp:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 177,
       "source_line": 503,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13264,
@@ -721,12 +721,12 @@
       "names": [
         "-[IOFloppyDrive rawReadInt:sectCount:buffer:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 129,
       "source_line": 692,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13396,
@@ -749,12 +749,12 @@
       "names": [
         "-[IOFloppyDrive fdGenRwCmd:blockCount:fdIoReq:readFlag:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 234,
       "source_line": 366,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13712,
@@ -777,12 +777,12 @@
       "names": [
         "-[IOFloppyDrive fdSendCmd:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 150,
       "source_line": 647,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 13968,
@@ -805,12 +805,12 @@
       "names": [
         "-[IOFloppyDrive updateReadyStateInt]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 95,
       "source_line": 766,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 14104,
@@ -819,12 +819,12 @@
       "names": [
         "-[IOFloppyDrive fdFormatTrack:head:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 349,
       "source_line": 286,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 14456,
@@ -833,12 +833,12 @@
       "names": [
         "-[IOFloppyDrive allocateDisk]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 316,
       "source_line": 219,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 14772,
@@ -875,12 +875,12 @@
       "names": [
         "-[IOFloppyDrive fdEjectInt]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 203,
       "source_line": 213,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 15328,
@@ -889,12 +889,12 @@
       "names": [
         "-[IOFloppyDrive fdRwCommon:block:blockCnt:buffer:client:actualLength:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 1064,
       "source_line": 283,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 16392,
@@ -903,12 +903,12 @@
       "names": [
         "-[IOFloppyDrive logRwErr:block:status:readFlag:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 85,
       "source_line": 528,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 16480,
@@ -959,12 +959,12 @@
       "names": [
         "-[IOFloppyDrive motorOffCheck]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 142,
       "source_line": 561,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 17444,
@@ -2149,12 +2149,12 @@
       "names": [
         "-[IOFloppyDrive initFromDeviceDescription:::]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 450,
       "source_line": 172,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 26788,
@@ -2233,12 +2233,12 @@
       "names": [
         "-[IOFloppyDrive ejectMedia]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 58,
       "source_line": 64,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 27764,
@@ -2947,12 +2947,12 @@
       "names": [
         "-[IOFloppyDrive registerVolCheck]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 65,
       "source_line": 116,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 37204,
@@ -2961,12 +2961,12 @@
       "names": [
         "-[IOFloppyDrive unregisterVolCheck]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 3; buffer offsets, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 16,
       "source_line": 137,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 37220,
@@ -3151,7 +3151,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "363453EE091E6577337A9C35AFB93835E9816104433FACBFABB91EB1A8B6DC0D",
+  "rebuilt_sha256": "A02A69EFDD57316B970CBAF2BFFC0F6AF8869CE9CCF9E46D411B39C44BCC6C1F",
   "reference_sha256": "49608BD40A302A9A3541F9E37202DEEA871C30CD6CECFE8ABB99D75BDC1D8252",
   "schema_version": "ledger-v1"
 }

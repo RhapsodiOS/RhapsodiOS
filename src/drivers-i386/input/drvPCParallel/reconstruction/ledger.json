@@ -9,7 +9,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "stub in our source: the reference implements a full poll-and-retry loop over the status register (mask 0xB8, target 0x98) bounded by busyMaxRetries with IOSleep(busyRetryInterval) between attempts and an unbounded retry when waitForever is set, and returns BOOL; ours sets *isReady=NO and returns void (divergences.md Findings 2, 9)"
+          "rewritten from the full instruction stream at 0-111: poll inb(statusRegister) for (status & 0xB8) == 0x98, bounded by busyMaxRetries with IOSleep(busyRetryInterval) between attempts and an unbounded retry while the waitForever argument is 1, *isReady set either way, and the return is whether it ever slept. The return type is now BOOL (Findings 2, 9)"
         ],
         "status": "agreed"
       },
@@ -18,11 +18,11 @@
         "-[IOParallelPort _waitForDevice:isReady:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 112,
-      "source_line": 878,
+      "source_line": 830,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 112,
@@ -33,7 +33,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the control-byte assembly, both outb sequences, the _waitForDevice:isReady: call, the controlRegisterDefaults store, all five status-word bit arms and all six returned values now match - the source returns -737, -738, -725, -714, 0 and -726 via IO_R_NO_PAPER, IO_R_PRINTER_OFFLINE, IO_R_BUSY, IO_R_IO, IO_R_SUCCESS and IO_R_TIMEOUT, whose expansions were verified against src/driverkit-3/driverkit/return.h (divergences.md Finding 58 resolved); statusWord is still manipulated 32 bits wide where ours is unsigned short, ours still sets an initialized ivar the reference does not have, and the reference still builds the control byte from uninitialised stack (divergences.md Findings 10, 52, 53)"
+          "rewritten against 112-393: all six returns now match by value, the statusWord bit for each arm matches, the initialized ivar is gone and -isInitialized reads bit 0 of statusWord. One deliberate difference remains: the reference builds the control byte with and/or against an uninitialised stack slot (122-160), leaving bits 6 and 7 garbage. Ours starts from 0, so bits 0-5 agree exactly and bits 6-7 are deterministically clear. Reproducing the reference here would mean reproducing a read of uninitialised memory (Findings 52, 53, 58)"
         ],
         "status": "agreed"
       },
@@ -41,12 +41,12 @@
       "names": [
         "-[IOParallelPort initDevice]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reason": "rewritten against 112-393: all six returns now match by value, the statusWord bit for each arm matches, the initialized ivar is gone and -isInitialized reads bit 0 of statusWord. One deliberate difference remains: the reference builds the control byte with and/or against an uninitialised stack slot (122-160), leaving bits 6 and 7 garbage. Ours starts from 0, so bits 0-5 agree exactly and bits 6-7 are deterministically clear. Reproducing the reference here would mean reproducing a read of uninitialised memory (Findings 52, 53, 58)",
+      "reviewer": "Pat Raynor",
       "size": 282,
-      "source_line": 286,
+      "source_line": 258,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 396,
@@ -57,7 +57,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; [self alloc], [inst initFromDeviceDescription:] and the test/setnz of the result against nil all match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -66,9 +66,9 @@
         "+[IOParallelPort probe:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 57,
-      "source_line": 69,
+      "source_line": 68,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -81,7 +81,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the largest concentration of divergence in the driver - setDriverName:/setLocation: for setDeviceKind:, the wrong freeString: argument, the missing setMinorDevNum:, the missing IOThreadDelay/intHandlerDelay initialisation, the enodev in cdevsw slot 8 where the reference passes seltrue, the explicit attachInterruptPort/interruptPort/setInterruptMessage: block the reference does not have, and the differing not-found message (divergences.md Findings 18 to 28)"
+          "rewritten against 456-1451. setDeviceKind: replaces setDriverName:, the Location read and setLocation: are gone, [deviceDescription name] is gone, the Minor Device Number string is freed on both the not-found path (828) and the success path (1028) with no NULL fallback, setMinorDevNum:0 is sent, IOThreadDelay and intHandlerDelay are initialised to 1, cdevsw slot 8 is seltrue, dataBuffer is sized from minPhys, the log text and its 16-bit address argument match __cstring at 7608, the explicit attachInterruptPort / interruptPort / setInterruptMessage: block is gone because IODirectDevice attaches the port, sizeLock is an NXLock, and registerDevice is tested for nil rather than against IO_R_SUCCESS (Findings 18-27, 61)"
         ],
         "status": "agreed"
       },
@@ -90,11 +90,11 @@
         "-[IOParallelPort initFromDeviceDescription:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 996,
-      "source_line": 87,
+      "source_line": 86,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1452,
@@ -105,7 +105,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference returns BOOL (1 on success, 0 on failure) where ours returns IOReturn (0 on success), and the two test patterns are built from uninitialised stack with different masks (divergences.md Findings 5, 53)"
+          "rewritten against 1452-1613 and now returns BOOL - 1 when both readbacks verify, 0 otherwise - so the caller's test in initFromDeviceDescription: inverts with it. Same deliberate difference as 112: the reference assembles both test patterns in an uninitialised stack slot, so bits 6 and 7 are garbage where ours are clear. Bits 0-5 are identical in both patterns, 0x1E then 0x04 (Findings 5, 53)"
         ],
         "status": "agreed"
       },
@@ -113,12 +113,12 @@
       "names": [
         "-[IOParallelPort probeForController]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reason": "rewritten against 1452-1613 and now returns BOOL - 1 when both readbacks verify, 0 otherwise - so the caller's test in initFromDeviceDescription: inverts with it. Same deliberate difference as 112: the reference assembles both test patterns in an uninitialised stack slot, so bits 6 and 7 are garbage where ours are clear. Bits 0-5 are identical in both patterns, 0x1E then 0x04 (Findings 5, 53)",
+      "reviewer": "Pat Raynor",
       "size": 162,
-      "source_line": 252,
+      "source_line": 223,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1616,
@@ -129,7 +129,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; [super attachInterruptPort], the jnz on a nonzero result, IOForkThread(IOParallelPortThread, self) and the store of the thread handle into the ivar at 0x170 all match, and the super's result is returned unchanged"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -138,9 +138,9 @@
         "-[IOParallelPort attachInterruptPort]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 76,
-      "source_line": 826,
+      "source_line": 783,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -153,7 +153,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the handler store and the *ipl=3 store match, but the reference writes minorDevNum (ivar 0x180) through *arg where ours writes physbufArg, and the argument is typed unsigned int * not void ** (divergences.md Finding 17)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -162,11 +162,11 @@
         "-[IOParallelPort getHandler:level:argument:forInterrupt:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 48,
-      "source_line": 857,
+      "source_line": 809,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1740,
@@ -177,7 +177,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the shutdown-command sequence, the three IOFree calls and the [super free] tail match, but the reference returns id where ours returns void, frees sizeLock and never frees an interrupt port, sizes the dataBuffer free from minPhys rather than blockSize, and carries none of our NULL guards (divergences.md Findings 6, 33, 34, 35)"
+          "rewritten against 1740-1976: gated on ioTaskThread, no NULL guard on the cmdBufAlloc result, dataBuffer freed from minPhys (1880), sizeLock (0x188) and ioQueueLock (0x164) both freed unconditionally, no interrupt-port free, and the result of [super free] returned (Findings 6, 33, 34, 35)"
         ],
         "status": "agreed"
       },
@@ -186,11 +186,11 @@
         "-[IOParallelPort free]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 237,
-      "source_line": 382,
+      "source_line": 357,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1980,
@@ -201,7 +201,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the *count==0 to 512 default, both 14-byte cmpsb comparisons against IOMajorDevice and IOMinorDevice, the loads from 0x17c and 0x180, the *count=1 store and the [super getIntValues:forParameter:count:&maxCount] fallthrough all match"
+          "unchanged by the fix pass; re-read against 1980-2142 and still matches"
         ],
         "status": "agreed"
       },
@@ -210,11 +210,11 @@
         "-[IOParallelPort getIntValues:forParameter:count:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 163,
-      "source_line": 1020,
+      "source_line": 974,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 2144,
@@ -225,7 +225,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x12c matches, but the reference types this method and its ivar const char * (encoding r*) where ours uses unsigned int (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -234,11 +234,11 @@
         "-[IOParallelPort configRegister]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 467,
+      "source_line": 428,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2160,
@@ -249,7 +249,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x12c and the return of self match, but the argument is typed const char * (r*) in the reference (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -258,11 +258,11 @@
         "-[IOParallelPort setConfigRegister:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 472,
+      "source_line": 433,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2180,
@@ -273,7 +273,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x130 matches, but the reference types this method and its ivar const char * (r*) where ours uses unsigned int (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -282,11 +282,11 @@
         "-[IOParallelPort dataRegister]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 434,
+      "source_line": 395,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2196,
@@ -297,7 +297,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x130 and the return of self match, but the argument is typed const char * (r*) in the reference (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -306,11 +306,11 @@
         "-[IOParallelPort setDataRegister:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 439,
+      "source_line": 400,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2216,
@@ -321,7 +321,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x138 matches, but the reference types this method and its ivar const char * (r*) where ours uses unsigned int (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -330,11 +330,11 @@
         "-[IOParallelPort statusRegister]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 445,
+      "source_line": 406,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2232,
@@ -345,7 +345,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x138 and the return of self match, but the argument is typed const char * (r*) in the reference (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -354,11 +354,11 @@
         "-[IOParallelPort setStatusRegister:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 450,
+      "source_line": 411,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2252,
@@ -369,7 +369,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; in al,dx from the status register at 0x138 and the and eax,0FFh zero-extension match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -378,9 +378,9 @@
         "-[IOParallelPort statusRegisterContents]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 493,
+      "source_line": 454,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -393,7 +393,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x13c matches, but the reference types this method and its ivar const char * (r*) where ours uses unsigned int (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -402,11 +402,11 @@
         "-[IOParallelPort controlRegister]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 456,
+      "source_line": 417,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2300,
@@ -417,7 +417,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x13c and the return of self match, but the argument is typed const char * (r*) in the reference (divergences.md Finding 13)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -426,11 +426,11 @@
         "-[IOParallelPort setControlRegister:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 461,
+      "source_line": 422,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2320,
@@ -441,7 +441,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; in al,dx from the control register at 0x13c and the and eax,0FFh zero-extension match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -450,9 +450,9 @@
         "-[IOParallelPort controlRegisterContents]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 482,
+      "source_line": 443,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -465,7 +465,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; movzx eax, byte ptr [self+140h] matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -474,9 +474,9 @@
         "-[IOParallelPort controlRegisterDefaults]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 488,
+      "source_line": 449,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -489,7 +489,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x174 matches, but the reference types this struct buf * where ours uses void * (divergences.md Finding 14)"
+          "the body matches 2372-2387 exactly and the ivar is now struct buf * at 0x174. The __meth_var_types encoding differs by one character: this tree's src/kernel-7/bsd/sys/buf.h ends struct buf with `int b_timestamp; long b_reserved[3]` (encoded ^vi[3l]) where Apple's 1998 header had four longs (^vllll). Same 16 bytes and the same offsets; the fix is in a kernel header this task must not touch (Finding 14)"
         ],
         "status": "agreed"
       },
@@ -497,12 +497,12 @@
       "names": [
         "-[IOParallelPort physbuf]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reason": "the body matches 2372-2387 exactly and the ivar is now struct buf * at 0x174. The __meth_var_types encoding differs by one character: this tree's src/kernel-7/bsd/sys/buf.h ends struct buf with `int b_timestamp; long b_reserved[3]` (encoded ^vi[3l]) where Apple's 1998 header had four longs (^vllll). Same 16 bytes and the same offsets; the fix is in a kernel header this task must not touch (Finding 14)",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 752,
+      "source_line": 709,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2388,
@@ -513,7 +513,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x174 and the return of self match, but the argument is typed struct buf * in the reference (divergences.md Finding 14)"
+          "the body matches 2388-2406 exactly; it carries the same one-character struct buf encoding difference as 2372, from src/kernel-7/bsd/sys/buf.h, which this task must not touch (Finding 14)"
         ],
         "status": "agreed"
       },
@@ -521,12 +521,12 @@
       "names": [
         "-[IOParallelPort setPhysbuf:]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reason": "the body matches 2388-2406 exactly; it carries the same one-character struct buf encoding difference as 2372, from src/kernel-7/bsd/sys/buf.h, which this task must not touch (Finding 14)",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 757,
+      "source_line": 714,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2408,
@@ -537,7 +537,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x178 matches, but the reference types this a pointer to a message struct and the ivar holds the 8192-byte IOMalloc, where ours declares unsigned int and puts the allocation in a separate cmdBuf ivar (divergences.md Finding 15)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -546,11 +546,11 @@
         "-[IOParallelPort interruptMessage]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 841,
+      "source_line": 798,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2424,
@@ -561,7 +561,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x178 and the return of self match, but the argument is a message-struct pointer in the reference (divergences.md Finding 15)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -570,11 +570,11 @@
         "-[IOParallelPort setInterruptMessage:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 846,
+      "source_line": 803,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2444,
@@ -585,7 +585,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x17c and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -594,9 +594,9 @@
         "-[IOParallelPort setMajorDevNum:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 650,
+      "source_line": 613,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -609,7 +609,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x17c matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -618,9 +618,9 @@
         "-[IOParallelPort majorDevNum]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 645,
+      "source_line": 608,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -633,7 +633,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x180 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -642,9 +642,9 @@
         "-[IOParallelPort setMinorDevNum:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 661,
+      "source_line": 624,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -657,7 +657,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x180 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -666,9 +666,9 @@
         "-[IOParallelPort minorDevNum]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 656,
+      "source_line": 619,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -681,7 +681,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; movsx eax, byte ptr [self+128h] matches the signed-char BOOL"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -690,9 +690,9 @@
         "-[IOParallelPort isInUse]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 608,
+      "source_line": 571,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -705,7 +705,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the byte store to 0x128 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -714,9 +714,9 @@
         "-[IOParallelPort setInUse:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 613,
+      "source_line": 576,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -729,7 +729,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit load from 0x160 matches, but the reference types ioTimeout signed int where ours uses unsigned int (divergences.md Finding 12)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -738,11 +738,11 @@
         "-[IOParallelPort ioTimeout]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 789,
+      "source_line": 746,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2572,
@@ -753,7 +753,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the 32-bit store to 0x160 and the return of self match, but the argument is signed int in the reference (divergences.md Finding 12)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -762,11 +762,11 @@
         "-[IOParallelPort setIoTimeout:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 794,
+      "source_line": 751,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2592,
@@ -777,7 +777,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x144 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -786,9 +786,9 @@
         "-[IOParallelPort busyMaxRetries]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 767,
+      "source_line": 724,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -801,7 +801,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x144 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -810,9 +810,9 @@
         "-[IOParallelPort setBusyMaxRetries:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 772,
+      "source_line": 729,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -825,7 +825,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x148 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -834,9 +834,9 @@
         "-[IOParallelPort busyRetryInterval]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 778,
+      "source_line": 735,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -849,7 +849,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x148 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -858,9 +858,9 @@
         "-[IOParallelPort setBusyRetryInterval:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 783,
+      "source_line": 740,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -873,7 +873,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference loads a full 32-bit int from 0x14c where ours declares BOOL and would emit a sign-extended byte load (divergences.md Finding 11)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -882,11 +882,11 @@
         "-[IOParallelPort autofeedOutput]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 630,
+      "source_line": 593,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2680,
@@ -897,7 +897,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference stores a full 32-bit int to 0x14c where ours declares BOOL and would emit a byte store (divergences.md Finding 11)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -906,11 +906,11 @@
         "-[IOParallelPort setAutofeedOutput:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 635,
+      "source_line": 598,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2700,
@@ -921,7 +921,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x150 matches (the reference spells the ivar IOThreadDelay, ours ioThreadDelay - see divergences.md Finding 3)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -930,9 +930,9 @@
         "-[IOParallelPort IOThreadDelay]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 811,
+      "source_line": 768,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -945,7 +945,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x150 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -954,9 +954,9 @@
         "-[IOParallelPort setIOThreadDelay:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 816,
+      "source_line": 773,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -969,7 +969,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x154 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -978,9 +978,9 @@
         "-[IOParallelPort intHandlerDelay]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 800,
+      "source_line": 757,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -993,7 +993,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit store to 0x154 and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1002,9 +1002,9 @@
         "-[IOParallelPort setIntHandlerDelay:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 805,
+      "source_line": 762,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1017,7 +1017,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference loads statusWord 32 bits wide from 0x190 where ours declares unsigned short (divergences.md Finding 10)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1026,11 +1026,11 @@
         "-[IOParallelPort statusWord]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 499,
+      "source_line": 460,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2788,
@@ -1041,7 +1041,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; test byte ptr [self+190h],1 with the 1/0 branch return matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1050,9 +1050,9 @@
         "-[IOParallelPort isInitialized]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 33,
-      "source_line": 602,
+      "source_line": 565,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1065,7 +1065,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference stores statusWord 32 bits wide to 0x190 where ours declares unsigned short (divergences.md Finding 10)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1074,11 +1074,11 @@
         "-[IOParallelPort setStatusWord:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 504,
+      "source_line": 465,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 2844,
@@ -1089,7 +1089,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; movsx eax, byte ptr [self+18Ch] matches the signed-char BOOL"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1098,9 +1098,9 @@
         "-[IOParallelPort waitForever]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 619,
+      "source_line": 582,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1113,7 +1113,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the byte store to 0x18c and the return of self match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1122,9 +1122,9 @@
         "-[IOParallelPort setWaitForever:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 624,
+      "source_line": 587,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1137,7 +1137,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x158 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1146,9 +1146,9 @@
         "-[IOParallelPort minPhys]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 716,
+      "source_line": 675,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1161,7 +1161,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the lockSize/IOFree/store/IOMalloc/unlockSize body matches, but the reference guards on the minPhys ivar (0x158) where ours compares blockSize, and the reference has no NULL guard before IOFree (divergences.md Findings 32, 34)"
+          "rewritten against 2900-3004: the guard compares the new size against minPhys (0x158), both 0x158 and 0x15c are written, and the IOFree/IOMalloc pair is sized from 0x158 with no NULL guard (Findings 32, 34)"
         ],
         "status": "agreed"
       },
@@ -1170,11 +1170,11 @@
         "-[IOParallelPort setMinPhys:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 721,
+      "source_line": 680,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3008,
@@ -1185,7 +1185,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x15c matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1194,9 +1194,9 @@
         "-[IOParallelPort blockSize]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 671,
+      "source_line": 634,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1209,7 +1209,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the lockSize/IOFree/store/IOMalloc/unlockSize body matches, but the reference guards on the blockSize ivar (0x15c) where ours compares unlockSize, and the reference has no NULL guard before IOFree (divergences.md Findings 32, 34)"
+          "rewritten against 3024-3128: the guard compares the new size against blockSize (0x15c); the body is otherwise identical to setMinPhys: (Findings 32, 34)"
         ],
         "status": "agreed"
       },
@@ -1218,11 +1218,11 @@
         "-[IOParallelPort setBlockSize:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 676,
+      "source_line": 639,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3132,
@@ -1233,7 +1233,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; clearing the INIT bit, outb, IOSleep(10), re-setting INIT and outb all match, but the reference returns IOReturn 0 where ours returns void (divergences.md Finding 7)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1242,11 +1242,11 @@
         "-[IOParallelPort printerInit]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 79,
-      "source_line": 365,
+      "source_line": 337,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 3212,
@@ -1257,7 +1257,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the command-buffer setup, the status masking, the errorFlag tail and all six switch labels now match - the arms select -726, -738, -737, -714, -725 and 0 via IO_R_TIMEOUT, IO_R_PRINTER_OFFLINE, IO_R_NO_PAPER, IO_R_IO, IO_R_BUSY and IO_R_SUCCESS, whose expansions were verified against src/driverkit-3/driverkit/return.h, so -726 reaches the 0x10 arm and only -714 and the default propagate the return code (divergences.md Finding 59 resolved); the reference still sets the writing ivar at 0x129 where ours sets inUse at 0x128, and it still returns 0 for the -726, -738, -737 and -725 arms where ours returns the error code (divergences.md Findings 30, 31)"
+          "rewritten against 3212-3476: the flag written at 0x129 is writing, not inUse; the return value starts at 0 and is only assigned from cmdBuffer->returnCode in the -714 arm (3403) and the default arm; the -726/-738/-737/-725 arms set a status bit and return 0; the default arm does not call setStatusWord: at all (Findings 30, 31, 59)"
         ],
         "status": "agreed"
       },
@@ -1266,11 +1266,11 @@
         "-[IOParallelPort writeToPort]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 265,
-      "source_line": 520,
+      "source_line": 481,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3480,
@@ -1281,7 +1281,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the whole body is xor eax,eax and matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1290,9 +1290,9 @@
         "-[IOParallelPort readFromPort]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 9,
-      "source_line": 514,
+      "source_line": 475,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1305,7 +1305,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction, including all 23 entries of the jump table at 3520 decoded from the binary; the base adjustment of msgType-0x232323 and the range check against 0x16 match, and all seven arms now return the reference's values - 0x232323 to -726, 0x232325 to 0, 0x232336 to -714, 0x232337 to -737, 0x232338 to -725, 0x232339 to -738 and default -714, spelled IO_R_TIMEOUT, IO_R_SUCCESS, IO_R_IO, IO_R_NO_PAPER, IO_R_BUSY and IO_R_PRINTER_OFFLINE, every expansion checked against src/driverkit-3/driverkit/return.h and the two local defines at IOParallelPort.m:51-56 rather than against the comments beside the names. Restored to assembly-matched after the value fix (divergences.md Finding 57 resolved)"
+          "unchanged by the fix pass; the seven arms were corrected by value in 15ce9007 and all 23 jump-table entries at 3520 were re-checked"
         ],
         "status": "agreed"
       },
@@ -1314,11 +1314,11 @@
         "-[IOParallelPort msgTypeToIOReturn:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 1059,
+      "source_line": 1013,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3692,
@@ -1329,7 +1329,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the 32-bit load from 0x184 matches"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1338,9 +1338,9 @@
         "-[IOParallelPort dataBuffer]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 747,
+      "source_line": 704,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1353,7 +1353,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference sends lock to the sizeLock ivar at 0x188, which our class does not have - ours locks interruptPortHandle instead (divergences.md Finding 4)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1362,11 +1362,11 @@
         "-[IOParallelPort lockSize]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 702,
+      "source_line": 663,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 3744,
@@ -1377,7 +1377,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference sends unlock to the sizeLock ivar at 0x188, which our class does not have - ours unlocks interruptPortHandle instead (divergences.md Finding 4)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1386,11 +1386,11 @@
         "-[IOParallelPort unlockSize]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 709,
+      "source_line": 669,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 3780,
@@ -1401,7 +1401,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; IOMalloc(0x1c), the lock creation, [lock lock] and [lock unlockWith:0] all match, but the reference obtains NXConditionLock through a compiler-emitted __cls_refs entry where ours calls objc_getClass with a string literal, and the reference has no NULL guard on the IOMalloc result (divergences.md Findings 28, 34)"
+          "rewritten against 3780-3852: the IOMalloc(0x1c) result is used without a NULL guard, and the return type is the command buffer rather than void * (Finding 34)"
         ],
         "status": "agreed"
       },
@@ -1410,11 +1410,11 @@
         "-[IOParallelPort cmdBufAlloc]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 73,
-      "source_line": 895,
+      "source_line": 858,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3856,
@@ -1425,7 +1425,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; [buf->conditionLock free] through the pointer at offset 0 and IOFree(buf, 0x1c) match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1434,9 +1434,9 @@
         "-[IOParallelPort cmdBufFree:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 37,
-      "source_line": 916,
+      "source_line": 877,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1449,7 +1449,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the queue insertion, both branches against &ioQueue, the unlockWith:1 and the lockWhen:1/unlock handshake all match, but the reference returns void where ours returns IOReturn (divergences.md Finding 8)"
+          "rewritten against 3896-4038 onto the ioQueue ivar at 0x168/0x16c and the command buffer's link at +0x14/+0x18; the return type is void (Finding 8)"
         ],
         "status": "agreed"
       },
@@ -1458,11 +1458,11 @@
         "-[IOParallelPort cmdBufExec:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 143,
-      "source_line": 927,
+      "source_line": 886,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4040,
@@ -1473,7 +1473,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "block shape and every call target checked against the reference: [ioQueueLock lockWhen:1], the dequeue of ioQueue.next, the two unlink branches against &ioQueue, the unlockWith: condition selected by whether the queue drained, and the return of the dequeued buffer all match; a short stretch between 4070 and 4095 was not read instruction by instruction"
+          "the stretch between 4070 and 4095 that the report pass left at block level has now been read instruction by instruction and matches; the return type stays void * because the reference's encoding is uniqued with -dataBuffer's and the two cannot be told apart"
         ],
         "status": "agreed"
       },
@@ -1482,9 +1482,9 @@
         "-[IOParallelPort waitForCmdBuf]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 141,
-      "source_line": 976,
+      "source_line": 930,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "control-flow-confirmed"
     },
@@ -1497,7 +1497,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; [buf->conditionLock lock] then [buf->conditionLock unlockWith:1], both reloading the lock from offset 0, match"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1506,9 +1506,9 @@
         "-[IOParallelPort cmdBufComplete:]"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 965,
+      "source_line": 921,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1521,7 +1521,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the two count checks, the spl3/splx bracketing, the three outb/IODelay strobe phases and the pointer advance all match, but the reference indexes a single 12-byte pp_softc entry where ours uses three parallel arrays with an extra level of indirection, ours adds a bounds check and a NULL guard the reference does not have, and ours increments an invented pp_strobe_count three times (divergences.md Findings 36, 50, 51)"
+          "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)"
         ],
         "status": "agreed"
       },
@@ -1529,12 +1529,12 @@
       "names": [
         "__strobeChar"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reason": "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)",
+      "reviewer": "Pat Raynor",
       "size": 280,
-      "source_line": 1275,
+      "source_line": 636,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4512,
@@ -1545,7 +1545,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; the command dispatch, the strobe path, the msg_receive loop with its 500 ms/ioTimeout clamp, the -207 and -203 arms, the IOLog and the msgTypeToIOReturn: tail all match, but ours mis-splits [self _waitForDevice:[self waitForever] isReady:&ready] into two calls at both sites, uses a stack-local message struct instead of the buffer returned by [self interruptMessage], and gives the first not-ready decode a different shape (divergences.md Findings 46, 47, 48)"
+          "rewritten against 4512-5239: [self interruptMessage] is fetched once and that buffer is what msg_receive fills, the nested [self _waitForDevice:[self waitForever] isReady:&ready] is a single statement at both sites, and the first not-ready decode uses its own shape - errorFlag set, then paper-out -737, select-set clears errorFlag and gives -726, otherwise -738 (Findings 46, 47, 48)"
         ],
         "status": "agreed"
       },
@@ -1554,11 +1554,11 @@
         "_IOParallelPortThread"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 728,
-      "source_line": 1088,
+      "source_line": 490,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5240,
@@ -1569,7 +1569,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the status decode, the writing check at 0x129, the strobe path and the IOSendInterrupt tail all match, but the SELECT-bit arm assigns the two message codes the opposite way round from the reference and the read path stores before advancing where the reference advances first (divergences.md Findings 44, 45)"
+          "rewritten against 5240-5518: gated on writing (0x129), the SELECT arm sends 0x232336 when SELECT is set and 0x232339 when it is clear, the read path advances the pointer before storing and tests the count for equality, and physbuf->b_flags at 0x24 selects the direction (Findings 30, 44, 45)"
         ],
         "status": "agreed"
       },
@@ -1578,11 +1578,11 @@
         "_IOParallelPortInterruptHandler"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 279,
-      "source_line": 1003,
+      "source_line": 416,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5520,
@@ -1593,7 +1593,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "stub in our source: the reference checks isInUse and returns EBUSY, calls initDevice, accepts only 0, -725, -726, -737 and -738 and returns EIO otherwise, then sends setInUse:YES; ours returns 0 unconditionally (divergences.md Finding 39)"
+          "rewritten against 5520-5651: EBUSY when already in use, and initDevice's result accepted only for 0, [-726,-725] and [-738,-737], EIO otherwise; no bounds check and no NULL guard, as the reference has neither (Findings 39, 51)"
         ],
         "status": "agreed"
       },
@@ -1602,11 +1602,11 @@
         "_ppopen"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 132,
-      "source_line": 530,
+      "source_line": 90,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5652,
@@ -1617,7 +1617,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the setInUse:NO send and the zero return match, but the reference indexes pp_softc directly with no bounds or NULL check and sends the message through a compiler-emitted __message_refs entry where ours calls sel_getUid with a string literal (divergences.md Findings 29, 36, 51)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1626,11 +1626,11 @@
         "_ppclose"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 38,
-      "source_line": 540,
+      "source_line": 112,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 5692,
@@ -1641,7 +1641,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the NULL check, lockSize, blockSize, the physio(ppstrategy, physbuf, dev, B_READ, ppminphys, uio, blockSize) call and unlockSize all match, but ours adds a bounds check and routes every send through sel_getUid string literals (divergences.md Findings 29, 51)"
+          "rewritten against 5692-5825: a NULL device gives ENXIO, there is no bounds check, and physio is called with the reference's argument order (Finding 51)"
         ],
         "status": "agreed"
       },
@@ -1650,11 +1650,11 @@
         "_ppread"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 134,
-      "source_line": 564,
+      "source_line": 124,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5828,
@@ -1665,7 +1665,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the segflg check, the 0x8000 clamp, copyin, the save/restore of the iovec and the resid adjustment all match, but the reference returns 0 immediately when initDevice yields -725, -726, -737 or -738 where ours continues into the write, and ours adds an ENOMEM check and sel_getUid literals (divergences.md Findings 29, 49)"
+          "rewritten against 5828-6251: the four accepted initDevice codes return 0 without writing and the ranges are exactly [-726,-725] and [-738,-737], the IOMalloc result is not checked, and there is no bounds check (Findings 49, 51)"
         ],
         "status": "agreed"
       },
@@ -1674,11 +1674,11 @@
         "_ppwrite"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 424,
-      "source_line": 607,
+      "source_line": 146,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6252,
@@ -1689,7 +1689,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the reference returns the smaller of b_bcount and minPhys and never writes to the buffer, where ours is declared void and stores minPhys into b_bcount (divergences.md Finding 40)"
+          "rewritten to the reference's body and re-read against it; in the rebuilt binary the ivar offsets match the reference one for one and __inst_meth, __meth_var_names, __message_refs, __instance_vars and __class_names are all identical to the reference's"
         ],
         "status": "agreed"
       },
@@ -1698,11 +1698,11 @@
         "_ppminphys"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 49,
-      "source_line": 966,
+      "source_line": 396,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 6304,
@@ -1713,7 +1713,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction, including all 36 entries of the jump table at 6496 decoded from the binary; the read/write split, the b_flags updates and the error-code switch structure match, but the reference returns int (0 or -1) where ours returns void, maps -737 and -738 to 83 where ours uses EIO (5), and copies the buffer pointer where ours stores its address (divergences.md Findings 41, 42, 43)"
+          "rewritten against 6304-6707: returns int, copies bp->b_un.b_addr by value into pp_softc[].data, and the jump table at 6496 maps -738/-737 to 83, -726 to 60, -725 to 16 and everything else to 5 - all 36 entries decoded from the binary (Findings 41, 42, 43)"
         ],
         "status": "agreed"
       },
@@ -1722,11 +1722,11 @@
         "_ppstrategy"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 404,
-      "source_line": 890,
+      "source_line": 334,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6708,
@@ -1737,7 +1737,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction; all seventeen ioctl codes, the wait-forever branch, the value*1000 lea chain, every getter arm, the and eax,0FFh byte masking and the EINVAL default match, but ours adds a bounds check and routes all thirty sends through sel_getUid string literals (divergences.md Findings 29, 51)"
+          "rewritten against 6708-7390: the same command decode and the same EINVAL default, now dispatching through ordinary message sends instead of sel_getUid, with the bounds check removed (Findings 29, 51)"
         ],
         "status": "agreed"
       },
@@ -1746,11 +1746,11 @@
         "_ppioctl"
       ],
       "reason": null,
-      "reviewer": "binrecon-task-9",
+      "reviewer": "Pat Raynor",
       "size": 683,
-      "source_line": 735,
+      "source_line": 232,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7392,

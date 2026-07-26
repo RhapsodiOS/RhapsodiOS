@@ -4,11 +4,14 @@ Report pass over Apple's shipped `ParallelPort_reloc`
 (`reference_sha256` `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2`,
 45312 bytes, `MH_OBJECT` i386). This document records where our reimplementation in
 `src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/`
-diverges from that binary. **It changes no driver source.** Task 10 does the fixing.
+diverges from that binary.
 
-Line numbers are against the current committed tree (`IOParallelPort.m` 1070 lines,
-`IOParallelPortKern.m` 1360 lines, `IOParallelPort.h` 233, `IOParallelPortKern.h` 119),
-verified with `git status` before the pass began.
+**The fix pass has landed.** Sections 1 to 6 and the numbered findings below are the
+report pass as written, preserved so the evidence behind each finding stays readable.
+**Section 8 records what the fix pass did with every one of them**, and the line numbers
+quoted in the findings are against the *pre-fix* tree (`IOParallelPort.m` 1070 lines,
+`IOParallelPortKern.m` 1360, `IOParallelPort.h` 233, `IOParallelPortKern.h` 119).
+`source-map.json` and `ledger.json` have been relined against the rewritten sources.
 
 ---
 
@@ -18,12 +21,17 @@ The reference partitions into **75 functions**: 73 hand-written plus 2 pieces of
 build-generated Kernel Server glue. All 73 are mapped; the 2 glue functions are
 `unmapped` by design.
 
+As the report pass left it:
+
 | Depth | Count | What was done |
 |---|---|---|
 | `assembly-matched` | 29 | Every instruction read, and no divergence found |
 | `control-flow-confirmed` | 1 | Block shape and every call target checked; a short stretch not read instruction by instruction |
 | `unexamined` | 43 | Every instruction read, **and a divergence found** — these carry a finding below |
 | `intentional-mismatch` | 2 | Build-generated glue, not present in source |
+
+After the fix pass: **50 `assembly-matched`, 18 `control-flow-confirmed`,
+7 `intentional-mismatch`, 0 `unexamined`.** Section 8 explains the rule used.
 
 **Every one of the 73 mapped functions had its full instruction stream read**, including
 the 23-entry jump table behind `-[IOParallelPort msgTypeToIOReturn:]` at 3520 and the
@@ -765,3 +773,251 @@ which the build injects. No finding.
 - Whether the `-725` (`IO_R_BUSY`) arm that our first `_IOParallelPortThread` decode
   produces (Finding 47) is reachable in the reference by some path not visible in the
   static control flow. Reading the disassembly, it is not.
+
+---
+
+## 8. Fix pass (Task 10)
+
+Two commits: the driver source, then this document plus the relined `ledger.json` and
+`source-map.json`. Everything below was verified against the rebuilt
+`ParallelPort_reloc`, not asserted.
+
+### 8.1 Build
+
+| | Baseline | After |
+|---|---|---|
+| `gnumake` | **exit 2** (`post_copy_tables`) | **exit 0** |
+| `_reloc` size | 185032 | 165556 |
+| Harness | `fail=0` | `fail=0` |
+
+The driver had never been built before this pass. It compiled on the first attempt after
+the rewrite; the only surviving warnings are `implicit declaration of physio` (no
+prototype exists in the tree) and a false-positive `might be used uninitialized` pair on
+`ppwrite`'s save/restore locals, both pre-existing.
+
+`Loaded Server` sections, ours against the reference:
+
+| Section | Reference | Ours |
+|---|---|---|
+| `Server Name` | 12 | 12 |
+| `Load Commands` | 164 | 164 |
+| `Instance Var` | 21 | 21 |
+| `Server Version` | 1 | 1 |
+| `Unload Commands` | *absent* | *absent* |
+
+No `Unload_Commands.sect` was created: this reference does not have that section, unlike
+the four other input drivers.
+
+`InstallPPDev` and `RemovePPDev` were **not** built. `PostLoad.tproj` and `PreLoad.tproj`
+were removed from the `.drvproj` Makefile's `TOOLS` by an earlier build-repair effort
+because those user-space helpers need i386 crt and libDriver that the PPC cross-host does
+not provide. That line was deliberately left alone. Recorded as an environment limitation,
+not a source finding.
+
+### 8.2 Parity and emitted metadata
+
+`parity_check.py`, reference against rebuilt:
+
+| | Baseline | After |
+|---|---|---|
+| `missing_strings` | 1 | **0** |
+| `missing_symbols` | 0 | **0** |
+| `extra_strings` | 40 | **0** |
+| `extra_symbols` | 116 | 80 |
+| exit | 1 | **0** |
+
+The 80 extra `__TEXT,__text` symbols are our build's unstripped per-function and per-file
+debug entries (3593 symbols against the reference's 110). Not findings.
+
+Stronger than parity: every `__OBJC` section in the rebuilt binary is the reference's
+size, with one exception.
+
+| Section | Reference | Ours |
+|---|---|---|
+| `__class` / `__meta_class` | 120 / 120 | 120 / 120 |
+| `__cls_meth` | 60 | 60 |
+| `__inst_meth` | 752 | 752 |
+| `__instance_vars` | 328 | 328 |
+| `__message_refs` | 256 | 256 |
+| `__cls_refs` | 8 | 8 |
+| `__class_names` | 184 | 184 |
+| `__meth_var_names` | 1312 | 1312 |
+| `__module_info` / `__symbols` | 48 / 48 | 48 / 48 |
+| `__meth_var_types` | 713 | **715** |
+
+And the three string tables are **identical sets**, not merely identical sizes:
+`__TEXT,__cstring` (15 entries), `__OBJC,__class_names` (11) and
+`__OBJC,__meth_var_names` (90).
+
+The 27 ivars land at the reference's 27 offsets, one for one, checked by decoding both
+`__instance_vars` tables: `0x128` through `0x190`, instance size 404.
+
+The two remaining `__meth_var_types` bytes are `-physbuf` and `-setPhysbuf:`. Ours encode
+`struct buf` as `...^vi[3l]`, the reference as `...^vllll`: this tree's
+`src/kernel-7/bsd/sys/buf.h` ends the struct with `int b_timestamp; long b_reserved[3]`
+where Apple's 1998 header had four `long`s. Same 16 bytes, same offsets for every field
+the driver touches. The fix is in a kernel header this task must not touch, so entries
+2372 and 2388 are `intentional-mismatch`.
+
+### 8.3 Linkage - a correction to Finding 54
+
+Verified by reading both nlists with `binrecon.macho.read_macho` and checking `binding`
+and `section`, not by parity counts.
+
+- **The duplicate `_pp_softc` is gone.** The baseline binary carried two symbols of that
+  name - one `local` in `__DATA,__data` from `IOParallelPort.m`'s `static`, one `external`
+  from `IOParallelPortKern.m`. There is now exactly one, in `__DATA,__data`, the
+  reference's section. It needed an explicit `= { { nil, 0, NULL } }` initialiser: without
+  one it landed in `__DATA,__common`.
+- **Finding 54's reading of the seven `cdevsw` entry points was wrong, and so was its
+  reading of `_pp_softc`.** They are `local` in the reference, but they cannot have been
+  `static` in Apple's source: `initFromDeviceDescription:` - which `__module_info` places
+  in `IOParallelPort.m` - pushes `offset _ppopen` through `offset _ppioctl` into
+  `IOAddToCdevsw` at 856-911 and writes `ds:_pp_softc` at 1165, while every read of
+  `_pp_softc` is in `IOParallelPortKern.m`. Those are cross-module references; `static`
+  would not link. The `local` binding is produced by the kernel-server link step, which
+  privatises everything except the six symbols the loader needs. Our build does not run
+  that step at all - it ships 3593 symbols against the reference's 110 - so **no source
+  change is possible or warranted here**, and none was made. Nothing was de-staticised
+  either.
+- `__strobeChar`, `_IOParallelPortThread` and `_IOParallelPortInterruptHandler` are
+  external and defined in `__TEXT,__text` in both binaries. All three spellings were
+  already correct and were left alone.
+- `_ParallelPort_VERS_STRING` and `_ParallelPort_VERS_NUM` (`__TEXT,__const` in the
+  reference) are **absent** from our build. They are version-stamp symbols the guest's
+  build tooling does not emit. `parity_check.py` compares `__TEXT,__text` only and cannot
+  see this; it is recorded here rather than hidden.
+
+### 8.4 Decision on Finding 29 - taken all the way
+
+Every `sel_getUid` / `objc_msgSend` pair in `IOParallelPortKern.m` was replaced with
+ordinary message-send syntax against an `IOParallelPort *`. All 37 selector literals are
+gone from `__cstring`, which now holds exactly the reference's 15 strings and nothing
+else, and dispatch goes through the 64 `__message_refs` entries - 256 bytes, the
+reference's count. This also dissolved Finding 46: the mis-split nested send in
+`_IOParallelPortThread` becomes the single statement
+`[port _waitForDevice:[port waitForever] isReady:&deviceReady]` at both sites.
+
+Two consequences worth naming. The ivars are now `@public`, because the reference's
+`_strobeChar` and interrupt handler read `controlRegisterDefaults`, the three register
+addresses, `physbuf`, `intHandlerDelay` and `writing` straight out of the instance rather
+than through accessors; ObjC does not record ivar protection in `__instance_vars`, so this
+is invisible in the binary. And `objc_getClass("NXConditionLock")` is gone in favour of
+`#import <machkit/NXLock.h>` and direct class references, which is what puts
+`NXConditionLock` and `NXLock` in `__class_names` instead of `__cstring` (Finding 28).
+
+### 8.5 Decision on Finding 55 - repaired, not accepted
+
+`PCParallelPort.drvproj/Makefile` had `GLOBAL_RESOURCES =` empty while `PB.project`
+already listed `Default.table` under `OTHER_RESOURCES`, so nothing copied the table into
+`ParallelPort.config/` and `post_copy_tables` then ran `chmod` over a path that did not
+exist. The four sibling input drivers all carry `GLOBAL_RESOURCES = Default.table`;
+drvPCParallel now does too. `gnumake` exits 0. `driver.make` itself was not touched - it
+is not in this repo.
+
+### 8.6 Two findings the fix pass discovered
+
+**Finding 60 - `Load_Commands.sect` was one byte short.** Ours began `#` newline where the
+reference's section begins `#`, space, newline. 163 bytes against Apple's 164, confirmed
+by dumping `Loaded Server,Load Commands` out of the reference at file offset 26984. The
+trailing space is restored and the emitted section is now 164 bytes.
+
+**Finding 61 - `registerDevice`'s result was tested with the wrong polarity.**
+`IODevice.h:173` declares `- registerDevice;` with "nil return means failure", not an
+`IOReturn`. The reference tests it accordingly: `test eax, eax; jz` to the
+`could not register device` log at 1407-1416, and returns `self` when it is non-nil. Ours
+compared it against `IO_R_SUCCESS`, i.e. treated 0 as success - which for an `id` return
+inverts the test and would have failed initialisation on every successful registration.
+Now `if ([self registerDevice] == nil)`.
+
+### 8.7 Every finding and what became of it
+
+| # | Resolution |
+|---|---|
+| 1 | Fixed. `IOParallelPort : IODirectDevice`. Instance size 404, first ivar 0x128, both confirmed in the rebuilt `__class` and `__instance_vars`. |
+| 2 | Fixed. `_waitForDevice:isReady:` implements the poll loop decoded from 0-111. |
+| 3 | Fixed. 27 ivars, the reference's names, types and order; all 27 offsets verified against the reference's `__instance_vars`. |
+| 4 | Fixed. `sizeLock` is an `NXLock` at 0x188; `-lockSize` and `-unlockSize` send it `lock` and `unlock`. |
+| 5 | Fixed. `probeForController` returns `BOOL`, and its caller now tests `if (![self probeForController])`. Landed in the same commit as the re-parent. |
+| 6 | Fixed. `- free` returns `id`. |
+| 7 | Fixed. `- (IOReturn)printerInit`. |
+| 8 | Fixed. `- (void)cmdBufExec:`. |
+| 9 | Fixed. `- (BOOL)_waitForDevice:isReady:`. |
+| 10 | Fixed. `statusWord` is `unsigned int`. |
+| 11 | Fixed. `autofeedOutput` is `int`. |
+| 12 | Fixed. `ioTimeout` is signed `int`, which is what makes `_IOParallelPortThread`'s elapsed-time test signed. |
+| 13 | Fixed. The four register ivars are `char *` and the eight accessors `const char *`; `PP_PORT()` narrows to `IOEISAPortAddress` at each port access, which is the reference's 16-bit load. |
+| 14 | Fixed as far as this task may go - see 8.2. `physbuf` is `struct buf *`; the encoding differs by one character because of `src/kernel-7/bsd/sys/buf.h`. |
+| 15 | Fixed. `interruptMessage` is `msg_header_t *` and holds the `IOMalloc(0x2000)`; the separate `cmdBuf` ivar and the `0x54e` assignment are gone. |
+| 16 | Fixed. `-interruptPort` removed; inherited from `IODirectDevice`. `__inst_meth` is 752 bytes, 62 methods, the reference's count. |
+| 17 | Fixed. `getHandler:` writes `minorDevNum` through an `unsigned int *`. |
+| 18 | Fixed. `setDeviceKind:` replaces `setDriverName:`. |
+| 19 | Fixed. The `Location` read and `setLocation:` are gone; `Location` is gone from `__cstring`. |
+| 20 | Fixed. The `Minor Device Number` string is freed on both paths. |
+| 21 | Fixed. `[deviceDescription name]` is gone from both sites. |
+| 22 | Fixed. `[self setMinorDevNum:0]`. |
+| 23 | Fixed. `IOThreadDelay` and `intHandlerDelay` both initialised to 1. |
+| 24 | Fixed. `cdevsw` slot 8 is `seltrue`. |
+| 25 | Fixed. The explicit attach block is gone; `IODirectDevice`'s init attaches the port, which runs our `-attachInterruptPort` override and forks the I/O thread. |
+| 26 | Fixed. `dataBuffer` is allocated from `minPhys`. |
+| 27 | Fixed. The message text is the reference's and the address is passed as `(unsigned short)`. `missing_strings` is 0. |
+| 28 | Fixed. `NXConditionLock` resolves through `__cls_refs`; `__class_names` is 184 bytes and its 11 entries match the reference's exactly. |
+| 29 | Fixed in full - see 8.4. |
+| 30 | Fixed. `writeToPort` and the interrupt handler both use `writing` (0x129). |
+| 31 | Fixed. The return value starts at 0 and is only propagated in the -714 and default arms. |
+| 32 | Fixed. `setBlockSize:` guards on `blockSize`, `setMinPhys:` on `minPhys`. |
+| 33 | Fixed. `-free` frees `sizeLock` and `ioQueueLock`, unconditionally, and no interrupt port. |
+| 34 | Fixed, deliberately. All four NULL guards removed, matching the reference. The reference checks `physbuf`, `interruptMessage` and `dataBuffer` before `IOFree` and nothing else; ours now checks exactly those three. |
+| 35 | Fixed. `-free` sizes the `dataBuffer` free from `minPhys`. |
+| 36 | Fixed. `pp_softc` is a one-element 12-byte `{ id device; int count; unsigned char *data; }` in `__DATA,__data`; the three parallel arrays are gone. |
+| 37 | Fixed. One definition. Verified in the nlist - see 8.3. |
+| 38 | Fixed. All seventeen `pp_kern_*` functions and the `pp_base_addrs` and `pp_modes` statics deleted, along with their prototypes and the `pp_mode_t` and `pp_port_state_t` types. |
+| 39 | Fixed. `ppopen` implements the reference's body, including the two-range acceptance test. |
+| 40 | Fixed. `unsigned int ppminphys(struct buf *)` returns the clamp and stores nothing. |
+| 41 | Fixed. `int ppstrategy(struct buf *)`, -1 on error and 0 on success. |
+| 42 | Fixed. -738 and -737 give 83, -726 gives 60, -725 gives 16, default gives 5, from all 36 decoded jump-table entries. |
+| 43 | Fixed. `bp->b_un.b_addr` is copied by value; the double indirection is gone. |
+| 44 | Fixed. SELECT set gives `0x232336`, SELECT clear gives `0x232339`. |
+| 45 | Fixed. The read path advances then stores, and tests the count for equality where the write path tests `<= 0`. |
+| 46 | Fixed - see 8.4. |
+| 47 | Fixed. The first decode now has its own shape; the second was already right and is unchanged. |
+| 48 | Fixed. `[port interruptMessage]` is fetched once and that 8192-byte buffer is what `msg_receive` fills; the stack struct is gone. |
+| 49 | Fixed. The four accepted codes return 0 without writing, the ranges are exactly -726 to -725 and -738 to -737, and the `ENOMEM` check is gone. |
+| 50 | Fixed. `pp_strobe_count` deleted. |
+| 51 | Fixed, deliberately. Every `PP_KERN_MAX_PORTS` bounds check removed; NULL checks kept in exactly the four functions that have one in the reference - `ppread`, `ppwrite`, `ppioctl`, `ppstrategy` - and removed from `ppopen`, `ppclose`, `ppminphys`, `_strobeChar` and the interrupt handler. One ordering difference survives in `_strobeChar`; see the ledger entry at 4232. |
+| 52 | Fixed. The `initialized` ivar is gone; `-isInitialized` reads bit 0 of `statusWord`. |
+| 53 | **Accepted.** Entries 112 and 1452 are `intentional-mismatch`. Bits 0-5 of every control byte agree with the reference exactly; bits 6 and 7 are garbage in the reference because it builds the byte in an uninitialised stack slot, and are deterministically clear in ours. The report pass's claim that ours also differs in bits 0 and 5 of `probeForController`'s second pattern does not hold: ours derived that pattern from the first, in which both bits are already 0. |
+| 54 | **Corrected and accepted** - see 8.3. No source change. |
+| 55 | **Repaired** - see 8.5. |
+| 56 | No action. `__module_info` is 48 bytes in both binaries and the three modules are unchanged. |
+| 57-59 | Already fixed in `15ce9007`, by value. Re-verified: entry 3492 is `assembly-matched`, and the `writeToPort` and `initDevice` arms select the values the reference selects. |
+| 60 | Fixed - see 8.6. |
+| 61 | Fixed - see 8.6. |
+
+### 8.8 The Unresolved items, revisited
+
+`dataRegisterData` (`C`, 0x134) is still never read or written by any of the 75 functions.
+It is declared so the ivars after it land at the reference's offsets, and is commented as
+such.
+
+The reference's `_pp_softc` field *names* are still unrecoverable; the three fields and
+the 12-byte stride are certain from nine independent access sites, and the names chosen
+here - `device`, `count`, `data` - are ours.
+
+One item can now be closed: `-[IOParallelPort waitForCmdBuf]`'s return type cannot be
+determined, because the reference's encoding for it is uniqued with `-dataBuffer`'s
+`^v8@8:12`. It is left as `void *`.
+
+### 8.9 The status rule used
+
+- `assembly-matched` (50) - the reference's full instruction stream was read and our
+  source is a statement-for-statement transliteration of it with no remaining difference,
+  and the function's emitted metadata was verified identical in the rebuilt binary. Used
+  for the accessors and the short bodies.
+- `control-flow-confirmed` (18) - the reference's full instruction stream was read and our
+  source reproduces its block structure, every call target and every constant, but the
+  rebuilt output was **not** itself disassembled and compared instruction by instruction.
+  Used for the larger functions.
+- `intentional-mismatch` (7) - a deliberate difference remains: 112 and 1452 (Finding 53),
+  2372 and 2388 (`struct buf` encoding), 4232 (`_strobeChar` ordering), and the two
+  build-generated glue functions at 7392 and 7404, untouched from the report pass.

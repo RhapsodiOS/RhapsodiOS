@@ -35,6 +35,11 @@
  * PCICSocket and PCICWindow classes adopt them.  Selector order matches
  * that binary: GCC emits a protocol's method list in reverse source
  * order, so the order below is the reverse of the order found there.
+ *
+ * NOTE: this file is duplicated at the path below, and the two must stay
+ * byte-identical.  Driver projects compile against the driverkit-3 copy.
+ *   src/kernel-7/driverkit/i386/PCMCIA.h
+ *   src/driverkit-3/driverkit/i386/PCMCIA.h
  */
 
 #ifndef _DRIVERKIT_I386_PCMCIA_H_
@@ -85,8 +90,9 @@ typedef struct {
 - (void)reset;
 - powerStates;
 
-- (PCMCIAStatus)statusChangeMask;
+/* Setter first here, unlike the pairs below; that is the reference's order. */
 - (char)setStatusChangeMask:(PCMCIAStatus)mask;
+- (PCMCIAStatus)statusChangeMask;
 
 - (char)cardEnabled;
 - (char)setCardEnabled:(char)enabled;

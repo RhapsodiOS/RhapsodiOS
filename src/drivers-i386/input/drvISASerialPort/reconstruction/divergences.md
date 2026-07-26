@@ -1984,3 +1984,223 @@ per-path epilogues, where our compiler keeps the pointer in a register and tail-
 is an optimisation-level difference rather than a source divergence, and it limits byte parity
 independently of correctness.
 
+## Addendum 4: Task 5 outcome — TU 2 split out, and the chip table written
+
+**The chip table is the first thing in this reconstruction to match a whole
+section exactly.** `_Chip` (180 bytes, nine rows of 20) and `_msr_state_lut`
+(16 bytes) are now `external` and non-`const` in `__DATA,__data`, and that
+section went **36 → 196 against the reference's 196**. Since those two symbols
+are the entire section, an exact size match means the stride, the row count and
+the field count are all right. `chipTypeNames[]` and `chipCapTable[]` are gone,
+`__TEXT,__const` dropped from 196 to nothing as they left it, and
+`__TEXT,__cstring` went 649 → 716 against 742 as the thirteen part names
+replaced the nine invented ones.
+
+The table was decoded a second time, independently, before being written:
+`__DATA,__data` read raw from file offset 35164, unpacked as nine 5-dword rows,
+the two `IntHandler` addresses checked against the nlist (13060 `_FIFOIntHandler`
+and 16232 `_NonFIFOIntHandler`, **both `local`**), and all thirteen strings read
+out of `__TEXT,__cstring` at 24412-24532. **The decode agreed with the report
+pass on every one of the 45 fields.** Two things fell out of it that are worth
+keeping:
+
+- Because both interrupt handlers are `local`, the table's **definition has to
+  live in `ISASerialPort.m`** — a plain C translation unit cannot name them.
+  `ISASerialPortInternal.h` declares `ChipInfo` and the two `extern`s, and
+  `programChip` reads `MaxBaud` through that.
+- The cstring order is the exact reverse of rows 0..8 with `ShortName` before
+  `LongName`, deduplicated, which is consistent with gcc emitting cstrings in
+  reverse order of first appearance. That independently corroborates the row
+  order and the field order, and it is why `"Auto"` sits last at 24528 rather
+  than first.
+
+**`__DATA,__bss` is 48 and section 9 item 1 is now fully closed.**
+`ISASerialPortChip.c` imports `<driverkit/i386/ioPorts.h>` and does real port
+I/O, so it supplied the fourth `_xxx.86/.89/.92` group: 36 → **48**, an exact
+match. Four translation units, four groups, one per unit. The
+`ISASerialPort_instance.m` hypothesis stays withdrawn.
+
+`missing_strings` fell 29 → **21**, by exactly **eight**. A naive count says
+nine, but `"Auto"` was already in `chipTypeNames[]` and so was never missing; the
+eight are `82510`, `ST16C650`, `16C1550`, `16550AF/C/CF`,
+`16550 with defective FIFO`, `16C1450`, `8250A or 16450` and `Unknown`.
+`extra_strings` fell 25 → 21 as `16550A`, `16750`, `16950` and `16550?` went.
+Sections matching went 18/30 → **20/30**.
+
+### Findings closed
+
+**Finding 2 — closed.** `_Chip` exists, external and non-`const`, all five
+fields including the three pointers `chipCapTable` lacked entirely.
+`ChipCapabilities` is deleted.
+
+**Finding 3 — closed.** `_msr_state_lut` is
+`00 01 08 09 04 05 0C 0D 02 03 0A 0B 06 07 0E 0F`, so DSR and DCD are no longer
+transposed in every modem-status report. It was also renamed
+`_msr_state_lut` → `msr_state_lut`, because the leading underscore in the C name
+made the emitted symbol `__msr_state_lut` rather than the reference's. Its three
+readers in `ISASerialPort.m` were updated mechanically.
+
+**Finding 4 — closed for TU 2.** All 28 `IODelay(1)` calls in these three
+functions are gone (18 in `identifyChip`, 3 in `initChip`, 7 in `programChip`).
+No `IODelay` remains anywhere in TU 2. The two in TU 3 went with Task 4, so what
+is left is TU 1's.
+
+**Finding 5 — not applicable to TU 2.** No critical-section pair was in these
+three functions. The remaining sites are TU 1's.
+
+**Finding 6 — closed.** `chipTypeNames[]` is deleted. The `"Chip Type"` match
+walks `Chip[i].ShortName`, so `"82510"` is now matchable and `"16550"` selects
+row 5 rather than row 3.
+
+**Finding 7 — closed.** The `CHIP_*` macros were renumbered onto the reference's
+nine rows: `CHIP_UNKNOWN 0`, `CHIP_8250 1`, `CHIP_16450 2`, `CHIP_16C1450 3`,
+`CHIP_16550_BADFIFO 4`, `CHIP_16550AF 5`, `CHIP_16C1550 6`, `CHIP_ST16C650 7`,
+`CHIP_82510 8`. `CHIP_16750` and `CHIP_16950` are gone — the reference does not
+support those parts. The one use outside TU 2 was `_activatePort`'s
+`Type > CHIP_16550`, which was `> 3`; it is now `Type > 4`, the reference's
+literal at 3161 and the same form `getHandler:level:argument:forInterrupt:`
+already used.
+
+**Finding 43 — closed.** All four divergences in `identifyChip`'s ladder are
+fixed: rung 3's `t == 0x40` returns 5 rather than 4, `t == 0x80` returns 4
+immediately rather than falling into the banked-scratchpad ladder, `t == 0xC0`
+runs rungs 6 and 7 rather than returning 5 with no I/O, and the 18 delays are
+gone. The unused `val3` local is dropped. `outb`/`inb` are the reference's 18
+and 10. Rung 7's missing MCR write is left in place as Apple's, per section 6
+item 1, and is commented as such.
+
+**Finding 44 — closed.** Seven fields in the reference's order, the `Type == 0`
+guard, three zero writes and the delegation to `programChip`. The field our
+source called `flowControl` is `RX_Parity` through the shared struct.
+
+**Finding 45 — closed.** `+2` half-bits when parity is none, `+4` otherwise
+(20009-20024). `nsPerChar`, `FrameInterval` and the derived trigger level are no
+longer corrupted.
+
+**Finding 46 — closed.** The clamp is the reference's if/else, so the 100 floor
+is skipped whenever the `MaxBaud` clamp fired (19892 `jnb` → 19920). The
+invented `chipType < 9` guard is gone; the reference range-checks `Type`
+nowhere.
+
+**Finding 47 — closed.** The trigger loop lost its `&& triggerLevel > 0` guard
+and can run negative as 20360-20377 and 20496-20513 do, which makes the type-7
+`triggerLevel < 0 && BaudRate <= 0x4AFF` arm live rather than dead code.
+
+**Finding 48 — closed.** Type 3 no longer shares type 4's arm. Types 0, 1, 2, 3
+and 8 fall to the default, which clears `FCRimage` and issues **no** `outb`, and
+the three separate FCR writes collapsed onto the reference's single shared write
+at 20614 — the default arm skips it by the same jump the reference makes from
+20628 to 20638. `programChip` is back to the reference's **5** `outb`s from
+seven, closing the section 7 discrepancy.
+
+**Finding 49 — closed.** `if (port->DLRimage != newDivisor) { … }` wraps the
+frame-interval maths, the divisor writes and the whole FCR switch, so `FCRimage`
+survives a no-op reprogram exactly as the reference's does.
+
+**Finding 50 — matched.** The `CharLength` clamp, the four-way LCR/`RBRmask`
+table, the stop-bit rule, the parity switch, the break bit from `State & 0x800`,
+`DLR = MasterClock / (BaudRate << 3)` as a 32-bit unsigned divide, DLAB held
+across both divisor halves, and the final `outb(Base+3, LCRimage)` followed by
+`LCRimage = lcr`. The parity switch gained an explicit `case PARITY_NONE: break;`
+so the jump table carries the reference's **five** entries (`dec ecx; cmp 4; ja;
+jmp table[ecx*4]` at 19790-19796) rather than four. `IERmask` is untouched.
+
+**Findings 51 and 52 — closed by relocation.** `RBRmask` is named for what it is
+and its four values are commented as 5/6/7/8 data bits rather than
+"31/63/127/255 bytes". `MinLatency`'s two arms are commented correctly: on types
+5 and 6 it **enables** the FIFO at a 1-byte trigger (20328), and only on type 7
+does it disable it.
+
+**Finding 95 — closed for TU 2.** `FrameInterval` now comes from an ordinary
+`unsigned long long` divide and modulo of the sign-extended `nsPerChar` by
+`1000000000`, which is what the reference's `cdq` at 20052 plus `__udivdi3` at
+20072 and `__umoddi3` at 20105 are. The explicit four-argument call sites
+elsewhere are TU 1's and remain open.
+
+### New findings from the Task 5 read
+
+**Finding 101 — we emit four copies of `_RX_enqueueLongEvent` against the
+reference's three, and a single shared header cannot produce the reference's
+pattern.** Predicted before the build and confirmed by it: gcc 2.7 emits every
+`static` defined in a translation unit whether or not that unit references it, so
+`ISASerialPortChip.c` picked up a copy from `ISASerialPortInternal.h`. The
+reference has copies in TUs 1, 3 and 4 at 0, 20684 and 23200 and **none** in
+TU 2.
+
+That asymmetry is the finding. One header included by all four units gives four
+copies; the reference has three. So Apple's definition cannot have been in a
+header that TU 2 includes. The likely shape is **two** headers: a shared one
+carrying the `Port` and `Queue` structs and the eleven prototypes, which all four
+units include, and a **queue-specific** one carrying `_RX_enqueueLongEvent`,
+included by TUs 1, 3 and 4 but not by TU 2. That reading is consistent with what
+the units do — TU 2 is chip programming and touches no ring buffer — and it also
+explains the otherwise odd unreferenced copy at 23200, since TU 4's
+`_flowMachine`/`_watchState` do not call it either but its unit would still
+include the queue header.
+
+This is a hypothesis about Apple's file layout, not a fact recovered from the
+binary; what the binary establishes is only that TU 2 has no copy and the other
+three do. **Task 6 owns the split**, because it changes TU 1's includes and
+because the three per-TU copies are also where Finding 59's `and edx, 0FFh` fix
+lands. Splitting the header should take the copy count from four to three and
+remove roughly 197 bytes of `__TEXT,__text` we currently carry and the reference
+does not.
+
+**Finding 102 — Finding 94 is now load-bearing for the port-open path, not a
+parity improvement.** `programChip` computes `FrameInterval` with a genuine
+64-bit divide and modulo because that is what the reference does, so TU 2 now
+calls `__udivdi3` and `__umoddi3` at runtime. Finding 94 established that our
+hand-written helpers recurse infinitely: both promote to a 64/64 division that
+gcc lowers to a call to the helper itself, and the recursive call re-enters on
+the same branch. `programChip` is reached from `initFromDeviceDescription:`,
+`acquire:`, `release` and `_executeEvent`, so **until Task 6 rewrites those two
+helpers with 32-bit division only, opening a port overflows the kernel stack.**
+TU 1 already called them from five sites, so this is not a new defect class, but
+it is no longer avoidable by not exercising those paths.
+
+### Still open in TU 2
+
+**`identifyChip`'s byte size against the reference's 684 is unverified.** Our
+build is unstripped and its debug stabs share addresses with real functions, so
+symbol-gap arithmetic returns nonsense — it reports 7 bytes for `identifyChip`.
+A capstone-based measurement is needed and has been referred to review. The
+structural evidence against overfit, recorded here so the size check has
+something to be checked against: 18 `outb` and 10 `inb`, matching the reference
+exactly; no call instruction; nine return sites at the reference's nine values;
+the rung-3 dispatch written as the same three-case comparison tree the reference
+builds; and the two locals typed as the reference's spill pattern shows them
+(`unsigned int` for the FIFO probes, `unsigned char` for the MCR bit, which gcc
+keeps in memory at both 19114 and 19345).
+
+**Findings 18 and 19 stay open, and they are TU 1's.** The four timeout handlers
+and `getHandler:level:argument:forInterrupt:` must dispatch through
+`Chip[Type].IntHandler`. The table they need now exists and carries the right
+function pointers, so this is a small change, but it is in TU 1. Only what the
+table's arrival forced was touched there: the `strcmp` loop, the banner's two
+fields, the three `FIFOsize` reads, the three `msr_state_lut` reads and
+`_activatePort`'s `Type > 4`.
+
+**The banner's remaining divergence stays open.** It now prints
+`Chip[Type].LongName` and `Chip[Type].FIFOsize`, which are the reference's
+fields, but the `" (PCMCIA)"` suffix against the reference's `"PCMCIA/"` prefix
+(Finding 87) is untouched and TU 1's.
+
+The three entries are `control-flow-confirmed` rather than `assembly-matched` for
+the same reason TU 3's six are: every reference instruction was read and our
+source matches it branch for branch and constant for constant, but **our rebuilt
+object has not been disassembled and compared**, and `ledger.json`'s
+`rebuilt_sha256` is still `null`.
+
+### A note on the relined records
+
+`source-map.json` was regenerated and relined. The fresh run reports 28 mapped
+and 17 unmapped against the committed 43 and 2, for the reason Addendum 2 gave:
+`source_sites` keys sites by compiled symbol name and globs only `*.m` and `*.c`,
+so the fifteen still-underscored functions and the three header-static
+`_RX_enqueueLongEvent` copies cannot auto-match. **`fresh-only` is empty and the
+partition is unchanged** — 43 mapped, 2 unmapped, no duplicates, no boundary
+disputes, and `load_source_map` passes. Only line numbers moved. Note the
+committed map had also drifted 8 lines on `ISASerialPortFlow.c`, from the
+`ioPorts.h` import Addendum 3 added after it was written; that is corrected too.
+The same relining was applied to `ledger.json`'s 34 stale `source_line` values so
+the two artifacts continue to agree.

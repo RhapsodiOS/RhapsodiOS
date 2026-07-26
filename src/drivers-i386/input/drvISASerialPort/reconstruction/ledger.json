@@ -22,7 +22,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 230,
+      "source_line": 267,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
       "status": "signature-confirmed"
     },
@@ -47,7 +47,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 61,
-      "source_line": 2793,
+      "source_line": 2434,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -72,7 +72,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2273,
-      "source_line": 2815,
+      "source_line": 2456,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -97,7 +97,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 233,
-      "source_line": 3080,
+      "source_line": 2721,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -122,7 +122,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 63,
-      "source_line": 4428,
+      "source_line": 4069,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -147,7 +147,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 172,
-      "source_line": 4364,
+      "source_line": 4005,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -172,7 +172,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1144,
-      "source_line": 755,
+      "source_line": 395,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -197,7 +197,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 345,
-      "source_line": 1037,
+      "source_line": 678,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -222,7 +222,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 944,
-      "source_line": 3140,
+      "source_line": 2781,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -247,7 +247,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 561,
-      "source_line": 3353,
+      "source_line": 2994,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "assembly-matched"
     },
@@ -272,7 +272,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 267,
-      "source_line": 4240,
+      "source_line": 3881,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -297,7 +297,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 4222,
+      "source_line": 3863,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -322,7 +322,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 100,
-      "source_line": 4322,
+      "source_line": 3963,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -347,7 +347,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 70,
-      "source_line": 4190,
+      "source_line": 3831,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "assembly-matched"
     },
@@ -372,7 +372,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 866,
-      "source_line": 3866,
+      "source_line": 3507,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -397,7 +397,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 746,
-      "source_line": 4060,
+      "source_line": 3701,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -422,7 +422,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 120,
-      "source_line": 3819,
+      "source_line": 3460,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -447,7 +447,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 3568,
+      "source_line": 3209,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -472,7 +472,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 696,
-      "source_line": 3617,
+      "source_line": 3258,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -497,7 +497,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 383,
-      "source_line": 3467,
+      "source_line": 3108,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -522,7 +522,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 679,
-      "source_line": 204,
+      "source_line": 198,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -547,7 +547,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 60,
-      "source_line": 145,
+      "source_line": 139,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -572,7 +572,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 60,
-      "source_line": 175,
+      "source_line": 169,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -597,7 +597,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 123,
-      "source_line": 1142,
+      "source_line": 783,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -622,7 +622,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 23,
-      "source_line": 738,
+      "source_line": 378,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -647,7 +647,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2704,
-      "source_line": 2303,
+      "source_line": 1944,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -672,7 +672,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 3172,
-      "source_line": 1684,
+      "source_line": 1325,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -697,7 +697,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2472,
-      "source_line": 1185,
+      "source_line": 826,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -710,6 +710,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "fix pass Task 5: rewritten into ISASerialPortChip.c against 18704-19387 and the decoded Chip table. All seven rungs now match: the DLL read/write pair returning 0, the +7 scratch pair returning 1, the IIR bits 6-7 switch whose 0x40 arm returns 5 and 0x80 arm returns 4 immediately (ours had 4 and a fall into the banked ladder), the 82510 FIFO-mode probe returning 8, the MCR bit 7 test returning 3 or 2, the DLAB-banked scratchpad returning 7, and the 0xC0 default running rungs 6 and 7 rather than returning 5 with no I/O. All 18 IODelay(1) calls deleted - the reference has zero call instructions - and the unused val3 local dropped. outb/inb counts are the reference 18 and 10. Rung 7 still reads MCR without writing it first, which is Apple defect section 6 item 1 and is reproduced deliberately. Byte size against the reference 684 is UNVERIFIED: our build is unstripped and debug stabs share addresses with real functions, so symbol-gap arithmetic returns nonsense. control-flow-confirmed rather than assembly-matched because our rebuilt object has not been disassembled and compared (divergences.md Findings 4, 6, 7, 43)",
           "full disassembly read instruction by instruction",
           "report pass: diverges. The reference has ZERO call instructions - no IODelay anywhere - against our 18 IODelay(1) calls, which are a mistranscription of the lock incl that ioPorts.h's inline outb emits after the out. Three rungs of the decision ladder are wrong: t == 0x40 returns index 5 where ours returns 4; t == 0x80 returns 4 immediately where ours runs the whole banked-scratchpad ladder; and t == 0xC0 runs rungs 6 and 7 where ours returns 5 with no I/O - so our 0x80 and 0xC0 arms are effectively swapped. Rungs 1, 4 and 5 match numerically. The full ladder is transcribed in divergences.md Finding 43; rung 7's missing MCR write is Apple's own defect (section 6 item 1) and must be reproduced. Returns a _Chip index which the caller stores into port->Type"
         ],
@@ -722,9 +723,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 684,
-      "source_line": 384,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "source_line": 47,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortChip.c",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 19388,
@@ -735,6 +736,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "fix pass Task 5: moved verbatim into ISASerialPortChip.c apart from the three deletions the record called for. Read against 19388-19535: the seven fields in the reference order with CharLength 16, StopBits 2, TX_Parity 1, RX_Parity 0, BaudRate 0x4B00, the 16-bit DLRimage store and the 8-bit FCRimage store, then the Type == 0 early return, then LCR, IER and MCR written zero and programChip called. Already void before this pass; the field our source called flowControl is now RX_Parity through the shared Port struct, and the three IODelay(1) calls are gone. control-flow-confirmed rather than assembly-matched because our rebuilt object has not been disassembled and compared (divergences.md Findings 4, 44)",
           "full disassembly read instruction by instruction",
           "report pass: diverges. Reference is void (Port *port) and initialises exactly seven fields - CharLength 16, StopBits 2, TX_Parity 1, RX_Parity 0, BaudRate 0x4B00, DLRimage 0 (16-bit store), FCRimage 0 (8-bit store) - then returns early if Type == 0, else writes LCR, IER and MCR as zero and delegates to _programChip. All seven constants, the field order and the Type == 0 guard match ours. Divergences: the IOReturn return type; ISASerialPort.m:739 writes a field it calls flowControl where Port+160 is RX_Parity; and three IODelay(1) calls with no counterpart (divergences.md Findings 4, 44)"
         ],
@@ -747,9 +749,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 148,
-      "source_line": 516,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "source_line": 146,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortChip.c",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 19536,
@@ -760,6 +762,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "fix pass Task 5: moved into ISASerialPortChip.c and corrected against 19536-20683. The parity frame-bit adjustment is now +2 when TX_Parity is none and +4 otherwise, so nsPerChar, FrameInterval and the trigger level are no longer corrupted. The baud clamp is the reference if/else, so the 100 floor is skipped when the MaxBaud clamp fired, and the invented Type bounds check is gone. The trigger loop lost its > 0 guard and can run negative as the reference does, which makes the type-7 negative arm live. The FCR switch covers types 4, 5, 6 and 7 only: type 3 no longer shares type 4 arm, and types 0, 1, 2, 3 and 8 clear FCRimage and issue no outb, reached by the same jump the reference makes from 20628 to 20638. The three FCR writes collapsed onto the single shared write at 20614, taking outb from 7 to the reference 5. The DLRimage early-out now wraps the frame-interval maths, the divisor writes and the whole FCR switch. FrameInterval comes from an ordinary unsigned long long divide and modulo of the sign-extended nsPerChar, which is the reference cdq plus __udivdi3 at 20072 and __umoddi3 at 20105; that makes Finding 94 load-bearing for the port-open path. The parity switch gained an explicit none arm so the jump table has the reference five entries. control-flow-confirmed rather than assembly-matched because our rebuilt object has not been disassembled and compared (divergences.md Findings 4, 45, 46, 47, 48, 49, 50, 51, 52, 95)",
           "full disassembly read instruction by instruction",
           "report pass: diverges. The parity frame-bit adjustment is inverted - the reference adds 2 half-bits when TX_Parity == 1 (none) and 4 otherwise - corrupting both FrameInterval and the FIFO trigger level in ours. The baud clamp is an if/else where ours makes the 100 floor independent and adds a Type bounds check the reference lacks. The FIFO trigger loop can drive n negative in the reference and ours cannot, which makes one of our branches dead code. The FCR switch covers types 4, 5, 6 and 7 only - types 0, 1, 2, 3 and 8 get FCRimage = 0 and no outb at all - where ours includes type 3 and emits two extra port writes. The DLRimage early-out that skips all FCR programming has no counterpart. Ours also returns IOReturn where the reference is void and does a 32-bit divide where the reference uses the 64-bit helpers (Findings 45-52)"
         ],
@@ -772,9 +775,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 1148,
-      "source_line": 550,
-      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "source_line": 174,
+      "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortChip.c",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 20684,
@@ -798,7 +801,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 230,
+      "source_line": 267,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
       "status": "signature-confirmed"
     },
@@ -980,7 +983,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 230,
+      "source_line": 267,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortInternal.h",
       "status": "signature-confirmed"
     },
@@ -1006,7 +1009,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 181,
-      "source_line": 41,
+      "source_line": 49,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortFlow.c",
       "status": "signature-confirmed"
     },
@@ -1032,7 +1035,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 191,
-      "source_line": 116,
+      "source_line": 124,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPortFlow.c",
       "status": "signature-confirmed"
     },
@@ -1105,7 +1108,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 264,
-      "source_line": 2592,
+      "source_line": 2233,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -1130,7 +1133,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 348,
-      "source_line": 2690,
+      "source_line": 2331,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     }

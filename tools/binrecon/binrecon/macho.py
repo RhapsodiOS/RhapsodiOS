@@ -417,6 +417,108 @@ def read_macho(path: Path) -> dict[str, Any]:
     }
 
 
+_MODULE_INFO_SECTION = "__OBJC,__module_info"
+_OBJC_MODULE = struct.Struct("<4I")
+_OBJC_CLASS = struct.Struct("<8I")
+_OBJC_CATEGORY = struct.Struct("<4I")
+
+
+def objc_methods_from_sections(payload, sections):
+    """Map each Objective-C method implementation address to its names.
+
+    A linked executable names no methods in its symbol table, so the runtime
+    metadata is the only source of address-to-name for them.
+    """
+    spans = [s for s in sections if s.get("size")]
+
+    def offset_of(address):
+        for span in spans:
+            start = span["address"]
+            if start <= address < start + span["size"]:
+                return span["offset"] + (address - start)
+        return None
+
+    def read(structure, address):
+        offset = offset_of(address)
+        if offset is None or offset + structure.size > len(payload):
+            return None
+        return structure.unpack_from(payload, offset)
+
+    def text(address):
+        offset = offset_of(address)
+        if offset is None:
+            return None
+        end = payload.find(b"\0", offset)
+        if end < 0:
+            return None
+        return payload[offset:end].decode("latin1")
+
+    index = {}
+
+    def collect(list_address, owner, sign):
+        if not list_address:
+            return
+        offset = offset_of(list_address)
+        if offset is None:
+            return
+        _, count = struct.unpack_from("<2I", payload, offset)
+        for entry in range(count):
+            base = offset + 8 + entry * 12
+            if base + 12 > len(payload):
+                return
+            selector_address, _types, imp = struct.unpack_from("<3I", payload, base)
+            selector = text(selector_address)
+            if not selector or not imp:
+                continue
+            index.setdefault(imp, set()).add(f"{sign}[{owner} {selector}]")
+
+    module_section = next(
+        (s for s in sections if s["name"] == _MODULE_INFO_SECTION), None
+    )
+    if module_section is None:
+        return {}
+
+    for ordinal in range(module_section["size"] // _OBJC_MODULE.size):
+        module_offset = module_section["offset"] + ordinal * _OBJC_MODULE.size
+        if module_offset + _OBJC_MODULE.size > len(payload):
+            break
+        _version, _size, _name, symtab = _OBJC_MODULE.unpack_from(payload, module_offset)
+        symtab_offset = offset_of(symtab) if symtab else None
+        if symtab_offset is None:
+            continue
+        class_count, category_count = struct.unpack_from("<HH", payload, symtab_offset + 8)
+        total = class_count + category_count
+        definitions = struct.unpack_from(f"<{total}I", payload, symtab_offset + 12) if total else ()
+
+        for position, definition in enumerate(definitions):
+            if position < class_count:
+                fields = read(_OBJC_CLASS, definition)
+                if fields is None:
+                    continue
+                isa, _super, name_address = fields[0], fields[1], fields[2]
+                owner = text(name_address)
+                if not owner:
+                    continue
+                collect(fields[7], owner, "-")
+                metaclass = read(_OBJC_CLASS, isa) if isa else None
+                if metaclass is not None:
+                    collect(metaclass[7], owner, "+")
+            else:
+                fields = read(_OBJC_CATEGORY, definition)
+                if fields is None:
+                    continue
+                category_name, class_name, instance_methods, class_methods = fields
+                owner_class = text(class_name)
+                owner_category = text(category_name)
+                if not owner_class or not owner_category:
+                    continue
+                owner = f"{owner_class}({owner_category})"
+                collect(instance_methods, owner, "-")
+                collect(class_methods, owner, "+")
+
+    return {address: sorted(names) for address, names in index.items()}
+
+
 def _read_symbols(
     data: bytes,
     symtab: tuple[int, int, int, int, int] | None,

@@ -16,7 +16,7 @@ LANGUAGE = English
 CLASSES = AppleIOPSSafeCondLock.m IOPortSession.m IOPortSessionKern.m PDPseudo.m PortServer.m ttyiops.m
 HFILES = AppleIOPSSafeCondLock.h IOPortSession.h IOPortSessionKern.h PDPseudo.h PortServer.h ttyiops.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble Load_Commands.sect
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

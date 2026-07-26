@@ -25,9 +25,12 @@
 #import <objc/objc.h>
 #import <objc/objc-runtime.h>
 #import <sys/types.h>
+#import <sys/param.h>   /* MAXCOMLEN, MAXLOGNAME for sys/proc.h */
+#import <sys/time.h>    /* timeval / itimerval for sys/proc.h */
 #import <sys/tty.h>
 #import <sys/conf.h>
 #import <sys/dkstat.h>
+#import <sys/signal.h>  /* sigset_t required by sys/proc.h fields */
 #import <sys/proc.h>    /* struct proc, and p_ucred, which is a macro */
 #import <sys/systm.h>   /* timeout_fcn_t, timeout(), untimeout() */
 #import <kern/assert.h>

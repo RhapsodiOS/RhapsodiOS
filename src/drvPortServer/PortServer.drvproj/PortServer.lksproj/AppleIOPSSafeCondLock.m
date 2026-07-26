@@ -370,6 +370,8 @@ static IMP _IMP_lockWhen = NULL;
      * - result: wake result code (0)
      */
     thread_wakeup_prim((char *)self + 8, 1, 0);
+}
+
 /*
  * unlock - Release lock
  * Unlocks the lock and signals waiting threads
@@ -483,36 +485,6 @@ static IMP _IMP_lockWhen = NULL;
     AIOPSSCL_unlock(self);
     
     /* Note: Original returns result of AIOPSSCL_unlock, but our signature is void */
-}
- * This is the typical way to change condition values
- */
-- (void)unlockWith:(int)condition
-{
-    /* TODO: Implement atomic unlock with condition update:
-     * - Update _condition = condition
-     * - Release mutex/simple_lock
-     * - Broadcast to all waiting threads (condition changed)
-     * - Wake all threads waiting in lockWhen:
-     */
-
-    *(int *)((char *)self + 8) = condition;  /* Update _condition at offset +8 */
-}
-
-/*
- * setCondition: - Set condition value
- * Updates condition and signals waiters
- * Note: Should be called with lock held
- */
-- (void)setCondition:(int)condition
-{
-    /* TODO: Implement condition update:
-     * - Should verify lock is held by caller
-     * - Update _condition = condition
-     * - Broadcast condition variable
-     * - Wake threads waiting for this condition
-     */
-
-    *(int *)((char *)self + 8) = condition;  /* Update _condition at offset +8 */
 }
 
 @end

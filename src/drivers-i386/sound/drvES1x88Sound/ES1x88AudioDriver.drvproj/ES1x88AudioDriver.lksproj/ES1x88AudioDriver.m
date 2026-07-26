@@ -523,7 +523,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     unsigned int dmaChannel;
     unsigned int irq;
     unsigned int sampleRate;
-    unsigned int channelCount;
+    unsigned int stereo;
     NXSoundParameterTag dataEncoding;
     unsigned char regValue;
     unsigned char sampleRateByte;
@@ -535,7 +535,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     dmaChannel = ((unsigned int *)[[self deviceDescription] channelList])[0];
     irq = [[self deviceDescription] interrupt];
     sampleRate = [self sampleRate];
-    channelCount = [self channelCount];
+    stereo = ([self channelCount] == 2);
     dataEncoding = [self dataEncoding];
 
     /* Send Audio Control 2 command followed by direction-specific value */
@@ -568,7 +568,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     /* Set stereo/mono bit */
-    if (channelCount == 2) {
+    if (stereo == 1) {
         regValue |= ES_AUDIO_MODE_STEREO;  /* Stereo */
     } else {
         regValue |= ES_AUDIO_MODE_MONO;  /* Mono */
@@ -619,17 +619,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Determine mode commands based on channel count and encoding */
-    if (channelCount == 2) {  /* Stereo */
-        if (dataEncoding == NX_SoundStreamDataEncoding_Linear8) {
-            modeData = ES_OUTPUT_MODE_16BIT;
-            modeCommand1 = ES_AUDIO_MODE_STEREO_16BIT_CMD1;
-            modeCommand2 = ES_AUDIO_MODE_STEREO_16BIT_CMD2;
-        } else {  /* Linear16 */
-            modeData = ES_OUTPUT_MODE_8BIT;
-            modeCommand1 = ES_AUDIO_MODE_STEREO_8BIT_CMD1;
-            modeCommand2 = ES_AUDIO_MODE_STEREO_8BIT_CMD2;
-        }
-    } else {  /* Mono */
+    if (stereo == 0) {  /* Mono */
         if (dataEncoding == NX_SoundStreamDataEncoding_Linear8) {
             modeData = ES_OUTPUT_MODE_16BIT;
             modeCommand1 = ES_AUDIO_MODE_MONO_16BIT_CMD1;
@@ -638,6 +628,16 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
             modeData = ES_OUTPUT_MODE_8BIT;
             modeCommand1 = ES_AUDIO_MODE_MONO_8BIT_CMD1;
             modeCommand2 = ES_AUDIO_MODE_MONO_8BIT_CMD2;
+        }
+    } else {  /* Stereo */
+        if (dataEncoding == NX_SoundStreamDataEncoding_Linear8) {
+            modeData = ES_OUTPUT_MODE_16BIT;
+            modeCommand1 = ES_AUDIO_MODE_STEREO_16BIT_CMD1;
+            modeCommand2 = ES_AUDIO_MODE_STEREO_16BIT_CMD2;
+        } else {  /* Linear16 */
+            modeData = ES_OUTPUT_MODE_8BIT;
+            modeCommand1 = ES_AUDIO_MODE_STEREO_8BIT_CMD1;
+            modeCommand2 = ES_AUDIO_MODE_STEREO_8BIT_CMD2;
         }
     }
 

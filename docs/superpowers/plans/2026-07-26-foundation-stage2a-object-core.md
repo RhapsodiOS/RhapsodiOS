@@ -31,6 +31,24 @@
   The `-I..` is load-bearing.
 - Full procedure: `docs/superpowers/plans/notes/2026-07-26-foundation-compile-probe.md` (committed).
 - The harness config `vm/vm.conf` is **untracked and exists only in the MAIN worktree** at `/d/RhapsodiOS/vm/vm.conf`. It contains a password. Reference that path directly — do **not** copy it into this worktree, where it is not gitignored and could be committed by accident.
+- **Two different builds, two different architectures — this is not optional.**
+  Stage 1 established the split and Task 1 confirmed why it exists:
+  - **Test binaries are linked and run, so they build NATIVE (ppc):**
+    `cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_x <sources>`
+    with **no `-arch` flag**. The guest has no i386 `crt1.o`, no i386
+    `libcc_dynamic.a` and no i386 System framework, so **no i386 executable can
+    be linked there at all**. Behaviour is what these test, and it is
+    architecture-independent.
+  - **Objects for `abi-check` are compiled, never linked, and are i386:**
+    `cc -c -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/NSx.o NSx.m`
+    The reference is the i386 slice, so the ABI comparison must be i386.
+  Do not add `-arch i386` to a test-binary link line; it will fail, and the
+  failure is an environment gap, not a defect in your code.
+- **A root class must implement `+initialize`.** Task 1's probe crashed with
+  `objc: ProbeRoot: Does not recognize selector forward::` until one was added.
+  `NSObject` and `NSProxy` both define it in the reference, so reconstructing
+  them faithfully satisfies this — but a test helper class that omits it will
+  fail in a way whose error message points nowhere near the cause.
 - **The guest login shell is tcsh.** Bash-style `2>&1` silently kills a command with no output. Use `>&` and `$status`.
 - `/build/source/src/Kits/Foundation` on the guest is shared with other sessions. Compile in an isolated sibling directory and clean up afterwards.
 
@@ -122,7 +140,7 @@ int main(void)
 On the guest, in your isolated directory:
 
 ```
-cc -arch i386 -o probe probe_root.m probe_main.m -lobjc >& build.log
+cc -x objective-c -o probe probe_root.m probe_main.m >& build.log
 echo $status
 ./probe
 ```
@@ -749,7 +767,7 @@ and record the deferral for Task 11's `divergences.md`.
 On the guest, in an isolated sibling directory (tcsh — use `>&`, not `2>&1`):
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_zone reconstruction/tests/test_zone.c NSZone.m >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_zone reconstruction/tests/test_zone.c NSZone.m >& build.log
 echo $status
 ```
 
@@ -764,7 +782,7 @@ Rhapsody's zones sit on the Mach/BSD allocator, so expect `vm_allocate`/`vm_deal
 - [ ] **Step 5: Run the tests until they pass**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_zone reconstruction/tests/test_zone.c NSZone.m >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_zone reconstruction/tests/test_zone.c NSZone.m >& build.log
 echo $status
 /tmp/test_zone
 ```
@@ -957,7 +975,7 @@ int main(void)
 - [ ] **Step 3: Run the tests to verify they fail**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_refcount reconstruction/tests/test_refcount.c NSZone.m >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_refcount reconstruction/tests/test_refcount.c NSZone.m >& build.log
 echo $status
 ```
 
@@ -972,7 +990,7 @@ Reconstruct the side table's real structure from the reference rather than inven
 - [ ] **Step 5: Run both suites until they pass**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_refcount reconstruction/tests/test_refcount.c NSZone.m >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_refcount reconstruction/tests/test_refcount.c NSZone.m >& build.log
 echo $status
 /tmp/test_refcount
 /tmp/test_zone
@@ -1148,7 +1166,7 @@ Note the relationship this pins down: `retainCount` is `NSExtraRefCount(self) + 
 Use Task 1's recorded link line, adding the reconstruction's sources:
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m -lobjc >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m >& build.log
 echo $status
 ```
 
@@ -1163,7 +1181,7 @@ Work through them in behavioural groups rather than file order — identity and 
 - [ ] **Step 6: Run the tests until they pass**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m -lobjc >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m >& build.log
 echo $status
 /tmp/test_object
 ```
@@ -1243,7 +1261,7 @@ static void test_allocWithZone_uses_the_named_zone(void)
 - [ ] **Step 3: Run to verify the new tests fail**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m -lobjc >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_object reconstruction/tests/test_object.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m >& build.log
 echo $status
 /tmp/test_object
 ```
@@ -1354,7 +1372,7 @@ int main(void)
 - [ ] **Step 3: Run to verify failure**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_proxy reconstruction/tests/test_proxy.m NSProxy.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m -lobjc >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_proxy reconstruction/tests/test_proxy.m NSProxy.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m >& build.log
 echo $status
 ```
 
@@ -1492,7 +1510,7 @@ int main(void)
 - [ ] **Step 4: Run to verify failure**
 
 ```
-cc -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_pool reconstruction/tests/test_autoreleasepool.m NSAutoreleasePool.m NSPrivate.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m -lobjc >& build.log
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_pool reconstruction/tests/test_autoreleasepool.m NSAutoreleasePool.m NSPrivate.m NSObject.m NSZone.m reconstruction/tests/link_stubs.m >& build.log
 echo $status
 ```
 

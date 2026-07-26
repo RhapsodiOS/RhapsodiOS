@@ -36,49 +36,72 @@ reference disassembly.
 
 Two binaries under `C:\Users\raynorpat\Downloads\test\Drivers\i386\VGA.config`:
 
-| Binary | Mach-O type | File size | `__text` | Symbols | Hand-written |
+| Binary | Mach-O type | File size | `__text` | Functions | Hand-written |
 | --- | --- | --- | --- | --- | --- |
-| `VGA_reloc` | MH_PRELOAD | 71112 | 18048 | 30 | 28 |
+| `VGA_reloc` | MH_PRELOAD | 71112 | 18048 | 36 | 34 |
 | `VGA_psdrvr` | MH_BUNDLE | 26584 | 7057 | 22 | 19 |
 
-47 hand-written symbols over 46 distinct function bodies — `_Start` is a
-zero-size alias of `_VGAStart` in the psdrvr. Both binaries retain full symbol
-tables, so address-to-name resolution is exact rather than inferred.
+53 hand-written functions over 52 distinct bodies — `_Start` is a zero-size alias
+of `_VGAStart` in the psdrvr.
 
-`VGA_reloc`, in address order:
+> **Corrected after the Task 7 analyzer run.** This table first said `VGA_reloc`
+> held 30 functions. That count came from walking the `__TEXT,__text` symbol
+> table and deriving each function's size from the gap to the next symbol, which
+> is wrong wherever a function carries no symbol. Six `-[vidBIOS …]` methods do
+> not appear in the symbol table at all and were hiding inside the 1168-byte gap
+> the old table attributed to `+[VGAVersion driverKitVersionForVGA]`, whose real
+> size is 12 bytes. IDA recovers them from `__OBJC,__inst_meth`. The sizes below
+> are IDA's, not gap-derived.
+
+`VGA_reloc`, in address order. Method names are as the symbol table gives them
+where it names the function, and as IDA recovers them from the ObjC metadata for
+the six `vidBIOS` methods it does not:
 
 | Address | Size | Symbol |
 | --- | --- | --- |
-| 0 | 228 | `-[IOVGADisplay _registerWithED]` |
-| 228 | 240 | `_SetET4000Brightness` |
-| 468 | 104 | `_select_read_segment` |
-| 572 | 104 | `_select_write_segment` |
-| 676 | 112 | `_select_read_plane` |
-| 788 | 128 | `_select_write_plane` |
-| 916 | 408 | `_vga_read_bpp4planar_to_bpp2packed32` |
+| 0 | 227 | `-[IOVGADisplay _registerWithED]` |
+| 228 | 237 | `_SetET4000Brightness` |
+| 468 | 103 | `_select_read_segment` |
+| 572 | 102 | `_select_write_segment` |
+| 676 | 110 | `_select_read_plane` |
+| 788 | 127 | `_select_write_plane` |
+| 916 | 407 | `_vga_read_bpp4planar_to_bpp2packed32` |
 | 1324 | 428 | `_vga_write_bpp2packed32_to_bpp4planar` |
 | 1752 | 816 | `_VGADisplayCursor` |
 | 2568 | 660 | `_VGARemoveCursor` |
 | 3228 | 100 | `-[IOVGADisplay hideCursor:]` |
-| 3328 | 520 | `-[IOVGADisplay moveCursor:frame:token:]` |
-| 3848 | 456 | `-[IOVGADisplay showCursor:frame:token:]` |
-| 4304 | 48 | `-[IOVGADisplay generateNameAndUnit:]` |
-| 4352 | 12 | `-[IOVGADisplay map]` |
+| 3328 | 517 | `-[IOVGADisplay moveCursor:frame:token:]` |
+| 3848 | 453 | `-[IOVGADisplay showCursor:frame:token:]` |
+| 4304 | 47 | `-[IOVGADisplay generateNameAndUnit:]` |
+| 4352 | 9 | `-[IOVGADisplay map]` |
 | 4364 | 84 | `-[IOVGADisplay unmap]` |
 | 4448 | 144 | `+[IOVGADisplay probe:]` |
-| 4592 | 44 | `-[IOVGADisplay free]` |
-| 4636 | 360 | `-[IOVGADisplay initFromDeviceDescription:]` |
+| 4592 | 41 | `-[IOVGADisplay free]` |
+| 4636 | 358 | `-[IOVGADisplay initFromDeviceDescription:]` |
 | 4996 | 64 | `-[IOVGADisplay setBrightness:token:]` |
-| 5060 | 440 | `-[IOVGADisplay getIntValues:forParameter:count:]` |
-| 5500 | 296 | `-[IOVGADisplay setIntValues:forParameter:count:]` |
-| 5796 | 32 | `-[IOVGADisplay allocateConsoleInfo]` |
-| 5828 | 116 | `-[IOVGADisplay(VESAMode) enterSVGAMode:]` |
-| 5944 | 168 | `-[IOVGADisplay(VESAMode) int10:]` |
-| 6112 | 108 | `_find_parameter` |
-| 6220 | 152 | `-[IOVGADisplay(VESAMode) didBootWithDefaultConfig]` |
+| 5060 | 437 | `-[IOVGADisplay getIntValues:forParameter:count:]` |
+| 5500 | 295 | `-[IOVGADisplay setIntValues:forParameter:count:]` |
+| 5796 | 29 | `-[IOVGADisplay allocateConsoleInfo]` |
+| 5828 | 114 | `-[IOVGADisplay(VESAMode) enterSVGAMode:]` |
+| 5944 | 166 | `-[IOVGADisplay(VESAMode) int10:]` |
+| 6112 | 106 | `_find_parameter` |
+| 6220 | 149 | `-[IOVGADisplay(VESAMode) didBootWithDefaultConfig]` |
 | 6372 | 12 | `+[VGAKernelServerInstance kernelServerInstance]` |
-| 6384 | 1168 | `+[VGAVersion driverKitVersionForVGA]` |
-| 7552 | 10496 | `_emu486` |
+| 6384 | 12 | `+[VGAVersion driverKitVersionForVGA]` |
+| 6396 | 267 | `-[vidBIOS init]` |
+| 6664 | 107 | `-[vidBIOS free]` |
+| 6772 | 696 | `-[vidBIOS int10:outregs:iorange:ionum:smmport:]` |
+| 7468 | 44 | `-[vidBIOS int10:outregs:iorange:ionum:]` |
+| 7512 | 16 | `-[vidBIOS scratchSegment]` |
+| 7528 | 22 | `-[vidBIOS realToVirtual::]` |
+| 7552 | 8088 | `_emu486` |
+
+IDA additionally carves 69 unnamed fragments totalling 1279 bytes out of the
+range 7912 to 15758, which lies inside `_emu486`. They are its per-opcode
+handlers, not functions: each performs one operation and jumps back to a shared
+dispatch point at `0x1E20`. They are excluded from the function partition (§4.3).
+A further 2290 bytes from 15758 to the end of `__text` at 18048 are claimed by no
+function at all and are presumably the emulator's dispatch tables.
 
 `VGA_psdrvr`, in address order. Offsets are relative to the `__TEXT` segment
 base, which the bundle prebinds at `0x70320000`; the `__text` section itself
@@ -213,7 +236,7 @@ driver, all credited to Gary Crum, 28 September 1992:
 The reference was compiled against these headers. They are the single largest
 asset in this effort and they are already checked in.
 
-### 2.4 `vidBIOS` is defined by `VGA_reloc` but has no method bodies
+### 2.4 `vidBIOS` is the BIOS-call class, and it has six methods
 
 `.objc_class_name_vidBIOS` is an `N_ABS` defined symbol, alongside
 `.objc_class_name_IOVGADisplay`, `.objc_class_name_VGAKernelServerInstance` and
@@ -221,9 +244,22 @@ asset in this effort and they are already checked in.
 `.objc_class_name_IODevice`, `.objc_class_name_Object` and
 `.objc_class_name_EventDriver` are undefined and resolved by the kernel loader.
 
-No `vidBIOS` method appears in `__TEXT,__text`. The reference's `__cstring`
-contains `VGADisplay: vidBIOS failed`. What the class is for, and where its
-declaration lives, is a report-pass question.
+An earlier draft of this section said no `vidBIOS` method appears in
+`__TEXT,__text` and left the class's purpose as an open question. That was an
+artifact of reading only the symbol table, which names none of them. IDA recovers
+six from `__OBJC,__inst_meth`, listed in §1.1: `init`, `free`, two `int10:`
+overloads, `scratchSegment` and `realToVirtual::`.
+
+Their names settle what the class is for. `vidBIOS` owns the real-mode BIOS call:
+`realToVirtual::` and `scratchSegment` manage the low-memory window the emulator
+needs, and `int10:outregs:iorange:ionum:smmport:` is the call itself, with a
+five-argument form and a four-argument convenience wrapper. `_emu486` is the
+engine underneath it. `-[IOVGADisplay(VESAMode) int10:]` at 5944 is the display
+driver's entry into that machinery, and `VGADisplay: vidBIOS failed` in
+`__cstring` is what it logs when the call does not come back clean.
+
+What remains for the report pass is narrower than before: the exact argument
+types and the register block layout the two `int10:` methods pass and receive.
 
 ### 2.5 The config tables and localized resources diverge
 
@@ -466,9 +502,17 @@ Per binary:
    produces IDA 9.2, Ghidra 12.1 and angr 9.3.0 analyses plus
    `consensus-reference.json` under the gitignored `tools/binrecon/out/<name>/`.
 
-2. **Map.** `binrecon source-map` anchored on the Mach-O symbol table, then
-   hand-resolve the residue. Every reference function lands in exactly one
+2. **Map.** `binrecon source-map` anchored on IDA's named function partition,
+   then hand-resolve the residue. Every reference function lands in exactly one
    bucket: `mapped`, `unmapped`, `boundary_disputed`, or `duplicate_candidates`.
+
+   **A function is an entry IDA names.** The Mach-O symbol table alone
+   undercounts, because it names none of the six `vidBIOS` methods (§2.4); IDA's
+   raw function list alone overcounts, because its boundary heuristics promote
+   `_emu486`'s 69 per-opcode handlers to functions (§1.1). Named entries are the
+   intersection that matches what a person actually reconstructs: 36 for
+   `VGA_reloc`, 22 for `VGA_psdrvr`. The excluded fragments are recorded in
+   `divergences.md` as part of `_emu486`'s structure, not dropped silently.
 
    Because our source is disjoint from Apple's, each binary's report-pass map
    puts all of its hand-written symbols in `unmapped` — 28 for `VGA_reloc`, 19
@@ -526,7 +570,8 @@ gated finding-by-finding. It stays inside `src/drivers-i386/video/drvVGA`; §1.4
 governs everything outside.
 
 `_emu486` gets its own commit or commits and its own section in `divergences.md`.
-At 10496 bytes it is 58% of `VGA_reloc`'s `__text` and the largest single piece
+At 8088 bytes for its dispatch core, plus 69 handlers and roughly 2290 bytes of
+tables, it is the largest single piece
 of work in this effort.
 
 ### 4.5 Verification
@@ -580,10 +625,20 @@ CLE on a 1992-vintage 32-bit i386 bundle with prebound `__TEXT` addresses at
 disables angr and the psdrvr's consensus is built from two analyzers. The
 `tools/binrecon/out/spd-noghidra` directory shows that precedent already exists.
 
-**`_emu486` decompilation quality.** A 10 KB table-driven interpreter can
-decompile into something that transcribes cleanly, or into something that does
-not. If it does not, that surfaces in Phase 2 and the approach is revisited with
-evidence rather than pre-empted now.
+**`_emu486` decompilation quality.** Partly resolved by the Task 7 analyzer run,
+and in the encouraging direction. It is not one 10 KB straight-line function: it
+is an 8088-byte dispatch core plus 69 per-opcode handlers averaging 19 bytes
+each, every one of them returning to a shared dispatch point at `0x1E20`, with
+roughly 2290 bytes of tables after it. That is a shape a reconstruction can
+follow handler by handler rather than all at once.
+
+What the run also showed is that the three analyzers agree on none of its
+interior. IDA gives the core 8088 bytes; Ghidra gives 6931 and then fragments
+along different boundaries; angr produced a phantom function overlapping the
+core's opening bytes and had to be disabled for this binary to normalize at all.
+So the risk has changed shape rather than disappeared: the danger is no longer
+one indigestible function, it is that no analyzer's boundaries can be trusted
+here and the handlers have to be read against the raw disassembly.
 
 **The guest's display-driver build path.** Other `video/` drivers are marked
 complete, so the toolchain is presumably sound, but `drvVGA` has never been built

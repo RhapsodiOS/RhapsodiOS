@@ -12,7 +12,7 @@
 
 ## Phase 3 boundary
 
-The spec's Phase 3a and 3b — rewriting `VGA_psdrvr`'s 19 functions and `VGA_reloc`'s 28, including the 10496-byte `_emu486` — are **not** in this plan, and this is a scope decision rather than an omission.
+The spec's Phase 3a and 3b — rewriting `VGA_psdrvr`'s 19 functions and `VGA_reloc`'s 34, including `_emu486`'s dispatch core and its 69 per-opcode handlers — are **not** in this plan, and this is a scope decision rather than an omission.
 
 Phase 3's tasks are parameterized on Phase 2's output. The spec's §3.1 states that Apple's translation-unit boundaries, and therefore our source file names, are decided in the report pass from the `__DATA` static ordering. A rewrite task cannot name the file it writes, cite the disassembly it transcribes, or state the function signature it produces until `divergences.md` exists. Writing those tasks now would mean writing placeholders, which is a plan failure.
 
@@ -1036,7 +1036,7 @@ cd /d/RhapsodiOS && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map \
 
 Every one of the 30 reference functions must land in exactly one of `mapped`, `unmapped`, `boundary_disputed`, `duplicate_candidates`. Entries within each bucket must be sorted by `(address, reference_names)`; `validate_source_map_semantics` rejects any other order.
 
-For this binary the expected outcome is that **all 30 land in `unmapped`**: 28 because our source has no counterpart for them (spec §2.1), and `+[VGAKernelServerInstance kernelServerInstance]` and `+[VGAVersion driverKitVersionForVGA]` because the Kernel Server project type generates them (spec §2.9).
+For this binary the expected outcome is that **all 36 land in `unmapped`**: 34 because our source has no counterpart for them (spec §2.1), and `+[VGAKernelServerInstance kernelServerInstance]` and `+[VGAVersion driverKitVersionForVGA]` because the Kernel Server project type generates them (spec §2.9).
 
 A function the tool places in `mapped` is a false positive from a coincidental name match and must be moved to `unmapped` — our `VGA` class shares no method name with Apple's `IOVGADisplay`, so any match is spurious. Record any such case in Task 9.
 
@@ -1072,11 +1072,11 @@ import json
 m = json.load(open('src/drivers-i386/video/drvVGA/reconstruction/VGA_reloc/source-map.json'))
 total = sum(len(m[k]) for k in ('mapped','unmapped','duplicate_candidates','boundary_disputed'))
 print({k: len(m[k]) for k in ('mapped','unmapped','duplicate_candidates','boundary_disputed')}, 'total', total)
-assert total == 30, total
+assert total == 36, total
 "
 ```
 
-Expected: `total 30`.
+Expected: `total 36`.
 
 - [ ] **Step 7: Commit**
 
@@ -1236,7 +1236,7 @@ cd /d/RhapsodiOS && git add src/drivers-i386/video/drvVGA/reconstruction/diverge
 
 **Interfaces:**
 - Consumes: `tools/binrecon/out/vga-reloc/published/` and the source map from Task 7; the shared contract from Task 9.
-- Produces: a `## VGA_reloc` section in `divergences.md` with one numbered finding per reference function, and a `ledger-v1` document with 30 entries. The Phase 3b rewrite plan is written from these two.
+- Produces: a `## VGA_reloc` section in `divergences.md` with one numbered finding per reference function, and a `ledger-v1` document with 36 entries. The Phase 3b rewrite plan is written from these two.
 
 - [ ] **Step 1: Decompile every function and write it up**
 
@@ -1256,7 +1256,7 @@ Four questions this section must answer explicitly:
 Statuses at the end of this task:
 
 - `+[VGAKernelServerInstance kernelServerInstance]` and `+[VGAVersion driverKitVersionForVGA]`: `intentional-mismatch`, with a reason naming the Kernel Server project type as their generator and a reviewer. The ledger CLI requires both fields.
-- All 28 hand-written functions: `unexamined`, `source_path` and `source_line` `null`, with `analyzer_agreement.reasons` recording what the analyzers agreed on and that no source counterpart exists.
+- All 34 hand-written functions: `unexamined`, `source_path` and `source_line` `null`, with `analyzer_agreement.reasons` recording what the analyzers agreed on and that no source counterpart exists.
 
 Nothing here may be `signature-confirmed` or stronger. No source has been written.
 
@@ -1271,7 +1271,7 @@ export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\VGA.co
   --ledger src/drivers-i386/video/drvVGA/reconstruction/VGA_reloc/ledger.json
 ```
 
-`binrecon ledger` resolves the profile's reference artifact, so `BINRECON_REFERENCE` must still be exported. Expected: the ledger validates and prints its entry count as 30.
+`binrecon ledger` resolves the profile's reference artifact, so `BINRECON_REFERENCE` must still be exported. Expected: the ledger validates and prints its entry count as 36.
 
 - [ ] **Step 4: Confirm every function has an entry**
 
@@ -1287,7 +1287,7 @@ print(len(led), 'entries, all addresses accounted for')
 "
 ```
 
-Expected: `30 entries, all addresses accounted for`.
+Expected: `36 entries, all addresses accounted for`.
 
 - [ ] **Step 5: Commit**
 
@@ -1400,7 +1400,7 @@ for b in ('VGA_reloc', 'VGA_psdrvr'):
 "
 ```
 
-Expected: `VGA_reloc 30 entries, 2 intentional-mismatch` and `VGA_psdrvr` with 3 intentional-mismatch. No function may be `signature-confirmed` or stronger; nothing is written yet.
+Expected: `VGA_reloc 36 entries, 2 intentional-mismatch` and `VGA_psdrvr` with 3 intentional-mismatch. No function may be `signature-confirmed` or stronger; nothing is written yet.
 
 - [ ] **Step 3: Confirm the tables still match**
 

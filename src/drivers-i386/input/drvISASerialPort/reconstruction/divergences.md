@@ -32,32 +32,58 @@ Ledger status:
 
 | Status | Count | Meaning here |
 |---|---|---|
-| `unexamined` | 43 | A divergence was found — each carries a finding below |
+| `unexamined` | 41 | A divergence was found — each carries a finding below |
 | `intentional-mismatch` | 2 | Build-generated glue, not present in source |
-| `assembly-matched` | 0 | — |
+| `assembly-matched` | 2 | `nextEvent` (6400) and `release` (5448) — already correct |
 | `control-flow-confirmed` | 0 | — |
 
-**There are no matches, and that is the honest result.** Every one of the 43 mapped functions
-diverges, because the divergence is structural and global: the reference keeps all driver state in
+**Only two of the 43 mapped functions match, and that is the honest result.** The other 41 diverge,
+because the divergence is structural and global: the reference keeps all driver state in
 one 304-byte `Port` struct reached through a single pointer ivar, and our source spreads that state
 across 68 invented instance variables (section 4.1). Every C function's first parameter and every
 method's state access is therefore wrong in our tree, independently of whether the algorithm above
-it is right. Several functions — `_flowMachine`, `_watchState`, `-[ISASerialPort free]`,
-`-[ISASerialPort nextEvent]`, `-[ISASerialPort requestEvent:data:]`,
-`-[ISASerialPort dequeueEvent:data:sleep:]` — have algorithms that match the reference closely and
-would reach `assembly-matched` once the layout is fixed. They are called out as such in their
-findings so Tasks 3-6 know where the cheap wins are.
+it is right.
+
+**The two exceptions are `-[ISASerialPort nextEvent]` (6400) and `-[ISASerialPort release]`
+(5448), and they are exceptions for the same reason: neither reads a single named ivar.** Both
+reach every field through raw `(char *)self` offset casts that never consult `ISASerialPort.h`, so
+the layout change cannot touch them, and both already reproduce the reference. They are
+`assembly-matched` now, not after the layout fix. `release`'s comments mislabel three fields
+(Finding 91) but comments do not reach the assembly. **Tasks 3-6 must not rewrite either body.**
+
+Several other functions — `_flowMachine`, `_watchState`, `-[ISASerialPort free]`,
+`-[ISASerialPort requestEvent:data:]`, `-[ISASerialPort dequeueEvent:data:sleep:]` — have
+algorithms that match the reference closely and would reach `assembly-matched` once the layout is
+fixed. They are called out as such in their findings so Tasks 3-6 know where the cheap wins are.
 
 `unexamined` is used, per the ledger convention, for a function that diverges — **not** for one
 that was skipped. No function in this driver was skipped.
 
 **Where to find each function's verdict in `ledger.json`.** `binrecon.ledger` reserves the `reason`
 field for `intentional-mismatch` entries and rejects it on any other status
-(`tools/binrecon/binrecon/ledger.py:182`), so the 43 `unexamined` entries carry `reason: null`. Each
-one's per-function verdict is the **third element of `analyzer_agreement.reasons`**, prefixed
-`report pass:`; the first element is the shared IDA-versus-angr note and the second states the depth
-actually reached. The two glue entries carry their reason in the `reason` field as the schema
-requires.
+(`tools/binrecon/binrecon/ledger.py:182`), so the 41 `unexamined` entries and the 2
+`assembly-matched` entries all carry `reason: null`. Each one's per-function verdict is the **third
+element of `analyzer_agreement.reasons`**, prefixed `report pass:`; the first element is the shared
+IDA-versus-angr note and the second states the depth actually reached. The two glue entries carry
+their reason in the `reason` field as the schema requires.
+
+**Advancing an entry out of `unexamined` — read this before trying.**
+`tools/binrecon/binrecon/ledger.py` defines
+`_ORDER = ("unexamined", "signature-confirmed", "control-flow-confirmed", "assembly-matched")` and
+`transition()` enforces two rules that will otherwise cost a later task an hour:
+
+1. **`ledger.py:270` — skipping states is forbidden.** `unexamined` → `assembly-matched` in one call
+   raises `skipping ledger states is forbidden`. You must step one rung at a time.
+2. **`ledger.py:262` — `unexamined` → `intentional-mismatch` is forbidden.** It "requires a reviewed
+   state", so an entry must first reach at least `signature-confirmed`.
+
+So Tasks 3-6 must either issue **successive** `binrecon ledger --address … --status …` calls, one per
+rung, or edit `ledger.json` directly and then revalidate with a plain
+`binrecon ledger --profile … --ledger …` (no transition flags — it loads, validates and prints the
+counts). Note that a direct edit must preserve this file's on-disk shape: `json.dumps` with
+`indent=1`, `sort_keys=True`, CRLF line endings. The CLI's own writer emits **compact** JSON, so
+letting it write the file reformats the whole thing into one line. `binrecon ledger` also leaves a
+`ledger.json.lock` beside the ledger — delete it before staging; it belongs in no commit.
 
 ### Depth actually reached, per function
 
@@ -251,9 +277,15 @@ is 296+144 = `Port.Type` — a decompiler leftover that accidentally records the
 the arithmetic in much of our source is right. What is wrong is the **base**: those offsets are
 relative to the `Port` struct, not to the object. Task 3 must adopt the two-ivar layout. Our source
 is currently split between two mutually incompatible styles — `requestEvent:data:`, `nextEvent` and
-`release` use raw `self + 0x1xx` casts (which become *correct for free* once the two-ivar layout is
-adopted), while `acquire:`, `enqueueData:` and the C functions use named ivars (which then all need
-rewriting). Do not convert the raw-offset half to named ivars.
+`release` use raw `self + 0x1xx` casts, while `acquire:`, `enqueueData:` and the C functions use
+named ivars (which all need rewriting). Do not convert the raw-offset half to named ivars.
+
+**The raw-offset half is not waiting on the layout fix; it is already emitting the reference's
+offsets.** A raw `*(T *)((char *)self + N)` never consults `ISASerialPort.h`, so replacing 68 ivars
+with two changes nothing about what it compiles to. That is why `nextEvent` (6400) and `release`
+(5448) are `assembly-matched` **now** — they use raw casts exclusively and no named ivar at all
+(Findings 91, 92). `requestEvent:data:` is in the same style but has independent divergences
+(Findings 31 and 92) and so is not yet matched.
 
 **Fields the reference does not have at all**, and which our header invents: `hasFIFO`,
 `deviceDescription`, `timerPending`, `heartBeatPending`, `pcmciaDetect`, `chipType` as distinct
@@ -346,7 +378,7 @@ increment which copy pins the boundaries directly:
 | 1 | `_xxx_86` @32964 | 0 - 18703 | `_activatePort`, `_deactivatePort`, `acquire:`, `release`, `setState:mask:`, `executeEvent:data:`, `enqueueData:...`, `_dataLatTOHandler`, `_executeEvent`, `_FIFOIntHandler`, `_NonFIFOIntHandler` |
 | 2 | `_xxx_86_0` @32976 | 18704 - 20683 | `_identifyChip`, `_initChip`, `_programChip` |
 | 3 | `_xxx_86_1` @32988 | 20684 - 23199 | `_TX_enqueueEvent`, `_RX_dequeueEvent`, `_RX_dequeueData` |
-| 4 | @33000, unreferenced | 23200 - 23775 | none — TU 4 performs no port I/O |
+| 4 | @33000, unreferenced — **owner not established**, see the risk note below | 23200 - 23775 | none — TU 4 performs no port I/O |
 
 The plan's boundaries 18704, 20684, 23200 and 23776 are all confirmed. `_RX_enqueueLongEvent` is a
 `static` defined in a shared header and emitted in TUs 1, 3 and 4 — and **not** in TU 2, exactly as
@@ -372,10 +404,29 @@ at `"PortDevices"` in `__OBJC,__class_names` and `instance_methods` pointing at
 
 **A risk Task 3 must plan for.** TU 4 (`_RX_enqueueLongEvent`, `_flowMachine`, `_watchState`)
 contains **no `out` instruction at all**, yet the reference still emits a fourth copy of all three
-`xxx` statics. The mechanism is not established — plausibly gcc 2.7 emitting the statics for a
-parsed `static __inline__` whose calls were all optimised away — so **do not assume** it. If our
-TU-4 `.c` file performs no `outb`, `__DATA,__bss` may come out 36 bytes instead of 48 and that
-section will not match. Verify it against the rebuilt nlist rather than reasoning about it.
+`xxx` statics. The mechanism is not established, and there are **two** live hypotheses:
+
+1. **The fourth group belongs to TU 4** — gcc 2.7 emitting the statics for a parsed
+   `static __inline__` whose calls were all optimised away.
+2. **The fourth group does not belong to TU 4 at all** — it belongs to the build-generated
+   `ISASerialPort_instance.m`, which `__OBJC,__module_info` and `__OBJC,__class_names` both name as
+   the binary's second module. That file includes the driver headers, so it would pick up
+   `ioPorts.h` and its three statics for exactly the same reason and without performing any port
+   I/O. On this reading the four `__bss` groups are TU 1, TU 2, TU 3 and the instance glue, and TU 4
+   contributes nothing — which is also consistent with the fourth group being **unreferenced**.
+
+**The binary cannot decide between them, and that is not a gap in the reading.** Both hypotheses
+predict an identical section layout: four groups of three dwords, 48 bytes, the fourth never
+referenced. There is no observable in the reference that separates a group emitted-and-unused by
+TU 4 from a group emitted-and-unused by the instance file, because the linker records neither one's
+origin. Resolving it needs a rebuild, not more disassembly.
+
+**The failure mode is the same under either hypothesis, so plan for it once.** If our TU-4 `.c`
+file performs no `outb` and our `ISASerialPort_instance.m` does not supply a fourth group either,
+`__DATA,__bss` comes out **36 bytes instead of 48** and that section will not match. It is a visible,
+unambiguous 36-versus-48 diff at rebuild — not a silent one — so **do not assume** either mechanism.
+Verify it against the rebuilt nlist rather than reasoning about it, and let which hypothesis is true
+fall out of what the rebuild produces.
 
 ## 5. The eleven exported functions' real signatures, and the `.c`-versus-`.m` question
 
@@ -1180,9 +1231,9 @@ advance**. Ours sets `rxQueueOverflow = 1` and then falls through to the common 
 
 **Finding 73 — the `Size - 3` watermark ladder is real, is inlined at 44 sites, and ours is
 correct.** Recorded because an earlier reading of this binary wrongly concluded the reference had no
-`- 3` arithmetic. It is emitted as `add reg, 0FFFFFFFDh`, not `sub reg, 3`, and appears in 11
+`- 3` arithmetic. It is emitted as `add reg, 0FFFFFFFDh`, not `sub reg, 3`, and appears in **10**
 functions: `_activatePort` (3547, 3556, 3799, 3808), `executeEvent:data:` (6945, 6971, 7048, 7074),
-`enqueueData:` (8735, 8744), `_dataLatTOHandler` (9763, 9772), `_executeEvent` (11 sites),
+`enqueueData:` (8735, 8744), `_dataLatTOHandler` (9763, 9772), `_executeEvent` (**18** sites),
 `_FIFOIntHandler` (14011, 14020, 15883, 15892), `_NonFIFOIntHandler` (17087, 17096, 18355, 18364),
 `_TX_enqueueEvent` (21187, 21196), `_RX_dequeueEvent` (21943, 21952), `_RX_dequeueData` (22623,
 22632). Our `rxQueueCapacity - 3` and `txQueueCapacity - 3` are right. **The ladder is inlined at
@@ -1200,22 +1251,35 @@ type (`Port *`, section 5) and the `State` split: `test byte ptr [ecx+0Fh], 40h`
 23509, 23561 is `State & 0x40000000`, which our source reads as `statusFlags & 0x40`
 (Finding 8). **This function will reach `assembly-matched` from the layout fix alone.**
 
-**Finding 75 — `_watchState`'s algorithm matches except for the lock idiom and two return
-constants.** `ISASerialPort.m:525-595`. Reference 23584-23774, all 71 instructions read.
+**Finding 75 — `_watchState`'s algorithm matches except for the lock idiom, two return
+constants and a cleanup our version skips.** `ISASerialPort.m:525-595`. Reference 23584-23774, all
+71 instructions read.
 Matching: the `mask & 0xC0000000` test adding `0x40000000` to both the mask and the cleared desired
 state (23611-23634); the loop condition `((~State ^ desired) & mask) != 0` (23640-23650); the
 `*state = State` store; `WatchStateMask |= mask`;
-`thread_sleep(&WatchStateMask, &WatchLock.locked, 1)`;
-`while (thread_wait_result() == 4)`; and the cleanup `WatchStateMask = 0` plus
-`thread_wakeup_prim(&WatchStateMask, 0, 4)`. `4` is `THREAD_RESTART`
-(`src/kernel-7/kern/sched_prim.h:74`), not `THREAD_AWAKENED`, which is 0.
+`thread_sleep(&WatchStateMask, &WatchLock.locked, 1)`; and
+`while (thread_wait_result() == 4)`.
 
-Two divergences. First, the lock: reference 23684-23705 is a bare `xchg`-based test-and-set —
+**Three** divergences. First, the lock: reference 23684-23705 is a bare `xchg`-based test-and-set —
 `edx = &WatchLock.locked; spin: if (*edx) goto spin; eax = 1; xchg eax, *edx; if ((eax ^ 1) == 0)
 goto spin;` — with the retry going back to the **spin label**. Ours (lines 562-573) calls
 `IOEnterCriticalSection()`/`IOExitCriticalSection()`, which the reference never calls anywhere, and
 its `continue` restarts the **outer** loop, re-testing the state. Second, the return constants —
-Finding 76. There are three `nop`s at 23637-23639, interior alignment padding, which is why IDA's
+Finding 76.
+
+Third, **the cleanup is on every exit path in the reference and on only one of ours.**
+`WatchStateMask = 0` and `thread_wakeup_prim(&WatchStateMask, 0, 4)` live at **23743**, and the
+reference funnels its early exits into that block rather than returning around it: `jz loc_5CBF` at
+**23666** (no active check, `ebx` still 0 — success), `jz loc_5CBF` at **23673** (active check made
+but the active bit did not change — also success), and `jmp loc_5CBF` at **23680** after
+`mov ebx, 0FFFFFD36h` at 23675 (the −714 exit). The wait-failed path at 23738 falls straight into
+it. Ours instead `return`s at `ISASerialPort.m:553` and `:556`, so it runs the cleanup **only** when
+the sleep fails — on the ordinary state-change return the watch mask stays set and **every other
+thread blocked in `thread_sleep` on `&WatchStateMask` is left unwoken**. This is a live bug, not a
+cosmetic one: the reference wakes those waiters on the common path. `4` is `THREAD_RESTART`
+(`src/kernel-7/kern/sched_prim.h:74`), not `THREAD_AWAKENED`, which is 0.
+
+There are three `nop`s at 23637-23639, interior alignment padding, which is why IDA's
 extent is 191 against the 192-byte symbol gap.
 
 ### `IO_R_*` constant values
@@ -1467,16 +1531,32 @@ the once-only arming, the `(left != 0)` sleep argument, the `−702 → 0` conve
 the same reset block as `acquire:` **minus** `MinLatency` and `DLRimage`; `_programChip(port)`;
 `_deactivatePort(port)` in that order; the inlined state change with `value = 0` (which folds the
 MCR to `0x08`); then **unconditionally** `outb(Base + 1, 0)` and `outb(Base + 4, 0)`; `splx`;
-return 0. Our version is offset-faithful and passes the `Port *` correctly, but its comments
-mislabel `0x1CC` as `stopBits` (it is `BreakLength`) and `0x1C4` as `flowControl` (it is
-`TX_Parity`), and it labels the `0x140/0x148/0x14C` block TX and `0x178/0x180/0x184` RX — they are
-RX and TX respectively.
+return 0. Our version reproduces all 146 instructions and passes the `Port *` correctly. **It is
+also layout-independent, and therefore `assembly-matched` now rather than after the layout fix:**
+every field access in the body is a raw `(char *)self` or `(char *)selfPtr` offset cast — `0x134`,
+`0x210`-`0x21C`, `0x1E8`, `0x1BC`-`0x1D0`, `0x208`, `0x20C`, `0x140`-`0x184`, `600`, and off the
+`Port *` `0x0C`, `0x0F`, `0x10`, `0x88`, `0xE0`, `0xE8` — and **not one named ivar appears
+anywhere in it**, so changing `ISASerialPort.h` cannot affect the generated code. What is wrong is
+only the commentary: it mislabels `0x1CC` as `stopBits` (it is `BreakLength`) and `0x1C4` as
+`flowControl` (it is `TX_Parity`), and it labels the `0x140/0x148/0x14C` block TX and
+`0x178/0x180/0x184` RX — they are RX and TX respectively. **Fix the comments; leave the code
+alone.**
 
-**Finding 92 — `nextEvent`, `getState` and the three other near-matches.**
+**Finding 92 — `nextEvent` is already done; `getState` and the three other near-matches are not.**
 `-[ISASerialPort nextEvent]` (reference 6400-6469, our 5088-5111) reproduces the reference
 instruction for instruction — `spl4`; `if (RX.Count) { p = RX.Output; if (p >= RX.End) p -= RX.Size * 2; b = *p; }` —
 including the `>=` wrap direction and the `Size * 2` stride, and it peeks without advancing
-`Output`. `-[ISASerialPort getState]` (6280-6298, our 5120-5136) is
+`Output`.
+
+**`nextEvent` is correct as it stands and is `assembly-matched` now — it is not waiting on the
+layout fix and it is not a cheap win, it is zero work.** The reference reads
+`cmp dword ptr [ebx+144h], 0` for the count and then, off the `lea eax, [ebx+140h]` base,
+`[eax+24h]` (`Output`), `[eax+1Ch]` (`End`) and `[eax]` (`Size`). Our lines 5097-5104 use the same
+absolute offsets — `0x144`, `0x164`, `0x15C`, `0x140` — through raw `(char *)self` casts that never
+consult `ISASerialPort.h`. The two-ivar layout change therefore cannot reach this method, in either
+direction. **Task 6 must not edit it.**
+
+`-[ISASerialPort getState]` (6280-6298, our 5120-5136) is
 `return self->Port.State & ~0x1000` and matches. `-[ISASerialPort requestEvent:data:]`
 (7340-8085, our 4958-5086) matches on every one of its 24 cases' offsets and expressions,
 including Apple's `0x27` bug (section 6 item 4); its divergences are the `& 0xFF` masking
@@ -1487,7 +1567,8 @@ one `unsigned long long` and multiplies the whole value by 1e9 before dividing (
 from the `Port *` argument, including the `unsigned char` staging local and the zero-extending
 store. `-[ISASerialPort enqueueEvent:data:sleep:]` (8088-8207, our 4717-4762) likewise, including
 the `r == 0 && !(State & 0x10000000)` conjunction guarding
-`thread_call_enter(FrameTOEntry)`. **All five are cheap wins once the layout lands.**
+`thread_call_enter(FrameTOEntry)`. **Those four are cheap wins once the layout lands; `nextEvent`
+is already banked.**
 
 **Finding 93 — the inlined state-change sequence appears six times in TU 1 and must stay inlined.**
 Reference sites: `setState:mask:` 6109-6255, `acquire:` 4580-4742 and 5165-5328, `release`
@@ -1565,10 +1646,14 @@ byte-identical** to the reference's `Loaded Server,Load Commands` section (both 
 
 ## 9. Unresolved
 
-1. **Why TU 4 emits a fourth copy of `ioPorts.h`'s three `xxx` statics** despite performing no port
-   I/O (section 4.4). The four groups are definitely there and three are definitely TUs 1-3, but the
-   emission mechanism for the fourth is not established. Task 3 must verify `__DATA,__bss` from the
-   rebuilt nlist rather than assume it.
+1. **Where the fourth copy of `ioPorts.h`'s three `xxx` statics comes from** (section 4.4). The four
+   groups are definitely there and three are definitely TUs 1-3. Two hypotheses remain for the
+   fourth: that TU 4 emits it despite performing no port I/O, or that it belongs to the
+   build-generated `ISASerialPort_instance.m` and TU 4 contributes nothing. **Both predict the same
+   48-byte section with the fourth group unreferenced, so the binary cannot distinguish them** — this
+   one is closed only by a rebuild. Task 3 must verify `__DATA,__bss` from the rebuilt nlist rather
+   than assume either; the failure mode either way is a visible 36-versus-48-byte
+   `__DATA,__bss`.
 2. **Apple's filenames for TUs 2, 3 and 4.** Not recoverable from this binary — only
    `ISASerialPort.m` and the generated `ISASerialPort_instance.m` are recorded.
 3. **`_activatePort` and `_dataLatTOHandler` were examined at control-flow depth only.** Their

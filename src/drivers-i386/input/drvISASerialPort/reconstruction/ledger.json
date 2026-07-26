@@ -235,7 +235,7 @@
     "reasons": [
      "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
      "full disassembly read instruction by instruction",
-     "report pass: diverges. The teardown order (HeartBeat, Delay, DataLat, Frame - the reverse of free), the reset block, the _programChip-then-_deactivatePort order, the inlined state change with value 0 and the two unconditional final writes outb(Base+1, 0) and outb(Base+4, 0) all match, and ours already passes the Port * correctly. The divergences are in the field comments, which mislabel 0x1CC as stopBits (it is BreakLength), 0x1C4 as flowControl (it is TX_Parity), and swap the RX and TX labels on the 0x140 and 0x178 blocks (divergences.md Finding 91)"
+     "report pass: matches. The teardown order (HeartBeat, Delay, DataLat, Frame - the reverse of free), the reset block, the _programChip-then-_deactivatePort order, the inlined state change with value 0 and the two unconditional final writes outb(Base+1, 0) and outb(Base+4, 0) all match, and ours already passes the Port * correctly. The code is layout-independent: every field access goes through a raw (char *)self or (char *)selfPtr offset cast and not one named ivar appears anywhere in the body, so the two-ivar layout change cannot affect it. Only the comments need touching - they mislabel 0x1CC as stopBits (it is BreakLength), 0x1C4 as flowControl (it is TX_Parity), and swap the RX and TX labels on the 0x140 and 0x178 blocks (divergences.md Finding 91)"
     ],
     "status": "agreed"
    },
@@ -248,7 +248,7 @@
    "size": 561,
    "source_line": 4251,
    "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-   "status": "unexamined"
+   "status": "assembly-matched"
   },
   {
    "address": 6012,
@@ -335,7 +335,7 @@
     "reasons": [
      "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
      "full disassembly read instruction by instruction",
-     "report pass: diverges. Reproduces the reference instruction for instruction - spl4, then if RX.Count is non-zero peek *Output after wrapping by Size*2 when Output >= End, without advancing Output - including the >= wrap direction and the two-byte cell stride. The only divergence is the access path: ours reaches the fields through raw self+0x1xx casts, which are correct only once the two-ivar layout is adopted (divergences.md section 4.1, Finding 92). A cheap win"
+     "report pass: matches. Reproduces the reference instruction for instruction - spl4, then if RX.Count is non-zero peek *Output after wrapping by Size*2 when Output >= End, without advancing Output - including the >= wrap direction and the two-byte cell stride. It is layout-independent: the reference addresses the fields as [ebx+144h] and, off the lea eax, [ebx+140h] base, [eax+24h], [eax+1Ch] and [eax], while our lines 5097-5104 use the same absolute offsets 0x144, 0x164, 0x15C and 0x140 through raw (char *)self casts that never consult the header, so the two-ivar layout change cannot affect this function. It is correct now and needs no work at all - Task 6 must not edit it (divergences.md Finding 92)"
     ],
     "status": "agreed"
    },
@@ -348,7 +348,7 @@
    "size": 70,
    "source_line": 5088,
    "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-   "status": "unexamined"
+   "status": "assembly-matched"
   },
   {
    "address": 6472,
@@ -1010,7 +1010,7 @@
     "reasons": [
      "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
      "full disassembly read instruction by instruction",
-     "report pass: diverges. The algorithm matches closely - the mask & 0xC0000000 test adding 0x40000000 to both mask and cleared desired state, the ((~State ^ desired) & mask) loop condition, the WatchStateMask |= mask, thread_sleep, the while (thread_wait_result() == 4) retry and the cleanup - but two things differ. The lock is a bare xchg test-and-set retrying to the spin label, where ours calls IOEnterCriticalSection/IOExitCriticalSection (which the reference never calls anywhere) and continues the OUTER loop. And both return constants are wrong: the reference returns -714 (IO_R_IO) and -703 (IO_R_IPC_FAILURE) where ours returns IO_R_NO_DEVICE (-704) and IO_R_TIMEOUT (-726), under comments that quote the reference's numbers correctly. acquire: compares against -714 as a retry sentinel, so -704 breaks the acquire loop. Three interior nops at 23637-23639 account for IDA's 191-byte extent against the 192-byte symbol gap (divergences.md Findings 75, 76)"
+     "report pass: diverges. The algorithm matches closely - the mask & 0xC0000000 test adding 0x40000000 to both mask and cleared desired state, the ((~State ^ desired) & mask) loop condition, the WatchStateMask |= mask, thread_sleep and the while (thread_wait_result() == 4) retry - but three things differ. The lock is a bare xchg test-and-set retrying to the spin label, where ours calls IOEnterCriticalSection/IOExitCriticalSection (which the reference never calls anywhere) and continues the OUTER loop. Both return constants are wrong: the reference returns -714 (IO_R_IO) and -703 (IO_R_IPC_FAILURE) where ours returns IO_R_NO_DEVICE (-704) and IO_R_TIMEOUT (-726), under comments that quote the reference's numbers correctly. And the cleanup does NOT match: the reference funnels its success exits (23666, 23673) and its -714 exit (23680) through 23743, where WatchStateMask = 0 and thread_wakeup_prim(&WatchStateMask, 0, 4) live, whereas ours returns early at ISASerialPort.m:553 and :556 and reaches that cleanup only on the wait-failed path, leaving the watch mask set and other waiters unwoken. acquire: compares against -714 as a retry sentinel, so -704 breaks the acquire loop. Three interior nops at 23637-23639 account for IDA's 191-byte extent against the 192-byte symbol gap (divergences.md Findings 75, 76)"
     ],
     "status": "agreed"
    },

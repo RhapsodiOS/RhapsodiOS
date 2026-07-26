@@ -86,8 +86,8 @@ typedef struct {
 #define EXT_TTY(tp) ((extended_tty_t *)(tp))
 
 /* State flags */
-#define TTY_STATE_RXFULL    0x20    // RX buffer full flag at offset 0x57 (byte)
-#define TTY_STATE_RXFLOWOFF 0x08    // RX flow control off flag
+#define TTY_STATE_RXFULL    0x20    // RX buffer full flag at offset 0x15c (byte)
+#define TTY_STATE_RXFLOWOFF 0x08    // RX flow control off flag at offset 0x15c
 
 /* Termios flags */
 #define TTY_IFLAG_RAW       0x01    // Raw mode flag at offset 0x6a (byte)
@@ -107,14 +107,10 @@ void ttyiops_getData(struct tty *tp)
     unsigned int i;
     SEL dequeueDataSel;
 
-    if (tp == NULL) {
-        return;
-    }
-
     ext_tp = EXT_TTY(tp);
 
-    /* Check if RX buffer is full (bit 0x20 at byte offset 0x57) */
-    if (((unsigned char *)tp)[0x57] & TTY_STATE_RXFULL) {
+    /* Check if RX buffer is full (bit 0x20 at byte offset 0x15c) */
+    if (((unsigned char *)tp)[0x15c] & TTY_STATE_RXFULL) {
         return;
     }
 
@@ -128,20 +124,17 @@ void ttyiops_getData(struct tty *tp)
 
     if (availableSpace == 0) {
         /* Set RX flow control off flag */
-        ((unsigned char *)tp)[0x57] |= TTY_STATE_RXFLOWOFF;
+        ((unsigned char *)tp)[0x15c] |= TTY_STATE_RXFLOWOFF;
         return;
     }
 
     /* Clear RX flow control off flag if it was set */
-    if (((unsigned char *)tp)[0x57] & TTY_STATE_RXFLOWOFF) {
-        ((unsigned char *)tp)[0x57] &= ~TTY_STATE_RXFLOWOFF;
+    if (((unsigned char *)tp)[0x15c] & TTY_STATE_RXFLOWOFF) {
+        ((unsigned char *)tp)[0x15c] &= ~TTY_STATE_RXFLOWOFF;
     }
 
     /* Get the port session object */
     portSession = ext_tp->portSession;
-    if (portSession == nil) {
-        return;
-    }
 
     /* Dequeue data from the port session */
     dequeueDataSel = @selector(dequeueData:bufferSize:transferCount:minCount:);
@@ -161,9 +154,7 @@ void ttyiops_getData(struct tty *tp)
                     /* Call line discipline l_rint function */
                     /* linesw is an array, indexed by t_line, each entry is 0x20 bytes */
                     /* l_rint is the first function pointer in the structure */
-                    if (linesw[tp->t_line].l_rint) {
-                        linesw[tp->t_line].l_rint(buffer[i], tp);
-                    }
+                    linesw[tp->t_line].l_rint(buffer[i], tp);
                 }
             } else {
                 /* Direct queuing - update statistics */
@@ -180,7 +171,7 @@ void ttyiops_getData(struct tty *tp)
         }
     } else {
         /* Log error */
-        IOLog("PStty%04x: dequeueData ret %d\n", tp->t_dev, result);
+        IOLog("PStty%04x: dequeueData ret %d\n", ((unsigned int *)tp)[100/4], result);
     }
 }
 
@@ -252,10 +243,6 @@ int ttyiops_acquireSession(struct tty *tp, unsigned int session_flags)
     id ioPortSessionClass;
     unsigned int current_session;
 
-    if (tp == NULL) {
-        return 0x16; // EINVAL
-    }
-
     /* Session acquisition loop with sleep/retry logic */
     while (1) {
         /* Check if we can proceed without waiting */
@@ -319,7 +306,7 @@ acquire_session:
             ((unsigned char *)tp)[0x15c] |= 0x10;
 
             /* Get device name */
-            deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name), &acquire_result);
+            deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name));
 
             /* Get IOPortSession class */
             ioPortSessionClass = objc_getClass("IOPortSession");
@@ -365,7 +352,7 @@ acquire_session:
         ((unsigned int *)tp)[100/4] = session_flags;
 
         /* Get device name */
-        deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name), &acquire_result);
+        deviceName = objc_msgSend(((id *)tp)[0xe8/4], @selector(name));
 
         /* Get IOPortSession class */
         ioPortSessionClass = objc_getClass("IOPortSession");
@@ -450,9 +437,7 @@ int ttyiops_close(unsigned int dev, int flag)
 
         /* Call line discipline close function */
         /* linesw is indexed by t_line at offset 0x60, each entry is 0x20 bytes */
-        if (linesw[((int *)tp)[0x60/4]].l_close) {
-            linesw[((int *)tp)[0x60/4]].l_close(tp, flag);
-        }
+        linesw[((int *)tp)[0x60/4]].l_close(tp, flag);
 
         /* Check if should drop modem control lines */
         /* Check flags at offsets 0x95, 0x68, and device flags */
@@ -518,17 +503,34 @@ int ttyiops_mctl(struct tty *tp, int bits, int how)
 {
     unsigned int current_state;
     unsigned int new_state;
+    int on;
     int result;
-
-    if (tp == NULL) {
-        return 0;
-    }
 
     /* Mask bits to only DTR and RTS (bits 1 and 2 = 6) */
     bits &= 6;
 
     /* Get current hardware state */
     current_state = (unsigned int)objc_msgSend(((id *)tp)[0xe8/4], @selector(getState));
+
+    /* Break control.  Apple masks the 0x800 break bit out of `bits` on the line
+     * above, so this test is identically false and TIOCSBRK/TIOCCBRK do nothing
+     * on shipped Rhapsody.  Reproduced as written - widening the mask would
+     * change behaviour. */
+    if ((bits & 0x800) != 0 && (unsigned int)(how - 1) <= 1) {
+        on = (how == 1);
+
+        /* Set or clear the break condition */
+        objc_msgSend(((id *)tp)[0xe8/4], @selector(enqueueEvent:data:sleep:),
+                     0xf9, on, 1);
+
+        if (on != 0) {
+            /* Hold the break for at least 0.25 s */
+            objc_msgSend(((id *)tp)[0xe8/4], @selector(enqueueEvent:data:sleep:),
+                         0x4b, 0x3d090, 1);
+        }
+
+        return on;
+    }
 
     /* Determine new state based on operation */
     switch (how) {
@@ -592,10 +594,6 @@ int ttyiops_control_ioctl(struct tty *tp, unsigned int dev, unsigned int cmd,
     unsigned char *data_bytes;
     int i;
 
-    if (tp == NULL || data == NULL) {
-        return 0x16; // EINVAL
-    }
-
     /* Check if this is a control device (bits 0xc0 should be 0x40) */
     if ((dev & 0xc0) != 0x40) {
         return 0x13; // EACCES
@@ -647,8 +645,8 @@ int ttyiops_control_ioctl(struct tty *tp, unsigned int dev, unsigned int cmd,
             /* Validate termios settings */
             /* Check if PARENB or PARODD is set (bits 6 or 2 at byte offset 1) */
             if ((data_bytes[1] & 0x6) != 0) {
-                /* Check for invalid speed values at offsets 7 and 0x1d */
-                if (((char *)data)[7] == -1 || ((char *)data)[0x1d] == -1) {
+                /* Reject a disabled VSTART or VSTOP character */
+                if (((char *)data)[0x1c] == -1 || ((char *)data)[0x1d] == -1) {
                     return 0x16; // EINVAL
                 }
             }
@@ -676,10 +674,6 @@ int ttyiops_control_ioctl(struct tty *tp, unsigned int dev, unsigned int cmd,
 void ttyiops_convertFlowCtrl(id portSession, unsigned int *flags)
 {
     unsigned char response[2];  /* local_8 and local_7 */
-
-    if (portSession == nil || flags == NULL) {
-        return;
-    }
 
     /* Request flow control event (0x53) from port session */
     /* Response contains flow control status in two bytes */
@@ -739,9 +733,7 @@ void ttyiops_dcddelay(struct tty *tp)
         /* Call line discipline modem function with DCD state */
         /* linesw[t_line].l_modem function is at offset 0x1c in linesw entry */
         /* Each linesw entry is 0x20 bytes, l_modem is the 8th function pointer */
-        if (linesw[((int *)tp)[0x60/4]].l_modem) {
-            linesw[((int *)tp)[0x60/4]].l_modem(tp, dcd_bit);
-        }
+        linesw[((int *)tp)[0x60/4]].l_modem(tp, dcd_bit);
     }
 
     /* Clear DCD delay pending flag (bit 2 at offset 0x15d) */
@@ -1053,10 +1045,7 @@ void ttyiops_txload(struct tty *tp, unsigned int *mask)
         if (buffer_space < 0x1a0) {
             transfer_size = buffer_space;
         }
-        if ((int)transfer_size < (int)outq_size) {
-            transfer_size = outq_size;
-        }
-        else {
+        if ((int)outq_size < (int)transfer_size) {
             transfer_size = outq_size;
         }
         
@@ -1254,9 +1243,10 @@ void ttyiops_txFunc(struct tty *tp)
                 /* Set DCD delay pending flag */
                 ((unsigned char *)tp)[0x15d] = ((unsigned char *)tp)[0x15d] | 2;
                 
-                /* Schedule timeout to process DCD change */
-                /* Call ttyiops_dcddelay after delay (0x3b84 ticks) */
-                timeout((timeout_func_t)ttyiops_dcddelay, tp, 0x3b84);
+                /* Schedule timeout to process DCD change, after the tick
+                 * count ttyiops_init computed at offset 0x158 */
+                timeout((timeout_func_t)ttyiops_dcddelay, tp,
+                        ((int *)tp)[0x158/4]);
             }
             else {
                 /* DCD delay already pending - cancel it */
@@ -1345,12 +1335,12 @@ int ttyiops_param(struct tty *tp, struct termios *t)
      */
     iflag = t->c_iflag;
     if ((((unsigned char *)&iflag)[1] & 6) != 0) {
-        /* If VSTART (c_cc[7]) is -1, invalid */
-        if (t->c_cc[7] == (unsigned char)-1) {
+        /* If VSTART (c_cc[12], offset 0x1c) is -1, invalid */
+        if (t->c_cc[VSTART] == (unsigned char)-1) {
             return 0x16;
         }
-        /* If VSTOP (c_cc[8], offset 0x1d from base) is -1, invalid */
-        if (t->c_cc[8] == (unsigned char)-1) {
+        /* If VSTOP (c_cc[13], offset 0x1d) is -1, invalid */
+        if (t->c_cc[VSTOP] == (unsigned char)-1) {
             return 0x16;
         }
     }
@@ -1406,7 +1396,7 @@ set_char_size:
     /* Set character size - event 0x3b */
     result = (int)objc_msgSend(portSession, @selector(executeEvent:data:), 0x3b, char_size);
     if (result != 0) {
-        return result;
+        return 0x16;
     }
     
     /* Configure parity based on PARENB (0x1000) and PARODD (0x2000) */
@@ -1423,7 +1413,7 @@ set_char_size:
     /* Set parity - event 0x43 */
     result = (int)objc_msgSend(portSession, @selector(executeEvent:data:), 0x43, parity);
     if (result != 0) {
-        return result;
+        return 0x16;
     }
     
     /* Configure stop bits based on CSTOPB (0x400) */
@@ -1436,7 +1426,7 @@ set_char_size:
     /* Set stop bits - event 0xf3 */
     result = (int)objc_msgSend(portSession, @selector(executeEvent:data:), 0xf3, stop_bits);
     if (result != 0) {
-        return result;
+        return 0x16;
     }
     
     /* Build flow control flags from termios settings */
@@ -1475,20 +1465,20 @@ set_char_size:
     /* Set flow control - event 0x53 */
     result = (int)objc_msgSend(portSession, @selector(executeEvent:data:), 0x53, flow_control);
     if (result != 0) {
-        return result;
+        return 0x16;
     }
     
     /* Set XON character - event 0xed */
     xon_char_result = (unsigned int)objc_msgSend(portSession, @selector(executeEvent:data:), 
-                                                  0xed, t->c_cc[7]);  /* VSTART */
+                                                  0xed, t->c_cc[VSTART]);
     
     /* Set XOFF character - event 0xe9 */
     xoff_char_result = (unsigned int)objc_msgSend(portSession, @selector(executeEvent:data:),
-                                                   0xe9, t->c_cc[8]);  /* VSTOP */
+                                                   0xe9, t->c_cc[VSTOP]);
     
     /* Check if either XON or XOFF setting failed */
     if ((xon_char_result | xoff_char_result) != 0) {
-        return result;
+        return 0x16;
     }
     
     /* Set flag at offset 0x15c, bit 0x80 */
@@ -1540,19 +1530,16 @@ int ttyiops_ioctl(unsigned int dev, unsigned int cmd, void *data, int flag, stru
 
     /* Check if this is a control device */
     if ((dev & 0xc0) != 0) {
-        return ttyiops_control_ioctl(tp, dev, cmd, data, flag, p);
+        error = ttyiops_control_ioctl(tp, dev, cmd, data, flag, p);
+        goto cleanup_and_return;
     }
 
     /* Try line discipline ioctl first */
-    if (linesw[((int *)tp)[0x60/4]].l_ioctl) {
-        error = linesw[((int *)tp)[0x60/4]].l_ioctl(tp, cmd, data, flag, p);
-    } else {
-        error = -1; // ENOTTY
-    }
+    error = linesw[((int *)tp)[0x60/4]].l_ioctl(tp, cmd, data, flag, p);
 
-    /* If line discipline handled it, we're done (unless positive error) */
+    /* If the line discipline handled it, skip the hardware reprogram */
     if (error >= 0) {
-        goto update_and_return;
+        goto optimise_and_return;
     }
 
     /* Handle termios ioctls */
@@ -1579,8 +1566,8 @@ int ttyiops_ioctl(unsigned int dev, unsigned int cmd, void *data, int flag, stru
             /* and if parity is enabled in current settings (bits 6 in byte at 0x8d) */
             if ((((unsigned char *)data)[8] & 1) != 0 &&  // c_cflag & PARENB
                 (((unsigned char *)tp)[0x8d] & 6) != 0) { // Current parity flags
-                /* Check for invalid speed values */
-                if (((char *)data)[7] == -1 || ((char *)data)[0x1d] == -1) {
+                /* Reject a disabled VSTART or VSTOP character */
+                if (((char *)data)[0x1c] == -1 || ((char *)data)[0x1d] == -1) {
                     error = 0x16; // EINVAL
                     goto cleanup_and_return;
                 }
@@ -1660,12 +1647,12 @@ do_modem_control:
         }
     }
 
-update_and_return:
-    /* If ioctl succeeded and changed parameters, apply them */
+    /* Only a positive ttioctl result reprograms the hardware */
     if (error > 0) {
         ttyiops_param(tp, (struct termios *)&((unsigned char *)tp)[0x8c]);
     }
 
+optimise_and_return:
     /* Optimize input processing based on current settings */
     ttyiops_optimiseInput(tp, (struct termios *)&((unsigned char *)tp)[0x8c]);
 
@@ -1810,9 +1797,9 @@ int ttyiops_read(unsigned int dev, struct uio *uio, int flag)
         error = (*linesw[tp->t_line].l_read)(tp, uio, flag);
         
         /* Check if RTS flow control is enabled and queue has space */
-        /* Check bit 0x08 at offset 0x57 (t_state flags) */
+        /* Check bit 0x08 at offset 0x15c (driver flag byte) */
         /* This is the "RTS flow control active" flag */
-        if ((((unsigned char *)tp)[0x57] & 8) != 0) {
+        if ((((unsigned char *)tp)[0x15c] & 8) != 0) {
             /* Calculate total queue usage: t_rawq.c_cc + canq */
             rawq_cc = tp->t_rawq.c_cc;
             canq_size = ((int *)tp)[8];  /* canq at offset 0x20 (8*4) */
@@ -1964,24 +1951,20 @@ int ttyiops_open(unsigned int dev, int flag, int mode, struct proc *p)
                 ttyiops_param(tp, (struct termios *)((char *)tp + 0x8c));
             }
             
-            /* Check if O_NONBLOCK set OR DCD is present */
-            if ((dev & 0x20) != 0) {
-                /* Non-blocking open, proceed to line discipline */
-                goto line_discipline_open;
-            }
-            
-            /* Get hardware state to check DCD (bit 0x40) */
-            state = (unsigned int)objc_msgSend(((id *)tp)[0xe8/4], @selector(getState));
-            if ((state & 0x40) != 0) {
-                /* DCD present, can proceed */
-                goto line_discipline_open;
+            /* Tell the line discipline carrier is up when the open is
+             * non-blocking or DCD (bit 0x40) is already asserted */
+            if ((dev & 0x20) != 0 ||
+                ((state = (unsigned int)objc_msgSend(((id *)tp)[0xe8/4],
+                                                     @selector(getState))),
+                 (state & 0x40) != 0)) {
+                (*linesw[tp->t_line].l_modem)(tp, 1);
             }
             
             /* Need to wait for DCD if:
-             * - Not O_NONBLOCK (checked above)
-             * - CLOCAL not set (checked here via t_cflag bit 0x8000)
+             * - Not O_NONBLOCK
+             * - CLOCAL not set (bit 0x8000 of the c_cflag halfword at 0x94)
              */
-            if ((((short *)tp)[0x94/4] & 0x8000) == 0) {
+            if ((dev & 0x20) == 0 && ((short *)tp)[0x94/2] >= 0) {
                 /* CLOCAL not set, must wait for carrier */
                 portSession = ((id *)tp)[0xe8/4];
                 error = ttyiops_waitForDCD(tp, flag);
@@ -2019,7 +2002,6 @@ int ttyiops_open(unsigned int dev, int flag, int mode, struct proc *p)
                 /* error == 0 means DCD arrived, fall through */
             }
             
-line_discipline_open:
             /* Create RX thread if not already created */
             if (((void **)tp)[0xec/4] == NULL) {
                 thread_id = (void *)IOForkThread((IOThreadFunc)ttyiops_rxFunc, tp);
@@ -2089,10 +2071,6 @@ void ttyiops_procEvent(struct tty *tp)
     
     if (event_type < 0x5d) {
         /* Events less than 0x5d */
-        if (event_type == 0x53) {
-            /* Event 0x53 - Flow control event, pass through */
-            goto send_to_line_discipline;
-        }
         if (event_type > 0x53) {
             /* Event 0x59 - Protocol event (SLIP/PPP), pass through */
             if (event_type == 0x59) {

@@ -721,7 +721,19 @@ cd /d/RhapsodiOS && git add "$DRV" src/drvSCSITape "$RECON" && git commit -m "dr
 
 ---
 
-### Task 9: Write the four absent SCSITape methods
+### Task 9: Write the two absent SCSITape methods
+
+> **Task narrowed after Task 7.** Only `reserveAllLuns` and `releaseAllLuns` are genuinely absent.
+> `initSCSITape:target:lun:controller:majorDeviceNumber:` and
+> `executeRequest:buffer:client:senseBuf:` already exist at `SCSITape.m:177` and `:938`; they were
+> reported unmapped by a second `source_map.py` bug (an inline C comment inside a multi-line
+> Objective-C signature). **Do not write those two.** Their divergences are Task 11's work, and the
+> scanner bug is Task 10's.
+>
+> Both methods this task writes are `- (void)` and belong to a category **`SCSITape(private)`**,
+> per `__OBJC,__cat_inst_meth` (type `v4@4:8`) and `__OBJC,__category`. Our tree has no such
+> category, so add `@interface SCSITape(private)` and `@implementation SCSITape(private)`.
+> `reserveAllLuns`'s two `IOLog` calls pass `[_controller name]`, not `[self name]`.
 
 **Files:**
 - Modify: `$DRV/SCSITape.m`, `$DRV/SCSITape.h`
@@ -797,7 +809,7 @@ cd /d/RhapsodiOS && git add "$RECON" && git commit -m "drvSCSITape: map the four
 - Consumes: nothing from earlier tasks.
 - Produces: `source-map` recording K&R definitions whose parameter declarations are not indented, so `stblocksize`'s regenerated map reports 4 mapped / 16 unmapped in Task 12.
 
-**The bug.** `source_map.py`'s forward scan treats an unindented line as a structural boundary. Its guard comment says K&R parameter declarations are indented, but this codebase's idiom allows column 0:
+**Bug 1 — unindented K&R parameters.** `source_map.py`'s forward scan treats an unindented line as a structural boundary. Its guard comment says K&R parameter declarations are indented, but this codebase's idiom allows column 0:
 
 ```c
 int
@@ -808,9 +820,27 @@ struct scsi_req *srp;
 
 `struct scsi_req *srp;` matches `_C_DEFINITION`, so the scan concludes the definition never resolved and no site is recorded. This is the only unindented-K&R definition across `src/drvSCSITape` and `src/drvSCSIServer`, so no existing reconstruction's numbers change — but the scanner is wrong for a construct this tree uses.
 
-- [ ] **Step 1: Write the failing test**
+**Bug 2 — inline comments in multi-line Objective-C signatures.** A comment inside a multi-line method signature corrupts selector reconstruction, so the site is recorded under a wrong name or not at all. Two real cases:
 
-Add to `tools/binrecon/tests/test_source_map_builder.py`, following the file's existing fixture style for source scanning:
+```objc
+- (stInitReturn_t) initSCSITape:(int)iunit 	/* IODevice unit # */
+    target:		(u_char) stTarget
+```
+
+and a comment on a *continuation* line:
+
+```objc
+- (sc_status_t) executeRequest: (IOSCSIRequest *)scsiReq
+    buffer:(void *) buffer /* data destination */
+```
+
+Both exist in `SCSITape.m` (lines 177 and 938) and both were reported unmapped. Note that a comment on a *single-line* signature is already handled — `SCSITape.m:364`, `:369`, `:379`, `:384` and `:414` all map correctly — so the fix must be narrow enough not to disturb that.
+
+Neither bug affects any prior reconstruction: these are the only such constructs across `src/drvSCSITape` and `src/drvSCSIServer`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `tools/binrecon/tests/test_source_map_builder.py`, following the file's existing fixture style for source scanning. One test per bug:
 
 ```python
 def test_kandr_definition_with_unindented_parameters_is_recorded(tmp_path):
@@ -838,9 +868,11 @@ Read the module first for the real scanning entry point and the shape it returns
 cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m pytest tools/binrecon/tests/test_source_map_builder.py -q -k kandr
 ```
 
-Expected: FAIL — no site recorded.
+Expected: both FAIL — no site recorded for the K&R definition, and a wrong or missing selector for the commented signatures.
 
-- [ ] **Step 3: Fix the guard**
+Add a second test covering the Objective-C cases, asserting that `initSCSITape:target:lun:controller:majorDeviceNumber:` and `executeRequest:buffer:client:senseBuf:` are recorded with their full selectors from fixtures shaped like the two snippets above, and a third asserting a single-line signature with a trailing comment still maps.
+
+- [ ] **Step 3: Fix both guards**
 
 Make the scan recognise a K&R parameter declaration at column 0. The `kandr` flag is already computed from the definition line ending in `)`; the fix is to stop treating a following `;`-terminated line as a structural boundary while that flag is set. Keep the existing behaviour for indented parameters and for genuine prototypes — a line ending in `;` that is *not* part of a K&R parameter list must still terminate the scan.
 
@@ -867,12 +899,26 @@ print([e['reference_names'][0] for e in m['mapped']])
 "
 ```
 
-Expected: `mapped 4 unmapped 16`, with `_do_ioc` among the mapped. This is a throwaway check written to the git-ignored scratch directory; the committed map is regenerated in Task 12.
+Expected: `mapped 4 unmapped 16`, with `_do_ioc` among the mapped.
+
+Then confirm the driver map picks up the two Objective-C methods:
+
+```bash
+cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m binrecon source-map \n  --reference-analysis tools/binrecon/out/scsitape-ppc/analysis.named.json \n  --binary "$TAPE/SCSITape_reloc" --source-dir "$DRV" \n  --repo-root . --output .superpowers/sdd/scsitape-check.json
+PYTHONPATH=tools/binrecon $PY -c "
+import json
+m = json.load(open('.superpowers/sdd/scsitape-check.json'))
+print('mapped', len(m['mapped']), 'unmapped', len(m['unmapped']))
+print([e['reference_names'][0] for e in m['unmapped']])
+"
+```
+
+Expected: `mapped 46 unmapped 4` — the 44 that already mapped plus `initSCSITape:` and `executeRequest:`; the 4 unmapped being `reserveAllLuns`, `releaseAllLuns` (Task 9 writes them) and the two build-generated classes. This is a throwaway check written to the git-ignored scratch directory; the committed map is regenerated in Task 12.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /d/RhapsodiOS && git add tools/binrecon/binrecon/source_map.py tools/binrecon/tests/test_source_map_builder.py && git commit -m "binrecon: record K&R definitions whose parameters are not indented"
+cd /d/RhapsodiOS && git add tools/binrecon/binrecon/source_map.py tools/binrecon/tests/test_source_map_builder.py && git commit -m "binrecon: record definitions the scanner missed on K&R and commented signatures"
 ```
 
 Note the `binrecon: ` prefix — this task changes shared tooling, not driver source.

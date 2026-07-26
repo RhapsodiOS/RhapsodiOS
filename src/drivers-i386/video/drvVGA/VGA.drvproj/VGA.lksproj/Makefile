@@ -7,29 +7,26 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = VGA_reloc
+NAME = VGA
 
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
 CLASSES = VGA.m VGAConfigTable.m VGASetMode.m
 
-HFILES = VGA.h VGAModes.h
-
 CFILES = VGAModes.c
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
-            Load_Commands.sect
+HFILES = VGA.h VGAModes.h
 
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-SOURCEMODE = 444
-
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = kernelserver.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
-
 
 -include Makefile.preamble
 

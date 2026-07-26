@@ -67,4 +67,4 @@ video
  * drvS3Generic - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
- * vga
+ * drvVGA - reconstruction in progress

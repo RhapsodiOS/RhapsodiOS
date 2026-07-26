@@ -459,7 +459,7 @@ def objc_methods_from_sections(payload, sections):
         if not list_address:
             return
         offset = offset_of(list_address)
-        if offset is None:
+        if offset is None or offset + 8 > len(payload):
             return
         _, count = struct.unpack_from("<2I", payload, offset)
         for entry in range(count):
@@ -486,8 +486,12 @@ def objc_methods_from_sections(payload, sections):
         symtab_offset = offset_of(symtab) if symtab else None
         if symtab_offset is None:
             continue
+        if symtab_offset + 12 > len(payload):
+            continue
         class_count, category_count = struct.unpack_from("<HH", payload, symtab_offset + 8)
         total = class_count + category_count
+        if symtab_offset + 12 + total * 4 > len(payload):
+            continue
         definitions = struct.unpack_from(f"<{total}I", payload, symtab_offset + 12) if total else ()
 
         for position, definition in enumerate(definitions):

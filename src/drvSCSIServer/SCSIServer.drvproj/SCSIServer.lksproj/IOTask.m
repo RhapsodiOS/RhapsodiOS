@@ -135,7 +135,7 @@ void IOTaskPortDeallocate(mach_port_t port)
  * paged out. This is required for DMA operations as the hardware needs
  * stable physical addresses.
  */
-void IOTaskWireMemory(unsigned int address, int length)
+int IOTaskWireMemory(unsigned int address, int length)
 {
     unsigned int start_addr;
     unsigned int end_addr;
@@ -153,6 +153,7 @@ void IOTaskWireMemory(unsigned int address, int length)
     /* TODO: Call kernel vm_wire() function
      * FUN_00001a8c(task_port, start_addr, end_addr, 0)
      */
+    return 0;
 }
 
 /*

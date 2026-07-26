@@ -39,8 +39,9 @@ void IOTaskPortDeallocate(mach_port_t port);
 /* Wire memory in task's address space for DMA
  * address: Virtual address to wire
  * length: Length of memory region in bytes
+ * Returns: result of vm_map_pageable()
  */
-void IOTaskWireMemory(unsigned int address, int length);
+int IOTaskWireMemory(unsigned int address, int length);
 
 /* Unwire previously wired memory
  * address: Virtual address to unwire

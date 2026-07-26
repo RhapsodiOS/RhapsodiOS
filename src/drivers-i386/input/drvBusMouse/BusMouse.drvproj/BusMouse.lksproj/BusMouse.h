@@ -34,22 +34,22 @@
 #import <driverkit/IOPower.h>
 #import <driverkit/IOEventSource.h>
 #import <kernserv/queue.h>
+#import <bsd/dev/i386/PCPointer.h>
+#import <bsd/dev/i386/PCPointerDefs.h>
 
-@interface BusMouse : IODirectDevice
-{
-@private
-    unsigned int resolution;
-    BOOL inverted;
-    id mouseEventPort;
-}
+/*
+ * target (0x128), resolution (0x12c) and inverted (0x130) are inherited from
+ * PCPointer, which also reserves 0x134-0x143.  This class adds no ivars of
+ * its own, giving an instance size of 324 (0x144).
+ */
+@interface BusMouse : PCPointer
 
-/* Initialization and cleanup */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
+/* Cleanup */
 - free;
 
 /* Configuration */
 - (BOOL)validConfiguration:(IODeviceDescription *)deviceDescription;
-- (IOReturn)mouseInit:(IODeviceDescription *)deviceDescription;
+- (BOOL)mouseInit:(IODeviceDescription *)deviceDescription;
 
 /* Parameters */
 - (IOReturn)getIntValues:(unsigned *)parameterArray
@@ -60,12 +60,12 @@
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count;
 
-- (unsigned int)getResolution;
+- (int)getResolution;
 
 /* Interrupt handling */
 - (BOOL)getHandler:(IOInterruptHandler *)handler
              level:(unsigned int *)ipl
-          argument:(void **)arg
+          argument:(unsigned int *)arg
       forInterrupt:(unsigned int)localInterrupt;
 
 - (void)interruptHandler;

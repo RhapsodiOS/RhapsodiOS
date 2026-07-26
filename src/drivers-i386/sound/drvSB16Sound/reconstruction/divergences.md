@@ -1815,8 +1815,14 @@ Every function was disassembled from the rebuilt `_reloc` with capstone and alig
 the reference's IDA instruction stream on `(mnemonic, operands)` with absolute addresses
 normalised. Eleven functions align **100 percent**, including `+[SoundBlaster16 probe:]` at
 91 of 91, which validates the comparison itself. The remaining seventeen align between 55
-and 85 percent and **every differing hunk was read**. All of them are our compiler's, not
-the source's:
+and 85 percent and **every differing hunk was read**.
+
+**This section originally claimed all of those hunks were our compiler's. Two of them were
+not**, and the review pass caught the overclaim: the pause-command selection in
+`stopDMAForChannel:read:` and the sample-rate command selection in `updateSampleRate` were
+both placed by our *source*, not by our gcc, and neither compiler could have produced the
+other's placement from the source we had shipped. They are Findings 26 and 27 below and are
+now fixed. The list that follows is what actually remains, and it is our compiler's:
 
 - our gcc schedules the post-`IODelay` `add esp, 4` before the next load, where Apple's
   puts it after — this alone accounts for two hunks per `IODelay` call, and there are
@@ -1838,7 +1844,7 @@ than narrowing the load, and `initializeHardware` grew from 3144 to 3292 and
 `timeoutOccurred` from 3184 to 3332. The direct `outbIXMixer(reg, shadow << 3)` form of
 Finding 16's disposition is kept because it is measurably closer.
 
-Two source-visible residuals are worth naming rather than hiding:
+Three source-visible residuals are worth naming rather than hiding:
 
 1. **`resetDSP()`'s `detected` flag.** Our gcc emits `mov byte ptr [ebp-4], 0` for it; the
    reference has no such store, having threaded the three probe tests directly onto the
@@ -1850,6 +1856,14 @@ Two source-visible residuals are worth naming rather than hiding:
    it and emits `test bl, 1`, where the reference emits
    `test byte ptr ds:_interruptStatus, 1`. The source construct is the reference's; the
    forwarding is not ours to control.
+3. **`interruptOccurredForInput:forOutput:` carries the same residual**, from the same
+   inlined `clearInterrupts()` body: built `test bl, 1` at 10283 against the reference's
+   `test byte ptr ds:_interruptStatus, 1` at 10304. Same cause and same benign status as
+   item 2; the original write-up disclosed it only at `_clearInterrupts`, which understated
+   where it appears. In both functions our gcc additionally spills the status byte to
+   `[ebp-4]` and re-reads it for the 16-bit test, and hoists both acknowledge-port loads
+   ahead of the branch so one `mov edx` is selected where the reference keeps a `mov dx` in
+   each arm.
 
 ## Finding by finding
 
@@ -1880,6 +1894,100 @@ Two source-visible residuals are worth naming rather than hiding:
 | 23 | Source. `resetDSPQuick()` and `checkSelectedDMAAndIRQ()` removed with all six of their string literals, including the `IRQ must be 2, 5, 7, or 10.` message that contradicted `Default.table` and `-[SoundBlaster16 reset]`. |
 | 24 | Source. `sb16CardType` gained `= {0}`; `sbBufferCounter` and `interruptStatus` lost their `= 0`, so the first is in `__data` and the other two in `__bss` as the reference has them. Their `__bss` order was left alone, per this finding's own instruction not to restructure on the strength of the inference. |
 | 25 | Source. `-initializeDMAChannels` moved above `-reset`. |
+| 26 | Source. `stopDMATransfer()` takes the encoding, not a `BOOL`, and the `== Linear8` test moved inside it, after `dspWriteWait()`. |
+| 27 | Source. `updateSampleRate`'s local `command` removed; the DMA-direction test moved to the write site with an `outb`/`IODelay` body in each arm. |
+| 28 | Source. The file-static `sb16CardType` renamed `sbCardType`, matching the reference's `_sbCardType`. |
+
+## Review-pass corrections: Findings 26, 27 and 28
+
+The fix pass's own report claimed, of every function, that "the residual instruction
+differences that remain are our gcc's, not the source's." For two functions that was false,
+and the binding rule is that **a source construct that cannot produce the reference's
+instructions is a divergence even when the behaviour is identical.**
+
+## Finding 26: `stopDMATransfer()` selected the pause command at the call site
+
+`SoundBlaster16Inline.h:394` declared `stopDMATransfer(BOOL is16Bit)`, so
+`SoundBlaster16.m:707`/`:709` evaluated `currentEncoding == Linear8` at the *call site*,
+before the inlined write-wait. The reference evaluates it *after*:
+
+```
+ref   9331 mov     esi, [edi+18Ch]     ; currentEncoding, kept live across the wait
+      ...  <write-wait, 9337-9440>
+      9443 cmp     esi, 259h           ; selection AFTER the wait
+      9451 mov     dx, ds:_sbWriteDataOrCommandReg
+      9458 mov     al, 0D5h
+      9460 jmp     short loc_2501
+      9464 mov     dx, ds:_sbWriteDataOrCommandReg
+      9471 mov     al, 0D0h
+      9473 out     dx, al              ; the two bodies tail-merged onto one out
+```
+
+Ours, before the fix:
+
+```
+      9423 mov     dl, 0D0h
+      9425 cmp     dword ptr [esi+18Ch], 259h
+      9437 mov     dl, 0D5h
+      9439 movzx   edi, dl             ; selection BEFORE the wait
+      ...  <write-wait>
+      9554 mov     eax, edi
+      9556 mov     cl, al
+      9558 out     dx, al
+```
+
+gcc does not sink a comparison across a loop containing calls, so neither compiler could
+produce the other's placement from one source. Apple's helper took the encoding, not a
+`BOOL`. Resolved: `stopDMATransfer(unsigned int encoding)`, `dspWriteWait()` first, then
+`if (encoding == NX_SoundStreamDataEncoding_Linear8)` with a full `outbV`/`IODelay` body in
+each arm — which is what lets gcc cross-jump them onto one `out dx, al`. After the fix:
+
+```
+ours  9431 mov     esi, [edi+18Ch]
+      9543 cmp     esi, 259h
+      9551 mov     dx, ds:_sbWriteDataOrCommandReg / 9558 mov al, 0D5h / 9560 jmp
+      9564 mov     dx, ds:_sbWriteDataOrCommandReg / 9571 mov al, 0D0h
+      9573 out     dx, al
+```
+
+Instruction count is now equal to the reference's 228, and the function is 816 bytes
+against 828 where it was 804.
+
+## Finding 27: `updateSampleRate` held the command in a stack slot
+
+`SoundBlaster16.m:438` declared `unsigned char command;` and `:447`–`:451` assigned it at
+the top of the method, producing a stack slot the reference does not have:
+
+```
+ours  6881 mov     byte ptr [ebp-8], 41h
+      6885 cmp     dword ptr [esi+184h], 0
+      6894 mov     byte ptr [ebp-8], 42h
+      ...
+      7010 mov     al, byte ptr [ebp-8]
+      7013 out     dx, al
+
+ref   (no such slot)
+      6927 test    esi, esi
+      6938 mov     al, 42h
+      6951 mov     al, 41h
+      6953 out     dx, al              ; two outbV bodies tail-merged
+```
+
+Resolved: `command` dropped, and the `if (dmaDirection == DMA_DIRECTION_IN)` test moved to
+the write site with an `outb`/`IODelay` body in each arm. After the fix our
+`test esi, esi` sits at 6995 with `mov al, 42h` / `mov al, 41h` converging on `out dx, al`
+at 7021, the stack layout matches the reference's (`rate` in `[ebp-4]`, `stereo` in
+`[ebp-8]`), and the function is **552 bytes against the reference's 552**, where it was
+544. The only residual left is gcc scheduling: `inc ebx` ahead of `add esp, 4`, the port
+load placed after the value rather than before, and the dropped alignment `nop`s.
+
+## Finding 28: the card-type static was named `sb16CardType`
+
+The reference's local symbol is `_sbCardType`; ours was `_sb16CardType`. `parity_check.py`
+compares external symbols only, so `missing_symbols 0` never covered it. The name appears
+in one file at eight sites, its declaration included, and the rename is mechanical, so it
+was done rather than recorded as accepted. No instruction changed: both binaries read the
+struct at `0x4000`.
 
 ## Pre-existing dead code, raised rather than removed
 

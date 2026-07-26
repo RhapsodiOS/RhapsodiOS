@@ -18,6 +18,46 @@ compile-verified. Every claim rests on the reference disassembly.
 | duplicate_candidates | 0 | — |
 | boundary_disputed | 0 | — |
 
+## Summary
+
+Final tally across all 68 ledger entries, after Tasks 3-7:
+
+| Status | Count |
+| --- | --- |
+| `assembly-matched` | 14 |
+| `intentional-mismatch` | 3 |
+| `unexamined` | 51 |
+| **Total** | **68** |
+
+The 3 `intentional-mismatch` entries are the hand-written MiG demux
+(`_IOSCSISessionMig_server`, address 13520, disposed in Task 6) and the two
+build-generated classes this task dispositions (`+[SCSIServerKernelServerInstance
+kernelServerInstance]`, address 13708, and `+[SCSIServerVersion
+driverKitVersionForSCSIServer]`, address 13728 — see "Disposition of the 27 unmapped
+entries" below).
+
+Of the 68 functions, **47 were read at instruction level**: the 41 functions Tasks 3-6
+compared against our source (14 confirmed `assembly-matched`, 27 left `unexamined`
+with a recorded finding of a real, non-cosmetic divergence), plus the 6 functions this
+task reads directly from the reference disassembly because our tree has no
+counterpart to compare them against at all (see "Finding: six functions our tree lacks
+entirely" below).
+
+**6 functions are absent from our tree entirely** — no definition, stub, or even a
+declaration with a matching name exists anywhere in `src/drvSCSIServer`, except
+`_IORequestNotifyForClientTask`, which is declared `extern` and called but never
+defined. A further **18 unexamined entries** are the reference's own MiG-generated
+dispatch-stub bodies (`__XIOSCSISession_*`, addresses 9212-13376) — compiler output
+from the project's lost `.defs` file, not hand-written source, which Task 9 regenerates
+rather than this task transcribing by hand. The remaining **1 unexamined entry**
+(address 1160, `-[IOSCSISession initServerWithTask:sendPort:]`) *is* implemented in our
+tree, at `IOSCSISession.m:234`, but under a misspelled selector name (see "Finding:
+`-[IOSCSISession(Private) _initServerWithTask:sendPort:]` carries a spurious
+underscore" below); it stays `unexamined` because only its name, not its full
+instruction sequence, has been checked so far, and its disposition is Task 8's.
+6 + 18 + 1 = 25, plus the 2 build-generated classes now `intentional-mismatch` = 27,
+matching the unmapped count in "Starting state" above.
+
 ## Out of scope
 
 **138 jump islands.** IDA finds 206 functions; 138 are unnamed 16-byte
@@ -932,3 +972,432 @@ carry the `_clientReferences`-slot-pointer design all the way through. Left `une
 should remove `notifClientObjects`, store the session pointer at `notifClients[i*2+1]` instead, and
 change the `IODereferenceClientTask` call to pass `notifClients[i*2]` (the stored slot pointer), not
 its address.
+
+## Disposition of the 27 unmapped entries (Task 7)
+
+Task 7 covers everything Tasks 3-6 left out of scope: the MiG dispatch-table wiring, the
+"impossible to place" belief that follows from it, the 6 functions our tree has no counterpart for
+at all, and two naming defects. Evidence for each finding below was reproduced from the reference
+binary and our own source, not asserted.
+
+## Finding: the hand-written MiG dispatch table is wired in the wrong order — every one of the 18 message IDs reaches the wrong handler
+
+**Source:** `IOSCSISession.m:921-940` (`_IOSCSISessionMig_handlers`), consumed by
+`IOSCSISessionMig_server` (`IOSCSISession.m:411`; already `intentional-mismatch` per Task 6, reproduced
+here because the *reason* recorded there is this table's wiring).
+
+**The demux arithmetic.** The reference's `_IOSCSISessionMig_server` (address 13520) computes, from
+the incoming message's `msgh_id` (loaded into `r0` at address 13572, already offset by MiG's usual
+`+100` convention for the *outgoing* reply — see below):
+
+```
+13576  addic  r0, r0, 0x64        ; reply_id = msgh_id + 0x64 (100), stored into the reply header
+...
+13608  addic  r0, r0, -0x1092     ; index = msgh_id - 0x1092  (0x1092 = 4242)
+13612  cmplwi cr1, r0, 0x11       ; index > 0x11 (17) ?  -> out-of-range, reject
+...
+13624  lis    r9, 0
+13628  addi   r9, r9, -0xAA4      ; r9 = table_base (see the PIC finding below)
+```
+
+So the reference accepts message IDs `0x1092`-`0x10A3` (4242-4259, 18 routines — matching
+`cmplwi cr1, r0, 0x11`, i.e. `index` must be `<= 17`), computes `reply_id = request_id + 100`, and
+indexes a table of 18 function pointers at `r9 + index*4`.
+
+**Apple's table order**, reproduced (not asserted) from the reference's own relocations, which is the
+authoritative record of which function pointer sits at which table slot (`__TEXT,__const`, base
+`0x37a4`, one 4-byte pointer-relocation per slot, in address order):
+
+```
+cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -c "
+from binrecon.macho import read_macho
+import os
+d = read_macho(os.environ['REF'])
+syms = {s['address']: s['name'] for s in d['symbols'] if s['section'] == '__TEXT,__text'}
+table = sorted((r for r in d['extensions']['macho']['relocations']
+                if r['section'] == '__TEXT,__const'), key=lambda r: r['address'])
+for index, r in enumerate(table):
+    print('%2d  id %d  0x%04x -> %s' % (index, 4242 + index, r['address'], syms.get(r['addend'], '?')))
+"
+```
+```
+ 0  id 4242  0x37a4 -> __XIOSCSISession_free
+ 1  id 4243  0x37a8 -> __XIOSCSISession_initForDevice
+ 2  id 4244  0x37ac -> __XIOSCSISession_releaseAllUnits
+ 3  id 4245  0x37b0 -> __XIOSCSISession_reserveTarget
+ 4  id 4246  0x37b4 -> __XIOSCSISession_releaseTarget
+ 5  id 4247  0x37b8 -> __XIOSCSISession_reserveSCSI3Target
+ 6  id 4248  0x37bc -> __XIOSCSISession_releaseSCSI3Target
+ 7  id 4249  0x37c0 -> __XIOSCSISession_numberOfTargets
+ 8  id 4250  0x37c4 -> __XIOSCSISession_executeRequest
+ 9  id 4251  0x37c8 -> __XIOSCSISession_executeSCSI3Request
+10  id 4252  0x37cc -> __XIOSCSISession_executeRequestScatter
+11  id 4253  0x37d0 -> __XIOSCSISession_executeSCSI3RequestScatter
+12  id 4254  0x37d4 -> __XIOSCSISession_executeRequestOOLScatter
+13  id 4255  0x37d8 -> __XIOSCSISession_executeSCSI3RequestOOLScatter
+14  id 4256  0x37dc -> __XIOSCSISession_resetSCSIBus
+15  id 4257  0x37e0 -> __XIOSCSISession_returnFromScStatus
+16  id 4258  0x37e4 -> __XIOSCSISession_maxTransfer
+17  id 4259  0x37e8 -> __XIOSCSISession_getDMAAlignment
+```
+
+**Our table order** (`IOSCSISession.m:921-940`, `_IOSCSISessionMig_handlers[18]`, the literal array
+entries in source order, each already commented with its intended message ID):
+
+```
+ 0  _IOSCSISession_reserveSCSI3Target_handler            /* 0x1092 */
+ 1  _IOSCSISession_releaseSCSI3Target_handler            /* 0x1093 */
+ 2  _IOSCSISession_reserveTarget_handler                 /* 0x1094 */
+ 3  _IOSCSISession_releaseTarget_handler                 /* 0x1095 */
+ 4  _IOSCSISession_executeSCSI3Request_handler           /* 0x1096 */
+ 5  _IOSCSISession_executeSCSI3RequestScatter_handler    /* 0x1097 */
+ 6  _IOSCSISession_executeSCSI3RequestOOLScatter_handler /* 0x1098 */
+ 7  _IOSCSISession_executeRequest_handler                /* 0x1099 */
+ 8  _IOSCSISession_executeRequestScatter_handler          /* 0x109A */
+ 9  _IOSCSISession_executeRequestOOLScatter_handler       /* 0x109B */
+10  _IOSCSISession_resetSCSIBus_handler                   /* 0x109C */
+11  _IOSCSISession_numberOfTargets_handler                /* 0x109D */
+12  _IOSCSISession_getDMAAlignment_handler                /* 0x109E */
+13  _IOSCSISession_maxTransfer_handler                    /* 0x109F */
+14  _IOSCSISession_releaseAllUnits_handler                /* 0x10A0 */
+15  _IOSCSISession_free_handler                           /* 0x10A1 */
+16  _IOSCSISession_initForDevice_handler                  /* 0x10A2 */
+17  _IOSCSISession_returnFromScStatus_handler             /* 0x10A3 */
+```
+
+**Side by side, by table slot (message ID = 4242 + slot):**
+
+| Slot | ID | Apple's routine | Our routine | Match? |
+| --- | --- | --- | --- | --- |
+| 0 | 4242 | `free` | `reserveSCSI3Target` | no |
+| 1 | 4243 | `initForDevice` | `releaseSCSI3Target` | no |
+| 2 | 4244 | `releaseAllUnits` | `reserveTarget` | no |
+| 3 | 4245 | `reserveTarget` | `releaseTarget` | no |
+| 4 | 4246 | `releaseTarget` | `executeSCSI3Request` | no |
+| 5 | 4247 | `reserveSCSI3Target` | `executeSCSI3RequestScatter` | no |
+| 6 | 4248 | `releaseSCSI3Target` | `executeSCSI3RequestOOLScatter` | no |
+| 7 | 4249 | `numberOfTargets` | `executeRequest` | no |
+| 8 | 4250 | `executeRequest` | `executeRequestScatter` | no |
+| 9 | 4251 | `executeSCSI3Request` | `executeRequestOOLScatter` | no |
+| 10 | 4252 | `executeRequestScatter` | `resetSCSIBus` | no |
+| 11 | 4253 | `executeSCSI3RequestScatter` | `numberOfTargets` | no |
+| 12 | 4254 | `executeRequestOOLScatter` | `getDMAAlignment` | no |
+| 13 | 4255 | `executeSCSI3RequestOOLScatter` | `maxTransfer` | no |
+| 14 | 4256 | `resetSCSIBus` | `releaseAllUnits` | no |
+| 15 | 4257 | `returnFromScStatus` | `free` | no |
+| 16 | 4258 | `maxTransfer` | `initForDevice` | no |
+| 17 | 4259 | `getDMAAlignment` | `returnFromScStatus` | no |
+
+Every one of the 18 slots names a different routine than Apple's table at that slot. This is not a
+handful of transposed neighbours — the two orderings share no fixed point at all.
+
+**Consequence:** because the reply-ID convention (`request_id + 100`) and the accepted ID range
+(`0x1092`-`0x10A3`) both match, a client's RPC will be *accepted* (it passes the bounds check) and
+will *get a reply in the shape the client expects* (the reply ID arithmetic is right) — but the reply
+will come from the *wrong handler*. A `reserveSCSI3Target` request (ID 4247) dispatches through our
+table's slot 5, which calls `executeSCSI3RequestScatter_handler`, not
+`reserveSCSI3Target_handler`. No message ID in the current table reaches the routine the reference
+dispatches for that same ID. This is the central finding of Task 7: the demux Task 6 already flagged
+as `intentional-mismatch` is not merely "different code, same effect" — it is wired to run the wrong
+handler for every single request, which Task 9 (recovering the MiG interface) must fix by re-deriving
+the table from `IOSCSISessionMig.defs` rather than by reordering entries to match the list above,
+since the `.defs` file, not this table, is this project's source of truth going forward.
+
+## Finding: the dispatch-table comment misreads a resolved PIC displacement as an address requiring manual placement
+
+**Source:** `IOSCSISession.m:899-916` (the comment block above `_IOSCSISessionMig_handlers`).
+
+**Our source's comment reads:**
+> "For proper linkage, this table needs to be at the correct offset in memory. ... For a complete
+> recreation, you would need to use linker scripts or compiler-specific directives to place this at
+> the correct address."
+
+**Reference behaviour:** the instructions the comment is trying to explain are, at addresses
+13624-13628:
+```
+13624  lis  r9, 0
+13628  addi r9, r9, -0xAA4
+```
+Read as *static* immediates, `r9` would end up holding `0 + (-0xAA4) = -0xAA4` — a nonsense address.
+But these two instructions are not static immediates: each carries a **scattered relocation pair**
+(`ppc-scattered-ha16-32-absolute` at 13624, `ppc-scattered-lo16-32-absolute` at 13628), and both
+relocation entries' own `r_value` field (the value Mach-O scattered relocations use to identify which
+section the reference is *to*, confirmed by instrumenting `binrecon.macho._ppc_section_of` directly
+rather than trusting the semantic `addend` field, which reports the offset *from* that section, not
+the absolute value) is **`0x37a4`** — the exact base address of the dispatch table in
+`__TEXT,__const` (`__TEXT,__const`'s section address is `14084`/`0x3704`; `0x37a4` falls inside it,
+and it is literally slot 0 of the table dumped in the finding above). The linker, at build time,
+rewrote the `lis`/`addi` immediate halves so that executing them at runtime produces `r9 = 0x37a4`
+directly — not `-0xAA4`. `-0xAA4` is simply the *pre-relocation placeholder* the assembler originally
+encoded (as if the table's address were `0`); it is an artifact of reading the still-relocatable
+object code as if it were already linked, not a real runtime displacement and not an address that
+needs "linker scripts or compiler-specific directives" to place anywhere. The whole point of a
+scattered relocation is that the linker already resolves this for you at the final link — that is
+what "scattered" relocations are *for* in PIC/position-independent Mach-O object code.
+
+**Consequence:** this is not a cosmetic misreading — it is the reasoning that led the comment's author
+to treat a faithful reconstruction of the dispatch table's addressing as impossible without
+"linker scripts or compiler-specific directives", which is very likely *why* the table ended up
+hand-ordered by best guess (see the finding above) rather than derived mechanically from the
+reference. There is nothing to place at a fixed address: `_IOSCSISessionMig_handlers` is an ordinary
+static array; whatever address the linker gives it, `lis`/`addi`-with-relocation (or, in C, just
+naming the array) resolves correctly, exactly the way our own `_IOSCSISessionMig_handlers` array
+already does today (it has no special placement and does not need one) — the reference's approach and
+ours are actually compatible in this respect. Task 9, when re-deriving the table from
+`IOSCSISessionMig.defs`, does not need to solve a placement problem; the ordering problem in the
+finding above is the only real defect here.
+
+## Finding: six functions our tree lacks entirely
+
+**Source:** none — no definition exists anywhere in `src/drvSCSIServer` for five of these; the sixth
+(`_IORequestNotifyForClientTask`) is declared `extern` at `IOSCSISession.m:19` and called at
+`IOSCSISession.m:282`, but never defined in this file or anywhere else in the project.
+
+Each function below was dumped with Task 3 Step 1's command (disassembly by address against
+`analysis-reference-ida.named.json`) and, because the named export strips jump-island calls, every
+`bl` target was independently resolved through `binrecon.macho.read_macho`'s relocation table the
+same way the "resolving a jump island" technique above resolved `_IOExitThread`.
+
+| Function | Address | Bytes | State in our tree |
+| --- | --- | --- | --- |
+| `__io_task_notification` | 7624 | 644 | absent |
+| `_IORequestNotifyForClientTask` | 8412 | 480 | declared `extern`, never defined |
+| `_serverThreadFunc` | 2672 | 276 | absent |
+| `_IOConvertTaskPortToVMTask` | 7320 | 160 | absent |
+| `_IOTaskPortAllocate` | 6588 | 48 | absent (only `_IOTaskPortAllocateName` exists, a different, already-mapped function at address 6460) |
+| `_IODestroyMappedVMTask` | 7576 | 32 | absent |
+
+### `__io_task_notification` (address 7624, 644 bytes) — the largest of the six
+
+Takes no visible arguments (consistent with being a thread entry point — see
+`_IORequestNotifyForClientTask` below, which forks it via `_IOForkThread(&__io_task_notification, 0)`).
+Behaviour, traced instruction-for-instruction with every `bl` resolved via relocation:
+
+1. Calls `_IOTaskPortAllocate(&localPort)` (the sibling function documented below, address 6588). On
+   failure (non-zero result), logs `IOLog("_io_task_notification: IOTaskPortAllocate - %d\n", result)`
+   and jumps straight to the shared cleanup/exit tail (step 4).
+2. On success, calls the imported `task_set_special_port_EXTERNAL(_IOTask_kern, 2, localPort)` —
+   installs the newly allocated port as special-port slot `2` of the global kernel-task handle
+   `_IOTask_kern` (the same external our source's own `_entry`/`IOTask_kern` groundwork already reads
+   in the seven mapped plumbing functions). On failure, logs
+   `"_io_task_notification: task_set_special_port - %d\n"` and jumps to the same cleanup/exit tail.
+3. On success, enters what is effectively an unbounded server loop: builds a Mach message buffer and
+   calls the imported `_msg_receive(buffer, 0x100, 0xEA60)` repeatedly.
+   - A result of `-0xCB` (-203) retries the receive (this numeric value is consistent with a
+     Mach IPC "receive timed out" status, but no import or string in the reference names it, so this
+     reading is inferred from the retry behaviour, not confirmed by a symbol).
+   - Any other non-zero result logs `"_io_task_notification: msg_receive - %d\n"` and falls into the
+     same cleanup/exit tail.
+   - A result of `0` (message received) scans the 32-entry, 8-byte-stride `_notifClients` array — the
+     same global `_IOReleaseNotifyForFunc` (address 8988, already examined in Task 6) walks — comparing
+     each entry's first field against the just-received message's source port field. On a match, it
+     calls `_IODereferenceClientTask` (address 7156, already mapped) with the entry's first field,
+     `bzero`s the 8-byte entry, decrements `_notifClientCnt`, and calls `_msg_send` once (an
+     acknowledgement/reply). Whether or not slot `i` matched, the scan advances to `i+1`; when
+     `_notifClientCnt` reaches zero mid-scan, or the scan exhausts all 32 slots, control returns to the
+     top of the loop and calls `_msg_receive` again for the next notification. The function does not
+     return in the ordinary case — it is a permanent per-notification-thread server loop.
+4. The cleanup/exit tail (reached from every error path above, and from the main loop once
+   `_notifClientCnt` has dropped to zero): resets special-port slot `2` back to
+   `task_set_special_port_EXTERNAL(_IOTask_kern, 2, 0)` (undoing step 2), calls
+   `_IOTaskPortDeallocate` (address 6652, already mapped) on the locally allocated port unless it is
+   already `0`, zeroes the global `_notifyThread` (marking "no notification thread is running" — the
+   same global `_IORequestNotifyForClientTask` below checks before forking a new one), then calls the
+   imported `_IOExitThread()`, which does not return; the disassembler's own epilogue bytes after that
+   call are unreachable.
+
+**Could not determine:** the exact symbolic meaning of special-port slot `2` (which Mach special-port
+ID `task_set_special_port`'s "which" argument names); the precise semantics of the `0x100` option and
+`0xEA60` (60000) timeout constants passed to `_msg_receive` beyond their raw values; and whether the
+`_notifClients[i]`'s first field, compared here against a received message's port, is a bare Mach port
+name or (per the existing `_IOReleaseNotifyForFunc` finding) the value of a `_clientReferences` slot
+pointer that also happens to serve as this comparison key — `_IORequestNotifyForClientTask` below
+(which populates this same array) is consistent with either reading, and disassembling the imported
+Mach kernel routines themselves is out of this project's scope.
+
+### `_IORequestNotifyForClientTask` (address 8412, 480 bytes)
+
+Three arguments, confirmed against our source's own extern declaration and call site
+(`IOSCSISession.m:19`, `int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort,
+mach_port_t *deathPort);`, called at `IOSCSISession.m:282` as
+`IORequestNotifyForClientTask(task, *(mach_port_t *)(session_struct+0xc), (mach_port_t
+*)(session_struct+0x10))` — this call site's own arguments confirm the disassembly's reading below
+field-for-field):
+
+- param1 (`r3`, kept on the stack) — the `task` argument, a task port, passed unchanged into two Mach
+  IPC "compat" calls described below.
+- param2 (`r4`, saved in `r26`) — stored, unmodified, into the new `_notifClients[i]` entry's second
+  field (offset `+4`) once registration succeeds. Our call site passes `self` (cast through
+  `mach_port_t`) here, confirming this field really is "session identity", matching the existing
+  `_IOReleaseNotifyForFunc` finding's reading of that same field.
+- param3 (`r5`, saved in `r29`) — an in/out `int **`, passed *as-is* to `_IOReferenceClientTask`
+  (address 6908, already mapped; matches that function's own recovered `int
+  **clientReferenceSlot` signature exactly), *dereferenced* to obtain the value stored into
+  `_notifClients[i]`'s first field (offset `+0`), and finally overwritten with the forked notification
+  thread's ID before returning. Our call site passes `(mach_port_t *)(session_struct+0x10)` — the
+  "death port" field documented in the session-structure comment — so this parameter is, physically,
+  the address of that field, even though the disassembly treats its pointee as a `_clientReferences`
+  slot value, not literally a Mach port name.
+
+Behaviour:
+1. Scans `_notifClients[0..31]` for the first entry whose first field is `0` (empty). If all 32 are
+   occupied, returns `-0x2BE` (-702) immediately.
+2. Marks the found slot reserved (`stwx -1, ...`) and increments `_notifClientCnt` up front (so a
+   concurrent scan will not reuse the same slot while this call is still in progress).
+3. Calls the imported `_ipc_object_copyout_compat(_IOTask_kern->port_funcs, param1, 0x11,
+   clientReferenceSlot)`. On failure, un-reserves the slot (`stwx 0`) and returns the error.
+4. Calls `_IOReferenceClientTask(clientReferenceSlot)` (address 6908). On failure, calls the imported
+   `_ipc_object_copyin_compat(port_funcs, *clientReferenceSlot, 6, 0, &param1-stack-copy)` (undoing
+   step 3's copyout), un-reserves the slot, and returns the error.
+5. On success, commits: stores `*clientReferenceSlot` into the entry's first field, stores `param2`
+   (session) into the entry's second field.
+6. Checks the global `_notifyThread`; if a notification thread is already running, skips straight to
+   the success return (only one `__io_task_notification` thread ever runs, shared across every
+   registered client).
+7. Otherwise calls the imported `_IOForkThread(&__io_task_notification, 0)` and stores the result into
+   `_notifyThread`. If the fork failed (result still `0`), unwinds everything: calls
+   `_ipc_object_copyin_compat` again (the same release as step 4), calls `_IODereferenceClientTask`,
+   writes `0` back through `clientReferenceSlot`, `bzero`s the entry, decrements `_notifClientCnt`, and
+   returns a distinct error code `-0x2BF` (-703).
+8. On any success path, returns `0`.
+
+**Could not determine:** the exact semantics of the `0x11` (17) and `6` "type" constants passed to
+`_ipc_object_copyout_compat`/`_ipc_object_copyin_compat` (these are Mach IPC compatibility-layer
+kernel routines, not part of this binary, so their own bodies are out of scope for this project); and
+the precise reason the same stack slot that held `param1` on entry is reused as the *output* parameter
+of the `ipc_object_copyin_compat` cleanup calls (steps 4 and 7) rather than a fresh local — the
+disassembly is consistent with this being an ordinary "throwaway output, never read again" pattern,
+but that is an inference, not a confirmed fact.
+
+### `_serverThreadFunc` (address 2672, 276 bytes)
+
+Single argument (`r3`, kept in `r31` for the whole function) — a session object, confirmed by its use
+as the receiver of `objc_msgSend(session, free)` (selector resolved via the reference's own
+`__OBJC,__message_refs`/`__OBJC,__meth_var_names` relocation chain, the same technique Task 5 used,
+to the literal string `"free"`) at three different points in the function.
+
+Behaviour: prepares a large (`0x1400` = 5120-byte) request buffer and a second, smaller reply buffer
+on the stack, writes the session pointer into the request buffer at the same byte offset (`+0xC`,
+i.e. word index 3) that every MiG handler in our own source reads as `session = (id)request[3];`
+(e.g. `IOSCSISession.m:534` and every other handler between lines 526-892), then loops: calls the
+imported `_msg_receive(requestBuffer,
+0x1400, 0)`, and on a successfully received message calls `_IOSCSISessionMig_server(requestBuffer,
+replyBuffer)` (address 13520, already `intentional-mismatch`) to dispatch it. If the dispatch call
+returns non-zero, or a special reply code appears in the reply buffer, the function logs
+`"SS%d: Server Thread Receive Error(%d) - terminating\n"` or
+`"SS%d: Server Thread Send Error(%d) - terminating\n"` (both via `_IOLog`), sends `objc_msgSend(session,
+free)`, and returns — tearing down the session and ending the thread. Otherwise it loops back and
+calls `_msg_receive` again for the next request. This is, structurally, the per-session counterpart to
+`__io_task_notification` above: one is the RPC-request server loop, the other is the death-notification
+listener loop, and `_IORequestNotifyForClientTask` (above) is what forks the latter.
+
+**Could not determine:** the precise meaning of two specific values (`0x41` and `0x45`) the function
+tests after a successful dispatch, each triggering the extra `IOLog`+`free`+return handling described
+above instead of looping back for the next message — these numbers do not match the MiG message-ID
+range this project's demux uses (`0x1092`-`0x10A3`), and no import or string in the reference names
+them, so I could not determine what field of the reply buffer is being read at that offset or what
+those two specific values represent (dead-name notification IDs and MiG-internal error codes are both
+plausible given their magnitude, but neither is confirmed). Task 10/11 should treat this as an open
+question rather than a value to guess at when writing this function's replacement.
+
+### `_IOConvertTaskPortToVMTask` (address 7320, 160 bytes)
+
+Single argument (`r3`) — a task port. The function copies its own argument onto the stack and passes
+*the address of that local copy* to `_IOReferenceClientTask` (address 6908) — i.e. it fabricates a
+throwaway `int *` slot for the call rather than reusing a persistent one, since it has no
+`_clientReferences`-style slot of its own to offer. If that call fails, returns `0` immediately.
+Otherwise: calls the imported `_ipc_object_copyin_compat(_IOTask_kern->port_funcs, taskPort, 6, 0,
+&outObject)`; on failure, falls to a cleanup path (returns `0`, after presumably dropping the reference
+— the disassembly for this specific failure edge was not traced in full detail given the time budget,
+so Task 10/11 should re-check it directly rather than trust this summary blindly for that one edge).
+On success, calls the imported `_convert_port_to_map(outObject)` and keeps the result; calls the
+imported `_ipc_port_release_send(outObject)`; calls `_IODereferenceClientTask(taskPort)` to drop the
+reference obtained earlier. If that dereference call itself fails, calls the imported
+`_vm_map_deallocate` on the map just obtained and returns `0` instead (discarding the map rather than
+handing back something whose reference bookkeeping is now inconsistent). Otherwise returns the
+`vm_map_t` obtained from `_convert_port_to_map`.
+
+### `_IOTaskPortAllocate` (address 6588, 48 bytes)
+
+Single argument (`r3`, moved to `r4`), a `mach_port_t *name` out-parameter. The entire body is one
+call: `return port_allocate(_IOTask_kern->port_funcs, name);` — a direct tail call to the imported
+`_port_allocate`, nothing else. This is a distinct, simpler sibling of the already-mapped
+`_IOTaskPortAllocateName` (address 6460, Task 6): that function calls both `port_allocate` *and*
+`port_rename`; this one only allocates and returns the raw result. Our source has no function at all
+under this name — only `IOTaskPortAllocateName` exists.
+
+### `_IODestroyMappedVMTask` (address 7576, 32 bytes) — the smallest of the six
+
+Single argument (`r3`), passed through unchanged. The entire body is one call:
+`return vm_map_deallocate(vmTask);` — a direct tail call to the imported `_vm_map_deallocate`, with no
+other instructions.
+
+## Naming findings (Task 8's territory)
+
+**Finding: `-[IOSCSISession(Private) _initServerWithTask:sendPort:]` carries a spurious leading
+underscore.**
+
+**Source:** `IOSCSISession.h:79` (declaration) and `IOSCSISession.m:234` (implementation), both named
+`_initServerWithTask:sendPort:` (leading underscore); the category, `(Private)`, is already correct.
+
+**Reference behaviour:** the same string-table evidence the existing "Finding:
+`-[SCSIServer serverConnect:taskPort:]` sends the wrong selector name to `IOSCSISession`" (SCSIServer.m
+block, above) already established applies here too: the only string in the entire reference binary
+containing `"initServerWith"` is `"initServerWithTask:sendPort:"`, with no underscore-prefixed variant
+anywhere in the string table. Apple's selector is `initServerWithTask:sendPort:` — no leading
+underscore.
+
+**Consequence:** this is the exact same defect already recorded once (from the *caller's* side, in
+`SCSIServer.m`) — this is the *declaration/definition* side, at address 1160 in the ledger (still
+`unexamined`, out of Tasks 3-6's scope, deferred here). A leading-underscore selector is a distinct
+selector to the Objective-C runtime, not a formatting variant; renaming it is exactly the class of fix
+`SCSIServer Task 8: correct selector names` is scoped to make project-wide. Task 8 should rename this
+method (declaration, implementation, and the `SCSIServer.m:309` call site already flagged) to
+`initServerWithTask:sendPort:`, matching the reference and the `(Private)` category, which needs no
+change.
+
+**Finding: `-[IOSCSISession(Private) _reserveTarget:lun:]` has no counterpart in the reference at all.**
+
+**Source:** `IOSCSISession.m:311-366` (comment and implementation of the ObjC method
+`_reserveTarget:lun:`, declared at `IOSCSISession.m:326`).
+
+**Reference behaviour:** `tools/binrecon/selector_check.py "$REF" "$SRC"` compares every selector our
+source declares against every selector the reference's Objective-C metadata declares:
+
+```
+$ PYTHONPATH=tools/binrecon $PY tools/binrecon/selector_check.py "$REF" "$SRC"
+reference selectors: 15
+our definitions:     14
+
+renames (1):
+    -[IOSCSISession(Private) _initServerWithTask:sendPort:]    IOSCSISession.m:234
+
+duplicates (0):
+
+missing (2):
+    +[SCSIServerKernelServerInstance kernelServerInstance]
+    +[SCSIServerVersion driverKitVersionForSCSIServer]
+
+extra (1):
+    -[IOSCSISession(Private) _reserveTarget:lun:]
+```
+`_reserveTarget:lun:` is the tool's one `extra` entry: it exists in our source under no name the
+reference declares, renamed or otherwise (contrast with `_initServerWithTask:sendPort:` above, which
+the tool correctly identifies as a *rename* of a reference selector, not an addition). The two
+`missing` entries are the build-generated classes this task already dispositions as
+`intentional-mismatch` above, not naming defects.
+
+Separately: this method's own body (`IOSCSISession.m:311-366`) does exactly what the already-mapped,
+`assembly-matched` C function `IOSCSISession_reserveTarget` (address 3372, Task 5) does — same
+controller lookup at session-structure offset `+8`, same `reserveTarget:lun:forOwner:` selector, same
+conditional `addReservation` call — just re-expressed as an Objective-C method instead of a plain C
+function, and (a minor, separate detail) without that C function's explicit `(int)(char)target`
+sign-extension, so `target_val >> 0x1f` in the ObjC method is always `0` regardless of `target`'s high
+bit, whereas the C function's equivalent shift can be `-1`. Neither `source-map.json` nor the
+reference's own message-ref/selector metadata (checked directly, not merely absent from the tool's
+`missing` list) shows this method corresponding to *anything* in the reference under *any* name.
+
+**Disposition Task 8 should apply:** this is not a naming defect to correct — there is no reference
+name to rename it *to*. Task 8 should leave this method's name alone but flag it to whoever owns Task
+12 (fixing Phase 1 divergences) as unreachable, duplicate logic layered on top of the already-correct
+`IOSCSISession_reserveTarget` C wrapper, worth removing rather than renaming.

@@ -5077,3 +5077,42 @@ Expect this to close or shrink the `executeEvent:`/`requestEvent:` pair (ref 26 
 half of Finding 89 — `setState:mask:` already showed that content can match while the
 branch polarity stays inverted, so some of these will land at matching length with residual
 ordering differences rather than going fully identical.
+
+## 22. The idiom does not generalize — batch result and partial revert
+
+Rebuilt and re-measured after §21: **52 identical / 59 differing — no change.** Nothing
+newly landed. Measured by distance from the reference's instruction count:
+
+| method | before | after | |
+|---|---|---|---|
+| `executeEvent:data:` | 26/20 | 26/25 | closer |
+| `requestEvent:data:` | 26/20 | 26/25 | closer |
+| `nextEvent` | 21/22, 18 diffs | 21/22, 16 diffs | marginally closer |
+| `acquire:`, `acquireAudit:` | 22/20 | 22/20 | unchanged |
+| `watchState:mask:` | 33/28 | 33/28 | unchanged |
+| `dequeueData:…` | 37/32 | 37/32 | unchanged |
+| `enqueueEvent:data:sleep:` | 38/31 | 38/**27** | **further away** |
+| `dequeueEvent:data:sleep:` | 38/31 | 38/**27** | **further away** |
+| `enqueueData:…` | 40/33 | 40/**29** | **further away** |
+
+**Finding 88 was over-generalised.** `-getState` really is fixed by evaluating the IMP in
+call position, and `executeEvent:`/`requestEvent:` moved from six instructions short to one.
+But four methods did not react at all, and three moved the wrong way: our instruction count
+fell *further below* the reference's, which is the opposite of what removing redundant
+loads should do. In those three the reference is the one holding values in locals — it has
+more instructions than we do, not fewer, so stripping ours was never going to converge.
+
+The honest statement is that hoisting-versus-re-reading is a **per-function** property of
+Apple's source, not a house style. `getState` was one data point and it was read as a rule.
+
+**Partially reverted.** `enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:` and
+`enqueueData:…` are restored to their pre-§21 form. `executeEvent:`, `requestEvent:` and
+`nextEvent` keep the change because they measurably improved; the four that did not react
+keep it too, since their emitted code is unchanged either way and reverting would be churn
+for its own sake.
+
+**Method note for whoever picks this up:** length-delta against the reference is the
+trustworthy signal. The "first-order diffs" column counts positionally-aligned mismatches,
+so when the two lengths differ it moves for reasons that have nothing to do with getting
+closer — `enqueueEvent:` improved from 28 to 24 on that column while simultaneously moving
+four instructions further away in length. Do not optimise against it.

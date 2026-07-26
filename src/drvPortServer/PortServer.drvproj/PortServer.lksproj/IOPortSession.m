@@ -462,14 +462,22 @@ static struct {
 {
     int result;
     void **method_cache;
+    int error_code;
     typedef int (*EnqueueEventIMP)(id, SEL, unsigned long, unsigned long, int);
+    EnqueueEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    if (*(int *)((char *)method_cache + 8) == 0) {
+    /* Check error code at _priv+8 */
+    error_code = *(int *)((char *)method_cache + 8);
+
+    if (error_code == 0) {
+        /* No error - call cached IMP at method_cache[9] (offset +0x24) */
+        cached_imp = (EnqueueEventIMP)method_cache[9];
+
         /* Call cached method on device object (method_cache[0]) */
-        result = ((EnqueueEventIMP)method_cache[9])(method_cache[0],
+        result = cached_imp(method_cache[0],
                            @selector(enqueueEvent:data:sleep:),
                            event, data, sleep);
 
@@ -479,7 +487,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = *(int *)((char *)method_cache + 8);
+        result = error_code;
     }
 
     return result;
@@ -499,14 +507,22 @@ static struct {
 {
     int result;
     void **method_cache;
+    int error_code;
     typedef int (*DequeueEventIMP)(id, SEL, unsigned long *, unsigned long *, int);
+    DequeueEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    if (*(int *)((char *)method_cache + 8) == 0) {
+    /* Check error code at _priv+8 */
+    error_code = *(int *)((char *)method_cache + 8);
+
+    if (error_code == 0) {
+        /* No error - call cached IMP at method_cache[10] (offset +0x28) */
+        cached_imp = (DequeueEventIMP)method_cache[10];
+
         /* Call cached method on device object (method_cache[0]) */
-        result = ((DequeueEventIMP)method_cache[10])(method_cache[0],
+        result = cached_imp(method_cache[0],
                            @selector(dequeueEvent:data:sleep:),
                            event, data, sleep);
 
@@ -516,7 +532,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = *(int *)((char *)method_cache + 8);
+        result = error_code;
     }
 
     return result;
@@ -540,14 +556,22 @@ static struct {
 {
     int result;
     void **method_cache;
+    int error_code;
     typedef int (*EnqueueDataIMP)(id, SEL, char *, unsigned int, unsigned int *, int);
+    EnqueueDataIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    if (*(int *)((char *)method_cache + 8) == 0) {
+    /* Check error code at _priv+8 */
+    error_code = *(int *)((char *)method_cache + 8);
+
+    if (error_code == 0) {
+        /* No error - call cached IMP at method_cache[11] (offset +0x2c) */
+        cached_imp = (EnqueueDataIMP)method_cache[11];
+
         /* Call cached method on device object (method_cache[0]) */
-        result = ((EnqueueDataIMP)method_cache[11])(method_cache[0],
+        result = cached_imp(method_cache[0],
                            @selector(enqueueData:bufferSize:transferCount:sleep:),
                            buffer, bufferSize, transferCount, sleep);
 
@@ -557,7 +581,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = *(int *)((char *)method_cache + 8);
+        result = error_code;
     }
 
     return result;

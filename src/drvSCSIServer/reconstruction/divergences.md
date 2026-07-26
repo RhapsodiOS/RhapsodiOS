@@ -491,3 +491,190 @@ sequence hands the caller back a pointer to the object that `free` just finished
 session structure `IOFree`'d, its ports deallocated, `[super free]` already invoked) — the caller has
 no way to detect the failure and is left holding a pointer to a freed object. Left `unexamined`;
 Task 12 should change `IOSCSISession.m:191` to `return nil;`.
+
+## C-callable Objective-C dispatch wrappers (Task 5)
+
+Task 5 read all 18 hand-written C wrappers (addresses 3028-6444, `analysis-reference-ida.named.json`
+plus raw instruction bytes for the `bl`-to-jump-island targets the named export strips) against
+`IOSCSISession.m`. Every `lis`/`lwz` pair loading a `pa<Name>` operand was resolved through the
+reference's relocation table (`binrecon.macho.read_macho`'s `extensions.macho.relocations`): the
+`ha16`/`lo16` pair at the load site names a slot in `__OBJC,__message_refs` (a flat array of 4-byte
+selector-pointer slots, stride 4, base offset in the section corresponding to address 20748, not a
+full `{imp, sel}` message-ref struct), whose own relocation names an offset into
+`__OBJC,__meth_var_names` (base address 22808) or, for the one class reference in this block
+(`paIomemorydescri`), `__OBJC,__cls_refs` (base address 20880) resolving through `__OBJC,__class_names`
+(base address 21464) — in both cases the final offset was looked up against the named export's
+`strings` table to read the literal selector or class name.
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 3028 | `_IOSCSISession_initForDevice` | `assembly-matched` | calls `IOGetObjectForDeviceName`, then `objc_msgSend(conformsTo:, @protocol(IOSCSIControllerExported))`; stores result at `session_struct+8` |
+| 3204 | `_IOSCSISession_free` | `assembly-matched` | 11-instruction leaf, `objc_msgSend(session, free)`, no controller indirection |
+| 3264 | `_IOSCSISession_releaseAllUnits` | `assembly-matched` | `objc_msgSend(controller, releaseAllUnitsForOwner:, session)` then a direct call to `_blastAllReservations(session)` |
+| 3372 | `_IOSCSISession_reserveTarget` | `assembly-matched` | `objc_msgSend(controller, reserveTarget:lun:forOwner:, ...)` then conditional `_addReservation` |
+| 3544 | `_IOSCSISession_releaseTarget` | `unexamined` | Finding: dispatch stubbed out (see below) |
+| 3796 | `_IOSCSISession_reserveSCSI3Target` | `unexamined` | Finding: dispatch stubbed out |
+| 3984 | `_IOSCSISession_releaseSCSI3Target` | `unexamined` | Finding: dispatch stubbed out |
+| 4204 | `_IOSCSISession_numberOfTargets` | `unexamined` | Finding: dispatch stubbed out |
+| 4288 | `_IOSCSISession_executeRequest` | `unexamined` | Finding: dispatch stubbed out (control flow and delegation to `executeRequestScatter` otherwise match) |
+| 4544 | `_IOSCSISession_executeRequestOOLScatter` | `unexamined` | Finding: dispatch stubbed out; Finding: `IOTaskWireMemory` return-type mismatch |
+| 4828 | `_IOSCSISession_executeRequestScatter` | `unexamined` | Finding: dispatch stubbed out (IOMemoryDescriptor alloc/init/wire/unwire/release and controller execute calls all commented out) |
+| 5220 | `_IOSCSISession_executeSCSI3Request` | `unexamined` | Finding: dispatch stubbed out (mirrors 4288 with SCSI-3 offsets) |
+| 5476 | `_IOSCSISession_executeSCSI3RequestOOLScatter` | `unexamined` | Finding: dispatch stubbed out; Finding: `IOTaskWireMemory` return-type mismatch |
+| 5760 | `_IOSCSISession_executeSCSI3RequestScatter` | `unexamined` | Finding: dispatch stubbed out (mirrors 4828 with SCSI-3 offsets) |
+| 6152 | `_IOSCSISession_resetSCSIBus` | `unexamined` | Finding: dispatch stubbed out |
+| 6236 | `_IOSCSISession_returnFromScStatus` | `unexamined` | Finding: dispatch stubbed out; Finding: wrong return type |
+| 6304 | `_IOSCSISession_maxTransfer` | `assembly-matched` | `objc_msgSend(controller, maxTransfer)`, result stored through output pointer |
+| 6388 | `_IOSCSISession_getDMAAlignment` | `assembly-matched` | `objc_msgSend(controller, getDMAAlignment:, alignment)`, pointer passed directly as the message argument |
+
+**Selector identity (Step 2 of the brief).** Every one of the 18 wrappers' `pa<Name>` operands was
+resolved as above. All 18 name the *correct* selector or class for the method the source's own code
+or comments say it is dispatching — `paFree`→`"free"`, `paReleaseallunit`→`"releaseAllUnitsForOwner:"`,
+`paConformsto`→`"conformsTo:"`, `paReservetargetL`→`"reserveTarget:lun:forOwner:"`,
+`paReleasetargetL`→`"releaseTarget:lun:forOwner:"`, `paReservescsi3ta`→`"reserveSCSI3Target:lun:forOwner:"`,
+`paReleasescsi3ta`→`"releaseSCSI3Target:lun:forOwner:"`, `paNumberoftarget`→`"numberOfTargets"`,
+`paExecuterequest_0`→`"executeRequest:buffer:client:"`, `paExecuterequest`→`"executeRequest:ioMemoryDescriptor:"`,
+`paExecutescsi3re_0`→`"executeSCSI3Request:buffer:client:"`, `paExecutescsi3re`→`"executeSCSI3Request:ioMemoryDescriptor:"`,
+`paResetscsibus`→`"resetSCSIBus"`, `paReturnfromscst`→`"returnFromScStatus:"`, `paMaxtransfer`→`"maxTransfer"`,
+`paGetdmaalignmen`→`"getDMAAlignment:"`, `paIomemorydescri`→ class `"IOMemoryDescriptor"`,
+`paAlloc`/`paInitwithiorang`/`paSetclient`/`paWirememory`/`paRelease`/`paUnwirememory`→`"alloc"` /
+`"initWithIORange:count:byReference:"` / `"setClient:"` / `"wireMemory:"` / `"release"` / `"unwireMemory"`.
+The `@protocol(IOSCSIControllerExported)` used by `initForDevice` (address 3028) was independently
+confirmed by walking `__OBJC,__protocol` (base 21424, two 20-byte `Protocol` records — the first is
+the `IOSCSIController` protocol from the Task 3 `requiredProtocols` finding, the second, at offset 20,
+is this one) through to its `protocol_name` field, which reads `"IOSCSIControllerExported"` — matching
+our source's literal text exactly, even though (see Finding below) that protocol is never declared.
+**No wrong-selector finding exists in this block** — the spec's warning that "a wrapper dispatching a
+different selector than ours is a plausible finding here" did not materialize for any of the 18; the
+defect this block actually has (below) is a different species entirely.
+
+**The six execute variants read together (Step 3 of the brief).** `executeRequest` (4288),
+`executeRequestScatter` (4828) and `executeRequestOOLScatter` (4544), and their `executeSCSI3*`
+counterparts (5220, 5760, 5476), are structurally identical between the reference and our source, and
+consistent within each pair:
+- `executeRequest`/`executeSCSI3Request` test a request-embedded buffer field (legacy offset `+0x14`,
+  SCSI-3 offset `+0x24`); if absent, they check `findReservation` and would dispatch
+  `executeRequest:buffer:client:`/`executeSCSI3Request:buffer:client:` directly with `NULL`/`NULL` for
+  the buffer arguments; if present, they build a single-entry `{size, address}` range on the stack and
+  tail-call the matching `*Scatter` function with `rangeCount=8` (one range, `count = rangeCount >> 3`).
+  The reference's own `_IOSCSISession_executeRequest` (4288) resolves its final `bl` (address 4496,
+  via relocation addend 4828) directly to `_IOSCSISession_executeRequestScatter`'s entry point, and the
+  argument registers at that call site (`r3`=session, `r4`=request, `r5`=client — untouched since
+  entry — `r6`=`&ioRange`, `r7`=8, `r8`=result) match `executeRequestScatter`'s own parameter
+  assignment instruction for instruction; the reference's `_IOSCSISession_executeSCSI3Request` (5220)
+  does the identical thing into `_IOSCSISession_executeSCSI3RequestScatter` (5760, relocation addend at
+  the call site's island). Our source's `return IOSCSISession_executeRequestScatter(session, request,
+  client, &ioRange, 8, result);` (`IOSCSISession.m:2207-2208`) and the SCSI-3 equivalent
+  (`IOSCSISession.m:1918-1919`) reproduce this delegation exactly, including the constant `8`.
+- `executeRequestOOLScatter`/`executeSCSI3RequestOOLScatter` both wire the out-of-line buffer, then
+  forward the OOL address and length as the `ioRanges`/`rangeCount` arguments to the matching
+  `*Scatter` function (not `*Request`), then unwire. In the reference, `executeRequestOOLScatter`'s
+  (4544) second `bl` resolves (relocation addend 4828) to `_IOSCSISession_executeRequestScatter`'s own
+  entry, with the call-site argument registers matching `executeRequestScatter`'s parameter assignment
+  the same way as above; `executeSCSI3RequestOOLScatter` (5476) resolves its second `bl` (relocation
+  addend 5760) to `_IOSCSISession_executeSCSI3RequestScatter`'s entry the same way. Our source's
+  `IOSCSISession_executeRequestScatter(session, request, client, oolData, oolDataSize, result)`
+  (`IOSCSISession.m:2386-2387`) and the SCSI-3 equivalent (`IOSCSISession.m:2092-2093`) match.
+- No in-line/out-of-line mix-up exists anywhere in the set: the legacy trio consistently uses offsets
+  `+0x14` (buffer)/`+0x10` (direction)/`+0x20` (status) and the SCSI-3 trio consistently uses
+  `+0x24`/`+0x20`/`+0x30`, in both the reference disassembly and our source's comments and field
+  accesses, and neither track ever borrows the other's offsets or delegates to the other track's
+  `*Scatter` function.
+- The one thing this reading surfaced that is **not** a mix-up but is still worth recording: all six
+  functions share the same "dispatch stubbed out" defect below, so the delegation structure above is
+  the only part of these six functions the reference and our source currently have in common.
+
+## Finding: twelve of the eighteen wrapper functions never send the Objective-C message the reference sends
+
+**Source:** `IOSCSISession.m:2582` (`releaseTarget`, line 2615-2618), `:2522` (`reserveSCSI3Target`,
+line 2545-2549), `:2456` (`releaseSCSI3Target`, line 2485-2488), `:2416` (`numberOfTargets`, line
+2424-2427), `:2141` (`executeRequest`, line 2185-2190), `:2239` (`executeRequestScatter`, lines
+2262-2328 throughout), `:2357` (`executeRequestOOLScatter`, via its call into the stubbed
+`executeRequestScatter`), `:1852` (`executeSCSI3Request`, line 1895-1899), `:1947`
+(`executeSCSI3RequestScatter`, lines 1970-2036 throughout), `:2063` (`executeSCSI3RequestOOLScatter`,
+via its call into the stubbed `executeSCSI3RequestScatter`), `:1808` (`resetSCSIBus`, lines 1816-1819),
+`:1790` (`returnFromScStatus`, lines 1797-1799).
+
+**Reference behaviour:** for every one of these twelve addresses, the disassembly contains a real
+`bl` to a jump island whose relocation resolves to `_objc_msgSend` (confirmed for each site
+individually via the same relocation-table technique used above and in Task 4), loading the correct
+selector (see the selector-identity paragraph above) and the correct receiver
+(`*(*(session+4)+8)`, i.e. the controller/device object, loaded identically to the six matched
+functions). `executeRequestScatter`/`executeSCSI3RequestScatter` additionally show full,
+instruction-accounted-for `[[IOMemoryDescriptor alloc] initWithIORange:count:byReference:]`,
+`setClient:`, `wireMemory:`, `unwireMemory`, and `release` sequences.
+
+**Our source:** every one of these call sites is a `/* TODO: ... */` comment containing the *correct*
+call (right selector, right arguments, right receiver) followed by code that never executes it —
+typically `exec_result = 0;` / `result = 0;` / `target_count = 0;` assigned directly instead of calling
+`objc_msgSend`, or (for `executeRequestScatter`/`executeSCSI3RequestScatter`) `ioMemDesc = NULL;`
+instead of allocating one, which then forces the function down its own "allocation failed" branch
+every time. `resetSCSIBus` and `returnFromScStatus` don't call their controller method at all, not even
+in stub form. The comments are not guesses about behaviour the disassembly doesn't support — cross-
+referenced above, every commented-out call matches the reference's real call byte for byte (selector,
+argument count and order) — but none of the twelve execute.
+
+**Consequence:** this is a severe, non-cosmetic divergence covering exactly two-thirds of this block.
+None of `reserveSCSI3Target`, `releaseSCSI3Target`, `releaseTarget`, `numberOfTargets`, `resetSCSIBus`,
+`returnFromScStatus`, or any of the six `executeRequest*`/`executeSCSI3Request*` variants would
+actually reach the SCSI controller on the eventual PPC rebuild — every one of them reports success (or
+a hardcoded not-reserved/allocation-failure error) without ever performing the operation a caller
+requested. `reserveSCSI3Target`/`releaseSCSI3Target`/`releaseTarget` compound this by then calling
+`addReservation`/`removeReservation` on the strength of a `result`/`is_reserved` value that was never
+actually obtained from the controller. Left `unexamined` for all twelve; Task 12 should uncomment and
+wire up each stubbed call (the comments already state the correct selector and arguments for every
+site, so this is mechanical rather than requiring new investigation).
+
+## Finding: `IOSCSISession_returnFromScStatus` discards the reference's return value and declares the wrong return type
+
+**Source:** `IOSCSISession.m:209` (header) and `:1790` (definition), both declaring
+`void IOSCSISession_returnFromScStatus(id session, unsigned int scStatus)`.
+
+**Reference behaviour:** address 6236 (52 bytes). After `bl sub_1890` (the `objc_msgSend(controller,
+returnFromScStatus:, scStatus)` call, confirmed above), the function falls straight through to its
+epilogue (`addi r1,r1,0x40` / restore `lr` / `blr`) with no intervening instruction that touches `r3`.
+`r3` therefore still holds `objc_msgSend`'s return value when the function returns — i.e. the
+reference function returns whatever `-[controller returnFromScStatus:]` returns; it is not `void`.
+
+**Our source:** declared `void` in both the header and the definition, and (per the Finding above) does
+not call the controller at all. Even if the stubbed call were wired up, a `void`-declared function has
+nowhere to put the controller's return value for its own caller to see.
+
+**Consequence:** on top of the missing dispatch, this function's signature itself cannot reproduce the
+reference's behaviour without changing — any caller of `IOSCSISession_returnFromScStatus` (this is the
+MiG-facing side of the demux Task 6 will reconstruct) needs the converted `IOReturn` value this
+function is supposed to hand back. Left `unexamined`; Task 12 should change the return type to `int`
+(or the appropriate `IOReturn` typedef) in both the header and definition, `return` the dispatched
+value, and wire up the call per the Finding above.
+
+## Finding: `executeRequestOOLScatter` and `executeSCSI3RequestOOLScatter` assign the result of a `void`-declared function to an `int`
+
+**Source:** `IOSCSISession.m:142` declares `void IOTaskWireMemory(unsigned int address, int length);`;
+the call sites at `IOSCSISession.m:2371` (`executeRequestOOLScatter`) and `:2077`
+(`executeSCSI3RequestOOLScatter`) both write `wire_result = IOTaskWireMemory((unsigned int)oolData,
+oolDataSize);` and then branch on `if (wire_result != 0)`.
+
+**Reference behaviour:** in both OOL wrappers, the first `bl` (address 4624 in
+`executeRequestOOLScatter`, resolving via relocation addend to address 6716; address 5556 in
+`executeSCSI3RequestOOLScatter`, resolving to the same address 6716 — a single shared helper used by
+both) is followed immediately by `cmpwi cr1, r3, 0` / `beq cr1, ...`, i.e. the reference treats this
+call's `r3` return value as meaningful and branches on it. A `void` function has no defined return
+value to branch on; the reference's own behaviour requires this helper to return an `int`.
+
+**Our source:** declares the callee `void` (`IOSCSISession.m:142`) while simultaneously using it as
+though it returns `int` at both call sites. Assigning the result of a `void` expression to an `int`
+variable, and then comparing that variable to `0`, is a `C` type error — this does not compile as
+written, independent of the missing-dispatch Finding above (`IOTaskWireMemory` is presumably one of
+this file's own functions rather than a controller message, so it is not covered by that Finding, but
+the call sites are inside two of this block's 18 functions, which is why it is recorded here rather
+than deferred to Task 6). Separately, the reference's fourth call in each OOL wrapper (address 4716 in
+`executeRequestOOLScatter`, address 5648 in `executeSCSI3RequestOOLScatter`) resolves by name to the
+imported `_IOUnmapPhysicalFromIOTask` (not `vm_deallocate`, which is what both of our source's
+"TODO: Call vm_deallocate(...)" comments guess it is); this is a secondary naming detail Task 6 or 12
+should resolve when it reconciles `IOTaskWireMemory`/`IOTaskUnwireMemory` against whatever "plumbing"
+functions the reference actually links.
+
+**Consequence:** a real, compile-blocking type mismatch inside two of this block's 18 functions (the
+declaration is header-wide, so every other caller of `IOTaskWireMemory` would need the same fix). Left
+`unexamined` for both addresses (4544, 5476); Task 12 should change `IOSCSISession.m:142`'s declaration
+to return `int`, matching the reference's own use of the call's result.

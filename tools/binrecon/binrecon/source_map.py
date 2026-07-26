@@ -219,8 +219,35 @@ def _overlapping_addresses(functions):
     return overlapping
 
 
+_BUCKETS = ("mapped", "unmapped", "duplicate_candidates", "boundary_disputed")
+
+
+def summarize_by_module(document, ownership):
+    """Count each source-map bucket per owning translation unit.
+
+    ``ownership`` maps a function name to its module, as proved by
+    ``__OBJC,__module_info`` for methods and declared by header for C functions.
+    Functions with no known owner are omitted rather than bucketed as unknown;
+    the top-level lists already account for them.
+    """
+    summary = {}
+    for bucket in _BUCKETS:
+        for entry in document[bucket]:
+            module = next(
+                (ownership[name] for name in entry["reference_names"]
+                 if name in ownership),
+                None,
+            )
+            if module is None:
+                continue
+            counts = summary.setdefault(module, {name: 0 for name in _BUCKETS})
+            counts[bucket] += 1
+    return summary
+
+
 def build_source_map(
-    reference_analysis, macho_document, sites, *, disputed=None, extra_names=None
+    reference_analysis, macho_document, sites, *, disputed=None, extra_names=None,
+    ownership=None,
 ):
     """Partition every reference function into exactly one source-map bucket."""
     disputed = set() if disputed is None else disputed
@@ -287,7 +314,7 @@ def build_source_map(
         else:
             unmapped.append(entry)
 
-    return {
+    document = {
         "schema_version": "source-map-v1",
         "reference_sha256": reference_analysis["input"]["sha256"].upper(),
         "mapped": _canonical(mapped),
@@ -295,6 +322,9 @@ def build_source_map(
         "duplicate_candidates": _canonical(duplicates),
         "boundary_disputed": _canonical(boundary),
     }
+    if ownership:
+        document["by_module"] = summarize_by_module(document, ownership)
+    return document
 
 
 def _canonical(entries):

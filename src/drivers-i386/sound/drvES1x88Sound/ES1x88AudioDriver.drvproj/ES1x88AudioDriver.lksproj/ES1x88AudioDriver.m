@@ -526,7 +526,8 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     unsigned int stereo;
     NXSoundParameterTag dataEncoding;
     unsigned char regValue;
-    unsigned char sampleRateByte;
+    unsigned int sampleRateByte;
+    unsigned int filterByte;
     es1x88ControlRegister_t irqControl, dmaControl;
     unsigned char modeCommand1, modeCommand2;
     unsigned char modeData;
@@ -590,7 +591,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     if (sampleRate < ES_SAMPLE_RATE_THRESHOLD) {  /* < 22001 Hz */
         sampleRateByte = (0x80 - (ES_SAMPLE_RATE_CONST_LOW / sampleRate)) & 0x7F;
     } else {
-        sampleRateByte = (-(ES_SAMPLE_RATE_CONST_HIGH / sampleRate)) | 0x80;
+        sampleRateByte = (0x100 - (ES_SAMPLE_RATE_CONST_HIGH / sampleRate)) | 0x80;
     }
     outb(sbWriteDataOrCommandReg, ES_REG_SAMPLE_RATE);
     IODelay(25);
@@ -598,9 +599,10 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Set filter register */
+    filterByte = 0x100 - (ES_FILTER_CONST / (sampleRate * ES_FILTER_DIVISOR));
     outb(sbWriteDataOrCommandReg, ES_REG_FILTER);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, -(ES_FILTER_CONST / (sampleRate * ES_FILTER_DIVISOR)));
+    outb(sbWriteDataOrCommandReg, filterByte);
     IODelay(25);
 
     /* Set transfer count (negative, 2's complement) */

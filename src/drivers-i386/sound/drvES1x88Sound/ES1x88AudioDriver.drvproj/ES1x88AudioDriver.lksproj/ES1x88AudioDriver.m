@@ -539,11 +539,13 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     dataEncoding = [self dataEncoding];
 
     /* Send Audio Control 2 command followed by direction-specific value */
-    outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
-    IODelay(25);
     if (currentDMADirection == DMA_DIRECTION_IN) {
+        outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+        IODelay(25);
         outb(sbWriteDataOrCommandReg, ES_MODE_INPUT);  /* Input/Record */
     } else {
+        outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+        IODelay(25);
         outb(sbWriteDataOrCommandReg, ES_MODE_OUTPUT);  /* Output/Playback */
     }
     IODelay(25);

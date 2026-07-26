@@ -264,3 +264,131 @@ void aic_unlock_mb(
 		(unsigned char *)&lock, sizeof(lock), 0, 0, TRUE);
 }
 
+/*
+ * Local memset().
+ *
+ * The kernel exports bzero() and memcpy() but not memset(), so the
+ * driver carries its own file-static copy.  It fills forward a byte at
+ * a time and returns nothing; it is not the libc memset(), which
+ * returns its destination.
+ */
+static void memset(
+	void		*b,
+	int		c,
+	int		len
+)
+{
+	unsigned char	*p = (unsigned char *)b;
+
+	while (len--) {
+		*p++ = (unsigned char)c;
+	}
+}
+
+/*
+ * Block transfer primitives.
+ *
+ * The chip's data register is a fixed FIFO port, so each of these moves
+ * "count" items to or from a single port address.  They are written as
+ * explicit loops, not "rep insb"/"rep outsb" string instructions: a
+ * string instruction would walk the port as well as memory, and the
+ * out-side loops have to go through the outb()/outw()/outl() inlines in
+ * <driverkit/i386/ioPorts.h>, which append a locked increment of a
+ * port-write counter after every access.  The tree already provides
+ * both halves, so no new inline assembly is needed here.
+ *
+ * The item width is fixed by the pointer type, and the pointer advances
+ * by exactly one item per iteration: 1 byte for the b forms, 2 for w,
+ * 4 for d.  The count is a signed item count, not a byte count.
+ */
+
+int repinsb(
+	IOEISAPortAddress	port,
+	unsigned char		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		addr[i] = inb(port);
+	}
+
+	return (0);
+}
+
+int repinsw(
+	IOEISAPortAddress	port,
+	unsigned short		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		addr[i] = inw(port);
+	}
+
+	return (0);
+}
+
+int repinsd(
+	IOEISAPortAddress	port,
+	unsigned long		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		addr[i] = inl(port);
+	}
+
+	return (0);
+}
+
+int repoutsb(
+	IOEISAPortAddress	port,
+	unsigned char		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		outb(port, addr[i]);
+	}
+
+	return (0);
+}
+
+int repoutsw(
+	IOEISAPortAddress	port,
+	unsigned short		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		outw(port, addr[i]);
+	}
+
+	return (0);
+}
+
+int repoutsd(
+	IOEISAPortAddress	port,
+	unsigned long		*addr,
+	int			count
+)
+{
+	int	i;
+
+	for (i = 0; i < count; i++) {
+		outl(port, addr[i]);
+	}
+
+	return (0);
+}
+

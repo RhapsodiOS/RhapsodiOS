@@ -101,3 +101,15 @@ extern boolean_t aic_probe_cmd(
 	boolean_t	polled
 );
 
+/*
+ * Block transfer primitives in AIC6X60Routines.m.  Each moves "count"
+ * items of the named width to or from the single port "port"; the
+ * count is an item count, not a byte count.
+ */
+extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);
+extern int repinsw(IOEISAPortAddress port, unsigned short *addr, int count);
+extern int repinsd(IOEISAPortAddress port, unsigned long *addr, int count);
+extern int repoutsb(IOEISAPortAddress port, unsigned char *addr, int count);
+extern int repoutsw(IOEISAPortAddress port, unsigned short *addr, int count);
+extern int repoutsd(IOEISAPortAddress port, unsigned long *addr, int count);
+

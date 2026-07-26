@@ -894,7 +894,29 @@ git commit -m "drvISASerialPort: advance the ledger after the chip split"
 
 ---
 
-### Task 6: TU 1, the class
+### Task 6 was split into 6a and 6b
+
+The report and fix passes surfaced far more structural work than this task originally
+scoped — eight coupled changes plus 27 still-`unexamined` entries across TU 1's 18.7 KB,
+which is three quarters of the driver. Running it as one unit would land the
+offset-shifting superclass change while 27 findings were still open, invalidating every
+offset-based claim mid-task.
+
+**Task 6a — structural.** The eight coupled changes, landing together because they all
+touch the same declarations: `: IODirectDevice`; the twelve `Port` fields widening to
+`unsigned long`; the fifteen leading-underscore renames; the `_udivdi3`/`_umoddi3` rename
+(see divergences addendum 4 — the problem is the symbol name, not the arithmetic); the
+queue-header split for Finding 101; `TX_STATE_BELOW_LOW`'s two wrong uses; Finding 59 as a
+behaviour fix; and the nine config-key fixes. Verified by build, section parity and the
+source-map reline.
+
+**Task 6b — findings.** The 27 remaining `unexamined` entries, worked against the stable
+layout 6a establishes.
+
+The section below is the original single-task text, retained for its step detail. Both 6a
+and 6b draw on it.
+
+### Task 6 (original text): TU 1, the class
 
 18704 bytes, 28 functions — three quarters of the driver. It goes last, with three settled modules beneath it.
 

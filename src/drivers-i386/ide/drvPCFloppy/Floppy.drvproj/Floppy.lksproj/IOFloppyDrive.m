@@ -63,15 +63,15 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
  */
 - (IOReturn)ejectMedia
 {
-	// Call superclass ejectMedia
+	// Call superclass ejectMedia; its result is discarded (the
+	// disassembly overwrites eax with fdEjectInt's result before
+	// returning)
 	[super ejectMedia];
-	
-	// Perform internal eject operations
+
+	// Perform internal eject operations and propagate its result
 	// - Seeks to track 79 to unload heads
 	// - Turns off motor
-	[self fdEjectInt];
-	
-	return IO_R_SUCCESS;
+	return [self fdEjectInt];
 }
 
 /*

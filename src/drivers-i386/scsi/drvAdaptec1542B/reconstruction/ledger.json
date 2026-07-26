@@ -1,0 +1,833 @@
+{
+  "schema_version": "ledger-v1",
+  "reference_sha256": "C4160F413776FF3559408BD802946EFB9624A249BF6CB0F2EAE6C212B0B40A24",
+  "rebuilt_sha256": null,
+  "entries": [
+    {
+      "address": 0,
+      "size": 184,
+      "names": [
+        "+[AHAController probe:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 73,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 184,
+      "size": 807,
+      "names": [
+        "-[AHAController initFromDeviceDescription:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 100,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 992,
+      "size": 15,
+      "names": [
+        "-[AHAController maxTransfer]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 211,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1008,
+      "size": 170,
+      "names": [
+        "-[AHAController free]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 220,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1180,
+      "size": 16,
+      "names": [
+        "-[AHAController numQueueSamples]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 243,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1196,
+      "size": 16,
+      "names": [
+        "-[AHAController sumQueueLengths]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 249,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1212,
+      "size": 16,
+      "names": [
+        "-[AHAController maxQueueLength]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 255,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1228,
+      "size": 40,
+      "names": [
+        "-[AHAController resetStats]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 261,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1268,
+      "size": 58,
+      "names": [
+        "-[AHAController executeRequest:buffer:client:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 272,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1328,
+      "size": 40,
+      "names": [
+        "-[AHAController resetSCSIBus]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 296,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1368,
+      "size": 277,
+      "names": [
+        "-[AHAController interruptOccurred]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 314,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1648,
+      "size": 41,
+      "names": [
+        "-[AHAController interruptOccurredAt:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 370,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1692,
+      "size": 41,
+      "names": [
+        "-[AHAController otherOccurred:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 375,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1736,
+      "size": 69,
+      "names": [
+        "-[AHAController receiveMsg]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 380,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1808,
+      "size": 311,
+      "names": [
+        "-[AHAController timeoutOccurred]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 396,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 2120,
+      "size": 391,
+      "names": [
+        "-[AHAController commandRequestOccurred]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 465,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 2512,
+      "size": 239,
+      "names": [
+        "-[AHAController probeAtPortBase:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 520,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 2752,
+      "size": 303,
+      "names": [
+        "-[AHAController executeCmdBuf:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m",
+      "source_line": 587,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3056,
+      "size": 29,
+      "names": [
+        "_aha_start_scsi"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 20,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3088,
+      "size": 367,
+      "names": [
+        "_aha_probe_cmd"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 34,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3456,
+      "size": 274,
+      "names": [
+        "_aha_cmd"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 100,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3732,
+      "size": 88,
+      "names": [
+        "_aha_reset_board"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 155,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3820,
+      "size": 288,
+      "names": [
+        "_aha_setup_mb_area"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 184,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4108,
+      "size": 69,
+      "names": [
+        "_aha_unlock_mb"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m",
+      "source_line": 256,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4180,
+      "size": 267,
+      "names": [
+        "-[AHAController threadExecuteRequest:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 53,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4448,
+      "size": 284,
+      "names": [
+        "-[AHAController threadResetBus:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 98,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4732,
+      "size": 1300,
+      "names": [
+        "-[AHAController ccbFromCmd:ccb:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 151,
+      "status": "control-flow-confirmed",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "block/branch structure, calls and struct-offset writes verified against source for the CDB opcode-group switch, cdb_ctrl validation and the pages==0 DMA path; the pages==1 and pages>1 scatter/gather branches were checked structurally (call targets, selectors, aha_put_24 writes) but not traced instruction by instruction, so no divergence claim is made at assembly-matched confidence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6032,
+      "size": 270,
+      "names": [
+        "-[AHAController runPendingCommands]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 345,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6304,
+      "size": 512,
+      "names": [
+        "-[AHAController commandCompleted:reason:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 391,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6816,
+      "size": 208,
+      "names": [
+        "-[AHAController allocCcb:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 496,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7024,
+      "size": 93,
+      "names": [
+        "-[AHAController freeCcb:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 544,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7120,
+      "size": 58,
+      "names": [
+        "-[AHAController completeDMA:length:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 558,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7180,
+      "size": 58,
+      "names": [
+        "-[AHAController abortDMA:length:]"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 574,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7240,
+      "size": 95,
+      "names": [
+        "_ahaTimeout"
+      ],
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m",
+      "source_line": 597,
+      "status": "assembly-matched",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA",
+          "Ghidra"
+        ],
+        "reasons": [
+          "instruction-level comparison against source found no divergence"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7336,
+      "size": 12,
+      "names": [
+        "+[Adaptec1542BKernelServerInstance kernelServerInstance]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "intentional-mismatch",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForAdaptec1542B), not present in source"
+        ]
+      },
+      "artifacts": [],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-adaptec1542b"
+    },
+    {
+      "address": 7348,
+      "size": 12,
+      "names": [
+        "+[Adaptec1542BVersion driverKitVersionForAdaptec1542B]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "intentional-mismatch",
+      "analyzer_agreement": {
+        "status": "agreed",
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForAdaptec1542B), not present in source"
+        ]
+      },
+      "artifacts": [],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-adaptec1542b"
+    }
+  ]
+}

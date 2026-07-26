@@ -23,10 +23,11 @@ from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
 from binrecon.source_map import build_source_map, scope_analysis, source_sites
+from binrecon.symbol_audit import unclaimed_text_symbols
 
 
 COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
-            "extract-slice", "abi", "abi-check", "module-scope")
+            "extract-slice", "abi", "abi-check", "module-scope", "symbol-audit")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -95,6 +96,9 @@ def build_parser() -> argparse.ArgumentParser:
     module_scope.add_argument("--profile", required=True)
     module_scope.add_argument("--module", action="append", required=True)
     module_scope.add_argument("--symbols", required=True)
+    symbol_audit = subparsers.add_parser("symbol-audit")
+    symbol_audit.add_argument("--profile", required=True)
+    symbol_audit.add_argument("--symbols", required=True)
 
     return parser
 
@@ -351,6 +355,21 @@ def main(argv=None) -> int:
             print(f"# {len(ranges)} ranges", file=sys.stderr)
             return 0
         except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "symbol-audit":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            _payload, document = load_image(profile.reference.path)
+            assignment = json.loads(Path(args.symbols).read_text())
+            unclaimed = unclaimed_text_symbols(document, assignment)
+            for name in unclaimed:
+                print(name)
+            print(f"symbol-audit: {len(unclaimed)} unclaimed exported function(s)",
+                  file=sys.stderr)
+            return 0
+        except (OSError, ValueError, ValidationError) as error:
             print(f"binrecon: {error}", file=sys.stderr)
             return 1
 

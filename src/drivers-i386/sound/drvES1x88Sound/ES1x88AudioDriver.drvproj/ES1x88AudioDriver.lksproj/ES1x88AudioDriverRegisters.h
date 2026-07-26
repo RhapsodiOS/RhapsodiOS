@@ -112,8 +112,8 @@
 /*
  * ES1x88 Audio Control 2 Mode Values (register 0xB8)
  */
-#define ES_MODE_INPUT                           0x04    /* Input/Record mode */
-#define ES_MODE_OUTPUT                          0x0E    /* Output/Playback mode */
+#define ES_MODE_INPUT                           0x0E    /* Input/Record mode */
+#define ES_MODE_OUTPUT                          0x04    /* Output/Playback mode */
 
 /*
  * ES1x88 Audio Control 1 Mode Commands (register 0xB7)

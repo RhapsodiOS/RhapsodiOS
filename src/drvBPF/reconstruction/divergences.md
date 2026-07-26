@@ -17,6 +17,10 @@ Section 1 likewise describes the report pass; the post-fix counts are 27
 `assembly-matched`, 1 `control-flow-confirmed`, 0 `unexamined` and 2
 `intentional-mismatch`.
 
+**Findings 9 and 10 were added later**, by the whole-branch review, against two functions
+this pass had wrongly recorded as matched. They are also fixed. The post-fix ledger counts
+are unchanged by them.
+
 ---
 
 ## 1. Coverage and examination depth
@@ -31,6 +35,12 @@ build-generated Kernel Server glue. All 28 are mapped; the 2 glue functions are
 | `control-flow-confirmed` | 0 | — |
 | `unexamined` | 5 | Every instruction read, **and a divergence found** — these carry a finding below |
 | `intentional-mismatch` | 2 | Build-generated glue, not present in source |
+
+**Two of the entries in the `assembly-matched` row above were wrong.** The whole-branch
+review found real divergences in `+[BPF probe:]` (0) and `_bpf_tap` (3124), both of which
+this pass had recorded as matched with no divergence. They are Findings 9 and 10, and
+both are now fixed. So the honest reading of the report pass is 21 matched and 7
+divergent, not 23 and 5.
 
 **Every one of the 28 mapped functions had its full instruction stream read.** No
 function in this driver was examined at block-and-call-target level only, and none was
@@ -545,6 +555,107 @@ entry.
 that rename is a `pb_makefiles` convention, not a divergence, and `BPF.rtfd`,
 `TableOfContents.rtf` and both `PixelRule.tiff` files are present in ours.
 
+### Found later, by the whole-branch review
+
+Findings 9 and 10 were **not** produced by the report pass. Both functions had been
+recorded as `assembly-matched` — "every instruction read, and no divergence found" — and
+both claims were wrong. They are written up here in the same form as the rest.
+
+**Finding 9 — `+[BPF probe:]` sends a selector that does not exist.**
+`BPF.m:69-81` (pre-fix).
+
+**Reference behaviour** — the eleven `IOSwitchFunc` arguments, pushed right-to-left at
+11-61, then the descriptor, the selector and `self`:
+
+```
+11: push offset _enodev        21: push offset _enodev      41: push offset _bpfioctl
+16: push offset _enodev        26: push offset _bpf_select  46: push offset _bpfwrite
+                              31: push offset _nulldev     51: push offset _bpfread
+                              36: push offset _nulldev     56: push offset _bpfclose
+                                                           61: push offset _bpfopen
+66: push esi                  ; deviceDescription
+80: add esp, 38h              ; 14 * 4 = 12 method arguments + self + _cmd
+```
+
+`__meth_var_names` at 8782 holds the selector string verbatim:
+
+```
+addToCdevswFromDescription:open:close:read:write:ioctl:stop:reset:select:mmap:getc:putc:
+```
+
+Twelve keywords, matching the `add esp, 38h` arity, and matching the declaration at
+`src/driverkit-3/driverkit/IODevice.h:112-123`.
+
+**Our source** named the last two keywords `strategy:` and `getstat:`.
+
+**Difference:** the *values* were right — all three of `mmap`, `getc` and `putc` are
+`enodev` in the reference, and our source passed `enodev` three times — but the selector
+we composed, `...select:mmap:strategy:getstat:`, is not a method of `IODevice`. The
+earlier read checked the pushed function pointers and never checked the keyword names
+against `IODevice.h` or against `__meth_var_names`.
+
+**Disposition:** fix.
+
+**Rationale:** load-bearing. An unrecognised selector makes `+probe:` fail, so the cdevsw
+entry is never installed and `/dev/bpf*` never opens — which would have defeated the
+`bpfops` repair of Finding 2 that this branch exists to make.
+
+**Outcome:** fixed. `BPF.m:78-80` now reads `mmap:` / `getc:` / `putc:`, each still
+`(IOSwitchFunc)enodev`. All 51 instructions at 0-155 were re-read after the edit and
+every one has a counterpart in our source. Ledger 0 keeps `assembly-matched`; a third
+`analyzer_agreement` reason records the false claim, the correction and the post-repair
+re-read. Note that the ledger's transition rule is forward-only, so `assembly-matched`
+could not have been walked back even had the post-repair evidence been weaker — that is
+recorded in §8.
+
+**Finding 10 — `bpf_tap`'s K&R parameter names do not agree; the file cannot compile.**
+`bpf.c:1019-1022` (pre-fix).
+
+**Reference behaviour** — the function prologue and the first use of the argument:
+
+```
+3130: 8B4508    mov eax, [ebp+arg_0]
+3139: 8B5804    mov ebx, [eax+4]      ; bp->bif_dlist
+```
+
+`arg_0` is read once and dereferenced at +4 with no intervening indirection, so it *is*
+the `struct bpf_if *` — not an `ifnet` from which one is reached. `_bpf_mtap` (3296) does
+the identical thing at 3305/3325 (`mov edx, [ebp+arg_0]`, `mov ebx, [edx+4]`), and its
+source already declares `caddr_t arg;`. `src/kernel-7/bsd/net/bpf.h:286-288` types the
+`bpfops_t` slot as `void (*bpf_tap)(caddr_t, u_char *, u_int)`, and `BPF.m:52` externs it
+the same way.
+
+**Our source**
+
+```c
+bpf_tap(arg, pkt, pktlen)
+	struct ifnet *ifp;
+	register u_char *pkt;
+	register u_int pktlen;
+{
+	...
+	bp = (struct bpf_if *)arg;
+```
+
+**Difference:** the parameter list names `arg`, the declarations name `ifp`. `arg` is
+then undeclared where the body casts it, and `ifp` is declared but is not a parameter —
+a hard `gcc` error, in live code (`bpf.c:58` defines `BPFDRV`). The body itself was
+correct and matched; only the declaration was wrong, which is what the earlier read
+missed by reading the body and not the signature.
+
+**Disposition:** fix.
+
+**Rationale:** compile blocker on the packet-capture path, and inconsistent with
+`bpf_mtap` two functions below it.
+
+**Outcome:** fixed. `bpf.c:1020` now declares `caddr_t arg;`, matching `bpf_mtap`, the
+`bpfops_t` slot and the `extern` in `BPF.m`. All 40 instructions at 3124-3202 were re-read
+after the edit and every one has a counterpart in our source. Ledger 3124 keeps
+`assembly-matched`, with a third reason recording the false claim and the correction.
+**Stated limit:** the assembly settles *how* the argument is used — as a `bpf_if *`, with
+no `ifnet` deref — but not the C spelling of its declared type; `caddr_t` comes from
+`bpf_mtap` and from `bpf.h`, not from the disassembly.
+
 ---
 
 ## 7. Tooling change made during this pass
@@ -601,6 +712,13 @@ what the brief predicted.
 - Why the reference uses `MGET` rather than `MGETHDR` in `bpf_movein` (Finding 5). The
   4.4BSD original this file derives from uses `MGETHDR`. Whether Apple changed it
   deliberately or inherited an older revision is not recoverable from the binary.
+- The ledger's `transition` is forward-only along
+  `unexamined → signature-confirmed → control-flow-confirmed → assembly-matched`, so a
+  status recorded in error cannot be walked back; the only exit from `assembly-matched` is
+  the terminal `intentional-mismatch`. Entries 0 and 3124 therefore keep
+  `assembly-matched`, which their post-repair full-stream re-reads do support, but the
+  ledger has no way to express "this was once claimed wrongly" other than the corrective
+  `analyzer_agreement` reason now attached to each.
 
 ## README status
 

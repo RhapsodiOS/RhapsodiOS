@@ -765,7 +765,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Update drive ready state (internal).
  * From decompiled code: checks drive status and returns ready state.
  */
-- (void)updateReadyStateInt
+- (int)updateReadyStateInt
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -803,11 +803,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 		readyState = 1;
 	}
 	
-	// NOTE: the disassembly computes readyState into eax and returns it
-	// (0=ready, 1=command failed, 2=not ready/wrong unit); this method is
-	// declared -(void) in FloppyDriveInt.h, so readyState is computed but
-	// never propagated to the caller. Fixing that requires changing the
-	// declared return type in the header, which is out of scope here.
+	return readyState;
 }
 
 @end

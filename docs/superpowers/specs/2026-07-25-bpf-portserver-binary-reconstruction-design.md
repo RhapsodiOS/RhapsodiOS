@@ -14,9 +14,9 @@ Apple shipped.
 
 Scoping already found that `src/drvPortServer/.../PortServer.m` contains two
 literal NUL bytes where `'\0'` was intended (§2.2), which means the driver
-cannot compile as committed. It also found that our `bpf.c` is a later vintage
-of Apple's own source than the shipped binary, differing structurally rather
-than in details (§2.1).
+cannot compile as committed. Against that, `drvBPF`'s C layer is in better shape
+than a first reading suggested: its function partition already matches the
+reference exactly (§2.1).
 
 ## 1. Scope
 
@@ -99,26 +99,29 @@ These are `unmapped` by design and are not defects:
 These come from scoping and are recorded so the plan can be checked against
 them. They seed `divergences.md`; the report pass confirms and extends them.
 
-### 2.1 Our bpf.c is a later vintage than the shipped binary
+### 2.1 Our bpf.c already matches the reference's function partition
 
 `src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c` is authentic K&R-style Apple and BSD
-source, but its header reads `Copyright (c) 1998-2000` where the rest of the
-driver reads 1999. It defines `bpf_timeout`, `bpf_sleep`, `bpf_wakeup`,
-`bpfselect`, and `bpf_alloc`. None of the five exists in `BPF_reloc`, which
-instead imports `_tsleep`, `_wakeup`, `_selrecord`, and `_selwakeup` directly.
-Static functions are not the explanation: `_reset_d` and `_catchpacket` are
-static in our source and both carry symbols in the reference.
+source. Its header reads `Copyright (c) 1998-2000` where the rest of the driver
+reads 1999, and it contains 26 function definitions against the reference's 21.
+Scoping initially read that as a structural vintage delta. It is not.
 
-This is a structural difference, not a set of line edits, and it is the largest
-single item in drvBPF.
+Four of the five extra definitions sit inside `#if BSD < 199103` blocks:
+`bpf_timeout` and `bpf_sleep` at lines 391–424, `bpfselect` at lines 953–962,
+and `bpf_alloc` at lines 1260–1289. That branch is false on Rhapsody, so none of
+them is ever compiled. The live branch of the first block is
+`#define BPF_SLEEP tsleep`, which is precisely why `BPF_reloc` imports `_tsleep`.
 
-**Decision: align to the 1999 binary.** The fix pass reshapes `bpf.c` to the
-shipped structure — the sleep, wakeup, and timeout wrappers are removed and the
-callers call `tsleep`, `wakeup`, `selrecord`, and `selwakeup` directly, and
-`bpf_alloc` and `bpfselect` go away. Keeping the newer official source and
-recording the delta as `intentional-mismatch` was considered and rejected: the
-point of the exercise is a source tree that corresponds to the binary Apple
-shipped.
+The fifth, `bpf_wakeup` at line 526, is declared `static __inline`. GCC inlines
+it into its two call sites in `catchpacket`, which is why the reference shows
+`_wakeup` and `_selwakeup` as imports and carries no `_bpf_wakeup` symbol.
+`_reset_d` and `_catchpacket`, both plain `static`, do carry symbols — the
+`__inline` is what distinguishes them.
+
+26 definitions minus the 4 dead ones minus the 1 inlined one is 21, exactly the
+reference's count. `bpf.c` needs no realignment. The report pass still diffs all
+21 functions at instruction level; this section only rules out the restructuring
+that scoping wrongly anticipated.
 
 `src/kernel-7/bsd/net/bpf.c` is a 180-line stub and is not a source for this
 work.
@@ -169,7 +172,32 @@ Three `TODO` markers sit on unimplemented method bodies in
 `AppleIOPSSafeCondLock.m:485` separately annotates a deliberate return-type
 deviation from what it calls the original.
 
-### 2.7 Coverage is otherwise strong
+### 2.7 The config tables and strings files diverge
+
+The reference `.config` bundles ship a `Default.table` and an
+`English.lproj/Localizable.strings` alongside the binary. Both diverge from ours,
+and the divergences are behavioural rather than cosmetic:
+
+| File | Reference | Ours |
+| --- | --- | --- |
+| `BPF.config/Default.table` | `"Version" = "1.0";` | absent |
+| `PortServer.config/Default.table` | `"Version" = "5.00";` | absent |
+| `PortServer.config/Default.table` | `"Support Dialin"` | `"Support DialIn"` |
+| `PortServer.config/Default.table` | `"Help File" = "PortServer_Main.rtfd";` | `"...rtf"` |
+| `PortServer.config/English.lproj/Localizable.strings` | `"PortServer" = "Port Server";` | `"Port Server" = "Port Server";` |
+
+The `Localizable.strings` key is the lookup key, so ours resolves nothing. The
+`Support Dialin` capitalisation is a config-table key the driver reads by exact
+name. Both `Default.table` files also carry a `"Driver Version"` line recording
+Apple's 1998 build host; that is build-generated and correctly absent from ours.
+
+Separately, `PortServer.drvproj/English.lproj/DriverHelp/` contains only
+`TableOfContents.rtf`. The `PortServer_Main.rtfd` bundle that the `Help File` key
+names is absent from our tree, where drvBPF's `BPF.rtfd` is present. The
+`DriverHelp` to `Help` directory rename between source and built bundle is a
+`pb_makefiles` convention, not a divergence.
+
+### 2.8 Coverage is otherwise strong
 
 All 25 functions in the ttyiops layer resolve to a definition in `ttyiops.m` —
 the 23 `_ttyiops_*` entries plus `_tiotors232` and `_rs232totio`. Every
@@ -263,6 +291,10 @@ Runs per driver, needs no VM.
    `__instance_vars`, `__inst_meth`, `__cls_meth`, `__cat_cls_meth`,
    `__cat_inst_meth`, `__meth_var_types`, `__message_refs`, `__cls_refs`,
    `__class_names`, `__module_info` — not inferred from the decompilation.
+   The reference `.config` bundle's `Default.table` and
+   `English.lproj/Localizable.strings` are diffed against ours in the same step
+   (§2.7); they are part of what Apple shipped and the driver reads them by
+   exact key name.
 
 4. **Report.** Write `divergences.md` with the reference decompilation beside our
    source for each finding, and assign each function a `ledger-v1` status. The
@@ -323,14 +355,13 @@ run as evidence.
 **An ambiguous symbol** resolving to two plausible source sites goes to
 `duplicate_candidates` rather than being guessed.
 
-**The `bpf.c` realignment growing past a line-edit job.** §2.1 commits to
-reshaping `bpf.c` toward the 1999 binary, but the report pass is what measures
-how many of the 21 `bpf.c` functions the delta actually touches. If the realignment
-turns out to require restructuring most of the file rather than removing the
-five absent functions and rerouting their callers, the drvBPF fix pass records
-that measurement in `divergences.md` and the realignment splits into its own
-spec. The rest of the drvBPF fix pass — `BPF.m` and `bpf_filter.c` — proceeds
-either way.
+**A preprocessor-conditional or inlined function read as a divergence.** §2.1 is
+the worked example: four `bpf.c` functions are absent from the binary because
+`#if BSD < 199103` excludes them, and a fifth because it is `static __inline`.
+Before recording any absent function as a finding, check whether our definition
+is inside a false conditional, is `__inline`, or is a macro the live branch
+redefines. This applies to `ttyiops.m` as well, which is the other large C
+translation unit in scope.
 
 ## 6. Sequencing
 
@@ -353,15 +384,16 @@ rebuilt artifact, and `pytest tools/binrecon/tests -q` still passes.
 *Verify:* `load_source_map` passes against the reference analysis; every
 `unmapped` entry has a stated reason; every function has a ledger entry.
 
-**Phase 2 — drvBPF fix pass.** Includes the §2.1 realignment, subject to the
-go/no-go in §5.
+**Phase 2 — drvBPF fix pass.** Expected to be small: §2.1 rules out the
+restructuring scoping anticipated, leaving `BPF.m`, `bpf_filter.c`, and the
+config table.
 
 *Verify:* every finding in `divergences.md` is either repaired with an advanced
 ledger status or marked `intentional-mismatch` with reason and reviewer;
 `source-map.json` re-validates.
 
 **Phase 3 — drvPortServer report pass** (113 functions). Expected to surface
-§2.3 through §2.6 in detail.
+§2.3 through §2.7 in detail.
 
 *Verify:* same as Phase 1.
 
@@ -390,3 +422,5 @@ Repository-wide:
 
 - `src/drivers-i386/README` gains status lines for `drvBPF` and `drvPortServer`
 - `PortServer.m` compiles as text again (§2.2)
+- Both `Default.table` files and `PortServer`'s `Localizable.strings` match the
+  reference on every key the driver reads (§2.7)

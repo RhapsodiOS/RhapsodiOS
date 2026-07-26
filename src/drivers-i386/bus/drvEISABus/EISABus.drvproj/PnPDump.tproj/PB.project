@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (PnPDump.m, PnPDeviceResources.m);
-        H_FILES = (PnPDeviceResources.h);
+        CLASSES = (R.m, IODeviceMaster.m, NXLock.m);
+        H_FILES = (IODeviceMaster.h, NXLock.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

@@ -21,7 +21,7 @@ CLASSES =
 
 HFILES =
 
-TOOLS = EISABus.lksproj #PnPDump.tproj
+TOOLS = EISABus.lksproj PnPDump.tproj
 
 OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 

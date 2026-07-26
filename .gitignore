@@ -22,4 +22,4 @@ tools/binrecon/out/
 out/
 # binrecon ledger lock files: transient, never committed
 ledger.json.lock
-**/reconstruction/*.lock
+**/reconstruction/**/*.lock

@@ -1,0 +1,448 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 16,
+      "reference_names": [
+        "+[SCSITape requiredProtocols]"
+      ],
+      "size": 20,
+      "source_line": 62,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 36,
+      "reference_names": [
+        "+[SCSITape probe:]"
+      ],
+      "size": 440,
+      "source_line": 69,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 1544,
+      "reference_names": [
+        "-[SCSITape free]"
+      ],
+      "size": 144,
+      "source_line": 318,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[SCSITape getIntValues:forParameter:count:]"
+      ],
+      "size": 244,
+      "source_line": 330,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2028,
+      "reference_names": [
+        "-[SCSITape target]"
+      ],
+      "size": 16,
+      "source_line": 364,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2044,
+      "reference_names": [
+        "-[SCSITape lun]"
+      ],
+      "size": 16,
+      "source_line": 369,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2060,
+      "reference_names": [
+        "-[SCSITape controller]"
+      ],
+      "size": 16,
+      "source_line": 374,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2076,
+      "reference_names": [
+        "-[SCSITape isInitialized]"
+      ],
+      "size": 20,
+      "source_line": 379,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2096,
+      "reference_names": [
+        "-[SCSITape didWrite]"
+      ],
+      "size": 20,
+      "source_line": 384,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2116,
+      "reference_names": [
+        "-[SCSITape isFixedBlock]"
+      ],
+      "size": 24,
+      "source_line": 389,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2140,
+      "reference_names": [
+        "-[SCSITape senseDataValid]"
+      ],
+      "size": 20,
+      "source_line": 398,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2160,
+      "reference_names": [
+        "-[SCSITape forceSenseDataInvalid]"
+      ],
+      "size": 20,
+      "source_line": 403,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2180,
+      "reference_names": [
+        "-[SCSITape senseDataPtr]"
+      ],
+      "size": 16,
+      "source_line": 409,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2196,
+      "reference_names": [
+        "-[SCSITape blockSize]"
+      ],
+      "size": 16,
+      "source_line": 414,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2212,
+      "reference_names": [
+        "-[SCSITape suppressIllegalLength]"
+      ],
+      "size": 20,
+      "source_line": 419,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2232,
+      "reference_names": [
+        "-[SCSITape setSuppressIllegalLength:]"
+      ],
+      "size": 16,
+      "source_line": 424,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2248,
+      "reference_names": [
+        "-[SCSITape setIgnoreCheckCondition:]"
+      ],
+      "size": 16,
+      "source_line": 435,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2264,
+      "reference_names": [
+        "-[SCSITape majorDevNum]"
+      ],
+      "size": 16,
+      "source_line": 441,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2280,
+      "reference_names": [
+        "-[SCSITape acquireDevice]"
+      ],
+      "size": 168,
+      "source_line": 457,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2464,
+      "reference_names": [
+        "-[SCSITape releaseDevice]"
+      ],
+      "size": 128,
+      "source_line": 472,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 2608,
+      "reference_names": [
+        "-[SCSITape stInquiry:]"
+      ],
+      "size": 420,
+      "source_line": 484,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 3124,
+      "reference_names": [
+        "-[SCSITape stTestReady]"
+      ],
+      "size": 160,
+      "source_line": 569,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 3332,
+      "reference_names": [
+        "-[SCSITape stCloseFile]"
+      ],
+      "size": 164,
+      "source_line": 606,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 3560,
+      "reference_names": [
+        "-[SCSITape stRewind]"
+      ],
+      "size": 132,
+      "source_line": 626,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 3740,
+      "reference_names": [
+        "-[SCSITape requestSense:]"
+      ],
+      "size": 368,
+      "source_line": 648,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 4172,
+      "reference_names": [
+        "-[SCSITape stModeSelect:]"
+      ],
+      "size": 332,
+      "source_line": 696,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 4584,
+      "reference_names": [
+        "-[SCSITape stModeSense:]"
+      ],
+      "size": 336,
+      "source_line": 748,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 5000,
+      "reference_names": [
+        "-[SCSITape executeMTOperation:]"
+      ],
+      "size": 432,
+      "source_line": 801,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 5496,
+      "reference_names": [
+        "-[SCSITape setBlockSize:]"
+      ],
+      "size": 260,
+      "source_line": 895,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6748,
+      "reference_names": [
+        "_moveString"
+      ],
+      "size": 124,
+      "source_line": 1093,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6872,
+      "reference_names": [
+        "_assign_cdb_c6s_len"
+      ],
+      "size": 32,
+      "source_line": 1127,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6904,
+      "reference_names": [
+        "_assign_msbd_numblocks"
+      ],
+      "size": 24,
+      "source_line": 1154,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6928,
+      "reference_names": [
+        "_assign_msbd_blocklength"
+      ],
+      "size": 24,
+      "source_line": 1167,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6952,
+      "reference_names": [
+        "_cdb_c6s_len_value"
+      ],
+      "size": 40,
+      "source_line": 1180,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 6992,
+      "reference_names": [
+        "_er_info_value"
+      ],
+      "size": 20,
+      "source_line": 1190,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 7424,
+      "reference_names": [
+        "_st_devsw_init"
+      ],
+      "size": 184,
+      "source_line": 87,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 7640,
+      "reference_names": [
+        "_stopen"
+      ],
+      "size": 508,
+      "source_line": 121,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 8228,
+      "reference_names": [
+        "_stclose"
+      ],
+      "size": 196,
+      "source_line": 227,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 8440,
+      "reference_names": [
+        "_stread"
+      ],
+      "size": 36,
+      "source_line": 252,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 8492,
+      "reference_names": [
+        "_stwrite"
+      ],
+      "size": 36,
+      "source_line": 258,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 8544,
+      "reference_names": [
+        "_st_rw"
+      ],
+      "size": 872,
+      "source_line": 265,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 9544,
+      "reference_names": [
+        "_stioctl"
+      ],
+      "size": 740,
+      "source_line": 434,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 10332,
+      "reference_names": [
+        "_st_doiocsrq"
+      ],
+      "size": 840,
+      "source_line": 574,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    },
+    {
+      "address": 11300,
+      "reference_names": [
+        "_read_er_info_low_24"
+      ],
+      "size": 20,
+      "source_line": 739,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
+    }
+  ],
+  "reference_sha256": "ABB8D7E5FDEB9188A4C58D10AE6A7A1313A79EFBE49513AD3804E386BB65131A",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 524,
+      "reference_names": [
+        "-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]"
+      ],
+      "size": 908
+    },
+    {
+      "address": 5836,
+      "reference_names": [
+        "-[SCSITape executeRequest:buffer:client:senseBuf:]"
+      ],
+      "size": 832
+    },
+    {
+      "address": 7012,
+      "reference_names": [
+        "-[SCSITape reserveAllLuns]"
+      ],
+      "size": 236
+    },
+    {
+      "address": 7280,
+      "reference_names": [
+        "-[SCSITape releaseAllLuns]"
+      ],
+      "size": 128
+    },
+    {
+      "address": 11320,
+      "reference_names": [
+        "+[SCSITapeKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 11340,
+      "reference_names": [
+        "+[SCSITapeVersion driverKitVersionForSCSITape]"
+      ],
+      "size": 16
+    }
+  ]
+}

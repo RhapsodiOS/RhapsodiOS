@@ -133,7 +133,7 @@ Expected: `missing_symbols` still 1; `missing_strings` below 92 by the number re
 
 divergences.md numbers this layer's findings 1 through 7. Each is one task.
 
-- [ ] **Task 2.1 — Finding 1:** `-[IODiskNEW free]` returns `nil` where the reference returns `self`. Check callers before changing the return: a caller that tests the result will change behaviour.
+- [ ] **Task 2.1 — Finding 1:** the reference's `-[IODiskNEW free]` forces `eax` to zero on every path and returns `nil`; ours returns `self` (`IODiskNew.m:99`). Check callers before changing the return — a caller that tests the result will change behaviour.
 - [ ] **Task 2.2 — Finding 2:** three sites use `[[Class alloc] init]` where the reference sends a single `+new`.
 - [ ] **Task 2.3 — Finding 3:** `-[IODiskPartitionNEW writeLabel:]` — three distinct issues: a dropped timestamp write, a wrong checksum-zero offset, and a missing log argument. One task, three commits if that reads more clearly.
 - [ ] **Task 2.4 — Finding 4:** `setBlockDeviceOpen:` and `setRawDeviceOpen:` compute "any device open" from `_labelValid` instead of the block/raw composite.
@@ -191,7 +191,7 @@ Closes two of the three remaining missing imports.
 
 - [ ] **Step 1: Replace each `[[objc_getClass("NXConditionLock") alloc] init]` with a direct class reference**, e.g. `[[NXConditionLock alloc] init]`. A link-time class reference is only emitted when the source names the class directly, which is what restores the imports.
 - [ ] **Step 2: Confirm `<machkit/NXLock.h>` is imported** in each file that now names a class directly.
-- [ ] **Step 3: Verify after the phase build** that `missing_imports` drops from 3 to 1, leaving only `_strcpy`.
+- [ ] **Step 3: Verify after the phase build** that `missing_imports` drops from 3 to 2, leaving `.objc_class_name_Protocol` and `_strcpy`. Only `NXSpinLock` is an `objc_getClass` site; `Protocol` is missing for a different reason — see the addendum in `divergences.md`.
 - [ ] **Step 4: Commit.**
 
 - [ ] **Task 4.10 — Strings:** restore this layer's diagnostics.

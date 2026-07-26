@@ -1471,3 +1471,73 @@ The reference never loads a fixed return constant anywhere in the function:
 ```
 The reference's "return value" is whatever `driveNumberOfDrive:` left in `eax` — `-1` on the invalid path, or the raw `driveNumber` (0–7) on the normal path — never the fixed `IO_R_SUCCESS` constant the source returns in both cases. Low practical impact since callers of this method in this file (the `DKIOCEJECT`/`DKIOCFORMAT` cases in `_HandleBsdIoctl`) don't inspect its return value, but it is a genuine divergence from the documented contract.
 
+
+---
+
+## Addendum — corrections from the final review
+
+Recorded after the report was committed. The layer sections above are left as
+written; where one of them is wrong, the correction is here rather than edited
+into the original, so the record of what the analysis actually concluded is
+preserved.
+
+### Two findings the report missed
+
+**`Bsd.m` dereferences the reference's `__DATA` link addresses as absolute
+pointers.** The reference's `__DATA,__data` begins at `0xc000`, and five sites
+transcribe link-time addresses from that section as integer constants:
+`Bsd.m:1401` (`(char *)0xc008 + devInfoOffset`), `:1415` (`0xc028`), `:1422`
+(`0xc02c`), `:1438` and `:1462` (both `0xc000`). In a relocatable driver
+`__DATA` lands wherever `kl_ld` places it, so `bzero((char *)0xc008, 0x28)`
+writes into low physical memory on the first BSD attach. Layer 5 analysed this
+code and concluded "No divergence" — it compared the arithmetic and the order of
+operations, which do match, without questioning the addresses themselves. The
+repair is one file-scope table in `Bsd.m` replacing all five sites. This belongs
+to fix phase 5 and is the most dangerous single item in this document.
+
+**Ten symbols the kernel does not export.** The rebuilt driver referenced
+`_DrivesRegistered`, `__IOExitThread`, `__IOForkThread`, `___kernel_map`,
+`___page_mask`, `___page_size`, `___xxx`, `__dma_mask_chan`, `_floppyMalloc` and
+`_vm_map_pmap` — none of which the kernel exports, so none could ever bind.
+Most were the same spurious-leading-underscore defect the pre-pass fixed
+elsewhere; `floppyMalloc` was `static` while being called across translation
+units; `DrivesRegistered` and `__xxx` were declared and never defined; and
+`vm_map_pmap` is a kernel macro whose only exported form is
+`vm_map_pmap_EXTERNAL`. All ten are fixed. They went unnoticed because
+`import_check.py` computed only reference-minus-rebuilt, which is structurally
+blind to an *extra* undefined symbol; the tool now takes the kernel binary and
+reports `unresolvable_imports` as well.
+
+Fixing them exposed a further genuine defect. `FloppyArch.m:22-23` declared
+`vm_map_pmap_EXTERNAL` with two parameters and `pmap_resident_extract` with one;
+the kernel's are one and two respectively
+(`src/kernel-7/vm/vm_map.c:2988`, `src/kernel-7/machdep/i386/pmap.c:1385`). The
+one-parameter `pmap_resident_extract` calls at `FloppyArch.m:69` and `:193` were
+therefore reading their `va` argument off the stack, yielding a wrong physical
+address for every floppy DMA transfer. Corrected in the same pass.
+
+### Three statements above that are wrong
+
+- **Layer 2, finding 7** reports `kernelDiskMethodsNEW.m:77` calling
+  `_errnoFromReturn:`. That was true when the analysis ran and was fixed before
+  this report was committed; the line now reads `errnoFromReturn:`. The
+  corresponding fix-phase task is a no-op.
+- **Layer 4** speculates that `vFloppyCopy` and `physContBlocks` "likely" live in
+  `FloppyVm.m`. There is no such file — `Request.m:11` imports `FloppyVm.h`, and
+  both functions are in `FloppyDriveInt2.m`, covered by Layer 3.
+- **`.objc_class_name_Protocol`** is attributed to the `objc_getClass` sites. It
+  is not one of them: the reference's `__OBJC,__protocol` section is 140 bytes
+  against our 0, so what is missing is a `@protocol` declaration, which is
+  generic-disk-family work. Converting the `objc_getClass` sites restores
+  `NXSpinLock` only, taking `missing_imports` from 3 to 2 rather than to 1.
+
+### Scope of the "no function is absent" claim
+
+The statement above that every function Apple compiled by hand has a counterpart
+in our tree is a claim about **names**, and in those terms it holds: 224 of 225
+reference symbols are present in the rebuild, and the source map resolves 222 to
+a file and line. It is not a claim about completeness of implementation. Several
+functions that are present by name diverge substantially in body — Layer 5 says
+of one that "the source's implementation is fabricated relative to the binary."
+Presence by name is the starting point for the fix phases, not evidence of
+coverage.

@@ -159,9 +159,9 @@ extern unsigned int _FloppyGeometry[];
  * From decompiled code: sets up disk instance with geometry and drive.
  */
 - initFromDeviceDescription:(id)deviceDescription
-                      drive:(id)drive
-                   capacity:(unsigned)capacity
-             writeProtected:(BOOL)writeProtected
+                           :(id)drive
+                           :(unsigned)capacity
+                           :(BOOL)writeProtected
 {
 	id geometry;
 	BOOL isFormatted;

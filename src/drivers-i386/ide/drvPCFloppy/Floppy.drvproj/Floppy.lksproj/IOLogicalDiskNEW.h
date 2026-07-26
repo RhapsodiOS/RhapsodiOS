@@ -95,12 +95,12 @@
 /*
  * Private methods category.
  */
-@interface IOLogicalDiskNEW(Private)
+@interface IOLogicalDiskNEW(private)
 
 /*
  * Common disk parameter validation.
  */
-- (IOReturn)__diskParamCommon : (unsigned)offset
+- (IOReturn)_diskParamCommon : (unsigned)offset
 		        length : (unsigned)length
 		  deviceOffset : (unsigned *)deviceOffset
 		   bytesToMove : (unsigned *)bytesToMove;

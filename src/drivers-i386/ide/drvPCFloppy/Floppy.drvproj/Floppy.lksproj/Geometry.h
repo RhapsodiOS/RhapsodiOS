@@ -75,9 +75,9 @@ extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 /*
  * Calculate cylinder number from block number and get head/sector.
  */
-- (unsigned)_cylinderFromBlockNumber:(unsigned)blockNumber
-                                head:(unsigned *)head
-                              sector:(unsigned *)sector;
+- (unsigned)cylinderFromBlockNumber:(unsigned)blockNumber
+                                   :(unsigned *)head
+                                   :(unsigned *)sector;
 
 @end
 

@@ -97,8 +97,8 @@
  * Initialize drive from device description.
  */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
-                 controller:(id)controller
-                       unit:(unsigned)unit;
+                           :(id)controller
+                           :(unsigned)unit;
 
 /*
  * Poll for media presence/change.

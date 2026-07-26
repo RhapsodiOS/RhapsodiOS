@@ -346,8 +346,8 @@ static void _doCopy(vm_map_t sourceMap,
 	}
 	
 	// Get cylinder range
-	startCylinder = [self _cylinderFromBlockNumber:blockStart head:NULL sector:NULL];
-	endCylinder = [self _cylinderFromBlockNumber:blockEnd head:NULL sector:NULL];
+	startCylinder = [self cylinderFromBlockNumber:blockStart :NULL :NULL];
+	endCylinder = [self cylinderFromBlockNumber:blockEnd :NULL :NULL];
 	numCylinders = (endCylinder - startCylinder) + 1;
 	
 	// Calculate request size: header (0x24) + numCylinders * subrequest size (0x24)

@@ -267,11 +267,11 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	isEjectable = (_flags >> 2) & 1;
 	
 	// Allocate IOFloppyDisk object
-	// Call: [[IOFloppyDisk alloc] initFromDeviceDescription:drive:type:isEjectable:]
+	// Call: [[IOFloppyDisk alloc] initFromDeviceDescription::::]
 	diskObject = [[IOFloppyDisk alloc] initFromDeviceDescription:_deviceDescription
-	                                                        drive:self
-	                                                         type:diskType
-	                                                  isEjectable:isEjectable];
+	                                                            :self
+	                                                            :diskType
+	                                                            :isEjectable];
 	
 	// Store disk object at offset 0x108
 	_nextLogicalDisk = diskObject;

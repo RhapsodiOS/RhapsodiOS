@@ -670,9 +670,9 @@ unsigned int FloppyGeometry[] = {
  * Calculate cylinder number from block number and get head/sector.
  * From decompiled code: converts LBA to CHS addressing.
  */
-- (unsigned)_cylinderFromBlockNumber:(unsigned)blockNumber
-                                head:(unsigned *)head
-                              sector:(unsigned *)sector
+- (unsigned)cylinderFromBlockNumber:(unsigned)blockNumber
+                                   :(unsigned *)head
+                                   :(unsigned *)sector
 {
 	id driveObject;
 	unsigned *geometryArray;

@@ -85,9 +85,9 @@ void OperationThreadStartup(id self);
  * Initialize from device description.
  */
 - initFromDeviceDescription:(id)deviceDescription
-                      drive:(id)drive
-                   capacity:(unsigned)capacity
-             writeProtected:(BOOL)writeProtected;
+                           :(id)drive
+                           :(unsigned)capacity
+                           :(BOOL)writeProtected;
 
 /*
  * Asynchronous read operation.

@@ -474,8 +474,8 @@ BOOL numFloppyDrives(void)
 		if (driveType != 0) {
 			// Allocate and initialize the drive
 			drive = [[IOFloppyDrive alloc] initFromDeviceDescription:devDesc
-			                                              controller:controller
-			                                                    unit:driveIndex];
+			                                                        :controller
+			                                                        :driveIndex];
 
 			if (drive == nil) {
 				IOLog("FloppyController: Failed to initialize floppy drive %d.\n",

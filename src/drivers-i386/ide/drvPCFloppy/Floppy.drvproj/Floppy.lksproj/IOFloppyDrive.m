@@ -170,8 +170,8 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
  * From decompiled code: initializes drive with default parameters and registers.
  */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
-                 controller:(id)controller
-                       unit:(unsigned)unit
+                           :(id)controller
+                           :(unsigned)unit
 {
 	BOOL registered;
 	int driveNumber;

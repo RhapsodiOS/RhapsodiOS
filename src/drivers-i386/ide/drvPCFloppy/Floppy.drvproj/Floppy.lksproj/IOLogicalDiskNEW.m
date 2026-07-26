@@ -180,7 +180,7 @@
 	IOReturn result;
 
 	// Validate parameters and calculate offsets
-	result = [self __diskParamCommon:offset
+	result = [self _diskParamCommon:offset
 	                          length:length
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
@@ -214,7 +214,7 @@
 	IOReturn result;
 
 	// Validate parameters and calculate offsets
-	result = [self __diskParamCommon:offset
+	result = [self _diskParamCommon:offset
 	                          length:length
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
@@ -255,7 +255,7 @@
 	}
 
 	// Validate parameters and calculate offsets
-	result = [self __diskParamCommon:offset
+	result = [self _diskParamCommon:offset
 	                          length:length
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
@@ -296,7 +296,7 @@
 	}
 
 	// Validate parameters and calculate offsets
-	result = [self __diskParamCommon:offset
+	result = [self _diskParamCommon:offset
 	                          length:length
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
@@ -319,13 +319,13 @@
 /*
  * Category: Private
  */
-@implementation IOLogicalDiskNEW(Private)
+@implementation IOLogicalDiskNEW(private)
 
 /*
  * Common disk parameter validation.
  * From decompiled code: validates parameters and calculates device offset and bytes to move.
  */
-- (IOReturn)__diskParamCommon : (unsigned)offset
+- (IOReturn)_diskParamCommon : (unsigned)offset
 		        length : (unsigned)length
 		  deviceOffset : (unsigned *)deviceOffset
 		   bytesToMove : (unsigned *)bytesToMove

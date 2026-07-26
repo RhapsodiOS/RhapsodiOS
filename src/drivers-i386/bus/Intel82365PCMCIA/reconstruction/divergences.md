@@ -1318,6 +1318,32 @@ of the same job — the signatures Apple used *are* these protocols' signatures 
 they are already applied, so the adoptions can be added without disturbing the
 method declarations again.
 
+**The declarations now exist.** That decoding has been done, driven by the kernel
+DriverKit reconstruction, which needed `PCMCIAWindow` and `PCMCIAWindowAttributes`
+to fix its own Finding 3. All five records were read from
+`PCIC.config/PCIC_reloc`: `PCMCIAAdapter` (3 methods), `PCMCIASocket` (21),
+`PCMCIAWindow` (15), `PCMCIAWindowAttributes` (16), and `IOPower`, which
+DriverKit already declares. Every selector and type encoding came off the binary.
+
+They went to `src/kernel-7/driverkit/i386/PCMCIA.h` rather than to `drvPCMCIABus`,
+which resolves the include-path objection above: that file installs into
+`<driverkit/i386/>`, so the kernel and every driver project can reach it without
+exporting a private header across projects. `PCMCIAStatus` moved there too, from
+`PCMCIAKernBus.h`.
+
+**The adoptions are still not done** — that is this driver's work, not the
+kernel's, and it remains the open item. Two things to know before doing it:
+
+- Declaration order in `PCMCIA.h` is the reverse of the binary's, because GCC
+  emits protocol method lists in reverse source order. That was verified against
+  `PCICWindow`'s own class method list, which reverses into clean getter/setter
+  pairs ending at `initWithSocket:memoryWindow:number:`. Adopting should reproduce
+  the reference's `__OBJC,__protocol` layout, so if the emitted order comes out
+  backwards, this is why.
+- `PCICSocket.h:49` declares its own `PCMCIAStatus` with the same eight bits.
+  Importing `PCMCIA.h` into this driver will collide with it, and the duplicate
+  should be dropped in favour of the shared one.
+
 **Ledger effect: none, in either direction.** Protocol adoption is recorded in
 `__OBJC,__protocol` and in the class and category structures' protocol-list
 pointers. It emits no code into `__TEXT,__text` and changes no method's type

@@ -32,6 +32,7 @@
 
 #import <driverkit/KernBus.h>
 #import <driverkit/driverTypes.h>
+#import <driverkit/i386/PCMCIA.h>
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
@@ -44,21 +45,9 @@
 #define PCMCIA_WINDOW_LIST	"PCMCIA Window List"
 
 /*
- * The state of a socket, as
- * reported by an adapter driver.
- * The 82365 adapter driver declares
- * the same eight bits in PCICSocket.h.
+ * PCMCIAStatus, and the protocols the adapter, socket
+ * and window objects adopt, are in <driverkit/i386/PCMCIA.h>.
  */
-
-typedef struct {
-    unsigned int	present:1;
-    unsigned int	locked:1;
-    unsigned int	ejectRequest:1;
-    unsigned int	insertRequest:1;
-    unsigned int	batteryStatus:2;
-    unsigned int	writeProtect:1;
-    unsigned int	ready:1;
-} PCMCIAStatus;
 
 /*
  * The PCMCIA bus object is supplied

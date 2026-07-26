@@ -248,12 +248,63 @@ adopts `PCMCIAWindowAttributes`. That split matches this call site exactly —
 `setAttributeMemory:` on the category — so the receiver's type is
 `id <PCMCIAWindow, PCMCIAWindowAttributes>`.
 
-Neither protocol is declared anywhere in `src/`. Their natural home is
-`src/kernel-7/driverkit/i386/PCMCIA.h`, currently a two-line `// TODO` stub,
-alongside `PCMCIAKernBus` — which is also where Finding 13 expects them, and
-declaring them there would close that finding's four outstanding protocol
-adoptions and this one together. That work spans two projects and is not done
-here.
+Neither protocol was declared anywhere in `src/`. Both now are.
+
+### The protocols, and the fix
+
+`src/kernel-7/driverkit/i386/PCMCIA.h` was a two-line `// TODO` stub that
+`autoconf_i386.m` already imported. It now carries the four protocols an
+adapter driver's objects adopt, recovered from the `__OBJC,__protocol` section
+of Apple's shipped `PCIC_reloc` — five records, of which four are
+`PCMCIAAdapter` (3 methods), `PCMCIASocket` (21), `PCMCIAWindow` (15) and
+`PCMCIAWindowAttributes` (16). The fifth is `IOPower`, which DriverKit already
+declares in `driverkit/IOPower.h` and which is therefore not repeated.
+
+Every selector and every type came from that section's method-description
+lists, so the signatures are Apple's rather than inferred — `c9@8:12c16` for
+`- (char)setEnabled:(char)`, `{?=b1b1b1b1b2b1b1}8@8:12` for
+`- (PCMCIAStatus)status`, and so on. That last encoding is worth noting: it is
+bit-for-bit the `PCMCIAStatus` bitfield already declared for
+`statusChangedForSocket:changedStatus:`, which independently confirms that
+typedef's layout.
+
+**Declaration order is the reverse of the binary's**, and this was measured
+rather than assumed. `PCICWindow`'s own class method list in the same binary
+ends with `initWithSocket:memoryWindow:number:` and begins with `set16Bit:`;
+reversed, it reads `initWithSocket:…, validSockets, socket, setSocket:,
+systemAddress, cardAddress, mapSize, setMapWithSize:…` — getter/setter pairs in
+a natural source order. GCC emits these lists in reverse source order, so the
+header restores the order Apple wrote.
+
+`PCMCIAStatus` moved from `PCMCIAKernBus.h` into `PCMCIA.h`, which now owns it,
+and `PCMCIAKernBus.h` imports it. Both files guard their bodies with
+`#ifdef DRIVER_PRIVATE`, so nothing changes about when the typedef is visible.
+libDriver compiles with `-DDRIVER_PRIVATE` in `KERN_CFLAGS`, and
+`IOPCMCIADirectDevice.m` already imports `PCMCIAKernBus.h`, so the protocols
+reach the call site without a new import.
+
+The fix itself is the receiver's type at line 137:
+
+```objc
+id <PCMCIAWindow, PCMCIAWindowAttributes>	window;
+```
+
+`memoryInterface`, `setEnabled:` and `socket` come from `PCMCIAWindow`;
+`attributeMemory` and `setAttributeMemory:` from `PCMCIAWindowAttributes`. The
+split is Apple's, and it matches this call site exactly.
+
+**This is a prediction, not yet a measurement.** It asserts that a
+protocol-qualified `id <P>` reaches the declared `char` return where a bare `id`
+did not — which is the documented purpose of protocol qualification, but the
+same class of claim that six builds falsified earlier in this document. It is
+confirmed when a rebuilt kernel's `-[IODirectDevice unmapAttributeMemory]`
+contains two `84 c0` and no `85 c0`. Until then no ledger entry advances, and
+Finding 3 stays `unexamined`.
+
+Because `pb_makefiles` tracks no header dependencies and libDriver reads its
+headers from the installed `System.framework` tree, verifying this needs the
+kernel headers reinstalled and `pcmcia/*.m` touched before the build — the
+omission that produced several of the false negatives recorded above.
 
 ## Summary
 

@@ -30,24 +30,30 @@ passes, split by source file.
 | 3 | `ttyiops.m` | 25 | 8 | 17 |
 | **Total** | | **110** | **19** | **91** |
 
-| Depth | Count | What was done |
-|---|---|---|
-| `assembly-matched` | 19 | Every instruction read, and no divergence found |
-| `control-flow-confirmed` | 0 | -- |
-| `unexamined` | 91 | Every instruction read, **and a divergence found** -- each carries a finding below |
-| `intentional-mismatch` | 3 | Build-generated glue (15728, 15740) and libgcc `__divdi3` (15752) |
+| Depth | After the report pass | After the Task 8 fix pass | What the post-fix count means |
+|---|---|---|---|
+| `assembly-matched` | 19 | **43** | A fix part re-read the reference function's full instruction stream and our source transcribes it |
+| `control-flow-confirmed` | 0 | **41** | Block shape, call targets and constants checked against the stream, but a compiler-dependent spelling or a partial read blocks a stronger claim |
+| `signature-confirmed` | 0 | **3** | Only the reference's own type metadata backs the repair (564, 592, 680 -- see Finding 9) |
+| `unexamined` | 91 | **20** | Repaired but never re-verified after editing, or not repaired at all |
+| `intentional-mismatch` | 3 | **6** | The 3 build/libgcc entries, plus Findings 67, 79 (`ttyiops_close`) and 80 |
+| **Total** | **113** | **113** | |
 
-**All 110 mapped functions had their full instruction stream read.** No function was
-examined at block-and-call-target level only, and none was skipped. `unexamined` is used,
-per the ledger convention, only for a function that diverges.
+The report pass read all 110 mapped functions' full instruction streams and used
+`unexamined` only for a function that diverges. The fix pass then applied the repairs; the
+post-fix column records what each part **re-verified after editing**, which is a stricter
+bar. Where the three parts disagreed or were vague about a function, the ledger carries the
+weaker status; the per-finding `**Outcome**` paragraphs in Section 11 say which, and why.
 
-Source-map buckets: **mapped 88, unmapped 22, duplicate_candidates 3, boundary_disputed 0.**
-**19 of the 22** unmapped entries are not missing code -- they are functions whose
-reference name does not exist in our source because the name or the method kind differs
-(Sections 4 and 7); Task 8 fixes names there, it does not write new functions. The
-remaining **3** (15728, 15740, 15752) are genuinely absent from our source by design:
-build-generated Kernel Server glue and libgcc's `__divdi3`. The 3
-duplicate candidates are an artefact of the brace damage in Section 4.
+Source-map buckets: **88 / 22 / 3 / 0 before the fix pass, 110 / 3 / 0 / 0 after**
+(mapped / unmapped / duplicate_candidates / boundary_disputed). The 19 recoverable unmapped
+entries were functions whose reference name did not exist in our source because the name or
+the method kind differed (Sections 4 and 7); every one of those renames landed. The 3
+duplicate candidates were an artefact of the brace damage in Section 4 and went with Task
+7's repair. The 3 that remain unmapped -- `+[PortServerKernelServerInstance
+kernelServerInstance]` (15728), `+[PortServerVersion driverKitVersionForPortServer]` (15740)
+and `__divdi3` (15752) -- are absent from our source by design: build-generated Kernel
+Server glue and libgcc.
 
 ## 2. Stated limitations
 
@@ -793,6 +799,12 @@ is unreachable until this is repaired. Delete `:487-499` and `:501-516` and clos
 `-setCondition:` at `:372`. This is the same class of tree damage as the NUL bytes in
 `PortServer.m` that Task 7 handles.
 
+**Outcome (Task 8):** Repaired ahead of the fix pass. Task 7 (`f230c8ad`) closed `-setCondition:` at
+`:372` and deleted the two `TODO` stubs, so the file arrived at Task 8 with brace delta
+`+0` and one definition each of `-setCondition:` and `-unlockWith:`. The three
+`duplicate_candidates` this finding predicted are gone from the regenerated source map
+(3 -> 0). Ledger: 484 and 712 are carried by Findings 7 and 8, both **assembly-matched**.
+
 ---
 
 **Finding 2 — the eight IMP cache globals are declared twice; the wrappers read the
@@ -818,6 +830,14 @@ answer is unambiguous. Keep one set: the names of `:529-536` (`IMP_*`, since the
 which is the reference's `__bss` address order), declared once before
 `@implementation`. Delete `:529-536` and rewrite `+initialize` and the eight wrappers
 against the survivor.
+
+**Outcome (Task 8):** Fixed. The second, uninitialised `IMP_condition` … `IMP_unlockWith` set was deleted
+and one set of eight kept, named `IMP_*` in the reference's `__bss` address order, written
+by `+initialize` and read by all eight wrappers. This removed a live NULL-function-pointer
+call on every wrapper invocation. Ledger: 368, 412, 456, 796, 960 and 1048
+**control-flow-confirmed**; 564 and 680 are held at **signature-confirmed** by Finding 9's
+weaker evidence. The eight `__bss` slots and their single writer were read from the symbol
+table and the wrapper bodies, not printed instruction by instruction.
 
 ---
 
@@ -857,6 +877,11 @@ colon-less form, so our two sites disagree with each other as well as with the r
 calls `AIOPSSCL_setCondition` (no relocation targets 456 outside its own definition), so
 reproducing it is inert. Leave a comment saying so rather than silently "improving" it.
 
+**Outcome (Task 8):** Fixed: `+initialize` now caches `@selector(setCondition)` without the colon, with a
+comment recording that this is Apple's latent bug (the wrapper can never reach
+`-setCondition:`) and that it is inert because nothing calls `AIOPSSCL_setCondition`.
+Ledger: 0 **control-flow-confirmed**.
+
 ---
 
 **Finding 4 — `+initialize` returns `id`, not `void`.**
@@ -877,6 +902,9 @@ and the body falls off the end.
 
 **Disposition:** fix. `+ (id)initialize` … `return self;`. (`IOPortSession`'s
 `+initialize` is already `+ (id)` in our header and already returns `self`, and matches.)
+
+**Outcome (Task 8):** Fixed in both `.h` and `.m`; `return self;` added. Ledger: 0
+**control-flow-confirmed**.
 
 ---
 
@@ -912,6 +940,15 @@ is allocated per port entry (`-[IOPortSession acquirePort:sleep:]` at 3052-3066)
 Declare the six real ivars with the reference's names and types and replace the raw
 casts; `cond_interlock`/`sleep_interlock` need a `typedef struct { unsigned int locked; }`
 to reproduce the `{?="locked"I}` encoding.
+
+**Outcome (Task 8):** Fixed. `cond_interlock` (+4), `conditionVar` (+8), `sleep_interlock` (+12),
+`interuptable` (+16), `want_lock` (+17) and `waiting` (+18) are declared, `instance_size`
+becomes 20, and every raw `*(int *)((char *)self + N)` cast in the file is replaced by the
+named ivar — ending the out-of-bounds writes at `self+0x10/0x11/0x12`. The two interlocks
+use a `typedef struct { unsigned int locked; } AIOPSSCLInterlock;` to reproduce the
+`{?="locked"I}` encoding; **the typedef name is invented**, since the reference struct is
+anonymous. This is `__OBJC` metadata and lies inside no function extent, so it sets no
+ledger status of its own.
 
 ---
 
@@ -965,6 +1002,9 @@ mislead the next reader into "completing" a method that is already complete. Del
 `:140-144`. This is a comment-accuracy fix, not a code change, and the function should be
 recorded as matching.
 
+**Outcome (Task 8):** Fixed (comment-only): the four `TODO` lines are gone and the body is
+`return [super free];`. Ledger: 520 was already **assembly-matched** and stays there.
+
 ---
 
 **Finding 7 — `-setCondition:` returns `self` and wakes one waiter; the `:506` stub does
@@ -1005,6 +1045,11 @@ returning `id`, and `return self;`. The behaviour the brief asked me to record p
 enough to write from these notes alone is: *store the argument into `conditionVar` (offset
 8), then `thread_wakeup_prim(&self->conditionVar, 1, 0)`, then return `self`.* Note it
 takes no interlock — the caller is expected to hold the lock.
+
+**Outcome (Task 8):** Fixed: `- setCondition:(int)` stores `conditionVar`, calls
+`thread_wakeup_prim(&conditionVar, 1, 0)` and returns `self`; no interlock is taken.
+Ledger: 484 **assembly-matched** — all 35 bytes of the reference body are printed above and
+the repaired source reproduces them statement for statement.
 
 ---
 
@@ -1061,6 +1106,10 @@ acquire `cond_interlock` (offset 4) the same way, store the argument into `condi
 (offset 8), release `cond_interlock`, release `sleep_interlock`, tail-call
 `AIOPSSCL_unlock(self)` and return its result.*
 
+**Outcome (Task 8):** Fixed: `- unlockWith:(int)` ends `return AIOPSSCL_unlock(self);`. Ledger: 712
+**assembly-matched** — all 84 bytes are printed above, including both test-and-set spins,
+the `conditionVar` store, both releases and the direct `call _AIOPSSCL_unlock`.
+
 ---
 
 **Finding 9 — `-unlock` returns `id`, and so do `AIOPSSCL_unlock` and
@@ -1076,6 +1125,14 @@ acquire `sleep_interlock`, `thread_wakeup_prim(&conditionVar, 1, 0)`, clear `wan
 
 **Disposition:** fix. `- unlock` returning `id`, `id AIOPSSCL_unlock(id)`,
 `id AIOPSSCL_unlockWith(id, int)`.
+
+**Outcome (Task 8):** Fixed in source — `-unlock`, `AIOPSSCL_unlock` and `AIOPSSCL_unlockWith` all
+return `id` — but **the evidence for it is a dangling cross-reference**. This finding defers
+to "Section 5", and Section 5 carries no `-unlock` disassembly; the change rests on the
+`@encode` string `@8@8:12` and on Finding 8's printed `retn` comment at 795, not on any
+instruction stream quoted in this document. The ledger records that honestly: 564, 592 and
+680 are **signature-confirmed**, not `control-flow-confirmed`, because a type string is
+signature evidence and nothing more. 592–678 should be re-read with the binary open.
 
 ---
 
@@ -1118,6 +1175,10 @@ against that `void` prototype — a hard compile error independent of F1.
 **Disposition:** fix. `- (int)lock`, `int AIOPSSCL_lock(id)`. The body needs no change:
 `.m:180-244` already computes `result` and already carries the note at `:242`.
 
+**Outcome (Task 8):** Fixed: `- (int)lock` / `int AIOPSSCL_lock(id)` with `return result;`. This also
+repaired a hard compile error — `-lockWhen:` already assigned `AIOPSSCL_lock`'s result
+against a `void` prototype. Ledger: 796 and 824 **control-flow-confirmed**.
+
 ---
 
 **Finding 11 — `-lockWhen:` returns `int`, and `AIOPSSCL_lockWhen` returns it.**
@@ -1139,6 +1200,10 @@ zero, else return it.
 `void AIOPSSCL_lockWhen(id, int)`.
 
 **Disposition:** fix. `- (int)lockWhen:(int)condition`, `int AIOPSSCL_lockWhen(id, int)`.
+
+**Outcome (Task 8):** Fixed: `- (int)lockWhen:(int)` / `int AIOPSSCL_lockWhen(id, int)`; the two
+interrupt paths return `result` and the success path returns 0. Ledger: 1048 and 1080
+**control-flow-confirmed**.
 
 ---
 
@@ -1168,6 +1233,11 @@ method returns `esi` = `self`. `@encode` `@13@8:12i16c20`, so `intr` is a `char`
 line reordering is what makes the 84 bytes line up. Trivial, but it is a real byte
 difference, not compiler scheduling — the three stores are to distinct non-aliasing
 addresses and gcc 2.x does not reorder them.
+
+**Outcome (Task 8):** Fixed: the store sequence in `-initWith:intr:` is now `cond_interlock.locked,
+conditionVar, sleep_interlock.locked, want_lock, waiting, interuptable`. Ledger: 284
+**control-flow-confirmed** — 31 of the function's 84 bytes are printed above; the prologue
+and the discarded `[super init]` are described rather than printed.
 
 ---
 
@@ -1203,6 +1273,14 @@ category method list would not match.
 **Rationale:** confirms the full set of four is exactly as the brief presumed, including
 `requestType:sleep:`. Mechanical rename across 4 declarations, 4 definitions and 9 call
 sites; no behaviour change.
+
+**Outcome (Task 8):** Fixed: the four selectors were renamed across 4 header declarations, 4 definitions
+and all 9 call sites, and a whole-`PortServer.lksproj` grep for the old names now returns
+nothing. **No file outside the finding's own scope needed editing** — the underscored
+selectors appeared nowhere in `PDPseudo.m`, `PortServer.m`, `IOPortSessionKern.m`,
+`ttyiops.m` or `pdservd.tproj/`. Ledger: 1984, 2036, 2772, 3332, 3588 and 3824
+**control-flow-confirmed** (read from `__category[0]` / `__cat_inst_meth` /
+`__message_refs`).
 
 ---
 
@@ -1243,6 +1321,14 @@ requestEvent:data:, +0x24 enqueueEvent:data:sleep:, +0x28 dequeueEvent:data:slee
 +0x2c enqueueData:…, +0x30 dequeueData:…, then `[edi+4]`=block. The store *order* matches
 ours too (device, err, entry, then the ten IMPs in that sequence). No ivar-order
 corruption exists in the body; the defect is purely that `_priv` is undeclared.
+
+**Outcome (Task 8):** Fixed: `void *_priv;` is declared in the `@interface` (`instance_size` 8, offset
+4) and every `*(void **)((char *)self + 4)` / `*(int *)((char *)self + 4)` /
+`**(id **)((char *)self + 4)` replaced by `_priv`. This was the highest-impact repair in
+pass 1's range: previously every access ran one word past the end of a 4-byte object.
+`__OBJC` metadata; it sets no ledger status of its own. Note that
+`IOPortSessionKern.m`'s four accessors still reach the same field by raw cast — correct now
+that `_priv` sits at offset 4, but not spelled as the named ivar.
 
 ---
 
@@ -1290,6 +1376,16 @@ DriverKit `queue_head_t` if a matching declaration exists in this tree) and drop
 `DAT_00008190`, replacing its uses with `_portList.prev`. Zero-initialisation is
 equivalent — the symbol is in `__bss`.
 
+**Outcome (Task 8):** Partially fixed. `DAT_00008190` is deleted and `_portList` is now one
+`static struct { void *next; void *prev; }` head, with `+initialize` writing `prev` then
+`next`, the empty test against `&_portList`, both insert cases and the `releasePort` unlink
+all rewritten. **Not done: the declaration order.** This finding asserts the order is
+already right (`_portListLock` then `_portList`) while our source declares `_portList`
+first, so the finding is self-contradictory and part 1 left the order alone. If the
+reference `__bss` order (33160 `_portListLock`, 33164 `_portList`) is meant to be reproduced
+by declaration order, a one-line swap is still owed. Ledger: 1188 and 3332
+**control-flow-confirmed**.
+
 ---
 
 **Finding 17 — `objc_getClass("…")` should be ordinary class references.**
@@ -1319,6 +1415,12 @@ The three sites in scope load `__cls_refs` slots directly:
 have, and creates `__cstring` entries for the class names that the reference does not
 have either. Write `[[NXLock alloc] init]`, `[[AppleIOPSSafeCondLock alloc] init]`,
 `[[NXConditionLock alloc] initWith:1]` and let the compiler emit the class references.
+
+**Outcome (Task 8):** Fixed: `objc_getClass("NXLock")`, `objc_getClass("AppleIOPSSafeCondLock")` and
+`objc_getClass("NXConditionLock")` became `[[NXLock alloc] init]`,
+`[[AppleIOPSSafeCondLock alloc] init]` and `[[NXConditionLock alloc] initWith:1]`;
+`#import <machkit/NXLock.h>` added. Ledger: 1188, 1304 and 2772
+**control-flow-confirmed**.
 
 ---
 
@@ -1366,6 +1468,11 @@ apparent copy-paste bug and not ours. **This is the one finding in my scope wher
 fidelity and sanity disagree; `accept` with a comment is defensible if the project would
 rather not ship a knowingly broken `-init`.** I recommend fix + comment.
 
+**Outcome (Task 8):** Fixed: the body is `return [super free];` with a comment recording that this is
+Apple's apparent copy-paste bug, not ours, and that it is inert because nothing sends bare
+`-init` to an `IOPortSession`. Ledger: 1260 **assembly-matched** — all 41 bytes are printed
+above and the `__message_refs[11]` -> `"free"` load is unambiguous.
+
 ---
 
 **Finding 19 — `-[IOPortSession free]` returns `[super free]`, and builds the super
@@ -1405,6 +1512,11 @@ The reference returns nil (Object's `-free`), ours returns `self`.
 
 **Disposition:** fix. `return [super free];`.
 
+**Outcome (Task 8):** Fixed: the hand-rolled `objc_super` struct and its `objc_getClass("Object")` are
+gone; the body is `[self release]`, the conditional `IOFree(_priv, 0x34)`, then
+`return [super free];`. Ledger: 1760 **control-flow-confirmed** — this finding prints the
+parts of 1760 that matter, not the whole 88 bytes.
+
 ---
 
 **Finding 20 — `-[IOPortSession initForDevice:result:]`: the first argument is `char *`,
@@ -1442,6 +1554,11 @@ parity; on i386 it happens to compile because both are 4 bytes. The `return [sel
 form is not cosmetic — the reference genuinely returns whatever `Object`'s `-free`
 returns rather than a literal `nil`, and there is no `xor eax, eax` anywhere in the tail.
 
+**Outcome (Task 8):** Fixed: the signature is `- initForDevice:(char *)device result:(int *)result` in
+both header and implementation (they previously disagreed with each other), the `(char *)`
+cast at `IOGetObjectForDeviceName` is dropped, and `[self free]; return nil;` became
+`return [self free];`. Ledger: 1304 **control-flow-confirmed**.
+
 ---
 
 **Finding 21 — `conformsTo:` is passed `@protocol(PortDevices)`, not
@@ -1472,6 +1589,11 @@ though `IOPortSession.h:18-20` already declares `@protocol PortDevices` correctl
 `#define IOPortDevice PortDevices` alias at `:23` alone — it is not referenced from
 anything in my scope, and removing it is out of scope for a parity fix.
 
+**Outcome (Task 8):** Fixed: `conformsTo:@protocol(PortDevices)`. The `IOSerialDeviceProtocol` it
+replaced names a protocol that exists nowhere in the binary. The
+`#define IOPortDevice PortDevices` alias was left alone as this finding directs. Ledger:
+1304 **control-flow-confirmed**.
+
 ---
 
 **Finding 22 — `-[IOPortSession acquirePort:sleep:]` matches, with three inherited
@@ -1498,6 +1620,12 @@ reference copies `entry[0x1c]` into `entry[0x1d]` on a **freshly `memset`-zeroed
 so both are zero and the copy is a no-op. Our `:754` reproduces it. Keep it.
 
 **Disposition:** no finding of its own; fix via F12/F16/F17/F25.
+
+**Outcome (Task 8):** No change of its own; repaired through Findings 12, 16, 17 and 25. The
+`entry[0x1d] = entry[0x1c]` copy on the freshly `memset`-zeroed block was **kept**, as this
+finding instructs. Ledger: 2772 **control-flow-confirmed** — the 560-byte body was traced
+block by block and agrees throughout, but was not transcribed instruction by
+instruction.
 
 ---
 
@@ -1536,6 +1664,13 @@ behaviour for any caller that passes 0 — and `__message_refs` 25476 shows
 **Disposition:** fix. `- (int)acquireAudit:(BOOL)sleep`, forwarding it. Same finding
 covers `- (int)acquire:(BOOL)sleep` at `.h:60` / `.m:202`, currently `(int)sleep`.
 
+**Outcome (Task 8):** Fixed: `- (int)acquireAudit:(BOOL)sleep` forwards to `acquirePort:1 sleep:sleep`
+and `- (int)acquire:(BOOL)sleep` likewise; the hardcoded `sleep:1` is gone. Both existing
+senders (`ttyiops.m`, `IOPortSessionKern.m`) already passed an argument, so no foreign call
+site changed. Ledger: 1932 **assembly-matched** — all 49 bytes are printed above. 1984
+`-acquire:` is held at **control-flow-confirmed** instead: Findings 12 and 25 also touch it
+and both rest on weaker evidence.
+
 ---
 
 **Finding 24 — five methods declared `void` in our source return `int` in the
@@ -1562,6 +1697,12 @@ comment at `:394` saying "Error case - return without modifying state".
 never initialised, and `setState:mask:`/`executeEvent:data:` are how the tty layer learns
 that the port went away mid-call. Dropping them is a behaviour change, not just a
 signature change.
+
+**Outcome (Task 8):** Fixed: `release` (-706 when `_priv` is NULL, else 0), `setState:mask:`,
+`watchState:mask:`, `executeEvent:data:` and `requestEvent:data:` now return the forwarded
+IMP's result or the session error code; `watchState:mask:` uses the same
+re-read-`_priv`-on-error shape confirmed for `dequeueData:…`. Ledger: 2036, 2104, 2188, 2308
+and 2364 **control-flow-confirmed** — per-method addresses were cited, not full streams.
 
 ---
 
@@ -1609,6 +1750,14 @@ al` at 2427/2447, 2515/2535, 2603/2623, 1938/1947, 1990/1999, 2787/3210, 3599, 3
 that `dequeueData:…` uses `I` (unsigned int) while `enqueueEvent:…` uses `L` (unsigned
 long) — the original's own types were inconsistent, so copy the table above literally
 rather than picking one.
+
+**Outcome (Task 8):** Fixed: the header's state/event methods moved to `unsigned long` /
+`unsigned long *`, the two data buffers to `char *`, the two transfer counts left
+`unsigned int` / `unsigned int *`, and **every** `sleep:` argument to `BOOL` (`c`). The
+`__meth_var_types` table above was copied literally, including its own `L` vs `I`
+inconsistency. Ledger: 2104, 2160, 2188, 2264, 2308, 2364, 2420, 2508, 2596, 2688, 2772,
+3588 and 3824 **control-flow-confirmed**, and it is this finding that holds 1984 and several
+of the others below `assembly-matched`.
 
 ---
 
@@ -1660,6 +1809,10 @@ matches `:1002-1130` including all four `-706` exits, the `-703` lock-failure ex
 `unlock_value` computation (2 if `entry[0x1d]`, else `entry[0x1c] != 0`), and the
 `lockWhen:1`/`unlock` epilogue.
 
+**Outcome (Task 8):** Fixed: `- (int)getType:(int)type sleep:(BOOL)sleep`; the three `*type`
+dereferences became `type`, and `requestType:sleep:` passes `type` rather than `&type`.
+Ledger: 3588 and 3824 **control-flow-confirmed**.
+
 ---
 
 **Finding 13 — the methods are in the wrong order in both files.**
@@ -1708,6 +1861,12 @@ Ours has `acquire:` before `acquireAudit:`, `name`/`locked` after `release`, and
 **Rationale:** purely mechanical and behaviour-free, but nothing else in the ledger can
 line up on address until it is done — text order *is* the function layout.
 
+**Outcome (Task 8):** Fixed in both files: the eight C wrappers moved inside `@implementation`, each
+immediately ahead of the method it forwards to, and both classes' methods reordered to the
+reference's ascending IMP order (`PDPseudo`'s equivalent is Finding 33). **This sets no
+ledger status.** Method text order is a link-order property observable only in a built image,
+and there is no compiler in this tree; no function extent carries this finding.
+
 ---
 
 ### `PDPseudo.m`
@@ -1735,6 +1894,9 @@ method context.
 This is the `PDPseudo.m` counterpart of part 1's Finding 1 (`AppleIOPSSafeCondLock.m`)
 and of Finding 54 below (`IOPortSessionKern.m`). Three of the six files in this
 `lksproj` currently fail to compile.
+
+**Outcome (Task 8):** Repaired ahead of the fix pass by Task 7 (`9d005a26`). Brace delta is `+0`
+today.
 
 ---
 
@@ -1764,6 +1926,12 @@ the third piece of evidence.
 declared in `Default.table`'s `"Class Names"` and cannot be instantiated by DriverKit
 unless it descends from `IODevice`. The protocol adoption is what makes
 `+[IOPortSession iopsServerIoctlCommand:data:]`'s `conformsTo:` scan (6162) find it.
+
+**Outcome (Task 8):** Fixed: `@interface PDPseudo : IODevice <PortDevices>` with
+`#import <driverkit/IODevice.h>` replacing `<objc/Object.h>`. Ledger: 4400
+**assembly-matched** — 4400 was re-read in full after the edit and 4477 loads
+`PDPseudo.super_class`, which is what a plain `[super …]` against an `IODevice` superclass
+emits.
 
 ---
 
@@ -1815,6 +1983,11 @@ hand where the source plainly said `[[PDPseudo alloc] initFromDeviceDescription:
 one. This is the same shape as part 1's Finding 17, which covers the `objc_getClass`
 half.
 
+**Outcome (Task 8):** Fixed: `[[PDPseudo alloc] initFromDeviceDescription:deviceDescription]`, the
+selectorless third send deleted, `objc_getClass("PDPseudo")` replaced by the class name.
+Ledger: 4336 **assembly-matched** — 4336 was re-read in full (61 bytes, two `_objc_msgSend`,
+class from `__cls_refs`, `test eax,eax` then 0/1).
+
 ---
 
 **Finding 30 — six of the constant-return methods are declared `(void)` but the
@@ -1855,6 +2028,16 @@ that gets no return value cannot tell.
 **Rationale:** highest-severity finding in `PDPseudo.m` after the syntax error — five
 methods currently return an indeterminate register to callers that test it.
 
+**Outcome (Task 8):** Fixed for **five** methods — `release`, `setState:mask:`, `watchState:mask:`,
+`executeEvent:data:` and `requestEvent:data:` are now `- (int)` returning `0xfffffd42`;
+`getState` and `nextEvent` keep their `return 0`. **This finding's title says "six"; there
+are five, and its own body agrees** (see Section 13). The numeric literal was kept rather
+than a symbolic name, because -702 is `IO_R_RESOURCE`, not `IO_R_UNSUPPORTED` (Section 13).
+Ledger: 4548 and 4560 **assembly-matched** — both were re-read in full and are the exact
+12-byte `55 89E5 B842FDFFFF 89EC 5D C3`. 4572, 4596, 4620 and 4632 are held at
+**control-flow-confirmed**: they were not re-read individually and rest on §5.1's statement
+that they share that byte string.
+
 ---
 
 **Finding 31 — nine `@encode` signatures in `PDPseudo` differ.** `PDPseudo.h:37-59`.
@@ -1886,6 +2069,13 @@ strings for all twelve shared selectors. That cross-check is itself confirmation
 the emitted stores are the same width, so nothing changes at runtime, but the encodings
 are what `conformsTo:` and the DriverKit parameter machinery read, and they should match
 `IOPortSession`'s byte for byte because the reference's do.
+
+**Outcome (Task 8):** Applied — all twelve `PortDevices` selectors in `PDPseudo.h` and `.m` now use the
+same spellings `IOPortSession.h` uses — but **not re-verified**: the declarations were
+compared against the `__meth_var_types` table quoted in this finding, not against a fresh
+read of the section. Ledger: 4584, 4608, 4644, 4656, 4668 and 4680 therefore stay
+**unexamined**. 4400 and 4548 carry stronger, independent evidence from Findings 32 and 30
+and are `assembly-matched`.
 
 ---
 
@@ -1919,6 +2109,10 @@ drop `struct objc_super` from the file.
 **Rationale:** same defect part 1 recorded as Finding 17; listed here because the fix
 touches `PDPseudo.m` and `PortServer.m` (three more sites: 5513, 5825, 6035) as well.
 
+**Outcome (Task 8):** Fixed: `[super initFromDeviceDescription:deviceDescription]`; `struct objc_super`
+and `<objc/objc-runtime.h>` are gone from the file. Ledger: 4400 **assembly-matched**, with
+Finding 28.
+
 ---
 
 **Finding 33 — `getState` and `setState:mask:` are declared in the wrong order.**
@@ -1936,6 +2130,10 @@ reference's order.
 **Disposition:** fix. **Rationale:** cosmetic on its own, but it is the only remaining
 ordering difference in the file and swapping two adjacent methods is free. Same class as
 part 1's Finding 13.
+
+**Outcome (Task 8):** Fixed: swapped in `.h` and `.m`, in its own commit (`1e23f5f1`, 14 insertions /
+14 deletions). **This sets no ledger status** — declaration order is a link-order property,
+not observable in either function's instruction stream.
 
 ---
 
@@ -1956,6 +2154,9 @@ that the reference implements as `cmp byte ptr [eax], 0` at 5183, site 2 is the
 **Disposition:** fix — replace each raw `0x00` with the two ASCII characters `\` `0`.
 **Rationale:** Task 7's whole purpose. The change is byte-for-byte reversible, restores
 the file to ASCII, and alters no semantics.
+
+**Outcome (Task 8):** Repaired ahead of the fix pass by Task 7 (`a48a9ba4`). `file(1)` now reports
+`PortServer.m` as ASCII text and the byte scan finds zero NULs.
 
 ---
 
@@ -1994,6 +2195,22 @@ being bit 0, which is exactly the bit `getIntValues:`/`setIntValues:` read and w
 (`IODevice`) + 352 (`ttyiops_state`), and `ttyiops.h` in our tree already declares a
 `ttyiops_state`, so the type exists. The hard-coded offsets are also what makes
 Finding 40 (`ttyiops_attachDevice`) hard to see.
+
+**Outcome (Task 8):** Applied in two halves. Part 2 applied the superclass (`@interface PortServer :
+IODevice`) but **could not** apply the `ttyiops_state state;` ivar, because
+`ttyiops_state` did not exist anywhere in this tree — this finding's rationale asserts that
+`ttyiops.h` already declares it, and that is wrong (Section 13). Part 3 then decoded the
+reference's ivar type string at address 27458, which names every field, cross-checked every
+derived offset against the disassembly (`[edi+0E8h]`, `[ebx+154h]`, `[ebx+158h]`,
+`[ebx+15Ch]`), declared `ttyiops_state` in `ttyiops.h` and gave `PortServer` its one ivar.
+**`instance_size` is now 616, not 264, so the out-of-bounds writes at `self+0x1f0` and
+`self+0x264` are gone**, and all three literal offsets in `PortServer.m` are replaced by
+`state.iops`, `state.is_post_loaded` and `&state`. Not re-read from `__OBJC` after editing;
+metadata, so it sets no ledger status. **Left undone:** `ttyiops.m` still addresses the same
+fields through roughly 120 literal byte offsets (`((unsigned char *)tp)[0x15c]`,
+`((id *)tp)[0xe8/4]`, …). No finding asks for that rewrite and it would swamp the pass's
+substantive repairs, so it was deliberately not done; those offsets are now *documented* by
+the type rather than unexplained.
 
 ---
 
@@ -2066,6 +2283,18 @@ the lock (4895, 4904). Ours issues six plus two.
 installed with seven wild function pointers, so the first `open` of `/dev/ttyd*` jumps
 into the middle of a function body. Largest behavioural finding in the file.
 
+**Outcome (Task 8):** Applied: the seven `extern int` function declarations are gone, the selector is
+the full twelve-part `addToCdevswFromDescription:open:close:read:write:ioctl:stop:reset:
+select:mmap:getc:putc:`, each argument is cast to `IOSwitchFunc`, and both selectorless
+sends are deleted. **Residual, still open:** the reference loads eight of the eleven
+pointers out of `ttyiops_devsw`'s fields (`mov ds:off_81xx`) where we pass the same eight
+functions by name. The values are identical; the spelling is not. Part 3 noted that
+`ttyiops_devsw` now exists in the same file so the spelling *could* be changed, but declined
+to overturn part 2's considered choice on part 2's own finding. **This is the one piece of
+Finding 36 that is not closed.** Ledger: 4692 **control-flow-confirmed** — 4692 was re-read
+in full after the edit and every send, push, store and branch is present and in order, but
+it is held below `assembly-matched` for exactly this spelling.
+
 ---
 
 **Finding 37 — `+[PortServer probe:]` issues five sends where the reference issues
@@ -2102,6 +2331,10 @@ and the 1/0 return (5105/5112).
 **Rationale:** same defect as Finding 29; the two selectorless sends are live undefined
 behaviour on the probe path.
 
+**Outcome (Task 8):** Fixed: the two selectorless sends are deleted, the guard is
+`portServerInit != nil`, and `objc_getClass` is replaced. **Not re-read after editing.**
+Ledger: 4952 **unexamined**.
+
 ---
 
 **Finding 38 — the TTY branch sets `deviceKind` to `"Port Device tty"`, not
@@ -2125,6 +2358,9 @@ the device advertises the same string as its kind so it can be found.
 enumeration and it is a one-word change. Ours also introduces no new string, so
 `__cstring` will match.
 
+**Outcome (Task 8):** Fixed: the TTY branch's `deviceKind` is now `"Port Device tty"`. **Not re-read
+after editing.** Ledger: 5128 **unexamined**.
+
 ---
 
 **Finding 39 — the "no free slot" log message is
@@ -2143,6 +2379,11 @@ not exist in the reference's `__cstring` at all (§5.1), and which lacks the tra
 **Disposition:** fix. **Rationale:** an invented string in a reconstruction is worse
 than a missing one; it will show up as a spurious `__cstring` entry in any future
 byte-comparison of the built driver.
+
+**Outcome (Task 8):** Fixed: the message is now
+`IOLog("ttyiops: Couldn't create any more tty instances\n")`, so `__cstring` no longer gains
+an entry the reference does not have. **Not re-read after editing.** Ledger: 5128
+**unexamined**.
 
 ---
 
@@ -2184,6 +2425,14 @@ does at `:274`.
 **Rationale:** stack-corrupting mismatch between caller and callee. The prototype lives
 in `ttyiops.h` and the definition in `ttyiops.m:206`, both outside my scope; I record the
 call site, which is inside it, and flag the other two for whoever owns `ttyiops.m`.
+
+**Outcome (Task 8):** Fixed, in two steps. Part 2 made the call site one-argument but cast it
+`(struct tty *)`, which was **wrong** — `+0x108` is `&self->state`, and the offsets the
+callee writes (0x120, 0xF4, 0x14C) are all past the end of `struct tty`'s 232 bytes. Part 3
+corrected the cast to `ttyiops_state *` on the evidence of the reference's ivar `@encode` at
+27458 (Section 13), and the call site is now simply `ttyiops_attachDevice(&state);`.
+Declaration, definition and call site all agree. **Not re-read after editing.** Ledger: 5128
+**unexamined**.
 
 ---
 
@@ -2235,6 +2484,12 @@ imports `<string.h>`.
 Note for the ledger: as in drvBPF, a `strcmp` call cannot be *proved* to compile back to
 `repe cmpsb` without a compiler, so these three functions should be held at
 `control-flow-confirmed` rather than advanced to `assembly-matched`.
+
+**Outcome (Task 8):** Fixed, five sites: all five are now `strcmp(x, "…") == 0` and the
+`cmp_len`/`match`/`p1`/`p2` locals are gone from three methods. Ledger: 5620 and 5896
+**control-flow-confirmed** — exactly as this finding instructs, a `strcmp` call cannot be
+shown to compile back to `repe cmpsb` without a compiler. 5128 is **unexamined** for
+Findings 38/39/40's sake.
 
 ---
 
@@ -2310,6 +2565,19 @@ driver after Finding 36, and the reason five of the ten class methods in §7.3 c
 have no caller. Moving the three functions into `PortServer.m` also restores the
 `__module_info` layout.
 
+**Outcome (Task 8):** Deferred by part 2 — writing the bodies in `PortServer.m` alone would have
+produced duplicate external definitions and deleting them from `ttyiops.m` was outside part
+2's file scope — and then **applied in full by part 3**, which owns both files.
+`portServeropen`, `portServerclose` and `portServerioctl` are deleted from `ttyiops.m` and
+rewritten in `PortServer.m` with the reference bodies, all three `static`, matching the
+reference's `local` binding. `portServerclose`'s signature widened to the four-argument
+`open_close_fcn_t` shape. **`/dev/rpski*` now reaches the kernel session layer**, and the
+five class methods part 2 reported as callerless (`iopsKernOpen:`, `iopsKernClose:`,
+`iopsServerIoctlCommand:data:`, `iopsKernInitIoctl:data:`, `iopsKernMsgIoctl:data:`) all
+have call sites. Ledger: 6112, 6212 and 6312 **control-flow-confirmed** — all three streams
+were read in full, but *before* the bodies were written rather than after, and the
+`strcpy`/`IOSetUNIXError` argument marshalling is compiler-dependent.
+
 ---
 
 **Finding 43 — `forParameter:` and `count:` are typed `int` in both parameter
@@ -2339,6 +2607,13 @@ the casts.
 **Rationale:** the casts currently make a real type error invisible; the encodings should
 match anyway. Same shape as drvBPF's Finding 4.
 
+**Outcome (Task 8):** Fixed: both accessors take `forParameter:(IOParameterName)parameterName`, the
+getter `count:(unsigned int *)count` and the setter `count:(unsigned int)count`; the
+internal casts are deleted. Ledger: 5620 and 5896 **control-flow-confirmed**. Part 2 read
+5620 in full and would have called its non-`strcmp` half `assembly-matched`, and read 5896
+to 5962 (`cmp eax,1` at 5931 confirms the setter's `count` is by value), but both are held
+lower by the Finding 41 rewrite inside them.
+
 ---
 
 **Finding 44 — `-[PortServer state]` returns `int`; the reference returns a
@@ -2353,6 +2628,12 @@ Ours returns `(int)((char *)self + 0x108)`.
 **Disposition:** fix, together with Finding 35 — `- (ttyiops_state *)state { return &state; }`.
 **Rationale:** encoding-only at the instruction level, but the `int` return is what
 forces the pointer cast, and the same cast is what obscured Finding 40.
+
+**Outcome (Task 8):** Deferred by part 2 with Finding 35's ivar — declaring it `void *` would have
+traded one wrong encoding for another — and applied by part 3 once `ttyiops_state` existed:
+`- (ttyiops_state *)state { return &state; }`, replacing
+`- (int)state { return (int)((char *)self + 0x108); }`. **Not re-read after editing.**
+Ledger: 6096 **unexamined**.
 
 ---
 
@@ -2378,6 +2659,14 @@ consistent only once that move happens. `_ttyiopsMap` may also be needed by `tty
 I did not audit `ttyiops.m` and cannot confirm from the reference which file the
 `_ttyiopsMap` references outside 4692–6576 come from.
 
+**Outcome (Task 8):** Five of six applied: `static` was added to `_ttyiopsMapLock`, `_pseudoUnit`,
+`_nsPortKernIdMap`, `_numSessions` and `_mapLock`, each confirmed by grep to have no
+reference outside its defining file. **`_ttyiopsMap` is deliberately left non-`static`** —
+`ttyiops.m` reads it in ten places through `ttyiops.h`'s `extern`, so `static` is a link
+error today, exactly as this finding's own caveat says. Part 3 hit the same wall on
+`_portServerMajor` (Section 14) and made the same call. **Both acceptances are on data
+symbols, which have no ledger entry**, so they are recorded here and nowhere else.
+
 ---
 
 **Finding 46 — `PortServer.m:101` has a raw newline inside a string literal.**
@@ -2395,6 +2684,8 @@ character"). The reference's string is `__cstring` 16183,
 **Rationale:** compile blocker. Task 7 should take this with the two NUL bytes; it is
 the same corruption (an escape sequence written as the byte it denotes) applied to `\n`
 instead of `\0`.
+
+**Outcome (Task 8):** Repaired ahead of the fix pass by Task 7 (`a48a9ba4`).
 
 ---
 
@@ -2424,6 +2715,11 @@ and drop the `extern`.
 `@protocol(PortDevices)` form requires the `PortDevices` protocol declaration to be in
 scope, which `IOPortSession.h` should provide once Finding 21 lands.
 
+**Outcome (Task 8):** Fixed: `_protocols_102` is now `{ @protocol(PortDevices), 0 }`; the
+`extern Protocol *objc_protocol_PortDevices;` and the extra `&` are gone. **Not re-read
+after editing** — the change is to the data definition rather than to the 12-byte function.
+Ledger: 4940 **unexamined**.
+
 ---
 
 ### `IOPortSessionKern.m`
@@ -2447,6 +2743,14 @@ The category declaration itself, `@implementation IOPortSession (IOPortSessionKe
 at `:29`, is **correct** and needs no change — `__OBJC,__category[1]` names exactly this
 category on exactly this class, and the file name in `__module_info` is
 `IOPortSessionKern.m`.
+
+**Outcome (Task 8):** Applied in full — the largest repair in pass 2's range. All ten declarations in
+`IOPortSessionKern.h` and all ten in `IOPortSessionKern.m` are now `+`; the four accessors
+from 8512 stay `-`; all five existing send sites are class-directed. Ledger: 6576, 6792,
+6900, 6912, 7232, 7948, 8180 and 8432 **assembly-matched** — each was re-read in full after
+editing and §7.2's claim independently re-confirmed (6900, 6912, 7232, 8432, 7948, 8180 and
+6576 never reference `[ebp+arg_0]`; 6792 loads it at 6797 only to push it as the receiver at
+6820). 7312 and 7440 are **unexamined**: they were not re-read.
 
 ---
 
@@ -2492,6 +2796,15 @@ they are never called: `IODevice`'s parameter machinery looks up
 records the identical underscore prefix on the four `IOPortSession(Private)` methods —
 the two findings should be fixed together so the naming convention across the driver
 comes out consistent.
+
+**Outcome (Task 8):** Fixed: the four leading underscores are dropped, and the parameter types were
+also brought to the encodings this finding itself quotes (`char *` for the char pair,
+`IOParameterName` for the name, `unsigned int *` / `unsigned int` for get/set `count`) —
+slightly beyond the finding's literal disposition, recorded as such, and behaviour-neutral
+because the bodies only forward. Ledger: 8512 **assembly-matched** — re-read in full after
+editing: the `[self+4]` guard, the `*_priv` load, `-706` on either failure and a five-push
+forward. 8576, 8640 and 8704 are **unexamined**: this finding states they are the same
+61-byte shape but they were not re-read.
 
 ---
 
@@ -2557,6 +2870,15 @@ immediately.
 no counterpart in the reference at all, which a byte-level comparison of `__bss` would
 otherwise flag forever.
 
+**Outcome (Task 8):** Applied in full: one `static nsPortKernSlot _nsPortKernIdMap[64]` of
+`{ id session; int inUse; }` = 512 bytes, `_nsPortKernStateMap` deleted, every
+`_nsPortKernStateMap[i * 2]` became `map[i].inUse`, every
+`*(id *)((char *)_nsPortKernIdMap + i * 8)` became `map[i].session`, and both `bzero`
+lengths became `sizeof _nsPortKernIdMap`. **This removes the 256-byte-array /
+512-byte-`bzero` overrun.** Ledger: 6576, 6792, 6912, 7232 and 8432 **assembly-matched** —
+all five re-read after editing, with the `*8` stride and the `+0`/`+4` field split
+unambiguous in each. 7312 and 7440 stay **unexamined** for Finding 48's reason.
+
 ---
 
 **Finding 51 — `_numSessions` is initialised to −1; the reference leaves it
@@ -2576,6 +2898,11 @@ before `iopsKernInit:` runs: `+iopsKernFree` (6802, `cmp ds:_numSessions, ebx; j
 **Rationale:** small, but it is a section-placement difference the binary states
 directly, and it changes two branch outcomes. The `/* -1 if not initialized */` comment
 should go with it.
+
+**Outcome (Task 8):** Fixed: `static int _numSessions;` with no initialiser, so it lands in `__bss` at
+0 as the reference does. Ledger: 6792 and 6912 **assembly-matched** — both branch on
+`cmp ds:_numSessions, ebx` with `ebx = 0`, so the code now runs one iteration over slot 0
+before `iopsKernInit:`, as the reference does.
 
 ---
 
@@ -2641,6 +2968,18 @@ the `msg->total += n` / `msg->ubuf += n` / `msg->remaining -= n` triple, and deq
 Dequeue reuses the buffer from its start on every pass (`edi` set once at 8241) and
 enqueue advances `edi` by the transfer count (8120) — our source has both.
 
+**Outcome (Task 8):** Fixed, and one step further on the enqueue side. Both loops now continue while the
+session handed back everything it was asked for (`while (transferCount == chunkSize)`, with
+`chunkSize` initialised to 0 so the first pass still runs). **This finding's claim that our
+counter-based refill test and the reference's pointer test agree on every reachable input is
+false once the loop condition is corrected** (Section 13): above 2048 bytes a full 0x800
+pass would take the `else` branch and call `enqueueData:` with `bufferSize:0` where the
+reference refills. The reference's pointer test was therefore transcribed literally —
+`kernelBufPtr` starts one past the end of the buffer and the refill test is
+`kernelBufPtr >= kernelBuffer + sizeof kernelBuffer` — with `chunkSize -= transferCount` as
+the `sub ebx, [var_804]` fallback. Ledger: 7948 and 8180 **assembly-matched**, both re-read
+in full after editing.
+
 ---
 
 **Finding 53 — `+iopsServerIoctlCommand:data:` writes `*(int *)data` only when a
@@ -2685,6 +3024,12 @@ as the `conformsTo:` argument (7157, `offset stru_68D4` = 26836 — see part 1's
 **Rationale:** small, concrete, and it is on the path `pdservd` uses to enumerate port
 devices.
 
+**Outcome (Task 8):** Fixed: the store happens only on the `conformsTo:` success path and the not-found
+path returns 6 with `data` untouched. Ledger: 6912 **assembly-matched** — re-read in full;
+`mov [edx], ebx` at 7091 is reachable only from the success branch, and the `< -1 -> -1`
+clamp, the -704 sentinel, the `0x40547001` free-slot path and the `[_mapLock unlock]` on
+every exit are all present.
+
 ---
 
 **Finding 54 — `IOPortSessionKern.m:472` has a raw newline inside a string literal; the
@@ -2704,6 +3049,8 @@ Byte 0x0A between the quotes, confirmed with `od -c`. The reference's string is
 (`AppleIOPSSafeCondLock.m` is the fourth, part 1's Finding 1). **Nothing in this driver
 compiles today**, which is worth stating plainly because it bounds what any later
 verification step can claim.
+
+**Outcome (Task 8):** Repaired ahead of the fix pass by Task 7 (`7c7f4c19`).
 
 ---
 
@@ -2738,6 +3085,10 @@ here because it is ten more sites across all three of my files, and because the
 compile-time class reference plus an instance-method selector would at least be visible
 to the reader).
 
+**Outcome (Task 8):** Fixed: all ten sites in `PDPseudo.m`, `PortServer.m` and `IOPortSessionKern.m`
+are gone, and a grep for `objc_msgSend|objc_getClass|objc_super` over those three files now
+returns nothing. Ledger: as the individual functions above.
+
 ---
 
 ### Cross-file
@@ -2757,6 +3108,12 @@ than as a change in its own right.
 **Rationale:** grouped here so Task 8 does not treat the header edits as five unrelated
 changes. Once bracket syntax replaces the hand-written sends, `<objc/objc-runtime.h>`
 can come out of all three files.
+
+**Outcome (Task 8):** Fixed: `<objc/objc-runtime.h>` removed from all three `.m` files;
+`<objc/Object.h>` replaced by `<driverkit/IODevice.h>` in `PDPseudo.h` and `PortServer.h`
+and added to `IOPortSessionKern.h`; `<driverkit/IODeviceParams.h>` added to
+`IOPortSessionKern.m` and `ttyiops.h` / `AppleIOPSSafeCondLock.h` / `IOPortSessionKern.h` to
+`PortServer.m`. Build-time only; it sets no ledger status.
 
 ---
 
@@ -2787,6 +3144,18 @@ extension are content, not stamps, and should match.
 **Honest limit:** see Section 8. I could not find any consumer of `"Support Dialin"` in this
 driver or anywhere in `src/`, so I cannot demonstrate that the capitalisation causes a
 behavioural difference. The case for fixing it is fidelity to the shipped table.
+
+**Outcome (Task 8):** Applied as specified: `"Version" = "5.00";` added, `Support DialIn` ->
+`Support Dialin`, the three trailing comments corrected to `ttyd*` / `cu*`, `.rtf` ->
+`.rtfd`, and `Localizable.strings` line 1 rekeyed to `"PortServer"`. The transposed
+dialin/dialout comments are preserved as Apple wrote them. **`"Driver Version"` is
+deliberately not added** — it embeds Apple's 1998 build host, date and project number, and
+reproducing it verbatim would misstate provenance; drvBPF made the same call for
+`_BPF_VERS_STRING`. A diff against the reference bundle now shows that one line as the only
+difference in `Default.table`, and `Localizable.strings` as byte-identical. **No behavioural
+consequence is claimed for the `Support Dialin` capitalisation** — the string occurs in no
+file under `src/` and in none of the three shipped binaries. **This acceptance has no ledger
+entry** (config data, not a function) and is recorded only here.
 
 ---
 
@@ -2830,6 +3199,13 @@ stands, our table is read as pairs anyway and yields garbage codes for every rat
 **Disposition: fix.** Replace with a `struct speedtab ttyiops_speeds[]` carrying
 the 23 pairs above verbatim. `struct speedtab` is declared in `<sys/tty.h>`.
 
+**Outcome (Task 8):** Fixed: the flat `int[24]` is replaced by the 23 `{ sp_speed, sp_code }` pairs;
+the invented rates (7200, 14400, 28800, and 76800-as-a-speed) are gone and 460800, 921600
+and 1843200 are restored. Ledger: the table's sole consumer lies inside 13040, which is
+**assembly-matched** on Findings 62 and 63's evidence; the 184 data bytes themselves were
+taken from this finding's decode rather than re-read from the file image, so this finding's
+own evidence is no stronger than `control-flow-confirmed`.
+
 ---
 
 ### Finding 59 — `_dtrDownDelay` is absent; the 2-second DTR-down delay is inlined
@@ -2861,6 +3237,11 @@ static const struct timeval dtrDownDelay = { 2, 0 };
 and use `target_time.tv_sec += dtrDownDelay.tv_sec; target_time.tv_usec +=
 dtrDownDelay.tv_usec;`. Runtime behaviour is unchanged; this is a fidelity fix.
 
+**Outcome (Task 8):** Fixed: `static const struct timeval dtrDownDelay = { 2, 0 };` at file scope, and
+`ttyiops_init` adds both halves. Runtime behaviour unchanged. Evidence:
+`control-flow-confirmed` — 12659–12698 was re-read. Ledger: 12260 is
+**intentional-mismatch**, on Finding 80's account rather than this one.
+
 ---
 
 ### Finding 60 — `ttyiops_devsw` is absent from our source entirely
@@ -2880,6 +3261,15 @@ cannot register a character device.
 **Disposition: fix.** Add the definition exactly as written in Section 5.7, at file
 scope in `ttyiops.m`, before `portServeropen`. Coordinate with part 2's finding
 on `_portServeropen`, which is what consumes it.
+
+**Outcome (Task 8):** Applied, but **in `PortServer.m` rather than `ttyiops.m`, deliberately.** The
+symbol is `local` and its consumers are the three wrappers Finding 42 moves into
+`PortServer.m`, so a `static` definition in `ttyiops.m` would be unreachable from them;
+§5.7's own "honest limit" flags this exact ambiguity and Finding 42's `__module_info`
+evidence resolves it. The 14 slots are §5.7's decode, spelled with `conf.h`'s own `eno_*`
+macros, `(reset_fcn_t *)nulldev` for `d_reset`, literal `0` for `d_ttys` and `D_TTY` for
+`d_type`. Data transcribed from the relocation table, not re-read from the file image; it
+sets no ledger status.
 
 ---
 
@@ -2943,6 +3333,16 @@ the guard and the map store, and pass `(struct termios *)((char *)tp + 0x120)` t
 `termioschars`. The map store belongs in `PortServer.m` — flag it to whoever owns
 part 2's `initFromDeviceDescription:` finding rather than silently deleting it.
 
+**Outcome (Task 8):** Fixed, with part 2's cast corrected. `ttyiops.h`, `ttyiops.m` and `PortServer.m`
+now all agree on `void ttyiops_attachDevice(ttyiops_state *state)` called as
+`ttyiops_attachDevice(&state)`. **This finding's own spelling, `struct tty *`, is wrong**
+(Section 13): the offsets the callee writes — 0x120 `it_in`, 0xF4 `it_out`, 0x14C
+`dtr_down_time` — are all past the end of `struct tty`'s 232 bytes. The body drops the
+`portServerObj == NULL || unit > 25` guard and the `_ttyiopsMap[unit] = portServerObj` store
+(which stays in `PortServer.m`, where the reference puts it) and passes `&state->it_in` to
+`termioschars`, which the reference's `lea esi,[ebx+120h]` settles. Ledger: 8768
+**assembly-matched** — re-read in full after editing.
+
 ---
 
 ### Finding 62 — `c_cc[VSTART]`/`c_cc[VSTOP]` are indexed as `c_cc[7]`/`c_cc[8]`
@@ -2978,6 +3378,10 @@ program `^C` as the XOFF character.
 
 **Disposition: fix.** Use `t->c_cc[VSTART]` and `t->c_cc[VSTOP]` at all four
 sites (`<sys/termios.h>` defines them as 12 and 13).
+
+**Outcome (Task 8):** Fixed, four sites: `t->c_cc[7]`/`[8]` -> `t->c_cc[VSTART]`/`[VSTOP]`. Ledger:
+13040 **assembly-matched** — the full stream was read and compared statement by statement
+against the finished function.
 
 ---
 
@@ -3024,6 +3428,10 @@ and out to userland as an `errno`.
 **Disposition: fix.** Replace all six with `return 0x16;`. Only the data-rate
 branch at line 1381 is already correct.
 
+**Outcome (Task 8):** Fixed, five sites: the char-size, parity, stop-bit, flow-control and XON/XOFF
+branches all `return 0x16;`. **The last of the five was returning `result`, which is 0 at
+that point — it reported success on failure.** Ledger: 13040 **assembly-matched**.
+
 ---
 
 ### Finding 64 — `ttyiops_param` is called only when `ttioctl` returns > 0
@@ -3068,6 +3476,11 @@ hardware — the reference never does that.
 the `ttyiops_optimiseInput` call, and only the `ttioctl > 0` path may call
 `ttyiops_param` first.
 
+**Outcome (Task 8):** Fixed: the `l_ioctl >= 0` path jumps past the `ttyiops_param` call and only the
+`ttioctl > 0` path calls it. Ledger: 10676 is **intentional-mismatch**, on Finding 67's
+account; this finding's own evidence is `assembly-matched` — the full 636-byte stream was
+read and every branch target in the epilogue region checked against the finished labels.
+
 ---
 
 ### Finding 65 — `l_ioctl` is called through a NULL guard the reference does not have
@@ -3096,6 +3509,10 @@ fallback happens to reach the same `< 0` branch, so this is fidelity only — bu
 it is the same pattern as F79 and should be fixed with it.
 
 **Disposition: fix.** Call unconditionally.
+
+**Outcome (Task 8):** Fixed: `l_ioctl` is now called unconditionally, matching 10824–10850. Ledger:
+10676 **intentional-mismatch**, per Finding 67; this finding's own evidence is
+`assembly-matched`.
 
 ---
 
@@ -3130,6 +3547,11 @@ whatever `ttyiops_convertFlowCtrl` set visible to the next `TIOCGETA`.
 
 **Disposition: fix.** Store into `error` and `goto cleanup_and_return`.
 
+**Outcome (Task 8):** Fixed: `ttyiops_control_ioctl`'s result is stored into `error` and jumps to the
+shared cleanup, so the `t_iflag &= ~0xE00` and `t_cflag &= ~0x30000` run on that exit too.
+Ledger: 10676 **intentional-mismatch**, per Finding 67; this finding's own evidence is
+`assembly-matched`.
+
 ---
 
 ### Finding 67 — the `tp == NULL` path also falls through the cleanup, and dereferences NULL
@@ -3162,6 +3584,14 @@ NULL dereference. Recorded here so the divergence is deliberate and documented
 rather than an oversight; the ledger entry for `_ttyiops_ioctl` should carry it
 as an intentional mismatch.
 
+**Outcome (Task 8):** **Accepted, not fixed.** Our early `return 6;` on `tp == NULL` stays. Reproducing
+the reference here would import a reachable kernel NULL dereference: it jumps from 10776
+into the epilogue at 11279 with `edi == 0` and faults on `[edi+8Ch]` on any ioctl against an
+empty `_ttyiopsMap` slot. Ledger: 10676 **intentional-mismatch**, reviewer Pat Raynor, with
+that reason recorded on the entry. The rest of 10676 (Findings 64, 65, 66 and 68)
+transcribes the reference, which is why the entry was walked up through `assembly-matched`
+before being accepted.
+
 ---
 
 ### Finding 68 — `TIOCSETA*` validation reads `data[7]` instead of `data[0x1c]`
@@ -3188,6 +3618,10 @@ transcription slip rather than a deliberate choice.
 
 **Disposition: fix.** `((char *)data)[0x1c]`.
 
+**Outcome (Task 8):** Fixed: `((char *)data)[7]` -> `((char *)data)[0x1c]`, matching
+`cmp byte ptr [ecx+1Ch], 0FFh` at 10988. Ledger: 10676 **intentional-mismatch**, per
+Finding 67; this finding's own evidence is `assembly-matched`.
+
 ---
 
 ### Finding 69 — the same `data[7]` slip in `ttyiops_control_ioctl`
@@ -3212,6 +3646,11 @@ if (((char *)data)[7] == -1 || ((char *)data)[0x1d] == -1) {
 
 **Difference and disposition.** Identical to F68: `[7]` must be `[0x1c]`.
 **fix.**
+
+**Outcome (Task 8):** Fixed: the same edit in `ttyiops_control_ioctl`, matching
+`cmp byte ptr [esi+1Ch], 0FFh` at 10591. **10456's stream was not read** — the four
+instructions quoted here are unambiguous, but nothing more than that is claimed. Ledger:
+10456 **unexamined**.
 
 ---
 
@@ -3258,6 +3697,12 @@ line discipline is therefore never told that carrier is up on a fast open, so
 both conditions fall *into* the `l_modem` call, and only the
 `carrier-absent && blocking` case skips it.
 
+**Outcome (Task 8):** Fixed: both the `dev & 0x20` and the `getState & 0x40` tests now fall *into*
+`(*linesw[tp->t_line].l_modem)(tp, 1)`, and only the carrier-absent blocking case skips it.
+**This is the fix that makes `TS_CARR_ON` get set on a fast open.** Ledger: 8888
+**assembly-matched** — the full 594-byte stream was read, including the 9164–9246 region
+this edit rewrites.
+
 ---
 
 ### Finding 71 — `ttyiops_open`'s CLOCAL test indexes the wrong halfword
@@ -3283,6 +3728,9 @@ is written correctly elsewhere in the file (`ttyiops.m:270`, `:289`, `:324`,
 signed test, not an explicit `& 0x8000`.
 
 **Disposition: fix.** `if (((short *)tp)[0x94/2] >= 0) { /* wait for DCD */ }`.
+
+**Outcome (Task 8):** Fixed: `((short *)tp)[0x94/4] & 0x8000` -> `((short *)tp)[0x94/2] >= 0`. The old
+expression read byte offset 74, not 148. Ledger: 8888 **assembly-matched**.
 
 ---
 
@@ -3311,6 +3759,10 @@ flag byte used consistently everywhere else in this file (`ttyiops.m:316`, `:442
 written, the RTS re-assert after a read is driven by a byte of queue state.
 
 **Disposition: fix.** `((unsigned char *)tp)[0x15c] & 8`.
+
+**Outcome (Task 8):** Fixed: `[0x57]` -> `[0x15c]`, matching `test byte ptr [ebx+15Ch], 8` at 10083.
+Ledger: 9972 **control-flow-confirmed** — only the tail (10061–10143) was read, not the
+whole 172-byte function.
 
 ---
 
@@ -3341,6 +3793,10 @@ if (((unsigned char *)tp)[0x57] & TTY_STATE_RXFLOWOFF) {
 byte offset is wrong.
 
 **Disposition: fix.** All three to 0x15C, and correct the two `#define` comments.
+
+**Outcome (Task 8):** Fixed, four sites plus two `#define` comments: `[0x57]` -> `[0x15c]` at the
+RX-suspended test, the flow-off set, the flow-off test and the flow-off clear. Ledger: 14248
+**assembly-matched** — the full 309-byte stream was read.
 
 ---
 
@@ -3383,6 +3839,11 @@ if (buffer_space < 0x1a0)          transfer_size = buffer_space;
 if (outq_size   < transfer_size)   transfer_size = outq_size;
 ```
 
+**Outcome (Task 8):** Fixed: the dead `if/else` that assigned `outq_size` in both arms is now
+`if ((int)outq_size < (int)transfer_size) transfer_size = outq_size;`, so the transfer is
+`min(outq, space, 0x1A0)`. **This closes the 416-byte stack smash.** Ledger: 14952
+**assembly-matched** — re-read in full after editing.
+
 ---
 
 ### Finding 75 — `ttyiops_txFunc` passes a code address as the `timeout` delay
@@ -3411,6 +3872,10 @@ as the delay. The real delay is `((int *)tp)[0x158/4]`, i.e. the
 that is 2 ticks (~20 ms); `0x3B84` is 15236 ticks, over two minutes.
 
 **Disposition: fix.** `timeout((timeout_func_t)ttyiops_dcddelay, tp, ((int *)tp)[0x158/4]);`
+
+**Outcome (Task 8):** Fixed: `0x3b84` (the address of `_ttyiops_dcddelay`) replaced by
+`((int *)tp)[0x158/4]`. Ledger: 15316 **control-flow-confirmed** — 15490–15600 was read, not
+the whole 411-byte function.
 
 ---
 
@@ -3463,6 +3928,12 @@ unchanged; this restores 100 bytes of the translation unit and documents the
 upstream defect rather than silently "improving" on it. Do **not** move or widen
 the mask — that would change behaviour.
 
+**Outcome (Task 8):** Fixed: the ~100 bytes at 13722–13837 are restored, with a comment recording that
+`bits &= 6` on the line above makes the test identically false, so `TIOCSBRK`/`TIOCCBRK` are
+dead on shipped Rhapsody. The mask was not moved or widened. Ledger: 13676
+**assembly-matched** — the full 324-byte stream was read and both `enqueueEvent` argument
+lists reproduced.
+
 ---
 
 ### Finding 77 — `ttyiops_procEvent` discards event 0x53 rather than forwarding it
@@ -3502,6 +3973,10 @@ line discipline as an input character. Every other arm (0x5C, 0x59, 0x60, 0x68,
 **Disposition: fix.** Make 0x53 fall into the `event_type = 0` path along with
 everything below 0x53.
 
+**Outcome (Task 8):** Fixed: the `event_type == 0x53` arm now falls into the `event_type = 0` sink with
+everything below 0x53. Ledger: 14560 **assembly-matched** — the full 207-byte stream was
+read.
+
 ---
 
 ### Finding 78 — `ttyiops_waitForDCD` is defined twice; delete the stub
@@ -3525,6 +4000,11 @@ proceed on a port it has not acquired.
 and its trailing blank line). Keep the body at 1099 unchanged; the only edit it
 might want is a comment noting the `-0x2CD`/`-0x2BF` mapping. Deleting the stub
 also removes one of the two unclosed braces.
+
+**Outcome (Task 8):** Repaired ahead of the fix pass by Task 7; there is exactly one definition today
+and it is the complete body. **Nothing in the fix pass re-verified 12880 against the
+reference**, so the ledger leaves it **unexamined** rather than claiming credit for Task 7's
+deletion.
 
 ---
 
@@ -3555,6 +4035,21 @@ class of bug as F67).
 instructions the reference does not have; **accept** the `ttyiops_close` NULL
 check on the same grounds as F67, and record it as an intentional mismatch. Doing
 this as one sweep keeps the diff coherent.
+
+**Outcome (Task 8):** Ten of the eleven guards removed: `getData`'s `tp` and `portSession` guards and
+its `l_rint` slot test, `acquireSession`'s `tp` guard, `close`'s `l_close` slot test,
+`mctl`'s `tp` guard, `control_ioctl`'s `tp`/`data` guard, `convertFlowCtrl`'s
+`portSession`/`flags` guard, and `dcddelay`'s `l_modem` slot test; `attachDevice`'s went
+with Finding 61 and `ttyiops_ioctl`'s `l_ioctl` test with Finding 65. **One kept
+deliberately: `ttyiops_close`'s `if (tp == NULL) return 0;`**, exactly as this finding
+directs — the reference at 9558 falls through with `ebx == 0` into
+`or byte ptr [ebx+15Ch], 4`, a reachable kernel NULL dereference on close of an empty map
+slot. Ledger: 14248 and 13676 **assembly-matched**; 10352, 11592 and 15236 **unexamined**,
+their prologues never read; 9484 **intentional-mismatch**, reviewer Pat Raynor, with that
+reason recorded on the entry. **A twelfth guard the report pass missed is still in place:**
+`ttyiops_init`'s `if (tp == NULL) return;`. It is not in this finding's table, so part 3
+left it; 12260–12420 was never read, so whether the reference's prologue also lacks a test
+is unknown. It deserves a finding of its own.
 
 ---
 
@@ -3591,6 +4086,12 @@ gap.
 `__divdi3` (e.g. `(long long)hz + 50`) would be guessing at Apple's exact
 declaration of `hz` and buys nothing.
 
+**Outcome (Task 8):** **Accepted, not fixed.** Our 32-bit division gives an identical result for every
+value of `hz`, and forcing the 64-bit widening would mean guessing Apple's declaration of
+`hz`. Ledger: 12260 **intentional-mismatch**, reviewer Pat Raynor, with that reason recorded
+on the entry; 15752 `__divdi3` stays **intentional-mismatch** as build-linked libgcc, and
+its presence in `source-map.json`'s `unmapped` bucket is explained by this one call site.
+
 ---
 
 ### Finding 81 — `ttyiops_close`'s prototype disagrees with its call site
@@ -3622,6 +4123,13 @@ prototype.
 `ttyiops_close(dev, flag)`. The reference's extra two arguments are never read,
 so this is behaviour-preserving. Hand this one to Task 7 along with the braces —
 it is a compile blocker, not a semantic divergence.
+
+**Outcome (Task 8):** Fixed: `ttyiops.m` now calls `ttyiops_close(dev, flag)`. The reference does push
+four arguments, but `_ttyiops_close` reads only `arg_0` at 9490 and `arg_4` at 9671 —
+Apple's K&R declaration tolerated the extra two, so trimming is behaviour-preserving and is
+the only spelling our prototype accepts. Evidence: `control-flow-confirmed`, the full stream
+read. Ledger: 9484 **intentional-mismatch**, on Finding 79's kept guard rather than on this
+finding.
 
 ---
 
@@ -3661,6 +4169,12 @@ Every other `IOLog` in this file writes the same field as
 Whether `t_dev` resolves to 0x64 depends on the `struct tty` layout our headers
 produce, and the surrounding code does not rely on it. **Disposition: fix** for
 consistency with the other five sites.
+
+**Outcome (Task 8):** Both fixed. (a) the phantom `&acquire_result` third argument to `-name` is dropped
+at both `ttyiops_acquireSession` sites; (b) `tp->t_dev` in `getData`'s `IOLog` is now
+`((unsigned int *)tp)[100/4]`, matching the other five `IOLog` sites in the file. Ledger:
+14248 **assembly-matched** for (b); 11592 **unexamined** for (a) — only the instructions
+quoted here were read, not the surrounding 667-byte stream.
 
 ---
 
@@ -3764,3 +4278,89 @@ Stated plainly, without hedging elsewhere in this document.
   the linker resolved to zero.** The relocation table has no entry at 33100 and
   the bytes are zero, so I recorded it as a literal `0`, matching `NO_CDEVICE` in
   `conf.h`. That is an inference from an absence, not a positive observation.
+
+## 13. Corrections to the report pass, found during the Task 8 fix pass
+
+These are errors in *this document* that only surfaced when the repairs were actually
+applied. They are recorded here rather than silently edited into the findings above, so the
+report pass's original claim and its correction both stay on the record.
+
+- **Finding 30's title says "six" `(void)` methods; there are five.** Its own body lists
+  exactly five (`release`, `setState:mask:`, `watchState:mask:`, `executeEvent:data:`,
+  `requestEvent:data:`) and our source has five. The title is a typo, not a missed site.
+
+- **−702 is `IO_R_RESOURCE`, not `IO_R_UNSUPPORTED`.** Finding 30 names it
+  `IO_R_UNSUPPORTED`; in `src/driverkit-3/driverkit/return.h`, −702 is `IO_R_RESOURCE` and
+  −711 is `IO_R_UNSUPPORTED`. The fix kept the numeric literal `0xfffffd42` rather than
+  introduce a wrong symbolic name. The value in the binary is not in dispute; only the name
+  this document gave it.
+
+- **Finding 35's rationale claims `ttyiops.h` already declares `ttyiops_state`. It did
+  not.** `grep -rn ttyiops_state src/drvPortServer` matched only this document. Part 2 could
+  therefore apply only the superclass half of Finding 35, and Findings 35's ivar and 44 had
+  to wait for part 3, which declared the type from the reference's ivar `@encode` at 27458.
+  Section 12's "remaining uncertainty" 5 already admitted the layout was never checked; the
+  rationale contradicted it.
+
+- **Finding 52's claim that the two enqueue refill tests agree on every reachable input is
+  false above 2048 bytes.** Once the loop condition is corrected as the finding directs, a
+  full 0x800 pass takes the `else` branch under our counter-based `remainingInBuffer == 0`
+  test, sets the size to 0 and calls `enqueueData:` with `bufferSize:0`, whereas the
+  reference (`cmp edi, ebp; jnb` at 8024, `edi` advanced by `transferCount` at 8120 and
+  initialised to `ebp` at 7989) refills. The fix transcribes the reference's pointer test
+  literally instead.
+
+- **Finding 61's cast for `ttyiops_attachDevice` is wrong; Finding 40's is right.** Finding
+  61 spells the parameter `struct tty *`. Part 2 followed it and part 3 corrected it to
+  `ttyiops_state *`, on the evidence of the reference's ivar `@encode` at 27458: `+0x108` is
+  `&self->state`, and the offsets the callee writes — 0x120 `it_in`, 0xF4 `it_out`, 0x14C
+  `dtr_down_time` — are all past the end of `struct tty`, which lays out to 232 (0xE8)
+  bytes. `struct tty *` would have made every one of those writes out of bounds of the
+  pointed-to type.
+
+- **A twelfth defensive NULL guard the Finding 79 table missed.** `ttyiops_init`'s
+  `if (tp == NULL) return;` is not in the table and was therefore left in place. 12260–12420
+  was never read, so whether the reference's prologue also lacks a test is unknown.
+
+## 14. Work the Task 8 fix pass left undone
+
+Recorded plainly rather than folded into the outcomes above, because each is a real gap the
+next pass inherits.
+
+- **`+serverMajor:`'s argument spelling — the last piece of Finding 36.** The reference
+  loads eight of its eleven arguments out of `ttyiops_devsw`'s fields (`mov ds:off_81xx`);
+  ours passes the same eight functions by name. Part 2 recorded the by-name spelling as a
+  considered choice while `ttyiops_devsw` did not exist; part 3 created `ttyiops_devsw` in
+  the same file, which makes the field spelling possible, but declined to overturn part 2's
+  decision on part 2's own finding. 4692 is held at `control-flow-confirmed` for exactly
+  this reason.
+
+- **`ttyiops.m`'s roughly 120 literal byte offsets.** `ttyiops.m` still reaches
+  `ttyiops_state`'s fields as `((unsigned char *)tp)[0x15c]`, `((id *)tp)[0xe8/4]` and so
+  on. No finding asks for the rewrite, the type now documents every one of them, and doing
+  it would have produced a mechanical diff swamping the pass's substantive repairs. It was
+  deliberately not done.
+
+- **`suser`'s argument shape, and the disagreement between its two call sites.** Section 12
+  asked for `ucred + 0x24` to be checked during the fix pass. It was not resolved, and in
+  the process a worse problem surfaced: `ttyiops_open` writes
+  `suser(p->p_ucred->cr_uid, &p->p_acflag)` while `ttyiops_control_ioctl` writes
+  `suser(p->p_ucred, &p->p_acflag)`. **The two disagree with each other**, so at most one can
+  be right regardless of what the reference does. This deserves a finding of its own.
+
+- **Finding 16's `_portList` / `_portListLock` declaration order.** Left alone because the
+  finding is self-contradictory about it. If the reference `__bss` order (33160
+  `_portListLock`, 33164 `_portList`) is meant to be reproduced by declaration order, a
+  one-line swap is still owed.
+
+- **Two accepted divergences that no ledger entry can carry.** `_ttyiopsMap` (Finding 45)
+  and `_portServerMajor` (part 3's out-of-list repair) are `local` in the reference but must
+  stay non-`static` in our tree while two translation units reference them. Both are data
+  symbols, and `ledger.json` has entries only for the 113 functions, so these acceptances
+  live here and nowhere else. `_portServerMajor` also fixed a pre-existing link break that
+  no finding raised: `ttyiops.h` declared `extern int portServerMajor;` while `PortServer.m`
+  defined `static int _portServerMajor` — two different C identifiers, the second not
+  externally visible, so `ttyiops.m`'s six references resolved to nothing.
+
+- **No compile gate anywhere in Tasks 7 or 8.** Nothing in this driver has been built. Every
+  claim in this document and in `ledger.json` rests on reading the reference disassembly.

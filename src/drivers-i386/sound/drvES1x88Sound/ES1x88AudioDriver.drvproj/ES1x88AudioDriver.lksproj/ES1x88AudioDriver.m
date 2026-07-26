@@ -302,8 +302,8 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     outb(sbMixerDataReg, volVoc.rawValue);
     IODelay(25);
 
-    /* Set Mic Volume (combines with existing bits) */
-    volMic = (volMic & 0x0F) | 0xA0;
+    /* Set Mic Volume (left channel only; the right nibble is left alone) */
+    volMic.reg.left = 0xA;
 
     /* Set Record Source to 0x07 */
     sbRecordSource = 0x07;
@@ -331,9 +331,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     /* Update shadow variables - ES1x88 format: upper 4 bits = left, lower 4 bits = right */
-    volLine.rawValue = (volLine.rawValue & ES_VOLUME_BITS) | (gainValue << 4);
-    volMic = (volMic & ES_VOLUME_BITS) | (gainValue << 4);
-    volCD.rawValue = (volCD.rawValue & ES_VOLUME_BITS) | (gainValue << 4);
+    volLine.reg.left = gainValue;
+    volMic.reg.left = gainValue;
+    volCD.reg.left = gainValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -362,9 +362,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     /* Update shadow variables - ES1x88 format: upper 4 bits = left, lower 4 bits = right */
-    volLine.rawValue = (volLine.rawValue & 0xF0) | (gainValue & ES_VOLUME_BITS);
-    volMic = (volMic & 0xF0) | (gainValue & ES_VOLUME_BITS);
-    volCD.rawValue = (volCD.rawValue & 0xF0) | (gainValue & ES_VOLUME_BITS);
+    volLine.reg.right = gainValue;
+    volMic.reg.right = gainValue;
+    volCD.reg.right = gainValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -405,10 +405,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IODelay(10);
         outb(sbMixerDataReg, volLine.rawValue);
         IODelay(25);
-
-        /* Turn on speaker */
-        outb(sbWriteDataOrCommandReg, DC16_TURN_ON_SPEAKER);
-        IODelay(25);
     } else {
         /* Mute all mixer channels */
         outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
@@ -430,11 +426,16 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IODelay(10);
         outb(sbMixerDataReg, 0);
         IODelay(25);
+    }
 
+    if (enableOutput) {
+        /* Turn on speaker */
+        outb(sbWriteDataOrCommandReg, DC16_TURN_ON_SPEAKER);
+    } else {
         /* Turn off speaker */
         outb(sbWriteDataOrCommandReg, DC16_TURN_OFF_SPEAKER);
-        IODelay(25);
     }
+    IODelay(25);
 }
 
 /*
@@ -445,19 +446,17 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     unsigned int attenuation;
     unsigned char volumeValue;
-    unsigned char volInUpperNibble;
 
     attenuation = [self outputAttenuationLeft];
 
     /* Convert attenuation to 4-bit volume (0-15) */
     volumeValue = (unsigned char)(((attenuation * ES_ATTENUATION_MULTIPLIER + ES_ATTENUATION_OFFSET) * ES_ATTENUATION_SCALE) / ES_ATTENUATION_RANGE);
-    volInUpperNibble = volumeValue << 4;
 
     /* Update shadow variables - left channel is upper 4 bits */
-    volCD.rawValue = (volCD.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volMaster.rawValue = (volMaster.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volLine.rawValue = (volLine.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volVoc.rawValue = (volVoc.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
+    volCD.reg.left = volumeValue;
+    volMaster.reg.left = volumeValue;
+    volLine.reg.left = volumeValue;
+    volVoc.reg.left = volumeValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
@@ -490,13 +489,12 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
     /* Convert attenuation to 4-bit volume (0-15) */
     volumeValue = (unsigned char)(((attenuation * ES_ATTENUATION_MULTIPLIER + ES_ATTENUATION_OFFSET) * ES_ATTENUATION_SCALE) / ES_ATTENUATION_RANGE);
-    volumeValue = volumeValue & ES_VOLUME_BITS;  /* Keep in lower 4 bits */
 
     /* Update shadow variables - right channel is lower 4 bits */
-    volCD.rawValue = (volCD.rawValue & 0xF0) | volumeValue;
-    volMaster.rawValue = (volMaster.rawValue & 0xF0) | volumeValue;
-    volLine.rawValue = (volLine.rawValue & 0xF0) | volumeValue;
-    volVoc.rawValue = (volVoc.rawValue & 0xF0) | volumeValue;
+    volCD.reg.right = volumeValue;
+    volMaster.reg.right = volumeValue;
+    volLine.reg.right = volumeValue;
+    volVoc.reg.right = volumeValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
@@ -819,7 +817,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IODelay(25);
 
         /* Handle Microphone input source */
-        micValue = volMic;
+        micValue = volMic.rawValue;
         if (inputSource == 0) {
             /* Microphone mode - set mic volume and mute other sources */
             outb(sbMixerAddressReg, ES_MIXER_MIC_VOLUME);

@@ -61,7 +61,7 @@ static sb16MonoMixerRegister_t volFM =          {0};
 static sb16MonoMixerRegister_t volLine =        {0};
 static sb16MonoMixerRegister_t volVoc =         {0};
 static sb16MonoMixerRegister_t volCD =          {0};
-static unsigned char volMic =                   0;
+static sb16MonoMixerRegister_t volMic =         {0};
 
 /*
  * ES1x88 hardware detection

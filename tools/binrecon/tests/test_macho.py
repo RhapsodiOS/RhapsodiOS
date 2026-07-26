@@ -7,6 +7,7 @@ from binrecon.macho import MachOFormatError, read_macho
 from binrecon.schema import validate_document
 from macho_fixture import (
     CPU_TYPE_I386,
+    CPU_TYPE_POWERPC,
     HEADER,
     LC_UNIXTHREAD,
     MH_MAGIC,
@@ -167,11 +168,11 @@ def test_rejects_unsupported_header_identity(tmp_path, header_offset, value, mes
         read_macho(path)
 
 
-def test_rejects_64_bit_and_big_endian_magic(tmp_path):
-    for magic in (0xFEEDFACF, 0xCEFAEDFE):
-        path = write_fixture(tmp_path, patch_u32(build_macho_fixture(), 0, magic))
-        with pytest.raises(MachOFormatError, match="magic"):
-            read_macho(path)
+def test_rejects_64_bit_magic(tmp_path):
+    path = write_fixture(tmp_path, patch_u32(build_macho_fixture(), 0, 0xFEEDFACF))
+
+    with pytest.raises(MachOFormatError, match="magic"):
+        read_macho(path)
 
 
 def test_rejects_truncated_load_command_with_index_and_offset(tmp_path):
@@ -445,3 +446,57 @@ def test_read_macho_accepts_a_linked_executable(tmp_path):
 
     assert document["input"]["architecture"] == "i386"
     assert any(section["name"] == "__TEXT,__text" for section in document["sections"])
+
+
+def test_reads_big_endian_ppc_preload_image(tmp_path):
+    blob = build_macho_fixture(
+        architecture="ppc", file_type=MH_PRELOAD, base_address=0,
+        text=b"\0" * 16, relocations=b"",
+    )
+    path = tmp_path / "ppc.o"
+    path.write_bytes(blob)
+
+    document = read_macho(path)
+
+    assert document["input"]["architecture"] == "ppc"
+    assert document["input"]["endianness"] == "big"
+    assert [section["name"] for section in document["sections"]] == [
+        "__TEXT,__text", "__DATA,__data",
+    ]
+    assert [section["size"] for section in document["sections"]] == [16, 4]
+    assert document["symbols"] == [
+        {"name": "_external", "address": 0, "binding": "external", "section": None}
+    ]
+    assert document["relocations"] == []
+    assert document["extensions"]["macho"]["header"]["cpu_type"] == CPU_TYPE_POWERPC
+    validate_document("analysis-v1", document)
+
+
+def test_ppc_and_i386_documents_differ_only_in_identity_fields(tmp_path):
+    def read(architecture):
+        path = tmp_path / f"{architecture}.o"
+        path.write_bytes(build_macho_fixture(architecture=architecture, relocations=b""))
+        document = read_macho(path)
+        document["input"].pop("path")
+        document["input"].pop("sha256")
+        return document
+
+    little = read("i386")
+    big = read("ppc")
+
+    assert little["input"] == {"size": big["input"]["size"], "architecture": "i386",
+                               "endianness": "little"}
+    assert big["input"]["architecture"] == "ppc"
+    assert little["sections"] == big["sections"]
+    assert little["symbols"] == big["symbols"]
+
+
+def test_rejects_swapped_header_by_naming_the_cpu_type(tmp_path):
+    # Bytes FE ED FA CE read big-endian are a valid magic, so the CPU type is
+    # what exposes a little-endian image mislabelled as big-endian.
+    blob = patch_u32(build_macho_fixture(), 0, 0xCEFAEDFE)
+    path = tmp_path / "swapped.o"
+    path.write_bytes(blob)
+
+    with pytest.raises(MachOFormatError, match="CPU type"):
+        read_macho(path)

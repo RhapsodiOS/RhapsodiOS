@@ -4,6 +4,7 @@ import struct
 from typing import Any
 
 from . import __version__
+from .arch import Architecture, ArchitectureError, architecture_for_cpu_type
 from .identity import identify
 
 
@@ -25,17 +26,26 @@ _ZERO_FILL_TYPES = frozenset(
 )
 _HASH_CHUNK_SIZE = 1024 * 1024
 
-_MACH_HEADER = struct.Struct("<7I")
-_LOAD_COMMAND = struct.Struct("<2I")
-_SEGMENT_COMMAND = struct.Struct("<II16sIIIIiiII")
-_SECTION = struct.Struct("<16s16sIIIIIIIII")
-_SYMTAB_COMMAND = struct.Struct("<6I")
-_NLIST = struct.Struct("<IBBHI")
-_RELOCATION_INFO = struct.Struct("<iI")
-
 
 class MachOFormatError(ValueError):
     """Raised when an input is not a supported, well-formed Mach-O object."""
+
+
+def _select_architecture(data: bytes) -> Architecture:
+    """Identify the image's architecture from its magic and CPU type."""
+    if len(data) < 8:
+        raise MachOFormatError("input is shorter than a Mach-O header identity")
+    for endianness, prefix in (("big", ">"), ("little", "<")):
+        magic, cpu_type = struct.unpack_from(f"{prefix}2I", data, 0)
+        if magic == MH_MAGIC:
+            try:
+                return architecture_for_cpu_type(cpu_type, endianness)
+            except ArchitectureError as error:
+                raise MachOFormatError(str(error)) from error
+    (raw,) = struct.unpack_from(">I", data, 0)
+    raise MachOFormatError(
+        f"unsupported Mach-O magic 0x{raw:08x}; expected 32-bit i386 or ppc"
+    )
 
 
 def _checked_slice(
@@ -115,6 +125,8 @@ def read_macho(path: Path) -> dict[str, Any]:
     if len(data) != identity.size or digest != identity.sha256:
         raise MachOFormatError(f"input changed while reading: {identity.path}")
 
+    architecture = _select_architecture(data)
+    layouts = architecture.layouts
     (
         magic,
         cpu_type,
@@ -123,20 +135,14 @@ def read_macho(path: Path) -> dict[str, Any]:
         command_count,
         commands_size,
         flags,
-    ) = _unpack(_MACH_HEADER, data, 0, "Mach-O header")
-    if magic != MH_MAGIC:
-        raise MachOFormatError(
-            f"unsupported Mach-O magic 0x{magic:08x}; expected 32-bit little-endian"
-        )
-    if cpu_type != CPU_TYPE_I386:
-        raise MachOFormatError(f"unsupported Mach-O CPU type {cpu_type}; expected i386")
+    ) = _unpack(layouts.header, data, 0, "Mach-O header")
     if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE):
         raise MachOFormatError(
             f"unsupported Mach-O file type {file_type}; "
             "expected MH_OBJECT, MH_PRELOAD, MH_BUNDLE or MH_EXECUTE"
         )
 
-    command_start = _MACH_HEADER.size
+    command_start = layouts.header.size
     table_context = (
         "load command 0 declared load-command table"
         if command_count
@@ -153,9 +159,9 @@ def read_macho(path: Path) -> dict[str, Any]:
     for command_index in range(command_count):
         context = f"load command {command_index}"
         command, command_size = _unpack(
-            _LOAD_COMMAND, data, cursor, context, limit=command_end
+            layouts.load_command, data, cursor, context, limit=command_end
         )
-        if command_size < _LOAD_COMMAND.size:
+        if command_size < layouts.load_command.size:
             raise MachOFormatError(
                 f"{context}: invalid size {command_size} at file offset 0x{cursor:x}"
             )
@@ -169,7 +175,7 @@ def read_macho(path: Path) -> dict[str, Any]:
 
         if command == LC_SEGMENT:
             values = _unpack(
-                _SEGMENT_COMMAND, data, cursor, context, limit=cursor + command_size
+                layouts.segment_command, data, cursor, context, limit=cursor + command_size
             )
             (_, _, segment_name_raw, segment_address, segment_size,
              segment_offset, segment_file_size, _maximum_protection,
@@ -185,24 +191,24 @@ def read_macho(path: Path) -> dict[str, Any]:
                 "permissions": _permissions(initial_protection),
                 "flags": segment_flags,
             })
-            section_table_offset = cursor + _SEGMENT_COMMAND.size
-            available = command_size - _SEGMENT_COMMAND.size
-            if section_count > available // _SECTION.size:
+            section_table_offset = cursor + layouts.segment_command.size
+            available = command_size - layouts.segment_command.size
+            if section_count > available // layouts.section.size:
                 raise MachOFormatError(
                     f"{context}: section table does not fit command at file offset "
                     f"0x{cursor:x}"
                 )
-            expected_size = _SEGMENT_COMMAND.size + section_count * _SECTION.size
+            expected_size = layouts.segment_command.size + section_count * layouts.section.size
             if expected_size != command_size:
                 raise MachOFormatError(
                     f"{context}: segment size does not match section count at file "
                     f"offset 0x{cursor:x}"
                 )
             for section_in_segment in range(section_count):
-                section_offset = section_table_offset + section_in_segment * _SECTION.size
+                section_offset = section_table_offset + section_in_segment * layouts.section.size
                 section_context = f"{context} section {section_in_segment}"
                 section_values = _unpack(
-                    _SECTION,
+                    layouts.section,
                     data,
                     section_offset,
                     section_context,
@@ -223,7 +229,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                 ) = section_values
                 if alignment_exponent > 31:
                     raise MachOFormatError(
-                        f"{section_context}: alignment exponent exceeds i386 address width "
+                        f"{section_context}: alignment exponent exceeds 32-bit address width "
                         f"at file offset 0x{section_offset:x}"
                     )
                 if size > 0x1_0000_0000 - address:
@@ -262,7 +268,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                     }
                 )
         elif command == LC_SYMTAB:
-            if command_size != _SYMTAB_COMMAND.size:
+            if command_size != layouts.symtab_command.size:
                 raise MachOFormatError(
                     f"{context}: invalid symtab command size at file offset 0x{cursor:x}"
                 )
@@ -271,7 +277,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                     f"{context}: duplicate symbol table at file offset 0x{cursor:x}"
                 )
             _, _, symbol_offset, symbol_count, string_offset, string_size = _unpack(
-                _SYMTAB_COMMAND, data, cursor, context, limit=cursor + command_size
+                layouts.symtab_command, data, cursor, context, limit=cursor + command_size
             )
             symtab = (
                 command_index,
@@ -301,8 +307,8 @@ def read_macho(path: Path) -> dict[str, Any]:
             f"0x{command_start:x}"
         )
 
-    symbols, symbol_names = _read_symbols(data, symtab, raw_sections)
-    raw_relocations = _read_relocations(data, raw_sections, symbol_names)
+    symbols, symbol_names = _read_symbols(data, symtab, raw_sections, layouts)
+    raw_relocations = _read_relocations(data, raw_sections, symbol_names, architecture)
     relocation_fields = ("address", "kind", "target", "addend")
     relocations = [
         {key: relocation[key] for key in relocation_fields}
@@ -318,8 +324,8 @@ def read_macho(path: Path) -> dict[str, Any]:
             "path": str(identity.path),
             "size": identity.size,
             "sha256": identity.sha256,
-            "architecture": "i386",
-            "endianness": "little",
+            "architecture": architecture.name,
+            "endianness": architecture.endianness,
         },
         "analyzer": {
             "name": "binrecon-macho",
@@ -533,27 +539,28 @@ def _read_symbols(
     data: bytes,
     symtab: tuple[int, int, int, int, int] | None,
     sections: list[dict[str, Any]],
+    layouts,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     if symtab is None:
         return [], []
     command_index, symbol_offset, symbol_count, string_offset, string_size = symtab
     context = f"load command {command_index} symbol table"
-    if symbol_count > len(data) // _NLIST.size:
+    if symbol_count > len(data) // layouts.nlist.size:
         raise MachOFormatError(
             f"{context}: symbol count is too large at file offset 0x{symbol_offset:x}"
         )
-    _checked_slice(data, symbol_offset, symbol_count * _NLIST.size, context)
+    _checked_slice(data, symbol_offset, symbol_count * layouts.nlist.size, context)
     string_table = _checked_slice(data, string_offset, string_size, f"{context} strings")
     result: list[dict[str, Any]] = []
     names: list[str] = []
     for symbol_index in range(symbol_count):
-        entry_offset = symbol_offset + symbol_index * _NLIST.size
+        entry_offset = symbol_offset + symbol_index * layouts.nlist.size
         entry_context = (
             f"load command {command_index} symbol {symbol_index} at file offset "
             f"0x{entry_offset:x}"
         )
         string_index, symbol_type, section_number, _description, value = _unpack(
-            _NLIST, data, entry_offset, entry_context
+            layouts.nlist, data, entry_offset, entry_context
         )
         if string_index >= len(string_table):
             raise MachOFormatError(
@@ -586,6 +593,7 @@ def _read_relocations(
     data: bytes,
     sections: list[dict[str, Any]],
     symbol_names: list[str],
+    architecture,
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for section_index, section in enumerate(sections):
@@ -594,17 +602,17 @@ def _read_relocations(
             f"load command {section['command_index']} section "
             f"{section['section_in_segment']} (global {section_index}) relocations"
         )
-        if count > len(data) // _RELOCATION_INFO.size:
+        if count > len(data) // architecture.layouts.relocation_info.size:
             raise MachOFormatError(
                 f"{context}: relocation count is too large at file offset "
                 f"0x{section['relocation_offset']:x}"
             )
-        table_size = count * _RELOCATION_INFO.size
+        table_size = count * architecture.layouts.relocation_info.size
         _checked_slice(data, section["relocation_offset"], table_size, context)
         for relocation_index in range(count):
             entry_offset = (
                 section["relocation_offset"]
-                + relocation_index * _RELOCATION_INFO.size
+                + relocation_index * architecture.layouts.relocation_info.size
             )
             entry_context = (
                 f"load command {section['command_index']} section "
@@ -612,7 +620,7 @@ def _read_relocations(
                 f"{relocation_index} at file offset 0x{entry_offset:x}"
             )
             address, word = _unpack(
-                _RELOCATION_INFO,
+                architecture.layouts.relocation_info,
                 data,
                 entry_offset,
                 entry_context,
@@ -656,7 +664,8 @@ def _read_relocations(
                 relocation_type = (word >> 28) & 0xF
             if length == 3:
                 raise MachOFormatError(
-                    f"{entry_context}: relocation length code 3 is invalid for i386"
+                    f"{entry_context}: relocation length code 3 is invalid for "
+                    f"{architecture.name}"
                 )
             width = 1 << length
             section_size = section["size"]
@@ -695,7 +704,7 @@ def _read_relocations(
             # Absolute fields model unsigned addresses. PC-relative fields model
             # signed displacements; preserving that distinction gives downstream
             # comparison a stable semantic addend without changing stored bits.
-            field_value = int.from_bytes(field, "little", signed=pc_relative)
+            field_value = int.from_bytes(field, architecture.endianness, signed=pc_relative)
             relocation_address = section["address"] + address
             addend = (field_value + (relocation_address if pc_relative else 0)
                       - target_section["address"]
@@ -703,7 +712,7 @@ def _read_relocations(
             result.append(
                 {
                     "address": relocation_address,
-                    "kind": f"i386-{type_name}-{width * 8}-{relative}",
+                    "kind": f"{architecture.name}-{type_name}-{width * 8}-{relative}",
                     "target": target,
                     "addend": addend,
                     "type": relocation_type,

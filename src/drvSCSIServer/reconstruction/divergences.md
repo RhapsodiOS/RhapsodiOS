@@ -323,7 +323,7 @@ themselves and reports `calls: []` for every function in this block).
 | 1604 | `+[IOSCSISession controllerNameList]` | `assembly-matched` | 4-instruction leaf; returns literal 0 |
 | 1620 | `-[IOSCSISession init]` | `assembly-matched` | loads the `free` selector ref, calls `[self free]` |
 | 1676 | `-[IOSCSISession initForDevice:result:]` | `assembly-matched` | identical shape to `init`, args unused |
-| 1732 | `-[IOSCSISession free]` | `unexamined` | Finding: missing `notify_port` argument to `IOTaskPortDeallocate()`; Finding: cleanup-callback mechanism diverges; addendum above: extra `objc_getClass("Object")` call |
+| 1732 | `-[IOSCSISession free]` | `unexamined` | Finding: missing `notify_port` argument to `IOTaskPortDeallocate()` (a compile error given the header declaration); Finding: cleanup call resolves to `IOExitThread()`, not a callback; Finding: returns `self` where the reference returns `nil`; addendum above: extra `objc_getClass("Object")` call |
 | 2076 | `-[IOSCSISession name]` | `assembly-matched` | 4-instruction leaf; returns literal 0 |
 | 2092 | `_findReservation` | `assembly-matched` | walks the circular list, matches the 0x18-byte element layout field-for-field |
 | 2196 | `_addReservation` | `assembly-matched` | calls `findReservation` (confirmed by local symbol name) then `IOMalloc`, links the new entry with the same four steps and offsets as the source |
@@ -332,15 +332,33 @@ themselves and reports `calls: []` for every function in this block).
 
 **The reservation structure.** All four reservation functions — in both the reference disassembly and
 our source's own documented layout (`IOSCSISession.m:1160-1168`) — agree on a 24-byte (`0x18`)
-element with offset `+0` = next, `+4` = prev (a circular doubly-linked list embedded in the session
-structure: the list head is `*(session+4)` itself, not a separately-allocated sentinel node — the
-list is empty exactly when `head->next == head`, with no `NULL` terminator anywhere), `+8`/`+0xC`
-= target high/low, `+0x10`/`+0x14` = lun high/low. `_findReservation` (2092), `_addReservation`
-(2196) and `_blastAllReservations` (2544) all read and write those exact offsets correctly and match
-the reference instruction for instruction. There is **no** layout disagreement between our four
-functions or against the reference — the one divergence in this group (`_removeReservation`) is a
-C-level implementation bug within a single function, not a structural disagreement, so it is reported
-as one finding below rather than a structure-wide one.
+element with offset `+0` = next, `+4` = prev (a circular doubly-linked list; the list is empty
+exactly when `head->next == head`, with no `NULL` terminator anywhere), `+8`/`+0xC` = target
+high/low, `+0x10`/`+0x14` = lun high/low. `_findReservation` (2092), `_addReservation` (2196) and
+`_blastAllReservations` (2544) all read and write those exact offsets correctly and match the
+reference instruction for instruction. There is **no** layout disagreement between our four functions
+or against the reference — the one divergence in this group (`_removeReservation`) is a C-level
+implementation bug within a single function, not a structural disagreement, so it is reported as one
+finding below rather than a structure-wide one.
+
+The four functions establish only that `*(session+4)` holds a pointer to the list's head node —
+used identically as the `next`/`prev` anchor in `_findReservation`'s and `_removeReservation`'s
+empty-list test (`head == head->next`), `_addReservation`'s insertion, and `_blastAllReservations`'
+teardown loop. None of them determines where that head node itself is allocated or how large it is;
+the earlier claim that it is "embedded in the session structure, not separately allocated" overstates
+what this evidence shows, so it is corrected here rather than repeated as established fact.
+
+Our own source's comments disagree with each other on which field is which. `IOSCSISession.m:114-115`
+(the doc comment above `-[IOSCSISession free]`, describing the fields of the structure at
+`*(self+4)`) reads "offset +0: prev pointer (circular list)" / "offset +4: next pointer (circular
+list)" — the opposite order from `IOSCSISession.m:1161-1162` (the reservation-structure doc comment
+above the four functions below), which reads "offset +0: next pointer (circular list)" / "offset +4:
+prev pointer (circular list)". The code itself follows the latter, `+0` = next / `+4` = prev — e.g.
+`addReservation`'s `new_entry[0] = (int)session_struct;` (`IOSCSISession.m:1242`, commented
+`new_entry->next = ...`) and `new_entry[1] = (int)last_entry;` (`IOSCSISession.m:1239`, commented
+`new_entry->prev = ...`). The `-free` comment's offset labels are simply wrong for this layout; Task
+12 should fix that comment rather than leave a fix-pass reader who trusts it with the fields
+backwards.
 
 ## Finding: `_removeReservation` corrupts the wrong field when unlinking an entry
 
@@ -384,7 +402,7 @@ scaling right; only `removeReservation` mixes in raw pointer arithmetic on a byt
 without going through `(char *)` or index notation. Left `unexamined`; Task 12 should change
 `*(int **)(next + 4) = prev;` to `next[1] = (int)prev;` (or `*(int **)((char *)next + 4) = prev;`).
 
-## Finding: `-[IOSCSISession free]` omits an argument and diverges on its cleanup-callback mechanism
+## Finding: `-[IOSCSISession free]` omits an argument, misidentifies its cleanup call as a callback, and returns `self` where the reference returns `nil`
 
 **Source:** `IOSCSISession.m:122` (`free`), specifically lines 157 and 181-188.
 
@@ -398,12 +416,18 @@ local `_IOTaskPortDeallocate` function (address 6652; confirmed via the symbol t
 `IOSCSISession.m:1744`, `void IOTaskPortDeallocate(mach_port_t port)`).
 
 **Our source:** calls `IOTaskPortDeallocate();` (line 157) with **no** arguments, despite the function
-being declared and defined with a `mach_port_t port` parameter earlier in the very same file.
+being declared and defined with a `mach_port_t port` parameter earlier in the very same file:
+`IOSCSISession.h:153` declares `void IOTaskPortDeallocate(mach_port_t port);`, and this header is
+included by `IOSCSISession.m` (the definition at `IOSCSISession.m:1744` matches). With that prototype
+in scope at the call site, `IOTaskPortDeallocate();` is not merely a behavioural divergence caught
+only at runtime — it is a **"too few arguments to function" compile-time error** in standard C.
 
 **Consequence:** a real divergence — the reference passes `notify_port` to the deallocation call;
 our source's call site drops the argument entirely, so `IOTaskPortDeallocate`'s body (which reads its
 `port` parameter) would receive whatever happened to be left in the argument register rather than the
-intended port. Left `unexamined`; Task 12 should change the call to
+intended port. Because a prototype for `IOTaskPortDeallocate` is already visible at this call site,
+this additionally fails to compile as written, which raises its priority for Task 12 relative to
+divergences that only manifest at runtime. Left `unexamined`; Task 12 should change the call to
 `IOTaskPortDeallocate(notify_port);`.
 
 **Reference behaviour, cleanup callback:** at addresses 1940-1948, the reference has exactly one test
@@ -413,18 +437,21 @@ before the cleanup call:
 1944  beq cr1, loc_7A0      ; skip the call if session_object_id == 0
 1948  bl sub_7BC            ; unconditional call, no argument registers set up beforehand
 ```
-`sub_7BC` is a 16-byte jump island (`lis r12,0 / ori r12,r12,0 / mtctr r12 / bctr`, raw bytes
-`3D800000 618C0000 7D8903A6 4E800420`) whose immediate halves are both literally zero in the object's
-raw bytes — the same shape used by three of this function's other calls (`objc_msgSend`,
-`objc_msgSendSuper`, `IOFree`, all of which are `UNDEF`-bound imports per the symbol table) rather
-than the two islands elsewhere in this same function that resolve to real link-time addresses
-(`_IOTaskPortDeallocate` at 2028, `_IOReleaseNotifyForFunc` at 2044, both `lis r12,name@h` / `ori
-r12,r12,name@l` with genuinely non-zero low halves). This function's own jump islands prove the
-codebase's convention for "load a value from a global variable" elsewhere (addresses 1912-1916, the
-`objc_super.class` field: `lis r9, stru_5198.ext@ha` / `lwz r9, stru_5198.ext@l(r9)`) always uses
-`lwz` — a memory load — which is absent from the `sub_7BC` call sequence entirely. This rules out the
-call being a runtime dereference of a mutable global function-pointer variable; it is a single,
-unconditional, compile/link-time-fixed call, gated by exactly one test.
+`sub_7BC` is the 16-byte jump island at address 1980 (`lis r12,0` / `ori r12,r12,0` / `mtctr r12` /
+`bctr`, raw bytes `3D800000 618C0000 7D8903A6 4E800420`). The earlier pass could not identify its
+target because the IDA export used elsewhere in this document does not carry the Mach-O external
+relocation table. The reference binary itself does, and `binrecon.macho.read_macho` reads it; the
+island's own two instructions carry relocations:
+```
+1980  ppc-hi16-32-absolute  target=_IOExitThread  external=True
+1984  ppc-lo16-32-absolute  target=_IOExitThread  external=True
+```
+`_IOExitThread` is among the reference's 34 named imports (`{'address': 24832, 'name':
+'<self>:_IOExitThread'}` in the published IDA export's `imports` list) — the earlier finding's claim
+that it was absent from the imports was a lookup miss (the export's import entries are prefixed
+`<self>:`), not a genuine absence. `sub_7BC` resolves to `IOExitThread()`, not to any
+function-pointer variable: the call is `if (session_object_id != 0) IOExitThread();` — the session's
+own server thread exiting when the session that owns it is freed.
 
 **Our source:**
 ```c
@@ -434,19 +461,33 @@ if (session_object_id != 0) {
     }
 }
 ```
-two nested tests — the `session_object_id != 0` test that matches the reference, and a second,
-additional `NULL` check on `_scsiSessionCleanupCallback` (a global function-pointer variable) before
-dereferencing and calling it.
+models the call as a dereference of `extern session_cleanup_callback_t _scsiSessionCleanupCallback`
+(declared at `IOSCSISession.m:40`, with no definition anywhere in this file), gated by a second,
+additional `NULL` check the reference does not perform.
 
-**Consequence:** the reference performs one test and one fixed call; our source performs two tests
-and models the target as a runtime-checked, re-loadable function pointer. Functionally the two are
-equivalent whenever `_scsiSessionCleanupCallback` is never actually reassigned away from a valid
-non-`NULL` value at runtime, so this may be low-severity in practice, but it is not what the
-instructions show, and — honestly — **I could not identify what `sub_7BC` actually targets**: it is
-not among the reference's 34 named imports, not a local symbol the exporter could resolve, and (per
-the missing-relocation check above) is not covered by any relocation entry in this export either, so
-its ultimate target is unresolved by the available tooling, not just by this review. Left
-`unexamined`; Task 12 should confirm the intended callback semantics against a from-scratch review of
-this call site (ideally with a tool that can resolve the raw `SCSIServer_reloc` external-relocation
-table directly) before deciding whether to keep the `NULL`-checked global-pointer model or replace it
-with a single fixed call.
+**Consequence:** the reference's single test gates a direct, fixed `IOExitThread()` call — there is
+no callback to identify and no callback variable to define; the "callback" framing in the original
+finding and in the source's own comment block (`IOSCSISession.m:171-183`) is itself the divergence to
+fix, not just the extra `NULL` check. Left `unexamined`; Task 12 should replace the
+`_scsiSessionCleanupCallback` declaration, its `NULL` check, and the indirect call with a direct call
+to `IOExitThread()`.
+
+**Reference behaviour, return value:** both paths through the function converge on the same
+instruction. The `beq cr1, loc_7A0` at address 1944 (taken when `session_object_id == 0`) branches to
+address 1952; falling through the `bl sub_7BC` at address 1948 also reaches address 1952 next, with
+no intervening register writes on either path. Address 1952 is `li r3, 0`, followed immediately by
+the epilogue (`addi r1, r1, 0x50` / restore `lr`, `r30`, `r31` / `blr`) — `-[IOSCSISession free]`
+always returns `nil`, on both branches.
+
+**Our source:** `IOSCSISession.m:191` ends `return self;`.
+
+**Consequence:** this is not cosmetic. `-[IOSCSISession init]` (`IOSCSISession.m:74-82`,
+`result = [self free]; return result;`) and `-[IOSCSISession initForDevice:result:]`
+(`IOSCSISession.m:96-104`, `free_result = [self free]; return free_result;`) both return whatever
+`[self free]` returns. With the reference's `return nil`, an `alloc`/`init` (or
+`alloc`/`initForDevice:result:`) call correctly hands the caller back `nil`, signalling that the
+object tore itself down instead of initializing. With our source's `return self`, the same call
+sequence hands the caller back a pointer to the object that `free` just finished tearing down (its
+session structure `IOFree`'d, its ports deallocated, `[super free]` already invoked) — the caller has
+no way to detect the failure and is left holding a pointer to a freed object. Left `unexamined`;
+Task 12 should change `IOSCSISession.m:191` to `return nil;`.

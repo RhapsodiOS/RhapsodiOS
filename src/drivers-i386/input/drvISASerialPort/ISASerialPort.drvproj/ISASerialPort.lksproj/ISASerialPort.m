@@ -2456,10 +2456,15 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 - (id)initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
     IOConfigTable *configTable;
+    // numPortRanges, numChannels and portRangeList are IOEISADeviceDescription's,
+    // not IODeviceDescription's.  Sending them to the declared parameter type
+    // leaves the compiler assuming an id return, which is how the range check
+    // below came to compare a pointer against an integer.
+    IOEISADeviceDescription *eisaDescription;
     const char *instanceStr, *chipTypeStr, *busTypeStr;
     const char *txBufStr, *rxBufStr, *chipClockStr, *heartBeatStr;
     long instance;
-    unsigned int *portRanges;
+    IORange *portRanges;
     unsigned int *irqList;
     unsigned int chipType;
     unsigned int masterClock;
@@ -2563,18 +2568,19 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     // The shape of the description itself: exactly one port range, exactly one
     // interrupt and no DMA channels.  All three are checked before any of them
     // is read, and they share one log string.
-    if ([deviceDescription numPortRanges] != 1 ||
+    eisaDescription = (IOEISADeviceDescription *)deviceDescription;
+    if ([eisaDescription numPortRanges] != 1 ||
         [deviceDescription numInterrupts] != 1 ||
-        [(IOEISADeviceDescription *)deviceDescription numChannels] != 0) {
+        [eisaDescription numChannels] != 0) {
         IOLog("%s: Invalid configuration\n", [self name]);
         return [self free];
     }
 
-    portRanges = (unsigned int *)[deviceDescription portRangeList];
-    self->Port.Base = portRanges[0];
+    portRanges = [eisaDescription portRangeList];
+    self->Port.Base = portRanges[0].start;
 
     // Check that base port is aligned and size is 8
-    if ((self->Port.Base & 3) != 0 || portRanges[1] != 8) {
+    if ((self->Port.Base & 3) != 0 || portRanges[0].size != 8) {
         IOLog("%s: Invalid Port configuration\n", [self name]);
         return [self free];
     }

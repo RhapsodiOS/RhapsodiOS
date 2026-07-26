@@ -2622,3 +2622,246 @@ derived from the struct, not from any comment, and supersedes every offset comme
   substantially (config-table mechanism, nine keys, seven new log strings, the heartbeat
   split). That premise has no measurement behind it. The figure should be read as an
   order-of-magnitude estimate only.
+
+## Addendum 7 — Task 6b: the twenty-five TU 1 findings
+
+Task 6b worked the `unexamined` remainder against the layout Task 6a fixed. One source file
+changed, `ISASerialPort.m`. Both suspected crossings were resolved against the disassembly
+rather than against the comments, the three items the 6a review reclassified as faults were
+fixed, and the section table moved from 25/30 to 28/30.
+
+### Sections after 6b
+
+| section | before 6b | after 6b | reference | |
+| --- | --- | --- | --- | --- |
+| `__TEXT,__cstring` | 799 | **742** | 742 | byte-identical |
+| `__OBJC,__meth_var_names` | 602 | **632** | 632 | |
+| `__OBJC,__message_refs` | 68 | **76** | 76 | |
+| `__TEXT,__text` | 22164 | **23088** | 24412 | −1324 |
+| `__TEXT,__const` | absent | absent | 682 | see below |
+
+`missing_strings`, `missing_symbols` and `extra_strings` are all **0**. Thirteen sections are
+byte-identical; every `__OBJC` section now matches by size. The two that remain are `__text`
+and `__const`.
+
+### `__TEXT,__const` is explained, and it is not a jump table
+
+The 682 bytes decompose exactly, read out of the reference's own symbol table and bytes:
+
+| symbol | binding | address | bytes | what it is |
+| --- | --- | --- | --- | --- |
+| `_ISASerialPort_VERS_STRING` | global | 25154 | 160 | `@(#)PROGRAM:ISASerialPort  PROJECT:drvISASerialPort-10  DEVELOPER:root  BUILT:Sat Mar 28 22:12:49 PST 1998\n` in a 160-byte array |
+| `_ISASerialPort_VERS_NUM` | global | 25314 | 10 | `"10"` |
+| `___clz_tab` | local | 25324 | 256 | libgcc's leading-zero table |
+| `___clz_tab_0` | local | 25580 | 256 | a second copy of the same table |
+
+160 + 10 + 256 + 256 = 682, to the byte.
+
+**Neither part is driver source.** The version pair is emitted by the project's build system
+into a generated `*_vers.c` and embeds a 1998 build date and the account name that ran the
+build; it cannot be reproduced and is recorded, not chased. The two `__clz_tab` copies are
+**dead data**: `longlong.h` declares the table for the portable `count_leading_zeros`, and
+libgcc2.c defines it whenever `L_udivdi3` or `L_umoddi3` is compiled — but on i386
+`count_leading_zeros` expands to `bsrl`, and the reference's helpers do exactly that
+(`bsr edx, edi` at 23912 and `bsr edx, ebx` at 24161). Nothing in the reference reads either
+table. They are there because the reference built the two helpers as two separate libgcc
+translation units, each of which emitted its own local copy; our reconstruction defines both
+helpers in `ISASerialPort.m`, so no copy is emitted at all.
+
+Reproducing 512 bytes of provably unread data, and a banner containing someone else's build
+timestamp, would be moving a size number and nothing else. **`__TEXT,__const` is recorded as a
+permanent, understood absence.**
+
+### The `lock incl` lead was wrong, and the correction is measured
+
+Task 6b's interim report suggested the reference's `lock incl` after every `out` was a
+statistics counter our source omitted, and estimated it at several hundred bytes. That was
+wrong on both counts.
+
+`_xxx.86`, `_xxx.89` and `_xxx.92` are three per translation unit, twelve in all, and they are
+the whole of `__DATA,__bss` — 48 bytes, and our `__bss` is byte-identical to the reference's.
+They are the static operands of the `asm volatile` in `driverkit/i386/ioPorts.h:101`, where
+`outb` expands to `outb %2,%1; lock; incl %0`. The count follows `out`, not `in`: the reference
+has 59 `out` and 59 `lock incl`, matching one-for-one in every function (`_identifyChip` has 18
+of each and 10 `in`). **Our build also has 59 `out` and 59 lock-prefixed increments**, counted
+with capstone over the rebuilt `__text`. The idiom costs us nothing and explains none of the
+gap. The `// Atomic increment` comments beside our `outb` calls describe what the macro already
+does.
+
+### The two live crossings, resolved
+
+**(a) `executeEvent:data:` events 0x0F and 0x0B — a real crossing, and our code was wrong.**
+The reference's event `0x0F` arm at 6921–6986 writes `[edi+140h]`, `[edi+148h]` and
+`[edi+14Ch]`, which are `Port.RX.Size`, `.HighWater` and `.LowWater`; the `0x0B` arm at
+7040–7089 writes `[edi+178h]`, `[edi+180h]` and `[edi+184h]`, the `Port.TX` triple. Our source
+had them the other way round. The comments were right about the offsets and wrong about which
+arm owned them; the code was wrong about both. Fixed.
+
+**A second original bug found in the same block.** Both arms pass `lea edx, [edi+140h]` —
+`&Port.RX` — to `validateRingBufferSize`, at 6921 for the RX arm and again at **7024 for the
+TX arm**. The TX resize therefore validates the requested size against the RX queue's limits
+and stores the result in `TX.Size`. This is the reference's behaviour, it is reproduced, and
+the source says so at the call site.
+
+**(b) `executeEvent:data:` event 0x4B — not a crossing.** The reference stores the split
+nanosecond value to `[edi+230h]` and `[edi+234h]` at 6889 and 6898, which is
+`Port.CharLatInterval`, exactly what our source already did. Only the comment, which doubted
+itself, was wrong. It has been corrected.
+
+### The three faults
+
+1. **`registerInterrupt:` — fixed, and the driver can now initialise.** The reference's tail at
+   2340–2419 is `[self enableAllInterrupts]`, and on success `[self registerDevice]`. The
+   selector our source sent was implemented nowhere in the tree, so `objc_msgSend` would have
+   faulted on the driver's only entry point.
+2. **`getHandler:level:argument:forInterrupt:` — fixed.** `Chip[Port.Type].IntHandler`, read at
+   stride 20 field +8 (2793–2809). The `Type > 4` test our source used gave `Chip[8]`, the
+   82510, `FIFOIntHandler`, because that part reports `FIFOsize` 4 while its table row names
+   `NonFIFOIntHandler`. The same table dispatch appears in `frameTOHandler`, `delayTOHandler`
+   and `heartBeatTOHandler`, where our source had the FIFO arm **commented out entirely** — a
+   FIFO part serviced no interrupt at all from those three timers.
+3. **`getCharValues:forParameter:count:` — fixed.** Three chained `objc_msgSend` calls and no
+   `stringValue`; the reference treats `valueForStringKey:`'s result as the string. Our version
+   sent a message to a `char *`, which faults on any successful key lookup. 172 bytes against
+   172.
+
+### `initFromDeviceDescription:`, the six inherited divergences
+
+All six are closed. The validation block is
+`numPortRanges != 1 || numInterrupts != 1 || numChannels != 0` sharing one log string
+(1009–1099); the four `thread_call_allocate` calls bind `frameTOHandler`, `dataLatTOHandler`,
+`delayTOHandler` and `heartBeatTOHandler` with `&self->Port` (1561–1620), where our source
+passed two `NULL`s; every early exit is `return [self free]`; the banner puts the `"PCMCIA/"`
+prefix **before** `Chip[Type].LongName`; and the method returns super's result (`mov eax, ebx`
+at 2525), not `self`.
+
+`numPortRanges`, `numChannels` and `portRangeList` are `IOEISADeviceDescription`'s, not
+`IODeviceDescription`'s. Sending them to the declared parameter type left gcc assuming an `id`
+return and comparing a pointer against an integer — the same class of defect as
+`registerInterrupt:`, and it was introduced by 6b's own first draft. The description is now
+held in an `IOEISADeviceDescription *` local, and `portRangeList` returns `IORange *`, so the
+base and size are `portRanges[0].start` and `portRanges[0].size` rather than two `unsigned int`
+subscripts.
+
+### `_executeEvent` was a different function
+
+The reference's 2704 bytes at 10356 were read in full. It returns `IOReturn`; it guards on
+`Port.State`'s sign bit and returns `0xFFFFFD33` when the port is not acquired (10384–10395);
+and it does not compute a state at all — `*statePtr` arrives holding `Port.State`, `*maskPtr`
+holding zero, each arm edits the bits it owns and records them in the mask, and the caller
+merges the two. Substantive divergences found and fixed:
+
+- **Three cases were missing.** `0x37`, `0x3F` and `0xF7` all reach 11636, where a non-zero
+  argument is rejected and zero is accepted as a no-op.
+- **`0xE9` and `0xED` were swapped.** The reference writes `XONchar` at Port+0xBD for event
+  `0xED` (10704) and `XOFFchar` at Port+0xBE for event `0xE9` (10716). Neither has the
+  `<= 0xFF` guard our source carried; both simply store the low byte.
+- **`0x4F` was wrong.** It is a microseconds-to-`tvalspec` split into `DataLatInterval`
+  (10948–11027), and is the second of the two 64-bit division pairs Finding 95 predicted, not
+  a pair of 16-bit halves.
+- **`0x33`, `0x3B`, `0x43`, `0xF3` and `0xE5` set their field and call `programChip`
+  unconditionally.** Our source derived `LCRimage` and `DLRimage` by hand and guarded the call
+  on `STATE_ACTIVE`; the reference leaves all of that to `programChip`. `0x33` also range-checks
+  against `Chip[Type].MaxBaud` (11118), which our source did not do at all.
+- **`0x53` drives the flow signals from outside**, masking the request against
+  `~Port.FlowControl` (10811–10836) and writing the MCR unconditionally; our source treated it
+  as a wholesale state assignment.
+- **`0x55` and `0x59` have no range guard**, and `0x05` tests only the low byte of the
+  argument.
+
+**A third original bug, reproduced.** Case `0x1B`, the TX high watermark, stores its argument
+into `[edi+20h]` — `RX.HighWater` — at 12740, and then clamps `TX.HighWater` against
+`TX.Size - 3` by reading the field back rather than the value just stored. Case `0x1F`, its RX
+twin, stores to the same offset at 12080 and compares against `eax`. The shape is a copy of the
+RX case with the first line's substitution missed. Reproduced, and commented at the site.
+
+The RX and TX watermark recomputations are inlined three times each in the reference (events
+`0x17`, `0x1F`, `0x2F` and `0x13`, `0x1B`, `0x28`). They are `static inline` helpers in our
+source. **Their first comparisons genuinely differ**: the RX arm takes the empty/below-low path
+on `Count < LowWater` (`jbe` at 11282 against `cmp LowWater, Count`) while the TX arm takes it
+on `Count <= LowWater` (`jb` at 11719). That asymmetry is the reference's, not a transcription
+error.
+
+`_executeEvent` is now **2800 bytes against 2704**, from −1236.
+
+### Division call sites
+
+Three of ours were removed. `NonFIFOIntHandler`, `FIFOIntHandler` and `dequeueData:` were
+round-tripping an existing `tvalspec_t` through a `(high << 32) | low` helper and back, which
+is both meaningless and the source of a `__udivdi3`/`__umoddi3` pair each. The reference passes
+the struct straight to `deadline_from_interval` — verified at 9295–9301 in `dequeueData:` and
+10280–10294 in `heartBeatTOHandler`. The three helper functions that existed only to perform
+that round trip were deleted.
+
+### What is left, measured per function
+
+Per-function sizes were taken from the rebuilt object with capstone against the `nlist`,
+filtering the debug stabs; our figures are symbol-gap derived and so include up to three bytes
+of inter-function alignment, which is why several exact matches read `+1` to `+3`.
+
+| function | reference | ours | delta |
+| --- | --- | --- | --- |
+| `_FIFOIntHandler` | 3172 | 2652 | **−520** |
+| `_NonFIFOIntHandler` | 2472 | 2128 | **−344** |
+| `initFromDeviceDescription:` | 2273 | 2116 | −157 |
+| `_RX_dequeueEvent` | 852 | 780 | −72 |
+| `_programChip` | 1148 | 1080 | −68 |
+| `acquire:` | 944 | 880 | −64 |
+| `_RX_enqueueLongEvent` ×3 | 197 | 140 | −57 each |
+| `setState:mask:` | 267 | 232 | −35 |
+| `_identifyChip` | 684 | 656 | −28 |
+| … | | | |
+| `_executeEvent` | 2704 | 2800 | **+96** |
+| `enqueueData:` | 696 | 740 | +44 |
+| `_activatePort` | 1144 | 1180 | +36 |
+| `_deactivatePort` | 345 | 380 | +35 |
+| `requestEvent:data:` | 746 | 768 | +22 |
+
+The matched deltas sum to −1271 of the section's −1324; the remainder is inter-function
+padding, which our build spends more of (49 alignment `nop`s inside `_NonFIFOIntHandler` alone
+against the reference's 2).
+
+### The two interrupt handlers: deliberately not fixed, with the reason
+
+`_FIFOIntHandler` and `_NonFIFOIntHandler` carry −864 of the remaining −1324 and are left at
+`signature-confirmed`. The signature is verified — `void (void *identity, void *state,
+Port *port)`, the `Port *` arriving as `arg_8` and matching the three-argument indirect call the
+timeout handlers make through `Chip[Type].IntHandler`. **The bodies were not verified**, and the
+ledger says so.
+
+What the partial comparison did establish, and what a later task should start from:
+
+- The mnemonic histograms differ mainly in `lea` (−18 and −24), `mov` (−43 and −75) and `call`
+  (+7 and +9). We make *more* calls and far fewer address computations.
+- The call-target sets are otherwise identical — `PCMCIA_yanked`, `executeEvent`,
+  `deadline_from_interval`, `thread_call_cancel`, `thread_call_enter_delayed`,
+  `thread_wakeup_prim`, and for the FIFO handler `NonFIFOIntHandler` — with exactly one
+  difference: **the reference never calls `RX_enqueueLongEvent` from either handler.**
+- It writes the enqueue out inline instead. At 18568–18664 the state-change event is three
+  cells — the `0x53` marker, the low half and the high half — each followed by its own
+  advance-and-wrap and `Count` increment, preceded at 18494–18520 by the same
+  `RX.Size - RX.Count > 2` space check and `0x6C` overflow-marker path that the out-of-line
+  helper at 0 has at 21–80. That is the same code, inlined, and it is where the `lea` deficit
+  comes from.
+
+Closing this means hand-inlining a helper into two functions whose remaining ~700 and ~880
+instructions have not been read. Doing it on the strength of a histogram would be guessing, and
+the two bodies are the driver's interrupt path. It is left for a dedicated pass.
+
+### Ledger
+
+45 entries: **28 `control-flow-confirmed`, 4 `signature-confirmed`, 2 `intentional-mismatch`,
+11 `unexamined`, 0 `assembly-matched`.** Twelve entries advanced to `control-flow-confirmed` on
+a full instruction-by-instruction read of the reference against the rewritten source; two
+advanced to `signature-confirmed` only. The eleven still `unexamined` are `_activatePort`,
+`_deactivatePort`, `acquire:`, `setState:mask:`, `watchState:mask:`, `requestEvent:data:`,
+`enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`, `enqueueData:…`, `dequeueData:…` and
+`_dataLatTOHandler`.
+
+**Nothing is `assembly-matched` and nothing claims to be.** Task 6b did diff rebuilt
+instruction streams, but only in aggregate — mnemonic histograms and call-target sets — not
+instruction by instruction, which is what that status requires.
+
+The source map is unchanged in shape: **43 mapped, 2 unmapped**, no duplicates and no disputed
+boundaries. Twenty-nine `source_line` values moved because the rewrite shifted the file; each
+was re-derived and then verified by printing the line it points at.

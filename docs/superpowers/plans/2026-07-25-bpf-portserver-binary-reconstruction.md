@@ -18,6 +18,7 @@
 - Python is 3.13.9. The venv is untracked and lives only in the main tree, so invoke it by **absolute path**: `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe`. Wherever a step below writes `./.venv-binrecon/Scripts/python.exe`, use the absolute path instead. The binrecon README names 3.12; 3.12 is not installed on this host and the pinned dependencies all install and pass on 3.13.9. **Do not change the pins.**
 - Every binrecon invocation needs `PYTHONPATH=tools/binrecon` and runs from the worktree root. With that set, the main tree's interpreter loads the worktree's `binrecon` package — verified.
 - **Test baseline is 662 passed, 4 skipped, 0 failed (666 collected).** Verify with `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`. Any failure you see is yours.
+- **`binrecon ledger` fails silently without `BINRECON_REFERENCE`.** It prints `reference artifact: artifact variable BINRECON_REFERENCE is not set` to stderr and then **exits 0**, so a scripted loop of ledger updates reports success while writing nothing. Every `binrecon ledger` invocation below is prefixed with the variable for this reason — keep it. After any batch of ledger writes, re-read the ledger and assert the entry count and status distribution rather than trusting exit codes. This bit Task 4 and would bite Task 6 far harder, where 113 entries are written.
 - **This plan adds no tests, by design** — it adds no code to `binrecon`. A task that ends with the baseline unchanged is correct, not a coverage gap.
 - IDA `version` must be `9.2`; Ghidra `version` must be `12.1` with a Java 21 `java.exe`. The adapters reject other versions.
 - **Ghidra is disabled in both profiles.** It cannot analyze either reference binary: its raw-i386 fallback import fails validation with `external relocation symbol association is missing`, deterministically, on both `BPF_reloc` (40 undefined externals) and `PortServer_reloc` (59). Java 21 and Ghidra 12.1 are both installed and working — this is not an environment fault. Repairing it means editing `adapters/ghidra.py` and `adapters/ghidra/ExportAnalysis.java`, which is outside this plan's scope and collides with concurrent work in the main tree. Precedent for running without Ghidra: the `parallelport`, `ps2keyboard`, `serialpointingdevice`, `vga-psdrvr`, and `kernel-driverkit` runs. **Consequence to record in both `divergences.md` files:** cross-analyzer boundary checking rests on IDA versus angr alone, and angr's `CFGFast` is the weaker of the two, so `boundary_disputed` is less sensitive than a three-analyzer run would be. IDA remains authoritative for the function partition, which is what every source-map step already uses.
@@ -507,7 +508,7 @@ status line should say, for Task 9.
 Every one of the 30 functions needs an entry. Functions Steps 3 and 4 confirmed get the status the evidence supports; diverging ones stay `unexamined`. The two build-generated functions are accepted divergences, which require both a reason and a reviewer:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/BPF.config/BPF_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/bpf.json \
   --ledger src/drvBPF/reconstruction/ledger.json \
   --address 0x1880 --status intentional-mismatch \
@@ -518,7 +519,7 @@ PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger
 `0x1880` is 6272; repeat for `0x188c` (6284). For a function resolved to a source site, pass `--source-path` and `--source-line` together:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/BPF.config/BPF_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/bpf.json \
   --ledger src/drvBPF/reconstruction/ledger.json \
   --address 0x0 --status assembly-matched \
@@ -605,7 +606,7 @@ Expected: every source file reports as ASCII or UTF-8 text, never `data`. `git d
 For each fixed function, set the status to the level the re-read supports. A repair you verified instruction by instruction earns `assembly-matched`; one where you checked block shape and call targets earns `control-flow-confirmed`. Do not claim `assembly-matched` for a function you did not read in full after the edit.
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/BPF.config/BPF_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/bpf.json \
   --ledger src/drvBPF/reconstruction/ledger.json \
   --address <address> --status control-flow-confirmed \
@@ -616,7 +617,7 @@ PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger
 For each accepted divergence:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/BPF.config/BPF_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/bpf.json \
   --ledger src/drvBPF/reconstruction/ledger.json \
   --address <address> --status intentional-mismatch \
@@ -902,7 +903,7 @@ status line should say, for Task 9.
 Every one of the 113 functions needs an entry, by the same rules as Task 3 Step 7. The three residue functions are accepted divergences:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PortServer.config/PortServer_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/portserver.json \
   --ledger src/drvPortServer/reconstruction/ledger.json \
   --address 0x3d70 --status intentional-mismatch \
@@ -913,7 +914,7 @@ PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger
 `0x3d70` is 15728; repeat for `0x3d7c` (15740). For `__divdi3` at `0x3d88` (15752):
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
+BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PortServer.config/PortServer_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon ledger \
   --profile tools/binrecon/profiles/portserver.json \
   --ledger src/drvPortServer/reconstruction/ledger.json \
   --address 0x3d88 --status intentional-mismatch \

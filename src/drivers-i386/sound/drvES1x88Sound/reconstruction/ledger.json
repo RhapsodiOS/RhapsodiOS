@@ -1,0 +1,591 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: the inlined assignDSPRegAddresses() in the reference writes only five DSP register addresses, ours also writes sbAck8bitInterrupt and sbAck16bitInterrupt, which have no symbol in the reference's __DATA,__data; and the numChannels bound test is unsigned (ja) in the reference against our signed int local. See divergences.md Findings 6 and 9. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[ES1x88AudioDriver probe:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 298,
+      "source_line": 31,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 300,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: no stringValue send on the \"Input Source\" value; setTransferMode: is passed 0 (IO_Demand) not 1 (IO_Single); the mixer record-source byte is re-read from _sbRecordSource rather than kept in a parallel local; and the hardwareName and inputSource ivars sit at 396 and 400, which our eight-ivar interface cannot produce. See divergences.md Findings 1, 2, 3 and 7. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver reset]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 1094,
+      "source_line": 74,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1396,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: the volume shadows are written as two 4-bit bitfield assignments each (and 0Fh / or 0A0h / and 0F0h / or 0Ah) and then read back, not as a single rawValue = 0xAA store followed by an immediate; _volVoc is a bitfield register in the reference and a plain unsigned char in ours; and the two DSP wait helpers' return values are discarded rather than causing an early return. See divergences.md Findings 4, 5 and 8. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver initializeHardware]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 1237,
+      "source_line": 346,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2636,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:497-526: inputGainLeft, gain ? (gain*15)>>15 : 0 as lea/lea/shr 0Fh, high-nibble update of _volLine, _volMic and _volCD in that order, then mixer writes to 3Eh and 38h. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver updateInputGainLeft]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 229,
+      "source_line": 497,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2868,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:528-557: the mirror of updateInputGainLeft writing the low nibble, including the and 0Fh that our & ES_VOLUME_BITS produces. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver updateInputGainRight]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 229,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3100,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: the reference stores !isOutputMuted into a stack local (setz al) and tests that, and emits the D1h and D3h speaker commands as separate immediates inside the two branches; our isMuted local and single trailing outb(sbWriteDataOrCommandReg, speakerCommand) cannot produce either. See divergences.md Finding 10. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver updateOutputMute]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 551,
+      "source_line": 559,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3652,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:623-661: (att*3+252)*5/84 as lea [edx+edx*2+0FCh] / lea [edx+edx*4] / div 54h, high-nibble update of _volCD, _volMaster, _volLine and _volVoc in that order, then mixer writes to 32h, 38h, 14h and 3Eh. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver updateOutputAttenuationLeft]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 367,
+      "source_line": 623,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4020,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:663-700: the mirror of updateOutputAttenuationLeft writing the low nibble, including the and 0Fh that our & ES_VOLUME_BITS produces. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver updateOutputAttenuationRight]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 367,
+      "source_line": 663,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4388,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: three predicates are inverted against the reference. currentDMADirection == DMA_DIRECTION_IN selects 0Eh in the reference and 04h in ours; it selects the and 0F8h mask in the reference and and 0FCh in ours; and the mode-command group is chosen on dataEncoding == 259h (NX_SoundStreamDataEncoding_Linear8) in the reference and on Linear16 in ours. See divergences.md Finding 11. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver configureHardwareForDataTransfer:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 1325,
+      "source_line": 801,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5716,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:986-990: the whole body is the objc_msgSendSuper for enableAllInterrupts. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver enableAllInterrupts]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 41,
+      "source_line": 986,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5760,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:992-996: the mirror of enableAllInterrupts. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver disableAllInterrupts]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 41,
+      "source_line": 992,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5804,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: waitForDSPDataAvailable() and waitForDSPWriteReady() return values are discarded, so the reference has no early return and no IOLog on their failure; the DSP identity byte is compared zero-extended against 0AAh, while our unsigned char dspVersion == (char)ES_DSP_READY_RESPONSE is a comparison that can never be true; and the inputSource ivar is read at +190h, which our eight-ivar interface cannot produce. See divergences.md Findings 7, 8 and 12. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 1578,
+      "source_line": 998,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7384,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1172-1227: C0h read-register, B8h read, and 0FEh, B8h write-back, disableAllInterrupts, disableChannel:0, mic mute at 1Ah, then the four-register restore behind isOutputMuted and D1h. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver stopDMAForChannel:read:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 540,
+      "source_line": 1172,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7924,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1235-1250: inb(sbDataAvailableStatusReg), then cmp dword [self+184h], 1 selecting *serviceOutput, else *serviceInput. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver interruptOccurredForInput:forOutput:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 48,
+      "source_line": 1235,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7972,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriverInline.h:177-185 clearInterrupts(): a single inb(sbDataAvailableStatusReg) returned in al, with no IODelay. Its source_line 24 is the #import \"ES1x88AudioDriverInline.h\" site, not the definition, because source-map's *.m/*.c glob does not see the header; see divergences.md, Weaker evidence. The static __inline__ qualifier still yields an out-of-line copy because interruptClearFunc takes its address. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_clearInterrupts"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 15,
+      "source_line": 24,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7988,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1229-1233: mov eax, offset _clearInterrupts; retn. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver interruptClearFunc]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 1229,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8000,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: as in startDMAForChannel:, the two DSP wait helpers' return values are discarded so the reference has no early-return arm, and the identity byte is compared zero-extended against 0AAh while our unsigned char dspVersion == (char)ES_DSP_READY_RESPONSE can never be true. See divergences.md Findings 8 and 12. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver timeoutOccurred]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 360,
+      "source_line": 1255,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8360,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: the reference tests val against 0C8h (Microphone) and then 0C9h (LineIn), with the default sharing the microphone path; our single val == NX_SoundStreamDataAnalogSourceLineIn test emits one compare, not two. See divergences.md Finding 13. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver setAnalogInputSource:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 133,
+      "source_line": 1294,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8496,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1323-1326: mov eax, 1; retn. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver acceptsContinuousSamplingRates]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 1323,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8508,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1328-1333: *low = 0FA0h (4000), *high = 0AC44h (44100). IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver getSamplingRatesLow:high:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 25,
+      "source_line": 1328,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1335-1344: 4000, 8000, 11025 (2B11h), 22050 (5622h), 44100 (0AC44h) and *count = 5. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver getSamplingRates:count:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 53,
+      "source_line": 1335,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8592,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three.",
+          "diverges: the reference writes encodings[0] = 259h (NX_SoundStreamDataEncoding_Linear8) and encodings[1] = 258h (Linear16); our source writes them in the opposite order. See divergences.md Finding 14. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver getDataEncodings:count:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 32,
+      "source_line": 1346,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8624,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "read instruction by instruction against ES1x88AudioDriver.m:1354-1357: mov eax, 2; retn. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[ES1x88AudioDriver channelCountLimit]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": 1354,
+      "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8636,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue emitted by the Kernel Server project type, not written by hand; IDA and angr agree on size and instructions. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[ES1x88AudioDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source: +[ES1x88AudioDriverKernelServerInstance kernelServerInstance] returns &_ES1x88AudioDriver_instance (__DATA,__common:16444)",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 8648,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue emitted by the Kernel Server project type, not written by hand; IDA and angr agree on size and instructions. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[ES1x88AudioDriverVersion driverKitVersionForES1x88AudioDriver]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source: +[ES1x88AudioDriverVersion driverKitVersionForES1x88AudioDriver] returns 1F4h (500)",
+      "reviewer": "binrecon-task-7",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "196F94DC778DB5A2AFE7763A2F4559ED96F27B46AB813674A5C098B75667DAD3",
+  "schema_version": "ledger-v1"
+}

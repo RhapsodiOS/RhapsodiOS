@@ -35,6 +35,11 @@
 #import <sys/types.h>
 #import <sys/uio.h>
 #import <sys/proc.h>
+#import <string.h>
+
+#define _KERNEL
+struct mbuf;
+#import <net/bpf.h>	/* bpfops */
 
 /* External BPF functions from bpf.c */
 extern int bpfopen(dev_t dev, int flag);
@@ -44,6 +49,8 @@ extern int bpfwrite(dev_t dev, struct uio *uio);
 extern int bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flag);
 extern int bpf_select(dev_t dev, int rw, struct proc *p);
 extern void bpfilterattach(int n);
+extern void bpf_tap(caddr_t arg, u_char *pkt, u_int pktlen);
+extern void bpf_mtap(caddr_t arg, struct mbuf *m);
 
 /* External BPF globals */
 extern int nbpfilter;
@@ -69,8 +76,8 @@ extern int enodev(void);
                                         reset:(IOSwitchFunc)nulldev
                                        select:(IOSwitchFunc)bpf_select
                                          mmap:(IOSwitchFunc)enodev
-                                     strategy:(IOSwitchFunc)enodev
-                                      getstat:(IOSwitchFunc)enodev];
+                                         getc:(IOSwitchFunc)enodev
+                                         putc:(IOSwitchFunc)enodev];
 
     if (result == YES) {
         instance = [[self alloc] initFromDeviceDescription:deviceDescription];
@@ -85,6 +92,10 @@ extern int enodev(void);
 
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
+    /* Divert the kernel's tap calls into this driver. */
+    bpfops.bpf_tap = bpf_tap;
+    bpfops.bpf_mtap = bpf_mtap;
+
     [self setName:"bpf"];
     [super initFromDeviceDescription:deviceDescription];
     [self registerDevice];
@@ -92,26 +103,12 @@ extern int enodev(void);
     return self;
 }
 
-- (IOReturn)getIntValues:(int *)parameterArray
+- (IOReturn)getIntValues:(unsigned int *)parameterArray
             forParameter:(IOParameterName)parameterName
                    count:(unsigned int *)count
 {
-    const char *expected = "BpfMajorMinor";
-    const char *p1, *p2;
-
-    /* Compare parameter name with "BpfMajorMinor" */
-    p1 = parameterName;
-    p2 = expected;
-
-    while (*p1 && *p2) {
-        if (*p1 != *p2)
-            break;
-        p1++;
-        p2++;
-    }
-
     /* Check if strings match and count is correct */
-    if (*p1 == '\0' && *p2 == '\0' && *count == 2) {
+    if (strcmp(parameterName, "BpfMajorMinor") == 0 && *count == 2) {
         /* Get character major number from class method */
         unsigned int majorNum = [[self class] characterMajor];
 

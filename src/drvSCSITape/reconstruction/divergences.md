@@ -310,6 +310,107 @@ line, rather than inserting it before, would have `-releaseDevice` lock an
 already-freed `_devLock` — a use-after-free. The fix pass must preserve the
 reference's ordering, not just add the missing call anywhere in the function.
 
+## SCSI command methods
+
+Task 3 read the nine SCSI-command-issuing methods at addresses 2608-5756
+(`analysis.named.json`) instruction by instruction against `SCSITape.m`,
+resolving every `bl` island via `read_macho` against `SCSITape_reloc`'s
+relocation table (the same technique Task 2 used for `__message_refs`) and
+cross-checking every literal against the constants in
+`src/kernel-7/bsd/dev/scsireg.h` and
+`src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeTypes.h`. All nine
+reached `assembly-matched` — no divergence found in this block.
+
+### The jump-table check (spec §2.1)
+
+`-[SCSITape executeMTOperation:]` (address 5000) builds a 14-entry jump table
+at `__TEXT,__const` offset 0 (raw address 0x2e34-0x2e68, the `PPC_RELOC_SECTDIFF`
+run the spec calls out). Resolving it against `__TEXT,__text`:
+
+| `mt_op` (index) | Target | Owning function |
+| --- | --- | --- |
+| 0 (`MTWEOF`) | `0x140c` | `-[SCSITape executeMTOperation:]` |
+| 1 (`MTFSF`) | `0x1418` | `-[SCSITape executeMTOperation:]` |
+| 2 (`MTBSF`) | `0x1448` | `-[SCSITape executeMTOperation:]` |
+| 3 (`MTFSR`) | `0x1478` | `-[SCSITape executeMTOperation:]` |
+| 4 (`MTBSR`) | `0x14a4` | `-[SCSITape executeMTOperation:]` |
+| 5 (`MTREW`) | `0x14d4` | `-[SCSITape executeMTOperation:]` |
+| 6 (`MTOFFL`) | `0x14dc` | `-[SCSITape executeMTOperation:]` |
+| 7 (`MTNOP`) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 8 (`MTRETEN`) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 9 (`MTERASE`) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 10 (unused) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 11 (unused) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 12 (`MTCACHE`) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+| 13 (`MTNOCACHE`) | `0x14f0` | `-[SCSITape executeMTOperation:]` |
+
+Exactly the expected shape: 14 entries, all inside this one function, distinct
+targets for indices 0-6, and indices 7-13 (`MTNOP`/`MTRETEN`/`MTERASE`/two
+unused slots/`MTCACHE`/`MTNOCACHE`) all collapsing onto the same default body
+at `0x14f0`. `src/kernel-7/bsd/sys/mtio.h:75-88` gives the `mt_op` values
+(`MTWEOF`=0 ... `MTOFFL`=6, `MTNOP`=7, `MTRETEN`=8, `MTERASE`=9, `MTCACHE`=12,
+`MTNOCACHE`=13, with 10-11 unassigned) — the reference's switch range is
+therefore 0-13 packed contiguously, matching our `SCSITape.m:801`'s `switch`
+case set and case order (`MTWEOF`, `MTFSF`, `MTBSF`, `MTFSR`, `MTBSR`, `MTREW`,
+`MTOFFL` as distinct cases; `MTNOP`/`MTCACHE`/`MTNOCACHE`/`MTRETEN`/`MTERASE`
+falling to one `default:` body) case for case, index for index. No reordering,
+no collapsed case that should be distinct or vice versa — this is the
+`SCSIServer` mis-wired-dispatch-table class of defect, checked and clean.
+
+Beyond the table itself, every one of the seven distinct case bodies (and the
+default) was read at instruction level and matches `SCSITape.m:821-874`
+exactly, including a compiler code-sharing pattern worth recording since it
+looks like a bug on first read: cases that compute a value and then jump
+*into the middle of another case's own instruction sequence* to reach a
+shared tail. `MTFSF`/`MTBSF` (cases 1/2) each compute
+`timeoutLength = mt_count * ST_IOTO_SPFM` (`0x258` = 600) into `r0`, then
+branch directly to the `stw r0,timeoutLength` instruction that is physically
+part of the `MTFSR`/`MTBSR` (cases 3/4) bodies, skipping those cases' own
+literal-timeout stores, and fall through into the shared `assign_cdb_c6s_len`
+call — reproducing `goto setcount_f;`/`goto setcount_b;` (`SCSITape.m:830`,
+`836`) exactly. `MTWEOF` (case 0) branches straight into case 3's tail past
+*both* the timeout store and the `stb` opcode store, reproducing the
+fallthrough `goto setcount_f;` at `SCSITape.m:824` (no per-op timeout
+override). `MTREW` (case 5) branches into case 6's (`MTOFFL`) `stb` opcode
+instruction with `r0` pre-loaded to `C6OP_REWIND` (1), then falls through
+case 6's own `timeoutLength = ST_IOTO_RWD` (`0x12C` = 300) store — matching
+`SCSITape.m:855-858`'s `cdbp->c6s_opcode = C6OP_REWIND; scsiReq.timeoutLength
+= ST_IOTO_RWD;` exactly, since both `MTREW` and `MTOFFL` want that same
+timeout value. The default case sets `r3 = SR_IOST_CMDREJ` (7) and branches
+straight to the function epilogue, skipping the `executeRequest:` call
+entirely — matching `default: rtn = SR_IOST_CMDREJ; goto out;`
+(`SCSITape.m:872-873`). None of this sharing changes behavior; it is the
+compiler merging identical tail instructions across cases, not a control-flow
+divergence, so it does not block `assembly-matched`.
+
+### Per-function CDB evidence
+
+All nine build (or, for `setBlockSize:`, indirectly rely on)
+`cdb_6_t`/`cdb_6s_t` at a fixed 4-byte offset into the `IOSCSIRequest` on the
+stack (confirmed by the `cdbp` pointer arithmetic in every function: cdb base
+= scsiReq base + 4, matching `struct cdb_6`'s big-endian bitfield layout in
+`scsireg.h:80-100`, where `c6_opcode:8`/`c6_lun:3`/`c6_lba:21` share one
+32-bit word at cdb offset 0 and `c6_len` is a separate byte at cdb offset 4;
+`struct cdb_6s` packs `c6s_opcode` alone at offset 0 and
+`c6s_lun:3`/`c6s_spare:3`/`c6s_opt:2` alone at offset 1, per `scsireg.h:108-133`).
+Every opcode, offset, and length constant below was cross-checked against
+`scsireg.h`'s `#define`s and the struct sizes they imply.
+
+| Address | Function | Status | CDB evidence |
+| --- | --- | --- | --- |
+| 2608 | `-[SCSITape stInquiry:]` | `assembly-matched` | `cdbp[0] = 0x12` (`C6OP_INQUIRY`); `c6_lun` bitfield insert (`insrwi`) into the same 32-bit word at offset 0, sourced from `_target`/`_lun` (`0x10C`/`0x10D`); `cdbp[4] = 0x41` (65 = `sizeof(inquiry_reply_t)`, confirmed by summing `scsireg.h:522-601`'s fields: 4 packed bytes + `ir_addlistlen`+`ir_zero3`+`ir_zero4` byte+`ir_reladr` byte + `vendorid[8]`+`productid[16]`+`revision[4]`+`misc[28]`+`endofid[1]` = 65); matches `SCSITape.m:523-525` exactly. The "bad DMA transfer" branch compares `bytesTransferred` against a baked-in `5` (`offsetof(inquiry_reply_t, ir_zero3)`), matching `SCSITape.m:533-534`'s `(char*)&alignedReply->ir_zero3 - (char*)alignedReply` computed at compile time |
+| 3124 | `-[SCSITape stTestReady]` | `assembly-matched` | `cdbp[0] = 0x00` (`C6OP_TESTRDY`); `c6_lun` bitfield insert from `_lun`; no `c6_len` write (source sets none either); return value computed via `subfic`/`adde` ("zero-to-1, else-0" idiom) — `YES` iff `driverStatus == SR_IOST_GOOD` (0), `NO` otherwise, matching the `switch(driverStatus){case SR_IOST_GOOD: YES; default: NO;}` at `SCSITape.m:592-599` |
+| 3332 | `-[SCSITape stCloseFile]` | `assembly-matched` | `cdbp->c6s_opcode = 0x10` (`C6OP_WRTFM`) at offset 0; no `c6s_lun` write (matches — source never sets it for the sequential CDB, leaving `bzero`'s 0); calls `_assign_cdb_c6s_len(cdbp, 1)` (address 6872, confirmed by symbol lookup in `analysis.named.json`) — matches `SCSITape.m:616-617`'s `cdbp->c6s_opcode = C6OP_WRTFM; assign_cdb_c6s_len(cdbp, 1);` |
+| 3560 | `-[SCSITape stRewind]` | `assembly-matched` | `timeoutLength = 0x12C` (300 = `ST_IOTO_RWD`, `SCSITapeTypes.h:29`); `cdbp->c6s_opcode = 0x01` (`C6OP_REWIND`) at offset 0; no length write; matches `SCSITape.m:634-636` |
+| 3740 | `-[SCSITape requestSense:]` | `assembly-matched` | `cdbp[0] = 0x03` (`C6OP_REQSENSE`); `c6_lun` bitfield insert from `_lun`; `cdbp[4] = 0x1C` (28 = `sizeof(esense_reply_t)`, confirmed by summing `scsireg.h:422-502`'s big-endian, non-natural-alignment fields and rounding to 4-byte struct alignment: 26 raw bytes → 28); calls `_controller`'s 3-arg `executeRequest:buffer:client:` directly (selector resolved via `__message_refs` offset 112, distinct from the other eight functions' 4-arg `executeRequest:buffer:client:senseBuf:` at offset 108) — matches `SCSITape.m:682-684`'s direct `[_controller executeRequest:...]` call that bypasses `self`'s wrapper |
+| 4172 | `-[SCSITape stModeSelect:]` | `assembly-matched` | `count` read from `modeSelectParmsPtr` offset `0x3C` (60 = `sizeof(mode_sel_data_t)`, confirmed via `mode_sel_hdr_t`(4) + `mode_sel_bd_t`(8) + `msd_vudata[0x30]`(48) = 60, so `msp_bcount` sits immediately after `msp_data`); `cdbp[0] = 0x15` (`C6OP_MODESELECT`); `c6_lun` bitfield insert; `cdbp[4] = count` (register, not immediate, but same offset); `bcopy(&modeSelectParmsPtr->msp_data, alignedBuf, count)` — matches `SCSITape.m:700, 730-734` |
+| 4584 | `-[SCSITape stModeSense:]` | `assembly-matched` | Same `count`-at-`0x3C` read; `cdbp[0] = 0x1A` (`C6OP_MODESENSE`); `c6_lun` bitfield insert; `cdbp[4] = count`; post-call `bcopy(alignedBuf, &modeSenseParmsPtr->msp_data, count)` guarded on `rtn == SR_IOST_GOOD` — matches `SCSITape.m:752, 782-784, 791-792` |
+| 5000 | `-[SCSITape executeMTOperation:]` | `assembly-matched` | Jump table and all seven case bodies verified above (opcodes `C6OP_WRTFM`(0x10)/`C6OP_SPACE`(0x11, `C6OPT_SPACE_FM`=1 or `C6OPT_SPACE_LB`=0)/`C6OP_REWIND`(0x01)/`C6OP_STARTSTOP`(0x1B), timeouts `ST_IOTO_SPFM`(600)/`ST_IOTO_SPR`(60)/`ST_IOTO_RWD`(300), default `rtn = SR_IOST_CMDREJ`(7)) — matches `SCSITape.m:821-874` case for case |
+| 5496 | `-[SCSITape setBlockSize:]` | `assembly-matched` | Builds no CDB directly (delegates to `stModeSense:`/`stModeSelect:`); `IOMalloc(0x40)` (64 = `sizeof(modesel_parms_t)` = 60 + 4); `msh_sd_length_0`/`msh_med_type` zeroed at offsets 0/1; `msh_wp` cleared via a 1-bit `clrlwi` at offset 2 (preserving the sense-derived `bufmode`/`speed` bits already in that byte, not zeroing the whole byte); `msh_bd_length = 8` (`sizeof(mode_sel_bd_t)`) at offset 3; calls `_assign_msbd_blocklength`/`_assign_msbd_numblocks` (addresses 6928/6904, confirmed by symbol lookup) on the block descriptor at `msp_data+4`; `_blockSize = blockSize` written at `0x114` (matches the ivar table); both `stModeSense:`/`stModeSelect:` failure paths converge on the same `IOFree(mspp,0x40); return [_controller returnFromScStatus:rtn];` — matches `SCSITape.m:895-929` in full |
+
+No findings were added for this block — every entry reached
+`assembly-matched` and none diverges from the source.
+
 ## Finding: `-[SCSITape acquireDevice]` reserves the target/lun and all LUNs with the controller; our source only flips a flag
 
 **Source:** `SCSITape.m:457-470` (`acquireDevice`).

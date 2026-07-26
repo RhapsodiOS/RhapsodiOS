@@ -302,6 +302,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	unsigned actualBytes;
 	int fdcStatus;
 	BOOL isContiguous;
+	int contiguousBlocks;
 	int eisaPresent;
 	unsigned long long startTime, endTime;
 	const char *statsMethod;
@@ -339,12 +340,19 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			blocksToTransfer = page_size / sectorSize;
 		}
 
-		// Check if buffer is physically contiguous
-		isContiguous = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
+		// Check if buffer is physically contiguous. physContBlocks
+		// returns the actual number of contiguous blocks (which may be
+		// less than blocksToTransfer); the disassembly uses that count
+		// directly instead of just a yes/no flag.
+		contiguousBlocks = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
 
-		// If not contiguous, can only transfer 1 block at a time
-		if (!isContiguous) {
+		if (contiguousBlocks == 0) {
+			// Not contiguous, can only transfer 1 block at a time
+			isContiguous = NO;
 			blocksToTransfer = 1;
+		} else {
+			isContiguous = YES;
+			blocksToTransfer = contiguousBlocks;
 		}
 
 		// Adjust block count to not exceed track boundary
@@ -357,20 +365,20 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			 readFlag:isRead];
 
 		// Set command length
-		*(unsigned *)(cmdBuffer + 0x5c) = 1;
+		*(unsigned *)(cmdBuffer + 0x08) = 1;
 
 		// Calculate expected bytes
-		*(unsigned *)(cmdBuffer + 0x34) = adjustedBlockCount * sectorSize;
+		*(unsigned *)(cmdBuffer + 0x24) = adjustedBlockCount * sectorSize;
 
 		// Set up buffer pointer and VM task
 		if (isContiguous) {
 			// Use user buffer directly
-			*(void **)(cmdBuffer + 0x30) = currentBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = client;
+			*(void **)(cmdBuffer + 0x20) = currentBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = client;
 		} else {
 			// Use bounce buffer
-			*(void **)(cmdBuffer + 0x30) = bounceBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = kernel_map;
+			*(void **)(cmdBuffer + 0x20) = bounceBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = kernel_map;
 
 			// For write, copy data to bounce buffer
 			if (!isRead) {
@@ -384,8 +392,8 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		// Get FDC status from offset 0x40
 		fdcStatus = *(int *)(cmdBuffer + 0x40);
 
-		// Get actual bytes transferred from offset 0x3c
-		actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
+		// Get actual bytes transferred from offset 0x48
+		actualBytes = *(unsigned *)(cmdBuffer + 0x48);
 
 		// Special case: if status 6 and actualBytes != 0, adjust by sector size
 		if ((fdcStatus == 6) && (actualBytes != 0)) {

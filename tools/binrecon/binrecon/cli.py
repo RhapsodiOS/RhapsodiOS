@@ -12,6 +12,7 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
+from binrecon.abi_check import diff_abi, module_from_object
 from binrecon.macho import extract_slice, load_image, objc_method_index, read_macho
 from binrecon.normalize import preflight_json
 from binrecon.objc_abi import (
@@ -24,7 +25,7 @@ from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
 COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
-            "extract-slice", "abi")
+            "extract-slice", "abi", "abi-check")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,6 +82,10 @@ def build_parser() -> argparse.ArgumentParser:
     abi.add_argument("--module", action="append", required=True)
     abi.add_argument("--symbols", required=True)
     abi.add_argument("--output", required=True)
+    abi_check = subparsers.add_parser("abi-check")
+    abi_check.add_argument("--abi-dir", required=True)
+    abi_check.add_argument("--built", action="append", required=True,
+                           metavar="MODULE=PATH")
 
     return parser
 
@@ -255,6 +260,42 @@ def main(argv=None) -> int:
                     json.dumps(modules[module], indent=1, sort_keys=True) + "\n"
                 )
                 print(f"wrote {target}")
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "abi-check":
+        try:
+            built = {}
+            for pair in args.built:
+                module, separator, path = pair.partition("=")
+                if not separator or not module or not path:
+                    raise ValueError(
+                        f"--built expects MODULE=PATH, got {pair!r}"
+                    )
+                payload, document = load_image(Path(path))
+                built[module] = module_from_object(payload, document, module)
+
+            findings = []
+            for expected_path in sorted(Path(args.abi_dir).glob("*.json")):
+                expected = json.loads(expected_path.read_text())
+                actual = built.pop(expected["module"], None)
+                if actual is None:
+                    findings.append(
+                        f"{expected['module']}: no --built object was supplied"
+                    )
+                    continue
+                findings.extend(diff_abi(expected, actual))
+            for module in sorted(built):
+                findings.append(f"{module}: no committed ABI document to check")
+
+            for line in findings:
+                print(f"abi-check: {line}")
+            if findings:
+                print(f"abi-check: {len(findings)} divergence(s)")
+                return 1
+            print("abi-check: ABI matches")
             return 0
         except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
             print(f"binrecon: {error}", file=sys.stderr)

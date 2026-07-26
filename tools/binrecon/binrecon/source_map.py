@@ -53,12 +53,23 @@ def defined_symbols(macho_document):
 
 
 def _selector(declaration):
-    """Reduce an Objective-C method declaration to its bare selector."""
+    """Reduce an Objective-C method declaration to its bare selector.
+
+    Keywords after the first may be empty: `initFromDeviceDescription::::` is a
+    real selector in the shipped i386 drivers. Once the parenthesised types are
+    gone, each colon is followed by its argument name and then, optionally, the
+    next keyword, so matching `(\\w+)\\s*:` would capture the argument name as a
+    keyword and turn `foo::::` into `foo:a:b:c:`. Walk the segments instead.
+    """
     text = re.sub(r"\([^()]*\)", " ", declaration)
     text = text.split("{")[0]
-    keywords = re.findall(r"(\w+)\s*:", text)
-    if keywords:
-        return "".join(keyword + ":" for keyword in keywords)
+    if ":" in text:
+        segments = text.split(":")
+        selector = segments[0].split()[-1] + ":" if segments[0].split() else ":"
+        for segment in segments[1:-1]:
+            words = segment.split()
+            selector += (words[1] if len(words) > 1 else "") + ":"
+        return selector
     words = re.findall(r"\w+", text)
     return words[0] if words else None
 

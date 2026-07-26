@@ -520,15 +520,17 @@ static int HandleBsdOpen(dev_t dev)
 
 	// If result is 2 (normal case), set the open flag
 	if (identifyResult == 2) {
-		partFlags = (unsigned char *)partition;
+		// identifyBsdDev wrote the major-match flag directly into the
+		// low byte of the "partition" slot - it is not a pointer to
+		// dereference.
+		partFlags = (unsigned char *)&partition;
 
-		// Check partition flags bit 0 to determine device type
-		if ((partFlags != NULL) && ((*partFlags & 1) == 0)) {
-			// Raw device - set raw open flag
-			[disk setRawDeviceOpen:YES];
-		} else {
+		if ((*partFlags & 1) != 0) {
 			// Block device - set block open flag
 			[disk setBlockDeviceOpen:YES];
+		} else {
+			// Raw device - set raw open flag
+			[disk setRawDeviceOpen:YES];
 		}
 	}
 
@@ -576,15 +578,17 @@ static int HandleBsdClose(dev_t dev)
 
 	// If we have a disk object, clear the open flag
 	if (disk != nil) {
-		partFlags = (unsigned char *)partition;
+		// identifyBsdDev wrote the major-match flag directly into the
+		// low byte of the "partition" slot - it is not a pointer to
+		// dereference.
+		partFlags = (unsigned char *)&partition;
 
-		// Check partition flags bit 0 to determine device type
-		if ((partFlags != NULL) && ((*partFlags & 1) == 0)) {
-			// Raw device - clear raw open flag
-			[disk setRawDeviceOpen:NO];
-		} else {
+		if ((*partFlags & 1) != 0) {
 			// Block device - clear block open flag
 			[disk setBlockDeviceOpen:NO];
+		} else {
+			// Raw device - clear raw open flag
+			[disk setRawDeviceOpen:NO];
 		}
 	}
 
@@ -625,7 +629,10 @@ static u_int fdminphys(struct buf *bp)
  *   dev        - BSD device number (dev_t)
  *   driveOut   - Output pointer for drive object
  *   diskOut    - Output pointer for disk object
- *   partOut    - Output pointer for partition info flags
+ *   partOut    - Output slot for the major-match flag (0 or 1), written
+ *                directly into *partOut's storage. This is never a
+ *                pointer to allocated memory - callers must not
+ *                dereference the value read back through it.
  *
  * Returns:
  *   0 = Invalid device
@@ -686,13 +693,13 @@ static unsigned int identifyBsdDev(dev_t dev,
 	// Get expected major number from offset 0x2d in drive table entry
 	expectedMajor = *((unsigned char *)&Drives[driveNumber].devInfo.blockDev + 1);
 
-	// Check if major number matches (set bit 0 in partition flags if it does)
+	// Check if major number matches. identifyBsdDev never allocates
+	// storage for the partition output - it writes the flag bit
+	// directly into *partOut's own storage (the caller's local slot),
+	// so callers must read that slot as a small integer, not dereference
+	// it as a pointer.
 	if (expectedMajor == major) {
-		// Allocate partition flags if needed
-		if (*partOut == NULL) {
-			*partOut = (void *)IOMalloc(1);
-		}
-		partFlags = (unsigned char *)*partOut;
+		partFlags = (unsigned char *)partOut;
 		*partFlags |= 1;  // Set bit 0 to indicate major match
 	}
 

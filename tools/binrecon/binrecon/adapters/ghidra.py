@@ -333,7 +333,7 @@ def _command(executable: Path, workspace: Path, project: str,
     return argv
 
 
-def _layout(profile, identity: InputIdentity) -> dict:
+def _layout(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
     try:
         macho = read_macho(identity.path)
     except (OSError, MachOFormatError) as error:
@@ -447,7 +447,7 @@ def _layout(profile, identity: InputIdentity) -> dict:
         ),
         "entry_points": sorted(entries, key=lambda item: (item["address"], item["name"])),
     }
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
     if scope:
         document["analysis_scope"] = [{"start": start, "end": end}
                                       for start, end in scope]
@@ -627,7 +627,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         assert_identity(identity)
     except (OSError, ValueError) as error:
         raise GhidraAdapterError(f"input identity is no longer stable: {error}") from error
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
 
     destination = Path(destination).resolve(strict=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -698,7 +698,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
                 output.unlink(missing_ok=True)
             except OSError as error:
                 raise GhidraAdapterError(f"could not reset fallback output: {error}") from error
-            layout_document = _layout(profile, identity)
+            layout_document = _layout(profile, identity, artifact)
             _atomic_text(layout_path, json.dumps(layout_document, ensure_ascii=False,
                                                   sort_keys=True, separators=(",", ":")) + "\n")
             command = _command(executable, workspace, f"fallback-{run_token}", identity, script, output,

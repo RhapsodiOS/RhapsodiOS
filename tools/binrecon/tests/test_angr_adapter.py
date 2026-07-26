@@ -127,6 +127,25 @@ def test_host_layout_preserves_canonical_relocation_metadata(tmp_path):
     assert layout["relocation_metadata"][0]["external"] is True
 
 
+def test_host_layout_scopes_each_artifact_separately(tmp_path):
+    binary = tmp_path / "input.o"
+    binary.write_bytes(build_macho_fixture())
+    identity = identify(binary)
+    profile = SimpleNamespace(document=MappingProxyType({
+        "image_base": 0x1000,
+        "comparison": MappingProxyType({"entry_points": ()}),
+        "regions": (),
+        "analysis_scope": ({"start": 0x1000, "end": 0x1100},),
+        "rebuilt_analysis_scope": ({"start": 0x9000, "end": 0x9200},),
+    }))
+
+    reference = angr_host._layout(profile, identity, "reference")
+    rebuilt = angr_host._layout(profile, identity, "rebuilt")
+
+    assert reference["analysis_scope"] == [{"start": 0x1000, "end": 0x1100}]
+    assert rebuilt["analysis_scope"] == [{"start": 0x9000, "end": 0x9200}]
+
+
 @pytest.mark.parametrize("mode,match", [
     ("missing", "fresh"), ("malformed", "malformed"),
     ("identity", "identity"), ("version", "version"), ("contract", "contract"),

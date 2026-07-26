@@ -19,6 +19,8 @@
     "regions": {"type": "array", "items": {"$ref": "#/$defs/region"}},
     "analysis_scope": {"type": "array", "minItems": 1,
                        "items": {"$ref": "#/$defs/scope_range"}},
+    "rebuilt_analysis_scope": {"type": "array", "minItems": 1,
+                               "items": {"$ref": "#/$defs/scope_range"}},
     "aliases": {"$ref": "#/$defs/aliases"},
     "symbolic_checks": {"type": "array", "items": {"$ref": "#/$defs/symbolic_check"}},
     "extensions": {"$ref": "#/$defs/extensions"}

@@ -11,12 +11,14 @@
 #import <driverkit/generalFuncs.h>	/* IOMalloc, IOFree */
 #import <driverkit/kernelDriver.h>	/* IOGetObjectForDeviceName */
 
-/* Global port list structures */
+/* Global port list structures.  _portListLock is declared first: the
+ * reference has it at 33160 and _portList at 33164, i.e. this order.
+ */
+static id _portListLock;            /* Lock protecting the port list */
 static struct {
     void *next;
     void *prev;
 } _portList;                        /* Circular list head (next, prev) */
-static id _portListLock = NULL;     /* Lock protecting the port list */
 
 /* Port list entry structure (0x20 bytes)
  * offset +0: next pointer

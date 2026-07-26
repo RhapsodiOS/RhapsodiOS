@@ -4667,3 +4667,152 @@ have been a codegen divergence rather than a warning.
 - **`strcpy` conflicting with the built-in** (`IOPortSessionKern.m:29`). A local prototype
   disagreeing with gcc's builtin. `_strcpy` is an undefined external in both binaries, so
   no divergence; left alone.
+
+## 16. The §14 fidelity items, settled against both binaries
+
+§14 listed three items as owed. With our own `PortServer_reloc` now built, two of them stop
+being judgement calls and become measurements.
+
+### Finding 86 — twelve globals sit in `__data` because we wrote `= NULL`
+
+Comparing every `__DATA` symbol's section between the two binaries turns up 12 mismatches,
+all in the same direction and all from the same cause:
+
+| symbol | reference | ours |
+|---|---|---|
+| `_IMP_interuptable` … `_IMP_lockWhen` (8) | `__bss` | `__data` |
+| `_portListLock` | `__bss` | `__data` |
+| `_mapLock` | `__bss` | `__data` |
+| `_ttyiopsMapLock` | `__bss` | `__data` |
+| `_pseudoUnit` | `__bss` | `__data` |
+
+Every one of those was declared `static id x = NULL;` or `static IMP x = NULL;`. The
+globals we declared *without* an initializer — `_numSessions`, `_portList`,
+`_nsPortKernIdMap` — are in `__bss` in both. This compiler honours an explicit zero
+initializer by emitting into `__data` rather than folding it into `__bss`, so the
+initializer is the whole difference. Apple's source therefore left all twelve
+uninitialized.
+
+`_ttyiopsMap[26] = { NULL }` and `_portServerMajor = 0` are in `__data` in **both**, so
+those two initializers are correct as written and were left alone.
+
+**Fixed.** The twelve `= NULL` initializers are dropped. This is behaviour-preserving —
+C zero-initializes static storage either way.
+
+### Finding 16 — `_portListLock` before `_portList`, now actionable
+
+§14 left this alone as "self-contradictory". It is not: the reference has `_portListLock`
+at 33160 and `_portList` at 33164, and the two are adjacent, so declaration order in
+`IOPortSession.m` is exactly what decides it. The reason it could not be tested before is
+Finding 86 — `_portListLock` was in a different *section*, so there was no order to
+compare. With the initializer gone both land in `__bss` and the order becomes meaningful.
+
+**Fixed.** `_portListLock` is now declared ahead of `_portList`.
+
+### Finding 36 — the by-name argument spelling is wrong, confirmed
+
+§14 held ledger entry 4692 at `control-flow-confirmed` because part 3 declined to overturn
+part 2's decision on part 2's own finding. The disassembly of both binaries settles it.
+
+The reference pushes eight of `+serverMajor:`'s eleven entry points as **memory loads**:
+
+```
+4712: mov edx, [0x8160]   ; putc     4740: mov edx, [0x8148]   ; reset
+4719: mov edx, [0x815c]   ; getc     4747: mov edx, [0x8144]   ; stop
+4726: mov edx, [0x8154]   ; mmap     4759: mov edx, [0x813c]   ; write
+4733: mov edx, [0x8150]   ; select   4766: mov edx, [0x8138]   ; read
+```
+
+`ttyiops_devsw` is at 33072 = **0x8130**, so those eight are precisely `d_read` (+8),
+`d_write` (+0xc), `d_stop` (+0x14), `d_reset` (+0x18), `d_select` (+0x20), `d_mmap`
+(+0x24), `d_getc` (+0x2c) and `d_putc` (+0x30). The only three immediates are
+`push 0x17e0`, `push 0x1844` and `push 0x18a8` — 6112, 6212 and 6312, which the symbol
+table gives as `_portServeropen`, `_portServerclose` and `_portServerioctl`.
+
+Ours pushed immediates for all eleven, including four literal `push 0`. That last part is
+not just a spelling difference: our `+serverMajor:` passed `nulldev`/`enodev` while our own
+`ttyiops_devsw` holds `nulldev`/`eno_mmap`/`eno_getc`/`eno_putc`, so the registered switch
+entry and the table could disagree. Reading the fields makes that impossible by
+construction, which is presumably why Apple did it.
+
+**Fixed.** The eight arguments now read `ttyiops_devsw.d_*`. The stale comment in
+`PortServer.m` claiming `+serverMajor:` names four `ttyiops_*` entry points directly is
+corrected; `ttyiops.h`'s comment was already accurate and is untouched.
+
+### The 183 literal byte offsets — deliberately still not done
+
+Unchanged from §14, and now with a reason that can be stated positively rather than as an
+excuse: the offsets and the typed field accesses compile to the same instructions, so the
+rewrite is unverifiable against the reference — it would produce a 183-site diff that no
+binary comparison could confirm or refute. Every offset is documented by `ttyiops_state`.
+Left as is.
+
+### Residual: a one-instruction divergence in `-[AppleIOPSSafeCondLock unlock]`
+
+Turned up while confirming Finding 83's repair. Reading the `waiting` ivar:
+
+```
+reference 643: mov al, [ebx+0x12] / test al, al   (5 bytes)
+ours      643: cmp byte ptr [ebx+0x12], 0         (4 bytes)
+```
+
+Everything before it matches instruction for instruction, including both `xchg`s;
+everything after is shifted by one byte. Our source is `if (waiting != '\0')`; the
+reference appears to load the byte into a local first. Not repaired — it is a new
+observation, not one of §14's items, and it wants its own finding.
+
+## 17. Rebuild verification of §16
+
+All three §16 repairs were rebuilt and checked against the reference.
+
+- **Finding 86 — confirmed.** `__DATA` section placement now has **zero** mismatches that
+  come from our source. The only two entries that differ are `protocols.102` (reference)
+  against `protocols_102` (ours), which is this gcc's local-static name mangling, not a
+  source difference; both are in `__data`.
+- **Finding 16 — confirmed.** The first ten `__bss` symbols now match the reference at
+  identical relative offsets: the eight `_IMP_*` at 0–28, `_portListLock` at **32**,
+  `_portList` at **36**.
+- **Finding 36 — confirmed.** `+serverMajor:` now emits the same instruction sequence as the
+  reference: eight `mov edx, [table+N]; push edx` pairs at field offsets
+  0x38, 0x3c, 0x44, 0x48, 0x50, 0x54, 0x5c, 0x60 off `ttyiops_devsw`, with the three
+  `portServer*` wrappers still pushed as immediates, in the same positions. Absolute
+  addresses differ only because our build carries `-g` debug info (table base 0x4130 against
+  the reference's 0x8130).
+- **Undefined symbols still clean** — `extra: none, missing: none`, 59 = 59.
+
+Ledger entry 4692 can come off `control-flow-confirmed`: the reason it was held was that
+Finding 36's argument spelling had never been decided, and it now is, with the emitted code
+matching.
+
+### Finding 87 — the `__bss` tail is ordered differently, in two ways
+
+The first ten symbols match; the last five do not.
+
+```
+reference:  44 _pseudoUnit  48 _ttyiopsMapLock  52 _mapLock  56 _numSessions  60 _nsPortKernIdMap
+ours:       44 _nsPortKernIdMap ...(512)... 556 _numSessions  560 _mapLock  564 _ttyiopsMapLock  568 _pseudoUnit
+```
+
+Ours is the exact reverse of the reference across those five, and it decomposes into two
+separate causes:
+
+1. **Translation-unit order.** Those five come from `IOPortSessionKern.m`
+   (`_nsPortKernIdMap`, `_numSessions`, `_mapLock`) and `PortServer.m` (`_ttyiopsMapLock`,
+   `_pseudoUnit`). The reference emits `PortServer.o`'s two **before**
+   `IOPortSessionKern.o`'s three; ours is the other way round, which is our `PB.project`
+   `CLASSES` order (`…, IOPortSessionKern.m, PDPseudo.m, PortServer.m, …`) feeding `kl_ld`.
+   Apple's `CLASSES` list evidently had `PortServer.m` ahead of `IOPortSessionKern.m`.
+2. **Within-file declaration order.** Inside each of those two files the reference's order is
+   the reverse of ours — `_pseudoUnit` before `_ttyiopsMapLock`, and `_mapLock`,
+   `_numSessions`, `_nsPortKernIdMap`. The first two translation units do **not** show this,
+   so it is not a global emission-order rule; Apple simply declared these five in the other
+   order.
+
+`_nsPortKernIdMap`'s 512 bytes (64 slots × 8) are the same in both, so only order differs,
+not size.
+
+**Not repaired.** Fixing (2) is a six-line reordering, but fixing (1) means changing the
+`CLASSES` order in `PB.project`, which changes link order for **every** section in the
+driver — including `__text`, where 113 function extents are already mapped in
+`ledger.json`. That is a whole-binary relayout and it needs its own pass with the ledger
+re-validated afterwards, not a tail-end edit here.

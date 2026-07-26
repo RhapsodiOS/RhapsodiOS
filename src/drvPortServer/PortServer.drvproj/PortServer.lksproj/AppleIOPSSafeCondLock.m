@@ -19,14 +19,14 @@
  * There is exactly one set; +initialize writes it and the C wrappers
  * below read it.
  */
-static IMP IMP_interuptable = NULL;
-static IMP IMP_condition = NULL;
-static IMP IMP_setCondition = NULL;
-static IMP IMP_unlock = NULL;
-static IMP IMP_unlockWith = NULL;
-static IMP IMP_lock = NULL;
-static IMP IMP_lockTry = NULL;
-static IMP IMP_lockWhen = NULL;
+static IMP IMP_interuptable;
+static IMP IMP_condition;
+static IMP IMP_setCondition;
+static IMP IMP_unlock;
+static IMP IMP_unlockWith;
+static IMP IMP_lock;
+static IMP IMP_lockTry;
+static IMP IMP_lockWhen;
 
 /* ========================================================================
  * Objective-C Class Implementation
@@ -240,7 +240,6 @@ id AIOPSSCL_unlock(id lock)
  */
 - unlock
 {
-
     /* Acquire the sleep interlock */
     simple_lock((simple_lock_t)&sleep_interlock);
 

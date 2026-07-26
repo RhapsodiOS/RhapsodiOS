@@ -18,6 +18,12 @@ subsystem IOSCSISessionMig 4242;
 #include <mach/std_types.defs>
 import <mach/mach_types.h>;
 
+/* This tree's MiG dialect is the old (non-MACH_IPC_FLAVOR) one - see
+ * std_types.defs's #else branch - which does not define `unsigned`.
+ * Every other old-flavour .defs in this tree (driverServer.defs,
+ * Event.defs) declares it the same way. */
+type unsigned = int;
+
 /* Argument types and names below were cross-checked against the reference
  * binary's own compiler-generated <arg>Check/<arg>Type msg_type_t statics
  * in __TEXT,__const (decoded against mach/message.h:707-726); see
@@ -86,9 +92,18 @@ type IOPPCDMAAlignment_t = struct[4] of unsigned;	/* IODMAAlignment */
  * shape MiG generates for a translated port type (compare
  * libDriver/driverServer.defs's IODevicePort). Neither function exists
  * anywhere in this tree yet (two of the six functions the fix pass
- * deferred), so "vm_task_t" here is the defensible ctype reading, not a
- * recovered fact. */
+ * deferred), so "vm_task_t" here is the defensible intran/destructor
+ * reading, not a recovered fact.
+ *
+ * Unlike IODevicePort (whose ctype defaults to its own type name,
+ * backed by driverkit/driverTypesPrivate.h's "typedef port_t
+ * IODevicePort;"), IOVMTaskPort has no such typedef anywhere in the
+ * tree, so leaving the ctype to default would name an undeclared C
+ * type in the generated Server.c. Declared explicitly here instead of
+ * adding a new typedef/header import, since port_t is already a real
+ * type in this tree's old MiG dialect. */
 type IOVMTaskPort = port_t
+	ctype: port_t
 	intran: vm_task_t IOConvertTaskPortToVMTask(IOVMTaskPort)
 	destructor: IODestroyMappedVMTask(vm_task_t)
 	;
@@ -102,93 +117,93 @@ type IOVMTaskPort = port_t
  * call whose reply port may not survive to receive a reply.
  */
 simpleroutine IOSCSISession_free(
-        server          : mach_port_t);
+        server          : port_t);
 
 routine IOSCSISession_initForDevice(
-        server          : mach_port_t;
+        server          : port_t;
     in  deviceName      : IOSCSIDeviceName_t);
 
 routine IOSCSISession_releaseAllUnits(
-        server          : mach_port_t);
+        server          : port_t);
 
 routine IOSCSISession_reserveTarget(
-        server          : mach_port_t;
+        server          : port_t;
     in  target          : char;
     in  lun             : char);
 
 routine IOSCSISession_releaseTarget(
-        server          : mach_port_t;
+        server          : port_t;
     in  target          : char;
     in  lun             : char);
 
 routine IOSCSISession_reserveSCSI3Target(
-        server          : mach_port_t;
+        server          : port_t;
     in  target          : IOSCSITargetLUN_t;
     in  lun             : IOSCSITargetLUN_t);
 
 routine IOSCSISession_releaseSCSI3Target(
-        server          : mach_port_t;
+        server          : port_t;
     in  target          : IOSCSITargetLUN_t;
     in  lun             : IOSCSITargetLUN_t);
 
 routine IOSCSISession_numberOfTargets(
-        server          : mach_port_t;
+        server          : port_t;
     out number          : unsigned);
 
 routine IOSCSISession_executeRequest(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSIRequest_t;
     in  client          : IOVMTaskPort;
     in  buffer          : int;
     out status          : int);
 
 routine IOSCSISession_executeSCSI3Request(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSI3Request_t;
     in  client          : IOVMTaskPort;
     in  buffer          : int;
     out status          : int);
 
 routine IOSCSISession_executeRequestScatter(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSIRequest_t;
     in  client          : IOVMTaskPort;
     in  ioRanges        : IOSCSIRangeArray896_t;
     out status          : int);
 
 routine IOSCSISession_executeSCSI3RequestScatter(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSI3Request_t;
     in  client          : IOVMTaskPort;
     in  ioRanges        : IOSCSIRangeArray872_t;
     out status          : int);
 
 routine IOSCSISession_executeRequestOOLScatter(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSIRequest_t;
     in  client          : IOVMTaskPort;
     in  oolData         : IOSCSIOOLData_t;
     out status          : int);
 
 routine IOSCSISession_executeSCSI3RequestOOLScatter(
-        server          : mach_port_t;
+        server          : port_t;
     inout scsiReq       : IOSCSI3Request_t;
     in  client          : IOVMTaskPort;
     in  oolData         : IOSCSIOOLData_t;
     out status          : int);
 
 routine IOSCSISession_resetSCSIBus(
-        server          : mach_port_t;
+        server          : port_t;
     out status          : unsigned);
 
 routine IOSCSISession_returnFromScStatus(
-        server          : mach_port_t;
+        server          : port_t;
     in  status          : unsigned);
 
 routine IOSCSISession_maxTransfer(
-        server          : mach_port_t;
+        server          : port_t;
     out maxTransfer     : unsigned);
 
 routine IOSCSISession_getDMAAlignment(
-        server          : mach_port_t;
+        server          : port_t;
     out alignment       : IOPPCDMAAlignment_t);

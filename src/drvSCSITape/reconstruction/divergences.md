@@ -465,3 +465,98 @@ the reference they need to be fixed together (the fix pass should not add the
 `reserveTarget:`/`reserveAllLuns` calls to `acquireDevice` without adding the
 matching `releaseTarget:`/`releaseAllLuns` calls here, or the reservation
 would leak). Left `unexamined`.
+
+## SCSITape.m C helpers
+
+Task 4 read the six C (non-Objective-C) helper functions at addresses
+6748-7012 (`analysis.named.json`) instruction by instruction against
+`SCSITape.m:1093-1196`, cross-checking every offset against `struct cdb_6s`,
+`struct mode_sel_bd` and `struct esense_reply` in
+`src/kernel-7/bsd/dev/scsireg.h`. `SCSITape.m:38-43`'s old-style (no
+prototype) forward declarations name all six; none of them are Objective-C
+methods, so none carry a `+`/`-` selector prefix in the reference symbol
+table — they are plain C functions named `_moveString`,
+`_assign_cdb_c6s_len`, `_assign_msbd_numblocks`, `_assign_msbd_blocklength`,
+`_cdb_c6s_len_value`, `_er_info_value`.
+
+**The compiler-defined-macro check.** Three of these five bit-field
+functions turn on `#if __BIG_ENDIAN__` / `#if __NATURAL_ALIGNMENT__` pairs in
+`scsireg.h`, and the reference disassembly can only be explained by knowing
+which branch a real ppc build takes. `src/cc-1/cc/config/rs6000/apple.h:135-141`
+and the identical block in `src/cc-791/cc/config/rs6000/apple.h` give the
+ppc `CPP_PREDEFINES` directly: `-D__ppc__ -D__NATURAL_ALIGNMENT__
+-D__MACH__ -D__BIG_ENDIAN__ -D__APPLE__` (and the `-Dppc` variant
+alongside it) — both `__BIG_ENDIAN__` and `__NATURAL_ALIGNMENT__` are
+compiler-predefined for every ppc target in this tree, unconditionally, not
+opt-in. Every struct branch below assumes both are true, and the recovered
+bit layouts confirm it.
+
+**The recovered bit-layout table.**
+
+| Structure | Field | Byte offset (from struct base) | Bits | Confirmed by |
+| --- | --- | --- | --- | --- |
+| `cdb_6s_t` | `c6s_opcode` | 0 | 8 (whole byte) | inferred (untouched by any of the six; `stCloseFile`/`stRewind` etc. write it directly per Task 3) |
+| `cdb_6s_t` | `c6s_lun:3, c6s_spare:3, c6s_opt:2` | 1 | bits 7-5 / 4-2 / 1-0 of byte 1 | Task 3's `c6s_opt` finding (low 2 bits of CDB byte 1); not directly touched by these six |
+| `cdb_6s_t` | `c6s_len[0..2]` (array, `__NATURAL_ALIGNMENT__`) | 2, 3, 4 (one byte each) | 8 each, MSB-first (`len[0]<<16 \| len[1]<<8 \| len[2]`) | `_assign_cdb_c6s_len` (6872): `stb` at offsets 2/3/4 from `length>>16`, `length>>8`, `length` — matches `SCSITape.m:1131-1133` exactly; `_cdb_c6s_len_value` (6952) reads the same three offsets back with the inverse shifts (see finding below) |
+| `cdb_6s_t` | `c6s_ctrl` | 5 | 8 (whole byte) | inferred (never touched by these six; last byte of the 6-byte CDB) |
+| `mode_sel_bd_t` | `msbd_density:8, msbd_numblocks:24` | word at offset 0 (density = byte 0, numblocks = bytes 1-3) | 8 / 24 | `_assign_msbd_numblocks` (6904): `lwz`+`insrwi r0,r4,24,8`+`stw` — inserts the low 24 bits of `numblocks` into bits 8-31 of the word at offset 0, leaving byte 0 (`msbd_density`) untouched; matches `SCSITape.m:1154-1160`'s unconditional `msbdp->msbd_numblocks = numblocks;` (no `__NATURAL_ALIGNMENT__` branch on this struct, unlike `cdb_6s_t`) |
+| `mode_sel_bd_t` | `msbd_rsvd_0:8, msbd_blocklength:24` | word at offset 4 (rsvd = byte 4, blocklength = bytes 5-7) | 8 / 24 | `_assign_msbd_blocklength` (6928): identical `lwz`+`insrwi r0,r4,24,8`+`stw` pattern at offset 4; matches `SCSITape.m:1167-1173`'s `msbdp->msbd_blocklength = length;` |
+| `esense_reply_t` | `er_info:24, er_addsenselen:8` | word at offset 4 (info = bytes 4-6, addsenselen = byte 7) | 24 / 8 | `_er_info_value` (6992): `lwz r3,4(r3)` + `srwi r3,r3,8` — loads the aligned word at offset 4 and shifts right 8 to drop `er_addsenselen`, leaving the top 24 bits; matches `SCSITape.m:1190-1195`'s unconditional `return (esrp->er_info);` (this field's home word starts at offset 4, a 4-byte-aligned boundary, so no `__NATURAL_ALIGNMENT__` branch is needed here the way `cdb_6s_t.c6s_len` needs one at its unaligned offset 2) |
+
+Per-function disposition:
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 6748 | `_moveString` | `assembly-matched` | Full control flow (11 basic blocks) traced against `SCSITape.m:1093-1119`: `lastCharSpace` in `r9`, `outpStart` in `r11`, the `'\0'`-skip branch (`loc_1A94`), the `' '`-collapse branch pair (`loc_1AA0`/`loc_1AA8`), the shared `copyit:` tail (`loc_1AAC`), and the `while(inlength && outlength)` two-part post-test loop (`cmpwi cr1,r5,0` / `bne- loc_1A70` testing `inlength`, looping back to the `outlength` test) — matches the `switch(*inp){case '\0': ...; case ' ': ...; default: ...}` state machine and the `outp - outpStart` return value exactly |
+| 6872 | `_assign_cdb_c6s_len` | `assembly-matched` | Three `stb`s at offsets 2/3/4 from `length>>16`, `length>>8`, `length` — matches `SCSITape.m:1131-1133`'s `__NATURAL_ALIGNMENT__` branch (confirmed active per the macro check above) instruction for instruction; also confirms the `c6s_len` byte-offset table above |
+| 6904 | `_assign_msbd_numblocks` | `assembly-matched` | `lwz`/`insrwi r0,r4,24,8`/`stw` at offset 0 — matches `SCSITape.m:1154-1160` |
+| 6928 | `_assign_msbd_blocklength` | `assembly-matched` | `lwz`/`insrwi r0,r4,24,8`/`stw` at offset 4 — matches `SCSITape.m:1167-1173` |
+| 6952 | `_cdb_c6s_len_value` | `unexamined` | Finding: reference reconstructs the 24-bit value by loading the three `c6s_len` bytes at offsets 2/3/4 and shifting/OR-ing them (`<<16`/`<<8`/`<<0`); `SCSITape.m:1180-1187`'s `__BIG_ENDIAN__` branch is a bare `return (cdbp->c6s_len);` with no `__NATURAL_ALIGNMENT__` sub-branch, unlike its sibling `assign_cdb_c6s_len` — see finding below |
+| 6992 | `_er_info_value` | `assembly-matched` | `lwz r3,4(r3)` + `srwi r3,r3,8` — matches `SCSITape.m:1190-1195`'s unconditional `return (esrp->er_info);`; confirms `er_info` occupies the top 24 bits of the aligned word at offset 4 |
+
+## Finding: `cdb_c6s_len_value`'s `__BIG_ENDIAN__` branch returns the array's address instead of reconstructing the 24-bit length
+
+**Source:** `SCSITape.m:1180-1187` (`cdb_c6s_len_value`), compared against its
+sibling `SCSITape.m:1127-1149` (`assign_cdb_c6s_len`) and
+`src/kernel-7/bsd/dev/scsireg.h:108-133` (`struct cdb_6s`).
+
+**Reference behaviour:** the function (address 6952, 40 bytes) loads three
+individual bytes — `lbz r9,2(r3)` / `lbz r0,3(r3)` / `lbz r3,4(r3)` — shifts
+the first two left by 16 and 8 respectively, and ORs all three together,
+returning `(c6s_len[0]<<16) | (c6s_len[1]<<8) | c6s_len[2]`. This is exactly
+the inverse of what `_assign_cdb_c6s_len` (address 6872, confirmed
+`assembly-matched` above) writes to those same three offsets, and it is the
+same reconstruction shape as the `__LITTLE_ENDIAN__` branch of our own source
+(`SCSITape.m:1185`: `cdbp->c6s_len0 | (cdbp->c6s_len1 << 8) | (cdbp->c6s_len2
+<< 16)`, same idea with the byte order flipped for the opposite endianness).
+
+**Our source:** `scsireg.h:108-133` declares `cdb_6s_t.c6s_len` two different
+ways depending on `__NATURAL_ALIGNMENT__`: a 3-element `u_char c6s_len[3]`
+array (offsets 2/3/4) when it's defined, or a packed 24-bit `u_int
+c6s_len:24` bitfield sharing a word with `c6s_ctrl:8` when it isn't.
+`src/cc-1/cc/config/rs6000/apple.h:137` and `src/cc-791/.../apple.h:137`
+confirm `__NATURAL_ALIGNMENT__` is unconditionally predefined for ppc, so the
+array form is what a real build uses — and `assign_cdb_c6s_len`'s own
+`__NATURAL_ALIGNMENT__`-guarded three-`stb` body (`SCSITape.m:1131-1133`)
+agrees. But `cdb_c6s_len_value`'s `__BIG_ENDIAN__` branch
+(`SCSITape.m:1183`) is a single, unguarded `return (cdbp->c6s_len);` — no
+nested `__NATURAL_ALIGNMENT__` check at all. With the array form active,
+`cdbp->c6s_len` decays to a `u_char *` (the address of `c6s_len[0]`), and
+returning it from a function declared `int cdb_c6s_len_value()` implicitly
+truncates/reinterprets that pointer as an integer — a compiler warning in
+practice, and a value with no relationship to the transfer length the
+reference binary actually computes.
+
+**Consequence:** real, non-cosmetic divergence, and a live one:
+`SCSITape.m:1001-1003` calls `cdb_c6s_len_value (&scsiReq->cdb.cdb_c6s) -
+er_info_value (senseBuf)` to compute `transferLength` in the filemark/`bytesTransferred`
+correction path of `-executeRequest:...` (the "DPT firmware bug" workaround),
+and that value is written back into `scsiReq->bytesTransferred` and used in
+the `isFixedBlock`/`_blockSize` multiply right after. A garbage
+pointer-as-int in place of the real byte count corrupts that whole
+correction path. The fix is narrow and mirrors the sibling function: give
+`cdb_c6s_len_value`'s `__BIG_ENDIAN__` branch the same `__NATURAL_ALIGNMENT__`
+split `assign_cdb_c6s_len` already has, with the array-form side reading
+`(cdbp->c6s_len[0] << 16) | (cdbp->c6s_len[1] << 8) | cdbp->c6s_len[2]`
+(matching the reference exactly) instead of `return (cdbp->c6s_len);`. Left
+`unexamined`; Task 7/the fix pass should apply this.

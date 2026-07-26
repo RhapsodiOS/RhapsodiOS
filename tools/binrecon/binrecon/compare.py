@@ -197,6 +197,7 @@ def _section_backing_metadata(document):
     sources = [
         (extensions.get("macho", {}).get("sections", []), False),
         (extensions.get("ghidra", {}).get("fallback_sections", []), True),
+        (extensions.get("ghidra", {}).get("sections", []), True),
         (extensions.get("ida", {}).get("sections", []), True),
     ]
     angr = extensions.get("angr", {})

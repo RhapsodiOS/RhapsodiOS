@@ -277,8 +277,8 @@ public final class ExportAnalysis extends GhidraScript {
         analyzer.put("invocation", "analyzeHeadless ExportAnalysis.java");
         root.put("analyzer", analyzer);
 
-        List<Object> fallbackBacking=new ArrayList<>();
-        root.put("sections", exportSections(layout,fallbackBacking));
+        List<Object> fallbackBacking=new ArrayList<>(), sectionBacking=new ArrayList<>();
+        root.put("sections", exportSections(layout,fallbackBacking,sectionBacking));
         root.put("symbols", exportSymbols(layout));
         root.put("relocations", exportRelocations(layout));
         List<Object> imports = new ArrayList<>(), strings = new ArrayList<>(),
@@ -301,6 +301,10 @@ public final class ExportAnalysis extends GhidraScript {
             ghidra.put("fallback_relocations", array(layout.get("relocations"), "relocations"));
             ghidra.put("fallback_backing", fallbackBacking);
             ghidra.put("fallback_relocation_status", exportFallbackRelocationStatus(layout));
+        } else {
+            // The native loader path publishes its own zero-fill distinction; the
+            // fallback path publishes the same distinction through fallback_sections.
+            ghidra.put("sections", sectionBacking);
         }
         if (!scope.isEmpty()) {
             List<Object> declaredScope = new ArrayList<>();
@@ -365,7 +369,8 @@ public final class ExportAnalysis extends GhidraScript {
         return Paths.get(value);
     }
 
-    private List<Object> exportSections(Map<String,Object> layout,List<Object> fallbackBacking) throws Exception {
+    private List<Object> exportSections(Map<String,Object> layout,List<Object> fallbackBacking,
+            List<Object> sectionBacking) throws Exception {
         if(layout!=null){List<Object> out=new ArrayList<>();for(Object value:array(layout.get("sections"),"sections")){
             Map<String,Object> section=object(value,"section"),item=map(),backing=map();long size=number(section.get("size"));
             MemoryBlock block=size==0?null:currentProgram.getMemory().getBlock(blockName(section));
@@ -385,6 +390,12 @@ public final class ExportAnalysis extends GhidraScript {
             item.put("offset", sourceOffset(block)); item.put("size", block.getSize());
             item.put("permissions", (block.isRead()?"r":"")+(block.isWrite()?"w":"")+(block.isExecute()?"x":""));
             item.put("sha256", blockHash(block,block.getSize())); out.add(item);
+            Map<String,Object> backing = map();
+            for (String field : new String[]{"name","address","offset","size"})
+                backing.put(field, item.get(field));
+            backing.put("initialized", block.isInitialized());
+            backing.put("zero_fill", !block.isInitialized());
+            sectionBacking.add(backing);
         }
         return out;
     }

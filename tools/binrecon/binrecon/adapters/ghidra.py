@@ -492,6 +492,25 @@ def _validate_instruction_relocations(document: dict, layout: dict) -> None:
             raise GhidraAdapterError("contained instruction relocation index is missing")
 
 
+def _validate_section_backing(document: dict) -> None:
+    """Require the per-section zero-fill metadata the comparator reads.
+
+    The native Mach-O loader reports uninitialized blocks (bss, common) with
+    no file bytes; without this metadata the comparator treats every section
+    as file-backed and rejects the overlapping synthetic blocks.
+    """
+    backing = document.get("extensions", {}).get("ghidra", {}).get("sections")
+    if not isinstance(backing, list) or len(backing) != len(document["sections"]):
+        raise GhidraAdapterError("Ghidra output section backing metadata is missing")
+    for section, actual in zip(document["sections"], backing):
+        if not isinstance(actual, dict) or type(actual.get("initialized")) is not bool:
+            raise GhidraAdapterError("Ghidra output section backing metadata is invalid")
+        if (any(actual.get(field) != section[field]
+                for field in ("name", "address", "offset", "size")) or
+                actual.get("zero_fill") is not (not actual["initialized"])):
+            raise GhidraAdapterError("Ghidra output section backing does not match sections")
+
+
 def _validate_output(document: dict, configuration: dict, identity: InputIdentity,
                      layout: dict | None = None) -> None:
     validate_document("analysis-v1", document)
@@ -508,6 +527,8 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
     extension = document.get("extensions", {}).get("ghidra", {})
     if extension.get("language") != _LANGUAGE:
         raise GhidraAdapterError("Ghidra output used the wrong processor language")
+    if layout is None:
+        _validate_section_backing(document)
     if layout is not None:
         for name in ("sections", "symbols", "relocations"):
             if extension.get(f"fallback_{name}") != layout[name]:

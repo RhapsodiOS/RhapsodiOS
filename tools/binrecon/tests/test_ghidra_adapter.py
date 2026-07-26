@@ -7,6 +7,7 @@ import subprocess
 
 import pytest
 
+from binrecon.compare import _section_backing_metadata
 from binrecon.identity import identify
 from binrecon.adapters.ghidra import (
     GhidraAdapterError, _layout, _validate_instruction_relocations, export_with_ghidra,
@@ -27,7 +28,7 @@ def _analysis(identity, version="12.1"):
         "analyzer": {"name": "Ghidra", "version": version, "invocation": "headless"},
         "sections": [], "symbols": [], "relocations": [], "functions": [],
         "references": [], "imports": [], "strings": [],
-        "extensions": {"ghidra": {"language": "x86:LE:32:default"}},
+        "extensions": {"ghidra": {"language": "x86:LE:32:default", "sections": []}},
     }
 
 
@@ -356,6 +357,87 @@ def test_schema_invalid_and_hardlinked_outputs_are_untrusted(configured, tmp_pat
             return subprocess.CompletedProcess(argv, 0, "", "")
         with pytest.raises(GhidraAdapterError, match=match):
             export_with_ghidra(profile, "reference", destination, runner=runner)
+
+
+def _native_backed_analysis(identity):
+    """A native-loader document with one file-backed and one uninitialized block."""
+    document = _analysis(identity)
+    document["sections"] = [
+        {"name": "__TEXT,__text", "address": 4096, "offset": 64, "size": 16,
+         "permissions": "rx", "sha256": "0" * 64},
+        {"name": "__DATA,__bss", "address": 8192, "offset": 0, "size": 32,
+         "permissions": "rw", "sha256": "0" * 64},
+    ]
+    document["extensions"]["ghidra"]["sections"] = [
+        {"name": "__TEXT,__text", "address": 4096, "offset": 64, "size": 16,
+         "initialized": True, "zero_fill": False},
+        {"name": "__DATA,__bss", "address": 8192, "offset": 0, "size": 32,
+         "initialized": False, "zero_fill": True},
+    ]
+    return document
+
+
+def _document_runner(document):
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        Path(argv[argv.index("--output") + 1]).write_text(
+            json.dumps(document), encoding="utf-8"
+        )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    return runner
+
+
+def test_native_section_backing_marks_uninitialized_blocks_as_zero_fill(configured, tmp_path):
+    profile, identity, _, _ = configured
+
+    document = export_with_ghidra(
+        profile, "reference", tmp_path / "native.json",
+        runner=_document_runner(_native_backed_analysis(identity)),
+    )
+
+    assert [(item["name"], item["zero_fill"], item["initialized"])
+            for item in document["extensions"]["ghidra"]["sections"]] == [
+        ("__TEXT,__text", False, True), ("__DATA,__bss", True, False)]
+    metadata = _section_backing_metadata(document)
+    assert metadata[("__TEXT,__text", 4096, 64, 16)]["zero_fill"] is False
+    assert metadata[("__DATA,__bss", 8192, 0, 32)]["zero_fill"] is True
+
+
+@pytest.mark.parametrize("mutation,match", [
+    ("missing", "backing metadata is missing"),
+    ("truncated", "backing metadata is missing"),
+    ("unflagged", "backing metadata is invalid"),
+    ("contradictory", "backing does not match sections"),
+    ("mismatched-key", "backing does not match sections"),
+])
+def test_native_output_without_trustworthy_section_backing_is_rejected(
+    configured, tmp_path, mutation, match
+):
+    profile, identity, _, _ = configured
+    document = _native_backed_analysis(identity)
+    backing = document["extensions"]["ghidra"]["sections"]
+    if mutation == "missing":
+        del document["extensions"]["ghidra"]["sections"]
+    elif mutation == "truncated":
+        del backing[1]
+    elif mutation == "unflagged":
+        del backing[1]["initialized"]
+    elif mutation == "contradictory":
+        backing[1]["zero_fill"] = False
+    else:
+        backing[1]["offset"] = 96
+
+    with pytest.raises(GhidraAdapterError, match=match):
+        export_with_ghidra(profile, "reference", tmp_path / f"{mutation}.json",
+                           runner=_document_runner(document))
+
+
+def test_java_exporter_emits_section_backing_on_the_native_loader_path():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    assert 'ghidra.put("sections", sectionBacking)' in source
+    assert 'backing.put("initialized", block.isInitialized())' in source
+    assert 'backing.put("zero_fill", !block.isInitialized())' in source
 
 
 def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, monkeypatch):

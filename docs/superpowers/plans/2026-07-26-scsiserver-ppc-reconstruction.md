@@ -1229,7 +1229,7 @@ cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -c "
 import json, os
 old = {e['address']: e for e in json.load(open(os.environ['RECON'] + '/ledger.json'))['entries']}
 print(json.dumps({str(a): [e['status'], e['reason'], e['reviewer']] for a, e in sorted(old.items())}, indent=1))
-" > /tmp/ledger-statuses.json
+" > .superpowers/sdd/scsiserver-ledger-statuses.json
 ```
 
 ```bash

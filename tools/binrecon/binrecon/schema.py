@@ -25,10 +25,12 @@ _SCHEMA_FILES = {
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
 MAX_JSON_COLLECTION = 500_000
-DEFAULT_MAX_JSON_NODES = 1_000_000
-# The 35.4 MiB EISABus three-analyzer aggregate is 1,916,833 nodes.  This
-# leaves 30% growth headroom without weakening the independent shape limits.
-CONSENSUS_MAX_JSON_NODES = 2_500_000
+# These bound memory against malformed analyzer output; the values are sized
+# for a ~1.4 MB kernel image whose string table dominates (single-analyzer
+# exports run ~1.09M nodes, so DEFAULT gives ~4x headroom, and CONSENSUS
+# stays at 2.5x DEFAULT to cover the combined three-analyzer document).
+DEFAULT_MAX_JSON_NODES = 4_000_000
+CONSENSUS_MAX_JSON_NODES = 10_000_000
 MAX_JSON_DEPTH = 64
 MAX_JSON_STRING = 1_048_576
 

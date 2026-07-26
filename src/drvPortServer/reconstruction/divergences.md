@@ -4935,3 +4935,57 @@ symbol diff can find — only this comparison can.
 64 addressed in this pass; the rest want a function-at-a-time pass with a rebuild between
 batches, and `ledger.json` should be re-scored against this comparison rather than against
 a reading of the reference alone.
+
+## 19. Correction to §18's figures, and the shared cause behind the accessor divergences
+
+**§18's "47 identical / 64 differing" was wrong — the correct figures are 51 and 60.**
+The comparison normalised away immediates of four hex digits or more but left three-digit
+ones alone, and intra-function branch targets are three digits. Because our `-g` build
+places every function at a different address from the reference's, the *same* branch reads
+as `je 0x715` there and `je 0x709` here, so four functions were reported as differing on
+nothing but their own address. `-[IOPortSession free]` and `-[IOPortSession locked]` were
+pure false positives and are byte-identical in shape. `compare_text.py` now rewrites
+in-function branch targets as offsets from the function entry and only calls out of the
+function as `EXT`.
+
+The same-length bucket §18 claimed was 43 is really **5** — that number came from an `awk`
+field split that broke on the spaces in Objective-C method names. The real split of the 60
+is 5 same-length and 55 different-length.
+
+### Finding 88 — the accessors hoist into locals where the reference re-reads
+
+Three same-length divergences were run down and they share one cause, which almost
+certainly accounts for a large share of the other 55 as well.
+
+`-[IOPortSession getState]` — ours assigns the cached IMP to a local before calling, so it
+is loaded *before* the arguments are pushed. The reference evaluates it in call position and
+loads it last:
+
+```
+ref:   mov edx,[IMM] / push edx    (selector)      ours:  mov edx,[eax+0x10]   (IMP first)
+       mov edx,[eax] / push edx    (receiver)             mov ecx,[IMM] / push ecx
+       mov eax,[eax+0x10]          (IMP last)             mov eax,[eax] / push eax
+       call eax                                           call edx
+```
+
+`-[IOPortSession setState:mask:]` — ours holds the error code in a local, giving
+`mov eax,[edx+8] / test eax,eax`. The reference tests it **in place** with
+`cmp dword ptr [eax+8], 0`, and its error path *re-reads* `_priv` and the field
+(`mov eax,[edx+4] / mov eax,[eax+8]`) instead of reusing a register — which is only what a
+compiler does when the source re-reads the expression rather than caching it.
+
+`-[IOPortSession name]` — same source shape in both, but ours emits the `NULL` return as a
+tail block (`je` forward) while the reference emits it inline right after the test (`jne`
+past it). The suspected cause is again a local: ours assigns the result to `port_name`
+before returning it.
+
+**Repaired in this batch:** `getState`, `setState:mask:` and `name` are rewritten to
+evaluate in place. This is deliberately a *small* batch — the idiom is a hypothesis until a
+rebuild confirms it, and the same rewrite is waiting on roughly a dozen more accessors
+(`executeEvent:`, `requestEvent:`, `nextEvent`, `watchState:mask:`, `enqueueEvent:`,
+`dequeueEvent:`, `enqueueData:`, `dequeueData:`, `acquire:`, `acquireAudit:`, `release`).
+Those show the same signature in the comparison — `executeEvent:`, `requestEvent:` and
+`setState:mask:` are all ref 26 / ours 20 with 15 differing instructions, which is what a
+shared idiom looks like.
+
+Do not apply the rewrite to the rest until the rebuild shows these three land.

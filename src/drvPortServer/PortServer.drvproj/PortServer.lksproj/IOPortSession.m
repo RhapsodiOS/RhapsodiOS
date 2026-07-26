@@ -195,17 +195,16 @@ static struct {
  */
 - (const char *)name
 {
-    const char *port_name;
-
     /* Check if the session state block is not initialized */
     if (_priv == NULL) {
         return NULL;
     }
 
-    /* Call name method on device object at _priv+0 */
-    port_name = (const char *)objc_msgSend(*(id *)_priv, @selector(name));
-
-    return port_name;
+    /* Call name method on device object at _priv+0.  Not held in a local
+     * first: the reference emits the NULL return inline after the test
+     * (jne past it) rather than as a tail block.
+     */
+    return (const char *)objc_msgSend(*(id *)_priv, @selector(name));
 }
 
 /*
@@ -307,27 +306,20 @@ static struct {
  */
 - (int)setState:(unsigned long)state mask:(unsigned long)mask
 {
-    void **method_cache;
-    int error_code;
     typedef int (*SetStateIMP)(id, SEL, unsigned long, unsigned long);
-    SetStateIMP cached_imp;
 
-    /* Get the session state block */
-    method_cache = (void **)_priv;
-
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[3] (offset +0xc) */
-        cached_imp = (SetStateIMP)method_cache[3];
-
-        /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(setState:mask:), state, mask);
+    /* The error code is tested in place rather than held in a local - the
+     * reference emits cmp dword ptr [eax+8], 0 - and the error path re-reads
+     * _priv and the field rather than reusing a register.
+     */
+    if (((int *)_priv)[2] == 0) {
+        return ((SetStateIMP)((void **)_priv)[3])((id)((void **)_priv)[0],
+                                                  @selector(setState:mask:),
+                                                  state, mask);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return ((int *)_priv)[2];
 }
 
 /*
@@ -338,21 +330,17 @@ static struct {
  */
 - (unsigned long)getState
 {
-    unsigned long state;
     void **method_cache;
     typedef unsigned long (*GetStateIMP)(id, SEL);
-    GetStateIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Call cached IMP at method_cache[4] (offset +0x10) */
-    cached_imp = (GetStateIMP)method_cache[4];
-
-    /* Call cached method on device object (method_cache[0]) */
-    state = cached_imp(method_cache[0], @selector(getState));
-
-    return state;
+    /* The IMP is evaluated in call position, not hoisted into a local: the
+     * reference pushes both arguments first and loads method_cache[4] last
+     * (mov eax, [eax+0x10] / call eax).
+     */
+    return ((GetStateIMP)method_cache[4])(method_cache[0], @selector(getState));
 }
 
 /*

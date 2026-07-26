@@ -1,0 +1,702 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction against SoundBlaster8Inline.h writeToDSP(): outb(sbWriteDataOrCommandReg, dataOrCommand), IODelay(25 = SB_DATA_WRITE_DELAY), return 1; the symbol is local in the raw nlist, matching plain static; Its source_line 23 is the #import \"SoundBlaster8Inline.h\" site, not the definition (SoundBlaster8Inline.h:151 for writeToDSP, :168 for readFromDSP), because source-map's *.m/*.c glob does not see the header; see divergences.md, Weaker evidence."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_writeToDSP"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 37,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 40,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction against SoundBlaster8Inline.h readFromDSP(): inb(sbReadDataReg), IODelay(10 = SB_DATA_READ_DELAY), return val; the symbol is local in the raw nlist, matching plain static; Its source_line 23 is the #import \"SoundBlaster8Inline.h\" site, not the definition (SoundBlaster8Inline.h:151 for writeToDSP, :168 for readFromDSP), because source-map's *.m/*.c glob does not see the header; see divergences.md, Weaker evidence."
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_readFromDSP"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 31,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 72,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction against SoundBlaster8.m +probe:, including the inlined assignDSPRegAddresses()/assignMixerRegAddresses() offset chain (+6/+0Ah/+0Ch/+0Ch/+0Eh/+4/+5) and the six base-address literals 210h-260h"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[SoundBlaster8 probe:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 275,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 348,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction against SoundBlaster8.m -reset, including the inlined checkSelectedDMAAndIRQ() (channel <= 1 or == 3; irq 3/5/7/10) and the SB_CLASSIC/SB_20/SB_PRO/SB_16 switch; IO_8Bit == 0 and IO_Single == 1 confirmed against driverkit/i386/directDevice.h"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 reset]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 576,
+      "source_line": 91,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 924,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction against SoundBlaster8.m -initializeHardware and the resetHardware()/resetDSP()/resetMixer()/initRegisters() chain it inlines from SoundBlaster8Inline.h; all _sbCardType field offsets and all eight mixer register writes confirmed"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 initializeHardware]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 2175,
+      "source_line": 185,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3100,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; gain*7/32768 emitted as lea/lea/shr 15, then the inlined setInputGain()"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateInputGainLeft]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 115,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3216,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; identical to updateInputGainLeft with the inputGainRight selector"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateInputGainRight]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 115,
+      "source_line": 215,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3332,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; the inlined enableAudioOutput() with unMuteOutput()/muteOutput() and writeToDSP(0D1h/0D3h)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateOutputMute]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 557,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 3892,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; (attenuation+84)*15/84 emitted as lea [edx+edx*2+0FCh], lea [edx+edx*4], div 54h, then the inlined setOutputAttenuation() writing the high nibble of each shadow register"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateOutputAttenuationLeft]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 380,
+      "source_line": 239,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4272,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; identical to updateOutputAttenuationLeft writing the low nibble"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateOutputAttenuationRight]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 380,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 4652,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction, including the inlined setCodecDataMode() and setCodecSamplingRate(); the 1000000/rate and 256000000/rate time-constant arms and the 3906/47619 clamps all confirmed"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 updateSampleRate]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 773,
+      "source_line": 273,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5428,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; the inlined setSampleBufferCounter() with the DC_SET_BLOCK_SIZE (48h) prefix on the high-speed path"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 setBufferCount:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 365,
+      "source_line": 307,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5796,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; empty enableCodecInterrupts() then objc_msgSendSuper"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 enableAllInterrupts]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 41,
+      "source_line": 313,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5840,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; empty disableCodecInterrupts() then objc_msgSendSuper"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 disableAllInterrupts]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 41,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5884,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; the 23000/15000/13000/23000 rate limits and the discarded dataEncoding send confirmed"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 isValidRequest:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 170,
+      "source_line": 330,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 6056,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction, including the inlined enableAudioOutput() and startDMA() and both arms of the lowSpeedDMA ordering; the isRead-returns-YES path on an unsupported request confirmed"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 1437,
+      "source_line": 384,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7496,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; the compiler merged the identical stopDMAInput()/stopDMAOutput() arms into one writeToDSP(0D0h), and the inlined resetDSPQuick() runs only when lowSpeedDMA is NO"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 stopDMAForChannel:read:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 257,
+      "source_line": 476,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7756,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; inb(sbDataAvailableStatusReg) and return, matching the static clearInterrupts()"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_clearInterrupts"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 15,
+      "source_line": 511,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7772,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; returns offset _clearInterrupts"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 interruptClearFunc]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 12,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; both lowSpeedDMA arms confirmed, and the else arm has no setBufferCount: send, matching the commented-out line in our source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 interruptOccurredForInput:forOutput:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 591,
+      "source_line": 525,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8376,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; guarded on interruptTimedOut at ivar offset 188h, then the inlined resetDSPQuick()"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 timeoutOccurred]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 210,
+      "source_line": 567,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8588,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; 0C8h/0C9h are NX_SoundDeviceAnalogInputSource_Microphone/_LineIn, and the default arm shares the microphone path"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 setAnalogInputSource:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 131,
+      "source_line": 583,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8720,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; returns 1"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 acceptsContinuousSamplingRates]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 12,
+      "source_line": 598,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8732,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; 0FA0h = 4000 and 0AC44h = 44100"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 getSamplingRatesLow:high:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 25,
+      "source_line": 603,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8760,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; 4000, 8000, 11025, 22050, 44100 and count 5"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 getSamplingRates:count:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 53,
+      "source_line": 610,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8816,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; 259h = 601 = NX_SoundStreamDataEncoding_Linear8, count 1"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 getDataEncodings:count:]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 25,
+      "source_line": 622,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8844,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; read instruction by instruction; _sbCardType.version compared against 3 = SB_PRO"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[SoundBlaster8 channelCountLimit]"
+      ],
+      "reason": null,
+      "reviewer": "binrecon-task-5",
+      "size": 26,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8872,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue emitted by the Kernel Server project type, not written by hand; Ghidra does not detect a function at this address, IDA and angr agree on size and instructions"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[SoundBlaster8KernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source: +[SoundBlaster8KernelServerInstance kernelServerInstance] returns &_SoundBlaster8_instance",
+      "reviewer": "binrecon-task-5",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 8884,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "build-generated Kernel Server glue emitted by the Kernel Server project type, not written by hand; IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[SoundBlaster8Version driverKitVersionForSoundBlaster8]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source: +[SoundBlaster8Version driverKitVersionForSoundBlaster8] returns 1F4h = 500",
+      "reviewer": "binrecon-task-5",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "3CE9787321C1E52D62BF1B19CFC58BD6F7340A98D5C6FEAEC8B92B5E6A8EC9D4",
+  "schema_version": "ledger-v1"
+}

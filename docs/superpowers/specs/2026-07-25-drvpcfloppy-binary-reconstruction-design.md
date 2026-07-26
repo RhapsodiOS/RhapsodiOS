@@ -206,9 +206,20 @@ The reference defines none of them. It imports three as undefined symbols:
 .objc_class_name_NXSpinLock
 ```
 
-So Apple linked them from the kernel. `NXRecursiveLock` appears nowhere in the
-reference and is invented outright. This is the defect recorded in `8890be17`:
-reconstructed sources must link classes, not reimplement them.
+So Apple linked them from the kernel. `NXRecursiveLock` is absent from the
+reference simply because the driver never uses one; `machkit/NXLock.h` declares
+it alongside the other three. The defect is that we *implement* all four rather
+than linking them, which is what `8890be17` recorded: reconstructed sources must
+link classes, not reimplement them.
+
+drvEIDE, which the README marks complete, already does this correctly —
+`AtapiCnt.m:52` imports `<machkit/NXLock.h>` and `AtapiCntInternal.m:72` calls
+`[NXLock new]` with no local implementation. That is precedent that the header is
+reachable from a loadable kernel driver and that the §6 fallback is unlikely to
+be needed.
+
+Only two drvPCFloppy files import the local copy — `FloppyCnt.m:9` and
+`IODiskNew.m:10` — so the change is narrow.
 
 `NXLock.m` and `NXLock.h` are listed in the `Makefile` but absent from
 `PB.project`, so the two build descriptions already disagree about them.

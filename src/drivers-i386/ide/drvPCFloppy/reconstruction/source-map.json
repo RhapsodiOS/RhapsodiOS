@@ -1,0 +1,2023 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[IOFloppyDisk driveNumberOfDrive:]"
+      ],
+      "size": 62,
+      "source_line": 1134,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 64,
+      "reference_names": [
+        "+[IOFloppyDisk registerDrive:]"
+      ],
+      "size": 390,
+      "source_line": 1199,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 456,
+      "reference_names": [
+        "+[IOFloppyDisk unregisterDrive:]"
+      ],
+      "size": 115,
+      "source_line": 1327,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 572,
+      "reference_names": [
+        "+[IOFloppyDisk characterDevOfDrive:]"
+      ],
+      "size": 62,
+      "source_line": 1095,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 636,
+      "reference_names": [
+        "+[IOFloppyDisk blockDevOfDrive:]"
+      ],
+      "size": 62,
+      "source_line": 1056,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 700,
+      "reference_names": [
+        "-[IOFloppyDisk attachBsdDiskInterfaceToDrive:]"
+      ],
+      "size": 330,
+      "source_line": 1376,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1032,
+      "reference_names": [
+        "-[IOFloppyDisk detachBsdDiskInterfaceFromDrive:]"
+      ],
+      "size": 62,
+      "source_line": 1448,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1096,
+      "reference_names": [
+        "_HandleBsdOpen"
+      ],
+      "size": 154,
+      "source_line": 392,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1252,
+      "reference_names": [
+        "_HandleBsdClose"
+      ],
+      "size": 120,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1372,
+      "reference_names": [
+        "_fakeStrategySuccess"
+      ],
+      "size": 143,
+      "source_line": 715,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1516,
+      "reference_names": [
+        "_HandleBsdRead"
+      ],
+      "size": 351,
+      "source_line": 890,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 1868,
+      "reference_names": [
+        "_HandleBsdWrite"
+      ],
+      "size": 172,
+      "source_line": 986,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 2040,
+      "reference_names": [
+        "_HandleBsdStrategy"
+      ],
+      "size": 272,
+      "source_line": 799,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 2312,
+      "reference_names": [
+        "_HandleBsdIoctl"
+      ],
+      "size": 2656,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 4968,
+      "reference_names": [
+        "_HandleBsdSize"
+      ],
+      "size": 93,
+      "source_line": 757,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 5064,
+      "reference_names": [
+        "_fdminphys"
+      ],
+      "size": 13,
+      "source_line": 509,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 5080,
+      "reference_names": [
+        "_identifyBsdDev"
+      ],
+      "size": 244,
+      "source_line": 540,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 5324,
+      "reference_names": [
+        "_identifyDetachedDiskIdFromBsdDev"
+      ],
+      "size": 129,
+      "source_line": 642,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m"
+    },
+    {
+      "address": 5456,
+      "reference_names": [
+        "-[FloppyController dmaStart:dmaStruct:]"
+      ],
+      "size": 385,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyArch.m"
+    },
+    {
+      "address": 5844,
+      "reference_names": [
+        "-[FloppyController dmaDone:dmaStruct:]"
+      ],
+      "size": 227,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyArch.m"
+    },
+    {
+      "address": 6072,
+      "reference_names": [
+        "-[FloppyController doCmdXfr:]"
+      ],
+      "size": 551,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m"
+    },
+    {
+      "address": 6624,
+      "reference_names": [
+        "-[FloppyController doEject:]"
+      ],
+      "size": 17,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m"
+    },
+    {
+      "address": 6644,
+      "reference_names": [
+        "-[FloppyController doMotorOn:]"
+      ],
+      "size": 96,
+      "source_line": 134,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m"
+    },
+    {
+      "address": 6740,
+      "reference_names": [
+        "-[FloppyController doMotorOff:]"
+      ],
+      "size": 87,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m"
+    },
+    {
+      "address": 6828,
+      "reference_names": [
+        "-[FloppyController sendCmd:]"
+      ],
+      "size": 1295,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m"
+    },
+    {
+      "address": 8124,
+      "reference_names": [
+        "_numFloppyDrives"
+      ],
+      "size": 58,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 8184,
+      "reference_names": [
+        "_floppyDriveType"
+      ],
+      "size": 95,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 8280,
+      "reference_names": [
+        "+[FloppyController probe:]"
+      ],
+      "size": 359,
+      "source_line": 422,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 8640,
+      "reference_names": [
+        "-[FloppyController initFromDeviceDescription:]"
+      ],
+      "size": 392,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 9032,
+      "reference_names": [
+        "-[FloppyController free]"
+      ],
+      "size": 290,
+      "source_line": 275,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 9324,
+      "reference_names": [
+        "-[FloppyController fcCmdXfr:]"
+      ],
+      "size": 258,
+      "source_line": 348,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 9584,
+      "reference_names": [
+        "-[FloppyController fcCmdXfrExecute:]"
+      ],
+      "size": 543,
+      "source_line": 517,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 10128,
+      "reference_names": [
+        "_FloppyControllerThread"
+      ],
+      "size": 258,
+      "source_line": 643,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m"
+    },
+    {
+      "address": 10388,
+      "reference_names": [
+        "-[FloppyController i82077Reset:]"
+      ],
+      "size": 468,
+      "source_line": 776,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 10856,
+      "reference_names": [
+        "-[FloppyController fcSendByte:]"
+      ],
+      "size": 54,
+      "source_line": 290,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 10912,
+      "reference_names": [
+        "-[FloppyController fcGetByte:]"
+      ],
+      "size": 48,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 10960,
+      "reference_names": [
+        "-[FloppyController fcWaitPio:]"
+      ],
+      "size": 109,
+      "source_line": 390,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 11072,
+      "reference_names": [
+        "-[FloppyController getDriveStatus:]"
+      ],
+      "size": 417,
+      "source_line": 611,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 11492,
+      "reference_names": [
+        "-[FloppyController doConfigure:]"
+      ],
+      "size": 111,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 11604,
+      "reference_names": [
+        "-[FloppyController doSpecify:]"
+      ],
+      "size": 281,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 11888,
+      "reference_names": [
+        "-[FloppyController doPerpendicular:gap:]"
+      ],
+      "size": 12,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 11900,
+      "reference_names": [
+        "-[FloppyController flushIntrMsgs]"
+      ],
+      "size": 179,
+      "source_line": 524,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12080,
+      "reference_names": [
+        "-[FloppyController fcWaitIntr:timeout:]"
+      ],
+      "size": 120,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12200,
+      "reference_names": [
+        "-[FloppyController floppyInterrupt:]"
+      ],
+      "size": 133,
+      "source_line": 453,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12336,
+      "reference_names": [
+        "-[FloppyController clearPollIntr]"
+      ],
+      "size": 116,
+      "source_line": 32,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12452,
+      "reference_names": [
+        "-[FloppyController seek:head:density:]"
+      ],
+      "size": 136,
+      "source_line": 993,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12588,
+      "reference_names": [
+        "-[FloppyController recal]"
+      ],
+      "size": 115,
+      "source_line": 930,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m"
+    },
+    {
+      "address": 12704,
+      "reference_names": [
+        "-[IOFloppyDrive fdRecal]"
+      ],
+      "size": 133,
+      "source_line": 557,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 12840,
+      "reference_names": [
+        "-[IOFloppyDrive fdSeek:head:]"
+      ],
+      "size": 170,
+      "source_line": 597,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13012,
+      "reference_names": [
+        "-[IOFloppyDrive fdGetStatus:]"
+      ],
+      "size": 69,
+      "source_line": 440,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13084,
+      "reference_names": [
+        "-[IOFloppyDrive fdReadId:statp:]"
+      ],
+      "size": 177,
+      "source_line": 503,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13264,
+      "reference_names": [
+        "-[IOFloppyDrive rawReadInt:sectCount:buffer:]"
+      ],
+      "size": 129,
+      "source_line": 692,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13396,
+      "reference_names": [
+        "-[IOFloppyDrive rwBlockCount:blockCount:]"
+      ],
+      "size": 80,
+      "source_line": 737,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13476,
+      "reference_names": [
+        "-[IOFloppyDrive fdGenRwCmd:blockCount:fdIoReq:readFlag:]"
+      ],
+      "size": 234,
+      "source_line": 366,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13712,
+      "reference_names": [
+        "-[IOFloppyDrive fdLogToPhys:cmdp:]"
+      ],
+      "size": 104,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13816,
+      "reference_names": [
+        "-[IOFloppyDrive fdSendCmd:]"
+      ],
+      "size": 150,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 13968,
+      "reference_names": [
+        "_fdTimer"
+      ],
+      "size": 39,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 14008,
+      "reference_names": [
+        "-[IOFloppyDrive updateReadyStateInt]"
+      ],
+      "size": 95,
+      "source_line": 766,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 14104,
+      "reference_names": [
+        "-[IOFloppyDrive fdFormatTrack:head:]"
+      ],
+      "size": 349,
+      "source_line": 286,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 14456,
+      "reference_names": [
+        "-[IOFloppyDrive allocateDisk]"
+      ],
+      "size": 316,
+      "source_line": 219,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 14772,
+      "reference_names": [
+        "_fdrToIo"
+      ],
+      "size": 245,
+      "source_line": 150,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 15020,
+      "reference_names": [
+        "_floppyMalloc"
+      ],
+      "size": 104,
+      "source_line": 45,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m"
+    },
+    {
+      "address": 15124,
+      "reference_names": [
+        "-[IOFloppyDrive fdEjectInt]"
+      ],
+      "size": 203,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 15328,
+      "reference_names": [
+        "-[IOFloppyDrive fdRwCommon:block:blockCnt:buffer:client:actualLength:]"
+      ],
+      "size": 1064,
+      "source_line": 283,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 16392,
+      "reference_names": [
+        "-[IOFloppyDrive logRwErr:block:status:readFlag:]"
+      ],
+      "size": 85,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 16480,
+      "reference_names": [
+        "-[IOFloppyDrive setDensityInt:]"
+      ],
+      "size": 124,
+      "source_line": 615,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 16604,
+      "reference_names": [
+        "-[IOFloppyDrive setSectSizeInt:]"
+      ],
+      "size": 142,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 16748,
+      "reference_names": [
+        "-[IOFloppyDrive updatePhysicalParametersInt]"
+      ],
+      "size": 551,
+      "source_line": 707,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 17300,
+      "reference_names": [
+        "-[IOFloppyDrive motorOffCheck]"
+      ],
+      "size": 142,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 17444,
+      "reference_names": [
+        "_fdGetSectSizeInfo"
+      ],
+      "size": 57,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 17504,
+      "reference_names": [
+        "_physContBlocks"
+      ],
+      "size": 160,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 17664,
+      "reference_names": [
+        "_vFloppyCopy"
+      ],
+      "size": 151,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m"
+    },
+    {
+      "address": 17816,
+      "reference_names": [
+        "-[IOFloppyDisk cachePointerFromBlockNumber:]"
+      ],
+      "size": 33,
+      "source_line": 598,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 17852,
+      "reference_names": [
+        "-[IOFloppyDisk cachePointerFromCylinderNumber:]"
+      ],
+      "size": 92,
+      "source_line": 621,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 17944,
+      "reference_names": [
+        "-[IOFloppyDisk cylinderFromBlockNumber:::]"
+      ],
+      "size": 225,
+      "source_line": 673,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 18172,
+      "reference_names": [
+        "-[IOFloppyDisk blocksToEndOfCylinderFromBlockNumber:]"
+      ],
+      "size": 81,
+      "source_line": 553,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 18256,
+      "reference_names": [
+        "+[IOFloppyDisk geometryOfCapacity:]"
+      ],
+      "size": 71,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 18328,
+      "reference_names": [
+        "+[IOFloppyDisk sizeListFromCapacities:sizeList:]"
+      ],
+      "size": 96,
+      "source_line": 498,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 18424,
+      "reference_names": [
+        "+[IOFloppyDisk capacityFromSize:]"
+      ],
+      "size": 90,
+      "source_line": 381,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m"
+    },
+    {
+      "address": 18516,
+      "reference_names": [
+        "-[IODiskNEW diskSize]"
+      ],
+      "size": 16,
+      "source_line": 28,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18532,
+      "reference_names": [
+        "-[IODiskNEW blockSize]"
+      ],
+      "size": 16,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18548,
+      "reference_names": [
+        "-[IODiskNEW setFormatted:]"
+      ],
+      "size": 19,
+      "source_line": 240,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18568,
+      "reference_names": [
+        "-[IODiskNEW isFormatted]"
+      ],
+      "size": 17,
+      "source_line": 106,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18588,
+      "reference_names": [
+        "-[IODiskNEW isRemovable]"
+      ],
+      "size": 17,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18608,
+      "reference_names": [
+        "-[IODiskNEW isPhysical]"
+      ],
+      "size": 17,
+      "source_line": 115,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18628,
+      "reference_names": [
+        "-[IODiskNEW isWriteProtected]"
+      ],
+      "size": 17,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18648,
+      "reference_names": [
+        "-[IODiskNEW eject]"
+      ],
+      "size": 22,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18672,
+      "reference_names": [
+        "-[IODiskNEW setDiskSize:]"
+      ],
+      "size": 19,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18692,
+      "reference_names": [
+        "-[IODiskNEW setBlockSize:]"
+      ],
+      "size": 19,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18712,
+      "reference_names": [
+        "-[IODiskNEW setIsPhysical:]"
+      ],
+      "size": 23,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18736,
+      "reference_names": [
+        "-[IODiskNEW nextLogicalDisk]"
+      ],
+      "size": 16,
+      "source_line": 179,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18752,
+      "reference_names": [
+        "-[IODiskNEW setRemovable:]"
+      ],
+      "size": 23,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18776,
+      "reference_names": [
+        "-[IODiskNEW setWriteProtected:]"
+      ],
+      "size": 23,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18800,
+      "reference_names": [
+        "-[IODiskNEW setFormattedInternal:]"
+      ],
+      "size": 23,
+      "source_line": 249,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18824,
+      "reference_names": [
+        "-[IODiskNEW getIntValues:forParameter:count:]"
+      ],
+      "size": 145,
+      "source_line": 142,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 18972,
+      "reference_names": [
+        "-[IODiskNEW setLogicalDisk:]"
+      ],
+      "size": 28,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19000,
+      "reference_names": [
+        "-[IODiskNEW registerDevice]"
+      ],
+      "size": 93,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19096,
+      "reference_names": [
+        "-[IODiskNEW lockLogicalDisks]"
+      ],
+      "size": 29,
+      "source_line": 169,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19128,
+      "reference_names": [
+        "-[IODiskNEW unlockLogicalDisks]"
+      ],
+      "size": 29,
+      "source_line": 335,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19160,
+      "reference_names": [
+        "-[IODiskNEW stringFromReturn:]"
+      ],
+      "size": 81,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19244,
+      "reference_names": [
+        "-[IODiskNEW errnoFromReturn:]"
+      ],
+      "size": 92,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19336,
+      "reference_names": [
+        "-[IODiskNEW drive]"
+      ],
+      "size": 16,
+      "source_line": 37,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19352,
+      "reference_names": [
+        "-[IODiskNEW setDrive:]"
+      ],
+      "size": 19,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19372,
+      "reference_names": [
+        "-[IODiskNEW free]"
+      ],
+      "size": 64,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m"
+    },
+    {
+      "address": 19436,
+      "reference_names": [
+        "+[IODiskPartitionNEW deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 19448,
+      "reference_names": [
+        "+[IODiskPartitionNEW requiredProtocols]"
+      ],
+      "size": 12,
+      "source_line": 29,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 19460,
+      "reference_names": [
+        "+[IODiskPartitionNEW probe:]"
+      ],
+      "size": 777,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 20240,
+      "reference_names": [
+        "-[IODiskPartitionNEW NeXTpartitionOffset]"
+      ],
+      "size": 216,
+      "source_line": 535,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 20456,
+      "reference_names": [
+        "-[IODiskPartitionNEW readLabel:]"
+      ],
+      "size": 374,
+      "source_line": 223,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 20832,
+      "reference_names": [
+        "-[IODiskPartitionNEW writeLabel:]"
+      ],
+      "size": 725,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 21560,
+      "reference_names": [
+        "-[IODiskPartitionNEW free]"
+      ],
+      "size": 65,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 21628,
+      "reference_names": [
+        "-[IODiskPartitionNEW eject]"
+      ],
+      "size": 141,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 21772,
+      "reference_names": [
+        "-[IODiskPartitionNEW readAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 105,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 21880,
+      "reference_names": [
+        "-[IODiskPartitionNEW readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 105,
+      "source_line": 675,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 21988,
+      "reference_names": [
+        "-[IODiskPartitionNEW writeAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 105,
+      "source_line": 703,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22096,
+      "reference_names": [
+        "-[IODiskPartitionNEW writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 105,
+      "source_line": 731,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22204,
+      "reference_names": [
+        "-[IODiskPartitionNEW setFormatted:]"
+      ],
+      "size": 91,
+      "source_line": 604,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22296,
+      "reference_names": [
+        "-[IODiskPartitionNEW setFormattedInternal:]"
+      ],
+      "size": 78,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22376,
+      "reference_names": [
+        "-[IODiskPartitionNEW isBlockDeviceOpen]"
+      ],
+      "size": 17,
+      "source_line": 487,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22396,
+      "reference_names": [
+        "-[IODiskPartitionNEW setBlockDeviceOpen:]"
+      ],
+      "size": 55,
+      "source_line": 496,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22452,
+      "reference_names": [
+        "-[IODiskPartitionNEW isRawDeviceOpen]"
+      ],
+      "size": 17,
+      "source_line": 526,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22472,
+      "reference_names": [
+        "-[IODiskPartitionNEW setRawDeviceOpen:]"
+      ],
+      "size": 55,
+      "source_line": 512,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22528,
+      "reference_names": [
+        "-[IODiskPartitionNEW _probeLabel:]"
+      ],
+      "size": 291,
+      "source_line": 861,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 22820,
+      "reference_names": [
+        "-[IODiskPartitionNEW _initPartition:disktab:]"
+      ],
+      "size": 380,
+      "source_line": 808,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 23200,
+      "reference_names": [
+        "-[IODiskPartitionNEW _freePartitions]"
+      ],
+      "size": 154,
+      "source_line": 768,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 23356,
+      "reference_names": [
+        "-[IODiskPartitionNEW isAnyBlockDevOpen]"
+      ],
+      "size": 95,
+      "source_line": 938,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 23452,
+      "reference_names": [
+        "-[IODiskPartitionNEW checkSafeConfig:]"
+      ],
+      "size": 162,
+      "source_line": 906,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m"
+    },
+    {
+      "address": 23616,
+      "reference_names": [
+        "-[IODriveNEW registerDevice]"
+      ],
+      "size": 181,
+      "source_line": 218,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 23800,
+      "reference_names": [
+        "-[IODriveNEW lastReadyState]"
+      ],
+      "size": 16,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 23816,
+      "reference_names": [
+        "-[IODriveNEW setLastReadyState:]"
+      ],
+      "size": 19,
+      "source_line": 273,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 23836,
+      "reference_names": [
+        "-[IODriveNEW setDriveName:]"
+      ],
+      "size": 68,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 23904,
+      "reference_names": [
+        "-[IODriveNEW driveName]"
+      ],
+      "size": 15,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 23920,
+      "reference_names": [
+        "-[IODriveNEW addToBytesRead:totalTime:latentTime:]"
+      ],
+      "size": 89,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24012,
+      "reference_names": [
+        "-[IODriveNEW addToBytesWritten:totalTime:latentTime:]"
+      ],
+      "size": 89,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24104,
+      "reference_names": [
+        "-[IODriveNEW incrementReadRetries]"
+      ],
+      "size": 16,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24120,
+      "reference_names": [
+        "-[IODriveNEW incrementReadErrors]"
+      ],
+      "size": 16,
+      "source_line": 168,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24136,
+      "reference_names": [
+        "-[IODriveNEW incrementWriteRetries]"
+      ],
+      "size": 16,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24152,
+      "reference_names": [
+        "-[IODriveNEW incrementWriteErrors]"
+      ],
+      "size": 16,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24168,
+      "reference_names": [
+        "-[IODriveNEW incrementOtherRetries]"
+      ],
+      "size": 16,
+      "source_line": 158,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24184,
+      "reference_names": [
+        "-[IODriveNEW incrementOtherErrors]"
+      ],
+      "size": 16,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24200,
+      "reference_names": [
+        "-[IODriveNEW getIntValues:forParameter:count:]"
+      ],
+      "size": 259,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24460,
+      "reference_names": [
+        "-[IODriveNEW ejectMedia]"
+      ],
+      "size": 54,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m"
+    },
+    {
+      "address": 24516,
+      "reference_names": [
+        "+[IOFloppyDisk deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 24528,
+      "reference_names": [
+        "+[IOFloppyDisk probe:]"
+      ],
+      "size": 9,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 24540,
+      "reference_names": [
+        "-[IOFloppyDisk initFromDeviceDescription::::]"
+      ],
+      "size": 715,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 25256,
+      "reference_names": [
+        "-[IOFloppyDisk free]"
+      ],
+      "size": 395,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 25652,
+      "reference_names": [
+        "-[IOFloppyDisk readAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 113,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 25768,
+      "reference_names": [
+        "-[IOFloppyDisk readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 131,
+      "source_line": 282,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 25900,
+      "reference_names": [
+        "-[IOFloppyDisk writeAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 189,
+      "source_line": 409,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 26092,
+      "reference_names": [
+        "-[IOFloppyDisk writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 211,
+      "source_line": 355,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 26304,
+      "reference_names": [
+        "-[IOFloppyDisk dummyIODiskPhysicalMethod]"
+      ],
+      "size": 7,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 26312,
+      "reference_names": [
+        "+[IOFloppyDrive deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 26,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 26324,
+      "reference_names": [
+        "+[IOFloppyDrive probe:]"
+      ],
+      "size": 9,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 26336,
+      "reference_names": [
+        "-[IOFloppyDrive initFromDeviceDescription:::]"
+      ],
+      "size": 450,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 26788,
+      "reference_names": [
+        "-[IOFloppyDrive free]"
+      ],
+      "size": 133,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 26924,
+      "reference_names": [
+        "-[IOFloppyDrive formatCylinder:data:]"
+      ],
+      "size": 180,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27104,
+      "reference_names": [
+        "-[IOFloppyDrive readCylinder:data:]"
+      ],
+      "size": 79,
+      "source_line": 309,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27184,
+      "reference_names": [
+        "-[IOFloppyDrive writeCylinder:data:]"
+      ],
+      "size": 79,
+      "source_line": 413,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27264,
+      "reference_names": [
+        "-[IOFloppyDrive setMediaCapacity:]"
+      ],
+      "size": 439,
+      "source_line": 339,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27704,
+      "reference_names": [
+        "-[IOFloppyDrive ejectMedia]"
+      ],
+      "size": 58,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27764,
+      "reference_names": [
+        "-[IOFloppyDrive pollMedia]"
+      ],
+      "size": 105,
+      "source_line": 265,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27872,
+      "reference_names": [
+        "-[IOFloppyDrive formatCapacities]"
+      ],
+      "size": 12,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27884,
+      "reference_names": [
+        "-[IOFloppyDrive readCapacities]"
+      ],
+      "size": 12,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27896,
+      "reference_names": [
+        "-[IOFloppyDrive writeCapacities]"
+      ],
+      "size": 12,
+      "source_line": 402,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27908,
+      "reference_names": [
+        "-[IOFloppyDrive canPollInexpensively]"
+      ],
+      "size": 9,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m"
+    },
+    {
+      "address": 27920,
+      "reference_names": [
+        "-[IOLogicalDiskNEW readAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 92,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28012,
+      "reference_names": [
+        "-[IOLogicalDiskNEW readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 92,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28104,
+      "reference_names": [
+        "-[IOLogicalDiskNEW writeAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 122,
+      "source_line": 237,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28228,
+      "reference_names": [
+        "-[IOLogicalDiskNEW writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 122,
+      "source_line": 281,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28352,
+      "reference_names": [
+        "-[IOLogicalDiskNEW connectToPhysicalDisk:]"
+      ],
+      "size": 181,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28536,
+      "reference_names": [
+        "-[IOLogicalDiskNEW setPartitionBase:]"
+      ],
+      "size": 19,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28556,
+      "reference_names": [
+        "-[IOLogicalDiskNEW isOpen]"
+      ],
+      "size": 99,
+      "source_line": 101,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28656,
+      "reference_names": [
+        "-[IOLogicalDiskNEW free]"
+      ],
+      "size": 81,
+      "source_line": 54,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28740,
+      "reference_names": [
+        "-[IOLogicalDiskNEW physicalDisk]"
+      ],
+      "size": 16,
+      "source_line": 74,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28756,
+      "reference_names": [
+        "-[IOLogicalDiskNEW isAnyOtherOpen]"
+      ],
+      "size": 89,
+      "source_line": 126,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28848,
+      "reference_names": [
+        "-[IOLogicalDiskNEW isInstanceOpen]"
+      ],
+      "size": 17,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28868,
+      "reference_names": [
+        "-[IOLogicalDiskNEW setInstanceOpen:]"
+      ],
+      "size": 23,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 28892,
+      "reference_names": [
+        "-[IOLogicalDiskNEW _diskParamCommon:length:deviceOffset:bytesToMove:]"
+      ],
+      "size": 205,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m"
+    },
+    {
+      "address": 29100,
+      "reference_names": [
+        "-[IODiskNEW completeTransfer:withStatus:actualLength:]"
+      ],
+      "size": 65,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29168,
+      "reference_names": [
+        "-[IODiskNEW devAndIdInfo]"
+      ],
+      "size": 16,
+      "source_line": 22,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29184,
+      "reference_names": [
+        "-[IODiskNEW setDevAndIdInfo:]"
+      ],
+      "size": 19,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29204,
+      "reference_names": [
+        "-[IODiskNEW blockDev]"
+      ],
+      "size": 19,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29224,
+      "reference_names": [
+        "-[IODiskNEW rawDev]"
+      ],
+      "size": 19,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29244,
+      "reference_names": [
+        "-[IODiskNEW registerUnixDisk:]"
+      ],
+      "size": 85,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29332,
+      "reference_names": [
+        "-[IODiskNEW unregisterUnixDisk:]"
+      ],
+      "size": 94,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m"
+    },
+    {
+      "address": 29428,
+      "reference_names": [
+        "-[IOFloppyDisk constructRequest:blockStart:byteCount:buffer:bufferMap:]"
+      ],
+      "size": 490,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 29920,
+      "reference_names": [
+        "-[IOFloppyDisk freeRequest:]"
+      ],
+      "size": 40,
+      "source_line": 707,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 29960,
+      "reference_names": [
+        "-[IOFloppyDisk executeRequest:]"
+      ],
+      "size": 732,
+      "source_line": 441,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 30692,
+      "reference_names": [
+        "-[IOFloppyDisk checkCylinderStateForSubrequest:]"
+      ],
+      "size": 256,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 30948,
+      "reference_names": [
+        "-[IOFloppyDisk popSubrequestsOnCylinder:]"
+      ],
+      "size": 347,
+      "source_line": 768,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 31296,
+      "reference_names": [
+        "-[IOFloppyDisk abortSubrequestsOnCylinder:]"
+      ],
+      "size": 241,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 31540,
+      "reference_names": [
+        "-[IOFloppyDisk imposeCylinderStateForSubrequest:]"
+      ],
+      "size": 78,
+      "source_line": 730,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 31620,
+      "reference_names": [
+        "-[IOFloppyDisk unimposeCylinderStateForSubrequest:]"
+      ],
+      "size": 263,
+      "source_line": 862,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 31884,
+      "reference_names": [
+        "-[IOFloppyDisk executeSubrequest:]"
+      ],
+      "size": 210,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 32096,
+      "reference_names": [
+        "-[IOFloppyDisk setUpCache]"
+      ],
+      "size": 260,
+      "source_line": 55,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Support.m"
+    },
+    {
+      "address": 32356,
+      "reference_names": [
+        "-[IOFloppyDisk releaseCache]"
+      ],
+      "size": 119,
+      "source_line": 18,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Support.m"
+    },
+    {
+      "address": 32688,
+      "reference_names": [
+        "_OperationThreadStartup"
+      ],
+      "size": 27,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m"
+    },
+    {
+      "address": 32716,
+      "reference_names": [
+        "-[IOFloppyDisk operationThread]"
+      ],
+      "size": 2734,
+      "source_line": 745,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 35452,
+      "reference_names": [
+        "-[IOFloppyDisk getReadModeFromConfigTable:]"
+      ],
+      "size": 197,
+      "source_line": 617,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 35652,
+      "reference_names": [
+        "-[IOFloppyDisk getWriteModeFromConfigTable:]"
+      ],
+      "size": 257,
+      "source_line": 676,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 35912,
+      "reference_names": [
+        "-[IOFloppyDisk bringCylinderOnline:isFormatted:]"
+      ],
+      "size": 279,
+      "source_line": 413,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36192,
+      "reference_names": [
+        "-[IOFloppyDisk commitDirtyCylinder:]"
+      ],
+      "size": 227,
+      "source_line": 557,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36420,
+      "reference_names": [
+        "-[IOFloppyDisk clearOperationsOnQueue:]"
+      ],
+      "size": 130,
+      "source_line": 489,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36552,
+      "reference_names": [
+        "_strlower"
+      ],
+      "size": 33,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36588,
+      "reference_names": [
+        "_queueOperationAscending"
+      ],
+      "size": 149,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36892,
+      "reference_names": [
+        "_sweepQueueInsert"
+      ],
+      "size": 50,
+      "source_line": 271,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36944,
+      "reference_names": [
+        "_sweepQueueReorder"
+      ],
+      "size": 189,
+      "source_line": 315,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 37136,
+      "reference_names": [
+        "-[IOFloppyDrive registerVolCheck]"
+      ],
+      "size": 65,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37204,
+      "reference_names": [
+        "-[IOFloppyDrive unregisterVolCheck]"
+      ],
+      "size": 16,
+      "source_line": 137,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37220,
+      "reference_names": [
+        "-[IOFloppyDrive isFormatted]"
+      ],
+      "size": 19,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37240,
+      "reference_names": [
+        "-[IOFloppyDrive isRemovable]"
+      ],
+      "size": 12,
+      "source_line": 63,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37252,
+      "reference_names": [
+        "-[IOFloppyDrive isWriteProtected]"
+      ],
+      "size": 19,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37272,
+      "reference_names": [
+        "-[IOFloppyDrive needsManualPolling]"
+      ],
+      "size": 33,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37308,
+      "reference_names": [
+        "-[IOFloppyDrive isPhysical]"
+      ],
+      "size": 30,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37340,
+      "reference_names": [
+        "-[IOFloppyDrive nextLogicalDisk]"
+      ],
+      "size": 29,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37372,
+      "reference_names": [
+        "-[IOFloppyDrive updatePhysicalParameters]"
+      ],
+      "size": 9,
+      "source_line": 149,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37384,
+      "reference_names": [
+        "-[IOFloppyDrive diskBecameReady]"
+      ],
+      "size": 7,
+      "source_line": 29,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37392,
+      "reference_names": [
+        "-[IOFloppyDrive updateReadyState]"
+      ],
+      "size": 36,
+      "source_line": 160,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    },
+    {
+      "address": 37428,
+      "reference_names": [
+        "-[IOFloppyDrive abortRequest]"
+      ],
+      "size": 7,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m"
+    }
+  ],
+  "reference_sha256": "49608BD40A302A9A3541F9E37202DEEA871C30CD6CECFE8ABB99D75BDC1D8252",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 32476,
+      "reference_names": [
+        "_dowire"
+      ],
+      "size": 61
+    },
+    {
+      "address": 32540,
+      "reference_names": [
+        "_docopy"
+      ],
+      "size": 146
+    },
+    {
+      "address": 36740,
+      "reference_names": [
+        "_queueOperationDecending"
+      ],
+      "size": 149
+    },
+    {
+      "address": 37436,
+      "reference_names": [
+        "+[FloppyKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 37448,
+      "reference_names": [
+        "+[FloppyVersion driverKitVersionForFloppy]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 37460,
+      "reference_names": [
+        "__udivdi3"
+      ],
+      "size": 264
+    }
+  ]
+}

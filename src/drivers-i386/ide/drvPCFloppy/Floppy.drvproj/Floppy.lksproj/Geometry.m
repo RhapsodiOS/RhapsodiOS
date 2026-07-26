@@ -218,19 +218,64 @@ fdGetSectSizeInfo(unsigned int density)
 }
 
 /*
- * fdrValues - FDC status → string map for IOFindNameForValue.
+ * fdrValues - fd_ioreq result code -> string map for IOFindNameForValue,
+ * recovered byte-for-byte from the reference binary's __DATA segment
+ * (_fdrValues). Consumed by FloppyDriveInt2.m's
+ * logRwErr:block:status:readFlag:.
  */
 const IONamedValue fdrValues[] = {
-	{ 0x00, "OK" },
-	{ 0x01, "I/O error" },
-	{ 0x02, "Write protected" },
-	{ 0x03, "Not readable" },
-	{ 0x04, "Not formatted" },
-	{ 0x05, "Media error" },
-	{ 0x0d, "DMA error" },
-	{ 0x14, "Timeout" },
-	{ 0x15, "Device error" },
-	{ 0x16, "No media" },
+	{ 0x00, "Success" },
+	{ 0x01, "fd_ioreq.timeout exceeded" },
+	{ 0x02, "Couldn't allocate memory" },
+	{ 0x03, "Memory transfer error" },
+	{ 0x04, "Bad field in fd_ioreq" },
+	{ 0x05, "Drive not present" },
+	{ 0x06, "Media error - data CRC" },
+	{ 0x07, "Media error - header CRC" },
+	{ 0x08, "Misc. media error" },
+	{ 0x09, "seek error" },
+	{ 0x0a, "Unexpected controller phase change" },
+	{ 0x0b, "Basic Drive Failure" },
+	{ 0x0c, "Header Not Found" },
+	{ 0x0d, "Disk Write Protected" },
+	{ 0x0e, "Missing Address Mark" },
+	{ 0x0f, "Missing Control Mark" },
+	{ 0x10, "Missing Data Mark" },
+	{ 0x11, "Controller rejected command" },
+	{ 0x12, "Controller Handshake Error" },
+	{ 0x13, "DMA Over/underrun" },
+	{ 0x14, "Requested Volume not available" },
+	{ 0x15, "DMA Alignment Error" },
+	{ 0x16, "DMA Error" },
+	{ 0x17, "Spurious Interrupt" },
+	{ 0, (const char *)0 },
+};
+
+/*
+ * fdDensityNameValues - FD_DENS_* density code -> string map for
+ * IOFindNameForValue, recovered byte-for-byte from the reference binary's
+ * __DATA segment. No caller of IOFindNameForValue against this table could
+ * be found in the reference disassembly; kept here for string-table parity.
+ */
+static const IONamedValue fdDensityNameValues[] = {
+	{ 0x00, "FD_DENS_NONE" },
+	{ 0x01, "FD_DENS_1" },
+	{ 0x02, "FD_DENS_2" },
+	{ 0x03, "FD_DENS_4" },
+	{ 0, (const char *)0 },
+};
+
+/*
+ * fdMidNameValues - FD_MID_* media-ID code -> string map for
+ * IOFindNameForValue, recovered byte-for-byte from the reference binary's
+ * __DATA segment. No caller of IOFindNameForValue against this table could
+ * be found in the reference disassembly; kept here for string-table parity.
+ */
+static const IONamedValue fdMidNameValues[] = {
+	{ 0x00, "FD_MID_NONE" },
+	{ 0x03, "FD_MID_1MB" },
+	{ 0x02, "FD_MID_2MB" },
+	{ 0x01, "FD_MID_4MB" },
 	{ 0, (const char *)0 },
 };
 

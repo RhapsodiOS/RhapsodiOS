@@ -1727,7 +1727,7 @@ repaired in its own commit before any divergence work: `SoundBlaster16.m:270` us
 defect was present — this driver carries none of drvSB8Sound's NEXTSTEP-era residue, and
 its `Makefile.preamble` files are clean.
 
-The baseline build after that repair produced a 198504-byte `_reloc` and 20 compiler
+The baseline build after that repair produced a 198504-byte `_reloc` and 23 compiler
 warnings, all of them consequences of findings this pass then closed (the `stringValue`
 receiver type, the `BOOL is16BitTransfer` range comparisons and the unused
 `stopDMAForChannel:read:` locals). The final build emits **no warnings at all**.

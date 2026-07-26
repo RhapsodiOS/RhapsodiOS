@@ -238,13 +238,21 @@ def _read_snapshot(path: Path) -> dict:
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
         if not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1 or getattr(initial, "st_file_attributes", 0) & reparse:
             raise AngrAdapterError("angr output is not a private regular file")
-        if initial.st_size > _MAX_OUTPUT: raise AngrAdapterError("angr output exceeds maximum JSON size")
+        if initial.st_size > _MAX_OUTPUT:
+            raise AngrAdapterError(
+                f"angr output exceeds maximum JSON size ({initial.st_size:,} bytes; "
+                f"cap {_MAX_OUTPUT:,})"
+            )
         chunks, total = [], 0
         while True:
             chunk = os.read(descriptor, min(_CHUNK, _MAX_OUTPUT + 1 - total))
             if not chunk: break
             chunks.append(chunk); total += len(chunk)
-            if total > _MAX_OUTPUT: raise AngrAdapterError("angr output exceeds maximum JSON size")
+            if total > _MAX_OUTPUT:
+                raise AngrAdapterError(
+                    f"angr output exceeds maximum JSON size (more than {_MAX_OUTPUT:,} bytes; "
+                    f"cap {_MAX_OUTPUT:,})"
+                )
         final = os.fstat(descriptor)
         fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
         if total != initial.st_size or any(getattr(initial, f) != getattr(final, f) for f in fields):

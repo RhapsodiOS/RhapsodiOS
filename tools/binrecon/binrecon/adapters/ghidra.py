@@ -187,7 +187,10 @@ def _read_snapshot(path: Path) -> dict:
         if getattr(initial, "st_file_attributes", 0) & reparse:
             raise GhidraAdapterError("Ghidra output is a reparse point")
         if initial.st_size > _MAX_OUTPUT:
-            raise GhidraAdapterError("Ghidra output exceeds maximum JSON size")
+            raise GhidraAdapterError(
+                f"Ghidra output exceeds maximum JSON size ({initial.st_size:,} bytes; "
+                f"cap {_MAX_OUTPUT:,})"
+            )
         chunks = []
         total = 0
         while True:
@@ -197,7 +200,10 @@ def _read_snapshot(path: Path) -> dict:
             chunks.append(chunk)
             total += len(chunk)
             if total > _MAX_OUTPUT:
-                raise GhidraAdapterError("Ghidra output exceeds maximum JSON size")
+                raise GhidraAdapterError(
+                    f"Ghidra output exceeds maximum JSON size (more than {_MAX_OUTPUT:,} bytes; "
+                    f"cap {_MAX_OUTPUT:,})"
+                )
         final = os.fstat(descriptor)
         fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
         if total != initial.st_size or any(

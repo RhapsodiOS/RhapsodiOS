@@ -174,7 +174,10 @@ def _read_analysis_snapshot(
         if getattr(initial, "st_file_attributes", 0) & reparse_flag:
             raise IdaAdapterError("IDA output is a reparse point")
         if initial.st_size > _MAX_ANALYSIS_BYTES:
-            raise IdaAdapterError("IDA output exceeds maximum JSON size")
+            raise IdaAdapterError(
+                f"IDA output exceeds maximum JSON size ({initial.st_size:,} bytes; "
+                f"cap {_MAX_ANALYSIS_BYTES:,})"
+            )
         chunks = []
         total = 0
         while True:
@@ -184,7 +187,10 @@ def _read_analysis_snapshot(
             chunks.append(chunk)
             total += len(chunk)
             if total > _MAX_ANALYSIS_BYTES:
-                raise IdaAdapterError("IDA output exceeds maximum JSON size")
+                raise IdaAdapterError(
+                    f"IDA output exceeds maximum JSON size (more than {_MAX_ANALYSIS_BYTES:,} bytes; "
+                    f"cap {_MAX_ANALYSIS_BYTES:,})"
+                )
         final = fstat(descriptor)
         stable_fields = (
             "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink"

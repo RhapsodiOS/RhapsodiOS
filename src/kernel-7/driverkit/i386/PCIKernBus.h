@@ -36,10 +36,57 @@
 #ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
+#import <driverkit/return.h>
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
 #define IRQ_LEVELS_KEY		"IRQ Levels"
 #define DMA_CHANNELS_KEY	"DMA Channels"
+
+/*
+ * The PCI bus object is supplied
+ * by a loadable driver.  The kernel
+ * only sends it messages, so the
+ * instance variables are private
+ * to the driver.
+ */
+
+@interface PCIKernBus : KernBus
+
++ initialize;
+
+- init;
+- free;
+
+- (BOOL)isPCIPresent;
+
+- (int)maxBusNum;
+- (int)maxDevNum;
+
+- (BOOL)testIDs: (const char *)ids
+	    dev: (unsigned char)dev
+	    fun: (unsigned char)fun
+	    bus: (unsigned char)bus;
+
+- (IOReturn)configAddress: deviceDescription
+		   device: (unsigned char *)devNum
+		 function: (unsigned char *)funNum
+		      bus: (unsigned char *)busNum;
+
+- (IOReturn)getRegister: (unsigned char)address
+		 device: (unsigned char)devNum
+	       function: (unsigned char)funNum
+		    bus: (unsigned char)busNum
+		   data: (unsigned long *)data;
+
+- (IOReturn)setRegister: (unsigned char)address
+		 device: (unsigned char)devNum
+	       function: (unsigned char)funNum
+		    bus: (unsigned char)busNum
+		   data: (unsigned long)data;
+
+- allocateResourcesForDeviceDescription: descr;
+
+@end
 
 #endif	/* DRIVER_PRIVATE */

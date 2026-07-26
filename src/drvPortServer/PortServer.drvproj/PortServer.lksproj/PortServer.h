@@ -6,15 +6,21 @@
 #ifndef _PORTSERVER_H_
 #define _PORTSERVER_H_
 
-#import <objc/Object.h>
+#import <driverkit/IODevice.h>
 
 /* ========================================================================
  * PortServer Class Definition
  * ======================================================================== */
 
-@interface PortServer : Object
+@interface PortServer : IODevice
 {
-    /* Instance variables */
+    /* Instance variables
+     *
+     * The reference declares one ivar here, "state" of type ttyiops_state at
+     * offset 264, which is what the +0x108/+0x1f0/+0x264 literals below reach.
+     * ttyiops_state is not declared anywhere in this tree yet; the ivar and the
+     * offsets stay as they are until ttyiops.h carries the type.
+     */
 }
 
 /* Class methods */
@@ -40,7 +46,7 @@
 + (int)serverMajor:(id)deviceDescription;
 
 /* Initialization */
-- initFromDeviceDescription:(void *)deviceDescription;
+- initFromDeviceDescription:(id)deviceDescription;
 
 /* IOPS (IOPortSession) operations */
 - (const char *)iopsName;
@@ -50,12 +56,12 @@
 
 /* Parameter access */
 - (int)getIntValues:(unsigned int *)values
-       forParameter:(int)parameter
-              count:(int)count;
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int *)count;
 
 - (int)setIntValues:(unsigned int *)values
-       forParameter:(int)parameter
-              count:(int)count;
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int)count;
 
 @end
 

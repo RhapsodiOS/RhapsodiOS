@@ -5,34 +5,28 @@
 
 #import "PortServer.h"
 #import "IOPortSession.h"
-#import <objc/objc-runtime.h>
+#import "IOPortSessionKern.h"
+#import "AppleIOPSSafeCondLock.h"
+#import "ttyiops.h"
 #import <string.h>
 /* Global ttyiops map and lock - defined here */
-id _ttyiopsMapLock = NULL;              /* AppleIOPSSafeCondLock for ttyiops map access */
+static id _ttyiopsMapLock = NULL;       /* AppleIOPSSafeCondLock for ttyiops map access */
 id _ttyiopsMap[26] = { NULL };          /* Array of 26 PortServer instances (one per letter a-z) */
-id _pseudoUnit = NULL;                  /* PDPseudo unit instance */
+static id _pseudoUnit = NULL;           /* PDPseudo unit instance */
 
 /* Global port server major device number */
 static int _portServerMajor = 0;
 
-/* Protocol array for PortServer - points to objc_protocol_000068c0 */
-extern Protocol *objc_protocol_PortDevices;  /* @protocol(PortDevices) */
+/* Protocol array for PortServer - _protocols.102 in the reference */
 Protocol *_protocols_102[] = {
-    &objc_protocol_PortDevices,
-    NULL
+    @protocol(PortDevices),
+    0
 };
 
 
-/* External character device switch functions */
-extern int portServeropen;
-extern int portServerclose;
-extern int ttyiops_read;
-extern int ttyiops_write;
-extern int portServerioctl;
-extern int ttyiops_stop;
-extern int nulldev;
-extern int ttyiops_select;
-extern int enodev;
+/* Character device switch functions supplied to addToCdevswFromDescription: */
+extern int nulldev();
+extern int enodev();
 
 /* External IOLog function */
 extern void IOLog(const char *format, ...);
@@ -68,43 +62,30 @@ extern void IOLog(const char *format, ...);
  */
 + (int)serverMajor:(id)deviceDescription
 {
-    id cdevswResult;
-    id majorResult;
-    id lockAlloc;
-
     if (_portServerMajor == 0) {
         /* Add to character device switch table */
-        cdevswResult = objc_msgSend(self,
-                                    @selector(class));
-        cdevswResult = objc_msgSend(cdevswResult,
-                                    @selector(addToCdevswFromDescription:open:),
-                                    deviceDescription,
-                                    portServeropen,
-                                    portServerclose,
-                                    ttyiops_read,
-                                    ttyiops_write,
-                                    portServerioctl,
-                                    ttyiops_stop,
-                                    &nulldev,
-                                    ttyiops_select,
-                                    &enodev,
-                                    &enodev,
-                                    &enodev);
-        objc_msgSend(cdevswResult);
+        [[self class] addToCdevswFromDescription:deviceDescription
+                                            open:(IOSwitchFunc)portServeropen
+                                           close:(IOSwitchFunc)portServerclose
+                                            read:(IOSwitchFunc)ttyiops_read
+                                           write:(IOSwitchFunc)ttyiops_write
+                                           ioctl:(IOSwitchFunc)portServerioctl
+                                            stop:(IOSwitchFunc)ttyiops_stop
+                                           reset:(IOSwitchFunc)nulldev
+                                          select:(IOSwitchFunc)ttyiops_select
+                                            mmap:(IOSwitchFunc)enodev
+                                            getc:(IOSwitchFunc)enodev
+                                            putc:(IOSwitchFunc)enodev];
 
         /* Get character major number */
-        majorResult = objc_msgSend(self, @selector(class));
-        majorResult = objc_msgSend(majorResult, @selector(characterMajor));
-        _portServerMajor = objc_msgSend(majorResult);
+        _portServerMajor = [[self class] characterMajor];
 
         if (_portServerMajor == 0xffffffff) {
             IOLog("Port Server: Can't find space in devsw\n");
         }
 
         /* Create AppleIOPSSafeCondLock for ttyiops map */
-        lockAlloc = objc_msgSend(objc_getClass("AppleIOPSSafeCondLock"),
-                                @selector(alloc));
-        _ttyiopsMapLock = objc_msgSend(lockAlloc, @selector(init));
+        _ttyiopsMapLock = [[AppleIOPSSafeCondLock alloc] init];
     }
 
     return _portServerMajor;
@@ -121,37 +102,28 @@ extern void IOLog(const char *format, ...);
 {
     int majorNumber;
     int lockResult;
-    id portServerAlloc;
     id portServerInit;
-    int initResult;
 
     /* Get/allocate server major number */
-    majorNumber = objc_msgSend(self, @selector(serverMajor:), deviceDescription);
+    majorNumber = [self serverMajor:deviceDescription];
 
     if (majorNumber != -1) {
         /* Initialize kernel port session subsystem */
-        objc_msgSend(objc_getClass("IOPortSession"),
-                    @selector(iopsKernInit:),
-                    deviceDescription);
+        [IOPortSession iopsKernInit:deviceDescription];
 
         /* Lock the ttyiops map (spin-wait) */
         do {
-            lockResult = objc_msgSend(_ttyiopsMapLock, @selector(lock));
+            lockResult = [_ttyiopsMapLock lock];
         } while (lockResult != 0);
 
         /* Allocate and initialize PortServer */
-        portServerAlloc = objc_msgSend(self, @selector(class));
-        portServerAlloc = objc_msgSend(portServerAlloc, @selector(alloc));
-        portServerInit = objc_msgSend(portServerAlloc,
-                                     @selector(initFromDeviceDescription:),
-                                     deviceDescription);
-        portServerInit = objc_msgSend(portServerInit);
-        initResult = objc_msgSend(portServerInit);
+        portServerInit = [[[self class] alloc]
+                              initFromDeviceDescription:deviceDescription];
 
         /* Unlock the ttyiops map */
-        objc_msgSend(_ttyiopsMapLock, @selector(unlock));
+        [_ttyiopsMapLock unlock];
 
-        if (initResult != 0) {
+        if (portServerInit != nil) {
             return 1;  /* Probe succeeded */
         }
     }
@@ -168,47 +140,28 @@ extern void IOLog(const char *format, ...);
  * 1. PDPseudo: Creates pseudo serial device named "pdservd"
  * 2. Regular TTY: Creates ttydX devices (a-z) with IOPortSession
  */
-- initFromDeviceDescription:(void *)deviceDescription
+- initFromDeviceDescription:(id)deviceDescription
 {
     id direct_device;
     const char *device_name;
-    int cmp_len;
-    int match;
-    const char *p1, *p2;
     unsigned int unit_index;
     char name_buffer[8];
     int result_code;
     id port_session;
     id init_result;
     const char *existing_name;
-    struct objc_super super_struct;
 
     /* Get direct device from device description */
-    direct_device = objc_msgSend(deviceDescription, @selector(directDevice));
-    device_name = (const char *)objc_msgSend(direct_device, @selector(name));
+    direct_device = [deviceDescription directDevice];
+    device_name = (const char *)[direct_device name];
 
     /* Check if device name exists and is not empty */
     if (device_name == NULL || *device_name == '\0') {
         goto init_failed;
     }
 
-    /* Check if this is a PDPseudo device (compare "PDPseudo" - 9 chars) */
-    cmp_len = 9;
-    match = 1;
-    p1 = device_name;
-    p2 = "PDPseudo";
-
-    while (cmp_len > 0) {
-        cmp_len--;
-        if (*p1 != *p2) {
-            match = 0;
-            break;
-        }
-        p1++;
-        p2++;
-    }
-
-    if (match) {
+    /* Check if this is a PDPseudo device */
+    if (strcmp(device_name, "PDPseudo") == 0) {
         /* PDPseudo device */
         [self setDeviceKind:"Port Server"];
 
@@ -233,8 +186,7 @@ extern void IOLog(const char *format, ...);
             }
 
             /* Check if device name already exists */
-            existing_name = (const char *)objc_msgSend(_ttyiopsMap[unit_index],
-                                                       @selector(iopsName));
+            existing_name = (const char *)[_ttyiopsMap[unit_index] iopsName];
             if (strcmp(existing_name, device_name) == 0) {
                 /* Device already registered */
                 goto init_failed;
@@ -245,28 +197,25 @@ extern void IOLog(const char *format, ...);
 
         /* Check if we exceeded maximum units (26) */
         if (unit_index > 0x19) {  /* 0x19 = 25 (last valid index) */
-            IOLog("PortServer: Maximum number of devices exceeded");
+            IOLog("ttyiops: Couldn't create any more tty instances\n");
             goto init_failed;
         }
 
         /* Set device kind */
-        [self setDeviceKind:"Port Server"];
+        [self setDeviceKind:"Port Device tty"];
 
         /* Create name "ttydX" where X is a-z */
         sprintf(name_buffer, "ttyd%c", unit_index + 0x61);  /* 0x61 = 'a' */
 
         /* Create IOPortSession for this device */
-        port_session = objc_msgSend(objc_getClass("IOPortSession"),
-                                    @selector(alloc));
-        port_session = objc_msgSend(port_session,
-                                    @selector(initForDevice:result:),
-                                    device_name, &result_code);
+        port_session = [[IOPortSession alloc] initForDevice:(char *)device_name
+                                                     result:&result_code];
 
         /* Store IOPortSession at offset +0x1f0 */
         *(id *)((char *)self + 0x1f0) = port_session;
 
-        /* Attach device to ttyiops system */
-        ttyiops_attachDevice(self, unit_index);
+        /* Attach device to ttyiops system - the reference passes &self->state */
+        ttyiops_attachDevice((struct tty *)((char *)self + 0x108));
     }
 
     /* Set unit number */
@@ -275,14 +224,9 @@ extern void IOLog(const char *format, ...);
     /* Set device name */
     [self setName:name_buffer];
 
-    /* Call [super initFromDeviceDescription:] */
-    super_struct.receiver = self;
-    super_struct.class = objc_getClass("IODevice");
-    init_result = objc_msgSendSuper(&super_struct,
-                                    @selector(initFromDeviceDescription:),
-                                    deviceDescription);
+    init_result = [super initFromDeviceDescription:deviceDescription];
 
-    if (init_result == NULL) {
+    if (init_result == nil) {
         goto init_failed;
     }
 
@@ -320,7 +264,7 @@ init_failed:
     port_session = *(id *)((char *)self + 0x1f0);
 
     /* Get name from IOPortSession */
-    name = (const char *)objc_msgSend(port_session, @selector(name));
+    name = [port_session name];
 
     return name;
 }
@@ -338,7 +282,7 @@ init_failed:
 /*
  * getIntValues:forParameter:count: - Get integer parameter values
  * values: Buffer to receive integer values (output parameter)
- * parameter: Parameter identifier (string)
+ * parameterName: Parameter identifier (string)
  * count: Pointer to count (input/output parameter)
  * Returns: Result code (0 on success)
  *
@@ -349,43 +293,20 @@ init_failed:
  * Falls back to [super getIntValues:forParameter:count:] for other parameters
  */
 - (int)getIntValues:(unsigned int *)values
-       forParameter:(int)parameter
-              count:(int)count
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int *)count
 {
     int result;
-    char *param_str;
-    int cmp_len;
-    int match;
-    char *p1, *p2;
-    unsigned int max_sessions;
-    struct objc_super super_struct;
 
-    param_str = (char *)parameter;
-
-    /* Check for "PortServerPLGandS" parameter (0x12 = 18 chars) */
-    cmp_len = 0x12;
-    match = 1;
-    p1 = param_str;
-    p2 = "PortServerPLGandS";
-
-    while (cmp_len > 0) {
-        cmp_len--;
-        if (*p1 != *p2) {
-            match = 0;
-            break;
-        }
-        p1++;
-        p2++;
-    }
-
-    if (match) {
+    /* Check for "PortServerPLGandS" parameter */
+    if (strcmp(parameterName, "PortServerPLGandS") == 0) {
         /* Lock the ttyiops map */
         do {
-            result = objc_msgSend(_ttyiopsMapLock, @selector(lock));
+            result = [_ttyiopsMapLock lock];
         } while (result != 0);
 
         /* Set count to 1 */
-        *(unsigned int *)count = 1;
+        *count = 1;
 
         /* Get current flag value (bit 0 at offset +0x264) */
         *values = *(unsigned char *)((char *)self + 0x264) & 1;
@@ -395,30 +316,15 @@ init_failed:
             *(unsigned char *)((char *)self + 0x264) | 1;
 
         /* Unlock the ttyiops map */
-        objc_msgSend(_ttyiopsMapLock, @selector(unlock));
+        [_ttyiopsMapLock unlock];
 
         return 0;
     }
 
-    /* Check for "Port Device tty" parameter (0x10 = 16 chars) */
-    cmp_len = 0x10;
-    match = 1;
-    p1 = param_str;
-    p2 = "Port Device tty";
-
-    while (cmp_len > 0) {
-        cmp_len--;
-        if (*p1 != *p2) {
-            match = 0;
-            break;
-        }
-        p1++;
-        p2++;
-    }
-
-    if (match) {
+    /* Check for "Port Device tty" parameter */
+    if (strcmp(parameterName, "Port Device tty") == 0) {
         /* Set count to 1 */
-        *(unsigned int *)count = 1;
+        *count = 1;
 
         /* Return pointer to offset +0x108 */
         *values = (unsigned int)((char *)self + 0x108);
@@ -426,47 +332,23 @@ init_failed:
         return 0;
     }
 
-    /* Check for "Maximum Sessions" parameter (0x11 = 17 chars) */
-    cmp_len = 0x11;
-    match = 1;
-    p1 = param_str;
-    p2 = "Maximum Sessions";
-
-    while (cmp_len > 0) {
-        cmp_len--;
-        if (*p1 != *p2) {
-            match = 0;
-            break;
-        }
-        p1++;
-        p2++;
-    }
-
-    if (match) {
+    /* Check for "Maximum Sessions" parameter */
+    if (strcmp(parameterName, "Maximum Sessions") == 0) {
         /* Get maximum sessions from IOPortSession class */
-        max_sessions = objc_msgSend(objc_getClass("IOPortSession"),
-                                    @selector(iopsKernNumSess));
-
-        *values = max_sessions;
-        *(unsigned int *)count = 1;
+        *values = [IOPortSession iopsKernNumSess];
+        *count = 1;
 
         return 0;
     }
 
     /* Unknown parameter - call super implementation */
-    super_struct.receiver = self;
-    super_struct.class = objc_getClass("IODevice");
-    result = objc_msgSendSuper(&super_struct,
-                               @selector(getIntValues:forParameter:count:),
-                               values, parameter, count);
-
-    return result;
+    return [super getIntValues:values forParameter:parameterName count:count];
 }
 
 /*
  * setIntValues:forParameter:count: - Set integer parameter values
  * values: Buffer containing integer values to set
- * parameter: Parameter identifier
+ * parameterName: Parameter identifier
  * count: Number of values to set
  * Returns: Result code (0 on success)
  *
@@ -475,40 +357,18 @@ init_failed:
  * Falls back to [super setIntValues:forParameter:count:] for other parameters
  */
 - (int)setIntValues:(unsigned int *)values
-       forParameter:(int)parameter
-              count:(int)count
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int)count
 {
     int result;
-    char *param_str;
-    int cmp_len;
-    int match;
-    char *p1, *p2;
-    struct objc_super super_struct;
 
-    param_str = (char *)parameter;
-
-    /* Check for "PortServerPLGandS" parameter (0x12 = 18 chars) */
-    cmp_len = 0x12;
-    match = 1;
-    p1 = param_str;
-    p2 = "PortServerPLGandS";
-
-    while (cmp_len > 0) {
-        cmp_len--;
-        if (*p1 != *p2) {
-            match = 0;
-            break;
-        }
-        p1++;
-        p2++;
-    }
-
-    if (match) {
+    /* Check for "PortServerPLGandS" parameter */
+    if (strcmp(parameterName, "PortServerPLGandS") == 0) {
         /* Check if count is 1 */
         if (count == 1) {
             /* Lock the ttyiops map */
             do {
-                result = objc_msgSend(_ttyiopsMapLock, @selector(lock));
+                result = [_ttyiopsMapLock lock];
             } while (result != 0);
 
             /* Set flag at offset +0x264 based on *values */
@@ -523,7 +383,7 @@ init_failed:
             }
 
             /* Unlock the ttyiops map */
-            objc_msgSend(_ttyiopsMapLock, @selector(unlock));
+            [_ttyiopsMapLock unlock];
 
             return 0;
         } else {
@@ -533,13 +393,7 @@ init_failed:
     }
 
     /* Unknown parameter - call super implementation */
-    super_struct.receiver = self;
-    super_struct.class = objc_getClass("IODevice");
-    result = objc_msgSendSuper(&super_struct,
-                               @selector(setIntValues:forParameter:count:),
-                               values, parameter, count);
-
-    return result;
+    return [super setIntValues:values forParameter:parameterName count:count];
 }
 
 @end

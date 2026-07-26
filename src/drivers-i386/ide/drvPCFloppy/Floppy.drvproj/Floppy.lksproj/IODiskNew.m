@@ -338,218 +338,29 @@
 	[_LogicalDiskLock unlock];
 }
 
-/*
- * Register instance with current name space.
- */
-- _registerDevice
-{
-	// TODO: Implement registration
-	return self;
-}
 
-/*
- * Free method.
- */
-- _free
-{
-	// TODO: Implement cleanup
-	return [super free];
-}
 
-/*
- * Disk size getter.
- */
-- (unsigned)_diskSize
-{
-	return _diskSize;
-}
 
-/*
- * Disk size setter.
- */
-- (void)_setDiskSize : (unsigned)size
-{
-	_diskSize = size;
-}
 
-/*
- * Block size getter.
- */
-- (unsigned)_blockSize
-{
-	return _blockSize;
-}
 
-/*
- * Block size setter.
- */
-- (void)_setBlockSize : (unsigned)size
-{
-	_blockSize = size;
-}
 
-/*
- * Formatted flag getter.
- */
-- (BOOL)_isFormatted
-{
-	return _formatted;
-}
 
-/*
- * Formatted flag setter.
- */
-- (void)_setFormatted : (BOOL)formattedFlag
-{
-	_formatted = formattedFlag;
-}
 
-/*
- * Formatted flag setter (internal).
- */
-- (void)_setFormattedInternal : (BOOL)formattedFlag
-{
-	_formatted = formattedFlag;
-}
 
-/*
- * Removable flag getter.
- */
-- (BOOL)_isRemovable
-{
-	return _removable;
-}
 
-/*
- * Removable flag setter.
- */
-- (void)_setRemovable : (BOOL)removableFlag
-{
-	_removable = removableFlag;
-}
 
-/*
- * Physical flag getter.
- */
-- (BOOL)_isPhysical
-{
-	return _isPhysical;
-}
 
-/*
- * Physical flag setter.
- */
-- (void)_setIsPhysical : (BOOL)isPhysical
-{
-	_isPhysical = isPhysical;
-}
 
-/*
- * Write protected flag getter.
- */
-- (BOOL)_isWriteProtected
-{
-	return _writeProtected;
-}
 
-/*
- * Write protected flag setter.
- */
-- (void)_setWriteProtected : (BOOL)writeProtectFlag
-{
-	_writeProtected = writeProtectFlag;
-}
 
-/*
- * Next logical disk getter.
- */
-- _nextLogicalDisk
-{
-	return _nextLogicalDisk;
-}
 
-/*
- * Set logical disk.
- */
-- (void)_setLogicalDisk : diskId
-{
-	_nextLogicalDisk = diskId;
-}
 
-/*
- * Drive getter.
- */
-- _drive
-{
-	return _drive;
-}
 
-/*
- * Drive setter.
- */
-- (void)_setDrive : driveId
-{
-	_drive = driveId;
-}
 
-/*
- * Lock logical disks.
- */
-- (void)_lockLogicalDisks
-{
-	// TODO: Implement locking
-	if (_LogicalDiskLock) {
-		// [_LogicalDiskLock lock];
-	}
-}
 
-/*
- * Unlock logical disks.
- */
-- (void)_unlockLogicalDisks
-{
-	// TODO: Implement unlocking
-	if (_LogicalDiskLock) {
-		// [_LogicalDiskLock unlock];
-	}
-}
 
-/*
- * Eject method.
- */
-- (IOReturn)_eject
-{
-	// TODO: Implement eject
-	return IO_R_SUCCESS;
-}
 
-/*
- * Get integer values for parameter.
- */
-- (IOReturn)_getIntValues : (unsigned *)parameterArray
-	     forParameter : (IOParameterName)parameterName
-		    count : (unsigned *)count
-{
-	// TODO: Implement parameter retrieval
-	return IO_R_UNSUPPORTED;
-}
 
-/*
- * Convert IOReturn to string.
- */
-- (const char *)_stringFromReturn : (IOReturn)rtn
-{
-	// TODO: Implement string conversion
-	return "Unknown";
-}
 
-/*
- * Convert IOReturn to errno.
- */
-- (int)_errnoFromReturn : (IOReturn)rtn
-{
-	// TODO: Implement errno conversion
-	return 0;
-}
 
 @end

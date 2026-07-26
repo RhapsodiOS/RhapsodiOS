@@ -486,13 +486,6 @@ cleanup:
 	return result;
 }
 
-/*
- * Check if block device is open.
- */
-- (BOOL)_isBlockDeviceOpen
-{
-	return _blockDeviceOpen;
-}
 
 /*
  * Check if block device is open (public version).
@@ -518,13 +511,6 @@ cleanup:
 }
 
 
-/*
- * Check if raw device is open.
- */
-- (BOOL)_isRawDeviceOpen
-{
-	return _rawDeviceOpen;
-}
 
 /*
  * Set raw device open flag.

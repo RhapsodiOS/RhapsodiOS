@@ -59,9 +59,7 @@
 /*
  * Get/set "device open" flags.
  */
-- (BOOL)_isBlockDeviceOpen;
 - (void)_setBlockDeviceOpen : (BOOL)openFlag;
-- (BOOL)_isRawDeviceOpen;
 - (void)_setRawDeviceOpen : (BOOL)openFlag;
 
 /*

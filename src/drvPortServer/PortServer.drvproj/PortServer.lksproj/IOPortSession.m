@@ -235,13 +235,10 @@ static struct {
  */
 - (int)acquireAudit:(BOOL)sleep
 {
-    int result;
-
     /* Check if the session state block is initialized */
     if (_priv != NULL) {
         /* Call private acquirePort:sleep: with type 1 */
-        result = [self acquirePort:1 sleep:sleep];
-        return result;
+        return [self acquirePort:1 sleep:sleep];
     }
 
     /* Not initialized - return error */
@@ -257,13 +254,10 @@ static struct {
  */
 - (int)acquire:(BOOL)sleep
 {
-    int result;
-
     /* Check if the session state block is initialized */
     if (_priv != NULL) {
         /* Call private acquirePort:sleep: with type 2 */
-        result = [self acquirePort:2 sleep:sleep];
-        return result;
+        return [self acquirePort:2 sleep:sleep];
     }
 
     /* Not initialized - return error */
@@ -356,22 +350,14 @@ static struct {
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*WatchStateIMP)(id, SEL, unsigned long *, unsigned long);
-    WatchStateIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[5] (offset +0x14) */
-        cached_imp = (WatchStateIMP)method_cache[5];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0], @selector(watchState:mask:), state, mask);
+        result = ((WatchStateIMP)method_cache[5])(method_cache[0], @selector(watchState:mask:), state, mask);
 
         /* Check if error code is still 0 after call */
         if (*(int *)((char *)method_cache + 8) == 0) {
@@ -396,25 +382,14 @@ static struct {
 - (unsigned long)nextEvent
 {
     void **method_cache;
-    int error_code;
-    unsigned long event;
     typedef unsigned long (*NextEventIMP)(id, SEL);
-    NextEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[6] (offset +0x18) */
-        cached_imp = (NextEventIMP)method_cache[6];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        event = cached_imp(method_cache[0], @selector(nextEvent));
-
-        return event;
+        return ((NextEventIMP)method_cache[6])(method_cache[0], @selector(nextEvent));
     }
 
     /* Error - return 0 */
@@ -433,26 +408,18 @@ static struct {
 - (int)executeEvent:(unsigned long)event data:(unsigned long)data
 {
     void **method_cache;
-    int error_code;
     typedef int (*ExecuteEventIMP)(id, SEL, unsigned long, unsigned long);
-    ExecuteEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[7] (offset +0x1c) */
-        cached_imp = (ExecuteEventIMP)method_cache[7];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(executeEvent:data:), event, data);
+        return ((ExecuteEventIMP)method_cache[7])(method_cache[0], @selector(executeEvent:data:), event, data);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return *(int *)((char *)method_cache + 8);
 }
 
 /*
@@ -467,26 +434,18 @@ static struct {
 - (int)requestEvent:(unsigned long)event data:(unsigned long *)data
 {
     void **method_cache;
-    int error_code;
     typedef int (*RequestEventIMP)(id, SEL, unsigned long, unsigned long *);
-    RequestEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[8] (offset +0x20) */
-        cached_imp = (RequestEventIMP)method_cache[8];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(requestEvent:data:), event, data);
+        return ((RequestEventIMP)method_cache[8])(method_cache[0], @selector(requestEvent:data:), event, data);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return *(int *)((char *)method_cache + 8);
 }
 
 /*
@@ -503,22 +462,14 @@ static struct {
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*EnqueueEventIMP)(id, SEL, unsigned long, unsigned long, int);
-    EnqueueEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[9] (offset +0x24) */
-        cached_imp = (EnqueueEventIMP)method_cache[9];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0],
+        result = ((EnqueueEventIMP)method_cache[9])(method_cache[0],
                            @selector(enqueueEvent:data:sleep:),
                            event, data, sleep);
 
@@ -528,7 +479,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = error_code;
+        result = *(int *)((char *)method_cache + 8);
     }
 
     return result;
@@ -548,22 +499,14 @@ static struct {
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*DequeueEventIMP)(id, SEL, unsigned long *, unsigned long *, int);
-    DequeueEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[10] (offset +0x28) */
-        cached_imp = (DequeueEventIMP)method_cache[10];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0],
+        result = ((DequeueEventIMP)method_cache[10])(method_cache[0],
                            @selector(dequeueEvent:data:sleep:),
                            event, data, sleep);
 
@@ -573,7 +516,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = error_code;
+        result = *(int *)((char *)method_cache + 8);
     }
 
     return result;
@@ -597,22 +540,14 @@ static struct {
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*EnqueueDataIMP)(id, SEL, char *, unsigned int, unsigned int *, int);
-    EnqueueDataIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[11] (offset +0x2c) */
-        cached_imp = (EnqueueDataIMP)method_cache[11];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0],
+        result = ((EnqueueDataIMP)method_cache[11])(method_cache[0],
                            @selector(enqueueData:bufferSize:transferCount:sleep:),
                            buffer, bufferSize, transferCount, sleep);
 
@@ -622,7 +557,7 @@ static struct {
         }
     } else {
         /* Return error code from _priv+8 */
-        result = error_code;
+        result = *(int *)((char *)method_cache + 8);
     }
 
     return result;
@@ -646,22 +581,14 @@ static struct {
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*DequeueDataIMP)(id, SEL, char *, unsigned int, unsigned int *, unsigned int);
-    DequeueDataIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[12] (offset +0x30) */
-        cached_imp = (DequeueDataIMP)method_cache[12];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0],
+        result = ((DequeueDataIMP)method_cache[12])(method_cache[0],
                            @selector(dequeueData:bufferSize:transferCount:minCount:),
                            buffer, bufferSize, transferCount, minCount);
 

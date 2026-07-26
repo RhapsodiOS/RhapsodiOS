@@ -5040,3 +5040,40 @@ accessors that share `getState`'s and `setState:`'s fingerprint — `executeEven
 `requestEvent:`, `nextEvent`, `watchState:mask:`, `enqueueEvent:`, `dequeueEvent:`,
 `enqueueData:`, `dequeueData:`, `acquire:`, `acquireAudit:`, `release`. That part is
 confirmed by `getState` and is independent of the ordering question.
+
+## 21. Finding 88's idiom applied to the remaining accessors
+
+`getState` confirmed the idiom, so it is now applied to the rest of the family in
+`IOPortSession.m`. Eleven methods changed; the mechanical part was done by an anchored
+transform over the region between `-watchState:mask:` and `-acquirePort:sleep:`, with the
+result reviewed as a diff.
+
+What was removed, per method:
+
+- the `<T>IMP cached_imp;` local and its assignment — the IMP is now evaluated in call
+  position as `((<T>IMP)method_cache[N])(...)`, which is what makes gcc load it after the
+  argument pushes rather than before;
+- the `int error_code;` local — the field is now tested and returned in place as
+  `*(int *)((char *)method_cache + 8)`;
+- result locals that were assigned and immediately returned (`event` in `-nextEvent`,
+  `result` in `-acquire:` and `-acquireAudit:`).
+
+`method_cache` itself is kept: `getState` landed with it in place, so it is not part of the
+divergence.
+
+Touched: `watchState:mask:`, `nextEvent`, `executeEvent:data:`, `requestEvent:data:`,
+`enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`, `enqueueData:…`, `dequeueData:…`,
+`acquire:`, `acquireAudit:`. `-watchState:mask:` keeps its `result` local because the value
+is read again after the second error check, so removing it would change the logic.
+
+**Deliberately not touched:** `-[IOPortSession(Private) acquirePort:sleep:]` reuses the name
+`error_code` for an unrelated value (`error_code = objc_msgSend(self, @selector(requestType:sleep:), …)`
+at what was line 807), which is why the transform is scoped to stop before it. An earlier
+unscoped version of the transform would have rewritten that too; its own assertion caught
+it before anything was written.
+
+Expect this to close or shrink the `executeEvent:`/`requestEvent:` pair (ref 26 / ours 20,
+15 differing) and the `enqueue*`/`dequeue*` group. It will **not** fix the block-ordering
+half of Finding 89 — `setState:mask:` already showed that content can match while the
+branch polarity stays inverted, so some of these will land at matching length with residual
+ordering differences rather than going fully identical.

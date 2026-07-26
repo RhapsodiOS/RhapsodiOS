@@ -14,11 +14,20 @@ from macho_fixture import (
     MH_OBJECT,
     MH_PRELOAD,
     MH_BUNDLE,
+    PPC_RELOC_BR24,
+    PPC_RELOC_HA16,
+    PPC_RELOC_HI16,
+    PPC_RELOC_JBSR,
+    PPC_RELOC_LO16,
+    PPC_RELOC_PAIR,
+    PPC_RELOC_VANILLA,
     SECTION,
     SEGMENT,
     SYMTAB,
     build_macho_fixture,
     patch_u32,
+    ppc_pair,
+    ppc_relocation,
 )
 
 
@@ -500,3 +509,138 @@ def test_rejects_swapped_header_by_naming_the_cpu_type(tmp_path):
 
     with pytest.raises(MachOFormatError, match="CPU type"):
         read_macho(path)
+
+
+def write_ppc(tmp_path, text, relocations, name="ppc.o"):
+    path = tmp_path / name
+    path.write_bytes(build_macho_fixture(
+        architecture="ppc", text=text, relocations=relocations,
+    ))
+    return path
+
+
+def semantic(document):
+    return {entry["address"]: entry for entry in document["relocations"]}
+
+
+def test_ppc_ha16_pair_applies_the_signed_low_half(tmp_path):
+    # lis r3,2 ; addi r3,r3,-1 -> external symbol value 0x0001FFFF
+    text = struct.pack(">II", 0x3C600002, 0x3863FFFF)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HA16, extern=1) + ppc_pair(0xFFFF)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-ha16-32-absolute",
+        "target": "_external", "addend": 0x1FFFF,
+    }
+
+
+def test_ppc_hi16_pair_concatenates_without_the_ha16_adjustment(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x3863FFFF)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HI16, extern=1) + ppc_pair(0xFFFF)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000]["addend"] == 0x2FFFF
+    assert semantic(document)[0x1000]["kind"] == "ppc-hi16-32-absolute"
+
+
+def test_ppc_lo16_pair_takes_the_high_half_from_the_pair(tmp_path):
+    # __data sits at 0x1008 when __text is eight bytes long.
+    text = struct.pack(">II", 0x38601008, 0x60000000)
+    relocations = ppc_relocation(0, 2, kind=PPC_RELOC_LO16) + ppc_pair(0x0000)
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-lo16-32-absolute",
+        "target": "__DATA,__data", "addend": 0,
+    }
+
+
+def test_ppc_vanilla_pointer_is_section_relative(tmp_path):
+    text = struct.pack(">II", 0x00001004, 0x00000000)
+    relocations = ppc_relocation(0, 1, kind=PPC_RELOC_VANILLA)
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-vanilla-32-absolute",
+        "target": "__TEXT,__text", "addend": 4,
+    }
+
+
+def test_ppc_jbsr_names_the_symbol_and_records_the_island(tmp_path):
+    # bl +8 into the island at 0x1008, whose real target is the symbol.
+    text = struct.pack(">III", 0x48000009, 0x60000000, 0x4E800020)
+    relocations = ppc_relocation(0, 0, kind=PPC_RELOC_JBSR, extern=1) + ppc_pair(0)
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-jbsr-24-pc-relative",
+        "target": "_external", "addend": 0,
+    }
+    raw = document["extensions"]["macho"]["relocations"]
+    assert [entry["kind"] for entry in raw] == [
+        "ppc-jbsr-24-pc-relative", "ppc-pair-16-absolute",
+    ]
+    assert raw[0]["original_bytes"] == "48000009"
+
+
+def test_ppc_br24_resolves_against_the_relocation_address(tmp_path):
+    text = struct.pack(">II", 0x48000009, 0x60000000)
+    relocations = ppc_relocation(0, 1, kind=PPC_RELOC_BR24, pcrel=1)
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-br24-24-pc-relative",
+        "target": "__TEXT,__text", "addend": 8,
+    }
+
+
+def test_ppc_raw_relocations_keep_every_file_entry(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x3863FFFF)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HA16, extern=1) + ppc_pair(0xFFFF)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    raw = document["extensions"]["macho"]["relocations"]
+    assert len(raw) == 2
+    assert len(document["relocations"]) == 1
+    assert [entry["scattered"] for entry in raw] == [False, False]
+
+
+def test_ppc_principal_without_its_pair_is_rejected(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x60000000)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HA16, extern=1)
+        + ppc_relocation(4, 1, kind=PPC_RELOC_VANILLA)
+    )
+
+    with pytest.raises(MachOFormatError, match="requires a PAIR"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_ppc_orphan_pair_is_rejected(tmp_path):
+    text = struct.pack(">II", 0x60000000, 0x60000000)
+    relocations = ppc_pair(0x1234)
+
+    with pytest.raises(MachOFormatError, match="unexpected PAIR"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_ppc_unsupported_relocation_type_names_type_and_offset(tmp_path):
+    text = struct.pack(">II", 0x60000000, 0x60000000)
+    relocations = ppc_relocation(0, 1, kind=9)
+
+    with pytest.raises(MachOFormatError, match=r"relocation type 9.*file offset 0x"):
+        read_macho(write_ppc(tmp_path, text, relocations))

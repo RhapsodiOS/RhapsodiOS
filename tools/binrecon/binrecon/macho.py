@@ -307,12 +307,9 @@ def read_macho(path: Path) -> dict[str, Any]:
         )
 
     symbols, symbol_names = _read_symbols(data, symtab, raw_sections, layouts)
-    raw_relocations = _read_relocations(data, raw_sections, symbol_names, architecture)
-    relocation_fields = ("address", "kind", "target", "addend")
-    relocations = [
-        {key: relocation[key] for key in relocation_fields}
-        for relocation in raw_relocations
-    ]
+    relocations, raw_relocations = _read_relocations(
+        data, raw_sections, symbol_names, architecture
+    )
     section_fields = ("name", "address", "offset", "size", "permissions", "sha256")
     sections = [
         {key: section[key] for key in section_fields} for section in raw_sections
@@ -398,17 +395,7 @@ def read_macho(path: Path) -> dict[str, Any]:
                     ),
                 ),
                 "relocations": sorted(
-                    [
-                        {
-                            key: relocation[key]
-                            for key in (
-                                "address", "kind", "target", "addend",
-                                "type", "pc_relative", "width", "external", "section",
-                                "section_ordinal", "target_section_ordinal", "original_bytes",
-                            )
-                        }
-                        for relocation in raw_relocations
-                    ],
+                    raw_relocations,
                     key=lambda item: (
                         item["address"], item["kind"], item["target"] or "",
                         item["addend"], item["type"], item["section"],
@@ -588,12 +575,27 @@ def _read_symbols(
     return result, names
 
 
+_RELOCATION_FIELDS = ("address", "kind", "target", "addend")
+
+
 def _read_relocations(
     data: bytes,
     sections: list[dict[str, Any]],
     symbol_names: list[str],
     architecture,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return (semantic, raw) relocation records for one image."""
+    if architecture.relocation_decoder == "ppc":
+        return _decode_ppc_relocations(data, sections, symbol_names, architecture)
+    return _decode_i386_relocations(data, sections, symbol_names, architecture)
+
+
+def _decode_i386_relocations(
+    data: bytes,
+    sections: list[dict[str, Any]],
+    symbol_names: list[str],
+    architecture,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     result: list[dict[str, Any]] = []
     for section_index, section in enumerate(sections):
         count = section["relocation_count"]
@@ -724,4 +726,215 @@ def _read_relocations(
                     "original_bytes": field.hex().upper(),
                 }
             )
-    return result
+    semantic = [
+        {key: relocation[key] for key in _RELOCATION_FIELDS}
+        for relocation in result
+    ]
+    return semantic, result
+
+
+PPC_RELOC_VANILLA = 0
+PPC_RELOC_PAIR = 1
+PPC_RELOC_BR14 = 2
+PPC_RELOC_BR24 = 3
+PPC_RELOC_HI16 = 4
+PPC_RELOC_LO16 = 5
+PPC_RELOC_HA16 = 6
+PPC_RELOC_SECTDIFF = 8
+PPC_RELOC_JBSR = 13
+
+_PPC_TYPE_NAMES = {
+    PPC_RELOC_VANILLA: "vanilla",
+    PPC_RELOC_PAIR: "pair",
+    PPC_RELOC_BR14: "br14",
+    PPC_RELOC_BR24: "br24",
+    PPC_RELOC_HI16: "hi16",
+    PPC_RELOC_LO16: "lo16",
+    PPC_RELOC_HA16: "ha16",
+    PPC_RELOC_SECTDIFF: "sectdiff",
+    PPC_RELOC_JBSR: "jbsr",
+}
+# Kind-name width: the reconstructed value's width for paired kinds (they
+# stand for a 32-bit address split across two fields), the field's own width
+# for kinds that carry a complete value themselves.
+_PPC_FIELD_BITS = {
+    PPC_RELOC_VANILLA: 32, PPC_RELOC_PAIR: 16, PPC_RELOC_BR14: 14,
+    PPC_RELOC_BR24: 24, PPC_RELOC_HI16: 32, PPC_RELOC_LO16: 32,
+    PPC_RELOC_HA16: 32, PPC_RELOC_SECTDIFF: 32, PPC_RELOC_JBSR: 24,
+}
+_PPC_PAIRED = frozenset(
+    (PPC_RELOC_HI16, PPC_RELOC_LO16, PPC_RELOC_HA16, PPC_RELOC_JBSR,
+     PPC_RELOC_SECTDIFF)
+)
+
+
+def _sign_extend(value: int, bits: int) -> int:
+    sign = 1 << (bits - 1)
+    return (value & (sign - 1)) - (value & sign)
+
+
+def _ppc_entries(data, section, section_index, architecture):
+    """Read one section's relocation table into decoded field dictionaries."""
+    layout = architecture.layouts.relocation_info
+    count = section["relocation_count"]
+    context = (
+        f"load command {section['command_index']} section "
+        f"{section['section_in_segment']} (global {section_index}) relocations"
+    )
+    if count > len(data) // layout.size:
+        raise MachOFormatError(
+            f"{context}: relocation count is too large at file offset "
+            f"0x{section['relocation_offset']:x}"
+        )
+    _checked_slice(data, section["relocation_offset"], count * layout.size, context)
+    entries = []
+    for index in range(count):
+        offset = section["relocation_offset"] + index * layout.size
+        first, second = _unpack(layout, data, offset, context)
+        raw_first = first & 0xFFFFFFFF
+        if raw_first & 0x80000000:
+            entries.append({
+                "offset": offset, "scattered": True,
+                "address": raw_first & 0xFFFFFF,
+                "pc_relative": bool(raw_first & (1 << 30)),
+                "length": (raw_first >> 28) & 0x3,
+                "type": (raw_first >> 24) & 0xF,
+                "value": second, "symbolnum": None, "external": False,
+            })
+        else:
+            entries.append({
+                "offset": offset, "scattered": False, "address": raw_first,
+                "pc_relative": bool((second >> 7) & 1),
+                "length": (second >> 5) & 0x3,
+                "external": bool((second >> 4) & 1),
+                "type": second & 0xF,
+                "symbolnum": (second >> 8) & 0xFFFFFF, "value": None,
+            })
+    return entries, context
+
+
+def _ppc_instruction(data, section, entry, context):
+    """Return the four-byte word the relocation patches."""
+    if section["zero_fill"]:
+        return 0, b"\0\0\0\0"
+    field = _checked_slice(data, section["offset"] + entry["address"], 4, context)
+    return int.from_bytes(field, "big"), field
+
+
+def _decode_ppc_relocations(data, sections, symbol_names, architecture):
+    semantic: list[dict[str, Any]] = []
+    raw: list[dict[str, Any]] = []
+    for section_index, section in enumerate(sections):
+        entries, context = _ppc_entries(data, section, section_index, architecture)
+        index = 0
+        while index < len(entries):
+            entry = entries[index]
+            where = f"{context} at file offset 0x{entry['offset']:x}"
+            kind = entry["type"]
+            if kind == PPC_RELOC_PAIR:
+                raise MachOFormatError(f"{where}: unexpected PAIR without a principal")
+            if kind not in _PPC_TYPE_NAMES:
+                raise MachOFormatError(
+                    f"{context}: unsupported relocation type {kind} at file offset "
+                    f"0x{entry['offset']:x}"
+                )
+            pair = None
+            if kind in _PPC_PAIRED:
+                pair = entries[index + 1] if index + 1 < len(entries) else None
+                if pair is None or pair["type"] != PPC_RELOC_PAIR:
+                    raise MachOFormatError(
+                        f"{where}: {_PPC_TYPE_NAMES[kind]} requires a PAIR entry"
+                    )
+            if entry["address"] > section["size"] - 4 or section["size"] < 4:
+                raise MachOFormatError(f"{where}: relocation field crosses owning section")
+
+            word, field = _ppc_instruction(data, section, entry, where)
+            low = word & 0xFFFF
+            if kind == PPC_RELOC_VANILLA:
+                value = word
+            elif kind == PPC_RELOC_HI16:
+                value = (low << 16) | (pair["address"] & 0xFFFF)
+            elif kind == PPC_RELOC_HA16:
+                value = (low << 16) + _sign_extend(pair["address"] & 0xFFFF, 16)
+            elif kind == PPC_RELOC_LO16:
+                value = ((pair["address"] & 0xFFFF) << 16) | low
+            elif kind == PPC_RELOC_JBSR:
+                value = pair["address"]
+            elif kind == PPC_RELOC_BR24:
+                value = (_sign_extend(word & 0x03FFFFFC, 26)
+                         + section["address"] + entry["address"])
+            elif kind == PPC_RELOC_BR14:
+                value = (_sign_extend(word & 0xFFFC, 16)
+                         + section["address"] + entry["address"])
+            else:  # PPC_RELOC_SECTDIFF, only ever scattered
+                raise MachOFormatError(
+                    f"{where}: SECTDIFF is only supported as a scattered relocation"
+                )
+
+            target, target_section = _ppc_target(
+                entry, sections, symbol_names, where
+            )
+            addend = value - target_section["address"] if target_section else value
+            relative = "pc-relative" if kind in (PPC_RELOC_BR14, PPC_RELOC_BR24,
+                                                 PPC_RELOC_JBSR) else "absolute"
+            name = f"ppc-{_PPC_TYPE_NAMES[kind]}-{_PPC_FIELD_BITS[kind]}-{relative}"
+            semantic.append({"address": section["address"] + entry["address"],
+                             "kind": name, "target": target, "addend": addend})
+            raw.append(_ppc_raw(section, entry, name, target, addend, field))
+            if target_section is not None:
+                raw[-1]["target_section_ordinal"] = target_section["ordinal"]
+            if pair is not None:
+                # A PAIR's r_address is the other half of the value, not an
+                # offset, so the record is addressed at its principal and its
+                # bytes are that half.
+                raw.append(_ppc_pair_raw(section, entry, pair))
+                index += 1
+            index += 1
+    return semantic, raw
+
+
+def _ppc_pair_raw(section, principal, pair):
+    record = _ppc_raw(section, principal, "ppc-pair-16-absolute", None,
+                      pair["address"],
+                      (pair["address"] & 0xFFFF).to_bytes(2, "big"))
+    record["type"] = pair["type"]
+    record["scattered"] = pair["scattered"]
+    record["width"] = 2
+    return record
+
+
+def _ppc_target(entry, sections, symbol_names, where):
+    """Resolve a non-scattered entry's target name and owning section."""
+    if entry["external"]:
+        if entry["symbolnum"] >= len(symbol_names):
+            raise MachOFormatError(
+                f"{where}: invalid symbol index {entry['symbolnum']}"
+            )
+        return symbol_names[entry["symbolnum"]], None
+    if entry["symbolnum"] == 0:
+        # Mach-O's R_ABS pseudo-section means no relocation target.
+        return None, None
+    if entry["symbolnum"] > len(sections):
+        raise MachOFormatError(
+            f"{where}: invalid section ordinal {entry['symbolnum']}"
+        )
+    section = sections[entry["symbolnum"] - 1]
+    return section["name"], section
+
+
+def _ppc_raw(section, entry, kind, target, addend, field):
+    return {
+        "address": section["address"] + entry["address"],
+        "kind": kind,
+        "target": target,
+        "addend": addend,
+        "type": entry["type"],
+        "pc_relative": entry["pc_relative"],
+        "width": 4,
+        "external": entry["external"],
+        "section": section["name"],
+        "section_ordinal": section["ordinal"],
+        "target_section_ordinal": None,
+        "original_bytes": field.hex().upper(),
+        "scattered": entry["scattered"],
+    }

@@ -688,3 +688,247 @@ functions the reference actually links.
 declaration is header-wide, so every other caller of `IOTaskWireMemory` would need the same fix). Left
 `unexamined` for both addresses (4544, 5476); Task 12 should change `IOSCSISession.m:142`'s declaration
 to return `int`, matching the reference's own use of the call's result.
+
+## Task plumbing and the MiG demux (Task 6)
+
+Task 6 read the seven `IOTask`-plumbing functions (addresses 6460-9179) and the MiG demux
+(13520) against `IOSCSISession.m`, resolving every `bl` to an unnamed jump island through
+`binrecon.macho.read_macho`'s relocation table (`extensions.macho.relocations`) the same way
+Tasks 4 and 5 did — the named export strips `calls` for all eight of these functions too.
+
+| Address | Function | Status | What was compared |
+| --- | --- | --- | --- |
+| 6460 | `_IOTaskPortAllocateName` | `unexamined` | Finding: stub replaces the real `port_allocate`/`port_rename` calls; wrong return type |
+| 6652 | `_IOTaskPortDeallocate` | `unexamined` | Finding: stub replaces the real `port_deallocate` call; wrong return type |
+| 6716 | `_IOTaskWireMemory` | `unexamined` | Finding: stub replaces the real `vm_map_pageable` call; wrong return type; wrong mask symbol |
+| 6812 | `_IOTaskUnwireMemory` | `unexamined` | Finding: stub replaces the real `vm_map_pageable` call (the same helper as Wire, not a second function); wrong return type; wrong mask symbol |
+| 6908 | `_IOReferenceClientTask` | `unexamined` | Finding: stub replaces the real `port_rename` call; true signature recovered |
+| 7156 | `_IODereferenceClientTask` | `unexamined` | Finding: wrong table and wrong field offset for the refcount |
+| 8988 | `_IOReleaseNotifyForFunc` | `unexamined` | Finding: invented parallel array not present in the reference |
+| 13520 | `_IOSCSISessionMig_server` | `intentional-mismatch` | hand-written demux stands in for MiG output pending Task 9 (`IOSCSISessionMig.defs`); ID range (0x1092-0x10a3) and reply-header convention match, but the dispatch table is wired wrong on all 18 entries — see the ledger's own `--reason` text for this entry, which is the durable record per this task's tooling constraints |
+
+**Groundwork: the `__SCSIServer_deviceStyle_` loads are all `_entry`, not a class method.** All
+seven plumbing functions load a pointer via `lis`/`lwz __SCSIServer_deviceStyle_@ha`/`@l` in the
+named export. This is the same "analyzer gap at address 0" artifact described above: the exporter's
+disassembly view falls back to the nearest preceding *symbol table* name
+(`+[SCSIServer deviceStyle]`, address 0) whenever a load has no local symbol of its own, because IDA
+emits no function entry at address 0 to attach the name to correctly. `read_macho`'s relocation
+table resolves every one of these loads to the actual external symbol `_IOTask_kern`, in every one
+of the seven functions — confirming these are all reads of the `_entry` structure our source
+declares at `IOSCSISession.m:15-31`, and that the offsets read from it (`0xA4` = `port_funcs`,
+loaded in all seven; `0x18` = `task_port`, loaded in `IOTaskWireMemory`/`IOTaskUnwireMemory`) match
+our source's own documented field layout exactly. This is not a divergence — it is why the raw
+disassembly looks like it is loading a class method instead of a data pointer, and it is recorded so
+a future reader doesn't need to re-derive it.
+
+## Finding: `_IOTaskPortAllocateName` never issues its own two Mach calls, and is declared `void` where the reference returns a status
+
+**Source:** `IOSCSISession.m:1760-1779` (`IOTaskPortAllocateName`), declared `void` at both
+`IOSCSISession.h:158` and `IOSCSISession.m:1760`.
+
+**Reference behaviour:** the function (address 6460, 96 bytes) loads `_entry->port_funcs` and calls
+the imported `_port_allocate(port_funcs, &allocated_port)` (relocation at address 6500 names
+`_port_allocate` directly). `mr. r3,r3` / `bne cr0, loc_1984` (addresses 6504-6508) test that result
+and, on failure, skip straight to the epilogue with `r3` still holding `port_allocate`'s error code —
+**no instruction clears `r3` before the return** on that path. On success, `port_funcs` is reloaded
+and the imported `_port_rename(port_funcs, allocated_port, name)` is called (relocation at address
+6528 names `_port_rename`); the epilogue immediately follows that call too, again with no
+intervening write to `r3`. Both paths therefore return whatever the last kernel call placed in `r3`
+— the reference function is not `void`, it returns an `int` status.
+
+**Our source:** calls neither `port_allocate` nor `port_rename`. `result = 0;` is hardcoded (line
+1772) in place of the `port_allocate` call the adjacent comment already names
+(`FUN_000019ac(port_funcs, &allocated_port)`), and the `port_rename` call
+(`FUN_0000199c(port_funcs, allocated_port, name)`) is left as a comment inside the `if (result == 0)`
+body with nothing executing it. Both the header and definition declare the function `void`.
+
+**Consequence:** this is the same "TODO comment plus a hardcoded value instead of the real call"
+pattern already recorded for twelve of the eighteen C wrappers in the finding above ("twelve of the
+eighteen wrapper functions never send the Objective-C message the reference sends") — here the
+missing calls are two Mach IPC primitives instead of an `objc_msgSend`, so on the eventual PPC
+rebuild a session would never actually receive a renamed port name for its notification port.
+Separately, the `void` return type is wrong independent of the stub: `IOSCSISession.m:270` already
+calls `result = IOTaskPortAllocateName(self);`, assigning a `void` expression to `result` — a second,
+independent compile error at that call site (which also passes `self`, an `id`, where the reference
+expects a `mach_port_t name`; that call site is outside this task's eight addresses and is left for
+whichever task disposes it). Left `unexamined`; Task 12 should wire up the two calls named in the
+existing comments and change the declaration in both the header and definition to return `int`
+(propagating the last kernel call's result), matching the reference and the caller's existing use of
+the return value.
+
+## Finding: `_IOTaskPortDeallocate` never issues its own Mach call, and is declared `void` where the reference returns a status
+
+**Source:** `IOSCSISession.m:1744-1754` (`IOTaskPortDeallocate`), declared `void` at both
+`IOSCSISession.h:153` and `IOSCSISession.m:1744`.
+
+**Reference behaviour:** the function (address 6652, 48 bytes) loads `_entry->port_funcs`, moves the
+`port` argument into `r4` (`mr r4, r3` at address 6664, from the incoming `r3`), and calls the
+imported `_port_deallocate(port_funcs, port)` (relocation at address 6680 names `_port_deallocate`
+directly) — matching the comment's own guess of "`mach_port_deallocate()`" closely enough to confirm
+which call this is. The epilogue (`addi r1, r1, 0x40` at address 6684) follows immediately, with no
+instruction clearing `r3` — the function returns whatever `port_deallocate` returned.
+
+**Our source:** the body is only the comment `/* TODO: Call mach_port_deallocate(); FUN_00001a2c(port_funcs, port) */`
+with no call executed at all.
+
+**Consequence:** same species as the finding above and the twelve stubbed wrappers — this instance's
+port-name deallocation never actually happens on the eventual PPC rebuild. This is also the function
+the "`-[IOSCSISession free]` omits an argument" finding already flagged from the *caller's* side (the
+call site drops the `notify_port` argument entirely); that finding and this one are two independent
+defects in the same call chain, not duplicates of each other. Left `unexamined`; Task 12 should wire
+up the `port_deallocate` call and change the declaration in both the header and definition to return
+`int`.
+
+## Finding: `_IOTaskWireMemory` and `_IOTaskUnwireMemory` never issue their shared Mach call, are declared `void` where the reference returns a status, and read the wrong mask symbol
+
+**Source:** `IOSCSISession.m:1691-1709` (`IOTaskWireMemory`) and `:1716-1734` (`IOTaskUnwireMemory`),
+both declared `void` (`IOSCSISession.h:142`/`:148`), and both computing
+`~(_page_size - 1)` against `extern unsigned int _page_size;` (`IOSCSISession.m:34`).
+
+**Reference behaviour:** both functions (address 6716, 80 bytes; address 6812, 80 bytes) have an
+identical shape: load `_entry->task_port` (offset `0x18`), load a mask value directly from the
+imported external `_page_mask` (relocation at addresses 6740/6744 for Wire, 6836/6840 for Unwire —
+**not** `_page_size`), compute `start = address & ~page_mask` and
+`end = (address + length + page_mask) & ~page_mask`, and call the imported `_vm_map_pageable(task_port, start, end, wireFlag)`
+— relocations at addresses 6776 and 6872 **both** name the identical external symbol
+`_vm_map_pageable`; the two calls are not two different kernel functions, they are the same one
+called with a different final argument (`li r6, 0` for Wire, `li r6, 1` for Unwire, matching the
+comment's own "wire"/"unwire" framing). Both epilogues follow their `bl` immediately with no
+instruction clearing `r3` — both functions return `vm_map_pageable`'s result.
+
+**Our source:** neither function calls `vm_map_pageable` (or anything); the body ends at the comment
+`/* TODO: Call kernel vm_wire()/vm_unwire() function; FUN_00001a8c(...)/FUN_00001aec(...) */`, naming
+what look like two distinct placeholder functions where the reference uses one shared real function.
+Separately, both functions read a locally-declared `_page_size` and subtract 1 to build the mask,
+where the reference reads a precomputed `_page_mask` external directly — a different imported symbol
+name than the one our source declares, so even with the stub filled in, linking against `_page_size`
+would not reproduce the reference's actual symbol dependency (`_page_mask`) even though the
+arithmetic result would likely be numerically equivalent if both kernel globals are set consistently.
+
+**Consequence:** same missing-call species as the two findings above (no DMA memory ever gets wired
+on the eventual rebuild); the `void`-vs-`int` return type mismatch is the same defect the
+`executeRequestOOLScatter`/`executeSCSI3RequestOOLScatter` finding above already recorded from the
+*caller's* side ("assign the result of a `void`-declared function to an `int`") — that finding and
+this one describe the same header-wide type error from opposite ends of the same call, not
+duplicates. This finding adds the two callees' own confirmation that the reference does return a
+value, plus the `_page_mask`-vs-`_page_size` symbol mismatch, which that earlier finding did not
+cover. Left `unexamined` for both addresses; Task 12 should wire up the shared `vm_map_pageable`
+call, change both declarations to return `int` (the existing `executeRequestOOLScatter` finding
+already calls for this), and read `_page_mask` directly rather than declaring and computing from a
+separate `_page_size`.
+
+## Finding: `_IOReferenceClientTask` never issues its own Mach call, and its sole parameter is a slot handle into `_clientReferences`, not a bare decompiler pointer
+
+**Source:** `IOSCSISession.m:1590-1676`, declared `int IOReferenceClientTask(int **param_1)`.
+
+**Reference behaviour:** the function (address 6908, 232 bytes) matches our source's own control flow
+exactly — the in-range test against `&_clientReferences[0]`/`&_notifyThread` (addresses 6940-6980),
+the linear search for a zero slot (addresses 6984-7052), the "no slots" return of `6` (address 7088),
+and the final `*current_entry += 1` (addresses 7100-7108) all correspond instruction-for-instruction
+to the source's own commented decompilation. The one place behaviour actually diverges: at address
+7076, the call our source's comment calls "a kernel function to set up the reference" (`FUN_00001be4`)
+resolves, via relocation, to the imported `_port_rename` — the same real function
+`_IOTaskPortAllocateName` calls above — invoked as `port_rename(port_funcs, originalParam1Value, foundSlot)`
+(the entry `r3`/`r4`/`r5` at the call site are `port_funcs`, the *original* `*param_1` value from
+function entry — reloaded from `0(r30)`, not the updated `current_entry` — and the newly found slot
+pointer). The reference then branches on that call's result (addresses 7092-7096: `cmpwi cr1,
+r3, 0` / `bne cr1, ...`), returning the error code early rather than falling through to increment the
+refcount, before the unconditional increment path.
+
+**Our source:** `result = 0; /* TODO: Call actual kernel function */
+/* result = FUN_00001be4(_entry->port_funcs, *param_1, search_ptr); */` — the call is never issued,
+so `result` is always `0` and the refcount is always incremented even when the reference's
+`port_rename` would have failed and returned early.
+
+**True signature (Step 3 of the brief):** `param_1`'s *type* is already right — the parameter really
+is an `int **`, exactly as transcribed — what is wrong is only its meaningless decompiler name. Every
+use inside the function (the entry-range test, the search-and-store-back at `*param_1 = search_ptr`,
+and the final increment through the resulting pointer) treats it as **a pointer to the caller's own
+storage cell holding a slot pointer into `_clientReferences[0..31]`**: on entry, if
+`*clientReferenceSlot` does not already point inside that table, the function finds a free slot,
+establishes it via `port_rename`, and writes the slot's address back through
+`*clientReferenceSlot`; either way it then increments the reference count stored *at* that slot
+(`_clientReferences[i]` is a bare `int` refcount, not a struct — matching `_findReservation`'s
+sibling functions' own use of `_clientReferences`). This reading is independently corroborated by two
+other findings in this section: `_IODereferenceClientTask` (below) expects the identical
+`_clientReferences`/`_notifyThread`-range pointer as its own argument, and `_IOReleaseNotifyForFunc`
+(below) is shown to store exactly such a slot pointer — not a raw Mach port — in
+`notifClients[i*2]`, the same cell layout `IOReferenceClientTask`'s callers would populate. The
+recovered true signature for Task 12's declaration is therefore:
+```c
+int IOReferenceClientTask(int **clientReferenceSlot);
+```
+(same type as today, renamed parameter, with a comment documenting the in/out slot-handle
+semantics above) rather than any change to the parameter's type or count.
+
+**Consequence:** the missing `port_rename` call is the same species of defect as the plumbing
+findings above (a `TODO` stub instead of the real call), with the added effect that a failed
+port-name setup is silently treated as success. Left `unexamined`; Task 12 should wire up the
+`port_rename` call using the original `*param_1` entry value and the found slot, branch on its
+result the way the reference does, and rename the parameter per the recovered signature above.
+
+## Finding: `_IODereferenceClientTask` validates and decrements against the wrong table
+
+**Source:** `IOSCSISession.m:1519-1563`, declared `int IODereferenceClientTask(int *clientEntry)`.
+
+**Reference behaviour:** the function (address 7156, 148 bytes) performs its in-range test against
+`&_clientReferences[0]`/`&_notifyThread` — the identical bounds `_IOReferenceClientTask` uses for the
+*same* table (addresses 7180-7220) — then reads and writes the refcount at **offset `+0`** of the
+argument (`lwz r0, 0(r11)` / `stw r0, 0(r11)`, addresses 7224-7252), decrementing it and, when it
+reaches zero, loading `_entry->port_funcs` and calling the imported `_port_deallocate` (relocation at
+address 7276) before returning `0`. `_clientReferences[i]` is a bare `int` (one refcount per slot, no
+sibling field), so offset `+0` is the *entire* entry — there is no offset `+4` field to read here.
+
+**Our source:** checks the pointer against `&notifClients[0]`/`&notifClients[64]` (lines 1532-1533) —
+a *different* global array, one with two `int`s per entry — and reads/writes the refcount at
+`clientEntry[1]`, i.e. offset `+4` (lines 1538, 1546, 1549), not offset `+0`.
+
+**Consequence:** a real, non-cosmetic bug, not a register-allocation artifact. If this function is
+ever called with a genuine `_clientReferences` slot pointer (the type its sibling
+`IOReferenceClientTask` produces and the type the reference's own bounds check expects), our source's
+range check would reject it (`_clientReferences` and `notifClients` are different global arrays at
+different addresses — see the "Groundwork" and the `_IOReleaseNotifyForFunc` finding below), and even
+if the range check were bypassed, decrementing `clientEntry[1]` would touch memory one `int` past the
+slot the reference decrements. Left `unexamined`; Task 12 should change the bounds check to
+`&_clientReferences[0]`/`&_notifyThread` and the refcount access to offset `+0` (`*clientEntry`, not
+`clientEntry[1]`), and wire up the stubbed `_port_deallocate` cleanup call (currently
+`result = 0; /* Placeholder */`, the same TODO-stub pattern as the findings above).
+
+## Finding: `_IOReleaseNotifyForFunc` invents a parallel object array the reference does not have
+
+**Source:** `IOSCSISession.m:1464-1466` (declares `notifClients[64]`, `notifClientObjects[32]` and
+`notifClientCnt`) and `:1479-1507` (`IOReleaseNotifyForFunc`, specifically lines 1494-1495 and 1498).
+
+**Reference behaviour:** the function (address 8988, 192 bytes) walks the same 32-entry, 8-byte-stride
+`_notifClients` array our source declares (confirmed via the reference's own local symbol table:
+`_notifClients` at address 16532, size matching 32 × 8 = 256 bytes, immediately followed by
+`_notifClientCnt` at 16788 — there is **no third global anywhere in `__DATA,__data`/`__DATA,__bss`**
+between `_notifyThread` (16520) and `_notifClientCnt` (16788) other than `_notifClients` itself, i.e.
+no room for a `notifClientObjects`-sized array to exist). Per entry, the reference compares offset
+`+0` against `deathPort` (`r27`) and offset `+4`, loaded from the *same* entry
+(`lwz r0, 4(r31)`, address 9080), against `session` (`r28`) — the session identity is stored **inline**
+as the second field of the 8-byte entry, not looked up in a separate array indexed by `i`. On a
+match, the reference passes **the value loaded from offset `+0`** (`r9`, `mr r3, r9` at address 9092)
+— not the entry's address — to `_IODereferenceClientTask` (relocation at address 9096 confirms the
+target is address 7156, this task's own `_IODereferenceClientTask`).
+
+**Our source:** declares a second, separate array `static id notifClientObjects[32];`
+(`IOSCSISession.m:1465`) and checks `notifClientObjects[i] == session` (line 1495) instead of a second
+field of the same entry, then calls `IODereferenceClientTask(&notifClients[i * 2])` (line 1498) —
+passing the *address* of the entry, not the *value stored at* the entry's first field.
+
+**Consequence:** two compounding, real divergences. First, `notifClientObjects` does not exist in the
+reference's data layout at all — it is invented storage with no backing global, so the match test at
+line 1495 can never agree with the reference's own (`notifClients[i*2+1] == session`, not
+`notifClientObjects[i] == session`). Second, the argument passed to `IODereferenceClientTask` is
+wrong in exactly the way the finding above predicts: the reference passes the *value* stored in
+`notifClients[i*2]` (a `_clientReferences` slot pointer, per the `IOReferenceClientTask` finding
+above) while our source passes `&notifClients[i*2]` (the notifClients entry's own address) — neither
+of which is a `_clientReferences`-range pointer, which is exactly why `IODereferenceClientTask`'s
+bounds check (against `notifClients`, not `_clientReferences`) had to be wrong for our source's own
+call site to ever pass it. All three functions' defects in this section trace back to the same root
+cause: our source's local reimplementation of the client-reference/notification bookkeeping does not
+carry the `_clientReferences`-slot-pointer design all the way through. Left `unexamined`; Task 12
+should remove `notifClientObjects`, store the session pointer at `notifClients[i*2+1]` instead, and
+change the `IODereferenceClientTask` call to pass `notifClients[i*2]` (the stored slot pointer), not
+its address.

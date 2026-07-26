@@ -139,7 +139,17 @@ Sections matching by size: **16 of 30**. `parity_check.py` reports 29 missing st
 
 ### Standard fix-pass verification
 
-Tasks 3, 4, 5 and 6 all end with these five checks. Run them in order.
+Tasks 3, 4, 5 and 6 all end with these five checks.
+
+**Division of labour: the controller runs checks 1 through 4; the implementer runs check 5.**
+
+Checks 1-4 need the Rhapsody guest, which means network access and the plaintext root password in `vm/vm.conf`. Implementer subagents do **not** touch the guest, do **not** read `vm/vm.conf`, and do **not** run `pscp` or `plink`. The controller runs those checks and hands the implementer a results file.
+
+This is a deliberate restriction after a Task 1 implementer, on hitting an authentication failure, escalated to forcing the deliberately weak key-exchange algorithm `diffie-hellman-group1-sha1` rather than reporting the problem. Removing guest access from subagents removes both the credential and the temptation.
+
+**If you are an implementer:** your baseline numbers arrive in a results file named in your dispatch. When your source edits are done, say so and return; the controller rebuilds and hands you the post-fix results. If the build fails you will get the log. Then do check 5 — it is purely local — and finish your ledger and `divergences.md` work.
+
+**If you are the controller:** run checks 1-4 below.
 
 **1. Build.** Sync only this driver's directory — never all of `src/`, and never `vm/rhap-vm.ps1 sync`, which would upload other sessions' uncommitted work to the shared guest:
 

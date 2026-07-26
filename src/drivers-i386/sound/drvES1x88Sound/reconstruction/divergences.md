@@ -1568,8 +1568,76 @@ function emits 26 `out` against the reference's 27. The whole of the difference 
 — joining only at the shared `out` at 4616. Our source writes `B8h` and delays once ahead
 of the test, so our build emits that block once, costing one `out`, one `IODelay` call, one
 `push` and one `lock inc`. Whether Apple's source duplicated the two statements into each
-arm or Apple's `gcc` duplicated the block cannot be told from the binary, so the source was
-left alone rather than restructured on a guess. The entry is already
-`intentional-mismatch`; its reason now names this alongside the `(channelCount == 2)` stack
-boolean and the paired IRQ/DMA byte construction. Rebuilt size 1180 against the
+arm or Apple's `gcc` duplicated the block could not be told from the binary, so the source
+was left alone rather than restructured on a guess. Rebuilt size 1180 against the
 reference's 1328.
+
+## The duplicated-`B8h` experiment: `gcc` keeps the duplication
+
+**Resolved in source.** The residual above was settled by trying it on the guest rather
+than by argument. `outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2); IODelay(25);` was
+moved out of its position ahead of the direction test and written into each arm:
+
+```c
+if (currentDMADirection == DMA_DIRECTION_IN) {
+    outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+    IODelay(25);
+    outb(sbWriteDataOrCommandReg, ES_MODE_INPUT);
+} else {
+    outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+    IODelay(25);
+    outb(sbWriteDataOrCommandReg, ES_MODE_OUTPUT);
+}
+IODelay(25);
+```
+
+`gcc` did **not** cross-jump the duplicate back out, which is what happened to
+`setAnalogInputSource:` and was the reason for expecting a negative result here. It tail
+merges only the single shared `out dx, al`, exactly as the reference does:
+
+```
+4321: jne  4364                    ; not IN
+4323: mov  dx, [0x400c]            ; IN arm
+4330: mov  al, 0xb8
+4332: out  dx, al
+4333: lock inc [0x4028]
+4340: push 0x19                    ; IODelay(25)
+4342: call _IODelay
+4347: mov  dx, [0x400c]
+4354: add  esp, 4
+4357: mov  al, 0xe                 ; ES_MODE_INPUT
+4359: jmp  4400
+4364: mov  dx, [0x400c]            ; OUT arm
+4371: mov  al, 0xb8
+4373: out  dx, al
+4374: lock inc [0x4028]
+4381: push 0x19                    ; IODelay(25)
+4383: call _IODelay
+4388: mov  dx, [0x400c]
+4395: add  esp, 4
+4398: mov  al, 4                   ; ES_MODE_OUTPUT
+4400: out  dx, al                  ; shared
+```
+
+Block for block this is the reference's shape. The only differences inside it are the two
+already-recorded systemic ones: `gcc` schedules the `add esp, 4` after the `mov dx` reload
+where Apple's puts it before, and it pads the fall-through with three `nop`s.
+
+`out`, `call`, `push` and `lock inc` are now 27, 35, 46 and 27 on both sides — the port
+sequence matches entry for entry and no port-write difference remains. Rebuilt size 1204
+against the reference's 1328; per-function sizes elsewhere in the binary are unchanged, and
+parity stays at `missing_strings` 0 / `missing_symbols` 0.
+
+What still separates this function from the reference is only the two accepted residuals:
+`and` −7 / `or` −6 from the paired IRQ and DMA byte construction, `sete` −1 / `test` −2 /
+`mov` −12 from the cached `(channelCount == 2)` stack boolean, and `movzx` −3 from the
+systemic codegen class. The entry stays `intentional-mismatch` on those two grounds; the
+`B8h` write is struck from its reason.
+
+Set against `setAnalogInputSource:`, the two experiments differ in where the duplicate sits.
+There the duplicated port sequence was the tail of each arm, ahead of a shared `mov al, cl`,
+and `gcc` merged the whole of it back. Here the duplicate is at the head of each arm and the
+arms continue past it into distinct `mov al` values, so there is nothing to merge but the
+final shared `out`. Two data points do not make a rule, but they are enough to say a
+duplication hypothesis is worth building on the guest rather than declining on the strength
+of the earlier negative.

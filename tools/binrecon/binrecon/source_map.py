@@ -149,6 +149,21 @@ def source_sites(repo_root, source_dir):
     return sites
 
 
+def scope_analysis(analysis, addresses):
+    """Return a copy of an analysis keeping only the named functions.
+
+    The input identity is preserved, so a source map built against the result
+    still binds to the real binary by SHA-256 while covering a declared subset
+    of a large image.
+    """
+    scoped = dict(analysis)
+    scoped["functions"] = [
+        function for function in analysis["functions"]
+        if function["address"] in addresses
+    ]
+    return scoped
+
+
 def _overlapping_addresses(functions):
     """Return the addresses of every function whose range overlaps another's.
 

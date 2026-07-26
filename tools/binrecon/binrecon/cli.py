@@ -11,12 +11,12 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
-from binrecon.macho import read_macho
+from binrecon.macho import objc_method_index, read_macho
 from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
-from binrecon.source_map import build_source_map, source_sites
+from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
 COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map")
@@ -57,9 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
     source_map = subparsers.add_parser("source-map")
     source_map.add_argument("--reference-analysis", required=True)
     source_map.add_argument("--binary", required=True)
-    source_map.add_argument("--source-dir", required=True)
+    source_map.add_argument("--source-dir", required=True, action="append",
+                            help="directory to scan for source sites; may be repeated")
     source_map.add_argument("--repo-root", required=True)
     source_map.add_argument("--output", required=True)
+    source_map.add_argument("--objc-methods", action="store_true",
+                            help="resolve names from Objective-C metadata as well as "
+                                 "the symbol table")
+    source_map.add_argument("--scope-to-objc", action="store_true",
+                            help="restrict the analysis to the Objective-C methods "
+                                 "found by --objc-methods")
 
     return parser
 
@@ -206,15 +213,32 @@ def main(argv=None) -> int:
 def _source_map_command(arguments) -> int:
     from binrecon.schema import load_json, load_source_map
 
-    source_dir = Path(arguments.source_dir)
-    if not source_dir.is_dir():
-        raise ValueError(f"--source-dir {source_dir} is not an existing directory")
+    if arguments.scope_to_objc and not arguments.objc_methods:
+        raise ValueError("--scope-to-objc requires --objc-methods")
+
+    source_dirs = [Path(value) for value in arguments.source_dir]
+    for source_dir in source_dirs:
+        if not source_dir.is_dir():
+            raise ValueError(f"--source-dir {source_dir} is not an existing directory")
 
     analysis = load_json(Path(arguments.reference_analysis))
     validate_document("analysis-v1", analysis)
     validate_analysis_semantics(analysis)
-    sites = source_sites(Path(arguments.repo_root), source_dir)
-    document = build_source_map(analysis, read_macho(Path(arguments.binary)), sites)
+
+    extra_names = None
+    if arguments.objc_methods:
+        extra_names = objc_method_index(arguments.binary)
+        if arguments.scope_to_objc:
+            analysis = scope_analysis(analysis, set(extra_names))
+
+    sites = {}
+    for source_dir in source_dirs:
+        for key, locations in source_sites(Path(arguments.repo_root), source_dir).items():
+            sites.setdefault(key, []).extend(locations)
+
+    document = build_source_map(
+        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names
+    )
     output = Path(arguments.output)
     output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     load_source_map(

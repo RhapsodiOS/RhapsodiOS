@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 import binrecon.schema as schema
-from binrecon.source_map import build_source_map, defined_symbols, source_sites
+from binrecon.source_map import (
+    build_source_map,
+    defined_symbols,
+    scope_analysis,
+    source_sites,
+)
 
 
 def test_defined_symbols_groups_names_and_drops_undefined():
@@ -657,3 +662,16 @@ def test_extra_names_are_merged_with_the_symbol_table_not_substituted_for_it():
 
     # Both names resolve to a site, so the address is genuinely ambiguous.
     assert [entry["address"] for entry in document["duplicate_candidates"]] == [0x2000]
+
+
+def test_scope_analysis_keeps_only_the_named_addresses_and_the_identity():
+    analysis = _analysis([
+        {"address": 0x1000, "size": 8, "names": ["a"]},
+        {"address": 0x2000, "size": 8, "names": ["b"]},
+    ])
+
+    scoped = scope_analysis(analysis, {0x2000})
+
+    assert [f["address"] for f in scoped["functions"]] == [0x2000]
+    assert scoped["input"] == analysis["input"]
+    assert [f["address"] for f in analysis["functions"]] == [0x1000, 0x2000]

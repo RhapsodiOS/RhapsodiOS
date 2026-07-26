@@ -152,21 +152,37 @@ missing set is every diagnostic message plus the entire name-lookup layer:
 The reference imports `_IOFindNameForValue`, so these are `IONamedValue` tables
 consumed by name lookup, not loose literals.
 
-### 2.3 Seventeen C functions have no counterpart
+### 2.3 Three C functions are absent; twenty-one more are misnamed
 
-Absent from our sources entirely:
+This section originally claimed seventeen C functions were absent from our
+sources. That was wrong, and the correction matters because it moves work out of
+the fix phases. Comparing the reference's 29 C symbols against our *built*
+binary rather than grepping the sources gives:
 
-```
-FloppyControllerThread   OperationThreadStartup   HandleBsdWrite
-docopy                   dowire                   fakeStrategySuccess
-fdTimer                  floppyDriveType          identifyBsdDev
-identifyDetachedDiskIdFromBsdDev                  numFloppyDrives
-physContBlocks           queueOperationAscending  queueOperationDecending
-sweepQueueInsert         sweepQueueReorder        vFloppyCopy
-```
+- **4 match** — `fdGetSectSizeInfo`, `fdminphys`, `fdrToIo`, `floppyMalloc`.
+- **21 are present but carry a spurious leading underscore in the source name.**
+  Our `Bsd.m:44` declares `static int _HandleBsdIoctl(...)`, which the compiler
+  emits as `__HandleBsdIoctl`; the reference has `_HandleBsdIoctl`, so Apple's
+  source name was `HandleBsdIoctl`. The affected names are
+  `FloppyControllerThread`, `HandleBsdClose`, `HandleBsdIoctl`, `HandleBsdOpen`,
+  `HandleBsdRead`, `HandleBsdSize`, `HandleBsdStrategy`, `HandleBsdWrite`,
+  `OperationThreadStartup`, `fakeStrategySuccess`, `fdTimer`, `floppyDriveType`,
+  `identifyBsdDev`, `identifyDetachedDiskIdFromBsdDev`, `numFloppyDrives`,
+  `physContBlocks`, `queueOperationAscending`, `strlower`, `sweepQueueInsert`,
+  `sweepQueueReorder` and `vFloppyCopy`.
+- **3 are genuinely absent** — `docopy`, `dowire` and `queueOperationDecending`
+  (Apple's spelling). Plus `__udivdi3`, which is libgcc's.
 
-Eleven other reference C functions are present. `HandleBsdWrite` being the one
-absent member of an otherwise complete `HandleBsd*` set is itself a signal.
+This is §2.1's defect in C rather than Objective-C, and it gets the same
+treatment: a mechanical pre-pass rename on direct symbol-table evidence.
+
+One of the twenty-one is not merely cosmetic. `Thread.m:33` defines
+`static void _strlower(char *str)` while `Thread.m:639` and `:698` call
+`strlower(modeBuffer)` — a name that is never defined locally. The rename makes
+the definition match its call sites and repairs that on the way through.
+
+The DMA bounce path of §2.9 is therefore the only substantial authorship left:
+`docopy` and `dowire`, not seventeen functions.
 
 ### 2.4 One method is an unimplemented stub
 

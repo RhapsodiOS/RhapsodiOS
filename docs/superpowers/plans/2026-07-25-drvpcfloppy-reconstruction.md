@@ -532,6 +532,79 @@ git commit -m "drvPCFloppy: restore Apple's selector names
 
 ---
 
+### Task 4b: Rename the 21 misnamed C functions
+
+Added after Task 5's build revealed that spec §2.3 was wrong. Twenty-one reference C functions are not absent from our sources — they are present under a name carrying one spurious leading underscore. `Bsd.m:44` declares `static int _HandleBsdIoctl(...)`, which compiles to the symbol `__HandleBsdIoctl`, while the reference has `_HandleBsdIoctl`. Same defect as Task 4, in C rather than Objective-C, on the same evidence.
+
+**Files:**
+- Modify: `$LKS/Bsd.m`, `$LKS/FloppyCnt.m`, `$LKS/FloppyCnt.h`, `$LKS/FloppyDriveInt.m`, `$LKS/FloppyDriveInt2.m`, `$LKS/IOFloppyDisk.m`, `$LKS/IOFloppyDisk.h`, `$LKS/Thread.m`
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks.
+- Produces: 21 more reference symbols resolvable by name. Task 11's source map can then classify them `mapped` rather than `absent-from-sources`.
+
+The 21 names, each to lose exactly one leading underscore:
+
+```
+_FloppyControllerThread   _HandleBsdClose      _HandleBsdIoctl
+_HandleBsdOpen            _HandleBsdRead       _HandleBsdSize
+_HandleBsdStrategy        _HandleBsdWrite      _OperationThreadStartup
+_fakeStrategySuccess      _fdTimer             _floppyDriveType
+_identifyBsdDev           _identifyDetachedDiskIdFromBsdDev
+_numFloppyDrives          _physContBlocks      _queueOperationAscending
+_strlower                 _sweepQueueInsert    _sweepQueueReorder
+_vFloppyCopy
+```
+
+- [ ] **Step 1: Confirm the current symbol names**
+
+```bash
+PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+from pathlib import Path
+from binrecon.macho import read_macho
+d = read_macho(Path('out/i386/drvPCFloppy/Floppy.config/Floppy_reloc'))
+t = [s['name'] for s in d['symbols'] if s['section'] == '__TEXT,__text']
+print([n for n in t if n.startswith('__Handle')][:4])
+"
+```
+
+Expected: names beginning with two underscores, e.g. `__HandleBsdOpen`.
+
+- [ ] **Step 2: Rename each name and all its references**
+
+For each of the 21 names, replace the whole-word token `_NAME` with `NAME` across the eight files listed above — prototypes, definitions and call sites alike. These are file-scope C identifiers, and none of them collides with an instance-variable name, so unlike Task 4 a straight whole-word token replacement is safe.
+
+Two things to expect and leave alone:
+- `Bsd.m:1192-1197` is a comment block listing `HandleBsdOpen (0x448)` and friends without underscores. It is already correct and needs no change.
+- `Thread.m` defines `_strlower` but calls `strlower` at lines 639 and 698. Those call sites are already in the target form. Renaming the definition makes them agree, repairing a pre-existing mismatch — do not "fix" the call sites in the other direction.
+
+- [ ] **Step 3: Verify no double-underscore C names remain**
+
+```bash
+grep -rnE "(^|[^_[:alnum:]])_(FloppyControllerThread|HandleBsd(Close|Ioctl|Open|Read|Size|Strategy|Write)|OperationThreadStartup|fakeStrategySuccess|fdTimer|floppyDriveType|identifyBsdDev|identifyDetachedDiskIdFromBsdDev|numFloppyDrives|physContBlocks|queueOperationAscending|strlower|sweepQueueInsert|sweepQueueReorder|vFloppyCopy)\b" src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/
+```
+
+Expected: no output.
+
+- [ ] **Step 4: Verify the Objective-C gate is untouched**
+
+```bash
+PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/selector_check.py "C:/Users/raynorpat/Downloads/test/Drivers/i386/Floppy.config/Floppy_reloc" src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj | grep -E "^(our|renames|duplicates)"
+```
+
+Expected, unchanged: `our definitions: 195`, `renames (0)`, `duplicates (0)`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/drivers-i386/ide/drvPCFloppy
+git commit -m "drvPCFloppy: restore Apple's C function names
+
+Twenty-one file-scope functions carried a leading underscore; strlower was also defined under a name its own call sites never used."
+```
+
+---
+
 ### Task 5: Build checkpoint — the pre-pass so far
 
 Tasks 2, 3 and 4 each passed a static gate. This is their integration gate: the first build since the tree changed shape. An over-eager rename shows up here as an undeclared identifier, and a missed call site as a "may not respond to" warning.

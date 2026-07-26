@@ -19,6 +19,37 @@
  */
 static unsigned int _motorChangeCount = 0;
 
+/*
+ * fcOpcodeValues - FDC command opcode -> string map for IOFindNameForValue,
+ * recovered byte-for-byte from the reference binary's __DATA segment
+ * (_fcOpcodeValues), including its one write-command naming asymmetry,
+ * which is Apple's own and is preserved here rather than normalised. No
+ * caller of IOFindNameForValue against this table could be found in the
+ * reference disassembly (the reference's only such call, in
+ * FloppyDriveInt2.m's logRwErr:block:status:readFlag:, uses fdrValues
+ * instead); kept here for string-table parity.
+ */
+static const IONamedValue fcOpcodeValues[] = {
+	{ 0x06, "FCCMD_READ" },
+	{ 0x0c, "FCCMD_READ_DELETE" },
+	{ 0x05, "CMD_WRITE" },
+	{ 0x09, "FCCMD_WRITE_DELETE" },
+	{ 0x02, "FCCMD_READ_TRACK" },
+	{ 0x16, "FCCMD_VERIFY" },
+	{ 0x10, "FCCMD_VERSION" },
+	{ 0x0d, "FCCMD_FORMAT" },
+	{ 0x07, "FCCMD_RECAL" },
+	{ 0x08, "FCCMD_INTSTAT" },
+	{ 0x03, "FCCMD_SPECIFY" },
+	{ 0x04, "FCCMD_DRIVE_STATUS" },
+	{ 0x0f, "FCCMD_SEEK" },
+	{ 0x13, "FCCMD_CONFIGURE" },
+	{ 0x0e, "FCCMD_DUMPREG" },
+	{ 0x0a, "FCCMD_READID" },
+	{ 0x12, "FCCMD_PERPENDICULAR" },
+	{ 0, (const char *)0 },
+};
+
 @implementation FloppyController(Cmds)
 
 /*

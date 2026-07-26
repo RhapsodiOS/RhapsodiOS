@@ -115,12 +115,24 @@ to:
 
 - [ ] **Step 5: Commit**
 
+`git rm --cached` in Step 2 already staged the two deletions, and `out/` is
+ignored, so do **not** name that path to `git add` — git refuses ignored paths
+and the command fails. Stage only the README:
+
 ```bash
-git add src/drivers-i386/README out/i386/drvPCFloppy
+git add src/drivers-i386/README
 git commit -m "drvPCFloppy: untrack the staged rebuild and refresh the status line
 
 The out/ tree is guest build output per 6713ce0c; the driver has built since 7f1c93a6."
 ```
+
+Then confirm the commit carries all three changes:
+
+```bash
+git show --stat HEAD
+```
+
+Expected: `src/drivers-i386/README` modified, and both `out/i386/drvPCFloppy/Floppy.config/` files deleted.
 
 ---
 

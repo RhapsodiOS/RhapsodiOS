@@ -781,6 +781,32 @@ cd /d/RhapsodiOS && git add src/drvSCSIServer/reconstruction && git commit -m "d
 
 ## Phase 2 — Fix
 
+> **Scope change, decided after Phase 1 (2026-07-26).** The report found far more divergence
+> than the spec assumed: 51 of 68 ledger entries carry findings, 12 of the 18 C wrappers are
+> non-functional stubs (a `TODO` comment plus a hardcoded return value in place of the
+> `objc_msgSend` dispatch), 4 of the 7 task-plumbing functions are stubs too, and 6 functions
+> are absent entirely — two of them 644 and 480 bytes.
+>
+> Writing that volume of PowerPC-derived function bodies with no compiler is where uncompiled
+> code is most likely to be wrong, and the Task 7 review demonstrated the risk directly by
+> finding four material errors in the descriptions those bodies would have been written from.
+>
+> **Phase 2 therefore does the structural and compile-error work only:**
+>
+> - **Task 8** — selector rename. Unchanged.
+> - **Task 9** — recover `IOSCSISessionMig.defs`, wire the build, delete the 562-line hand-rolled
+>   apparatus. Unchanged.
+> - **Task 10** — the `IOTask.m` / `IOTask.h` split and the `PB.project` update **only**. The five
+>   absent plumbing function bodies are **deferred**.
+> - **Task 11** — **deferred in full** (`_serverThreadFunc` is an absent body).
+> - **Task 12** — the compile-error class plus small, precisely-evidenced corrections inside
+>   *existing* bodies. The 12 stub wrapper bodies and the 6 absent bodies are **deferred**.
+> - **Task 13** — unchanged in procedure; the acceptance numbers change (see its revised Step 2).
+>
+> Deferred work needs a PowerPC build so it can be compile-verified, and is recorded as follow-on
+> work in the spec's §5. Nothing deferred is dropped: every deferred item keeps its ledger entry
+> and its finding, so the next pass has a complete work list.
+
 ### Task 8: Correct the selector names
 
 **Files:**
@@ -1018,11 +1044,14 @@ cd /d/RhapsodiOS && for f in IOTaskPortAllocateName IOTaskPortDeallocate IOTaskW
 
 Expected: `1` for each.
 
-- [ ] **Step 4: Write the five absent functions**
+- [ ] **Step 4: Do not write the five absent functions (deferred)**
 
-Add `_IOTaskPortAllocate`, `_IOConvertTaskPortToVMTask`, `_IODestroyMappedVMTask`, `_io_task_notification` and `IORequestNotifyForClientTask` to `IOTask.m`, each written from the disassembly Task 7 Step 3 recorded. Place each at its address-order position. Remove the now-redundant `extern` declaration of `IORequestNotifyForClientTask` from wherever Task 7 found it.
+Per the Phase 2 scope change, `_IOTaskPortAllocate`, `_IOConvertTaskPortToVMTask`, `_IODestroyMappedVMTask`, `_io_task_notification` and `IORequestNotifyForClientTask` are **not** written in this pass — they need a PowerPC compiler. Leave their ledger entries `unexamined` with their findings intact.
 
-Also correct `_IOReferenceClientTask`'s signature using the true parameter type Task 6 Step 3 recovered, replacing the decompiler-generated `int **param_1`.
+Do make these two changes, which are declaration-level and carry no uncompiled body:
+
+- Correct `_IOReferenceClientTask`'s parameter naming using what Task 6 recovered, replacing the decompiler-generated `int **param_1`. Task 6 established the type is unchanged (`int **`); only the name and its documented meaning improve.
+- Leave the `extern` declaration of `IORequestNotifyForClientTask` in place, since nothing defines it yet, and note in `IOTask.h` that the definition is deferred.
 
 - [ ] **Step 5: Update the project file**
 
@@ -1064,7 +1093,13 @@ cd /d/RhapsodiOS && git add "$SRC" src/drvSCSIServer/reconstruction && git commi
 
 ---
 
-### Task 11: Add `_serverThreadFunc`
+### Task 11: Add `_serverThreadFunc` — DEFERRED
+
+**Not executed in this pass.** Per the Phase 2 scope change, `_serverThreadFunc` (address 2672, 276 bytes) is an absent body and needs a PowerPC compiler to verify. Its ledger entry stays `unexamined` and its finding in `divergences.md` — corrected by the Task 7 review, which found four errors in the original description — is the work list for the deferred pass.
+
+The original task text follows, unchanged, for whoever picks it up.
+
+### Task 11 (deferred): Add `_serverThreadFunc`
 
 **Files:**
 - Modify: `.../IOSCSISession.m`, `.../IOSCSISession.h`
@@ -1134,7 +1169,14 @@ cd /d/RhapsodiOS && git add "$SRC" src/drvSCSIServer/reconstruction && git commi
 - Consumes: every `## Finding:` section in `divergences.md`, and every ledger entry Tasks 3–6 left `unexamined` with a finding attached.
 - Produces: each of those entries reaching `assembly-matched`, `control-flow-confirmed` or `intentional-mismatch`.
 
-**This task's content comes from Phase 1 and cannot be enumerated here** — the findings do not exist until Tasks 3–7 run. What is fixed is the procedure, not the list.
+**Scope, per the Phase 2 scope change.** Fix only these two classes, both of which change *existing* code and carry no uncompiled function body:
+
+1. **Compile errors** — `IOTaskPortDeallocate()` called with no argument against the prototype at `IOSCSISession.h:153`; the two `OOLScatter` wrappers assigning `void IOTaskWireMemory`'s result to an `int` and branching on it; `@protocol(IOSCSIControllerExported)` used but never declared (the reference's `__OBJC,__protocol` struct confirms Apple's protocol really is named `IOSCSIControllerExported`, so declare it — do not rename the call).
+2. **Small, precisely-evidenced corrections inside existing bodies**, each one or two lines with the exact fix already recorded in `divergences.md`: `registerSCSIController:` passed `self` instead of the device description; `_removeReservation` writing `lun_high` where the reference writes `prev` (our `next`/`prev` are `int *`, so `next + 4` is +16 bytes — the fix is `next[1] = (int)prev;`); `-[IOSCSISession free]` returning `self` where the reference returns `nil`; `_IODereferenceClientTask` reading the refcount at `+4` where the reference uses `+0`; and the contradictory list-layout comment at `IOSCSISession.m:114-115`.
+
+**Deferred, not dropped:** the 12 stub wrapper bodies and the 6 absent bodies. Leave their ledger entries `unexamined` with findings intact.
+
+**The exact list within those two classes comes from Phase 1 and cannot be enumerated at plan time** — the procedure below is what is fixed, not the list.
 
 - [ ] **Step 1: List the work**
 
@@ -1214,9 +1256,13 @@ print('unmapped:', [e['reference_names'][0] for e in m['unmapped']])
 "
 ```
 
-Expected: **mapped 48, unmapped 20**, duplicate_candidates 0, boundary_disputed 0, per spec §4.2 item 2.
+Expected: **mapped 42, unmapped 26**, duplicate_candidates 0, boundary_disputed 0.
 
-The 48 are the 41 that mapped at the start plus the seven this work supplied: the renamed `initServerWithTask:sendPort:`, `_serverThreadFunc`, and the five plumbing functions from Task 10. The 20 unmapped are the 2 build-generated classes plus the 18 `__XIOSCSISession_*` stubs — the stubs cannot map because `source-map` needs a source site on disk and MiG's generated `IOSCSISessionMigServer.c` does not exist here. Recovering the `.defs` makes them correct, not mapped.
+The 42 are the 41 that mapped at the start plus one: the renamed `initServerWithTask:sendPort:`. The other six the spec projected — `_serverThreadFunc` and the five plumbing functions — are deferred by the Phase 2 scope change, so they remain unmapped.
+
+The 26 unmapped are the 2 build-generated classes, the 18 `__XIOSCSISession_*` stubs, and those 6 deferred bodies. The MiG stubs cannot map because `source-map` needs a source site on disk and MiG's generated `IOSCSISessionMigServer.c` does not exist here — recovering the `.defs` makes them correct, not mapped.
+
+This supersedes spec §4.2 item 2's figure of 48/20, which assumed all six bodies would be written. Record the supersession in `divergences.md` rather than leaving the spec's number to look unmet.
 
 If you observe different numbers, do not adjust anything to reach these — record what you actually saw in `divergences.md` and report it.
 

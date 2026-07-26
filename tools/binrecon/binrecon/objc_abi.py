@@ -146,3 +146,60 @@ def read_classes(reader, symtab_address):
             "class_methods": reader.method_list(class_methods),
         })
     return classes
+
+
+def read_categories(reader, symtab_address):
+    """Return the category records an ``objc_symtab`` defines."""
+    class_count, category_count = reader.halves(symtab_address + 8, 2)
+    definitions = reader.at(symtab_address + 12, class_count + category_count)
+    categories = []
+    for pointer in definitions[class_count:]:
+        category_name, class_name, instance_methods, class_methods = reader.at(
+            pointer, 4
+        )
+        categories.append({
+            "name": reader.cstring(category_name),
+            "class": reader.cstring(class_name),
+            "instance_methods": reader.method_list(instance_methods),
+            "class_methods": reader.method_list(class_methods),
+        })
+    return categories
+
+
+def read_modules_from_sections(payload, sections, endianness, method_names=None):
+    """Return ``{module name: abi-v1 document}`` for an image's ``__OBJC``."""
+    reader = ObjcReader(payload, sections, endianness, method_names)
+    info = next(
+        (s for s in sections if s["name"] == "__OBJC,__module_info" and s.get("size")),
+        None,
+    )
+    if info is None:
+        raise ObjcAbiError("image has no __OBJC,__module_info section")
+
+    modules = {}
+    for index in range(info["size"] // 16):
+        address = info["address"] + 16 * index
+        _version, _size, name, symtab = reader.at(address, 4)
+        module = reader.cstring(name)
+        if module in modules:
+            raise ObjcAbiError(f"__module_info names {module} more than once")
+        modules[module] = {
+            "schema_version": "abi-v1",
+            "module": module,
+            "classes": read_classes(reader, symtab),
+            "categories": read_categories(reader, symtab),
+            "text_symbols": [],
+            "data_symbols": [],
+        }
+    return modules
+
+
+def read_modules(path):
+    """Return ``{module name: abi-v1 document}`` for an image on disk."""
+    from .macho import load_image
+
+    payload, document = load_image(path)
+    return read_modules_from_sections(
+        payload, document["sections"], document["input"]["endianness"],
+        method_symbol_index(document),
+    )

@@ -110,3 +110,59 @@ def test_method_symbol_index_keys_on_implementation_address():
         0x2000: "-[Thing doThing]",
         0x2100: "+[Thing(Extra) make]",
     }
+
+
+def build_module_blob(prefix="<"):
+    """A module defining no classes and one category on NSCoder."""
+    blob = bytearray(0x300)
+
+    def put(offset, *values):
+        struct.pack_into(f"{prefix}{len(values)}I", blob, offset, *values)
+
+    def put_str(offset, text):
+        raw = text.encode("ascii") + b"\0"
+        blob[offset:offset + len(raw)] = raw
+
+    # objc_module: version, size, name, symtab
+    put(0x00, 7, 16, BASE + 0x100, BASE + 0x20)
+    put(0x20, 0, 0)
+    struct.pack_into(f"{prefix}HH", blob, 0x28, 0, 1)
+    put(0x2C, BASE + 0x80)
+    # objc_category: category_name, class_name, instance_methods, class_methods
+    put(0x80, BASE + 0x120, BASE + 0x110, BASE + 0xE0, 0)
+    put(0xE0, 0, 1, BASE + 0x160, BASE + 0x140, 0x2200)
+
+    put_str(0x100, "NSGeometry.m")
+    put_str(0x110, "NSCoder")
+    put_str(0x120, "NSGeometryCoding")
+    put_str(0x140, "{?=ff}8@8:12")
+    put_str(0x160, "decodePoint")
+    return bytes(blob)
+
+
+MODULE_SECTIONS = [
+    {"name": "__OBJC,__module_info", "address": BASE, "size": 16, "offset": 0},
+    {"name": "__OBJC,__blob", "address": BASE, "size": 0x300, "offset": 0},
+]
+
+
+def test_reads_a_module_with_a_category():
+    from binrecon.objc_abi import read_modules_from_sections
+
+    modules = read_modules_from_sections(build_module_blob(), MODULE_SECTIONS, "little")
+
+    assert modules == {"NSGeometry.m": {
+        "schema_version": "abi-v1",
+        "module": "NSGeometry.m",
+        "classes": [],
+        "categories": [{
+            "name": "NSGeometryCoding",
+            "class": "NSCoder",
+            "instance_methods": [
+                {"selector": "decodePoint", "types": "{?=ff}8@8:12"}
+            ],
+            "class_methods": [],
+        }],
+        "text_symbols": [],
+        "data_symbols": [],
+    }}

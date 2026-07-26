@@ -28,7 +28,7 @@
  * Exported interface for Kernel PCMCIA Bus Resource Object(s).
  */
 
- #ifdef	DRIVER_PRIVATE
+#ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
 #import <driverkit/driverTypes.h>

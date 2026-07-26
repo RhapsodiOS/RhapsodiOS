@@ -692,7 +692,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
-    unsigned int currentStatus;
+    PCMCIAStatus currentStatus;
     id memRange;
     Range range;
     id memWindow;
@@ -726,14 +726,15 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     if (_verbose) {
         IOLog("PKB: socket %d status: changed = %x, current = %x\n",
-              socketNum, changedStatus, currentStatus);
+              socketNum, *(unsigned int *)&changedStatus,
+              *(unsigned int *)&currentStatus);
     }
 
-    /* Store current status */
-    socketInfo->status = currentStatus;
+    /* Store current status (PCMCIAStatus is 4 bytes) */
+    socketInfo->status = *(unsigned int *)&currentStatus;
 
     /* Check if card is present (bit 0 of status) */
-    if ((currentStatus & 1) == 0) {
+    if (!currentStatus.present) {
         /* Card removed */
         if (socketInfo->probed != 0) {
             /* Clean up card resources */

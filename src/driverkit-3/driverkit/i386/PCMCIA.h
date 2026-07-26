@@ -23,96 +23,155 @@
  */
 
 /*
- * PCMCIA Common Definitions
+ * Copyright (c) 1995 NeXT Computer, Inc.
  *
- * This header defines constants and types used by PCMCIA bus drivers
- * and device drivers for PC Card support.
+ * Protocols adopted by the objects a PCMCIA adapter driver supplies:
+ * the adapter itself, its sockets, and its windows.  The kernel never
+ * sees these classes, only the messages they answer, so the contract
+ * between the two lives here rather than in either one.
+ *
+ * These four declarations were recovered from the Objective-C protocol
+ * records in Apple's shipped Intel82365PCMCIA driver, whose PCIC,
+ * PCICSocket and PCICWindow classes adopt them.  Selector order matches
+ * that binary: GCC emits a protocol's method list in reverse source
+ * order, so the order below is the reverse of the order found there.
  */
 
-#ifndef _DRIVERKIT_I386_PCMCIA_H
-#define _DRIVERKIT_I386_PCMCIA_H
+#ifndef _DRIVERKIT_I386_PCMCIA_H_
+#define _DRIVERKIT_I386_PCMCIA_H_
 
-/* PCMCIA Power State Flags */
-#define PCMCIA_VCC_5V           0x01    /* 5V VCC */
-#define PCMCIA_VCC_3V           0x02    /* 3.3V VCC */
-#define PCMCIA_VPP1_5V          0x04    /* 5V VPP1 */
-#define PCMCIA_VPP1_12V         0x08    /* 12V VPP1 */
-#define PCMCIA_VPP2_5V          0x10    /* 5V VPP2 */
-#define PCMCIA_VPP2_12V         0x20    /* 12V VPP2 */
+#ifdef	DRIVER_PRIVATE
 
-/* Card voltage detection flags */
-#define PCMCIA_VS1              0x01    /* Voltage Sense 1 */
-#define PCMCIA_VS2              0x02    /* Voltage Sense 2 */
+/*
+ * The state of a socket, as reported by an adapter driver.
+ * The 82365 adapter driver declares the same eight bits in
+ * PCICSocket.h.
+ */
 
-/* Card types based on voltage sense pins */
-#define PCMCIA_CARD_TYPE_5V     0       /* 5V card (VS1=1, VS2=1) */
-#define PCMCIA_CARD_TYPE_3V     1       /* 3.3V card (VS1=0, VS2=1) */
-#define PCMCIA_CARD_TYPE_XV     2       /* X.V card (VS1=1, VS2=0) */
-#define PCMCIA_CARD_TYPE_YV     3       /* Y.V card (VS1=0, VS2=0) */
+typedef struct {
+    unsigned int	present:1;
+    unsigned int	locked:1;
+    unsigned int	ejectRequest:1;
+    unsigned int	insertRequest:1;
+    unsigned int	batteryStatus:2;
+    unsigned int	writeProtect:1;
+    unsigned int	ready:1;
+} PCMCIAStatus;
 
-/* PCMCIA Function Types */
-#define PCMCIA_FUNC_MULTI       0x00    /* Multi-function card */
-#define PCMCIA_FUNC_MEMORY      0x01    /* Memory card */
-#define PCMCIA_FUNC_SERIAL      0x02    /* Serial port (modem/serial) */
-#define PCMCIA_FUNC_PARALLEL    0x03    /* Parallel port */
-#define PCMCIA_FUNC_FIXED_DISK  0x04    /* Fixed disk (ATA) */
-#define PCMCIA_FUNC_VIDEO       0x05    /* Video adapter */
-#define PCMCIA_FUNC_NETWORK     0x06    /* Network adapter */
-#define PCMCIA_FUNC_AIMS        0x07    /* AIMS */
-#define PCMCIA_FUNC_SCSI        0x08    /* SCSI adapter */
+/*
+ * The adapter: the driver object that owns a set of
+ * sockets and the windows that can be mapped onto them.
+ */
 
-/* PCMCIA Socket Status Flags */
-#define PCMCIA_STATUS_CARD_DETECT       0x01    /* Card detected */
-#define PCMCIA_STATUS_READY             0x02    /* Card ready */
-#define PCMCIA_STATUS_POWER_ON          0x04    /* Power active */
-#define PCMCIA_STATUS_WRITE_PROTECT     0x08    /* Write protected */
-#define PCMCIA_STATUS_BATTERY_DEAD      0x10    /* Battery dead */
-#define PCMCIA_STATUS_BATTERY_WARNING   0x20    /* Battery warning */
-#define PCMCIA_STATUS_CARD_IS_IO        0x40    /* Card is I/O type */
-#define PCMCIA_STATUS_16BIT             0x80    /* 16-bit card */
+@protocol PCMCIAAdapter
 
-/* PCMCIA Window Types */
-#define PCMCIA_WINDOW_MEMORY            0x01    /* Memory window */
-#define PCMCIA_WINDOW_IO                0x02    /* I/O window */
-#define PCMCIA_WINDOW_ATTRIBUTE         0x04    /* Attribute memory */
-#define PCMCIA_WINDOW_COMMON            0x08    /* Common memory */
+- sockets;
+- windows;
+- (void)setStatusChangeHandler:handler;
 
-/* PCMCIA Memory Window Flags */
-#define PCMCIA_MEM_16BIT                0x01    /* 16-bit memory window */
-#define PCMCIA_MEM_WRITE_PROTECT        0x02    /* Write protect */
-#define PCMCIA_MEM_ATTRIBUTE            0x04    /* Attribute memory */
-#define PCMCIA_MEM_ENABLED              0x08    /* Window enabled */
+@end
 
-/* PCMCIA I/O Window Flags */
-#define PCMCIA_IO_16BIT                 0x01    /* 16-bit I/O window */
-#define PCMCIA_IO_WAIT_STATE            0x02    /* Wait state */
-#define PCMCIA_IO_ZERO_WAIT             0x04    /* Zero wait state */
-#define PCMCIA_IO_ENABLED               0x08    /* Window enabled */
+/*
+ * A socket, into which one card is inserted.
+ */
 
-/* PCMCIA Timing Modes */
-#define PCMCIA_TIMING_SLOW              0x00    /* Slow timing */
-#define PCMCIA_TIMING_MEDIUM            0x01    /* Medium timing */
-#define PCMCIA_TIMING_FAST              0x02    /* Fast timing */
+@protocol PCMCIASocket
 
-/* PCMCIA Card Interface Types */
-#define PCMCIA_INTERFACE_MEMORY         0x00    /* Memory only */
-#define PCMCIA_INTERFACE_IO             0x01    /* I/O and memory */
+- adapter;
+- (int)socketNumber;
+- windows;
 
-/* Maximum number of sockets typically supported */
-#define PCMCIA_MAX_SOCKETS              4
+- (PCMCIAStatus)status;
+- (void)reset;
+- powerStates;
 
-/* Maximum number of windows per socket */
-#define PCMCIA_MAX_MEM_WINDOWS          5       /* 5 memory windows */
-#define PCMCIA_MAX_IO_WINDOWS           2       /* 2 I/O windows */
+- (PCMCIAStatus)statusChangeMask;
+- (char)setStatusChangeMask:(PCMCIAStatus)mask;
 
-/* PCMCIA Error Codes */
-#define PCMCIA_SUCCESS                  0
-#define PCMCIA_ERR_INVALID_SOCKET       -1
-#define PCMCIA_ERR_INVALID_WINDOW       -2
-#define PCMCIA_ERR_NO_CARD              -3
-#define PCMCIA_ERR_VOLTAGE_MISMATCH     -4
-#define PCMCIA_ERR_TIMEOUT              -5
-#define PCMCIA_ERR_RESOURCE_BUSY        -6
-#define PCMCIA_ERR_OUT_OF_RESOURCES     -7
+- (char)cardEnabled;
+- (char)setCardEnabled:(char)enabled;
 
-#endif /* _DRIVERKIT_I386_PCMCIA_H */
+- (char)cardAutoPower;
+- (char)setCardAutoPower:(char)autoPower;
+
+- (unsigned int)cardVccPower;
+- (char)setCardVccPower:(unsigned int)power;
+
+- (unsigned int)cardVppPower;
+- (char)setCardVppPower:(unsigned int)power;
+
+- (unsigned int)cardIRQ;
+- (void)setCardReset:(char)reset;
+- (char)setCardIRQ:(unsigned int)irq;
+
+- (char)memoryInterface;
+- (char)setMemoryInterface:(char)memoryInterface;
+
+@end
+
+/*
+ * A window: a range of host address space mapped
+ * onto a card's memory or I/O space.
+ */
+
+@protocol PCMCIAWindow
+
+- validSockets;
+- socket;
+- (char)setSocket:socket;
+
+- (unsigned int)systemAddress;
+- (unsigned int)cardAddress;
+- (unsigned int)mapSize;
+- (char)setMapWithSize:(unsigned int)size
+	 systemAddress:(unsigned int)systemAddress
+	   cardAddress:(unsigned int)cardAddress;
+
+- (char)attributeMemory;
+- (char)setAttributeMemory:(char)attributeMemory;
+
+- (char)enabled;
+- (char)setEnabled:(char)enabled;
+
+- (char)memoryInterface;
+- (char)setMemoryInterface:(char)memoryInterface;
+
+- (char)is16Bit;
+- (char)set16Bit:(char)is16Bit;
+
+@end
+
+/*
+ * What a window is capable of.  Adopted separately from
+ * PCMCIAWindow so that an adapter can describe windows
+ * that differ in what they can map.
+ */
+
+@protocol PCMCIAWindowAttributes
+
+- (char)supportsMemory;
+- (char)supportsIO;
+- (char)canUse8Bit;
+- (char)canUse16Bit;
+- (char)mustBePowerOfTwo;
+
+- (unsigned int)firstSystemAddress;
+- (unsigned int)lastSystemAddress;
+
+- (int)minimumSize;
+- (int)maximumSize;
+- (int)sizeAlignment;
+- (int)baseAlignment;
+- (int)offsetAlignment;
+
+- (int)slowestSpeed;
+- (int)fastestSpeed;
+
+- (char)writeProtectable;
+- (int)addressLinesDecoded;
+
+@end
+
+#endif	/* DRIVER_PRIVATE */
+
+#endif	/* _DRIVERKIT_I386_PCMCIA_H_ */

@@ -28,12 +28,13 @@
 
 #import "PCMCIAKernBus.h"
 
-/* Forward declarations that a secondary PCMCIA driver would have to hook into the bus driver */
+/* Forward declarations that a secondary PCMCIA driver would have to hook into the bus driver.
+ * status / setStatusChangeMask: / socketNumber match <driverkit/i386/PCMCIA.h> PCMCIASocket. */
 @interface Object(PCMCIASocketWindowMethods)
 - (id)windows;
-- (void)setStatusChangeMask:(unsigned int)mask;
-- (unsigned int)socketNumber;
-- (unsigned int)status;
+- (char)setStatusChangeMask:(PCMCIAStatus)mask;
+- (int)socketNumber;
+- (PCMCIAStatus)status;
 @end
 
 @interface Object(ListFreeMethods)

@@ -33,7 +33,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     ES1x88AudioDriver  *dev;
     IORange         *portRangeList;
     int             numPortRanges;
-    int             numChannels;
+    unsigned int    numChannels;
     unsigned int    baseAddress;
 
     dev = [self alloc];
@@ -73,30 +73,24 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
 - (BOOL)reset
 {
-    IODeviceDescription *deviceDescription;
-    unsigned int *channelList;
     unsigned int dmaChannel1, dmaChannel2;
     unsigned int numChannels;
     unsigned int interrupt;
     IOReturn ioReturn;
     BOOL valid = YES;
-    id configTable;
     const char *inputSourceStr;
-    unsigned char recordSourceValue;
 
-    deviceDescription = [self deviceDescription];
-    channelList = (unsigned int *)[deviceDescription channelList];
-    dmaChannel1 = channelList[0];
-    numChannels = [deviceDescription numChannels];
-    interrupt = [deviceDescription interrupt];
+    dmaChannel1 = ((unsigned int *)[[self deviceDescription] channelList])[0];
+    numChannels = [[self deviceDescription] numChannels];
+    interrupt = [[self deviceDescription] interrupt];
 
-    [self setName:"ES1x88AudioDriver"];
-    [self setDeviceKind:"Audio"];
+    [self setName:codecDeviceName];
+    [self setDeviceKind:codecDeviceKind];
 
     /* Get second DMA channel if dual-channel mode */
     dmaChannel2 = dmaChannel1;
     if (numChannels > 1) {
-        dmaChannel2 = channelList[1];
+        dmaChannel2 = ((unsigned int *)[[self deviceDescription] channelList])[1];
     }
 
     /* Validate first DMA channel (must be 0, 1, or 3) */
@@ -128,8 +122,8 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     [self initializeHardware];
 
     /* Parse "Input Source" from config table */
-    configTable = [deviceDescription configTable];
-    inputSourceStr = [[configTable valueForStringKey:"Input Source"] stringValue];
+    inputSourceStr = [[[self deviceDescription] configTable]
+                      valueForStringKey:"Input Source"];
 
     if (inputSourceStr == NULL) {
         inputSource = 0;  /* Default to Mic */
@@ -146,21 +140,17 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     /* Set mixer record source based on input source */
     if (inputSource == 0) {
         sbRecordSource = 0;  /* Microphone */
-        recordSourceValue = 0;
     } else if (inputSource == 1) {
         sbRecordSource = 6;  /* Line In */
-        recordSourceValue = 6;
     } else if (inputSource == 2) {
         sbRecordSource = 2;  /* CD */
-        recordSourceValue = 2;
     } else {
         sbRecordSource = 7;  /* Mixed */
-        recordSourceValue = 7;
     }
 
     outb(sbMixerAddressReg, ES_MIXER_RECORD_SOURCE);
     IODelay(10);
-    outb(sbMixerDataReg, recordSourceValue);
+    outb(sbMixerDataReg, sbRecordSource);
     IODelay(25);
 
     /* Check ES hardware type and set hardware name */
@@ -191,7 +181,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         }
     }
 
-    ioReturn = [self setTransferMode:IO_Single forChannel:0];
+    ioReturn = [self setTransferMode:IO_Demand forChannel:0];
     if (ioReturn != IO_R_SUCCESS) {
         IOLog("%s: dma transfer mode error %d\n", [self name], ioReturn);
         return NO;
@@ -212,140 +202,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     return YES;
 }
 
-- (BOOL) initializeDMAChannels
-{
-    id deviceDesc = [self deviceDescription];
-    int numChannels;
-    unsigned int *channelList;
-    IOReturn ioReturn;
-    BOOL status;
-
-    numChannels = [deviceDesc numChannels];
-
-    if (numChannels == 1) {
-        /* Single DMA channel - 8-bit only */
-        dma8Channel = [deviceDesc channel];
-        numDMAChannels = 1;
-
-        /* Validate 8-bit DMA channel */
-        if ((dma8Channel < 2) || (dma8Channel == 3)) {
-            status = YES;
-        } else {
-            IOLog("ES1x88AudioDriver: 8-bit DMA channel is %d.\n", dma8Channel);
-            IOLog("ES1x88AudioDriver: 8-Bit DMA channel must be one of 0, 1 and 3.\n");
-            status = NO;
-        }
-
-        if (!status)
-            return NO;
-
-        /* Set default 16-bit channel to invalid value */
-        dma16Channel = 99;
-
-    } else if (numChannels == 2) {
-        /* Dual DMA channels - 8-bit and 16-bit */
-        channelList = (unsigned int *)[deviceDesc channelList];
-        dma8Channel = channelList[0];
-        dma16Channel = channelList[1];
-        numDMAChannels = 2;
-
-        /* Validate 8-bit DMA channel */
-        if ((dma8Channel < 2) || (dma8Channel == 3)) {
-            status = YES;
-        } else {
-            IOLog("ES1x88AudioDriver: 8-bit DMA channel is %d.\n", dma8Channel);
-            IOLog("ES1x88AudioDriver: 8-Bit DMA channel must be one of 0, 1 and 3.\n");
-            status = NO;
-        }
-
-        if (!status)
-            return NO;
-
-        /* Validate 16-bit DMA channel */
-        if ((dma16Channel >= 5 && dma16Channel <= 6) || (dma16Channel == 7)) {
-            status = YES;
-        } else {
-            IOLog("ES1x88AudioDriver: 16-bit DMA channel is %d.\n", dma16Channel);
-            IOLog("ES1x88AudioDriver: 16-Bit DMA channel must be one of 5, 6 and 7.\n");
-            status = NO;
-        }
-
-        if (!status)
-            return NO;
-
-    } else {
-        IOLog("%s: Must specify either one or two channels.\n", [self name]);
-        return NO;
-    }
-
-    /*
-     * Program the DMA select register in the mixer
-     */
-    programDMASelect(dma8Channel, dma16Channel);
-
-    /*
-     * Initialize 8-bit DMA controller
-     */
-    [self disableChannel: 0];
-
-    if ([self isEISAPresent]) {
-        ioReturn = [self setDMATransferWidth:IO_8Bit forChannel:0];
-        if (ioReturn != IO_R_SUCCESS) {
-            IOLog("%s: could not set transfer width to 8 bits, error %d.\n",
-                  [self name], ioReturn);
-            return NO;
-        }
-    }
-
-    ioReturn = [self setTransferMode: IO_Single forChannel: 0];
-    if (ioReturn != IO_R_SUCCESS)  {
-        IOLog("%s: dma transfer mode error %d\n", [self name], ioReturn);
-        return NO;
-    }
-
-    ioReturn = [self setAutoinitialize: YES forChannel: 0];
-    if (ioReturn != IO_R_SUCCESS) {
-        IOLog("%s: dma auto initialize error %d", [self name], ioReturn);
-        return NO;
-    }
-
-    /*
-     * Initialize 16-bit DMA controller (only if dual-channel mode)
-     */
-    if (numDMAChannels == 1) {
-        return YES;
-    }
-
-    [self disableChannel: 1];
-
-    if ([self isEISAPresent]) {
-        ioReturn = [self setDMATransferWidth:IO_16Bit forChannel:1];
-        if (ioReturn != IO_R_SUCCESS) {
-            IOLog("%s: could not set transfer width to 16 bits, error %d.\n",
-                  [self name], ioReturn);
-            return NO;
-        }
-    }
-
-    ioReturn = [self setTransferMode: IO_Single forChannel: 1];
-    if (ioReturn != IO_R_SUCCESS)  {
-        IOLog("%s: dma transfer mode error %d\n", [self name], ioReturn);
-        return NO;
-    }
-
-    ioReturn = [self setAutoinitialize: YES forChannel: 1];
-    if (ioReturn != IO_R_SUCCESS) {
-        IOLog("%s: dma auto initialize error %d", [self name], ioReturn);
-        return NO;
-    }
-
-    return YES;
-}
-
-
 - (void) initializeHardware
 {
-    char dspVersion;
+    unsigned char dspVersion;
     unsigned char chipId1, chipId2;
 
     /* Initialize ES hardware detection flag */
@@ -358,36 +217,28 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(10);
 
     /* Wait for DSP ready (0xAA response) */
-    if (!waitForDSPDataAvailable()) {
-        return;
-    }
+    waitForDSPDataAvailable();
 
     /* Read DSP version */
     dspVersion = inb(sbReadDataReg);
     IODelay(10);
 
     /* Check if DSP returned 0xAA ready response */
-    if (dspVersion == (char)ES_DSP_READY_RESPONSE) {
+    if (dspVersion == ES_DSP_READY_RESPONSE) {
         /* Sleep to let hardware stabilize */
         IOSleep(1);
 
         /* Send extended ID command */
-        if (!waitForDSPWriteReady()) {
-            return;
-        }
+        waitForDSPWriteReady();
         outb(sbWriteDataOrCommandReg, ES_CMD_EXTENDED_ID);
 
         /* Send version query command */
-        if (!waitForDSPWriteReady()) {
-            return;
-        }
+        waitForDSPWriteReady();
         outb(sbWriteDataOrCommandReg, ES_CMD_VERSION_QUERY);
         IODelay(25);
 
         /* Read chip ID bytes */
-        if (!waitForDSPDataAvailable()) {
-            return;
-        }
+        waitForDSPDataAvailable();
         chipId1 = inb(sbReadDataReg);
         IODelay(10);
 
@@ -408,42 +259,47 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Set Master Volume to 0xAA */
-    volMaster.rawValue = 0xAA;
+    volMaster.reg.left = 0xA;
+    volMaster.reg.right = 0xA;
     outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, 0xAA);
+    outb(sbMixerDataReg, volMaster.rawValue);
     IODelay(25);
 
     /* Set FM Volume to 0x00 (off) */
-    volFM.rawValue = 0x00;
+    volFM.reg.left = 0x0;
+    volFM.reg.right = 0x0;
     outb(sbMixerAddressReg, ES_MIXER_FM_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, 0x00);
+    outb(sbMixerDataReg, volFM.rawValue);
     IODelay(25);
 
     /* Set CD Volume to 0xAA */
-    volCD.rawValue = 0xAA;
+    volCD.reg.left = 0xA;
+    volCD.reg.right = 0xA;
     outb(sbMixerAddressReg, ES_MIXER_CD_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, 0xAA);
+    outb(sbMixerDataReg, volCD.rawValue);
     IODelay(25);
 
     /* Set Line Volume to 0xAA */
-    volLine.rawValue = 0xAA;
+    volLine.reg.left = 0xA;
+    volLine.reg.right = 0xA;
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, 0xAA);
+    outb(sbMixerDataReg, volLine.rawValue);
     IODelay(25);
 
     /* Set Voice Volume to 0xAA */
-    volVoc = 0xAA;
+    volVoc.reg.left = 0xA;
+    volVoc.reg.right = 0xA;
     outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, 0xAA);
+    outb(sbMixerDataReg, volVoc.rawValue);
     IODelay(25);
 
-    /* Set Mic Volume (combines with existing bits) */
-    volMic = (volMic & 0x0F) | 0xA0;
+    /* Set Mic Volume (left channel only; the right nibble is left alone) */
+    volMic.reg.left = 0xA;
 
     /* Set Record Source to 0x07 */
     sbRecordSource = 0x07;
@@ -451,44 +307,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(10);
     outb(sbMixerDataReg, 0x07);
     IODelay(25);
-}
-
-- (void) initializeLastStageGainRegisters
-{
-    id deviceDesc = [self deviceDescription];
-    id configTable;
-    const char *gainStr;
-    unsigned char gainValue;
-
-    /*
-     * Read last-stage gain values from config table if present
-     */
-    configTable = [deviceDesc configTable];
-
-    /* Read LS Input Gain */
-    gainStr = [[configTable valueForStringKey:"LS Input Gain"] stringValue];
-    if (gainStr != NULL && (gainStr[0] - '0') < 4) {
-        gainValue = gainStr[0] - '0';
-        lastStageGainInputLeft = gainValue;
-        lastStageGainInputRight = gainValue;
-    }
-
-    /* Read LS Output Gain */
-    gainStr = [[configTable valueForStringKey:"LS Output Gain"] stringValue];
-    if (gainStr != NULL && (gainStr[0] - '0') < 4) {
-        gainValue = gainStr[0] - '0';
-        lastStageGainOutputLeft = gainValue;
-        lastStageGainOutputRight = gainValue;
-    }
-
-    /*
-     * Program last-stage (output) gain registers
-     * These are 2-bit values (0-3) shifted left by 6 bits
-     */
-    outbIXMixer(MC16_INPUT_GAIN_LEFT, lastStageGainInputLeft << 6);
-    outbIXMixer(MC16_INPUT_GAIN_RIGHT, lastStageGainInputRight << 6);
-    outbIXMixer(MC16_OUTPUT_GAIN_LEFT, lastStageGainOutputLeft << 6);
-    outbIXMixer(MC16_OUTPUT_GAIN_RIGHT, lastStageGainOutputRight << 6);
 }
 
 /*
@@ -509,9 +327,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     /* Update shadow variables - ES1x88 format: upper 4 bits = left, lower 4 bits = right */
-    volLine.rawValue = (volLine.rawValue & ES_VOLUME_BITS) | (gainValue << 4);
-    volMic = (volMic & ES_VOLUME_BITS) | (gainValue << 4);
-    volCD.rawValue = (volCD.rawValue & ES_VOLUME_BITS) | (gainValue << 4);
+    volLine.reg.left = gainValue;
+    volMic.reg.left = gainValue;
+    volCD.reg.left = gainValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -540,9 +358,9 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     /* Update shadow variables - ES1x88 format: upper 4 bits = left, lower 4 bits = right */
-    volLine.rawValue = (volLine.rawValue & 0xF0) | (gainValue & ES_VOLUME_BITS);
-    volMic = (volMic & 0xF0) | (gainValue & ES_VOLUME_BITS);
-    volCD.rawValue = (volCD.rawValue & 0xF0) | (gainValue & ES_VOLUME_BITS);
+    volLine.reg.right = gainValue;
+    volMic.reg.right = gainValue;
+    volCD.reg.right = gainValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -558,12 +376,32 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
 - (void)updateOutputMute
 {
-    BOOL isMuted;
-    unsigned char speakerCommand;
+    BOOL enableOutput;
 
-    isMuted = [self isOutputMuted];
+    enableOutput = ![self isOutputMuted];
 
-    if (isMuted) {
+    if (enableOutput) {
+        /* Restore volumes from shadow variables */
+        outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
+        IODelay(10);
+        outb(sbMixerDataReg, volMaster.rawValue);
+        IODelay(25);
+
+        outb(sbMixerAddressReg, ES_MIXER_CD_VOLUME);
+        IODelay(10);
+        outb(sbMixerDataReg, volCD.rawValue);
+        IODelay(25);
+
+        outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
+        IODelay(10);
+        outb(sbMixerDataReg, volVoc.rawValue);
+        IODelay(25);
+
+        outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
+        IODelay(10);
+        outb(sbMixerDataReg, volLine.rawValue);
+        IODelay(25);
+    } else {
         /* Mute all mixer channels */
         outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
         IODelay(10);
@@ -584,35 +422,15 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IODelay(10);
         outb(sbMixerDataReg, 0);
         IODelay(25);
-
-        speakerCommand = DC16_TURN_OFF_SPEAKER;
-    } else {
-        /* Restore volumes from shadow variables */
-        outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
-        IODelay(10);
-        outb(sbMixerDataReg, volMaster.rawValue);
-        IODelay(25);
-
-        outb(sbMixerAddressReg, ES_MIXER_CD_VOLUME);
-        IODelay(10);
-        outb(sbMixerDataReg, volCD.rawValue);
-        IODelay(25);
-
-        outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
-        IODelay(10);
-        outb(sbMixerDataReg, volVoc);
-        IODelay(25);
-
-        outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
-        IODelay(10);
-        outb(sbMixerDataReg, volLine.rawValue);
-        IODelay(25);
-
-        speakerCommand = DC16_TURN_ON_SPEAKER;
     }
 
-    /* Send speaker on/off command */
-    outb(sbWriteDataOrCommandReg, speakerCommand);
+    if (enableOutput) {
+        /* Turn on speaker */
+        outb(sbWriteDataOrCommandReg, DC16_TURN_ON_SPEAKER);
+    } else {
+        /* Turn off speaker */
+        outb(sbWriteDataOrCommandReg, DC16_TURN_OFF_SPEAKER);
+    }
     IODelay(25);
 }
 
@@ -622,21 +440,19 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
  */
 - (void) updateOutputAttenuationLeft
 {
-    int attenuation;
+    unsigned int attenuation;
     unsigned char volumeValue;
-    unsigned char volInUpperNibble;
 
     attenuation = [self outputAttenuationLeft];
 
     /* Convert attenuation to 4-bit volume (0-15) */
     volumeValue = (unsigned char)(((attenuation * ES_ATTENUATION_MULTIPLIER + ES_ATTENUATION_OFFSET) * ES_ATTENUATION_SCALE) / ES_ATTENUATION_RANGE);
-    volInUpperNibble = volumeValue << 4;
 
     /* Update shadow variables - left channel is upper 4 bits */
-    volCD.rawValue = (volCD.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volMaster.rawValue = (volMaster.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volLine.rawValue = (volLine.rawValue & ES_VOLUME_BITS) | volInUpperNibble;
-    volVoc = (volVoc & ES_VOLUME_BITS) | volInUpperNibble;
+    volCD.reg.left = volumeValue;
+    volMaster.reg.left = volumeValue;
+    volLine.reg.left = volumeValue;
+    volVoc.reg.left = volumeValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
@@ -651,7 +467,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
     outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, volVoc);
+    outb(sbMixerDataReg, volVoc.rawValue);
     IODelay(25);
 
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -662,20 +478,19 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
 - (void) updateOutputAttenuationRight
 {
-    int attenuation;
+    unsigned int attenuation;
     unsigned char volumeValue;
 
     attenuation = [self outputAttenuationRight];
 
     /* Convert attenuation to 4-bit volume (0-15) */
     volumeValue = (unsigned char)(((attenuation * ES_ATTENUATION_MULTIPLIER + ES_ATTENUATION_OFFSET) * ES_ATTENUATION_SCALE) / ES_ATTENUATION_RANGE);
-    volumeValue = volumeValue & ES_VOLUME_BITS;  /* Keep in lower 4 bits */
 
     /* Update shadow variables - right channel is lower 4 bits */
-    volCD.rawValue = (volCD.rawValue & 0xF0) | volumeValue;
-    volMaster.rawValue = (volMaster.rawValue & 0xF0) | volumeValue;
-    volLine.rawValue = (volLine.rawValue & 0xF0) | volumeValue;
-    volVoc = (volVoc & 0xF0) | volumeValue;
+    volCD.reg.right = volumeValue;
+    volMaster.reg.right = volumeValue;
+    volLine.reg.right = volumeValue;
+    volVoc.reg.right = volumeValue;
 
     /* Write to mixer registers */
     outb(sbMixerAddressReg, ES_MIXER_MASTER_VOLUME);
@@ -690,7 +505,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
     outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
     IODelay(10);
-    outb(sbMixerDataReg, volVoc);
+    outb(sbMixerDataReg, volVoc.rawValue);
     IODelay(25);
 
     outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -700,134 +515,38 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 }
 
 /*
- * Program DSP for sample rate
- */
-- (void)updateSampleRate
-{
-    unsigned int rate;
-    unsigned int channelCount;
-    unsigned char command;
-    int timeout;
-    char status;
-
-    rate = [self sampleRate];
-    channelCount = [self channelCount];
-
-    // Determine command based on DMA direction
-    if (currentDMADirection == DMA_DIRECTION_IN) {
-        command = DC16_SET_SAMPLE_RATE_INPUT;   // 0x42
-    } else {
-        command = DC16_SET_SAMPLE_RATE_OUTPUT;  // 0x41
-    }
-
-    // Write command with timeout check
-    timeout = 0;
-    do {
-        status = inb(sbWriteBufferStatusReg);
-        if ((status & SB16_DSP_BUSY_BIT) == 0) break;
-        IODelay(10);
-        timeout++;
-    } while (timeout < 10000);
-
-    if (timeout == 10000) {
-        outb(sbResetReg, 1);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        outb(sbResetReg, 0);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        IOLog("ES1x88AudioDriver: DSP write error.\n");
-    }
-
-    outb(sbWriteDataOrCommandReg, command);
-    IODelay(SB16_DATA_WRITE_DELAY);
-
-    // Write high byte of sample rate with timeout check
-    timeout = 0;
-    do {
-        status = inb(sbWriteBufferStatusReg);
-        if ((status & SB16_DSP_BUSY_BIT) == 0) break;
-        IODelay(10);
-        timeout++;
-    } while (timeout < 10000);
-
-    if (timeout == 10000) {
-        outb(sbResetReg, 1);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        outb(sbResetReg, 0);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        IOLog("ES1x88AudioDriver: DSP write error.\n");
-    }
-
-    outb(sbWriteDataOrCommandReg, (rate >> 8) & 0xff);
-    IODelay(SB16_DATA_WRITE_DELAY);
-
-    // Write low byte of sample rate with timeout check
-    timeout = 0;
-    do {
-        status = inb(sbWriteBufferStatusReg);
-        if ((status & SB16_DSP_BUSY_BIT) == 0) break;
-        IODelay(10);
-        timeout++;
-    } while (timeout < 10000);
-
-    if (timeout == 10000) {
-        outb(sbResetReg, 1);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        outb(sbResetReg, 0);
-        IODelay(SB16_ADDRESS_WRITE_DELAY);
-        IOLog("ES1x88AudioDriver: DSP write error.\n");
-    }
-
-    outb(sbWriteDataOrCommandReg, rate & 0xff);
-    IODelay(SB16_DATA_WRITE_DELAY);
-
-    // Update DMA mode flags based on encoding and channel count
-    if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear8) {
-        sbStartDMAMode &= ~DMA_MODE_SIGNED;  // Clear signed bit for 8-bit
-    } else {
-        sbStartDMAMode |= DMA_MODE_SIGNED;   // Set signed bit for 16-bit
-    }
-
-    if (channelCount == 2) {
-        sbStartDMAMode |= DMA_MODE_STEREO;   // Set stereo bit
-    } else {
-        sbStartDMAMode &= ~DMA_MODE_STEREO;  // Clear stereo bit (mono)
-    }
-}
-
-/*
  * Configure ES1x88 hardware registers for data transfer
  * This sets up sample rate, transfer mode, IRQ and DMA channels
  */
 - (void)configureHardwareForDataTransfer:(unsigned int)transferCount
 {
-    IODeviceDescription *deviceDescription;
-    unsigned int *channelList;
     unsigned int dmaChannel;
     unsigned int irq;
     unsigned int sampleRate;
-    unsigned int channelCount;
+    unsigned int stereo;
     NXSoundParameterTag dataEncoding;
     unsigned char regValue;
-    unsigned char sampleRateByte;
-    unsigned char irqBits, dmaBits;
+    unsigned int sampleRateByte;
+    unsigned int filterByte;
+    es1x88ControlRegister_t irqControl, dmaControl;
     unsigned char modeCommand1, modeCommand2;
     unsigned char modeData;
     unsigned short transferCountNeg;
 
-    deviceDescription = [self deviceDescription];
-    channelList = (unsigned int *)[deviceDescription channelList];
-    dmaChannel = channelList[0];
-    irq = [deviceDescription interrupt];
+    dmaChannel = ((unsigned int *)[[self deviceDescription] channelList])[0];
+    irq = [[self deviceDescription] interrupt];
     sampleRate = [self sampleRate];
-    channelCount = [self channelCount];
+    stereo = ([self channelCount] == 2);
     dataEncoding = [self dataEncoding];
 
     /* Send Audio Control 2 command followed by direction-specific value */
-    outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
-    IODelay(25);
     if (currentDMADirection == DMA_DIRECTION_IN) {
+        outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+        IODelay(25);
         outb(sbWriteDataOrCommandReg, ES_MODE_INPUT);  /* Input/Record */
     } else {
+        outb(sbWriteDataOrCommandReg, ES_REG_AUDIO_CONTROL_2);
+        IODelay(25);
         outb(sbWriteDataOrCommandReg, ES_MODE_OUTPUT);  /* Output/Playback */
     }
     IODelay(25);
@@ -844,13 +563,13 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
     /* Clear channel bits based on direction */
     if (currentDMADirection == DMA_DIRECTION_IN) {
-        regValue &= 0xFC;  /* Clear lower 2 bits */
-    } else {
         regValue &= 0xF8;  /* Clear lower 3 bits */
+    } else {
+        regValue &= 0xFC;  /* Clear lower 2 bits */
     }
 
     /* Set stereo/mono bit */
-    if (channelCount == 2) {
+    if (stereo == 1) {
         regValue |= ES_AUDIO_MODE_STEREO;  /* Stereo */
     } else {
         regValue |= ES_AUDIO_MODE_MONO;  /* Mono */
@@ -872,7 +591,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     if (sampleRate < ES_SAMPLE_RATE_THRESHOLD) {  /* < 22001 Hz */
         sampleRateByte = (0x80 - (ES_SAMPLE_RATE_CONST_LOW / sampleRate)) & 0x7F;
     } else {
-        sampleRateByte = (-(ES_SAMPLE_RATE_CONST_HIGH / sampleRate)) | 0x80;
+        sampleRateByte = (0x100 - (ES_SAMPLE_RATE_CONST_HIGH / sampleRate)) | 0x80;
     }
     outb(sbWriteDataOrCommandReg, ES_REG_SAMPLE_RATE);
     IODelay(25);
@@ -880,9 +599,10 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Set filter register */
+    filterByte = 0x100 - (ES_FILTER_CONST / (sampleRate * ES_FILTER_DIVISOR));
     outb(sbWriteDataOrCommandReg, ES_REG_FILTER);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, -(ES_FILTER_CONST / (sampleRate * ES_FILTER_DIVISOR)));
+    outb(sbWriteDataOrCommandReg, filterByte);
     IODelay(25);
 
     /* Set transfer count (negative, 2's complement) */
@@ -901,30 +621,30 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Determine mode commands based on channel count and encoding */
-    if (channelCount == 2) {  /* Stereo */
-        if (dataEncoding == NX_SoundStreamDataEncoding_Linear16) {
-            modeData = ES_OUTPUT_MODE_16BIT;
-            modeCommand1 = ES_AUDIO_MODE_STEREO_16BIT_CMD1;
-            modeCommand2 = ES_AUDIO_MODE_STEREO_16BIT_CMD2;
-        } else {  /* 8-bit */
-            modeData = ES_OUTPUT_MODE_8BIT;
-            modeCommand1 = ES_AUDIO_MODE_STEREO_8BIT_CMD1;
-            modeCommand2 = ES_AUDIO_MODE_STEREO_8BIT_CMD2;
-        }
-    } else {  /* Mono */
-        if (dataEncoding == NX_SoundStreamDataEncoding_Linear16) {
+    if (stereo == 0) {  /* Mono */
+        if (dataEncoding == NX_SoundStreamDataEncoding_Linear8) {
             modeData = ES_OUTPUT_MODE_16BIT;
             modeCommand1 = ES_AUDIO_MODE_MONO_16BIT_CMD1;
             modeCommand2 = ES_AUDIO_MODE_MONO_16BIT_CMD2;
-        } else {  /* 8-bit */
+        } else {  /* Linear16 */
             modeData = ES_OUTPUT_MODE_8BIT;
             modeCommand1 = ES_AUDIO_MODE_MONO_8BIT_CMD1;
             modeCommand2 = ES_AUDIO_MODE_MONO_8BIT_CMD2;
         }
+    } else {  /* Stereo */
+        if (dataEncoding == NX_SoundStreamDataEncoding_Linear8) {
+            modeData = ES_OUTPUT_MODE_16BIT;
+            modeCommand1 = ES_AUDIO_MODE_STEREO_16BIT_CMD1;
+            modeCommand2 = ES_AUDIO_MODE_STEREO_16BIT_CMD2;
+        } else {  /* Linear16 */
+            modeData = ES_OUTPUT_MODE_8BIT;
+            modeCommand1 = ES_AUDIO_MODE_STEREO_8BIT_CMD1;
+            modeCommand2 = ES_AUDIO_MODE_STEREO_8BIT_CMD2;
+        }
     }
 
     /* Send Output Mode command for output (record/playback mode) */
-    if (currentDMADirection != DMA_DIRECTION_IN) {
+    if (currentDMADirection == DMA_DIRECTION_OUT) {
         outb(sbWriteDataOrCommandReg, ES_REG_OUTPUT_MODE);
         IODelay(25);
         outb(sbWriteDataOrCommandReg, modeData);
@@ -943,44 +663,47 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Configure IRQ Control register */
-    irqBits = 0;
+    irqControl.rawValue = 0;
+    dmaControl.rawValue = 0;
     if (irq == 9) {
-        irqBits = 0x00;
+        irqControl.reg.select0 = 0;
+        irqControl.reg.select1 = 0;
     } else if (irq == 5) {
-        irqBits = 0x04;
+        irqControl.reg.select0 = 1;
+        irqControl.reg.select1 = 0;
     } else if (irq == 7) {
-        irqBits = 0x08;
+        irqControl.reg.select0 = 0;
+        irqControl.reg.select1 = 1;
     } else if (irq == 10) {
-        irqBits = 0x0C;
+        irqControl.reg.select0 = 1;
+        irqControl.reg.select1 = 1;
     }
+    irqControl.reg.fixed4 = 1;
+    irqControl.reg.fixed6 = 1;
 
     outb(sbWriteDataOrCommandReg, ES_REG_IRQ_CONTROL);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, irqBits | 0x50);
+    outb(sbWriteDataOrCommandReg, irqControl.rawValue);
     IODelay(25);
 
     /* Configure DMA Control register */
-    dmaBits = 0;
     if (dmaChannel == 0) {
-        dmaBits = 0x04;
+        dmaControl.reg.select0 = 1;
+        dmaControl.reg.select1 = 0;
     } else if (dmaChannel == 1) {
-        dmaBits = 0x08;
+        dmaControl.reg.select0 = 0;
+        dmaControl.reg.select1 = 1;
     } else if (dmaChannel == 3) {
-        dmaBits = 0x0C;
+        dmaControl.reg.select0 = 1;
+        dmaControl.reg.select1 = 1;
     }
+    dmaControl.reg.fixed4 = 1;
+    dmaControl.reg.fixed6 = 1;
 
     outb(sbWriteDataOrCommandReg, ES_REG_DMA_CONTROL);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, dmaBits | 0x50);
+    outb(sbWriteDataOrCommandReg, dmaControl.rawValue);
     IODelay(25);
-}
-
-/*
- * Set DMA buffer count
- */
-- (void) setBufferCount:(int)count
-{
-    sbBufferCounter = count;
 }
 
 - (IOReturn) enableAllInterrupts
@@ -1002,7 +725,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     IOReturn ioReturn;
     unsigned char dspVersion;
-    unsigned char recordSourceValue;
     unsigned char micValue;
     unsigned char regValue;
 
@@ -1023,19 +745,15 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(10);
 
     /* Wait for DSP ready and read version */
-    if (!waitForDSPDataAvailable()) {
-        IOLog("ES1x88AudioDriver: Can not reset DSP.\n");
-        return NO;
-    }
+    waitForDSPDataAvailable();
 
     dspVersion = inb(sbReadDataReg);
     IODelay(10);
 
     /* If DSP returned 0xAA ready response, send extended ID command */
-    if (dspVersion == (char)ES_DSP_READY_RESPONSE) {
-        if (waitForDSPWriteReady()) {
-            outb(sbWriteDataOrCommandReg, ES_CMD_EXTENDED_ID);
-        }
+    if (dspVersion == ES_DSP_READY_RESPONSE) {
+        waitForDSPWriteReady();
+        outb(sbWriteDataOrCommandReg, ES_CMD_EXTENDED_ID);
     } else {
         IOLog("ES1x88AudioDriver: Can not reset DSP.\n");
     }
@@ -1074,7 +792,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
         outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
         IODelay(10);
-        outb(sbMixerDataReg, volVoc);
+        outb(sbMixerDataReg, volVoc.rawValue);
         IODelay(25);
 
         outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -1092,25 +810,21 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         /* Set record source based on inputSource */
         if (inputSource == 0) {
             sbRecordSource = 0;  /* Microphone */
-            recordSourceValue = 0;
         } else if (inputSource == 1) {
             sbRecordSource = 6;  /* Line In */
-            recordSourceValue = 6;
         } else if (inputSource == 2) {
             sbRecordSource = 2;  /* CD */
-            recordSourceValue = 2;
         } else {
             sbRecordSource = 7;  /* Mixed */
-            recordSourceValue = 7;
         }
 
         outb(sbMixerAddressReg, ES_MIXER_RECORD_SOURCE);
         IODelay(10);
-        outb(sbMixerDataReg, recordSourceValue);
+        outb(sbMixerDataReg, sbRecordSource);
         IODelay(25);
 
         /* Handle Microphone input source */
-        micValue = volMic;
+        micValue = volMic.rawValue;
         if (inputSource == 0) {
             /* Microphone mode - set mic volume and mute other sources */
             outb(sbMixerAddressReg, ES_MIXER_MIC_VOLUME);
@@ -1212,7 +926,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
         outb(sbMixerAddressReg, ES_MIXER_VOICE_VOLUME);
         IODelay(10);
-        outb(sbMixerDataReg, volVoc);
+        outb(sbMixerDataReg, volVoc.rawValue);
         IODelay(25);
 
         outb(sbMixerAddressReg, ES_MIXER_LINE_VOLUME);
@@ -1264,20 +978,15 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IODelay(10);
 
         /* Wait for DSP ready and read version */
-        if (!waitForDSPDataAvailable()) {
-            IOLog("ES1x88AudioDriver: Can not reset DSP.\n");
-            interruptTimedOut = YES;
-            return;
-        }
+        waitForDSPDataAvailable();
 
         dspVersion = inb(sbReadDataReg);
         IODelay(10);
 
         /* If DSP returned 0xAA ready response, send extended ID command */
-        if (dspVersion == (char)ES_DSP_READY_RESPONSE) {
-            if (waitForDSPWriteReady()) {
-                outb(sbWriteDataOrCommandReg, ES_CMD_EXTENDED_ID);
-            }
+        if (dspVersion == ES_DSP_READY_RESPONSE) {
+            waitForDSPWriteReady();
+            outb(sbWriteDataOrCommandReg, ES_CMD_EXTENDED_ID);
         } else {
             IOLog("ES1x88AudioDriver: Can not reset DSP.\n");
         }
@@ -1300,7 +1009,10 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
      * 0 = Microphone
      * 6 = Line In
      */
-    if (val == NX_SoundStreamDataAnalogSourceLineIn) {
+    if (val == NX_SoundStreamDataAnalogSourceMicrophone) {
+        sbRecordSource = 0;
+        sourceValue = 0;
+    } else if (val == NX_SoundStreamDataAnalogSourceLineIn) {
         sbRecordSource = 6;
         sourceValue = 6;
     } else {
@@ -1346,8 +1058,8 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 - (void)getDataEncodings: (NXSoundParameterTag *)encodings
                                 count:(unsigned int *)numEncodings
 {
-    encodings[0] = NX_SoundStreamDataEncoding_Linear16;
-    encodings[1] = NX_SoundStreamDataEncoding_Linear8;
+    encodings[0] = NX_SoundStreamDataEncoding_Linear8;
+    encodings[1] = NX_SoundStreamDataEncoding_Linear16;
     *numEncodings = 2;
 }
 

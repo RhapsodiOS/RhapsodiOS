@@ -20,8 +20,6 @@ static unsigned int sbReadDataReg = 0;
 static unsigned int sbWriteDataOrCommandReg = 0;
 static unsigned int sbWriteBufferStatusReg = 0;
 static unsigned int sbDataAvailableStatusReg = 0;
-static unsigned int sbAck8bitInterrupt = 0;
-static unsigned int sbAck16bitInterrupt = 0;
 
 static __inline__
 void
@@ -37,10 +35,6 @@ assignDSPRegAddresses(void)
         (sbBaseRegisterAddress + SB16_DSP_WRITE_BUFFER_STATUS_OFFSET);
     sbDataAvailableStatusReg =
         (sbBaseRegisterAddress + SB16_DSP_DATA_AVAILABLE_STATUS_OFFSET);
-    sbAck8bitInterrupt =
-        (sbBaseRegisterAddress + SB16_DSP_DATA_AVAILABLE_STATUS_OFFSET);
-    sbAck16bitInterrupt =
-        (sbBaseRegisterAddress + SB16_DSP_16BIT_ACK_OFFSET);
 }
 
 /*
@@ -64,23 +58,16 @@ assignMixerRegAddresses(void)
  */
 static sb16MonoMixerRegister_t volMaster =      {0};
 static sb16MonoMixerRegister_t volFM =          {0};
-static sb16MonoMixerRegister_t volCD =          {0};
 static sb16MonoMixerRegister_t volLine =        {0};
-static unsigned char volMic =                   0;
-
-/*
- * Last stage (output) gain controls (0-3)
- */
-static unsigned char lastStageGainInputLeft =   0;
-static unsigned char lastStageGainInputRight =  0;
-static unsigned char lastStageGainOutputLeft =  0;
-static unsigned char lastStageGainOutputRight = 0;
+static sb16MonoMixerRegister_t volVoc =         {0};
+static sb16MonoMixerRegister_t volCD =          {0};
+static sb16MonoMixerRegister_t volMic =         {0};
 
 /*
  * ES1x88 hardware detection
  */
-static unsigned int essHardware =               0;
-static unsigned char essChipRevision =          0;
+static unsigned int essHardware;
+static unsigned char essChipRevision;
 
 /*
  * ES1x88 record source
@@ -88,16 +75,9 @@ static unsigned char essChipRevision =          0;
 static unsigned char sbRecordSource =           0;
 
 /*
- * ES1x88 voice volume alias
+ * DMA command variable
  */
-static unsigned char volVoc =                   0;
-
-/*
- * Buffer counter and DMA command variables
- */
-static unsigned int sbBufferCounter =           0;
 static unsigned char sbStartDMACommand =        0;
-static unsigned char sbStartDMAMode =           0;
 
 /*
  * Write to mixer register
@@ -182,35 +162,4 @@ clearInterrupts(void)
 
     status = inb(sbDataAvailableStatusReg);
     return status;
-}
-
-/*
- * Program the DMA Select register (0x81) with the active DMA channels
- */
-static __inline__
-void
-programDMASelect(unsigned int dma8Channel, unsigned int dma16Channel)
-{
-    unsigned char dmaSelectBits = 0;
-
-    /* Set 8-bit DMA channel bit */
-    if (dma8Channel == 0) {
-        dmaSelectBits = 0x01;
-    } else if (dma8Channel == 1) {
-        dmaSelectBits = 0x02;
-    } else if (dma8Channel == 3) {
-        dmaSelectBits = 0x08;
-    }
-
-    /* Set 16-bit DMA channel bit */
-    if (dma16Channel == 5) {
-        dmaSelectBits |= 0x20;
-    } else if (dma16Channel == 6) {
-        dmaSelectBits |= 0x40;
-    } else if (dma16Channel == 7) {
-        dmaSelectBits |= 0x80;
-    }
-
-    /* Write to mixer DMA select register */
-    outbIXMixer(MC16_DMA_SELECT, dmaSelectBits);
 }

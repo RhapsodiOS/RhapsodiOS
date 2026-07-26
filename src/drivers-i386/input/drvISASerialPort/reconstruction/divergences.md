@@ -3823,3 +3823,362 @@ ledger … entries=45 control-flow-confirmed=36 intentional-mismatch=2 signature
 - `binrecon ledger` validates with **45 entries**.
 - All touched files LF-only per `git ls-files --eol`; the three records are `i/lf w/lf`.
 - `ledger.json.lock` is recreated by every `binrecon ledger` run and stays untracked.
+
+## Addendum 11 — Task 10b: the last five bodies, read — `unexamined` reaches 0
+
+The five bodies that were still `unexamined`, read instruction by instruction against the
+reference and then diffed against the rebuilt stream: `-[ISASerialPort requestEvent:data:]`
+7340–8085 (182 instructions), `-[ISASerialPort enqueueEvent:data:sleep:]` 8088–8207 (44),
+`-[ISASerialPort dequeueEvent:data:sleep:]` 8208–8324 (45),
+`-[ISASerialPort enqueueData:bufferSize:transferCount:sleep:]` 8328–9023 (213) and
+`-[ISASerialPort dequeueData:bufferSize:transferCount:minCount:]` 9024–9406 (121).
+
+**`unexamined` is now 0.** That closes the departure from Spec §4.2 — *"No entry ends
+`unexamined`"* — and from plan Task 6 Step 8, which Addendum 8 recorded as open at 11 and
+Addendum 10 brought down to 5.
+
+### The ledger status was predictive of defect location, for the fourth time
+
+`requestEvent:data:` dispatched on `event & 0xFF`. The reference loads the whole 32-bit argument
+at 7352 and every comparison in the dispatch tree is a full-width `cmp ebx, imm32` — there is no
+`and`, no `movzx` and no byte compare anywhere in 7340–7672. So `requestEvent:0x105` was silently
+serviced as event `0x05`, and any event number whose low byte happened to collide with a known one
+returned the wrong field instead of `IO_R_INVALID_ARG`. It is reachable from a caller with no
+hardware involved at all.
+
+| task | function | status when the defect was found | defect |
+|---|---|---|---|
+| 8 | `acquire:` | `unexamined` | `0x126` into `MasterClock`, zero baud divisor on every open |
+| 8 | both interrupt handlers | `signature-confirmed`, body unread | inverted watermark comparisons, dead RX gate, wrong ring wrap |
+| 10a | `_activatePort`, `_dataLatTOHandler` | `unexamined` | wrong `State` bit in the hardware-flow arm (Finding 110) |
+| **10b** | **`requestEvent:data:`** | **`unexamined`** | **dispatch masked to the low byte; `0x105` aliased to `0x05`** |
+
+Four for four. Every batch of `unexamined` bodies this effort has opened has had a defect in it,
+and the last batch was no exception.
+
+### Two entries reach `assembly-matched`, the first in this reconstruction
+
+`enqueueEvent:data:sleep:` and `dequeueEvent:data:sleep:` are **byte-identical to the reference**.
+The spec defines `assembly-matched` as *"the rebuilt instruction stream was read against the
+reference"*; that had never been done here, which is why Addendum 6's C1 downgraded the only two
+entries that claimed it. This pass did it, and the method is stated so it can be reproduced:
+
+1. Extract the rebuilt body from `__TEXT,__text` by parsing the Mach-O nlist and **excluding
+   `N_STAB` entries by `n_type`** — 45 non-stab `__text` symbols, matching the reference's 45.
+2. Disassemble with capstone; take the reference stream from the published IDA analysis.
+3. Drop alignment `nop`s from both.
+4. Mask the relative displacement of every `call`, `jmp` and `jcc` — these *must* differ, because
+   our functions sit at different addresses inside a smaller `__text`.
+5. Compare the remaining bytes.
+
+| function | ref instrs | our instrs | masked bytes | equal |
+|---|---|---|---|---|
+| `enqueueEvent:data:sleep:` | 44 | 44 | 117 vs 117 | **yes** |
+| `dequeueEvent:data:sleep:` | 45 | 45 | 114 vs 114 | **yes** |
+
+Not one instruction differs in either — same opcodes, same registers, same displacements, same
+order. `enqueueEvent:`'s extent is 120 against 120; `dequeueEvent:`'s is 120 against 117 because
+ours carries three trailing alignment `nop`s the reference does not.
+
+**`rebuilt_sha256` stays `null`**, per the plan's standing convention, so the two reasons carry the
+`__TEXT,__text` sha256 `E437CED7AA46313D811065DB415280608734C6BC768C52905495EB5DC49EBCF6` at size
+23272 instead. That is the anchor a reviewer should check the claim against. Addendum 6's C1
+objected to `assembly-matched` on two grounds — a null `rebuilt_sha256` **and** a reason that
+described reading the *reference* rather than a diff. The second ground is now answered directly;
+the first is answered by naming the hash in the reason.
+
+### `dequeueEvent:data:sleep:` needed no source change at all
+
+Stated affirmatively, because a function verified as already correct is a result. All 45
+instructions of 8208–8324 were already reproduced exactly: the `!event || !data` guard returning
+`0xFFFFFD3E`, the `spl4`/`splx` bracket with `splx` on both exits, the `State` bit 30 gate
+returning `IO_R_NOT_OPEN`, the `movsx` of the `BOOL` `sleep` argument at 8259, the `Port *` taken
+from `[self+258h]`, the one-byte staging local at `[ebp-1]` and the zero-extending store back into
+`*event` at 8282. The only edit was to a comment that called `self+0x137` a separate `statusFlags`
+field when it is `Port.State`'s top byte.
+
+### Finding 90 is now closed entirely, and its `minCount` half was never wrong
+
+The callout half was fixed in `1bcc4300`. The `minCount` half was re-derived from the bytes before
+anything was touched, and **it was already correct**. `minCount` is a sleep budget, not a floor:
+
+- 9216–9226 `cmp [remainingMin], 0` / `setnz al` / `movzx edx, al` / `push edx` — the countdown's
+  only use is as `RX_dequeueData`'s third argument, the `sleep` flag.
+- 9272–9278 decrements it, and only on the success path.
+- Nothing anywhere in 9024–9406 compares `*count` against `minCount`. A short read is not an error.
+
+So the first `minCount` bytes block until they arrive and every byte after that is taken only if it
+is already queued. Finding 90's own text says as much; what was missing was any record that
+somebody had checked it against the disassembly rather than repeating it. That check is now made
+and the finding is closed. The two callout reads were also moved onto the `port` ivar, since 9318
+and 9365 go `[self+258h]` then `[port+0ECh]` rather than straight to `self+0x214`.
+
+### Finding 113 (new) — `tv_nsec` zero-extended where the reference sign-extends
+
+`dequeueData:` staged the interval into `unsigned int charTimeLo, charTimeHi` and formed the
+64-bit test as `(unsigned long long)charTimeLo * 1000000000ULL + (long long)charTimeHi`. Because
+`charTimeHi` was `unsigned`, the widening **zero**-extended. Reference 9090–9095:
+
+```
+9090  mov  edx, [ebp+var_C]     ; tv_nsec
+9093  mov  eax, edx
+9095  99                        ; cdq   <- sign extension
+```
+
+`tv_nsec` is `clock_res_t`, which `mach/clock_types.h:74` makes a plain **signed** `int`. A negative
+nanosecond value can therefore cancel `tv_sec * 1e9` and produce a genuine zero, which the
+zero-extending form would read as non-zero and arm the data-latency callout on an interval the
+reference treats as unset. Now written against a `tvalspec_t` local so `tv_nsec` keeps its declared
+type, and the rebuilt stream carries `mul ecx` / `mov ebx, eax` / `mov esi, edx` / `mov edx, [nsec]`
+/ `mov eax, edx` / `cdq` / `add` / `adc` at our 52–81, byte-identical to reference 9076–9105.
+
+**This is the third occurrence of one shape, so it is worth stating as a rule rather than a
+defect.** Finding 89 had it in `acquire:`'s heartbeat test and Critical C5 had it in
+`requestEvent:`'s `0x4B`/`0x4F` conversion. Three independent sites is a systematic misreading of
+the `tvalspec` idiom, not three typos. **Whoever next forms a 64-bit value out of a `tvalspec_t` in
+this driver should expect the nanosecond half to be sign-extended and should check for `cdq`.**
+
+### Finding 114 (new) — the nested TX watermark ladder in `enqueueData:`
+
+`enqueueData:` spelled the TX watermark ladder as a nested `if`/`else` testing
+`Count > LowWater` and `Count > HighWater`, which inverts both of the reference's branch senses:
+8676 is `cmp [TX.LowWater], Count` / `jb` and 8727 is `cmp [TX.HighWater], Count` / `jnb`, so the
+reference's first arm is `Count <= LowWater` and its second is `HighWater < Count`. It also carried
+the top two level values as raw `0x1800000` and `0x1000000` and the third as a bare `0`, where
+`TX_STATE_CRITICAL`, `TX_STATE_ABOVE_HIGH` and `TX_STATE_BELOW_HIGH` have existed in the header
+since Finding 17.
+
+Rewritten in `TX_updateState`'s exact form with the constants named. This is the same hazard that
+produced Critical C4 — four spellings of this one algorithm in one file, one of which was wrong —
+and Addendum 10 flattened `_activatePort`'s copy for the same reason. **Where the reference writes
+a block more than once, our copies should be textually identical, so a defect in one is visibly a
+defect in both.** All copies of this ladder now agree.
+
+The same pass found `spaceToEnd` computed as
+`((unsigned int)TX.End - (unsigned int)TX.Input) >> 1`, which emits `shr`. Reference 8554 is
+`D1F8`, `sar eax, 1` — the shift is on the `char *` pointer difference, an `int`. The report pass's
+own entry for 8328 records *"the signed 'sar 1' cell count ... match"*, so **that was recorded as
+matching when it was not**. Now written as the pointer difference and the rebuilt stream carries
+`D1F8` at our 230.
+
+### The `0x210` comment — the effort's number-one pattern, caught in the act
+
+Both `enqueueEvent:` and `enqueueData:` reached the frame callout through a raw cast:
+
+```c
+txTimerPtr = (void **)((char *)self + 0x210);
+// Access timer at offset 0x210 (TX operation timer)
+// This is a field not yet defined in the header - likely txOperationCallout
+thread_call_enter(*txTimerPtr);
+```
+
+There is no such field and there never was. `Port` is embedded at 296 and `FrameTOEntry` is at 232,
+so `296 + 232 = 0x210`, and the reference reads that same word two ways in the same function:
+`[esi+210h]` off `self` at 8175 and 8978, and `[port+0E8h]` off the `Port *` at 8916. This is
+exactly the shape that hid the `MasterClock`/`FlowControl` crossing behind *"UART clock rate (seems
+odd, might be scaled)"* — a speculative hedge sitting on a raw offset. It is worse here in one
+respect: **entry 8088's own `analyzer_agreement` reason had said `FrameTOEntry` since the report
+pass.** The record was right and the code's comment contradicted it, and nothing reconciled the
+two for ten tasks.
+
+No behaviour changed; `mov esi, [esi+210h]` encodes as `8BB610020000` in both streams either way.
+What changed is that the offset is gone.
+
+### The same reasoning, applied to `requestEvent:`'s 22 cases
+
+`requestEvent:` read every field through a cast — `*(unsigned int *)((char *)self + 0x178)` and
+21 more — each annotated with a hand-written field name. Those annotations have been wrong in this
+method before: Addendum 6's I2 found them *systematically RX/TX crossed*, and `1bcc4300` corrected
+them.
+
+Every one was re-checked here against `ISASerialPortInternal.h` with `Port` embedded at 296 **and**
+against the reference instruction that reads it, and all 22 were correct. They were then converted
+to named `self->Port.…` accesses anyway. The codegen is identical — the offsets are the same
+displacements off the same base — and the trade is that 22 hand-checked comments become 22
+compiler-checked field references. Given that wrong comments beside raw offsets have caused six
+real defects in this effort, two of them Criticals, moving a whole method off raw casts removes the
+failure mode rather than re-auditing it.
+
+The check that this was value-preserving is independent of the reading: **the Port-relative
+field-access multiset over the rebuilt body is identical to the reference's** — 21 distinct
+offsets, same counts on each. `dequeueData:` is identical on the same measure, 5 offsets.
+
+### An observation recorded rather than acted on: `self->Port` versus `self->port`
+
+The reference reaches queue state through the `port` ivar and ours reaches it through the embedded
+struct. In `enqueueData:` this is the single largest remaining difference, and it is measurable:
+`[self+258h]` is loaded **nine** times in the reference and twice in ours, while each of our field
+accesses pays a 4-byte displacement off `self` where the reference pays a 1-byte displacement off
+`port`. Over roughly thirty accesses the two effects very nearly cancel, which is consistent with
+the measured +48.
+
+**Deliberately not changed.** Converting this one method would leave it disagreeing with the
+twenty-odd other TX ring sites in the file, which is precisely the two-spellings hazard Finding 114
+above exists to close; and the only gain would be codegen shape, which is size-chasing. Recorded
+with the numbers so a future pass that wants to unify all of them can, in one pass that does
+nothing else.
+
+### Every recorded finding touching these five, and its disposition
+
+| finding | verdict | evidence re-derived | disposition |
+|---|---|---|---|
+| **31** dispatch masked to the low byte | **real** | 7352 `mov ebx, [ebp+arg_8]`, then `cmp ebx, 3Bh`, `cmp ebx, 0EDh` — no `and`, no `movzx` in 7340–7672 | **fixed** — `switch (event)`; Finding 31's last open half, so 31 is now closed |
+| **11** `FlowControl` reached by `memcpy` type-pun | **real** | 8941 `859FE0000000` tests `[port+0E0h]` in place | **fixed** — same site as Finding 111 |
+| **111** the `eventMask` staging local | **real** | as Addendum 10 recorded | **fixed** — the last in-scope site |
+| **61** `oldState` where the reference reads `newState` | **real** | 8865 / 8875 test `esi` = `newState`; 8949 `movzx eax, si` | **fixed** — value-equivalent, but `newState` is what the reference reads; 61 now closed at both its sites |
+| **17** two TX level values, one unnamed | already closed; last raw-hex site | 8701 `6000000h`, 8714 `2000000h`, 8758 `1800000h`, 8774 `1000000h`, 8796 `xor edx, edx` | **constants named** |
+| **90** wrong callout, and `minCount` | callout real and closed in `1bcc4300`; **`minCount` half already correct** | 9216–9226, 9272–9278; nothing compares `*count` to `minCount` | **closed entirely** |
+| **92** the near-matches, incl. the `Port *` arguments | **real, already closed** | `[self+258h]` passed at 8145, 8268, 9231 | untouched, re-verified |
+| **95** the `0x4B`/`0x4F` formula | **real, closed in Task 8** | 7742 `mul 3B9ACA00h`, 7761 `cdq`, 7774 `add`/`adc`, 7797 `__udivdi3` by 1000 | **verified correct, not assumed** |
+| §6 Apple bug: `0x27` computes `RX.Size − TX.Count` | **real, reproduced** | 7932 `[ecx+140h]`, 7938 `sub … [ecx+17Ch]` — the RX twin of `0x23` at 7912/7918 with one substitution missed | reproduced and commented at the site |
+
+### Measured after this commit
+
+The build was run **after** the last source edit, on a guest with the stale `_reloc` deleted first
+and `stale=0` confirmed, so these describe the object this commit produces. Getting this order
+wrong is what made Addendum 7's headline numbers stale by 8 bytes.
+
+| metric | before Task 10b | after Task 10b |
+|---|---|---|
+| `make` | exit 0, 0 errors | **exit 0, 0 errors** |
+| build warnings | 5 | **5** (identical set, none new) |
+| external-undefined imports | 27, 0 ours-only, 0 reference-only | **27, 0 ours-only, 0 reference-only** |
+| sections matching | 28/30 | 28/30 |
+| byte-identical sections | 13 | 13 |
+| `missing_strings` / `missing_symbols` / `extra_strings` | 0 / 0 / 0 | 0 / 0 / 0 |
+| `__TEXT,__text` | 23260 | **23272** |
+| gap to reference 24412 | −1152 | **−1140** |
+
+−1140 is the narrowest the gap has been, and for the fourth pass running it closed on work whose
+purpose was correctness. `__TEXT,__const` remains absent — the permanent understood absence.
+
+Per Addendum 9's rule, each of the five warnings was re-checked against the reference's import list
+rather than assumed benign: the three implicit declarations are all `thread_wakeup_prim`, which is
+one of Apple's 27, so they are missing prototypes only. **No new warning appeared**, and in
+particular no new implicit declaration.
+
+### Per-function extents
+
+Measured with capstone over the rebuilt `__text` by parsing the Mach-O nlist and **excluding
+`N_STAB` entries by `n_type`** — 45 non-stab `__text` symbols, matching the reference's 45.
+
+| function | reference | before | after | delta before | delta after |
+|---|---|---|---|---|---|
+| `-[ISASerialPort requestEvent:data:]` | 746 | 780 | 780 | +34 | +34 |
+| `-[ISASerialPort enqueueEvent:data:sleep:]` | 120 | 120 | 120 | **0** | **0** |
+| `-[ISASerialPort dequeueEvent:data:sleep:]` | 117 | 120 | 120 | +3 | +3 |
+| `-[ISASerialPort enqueueData:…sleep:]` | 696 | 740 | **744** | +44 | **+48** |
+| `-[ISASerialPort dequeueData:…minCount:]` | 383 | 364 | **372** | −19 | **−11** |
+| **the five** | 2062 | 2124 | **2136** | **+62** | **+74** |
+
+**Every byte of the movement is inside the five.** The other 40 extents are byte-for-byte
+unchanged, and the five sum to exactly +12, which is the whole of 23272 − 23260.
+
+`requestEvent:`'s extent did not move even though the `and` on the dispatch argument is gone: the
+saving was absorbed by interior alignment padding, of which our body carries seven bytes across
+three sites. `dequeueData:` moved 8 bytes **toward** the reference. `enqueueData:` moved 4 further
+out, which is the expected sign — naming the level constants and flattening the ladder is
+size-neutral, and the in-place `FlowControl` test saves a store while `sar` on a pointer difference
+and the `newState` reads cost nothing, so the movement is gcc's block placement responding to a
+restructured ladder. Size was not the objective and was not chased.
+
+**The accounting closes both ways, exactly.** The 45 per-function deltas over IDA extents sum to
+**−1087**, and 24359 − 23272 = 1087 to the byte. Subtracting the 53 bytes of reference
+inter-function padding IDA does not count (24412 − 24359) gives **−1140**, the measured `__text`
+gap. No residual.
+
+### Corroboration from the rebuilt stream
+
+Beyond the two exact diffs above, the three remaining bodies were diffed against the reference
+instruction sequence and every difference accounted for. None is a missing or extra operation.
+
+- `dequeueData:` — **118 instructions against 121.** The prologue is byte-identical from the
+  `mov ecx, 3B9ACA00h` through the `test`/`test` pair (our 52–90 against 9076–9114), as is the
+  whole tail from the `thread_call_enter_delayed` argument setup to the `ret` (our 282–370 against
+  9318–9406), including `dec edi` / `cmp edi, -1` / `jnz`. The three-instruction difference is that
+  ours keeps `size` in `edi` where the reference reloads `[ebp+0x14]` twice before the `minCount`
+  compare, and that gcc branched the `0xFFFFFD42`-to-success conversion where the reference
+  materialised it with `xor ecx, ecx` / `cmp` / `jz` / `mov ecx, ebx` / `mov ebx, ecx`. Our frame
+  is one 4-byte slot smaller, `sub esp, 0x28` against `0x2C`.
+- `enqueueData:` — **196 instructions against 213.** `sar eax, 1` at our 230 matches 8554's `D1F8`;
+  `test esi, 2` and `test esi, 4` at our 589 and 599 match 8865 and 8875 byte for byte;
+  `movzx eax, si` at our 665 matches 8949's `0FB7C6`; `test [ebx+0x208], edx` at our 657 is 8941's
+  in-place `FlowControl` test; `dec edx` / `cmp edx, -1` / `jnz` at our 294–298 is 8624–8628. The
+  residual is the `self->Port`-versus-`self->port` addressing described above (nine `[self+258h]`
+  loads against two), `add eax, 0x10` versus `lea` for `&WatchStateMask`, one re-read of `State`
+  the reference makes and ours does not, and gcc's placement of the two early-exit blocks plus one
+  `lea` hoisted into a spill slot.
+- `requestEvent:` — **187 instructions against 182**, differing only in prologue register
+  allocation and the placement of the shared zero-return epilogue. The dispatch tree itself is the
+  same binary search over the same 22 values in the same order, and the field-access multiset is
+  identical.
+
+### Ledger
+
+`entries=45`. `unexamined` **5 → 0**. `control-flow-confirmed` 36 → **39**, `assembly-matched`
+0 → **2**, `signature-confirmed` 2, `intentional-mismatch` 2. Every advance stepped through each
+intermediate state, because skipping is forbidden.
+
+Three of the five stop at `control-flow-confirmed` and say why in their own reason: a
+rebuilt-versus-reference diff *was* performed on all three, and all three differ.
+`control-flow-confirmed` is the correct status for a body whose reference stream has been read in
+full and whose rebuilt stream has been diffed and found merely equivalent. Only the two that came
+out byte-identical claim `assembly-matched`.
+
+**The two entries still at `signature-confirmed` are `_flowMachine` @23400 and `_watchState`
+@23584.** They are not in this task's scope, they were `signature-confirmed` before it, and they are
+the only two bodies in the driver whose instruction streams have never been read in full. They are
+now the whole of the remaining depth gap.
+
+### Still open, and owned by nobody
+
+`-[ISASerialPort executeEvent:data:]` @6472 carries **two open items**, is
+`control-flow-confirmed` from Task 6b, and has had no owner since Task 9 flagged it:
+
+- **Finding 109** — it calls `RX_enqueueLongEvent` twice, at `:3764` and `:3810`, where reference
+  7308 calls it once, because its `0x53` arm and its `default` arm carry two structurally identical
+  tails instead of converging on a shared one.
+- **Finding 111, two sites** — the `memcpy(&eventMask, &self->Port.FlowControl, …)` staging idiom,
+  the last two copies in the driver now that this pass removed the third.
+
+Nothing 10b read changes the diagnosis of either, and reading `enqueueData:`'s tail in full
+corroborates Finding 109's shape: the reference's state-change tail is one block ending in a single
+`RX_enqueueLongEvent`, and `enqueueData:` reaches it from one place. Recorded here so it does not
+fall through the gap now that every other body in the driver has been read.
+
+`__TEXT,__const` remains a permanent understood absence. And **the driver has still never been
+run** — everything above is static verification against the binary, not evidence that it
+enumerates, opens or passes traffic on real or emulated hardware.
+
+### Re-lining
+
+By Addendum 9's method, unchanged, and done **last**, after every source edit: re-lined once
+through a `difflib` opcode alignment of the `HEAD` version of each source file against the final
+working-tree version, mapping each entry through the `equal` runs and **asserting that the
+destination line's text is byte-identical to the source line's**, refusing to move any entry whose
+line text changed. The script also asserts, for every entry, that its `(source_path, source_line)`
+still equals `HEAD`'s before mapping it — which additionally proves this pass's status and reason
+edits did not disturb a line number.
+
+The thirteen `source_line` values that point at a doc-comment line rather than a definition line are
+**preserved exactly**, as Addenda 9 and 10 recorded them. Five of the thirteen belong to this task's
+five, and re-lining is only verifiable if it reproduces the previous target, so they were not
+"improved" here either. That leaves the thirteen as the one piece of tidying this effort has
+consistently declined; fix all of them in a pass that does nothing else, or leave them.
+
+### Gates
+
+Both run after the reline, on the committed state.
+
+```
+source map OK: mapped 43 unmapped 2 duplicate 0 disputed 0
+ledger … entries=45 assembly-matched=2 control-flow-confirmed=39 intentional-mismatch=2 signature-confirmed=2
+```
+
+- `load_source_map(...)` prints `source map OK`; the partition is **unchanged at 43 mapped /
+  2 unmapped**, 0 duplicate candidates, 0 boundary disputed. **No function entered or left the
+  mapped set.**
+- `binrecon ledger` validates with **45 entries**, and `unexamined` no longer appears in the
+  summary because the count is zero.
+- All touched files LF-only per `git ls-files --eol`; the two records are `i/lf w/lf`.
+- `ledger.json.lock` is recreated by every `binrecon ledger` run and stays untracked.

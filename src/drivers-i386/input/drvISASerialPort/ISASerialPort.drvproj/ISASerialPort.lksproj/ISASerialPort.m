@@ -3244,11 +3244,19 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
  * Dequeue data from the serial port.
  * Reads data bytes from the RX queue with optional character timeout support.
  *
+ * minCount is a sleep budget, not a floor.  It is counted down one byte at a
+ * time and its only use is as RX_dequeueData's third argument, so the first
+ * minCount bytes block until they arrive and every byte after that is taken
+ * only if it is already queued.  Reference 9216-9226 is
+ * cmp [remainingMin], 0 / setnz al / movzx edx, al / push edx, and 9272-9278
+ * decrements it inside the success path.  Nothing ever compares *count against
+ * minCount, so a short read is not an error (Finding 90's second half).
+ *
  * Parameters:
  *   buffer - Destination buffer for received data
  *   size - Size of buffer (maximum bytes to read)
  *   count - Output: number of bytes actually read
- *   minCount - Minimum bytes to read before returning (used for sleeping)
+ *   minCount - How many bytes may be waited for; see above
  *
  * Returns:
  *   IO_R_SUCCESS (0) on success
@@ -3266,28 +3274,37 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned char *writePtr;
     unsigned int remainingMin;
     int timerScheduled;
-    unsigned int charTimeLo, charTimeHi;
+    tvalspec_t charTime;
+
+    // The interval is read and the timer decision taken BEFORE the parameters
+    // are checked: 9051-9066 load [self+228h]/[self+22Ch] and 9076-9122 do the
+    // whole 64-bit test, all ahead of the first cmp at 9131.
+    writePtr = buffer;
+    remainingMin = minCount;
+    charTime = self->Port.DataLatInterval;   // 0x228 tv_sec, 0x22c tv_nsec
+
+    // Arm the data-latency timer only if the interval is non-zero and there is
+    // more than one byte of room.  tv_nsec is clock_res_t, a SIGNED int, and the
+    // reference sign-extends it with cdq at 9095 before the 64-bit add - so a
+    // negative tv_nsec can cancel tv_sec * 1e9 and produce a zero that a
+    // field-wise or zero-extending test would call non-zero.  Same shape as
+    // Finding 89 in acquire: and Critical C5 in requestEvent:.
+    timerScheduled = 0;
+    if (((unsigned long long)charTime.tv_sec * 1000000000ULL
+         + (long long)charTime.tv_nsec) != 0 && size > 1) {
+        timerScheduled = 1;
+    }
 
     // Validate parameters
     if (count == NULL || buffer == NULL || size < minCount) {
         return 0xFFFFFD3E; // Invalid argument
     }
 
-    // Port.DataLatInterval: 0x228 is tv_sec, 0x22c is tv_nsec
-    charTimeLo = self->Port.DataLatInterval.tv_sec;
-    charTimeHi = self->Port.DataLatInterval.tv_nsec;
-
-    // Determine if we should schedule a timeout timer
-    // Timer is scheduled if character time is set and buffer size > 1
-    timerScheduled = 0;
-    if (((unsigned long long)charTimeLo * 1000000000ULL + (long long)charTimeHi) != 0 && size > 1) {
-        timerScheduled = 1;
-    }
-
     // Raise interrupt level
     oldIRQL = spl4();
 
-    // Check if port is active (statusFlags at offset 0x137 & 0x40)
+    // Not acquired?  Port.State bit 30, tested as byte ptr [eax+137h] & 0x40
+    // at 9174 - State's top byte, not a separate flags field.
     if ((self->Port.State & 0x40000000) == 0) {
         splx(oldIRQL);
         return 0xFFFFFD33; // Port not active
@@ -3295,14 +3312,12 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
     // Initialize output count
     *count = 0;
-    writePtr = buffer;
-    remainingMin = minCount;
     result = IO_R_SUCCESS;
 
-    // Dequeue bytes until buffer is full or error
-    while (size > 0) {
-        size--;
-
+    // Dequeue bytes until the buffer is full or the queue runs dry.  9349-9353
+    // is dec edi / cmp edi, -1 / jnz, entered from the jmp at 9209, so the test
+    // is on the pre-decrement value and the loop body sees size already down.
+    while (size-- != 0) {
         // Dequeue one byte from RX queue
         result = RX_dequeueData(self->port, writePtr, (remainingMin != 0));
 
@@ -3330,18 +3345,19 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         // initFromDeviceDescription: bound to dataLatTOHandler.  Arming
         // DelayTOEntry here would run delayTOHandler instead - clearing State
         // bit 0x1000 and driving the interrupt handler - and would clobber any
-        // delay timer event 0x4B had set (Finding 90).
+        // delay timer event 0x4B had set (Finding 90).  Both sites reach it
+        // through the port ivar, [self+258h] then [port+0ECh], not through the
+        // embedded struct; and the interval pushed is the staged copy, 9295-9298.
         if (timerScheduled > 0) {
-            thread_call_enter_delayed(
-                self->Port.DataLatTOEntry,
-                deadline_from_interval(self->Port.DataLatInterval));
+            thread_call_enter_delayed(self->port->DataLatTOEntry,
+                                      deadline_from_interval(charTime));
             timerScheduled = -1;  // Mark as scheduled
         }
     }
 
     // Cancel the data-latency timer if it was armed
     if (timerScheduled < 0) {
-        thread_call_cancel(self->Port.DataLatTOEntry);
+        thread_call_cancel(self->port->DataLatTOEntry);
     }
 
     splx(oldIRQL);
@@ -3379,7 +3395,8 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     // Raise interrupt level
     oldIRQL = spl4();
 
-    // Check if port is active (statusFlags at offset 0x137 & 0x40)
+    // Not acquired?  Port.State bit 30, tested as byte ptr [edx+137h] & 0x40
+    // at 8250 - State's top byte, not a separate flags field.
     if ((self->Port.State & 0x40000000) == 0) {
         splx(oldIRQL);
         return 0xFFFFFD33; // Port not active
@@ -3388,7 +3405,7 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     // Dequeue event from RX queue
     result = RX_dequeueEvent(self->port, &eventType, data, sleep);
 
-    // Convert event type from byte to unsigned int
+    // Convert event type from byte to unsigned int; 8282 movzx from var_1
     *event = (unsigned int)eventType;
 
     splx(oldIRQL);
@@ -3423,27 +3440,25 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
     unsigned int freeSpace;
     unsigned int chunkSize;
     unsigned int spaceToEnd;
-    unsigned int i;
     unsigned long checkMask;
     IOReturn result;
     unsigned int txState;
     unsigned int oldState, newState, changedBits;
     unsigned char mcrValue;
-    unsigned int eventMask;
-    void **txTimerPtr;
 
     // Validate parameters
     if (count == NULL || buffer == NULL) {
         return 0xFFFFFD3E; // Invalid argument
     }
 
-    // Initialize output count
+    // Initialize output count.  8379 does this before the spl4 at 8385.
     *count = 0;
 
     // Raise interrupt level
     oldIRQL = spl4();
 
-    // Check if port is active (statusFlags at offset 0x137 & 0x40)
+    // Not acquired?  Port.State bit 30, tested as byte ptr [ebx+137h] & 0x40
+    // at 8396 - State's top byte, not a separate flags field.
     if ((self->Port.State & 0x40000000) == 0) {
         splx(oldIRQL);
         return 0xFFFFFD33; // Port not active
@@ -3486,9 +3501,11 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             chunkSize = freeSpace;
         }
 
-        // Limit by distance to end of circular buffer
-        // Each entry is 2 bytes, so divide by 2
-        spaceToEnd = ((unsigned int)self->Port.TX.End - (unsigned int)self->Port.TX.Input) >> 1;
+        // Limit by distance to end of circular buffer.  Each cell is 2 bytes, so
+        // the byte distance is halved - and the shift is on the char * pointer
+        // difference, an int, which is why 8554 is `sar eax, 1` and not `shr`.
+        // The comparison that follows is unsigned, 8556 cmp / 8558 jbe.
+        spaceToEnd = (self->Port.TX.End - self->Port.TX.Input) >> 1;
         if (spaceToEnd < chunkSize) {
             chunkSize = spaceToEnd;
         }
@@ -3498,8 +3515,10 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         self->Port.TX.Count += chunkSize;
         *count += chunkSize;
 
-        // Enqueue bytes in TX queue format (0x55 marker + data byte)
-        for (i = 0; i < chunkSize; i++) {
+        // Enqueue bytes in TX queue format (0x55 marker + data byte).  8624-8628
+        // is dec ecx / cmp ecx, -1 / jnz, the loop counting down chunkSize itself
+        // with no separate index, entered at the test.
+        while (chunkSize-- != 0) {
             // Write marker byte (0x55 = 'U')
             *(unsigned char *)self->Port.TX.Input = 0x55;
             self->Port.TX.Input = (char *)self->Port.TX.Input + 1;
@@ -3515,41 +3534,41 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             self->Port.TX.Input = self->Port.TX.Base;
         }
 
-        // Update TX state based on watermark levels
+        // Report a level crossing only once the queue has reached the level the
+        // last report armed.  8665 cmp [TX.Enqueue], Count / ja skips the whole
+        // block, so it runs on Enqueue <= Count.
         if (self->Port.TX.Count >= self->Port.TX.Enqueue) {
-            // Used >= highWater
-            if (self->Port.TX.Count > self->Port.TX.LowWater) {
-                // Used > medWater
-                if (self->Port.TX.Count > self->Port.TX.HighWater) {
-                    // Used > lowWater (critical/above high)
-                    self->Port.TX.Enqueue = self->Port.TX.Size - 3;
-                    if (self->Port.TX.Count > (self->Port.TX.Size - 3)) {
-                        // Critical level
-                        self->Port.TX.Dequeue = self->Port.TX.Size;
-                        txState = 0x1800000;
-                    } else {
-                        // Above high watermark
-                        self->Port.TX.Dequeue = self->Port.TX.HighWater;
-                        txState = 0x1000000;
-                    }
-                } else {
-                    // medWater < used <= lowWater
-                    self->Port.TX.Enqueue = self->Port.TX.HighWater;
-                    self->Port.TX.Dequeue = self->Port.TX.LowWater;
-                    txState = 0;
-                }
-            } else {
-                // Used <= medWater
+            // The same ladder TX_updateState spells out, written the same way -
+            // flat, Count <= LowWater first, and with the level constants named.
+            // 8676 cmp [TX.LowWater], Count / jb and 8727 cmp [TX.HighWater],
+            // Count / jnb are the reference's two tests in that order; the
+            // nested spelling this used to carry inverted both of them.
+            if (self->Port.TX.Count <= self->Port.TX.LowWater) {
                 self->Port.TX.Dequeue = 0;
+
                 if (self->Port.TX.Count == 0) {
-                    // Empty
                     self->Port.TX.Enqueue = 0;
-                    txState = TX_STATE_EMPTY;
+                    txState = TX_STATE_EMPTY;         // 8701
                 } else {
-                    // Below medium watermark
                     self->Port.TX.Enqueue = self->Port.TX.LowWater;
-                    txState = TX_STATE_BELOW_MED;
+                    txState = TX_STATE_BELOW_MED;     // 8714
                 }
+
+            } else if (self->Port.TX.HighWater < self->Port.TX.Count) {
+                self->Port.TX.Enqueue = self->Port.TX.Size - 3;
+
+                if (self->Port.TX.Count > self->Port.TX.Size - 3) {
+                    self->Port.TX.Dequeue = self->Port.TX.Size;
+                    txState = TX_STATE_CRITICAL;      // 8758
+                } else {
+                    self->Port.TX.Dequeue = self->Port.TX.HighWater;
+                    txState = TX_STATE_ABOVE_HIGH;    // 8774
+                }
+
+            } else {
+                self->Port.TX.Enqueue = self->Port.TX.HighWater;
+                self->Port.TX.Dequeue = self->Port.TX.LowWater;
+                txState = TX_STATE_BELOW_HIGH;        // 8796 xor edx, edx
             }
 
             // Update current state with new TX state
@@ -3558,22 +3577,26 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             changedBits = oldState ^ newState;
             self->Port.State = newState;
 
-            // Wake up threads waiting on state changes
+            // Wake up threads waiting on state changes.  8833 tests
+            // [port+10h] against changedBits in place, one instruction.
             if (self->Port.WatchStateMask & changedBits) {
                 thread_wakeup_prim(&self->Port.WatchStateMask, 0, 4);
             }
 
-            // Update DTR/RTS if they changed
+            // Rebuild the MCR if DTR or RTS moved.  8865 and 8875 test esi,
+            // which holds newState, not the saved oldState.  The two agree
+            // here - the 0xF87FFFFF mask keeps bits 0x02 and 0x04 and txState
+            // cannot set them - but newState is what the reference reads.
             if (changedBits & STATE_FLOW_MASK) {
                 mcrValue = MCR_OUT2;
-                if (oldState & STATE_DTR) {
+                if (newState & STATE_DTR) {
                     mcrValue |= MCR_DTR;
                 }
-                if (oldState & STATE_RTS) {
+                if (newState & STATE_RTS) {
                     mcrValue |= MCR_RTS;
                 }
                 outb(self->Port.Base + UART_MCR, mcrValue);
-                // Atomic increment (LOCK/UNLOCK omitted)
+                // outb emits the lock incl at 8900 by itself
             }
 
             // Trigger timer callout
@@ -3581,18 +3604,23 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
                 thread_call_enter(self->Port.FrameTOEntry);
             }
 
-            // Enqueue state change event
-            memcpy(&eventMask, &self->Port.FlowControl, sizeof(unsigned int));
-            if (eventMask & (changedBits << 16)) {
+            // Enqueue state change event.  8941 tests [port+0E0h] =
+            // Port.FlowControl in place against the shifted changedBits; the
+            // memcpy into a staging local that stood here was a decompilation
+            // artifact and cost a frame slot (Finding 111).  8949 movzx eax, si
+            // takes the low half of newState, again not oldState - the two are
+            // equal because changedBits is confined to 0x07800000.
+            if (self->Port.FlowControl & (changedBits << 16)) {
                 RX_enqueueLongEvent(self->port, EVENT_STATE_CHANGE,
-                                    (oldState & 0xFFFF) | (changedBits << 16));
+                                    (newState & 0xFFFF) | (changedBits << 16));
             }
         }
 
-        // Trigger TX operation timer if not paused
+        // Kick the frame callout if not paused.  8978 reads [edi+210h] off self
+        // where 8916 above reads the same word as [port+0E8h]: both are
+        // Port.FrameTOEntry, 296 + 232 = 0x210.
         if ((self->Port.State & 0x10000000) == 0) {
-            txTimerPtr = (void **)((char *)self + 0x210);
-            thread_call_enter(*txTimerPtr);
+            thread_call_enter(self->Port.FrameTOEntry);
         }
     }
 
@@ -3620,27 +3648,30 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 {
     unsigned int oldIRQL;
     IOReturn result;
-    void **txTimerPtr;
 
-    // Raise interrupt level
+    // Raise interrupt level.  There is no parameter validation here: the
+    // reference's first instruction after the prologue is the spl4 call at 8100.
     oldIRQL = spl4();
 
-    // Check if port is active (statusFlags at offset 0x137 & 0x40)
+    // Not acquired?  Port.State bit 30.  8107 tests byte ptr [esi+137h] with
+    // 0x40, which is State's top byte, not a separate flags field.
     if ((self->Port.State & 0x40000000) == 0) {
         splx(oldIRQL);
         return 0xFFFFFD33; // Port not active
     }
 
     // Enqueue event to TX queue
-    // Extract event type (low byte) and pass data
+    // Extract event type (low byte) and pass data.  8140 is movzx from a byte,
+    // so the event really is narrowed here even though requestEvent: does not.
     result = TX_enqueueEvent(self->port, (unsigned char)(event & 0xFF), data, sleep);
 
-    // If successful and port not paused, trigger TX timer
+    // If successful and port not paused, kick the frame callout
     if (result == IO_R_SUCCESS && (self->Port.State & 0x10000000) == 0) {
-        // Access timer at offset 0x210 (TX operation timer)
-        // This is a field not yet defined in the header - likely txOperationCallout
-        txTimerPtr = (void **)((char *)self + 0x210);
-        thread_call_enter(*txTimerPtr);
+        // self+0x210 is Port.FrameTOEntry: Port is embedded at 296 and
+        // FrameTOEntry is at 232, so 296 + 232 = 0x210.  8175 reads [esi+210h]
+        // and 8916, in enqueueData:, reads the same word as [port+0E8h].  It is
+        // not a separate TX callout - there is no such field.
+        thread_call_enter(self->Port.FrameTOEntry);
     }
 
     splx(oldIRQL);
@@ -3845,8 +3876,19 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
  * Request an event.
  * Queries information about the port based on the event type.
  *
+ * The switch is on the whole 32-bit argument, not on its low byte.  Reference
+ * 7352 loads the argument into ebx and every comparison in the dispatch tree is
+ * a full-width `cmp ebx, imm32`; there is no `and`, no `movzx` and no byte
+ * compare anywhere in 7340-7672.  So requestEvent:0x105 is an unknown event
+ * here, where masking would have made it event 0x05.
+ *
+ * Every field this reads is named rather than reached through a cast offset,
+ * because two earlier passes recorded RX/TX-crossed comments beside these very
+ * offsets.  Each name was checked against ISASerialPortInternal.h with Port
+ * embedded at 296 and against the reference instruction cited beside it.
+ *
  * Parameters:
- *   event - Event type to query (low byte contains event code)
+ *   event - Event type to query
  *   data - Output: data value for the query
  *
  * Returns:
@@ -3864,67 +3906,68 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
         return 0xFFFFFD3E;
     }
 
-    // Handle different query types based on event low byte
-    switch (event & 0xFF) {
-        case 0x05: // Port.State bit 30 (0x40000000), the port-active flag
-            *data = (*(unsigned int *)((char *)self + 0x134) >> 30) & 1;
+    // Handle different query types
+    switch (event) {
+        case 0x05: // Port.State bit 30 (0x40000000), the port-active flag; 7672
+            *data = (self->Port.State >> 30) & 1;
             return 0;
 
-        case 0x0B: // Port.TX.Size (0x178)
-            *data = *(unsigned int *)((char *)self + 0x178);
+        case 0x0B: // Port.TX.Size (self+0x178); 7816
+            *data = self->Port.TX.Size;
             return 0;
 
-        case 0x0F: // Port.RX.Size (0x140)
-            *data = *(unsigned int *)((char *)self + 0x140);
+        case 0x0F: // Port.RX.Size (self+0x140); 7832
+            *data = self->Port.RX.Size;
             return 0;
 
-        case 0x13: // Port.TX.LowWater (0x184)
-            *data = *(unsigned int *)((char *)self + 0x184);
+        case 0x13: // Port.TX.LowWater (self+0x184); 7848
+            *data = self->Port.TX.LowWater;
             return 0;
 
-        case 0x17: // Port.RX.LowWater (0x14c)
-            *data = *(unsigned int *)((char *)self + 0x14c);
+        case 0x17: // Port.RX.LowWater (self+0x14c); 7864
+            *data = self->Port.RX.LowWater;
             return 0;
 
-        case 0x1B: // Port.TX.HighWater (0x180)
-            *data = *(unsigned int *)((char *)self + 0x180);
+        case 0x1B: // Port.TX.HighWater (self+0x180); 7880
+            *data = self->Port.TX.HighWater;
             return 0;
 
-        case 0x1F: // Port.RX.HighWater (0x148)
-            *data = *(unsigned int *)((char *)self + 0x148);
+        case 0x1F: // Port.RX.HighWater (self+0x148); 7896
+            *data = self->Port.RX.HighWater;
             return 0;
 
-        case 0x23: // Port.TX.Size - Port.TX.Count, the free space in TX
-            *data = *(int *)((char *)self + 0x178) - *(int *)((char *)self + 0x17c);
+        case 0x23: // Port.TX.Size - Port.TX.Count, the free space in TX; 7912-7918
+            *data = self->Port.TX.Size - self->Port.TX.Count;
             return 0;
 
         case 0x27: // Port.RX.Size - Port.TX.Count.  The reference really does
-                   // mix the two queues here (7932-7938); reproduced.
-            *data = *(int *)((char *)self + 0x140) - *(int *)((char *)self + 0x17c);
+                   // mix the two queues here (7932-7938) - the RX twin of 0x23
+                   // with one substitution missed; reproduced, not fixed.
+            *data = self->Port.RX.Size - self->Port.TX.Count;
             return 0;
 
-        case 0x33: // Port.BaudRate (0x1d0)
-            *data = *(unsigned int *)((char *)self + 0x1d0);
+        case 0x33: // Port.BaudRate (self+0x1d0); 7948
+            *data = self->Port.BaudRate;
             return 0;
 
-        case 0x37: // Always returns 0
+        case 0x37: // Always returns 0; 8008
             *data = 0;
             return 0;
 
-        case 0x3B: // Port.CharLength (0x1bc)
-            *data = *(unsigned int *)((char *)self + 0x1bc);
+        case 0x3B: // Port.CharLength (self+0x1bc); 7960
+            *data = self->Port.CharLength;
             return 0;
 
-        case 0x3F: // Always returns 0
+        case 0x3F: // Always returns 0, sharing 0x37's arm; 8008
             *data = 0;
             return 0;
 
-        case 0x43: // Port.TX_Parity (0x1c4)
-            *data = *(unsigned int *)((char *)self + 0x1c4);
+        case 0x43: // Port.TX_Parity (self+0x1c4); 7972
+            *data = self->Port.TX_Parity;
             return 0;
 
-        case 0x47: // Port.RX_Parity (0x1c8)
-            *data = *(unsigned int *)((char *)self + 0x1c8);
+        case 0x47: // Port.RX_Parity (self+0x1c8); 7984
+            *data = self->Port.RX_Parity;
             return 0;
 
         // The two interval queries are the inverse of what events 0x4B and 0x4F
@@ -3947,32 +3990,33 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
             *data = result;
             return 0;
 
-        case 0x53: // Port.FlowControl (0x208)
-            *data = *(unsigned int *)((char *)self + 0x208);
+        case 0x53: // Port.FlowControl (self+0x208); 7688
+            *data = self->Port.FlowControl;
             return 0;
 
-        case 0xE5: // Port.MinLatency (0x1e0), reported as 0 or 1
-            *data = (unsigned int)(*(char *)((char *)self + 0x1e0) != 0);
+        case 0xE5: // Port.MinLatency (self+0x1e0), reported as 0 or 1; 8056-8066
+            *data = (unsigned int)(self->Port.MinLatency != 0);
             return 0;
 
-        case 0xE9: // Port.XOFFchar (0x1e6)
-            *data = (unsigned int)*(unsigned char *)((char *)self + 0x1e6);
+        case 0xE9: // Port.XOFFchar (self+0x1e6); 8028
+            *data = (unsigned int)self->Port.XOFFchar;
             return 0;
 
-        case 0xED: // Port.XONchar (0x1e5)
-            *data = (unsigned int)*(unsigned char *)((char *)self + 0x1e5);
+        case 0xED: // Port.XONchar (self+0x1e5); 8016
+            *data = (unsigned int)self->Port.XONchar;
             return 0;
 
-        case 0xF3: // Port.StopBits (0x1c0)
-            *data = *(unsigned int *)((char *)self + 0x1c0);
+        case 0xF3: // Port.StopBits (self+0x1c0); 7996
+            *data = self->Port.StopBits;
             return 0;
 
-        case 0xF7: // Always returns 0
+        case 0xF7: // Always returns 0, sharing 0x37's arm; 8008
             *data = 0;
             return 0;
 
-        case 0xF9: // Port.State bit 11 (0x800), the break flag event 0xF9 sets
-            *data = (*(unsigned int *)((char *)self + 0x134) >> 11) & 1;
+        case 0xF9: // Port.State bit 11 (0x800), the break flag event 0xF9 sets;
+                   // 8040-8049
+            *data = (self->Port.State >> 11) & 1;
             return 0;
 
         default:

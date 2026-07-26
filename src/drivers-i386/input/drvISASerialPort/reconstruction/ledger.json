@@ -131,7 +131,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 63,
-      "source_line": 4210,
+      "source_line": 4254,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -158,7 +158,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 172,
-      "source_line": 4168,
+      "source_line": 4212,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -285,7 +285,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 267,
-      "source_line": 4038,
+      "source_line": 4082,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -312,7 +312,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 4020,
+      "source_line": 4064,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -337,7 +337,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 100,
-      "source_line": 4126,
+      "source_line": 4170,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -362,7 +362,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 70,
-      "source_line": 3988,
+      "source_line": 4032,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -389,7 +389,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 866,
-      "source_line": 3661,
+      "source_line": 3692,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -402,6 +402,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "Task 10b read all 182 reference instructions of 7340-8085 and diffed the rebuilt stream against them. Two divergences closed. The switch was on event & 0xFF where the reference loads the whole 32-bit argument at 7352 and every dispatch compare is cmp ebx, imm32 with no and and no movzx, so requestEvent:0x105 aliased to event 0x05 instead of returning IO_R_INVALID_ARG - Finding 31's last open half, now closed and confirmed gone from the rebuilt stream, which now reads mov ecx, [ebp+0x10] / cmp ecx, 0x3b. All 22 cases were then moved off raw (char *)self offset casts onto named Port fields after checking every offset against ISASerialPortInternal.h with Port embedded at 296 and against the reference instruction that reads it. The Port-relative field-access multiset over the rebuilt body is IDENTICAL to the reference's, 21 distinct offsets with the same counts. The 0x4B and 0x4F arithmetic was re-derived and is correct as Task 8 left it: unsigned mul by 3B9ACA00h on tv_sec, cdq on tv_nsec, add/adc, __udivdi3 by 1000, reference 7742-7797. Apple's 0x27 bug is reproduced and commented. Not assembly-matched: ours is 187 instructions against 182, differing in prologue register allocation and gcc's placement of the shared epilogue",
           "Task 8 corrected the 0x4B and 0x4F interval arithmetic, which read the tvalspec as one little-endian 64-bit word instead of scaling tv_sec and sign-extending tv_nsec separately as the reference does at 7704-7808, and un-crossed every RX/TX label in the switch. The rest of the body has not been read, so the status does not advance",
           "report pass: diverges, but this is the second-closest match in TU 1. Every one of the 24 event cases' field offsets and expressions matches, including Apple's own 0x27 bug (RX.Size - TX.Count, reference 7932, reproduced at ISASerialPort.m:5030). Two divergences: ours switches on event & 0xFF where the reference compares the unmasked 32-bit value, and cases 0x4B and 0x4F compute tv_sec * 1e9 + (int)tv_nsec then divide by 1000 in the reference where ours loads the pair as one unsigned long long and multiplies the whole value by 1e9 first (Findings 31, 92)"
         ],
@@ -414,9 +415,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 746,
-      "source_line": 3853,
+      "source_line": 3895,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8088,
@@ -427,6 +428,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "Task 10b performed an actual rebuilt-versus-reference instruction diff and it is EXACT. Reference 8088-8207 is 44 instructions; the rebuilt body is 44 instructions in the same order, and with alignment nops excluded and only the relative displacements of call, jmp and jcc masked - which must differ, since the function sits at a different address in a smaller __text - the two byte streams are equal over all 117 bytes. Extents are 120 against 120. This is the evidence the spec requires for assembly-matched and it is the first entry in this reconstruction to have it. The diff was taken against __TEXT,__text sha256 E437CED7AA46313D811065DB415280608734C6BC768C52905495EB5DC49EBCF6, size 23272; rebuilt_sha256 stays null per the plan's convention, so that hash in this reason is the anchor. The one change Task 10b made here was removing a raw (void **)((char *)self + 0x210) cast whose comment claimed a field not yet in the header, likely txOperationCallout; it is Port.FrameTOEntry, 296 + 232 = 0x210, and 8175 reads it as mov esi, [esi+210h] with the identical encoding 8BB610020000 in both streams",
           "report pass: diverges only in the argument. Reference loads [self+258h] and calls _TX_enqueueEvent with that Port *; ours passes self. The spl4 bracket, the State & 0x40000000 gate returning IO_R_NOT_OPEN, the byte-width event and signed-char sleep arguments, and the r == 0 && !(State & 0x10000000) conjunction guarding thread_call_enter(FrameTOEntry) all match (divergences.md Finding 92). A cheap win"
         ],
         "status": "agreed"
@@ -438,9 +440,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 120,
-      "source_line": 3614,
+      "source_line": 3642,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 8208,
@@ -451,6 +453,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "Task 10b performed an actual rebuilt-versus-reference instruction diff and it is EXACT. Reference 8208-8324 is 45 instructions; the rebuilt body is 45 instructions in the same order, and with alignment nops excluded and only the relative displacements of call, jmp and jcc masked the two byte streams are equal over all 114 bytes. Our extent is 120 against the reference's 117 because ours carries 3 trailing alignment nops the reference does not; no instruction differs. The diff was taken against __TEXT,__text sha256 E437CED7AA46313D811065DB415280608734C6BC768C52905495EB5DC49EBCF6, size 23272; rebuilt_sha256 stays null per the plan's convention, so that hash in this reason is the anchor. This body needed NO source change at all - the null guards on both out-parameters, the spl4 bracket, the State bit 30 gate returning IO_R_NOT_OPEN, the movsx of the BOOL sleep argument, the Port * from [self+258h], the one-byte staging local and the zero-extending store back into *event were all already right. Only a misleading comment calling self+0x137 a separate statusFlags field was corrected",
           "report pass: diverges only in the argument. Reference passes the Port * from [self+258h] to _RX_dequeueEvent; ours passes self. The !event || !data guard, the spl4 bracket, the State & 0x40000000 gate, the unsigned char staging local and the zero-extending store back into *event all match (divergences.md Finding 92). A cheap win"
         ],
         "status": "agreed"
@@ -462,9 +465,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 3363,
+      "source_line": 3379,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 8328,
@@ -475,6 +478,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "Task 10b read all 213 reference instructions of 8328-9023 and diffed the rebuilt stream against them. Four divergences closed. Finding 111's last in-scope site is gone: the memcpy staging of Port.FlowControl into a local is replaced by the in-place test the reference does at 8941, and the rebuilt body now reads test [ebx+0x208], edx. Finding 61's enqueueData: half is closed: the MCR rebuild and the long-event payload now read newState, matching 8865 F7C602000000, 8875 F7C604000000 and 8949 0FB7C6, all three byte-identical in the rebuilt stream - value-equivalent to the old oldState spelling, since the 0xF87FFFFF mask preserves bits 0x02 and 0x04 and changedBits is confined to 0x07800000, but newState is what the reference reads. The nested watermark ladder, which inverted both of the reference's tests at 8676 and 8727, is rewritten in TX_updateState's flat form with the level constants named, closing Finding 17's last raw-hex site. And spaceToEnd is now the char * pointer difference, so 8554's sar eax, 1 is reproduced as D1F8 where ours emitted shr - a mismatch the report pass had recorded as matching. Not assembly-matched: ours is 196 instructions against 213. Every difference is accounted for and none is a missing or extra operation - the reference reaches the queue through self->port with 1-byte displacements and reloads [self+258h] nine times where ours addresses self->Port with 4-byte displacements and loads it twice, it forms &WatchStateMask with add eax, 0x10 on a copy where ours uses lea, it re-reads State from memory to compute changedBits where ours uses the register copy, and gcc placed our two early-exit blocks differently and hoisted one lea into a spill slot",
           "report pass: diverges. The loop shape, the 0x55-tag-plus-payload cell writes, the signed 'sar 1' cell count and the watchState(0x800000) sleep path match, but the MCR is driven from oldState where the reference uses newState, the long-event payload uses oldState rather than (newState & 0xFFFF), the below-low-water state value is 0x04000000 where the reference emits 0x02000000, and FlowControl is reached by memcpy type-punning an unsigned char ivar that is a 32-bit field in the reference (divergences.md Findings 11, 17, 61)"
         ],
         "status": "agreed"
@@ -486,9 +490,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 696,
-      "source_line": 3412,
+      "source_line": 3429,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9024,
@@ -499,6 +503,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
+          "Task 10b read all 121 reference instructions of 9024-9406 and diffed the rebuilt stream against them, closing Finding 90 entirely and finding one new behavioural defect. The new one is Finding 113: tv_nsec was staged into an unsigned int and zero-extended into the 64-bit interval test, where 9095 is cdq and tv_nsec is clock_res_t, a signed int, so a negative nanosecond value could cancel tv_sec * 1e9 and produce a zero the old test called non-zero. The rebuilt stream now carries mul ecx / mov ebx, eax / mov esi, edx / mov edx, [nsec] / mov eax, edx / cdq / add / adc at our 52-81, byte-identical to reference 9076-9105. Finding 90's minCount half was re-derived and was ALREADY CORRECT: minCount is a sleep budget, passed as (remainingMin != 0) to RX_dequeueData per 9216-9226 and counted down at 9272-9278, with nothing comparing *count against it, so a short read is not an error; the callout half was closed in 1bcc4300 and both sites now also reach DataLatTOEntry through the port ivar as [self+258h] then [port+0xEC], matching 9327 and 9374 instruction for instruction. The loop is now the reference's bottom-entered dec edi / cmp edi, -1 / jnz of 9349-9353, and the interval read and timer decision precede the parameter validation as they do at 9051-9122 against 9131. The Port-relative field-access multiset over the rebuilt body is IDENTICAL to the reference's. Not assembly-matched: ours is 118 instructions against 121, because ours keeps size in edi where the reference reloads [ebp+0x14] twice, and gcc branched the FFFFFD42-to-success conversion where the reference materialised it with xor ecx, ecx / cmp / jz / mov ecx, ebx / mov ebx, ecx",
           "Task 8 corrected the callout identifier: this method armed and cancelled DelayTOEntry (Port+0xF0) where the reference reads Port+0xEC, DataLatTOEntry, at 9327 and 9374. The rest of the body has not been read, so the status does not advance",
           "report pass: diverges. The armed 0/1/-1 tri-state, the once-only arming, the (left != 0) sleep argument implementing minCount as a sleep budget, the -702-to-success conversion and the minCount > size guard all match. But ours arms and cancels delayTimeoutCallout where the reference uses DataLatTOEntry at Port+236 - the wrong callout - and reads the interval from charTimeOverrideLow/High rather than Port.DataLatInterval (divergences.md Finding 90)"
         ],
@@ -511,9 +516,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 383,
-      "source_line": 3256,
+      "source_line": 3264,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9408,

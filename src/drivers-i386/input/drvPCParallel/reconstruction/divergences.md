@@ -63,12 +63,13 @@ inferred from disassembly.
   `src/driverkit-3/driverkit/return.h`: `IO_R_IO` is **−714**, `IO_R_BUSY` **−725**,
   `IO_R_TIMEOUT` **−726**, `IO_R_OFFLINE` **−727**, `IO_R_NOT_READY` **−728**; `return.h`
   has no name at all for −738, and −737 is `IO_R_MSG_TOO_LARGE` (which our source
-  re-`#define`s locally as `IO_R_NO_PAPER`, `IOParallelPort.m:44-45`). This mistake
+  re-`#define`s locally as `IO_R_NO_PAPER`, `IOParallelPort.m:51-56`). This mistake
   produced three wrong verdicts, now recorded as Findings 57, 58 and 59. **All 30 entries
   originally marked `assembly-matched` were re-audited against `return.h` and every other
   macro their justification rests on; exactly one — `msgTypeToIOReturn:` at 3492 — did not
   hold and has been downgraded to `unexamined`. The remaining 29 were confirmed.**
-  Task 10 must fix Findings 57-59 **by value, not by constant name**.
+  Task 10 must fix Findings 57-59 **by value, not by constant name**. *(Done — see the
+  resolution notes on Findings 57, 58 and 59; 3492 is `assembly-matched` again.)*
 
 ## 3. Analyzer agreement
 
@@ -621,9 +622,17 @@ The three findings below share one cause: our source names return codes with `IO
 macros whose comments claim values the macros do not have. `src/driverkit-3/driverkit/return.h`
 gives `IO_R_IO` −714, `IO_R_BUSY` −725, `IO_R_TIMEOUT` −726, `IO_R_OFFLINE` −727,
 `IO_R_NOT_READY` −728, `IO_R_MSG_TOO_LARGE` −737; there is no macro for −738.
-`IOParallelPort.m:44-45` adds `IO_R_NO_PAPER (-737)` locally, which is correct.
+`IOParallelPort.m:51-56` adds `IO_R_NO_PAPER (-737)` locally, which is correct.
 **Task 10 must fix these by value. Fixing them by constant name would target the wrong
 arms, because the names in our source are wrong.**
+
+**All three are now fixed.** `IOParallelPort.m:43-56` keeps the local `IO_R_NO_PAPER`
+(−737) and adds a local `IO_R_PRINTER_OFFLINE` (−738) — deliberately *not* spelled
+`IO_R_OFFLINE`, which `return.h` already owns at −727. The three arms that wanted a stock
+code now name the macro that actually holds it: −726 is `IO_R_TIMEOUT`, −714 is `IO_R_IO`.
+`IO_R_OFFLINE` and `IO_R_NOT_READY` no longer appear anywhere in the driver. Every
+`IO_R_*` in the file was re-checked by expanding it against `return.h` rather than by
+reading the comment beside it, and each comment now states the expansion.
 
 **Finding 57 — four of `msgTypeToIOReturn:`'s seven arms return the wrong value.**
 `IOParallelPort.m:1044-1067`. The reference (3492, jump table at 3520, all 23 entries
@@ -644,6 +653,13 @@ The 20 unlisted table indices (`0x232324`, `0x232326`-`0x232335`) all target the
 arm, so the reference's default really is −714. This entry was previously recorded as
 `assembly-matched` on the strength of the comments; it is now `unexamined`.
 
+*Resolved.* The four diverging arms now read `IO_R_TIMEOUT` (−726), `IO_R_IO` (−714),
+`IO_R_PRINTER_OFFLINE` (−738) and `IO_R_IO` (−714) for the default; all seven values match
+the reference and the entry is `assembly-matched` again. The `PP_MSG_*` labels are left
+alone — they name the message code, not the return code, and the two do not line up (see
+Finding 44); a comment above the method says so. The method is now at
+`IOParallelPort.m:1059-1082`.
+
 **Finding 58 — three of `initDevice`'s six return values are wrong.**
 `IOParallelPort.m:276-352`. The reference (112) returns, from its five error paths and its
 success path: paper-out **−737** (281), offline **−738** (301), busy **−725** (321),
@@ -656,6 +672,11 @@ diverge. This matters at the callers: `ppopen` (Finding 39) and `ppwrite` (Findi
 accept exactly `{0, −725, −726, −737, −738}` from `initDevice`, so under our constants an
 offline or not-ready printer falls through to the `EIO` path.
 
+*Resolved.* The three wrong arms now read `IO_R_PRINTER_OFFLINE` (−738), `IO_R_IO` (−714)
+and `IO_R_TIMEOUT` (−726), so all six returns match and the caller-side set
+`{0, −725, −726, −737, −738}` is satisfied. This entry's other divergences (Findings 10,
+52, 53) stand, so 112 stays `unexamined`. The method is now at `IOParallelPort.m:286-362`.
+
 **Finding 59 — `writeToPort`'s switch labels select the wrong arms.**
 `IOParallelPort.m:538-568`. The reference (3212) switches `cmdBuffer->returnCode` on
 −726 → status bit 0x10, −738 → 0x08, −737 → 0x04, −714 → 0x20 **and propagate the return
@@ -665,6 +686,12 @@ compile to −728, −727, −737, −726 and −725. So −737 and −725 land 
 are codes nothing ever produces, and −726 — which the reference sends to the 0x10 arm —
 is instead routed to the 0x20 "propagate" arm. The `PP_SW_*` bit values themselves are all
 correct (`IOParallelPort.h:61-66`).
+
+*Resolved.* The labels are now `IO_R_TIMEOUT` (−726 → 0x10), `IO_R_PRINTER_OFFLINE`
+(−738 → 0x08), `IO_R_NO_PAPER` (−737 → 0x04), `IO_R_IO` (−714 → 0x20 and propagate),
+`IO_R_BUSY` (−725 → 0x02) and `IO_R_SUCCESS`, so every arm selects the value the reference
+selects. Findings 30 and 31 still stand, so 3212 stays `unexamined`. The switch is now at
+`IOParallelPort.m:548-578`.
 
 ### Linkage and packaging
 

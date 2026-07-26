@@ -40,9 +40,19 @@
 #import <objc/objc-runtime.h>
 #import <string.h>
 
-/* Parallel-port specific return; not in stock driverkit/return.h */
+/*
+ * Parallel-port specific returns.  The reference driver returns two codes that
+ * <driverkit/return.h> has no name for: -737 (return.h spends that number on
+ * IO_R_MSG_TOO_LARGE) and -738.  Every other code it returns is a stock
+ * driverkit one - IO_R_IO (-714), IO_R_BUSY (-725), IO_R_TIMEOUT (-726).
+ * Note that the reference never returns IO_R_OFFLINE (-727) or
+ * IO_R_NOT_READY (-728); do not reach for those names here.
+ */
 #ifndef IO_R_NO_PAPER
 #define IO_R_NO_PAPER (-737)
+#endif
+#ifndef IO_R_PRINTER_OFFLINE
+#define IO_R_PRINTER_OFFLINE (-738)
 #endif
 /* Kernel sprintf lives in <sys/systm.h>; do not import <stdio.h> (conflicts). */
 extern int sprintf(char *str, const char *fmt, ...);
@@ -320,7 +330,7 @@ static void *pp_softc = NULL;
         // Check for offline/not selected (bit 4, 0x10)
         if ((statusValue & PP_STATUS_SELECT) == 0) {
             statusWord |= PP_SW_OFFLINE;
-            return IO_R_OFFLINE;  // -738
+            return IO_R_PRINTER_OFFLINE;  // -738
         }
 
         // Check for busy (bit 7, 0x80)
@@ -331,7 +341,7 @@ static void *pp_softc = NULL;
 
         // If device indicated ready during wait
         if (isReady) {
-            return IO_R_TIMEOUT;  // -714
+            return IO_R_IO;  // -714
         }
 
         // Device not ready
@@ -349,7 +359,7 @@ static void *pp_softc = NULL;
     }
 
     // Device not ready error
-    return IO_R_NOT_READY;  // -726
+    return IO_R_TIMEOUT;  // -726
 }
 
 - (void)printerInit
@@ -536,11 +546,11 @@ static void *pp_softc = NULL;
     returnCode = cmdBuffer->returnCode;
 
     switch (returnCode) {
-    case IO_R_NOT_READY:  // -726 (0xfffffd2a = -0x2d6)
+    case IO_R_TIMEOUT:  // -726 (0xfffffd2a = -0x2d6)
         status |= PP_SW_NOT_READY;  // 0x10
         break;
 
-    case IO_R_OFFLINE:  // -738 (0xfffffd1e = -0x2e2)
+    case IO_R_PRINTER_OFFLINE:  // -738 (0xfffffd1e = -0x2e2)
         status |= PP_SW_OFFLINE;  // 0x08
         break;
 
@@ -548,7 +558,7 @@ static void *pp_softc = NULL;
         status |= PP_SW_PAPER_OUT;  // 0x04
         break;
 
-    case IO_R_TIMEOUT:  // -714 (0xfffffd36 = -0x2ca)
+    case IO_R_IO:  // -714 (0xfffffd36 = -0x2ca)
         status |= PP_SW_NO_ERROR;  // 0x20
         returnCode = cmdBuffer->returnCode;  // Keep original return code
         break;
@@ -1041,6 +1051,11 @@ static void *pp_softc = NULL;
 // Message handling
 //
 
+//
+// The PP_MSG_* names describe the interrupt message code, not the return code
+// it maps to; the two do not line up.  The mapping below is the one the port
+// actually implements, so the values are what matter here, not the names.
+//
 - (IOReturn)msgTypeToIOReturn:(int)msgType
 {
     switch (msgType) {
@@ -1048,10 +1063,10 @@ static void *pp_softc = NULL;
         return IO_R_SUCCESS;  // 0
 
     case PP_MSG_NOT_READY:    // 0x232323
-        return IO_R_NOT_READY;  // -726 (0xfffffd2a)
+        return IO_R_TIMEOUT;  // -726 (0xfffffd2a)
 
     case PP_MSG_TIMEOUT:      // 0x232336
-        return IO_R_TIMEOUT;  // -714 (0xfffffd36)
+        return IO_R_IO;  // -714 (0xfffffd36)
 
     case PP_MSG_NO_PAPER:     // 0x232337
         return IO_R_NO_PAPER;  // -737 (0xfffffd1f)
@@ -1060,10 +1075,10 @@ static void *pp_softc = NULL;
         return IO_R_BUSY;  // -725 (0xfffffd2b)
 
     case PP_MSG_OFFLINE:      // 0x232339
-        return IO_R_OFFLINE;  // -738 (0xfffffd1e)
+        return IO_R_PRINTER_OFFLINE;  // -738 (0xfffffd1e)
 
     default:
-        return IO_R_TIMEOUT;  // -714 (0xfffffd36)
+        return IO_R_IO;  // -714 (0xfffffd36)
     }
 }
 

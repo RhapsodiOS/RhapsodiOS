@@ -20,7 +20,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 112,
-      "source_line": 868,
+      "source_line": 878,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -33,7 +33,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the control-byte assembly, both outb sequences, the _waitForDevice:isReady: call, the controlRegisterDefaults store and all five status-word bit arms match, but three of the six returned values diverge because our IO_R_* names do not expand to their commented values - the reference returns -737, -738, -725, -714, 0 and -726 where ours compiles to -737, -727, -725, -726, 0 and -728 - and statusWord is manipulated 32 bits wide where ours is unsigned short, ours sets an initialized ivar the reference does not have, and the reference builds the control byte from uninitialised stack (divergences.md Findings 10, 52, 53, 58)"
+          "full disassembly read; the control-byte assembly, both outb sequences, the _waitForDevice:isReady: call, the controlRegisterDefaults store, all five status-word bit arms and all six returned values now match - the source returns -737, -738, -725, -714, 0 and -726 via IO_R_NO_PAPER, IO_R_PRINTER_OFFLINE, IO_R_BUSY, IO_R_IO, IO_R_SUCCESS and IO_R_TIMEOUT, whose expansions were verified against src/driverkit-3/driverkit/return.h (divergences.md Finding 58 resolved); statusWord is still manipulated 32 bits wide where ours is unsigned short, ours still sets an initialized ivar the reference does not have, and the reference still builds the control byte from uninitialised stack (divergences.md Findings 10, 52, 53)"
         ],
         "status": "agreed"
       },
@@ -44,7 +44,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 282,
-      "source_line": 276,
+      "source_line": 286,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -68,7 +68,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 57,
-      "source_line": 59,
+      "source_line": 69,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -92,7 +92,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 996,
-      "source_line": 77,
+      "source_line": 87,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -116,7 +116,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 162,
-      "source_line": 242,
+      "source_line": 252,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -140,7 +140,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 76,
-      "source_line": 816,
+      "source_line": 826,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -164,7 +164,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 48,
-      "source_line": 847,
+      "source_line": 857,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -188,7 +188,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 237,
-      "source_line": 372,
+      "source_line": 382,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -212,7 +212,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 163,
-      "source_line": 1010,
+      "source_line": 1020,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -236,7 +236,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 457,
+      "source_line": 467,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -260,7 +260,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 462,
+      "source_line": 472,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -284,7 +284,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 424,
+      "source_line": 434,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -308,7 +308,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 429,
+      "source_line": 439,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -332,7 +332,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 435,
+      "source_line": 445,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -356,7 +356,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 440,
+      "source_line": 450,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -380,7 +380,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 29,
-      "source_line": 483,
+      "source_line": 493,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -404,7 +404,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 446,
+      "source_line": 456,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -428,7 +428,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 451,
+      "source_line": 461,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -452,7 +452,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 29,
-      "source_line": 472,
+      "source_line": 482,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -476,7 +476,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 17,
-      "source_line": 478,
+      "source_line": 488,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -500,7 +500,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 742,
+      "source_line": 752,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -524,7 +524,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 747,
+      "source_line": 757,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -548,7 +548,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 831,
+      "source_line": 841,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -572,7 +572,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 836,
+      "source_line": 846,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -596,7 +596,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 640,
+      "source_line": 650,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -620,7 +620,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 635,
+      "source_line": 645,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -644,7 +644,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 651,
+      "source_line": 661,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -668,7 +668,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 646,
+      "source_line": 656,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -692,7 +692,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 17,
-      "source_line": 598,
+      "source_line": 608,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -716,7 +716,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 603,
+      "source_line": 613,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -740,7 +740,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 779,
+      "source_line": 789,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -764,7 +764,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 784,
+      "source_line": 794,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -788,7 +788,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 757,
+      "source_line": 767,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -812,7 +812,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 762,
+      "source_line": 772,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -836,7 +836,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 768,
+      "source_line": 778,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -860,7 +860,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 773,
+      "source_line": 783,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -884,7 +884,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 620,
+      "source_line": 630,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -908,7 +908,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 625,
+      "source_line": 635,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -932,7 +932,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 801,
+      "source_line": 811,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -956,7 +956,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 806,
+      "source_line": 816,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -980,7 +980,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 790,
+      "source_line": 800,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1004,7 +1004,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 795,
+      "source_line": 805,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1028,7 +1028,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 489,
+      "source_line": 499,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1052,7 +1052,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 33,
-      "source_line": 592,
+      "source_line": 602,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1076,7 +1076,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 494,
+      "source_line": 504,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1100,7 +1100,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 17,
-      "source_line": 609,
+      "source_line": 619,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1124,7 +1124,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 19,
-      "source_line": 614,
+      "source_line": 624,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1148,7 +1148,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 706,
+      "source_line": 716,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1172,7 +1172,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 105,
-      "source_line": 711,
+      "source_line": 721,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1196,7 +1196,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 661,
+      "source_line": 671,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1220,7 +1220,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 105,
-      "source_line": 666,
+      "source_line": 676,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1244,7 +1244,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 79,
-      "source_line": 355,
+      "source_line": 365,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1257,7 +1257,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read; the command-buffer setup, the status masking and the errorFlag tail match, but the reference sets the writing ivar at 0x129 where ours sets inUse at 0x128, the reference returns 0 for the -726, -738, -737 and -725 arms and propagates the return code only for -714 and the default where ours returns the error code, and our switch labels select the wrong arms because IO_R_NOT_READY is -728 and IO_R_OFFLINE is -727, while -726 is routed to the propagate arm instead of the 0x10 arm (divergences.md Findings 30, 31, 59)"
+          "full disassembly read; the command-buffer setup, the status masking, the errorFlag tail and all six switch labels now match - the arms select -726, -738, -737, -714, -725 and 0 via IO_R_TIMEOUT, IO_R_PRINTER_OFFLINE, IO_R_NO_PAPER, IO_R_IO, IO_R_BUSY and IO_R_SUCCESS, whose expansions were verified against src/driverkit-3/driverkit/return.h, so -726 reaches the 0x10 arm and only -714 and the default propagate the return code (divergences.md Finding 59 resolved); the reference still sets the writing ivar at 0x129 where ours sets inUse at 0x128, and it still returns 0 for the -726, -738, -737 and -725 arms where ours returns the error code (divergences.md Findings 30, 31)"
         ],
         "status": "agreed"
       },
@@ -1268,7 +1268,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 265,
-      "source_line": 510,
+      "source_line": 520,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1292,7 +1292,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 9,
-      "source_line": 504,
+      "source_line": 514,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1305,7 +1305,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "full disassembly read instruction by instruction, including all 23 entries of the jump table at 3520 decoded from the binary; the base adjustment of msgType-0x232323 and the range check against 0x16 match, and the reference's arms are 0x232323 to -726, 0x232325 to 0, 0x232336 to -714, 0x232337 to -737, 0x232338 to -725, 0x232339 to -738 and default -714, but four of our seven arms return a different value because the IO_R_* macros our source names do not hold the values its comments claim: IO_R_NOT_READY is -728 not -726, IO_R_TIMEOUT is -726 not -714 and IO_R_OFFLINE is -727 not -738 in src/driverkit-3/driverkit/return.h, so 0x232323, 0x232336, 0x232339 and the default all diverge. Previously recorded as assembly-matched on the strength of those comments (divergences.md Finding 57)"
+          "full disassembly read instruction by instruction, including all 23 entries of the jump table at 3520 decoded from the binary; the base adjustment of msgType-0x232323 and the range check against 0x16 match, and all seven arms now return the reference's values - 0x232323 to -726, 0x232325 to 0, 0x232336 to -714, 0x232337 to -737, 0x232338 to -725, 0x232339 to -738 and default -714, spelled IO_R_TIMEOUT, IO_R_SUCCESS, IO_R_IO, IO_R_NO_PAPER, IO_R_BUSY and IO_R_PRINTER_OFFLINE, every expansion checked against src/driverkit-3/driverkit/return.h and the two local defines at IOParallelPort.m:51-56 rather than against the comments beside the names. Restored to assembly-matched after the value fix (divergences.md Finding 57 resolved)"
         ],
         "status": "agreed"
       },
@@ -1316,9 +1316,9 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 197,
-      "source_line": 1044,
+      "source_line": 1059,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 3692,
@@ -1340,7 +1340,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 16,
-      "source_line": 737,
+      "source_line": 747,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1364,7 +1364,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 35,
-      "source_line": 692,
+      "source_line": 702,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1388,7 +1388,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 35,
-      "source_line": 699,
+      "source_line": 709,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1412,7 +1412,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 73,
-      "source_line": 885,
+      "source_line": 895,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1436,7 +1436,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 37,
-      "source_line": 906,
+      "source_line": 916,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1460,7 +1460,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 143,
-      "source_line": 917,
+      "source_line": 927,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "unexamined"
     },
@@ -1484,7 +1484,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 141,
-      "source_line": 966,
+      "source_line": 976,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "control-flow-confirmed"
     },
@@ -1508,7 +1508,7 @@
       "reason": null,
       "reviewer": "binrecon-task-9",
       "size": 46,
-      "source_line": 955,
+      "source_line": 965,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },

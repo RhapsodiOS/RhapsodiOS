@@ -369,7 +369,7 @@ driver they were extra, on this one they are Apple's.
 **SoundBlaster16 declares exactly one class method, `probe:`**, with encoding
 `c12@8:12@16`. `__OBJC,__cls_meth` itself is 60 bytes and holds **three** single-entry
 method lists, one per class in the module — `probe:` (imp 0, the `SoundBlaster16` class
-list), `driverKitVersionForSoundBlaster16` (imp 13548) and `kernelServerInstance`
+list), `kernelServerInstance` (imp 13548) and `driverKitVersionForSoundBlaster16`
 (imp 13560), the latter two being the build-generated glue classes recorded under
 *Unmapped*. Only the first belongs to `SoundBlaster16`.
 `__OBJC,__inst_meth` is 296 bytes: one list of exactly 24, and they are our 24 instance
@@ -976,8 +976,8 @@ read from `initializeHardware` 3136–4635:
 moments later, and the reference emits both.)
 
 Four shift groups, and `3Bh` belongs to the last one, not to the unshifted group its
-neighbours `3Ch`–`3Eh` form: `30h`–`3Ah` are `shl bl, 3`; `3Bh` and `3Fh`–`42h` are
-`shl bl, 6`; `44h`–`47h` are `shl bl, 4`; `3Ch`, `3Dh` and `3Eh` are written unshifted and
+neighbours `3Ch`–`3Eh` form: `30h`–`3Ah` shift left 3; `3Bh` and `3Fh`–`42h` shift left 6
+(`3Bh` through `bl`, `3Fh` through `al`); `44h`–`47h` shift left 4; `3Ch`, `3Dh` and `3Eh` are written unshifted and
 `43h` is the literal `0` (`xor al, al` at 4106). The `3Bh` site is explicit at
 `3829: 8A1D4C400000 mov bl, ds:_volPCSpeaker` / `3835: C0E306 shl bl, 6`. **Task 10 must
 emit `_volPCSpeaker << 6` for `3Bh`.**

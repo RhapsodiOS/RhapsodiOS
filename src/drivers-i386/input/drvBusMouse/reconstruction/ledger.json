@@ -1,0 +1,331 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 0-108: inb(0x23E) once, then 0xF000 more reads accumulating the OR of consecutive-sample XORs, then a nested if ladder decoding bit 0 to IRQ 5, bit 1 to IRQ 4, bit 2 to IRQ 3, bit 3 to IRQ 2 and 0 otherwise. The algorithm in our source already matches; the symbol is global in the reference and static in ours (divergences.md Finding 5), and the 'and cl, 0Fh' masked copy at 47 has no counterpart. Left unexamined because the function diverges"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_GetIRQFromBoard"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 109,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 112,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 112-240: outb(0x23F, 0x91), us_spin(30000), outb(0x23D, 0xA5), inb(0x23D) compared against 0xA5, then [deviceDescription interrupt] against GetIRQFromBoard(). Our source waits IODelay(30) -- 30 microseconds against the reference's 30 milliseconds -- and both IOLog strings are our own wording (divergences.md Findings 4, 6, 9)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse validConfiguration:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 129,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 244,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 244-649: the six outb writes to 0x23E (0x80 twice, 0xA0, 0xC0, 0xE0, 0x00) and four inb reads of 0x23C, the active-low button decode from bits 7 and 5, the split-nibble X and negated Y, the four-way change test, and the busy-accumulate versus post-and-clear split around _higherLevelsBusy. Diverges: the handler returns void in the reference, _summedEvent is a 12-byte PCPointerEvent rather than our unsigned int plus two loose chars, and our ioPortCount increments are a transcribed decompiler artifact (divergences.md Findings 3, 6, 7)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_MouseIntHandler"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 406,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 652,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 652-704: nil-check [self+0x128], [target dispatchPointerEvent:&_event], then _higherLevelsBusy = 0 on both paths. The control-flow shape is already correct in our source; the ivar our code messages is mouseEventPort at 0x130 where the reference messages PCPointer's target at 0x128 (divergences.md Finding 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse interruptHandler]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 53,
+      "source_line": 375,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 708,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 708-830: [driver interruptPort], then an unterminated loop setting msg_size to 24 and msg_local_port before msg_receive(&msg, 0, 0), testing msg_id at +0x14 against 0x232325 and msg_local_port at +0x0C against the port. Diverges: the reference's buffer is a bare 24-byte msg_header_t where our source invents a 36-byte interrupt_msg_t and reads the message ID from offset 32, and both IOLog strings are our own wording (divergences.md Findings 4, 8)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_BusMouseThread"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 123,
+      "source_line": 209,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 832,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 832-1223: validConfiguration: gate, setName:/setDeviceKind: with the literal BusMouse, [[self deviceDescription] configTable], the Inverted y/Y parse into the byte at 0x130, the Resolution parse via PCPatoi with 400 as the default, seven static initializations, enableAllInterrupts, outb(0x23E, 0) and IOForkThread(BusMouseThread, self). Diverges: returns BOOL with 1 = success where ours returns IOReturn with inverted polarity, parses with PCPatoi not strtoul, reads ivars one slot lower, clears _summedEvent's timestamp rather than _event's, and four IOLog strings are our own wording (divergences.md Findings 1, 2, 3, 4, 12, 13)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse mouseInit:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 392,
+      "source_line": 297,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1224,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1224-1264: the objc_super struct is built on the stack from self and the class's super_class field and passed to objc_msgSendSuper with @selector(free). Our bare '- free' returning [super free] compiles to exactly this byte for byte, and the super_class field reference is the same instruction whatever the superclass is, so it stays matched after the re-parent"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 41,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1268,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1268-1306: *handler = _MouseIntHandler, *ipl = 3, *argument = 0xDEADBEEF, return 1; forInterrupt: is never read. Our body compiles to this byte for byte. The argument: parameter is encoded ^I in the reference and ^^v in ours (divergences.md Finding 2), which is type metadata and does not appear in the code. Identical to drvPS2Mouse's at the identical reference size of 40"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getHandler:level:argument:forInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 39,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1308,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1308-1323: a single load of the ivar at [self+0x12C]. Our source reads the right field but our ivar layout puts resolution at 0x128, so the emitted displacement differs; the reference also returns int where ours returns unsigned int (divergences.md Findings 1, 2). Identical to drvPS2Mouse's at the identical reference size of 16"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getResolution]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 486,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1324-1416: fixed-length repe cmpsb against Resolution with ecx = 11 then Inverted with ecx = 9, both including the terminating NUL; resolution read from 0x12C, inverted sign-extended from the byte at 0x130; count never touched. Diverges: the no-match path returns IO_R_UNSUPPORTED (-711) where ours returns IO_R_INVALID_ARG (-706), and both ivar displacements are one slot off (divergences.md Findings 1, 10). Identical to drvPS2Mouse's at the identical reference size of 96"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 93,
+      "source_line": 383,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1420,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1420-1565: the same two fixed-length repe cmpsb comparisons, resolution written from *parameterArray and then re-read through [self getResolution], inverted written as a char and forwarded sign-extended, and both branches converging on one unguarded objc_msgSend to target at 0x128. Diverges: the no-match path returns IO_R_UNSUPPORTED where ours returns IO_R_INVALID_ARG, and the ivar displacements are one slot off (divergences.md Findings 1, 10). Our source's lack of a target nil check is already correct and must not be changed to drvPS2Mouse's guarded form (divergences.md Finding 11). Identical to drvPS2Mouse's at the identical reference size of 148"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse setIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 146,
+      "source_line": 432,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on address and size; Ghidra does not detect this function at all (see divergences.md, analyzer agreement). IDA is authoritative for the partition",
+          "full disassembly read at 1568-1579: loads the address of _BusMouse_instance (0x2030) into eax"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusMouseKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns &_BusMouse_instance",
+      "reviewer": "binrecon-task-11",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1580,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read at 1580-1591: loads the constant 500 (0x1F4) into eax"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusMouseVersion driverKitVersionForBusMouse]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns the DriverKit version 500",
+      "reviewer": "binrecon-task-11",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864",
+  "schema_version": "ledger-v1"
+}

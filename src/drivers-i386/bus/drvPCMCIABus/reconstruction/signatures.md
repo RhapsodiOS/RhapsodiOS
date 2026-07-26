@@ -229,6 +229,65 @@ cosmetic and all `_verbose`-gated: the byte-versus-dword width above, the
 `socketNum` caching, and `currentStatus`'s type. They are worth doing together
 or not at all, since each moves the same stack frame.
 
+### The loose-ends pass
+
+All three are closed. `currentStatus` had already become a `PCMCIAStatus` in
+commit `2d41c7e9`; the other two are done here.
+
+**`socketNum`'s caching is gone.** Counting selector sends over each method's
+true extent — bounded by the next function prologue, not the next Objective-C
+method, which otherwise swallows intervening static functions and inflates the
+count — the reference sends `socketNumber` **five** times and ours sent it once:
+
+| Selector | Reference | Before | After |
+| --- | --- | --- | --- |
+| `socketNumber` | 5 | 1 | 5 |
+
+Five is exactly the number of places the number is used, so Apple's source
+re-sends at each rather than caching. The local is deleted and each of the five
+`IOLog` sites now sends `[socket socketNumber]` inline. Argument order supports
+this reading: the reference pushes `currentStatus`, then `changedStatus`, then
+*calls* `socketNumber` and pushes its result — right-to-left evaluation with the
+socket number as the leftmost argument, which is what an inline send produces.
+
+**The logged widths are bytes.** `*(unsigned int *)&` on both status values
+became `*(unsigned char *)&`, to match the reference's
+`movzx edx, byte ptr` rather than a dword push.
+
+**Two choices this pass left alone were checked against the reference and are
+correct as they stand.** Immediately after the log the reference does:
+
+```
+8b 75 fc       mov esi, dword ptr [ebp - 4]     ; currentStatus
+89 37          mov dword ptr [edi], esi         ; socketInfo->status = it
+f6 45 fc 01    test byte ptr [ebp - 4], 1       ; currentStatus.present
+```
+
+a **dword** store and a **byte** test — which `socketInfo->status =
+*(unsigned int *)&currentStatus` and `!currentStatus.present` already produce.
+
+### Two divergences this pass uncovered, both out of its scope
+
+Counting sends over the true extents left exactly two selector differences
+besides `socketNumber`:
+
+| Selector | Reference | Ours |
+| --- | --- | --- |
+| `status` | 1 | 2 |
+| `freeObjects` / `freeObjects:` | `freeObjects` ×1 | `freeObjects:` ×1 |
+
+**`status` twice** is not a defect introduced here. The second send is at +1048,
+in a wait loop, and reads `test al, al` / `jl` — a sign-bit test, which is bit 7,
+`ready`. That is the explicit ready-bit test added deliberately in commit
+`b611dee9` under Finding 5 of `divergences.md`. The reference reaches the same
+check without a second `status` send, so how it observes readiness is worth
+settling, but it belongs to Finding 5 and was not touched.
+
+**`freeObjects` versus `freeObjects:`** is a plain selector mismatch: the
+reference sends the no-argument `freeObjects`, ours sends
+`freeObjects:@selector(free)`. One line, in the card-removal path. Not
+investigated here.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

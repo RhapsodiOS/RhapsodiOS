@@ -691,7 +691,6 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 - (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)changedStatus
 {
     SocketInfo *socketInfo;
-    unsigned int socketNum;
     PCMCIAStatus currentStatus;
     id memRange;
     Range range;
@@ -699,12 +698,9 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     unsigned int i, count;
     id tuple;
 
-    /* Get socket number for logging */
-    socketNum = [socket socketNumber];
-
     /* Check if we care about this status change */
     if (!changedStatus.present) {
-        IOLog("PCMCIA: don't care socket %d\n", socketNum);
+        IOLog("PCMCIA: don't care socket %d\n", [socket socketNumber]);
         return;
     }
 
@@ -717,7 +713,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     /* Check if already probed */
     if (socketInfo->flag1 != 0) {
-        IOLog("PCMCIA: Socket %d: already probed\n", socketNum);
+        IOLog("PCMCIA: Socket %d: already probed\n", [socket socketNumber]);
         return;
     }
 
@@ -726,8 +722,8 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     if (_verbose) {
         IOLog("PKB: socket %d status: changed = %x, current = %x\n",
-              socketNum, *(unsigned int *)&changedStatus,
-              *(unsigned int *)&currentStatus);
+              [socket socketNumber], *(unsigned char *)&changedStatus,
+              *(unsigned char *)&currentStatus);
     }
 
     /* Store current status (PCMCIAStatus is 4 bytes) */
@@ -757,7 +753,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
             socketInfo->flag1 = 0;
 
             [self disableSocket:socket];
-            IOLog("PCMCIABus: Socket %d: card removed\n", socketNum);
+            IOLog("PCMCIABus: Socket %d: card removed\n", [socket socketNumber]);
         }
     } else {
         /* Card inserted */
@@ -816,7 +812,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
                     [self parseTuple:tuple intoDeviceDescription:socketInfo->deviceDesc];
                 }
 
-                IOLog("PCMCIABus: Socket %d: card inserted\n", socketNum);
+                IOLog("PCMCIABus: Socket %d: card inserted\n", [socket socketNumber]);
 
                 /* Create PCMCIAid from device description */
                 socketInfo->cardID = [[PCMCIAid alloc] initFromDescription:socketInfo->deviceDesc];

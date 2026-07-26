@@ -1,7 +1,7 @@
 #
-#  DDMViewer data file for Adaptec AIC6X60Controller driver.
+#  DDMViewer data file for Adaptec AIC6X60 driver.
 #
-Index : 2 : "AIC6X60Controller"
+Index : 2 : "AIC6X60"
 
 0x0001 : "Exported Methods"
 0x0002 : "I/O thread"

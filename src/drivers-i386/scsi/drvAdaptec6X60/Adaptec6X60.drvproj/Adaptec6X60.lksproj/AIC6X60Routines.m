@@ -187,13 +187,13 @@ boolean_t aic_setup_mb_area(
 	struct ccb		*ccbPhys;
 	struct ccb		*ccbVirt;
 
-	ddm_init("AIC6X60Controller aic_setup_mb_area\n", 1,2,3,4,5);
+	ddm_init("AIC6X60 aic_setup_mb_area\n", 1,2,3,4,5);
 
 	rtn = IOPhysicalFromVirtual(IOVmTaskSelf(),
 		(vm_address_t)aicMbArea,
 		(unsigned *)&mbPhysAddr);
 	if(rtn) {
-		IOLog("AIC6X60Controller: Can't get physical address of "
+		IOLog("AIC6X60: Can't get physical address of "
 			"aicMbArea (%s)\n", [IODevice stringFromReturn:rtn]);
 		return FALSE;
 	}
@@ -228,7 +228,7 @@ boolean_t aic_setup_mb_area(
 		    (vm_address_t)ccbVirt,
 		    (unsigned *)&ccbPhys);
 		if(rtn) {
-		    IOLog("AIC6X60Controller: Can't get physical address of "
+		    IOLog("AIC6X60: Can't get physical address of "
 		    "ccb (%s)\n", [IODevice stringFromReturn:rtn]);
 	 	   return FALSE;
 		}

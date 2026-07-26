@@ -37,7 +37,7 @@ static msg_header_t timeoutMsgTemplate = {
 	IO_TIMEOUT_MSG				// msg_id
 };
 
-@implementation AIC6X60Controller(IOThread)
+@implementation AIC6X60(IOThread)
 
 /*
  * I/O thread version of -executeRequest:buffer:client.
@@ -327,7 +327,7 @@ static msg_header_t timeoutMsgTemplate = {
 				&phys)) {
 			IOLog("%s: Can\'t get physical address of ccb\n",
 				[self name]);
-			IOPanic("AIC6X60Controller");
+			IOPanic("AIC6X60");
 		}
 		aic_put_24(phys, ccb->data_addr);
 		aic_put_24(sgEntry * sizeof(struct aic_sg), ccb->data_len);
@@ -512,7 +512,7 @@ static msg_header_t timeoutMsgTemplate = {
 		ccb++;
 	}
 	if (ccb > &aicCcb[AIC_QUEUE_SIZE - 1]) {
-		IOPanic("AIC6X60Controller: out of ccbs");
+		IOPanic("AIC6X60: out of ccbs");
 	}
 	numFreeCcbs--;
 	ccb->in_use = TRUE;

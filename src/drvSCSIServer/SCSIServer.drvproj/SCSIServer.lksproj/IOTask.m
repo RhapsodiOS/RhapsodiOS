@@ -316,13 +316,13 @@ int IODereferenceClientTask(int *clientEntry)
     int result;
 
     /* Validate pointer is within the _clientReferences table
-     * Range check: &_clientReferences[0] <= clientEntry <= &_notifyThread,
+     * Range check: &_clientReferences[0] <= clientEntry <= &_clientReferences[31],
      * the same bounds IOReferenceClientTask uses for the same table
      * (_clientReferences[i] is a bare int refcount, offset +0 is the
      * entire entry -- there is no offset +4 field here)
      */
     if ((clientEntry < &_clientReferences[0]) ||
-        (clientEntry > &_notifyThread)) {
+        (clientEntry > &_clientReferences[31])) {
         return 4;  /* Invalid pointer */
     }
 

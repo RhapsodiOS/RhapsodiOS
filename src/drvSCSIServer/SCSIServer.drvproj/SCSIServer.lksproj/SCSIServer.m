@@ -128,7 +128,7 @@ static Protocol *_scsiServerProtocols[] = {
  * Sets up the SCSI server instance and registers it as a device.
  *
  * The decompiled code shows this sequence:
- * 1. Call [self registerSCSIController:] with self as argument - if fails, return [self free]
+ * 1. Call [self registerSCSIController:] with deviceDescription as argument - if fails, return [self free]
  * 2. Set name to "SCSI Server"
  * 3. Set device kind to "SCSI Server"
  * 4. Call [super initFromDeviceDescription:]
@@ -141,7 +141,7 @@ static Protocol *_scsiServerProtocols[] = {
     struct objc_super superStruct;
     id initResult;
 
-    /* Register self as SCSI controller
+    /* Register self as SCSI controller with deviceDescription
      * iVar1 = FUN_000001d0(param_1, s_registerSCSIController:_000059a8)
      * The reference disassembly leaves r3/r5 (self/deviceDescription) untouched
      * between entry and this call, so the argument is the incoming

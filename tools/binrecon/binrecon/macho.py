@@ -12,6 +12,7 @@ MH_MAGIC = 0xFEEDFACE
 MH_OBJECT = 1
 MH_EXECUTE = 2
 MH_PRELOAD = 5
+MH_DYLIB = 6
 MH_BUNDLE = 8
 LC_SEGMENT = 1
 LC_SYMTAB = 2
@@ -135,10 +136,10 @@ def read_macho(path: Path) -> dict[str, Any]:
         commands_size,
         flags,
     ) = _unpack(layouts.header, data, 0, "Mach-O header")
-    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE):
+    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE, MH_DYLIB):
         raise MachOFormatError(
             f"unsupported Mach-O file type {file_type}; "
-            "expected MH_OBJECT, MH_PRELOAD, MH_BUNDLE or MH_EXECUTE"
+            "expected MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE or MH_DYLIB"
         )
 
     command_start = layouts.header.size

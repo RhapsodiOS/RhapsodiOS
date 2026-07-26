@@ -750,3 +750,16 @@ def test_ppc_sectdiff_requires_a_scattered_pair(tmp_path):
 
     with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR"):
         read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_reads_a_dylib(tmp_path):
+    from binrecon.macho import MH_DYLIB, read_macho
+    from macho_fixture import build_macho_fixture
+
+    path = tmp_path / "libthing.dylib"
+    path.write_bytes(build_macho_fixture(file_type=MH_DYLIB))
+
+    document = read_macho(path)
+
+    assert document["input"]["architecture"] == "i386"
+    assert any(section["name"] == "__TEXT,__text" for section in document["sections"])

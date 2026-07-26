@@ -29,8 +29,11 @@ three of the four (§2.6), and table gaps in three of the four (§2.5).
 
 Unlike the Intel effort, every reference driver has a source counterpart in our
 tree, and every reference method name except one has a name-level counterpart.
-Nothing is missing wholesale. Two of the four are nonetheless close to
-inventions rather than reconstructions, and are treated as such (§4.3).
+Nothing is missing wholesale. Scoping suspected that two of the four were closer
+to inventions than reconstructions, on a size heuristic, and §4.3 was written to
+allow for that. The report passes refuted it: no method in any of the four
+drivers was classified invented, and the §4.3 rewrite authorisation was never
+exercised. See the retraction in §2.2.
 
 ## 1. Scope
 
@@ -453,14 +456,23 @@ exceptions:
   source counterpart, so it cannot be a ledger-flagged divergence of existing
   code.
 - **Wholesale rewrite where the report pass confirms invention.** Where a
-  method's body is invented rather than divergent — §2.2 flags
-  `-[SoundBlaster16 initializeHardware]` and `-[SoundBlaster16 timeoutOccurred]`
-  as the likely cases, and §2.3 flags drvES1x88Sound's four extra methods for
-  excision — the fix pass rewrites or removes it as a unit rather than
-  finding-by-finding, on the drvBusMouse §2.3 precedent. The authorisation is
-  conditional: it applies only to methods whose report pass says the source does
-  not implement the reference's logic, and the report pass must say so in
-  `divergences.md` before the rewrite starts.
+  method's body is invented rather than divergent, the fix pass rewrites or
+  removes it as a unit rather than finding-by-finding, on the drvBusMouse §2.3
+  precedent. The authorisation is conditional: it applies only to methods whose
+  report pass says the source does not implement the reference's logic, and the
+  report pass must say so in `divergences.md` before the rewrite starts.
+
+  **The rewrite half of this was granted and never exercised.** It was written
+  with `-[SoundBlaster16 initializeHardware]` and `-[SoundBlaster16
+  timeoutOccurred]` in view, on §2.2's size heuristic. §2.2 now retracts that
+  premise: drvSB16Sound's report pass found both methods are one inlined
+  `resetHardware()` expansion, 780 of 792 instructions byte-identical, and **no
+  method in any of the four drivers was classified invented**. The condition was
+  therefore never met and no method was rewritten. The excision half *was*
+  exercised, once: drvES1x88Sound's four SB16-derived methods (§2.3), removed in
+  Phase 7 after Phase 6 recorded that the reference has no counterpart for them.
+  Do not read this bullet as authorising a rewrite on the strength of §2.2 —
+  read §2.2 first, which says the opposite.
 
 No other adjacent cleanup, no refactoring of code that is not divergent.
 
@@ -567,7 +579,9 @@ authorised by §4.3 only once Phase 6 has recorded it.
 
 **Phase 8 — drvSB16Sound report pass** (26 functions, 13572 bytes). The largest
 and most divergent. `initializeHardware` and `timeoutOccurred` alone are 44
-percent of the reference `__text`.
+percent of the reference `__text` — which this phase established is one inlined
+`resetHardware()` expansion present in our source, not the invention §2.2 first
+read it as.
 
 *Verify:* `load_source_map` passes.
 
@@ -575,6 +589,11 @@ percent of the reference `__text`.
 (§2.2), then rewrite whatever Phase 8 confirmed as invented, informed by Phase 4
 and Phase 6's worked examples of the shared method set. The `__DATA` mixer
 defaults recorded in §2.2 are the target for the initialisation path.
+
+*Outcome:* Phase 8 confirmed nothing as invented, so the rewrite half of this
+phase produced no work. The IRQ set, the two missing strings and the `__DATA`
+mixer defaults were all resolved finding-by-finding under the ordinary §4.3
+discipline.
 
 *Verify:* the three §4.3 checks, plus per-function size against the reference.
 
@@ -584,10 +603,15 @@ drvIntelAC97Sound and drvSB128Sound are left alone.
 
 ## 6. Failure modes
 
-**The drvSB16Sound and drvES1x88Sound rewrites can overfit.** 13572 and 8660
-bytes respectively. A rebuilt function materially larger than its reference
+**drvSB16Sound and drvES1x88Sound can overfit.** 13572 and 8660 bytes
+respectively. A rebuilt function materially larger than its reference
 counterpart means we invented structure again. Per-function size against the
 reference is the check, as in the Intel and input specs.
+
+*Outcome:* neither driver was rewritten — the §4.3 rewrite authorisation was
+never exercised — so the exposure this anticipated never arose. The
+per-function size check ran anyway on both, and no function was flagged
+`LARGER`.
 
 **`+[Beep probe:]` may not be fully recoverable.** 68 bytes is small enough that
 the disassembly should be unambiguous, but if it turns out to depend on an

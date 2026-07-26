@@ -51,11 +51,11 @@ scsi
  * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
 
 sound
- * drvBeepSound - needs compiled and then tested
- * drvES1x88Sound - needs compiled and then tested
+ * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvES1x88Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvIntelAC97Sound - needs compiled and then tested
- * drvSB8Sound - needs compiled and then tested
- * drvSB16Sound - needs compiled and then tested
+ * drvSB8Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvSB16Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSB128Sound - complete
 
 video

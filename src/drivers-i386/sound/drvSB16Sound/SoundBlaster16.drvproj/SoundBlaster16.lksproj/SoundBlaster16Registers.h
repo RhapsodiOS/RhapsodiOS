@@ -28,9 +28,9 @@
 /*
  * DSP Command timing delays
  */
-#define SB16_ADDRESS_WRITE_DELAY                10
+#define SB16_ADDRESS_WRITE_DELAY                15
 #define SB16_DATA_WRITE_DELAY                   75
-#define SB16_DATA_READ_DELAY                    10
+#define SB16_DATA_READ_DELAY                    30
 
 /*
  * DSP status register bits
@@ -132,6 +132,7 @@
  */
 #define DC16_GET_VERSION                        0xe1
 #define DC16_GET_COPYRIGHT                      0xe3
+#define DC16_INVERT_BYTE                        0xe0
 
 /*
  * Halt DMA
@@ -207,15 +208,6 @@
 typedef union {
     struct {
         unsigned char
-                right:4,
-                left:4;
-    }       reg;
-    unsigned char data;
-}       sb16MonoMixerRegister_t;
-
-typedef union {
-    struct {
-        unsigned char
                 right:5,
                 rsvd1:3;
     }       reg;
@@ -248,12 +240,8 @@ typedef enum {
  */
 typedef struct  {
         sb16CardVersion_t version;
-        char              *name;
         unsigned int      majorVersion;
         unsigned int      minorVersion;
-        BOOL              mixerPresent;
-        BOOL              supports16Bit;
-        BOOL              supportsAWE;
 } sb16CardParameters_t;
 
 /*

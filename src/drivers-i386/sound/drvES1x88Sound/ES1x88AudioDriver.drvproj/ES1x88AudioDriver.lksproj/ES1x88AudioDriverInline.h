@@ -80,19 +80,6 @@ static unsigned char sbRecordSource =           0;
 static unsigned char sbStartDMACommand =        0;
 
 /*
- * Write to mixer register
- */
-static  __inline__
-void
-outbIXMixer(unsigned int address, unsigned int val)
-{
-    outb(sbMixerAddressReg, address);
-    IODelay(SB16_ADDRESS_WRITE_DELAY);
-    outb(sbMixerDataReg, val);
-    IODelay(SB16_DATA_WRITE_DELAY);
-}
-
-/*
  * Wait for DSP data available (with timeout)
  * Returns 1 if data available, 0 on timeout
  */

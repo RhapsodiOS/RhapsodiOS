@@ -20,3 +20,5 @@ vm/capture_output/
 tools/binrecon/out/
 # Rebuilt driver artifacts staged from the Rhapsody guest; never committed.
 out/
+# binrecon ledger lock files: transient, never committed
+ledger.json.lock

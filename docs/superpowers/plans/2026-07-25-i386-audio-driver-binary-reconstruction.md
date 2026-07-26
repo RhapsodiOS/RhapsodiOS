@@ -1408,7 +1408,9 @@ Expected: `complete: True` and SHA-256 `3CE9787321C1E52D62BF1B19CFC58BD6F7340A98
 
 Follow Standard report pass procedure Steps B and C with `<drv>` = `drvSB8Sound`, `<drvproj>` = `SoundBlaster8.drvproj`, `<lksproj>` = `SoundBlaster8.lksproj`.
 
-Two functions need care. `_writeToDSP` (0, 40 bytes) and `_readFromDSP` (40, 32 bytes) are `local` out-of-line functions in the reference; ours are `static inline` in `SoundBlaster8Inline.h:153` and `:170`, which the `*.m`/`*.c` glob does not see. Map both to `SoundBlaster8.m` at its `#import "SoundBlaster8Inline.h"` line and record in `divergences.md` that their `source_line` is an include site rather than a definition. `_clearInterrupts` (7756, 16 bytes) is defined at `SoundBlaster8.m:511` and maps directly.
+Two functions need care. `_writeToDSP` (0, 40 bytes) and `_readFromDSP` (40, 32 bytes) are `local` out-of-line functions in the reference; ours are defined in `SoundBlaster8Inline.h`, which the `*.m`/`*.c` glob does not see. Map both to `SoundBlaster8.m` at its `#import "SoundBlaster8Inline.h"` line and record in `divergences.md` that their `source_line` is an include site rather than a definition. `_clearInterrupts` (7756, 16 bytes) is defined at `SoundBlaster8.m:511` and maps directly.
+
+An earlier revision of this step called ours `static inline`. They are plain `static`, and already emit out of line at Apple's 40 and 32 bytes; see Task 6 Step 3, which carries the corrected reading and the exact declaration lines.
 
 The remaining 24 hand-written functions are `SoundBlaster8` methods with name-level counterparts in `SoundBlaster8.m`; the two glue methods at 8872 and 8884 go to `unmapped`.
 
@@ -1436,7 +1438,7 @@ Follow Standard report pass procedure Step F. `Default.table` only. Record the `
 
 - [ ] **Step 6: Write `divergences.md` and `ledger.json`**
 
-Follow Standard report pass procedure Steps G and H. Record as positive results, not findings: all 19 reference `__cstring` entries are present in our source, and every extra string of ours sits under `#ifdef DEBUG`. Record as a finding the `_writeToDSP`/`_readFromDSP` `static inline` versus out-of-line `local` question, with Task 6's fallback stated.
+Follow Standard report pass procedure Steps G and H. Record as positive results, not findings: all 19 reference `__cstring` entries are present in our source, and every extra string of ours sits under `#ifdef DEBUG`. Record the `_writeToDSP`/`_readFromDSP` linkage as a positive result too, not a finding: ours are plain `static`, Apple's are out-of-line `local`, and the two already agree, so there is nothing for Task 6 to change and no fallback to state.
 
 - [ ] **Step 7: Commit**
 
@@ -1831,7 +1833,7 @@ the two missing strings and the initialised mixer defaults."
 
 **Interfaces:**
 - Consumes: `divergences.md` from Task 9 and its per-method divergent-or-invented classification.
-- Produces: a drvSB16Sound that validates IRQs 5, 7, 9 and 10, emits both previously-missing strings, and whose invented methods are rewritten from the disassembly.
+- Produces: a drvSB16Sound that validates IRQs 5, 7, 9 and 10 and emits both previously-missing strings. Task 9 classified no method invented — see Step 6 — so nothing was rewritten from the disassembly.
 
 - [ ] **Step 1: Baseline build**
 
@@ -1900,18 +1902,18 @@ PY
 
 Expected after the fix: no `MISMATCH` lines. This reads one byte at each symbol's address, which is correct for the `unsigned char` mixer values; a symbol our build declares at a different width will show a spurious mismatch, and that is itself a finding.
 
-- [ ] **Step 6: Rewrite the invented methods**
+- [ ] **Step 6: Rewrite the invented methods — no work; the guard returned no authorisation**
 
-For each method Task 9 classified as invented — expected to include `timeoutOccurred` and `initializeHardware` — rewrite the body from the reference disassembly as a unit. This is the spec's §4.3 conditional authorisation; it applies only to methods `divergences.md` explicitly classified that way.
+For each method Task 9 classified as invented, rewrite the body from the reference disassembly as a unit. This is the spec's §4.3 conditional authorisation; it applies only to methods `divergences.md` explicitly classified that way. **A method not classified there does not get rewritten**, however wrong it looks. Commit each rewritten method separately, so a reviewer can reject one without rejecting the others.
 
 ```bash
 cd /d/RhapsodiOS
 grep -n 'invented' src/drivers-i386/sound/drvSB16Sound/reconstruction/divergences.md
 ```
 
-Expected: one hit per method being rewritten. **A method not named here does not get rewritten**, however wrong it looks.
+**Outcome: the guard authorised nothing and this step produced no work.** An earlier revision expected the rewrite set to include `timeoutOccurred` and `initializeHardware`, on the spec §2.2 size heuristic. Task 9 refuted that: both are one inlined `resetHardware()` expansion out of `SoundBlaster16Inline.h`, 780 of 792 instructions byte-identical, and `divergences.md` records **"No function in this driver is invented"**. Spec §2.2 has been retracted to match.
 
-Commit each rewritten method separately, so a reviewer can reject one without rejecting the others.
+Read the guard's hits, do not count them. All four are the classification scheme's own definition and its negation — `divergences.md:110`, `:113`, `:115` and `:146` — and none names a method. A literal "one hit per method" reading of the old wording would have read as satisfied by those negations, which is the opposite of what they say. The authorisation is a named method in a classification line, not a substring match.
 
 - [ ] **Step 7: Fix the remaining findings**
 

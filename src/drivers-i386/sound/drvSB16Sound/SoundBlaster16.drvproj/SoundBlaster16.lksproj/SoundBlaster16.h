@@ -15,10 +15,8 @@
 @private
     unsigned int currentDMADirection;
     BOOL interruptTimedOut;
-    BOOL is16BitTransfer;                // Are we doing 16-bit audio?
-    unsigned int dma8Channel;            // 8-bit DMA channel
-    unsigned int dma16Channel;           // 16-bit DMA channel
-    unsigned int numDMAChannels;         // Number of DMA channels (1 or 2)
+    unsigned int currentEncoding;        // NXSoundStreamDataEncoding in use
+    unsigned int dmaChannelsAvailable;   // Number of DMA channels (1 or 2)
 }
 
 + (BOOL)probe: deviceDescription;

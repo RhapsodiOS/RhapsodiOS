@@ -67,8 +67,8 @@ of every comparison by the Global Constraints.
 
 All 25 reference functions land in exactly one bucket and every one carries a ledger entry.
 
-Ledger status counts: `assembly-matched` 14, `unexamined` 9, `intentional-mismatch` 2.
-The nine `unexamined` entries are the nine functions carrying a divergence; per the
+Ledger status counts: `assembly-matched` 12, `unexamined` 11, `intentional-mismatch` 2.
+The eleven `unexamined` entries are the eleven functions carrying a divergence; per the
 drvPCIBus convention their status is held here and advancing it is Task 8's job.
 
 **The asymmetry runs one way.** There is no reference function our source lacks. Both
@@ -84,16 +84,16 @@ former.
 
 ## Examination depth
 
-Fourteen functions were read **at instruction level**, top to bottom, against our source,
+Twelve functions were read **at instruction level**, top to bottom, against our source,
 and carry `assembly-matched`: `updateInputGainLeft`, `updateInputGainRight`,
-`updateOutputAttenuationLeft`, `updateOutputAttenuationRight`, `enableAllInterrupts`,
-`disableAllInterrupts`, `stopDMAForChannel:read:`,
+`enableAllInterrupts`, `disableAllInterrupts`, `stopDMAForChannel:read:`,
 `interruptOccurredForInput:forOutput:`, `_clearInterrupts`, `interruptClearFunc`,
 `acceptsContinuousSamplingRates`, `getSamplingRatesLow:high:`, `getSamplingRates:count:`
 and `channelCountLimit`.
 
-Nine functions were also read at instruction level but **diverge** and are held
+Eleven functions were also read at instruction level but **diverge** and are held
 `unexamined`: `+probe:`, `reset`, `initializeHardware`, `updateOutputMute`,
+`updateOutputAttenuationLeft`, `updateOutputAttenuationRight`,
 `configureHardwareForDataTransfer:`,
 `startDMAForChannel:read:buffer:bufferSizeForInterrupts:`, `timeoutOccurred`,
 `setAnalogInputSource:` and `getDataEncodings:count:`. For the three largest of these —
@@ -364,7 +364,7 @@ Their SoundBlaster16 origin is unambiguous and needs no inference.
   of those four mixer register addresses is ever written. The four backing variables
   `_lastStageGainInputLeft`, `_lastStageGainInputRight`, `_lastStageGainOutputLeft` and
   `_lastStageGainOutputRight` (`ES1x88AudioDriverInline.h:74`–`:77`) have no symbol in
-  `__DATA,__data`, which holds exactly the eleven symbols listed below and no others.
+  `__DATA,__data`, which holds exactly the fifteen symbols listed below and no others.
 - `setBufferCount:` (`ES1x88AudioDriver.m:981`–`:984`) assigns `sbBufferCounter`.
   `_sbBufferCounter` has no symbol in the reference's `__DATA,__data` or `__DATA,__bss`,
   and the ES-1688 gets its transfer count from registers `A4h`/`A5h` inside
@@ -563,8 +563,8 @@ help-file finding here and `ES1x88_3_30.rtfd` must not be renamed.
 
 # Findings
 
-Fourteen. Every one is a real difference between our source and Apple's binary; none is a
-Task 2 defect. Findings 1–3 and 6–14 name a concrete source change; Findings 4, 5 and 7
+Fifteen. Every one is a real difference between our source and Apple's binary; none is a
+Task 2 defect. Findings 1–3 and 6–15 name a concrete source change; Findings 4, 5 and 7
 are structural and Task 8 should weigh them together.
 
 ## Finding 1: `reset` sends `stringValue` to the config-table value; the reference does not
@@ -700,10 +700,39 @@ static unsigned char volVoc =                   0;
 
 `_volVoc` at `__DATA,__data:16419` is manipulated exactly like `_volMaster`, `_volCD` and
 `_volLine` — `and 0Fh / or 0A0h / and 0F0h / or 0Ah` in `initializeHardware` (2445–2473),
-`and 0Fh / or dl` in `updateOutputAttenuationLeft` (3758–3765), `and 0F0h / or al` in
+`and 0Fh / or al` in `updateOutputAttenuationLeft` (3758–3765), `and 0F0h / or al` in
 `updateOutputAttenuationRight` (4126–4133). Those are the same instructions the other
-three `sb16MonoMixerRegister_t` shadows get. Our `unsigned char` reproduces them in the
-attenuation methods only because we write the masks by hand at `:639` and `:678`.
+three `sb16MonoMixerRegister_t` shadows get.
+
+**Open question for Task 8, not a finding: can a single masked expression emit two
+read-modify-write memory operations?** The attenuation and input-gain methods write each
+shadow as `and ds:_volX, imm` followed by `or ds:_volX, reg` — two loads and two stores of
+the same byte. Our source writes those sites as one expression each:
+`volVoc = (volVoc & 0x0F) | volInUpperNibble;` at `:639` and the matching form at `:678`,
+and the `.rawValue = (rawValue & mask) | …` form at `:512`–`:514`, `:543`–`:545`,
+`:636`–`:638` and `:675`–`:677`. A single expression whose destination is a global byte
+normally compiles to load / `and` / `or` / store through one register — one load, one
+store. The paired read-modify-write form is characteristic of a **bitfield store**, where
+the compiler uses the destination itself as the target of both the mask and the merge, or
+of two separate compound assignments. On that reading Apple's construct here is
+`volVoc.reg.left = volumeValue;`, not our expression.
+
+**This could not be settled from the reference.** The binary shows the emitted
+instructions only, and both constructs are candidate sources for them; deciding between
+them needs the period compiler, which this pass did not have. The earlier confident claim
+that our hand-written masks reproduce the reference is therefore withdrawn — it is
+unproven in either direction.
+
+Two consequences for Task 8. First, **the question is not specific to `volVoc`**: the
+identical construct produces the identical instructions for `_volLine`, `_volMic` and
+`_volCD` in `updateInputGainLeft` (2687–2729) and `updateInputGainRight` (2919–2961), and
+both of those functions are recorded `assembly-matched`. If Task 8 settles the question
+against the expression form, it must reopen those two entries too; the answer cannot apply
+to `volVoc` alone. Second, **this does not unsettle Finding 4**, which rests on separate
+evidence: `initializeHardware` emits *four* read-modify-write operations per shadow where
+our single `rawValue = 0xAA` store would emit one `mov` of an immediate, and `_volFM`'s
+`and 0Fh / and 0F0h` pair (2186–2193) shows two source-level assignments with the `or 0`
+folded away.
 
 Related: `_volVoc` sits at 16419, **between** `_volLine` (16418) and `_volCD` (16420),
 whereas our header declares `volMaster, volFM, volCD, volLine, volMic` at `:65`–`:69` and
@@ -719,7 +748,7 @@ better.
 **Source:** `ES1x88AudioDriverInline.h:23`–`:24`, `:74`–`:77`, `:98`–`:100`;
 `ES1x88AudioDriver.m:19`
 
-The reference's `__DATA,__data` holds exactly eleven symbols (table above) and its
+The reference's `__DATA,__data` holds exactly fifteen symbols (table above) and its
 `__DATA,__bss` exactly four. Our source declares nine more that have no counterpart:
 
 | Ours | Where | Why it has no counterpart |
@@ -1031,6 +1060,29 @@ The two `#define`s at `ES1x88AudioDriverRegisters.h:233`–`:234` carry the righ
 **Disposition for Task 8:** rewrite as an explicit two-test chain with a default that
 shares the microphone arm.
 
+**Keep the `sourceValue` local at `:1296`.** It has the shape of the parallel local
+Finding 3 tells Task 8 to remove, but the reference does *not* re-read `_sbRecordSource`
+here. The whole binary contains exactly two `movzx ebx, ds:_sbRecordSource` instructions —
+`reset`+619 (919) and `startDMAForChannel:`+899 (6703), the two sites Finding 3 names.
+`setAnalogInputSource:` keeps the port byte in a register instead:
+
+```
+8374: C6052640000000 mov  ds:_sbRecordSource, 0
+8408: 668B151C400000 mov  dx, word ptr ds:_sbMixerDataReg
+8415: 30C9           xor  cl, cl              ; the value written to the port
+8417: 88C8           mov  al, cl
+8419: EE             out  dx, al
+...
+8448: C6052640000006 mov  ds:_sbRecordSource, 6
+8489: B106           mov  cl, 6
+8491: EBB4           jmp  loc_20E1            ; -> 8417, the shared tail
+```
+
+That is exactly our `:1304`/`:1308` global store plus the `:1305`/`:1309` `sourceValue`
+assignment plus `:1315` `outb(sbMixerDataReg, sourceValue)`. **Finding 3 must not be
+applied to this method**; removing `sourceValue` here would introduce a divergence rather
+than remove one.
+
 ## Finding 14: `getDataEncodings:count:` returns the two encodings in the wrong order
 
 **Source:** `ES1x88AudioDriver.m:1349`–`:1350`
@@ -1055,3 +1107,57 @@ preferred encoding, so this is a behavioural difference, and it is consistent wi
 Finding 11(c), where the reference also keys its mode selection on `Linear8`.
 
 **Disposition for Task 8:** swap the two assignments.
+
+## Finding 15: the attenuation division is unsigned; our `attenuation` locals are `int`
+
+**Source:** `ES1x88AudioDriver.m:625` and `:665`
+
+```c
+int             attenuation;
+...
+volumeValue = (unsigned char)(((attenuation * ES_ATTENUATION_MULTIPLIER
+                                + ES_ATTENUATION_OFFSET)
+                               * ES_ATTENUATION_SCALE) / ES_ATTENUATION_RANGE);
+```
+
+The reference divides **unsigned** in both methods. `updateOutputAttenuationLeft`:
+
+```
+3674: 89C2           mov  edx, eax                ; [self outputAttenuationLeft]
+3676: 8D9452FC000000 lea  edx, [edx+edx*2+0FCh]   ; attenuation*3 + 252
+3686: 8D1492         lea  edx, [edx+edx*4]        ; *5
+3689: 89D0           mov  eax, edx
+3691: B954000000     mov  ecx, 54h                ; 84
+3696: 31D2           xor  edx, edx                ; zero-extend, not sign-extend
+3698: F7F1           div  ecx                     ; unsigned divide
+```
+
+and the identical shape in `updateOutputAttenuationRight`:
+
+```
+4059: B954000000     mov  ecx, 54h
+4064: 31D2           xor  edx, edx
+4066: F7F1           div  ecx
+```
+
+`xor edx, edx` followed by `div` is reachable only from unsigned operands. A signed `int`
+division by a non-power-of-two constant emits `cltd; idiv ecx`, and the compiler cannot
+substitute `div` for `idiv` without knowing the dividend is non-negative — there is no
+such range information here, since `[self outputAttenuationLeft]` is an opaque
+`objc_msgSend` return. The four constants themselves match ours exactly
+(`ES_ATTENUATION_MULTIPLIER` 3, `ES_ATTENUATION_OFFSET` 252, `ES_ATTENUATION_SCALE` 5,
+`ES_ATTENUATION_RANGE` 84, `ES1x88AudioDriverRegisters.h:163`–`:166`); only the signedness
+of the arithmetic differs.
+
+**Behaviour is identical.** The attenuation range is 0 to -84, which `*3 + 252` maps to
+0..1260 and `*5` to 0..6300 — all non-negative, so signed and unsigned division agree on
+every value that can occur. That is exactly the case the binding rule covers: a source
+construct that cannot produce the reference's instructions is a divergence even when the
+behaviour matches. It is the same signal Finding 9 turns on for `numChannels` (`ja` versus
+`jg`), and the same signal that makes `updateInputGain*`'s `shr ecx, 0Fh` at 2673 and 2905
+evidence for their `unsigned int gain`.
+
+**Disposition for Task 8:** declare `attenuation` as `unsigned int` at `:625` and `:665`.
+Nothing else in either method changes; both `lea`s and the `54h` divisor already match.
+Note that this is the only reason both entries are held `unexamined`; the open question in
+Finding 5 about the `_volVoc` masks is recorded there and is not a finding.

@@ -150,6 +150,7 @@
           "angr"
         ],
         "reasons": [
+          "diverges: the attenuation-to-volume division is unsigned in the reference (3691 mov ecx, 54h; 3696 xor edx, edx; 3698 div ecx), while our int attenuation at ES1x88AudioDriver.m:625 makes ((attenuation * 3 + 252) * 5) / 84 a signed division, which must emit cltd; idiv ecx. The values are non-negative in practice so behaviour is identical, but the construct cannot produce the reference's instructions. See divergences.md Finding 15. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job.",
           "read instruction by instruction against ES1x88AudioDriver.m:623-661: (att*3+252)*5/84 as lea [edx+edx*2+0FCh] / lea [edx+edx*4] / div 54h, high-nibble update of _volCD, _volMaster, _volLine and _volVoc in that order, then mixer writes to 32h, 38h, 14h and 3Eh. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
         ],
         "status": "agreed"
@@ -163,7 +164,7 @@
       "size": 367,
       "source_line": 623,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
-      "status": "assembly-matched"
+      "status": "unexamined"
     },
     {
       "address": 4020,
@@ -173,6 +174,7 @@
           "angr"
         ],
         "reasons": [
+          "diverges: the same signed/unsigned division mismatch as updateOutputAttenuationLeft. The reference divides unsigned (4059 mov ecx, 54h; 4064 xor edx, edx; 4066 div ecx), while our int attenuation at ES1x88AudioDriver.m:665 makes ((attenuation * 3 + 252) * 5) / 84 a signed division, which must emit cltd; idiv ecx. Behaviour is identical for the values that occur; the construct is not. See divergences.md Finding 15. Status held at unexamined per the report-pass convention; advancing it is the fix pass's job.",
           "read instruction by instruction against ES1x88AudioDriver.m:663-700: the mirror of updateOutputAttenuationLeft writing the low nibble, including the and 0Fh that our & ES_VOLUME_BITS produces. IDA and angr agree on size and instruction count for this function; angr's basic-block count differs only by its CFGFast splitting convention. Ghidra is disabled in this driver's profile after the \"Ghidra relocation operand metadata is ambiguous\" normalization abort, so this entry rests on two analyzers, not three."
         ],
         "status": "agreed"
@@ -186,7 +188,7 @@
       "size": 367,
       "source_line": 663,
       "source_path": "src/drivers-i386/sound/drvES1x88Sound/ES1x88AudioDriver.drvproj/ES1x88AudioDriver.lksproj/ES1x88AudioDriver.m",
-      "status": "assembly-matched"
+      "status": "unexamined"
     },
     {
       "address": 4388,

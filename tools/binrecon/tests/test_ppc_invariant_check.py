@@ -8,6 +8,7 @@ from macho_fixture import (
     build_macho_fixture,
     ppc_pair,
     ppc_relocation,
+    ppc_scattered,
 )
 from binrecon.macho import read_macho
 from ppc_invariant_check import check_document
@@ -52,3 +53,26 @@ def test_missing_pair_records_are_reported(tmp_path):
     violations = check_document(document)
 
     assert any("PAIR" in violation for violation in violations)
+
+
+def test_scattered_relocation_far_outside_target_section_is_not_a_violation(tmp_path):
+    # HA16 scattered relocations store target - anchor (a difference), not
+    # an address, so the reconstructed field lands far outside the target
+    # section on real binaries (e.g. SCSIServer_reloc) -- that must not be
+    # reported as a violation.
+    text = struct.pack(">II", 0x3C600002, 0x60000000)
+    relocations = ppc_scattered(0, 0x1000, kind=PPC_RELOC_HA16) + ppc_pair(0xFFFF)
+
+    assert check_document(_document(tmp_path, text, relocations)) == []
+
+
+def test_scattered_relocation_naming_no_section_is_reported(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x60000000)
+    relocations = ppc_scattered(0, 0x1000, kind=PPC_RELOC_HA16) + ppc_pair(0xFFFF)
+    document = _document(tmp_path, text, relocations)
+    document["relocations"][0]["target"] = "__DATA,__bogus"
+
+    violations = check_document(document)
+
+    assert len(violations) == 1
+    assert "__DATA,__bogus" in violations[0]

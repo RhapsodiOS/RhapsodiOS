@@ -16,6 +16,17 @@ from binrecon.macho import read_macho
 
 _PAIRED_KINDS = ("hi16", "ha16", "lo16", "jbsr", "sectdiff")
 
+# Scattered HI16/HA16/LO16 relocations and SECTDIFF (macho.py's
+# "ppc-scattered-*-32-absolute" / "ppc-sectdiff-32-absolute" kinds) store a
+# *difference* (target - anchor) in their addend, not an address -- that is
+# the whole reason the scattered form exists. "base + addend lands inside
+# the target section" is an address-form invariant and cannot hold for these.
+_DIFFERENCE_FORM_PREFIXES = ("ppc-scattered-", "ppc-sectdiff-")
+
+
+def _is_difference_form(kind):
+    return kind.startswith(_DIFFERENCE_FORM_PREFIXES)
+
 
 def _sections(document):
     return [section for section in document["sections"] if section["size"]]
@@ -44,6 +55,18 @@ def check_document(document):
 
     for relocation in document["relocations"]:
         target = relocation["target"]
+        if _is_difference_form(relocation["kind"]):
+            # The field is a difference, not an address, so it cannot be
+            # checked against the target section's bounds. What we *can*
+            # check is the thing the scattered format's redundant r_value
+            # already pinned during decode (_ppc_section_of in macho.py):
+            # that the target it named is a real section in this document.
+            if target is None or target not in section_names:
+                violations.append(
+                    f"{relocation['kind']} at 0x{relocation['address']:x} names "
+                    f"target {target!r}, which is not a section in this document"
+                )
+            continue
         if target is None or target not in section_names:
             continue
         base = next(section["address"] for section in sections
@@ -124,6 +147,10 @@ def main(argv=None):
 
     for violation in violations:
         print(violation)
+    scattered = sum(1 for relocation in document["relocations"]
+                    if _is_difference_form(relocation["kind"]))
+    print(f"{scattered} scattered/difference-form relocations "
+          "(target section verified, field is a difference, not an address)")
     print(f"{len(document['relocations'])} fused relocations, "
           f"{len(violations)} violations")
     return 1 if violations else 0

@@ -33,15 +33,24 @@ Our sources, all under `src/driverkit-3/libDriver/`:
 
 | Module | Classes and categories in the reference | Methods |
 | --- | --- | --- |
-| `pci/IOPCIDirectDevice.m` | `IODirectDevice(IOPCIDirectDevice)` | 5 |
+| `pci/IOPCIDirectDevice.m` | `IODirectDevice(IOPCIDirectDevice)` | 10 (5 class, 5 instance) |
 | `pci/IOPCIDeviceDescription.m` | `IOPCIDeviceDescription`, `(Private)` | 3 |
 | `pcmcia/IOPCMCIADirectDevice.m` | `IODirectDevice(IOPCMCIADirectDevice)` | 2 |
 | `pcmcia/IOPCMCIADeviceDescription.m` | `IOPCMCIADeviceDescription`, `(Private)` | 4 |
 | `pcmcia/IOPCMCIATuple.m` | `IOPCMCIATuple`, `(Private)` | 5 |
 
-Nineteen methods, whose implementations occupy a contiguous region beginning at
-`0x1fd2fc` and running past the last entry point at `0x1fdcd4` — roughly 2.5 KB
-of code. Our five sources total about 21 KB.
+Twenty-four methods, whose implementations occupy a contiguous region from
+`0x1fd0d4` to the last entry point at `0x1fdcd4` — roughly 3 KB of code. Our five
+sources total about 21 KB.
+
+The five class methods all belong to `IODirectDevice(IOPCIDirectDevice)`, and one
+selector — `isPCIPresent` — exists as **both** a class and an instance method at
+different addresses. Any walk that follows only instance method lists undercounts
+by five and misses the region's true start; the metadata walk must follow a
+class's metaclass method list and a category's class-method list as well.
+
+The reference kernel's SHA-256 is
+`BE98A33F71B80AEE00A6921333943DA02D0B676C8AF056843EB868C14EBB497C`.
 
 ### 1.2 Out of scope
 
@@ -190,7 +199,7 @@ and is what the `duplicate_candidates` bucket exists to surface.
 Unchanged in shape from the driver effort.
 
 **Report pass.** Analyze the reference kernel; build `source-map.json` scoped to
-the 19 methods; disassembly-diff each against our source; write `divergences.md`
+the 24 methods; disassembly-diff each against our source; write `divergences.md`
 and a `ledger-v1` ledger. A function that matches gets the strongest status the
 evidence supports; a function that diverges stays `unexamined` and is written up.
 
@@ -212,7 +221,7 @@ One profile at `tools/binrecon/profiles/kernel-driverkit.json`, reference-only,
 ## 5. Failure modes
 
 **The source map is partial by design — resolved, see §3.3.** Every prior source
-map partitioned every function in its binary; this one covers 19 methods out of a
+map partitioned every function in its binary; this one covers 24 methods out of a
 1.4 MB kernel. `load_source_map` does require an exact partition, so the scoping
 is expressed by filtering the *analysis* rather than by loosening the check. The
 residual risk is that the filter's address range is drawn wrongly and silently
@@ -244,7 +253,7 @@ analysis scoping of §3.3, and the builder wiring, each test-first.
 
 *Verify:* the existing suite stays green (currently 650 passed, 4 skipped);
 `binrecon validate` resolves the kernel and prints its identity; the new index
-reproduces the 19 methods and IMPs recorded in §1.1.
+reproduces the 24 methods and IMPs recorded in §1.1, including the five class methods.
 
 **Phase 1 — analysis.** Run the three analyzers over the reference kernel.
 
@@ -254,7 +263,7 @@ boundaries that coincide with the §1.1 IMPs.
 **Phase 2 — report pass.** Source map, disassembly diff, `divergences.md`,
 ledger.
 
-*Verify:* `load_source_map` passes; all 19 methods carry a ledger entry.
+*Verify:* `load_source_map` passes; all 24 methods carry a ledger entry.
 
 **Phase 3 — fix pass.** Apply the findings.
 

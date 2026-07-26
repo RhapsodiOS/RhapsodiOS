@@ -469,8 +469,7 @@ extern Protocol *objc_protocol_PortDevices;  /* @protocol(PortDevices) */
     
     if (configTable == NULL) {
         /* No config table - log error and mark as invalid */
-        IOLog("IOPortSessionKern: Invalid Config Table
-");
+        IOLog("IOPortSessionKern: Invalid Config Table\n");
         _numSessions = -1;
     } else {
         /* Read "Maximum Sessions" value from config */

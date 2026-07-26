@@ -1701,3 +1701,1401 @@ All 38 entries are `unmapped`. Two reason classes:
   implements a class `VGA` subclassing `IOFrameBufferDisplay`; Apple's
   implements `IOVGADisplay`, `IOVGADisplay(VESAMode)` and `vidBIOS` over an
   assembly real-mode emulator. There is no name, string or structure in common.
+
+---
+
+## VGA_psdrvr
+
+Reference `__TEXT,__text` is 7057 bytes at `0x70301F34` (1882201908). The source
+map partitions it plus `__TEXT,__picsymbol_stub` into 53 functions: 19
+hand-written symbols over 18 bodies, 2 dyld glue routines, 17 linker-generated
+PIC stubs and 16 unnamed `static` bodies. Everything below was read from the
+reference disassembly and from the Mach-O load commands, symbol table,
+relocation table and section bytes read directly out of the file. No counterpart
+exists in our source, so nothing here is a diff.
+
+### Evidence and coverage for this section
+
+**One analyzer, not two or three.** angr cannot produce an analysis document for
+this bundle at all — CFG recovery aborts with `block at address 1882209993 is
+outside function at address 1882210007` — and all 48 of Ghidra 12.1's relocation
+records come back with the unclassified kind `"0"`, so `normalize_analysis` can
+never derive a field width and aborts on the first one. Both are disabled in
+`tools/binrecon/profiles/vga-psdrvr.json`. **Every function claim below rests on
+IDA 9.2 alone.** That is a weaker evidentiary base than the `VGA_reloc` section
+above, and it is stated here once rather than repeated per finding.
+
+Three things compensate, and each is used explicitly where a claim would
+otherwise rest on IDA alone:
+
+1. **The Mach-O symbol table is linker-emitted ground truth.** It carries 52
+   symbols: 3 local, 26 external defined, 23 undefined. Every external defined
+   `__TEXT,__text` symbol appears in IDA's function list at the same address,
+   and IDA's list contains no named text function the symbol table does not
+   have. The only symbol-table `__text` entry IDA declines to call a function is
+   `__mh_bundle_header`, which is the bundle header rather than code; the source
+   map follows IDA and omits it, which is why the map has 53 entries and not 54.
+2. **The section table arithmetic closes exactly.** `__picsymbol_stub` is 442
+   bytes = 17 × 26; `__const` is 444 bytes and every byte of it is claimed by
+   one of the five tables identified below; `__common` is 32 bytes and the seven
+   globals account for all 32; `__bss` is 131124 bytes and the two 65536-byte
+   conversion tables plus 52 bytes of scalars account for all of it. Nothing is
+   left over anywhere.
+3. **The kernel half is an independent second copy of the same code.** The two
+   cursor blitters, the two planar/packed converters, the two plane selectors
+   and the palette values exist on both sides of the driver, compiled from what
+   is plainly shared source. Where a psdrvr claim has a `VGA_reloc` counterpart
+   it is cross-checked against it below, and in every case the two agree. That
+   is a stronger check than a second disassembler on the same bytes would be.
+
+**A correction to the spec's `__TEXT` base.** §1.1 says the bundle prebinds
+`__TEXT` at `0x70320000`. `LC_SEGMENT __TEXT` gives `vmaddr 0x70300000`,
+`vmsize 0x4000`; the offsets in §1.1's psdrvr table are consistent with
+`0x70300000` and only the prose is wrong.
+
+**A correction to the published `__picsymbol_stub` size.** The analysis document
+records 443 bytes. The load command says 442, which is exactly 17 × 26. The extra
+byte is an artefact of how the section list was derived and is cosmetic; the
+`442 = 17 × 26` identity in the Evidence section above is correct.
+
+### Local symbols were stripped, and that changes one of the `_emu486` tests
+
+The symbol table has exactly **three** local symbols — `dyld_stub_binding_helper`,
+`__dyld_func_lookup` and `__mh_bundle_header` — and all three are emitted by the
+linker itself. There is no `_name.N` private static, no `L`-prefixed label, no
+file symbol and no local name for any of the 16 unnamed function bodies. By
+contrast `VGA_reloc` retains seven numbered statics and every one of its `static`
+C functions by name.
+
+So **this bundle was linked with local symbols stripped** (`ld -x` or equivalent),
+and two consequences follow that Phase 3a has to hold on to:
+
+- The 16 `static` bodies are unnamed *because of the link*, not because they are
+  anything unusual. The source map's `sub_<ADDRESS>` names are synthesized and
+  correspond to nothing in Apple's source.
+- **The second of the seven `_emu486` tests does not transfer.** In `VGA_reloc`,
+  92 bytes of unsymbolised `__DATA,__data` was evidence of hand-written assembly
+  because that binary keeps its local data symbols. Here *all* file-scope statics
+  are unsymbolised, so the absence of a symbol on a `__data` or `__bss` object
+  proves nothing at all. The unnamed `static int` at `__data` `0x70304088` and
+  the two unnamed 65536-byte `__bss` tables at `0x70304138` and `0x70314138` are
+  ordinary C statics whose names the link removed, not an assembler idiom.
+
+The remaining `_emu486` tests do transfer, and they were applied to all 53
+entries:
+
+| Test | Result |
+| --- | --- |
+| Frame pointer | All 34 compiled bodies — the 18 named and all 16 unnamed — open `push ebp / mov ebp, esp` and close `mov esp, ebp / pop ebp / retn`. The 2 dyld glue routines and the 17 PIC stubs have no frame and no prologue at all. |
+| Instruction selection | No `daa`, `das`, `aaa`, `aas`, `pushf`, `popf`, `sahf`, `lahf`, `into`, `bound`, `xlat`, string instruction other than the single `movsd` run gcc emits for a 36-byte struct copy, or segment-override prefix appears anywhere in `__text`. |
+| Calling convention | Every internal call passes arguments on the stack and returns in `eax`; there is no register-argument subroutine and no `pop ecx`-to-discard-a-return-address anywhere. |
+| Zero data in `__data` | Present (`0x70304088`), but as shown above it is not diagnostic in a binary whose local symbols are stripped. |
+
+**Conclusion: all 16 unnamed `static` bodies are compiled C, and so are all 18
+named ones. Nothing in this binary is hand-written assembly.** The only bytes
+that are not compiled from a source file are the 2 dyld glue routines (20 + 14)
+and the 17 PIC stubs (442), and those are the linker's and dyld's, which is why
+all 19 are `intentional-mismatch` in the ledger.
+
+The 51 bytes of `__text` not claimed by any of the 53 entries are inter-function
+alignment padding: gcc's function alignment plus the `nop` runs it emits before
+hot loop heads.
+
+### Where Apple's translation-unit boundaries fall
+
+**There is no `__OBJC` segment in this binary at all.** The load commands list
+`__TEXT` (4 sections), `__DATA` (6 sections) and `__LINKEDIT`, and nothing else.
+There is no `__module_info`, no `__symbols`, no `__class` and no
+`__meth_var_types`. This is plain C, not Objective-C, so the section that named
+`IOVGADisplay.m`, `VGA_instance.m` and `vidBIOS.m` outright in `VGA_reloc` has no
+analogue here, and the private-name numbering argument is unavailable too because
+the link stripped the numbered statics. **Everything in this subsection is
+inference from section layout and linkage, and is marked as such.**
+
+One deduction is solid and does not depend on layout. **A function body with no
+external symbol had internal linkage.** The strip removed local symbols only;
+every symbol with `N_EXT` survived, and the 26 external defined symbols are
+exactly the 19 function names and the 7 globals. So each of the 16 unnamed
+bodies was `static`, and therefore each is reachable only from within its own
+translation unit. Chaining that:
+
+- `sub_70302BEC` is called only by `_VGASysShowCursor` and `sub_70302E48` only by
+  `_VGASysHideCursor`, so both cursor blitters are in the same unit as the two
+  `Sys` primitives.
+- `sub_703030F0` is called only by `_read_bpp4planar_to_bpp2packed`;
+  `sub_70303144` by `_write_bpp2packed_to_bpp4planar` and
+  `_vga_at_mode12_bpp2_to_bpp4`; `sub_70303844` by
+  `_vga_at_mode12_bpp2_to_bpp4`. So those four statics and the three converters
+  are one unit.
+- The eleven driver-vector statics are never called by name; their addresses
+  appear only in the unnamed `__data` object at `0x70304018`. That object has no
+  symbol either, so it also had internal linkage, so the unit that wrote its
+  initializer is the unit that defines all eleven — a cross-file initializer
+  would have required them to be `extern`.
+- `_VGAStart` takes the address of that same unnamed `__data` object with a
+  PIC-relative `lea`, which likewise requires it to be in the same unit.
+
+That leaves three candidate units — the device-vector layer, the cursor layer and
+the VGA hardware layer — and one piece of layout evidence collapses them into
+one. `__DATA,__data` is 152 bytes and holds, in address order: the linker's
+mach-header cell, the five-entry bitmap-class table used by the device layer, the
+21-entry driver vector table, three zero words, four address cells used by the
+device layer and `_VGAStart`, **the hardware layer's `static int` guard at
+`0x70304088`**, and three more address cells used by both layers. A static linker
+concatenates whole `__data` contributions per object file; it cannot interleave
+one file's guard variable between another file's tables. The guard is in the
+middle, so the device layer and the hardware layer contributed to the same
+`__data` block, i.e. they are one object file. The cursor layer's `__text` run
+(`0x70302708`–`0x70303028`) lies *between* the device layer's
+(`0x70301F58`–`0x70302704`) and the hardware layer's
+(`0x7030302C`–`0x70303AC4`), and a linker cannot interleave another file's text
+into the middle of one file's contribution either.
+
+**Therefore `VGA_psdrvr` is one C translation unit**, `__text` `0x70301F58`
+through `0x70303AC4`, and `VGA_psdrvr.tproj`'s `sources` should name exactly one
+hand-written file. This is a deduction from section layout plus linkage, not
+something any metadata section states, and it should be revisited if Phase 3a
+finds the single file unwieldy — but splitting it would change the `__data`
+layout and is therefore visible in the artifact.
+
+Weak corroboration, offered as corroboration only: `__cstring`'s 15 entries fall
+in the order their users appear in `__text` (the two strings `sub_70301FD8` at
+`0x70301FD8` uses come first, then the thirteen `_VGAStart` at `0x70302488` uses,
+in the order `_VGAStart` reaches them), and `__const`'s five tables fall in the
+order their users appear in `__text` (the cursor layer's two, then the hardware
+layer's three). Both are what a single compilation emitting in source order
+produces; neither excludes separate files.
+
+### The seven `__DATA,__common` globals
+
+`__common` is 32 bytes at `0x70324138` and holds all seven, each `N_SECT | N_EXT`
+— C tentative definitions at file scope with no initializer and no `static`, and
+all seven are **exported**, so the Window Server can read them. Sizes are the
+address deltas, and they sum to exactly 32.
+
+| Address | Symbol | Size | Type | First written by |
+| --- | --- | --- | --- | --- |
+| `0x70324138` | `_vga_width` | 4 | `int` | `_VGAStart`, step 3 |
+| `0x7032413C` | `_vga_height` | 4 | `int` | `_VGAStart`, step 3 |
+| `0x70324140` | `_vga_rowbytes` | 4 | `int` | `_VGAStart`, step 3 |
+| `0x70324144` | `_vga_bpl` | 4 | `int` | `_VGAStart`, step 3 |
+| `0x70324148` | `_vgaBounds` | 8 | `Bounds` | `sub_70301F58` — **not** `_VGAStart` |
+| `0x70324150` | `_vgaAddress` | 4 | `vm_address_t` | `_VGAStart`, step 5 (zeroed, then filled by the RPC) |
+| `0x70324154` | `_vgaVirtualAddress` | 4 | `void *` | `_VGAStart`, step 5 |
+
+Type evidence, from code rather than from the deltas:
+
+- `_vga_width`, `_vga_height`, `_vga_rowbytes` and `_vga_bpl` are written with
+  32-bit `mov [eax], ecx` and read with 32-bit loads everywhere except at the
+  `_NXRegisterScreen` call, where `_VGAStart` narrows two of them with
+  `movsx eax, word ptr [eax]`. A 4-byte store settles the width; the `movsx` is
+  a conversion at the call, so `NXRegisterScreen`'s prototype takes `short`
+  coordinates. All four are `int`.
+- `_vgaBounds` is written by `sub_70301F58` as two 32-bit stores taken straight
+  from the screen device's own bounds field, and read by
+  `_vga_at_mode12_bpp2_to_bpp4` as four `short`s at `+0`, `+2`, `+4`, `+6` and
+  compared against a caller's `Bounds`. It is a `Bounds`,
+  `{minx, maxx, miny, maxy}`, matching `IOVGAShared.h` — and the field order is
+  independently confirmed by the clip in `_vga_at_mode12_bpp2_to_bpp4`, which
+  takes the maximum at `+0`/`+4` and the minimum at `+2`/`+6`.
+- `_vgaAddress` is passed to `_IOMapEISADeviceMemory` as its `vm_offset_t *addr`
+  argument, so it is a `vm_address_t`. `_get_addr_range` reads it and adds
+  `0x10000`, i.e. it is the base of the 128 KB device mapping of physical
+  `0xA0000`.
+- `_vgaVirtualAddress` receives `_os_malloc`'s return value and is handed to the
+  `bm12` imaging machine as the storage for a 2-bit-per-pixel shadow of the
+  screen, so it is a `void *`.
+
+**The one that is easy to get wrong is `_vgaBounds`.** It is written by the
+vector-table static at `0x70301F58`, which the Window Server calls *after*
+`_VGAStart` has already returned and registered the screen. Until then it is
+zero, and `_vga_at_mode12_bpp2_to_bpp4` clips every rectangle against it, so any
+flush that happens before the screen device is initialized clips to nothing.
+
+The code never touches the seven directly. It loads their addresses out of 4-byte
+cells and dereferences those, and the cells live in two places: seven in
+`__DATA,__data` at `0x70304078`–`0x70304094` (skipping the guard at
+`0x70304088`), and five more in `__DATA,__nl_symbol_ptr` at
+`0x703040E8`–`0x70304100`. Five of the seven globals have a cell in both, and
+`_vga_height` and `_vga_rowbytes` have one only in `__data`. A single function
+(`_vga_at_mode12_bpp2_to_bpp4`) loads through cells of both kinds. Why the NeXT
+toolchain emitted two indirection mechanisms for the same tentative definitions
+is **not determined**; it is a `-dynamic` PIC artefact of the era and it does not
+constrain the rewrite, which just writes `vga_width` and lets the compiler pick.
+
+### `_VGAStart`: the Window Server's entry contract
+
+`_Start` and `_VGAStart` are both `N_SECT | N_EXT` at `0x70302488` (1882203272),
+size 637. IDA drops the duplicate name, which is why the analysis document shows
+only `_VGAStart`; `tools/binrecon/restore_symbol_aliases.py` puts `_Start` back
+and the committed source map carries both names on the one entry, as Task 8 Step
+6 decided.
+
+**What the alias is for.** The Window Server loads a `*_psdrvr` bundle and looks
+up one fixed entry point. `_Start` is that fixed name — it is what the loader
+resolves, and it is the same in every display bundle. `_VGAStart` is the
+descriptive name the source gives the function. The binary cannot say which of
+the two the C definition used and which is the alias: both are `N_EXT` with
+`n_desc == 0` at the same value, and the external symbol list is sorted
+alphabetically, so nothing in the file distinguishes them. Phase 3a must emit
+both, and the two must be a single body — not a wrapper — because a wrapper
+would add a call and change the size.
+
+The full sequence, with every argument. `master` is the cached
+`device_master_self()` at `__bss` `0x70304114` and `object` is the
+`IOObjectNumber` at `__bss` `0x70304110`; both are file-scope statics the strip
+unnamed. `values[3]` and `count` are stack locals, and `kind` is an 80-byte
+`IOString` buffer — the frame is exactly `4 + 4 + 80 + 12 = 100` bytes, which is
+the `sub esp, 64h`.
+
+```c
+int VGAStart(NXScreen *screen)                     /* also exported as Start */
+{
+    port_t          port;
+    IOString        kind;
+    unsigned int    values[3], count;
+    IOReturn        r;
+
+    port = LookupFrameBufferDevicePort("VGADisplay0", "frame buffer");
+    if (port == 0) {
+        os_fprintf(os_stderr, "VGA Driver: can't open framebuffer.\n");
+        return -1;
+    }
+
+    master = device_master_self();
+    r = _IOLookupByDeviceName(master, "VGADisplay0", &object, &kind);
+    if (r) { os_fprintf(os_stderr, "VGA Driver: can't find VGA display (%d).\n", r);
+             return -1; }
+
+    r = _IOGetIntValues(master, object, "IOGetDisplayInfo", 3, values, &count);
+    if (r) { os_fprintf(os_stderr, "VGA Driver: can't set display info (%d).\n", r);
+             return -1; }
+    vga_width    = values[0];
+    vga_height   = values[1];
+    vga_rowbytes = values[2];
+    vga_bpl      = values[2] >> 1;
+
+    r = _IOSetIntValues(master, object, "IO_Framebuffer_SetDimensions", values, 3);
+    if (r) { os_fprintf(os_stderr, "VGA Driver: can't set display info (%d).\n", r);
+             return -1; }
+
+    vgaAddress = 0;
+    r = _IOMapEISADeviceMemory(port, task_self(), 0xA0000, 0x20000,
+                               &vgaAddress, YES, IO_WriteThrough);
+    if (r) { os_fprintf(os_stderr, "VGA Driver: can't map display memory (%d).\n", r);
+             return -1; }
+
+    r = _IOMapEISADevicePorts(port, thread_self());
+    if (r) { os_fprintf(os_stderr, "VGA Driver: can't map display ports (%d).\n", r);
+             return -1; }
+
+    vgaVirtualAddress = os_malloc(vga_height * vga_rowbytes);
+    if (vgaVirtualAddress == 0) {
+        os_fprintf(os_stderr, "VGA Driver: can't allocate virtual display (%d).\n", r);
+        return -1;                                  /* r is 0 here — see below */
+    }
+
+    if (values[0] != 640) {
+        values[0] = 0;
+        r = _IOSetIntValues(master, object, "Set VGA VESA Mode", values, 1);
+        if (r) { os_fprintf(os_stderr, "VGA Driver:  can't talk to VGA (%d).\n", r);
+                 return -1; }
+    } else {
+        VGASetStdRegs(5);                           /* 640x480x16, mode 0x12 */
+    }
+
+    fill_64K_plane(0);
+    set_colormap();
+    screen->name = "VGA";                           /* +0x08 */
+    screen->ops  = &vgaDriverVector;                /* +0x0C, the table at 0x70304018 */
+    NXRegisterScreen(screen, 0, 0, (short)vga_width, (short)vga_height);
+    return 0;
+}
+```
+
+Everything in that listing is checkable against the reference. The
+`driverServer.h` prototypes as checked in match argument for argument:
+`_IOGetIntValues` takes six arguments with `maxCount` fourth and
+`unsigned int *returnedCount` sixth, `_IOSetIntValues` takes five with `count`
+last, `_IOLookupByDeviceName` takes four with `IOString *deviceKind` last, and
+`_IOMapEISADeviceMemory` takes seven ending `BOOL anywhere, IOCache cache` — the
+reference passes `1, 1`, and `IO_WriteThrough` is 1 in `driverTypes.h`'s
+`IOCache` enum. `IOString` is `char[IO_STRING_LENGTH]`, and the 80-byte hole in
+the frame is exactly that buffer.
+
+Two things about it are worth carrying into the rewrite verbatim.
+
+**A defect in the `os_malloc` failure path.** Every other failure prints the
+`IOReturn` it just received. The `os_malloc` one prints `ebx`, which at that
+point still holds the *successful* return of `_IOMapEISADevicePorts`, i.e. zero.
+`VGA Driver: can't allocate virtual display (0).` is the only message this driver
+can ever produce for that case. It is Apple's bug, it is observable, and Phase 3a
+should reproduce it — the C that produces it is passing the stale `r`, as above.
+
+**The `640` test reads `values[0]`, not `vga_width`.** They are equal at that
+point, so the behaviour is the same, but the compiled code compares the stack
+slot (`cmp [ebp+var_C], 280h`) rather than reloading the global. Writing
+`vga_width != 640` would produce a different instruction and a different size.
+
+The error tail is shared: all seven failure paths converge on a single
+`os_fprintf(os_stderr, fmt, r)` and `return -1`, which is why the format strings
+are the only thing that differs between them.
+
+### The driver vector table at `0x70304018`
+
+`_VGAStart` stores `&0x70304018` into its screen argument's `+0x0C`. The object
+there is 21 pointer slots, 84 bytes, and it is what the Window Server calls the
+driver through. Slots `+0x08`, `+0x20` and `+0x4C` are null in the file and carry
+no relocation, so the driver genuinely implements 18 of 21 operations.
+
+| Slot | Target | Size | Role |
+| --- | --- | --- | --- |
+| `+0x00` | `sub_70302040` | 521 | composite, then flush the dirty rect |
+| `+0x04` | `sub_7030224C` | 36 | release the offscreen bitmap |
+| `+0x08` | null | — | not implemented |
+| `+0x0C` | `sub_70301F58` | 127 | initialize the screen device; writes `_vgaBounds` |
+| `+0x10` | `sub_70302270` | 57 | fill a rect, then flush it |
+| `+0x14` | `sub_703022AC` | 45 | set the offscreen bitmap's origin |
+| `+0x18` | `sub_703022DC` | 29 | one-argument op on the offscreen bitmap |
+| `+0x1C` | `sub_703022FC` | 111 | create an offscreen bitmap at a given depth |
+| `+0x20` | null | — | not implemented |
+| `+0x24` | `sub_7030236C` | 223 | convert the offscreen bitmap to another depth |
+| `+0x28` | `sub_70301FD8` | 96 | send `IO_Framebuffer_Register` |
+| `+0x2C` | `sub_7030244C` | 58 | read back five bitmap parameters |
+| `+0x30` | `_VGASetCursor` | 554 | |
+| `+0x34` | `_VGAHideCursor` | 44 | |
+| `+0x38` | `_VGAShowCursor` | 44 | |
+| `+0x3C` | `_VGAObscureCursor` | 66 | |
+| `+0x40` | `_VGARevealCursor` | 63 | |
+| `+0x44` | `_VGAShieldCursor` | 78 | |
+| `+0x48` | `_VGAUnshieldCursor` | 73 | |
+| `+0x4C` | null | — | not implemented |
+| `+0x50` | `sub_70302038` | 7 | empty stub, `{ }` |
+
+Slot `+0x28` is the only reason `IO_Framebuffer_Register` is sent at all, and it
+is sent *after* `_VGAStart` returns, which is the ordering the Shared contract
+section records.
+
+**The screen-device record the vector entries receive.** Its layout is the Window
+Server's, not this driver's, and no header for it exists in this tree. What the
+reference touches, read from the disassembly:
+
+| Offset | Width | Use |
+| --- | --- | --- |
+| `+0x01` | byte | bit 0 written by `sub_703022FC` and `sub_7030236C`: "offscreen depth differs from the screen's" |
+| `+0x0C` | 4 | the screen's own bitmap; written by `sub_70301F58` |
+| `+0x10` | 8 | screen `Bounds`, `{minx, maxx, miny, maxy}`; read by everything |
+| `+0x18` | 4 | cached `screen->bitmap->[0x0C]` |
+| `+0x1C` | 4 | the offscreen bitmap, created and released by slots `+0x1C`/`+0x04` |
+| `+0x20` | 4 | written 0 by `sub_70301F58` |
+| `+0x24` | 4 | written 1 by `sub_70301F58` — the depth index |
+| `+0x28` | 4 | `VGAShmem_t *`; filled by the Window Server, read by every cursor entry |
+| `+0x2C` | 4 | shared-memory size the driver requests; see below |
+
+**`_VGAStart`'s argument and the vector entries' argument are not the same
+layout.** `_VGAStart` writes `+0x08` and `+0x0C` with the name and the vector
+table; `sub_70301F58` writes `+0x0C` with a bitmap. Either the Window Server
+copies the descriptor `_VGAStart` filled into a separate screen-device record
+before it starts calling the vector, or it caches the vector pointer and then
+lets slot `+0x0C` overwrite it. The binary does not say which. **Inference, not
+fact**, and it matters to Phase 3a only in that the two argument types must be
+declared separately.
+
+### The four `__bm*` symbols are not cursor blitters
+
+`__bm12`, `__bm18`, `__bm34` and `__bm38` are **undefined external data symbols**
+(`N_UNDF | N_EXT`, `n_desc == 0`, no `__imp_` alias, no PIC stub). They are
+imported from the Window Server, not defined here and not called through the stub
+table; they are the four imaging-machine class objects the Window Server exports,
+one per pixel format. The spec's and the task brief's description of them as "the
+four cursor blitters" is wrong, and this is recorded as a correction. The cursor
+blitters are `sub_70302BEC` and `sub_70302E48`.
+
+**How one is selected.** `__DATA,__data` `0x70304004`–`0x70304014` is a
+five-entry table whose relocations resolve to
+`{_bm12, _bm12, _bm18, _bm34, _bm38}` at load. `sub_703022FC` clamps its depth
+argument to `0 <= d <= 4` (`d < 0` becomes 0, `d > 4` becomes 4) and indexes the
+table with it; `sub_7030236C` indexes the same table with its own argument,
+unclamped. Index 0 and index 1 both give `_bm12`, so a request for the lowest two
+depths gets the 2-bit machine.
+
+The correspondence to `IOVGAShared.h`'s cursor union is by pixel format, and the
+header's member order is the same as the table's:
+
+| Table index | Class | `VGAShmem_t` union member | Arm |
+| --- | --- | --- | --- |
+| 0, 1 | `_bm12` | `cursor.bw` | `struct bm12Cursor`, 2 bits/pixel |
+| 2 | `_bm18` | `cursor.bw8` | `struct bm18Cursor`, 8-bit gray |
+| 3 | `_bm34` | `cursor.rgb` | `struct bm34Cursor`, 16-bit RGB |
+| 4 | `_bm38` | `cursor.rgb24` | `struct bm38Cursor`, 32-bit RGB |
+
+Only `_bm12` is ever dereferenced for the screen itself or for the cursor:
+`sub_70301F58` and `_VGASetCursor` both load it through the single
+`__nl_symbol_ptr` cell at `0x703040F8` rather than through the table, and no code
+path can reach the other three for the screen bitmap. `_bm18`, `_bm34` and
+`_bm38` exist only so that the Window Server can ask this driver for an
+*offscreen* bitmap at another depth through vector slots `+0x1C` and `+0x24`.
+That is why the Shared contract's finding — that both halves use the `bw` arm and
+nothing else — holds even though four classes are imported.
+
+### The shared-memory size this side asks for, and a `save[]` finding
+
+`sub_70301F58` sets the screen device's `+0x2C` to `0x48`, creates the screen
+bitmap, then adds `0x240` to it. `0x48` is `offsetof(VGAShmem_t, cursor)` and
+`0x240` is `sizeof(struct bm12Cursor)` — 256 + 256 + 64 — from `IOVGAShared.h` as
+checked in. So the Window Server side declares it needs **648 bytes** of shared
+memory, not 5192.
+
+That is consistent with, and independently confirms, the Shared contract's
+reading of the kernel's `ja` test: `-[IOVGADisplay _registerWithED]` rejects a
+region *larger* than `sizeof(VGAShmem_t)` and accepts anything smaller, precisely
+so that a 2-bit driver need not be handed the 5120-byte 24-bit cursor arm.
+648 < 5192.
+
+**But both blitters write past `cursor.bw.save`.** `save` is
+`unsigned int save[16]`, 64 bytes at `+0x248`. Both `sub_70302BEC` and
+`sub_70302E48` advance the save pointer by 4 bytes once for the left 16-pixel
+column and once for the right one, on every scan line, for up to 16 lines — 32
+words, 128 bytes. The kernel half does exactly the same: `_VGADisplayCursor` at
+`VGA_reloc` 1752 takes `lea eax, [ebx+248h]` and then `add ecx, 4` in both
+branches, including the `shift == 0` branch that advances without writing. So
+this is not an asymmetry between the halves; both were compiled from the same
+arithmetic.
+
+Either `struct bm12Cursor.save` was `[32]` in the header Apple compiled against
+and the checked-in `[16]` is a different revision, or Apple overruns it by 64
+bytes. The binary argues for the second: `sub_70301F58`'s `0x240` is
+`sizeof(struct bm12Cursor)` with `save[16]`; with `save[32]` it would be `0x280`.
+Widening `save` would not change `sizeof(VGAShmem_t)` — that is pinned at 5192 by
+the `bm38` arm and by the kernel's compiled-in constant — but it would change the
+648, and that number is in the artifact. **Reproduce the arithmetic as written and
+leave `IOVGAShared.h` alone**; §1.4 puts the header out of scope, and changing it
+would not change either binary.
+
+This is recorded as an addition to the Shared contract's §1, which says that
+`saveRect` and `cursor.bw.save[16]` are a shared scratch pair but does not say how
+much of `save` the blitters actually touch.
+
+### Correction to the Shared contract's `_VGAShieldCursor` note
+
+The Shared contract's §3 records the `_VGAShieldCursor` asymmetry and it is
+**confirmed against the disassembly**: `_VGAShieldCursor` at `0x70302B50` sets
+`shieldFlag = 1`, then `shielded = 0`, then copies `shieldRect`, then calls
+`_VGACheckShield`. If the cursor was already shielded (and therefore already
+hidden, `cursorShow == 1`) and the new shield rect does not intersect it,
+`_VGACheckShield` computes `hit == 0`, finds `hit == shielded`, and does nothing.
+
+The Shared contract then says the state "is recovered by the next
+`_VGAUnshieldCursor` only through the `cursorShow` depth counter". **That is wrong
+and is corrected here.** `_VGAUnshieldCursor` at `0x70302BA0` is
+
+```c
+ev_lock(&shmem->cursorSema);
+if (shmem->shielded) VGASysShowCursor(screen);
+shmem->shielded   = 0;
+shmem->shieldFlag = 0;
+ev_unlock(&shmem->cursorSema);
+```
+
+It never touches `cursorShow` itself; the only thing that would decrement it is
+the `_VGASysShowCursor` call it skips. So after the losing sequence the cursor is
+left hidden at depth 1 with `shielded == 0` and `shieldFlag == 0`, and **nothing
+in the shield path ever recovers it** — it takes an unrelated `_VGAShowCursor` or
+`_VGARevealCursor`, or another shield that does intersect followed by an
+unshield. Reproduce it as written; it is Apple's, it is observable, and changing
+it changes behaviour.
+
+### Lock ownership, settled
+
+Confirmed from both symbol tables. `VGA_psdrvr` imports `_ev_lock` and
+`_ev_unlock` and has no undefined symbol named `_ev_try_lock`; `VGA_reloc`
+imports `_ev_try_lock` and `_ev_unlock` and has none named `_ev_lock`. So:
+
+- **The Window Server owns `cursorSema` in the blocking sense.** All seven public
+  cursor entry points — `_VGASetCursor`, `_VGAHideCursor`, `_VGAShowCursor`,
+  `_VGAObscureCursor`, `_VGARevealCursor`, `_VGAShieldCursor`,
+  `_VGAUnshieldCursor` — open with `ev_lock(&shmem->cursorSema)` and close with
+  `ev_unlock`. Each of the seven recomputes `shmem` from `screen->[0x28]` for the
+  unlock rather than caching it, which is a compiler artefact, not semantics.
+  Under contention the Window Server **waits**.
+- **The kernel never waits.** Its three cursor methods take `ev_try_lock` and
+  return immediately having done nothing if it fails, dropping the update.
+- `_VGASysHideCursor`, `_VGASysShowCursor`, `_VGACheckShield` and the two blitters
+  touch the lock not at all. They are the inner primitives; every caller holds it.
+  `_VGACheckShield` is exported even though nothing outside the bundle should call
+  it — it is exported because everything in this file is.
+
+The consequence for the rewrite is that the two halves are **not**
+interchangeable. Making the bundle use `try` would silently drop Window Server
+cursor updates; making the kernel block would let a stalled Window Server hang the
+event thread.
+
+---
+
+### Per-function findings
+
+Addresses are decimal, as in the source map, with the hex form in the heading.
+`shmem` throughout is the `VGAShmem_t` settled in the Shared contract section
+above and the field offsets are that section's. `dev` is the screen-device record
+tabulated under "The driver vector table" above.
+
+**1. `dyld_stub_binding_helper` — 1882201908 (`0x70301F34`), 20 bytes.**
+
+```
+call $+5 ; pop eax
+push dword [eax + (0x70304000 - 0x70301F39)]      ; &__mh_bundle_header
+mov  eax,  dword [eax + (0x70304098 - 0x70301F39)]; __dyld[0]
+jmp  eax
+```
+
+Linker-generated. `__DATA,__data + 0` holds `&__mh_bundle_header` and is the
+module cookie dyld wants; `__DATA,__dyld` is eight zero bytes in the file that
+dyld fills in at load. No frame pointer. `intentional-mismatch`.
+
+**2. `__dyld_func_lookup` — 1882201928 (`0x70301F48`), 14 bytes.**
+
+```
+call $+5 ; pop eax ; mov eax, [eax + 0x2163] ; jmp eax
+```
+
+Linker-generated, no frame pointer, `intentional-mismatch`. Worth one note for
+whoever reads the bytes later: `eax` is `0x70301F4D` and the displacement resolves
+to `0x703040B0`, which is `__la_symbol_ptr + 0x10`, not `__dyld + 4` as the
+conventional form of this stub uses. The `__dyld` section is only 8 bytes and
+`dyld_stub_binding_helper` above uses `__dyld + 0` correctly. Nothing in this
+bundle calls `__dyld_func_lookup`, so the discrepancy is inert; it is recorded
+because a rewrite that produced a different byte here would be right to.
+
+**3. `sub_70301F58` — 1882201944 (`0x70301F58`), 127 bytes. Vector slot `+0x0C`.**
+
+```c
+static void VGAInitScreen(NXScreenDev *dev)
+{
+    dev->flags2    = 0;                                 /* +0x20 */
+    dev->shmemSize = offsetof(VGAShmem_t, cursor);      /* +0x2C = 0x48 */
+    dev->bitmap    = bm12->newBitmap(bm12, &dev->bounds, vgaVirtualAddress, 0,
+                                     (dev->bounds.maxy - dev->bounds.miny) * vga_rowbytes,
+                                     vga_rowbytes, 1, 0);
+    dev->depth     = 1;                                 /* +0x24 */
+    dev->shmemSize += sizeof(struct bm12Cursor);        /* += 0x240, total 648 */
+    vgaBounds      = dev->bounds;                       /* two 4-byte stores */
+}
+```
+
+`bm12->newBitmap` is the imaging class's method at vtable offset `0x3C`; the same
+slot is called by `_VGASetCursor` with a 16×16 `Bounds`, which is what fixes its
+signature. The storage handed over is `_vgaVirtualAddress`, the `os_malloc`'d
+shadow, at `_vga_rowbytes` bytes per line — 160 at 640×480, i.e. two bits per
+pixel. **This is the single most important structural fact about this driver: the
+Window Server never draws into VGA memory. It draws into a packed 2-bit shadow
+with the stock `bm12` machine, and the driver converts dirty rectangles into the
+four-plane framebuffer afterwards.** The only writer of `_vgaBounds`.
+
+**4. `sub_70301FD8` — 1882202072 (`0x70301FD8`), 96 bytes. Vector slot `+0x28`.**
+
+```c
+static void VGARegisterScreen(void)
+{
+    unsigned int token, count = 1;
+    IOReturn r = _IOGetIntValues(master, object, "IO_Framebuffer_Register",
+                                 1, &token, &count);
+    if (r)
+        os_fprintf(os_stderr, "VGA Driver: can't register screen(%d)\n", r);
+}
+```
+
+The returned token is read into a stack slot and then discarded — the bundle never
+uses it. On the kernel side this is what runs `-[IOVGADisplay _registerWithED]`
+and hands out the shared region, so the ordering constraint in the Shared
+contract's §2 is: geometry first, in `_VGAStart`; registration later, here, when
+the Window Server initializes the screen device.
+
+**5. `sub_70302038` — 1882202168 (`0x70302038`), 7 bytes. Vector slot `+0x50`.**
+
+`push ebp / mov ebp, esp / mov esp, ebp / pop ebp / retn`. An empty C function.
+It has a frame pointer, so it is compiled C and not a linker-generated no-op.
+
+**6. `sub_70302040` — 1882202176 (`0x70302040`), 521 bytes. Vector slot `+0x00`.**
+
+The compositing entry, and the largest of the vector statics. It takes an
+operation record and a `Bounds *`, copies 36 bytes of the record onto its stack
+with a `movsd` run, selects a source bitmap from the record's `+0x00` or `+0x04`
+according to the low nibble of `+0x08`, dispatches on a tag byte that is `0x67`
+(`'g'`) or `0x70` (`'p'`), calls the imaging machine's method at vtable `+0x20`
+and then either `+0x1C` on the destination or `+0x0C` followed by `+0x1C` on a
+temporary, releases up to two temporaries by decrementing their 16-bit refcount at
+`+0x0E` and calling `+0x10` at zero, and finishes with
+
+```c
+vga_at_mode12_bpp2_to_bpp4(dirtyRect);
+```
+
+The `'g'`/`'p'` tag and the operation record's layout are the Window Server's, not
+this driver's, and no header for them exists in this tree. The rewrite has to
+reproduce the field offsets exactly and can name them only descriptively. The
+refcount protocol — 16-bit count at `+0x0E`, `free` at class vtable `+0x10` — is
+the same in slots `+0x04`, `+0x24` and in `_VGASetCursor`, so it is the imaging
+machine's convention and not a local idiom.
+
+**7. `sub_7030224C` — 1882202700 (`0x7030224C`), 36 bytes. Vector slot `+0x04`.**
+
+```c
+static void VGAFreeOffscreen(NXScreenDev *dev)
+{
+    if (dev->offscreen && --dev->offscreen->refcount == 0)
+        dev->offscreen->isa->free(dev->offscreen);
+}
+```
+
+**8. `sub_70302270` — 1882202736 (`0x70302270`), 57 bytes. Vector slot `+0x10`.**
+
+```c
+static void VGAFillRect(NXScreenDev *dev, int which, int arg, Bounds *r, int arg2)
+{
+    bitmap *bm = (which == 1) ? dev->cached : dev->offscreen;
+    bm->isa->fill(bm, arg, r, arg2);          /* class vtable +0x24 */
+    vga_at_mode12_bpp2_to_bpp4(r);
+}
+```
+
+The flush is unconditional even when the target was the offscreen bitmap, which is
+a wasted conversion in that case; reproduce it.
+
+**9. `sub_703022AC` — 1882202796 (`0x703022AC`), 45 bytes. Vector slot `+0x14`.**
+
+```c
+static void VGASetOffscreenOrigin(NXScreenDev *dev, short x, short y)
+{
+    if (dev->offscreen)
+        dev->offscreen->isa->setOrigin(dev->offscreen, x, y);   /* +0x2C */
+}
+```
+
+Both arguments are read as 16-bit and sign-extended before the call, so the
+prototype takes `short`.
+
+**10. `sub_703022DC` — 1882202844 (`0x703022DC`), 29 bytes. Vector slot `+0x18`.**
+
+```c
+static void VGAOffscreenOp18(NXScreenDev *dev)
+{
+    if (dev->offscreen)
+        dev->offscreen->isa->method28(dev->offscreen, 1);       /* +0x28 */
+}
+```
+
+The constant `1` is the only argument and is never varied.
+
+**11. `sub_703022FC` — 1882202876 (`0x703022FC`), 111 bytes. Vector slot `+0x1C`.**
+
+```c
+static void VGANewOffscreen(NXScreenDev *dev, void *a, int which, int depth, void *b)
+{
+    dev->cached = dev->bitmap->field0C;                /* +0x18 */
+    if (which == 1) return;
+    if (depth < 0)      depth = 0;
+    else if (depth > 4) depth = 4;
+    class = bmClasses[depth];                          /* the table at 0x70304004 */
+    dev->offscreen = class->newBitmap2(class, a, b);   /* class vtable +0x0C */
+    dev->flags = (dev->flags & ~1) |
+                 (dev->cached->format != dev->offscreen->format);  /* both at +0x0C */
+}
+```
+
+This and finding 12 are the only two readers of the five-entry `__bm*` table, and
+they are the reason `_bm18`, `_bm34` and `_bm38` are imported at all.
+
+**12. `sub_7030236C` — 1882202988 (`0x7030236C`), 223 bytes. Vector slot `+0x24`.**
+
+Converts the offscreen bitmap to the class at `bmClasses[index]`. It returns
+immediately if the requested index equals the current bitmap's `format` field
+(`+0x0C`), or if the current bitmap's class is already the requested one, or if
+its fourth argument is 1. Otherwise it creates a bitmap of the new class, calls
+the old class's method at `+0x20` to get a converter, runs the new bitmap's
+`+0x1C` method with six arguments, releases both temporaries through the same
+refcount protocol as finding 6, installs the new bitmap in `dev->offscreen` and
+recomputes the `+0x01` format-differs bit exactly as finding 11 does. Its index
+argument is **not** clamped, unlike finding 11's — a caller passing an index above
+4 reads past the five-entry table. Reproduce that too.
+
+**13. `sub_7030244C` — 1882203212 (`0x7030244C`), 58 bytes. Vector slot `+0x2C`.**
+
+```c
+static int VGAGetOffscreenParams(NXScreenDev *dev)
+{
+    int a, b, c, d, e;
+    if (!dev->offscreen) return 0;
+    return dev->offscreen->isa->getParams(dev->offscreen, &a, &b, &c, &d, &e);
+}
+```
+
+Five out-parameters, all `int`, all discarded by this function — it is a pure
+pass-through of the callee's return value, and the stack cleanup is folded into
+the `mov esp, ebp` epilogue rather than an `add esp`.
+
+**14. `_Start`, `_VGAStart` — 1882203272 (`0x70302488`), 637 bytes.**
+
+Decompiled in full under "the Window Server's entry contract" above, including
+the `os_malloc` failure-path defect and the `_Start` alias. Not repeated here.
+
+**15. `_VGASysHideCursor` — 1882203912 (`0x70302708`), 29 bytes.**
+
+```c
+void VGASysHideCursor(NXScreenDev *dev)          /* caller holds cursorSema */
+{
+    VGAShmem_t *sh = dev->shmem;
+    if (sh->cursorShow++ == 0)
+        VGARemoveCursorBlit(dev);                /* sub_70302E48 */
+}
+```
+
+The post-increment is compiled as `mov dl,[eax+8] / inc byte [eax+8] / test dl,dl`,
+so the counter is incremented unconditionally and the old value decides. Matches
+the Shared contract's `hide` half exactly, and matches the kernel's inlined copy
+in `-[IOVGADisplay hideCursor:]`.
+
+**16. `_VGASysShowCursor` — 1882203944 (`0x70302728`), 107 bytes.**
+
+```c
+void VGASysShowCursor(NXScreenDev *dev)          /* caller holds cursorSema */
+{
+    VGAShmem_t *sh = dev->shmem;
+    if (sh->cursorShow == 0) return;
+    if (--sh->cursorShow != 0) return;
+    Point p = sh->hotSpot[sh->frame];            /* one 4-byte load */
+    sh->cursorRect.minx = sh->cursorLoc.x - p.x;
+    sh->cursorRect.maxx = sh->cursorRect.minx + CURSORWIDTH;
+    sh->cursorRect.miny = sh->cursorLoc.y - p.y; /* p.y via sar ecx, 16 */
+    sh->cursorRect.maxy = sh->cursorRect.miny + CURSORHEIGHT;
+    VGADisplayCursorBlit(dev);                   /* sub_70302BEC */
+    sh->oldCursorRect = sh->cursorRect;          /* +0x20 -> +0x28, +0x24 -> +0x2C */
+}
+```
+
+Byte for byte the Shared contract's `show` half. `hotSpot[frame]` is addressed as
+`[edx + ecx*4 + 0x38]`, confirming the `Point hotSpot[4]` at `+0x38`, and the y
+component is recovered with `sar ecx, 16` rather than a second 16-bit load —
+neither half stores the hot spot as two shorts.
+
+**17. `_VGACheckShield` — 1882204052 (`0x70302794`), 178 bytes.**
+
+```c
+void VGACheckShield(NXScreenDev *dev)            /* caller holds cursorSema */
+{
+    VGAShmem_t *sh = dev->shmem;
+    Point p = sh->hotSpot[sh->frame];
+    short minx = sh->cursorLoc.x - p.x, maxx = minx + 16;
+    short miny = sh->cursorLoc.y - p.y, maxy = miny + 16;
+    int hit = 0;
+    if (sh->shieldRect.maxx > minx && sh->shieldRect.minx < maxx &&
+        sh->shieldRect.maxy > miny && sh->shieldRect.miny < maxy)
+        hit = 1;
+    if (hit != (signed char)sh->shielded) {
+        if (hit) VGASysHideCursor(dev); else VGASysShowCursor(dev);
+        sh->shielded = hit;
+    }
+}
+```
+
+Confirms the Shared contract: it recomputes the cursor rectangle into registers
+and **does not** write `shmem->cursorRect`. The four comparisons are 16-bit and
+strict on the max side, so an empty or edge-touching intersection counts as a
+miss. `shielded` is read with `movsx byte`, i.e. as `signed char`, which is why
+the contract writes the comparison that way.
+
+**18. `_VGASetCursor` — 1882204232 (`0x70302848`), 554 bytes.**
+
+```c
+void VGASetCursor(NXScreenDev *dev, bitmap *src, Point hot, int frame, int *flagp)
+{
+    unsigned int  imageBuf[16], maskBuf[16];       /* 64 bytes each, on the stack */
+    void         *image = imageBuf, *mask = maskBuf;
+    bitmap       *tmp;
+    int           hide;
+
+    tmp = bm12->newBitmap(bm12, &cursorBounds16x16, imageBuf, maskBuf, 64, 4, 0, 0);
+    switch (src->format) {                          /* short at src->+0x0C */
+    case 1:  image = src->plane0; mask = src->plane1; break;   /* +0x20, +0x24 */
+    case 2:  BM12Convert8to2 (tmp, src, 0x00100000, 0x00100000,
+                              src->f4, src->f8, 0, 0); break;
+    case 3:  BM12Convert16to2(tmp, src, /* same six */ ); break;
+    case 4:  BM12Convert32to2(tmp, src, /* same six */ ); break;
+    default: break;                                 /* nothing converted */
+    }
+    ev_lock(&dev->shmem->cursorSema);
+    hide = (*flagp == 0);
+    if (hide) VGASysHideCursor(dev);
+    dev->shmem->hotSpot[frame] = hot;               /* one 4-byte store */
+    bcopy(image, &dev->shmem->cursor.bw.image[frame], 64);
+    bcopy(mask,  &dev->shmem->cursor.bw.mask [frame], 64);
+    if (hide) VGASysShowCursor(dev);
+    ev_unlock(&dev->shmem->cursorSema);
+    if (--tmp->refcount == 0) tmp->isa->free(tmp);
+}
+```
+
+The dispatch is a four-entry jump table at `0x703028E8` on `src->format - 1`, with
+`ja` to the default for anything outside 1…4. Case 1 uses the source descriptor's
+own planes untouched; the default case falls through with `image`/`mask` still
+pointing at the **uninitialized** stack buffers, so a bad `format` copies 128
+bytes of stack garbage into the shared cursor. That is Apple's, and it is
+reachable only from the Window Server.
+
+The destination addressing is `shmem + frame*64 + 0x48` and
+`shmem + frame*64 + 0x148`, and the copies are 64 bytes — `image[4][16]` and
+`mask[4][16]` of `unsigned int` in `struct bm12Cursor`. Together with the kernel's
+`lea edx, [ebx+eax+48h]` / `lea ecx, [ebx+eax+148h]`, that pins the `bw` arm on
+both sides, as the Shared contract's §1 says.
+
+The three converters are the only reason the bundle imports `_BM12Convert8to2`,
+`_BM12Convert16to2` and `_BM12Convert32to2` at all, and their argument list is
+identical in all three arms — only the callee differs. `0x00100000` is the
+`__const` word at `0x70303E44`, which read as a `Bounds` is `{0, 16, 0, 16}`.
+
+**19. `_VGAHideCursor` — 1882204788 (`0x70302A74`), 44 bytes.**
+
+```c
+void VGAHideCursor(NXScreenDev *dev)
+{
+    ev_lock(&dev->shmem->cursorSema);
+    VGASysHideCursor(dev);
+    ev_unlock(&dev->shmem->cursorSema);
+}
+```
+
+**20. `_VGAShowCursor` — 1882204832 (`0x70302AA0`), 44 bytes.** The same, around
+`VGASysShowCursor`. Both recompute `dev->shmem` for the unlock.
+
+**21. `_VGAObscureCursor` — 1882204876 (`0x70302ACC`), 66 bytes.**
+
+```c
+void VGAObscureCursor(NXScreenDev *dev)
+{
+    ev_lock(&dev->shmem->cursorSema);
+    if (!dev->shmem->cursorObscured) {
+        VGASysHideCursor(dev);
+        dev->shmem->cursorObscured = 1;
+    }
+    ev_unlock(&dev->shmem->cursorSema);
+}
+```
+
+**22. `_VGARevealCursor` — 1882204944 (`0x70302B10`), 63 bytes.**
+
+```c
+void VGARevealCursor(NXScreenDev *dev)
+{
+    ev_lock(&dev->shmem->cursorSema);
+    if (dev->shmem->cursorObscured) {
+        dev->shmem->cursorObscured = 0;
+        VGASysShowCursor(dev);
+    }
+    ev_unlock(&dev->shmem->cursorSema);
+}
+```
+
+Note the order: obscure hides *then* sets the flag; reveal clears the flag *then*
+shows. The asymmetry is in the compiled code and is visible in the sizes, 66
+against 63.
+
+**23. `_VGAShieldCursor` — 1882205008 (`0x70302B50`), 78 bytes.**
+
+```c
+void VGAShieldCursor(NXScreenDev *dev, Bounds *r)
+{
+    ev_lock(&dev->shmem->cursorSema);
+    dev->shmem->shieldFlag = 1;
+    dev->shmem->shielded   = 0;
+    dev->shmem->shieldRect = *r;              /* two 4-byte stores, +0x14, +0x18 */
+    VGACheckShield(dev);
+    ev_unlock(&dev->shmem->cursorSema);
+}
+```
+
+The defect is the `shielded = 0` before `VGACheckShield`; see the correction
+subsection above. Single basic block, 31 instructions — there is no conditional in
+it at all.
+
+**24. `_VGAUnshieldCursor` — 1882205088 (`0x70302BA0`), 73 bytes.**
+
+```c
+void VGAUnshieldCursor(NXScreenDev *dev)
+{
+    ev_lock(&dev->shmem->cursorSema);
+    if (dev->shmem->shielded) VGASysShowCursor(dev);
+    dev->shmem->shielded   = 0;
+    dev->shmem->shieldFlag = 0;
+    ev_unlock(&dev->shmem->cursorSema);
+}
+```
+
+73 bytes, against the 1164 §1.1's gap-derived table gives it. The 1091-byte
+difference is exactly `sub_70302BEC` (603) plus `sub_70302E48` (481) plus 7 bytes
+of alignment, which is the whole reason the sixteen statics had to be recovered.
+
+**25. `sub_70302BEC` — 1882205164 (`0x70302BEC`), 603 bytes. Draw the cursor.**
+
+The direct counterpart of the kernel's `_VGADisplayCursor` (`VGA_reloc` 1752, 816
+bytes). Called only by `_VGASysShowCursor`.
+
+```c
+static void VGADisplayCursorBlit(NXScreenDev *dev)
+{
+    VGAShmem_t *sh  = dev->shmem;
+    Bounds      c   = sh->cursorRect;                 /* two 4-byte loads */
+    Bounds      scr = dev->bounds;
+
+    if (scr.miny > c.miny) c.miny = scr.miny;         /* clip vertically */
+    if (scr.maxy < c.maxy) c.maxy = scr.maxy;
+    /* snap horizontally to a 16-pixel column and take two columns */
+    x0 = scr.minx + ((sh->cursorRect.minx - scr.minx) & ~15);
+    sh->saveRect.minx = x0;      sh->saveRect.maxx = x0 + 32;
+    sh->saveRect.miny = c.miny;  sh->saveRect.maxy = c.maxy;
+
+    shift  = (sh->cursorRect.minx & 15) * 2;          /* 2 bits per pixel */
+    rshift = 32 - shift;
+    rows   = c.miny - sh->cursorRect.miny;            /* rows clipped off the top */
+    img    = &sh->cursor.bw.image[sh->frame][rows];
+    msk    = &sh->cursor.bw.mask [sh->frame][rows];
+    save   = &sh->cursor.bw.save[0];
+    leftOK  = (scr.minx <= x0);
+    rightOK = (x0 + 32 <= scr.maxx);
+
+    words = vga_bpl >> 1;                             /* 16-pixel words per line */
+    lines = 0x10000 / vga_bpl;                        /* lines per 64 KB window  */
+    get_addr_range(&p);
+    row   = c.miny - scr.miny;
+    p    += ((row % lines) * words + ((x0 - scr.minx) >> 4)) * 2;
+
+    for (y = row; y < c.maxy - scr.miny; y++) {
+        if (leftOK) {
+            v = read_bpp4planar_to_bpp2packed(p);
+            *save++ = v;
+            v = (v & ~(*msk << shift)) | (*img << shift);
+            write_bpp2packed_to_bpp4planar(v, p);
+        }
+        if (rightOK) {
+            if (shift == 0) save++;                   /* nothing spills over */
+            else {
+                v = read_bpp4planar_to_bpp2packed(p + 2);
+                *save++ = v;
+                v = (v & ~(*msk >> rshift)) | (*img >> rshift);
+                write_bpp2packed_to_bpp4planar(v, p + 2);
+            }
+        }
+        p += vga_bpl; img++; msk++;
+    }
+}
+```
+
+The kernel's copy is the same algorithm with three differences, all of which are
+kernel-side needs the bundle does not have: it saves and restores the sequencer
+map mask and the current read/write plane and segment around the loop; it calls
+`_select_read_segment` / `_select_write_segment` at each 64 KB boundary and gets
+its frame-buffer pointer as a literal `0xA0000` rather than through
+`_get_addr_range`; and it computes the words-per-line as `displayInfo->width >> 4`
+where the bundle uses `vga_bpl >> 1`. Those are the same number, 40 at 640 wide.
+The mask/image shift arithmetic, the `save` stride, the `shift == 0` special case
+and the two-column clip are identical instruction for instruction.
+
+Compiled C: frame pointer, stack arguments, no unusual instruction.
+
+**26. `sub_70302E48` — 1882205768 (`0x70302E48`), 481 bytes. Erase the cursor.**
+
+The counterpart of the kernel's `_VGARemoveCursor` (`VGA_reloc` 2568, 660 bytes).
+Called only by `_VGASysHideCursor`.
+
+```c
+static void VGARemoveCursorBlit(NXScreenDev *dev)
+{
+    VGAShmem_t  *sh  = dev->shmem;
+    Bounds       scr = dev->bounds;
+    Bounds       s   = sh->saveRect;                  /* what the draw pass wrote */
+    unsigned int maskL = 0, maskR = 0;
+
+    col   = (s.minx - scr.minx) >> 4;
+    words = vga_bpl >> 1;
+    lines = 0x10000 / vga_bpl;
+    get_addr_range(&p);
+    p    += (((s.miny - scr.miny) % lines) * words + col) * 2;
+    shift = (sh->cursorRect.minx & 15) * 2;
+    save  = &sh->cursor.bw.save[0];
+
+    leftOK  = (s.minx >= scr.minx);
+    rightOK = (scr.maxx >= s.maxx);
+    if (leftOK)  maskL =  leftMask[sh->oldCursorRect.minx - s.minx];
+    if (rightOK) maskR = ~leftMask[16 - (s.maxx - sh->oldCursorRect.maxx)];
+
+    for (y = s.miny - scr.miny; y < s.maxy - scr.miny; y++) {
+        if (leftOK) {
+            v = read_bpp4planar_to_bpp2packed(p);
+            v = (v & ~maskL) | (maskL & *save++);
+            write_bpp2packed_to_bpp4planar(v, p);
+        }
+        if (rightOK) {
+            if (shift == 0) save++;
+            else {
+                v = read_bpp4planar_to_bpp2packed(p + 2);
+                v = (v & ~maskR) | (maskR & *save++);
+                write_bpp2packed_to_bpp4planar(v, p + 2);
+            }
+        }
+        p += vga_bpl;
+    }
+}
+```
+
+`leftMask` is the 17-entry table at `__TEXT,__const` `0x70303E54`,
+`leftMask[k] == ~0u << (2*k)`: `0xFFFFFFFF, 0xFFFFFFFC, 0xFFFFFFF0, 0xFFFFFFC0,
+0xFFFFFF00, …, 0xC0000000, 0x00000000`. **The kernel has a byte-identical copy** —
+`_mask_array.128` at `VGA_reloc` `__data` 24604, 68 bytes, all seventeen values
+the same — and uses it in `_VGARemoveCursor` with the same two index expressions.
+That is the strongest single cross-check in this section: two independently
+compiled binaries, the same 68-byte table in different sections, the same two
+subscripts.
+
+This is where `oldCursorRect` earns its keep. The erase pass restores only the
+columns the *previous* draw actually covered, which is why the draw pass copies
+`cursorRect` into `oldCursorRect` after blitting and why both halves must keep
+doing so.
+
+Compiled C.
+
+**27. `_set_colormap` — 1882206252 (`0x7030302C`), 196 bytes.**
+
+```c
+void set_colormap(void)
+{
+    for (i = 0; i <= 255; i++) {                 /* every entry bright red */
+        outb(0x3C8, i);
+        outb(0x3C9, 0x3F); outb(0x3C9, 0); outb(0x3C9, 0);
+    }
+    outb(0x3C8, 3); outb(0x3C9, 0x3F); outb(0x3C9, 0x3F); outb(0x3C9, 0x3F);
+    outb(0x3C8, 2); outb(0x3C9, 0x30); outb(0x3C9, 0x30); outb(0x3C9, 0x30);
+    outb(0x3C8, 1); outb(0x3C9, 0x1E); outb(0x3C9, 0x1E); outb(0x3C9, 0x1E);
+    outb(0x3C8, 0); outb(0x3C9, 0);    outb(0x3C9, 0);    outb(0x3C9, 0);
+}
+```
+
+Only four of the sixteen mode-0x12 pixel values are ever produced by this driver,
+so entries 4…255 are painted bright red as a deliberate tell: anything that shows
+up red came from a plane this driver does not write. The four grays are 63, 48, 30
+and 0, which are `WHITE_PALETTE_VALUE`, `LIGHT_GRAY_PALETTE_VALUE`,
+`DARK_GRAY_PALETTE_VALUE` and `BLACK_PALETTE_VALUE` from
+`IOVGADisplayPrivate.h`, in the same index order the kernel's
+`_SetET4000Brightness` uses. **Index 3 is white and index 0 is black**, which is
+the inverse of NeXT's 2-bit gray, and that is why the two conversion tables of
+finding 35 complement every byte.
+
+**Note on `outb` in this binary.** Every `out` and `in` is followed by
+`lock incl -4(%ebp)` — the dummy `"=m"` operand of the inline `outb` is an
+*automatic*, not the `static int xxx;` that `driverkit/i386/ioPorts.h` declares
+and that produces `lock incl _xxx.100` throughout `VGA_reloc`. So the user-space
+half was compiled against a different `outb`, and Phase 3a must not reach for the
+driverkit header here or it will emit a static and a relocation the reference does
+not have.
+
+**28. `sub_703030F0` — 1882206448 (`0x703030F0`), 81 bytes.**
+
+```c
+static void select_read_plane(int plane)
+{
+    outb(0x3CE, 4);                            /* GC index 4, Read Map Select */
+    v = (inb(0x3CF) & 0xFC) | (plane & 3);
+    outb(0x3CE, 4);
+    outb(0x3CF, v);
+}
+```
+
+The kernel's `_select_read_plane` (`VGA_reloc` 676, 110 bytes) is the same
+read-modify-write; the size difference is the kernel copy caching the value in
+`_curr_read_plane`, which the bundle has no need for. Leaf, no calls, compiled C.
+
+**29. `sub_70303144` — 1882206532 (`0x70303144`), 92 bytes.**
+
+```c
+static void select_write_plane(int plane)
+{
+    outb(0x3C4, 2);                            /* SEQ index 2, Map Mask */
+    v = (inb(0x3C5) & 0xF0) | (1 << (plane & 3));
+    outb(0x3C4, 2);
+    outb(0x3C5, v);
+}
+```
+
+Note the asymmetry with finding 28 and reproduce it: the read selector takes a
+plane *number*, the write selector turns the number into a one-hot *mask*, so only
+one plane is ever written at a time. The kernel's `_select_write_plane`
+(`VGA_reloc` 788, 127 bytes) does the same. Leaf, compiled C.
+
+**30. `_get_addr_range` — 1882206624 (`0x703031A0`), 117 bytes.**
+
+```c
+void get_addr_range(void **out)
+{
+    outb(0x3CE, 6);                            /* GC index 6, Miscellaneous */
+    switch ((inb(0x3CF) & 0x0C) >> 2) {        /* memory map select */
+    case 0: case 1: *out = vgaAddress;             break;   /* 0xA0000 */
+    case 2: case 3: *out = vgaAddress + 0x10000;   break;   /* 0xB0000 */
+    }
+}
+```
+
+A four-entry jump table at `0x703031E0` with two distinct targets. This is the
+bundle's replacement for the kernel's `_select_read_segment` /
+`_select_write_segment` pair: it has a 128 KB mapping of `0xA0000` and never
+bank-switches, so it only needs to know where the aperture currently is. Map
+select 3 is `0xB8000`–`0xBFFFF` on real hardware and this returns `0xB0000` for
+it, a 32 KB error; mode 0x12 uses select 1, so the path is dead. Reproduce it.
+
+**31. `_fill_64K_plane` — 1882206744 (`0x70303218`), 120 bytes.**
+
+```c
+void fill_64K_plane(short value)
+{
+    outb(0x3C4, 2);
+    saved = inb(0x3C5);                        /* save the map mask */
+    get_addr_range(&p);
+    for (row = 0; row <= 0xC7; row++)          /* 200 */
+        for (col = 0; col <= 0x13F; col++)     /* 320 */
+            { *(short *)p = value; p += 2; }
+    outb(0x3C4, 2);
+    outb(0x3C5, saved);                        /* restore it */
+}
+```
+
+It saves and restores the map mask but never changes it, so the fill goes to
+whatever planes are currently enabled — all four, because `_VGAStart` calls it
+right after `VGASetStdRegs(5)` leaves SEQ[2] at `0x0F`. The save/restore is
+vestigial. 320 × 200 × 2 = 128000 bytes, which overruns the 64 KB the name
+promises; the excess lands past the aperture and is discarded by the hardware.
+Called once, with 0, and that is what clears planes 2 and 3 for good — nothing in
+this driver ever writes them again.
+
+**32. `_vga_at_mode12_bpp2_to_bpp4` — 1882206864 (`0x70303290`), 932 bytes.**
+
+The flush. This is the largest body in the binary and the one every drawing
+operation ends with.
+
+```c
+void vga_at_mode12_bpp2_to_bpp4(Bounds *r)
+{
+    if (!tablesBuilt) build_tables();                  /* the guard at 0x70304088 */
+
+    x0 = max(vgaBounds.minx, r->minx);  x1 = min(vgaBounds.maxx, r->maxx);
+    y0 = max(vgaBounds.miny, r->miny);  y1 = min(vgaBounds.maxy, r->maxy);
+    if (x1 < x0 || y0 > y1) return;
+    x0 -= vgaBounds.minx; x1 -= vgaBounds.minx;
+    y0 -= vgaBounds.miny; y1 -= vgaBounds.miny;
+
+    first = x0 >> 4;
+    n     = (x1 >> 4) - first + ((x1 & ~15) != x1);    /* 16-pixel words to convert */
+    words = vga_width >> 4;                            /* words per screen line     */
+    outb(0x3C4, 2); saved = inb(0x3C5);                /* save the map mask         */
+
+    src = (unsigned int   *)vgaVirtualAddress + y0 * words + first;
+    get_addr_range(&p);
+    dst = (unsigned short *)p                 + y0 * words + first;
+
+    for (y = y0; y <= y1; y++) {
+        select_write_plane(0);
+        for (i = 0; i < n; i++) {
+            v = src[i];
+            dst[i] = (evenTable[(v >> 16) & 0x5555] << 8) | evenTable[v & 0x5555];
+        }
+        select_write_plane(1);
+        for (i = 0; i < n; i++) {
+            v = src[i];
+            dst[i] = (oddTable[(v >> 16) & 0xAAAA] << 8) | oddTable[v & 0xAAAA];
+        }
+        select_write_plane(0);
+        src += words; dst += words;
+    }
+    outb(0x3C4, 2); outb(0x3C5, saved);
+}
+```
+
+gcc peeled the first row, so the two inner loops appear twice in the disassembly;
+the peeled copy loads the table bases from the PIC register directly and the
+rolled copy caches them in locals. That is why the body is 932 bytes for what is a
+twenty-line function.
+
+Three facts to carry into the rewrite. The source stride is `vga_width >> 4`
+32-bit words, which is `vga_rowbytes` bytes and matches the `bm12` shadow's row
+pitch. The destination stride is the same count of 16-bit words, which is
+`vga_bpl` bytes. And **only planes 0 and 1 are ever written**, which is what makes
+the driver 2 bits deep on 4-plane hardware and what `_set_colormap`'s red entries
+are guarding.
+
+**33. `_read_bpp4planar_to_bpp2packed` — 1882207796 (`0x70303634`), 402 bytes.**
+
+```c
+unsigned int read_bpp4planar_to_bpp2packed(const void *addr)
+{
+    select_read_plane(1);
+    hi = spread(~*(unsigned short *)addr);   /* bit b -> bit 2b+1 */
+    select_read_plane(0);
+    lo = spread(~*(unsigned short *)addr);   /* bit b -> bit 2b   */
+    return hi | lo;
+}
+```
+
+Reads sixteen pixels' worth of planes 1 and 0, complements each 16-bit word, and
+interleaves them into one 32-bit value of sixteen 2-bit pixels, plane 0 supplying
+the low bit of each pair. gcc unrolled both spreads into 16 `and`/shift/`or`
+triples each, which is the whole 402 bytes; the two shift schedules differ by one
+because the destination bit is `2b` in one and `2b+1` in the other. The complement
+is the NeXT-2-bit-gray-to-VGA-index inversion of finding 27. Single basic block.
+The kernel's `_vga_read_bpp4planar_to_bpp2packed32` (`VGA_reloc` 916, 407 bytes) is
+the same function with an out-parameter instead of a return value, which is
+exactly the five-byte difference.
+
+**34. `_write_bpp2packed_to_bpp4planar` — 1882208200 (`0x703037C8`), 124 bytes.**
+
+```c
+void write_bpp2packed_to_bpp4planar(unsigned int v, void *addr)
+{
+    select_write_plane(1);
+    *(unsigned short *)addr = (oddTable [(v >> 16) & 0xAAAA] << 8) | oddTable [v & 0xAAAA];
+    select_write_plane(0);
+    *(unsigned short *)addr = (evenTable[(v >> 16) & 0x5555] << 8) | evenTable[v & 0x5555];
+}
+```
+
+The inverse of finding 33, and 278 bytes shorter because it uses the two 64 KB
+lookup tables instead of unrolled shifts. The kernel's
+`_vga_write_bpp2packed32_to_bpp4planar` (`VGA_reloc` 1324, 428 bytes) does the same
+job with unrolled shifts and no tables — **the two halves genuinely diverge here**,
+and the divergence is a deliberate space/time trade the user-space half can afford
+and the kernel cannot. Do not harmonize them.
+
+`oddTable` is `0x70314138`, `evenTable` is `0x70304138`, both in `__bss`, both
+built by finding 35. Neither is referenced anywhere else except finding 32.
+
+**35. `sub_70303844` — 1882208324 (`0x70303844`), 240 bytes.**
+
+```c
+static void build_tables(void)
+{
+    for (c = 0; c <= 0xFFFF; c++) {
+        evenTable[c] = ~gather_even(c);   /* bits 14,12,10,8,6,4,2,0 -> bits 0..7 */
+        oddTable [c] = ~gather_odd (c);   /* bits 15,13,11,9,7,5,3,1 -> bits 0..7 */
+    }
+    tablesBuilt++;
+}
+```
+
+Two 65536-byte tables, 131072 bytes, which is all of `__bss` bar 52 bytes. The
+guard is the unnamed `static int` at `__DATA,__data` `0x70304088`; it is
+incremented, not set, so a second call would leave it at 2 — but the only test is
+against zero and the only caller is finding 32. Both gathers are fully unrolled,
+which is the 240 bytes, and both results are complemented for the reason in
+finding 27.
+
+The remaining 52 bytes of `__bss`, `0x70304104`–`0x70304137`, hold the
+`IOObjectNumber` at `0x70304110` and the `device_master_self()` port at
+`0x70304114`. The other 44 bytes are not referenced by any instruction IDA
+recovered; they are file-scope statics whose names the strip removed, and Phase 3a
+will find out what they are only by writing the source and comparing sizes.
+
+Compiled C: frame pointer, no unusual instruction, ordinary stack discipline.
+
+**36. `_VGASetStdRegs` — 1882208564 (`0x70303934`), 401 bytes.**
+
+```c
+int VGASetStdRegs(int mode)
+{
+    if (mode > 5) return 1;
+    inb(0x3DA);  outb(0x3C0, 0);                       /* reset AC flip-flop, blank */
+    outb(0x3C2, miscTable[mode]);                      /* Miscellaneous Output      */
+    for (i = 0; i <= 4;    i++) { outb(0x3C4, i); outb(0x3C5, seqTable [mode][i]); }
+    outb(0x3C4, 0); outb(0x3C5, 3);                    /* release sequencer reset   */
+    outb(0x3D4, 0x11); outb(0x3D5, 0);                 /* unprotect CRTC 0..7       */
+    for (i = 0; i <= 0x18; i++) { outb(0x3D4, i); outb(0x3D5, crtcTable[mode][i]); }
+    inb(0x3DA);
+    for (i = 0; i <= 0x13; i++) { outb(0x3C0, i); outb(0x3C0, acTable  [mode][i]); }
+    for (i = 0; i <= 8;    i++) { outb(0x3CE, i); outb(0x3CF, gcTable  [mode][i]); }
+    inb(0x3DA);  outb(0x3C0, 0x20);                    /* unblank                   */
+    return 0;
+}
+```
+
+The five tables occupy 360 of the 444 bytes of `__TEXT,__const`, from `0x70303E98`
+to `0x70304000`, with no slack:
+
+| Address | Bytes | Table |
+| --- | --- | --- |
+| `0x70303E98` | 6 | `miscTable[6]` = `EB EB EB 2F 67 E3` |
+| `0x70303E9E` | 30 | `seqTable[6][5]` |
+| `0x70303EBC` | 150 | `crtcTable[6][25]` |
+| `0x70303F52` | 120 | `acTable[6][20]` |
+| `0x70303FCA` | 54 | `gcTable[6][9]` |
+
+Mode 5 is `0xE3 / 03 01 0F 00 06 / …`, which is 640×480×16 — BIOS mode 0x12 — and
+it is the only mode `_VGAStart` ever asks for. Mode 4 is `0x67 / 01 00 03 00 02`,
+the 80×25 text mode. `mode < 0` is not checked and would read before the tables;
+only `> 5` returns the error, and the error value is 1, not an `IOReturn`.
+
+The remaining 84 bytes of `__const`, `0x70303E44`–`0x70303E97`, are the cursor
+layer's: the 16×16 `Bounds` `{0, 16, 0, 16}` at `0x70303E44` used by
+`_VGASetCursor` (finding 18) and the 17-entry left-edge mask table at
+`0x70303E54` used by `sub_70302E48` (finding 26). Every byte of `__const` is
+accounted for.
+
+**37–53. The seventeen PIC symbol stubs — 1882209417 (`0x70303C89`) through
+1882209833 (`0x70303E29`), 14 bytes each as IDA names them, 26 bytes each in
+fact.**
+
+| # | Address | Symbol | # | Address | Symbol |
+| --- | --- | --- | --- | --- | --- |
+| 37 | `0x70303C89` | `_NXRegisterScreen` | 46 | `0x70303D73` | `_os_fprintf` |
+| 38 | `0x70303CA3` | `_os_malloc` | 47 | `0x70303D8D` | `__IOGetIntValues` |
+| 39 | `0x70303CBD` | `__IOMapEISADevicePorts` | 48 | `0x70303DA7` | `_ev_unlock` |
+| 40 | `0x70303CD7` | `_thread_self` | 49 | `0x70303DC1` | `_bcopy` |
+| 41 | `0x70303CF1` | `__IOMapEISADeviceMemory` | 50 | `0x70303DDB` | `_ev_lock` |
+| 42 | `0x70303D0B` | `__IOSetIntValues` | 51 | `0x70303DF5` | `_BM12Convert32to2` |
+| 43 | `0x70303D25` | `__IOLookupByDeviceName` | 52 | `0x70303E0F` | `_BM12Convert16to2` |
+| 44 | `0x70303D3F` | `_device_master_self` | 53 | `0x70303E29` | `_BM12Convert8to2` |
+| 45 | `0x70303D59` | `_LookupFrameBufferDevicePort` | | | |
+
+Every one has the identical shape
+
+```
+call $+5 ; pop eax ; mov edx, [eax + disp] ; jmp edx
+```
+
+where `disp` reaches the matching `__DATA,__la_symbol_ptr` cell.
+`__picsymbol_stub` is 442 bytes and the stubs start 26 apart, so each carries a
+further 12 bytes that IDA does not name: the lazy half, which the
+`__la_symbol_ptr` cell points at until dyld rebinds it. The file's
+`__la_symbol_ptr` values are `stub + 14` for all seventeen, which is that lazy
+half's address, exactly as expected for a bundle that has never been loaded.
+
+All seventeen are `intentional-mismatch` in the ledger, with the linker and dyld
+named as their generator: `ld` synthesizes one stub and one lazy pointer per
+lazily-bound external function, and they will reappear in our build only as a side
+effect of the source calling `os_fprintf`, `ev_lock` and the rest. There is no
+source to write for them.
+
+The four imports that are **not** in this list — `_bm12`, `_bm18`, `_bm34`,
+`_bm38` — are undefined *data*, bound through `__nl_symbol_ptr` and `__data`
+relocations rather than through stubs, along with `_os_stderr` and `_task_self_`.
+That is why `__picsymbol_stub` has 17 entries for 23 undefined symbols.
+
+### What Phase 3a has to reproduce, in one place
+
+- One C translation unit, `__text` `0x70301F58`–`0x70303AC4`, 34 compiled bodies,
+  no assembly.
+- Two exported names on one body (`_Start`, `_VGAStart`), 19 exported function
+  symbols in total, and 7 exported `__common` globals.
+- A 21-slot vector table in `__DATA,__data` at `+0x18` with three null slots, and
+  a five-entry `__bm*` class table before it.
+- The `_VGAStart` call order and its seven `__cstring` failure paths verbatim,
+  including the stale-`r` `os_malloc` message.
+- The blocking `ev_lock` discipline on all seven public cursor entry points and
+  none on the three primitives.
+- `_VGAShieldCursor`'s `shielded = 0` before `_VGACheckShield`, unchanged.
+- Both blitters' `save` stride of two words per scan line, unchanged.
+- 444 bytes of `__const` in five VGA register tables plus the 16×16 `Bounds` and
+  the 17-entry mask table; 131072 bytes of `__bss` in two built-at-runtime tables.
+- An `outb` whose dummy operand is an automatic, not `driverkit`'s `static int`.

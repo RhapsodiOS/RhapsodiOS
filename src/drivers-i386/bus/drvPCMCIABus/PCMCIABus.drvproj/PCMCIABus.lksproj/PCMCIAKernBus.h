@@ -57,7 +57,7 @@ extern unsigned int biosBitmap[3];
  */
 @protocol PCMCIAStatusChange
 
-- statusChangedForSocket:socket changedStatus:(unsigned int)status;
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)status;
 
 @end
 
@@ -124,7 +124,7 @@ extern unsigned int biosBitmap[3];
 - (void)setVerbose:(BOOL)verbose;
 
 /* Status changes */
-- (void)statusChangedForSocket:socket changedStatus:(unsigned int)status;
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)status;
 
 @end
 

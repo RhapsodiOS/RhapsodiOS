@@ -65,7 +65,14 @@ never compared before this pass, which is why Findings 2-8 are new. Both that
 commit and that report currently live on the `qemu-debug-loop` branch, which is
 ahead of this one — the cross-reference resolves once this branch merges forward.
 
-## Finding 1 — `statusChangedForSocket:changedStatus:` takes a bitfield: **intentional mismatch, not changed**
+## Finding 1 — `statusChangedForSocket:changedStatus:` takes a bitfield: **fixed**
+
+> **Resolved.** The deferral below stood while `PCMCIAStatus` did not exist. It
+> does now, and the reference's own implementation has since been disassembled,
+> which settled the one thing the record said was unmeasured. See
+> § The reconciling pass at the end of this finding. The original reasoning is
+> kept because it explains why the change waited.
+
 
 | | |
 | --- | --- |
@@ -128,6 +135,63 @@ Apple's.
 > `PCMCIABus_reloc` and confirm the reference tests `present` rather than some
 > other bit — the field mapping is known, but which field this method reads
 > is not, in this record, measured.
+
+### The reconciling pass
+
+**The reference tests `present`, measured.** At `0xfe0 + 0x1c`:
+
+```
+f6 45 14 01    test byte ptr [ebp + 0x14], 1
+0f 85 aa 00..  jne  0x10b0
+```
+
+`[ebp+0x14]` is the third argument — `changedStatus` — and the mask is bit 0,
+which the ivar-type names give as `present`. Our build did test the same bit,
+but through the type: `mov ecx, [ebp+0x14]` then `test cl, 1`, a dword load
+because the parameter was an `unsigned int`. The reference tests the byte in
+memory directly.
+
+Our build also spilled `socketNum` to `[ebp-4]` where the reference keeps it in
+`eax`, most likely because that dword load needed the register.
+
+**`sizeof(PCMCIAStatus)` is 4, and ours already agrees.** Worth recording
+because the reference's logging path reads it a byte at a time, which invites
+the opposite conclusion. `PCICSocket` stores one as an ivar, and the two
+binaries' layouts are identical — `instance_size` 20, `statusMask` at +12,
+`windows` at +16. A one-byte struct would have put `windows` at +13.
+
+**Changed**, in `PCMCIAKernBus.h` and `PCMCIAKernBus.m`:
+
+- the `PCMCIAStatusChange` protocol declaration, which also lacked its `(void)`
+  return — the reference encoding is `v16@8:12@16{?=b1b1b1b1b2b1b1}20`
+- the matching class declaration and the implementation's signature
+- `(changedStatus & 1) == 0` → `!changedStatus.present`
+- both call sites in `addAdapter:`, via a local `PCMCIAStatus cardPresent = { 1 }`
+
+The reference pushes a literal `1` at both call sites, so Apple's source also
+had a constant whose four bytes are `present` alone; `{ 1 }` initialises the
+first bitfield and zeroes the rest, giving the same value.
+
+**Predictions this pass makes, all checkable in a rebuilt `PCMCIABus_reloc`:**
+the emitted encoding becomes `v16@8:12@16{?=b1b1b1b1b2b1b1}20`; the test becomes
+the reference's two instructions; the `socketNum` spill disappears; and both
+call sites emit `push 1`.
+
+**One divergence found here and left open.** In the verbose logging path the
+reference zero-extends a *single byte* of each status:
+
+```
+0f b6 55 fc    movzx edx, byte ptr [ebp - 4]    ; currentStatus
+0f b6 55 14    movzx edx, byte ptr [ebp + 0x14] ; changedStatus
+```
+
+Ours passes the values whole. Since the struct is four bytes, `movzx` from a
+byte means Apple's source narrowed both at the call — a cast, or byte-typed
+locals. Which of those it was is not recoverable from the encoding, and the path
+is `_verbose`-only, so nothing was invented to match it. `currentStatus` is also
+still an `unsigned int` here, assigned from `[socket status]` through an untyped
+receiver; the reference's `-[PCICSocket status]` returns the bitfield. Both
+belong to the same unfinished thread.
 
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this

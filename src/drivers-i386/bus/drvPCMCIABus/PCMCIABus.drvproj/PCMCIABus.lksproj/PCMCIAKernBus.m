@@ -553,6 +553,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     id pool;
     id windows;
     unsigned int windowCount;
+    PCMCIAStatus cardPresent = { 1 };	/* present, nothing else */
 
     if (_verbose) {
         IOLog("PKB: adding adapter %x\n", (unsigned int)adapter);
@@ -594,7 +595,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         [_socketMap insertKey:socket value:socketInfo];
 
         /* Set status change mask */
-        [socket setStatusChangeMask:1];
+        [socket setStatusChangeMask:cardPresent];
 
         /* Initialize remaining fields */
         socketInfo->tupleList = nil;
@@ -604,7 +605,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         socketInfo->cardID = nil;
 
         /* Trigger initial status change */
-        [self statusChangedForSocket:socket changedStatus:1];
+        [self statusChangedForSocket:socket changedStatus:cardPresent];
     }
 
     return self;
@@ -687,7 +688,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 /*
  * Handle socket status change
  */
-- (void)statusChangedForSocket:socket changedStatus:(unsigned int)changedStatus
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)changedStatus
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
@@ -701,8 +702,8 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     /* Get socket number for logging */
     socketNum = [socket socketNumber];
 
-    /* Check if we care about this status change (bit 0) */
-    if ((changedStatus & 1) == 0) {
+    /* Check if we care about this status change */
+    if (!changedStatus.present) {
         IOLog("PCMCIA: don't care socket %d\n", socketNum);
         return;
     }

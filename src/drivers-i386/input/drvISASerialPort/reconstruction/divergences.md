@@ -1697,3 +1697,49 @@ size is 0, in which case the RX default is applied to TX. The sibling site at 0x
 self-consistent RX/RX. Reproduce the reference's behaviour rather than correcting it, and
 record the disposition — this is a parity effort, and an Apple bug faithfully reproduced is
 a match, not a defect.
+
+## Addendum 2: Task 3 outcome, and a finding the reline exposed
+
+**Task 3 landed the structural change.** `__OBJC,__instance_vars` went from 820 bytes to
+**28 — an exact match**. Our scattered ivars are now one embedded 304-byte `Port` struct at
+offset 296 plus a `Port *` at 600, carrying Apple's 43 recovered field names with every
+offset verified. `__OBJC,__module_info` held at **32**, so the `.c` decision paid off.
+`missing_symbols` fell 24 → 13; sections matching went 17/30 → **18/30**.
+`reference-only` externals is **empty**: all 11 exported functions now exist with the
+reference's linkage. `ours-only` is `___udivdi3`/`___umoddi3`, our libgcc substitutes, which
+are `local` in the reference — Task 6's business.
+
+`flowMachine` and `watchState` moved to `ISASerialPortFlow.c`. `watchState`'s missing cleanup
+is fixed: all four exits now funnel through `WatchStateMask = 0` plus `thread_wakeup_prim`,
+mirroring the reference's three jumps into 23743 and its fall-through. Finding 76 is also
+fixed — it now returns −714 and −703 where the reference does, rather than −704/−726.
+
+**New finding: 15 C functions still carry a leading underscore the reference does not have.**
+
+This surfaced when the source map was relined. `binrecon.source_map.source_sites` keys sites
+by *compiled* symbol name, so a source function named `activatePort` keys as `_activatePort`
+and matches the reference symbol, while one named `_activatePort` keys as `__activatePort`
+and does not. The 11 functions Task 3 exported now match. These 15 do not:
+
+`_activatePort`, `_deactivatePort`, `_executeEvent`, `_FIFOIntHandler`, `_NonFIFOIntHandler`,
+`_PCMCIA_yanked`, `_dataLatTOHandler`, `_frameTOHandler`, `_delayTOHandler`,
+`_heartBeatTOHandler`, the three `_RX_enqueueLongEvent` copies, and
+`__udivdi3`/`__umoddi3`.
+
+All are TU 1 or libgcc, so **Task 6 owns the rename** — drop one leading underscore from each
+so the compiler emits the reference's symbol. This is the same divergence class that appeared
+in four of the five sibling input drivers.
+
+Note for whoever reruns the map: a fresh `binrecon source-map` will report roughly 28 mapped
+and 17 unmapped rather than the committed 43 and 2, purely because the generator cannot
+auto-match those 15 names. That is **not** a partition change — `fresh-only` is empty and the
+committed `mapped` set is a superset. Reline by matching each reference symbol against both
+its exact key and the `_`-prefixed key our still-underscored source produces, and point all
+three `_RX_enqueueLongEvent` copies at our single definition. Once Task 6 lands the rename the
+generator will match them directly and this workaround becomes unnecessary.
+
+**Still open.** `__DATA,__bss` is 12 against the reference's 48. `ISASerialPortFlow.c` does no
+port I/O and does not import `ioPorts.h`, so it contributes no `outb` static group. Tasks 4
+and 5 will each add one, which is the decisive test of whether the fourth group belongs to
+TU 4 or to the build-generated `ISASerialPort_instance.m`. Do not force it either way.
+

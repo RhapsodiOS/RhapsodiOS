@@ -51,21 +51,37 @@ its first line. None of these is a finding.
 
 ## Parity baseline
 
-Measured against the guest build taken at the end of the pre-pass:
+Measured against the guest build the fix phases start from, whose SHA-256 is
+recorded as `rebuilt_sha256` in `ledger.json`:
 
-| Axis | Original baseline | After the pre-pass |
+| Axis | Original baseline | Fix-phase baseline |
 |---|---:|---:|
-| `missing_symbols` | 163 | 4 |
+| `missing_symbols` | 163 | 1 |
 | `missing_strings` | 94 | 92 |
-| `missing_imports` | 7 | 8 |
+| `missing_imports` | 7 | 3 |
 
-Two repairs landed after that build and are not yet reflected in those numbers.
-The dangling `[self _errnoFromReturn:]` call and the seven `extern` kernel
-declarations that compiled to unresolvable `__`-prefixed symbols were both fixed
-after the measurement, so the next build should show `missing_symbols` at 1
-— libgcc's `__udivdi3`, which we never write — and `missing_imports` reduced by
-up to five. `ledger.json` records the `rebuilt_sha256` of the pre-fix build and
-should be refreshed when that build lands.
+**Symbol parity is closed.** The single remaining entry is `__udivdi3`, libgcc's
+64-bit division helper, which no source in this project writes. Every function
+Apple compiled by hand is present in our build under its own name.
+
+The three remaining missing imports are findings rather than naming artifacts,
+and each belongs to a fix phase:
+
+| Import | Why it is missing |
+|---|---|
+| `.objc_class_name_NXSpinLock` | allocated by runtime lookup, `IOFloppyDisk.m:190` |
+| `.objc_class_name_Protocol` | no compile-time protocol reference survives |
+| `_strcpy` | the reference calls it; our sources never do |
+
+The first two are the `objc_getClass("…")` sites listed under Layer 4 below: a
+link-time class reference is only emitted when the source names the class
+directly, so converting those five sites is what restores these imports. This is
+the defect commit `8890be17` recorded — reconstructed sources must link classes,
+not look them up.
+
+`missing_strings` is untouched by the pre-pass, as designed: restoring the 92
+diagnostic messages and `IONamedValue` tables is fix-phase work, distributed
+across the layers that emit them.
 
 ## Findings
 

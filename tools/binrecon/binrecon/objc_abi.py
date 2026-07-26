@@ -194,6 +194,31 @@ def read_modules_from_sections(payload, sections, endianness, method_names=None)
     return modules
 
 
+def attach_symbols(modules, assignment, symbols):
+    """Record each module's exported C symbols, split by segment.
+
+    ``assignment`` maps a module name to the symbol names it owns. C functions
+    carry no module attribution in the image (spec §2.1), so the assignment is
+    declared from the module's public header rather than inferred.
+    """
+    by_name = {symbol["name"]: symbol for symbol in symbols}
+    for module, names in assignment.items():
+        if module not in modules:
+            raise ObjcAbiError(f"assignment names unknown module {module}")
+        text, data = [], []
+        for name in names:
+            symbol = by_name.get(name)
+            if symbol is None:
+                raise ObjcAbiError(f"image exports no symbol named {name}")
+            section = symbol["section"]
+            if section is None:
+                raise ObjcAbiError(f"{name} is undefined in the image")
+            bucket = text if section.startswith("__TEXT") else data
+            bucket.append(name)
+        modules[module]["text_symbols"] = sorted(text)
+        modules[module]["data_symbols"] = sorted(data)
+
+
 def read_modules(path):
     """Return ``{module name: abi-v1 document}`` for an image on disk."""
     from .macho import load_image

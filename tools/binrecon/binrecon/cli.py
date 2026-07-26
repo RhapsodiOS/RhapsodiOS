@@ -14,6 +14,9 @@ from binrecon.compare import ComparisonError, compare_artifacts, format_text_rep
 from binrecon.consensus import ConsensusError, build_consensus
 from binrecon.macho import extract_slice, load_image, objc_method_index, read_macho
 from binrecon.normalize import preflight_json
+from binrecon.objc_abi import (
+    ObjcAbiError, attach_symbols, method_symbol_index, read_modules_from_sections,
+)
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
@@ -21,7 +24,7 @@ from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
 COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
-            "extract-slice")
+            "extract-slice", "abi")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--input", required=True)
     extract.add_argument("--architecture", required=True)
     extract.add_argument("--output", required=True)
+    abi = subparsers.add_parser("abi")
+    abi.add_argument("--profile", required=True)
+    abi.add_argument("--module", action="append", required=True)
+    abi.add_argument("--symbols", required=True)
+    abi.add_argument("--output", required=True)
 
     return parser
 
@@ -222,6 +230,32 @@ def main(argv=None) -> int:
             print(f"wrote {args.output} size={len(payload)} sha256={digest}")
             return 0
         except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "abi":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            payload, document = load_image(profile.reference.path)
+            modules = read_modules_from_sections(
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
+            )
+            assignment = json.loads(Path(args.symbols).read_text())
+            attach_symbols(modules, assignment, document["symbols"])
+
+            output = Path(args.output)
+            output.mkdir(parents=True, exist_ok=True)
+            for module in args.module:
+                if module not in modules:
+                    raise ValueError(f"image defines no module {module}")
+                target = output / (module.removesuffix(".m") + ".json")
+                target.write_text(
+                    json.dumps(modules[module], indent=1, sort_keys=True) + "\n"
+                )
+                print(f"wrote {target}")
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
             print(f"binrecon: {error}", file=sys.stderr)
             return 1
 

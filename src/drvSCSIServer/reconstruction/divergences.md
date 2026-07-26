@@ -368,7 +368,7 @@ themselves and reports `calls: []` for every function in this block).
 | 2076 | `-[IOSCSISession name]` | `assembly-matched` | 4-instruction leaf; returns literal 0 |
 | 2092 | `_findReservation` | `assembly-matched` | walks the circular list, matches the 0x18-byte element layout field-for-field |
 | 2196 | `_addReservation` | `assembly-matched` | calls `findReservation` (confirmed by local symbol name) then `IOMalloc`, links the new entry with the same four steps and offsets as the source |
-| 2388 | `_removeReservation` | `unexamined` | Finding: pointer-arithmetic bug corrupts the wrong field when unlinking |
+| 2388 | `_removeReservation` | `assembly-matched` | Finding: pointer-arithmetic bug corrupts the wrong field when unlinking (fixed by commit `5c17f9cb`; see the finding below) |
 | 2544 | `_blastAllReservations` | `assembly-matched` | `while` loop freeing 0x18-byte entries, correctly fixes up `next->prev` |
 
 **The reservation structure.** All four reservation functions — in both the reference disassembly and
@@ -401,9 +401,11 @@ prev pointer (circular list)". The code itself follows the latter, `+0` = next /
 12 should fix that comment rather than leave a fix-pass reader who trusts it with the fields
 backwards.
 
-## Finding: `_removeReservation` corrupts the wrong field when unlinking an entry
+## Finding: `_removeReservation` corrupts the wrong field when unlinking an entry (resolved)
 
-**Source:** `IOSCSISession.m:1308` (`removeReservation`), specifically lines 1350-1352.
+**Source:** `IOSCSISession.m:667` (`removeReservation`), specifically lines 706-707. (Citation
+updated in the final whole-branch review fix pass; was `:1308`/lines 1350-1352 before Task 10's
+IOTask.m/.h split shifted this content.)
 
 **Reference behaviour:** at addresses 2468-2480, after locating the matching entry (`r3` = `current`),
 the reference does:
@@ -417,7 +419,7 @@ Both stores land on the field at byte offset `+4` (`prev`) and `+0` (`next`) of 
 entries — a correct doubly-linked-list unlink, matching `_addReservation`'s and
 `_blastAllReservations`' own use of the same offsets.
 
-**Our source:**
+**Our source (as originally recorded, before the fix below):**
 ```c
 next = (int *)current[0];  /* current->next */
 prev = (int *)current[1];  /* current->prev */
@@ -432,16 +434,21 @@ not 4 bytes — so `*(int **)(next + 4) = prev;` writes `prev` into the byte at 
 field. The second line, `*prev = (int)next;`, is correct (offset `+0` of `prev`, matching the
 reference's `stw r11, 0(r9)`).
 
+**Resolved:** commit `5c17f9cb` changed the first line to `next[1] = (int)prev;` (`IOSCSISession.m:706`
+as of this fix pass), matching `_addReservation`'s and `_blastAllReservations`' own array-index
+notation for the same field and eliminating the raw-pointer-arithmetic scaling bug. The ledger already
+recorded this address (2388) as `assembly-matched`; this divergences.md entry was simply never updated
+to match until now.
+
 **Consequence:** this is a real, non-cosmetic bug, not a register-allocation artifact: removing a
 reservation (1) never updates the successor entry's actual `prev` pointer — it is left dangling,
 pointing at the just-freed `current` node — and (2) clobbers the successor entry's `lun_high` field
 with the (unrelated) `prev` pointer value, corrupting live reservation data for every entry still in
 the list after the removed one. `_addReservation`'s own equivalent step
-(`new_entry[1] = (int)last_entry;`, `IOSCSISession.m:1237`) and `blastAllReservations`' equivalent
-step (`next[1] = list_head;`, `IOSCSISession.m:1283`) both use array-index notation and get the
-scaling right; only `removeReservation` mixes in raw pointer arithmetic on a byte offset comment
-without going through `(char *)` or index notation. Left `unexamined`; Task 12 should change
-`*(int **)(next + 4) = prev;` to `next[1] = (int)prev;` (or `*(int **)((char *)next + 4) = prev;`).
+(`new_entry[1] = (int)last_entry;`, `IOSCSISession.m:598`) and `blastAllReservations`' equivalent
+step (`next[1] = list_head;`, `IOSCSISession.m:646`) both use array-index notation and get the
+scaling right; only `removeReservation` mixed in raw pointer arithmetic on a byte offset comment
+without going through `(char *)` or index notation — see "Resolved" above for the fix.
 
 ## Finding: `-[IOSCSISession free]` omits an argument, misidentifies its cleanup call as a callback, and returns `self` where the reference returns `nil`
 
@@ -615,8 +622,10 @@ consistent within each pair:
   assignment instruction for instruction; the reference's `_IOSCSISession_executeSCSI3Request` (5220)
   does the identical thing into `_IOSCSISession_executeSCSI3RequestScatter` (5760, relocation addend at
   the call site's island). Our source's `return IOSCSISession_executeRequestScatter(session, request,
-  client, &ioRange, 8, result);` (`IOSCSISession.m:2207-2208`) and the SCSI-3 equivalent
-  (`IOSCSISession.m:1918-1919`) reproduce this delegation exactly, including the constant `8`.
+  client, &ioRange, 8, result);` (`IOSCSISession.m:1197-1198`) and the SCSI-3 equivalent
+  (`IOSCSISession.m:908-909`) reproduce this delegation exactly, including the constant `8`.
+  (Citations updated in the final whole-branch review fix pass for the constant -1010 line shift
+  Task 10's IOTask.m/.h split introduced.)
 - `executeRequestOOLScatter`/`executeSCSI3RequestOOLScatter` both wire the out-of-line buffer, then
   forward the OOL address and length as the `ioRanges`/`rangeCount` arguments to the matching
   `*Scatter` function (not `*Request`), then unwire. In the reference, `executeRequestOOLScatter`'s
@@ -625,7 +634,7 @@ consistent within each pair:
   the same way as above; `executeSCSI3RequestOOLScatter` (5476) resolves its second `bl` (relocation
   addend 5760) to `_IOSCSISession_executeSCSI3RequestScatter`'s entry the same way. Our source's
   `IOSCSISession_executeRequestScatter(session, request, client, oolData, oolDataSize, result)`
-  (`IOSCSISession.m:2386-2387`) and the SCSI-3 equivalent (`IOSCSISession.m:2092-2093`) match.
+  (`IOSCSISession.m:1376-1377`) and the SCSI-3 equivalent (`IOSCSISession.m:1082-1083`) match.
 - No in-line/out-of-line mix-up exists anywhere in the set: the legacy trio consistently uses offsets
   `+0x14` (buffer)/`+0x10` (direction)/`+0x20` (status) and the SCSI-3 trio consistently uses
   `+0x24`/`+0x20`/`+0x30`, in both the reference disassembly and our source's comments and field
@@ -637,14 +646,16 @@ consistent within each pair:
 
 ## Finding: twelve of the eighteen wrapper functions never send the Objective-C message the reference sends
 
-**Source:** `IOSCSISession.m:2582` (`releaseTarget`, line 2615-2618), `:2522` (`reserveSCSI3Target`,
-line 2545-2549), `:2456` (`releaseSCSI3Target`, line 2485-2488), `:2416` (`numberOfTargets`, line
-2424-2427), `:2141` (`executeRequest`, line 2185-2190), `:2239` (`executeRequestScatter`, lines
-2262-2328 throughout), `:2357` (`executeRequestOOLScatter`, via its call into the stubbed
-`executeRequestScatter`), `:1852` (`executeSCSI3Request`, line 1895-1899), `:1947`
-(`executeSCSI3RequestScatter`, lines 1970-2036 throughout), `:2063` (`executeSCSI3RequestOOLScatter`,
-via its call into the stubbed `executeSCSI3RequestScatter`), `:1808` (`resetSCSIBus`, lines 1816-1819),
-`:1790` (`returnFromScStatus`, lines 1797-1799).
+**Source:** `IOSCSISession.m:1572` (`releaseTarget`, line 1605-1608), `:1512` (`reserveSCSI3Target`,
+line 1535-1539), `:1446` (`releaseSCSI3Target`, line 1475-1478), `:1406` (`numberOfTargets`, line
+1414-1417), `:1131` (`executeRequest`, line 1175-1180), `:1229` (`executeRequestScatter`, lines
+1252-1318 throughout), `:1347` (`executeRequestOOLScatter`, via its call into the stubbed
+`executeRequestScatter`), `:842` (`executeSCSI3Request`, line 885-889), `:937`
+(`executeSCSI3RequestScatter`, lines 960-1026 throughout), `:1053` (`executeSCSI3RequestOOLScatter`,
+via its call into the stubbed `executeSCSI3RequestScatter`), `:798` (`resetSCSIBus`, lines 806-809),
+`:780` (`returnFromScStatus`, lines 787-789). (Citations updated in the final whole-branch review fix
+pass; the Task 10 IOTask.m/.h split shifted every one of these by a constant -1010 lines, since none
+of these twelve functions themselves moved out of IOSCSISession.m.)
 
 **Reference behaviour:** for every one of these twelve addresses, the disassembly contains a real
 `bl` to a jump island whose relocation resolves to `_objc_msgSend` (confirmed for each site
@@ -698,11 +709,13 @@ function is supposed to hand back. Left `unexamined`; Task 12 should change the 
 (or the appropriate `IOReturn` typedef) in both the header and definition, `return` the dispatched
 value, and wire up the call per the Finding above.
 
-## Finding: `executeRequestOOLScatter` and `executeSCSI3RequestOOLScatter` assign the result of a `void`-declared function to an `int`
+## Finding: `executeRequestOOLScatter` and `executeSCSI3RequestOOLScatter` assign the result of a `void`-declared function to an `int` (resolved)
 
-**Source:** `IOSCSISession.m:142` declares `void IOTaskWireMemory(unsigned int address, int length);`;
-the call sites at `IOSCSISession.m:2371` (`executeRequestOOLScatter`) and `:2077`
-(`executeSCSI3RequestOOLScatter`) both write `wire_result = IOTaskWireMemory((unsigned int)oolData,
+**Source:** `IOTask.h:44` now declares `int IOTaskWireMemory(unsigned int address, int length);` (moved
+from `IOSCSISession.h:142`, and changed from `void` to `int` by commit `84fffeb1`, resolving the type
+mismatch this finding originally recorded — see below); the call sites at `IOSCSISession.m:1361`
+(`executeRequestOOLScatter`) and `:1067` (`executeSCSI3RequestOOLScatter`) (moved from `:2371`/`:2077`
+by Task 10's IOTask.m/.h split) both write `wire_result = IOTaskWireMemory((unsigned int)oolData,
 oolDataSize);` and then branch on `if (wire_result != 0)`.
 
 **Reference behaviour:** in both OOL wrappers, the first `bl` (address 4624 in
@@ -712,7 +725,8 @@ both) is followed immediately by `cmpwi cr1, r3, 0` / `beq cr1, ...`, i.e. the r
 call's `r3` return value as meaningful and branches on it. A `void` function has no defined return
 value to branch on; the reference's own behaviour requires this helper to return an `int`.
 
-**Our source:** declares the callee `void` (`IOSCSISession.m:142`) while simultaneously using it as
+**Our source (as recorded when this finding was written):** declared the callee `void`
+(`IOSCSISession.m:142`, now `IOTask.h:44`) while simultaneously using it as
 though it returns `int` at both call sites. Assigning the result of a `void` expression to an `int`
 variable, and then comparing that variable to `0`, is a `C` type error — this does not compile as
 written, independent of the missing-dispatch Finding above (`IOTaskWireMemory` is presumably one of
@@ -726,9 +740,12 @@ should resolve when it reconciles `IOTaskWireMemory`/`IOTaskUnwireMemory` agains
 functions the reference actually links.
 
 **Consequence:** a real, compile-blocking type mismatch inside two of this block's 18 functions (the
-declaration is header-wide, so every other caller of `IOTaskWireMemory` would need the same fix). Left
-`unexamined` for both addresses (4544, 5476); Task 12 should change `IOSCSISession.m:142`'s declaration
-to return `int`, matching the reference's own use of the call's result.
+declaration is header-wide, so every other caller of `IOTaskWireMemory` would need the same fix).
+Resolved: commit `84fffeb1` changed `IOTaskWireMemory`'s declaration (in both `IOTask.h` and
+`IOTask.m`) to return `int`, matching the reference's own use of the call's result and both call
+sites' existing use of it. The stub body itself (never issuing `vm_map_pageable`/the reference's
+actual helper, reading `_page_size` instead of `_page_mask`) is separate, unresolved stub-body work —
+see the `_IOTaskWireMemory`/`_IOTaskUnwireMemory` finding above.
 
 ## Task plumbing and the MiG demux (Task 6)
 
@@ -764,8 +781,9 @@ a future reader doesn't need to re-derive it.
 
 ## Finding: `_IOTaskPortAllocateName` never issues its own two Mach calls, and is declared `void` where the reference returns a status
 
-**Source:** `IOSCSISession.m:1760-1779` (`IOTaskPortAllocateName`), declared `void` at both
-`IOSCSISession.h:158` and `IOSCSISession.m:1760`.
+**Source:** `IOTask.m:88-107` (`IOTaskPortAllocateName`), declared `void` at both
+`IOTask.h:22` and `IOTask.m:88`. (Moved from `IOSCSISession.m:1760-1779`/`IOSCSISession.h:158` by
+Task 10's IOTask.m/.h split; citation updated in the final whole-branch review fix pass.)
 
 **Reference behaviour:** the function (address 6460, 96 bytes) loads `_entry->port_funcs` and calls
 the imported `_port_allocate(port_funcs, &allocated_port)` (relocation at address 6500 names
@@ -788,7 +806,8 @@ pattern already recorded for twelve of the eighteen C wrappers in the finding ab
 eighteen wrapper functions never send the Objective-C message the reference sends") — here the
 missing calls are two Mach IPC primitives instead of an `objc_msgSend`, so on the eventual PPC
 rebuild a session would never actually receive a renamed port name for its notification port.
-Separately, the `void` return type is wrong independent of the stub: `IOSCSISession.m:270` already
+Separately, the `void` return type is wrong independent of the stub: `IOSCSISession.m:253` (the call
+site stayed in IOSCSISession.m across the IOTask.m split; line renumbered) already
 calls `result = IOTaskPortAllocateName(self);`, assigning a `void` expression to `result` — a second,
 independent compile error at that call site (which also passes `self`, an `id`, where the reference
 expects a `mach_port_t name`; that call site is outside this task's eight addresses and is left for
@@ -799,8 +818,9 @@ the return value.
 
 ## Finding: `_IOTaskPortDeallocate` never issues its own Mach call, and is declared `void` where the reference returns a status
 
-**Source:** `IOSCSISession.m:1744-1754` (`IOTaskPortDeallocate`), declared `void` at both
-`IOSCSISession.h:153` and `IOSCSISession.m:1744`.
+**Source:** `IOTask.m:113-123` (`IOTaskPortDeallocate`), declared `void` at both
+`IOTask.h:37` and `IOTask.m:113`. (Moved from `IOSCSISession.m:1744-1754`/`IOSCSISession.h:153` by
+Task 10's IOTask.m/.h split; citation updated in the final whole-branch review fix pass.)
 
 **Reference behaviour:** the function (address 6652, 48 bytes) loads `_entry->port_funcs`, moves the
 `port` argument into `r4` (`mr r4, r3` at address 6664, from the incoming `r3`), and calls the
@@ -820,11 +840,19 @@ defects in the same call chain, not duplicates of each other. Left `unexamined`;
 up the `port_deallocate` call and change the declaration in both the header and definition to return
 `int`.
 
-## Finding: `_IOTaskWireMemory` and `_IOTaskUnwireMemory` never issue their shared Mach call, are declared `void` where the reference returns a status, and read the wrong mask symbol
+## Finding: `_IOTaskWireMemory` and `_IOTaskUnwireMemory` never issue their shared Mach call, are declared `void` where the reference returns a status, and read the wrong mask symbol (partially resolved)
 
-**Source:** `IOSCSISession.m:1691-1709` (`IOTaskWireMemory`) and `:1716-1734` (`IOTaskUnwireMemory`),
-both declared `void` (`IOSCSISession.h:142`/`:148`), and both computing
-`~(_page_size - 1)` against `extern unsigned int _page_size;` (`IOSCSISession.m:34`).
+**Source:** `IOTask.m:138-157` (`IOTaskWireMemory`) and `:164-182` (`IOTaskUnwireMemory`),
+declared at `IOTask.h:44`/`:50`, and both computing
+`~(_page_size - 1)` against `extern unsigned int _page_size;` (`IOTask.m:22`). (Moved from
+`IOSCSISession.m:1691-1709`/`:1716-1734`/`IOSCSISession.h:142`/`:148`/`IOSCSISession.m:34` by Task
+10's IOTask.m/.h split; citations updated in the final whole-branch review fix pass.)
+
+**Since this finding was recorded:** commit `84fffeb1` changed `IOTaskWireMemory`'s declared return
+type from `void` to `int` (in both `IOTask.h` and `IOTask.m`) so it matches its callers, which was
+the part of this finding within that task's scope. `IOTaskUnwireMemory` is still declared `void`, and
+neither function issues the shared `vm_map_pageable` call or reads `_page_mask` instead of
+`_page_size` — those parts of this finding remain open.
 
 **Reference behaviour:** both functions (address 6716, 80 bytes; address 6812, 80 bytes) have an
 identical shape: load `_entry->task_port` (offset `0x18`), load a mask value directly from the
@@ -853,14 +881,16 @@ on the eventual rebuild); the `void`-vs-`int` return type mismatch is the same d
 this one describe the same header-wide type error from opposite ends of the same call, not
 duplicates. This finding adds the two callees' own confirmation that the reference does return a
 value, plus the `_page_mask`-vs-`_page_size` symbol mismatch, which that earlier finding did not
-cover. Left `unexamined` for both addresses; Task 12 should wire up the shared `vm_map_pageable`
-call, change both declarations to return `int` (the existing `executeRequestOOLScatter` finding
-already calls for this), and read `_page_mask` directly rather than declaring and computing from a
-separate `_page_size`.
+cover. Left `unexamined` for both addresses; Task 12 wired up `IOTaskWireMemory`'s return type
+(commit `84fffeb1`, matching the `executeRequestOOLScatter` finding's request), but not
+`IOTaskUnwireMemory`'s, nor either function's `vm_map_pageable` call or `_page_mask`-vs-`_page_size`
+symbol mismatch — those remain open for whichever task next picks up stub-body work.
 
 ## Finding: `_IOReferenceClientTask` never issues its own Mach call, and its sole parameter is a slot handle into `_clientReferences`, not a bare decompiler pointer
 
-**Source:** `IOSCSISession.m:1590-1676`, declared `int IOReferenceClientTask(int **param_1)`.
+**Source:** `IOTask.m:214-300`, declared `int IOReferenceClientTask(int **param_1)`. (Moved from
+`IOSCSISession.m:1590-1676` by Task 10's IOTask.m/.h split; citation updated in the final
+whole-branch review fix pass.)
 
 **Reference behaviour:** the function (address 6908, 232 bytes) matches our source's own control flow
 exactly — the in-range test against `&_clientReferences[0]`/`&_notifyThread` (addresses 6940-6980),
@@ -910,7 +940,9 @@ result the way the reference does, and rename the parameter per the recovered si
 
 ## Finding: `_IODereferenceClientTask` validates and decrements against the wrong table
 
-**Source:** `IOSCSISession.m:1519-1563`, declared `int IODereferenceClientTask(int *clientEntry)`.
+**Source:** `IOTask.m:313-354`, declared `int IODereferenceClientTask(int *clientEntry)`. (Moved from
+`IOSCSISession.m:1519-1563` by Task 10's IOTask.m/.h split; citation updated in the final
+whole-branch review fix pass.)
 
 **Reference behaviour:** the function (address 7156, 148 bytes) performs its in-range test against
 `&_clientReferences[0]`/`&_notifyThread` — the identical bounds `_IOReferenceClientTask` uses for the
@@ -935,10 +967,12 @@ slot the reference decrements. Left `unexamined`; Task 12 should change the boun
 `clientEntry[1]`), and wire up the stubbed `_port_deallocate` cleanup call (currently
 `result = 0; /* Placeholder */`, the same TODO-stub pattern as the findings above).
 
-## Finding: `_IOReleaseNotifyForFunc` invents a parallel object array the reference does not have
+## Finding: `_IOReleaseNotifyForFunc` invents a parallel object array the reference does not have (call-site argument partially resolved)
 
-**Source:** `IOSCSISession.m:1464-1466` (declares `notifClients[64]`, `notifClientObjects[32]` and
-`notifClientCnt`) and `:1479-1507` (`IOReleaseNotifyForFunc`, specifically lines 1494-1495 and 1498).
+**Source:** `IOTask.m:76-78` (declares `notifClients[64]`, `notifClientObjects[32]` and
+`notifClientCnt`) and `:372-404` (`IOReleaseNotifyForFunc`, specifically lines 387-388 and 395).
+(Moved from `IOSCSISession.m:1464-1466`/`:1479-1507` by Task 10's IOTask.m/.h split; citation updated,
+and the call-site argument fixed, in the final whole-branch review fix pass — see below.)
 
 **Reference behaviour:** the function (address 8988, 192 bytes) walks the same 32-entry, 8-byte-stride
 `_notifClients` array our source declares (confirmed via the reference's own local symbol table:
@@ -953,26 +987,21 @@ match, the reference passes **the value loaded from offset `+0`** (`r9`, `mr r3,
 — not the entry's address — to `_IODereferenceClientTask` (relocation at address 9096 confirms the
 target is address 7156, this task's own `_IODereferenceClientTask`).
 
-**Our source:** declares a second, separate array `static id notifClientObjects[32];`
-(`IOSCSISession.m:1465`) and checks `notifClientObjects[i] == session` (line 1495) instead of a second
-field of the same entry, then calls `IODereferenceClientTask(&notifClients[i * 2])` (line 1498) —
-passing the *address* of the entry, not the *value stored at* the entry's first field.
+**Our source (as of the final whole-branch review fix pass):** still declares a second, separate array
+`static id notifClientObjects[32];` (`IOTask.m:77`) and still checks `notifClientObjects[i] == session`
+(`:388`) instead of a second field of the same entry, but the call now reads
+`IODereferenceClientTask((int *)client_entry[0])` (`:395`) — passing the *value* held in the slot,
+not its address, per the reference behaviour above.
 
-**Consequence:** two compounding, real divergences. First, `notifClientObjects` does not exist in the
-reference's data layout at all — it is invented storage with no backing global, so the match test at
-line 1495 can never agree with the reference's own (`notifClients[i*2+1] == session`, not
-`notifClientObjects[i] == session`). Second, the argument passed to `IODereferenceClientTask` is
-wrong in exactly the way the finding above predicts: the reference passes the *value* stored in
+**Consequence:** one of the two compounding divergences this finding originally recorded is resolved,
+the other is not. `notifClientObjects` still does not exist in the reference's data layout — it is
+invented storage with no backing global, so the match test at `:388` can still never agree with the
+reference's own (`notifClients[i*2+1] == session`, not `notifClientObjects[i] == session`); that part
+of this finding remains open. The `IODereferenceClientTask` call site now passes the value stored in
 `notifClients[i*2]` (a `_clientReferences` slot pointer, per the `IOReferenceClientTask` finding
-above) while our source passes `&notifClients[i*2]` (the notifClients entry's own address) — neither
-of which is a `_clientReferences`-range pointer, which is exactly why `IODereferenceClientTask`'s
-bounds check (against `notifClients`, not `_clientReferences`) had to be wrong for our source's own
-call site to ever pass it. All three functions' defects in this section trace back to the same root
-cause: our source's local reimplementation of the client-reference/notification bookkeeping does not
-carry the `_clientReferences`-slot-pointer design all the way through. Left `unexamined`; Task 12
-should remove `notifClientObjects`, store the session pointer at `notifClients[i*2+1]` instead, and
-change the `IODereferenceClientTask` call to pass `notifClients[i*2]` (the stored slot pointer), not
-its address.
+above), matching the reference, rather than the notifClients entry's own address. Whoever next picks
+up stub-body work should remove `notifClientObjects` and store the session pointer at
+`notifClients[i*2+1]` instead.
 
 ## Disposition of the 27 unmapped entries (Task 7)
 
@@ -1559,10 +1588,10 @@ name to rename it *to*. Task 8 should leave this method's name alone but flag it
 12 (fixing Phase 1 divergences) as unreachable, duplicate logic layered on top of the already-correct
 `IOSCSISession_reserveTarget` C wrapper, worth removing rather than renaming.
 
-## Finding: `IOSCSISession_initForDevice`'s wrapper prototype is one parameter short of what the recovered `.defs` requires
+## Finding: `IOSCSISession_initForDevice`'s wrapper prototype is one parameter short of what the recovered `.defs` requires (resolved)
 
-**Source:** `IOSCSISession.h:122`, `int IOSCSISession_initForDevice(id session, const char *deviceName);`;
-implementation at `IOSCSISession.m:499`.
+**Source:** `IOSCSISession.h:130`, `int IOSCSISession_initForDevice(id session, const char *deviceName);`;
+implementation at `IOSCSISession.m:429`.
 
 **Reference behaviour:** `__XIOSCSISession_initForDevice`'s own message-type descriptor for `deviceName`
 is `MSG_TYPE_CHAR` (8), not `MSG_TYPE_STRING_C` (12) — a masked, variable-length check identical in
@@ -1573,17 +1602,16 @@ declares `in deviceName : array[*:80] of char;` to match, which is MiG's standar
 convention: the generated call adds an implicit `deviceNameCnt` (or similarly-named) count parameter
 after the pointer, matching the stub's three-argument call exactly.
 
-**Our source:** `IOSCSISession_initForDevice(id session, const char *deviceName)` — two parameters, no
-count. A `c_string` argument (MiG's other variable-length string convention) would generate exactly this
-two-parameter shape, which is presumably why the wrapper was written this way — but the reference's own
-descriptor rules that convention out (see above).
+**Our source (as of the final whole-branch review fix pass):** `IOSCSISession_initForDevice(id session,
+const char *deviceName, unsigned int deviceNameCnt)` — a third parameter, `deviceNameCnt`, was added to
+both the header declaration and the definition, matching the count parameter MiG's generated
+`IOSCSISessionMigServer.c` passes. This is a pure declaration/definition signature change with no new
+body logic; `deviceNameCnt` is accepted but not yet read by the function body, consistent with the
+byte-count validation this function does not otherwise perform.
 
-**Consequence:** once `IOSCSISessionMig.defs` is compiled, the generated `IOSCSISessionMigServer.c` will
-call `_IOSCSISession_initForDevice(server, deviceName, deviceNameCnt)` — three arguments — against a
-prototype that only declares two. This is a compile-time arity mismatch, not a runtime behavioural
-divergence. Left for the deferred body work (Task 12 or wherever `IOSCSISession.h`/`IOSCSISession.m`'s
-signatures are reconciled with the regenerated MiG interface) to add the missing count parameter to both
-the header and the definition.
+**Consequence:** the compile-time arity mismatch between the MiG-generated caller (three arguments) and
+this wrapper (previously two) is resolved. `IOSCSISessionMigServer.c` is still not checked into this
+tree (it is MiG build output), so this remains structurally verified rather than compile-verified.
 
 ## Acceptance
 
@@ -1655,6 +1683,39 @@ Final ledger tally (68 entries):
 | `unexamined` | 31 |
 | **Total** | **68** |
 
+**This does not meet spec §4.2 item 4** ("All 68 ledger entries carry a status, a reviewer and a
+reason; none is `unexamined`"), for the same class of reason §4.2 item 2's 48/20 figure is not met
+above: item 4 assumed the deferred-body and stub-dispatch work would be complete by acceptance time,
+which it is not. Each of the 31 `unexamined` entries retains an unfixed divergence, not an oversight
+— breaking down by `source_path`/`names` in the ledger itself:
+- **6** have no source at all (`_serverThreadFunc`, `_IOTaskPortAllocate`,
+  `_IOConvertTaskPortToVMTask`, `_IODestroyMappedVMTask`, `__io_task_notification`,
+  `_IORequestNotifyForClientTask`) — the Phase-2-deferred bodies under "six functions our tree lacks
+  entirely"; there is nothing yet for the ledger to examine.
+- **12** are twelve of the eighteen C-callable dispatch wrappers (`IOSCSISession_releaseTarget`,
+  `reserveSCSI3Target`, `releaseSCSI3Target`, `numberOfTargets`, `executeRequest`,
+  `executeRequestOOLScatter`, `executeRequestScatter`, `executeSCSI3Request`,
+  `executeSCSI3RequestOOLScatter`, `executeSCSI3RequestScatter`, `resetSCSIBus`,
+  `returnFromScStatus`) — the "twelve of the eighteen wrapper functions never send the Objective-C
+  message the reference sends" finding; real source exists, but the dispatch is still stubbed out.
+- **7** are the `IOTask.m` plumbing functions (`IOTaskPortAllocateName`, `IOTaskPortDeallocate`,
+  `IOTaskWireMemory`, `IOTaskUnwireMemory`, `IOReferenceClientTask`, `IODereferenceClientTask`,
+  `IOReleaseNotifyForFunc`) — each has a real finding above; some are now partially resolved by this
+  fix pass and earlier Task 12 commits (`IOTaskWireMemory`'s return type, the
+  `IODereferenceClientTask` call-site argument), but the underlying stub bodies (missing Mach calls,
+  `notifClientObjects` fabrication, etc.) remain, so the ledger status is correctly left
+  `unexamined` rather than advanced.
+- **1** is `-[IOSCSISession free]` (address 1732) — its own finding above.
+- **5** are the `SCSIServer.m` findings (`probe:`, `initFromDeviceDescription:`,
+  `registerSCSIController:`, `serverConnect:taskPort:`, `getCharValues:forParameter:count:`) — several
+  of these were fixed by earlier Task 12 commits, but per this project's divergence convention
+  (task-13-report.md), a fixed logging/argument difference does not by itself advance ledger status
+  without a full re-examination pass, so these remain `unexamined` intentionally.
+
+6 + 12 + 7 + 1 + 5 = 31. See "Phase 2 outcome" below for which of these findings this fix pass
+resolved versus left open — this acceptance section's own numbers are Task 13's as regenerated, not
+re-run by this pass.
+
 ### Gate results (Step 4)
 
 **`selector_check.py`:**
@@ -1712,3 +1773,52 @@ exit=0
 
 All binrecon tooling tests pass; Task 1's tooling is not broken by this task's
 regeneration.
+
+## Phase 2 outcome
+
+This section exists so a future fix pass has a work list without reading every commit body between
+Task 7 and the final whole-branch review. Status is drawn from the actual commit history
+(`git log -- src/drvSCSIServer`), the current source, and the ledger's `unexamined` list, not
+reasserted from memory. "Resolved" means the specific defect the finding describes no longer matches
+the current source; it does not mean the ledger status was advanced (see the §4.2 item 4 discussion
+above for why several resolved findings still carry `unexamined`).
+
+**Resolved:**
+
+| Finding | Commit(s) |
+| --- | --- |
+| `_removeReservation` pointer-arithmetic bug when unlinking | `5c17f9cb` |
+| `-[IOSCSISession free]`'s `IOTaskPortDeallocate` call and return value | `5b4d62ec` |
+| Session-structure doc comment's swapped next/prev field order | `e853646a` |
+| `-[IOSCSISession(Private) _reserveTarget:lun:]` unreachable duplicate method | `bc7c14da` (removed) |
+| `IOSCSISession_initForDevice:result:`'s undeclared `IOSCSIControllerExported` protocol | `1c6886ea` (empty declaration), superseded by this fix pass importing `driverkit/scsiTypes.h`'s real protocol (Minor 10) |
+| `-[SCSIServer serverConnect:taskPort:]`'s wrong (underscore-prefixed) selector name | `b2d798bd` |
+| `-[SCSIServer initFromDeviceDescription:]` passing the wrong argument to `registerSCSIController:` | `c3a70903` (the logging-difference half of this finding is still open, see below) |
+| The hand-written MiG dispatch table's wrong wiring order | moot — `5ac4f5c7` deleted the hand-rolled table and demux entirely, replacing it with the recovered `IOSCSISessionMig.defs` |
+| The dispatch-table comment misreading a PIC displacement as a manual-placement address | moot for the same reason (the comment's subject no longer exists in source) |
+| `IODereferenceClientTask` validating/decrementing against the wrong table (`notifClients` instead of `_clientReferences`) | `92384e9b` (bounds check and offset), `a495abfc` (one-past-the-end bound) — the `_port_deallocate` cleanup call inside it is still a stub, see below |
+| `IOTaskWireMemory` declared `void` where the reference returns a status | `84fffeb1` (return-type only; the stub body itself is still open, see below) |
+| The recovered `.defs`'s use of `unsigned`/`mach_port_t`, not part of this tree's MiG dialect | this fix pass (Critical 1) |
+| `IOVMTaskPort` having no C `ctype` | this fix pass (Critical 2) |
+| `IOSCSISession_initForDevice`'s two-parameter wrapper vs. the `.defs`'s three-argument call | this fix pass (Important 3) |
+| `IOReleaseNotifyForFunc` passing `&notifClients[i*2]` (an address) instead of the value stored there to `IODereferenceClientTask` | this fix pass (Important 4) — the `notifClientObjects` fabrication in the same finding is still open, see below |
+
+**Open (still needs a fix pass):**
+
+| Finding | Why still open |
+| --- | --- |
+| `+[SCSIServer requiredProtocols]`'s wrong pointer indirection / static storage class | no commit addresses it; `SCSIServer.m:21-25`/`:118-121` unchanged |
+| `+[SCSIServer probe:]` logging where the reference has none | no commit addresses it |
+| `-[SCSIServer initFromDeviceDescription:]` logging where the reference has none | the argument half is resolved (above); the logging half is not |
+| `-[SCSIServer registerSCSIController:]` logging where the reference has none | no commit addresses it |
+| `-[SCSIServer getCharValues:forParameter:count:]`'s extra bounds guard | no commit addresses it |
+| Our source calling `objc_getClass()` where the reference loads static `__cls_refs` | no commit addresses it |
+| Twelve of the eighteen C-callable wrapper functions never send the Objective-C message the reference sends | stub `/* TODO */` bodies unchanged; matches the 12 `unexamined` wrapper entries in the ledger (§4.2 item 4 discussion above) |
+| `IOSCSISession_returnFromScStatus` still declared `void`, discarding the reference's return value | still `void IOSCSISession_returnFromScStatus(...)` in both header and definition |
+| `IOTaskPortAllocateName` never issuing its two Mach calls, still declared `void` | unchanged stub |
+| `IOTaskPortDeallocate` never issuing its Mach call, still declared `void` | unchanged stub |
+| `IOTaskUnwireMemory` never issuing its Mach call, still declared `void`, reads `_page_size` not `_page_mask` | unchanged stub (only its sibling `IOTaskWireMemory`'s return type was fixed) |
+| `IOReferenceClientTask` never issuing its `port_rename` call | unchanged stub |
+| `IODereferenceClientTask`'s stubbed `_port_deallocate` cleanup call | unchanged stub (only the bounds/offset/one-past-the-end parts were fixed) |
+| `IOReleaseNotifyForFunc`'s fabricated `notifClientObjects` array and its match condition | unchanged (only the `IODereferenceClientTask` call-site argument was fixed, this pass) |
+| Six functions our tree lacks entirely (`_serverThreadFunc`, `_IOTaskPortAllocate`, `_IOConvertTaskPortToVMTask`, `_IODestroyMappedVMTask`, `__io_task_notification`, `_IORequestNotifyForClientTask`) | no source exists yet; these are the Phase-2-deferred bodies |

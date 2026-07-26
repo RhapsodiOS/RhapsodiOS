@@ -15,6 +15,16 @@
 #import <mach/mach_error.h>
 /* Use kernel printf from <sys/systm.h>; do not import <stdio.h>. */
 
+/*
+ * FIFO threshold and extended-FIFO configuration used to build the
+ * CONFIGURE command byte. These are `static` globals in the reference
+ * driver's __DATA segment (_cf2_fifo_value, _cf2_efifo). Initialized here
+ * to reproduce the value this driver previously hardcoded (0x18, i.e.
+ * fifo=8, efifo=0); the reference may set these elsewhere at runtime.
+ */
+static unsigned char cf2_fifo_value = 8;
+static unsigned char cf2_efifo = 0;
+
 @implementation FloppyController(IO)
 
 /*
@@ -95,7 +105,7 @@
 	// local_58 is at offset -0x58 from buffer start, which is 0x0c into the 96-byte buffer
 	cmdBuffer[0x0c] = 0x13;        // Command: CONFIGURE
 	cmdBuffer[0x0d] = 0;           // Byte 1: reserved (0)
-	cmdBuffer[0x0e] = 0x18;        // Byte 2: configuration byte (implied seeks enabled, FIFO enabled)
+	cmdBuffer[0x0e] = cf2_fifo_value | 0x10 | cf2_efifo;  // Byte 2: configuration byte (implied seeks enabled, FIFO enabled)
 	cmdBuffer[0x0f] = 0;           // Byte 3: precompensation (0)
 
 	// Set timeout at offset 0x04 (local_60)
@@ -104,8 +114,8 @@
 	// Set unknown field at offset 0x08 (local_5c)
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
 
-	// Set command byte count at offset 0x4c (local_48)
-	*(unsigned int *)(cmdBuffer + 0x4c) = 4;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 4;
 
 	// Send command to controller
 	result = [self sendCmd:cmdBuffer];
@@ -209,8 +219,8 @@
 	*(unsigned int *)(cmdBuffer + 0x04) = 5000;  // timeout
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 3;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 3;
 
 	// Send SPECIFY command
 	result = [self sendCmd:cmdBuffer];
@@ -657,7 +667,7 @@ set_error_flag:
 
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type or flags
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;  // Command byte count
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;  // Command byte count
 
 	// Build command bytes at offset 0x0c
 	cmdBuffer[0x0c] = (cmdBuffer[0x0c] & 0xc0) | 0x4a;  // Command with flags (likely 0x04 | MT flag)
@@ -666,8 +676,8 @@ set_error_flag:
 	// Set timeout
 	*(unsigned int *)(cmdBuffer + 0x04) = 500;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 7;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 7;
 
 	// Send the command
 	result = [self sendCmd:cmdBuffer];
@@ -717,7 +727,7 @@ get_write_protect_status:
 
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;  // Command byte count
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;  // Command byte count
 
 	// Build command bytes
 	cmdBuffer[0x0c] = 0x04;  // SENSE DRIVE STATUS command
@@ -726,8 +736,8 @@ get_write_protect_status:
 	// Set timeout
 	*(unsigned int *)(cmdBuffer + 0x04) = 2000;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 1;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 1;
 
 	// Send the command
 	result = [self sendCmd:cmdBuffer];
@@ -945,18 +955,18 @@ get_write_protect_status:
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type/flags
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;
 
 	// Set timeout at offset 0x04 (20 seconds)
 	*(unsigned int *)(cmdBuffer + 0x04) = 20000;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 2;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 2;
 
-	// Clear additional fields at offsets 0x44 and 0x40
-	*(unsigned int *)(cmdBuffer + 0x44) = 0;
-	*(unsigned int *)(cmdBuffer + 0x40) = 0;
+	// Clear additional fields at offsets 0x20 and 0x24
+	*(unsigned int *)(cmdBuffer + 0x20) = 0;
+	*(unsigned int *)(cmdBuffer + 0x24) = 0;
 
 	// Send the RECALIBRATE command
 	result = [self sendCmd:cmdBuffer];
@@ -1004,8 +1014,8 @@ get_write_protect_status:
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type/flags
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 3;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 3;
 
 	// Build SEEK command at offset 0x0c
 	cmdBuffer[0x0c] = 0x0f;  // SEEK command
@@ -1020,12 +1030,12 @@ get_write_protect_status:
 	// Set timeout at offset 0x04 (500ms)
 	*(unsigned int *)(cmdBuffer + 0x04) = 500;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 2;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 2;
 
-	// Clear additional fields at offsets 0x44 and 0x40
-	*(unsigned int *)(cmdBuffer + 0x44) = 0;
-	*(unsigned int *)(cmdBuffer + 0x40) = 0;
+	// Clear additional fields at offsets 0x20 and 0x24
+	*(unsigned int *)(cmdBuffer + 0x20) = 0;
+	*(unsigned int *)(cmdBuffer + 0x24) = 0;
 
 	// Send the SEEK command
 	result = [self sendCmd:cmdBuffer];

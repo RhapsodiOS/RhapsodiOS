@@ -14,9 +14,10 @@
 
 Every task's requirements implicitly include this section.
 
-- **Never commit reference binaries, rebuilt artifacts, or analyzer output.** `tools/binrecon/out/` and `out/` are gitignored. Rebuilt files stage to `out/i386/` and stay untracked.
+- **The repository root for this execution is the worktree**, `/d/RhapsodiOS/.claude/worktrees/cirrus-thinkpad-recon`, on branch `cirrus-thinkpad-recon`. Every `cd /d/RhapsodiOS` in the command examples below means *that* directory, not `D:\RhapsodiOS`. Writing to `D:\RhapsodiOS` modifies another session's checkout — never do it.
+- **Never commit reference binaries, rebuilt artifacts, or analyzer output.** `tools/binrecon/out/`, `out/` and `.venv-binrecon/` are all excluded from git. Rebuilt files stage to `out/i386/` and stay untracked.
 - **Run every `binrecon` command from the repository root** with `PYTHONPATH=tools/binrecon`. Analyzer executable paths in profiles are resolved by the host process, so another cwd breaks them.
-- **Python is `./.venv-binrecon/Scripts/python.exe`.** Not `python`, not `py`.
+- **Python is `./.venv-binrecon/Scripts/python.exe`.** Not `python`, not `py`. A venv already exists in the worktree with the pinned dependencies installed (Python 3.13.9; the README's 3.12 is stale). Baseline `pytest tools/binrecon/tests` is 713 passed, 4 skipped — rerun it if you touch anything under `tools/binrecon/binrecon/`, though this plan does not.
 - **`BINRECON_REFERENCE` must be exported** in any shell running `binrecon validate`, `analyze`, `source-map` or `ledger`. Track A:
   `C:\Users\raynorpat\Downloads\test\Drivers\i386\CirrusLogicGD5434DisplayDriver.config\CirrusLogicGD5434DisplayDriver_reloc`
   Track B:

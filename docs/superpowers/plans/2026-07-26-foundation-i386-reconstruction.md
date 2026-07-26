@@ -20,6 +20,7 @@
 - Test command: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 - **The full suite takes about 5 minutes** (753 passed, 4 skipped at baseline). During a red/green cycle run only the focused test file — those finish in seconds. Run the full suite once before committing.
 - Commit messages: start with the subsystem (`binrecon: `, `Foundation: `, `docs: `), one to two lines, describe behaviour not files, no metadata or trailers.
+- **Never `git add -A` or `git add .`** — this repo tracks `__pycache__`, so every test run dirties a dozen `.pyc` files. Each commit step in this plan already names its exact paths; use those and nothing else. Leave the `.pyc` churn uncommitted.
 - Do not add Foundation to `src/Manifest`, do not build the framework as a framework, and do not touch the 63 stub `.m` files outside this stage's three.
 
 ---

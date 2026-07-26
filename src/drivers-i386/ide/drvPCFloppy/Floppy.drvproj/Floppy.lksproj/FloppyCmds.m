@@ -41,39 +41,146 @@ static unsigned int _motorChangeCount = 0;
  */
 - (IOReturn)doCmdXfr:(void *)cmdParams
 {
+	unsigned char cmdOpcode;
+	unsigned char density;
 	unsigned char driveNum;
+	unsigned char targetTrack;
+	unsigned char targetHead;
+	unsigned char *cmdBytePtr;
 	IOReturn result;
+	BOOL isEISA;
 
-	// Per reconstruction/divergences.md, the reference doCmdXfr: masks the
-	// command opcode, merges the motor-select byte into the request,
-	// conditionally calls doConfigure:/doSpecify: when the drive changes,
-	// dispatches via two jump tables to call doMotorOn:, seek:head:density:
-	// (with a 20 ms IOSleep), and finally sendCmd:, then post-processes
-	// errors including a RECALIBRATE-specific retry.
+	// Reconstructed from the reference's 24-block/551-byte disassembly
+	// (0x17b8-0x19de). The cmdParams offsets below are read directly off
+	// the instructions, not off this file's older field-offset comments,
+	// which reconstruction/divergences.md already flagged as wrong for
+	// this method's own drive-number read (it used +0x14; the reference
+	// uses +0x5c throughout doCmdXfr:):
+	//   +0x00       requested density -- doConfigure:/doSpecify:'s
+	//               argument, and seek:head:density:'s "density" arg
+	//   +0x0c..+0x0f raw FDC command bytes 0-3 (opcode, drive/head
+	//               select, cylinder, head) -- the same bytes sendCmd:
+	//               sends to the controller
+	//   +0x40       result status, already written by sendCmd: itself
+	//   +0x5c       drive/unit number (0-3), staged by the caller
 	//
-	// NOT DETERMINED from the available evidence, and left unimplemented:
-	//   - which cmdParams field(s) track the previously-selected drive and
-	//     density, needed to decide when doConfigure:/doSpecify: must run;
-	//   - the two jump tables' contents (which opcodes require a
-	//     seek:head:density: before the transfer) and the cmdParams
-	//     offsets holding the target track/head/density for that call;
-	//   - the exact trigger and retry count for the RECALIBRATE-specific
-	//     error retry.
-	// Implementing these without the reference's exact field layout would
-	// risk seeking to a wrong track or mis-sequencing FDC commands, so
-	// they are omitted rather than guessed.
+	// self->_lastErrorCode (offset 0x140) does double duty here as a
+	// cached "current cylinder": doSpecify:/i82077Reset: prime it to
+	// 0xffff ("unknown"), and sendCmd:'s own SEEK case updates it from
+	// the reached PCN -- which is why comparing it against the requested
+	// cylinder below is what decides whether a seek is actually needed.
 	//
-	// Implemented below: spinning up the drive (doMotorOn: is idempotent
-	// and is named explicitly in the evidence) and forwarding the
-	// already-built command in cmdParams to sendCmd:, which the evidence
-	// marks as the unconditional final step.
+	// The reference picks which of the actions below apply via two
+	// compiler-generated jump tables (jpt_17E2 gating the drive-select
+	// merge, jpt_188E gating the motor-on/seek step); the disassembly
+	// resolves each table's reachable blocks but not its raw
+	// case-to-opcode bytes, so the exact per-opcode membership below is
+	// NOT verified byte-for-byte against the reference. It reproduces
+	// the observed effect of each reachable block, grouped by the
+	// standard i82077 command formats this file's own
+	// doConfigure:/doSpecify:/seek:head:density:/recal already use
+	// (which opcodes carry a real cylinder/head in command bytes 2/3,
+	// which are drive-targeted at all, which are controller-only) and
+	// cross-checked against sendCmd:'s own settled opcode groupings.
+	// If the raw jump-table bytes ever surface, re-verify the three
+	// switch statements below against them.
+	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0c) & 0x1f;
+	cmdBytePtr = (unsigned char *)cmdParams + 0x0c;
+	density = *(unsigned char *)cmdParams;
+	driveNum = *((unsigned char *)cmdParams + 0x5c);
 
-	driveNum = *(unsigned char *)((char *)cmdParams + 0x14);
-	[self doMotorOn:driveNum];
+	// Blocks 0x17e2/0x1830/0x1836: merge the drive-select byte into FDC
+	// command byte 1, except for the commands whose byte 1 has a
+	// different meaning (SPECIFY's SRT/HUT, CONFIGURE's reserved byte,
+	// SENSE INTERRUPT STATUS/DUMPREG/VERSION/PERPENDICULAR MODE, none of
+	// which take a drive-select byte).
+	switch (cmdOpcode) {
+	case 0x03: case 0x08: case 0x0e: case 0x10: case 0x12: case 0x13:
+		break;
+	default:
+		*((unsigned char *)cmdParams + 0x0d) |= driveNum;
+		break;
+	}
 
+	// Blocks 0x1836-0x187e: doConfigure:/doSpecify: are only reissued
+	// when the requested density differs from the controller's cached
+	// density (_currentDensity, offset 0x139); an error from either
+	// aborts the transfer immediately.
+	if (_currentDensity != density) {
+		result = [self doConfigure:density];
+		if (result != 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+			return result;
+		}
+
+		result = [self doSpecify:density];
+		if (result != 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+			return result;
+		}
+	}
+
+	// Blocks 0x188e/0x18ec/0x1910/0x193c: spin up the drive for any
+	// command that touches it. For commands whose command bytes 2/3
+	// carry a real cylinder/head (read/write/verify), seek there first
+	// if the cached cylinder doesn't already match; SEEK/RECALIBRATE and
+	// the remaining drive commands (whose byte 2 isn't a cylinder) just
+	// get the motor turned on.
+	switch (cmdOpcode) {
+	case 0x05: case 0x06: case 0x09: case 0x0c: case 0x16:
+		[self doMotorOn:driveNum];
+
+		targetTrack = cmdBytePtr[2];
+		targetHead = cmdBytePtr[3];
+
+		if (_lastErrorCode != targetTrack) {
+			result = [self seek:targetTrack head:targetHead density:density];
+			IOSleep(20);
+			if (result != 0) {
+				*(unsigned int *)((char *)cmdParams + 0x40) = result;
+				return result;
+			}
+		}
+		break;
+
+	case 0x02: case 0x04: case 0x07: case 0x0a: case 0x0d: case 0x0f:
+		[self doMotorOn:driveNum];
+		break;
+
+	default:
+		break;
+	}
+
+	// Block 0x1951: send the command. sendCmd: already stores its result
+	// at +0x40; the reference re-stores it here too.
 	result = [self sendCmd:cmdParams];
+	*(unsigned int *)((char *)cmdParams + 0x40) = result;
 
-	return result;
+	// Blocks 0x1962-0x19d2: the post-processing tail is gated entirely
+	// on isEISAPresent. On EISA systems, SEEK/RECALIBRATE/VERIFY just
+	// get an extra 20ms settle delay (blocks 0x1976-0x1988) and the
+	// function returns. On non-EISA systems, that settle sleep is
+	// skipped (block 0x1994's own IOSleep(30) is gated by a condition
+	// that's always false in the reference build -- dead code, nothing
+	// to reproduce) and a RECALIBRATE gets a retry instead: verify by
+	// explicitly seeking to cylinder 0/head 0, and let that failure
+	// override sendCmd:'s result only if sendCmd: had itself reported
+	// success.
+	isEISA = [self isEISAPresent];
+	if (isEISA) {
+		if (cmdOpcode == 0x0f || cmdOpcode == 0x07 || cmdOpcode == 0x16) {
+			IOSleep(20);
+		}
+	} else if (cmdOpcode == 0x07) {
+		result = [self seek:0 head:0 density:density];
+		IOSleep(20);
+		if (result != 0 &&
+		    *(unsigned int *)((char *)cmdParams + 0x40) == 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+		}
+	}
+
+	return *(IOReturn *)((char *)cmdParams + 0x40);
 }
 
 /*

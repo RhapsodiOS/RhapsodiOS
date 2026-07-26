@@ -545,7 +545,10 @@ set_error_flag:
  * and if found, processes them and reads any remaining result bytes.
  *
  * Returns:
- *   Always returns 0 (IO_R_SUCCESS)
+ *   0 (IO_R_SUCCESS) if no message was pending, or floppyInterrupt:'s
+ *   result if one was. The drain loop's own fcGetByte: failures are not
+ *   propagated (matches the disassembly at 0x2e7c: only the initial
+ *   floppyInterrupt: call's return value reaches the epilogue).
  */
 - (IOReturn)flushIntrMsgs
 {
@@ -589,7 +592,8 @@ set_error_flag:
 			for (i = resultByteCount; i < 0x10; i++) {
 				getByteResult = [self fcGetByte:resultBytesPtr];
 				if (getByteResult != IO_R_SUCCESS) {
-					// No more bytes available
+					// No more bytes available; the reference does not
+					// propagate this failure, unlike floppyInterrupt:'s.
 					break;
 				}
 				resultBytesPtr++;
@@ -598,9 +602,11 @@ set_error_flag:
 
 		// Log the stray interrupt
 		printf("FloppyCntIo:flushIntMsgs:Stray Interrupt\n");
+
+		return intrResult;
 	}
 
-	// Always return success
+	// No message was pending
 	return IO_R_SUCCESS;
 }
 

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reconstruct `src/drvSCSITape` against Apple's four shipped PowerPC binaries — dispositioning all 49 mapped functions, writing the five our tree lacks, and repairing the divergences found.
+**Goal:** Reconstruct `src/drvSCSITape` against Apple's four shipped PowerPC binaries — dispositioning all 49 mapped functions, writing the four our tree lacks, and repairing the divergences found.
 
-**Architecture:** Phase 1 produces `src/drvSCSITape/reconstruction/` with per-binary `source-map.json` and `ledger.json` plus one shared `divergences.md`, committed in full before any source change. Phase 2 then changes source one translation unit per commit: the naming and declaration class, the four absent `SCSITape` methods, `stblocksize`'s `_do_ioc`, and the remaining divergences.
+**Architecture:** Phase 1 produces `src/drvSCSITape/reconstruction/` with per-binary `source-map.json` and `ledger.json` plus one shared `divergences.md`, committed in full before any source change. Phase 2 then changes source one translation unit per commit: the naming and declaration class, the four absent `SCSITape` methods, and the remaining divergences.
 
 **Tech Stack:** Python 3.12 (`.venv-binrecon`), binrecon (`source-map`, `ledger`, `seed_ledger.py`, `filter_named_functions.py`, `selector_check.py`, `ppc_invariant_check.py`), Objective-C and C for Rhapsody DriverKit.
 
@@ -93,8 +93,8 @@ Set `BINRECON_REFERENCE` to the matching binary for the profile in use.
 | `$DRV/SCSITape.m` | Four absent methods added; divergences repaired. |
 | `$DRV/SCSITape.h` | Declarations for the added methods. |
 | `$DRV/SCSITapeKern.m` | Divergences repaired. |
-| `src/drvSCSITape/stblocksize.tproj/stblocksize.c` | `_do_ioc` added. |
 | `.gitignore` | Lock rule widened to reach per-binary subdirectories. |
+| `tools/binrecon/binrecon/source_map.py` | K&R scanner fix (Task 10). |
 
 ---
 

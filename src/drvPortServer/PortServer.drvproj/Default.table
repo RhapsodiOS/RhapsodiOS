@@ -1,4 +1,5 @@
 "Title" = "Port Server";
+"Version" = "5.00";
 "Class Names" = "PDPseudo PortServer";
 "Family" = "Serial";
 "Instance" = "0";
@@ -6,8 +7,8 @@
 "Driver Name" = "Port Server";
 "Maximum Sessions" = "16";
 "Port Count" = "0";
-"Support CTS" = "YES";   /* All ports support hardware handshaking */
-"Support DialIn" = "YES";  /* All ports support dialout (ttyof..) */
-"Support Dialout" = "YES"; /* All ports support dialin (cuA) */
-"Help File" = "PortServer_Main.rtf";
+"Support CTS" = "YES";     /* All ports support hardware handshaking */
+"Support Dialin" = "YES";  /* All ports support dialout (ttyd*) */
+"Support Dialout" = "YES"; /* All ports support dialin (cu*) */
+"Help File" = "PortServer_Main.rtfd";
 "Server Name" = "PortServer";

@@ -200,6 +200,25 @@ typedef union {
 }       es1x88MixerRegister_t;
 
 /*
+ * IRQ control (0xB1) and DMA control (0xB2) share a layout: two select bits at
+ * 2 and 3 encoding the interrupt or channel, and two bits at 4 and 6 that are
+ * always set.
+ */
+typedef union {
+    struct {
+        unsigned char
+                reserved0:2,
+                select0:1,
+                select1:1,
+                fixed4:1,
+                reserved5:1,
+                fixed6:1,
+                reserved7:1;
+    }       reg;
+    unsigned char rawValue;
+}       es1x88ControlRegister_t;
+
+/*
  * Card version enumeration
  */
 typedef enum {

@@ -527,7 +527,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     NXSoundParameterTag dataEncoding;
     unsigned char regValue;
     unsigned char sampleRateByte;
-    unsigned char irqBits, dmaBits;
+    es1x88ControlRegister_t irqControl, dmaControl;
     unsigned char modeCommand1, modeCommand2;
     unsigned char modeData;
     unsigned short transferCountNeg;
@@ -661,35 +661,46 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(25);
 
     /* Configure IRQ Control register */
-    irqBits = 0;
+    irqControl.rawValue = 0;
+    dmaControl.rawValue = 0;
     if (irq == 9) {
-        irqBits = 0x00;
+        irqControl.reg.select0 = 0;
+        irqControl.reg.select1 = 0;
     } else if (irq == 5) {
-        irqBits = 0x04;
+        irqControl.reg.select0 = 1;
+        irqControl.reg.select1 = 0;
     } else if (irq == 7) {
-        irqBits = 0x08;
+        irqControl.reg.select0 = 0;
+        irqControl.reg.select1 = 1;
     } else if (irq == 10) {
-        irqBits = 0x0C;
+        irqControl.reg.select0 = 1;
+        irqControl.reg.select1 = 1;
     }
+    irqControl.reg.fixed4 = 1;
+    irqControl.reg.fixed6 = 1;
 
     outb(sbWriteDataOrCommandReg, ES_REG_IRQ_CONTROL);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, irqBits | 0x50);
+    outb(sbWriteDataOrCommandReg, irqControl.rawValue);
     IODelay(25);
 
     /* Configure DMA Control register */
-    dmaBits = 0;
     if (dmaChannel == 0) {
-        dmaBits = 0x04;
+        dmaControl.reg.select0 = 1;
+        dmaControl.reg.select1 = 0;
     } else if (dmaChannel == 1) {
-        dmaBits = 0x08;
+        dmaControl.reg.select0 = 0;
+        dmaControl.reg.select1 = 1;
     } else if (dmaChannel == 3) {
-        dmaBits = 0x0C;
+        dmaControl.reg.select0 = 1;
+        dmaControl.reg.select1 = 1;
     }
+    dmaControl.reg.fixed4 = 1;
+    dmaControl.reg.fixed6 = 1;
 
     outb(sbWriteDataOrCommandReg, ES_REG_DMA_CONTROL);
     IODelay(25);
-    outb(sbWriteDataOrCommandReg, dmaBits | 0x50);
+    outb(sbWriteDataOrCommandReg, dmaControl.rawValue);
     IODelay(25);
 }
 

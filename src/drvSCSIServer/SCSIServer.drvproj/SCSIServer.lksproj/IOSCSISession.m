@@ -291,62 +291,6 @@ extern void blastAllReservations(id session);
     return (int)self;
 }
 
-/*
- * _reserveTarget:lun: - Reserve a SCSI target and LUN for this session
- * target: SCSI target ID (0-15)
- * lun: SCSI logical unit number (0-7)
- * Returns: 0 on success, error code on failure
- *
- * This method:
- * 1. Gets the controller object from session structure offset +8
- * 2. Calls reserveTarget:lun:forOwner: on the controller
- * 3. If successful, adds the reservation to this session's reservation list
- *
- * The decompiled code shows sign-extension of the target and lun values
- * (iVar3 >> 0x1f, iVar2 >> 0x1f) which produces the high 32 bits for
- * passing unsigned chars as 64-bit values on PowerPC.
- */
-- (int)_reserveTarget:(unsigned char)target lun:(unsigned char)lun
-{
-    int result;
-    id controller;
-    int target_val;
-    int lun_val;
-
-    /* Convert unsigned char to int */
-    target_val = (int)target;
-    lun_val = (int)lun;
-
-    /* Get controller object from session structure at offset +8
-     * This is the SCSI controller that owns this target/LUN
-     */
-    controller = *(id *)(*(int *)((char *)self + 4) + 8);
-
-    /* Call reserveTarget:lun:forOwner: on the controller
-     * This reserves the target/LUN pair for exclusive use by this session
-     */
-    result = objc_msgSend(controller,
-                         @selector(reserveTarget:lun:forOwner:),
-                         target_val,
-                         lun_val,
-                         self);
-
-    /* If reservation succeeded, add it to this session's reservation list */
-    if (result == 0) {
-        /* The sign extension (>> 0x1f) extracts the sign bit, which is 0
-         * for positive values. This is used to pass 64-bit values on PowerPC.
-         * For unsigned chars, this will always be 0.
-         */
-        addReservation(self,
-                      target_val >> 0x1f,  /* High 32 bits of target (always 0) */
-                      target_val,           /* Low 32 bits of target */
-                      lun_val >> 0x1f,      /* High 32 bits of LUN (always 0) */
-                      lun_val);             /* Low 32 bits of LUN */
-    }
-
-    return result;
-}
-
 @end
 
 

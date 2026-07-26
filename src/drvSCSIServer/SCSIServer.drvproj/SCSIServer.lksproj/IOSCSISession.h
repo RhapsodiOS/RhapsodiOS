@@ -86,13 +86,6 @@
  */
 - (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort;
 
-/* Private: Reserve a SCSI target and LUN for this session
- * target: SCSI target ID
- * lun: SCSI logical unit number
- * Returns: 0 on success, error code on failure
- */
-- (int)_reserveTarget:(unsigned char)target lun:(unsigned char)lun;
-
 @end
 
 /* ========================================================================

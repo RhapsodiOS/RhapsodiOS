@@ -21,26 +21,13 @@ static id _pseudoUnit = NULL;           /* PDPseudo unit instance */
 int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
 
 /*
- * The character device switch entry this driver installs.  serverMajor: hands
- * the same entry points to addToCdevswFromDescription:, and the three wrappers
- * below dispatch through this table rather than naming ttyiops_* directly.
+ * The character device switch entry this driver installs is defined in
+ * ttyiops.m (see ttyiops.h) - the seven ttyiops_* entry points it names are
+ * static to that file, so only that file can take their addresses.
+ * serverMajor: hands the same entry points to addToCdevswFromDescription:,
+ * and the three wrappers below dispatch through this table rather than
+ * naming ttyiops_* directly.
  */
-static struct cdevsw ttyiops_devsw = {
-    (open_close_fcn_t *)ttyiops_open,
-    (open_close_fcn_t *)ttyiops_close,
-    (read_write_fcn_t *)ttyiops_read,
-    (read_write_fcn_t *)ttyiops_write,
-    (ioctl_fcn_t *)ttyiops_ioctl,
-    (stop_fcn_t *)ttyiops_stop,
-    (reset_fcn_t *)nulldev,
-    0,
-    (select_fcn_t *)ttyiops_select,
-    eno_mmap,
-    eno_strat,
-    eno_getc,
-    eno_putc,
-    D_TTY
-};
 
 /* ========================================================================
  * Character Device Switch Wrappers

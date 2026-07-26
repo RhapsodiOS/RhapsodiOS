@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/tty.h>
+#include <sys/conf.h>
 
 @class IOPortSession;
 
@@ -66,6 +67,14 @@ typedef struct ttyiops_state {
 
 /* Speed table for baud rate conversion */
 extern struct speedtab ttyiops_speeds[];
+
+/*
+ * The character device switch entry this driver installs.  Defined in
+ * ttyiops.m, where the seven ttyiops_* entry points it names are static;
+ * PortServer.m's wrappers and +serverMajor: reach it through this
+ * declaration.
+ */
+extern struct cdevsw ttyiops_devsw;
 
 /* Function declarations */
 void ttyiops_getData(struct tty *tp);

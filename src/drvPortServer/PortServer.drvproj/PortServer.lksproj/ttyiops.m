@@ -64,6 +64,31 @@ struct speedtab ttyiops_speeds[] = {
     { -1,      -1 }
 };
 
+/*
+ * The character device switch entry this driver installs.  It lives here, not
+ * in PortServer.m, because it takes the address of seven ttyiops_* entry
+ * points that are static to this file; it is non-static so that PortServer.m's
+ * wrappers and +serverMajor: can reach it.  In the reference it sits at 33072,
+ * immediately after ttyiops_speeds' 184 bytes at 32888 - the same translation
+ * unit, in this order.
+ */
+struct cdevsw ttyiops_devsw = {
+    (open_close_fcn_t *)ttyiops_open,
+    (open_close_fcn_t *)ttyiops_close,
+    (read_write_fcn_t *)ttyiops_read,
+    (read_write_fcn_t *)ttyiops_write,
+    (ioctl_fcn_t *)ttyiops_ioctl,
+    (stop_fcn_t *)ttyiops_stop,
+    (reset_fcn_t *)nulldev,
+    0,
+    (select_fcn_t *)ttyiops_select,
+    eno_mmap,
+    eno_strat,
+    eno_getc,
+    eno_putc,
+    D_TTY
+};
+
 /* Minimum time DTR must stay down before it may be raised again */
 static const struct timeval dtrDownDelay = { 2, 0 };
 

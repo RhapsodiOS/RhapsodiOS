@@ -19,8 +19,42 @@ extern int physio(int (*strategy)(struct buf *), struct buf *bp, dev_t dev, int 
 // Forward declaration for detached disk identification
 static id identifyDetachedDiskIdFromBsdDev(dev_t dev);
 
+/*
+ * Drives - per-drive BSD device state table.
+ *
+ * Reconstructed from the reference binary's local __DATA symbols _Drives
+ * (0xc000) and _DrivesRegistered (0xc1a0): the 0x1a0-byte gap between them
+ * is 8 entries of 0x34 bytes each, indexed by drive number. This replaces
+ * the five sites that used to dereference 0xc000/0xc008/0xc028/0xc02c as
+ * absolute pointers - those were the reference's link-time __DATA
+ * addresses, meaningless in a relocatable driver.
+ *
+ * Running offsets within one entry (must total exactly 0x34 bytes):
+ *   +0x00  1 byte     flags    - bit 1 (0x02) set = disk attached
+ *   +0x01  7 bytes    reserved - other fields (drive object ptr at +0x04,
+ *                      disk ptrs at +0x0c/+0x10, etc.) not reconstructed here
+ *   +0x08  0x28 bytes devInfo  - struct passed to setDevAndIdInfo:
+ *     +0x20 (entry +0x28) int blockDev - (major << 8) | minor, block device
+ *     +0x24 (entry +0x2c) int charDev  - (major << 8) | minor, char device
+ *   +0x30  4 bytes    reserved - device buffer pointer, not reconstructed here
+ */
+struct DriveDevInfo {
+	unsigned char reserved[0x20];
+	int blockDev;
+	int charDev;
+};
+
+struct DriveEntry {
+	unsigned char flags;
+	unsigned char reserved1[7];
+	struct DriveDevInfo devInfo;
+	unsigned char reserved2[4];
+};
+
+static struct DriveEntry Drives[8];
+
 // Count of floppy drives registered with the BSD device layer
-int DrivesRegistered = 0;
+static int DrivesRegistered = 0;
 
 /*
  * HandleBsdIoctl - BSD ioctl handler
@@ -1376,7 +1410,6 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 - (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive
 {
 	int driveNumber;
-	int devInfoOffset;
 	BOOL hasDevInfo;
 	char *devInfoPtr;
 	void *sourceDevInfo;
@@ -1394,48 +1427,45 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 		return IO_R_INVALID_ARG;
 	}
 	
-	// Calculate offset into device info table (each entry is 0x34 bytes)
-	devInfoOffset = driveNumber * 0x34;
-	
-	// Get pointer to device info structure (global table at 0xc008)
-	devInfoPtr = (char *)0xc008 + devInfoOffset;
-	
+	// Get pointer to device info structure (Drives[driveNumber].devInfo)
+	devInfoPtr = (char *)&Drives[driveNumber].devInfo;
+
 	// Check if device info already exists
 	hasDevInfo = [drive _hasDevInfo];
-	
+
 	if (!hasDevInfo) {
-		// Clear device info area (0x28 bytes starting at offset 0xc008)
-		bzero(devInfoPtr, 0x28);
-		
+		// Clear device info area
+		bzero(devInfoPtr, sizeof(struct DriveDevInfo));
+
 		// Get block device major number from class
 		blockDevMajor = [[self class] blockMajor];
-		
-		// Calculate and store block device major/minor at offset 0xc028
+
+		// Calculate and store block device major/minor
 		blockDevMinor = driveNumber * 8;
-		*(int *)((char *)0xc028 + devInfoOffset) = (blockDevMajor << 8) | blockDevMinor;
-		
-		// Get character device major number from class  
+		Drives[driveNumber].devInfo.blockDev = (blockDevMajor << 8) | blockDevMinor;
+
+		// Get character device major number from class
 		charDevMajor = [[self class] characterMajor];
-		
-		// Calculate and store char device major/minor at offset 0xc02c
+
+		// Calculate and store char device major/minor
 		charDevMinor = driveNumber * 8;
-		*(int *)((char *)0xc02c + devInfoOffset) = (charDevMajor << 8) | charDevMinor;
+		Drives[driveNumber].devInfo.charDev = (charDevMajor << 8) | charDevMinor;
 	} else {
 		// Device info already exists, get existing info
 		sourceDevInfo = [self _getDevInfo];
-		
+
 		// Check if it's not already the same pointer
 		if (sourceDevInfo != devInfoPtr) {
-			// Copy existing device info (0x28 bytes)
-			bcopy(sourceDevInfo, devInfoPtr, 0x28);
+			// Copy existing device info
+			bcopy(sourceDevInfo, devInfoPtr, sizeof(struct DriveDevInfo));
 		}
 	}
-	
+
 	// Set device and ID info on the drive
 	[self setDevAndIdInfo:devInfoPtr];
-	
-	// Set bit 2 in flags byte at offset 0xc000 (marks as attached)
-	flagsPtr = (unsigned char *)((char *)0xc000 + devInfoOffset);
+
+	// Set bit 2 in flags byte (marks as attached)
+	flagsPtr = &Drives[driveNumber].flags;
 	*flagsPtr |= 2;
 	
 	return IO_R_SUCCESS;
@@ -1458,8 +1488,8 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 		return IO_R_SUCCESS;
 	}
 	
-	// Clear bit 2 in flags byte at offset 0xc000 (marks as detached)
-	flagsPtr = (unsigned char *)((char *)0xc000 + driveNumber * 0x34);
+	// Clear bit 2 in flags byte (marks as detached)
+	flagsPtr = &Drives[driveNumber].flags;
 	*flagsPtr &= 0xfd;  // Clear bit 2 (0xfd = ~0x02)
 	
 	return IO_R_SUCCESS;

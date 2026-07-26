@@ -442,13 +442,30 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             pnpBios = nil;
 
             /*
-             * The reference gives up here: it logs, frees the PnPBios and
-             * returns NO directly, with no fall back to initializeNoBIOS and
-             * no other cleanup on this path.  A BIOS that answered the
-             * installation check but then failed the configuration call is
-             * not one we go behind the back of.
+             * Deliberate divergence from the reference, which logs, frees the
+             * PnPBios and returns NO here (0x2716).  That branch was dead code
+             * in the shipped module: __bios32PnP recovers its register-block
+             * pointer from save_edx, __PnPEntry clobbers that slot, so the
+             * status write-back never landed and _call_bios always returned
+             * the zero -setupSegments left in bb->eax.  getPnPConfig could not
+             * fail, so giving up here cost nothing.
+             *
+             * With the save_bb fix in bios.c the real status arrives, and a
+             * BIOS that does not implement function 0x40 answers 0x82
+             * PNPB_R_FUNCTION_NOT_SUPPORTED - SeaBIOS does exactly this.  That
+             * is a perfectly ordinary machine, not a broken one, and the ISA
+             * PnP path is precisely what it needs.
+             *
+             * Fall through to isolation and then continue down the common path
+             * below: initializeNoBIOS only isolates, setting maxPnPCard and
+             * pnpReadPort.  Returning here instead would skip setReadPort:,
+             * the device table and the enumeration loop, so any cards it found
+             * would be isolated and then silently discarded.
              */
-            return NO;
+            result = [self initializeNoBIOS];
+            if (result == NO) {
+                return NO;
+            }
         }
         else {
             /* BIOS call succeeded - extract configuration from result */

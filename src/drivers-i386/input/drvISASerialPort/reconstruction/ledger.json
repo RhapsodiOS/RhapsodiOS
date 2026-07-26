@@ -35,6 +35,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 61 reference bytes at 200. Two-arm shape confirmed: alloc, initFromDeviceDescription:, test the result, return 1 or 0. The reference does NOT free the instance, because initFromDeviceDescription: has already called registerDevice; the [instance free] our source carried was removed. Ours 64 bytes against 61, the 3 being inter-function alignment padding",
           "full disassembly read instruction by instruction",
@@ -49,7 +50,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 61,
-      "source_line": 2436,
+      "source_line": 2440,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -61,6 +62,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 2273 reference bytes at 264 and rewrote the body against them. Confirmed and fixed: the shape check is numPortRanges != 1 || numInterrupts != 1 || numChannels != 0 sharing one log string (1009-1099); all four early exits are return [self free] (loc_918/loc_95D); the four thread_call_allocate calls bind frameTOHandler, dataLatTOHandler, delayTOHandler and heartBeatTOHandler with the address of self->Port (1561-1620); the tail is enableAllInterrupts then registerDevice, not registerInterrupt: (2340-2419); the banner puts the PCMCIA/ prefix before Chip[Type].LongName (2440-2515); and the method returns super's result via mov eax, ebx at 2525. Ours 2116 against 2273; the residual -157 is unattributed codegen and is recorded in divergences.md Addendum 7",
           "full disassembly read instruction by instruction",
@@ -75,7 +77,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2273,
-      "source_line": 2456,
+      "source_line": 2460,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -87,6 +89,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 233 reference bytes at 2540. Call sequence confirmed identical: spl4, deactivatePort of self->port, disableAllInterrupts, then four guarded thread_call_cancel and thread_call_free pairs on 0x210, 0x214, 0x218 and 0x21C, splx, and super free. Ours 236 against 233",
           "full disassembly read instruction by instruction",
@@ -101,7 +104,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 233,
-      "source_line": 2748,
+      "source_line": 2754,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -113,6 +116,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 63 reference bytes at 2776. The handler is Chip[Type].IntHandler read out of the table at stride 20 field +8 (2793-2809), NOT a Type greater than 4 FIFO test: Chip[8], the 82510, has FIFOsize 4 and NonFIFOIntHandler, so the test our source used handed that part the wrong handler. Also confirmed the level is 3 and the argument is self->port. Ours 64 against 63",
           "full disassembly read instruction by instruction",
@@ -127,7 +131,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 63,
-      "source_line": 4072,
+      "source_line": 4093,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -139,6 +143,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 172 reference bytes at 2840. The reference makes exactly three objc_msgSend calls - deviceDescription, configTable, valueForStringKey: - chained with no intermediate nil checks, and treats the result as the string; our source was sending stringValue to that char pointer, which faults on any successful lookup. The length report is an inlined strlen (repne scasb at 2949-2959) plus one. Ours 172 against 172, exact",
           "full disassembly read instruction by instruction",
@@ -153,7 +158,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 172,
-      "source_line": 4030,
+      "source_line": 4051,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -191,8 +196,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. Reference is void (Port *port) and no call site reads eax; ours returns IOReturn. The body otherwise matches in shape: early-out unless State & 0x40000000, outb(Base+1, IERmask & 8), the state clear plus wakeup, the MCR rebuild as 8 | DTR | RTS on delta & 6, the State & 0x10000000 gate on thread_call_enter(FrameTOEntry), the 0x53 long event, then _freeRingBuffer(&TX), _freeRingBuffer(&RX), _flowMachine and a second merge with mask 0xFFFFFFE9 (divergences.md Findings 69, 70). The parameter type and the three-way State split remain (Finding 8)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges. Reference is void (Port *port) and no call site reads eax; ours returns IOReturn. The body otherwise matches in shape: early-out unless State & 0x40000000, outb(Base+1, IERmask & 8), the state clear plus wakeup, the MCR rebuild as 8 | DTR | RTS on delta & 6, the State & 0x10000000 gate on thread_call_enter(FrameTOEntry), the 0x53 long event, then _freeRingBuffer(&TX), _freeRingBuffer(&RX), _flowMachine and a second merge with mask 0xFFFFFFE9 (divergences.md Findings 69, 70). The parameter type and the three-way State split remain (Finding 8)"
         ],
         "status": "agreed"
       },
@@ -216,8 +220,8 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. The retry loop, the -709 returns and the reset block's constants largely match, but ours never resets RXOstate, has RX.OverRun = 0 and DLRimage = 0 commented out at ISASerialPort.m:4136 and 4147, writes the wrong watermark slots because our TX field names are shifted one position from Apple's, indexes an identity _msr_state_lut, and tests a heartBeatInterval ivar that init never populates so it always takes the FrameTOEntry branch (divergences.md Findings 3, 12, 88, 89)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "Task 8 rewrote the reset block at reference 4853-5063 after the whole-effort review found two defects in it, but did not read the remaining instructions of this function, so the status does not advance. 0x126 was being stored to MasterClock (0x1dc) where the reference stores it to FlowControl (0x208) at 4937, which made programChip divide to a zero baud divisor on every acquire; and neither ring's Size was assigned from its DefaultSize, so every watermark derived from it came out zero and the first received byte tripped the above-high-water arm permanently",
+          "report pass: diverges. The retry loop, the -709 returns and the reset block's constants largely match, but ours never resets RXOstate, has RX.OverRun = 0 and DLRimage = 0 commented out at ISASerialPort.m:4136 and 4147, writes the wrong watermark slots because our TX field names are shifted one position from Apple's, indexes an identity _msr_state_lut, and tests a heartBeatInterval ivar that init never populates so it always takes the FrameTOEntry branch (divergences.md Findings 3, 12, 88, 89)"
         ],
         "status": "agreed"
       },
@@ -228,7 +232,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 944,
-      "source_line": 2808,
+      "source_line": 2814,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -253,7 +257,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 561,
-      "source_line": 3020,
+      "source_line": 3031,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -266,8 +270,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. The reference rejects mask & 0xC0001000 with IO_R_INVALID_ARG at 6027-6040, forbidding the two high State gates and the private bit 12 from being set through this entry point; our source has no such check and a comment saying it will 'just proceed with the low 32 bits'. Everything else matches, including the mask &= (0xFFFF0000 | ~FlowControl) narrowing, the State < 0 open test and the whole inlined state-change tail (divergences.md Finding 79)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges. The reference rejects mask & 0xC0001000 with IO_R_INVALID_ARG at 6027-6040, forbidding the two high State gates and the private bit 12 from being set through this entry point; our source has no such check and a comment saying it will 'just proceed with the low 32 bits'. Everything else matches, including the mask &= (0xFFFF0000 | ~FlowControl) narrowing, the State < 0 open test and the whole inlined state-change tail (divergences.md Finding 79)"
         ],
         "status": "agreed"
       },
@@ -278,7 +281,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 267,
-      "source_line": 3906,
+      "source_line": 3927,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -290,6 +293,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 19 reference bytes at 6280: return Port.State with bit 0x1000 cleared, emitted as and ah, 0EFh. Ours matches. Ours 20 against 19",
           "full disassembly read instruction by instruction",
@@ -304,7 +308,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 3888,
+      "source_line": 3909,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -317,8 +321,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. Loads [self+258h] (ivar port) and passes that Port * to _watchState at 6347, where ours passes self; and _watchState's own two return constants are wrong in our tree (divergences.md Finding 76). The spl4/splx bracket, the State < 0 gate, the mask &= 0xFFFFEFFFh narrowing and the *state &= 0xFFFFEFFFh on return all match",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges. Loads [self+258h] (ivar port) and passes that Port * to _watchState at 6347, where ours passes self; and _watchState's own two return constants are wrong in our tree (divergences.md Finding 76). The spl4/splx bracket, the State < 0 gate, the mask &= 0xFFFFEFFFh narrowing and the *state &= 0xFFFFEFFFh on return all match"
         ],
         "status": "agreed"
       },
@@ -329,7 +332,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 100,
-      "source_line": 3988,
+      "source_line": 4009,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -354,7 +357,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 70,
-      "source_line": 3856,
+      "source_line": 3877,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -366,6 +369,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 866 reference bytes at 6472. The dispatch is a switch, not an if-chain: gcc emits a binary decision tree (cmp 0Fh then ja then cmp 0Bh at 6532-6552, cmp 4Bh then cmp 53h at 6560-6572) and our source now spells it as a switch. Event 0x0F operates on Port.RX (0x140, 0x148, 0x14C at 6921-6986) and event 0x0B on Port.TX (0x178, 0x180, 0x184 at 7040-7089) - the opposite of what our source had. Event 0x4B stores to 0x230 and 0x234, which is CharLatInterval and not HeartBeatInterval (6889 and 6898). The default arm takes executeEvent's return value as its own (7141). Ours 864 against 866",
           "full disassembly read instruction by instruction",
@@ -380,7 +384,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 866,
-      "source_line": 3539,
+      "source_line": 3550,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -393,8 +397,8 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges, but this is the second-closest match in TU 1. Every one of the 24 event cases' field offsets and expressions matches, including Apple's own 0x27 bug (RX.Size - TX.Count, reference 7932, reproduced at ISASerialPort.m:5030). Two divergences: ours switches on event & 0xFF where the reference compares the unmasked 32-bit value, and cases 0x4B and 0x4F compute tv_sec * 1e9 + (int)tv_nsec then divide by 1000 in the reference where ours loads the pair as one unsigned long long and multiplies the whole value by 1e9 first (Findings 31, 92)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "Task 8 corrected the 0x4B and 0x4F interval arithmetic, which read the tvalspec as one little-endian 64-bit word instead of scaling tv_sec and sign-extending tv_nsec separately as the reference does at 7704-7808, and un-crossed every RX/TX label in the switch. The rest of the body has not been read, so the status does not advance",
+          "report pass: diverges, but this is the second-closest match in TU 1. Every one of the 24 event cases' field offsets and expressions matches, including Apple's own 0x27 bug (RX.Size - TX.Count, reference 7932, reproduced at ISASerialPort.m:5030). Two divergences: ours switches on event & 0xFF where the reference compares the unmasked 32-bit value, and cases 0x4B and 0x4F compute tv_sec * 1e9 + (int)tv_nsec then divide by 1000 in the reference where ours loads the pair as one unsigned long long and multiplies the whole value by 1e9 first (Findings 31, 92)"
         ],
         "status": "agreed"
       },
@@ -405,7 +409,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 746,
-      "source_line": 3727,
+      "source_line": 3742,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -418,8 +422,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges only in the argument. Reference loads [self+258h] and calls _TX_enqueueEvent with that Port *; ours passes self. The spl4 bracket, the State & 0x40000000 gate returning IO_R_NOT_OPEN, the byte-width event and signed-char sleep arguments, and the r == 0 && !(State & 0x10000000) conjunction guarding thread_call_enter(FrameTOEntry) all match (divergences.md Finding 92). A cheap win",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges only in the argument. Reference loads [self+258h] and calls _TX_enqueueEvent with that Port *; ours passes self. The spl4 bracket, the State & 0x40000000 gate returning IO_R_NOT_OPEN, the byte-width event and signed-char sleep arguments, and the r == 0 && !(State & 0x10000000) conjunction guarding thread_call_enter(FrameTOEntry) all match (divergences.md Finding 92). A cheap win"
         ],
         "status": "agreed"
       },
@@ -430,7 +433,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 120,
-      "source_line": 3492,
+      "source_line": 3503,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -443,8 +446,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges only in the argument. Reference passes the Port * from [self+258h] to _RX_dequeueEvent; ours passes self. The !event || !data guard, the spl4 bracket, the State & 0x40000000 gate, the unsigned char staging local and the zero-extending store back into *event all match (divergences.md Finding 92). A cheap win",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges only in the argument. Reference passes the Port * from [self+258h] to _RX_dequeueEvent; ours passes self. The !event || !data guard, the spl4 bracket, the State & 0x40000000 gate, the unsigned char staging local and the zero-extending store back into *event all match (divergences.md Finding 92). A cheap win"
         ],
         "status": "agreed"
       },
@@ -455,7 +457,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 3241,
+      "source_line": 3252,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -468,8 +470,7 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. The loop shape, the 0x55-tag-plus-payload cell writes, the signed 'sar 1' cell count and the watchState(0x800000) sleep path match, but the MCR is driven from oldState where the reference uses newState, the long-event payload uses oldState rather than (newState & 0xFFFF), the below-low-water state value is 0x04000000 where the reference emits 0x02000000, and FlowControl is reached by memcpy type-punning an unsigned char ivar that is a 32-bit field in the reference (divergences.md Findings 11, 17, 61)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges. The loop shape, the 0x55-tag-plus-payload cell writes, the signed 'sar 1' cell count and the watchState(0x800000) sleep path match, but the MCR is driven from oldState where the reference uses newState, the long-event payload uses oldState rather than (newState & 0xFFFF), the below-low-water state value is 0x04000000 where the reference emits 0x02000000, and FlowControl is reached by memcpy type-punning an unsigned char ivar that is a 32-bit field in the reference (divergences.md Findings 11, 17, 61)"
         ],
         "status": "agreed"
       },
@@ -480,7 +481,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 696,
-      "source_line": 3290,
+      "source_line": 3301,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -493,8 +494,8 @@
         ],
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
-          "report pass: diverges. The armed 0/1/-1 tri-state, the once-only arming, the (left != 0) sleep argument implementing minCount as a sleep budget, the -702-to-success conversion and the minCount > size guard all match. But ours arms and cancels delayTimeoutCallout where the reference uses DataLatTOEntry at Port+236 - the wrong callout - and reads the interval from charTimeOverrideLow/High rather than Port.DataLatInterval (divergences.md Finding 90)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "Task 8 corrected the callout identifier: this method armed and cancelled DelayTOEntry (Port+0xF0) where the reference reads Port+0xEC, DataLatTOEntry, at 9327 and 9374. The rest of the body has not been read, so the status does not advance",
+          "report pass: diverges. The armed 0/1/-1 tri-state, the once-only arming, the (left != 0) sleep argument implementing minCount as a sleep budget, the -702-to-success conversion and the minCount > size guard all match. But ours arms and cancels delayTimeoutCallout where the reference uses DataLatTOEntry at Port+236 - the wrong callout - and reads the interval from charTimeOverrideLow/High rather than Port.DataLatInterval (divergences.md Finding 90)"
         ],
         "status": "agreed"
       },
@@ -505,7 +506,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 383,
-      "source_line": 3134,
+      "source_line": 3145,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "unexamined"
     },
@@ -542,6 +543,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 60 reference bytes at 10088. Takes one argument, the Port pointer, not a spec and call pair; clears WaitingForTXIdle and then calls Chip[Type].IntHandler(0, 0, port) through the table (10110-10131) rather than testing Type greater than 4 - our source had the FIFO arm commented out entirely, so a FIFO part serviced no interrupt from this timer. Ours 60 against 60, exact",
           "full disassembly read instruction by instruction",
@@ -568,6 +570,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 60 reference bytes at 10148. Same shape as frameTOHandler: one Port pointer argument, clears State bit 0x1000, dispatches through Chip[Type].IntHandler (10170-10191). Ours 60 against 60, exact",
           "full disassembly read instruction by instruction",
@@ -594,6 +597,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 123 reference bytes at 10208. Guard is State's sign bit and PCMCIA_yanked equal to zero (10223-10236); the chip is polled through Chip[Type].IntHandler only when JustDoneInterrupt is zero (10238-10268); the rearm passes HeartBeatInterval straight to deadline_from_interval (10280-10294), so there is no nanosecond arithmetic and no 64-bit division here - our source was round-tripping the tvalspec through a bogus high-shifted-32 or low helper. Ours 124 against 123",
           "full disassembly read instruction by instruction",
@@ -620,6 +624,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 23 reference bytes at 10332: set PCMCIA_yanked to 1, call deactivatePort. Ours matches exactly. Ours 24 against 23",
           "full disassembly read instruction by instruction",
@@ -646,6 +651,7 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b read all 2704 reference bytes at 10356 and rewrote the body against them. The function returns IOReturn, guards on Port.State's sign bit and returns 0xFFFFFD33 when the port is not acquired (10384-10395), and uses its two pointer arguments as accumulators - the state pointer arrives holding Port.State and the mask pointer holding zero - rather than computing a state locally. Three cases were missing (0x37, 0x3F and 0xF7, all reached at 11636); 0xE9 and 0xED were swapped, the reference writing XONchar at 0xBD for 0xED and XOFFchar at 0xBE for 0xE9 (10704 and 10716); 0x4F is a microsecond to tvalspec split into DataLatInterval and is the second of the two 64-bit division pairs (10948-11027); and 0x33, 0x3B, 0x43, 0xF3 and 0xE5 set their field and call programChip unconditionally instead of deriving LCRimage and DLRimage by hand. Case 0x1B stores its argument into RX.HighWater at 12740 and then clamps TX.HighWater, which is an original bug and is reproduced. Ours 2800 against 2704",
           "full disassembly read instruction by instruction, with repeated inlined blocks confirmed as the same mnemonic sequence rather than re-derived",
@@ -660,7 +666,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 2704,
-      "source_line": 2019,
+      "source_line": 2023,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -672,10 +678,11 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b confirmed the signature only: void taking identity, state and a Port pointer, the Port pointer arriving as arg_8 at 13060 and matching the three-argument indirect call the timeout handlers make through Chip[Type].IntHandler. The body was NOT verified. Measured 2652 against 3172; the mnemonic histogram differs by lea -24, mov -75 and call +9, and the call-target comparison shows the reference has no call to RX_enqueueLongEvent at all where ours has several, because the reference writes the three-cell ring enqueue inline at each event site together with its own space check",
-          "report pass: diverges. The FCRimage & 1 delegation to _NonFIFOIntHandler matches and must be kept. Divergences: STATE_RX_ENABLED is 0x00400000 not 0x00080000; the IIR read must be short-circuited behind three tests and in ours is unconditional, which can eat a THRE interrupt; both TX watermark comparisons are inverted; the 0x01800000 TX state value is missing and 0x04000000 is emitted where the reference never produces it; fifoRemaining is zeroed on the drain-loop break, killing the outer re-iteration; timerNeeded is set on the wrong paths; the RX watermark's preserved bits come from port->State not the local; the three flow-control adjustments must be an exclusive else-if chain; _RX_enqueueLongEvent is inlined not called; and _Chip[].FIFOsize is wrong for indices 6-8 (Findings 2, 10, 15-17, 25-29)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "Task 8 fixed two defects inside this body without reading the rest of it, so the status does not advance. The TX-watermark tail at reference 18285-18416 had both branch senses inverted and both level constants one rung low, emitting ABOVE_HIGH where the reference emits CRITICAL 0x1800000 and 0 where it emits ABOVE_HIGH 0x1000000; and the receive gate tested bit 0x00080000 where the reference tests 0x00400000 at 13237, which meant this handler read bytes out of the RBR and discarded them",
+          "report pass: diverges. The FCRimage & 1 delegation to _NonFIFOIntHandler matches and must be kept. Divergences: STATE_RX_ENABLED is 0x00400000 not 0x00080000; the IIR read must be short-circuited behind three tests and in ours is unconditional, which can eat a THRE interrupt; both TX watermark comparisons are inverted; the 0x01800000 TX state value is missing and 0x04000000 is emitted where the reference never produces it; fifoRemaining is zeroed on the drain-loop break, killing the outer re-iteration; timerNeeded is set on the wrong paths; the RX watermark's preserved bits come from port->State not the local; the three flow-control adjustments must be an exclusive else-if chain; _RX_enqueueLongEvent is inlined not called; and _Chip[].FIFOsize is wrong for indices 6-8 (Findings 2, 10, 15-17, 25-29)"
         ],
         "status": "agreed"
       },
@@ -686,7 +693,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 3172,
-      "source_line": 1272,
+      "source_line": 1274,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "signature-confirmed"
     },
@@ -698,10 +705,11 @@
           "angr"
         ],
         "reasons": [
+          "Byte counts quoted in this entry were taken with capstone over the rebuilt __text against the nlist. They are NOT anchored: ledger rebuilt_sha256 is null and artifacts is empty, so the object they describe is not identified by this document. Treat them as as-of Task 8, not as a reproducible measurement",
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "Task 6b confirmed the signature only: void taking identity, state and a Port pointer, the Port pointer arriving as arg_8 at 16241. The body was NOT verified. Measured 2128 against 2472; the mnemonic histogram differs by lea -18, mov -43 and call +7. The reference's six calls are PCMCIA_yanked, executeEvent, deadline_from_interval, thread_call_cancel, thread_call_enter_delayed and thread_wakeup_prim, with no call to RX_enqueueLongEvent: the state-change event is written inline as three cells at 18568-18664, preceded by the same space check and 0x6C overflow path the out-of-line helper has",
-          "report pass: diverges. Its five structural differences from _FIFOIntHandler - LSR read once before the loop and re-read at the bottom, no RX drain loop, stats incremented once before the loop, MSR handling gated on msr & 0x0F and incrementing Stats.mdmInts, and no JustDoneInterrupt write - are all reproduced correctly in ours and must not be unified with the FIFO handler. Divergences: STATE_RX_ENABLED is 0x00400000; the IIR read is unconditional in ours; both TX watermark comparisons are inverted; the TX state constants 0x01800000 and 0x01000000 are wrong; the flow-control adjustments must be an exclusive chain; the enqueued byte is the post-RBRmask value; _RX_enqueueLongEvent is inlined; and ISASerialPort.m:2357 assigns txQueueRead to itself in the TX ring wrap so the ring never wraps (Findings 10, 15-17, 21, 23-27)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "Task 8 fixed three defects inside this body without reading the rest of it, so the status does not advance. The TX-watermark tail at 18285-18416 had both branch senses inverted and both level constants one rung low; the receive gate tested 0x00080000 where the reference tests 0x00400000 at 16340 and 16449, so the receive path was dead; and the TX ring wrap assigned TX.Output to itself where reference 17598-17606 assigns TX.Base, so a wrapped ring retransmitted the same cell while Count decremented",
+          "report pass: diverges. Its five structural differences from _FIFOIntHandler - LSR read once before the loop and re-read at the bottom, no RX drain loop, stats incremented once before the loop, MSR handling gated on msr & 0x0F and incrementing Stats.mdmInts, and no JustDoneInterrupt write - are all reproduced correctly in ours and must not be unified with the FIFO handler. Divergences: STATE_RX_ENABLED is 0x00400000; the IIR read is unconditional in ours; both TX watermark comparisons are inverted; the TX state constants 0x01800000 and 0x01000000 are wrong; the flow-control adjustments must be an exclusive chain; the enqueued byte is the post-RBRmask value; _RX_enqueueLongEvent is inlined; and ISASerialPort.m:2357 assigns txQueueRead to itself in the TX ring wrap so the ring never wraps (Findings 10, 15-17, 21, 23-27)"
         ],
         "status": "agreed"
       },
@@ -1014,8 +1022,7 @@
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "fix pass Task 3: moved verbatim to ISASerialPortFlow.c with external linkage. Its report-pass divergences are NOT yet corrected, hence signature-confirmed rather than higher.",
-          "report pass: diverges only in layout, and will reach assembly-matched from the layout fix alone. Every branch of the algorithm matches: the FlowControl & 0x14 split, the DTR sub-test, the exclusive RTS-then-hardware chain, HighWater < Count selecting clear versus set, the RXOstate -1-to-2 and 1-to--2 transitions, and the new State returned in eax. The divergences are the parameter type - Port * not ISASerialPort * - and the fact that 'test byte ptr [ecx+0Fh], 40h' at 23427, 23460, 23509 and 23561 is State & 0x40000000, which our source reads as statusFlags & 0x40 because our header splits the single 32-bit State field into three ivars (Findings 8, 74)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges only in layout, and will reach assembly-matched from the layout fix alone. Every branch of the algorithm matches: the FlowControl & 0x14 split, the DTR sub-test, the exclusive RTS-then-hardware chain, HighWater < Count selecting clear versus set, the RXOstate -1-to-2 and 1-to--2 transitions, and the new State returned in eax. The divergences are the parameter type - Port * not ISASerialPort * - and the fact that 'test byte ptr [ecx+0Fh], 40h' at 23427, 23460, 23509 and 23561 is State & 0x40000000, which our source reads as statusFlags & 0x40 because our header splits the single 32-bit State field into three ivars (Findings 8, 74)"
         ],
         "status": "agreed"
       },
@@ -1040,8 +1047,7 @@
         "reasons": [
           "IDA 9.2 and angr 9.3.0 agree on this function's start address and size exactly. angr additionally promotes interior basic-block starts to function starts and reports the 1-3 byte inter-function nop padding as starts; across the binary it finds 353 starts against IDA's 45, a strict superset with no IDA-only starts, and its basic-block count is greater than or equal to IDA's in every shared function. Ghidra is disabled for this driver because normalization aborts with 'Ghidra relocation operand metadata is ambiguous' (see divergences.md, stated limitations), so the analyzer set is IDA + angr only",
           "fix pass Task 3: moved to ISASerialPortFlow.c with external linkage; the skipped cleanup at reference 23743 now runs on all four exits, and Finding 76 is fixed (returns -714 and -703, verified against return.h:54 and :41). The lock idiom of Finding 75 remains open, hence signature-confirmed rather than higher. The earlier reason text describing ISASerialPort.m:553/:556 is superseded - that file no longer holds this function.",
-          "report pass: diverges. The algorithm matches closely - the mask & 0xC0000000 test adding 0x40000000 to both mask and cleared desired state, the ((~State ^ desired) & mask) loop condition, the WatchStateMask |= mask, thread_sleep and the while (thread_wait_result() == 4) retry - but three things differ. The lock is a bare xchg test-and-set retrying to the spin label, where ours calls IOEnterCriticalSection/IOExitCriticalSection (which the reference never calls anywhere) and continues the OUTER loop. Both return constants are wrong: the reference returns -714 (IO_R_IO) and -703 (IO_R_IPC_FAILURE) where ours returns IO_R_NO_DEVICE (-704) and IO_R_TIMEOUT (-726), under comments that quote the reference's numbers correctly. And the cleanup does NOT match: the reference funnels its success exits (23666, 23673) and its -714 exit (23680) through 23743, where WatchStateMask = 0 and thread_wakeup_prim(&WatchStateMask, 0, 4) live, whereas ours returns early at ISASerialPort.m:553 and :556 and reaches that cleanup only on the wait-failed path, leaving the watch mask set and other waiters unwoken. acquire: compares against -714 as a retry sentinel, so -704 breaks the acquire loop. Three interior nops at 23637-23639 account for IDA's 191-byte extent against the 192-byte symbol gap (divergences.md Findings 75, 76)",
-          "the REFERENCE disassembly was read instruction by instruction. This is NOT a rebuilt-versus-reference comparison: the rebuilt body has not been diffed against it, which is why this entry has not advanced further"
+          "report pass: diverges. The algorithm matches closely - the mask & 0xC0000000 test adding 0x40000000 to both mask and cleared desired state, the ((~State ^ desired) & mask) loop condition, the WatchStateMask |= mask, thread_sleep and the while (thread_wait_result() == 4) retry - but three things differ. The lock is a bare xchg test-and-set retrying to the spin label, where ours calls IOEnterCriticalSection/IOExitCriticalSection (which the reference never calls anywhere) and continues the OUTER loop. Both return constants are wrong: the reference returns -714 (IO_R_IO) and -703 (IO_R_IPC_FAILURE) where ours returns IO_R_NO_DEVICE (-704) and IO_R_TIMEOUT (-726), under comments that quote the reference's numbers correctly. And the cleanup does NOT match: the reference funnels its success exits (23666, 23673) and its -714 exit (23680) through 23743, where WatchStateMask = 0 and thread_wakeup_prim(&WatchStateMask, 0, 4) live, whereas ours returns early at ISASerialPort.m:553 and :556 and reaches that cleanup only on the wait-failed path, leaving the watch mask set and other waiters unwoken. acquire: compares against -714 as a retry sentinel, so -704 breaks the acquire loop. Three interior nops at 23637-23639 account for IDA's 191-byte extent against the 192-byte symbol gap (divergences.md Findings 75, 76)"
         ],
         "status": "agreed"
       },
@@ -1126,7 +1132,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 264,
-      "source_line": 2410,
+      "source_line": 2414,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     },
@@ -1152,7 +1158,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 348,
-      "source_line": 2415,
+      "source_line": 2419,
       "source_path": "src/drivers-i386/input/drvISASerialPort/ISASerialPort.drvproj/ISASerialPort.lksproj/ISASerialPort.m",
       "status": "control-flow-confirmed"
     }

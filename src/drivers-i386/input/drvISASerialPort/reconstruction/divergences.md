@@ -30,11 +30,18 @@ are `unmapped` by design.
 
 Ledger status:
 
+> **SUPERSEDED — this table is the Task 1 snapshot and its `assembly-matched` row was
+> false.** Commit `fed2f5bd` downgraded both entries after the Task 6a review found the
+> status had never been earned (`rebuilt_sha256` is `null`; `nextEvent` is 70 bytes
+> against our 80 and the streams differ structurally; `release` is 561 against 544).
+> **Nothing in this reconstruction has ever been `assembly-matched`.** The live counts
+> are in Addendum 7's ledger section; read them, not this table.
+
 | Status | Count | Meaning here |
 |---|---|---|
 | `unexamined` | 41 | A divergence was found — each carries a finding below |
 | `intentional-mismatch` | 2 | Build-generated glue, not present in source |
-| `assembly-matched` | 2 | `nextEvent` (6400) and `release` (5448) — already correct |
+| ~~`assembly-matched`~~ | ~~2~~ | **RETRACTED — see the note above** |
 | `control-flow-confirmed` | 0 | — |
 
 **Only two of the 43 mapped functions match, and that is the honest result.** The other 41 diverge,
@@ -634,11 +641,25 @@ parts. Every comparison against a `CHIP_*` name is therefore suspect — see Fin
 `STATE_ACTIVE` where the reference tests the sign bit. Bit 12 (`0x1000`) is private: `getState`
 masks it out (6292) and `setState:mask:` rejects any attempt to set it (6027).
 
-**Finding 10 — `STATE_RX_ENABLED` is `0x00400000`, not `0x00080000`.**
-`ISASerialPort.h:94`, used at `ISASerialPort.m:2122, 2151, 2640`. Reference:
-`test byte ptr [ebp+var_C+2], 40h` at `_FIFOIntHandler` 13237 and `_NonFIFOIntHandler` 16340 and
-16449 — byte 2 of the state word, bit `0x40`, i.e. `0x00400000`. With the wrong bit the entire RX
-path in both interrupt handlers is gated on an unrelated flag.
+**Finding 10 — CORRECTED, then RESOLVED in Task 8: two constants are needed, not one
+substitution.** As first written this finding said `STATE_RX_ENABLED` "is `0x00400000`, not
+`0x00080000`". That is half right, and applied literally it would have broken two call sites
+that were already correct. The single name was covering two different bits:
+
+- **`0x00400000` is the handler-internal receive gate.** `test byte ptr [ebp+var_C+2], 40h` at
+  `_FIFOIntHandler` 13237 and `_NonFIFOIntHandler` 16340 and 16449 — byte 2 of the state word,
+  bit `0x40`. `acquire:` sets `State = 0xA0400018`, which carries this bit.
+- **`0x00080000` is correct where it was already used**, as the `watchState` mask in
+  `RX_dequeueEvent` and `RX_dequeueData`: the reference pushes `80000h` at 21443 and 22292, the
+  only two `push 80000h` in the binary.
+
+Task 8 added `STATE_RX_GATE = 0x00400000` beside `STATE_RX_ENABLED = 0x00080000` and moved the
+three handler sites to the new name, leaving the two queue sites alone. Corroboration that the
+gate is not bit 19: `test byte ptr ..., 8` occurs **zero times** in the reference's entire
+`__text`, while `test byte ptr ..., 40h` occurs seventeen times.
+
+Until Task 8 that gate was false for the life of the port, so both interrupt handlers read bytes
+out of the RBR and discarded them. **The receive path did not work at all.**
 
 **Finding 11 — `FlowControl` is 32 bits and our `flowControlMode` is an `unsigned char`.**
 `ISASerialPort.h:195`. `Port+224` is `FlowControl L`. Four places gate a state-change event on
@@ -781,6 +802,8 @@ not "unified" with the FIFO handler.
 assigning the read pointer to itself, so the ring never wraps. Reference 17598-17606:
 `cmp TX.End, TX.Output / ja skip / mov TX.Output, TX.Base`. Every other wrap in our file uses the
 start pointer; this one line does not. A plain typo with a hard consequence.
+**RESOLVED in Task 8**: the wrap now targets `port->TX.Base`, matching its own mirror sixty
+lines later and the other fifteen ring wraps across the three files.
 
 **Finding 25 — the flow-control adjustments are exclusive `if / else if` chains, not independent
 `if`s.** `ISASerialPort.m:2265, 2268, 2276` and `2290, 2293, 2301` (`_NonFIFOIntHandler`);
@@ -1532,7 +1555,9 @@ the same reset block as `acquire:` **minus** `MinLatency` and `DLRimage`; `_prog
 `_deactivatePort(port)` in that order; the inlined state change with `value = 0` (which folds the
 MCR to `0x08`); then **unconditionally** `outb(Base + 1, 0)` and `outb(Base + 4, 0)`; `splx`;
 return 0. Our version reproduces all 146 instructions and passes the `Port *` correctly. **It is
-also layout-independent, and therefore `assembly-matched` now rather than after the layout fix:**
+also layout-independent** — the claim that this made it `assembly-matched` is **RETRACTED**, it
+was never true, `fed2f5bd` downgraded the entry to `control-flow-confirmed`, and the measured
+sizes are 561 reference against 544 ours —**:**
 every field access in the body is a raw `(char *)self` or `(char *)selfPtr` offset cast — `0x134`,
 `0x210`-`0x21C`, `0x1E8`, `0x1BC`-`0x1D0`, `0x208`, `0x20C`, `0x140`-`0x184`, `600`, and off the
 `Port *` `0x0C`, `0x0F`, `0x10`, `0x88`, `0xE0`, `0xE8` — and **not one named ivar appears
@@ -2967,3 +2992,136 @@ with it.
 The source map is unchanged in shape: **43 mapped, 2 unmapped**, no duplicates and no disputed
 boundaries. Twenty-nine `source_line` values moved because the rewrite shifted the file; each
 was re-derived and then verified by printing the line it points at.
+
+## Addendum 8 — Task 8: the driver could not receive, and could not reliably transmit
+
+The whole-effort review returned four Criticals. Two were recorded findings that had never been
+implemented, and two were unrecorded. Together they meant that a port which initialised
+cleanly, enumerated correctly and published itself to the system **dropped every byte it
+received and retransmitted stale cells when its TX ring wrapped**. All four are fixed here, plus
+the interval-query arithmetic.
+
+None of this was visible in section parity. `__cstring` was already byte-identical and
+`__OBJC` already matched entry for entry while the receive path was dead. Size agreement is not
+evidence of behaviour, and this addendum is the clearest demonstration of that the effort has
+produced.
+
+### Finding 103 (new) — `acquire:` put `0x126` in `MasterClock` and never sized the rings
+
+`acquire:`'s reset block is reference 4853–5063. Two independent defects sat in it.
+
+**The `0x126` crossing.** The reference stores `0x126` to `[edi+208h]` — `Port.FlowControl` —
+at 4937. It is stored to `FlowControl` at three sites in the binary (659, 4937, 5653) and
+**never** to `[+0x1dc]`; `MasterClock` only ever receives `0x1c2000` (350, 1991) or the
+`"Chip Clock"` key's value (1946). Our source assigned it to `MasterClock`, under the comment
+*"UART clock rate (seems odd, might be scaled)"* — the effort's known-bad pattern in its purest
+form, a hedge sitting on top of a real defect instead of a check against the header.
+
+The consequence was not cosmetic. `ISASerialPortChip.c:256` computes
+`newDivisor = MasterClock / (BaudRate << 3)`; with `MasterClock` = 294 and `BaudRate` = 19200
+that is **0**, and `programChip` runs eight lines later in the same block. Every acquire
+programmed a zero baud divisor.
+
+**The watermark block was structurally wrong.** The reference assigns
+`Size = DefaultSize` for both rings and then derives `HighWater = (2 * Size) / 3` and
+`LowWater = HighWater >> 1` from it (4954–5041). Ours never assigned `Size` at all, and instead
+wrote `TX.Enqueue = TX.Size`, `RX.HighWater = RX.Size` and `RX.Enqueue = rxLowWater`. Since
+`initFromDeviceDescription:` zeroes `0x140` and `0x178`, **every watermark came out zero on the
+first acquire** — and with `RX.HighWater == 0` the very first received byte trips the
+above-high-water arm, so the port asserts flow-control back-pressure and never releases it.
+
+Also corrected in the same block: `RX_Parity` was 2 where the reference writes 0, and
+`BreakLength = 2`, `MinLatency = 0`, `DLRimage = 0` and `RX.OverRun = 0` were missing entirely.
+
+**Finding 88 (line 1460) already carried the correct table**, `| 224 | FlowControl | 0x126 |`
+included. It was never implemented. The `MasterClock` crossing was recorded nowhere.
+
+### Finding 104 (new) — both interrupt handlers' TX-watermark tails were inverted
+
+Reference `_NonFIFOIntHandler` 18285–18416, and the identical block in `_FIFOIntHandler`:
+
+```
+18294  cmp TX.LowWater, Count ; jb 18344   -> LowWater <  Count goes to the HIGH arm
+18299  Dequeue = 0 ; EMPTY (0x6000000) or BELOW_MED (0x2000000)
+18344  cmp TX.HighWater, Count ; jae 18404 -> HighWater >= Count goes to BELOW_HIGH
+18352  Enqueue = Size-3 ; CRITICAL (0x1800000) or ABOVE_HIGH (0x1000000)
+18404  Enqueue = HighWater ; Dequeue = LowWater ; 0
+```
+
+Ours had **both branch senses inverted** — the high-water logic sat under `Count < LowWater` —
+**and both level constants one rung low**, emitting `TX_STATE_ABOVE_HIGH` where the reference
+emits `TX_STATE_CRITICAL` and `0` where it emits `TX_STATE_ABOVE_HIGH`. The block is duplicated
+verbatim in the two handlers, so the defect was too. Both copies are fixed.
+
+The corrected shape is the same one `TX_updateState` already carried for `_executeEvent`, which
+is where the discrepancy should have been caught: two spellings of one algorithm sat forty lines
+apart in the same file and disagreed.
+
+### The two recorded-but-unfixed Criticals
+
+**Finding 10 — the RX gate.** Corrected in place above: two constants, not one substitution.
+`STATE_RX_GATE = 0x00400000` for the three handler sites, `STATE_RX_ENABLED = 0x00080000` kept
+for the two `watchState` masks. My earlier framing of this as "would break working code if
+followed literally" was itself wrong in an important way, and is retracted: the code was
+**already broken**. Following the finding literally would have broken two *further* sites while
+fixing three.
+
+**Finding 24 — the TX ring wrap.** Resolved in place above: `port->TX.Base`, per reference
+17598–17606.
+
+### `requestEvent:` 0x4B and 0x4F
+
+Fixed rather than left open. The reference at 7704–7808 loads `tv_sec` and `tv_nsec`
+separately, `mul`s `tv_sec` by `3B9ACA00h`, `cdq`s `tv_nsec` to sign-extend it, adds the pair
+and divides by 1000 through `__udivdi3`. Ours read the `tvalspec` as one little-endian 64-bit
+word, which is `tv_sec | (tv_nsec << 32)`, and then multiplied *that* by 1e9. The two queries
+are the inverse of what events 0x4B and 0x4F set, so they were returning nonsense for any
+non-zero interval.
+
+### One place a clamp was deliberately not added
+
+`-[ISASerialPort executeEvent:data:]`'s 0x4B arm has no `0x418937` clamp, while its two
+siblings — `initFromDeviceDescription:` and `_executeEvent`'s own 0x4B — do. That asymmetry is
+the reference's: 6816–6831 is an unguarded `lea`/`shl` chain, so `data * 1000` can wrap in 32
+bits. Adding the clamp would make the driver diverge from the binary being reconstructed. It is
+commented at the site instead.
+
+### Comment sweep
+
+`-[ISASerialPort release]`'s reset block had the same RX/TX crossing in its comments that
+`requestEvent:` had, with correct code underneath — the fifth pass this pattern has survived in
+that method. Both watermark locals were also named for the wrong queue (`txWaterLow` held the RX
+high watermark), which is how a comment crossing turns into a code crossing, so they were
+renamed as well. Fixed alongside: the `0xA0400018` decomposition, which claimed the constant
+contains `STATE_ACTIVE` and `0x80000` when it contains neither and does carry the `0x00400000`
+gate Finding 10 needed; `0x208` labelled `stateEventMask` at four sites; `Port.Type` labelled
+"also used as hasFIFO"; `0x228/0x22c` labelled `charTimeOverride`; three wrong `IO_R_*` names; a
+nine-digit `0xFFFFFFD3E`; and the ring-size clamps described in bytes where the header counts
+cells.
+
+The double write of `0x1cc` in `initFromDeviceDescription:` is the reference's own — 330 and
+again at 427 — and is now commented as deliberate rather than left to look like a mistake.
+
+### Departure from a stated acceptance criterion
+
+**Spec §4.2 and plan Task 6 Step 8 require `unexamined: 0`. This effort delivers 11.** The
+counts have been disclosed in every report, but that they constitute a departure from an
+acceptance criterion rather than a neutral status has not been written down until now. The
+eleven are `_activatePort`, `_deactivatePort`, `acquire:`, `setState:mask:`, `watchState:mask:`,
+`requestEvent:data:`, `enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`, `enqueueData:…`,
+`dequeueData:…` and `_dataLatTOHandler`.
+
+Task 8 is direct evidence that this matters: three of the four Criticals were in bodies carrying
+`unexamined` (`acquire:`) or `signature-confirmed` (both interrupt handlers). The status was
+honest; the gap it described was real, and it contained defects that stopped the driver working.
+Anyone resuming should treat the remaining eleven the same way.
+
+### A note on the reason text in this document
+
+The free-text citations inside findings are **as-of the report pass that wrote them**. Four cite
+line numbers past the current end of `ISASerialPort.m` and roughly eight name identifiers that
+no longer exist (`txQueueRead`, `spaceNeeded`, `defaultRingBufferSize`, `_msr_state_lut`) — all
+casualties of Task 6a's rename and Task 6b's rewrite. The **structured** fields are current:
+every `source_path` and `source_line` in `source-map.json` and `ledger.json` is re-derived and
+verified after each change. Reference addresses in the findings are stable and remain the
+authority.

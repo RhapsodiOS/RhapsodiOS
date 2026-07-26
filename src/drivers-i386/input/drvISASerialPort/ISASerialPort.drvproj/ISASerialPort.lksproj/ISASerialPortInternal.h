@@ -98,7 +98,23 @@
 // State bit flags
 #define STATE_ACTIVE        0x40000000  // Port is active/open
 #define STATE_TX_ENABLED    0x00800000  // Transmit enabled
-#define STATE_RX_ENABLED    0x00080000  // Receive enabled
+
+/*
+ * Two different bits, and they are not interchangeable.
+ *
+ * STATE_RX_ENABLED is what a reader waits on: RX_dequeueEvent and
+ * RX_dequeueData pass it to watchState, and the reference pushes 0x80000 at
+ * both those sites (21443 and 22292).
+ *
+ * STATE_RX_GATE is what the two interrupt handlers test before draining the
+ * receive buffer, as `test byte ptr [state+2], 0x40` at 13237, 16340 and 16449
+ * - bit 22, not bit 19.  acquire: sets State to 0xA0400018, which carries
+ * STATE_RX_GATE and NOT STATE_RX_ENABLED, so gating the handlers on the latter
+ * leaves the receive path dead: bytes are read out of the RBR and dropped.
+ * `test byte ptr ..., 8` appears nowhere in the reference's __text.
+ */
+#define STATE_RX_ENABLED    0x00080000  // Receive enabled, the watchState mask
+#define STATE_RX_GATE       0x00400000  // Handler-internal receive gate
 
 // DTR/RTS flow control bits
 #define STATE_DTR           0x00000002  // DTR signal state

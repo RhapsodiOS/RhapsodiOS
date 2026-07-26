@@ -572,12 +572,12 @@ unsigned int validateRingBufferSize(unsigned int requestedSize, Queue *q)
         size = q->DefaultSize;
     }
 
-    // Clamp to maximum size (256KB)
+    // Clamp to the maximum ring size, 0x40000 cells (2 bytes each)
     if (size > MAX_RING_BUFFER_SIZE) {
         size = MAX_RING_BUFFER_SIZE;
     }
 
-    // Clamp to minimum size (18 bytes)
+    // Clamp to the minimum ring size, 18 cells
     if (size < MIN_RING_BUFFER_SIZE) {
         size = MIN_RING_BUFFER_SIZE;
     }

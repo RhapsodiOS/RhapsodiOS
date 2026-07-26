@@ -31,6 +31,10 @@ static void test_union_range(void)
 static void test_union_range_with_empty(void)
 {
     CHECK_RANGE(NSUnionRange(NSMakeRange(4, 0), NSMakeRange(4, 6)), 4, 6);
+
+    /*  An empty range outside the other still widens the span: the reference
+        takes a plain min/max and does not special-case zero length.  */
+    CHECK_RANGE(NSUnionRange(NSMakeRange(20, 0), NSMakeRange(4, 6)), 4, 16);
 }
 
 static void test_intersection_range(void)
@@ -53,6 +57,13 @@ static void test_intersection_range_when_nested(void)
     CHECK_RANGE(NSIntersectionRange(NSMakeRange(0, 10), NSMakeRange(4, 2)), 4, 2);
 }
 
+static void test_intersection_range_zero_length_inside(void)
+{
+    /*  A zero-length range inside the other keeps its own location rather
+        than collapsing to {0, 0}.  Verified against the reference.  */
+    CHECK_RANGE(NSIntersectionRange(NSMakeRange(4, 0), NSMakeRange(0, 10)), 4, 0);
+}
+
 static void test_intersects_range(void)
 {
     CHECK(NSIntersectsRange(NSMakeRange(0, 5), NSMakeRange(3, 5)));
@@ -67,6 +78,7 @@ int main(void)
     test_intersection_range();
     test_intersection_range_when_disjoint();
     test_intersection_range_when_nested();
+    test_intersection_range_zero_length_inside();
     test_intersects_range();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);

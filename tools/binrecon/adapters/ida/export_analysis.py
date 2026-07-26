@@ -348,6 +348,7 @@ def _collect_relocations(modules):
         if (
             not isinstance(base, int)
             or not isinstance(offset, int)
+            or not isinstance(addend, int)
             or base < 0
             or offset < 0
             or base == bad_address
@@ -363,22 +364,23 @@ def _collect_relocations(modules):
         # sign-extended across all 64 bits rather than as a small unsigned
         # 32-bit value. A legitimate offset therefore has its upper 32 bits
         # either all zero (non-negative) or all one (a sign-extended
-        # negative 32-bit displacement); anything else is corruption.
+        # negative 32-bit displacement); anything else is a stray high word,
+        # not a real fixup.
         if offset >> 32 not in (0, 0xFFFFFFFF):
             raise ExportError(f"malformed fixup target at {address:#x}")
-        # Compute the target with explicit 32-bit modular arithmetic --
-        # Python's arbitrary-precision `&` mask gives the correct low 32
-        # bits whether offset is small or 64-bit sign-extended -- and
-        # validate the resulting target rather than an intermediate
-        # overflow.
-        target_address = (base + offset) & 0xFFFFFFFF
-        if (
-            not isinstance(addend, int)
-            or not isinstance(target_address, int)
-            or target_address < 0
-            or target_address > 0xFFFFFFFF
-        ):
-            raise ExportError(f"malformed fixup fields at {address:#x}")
+        # Recover the true signed 32-bit displacement from the low 32 bits,
+        # then add it to base with ordinary (non-modular) arithmetic and
+        # range-check the result. This keeps the integrity property a mask
+        # would discard: a target that actually leaves the 32-bit address
+        # space -- e.g. base=0x2000 with a sub-2**32 offset of 0xFFFF0000,
+        # whose signed value is -0x10000 -- is still rejected instead of
+        # silently wrapping into range.
+        signed = offset & 0xFFFFFFFF
+        if signed >= 0x80000000:
+            signed -= 0x100000000
+        target_address = base + signed
+        if not 0 <= target_address <= 0xFFFFFFFF:
+            raise ExportError(f"malformed fixup target at {address:#x}")
         target_name = ida_name.get_name(target_address) or ""
         if external:
             target = target_name or f"external:{target_address:08X}"

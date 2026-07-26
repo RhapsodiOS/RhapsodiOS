@@ -256,30 +256,41 @@ PowerPC profile:
 |---|---|---|---|
 | scsiserver-ppc | `SCSIServer.config/SCSIServer_reloc` | 51044 | 1 (reference-only) |
 | scsiserver-bundle-ppc | `SCSIServer.config/SCSIServer` | 8496 | 1 (reference-only) |
-| scsitape-ppc | `SCSITape.config/SCSITape_reloc` | 47624 | 1 (IDA export failed) |
+| scsitape-ppc | `SCSITape.config/SCSITape_reloc` | 47624 | 1 (reference-only) |
 | scsitape-bundle-ppc | `SCSITape.config/SCSITape` | 8492 | 1 (reference-only) |
 | scsitape-preload-ppc | `SCSITape.config/PreLoad` | 9060 | 1 (reference-only) |
 | scsitape-postload-ppc | `SCSITape.config/PostLoad` | 21520 | 1 (reference-only) |
 | stblocksize-ppc | `SCSITape.config/stblocksize` | 13408 | 1 (reference-only) |
 
 Exit 1 marked "reference-only" is expected: these profiles have no rebuilt
-artifact, so `normalized-functions` acceptance can never pass. Each of those
-runs still published a validated `analysis-reference-ida.json` — IDA loaded
-the artifact and the exporter's mapping-manifest and fixup checks accepted its
-output. `scsitape-ppc` did not publish: IDA's PPC loader logs the SECTDIFF
-relocation at `__text+0x2e34` in `SCSITape_reloc` as an "Unhandled relocation
-type", and the exporter's own fixup-integrity check then raises `IDA export
-failed: malformed fixup target at 0x2e34` rather than publish an unverified
-analysis. No analysis document exists for this artifact.
+artifact, so `normalized-functions` acceptance can never pass. Success for a
+reference-only profile means `complete: true` plus a published
+`analysis-reference-ida.json`, not exit 0. All seven runs meet that bar: IDA
+loaded each artifact, and the exporter's mapping-manifest and fixup checks
+accepted its output.
 
-Re-running `ppc_invariant_check.py --binary ... --analysis ...` against
-`scsiserver-ppc`'s published analysis finds one symbol/function-start
-mismatch: `+[SCSIServer deviceStyle]` at address 0 has no corresponding IDA
-function (the earliest function IDA found starts at 0x10). That is a
-candidate for a future reconstruction's `boundary_disputed` bucket, not a
-decoder defect. `SCSITape_reloc` still reports 0 violations on its
-binary-only invariants, as in the relocation invariant check; it has no
-published analysis to cross-check.
+`scsitape-ppc` did not always publish cleanly. It first failed with `IDA
+export failed: malformed fixup target at 0x2e34`: IDA's PPC loader logs the
+relocation at `__text+0x2e34` in `SCSITape_reloc` as an "Unhandled relocation
+type" (a `PPC_RELOC_SECTDIFF`-derived switch table in `__TEXT,__const`), and
+the exporter's own fixup-integrity check rejected the 32-bit wrap of that
+scattered section-difference fixup as if it were corruption rather than a
+legitimate negative displacement. Commit `12a64a6c` fixed the exporter to
+accept this case, and a later hardening pass replaced the fix's masking
+arithmetic with an explicit sign-extend-then-range-check so a fixup target
+that genuinely leaves the 32-bit address space is still rejected rather than
+silently wrapped into range. `scsitape-ppc` now completes and publishes
+`analysis-reference-ida.json` like the other six.
+
+Re-running `ppc_invariant_check.py --binary ... --analysis ...` against the
+published analyses finds one symbol/function-start mismatch in each of
+`scsiserver-ppc` and `scsitape-ppc`: `+[SCSIServer deviceStyle]` and
+`+[SCSITape deviceStyle]`, respectively, are local symbols at address 0 with
+no corresponding IDA function (the earliest function IDA found in each
+starts at 0x10). Both are candidates for a future reconstruction's
+`boundary_disputed` bucket, not a relocation-decoder defect — all 20
+scattered/difference-form relocations and all HI16/HA16-LO16 pairs in both
+binaries still agree.
 
 `binrecon source-map --objc-methods --scope-to-objc` runs to completion
 against `scsiserver-ppc`'s analysis (0 mapped, 14 unmapped Objective-C
@@ -287,4 +298,5 @@ methods). Without `--scope-to-objc` it fails: IDA's PPC linker glue stub for
 external calls (`_objc_msgSend`, `_IOLog`, ...) has no name, and
 `source-map-v1` requires every analyzed function to have one.
 
-Full suite: 741 passed, 4 skipped (unchanged from baseline).
+Full suite: 745 passed, 4 skipped (741 baseline + 3 tests from the SECTDIFF
+fix + 1 test pinning the range-check hardening).

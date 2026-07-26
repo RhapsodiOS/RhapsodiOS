@@ -1223,6 +1223,25 @@ def test_relocation_still_rejects_an_offset_that_is_not_a_32bit_sign_extension()
         module._collect_relocations(modules)
 
 
+def test_relocation_still_rejects_a_subrange_offset_whose_sum_with_base_wraps():
+    # Not every large-looking offset is a legitimate 64-bit sign-extension
+    # of a negative 32-bit PowerPC displacement. off=0xFFFF0000 is itself
+    # already a sub-2**32 value (offset >> 32 == 0, same as any ordinary
+    # i386 offset), but as a *signed* 32-bit displacement it is -0x10000,
+    # and base=0x2000 + -0x10000 is negative -- outside the 32-bit address
+    # space. The old masking arithmetic ((base + offset) & 0xFFFFFFFF)
+    # would have silently wrapped this into a plausible-looking in-range
+    # address instead of catching the fact that the target fell out of
+    # range; the range-checked signed arithmetic must still reject it.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_subrange_wrap")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x2000, off=0xFFFF0000),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
 def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_one(tmp_path):
     # Real IDA evidence (probed directly against the drvPCMCIABus reference
     # binary) for `div ds:_page_size` at 0xC7D in

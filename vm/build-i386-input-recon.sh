@@ -109,7 +109,7 @@ EOF
 # not used above: a driver that fails to build must not abort the loop, it must
 # set fail=1 and let the remaining drivers run.
 if [ $# -eq 0 ]; then
-	TARGETS="drvPS2Mouse drvSerialPointingDevice drvPS2Keyboard drvPCParallel drvBusMouse"
+	TARGETS="drvPS2Mouse drvSerialPointingDevice drvPS2Keyboard drvPCParallel drvBusMouse drvISASerialPort"
 else
 	TARGETS="$*"
 fi
@@ -132,6 +132,9 @@ for d in $TARGETS; do
 		;;
 	drvBusMouse)
 		build_one BusMouse drvBusMouse BusMouse.drvproj || fail=1
+		;;
+	drvISASerialPort)
+		build_one ISASerialPort drvISASerialPort ISASerialPort.drvproj || fail=1
 		;;
 	*)
 		echo "unknown driver: $d" >&2

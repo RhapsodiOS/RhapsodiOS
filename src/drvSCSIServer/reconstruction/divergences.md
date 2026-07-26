@@ -1584,3 +1584,131 @@ prototype that only declares two. This is a compile-time arity mismatch, not a r
 divergence. Left for the deferred body work (Task 12 or wherever `IOSCSISession.h`/`IOSCSISession.m`'s
 signatures are reconciled with the regenerated MiG interface) to add the missing count parameter to both
 the header and the definition.
+
+## Acceptance
+
+Regenerated from the finished tree (Task 13). Nothing here is compile-verified — there
+is no PowerPC compiler in this environment; every gate below proves structural
+correspondence to the reference binary, not that the driver builds or runs.
+
+### Regenerated source map
+
+```
+mapped                 41
+unmapped               27
+duplicate_candidates   0
+boundary_disputed      0
+```
+
+**This does not match the 42 mapped / 26 unmapped this task's brief projected.** The
+brief expected the 41 that mapped before this regeneration plus one — the renamed
+`-[IOSCSISession initServerWithTask:sendPort:]` (address 1160) — for 42, with the 26
+unmapped being the 2 build-generated classes, the 18 `__XIOSCSISession_*` MiG stubs, and
+the 6 bodies Phase 2 deferred.
+
+What actually happened: the rename *did* map, exactly as predicted. But
+`_IOSCSISessionMig_server` (address 13520) — which the previously-committed, stale
+`source-map.json` had matched to `IOSCSISession.m:411` — no longer maps after the source
+changes made across Tasks 9-12. Line 411 of `IOSCSISession.m` is a blank line between two
+unrelated C wrappers (`IOSCSISession_free` and `IOSCSISession_initForDevice`); it never
+contained any part of a demux implementation. The old match was a matcher false positive,
+not a real correspondence — the ledger already knew this (address 13520 has carried
+`intentional-mismatch` since Task 9, with reason "our IOSCSISessionMig_server is
+hand-written where Apple's is MiG output..."). `_IOSCSISessionMig_server` is, like the 18
+stub bodies, MiG-generated build output belonging to `IOSCSISessionMigServer.c`, which
+does not exist in this tree, so `source-map` correctly cannot find a source site for it
+either. The rename's `+1` and the resolved false positive's `-1` cancel out: **41
+mapped, 27 unmapped**, not 42/26.
+
+The 27 unmapped break down as 2 build-generated classes + 18 MiG stub bodies + 6
+Phase-2-deferred bodies + 1 MiG-generated demux (`_IOSCSISessionMig_server`) = 27. This
+also supersedes spec §4.2 item 2's figure of 48/20 (itself already a correction of the
+spec's original, unreachable 66/2): that figure assumed all six deferred bodies would be
+written and did not anticipate the demux losing its spurious map entry, so 48/20 is not
+met either, for the same reason 42/26 is not met. `duplicate_candidates` and
+`boundary_disputed` are 0, as expected.
+
+### Ledger reconciliation
+
+The ledger was re-seeded fresh from the regenerated source map with `seed_ledger.py`
+(68 entries, all `unexamined`), then every one of the 68 previously-recorded statuses was
+replayed through `binrecon ledger`, one forward transition at a time (`unexamined` -to
+`intentional-mismatch` by way of an intermediate `signature-confirmed`; `assembly-matched`
+by way of `signature-confirmed` then `control-flow-confirmed`). Comparing the replayed
+ledger against the statuses saved before re-seeding, **every entry landed on exactly the
+status it held before** — no entry's evidence-supported disposition differs from what the
+old ledger recorded. This was checked explicitly for the two entries whose source-map
+membership changed (addresses 1160 and 13520): address 1160 was already
+`signature-confirmed` (name-only check from Task 8, pending full instruction-level review)
+and its underlying evidence is unaffected by now appearing in the `mapped` bucket; address
+13520's `intentional-mismatch` disposition and reason already accounted for its status as
+non-source-backed MiG output, so its move from `mapped` to `unmapped` changes nothing
+about the correctness of that status.
+
+Final ledger tally (68 entries):
+
+| Status | Count |
+| --- | --- |
+| `assembly-matched` | 15 |
+| `intentional-mismatch` | 21 |
+| `signature-confirmed` | 1 |
+| `unexamined` | 31 |
+| **Total** | **68** |
+
+### Gate results (Step 4)
+
+**`selector_check.py`:**
+
+```
+reference selectors: 15
+our definitions:     13
+
+renames (0):
+
+duplicates (0):
+
+missing (2):
+    +[SCSIServerKernelServerInstance kernelServerInstance]
+    +[SCSIServerVersion driverKitVersionForSCSIServer]
+
+extra (0):
+exit=0
+```
+
+Matches expectation: `renames (0)`, `duplicates (0)`, `exit=0`. The 2 "missing" selectors
+are the build-generated classes documented above under "Out of scope" — they are expected
+to have no hand-written definition.
+
+**Artifact validation** (`identify` + `load_ledger` + `load_source_map`):
+
+```
+artifacts validate
+exit=0
+```
+
+**`ppc_invariant_check.py`:**
+
+```
+symbol +[SCSIServer deviceStyle] at 0x0 is not a function start
+20 scattered/difference-form relocations (target section verified, field is a difference, not an address)
+10 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
+998 fused relocations, 1 violations
+exit=1
+```
+
+998 fused relocations with 0 relocation-decode violations, matching expectation. The
+single reported violation is the known `+[SCSIServer deviceStyle]`
+symbol-versus-function-start mismatch at address 0, documented above under "The analyzer
+gap at address 0" — an IDA analyzer artifact (69 symbols vs. 68 function entries), not a
+new or unexplained finding. `exit=1` is expected here because the checker's violation
+count is nonzero only due to this single, already-documented, non-relocation case.
+
+**`pytest tools/binrecon`:**
+
+```
+760 passed, 4 skipped in 75.47s
+exit=0
+```
+
+All binrecon tooling tests pass; Task 1's tooling is not broken by this task's
+regeneration.

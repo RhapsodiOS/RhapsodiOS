@@ -38,6 +38,29 @@ Every task's requirements implicitly include this section.
 - **`parity_check.py` compares symbol NAMES only.** A `static`-versus-`external` change is invisible to it. Verify linkage by reading the rebuilt nlist with `binrecon.macho.read_macho` and checking each symbol's `binding` and `section`.
 - **Never claim a ledger status stronger than the work performed.** `assembly-matched` means the rebuilt instruction stream was read against the reference. `control-flow-confirmed` means block shape and call targets were checked but not every instruction. A function written but not yet verified against a rebuilt binary stays `unexamined` or `signature-confirmed`, with the reasoning in `divergences.md`.
 - **Commit messages** start with `drvCirrusLogicGD5434: `, `drvIBMThinkPad760EDDisplay: `, `binrecon: ` or `drivers-i386: `, run one to two lines, and describe what the change does rather than listing files. **No metadata, no `Co-Authored-By`, no "Generated with" trailer.**
+- **`--reviewer` on every `binrecon ledger` call is `Pat Raynor`** — the repository's git user. Do not invent a different reviewer identity.
+
+### Driving the Rhapsody guest build
+
+Tasks 5 and 10 build on a remote Rhapsody host, not locally. The mechanism is
+PuTTY over the host named in `vm/vm.conf`, exactly as
+`docs/drivers/drvVGA-baseline-build.md` documents. Push the driver tree and the
+script, then run it:
+
+```bash
+cd /d/RhapsodiOS/.claude/worktrees/cirrus-thinkpad-recon
+PW=$(grep -i '^Password=' vm/vm.conf | cut -d= -f2 | tr -d '\r')
+HOST=$(grep -i '^Host=' vm/vm.conf | cut -d= -f2 | tr -d '\r')
+"/c/Program Files/PuTTY/pscp.exe" -batch -r -pw "$PW" src/drivers-i386/video/<driver-dir> root@$HOST:/build/source/src/drivers-i386/video/
+"/c/Program Files/PuTTY/pscp.exe" -batch -pw "$PW" vm/build-i386-video-recon.sh root@$HOST:/build/source/vm/
+"/c/Program Files/PuTTY/plink.exe" -batch -pw "$PW" root@$HOST 'tr -d "\r" < /build/source/vm/build-i386-video-recon.sh > /tmp/br && mv /tmp/br /build/source/vm/build-i386-video-recon.sh; sh /build/source/vm/build-i386-video-recon.sh <driver-dir>' > /tmp/video-build.log 2>&1
+echo "EXIT=$?"
+```
+
+Read the result from `/tmp/video-build.log`. To bring a rebuilt binary back for
+`parity_check.py`, `pscp` it from the guest into `out/i386/` on the host, which
+is gitignored. **Never print the password**; always read it from `vm/vm.conf`
+into a shell variable as above.
 - **Do not touch** `src/kernel-7/**`, `src/drivers-i386/video/drvVGA/**`, any other driver, or any binrecon tooling. The four Number9 drivers, both Weitek drivers and `MatroxMGA2064WDisplayDriver` are explicitly excluded.
 - **Other sessions commit to this branch concurrently and have swept staged changes into their own commits.** Stage and commit in one shell invocation, promptly. If unrelated changes appear mid-work, leave them alone.
 
@@ -829,7 +852,7 @@ Expected: `linkage mismatches: []`. In particular `_SetGammaValue` must be `loca
 For each of the 19 hand-written functions, set a status that matches the work actually done. `parity_check.py` plus a matching symbol name justifies `signature-confirmed` and nothing stronger. `control-flow-confirmed` requires having compared block shape and call targets in the rebuilt binary against the reference. `assembly-matched` requires having read the rebuilt instruction stream against the reference. Use `binrecon ledger` for each transition:
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\CirrusLogicGD5434DisplayDriver.config\CirrusLogicGD5434DisplayDriver_reloc' && ./.venv-binrecon/Scripts/python.exe -m binrecon ledger --profile tools/binrecon/profiles/cirruslogic-gd5434.json --ledger src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/ledger.json --address 3588 --status signature-confirmed --reason "Rebuilt binary exports -[CirrusLogicGD5434DisplayDriver(ProgramDAC) setTransferTable:count:]; parity_check reports no missing symbol or string. Instruction stream not compared." --reviewer "<your name>" --source-path src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\CirrusLogicGD5434DisplayDriver.config\CirrusLogicGD5434DisplayDriver_reloc' && ./.venv-binrecon/Scripts/python.exe -m binrecon ledger --profile tools/binrecon/profiles/cirruslogic-gd5434.json --ledger src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/ledger.json --address 3588 --status signature-confirmed --reason "Rebuilt binary exports -[CirrusLogicGD5434DisplayDriver(ProgramDAC) setTransferTable:count:]; parity_check reports no missing symbol or string. Instruction stream not compared." --reviewer "Pat Raynor" --source-path src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m
 ```
 
 Repeat per address. Do not batch a status onto functions you did not individually check.
@@ -1243,7 +1266,7 @@ Capture the linker's unresolved-symbol list verbatim from the build output. Expe
 For the 29 in-scope functions, the strongest defensible status is `signature-confirmed` only where a rebuilt binary was inspected — and no rebuilt binary exists for this driver. Compilation alone does not confirm a signature against the reference. Set each entry's status to reflect that, with a reason naming the constraint, for example:
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\IBMThinkPad760EDDisplayDriver.config\IBMThinkPad760EDDisplayDriver_reloc' && ./.venv-binrecon/Scripts/python.exe -m binrecon ledger --profile tools/binrecon/profiles/thinkpad760ed.json --ledger src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/ledger.json --address 5708 --status unexamined --reason "Written from the reference disassembly and compiles, but the driver does not link until drvVGA supplies vidBIOS.m and emu486, so no rebuilt binary exists to compare against. Re-status once the link succeeds." --reviewer "<your name>" --source-path src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && export BINRECON_REFERENCE='C:\Users\raynorpat\Downloads\test\Drivers\i386\IBMThinkPad760EDDisplayDriver.config\IBMThinkPad760EDDisplayDriver_reloc' && ./.venv-binrecon/Scripts/python.exe -m binrecon ledger --profile tools/binrecon/profiles/thinkpad760ed.json --ledger src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/ledger.json --address 5708 --status unexamined --reason "Written from the reference disassembly and compiles, but the driver does not link until drvVGA supplies vidBIOS.m and emu486, so no rebuilt binary exists to compare against. Re-status once the link succeeds." --reviewer "Pat Raynor" --source-path src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m
 ```
 
 Repeat per in-scope address. The seven deferred entries stay `unexamined` with a reason naming the deferral.

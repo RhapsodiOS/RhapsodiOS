@@ -41,18 +41,39 @@ static unsigned int _motorChangeCount = 0;
  */
 - (IOReturn)doCmdXfr:(void *)cmdParams
 {
-	// TODO: Implement command transfer execution
-	// This should:
-	// - Turn on motor if needed
-	// - Seek to correct track if needed
-	// - Set up DMA for data transfers
-	// - Send command bytes to controller
-	// - Wait for interrupt
-	// - Read result bytes
-	// - Handle errors and retries
-	// - Turn off motor (or start motor timeout)
+	unsigned char driveNum;
+	IOReturn result;
 
-	return IO_R_SUCCESS;
+	// Per reconstruction/divergences.md, the reference doCmdXfr: masks the
+	// command opcode, merges the motor-select byte into the request,
+	// conditionally calls doConfigure:/doSpecify: when the drive changes,
+	// dispatches via two jump tables to call doMotorOn:, seek:head:density:
+	// (with a 20 ms IOSleep), and finally sendCmd:, then post-processes
+	// errors including a RECALIBRATE-specific retry.
+	//
+	// NOT DETERMINED from the available evidence, and left unimplemented:
+	//   - which cmdParams field(s) track the previously-selected drive and
+	//     density, needed to decide when doConfigure:/doSpecify: must run;
+	//   - the two jump tables' contents (which opcodes require a
+	//     seek:head:density: before the transfer) and the cmdParams
+	//     offsets holding the target track/head/density for that call;
+	//   - the exact trigger and retry count for the RECALIBRATE-specific
+	//     error retry.
+	// Implementing these without the reference's exact field layout would
+	// risk seeking to a wrong track or mis-sequencing FDC commands, so
+	// they are omitted rather than guessed.
+	//
+	// Implemented below: spinning up the drive (doMotorOn: is idempotent
+	// and is named explicitly in the evidence) and forwarding the
+	// already-built command in cmdParams to sendCmd:, which the evidence
+	// marks as the unconditional final step.
+
+	driveNum = *(unsigned char *)((char *)cmdParams + 0x14);
+	[self doMotorOn:driveNum];
+
+	result = [self sendCmd:cmdParams];
+
+	return result;
 }
 
 /*

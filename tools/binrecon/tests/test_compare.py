@@ -1230,3 +1230,124 @@ def test_retained_artifact_byte_variants_bind_to_different_identities(
     assert retained
     assert report["reference"]["sha256"] != report["rebuilt"]["sha256"]
     validate_comparison_report(report)
+
+
+def _name_pairing_case(tmp_path, reference_layout, rebuilt_layout):
+    """One .text section of nops with independently placed one-or-more-byte functions."""
+    data = b"\x90" * 64
+    rp, bp, left, right = _case(tmp_path, data, data)
+    section = {"name": ".text", "address": 0x1000, "offset": 0, "size": len(data),
+               "permissions": "rx", "sha256": hashlib.sha256(data).hexdigest()}
+    for document, layout in ((left, reference_layout), (right, rebuilt_layout)):
+        functions = []
+        for entry in layout:
+            offset, names = entry[0], entry[1]
+            size = entry[2] if len(entry) > 2 else 1
+            address = 0x1000 + offset
+            functions.append({"address": address, "size": size, "names": list(names),
+                "blocks": [{"address": address, "size": size, "successors": []}],
+                "instructions": [{"address": address + step, "bytes": "90", "mnemonic": "nop",
+                                  "operands": "", "normalized_operands": "", "relocations": []}
+                                 for step in range(size)],
+                "calls": [], "confidence": 1.0})
+        document["sections"] = [deepcopy(section)]; document["functions"] = functions
+        document["symbols"] = []; document["relocations"] = []; document["references"] = []
+        document["extensions"] = {}
+    return rp, bp, left, right
+
+
+@pytest.mark.parametrize("names", [["alpha"], []])
+def test_offset_matched_functions_keep_matching_with_or_without_names(tmp_path, names):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(0, names), (8, names)], [(0, names), (8, names)])
+
+    report = compare_artifacts(rp, bp, left, right, "exact-image")
+
+    validate_comparison_report(report)
+    assert report["acceptance"]["exact-image"] is True
+    assert [item["status"] for item in report["functions"]] == ["assembly-matched"] * 2
+    assert [item["pairing"] for item in report["functions"]] == ["offset"] * 2
+    assert [item["key"]["start"] for item in report["functions"]] == [0, 8]
+
+
+def test_uniquely_named_functions_at_different_offsets_pair_by_name(tmp_path):
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, ["alpha"])], [(16, ["alpha"])])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert len(report["functions"]) == 1
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "different"
+    assert record["key"]["start"] == 0
+    assert record["reference_aliases"] == record["rebuilt_aliases"] == ["alpha"]
+    assert record["raw_equal"] is True and record["masked_equal"] is True
+    assert "missing rebuilt function" not in record["reasons"]
+    assert not any(item["reason"].startswith("missing") for item in report["categories"]["code"])
+
+
+@pytest.mark.parametrize("side", ["reference", "rebuilt"])
+def test_ambiguous_names_pair_nothing_and_stay_missing(tmp_path, side):
+    single, double = [(0, ["alpha"])], [(16, ["alpha"]), (32, ["alpha"])]
+    layouts = (double, single) if side == "reference" else (single, double)
+    rp, bp, left, right = _name_pairing_case(tmp_path, *layouts)
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert len(report["functions"]) == 3
+    assert all(item["pairing"] is None for item in report["functions"])
+    assert all(item["status"].startswith("missing-") for item in report["functions"])
+
+
+def test_unnamed_unmatched_functions_stay_unmatched(tmp_path):
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, [])], [(16, [])])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert [item["status"] for item in report["functions"]] == ["missing-rebuilt", "missing-reference"]
+    assert all(item["pairing"] is None for item in report["functions"])
+
+
+def test_offset_and_name_pairing_coexist_in_one_comparison(tmp_path):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(0, ["alpha"]), (8, ["beta"])], [(0, ["alpha"]), (24, ["beta"])])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert [(item["key"]["start"], item["pairing"], item["status"])
+            for item in report["functions"]] == [
+        (0, "offset", "assembly-matched"), (8, "name", "different")]
+
+
+def test_name_paired_functions_of_unequal_size_are_compared_not_rejected(tmp_path):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(0, ["alpha"], 2)], [(16, ["alpha"], 3)])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "different"
+    assert record["raw_equal"] is False and record["masked_equal"] is False
+    assert record["reference_sha256"] != record["rebuilt_sha256"]
+    assert "instruction shape differs" in record["reasons"]
+    assert "function range bytes differ" in record["reasons"]
+
+
+def test_report_validator_rejects_forged_pairing_basis(tmp_path):
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, ["alpha"])], [(16, ["alpha"])])
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    for value in ("offset-or-name", None):
+        forged = deepcopy(report); forged["functions"][0]["pairing"] = value
+        with pytest.raises(ComparisonError, match="pairing"):
+            validate_comparison_report(forged)
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, [])], [(16, [])])
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    report["functions"][0]["pairing"] = "name"
+    with pytest.raises(ComparisonError, match="pairing"):
+        validate_comparison_report(report)

@@ -6,7 +6,7 @@
 
 #import "FloppyCnt.h"
 #import "IOFloppyDrive.h"
-#import "NXLock.h"
+#import <machkit/NXLock.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>

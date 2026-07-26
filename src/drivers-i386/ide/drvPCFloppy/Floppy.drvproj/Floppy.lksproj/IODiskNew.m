@@ -7,7 +7,7 @@
 #import "IODiskNew.h"
 #import <driverkit/generalFuncs.h>
 #import <string.h>
-#import "NXLock.h"
+#import <machkit/NXLock.h>
 #import <driverkit/kernelDriver.h>
 
 @implementation IODiskNEW

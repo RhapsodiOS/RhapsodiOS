@@ -170,8 +170,15 @@ binary rather than grepping the sources gives:
   `identifyBsdDev`, `identifyDetachedDiskIdFromBsdDev`, `numFloppyDrives`,
   `physContBlocks`, `queueOperationAscending`, `strlower`, `sweepQueueInsert`,
   `sweepQueueReorder` and `vFloppyCopy`.
-- **3 are genuinely absent** — `docopy`, `dowire` and `queueOperationDecending`
-  (Apple's spelling). Plus `__udivdi3`, which is libgcc's.
+- **3 more are misnamed by case or spelling rather than by underscore alone** —
+  and these were the last functions believed absent. `Request.m:39` defines
+  `_doWire` where Apple's source name was `dowire`; `Request.m:87` defines
+  `_doCopy` against `docopy`; `Thread.m:180` defines `_queueOperationDescending`
+  against `queueOperationDecending`, reproducing Apple's own misspelling.
+
+**No reference function is absent from our sources.** The only unmapped entries
+are `__udivdi3` and the two `kl_ld` class methods, all build-generated. The
+source map bears this out: 222 of 225 functions map to a file and line.
 
 This is §2.1's defect in C rather than Objective-C, and it gets the same
 treatment: a mechanical pre-pass rename on direct symbol-table evidence.
@@ -268,11 +275,18 @@ _vm_map_pageable         _vm_map_pmap_EXTERNAL
 _strcpy                  .objc_category_name_IOLogicalDiskNEW_private
 ```
 
-The first five are the DMA bounce-buffer path, and they correspond exactly to the
-missing C functions `docopy`, `dowire`, `vFloppyCopy` and `physContBlocks` from
-§2.3. The last is the category-name divergence from §2.5. Import parity is
-therefore a third verification axis, orthogonal to string and symbol parity and
-just as cheap, and §5 adopts it.
+The first five are the DMA bounce-buffer path. §2.3 originally read this as those
+functions being absent; they are not. `dowire`, `docopy`, `vFloppyCopy` and
+`physContBlocks` all exist. What is missing is the calls: our `dowire` never
+invokes `vm_map_pageable`, and `alloc_cnvmem`, `get_dma_addr` and
+`dma_xfer_abort` appear nowhere in the tree. Only `vm_map_pmap` is used, in
+`FloppyDriveInt2.m`.
+
+So the DMA path is divergent in its bodies rather than absent, which makes it
+repair work for the fix phases rather than authorship. The last import is the
+category-name divergence from §2.5, closed by the pre-pass. Import parity is a
+third verification axis, orthogonal to string and symbol parity and just as
+cheap, and §5 adopts it.
 
 ## 3. Artifact layout
 

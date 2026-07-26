@@ -25,6 +25,60 @@ claim rests on the reference disassembly.
 | `PostLoad` | 16 | 1 | 15 |
 | `stblocksize` | 20 | 3 | 17 |
 
+## Summary
+
+Final tally across all four ledgers, after Tasks 1-7:
+
+| Ledger | `assembly-matched` | `intentional-mismatch` | `unexamined` | Total |
+| --- | --- | --- | --- | --- |
+| `SCSITape_reloc` | 34 | 2 | 14 | 50 |
+| `PreLoad` | 1 | 11 | 0 | 12 |
+| `PostLoad` | 1 | 15 | 0 | 16 |
+| `stblocksize` | 4 | 16 | 0 | 20 |
+| **Total** | **40** | **44** | **14** | **98** |
+
+Of `SCSITape_reloc`'s 50 entries, **48 were read at instruction level**: the
+44 functions Tasks 2-6 already mapped and compared against
+`SCSITape.m`/`SCSITapeKern.m` (34 confirmed `assembly-matched`, 10 left
+`unexamined` with a recorded finding), plus 4 more this task adds to that
+count — two functions this task establishes were wrongly excluded from
+source mapping by a `source_map.py` bug rather than genuinely absent
+(`-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]` and
+`-[SCSITape executeRequest:buffer:client:senseBuf:]`, both left `unexamined`
+with a recorded finding once actually compared against the source they were
+missing from), and two functions genuinely absent from our tree (`-[SCSITape
+reserveAllLuns]`, `-[SCSITape releaseAllLuns]`), described here directly from
+the reference disassembly since no source counterpart exists to compare
+against. The remaining 2 `SCSITape_reloc` entries (the build-generated
+classes) were not read at instruction level, matching `SCSIServer`'s
+equivalent pair. Every `PreLoad`/`PostLoad`/`stblocksize` function was
+already read at instruction level by Task 6, including `_do_ioc`
+(`stblocksize`, `assembly-matched` since Task 6 — see that section below);
+this task adds nothing further to those three ledgers.
+
+**Only 2 functions are genuinely absent** from `src/drvSCSITape` —
+`-[SCSITape reserveAllLuns]` and `-[SCSITape releaseAllLuns]` (ledger
+addresses 7012/7280) — confirmed by `grep` finding no such selector anywhere
+in the tree; Task 9 must write both from the descriptions below. The other
+two entries the seeding pass and the original plan counted among the "four
+absent methods" are not absent at all: see "Finding: two of the four
+originally-'absent' methods already exist in source" below, which is this
+task's central discovery.
+
+**14 entries remain `unexamined`, each carrying a recorded finding**:
+`+[SCSITape probe:]`, `-[SCSITape free]`, `-[SCSITape
+setIgnoreCheckCondition:]`, `-[SCSITape acquireDevice]`, `-[SCSITape
+releaseDevice]`, `_cdb_c6s_len_value`, `_st_devsw_init`, `_st_rw`,
+`_stioctl`, `_st_doiocsrq` (Tasks 2-5's findings), plus `-[SCSITape
+initSCSITape:target:lun:controller:majorDeviceNumber:]` and `-[SCSITape
+executeRequest:buffer:client:senseBuf:]` (this task's findings), plus the 2
+genuinely-absent methods (this task; left `unexamined` for lack of any other
+ledger status that fits a function with no source to examine yet). The 2
+build-generated classes (`+[SCSITapeKernelServerInstance
+kernelServerInstance]`, `+[SCSITapeVersion driverKitVersionForSCSITape]`) are
+now `intentional-mismatch`, dispositioned by this task the same way
+`SCSIServer`'s equivalent pair was.
+
 ## Out of scope
 
 **94 jump islands.** `SCSITape_reloc`'s IDA analysis finds 144 functions; 94 are
@@ -53,7 +107,10 @@ rather than filtered out of sight.
 `+[SCSITapeKernelServerInstance kernelServerInstance]` (20 bytes) and
 `+[SCSITapeVersion driverKitVersionForSCSITape]` (16) are emitted by the Kernel
 Server build from the project's own settings, exactly as `SCSIServer`'s pair
-were. They remain `unmapped` permanently.
+were. They remain `unmapped` permanently. Task 7 dispositions both
+`intentional-mismatch` in `SCSITape/ledger.json` (reason: "emitted by the
+Kernel Server build from the project's own settings, not hand-written
+source"), matching `SCSIServer` Task 7's disposition of its own pair.
 
 ## The analyzer gap at address 0
 
@@ -982,3 +1039,473 @@ starting-state table); `PostLoad` 1 `assembly-matched` + 15
 `intentional-mismatch` (16 total); `stblocksize` 4 `assembly-matched` + 16
 `intentional-mismatch` (20 total). No entry in any of the three ledgers is
 left `unexamined`.
+
+## The four originally-"absent" SCSITape methods (Task 7)
+
+The plan's Task 7 brief lists four `SCSITape_reloc` ledger entries with no
+`source_path`/`source_line` at all — addresses 524 (908 bytes), 5836 (832
+bytes), 7012 (236 bytes), 7280 (128 bytes) — as "absent" methods this task
+must describe from the reference disassembly alone so Task 9 can write their
+bodies with no compiler to check the result. Before doing that, this task
+re-derives every jump-island and message-ref target in all four address
+ranges via `read_macho`'s relocation table (the same technique Tasks 2-6
+used), which surfaces a finding that changes the shape of the rest of this
+section.
+
+## Finding: two of the four originally-"absent" methods already exist in source — a `source_map.py` selector-reconstruction bug, not a missing function
+
+**Source:** `SCSITape.m:177-315` (`initSCSITape:target:lun:controller:majorDeviceNumber:`),
+`SCSITape.m:938-1076` (`executeRequest:buffer:client:senseBuf:`).
+
+`source-map.json`'s `unmapped` list (and the ledger entries it seeded) carry
+both these selectors with `source_path`/`source_line` set to `null`, exactly
+as if no implementation existed anywhere in the tree. Reading `SCSITape.m`
+directly shows otherwise: both methods are fully implemented, at the line
+numbers above. Running `source_map.py`'s own `source_sites()` scanner
+directly against this tree confirms *why* it missed them —
+
+```
+$ PYTHONPATH=tools/binrecon "$PY" -c "
+from binrecon.source_map import source_sites
+from pathlib import Path
+sites = source_sites(Path('.'), Path('src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj'))
+for k, v in sites.items():
+    if 'initSCSITape' in k or 'executeRequest' in k: print(k, v)
+"
+-[SCSITape initSCSITape:/*:lun:controller:majorDeviceNumber:] [('...SCSITape.m', 177)]
+-[SCSITape executeRequest:buffer:/*:senseBuf:] [('...SCSITape.m', 938)]
+```
+
+— the scanner reconstructs a *garbage* selector key for both, not the real
+one. Both declarations are the one shape in this file that triggers it: a
+multi-line Objective-C method signature whose **first** line carries a
+trailing C comment before the line break, e.g.
+`- (stInitReturn_t) initSCSITape:(int)iunit 	/* IODevice unit # */` followed
+by `    target:		(u_char) stTarget` on the next line. `source_map.py`'s
+`_selector()` helper (`tools/binrecon/binrecon/source_map.py:52-67`) strips
+*parenthesised* text (`re.sub(r"\([^()]*\)", " ", declaration)`) but not
+comments, so the joined declaration text still contains the literal
+`/* IODevice unit # */` between the `initSCSITape:` keyword and the `target`
+keyword. `_selector()` then splits on `:` and, for each interior segment,
+takes `words[1]` (the second whitespace-separated word) as the next
+keyword — for the segment between the first and second colon, that second
+word is `/*`, not `target`, since the comment's tokens (`/*`, `IODevice`,
+`unit`, `#`, `*/`) sit ahead of `target` in that segment's word list. The
+same shape recurs at `executeRequest:buffer:client:senseBuf:`'s second line,
+`buffer:(void *) buffer /* data destination */`, dropping `client:` from the
+reconstructed key the identical way. Both corrupted keys have no match
+anywhere in the reference's symbol table or `__OBJC` metadata, so
+`build_source_map` correctly (given the bad key) files both under
+`unmapped` — this is a `source_map.py` parsing limitation triggered by an
+inline comment on a multi-line method declaration's first line, the same
+class of tooling gap as the `_do_ioc` finding above, not evidence that either
+function is missing from source.
+
+**Consequence for this task and for Task 9:** unlike `_do_ioc`, which
+matched its reference exactly, both of these functions have real,
+non-cosmetic divergences from their reference bodies (described below) — so
+Task 9's job for these two is *not* "write from scratch" but "fix the
+existing implementation to match the findings below." Only `-[SCSITape
+reserveAllLuns]` and `-[SCSITape releaseAllLuns]` are genuinely absent and
+need net-new bodies. This task fixes the ledger's `source_path`/`source_line`
+for both rediscovered entries by hand via `--source-path`/`--source-line`
+(the same mechanism Task 6 used for `_do_ioc`); both stay `unexamined` since
+each carries a real finding, not a clean match. `source-map.json` itself is
+left unchanged, for the same out-of-scope reason `_do_ioc`'s finding gives:
+fixing the scanner or rerunning Task 1's seeding step is not authorized by
+this task's brief.
+
+### `-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]` (address 524, 908 bytes; `SCSITape.m:177-315`)
+
+**Signature:** `- (stInitReturn_t) initSCSITape:(int)iunit target:(u_char)stTarget
+lun:(u_char)stLun controller:controllerId majorDeviceNumber:(int)major` — confirmed
+register-for-register: `r3`=self, `r4`=`_cmd` (unused), `r5`=`iunit` (kept live,
+never masked, matching `int`), `r6`=`stTarget` and `r7`=`stLun` (each
+immediately `clrlwi ...,24`-masked to a byte, matching `u_char`), `r8`=
+`controllerId`, `r9`=`major` (kept live as a full word, matching `int`).
+`stInitReturn_t` is `SCSITapeTypes.h:71-78`'s enum: `STR_GOOD`=0,
+`STR_NOTATAPE`=1, `STR_SELECTTO`=2, `STR_ERROR`=3.
+
+**What it calls, resolved through the relocation table:**
+`objc_msgSend` (`_objc_msgSend`, every message send below), `_sprintf`
+(twice), `_IOMalloc`, `_bzero`, `_IOLog`, `_objc_msgSendSuper` (once, for
+`[super init]`), and `_moveString` (`sub_5B8`, an internal `bl` resolved via
+`read_macho`'s `ppc-jbsr-24-pc-relative` relocation to `__TEXT,__text`
+address 6748 — the already-`assembly-matched` C helper, not an
+`objc_msgSend`). Every selector is resolved through
+`__OBJC,__message_refs` → `__OBJC,__meth_var_names` (the same two-hop lookup
+Task 2 used): `reserveTarget:lun:forOwner:`, `reserveAllLuns`, `setName:`,
+`setDeviceKind:`, `name`, `setLocation:`, `setUnit:`, `stTestReady` (called
+twice), `stInquiry:`, `alloc`, `init` (called twice — once on `[NXLock
+alloc]`'s result, once via `objc_msgSendSuper` for `[super init]`),
+`setBlockSize:`, `releaseAllLuns`, `releaseTarget:lun:forOwner:`. The `[NXLock
+alloc]` receiver is a class reference (`__OBJC,__cls_refs` entry 1, resolved
+through `__OBJC,__class_names` offset 84 to the literal string `NXLock`) —
+the same two-hop pattern Task 2 used for selectors, just against the class
+reference and class-name tables instead of the message-ref tables.
+
+**Body, in exact reference order:**
+
+1. `if ([controllerId reserveTarget:stTarget lun:stLun forOwner:self])
+   return STR_ERROR;` — this call is the *first* thing the function does,
+   before touching any ivar. Non-zero (busy/conflict) short-circuits straight
+   to the epilogue with `r3 = 3` (`STR_ERROR`), bypassing every ivar write
+   and the cleanup block described in step 13.
+2. On success: `_controller = controllerId;` (`0x108`), `_target = stTarget;`
+   (`0x10C`), `_lun = stLun;` (`0x10D`) — matches `SCSITape.m:194-196`.
+3. `[self reserveAllLuns];` (return value discarded) — matches nothing in
+   our source (see the `probe:` reconciliation note below).
+4. Zeroes `_ignoreCheckCondition[stTarget][stLun]` (the `char[32][8]` matrix
+   at `0x125` — `stTarget*8 + stLun` byte offset from `0x125`, confirming the
+   matrix is target-major/lun-minor) and `_ignoreOpenCheckCondition` (`0x225`)
+   to 0 — no equivalent statement in our source at all (our source has
+   neither ivar under those names/shapes; see Task 2's ivar-layout finding).
+5. `sprintf(localName, "st%d", iunit); [self setName:localName];
+   [self setDeviceKind:"SCSITape"]; [self setLocation:[_controller name]];
+   [self setUnit:iunit];` — matches `SCSITape.m:197-201` exactly, including
+   passing `[_controller name]` (not a cached local) as the initial
+   `setLocation:` argument.
+6. `_senseDataPtr = IOMalloc(28);` (`0x118`, 28 = `sizeof(esense_reply_t)`);
+   `_senseDataValid = 0;` (`0x124`); `_didWrite = 0;` (`0x122`);
+   `_suppressIllegalLength = 0;` (`0x123`); `_isInitialized = 0;` (`0x120`);
+   `_devLock = nil;` (`0x11C`, a plain zero-store — matches `SCSITape.m:221`'s
+   comment "Until we know we're a tape") — matches `SCSITape.m:212-221`
+   field-for-field and offset-for-offset against Task 2's ivar table.
+7. `[self stTestReady];` (return discarded) — matches `SCSITape.m:227`.
+8. `bzero(&inquiryReply, 65); rtn = [self stInquiry:&inquiryReply];` — matches
+   `SCSITape.m:232-233` (65 = `sizeof(inquiry_reply_t)`, the same constant
+   Task 3 confirmed for `stInquiry:`'s own reply buffer). Return handling:
+   `rtn == 0` (`SR_IOST_GOOD`) falls through to step 9; `rtn == 1`
+   (`SR_IOST_SELTO`) jumps to the cleanup block (step 13) with `r27 = 2`
+   (`STR_SELECTTO`); any other non-zero `rtn` jumps to the same cleanup block
+   with `r27 = 3` (`STR_ERROR`) — matches `SCSITape.m:239-246`'s
+   `switch(rtn){case SR_IOST_GOOD: break; case SR_IOST_SELTO: return
+   STR_SELECTTO; default: return STR_ERROR;}` exactly, modulo the reference
+   routing both non-`GOOD` returns through the shared cleanup tail (step 13)
+   rather than returning immediately the way our source's `switch` does.
+9. Reads inquiry byte 0 (`inquiryReply.ir_qual`/`ir_devicetype`'s shared
+   byte) and compares it to `1` as a single integer, not two separate
+   bitfield tests. `DEVQUAL_OK` (0) occupies the qualifier's high 3 bits and
+   `DEVTYPE_TAPE` (1) the low 5, so a combined byte value of exactly `1`
+   is bit-for-bit equivalent to `ir_qual == DEVQUAL_OK && ir_devicetype ==
+   DEVTYPE_TAPE` — a compiler collapsing two bitfield compares into one
+   integer compare (the same class of idiom already noted elsewhere in this
+   project), not a divergence. Byte `!= 1` jumps to the cleanup block with
+   `r27 = 1` (`STR_NOTATAPE`) — matches `SCSITape.m:251-258`.
+10. `_devLock = [[NXLock alloc] init]; _devAcquired = 0;` (`0x11C`/`0x121`) —
+    matches `SCSITape.m:264-265`.
+11. Builds the compressed drive-type string via three `_moveString` calls
+    (vendor ID 8 bytes, product ID 16 bytes, revision 4 bytes, each followed
+    by the "insert a trailing space if the last output byte wasn't already
+    one" check) into the `deviceName`-sized stack buffer at `var_F4`
+    (matching source's `driveType`), `sprintf`s `"Target %d LUN %d at %s"`
+    into a second buffer at `var_84` using `_target`/`_lun`/`[controllerId
+    name]` (matching source's `location`), calls `[self setLocation:...]`
+    with it, and then `IOLog("%s: %s at %s\n", deviceName, driveType,
+    location);`. **Divergence:** the reference's format string (`aSSAtS`,
+    confirmed byte-for-byte in `__TEXT,__cstring`) is `"%s: %s at %s\n"`,
+    three `%s` conversions with three distinct arguments — confirmed
+    register-for-register: `r4` = the `deviceName` stack address (recomputed
+    fresh at this call site), `r5` = `r29`, which was repointed from
+    `deviceName` to `driveType`'s base address earlier (`addi r29, r1,
+    var_F4` at address 1124, mid-`_moveString`-sequence, and never
+    reassigned again before this call), and `r6` = `r31`, repointed from
+    `driveType`-tracking to `location`'s base address at address 1180. Our
+    source's equivalent (`SCSITape.m:293`) is `IOLog("%s: %s\n", deviceName,
+    driveType);` — a *different* format string with only two conversions,
+    silently omitting `location` as a third argument entirely. Task 9 should
+    add `location` as a third `%s`/argument to this log line to match the
+    reference exactly.
+12. `[self stTestReady];` again (discarded), `[self setBlockSize:0];`,
+    `_majorDevNum = major;` (`0x110`), `[super init];`, `_isInitialized =
+    1;` (`0x120`), `r27 = 0` (`STR_GOOD`, set once at function entry and
+    never touched again on this path) — matches `SCSITape.m:300-313`.
+13. **Cleanup tail, reached by every exit path except step 1's immediate
+    `STR_ERROR` return:** `[self releaseAllLuns]; [_controller
+    releaseTarget:_target lun:_lun forOwner:self];` (both return values
+    discarded), then restore registers and `return r27` (whatever step 8, 9
+    or 12 set it to). **No equivalent statement anywhere in our source.**
+
+**Return value on each path:** `STR_ERROR` (3, immediate, step 1's failure);
+`STR_SELECTTO` (2, via cleanup, step 8); `STR_ERROR` (3, via cleanup, step 8's
+default case); `STR_NOTATAPE` (1, via cleanup, step 9); `STR_GOOD` (0, via
+cleanup, step 12's success path). Every non-immediate exit — including
+success — passes through the same `releaseAllLuns`/`releaseTarget:...`
+cleanup call pair before returning.
+
+**Error handling:** none of the calls in steps 2-12 check their own return
+values except step 8's `stInquiry:` (whose result selects the three
+`stInitReturn_t` outcomes above); `reserveAllLuns`/`releaseAllLuns`/
+`releaseTarget:lun:forOwner:`'s results are discarded, matching the same
+"fire and forget" pattern Task 2's `acquireDevice`/`releaseDevice` findings
+already noted for those two methods.
+
+## Finding: reconciling `initSCSITape:`'s reservation calls with the existing `probe:`/`acquireDevice` findings — the reference reserves transiently at probe time, not only at open time
+
+**Source:** `SCSITape.m:69-174` (`probe:`), `SCSITape.m:457-478`
+(`acquireDevice`/`releaseDevice`), and the "Finding: `+[SCSITape probe:]`..."
+and "Finding: `-[SCSITape acquireDevice]`..." sections above, both recorded
+before this task examined `initSCSITape:`'s own body.
+
+The existing `probe:` finding above states, correctly, that no instruction in
+`probe:`'s own address range calls `reserveTarget:lun:forOwner:`, and its
+"Consequence" paragraph characterizes reservation as deferred "to
+`-acquireDevice`/`-releaseDevice`". Having now read `initSCSITape:`'s body
+(the function `probe:` calls immediately after our source's own
+`reserveTarget:lun:forOwner:` call at `SCSITape.m:102-104`), that
+characterization needs a correction: the reference's `initSCSITape:` *does*
+call `reserveTarget:lun:forOwner:` and `reserveAllLuns` — at its own entry,
+using its own parameters, independent of whatever `probe:` did or didn't
+do — and then unconditionally releases both (`releaseAllLuns` +
+`releaseTarget:lun:forOwner:`) before returning, on every exit path except an
+immediate reservation failure (see step 13 above). So the full picture is:
+the reference's `probe:` truly never reserves anything itself (the existing
+finding's direct claim is correct), but `initSCSITape:` performs its own
+*transient* reserve → probe-the-device → release cycle around the
+`stTestReady`/`stInquiry:` calls, entirely separate from the *persistent*
+hold `acquireDevice`/`releaseDevice` take later when the device is actually
+opened via `-stopen`. This is architecturally coherent once seen in full:
+`initSCSITape:` needs exclusive access to the target/lun just long enough to
+run `TESTUNITREADY`/`INQUIRY` and decide whether a real tape is present, and
+releases that access again immediately afterward — it does not hold the
+device open. Our source's `initSCSITape:` (`SCSITape.m:177-315`) has none of
+this: no reservation call, no release call, and (per the existing findings)
+our `probe:` reserves *before* calling `initSCSITape:` and never releases on
+the success path at all. Task 9/11 fixing this needs to add the
+transient reserve/release pair inside `initSCSITape:` itself, matching the
+ordering in steps 1-13 above, rather than trying to fold it into `probe:`'s
+existing (different) reservation call.
+
+### `-[SCSITape executeRequest:buffer:client:senseBuf:]` (address 5836, 832 bytes; `SCSITape.m:938-1076`)
+
+**Signature:** `- (sc_status_t) executeRequest:(IOSCSIRequest *)scsiReq
+buffer:(void *)buffer client:(vm_task_t)client senseBuf:(esense_reply_t
+*)senseBuf` — `r3`=self, `r5`=`scsiReq` (kept in `r30`), `r6`=`buffer` and
+`r7`=`client` (never copied to a saved register — both are passed straight
+through, untouched, to the single nested `executeRequest:buffer:client:`
+call in step 1, since nothing between function entry and that call clobbers
+`r6`/`r7`), `r8`=`senseBuf` (kept in `r26`).
+
+**What it calls, resolved through the relocation table:** `objc_msgSend`
+(five sites: the initial `[_controller executeRequest:...]`, `[self
+requestSense:]`, twice `[self name]`, `[self isFixedBlock]`), `_IOLog` (four
+sites), `_IOFindNameForValue` (three sites, against `_IOSCSIOpcodeStrings`
+twice and `_IOScStatusStrings` once — both external data symbols, confirmed
+by relocation, not `objc_msgSend` targets), and two internal `bl`s resolved
+via `read_macho` to this same binary's already-`assembly-matched` C helpers:
+`sub_1A3C` → `_cdb_c6s_len_value` (address 6952 — itself still `unexamined`
+per its own finding above) and `sub_1A2C` → `_er_info_value` (address 6992,
+`assembly-matched`).
+
+**Body, in exact reference order (matches `SCSITape.m:938-1076` in
+structure, with the divergences below):**
+
+1. `_senseDataValid = NO;` (`0x124`), then `rtn = [_controller
+   executeRequest:scsiReq buffer:buffer client:client];` — matches
+   `SCSITape.m:945,957-959`. `rtn == SR_IOST_GOOD` (0) skips directly to
+   step 6's tail.
+2. `rtn == SR_IOST_CHKSV` (2): copies `scsiReq->senseData` (28 bytes, at
+   `scsiReq` offset `0x3C`/60 — a new offset this task establishes;
+   `60 + 28 = 88 = sizeof(IOSCSIRequest)`, so `senseData` is the struct's
+   final field, immediately confirming `driverkit/scsiRequest.h`'s field
+   order) into both `*_senseDataPtr` and `*senseBuf`, then `_senseDataValid =
+   YES;` — matches `SCSITape.m:972-978`.
+3. `rtn == SR_IOST_CHKSV || rtn == SR_IOST_CHKSNV` (a single unsigned
+   range-check compiler idiom, `(rtn-2) <= 1` — the same class already
+   documented elsewhere in this project, not a divergence) **and**
+   `_ignoreCheckCondition[scsiReq->target][scsiReq->lun] == 0` **and**
+   `_ignoreOpenCheckCondition == 0`: this is the guard for the whole
+   request-sense block (`SCSITape.m:980-981`'s `!_ignoreCheckCondition`).
+   **Divergence:** the reference indexes the matrix by `scsiReq->target`/
+   `scsiReq->lun` (offsets 0/1 of `IOSCSIRequest`, the caller-supplied
+   request's own target/lun) and separately checks `_ignoreOpenCheckCondition`
+   — two real ivars our source collapses into the single scalar
+   `_ignoreCheckCondition` it declares (per Task 2's ivar-layout finding).
+   This is the *same* underlying layout divergence already recorded, not a
+   new bug, but it recurs at three separate call sites inside this one
+   function (this is the first).
+4. If `rtn == SR_IOST_CHKSV`: `rtn = SR_IOST_GOOD;`. Else (`rtn ==
+   SR_IOST_CHKSNV`): `rtn = [self requestSense:senseBuf];`.
+5. If the (possibly reassigned) `rtn == SR_IOST_GOOD`: checks
+   `scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ` (0x08, at `scsiReq+4`) *and*
+   `senseBuf->er_filemark` (bit `0x8000` of `senseBuf`'s first word) — matches
+   `SCSITape.m:994-995`. Both true: `transferLength =
+   cdb_c6s_len_value(&scsiReq->cdb.cdb_c6s) - er_info_value(senseBuf);` then,
+   if `[self isFixedBlock]`, `transferLength *= _blockSize;` (`0x114`); if
+   `scsiReq->bytesTransferred` (`scsiReq+0x28`/40) `!= transferLength`,
+   `scsiReq->bytesTransferred = transferLength;`; `rtn = SR_IOST_GOOD;
+   scsiReq->driverStatus = SR_IOST_GOOD;` (`scsiReq+0x20`/32) — matches
+   `SCSITape.m:1001-1018` field-for-field, using the same `IOSCSIRequest`
+   offsets Task 4's structure table already established. Either half of the
+   `&&` failing: `rtn = SR_IOST_CHKSV;` — matches `SCSITape.m:1028-1029`.
+6. If (from step 4) `rtn != SR_IOST_GOOD`: reads `_isInitialized` (`0x120`),
+   and if true, checks `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]`
+   and `_ignoreOpenCheckCondition` again (second occurrence of the same
+   compound check as step 3); only if `_isInitialized` is true and both
+   check-condition ivars are clear does it call `IOLog("%s: Request Sense on
+   target %d lun %d failed (%s)\n", [self name], _target, _lun,
+   IOFindNameForValue(rtn, IOScStatusStrings))` (using **self's own**
+   `_target`/`_lun` ivars here, not `scsiReq`'s — a different field than the
+   matrix-index check just before it uses). Either way, `rtn =
+   SR_IOST_CHKSNV;` at the end. **Divergence:** our source's equivalent
+   (`SCSITape.m:1032-1040`) gates this specific log on `_isInitialized`
+   alone — it has no `_ignoreCheckCondition`/`_ignoreOpenCheckCondition` check
+   at this call site at all, so our source logs this failure whenever
+   `_isInitialized` is true regardless of either check-condition flag, while
+   the reference additionally suppresses it when either flag is set. Same
+   root-cause ivar-layout finding as step 3, second recurrence.
+7. Shared tail (reached from steps 1's direct-good path, step 5's corrected
+   path, and step 6's `SR_IOST_CHKSNV` path alike): if `_isInitialized` is
+   true *and* the (final) `rtn != SR_IOST_GOOD` *and* (third occurrence of
+   the same `_ignoreCheckCondition[scsiReq->target][scsiReq->lun]` +
+   `_ignoreOpenCheckCondition` compound check) both check-condition ivars are
+   clear: `IOLog("%s, target %d, lun %d: op %s returned %s\n", [self name],
+   _target, _lun, IOFindNameForValue(scsiReq->cdb.cdb_opcode,
+   IOSCSIOpcodeStrings), IOFindNameForValue(rtn, IOScStatusStrings))`
+   (self's own `_target`/`_lun` again), and if `rtn == SR_IOST_CHKSV`
+   additionally `IOLog("    Sense key = 0x%x  Sense Code = 0x%x\n",
+   senseBuf->er_sensekey, senseBuf->er_addsensecode)` (`er_addsensecode` at
+   `senseBuf+0xC`/12, matching the `_do_ioc` finding's own offset for the
+   same field) — matches `SCSITape.m:1047-1060` exactly, modulo the same
+   ivar-layout divergence as steps 3 and 6 (third recurrence).
+8. `_didWrite` tail: reference re-tests `scsiReq->cdb.cdb_opcode ==
+   C6OP_WRITE` (0x0A) to decide `_didWrite` (`0x122`) whenever this shared
+   tail is reached with the *final* `rtn == SR_IOST_GOOD` (whether that came
+   from never entering the `if(rtn != SR_IOST_GOOD)` branch at all, or from
+   step 5's filemark-correction setting it back to `SR_IOST_GOOD`) — matching
+   our source's `else { _didWrite = (opcode==C6OP_WRITE); }` branch
+   (`SCSITape.m:1066-1073`). When the tail is reached with final `rtn !=
+   SR_IOST_GOOD` instead, `_didWrite` is set unconditionally to `NO` with no
+   opcode test — matching our source's `_didWrite = NO;`
+   (`SCSITape.m:1063`). **Structural note, not a behavioral bug:** the
+   compiler reaches this decision by testing the *final* `rtn` value at the
+   merged tail rather than remembering which of source's two original
+   branches (`if`/`else` at line 968) was taken, so the filemark-correction
+   path (step 5, `rtn` forced back to `SR_IOST_GOOD`) is routed through the
+   opcode-test side rather than through an unconditional `NO` — but that path
+   is only reachable when `scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ`
+   (step 5's own guard), which can never equal `C6OP_WRITE`, so the opcode
+   test always evaluates to `NO` there too. Likewise the `!_isInitialized`
+   early skip in step 6/7 routes straight to this same opcode-test tail
+   regardless of `rtn`; since `executeRequest:buffer:client:senseBuf:` is only
+   reached with `_isInitialized == NO` during `initSCSITape:`'s own
+   `stTestReady`/`stInquiry:` probing (neither of which ever builds a
+   `C6OP_WRITE` CDB), this too is unobservable in practice. Recorded because
+   it is a genuine structural difference from our source's branch shape, even
+   though no reachable input makes it produce a different `_didWrite` value
+   than our source would.
+
+**Return value:** `sc_status_t rtn`, one of `SR_IOST_GOOD` (0),
+`SR_IOST_CHKSV` (2, only if the filemark-correction path's `&&` fails at
+step 5, i.e. non-read op or no filemark), `SR_IOST_CHKSNV` (3, if
+`requestSense:` itself did not return `SR_IOST_GOOD`), or the controller's
+original non-`GOOD` status when `rtn` was never 2 (i.e. `CHKSV`/`CHKSNV`) in
+the first place at step 1.
+
+**Error handling:** every non-`SR_IOST_GOOD` controller status triggers the
+request-sense/logging machinery in steps 2-7; there is no path that discards
+an error silently, though the three `_ignoreCheckCondition`/
+`_ignoreOpenCheckCondition` recurrences (steps 3, 6, 7) mean the reference
+can *suppress the logging* (never the underlying `rtn` computation) more
+aggressively than our source does today.
+
+### `-[SCSITape reserveAllLuns]` (address 7012, 236 bytes) — genuinely absent
+
+**No source exists anywhere in this tree** — `grep` for `reserveAllLuns`
+across `src/drvSCSITape` finds only the mentions already in this document.
+Task 9 must write this method from the description below.
+
+**Signature:** `- reserveAllLuns` (no arguments beyond the implicit
+self/`_cmd`; `r3`=self, kept in `r31`). Objective-C methods with no explicit
+`return` statement leave `r3` holding whatever the last call happened to
+return — see the return-value note below — so this is effectively declared
+to return `id` and its result is not meaningful.
+
+**What it calls, resolved through the relocation table:** `objc_msgSend` at
+three call sites — `[self name]` before the loop (step 1, only reached if
+`_lun != 0`), `[_controller reserveTarget:lun:forOwner:]` once per loop
+iteration (step 3), and `[self name]` again inside the loop's failure branch
+(step 3) — and `_IOLog` at two call sites, one per warning below.
+
+**Body, in exact reference order:**
+
+1. `if (_lun != 0)` (`0x10D`): `IOLog("%s: SCSITape (target %d, lun %d)
+   expects lun 0\n", [self name], _target, _lun);` — a sanity warning; the
+   method proceeds regardless of `_lun`'s value.
+2. `_lunsReserved = 0;` (`0x228`, unconditional — confirms Task 2's
+   ivar-table conjecture that `_lunsReserved` is the bitmask this method
+   manipulates).
+3. `for (lun = 1; lun <= 7; lun++)` (loop variable starts at **1**, not 0,
+   and the reference's own byte-masked increment/compare confirms the range
+   is exactly 1-7 inclusive, i.e. the 7 *other* LUNs on the same target,
+   deliberately excluding LUN 0 — the tape's own LUN, already reserved
+   separately by `initSCSITape:`'s own `reserveTarget:lun:forOwner:` call at
+   its own `_lun`, per the finding above):
+   `if ([_controller reserveTarget:_target lun:lun forOwner:self] == 0)
+   { _lunsReserved |= (1 << lun); }
+   else { IOLog("%s: SCSITape (target %d) can't reserve, lun %d\n",
+   [self name], _target, lun); }` — `_target` read once per iteration
+   (`0x10C`), `_controller` once (`0x108`). The bit position is exactly the
+   LUN number, confirming the `char[32][8]` `_ignoreCheckCondition` matrix's
+   inner `[8]` dimension (LUNs 0-7) and this bitmask share the same
+   numbering.
+
+**Return value:** not meaningful — no explicit `return`; `r3` on exit holds
+whichever of `reserveTarget:lun:forOwner:`'s or `IOLog`'s result happened to
+run last (lun 7's iteration). Every caller this task has found
+(`initSCSITape:`, `acquireDevice`, per the findings above) discards the
+return value, consistent with this reading.
+
+**Error handling:** a failed `reserveTarget:lun:forOwner:` for any individual
+LUN only logs a warning and continues to the next LUN — it does not abort
+the loop, does not clear any bit already set, and does not surface the
+failure to the caller in any way (per the return-value note above).
+
+### `-[SCSITape releaseAllLuns]` (address 7280, 128 bytes) — genuinely absent
+
+**No source exists anywhere in this tree** — same `grep` result as
+`reserveAllLuns`. Task 9 must write this method from the description below.
+
+**Signature:** `- releaseAllLuns` (no arguments; `r3`=self, kept in `r30`).
+Same "no meaningful return value" situation as `reserveAllLuns` — no
+explicit `return`, `r3` on exit holds whichever call ran last.
+
+**What it calls, resolved through the relocation table:** `objc_msgSend`
+(once per loop iteration where a bit is set: `releaseTarget:lun:forOwner:`).
+
+**Body, in exact reference order:** `for (lun = 7; lun >= 1; lun--)`
+(descending, mirroring `reserveAllLuns`'s ascending 1-7 range exactly — the
+reference's own byte-masked decrement/compare confirms the loop stops after
+processing `lun == 1`, never touching lun 0): `if (_lunsReserved &
+(1 << lun)) { [_controller releaseTarget:_target lun:lun forOwner:self]; }`
+— `_lunsReserved` (`0x228`), `_target` (`0x10C`) and `_controller` (`0x108`)
+each read once per iteration; the release call's return value is discarded.
+**Note, not a finding (nothing in our source to diverge from):** the
+function never clears `_lunsReserved` back to 0 after releasing — every bit
+it just released stays set in the ivar. This does not appear to be
+exploitable in practice, since the only place `_lunsReserved` is ever *set*
+is `reserveAllLuns`'s own step 2, which unconditionally zeroes it before
+reserving fresh, so a stale bit left behind by `releaseAllLuns` cannot survive
+past the next `reserveAllLuns` call — but Task 9 should reproduce this
+exactly (not add a clear this method's own reference disassembly does not
+have), since inventing a "more correct" version here is not what this
+project's fix passes are for.
+
+**Return value:** not meaningful, same as `reserveAllLuns`.
+
+**Error handling:** none — a failed `releaseTarget:lun:forOwner:` for any
+individual LUN has no visible effect (no log, no return-value check); the
+loop always processes all set bits from 7 down to 1.
+
+## `_lunsReserved` — established
+
+`_lunsReserved` (`0x228`, `unsigned int`, absent from our `@interface`) is
+confirmed by this task to be exactly the bitmask Task 2's ivar-table
+conjectured it was: `reserveAllLuns` zeroes it and then sets bit `lun` for
+every LUN 1-7 it successfully reserves with the controller; `releaseAllLuns`
+tests the same bits (7 down to 1) to decide which LUNs to release, but never
+clears the mask itself (see the note above). Bit 0 (LUN 0) is never touched
+by either method — LUN 0 is the tape's own LUN, reserved and released
+separately by `initSCSITape:`/`-acquireDevice`/`-releaseDevice`'s own direct
+`reserveTarget:`/`releaseTarget:lun:forOwner:` calls at `_target`/`_lun`, not
+through this bitmask at all.

@@ -13,9 +13,13 @@ Five modules are covered: `src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m`,
 This is worth stating plainly before any of the findings, because it changes how
 a near-total match should be read. The five `.m` files were not hand-written
 against a reference — `git log` shows each entering the tree in a single import
-commit (`3a0ab68f Move source tree under src/`) and each still carries Apple's
+commit (`19ffee9a Original Darwin 0.3 Sources`) and each still carries Apple's
 1999 `@APPLE_LICENSE_HEADER_START@` block over a 1994 NeXT `HISTORY` block naming
-Dean Reece and Curtis Galloway. They are Apple's own Darwin 0.3 sources.
+Dean Reece and Curtis Galloway. They are Apple's own Darwin 0.3 sources. Two of
+the five were subsequently touched — `64a7d057` and `525eece3`, each an
+`#import`-line change only — so this is not a claim that the files are untouched
+since import, only that nothing beyond an include path has diverged from what
+Apple shipped.
 
 The reference is Rhapsody DR2, roughly two years earlier. So this pass compares
 **Apple's later source against Apple's earlier binary**. A high match rate is the
@@ -96,7 +100,9 @@ caused by something outside those five files.
 
 The three analyses were scoped at source, in
 `tools/binrecon/profiles/kernel-driverkit.json`, to a single range
-`{"start": 2085076, "end": 2088160}` — `0x1FD0D4` to `0x1FDCE0`. That range is the
+`{"start": 2085076, "end": 2088160}` — `0x1FD0D4` to `0x1FDCE0`, the range in
+effect for this pass. (The `end` value has since been corrected to `2088215` /
+`0x1FDD17` in commit `013c4787` — see below.) That range is the
 contiguous run of `__text` that the five modules' object files contribute to the
 linked kernel, and nothing else. IDA returns exactly 24 functions for it, which
 is exactly the 24 Objective-C methods those five modules define. No hand-narrowing
@@ -115,14 +121,19 @@ the kernel, which is far more than these five modules.
 **This map deliberately covers 24 of the kernel's functions.** The kernel has
 thousands. Nothing here says anything about the rest of it.
 
-One defect in the scope is worth recording. `-[IOPCMCIATuple data]` starts at
-`0x1FDCD4` and is 67 bytes long, so it ends at `0x1FDD17`; the scope ends at
-`0x1FDCE0`, twelve bytes in, cutting the last 55 bytes off. IDA and Ghidra both
-returned the whole 67-byte body anyway, but angr returned a zero-size function at
-that address, and the clipped scope is the most likely reason. The scope `end`
-should have been 2088215 (`0x1FDD17`) rather than 2088160. This
-did not cost any coverage on the authoritative analysis, so it is recorded as an
-observation rather than acted on.
+One defect in the scope was found and has since been fixed. `-[IOPCMCIATuple
+data]` starts at `0x1FDCD4` and is 67 bytes long, so it ends at `0x1FDD17`; the
+scope used for this pass ended at `0x1FDCE0`, twelve bytes in, cutting the last
+55 bytes off. IDA and Ghidra both returned the whole 67-byte body anyway, but
+angr returned a zero-size function at that address, and the clipped scope is the
+most likely reason. The old `end` was computed from the last function's entry
+point rather than its extent; it should have been 2088215 (`0x1FDD17`) rather
+than 2088160. This did not cost any coverage on the authoritative analysis.
+**The scope has been corrected to `end: 2088215` in commit `013c4787`.** The
+analyses referenced throughout this document, including the ones published in
+`tools/binrecon/out/kernel-driverkit/`, were produced under the old,
+uncorrected scope; a re-analysis under the fixed scope would be needed for
+angr's zero-size entry at `0x1FDCD4` to clear.
 
 ## The missing PCMCIA modules
 
@@ -207,7 +218,7 @@ Reading the bytes in the gap before each of the 24 function starts settles it:
 
 | Function | Pad bytes before it | Ghidra |
 | --- | --- | --- |
-| `0x1FD0D4` | *(scope start, nothing before)* | no |
+| `0x1FD0D4` | `00 00 00` (just outside the scope) | no |
 | `0x1FD514` | `00 00 00` | no |
 | `0x1FD644` | `00 00` | no |
 | `0x1FDA10` | `00 00 00` | no |
@@ -215,25 +226,29 @@ Reading the bytes in the gap before each of the 24 function starts settles it:
 | all nineteen others | `90`, `90 90`, `90 90 90` or nothing | yes |
 
 The correlation is perfect. `90` is the assembler's `.align` padding *inside* an
-object file; `00` is the link editor's zero fill *between* object files. So the
-four zero-padded functions are precisely the first function contributed by each
-of the four subsequent object files, and `0x1FD0D4` is the first function of the
-first object file, which happens to sit at the scope start. Ghidra's function
-finder evidently walks forward through decoded code and treats a `90` run as
-alignment to step over but a `00` run as data, breaking the chain at each object
-boundary.
+object file; `00` is the link editor's zero fill *between* object files. So all
+five zero-padded functions are the first function contributed by an object
+file — `0x1FD0D4` included: the three bytes immediately before it are `00 00
+00`, the same link-editor zero fill as the other four, just outside the scope
+rather than inside it, because `0x1FD0D4` is the first function of the first
+object file the scope covers. Ghidra's function finder evidently walks forward
+through decoded code and treats a `90` run as alignment to step over but a `00`
+run as data, breaking the chain at each object boundary.
 
 IDA is authoritative for the partition; this is a Ghidra detection gap, not
 evidence that the five functions are missing. Recorded, no action taken.
 
-### angr: 23 of 24, plus 24 padding runs promoted to functions
+### angr: 23 of 24, plus 23 padding runs promoted to functions
 
-angr reports 47 functions in the scope. Twenty-three are real. The other
-twenty-four are alignment padding: every one is a run of one to three `0x90`
-bytes, either in the gap before a real function or at an intra-function branch
-target. `0x1FD112` and `0x1FD152` (`9090`), `0x1FD3D9` and `0x1FD425` (`909090`),
-`0x1FD69E` at `mapAttributeMemoryTo:` + 90, and nineteen more of the same kind.
-`CFGFast` recovers more than the metadata declares, and none of it is code.
+angr reports 47 functions in the scope. Twenty-three are real. Twenty-three more
+are alignment padding: every one is a run of one to three `0x90` bytes, either in
+the gap before a real function or at an intra-function branch target. `0x1FD112`
+and `0x1FD152` (`9090`), `0x1FD3D9` and `0x1FD425` (`909090`), `0x1FD69E` at
+`mapAttributeMemoryTo:` + 90, and eighteen more of the same kind. `CFGFast`
+recovers more than the metadata declares, and none of those twenty-three is
+code. The 47th function reported is the remaining extra, and it is not padding:
+it is the 158-byte misstart at `0x1FDBBF`, covered below as one of the two real
+angr defects.
 
 Two real angr defects, both traceable to the same zero padding that defeats
 Ghidra:
@@ -301,21 +316,38 @@ copy is the one that was stubbed.
 
 **Disposition:** fix
 
-**Rationale:** this is a live correctness bug, not a fidelity nit. `-[PCIKernBus
-isPCIPresent]` returns `BOOL` and is only obliged to set `al`; bits 8–31 of `eax`
-are whatever the callee happened to leave there. `cmp eax, 1` therefore fails
-whenever those bits are non-zero, `private->valid` stays `NO`, and every
-subsequent `-[IOPCIDeviceDescription getPCIdevice:function:bus:]` returns
-`IO_R_NO_DEVICE`. That is the single call every PCI driver makes to find its own
-device — `+[IODirectDevice getPCIConfigSpace:withDeviceDescription:]` and all
-three of its siblings go through it. The failure mode is a machine on which no
-PCI driver can locate its hardware, and it depends on register residue, so it
-would present as intermittent.
+**Rationale:** this is a latent ABI hazard, not a live bug. The compiled callee
+settles the question directly. `out/i386/drvPCIBus/PCIBus.config/PCIBus_reloc`
+holds an actual `-[PCIKernBus isPCIPresent]` — the same unproven-provenance
+caveat applies to this artifact as to `out/i386/mach_kernel` (see Baseline
+build):
+
+```
+test dword ptr [eax+0x18], 0xffffff00
+setne al
+and  eax, 0xff          ; explicitly zero-extends to 0/1
+ret
+```
+
+`and eax, 0xff` zero-extends the result before it returns, so with the only
+implementation this tree builds, `eax` is already 0 or 1 whenever `al` would be
+checked, and `cmp eax, 1` behaves identically to `cmp al, 1`. The
+intermittent-failure scenario this finding previously described —
+`private->valid` left `NO` and `getPCIdevice:function:bus:` returning
+`IO_R_NO_DEVICE` — is not demonstrated by this build and is contradicted by it.
+
+What is real is the exposure: with no declaration in scope, GCC cannot know the
+method returns `BOOL`, so nothing in the source enforces that `isPCIPresent`'s
+upper 24 bits stay zero. The ABI only defines `al` for a `char`/`BOOL` return, so
+a conforming implementation is free to leave garbage above it, and such an
+implementation would break under `cmp eax, 1`. Today's callee happens to
+zero-extend; nothing in the type system guarantees the next one will.
 
 The fix belongs in the header, not in the module: restore an `@interface
 PCIKernBus` declaring at least `isPCIPresent`, `configAddress:device:function:bus:`,
 `getRegister:device:function:bus:data:` and `setRegister:device:function:bus:data:`,
-with the signatures the driver-side header already carries. Finding 2 is fixed by
+with the signatures the driver-side header already carries. It removes a real
+fragility even though it is not causing a failure today. Finding 2 is fixed by
 the same change.
 
 ## Finding 2: the config-register number is not narrowed before `getRegister:` / `setRegister:`
@@ -421,12 +453,13 @@ recorded under "Examined with no divergence found".
 
 **Disposition:** fix
 
-**Rationale:** if the prediction holds, the consequence is that an attribute-memory
-window is never recognised and never torn down — `unmapAttributeMemory` walks the
-whole window list, matches nothing, and falls through to
-`removeResourcesForKey:` having left the window enabled and mapped. Fixing it is
-the same change as Findings 1 and 2 applied to the PCMCIA header. Whoever applies
-it should confirm the prediction against a build rather than assume it.
+**Rationale:** if the prediction holds, the consequence is a spurious match, not
+a missed one. With `test eax, eax`, dirty bits above `al` make a false `BOOL`
+read as true, so a window that is *not* the attribute-memory window could be
+wrongly treated as one and torn down, while the real attribute-memory window is
+walked past unmatched. Fixing it is the same change as Findings 1 and 2 applied
+to the PCMCIA header. Whoever applies it should confirm the prediction against a
+build rather than assume it.
 
 ## Finding 4: `-[IOPCMCIATuple data]` carries a stray semicolon and does not map
 
@@ -635,11 +668,14 @@ that order.
   a later addition that should stay; a subtler version-drift difference could in
   principle be sitting inside one of the eleven control-flow-only comparisons
   without being visible at that resolution.
-- **The scope end is 55 bytes short** of the end of the last function
-  (2088160 / `0x1FDCE0` against the 2088215 / `0x1FDD17` it should be). It cost
-  nothing measurable on IDA or Ghidra but is the most likely cause of angr's
-  zero-size entry, and it should be corrected in
-  `tools/binrecon/profiles/kernel-driverkit.json` before the analysis is re-run.
+- **The scope end used for this pass was 55 bytes short** of the end of the last
+  function (2088160 / `0x1FDCE0` against the 2088215 / `0x1FDD17` it should have
+  been), because the old value was computed from the last function's entry point
+  rather than its extent. It cost nothing measurable on IDA or Ghidra but is the
+  most likely cause of angr's zero-size entry at `0x1FDCD4`. **Fixed in
+  `013c4787`.** The published analyses in `tools/binrecon/out/kernel-driverkit/`
+  were produced under the old scope; a re-analysis under the corrected scope
+  would be needed for that entry to clear.
 - **The two stub headers were not audited beyond what these five modules need.**
   `src/kernel-7/driverkit/i386/PCIKernBus.h` and `.../PCMCIAKernBus.h` are stubs
   in their entirety. The only other importer in the tree is

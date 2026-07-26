@@ -34,10 +34,10 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
  *
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
- *               - offset 0x04: VM map
  *               - offset 0x20: Buffer address
  *               - offset 0x24: Byte count
  *               - offset 0x3c: Flags (bit 1 = read/write direction)
+ *               - offset 0x58: VM map
  *   dmaStruct - Pointer to DMA transfer structure to be filled in
  *
  * Returns:
@@ -52,14 +52,13 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 	void *physAddr;
 	unsigned int physAddrInt;
 	BOOL isRead;
-	BOOL isEISA;
 	int result;
 
 	// Get byte count from cmdParams (offset 0x24)
 	byteCount = *(unsigned int *)((char *)cmdParams + 0x24);
 
-	// Get VM map from cmdParams (offset 0x04)
-	vmMap = *(unsigned int *)((char *)cmdParams + 0x04);
+	// Get VM map from cmdParams (offset 0x58)
+	vmMap = *(unsigned int *)((char *)cmdParams + 0x58);
 
 	// Get buffer address from cmdParams (offset 0x20)
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
@@ -71,8 +70,11 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 	result = 0;
 
 	// Check if byte count is valid (<= 1MB for EISA, <= page_size for ISA)
+	// The reference re-sends isEISAPresent for each decision below rather
+	// than caching it; matched here since these are independent objc_msgSend
+	// calls in the disassembly (0x1590, 0x15df, 0x1679).
 	if ((byteCount < 0x100001) &&
-	    ((isEISA = [self isEISAPresent]) || (byteCount <= page_size))) {
+	    ([self isEISAPresent] || (byteCount <= page_size))) {
 
 		// Get read/write flag from cmdParams (offset 0x3c, bit 1)
 		isRead = (*(unsigned char *)((char *)cmdParams + 0x3c) & 0x02) != 0;
@@ -90,7 +92,7 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 		_flags &= 0xf7;
 
 		// Check if we need to use bounce buffer (ISA only)
-		if (!isEISA) {
+		if (![self isEISAPresent]) {
 			// Set bit 3 of controller flags (using bounce buffer)
 			_flags |= 0x08;
 
@@ -133,7 +135,7 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 		_dma_mask_chan(2);
 
 		// Set transfer mode (ISA vs EISA)
-		_dma_chan_xfer_mode(2, !isEISA);
+		_dma_chan_xfer_mode(2, ![self isEISAPresent]);
 
 		// Start the DMA transfer
 		result = dma_xfer_chan(2, (dma_xfer_t *)dmaStruct);
@@ -163,9 +165,9 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
  *
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
- *               - offset 0x04: VM map
  *               - offset 0x20: Buffer address
  *               - offset 0x24: Byte count
+ *               - offset 0x58: VM map
  *   dmaStruct - Pointer to DMA transfer structure
  *
  * Returns:
@@ -184,7 +186,7 @@ extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 	unsigned int requestedBytes;
 
 	// Get VM map and buffer address from cmdParams
-	vmMap = *(unsigned int *)((char *)cmdParams + 0x04);
+	vmMap = *(unsigned int *)((char *)cmdParams + 0x58);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address

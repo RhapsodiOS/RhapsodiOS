@@ -37,8 +37,8 @@
 - (int)release;
 
 /* State management */
-- (unsigned long)getState;
 - (int)setState:(unsigned long)state mask:(unsigned long)mask;
+- (unsigned long)getState;
 - (int)watchState:(unsigned long *)state mask:(unsigned long)mask;
 
 /* Event operations */

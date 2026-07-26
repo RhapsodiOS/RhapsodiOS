@@ -107,19 +107,6 @@ static char _PseudoDeviceLoaded = '\0';
 
 
 /*
- * getState - Get current device state
- * Returns: Current state value (always 0)
- *
- * PDPseudo devices have no state - always returns 0
- */
-- (unsigned long)getState
-{
-    /* Pseudo devices have no state */
-    return 0;
-}
-
-
-/*
  * setState:mask: - Set device state with mask
  * state: New state value
  * mask: Bits to modify
@@ -131,6 +118,19 @@ static char _PseudoDeviceLoaded = '\0';
 {
     /* Operation not supported */
     return 0xfffffd42;  /* -702 decimal */
+}
+
+
+/*
+ * getState - Get current device state
+ * Returns: Current state value (always 0)
+ *
+ * PDPseudo devices have no state - always returns 0
+ */
+- (unsigned long)getState
+{
+    /* Pseudo devices have no state */
+    return 0;
 }
 
 

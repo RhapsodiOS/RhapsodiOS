@@ -530,7 +530,7 @@ IOLog ("InitSCSITape: not a tape\n");
 	senseBuf: _senseDataPtr];
 
     if(scsiReq.driverStatus == SR_IOST_GOOD) {
-	unsigned required = (char *)(&alignedReply->ir_zero3[0]) -
+	unsigned required = (char *)(&alignedReply->ir_zero3) -
 	    (char *)(alignedReply);
 	if(scsiReq.bytesTransferred < required) {
 	    IOLog("%s: bad DMA Transfer count (%d) on Inquiry\n",

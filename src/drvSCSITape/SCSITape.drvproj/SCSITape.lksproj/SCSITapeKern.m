@@ -79,7 +79,7 @@ extern id		stIdMap[];
  * Add ourself to cdevsw. Called from SCSIGeneric layer at probe time.
  */
 extern int		nulldev();
-extern int		nodev();
+extern int		enodev();
 
 static int stMajor = -1;
 
@@ -100,12 +100,12 @@ st_devsw_init()
 	(IOSwitchFunc) stread,
 	(IOSwitchFunc) stwrite,
 	(IOSwitchFunc) stioctl,
-	(IOSwitchFunc) nodev,
+	(IOSwitchFunc) enodev,
 	(IOSwitchFunc) nulldev,		// reset
 	(IOSwitchFunc) nulldev,
-	(IOSwitchFunc) nodev,		// mmap
-	(IOSwitchFunc) nodev,		// getc
-	(IOSwitchFunc) nodev);		// putc
+	(IOSwitchFunc) enodev,		// mmap
+	(IOSwitchFunc) enodev,		// getc
+	(IOSwitchFunc) enodev);		// putc
     if(rtn < 0) {
 	IOLog("st: Can't find space in devsw\n");
     }
@@ -482,7 +482,7 @@ stioctl(dev_t dev,
 	     * sense data.
 	     */
 	    if(ST_EXABYTE(dev))
-		mgp->mt_type = MT_ISEXB;
+		mgp->mt_type = MT_ISEXABYTE;
 	    else
 		mgp->mt_type = MT_ISGS;
 	    mgp->mt_dsreg = ((u_char *)erp)[2];
@@ -495,7 +495,7 @@ stioctl(dev_t dev,
 #if	__BIG_ENDIAN__
 	    mgp->mt_resid = (u_int) erp->er_info;
 #elif	__LITTLE_ENDIAN__
-	    mgp->mt_resid = read_er_info_low_24();
+	    mgp->mt_resid = read_er_info_low_24(erp);
 	    mgp->mt_resid |= (u_int) erp->er_info3;
 #endif
 

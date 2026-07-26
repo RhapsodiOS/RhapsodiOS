@@ -42,8 +42,11 @@ examined at block-and-call-target level only, and none was skipped. `unexamined`
 per the ledger convention, only for a function that diverges.
 
 Source-map buckets: **mapped 88, unmapped 22, duplicate_candidates 3, boundary_disputed 0.**
-The 22 unmapped are not missing code -- they are functions whose reference name does not
-exist in our source because the name or the method kind differs (Sections 4 and 7). The 3
+**19 of the 22** unmapped entries are not missing code -- they are functions whose
+reference name does not exist in our source because the name or the method kind differs
+(Sections 4 and 7); Task 8 fixes names there, it does not write new functions. The
+remaining **3** (15728, 15740, 15752) are genuinely absent from our source by design:
+build-generated Kernel Server glue and libgcc's `__divdi3`. The 3
 duplicate candidates are an artefact of the brace damage in Section 4.
 
 ## 2. Stated limitations
@@ -282,7 +285,7 @@ source-level `static`, not a `kl_ld` artifact. See Finding 45.
 
 ### From pass 3
 
-### 3.1 `_dtrDownDelay` — `__TEXT,__const`, 16604, 8 bytes
+### 5.6 `_dtrDownDelay` — `__TEXT,__const`, 16604, 8 bytes
 
 File image (offset 19000): `02 00 00 00 00 00 00 00`.
 
@@ -310,7 +313,7 @@ are added, then the microsecond field is normalised. Our source hardcodes only
 the seconds half (`target_time.tv_sec += 2;` at `ttyiops.m:847`) and does not
 carry the constant at all. See F59.
 
-### 3.2 `_ttyiops_devsw` — `__DATA,__data`, 33072, 56 bytes
+### 5.7 `_ttyiops_devsw` — `__DATA,__data`, 33072, 56 bytes
 
 56 bytes is exactly `sizeof(struct cdevsw)` for this kernel
 (`src/kernel-7/bsd/sys/conf.h`, 14 fields × 4). Image bytes and the relocations
@@ -802,7 +805,7 @@ second, alphabetised set `IMP_condition` … `IMP_unlockWith`, and all eight
 read *that* set. Nothing assigns it. Every wrapper call is therefore a call through a
 NULL function pointer.
 
-**Reference behaviour** — see §4.1: eight globals in `__DATA,__bss` at 33128–33156,
+**Reference behaviour** — see Section 5: eight globals in `__DATA,__bss` at 33128–33156,
 written by `+initialize` and read by the wrappers. Only eight symbols exist in that
 address range; there is no second set.
 
@@ -1063,7 +1066,7 @@ acquire `cond_interlock` (offset 4) the same way, store the argument into `condi
 **Finding 9 — `-unlock` returns `id`, and so do `AIOPSSCL_unlock` and
 `AIOPSSCL_unlockWith`.**
 
-Detailed evidence in §4.2. The body otherwise matches ours instruction for instruction:
+Detailed evidence in Section 5. The body otherwise matches ours instruction for instruction:
 acquire `sleep_interlock`, `thread_wakeup_prim(&conditionVar, 1, 0)`, clear `want_lock`
 (offset 17), and if `waiting` (offset 18) is set, clear it and `thread_wakeup_prim(self,
 0, 0)`, then release `sleep_interlock`.
@@ -2781,7 +2784,7 @@ project number), and reproducing them verbatim would be a lie about provenance �
 drvBPF made the same call for `_BPF_VERS_STRING`. The `Dialin` key and the help-file
 extension are content, not stamps, and should match.
 
-**Honest limit:** see §4. I could not find any consumer of `"Support Dialin"` in this
+**Honest limit:** see Section 8. I could not find any consumer of `"Support Dialin"` in this
 driver or anywhere in `src/`, so I cannot demonstrate that the capitalisation causes a
 behavioural difference. The case for fixing it is fidelity to the shipped table.
 
@@ -2831,7 +2834,7 @@ the 23 pairs above verbatim. `struct speedtab` is declared in `<sys/tty.h>`.
 
 ### Finding 59 — `_dtrDownDelay` is absent; the 2-second DTR-down delay is inlined
 
-**Reference:** see §3.1 (12659–12716). Both halves of a file-scope
+**Reference:** see Section 5.6 (12659–12716). Both halves of a file-scope
 `struct timeval` at 16604 are added to `tp->[0x14c]`/`[0x150]` before the
 microsecond carry.
 
@@ -2862,7 +2865,7 @@ dtrDownDelay.tv_usec;`. Runtime behaviour is unchanged; this is a fidelity fix.
 
 ### Finding 60 — `ttyiops_devsw` is absent from our source entirely
 
-**Reference:** `__DATA,__data` 33072, 56 bytes, decoded slot by slot in §3.2.
+**Reference:** `__DATA,__data` 33072, 56 bytes, decoded slot by slot in Section 5.7.
 
 **Our source:** no `cdevsw` initialiser anywhere in `ttyiops.m`. Our
 `portServeropen`/`portServerclose`/`portServerioctl` wrappers
@@ -2874,7 +2877,7 @@ wrappers are installed alongside is missing.
 once from `_portServeropen`+37 (reference address 6149). Without it the driver
 cannot register a character device.
 
-**Disposition: fix.** Add the definition exactly as written in §3.2, at file
+**Disposition: fix.** Add the definition exactly as written in Section 5.7, at file
 scope in `ttyiops.m`, before `portServeropen`. Coordinate with part 2's finding
 on `_portServeropen`, which is what consumes it.
 
@@ -3503,7 +3506,7 @@ everything below 0x53.
 
 ### Finding 78 — `ttyiops_waitForDCD` is defined twice; delete the stub
 
-**Reference.** One `_ttyiops_waitForDCD` at 12880, 160 bytes, fully decoded in §4.
+**Reference.** One `_ttyiops_waitForDCD` at 12880, 160 bytes, fully decoded in Section 5.
 
 **Our source.** Two definitions:
 - `ttyiops.m:1099–1153` — a complete body that matches the reference instruction
@@ -3702,7 +3705,7 @@ Stated plainly, without hedging elsewhere in this document.
 
 ### From pass 2
 
-1. **Who reads `"Support Dialin"`.** Covered at length in §4. The string is absent from
+1. **Who reads `"Support Dialin"`.** Covered at length in Section 8. The string is absent from
    `PortServer_reloc`, from `PortServer`, from `pdservd` and from every source file in
    this repository. I can show our table differs from Apple's by one character; I cannot
    show what breaks.

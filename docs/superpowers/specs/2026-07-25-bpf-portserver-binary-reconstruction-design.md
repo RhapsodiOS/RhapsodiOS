@@ -343,7 +343,24 @@ function discovery are claims, not truth. Conflicting boundaries go to
 `boundary_disputed` for human resolution.
 
 **Ghidra rejecting legacy Mach-O input** falls back to deterministic raw i386
-import using parsed sections. Java 21 and Ghidra 12.1 remain mandatory.
+import using parsed sections.
+
+That fallback does not save these two binaries. Execution found that Ghidra
+fails on both, deterministically, with
+`external relocation symbol association is missing`: the fallback import does
+not associate unresolved external relocation targets with their symbol names,
+and `BPF_reloc` has 40 undefined externals while `PortServer_reloc` has 59.
+Java 21 and Ghidra 12.1 are installed and working, so this is a toolchain
+limitation rather than a setup fault, and repairing it would mean changing
+`binrecon`'s Ghidra adapter — which §3.3 rules out. Ghidra is therefore
+disabled in both profiles, following the `parallelport`, `ps2keyboard`,
+`serialpointingdevice`, `vga-psdrvr`, and `kernel-driverkit` runs.
+
+The cost is narrower than it looks. IDA is authoritative for the function
+partition and every source-map step already reads only
+`analysis-reference-ida.json`. What is lost is the second opinion on function
+extent: `boundary_disputed` now rests on IDA versus angr, and angr's `CFGFast`
+is the weaker of the two. Both `divergences.md` files state this.
 
 **angr `CFGFast` misses on indirect control flow** are recorded as CFG errors.
 They are never read as "function absent."

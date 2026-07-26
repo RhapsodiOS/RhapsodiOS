@@ -6,7 +6,7 @@
 
 **Architecture:** Each driver gets a *report pass* — run the three analyzers, build a `source-map.json` partitioning every reference function into mapped/unmapped/disputed/duplicate buckets, disassembly-diff the mapped ones, diff the shipped config table and strings file, then write `divergences.md` and `ledger.json` — followed by a separate *fix pass*. There is no guest build and no compile gate; the fix pass is verified by re-reading each repaired function against the reference disassembly and re-validating the source map. Smallest driver first, carried all the way through before the second starts.
 
-**Tech Stack:** Python 3.13.9, binrecon (`tools/binrecon`), IDA Professional 9.2, Ghidra 12.1 on Java 21, angr 9.3.0, pytest 9.1.1, jsonschema 4.26.0.
+**Tech Stack:** Python 3.13.9, binrecon (`tools/binrecon`), IDA Professional 9.2, angr 9.3.0 (Ghidra 12.1 disabled — see Global Constraints), pytest 9.1.1, jsonschema 4.26.0.
 
 **Spec:** `docs/superpowers/specs/2026-07-25-bpf-portserver-binary-reconstruction-design.md`
 
@@ -20,6 +20,7 @@
 - **Test baseline is 662 passed, 4 skipped, 0 failed (666 collected).** Verify with `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`. Any failure you see is yours.
 - **This plan adds no tests, by design** — it adds no code to `binrecon`. A task that ends with the baseline unchanged is correct, not a coverage gap.
 - IDA `version` must be `9.2`; Ghidra `version` must be `12.1` with a Java 21 `java.exe`. The adapters reject other versions.
+- **Ghidra is disabled in both profiles.** It cannot analyze either reference binary: its raw-i386 fallback import fails validation with `external relocation symbol association is missing`, deterministically, on both `BPF_reloc` (40 undefined externals) and `PortServer_reloc` (59). Java 21 and Ghidra 12.1 are both installed and working — this is not an environment fault. Repairing it means editing `adapters/ghidra.py` and `adapters/ghidra/ExportAnalysis.java`, which is outside this plan's scope and collides with concurrent work in the main tree. Precedent for running without Ghidra: the `parallelport`, `ps2keyboard`, `serialpointingdevice`, `vga-psdrvr`, and `kernel-driverkit` runs. **Consequence to record in both `divergences.md` files:** cross-analyzer boundary checking rests on IDA versus angr alone, and angr's `CFGFast` is the weaker of the two, so `boundary_disputed` is less sensitive than a three-analyzer run would be. IDA remains authoritative for the function partition, which is what every source-map step already uses.
 - Reference binaries live under `C:\Users\raynorpat\Downloads\test\Drivers\i386` and are **never** committed.
 - **Never point a profile's `rebuilt` at the reference.** That is what produced the false `exact-image` pass in the retired `tools/binrecon/out/eisabus/` run. Both profiles here are reference-only: they omit `rebuilt` entirely.
 - Architecture is `i386`, endianness `little`, for both profiles.
@@ -46,7 +47,7 @@ Both are `MH_PRELOAD` (Mach-O file type 5), i386, little-endian.
 
 ## Reference function inventory
 
-Sizes below are derived from the gap to the next `__TEXT,__text` symbol. IDA's own `size` field is authoritative where the two disagree; a disagreement between IDA and Ghidra is a `boundary_disputed` entry, not something to average.
+Sizes below are derived from the gap to the next `__TEXT,__text` symbol. IDA's own `size` field is authoritative where the two disagree; a disagreement between IDA and angr is a `boundary_disputed` entry, not something to average.
 
 ### `BPF_reloc`, `__TEXT,__text` = 6296 bytes, 30 functions
 
@@ -179,7 +180,7 @@ Create `tools/binrecon/profiles/bpf.json`. This is `profiles/pcmciabus.json` wit
       "version": "9.2"
     },
     "ghidra": {
-      "enabled": true,
+      "enabled": false,
       "executable": "D:/ghidra/support/analyzeHeadless.bat",
       "timeout_seconds": 900,
       "version": "12.1"
@@ -223,7 +224,7 @@ Create `tools/binrecon/profiles/portserver.json`, identical but for two fields:
       "version": "9.2"
     },
     "ghidra": {
-      "enabled": true,
+      "enabled": false,
       "executable": "D:/ghidra/support/analyzeHeadless.bat",
       "timeout_seconds": 900,
       "version": "12.1"
@@ -286,7 +287,7 @@ git commit -m "binrecon: add drvBPF and drvPortServer reference-only profiles"
 
 **Interfaces:**
 - Consumes: `tools/binrecon/profiles/bpf.json` from Task 1.
-- Produces: `tools/binrecon/out/bpf/published/analysis-reference-{ida,ghidra,angr}.json` and `consensus-reference.json`, which Task 3 reads.
+- Produces: `tools/binrecon/out/bpf/published/analysis-reference-{ida,angr}.json` and `consensus-reference.json`, which Task 3 reads.
 
 - [ ] **Step 1: Run the analyzers**
 
@@ -298,9 +299,9 @@ Expected: **exit code 1**, with `run-summary.json` showing `"complete": true`, `
 
 Exit 1 is the correct outcome for every reference-only run and is not a failure. `runner.py:259` computes `expected_pass = bool(comparisons) and all(...)`, so with nothing compared the acceptance is `false`, and line 262 *enforces* that it stay `false` — the tool refuses to report acceptance as passed when no comparison happened.
 
-**The real gate for this task** is: `"complete": true`, a `published/` directory holding the three `analysis-reference-*.json` files plus `consensus-reference.json`, and `"reference"` non-null for all three analyzers. Judge success on those, not the exit code.
+**The real gate for this task** is: `"complete": true`, a `published/` directory holding the two `analysis-reference-*.json` files plus `consensus-reference.json`, and `"reference"` non-null for both analyzers. Judge success on those, not the exit code.
 
-If Ghidra's Mach-O loader rejects the input, the adapter falls back to deterministic raw i386 import — expected, not a failure. If a run times out, the summary is marked `"complete": false`; fix the cause and re-run rather than proceeding.
+Ghidra is disabled for both profiles (see Global Constraints), so only IDA and angr run. If a run times out, the summary is marked `"complete": false`; fix the cause and re-run rather than proceeding.
 
 **Do not launch `analyze` from a subagent that then exits** — the run is a long-lived child process and dies with its parent. Run it as a detached background task owned by the session.
 
@@ -311,14 +312,14 @@ ls tools/binrecon/out/bpf/published/
 git status --porcelain tools/binrecon/out
 ```
 
-Expected: the four JSON files; `git status` prints nothing, confirming the `.gitignore` rules at lines 17 (`tools/binrecon/out/`) and 19 (`out/`) hold.
+Expected: the three JSON files; `git status` prints nothing, confirming the `.gitignore` rules at lines 17 (`tools/binrecon/out/`) and 19 (`out/`) hold.
 
 - [ ] **Step 3: Confirm the analyzers found all thirty functions**
 
 ```bash
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
 import json
-for analyzer in ('ida', 'ghidra', 'angr'):
+for analyzer in ('ida', 'angr'):
     path = f'tools/binrecon/out/bpf/published/analysis-reference-{analyzer}.json'
     functions = json.load(open(path))['functions']
     print(analyzer, len(functions))
@@ -326,7 +327,7 @@ for analyzer in ('ida', 'ghidra', 'angr'):
 "
 ```
 
-Expected from IDA and Ghidra: 30 functions whose addresses and sizes match the inventory table above. angr's `CFGFast` may report fewer or differ on sizes; that is recorded, not corrected. Any IDA/Ghidra disagreement on a boundary goes to `boundary_disputed` in Task 3.
+Expected from IDA: 30 functions whose addresses and sizes match the inventory table above. angr's `CFGFast` may report fewer or differ on sizes; that is recorded, not corrected. Any IDA/angr disagreement on a boundary goes to `boundary_disputed` in Task 3.
 
 `_bpf_filter` at 4276 is 1840 bytes and is a large switch over BPF opcodes. If an analyzer splits it, that is a boundary dispute, not two functions.
 
@@ -379,7 +380,7 @@ Anything else unmapped is a finding for Step 6. Before writing it up, apply the 
 
 - [ ] **Step 3: Disassembly-diff the three `BPF.m` methods**
 
-The analyses contain **disassembly, not C decompilation**. Each function carries `instructions` (address, `bytes`, `mnemonic`, `operands`, `normalized_operands`, `relocations`), `blocks` for control flow, and `calls` with resolved targets. Ghidra additionally exposes `extensions.ghidra.decompiler_pcode`, which is p-code IR rather than C. Compare at the instruction level — it is more precise than decompiled C, not less.
+The analyses contain **disassembly, not C decompilation**. Each function carries `instructions` (address, `bytes`, `mnemonic`, `operands`, `normalized_operands`, `relocations`), `blocks` for control flow, and `calls` with resolved targets. Compare at the instruction level — it is more precise than decompiled C, not less.
 
 Reading disassembly against Objective-C source: a method's arguments arrive on the stack (`[ebp+self]`, `[ebp+arg]`), instance variables load as fixed offsets off `self`, and message sends appear as `calls` to `objc_msgSend` or `objc_msgSendSuper`.
 
@@ -669,7 +670,7 @@ Split into more than one commit if the findings group naturally — for example,
 
 **Interfaces:**
 - Consumes: `tools/binrecon/profiles/portserver.json` from Task 1.
-- Produces: `tools/binrecon/out/portserver/published/analysis-reference-{ida,ghidra,angr}.json` and `consensus-reference.json`, which Task 6 reads.
+- Produces: `tools/binrecon/out/portserver/published/analysis-reference-{ida,angr}.json` and `consensus-reference.json`, which Task 6 reads.
 
 - [ ] **Step 1: Run the analyzers**
 
@@ -677,9 +678,9 @@ Split into more than one commit if the findings group naturally — for example,
 BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Drivers/i386/PortServer.config/PortServer_reloc" PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m binrecon analyze --profile tools/binrecon/profiles/portserver.json
 ```
 
-Expected: **exit code 1** with `"complete": true`, for the reason given in Task 2 Step 1. The gate is the same: `"complete": true`, four files in `published/`, `"reference"` non-null for all three analyzers.
+Expected: **exit code 1** with `"complete": true`, for the reason given in Task 2 Step 1. The gate is the same: `"complete": true`, three files in `published/`, `"reference"` non-null for both analyzers.
 
-This binary is more than twice the size of `BPF_reloc`; if 900 seconds proves short for Ghidra, raise `timeout_seconds` in the profile and re-run rather than accepting an incomplete summary. Record any raise in the commit message.
+This binary is more than twice the size of `BPF_reloc`; if 900 seconds proves short for IDA, raise `timeout_seconds` in the profile and re-run rather than accepting an incomplete summary. Record any raise in the commit message.
 
 **Do not launch `analyze` from a subagent that then exits.**
 
@@ -690,21 +691,21 @@ ls tools/binrecon/out/portserver/published/
 git status --porcelain tools/binrecon/out
 ```
 
-Expected: the four JSON files; `git status` prints nothing.
+Expected: the three JSON files; `git status` prints nothing.
 
 - [ ] **Step 3: Confirm the analyzers found all 113 functions**
 
 ```bash
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -c "
 import json
-for analyzer in ('ida', 'ghidra', 'angr'):
+for analyzer in ('ida', 'angr'):
     path = f'tools/binrecon/out/portserver/published/analysis-reference-{analyzer}.json'
     functions = json.load(open(path))['functions']
     print(analyzer, len(functions))
 "
 ```
 
-Expected 113 from IDA and Ghidra. angr may differ.
+Expected 113 from IDA. angr may differ.
 
 Two specific risks to check rather than assume:
 

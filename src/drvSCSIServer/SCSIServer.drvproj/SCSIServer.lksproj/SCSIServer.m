@@ -143,15 +143,12 @@ static Protocol *_scsiServerProtocols[] = {
 
     /* Register self as SCSI controller
      * iVar1 = FUN_000001d0(param_1, s_registerSCSIController:_000059a8)
-     * This appears to be [self registerSCSIController:self] but that doesn't make sense.
-     * Actually, looking at the decompiled code, this checks if registration is possible.
-     * The return value check (iVar1 != 0) suggests this is a capability check.
-     *
-     * However, registerSCSIController: expects a controller object, not self.
-     * This might be checking some capability or doing self-registration.
-     * For now, let's interpret this as a registration capability check.
+     * The reference disassembly leaves r3/r5 (self/deviceDescription) untouched
+     * between entry and this call, so the argument is the incoming
+     * deviceDescription, matching probe:'s own use of registerSCSIController:
+     * on subsequent probes.
      */
-    registerResult = (int)[self registerSCSIController:self];
+    registerResult = (int)[self registerSCSIController:deviceDescription];
 
     if (registerResult == 0) {
         /* Registration check failed - free and return */

@@ -83,7 +83,7 @@ typedef struct {
 /*
  * Controller operations
  */
-- (IOReturn)_fcCmdXfr:(void *)cmdParams;
+- (IOReturn)fcCmdXfr:(void *)cmdParams;
 
 @end
 

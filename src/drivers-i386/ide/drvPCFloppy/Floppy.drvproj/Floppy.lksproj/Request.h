@@ -17,17 +17,17 @@
 /*
  * Abort all subrequests on a cylinder.
  */
-- (void)_abortSubrequestsOnCylinder:(unsigned)cylinderNumber;
+- (void)abortSubrequestsOnCylinder:(unsigned)cylinderNumber;
 
 /*
  * Check cylinder state for a subrequest.
  */
-- (IOReturn)_checkCylinderStateForSubrequest:(id)subrequest;
+- (IOReturn)checkCylinderStateForSubrequest:(id)subrequest;
 
 /*
  * Construct an I/O request.
  */
-- (id)_constructRequest:(IOReturn *)statusPtr
+- (id)constructRequest:(IOReturn *)statusPtr
              blockStart:(unsigned)blockStart
               byteCount:(unsigned)byteCount
                  buffer:(void *)buffer
@@ -36,32 +36,32 @@
 /*
  * Execute an I/O request.
  */
-- (IOReturn)_executeRequest:(id)request;
+- (IOReturn)executeRequest:(id)request;
 
 /*
  * Execute a subrequest.
  */
-- (IOReturn)_executeSubrequest:(id)subrequest;
+- (IOReturn)executeSubrequest:(id)subrequest;
 
 /*
  * Free an I/O request.
  */
-- (void)_freeRequest:(id)request;
+- (void)freeRequest:(id)request;
 
 /*
  * Impose cylinder state for a subrequest.
  */
-- (IOReturn)_imposeCylinderStateForSubrequest:(id)subrequest;
+- (IOReturn)imposeCylinderStateForSubrequest:(id)subrequest;
 
 /*
  * Pop and process subrequests waiting on a cylinder.
  */
-- (void)_popSubrequestsOnCylinder:(unsigned)cylinderNumber;
+- (void)popSubrequestsOnCylinder:(unsigned)cylinderNumber;
 
 /*
  * Remove imposed cylinder state for a subrequest.
  */
-- (IOReturn)_unimposeCylinderStateForSubrequest:(id)subrequest;
+- (IOReturn)unimposeCylinderStateForSubrequest:(id)subrequest;
 
 @end
 

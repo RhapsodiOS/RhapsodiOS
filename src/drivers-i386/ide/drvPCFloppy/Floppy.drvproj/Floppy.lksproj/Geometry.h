@@ -31,7 +31,7 @@ extern unsigned int *fdGetSectSizeInfo(unsigned int density);
  * Returns:
  *   Capacity value corresponding to the disk size
  */
-+ (unsigned int)_capacityFromSize:(unsigned int)diskSize;
++ (unsigned int)capacityFromSize:(unsigned int)diskSize;
 
 /*
  * Class method: Get geometry from capacity.
@@ -42,7 +42,7 @@ extern unsigned int *fdGetSectSizeInfo(unsigned int density);
  * Returns:
  *   Pointer to geometry structure for the given capacity
  */
-+ (void *)_geometryOfCapacity:(unsigned int)capacity;
++ (void *)geometryOfCapacity:(unsigned int)capacity;
 
 /*
  * Class method: Create size list from capacities.
@@ -54,23 +54,23 @@ extern unsigned int *fdGetSectSizeInfo(unsigned int density);
  * Returns:
  *   IOReturn status code
  */
-+ (IOReturn)_sizeListFromCapacities:(unsigned int)capacities
++ (IOReturn)sizeListFromCapacities:(unsigned int)capacities
                            sizeList:(unsigned int *)sizeList;
 
 /*
  * Calculate blocks remaining to end of cylinder from given block number.
  */
-- (unsigned)_blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber;
+- (unsigned)blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber;
 
 /*
  * Get cache pointer from block number.
  */
-- (void *)_cachePointerFromBlockNumber:(unsigned)blockNumber;
+- (void *)cachePointerFromBlockNumber:(unsigned)blockNumber;
 
 /*
  * Get cache pointer from cylinder number.
  */
-- (void *)_cachePointerFromCylinderNumber:(unsigned)cylinderNumber;
+- (void *)cachePointerFromCylinderNumber:(unsigned)cylinderNumber;
 
 /*
  * Calculate cylinder number from block number and get head/sector.

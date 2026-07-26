@@ -16,7 +16,7 @@
  * Abort pending volume check request.
  * From decompiled code: empty function (no abort needed).
  */
-- (void)_abortRequest
+- (void)abortRequest
 {
 	// No operation required
 	return;
@@ -26,7 +26,7 @@
  * Handle disk became ready event.
  * From decompiled code: empty function (handling done elsewhere).
  */
-- (void)_diskBecameReady
+- (void)diskBecameReady
 {
 	// No operation required
 	return;
@@ -36,7 +36,7 @@
  * Check if disk is formatted.
  * From decompiled code: checks bit 0 of flags.
  */
-- (BOOL)_isFormatted
+- (BOOL)isFormatted
 {
 	// Return bit 0 of flags (offset 0x18c)
 	return _flags & 1;
@@ -46,7 +46,7 @@
  * Check if this is a physical device.
  * From decompiled code: checks bit 1 of offset 0x16c.
  */
-- (BOOL)_isPhysical
+- (BOOL)isPhysical
 {
 	// Check bit 1 of _regFlags
 	// Returns YES (1) if bit 1 is clear, NO (0) if bit 1 is set
@@ -60,7 +60,7 @@
  * Check if disk is removable.
  * From decompiled code: always returns YES.
  */
-- (BOOL)_isRemovable
+- (BOOL)isRemovable
 {
 	// Floppy disks are always removable
 	return YES;
@@ -70,7 +70,7 @@
  * Check if disk is write protected.
  * From decompiled code: checks bit 2 of flags.
  */
-- (BOOL)_isWriteProtected
+- (BOOL)isWriteProtected
 {
 	// Return bit 2 of flags (offset 0x18c)
 	return _flags & 4;
@@ -80,7 +80,7 @@
  * Check if manual polling is needed for disk change detection.
  * From decompiled code: returns opposite of canPollInexpensively.
  */
-- (BOOL)_needsManualPolling
+- (BOOL)needsManualPolling
 {
 	BOOL canPollInexpensively;
 	
@@ -95,7 +95,7 @@
  * Get next logical disk in chain.
  * From decompiled code: delegates to disk object at offset 0x108.
  */
-- (id)_nextLogicalDisk
+- (id)nextLogicalDisk
 {
 	id diskObject;
 	id nextDisk;
@@ -113,7 +113,7 @@
  * Register for volume check notifications.
  * From decompiled code: gets character and block devices, registers with volCheck.
  */
-- (IOReturn)_registerVolCheck
+- (IOReturn)registerVolCheck
 {
 	id characterDev;
 	id blockDev;
@@ -134,7 +134,7 @@
  * Unregister from volume check notifications.
  * From decompiled code: calls volCheckUnregister.
  */
-- (IOReturn)_unregisterVolCheck
+- (IOReturn)unregisterVolCheck
 {
 	// Unregister from volume check subsystem
 	volCheckUnregister(self);
@@ -146,7 +146,7 @@
  * Update physical disk parameters.
  * From decompiled code: returns 0 (no operation).
  */
-- (IOReturn)_updatePhysicalParameters
+- (IOReturn)updatePhysicalParameters
 {
 	// No operation required for volCheck interface
 	// Actual work done by internal methods
@@ -157,7 +157,7 @@
  * Update ready state.
  * From decompiled code: polls media and returns ready state.
  */
-- (int)_updateReadyState
+- (int)updateReadyState
 {
 	BOOL mediaPresent;
 	int readyState;

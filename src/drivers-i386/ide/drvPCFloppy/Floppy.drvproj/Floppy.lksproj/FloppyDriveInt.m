@@ -216,7 +216,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Allocate disk structure.
  * From decompiled code: determines disk type from geometry and allocates IOFloppyDisk.
  */
-- (IOReturn)_allocateDisk
+- (IOReturn)allocateDisk
 {
 	id diskObject;
 	unsigned diskType = 1;  // Default type
@@ -283,7 +283,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Format a track.
  * From decompiled code: formats a track with C/H/R/N sector descriptors.
  */
-- (IOReturn)_fdFormatTrack : (unsigned)track
+- (IOReturn)fdFormatTrack : (unsigned)track
 		       head : (unsigned)head
 {
 	IOReturn result;
@@ -314,7 +314,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	}
 	
 	// Seek to track
-	result = [self _fdSeek:track head:head];
+	result = [self fdSeek:track head:head];
 	if (result != IO_R_SUCCESS) {
 		IOFree(allocAddr, allocSize);
 		return result;
@@ -346,7 +346,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(int *)(cmdBuffer + 0x34) = bufferSize;
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -363,7 +363,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Generate read/write command.
  * From decompiled code: builds FDC READ/WRITE DATA command structure.
  */
-- (IOReturn)_fdGenRwCmd : (unsigned)startBlock
+- (IOReturn)fdGenRwCmd : (unsigned)startBlock
 	       blockCount : (unsigned)blockCount
 		 fdIoReq : (void *)fdIoReq
 		 readFlag : (BOOL)readFlag
@@ -383,7 +383,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 
 	// Convert logical block to physical C/H/R
 	// This fills in cmdBytes[2], cmdBytes[3], cmdBytes[4] (C, H, R)
-	[self _fdLogToPhys:startBlock cmdp:cmdBytes];
+	[self fdLogToPhys:startBlock cmdp:cmdBytes];
 
 	// Build command byte 0: command code with flags
 	// READ DATA = 6 (0x06), WRITE DATA = 5 (0x05)
@@ -402,9 +402,9 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	cmdBytes[1] = (cmdBytes[1] & 0xfc) | (unit & 3);  // Unit number
 
 	// Build remaining FDC READ/WRITE DATA command bytes
-	// cmdBytes[2] = C (cylinder) - already set by _fdLogToPhys
-	// cmdBytes[3] = H (head) - already set by _fdLogToPhys
-	// cmdBytes[4] = R (sector) - already set by _fdLogToPhys
+	// cmdBytes[2] = C (cylinder) - already set by fdLogToPhys
+	// cmdBytes[3] = H (head) - already set by fdLogToPhys
+	// cmdBytes[4] = R (sector) - already set by fdLogToPhys
 	cmdBytes[5] = _sectorSizeCode;  // N - sector size code (offset 0x1a0)
 	cmdBytes[6] = cmdBytes[4] + (unsigned char)blockCount - 1;  // EOT - end sector
 	cmdBytes[7] = _readWriteGapLength;  // GPL - gap length (offset 0x1a8)
@@ -437,7 +437,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Get floppy controller status.
  * From decompiled code: sends SENSE DRIVE STATUS command to FDC.
  */
-- (IOReturn)_fdGetStatus : (unsigned char *)status
+- (IOReturn)fdGetStatus : (unsigned char *)status
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -452,7 +452,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x60) = 5000;
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	// Copy status from offset 0x14 (local_14) to output parameter
 	if (status != NULL) {
@@ -466,7 +466,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Convert logical block to physical cylinder/head/sector.
  * From decompiled code: converts LBA to CHS addressing for FDC commands.
  */
-- (IOReturn)_fdLogToPhys : (unsigned)logicalBlock
+- (IOReturn)fdLogToPhys : (unsigned)logicalBlock
 		     cmdp : (void *)cmdp
 {
 	unsigned char *cmd = (unsigned char *)cmdp;
@@ -500,7 +500,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Read sector ID.
  * From decompiled code: sends READ ID command to get current sector's C/H/R/N.
  */
-- (IOReturn)_fdReadId : (unsigned)head
+- (IOReturn)fdReadId : (unsigned)head
 		statp : (unsigned char *)statp
 {
 	IOReturn result;
@@ -528,7 +528,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x3c) = 0;
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -554,7 +554,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Recalibrate drive (seek to track 0).
  * From decompiled code: sends RECALIBRATE command to move heads to track 0.
  */
-- (IOReturn)_fdRecal
+- (IOReturn)fdRecal
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -580,7 +580,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x38) = 2;    // Result bytes expected
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -594,7 +594,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Seek to specific track and head.
  * From decompiled code: sends SEEK command to position heads at specified track.
  */
-- (IOReturn)_fdSeek : (unsigned)track
+- (IOReturn)fdSeek : (unsigned)track
 		 head : (unsigned)head
 {
 	IOReturn result;
@@ -630,7 +630,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x38) = 2;    // Result bytes expected
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -644,7 +644,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Send command to floppy controller.
  * From decompiled code: sends command buffer to FDC via controller object.
  */
-- (IOReturn)_fdSendCmd : (unsigned char *)cmd
+- (IOReturn)fdSendCmd : (unsigned char *)cmd
 {
 	IOReturn result;
 	char fdcNumber;
@@ -689,7 +689,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Raw read from disk (internal).
  * From decompiled code: performs raw sector read using FDC commands.
  */
-- (IOReturn)_rawReadInt : (unsigned)startSector
+- (IOReturn)rawReadInt : (unsigned)startSector
 	       sectCount : (unsigned)sectCount
 		  buffer : (unsigned char *)buffer
 {
@@ -702,7 +702,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Generate read command
-	[self _fdGenRwCmd:startSector
+	[self fdGenRwCmd:startSector
 	       blockCount:sectCount
 		 fdIoReq:cmdBuffer
 		 readFlag:YES];  // 1 = read operation
@@ -718,7 +718,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x54) = IOVmTaskSelf();
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	// Check if actual bytes transferred matches expected
 	actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
@@ -734,7 +734,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Read/write block count operation.
  * From decompiled code: adjusts block count to not exceed track boundary.
  */
-- (IOReturn)_rwBlockCount : (unsigned)startBlock
+- (IOReturn)rwBlockCount : (unsigned)startBlock
 	       blockCount : (unsigned)blockCount
 {
 	unsigned char cmd[16];
@@ -742,7 +742,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	unsigned adjustedCount;
 	
 	// Convert logical block to physical C/H/R
-	[self _fdLogToPhys:startBlock cmdp:cmd];
+	[self fdLogToPhys:startBlock cmdp:cmd];
 	
 	// Get sector number from cmd[4] (R - sector is 1-based)
 	sector = cmd[4];
@@ -763,7 +763,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
  * Update drive ready state (internal).
  * From decompiled code: checks drive status and returns ready state.
  */
-- (void)_updateReadyStateInt
+- (void)updateReadyStateInt
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -780,7 +780,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x60) = 5000;
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	// Get status byte from offset 0x14
 	status = cmdBuffer[0x14];

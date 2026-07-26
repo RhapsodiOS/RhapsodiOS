@@ -14,7 +14,7 @@
  * Add to bytes read statistics.
  * From decompiled code: updates read statistics counters.
  */
-- (void)_addToBytesRead:(unsigned)bytes
+- (void)addToBytesRead:(unsigned)bytes
               totalTime:(unsigned long long)totalTime
              latentTime:(unsigned long long)latentTime
 {
@@ -39,7 +39,7 @@
  * Add to bytes written statistics.
  * From decompiled code: updates write statistics counters.
  */
-- (void)_addToBytesWritten:(unsigned)bytes
+- (void)addToBytesWritten:(unsigned)bytes
                  totalTime:(unsigned long long)totalTime
                 latentTime:(unsigned long long)latentTime
 {
@@ -64,7 +64,7 @@
  * Get drive name.
  * From decompiled code: returns stored drive name string.
  */
-- (const char *)_driveName
+- (const char *)driveName
 {
 	// Return pointer to drive name string
 	return _driveName;
@@ -74,13 +74,13 @@
  * Eject media (subclass responsibility).
  * From decompiled code: frees disk object and sets ready state to not ready.
  */
-- (IOReturn)_ejectMedia
+- (IOReturn)ejectMedia
 {
 	// Free the disk object and store result
 	_diskObject = [_diskObject free];
 	
 	// Set ready state to 2 (not ready)
-	[self _setLastReadyState:2];
+	[self setLastReadyState:2];
 	
 	return IO_R_SUCCESS;
 }
@@ -89,7 +89,7 @@
  * Get integer parameter values.
  * From decompiled code: returns various drive parameters based on parameterName.
  */
-- (IOReturn)_getIntValues:(unsigned *)values
+- (IOReturn)getIntValues:(unsigned *)values
              forParameter:(IOParameterName)parameterName
                     count:(unsigned *)count
 {
@@ -135,7 +135,7 @@
 		result = IO_R_SUCCESS;
 	} else {
 		// Call superclass for other parameters
-		result = [super _getIntValues:values forParameter:parameterName count:count];
+		result = [super getIntValues:values forParameter:parameterName count:count];
 	}
 	
 	return result;
@@ -145,7 +145,7 @@
  * Increment other errors counter.
  * From decompiled code: increments other error statistics.
  */
-- (void)_incrementOtherErrors
+- (void)incrementOtherErrors
 {
 	// Increment other errors counter
 	_otherErrors++;
@@ -155,7 +155,7 @@
  * Increment other retries counter.
  * From decompiled code: increments other retry statistics.
  */
-- (void)_incrementOtherRetries
+- (void)incrementOtherRetries
 {
 	// Increment other retries counter
 	_otherRetries++;
@@ -165,7 +165,7 @@
  * Increment read errors counter.
  * From decompiled code: increments read error statistics.
  */
-- (void)_incrementReadErrors
+- (void)incrementReadErrors
 {
 	// Increment read errors counter
 	_readErrors++;
@@ -175,7 +175,7 @@
  * Increment read retries counter.
  * From decompiled code: increments read retry statistics.
  */
-- (void)_incrementReadRetries
+- (void)incrementReadRetries
 {
 	// Increment read retries counter
 	_readRetries++;
@@ -185,7 +185,7 @@
  * Increment write errors counter.
  * From decompiled code: increments write error statistics.
  */
-- (void)_incrementWriteErrors
+- (void)incrementWriteErrors
 {
 	// Increment write errors counter
 	_writeErrors++;
@@ -195,7 +195,7 @@
  * Increment write retries counter.
  * From decompiled code: increments write retry statistics.
  */
-- (void)_incrementWriteRetries
+- (void)incrementWriteRetries
 {
 	// Increment write retries counter
 	_writeRetries++;
@@ -205,7 +205,7 @@
  * Get last ready state.
  * From decompiled code: returns stored ready state value.
  */
-- (unsigned)_lastReadyState
+- (unsigned)lastReadyState
 {
 	// Return ready state
 	return _lastReadyState;
@@ -215,7 +215,7 @@
  * Register device with system.
  * From decompiled code: clears statistics and registers device in device tree.
  */
-- (IOReturn)_registerDevice
+- (IOReturn)registerDevice
 {
 	IOReturn result;
 	
@@ -245,7 +245,7 @@
  * Set drive name.
  * From decompiled code: stores drive name string with length limit.
  */
-- (void)_setDriveName:(const char *)name
+- (void)setDriveName:(const char *)name
 {
 	size_t length;
 	size_t copyLength;
@@ -270,7 +270,7 @@
  * Set last ready state.
  * From decompiled code: stores ready state value.
  */
-- (void)_setLastReadyState:(unsigned)state
+- (void)setLastReadyState:(unsigned)state
 {
 	// Store ready state
 	_lastReadyState = state;

@@ -30,11 +30,11 @@ typedef struct {
  */
 @interface IODiskNEW(kernelDiskMethods)
 
-- (IODevAndIdInfoNEW *)_devAndIdInfo;
-- (void)_setDevAndIdInfo	: (IODevAndIdInfoNEW *)info;
-- (dev_t)_blockDev;
-- (dev_t)_rawDev;
-- (void)_completeTransfer	: (void *)pending
+- (IODevAndIdInfoNEW *)devAndIdInfo;
+- (void)setDevAndIdInfo	: (IODevAndIdInfoNEW *)info;
+- (dev_t)blockDev;
+- (dev_t)rawDev;
+- (void)completeTransfer	: (void *)pending
 		withStatus	: (IOReturn)status
 		actualLength	: (unsigned)actualLength;
 
@@ -45,8 +45,8 @@ typedef struct {
  */
 @interface IODiskNEW(kernelDiskMethodsPrivate)
 
-- (IOReturn)_registerUnixDisk	: (int)partition;
-- (IOReturn)_unregisterUnixDisk	: (int)partition;
+- (IOReturn)registerUnixDisk	: (int)partition;
+- (IOReturn)unregisterUnixDisk	: (int)partition;
 
 @end
 

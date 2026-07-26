@@ -74,7 +74,7 @@ void _OperationThreadStartup(id self);
 /*
  * Dummy method for IODisk protocol compliance.
  */
-- (void)_dummyIODiskPhysicalMethod;
+- (void)dummyIODiskPhysicalMethod;
 
 /*
  * Free the disk object and release resources.

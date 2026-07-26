@@ -210,7 +210,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
  * Eject disk (internal).
  * From decompiled code: seeks to track 79 to unload heads, then turns off motor.
  */
-- (IOReturn)_fdEjectInt
+- (IOReturn)fdEjectInt
 {
 	IOReturn result;
 	BOOL isFatal;
@@ -226,7 +226,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	// Retry up to 4 times (0, 1, 2, 3)
 	do {
 		// Seek to track 79 (0x4F) head 0 to unload/park heads
-		result = [self _fdSeek:0x4f head:0];
+		result = [self fdSeek:0x4f head:0];
 
 		if (result != IO_R_SUCCESS) {
 			// Check if this is the last retry (4th attempt)
@@ -268,7 +268,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	*(unsigned *)(cmdBuffer + 0x5c) = 4;
 
 	// Send command to FDC
-	[self _fdSendCmd:cmdBuffer];
+	[self fdSendCmd:cmdBuffer];
 
 	// Set last ready state to 2 (not ready/ejected)
 	[self setLastReadyState:2];
@@ -280,7 +280,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
  * Common read/write operation.
  * From decompiled code: performs read/write with retry logic and error handling.
  */
-- (IOReturn)_fdRwCommon : (BOOL)isRead
+- (IOReturn)fdRwCommon : (BOOL)isRead
 		    block : (unsigned)block
 		 blockCnt : (unsigned)blockCnt
 		   buffer : (unsigned char *)buffer
@@ -348,10 +348,10 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		}
 
 		// Adjust block count to not exceed track boundary
-		adjustedBlockCount = [self _rwBlockCount:currentBlock blockCount:blocksToTransfer];
+		adjustedBlockCount = [self rwBlockCount:currentBlock blockCount:blocksToTransfer];
 
 		// Generate FDC read/write command
-		[self _fdGenRwCmd:currentBlock
+		[self fdGenRwCmd:currentBlock
 		       blockCount:adjustedBlockCount
 			 fdIoReq:cmdBuffer
 			 readFlag:isRead];
@@ -379,7 +379,7 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		}
 
 		// Send command to FDC
-		result = [self _fdSendCmd:cmdBuffer];
+		result = [self fdSendCmd:cmdBuffer];
 
 		// Get FDC status from offset 0x40
 		fdcStatus = *(int *)(cmdBuffer + 0x40);
@@ -444,22 +444,22 @@ static void _vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 
 				if (recalCount == 6) {
 					// Give up after 6 recalibrations
-					[self _logRwErr:"FATAL"
+					[self logRwErr:"FATAL"
 						      block:currentBlock
 						     status:(unsigned char *)&fdcStatus
 						   readFlag:isRead];
 					goto transfer_done;
 				}
 
-				[self _logRwErr:"RECALIBRATING"
+				[self logRwErr:"RECALIBRATING"
 					      block:currentBlock
 					     status:(unsigned char *)&fdcStatus
 					   readFlag:isRead];
 
-				[self _fdRecal];
+				[self fdRecal];
 				retryCount = 0;
 			} else {
-				[self _logRwErr:"RETRYING"
+				[self logRwErr:"RETRYING"
 					      block:currentBlock
 					     status:(unsigned char *)&fdcStatus
 					   readFlag:isRead];
@@ -476,7 +476,7 @@ update_stats:
 			break;
 
 		default:  // Fatal error
-			[self _logRwErr:"FATAL"
+			[self logRwErr:"FATAL"
 				      block:currentBlock
 				     status:(unsigned char *)&fdcStatus
 				   readFlag:isRead];
@@ -525,7 +525,7 @@ transfer_done:
  * Log read/write error.
  * From decompiled code: logs FDC error with operation type and status.
  */
-- (void)_logRwErr : (unsigned)operation
+- (void)logRwErr : (unsigned)operation
 	      block : (unsigned)block
 	     status : (unsigned char *)status
 	   readFlag : (BOOL)readFlag
@@ -558,7 +558,7 @@ transfer_done:
  * Check if motor should be turned off.
  * From decompiled code: checks timeout and turns off motor after 2 seconds.
  */
-- (void)_motorOffCheck
+- (void)motorOffCheck
 {
 	int lastReadyState;
 	unsigned long long currentTime;
@@ -604,7 +604,7 @@ transfer_done:
 		*(unsigned *)(cmdBuffer + 0x5c) = 4;
 
 		// Send command to FDC
-		[self _fdSendCmd:cmdBuffer];
+		[self fdSendCmd:cmdBuffer];
 	}
 }
 
@@ -612,7 +612,7 @@ transfer_done:
  * Set disk density (internal).
  * From decompiled code: looks up density parameters and configures drive.
  */
-- (IOReturn)_setDensityInt : (unsigned)density
+- (IOReturn)setDensityInt : (unsigned)density
 {
 	int *densityInfoPtr;
 	BOOL wasZero;
@@ -641,7 +641,7 @@ transfer_done:
 	_writePrecomp = densityInfoPtr[2];     // offset 0x198
 
 	// Update sector size configuration
-	[self _setSectSizeInt:_sectorSize];    // offset 0x19c
+	[self setSectSizeInt:_sectorSize];    // offset 0x19c
 
 	// If density was 0, clear formatted flag (bit 0 at offset 0x18c)
 	if (wasZero) {
@@ -655,7 +655,7 @@ transfer_done:
  * Set sector size (internal).
  * From decompiled code: looks up sector size parameters and configures drive.
  */
-- (IOReturn)_setSectSizeInt : (unsigned)sectorSize
+- (IOReturn)setSectSizeInt : (unsigned)sectorSize
 {
 	int *sectSizeInfoPtr;
 
@@ -704,7 +704,7 @@ transfer_done:
  * Update physical parameters (internal).
  * From decompiled code: probes disk to determine geometry and density.
  */
-- (void)_updatePhysicalParametersInt
+- (void)updatePhysicalParametersInt
 {
 	IOReturn result;
 	unsigned char status;
@@ -724,12 +724,12 @@ transfer_done:
 	_flags = _flags & 0xfffffffe;
 
 	// Reset to default density
-	[self _setDensityInt:0];
+	[self setDensityInt:0];
 
 	// Try to recalibrate drive (up to 3 attempts)
 	retryCount = 0;
 	do {
-		result = [self _fdRecal];
+		result = [self fdRecal];
 		if (result == IO_R_SUCCESS) {
 			break;
 		}
@@ -741,7 +741,7 @@ transfer_done:
 	}
 
 	// Get drive status
-	result = [self _fdGetStatus:&status];
+	result = [self fdGetStatus:&status];
 	if (result != IO_R_SUCCESS) {
 		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED");
 		return;
@@ -789,9 +789,9 @@ transfer_done:
 		// Try to seek and read ID at this density (3 attempts)
 		retryCount = 0;
 		do {
-			result = [self _fdSeek:track head:0];
+			result = [self fdSeek:track head:0];
 			if (result == IO_R_SUCCESS) {
-				result = [self _fdReadId:0 statp:readIdStatus];
+				result = [self fdReadId:0 statp:readIdStatus];
 				if (result == IO_R_SUCCESS) {
 					break;  // Success at this density
 				}
@@ -806,7 +806,7 @@ transfer_done:
 	}
 
 	// Set the detected density
-	[self _setDensityInt:density];
+	[self setDensityInt:density];
 
 	if (density == 0) {
 		return;  // No valid density found
@@ -818,13 +818,13 @@ transfer_done:
 
 	// Try each sector size in the table
 	while (*sectSizeInfoPtr != 0) {
-		[self _setSectSizeInt:*sectSizeInfoPtr];
+		[self setSectSizeInt:*sectSizeInfoPtr];
 
 		// Try to read sectors at different positions (3 attempts)
 		sectorTest = 0;
 		retryCount = 0;
 		do {
-			result = [self _rawReadInt:sectorTest
+			result = [self rawReadInt:sectorTest
 				       sectCount:1
 					  buffer:bounceBuffer];
 			if (result == IO_R_SUCCESS) {

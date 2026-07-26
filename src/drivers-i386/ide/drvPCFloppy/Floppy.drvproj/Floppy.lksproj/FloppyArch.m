@@ -44,7 +44,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
  * Returns:
  *   0 on success, 4 (IO_R_INVALID_ARG) on error
  */
-- (int)_dmaStart:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct
+- (int)dmaStart:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct
 {
 	unsigned int byteCount;
 	unsigned int vmMap;
@@ -173,7 +173,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
  * Returns:
  *   0 on success
  */
-- (int)_dmaDone:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct
+- (int)dmaDone:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct
 {
 	unsigned int vmMap;
 	unsigned int bufferAddr;

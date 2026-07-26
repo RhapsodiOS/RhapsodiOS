@@ -39,7 +39,7 @@ static unsigned int _motorChangeCount = 0;
  * Returns:
  *   IO_R_SUCCESS on success, error code otherwise
  */
-- (IOReturn)_doCmdXfr:(void *)cmdParams
+- (IOReturn)doCmdXfr:(void *)cmdParams
 {
 	// TODO: Implement command transfer execution
 	// This should:
@@ -69,7 +69,7 @@ static unsigned int _motorChangeCount = 0;
  * Returns:
  *   IO_R_SUCCESS (always)
  */
-- (IOReturn)_doEject:(void *)cmdParams
+- (IOReturn)doEject:(void *)cmdParams
 {
 	// Set result status to 0 (success) at offset 0x40
 	*(unsigned int *)((char *)cmdParams + 0x40) = 0;
@@ -93,7 +93,7 @@ static unsigned int _motorChangeCount = 0;
  * Returns:
  *   IO_R_SUCCESS
  */
-- (IOReturn)_doMotorOff:(unsigned int)driveNum
+- (IOReturn)doMotorOff:(unsigned int)driveNum
 {
 	unsigned char motorBit;
 
@@ -131,7 +131,7 @@ static unsigned int _motorChangeCount = 0;
  * Returns:
  *   IO_R_SUCCESS
  */
-- (IOReturn)_doMotorOn:(unsigned int)driveNum
+- (IOReturn)doMotorOn:(unsigned int)driveNum
 {
 	unsigned char motorBit;
 
@@ -184,7 +184,7 @@ static unsigned int _motorChangeCount = 0;
  * Returns:
  *   0 on success, error code otherwise
  */
-- (IOReturn)_sendCmd:(void *)cmdParams
+- (IOReturn)sendCmd:(void *)cmdParams
 {
 	DMATransferStruct dmaStruct;
 	IOReturn result = 0;
@@ -221,7 +221,7 @@ static unsigned int _motorChangeCount = 0;
 
 	// Start DMA if byte count > 0
 	if (dmaByteCount > 0) {
-		result = [self _dmaStart:cmdParams dmaStruct:&dmaStruct];
+		result = [self dmaStart:cmdParams dmaStruct:&dmaStruct];
 		_get_dma_addr(2);  // Debug/verify
 		_get_dma_count(2); // Debug/verify
 
@@ -244,7 +244,7 @@ static unsigned int _motorChangeCount = 0;
 		break;
 	default:
 		// Flush any pending interrupt messages
-		result = [self _flushIntrMsgs];
+		result = [self flushIntrMsgs];
 		if (result != 0) {
 			goto cleanup;
 		}
@@ -258,7 +258,7 @@ static unsigned int _motorChangeCount = 0;
 
 	for (i = 0; i < cmdByteCount; i++) {
 		byte = cmdBytesPtr[i];
-		result = [self _fcSendByte:byte];
+		result = [self fcSendByte:byte];
 
 		if (result != 0) {
 			// Set controller hung flag on phase error
@@ -281,7 +281,7 @@ static unsigned int _motorChangeCount = 0;
 			timeout = 2000;
 		}
 
-		result = [self _fcWaitIntr:cmdParams timeout:timeout];
+		result = [self fcWaitIntr:cmdParams timeout:timeout];
 	}
 
 	if (result != 0) {
@@ -301,7 +301,7 @@ static unsigned int _motorChangeCount = 0;
 	                 *(unsigned int *)((char *)cmdParams + 0x4c) + 3;
 
 	for (i = *(unsigned int *)((char *)cmdParams + 0x4c); i < resultByteCount; i++) {
-		result = [self _fcGetByte:resultBytesPtr];
+		result = [self fcGetByte:resultBytesPtr];
 
 		if (result != 0) {
 			// Allow phase error if we got at least one result byte
@@ -317,7 +317,7 @@ static unsigned int _motorChangeCount = 0;
 
 	// Complete DMA if active
 	if (dmaActive) {
-		result = [self _dmaDone:cmdParams dmaStruct:&dmaStruct];
+		result = [self dmaDone:cmdParams dmaStruct:&dmaStruct];
 		_get_dma_addr(2);  // Debug/verify
 		_get_dma_count(2); // Debug/verify
 		dmaActive = NO;

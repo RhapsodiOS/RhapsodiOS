@@ -378,7 +378,7 @@ unsigned int FloppyGeometry[] = {
  *
  * The table is NULL-terminated (capacity = 0 marks end).
  */
-+ (unsigned int)_capacityFromSize:(unsigned int)diskSize
++ (unsigned int)capacityFromSize:(unsigned int)diskSize
 {
 	extern unsigned int FloppyGeometry[];  // External geometry table
 	int index;
@@ -447,7 +447,7 @@ unsigned int FloppyGeometry[] = {
  *   [5] - ? (offset 0x14)
  *   [6] - Sectors per track (offset 0x18)
  */
-+ (void *)_geometryOfCapacity:(unsigned int)capacity
++ (void *)geometryOfCapacity:(unsigned int)capacity
 {
 	extern unsigned int FloppyGeometry[];  // External geometry table
 	int index;
@@ -495,7 +495,7 @@ unsigned int FloppyGeometry[] = {
  *   If capacities = 0x03 (bits 0 and 1 set), this will add sizes for
  *   all geometry entries with capacity IDs 0 or 1.
  */
-+ (IOReturn)_sizeListFromCapacities:(unsigned int)capacities
++ (IOReturn)sizeListFromCapacities:(unsigned int)capacities
                            sizeList:(unsigned int *)sizeList
 {
 	extern unsigned int FloppyGeometry[];  // External geometry table
@@ -550,7 +550,7 @@ unsigned int FloppyGeometry[] = {
  * Calculate blocks remaining to end of cylinder from given block number.
  * From decompiled code: calculates how many blocks until end of current cylinder.
  */
-- (unsigned)_blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber
+- (unsigned)blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber
 {
 	id driveObject;
 	unsigned *geometryArray;
@@ -595,7 +595,7 @@ unsigned int FloppyGeometry[] = {
  * Get cache pointer from block number.
  * From decompiled code: returns pointer to cached cylinder for given block.
  */
-- (void *)_cachePointerFromBlockNumber:(unsigned)blockNumber
+- (void *)cachePointerFromBlockNumber:(unsigned)blockNumber
 {
 	id driveObject;
 	int sectorSize;
@@ -618,7 +618,7 @@ unsigned int FloppyGeometry[] = {
  * Get cache pointer from cylinder number.
  * From decompiled code: returns pointer to cached cylinder data.
  */
-- (void *)_cachePointerFromCylinderNumber:(unsigned)cylinderNumber
+- (void *)cachePointerFromCylinderNumber:(unsigned)cylinderNumber
 {
 	id driveObject;
 	int *geometryArray;

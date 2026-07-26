@@ -23,7 +23,7 @@
  * Returns:
  *   Block device number (dev_t)
  */
-+ (unsigned int)_blockDevOfDrive:(id)drive;
++ (unsigned int)blockDevOfDrive:(id)drive;
 
 /*
  * Class method: Get character device number for a drive.
@@ -34,7 +34,7 @@
  * Returns:
  *   Character device number (dev_t)
  */
-+ (unsigned int)_characterDevOfDrive:(id)drive;
++ (unsigned int)characterDevOfDrive:(id)drive;
 
 /*
  * Class method: Get drive number from drive object.
@@ -45,7 +45,7 @@
  * Returns:
  *   Drive number (0-3)
  */
-+ (unsigned int)_driveNumberOfDrive:(id)drive;
++ (unsigned int)driveNumberOfDrive:(id)drive;
 
 /*
  * Class method: Register a drive with the BSD device system.
@@ -56,7 +56,7 @@
  * Returns:
  *   IOReturn status code
  */
-+ (IOReturn)_registerDrive:(id)drive;
++ (IOReturn)registerDrive:(id)drive;
 
 /*
  * Class method: Unregister a drive from the BSD device system.
@@ -67,7 +67,7 @@
  * Returns:
  *   IOReturn status code
  */
-+ (IOReturn)_unregisterDrive:(id)drive;
++ (IOReturn)unregisterDrive:(id)drive;
 
 @end
 
@@ -79,12 +79,12 @@
 /*
  * Attach BSD disk interface to a drive.
  */
-- (IOReturn)_attachBsdDiskInterfaceToDrive:(id)drive;
+- (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive;
 
 /*
  * Detach BSD disk interface from a drive.
  */
-- (IOReturn)_detachBsdDiskInterfaceFromDrive:(id)drive;
+- (IOReturn)detachBsdDiskInterfaceFromDrive:(id)drive;
 
 @end
 

@@ -345,7 +345,7 @@ BOOL _numFloppyDrives(void)
  * Parameters:
  *   cmdParams - Pointer to command parameter structure
  */
-- (IOReturn)_fcCmdXfr:(void *)cmdParams
+- (IOReturn)fcCmdXfr:(void *)cmdParams
 {
 	RequestNode *request;
 	id requestLock;
@@ -500,7 +500,7 @@ BOOL _numFloppyDrives(void)
  * From decompiled code: this is the actual command execution in thread context.
  *
  * This method is called by the controller thread (via _FloppyControllerThread)
- * to execute commands that have been queued via _fcCmdXfr:.
+ * to execute commands that have been queued via fcCmdXfr:.
  *
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
@@ -549,27 +549,27 @@ BOOL _numFloppyDrives(void)
 			// Execute command based on type
 			switch (cmdType) {
 			case 1:  // Command transfer (read/write/format)
-				[self _doCmdXfr:cmdParams];
+				[self doCmdXfr:cmdParams];
 				needsReset = ((_flags & 0x01) != 0);
-				[self _getDriveStatus:cmdParams];
+				[self getDriveStatus:cmdParams];
 				break;
 
 			case 2:  // Eject
-				[self _doEject:cmdParams];
+				[self doEject:cmdParams];
 				needsReset = ((_flags & 0x01) != 0);
-				[self _getDriveStatus:cmdParams];
+				[self getDriveStatus:cmdParams];
 				break;
 
 			case 3:  // Motor on
-				[self _getDriveStatus:cmdParams];
-				[self _doMotorOn:driveNum];
+				[self getDriveStatus:cmdParams];
+				[self doMotorOn:driveNum];
 				*(unsigned int *)((char *)cmdParams + 0x40) = 0;  // Success
 				needsReset = NO;
 				break;
 
 			case 4:  // Motor off
-				[self _getDriveStatus:cmdParams];
-				[self _doMotorOff:driveNum];
+				[self getDriveStatus:cmdParams];
+				[self doMotorOff:driveNum];
 
 				// Clear bit 2 of flags at offset 0x4e
 				flagsPtr = (unsigned char *)((char *)cmdParams + 0x4e);
@@ -581,7 +581,7 @@ BOOL _numFloppyDrives(void)
 
 			case 5:  // Get drive status
 				needsReset = NO;
-				[self _getDriveStatus:cmdParams];
+				[self getDriveStatus:cmdParams];
 				*(unsigned int *)((char *)cmdParams + 0x40) = 0;  // Success
 				break;
 

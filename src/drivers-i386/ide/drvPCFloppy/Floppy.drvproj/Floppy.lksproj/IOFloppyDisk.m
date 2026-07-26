@@ -74,7 +74,7 @@ extern unsigned int _FloppyGeometry[];
  * Dummy method for IODisk protocol compliance.
  * From decompiled code: placeholder method that does nothing.
  */
-- (void)_dummyIODiskPhysicalMethod
+- (void)dummyIODiskPhysicalMethod
 {
 	// Intentionally empty - just a placeholder for protocol compliance
 	return;
@@ -90,7 +90,7 @@ extern unsigned int _FloppyGeometry[];
 
 	// Get drive and detach BSD interface
 	drive = [self drive];
-	[self _detachBsdDiskInterfaceFromDrive:drive];
+	[self detachBsdDiskInterfaceFromDrive:drive];
 
 	// If operation thread is running, shut it down
 	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
@@ -137,7 +137,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Release cache
-	[self _releaseCache];
+	[self releaseCache];
 
 	// Free queue lock
 	if (_queueLock != nil) {
@@ -193,7 +193,7 @@ extern unsigned int _FloppyGeometry[];
 	_capacity = capacity;
 
 	// Get geometry for this capacity
-	geometry = [IOFloppyDisk _geometryOfCapacity:capacity];
+	geometry = [IOFloppyDisk geometryOfCapacity:capacity];
 	_geometry = geometry;
 
 	// Allocate queue lock (NXConditionLock)
@@ -238,7 +238,7 @@ extern unsigned int _FloppyGeometry[];
 	[self setDiskSize:*(unsigned *)((char *)geometry + 4)];
 
 	// Get drive number and create name
-	driveNumber = [IOFloppyDisk _driveNumberOfDrive:drive];
+	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
 	sprintf(diskName, "fdsk%d", driveNumber);
 
 	// Set unit and name
@@ -247,13 +247,13 @@ extern unsigned int _FloppyGeometry[];
 	[self setDeviceKind:"Floppy Disk"];
 
 	// Set up cache
-	result = [self _setUpCache];
+	result = [self setUpCache];
 	if (!result) {
 		return [self free];
 	}
 
 	// Attach BSD interface
-	result = [self _attachBsdDiskInterfaceToDrive:drive];
+	result = [self attachBsdDiskInterfaceToDrive:drive];
 	if (!result) {
 		return [self free];
 	}
@@ -289,7 +289,7 @@ extern unsigned int _FloppyGeometry[];
 	IOReturn result;
 
 	// Construct request (status pointer = NULL for async)
-	request = [self _constructRequest:NULL
+	request = [self constructRequest:NULL
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
@@ -300,7 +300,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Execute the request
-	result = [self _executeRequest:request];
+	result = [self executeRequest:request];
 
 	// If successful, complete the transfer
 	if (result == IO_R_SUCCESS) {
@@ -310,7 +310,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Free the request
-	[self _freeRequest:request];
+	[self freeRequest:request];
 
 	return result;
 }
@@ -326,7 +326,7 @@ extern unsigned int _FloppyGeometry[];
 	IOReturn result;
 
 	// Construct request (status pointer = NULL)
-	request = [self _constructRequest:NULL
+	request = [self constructRequest:NULL
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
@@ -337,7 +337,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Execute the request
-	result = [self _executeRequest:request];
+	result = [self executeRequest:request];
 
 	// If successful, set actual length
 	if (result == IO_R_SUCCESS) {
@@ -347,7 +347,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Free the request
-	[self _freeRequest:request];
+	[self freeRequest:request];
 
 	return result;
 }
@@ -379,7 +379,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Construct request (status pointer = (IOReturn *)1 for write flag)
-	request = [self _constructRequest:(IOReturn *)1
+	request = [self constructRequest:(IOReturn *)1
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
@@ -390,7 +390,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Execute the request
-	result = [self _executeRequest:request];
+	result = [self executeRequest:request];
 
 	// If successful, complete the transfer
 	if (result == IO_R_SUCCESS) {
@@ -400,7 +400,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Free the request
-	[self _freeRequest:request];
+	[self freeRequest:request];
 
 	return result;
 }
@@ -433,7 +433,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Construct request (status pointer = (IOReturn *)1 for write flag)
-	request = [self _constructRequest:(IOReturn *)1
+	request = [self constructRequest:(IOReturn *)1
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
@@ -444,7 +444,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Execute the request
-	result = [self _executeRequest:request];
+	result = [self executeRequest:request];
 
 	// If successful, set actual length
 	if (result == IO_R_SUCCESS) {
@@ -454,7 +454,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Free the request
-	[self _freeRequest:request];
+	[self freeRequest:request];
 
 	return result;
 }

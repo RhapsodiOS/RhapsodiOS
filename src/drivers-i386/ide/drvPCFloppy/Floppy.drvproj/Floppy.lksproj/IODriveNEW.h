@@ -42,83 +42,83 @@
 /*
  * Add to bytes read statistics.
  */
-- (void)_addToBytesRead:(unsigned)bytes
+- (void)addToBytesRead:(unsigned)bytes
               totalTime:(unsigned long long)totalTime
              latentTime:(unsigned long long)latentTime;
 
 /*
  * Add to bytes written statistics.
  */
-- (void)_addToBytesWritten:(unsigned)bytes
+- (void)addToBytesWritten:(unsigned)bytes
                  totalTime:(unsigned long long)totalTime
                 latentTime:(unsigned long long)latentTime;
 
 /*
  * Get drive name.
  */
-- (const char *)_driveName;
+- (const char *)driveName;
 
 /*
  * Eject media (subclass responsibility).
  */
-- (IOReturn)_ejectMedia;
+- (IOReturn)ejectMedia;
 
 /*
  * Get integer parameter values.
  */
-- (IOReturn)_getIntValues:(unsigned *)values
+- (IOReturn)getIntValues:(unsigned *)values
              forParameter:(IOParameterName)parameterName
                     count:(unsigned *)count;
 
 /*
  * Increment other errors counter.
  */
-- (void)_incrementOtherErrors;
+- (void)incrementOtherErrors;
 
 /*
  * Increment other retries counter.
  */
-- (void)_incrementOtherRetries;
+- (void)incrementOtherRetries;
 
 /*
  * Increment read errors counter.
  */
-- (void)_incrementReadErrors;
+- (void)incrementReadErrors;
 
 /*
  * Increment read retries counter.
  */
-- (void)_incrementReadRetries;
+- (void)incrementReadRetries;
 
 /*
  * Increment write errors counter.
  */
-- (void)_incrementWriteErrors;
+- (void)incrementWriteErrors;
 
 /*
  * Increment write retries counter.
  */
-- (void)_incrementWriteRetries;
+- (void)incrementWriteRetries;
 
 /*
  * Get last ready state.
  */
-- (unsigned)_lastReadyState;
+- (unsigned)lastReadyState;
 
 /*
  * Register device with system.
  */
-- (IOReturn)_registerDevice;
+- (IOReturn)registerDevice;
 
 /*
  * Set drive name.
  */
-- (void)_setDriveName:(const char *)name;
+- (void)setDriveName:(const char *)name;
 
 /*
  * Set last ready state.
  */
-- (void)_setLastReadyState:(unsigned)state;
+- (void)setLastReadyState:(unsigned)state;
 
 @end
 

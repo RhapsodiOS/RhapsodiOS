@@ -48,7 +48,7 @@ typedef struct {
  * Returns:
  *   0 on success, 4 (IO_R_INVALID_ARG) on error
  */
-- (int)_dmaStart:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct;
+- (int)dmaStart:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct;
 
 /*
  * Complete a DMA transfer.
@@ -60,7 +60,7 @@ typedef struct {
  * Returns:
  *   0 on success
  */
-- (int)_dmaDone:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct;
+- (int)dmaDone:(void *)cmdParams dmaStruct:(DMATransferStruct *)dmaStruct;
 
 @end
 

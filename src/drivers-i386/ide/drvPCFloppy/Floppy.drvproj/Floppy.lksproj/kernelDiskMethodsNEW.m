@@ -19,7 +19,7 @@
 /*
  * Get dev and id info.
  */
-- (IODevAndIdInfoNEW *)_devAndIdInfo
+- (IODevAndIdInfoNEW *)devAndIdInfo
 {
 	return (IODevAndIdInfoNEW *)_devAndIdInfo;
 }
@@ -27,7 +27,7 @@
 /*
  * Set dev and id info.
  */
-- (void)_setDevAndIdInfo : (IODevAndIdInfoNEW *)info
+- (void)setDevAndIdInfo : (IODevAndIdInfoNEW *)info
 {
 	_devAndIdInfo = info;
 }
@@ -36,7 +36,7 @@
  * Get block device.
  * Returns the block device number from the device-to-id mapping structure.
  */
-- (dev_t)_blockDev
+- (dev_t)blockDev
 {
 	IODevAndIdInfoNEW *devIdInfo = (IODevAndIdInfoNEW *)_devAndIdInfo;
 	
@@ -48,7 +48,7 @@
  * Get raw device.
  * Returns the raw device number from the device-to-id mapping structure.
  */
-- (dev_t)_rawDev
+- (dev_t)rawDev
 {
 	IODevAndIdInfoNEW *devIdInfo = (IODevAndIdInfoNEW *)_devAndIdInfo;
 	
@@ -61,7 +61,7 @@
  * Completes a block I/O transfer by setting appropriate flags and errors,
  * then calling biodone() to notify the system.
  */
-- (void)_completeTransfer : (void *)pending
+- (void)completeTransfer : (void *)pending
 	       withStatus : (IOReturn)status
 	     actualLength : (unsigned)actualLength
 {
@@ -97,13 +97,13 @@
  * Registers this disk object in the device-to-id mapping structure
  * at the specified partition index.
  */
-- (IOReturn)_registerUnixDisk : (int)partition
+- (IOReturn)registerUnixDisk : (int)partition
 {
 	IODevAndIdInfoNEW *devIdInfo = (IODevAndIdInfoNEW *)_devAndIdInfo;
 
 	// Check for valid partition number (0-6)
 	if (partition > 6) {
-		IOLog("%s _registerUnixDisk: Bogus partition (%d)\n",
+		IOLog("%s registerUnixDisk: Bogus partition (%d)\n",
 		      [self name], partition);
 		return IO_R_INVALID;
 	}
@@ -124,13 +124,13 @@
  * Clears this disk object from the device-to-id mapping structure
  * at the specified partition index.
  */
-- (IOReturn)_unregisterUnixDisk : (int)partition
+- (IOReturn)unregisterUnixDisk : (int)partition
 {
 	IODevAndIdInfoNEW *devIdInfo = (IODevAndIdInfoNEW *)_devAndIdInfo;
 
 	// Check for valid partition number (0-6)
 	if (partition > 6) {
-		IOLog("%s _unregisterUnixDisk: Bogus partition (%d)\n",
+		IOLog("%s unregisterUnixDisk: Bogus partition (%d)\n",
 		      [self name], partition);
 		return IO_R_INVALID;
 	}

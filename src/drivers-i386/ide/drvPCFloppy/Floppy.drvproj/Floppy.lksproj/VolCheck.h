@@ -17,62 +17,62 @@
 /*
  * Abort pending volume check request.
  */
-- (void)_abortRequest;
+- (void)abortRequest;
 
 /*
  * Handle disk became ready event.
  */
-- (void)_diskBecameReady;
+- (void)diskBecameReady;
 
 /*
  * Check if disk is formatted.
  */
-- (BOOL)_isFormatted;
+- (BOOL)isFormatted;
 
 /*
  * Check if this is a physical device.
  */
-- (BOOL)_isPhysical;
+- (BOOL)isPhysical;
 
 /*
  * Check if disk is removable.
  */
-- (BOOL)_isRemovable;
+- (BOOL)isRemovable;
 
 /*
  * Check if disk is write protected.
  */
-- (BOOL)_isWriteProtected;
+- (BOOL)isWriteProtected;
 
 /*
  * Check if manual polling is needed for disk change detection.
  */
-- (BOOL)_needsManualPolling;
+- (BOOL)needsManualPolling;
 
 /*
  * Get next logical disk in chain.
  */
-- (id)_nextLogicalDisk;
+- (id)nextLogicalDisk;
 
 /*
  * Register for volume check notifications.
  */
-- (IOReturn)_registerVolCheck;
+- (IOReturn)registerVolCheck;
 
 /*
  * Unregister from volume check notifications.
  */
-- (IOReturn)_unregisterVolCheck;
+- (IOReturn)unregisterVolCheck;
 
 /*
  * Update physical disk parameters.
  */
-- (IOReturn)_updatePhysicalParameters;
+- (IOReturn)updatePhysicalParameters;
 
 /*
  * Update ready state.
  */
-- (int)_updateReadyState;
+- (int)updateReadyState;
 
 @end
 

@@ -69,7 +69,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	// Perform internal eject operations
 	// - Seeks to track 79 to unload heads
 	// - Turns off motor
-	[self _fdEjectInt];
+	[self fdEjectInt];
 	
 	return IO_R_SUCCESS;
 }
@@ -106,7 +106,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	
 	// If this is cylinder 0, recalibrate first
 	if (cylinder == 0) {
-		result = [self _fdRecal];
+		result = [self fdRecal];
 		if (result != IO_R_SUCCESS) {
 			return result;
 		}
@@ -114,7 +114,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	
 	// Format each track (head) in the cylinder
 	for (head = 0; head < numHeads; head++) {
-		result = [self _fdFormatTrack:cylinder head:head];
+		result = [self fdFormatTrack:cylinder head:head];
 		if (result != IO_R_SUCCESS) {
 			return result;  // Format failed
 		}
@@ -129,7 +129,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 		blocksPerCylinder = numHeads * sectorsPerTrack;
 		
 		// Read to verify format
-		result = [self _fdRwCommon:YES  // isRead = YES
+		result = [self fdRwCommon:YES  // isRead = YES
 				    block:startingBlock
 				 blockCnt:blocksPerCylinder
 				   buffer:data
@@ -148,7 +148,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 {
 	// If bit 2 is set, unregister from volume check
 	if ((_regFlags & 2) != 0) {
-		[self _unregisterVolCheck];
+		[self unregisterVolCheck];
 	}
 	
 	// If bit 1 is set, unregister drive from IOFloppyDisk
@@ -241,7 +241,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	[self setLastReadyState:1];
 	
 	// Register for volume check notifications
-	[self _registerVolCheck];
+	[self registerVolCheck];
 	
 	// Set bit 2 of _regFlags (volCheck registered flag)
 	_regFlags = _regFlags | 2;
@@ -268,19 +268,19 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	BOOL allocated;
 	
 	// Update ready state
-	result = [self _updateReadyStateInt];
+	result = [self updateReadyStateInt];
 	
 	// If ready and no disk object allocated yet
 	if ((result == 0) && (_nextLogicalDisk == nil)) {
 		// Update physical parameters (probe geometry)
-		result = [self _updatePhysicalParametersInt];
+		result = [self updatePhysicalParametersInt];
 		
 		if (result == 0) {
 			// Set ready state to 0 (ready)
 			[self setLastReadyState:0];
 			
 			// Allocate disk object
-			allocated = [self _allocateDisk];
+			allocated = [self allocateDisk];
 			
 			if (allocated) {
 				return YES;  // Media present and disk allocated
@@ -304,7 +304,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 
 /*
  * Read a specific cylinder.
- * From decompiled code: reads all sectors in cylinder using _fdRwCommon.
+ * From decompiled code: reads all sectors in cylinder using fdRwCommon.
  */
 - (IOReturn)readCylinder:(unsigned)cylinder
                     data:(void *)data
@@ -322,7 +322,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	blocksPerCylinder = _density * _sectorsPerTrack;
 	
 	// Read the entire cylinder
-	result = [self _fdRwCommon:YES  // isRead = YES
+	result = [self fdRwCommon:YES  // isRead = YES
 			    block:startingBlock
 			 blockCnt:blocksPerCylinder
 			   buffer:data
@@ -408,7 +408,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 
 /*
  * Write a specific cylinder.
- * From decompiled code: writes all sectors in cylinder using _fdRwCommon.
+ * From decompiled code: writes all sectors in cylinder using fdRwCommon.
  */
 - (IOReturn)writeCylinder:(unsigned)cylinder
                      data:(void *)data
@@ -426,7 +426,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	blocksPerCylinder = _density * _sectorsPerTrack;
 	
 	// Write the entire cylinder
-	result = [self _fdRwCommon:NO   // isRead = NO (write)
+	result = [self fdRwCommon:NO   // isRead = NO (write)
 			    block:startingBlock
 			 blockCnt:blocksPerCylinder
 			   buffer:data

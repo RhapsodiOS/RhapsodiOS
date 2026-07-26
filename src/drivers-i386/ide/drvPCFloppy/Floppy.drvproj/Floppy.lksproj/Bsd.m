@@ -1053,12 +1053,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Combined: 0x100 | (driveNumber * 8)
  *   - Example: drive 0 = 0x100, drive 1 = 0x108, etc.
  */
-+ (unsigned int)_blockDevOfDrive:(id)drive
++ (unsigned int)blockDevOfDrive:(id)drive
 {
 	int driveNumber;
 
 	// Get drive number from drive object using class method
-	driveNumber = [[self class] _driveNumberOfDrive:drive];
+	driveNumber = [[self class] driveNumberOfDrive:drive];
 
 	// If drive number is invalid (-1), return 0
 	if (driveNumber == -1) {
@@ -1092,12 +1092,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Combined: 0x2900 | (driveNumber * 8)
  *   - Example: drive 0 = 0x2900, drive 1 = 0x2908, etc.
  */
-+ (unsigned int)_characterDevOfDrive:(id)drive
++ (unsigned int)characterDevOfDrive:(id)drive
 {
 	int driveNumber;
 
 	// Get drive number from drive object using class method
-	driveNumber = [[self class] _driveNumberOfDrive:drive];
+	driveNumber = [[self class] driveNumberOfDrive:drive];
 
 	// If drive number is invalid (-1), return 0
 	if (driveNumber == -1) {
@@ -1131,7 +1131,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Offset 0x04: Drive object pointer
  *   - Up to 8 entries (indices 0-7)
  */
-+ (unsigned int)_driveNumberOfDrive:(id)drive
++ (unsigned int)driveNumberOfDrive:(id)drive
 {
 	unsigned int driveIndex;
 	unsigned char *flagsPtr;
@@ -1196,7 +1196,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - HandleBsdStrategy (0x908)
  *   - HandleBsdSize (function pointer)
  */
-+ (IOReturn)_registerDrive:(id)drive
++ (IOReturn)registerDrive:(id)drive
 {
 	extern int DrivesRegistered;  // Global counter of registered drives
 	extern int enodev, nulldev, seltrue;
@@ -1324,7 +1324,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Base: 0xc000 (flags and state) - cleared (0x34 bytes)
  *   - Base: 0xc030 (device info structure pointers) - freed
  */
-+ (IOReturn)_unregisterDrive:(id)drive
++ (IOReturn)unregisterDrive:(id)drive
 {
 	extern int DrivesRegistered;  // Global counter of registered drives
 
@@ -1333,7 +1333,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	void *deviceInfo;
 
 	// Get drive number from drive object
-	driveNumber = [self _driveNumberOfDrive:drive];
+	driveNumber = [self driveNumberOfDrive:drive];
 
 	// If drive not found, nothing to do
 	if (driveNumber == -1) {
@@ -1373,7 +1373,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  * Attach BSD disk interface to a drive.
  * From decompiled code: creates BSD device nodes (block and character devices).
  */
-- (IOReturn)_attachBsdDiskInterfaceToDrive:(id)drive
+- (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive
 {
 	int driveNumber;
 	int devInfoOffset;
@@ -1445,7 +1445,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  * Detach BSD disk interface from a drive.
  * From decompiled code: removes BSD device nodes.
  */
-- (IOReturn)_detachBsdDiskInterfaceFromDrive:(id)drive
+- (IOReturn)detachBsdDiskInterfaceFromDrive:(id)drive
 {
 	int driveNumber;
 	unsigned char *flagsPtr;

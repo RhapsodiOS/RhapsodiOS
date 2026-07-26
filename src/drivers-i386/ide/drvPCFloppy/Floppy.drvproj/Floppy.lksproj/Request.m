@@ -142,7 +142,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Abort all subrequests on a cylinder.
  * From decompiled code: aborts all pending I/O operations on a cylinder.
  */
-- (void)_abortSubrequestsOnCylinder:(unsigned)cylinderNumber
+- (void)abortSubrequestsOnCylinder:(unsigned)cylinderNumber
 {
 	void *cacheMetadata;
 	int cylinderOffset;
@@ -207,7 +207,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Check cylinder state for a subrequest.
  * From decompiled code: checks if cylinder is ready for I/O.
  */
-- (IOReturn)_checkCylinderStateForSubrequest:(id)subrequest
+- (IOReturn)checkCylinderStateForSubrequest:(id)subrequest
 {
 	void *cacheMetadata;
 	unsigned cylinderNumber;
@@ -299,7 +299,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Construct an I/O request.
  * From decompiled code: allocates and initializes a request structure.
  */
-- (id)_constructRequest:(IOReturn *)statusPtr
+- (id)constructRequest:(IOReturn *)statusPtr
              blockStart:(unsigned)blockStart
               byteCount:(unsigned)byteCount
                  buffer:(void *)buffer
@@ -408,7 +408,7 @@ static void _doCopy(vm_map_t sourceMap,
 		// +0x0c, +0x10: queue pointers (will be set when queued, leave uninitialized)
 		
 		// Calculate blocks to process for this cylinder
-		blocksInCylinder = [self _blocksToEndOfCylinderFromBlockNumber:blockStart];
+		blocksInCylinder = [self blocksToEndOfCylinderFromBlockNumber:blockStart];
 		
 		if (blocksInCylinder < (blockEnd - blockStart) + 1) {
 			blocksThisSubrequest = blocksInCylinder;
@@ -438,7 +438,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Execute an I/O request.
  * From decompiled code: breaks request into subrequests and executes them.
  */
-- (IOReturn)_executeRequest:(id)request
+- (IOReturn)executeRequest:(id)request
 {
 	id operationLock;
 	id geometry;
@@ -492,7 +492,7 @@ static void _doCopy(vm_map_t sourceMap,
 		subrequest = (char *)request + 0x24 + subrequestIndex * 0x24;
 
 		// Check if cylinder is ready for this subrequest
-		isReady = [self _checkCylinderStateForSubrequest:subrequest];
+		isReady = [self checkCylinderStateForSubrequest:subrequest];
 
 		if (!isReady) {
 			// Cylinder not ready - queue subrequest on cylinder's wait queue
@@ -518,7 +518,7 @@ static void _doCopy(vm_map_t sourceMap,
 			}
 		} else {
 			// Cylinder ready - impose state and add to request's ready queue
-			[self _imposeCylinderStateForSubrequest:subrequest];
+			[self imposeCylinderStateForSubrequest:subrequest];
 
 			// Get request's ready queue head (at offset 0x10)
 			requestQueueHead = (char *)request + 0x10;
@@ -569,18 +569,18 @@ static void _doCopy(vm_map_t sourceMap,
 			[operationLock unlock];
 
 			// Execute the subrequest
-			[self _executeSubrequest:subrequest];
+			[self executeSubrequest:subrequest];
 
 			// Lock again
 			[operationLock lock];
 
 			// Unimpose cylinder state
-			result = [self _unimposeCylinderStateForSubrequest:subrequest];
+			result = [self unimposeCylinderStateForSubrequest:subrequest];
 
 			// If state change succeeded, pop other waiting subrequests
 			if (result != 0) {
 				unsigned cylinderNumber = *(unsigned *)((char *)subrequest + 0x04);
-				[self _popSubrequestsOnCylinder:cylinderNumber];
+				[self popSubrequestsOnCylinder:cylinderNumber];
 			}
 
 			// Decrement remaining count
@@ -626,7 +626,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Execute a subrequest.
  * From decompiled code: performs I/O for a single subrequest.
  */
-- (IOReturn)_executeSubrequest:(id)subrequest
+- (IOReturn)executeSubrequest:(id)subrequest
 {
 	unsigned cylinderNumber;
 	void *cacheMetadata;
@@ -660,7 +660,7 @@ static void _doCopy(vm_map_t sourceMap,
 
 	// Get block start and calculate cache pointer
 	blockStart = *(unsigned *)((char *)subrequest + 0x14);
-	cachePointer = [self _cachePointerFromBlockNumber:blockStart];
+	cachePointer = [self cachePointerFromBlockNumber:blockStart];
 
 	// Get sector size and block count to calculate byte count
 	geometry = *(id *)((char *)self + 0x14c);
@@ -704,7 +704,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Free an I/O request.
  * From decompiled code: releases request structure and resources.
  */
-- (void)_freeRequest:(id)request
+- (void)freeRequest:(id)request
 {
 	id lockObject;
 	unsigned requestSize;
@@ -727,7 +727,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Impose cylinder state for a subrequest.
  * From decompiled code: marks cylinder as needed for a subrequest.
  */
-- (IOReturn)_imposeCylinderStateForSubrequest:(id)subrequest
+- (IOReturn)imposeCylinderStateForSubrequest:(id)subrequest
 {
 	unsigned cylinderNumber;
 	void *cacheMetadata;
@@ -765,7 +765,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Pop and process subrequests waiting on a cylinder.
  * From decompiled code: processes all queued subrequests for a cylinder.
  */
-- (void)_popSubrequestsOnCylinder:(unsigned)cylinderNumber
+- (void)popSubrequestsOnCylinder:(unsigned)cylinderNumber
 {
 	void *cacheMetadata;
 	int cylinderOffset;
@@ -834,7 +834,7 @@ static void _doCopy(vm_map_t sourceMap,
 		}
 
 		// Impose cylinder state
-		[self _imposeCylinderStateForSubrequest:subrequest];
+		[self imposeCylinderStateForSubrequest:subrequest];
 
 		// Wake up parent request
 		parentLock = *(id *)((char *)parentRequest + 0x18);
@@ -859,7 +859,7 @@ static void _doCopy(vm_map_t sourceMap,
  * Remove imposed cylinder state for a subrequest.
  * From decompiled code: clears cylinder state markers for a subrequest.
  */
-- (IOReturn)_unimposeCylinderStateForSubrequest:(id)subrequest
+- (IOReturn)unimposeCylinderStateForSubrequest:(id)subrequest
 {
 	unsigned cylinderNumber;
 	void *cacheMetadata;

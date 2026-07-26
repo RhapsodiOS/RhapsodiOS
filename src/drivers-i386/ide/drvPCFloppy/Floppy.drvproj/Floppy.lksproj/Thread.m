@@ -410,7 +410,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
  * Bring a cylinder online (read into cache).
  * From decompiled code: reads cylinder data into cache buffer.
  */
-- (IOReturn)_bringCylinderOnline:(unsigned)cylinderNumber
+- (IOReturn)bringCylinderOnline:(unsigned)cylinderNumber
                      isFormatted:(BOOL)isFormatted
 {
 	void *cachePointer;
@@ -424,7 +424,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	const char *diskName;
 
 	// Get cache pointer for this cylinder
-	cachePointer = [self _cachePointerFromCylinderNumber:cylinderNumber];
+	cachePointer = [self cachePointerFromCylinderNumber:cylinderNumber];
 
 	// Get drive object
 	drive = [self drive];
@@ -461,7 +461,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	*(int *)(*(int *)((char *)self + 0x13c) + cylinderInfoOffset) = 0;
 
 	// Pop/process subrequests waiting on this cylinder
-	[self _popSubrequestsOnCylinder:cylinderNumber];
+	[self popSubrequestsOnCylinder:cylinderNumber];
 
 	// Unlock
 	[lockObject unlock];
@@ -486,7 +486,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
  * Clear all pending operations on the queue.
  * From decompiled code: removes all queued I/O operations.
  */
-- (void)_clearOperationsOnQueue:(id)queue
+- (void)clearOperationsOnQueue:(id)queue
 {
 	unsigned int *queueEntry;
 	unsigned int *prevPtr;
@@ -554,7 +554,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
  * Commit dirty cylinder to disk.
  * From decompiled code: writes modified cylinder data back to disk.
  */
-- (IOReturn)_commitDirtyCylinder:(unsigned)cylinderNumber
+- (IOReturn)commitDirtyCylinder:(unsigned)cylinderNumber
 {
 	id lockObject;
 	unsigned char *flagsPtr;
@@ -580,7 +580,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	[lockObject unlock];
 
 	// Get cache pointer for this cylinder
-	cachePointer = [self _cachePointerFromCylinderNumber:cylinderNumber];
+	cachePointer = [self cachePointerFromCylinderNumber:cylinderNumber];
 
 	// Get drive object
 	drive = [self drive];
@@ -614,7 +614,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
  * Get read mode from configuration table.
  * From decompiled code: looks up read operation mode setting.
  */
-- (int)_getReadModeFromConfigTable:(id)configTable
+- (int)getReadModeFromConfigTable:(id)configTable
 {
 	const char *modeString;
 	char modeBuffer[20];
@@ -673,7 +673,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
  * Get write mode from configuration table.
  * From decompiled code: looks up write operation mode setting.
  */
-- (int)_getWriteModeFromConfigTable:(id)configTable
+- (int)getWriteModeFromConfigTable:(id)configTable
 {
 	const char *modeString;
 	char modeBuffer[20];
@@ -742,7 +742,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	return writeMode;
 }
 
-- (void)_operationThread
+- (void)operationThread
 {
 	id deviceDescription;
 	id configTable;
@@ -764,8 +764,8 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	// Get configuration
 	deviceDescription = *(id *)((char *)self + 0x160);
 	configTable = [deviceDescription configTable];
-	readMode = [self _getReadModeFromConfigTable:configTable];
-	writeMode = [self _getWriteModeFromConfigTable:configTable];
+	readMode = [self getReadModeFromConfigTable:configTable];
+	writeMode = [self getWriteModeFromConfigTable:configTable];
 
 	mainQueue = (id)((char *)self + 0x150);
 	queueLock = *(id *)((char *)self + 0x158);
@@ -806,7 +806,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				// Read cylinder
 				cylinderNumber = operation[1];
 				if (*(int *)(*(int *)((char *)self + 0x13c) + cylinderNumber * 0x14) == 3) {
-					[self _bringCylinderOnline:cylinderNumber isFormatted:YES];
+					[self bringCylinderOnline:cylinderNumber isFormatted:YES];
 				}
 				IOFree(operation, 0x28);
 				break;
@@ -815,7 +815,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				// Write cylinder
 				cylinderNumber = operation[1];
 				if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + cylinderNumber * 0x14) & 2) != 0) {
-					[self _commitDirtyCylinder:cylinderNumber];
+					[self commitDirtyCylinder:cylinderNumber];
 				}
 				IOFree(operation, 0x28);
 				break;
@@ -829,7 +829,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 					for (cylinderNumber = numCylinders; cylinderNumber > 0; cylinderNumber--) {
 						int offset = (cylinderNumber - 1) * 0x14;
 						if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset) & 2) != 0) {
-							[self _commitDirtyCylinder:(cylinderNumber - 1)];
+							[self commitDirtyCylinder:(cylinderNumber - 1)];
 							if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset) & 2) != 0) {
 								operation[2] = 0;
 							}
@@ -848,12 +848,12 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				geometry = *(id *)((char *)self + 0x14c);
 				numCylinders = *(unsigned *)((char *)geometry + 0x0c);
 				for (cylinderNumber = 0; cylinderNumber < numCylinders; cylinderNumber++) {
-					[self _abortSubrequestsOnCylinder:cylinderNumber];
+					[self abortSubrequestsOnCylinder:cylinderNumber];
 				}
 				[operationLock unlock];
 
 				// Release old cache
-				[self _releaseCache];
+				[self releaseCache];
 
 				// Set new capacity
 				*(unsigned *)((char *)self + 0x148) = operation[5];
@@ -868,9 +868,9 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				[[self drive] setMediaCapacity:*(unsigned *)((char *)self + 0x148)];
 
 				// Setup new cache
-				success = [self _setUpCache];
+				success = [self setUpCache];
 				if (success) {
-					[self _bringCylinderOnline:0 isFormatted:NO];
+					[self bringCylinderOnline:0 isFormatted:NO];
 					success = ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10) ^ 1) & 1);
 				}
 
@@ -882,7 +882,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 					[self setDiskSize:0];
 					[self setFormattedInternal:NO];
 					[[self nextLogicalDisk] setFormattedInternal:NO];
-					[self _releaseCache];
+					[self releaseCache];
 				}
 
 				operation[6] = success;
@@ -896,7 +896,7 @@ static void _sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				if (geometry != nil) {
 					numCylinders = *(unsigned *)((char *)geometry + 0x0c);
 					for (cylinderNumber = 0; cylinderNumber < numCylinders; cylinderNumber++) {
-						[self _abortSubrequestsOnCylinder:cylinderNumber];
+						[self abortSubrequestsOnCylinder:cylinderNumber];
 					}
 				}
 				[operationLock unlock];

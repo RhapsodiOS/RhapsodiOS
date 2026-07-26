@@ -51,7 +51,7 @@
  * Free method.
  * From decompiled code: frees next logical disk in chain, then calls super.
  */
-- _free
+- free
 {
 	id nextDisk;
 	
@@ -71,7 +71,7 @@
  * Get physical disk.
  * From decompiled code: returns physical disk at offset 0x134.
  */
-- _physicalDisk
+- physicalDisk
 {
 	return _physicalDisk;  // offset 0x134
 }
@@ -80,7 +80,7 @@
  * Check if instance is open.
  * From decompiled code: returns flag at offset 0x13c.
  */
-- (BOOL)_isInstanceOpen
+- (BOOL)isInstanceOpen
 {
 	return _instanceOpen;  // offset 0x13c
 }
@@ -89,7 +89,7 @@
  * Set instance open flag.
  * From decompiled code: sets flag at offset 0x13c.
  */
-- (void)_setInstanceOpen : (BOOL)openFlag
+- (void)setInstanceOpen : (BOOL)openFlag
 {
 	_instanceOpen = (openFlag != 0);  // offset 0x13c
 }
@@ -98,7 +98,7 @@
  * Check if disk is open.
  * From decompiled code: checks if this instance or any in the chain is open.
  */
-- (BOOL)_isOpen
+- (BOOL)isOpen
 {
 	BOOL instanceOpen;
 	id nextDisk;
@@ -123,7 +123,7 @@
  * Check if any other instance is open.
  * From decompiled code: iterates through logical disk chain checking for open instances.
  */
-- (BOOL)_isAnyOtherOpen
+- (BOOL)isAnyOtherOpen
 {
 	id disk;
 	BOOL isOpen;
@@ -158,7 +158,7 @@
  * Set partition base offset.
  * From decompiled code: sets base at offset 0x138.
  */
-- (void)_setPartitionBase : (unsigned)base
+- (void)setPartitionBase : (unsigned)base
 {
 	_partitionBase = base;  // offset 0x138
 }
@@ -169,7 +169,7 @@
  * Read at offset.
  * From decompiled code: validates params, then delegates to physical disk.
  */
-- (IOReturn)_readAt : (unsigned)offset
+- (IOReturn)readAt : (unsigned)offset
 	     length : (unsigned)length
 	     buffer : (unsigned char *)buffer
        actualLength : (unsigned *)actualLength
@@ -192,7 +192,7 @@
 	}
 
 	// Delegate to physical disk (offset already calculated in deviceOffset)
-	return [_physicalDisk _readAt:deviceOffset
+	return [_physicalDisk readAt:deviceOffset
 	                       length:bytesToMove
 	                       buffer:buffer
 	                 actualLength:actualLength
@@ -203,7 +203,7 @@
  * Read asynchronously at offset.
  * From decompiled code: validates params, then delegates to physical disk.
  */
-- (IOReturn)_readAsyncAt : (unsigned)offset
+- (IOReturn)readAsyncAt : (unsigned)offset
 		  length : (unsigned)length
 		  buffer : (unsigned char *)buffer
 		 pending : (void *)pending
@@ -223,7 +223,7 @@
 	}
 
 	// Delegate to physical disk (offset already calculated in deviceOffset)
-	return [_physicalDisk _readAsyncAt:deviceOffset
+	return [_physicalDisk readAsyncAt:deviceOffset
 	                            length:bytesToMove
 	                            buffer:buffer
 	                           pending:pending
@@ -234,7 +234,7 @@
  * Write at offset.
  * From decompiled code: checks write protection, validates params, then delegates to physical disk.
  */
-- (IOReturn)_writeAt : (unsigned)offset
+- (IOReturn)writeAt : (unsigned)offset
 	      length : (unsigned)length
 	      buffer : (unsigned char *)buffer
         actualLength : (unsigned *)actualLength
@@ -267,7 +267,7 @@
 	}
 
 	// Delegate to physical disk (offset already calculated in deviceOffset)
-	return [_physicalDisk _writeAt:deviceOffset
+	return [_physicalDisk writeAt:deviceOffset
 	                        length:bytesToMove
 	                        buffer:buffer
 	                  actualLength:actualLength
@@ -278,7 +278,7 @@
  * Write asynchronously at offset.
  * From decompiled code: checks write protection, validates params, then delegates to physical disk.
  */
-- (IOReturn)_writeAsyncAt : (unsigned)offset
+- (IOReturn)writeAsyncAt : (unsigned)offset
 		   length : (unsigned)length
 		   buffer : (unsigned char *)buffer
 		  pending : (void *)pending
@@ -305,7 +305,7 @@
 	}
 
 	// Delegate to physical disk (offset already calculated in deviceOffset)
-	return [_physicalDisk _writeAsyncAt:deviceOffset
+	return [_physicalDisk writeAsyncAt:deviceOffset
 	                             length:bytesToMove
 	                             buffer:buffer
 	                            pending:pending

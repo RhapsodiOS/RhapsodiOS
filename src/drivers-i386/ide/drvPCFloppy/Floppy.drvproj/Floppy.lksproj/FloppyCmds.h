@@ -27,7 +27,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doCmdXfr:(void *)cmdParams;
+- (IOReturn)doCmdXfr:(void *)cmdParams;
 
 /*
  * Eject the floppy disk.
@@ -38,7 +38,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doEject:(void *)cmdParams;
+- (IOReturn)doEject:(void *)cmdParams;
 
 /*
  * Turn off the drive motor.
@@ -49,7 +49,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doMotorOff:(unsigned int)driveNum;
+- (IOReturn)doMotorOff:(unsigned int)driveNum;
 
 /*
  * Turn on the drive motor.
@@ -60,7 +60,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doMotorOn:(unsigned int)driveNum;
+- (IOReturn)doMotorOn:(unsigned int)driveNum;
 
 /*
  * Send a command to the floppy controller.
@@ -71,7 +71,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_sendCmd:(void *)cmdParams;
+- (IOReturn)sendCmd:(void *)cmdParams;
 
 @end
 

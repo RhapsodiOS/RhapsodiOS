@@ -188,7 +188,20 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	// Initialize disk object pointer
 	_nextLogicalDisk = nil;                    // offset 0x108
 	
-	// Set default parameters (720KB DD settings)
+	// Set default parameters (720KB DD settings).
+	//
+	// UNRESOLVED: the disassembly does not use these as literals. It loads
+	// _fdcNumber from ds:_fdDensityInfo (the *address* of the density
+	// table, not an integer -- inconsistent with every other place in this
+	// layer that treats offset 0x190 as a one-byte density value), and
+	// loads _totalBytes/_writePrecomp/the four sector-size fields from
+	// separate globals (dword_C28C, dword_C290, off_C264[0..3]) that live
+	// in Geometry.m, outside this layer's files. Those globals' values
+	// line up numerically with fdDensityInfo's density-1 entry and
+	// _ssi_1mb (both already in Geometry.m) for the 720KB DD case, so the
+	// literals below match what the binary would actually store, but the
+	// _fdcNumber pointer-vs-integer mismatch is not resolved here -- see
+	// the reconstruction/divergences.md write-up for this function.
 	_fdcNumber = 1;                            // offset 400
 	_totalBytes = 0xb4000;                     // offset 0x194 (737,280 bytes)
 	_writePrecomp = 1;                         // offset 0x198
@@ -230,8 +243,10 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	// Get drive number and set up name
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:self];
 	sprintf(name, "fd%d", driveNumber);
-	
-	// Set up drive properties
+
+	// Set up drive properties. The disassembly sends driveNumberOfDrive:
+	// a second time here rather than reusing the first result.
+	driveNumber = [IOFloppyDisk driveNumberOfDrive:self];
 	[self setUnit:driveNumber];
 	[self setName:name];
 	[self setDeviceKind:"Floppy Drive"];
@@ -246,10 +261,13 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	// Set bit 2 of _regFlags (volCheck registered flag)
 	_regFlags = _regFlags | 2;
 	
-	// Register the device with the system
+	// Register the device with the system. registerDevice returns nil on
+	// failure (not an IOReturn), so the disassembly tests for a zero
+	// result here, not IO_R_SUCCESS -- the old "!= IO_R_SUCCESS" check
+	// had this backwards and would free on success instead of failure.
 	result = [self registerDevice];
-	
-	if (result != IO_R_SUCCESS) {
+
+	if (result == 0) {
 		// Registration failed
 		return [self free];
 	}

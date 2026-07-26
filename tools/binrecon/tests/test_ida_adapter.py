@@ -119,7 +119,7 @@ def test_host_uses_argument_vector_temp_output_and_atomic_publication(tmp_path):
     assert destination.read_text(encoding="utf-8").endswith("\n")
     argv, options = calls[0]
     assert argv[0] == str(executable.resolve())
-    assert argv[1:3] == ["-c", "-A"]
+    assert argv[1:4] == ["-c", "-A", "-pmetapc"]
     assert argv[-1] == str(input_path.resolve())
     assert isinstance(argv, list)
     script_args = _script_args(argv)
@@ -137,6 +137,7 @@ def test_host_uses_argument_vector_temp_output_and_atomic_publication(tmp_path):
         str(executable.resolve()),
         "-c",
         "-A",
+        "-pmetapc",
         next(arg for arg in argv if arg.startswith("-o")),
         next(arg for arg in argv if arg.startswith("-L")),
         "-S" + expected_script,

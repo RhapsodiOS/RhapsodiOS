@@ -277,7 +277,7 @@ def export_with_ida(
         _atomic_text(mapping, mapping_raw.decode("utf-8"))
         mapping_sha256 = hashlib.sha256(mapping_raw).hexdigest().upper()
         argv = [
-            str(executable), "-c", "-A", f"-o{database}", f"-L{native_log}",
+            str(executable), "-c", "-A", "-pmetapc", f"-o{database}", f"-L{native_log}",
             "-S" + _script_command(script.resolve(), temporary, identity, mapping,
                                     mapping_sha256),
             str(identity.path),

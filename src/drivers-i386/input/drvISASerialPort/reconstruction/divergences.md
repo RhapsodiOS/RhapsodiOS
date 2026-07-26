@@ -2204,3 +2204,66 @@ committed map had also drifted 8 lines on `ISASerialPortFlow.c`, from the
 `ioPorts.h` import Addendum 3 added after it was written; that is corrected too.
 The same relining was applied to `ledger.json`'s 34 stale `source_line` values so
 the two artifacts continue to agree.
+
+## Addendum 4: Findings 94 and 102 are wrong, and the real 64-bit-division picture
+
+Both findings claimed a runtime catastrophe that does not exist. Finding 94 said our
+`__udivdi3` recurses infinitely; Finding 102 said that makes opening a port overflow the
+kernel stack. **Neither is true.** The mechanism was misread, and the corrected picture
+changes what Task 6 should do.
+
+**What is actually in our binary.** Four symbols, not two:
+
+```
+__udivdi3     external, section=None          <- undefined; what the compiler calls
+__umoddi3     external, section=None          <- undefined; what the compiler calls
+___udivdi3    external, __TEXT,__text         <- our definition, wrong name
+___umoddi3    external, __TEXT,__text         <- our definition, wrong name
+```
+
+Our source names these functions `__udivdi3` in C, so the compiler emits `___udivdi3`. But a
+compiler-lowered 64-bit divide relocates against the **ABI** symbol `__udivdi3`, which is a
+different symbol and is undefined in our object. So our definitions are **never called**, and
+the four calls inside them (at 9425, 9523, 9751, 9785) target the undefined externals rather
+than themselves. There is no recursion.
+
+**The driver nevertheless loads.** The i386 kernel exports both:
+
+```
+00218bac T __udivdi3
+00218be0 T __umoddi3
+```
+
+so the undefined externals resolve at load time. The reviewer's concern that this might be a
+load failure is answered: it is not.
+
+**So our two definitions are dead code under the wrong name**, while the reference defines
+both **locally** at 23800 and 24064 — 264 and 348 bytes — because Apple's link pulled them
+from libgcc. Ours come from the kernel instead.
+
+**What Task 6 should do, and what it should not.** The plan's original instruction was to
+rewrite the helpers with 32-bit division only. That would **not** fix anything, because the
+problem is the symbol name, not the arithmetic. The correct change is the rename that is
+already on Task 6's list, understood properly: renaming the C functions to `_udivdi3` and
+`_umoddi3` makes the compiler emit `__udivdi3`/`__umoddi3`, which turns them into the
+definitions the lowered divides actually call — matching the reference's local definitions and
+making our object self-contained rather than dependent on a kernel export.
+
+That is worth doing on parity grounds: it should close roughly 612 bytes of the
+`__TEXT,__text` gap, since the reference's two bodies total 612 bytes and ours currently
+contribute dead weight under names nothing references.
+
+Spec §2.8's reasoning still stands — the helpers stay rather than being removed, because
+`/usr/lib/libcc.a` on the guest is a PPC archive that cannot load for `-arch i386`. What
+changes is only the understanding of *why* they matter and what the fix is.
+
+**Two smaller corrections to Finding 102's text.** Its caller list should read `_activatePort`,
+`acquire:`, `release`, `_executeEvent` and `_initChip` — not `initFromDeviceDescription:`. And
+Task 5's report says the reference's `identifyChip` is 180 instructions where capstone counts
+**192**, and lists ten values under a heading of "nine return sites".
+
+**Measured function sizes, for the record**, since Task 5 left them unverified and symbol-gap
+arithmetic is useless on our unstripped build: `identifyChip` **656** against the reference's
+684, `initChip` **148** against 148 — exact — and `programChip` **1077** against 1148. All at
+or below the reference, so the overfit guard passes.
+

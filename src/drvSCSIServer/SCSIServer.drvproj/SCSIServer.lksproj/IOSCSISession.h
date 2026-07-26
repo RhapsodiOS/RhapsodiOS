@@ -135,28 +135,6 @@ int IOSCSISession_getDMAAlignment(id session, unsigned int *alignment);
  */
 int IOSCSISession_maxTransfer(id session, unsigned int *maxTransfer);
 
-/* Wire memory in task's address space for DMA
- * address: Virtual address to wire
- * length: Length of memory region in bytes
- */
-void IOTaskWireMemory(unsigned int address, int length);
-
-/* Unwire previously wired memory
- * address: Virtual address to unwire
- * length: Length of memory region in bytes
- */
-void IOTaskUnwireMemory(unsigned int address, int length);
-
-/* Deallocate a Mach port in the task
- * port: Mach port to deallocate
- */
-void IOTaskPortDeallocate(mach_port_t port);
-
-/* Allocate and assign a name to a Mach port
- * name: Port name to assign
- */
-void IOTaskPortAllocateName(mach_port_t name);
-
 /* Execute a SCSI-3 request
  * session: IOSCSISession object
  * request: Pointer to SCSI request structure

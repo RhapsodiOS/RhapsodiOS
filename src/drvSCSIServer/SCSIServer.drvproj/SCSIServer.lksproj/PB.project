@@ -3,11 +3,13 @@
     FILESTABLE = {
         CLASSES = (
             SCSIServer.m,
-            IOSCSISession.m
+            IOSCSISession.m,
+            IOTask.m
         );
         H_FILES = (
             SCSIServer.h,
-            IOSCSISession.h
+            IOSCSISession.h,
+            IOTask.h
         );
         OTHER_SOURCES = (
             Makefile,

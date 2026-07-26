@@ -6,14 +6,14 @@
 #ifndef _PDPSEUDO_H_
 #define _PDPSEUDO_H_
 
-#import <objc/Object.h>
+#import <driverkit/IODevice.h>
 #import "IOPortSession.h"
 
 /* ========================================================================
  * PDPseudo Class Definition
  * ======================================================================== */
 
-@interface PDPseudo : Object
+@interface PDPseudo : IODevice <PortDevices>
 {
     /* Instance variables */
 }
@@ -30,31 +30,31 @@
 + (char)probe:(id)deviceDescription;
 
 /* Initialization */
-- initFromDeviceDescription:(void *)deviceDescription;
+- initFromDeviceDescription:(id)deviceDescription;
 
 /* Port operations */
-- (int)acquire:(int)param;
-- (void)release;
+- (int)acquire:(BOOL)sleep;
+- (int)release;
 
 /* State management */
-- (unsigned int)getState;
-- (void)setState:(unsigned int)state mask:(unsigned int)mask;
-- (void)watchState:(unsigned int *)state mask:(unsigned int)mask;
+- (unsigned long)getState;
+- (int)setState:(unsigned long)state mask:(unsigned long)mask;
+- (int)watchState:(unsigned long *)state mask:(unsigned long)mask;
 
 /* Event operations */
-- (unsigned int)nextEvent;
-- (void)executeEvent:(unsigned int)event data:(unsigned int)data;
-- (void)requestEvent:(unsigned int)event data:(unsigned int *)data;
-- (int)enqueueEvent:(unsigned int)event data:(unsigned int)data sleep:(int)sleep;
-- (int)dequeueEvent:(unsigned int *)event data:(unsigned int *)data sleep:(int)sleep;
+- (unsigned long)nextEvent;
+- (int)executeEvent:(unsigned long)event data:(unsigned long)data;
+- (int)requestEvent:(unsigned long)event data:(unsigned long *)data;
+- (int)enqueueEvent:(unsigned long)event data:(unsigned long)data sleep:(BOOL)sleep;
+- (int)dequeueEvent:(unsigned long *)event data:(unsigned long *)data sleep:(BOOL)sleep;
 
 /* Data transfer operations */
-- (int)enqueueData:(void *)buffer
+- (int)enqueueData:(char *)buffer
         bufferSize:(unsigned int)bufferSize
      transferCount:(unsigned int *)transferCount
-             sleep:(int)sleep;
+             sleep:(BOOL)sleep;
 
-- (int)dequeueData:(void *)buffer
+- (int)dequeueData:(char *)buffer
         bufferSize:(unsigned int)bufferSize
      transferCount:(unsigned int *)transferCount
           minCount:(unsigned int)minCount;

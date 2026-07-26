@@ -875,11 +875,19 @@ and `section`, not by parity counts.
   in `IOParallelPort.m` - pushes `offset _ppopen` through `offset _ppioctl` into
   `IOAddToCdevsw` at 856-911 and writes `ds:_pp_softc` at 1165, while every read of
   `_pp_softc` is in `IOParallelPortKern.m`. Those are cross-module references; `static`
-  would not link. The `local` binding is produced by the kernel-server link step, which
-  privatises everything except the six symbols the loader needs. Our build does not run
-  that step at all - it ships 3593 symbols against the reference's 110 - so **no source
-  change is possible or warranted here**, and none was made. Nothing was de-staticised
-  either.
+  would not link. The `local` binding is therefore produced by the kernel-server link
+  step, not by a `static` in the source. Our build does not run that step at all - it
+  ships 3593 symbols against the reference's 110 - so **no source change is possible or
+  warranted here**, and none was made. Nothing was de-staticised either.
+
+  A note on how much this explains: the reference has **34** external symbols, not six,
+  and three of them (`__strobeChar`, `_IOParallelPortThread`,
+  `_IOParallelPortInterruptHandler`) live in the *same* object file as the seven `local`
+  `cdevsw` entry points. So the link step privatises selectively, and exactly which
+  symbols it keeps external is not explained by "what the loader needs". That split is
+  unresolved. It does not affect the conclusion above - the cross-module references are
+  proof enough that `static` was never in the source - but the mechanism should not be
+  stated more confidently than the evidence supports.
 - `__strobeChar`, `_IOParallelPortThread` and `_IOParallelPortInterruptHandler` are
   external and defined in `__TEXT,__text` in both binaries. All three spellings were
   already correct and were left alone.
@@ -990,7 +998,7 @@ Now `if ([self registerDevice] == nil)`.
 | 54 | **Corrected and accepted** - see 8.3. No source change. |
 | 55 | **Repaired** - see 8.5. |
 | 56 | No action. `__module_info` is 48 bytes in both binaries and the three modules are unchanged. |
-| 57-59 | Already fixed in `15ce9007`, by value. Re-verified: entry 3492 is `assembly-matched`, and the `writeToPort` and `initDevice` arms select the values the reference selects. |
+| 57-59 | Already fixed in `15ce9007`, by value. Re-verified: the `writeToPort` and `initDevice` arms select the values the reference selects. Ledger entry 3492 is `control-flow-confirmed`, not `assembly-matched` - the ledger is the authority here and is deliberately the more conservative of the two. |
 | 60 | Fixed - see 8.6. |
 | 61 | Fixed - see 8.6. |
 

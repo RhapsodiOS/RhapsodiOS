@@ -105,11 +105,22 @@ Our `ISASerialPort.m` is 5349 lines holding all of it.
 
 `__OBJC,__instance_vars` is **28 bytes** in the reference and **820** in ours.
 
-Apple keeps driver state in file-scope statics: `_Chip` (180 bytes) and
-`_msr_state_lut` (16 bytes) in `__DATA,__data`, plus four `_xxx.NN` static sets in
-`__DATA,__bss`. That is what a design with 11 exported C functions reaching into
-driver state requires — a C function in another translation unit cannot
-dereference an Objective-C instance variable.
+**The report pass corrected this section's original explanation.** It is not that
+Apple scatters driver state into file-scope statics; it is that Apple keeps
+**exactly two instance variables** — an embedded 304-byte `Port` struct at offset
+296, and a pointer to it at 600. The `__instance_vars` metadata is 28 bytes
+because an `ivar_list` is 4 bytes of count plus 12 per ivar, and 4 + 12×2 = 28,
+confirmed by decoding the section directly.
+
+That single design choice explains the rest of the driver. The 11 exported C
+functions take a `Port *` or a `Queue *` — **none of them takes an
+`ISASerialPort *`** — so they reach driver state through a plain C struct pointer
+and never need the `@interface`. Our ~30 scattered ivars consolidate into one
+embedded struct rather than dispersing into statics.
+
+`_Chip` (180 bytes, 9 entries × 20) and `_msr_state_lut` (16 bytes) are genuinely
+file-scope in `__DATA,__data`, as are four `_xxx.NN` sets in `__DATA,__bss` — but
+those are tables and compiler residue, not per-port state.
 
 This is the largest structural change in the effort and the reason every ivar
 dereference in the reference disassembly is currently unmatchable against our

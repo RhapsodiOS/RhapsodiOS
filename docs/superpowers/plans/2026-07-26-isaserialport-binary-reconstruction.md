@@ -674,7 +674,11 @@ Then add the file-scope state declarations the Step 9 decode says are shared. De
 
 - [ ] **Step 3: Invert the state model**
 
-Move every field Task 2's Step 9 decode does **not** list among the reference's 28 bytes out of `@interface ISASerialPort` and into file-scope storage. The reference keeps `_Chip` (180 bytes) and `_msr_state_lut` (16) in `__DATA,__data` plus four `_xxx.NN` sets in `__DATA,__bss`.
+**The report pass established the target shape, and it is not what this step originally described.** The reference has **exactly two ivars**: an embedded 304-byte `Port` struct at offset 296 and a pointer to it at 600 (`__instance_vars` is 28 bytes = 4 + 12×2, decoded directly). Consolidate our ~30 scattered ivars into **one embedded `Port` struct**, using Apple's own field names as recovered in Task 2's decode. Do **not** disperse them into file-scope statics.
+
+`_Chip` (180 bytes, 9 entries × 20) and `_msr_state_lut` (16) do go to file scope in `__DATA,__data` — they are tables, not per-port state — but Task 5 owns those.
+
+This is what makes `.c` work: Task 2 confirmed **none of the 11 exported functions takes an `ISASerialPort *`**; each takes a `Port *` or `Queue *`, so they reach state through a plain C struct pointer and never need the `@interface`. Drop the `self` parameter our source gives them — it is decompiler residue.
 
 Two rules:
 - **Follow the decode, not convenience.** The interrupt handlers `_FIFOIntHandler` and `_NonFIFOIntHandler` run at raised IPL and read this state.

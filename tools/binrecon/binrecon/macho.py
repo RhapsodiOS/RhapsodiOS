@@ -900,6 +900,8 @@ def _ppc_pair_raw(section, principal, pair):
     record["type"] = pair["type"]
     record["scattered"] = pair["scattered"]
     record["width"] = 2
+    record["pc_relative"] = pair["pc_relative"]
+    record["external"] = pair["external"]
     return record
 
 

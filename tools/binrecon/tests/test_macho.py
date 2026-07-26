@@ -553,13 +553,13 @@ def test_ppc_hi16_pair_concatenates_without_the_ha16_adjustment(tmp_path):
 def test_ppc_lo16_pair_takes_the_high_half_from_the_pair(tmp_path):
     # __data sits at 0x1008 when __text is eight bytes long.
     text = struct.pack(">II", 0x38601008, 0x60000000)
-    relocations = ppc_relocation(0, 2, kind=PPC_RELOC_LO16) + ppc_pair(0x0000)
+    relocations = ppc_relocation(0, 2, kind=PPC_RELOC_LO16) + ppc_pair(0x0001)
 
     document = read_macho(write_ppc(tmp_path, text, relocations))
 
     assert semantic(document)[0x1000] == {
         "address": 0x1000, "kind": "ppc-lo16-32-absolute",
-        "target": "__DATA,__data", "addend": 0,
+        "target": "__DATA,__data", "addend": 0x10000,
     }
 
 
@@ -578,13 +578,13 @@ def test_ppc_vanilla_pointer_is_section_relative(tmp_path):
 def test_ppc_jbsr_names_the_symbol_and_records_the_island(tmp_path):
     # bl +8 into the island at 0x1008, whose real target is the symbol.
     text = struct.pack(">III", 0x48000009, 0x60000000, 0x4E800020)
-    relocations = ppc_relocation(0, 0, kind=PPC_RELOC_JBSR, extern=1) + ppc_pair(0)
+    relocations = ppc_relocation(0, 0, kind=PPC_RELOC_JBSR, extern=1) + ppc_pair(0x1004)
 
     document = read_macho(write_ppc(tmp_path, text, relocations))
 
     assert semantic(document)[0x1000] == {
         "address": 0x1000, "kind": "ppc-jbsr-24-pc-relative",
-        "target": "_external", "addend": 0,
+        "target": "_external", "addend": 0x1004,
     }
     raw = document["extensions"]["macho"]["relocations"]
     assert [entry["kind"] for entry in raw] == [
@@ -617,6 +617,24 @@ def test_ppc_raw_relocations_keep_every_file_entry(tmp_path):
     assert len(raw) == 2
     assert len(document["relocations"]) == 1
     assert [entry["scattered"] for entry in raw] == [False, False]
+
+
+def test_ppc_pair_raw_reports_the_pair_bits_not_principal_bits(tmp_path):
+    # HA16 has an external principal, but the pair's r_extern is 0.
+    # The raw PAIR record should report external=False from the pair itself.
+    text = struct.pack(">II", 0x3C600002, 0x3863FFFF)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HA16, extern=1) + ppc_pair(0xFFFF)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    raw = document["extensions"]["macho"]["relocations"]
+    assert len(raw) == 2
+    assert raw[0]["external"] is True
+    assert raw[0]["kind"] == "ppc-ha16-32-absolute"
+    assert raw[1]["external"] is False
+    assert raw[1]["kind"] == "ppc-pair-16-absolute"
 
 
 def test_ppc_principal_without_its_pair_is_rejected(tmp_path):

@@ -213,7 +213,7 @@ def attach_symbols(modules, assignment, symbols):
             section = symbol["section"]
             if section is None:
                 raise ObjcAbiError(f"{name} is undefined in the image")
-            bucket = text if section.startswith("__TEXT") else data
+            bucket = text if section == "__TEXT,__text" else data
             bucket.append(name)
         modules[module]["text_symbols"] = sorted(text)
         modules[module]["data_symbols"] = sorted(data)

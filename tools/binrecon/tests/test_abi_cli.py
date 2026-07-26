@@ -23,6 +23,22 @@ def test_attaches_symbols_by_declared_assignment():
     assert modules["NSRange.m"]["data_symbols"] == ["_NSZeroRect"]
 
 
+def test_text_const_section_is_classified_as_data():
+    modules = {"NSGeometry.m": {
+        "schema_version": "abi-v1", "module": "NSGeometry.m",
+        "classes": [], "categories": [],
+        "text_symbols": [], "data_symbols": [],
+    }}
+    symbols = [
+        {"name": "_NSZeroPoint", "address": 0x3000, "section": "__TEXT,__const"},
+    ]
+
+    attach_symbols(modules, {"NSGeometry.m": ["_NSZeroPoint"]}, symbols)
+
+    assert modules["NSGeometry.m"]["text_symbols"] == []
+    assert modules["NSGeometry.m"]["data_symbols"] == ["_NSZeroPoint"]
+
+
 def test_unknown_symbol_is_an_error():
     import pytest
     from binrecon.objc_abi import ObjcAbiError

@@ -1,6 +1,10 @@
 # macOS Finder special file
 .DS_Store
 
+# Python bytecode: regenerated on every run of the tooling, not source
+__pycache__/
+*.pyc
+
 # vm directory: large binaries and generated images, not source
 vm/*.vmdk
 vm/*.img
@@ -11,7 +15,6 @@ vm/artifacts/
 vm/debs/
 vm/shots-*/
 vm/capture_output/
-vm/__pycache__/
 
 # binrecon: analyzer output is generated evidence, not source
 tools/binrecon/out/

@@ -29,15 +29,16 @@ comparison). That is a positive result from Task 2, not a finding.
 
 ## Summary
 
-| Bucket | Count |
-| --- | --- |
-| mapped | 10 |
-| unmapped | 3 |
-| duplicate_candidates | 0 |
-| boundary_disputed | 0 |
+| Bucket | Count (report pass) | Count (after the fix pass) |
+| --- | --- | --- |
+| mapped | 10 | 11 |
+| unmapped | 3 | 2 |
+| duplicate_candidates | 0 | 0 |
+| boundary_disputed | 0 | 0 |
 
 All 13 reference functions land in exactly one bucket and every one carries a ledger
-entry.
+entry. The single bucket move is `+[Beep probe:]`, which the fix pass wrote; see
+Finding 1 and the resolution section at the end of this document.
 
 Note on sizes: the task brief's disposition table lists each function's size as the
 gap to the next function start (68, 100, 100, 320, 444, 28, 224, 192, 356, 124, 80,
@@ -1147,3 +1148,109 @@ reference's instructions is a divergence even when the behaviour is identical.
 **Disposition:** fix — drop `firstItem` and suppress the separator with
 `if (seq != defaultBeepSequences && (*count + 2 <= maxLen))`, which is what the
 reference compiles from.
+
+---
+
+# Fix pass resolution
+
+Every finding above is resolved below. The driver was built for the first time in
+this pass: `gnumake RC_ARCHS=i386` exits 0, `Beep.m` compiles under `-Wmost` with no
+warnings, and the staged `Beep_reloc` is 106816 bytes (unstripped; the reference is
+37984).
+
+Parity, before and after the source fixes:
+
+| List | Baseline | After |
+| --- | --- | --- |
+| `missing_strings` | 0 | 0 |
+| `missing_symbols` | 1 (`+[Beep probe:]`) | 0 |
+| `extra_strings` | 4 (`Beep`, `Audio`, `PC Speaker`, `Beep: Initialized ...`) | 0 |
+| `extra_symbols` | 16 | 18 |
+
+Both `extra_symbols` counts are entirely stabs from our unstripped build — `Beep.m`,
+the `machdep/i386/*_inline.h` file entries and one `name:fN` entry per function. The
+two added ones are `+[Beep probe:]:f2` and the `timer_inline.h` file entry, both
+consequences of fixes below. `parity_check.py` now exits 0.
+
+Per-function sizes in the rebuilt binary against the reference:
+
+```
+   ref   ours name
+    68     68 +[Beep probe:]
+    12     12 +[BeepKernelServerInstance kernelServerInstance]
+    12     12 +[BeepVersion driverKitVersionForBeep]
+    28     28 -[Beep _channelWillAddStream]
+    80     80 -[Beep _getSupportedParameters:count:forObject:]
+   444    356 -[Beep beep]
+   356    356 -[Beep getCharValues:forParameter:count:]
+   224    248 -[Beep getIntValues:forParameter:count:]
+   320    316 -[Beep initFromDeviceDescription:]
+   100    100 -[Beep reset]
+   124    124 -[Beep setCharValues:forParameter:count:]
+   192    196 -[Beep setIntValues:forParameter:count:]
+   100    104 _stringToStyle
+```
+
+Nothing is flagged `LARGER`. The three functions that exceed the reference —
+`getIntValues:` by 24 bytes, `setIntValues:` by 4 and `_stringToStyle` by 4 — are
+exactly the three where a NULL guard was deliberately retained, and the excess is
+exactly the guard. `beep` is *smaller* than the reference because our gcc rolls the
+note loop the reference peels.
+
+Every rewritten function was disassembled out of the rebuilt binary with capstone and
+read against the reference instruction by instruction. `+[Beep probe:]` (31/31
+instructions), `-[Beep reset]` (28/28) and `-[Beep getCharValues:forParameter:count:]`
+(138/138) came out identical in sequence, not merely in content.
+
+## Finding-by-finding
+
+| # | Resolution |
+| --- | --- |
+| 1 | **Fixed.** `+ (BOOL)probe:deviceDescription` written from the disassembly in Q1 and declared in `Beep.h`. It allocates, sends `initFromDeviceDescription:`, and returns the non-nil test; it does not free the instance on failure, reproducing the reference's leak. Rebuilt at 68 bytes, instruction for instruction identical. |
+| 2 | **Fixed.** `IOSleep` replaced by `assert_wait(0, 0)` / `thread_set_timeout(timeout)` / `thread_block()`, with the tick count passed unscaled. The rebuilt stream carries the same `push 0; push 0; call; push; call; call; add esp, 0Ch`. `<kernserv/prototypes.h>` already declared all three, `thread_block` as `void thread_block(void)`. |
+| 3 | **Fixed.** `<machdep/i386/timer.h>` and `<machdep/i386/timer_inline.h>` imported; the control write is `timer_set_ctl(timer)` and the two counter writes are `timer_write(TIMER_CNT2_SEL, pitDivisor)`. `PIT_CONTROL` and `PIT_COUNTER2` are gone. The rebuilt binary loads the port from `_timer_cnt_port_[2]` in `__TEXT,__const`, as the reference does. |
+| 4 | **Fixed.** `static char beepDeviceName[] = "Beep";` and `static char beepDeviceKind[] = "Audio";` at file scope; `reset` passes their addresses. Both come out `local` in `__DATA,__data`, and the two `__TEXT,__cstring` literals are gone. The call sites did not move — they were already in `reset`, as Q4 records. The plan's Step 5 named `Beep.m:176`/`:179` as needing relocation; that was not necessary. |
+| 5 | **Fixed.** `setLocation:"PC Speaker"`, the `[self reset]` send and the `IOLog` are all removed. Removing the `reset` send is safe and is now established rather than assumed: `src/driverkit-3/libDriver/Kernel/IOAudio.m:1647` shows `-[IOAudio initFromDeviceDescription:]` sending `[self reset]` itself and returning nil if it answers `NO`, so `reset` still runs during registration, before `super`'s initialiser returns. Ours was a second, redundant send. |
+| 6 | **Split.** The `index` counter is **fixed** — the loop returns `(int)(seq - defaultBeepSequences)`, and the rebuilt prologue has no `sub esp`, so no stack local is allocated, matching the reference's `sub`/`sar`. The NULL guard is **accepted as `intentional-mismatch`** (reviewer Pat Raynor). `setCharValues:` hands the caller's `parameterArray` straight to `stringToStyle`, so dropping the guard would buy 4 bytes of parity in exchange for a kernel-mode NULL dereference. |
+| 7 | **Fixed.** `PIT_FREQUENCY` and `PIT_DIVISOR` are gone; the divisor is `TIMER_CONSTANT / (currentFreq > 0 ? currentFreq : 1)`. The rebuilt stream divides by `0x1234CF`. One residual: our gcc keeps the ternary as a select (`cmp ebx, 1; jge; mov ecx, 1`) where the reference constant-folds the false arm to `mov ecx, 0x34CF`. Same value, different fold; no source form controls this. |
+| 8 | **Fixed.** The `_pitCommand = PIT_CMD_COUNTER2_LOHI_MODE3;` store is removed, and `PIT_CMD_COUNTER2_LOHI_MODE3` with it. `initFromDeviceDescription:` now writes only `0x188`, `0x18C` and `0x190`, as the reference does. |
+| 9 | **Accepted as `intentional-mismatch`** (reviewer Pat Raynor) on both `getIntValues:` and `setIntValues:`, on the same reasoning as Finding 6's guard. The disassembly confirms the guards are the *only* difference in either method; the +24 and +4 bytes are entirely theirs. |
+| 10 | **Fixed.** `- (void)beep` in both `Beep.h` and `Beep.m`; the four `return IO_R_SUCCESS;` statements are gone. Neither `IOAudio.h` nor `IODevice.h` declares `-beep`, so nothing conflicts. |
+| 11 | **Fixed.** Index 0 is `{ "Plain", 1, 1, 1 }` and index 1 is `{ "Blip", 2, 3, 4 }`; the comments moved with the names. Confirmed against the reference's own `__DATA` image: all six records, names and triples, compare `OK`. The shipped `"Style" = "Plain"` now selects the single-note style, as on Apple's driver. |
+| 12 | **Fixed.** `static` dropped from `defaultBeepSequences`; the symbol is `external`. `stringToStyle` keeps its `static` and stays `local`. |
+| 13 | **Fixed.** `char isMute;` added ahead of the others, `timer` typed `timer_ctl_reg_t`, and all four surviving ivars renamed to `timer`, `frequency`, `duration`, `currentBeepSequence`. `reset` now assigns the four bitfields by name, and the rebuilt code is the reference's six read-modify-writes on `[ebx+0x185]` — which also confirms the offsets, since without `isMute` the control byte would sit at `0x184`. |
+| 14 | **Fixed**, not accepted. `getCharValues:`/`setCharValues:` declare `char *parameterArray` in both `Beep.h` and `Beep.m`, so the encodings are `i20@8:12*16*20^I24` and `i20@8:12*16*20I24`. The tension with `src/driverkit-3/driverkit/IODevice.h:209`/`:217` turned out to be theoretical: the build compiles `Beep.m` under `-Wmost` with **no** diagnostic of any kind, so there was no build cost to weigh against metadata parity. `IODevice.h` was not touched. |
+| 15 | **No change.** The three early exits still return before `inb(PPI_PORT_B)`, and the restore is still only on the fall-through. Verified in the rebuilt stream: all three jump to the shared epilogue. |
+| 16 | **Fixed.** `firstItem` is gone; the separator is suppressed by `seq != defaultBeepSequences`. The rebuilt `getCharValues:` is instruction for instruction identical to the reference across all 138 instructions, which is the direct confirmation that the flag was the only thing standing between the two. |
+
+## Residuals recorded rather than fixed
+
+Three things remain that are visible in the binary and that this pass did not act on.
+
+1. **`beep`'s note loop is rolled where the reference peels the first note.** Q2 calls
+   the peeling a compiler transformation and not a divergence; our build simply does
+   not perform it. It is why `beep` is 356 bytes against the reference's 444.
+2. **The `currentFreq > 0` ternary is not constant-folded** on the false arm — see
+   Finding 7.
+3. **Function order in `__text` differs.** The reference emits `+[Beep probe:]` at 0,
+   then `_stringToStyle` at 68, then `-[Beep reset]` at 168 and
+   `-[Beep initFromDeviceDescription:]` at 268. Ours emits `_stringToStyle` first (a
+   file-scope function ahead of the `@implementation`), and `reset` after `init`.
+   Matching it would mean moving `stringToStyle` between `+probe:` and `-reset` and
+   swapping `reset` and `initFromDeviceDescription:` in the `@implementation`. No
+   finding above covers this, so it is left for a later pass to decide; it changes no
+   addresses that the source map or ledger depend on, both of which are keyed to
+   reference addresses.
+
+## Ledger after this pass
+
+| Status | Count |
+| --- | --- |
+| `assembly-matched` | 7 |
+| `intentional-mismatch` | 6 |
+| `unexamined` | 0 |
+
+The six `intentional-mismatch` entries are the two build-generated glue methods
+carried over from the report pass, the three NULL-guard retentions (`_stringToStyle`,
+`getIntValues:`, `setIntValues:`) and `-[Beep beep]`, whose two residual codegen
+differences are recorded above.

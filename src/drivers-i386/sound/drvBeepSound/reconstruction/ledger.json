@@ -9,7 +9,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; no source counterpart, +[Beep probe:] is absent from Beep.m and Beep.h entirely (divergences.md Finding 1); Ghidra's decompilation independently reproduces the alloc/initFromDeviceDescription: sequence"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; the method was written from the reference disassembly in the fix pass (divergences.md Finding 1) and the rebuilt stream is instruction for instruction identical to 0-65 at the same 68-byte size"
         ],
         "status": "agreed"
       },
@@ -20,9 +20,9 @@
       "reason": null,
       "reviewer": null,
       "size": 66,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 107,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
+      "status": "assembly-matched"
     },
     {
       "address": 68,
@@ -41,12 +41,12 @@
       "names": [
         "_stringToStyle"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 6, accepted: the styleStr == NULL guard is kept, where the reference dereferences the argument immediately through the inlined strlen. setCharValues: passes the caller-supplied parameterArray straight through, so the reference faults on a NULL style name while our source returns -1; a kernel-mode NULL dereference is not worth eight bytes of parity. The rest of the function was rewritten and now matches the reference stream: the index counter is gone, the return value is the sub/sar pointer subtraction against _defaultBeepSequences, and the prologue allocates no stack locals.",
+      "reviewer": "Pat Raynor",
       "size": 99,
-      "source_line": 81,
+      "source_line": 80,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 168,
@@ -57,7 +57,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; instruction-level comparison against source found a divergence (divergences.md Finding 4)"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; divergences.md Finding 4 fixed (setName:/setDeviceKind: now take the addresses of two local __DATA char arrays) and Finding 13 fixed (the control byte is a timer_ctl_reg_t at 0x185 behind the new isMute byte); the rebuilt stream is instruction for instruction identical to 168-264 at the same 100-byte size, including all six read-modify-writes"
         ],
         "status": "agreed"
       },
@@ -68,9 +68,9 @@
       "reason": null,
       "reviewer": null,
       "size": 97,
-      "source_line": 173,
+      "source_line": 175,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 268,
@@ -81,7 +81,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; instruction-level comparison against source found divergences (divergences.md Findings 5 and 8)"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; divergences.md Findings 5 and 8 fixed (setLocation:, the redundant [self reset] and the IOLog are gone, and the control byte is no longer initialised here); every instruction of the rebuilt stream accounts for one in 268-585, the only differences being branch polarity and basic-block order chosen by our gcc"
         ],
         "status": "agreed"
       },
@@ -92,9 +92,9 @@
       "reason": null,
       "reviewer": null,
       "size": 318,
-      "source_line": 110,
+      "source_line": 124,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 588,
@@ -113,12 +113,12 @@
       "names": [
         "-[Beep beep]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Findings 2, 3, 7 and 10 fixed and verified in the rebuilt stream: assert_wait(0,0) / thread_set_timeout(ticks) / thread_block() with the same add esp, 0Ch, the counter-2 port loaded from _timer_cnt_port_[2] instead of an immediate, TIMER_CONSTANT 1193167 as the dividend, and a void return. Two residual codegen differences remain that no source change can remove: our gcc rolls the note loop where the reference peels the first note, and it keeps the currentFreq > 0 ternary as a select where the reference constant-folds the false arm to 0x34CF. Both produce the same frequencies and the same port writes.",
+      "reviewer": "Pat Raynor",
       "size": 441,
-      "source_line": 195,
+      "source_line": 194,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1032,
@@ -140,7 +140,7 @@
       "reason": null,
       "reviewer": null,
       "size": 25,
-      "source_line": 462,
+      "source_line": 452,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
       "status": "assembly-matched"
     },
@@ -161,12 +161,12 @@
       "names": [
         "-[Beep getIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 9, accepted: the parameterArray == NULL || count == NULL guard is kept, where the reference dereferences count in its first instructions after the prologue. Everything else matches instruction for instruction, including the *count == 0 -> 512 default, &maxLen passed to super, and the style index computed as currentBeepSequence - defaultBeepSequences. The guard accounts for the whole 24-byte excess over the reference.",
+      "reviewer": "Pat Raynor",
       "size": 223,
-      "source_line": 269,
+      "source_line": 263,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1284,
@@ -185,12 +185,12 @@
       "names": [
         "-[Beep setIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "divergences.md Finding 9, accepted: the parameterArray == NULL guard is kept, where the reference loads parameterArray and dereferences it with no test. Everything else matches instruction for instruction, including the unsigned compare against 4 on the style index and the 0FFFFFD39h return. The guard accounts for the whole excess over the reference.",
+      "reviewer": "Pat Raynor",
       "size": 192,
-      "source_line": 393,
+      "source_line": 383,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1476,
@@ -201,7 +201,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source, which found divergences (divergences.md Findings 16 and 14)"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; divergences.md Findings 16 and 14 fixed (the firstItem flag is replaced by the seq != defaultBeepSequences cursor test, and parameterArray is declared char *); the rebuilt stream is instruction for instruction identical to 1476-1831 across all 138 instructions at the same 356-byte size"
         ],
         "status": "agreed"
       },
@@ -212,9 +212,9 @@
       "reason": null,
       "reviewer": null,
       "size": 356,
-      "source_line": 315,
+      "source_line": 309,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1832,
@@ -225,7 +225,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source, whose body matches, but the emitted Objective-C type encoding diverges (divergences.md Finding 14)"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; divergences.md Finding 14 fixed (parameterArray is declared char *, so the emitted encoding is i20@8:12*16*20I24); all 52 instructions of the rebuilt stream account for one in 1832-1955 at the same 124-byte size, the only difference being branch polarity on the invalid-style arm"
         ],
         "status": "agreed"
       },
@@ -236,9 +236,9 @@
       "reason": null,
       "reviewer": null,
       "size": 123,
-      "source_line": 432,
+      "source_line": 422,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 1956,
@@ -260,7 +260,7 @@
       "reason": null,
       "reviewer": null,
       "size": 77,
-      "source_line": 471,
+      "source_line": 461,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
       "status": "assembly-matched"
     },

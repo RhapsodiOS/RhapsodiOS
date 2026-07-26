@@ -85,7 +85,8 @@ Five methods carry a finding and therefore stay `unexamined` in the ledger, per
 the convention established by the driver passes: a method known to diverge is
 written up here rather than given a status it has not earned. The other nineteen
 are `control-flow-confirmed`. None is `assembly-matched`; that requires a rebuilt
-binary and no build was run.
+binary and no build was run. (Those counts are as of the report pass. The fix
+pass advanced four of the five; see Post-fix parity below.)
 
 Six findings follow. Findings 1 to 3 share one root cause — two kernel-side bus
 headers in our tree are stubs — and are the only behavioural divergences found.
@@ -350,6 +351,14 @@ with the signatures the driver-side header already carries. It removes a real
 fragility even though it is not causing a failure today. Finding 2 is fixed by
 the same change.
 
+**Outcome:** fixed in commit `99a55c1b`. `src/kernel-7/driverkit/i386/PCIKernBus.h`
+now carries an `@interface PCIKernBus : KernBus` declaring the eleven methods the
+shipped `PCIBus_reloc` metadata attests, `- (BOOL)isPCIPresent;` among them, so
+`IOPCIDeviceDescription.m:78` has a `BOOL` signature in scope and should emit
+`cmp al, 1`. No ivars are declared kernel-side; the kernel only messages the
+object. Ledger `0x1FD514` advanced `unexamined` -> `control-flow-confirmed`. Not
+`assembly-matched`: no build was run, so the predicted `cmp al, 1` is unverified.
+
 ## Finding 2: the config-register number is not narrowed before `getRegister:` / `setRegister:`
 
 **Reference addresses:** `0x1FD154`
@@ -401,6 +410,12 @@ today and the behaviour is identical. What makes it worth fixing is that it is t
 same one-line header change as Finding 1, and that the current state means the
 compiler is type-checking none of these four calls — a future argument-order or
 type error in `getRegister:device:function:bus:data:` would pass silently.
+
+**Outcome:** fixed in commit `99a55c1b`, by the same header. `getRegister:` and
+`setRegister:` now declare their first four parameters `unsigned char`, matching
+the reference's `i28@8:12C16C20C24C28^L32` and `...L32`, so the `int address`
+loop counter should be narrowed at the call site. Ledger `0x1FD154` and
+`0x1FD248` advanced `unexamined` -> `control-flow-confirmed`.
 
 ## Finding 3: `unmapAttributeMemory` will hit the same undeclared-`BOOL` problem
 
@@ -461,6 +476,20 @@ walked past unmatched. Fixing it is the same change as Findings 1 and 2 applied
 to the PCMCIA header. Whoever applies it should confirm the prediction against a
 build rather than assume it.
 
+**Outcome:** not fixed; the finding stands. Commit `99a55c1b` does give
+`src/kernel-7/driverkit/i386/PCMCIAKernBus.h` a real `@interface PCMCIAKernBus`,
+but that does not reach this line. `memoryInterface` and `attributeMemory` are
+not `PCMCIAKernBus` methods: `window` here is an adapter-supplied object, and
+walking `__OBJC,__module_info` in the reference `PCMCIABus_reloc` shows the bus
+driver declares no window class at all. The only declarations of the two
+selectors anywhere in the tree are `- (char)memoryInterface` and
+`- (char)attributeMemory` on `PCICWindow`, in the 82365 adapter driver, which
+`libDriver` cannot see. Whatever DR2 header put those signatures in scope is not
+attested by any metadata available here, so declaring them kernel-side would mean
+inventing an interface rather than recovering one, and that was not done. Ledger
+`0x1FD8C4` stays `unexamined`, per the convention that a method known to diverge
+is written up rather than given a status it has not earned.
+
 ## Finding 4: `-[IOPCMCIATuple data]` carries a stray semicolon and does not map
 
 **Reference address:** `0x1FDCD4`
@@ -496,6 +525,12 @@ removing anyway because it costs a source-map entry and therefore a ledger
 `source_path`, and because a stricter compiler will reject it. The change is one
 character and cannot alter behaviour.
 
+**Outcome:** fixed in the commit that carries this record. The semicolon is gone
+from `IOPCMCIATuple.m:83`. Ledger `0x1FDCD4` advanced `unexamined` ->
+`control-flow-confirmed` and now carries `source_path`
+`src/driverkit-3/libDriver/pcmcia/IOPCMCIATuple.m` and `source_line` 83, which it
+could not before. The unused `unsigned length;` local was left alone.
+
 ## Finding 5: our `IOPCIDeviceDescription` has two methods DR2 does not (accepted)
 
 **Source:** `src/driverkit-3/libDriver/pci/IOPCIDeviceDescription.m:123-140`
@@ -523,6 +558,8 @@ expected. Removing them to match the reference would delete working functionalit
 that later Apple releases depend on. They have no reference address and therefore
 no ledger entry.
 
+**Outcome:** accepted, no code change. No ledger entry exists to transition.
+
 ## Finding 6: unused `_busPrivate` locals in both PCMCIA direct-device methods (accepted)
 
 **Source:** `src/driverkit-3/libDriver/pcmcia/IOPCMCIADirectDevice.m:56`, `:124`
@@ -544,6 +581,9 @@ all.
 **Rationale:** dead code in Apple's own source, and per the repository's own rule
 on adjacent dead code it is mentioned rather than removed. Recorded so that a
 later reader does not mistake it for a missing feature.
+
+**Outcome:** accepted, no code change. Both locals are still there. The two
+methods' ledger entries were not touched by this finding.
 
 ## Examined with no divergence found
 
@@ -681,3 +721,124 @@ that order.
   in their entirety. The only other importer in the tree is
   `src/kernel-7/driverkit/i386/autoconf_i386.m`, which was not examined; it is
   exposed to the same class of problem as Findings 1 to 3.
+
+## The two kernel bus interfaces, as written
+
+The header work behind Findings 1 to 3 is recorded here rather than only in the
+commit, because it is the one part of this pass that was not derived from the
+kernel reference.
+
+Both interfaces come from the shipped bus drivers' Objective-C metadata, read out
+of `PCIBus.config/PCIBus_reloc` and `PCMCIABus.config/PCMCIABus_reloc` by walking
+`__OBJC,__module_info` to each class's method list and printing the
+`__meth_var_types` string beside each selector. `PCIKernBus` reports
+`instance_size` 44 and eleven methods; `PCMCIAKernBus` reports 40 and fifteen.
+Both instance sizes agree with the ivar layouts our own driver-side headers
+declare, which is an independent check that the right classes were read.
+
+Two encodings needed a decision:
+
+- `-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` takes
+  `{?=b1b1b1b1b2b1b1}` — seven bit-fields totalling eight bits. That is exactly
+  the `PCMCIAStatus` the 82365 adapter driver declares in
+  `src/drivers-i386/bus/Intel82365PCMCIA/PCIC.drvproj/PCIC.lksproj/PCICSocket.h`:
+  `present:1`, `locked:1`, `ejectRequest:1`, `insertRequest:1`,
+  `batteryStatus:2`, `writeProtect:1`, `ready:1`. The kernel header declares the
+  same struct under the same name and with the same fields in the same order.
+  **It is a second declaration, not a shared one** — the two live in different
+  projects with no header in common, and neither can reach the other's include
+  path. No translation unit sees both today, so nothing is broken, but a future
+  file that imports both will get a duplicate `typedef`. Unifying them needs a
+  home for the type that both projects can import, which is a larger change than
+  this pass is scoped for.
+- `-[PCMCIAKernBus setBusRange:]` takes `{?=II}`, and the class's own `busRange`
+  ivar encodes as `{?="base"I"length"I}`. That is `Range` from
+  `src/kernel-7/driverkit/KernBus.h:113`, field names included, so the existing
+  type is used rather than a new one. The anonymous `?` tag is the same GCC
+  typedef collapse already documented above for `IOPCIConfigSpace`.
+
+Everything else maps directly: `C` to `unsigned char`, `L` to `unsigned long`,
+`^L` to `unsigned long *`, `c` to `BOOL`, `i` to `int` (or `IOReturn`, which is
+`typedef int`, on the three methods that return a driver status), `^@` to
+`Protocol **`, `r*` to `const char *`, `*` to `unsigned char *` on
+`configAddress:`'s three out-parameters, following this document's own note that
+old GCC collapses any pointer-to-byte to `*`.
+
+Neither header declares ivars. The kernel only sends these objects messages; the
+storage belongs to the loadable driver, and declaring a second copy of the layout
+would create a divergence to maintain for no gain.
+
+## Signatures our bus drivers do not match
+
+The metadata read for the headers also answers a question nobody had asked: does
+our `drvPCIBus` and `drvPCMCIABus` implement what Apple declared? Mostly yes —
+twenty-three of the twenty-six methods agree exactly. Three do not. **Nothing was
+changed on either side**; forcing agreement without evidence about which side is
+right would hide the divergence rather than settle it.
+
+| Method | Reference | Ours |
+| --- | --- | --- |
+| `-[PCIKernBus maxBusNum]`, `maxDevNum` | `i8@8:12`, so `- (int)` | `- (unsigned int)` |
+| `-[PCIKernBus testIDs:dev:fun:bus:]` | `c21@8:12r*16C20C24C28`, so `(const char *)ids` and three `unsigned char` | `(unsigned int *)ids` and three `unsigned int` |
+| `-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` | `{?=b1b1b1b1b2b1b1}`, the `PCMCIAStatus` bitfield | `(unsigned int)status` |
+
+The first is a type-checking divergence only; `int` and `unsigned int` return in
+`eax` identically. The second and third are real: a caller written against
+Apple's `testIDs:` passes a byte string where ours expects an `unsigned int *`,
+and a caller written against Apple's `statusChangedForSocket:changedStatus:`
+passes a bitfield where ours reads an integer mask. Neither is reachable across
+that boundary today — `testIDs:` is sent only from inside `drvPCIBus`, and our
+PCMCIA stack is self-consistent because the 82365 driver's
+`PCMCIAStatusChange` protocol also declares `(unsigned int)status`.
+
+Our ivar *names* diverge too, though the layouts do not. The reference's
+`PCIKernBus` names them `maxBusNum`, `maxDevNum`, `BIOS16Present`,
+`configMethod1`, `configMethod2`, `specialCycle1`, `specialCycle2`,
+`BIOS32Present`, `BIOS32Entry`, `majorVersion`, `minorVersion`; the reference's
+`PCMCIAKernBus` names them `adapters`, `busRange` (a `Range`, where ours has two
+separate `unsigned int`s at the same offsets), `socketTable`, `verbose` (a `char`,
+where ours has an `int` in a slot that pads to the same size) and `attrMem`. Both
+`instance_size` values still match. These belong in the two drivers' own
+reconstruction records, not this one, and are noted here only because this is
+where they were found.
+
+## Post-fix parity
+
+**No build was performed and no parity run was performed.** There is no route to
+a Rhapsody build host from here, which is the same reason the report pass could
+not run one. `binrecon compare` therefore had nothing to compare:
+`rebuilt_sha256` stays `null`, no entry is `assembly-matched`, and no number in
+this document was estimated to stand in for one.
+
+Every change in this pass landed uncompiled. That includes two headers included
+by four `libDriver` modules and by `src/kernel-7/driverkit/i386/autoconf_i386.m`,
+so a mistake in them would surface in five translation units that nobody here can
+compile. In place of a build, the following were checked by reading:
+
+- Every type the new declarations name resolves from an import already present
+  or newly added: `IOReturn` from `driverkit/return.h` (added to `PCIKernBus.h`),
+  `IODeviceStyle` from `driverkit/driverTypes.h` (added to `PCMCIAKernBus.h`),
+  `Range` and `KernBus` from `driverkit/KernBus.h`, `Protocol` from the
+  `@class Protocol` in `objc/Object.h` that `KernBus.h` already pulls in. Both
+  additions are headers all five translation units already include transitively.
+- No selector declared in either header is declared elsewhere in a reachable
+  header with a different signature. The four class methods that are also
+  declared in `driverkit/IODevice.h` and `driverkit/KernBus.h` — `probe:`,
+  `deviceStyle`, `requiredProtocols`, `configureDriverWithTable:` — are written
+  with the same spellings those headers use, so a translation unit that sees both
+  sees one consistent declaration rather than a conflict.
+- Both new `@interface` blocks sit inside the existing `#ifdef DRIVER_PRIVATE`,
+  as `KernBus.h`'s own contents do, and `libDriver/Makefile:70` puts
+  `-DDRIVER_PRIVATE` in `KERN_CFLAGS`.
+- `drvPCIBus` and `drvPCMCIABus` declare these same two classes in their own
+  project-local headers and reach them through quoted includes, so no translation
+  unit sees two `@interface` blocks for either class. That is true today and is
+  not enforced by anything.
+
+The consequence for the ledger is that `control-flow-confirmed` is the ceiling.
+Twenty-three of the twenty-four entries are there; `-[IODirectDevice
+unmapAttributeMemory]` at `0x1FD8C4` stays `unexamined` because Finding 3 is
+unfixed. The predicted code changes behind Findings 1 and 2 — `cmp al, 1` in
+`_initWithDelegate:`, `movzx eax, bl` before the two config-space loops — are
+predictions until a build confirms them, and confirming them is the first thing a
+build host should be used for.

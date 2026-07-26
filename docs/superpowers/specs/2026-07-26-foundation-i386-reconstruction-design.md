@@ -182,7 +182,9 @@ Each later stage gets its own design and plan.
 | # | Stage | Modules | ~`__text` |
 | --- | --- | --- | --- |
 | **1** | **Tooling, ABI baseline, proof slice** | NSGeometry, NSRange, NSDecimal | **8 KB** |
-| 2 | Core runtime | NSObject, NSProxy, NSAutoreleasePool, NSException, NSInvocation, NSMethodSignature, NSCoder, NSFault, NSObjCRuntime, NSPrivate, NSZone | 22 KB |
+| 2a | Object core | NSObject, NSProxy, NSAutoreleasePool, NSPrivate, NSZone | 10.4 KB |
+| 2b | Exceptions and runtime | NSException, NSObjCRuntime, NSFault | 6.6 KB |
+| 2c | Invocation and coding | NSInvocation, NSMethodSignature, NSCoder | 15.0 KB |
 | 3 | Strings | NSString, NSMutableString, NSSimpleCString, NSSimpleString, NSConstantString, NSCharConversion, NSStringEncodings, NSStringLocalizedCompare, NSStringArray | 60 KB |
 | 4 | Collections | NSArray, NSDictionary, NSSet, NSEnumerator, NSHashTable, NSMapTable, NSSimpleHashing | 65 KB |
 | 5 | Values, dates, formatters | NSValue, NSDecimalNumber, NSDate, NSCalendarDate, NSTimeZone, NSFormatter, NSNumberFormatter, NSDateFormatter, NSScanner, NSCharacterSet | 80 KB |

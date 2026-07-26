@@ -34,6 +34,11 @@
 #import <driverkit/generalFuncs.h>
 #import <kernserv/prototypes.h>
 /*
+ * watchState takes Port.WatchLock with the Mach spin lock, whose test-and-set
+ * is a bare xchgl and needs no critical section - see the comment at the call.
+ */
+#import <mach/machine/simple_lock.h>
+/*
  * The reference's fourth translation unit includes <driverkit/i386/ioPorts.h>
  * even though it performs no port I/O: the reference emits four groups of the
  * outb() inline-asm statics (_xxx.86/.89/.92 at 0x80c4, 0x80d0, 0x80dc, 0x80e8,
@@ -159,21 +164,20 @@ IOReturn watchState(Port *port, unsigned long *state, unsigned long mask)
             goto wakeWaiters;
         }
 
-        // State hasn't changed yet - wait for it
-
-        // Acquire lock using test-and-set loop
-        while (port->WatchLock.locked != 0) {
-            // Spin while lock is held
-        }
-
-        // Atomic test and set
-        IOEnterCriticalSection();
-        if (port->WatchLock.locked == 1) {
-            IOExitCriticalSection();
-            continue;  // Lost race, try again
-        }
-        port->WatchLock.locked = 1;
-        IOExitCriticalSection();
+        /*
+         * State hasn't changed yet - wait for it.
+         *
+         * Reference 23684-23705 is simple_lock() inlined, instruction for
+         * instruction: lea edx,[esi+14h], then a spin on cmp [edx],0 / jnz,
+         * then mov eax,1 / xchg eax,[edx] / xor eax,1 / test eax,eax / jz back
+         * to the spin.  On x86 xchg against memory is atomic on its own, so
+         * there is no critical section here and no lock released afterwards -
+         * thread_sleep drops it.  Port.WatchLock stays a private anonymous
+         * struct rather than becoming a simple_lock_data_t because the
+         * reference's own ivar type encoding spells it {?="locked"I}, an
+         * unsigned int; the two are layout-identical, hence the cast.
+         */
+        simple_lock((simple_lock_t)&port->WatchLock);
 
         // Set the mask of bits we're watching
         port->WatchStateMask |= actualMask;

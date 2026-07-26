@@ -776,7 +776,7 @@ static void heartBeatTOHandler(Port *port)
 static void NonFIFOIntHandler(void *identity, void *state, Port *port)
 {
     unsigned int matchBits;
-    unsigned char lsr, msr, iir;
+    unsigned char lsr, msr;
     unsigned char dataByte;
     unsigned char eventType;
     unsigned int eventData;
@@ -786,7 +786,6 @@ static void NonFIFOIntHandler(void *identity, void *state, Port *port)
     unsigned char timerNeeded;
     unsigned short dataWord;
     unsigned short *readPtr;
-    unsigned int stateChangeMask;
 
     // Initialize locals
     changedBits = 0;
@@ -855,12 +854,15 @@ static void NonFIFOIntHandler(void *identity, void *state, Port *port)
                         goto process_flow_control_char;
                     }
 
-                    // Enqueue parity error with data
+                    // Enqueue parity error with data.  The byte OR'd in is the
+                    // post-RBRmask eventData, not the raw RBR read: reference
+                    // 16521 loads byte ptr [ebp+var_8], the same slot 16567
+                    // masks on the RX_Parity == 6 path.
                     if (port->RX.Count >= port->RX.Size) {
                         port->RX.OverRun = 1;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                        *writePtr++ = EVENT_PARITY_ERROR | (dataByte << 8);
+                        *writePtr++ = EVENT_PARITY_ERROR | (eventData << 8);
                         if ((char *)writePtr >= port->RX.End) {
                             writePtr = (unsigned short *)port->RX.Base;
                         }
@@ -871,7 +873,7 @@ static void NonFIFOIntHandler(void *identity, void *state, Port *port)
                     // No error - normal data reception
 process_flow_control_char:
                     // Check for software flow control characters
-                    if ((*(unsigned int *)&port->FlowControl & 0x80008) != 0) {
+                    if ((port->FlowControl & 0x80008) != 0) {
                         // Software flow control enabled
                         if (eventData == port->XONchar) {
                             newState |= 0x08;
@@ -902,7 +904,7 @@ process_flow_control_char:
                         port->RX.OverRun = 1;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                        *writePtr++ = (unsigned short)eventType | (dataByte << 8);
+                        *writePtr++ = (unsigned short)eventType | (eventData << 8);
                         if ((char *)writePtr >= port->RX.End) {
                             writePtr = (unsigned short *)port->RX.Base;
                         }
@@ -915,7 +917,7 @@ process_flow_control_char:
                         port->RX.OverRun = 1;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                        *writePtr++ = EVENT_FRAMING_ERROR | (dataByte << 8);
+                        *writePtr++ = EVENT_FRAMING_ERROR | (eventData << 8);
                         if ((char *)writePtr >= port->RX.End) {
                             writePtr = (unsigned short *)port->RX.Base;
                         }
@@ -942,7 +944,11 @@ process_flow_control_char:
 data_processed:
         // Update RX watermark state if at target level and port active
         if ((port->RX.Count >= port->RX.Enqueue) && (newState & STATE_ACTIVE)) {
-            unsigned int rxState = newState & 0x17E;  // Keep only non-RX-state bits
+            // The preserved low bits come from port->State, not from the local
+            // copy: reference 16906 masks the local with 0xFFF0FFE9 first and
+            // only then reads the struct field at 16913.  The XON/XOFF handling
+            // above may already have moved bit 3 of the local.
+            unsigned int rxState = port->State & 0x17E;
 
             if (port->RX.Count < port->RX.LowWater) {
                 port->RX.Dequeue = 0;
@@ -954,19 +960,20 @@ data_processed:
                     port->RX.Enqueue = port->RX.LowWater;
                 }
 
-                // Turn ON flow control signals (queue draining)
+                // Turn ON flow control signals (queue draining).  Reference
+                // 16971/16988/17052: an exclusive chain, not three independent
+                // tests - with FlowControl == 0x14 only bit 2 is set and the
+                // RXOstate machine is not reached.
                 if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                     rxState |= STATE_RTS;
-                }
-                if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                     rxState |= 0x10;
                     if (port->RXOstate == -1) {
                         port->RXOstate = 2;
                     } else if (port->RXOstate == 1) {
                         port->RXOstate = -2;
                     }
-                }
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                     rxState |= STATE_DTR;
                 }
             } else if (port->RX.Count > port->RX.HighWater) {
@@ -979,19 +986,18 @@ data_processed:
                     port->RX.Dequeue = port->RX.HighWater;
                 }
 
-                // Turn OFF flow control signals (queue filling)
+                // Turn OFF flow control signals (queue filling).  Reference
+                // 17131/17144/17212, the same exclusive chain.
                 if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                     rxState &= ~STATE_RTS;
-                }
-                if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                     rxState &= ~0x10;
                     if (port->RXOstate == -2 || port->RXOstate == 0) {
                         port->RXOstate = 1;
                     } else if (port->RXOstate == 2) {
                         port->RXOstate = -1;
                     }
-                }
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                     rxState &= ~STATE_DTR;
                 }
             } else {
@@ -1004,13 +1010,9 @@ data_processed:
 
             // Update hardware MCR if DTR/RTS changed
             mcrValue = MCR_OUT2;
-            if (rxState & STATE_DTR) mcrValue |= MCR_DTR;
-            if (rxState & STATE_RTS) mcrValue |= MCR_RTS;
+            if (newState & STATE_DTR) mcrValue |= MCR_DTR;
+            if (newState & STATE_RTS) mcrValue |= MCR_RTS;
             OUTB(port->Base + UART_MCR, mcrValue);
-
-            IOEnterCriticalSection();
-            // Increment some counter (placeholder for global variable)
-            IOExitCriticalSection();
         }
 
         // Handle Modem Status Register changes
@@ -1039,8 +1041,8 @@ data_processed:
                             if (*peekPtr == 'U') {
                                 // Data byte transmission
                                 // Check for conditions that prevent transmission
-                                unsigned int preventMask = *(unsigned int *)&port->FlowControl;
-                                preventMask = (preventMask & 0x168) | 0x20000000;
+                                unsigned int preventMask;
+                                preventMask = (port->FlowControl & 0x168) | 0x20000000;
                                 if ((preventMask & ~newState) == 0) {
                                     unsigned char wordLen;
                                     // Dequeue and transmit
@@ -1088,10 +1090,6 @@ data_processed:
 
                                     port->Stats.txChars++;
                                     OUTB(port->Base + UART_THR, (unsigned char)eventData);
-
-                                    IOEnterCriticalSection();
-                                    // Increment counter
-                                    IOExitCriticalSection();
                                 }
                             } else if ((lsr & 0x40) == 0) {
                                 // Not ready for event processing
@@ -1164,10 +1162,6 @@ data_processed:
                     OUTB(port->Base + UART_THR, port->XOFFchar);
                 }
 
-                IOEnterCriticalSection();
-                // Increment counter
-                IOExitCriticalSection();
-
                 port->RXOstate = -port->RXOstate;
             }
         }
@@ -1175,9 +1169,12 @@ data_processed:
         // Re-read LSR for next iteration
         lsr = INB(port->Base + UART_LSR);
 
-        // Continue if event was executed or no interrupt pending
-        iir = INB(port->Base + UART_IIR);
-    } while (continueLoop || ((iir & 0x01) == 0));
+        // Continue if an event was executed, else consult IIR.  The IIR read
+        // must be short-circuited: reference 18179 tests the executed-event
+        // flag first and only falls through to the IIR read at 18189 when it is
+        // clear.  Reading IIR clears a pending THRE interrupt, so an
+        // unconditional read here silently drops a transmit interrupt.
+    } while (continueLoop || ((INB(port->Base + UART_IIR) & 0x01) == 0));
 
     // Check for break condition change
     if ((lsr & 0x60) == 0x20) {
@@ -1235,25 +1232,54 @@ data_processed:
 
     changedBits |= (port->State ^ newState);
 
-    // Enqueue state change event if mask matches
-    stateChangeMask = *(unsigned int *)&port->FlowControl;
-    matchBits = (changedBits << 16) & stateChangeMask;
+    /*
+     * Enqueue the state-change event if the mask matches.  The reference writes
+     * the three cells INLINE here rather than calling RX_enqueueLongEvent:
+     * fourteen sites in its class translation unit write this event, twelve of
+     * them call the out-of-line helper at 0, and the two that do not are
+     * _NonFIFOIntHandler at 18486-18664 and _FIFOIntHandler at 16014-16192,
+     * both of which spell out the capacity check and the 0x6C overflow path in
+     * full.  matchBits carries no low-half bits, so the reference simply ORs the
+     * two halves together at 18492 / 16020 with no extra masking.
+     */
+    matchBits = (changedBits << 16) & port->FlowControl;
     if (matchBits != 0) {
-        if ((port->RX.Size - port->RX.Count) < 3) {
-            if (port->RX.Count >= port->RX.Size) {
-                port->RX.OverRun = 1;
-            } else {
-                unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                *writePtr++ = EVENT_OVERFLOW;
-                if ((char *)writePtr >= port->RX.End) {
-                    writePtr = (unsigned short *)port->RX.Base;
-                }
-                port->RX.Input = (char *)writePtr;
-                port->RX.Count++;
+        unsigned int eventValue = (newState & 0xFFFF) | matchBits;
+        unsigned short *writePtr;
+
+        if ((port->RX.Size - port->RX.Count) > 2) {
+            writePtr = (unsigned short *)port->RX.Input;
+
+            *writePtr++ = EVENT_STATE_CHANGE;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
             }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+
+            *writePtr++ = (unsigned short)eventValue;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+
+            *writePtr++ = (unsigned short)(eventValue >> 16);
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+        } else if (port->RX.Count < port->RX.Size) {
+            writePtr = (unsigned short *)port->RX.Input;
+            *writePtr++ = EVENT_OVERFLOW;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
         } else {
-            RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                                (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
+            port->RX.OverRun = 1;
         }
     }
 
@@ -1274,7 +1300,7 @@ data_processed:
 static void FIFOIntHandler(void *identity, void *state, Port *port)
 {
     unsigned int matchBits;
-    unsigned char lsr, msr, iir;
+    unsigned char lsr, msr;
     unsigned char dataByte;
     unsigned char eventType;
     unsigned int eventData;
@@ -1284,7 +1310,6 @@ static void FIFOIntHandler(void *identity, void *state, Port *port)
     unsigned char timerNeeded;
     unsigned short dataWord;
     unsigned short *readPtr;
-    unsigned int stateChangeMask;
     int fifoRemaining;
     int overrunCounter;
 
@@ -1354,12 +1379,21 @@ static void FIFOIntHandler(void *identity, void *state, Port *port)
                         goto process_flow_control_char_fifo;
                     }
 
-                    // Enqueue parity error with data
+                    // Enqueue parity error with data.  The byte OR'd in is the
+                    // post-RBRmask eventData, not the raw RBR read: reference
+                    // 13361 loads byte ptr [ebp+var_8], the same slot 13407
+                    // masks on the RX_Parity == 6 path.
+                    //
+                    // All four full-queue arms share one site in the reference,
+                    // 13684, which sets RX.OverRun and then jumps straight back
+                    // to the drain-loop top at 13691 - so the overrun countdown
+                    // below does NOT run when the queue is full.
                     if (port->RX.Count >= port->RX.Size) {
                         port->RX.OverRun = 1;
+                        continue;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                        *writePtr++ = EVENT_PARITY_ERROR | (dataByte << 8);
+                        *writePtr++ = EVENT_PARITY_ERROR | (eventData << 8);
                         if ((char *)writePtr >= port->RX.End) {
                             writePtr = (unsigned short *)port->RX.Base;
                         }
@@ -1370,52 +1404,53 @@ static void FIFOIntHandler(void *identity, void *state, Port *port)
                     // No error - normal data reception
 process_flow_control_char_fifo:
                     // Check for software flow control characters
-                    if ((*(unsigned int *)&port->FlowControl & 0x80008) != 0) {
+                    if ((port->FlowControl & 0x80008) != 0) {
                         // Software flow control enabled
                         if (eventData == port->XONchar) {
                             newState |= 0x08;
                             changedBits |= 0x08;
+                            goto data_processed_fifo;
                         } else if (eventData == port->XOFFchar) {
                             newState &= ~0x08;
                             changedBits |= 0x08;
-                        } else {
-                            goto enqueue_normal_data_fifo;
+                            goto data_processed_fifo;
                         }
+                    }
+
+                    // Check if data needs special handling based on control flags
+                    if ((port->FlowControl & 0x00000400) != 0) {
+                        newState |= 0x08;
+                        changedBits |= 0x08;
+                    }
+
+                    // Check character filter bitmap (256 bits)
+                    if ((port->SWspecial[eventData >> 5] & (1 << (eventData & 0x1F))) == 0) {
+                        eventType = EVENT_VALID_DATA;  // 'U' - normal data
                     } else {
-enqueue_normal_data_fifo:
-                        // Check if data needs special handling based on control flags
-                        if ((port->FlowControl & 0x00000400) != 0) {
-                            newState |= 0x08;
-                            changedBits |= 0x08;
-                        }
+                        eventType = EVENT_SPECIAL_DATA;  // 'Y' - special/filtered data
+                    }
 
-                        // Check character filter bitmap (256 bits)
-                        if ((port->SWspecial[eventData >> 5] & (1 << (eventData & 0x1F))) == 0) {
-                            eventType = EVENT_VALID_DATA;  // 'U' - normal data
-                        } else {
-                            eventType = EVENT_SPECIAL_DATA;  // 'Y' - special/filtered data
+                    // Enqueue data with marker
+                    if (port->RX.Count >= port->RX.Size) {
+                        port->RX.OverRun = 1;
+                        continue;
+                    } else {
+                        unsigned short *writePtr = (unsigned short *)port->RX.Input;
+                        *writePtr++ = (unsigned short)eventType | (eventData << 8);
+                        if ((char *)writePtr >= port->RX.End) {
+                            writePtr = (unsigned short *)port->RX.Base;
                         }
-
-                        // Enqueue data with marker
-                        if (port->RX.Count >= port->RX.Size) {
-                            port->RX.OverRun = 1;
-                        } else {
-                            unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                            *writePtr++ = (unsigned short)eventType | (dataByte << 8);
-                            if ((char *)writePtr >= port->RX.End) {
-                                writePtr = (unsigned short *)port->RX.Base;
-                            }
-                            port->RX.Input = (char *)writePtr;
-                            port->RX.Count++;
-                        }
+                        port->RX.Input = (char *)writePtr;
+                        port->RX.Count++;
                     }
                 } else if ((errorBits == 0x08) || (errorBits == 0x0C)) {
                     // Framing error or break condition
                     if (port->RX.Count >= port->RX.Size) {
                         port->RX.OverRun = 1;
+                        continue;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                        *writePtr++ = EVENT_FRAMING_ERROR | (dataByte << 8);
+                        *writePtr++ = EVENT_FRAMING_ERROR | (eventData << 8);
                         if ((char *)writePtr >= port->RX.End) {
                             writePtr = (unsigned short *)port->RX.Base;
                         }
@@ -1426,6 +1461,7 @@ enqueue_normal_data_fifo:
                     // Other error
                     if (port->RX.Count >= port->RX.Size) {
                         port->RX.OverRun = 1;
+                        continue;
                     } else {
                         unsigned short *writePtr = (unsigned short *)port->RX.Input;
                         *writePtr++ = EVENT_ERROR;
@@ -1437,7 +1473,10 @@ enqueue_normal_data_fifo:
                     }
                 }
 
-                // Check for end of overrun sequence
+                // Check for end of overrun sequence.  An XON/XOFF match above
+                // lands here too: reference 13442 and 13480 jump to 13728, not
+                // past it.
+data_processed_fifo:
                 if (overrunCounter != 0) {
                     overrunCounter--;
                     if (overrunCounter == 0) {
@@ -1460,7 +1499,10 @@ enqueue_normal_data_fifo:
 
         // Update RX watermark state if at target level and port active
         if ((port->RX.Count >= port->RX.Enqueue) && (newState & STATE_ACTIVE)) {
-            unsigned int rxState = newState & 0x17E;
+            // The preserved low bits come from port->State, not from the local
+            // copy: reference 13830 masks the local with 0xFFF0FFE9 first and
+            // only then reads the struct field at 13837.
+            unsigned int rxState = port->State & 0x17E;
 
             if (port->RX.Count < port->RX.LowWater) {
                 port->RX.Dequeue = 0;
@@ -1472,18 +1514,18 @@ enqueue_normal_data_fifo:
                     port->RX.Enqueue = port->RX.LowWater;
                 }
 
+                // Reference 13895/13912/13976: an exclusive chain, not three
+                // independent tests.
                 if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                     rxState |= STATE_RTS;
-                }
-                if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                     rxState |= 0x10;
                     if (port->RXOstate == -1) {
                         port->RXOstate = 2;
                     } else if (port->RXOstate == 1) {
                         port->RXOstate = -2;
                     }
-                }
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                     rxState |= STATE_DTR;
                 }
             } else if (port->RX.Count > port->RX.HighWater) {
@@ -1496,18 +1538,17 @@ enqueue_normal_data_fifo:
                     port->RX.Dequeue = port->RX.HighWater;
                 }
 
+                // Reference 14055/14068/14136, the same exclusive chain.
                 if ((port->FlowControl & FLOW_RTS_ENABLED) != 0) {
                     rxState &= ~STATE_RTS;
-                }
-                if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_HW_ENABLED) != 0) {
                     rxState &= ~0x10;
                     if (port->RXOstate == -2 || port->RXOstate == 0) {
                         port->RXOstate = 1;
                     } else if (port->RXOstate == 2) {
                         port->RXOstate = -1;
                     }
-                }
-                if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
+                } else if ((port->FlowControl & FLOW_DTR_ENABLED) != 0) {
                     rxState &= ~STATE_DTR;
                 }
             } else {
@@ -1519,12 +1560,9 @@ enqueue_normal_data_fifo:
             changedBits |= ((newState ^ port->State) & 0xF0016);
 
             mcrValue = MCR_OUT2;
-            if (rxState & STATE_DTR) mcrValue |= MCR_DTR;
-            if (rxState & STATE_RTS) mcrValue |= MCR_RTS;
+            if (newState & STATE_DTR) mcrValue |= MCR_DTR;
+            if (newState & STATE_RTS) mcrValue |= MCR_RTS;
             OUTB(port->Base + UART_MCR, mcrValue);
-
-            IOEnterCriticalSection();
-            IOExitCriticalSection();
         }
 
         // Handle Modem Status Register changes
@@ -1532,7 +1570,16 @@ enqueue_normal_data_fifo:
         newState = (newState & 0xFFFFFE1F) | (msr_state_lut[msr >> 4] << 5);
         changedBits |= ((newState ^ port->State) & 0x1E0);
 
-        // Handle Transmitter Holding Register Empty (LSR bit 5 or FIFO counter)
+        /*
+         * Handle the transmitter.  Reference 14277-14287: entered when THRE is
+         * set OR the burst counter is still non-zero, because once the FIFO's
+         * depth is known the handler keeps stuffing without re-reading THRE.
+         *
+         * fifoRemaining is the reference's edi.  Every arm that cannot transmit
+         * zeroes it (15328) and every arm that can leaves it holding the number
+         * of FIFO slots still free, which is what the loop-bottom test at 15708
+         * re-enters the whole handler on.
+         */
         if ((lsr & 0x20) || (fifoRemaining != 0)) {
             if (firstTHRInt) {
                 firstTHRInt = FALSE;
@@ -1540,231 +1587,7 @@ enqueue_normal_data_fifo:
             }
 
             // Check hardware flow control state
-            if (((port->FlowControl & FLOW_HW_ENABLED) == 0) || (port->RXOstate < 1)) {
-                if ((newState & 0x1000) == 0) {
-                    char peekChar;
-                    // Peek at next TX queue entry
-                    char *peekPtr = (char *)port->TX.Output;
-                    if ((char *)peekPtr >= port->TX.End) {
-                        peekPtr = (char *)port->TX.Base;
-                    }
-                    peekChar = (port->TX.Count != 0) ? *peekPtr : '\0';
-
-                    if (peekChar != 0) {
-                        if (peekChar == 'U') {
-                            // Data byte transmission
-                            unsigned int preventMask = *(unsigned int *)&port->FlowControl;
-                            preventMask = (preventMask & 0x168) | 0x20000000;
-                            if ((preventMask & ~newState) == 0) {
-                                // Can transmit - check if TEMT set for burst mode
-                                if ((lsr & 0x40) == 0) {
-                                    char peek2Char;
-                                    // Transmitter not empty - peek ahead for next byte
-                                    char *peek2Ptr = (char *)((unsigned short *)port->TX.Output + 1);
-                                    if ((char *)peek2Ptr >= port->TX.End) {
-                                        peek2Ptr = (char *)port->TX.Base;
-                                    }
-                                    peek2Char = (port->TX.Count >= 2) ? *peek2Ptr : '\0';
-
-                                    if (peek2Char == 'U') {
-                                        unsigned char wordLen;
-                                        // Next is also data - setup FIFO burst
-                                        fifoRemaining = Chip[port->Type].FIFOsize - 1;
-                                        timerNeeded = 0;
-                                        if (port->WaitingForTXIdle != 0) {
-                                            thread_call_cancel(port->FrameTOEntry);
-                                            port->WaitingForTXIdle = 0;
-                                        }
-
-                                        // Dequeue and transmit first byte
-                                        readPtr = (unsigned short *)port->TX.Output;
-                                        dataWord = *readPtr++;
-                                        if ((char *)readPtr >= port->TX.End) {
-                                            readPtr = (unsigned short *)port->TX.Base;
-                                        }
-                                        port->TX.Output = (char *)readPtr;
-                                        port->TX.Count--;
-
-                                        eventType = (unsigned char)dataWord;
-                                        wordLen = eventType & 3;
-
-                                        if (wordLen == 1) {
-                                            eventData = (dataWord >> 8);
-                                        } else if (wordLen == 0) {
-                                            eventData = 0;
-                                        } else if (wordLen == 2) {
-                                            dataWord = *readPtr++;
-                                            if ((char *)readPtr >= port->TX.End) {
-                                                readPtr = (unsigned short *)port->TX.Base;
-                                            }
-                                            port->TX.Output = (char *)readPtr;
-                                            port->TX.Count--;
-                                            eventData = dataWord;
-                                        } else if (wordLen == 3) {
-                                            unsigned short highWord;
-                                            unsigned short lowWord = *readPtr++;
-                                            if ((char *)readPtr >= port->TX.End) {
-                                                readPtr = (unsigned short *)port->TX.Base;
-                                            }
-                                            port->TX.Output = (char *)readPtr;
-                                            port->TX.Count--;
-
-                                            highWord = *readPtr++;
-                                            if ((char *)readPtr >= port->TX.End) {
-                                                readPtr = (unsigned short *)port->TX.Base;
-                                            }
-                                            port->TX.Output = (char *)readPtr;
-                                            port->TX.Count--;
-
-                                            eventData = ((unsigned int)highWord << 16) | lowWord;
-                                        }
-
-                                        port->Stats.txChars++;
-                                        OUTB(port->Base + UART_THR, (unsigned char)eventData);
-
-                                        IOEnterCriticalSection();
-                                        IOExitCriticalSection();
-                                    }
-                                } else {
-                                    // TEMT set - can do FIFO burst transmission
-                                    fifoRemaining = Chip[port->Type].FIFOsize;
-                                    timerNeeded = 0;
-                                    if (port->WaitingForTXIdle != 0) {
-                                        thread_call_cancel(port->FrameTOEntry);
-                                        port->WaitingForTXIdle = 0;
-                                    }
-                                }
-
-                                // Transmit remaining FIFO bytes
-                                while (fifoRemaining != 0) {
-                                    unsigned char wordLen;
-                                    // Peek at next entry
-                                    peekPtr = (char *)port->TX.Output;
-                                    if ((char *)peekPtr >= port->TX.End) {
-                                        peekPtr = (char *)port->TX.Base;
-                                    }
-                                    peekChar = (port->TX.Count != 0) ? *peekPtr : '\0';
-
-                                    if (peekChar != 'U') break;
-
-                                    // Dequeue and transmit
-                                    readPtr = (unsigned short *)port->TX.Output;
-                                    dataWord = *readPtr++;
-                                    if ((char *)readPtr >= port->TX.End) {
-                                        readPtr = (unsigned short *)port->TX.Base;
-                                    }
-                                    port->TX.Output = (char *)readPtr;
-                                    port->TX.Count--;
-
-                                    eventType = (unsigned char)dataWord;
-                                    wordLen = eventType & 3;
-
-                                    if (wordLen == 1) {
-                                        eventData = (dataWord >> 8);
-                                    } else if (wordLen == 0) {
-                                        eventData = 0;
-                                    } else if (wordLen == 2) {
-                                        dataWord = *readPtr++;
-                                        if ((char *)readPtr >= port->TX.End) {
-                                            readPtr = (unsigned short *)port->TX.Base;
-                                        }
-                                        port->TX.Output = (char *)readPtr;
-                                        port->TX.Count--;
-                                        eventData = dataWord;
-                                    } else if (wordLen == 3) {
-                                        unsigned short highWord;
-                                        unsigned short lowWord = *readPtr++;
-                                        if ((char *)readPtr >= port->TX.End) {
-                                            readPtr = (unsigned short *)port->TX.Base;
-                                        }
-                                        port->TX.Output = (char *)readPtr;
-                                        port->TX.Count--;
-
-                                        highWord = *readPtr++;
-                                        if ((char *)readPtr >= port->TX.End) {
-                                            readPtr = (unsigned short *)port->TX.Base;
-                                        }
-                                        port->TX.Output = (char *)readPtr;
-                                        port->TX.Count--;
-
-                                        eventData = ((unsigned int)highWord << 16) | lowWord;
-                                    }
-
-                                    port->Stats.txChars++;
-                                    OUTB(port->Base + UART_THR, (unsigned char)eventData);
-
-                                    IOEnterCriticalSection();
-                                    IOExitCriticalSection();
-
-                                    fifoRemaining--;
-                                }
-
-                                goto tx_done_fifo;
-                            }
-                        } else if ((lsr & 0x40) != 0) {
-                            unsigned char wordLen;
-                            // Non-data event and TEMT set - execute it
-                            timerNeeded = 0;
-                            if (port->WaitingForTXIdle != 0) {
-                                thread_call_cancel(port->FrameTOEntry);
-                                port->WaitingForTXIdle = 0;
-                            }
-
-                            // Dequeue event
-                            readPtr = (unsigned short *)port->TX.Output;
-                            dataWord = *readPtr++;
-                            if ((char *)readPtr >= port->TX.End) {
-                                readPtr = (unsigned short *)port->TX.Base;
-                            }
-                            port->TX.Output = (char *)readPtr;
-                            port->TX.Count--;
-
-                            eventType = (unsigned char)dataWord;
-                            wordLen = eventType & 3;
-
-                            if (wordLen == 1) {
-                                eventData = (dataWord >> 8);
-                            } else if (wordLen == 0) {
-                                eventData = 0;
-                            } else if (wordLen == 2) {
-                                dataWord = *readPtr++;
-                                if ((char *)readPtr >= port->TX.End) {
-                                    readPtr = (unsigned short *)port->TX.Base;
-                                }
-                                port->TX.Output = (char *)readPtr;
-                                port->TX.Count--;
-                                eventData = dataWord;
-                            } else if (wordLen == 3) {
-                                unsigned short highWord;
-                                unsigned short lowWord = *readPtr++;
-                                if ((char *)readPtr >= port->TX.End) {
-                                    readPtr = (unsigned short *)port->TX.Base;
-                                }
-                                port->TX.Output = (char *)readPtr;
-                                port->TX.Count--;
-
-                                highWord = *readPtr++;
-                                if ((char *)readPtr >= port->TX.End) {
-                                    readPtr = (unsigned short *)port->TX.Base;
-                                }
-                                port->TX.Output = (char *)readPtr;
-                                port->TX.Count--;
-
-                                eventData = ((unsigned int)highWord << 16) | lowWord;
-                            }
-
-                            executeEvent(port, eventType, eventData, &newState, &changedBits);
-                            continueLoop = TRUE;
-                            goto tx_done_fifo;
-                        }
-
-                        timerNeeded = 1;
-                    }
-                }
-
-tx_done_fifo:
-                fifoRemaining = 0;
-            } else {
+            if ((port->FlowControl & FLOW_HW_ENABLED) && (port->RXOstate > 0)) {
                 // Hardware flow control active - send XON/XOFF
                 if (port->RXOstate == 2) {
                     port->Stats.txChars++;
@@ -1774,20 +1597,257 @@ tx_done_fifo:
                     OUTB(port->Base + UART_THR, port->XOFFchar);
                 }
 
-                IOEnterCriticalSection();
-                IOExitCriticalSection();
-
                 port->RXOstate = -port->RXOstate;
 
                 if (fifoRemaining != 0) {
                     fifoRemaining--;
                 }
+            } else if (newState & 0x1000) {
+                // Transmission suspended by event 0x4B
+                fifoRemaining = 0;
+            } else {
+                char peekChar;
+                // Peek at next TX queue entry
+                char *peekPtr = (char *)port->TX.Output;
+                if ((char *)peekPtr >= port->TX.End) {
+                    peekPtr = (char *)port->TX.Base;
+                }
+                peekChar = (port->TX.Count != 0) ? *peekPtr : '\0';
+
+                if (peekChar == 0) {
+                    fifoRemaining = 0;
+                } else if (peekChar != 'U') {
+                    // Head is a non-data event.  Reference 15336-15344: the
+                    // burst counter is cleared unconditionally, and the timer is
+                    // armed only when the transmitter is not yet idle.
+                    fifoRemaining = 0;
+                    if ((lsr & 0x40) == 0) {
+                        timerNeeded = 1;
+                    } else {
+                        unsigned char wordLen;
+                        timerNeeded = 0;
+                        if (port->WaitingForTXIdle != 0) {
+                            thread_call_cancel(port->FrameTOEntry);
+                            port->WaitingForTXIdle = 0;
+                        }
+
+                        // Dequeue event
+                        readPtr = (unsigned short *)port->TX.Output;
+                        dataWord = *readPtr++;
+                        if ((char *)readPtr >= port->TX.End) {
+                            readPtr = (unsigned short *)port->TX.Base;
+                        }
+                        port->TX.Output = (char *)readPtr;
+                        port->TX.Count--;
+
+                        eventType = (unsigned char)dataWord;
+                        wordLen = eventType & 3;
+
+                        if (wordLen == 1) {
+                            eventData = (dataWord >> 8);
+                        } else if (wordLen == 0) {
+                            eventData = 0;
+                        } else if (wordLen == 2) {
+                            dataWord = *readPtr++;
+                            if ((char *)readPtr >= port->TX.End) {
+                                readPtr = (unsigned short *)port->TX.Base;
+                            }
+                            port->TX.Output = (char *)readPtr;
+                            port->TX.Count--;
+                            eventData = dataWord;
+                        } else if (wordLen == 3) {
+                            unsigned short highWord;
+                            unsigned short lowWord = *readPtr++;
+                            if ((char *)readPtr >= port->TX.End) {
+                                readPtr = (unsigned short *)port->TX.Base;
+                            }
+                            port->TX.Output = (char *)readPtr;
+                            port->TX.Count--;
+
+                            highWord = *readPtr++;
+                            if ((char *)readPtr >= port->TX.End) {
+                                readPtr = (unsigned short *)port->TX.Base;
+                            }
+                            port->TX.Output = (char *)readPtr;
+                            port->TX.Count--;
+
+                            eventData = ((unsigned int)highWord << 16) | lowWord;
+                        }
+
+                        executeEvent(port, eventType, eventData, &newState, &changedBits);
+                        continueLoop = TRUE;
+                    }
+                } else {
+                    // Head is a data byte.  Check for conditions that prevent
+                    // transmission.
+                    unsigned int preventMask;
+                    preventMask = (port->FlowControl & 0x168) | 0x20000000;
+
+                    if ((preventMask & ~newState) != 0) {
+                        fifoRemaining = 0;
+                    } else {
+                        if ((lsr & 0x40) != 0) {
+                            // TEMT set - the FIFO is empty, so its whole depth
+                            // is available (reference 14510).
+                            fifoRemaining = Chip[port->Type].FIFOsize;
+                            timerNeeded = 0;
+                            if (port->WaitingForTXIdle != 0) {
+                                thread_call_cancel(port->FrameTOEntry);
+                                port->WaitingForTXIdle = 0;
+                            }
+                        } else if (lsr & 0x20) {
+                            // TEMT clear but THRE set: only start a burst when
+                            // the cell after the head is data too (reference
+                            // 14572-14622).  Without the THRE test this arm can
+                            // be reached on a re-entry carrying a live burst
+                            // counter and would write THR with no room.
+                            char peek2Char;
+                            char *peek2Ptr = (char *)((unsigned short *)port->TX.Output + 1);
+                            if ((char *)peek2Ptr >= port->TX.End) {
+                                peek2Ptr = (char *)port->TX.Base;
+                            }
+                            peek2Char = (port->TX.Count > 1) ? *peek2Ptr : '\0';
+
+                            if (peek2Char == 'U') {
+                                unsigned char wordLen;
+                                fifoRemaining = Chip[port->Type].FIFOsize - 1;
+                                timerNeeded = 0;
+                                if (port->WaitingForTXIdle != 0) {
+                                    thread_call_cancel(port->FrameTOEntry);
+                                    port->WaitingForTXIdle = 0;
+                                }
+
+                                // Dequeue and transmit the head
+                                readPtr = (unsigned short *)port->TX.Output;
+                                dataWord = *readPtr++;
+                                if ((char *)readPtr >= port->TX.End) {
+                                    readPtr = (unsigned short *)port->TX.Base;
+                                }
+                                port->TX.Output = (char *)readPtr;
+                                port->TX.Count--;
+
+                                eventType = (unsigned char)dataWord;
+                                wordLen = eventType & 3;
+
+                                if (wordLen == 1) {
+                                    eventData = (dataWord >> 8);
+                                } else if (wordLen == 0) {
+                                    eventData = 0;
+                                } else if (wordLen == 2) {
+                                    dataWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+                                    eventData = dataWord;
+                                } else if (wordLen == 3) {
+                                    unsigned short highWord;
+                                    unsigned short lowWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+
+                                    highWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+
+                                    eventData = ((unsigned int)highWord << 16) | lowWord;
+                                }
+
+                                port->Stats.txChars++;
+                                OUTB(port->Base + UART_THR, (unsigned char)eventData);
+                            }
+                        }
+
+                        // Reference 14967: the four sub-paths above converge
+                        // here, and an empty burst budget is what arms the frame
+                        // timer.
+                        if (fifoRemaining == 0) {
+                            timerNeeded = 1;
+                        } else {
+                            for (;;) {
+                                unsigned char wordLen;
+
+                                peekPtr = (char *)port->TX.Output;
+                                if ((char *)peekPtr >= port->TX.End) {
+                                    peekPtr = (char *)port->TX.Base;
+                                }
+                                peekChar = (port->TX.Count != 0) ? *peekPtr : '\0';
+
+                                // Reference 15020 leaves the burst counter
+                                // non-zero on this break, which is what makes
+                                // the loop-bottom test re-enter the handler.
+                                if (peekChar != 'U') {
+                                    break;
+                                }
+
+                                readPtr = (unsigned short *)port->TX.Output;
+                                dataWord = *readPtr++;
+                                if ((char *)readPtr >= port->TX.End) {
+                                    readPtr = (unsigned short *)port->TX.Base;
+                                }
+                                port->TX.Output = (char *)readPtr;
+                                port->TX.Count--;
+
+                                eventType = (unsigned char)dataWord;
+                                wordLen = eventType & 3;
+
+                                if (wordLen == 1) {
+                                    eventData = (dataWord >> 8);
+                                } else if (wordLen == 0) {
+                                    eventData = 0;
+                                } else if (wordLen == 2) {
+                                    dataWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+                                    eventData = dataWord;
+                                } else if (wordLen == 3) {
+                                    unsigned short highWord;
+                                    unsigned short lowWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+
+                                    highWord = *readPtr++;
+                                    if ((char *)readPtr >= port->TX.End) {
+                                        readPtr = (unsigned short *)port->TX.Base;
+                                    }
+                                    port->TX.Output = (char *)readPtr;
+                                    port->TX.Count--;
+
+                                    eventData = ((unsigned int)highWord << 16) | lowWord;
+                                }
+
+                                port->Stats.txChars++;
+                                OUTB(port->Base + UART_THR, (unsigned char)eventData);
+
+                                if (--fifoRemaining == 0) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // Check for more interrupts
-        iir = INB(port->Base + UART_IIR);
-    } while (continueLoop || (overrunCounter != 0) || (fifoRemaining != 0) || ((iir & 0x01) == 0));
+        // Continue while work remains, else consult IIR.  The IIR read must be
+        // short-circuited: reference 15692/15702/15710 test the three flags
+        // first and only fall through to the read at 15716 when all are clear.
+        // Reading IIR clears a pending THRE interrupt.
+    } while (continueLoop || (overrunCounter != 0) || (fifoRemaining != 0) ||
+             ((INB(port->Base + UART_IIR) & 0x01) == 0));
 
     // Check for break condition change
     if ((lsr & 0x60) == 0x20) {
@@ -1845,25 +1905,54 @@ tx_done_fifo:
 
     changedBits |= (port->State ^ newState);
 
-    // Enqueue state change event if mask matches
-    stateChangeMask = *(unsigned int *)&port->FlowControl;
-    matchBits = (changedBits << 16) & stateChangeMask;
+    /*
+     * Enqueue the state-change event if the mask matches.  The reference writes
+     * the three cells INLINE here rather than calling RX_enqueueLongEvent:
+     * fourteen sites in its class translation unit write this event, twelve of
+     * them call the out-of-line helper at 0, and the two that do not are
+     * _NonFIFOIntHandler at 18486-18664 and _FIFOIntHandler at 16014-16192,
+     * both of which spell out the capacity check and the 0x6C overflow path in
+     * full.  matchBits carries no low-half bits, so the reference simply ORs the
+     * two halves together at 18492 / 16020 with no extra masking.
+     */
+    matchBits = (changedBits << 16) & port->FlowControl;
     if (matchBits != 0) {
-        if ((port->RX.Size - port->RX.Count) < 3) {
-            if (port->RX.Count >= port->RX.Size) {
-                port->RX.OverRun = 1;
-            } else {
-                unsigned short *writePtr = (unsigned short *)port->RX.Input;
-                *writePtr++ = EVENT_OVERFLOW;
-                if ((char *)writePtr >= port->RX.End) {
-                    writePtr = (unsigned short *)port->RX.Base;
-                }
-                port->RX.Input = (char *)writePtr;
-                port->RX.Count++;
+        unsigned int eventValue = (newState & 0xFFFF) | matchBits;
+        unsigned short *writePtr;
+
+        if ((port->RX.Size - port->RX.Count) > 2) {
+            writePtr = (unsigned short *)port->RX.Input;
+
+            *writePtr++ = EVENT_STATE_CHANGE;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
             }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+
+            *writePtr++ = (unsigned short)eventValue;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+
+            *writePtr++ = (unsigned short)(eventValue >> 16);
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
+        } else if (port->RX.Count < port->RX.Size) {
+            writePtr = (unsigned short *)port->RX.Input;
+            *writePtr++ = EVENT_OVERFLOW;
+            if ((char *)writePtr >= port->RX.End) {
+                writePtr = (unsigned short *)port->RX.Base;
+            }
+            port->RX.Input = (char *)writePtr;
+            port->RX.Count++;
         } else {
-            RX_enqueueLongEvent(port, EVENT_STATE_CHANGE,
-                                (newState & 0xFFFF) | (matchBits & 0xFFFF0000));
+            port->RX.OverRun = 1;
         }
     }
 
@@ -2629,8 +2718,15 @@ unsigned long long _umoddi3(unsigned long long u, unsigned long long v)
 
     // "Bus Type" of "PCMCIA" marks the port as removable, which is what
     // PCMCIA_yanked and the banner's prefix key off.
+    //
+    // This is strcmp, not strncmp.  Reference 1499-1521 is
+    // mov ecx,7 / cld / repz cmpsb / jnz, with no call: the compiler's inline
+    // expansion of strcmp against a string literal, where the 7 is
+    // strlen("PCMCIA") + 1 and not a caller-supplied count.  Reading the 7 as
+    // an explicit length put _strncmp in our import list, and the reference
+    // imports _strcmp and _strncpy but never _strncmp.
     busTypeStr = [configTable valueForStringKey:"Bus Type"];
-    if (busTypeStr != NULL && strncmp("PCMCIA", busTypeStr, 7) == 0) {
+    if (busTypeStr != NULL && strcmp(busTypeStr, "PCMCIA") == 0) {
         self->Port.PCMCIA = 1;
     }
 

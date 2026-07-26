@@ -3140,3 +3140,257 @@ casualties of Task 6a's rename and Task 6b's rewrite. The **structured** fields 
 every `source_path` and `source_line` in `source-map.json` and `ledger.json` is re-derived and
 verified after each change. Reference addresses in the findings are stable and remain the
 authority.
+
+## Addendum 9 — Task 9: the two interrupt handler bodies, read
+
+Task 6b left both interrupt handlers at `signature-confirmed` with their bodies unread, arguing
+that closing the size gap meant guessing inside ~1600 unexamined instructions. A reviewer
+endorsed that. Then the whole-effort review found two Criticals inside those very bodies, both
+provable from under 130 instructions. This pass read them: `_FIFOIntHandler` 13060–16231 (880
+instructions) and `_NonFIFOIntHandler` 16232–18703 (682), every instruction against the source.
+
+Ten recorded findings were checked. **All ten were real** — none turned out to be the kind of
+false report Findings 94 and 102 were. Three new divergences were found inside the handlers, and
+three more outside them, one of which was a load-time failure.
+
+### The three ours-only imports — a load failure that section parity could not see
+
+Our binary imported **30** external-undefined symbols; the reference imports **27**. Nothing was
+reference-only, so we were a strict superset and every extra was a symbol Apple's driver never
+needed:
+
+| symbol | site | recorded as |
+|---|---|---|
+| `_IOEnterCriticalSection` | 8 pairs in the two handlers, 1 in `watchState` | Finding 105 |
+| `_IOExitCriticalSection` | same | Finding 105 |
+| `_strncmp` | `initFromDeviceDescription:` | Finding 106 |
+
+Neither `IOEnterCriticalSection` nor `IOExitCriticalSection` exists **anywhere in this source
+tree** — not in `driverkit-3`, not in `kernel-7`, nowhere. The kernel does not export them, so
+this driver could not have loaded. All three are gone; the import sets are now identical, 27
+against 27, with no remainder in either direction.
+
+**The rule this establishes, stated as a rule.** An implicit-declaration warning in this codebase
+is a **load-failure signal until the symbol has been checked against the reference's import
+list**. The warning text is identical for `_thread_wakeup_prim`, which *is* one of Apple's 27 and
+is genuinely just a missing prototype, and for `_IOEnterCriticalSection`, which is not and does
+not exist. Nothing in the compiler output distinguishes them. These warnings were reported as
+benign three times across earlier passes on exactly that reasoning.
+
+### Finding 105 (new) — the critical-section pairs were the last of Finding 4/5's mistranscription
+
+Finding 5 identified the `IOEnterCriticalSection()`/`IOExitCriticalSection()` pairs as the same
+mistranscription as Finding 4's 30 spurious `IODelay(1)` calls: what the original decompilation
+read as a critical section is the `lock incl` that `ioPorts.h`'s inline `outb` emits after the
+`out`. Eight surviving pairs sat in the two interrupt handlers, each immediately after an `OUTB`,
+against the reference's `lock inc ds:_xxx_86` at the corresponding site (17288, 17444, 14212,
+14380 and so on). Deleted; `outb()` emits the increment by itself.
+
+The ninth was **not** the same thing. `ISASerialPortFlow.c` wrapped a non-atomic
+read-then-write of `Port.WatchLock.locked` in the pair. Reference 23684–23705 is `simple_lock()`
+from `src/kernel-7/mach/i386/simple_lock.h` inlined instruction for instruction:
+
+| reference | `simple_lock` / `simple_lock_try` |
+|---|---|
+| `lea edx,[esi+14h]` | `&slock->locked`, i.e. `Port+0x14` |
+| `cmp [edx],0` / `jnz` back | `while (slock->locked) continue;` |
+| `mov eax,1` / `xchg eax,[edx]` / `xor eax,1` | `asm("xchgl %1,%0; xorl %3,%0")`, `"0" (TRUE)`, `"i" (TRUE)` |
+| `test eax,eax` / `jz` back | `while (!simple_lock_try(slock))` |
+
+`xchg` against memory is atomic on x86 by itself, so there is no critical section and no unlock
+afterwards — `thread_sleep(event, lock, interruptible)` drops it, which is why 23710–23720 passes
+`lea eax,[esi+14h]` as its second argument. Our old code was wrong twice over: the test-and-set
+was not atomic, and its lost-race `continue` targeted the outer `do`/`while`, re-running the
+`changedBits` test, where the reference retries the spin.
+
+**`Port.WatchLock` deliberately stays `struct { unsigned int locked; }`** and is cast at the call
+rather than becoming a `simple_lock_data_t`. The reference's own ivar type encoding decides this:
+it reads `"WatchLock"{?="locked"I}` — an anonymous struct holding an **unsigned** int — where
+`simple_lock_data_t` would encode as `{slock="locked"i}`. The two are layout-identical, so
+switching the declared type would have flipped `I` to `i` in a published encoding string and
+broken a currently byte-identical section for no gain. This is the reference's encoding settling a
+type question, which is the strongest kind of evidence available in this reconstruction.
+
+### Finding 106 (new) — it is `strcmp`, not `strncmp`, and there is no call at all
+
+Task 6b introduced `strncmp("PCMCIA", busTypeStr, 7)` in `initFromDeviceDescription:` on the
+strength of `mov ecx, 7` at reference 1507. The Task 6b reviewer independently confirmed it.
+**Both were wrong.** Reference 1499–1521 reads:
+
+```
+1499  mov  eax, offset aPcmcia      ; "PCMCIA"
+1504  mov  edx, [ebp+__str]
+1507  mov  ecx, 7
+1512  mov  esi, eax / mov edi, edx / cld
+1517  test al, 0
+1519  repz cmpsb                    ; F3 A6 - IDA folds the F3 prefix onto the mnemonic
+1521  jnz  loc_5FD
+```
+
+There is **no `call` instruction**. This is the compiler's `cmpstrsi` expansion of `strcmp`
+against a string literal: `expand_builtin_strcmp` takes `c_strlen` of the constant operand and
+uses `len + 1` as the byte count, so the `7` is `strlen("PCMCIA") + 1` and **not a
+caller-supplied length**. It is safe as a full `strcmp` because `repz` stops at the first
+mismatch, so a shorter `busTypeStr` fails on its own NUL terminator rather than reading past it.
+The `strcmp` at 1267 stays out of line precisely because there neither operand has a
+compile-time-known length — which is exactly why `_strcmp` is imported and `_strncmp` never was.
+
+**The reference's import list was the discriminator.** A driver that called `strncmp` would import
+`_strncmp`; Apple's imports `_strcmp` and `_strncpy` and not `_strncmp`. Reading `mov ecx, 7` as
+an argument is a locally plausible misreading that survived a write and a review, and what exposed
+it was a set comparison, not a closer look at the instruction.
+
+### The ten recorded findings against the handlers
+
+| Finding | verdict | evidence |
+|---|---|---|
+| 15 IIR read unconditional | **real, fixed** | 18179 tests the executed-event flag and only falls through to the read at 18189; 15692/15702/15710 test all three flags before 15716 |
+| 16 TX comparisons inverted | already closed in Task 8 | re-derived at 18294/18344 and 15821/15875; correct, untouched |
+| 17 TX level constants | already closed in Task 8 | all five re-verified at 18319/18334/18378/18394/18416 |
+| 21 ladder enqueues the raw RBR byte | **real, fixed** | 16521, 16716 and 16780 all load `byte ptr [ebp+var_8]`, the slot 16567 masks with `RBRmask` |
+| 23 NonFIFO's five structural differences | **correct in ours**, untouched | as recorded |
+| 25 flow adjustments are independent `if`s | **real, fixed** | 16971/16988/17052, 17131/17144/17212, 13895/13912/13976, 14055/14068/14136 |
+| 26 watermark bits from the local copy | **real, fixed** | 13830 masks the local, *then* 13837 reads `[ebx+0Ch]` |
+| 27 long-event enqueue is inlined | **real, fixed** | the two handlers are the only 2 of 14 sites not calling the helper at 0 |
+| 28 `timerNeeded` on the wrong paths | **real, fixed** | only 14969 and 15344 reach 15684 |
+| 29 `fifoRemaining` zeroed on the drain break | **real, fixed** | 15020 breaks with `edi` live; 15708 re-enters the outer loop on it |
+
+Findings 25 and 26 are behavioural, not cosmetic. With `FlowControl == 0x14` the reference sets
+only bit 2 and never reaches the `RXOstate` machine; ours set bits 2 and 4 and ran it. And the
+`0x17E` seed must come from `port->State` because the local copy's bit 3 may already have been
+moved by the XON/XOFF handling twenty instructions earlier.
+
+Finding 27 is the structural one Task 6b named and declined. The reference's class translation unit
+has fourteen sites that write the three-cell state-change event; twelve call `_RX_enqueueLongEvent`
+at 0, and the two that do not are these handlers, which spell out the `RX.Size - RX.Count > 2`
+capacity check, the `0x6C` overflow cell and three advance-wrap-increment cells in full
+(18486–18664 and 16014–16192). Inlined only there.
+
+### Finding 107 (new) — the FIFO burst-setup arm had no THRE test
+
+Reference 14572 gates the peek-ahead on `test cl, 20h` before looking at the cell after the TX
+head. Ours had no such test. This was **latent until Finding 29 was fixed**: with the burst counter
+always zeroed on the drain break, `fifoRemaining` was necessarily 0 at the loop top, so the outer
+guard `(lsr & 0x20) || fifoRemaining != 0` could only be satisfied by THRE. Fixing 29 makes
+re-entry with a live counter and THRE clear reachable, at which point the unguarded arm writes THR
+with no room in the holding register. The two findings had to be closed together.
+
+### Finding 108 (new) — the FIFO full-queue arms must not run the overrun countdown
+
+All four of `_FIFOIntHandler`'s full-queue arms share one site, reference 13684, which sets
+`RX.OverRun` and then jumps to **13691 → 13172, the drain-loop top** — skipping the overrun
+countdown at 13728 entirely. Ours fell through into it, so a full receive queue could still
+decrement the FIFO-overrun counter and enqueue the `0x68` event. Four `continue`s.
+
+`_NonFIFOIntHandler` is not affected and must not be changed to match: its shared overrun site at
+16840 jumps to 16884, the RX watermark block, which is the natural fall-through in a handler that
+has no drain loop. Two handlers, two different correct answers — recorded so nobody unifies them.
+
+### Finding 109 (new, for Task 10b) — `executeEvent:data:` writes the event tail twice
+
+`ISASerialPort.m` calls `RX_enqueueLongEvent` thirteen times where the reference calls it twelve.
+The extra one is in `-[ISASerialPort executeEvent:data:]`, which carries two structurally identical
+tails — MCR rebuild, `thread_call_enter`, mask test, enqueue — one in the `0x53` arm and one in
+`default`. Reference `executeEvent:data:` (6472–7337) calls it **once**, at 7308, so its two arms
+converge on a shared tail. Not fixed: that function is outside this task's scope and its ledger
+entry is `control-flow-confirmed` from Task 6b. Left for Task 10b, which owns the adjacent group.
+
+### Two spellings of one algorithm, again
+
+The FIFO handler's XON/XOFF-character block was written differently from the NonFIFO handler's — a
+nested `if`/`else` with a `goto` into the else branch, against NonFIFO's flat form. The reference's
+two copies (13410–13501 and 16570–16661) are structurally identical. Unified on the NonFIFO
+spelling. This is the same hazard that produced Critical C4: four spellings of the TX watermark
+algorithm in one file, one of which was wrong. Where the reference writes a block twice, our two
+copies should be textually identical, so that a defect in one is visibly a defect in both.
+
+### Reproduced, not fixed
+
+`_FIFOIntHandler`'s loop-bottom test re-enters on `overrunCounter != 0` (15698), but that counter
+is decremented **only** inside the RX drain loop (13738). If receive data stops arriving while the
+counter is non-zero, the handler spins without ever reaching the IIR read at 15716. This is what
+the reference does and it is reproduced unchanged. Flagged rather than corrected, per the effort's
+rule on Apple's own defects; it is not added to section 6's catalogue because it is a liveness
+hazard rather than a wrong value, and it may be unreachable in practice.
+
+### Measured after this commit
+
+The figures below are for the binary **this commit produces** — the build was run after the last
+source edit, not before it, which is the error that made Addendum 7's headline numbers stale by
+8 bytes.
+
+| metric | before Task 9 | after Task 9 |
+|---|---|---|
+| `__TEXT,__text` | 23136 | **23244** |
+| gap to reference 24412 | −1276 | **−1168** |
+| sections matching | 28/30 | 28/30 |
+| byte-identical sections | 13 | 13 |
+| `missing_strings` / `missing_symbols` / `extra_strings` | 0 / 0 / 0 | 0 / 0 / 0 |
+| external-undefined imports | 30 (3 ours-only) | **27 (0 ours-only, 0 reference-only)** |
+| build warnings | 8 | **5** |
+
+−1168 is the narrowest the gap has been in this effort, and it closed on a pass whose purpose was
+correctness rather than size. `__TEXT,__const` remains absent — the understood permanent absence.
+
+Per-function extents were measured over the rebuilt `__text` by parsing the Mach-O nlist directly
+and **excluding `N_STAB` entries by `n_type`**. This matters: the object carries 6819 nlist entries
+of which **6732 are stabs**, and a name-based extraction splits every function at each line-number
+stab — it reported `_FIFOIntHandler` as 115 bytes. With stabs filtered, 45 non-stab `__text`
+symbols remain, matching the reference's 45 exactly. Each extent was then disassembled with
+capstone and required to decode cleanly end to end and terminate in `ret`; both handlers do, at
+807 and 663 instructions.
+
+| function | reference | ours before | ours after | delta before | delta after |
+|---|---|---|---|---|---|
+| `_FIFOIntHandler` | 3172 | 2668 | **2664** | −504 | **−508** |
+| `_NonFIFOIntHandler` | 2472 | 2144 | **2136** | −328 | **−336** |
+
+Both handlers moved 4 and 8 bytes **further** from the reference, and that is the expected sign:
+inlining the three-cell enqueue grows them, but deleting eight critical-section call pairs shrinks
+them by more. The pass's +108 bytes came from `initFromDeviceDescription:` (the inline `repz cmpsb`
+is larger than a `strncmp` call) and `watchState` (inline `simple_lock` against two calls). Size
+was not the objective and was not chased.
+
+**The accounting closes both ways, exactly.** Summing all 45 per-function deltas over IDA extents
+gives **−1115**, and 24359 − 23244 = 1115 to the byte. Subtracting the 53 bytes of reference
+inter-function padding IDA does not count (24412 − 24359) gives **−1168**, the measured `__text`
+gap. No residual.
+
+### Ledger
+
+Both handlers advance `signature-confirmed` → `control-flow-confirmed`. That is the ceiling this
+evidence supports, and the pass stops there deliberately: the **reference** stream was read
+instruction by instruction, but no rebuilt-versus-reference instruction diff was performed, which
+is what `assembly-matched` requires. Nothing in this reconstruction is `assembly-matched` and these
+two are not either. `entries=45`, control-flow-confirmed 28 → **30**, signature-confirmed 4 → **2**,
+intentional-mismatch 2, unexamined 11 unchanged.
+
+### On re-lining, for Tasks 10a and 10b
+
+`source_line` values were re-derived by aligning the `HEAD` version of each source file against the
+working-tree version with a `difflib` opcode alignment and mapping each entry through the `equal`
+runs, **asserting that the destination line's text is byte-identical to the source line's** and
+refusing to move any entry whose line text changed. 46 values moved across `ledger.json` and
+`source-map.json`; 0 were unmappable.
+
+This method caught a failure in this pass that a hand reline would have shipped. The first reline
+was computed from a hand-derived +87/+25 offset, and then later comment edits shifted the file a
+second time and silently invalidated it — the same staleness that made Addendum 7 wrong. Both JSON
+files were reset to `HEAD` and re-lined once, from the committed state to the final state. Use the
+alignment, not arithmetic.
+
+**A known property, not drift:** thirteen `source_line` values point at a line inside their
+function's leading doc comment rather than at the definition line — `getHandler:…`,
+`getCharValues:…`, `release`, `setState:mask:`, `getState`, `watchState:mask:`, `nextEvent`,
+`executeEvent:data:`, `requestEvent:data:`, `enqueueEvent:…`, `dequeueEvent:…`, `enqueueData:…`
+and `dequeueData:…`. This predates Task 9 and was **preserved rather than corrected**, because
+re-lining is only verifiable if it reproduces the previous target exactly; improving thirteen
+unrelated entries in the same pass would have destroyed that check. Fix them in a pass that does
+nothing else, or leave them.
+
+### Gates
+
+- `load_source_map(...)` prints `source map OK`; partition unchanged at **43 mapped / 2 unmapped**,
+  0 duplicate candidates, 0 boundary disputed.
+- `binrecon ledger` validates with **45 entries**.
+- All touched files LF-only per `git ls-files --eol`.

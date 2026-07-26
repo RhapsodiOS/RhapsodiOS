@@ -1362,7 +1362,7 @@ tolerated (spec §3.2). ABI divergence is not: client code is compiled against
 these offsets, sizes and encodings.
 """
 
-from .objc_abi import ObjcAbiError, read_modules_from_sections
+from .objc_abi import ObjcAbiError, method_symbol_index, read_modules_from_sections
 
 
 def external_symbols(document):

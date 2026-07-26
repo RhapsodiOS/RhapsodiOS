@@ -15,7 +15,14 @@
 ## Global Constraints
 
 - Python is 3.13.9 at `./.venv-binrecon/Scripts/python.exe`. Every binrecon invocation needs `PYTHONPATH=tools/binrecon` and runs from the repository root.
-- **Test baseline is 650 passed, 4 skipped, 0 failed.** Verify before you start. Any failure you see is yours.
+- **Measure the test baseline yourself before your first edit** and treat every later count as a delta from it:
+
+  ```bash
+  PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
+  ```
+
+  It was 651 passed, 4 skipped when this plan was written, but **another agent is adding tests to `tools/binrecon` concurrently**, so the absolute number drifts. What matters is that your change adds exactly the tests your task introduces and breaks none. Where a task says "expect N passed", read it as "expect baseline + the tests this task adds". A *falling* count, or any failure, is yours to investigate.
+- **`tools/binrecon/binrecon/macho.py` is shared with that other agent** — they recently added `MH_BUNDLE` support to the same file. Re-read the file before editing rather than trusting the line numbers quoted here, and stage only your own paths.
 - IDA `version` must be `9.2`; Ghidra `12.1` with Java 21; angr `9.3.0`.
 - The reference kernel lives at `C:\Users\raynorpat\Downloads\test\mach_kernel_dr2_x86` and is **never** committed. Size 1404116, SHA-256 `BE98A33F71B80AEE00A6921333943DA02D0B676C8AF056843EB868C14EBB497C`.
 - Architecture `i386`, endianness `little`.
@@ -171,7 +178,7 @@ to:
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `651 passed, 4 skipped`.
+Expected: baseline + 1 (this task adds one test), 4 skipped, 0 failed.
 
 - [ ] **Step 5: Verify it reads the real kernel**
 
@@ -415,7 +422,7 @@ Expected: `2 passed`.
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `653 passed, 4 skipped`.
+Expected: baseline + 3 (Task 1's one plus this task's two), 4 skipped, 0 failed.
 
 - [ ] **Step 6: Commit**
 
@@ -488,7 +495,7 @@ Expected: `3 passed`. Then confirm the full suite:
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `654 passed, 4 skipped`.
+Expected: baseline + 4, 4 skipped, 0 failed.
 
 - [ ] **Step 5: Check it against the real kernel — the gate for this task**
 
@@ -601,7 +608,7 @@ The merge is additive: where both sources name an address, both names are kept. 
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `656 passed, 4 skipped` (654 after Task 3, plus this task's two). **The existing source-map tests must all still pass** — a regression here breaks the three completed driver reconstructions.
+Expected: baseline + 6 (baseline + 4 after Task 3, plus this task's two). **The existing source-map tests must all still pass** — a regression here breaks the three completed driver reconstructions.
 
 - [ ] **Step 5: Commit**
 
@@ -715,7 +722,7 @@ Merging by extending is deliberate: a selector defined in both directories yield
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `657 passed, 4 skipped`.
+Expected: baseline + 7, 4 skipped, 0 failed.
 
 - [ ] **Step 6: Confirm the CLI help shows the flags**
 
@@ -1027,7 +1034,7 @@ Fixes installsrc and tags; not the cause of the absent PCMCIA objects."
 | --- | --- | --- |
 | `MH_EXECUTE` accepted | Task 1 | `read_macho` on the real kernel returns the expected SHA-256 |
 | Metadata walk correct | Task 3 | index yields exactly the 24 methods in the inventory table |
-| No regression | Tasks 1-5 | `pytest tools/binrecon/tests -q` reaches 657 passed, 4 skipped |
+| No regression | Tasks 1-5 | `pytest tools/binrecon/tests -q` reaches baseline + 7, 0 failed |
 | Analysis complete | Task 6 | `"complete": true`, populated `published/` |
 | Walk corroborated | Task 6 | IDA/Ghidra function entry points coincide with our 24 IMPs |
 | Source map valid | Task 7 | `load_source_map` against the scoped analysis |

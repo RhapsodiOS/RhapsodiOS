@@ -42,8 +42,8 @@ static void FloppyControllerThread(void *arg);
  */
 static int _fcUnitNum = 0;
 
-// External CMOS lock variable (referenced in decompiled code)
-extern int __xxx;
+// CMOS access counter (compiler-generated name in the decompiled code)
+static int __xxx;
 
 /*
  * floppyDriveType - Read floppy drive type from CMOS

@@ -19,6 +19,9 @@ extern int physio(int (*strategy)(struct buf *), struct buf *bp, dev_t dev, int 
 // Forward declaration for detached disk identification
 static id identifyDetachedDiskIdFromBsdDev(dev_t dev);
 
+// Count of floppy drives registered with the BSD device layer
+int DrivesRegistered = 0;
+
 /*
  * HandleBsdIoctl - BSD ioctl handler
  * From decompiled code: handles ioctl commands from BSD layer.
@@ -1198,7 +1201,6 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
  */
 + (IOReturn)registerDrive:(id)drive
 {
-	extern int DrivesRegistered;  // Global counter of registered drives
 	extern int enodev, nulldev, seltrue;
 
 	unsigned int driveIndex;
@@ -1326,8 +1328,6 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
  */
 + (IOReturn)unregisterDrive:(id)drive
 {
-	extern int DrivesRegistered;  // Global counter of registered drives
-
 	int driveNumber;
 	void **devInfoPtr;
 	void *deviceInfo;

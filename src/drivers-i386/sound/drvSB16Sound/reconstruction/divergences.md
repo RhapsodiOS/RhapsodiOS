@@ -36,7 +36,7 @@ gitignored analyzer output.
         ioReturn = [self setDMATransferWidth:IO_16Bit forChannel:1];
 ```
 
-and `IO_16Bit` is not a member of `IODMATransferWidth`
+and `IO_16Bit` is not a member of `IOEISADMATransferWidth`
 (`src/driverkit-3/driverkit/i386/directDevice.h:163`–`:169` declares `IO_8Bit`,
 `IO_16BitWordCount`, `IO_16BitByteCount`, `IO_32Bit`). This is the same defect
 drvES1x88Sound carried. It is verified at line 270. **Task 10 must repair it as a
@@ -102,9 +102,12 @@ re-derived from the current `SoundBlaster16.m`.
 ## The classification every function carries
 
 This is the section Task 10's authorisation depends on. Each of the 26 hand-written
-functions is classified below as **divergent** ("the source implements the reference's
-logic with specific differences") or **invented** ("the source does not implement the
-reference's logic at all"). Only the second wording authorises a rewrite.
+functions carries one of three classifications: **invented** ("the source does not
+implement the reference's logic at all"), **divergent** ("the source implements the
+reference's logic with specific differences"), or **matches** ("the source implements the
+reference's logic and no difference was found"). Only **invented** authorises a rewrite;
+**matches** is the strongest statement in the table and authorises nothing at all. No
+function here is invented, so the classification is `divergent` or `matches` throughout.
 
 | Reference function | Address | Size | Our source | Classification |
 | --- | --- | --- | --- | --- |
@@ -196,7 +199,7 @@ assumed, but that mechanical step is weaker than a fresh reading and is recorded
 
 Within every function, the `outbIXMixer()` expansion (`out dx,al` / `lock incl _xxx.86` /
 `IODelay(15)` / `out dx,al` / `lock incl _xxx.86` / `IODelay(75)`, 14 instructions) recurs
-roughly 90 times and the DSP wait loop (29 instructions) roughly 25 times. Each distinct
+roughly 90 times and the DSP wait loop (29 instructions) exactly 29 times. Each distinct
 expansion was read in full once and every later occurrence checked on `(mnemonic,
 operands)` with only the port address and data immediate varying. Every occurrence matched.
 
@@ -363,8 +366,14 @@ driver they were extra, on this one they are Apple's.
 
 ## Objective-C metadata: the method set is complete on both sides
 
-`__OBJC,__cls_meth` holds exactly one entry, `probe:` with encoding `c12@8:12@16`.
-`__OBJC,__inst_meth` holds exactly 24, and they are our 24 instance methods with matching
+**SoundBlaster16 declares exactly one class method, `probe:`**, with encoding
+`c12@8:12@16`. `__OBJC,__cls_meth` itself is 60 bytes and holds **three** single-entry
+method lists, one per class in the module — `probe:` (imp 0, the `SoundBlaster16` class
+list), `driverKitVersionForSoundBlaster16` (imp 13548) and `kernelServerInstance`
+(imp 13560), the latter two being the build-generated glue classes recorded under
+*Unmapped*. Only the first belongs to `SoundBlaster16`.
+`__OBJC,__inst_meth` is 296 bytes: one list of exactly 24, and they are our 24 instance
+methods with matching
 encodings throughout: `enableAllInterrupts` is `i8@8:12` (`IOReturn`),
 `disableAllInterrupts` is `v8@8:12`, `interruptClearFunc` is `^?8@8:12`,
 `interruptOccurredForInput:forOutput:` is `v16@8:12^c16^c20`, `setAnalogInputSource:` is
@@ -402,6 +411,8 @@ contradiction is confined to dead code.**
  1381: 6889360000       push offset "SoundBlaster16: Audio IRQ must be one of 5, 7, 9, 10.\n"
  1386: E891FAFFFF       call _IOLog
  1391: 31D2             xor  edx, edx            ; status = NO
+ 1393: 83C40C           add  esp, 0Ch
+ 1396: EB07             jmp  loc_57D             ; -> 1405, skipping the status = YES arm
  1400: BA01000000       mov  edx, 1              ; status = YES
  1405: 84D2             test dl, dl
  1407: 7455             jz   loc_5D6             ; return NO
@@ -482,9 +493,14 @@ Three properties matter and all three differ from ours:
 exactly this shape, including the `timeout == 10000` post-test and the
 `SoundBlaster16: DSP write error.\n` log — **that is the closest thing in our tree to
 Apple's helper, and it is a good model for what `dspWriteWait()`/`dspReadWait()` should
-become.** The reference emits this expansion 25 times: seven in `initializeHardware`, three
-in `updateSampleRate`, eight in `startDMAForChannel:`, three in `stopDMAForChannel:read:`
-and seven in `timeoutOccurred`.
+become.** The reference emits this expansion **29** times, counted as the `cmp …, 270Fh`
+bound test, one per expansion: seven in `initializeHardware` (1791, 1931, 2091, 2231, 2391,
+2559, 2691), three in `updateSampleRate` (6847, 6999, 7135), eight in
+`startDMAForChannel:` (8191, 8327, 8475, 8615, 8743, 8879, 9027, 9163), **four** in
+`stopDMAForChannel:read:` (9363, 9575, 9619, 9827) and seven in `timeoutOccurred` (10499,
+10639, 10799, 10939, 11099, 11267, 11399). 7 + 3 + 8 + 4 + 7 = 29. No other function in the
+binary contains the expansion. **`stopDMAForChannel:read:` has four waits, not three** —
+see Finding 19.
 
 `SoundBlaster16: DSP read error.\n` is emitted from `initializeHardware`, `timeoutOccurred`
 and `stopDMAForChannel:read:` (9894); `SoundBlaster16: DSP write error.\n` from all five.
@@ -760,8 +776,10 @@ lastStageGainInputLeft, lastStageGainInputRight, lastStageGainOutputLeft,
 lastStageGainOutputRight, outputMixerSwitch, inputMixerSwitchLeft, inputMixerSwitchRight,
 sbStartDMACommand, sbStartDMAMode`. If Task 10 reorders, reorder all of them together.
 
-**Disposition for Task 10:** replace the five unions and seven bytes with the twenty-three
-`unsigned int` variables in that order, with the reference's initialisers, and delete
+**Disposition for Task 10:** replace the five unions (`Inline.h:78`–`:82`) and the eleven
+`unsigned char` shadows — the seven at `Inline.h:83`–`:89` plus the four `lastStageGain*`
+at `:100`–`:103`, whose retyping the mapping table above already covers — with the
+twenty-three `unsigned int` variables in that order, with the reference's initialisers, and delete
 `inputGainLeft`/`Right` and `outputGainLeft`/`Right` as duplicates of the `lastStageGain*`
 set. `sb16MonoMixerRegister_t`, `sb16MonoMixerRegister5bit_t` and
 `sb16StereoMixerRegister_t` become unused; `sb16MonoMixerRegister5bit_t` and
@@ -924,7 +942,7 @@ Our `initMixerRegisters()` writes `MC16_MASTER_VOLUME` `22h`, `MC16_VOICE_VOLUME
 `MC16_FM_VOLUME` `26h`, `MC16_CD_VOLUME` `28h`, `MC16_LINE_VOLUME` `2Eh`,
 `MC16_MIC_VOLUME` `0Ah`, `MC16_INPUT_CONTROL_LEFT`/`RIGHT` `3Dh`/`3Eh`,
 `MC16_INPUT_GAIN_LEFT`/`RIGHT` `3Fh`/`40h` and `MC16_OUTPUT_GAIN_LEFT`/`RIGHT` `41h`/`42h`
-— twelve writes. The reference writes nineteen, all in the CT1745 block, in this order,
+— twelve writes. The reference writes twenty-four, all in the CT1745 block, in this order,
 read from `initializeHardware` 3136–4635:
 
 | Register | Source value | Shift |
@@ -940,7 +958,7 @@ read from `initializeHardware` 3136–4635:
 | `38h` `CT1745_LINE_VOLUME_LEFT` | `_volLineLeft` | `<< 3` |
 | `39h` `CT1745_LINE_VOLUME_RIGHT` | `_volLineRight` | `<< 3` |
 | `3Ah` `CT1745_MIC_VOLUME` | `_volMic` | `<< 3` |
-| `3Bh` `MC16_PC_SPEAKER_VOLUME` | `_volPCSpeaker` | none |
+| `3Bh` `MC16_PC_SPEAKER_VOLUME` | `_volPCSpeaker` | `<< 6` |
 | `3Ch` `MC16_OUTPUT_CONTROL` | `_outputMixerSwitch` | none |
 | `3Dh` `MC16_INPUT_CONTROL_LEFT` | `_inputMixerSwitchLeft` | none |
 | `3Eh` `MC16_INPUT_CONTROL_RIGHT` | `_inputMixerSwitchRight` | none |
@@ -956,6 +974,13 @@ read from `initializeHardware` 3136–4635:
 
 (That is 24 writes; the last four repeat what `initializeLastStageGainRegisters` writes
 moments later, and the reference emits both.)
+
+Four shift groups, and `3Bh` belongs to the last one, not to the unshifted group its
+neighbours `3Ch`–`3Eh` form: `30h`–`3Ah` are `shl bl, 3`; `3Bh` and `3Fh`–`42h` are
+`shl bl, 6`; `44h`–`47h` are `shl bl, 4`; `3Ch`, `3Dh` and `3Eh` are written unshifted and
+`43h` is the literal `0` (`xor al, al` at 4106). The `3Bh` site is explicit at
+`3829: 8A1D4C400000 mov bl, ds:_volPCSpeaker` / `3835: C0E306 shl bl, 6`. **Task 10 must
+emit `_volPCSpeaker << 6` for `3Bh`.**
 
 Every value is read from its shadow variable and shifted; **no value is a literal except
 the `0` to `43h`**, and no shadow is assigned inside this block. Our version assigns the
@@ -1044,6 +1069,49 @@ drvES1x88Sound's Finding 1 recorded for its `reset`.
 
 **Disposition for Task 10:** drop `deviceDesc` and `numChannels` and inline the sends.
 
+### The one exception to the selector-count rule in this driver: `paName` in this function
+
+**`initializeDMAChannels` is the single function in this binary where a per-function
+selector-reference count is lower than our source's send count for a reason that is *not* a
+source difference.** The effort's Global Constraints say a differing per-function selector
+count is always a source difference, because gcc cannot elide an `objc_msgSend`. That is
+true of every send that is *executed*; it is not true of a send that gcc **tail-merges**
+with an identical one, which removes the duplicate instruction without removing the source
+statement.
+
+The reference has **six** `mov eax, ds:paName` sites in this function — 664, 896, 957,
+1106, 1165 and 1233 — where our source has **seven** `[self name]` sends. The missing
+seventh is a tail merge, not a missing `IOLog`:
+
+```
+ 1014: 0F85D4000000   jnz  loc_4D0    ; setAutoinitialize:0 forChannel:0 failed -> 1232
+ ...
+ 1222: 7508           jnz  loc_4D0    ; setAutoinitialize:1 forChannel:1 failed -> 1232
+ 1224: B801000000     mov  eax, 1                     ; success return
+ 1229: EB23           jmp  loc_4F2
+ 1232: 52             push edx                        ; the single shared failure block
+ 1233: A124600000     mov  eax, ds:paName
+ 1243: E820FBFFFF     call _objc_msgSend              ; [self name]
+ 1254: 6844380000     push offset aSDmaAutoInitia     ; "%s: dma auto initialize error %d"
+ 1259: E810FBFFFF     call _IOLog
+ 1264: 31C0           xor  eax, eax                   ; failure return
+```
+
+Both `jnz loc_4D0` land on 1232 (`0F85 D4000000` from 1020 is 1020 + 212 = 1232; `75 08`
+from 1224 is 1224 + 8 = 1232). **Both `setAutoinitialize:` failure arms share one
+`[self name]` send and one `IOLog`.** The corresponding `setTransferMode:` failure blocks at
+957 and 1165 were **not** merged — each keeps its own `paName` send and its own
+`push offset aSDmaTransferMo`, and they converge only later, at the `call _IOLog` at 1259
+(`loc_4EB`). That asymmetry — two identical error arms merged, two others not — is what
+makes the count look like a source difference when it is not.
+
+**Task 10 must keep all seven `[self name]` sends and the seven `IOLog` calls that consume
+them, including both `"%s: dma auto initialize error %d"` sites — one per channel. Do not
+delete an `IOLog`, and do not hoist one into a shared arm, to make the `paName` count reach
+six.** Six in the binary against seven in correct source is the expected result here, not a
+divergence to close. This is the only such exception in the driver; all 26 functions were checked and
+the selector-count rule holds everywhere else.
+
 ## Finding 11: our class declares six instance variables; the reference has four
 
 **Source:** `SoundBlaster16.h:14`–`:22`
@@ -1129,7 +1197,7 @@ supplies the value:
  1081: A130600000     mov  eax, ds:paSetdmatransfer ; sel:setDMATransferWidth:forChannel:
 ```
 
-`IODMATransferWidth` (`directDevice.h:163`–`:169`) is `IO_8Bit = 0, IO_16BitWordCount = 1,
+`IOEISADMATransferWidth` (`directDevice.h:163`–`:169`) is `IO_8Bit = 0, IO_16BitWordCount = 1,
 IO_16BitByteCount = 2, IO_32Bit = 3`. The 8-bit site at 867–869 pushes `0` and `0`,
 matching our `:240`.
 
@@ -1388,6 +1456,11 @@ Three differences:
    the two arms of `if (isRead) … else …` produce — the shape drvSB8Sound recorded for its
    `stopDMAInput()`/`stopDMAOutput()` pair. Our `.m:741` has a single call site and no
    `isRead` test at all.
+
+   **This function carries four DSP wait expansions, two per arm** — the `cmp …, 270Fh`
+   bound tests are at 9363 and 9575 (the `isRead` arm's write-wait and read-wait) and at
+   9619 and 9827 (the same pair in the second copy). Task 10 must emit two waits inside the
+   shared helper, so that the two call sites produce four.
 
    **The inverted pause-command selection our source comments on is correct**:
    `currentEncoding == Linear8` selects `0D5h`, the 16-bit pause, exactly as `:741`–`:745`

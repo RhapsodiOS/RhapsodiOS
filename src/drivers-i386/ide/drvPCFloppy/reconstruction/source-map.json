@@ -1767,6 +1767,24 @@
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Support.m"
     },
     {
+      "address": 32476,
+      "reference_names": [
+        "_dowire"
+      ],
+      "size": 61,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
+      "address": 32540,
+      "reference_names": [
+        "_docopy"
+      ],
+      "size": 146,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m"
+    },
+    {
       "address": 32688,
       "reference_names": [
         "_OperationThreadStartup"
@@ -1845,6 +1863,15 @@
       ],
       "size": 149,
       "source_line": 87,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
+    },
+    {
+      "address": 36740,
+      "reference_names": [
+        "_queueOperationDecending"
+      ],
+      "size": 149,
+      "source_line": 180,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m"
     },
     {
@@ -1977,27 +2004,6 @@
   "reference_sha256": "49608BD40A302A9A3541F9E37202DEEA871C30CD6CECFE8ABB99D75BDC1D8252",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 32476,
-      "reference_names": [
-        "_dowire"
-      ],
-      "size": 61
-    },
-    {
-      "address": 32540,
-      "reference_names": [
-        "_docopy"
-      ],
-      "size": 146
-    },
-    {
-      "address": 36740,
-      "reference_names": [
-        "_queueOperationDecending"
-      ],
-      "size": 149
-    },
     {
       "address": 37436,
       "reference_names": [

@@ -6,14 +6,57 @@ Foundation linked? This is the hard gate for stage 2a — if it fails, the 168
 Objective-C methods in Tasks 7-10 cannot be behaviourally tested and the
 stage's shape changes.
 
-## RESULT: not hosted (for i386, the stage's target architecture)
+## RESULT: hosted, on native ppc — the configuration behavioural tests use
 
-Case 1 — missing runtime libraries. **But see "Important nuance" below**:
-the deeper, more important sub-finding is that the runtime's *root-class
-dispatch mechanism itself is sound* and does host a foreign root class, once
-that class supplies the minimum a real `NSObject`/`Object` would already
-supply. The blocker is an incomplete i386 link environment on this guest,
-not a rejection of custom root classes.
+The guest's Objective-C runtime **does** host a root class supplied by us
+rather than by Foundation: see "Important nuance" below for the proof
+(`PASS: answer=42`, native ppc, once `+initialize` was added). That is the
+substantive answer to the question this probe exists to answer, and it is
+positive.
+
+An earlier reading of this probe recorded `RESULT: not hosted`, based on
+the task brief's literal instruction to build with `-arch i386` and link an
+executable. That instruction was an error in the brief, not a finding about
+the runtime: the established split this repo already uses (stage 1
+throughout, and confirmed again by this probe) links and runs test binaries
+**native (ppc)**, with no `-arch` flag, and only ever compiles-without-linking
+i386 objects (for `abi-check`). See "Build split" immediately below. Under
+that split, nothing ever needs an i386 link, so the i386 link failure
+recorded in "Step 1"/"Step 2" is a real, separately-worth-recording
+constraint on this guest — just not an answer to the hosting question.
+
+## Build split (read this before touching the guest)
+
+Two different build configurations are in play here, and conflating them is
+what produced the original wrong verdict:
+
+- **Test binaries are linked and run, so they build NATIVE (ppc), with no
+  `-arch` flag** — this is the form stage 1 used throughout and the form
+  every behavioural test in Tasks 7-10 must use:
+  ```
+  cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_x <sources>
+  ```
+- **Objects for `abi-check` are compiled, never linked, and target i386
+  explicitly:**
+  ```
+  cc -c -arch i386 ... -o /tmp/NSx.o NSx.m
+  ```
+
+The task brief for this probe asked for the first kind of artifact (linked,
+run) but specified the second kind's flags (`-arch i386`) — a mismatch the
+brief failed to carry forward from stage 1. That mismatch, not a runtime
+limitation, is why the literal brief command failed: **this guest has no
+i386 slice of `crt1.o`, no i386 `libcc_dynamic.a`, and no i386 System
+framework binary**, so no i386 executable can be linked here at all,
+independent of Objective-C (full detail in "Step 2" below). `-c -arch i386`
+compilation — never linked — is unaffected and works fine.
+
+Case 1 (from the brief's own diagnostic categories) — missing runtime
+libraries. The runtime's *root-class dispatch mechanism itself is sound*
+and does host a foreign root class, once that class supplies the minimum a
+real `NSObject`/`Object` would already supply. The blocker is an incomplete
+i386 link environment on this guest, not a rejection of custom root
+classes.
 
 ## Probe sources (as given, with one required fix)
 
@@ -238,24 +281,43 @@ throwaway probe's deliberately minimal `ProbeRoot`.
 
 ## Verdict
 
-- **RESULT: not hosted**, strictly as asked (`-arch i386`, the brief's
-  exact command) — **Case 1: missing runtime libraries.** `-lobjc` does not
-  exist anywhere on this guest for either architecture, and — discovered in
-  the course of diagnosing that — the guest additionally has no i386 slice
-  of `crt1.o`, `libcc_dynamic.a`, or the System framework binary, so no
-  i386 executable can currently be linked on this guest at all, regardless
-  of Objective-C.
-- The **root-class-hosting question itself is answered positively** on
-  native ppc, where the System framework's runtime is present and complete:
-  a foreign root class, once it implements `+initialize` (something any
-  real `NSObject` will do), is instantiated and dispatched through
-  correctly with no interference from a second implementation.
-- **Consequence for the stage:** this guest, as currently provisioned,
-  cannot link i386 Objective-C (or any i386) executables. Either (a) the
-  guest's i386 cross-link environment needs the missing runtime pieces
-  (`crt1.o`, `libcc_dynamic.a`, System framework, and an ObjC runtime
-  library or equivalent) installed before Tasks 7-10 can behaviourally test
-  i386 binaries, or (b) behavioural testing proceeds on native ppc instead
-  (where hosting is proven to work), or (c) testing is deferred until a
-  linkable framework exists. This is a decision for the user, per the
-  brief's gate instruction — Task 2 was not started.
+- **RESULT: hosted.** On native ppc — the configuration every behavioural
+  test in Tasks 7-10 actually builds and runs under (see "Build split"
+  above) — the guest's Objective-C runtime dispatches correctly through a
+  root class we supply, with no interference from a second implementation.
+  The "Important nuance" experiment above is the proof: a genuine root
+  class (no superclass), once it implements `+initialize`, links cleanly
+  and runs to `PASS: answer=42`. This is the substantive answer to the
+  question this probe exists to answer, and the gate for Tasks 7-10
+  **passes**.
+- The earlier `not hosted` verdict answered a different, incorrectly-posed
+  question: whether an i386 *executable* could be linked on this guest.
+  That framing came from the task brief's literal instruction
+  (`-arch i386`, then link), not from any property of the runtime.
+  Test binaries never link i386 in this codebase's established workflow
+  (see "Build split"); only `abi-check` objects target i386, and those are
+  compiled, never linked, so the i386 link failure this probe hit never
+  actually occurs in the real Tasks 7-10 workflow.
+- **Real constraint, recorded here because it is true, not because it
+  bears on hosting:** this guest genuinely has no i386 slice of `crt1.o`,
+  `libcc_dynamic.a`, or the System framework binary, so no i386 executable
+  can be linked here today (Step 1/Step 2 above have the full transcript).
+  That limits what this guest can do with i386 *links* generally; it does
+  not limit stage 2a, which never needs one.
+- **`+initialize` is load-bearing for any root class**, including test
+  helpers. Before this runtime's first dispatch to a class, it implicitly
+  sends `+initialize`; a root class with no superclass has no inherited
+  no-op to fall back on. Skipping it is fatal — `ProbeRoot` aborted with
+  `objc: ProbeRoot: Does not recognize selector forward::`, logged only to
+  `/var/log/system.log`, nowhere near the actual cause. `NSObject` and
+  `NSProxy` both define `+initialize` in the reference, so a faithful
+  reconstruction satisfies this automatically and Tasks 7-10 are not
+  expected to hit it — but any minimal test scaffolding built along the way
+  must remember to add it, or it will fail with a misleading error.
+- **Command forms later tasks should reuse**, unchanged from stage 1's own
+  split (see "Build split" above for the reasoning):
+  - Behavioural test binaries (linked and run): `cc -x objective-c -I..
+    -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_x
+    <sources>` — no `-arch` flag, native ppc.
+  - `abi-check` objects (compiled, never linked): `cc -c -arch i386 ...
+    -o /tmp/NSx.o NSx.m`.

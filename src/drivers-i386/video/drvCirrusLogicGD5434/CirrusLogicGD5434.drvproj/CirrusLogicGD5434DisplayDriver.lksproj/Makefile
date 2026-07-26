@@ -7,7 +7,7 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = CirrusLogicGD5434
+NAME = CirrusLogicGD5434DisplayDriver
 
 PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server

@@ -7,17 +7,22 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = CirrusLogicGD5434
+NAME = CirrusLogicGD5434DisplayDriver
 
 PROJECTVERSION = 2.7
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table Display.modes TwoMeg.table TwoMeg.modes\
+                   PCIOneMB.table PCIOneMB.modes PCITwoMB.table PCITwoMB.modes\
+                   GD5446_PCIOneMB.table GD5446_PCIOneMB.modes\
+                   GD5446_PCITwoMB.table GD5446_PCITwoMB.modes
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = Localizable.strings TwoMeg.strings PCIOneMB.strings\
+                  PCITwoMB.strings GD5446_PCIOneMB.strings GD5446_PCITwoMB.strings\
+                  Help
 
-TOOLS = CirrusLogicGD5434.lksproj
+TOOLS = CirrusLogicGD5434DisplayDriver.lksproj
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble DriverInfo
 

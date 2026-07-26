@@ -66,9 +66,12 @@ struct speedtab ttyiops_speeds[] = {
 
 /*
  * The character device switch entry this driver installs.  It lives here, not
- * in PortServer.m, because it takes the address of seven ttyiops_* entry
- * points that are static to this file; it is non-static so that PortServer.m's
- * wrappers and +serverMajor: can reach it.  In the reference it sits at 33072,
+ * in PortServer.m, because in the reference the seven ttyiops_* entry points it
+ * takes the address of are static, so only this translation unit could build
+ * the table.  Ours are not static - PortServer.m names four of them directly -
+ * but the table is kept here to match the reference; it is itself non-static so
+ * that PortServer.m's wrappers and +serverMajor: can reach it.  In the
+ * reference it sits at 33072,
  * immediately after ttyiops_speeds' 184 bytes at 32888 - the same translation
  * unit, in this order.
  */

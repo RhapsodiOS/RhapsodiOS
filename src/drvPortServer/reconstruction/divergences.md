@@ -4370,18 +4370,51 @@ next pass inherits.
   so it is still in scope in `PortServer.m` and the field spelling remains available. 4692
   is held at `control-flow-confirmed` for exactly this reason.
 
-- **`ttyiops.m`'s roughly 120 literal byte offsets.** `ttyiops.m` still reaches
-  `ttyiops_state`'s fields as `((unsigned char *)tp)[0x15c]`, `((id *)tp)[0xe8/4]` and so
-  on. No finding asks for the rewrite, the type now documents every one of them, and doing
-  it would have produced a mechanical diff swamping the pass's substantive repairs. It was
-  deliberately not done.
+- **`ttyiops.m`'s literal byte offsets — 183, not the "roughly 120" first written here.**
+  `ttyiops.m` still reaches `ttyiops_state`'s fields as `((unsigned char *)tp)[0x15c]`,
+  `((id *)tp)[0xe8/4]` and so on. The earlier figure was an estimate and was low; counted
+  over the current file, the offsets applied to `tp` are **183**: 158 hex subscripts on a
+  cast of `tp`, 23 decimal ones (`[100/4]`, `[100]`, `[8]`, `[7]`, `[200/4]`), and 2
+  pointer-arithmetic forms (`(char *)tp + 0x40`, `+ 0x8c`). Counting the same idiom on the
+  other bases in the file brings it to **194** — 5 on `data`, 6 on
+  `_ttyiopsMap[...] + 0x108`. (Excluded from both totals: the 4 `((unsigned char *)&iflag)[1]`
+  accesses, which index a local, and the `char padding[0xe8 - sizeof(struct tty)]` member
+  declaration.) No finding asks for the rewrite, the type now documents every one of them,
+  and doing it would have produced a mechanical diff swamping the pass's substantive
+  repairs. It was deliberately not done.
 
-- **`suser`'s argument shape, and the disagreement between its two call sites.** Section 12
-  asked for `ucred + 0x24` to be checked during the fix pass. It was not resolved, and in
-  the process a worse problem surfaced: `ttyiops_open` writes
-  `suser(p->p_ucred->cr_uid, &p->p_acflag)` while `ttyiops_control_ioctl` writes
-  `suser(p->p_ucred, &p->p_acflag)`. **The two disagree with each other**, so at most one can
-  be right regardless of what the reference does. This deserves a finding of its own.
+- **`suser`'s argument shape, and the disagreement between its two call sites — now
+  resolved from the disassembly.** Section 12 asked for `ucred + 0x24` to be checked during
+  the fix pass. It was not, and in the process a worse problem surfaced: `ttyiops.m:1953`
+  (in `ttyiops_open`) writes `suser(((struct proc *)p)->p_ucred->cr_uid, &p->p_acflag)`
+  while `ttyiops.m:661` writes `suser(p->p_ucred, &p->p_acflag)`. The two disagree, so at
+  most one can be right. **The reference settles it: `:1953` is the wrong one.** Both
+  `_suser` call sites in the binary compile to the identical three-instruction argument
+  setup, and each performs exactly **two** loads off the `struct proc *`:
+
+  ```
+  _ttyiops_open (22B8):            _ttyiops_control_ioctl (28D8):
+  2345: mov eax, [ebp+arg_C]       2940: lea eax, [edi+0D2h]      ; &p->p_acflag
+  2348: add eax, 0D2h              2946: push eax
+  234D: push eax                   ; &p->p_acflag
+  234E: mov edx, [ebp+arg_C]
+  2351: mov eax, [edx+8]           2947: mov eax, [edi+8]         ; p->p_cred
+  2354: mov eax, [eax+24h]         294A: mov eax, [eax+24h]       ; ->pc_ucred
+  2357: push eax                   294D: push eax
+  2358: call _suser                294E: call _suser
+  ```
+
+  `src/kernel-7/bsd/sys/proc.h:116` defines `p_ucred` as the macro `p_cred->pc_ucred`, so
+  the expansion is inherently two loads. The offsets corroborate it: `p_cred` is
+  `proc.h:110`, the first member after the 8-byte `LIST_ENTRY(proc) p_list`, hence `+8`; and
+  `pc_ucred` is `proc.h:291`, sitting behind `struct lock__bsd__ pc_lock`, whose ten members
+  (`lock.h:75-87`) occupy 4+4+4+4+2+2+4+4+4+4 = 36 = **0x24** bytes on i386. `p_acflag`
+  (`proc.h:185`) is the `+0xD2`. A third load for `->cr_uid` appears at neither site.
+  `src/kernel-7/bsd/sys/ucred.h:90` also declares
+  `int suser(struct ucred *cred, u_short *acflag)`, which `:1953` violates by passing a
+  `uid_t`. **Conclusion: `ttyiops.m:661` matches the reference and is correct; `:1953`'s
+  `->cr_uid` is wrong and should be dropped.** Not repaired here — this section is
+  disclosure only.
 
 - **Finding 16's `_portList` / `_portListLock` declaration order.** Left alone because the
   finding is self-contradictory about it. If the reference `__bss` order (33160
@@ -4405,3 +4438,32 @@ next pass inherits.
 
 - **No compile gate anywhere in Tasks 7 or 8.** Nothing in this driver has been built. Every
   claim in this document and in `ledger.json` rests on reading the reference disassembly.
+
+- **Two compile blockers this branch walked past without disclosing them.** Both are
+  **pre-existing**, both are in `ttyiops.m`, and **neither was repaired** — they are outside
+  this branch's remit and belong to a follow-up. They are recorded here because §14 had
+  previously said only that there was no compile gate, without naming anything that would
+  actually fail one.
+
+  1. **`timeout_func_t` is not defined anywhere under `src/`.** `ttyiops.m:1273`, `:1279` and
+     `:1319` cast through it:
+
+     ```c
+     timeout((timeout_func_t)ttyiops_dcddelay, tp, ...);
+     untimeout((timeout_func_t)ttyiops_dcddelay, tp);
+     ```
+
+     A tree-wide search finds the identifier only at those three lines and in this document
+     — there is no `typedef` for it. `src/kernel-7/bsd/sys/systm.h:177` declares
+     `void timeout __P((void (*)(void *), void *arg, int ticks));`, so the correct cast type
+     is `void (*)(void *)`; the nearby `timeout_fcn_t` at `systm.h:176` is the typedef Apple
+     actually spells, and differs from ours by one letter. **This branch touched line 1273**
+     (commit `46236c13`, Finding 46's DCD-delay repair) and left the undefined type in place.
+
+  2. **`sys/proc.h` is never included, so `struct proc` is incomplete where it is
+     dereferenced.** `ttyiops.m` names `struct proc *` in four prototypes (`:614`, `:904`,
+     `:1535`, `:1915`) and dereferences it at `:661` (`p->p_ucred`, `p->p_acflag`) and
+     `:1953` (same). With no `#import <sys/proc.h>` the type is only an incomplete forward
+     declaration and every one of those member accesses is an error. Note that `p_ucred` is
+     a macro rather than a member (`proc.h:116`), so the header is required for the
+     expansion as well as for the layout.

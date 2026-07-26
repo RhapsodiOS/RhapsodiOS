@@ -22,11 +22,14 @@ int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
 
 /*
  * The character device switch entry this driver installs is defined in
- * ttyiops.m (see ttyiops.h) - the seven ttyiops_* entry points it names are
- * static to that file, so only that file can take their addresses.
- * serverMajor: hands the same entry points to addToCdevswFromDescription:,
- * and the three wrappers below dispatch through this table rather than
- * naming ttyiops_* directly.
+ * ttyiops.m (see ttyiops.h), because in the reference the seven ttyiops_*
+ * entry points it names are static, so only that file could take their
+ * addresses.  Ours are not static, and +serverMajor: below names four of them
+ * (ttyiops_read, ttyiops_write, ttyiops_stop, ttyiops_select) directly; the
+ * table is kept in ttyiops.m to match the reference's layout.  serverMajor:
+ * hands the same entry points to addToCdevswFromDescription:, and the three
+ * wrappers below dispatch through this table rather than naming ttyiops_*
+ * directly.
  */
 
 /* ========================================================================

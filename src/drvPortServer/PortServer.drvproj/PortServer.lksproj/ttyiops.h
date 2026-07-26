@@ -70,8 +70,10 @@ extern struct speedtab ttyiops_speeds[];
 
 /*
  * The character device switch entry this driver installs.  Defined in
- * ttyiops.m, where the seven ttyiops_* entry points it names are static;
- * PortServer.m's wrappers and +serverMajor: reach it through this
+ * ttyiops.m, because in the reference the seven ttyiops_* entry points it
+ * names are static, so only that translation unit could take their addresses.
+ * They are not static in our tree, but the table is kept where the reference
+ * has it; PortServer.m's wrappers and +serverMajor: reach it through this
  * declaration.
  */
 extern struct cdevsw ttyiops_devsw;

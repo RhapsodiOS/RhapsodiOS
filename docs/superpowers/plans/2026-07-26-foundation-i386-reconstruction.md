@@ -1670,11 +1670,16 @@ def function_ranges(symbols, text_section, names):
         if symbol["section"] == text_section["name"]
         and text_start <= symbol["address"] < text_end
     )
-    boundaries = [value for value, _ in in_text] + [text_end]
-    extent = {
-        name: (value, boundaries[index + 1])
-        for index, (value, name) in enumerate(in_text)
+    # Aliased symbols share an address; collapse to one boundary per distinct
+    # address so every alias gets the same non-empty extent rather than the
+    # first one getting a zero-length range that analysis_scope would reject.
+    addresses = sorted({value for value, _ in in_text})
+    boundaries = addresses + [text_end]
+    extent_by_address = {
+        address: (address, boundaries[index + 1])
+        for index, address in enumerate(addresses)
     }
+    extent = {name: extent_by_address[value] for value, name in in_text}
 
     known = {symbol["name"] for symbol in symbols}
     ranges = []

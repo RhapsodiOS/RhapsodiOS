@@ -20,6 +20,7 @@ run_make() {
 	src="$1"
 	if [ ! -f "$src/Makefile" ]; then
 		echo "MISSING $src/Makefile" >&2
+		MAKE_EC=127
 		return 1
 	fi
 	cd "$src"
@@ -28,6 +29,7 @@ run_make() {
 		tr -d '\r' < "$f" > /tmp/rhap_cr && mv /tmp/rhap_cr "$f"
 	done
 	gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 2>&1
+	MAKE_EC=$?
 	return 0
 }
 
@@ -38,7 +40,7 @@ build_reloc() {
 	src="$VIDEO/$dir"
 	echo "======== build $name ($dir) ========"
 	run_make "$src" || return 1
-	ec=$?
+	ec=$MAKE_EC
 	echo "make exit=$ec for $name"
 
 	reloc=`find "$src" -name "${name}_reloc" -type f 2>/dev/null | head -1`
@@ -79,7 +81,7 @@ build_objects() {
 	src="$VIDEO/$dir"
 	echo "======== build $name ($dir), objects only ========"
 	run_make "$src" || return 1
-	ec=$?
+	ec=$MAKE_EC
 	echo "make exit=$ec for $name (a link failure here is expected)"
 
 	miss=0

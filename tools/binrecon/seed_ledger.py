@@ -8,7 +8,6 @@ for, so this seeds from the map instead: mapped entries keep their source path
 and line, every other bucket carries nulls, and every entry starts unexamined.
 """
 
-import hashlib
 import json
 from pathlib import Path
 import sys

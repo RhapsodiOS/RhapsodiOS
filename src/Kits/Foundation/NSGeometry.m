@@ -161,7 +161,7 @@ NSPointInRect(NSPoint aPoint, NSRect aRect)
 
 /*	Like NSPointInRect, but "up" depends on flipped: an unflipped rect
 	(the usual window/view coordinate system, y increasing upward)
-	treats its bottom and left edges as inclusive and its top and
+	treats its top and left edges as inclusive and its bottom and
 	right edges as exclusive when flipped is NO; a flipped rect (y
 	increasing downward) treats top and left as inclusive, bottom and
 	right as exclusive -- i.e. the same corner is inclusive either

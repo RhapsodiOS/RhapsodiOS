@@ -12,7 +12,7 @@
 	Multiply/Divide/Round/Compact all reduce to ordinary bignum
 	arithmetic on that integer, with the surrounding NSDecimal exponent
 	tracking the base-10 scale. BigInteger below is scratch space for
-	those computations -- four times NSDecimalMaxSize gives enough
+	those computations -- six times NSDecimalMaxSize gives enough
 	headroom for a full product of two mantissas, or a mantissa scaled
 	up by the 38 extra decimal digits NSDecimalDivide uses for
 	precision, without ever running out of room.  */

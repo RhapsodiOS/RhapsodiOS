@@ -246,3 +246,80 @@ Neither fix touches `src/Kits/Foundation`; both are narrowly-scoped,
 test-covered `binrecon:` commits landed before this stage's own commit, per
 this repo's established practice of fixing tooling gaps in their own
 commits as they're discovered (e.g. Task 2's `MH_DYLIB` acceptance).
+
+### Findings from the final whole-branch review (recorded here so they are not lost)
+
+- **Task 13 deleted the pre-existing `@implementation NSValue` stubs
+  (`+valueWithPoint:`, `+valueWithSize:`, `+valueWithRect:`,
+  `-pointValue`, `-sizeValue`, `-rectValue`) from `NSGeometry.m`.** These
+  were TODO-stub bodies (`return nil;` / `return NSMakePoint(0, 0);`) left
+  over from before the module was reconstructed; commit `fc76240a` removed
+  them because `__OBJC,__module_info` places the `NSValue` geometry
+  category in `NSValue.m`, not `NSGeometry.m` — the deletion was correct
+  for this module's scope. Verified: `src/Kits/Foundation/NSValue.m`
+  exists but implements only `+valueWithPointer:`/`-pointerValue`; it
+  contains none of `+valueWithPoint:`, `+valueWithSize:`,
+  `+valueWithRect:`, `-pointValue`, `-sizeValue` or `-rectValue`. **These
+  six header-declared entry points currently exist nowhere in the tree.**
+  Stage 5 (`NSValue.m`) must supply them.
+- **The `NSDecimal` mantissa is base-65536, not base-10000 as the plan
+  originally stated; corrected in commit `e18c5fe3`.** Stage 5's
+  `NSDecimalNumber` depends on this: the mantissa is a plain multi-word
+  binary integer (one `unsigned short` per digit, little-endian), scaled
+  by `10^exponent` for the decimal value — not a base-10000
+  binary-coded-decimal representation.
+- **The bignum helpers in `NSDecimal.m` are reconstructed as private
+  statics under invented `BigXxx` names** (`BigTrim`, `BigFromMantissa`,
+  `BigToMantissa`, `BigAddMantissas`, `BigSubtractMantissas`,
+  `BigMultiplyMantissas`, `BigDivideByShort`, `BigMultiplyByShort`,
+  `BigAddShort`, `BigDivideMantissas`, etc.) — see the open item below,
+  which supersedes this: the reference exports this layer under real
+  names, so it is a claimed cross-TU interface, not purely-internal
+  scratch code.
+
+#### Open item: the unclaimed exported bignum layer (`_NSIntegerXxx`)
+
+The reference binary (`Foundation-i386`) exports twelve external
+`__TEXT,__text` symbols that this stage's `NSDecimal.m` reconstructed as
+private statics under invented `BigXxx` names instead of their real
+exported names:
+
+`_NSIntegerAdd`, `_NSIntegerSubtract`, `_NSIntegerMultiply`,
+`_NSIntegerDivide`, `_NSIntegerCompare`, `_NSIntegerCopy`,
+`_NSIntegerAddShort`, `_NSIntegerSubShort`, `_NSIntegerMultiplyByShort`,
+`_NSIntegerDivideByShort`, `_NSIntegerMultiplyByPowerOf10`,
+`_NSIntegerMaxPowerOf10Multiplier`.
+
+Verified directly against the reference slice:
+
+- All twelve are `binding: external`, `section: __TEXT,__text`, at
+  addresses `0x425a1510`–`0x425a2020`.
+- They are declared in no public header (confirmed: absent from
+  `NSDecimal.h` and every other Foundation header), so `attach_symbols`
+  — which attributes C symbols from headers — cannot see them, and they
+  appear in no `abi/*.json`.
+- They are a real cross-TU interface, not internals: byte-scanning the
+  callers' own bodies for `call rel32` confirms `__NSCStringToDecimal`
+  (at `0x425a2950`) calls `_NSIntegerMultiplyByShort` (from
+  `0x425a2a3f` and `0x425a2b23`) and `_NSIntegerAddShort` (from
+  `0x425a2a75` and `0x425a2b59`), and `_decimaltostr` (at `0x425a3c90`)
+  calls `_NSIntegerDivideByShort` (from `0x425a3d71`) — all well outside
+  the `NSInteger*` functions' own `0x425a15xx`–`0x425a20xx` address
+  range, i.e. called from other translation units.
+
+Our reconstruction currently provides equivalent behaviour under
+different private (`BigXxx`) names, so nothing links against the real
+`_NSIntegerXxx` symbols — this is a naming/API-surface gap, not a
+behavioural one. Ownership (does this layer belong in `NSDecimal.m` or
+move to `NSDecimalNumber.m`?) and whether to reconstruct it under its
+real exported names must be settled by stage 5, the first stage to
+depend on `NSDecimal`'s bignum layer from outside this module.
+
+**This is a class of omission, not a one-off**: any external
+`__TEXT,__text` symbol with no public header declaration is invisible to
+the current attribution method (`attach_symbols` only sees symbols
+`assignment` names, and `assignment` is declared from public headers). A
+binrecon check that every external `__TEXT,__text` symbol is claimed by
+some module's `text_symbols` would catch this class in each of the nine
+remaining stages, rather than relying on a reviewer noticing it by hand
+as happened here.

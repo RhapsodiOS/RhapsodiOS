@@ -16,7 +16,9 @@ static int failures = 0;
         } \
     } while (0)
 
-/*  Build a decimal from a base-10000 mantissa, most significant word last.  */
+/*  Build a decimal from a base-65536 mantissa (a plain multi-word binary
+    integer, one unsigned short per digit) scaled by 10^exponent, most
+    significant word last.  */
 static NSDecimal make(int negative, int exponent, int length,
                       unsigned short w0, unsigned short w1)
 {

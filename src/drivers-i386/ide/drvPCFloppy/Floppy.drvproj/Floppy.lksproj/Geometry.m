@@ -173,13 +173,14 @@ fdGetSectSizeInfo(unsigned int density)
 	unsigned int *entry;
 
 	entry = fdDensitySectsize;
-	while (entry[0] != 0 || entry[1] != 0) {
-		if (entry[0] == density || entry[0] == 0) {
+	while (entry[1] != 0) {
+		if (entry[0] == density) {
 			return (unsigned int *)entry[1];
 		}
 		entry += 2;
 	}
-	return _ssi_1mb;
+	IOPanic("fdGetSectSizeInfo: bad density\n");
+	return 0;
 }
 
 /*
@@ -383,12 +384,12 @@ unsigned int FloppyGeometry[] = {
  *
  * FloppyGeometry table structure (7 int entries per format):
  *   [0] - Capacity identifier
- *   [1] - ? (offset 0x04)
+ *   [1] - Total block count (offset 0x04)
  *   [2] - ? (offset 0x08)
  *   [3] - ? (offset 0x0c)
- *   [4] - Blocks/sectors (offset 0x10)
- *   [5] - ? (offset 0x14)
- *   [6] - Sectors per track (offset 0x18)
+ *   [4] - ? (offset 0x10)
+ *   [5] - Sector size in bytes (offset 0x14)
+ *   [6] - ? (offset 0x18)
  *
  * The table is NULL-terminated (capacity = 0 marks end).
  */
@@ -399,7 +400,7 @@ unsigned int FloppyGeometry[] = {
 	int matchIndex;
 	unsigned int *geometryEntry;
 	unsigned int blocks;
-	unsigned int sectorsPerTrack;
+	unsigned int sectorSize;
 	unsigned int sizeInKB;
 
 	index = 0;
@@ -413,13 +414,13 @@ unsigned int FloppyGeometry[] = {
 		// Get pointer to current geometry entry
 		geometryEntry = &FloppyGeometry[index * 7];
 
-		// Calculate size in KB from blocks and sectors per track
-		// blocks at offset 0x10 (index 4), sectors per track at offset 0x18 (index 6)
-		blocks = geometryEntry[4];           // Offset 0x10 from entry start
-		sectorsPerTrack = geometryEntry[6];  // Offset 0x18 from entry start
+		// Calculate size in KB from block count and sector size
+		// blocks at offset 0x04 (index 1), sector size at offset 0x14 (index 5)
+		blocks = geometryEntry[1];      // Offset 0x04 from entry start
+		sectorSize = geometryEntry[5];  // Offset 0x14 from entry start
 
-		// Calculate size in KB: (blocks * sectorsPerTrack) / 1024
-		sizeInKB = (unsigned int)(blocks * sectorsPerTrack) >> 10;
+		// Calculate size in KB: (blocks * sectorSize) / 1024
+		sizeInKB = (unsigned int)(blocks * sectorSize) >> 10;
 
 		// Check if this entry matches the requested size
 		if (sizeInKB == diskSize) {
@@ -517,7 +518,7 @@ unsigned int FloppyGeometry[] = {
 	int nextIndex;
 	unsigned int *geometryEntry;
 	unsigned int blocks;
-	unsigned int sectorsPerTrack;
+	unsigned int sectorSize;
 	unsigned int sizeInKB;
 	unsigned int capacityId;
 
@@ -534,12 +535,12 @@ unsigned int FloppyGeometry[] = {
 
 		// Check if this capacity is in the bitmask
 		if ((capacityId & capacities) != 0) {
-			// Calculate size in KB from blocks and sectors per track
-			blocks = geometryEntry[4];           // Offset 0x10
-			sectorsPerTrack = geometryEntry[6];  // Offset 0x18
+			// Calculate size in KB from block count and sector size
+			blocks = geometryEntry[1];      // Offset 0x04
+			sectorSize = geometryEntry[5];  // Offset 0x14
 
-			// Calculate size in KB: (blocks * sectorsPerTrack) / 1024
-			sizeInKB = (unsigned int)(blocks * sectorsPerTrack) >> 10;
+			// Calculate size in KB: (blocks * sectorSize) / 1024
+			sizeInKB = (unsigned int)(blocks * sectorSize) >> 10;
 
 			// Store size in output array and advance pointer
 			*sizeList = sizeInKB;
@@ -587,7 +588,7 @@ unsigned int FloppyGeometry[] = {
 	} else {
 		// Variable geometry: search array for matching range
 		// Array format: [startBlock, ?, sectorsPerCyl, ...]
-		while (blockNumber >= *geometryArray) {
+		while (blockNumber < *geometryArray) {
 			geometryArray += 3;  // Move to next entry (3 uints per entry)
 		}
 		

@@ -491,6 +491,24 @@ BOOL numFloppyDrives(void)
 @end
 
 /*
+ * fdCommandValues - FDCMD_* drive command code -> string map for
+ * IOFindNameForValue, recovered byte-for-byte from the reference binary's
+ * __DATA segment (_fdCommandValues). Matches the cmdType values switched on
+ * in fcCmdXfrExecute: below. No caller of IOFindNameForValue against this
+ * table could be found in the reference disassembly; kept here for
+ * string-table parity.
+ */
+static const IONamedValue fdCommandValues[] = {
+	{ 0x00, "FDCMD_BAD" },
+	{ 0x01, "FDCMD_CMD_XFR" },
+	{ 0x02, "FDCMD_EJECT" },
+	{ 0x03, "FDCMD_MOTOR_ON" },
+	{ 0x04, "FDCMD_MOTOR_OFF" },
+	{ 0x05, "FDCMD_GET_STATUS" },
+	{ 0, (const char *)0 },
+};
+
+/*
  * Thread category implementation
  */
 @implementation FloppyController(Thread)

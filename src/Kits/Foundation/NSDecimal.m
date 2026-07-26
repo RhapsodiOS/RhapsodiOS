@@ -793,11 +793,25 @@ NSDecimalMultiplyByPowerOf10(NSDecimal *result, const NSDecimal *number, short p
     return NSCalculationNoError;
 }
 
+/*  Worst-case size of the buffer NSDecimalString formats into.  The
+    mantissa is NSDecimalMaxSize unsigned short words, each < 65536 <
+    10^5, so the value never needs more than 5 * NSDecimalMaxSize
+    decimal digits (39 for the current MaxSize of 8; digits[] below
+    only ever needs to hold that many).  _exponent is a signed 8-bit
+    bitfield, and NSDecimalMultiplyByPowerOf10 keeps its stored value
+    in -128..127, so the positive-exponent path can pad with up to
+    127 trailing zeros.  The longest string is therefore a sign, the
+    digits, the zero padding, and the terminating NUL.  */
+#define NSDecimalMaxDigits (5 * NSDecimalMaxSize)
+#define NSDecimalMaxExponentPadding 127
+#define NSDecimalStringBufferSize \
+    (1 + NSDecimalMaxDigits + NSDecimalMaxExponentPadding + 1)
+
 NSString *
 NSDecimalString(const NSDecimal *decimal, NSDictionary *locale)
 {
     char digits[64];
-    char buffer[96];
+    char buffer[NSDecimalStringBufferSize];
     char *out;
     char separator;
     int digitCount, i, exponent, fractionDigits;

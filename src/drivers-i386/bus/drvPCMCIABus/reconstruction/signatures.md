@@ -102,6 +102,33 @@ the 82365 driver's `PCMCIAStatusChange` protocol also declares
 `PCMCIAKernBus.h:59` — so nothing is broken today, but both sides diverge from
 Apple's.
 
+> **Both halves of that paragraph have since stopped being true, which is the
+> reason to revisit this finding.**
+>
+> `PCMCIAStatus` now exists, in `<driverkit/i386/PCMCIA.h>`, declared with the
+> four PCMCIA protocols recovered from `PCIC_reloc`. And the 82365 driver no
+> longer declares `(unsigned int)status`: its invented `PCMCIAStatusChange` was
+> deleted, and `PCICSocket` now adopts the real `PCMCIASocket`, whose `status`,
+> `statusChangeMask` and `setStatusChangeMask:` all carry
+> `{?=b1b1b1b1b2b1b1}` — verified byte-identical to the reference in a rebuilt
+> `PCIC_reloc`.
+>
+> So the stack is no longer internally consistent: `PCICSocket` takes the
+> bitfield and `PCMCIAKernBus` still passes an integer. `PCMCIAKernBus.m:607`'s
+> `[socket setStatusChangeMask:1]` happens to survive only because the receiver
+> is an untyped `id` and a four-byte struct occupies the same stack slot as the
+> `int` — it is right by coincidence, not by type.
+>
+> The deferral's other reason — a coordinated change across three classes —
+> still stands, and the work is still not done here. What it now needs is the
+> mechanical part: `changedStatus`'s two declarations and its implementation,
+> the `(changedStatus & 1)` test that reads bit 0 (`present`), and the two call
+> sites that pass a literal `1`. Before changing the test, disassemble
+> `-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` at `0xfe0` in
+> `PCMCIABus_reloc` and confirm the reference tests `present` rather than some
+> other bit — the field mapping is known, but which field this method reads
+> is not, in this record, measured.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

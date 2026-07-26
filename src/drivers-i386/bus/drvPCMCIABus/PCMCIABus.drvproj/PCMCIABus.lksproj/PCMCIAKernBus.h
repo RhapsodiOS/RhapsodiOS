@@ -33,6 +33,7 @@
 #import <driverkit/KernBus.h>
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/KernBusInterrupt.h>
+#import <driverkit/i386/PCMCIA.h>
 #import <objc/List.h>
 
 /* Socket info structure (24 bytes) */
@@ -61,14 +62,8 @@ extern unsigned int biosBitmap[3];
 @end
 
 /*
- * Protocol for PCMCIA adapter drivers
+ * PCMCIAAdapter is declared in <driverkit/i386/PCMCIA.h>.
  */
-@protocol PCMCIAAdapter
-
-- setStatusChangeHandler:handler;
-- sockets;
-
-@end
 
 
 @interface PCMCIAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>

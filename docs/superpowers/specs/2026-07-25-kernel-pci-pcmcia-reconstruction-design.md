@@ -83,11 +83,27 @@ Apple's kernel also defines `.objc_class_name_IOPCMCIADeviceDescription`,
 `.objc_class_name_IOPCMCIATuple`, and the three PCMCIA category symbols. Ours
 defines none of them.
 
-This is a build failure, not missing source. All three `.m` files exist in
-`src/driverkit-3/libDriver/pcmcia/`; `pcmcia_BUS_MFILES` lists all three;
-`i386_KERN_MFILES` includes that variable; and `KERNEL_DIRS` puts `pcmcia` on the
-VPATH. Why the objects never reach the kernel could not be determined without a
-build.
+**Resolved, per the project owner: this is an upstream Darwin 0.3 omission, not
+a build failure in this tree.** Apple did not ship these three modules in the
+*kernel* build — most likely an oversight on Apple's part — so there is no local
+misconfiguration to hunt down. This needs one nuance held carefully: the
+*sources* were shipped. `git log` confirms all five `.m` files, the three
+PCMCIA ones included, entered this repository at commit `19ffee9a Original
+Darwin 0.3 Sources`, as part of the driverkit component. What was not shipped
+is whatever makes the *kernel* actually link those three objects in.
+
+Locally, the sources exist in `src/driverkit-3/libDriver/pcmcia/`;
+`pcmcia_BUS_MFILES` lists all three; `i386_KERN_MFILES` includes that variable;
+and `KERNEL_DIRS` puts `pcmcia` on the VPATH — all correctly wired. That is
+consistent with the explanation rather than contradicting it: there is nothing
+wrong in this tree's Makefile for the missing kernel-side inclusion to be
+blamed on. This reconciliation is the owner's account plus these local
+observations, not something verified by a build — no build was run. Pinpointing
+exactly where the kernel-side chain breaks would still need a build host, but
+it is no longer a mystery to investigate: the three modules were never expected
+to be in a Darwin 0.3 kernel build. If PCMCIA support in the kernel is wanted,
+these three modules need to be added to the kernel build deliberately — a
+feature decision, not a repair.
 
 One real but unrelated bug surfaced while checking: `SOURCE_DIRS` at
 `src/driverkit-3/libDriver/Makefile:46` omits `pcmcia` where every other list

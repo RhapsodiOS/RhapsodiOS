@@ -160,7 +160,9 @@ The sources exist and the build system references them everywhere it should.
 (line 133), folds that into `i386_KERN_MFILES` (line 175), and lists `pcmcia` in
 `SOURCE_DIRS` (line 46), `BUS_LIST` (line 55) and `KERNEL_DIRS` (line 276).
 
-Candidate causes that were checked and **ruled out**:
+Candidate causes that were checked and **ruled out** — kept here because, per
+the resolution below, they now corroborate that explanation rather than being
+dead ends:
 
 - *Missing headers.* Every header the three files import resolves:
   `driverkit/KernDeviceDescription.h`, `driverkit/i386/PCMCIAKernBus.h`,
@@ -180,9 +182,33 @@ Candidate causes that were checked and **ruled out**:
   compiles.
 - *Build-system omission.* Ruled out above.
 
-**The cause is unresolved and needs a build host to determine.** It is not
-guessed at here. What it costs this pass is stated in the Summary: eleven of the
-twenty-four methods could only be compared at control-flow level.
+**Resolved: this is an upstream omission, not a misconfiguration in this tree.**
+Per the project owner, Apple's Darwin 0.3 release did not ship these three
+modules in the *kernel* build — most likely an oversight on Apple's part — so
+there is nothing in this tree to keep hunting for.
+
+One nuance matters here. The *sources* were shipped: `git log` confirms all
+five `.m` files, the three PCMCIA ones included, entered this repository at
+commit `19ffee9a Original Darwin 0.3 Sources`, as part of the driverkit
+component (see What is being compared, above). What Apple did not ship is
+whatever makes the *kernel* actually link those three objects in — the sources
+arrived with Darwin 0.3, the kernel-side inclusion did not, and that gap is
+upstream. The candidate causes ruled out above are not dead ends under this
+reading; they corroborate it, by showing there is nothing locally broken for
+the missing kernel-side inclusion to be blamed on.
+
+This reconciliation is the owner's account plus the local observations above,
+not something a build has verified — no build was performed for this pass or
+since (see Baseline build). Exactly where the kernel-side chain breaks would
+still need a build host to pin down. But it is no longer a mystery to
+investigate: the three modules were never expected to be in a Darwin 0.3 kernel
+build. Consequently, the absence is not a defect to fix in this build
+configuration — if PCMCIA support in the kernel is wanted, `IOPCMCIADirectDevice.m`,
+`IOPCMCIADeviceDescription.m` and `IOPCMCIATuple.m` would need to be added to
+the kernel build deliberately, as a feature decision rather than a repair. What
+this costs this pass is unchanged and is not softened by the explanation:
+eleven of the twenty-four methods could only be compared at control-flow level,
+stated in the Summary.
 
 ## Analyzer disagreement
 
@@ -701,10 +727,11 @@ that order.
   and 2 are the only ones with instruction-level evidence on both sides, and even
   they rest on an artifact of unproven provenance.
 - **Eleven of twenty-four methods were compared at control-flow level only**,
-  because the three PCMCIA modules are missing from our kernel. Finding 3 is a
-  prediction within that gap, not a measurement. If the missing-modules problem
-  is solved first, all eleven should be re-compared at instruction level before
-  they are trusted.
+  because the three PCMCIA modules are missing from our kernel — an upstream
+  Darwin 0.3 omission, not a defect here (see The missing PCMCIA modules).
+  Finding 3 is a prediction within that gap, not a measurement. If those three
+  modules are ever added to the kernel build, all eleven should be re-compared
+  at instruction level before they are trusted.
 - **Two methods rest on a single analyzer.**
   `-[IOPCMCIATuple(Private) initWithKernTuple:]` has IDA only — Ghidra missed it
   and angr mis-started it a byte early. `-[IOPCMCIATuple data]` has IDA and

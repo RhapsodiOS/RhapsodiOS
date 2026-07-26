@@ -2051,7 +2051,8 @@ BINRECON_REFERENCE="C:/Users/raynorpat/Downloads/test/Foundation-i386" PYTHONPAT
 Expected: `complete: true` and a populated `tools/binrecon/out/foundation-i386/published/`.
 
 If it fails with `IDA output exceeds maximum JSON size`, **do not raise the
-limit** (spec §1.4). Narrow to one module at a time by regenerating the scope
+limit** (spec §1.4). The cap is 64 MB (`adapters/ida.py:31`); stage 1 measured
+15.1 MB, so this is unlikely to trip here. Narrow to one module at a time by regenerating the scope
 with a single `--module`, and record the split in Step 7's note.
 
 - [ ] **Step 6: Confirm the export**

@@ -417,12 +417,23 @@ appears to require a header change, that is a stop-and-report finding.
 
 ### 5.2 IDA on a 1.6 MB dylib is unmeasured
 
-The allowlist limits *output*, which is what tripped the 16 MB guard on the DR2
-kernel, but autoanalysis still loads the whole image and its runtime is unknown.
-This is the most likely place stage 1 stalls. The plan measures and records
-wall-clock and output size on the first run. If the guard trips despite the
-allowlist, the group narrows to one module at a time rather than raising the
-limit — the same call the address-range scoping spec made.
+Scoping limits *output*, which is what tripped the size guard on the DR2 kernel,
+but autoanalysis still loads the whole image and its runtime was unknown.
+
+**Measured in stage 1** (see the plan's run note): the run took **128 seconds**
+and produced a **15.1 MB** published analysis, against a `_MAX_ANALYSIS_BYTES`
+cap of **64 MB** (`tools/binrecon/binrecon/adapters/ida.py:31`). No splitting was
+needed.
+
+The size is dominated by fixed per-image overhead, not by the scoped functions:
+the whole symbol table (10,921 entries) and relocation list are emitted whatever
+the scope, while the 43 in-scope functions hold only 3,019 instructions. So later
+stages grow this file slowly — roughly 660 on-disk bytes per additional
+instruction — leaving about 49 MB of headroom. Stage 3, the largest at ~60 KB of
+code, should land near 17 MB.
+
+If the guard is ever tripped, the group narrows to one module at a time rather
+than raising the limit — the same call the address-range scoping spec made.
 
 ### 5.3 The proof slice may not compile standalone
 

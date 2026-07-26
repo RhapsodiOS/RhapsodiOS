@@ -15,8 +15,10 @@
 - Slice of record: i386, `cputype` 7, offset 8192, size 1,630,488, SHA-256 `1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6`.
 - **No header under `src/Kits/Foundation` may be modified.** If reconstruction appears to need a header change, stop and report.
 - **No decompiler-generated identifiers in committed source.** No `param_1`, `v3`, `sub_42501428`, or decompiler comments. Source is written from an understanding of the behaviour, in the idiom of the surrounding headers.
-- Python: run everything from the repository root with `PYTHONPATH=tools/binrecon` and `./.venv-binrecon/Scripts/python.exe`.
-- Test command: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+- **Working directory is the worktree** `D:\RhapsodiOS\.claude\worktrees\foundation-recon` (branch `foundation-recon`). Run every command from there.
+- **The venv lives at the main repo root and is gitignored, so the worktree has none.** Use the absolute interpreter path `/d/RhapsodiOS/.venv-binrecon/Scripts/python.exe` with `PYTHONPATH=tools/binrecon`, which resolves `binrecon` to the worktree's copy. Anywhere this plan writes `./.venv-binrecon/Scripts/python.exe`, substitute the absolute path.
+- Test command: `PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
+- **The full suite takes about 5 minutes** (753 passed, 4 skipped at baseline). During a red/green cycle run only the focused test file — those finish in seconds. Run the full suite once before committing.
 - Commit messages: start with the subsystem (`binrecon: `, `Foundation: `, `docs: `), one to two lines, describe behaviour not files, no metadata or trailers.
 - Do not add Foundation to `src/Manifest`, do not build the framework as a framework, and do not touch the 63 stub `.m` files outside this stage's three.
 

@@ -523,6 +523,12 @@ def objc_methods_from_sections(payload, sections):
     return {address: sorted(names) for address, names in index.items()}
 
 
+def objc_method_index(path):
+    """Map each Objective-C method implementation address to its names."""
+    document = read_macho(path)
+    return objc_methods_from_sections(Path(path).read_bytes(), document["sections"])
+
+
 def _read_symbols(
     data: bytes,
     symtab: tuple[int, int, int, int, int] | None,

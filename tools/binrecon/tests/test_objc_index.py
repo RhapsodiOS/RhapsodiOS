@@ -87,3 +87,17 @@ def test_truncated_symtab_does_not_raise():
 
     result = objc_methods_from_sections(payload, sections)
     assert result == {}
+
+
+from pathlib import Path
+
+from binrecon.macho import objc_method_index
+
+
+def test_objc_method_index_is_empty_for_a_binary_with_no_objc(tmp_path):
+    from tests.macho_fixture import build_macho_fixture
+
+    target = tmp_path / "plain"
+    target.write_bytes(build_macho_fixture())
+
+    assert objc_method_index(target) == {}

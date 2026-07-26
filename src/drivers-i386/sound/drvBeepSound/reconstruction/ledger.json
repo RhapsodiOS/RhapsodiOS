@@ -33,7 +33,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; instruction-level comparison against source found a divergence (divergences.md Finding 6)"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; instruction-level comparison against source found two divergences (divergences.md Finding 6: a NULL guard the reference lacks, and an index counter where the reference uses pointer subtraction)"
         ],
         "status": "agreed"
       },
@@ -201,7 +201,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source with no divergence in the function body"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source, which found divergences (divergences.md Findings 16 and 14)"
         ],
         "status": "agreed"
       },
@@ -214,7 +214,7 @@
       "size": 356,
       "source_line": 315,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "assembly-matched"
+      "status": "unexamined"
     },
     {
       "address": 1832,
@@ -225,7 +225,7 @@
           "angr"
         ],
         "reasons": [
-          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source with no divergence in the function body"
+          "IDA, Ghidra and angr agree on size and instruction count; block counts differ only by each analyzer's basic-block splitting convention; full disassembly read instruction by instruction against source, whose body matches, but the emitted Objective-C type encoding diverges (divergences.md Finding 14)"
         ],
         "status": "agreed"
       },
@@ -238,7 +238,7 @@
       "size": 123,
       "source_line": 432,
       "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m",
-      "status": "assembly-matched"
+      "status": "unexamined"
     },
     {
       "address": 1956,

@@ -55,19 +55,25 @@ our source. Ghidra's decompiler output was used as an independent cross-check on
 `+[Beep probe:]`, `-[Beep reset]`, `_stringToStyle` and `-[Beep beep]`, and it agreed
 with the hand reading in every case.
 
-Four functions are recorded `assembly-matched` (`_channelWillAddStream`,
-`getCharValues:forParameter:count:`, `setCharValues:forParameter:count:`,
+Two functions are recorded `assembly-matched` (`_channelWillAddStream`,
 `_getSupportedParameters:count:forObject:`). Two are `intentional-mismatch`
-(build-generated glue). The remaining seven carry a confirmed divergence and stay
+(build-generated glue). The remaining nine carry a confirmed divergence and stay
 `unexamined` per the convention that advancing a diverging function's status is the
 fix pass's job.
 
-**Scope caveat on the four `assembly-matched` entries:** that status covers the
-*instructions of those functions only*. `getCharValues:`, `setCharValues:` and
+`getCharValues:forParameter:count:` and `setCharValues:forParameter:count:` were
+*read* instruction by instruction, and their bodies are otherwise faithful, but both
+carry findings — Finding 16 (a construct in `getCharValues:` that cannot compile to
+the reference's instructions) and Finding 14 (an Objective-C type-encoding divergence
+in both) — so both stay `unexamined`. The reading is recorded here; promoting the
+status is the fix pass's job.
+
+**Scope caveat on the two `assembly-matched` entries:** that status covers the
+*instructions of those two functions only*. `getCharValues:`, `setCharValues:` and
 `setIntValues:`/`getIntValues:` all read `_defaultBeepSequences`, whose *contents*
 diverge (Finding 11). The code that walks the table matches; the table it walks does
-not. Do not read `assembly-matched` as "this method behaves identically" until
-Finding 11 is fixed.
+not. Nothing in this document should be read as "this method behaves identically"
+until Finding 11 is fixed.
 
 `source_map`'s `source_sites` glob saw only `Beep.m` — this driver keeps no code in
 a `*Inline.h` header of its own, so every mapped `source_line` points at a direct
@@ -291,7 +297,10 @@ for `thread_block`. Declare it `void thread_block(void)`.
 
 The reference's import list is complete and contains `_assert_wait`, `_hz`,
 `_thread_block`, `_thread_set_timeout`, `_objc_msgSend`, `_objc_msgSendSuper`,
-`_strncmp`, `_strncpy`, `_strtol` and the three `objc_class_name_*` references — and
+`_strncmp`, `_strncpy`, `_strtol` and three of the six `.objc_class_name_*` symbols —
+`IOAudio`, `IODevice` and `Object`, the three that are undefined (`n_type` `0x01`,
+`N_UNDF|N_EXT`); the other three, `Beep`, `BeepKernelServerInstance` and `BeepVersion`,
+are defined absolute symbols (`n_type` `0x03`, `N_ABS|N_EXT`) and are not imports — and
 **no `_IOSleep` and no `_IOLog`**. (`strlen` and `strcmp` are absent too, but only
 because the compiler inlined them as `repne scasb` / `repe cmpsb`; our source's
 `strlen`/`strcmp` calls will inline the same way and are not a divergence.)
@@ -361,7 +370,7 @@ counter-2 data writes:
 because the array is initialised whole.
 
 **This symbol is not Apple-Beep-specific — it is already in our tree.**
-`src/kernel-7/machdep/i386/timer_inline.h:82` defines:
+`src/kernel-7/machdep/i386/timer_inline.h:81`–`:84` defines:
 
 ```c
 #define TIMER_CNT_PORT(n)	_timer_cnt_port_[(n)]
@@ -369,7 +378,7 @@ static const int	_timer_cnt_port_[] =
 	{ TIMER_CNT0_PORT, TIMER_CNT1_PORT, TIMER_CNT2_PORT };
 ```
 
-and `timer_inline.h:101` defines `timer_write(sel, val)` as exactly the two
+and `timer_inline.h:102` defines `timer_write(sel, val)` as exactly the two
 `outb(TIMER_CNT_PORT(sel), byte)` writes seen above. So the reference's `Beep.m`
 imported `<machdep/i386/timer_inline.h>` and called
 `timer_write(TIMER_CNT2_SEL, divisor)`. Our `Beep.m` imports only
@@ -421,8 +430,13 @@ the addresses of two mutable `__DATA,__data` char arrays. See Finding 4.
 
 ## Finding 1: `+[Beep probe:]` is absent from our source
 
-**Reference:** address 0, 66 bytes, `__TEXT,__text`, `global` binding, the class's
-only entry in `__OBJC,__cls_meth`.
+**Reference:** address 0, 66 bytes, `__TEXT,__text`, `local` binding, the class's
+only entry in `__OBJC,__cls_meth`. (Its `n_type` is `0x0E` — `N_SECT` without
+`N_EXT`. Every method symbol in this binary is local; the defined symbols that are
+genuinely `global` are `_Beep_VERS_STRING`, `_Beep_VERS_NUM`, `_defaultBeepSequences`
+and `_Beep_instance`. Note that the IDA analysis JSON reports this symbol's binding
+as `global`; that is an adapter artifact — the raw `nlist` is authoritative and says
+local.)
 
 **Our source:** `Beep.m` and `Beep.h` contain no `probe`. Grep finds no occurrence.
 
@@ -462,12 +476,32 @@ tick count unscaled. The reference's import table has no `_IOSleep` entry at all
 this is not a matter of which wrapper the linker resolved — the reference genuinely
 does not use `IOSleep`.
 
-Secondary effect: the `timeout * 1000 / hz` round-trip loses precision. For the
-default `Duration = 100` ms with the common `hz = 100`, `timeout` is
-`(100 * 100) / (noteCount * 1000)`, which for `noteCount >= 2` truncates to 0 —
-so our `IOSleep(0)` does not sleep at all, while the reference's
-`thread_set_timeout(0)` follows the same degenerate path. The tick truncation is
-faithful; the extra `* 1000 / hz` round-trip is not.
+**The divergence is mechanism, not magnitude.** On i386 `hz` is 100
+(`src/kernel-7/machdep/i386/mach_param.h:55` defines `HZ` as `(100)`;
+`src/kernel-7/kern/mach_clock.c:84` is `int hz = HZ;`), so one tick is exactly 10 ms
+and the `timeout * 1000 / hz` round-trip back to milliseconds is exact — it is a
+multiply by 10, with no truncation. The only truncation anywhere in the chain is the
+tick division `(duration * hz) / (noteCount * 1000)`, which our source performs
+identically to the reference and which is therefore faithful.
+
+Worked through for the shipped `Duration = 100` ms at `hz = 100`
+(`duration * hz` = 10000), across every `noteCount` in `_defaultBeepSequences`:
+
+| `noteCount` | `timeout` (ticks) | our `IOSleep` argument (ms) | reference sleep |
+| --- | --- | --- | --- |
+| 1 | 10000 / 1000 = 10 | 100 | 10 ticks = 100 ms |
+| 2 | 10000 / 2000 = 5 | 50 | 5 ticks = 50 ms |
+| 8 | 10000 / 8000 = 1 | 10 | 1 tick = 10 ms |
+
+The table's largest `noteCount` is 8. `timeout` only reaches 0 when
+`duration * 100 < noteCount * 1000`, i.e. when the configured `Duration` is below
+`noteCount * 10` ms — below 80 ms at `noteCount = 8`. That degenerate case is reached
+identically on both sides (the reference passes 0 to `thread_set_timeout`), so it is
+not a divergence in the computed value either. What differs is only *how* the wait is
+performed.
+
+(The round-trip would stop being exact if `hz` did not divide 1000. It does on every
+i386 configuration in this tree, so no such case arises here.)
 
 **Disposition:** fix — replace `IOSleep(...)` with the three-call sequence and pass
 `timeout` unchanged. Declare `thread_block` as taking no arguments.
@@ -637,14 +671,57 @@ nameLen = strlen(styleStr);
 straight away via the inlined `strlen`. Ghidra's decompilation confirms the absence
 of the guard.
 
-This matters because `-[Beep setCharValues:forParameter:count:]` at 1866 passes the
-caller-supplied `parameterArray` to `_stringToStyle` with no check of its own, so the
-reference will fault on a NULL `parameterArray`. Our guard makes that case return
-`-711` instead.
+This matters because `-[Beep setCharValues:forParameter:count:]` passes the
+caller-supplied `parameterArray` to `_stringToStyle` with no check of its own — the
+`call _stringToStyle` is at **1870**, with the argument loaded at 1866
+(`mov edx, [ebp+__s2]`) and pushed at 1869 — so the reference will fault on a NULL
+`parameterArray`. Our guard makes that case return `-711` instead.
 
-The other implementation difference in this function — the reference computes the
-return index as `(seq - _defaultBeepSequences) >> 4` (pointer subtraction) while ours
-carries an `index` counter — is semantically identical and is **not** a divergence.
+**Second divergence in the same function: the loop carries an `index` counter the
+reference does not have.** The reference computes the return value as
+`(seq - _defaultBeepSequences) >> 4` — a pointer subtraction performed once, at the
+match site:
+
+```
+  96: BB0C200000       mov   ebx, offset _defaultBeepSequences
+ 101: 833D0C20000000   cmp   ds:_defaultBeepSequences, 0
+ 108: 742A             jz    loc_98
+ 112: 57               push  edi                    ; nameLen
+ 113: 56               push  esi                    ; styleStr
+ 114: 8B13             mov   edx, [ebx]             ; seq->name
+ 116: 52               push  edx
+ 117: E886FFFFFF       call  _strncmp
+ 122: 83C40C           add   esp, 0Ch
+ 125: 85C0             test  eax, eax
+ 127: 750F             jnz   loc_90
+ 129: 89D8             mov   eax, ebx
+ 131: 2D0C200000       sub   eax, offset _defaultBeepSequences
+ 136: C1F804           sar   eax, 4                 ; (seq - table) / 16
+ 139: EB10             jmp   loc_9D
+loc_90:
+ 144: 83C310           add   ebx, 10h
+ 147: 833B00           cmp   dword ptr [ebx], 0
+ 150: 75D8             jnz   loc_70
+```
+
+Ours (`Beep.m:85`, `:94`, `:95`, `:98`) declares `int index`, initialises it to 0 and
+advances it in the loop's third clause. That cannot compile to the instructions
+above: there is no fourth callee-saved register free (`ebx` holds `seq`, `esi` holds
+`styleStr`, `edi` holds `nameLen`, and `index` must survive the `strncmp` call), so
+our build must spill `index` to a stack slot — yet the reference's prologue has **no
+`sub esp` at all** (`push ebp; mov ebp, esp; push edi; push esi; push ebx`, epilogue
+`lea esp, [ebp-0Ch]`), meaning the reference allocates zero stack locals. Our build
+would additionally emit an increment of that slot on every iteration, which is absent
+here.
+
+The two constructs are semantically identical — they yield the same index — but they
+are not the same instructions, so this is recorded as a divergence, on the same
+threshold applied to Finding 16. An earlier revision of this document called it "not
+a divergence"; that was inconsistent and is corrected here.
+
+**Disposition of this second point:** fix — drop the `index` variable and return
+`(int)(seq - defaultBeepSequences)` from the loop, which the compiler renders as the
+subtract-and-shift above.
 
 **Disposition:** fix if strict parity is the goal; the guard is strictly safer than
 the reference. Flagged rather than decided, because removing it introduces a
@@ -680,7 +757,7 @@ if (currentFreq > 0) {
 ```
 
 **Difference:** the reference's dividend is `0x1234CF` = **1193167**, which is exactly
-`TIMER_CONSTANT` from `src/kernel-7/machdep/i386/timer.h:83`. Ours is 1193182 — the
+`TIMER_CONSTANT` from `src/kernel-7/machdep/i386/timer.h:84`. Ours is 1193182 — the
 true 1.193182 MHz PIT rate, but not the constant Apple's driver used.
 
 The audible effect is small but real: across the 20 Hz–20 kHz range the two dividends
@@ -923,14 +1000,15 @@ BeepSequence *_beepSequence;      /* Pointer to beep sequence */
 1. **`isMute` is missing.** The reference declares a `char isMute` at `0x184` that no
    instruction in `__text` ever reads or writes — it is dead in Apple's source too,
    but it occupies a byte. Without it our `_pitCommand` lands at `0x184`, not the
-   `0x185` that `Beep.h:51`'s own comment claims. The three aligned ivars at `0x188`,
+   `0x185` that `Beep.h:50`'s own comment claims. The three aligned ivars at `0x188`,
    `0x18C` and `0x190` happen to land correctly regardless, because `unsigned int`
    forces 4-byte alignment either way — so only the char ivar is displaced. Note that
    this is *not* `IOAudio`'s own `_isOutputMuted` (`IOAudio.h:68`), which lives inside
    `IOAudio`'s ivar block below `0x184`; `Beep` declares a second, unused one.
 2. **`timer` is a bitfield struct, not a plain `unsigned char`.** Its encoding
    `{?="bcd"b1"mode"b3"rw"b2"sel"b2}` is exactly `timer_ctl_reg_t` from
-   `src/kernel-7/machdep/i386/timer.h:41`. This is the direct confirmation that
+   `src/kernel-7/machdep/i386/timer.h:42`–`:61` (the `typedef struct {` opens at 42
+   and `} timer_ctl_reg_t;` closes it at 61). This is the direct confirmation that
    `-[Beep reset]`'s six read-modify-writes are bitfield assignments —
    `and 0xFE` is `reg.bcd = 0`, `and 0xF1` + `or 0x06` is `reg.mode = TIMER_SQWAVEMODE`
    (3), `or 0x30` is `reg.rw = TIMER_CTL_RW_BOTH` (3), `and 0x3F` + `or 0x80` is
@@ -983,7 +1061,10 @@ reference's encoding will disagree with the inherited declaration and may warn.
 Recorded as observed; the fix pass should weigh metadata parity against a clean build
 and record the choice. Do not change `IODevice.h` — it is outside this effort's scope.
 
-**Disposition:** flagged, low severity, metadata only. No behavioural effect.
+**Disposition:** flagged, low severity, metadata only. No behavioural effect. The
+divergence is in emitted Objective-C metadata rather than in the instruction stream,
+but it is a confirmed divergence, so both ledger entries (1476 and 1832) are
+`unexamined`; advancing them is the fix pass's job.
 
 ## Finding 15: `-[Beep beep]`'s early exits skip the port-B restore — confirmed matching, recorded for the fix pass
 
@@ -996,3 +1077,73 @@ All three early exits (`isOutputMuted` true at 619, `frequency == 0` at 635,
 the note loop and is **not** executed on any early exit — correctly, since
 `savedPortB` has not been read yet on those paths. Our `Beep.m:209`–`Beep.m:216`
 returns before `inb(PPI_PORT_B)` for the same reason. This matches; keep it that way.
+
+## Finding 16: `getCharValues:` uses a `BOOL firstItem` flag where the reference tests the table cursor
+
+**Source:** `Beep.m:324` (declaration), `:354` (set), `:368` (test), `:377` (clear)
+
+**Reference behaviour** — in the `"AllStyles"` loop, the list separator is suppressed
+on the first entry by comparing the walking cursor `ebx` against the address of the
+table itself:
+
+```
+1634: BB0C200000       mov   ebx, offset _defaultBeepSequences   ; seq = table
+...
+1689: 81FB0C200000     cmp   ebx, offset _defaultBeepSequences   ; seq == table?
+1695: 7420             jz    loc_6C1                             ; -> 1729, no separator
+1697: 8B7518           mov   esi, [ebp+arg_10]
+1700: 8B36             mov   esi, [esi]
+1702: 83C602           add   esi, 2                              ; *count + 2
+1705: 8B45F4           mov   eax, [ebp+var_C]                    ; maxLen
+1708: 39C6             cmp   esi, eax
+1710: 7711             ja    loc_6C1                             ; -> 1729
+1712: 8B7518           mov   esi, [ebp+arg_10]
+1715: 8B36             mov   esi, [esi]
+1717: 8B4510           mov   eax, [ebp+__dst]
+1720: C6040620         mov   byte ptr [esi+eax], 20h             ; ' '
+1724: 8B7518           mov   esi, [ebp+arg_10]
+1727: FF06             inc   dword ptr [esi]                     ; ++*count
+loc_6C1:
+1729: 57               push  edi
+```
+
+There is no boolean anywhere in the function: nothing is stored to or loaded from a
+flag byte, and the loop's only per-iteration state is `ebx` (advanced by `add ebx,
+10h` at 1753).
+
+**Our source**
+
+```c
+    firstItem = YES;
+    for (seq = defaultBeepSequences; seq->name != NULL; seq++) {
+        ...
+        /* Add space separator (except for first item) */
+        if (!firstItem && (*count + 2 <= maxLen)) {
+            parameterArray[*count] = ' ';
+            *count = *count + 1;
+        }
+        ...
+        firstItem = NO;
+    }
+```
+
+**Difference:** ours carries a `BOOL firstItem` local. That cannot compile to the
+instructions above — our build must allocate a stack byte for it and emit a store of
+1 before the loop, a `cmpb`/`testb` against it at the separator test, and a store of 0
+at the bottom of every iteration. None of those instructions exist in the reference,
+which instead does the single `cmp ebx, offset _defaultBeepSequences`. The two are
+semantically identical (`firstItem` is true exactly when `seq == table`), so there is
+no behavioural difference; the divergence is in the emitted instruction stream.
+
+The rest of the function's body **does** match instruction for instruction, including
+the `*count == 0 -> 512` default, the `maxLen <= nameLen -> nameLen = maxLen - 1`
+clamp in the `"Style"` branch, the `*count + nameLen >= maxLen` truncation in the
+`"AllStyles"` loop, the trailing NUL plus `++*count`, and the delegation to `super`
+with the caller's `count`.
+
+Same threshold as the second point in Finding 6: a construct that cannot produce the
+reference's instructions is a divergence even when the behaviour is identical.
+
+**Disposition:** fix — drop `firstItem` and suppress the separator with
+`if (seq != defaultBeepSequences && (*count + 2 <= maxLen))`, which is what the
+reference compiles from.

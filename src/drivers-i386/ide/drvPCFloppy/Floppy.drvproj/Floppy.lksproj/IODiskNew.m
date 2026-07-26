@@ -95,8 +95,10 @@
 	}
 	
 	// Note: Decompiled code shows return here without calling super free
-	// This may be because the actual freeing happens elsewhere
-	return self;
+	// This may be because the actual freeing happens elsewhere.
+	// The reference unconditionally zeroes eax before returning, i.e. it
+	// returns nil regardless of whether a chained disk was freed.
+	return nil;
 }
 
 /*

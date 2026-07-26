@@ -46,10 +46,11 @@ entirely" below).
 **6 functions are absent from our tree entirely** — no definition, stub, or even a
 declaration with a matching name exists anywhere in `src/drvSCSIServer`, except
 `_IORequestNotifyForClientTask`, which is declared `extern` and called but never
-defined. A further **18 unexamined entries** are the reference's own MiG-generated
-dispatch-stub bodies (`__XIOSCSISession_*`, addresses 9212-13376) — compiler output
-from the project's lost `.defs` file, not hand-written source, which Task 9 regenerates
-rather than this task transcribing by hand. The remaining **1 unexamined entry**
+defined. A further **18 entries** (now `intentional-mismatch`, dispositioned by Task 9)
+are the reference's own MiG-generated dispatch-stub bodies (`__XIOSCSISession_*`,
+addresses 9212-13376) — compiler output from the project's lost `.defs` file, not
+hand-written source, regenerated in `IOSCSISessionMig.defs` rather than transcribed by
+hand. The remaining **1 unexamined entry**
 (address 1160, `-[IOSCSISession initServerWithTask:sendPort:]`) *is* implemented in our
 tree, at `IOSCSISession.m:234`, but under a misspelled selector name (see "Finding:
 `-[IOSCSISession(Private) _initServerWithTask:sendPort:]` carries a spurious
@@ -745,7 +746,7 @@ Tasks 4 and 5 did — the named export strips `calls` for all eight of these fun
 | 6908 | `_IOReferenceClientTask` | `unexamined` | Finding: stub replaces the real `port_rename` call; true signature recovered |
 | 7156 | `_IODereferenceClientTask` | `unexamined` | Finding: wrong table and wrong field offset for the refcount |
 | 8988 | `_IOReleaseNotifyForFunc` | `unexamined` | Finding: invented parallel array not present in the reference |
-| 13520 | `_IOSCSISessionMig_server` | `intentional-mismatch` | hand-written demux stands in for MiG output pending Task 9 (`IOSCSISessionMig.defs`); ID range (0x1092-0x10a3) and reply-header convention match, but the dispatch table is wired wrong on all 18 entries — see the ledger's own `--reason` text for this entry, which is the durable record per this task's tooling constraints |
+| 13520 | `_IOSCSISessionMig_server` | `intentional-mismatch` | hand-written demux stood in for MiG output; replaced by Task 9's `IOSCSISessionMig.defs`, whose argument types were then corrected against the reference's own `<arg>Check`/`<arg>Type` descriptors. ID range (0x1092-0x10a3) and reply-header convention match, but the dispatch table was wired wrong on all 18 entries — see the ledger's own `--reason` text for this entry, and its `source_path`/`source_line` (now citing `IOSCSISessionMig.defs`, since the demux is build output with no checked-in source line of its own), which are the durable record per this task's tooling constraints |
 
 **Groundwork: the `__SCSIServer_deviceStyle_` loads are all `_entry`, not a class method.** All
 seven plumbing functions load a pointer via `lis`/`lwz __SCSIServer_deviceStyle_@ha`/`@l` in the
@@ -1557,3 +1558,29 @@ reference's own message-ref/selector metadata (checked directly, not merely abse
 name to rename it *to*. Task 8 should leave this method's name alone but flag it to whoever owns Task
 12 (fixing Phase 1 divergences) as unreachable, duplicate logic layered on top of the already-correct
 `IOSCSISession_reserveTarget` C wrapper, worth removing rather than renaming.
+
+## Finding: `IOSCSISession_initForDevice`'s wrapper prototype is one parameter short of what the recovered `.defs` requires
+
+**Source:** `IOSCSISession.h:122`, `int IOSCSISession_initForDevice(id session, const char *deviceName);`;
+implementation at `IOSCSISession.m:499`.
+
+**Reference behaviour:** `__XIOSCSISession_initForDevice`'s own message-type descriptor for `deviceName`
+is `MSG_TYPE_CHAR` (8), not `MSG_TYPE_STRING_C` (12) — a masked, variable-length check identical in
+shape to the `ioRanges` scatter arguments, not a `c_string`. The stub itself passes three arguments to
+`_IOSCSISession_initForDevice`: `r3` (session), `r4` (`request+0x1C`, the pointer), and `r5` (a separate
+byte count extracted from the descriptor's `msg_type_number` via `extrwi`). `IOSCSISessionMig.defs` now
+declares `in deviceName : array[*:80] of char;` to match, which is MiG's standard variable-length-array
+convention: the generated call adds an implicit `deviceNameCnt` (or similarly-named) count parameter
+after the pointer, matching the stub's three-argument call exactly.
+
+**Our source:** `IOSCSISession_initForDevice(id session, const char *deviceName)` — two parameters, no
+count. A `c_string` argument (MiG's other variable-length string convention) would generate exactly this
+two-parameter shape, which is presumably why the wrapper was written this way — but the reference's own
+descriptor rules that convention out (see above).
+
+**Consequence:** once `IOSCSISessionMig.defs` is compiled, the generated `IOSCSISessionMigServer.c` will
+call `_IOSCSISession_initForDevice(server, deviceName, deviceNameCnt)` — three arguments — against a
+prototype that only declares two. This is a compile-time arity mismatch, not a runtime behavioural
+divergence. Left for the deferred body work (Task 12 or wherever `IOSCSISession.h`/`IOSCSISession.m`'s
+signatures are reconciled with the regenerated MiG interface) to add the missing count parameter to both
+the header and the definition.

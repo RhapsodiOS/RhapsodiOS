@@ -1,0 +1,3157 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk driveNumberOfDrive:]"
+      ],
+      "reason": "Exact match: 8-entry table walk checking flags bit0 then object pointer at +4.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 62,
+      "source_line": 1134,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 64,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk registerDrive:]"
+      ],
+      "reason": "Exact match including IOAddToCdevswAt/IOAddToBdevswAt argument lists, order, and major numbers (0x29 / 1).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 390,
+      "source_line": 1199,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 456,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk unregisterDrive:]"
+      ],
+      "reason": "Exact match: IOFree at offset 0xc030 then bzero(0x34) at 0xc000, conditional IORemoveFromBdevsw(1)/IORemoveFromCdevsw(0x29).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 115,
+      "source_line": 1327,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 572,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk characterDevOfDrive:]"
+      ],
+      "reason": "Exact match: (driveNumber<<3)|0x2900 via shl+or ah,29h.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 62,
+      "source_line": 1095,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 636,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk blockDevOfDrive:]"
+      ],
+      "reason": "Exact match: (driveNumber<<3)|0x100 via shl+or ah,1.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 62,
+      "source_line": 1056,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 700,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk attachBsdDiskInterfaceToDrive:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 330,
+      "source_line": 1376,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1032,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk detachBsdDiskInterfaceFromDrive:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 62,
+      "source_line": 1448,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1096,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdOpen"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 154,
+      "source_line": 392,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1252,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdClose"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 120,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1372,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_fakeStrategySuccess"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 143,
+      "source_line": 715,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1516,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdRead"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 351,
+      "source_line": 890,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1868,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdWrite"
+      ],
+      "reason": "Exact match including correct EINVAL for not-formatted and physio argument order/flags.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 172,
+      "source_line": 986,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2040,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdStrategy"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 272,
+      "source_line": 799,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2312,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdIoctl"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 2656,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4968,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_HandleBsdSize"
+      ],
+      "reason": "Exact match: ENXIO for identifyResult==0 or >=3, blockSize call when disk!=NULL, 0 otherwise.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 93,
+      "source_line": 757,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5064,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_fdminphys"
+      ],
+      "reason": "Exact match: returns bp->b_bcount from offset 0x30.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 13,
+      "source_line": 509,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5080,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_identifyBsdDev"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 244,
+      "source_line": 540,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5324,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_identifyDetachedDiskIdFromBsdDev"
+      ],
+      "reason": "Exact match: driveNumber/partition extraction, offsets 0x2d/0xc008/0xc00c and flag bits 0x01/0x02 all correspond to the source.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 129,
+      "source_line": 642,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5456,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController dmaStart:dmaStruct:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 385,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyArch.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5844,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController dmaDone:dmaStruct:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 227,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyArch.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 6072,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doCmdXfr:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 551,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 6624,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doEject:]"
+      ],
+      "reason": "Matches: zeroes request+0x40 and returns, no other behavior.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 6644,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doMotorOn:]"
+      ],
+      "reason": "Matches: early-out if already on, OUT to port 0x3F2, IOSleep(1000) spin-up delay on turn-on.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 96,
+      "source_line": 134,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 6740,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doMotorOff:]"
+      ],
+      "reason": "Matches: clears motor bit in DOR shadow, sets drive-select bits, single OUT to port 0x3F2, no sleep.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 87,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 6828,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController sendCmd:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 1295,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCmds.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8124,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_numFloppyDrives"
+      ],
+      "reason": "Same branch outcomes for all reachable inputs; boolean is derived via a different but equivalent expression than the disassembly's setnz.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 58,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 8184,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_floppyDriveType"
+      ],
+      "reason": "CMOS register, nibble select, warning-only-for-type-1-or-2, and >4 clamp all match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 95,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8280,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[FloppyController probe:]"
+      ],
+      "reason": "Port/interrupt validation, controller setup order, and drive-probe loop all match the disassembly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 359,
+      "source_line": 422,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 8640,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController initFromDeviceDescription:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 392,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 9032,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController free]"
+      ],
+      "reason": "Exit-sentinel enqueue/signal/wait/cleanup handshake matches the disassembly exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 290,
+      "source_line": 275,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 9324,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcCmdXfr:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 258,
+      "source_line": 348,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 9584,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcCmdXfrExecute:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 543,
+      "source_line": 517,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 10128,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_FloppyControllerThread"
+      ],
+      "reason": "Dequeue unlink logic (all three link cases), exit-sentinel check, and drain-then-relock loop match the disassembly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 258,
+      "source_line": 643,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCnt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 10388,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController i82077Reset:]"
+      ],
+      "reason": "Reset pulse, density/CCR mapping for all cases, retry-on-CONFIGURE-failure loop, and doSpecify:-driven flag/DOR/motor logic all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 468,
+      "source_line": 776,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10856,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcSendByte:]"
+      ],
+      "reason": "fcWaitPio:0 then outb(0x3f5,byte) and counter increment on success, matches exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 54,
+      "source_line": 290,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 10912,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcGetByte:]"
+      ],
+      "reason": "fcWaitPio:0x40 then inb(0x3f5) into *bytePtr on success, matches exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 48,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 10960,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcWaitPio:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 109,
+      "source_line": 390,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11072,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController getDriveStatus:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 417,
+      "source_line": 611,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11492,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doConfigure:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 111,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11604,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doSpecify:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 281,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11888,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController doPerpendicular:gap:]"
+      ],
+      "reason": "Correctly reproduces the binary's own unimplemented stub, unconditional return 0.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 11900,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController flushIntrMsgs]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 179,
+      "source_line": 524,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12080,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController fcWaitIntr:timeout:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 120,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12200,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController floppyInterrupt:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 133,
+      "source_line": 453,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12336,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController clearPollIntr]"
+      ],
+      "reason": "4x2 fcGetByte loop with fcSendByte:8 on first 3 iterations only, matches exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 116,
+      "source_line": 32,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 12452,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController seek:head:density:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 136,
+      "source_line": 993,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12588,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[FloppyController recal]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 115,
+      "source_line": 930,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyCntIo.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12704,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdRecal]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 133,
+      "source_line": 557,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 12840,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdSeek:head:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 170,
+      "source_line": 597,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13012,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdGetStatus:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 69,
+      "source_line": 440,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13084,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdReadId:statp:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 177,
+      "source_line": 503,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13264,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive rawReadInt:sectCount:buffer:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 129,
+      "source_line": 692,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13396,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive rwBlockCount:blockCount:]"
+      ],
+      "reason": "Track-boundary clamp condition and arithmetic match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 80,
+      "source_line": 737,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 13476,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdGenRwCmd:blockCount:fdIoReq:readFlag:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 234,
+      "source_line": 366,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13712,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdLogToPhys:cmdp:]"
+      ],
+      "reason": "Cylinder/head/sector division math and cmd[2..4] stores match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 104,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 13816,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdSendCmd:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 150,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13968,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_fdTimer"
+      ],
+      "reason": "Motor-timer flag test/clear and motorOffCheck dispatch match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 39,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 14008,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive updateReadyStateInt]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 95,
+      "source_line": 766,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14104,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdFormatTrack:head:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 349,
+      "source_line": 286,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14456,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive allocateDisk]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 316,
+      "source_line": 219,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14772,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_fdrToIo"
+      ],
+      "reason": "All 24 jump-table cases and the default map to the same IOReturn codes as the switch in source.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 245,
+      "source_line": 150,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15020,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_floppyMalloc"
+      ],
+      "reason": "Page-boundary allocation math matches instruction-for-instruction, including the stack-leftover argument trick feeding pmap_resident_extract.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 104,
+      "source_line": 45,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15124,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdEjectInt]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 203,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15328,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive fdRwCommon:block:blockCnt:buffer:client:actualLength:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 1064,
+      "source_line": 283,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16392,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive logRwErr:block:status:readFlag:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 85,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16480,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive setDensityInt:]"
+      ],
+      "reason": "Density-table search (3-int stride), field assignment and formatted-flag clear on wasZero all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 124,
+      "source_line": 615,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 16604,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive setSectSizeInt:]"
+      ],
+      "reason": "Sector-size-table search (4-int stride), field assignment, numBlocks recompute and flags update all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 142,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 16748,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive updatePhysicalParametersInt]"
+      ],
+      "reason": "Recal retry loop, status-bit checks, disk-info table lookup (4-int stride), density probing loop and sector-size probing loop (including the `sectorTest + 1 + sectSizeInfoPtr[2]` step) all match on detailed spot-check.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 551,
+      "source_line": 707,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 17300,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive motorOffCheck]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 142,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17444,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_fdGetSectSizeInfo"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 57,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17504,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_physContBlocks"
+      ],
+      "reason": "Contiguous-page-walk loop and termination conditions match; disasm recomputes vm_map_pmap every iteration where source hoists it out of the loop, which is behaviorally inert.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 160,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 17664,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_vFloppyCopy"
+      ],
+      "reason": "Three-way chunk-size clamp (src page / dest page / remaining size) and the bcopy/advance loop match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 151,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDriveInt2.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 17816,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk cachePointerFromBlockNumber:]"
+      ],
+      "reason": "Straight-line cacheBase + blockNumber*sectorSize computation matches the reference instruction-for-instruction.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 33,
+      "source_line": 598,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 17852,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk cachePointerFromCylinderNumber:]"
+      ],
+      "reason": "Fixed- and variable-geometry paths, including the band-search loop direction, match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 92,
+      "source_line": 621,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 17944,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk cylinderFromBlockNumber:::]"
+      ],
+      "reason": "Fixed- and variable-geometry CHS conversion, including head/sector/cylinder division order and the band-search loop direction, match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 225,
+      "source_line": 673,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18172,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk blocksToEndOfCylinderFromBlockNumber:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 81,
+      "source_line": 553,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18256,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk geometryOfCapacity:]"
+      ],
+      "reason": "Capacity-ID table walk and pointer return match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 71,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18328,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk sizeListFromCapacities:sizeList:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 96,
+      "source_line": 498,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18424,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk capacityFromSize:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 90,
+      "source_line": 381,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Geometry.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18516,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW diskSize]"
+      ],
+      "reason": "Returns _diskSize at offset 0x110; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 28,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18532,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW blockSize]"
+      ],
+      "reason": "Returns _blockSize at offset 0x10c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18548,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setFormatted:]"
+      ],
+      "reason": "IOPanic call then returns; matches (panic string text unverifiable but structure identical).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 240,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18568,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW isFormatted]"
+      ],
+      "reason": "Returns _formatted at offset 0x115; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 106,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18588,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW isRemovable]"
+      ],
+      "reason": "Returns _removable at offset 0x114; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18608,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW isPhysical]"
+      ],
+      "reason": "Returns _isPhysical at offset 0x116; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 115,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18628,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW isWriteProtected]"
+      ],
+      "reason": "Returns _writeProtected at offset 0x117; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18648,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW eject]"
+      ],
+      "reason": "IOPanic then returns 0xfffffd39; matches (panic string text unverifiable but structure identical).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 22,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18672,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setDiskSize:]"
+      ],
+      "reason": "Sets _diskSize at offset 0x110; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18692,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setBlockSize:]"
+      ],
+      "reason": "Sets _blockSize at offset 0x10c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18712,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setIsPhysical:]"
+      ],
+      "reason": "Sets _isPhysical (boolean-normalized) at offset 0x116; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 23,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18736,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW nextLogicalDisk]"
+      ],
+      "reason": "Returns _nextLogicalDisk at offset 0x108; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 179,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18752,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setRemovable:]"
+      ],
+      "reason": "Sets _removable (boolean-normalized) at offset 0x114; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 23,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18776,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setWriteProtected:]"
+      ],
+      "reason": "Sets _writeProtected (boolean-normalized) at offset 0x117; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 23,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18800,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setFormattedInternal:]"
+      ],
+      "reason": "Sets _formatted (boolean-normalized) at offset 0x115; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 23,
+      "source_line": 249,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18824,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW getIntValues:forParameter:count:]"
+      ],
+      "reason": "strcmp-based IOIsADisk/IOIsAPhysicalDisk handling and super fallback match the reference's inlined string compares exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 145,
+      "source_line": 142,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18972,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setLogicalDisk:]"
+      ],
+      "reason": "Sets _nextLogicalDisk at 0x108 only if currently nil; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 28,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19000,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW registerDevice]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 93,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19096,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW lockLogicalDisks]"
+      ],
+      "reason": "[_LogicalDiskLock lock] at offset 0x11c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 29,
+      "source_line": 169,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19128,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW unlockLogicalDisks]"
+      ],
+      "reason": "[_LogicalDiskLock unlock] at offset 0x11c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 29,
+      "source_line": 335,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19160,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW stringFromReturn:]"
+      ],
+      "reason": "Local terminator-only table always defers to super, matching the reference's behavior when its external table/count is empty; entry layout differs but is not externally observable here.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 81,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 19244,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW errnoFromReturn:]"
+      ],
+      "reason": "if/else-if in source is logically equivalent to the reference's cmp/jg decision tree; same 3 special codes (0x16, 6, 6) and super fallback.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 92,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 19336,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW drive]"
+      ],
+      "reason": "Returns _drive at offset 0x120; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 37,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19352,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setDrive:]"
+      ],
+      "reason": "Sets _drive at offset 0x120; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19372,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW free]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 64,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskNew.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19436,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IODiskPartitionNEW deviceStyle]"
+      ],
+      "reason": "Returns constant 1 (IO_DirectDevice); instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19448,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IODiskPartitionNEW requiredProtocols]"
+      ],
+      "reason": "Returns static protocols array pointer; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 29,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19460,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IODiskPartitionNEW probe:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 777,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20240,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW NeXTpartitionOffset]"
+      ],
+      "reason": "MBR read, 0xAA55 signature check, 4-entry partition-table scan for type 0xA7, and error codes (0xfffffbb1/0xfffffbb0) all match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 216,
+      "source_line": 535,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20456,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW readLabel:]"
+      ],
+      "reason": "Block-size/formatted validation, NeXTpartitionOffset call, 4-attempt read/check_label loop, and result handling all match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 374,
+      "source_line": 223,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20832,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW writeLabel:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 725,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 21560,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW free]"
+      ],
+      "reason": "unregisterUnixDisk:_partition then [super free]; instruction-identical control flow and calls.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 65,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 21628,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW eject]"
+      ],
+      "reason": "checkSafeConfig -> _freePartitions -> clear _labelValid -> super setFormattedInternal:NO -> [[physicalDisk drive] ejectMedia]; matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 141,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 21772,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW readAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "Checks _labelValid then delegates to super or logs+returns 0xfffffd3e; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 105,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 21880,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "Checks _labelValid then delegates to super or logs+returns 0xfffffd3e; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 105,
+      "source_line": 675,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 21988,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW writeAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "Checks _labelValid then delegates to super or logs+returns 0xfffffd3e; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 105,
+      "source_line": 703,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 22096,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "Checks _labelValid then delegates to super or logs+returns 0xfffffd3e; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 105,
+      "source_line": 731,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 22204,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW setFormatted:]"
+      ],
+      "reason": "checkSafeConfig then sets formatted on physicalDisk and self; matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 91,
+      "source_line": 604,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 22296,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW setFormattedInternal:]"
+      ],
+      "reason": "_freePartitions, clear _labelValid, then [super setFormattedInternal:]; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 78,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 22376,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW isBlockDeviceOpen]"
+      ],
+      "reason": "Returns _blockDeviceOpen at offset 0x155; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 487,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 22396,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW setBlockDeviceOpen:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 55,
+      "source_line": 496,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22452,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW isRawDeviceOpen]"
+      ],
+      "reason": "Returns _rawDeviceOpen at offset 0x156; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 526,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 22472,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW setRawDeviceOpen:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 55,
+      "source_line": 512,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22528,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW _probeLabel:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 291,
+      "source_line": 861,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22820,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW _initPartition:disktab:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 380,
+      "source_line": 808,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23200,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW _freePartitions]"
+      ],
+      "reason": "Partition==0 check, nil/isOpen checks on nextLogicalDisk, free+clear on success, IO_R_BUSY/IOLog on failure; all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 154,
+      "source_line": 768,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 23356,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW isAnyBlockDevOpen]"
+      ],
+      "reason": "Walks physicalDisk's nextLogicalDisk chain checking isBlockDeviceOpen; matches (loop-rotated in the reference, semantically identical).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 95,
+      "source_line": 938,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 23452,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskPartitionNEW checkSafeConfig:]"
+      ],
+      "reason": "Sequential partition/isAnyBlockDevOpen/isAnyOtherOpen checks with matching IOLog + 0xfffffd2b on failure; matches (isAnyOtherOpen dispatch target is a separately-known, out-of-scope issue).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 162,
+      "source_line": 906,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODiskPartitionNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 23616,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW registerDevice]"
+      ],
+      "reason": "Clears all 14 statistics fields (0x128-0x15c) then [super registerDevice]; matches exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 181,
+      "source_line": 218,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 23800,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW lastReadyState]"
+      ],
+      "reason": "Returns _lastReadyState at offset 0x10c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 23816,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW setLastReadyState:]"
+      ],
+      "reason": "Sets _lastReadyState at offset 0x10c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 273,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 23836,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW setDriveName:]"
+      ],
+      "reason": "strlen-clamp-to-23 then strncpy into _driveName, null-terminate at offset 0x127; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 68,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 23904,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW driveName]"
+      ],
+      "reason": "Returns &_driveName (offset 0x110), matching array-decay semantics; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 15,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 23920,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW addToBytesRead:totalTime:latentTime:]"
+      ],
+      "reason": "Increments _readCount/_bytesRead/_readTotalTime/_readLatentTime at 0x128-0x134 using __udivdi3 for ns->ms; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 89,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24012,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW addToBytesWritten:totalTime:latentTime:]"
+      ],
+      "reason": "Increments _writeCount/_bytesWritten/_writeTotalTime/_writeLatentTime at 0x140-0x14c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 89,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24104,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementReadRetries]"
+      ],
+      "reason": "Increments _readRetries at offset 0x138; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24120,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementReadErrors]"
+      ],
+      "reason": "Increments _readErrors at offset 0x13c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 168,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24136,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementWriteRetries]"
+      ],
+      "reason": "Increments _writeRetries at offset 0x150; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24152,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementWriteErrors]"
+      ],
+      "reason": "Increments _writeErrors at offset 0x154; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24168,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementOtherRetries]"
+      ],
+      "reason": "Increments _otherRetries at offset 0x158; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 158,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24184,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW incrementOtherErrors]"
+      ],
+      "reason": "Increments _otherErrors at offset 0x15c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24200,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW getIntValues:forParameter:count:]"
+      ],
+      "reason": "IODiskStats field order (0x128-0x15c, 14 fields) matches header/source exactly; maxCount default, copy loop, and super fallback all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 259,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 24460,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODriveNEW ejectMedia]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 54,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IODriveNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24516,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk deviceStyle]"
+      ],
+      "reason": "Trivially returns constant 2, matches reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24528,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDisk probe:]"
+      ],
+      "reason": "Trivially returns 0, matches reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 9,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 24540,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk initFromDeviceDescription::::]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 715,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 25256,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk free]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 395,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 25652,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk readAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "constructRequest/executeRequest/freeRequest sequence and actualLength handling match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 113,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 25768,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "constructRequest/executeRequest/completeTransfer/freeRequest sequence and error codes match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 131,
+      "source_line": 282,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 25900,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk writeAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "Write-capability bitmask test, write-protect check, and request execution sequence match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 189,
+      "source_line": 409,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26092,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "Write-capability bitmask test, write-protect check, and request execution sequence match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 211,
+      "source_line": 355,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26304,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk dummyIODiskPhysicalMethod]"
+      ],
+      "reason": "Empty method body, matches reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 7,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 26312,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDrive deviceStyle]"
+      ],
+      "reason": "Returns constant 2, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 26,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 26324,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[IOFloppyDrive probe:]"
+      ],
+      "reason": "Returns constant 0, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 9,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 26336,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive initFromDeviceDescription:::]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 450,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 26788,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive free]"
+      ],
+      "reason": "regFlags bit tests, unregister calls, IOFree(allocAddr,allocSize) argument order and super free all match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 133,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 26924,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive formatCylinder:data:]"
+      ],
+      "reason": "Recal-on-cylinder-0, per-head fdFormatTrack loop and verification fdRwCommon:YES call with matching block/count math all confirmed against disasm.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 180,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 27104,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive readCylinder:data:]"
+      ],
+      "reason": "Block/count math and fdRwCommon:YES call with kernel_map client match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 79,
+      "source_line": 309,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27184,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive writeCylinder:data:]"
+      ],
+      "reason": "Block/count math and fdRwCommon:NO call with kernel_map client match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 79,
+      "source_line": 413,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27264,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive setMediaCapacity:]"
+      ],
+      "reason": "All three capacity branches (0x100/0x20/0x800) match every field constant, and the numBlocks/flags epilogue and default-return-NO path match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 439,
+      "source_line": 339,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27704,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive ejectMedia]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 58,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27764,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive pollMedia]"
+      ],
+      "reason": "updateReadyStateInt/updatePhysicalParametersInt/setLastReadyState/allocateDisk call sequence and branch conditions match exactly; correctness depends on the updateReadyStateInt and allocateDisk fixes noted separately.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 105,
+      "source_line": 265,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 27872,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive formatCapacities]"
+      ],
+      "reason": "Returns constant 0x120, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27884,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive readCapacities]"
+      ],
+      "reason": "Returns constant 0x120, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27896,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive writeCapacities]"
+      ],
+      "reason": "Returns constant 0x120, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 402,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27908,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive canPollInexpensively]"
+      ],
+      "reason": "Returns constant 0/NO, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 9,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDrive.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 27920,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW readAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 92,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 28012,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "_diskParamCommon call then delegates to _physicalDisk readAsyncAt:; instruction-identical (no actualLength param, so no zeroing needed or present).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 92,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28104,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW writeAt:length:buffer:actualLength:client:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 122,
+      "source_line": 237,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 28228,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "reason": "isWriteProtected + _diskParamCommon checks then delegates to _physicalDisk writeAsyncAt:; instruction-identical (no actualLength param).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 122,
+      "source_line": 281,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28352,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW connectToPhysicalDisk:]"
+      ],
+      "reason": "Copies isRemovable/isFormatted/isWriteProtected/devAndIdInfo from diskId, sets _physicalDisk (0x134), clears logical disk chain; matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 181,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28536,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW setPartitionBase:]"
+      ],
+      "reason": "Sets _partitionBase at offset 0x138; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28556,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW isOpen]"
+      ],
+      "reason": "isInstanceOpen -> nextLogicalDisk nil check -> recursive isOpen; matches (reference re-fetches nextLogicalDisk rather than reusing, semantically identical).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 99,
+      "source_line": 101,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28656,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW free]"
+      ],
+      "reason": "Frees nextLogicalDisk if present then [super free]; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 81,
+      "source_line": 54,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28740,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW physicalDisk]"
+      ],
+      "reason": "Returns _physicalDisk at offset 0x134; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 74,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28756,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW isAnyOtherOpen]"
+      ],
+      "reason": "Walks the chain from _physicalDisk, skipping self, checking isInstanceOpen; matches (loop-rotated in the reference, semantically identical).",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 89,
+      "source_line": 126,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28848,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW isInstanceOpen]"
+      ],
+      "reason": "Returns _instanceOpen at offset 0x13c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 17,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28868,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW setInstanceOpen:]"
+      ],
+      "reason": "Sets _instanceOpen (boolean-normalized) at offset 0x13c; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 23,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28892,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOLogicalDiskNEW _diskParamCommon:length:deviceOffset:bytesToMove:]"
+      ],
+      "reason": "Block-size-multiple check, in-bounds/truncation logic, and deviceOffset/bytesToMove formulas all match the reference exactly, including operation order.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 205,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOLogicalDiskNEW.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29100,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW completeTransfer:withStatus:actualLength:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 65,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 29168,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW devAndIdInfo]"
+      ],
+      "reason": "Returns _devAndIdInfo at offset 0x118; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 22,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 29184,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW setDevAndIdInfo:]"
+      ],
+      "reason": "Sets _devAndIdInfo at offset 0x118; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 29204,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW blockDev]"
+      ],
+      "reason": "Returns devAndIdInfo->blockDev at offset 0x24 within the struct; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 29224,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW rawDev]"
+      ],
+      "reason": "Returns devAndIdInfo->rawDev at offset 0x20 within the struct; instruction-identical.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 29244,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW registerUnixDisk:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 85,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 29332,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IODiskNEW unregisterUnixDisk:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 94,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/kernelDiskMethodsNEW.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 29428,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk constructRequest:blockStart:byteCount:buffer:bufferMap:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 490,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 29920,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk freeRequest:]"
+      ],
+      "reason": "Frees lockObject then IOFrees the request with its stored size, matching the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 40,
+      "source_line": 707,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 29960,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk executeRequest:]"
+      ],
+      "reason": "Bounds check, ready/not-ready subrequest dispatch, dequeue/execute/wait loop and abort/completion status handling match the reference on the sampled sections; only objc_msgSend is called, no kernel APIs.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 732,
+      "source_line": 441,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 30692,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk checkCylinderStateForSubrequest:]"
+      ],
+      "reason": "State==3 enqueue path, write-ready and read-ready branches all match the reference field-for-field.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 256,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 30948,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk popSubrequestsOnCylinder:]"
+      ],
+      "reason": "Dequeue-from-cylinder-queue, enqueue-to-parent-ready-queue, imposeCylinderState call, and processedOne/isWrite stop condition match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 347,
+      "source_line": 768,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 31296,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk abortSubrequestsOnCylinder:]"
+      ],
+      "reason": "Doubly-linked queue unlink loop, parent-request abort flag, and lock/unlockWith:1 sequence match the reference, including the per-iteration cacheMetadata reload.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 241,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 31540,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk imposeCylinderStateForSubrequest:]"
+      ],
+      "reason": "Read (state=1, refcount++) vs write (state=2) branches match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 78,
+      "source_line": 730,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 31620,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk unimposeCylinderStateForSubrequest:]"
+      ],
+      "reason": "Read refcount-decrement/state-clear path and write dirty-flag/enqueue-write-operation path both match the reference, including the empty/non-empty queue append logic.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 263,
+      "source_line": 862,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 31884,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk executeSubrequest:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 210,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 32096,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk setUpCache]"
+      ],
+      "reason": "cacheSize/metadataSize computation, vm_allocate/IOMalloc argument order, failure cleanup, and per-cylinder metadata initialization (including the self-pointing queue sentinel at offset+8) match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 260,
+      "source_line": 55,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Support.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 32356,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk releaseCache]"
+      ],
+      "reason": "vm_deallocate/IOFree argument order and field clearing match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 119,
+      "source_line": 18,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Support.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 32476,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_dowire"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 61,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 32540,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_docopy"
+      ],
+      "reason": "Page-boundary chunking and vm_map_pmap_EXTERNAL/pmap_resident_extract/bcopy call sequence match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 146,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Request.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 32688,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_OperationThreadStartup"
+      ],
+      "reason": "Calls [self operationThread] then IOExitThread(), matching the two-call reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 27,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/IOFloppyDisk.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 32716,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk operationThread]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 2734,
+      "source_line": 745,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 35452,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk getReadModeFromConfigTable:]"
+      ],
+      "reason": "ahead/normal/default/demand string matching order, return values, and the validMode/log-on-unknown logic (reconstructed via a repurposed register in the reference) all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 197,
+      "source_line": 617,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 35652,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk getWriteModeFromConfigTable:]"
+      ],
+      "reason": "eject/normal/default/behind/immediate/soon string matching order, return values, and validMode/log-on-unknown logic match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 257,
+      "source_line": 676,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 35912,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk bringCylinderOnline:isFormatted:]"
+      ],
+      "reason": "isFormatted selects readCylinder:data: vs formatCylinder:data: exactly as in the reference; error-flag update, popSubrequestsOnCylinder call, IOSleep, and failure logging all match.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 279,
+      "source_line": 413,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 36192,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk commitDirtyCylinder:]"
+      ],
+      "reason": "Dirty-flag clear, writeCylinder:data: call, and failure path (log + restore dirty flag) match the reference.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 227,
+      "source_line": 557,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 36420,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDisk clearOperationsOnQueue:]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 130,
+      "source_line": 489,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 36552,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_strlower"
+      ],
+      "reason": "The (*str+0xBF)<0x1A uppercase test and in-place +0x20 conversion match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 33,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 36588,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_queueOperationAscending"
+      ],
+      "reason": "Duplicate detection, empty-queue insert, head-insert, and middle-insert branches all match the reference's ascending (operation[1] < current[1]) comparison.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 149,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 36740,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_queueOperationDecending"
+      ],
+      "reason": "Identical structure to queueOperationAscending with the reference's descending (current[1] < operation[1]) comparison correctly reproduced.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 149,
+      "source_line": 180,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 36892,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_sweepQueueInsert"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 50,
+      "source_line": 271,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 36944,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "_sweepQueueReorder"
+      ],
+      "reason": "Both the ascending-to-descending and descending-to-ascending migration loops, including their equal-cylinder tie-break conditions, match the reference exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 189,
+      "source_line": 315,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Thread.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 37136,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive registerVolCheck]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 65,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 37204,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive unregisterVolCheck]"
+      ],
+      "reason": "diverges; see reconstruction/divergences.md",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 16,
+      "source_line": 137,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 37220,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive isFormatted]"
+      ],
+      "reason": "Returns _flags & 1, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37240,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive isRemovable]"
+      ],
+      "reason": "Returns constant YES, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": 63,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37252,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive isWriteProtected]"
+      ],
+      "reason": "Returns _flags & 4, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 19,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37272,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive needsManualPolling]"
+      ],
+      "reason": "Returns !canPollInexpensively via setz, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 33,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37308,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive isPhysical]"
+      ],
+      "reason": "Returns YES when _regFlags bit 1 clear, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 30,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37340,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive nextLogicalDisk]"
+      ],
+      "reason": "Delegates to [_nextLogicalDisk nextLogicalDisk], matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 29,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37372,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive updatePhysicalParameters]"
+      ],
+      "reason": "Returns constant 0, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 9,
+      "source_line": 149,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37384,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive diskBecameReady]"
+      ],
+      "reason": "Empty function, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 7,
+      "source_line": 29,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37392,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive updateReadyState]"
+      ],
+      "reason": "pollMedia call and 0/2 result mapping match exactly.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 36,
+      "source_line": 160,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37428,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "-[IOFloppyDrive abortRequest]"
+      ],
+      "reason": "Empty function, matches.",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 7,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/VolCheck.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 37436,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[FloppyKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated: emitted by kl_ld or libgcc, no hand-written source",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 37448,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "+[FloppyVersion driverKitVersionForFloppy]"
+      ],
+      "reason": "build-generated: emitted by kl_ld or libgcc, no hand-written source",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 37460,
+      "analyzer_agreement": null,
+      "artifacts": [],
+      "names": [
+        "__udivdi3"
+      ],
+      "reason": "build-generated: emitted by kl_ld or libgcc, no hand-written source",
+      "reviewer": "drvPCFloppy report pass",
+      "size": 264,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": "F509844101505EEEBA4F7E804FA4C0A4A24D220B9A4224FF130199758AA73679",
+  "reference_sha256": "49608BD40A302A9A3541F9E37202DEEA871C30CD6CECFE8ABB99D75BDC1D8252",
+  "schema_version": "ledger-v1"
+}

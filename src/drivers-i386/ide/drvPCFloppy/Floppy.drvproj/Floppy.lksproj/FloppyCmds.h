@@ -78,9 +78,9 @@
 /*
  * External DMA functions
  */
-extern unsigned int _get_dma_addr(int channel);
-extern unsigned int _get_dma_count(int channel);
-extern void _dma_xfer_abort(void *dmaStruct);
+extern unsigned int get_dma_addr(int channel);
+extern unsigned int get_dma_count(int channel);
+extern void dma_xfer_abort(void *dmaStruct);
 
 #endif // _BSD_DEV_I386_FLOPPYCMDS_H_
 

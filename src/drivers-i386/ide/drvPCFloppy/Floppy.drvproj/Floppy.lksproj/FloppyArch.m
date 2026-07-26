@@ -16,12 +16,11 @@
 #define _dma_mask_chan		dma_mask_chan
 #define _dma_chan_xfer_mode	dma_chan_xfer_mode
 #define _is_dma_done		is_dma_done
-#define _get_dma_count		get_dma_count
 
 extern unsigned int page_size;
 /* Decompiled VM helpers used by this file (1-arg extract). */
-extern unsigned int _vm_map_pmap_EXTERNAL(unsigned int map, unsigned int addr);
-extern unsigned int _pmap_resident_extract(unsigned int pmap);
+extern unsigned int vm_map_pmap_EXTERNAL(unsigned int map, unsigned int addr);
+extern unsigned int pmap_resident_extract(unsigned int pmap);
 
 @implementation FloppyController(Arch)
 
@@ -66,8 +65,8 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address from virtual address
-	pmap = _vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)_pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
+	physAddr = (void *)pmap_resident_extract(pmap);
 
 	result = 0;
 
@@ -101,9 +100,9 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 			}
 
 			// Get physical address of bounce buffer
-			pmap = _vm_map_pmap_EXTERNAL((unsigned int)kernel_map,
+			pmap = vm_map_pmap_EXTERNAL((unsigned int)kernel_map,
 			                              (unsigned int)_dmaBuffer);
-			physAddrInt = _pmap_resident_extract(pmap);
+			physAddrInt = pmap_resident_extract(pmap);
 			dmaStruct->physAddr = physAddrInt;
 		} else {
 			// EISA - use buffer directly
@@ -190,8 +189,8 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address
-	pmap = _vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)_pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
+	physAddr = (void *)pmap_resident_extract(pmap);
 
 	// Wait for DMA to complete (up to 2 retries with 2ms delay)
 	retries = 2;
@@ -213,7 +212,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	_dma_mask_chan(2);
 
 	// Get remaining byte count from DMA controller
-	remainingCount = _get_dma_count(2);
+	remainingCount = get_dma_count(2);
 
 	// Get requested byte count (offset 0x24)
 	requestedBytes = *(unsigned int *)((char *)cmdParams + 0x24);

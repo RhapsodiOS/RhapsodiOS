@@ -74,7 +74,7 @@
 	}
 
 	// Convert IOReturn to errno and set in buffer
-	errno = [self _errnoFromReturn:status];
+	errno = [self errnoFromReturn:status];
 	bp->b_error = errno;
 
 	// Calculate residual count (bytes not transferred)

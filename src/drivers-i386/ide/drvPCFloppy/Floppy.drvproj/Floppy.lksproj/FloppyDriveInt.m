@@ -15,8 +15,8 @@
 extern unsigned int __page_size;
 extern unsigned int __page_mask;
 extern vm_map_t __kernel_map;
-extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
-extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
+extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 
 /*
  * floppyMalloc - Allocate page-aligned memory for DMA
@@ -68,8 +68,8 @@ static void *floppyMalloc(unsigned int size,
 	*allocSizeOut = allocSize;
 
 	// Get physical address of the allocation
-	pmap = _vm_map_pmap_EXTERNAL(__kernel_map, allocAddr);
-	physAddr = _pmap_resident_extract(pmap, allocAddr);
+	pmap = vm_map_pmap_EXTERNAL(__kernel_map, allocAddr);
+	physAddr = pmap_resident_extract(pmap, allocAddr);
 
 	// Calculate offset from physical address to next page boundary
 	// (-__page_size & physAddr) rounds down to page boundary

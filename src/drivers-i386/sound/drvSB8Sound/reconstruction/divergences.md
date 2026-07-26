@@ -767,7 +767,11 @@ name:
 | Driver | Our `"Help File"` | Our bundle | Apple's shipped bundle |
 | --- | --- | --- | --- |
 | drvBeepSound | `Beep.rtfd` | `DriverHelp/Beep.rtfd` | `Help/Beep.rtfd` |
-| **drvSB8Sound** | **`SB8.rtfd`** | **`DriverHelp/SB8_3_31.rtfd`** | **`Help/SB8.rtfd`** |
+| **drvSB8Sound** | **`SB8.rtfd`** | **`Help/SB8.rtfd`** (was `DriverHelp/SB8_3_31.rtfd`) | **`Help/SB8.rtfd`** |
+
+The "our bundle" column is the path inside the *built* `.config`. For the other three that
+is still the source directory name `DriverHelp`, because only drvSB8Sound enables the
+rename described below.
 | drvES1x88Sound | `ES1x88_3_30.rtfd` | `DriverHelp/ES1x88_3_30.rtfd` | `Help/ES1x88_3_30.rtfd` |
 | drvSB16Sound | `SB16_3_31.rtfd` | `DriverHelp/SB16_3_31.rtfd` | `Help/SB16_3_31.rtfd` |
 
@@ -777,8 +781,9 @@ from a different revision of the driver.
 
 **Disposition: RESOLVED in Task 6 by renaming our bundle.**
 `English.lproj/DriverHelp/SB8_3_31.rtfd` → `English.lproj/DriverHelp/SB8.rtfd`. That makes
-our tree self-consistent *and* matches Apple's shipped layout on both the table value and
-the bundle name, so it diverges from Apple in neither. The alternative — changing the
+our tree self-consistent *and* matches Apple's shipped layout on the table value and the
+bundle name. It did not by itself fix the enclosing directory — Apple's `Help/` versus our
+`DriverHelp/` — which is dealt with separately below. The alternative — changing the
 table back to `"SB8_3_31.rtfd"` — was rejected: it would reintroduce the very
 `Default.table` divergence Task 2 removed, and would be a choice to diverge rather than a
 forced one.
@@ -786,7 +791,31 @@ forced one.
 `DriverHelp/TableOfContents.rtf` was the only other reference to the old name; its
 `\linkFilename` now reads `SB8.rtfd`, matching Apple's shipped table of contents. The
 project's `LOCAL_RESOURCES` names the `DriverHelp` directory rather than the bundle inside
-it, so no makefile needed touching, and the rebuilt bundle stages as
-`SoundBlaster8.config/English.lproj/DriverHelp/SB8.rtfd`.
+it, so the rename itself needed no makefile change.
+
+The enclosing directory was a second, separate divergence: Apple ships
+`English.lproj/Help/`, we staged `English.lproj/DriverHelp/`. The NEXTSTEP-era
+`Makefile.postamble` had a `bundle all::` rule that renamed it, but that rule was part of
+the aggregate build break repaired earlier in Task 6, and it could not have worked as
+written anyway — under `pb_makefiles` `PRODUCT_ROOT` is `PRODUCT_DIR`, the directory
+*containing* the `.config`, not the bundle root. `driver.make` already carries the correct
+rule (`movehelp`, with `HELP_FILE = Help` and `SOURCE_HELP_DIR = DriverHelp`) but never
+wires it up, so `SoundBlaster8.drvproj/Makefile.preamble` now does:
+
+```make
+AFTER_BUILD += movehelp
+```
+
+It goes in the preamble, not the postamble, because `build.make` expands `$(AFTER_BUILD)`
+into `local-build`'s prerequisites when `common.make` is read — between the two includes.
+With that, the built bundle is `SoundBlaster8.config/English.lproj/Help/SB8.rtfd`,
+matching Apple on the table value, the bundle name, *and* the enclosing directory. The
+rename is repeatable: `copy-local-resources` re-copies `DriverHelp` on every build and
+`movehelp` removes any existing `Help` first, so consecutive builds both exit 0.
+
+One residual cosmetic difference: `vm/build-i386-sound-recon.sh` copies `English.lproj`
+out of the *source* project rather than the built `.config`, so the tree under
+`out/i386/drvSB8Sound/` still shows `DriverHelp/`. That is a staging-script artifact, not
+a property of the driver bundle.
 
 This finding never touched any of the 29 functions, so it has no ledger entry.

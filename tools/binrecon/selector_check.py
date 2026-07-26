@@ -52,11 +52,27 @@ def _outside_parens(text):
 
 
 def _selector(signature):
+    """Extract the selector from a method signature, types and argument names removed.
+
+    Apple declares some methods with empty keywords — `initFromDeviceDescription::::`
+    is a real selector in the reference binary. Once the parenthesised types are
+    gone, each colon is followed by its argument name and then, optionally, the
+    next keyword. Matching `(\\w*)\\s*:` would capture the argument name as the
+    keyword and silently turn `foo:::` into `foo:a:b:`, so walk the segments
+    instead: in every segment after the first, the argument name is the leading
+    word and the keyword is whatever word follows it, or nothing.
+    """
     body = _outside_parens(signature).strip()
-    if ":" in body:
-        return "".join(part + ":" for part in re.findall(r"(\w*)\s*:", body))
-    words = body.split()
-    return words[0] if words else ""
+    if ":" not in body:
+        words = body.split()
+        return words[0] if words else ""
+
+    segments = body.split(":")
+    selector = segments[0].strip() + ":"
+    for segment in segments[1:-1]:
+        words = segment.split()
+        selector += (words[1] if len(words) > 1 else "") + ":"
+    return selector
 
 
 def source_methods(source_dir):

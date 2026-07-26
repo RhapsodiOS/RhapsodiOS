@@ -1,0 +1,14 @@
+###############################################################################
+#  Makefile.preamble
+#
+#  Use this makefile for configuring the standard driver makefiles associated
+#  with ProjectBuilder.
+#
+###############################################################################
+
+# Ship the help as English.lproj/Help, the way Apple's SoundBlaster8.config
+# does, instead of leaving the source name DriverHelp in the bundle.
+# driver.make already defines `movehelp' for this (HELP_FILE = Help,
+# SOURCE_HELP_DIR = DriverHelp) but never wires it up.  AFTER_BUILD has to be
+# set before common.make expands it, so this belongs in the preamble.
+AFTER_BUILD += movehelp

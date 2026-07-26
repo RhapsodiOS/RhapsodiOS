@@ -5,3 +5,13 @@
 #  Use this makefile for adding commands to be run at the end of the build.
 #
 ###############################################################################
+
+# Install the package description alongside the driver.  `after_install' is
+# only ever a prerequisite in pb_makefiles (compatibility.make), never a
+# single-colon target, so a double-colon rule here is safe.
+after_install::
+	if [ ! -d $(DSTROOT)/usr/local/InfoFiles ]; then \
+		$(MKDIRS) $(DSTROOT)/usr/local/InfoFiles;\
+	fi
+	cp $(SRCROOT)/$(NAME).info \
+		$(DSTROOT)/usr/local/InfoFiles/$(NAME).info

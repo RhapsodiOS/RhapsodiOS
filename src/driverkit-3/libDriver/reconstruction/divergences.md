@@ -28,13 +28,18 @@ useful output is the small set of places where the two genuinely differ, and the
 places where *our tree's supporting headers* — which are not Apple's — change what
 that source compiles into.
 
-That last category turned out to be where every real divergence lives.
+That last category is where this document originally placed every real
+divergence. A build has since shown that the supporting headers are *not* what
+changes the emitted code here (see Findings 1 and 2); the divergences are real,
+but attributing them to the headers was wrong.
 
 ## Baseline build
 
-**No build was performed as part of this pass, and no build host is reachable.**
-No parity run, no rebuilt artifact, no `assembly-matched` claim. Nothing in this
-document estimates or invents build output.
+**No build was performed as part of the report or fix passes, and no build host
+was reachable then.** No parity run, no rebuilt artifact, no `assembly-matched`
+claim. Nothing in this document estimates or invents build output. (A build has
+since been performed, by the verification pass described at the end of this
+section. It falsified the fix pass's central prediction; see Findings 1 and 2.)
 
 One artifact that already exists on disk is used, and only as a labelled
 cross-check: `out/i386/mach_kernel`, 1468416 bytes, SHA-256
@@ -51,6 +56,40 @@ twenty-four reference methods could be disassembled on both sides and compared
 instruction by instruction. Ten of those thirteen decode to **identical mnemonic
 and encoding-length sequences**, differing only in link-time absolute addresses.
 The three that do not are Findings 1 and 2.
+
+### The verification build, and what it falsified
+
+A build host was subsequently reached and **six kernel builds were made** in
+order to test the fix pass's prediction that declaring `@interface PCIKernBus`
+would change the emitted code. It does not. The prediction was wrong, and the
+detail is recorded here because the *procedure* took five attempts to get right
+and every wrong attempt looked like a success.
+
+The final build satisfies every precondition:
+
+- `out/i386/mach_kernel`, built 2026-07-26 11:02, SHA-256
+  `DA6E06AE910CFDC48BA33B8648CBCFB74EE7DCBC904BBA180B9CD86DA06F02AD`. This
+  supersedes the unproven-provenance artifact described above; its provenance
+  *is* known.
+- The updated header is installed where the compiler actually reads it.
+  `grep -c isPCIPresent
+  /System/Library/Frameworks/System.framework/PrivateHeaders/driverkit/i386/PCIKernBus.h`
+  returns **1**.
+- GCC's `-H` include trace confirms it opens *that* file, not the source-tree
+  copy, while compiling the affected modules.
+- The affected objects were force-recompiled: `touch` on the five `.m` files
+  under `libDriver/pci` and `libDriver/pcmcia`, after a prior `gnumake clean`.
+
+The result, measured in that kernel:
+
+- `-[IOPCIDeviceDescription(Private) _initWithDelegate:]` is still at
+  `0x20A2F0` — **the same address it held in every one of the six builds** — and
+  still contains `83 f8 01` (`cmp eax, 1`), with no `3c 01` anywhere in it.
+- All four `ConfigSpace` methods still lack `0f b6 c3` (`movzx eax, bl`).
+
+Apple's reference does have `3c 01` and `0f b6 c3` at those sites; that half of
+the comparison was always correct and is unchanged. **What is falsified is the
+stated cause.** Declaring the interface does not produce Apple's codegen.
 
 ## Summary
 
@@ -86,16 +125,24 @@ the convention established by the driver passes: a method known to diverge is
 written up here rather than given a status it has not earned. The other nineteen
 are `control-flow-confirmed`. None is `assembly-matched`; that requires a rebuilt
 binary and no build was run. (Those counts are as of the report pass. The fix
-pass advanced four of the five; see Post-fix parity below.)
+pass advanced four of the five; the verification pass then reset three of those
+four to `unexamined` when the build falsified the fix. Twenty are
+`control-flow-confirmed` today and four are `unexamined`. See Post-fix parity
+below.)
 
-Six findings follow. Findings 1 to 3 share one root cause — two kernel-side bus
-headers in our tree are stubs — and are the only behavioural divergences found.
-Finding 4 is a source typo with tooling consequences, Finding 5 is an accepted
-later-Apple addition, Finding 6 is accepted dead code.
+Six findings follow. Findings 1 to 3 were believed to share one root cause — two
+kernel-side bus headers in our tree are stubs — and are the only behavioural
+divergences found. **That shared root cause has since been tested and
+disproved for Findings 1 and 2**, and is therefore in doubt for Finding 3; the
+divergences themselves are all still real. Finding 4 is a source typo with
+tooling consequences, Finding 5 is an accepted later-Apple addition, Finding 6
+is accepted dead code.
 
 The headline: **the five modules' own source text is faithful to DR2 down to the
 instruction in every place it could be checked.** Every divergence found is
-caused by something outside those five files.
+caused by something outside those five files — but *what*, exactly, is no longer
+answered. The header explanation was the answer this document gave, and a build
+disproved it.
 
 ## Scoping
 
@@ -310,12 +357,16 @@ one more has two.
 120 75 25   jnz loc_1FD5B3         ; -> leave private->valid at 0
 ```
 
-**Ours**, at the corresponding point in `out/i386/mach_kernel` (`0x20A366`):
+**Ours**, at the corresponding point in `out/i386/mach_kernel` (`0x20A366`, in
+the function at `0x20A2F0`):
 
 ```
 83 F8 01   cmp eax, 1
 75 25      jnz ...
 ```
+
+This was measured in the original artifact and re-measured, unchanged, in the
+verification build after the header fix.
 
 **Difference:** the reference compares `al`, ours compares the whole of `eax`.
 The two functions are otherwise instruction-for-instruction identical — 67
@@ -323,16 +374,49 @@ instructions each, same order, same encoding lengths — and this single byte is
 the entire size difference between them, 176 bytes in the reference against 177
 in ours.
 
-**Root cause:** `src/kernel-7/driverkit/i386/PCIKernBus.h` in our tree is a stub.
-Its `HISTORY` block reads `11 Oct 2025 raynorpat / Created proper PCI bus support
-for i386`, and past the licence header its entire body is one `#import` and four
-`#define`s of resource-key strings.
-**It declares no `@interface PCIKernBus` and no methods at all.** With no
+**The divergence is real and is still present.** It was re-measured in the
+verification build (`DA6E06AE...`, see Baseline build): `83 f8 01` is still
+there and `3c 01` is still absent. Nothing below softens that.
+
+**Root cause: not established. The stated cause was tested and is wrong.**
+
+This document previously asserted the cause with confidence, and that assertion
+has been falsified by measurement. What it said:
+`src/kernel-7/driverkit/i386/PCIKernBus.h` in our tree was a stub — past the
+licence header, one `#import` and four `#define`s of resource-key strings, **no
+`@interface PCIKernBus` and no method declarations at all** — so with no
 declaration of `isPCIPresent` in scope at `IOPCIDeviceDescription.m:78`, GCC
-assumes the message returns `id` and compares 32 bits. Apple's DR2 build had a
-declaration returning `BOOL`, so it compared 8. That the declaration is genuinely
-absent is not an inference: `cmp eax, 1` in our own binary proves GCC found no
-signature for the selector, since it emits `cmp al, 1` whenever it has one.
+assumed the message returned `id` and compared 32 bits. The inference drawn from
+that was: restore the interface and GCC will emit `cmp al, 1`.
+
+**It does not.** The interface was restored, installed, and the objects
+force-recompiled, and the emitted code is byte-identical to before — same
+address, same `83 f8 01`. The reasoning that "`cmp eax, 1` proves GCC found no
+signature, since it emits `cmp al, 1` whenever it has one" was the load-bearing
+step, and it is false: GCC found a signature in the final build and still emitted
+`cmp eax, 1`.
+
+**Replacement hypothesis — untested.** Both divergent call sites message an
+untyped receiver:
+
+- `src/driverkit-3/libDriver/pci/IOPCIDeviceDescription.m:70` —
+  `id thePCIBus = [KernBus lookupBusInstanceWithName:"PCI" busId:0];`
+- `src/driverkit-3/libDriver/pci/IOPCIDirectDevice.m:59` —
+  `id thePCIBus = getThePCIBus();`
+
+With an `id` receiver, this vintage of GCC appears not to apply any declared
+method signature at all: it assumes an `id`-sized return and default argument
+promotion no matter how many visible headers declare the selector. That would
+explain Findings 1 and 2 together, and would explain why installing the
+declaration changed nothing. It implies Apple compiled these sites with a
+*typed* receiver — `PCIKernBus *thePCIBus` — which is what makes the signature
+reachable.
+
+**This is a hypothesis and has not been tested.** The experiment is concrete and
+is the next thing to run: change those two declarations from `id` to
+`PCIKernBus *`, rebuild, and re-check the same byte patterns —
+`3c 01` in `_initWithDelegate:` and `0f b6 c3` in the four `ConfigSpace`
+methods. Until that is run, nothing here should be repeated as the cause.
 
 For contrast, the driver-side copy of the same header,
 `src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.h`, does
@@ -363,27 +447,34 @@ intermittent-failure scenario this finding previously described —
 `private->valid` left `NO` and `getPCIdevice:function:bus:` returning
 `IO_R_NO_DEVICE` — is not demonstrated by this build and is contradicted by it.
 
-What is real is the exposure: with no declaration in scope, GCC cannot know the
-method returns `BOOL`, so nothing in the source enforces that `isPCIPresent`'s
-upper 24 bits stay zero. The ABI only defines `al` for a `char`/`BOOL` return, so
-a conforming implementation is free to leave garbage above it, and such an
-implementation would break under `cmp eax, 1`. Today's callee happens to
-zero-extend; nothing in the type system guarantees the next one will.
+What is real is the exposure: nothing in the source enforces that
+`isPCIPresent`'s upper 24 bits stay zero. The ABI only defines `al` for a
+`char`/`BOOL` return, so a conforming implementation is free to leave garbage
+above it, and such an implementation would break under `cmp eax, 1`. Today's
+callee happens to zero-extend; nothing guarantees the next one will. The
+verification build shows the exposure is *not* closed by the header, since the
+compare is still 32-bit.
 
-The fix belongs in the header, not in the module: restore an `@interface
-PCIKernBus` declaring at least `isPCIPresent`, `configAddress:device:function:bus:`,
-`getRegister:device:function:bus:data:` and `setRegister:device:function:bus:data:`,
-with the signatures the driver-side header already carries. It removes a real
-fragility even though it is not causing a failure today. Finding 2 is fixed by
-the same change.
+**Outcome: the header was changed, the change stays, and the prediction it was
+made on was wrong.**
 
-**Outcome:** fixed in commit `99a55c1b`. `src/kernel-7/driverkit/i386/PCIKernBus.h`
-now carries an `@interface PCIKernBus : KernBus` declaring the eleven methods the
-shipped `PCIBus_reloc` metadata attests, `- (BOOL)isPCIPresent;` among them, so
-`IOPCIDeviceDescription.m:78` has a `BOOL` signature in scope and should emit
-`cmp al, 1`. No ivars are declared kernel-side; the kernel only messages the
-object. Ledger `0x1FD514` advanced `unexamined` -> `control-flow-confirmed`. Not
-`assembly-matched`: no build was run, so the predicted `cmp al, 1` is unverified.
+`src/kernel-7/driverkit/i386/PCIKernBus.h` now carries an `@interface
+PCIKernBus : KernBus` declaring the eleven methods the shipped `PCIBus_reloc`
+metadata attests, `- (BOOL)isPCIPresent;` among them (commit `99a55c1b`). No
+ivars are declared kernel-side; the kernel only messages the object.
+
+That edit stays, on its own terms: a header describing a class should declare
+the class, and the driver-side copy
+(`src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIKernBus.h`)
+already does. But it was justified here as *the fix for this divergence*, and it
+is not. The fix pass predicted the emitted code would change to `cmp al, 1`; the
+verification build shows it did not, and
+`-[IOPCIDeviceDescription(Private) _initWithDelegate:]` did not even move from
+`0x20A2F0`.
+
+The ledger has been corrected accordingly: `0x1FD514` is back to `unexamined`,
+which is what a known, unexplained divergence is entitled to under this
+document's own convention.
 
 ## Finding 2: the config-register number is not narrowed before `getRegister:` / `setRegister:`
 
@@ -415,33 +506,57 @@ the two class methods. Everything else in both functions matches exactly, same
 order and encodings, and this is the whole of the size difference: 178 bytes
 against 175, and 180 against 177.
 
-**Root cause:** the same stub `PCIKernBus.h` as Finding 1. The reference's
+**The divergence is real and is still present.** All four `ConfigSpace` methods
+were re-checked in the verification build (`DA6E06AE...`, see Baseline build) and
+none of them contains `0f b6 c3`.
+
+**Root cause: not established. The stated cause was tested and is wrong.**
+
+The stated cause was the same stub `PCIKernBus.h` as Finding 1: the reference's
 `getRegister:` declares its first parameter as `unsigned char` (the driver-side
 header still does, at line 82), so GCC converts the `int address` loop counter at
-the call site. With no declaration in scope our build applies the default
-argument promotions and pushes the `int` whole.
+the call site, and with no declaration in scope our build applies the default
+argument promotions and pushes the `int` whole. The prediction was that
+declaring the parameters `unsigned char` would produce `movzx eax, bl`.
+
+**It does not.** The declarations were added, installed and force-recompiled;
+the four methods still push the full 32-bit int. The replacement hypothesis is
+the same one set out under Finding 1 — the receiver at
+`IOPCIDirectDevice.m:59` is an untyped `id`, and this GCC appears to ignore
+declared signatures entirely for an `id` receiver, applying default argument
+promotion regardless. **Untested**, and to be tested by the same experiment:
+type the receiver as `PCIKernBus *`, rebuild, look for `0f b6 c3`.
 
 Note that `+[IODirectDevice getPCIConfigData:atRegister:withDeviceDescription:]`
 does *not* diverge here — both binaries emit `movzx eax, [ebp+var_8]` — because
 that method's *own* parameter is declared `(unsigned char)address` in
 `driverkit/i386/IOPCIDirectDevice.h`, which our tree does have. The divergence
-only appears where the narrowing has to come from the callee's declaration.
+only appears where the narrowing has to come from the callee's declaration,
+reached through an `id` receiver — which is consistent with the replacement
+hypothesis, though it does not test it.
 
 **Disposition:** fix
 
 **Rationale:** lower severity than Finding 1 and worth saying so. The callee reads
 its parameter as `unsigned char` off the stack, i386 is little-endian, and the
 loop counter only ever holds 0 to 252, so the byte actually delivered is correct
-today and the behaviour is identical. What makes it worth fixing is that it is the
-same one-line header change as Finding 1, and that the current state means the
-compiler is type-checking none of these four calls — a future argument-order or
-type error in `getRegister:device:function:bus:data:` would pass silently.
+today and the behaviour is identical. The reason originally given for fixing it —
+that it is the same one-line header change as Finding 1 — no longer carries any
+weight, because that change has been shown not to affect the emitted code. What
+remains is that the compiler is type-checking none of these four calls, and a
+future argument-order or type error in `getRegister:device:function:bus:data:`
+would pass silently.
 
-**Outcome:** fixed in commit `99a55c1b`, by the same header. `getRegister:` and
-`setRegister:` now declare their first four parameters `unsigned char`, matching
-the reference's `i28@8:12C16C20C24C28^L32` and `...L32`, so the `int address`
-loop counter should be narrowed at the call site. Ledger `0x1FD154` and
-`0x1FD248` advanced `unexamined` -> `control-flow-confirmed`.
+**Outcome: the header was changed, the change stays, and the prediction it was
+made on was wrong.**
+
+`getRegister:` and `setRegister:` now declare their first four parameters
+`unsigned char` in `src/kernel-7/driverkit/i386/PCIKernBus.h` (commit
+`99a55c1b`), matching the reference's `i28@8:12C16C20C24C28^L32` and `...L32`.
+The declarations are correct and stay. The fix pass predicted the call sites
+would gain `movzx eax, bl`; the verification build shows they did not.
+
+Ledger `0x1FD154` and `0x1FD248` have been reset to `unexamined`.
 
 ## Finding 3: `unmapAttributeMemory` will hit the same undeclared-`BOOL` problem
 
@@ -489,6 +604,15 @@ construct in Finding 1. It is recorded as a finding rather than a certainty
 because the fix is the same header work and skipping it would leave a known
 exposure undocumented.
 
+**The mechanism this prediction borrows is the one that was disproved.** Finding
+1's "no declaration in scope, therefore a 32-bit test" reasoning has been tested
+against a build and found not to hold (see Baseline build and Finding 1), so the
+part of this finding that says *why* `test eax, eax` would be emitted is no
+longer supported. `window` here is likewise an untyped `id`
+(`IOPCMCIADirectDevice.m:138`), which fits the replacement hypothesis, but that
+hypothesis is untested. The predicted divergence itself is unaffected either
+way; only its explanation is.
+
 The rest of the method matches the reference on a control-flow read and is
 recorded under "Examined with no divergence found".
 
@@ -498,9 +622,11 @@ recorded under "Examined with no divergence found".
 a missed one. With `test eax, eax`, dirty bits above `al` make a false `BOOL`
 read as true, so a window that is *not* the attribute-memory window could be
 wrongly treated as one and torn down, while the real attribute-memory window is
-walked past unmatched. Fixing it is the same change as Findings 1 and 2 applied
-to the PCMCIA header. Whoever applies it should confirm the prediction against a
-build rather than assume it.
+walked past unmatched. Fixing it was assumed to be the same change as Findings 1
+and 2 applied to the PCMCIA header; that assumption is now unsafe, since the
+change did not fix Findings 1 or 2. Whoever applies it should confirm the
+prediction against a build rather than assume it — which is exactly what the
+fix pass failed to do for Findings 1 and 2.
 
 **Outcome:** not fixed; the finding stands. Commit `99a55c1b` does give
 `src/kernel-7/driverkit/i386/PCMCIAKernBus.h` a real `@interface PCMCIAKernBus`,
@@ -722,10 +848,15 @@ that order.
 
 ## Uncertainty and limits of this pass
 
-- **No build, no parity run, no `assembly-matched`.** Nineteen methods reach
-  `control-flow-confirmed` and that is the ceiling this pass can reach. Findings 1
-  and 2 are the only ones with instruction-level evidence on both sides, and even
-  they rest on an artifact of unproven provenance.
+- **No parity run and no `assembly-matched`.** `control-flow-confirmed` is still
+  the ceiling. Findings 1 and 2 are the only ones with instruction-level evidence
+  on both sides; that evidence now includes a build of known provenance
+  (`DA6E06AE...`), which is what falsified the fix.
+- **The cause of Findings 1 and 2 is unknown.** The one explanation this document
+  offered was tested against a build and disproved. The `id`-receiver hypothesis
+  under Finding 1 is the leading replacement and has not been tested. Anyone
+  citing this document for *why* the divergence exists should treat the question
+  as open.
 - **Eleven of twenty-four methods were compared at control-flow level only**,
   because the three PCMCIA modules are missing from our kernel — an upstream
   Darwin 0.3 omission, not a defect here (see The missing PCMCIA modules).
@@ -752,17 +883,19 @@ that order.
   `013c4787`.** The published analyses in `tools/binrecon/out/kernel-driverkit/`
   were produced under the old scope; a re-analysis under the corrected scope
   would be needed for that entry to clear.
-- **The two stub headers were not audited beyond what these five modules need.**
-  `src/kernel-7/driverkit/i386/PCIKernBus.h` and `.../PCMCIAKernBus.h` are stubs
-  in their entirety. The only other importer in the tree is
-  `src/kernel-7/driverkit/i386/autoconf_i386.m`, which was not examined; it is
-  exposed to the same class of problem as Findings 1 to 3.
+- **The two headers were not audited beyond what these five modules need.**
+  `src/kernel-7/driverkit/i386/PCIKernBus.h` and `.../PCMCIAKernBus.h` were
+  stubs in their entirety and now carry the interfaces described below. The only
+  other importer in the tree is `src/kernel-7/driverkit/i386/autoconf_i386.m`,
+  which was not examined.
 
 ## The two kernel bus interfaces, as written
 
 The header work behind Findings 1 to 3 is recorded here rather than only in the
 commit, because it is the one part of this pass that was not derived from the
-kernel reference.
+kernel reference. It stays in the tree — the declarations are correct and were
+read out of Apple's own shipped metadata — even though the build has since shown
+it does not fix Findings 1 and 2.
 
 Both interfaces come from the shipped bus drivers' Objective-C metadata, read out
 of `PCIBus.config/PCIBus_reloc` and `PCMCIABus.config/PCMCIABus_reloc` by walking
@@ -861,13 +994,16 @@ where they were found.
 
 ## Post-fix parity
 
-**No build was performed and no parity run was performed.** There is no route to
-a Rhapsody build host from here, which is the same reason the report pass could
-not run one. `binrecon compare` therefore had nothing to compare:
-`rebuilt_sha256` stays `null`, no entry is `assembly-matched`, and no number in
-this document was estimated to stand in for one.
+**No build was performed by the fix pass and no parity run was performed.**
+There was no route to a Rhapsody build host at the time, which is the same
+reason the report pass could not run one. `binrecon compare` therefore had
+nothing to compare: `rebuilt_sha256` stays `null`, no entry is
+`assembly-matched`, and no number in this document was estimated to stand in for
+one. A build has since been run by the verification pass (see Baseline build);
+it was a targeted byte check, not a parity run, so `rebuilt_sha256` is still
+`null`.
 
-Every change in this pass landed uncompiled. That includes two headers included
+Every change in the fix pass landed uncompiled. That includes two headers included
 by four `libDriver` modules and by `src/kernel-7/driverkit/i386/autoconf_i386.m`,
 so a mistake in them would surface in five translation units that nobody here can
 compile. In place of a build, the following were checked by reading:
@@ -893,9 +1029,64 @@ compile. In place of a build, the following were checked by reading:
   not enforced by anything.
 
 The consequence for the ledger is that `control-flow-confirmed` is the ceiling.
-Twenty-three of the twenty-four entries are there; `-[IODirectDevice
-unmapAttributeMemory]` at `0x1FD8C4` stays `unexamined` because Finding 3 is
-unfixed. The predicted code changes behind Findings 1 and 2 — `cmp al, 1` in
-`_initWithDelegate:`, `movzx eax, bl` before the two config-space loops — are
-predictions until a build confirms them, and confirming them is the first thing a
-build host should be used for.
+The fix pass left twenty-three of the twenty-four entries there, with
+`-[IODirectDevice unmapAttributeMemory]` at `0x1FD8C4` `unexamined` because
+Finding 3 is unfixed. The predicted code changes behind Findings 1 and 2 —
+`cmp al, 1` in `_initWithDelegate:`, `movzx eax, bl` before the two config-space
+loops — were predictions until a build confirmed them, and confirming them was
+named as the first thing a build host should be used for.
+
+### The ledger correction
+
+That is what a build host was used for, and the predictions did not hold. Three
+entries had been advanced to `control-flow-confirmed` on the strength of the
+prediction alone, and have been **reset to `unexamined`**:
+
+| Address | Method | Finding |
+| --- | --- | --- |
+| 2085204 / `0x1FD154` | `+[IODirectDevice getPCIConfigSpace:withDeviceDescription:]` | 2 |
+| 2085448 / `0x1FD248` | `+[IODirectDevice setPCIConfigSpace:withDeviceDescription:]` | 2 |
+| 2086164 / `0x1FD514` | `-[IOPCIDeviceDescription(Private) _initWithDelegate:]` | 1 |
+
+Their `analyzer_agreement.reasons` now record that the divergence is confirmed
+present in a real build, that the predicted fix was tested and did not change
+the emitted code, and that the cause is not established. The ledger now holds 20
+`control-flow-confirmed` and 4 `unexamined` across 24 entries. `0x1FDCD4`
+(Finding 4) keeps `control-flow-confirmed`; that fix was a source change with no
+codegen prediction attached to it.
+
+**This reset could not be made with the `binrecon ledger` CLI.**
+`tools/binrecon/binrecon/ledger.py:269` raises `backward ledger transition is
+forbidden`: the tool models evidence as only ever strengthening, and has no path
+for a measurement that falsifies an earlier inference. The three entries were
+therefore edited directly in `ledger.json`, preserving the file's canonical
+serialization (`sort_keys`, `(",", ":")` separators, trailing newline) and its
+sorted and unique invariants; the result was re-validated with
+`binrecon.ledger.validate_ledger` and the source map re-loaded, both clean.
+A reader comparing this file against the CLI's rules should know why it does not
+look like something the CLI produced.
+
+### Build-system facts, learned the hard way
+
+Two properties of this build silently produced stale kernels during the
+verification work, and cost four of the six builds. Anyone testing a header
+change in this tree should read these first.
+
+- **DriverKit headers are consumed from an installed copy, not from the source
+  tree.** The compiler reads
+  `/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/driverkit/...`,
+  so editing `src/kernel-7/driverkit/i386/PCIKernBus.h` has *no effect at all*
+  until the header is reinstalled. Verify with
+  `grep -c <symbol> /System/Library/Frameworks/System.framework/PrivateHeaders/driverkit/i386/PCIKernBus.h`
+  and confirm which file the compiler actually opens with GCC's `-H` include
+  trace. Do not assume the source-tree edit is what is being compiled.
+- **The build does not track header dependencies.** Updating the installed
+  header does not cause dependent objects to rebuild. The `.m` files must be
+  force-recompiled — `touch` them, after a `gnumake clean` if there is any
+  doubt — or the link will reuse objects compiled against the old header and the
+  resulting kernel will look exactly like a genuine negative result.
+
+Both failure modes produce a build that is byte-identical to the previous one,
+which is indistinguishable from "the change had no effect" — the very thing
+being measured. That is why six builds were needed to reach one trustworthy
+answer.

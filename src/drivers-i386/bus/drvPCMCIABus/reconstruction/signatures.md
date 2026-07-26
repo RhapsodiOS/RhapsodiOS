@@ -172,10 +172,40 @@ The reference pushes a literal `1` at both call sites, so Apple's source also
 had a constant whose four bytes are `present` alone; `{ 1 }` initialises the
 first bitfield and zeroes the rest, giving the same value.
 
-**Predictions this pass makes, all checkable in a rebuilt `PCMCIABus_reloc`:**
-the emitted encoding becomes `v16@8:12@16{?=b1b1b1b1b2b1b1}20`; the test becomes
-the reference's two instructions; the `socketNum` spill disappears; and both
-call sites emit `push 1`.
+**Predictions this pass made, and how they came out** in a rebuilt
+`PCMCIABus_reloc` (349164 bytes, 2026-07-26 19:26):
+
+| Prediction | Result |
+| --- | --- |
+| encoding becomes `v16@8:12@16{?=b1b1b1b1b2b1b1}20` | **held** — the `PCMCIAStatusChange` record is now identical to the reference's, selector and type both |
+| the test becomes the reference's instruction | **held** — `f6 45 14 01`, byte-identical, at the same position in the prologue |
+| the `socketNum` spill disappears | **failed** — it is still there, and the frame grew from `sub esp, 0x14` to `0x18` |
+| both call sites emit `push 1` | **held** — twice in `addAdapter:`, with the same surrounding instruction sequences |
+
+Both protocol records now match, and `__OBJC,__protocol` lists them in the
+reference's order, which the `PCMCIAAdapter` change corrected as a side effect.
+
+**Why the spill prediction failed, now measured rather than guessed.** It was
+never about the parameter's type. Before the verbose `IOLog`, the reference
+*re-sends* `socketNumber`:
+
+```
+0f b6 55 fc    movzx edx, byte ptr [ebp - 4]     ; currentStatus
+0f b6 55 14    movzx edx, byte ptr [ebp + 0x14]  ; changedStatus
+8b 35 ..       mov esi, [selector socketNumber]
+e8 ..          call objc_msgSend                 ; socket number again
+50             push eax
+```
+
+where ours pushes a cached `[ebp - 8]`. Our source assigns
+`socketNum = [socket socketNumber]` once at the top and reuses it across four
+logging sites; Apple's sends the message afresh each time. That local is what
+occupies the stack slot, so the spill is a consequence of the caching, not of
+this finding's change. It is the same construct as the 82365 driver's Finding
+19, which was examined and accepted there.
+
+The frame growing by four bytes is a second-order effect of the same area and
+was not chased further; it is confined to a `_verbose` path.
 
 **One divergence found here and left open.** In the verbose logging path the
 reference zero-extends a *single byte* of each status:
@@ -185,13 +215,19 @@ reference zero-extends a *single byte* of each status:
 0f b6 55 14    movzx edx, byte ptr [ebp + 0x14] ; changedStatus
 ```
 
-Ours passes the values whole. Since the struct is four bytes, `movzx` from a
-byte means Apple's source narrowed both at the call — a cast, or byte-typed
-locals. Which of those it was is not recoverable from the encoding, and the path
-is `_verbose`-only, so nothing was invented to match it. `currentStatus` is also
-still an `unsigned int` here, assigned from `[socket status]` through an untyped
-receiver; the reference's `-[PCICSocket status]` returns the bitfield. Both
-belong to the same unfinished thread.
+Ours passes the values whole — the rebuild confirms it, pushing `changedStatus`
+as `mov ecx, [ebp + 0x14]` against the reference's `movzx`. Since the struct is
+four bytes, `movzx` from a byte means Apple's source narrowed both at the call —
+a cast, or byte-typed locals. Which of those it was is not recoverable from the
+encoding, and the path is `_verbose`-only, so nothing was invented to match it.
+`currentStatus` is also still an `unsigned int` here, assigned from
+`[socket status]` through an untyped receiver; the reference's
+`-[PCICSocket status]` returns the bitfield.
+
+Three loose ends therefore remain in this one logging path, all of them
+cosmetic and all `_verbose`-gated: the byte-versus-dword width above, the
+`socketNum` caching, and `currentStatus`'s type. They are worth doing together
+or not at all, since each moves the same stack frame.
 
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this

@@ -821,6 +821,14 @@ def _ppc_instruction(data, section, entry, context):
     return int.from_bytes(field, "big"), field
 
 
+def _ppc_section_of(sections, value):
+    """Return the section whose [address, address + size) contains value."""
+    for section in sections:
+        if section["size"] and section["address"] <= value < section["address"] + section["size"]:
+            return section
+    return None
+
+
 def _decode_ppc_relocations(data, sections, symbol_names, architecture):
     semantic: list[dict[str, Any]] = []
     raw: list[dict[str, Any]] = []
@@ -850,6 +858,48 @@ def _decode_ppc_relocations(data, sections, symbol_names, architecture):
 
             word, field = _ppc_instruction(data, section, entry, where)
             low = word & 0xFFFF
+
+            if entry["scattered"]:
+                target_section = _ppc_section_of(sections, entry["value"])
+                if target_section is None:
+                    raise MachOFormatError(
+                        f"{where}: scattered relocation target 0x{entry['value']:x} "
+                        "is outside every section"
+                    )
+                if kind == PPC_RELOC_SECTDIFF:
+                    if pair is None or not pair["scattered"]:
+                        raise MachOFormatError(
+                            f"{where}: SECTDIFF requires a scattered PAIR entry"
+                        )
+                    difference = entry["value"] - pair["value"]
+                    addend = _sign_extend(word, 32) - difference
+                    name = "ppc-sectdiff-32-absolute"
+                elif kind == PPC_RELOC_HI16:
+                    addend = ((low << 16) | (pair["address"] & 0xFFFF)) - target_section["address"]
+                    name = "ppc-scattered-hi16-32-absolute"
+                elif kind == PPC_RELOC_HA16:
+                    addend = ((low << 16) + _sign_extend(pair["address"] & 0xFFFF, 16)
+                              - target_section["address"])
+                    name = "ppc-scattered-ha16-32-absolute"
+                elif kind == PPC_RELOC_LO16:
+                    addend = (((pair["address"] & 0xFFFF) << 16) | low) - target_section["address"]
+                    name = "ppc-scattered-lo16-32-absolute"
+                else:
+                    raise MachOFormatError(
+                        f"{where}: unsupported scattered relocation type {kind}"
+                    )
+                semantic.append({"address": section["address"] + entry["address"],
+                                 "kind": name, "target": target_section["name"],
+                                 "addend": addend})
+                raw.append(_ppc_raw(section, entry, name, target_section["name"],
+                                    addend, field))
+                raw[-1]["target_section_ordinal"] = target_section["ordinal"]
+                if pair is not None:
+                    raw.append(_ppc_pair_raw(section, entry, pair))
+                    index += 1
+                index += 1
+                continue
+
             if kind == PPC_RELOC_VANILLA:
                 value = word
             elif kind == PPC_RELOC_HI16:

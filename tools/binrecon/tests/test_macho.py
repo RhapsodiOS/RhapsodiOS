@@ -20,6 +20,7 @@ from macho_fixture import (
     PPC_RELOC_JBSR,
     PPC_RELOC_LO16,
     PPC_RELOC_PAIR,
+    PPC_RELOC_SECTDIFF,
     PPC_RELOC_VANILLA,
     SECTION,
     SEGMENT,
@@ -28,6 +29,7 @@ from macho_fixture import (
     patch_u32,
     ppc_pair,
     ppc_relocation,
+    ppc_scattered,
 )
 
 
@@ -661,4 +663,69 @@ def test_ppc_unsupported_relocation_type_names_type_and_offset(tmp_path):
     relocations = ppc_relocation(0, 1, kind=9)
 
     with pytest.raises(MachOFormatError, match=r"relocation type 9.*file offset 0x"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_ppc_scattered_lo16_resolves_through_the_scattered_value(tmp_path):
+    # __data sits at 0x1008; the field names 0x100C, four bytes into it.
+    text = struct.pack(">II", 0x3860100C, 0x60000000)
+    relocations = (
+        ppc_scattered(0, 0x1008, kind=PPC_RELOC_LO16) + ppc_pair(0x0000)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-scattered-lo16-32-absolute",
+        "target": "__DATA,__data", "addend": 4,
+    }
+
+
+def test_ppc_scattered_ha16_applies_the_signed_low_half(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x60000000)
+    relocations = (
+        ppc_scattered(0, 0x1000, kind=PPC_RELOC_HA16) + ppc_pair(0xFFFF)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-scattered-ha16-32-absolute",
+        "target": "__TEXT,__text", "addend": 0x1EFFF,
+    }
+
+
+def test_ppc_sectdiff_reports_the_difference_and_its_addend(tmp_path):
+    # field = (__data - __text) + 8 = 0x1008 - 0x1000 + 8 = 0x10
+    text = struct.pack(">II", 0x00000010, 0x60000000)
+    relocations = (
+        ppc_scattered(0, 0x1008, kind=PPC_RELOC_SECTDIFF)
+        + ppc_scattered(0, 0x1000, kind=PPC_RELOC_PAIR)
+    )
+
+    document = read_macho(write_ppc(tmp_path, text, relocations))
+
+    assert semantic(document)[0x1000] == {
+        "address": 0x1000, "kind": "ppc-sectdiff-32-absolute",
+        "target": "__DATA,__data", "addend": 8,
+    }
+
+
+def test_ppc_scattered_value_outside_every_section_is_rejected(tmp_path):
+    text = struct.pack(">II", 0x3860100C, 0x60000000)
+    relocations = (
+        ppc_scattered(0, 0x9000, kind=PPC_RELOC_LO16) + ppc_pair(0x0000)
+    )
+
+    with pytest.raises(MachOFormatError, match="scattered relocation target"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_ppc_sectdiff_requires_a_scattered_pair(tmp_path):
+    text = struct.pack(">II", 0x00000010, 0x60000000)
+    relocations = (
+        ppc_scattered(0, 0x1008, kind=PPC_RELOC_SECTDIFF) + ppc_pair(0x0000)
+    )
+
+    with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR"):
         read_macho(write_ppc(tmp_path, text, relocations))

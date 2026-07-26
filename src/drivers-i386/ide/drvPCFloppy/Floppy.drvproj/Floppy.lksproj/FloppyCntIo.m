@@ -370,8 +370,9 @@ static unsigned char cf2_efifo = 0;
 	// Wait for interrupt message with timeout
 	msgResult = msg_receive(&msg, MSG_OPTION_NONE, timeout);
 
-	// Check if message received successfully or timed out
-	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TIMED_OUT)) {
+	// A message arrived if the receive succeeded, or if it failed only
+	// because our buffer was too small for it (0x2f81: cmp eax, -204).
+	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TOO_LARGE)) {
 		// Call interrupt handler to process the interrupt
 		result = [self floppyInterrupt:cmdParams];
 	} else {
@@ -564,8 +565,9 @@ set_error_flag:
 	// Try to receive interrupt message with no timeout (non-blocking)
 	msgResult = msg_receive(&msg, MSG_OPTION_NONE, 0);
 
-	// Check if message received successfully or timed out
-	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TIMED_OUT)) {
+	// A message arrived if the receive succeeded, or if it failed only
+	// because our buffer was too small for it (0x2eaf: cmp eax, -204).
+	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TOO_LARGE)) {
 		// Got a stray interrupt - process it
 
 		// Zero out command buffer

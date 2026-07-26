@@ -1049,3 +1049,78 @@ Expected: one changed line, inside the `input` block, with no other block touche
 git add src/drivers-i386/README
 git commit -m "drivers-i386: record the drvISASerialPort reconstruction status"
 ```
+
+---
+
+## Tasks 8-10 — added after the final whole-effort review
+
+Tasks 1-7 completed and the whole-effort review then returned **READY TO MERGE: NO with four
+Criticals**: the driver built, matched Apple's structure to 28/30 sections, and **could not
+receive or transmit**. Task 8 closed them. Tasks 9 and 10 exist because of *where* they were.
+
+Three of the four Criticals sat in function bodies whose ledger status was `unexamined` or
+`signature-confirmed` — so the gap those statuses described was real and load-bearing, not
+bookkeeping. Spec §4.2 and Task 6 Step 8 require `unexamined: 0`; we delivered 11. Tasks 9 and
+10 close that departure by reading the bodies rather than by relabelling them.
+
+### Task 8 — fix the four Criticals (done, `365a526b` + `22818abc`)
+
+`acquire:` wrote `0x126` into `MasterClock` instead of `FlowControl`, so every open programmed a
+**zero baud divisor**; it also never sized either ring, leaving every watermark 0. The RX gate
+tested `0x00080000` where the reference tests `0x00400000`, so **every received byte was read
+from the RBR and discarded**. A TX ring wrap targeted `Output` instead of `Base`. Both interrupt
+handlers' watermark tails had inverted comparisons and level constants one rung low.
+`requestEvent:` read a `tvalspec` as one little-endian u64.
+
+Two of those four were already recorded — Findings 10 and 24 — and shipped anyway. Finding 24
+had carried the phrase *"a plain typo with a hard consequence"* and the reference instruction
+sequence since the report pass.
+
+### Task 9 — read the two interrupt handler bodies
+
+**Scope:** `_FIFOIntHandler` (−504) and `_NonFIFOIntHandler` (−328) — together **−832 of the
+remaining −1276** `__text` gap, and the only two ledger entries above `unexamined` but below
+`control-flow-confirmed`, both with reasons that say the body was not verified.
+
+Task 6b declined to rewrite these, arguing it meant guessing inside ~1600 unread instructions,
+and a reviewer endorsed the restraint. Task 8 then found two Criticals inside them, both
+provable from under 130 instructions. The restraint was wrong.
+
+- [ ] Read both bodies instruction-by-instruction against the reference
+- [ ] Verify Findings 15, 16, 17, 21, 23, 25, 26, 27, 28, 29 **yourself** before acting — findings
+      in this effort have been wrong (94 and 102 retracted as false; 10 half wrong in a way that
+      would have broken working code)
+- [ ] The reference **inlines** the RX enqueue rather than calling `RX_enqueueLongEvent`
+      (18494-18664: the `RX.Size - RX.Count > 2` check at 18494-18503, the `0x6C` overflow path
+      at 18528-18557, three cells at 18568/18600/18632). Inline only where the reference does
+- [ ] Verify: `make exit=0`, gates green, ledger advanced only as far as evidence supports
+
+### Task 10a — the port and state group
+
+**Scope:** `_activatePort`, `_deactivatePort`, `acquire:`, `setState:mask:`, `watchState:mask:`,
+`_dataLatTOHandler`. `acquire:` is the proof this pass is needed: it was one of the eleven
+`unexamined` and it stopped the driver working. `_dataLatTOHandler` @9408 already reports only
+90 of its 186 instructions read and names Findings 71 and 72.
+
+### Task 10b — the queue API group
+
+**Scope:** `requestEvent:data:`, `enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`,
+`enqueueData:bufferSize:transferCount:sleep:`,
+`dequeueData:bufferSize:transferCount:minCount:`. Carries Finding 90's remaining
+`minCount` sleep-budget half.
+
+### Rules for all three
+
+Run **sequentially** — all three edit `ISASerialPort.m` and concurrent agents would collide.
+
+1. **Never trust an inline comment beside a constant or offset.** Six real bugs in this effort,
+   including two of Task 8's Criticals. Verify constants against their macro definitions and
+   offsets against the `Port` struct (Addendum 6's table). Fix wrong comments as you go.
+2. **Reproduce Apple's bugs, don't fix them.** Four are already reproduced and commented at the
+   site. If you find more, do the same.
+3. **`control-flow-confirmed` is the honest ceiling** unless a rebuilt-vs-reference instruction
+   diff is cited in the reason. Nothing here is `assembly-matched`; two entries were downgraded
+   for falsely claiming it.
+4. **No overfitting.** A correctness fix that moves size *away* from the reference is fine —
+   Task 8's `requestEvent:` fix cost 12 bytes and was right.
+5. Measure addendum figures **against the binary the commit produces**, not before its own edit.

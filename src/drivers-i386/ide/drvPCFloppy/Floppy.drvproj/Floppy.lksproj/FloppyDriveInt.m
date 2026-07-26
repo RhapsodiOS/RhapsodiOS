@@ -661,9 +661,9 @@ IOReturn fdrToIo(unsigned int fdrCode)
 		cmd[0] = 2;
 	}
 	
-	// Get unit number and store at offset 0x10 (field after field2_0x5)
+	// Get unit number and store at offset 0x5c (disasm: "mov [esi+5Ch], al")
 	unit = [self unit];
-	cmd[0x10] = unit;
+	cmd[0x5c] = unit;
 	
 	// Get timestamp and store at offset 0x170
 	IOGetTimestamp((unsigned long long *)((char *)self + 0x170));
@@ -709,21 +709,21 @@ IOReturn fdrToIo(unsigned int fdrCode)
 		 fdIoReq:cmdBuffer
 		 readFlag:YES];  // 1 = read operation
 	
-	// Set buffer pointer at offset 0x30
-	*(unsigned char **)(cmdBuffer + 0x30) = buffer;
-	
+	// Set buffer pointer at offset 0x20
+	*(unsigned char **)(cmdBuffer + 0x20) = buffer;
+
 	// Calculate expected byte count (sectCount * sectorSize)
 	expectedBytes = sectCount * _sectorSize;  // offset 0x19c
-	*(unsigned *)(cmdBuffer + 0x34) = expectedBytes;
-	
+	*(unsigned *)(cmdBuffer + 0x24) = expectedBytes;
+
 	// Set VM task (kernel task)
-	*(unsigned *)(cmdBuffer + 0x54) = IOVmTaskSelf();
-	
+	*(unsigned *)(cmdBuffer + 0x58) = IOVmTaskSelf();
+
 	// Send command to FDC
 	result = [self fdSendCmd:cmdBuffer];
-	
+
 	// Check if actual bytes transferred matches expected
-	actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
+	actualBytes = *(unsigned *)(cmdBuffer + 0x48);
 	if ((result == IO_R_SUCCESS) && (expectedBytes != actualBytes)) {
 		// Set error if byte count mismatch
 		result = (IOReturn)0x13;  // Error code for transfer mismatch
@@ -776,16 +776,16 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters for SENSE DRIVE STATUS
-	// Offset 0x5c: command type = 5 (SENSE DRIVE STATUS)
-	// Offset 0x60: timeout = 5000ms
-	*(unsigned *)(cmdBuffer + 0x5c) = 5;
-	*(unsigned *)(cmdBuffer + 0x60) = 5000;
-	
+	// Offset 0x08: fcCmdXfr: op selector = 5 (SENSE DRIVE STATUS)
+	// Offset 0x04: timeout = 5000ms
+	*(unsigned *)(cmdBuffer + 0x08) = 5;
+	*(unsigned *)(cmdBuffer + 0x04) = 5000;
+
 	// Send command to FDC
 	result = [self fdSendCmd:cmdBuffer];
-	
-	// Get status byte from offset 0x14
-	status = cmdBuffer[0x14];
+
+	// Get status byte from offset 0x50
+	status = cmdBuffer[0x50];
 	
 	if (result == IO_R_SUCCESS) {
 		// Check status bits:
@@ -803,9 +803,11 @@ IOReturn fdrToIo(unsigned int fdrCode)
 		readyState = 1;
 	}
 	
-	// Store ready state (assuming there's a field for this)
-	// The decompiled code returns the state, but this is a void method
-	// so we might be storing it in an instance variable
+	// NOTE: the disassembly computes readyState into eax and returns it
+	// (0=ready, 1=command failed, 2=not ready/wrong unit); this method is
+	// declared -(void) in FloppyDriveInt.h, so readyState is computed but
+	// never propagated to the caller. Fixing that requires changing the
+	// declared return type in the header, which is out of scope here.
 }
 
 @end

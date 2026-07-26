@@ -246,3 +246,45 @@ Run the complete test suite with:
 $env:PYTHONPATH = 'tools/binrecon'
 & $binreconPython -m pytest tools/binrecon/tests -q
 ```
+
+## PowerPC acceptance run
+
+`validate` and `analyze` against the real reference binaries, one run per
+PowerPC profile:
+
+| Profile | Reference file | Size | `analyze` exit |
+|---|---|---|---|
+| scsiserver-ppc | `SCSIServer.config/SCSIServer_reloc` | 51044 | 1 (reference-only) |
+| scsiserver-bundle-ppc | `SCSIServer.config/SCSIServer` | 8496 | 1 (reference-only) |
+| scsitape-ppc | `SCSITape.config/SCSITape_reloc` | 47624 | 1 (IDA export failed) |
+| scsitape-bundle-ppc | `SCSITape.config/SCSITape` | 8492 | 1 (reference-only) |
+| scsitape-preload-ppc | `SCSITape.config/PreLoad` | 9060 | 1 (reference-only) |
+| scsitape-postload-ppc | `SCSITape.config/PostLoad` | 21520 | 1 (reference-only) |
+| stblocksize-ppc | `SCSITape.config/stblocksize` | 13408 | 1 (reference-only) |
+
+Exit 1 marked "reference-only" is expected: these profiles have no rebuilt
+artifact, so `normalized-functions` acceptance can never pass. Each of those
+runs still published a validated `analysis-reference-ida.json` — IDA loaded
+the artifact and the exporter's mapping-manifest and fixup checks accepted its
+output. `scsitape-ppc` did not publish: IDA's PPC loader logs the SECTDIFF
+relocation at `__text+0x2e34` in `SCSITape_reloc` as an "Unhandled relocation
+type", and the exporter's own fixup-integrity check then raises `IDA export
+failed: malformed fixup target at 0x2e34` rather than publish an unverified
+analysis. No analysis document exists for this artifact.
+
+Re-running `ppc_invariant_check.py --binary ... --analysis ...` against
+`scsiserver-ppc`'s published analysis finds one symbol/function-start
+mismatch: `+[SCSIServer deviceStyle]` at address 0 has no corresponding IDA
+function (the earliest function IDA found starts at 0x10). That is a
+candidate for a future reconstruction's `boundary_disputed` bucket, not a
+decoder defect. `SCSITape_reloc` still reports 0 violations on its
+binary-only invariants, as in the relocation invariant check; it has no
+published analysis to cross-check.
+
+`binrecon source-map --objc-methods --scope-to-objc` runs to completion
+against `scsiserver-ppc`'s analysis (0 mapped, 14 unmapped Objective-C
+methods). Without `--scope-to-objc` it fails: IDA's PPC linker glue stub for
+external calls (`_objc_msgSend`, `_IOLog`, ...) has no name, and
+`source-map-v1` requires every analyzed function to have one.
+
+Full suite: 741 passed, 4 skipped (unchanged from baseline).

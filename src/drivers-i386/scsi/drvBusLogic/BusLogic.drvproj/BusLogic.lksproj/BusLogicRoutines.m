@@ -19,7 +19,7 @@
 /*
  * Reset the BusLogic board.
  */
-BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
+BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
 {
 	bl_ctrl_reg_t ctrl = { 0 };
 	bl_stat_reg_t stat;
@@ -52,7 +52,7 @@ BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
 /*
  * Send command to board with optional data in/out.
  */
-BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
+BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 		  unsigned char *dataOut, int dataOutLen,
 		  unsigned char *dataIn, int dataInLen,
 		  BOOL expectResponse)
@@ -114,7 +114,7 @@ BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 /*
  * Setup mailbox area.
  */
-BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
+BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 		      struct bl_mb_area *mbArea,
 		      struct ccb *ccbArray)
 {
@@ -137,7 +137,7 @@ BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
 	bl_put_24(physAddr, initCmd.mb_area_addr);
 
 	/* Send mailbox init command */
-	if (!bl_probe_cmd(portBase, BL_CMD_INIT_MBOX,
+	if (!blc_probe_cmd(portBase, BL_CMD_INIT_MBOX,
 			  (unsigned char *)&initCmd, sizeof(initCmd),
 			  NULL, 0, FALSE)) {
 		IOLog("BusLogic: Mailbox init failed\n");

@@ -11,7 +11,7 @@
 #import "BusLogicController.h"
 #import "BusLogicControllerPrivate.h"
 
-@interface BLController(IOThread)
+@interface BLCController(IOThread)
 
 - (int)threadExecuteRequest	: (BLCommandBuf *)cmdBuf;
 - (void)threadResetBus		: (BLCommandBuf *)cmdBuf;

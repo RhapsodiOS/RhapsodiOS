@@ -2,7 +2,7 @@
 "Family" = "SCSI";
 "Location" = "";
 "Instance" = "0";
-"Driver Name" = "BLController";
+"Driver Name" = "BLCController";
 "DMA Channels" = "14";
 "IRQ Levels" = "11";
 "I/O Ports" = "0x330-0x333";

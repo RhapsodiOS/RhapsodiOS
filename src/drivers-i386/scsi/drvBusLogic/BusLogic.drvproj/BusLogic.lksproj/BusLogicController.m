@@ -37,12 +37,12 @@
 #import "BusLogicThread.h"
 
 extern unsigned ffs(unsigned mask);
-extern BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId);
-extern BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
+extern BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId);
+extern BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 			 unsigned char *dataOut, int dataOutLen,
 			 unsigned char *dataIn, int dataInLen,
 			 BOOL expectResponse);
-extern BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
+extern BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 			     struct bl_mb_area *mbArea,
 			     struct ccb *ccbArray);
 
@@ -63,23 +63,23 @@ static msg_header_t BLMessageTemplate = {
 /*
  * Private methods implemented in this file.
  */
-@interface BLController(PrivateMethods)
+@interface BLCController(PrivateMethods)
 - (BOOL) probeAtPortBase 	: (IOEISAPortAddress) portBase;
 - (IOReturn)executeCmdBuf	: (BLCommandBuf *)cmdBuf;
 @end
 
 
-@implementation BLController
+@implementation BLCController
 
 /*
  *  Probe, configure board, and init new instance.
  */
 + (BOOL)probe:deviceDescription
 {
-	BLController	*bl = [self alloc];
+	BLCController	*bl = [self alloc];
 	IORange		ioPort;
 
-	ddm_init("BLController probe\n", 1,2,3,4,5);
+	ddm_init("BLCController probe\n", 1,2,3,4,5);
 	bl->ioThreadRunning = NO;
 
 	/*
@@ -88,7 +88,7 @@ static msg_header_t BLMessageTemplate = {
 	 *  -probeAtPortBase returns TRUE if there's a BusLogic Controller present.
 	 */
 	if ([deviceDescription numPortRanges] < 1) {
-		IOLog("BLController: can't determine port base!\n");
+		IOLog("BLCController: can't determine port base!\n");
 	    	[bl free];
 		return NO;
 	}
@@ -106,7 +106,7 @@ static msg_header_t BLMessageTemplate = {
 	unsigned Lun;
 	kern_return_t krtn;
 
-	ddm_init("BLController initFromDeviceDescription\n", 1,2,3,4,5);
+	ddm_init("BLCController initFromDeviceDescription\n", 1,2,3,4,5);
 
 	queue_init(&outstandingQ);
 	queue_init(&pendingQ);
@@ -134,7 +134,7 @@ static msg_header_t BLMessageTemplate = {
 	 */
 	if ([deviceDescription numChannels] < 1 ||
 	    [deviceDescription channel] != config.dma_channel) {
-		IOLog("BLController: Actual DMA Channel (%d) doesn't match "
+		IOLog("BLCController: Actual DMA Channel (%d) doesn't match "
 		      "configured value (%d)!\n", config.dma_channel,
 		      ([deviceDescription numChannels] ?
 		      	[deviceDescription channel] : 0));
@@ -143,7 +143,7 @@ static msg_header_t BLMessageTemplate = {
 
 	if ([deviceDescription numInterrupts] < 1 ||
 	    [deviceDescription interrupt] != config.irq) {
-		IOLog("BLController: Actual IRQ (%d) doesn't match "
+		IOLog("BLCController: Actual IRQ (%d) doesn't match "
 		      "configured value (%d)!\n", config.irq,
 		      ([deviceDescription numInterrupts] ?
 		      	[deviceDescription interrupt] : 0));
@@ -156,7 +156,7 @@ static msg_header_t BLMessageTemplate = {
 	 */
 	if ([self setTransferMode:IO_Cascade forChannel:0] != IO_R_SUCCESS ||
 	    [self enableChannel:0] != IO_R_SUCCESS) {
-		IOLog("BLController: couldn't init DMA!\n");
+		IOLog("BLCController: couldn't init DMA!\n");
 		return [super free];
 	}
 
@@ -173,8 +173,8 @@ static msg_header_t BLMessageTemplate = {
 	 *  Note that if we fail, the call to [super free] will release (and
 	 *  disable) our resources (IRQ, DMA channel, portRanges).
 	 */
-	if (!bl_setup_mb_area(ioBase, blMbArea, blCcb)) {
-		IOLog("BLController: couldn't set up mailbox area!\n");
+	if (!blc_setup_mb_area(ioBase, blMbArea, blCcb)) {
+		IOLog("BLCController: couldn't set up mailbox area!\n");
 		return [self free];
 	}
 
@@ -394,7 +394,7 @@ static msg_header_t BLMessageTemplate = {
 
 /*
  * Called from the I/O thread when it receives a timeout
- * message. We send these messages ourself from blTimeout() in
+ * message. We send these messages ourself from blcTimeout() in
  * BusLogicThread.m.
  */
 - (void)timeoutOccurred
@@ -519,22 +519,22 @@ out:
 
 @end	/* methods declared in BusLogicController.h */
 
-@implementation BLController(PrivateMethods)
+@implementation BLCController(PrivateMethods)
 
 - (BOOL) probeAtPortBase:(IOEISAPortAddress) portBase
 {
 	bl_inquiry_t	inquiry;
 
-	ddm_init("BLController probeAtPortBase\n", 1,2,3,4,5);
+	ddm_init("BLCController probeAtPortBase\n", 1,2,3,4,5);
 
 	ioBase = portBase;
-	bl_reset_board(ioBase, blBoardId);
+	blc_reset_board(ioBase, blBoardId);
 
 	/*
 	 *  Do an inquiry to find out the board id and other things that
 	 *  we won't check.
 	 */
-	if (!bl_probe_cmd(ioBase, BL_CMD_INQUIRY, NULL, 0,
+	if (!blc_probe_cmd(ioBase, BL_CMD_INQUIRY, NULL, 0,
 	    (unsigned char *)&inquiry, sizeof(inquiry), TRUE)) {
 	    	ddm_init("  ..inquiry command failed\n", 1,2,3,4,5);
 		return FALSE;
@@ -559,7 +559,7 @@ out:
 	 *  Attempt to read the configuration data from the board.
 	 *  If this succeeds, then we have successfully probed.
 	 */
-	if (!bl_probe_cmd(ioBase, BL_CMD_GET_CONFIG, NULL, 0,
+	if (!blc_probe_cmd(ioBase, BL_CMD_GET_CONFIG, NULL, 0,
 	                   (unsigned char *)&config, sizeof(config), TRUE)) {
 	    	ddm_init("  ..get config command failed\n", 1,2,3,4,5);
 
@@ -621,7 +621,7 @@ out:
 	return rtn;
 }
 
-@end	/* BLController(PrivateMethods) */
+@end	/* BLCController(PrivateMethods) */
 
 
 

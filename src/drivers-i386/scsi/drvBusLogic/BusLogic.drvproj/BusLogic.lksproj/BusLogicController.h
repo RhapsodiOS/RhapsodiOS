@@ -19,7 +19,7 @@
 #import "BusLogicTypes.h"
 
 
-@interface BLController : IOSCSIController
+@interface BLCController : IOSCSIController
 {
 	/*
 	 * Hardware info.

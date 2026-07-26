@@ -413,6 +413,9 @@ int IOSCSISession_free(id session)
  * IOSCSISession_initForDevice - Initialize SCSI session for a device
  * session: IOSCSISession object
  * deviceName: Name of the SCSI device
+ * deviceNameCnt: Byte count of deviceName, as passed by the MiG-generated
+ *   IOSCSISessionMigServer.c (the array[*:80] of char argument's implicit
+ *   count parameter)
  * Returns: 0 on success, error code on failure
  *
  * This function:
@@ -423,7 +426,8 @@ int IOSCSISession_free(id session)
  * Note: This is different from the Objective-C initForDevice:result: method
  * which always calls free. This C function provides actual initialization.
  */
-int IOSCSISession_initForDevice(id session, const char *deviceName)
+int IOSCSISession_initForDevice(id session, const char *deviceName,
+                                unsigned int deviceNameCnt)
 {
     int result;
     id device_obj;

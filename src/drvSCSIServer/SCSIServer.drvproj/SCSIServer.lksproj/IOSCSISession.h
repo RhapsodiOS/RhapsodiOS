@@ -118,9 +118,13 @@ int IOSCSISession_free(id session);
 /* Initialize SCSI session for a device
  * session: IOSCSISession object
  * deviceName: Name of the SCSI device
+ * deviceNameCnt: Byte count of deviceName, as passed by the MiG-generated
+ *   IOSCSISessionMigServer.c (the array[*:80] of char argument's implicit
+ *   count parameter)
  * Returns: 0 on success, error code on failure
  */
-int IOSCSISession_initForDevice(id session, const char *deviceName);
+int IOSCSISession_initForDevice(id session, const char *deviceName,
+                                unsigned int deviceNameCnt);
 
 /* Get DMA alignment requirements for SCSI transfers
  * session: IOSCSISession object

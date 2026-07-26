@@ -14,6 +14,7 @@ from binrecon.compare import ComparisonError, compare_artifacts, format_text_rep
 from binrecon.consensus import ConsensusError, build_consensus
 from binrecon.abi_check import diff_abi, module_from_object
 from binrecon.macho import extract_slice, load_image, objc_method_index, read_macho
+from binrecon.module_scope import function_ranges
 from binrecon.normalize import preflight_json
 from binrecon.objc_abi import (
     ObjcAbiError, attach_symbols, method_symbol_index, read_modules_from_sections,
@@ -25,7 +26,7 @@ from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
 COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
-            "extract-slice", "abi", "abi-check")
+            "extract-slice", "abi", "abi-check", "module-scope")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -86,6 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
     abi_check.add_argument("--abi-dir", required=True)
     abi_check.add_argument("--built", action="append", required=True,
                            metavar="MODULE=PATH")
+    module_scope = subparsers.add_parser("module-scope")
+    module_scope.add_argument("--profile", required=True)
+    module_scope.add_argument("--module", action="append", required=True)
+    module_scope.add_argument("--symbols", required=True)
 
     return parser
 
@@ -296,6 +301,50 @@ def main(argv=None) -> int:
                 print(f"abi-check: {len(findings)} divergence(s)")
                 return 1
             print("abi-check: ABI matches")
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "module-scope":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            payload, document = load_image(profile.reference.path)
+            modules = read_modules_from_sections(
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
+            )
+            assignment = json.loads(Path(args.symbols).read_text())
+            text_names = {
+                symbol["name"] for symbol in document["symbols"]
+                if symbol["section"] == "__TEXT,__text"
+            }
+
+            names = []
+            for module in args.module:
+                if module not in modules:
+                    raise ValueError(f"image defines no module {module}")
+                names.extend(
+                    name for name in assignment.get(module, []) if name in text_names
+                )
+                for item in modules[module]["classes"]:
+                    for method in item["instance_methods"]:
+                        names.append(f"-[{item['name']} {method['selector']}]")
+                    for method in item["class_methods"]:
+                        names.append(f"+[{item['name']} {method['selector']}]")
+                for item in modules[module]["categories"]:
+                    owner = f"{item['class']}({item['name']})"
+                    for method in item["instance_methods"]:
+                        names.append(f"-[{owner} {method['selector']}]")
+                    for method in item["class_methods"]:
+                        names.append(f"+[{owner} {method['selector']}]")
+
+            text = next(
+                s for s in document["sections"] if s["name"] == "__TEXT,__text"
+            )
+            ranges = function_ranges(document["symbols"], text, names)
+            print(json.dumps(ranges, indent=1))
+            print(f"# {len(ranges)} ranges", file=sys.stderr)
             return 0
         except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
             print(f"binrecon: {error}", file=sys.stderr)

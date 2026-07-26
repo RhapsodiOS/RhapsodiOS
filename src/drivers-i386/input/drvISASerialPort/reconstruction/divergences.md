@@ -2531,3 +2531,94 @@ allocation, spill slots and block ordering, and `ledger.json`'s `rebuilt_sha256`
 The 25 remaining are TU 1 bodies and they are 6b's, together with essentially the whole
 `__TEXT,__text` gap and all four extra cstrings. `__TEXT,__const` is still absent against the
 reference's 682 and stays recorded rather than chased.
+
+## Addendum 6 — Task 6a review corrections
+
+The Task 6a review returned READY TO MERGE: NO on one Critical, plus corrections to
+Addendum 5's own claims. All are recorded here rather than by editing Addendum 5, so the
+record shows what was believed and when.
+
+### C1 (resolved) — the two `assembly-matched` entries were overstated
+
+`-[ISASerialPort release]` @5448 and `-[ISASerialPort nextEvent]` @6400 carried
+`assembly-matched`. The spec defines that status as *the rebuilt instruction stream was read
+against the reference*. That was never done: `rebuilt_sha256` is `null`, and the reason
+`"full disassembly read instruction by instruction"` described reading the **reference**, not
+a rebuilt-vs-reference diff. The streams are in fact not identical:
+
+- `nextEvent` — reference 70 bytes / 26 instructions; ours 80. Ours emits `sub esp,4` plus a
+  `[ebp-4]` staging slot with `mov byte ptr [ebp-4],0`, addresses the fields directly
+  (`[ebx+0x164]`, `[ebx+0x15c]`, `[ebx+0x140]`) where the reference works off a single
+  `lea eax,[ebx+140h]` base, and inverts the sense of the first branch (ours `je`, reference
+  `jnz`). The entry's own text claimed it *"Reproduces the reference instruction for
+  instruction."* It does not.
+- `release` — reference 561 bytes, ours 544. Not byte-identical.
+
+Both were pre-6a, but `421e2987` relined both and left the status standing.
+`binrecon.ledger.transition` forbids backward moves (`ledger.py:269`), so both `status` fields
+were hand-edited down to `control-flow-confirmed`, the overstated reason text was replaced
+with the measured deltas above, `reasons` was re-sorted under `canonical_key` to preserve the
+sorted+deduped invariant, and `binrecon ledger` was re-run: **entries=45,
+control-flow-confirmed=16, intentional-mismatch=2, signature-confirmed=2, unexamined=25,
+assembly-matched=0.**
+
+Nothing in this reconstruction is `assembly-matched`, and nothing should claim to be until
+somebody diffs a rebuilt stream.
+
+### Authoritative self-relative offset table
+
+The review found the effort's #1 known-bad pattern recurring inside the function 6a rewrote:
+inline comments beside raw offsets that assert exactly the TX/RX crossing 6a spent the pass
+fixing. Computed from `ISASerialPortInternal.h` with `Port` embedded at 296 — this table is
+derived from the struct, not from any comment, and supersedes every offset comment in
+`ISASerialPort.m`:
+
+| offset | field | a comment in ISASerialPort.m calls it |
+|---|---|---|
+| 0x134 | `Port.State` | currentState (near enough) |
+| 0x140 | `Port.RX.Size` | txQueueCapacity — **wrong** |
+| 0x16c | `Port.RX.DefaultSize` | txQueueCapacity default — **wrong** |
+| 0x178 | `Port.TX.Size` | RX queue size — **wrong** |
+| 0x1a4 | `Port.TX.DefaultSize` | rxQueueCapacity default — **wrong** |
+| 0x1c4 | `Port.TX_Parity` | flowControl — **wrong** |
+| 0x1cc | `Port.BreakLength` | stopBits — **wrong** |
+| 0x208 | `Port.FlowControl` | stateEventMask — **wrong** |
+| 0x228 | `Port.DataLatInterval` | charTimeOverride — **wrong** |
+| 0x230 | `Port.CharLatInterval` | heartBeatInterval — **wrong** |
+| 0x238 | `Port.HeartBeatInterval` | (unlabelled) |
+
+### Two of these are suspected live crossings, not comment noise — Task 6b must resolve them
+
+1. **`ISASerialPort.m:3507-3538`.** The `event == 0x0F` arm is commented `offset 0x140` but
+   operates on `Port.TX`; the `event == 0x0B` arm is commented `offset 0x178` but operates on
+   `Port.RX`. 0x140 is `RX.Size` and 0x178 is `TX.Size`, so **the comments' offsets say the
+   opposite of the code.** One of the two is wrong and the reference decides which. The
+   comments in this block are visibly speculative leftovers from the original decompilation
+   ("in wrong place?", "Actually this seems to be", "appears to be") and must not be trusted.
+2. **`ISASerialPort.m:3556-3560`.** Stores the heartbeat pair to 0x230/0x234, which is
+   `CharLatInterval`. `HeartBeatInterval` is 0x238/0x23c. Note the comment there already
+   doubts itself ("These seem to be different from heartBeatInterval"). The corresponding
+   store in `initFromDeviceDescription:` was verified against the reference as correct
+   (`[edi+238h]`/`[edi+23Ch]`); this second site was not, and is a different function.
+
+### Corrections to Addendum 5
+
+- **"twenty-seven TU 1 functions" should read twenty-four.** TU 1 has 28 functions; 28 − 4 = 24.
+  The +156 remainder and every individual delta are correct — the review reproduced all 28.
+- **The `" (PCMCIA)"` / `"PCMCIA/"` banner divergence is Finding 84, not Finding 87.**
+  Finding 87 is `getCharValues:`. The mis-citation entered in Addendum 4 and Addendum 5
+  repeated it.
+- **`initFromDeviceDescription:` reference size.** The −220 delta uses span 2276; the analysis
+  and ledger carry function size 2273. Both now coexist in the records; the delta is quoted
+  against the span.
+- **`__udivdi3` "fourteen conditional branches"** is fourteen *branch instructions* — 10
+  conditional plus 4 `jmp`.
+- **The `__umoddi3` spill description is one-sided.** The reference spills `n1` to
+  `[ebp+var_20]` while ours keeps it in `ebx`; ours symmetrically spills `d1` to `[ebp-0x24]`
+  while the reference keeps it in `ebx`. Net is the stated +8 `mov`s for the reference.
+- **The ≈1800-byte inference rests on a weaker premise than its label admits.** Addendum 5
+  correctly labels the figure inferred rather than measured, but the inference also assumes
+  everything else in 6a was size-neutral — and 6a rewrote `initFromDeviceDescription:`
+  substantially (config-table mechanism, nine keys, seven new log strings, the heartbeat
+  split). That premise has no measurement behind it. The figure should be read as an
+  order-of-magnitude estimate only.

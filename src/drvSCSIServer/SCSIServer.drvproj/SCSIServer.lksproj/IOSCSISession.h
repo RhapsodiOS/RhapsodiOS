@@ -76,7 +76,7 @@
  * sendPort: Pointer to send port (output parameter)
  * Returns: self on success, result of [self free] on failure
  */
-- (int)_initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort;
+- (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort;
 
 /* Private: Reserve a SCSI target and LUN for this session
  * target: SCSI target ID

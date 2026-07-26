@@ -274,7 +274,7 @@ static Protocol *_scsiServerProtocols[] = {
  * The decompiled code shows this:
  * 1. Initializes *connection to 0
  * 2. Allocates IOSCSISession via [IOSCSISession alloc]
- * 3. Initializes session via _initServerWithTask:sendPort:
+ * 3. Initializes session via initServerWithTask:sendPort:
  * 4. Returns -702 on failure (iVar2 == 0), 0 on success
  *
  * The error code calculation: -(uint)(iVar2 == 0) & 0xfffffd42
@@ -299,14 +299,14 @@ static Protocol *_scsiServerProtocols[] = {
 
     /* Initialize the session with task and send port
      * iVar2 = FUN_000002f4(uVar1, s_initServerWithTask:sendPort:_00005a38, param_4, param_3)
-     * This is [sessionAlloc _initServerWithTask:taskPort sendPort:connection]
+     * This is [sessionAlloc initServerWithTask:taskPort sendPort:connection]
      *
      * The connection pointer is passed as the sendPort output parameter.
      * On success, this returns the session object (non-zero).
      * On failure, this returns the result of [self free] (could be non-zero).
      */
     session_result = (int)objc_msgSend(sessionAlloc,
-                                       @selector(_initServerWithTask:sendPort:),
+                                       @selector(initServerWithTask:sendPort:),
                                        taskPort,
                                        connection);
 

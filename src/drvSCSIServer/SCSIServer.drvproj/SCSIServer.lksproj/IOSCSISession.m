@@ -69,7 +69,7 @@ extern void blastAllReservations(id session);
  * NOTE: This is unusual - the init method immediately frees the object!
  * This suggests that IOSCSISession objects should NOT be created via
  * a simple alloc/init pattern, but rather through initForDevice:result:
- * or via _initServerWithTask:sendPort:.
+ * or via initServerWithTask:sendPort:.
  */
 - init
 {
@@ -90,7 +90,7 @@ extern void blastAllReservations(id session);
  *
  * NOTE: Like init, this method immediately frees the object!
  * This suggests that IOSCSISession should NOT be initialized via
- * initForDevice:result:, but only through _initServerWithTask:sendPort:.
+ * initForDevice:result:, but only through initServerWithTask:sendPort:.
  * The server-based initialization is the only supported path.
  */
 - initForDevice:(const char *)device result:(int *)result
@@ -215,7 +215,7 @@ extern void blastAllReservations(id session);
 @implementation IOSCSISession (Private)
 
 /*
- * _initServerWithTask:sendPort: - Initialize server with Mach task and send port
+ * initServerWithTask:sendPort: - Initialize server with Mach task and send port
  * task: Mach task port
  * sendPort: Pointer to send port (output parameter)
  * Returns: self on success, calls free and returns that result on failure
@@ -231,7 +231,7 @@ extern void blastAllReservations(id session);
  * offset +14: session object ID (from objc_msgSend with selector 0xa70)
  * offset +18: session index (_sSessionIndex)
  */
-- (int)_initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort
+- (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort
 {
     int result;
     void **session_struct;
@@ -1092,7 +1092,7 @@ int IOSCSISession_initForDevice(id session, const char *deviceName)
         else {
             /* Store device object in session structure at offset +8
              * This is the same location where the controller object is stored
-             * in _initServerWithTask:sendPort:
+             * in initServerWithTask:sendPort:
              */
             *(id *)(*(int *)((char *)session + 4) + 8) = device_obj;
         }

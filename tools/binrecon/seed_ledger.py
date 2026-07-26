@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
 from binrecon.identity import identify
-from binrecon.ledger import new_ledger, validate_ledger
+from binrecon.ledger import new_ledger, LedgerError
 
 _BUCKETS = ("mapped", "unmapped", "duplicate_candidates", "boundary_disputed")
 # Only IDA supports PowerPC; the Ghidra and angr adapters reject a ppc profile.
@@ -58,8 +58,11 @@ def main(argv=None) -> int:
     if str(source_map["reference_sha256"]).upper() != reference.sha256:
         print("source map reference_sha256 does not match the binary", file=sys.stderr)
         return 1
-    document = new_ledger(reference, None, seed_entries(source_map))
-    validate_ledger(document, reference, None)
+    try:
+        document = new_ledger(reference, None, seed_entries(source_map))
+    except LedgerError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     Path(argv[2]).write_text(
         json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )

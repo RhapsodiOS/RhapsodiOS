@@ -1,6 +1,5 @@
+import hashlib
 import json
-
-import pytest
 
 from macho_fixture import build_macho_fixture
 from seed_ledger import main, seed_entries
@@ -55,7 +54,6 @@ def test_every_entry_satisfies_the_ledger_schema_fields():
 def test_cli_writes_a_valid_ledger(tmp_path):
     binary = tmp_path / "reference"
     binary.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
-    import hashlib
     digest = hashlib.sha256(binary.read_bytes()).hexdigest().upper()
     map_path = tmp_path / "source-map.json"
     map_path.write_text(json.dumps(dict(SOURCE_MAP, reference_sha256=digest)))
@@ -81,3 +79,29 @@ def test_cli_rejects_a_map_for_a_different_binary(tmp_path):
 
 def test_cli_reports_usage_error(tmp_path):
     assert main(["only-one-argument"]) == 2
+
+
+def test_cli_fails_cleanly_when_boundary_disputed_overlaps_mapped(tmp_path):
+    binary = tmp_path / "reference"
+    binary.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    digest = hashlib.sha256(binary.read_bytes()).hexdigest().upper()
+    map_path = tmp_path / "source-map.json"
+    # Mapped entry at 16..35, boundary_disputed entry at 20..27 (overlaps)
+    overlapping_map = {
+        "schema_version": "source-map-v1",
+        "reference_sha256": digest,
+        "mapped": [
+            {"address": 16, "size": 20, "reference_names": ["+[C m]"],
+             "source_path": "src/a.m", "source_line": 7},
+        ],
+        "unmapped": [],
+        "duplicate_candidates": [],
+        "boundary_disputed": [
+            {"address": 20, "size": 8, "reference_names": ["_overlap"]},
+        ],
+    }
+    map_path.write_text(json.dumps(overlapping_map))
+    output = tmp_path / "ledger.json"
+
+    # Should return 1 instead of raising LedgerError
+    assert main([str(map_path), str(binary), str(output)]) == 1

@@ -42,10 +42,18 @@
     BOOL		_didWrite;	// last command was a write
     BOOL		_suppressIllegalLength;	// Suppress IL errors
     BOOL		_senseDataValid;// *_senseDataPtr from last command OK
+
+@public
+    /*
+     * st_doiocsrq() overrides these around a single MTIOCSRQ command,
+     * so they cannot be private.
+     */
     BOOL		_ignoreCheckCondition [SCSI3_NTARGETS][SCSI_NLUNS];
 					// per target/lun, during MTIOCSRQ
     BOOL		_ignoreOpenCheckCondition;
 					// during Test Ready in open()
+
+@private
     unsigned int	_lunsReserved;	// bitmask of luns 1..7 we hold
 };
 

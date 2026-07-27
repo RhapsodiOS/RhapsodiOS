@@ -566,6 +566,7 @@ int stForcePageAlign = 1;
 
 static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 {
+    SCSITape		*stp = scsiTape;
     void 		*alignedPtr = NULL;
     unsigned 		alignedLen = 0;
     void 		*freePtr;
@@ -575,6 +576,8 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
     int			rtn = 0;
     IOSCSIRequest	scsiReq;
     sc_status_t		srtn;
+    BOOL		savedIgnore = NO;
+    BOOL		savedOpenIgnore = NO;
 
     if(srp->sr_dma_max > [[scsiTape controller] maxTransfer]) {
 	return EINVAL;
@@ -663,6 +666,15 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 	    didAlign = NO;
 	}
     }
+    else {
+	/*
+	 * No data phase - nothing to align or copy.
+	 */
+	alignedLen = srp->sr_dma_max;
+	alignedPtr = srp->sr_addr;
+	client = IOVmTaskCurrent();
+	didAlign = NO;
+    }
 
     /*
      * Generate a contemporary version of scsi_req.
@@ -679,7 +691,18 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
     scsiReq.read = (srp->sr_dma_dir == SR_DMA_RD) ? YES : NO;
     scsiReq.maxTransfer = alignedLen;
     scsiReq.timeoutLength = srp->sr_ioto;
-    scsiReq.disconnect = 1;
+    scsiReq.disconnect = srp->sr_discon_disable ? 0 : 1;
+
+    /*
+     * The caller can ask us to keep quiet about check conditions for the
+     * duration of this one command.
+     */
+    if(srp->sr_ignore_chkcond) {
+	savedIgnore = stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun];
+	savedOpenIgnore = stp->_ignoreOpenCheckCondition;
+	stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun] = YES;
+	stp->_ignoreOpenCheckCondition = YES;
+    }
 
     /*
      * Go for it.
@@ -693,6 +716,11 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 	buffer : alignedPtr
 	client : client
 	senseBuf : &srp->sr_esense];
+
+    if(srp->sr_ignore_chkcond) {
+	stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun] = savedIgnore;
+	stp->_ignoreOpenCheckCondition = savedOpenIgnore;
+    }
 
     /*
      * Copy status back to user. Note that if we got this far, we

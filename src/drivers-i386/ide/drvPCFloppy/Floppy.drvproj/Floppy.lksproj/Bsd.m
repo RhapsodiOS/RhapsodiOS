@@ -937,6 +937,8 @@ static int fakeStrategySuccess(struct buf *bp)
 	int driveNumber;
 	id deviceInfo;
 	dev_t dev;
+	void *geometry;
+	unsigned int transferSize;
 
 	// Get device number from buffer
 	dev = bp->b_dev;
@@ -949,6 +951,20 @@ static int fakeStrategySuccess(struct buf *bp)
 
 	// Get device info pointer
 	deviceInfo = Drives[driveNumber].devInfo.disk;
+
+	// From decompiled code: two divisions against the geometry record
+	// (deviceInfo+0x14c, the same "geometry" pointer HandleBsdIoctl uses)
+	// whose quotients are discarded - neither result is stored or used.
+	// Reproduced verbatim rather than dropped because a zero geometry
+	// field divides by zero (#DE) in the real binary; the reconstructed
+	// source previously had no equivalent code here at all.
+	geometry = *(void **)((char *)deviceInfo + 0x14c);
+	(void)(bp->b_blkno / *(unsigned int *)((char *)geometry + 0x10));
+	if ((bp->b_blkno % *(unsigned int *)((char *)geometry + 0x10)) == 0) {
+		transferSize = *(unsigned int *)((char *)geometry + 0x10) *
+		               *(unsigned int *)((char *)geometry + 0x14);
+		(void)(bp->b_bcount / transferSize);
+	}
 
 	// Complete the transfer with success status
 	[deviceInfo completeTransfer:bp
@@ -1072,21 +1088,20 @@ static void HandleBsdStrategy(struct buf *bp)
 					                   pending:bp
 					                    client:vmTask];
 				}
-
-				// If successful, return without completing (async operation)
-				if (result == 0) {
-					return;
-				}
 			} else {
 				result = -0x44d;  // Disk not formatted
 			}
 		}
 	}
 
-	// Error path - complete transfer with error status
-	[disk completeTransfer:bp withStatus:result actualLength:0];
+	// If the async operation was accepted, skip completeTransfer: - but
+	// the reference always sends errnoFromReturn: below regardless, even
+	// on success (result == 0).
+	if (result != 0) {
+		[disk completeTransfer:bp withStatus:result actualLength:0];
+	}
 
-	// Convert IOReturn to errno (not used, but matches decompiled code)
+	// Convert IOReturn to errno (return value unused, but always sent)
 	[disk errnoFromReturn:result];
 }
 
@@ -1164,7 +1179,7 @@ static int HandleBsdRead(dev_t dev, struct uio *uio)
 	// Check if disk is formatted
 	isFormatted = [disk isFormatted];
 	if (!isFormatted) {
-		return ENXIO;  // Device not formatted (0x16 = 22 = EINVAL in some contexts)
+		return EINVAL;  // 0x16 = 22 - Invalid argument (disk not formatted)
 	}
 
 	// Get block size from disk
@@ -1659,20 +1674,22 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 {
 	int driveNumber;
 	unsigned char *flagsPtr;
-	
+
 	// Get drive number
 	driveNumber = [[self class] driveNumberOfDrive:drive];
-	
+
 	// If invalid drive number, nothing to do
-	if (driveNumber == -1) {
-		return IO_R_SUCCESS;
+	if (driveNumber != -1) {
+		// Clear bit 2 in flags byte (marks as detached)
+		flagsPtr = &Drives[driveNumber].flags;
+		*flagsPtr &= 0xfd;  // Clear bit 2 (0xfd = ~0x02)
 	}
-	
-	// Clear bit 2 in flags byte (marks as detached)
-	flagsPtr = &Drives[driveNumber].flags;
-	*flagsPtr &= 0xfd;  // Clear bit 2 (0xfd = ~0x02)
-	
-	return IO_R_SUCCESS;
+
+	// The reference never loads a fixed IO_R_SUCCESS/IO_R_INVALID_ARG
+	// constant here - it returns whatever driveNumberOfDrive: left in
+	// eax: -1 on the invalid path, or the raw driveNumber (0-7) on the
+	// normal path.
+	return (IOReturn)driveNumber;
 }
 
 @end

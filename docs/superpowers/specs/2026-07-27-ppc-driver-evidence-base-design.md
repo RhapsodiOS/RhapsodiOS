@@ -266,9 +266,10 @@ written with a semicolon between signature and body:
 
 Line 139 sets `found_semicolon`, and line 163's `found_brace and not
 found_semicolon` guard then never records the site. The idiom is valid
-NeXT-era GCC and appears twice across these five drivers —
-`drvCuda/cuda.m:1399` and `drvApple96_SCSI/Apple96SCSI.m:113`. Both are
-reported as gaps that do not exist.
+NeXT-era GCC and appears three times across these five drivers —
+`drvCuda/cuda.m:1399`, `drvApple96_SCSI/Apple96SCSI.m:113` and
+`drvApple96_SCSI/Apple96CurioPublic.m:424` (the last with a signature wrapped
+across four lines). All three are reported as gaps that do not exist.
 
 This is the same class of defect the SCSITape spec found in the same scanner
 (unindented K&R parameter declarations) and resolved the same way: "a tool

@@ -69,8 +69,8 @@ A trial of the whole pipeline against `drvPPCCuda` produced these numbers. Task 
 
 - `analyze` on the 8,496-byte bundle: **2.3 s**. On the 43,328-byte `_reloc`: **6.6 s**. The 151 KB `drvPPC53c96_reloc` will still finish well inside the 900 s timeout. **Run everything inline; no background jobs are needed.**
 - `drvPPCCuda_reloc` analysis: **100 functions**, 40 carrying names, all 40 Objective-C, **0 named C functions**, 60 unnamed.
-- Cuda source map: **mapped 37, unmapped 3, duplicate_candidates 0, boundary_disputed 0**. The 3 unmapped are `-[AppleCuda StartCudaTransmission:]` (a real gap) plus `+[drvPPCCudaKernelServerInstance kernelServerInstance]` and `+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]` (build-generated).
-- Reconciliation: 37 + 3 + 60 = 100. ✅
+- Cuda source map: **mapped 38, unmapped 2, duplicate_candidates 0, boundary_disputed 0**. The 2 unmapped are the build-generated accessors `+[drvPPCCudaKernelServerInstance kernelServerInstance]` and `+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]`; there are **zero real gaps**. (The original calibration read 37/3 and counted `-[AppleCuda StartCudaTransmission:]` as a real gap; that was a scanner defect -- `cuda.m:1399` defines it with a NeXT-era `;` between the signature and the body -- fixed in `source_map.py`.)
+- Reconciliation: 38 + 2 + 60 = 100. ✅
 - The bundle stub analysis has **2 functions, both unnamed**. Bundle stubs are loader shims and carry no correspondence findings. They are analyzed because the spec requires all ten.
 
 ### Correction to spec §3.4, buckets 1 and 2
@@ -301,7 +301,7 @@ d=json.load(open('src/drivers-ppc/reconstruction/Cuda/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
       'dup',len(d['duplicate_candidates']),'disputed',len(d['boundary_disputed']))
 for u in d['unmapped']: print('  unmapped:', u['reference_names'], u['size'])
-assert len(d['mapped'])==37 and len(d['unmapped'])==3
+assert len(d['mapped'])==38 and len(d['unmapped'])==2
 assert len(d['duplicate_candidates'])==0 and len(d['boundary_disputed'])==0
 print('MATCHES CALIBRATION')
 "
@@ -309,8 +309,7 @@ print('MATCHES CALIBRATION')
 
 Expected:
 ```
-mapped 37 unmapped 3 dup 0 disputed 0
-  unmapped: ['-[AppleCuda StartCudaTransmission:]'] 284
+mapped 38 unmapped 2 dup 0 disputed 0
   unmapped: ['+[drvPPCCudaKernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]'] 16
 MATCHES CALIBRATION
@@ -414,7 +413,7 @@ Expected exactly:
 
 ```
 total functions: 100
-  mapped: 37
+  mapped: 38
   1-crt-dyld: 0
   2-picsymbol-stub: 0
   3-unnamed-jump-island: 60
@@ -422,8 +421,7 @@ total functions: 100
       0x2428  +[drvPPCCudaKernelServerInstance kernelServerInstance]  (20 bytes)
       0x243c  +[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]  (16 bytes)
   5-fn-with-source-site: 0
-  6-fn-no-source-site: 1
-      0x179c  -[AppleCuda StartCudaTransmission:]  (284 bytes)
+  6-fn-no-source-site: 0
 counted: 100
 RECONCILES: yes
 ```
@@ -448,7 +446,7 @@ Create `src/drivers-ppc/reconstruction/Cuda/findings.md` with these sections, fi
 1. `## Artifacts` — both artifacts with size and SHA-256 from the Global Constraints table.
 2. `## Correspondence` — mapped, unmapped, duplicate_candidates, boundary_disputed; total functions; named vs unnamed.
 3. `## Buckets` — the Step 7 table verbatim, including the explicit statement that buckets 1 and 2 are empty **because this is a statically linked kernel server with no `__picsymbol_stub` section and no crt/dyld routines**.
-4. `## Unmapped detail` — each unmapped entry with its size, classified as build-generated or a real gap. `-[AppleCuda StartCudaTransmission:]` is the one real gap; state its size and that `drvCuda/cuda.m` defines no such method.
+4. `## Unmapped detail` — each unmapped entry with its size, classified as build-generated or a real gap. Both unmapped entries are the build-generated accessors (`kernelServerInstance`, `driverKitVersionFordrvPPCCuda`); state each size and that Cuda has **zero real gaps**. `-[AppleCuda StartCudaTransmission:]` is *not* a gap: `drvCuda/cuda.m:1399` defines it.
 5. `## Invariant check` — Step 3 output; relocation violations must be 0; list any symbol/function-start mismatches as `boundary_disputed` candidates.
 6. `## Selector check` — Step 8 output verbatim.
 7. `## Bundle stub` — 2 functions, both unnamed; a loader shim carrying no correspondence findings.
@@ -483,8 +481,8 @@ Expected: an `analysis functions N -> scoped M` line followed by `load_source_ma
 ```bash
 cd $REPO && git add src/drivers-ppc/reconstruction/Cuda && git commit -m "drivers-ppc: measure drvPPCCuda against its shipped binary
 
-37 of 40 Objective-C methods map to bsd/dev/ppc/drvCuda; the only real gap is
--[AppleCuda StartCudaTransmission:]."
+38 of 40 Objective-C methods map to bsd/dev/ppc/drvCuda; the two that do not
+are build-generated accessors, so there is no real gap."
 ```
 
 ---

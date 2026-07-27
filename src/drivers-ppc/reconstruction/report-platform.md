@@ -174,7 +174,8 @@ in the binary: `IOApplePCIBus_reloc`'s symbol table carries
 `binding: external, address: 0, section: None` -- *undefined* symbols this object
 references but does not define. Not one compiled method of either class exists
 in the `_reloc` or the bundle. Their 48 source selectors (17 + 31) are
-attributed to the deferred `IONDRVSupport` in section 3. Evidence:
+absent from every shipped ppc driver binary in the reference tree, the
+deferred `IONDRVSupport` included (section 3). Evidence:
 [ApplePCIBus/findings.md](ApplePCIBus/findings.md), "Note on `IODeviceTreeBus`
 and `IOTreeDevice` specifically".
 
@@ -282,7 +283,9 @@ These are DriverKit build-tooling output, not hand-written driver code.
 and line in each `findings.md`:
 
 - [OHare](OHare/findings.md): nothing to move -- its bucket 6 is empty from the
-  script. The smallest bucket-6 result of any driver measured in this project.
+  script, tied with `drvPPCCuda`'s ([Cuda/findings.md](Cuda/findings.md),
+  `6-fn-no-source-site: 0`) for the smallest bucket-6 result of any driver
+  measured in this project.
 - [PMU](PMU/findings.md): `_gotInterruptCause` (`pmu.m:1533`) and
   `_timer_expired` (`pmu.m:1783`), both non-static C callbacks confirmed by
   basic-block structure -- 13 blocks against a 5-way `if`/`else if` chain, and 1
@@ -359,12 +362,12 @@ definition belonging to the other two binaries as "extra".
 grouped by class and each class checked with `read_macho` against both sibling
 `_reloc` symbol tables:
 
-| Run | Sibling-attributed | Deferred `IONDRVSupport` | Same-class anomalies | Total |
+| Run | Sibling-attributed | Not sibling-attributed | Same-class anomalies | Total |
 | --- | --- | --- | --- | --- |
 | `IOApplePCIBus` | **18** (`IODisplay`'s three classes: 6 + 10 + 2) | **192** | 3 | 213 |
 | `IODisplay` | **27** (`IOApplePCIBus`'s five classes: 9 + 9 + 5 + 3 + 1) | **192** | 0 | 219 |
 
-**Both runs attribute the identical 192 selectors to `IONDRVSupport`**, across
+**Both runs report the identical 192 non-sibling selectors**, across
 the identical class list -- `IOFramebuffer` (55), `IONDRVFramebuffer` (26) and
 `IONDRVFramebuffer(ProgramDAC)` (6), `IOTreeDevice` (31), `IODeviceTreeBus`
 (17), `IOPropertyTable` (14), `IOOFFramebuffer` (11), `IOIX3DNDRV` (9),
@@ -373,6 +376,27 @@ the identical class list -- `IOFramebuffer` (55), `IONDRVFramebuffer` (26) and
 `IOPPCDeviceDescription` (1). Each was confirmed **absent from both**
 `IOApplePCIBus_reloc` and `IODisplay_reloc` by symbol table, not by name
 guessing. 55+26+6+31+17+14+11+9+8+8+2+2+1+1+1 = 192.
+
+**Absence from the two measured binaries is not presence in `IONDRVSupport`
+-- that destination was never checked before this report.** Every Mach-O in
+the shipped `ppc` reference tree (73 files; 26 carry compiled Objective-C
+methods) was scanned by symbol table for these 192 selectors, and the
+destination splits 58/134:
+
+- **58 are defined in `IONDRVSupport_reloc`** and nowhere else --
+  `IOOFFramebuffer` (11 of 11), `IOIX3DNDRV` (9 of 9), `IOIXMNDRV` (8 of 8),
+  `IOATINDRV` (1 of 1), `IONDRVFramebuffer` (24 of 26) and
+  `IONDRVFramebuffer(ProgramDAC)` (5 of 6).
+- **134 are absent from every shipped ppc binary, `IONDRVSupport_reloc`
+  included.** 131 of those sit on nine classes no shipped ppc binary defines
+  at all: `IOFramebuffer` (55), `IOTreeDevice` (31), `IODeviceTreeBus` (17),
+  `IOPropertyTable` (14), `IOATIMACH64NDRV` (8), `IODirectDevice(PPCPrivate)`
+  (2), `IORootDevice` (2), `IOATIRAGE128NDRV` (1), `IOPPCDeviceDescription`
+  (1). The remaining 3 are selector-level absences on otherwise-present
+  classes: `IONDRVFramebuffer` (2 of 26) and `IONDRVFramebuffer(ProgramDAC)`
+  (1 of 6).
+
+58 + 134 = 192. 4.5 states the 131-selector remainder as a finding of its own.
 
 The two sibling figures cross-validate: 18 + 192 + 3 = 213, and
 27 + 192 + 0 = 219. `IOApplePCIBus`'s three same-class anomalies are
@@ -401,10 +425,10 @@ a function at all.
 
 ## 4. Findings
 
-### 4.1 The underscore convention is project-wide, not a `drvPPCBurgundy` one-off
+### 4.1 The underscore convention isn't a `drvPPCBurgundy` one-off -- `PPCAwacs` shares it
 
-**This is the question the spec was written to answer, and the answer is
-project-wide.**
+**This is the question the spec was written to answer: does `PPCAwacs` share
+`drvPPCBurgundy`'s private-selector renaming convention? It does.**
 
 `selector_check.py` on `PPCAwacs` against
 `src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj`, re-run
@@ -453,8 +477,8 @@ missing = 40 reference selectors ([report.md](report.md);
 [Burgundy/findings.md](Burgundy/findings.md), "Selector check"), and its 16 are
 `PPCBurgundy(Private) _<name>` at cited `BurgundySoundPrivate.m` lines.
 
-Two independent RhapsodiOS `IOAudio` reimplementations, the same convention
-applied at the same 16-of-16 rate, and **neither has any unexplained missing
+The two RhapsodiOS `IOAudio` reimplementations apply the same convention
+at the same 16-of-16 rate, and **neither has any unexplained missing
 selector beyond the build-generated accessors** -- Awacs's missing list is
 exactly the two tool-emitted accessors, and Burgundy's is those two plus
 `probe:`, which Awacs implements under its exact reference name
@@ -463,6 +487,16 @@ exactly the two tool-emitted accessors, and Burgundy's is those two plus
 Evidence: [Awacs/findings.md](Awacs/findings.md), "Selector check" and
 "Reimplementation note"; [Burgundy/findings.md](Burgundy/findings.md),
 "Selector check".
+
+**A third correction to the spec's numbers.** The spec described `PPCAwacs`
+as having "17 of its 38 method definitions underscore-prefixed"; the
+measurement above gives 39 definitions and 16 renames. The 17th
+underscore-prefixed method is `-[PPCAwacs _interruptOccurred]`
+(`PPCSound.m:346`, declared `PPCSound.h:108`) -- an `IOAudio` superclass
+override that calls `[super _interruptOccurred]`, whose selector matches
+Apple's reference exactly, so it is correctly not counted as a rename. This
+sharpens the finding: the convention is "underscore our own privates", not
+blanket prefixing.
 
 ### 4.2 OHare has zero real gaps, and spec 1.2's prediction about it was wrong
 
@@ -564,16 +598,28 @@ selectors"; [Cuda/findings.md](Cuda/findings.md), "Selector check".
 ### 4.5 The shared `driverkit-3` directory's extras are sibling classes, not gaps
 
 Stated in full in section 3 rather than buried. **213 extras for
-`IOApplePCIBus`, 219 for `IODisplay`, all attributed.** 192 to the deferred
-`IONDRVSupport` in both cases -- the identical 192 selectors across the identical
-class list, confirmed absent from both sibling `_reloc` symbol tables -- and the
-remainder to each other: 18 and 27, cross-validated between the two tasks
+`IOApplePCIBus`, 219 for `IODisplay`, all attributed.** 192 are shared in both
+cases -- the identical 192 selectors across the identical class list, confirmed
+absent from both sibling `_reloc` symbol tables -- and split 58 in
+`IONDRVSupport_reloc` / 134 in no shipped ppc binary at all. The remainder is
+attributed to each other: 18 and 27, cross-validated between the two tasks
 against each binary's own symbol table.
 
 **These are not gaps.** They are the arithmetic consequence of running a
 whole-directory selector scan against one binary out of three that the directory
 builds. The three residual same-class anomalies in `IOApplePCIBus`'s run are
 named in sections 3 and 4.6; `IODisplay`'s run has none.
+
+**The 131-selector remainder is a finding in its own right.** Nine classes --
+`IOFramebuffer`, `IOTreeDevice`, `IODeviceTreeBus`, `IOPropertyTable`,
+`IOATIMACH64NDRV`, `IODirectDevice(PPCPrivate)`, `IORootDevice`,
+`IOATIRAGE128NDRV`, `IOPPCDeviceDescription` -- have source in this shared
+directory but no shipped ppc binary in the reference tree, `IONDRVSupport`
+included, compiles a single method of any of them. That is consistent with
+this surface being kernel-resident DriverKit that never shipped as a
+standalone ppc driver binary here, not with a gap in either measured driver:
+the direction of measurement is source against binary, so it cannot be
+missing code in `IOApplePCIBus` or `IODisplay`.
 
 Spec 5.1 named mischaracterising these as gaps the likeliest error in the batch.
 It is recorded here as a finding precisely so the number cannot be quoted
@@ -584,7 +630,10 @@ without its attribution.
 Across sixteen drivers measured in four specs, every binary carries exactly one
 `__TEXT,__text` symbol at address `0x0`, and in every case but one that symbol
 has **no** corresponding IDA function -- it is a symbol-table entry with a
-placeholder address.
+placeholder address. This report re-verified that disposition firsthand for
+its own ten artifacts, five `_reloc` and five bundle stubs (Acceptance item
+2); the other six are carried forward from the three prior reports and were
+not re-verified here.
 
 **`IOApplePCIBus_reloc` is the exception.** `-[IOPCIBridge registerLoudly]` sits
 at address 0 *and* is a real 12-byte IDA function with three instructions
@@ -717,7 +766,8 @@ entirely a documented address-0x0 artifact.
 - **Drift or different version?** **Neither.** This is a RhapsodiOS
   reimplementation (`PPCSound.m` carries both `Copyright (c) 1999 Apple
   Computer, Inc.` and `Copyright (c) 2025 RhapsodiOS Project`) applying a
-  deliberate naming rule, confirmed by section 6.1 to be project-wide.
+  deliberate naming rule, confirmed by section 6.1 to also hold for
+  `drvPPCBurgundy`.
 - **The follow-on spec's job:** decide whether to keep the underscore prefix or
   restore Apple's selectors -- **the same decision `drvPPCBurgundy`'s follow-on
   faces, and it should be made once for both** (6.1). The runtime consequence is
@@ -776,9 +826,11 @@ entirely a documented address-0x0 artifact.
   against 36 unmapped. 7 functions.
 - **Exact-name match: 2 of 4 (50.0%)** -- the lowest rate in the batch and the
   least meaningful, since the denominator is 4 (section 3).
-- **Bucket 6 from the script: 0.** Nothing to resolve by hand at all -- the only
-  driver measured in this project with an empty bucket 6 straight out of the
-  script.
+- **Bucket 6 from the script: 0.** Nothing to resolve by hand at all -- tied
+  with `drvPPCCuda` ([Cuda/findings.md](Cuda/findings.md),
+  `6-fn-no-source-site: 0`) for the smallest bucket-6 result straight out of
+  the script of any driver measured in this project. OHare is still the
+  smallest measurement of the two by function count (7 against Cuda's 100).
 - **Drift or different version?** **Neither.** Both source methods have
   exact-name binary counterparts; `extra` is empty and `missing` contains only
   the two tool-emitted accessors.
@@ -876,7 +928,8 @@ updateInputGainRight, updateOutputAttenuation, updateOutputAttenuationLeft,
 updateOutputAttenuationRight, updateOutputMute
 ```
 
-**The convention question, answered: it is project-wide, not driver-local.**
+**The convention question, answered: `PPCAwacs` shares it too, not just
+`drvPPCBurgundy`.**
 
 | | Reference selectors | Exact | Renamed | Missing | Rename rate |
 | --- | --- | --- | --- | --- | --- |
@@ -892,7 +945,7 @@ updateOutputAttenuationRight, updateOutputMute
 Every rename in both is the identical transformation: a
 `<Class>(Private) _<name>` source method against a bare `<name>` reference
 selector. **Neither driver has a single unexplained missing selector beyond
-build-generated accessors.** Two independent reimplementations, the same rule,
+build-generated accessors.** The two reimplementations follow the same rule,
 the same 16-of-16 rate, zero counterexamples in either direction -- Awacs has no
 extras to check, and neither driver's missing accessors has an
 underscore-prefixed source form (checked in [Awacs/findings.md](Awacs/findings.md),
@@ -1176,8 +1229,8 @@ in all three of its shapes.
 
 ### Item 8 -- section 6 answers both pairing questions from measurement -- **PASS**
 
-Section 6.1 answers the `IOAudio` question: **the underscore convention is
-project-wide, not driver-local**, from `PPCAwacs`'s 16 renames at 16 of 16
+Section 6.1 answers the `IOAudio` question: **`PPCAwacs` shares
+`drvPPCBurgundy`'s underscore convention**, from `PPCAwacs`'s 16 renames at 16 of 16
 against `drvPPCBurgundy`'s 16 at 16 of 16, with the arithmetic stated for both
 (23 + 16 + 2 = 41; 21 + 16 + 3 = 40) and neither carrying an unexplained missing
 selector. It also reports the shared/unique selector split (37 shared of 39 and
@@ -1218,3 +1271,7 @@ spec 4.6's stated questions, per spec 5.1.
   [report.md](report.md) for everything else.
 - **`PPCSerialPort`, `IONDRVSupport`, `IOADBDevice`, `adbservd`, `Floppy`,
   `DEC21x4Ethernet`, `BPF`, `PortServer` are not measured**, per spec 1.3.
+- **The "sixteen drivers... every binary" address-0x0 disposition (4.6) was not
+  re-verified in full for this report.** Only this batch's own ten artifacts
+  were re-run through `ppc_invariant_check.py` here; the other six are read
+  from the three prior reports as committed.

@@ -437,26 +437,26 @@ counts among the 213 extras:
 
 | Class | Count | Attribution |
 | --- | --- | --- |
-| `IOFramebuffer` | 55 | Deferred `IONDRVSupport` -- absent from both `IOApplePCIBus_reloc` and `IODisplay_reloc`. |
-| `IONDRVFramebuffer` | 32 | Deferred `IONDRVSupport`. |
-| `IOTreeDevice` | 31 | Deferred `IONDRVSupport` -- see note below on the brief's seven-class list. |
-| `IODeviceTreeBus` | 17 | Deferred `IONDRVSupport` -- see note below. |
-| `IOPropertyTable` | 14 | Deferred `IONDRVSupport`. |
-| `IOOFFramebuffer` | 11 | Deferred `IONDRVSupport`. |
+| `IOFramebuffer` | 55 | Not a sibling -- absent from `IOApplePCIBus_reloc`, `IODisplay_reloc` **and every other shipped ppc binary**, `IONDRVSupport_reloc` included. |
+| `IONDRVFramebuffer` | 32 | Not a sibling -- 29 of 32 (24 base + 5 `(ProgramDAC)`) are defined in `IONDRVSupport_reloc`; 3 (2 base + 1 `(ProgramDAC)`) are absent from every shipped ppc binary. |
+| `IOTreeDevice` | 31 | Not a sibling -- absent from every shipped ppc binary; see note below on the brief's seven-class list. |
+| `IODeviceTreeBus` | 17 | Not a sibling -- absent from every shipped ppc binary; see note below. |
+| `IOPropertyTable` | 14 | Not a sibling -- absent from every shipped ppc binary. |
+| `IOOFFramebuffer` | 11 | Not a sibling -- defined in `IONDRVSupport_reloc`. |
 | `IOSmartADBDisplay` | 10 | Sibling: `IODisplay` (confirmed present in `IODisplay_reloc`). |
-| `IOIX3DNDRV` | 9 | Deferred `IONDRVSupport`. |
-| `IOIXMNDRV` | 8 | Deferred `IONDRVSupport`. |
-| `IOATIMACH64NDRV` | 8 | Deferred `IONDRVSupport`. |
+| `IOIX3DNDRV` | 9 | Not a sibling -- defined in `IONDRVSupport_reloc`. |
+| `IOIXMNDRV` | 8 | Not a sibling -- defined in `IONDRVSupport_reloc`. |
+| `IOATIMACH64NDRV` | 8 | Not a sibling -- absent from every shipped ppc binary. |
 | `IOSmartDisplay` | 6 | Sibling: `IODisplay` (confirmed present in `IODisplay_reloc`). |
 | `IOSmartDDCDisplay` | 2 | Sibling: `IODisplay` (confirmed present in `IODisplay_reloc`). |
-| `IORootDevice` | 2 | Deferred `IONDRVSupport`. |
-| `IODirectDevice(PPCPrivate)` | 2 | Deferred `IONDRVSupport` (category on a DriverKit base class, source-only in this directory). |
-| `IOPPCDeviceDescription` | 1 | Deferred `IONDRVSupport`. |
+| `IORootDevice` | 2 | Not a sibling -- absent from every shipped ppc binary. |
+| `IODirectDevice(PPCPrivate)` | 2 | Not a sibling -- absent from every shipped ppc binary (category on a DriverKit base class, source-only in this directory). |
+| `IOPPCDeviceDescription` | 1 | Not a sibling -- absent from every shipped ppc binary. |
 | `IOPCIDevice` | 1 | **Not a sibling -- see below.** |
 | `IOPCIBridge` | 1 | **Not a sibling -- see below.** |
 | `IOMacRiscPCIBridge` | 1 | **Not a sibling -- the `registerLoudly` anomaly, see Buckets above.** |
-| `IOATIRAGE128NDRV` | 1 | Deferred `IONDRVSupport`. |
-| `IOATINDRV` | 1 | Deferred `IONDRVSupport`. |
+| `IOATIRAGE128NDRV` | 1 | Not a sibling -- absent from every shipped ppc binary. |
+| `IOATINDRV` | 1 | Not a sibling -- defined in `IONDRVSupport_reloc`. |
 
 Sum: 55+32+31+17+14+11+10+9+8+8+6+2+2+2+1+1+1+1+1+1 = 213. Matches the
 header count exactly.
@@ -466,15 +466,29 @@ header count exactly.
 (Task 6), confirmed present in `IODisplay_reloc`'s own symbol table via
 `read_macho`, not by name guessing.
 
-**Deferred `IONDRVSupport` attribution (192 total):** every remaining class
-except the three flagged "not a sibling" -- `IOFramebuffer`,
+**Not-sibling attribution (192 total):** every remaining class except the
+three flagged "not a sibling, same-class anomaly" -- `IOFramebuffer`,
 `IONDRVFramebuffer`, `IOTreeDevice`, `IODeviceTreeBus`, `IOPropertyTable`,
 `IOOFFramebuffer`, `IOIX3DNDRV`, `IOIXMNDRV`, `IOATIMACH64NDRV`,
 `IORootDevice`, `IODirectDevice(PPCPrivate)`, `IOPPCDeviceDescription`,
 `IOATIRAGE128NDRV`, `IOATINDRV` -- was checked against both
-`IOApplePCIBus_reloc` and `IODisplay_reloc` and found in neither, so all
-192 selectors are attributed to the deferred `IONDRVSupport` binary that
-also lives in this shared source directory.
+`IOApplePCIBus_reloc` and `IODisplay_reloc` and found in neither. **That does
+not mean all 192 are in the deferred `IONDRVSupport` binary** -- that
+destination was never checked until every Mach-O in the shipped `ppc`
+reference tree was scanned by symbol table for this fix. It splits 58/134:
+58 are defined in `IONDRVSupport_reloc` (`IOOFFramebuffer` 11 of 11,
+`IOIX3DNDRV` 9 of 9, `IOIXMNDRV` 8 of 8, `IOATINDRV` 1 of 1,
+`IONDRVFramebuffer` 24 of 26, `IONDRVFramebuffer(ProgramDAC)` 5 of 6), and 134
+are absent from every shipped ppc binary, `IONDRVSupport_reloc` included --
+131 of those on the nine classes with no defined method anywhere
+(`IOFramebuffer`, `IOTreeDevice`, `IODeviceTreeBus`, `IOPropertyTable`,
+`IOATIMACH64NDRV`, `IODirectDevice(PPCPrivate)`, `IORootDevice`,
+`IOATIRAGE128NDRV`, `IOPPCDeviceDescription`), and the remaining 3 on
+otherwise-present classes (`IONDRVFramebuffer` 2 of 26,
+`IONDRVFramebuffer(ProgramDAC)` 1 of 6). That 131-selector remainder is most
+plausibly kernel-resident DriverKit surface that never shipped as a
+standalone ppc driver binary in this reference tree -- a result in its own
+right, not an artifact of this attribution.
 
 **Note on `IODeviceTreeBus` and `IOTreeDevice` specifically:** the task
 brief lists these two as part of *this* binary's seven classes. Empirically
@@ -488,9 +502,9 @@ define. Neither the relocatable object nor the bundle (`applepcibus-bundle-ppc`,
 2 functions, both dyld stubs) contains a single compiled
 `IODeviceTreeBus` or `IOTreeDevice` method. All 48 of their selectors
 (17 + 31) found in source are therefore genuinely absent from both of
-this task's reference artifacts and are attributed to the deferred
-`IONDRVSupport` binary, which must be where these two classes are actually
-compiled and where the external references resolve at link time.
+this task's reference artifacts, and, per the scan above, from every other
+shipped ppc binary as well, `IONDRVSupport_reloc` included -- neither class
+has a single compiled method anywhere in this reference tree.
 
 **Three same-class extras, not sibling attributions:**
 
@@ -555,14 +569,15 @@ directory, regardless of which binary it belongs to -- which is exactly
 why this task's selector check reports 213 "extra" selectors and only 0
 renames. **None of the 213 extras are gaps in this driver's
 reimplementation.** 18 belong to `IODisplay`'s three classes (confirmed via
-`read_macho` against `IODisplay_reloc`), 192 belong to the deferred
-`IONDRVSupport`'s classes (confirmed absent from both `IOApplePCIBus_reloc`
-and `IODisplay_reloc`, including the `IODeviceTreeBus`/`IOTreeDevice`
-classes the task brief nominally lists as this binary's own -- see the note
-above), and the remaining 3 are same-class anomalies specific to this
-binary, fully accounted for in Buckets and Selector check above (one
-class-attribution mismatch on `registerLoudly`, and two confirmed-in-source
-but absent-from-binary trivial overrides).
+`read_macho` against `IODisplay_reloc`); 192 are not on either sibling's own
+class list (confirmed absent from both `IOApplePCIBus_reloc` and
+`IODisplay_reloc`, including the `IODeviceTreeBus`/`IOTreeDevice` classes
+the task brief nominally lists as this binary's own -- see the note above),
+of which 58 are defined in the deferred `IONDRVSupport_reloc` and 134 are
+absent from every shipped ppc binary; and the remaining 3 are same-class
+anomalies specific to this binary, fully accounted for in Buckets and
+Selector check above (one class-attribution mismatch on `registerLoudly`,
+and two confirmed-in-source but absent-from-binary trivial overrides).
 
 The task brief's warning that "mischaracterising those extras as gaps is
 the single likeliest error in this batch" is borne out by the scale here:

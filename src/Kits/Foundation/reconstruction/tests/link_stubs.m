@@ -181,3 +181,13 @@ id NSStringFromStack(id format, id separator)
     unimplemented("NSStringFromStack");
     return nil;
 }
+
+/*  Task 9 (NSProxy) addition.  NSProxy's own null-selector diagnostic
+    helper, the direct counterpart to _NSObjectRaiseNullSelectorException
+    above -- not reconstructed (NSPrivate territory, Task 10), and not
+    reached by any test in this stage (none call performSelector: with a
+    NULL selector).  */
+void _NSProxyRaiseNullSelectorException(id object, SEL aSelector)
+{
+    unimplemented("_NSProxyRaiseNullSelectorException");
+}

@@ -334,22 +334,15 @@ IOLog ("SCSI Tape read/write: set up for fixed block transfer\n");
 
     } else {
 	length = uiop->uio_iov->iov_len;
-	if(rw_flag == SR_DMA_RD)
-	    if ([scsiTape suppressIllegalLength]) {
-		cdbp->c6s_opt |= C6OPT_SIL;
+	if(rw_flag == SR_DMA_RD) {
+	    [scsiTape setSuppressIllegalLength: YES];
+	    cdbp->c6s_opt |= C6OPT_SIL;
 
 #ifdef	DEBUG
 IOLog ("SCSI Tape read: variable block read, suppress illegal len errs\n");
 #endif	DEBUG
 
-	    }
-	    else {
-
-#ifdef	DEBUG
-IOLog ("SCSI Tape read: variable block read, allow illegal len errs\n");
-#endif	DEBUG
-
-	    }
+	}
     }
     assign_cdb_c6s_len (cdbp, length);
 

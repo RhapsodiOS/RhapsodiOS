@@ -113,22 +113,31 @@ class _Artifact:
             chunks.append(chunk); remaining -= len(chunk)
         return b"".join(chunks)
 
-    def hash_all(self):
+    def _digest_all(self):
         digest = hashlib.sha256(); count = 0
         os.lseek(self.fd, 0, os.SEEK_SET)
         while True:
             chunk = os.read(self.fd, CHUNK_SIZE)
             if not chunk: break
             digest.update(chunk); count += len(chunk)
+        return digest.hexdigest().upper(), count
+
+    def hash_all(self):
+        sha256, count = self._digest_all()
         if count != self.initial.st_size:
             raise ComparisonError(f"artifact changed while comparing: {self.path}")
-        self.identity = {"path": str(self.path), "size": count,
-                         "sha256": digest.hexdigest().upper()}
+        self.identity = {"path": str(self.path), "size": count, "sha256": sha256}
         return self.identity
 
     def verify_stable(self):
         final = os.fstat(self.fd)
         if any(getattr(self.initial, field) != getattr(final, field) for field in _STABLE_FIELDS):
+            raise ComparisonError(f"artifact changed while comparing: {self.path}")
+
+    def verify_content(self):
+        """Re-read the bytes: a same-size overwrite need not move any stat timestamp."""
+        sha256, count = self._digest_all()
+        if (count, sha256) != (self.identity["size"], self.identity["sha256"]):
             raise ComparisonError(f"artifact changed while comparing: {self.path}")
 
     def close(self):
@@ -1003,6 +1012,7 @@ def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_
                   "relocation_summary": relocation_summary,
                   "functions": functions, "sections": sections}
         pair.left.verify_stable(); pair.right.verify_stable()
+        pair.left.verify_content(); pair.right.verify_content()
         validate_comparison_report(report); complete = True
     finally:
         if complete: pair.close_verified()

@@ -412,6 +412,30 @@ def test_source_sites_finds_kandr_definition_with_return_type_on_its_own_line(
     assert sites["_bpf_movein"] == [("src/driver/bpf.c", 2)]
 
 
+def test_source_sites_finds_kandr_definition_with_unindented_parameters(tmp_path):
+    """K&R parameter declarations need not be indented.
+
+    drvSCSITape's stblocksize.c writes them at column zero. Each still ends
+    in ';' and must not be read as a prototype's terminator just because it
+    starts in column zero.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "stblocksize.c").write_text(
+        "int\n"
+        "do_ioc(srp)\n"
+        "struct scsi_req *srp;\n"
+        "{\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_do_ioc"] == [("src/driver/stblocksize.c", 2)]
+
+
 def test_source_sites_finds_ansi_definition_with_return_type_on_its_own_line(
     tmp_path,
 ):

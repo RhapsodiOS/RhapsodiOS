@@ -149,8 +149,13 @@ def source_sites(repo_root, source_dir):
                 found_brace = "{" in line
                 found_semicolon = not found_brace and line.rstrip().endswith(";")
                 # A closed parameter list with no ";" may be a K&R definition,
-                # whose indented parameter declarations each end in ";". Those
-                # must not be read as a prototype's terminator.
+                # whose parameter declarations each end in ";". Those must not
+                # be read as a prototype's terminator. They are not reliably
+                # indented -- drvSCSITape's stblocksize.c writes them at column
+                # zero -- so indentation cannot be part of the test. A genuine
+                # prototype is unaffected: a single-line one is skipped before
+                # this point, and a wrapped one does not close its parameter
+                # list on the header line, so "kandr" is never set.
                 kandr = line.rstrip().endswith(")")
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
@@ -173,9 +178,7 @@ def source_sites(repo_root, source_dir):
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";") and not (
-                        kandr and candidate[:1].isspace()
-                    ):
+                    elif candidate.rstrip().endswith(";") and not kandr:
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:

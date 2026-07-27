@@ -100,7 +100,10 @@ bucket 5:
 - `_ReadGemRegister` -- `src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnet.m:32`
   (non-static, `extern`-declared at `GemEnetPrivate.m:69`)
 - `_mace_crc` -- `src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m:135`
-  (static; a name match, with a caveat -- see below)
+  (static; **name-only match, not a confirmed correspondence** -- the source
+  site exists, satisfying the bucket-5 criterion, but the compiled function
+  implements measurably different, non-equivalent logic; see the headline
+  finding below)
 
 Neither `_WriteGemRegister`/`_ReadGemRegister` is one of the "2 static C
 functions" the task description calls out for this source. Grepping for
@@ -136,11 +139,36 @@ as exactly three calls to `crc416` on the address's three 16-bit halfwords --
 this matches Gem's compiled `_mace_crc`/`_crc416` instruction-for-instruction.
 So the reference binary's `_mace_crc`/`_crc416` implement the same
 shared/boilerplate CRC-32 pair BMac's original source carries, not the
-different (though presumably behavior-equivalent) reflected-CRC algorithm
-that this repository's `GemEnetPrivate.m:135` currently implements under the
-same function name. I moved `_mace_crc` to bucket 5 because the name and
-declaration site match, but this is a name match, not a byte-identical
-match -- flagging it here rather than asserting it silently.
+different reflected-CRC algorithm that this repository's
+`GemEnetPrivate.m:135` currently implements under the same function name.
+
+**Headline finding: the two algorithms are measurably not
+behavior-equivalent.** I implemented both (BMac's `crc416`/`mace_crc` pair,
+reading each halfword big-endian -- the correct byte order on PowerPC -- and
+this repository's byte-wise reflected-CRC version) and ran both against five
+MAC addresses, including the standard IPv4 and IPv6 multicast addresses,
+taking the top 6 bits as the hash-table index each driver actually uses:
+
+```
+01:00:5E:00:00:01  apple=0x7FA32D9B (hash 31)  ours=0xD9B4C5FE (hash 54)  DIFFER
+33:33:00:00:00:01  apple=0xF99BAABA (hash 62)  ours=0x5D55D99F (hash 23)  DIFFER
+FF:FF:FF:FF:FF:FF  apple=0xFF48647D (hash 63)  ours=0xBE2612FF (hash 47)  DIFFER
+00:00:00:00:00:00  apple=0x3A7ABC72 (hash 14)  ours=0x4E3D5E5C (hash 19)  DIFFER
+01:23:45:67:89:AB  apple=0xA72FE892 (hash 41)  ours=0x4917F4E5 (hash 18)  DIFFER
+
+identical on 0/5 vectors
+```
+
+Zero of five vectors agree, including both standard multicast addresses.
+The runtime consequence is concrete: this repository's `GemEnet` would
+program the wrong multicast hash bucket for every address tested, so it
+would drop multicast frames the real hardware/driver combination should
+accept, and accept frames it should not -- a real behavioral divergence, not
+just a naming/bookkeeping mismatch. `_mace_crc` stays in bucket 5 because a
+source site genuinely exists (the bucket taxonomy is about source-site
+existence, not logic equivalence), but a later reader must not count it as
+a confirmed match: it is a name-only correspondence with divergent, tested,
+non-equivalent logic.
 
 The remaining two entries are real gaps:
 
@@ -148,8 +176,13 @@ The remaining two entries are real gaps:
   `src/drivers-ppc/network/drvPPCGem`. Given the byte-identical match with
   BMac's `crc416` above, it is very likely the same shared driver-era CRC
   helper Apple's original Gem driver carried, simply not present in this
-  repository's `GemEnetPrivate.m` reconstruction (which reimplements the same
-  multicast-hash behavior differently). It stays in bucket 6 as a real gap
+  repository's `GemEnetPrivate.m` reconstruction (which reimplements
+  multicast-hash filtering with a different, tested-non-equivalent
+  algorithm -- see the headline finding above). This absence is internally
+  consistent: this repository's version computes CRC-32 byte-by-byte over
+  the whole address in one self-contained loop and never decomposes the
+  computation into per-16-bit-halfword steps, so it has no reason to carry
+  a `crc416`-shaped helper at all. It stays in bucket 6 as a real gap
   relative to this repository's current source tree.
 - `__udivdi3` has no match anywhere under `src/drivers-ppc/network/drvPPCGem`
   either. It is the libgcc 64-bit unsigned-division runtime helper the PPC

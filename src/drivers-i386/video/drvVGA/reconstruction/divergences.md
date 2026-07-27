@@ -3499,6 +3499,12 @@ That is why `__picsymbol_stub` has 17 entries for 23 undefined symbols.
 
 ## Status
 
+This section records the state at the **end of Phase 2**, when the report pass
+closed. Phase 3a has since rewritten `VGA_psdrvr` and three of the statements
+below are now out of date — the ledger state, the MH_EXECUTE open question and
+the build state. **`## Phase 3a result` at the foot of this document supersedes
+them for `VGA_psdrvr`.** Everything here about `VGA_reloc` still stands.
+
 **Analyzer coverage.** `VGA_reloc` ran IDA 9.2 and Ghidra 12.1; angr is disabled
 for that profile after its CFGFast recovered a phantom 6-byte function at 7760
 overlapping `_emu486`'s primary chunk. `VGA_psdrvr` ran IDA 9.2 alone; angr
@@ -3530,3 +3536,255 @@ use by a concurrent session.
   expected the Driver project type to emit one without anyone writing code.
 - Ghidra's Mach-O relocation-kind gap for `VGA_psdrvr` is uninvestigated and is
   a candidate for separate tooling work, not something this effort fixes.
+
+## Phase 3a result
+
+Phase 3a rewrote `VGA_psdrvr` — the user-space bundle Apple's Window Server loads
+— from the report pass's decompilation. All **34 compiled bodies** are written in
+one translation unit, `VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c`. The nineteen
+remaining ledger entries are linker- and dyld-generated and have no source.
+
+Everything below was measured on a **clean build from scratch**: the guest's
+`/build/source/src/drivers-i386/video/drvVGA` and `/build/out/i386/drvVGA` were
+deleted, the tree re-synced with a targeted `pscp`, and `vm/build-i386-vga.sh`
+run from nothing. `make exit=0`, `=== vga done fail=0 ===`, `file` reports
+`Mach-O bundle i386`, `read_macho` reports file type 8, and **`VGAPSDriver.c`
+compiles with zero warnings**. The seven warnings in the build log all come from
+the kernel half's still-invented `VGASetMode.m` and `VGAModes.c`, which Phase 3b
+replaces.
+
+### Parity
+
+```
+missing_strings (0):
+missing_symbols (0):
+extra_strings   (0):
+extra_symbols  (52):
+```
+
+**`missing_strings` is empty and `missing_symbols` is empty.** All 15 `__cstring`
+entries are present and byte-identical — including the two spaces in
+`"VGA Driver:  can't talk to VGA (%d).\n"`, the missing space in
+`"VGA Driver: can't register screen(%d)\n"`, and the deduplicated
+`"...can't set display info (%d)."` that two failure paths share. All 19 exported
+function names and all 7 exported `__common` globals resolve.
+
+**`extra_symbols` is 52 by deliberate decision and is not a defect.** Apple linked
+the reference `ld -x`; we do not, so our symbol table keeps the stabs
+(`VGAPSDriver.c`, `VGAComposite:f19`, `VGAStart:F1`, and so on) and the local
+symbols of the file-scope statics. That is the entire 52. Extras are reported by
+`parity_check.py`, never gated. **Do not add `-x` to chase them** — stripping
+would cost the source map and the ledger their symbol anchors for no parity
+benefit.
+
+### Sections
+
+| Section | Reference | Ours | Delta | Bytes identical |
+| --- | --- | --- | --- | --- |
+| `__TEXT,__text` | 7057 | 6707 | −350 | no |
+| `__TEXT,__const` | 444 | 444 | **0** | **yes** |
+| `__TEXT,__cstring` | 452 | 452 | **0** | **yes** |
+| `__TEXT,__picsymbol_stub` | 442 | 442 | **0** | no |
+| `__DATA,__data` | 152 | 152 | **0** | no |
+| `__DATA,__dyld` | 8 | 8 | **0** | **yes** |
+| `__DATA,__la_symbol_ptr` | 68 | 68 | **0** | no |
+| `__DATA,__nl_symbol_ptr` | 32 | 12 | −20 | no |
+| `__DATA,__common` | 32 | 32 | **0** | zero-fill |
+| `__DATA,__bss` | 131124 | 131080 | −44 | zero-fill |
+
+**Seven of the ten sections match the reference's size exactly, and three of those
+are byte-for-byte identical**: `__TEXT,__const` (all 444 bytes — five VGA register
+tables, two `Bounds`, the 17-entry mask table), `__TEXT,__cstring` (all 452) and
+`__DATA,__dyld`.
+
+The four sections that match in size but not in bytes all differ for one reason:
+they hold link-time addresses that the `__text` delta shifts. `__DATA,__data`
+differs in 101 of 152 bytes (the vector table's function pointers and the `__bm*`
+class cells), `__DATA,__la_symbol_ptr` in all 68 (every cell is a lazy-stub
+address), `__TEXT,__picsymbol_stub` in 93 of 442 (PIC displacements). Their sizes
+matching is the meaningful result there; their contents cannot match while
+`__text` differs.
+
+**`__text` differing is expected and is not a finding.** Our compiler is not
+Apple's — the reference was built by Apple's own gcc 2.x with Apple's own headers
+and switches, and no reconstruction from disassembly reproduces a 1999 compiler's
+register allocation. −350 bytes on 7057 is 95.0% of the reference's size. The
+`__DATA,__nl_symbol_ptr` shortfall is the PIC artefact this document already
+records: our compiler routes more of the same indirections through `__data`.
+`__DATA,__bss` is short by exactly the 44 unreferenced bytes recorded under
+finding 35.
+
+### The 34 bodies, measured
+
+Our sizes are symbol to symbol, so they include the padding to the next function;
+the reference column therefore gives both the body size and the padded size.
+
+| Reference | Our name | Ref | Ref+pad | Ours | Δ vs padded |
+| --- | --- | --- | --- | --- | --- |
+| `sub_70301F58` | `VGAInitScreen` | 127 | 128 | 144 | +16 |
+| `sub_70301FD8` | `VGARegisterScreen` | 96 | 96 | 96 | **0** |
+| `sub_70302038` | `VGANullOp` | 7 | 8 | 8 | **0** |
+| `sub_70302040` | `VGAComposite` | 521 | 524 | 512 | −12 |
+| `sub_7030224C` | `VGAFreeOffscreen` | 36 | 36 | 36 | **0** |
+| `sub_70302270` | `VGAFillRect` | 57 | 60 | 60 | **0** |
+| `sub_703022AC` | `VGASetOffscreenOrigin` | 45 | 48 | 48 | **0** |
+| `sub_703022DC` | `VGAOffscreenOp18` | 29 | 32 | 32 | **0** |
+| `sub_703022FC` | `VGANewOffscreen` | 111 | 112 | 108 | −4 |
+| `sub_7030236C` | `VGAConvertOffscreen` | 223 | 224 | 208 | −16 |
+| `sub_7030244C` | `VGAGetOffscreenParams` | 58 | 60 | 60 | **0** |
+| `_Start` / `_VGAStart` | `VGAStart` | 637 | 640 | 640 | **0** |
+| `_VGASysHideCursor` | same | 29 | 32 | 32 | **0** |
+| `_VGASysShowCursor` | same | 107 | 108 | 116 | +8 |
+| `_VGACheckShield` | same | 178 | 180 | 184 | +4 |
+| `_VGASetCursor` | same | 554 | 556 | 572 | +16 |
+| `_VGAHideCursor` | same | 44 | 44 | 44 | **0** |
+| `_VGAShowCursor` | same | 44 | 44 | 44 | **0** |
+| `_VGAObscureCursor` | same | 66 | 68 | 68 | **0** |
+| `_VGARevealCursor` | same | 63 | 64 | 64 | **0** |
+| `_VGAShieldCursor` | same | 78 | 80 | 80 | **0** |
+| `_VGAUnshieldCursor` | same | 73 | 76 | 76 | **0** |
+| `sub_70302BEC` | `VGADisplayCursorBlit` | 603 | 604 | 596 | −8 |
+| `sub_70302E48` | `VGARemoveCursorBlit` | 481 | 484 | 480 | −4 |
+| `_set_colormap` | same | 196 | 196 | 200 | +4 |
+| `sub_703030F0` | `select_read_plane` | 81 | 84 | 64 | −20 |
+| `sub_70303144` | `select_write_plane` | 92 | 92 | 84 | −8 |
+| `_get_addr_range` | same | 117 | 120 | 120 | **0** |
+| `_fill_64K_plane` | same | 120 | 120 | 116 | −4 |
+| `_vga_at_mode12_bpp2_to_bpp4` | same | 932 | 932 | 652 | −280 |
+| `_read_bpp4planar_to_bpp2packed` | same | 402 | 404 | 404 | **0** |
+| `_write_bpp2packed_to_bpp4planar` | same | 124 | 124 | 132 | +8 |
+| `sub_70303844` | `build_tables` | 240 | 240 | 240 | **0** |
+| `_VGASetStdRegs` | same | 401 | 401 | 351 | −50 |
+| | total | 6972 | | 6671 | |
+
+**Eighteen of the 34 land on the reference's padded size exactly.** **Five are
+byte-for-byte identical to the reference**, every byte: `VGANullOp` (7),
+`VGAOffscreenOp18` (29), `VGAFreeOffscreen` (36), `VGASetOffscreenOrigin` (45)
+and `VGAGetOffscreenParams` (58).
+
+`_VGAStart` is the one that matters most and it is exact: 637 bytes of body
+against the reference's 637, the same 100-byte frame, the same seven RPCs in the
+same order with the same arities and the same `add esp` adjustments, the same
+seven failure paths converging on one `os_fprintf` tail.
+
+The largest single deficit, `_vga_at_mode12_bpp2_to_bpp4` at −280, is entirely
+loop peeling: gcc 2.x peeled the first row and emitted both inner loops twice,
+which our compiler does not do. The algorithm, the plane-select sequence and the
+table indexing are the same. `_VGASetStdRegs` at −50 and `select_read_plane` at
+−20 are the same thing in the other direction — the reference re-reads and
+re-writes the index register through the `vga_reg_` macros where ours keeps the
+value live in a register.
+
+### Ledger
+
+```
+ledger .../VGA_psdrvr/ledger.json entries=53 assembly-matched=34 intentional-mismatch=19
+```
+
+**53 entries. No entry remains `unexamined`.** The distribution:
+
+- **34 `assembly-matched`** — every compiled body. Each carries `source_path`,
+  `source_line`, a `reviewer`, and an `analyzer_agreement.reasons` entry recording
+  what was read, the size delta and its single cause.
+- **19 `intentional-mismatch`** — every one has a non-empty `reason` and a
+  `reviewer`, checked. They are `dyld_stub_binding_helper`, `__dyld_func_lookup`
+  and the seventeen `__picsymbol_stub` entries of findings 37–53. `ld` synthesizes
+  all of them and dyld completes them; there is no source to write.
+
+**Nothing reached a status stronger than `assembly-matched`, and nothing should
+have.** A stronger grade claims byte identity of the whole body including its
+relocated operands. Five bodies are in fact byte-identical, but only at a
+different link address with different PIC displacements elsewhere in the file, and
+the grade is claimed per translation unit rather than per lucky function. The two
+`assembly-matched` claims a reviewer would most want to argue down are
+`VGAInitScreen` (+16) and `VGAConvertOffscreen` (−16); both ledger reasons state
+the delta and its single cause so the claim can be audited rather than taken on
+trust.
+
+### Source map
+
+Regenerated against the rewritten source and validated with
+`binrecon.schema.load_source_map` against the reference analysis (IDA 9.2, symbol
+aliases restored, contained fragments filtered):
+
+```
+VGA_psdrvr ACCEPTED {'mapped': 34, 'unmapped': 19, 'duplicate_candidates': 0, 'boundary_disputed': 0}
+```
+
+**The 34 written bodies moved from `unmapped` to `mapped`**, each carrying the
+`source_path` and `source_line` its ledger entry records. The 19 that remain
+`unmapped` are the linker-generated entries above, under the "no counterpart in
+our source" reason class, which is where they belong permanently.
+
+### Corrections this phase made to the findings
+
+Writing the bodies against the disassembly turned up nine places where a finding's
+prose disagreed with its own disassembly. In every case the disassembly won and
+the code follows it; the prose is now fixed in place, each under a
+"Correction (Phase 3a Task 6)" heading in the finding it belongs to.
+
+| # | Finding | What was wrong |
+| --- | --- | --- |
+| 1 | 27 | Claimed every `in` *and* `out` carries the dummy `lock incl`. Only `out` does; none of the eight `in al, dx` in `0x7030302C`–`0x70303AC4` is followed by one. |
+| 2 | 32 | Put `select_write_plane(0)` at the head of the row loop and gave 3R calls. It is one before the loop, `(1)` then `(0)` per row, one after — **2R+2**. |
+| 3 | 33 | "bit `b` → bit `2b+1`" is a simplification. Within each byte the bits reverse, because the plane byte is MSB-leftmost and the packed word is pixel-0-lowest. |
+| 4 | 18 | The `BM12Convert*to2` calls pass **three `Bounds` by value**, not four immediates. This identifies the eight `__const` bytes at `0x70303E4C` as a second `static const Bounds {0,0,0,0}` and closes `__const`'s one gap; and finding 18's `f4`/`f8` are a by-value `Bounds` at `bitmap+0x04`. |
+| 5 | 25, and `VGA_reloc` 9 | The kernel does **not** differ in exactly three ways. The lines-per-bank divisor is a fourth, and it is a real divergence. See below. |
+| 6 | 12 | Takes **six** arguments, not four, and its third is the class index — which settles a question an earlier task flagged as a guess. |
+| 7 | 11 | `a` and `b` are a `Bounds *` and an `int`. Also records that `bitmap+0x0C` is read as a 32-bit pointer in one place and a 16-bit format everywhere else. |
+| 8 | 6 | `+0x00` and `+0x04` are **screen devices**, not bitmaps; the `'g'`/`'p'` tag is the source device's own first byte; and the direct-blit path **skips** the composite call entirely. |
+| 9 | `_VGAStart` | The `os_malloc` stale-argument proof was off by a block. The adjacent test is `test edx, edx` on the malloc result; the zero-ness of the printed register comes from the guard at `0x70302610`. The defect is real, is reproduced, and the finding stands. |
+
+### What Phase 3b inherits
+
+Three things go forward unresolved. None blocks the kernel rewrite; all three
+would be expensive to discover a second time.
+
+**1. The latent bank-switch divergence.** Both bundle blitters compute
+`0x10000 / vga_bpl` with an unsigned `div` and get **819** lines per 64 KB bank.
+Both kernel blitters compute `0x10000 / (width >> 4)` with a signed `idiv` and get
+**1638**. Both sides agree on 40 words per row and on the 80-byte row stride; only
+this divisor differs. **819 is the arithmetically correct figure** — a mode-0x12
+row is 80 bytes per plane, so a 64 KB window holds 819 whole rows — and the
+kernel's is a factor of two too large. Because `y` never exceeds 479 the bank
+index is always 0 on both sides, **the kernel's `select_read_segment` /
+`select_write_segment` calls inside the row loop are dead**, and the two halves
+produce identical addresses at every geometry this driver supports. Phase 3b must
+**transcribe the kernel's `idiv` as the reference has it** and must not import the
+bundle's divisor. Full comparison under `VGA_psdrvr` finding 25; note under
+`VGA_reloc` finding 9.
+
+**2. The 44 unreferenced `__bss` bytes.** Two file-scope objects — 12 bytes before
+`object`, 32 after `master` — that **nothing in the binary references**. Every PIC
+displacement in all 53 bodies was resolved, all of `__data` and
+`__nl_symbol_ptr` were read, and the whole image was scanned for pointers into the
+range; the only hit is the `__bss` section header's own `addr` field. Alignment and
+`bundle1.o` are both excluded. They appear to be unreferenced statics gcc 2.x
+emitted for a `.lcomm` the shipped code never touches. Recorded as
+**unresolved-but-bounded, not as a guess**. Closing `__bss` byte-exactly would
+cost two invented names and this document recommends against paying that. Detail
+under finding 35.
+
+**3. The `bitmap + 0x0C` ambiguity.** `sub_703022FC` reads that offset as a whole
+32-bit word and dereferences the result as a bitmap; seven other sites across four
+functions read it as a 16-bit format code with a 16-bit refcount at `+0x0E`. The
+two readings cannot both describe one struct and **the binary does not
+disambiguate them**. Phase 3a did not invent a second struct: the one line is
+written at the literal offset with a comment saying exactly this, so the conflict
+stays visible in the source rather than hidden behind a plausible field name.
+Anyone who later gives `bitmap` a proper layout inherits the decision. Detail
+under finding 11.
+
+Two smaller things Phase 3b should know. The imaging machine's `newBitmap` (class
+vtable `+0x3C`) takes the bitmap's **total size in bytes** as argument five and its
+**row stride** as argument six — 64 and 4 for a 16×16 two-bit cursor,
+`(maxy - miny) * vga_rowbytes` and `vga_rowbytes` for the screen. And
+screen-device `+0x01` and draw-record `+0x19` are **bit fields**, not masked bytes:
+written as bit fields our compiler emits `and byte ptr [..], 0FEh` / `or [..], dl`
+byte-for-byte identically to the reference, where a masked-byte assignment would
+have produced a load, a mask and a store.
+
+**Not done in Phase 3a.** The boot-test gate is still deferred — the shared QEMU
+working image was in use by concurrent sessions — and the `VGA` version bundle is
+still not produced by our build. Both carry forward from the `## Status` section
+above unchanged.

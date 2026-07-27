@@ -13,9 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = IBMThinkPad760EDDisplayDriver.m
+CLASSES = IBMThinkPad760ED.m TransferTable.m
 
 HFILES = IBMThinkPad760EDDisplayDriver.h
+
+SFILES = smapi.s
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

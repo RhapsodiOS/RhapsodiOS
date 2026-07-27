@@ -37,6 +37,42 @@
       "size": 89,
       "source_line": 103,
       "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760EDDisplayDriver.m"
+    },
+    {
+      "address": 5708,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setTransferTable:count:]"
+      ],
+      "size": 333,
+      "source_line": 24,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6044,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setBrightness:token:]"
+      ],
+      "size": 77,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6124,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver SetGammaValueRed:Green:Blue:Level:]"
+      ],
+      "size": 82,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6208,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setGammaTable]"
+      ],
+      "size": 229,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
     }
   ],
   "reference_sha256": "47539E03C441BBFD6724EB6778D85BFACD0961B78A8DFA33D56321C938EB5AEC",
@@ -181,34 +217,6 @@
         "-[IBMThinkPad760EDDisplayDriver name]"
       ],
       "size": 59
-    },
-    {
-      "address": 5708,
-      "reference_names": [
-        "-[IBMThinkPad760EDDisplayDriver setTransferTable:count:]"
-      ],
-      "size": 333
-    },
-    {
-      "address": 6044,
-      "reference_names": [
-        "-[IBMThinkPad760EDDisplayDriver setBrightness:token:]"
-      ],
-      "size": 77
-    },
-    {
-      "address": 6124,
-      "reference_names": [
-        "-[IBMThinkPad760EDDisplayDriver SetGammaValueRed:Green:Blue:Level:]"
-      ],
-      "size": 82
-    },
-    {
-      "address": 6208,
-      "reference_names": [
-        "-[IBMThinkPad760EDDisplayDriver setGammaTable]"
-      ],
-      "size": 229
     },
     {
       "address": 6440,

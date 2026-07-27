@@ -2129,6 +2129,11 @@ _smapi_asm:
   function.
 - The three-byte `90 90 90` at 6513–6516, jumped over by the two-byte `jmp` at
   6511, is intra-function alignment before the epilogue.
+- **`binrecon source-map` cannot map 6440, and that is a scanner limitation.**
+  `binrecon/source_map.py` globs `*.m` and `*.c` in each `--source-dir`, so it
+  never opens `smapi.s` and knows nothing of `.s` definitions; 6440 stays in
+  `unmapped` even with the file written and named exactly as the binary names
+  it. The symbol must not be renamed to satisfy the tool.
 - **Callers:** `initFromDeviceDescription:`, `enterLinearMode` (×2),
   `revertToVGAMode`, `setPendingDisplayMode:` (×3), `getDisplayDeviceState`,
   `setDisplayDeviceState:`, `reportSystemConfiguration` (×6) — fifteen call

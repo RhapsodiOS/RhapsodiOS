@@ -13,9 +13,9 @@
 #import <sys/systm.h>
 #import <driverkit/kernelDriver.h>
 /* Global ttyiops map and lock - defined here */
-static id _ttyiopsMapLock = NULL;       /* AppleIOPSSafeCondLock for ttyiops map access */
+static id _ttyiopsMapLock;       /* AppleIOPSSafeCondLock for ttyiops map access */
 id _ttyiopsMap[26] = { NULL };          /* Array of 26 PortServer instances (one per letter a-z) */
-static id _pseudoUnit = NULL;           /* PDPseudo unit instance */
+static id _pseudoUnit;           /* PDPseudo unit instance */
 
 /* Global port server major device number */
 int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
@@ -24,12 +24,12 @@ int _portServerMajor = 0;      /* read by ttyiops.m through ttyiops.h */
  * The character device switch entry this driver installs is defined in
  * ttyiops.m (see ttyiops.h), because in the reference the seven ttyiops_*
  * entry points it names are static, so only that file could take their
- * addresses.  Ours are not static, and +serverMajor: below names four of them
- * (ttyiops_read, ttyiops_write, ttyiops_stop, ttyiops_select) directly; the
- * table is kept in ttyiops.m to match the reference's layout.  serverMajor:
- * hands the same entry points to addToCdevswFromDescription:, and the three
- * wrappers below dispatch through this table rather than naming ttyiops_*
- * directly.
+ * addresses.  Ours are not static, but nothing here names them: +serverMajor:
+ * below reads the eight entry points it needs out of ttyiops_devsw's fields,
+ * exactly as the reference does, and the three wrappers below dispatch
+ * through the same table.  The only ttyiops_* addresses this file takes are
+ * none - portServeropen, portServerclose and portServerioctl are the three
+ * arguments serverMajor: passes as immediates.
  */
 
 /* ========================================================================
@@ -165,18 +165,26 @@ extern void IOLog(const char *format, ...);
 {
     if (_portServerMajor == 0) {
         /* Add to character device switch table */
+        /* Eight of the eleven entry points come out of ttyiops_devsw's fields,
+         * not by name: the reference loads [0x8138], [0x813c], [0x8144],
+         * [0x8148], [0x8150], [0x8154], [0x815c] and [0x8160], which are
+         * d_read, d_write, d_stop, d_reset, d_select, d_mmap, d_getc and
+         * d_putc off the table at 33072.  Only the three portServer* wrappers
+         * are pushed as immediates.  This also keeps the registered entry
+         * points and the table itself from drifting apart.
+         */
         [[self class] addToCdevswFromDescription:deviceDescription
                                             open:(IOSwitchFunc)portServeropen
                                            close:(IOSwitchFunc)portServerclose
-                                            read:(IOSwitchFunc)ttyiops_read
-                                           write:(IOSwitchFunc)ttyiops_write
+                                            read:(IOSwitchFunc)ttyiops_devsw.d_read
+                                           write:(IOSwitchFunc)ttyiops_devsw.d_write
                                            ioctl:(IOSwitchFunc)portServerioctl
-                                            stop:(IOSwitchFunc)ttyiops_stop
-                                           reset:(IOSwitchFunc)nulldev
-                                          select:(IOSwitchFunc)ttyiops_select
-                                            mmap:(IOSwitchFunc)enodev
-                                            getc:(IOSwitchFunc)enodev
-                                            putc:(IOSwitchFunc)enodev];
+                                            stop:(IOSwitchFunc)ttyiops_devsw.d_stop
+                                           reset:(IOSwitchFunc)ttyiops_devsw.d_reset
+                                          select:(IOSwitchFunc)ttyiops_devsw.d_select
+                                            mmap:(IOSwitchFunc)ttyiops_devsw.d_mmap
+                                            getc:(IOSwitchFunc)ttyiops_devsw.d_getc
+                                            putc:(IOSwitchFunc)ttyiops_devsw.d_putc];
 
         /* Get character major number */
         _portServerMajor = [[self class] characterMajor];

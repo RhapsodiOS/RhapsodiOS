@@ -1283,7 +1283,10 @@ signatures matter: the signatures Apple used are the protocols' signatures.
 This finding is the one most likely to expand Task 9's scope, because it depends
 on headers outside this driver.
 
-**Outcome: partially applied — this is the one incomplete item in the fix pass.**
+**Outcome: fully applied.** It was the one incomplete item in the fix pass; the
+protocols have since been recovered and all four adoptions made. The account
+below is kept in the order it happened, because the reason the second half
+waited is the substance of the finding.
 
 **Done,** in commit `8e1633ea`: `PCIC` now declares `<IOPower>`, which is the
 second of the two protocols the reference's class structure names for it, and the
@@ -1317,6 +1320,110 @@ with no guessing, and they should then be declared in `drvPCMCIABus` alongside
 of the same job — the signatures Apple used *are* these protocols' signatures — and
 they are already applied, so the adoptions can be added without disturbing the
 method declarations again.
+
+**The declarations now exist.** That decoding has been done, driven by the kernel
+DriverKit reconstruction, which needed `PCMCIAWindow` and `PCMCIAWindowAttributes`
+to fix its own Finding 3. All five records were read from
+`PCIC.config/PCIC_reloc`: `PCMCIAAdapter` (3 methods), `PCMCIASocket` (21),
+`PCMCIAWindow` (15), `PCMCIAWindowAttributes` (16), and `IOPower`, which
+DriverKit already declares. Every selector and type encoding came off the binary.
+
+They went to `src/kernel-7/driverkit/i386/PCMCIA.h` rather than to `drvPCMCIABus`,
+which resolves the include-path objection above: that file installs into
+`<driverkit/i386/>`, so the kernel and every driver project can reach it without
+exporting a private header across projects. `PCMCIAStatus` moved there too, from
+`PCMCIAKernBus.h`.
+
+**The adoptions are now done**, and this finding is closed. Each one was read
+off the reference's class and category structures rather than inferred from the
+protocol names:
+
+| Adopter | Adopts | Source of the mapping |
+| --- | --- | --- |
+| `PCIC` | `PCMCIAAdapter`, `IOPower` | protocol list at `0x4000` |
+| `PCICSocket` | `PCMCIASocket` | protocol list at `0x4010` |
+| `PCICWindow` | `PCMCIAWindow` | protocol list at `0x401c` |
+| `PCICWindow(Attributes)` | `PCMCIAWindowAttributes` | category record's protocol list at `0x513c` |
+
+That last one took some untangling: `__OBJC,__category` is not a flat array. It
+holds two 20-byte category records, then a 12-byte `objc_protocol_list` inline,
+then the third record — whose `protocols` field points back at that inline list,
+which names the fifth protocol record, `PCMCIAWindowAttributes`.
+
+`PCICWindow(Attributes)` had no `@interface` at all, only an
+`@implementation` in `PCICWindowAttributes.m`, so a category interface was added
+to `PCICWindow.h` to carry the adoption. It declares no methods: the protocol
+declares all sixteen.
+
+`PCICSocket.h`'s duplicate `PCMCIAStatus` was dropped in favour of the shared
+one, as anticipated.
+
+**Every signature already agreed.** Adoption makes the compiler check our
+declarations against Apple's, and all 3 + 21 + 15 + 16 of them match — return
+types, parameter types and all. That is an independent confirmation of Finding
+11's fix pass from a source it did not use: Finding 11 worked from the class
+method lists' type encodings, and these are the protocols' encodings.
+
+**The ordering reasoning was checked against a build, and held.** Method lists
+are emitted in reverse source order, which is why `PCMCIA.h` reverses them;
+protocol *adoption* lists are built by appending rather than prepending, so
+`<PCMCIAAdapter, IOPower>` should emit in that order. Measured in a rebuilt
+`PCIC_reloc` (266508 bytes, 2026-07-26 19:08), it does.
+
+### The verifying build
+
+`__OBJC,__protocol` is **100 bytes, the reference's size exactly** — five
+records where our build previously emitted none. Comparing the two binaries'
+Objective-C metadata:
+
+- The five protocols appear in the same section order, with the same names.
+- Four of the five — `PCMCIAAdapter`, `IOPower`, `PCMCIAWindow` and
+  `PCMCIAWindowAttributes` — are identical in every selector *and* every type
+  encoding, in order.
+- All three class adoptions match, `PCIC`'s two-protocol list included and in
+  the reference's order.
+- `__OBJC,__category` is 72 bytes in both, and `PCICWindow(Attributes)` adopts
+  `PCMCIAWindowAttributes` in both — so the inline-protocol-list layout
+  described above is reproduced too.
+
+**One discrepancy, since fixed and verified.** `PCMCIASocket` had
+`statusChangeMask` and `setStatusChangeMask:` in the opposite order to the
+reference — same 21 selectors, same 21 type encodings, one adjacent pair
+transposed. The cause was a transcription slip rather than a wrong theory:
+reversing the reference's list gives `setStatusChangeMask:` before
+`statusChangeMask`, the one place in that protocol where Apple put a setter
+ahead of its getter, and `PCMCIA.h` had regularised it to the getter-first
+convention used by the other nine pairs.
+
+**Finding 13 is now closed against a build.** In `PCIC_reloc` of 2026-07-26
+19:49, all **five protocol records are identical to the reference** — every
+selector and every type encoding, in order — the section lists them in the
+reference's order, and all four adoptions match, `PCICWindow(Attributes)`
+included.
+
+**The fix took three rebuilds to land, for a reason worth recording.**
+`PCMCIA.h` exists **twice** in this tree:
+
+```
+src/kernel-7/driverkit/i386/PCMCIA.h
+src/driverkit-3/driverkit/i386/PCMCIA.h
+```
+
+Driver projects compile against the driverkit-3 copy. The ordering fix went to
+the kernel-7 copy, and the driverkit-3 copy — created separately, from the
+version before that fix — kept the old order, so two rebuilds reproduced the
+same transposition exactly. The symptom was diagnostic in hindsight: four of
+five protocols were already correct and the only wrong one was the only one that
+commit had touched, which is the signature of a stale *source*, not a stale
+object or a wrong theory. Both copies are now byte-identical and each names the
+other in a comment.
+
+A related trap: this fix changes no section's size, so an unchanged file size is
+not evidence that a rebuild did nothing. Only the metadata content settles it.
+
+**Ledger effect: still none**, for the reason given above — adoption emits no
+code into `__TEXT,__text`. What it does close is the gap that paragraph warns
+about: the four protocol records missing from what our build emits.
 
 **Ledger effect: none, in either direction.** Protocol adoption is recorded in
 `__OBJC,__protocol` and in the class and category structures' protocol-list

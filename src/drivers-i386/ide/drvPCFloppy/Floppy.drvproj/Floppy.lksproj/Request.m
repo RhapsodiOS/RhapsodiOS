@@ -8,6 +8,7 @@
 #import "Request.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 #import "FloppyVm.h"
 
 // External references for VM functions
@@ -35,8 +36,10 @@ extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_addres
  *   - End address is aligned up: (address + size + page_mask) & ~page_mask
  *   - Wiring when wireFlag != 0 (new_pageable = FALSE)
  *   - Unwiring when wireFlag == 0 (new_pageable = TRUE)
+ *   - Returns vm_map_pageable's kern_return_t so callers can detect a wire
+ *     failure
  */
-static void dowire(vm_map_t map,
+static kern_return_t dowire(vm_map_t map,
                     vm_address_t address,
                     vm_size_t size,
                     int wireFlag)
@@ -59,7 +62,7 @@ static void dowire(vm_map_t map,
 	newPageable = (wireFlag == 0);
 
 	// Wire or unwire the memory range
-	vm_map_pageable(map, startAddr, endAddr, newPageable);
+	return vm_map_pageable(map, startAddr, endAddr, newPageable);
 }
 
 /*
@@ -366,7 +369,7 @@ static void docopy(vm_map_t sourceMap,
 	*((unsigned char *)request + 0x0c) = 0;                // +0x0c: abort flag
 	
 	// Allocate lock object
-	lockObject = [[objc_getClass("NXConditionLock") alloc] init];
+	lockObject = [NXConditionLock alloc];
 	*(id *)((char *)request + 0x18) = lockObject;          // +0x18: lock
 	*(unsigned *)((char *)request + 0x20) = numCylinders;  // +0x20: num subrequests
 	*(unsigned *)((char *)request + 0x1c) = 0;             // +0x1c: completed count
@@ -653,9 +656,13 @@ static void docopy(vm_map_t sourceMap,
 	// Check if error flag is set (bit 0)
 	if ((*flagsPtr & 1) != 0) {
 		// Cylinder has an error - fail the operation
+		/* 0x7cb8 stores -721 (IO_R_MEDIA) here, not IO_R_IO_ERROR. The
+		   reference then jumps straight to the epilogue, which never sets
+		   eax, so its return value on this path is incidental; we return
+		   the same code we recorded. */
 		parentRequest = *(id *)((char *)subrequest + 0x08);
-		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_IO_ERROR;
-		return IO_R_IO_ERROR;
+		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_MEDIA;
+		return IO_R_MEDIA;
 	}
 
 	// Get block start and calculate cache pointer
@@ -669,7 +676,15 @@ static void docopy(vm_map_t sourceMap,
 	byteCount = sectorSize * blockCount;
 
 	// Wire the cache memory (make pages resident)
-	dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
+	wireResult = dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
+
+	if (wireResult != 0) {
+		// Wiring failed - fail the operation without touching memory
+		// (no docopy, no compensating unwire)
+		parentRequest = *(id *)((char *)subrequest + 0x08);
+		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_CANT_WIRE;
+		return IO_R_CANT_WIRE;
+	}
 
 	// Get write flag and buffer info
 	isWrite = *(BOOL *)subrequest;

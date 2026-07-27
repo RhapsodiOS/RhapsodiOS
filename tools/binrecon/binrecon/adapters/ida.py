@@ -77,7 +77,7 @@ def _architecture(profile):
         raise IdaAdapterError(str(error)) from error
 
 
-def _mapping_manifest(profile, identity: InputIdentity) -> dict:
+def _mapping_manifest(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
     architecture = _architecture(profile)
     try:
         macho = read_macho(identity.path)
@@ -102,7 +102,7 @@ def _mapping_manifest(profile, identity: InputIdentity) -> dict:
                           "endianness": architecture.endianness,
                           "ida_processor": architecture.ida_processor},
                 "runs": runs}
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
     if scope:
         manifest["analysis_scope"] = [{"start": start, "end": end}
                                       for start, end in scope]
@@ -325,7 +325,7 @@ def export_with_ida(
         mapping = workspace / "mapping.json"
         database = workspace / "analysis.i64"
         native_log = workspace / "ida-native.log"
-        manifest = _mapping_manifest(profile, identity)
+        manifest = _mapping_manifest(profile, identity, artifact)
         mapping_raw = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
         _atomic_text(mapping, mapping_raw.decode("utf-8"))
         mapping_sha256 = hashlib.sha256(mapping_raw).hexdigest().upper()

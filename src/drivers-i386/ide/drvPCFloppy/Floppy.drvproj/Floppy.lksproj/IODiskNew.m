@@ -95,8 +95,10 @@
 	}
 	
 	// Note: Decompiled code shows return here without calling super free
-	// This may be because the actual freeing happens elsewhere
-	return self;
+	// This may be because the actual freeing happens elsewhere.
+	// The reference unconditionally zeroes eax before returning, i.e. it
+	// returns nil regardless of whether a chained disk was freed.
+	return nil;
 }
 
 /*
@@ -198,7 +200,7 @@
 	_nextLogicalDisk = nil;
 	
 	// Create a new NXLock for logical disk operations (offset 0x11c)
-	_LogicalDiskLock = [[NXLock alloc] init];
+	_LogicalDiskLock = [NXLock new];
 	
 	// Call superclass registerDevice
 	result = [super registerDevice];

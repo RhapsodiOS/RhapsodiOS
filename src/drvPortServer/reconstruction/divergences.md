@@ -4667,3 +4667,452 @@ have been a codegen divergence rather than a warning.
 - **`strcpy` conflicting with the built-in** (`IOPortSessionKern.m:29`). A local prototype
   disagreeing with gcc's builtin. `_strcpy` is an undefined external in both binaries, so
   no divergence; left alone.
+
+## 16. The §14 fidelity items, settled against both binaries
+
+§14 listed three items as owed. With our own `PortServer_reloc` now built, two of them stop
+being judgement calls and become measurements.
+
+### Finding 86 — twelve globals sit in `__data` because we wrote `= NULL`
+
+Comparing every `__DATA` symbol's section between the two binaries turns up 12 mismatches,
+all in the same direction and all from the same cause:
+
+| symbol | reference | ours |
+|---|---|---|
+| `_IMP_interuptable` … `_IMP_lockWhen` (8) | `__bss` | `__data` |
+| `_portListLock` | `__bss` | `__data` |
+| `_mapLock` | `__bss` | `__data` |
+| `_ttyiopsMapLock` | `__bss` | `__data` |
+| `_pseudoUnit` | `__bss` | `__data` |
+
+Every one of those was declared `static id x = NULL;` or `static IMP x = NULL;`. The
+globals we declared *without* an initializer — `_numSessions`, `_portList`,
+`_nsPortKernIdMap` — are in `__bss` in both. This compiler honours an explicit zero
+initializer by emitting into `__data` rather than folding it into `__bss`, so the
+initializer is the whole difference. Apple's source therefore left all twelve
+uninitialized.
+
+`_ttyiopsMap[26] = { NULL }` and `_portServerMajor = 0` are in `__data` in **both**, so
+those two initializers are correct as written and were left alone.
+
+**Fixed.** The twelve `= NULL` initializers are dropped. This is behaviour-preserving —
+C zero-initializes static storage either way.
+
+### Finding 16 — `_portListLock` before `_portList`, now actionable
+
+§14 left this alone as "self-contradictory". It is not: the reference has `_portListLock`
+at 33160 and `_portList` at 33164, and the two are adjacent, so declaration order in
+`IOPortSession.m` is exactly what decides it. The reason it could not be tested before is
+Finding 86 — `_portListLock` was in a different *section*, so there was no order to
+compare. With the initializer gone both land in `__bss` and the order becomes meaningful.
+
+**Fixed.** `_portListLock` is now declared ahead of `_portList`.
+
+### Finding 36 — the by-name argument spelling is wrong, confirmed
+
+§14 held ledger entry 4692 at `control-flow-confirmed` because part 3 declined to overturn
+part 2's decision on part 2's own finding. The disassembly of both binaries settles it.
+
+The reference pushes eight of `+serverMajor:`'s eleven entry points as **memory loads**:
+
+```
+4712: mov edx, [0x8160]   ; putc     4740: mov edx, [0x8148]   ; reset
+4719: mov edx, [0x815c]   ; getc     4747: mov edx, [0x8144]   ; stop
+4726: mov edx, [0x8154]   ; mmap     4759: mov edx, [0x813c]   ; write
+4733: mov edx, [0x8150]   ; select   4766: mov edx, [0x8138]   ; read
+```
+
+`ttyiops_devsw` is at 33072 = **0x8130**, so those eight are precisely `d_read` (+8),
+`d_write` (+0xc), `d_stop` (+0x14), `d_reset` (+0x18), `d_select` (+0x20), `d_mmap`
+(+0x24), `d_getc` (+0x2c) and `d_putc` (+0x30). The only three immediates are
+`push 0x17e0`, `push 0x1844` and `push 0x18a8` — 6112, 6212 and 6312, which the symbol
+table gives as `_portServeropen`, `_portServerclose` and `_portServerioctl`.
+
+Ours pushed immediates for all eleven, including four literal `push 0`. That last part is
+not just a spelling difference: our `+serverMajor:` passed `nulldev`/`enodev` while our own
+`ttyiops_devsw` holds `nulldev`/`eno_mmap`/`eno_getc`/`eno_putc`, so the registered switch
+entry and the table could disagree. Reading the fields makes that impossible by
+construction, which is presumably why Apple did it.
+
+**Fixed.** The eight arguments now read `ttyiops_devsw.d_*`. The stale comment in
+`PortServer.m` claiming `+serverMajor:` names four `ttyiops_*` entry points directly is
+corrected; `ttyiops.h`'s comment was already accurate and is untouched.
+
+### The 183 literal byte offsets — deliberately still not done
+
+Unchanged from §14, and now with a reason that can be stated positively rather than as an
+excuse: the offsets and the typed field accesses compile to the same instructions, so the
+rewrite is unverifiable against the reference — it would produce a 183-site diff that no
+binary comparison could confirm or refute. Every offset is documented by `ttyiops_state`.
+Left as is.
+
+### Residual: a one-instruction divergence in `-[AppleIOPSSafeCondLock unlock]`
+
+Turned up while confirming Finding 83's repair. Reading the `waiting` ivar:
+
+```
+reference 643: mov al, [ebx+0x12] / test al, al   (5 bytes)
+ours      643: cmp byte ptr [ebx+0x12], 0         (4 bytes)
+```
+
+Everything before it matches instruction for instruction, including both `xchg`s;
+everything after is shifted by one byte. Our source is `if (waiting != '\0')`; the
+reference appears to load the byte into a local first. Not repaired — it is a new
+observation, not one of §14's items, and it wants its own finding.
+
+## 17. Rebuild verification of §16
+
+All three §16 repairs were rebuilt and checked against the reference.
+
+- **Finding 86 — confirmed.** `__DATA` section placement now has **zero** mismatches that
+  come from our source. The only two entries that differ are `protocols.102` (reference)
+  against `protocols_102` (ours), which is this gcc's local-static name mangling, not a
+  source difference; both are in `__data`.
+- **Finding 16 — confirmed.** The first ten `__bss` symbols now match the reference at
+  identical relative offsets: the eight `_IMP_*` at 0–28, `_portListLock` at **32**,
+  `_portList` at **36**.
+- **Finding 36 — confirmed.** `+serverMajor:` now emits the same instruction sequence as the
+  reference: eight `mov edx, [table+N]; push edx` pairs at field offsets
+  0x38, 0x3c, 0x44, 0x48, 0x50, 0x54, 0x5c, 0x60 off `ttyiops_devsw`, with the three
+  `portServer*` wrappers still pushed as immediates, in the same positions. Absolute
+  addresses differ only because our build carries `-g` debug info (table base 0x4130 against
+  the reference's 0x8130).
+- **Undefined symbols still clean** — `extra: none, missing: none`, 59 = 59.
+
+Ledger entry 4692 can come off `control-flow-confirmed`: the reason it was held was that
+Finding 36's argument spelling had never been decided, and it now is, with the emitted code
+matching.
+
+### Finding 87 — the `__bss` tail is ordered differently, in two ways
+
+The first ten symbols match; the last five do not.
+
+```
+reference:  44 _pseudoUnit  48 _ttyiopsMapLock  52 _mapLock  56 _numSessions  60 _nsPortKernIdMap
+ours:       44 _nsPortKernIdMap ...(512)... 556 _numSessions  560 _mapLock  564 _ttyiopsMapLock  568 _pseudoUnit
+```
+
+Ours is the exact reverse of the reference across those five, and it decomposes into two
+separate causes:
+
+1. **Translation-unit order.** Those five come from `IOPortSessionKern.m`
+   (`_nsPortKernIdMap`, `_numSessions`, `_mapLock`) and `PortServer.m` (`_ttyiopsMapLock`,
+   `_pseudoUnit`). The reference emits `PortServer.o`'s two **before**
+   `IOPortSessionKern.o`'s three; ours is the other way round, which is our `PB.project`
+   `CLASSES` order (`…, IOPortSessionKern.m, PDPseudo.m, PortServer.m, …`) feeding `kl_ld`.
+   Apple's `CLASSES` list evidently had `PortServer.m` ahead of `IOPortSessionKern.m`.
+2. **Within-file declaration order.** Inside each of those two files the reference's order is
+   the reverse of ours — `_pseudoUnit` before `_ttyiopsMapLock`, and `_mapLock`,
+   `_numSessions`, `_nsPortKernIdMap`. The first two translation units do **not** show this,
+   so it is not a global emission-order rule; Apple simply declared these five in the other
+   order.
+
+`_nsPortKernIdMap`'s 512 bytes (64 slots × 8) are the same in both, so only order differs,
+not size.
+
+**Not repaired.** Fixing (2) is a six-line reordering, but fixing (1) means changing the
+`CLASSES` order in `PB.project`, which changes link order for **every** section in the
+driver — including `__text`, where 113 function extents are already mapped in
+`ledger.json`. That is a whole-binary relayout and it needs its own pass with the ledger
+re-validated afterwards, not a tail-end edit here.
+
+## 18. Whole-`__text` instruction comparison — 47 of 111 functions match
+
+The `waiting` read in §17's residual is repaired: `- unlock` now reads the flag into a local
+`char waiters` before testing it, which is what produces the reference's
+`mov al, [ebx+0x12] / test al, al` instead of our `cmp byte ptr [ebx+0x12], 0`. Needs a
+rebuild to confirm.
+
+Chasing "and any other differences" turned into the first whole-`__text` comparison this
+reconstruction has had, so the result is recorded here rather than buried in a commit
+message.
+
+**Method.** Disassemble every function present in both binaries, normalise away absolute
+addresses and immediates above 0x1000 (our build's `-g` shifts every address), strip
+trailing padding `nop`s, and compare the mnemonic+operand-shape sequences. Function extents
+come from the symbol table; our binary's stabs entries share addresses with the real
+symbols, so boundaries are taken only from names that exist in both.
+
+**Result: 111 functions compared, 47 identical, 64 differing.**
+
+This is a materially harder gate than the ledger's per-entry statuses, which were set by
+reading the reference alone. A `control-flow-confirmed` entry can still differ instruction
+for instruction — the whole point of that status was that nobody had a rebuilt binary to
+check against. Now there is one.
+
+### What the divergences actually are
+
+Two were sampled in detail. Neither is a logic error; both are code *layout*.
+
+`-[IOPortSession setState:mask:]` (ref 26 insns, ours 20). The reference emits the
+early-out as a **separate tail block** after the epilogue:
+
+```
+ref:   cmp dword ptr [eax+8], 0 / jne <tail>     ... <tail>: mov eax,[edx+4]
+                                                             mov eax,[eax+8]
+                                                             mov esp,ebp / pop ebp / ret
+ours:  mov eax,[edx+8] / test eax,eax / jne <shared epilogue>
+```
+
+`-[IOPortSession(IOPortSessionKern) getIntValues:…]` (ref 28, ours 27) shows the *same*
+class in the opposite direction — there the reference inlines the early-out at the top and
+ours puts it in a tail block.
+
+So the residual work is per-function: expressing each early-return in the source form that
+makes this gcc lay the blocks out the way Apple's did, plus matching its load and register
+scheduling. It is not a bulk transform, and it is not something the warning list or the
+symbol diff can find — only this comparison can.
+
+### The 64
+
+      +[IOPortSession(IOPortSessionKern) iopsKernClose           ref   25 / ours   24
+      +[IOPortSession(IOPortSessionKern) iopsKernDequeue         ref   74 / ours   92
+      +[IOPortSession(IOPortSessionKern) iopsKernEnqueue         ref   71 / ours   89
+      +[IOPortSession(IOPortSessionKern) iopsKernFree]           ref   36 / ours   35
+      +[IOPortSession(IOPortSessionKern) iopsKernInitIoctl       ref   55 / ours   49
+      +[IOPortSession(IOPortSessionKern) iopsKernMsgIoctl        ref  200 / ours  207
+      +[IOPortSession(IOPortSessionKern) iopsKernOpen            ref   26 / ours   27
+      +[IOPortSession(IOPortSessionKern) iopsServerIoctlCommand  ref  107 / ours  104
+      +[PDPseudo probe                                           ref   24 / ours   25
+      +[PortServer probe                                         ref   64 / ours   61
+      -[AppleIOPSSafeCondLock lockTry]                           ref   26 / ours   25
+      -[AppleIOPSSafeCondLock lockWhen                           ref   48 / ours   49
+      -[AppleIOPSSafeCondLock lock]                              ref   60 / ours   53
+      -[AppleIOPSSafeCondLock setCondition                       ref   16 / ours   16
+      -[AppleIOPSSafeCondLock unlock]                            ref   36 / ours   35
+      -[IOPortSession acquire                                    ref   22 / ours   20
+      -[IOPortSession acquireAudit                               ref   22 / ours   20
+      -[IOPortSession dequeueData                                ref   37 / ours   32
+      -[IOPortSession dequeueEvent                               ref   38 / ours   31
+      -[IOPortSession enqueueData                                ref   40 / ours   33
+      -[IOPortSession enqueueEvent                               ref   38 / ours   31
+      -[IOPortSession executeEvent                               ref   26 / ours   20
+      -[IOPortSession free]                                      ref   30 / ours   30
+      -[IOPortSession getState]                                  ref   13 / ours   13
+      -[IOPortSession initForDevice                              ref  146 / ours  146
+      -[IOPortSession locked]                                    ref   18 / ours   18
+      -[IOPortSession name]                                      ref   20 / ours   20
+      -[IOPortSession nextEvent]                                 ref   21 / ours   22
+      -[IOPortSession release]                                   ref   26 / ours   26
+      -[IOPortSession requestEvent                               ref   26 / ours   20
+      -[IOPortSession setState                                   ref   26 / ours   20
+      -[IOPortSession watchState                                 ref   33 / ours   28
+      -[IOPortSession(IOPortSessionKern) getCharValues           ref   28 / ours   27
+      -[IOPortSession(IOPortSessionKern) getIntValues            ref   28 / ours   27
+      -[IOPortSession(IOPortSessionKern) setCharValues           ref   29 / ours   27
+      -[IOPortSession(IOPortSessionKern) setIntValues            ref   28 / ours   27
+      -[IOPortSession(Private) acquirePort                       ref  175 / ours  175
+      -[IOPortSession(Private) getType                           ref   89 / ours   91
+      -[IOPortSession(Private) releasePort]                      ref   83 / ours   86
+      -[IOPortSession(Private) requestType                       ref  181 / ours  163
+      -[PDPseudo initFromDeviceDescription                       ref   52 / ours   53
+      -[PortServer initFromDeviceDescription                     ref  159 / ours  167
+      -[PortServer setIntValues                                  ref   61 / ours   64
+      _ttyiops_dcddelay                                          ref   26 / ours   28
+      _ttyiops_attachDevice                                      ref   30 / ours   39
+      _ttyiops_convertFlowCtrl                                   ref   32 / ours   32
+      _ttyiops_start                                             ref   34 / ours   30
+      _ttyiops_stop                                              ref   53 / ours   52
+      _ttyiops_rxFunc                                            ref   54 / ours   57
+      _ttyiops_waitForDCD                                        ref   56 / ours   52
+      _ttyiops_optimiseInput                                     ref   71 / ours   70
+      _ttyiops_procEvent                                         ref   75 / ours   82
+      _ttyiops_control_ioctl                                     ref   85 / ours  110
+      _ttyiops_txload                                            ref   92 / ours   88
+      _portServerioctl                                           ref   96 / ours  104
+      _ttyiops_getData                                           ref   96 / ours   95
+      _ttyiops_mctl                                              ref  115 / ours  116
+      _ttyiops_txFunc                                            ref  121 / ours  122
+      _ttyiops_close                                             ref  143 / ours  137
+      _ttyiops_init                                              ref  187 / ours  165
+      _ttyiops_open                                              ref  194 / ours  189
+      _ttyiops_acquireSession                                    ref  195 / ours  189
+      _ttyiops_param                                             ref  199 / ours  190
+      _ttyiops_ioctl                                             ref  227 / ours  213
+
+**Not repaired.** Recorded as the measured state. The `waiting` read is the only one of the
+64 addressed in this pass; the rest want a function-at-a-time pass with a rebuild between
+batches, and `ledger.json` should be re-scored against this comparison rather than against
+a reading of the reference alone.
+
+## 19. Correction to §18's figures, and the shared cause behind the accessor divergences
+
+**§18's "47 identical / 64 differing" was wrong — the correct figures are 51 and 60.**
+The comparison normalised away immediates of four hex digits or more but left three-digit
+ones alone, and intra-function branch targets are three digits. Because our `-g` build
+places every function at a different address from the reference's, the *same* branch reads
+as `je 0x715` there and `je 0x709` here, so four functions were reported as differing on
+nothing but their own address. `-[IOPortSession free]` and `-[IOPortSession locked]` were
+pure false positives and are byte-identical in shape. `compare_text.py` now rewrites
+in-function branch targets as offsets from the function entry and only calls out of the
+function as `EXT`.
+
+The same-length bucket §18 claimed was 43 is really **5** — that number came from an `awk`
+field split that broke on the spaces in Objective-C method names. The real split of the 60
+is 5 same-length and 55 different-length.
+
+### Finding 88 — the accessors hoist into locals where the reference re-reads
+
+Three same-length divergences were run down and they share one cause, which almost
+certainly accounts for a large share of the other 55 as well.
+
+`-[IOPortSession getState]` — ours assigns the cached IMP to a local before calling, so it
+is loaded *before* the arguments are pushed. The reference evaluates it in call position and
+loads it last:
+
+```
+ref:   mov edx,[IMM] / push edx    (selector)      ours:  mov edx,[eax+0x10]   (IMP first)
+       mov edx,[eax] / push edx    (receiver)             mov ecx,[IMM] / push ecx
+       mov eax,[eax+0x10]          (IMP last)             mov eax,[eax] / push eax
+       call eax                                           call edx
+```
+
+`-[IOPortSession setState:mask:]` — ours holds the error code in a local, giving
+`mov eax,[edx+8] / test eax,eax`. The reference tests it **in place** with
+`cmp dword ptr [eax+8], 0`, and its error path *re-reads* `_priv` and the field
+(`mov eax,[edx+4] / mov eax,[eax+8]`) instead of reusing a register — which is only what a
+compiler does when the source re-reads the expression rather than caching it.
+
+`-[IOPortSession name]` — same source shape in both, but ours emits the `NULL` return as a
+tail block (`je` forward) while the reference emits it inline right after the test (`jne`
+past it). The suspected cause is again a local: ours assigns the result to `port_name`
+before returning it.
+
+**Repaired in this batch:** `getState`, `setState:mask:` and `name` are rewritten to
+evaluate in place. This is deliberately a *small* batch — the idiom is a hypothesis until a
+rebuild confirms it, and the same rewrite is waiting on roughly a dozen more accessors
+(`executeEvent:`, `requestEvent:`, `nextEvent`, `watchState:mask:`, `enqueueEvent:`,
+`dequeueEvent:`, `enqueueData:`, `dequeueData:`, `acquire:`, `acquireAudit:`, `release`).
+Those show the same signature in the comparison — `executeEvent:`, `requestEvent:` and
+`setState:mask:` are all ref 26 / ours 20 with 15 differing instructions, which is what a
+shared idiom looks like.
+
+Do not apply the rewrite to the rest until the rebuild shows these three land.
+
+## 20. Batch result: the hoisting idiom is confirmed, block ordering is not
+
+Rebuilt and re-measured: **52 identical / 59 differing**, up from 51/60.
+
+- **`-[IOPortSession getState]` — landed.** It has dropped out of the differing list
+  entirely and is now instruction-identical. Finding 88's hoisting idiom is **confirmed**:
+  evaluating the cached IMP in call position rather than assigning it to a local is what
+  makes gcc load it after the argument pushes.
+- **`-[IOPortSession setState:mask:]` — half landed.** Length went from 26/20 to **26/26**
+  and the instruction content is now right, so testing the error field in place and
+  re-reading it on the error path were both correct. What remains is purely **block order**:
+  the reference emits `jne +44` with the call path inline and the error return as a tail
+  block; ours emits `je +24` with the error return inline and the call path at +24. 18
+  instructions still differ, all of it that inversion.
+- **`-[IOPortSession name]` — did not move.** Byte-for-byte the same divergence as before.
+  The `port_name` local was not the cause, so that hypothesis was wrong.
+
+### Finding 89 — block ordering does not follow source order in our build
+
+`name` and `setState:mask:` disprove the obvious explanation. In **both**, the reference's
+layout is exactly its source order:
+
+```
+name:      if (_priv == NULL) return NULL;   -> nil block inline, body at +20   (jne +20)
+setState:  if (err == 0) return call(...);   -> call inline, error tail at +44  (jne +44)
+```
+
+and in **both**, ours is the inversion of the same source. Note that these two are opposite
+to each other — the reference inlines the *early return* in `name` and the *main path* in
+`setState:mask:` — so there is no "the reference always inlines X" rule to code to. Our
+compiler is inverting the branch in both cases regardless of how the source is written,
+which is why rewriting the source did not help.
+
+That points away from source shape and toward **build configuration**: our kernel-server
+build compiles with `-O` (`project_makefiles-1/common.make:204`,
+`OPTIMIZATION_CFLAG = -O`). If Apple built at a different level, or with different
+block-reordering behaviour, it would show up exactly like this — as a systematic branch
+polarity difference in functions whose instruction content already matches. 52 functions
+being identical says the compiler is otherwise very close.
+
+**Next experiment, one rebuild:** build with `-O2` (and, if that does not do it, with no
+`-O` at all) and re-run `compare_text.py`. A flag change that moves a large block of the 59
+at once is worth ruling in or out before any more per-function source rewriting, because
+every source-level fix attempted so far has been fighting this.
+
+**What is safe to do now regardless:** apply the confirmed hoisting idiom to the remaining
+accessors that share `getState`'s and `setState:`'s fingerprint — `executeEvent:`,
+`requestEvent:`, `nextEvent`, `watchState:mask:`, `enqueueEvent:`, `dequeueEvent:`,
+`enqueueData:`, `dequeueData:`, `acquire:`, `acquireAudit:`, `release`. That part is
+confirmed by `getState` and is independent of the ordering question.
+
+## 21. Finding 88's idiom applied to the remaining accessors
+
+`getState` confirmed the idiom, so it is now applied to the rest of the family in
+`IOPortSession.m`. Eleven methods changed; the mechanical part was done by an anchored
+transform over the region between `-watchState:mask:` and `-acquirePort:sleep:`, with the
+result reviewed as a diff.
+
+What was removed, per method:
+
+- the `<T>IMP cached_imp;` local and its assignment — the IMP is now evaluated in call
+  position as `((<T>IMP)method_cache[N])(...)`, which is what makes gcc load it after the
+  argument pushes rather than before;
+- the `int error_code;` local — the field is now tested and returned in place as
+  `*(int *)((char *)method_cache + 8)`;
+- result locals that were assigned and immediately returned (`event` in `-nextEvent`,
+  `result` in `-acquire:` and `-acquireAudit:`).
+
+`method_cache` itself is kept: `getState` landed with it in place, so it is not part of the
+divergence.
+
+Touched: `watchState:mask:`, `nextEvent`, `executeEvent:data:`, `requestEvent:data:`,
+`enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:`, `enqueueData:…`, `dequeueData:…`,
+`acquire:`, `acquireAudit:`. `-watchState:mask:` keeps its `result` local because the value
+is read again after the second error check, so removing it would change the logic.
+
+**Deliberately not touched:** `-[IOPortSession(Private) acquirePort:sleep:]` reuses the name
+`error_code` for an unrelated value (`error_code = objc_msgSend(self, @selector(requestType:sleep:), …)`
+at what was line 807), which is why the transform is scoped to stop before it. An earlier
+unscoped version of the transform would have rewritten that too; its own assertion caught
+it before anything was written.
+
+Expect this to close or shrink the `executeEvent:`/`requestEvent:` pair (ref 26 / ours 20,
+15 differing) and the `enqueue*`/`dequeue*` group. It will **not** fix the block-ordering
+half of Finding 89 — `setState:mask:` already showed that content can match while the
+branch polarity stays inverted, so some of these will land at matching length with residual
+ordering differences rather than going fully identical.
+
+## 22. The idiom does not generalize — batch result and partial revert
+
+Rebuilt and re-measured after §21: **52 identical / 59 differing — no change.** Nothing
+newly landed. Measured by distance from the reference's instruction count:
+
+| method | before | after | |
+|---|---|---|---|
+| `executeEvent:data:` | 26/20 | 26/25 | closer |
+| `requestEvent:data:` | 26/20 | 26/25 | closer |
+| `nextEvent` | 21/22, 18 diffs | 21/22, 16 diffs | marginally closer |
+| `acquire:`, `acquireAudit:` | 22/20 | 22/20 | unchanged |
+| `watchState:mask:` | 33/28 | 33/28 | unchanged |
+| `dequeueData:…` | 37/32 | 37/32 | unchanged |
+| `enqueueEvent:data:sleep:` | 38/31 | 38/**27** | **further away** |
+| `dequeueEvent:data:sleep:` | 38/31 | 38/**27** | **further away** |
+| `enqueueData:…` | 40/33 | 40/**29** | **further away** |
+
+**Finding 88 was over-generalised.** `-getState` really is fixed by evaluating the IMP in
+call position, and `executeEvent:`/`requestEvent:` moved from six instructions short to one.
+But four methods did not react at all, and three moved the wrong way: our instruction count
+fell *further below* the reference's, which is the opposite of what removing redundant
+loads should do. In those three the reference is the one holding values in locals — it has
+more instructions than we do, not fewer, so stripping ours was never going to converge.
+
+The honest statement is that hoisting-versus-re-reading is a **per-function** property of
+Apple's source, not a house style. `getState` was one data point and it was read as a rule.
+
+**Partially reverted.** `enqueueEvent:data:sleep:`, `dequeueEvent:data:sleep:` and
+`enqueueData:…` are restored to their pre-§21 form. `executeEvent:`, `requestEvent:` and
+`nextEvent` keep the change because they measurably improved; the four that did not react
+keep it too, since their emitted code is unchanged either way and reverting would be churn
+for its own sake.
+
+**Method note for whoever picks this up:** length-delta against the reference is the
+trustworthy signal. The "first-order diffs" column counts positionally-aligned mismatches,
+so when the two lengths differ it moves for reasons that have nothing to do with getting
+closer — `enqueueEvent:` improved from 28 to 24 on that column while simultaneously moving
+four instructions further away in length. Do not optimise against it.

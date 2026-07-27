@@ -168,6 +168,190 @@ capstone, **not** a `binrecon compare` parity run and not a three-analyzer pass,
 so it does not by itself earn any entry an `assembly-matched` status. It is
 recorded because it is the first two-sided evidence this pass has had.
 
+### The formal parity run, and why binrecon still cannot certify it
+
+A real `binrecon analyze` parity pass has since been run against this same
+kernel. It required a tooling change first: binrecon pairs reference and rebuilt
+functions by **section-relative offset**, which is correct for relocatable driver
+objects but cannot work for two independently linked kernels — ours carries more
+code ahead of the region, so not one of the 24 methods paired. The first run
+returned 24 `missing-rebuilt` and 26 `missing-reference` with nothing compared.
+
+Commit `8ae85861` added a second, additive pairing pass: functions the offset
+pass leaves unmatched on both sides are paired by a uniquely shared symbol name,
+ambiguous names are left unpaired rather than guessed, and each record carries a
+`pairing` field of `offset`, `name` or `null` so the two evidence classes are
+never confused. With it, all 24 reference methods pair, leaving the expected two
+rebuilt-only extras (`property_IODeviceType:length:`, `property_IOSlotName:length:`).
+
+**binrecon's own verdict is `different` for all 24, and that verdict is not
+informative here.** Every equality signal it computes is defeated by link
+addresses in a way it cannot see through:
+
+- `cfg_equal` is false for all 24 — including the three that are byte-identical
+  — because basic blocks are keyed by address.
+- `raw_equal` and `masked_equal` hold for only 3 of 24, and masking cannot help:
+  a linked `MH_EXECUTE` has its relocations applied and discarded, so **both
+  analyses carry zero relocations** and there is nothing to mask. The three that
+  do match byte-for-byte are exactly the accessors with no outbound call and no
+  absolute data reference — `-[IOPCIDeviceDescription getPCIdevice:function:bus:]`,
+  `-[IOPCMCIATuple code]` and `-[IOPCMCIATuple length]`.
+- Ghidra and angr paired nothing at all, because their function-name renderings
+  differ from IDA's, so no alias is shared. angr also recovers different
+  boundaries under scoping, which the scoping design predicted.
+
+**What the published analyses do establish**, read directly rather than through
+the comparator: all 24 pairs have **identical instruction counts**, and every
+operand difference across all 24 falls into exactly three classes —
+
+1. IDA branch auto-labels (`loc_1FD388` against `loc_20AA38`), which encode the
+   absolute address;
+2. IDA data auto-labels (`stru_23A7B8.super_class` against
+   `stru_25F8DC.super_class`) — same field, same struct, different auto-name;
+3. the two `test al, al` against `test eax, eax` in `unmapAttributeMemory`.
+
+So the earlier ad-hoc finding is reproduced from binrecon-published,
+three-analyzer-scoped data: **23 of 24 methods are instruction-for-instruction
+identical to Apple's modulo link addresses, and Finding 3 is the only semantic
+divergence among all 24.**
+
+**No entry earns `assembly-matched` from this run either.** The comparator did
+not certify the equality; a script reading its output did. The gap is narrow and
+now precisely located: `normalized_operands` canonicalizes registers but not
+IDA's address-derived auto-labels, so `loc_*`, `stru_*` and `off_*` defeat it.
+Canonicalizing those is what would let binrecon certify this class of
+comparison itself.
+
+### Finding 3's cause, fully localised
+
+The same run pins Finding 3 to one line. `unmapAttributeMemory` is the **only**
+site among all 24 methods that tests the *result* of a `char`-returning selector
+sent to an untyped receiver, at
+`src/driverkit-3/libDriver/pcmcia/IOPCMCIADirectDevice.m:141`:
+
+```objc
+if ([window memoryInterface] && [window attributeMemory])
+```
+
+Its sibling `mapAttributeMemoryTo:findSpace:` messages window objects just as
+freely but sends only setters and never tests a return value, which is why it
+matches byte-for-byte with `id` locals. One construct, one divergence — the
+mechanism confirmed for Findings 1 and 2 above, in its last unfixed instance.
+
+Both selectors are declared `- (char)` in the 82365 driver's
+`PCICWindow.h`, which is why the reference tests `al`. Fixing it needs a typed
+receiver, and the type is **not** a free choice: Finding 13 of the
+Intel82365PCMCIA reconstruction recovered from Apple's driver binary that
+`PCICWindow` adopts a `PCMCIAWindow` protocol and `PCICWindow(Attributes)`
+adopts `PCMCIAWindowAttributes`. That split matches this call site exactly —
+`memoryInterface` is on the main class, `attributeMemory` and
+`setAttributeMemory:` on the category — so the receiver's type is
+`id <PCMCIAWindow, PCMCIAWindowAttributes>`.
+
+Neither protocol was declared anywhere in `src/`. Both now are.
+
+### The protocols, and the fix
+
+`src/kernel-7/driverkit/i386/PCMCIA.h` was a two-line `// TODO` stub that
+`autoconf_i386.m` already imported. It now carries the four protocols an
+adapter driver's objects adopt, recovered from the `__OBJC,__protocol` section
+of Apple's shipped `PCIC_reloc` — five records, of which four are
+`PCMCIAAdapter` (3 methods), `PCMCIASocket` (21), `PCMCIAWindow` (15) and
+`PCMCIAWindowAttributes` (16). The fifth is `IOPower`, which DriverKit already
+declares in `driverkit/IOPower.h` and which is therefore not repeated.
+
+Every selector and every type came from that section's method-description
+lists, so the signatures are Apple's rather than inferred — `c9@8:12c16` for
+`- (char)setEnabled:(char)`, `{?=b1b1b1b1b2b1b1}8@8:12` for
+`- (PCMCIAStatus)status`, and so on. That last encoding is worth noting: it is
+bit-for-bit the `PCMCIAStatus` bitfield already declared for
+`statusChangedForSocket:changedStatus:`, which independently confirms that
+typedef's layout.
+
+**Declaration order is the reverse of the binary's**, and this was measured
+rather than assumed. `PCICWindow`'s own class method list in the same binary
+ends with `initWithSocket:memoryWindow:number:` and begins with `set16Bit:`;
+reversed, it reads `initWithSocket:…, validSockets, socket, setSocket:,
+systemAddress, cardAddress, mapSize, setMapWithSize:…` — getter/setter pairs in
+a natural source order. GCC emits these lists in reverse source order, so the
+header restores the order Apple wrote.
+
+`PCMCIAStatus` moved from `PCMCIAKernBus.h` into `PCMCIA.h`, which now owns it,
+and `PCMCIAKernBus.h` imports it. Both files guard their bodies with
+`#ifdef DRIVER_PRIVATE`, so nothing changes about when the typedef is visible.
+libDriver compiles with `-DDRIVER_PRIVATE` in `KERN_CFLAGS`, and
+`IOPCMCIADirectDevice.m` already imports `PCMCIAKernBus.h`, so the protocols
+reach the call site without a new import.
+
+The fix itself is the receiver's type at line 137:
+
+```objc
+id <PCMCIAWindow>	window;
+```
+
+All five selectors this method sends to a window — `memoryInterface`,
+`attributeMemory`, `setAttributeMemory:`, `setEnabled:` and `socket` — are
+`PCMCIAWindow`'s. `PCMCIAWindowAttributes` is not involved: despite its name it
+holds no attribute-memory accessor, only the sixteen capability getters that
+describe what a window can map (`supportsMemory`, `minimumSize`,
+`addressLinesDecoded` and so on).
+
+### The verifying build
+
+The prediction held. Measured in `out/i386/mach_kernel`, 1472800 bytes, SHA-256
+`797B98878998D3E04D5643357C368245992C41C079CF1890CCB08E132A1DA64F`, built
+2026-07-26 18:37 with the kernel headers reinstalled:
+
+`-[IODirectDevice(IOPCMCIADirectDevice) unmapAttributeMemory]` moved to
+`0x20aff8` and now carries exactly the reference's three `test` instructions, at
+the same offsets from the method's entry:
+
+| Offset | `0x1fd8c4` (reference) | `0x20aff8` (rebuilt) |
+| --- | --- | --- |
+| +39 | `85 c0` `test eax, eax` | `85 c0` `test eax, eax` |
+| +161 | `84 c0` `test al, al` | `84 c0` `test al, al` |
+| +181 | `84 c0` `test al, al` | `84 c0` `test al, al` |
+
+The surviving `85 c0` at +39 is correct in both: it is the `resourcesForKey:`
+nil test, whose receiver is an `id` and whose result genuinely is `id`-sized.
+Only the two that read a `char` return changed. **Finding 3 is closed**, and the
+mechanism established for Findings 1 and 2 is confirmed a third time, now in its
+protocol-qualified form: `id <PCMCIAWindow>` reaches a declared `char` return
+where a bare `id` does not.
+
+### All 24, measured
+
+The same build was compared method by method against the reference, pairing by
+name rather than address and disassembling each from its own binary:
+
+**All 24 decode to identical instruction sequences.** None is missing, none
+differs in instruction count, and no operand differs except addresses.
+
+That last clause was audited rather than assumed, because the comparison
+normalises operands that look like addresses and such a mask can hide a real
+difference. Of 297 masked operand values, 269 are branch targets or memory
+references. The remaining 28 are all benign, and individually checked:
+`mov eax, 0xfffffd40` is **identical** on both sides and was masked only for its
+magnitude, and every `push` of a constant resolves to the same string on both
+sides — `"PCI"`, `"IOEISADeviceDescription"`, `"PCMCIA"`,
+`"PCMCIA_DEVICE_ATTR_MAPPING"`.
+
+The one earlier caveat is unchanged and remains cosmetic:
+`-[IOPCIDeviceDescription getPCIdevice:function:bus:]` is followed by `00 00`
+padding in the reference and `90 90` in ours, after its `ret`.
+
+**The ledger now reads 24 of 24 `assembly-matched`**, and its `rebuilt_sha256`
+is bound for the first time — it had been `null`, the ledger having been created
+reference-only. That binding is what makes the claim falsifiable: any future
+kernel that is not this one will fail validation rather than silently inherit
+these statuses.
+
+The evidence class is worth stating precisely. This is a direct disassembly
+comparison, not a `binrecon compare` verdict — the comparator still cannot
+certify a linked executable, for the reasons under The formal parity run. Two
+independent measurements now agree, one over binrecon's published IDA analyses
+and one over raw capstone output.
+
 ## Summary
 
 | Bucket | Count |

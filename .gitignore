@@ -16,6 +16,11 @@ vm/debs/
 vm/shots-*/
 vm/capture_output/
 
+# vm directory: local machine config, never committed. vm.conf holds the guest
+# root password; the tracked .example files stay tracked.
+vm/vm.conf
+vm/bridge.conf
+
 # binrecon: analyzer output is generated evidence, not source
 tools/binrecon/out/
 # Rebuilt driver artifacts staged from the Rhapsody guest; never committed.

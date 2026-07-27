@@ -11,12 +11,14 @@
 #import <driverkit/generalFuncs.h>	/* IOMalloc, IOFree */
 #import <driverkit/kernelDriver.h>	/* IOGetObjectForDeviceName */
 
-/* Global port list structures */
+/* Global port list structures.  _portListLock is declared first: the
+ * reference has it at 33160 and _portList at 33164, i.e. this order.
+ */
+static id _portListLock;            /* Lock protecting the port list */
 static struct {
     void *next;
     void *prev;
 } _portList;                        /* Circular list head (next, prev) */
-static id _portListLock = NULL;     /* Lock protecting the port list */
 
 /* Port list entry structure (0x20 bytes)
  * offset +0: next pointer
@@ -193,17 +195,16 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
  */
 - (const char *)name
 {
-    const char *port_name;
-
     /* Check if the session state block is not initialized */
     if (_priv == NULL) {
         return NULL;
     }
 
-    /* Call name method on device object at _priv+0 */
-    port_name = (const char *)objc_msgSend(*(id *)_priv, @selector(name));
-
-    return port_name;
+    /* Call name method on device object at _priv+0.  Not held in a local
+     * first: the reference emits the NULL return inline after the test
+     * (jne past it) rather than as a tail block.
+     */
+    return (const char *)objc_msgSend(*(id *)_priv, @selector(name));
 }
 
 /*
@@ -234,13 +235,10 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
  */
 - (int)acquireAudit:(BOOL)sleep
 {
-    int result;
-
     /* Check if the session state block is initialized */
     if (_priv != NULL) {
         /* Call private acquirePort:sleep: with type 1 */
-        result = [self acquirePort:1 sleep:sleep];
-        return result;
+        return [self acquirePort:1 sleep:sleep];
     }
 
     /* Not initialized - return error */
@@ -256,13 +254,10 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
  */
 - (int)acquire:(BOOL)sleep
 {
-    int result;
-
     /* Check if the session state block is initialized */
     if (_priv != NULL) {
         /* Call private acquirePort:sleep: with type 2 */
-        result = [self acquirePort:2 sleep:sleep];
-        return result;
+        return [self acquirePort:2 sleep:sleep];
     }
 
     /* Not initialized - return error */
@@ -305,27 +300,20 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
  */
 - (int)setState:(unsigned long)state mask:(unsigned long)mask
 {
-    void **method_cache;
-    int error_code;
     typedef int (*SetStateIMP)(id, SEL, unsigned long, unsigned long);
-    SetStateIMP cached_imp;
 
-    /* Get the session state block */
-    method_cache = (void **)_priv;
-
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[3] (offset +0xc) */
-        cached_imp = (SetStateIMP)method_cache[3];
-
-        /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(setState:mask:), state, mask);
+    /* The error code is tested in place rather than held in a local - the
+     * reference emits cmp dword ptr [eax+8], 0 - and the error path re-reads
+     * _priv and the field rather than reusing a register.
+     */
+    if (((int *)_priv)[2] == 0) {
+        return ((SetStateIMP)((void **)_priv)[3])((id)((void **)_priv)[0],
+                                                  @selector(setState:mask:),
+                                                  state, mask);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return ((int *)_priv)[2];
 }
 
 /*
@@ -336,21 +324,17 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
  */
 - (unsigned long)getState
 {
-    unsigned long state;
     void **method_cache;
     typedef unsigned long (*GetStateIMP)(id, SEL);
-    GetStateIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Call cached IMP at method_cache[4] (offset +0x10) */
-    cached_imp = (GetStateIMP)method_cache[4];
-
-    /* Call cached method on device object (method_cache[0]) */
-    state = cached_imp(method_cache[0], @selector(getState));
-
-    return state;
+    /* The IMP is evaluated in call position, not hoisted into a local: the
+     * reference pushes both arguments first and loads method_cache[4] last
+     * (mov eax, [eax+0x10] / call eax).
+     */
+    return ((GetStateIMP)method_cache[4])(method_cache[0], @selector(getState));
 }
 
 /*
@@ -366,22 +350,14 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*WatchStateIMP)(id, SEL, unsigned long *, unsigned long);
-    WatchStateIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[5] (offset +0x14) */
-        cached_imp = (WatchStateIMP)method_cache[5];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0], @selector(watchState:mask:), state, mask);
+        result = ((WatchStateIMP)method_cache[5])(method_cache[0], @selector(watchState:mask:), state, mask);
 
         /* Check if error code is still 0 after call */
         if (*(int *)((char *)method_cache + 8) == 0) {
@@ -406,25 +382,14 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
 - (unsigned long)nextEvent
 {
     void **method_cache;
-    int error_code;
-    unsigned long event;
     typedef unsigned long (*NextEventIMP)(id, SEL);
-    NextEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[6] (offset +0x18) */
-        cached_imp = (NextEventIMP)method_cache[6];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        event = cached_imp(method_cache[0], @selector(nextEvent));
-
-        return event;
+        return ((NextEventIMP)method_cache[6])(method_cache[0], @selector(nextEvent));
     }
 
     /* Error - return 0 */
@@ -443,26 +408,18 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
 - (int)executeEvent:(unsigned long)event data:(unsigned long)data
 {
     void **method_cache;
-    int error_code;
     typedef int (*ExecuteEventIMP)(id, SEL, unsigned long, unsigned long);
-    ExecuteEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[7] (offset +0x1c) */
-        cached_imp = (ExecuteEventIMP)method_cache[7];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(executeEvent:data:), event, data);
+        return ((ExecuteEventIMP)method_cache[7])(method_cache[0], @selector(executeEvent:data:), event, data);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return *(int *)((char *)method_cache + 8);
 }
 
 /*
@@ -477,26 +434,18 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
 - (int)requestEvent:(unsigned long)event data:(unsigned long *)data
 {
     void **method_cache;
-    int error_code;
     typedef int (*RequestEventIMP)(id, SEL, unsigned long, unsigned long *);
-    RequestEventIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[8] (offset +0x20) */
-        cached_imp = (RequestEventIMP)method_cache[8];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        return cached_imp(method_cache[0], @selector(requestEvent:data:), event, data);
+        return ((RequestEventIMP)method_cache[8])(method_cache[0], @selector(requestEvent:data:), event, data);
     }
 
     /* Return the error code recorded in the session state block */
-    return error_code;
+    return *(int *)((char *)method_cache + 8);
 }
 
 /*
@@ -656,22 +605,14 @@ static id _portListLock = NULL;     /* Lock protecting the port list */
 {
     int result;
     void **method_cache;
-    int error_code;
     typedef int (*DequeueDataIMP)(id, SEL, char *, unsigned int, unsigned int *, unsigned int);
-    DequeueDataIMP cached_imp;
 
     /* Get the session state block */
     method_cache = (void **)_priv;
 
-    /* Check error code at _priv+8 */
-    error_code = *(int *)((char *)method_cache + 8);
-
-    if (error_code == 0) {
-        /* No error - call cached IMP at method_cache[12] (offset +0x30) */
-        cached_imp = (DequeueDataIMP)method_cache[12];
-
+    if (*(int *)((char *)method_cache + 8) == 0) {
         /* Call cached method on device object (method_cache[0]) */
-        result = cached_imp(method_cache[0],
+        result = ((DequeueDataIMP)method_cache[12])(method_cache[0],
                            @selector(dequeueData:bufferSize:transferCount:minCount:),
                            buffer, bufferSize, transferCount, minCount);
 

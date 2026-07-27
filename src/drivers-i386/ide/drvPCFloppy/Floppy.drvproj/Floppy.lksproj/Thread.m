@@ -278,17 +278,18 @@ static void sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
 	operationCylinder = operation[1];
 
 	// Determine which queue to insert into based on sweep direction and position
-	if ((operationCylinder <= currentCylinder) &&
-	    ((currentCylinder != operationCylinder) || (sweepDirection != 1))) {
-		// Operation is behind current position or we're sweeping down
-		// Insert into ascending queue for next upward sweep
-		queueOperationAscending(ascendingQueue, operation);
+	if ((operationCylinder < currentCylinder) ||
+	    ((operationCylinder == currentCylinder) && (sweepDirection == 1))) {
+		// Operation is behind current position, or exactly under the head
+		// while sweeping up (already serviced on this pass) - queue it for
+		// the next downward sweep.
+		queueOperationDecending(descendingQueue, operation);
 		return;
 	}
 
-	// Operation is ahead of current position or we're sweeping up
-	// Insert into descending queue for current/next downward sweep
-	queueOperationDecending(descendingQueue, operation);
+	// Operation is ahead of current position, or exactly under the head
+	// while sweeping down - queue it for the next upward sweep.
+	queueOperationAscending(ascendingQueue, operation);
 	return;
 }
 
@@ -404,6 +405,73 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	}
 }
 
+/*
+ * queueEmpty - Test whether a circular queue head is empty.
+ * A queue head is empty when its first-element slot still points at itself.
+ */
+static BOOL queueEmpty(id *queueHead)
+{
+	return (id *)*queueHead == queueHead;
+}
+
+/*
+ * dequeueOperation - Remove and return the first operation on a queue.
+ * From decompiled code: shared unlink pattern used both for the main
+ * (self+0x150) intake queue and for the five scheduler queues below -
+ * it is the mirror image of queueOperationAscending/Decending's insert.
+ * Caller must ensure the queue is non-empty (see queueEmpty above).
+ */
+static unsigned int *dequeueOperation(id *queueHead)
+{
+	unsigned int *operation;
+	unsigned int *nextOp;
+	unsigned int *prevOp;
+
+	operation = (unsigned int *)*queueHead;
+	nextOp = (unsigned int *)operation[8];
+	prevOp = (unsigned int *)operation[9];
+
+	if ((id *)nextOp == queueHead) {
+		queueHead[1] = (id)prevOp;
+	} else {
+		nextOp[9] = (unsigned int)prevOp;
+	}
+
+	if ((id *)prevOp == queueHead) {
+		queueHead[0] = (id)nextOp;
+	} else {
+		prevOp[8] = (unsigned int)nextOp;
+	}
+
+	return operation;
+}
+
+/*
+ * appendOperationToQueue - Append an operation to the tail of a plain FIFO
+ * queue (used for the control-operation queue: eject/format/abort).
+ * From decompiled code: this is the "not sorted" queue-insert idiom used at
+ * Thread.m operationThread's initial classification of operation types 2-4 -
+ * it is textually identical to the empty/non-empty append branch inside
+ * queueOperationAscending/Decending above, without any cylinder comparison.
+ */
+static void appendOperationToQueue(id *queueHead, unsigned int *operation)
+{
+	unsigned int *lastOp;
+
+	if (queueEmpty(queueHead)) {
+		*queueHead = (id)operation;
+		queueHead[1] = (id)operation;
+		operation[8] = (unsigned int)queueHead;
+		operation[9] = (unsigned int)queueHead;
+	} else {
+		lastOp = (unsigned int *)queueHead[1];
+		operation[9] = (unsigned int)lastOp;
+		operation[8] = (unsigned int)queueHead;
+		queueHead[1] = (id)operation;
+		lastOp[8] = (unsigned int)operation;
+	}
+}
+
 @implementation IOFloppyDisk(OperationThreadLocal)
 
 /*
@@ -475,7 +543,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		diskName = [self name];
 		operationName = isFormatted ? "read" : "format";
 
-		IOLog("%s: Unable to %s cylinder %d of disk (on drive %d).",
+		IOLog("%s: Unable to %s cylinder %d of disk (on drive %d).\n",
 		      diskName, operationName, cylinderNumber, unit);
 	}
 
@@ -510,16 +578,22 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		nextPtr = (unsigned int *)queueEntry[9];  // offset 0x24 (9 * 4)
 
 		// Unlink entry from queue - update prev->next
+		// prevPtr actually holds the entry's *next* link (offset 0x20); when
+		// it is not the queue head itself, its prev field (offset 0x24, i.e.
+		// index 9) must be retargeted - that is 8 words, not 4, past prevPtr.
 		linkPtr = (unsigned int *)queue;
 		if (queue != prevPtr) {
-			linkPtr = prevPtr + 4;  // Point to next field
+			linkPtr = prevPtr + 8;  // Point to prev field (offset 0x24)
 		}
 		*(unsigned int **)((char *)linkPtr + 4) = nextPtr;
 
 		// Unlink entry from queue - update next->prev
+		// nextPtr actually holds the entry's *prev* link (offset 0x24); when
+		// it is not the queue head itself, its next field (offset 0x20, i.e.
+		// index 8) must be retargeted - that is 8 words past nextPtr.
 		linkPtr = (unsigned int *)queue;
 		if (queue != nextPtr) {
-			linkPtr = nextPtr + 4;  // Point to prev field
+			linkPtr = nextPtr + 8;  // Point to next field (offset 0x20)
 		}
 		*(unsigned int **)linkPtr = prevPtr;
 
@@ -527,8 +601,8 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		operationType = *queueEntry;
 
 		// Process based on operation type
-		if (operationType == 1) {
-			// Type 1: Free the operation structure (0x28 = 40 bytes)
+		if (operationType <= 1) {
+			// Type 0 or 1: Free the operation structure (0x28 = 40 bytes)
 			IOFree(queueEntry, 0x28);
 		}
 		else if (operationType == 2) {
@@ -593,7 +667,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		unit = [self unit];
 		diskName = [self name];
 
-		IOLog("%s: Unable to commit cylinder %d to disk (on drive %d).",
+		IOLog("%s: Unable to commit cylinder %d to disk (on drive %d).\n",
 		      diskName, cylinderNumber, unit);
 
 		// Lock again to restore dirty flag
@@ -662,7 +736,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown \"Read Mode\" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Read Mode\" setting in the configuration table.\n", diskName);
 		}
 	}
 
@@ -735,13 +809,53 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 		// If mode string was provided but invalid, log warning
 		if (!validMode) {
 			diskName = [self name];
-			IOLog("%s: Unknown \"Write Mode\" setting in the configuration table.", diskName);
+			IOLog("%s: Unknown \"Write Mode\" setting in the configuration table.\n", diskName);
 		}
 	}
 
 	return writeMode;
 }
 
+/*
+ * operationThread - Background elevator (SCAN) scheduler for cylinder I/O.
+ * From decompiled code (Thread.m ref 0x7fcc-0x8a79, 135 basic blocks).
+ *
+ * Every request is first pulled off the single FIFO intake queue at
+ * self+0x150 and re-filed into one of five internal queues:
+ *
+ *   ctlQueue      - plain FIFO (not cylinder-sorted). Holds operation
+ *                   types 2 (eject/flush), 3 (change capacity/format) and
+ *                   4 (abort + exit thread). Non-empty ctlQueue always wins
+ *                   the scheduler's next pick - control operations preempt
+ *                   the elevators outright.
+ *   rwAscQueue,
+ *   rwDescQueue   - cylinder-sorted sweep pair for type 0 (read) operations
+ *                   and, when the "Write Mode" config is "soon" (mode 1),
+ *                   type 1 (write) operations too.
+ *   wbAscQueue,
+ *   wbDescQueue   - cylinder-sorted sweep pair for write-behind: type 1
+ *                   writes when "Write Mode" is "normal" (mode 0) or
+ *                   "immediate" (mode 2).
+ *
+ * currentCylinder/sweepDirection track the (virtual) disk head position and
+ * are shared by both sweep pairs, since it is the same physical head. The
+ * scheduler favors the read/write-soon pair unless the write mode is
+ * "immediate", in which case the write-behind pair is checked first;
+ * forceReorder marks that the other pair's ordering may now be stale
+ * (e.g. a normal write arrived while at rest, or an immediate write just
+ * moved the head) and must be re-sorted with sweepQueueReorder before it is
+ * next consulted. Write mode "eject" (mode 3) drops the write outright
+ * (never queued, never committed) and an unrecognized write mode panics.
+ *
+ * When both sweep pairs and ctlQueue are empty, an optional read-ahead pass
+ * looks for the nearest not-yet-cached cylinder (scanning forward from the
+ * head, then backward) and brings it online purely speculatively; this is
+ * gated by readAheadEnabled (set when "Read Mode" is "ahead" and the media
+ * is formatted) or formatPending (set after a capacity change whose new
+ * media still needs its remaining cylinders formatted cylinder-by-cylinder,
+ * see case 3 below). Only once there is truly nothing left to do does the
+ * thread block on [queueLock lockWhen:1] for new intake.
+ */
 - (void)operationThread
 {
 	id deviceDescription;
@@ -755,11 +869,23 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	unsigned numCylinders;
 	unsigned cylinderNumber;
 	unsigned *operation;
-	void *prevPtr;
-	void *nextPtr;
-	void *linkPtr;
 	unsigned operationType;
 	BOOL success;
+
+	/* The five scheduler queues; see the block comment above. */
+	id ctlQueue[2];
+	id rwDescQueue[2];
+	id rwAscQueue[2];
+	id wbDescQueue[2];
+	id wbAscQueue[2];
+
+	unsigned currentCylinder;
+	int sweepDirection;
+	BOOL formatPending;
+	BOOL forceReorder;
+	BOOL readAheadEnabled;
+
+	id *selectedQueue;
 
 	// Get configuration
 	deviceDescription = *(id *)((char *)self + 0x160);
@@ -771,42 +897,175 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	queueLock = *(id *)((char *)self + 0x158);
 	operationLock = *(id *)((char *)self + 0x144);
 
-	// Main operation loop
-	while (1) {
-		// Wait for operations
-		[queueLock lockWhen:1];
+	ctlQueue[0] = (id)ctlQueue;         ctlQueue[1] = (id)ctlQueue;
+	rwDescQueue[0] = (id)rwDescQueue;   rwDescQueue[1] = (id)rwDescQueue;
+	rwAscQueue[0] = (id)rwAscQueue;     rwAscQueue[1] = (id)rwAscQueue;
+	wbDescQueue[0] = (id)wbDescQueue;   wbDescQueue[1] = (id)wbDescQueue;
+	wbAscQueue[0] = (id)wbAscQueue;     wbAscQueue[1] = (id)wbAscQueue;
 
-		// Process all queued operations
+	currentCylinder = 0;
+	sweepDirection = 1;
+	formatPending = NO;
+	forceReorder = NO;
+	readAheadEnabled = (readMode == 0 && *(int *)((char *)self + 0x148) != 1) ? YES : NO;
+
+	[queueLock lock];
+
+	// Main operation loop. A plain [queueLock lock] always re-enters here
+	// (matches the reference's var_40 flag, which is unconditionally true on
+	// every pass); the idle-wait path further below performs its own
+	// lock/unlockWith/lockWhen sequence and jumps directly past this lock
+	// with the lock already held.
+	for (;;) {
+	drain:
+		// Drain the intake queue - classify and re-file every pending
+		// operation before doing any actual I/O. The queue lock is held for
+		// the whole drain, exactly as in the reference.
 		while (*(void **)((char *)self + 0x150) != mainQueue) {
-			// Dequeue operation
-			operation = *(unsigned **)((char *)self + 0x150);
-			prevPtr = (void *)operation[8];
-			nextPtr = (void *)operation[9];
-
-			// Unlink from queue
-			linkPtr = mainQueue;
-			if (mainQueue != prevPtr) {
-				linkPtr = (char *)prevPtr + 0x20;
-			}
-			*(void **)((char *)linkPtr + 4) = nextPtr;
-
-			if (mainQueue != nextPtr) {
-				nextPtr = (char *)nextPtr + 0x20;
-			}
-			*(void **)nextPtr = prevPtr;
-
+			operation = dequeueOperation((id *)((char *)self + 0x150));
 			operationType = operation[0];
 
-			// Unlock to process operation
-			[queueLock unlock];
+			if (operationType == 0) {
+				// Read: always goes on the read/write-soon sweep pair.
+				sweepQueueInsert(rwAscQueue, rwDescQueue, operation,
+				                  currentCylinder, sweepDirection);
+				if (writeMode == 0) {
+					forceReorder = YES;
+				}
+			} else if (operationType == 1) {
+				// Write: routed by the configured write mode.
+				switch (writeMode) {
+				case 0:
+					// "normal": write-behind pair.
+					sweepQueueInsert(wbAscQueue, wbDescQueue, operation,
+					                  currentCylinder, sweepDirection);
+					break;
+				case 1:
+					// "soon": shares the read pair.
+					sweepQueueInsert(rwAscQueue, rwDescQueue, operation,
+					                  currentCylinder, sweepDirection);
+					break;
+				case 2:
+					// "immediate": write-behind pair, but force a reorder
+					// so it is picked up promptly.
+					sweepQueueInsert(wbAscQueue, wbDescQueue, operation,
+					                  currentCylinder, sweepDirection);
+					forceReorder = YES;
+					break;
+				case 3:
+					// "eject": drop the write, never commit it.
+					IOFree(operation, 0x28);
+					break;
+				default:
+					panic("IOFloppyDisk: Unknown write mode.");
+				}
+			} else if (operationType <= 4) {
+				// Eject/format/abort: plain FIFO, always highest priority.
+				appendOperationToQueue(ctlQueue, operation);
+			} else {
+				panic("IOFloppyDisk: Unknown operation type.");
+			}
+		}
+		[queueLock unlock];
 
-			// Execute based on type
+		// Pick the next queue to service: ctlQueue always wins; otherwise
+		// prefer the read/write-soon pair, except when the write mode is
+		// "immediate", in which case the write-behind pair is checked
+		// first. Selecting from the "wrong direction" queue of a pair also
+		// flips sweepDirection for next time.
+		selectedQueue = 0;
+
+		if (!queueEmpty(ctlQueue)) {
+			selectedQueue = ctlQueue;
+		} else if (writeMode == 2) {
+			if (sweepDirection == 1) {
+				if (!queueEmpty(wbAscQueue)) {
+					selectedQueue = wbAscQueue;
+				} else if (!queueEmpty(wbDescQueue)) {
+					selectedQueue = wbDescQueue;
+					sweepDirection = 0;
+				} else {
+					if (forceReorder) {
+						sweepQueueReorder(rwAscQueue, rwDescQueue, currentCylinder, sweepDirection);
+						forceReorder = NO;
+					}
+					if (!queueEmpty(rwAscQueue)) {
+						selectedQueue = rwAscQueue;
+					} else if (!queueEmpty(rwDescQueue)) {
+						selectedQueue = rwDescQueue;
+						sweepDirection = 0;
+					}
+				}
+			} else {
+				if (!queueEmpty(wbDescQueue)) {
+					selectedQueue = wbDescQueue;
+				} else if (!queueEmpty(wbAscQueue)) {
+					selectedQueue = wbAscQueue;
+					sweepDirection = 1;
+				} else {
+					if (forceReorder) {
+						sweepQueueReorder(rwAscQueue, rwDescQueue, currentCylinder, sweepDirection);
+						forceReorder = NO;
+					}
+					if (!queueEmpty(rwDescQueue)) {
+						selectedQueue = rwDescQueue;
+					} else if (!queueEmpty(rwAscQueue)) {
+						selectedQueue = rwAscQueue;
+						sweepDirection = 1;
+					}
+				}
+			}
+		} else {
+			if (sweepDirection == 1) {
+				if (!queueEmpty(rwAscQueue)) {
+					selectedQueue = rwAscQueue;
+				} else if (!queueEmpty(rwDescQueue)) {
+					selectedQueue = rwDescQueue;
+					sweepDirection = 0;
+				} else if (writeMode == 0 && !formatPending) {
+					if (forceReorder) {
+						sweepQueueReorder(wbAscQueue, wbDescQueue, currentCylinder, sweepDirection);
+						forceReorder = NO;
+					}
+					if (!queueEmpty(wbAscQueue)) {
+						selectedQueue = wbAscQueue;
+					} else if (!queueEmpty(wbDescQueue)) {
+						selectedQueue = wbDescQueue;
+						sweepDirection = 0;
+					}
+				}
+			} else {
+				if (!queueEmpty(rwDescQueue)) {
+					selectedQueue = rwDescQueue;
+				} else if (!queueEmpty(rwAscQueue)) {
+					selectedQueue = rwAscQueue;
+					sweepDirection = 1;
+				} else if (writeMode == 0 && !formatPending) {
+					if (forceReorder) {
+						sweepQueueReorder(wbAscQueue, wbDescQueue, currentCylinder, sweepDirection);
+						forceReorder = NO;
+					}
+					if (!queueEmpty(wbDescQueue)) {
+						selectedQueue = wbDescQueue;
+					} else if (!queueEmpty(wbAscQueue)) {
+						selectedQueue = wbAscQueue;
+						sweepDirection = 1;
+					}
+				}
+			}
+		}
+
+		if (selectedQueue != 0) {
+			operation = dequeueOperation(selectedQueue);
+			operationType = operation[0];
+
 			switch (operationType) {
 			case 0:
 				// Read cylinder
 				cylinderNumber = operation[1];
 				if (*(int *)(*(int *)((char *)self + 0x13c) + cylinderNumber * 0x14) == 3) {
-					[self bringCylinderOnline:cylinderNumber isFormatted:YES];
+					[self bringCylinderOnline:cylinderNumber isFormatted:(formatPending == NO)];
+					currentCylinder = operation[1];
 				}
 				IOFree(operation, 0x28);
 				break;
@@ -816,6 +1075,7 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				cylinderNumber = operation[1];
 				if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + cylinderNumber * 0x14) & 2) != 0) {
 					[self commitDirtyCylinder:cylinderNumber];
+					currentCylinder = operation[1];
 				}
 				IOFree(operation, 0x28);
 				break;
@@ -828,9 +1088,27 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 					numCylinders = *(unsigned *)((char *)geometry + 0x0c);
 					for (cylinderNumber = numCylinders; cylinderNumber > 0; cylinderNumber--) {
 						int offset = (cylinderNumber - 1) * 0x14;
-						if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset) & 2) != 0) {
+						unsigned char *flagsPtr;
+
+						// If this cylinder was never brought online and the
+						// media is still mid-format, bring it online first
+						// (formatting it) so its dirty state is known.
+						if ((*(int *)(*(int *)((char *)self + 0x13c) + offset) == 3) && formatPending) {
+							[self bringCylinderOnline:(cylinderNumber - 1) isFormatted:NO];
+							currentCylinder = cylinderNumber - 1;
+							flagsPtr = (unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset);
+							if ((*flagsPtr & 1) != 0) {
+								operation[2] = 0;
+							}
+						}
+
+						flagsPtr = (unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset);
+						if ((*(int *)(*(int *)((char *)self + 0x13c) + offset) != 3) &&
+						    ((*flagsPtr & 2) != 0)) {
 							[self commitDirtyCylinder:(cylinderNumber - 1)];
-							if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset) & 2) != 0) {
+							currentCylinder = cylinderNumber - 1;
+							flagsPtr = (unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset);
+							if ((*flagsPtr & 2) != 0) {
 								operation[2] = 0;
 							}
 						}
@@ -851,6 +1129,15 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 					[self abortSubrequestsOnCylinder:cylinderNumber];
 				}
 				[operationLock unlock];
+
+				// The old geometry is going away - every operation still
+				// queued against it (control queue and both sweep pairs)
+				// is now meaningless.
+				[self clearOperationsOnQueue:(id)ctlQueue];
+				[self clearOperationsOnQueue:(id)rwAscQueue];
+				[self clearOperationsOnQueue:(id)rwDescQueue];
+				[self clearOperationsOnQueue:(id)wbAscQueue];
+				[self clearOperationsOnQueue:(id)wbDescQueue];
 
 				// Release old cache
 				[self releaseCache];
@@ -886,6 +1173,19 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				}
 
 				operation[6] = success;
+
+				// Reset scheduler state for the new media: head back at
+				// cylinder 0 sweeping up, and formatPending mirrors whether
+				// the format actually succeeded (cylinder 0 only has been
+				// brought online/formatted above - the rest of the media
+				// still needs bringCylinderOnline:isFormatted:NO as each
+				// cylinder is first touched).
+				readAheadEnabled = (readMode == 0 && *(int *)((char *)self + 0x148) != 1) ? YES : NO;
+				currentCylinder = 0;
+				sweepDirection = 1;
+				formatPending = (BOOL)operation[6];
+				forceReorder = NO;
+
 				[(id)operation[7] unlockWith:0];
 				break;
 
@@ -893,28 +1193,93 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 				// Abort and exit thread
 				[operationLock lock];
 				geometry = *(id *)((char *)self + 0x14c);
-				if (geometry != nil) {
-					numCylinders = *(unsigned *)((char *)geometry + 0x0c);
-					for (cylinderNumber = 0; cylinderNumber < numCylinders; cylinderNumber++) {
-						[self abortSubrequestsOnCylinder:cylinderNumber];
-					}
+				numCylinders = *(unsigned *)((char *)geometry + 0x0c);
+				for (cylinderNumber = 0; cylinderNumber < numCylinders; cylinderNumber++) {
+					[self abortSubrequestsOnCylinder:cylinderNumber];
 				}
 				[operationLock unlock];
+
+				[self clearOperationsOnQueue:(id)ctlQueue];
+				[self clearOperationsOnQueue:(id)rwAscQueue];
+				[self clearOperationsOnQueue:(id)rwDescQueue];
+				[self clearOperationsOnQueue:(id)wbAscQueue];
+				[self clearOperationsOnQueue:(id)wbDescQueue];
 
 				// Signal completion
 				[(id)operation[4] unlockWith:0];
 				return;
 
 			default:
-				panic("IOFloppyDisk: Unknown operation type.");
+				// Unreachable: every queue above only ever holds operation
+				// types validated during classification. The reference
+				// binary has a defensive jump table bounds check here that
+				// simply falls through to the top of the loop rather than
+				// panicking, so we do the same.
+				break;
 			}
 
-			// Lock again for next iteration
 			[queueLock lock];
+			goto drain;
 		}
 
-		// Unlock with status 0 (no more operations)
-		[queueLock unlockWith:0];
+		// Nothing scheduled on any queue - try one speculative read-ahead
+		// if enabled, otherwise fall through to the idle wait below.
+		if (readAheadEnabled || formatPending) {
+			BOOL found;
+			unsigned scanCylinder;
+			int cylinderInfoBase;
+
+			found = NO;
+			cylinderInfoBase = *(int *)((char *)self + 0x13c);
+			geometry = *(id *)((char *)self + 0x14c);
+			numCylinders = *(unsigned *)((char *)geometry + 0x0c);
+
+			// Scan forward from just past the current head position.
+			scanCylinder = currentCylinder + 1;
+			while (scanCylinder < numCylinders) {
+				if (*(int *)(cylinderInfoBase + scanCylinder * 0x14) == 3) {
+					found = YES;
+					break;
+				}
+				scanCylinder++;
+			}
+
+			// Nothing ahead: try the current cylinder, then scan backward.
+			if (!found) {
+				scanCylinder = currentCylinder;
+				if (*(int *)(cylinderInfoBase + scanCylinder * 0x14) == 3) {
+					found = YES;
+				} else {
+					while (scanCylinder != 0) {
+						scanCylinder--;
+						if (*(int *)(cylinderInfoBase + scanCylinder * 0x14) == 3) {
+							found = YES;
+							break;
+						}
+					}
+				}
+			}
+
+			if (found) {
+				[self bringCylinderOnline:scanCylinder isFormatted:(formatPending == NO)];
+				currentCylinder = scanCylinder;
+			} else {
+				// No cylinder anywhere still needs loading - stop trying.
+				readAheadEnabled = NO;
+				formatPending = NO;
+			}
+
+			[queueLock lock];
+			goto drain;
+		}
+
+		// Truly idle: block until new work is queued.
+		[queueLock lock];
+		if (*(void **)((char *)self + 0x150) == mainQueue) {
+			[queueLock unlockWith:0];
+			[queueLock lockWhen:1];
+		}
+		goto drain;
 	}
 }
 

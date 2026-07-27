@@ -325,6 +325,33 @@ def test_i386_mapping_manifest_still_names_metapc(tmp_path):
     assert manifest["input"]["ida_processor"] == "metapc"
 
 
+def test_each_artifact_maps_its_own_analysis_scope(tmp_path):
+    input_path = tmp_path / "input image.i64"
+    input_path.write_bytes(b"sample")
+    profile, _ = _profile(tmp_path, input_path)
+    profile.document = MappingProxyType({
+        **profile.document,
+        "analysis_scope": ({"start": 0x1000, "end": 0x1100},),
+        "rebuilt_analysis_scope": ({"start": 0x9000, "end": 0x9200},),
+    })
+    mappings = []
+
+    def runner(argv, **kwargs):
+        arguments = _script_args(argv)
+        mapping_path = Path(arguments[arguments.index("--mapping") + 1])
+        mappings.append(json.loads(mapping_path.read_text(encoding="utf-8")))
+        Path(arguments[arguments.index("--output") + 1]).write_text(
+            json.dumps(_analysis(profile.reference_identity)), encoding="utf-8"
+        )
+        return SimpleNamespace(returncode=0, stdout="ida log\n", stderr="")
+
+    export_with_ida(profile, "reference", tmp_path / "reference.json", runner=runner)
+    export_with_ida(profile, "rebuilt", tmp_path / "rebuilt.json", runner=runner)
+
+    assert mappings[0]["analysis_scope"] == [{"start": 0x1000, "end": 0x1100}]
+    assert mappings[1]["analysis_scope"] == [{"start": 0x9000, "end": 0x9200}]
+
+
 def test_ppc_profile_against_an_i386_artifact_is_rejected(tmp_path):
     input_path = tmp_path / "input.bin"
     input_path.write_bytes(build_macho_fixture(architecture="i386", relocations=b""))

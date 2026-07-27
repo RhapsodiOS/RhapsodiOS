@@ -19,7 +19,7 @@ static nsPortKernSlot _nsPortKernIdMap[64];
 
 /* Global kernel session state */
 static int _numSessions;                /* Number of sessions, 0 until iopsKernInit: */
-static id _mapLock = NULL;              /* AppleIOPSSafeCondLock for map access */
+static id _mapLock;              /* AppleIOPSSafeCondLock for map access */
 
 /* External kernel functions */
 extern int copyout(const void *kaddr, void *uaddr, size_t len);

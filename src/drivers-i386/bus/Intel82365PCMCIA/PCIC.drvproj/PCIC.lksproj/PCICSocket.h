@@ -30,25 +30,18 @@
 #define _PCIC_SOCKET_H_
 
 #import <objc/Object.h>
+#import <driverkit/i386/PCMCIA.h>
 
 /* Forward declarations */
 @class List;
 @class PCIC;
 
 /*
- * Socket status bits
+ * The socket status bits are PCMCIAStatus, declared with the
+ * PCMCIA protocols in <driverkit/i386/PCMCIA.h>.
  */
-typedef struct {
-    unsigned int present:1;
-    unsigned int locked:1;
-    unsigned int ejectRequest:1;
-    unsigned int insertRequest:1;
-    unsigned int batteryStatus:2;
-    unsigned int writeProtect:1;
-    unsigned int ready:1;
-} PCMCIAStatus;
 
-@interface PCICSocket : Object
+@interface PCICSocket : Object <PCMCIASocket>
 {
     id adapter;                     /* Parent PCIC controller */
     int socketNumber;               /* Socket number (0-3) */

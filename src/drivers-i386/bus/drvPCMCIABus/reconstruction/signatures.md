@@ -65,7 +65,14 @@ never compared before this pass, which is why Findings 2-8 are new. Both that
 commit and that report currently live on the `qemu-debug-loop` branch, which is
 ahead of this one — the cross-reference resolves once this branch merges forward.
 
-## Finding 1 — `statusChangedForSocket:changedStatus:` takes a bitfield: **intentional mismatch, not changed**
+## Finding 1 — `statusChangedForSocket:changedStatus:` takes a bitfield: **fixed**
+
+> **Resolved.** The deferral below stood while `PCMCIAStatus` did not exist. It
+> does now, and the reference's own implementation has since been disassembled,
+> which settled the one thing the record said was unmeasured. See
+> § The reconciling pass at the end of this finding. The original reasoning is
+> kept because it explains why the change waited.
+
 
 | | |
 | --- | --- |
@@ -101,6 +108,185 @@ the 82365 driver's `PCMCIAStatusChange` protocol also declares
 `(unsigned int)status` (`Intel82365PCMCIA/.../PCIC.h:47`), matching our
 `PCMCIAKernBus.h:59` — so nothing is broken today, but both sides diverge from
 Apple's.
+
+> **Both halves of that paragraph have since stopped being true, which is the
+> reason to revisit this finding.**
+>
+> `PCMCIAStatus` now exists, in `<driverkit/i386/PCMCIA.h>`, declared with the
+> four PCMCIA protocols recovered from `PCIC_reloc`. And the 82365 driver no
+> longer declares `(unsigned int)status`: its invented `PCMCIAStatusChange` was
+> deleted, and `PCICSocket` now adopts the real `PCMCIASocket`, whose `status`,
+> `statusChangeMask` and `setStatusChangeMask:` all carry
+> `{?=b1b1b1b1b2b1b1}` — verified byte-identical to the reference in a rebuilt
+> `PCIC_reloc`.
+>
+> So the stack is no longer internally consistent: `PCICSocket` takes the
+> bitfield and `PCMCIAKernBus` still passes an integer. `PCMCIAKernBus.m:607`'s
+> `[socket setStatusChangeMask:1]` happens to survive only because the receiver
+> is an untyped `id` and a four-byte struct occupies the same stack slot as the
+> `int` — it is right by coincidence, not by type.
+>
+> The deferral's other reason — a coordinated change across three classes —
+> still stands, and the work is still not done here. What it now needs is the
+> mechanical part: `changedStatus`'s two declarations and its implementation,
+> the `(changedStatus & 1)` test that reads bit 0 (`present`), and the two call
+> sites that pass a literal `1`. Before changing the test, disassemble
+> `-[PCMCIAKernBus statusChangedForSocket:changedStatus:]` at `0xfe0` in
+> `PCMCIABus_reloc` and confirm the reference tests `present` rather than some
+> other bit — the field mapping is known, but which field this method reads
+> is not, in this record, measured.
+
+### The reconciling pass
+
+**The reference tests `present`, measured.** At `0xfe0 + 0x1c`:
+
+```
+f6 45 14 01    test byte ptr [ebp + 0x14], 1
+0f 85 aa 00..  jne  0x10b0
+```
+
+`[ebp+0x14]` is the third argument — `changedStatus` — and the mask is bit 0,
+which the ivar-type names give as `present`. Our build did test the same bit,
+but through the type: `mov ecx, [ebp+0x14]` then `test cl, 1`, a dword load
+because the parameter was an `unsigned int`. The reference tests the byte in
+memory directly.
+
+Our build also spilled `socketNum` to `[ebp-4]` where the reference keeps it in
+`eax`, most likely because that dword load needed the register.
+
+**`sizeof(PCMCIAStatus)` is 4, and ours already agrees.** Worth recording
+because the reference's logging path reads it a byte at a time, which invites
+the opposite conclusion. `PCICSocket` stores one as an ivar, and the two
+binaries' layouts are identical — `instance_size` 20, `statusMask` at +12,
+`windows` at +16. A one-byte struct would have put `windows` at +13.
+
+**Changed**, in `PCMCIAKernBus.h` and `PCMCIAKernBus.m`:
+
+- the `PCMCIAStatusChange` protocol declaration, which also lacked its `(void)`
+  return — the reference encoding is `v16@8:12@16{?=b1b1b1b1b2b1b1}20`
+- the matching class declaration and the implementation's signature
+- `(changedStatus & 1) == 0` → `!changedStatus.present`
+- both call sites in `addAdapter:`, via a local `PCMCIAStatus cardPresent = { 1 }`
+
+The reference pushes a literal `1` at both call sites, so Apple's source also
+had a constant whose four bytes are `present` alone; `{ 1 }` initialises the
+first bitfield and zeroes the rest, giving the same value.
+
+**Predictions this pass made, and how they came out** in a rebuilt
+`PCMCIABus_reloc` (349164 bytes, 2026-07-26 19:26):
+
+| Prediction | Result |
+| --- | --- |
+| encoding becomes `v16@8:12@16{?=b1b1b1b1b2b1b1}20` | **held** — the `PCMCIAStatusChange` record is now identical to the reference's, selector and type both |
+| the test becomes the reference's instruction | **held** — `f6 45 14 01`, byte-identical, at the same position in the prologue |
+| the `socketNum` spill disappears | **failed** — it is still there, and the frame grew from `sub esp, 0x14` to `0x18` |
+| both call sites emit `push 1` | **held** — twice in `addAdapter:`, with the same surrounding instruction sequences |
+
+Both protocol records now match, and `__OBJC,__protocol` lists them in the
+reference's order, which the `PCMCIAAdapter` change corrected as a side effect.
+
+**Why the spill prediction failed, now measured rather than guessed.** It was
+never about the parameter's type. Before the verbose `IOLog`, the reference
+*re-sends* `socketNumber`:
+
+```
+0f b6 55 fc    movzx edx, byte ptr [ebp - 4]     ; currentStatus
+0f b6 55 14    movzx edx, byte ptr [ebp + 0x14]  ; changedStatus
+8b 35 ..       mov esi, [selector socketNumber]
+e8 ..          call objc_msgSend                 ; socket number again
+50             push eax
+```
+
+where ours pushes a cached `[ebp - 8]`. Our source assigns
+`socketNum = [socket socketNumber]` once at the top and reuses it across four
+logging sites; Apple's sends the message afresh each time. That local is what
+occupies the stack slot, so the spill is a consequence of the caching, not of
+this finding's change. It is the same construct as the 82365 driver's Finding
+19, which was examined and accepted there.
+
+The frame growing by four bytes is a second-order effect of the same area and
+was not chased further; it is confined to a `_verbose` path.
+
+**One divergence found here and left open.** In the verbose logging path the
+reference zero-extends a *single byte* of each status:
+
+```
+0f b6 55 fc    movzx edx, byte ptr [ebp - 4]    ; currentStatus
+0f b6 55 14    movzx edx, byte ptr [ebp + 0x14] ; changedStatus
+```
+
+Ours passes the values whole — the rebuild confirms it, pushing `changedStatus`
+as `mov ecx, [ebp + 0x14]` against the reference's `movzx`. Since the struct is
+four bytes, `movzx` from a byte means Apple's source narrowed both at the call —
+a cast, or byte-typed locals. Which of those it was is not recoverable from the
+encoding, and the path is `_verbose`-only, so nothing was invented to match it.
+`currentStatus` is also still an `unsigned int` here, assigned from
+`[socket status]` through an untyped receiver; the reference's
+`-[PCICSocket status]` returns the bitfield.
+
+Three loose ends therefore remain in this one logging path, all of them
+cosmetic and all `_verbose`-gated: the byte-versus-dword width above, the
+`socketNum` caching, and `currentStatus`'s type. They are worth doing together
+or not at all, since each moves the same stack frame.
+
+### The loose-ends pass
+
+All three are closed. `currentStatus` had already become a `PCMCIAStatus` in
+commit `2d41c7e9`; the other two are done here.
+
+**`socketNum`'s caching is gone.** Counting selector sends over each method's
+true extent — bounded by the next function prologue, not the next Objective-C
+method, which otherwise swallows intervening static functions and inflates the
+count — the reference sends `socketNumber` **five** times and ours sent it once:
+
+| Selector | Reference | Before | After |
+| --- | --- | --- | --- |
+| `socketNumber` | 5 | 1 | 5 |
+
+Five is exactly the number of places the number is used, so Apple's source
+re-sends at each rather than caching. The local is deleted and each of the five
+`IOLog` sites now sends `[socket socketNumber]` inline. Argument order supports
+this reading: the reference pushes `currentStatus`, then `changedStatus`, then
+*calls* `socketNumber` and pushes its result — right-to-left evaluation with the
+socket number as the leftmost argument, which is what an inline send produces.
+
+**The logged widths are bytes.** `*(unsigned int *)&` on both status values
+became `*(unsigned char *)&`, to match the reference's
+`movzx edx, byte ptr` rather than a dword push.
+
+**Two choices this pass left alone were checked against the reference and are
+correct as they stand.** Immediately after the log the reference does:
+
+```
+8b 75 fc       mov esi, dword ptr [ebp - 4]     ; currentStatus
+89 37          mov dword ptr [edi], esi         ; socketInfo->status = it
+f6 45 fc 01    test byte ptr [ebp - 4], 1       ; currentStatus.present
+```
+
+a **dword** store and a **byte** test — which `socketInfo->status =
+*(unsigned int *)&currentStatus` and `!currentStatus.present` already produce.
+
+### Two divergences this pass uncovered, both out of its scope
+
+Counting sends over the true extents left exactly two selector differences
+besides `socketNumber`:
+
+| Selector | Reference | Ours |
+| --- | --- | --- |
+| `status` | 1 | 2 |
+| `freeObjects` / `freeObjects:` | `freeObjects` ×1 | `freeObjects:` ×1 |
+
+**`status` twice** is not a defect introduced here. The second send is at +1048,
+in a wait loop, and reads `test al, al` / `jl` — a sign-bit test, which is bit 7,
+`ready`. That is the explicit ready-bit test added deliberately in commit
+`b611dee9` under Finding 5 of `divergences.md`. The reference reaches the same
+check without a second `status` send, so how it observes readiness is worth
+settling, but it belongs to Finding 5 and was not touched.
+
+**`freeObjects` versus `freeObjects:`** is a plain selector mismatch: the
+reference sends the no-argument `freeObjects`, ours sends
+`freeObjects:@selector(free)`. One line, in the card-removal path. Not
+investigated here.
 
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this

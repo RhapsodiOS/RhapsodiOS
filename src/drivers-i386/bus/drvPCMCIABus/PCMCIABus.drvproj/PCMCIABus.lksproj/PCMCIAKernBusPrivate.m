@@ -55,7 +55,7 @@ extern port_t create_dev_port(KernDevice *kernDevice);
  */
 static BOOL waitForSocketReady(id socket)
 {
-    char status;
+    PCMCIAStatus status;
     int retries;
 
     retries = 100;
@@ -63,8 +63,8 @@ static BOOL waitForSocketReady(id socket)
         /* Get socket status */
         status = [socket status];
 
-        /* Check if ready bit is set (bit 7 = 0x80) */
-        if (status & 0x80) {
+        /* Check if ready bit is set */
+        if (status.ready) {
             return YES;
         }
 
@@ -1205,7 +1205,7 @@ done:
 - (BOOL)enableSocket:socket
 {
     int retries;
-    unsigned char status;
+    PCMCIAStatus status;
     unsigned int socketNum;
 
     /* Assert reset */
@@ -1234,12 +1234,11 @@ done:
     /* Wait for card to start responding */
     IOSleep(100);
 
-    /* Wait for card to become ready (check bit 7 of status) */
+    /* Wait for card to become ready */
     retries = 100;
     do {
-        status = (unsigned char)[socket status];
-        if (status & 0x80) {
-            /* Card is ready (bit 7 set) */
+        status = [socket status];
+        if (status.ready) {
             IOSleep(20);
             break;
         }

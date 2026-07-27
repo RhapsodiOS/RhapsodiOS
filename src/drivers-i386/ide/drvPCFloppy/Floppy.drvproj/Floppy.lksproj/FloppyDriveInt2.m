@@ -244,7 +244,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			driveName = [self name];
 
 			// Log the error
-			IOLog("%s seek: %s; %s", driveName, errorString, errorType);
+			IOLog("%s seek: %s; %s\n", driveName, errorString, errorType);
 
 			// If fatal, return the error
 			if (isFatal) {
@@ -265,7 +265,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	bzero(cmdBuffer, 0x60);
 
 	// Set command type 4 (motor off/eject)
-	*(unsigned *)(cmdBuffer + 0x5c) = 4;
+	*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 	// Send command to FDC
 	[self fdSendCmd:cmdBuffer];
@@ -302,6 +302,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	unsigned actualBytes;
 	int fdcStatus;
 	BOOL isContiguous;
+	int contiguousBlocks;
 	int eisaPresent;
 	unsigned long long startTime, endTime;
 	const char *statsMethod;
@@ -339,12 +340,19 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			blocksToTransfer = page_size / sectorSize;
 		}
 
-		// Check if buffer is physically contiguous
-		isContiguous = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
+		// Check if buffer is physically contiguous. physContBlocks
+		// returns the actual number of contiguous blocks (which may be
+		// less than blocksToTransfer); the disassembly uses that count
+		// directly instead of just a yes/no flag.
+		contiguousBlocks = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
 
-		// If not contiguous, can only transfer 1 block at a time
-		if (!isContiguous) {
+		if (contiguousBlocks == 0) {
+			// Not contiguous, can only transfer 1 block at a time
+			isContiguous = NO;
 			blocksToTransfer = 1;
+		} else {
+			isContiguous = YES;
+			blocksToTransfer = contiguousBlocks;
 		}
 
 		// Adjust block count to not exceed track boundary
@@ -357,20 +365,20 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			 readFlag:isRead];
 
 		// Set command length
-		*(unsigned *)(cmdBuffer + 0x5c) = 1;
+		*(unsigned *)(cmdBuffer + 0x08) = 1;
 
 		// Calculate expected bytes
-		*(unsigned *)(cmdBuffer + 0x34) = adjustedBlockCount * sectorSize;
+		*(unsigned *)(cmdBuffer + 0x24) = adjustedBlockCount * sectorSize;
 
 		// Set up buffer pointer and VM task
 		if (isContiguous) {
 			// Use user buffer directly
-			*(void **)(cmdBuffer + 0x30) = currentBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = client;
+			*(void **)(cmdBuffer + 0x20) = currentBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = client;
 		} else {
 			// Use bounce buffer
-			*(void **)(cmdBuffer + 0x30) = bounceBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = kernel_map;
+			*(void **)(cmdBuffer + 0x20) = bounceBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = kernel_map;
 
 			// For write, copy data to bounce buffer
 			if (!isRead) {
@@ -384,8 +392,8 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		// Get FDC status from offset 0x40
 		fdcStatus = *(int *)(cmdBuffer + 0x40);
 
-		// Get actual bytes transferred from offset 0x3c
-		actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
+		// Get actual bytes transferred from offset 0x48
+		actualBytes = *(unsigned *)(cmdBuffer + 0x48);
 
 		// Special case: if status 6 and actualBytes != 0, adjust by sector size
 		if ((fdcStatus == 6) && (actualBytes != 0)) {
@@ -446,14 +454,14 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 					// Give up after 6 recalibrations
 					[self logRwErr:"FATAL"
 						      block:currentBlock
-						     status:(unsigned char *)&fdcStatus
+						     status:fdcStatus
 						   readFlag:isRead];
 					goto transfer_done;
 				}
 
 				[self logRwErr:"RECALIBRATING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 
 				[self fdRecal];
@@ -461,7 +469,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			} else {
 				[self logRwErr:"RETRYING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 			}
 
@@ -478,7 +486,7 @@ update_stats:
 		default:  // Fatal error
 			[self logRwErr:"FATAL"
 				      block:currentBlock
-				     status:(unsigned char *)&fdcStatus
+				     status:fdcStatus
 				   readFlag:isRead];
 			goto transfer_done;
 		}
@@ -525,21 +533,17 @@ transfer_done:
  * Log read/write error.
  * From decompiled code: logs FDC error with operation type and status.
  */
-- (void)logRwErr : (unsigned)operation
+- (void)logRwErr : (const char *)operation
 	      block : (unsigned)block
-	     status : (unsigned char *)status
+	     status : (unsigned)status
 	   readFlag : (BOOL)readFlag
 {
 	const char *statusString;
 	const char *operationType;
 	const char *driveName;
-	int fdcStatus;
-
-	// Get FDC status value
-	fdcStatus = *(int *)status;
 
 	// Find name for FDC status value in fdrValues table
-	statusString = IOFindNameForValue(fdcStatus, fdrValues);
+	statusString = IOFindNameForValue(status, fdrValues);
 
 	// Set operation type based on read flag
 	operationType = readFlag ? "Read" : "Write";
@@ -547,10 +551,12 @@ transfer_done:
 	// Get drive name
 	driveName = [self name];
 
-	// Log the error
-	IOLog("%s: Sector %d cmd = %s; %s: %s",
+	// Log the error. The disassembly's argument order puts statusString
+	// before operation (the leftover push from the IOFindNameForValue
+	// call ends up as the last IOLog vararg).
+	IOLog("%s: Sector %d cmd = %s; %s: %s\n",
 	      driveName, block, operationType,
-	      (const char *)operation, statusString);
+	      statusString, operation);
 }
 
 
@@ -601,7 +607,7 @@ transfer_done:
 		bzero(cmdBuffer, 0x60);
 
 		// Set command type 4 (motor off)
-		*(unsigned *)(cmdBuffer + 0x5c) = 4;
+		*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 		// Send command to FDC
 		[self fdSendCmd:cmdBuffer];
@@ -743,7 +749,7 @@ transfer_done:
 	// Get drive status
 	result = [self fdGetStatus:&status];
 	if (result != IO_R_SUCCESS) {
-		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED");
+		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED\n");
 		return;
 	}
 

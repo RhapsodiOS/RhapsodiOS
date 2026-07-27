@@ -124,6 +124,25 @@ def test_multiple_analysis_scope_ranges_emit_repeated_arguments(configured, tmp_
     assert [argv[index + 1] for index in indexes] == ["4096-4112", "8192-8320"]
 
 
+def test_rebuilt_artifact_uses_the_rebuilt_analysis_scope(configured, tmp_path):
+    profile, identity, _, _ = configured
+    profile.document = MappingProxyType({
+        **profile.document,
+        "analysis_scope": [{"start": 4096, "end": 4112}],
+        "rebuilt_analysis_scope": [{"start": 8192, "end": 8320}],
+    })
+    calls = []
+    export_with_ghidra(profile, "reference", tmp_path / "reference.json",
+                       runner=_successful_runner(identity, calls))
+    reference_argv = calls[-1][0]
+    export_with_ghidra(profile, "rebuilt", tmp_path / "rebuilt.json",
+                       runner=_successful_runner(identity, calls))
+    rebuilt_argv = calls[-1][0]
+
+    assert reference_argv[reference_argv.index("--analysis-scope") + 1] == "4096-4112"
+    assert rebuilt_argv[rebuilt_argv.index("--analysis-scope") + 1] == "8192-8320"
+
+
 def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
     import binrecon.adapters.ghidra as ghidra_adapter
 
@@ -282,7 +301,7 @@ def test_published_log_is_replaced_and_native_hardlink_is_not_followed(configure
 
 def test_native_loader_log_exact_rejection_retries_but_exporter_text_does_not(configured, tmp_path, monkeypatch):
     profile, identity, _, _ = configured
-    monkeypatch.setattr("binrecon.adapters.ghidra._layout", lambda profile, identity: {
+    monkeypatch.setattr("binrecon.adapters.ghidra._layout", lambda profile, identity, artifact: {
         "schema_version": "ghidra-layout-v1", "language": "x86:LE:32:default",
         "input": {"path": str(identity.path), "size": identity.size, "sha256": identity.sha256},
         "image_base": 0, "sections": [], "symbols": [], "relocations": [], "entry_points": [],

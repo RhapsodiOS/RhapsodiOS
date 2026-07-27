@@ -5,13 +5,14 @@
  */
 
 #import "IODiskNew.h"
+#import "IODiskProtocols.h"
 
 #ifdef	KERNEL
 #import <driverkit/kernelDiskMethods.h>
 #import <bsd/dev/ldd.h>
 #endif	KERNEL
 
-@interface IOLogicalDiskNEW : IODiskNEW
+@interface IOLogicalDiskNEW : IODiskNEW <IODiskReadingAndWriting>
 {
 @private
 	id		_physicalDisk;		// physical disk object

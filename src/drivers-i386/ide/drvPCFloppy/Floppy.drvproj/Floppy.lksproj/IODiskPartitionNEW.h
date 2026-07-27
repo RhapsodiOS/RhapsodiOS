@@ -9,6 +9,7 @@
 
 #import "IODiskNew.h"
 #import "IOLogicalDiskNEW.h"
+#import "IODiskProtocols.h"
 #import <bsd/dev/disk_label.h>
 
 #ifdef	KERNEL
@@ -16,7 +17,7 @@
 #import <bsd/dev/ldd.h>
 #endif	KERNEL
 
-@interface IODiskPartitionNEW : IOLogicalDiskNEW
+@interface IODiskPartitionNEW : IOLogicalDiskNEW <IODiskPartitionExported>
 {
 @private
 	int		_partition;		// like 3 LSB's of the old UNIX minor number

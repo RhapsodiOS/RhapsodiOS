@@ -7,6 +7,7 @@
 #import "IODriveNEW.h"
 #import <driverkit/return.h>
 #import "FloppyVm.h"
+#import "IODiskProtocols.h"
 
 // Forward declarations
 @class IOFloppyDrive;
@@ -20,7 +21,7 @@ void OperationThreadStartup(id self);
  * Extends IODriveNEW to provide cylinder-based caching for floppy disks.
  * Uses a background operation thread for read-ahead and write-behind operations.
  */
-@interface IOFloppyDisk : IODriveNEW
+@interface IOFloppyDisk : IODriveNEW <IODiskReadingAndWriting, IODiskPhysicalNEW>
 {
 	// Cache management (offsets 0x134-0x140)
 	void *_cacheBuffer;              // offset 0x134: cache data buffer

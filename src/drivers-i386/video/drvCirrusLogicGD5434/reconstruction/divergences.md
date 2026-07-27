@@ -48,12 +48,18 @@ other two, for reasons unrelated to the emulator problem that stopped angr on
 
 #### angr — data in an executable section is disassembled as code
 
-Verbatim, from `binrecon analyze`'s diagnostic and from
-`run-summary.json`'s `diagnostic` field:
+Verbatim, as `binrecon analyze` printed it to stderr:
 
 ```
 binrecon: angr reference adapter failed: angr output is invalid: block at address 5148 is outside function at address 5172
 ```
+
+The `binrecon: ` prefix is `cli.py`'s (`cli.py:80` and its siblings print
+`f"binrecon: {error}"`); `run-summary.json`'s `diagnostic` field carries the bare
+`str(error)` without it (`binrecon/runner.py:196`), so match on the text after
+the prefix when looking for this message in a summary. The current
+`run-summary.json` records the successful IDA-only run and its `diagnostic` is
+`null`.
 
 The failure is deterministic: the adapter was invoked twice more directly,
 outside the runner, and produced the identical message both times.
@@ -86,14 +92,19 @@ separate infrastructure work.
 
 #### Ghidra — `binrecon` cannot normalize its relocation operand metadata
 
-Verbatim, from `run-summary.json`'s `diagnostic` field:
+Verbatim, as `binrecon analyze` printed it to stderr (same prefix convention as
+above — `run-summary.json`'s `diagnostic` would hold the text without the
+`binrecon: `):
 
 ```
 binrecon: Ghidra relocation operand metadata is ambiguous
 ```
 
 Note this is **not** an adapter failure — Ghidra ran to completion and wrote a
-valid, schema-conforming 762 KB analysis document. The rejection happens later,
+valid, schema-conforming 762 KB analysis document. That document went to the
+dot-free scratch `output_dir` described below and was not retained, so the
+instrumentation output quoted here is all that survives of it. The rejection
+happens later,
 in `normalize_analysis`, at `binrecon/normalize.py:432`. Instrumenting
 `_ghidra_operand_owner` identifies the exact instruction:
 
@@ -107,7 +118,7 @@ That instruction is inside `-[... determineConfiguration]`: it is
 relocated address of `__DATA,__data`. Both operands carry a Ghidra reference —
 operand 0 is a `WRITE` to `[EDX+0x25c]`, operand 1 is the relocated immediate —
 so `owners` ends up with two entries, and the `READ`/`WRITE` tie-break at
-`normalize.py:422-430` does not reduce it to one because the memory operand is
+`normalize.py:421-430` does not reduce it to one because the memory operand is
 itself a semantic reference. `normalize_analysis` therefore aborts.
 
 `mov [reg+disp], imm32` where the immediate is relocated is a common shape in
@@ -126,14 +137,18 @@ The first run in this worktree failed earlier and differently, with
 binrecon: ghidra reference adapter failed: Ghidra failed with exit code 1
 ```
 
-whose underlying cause, from the adapter's own `.ghidra.log`, is
+whose underlying cause, from the adapter's own `.ghidra.log` — the retained
+`tools/binrecon/out/cirruslogic-gd5434/binrecon-run-0iv2wn2a/analysis-reference-ghidra.json.ghidra.log`,
+line 40, quoted with its leading timestamp and followed by the first four of its
+stack frames (the rest elided) — is
 
 ```
-ERROR (HeadlessAnalyzer) Abort due to Headless analyzer error: Path element starting with '.' is not permitted java.lang.IllegalArgumentException: Path element starting with '.' is not permitted
+2026-07-27 00:00:41 ERROR (HeadlessAnalyzer) Abort due to Headless analyzer error: Path element starting with '.' is not permitted java.lang.IllegalArgumentException: Path element starting with '.' is not permitted
 	at ghidra.util.NamingUtilities.checkName(NamingUtilities.java:108)
 	at ghidra.framework.protocol.ghidra.GhidraURL.checkValidProjectPath(GhidraURL.java:448)
 	at ghidra.framework.protocol.ghidra.GhidraURL.checkLocalAbsolutePath(GhidraURL.java:429)
 	at ghidra.framework.model.ProjectLocator.<init>(ProjectLocator.java:75)
+	…
 ```
 
 Ghidra 12.1 refuses to create a project whose path contains any dot-prefixed
@@ -144,46 +159,58 @@ and this work was done in a git worktree at
 the binary** — the committed `output_dir` of `../out/cirruslogic-gd5434` is
 correct and would work unchanged from the main checkout at `D:\RhapsodiOS`. It is
 recorded only so that a future reader who sees this error knows it is not the
-same problem as the normalization failure above. Ghidra was re-run with
+same problem as the normalization failure above, and it is repeated in the
+plan's Global Constraints so that every later task inherits the diagnosis rather
+than rediscovering it. Ghidra was re-run with
 `output_dir` redirected to a dot-free path, which is how the normalization
 failure — the location-independent one that actually justifies the disablement —
 was reached and diagnosed.
 
 ### Why IDA alone is nevertheless trustworthy here
 
-Two independent sources corroborate IDA's partition, so the reduction to one
-analyzer costs less than it does for `VGA_psdrvr`.
+**The load-bearing corroboration is the Mach-O symbol table, and it is the only
+one that can be re-checked from what is committed.**
 
-**The linker's own symbol table agrees exactly.** `__TEXT,__text` carries 21
-symbol-table entries. IDA recovers 21 functions. The two sets are identical —
-neither `set(IDA) - set(symtab)` nor `set(symtab) - set(IDA)` has a single
-member. There are no unnamed fragments, so the containment rule that had to be
+`__TEXT,__text` carries 21 symbol-table entries. IDA recovers 21 functions.
+**The two address sets are identical** — neither `set(IDA addresses) -
+set(symtab addresses)` nor the reverse has a single member — and IDA's sizes are
+consistent with the symbol table throughout: every function ends at or before
+the next symbol's address, the differences being exactly the 14 padding gaps
+tabulated below, 34 bytes in total. Re-derivable from
+`published/analysis-reference-ida.json` and `binrecon.macho.read_macho` alone.
+
+**The names are *not* quite identical, in three places.** The symbol table
+spells the `ProgramDAC` methods with the category qualifier and IDA drops it:
+
+| Address | Symbol table | IDA |
+| --- | --- | --- |
+| 3588 | `-[CirrusLogicGD5434DisplayDriver(ProgramDAC) setTransferTable:count:]` | `-[CirrusLogicGD5434DisplayDriver setTransferTable:count:]` |
+| 3924 | `-[CirrusLogicGD5434DisplayDriver(ProgramDAC) setBrightness:token:]` | `-[CirrusLogicGD5434DisplayDriver setBrightness:token:]` |
+| 4088 | `-[CirrusLogicGD5434DisplayDriver(ProgramDAC) setGammaTable]` | `-[CirrusLogicGD5434DisplayDriver setGammaTable]` |
+
+The other 18 names match character for character. The three differences are a
+display convention, not a disagreement about the binary — same addresses, same
+extents — but the set equality is over addresses and extents, not over names.
+
+There are no unnamed fragments, so the containment rule that had to be
 introduced for `VGA_psdrvr` does not bite here; `filter_contained_fragments.py`
 would be a no-op.
 
-**Ghidra's document, though unnormalizable, agrees on every function it
-recovered.** Ghidra recovers 19 of the 21, and for all 19 its address, byte size
-and instruction count match IDA exactly — zero disagreements, including on the
-two largest functions:
-
-| Address | IDA size / instrs | Ghidra size / instrs |
-| --- | --- | --- |
-| 892 `determineConfiguration` | 766 / 193 | 766 / 193 |
-| 1692 `setPCIConfiguration` | 583 / 180 | 583 / 180 |
-| 2276 `setMode:` | 1020 / 305 | 1020 / 305 |
-| 4088 `setGammaTable` | 273 / 101 | 273 / 101 |
-
-The two Ghidra misses are 3588
-(`-[... setTransferTable:count:]`) and 4364
-(`+[...KernelServerInstance kernelServerInstance]`). **Inference:** both are
-immediately preceded by three `0x00` padding bytes rather than by `nop`s (see
-the partition section below), and Ghidra appears not to start a function body
-after a zero run; IDA and the symbol table both recover them. Nothing in this
-document rests on either function's boundaries being contested — they are not.
+**Ghidra agreed too, but that agreement was not retained and cannot be
+audited.** During the dot-free rerun Ghidra's document was observed to recover 19
+of the 21 functions with addresses, byte sizes and instruction counts matching
+IDA, and to miss 3588 (`-[... setTransferTable:count:]`) and 4364
+(`+[...KernelServerInstance kernelServerInstance]`) — both immediately preceded
+by three `0x00` padding bytes rather than by `nop`s. **That document was written
+to a scratch directory outside the worktree and was not kept.** Nothing but the
+failed run's `.ghidra.log` survives, so the comparison above is a recollection of
+what was seen, not evidence a reader can check, and it should carry no weight in
+accepting the single-analyzer consensus. It is recorded because it is what
+happened, not because it can be verified.
 
 So every claim below rests on IDA 9.2, the Mach-O symbol table, the `__OBJC`
-metadata sections and the raw section bytes, all read directly, with Ghidra's
-document used as a cross-check on function extents only.
+metadata sections and the raw section bytes, all read directly — and, of those,
+only the last three are independent of IDA.
 
 ### Function partition
 
@@ -425,6 +452,42 @@ Both tables are **mutable** — `determineConfiguration` writes `memorySize`,
 whichever table it selected. They are in `__DATA` rather than `__TEXT,__const`
 for exactly that reason, and the rewrite must not make them `const`.
 
+**Read the column legend before transcribing either table.** The column headings
+are not field names, one initialized field has no column at all, and one column
+is not the value the field stores:
+
+| Column | `IODisplayInfo` field | Offset | Note |
+| --- | --- | --- | --- |
+| W×H | `width` × `height` | 0, 4 | |
+| — | **`totalWidth`** | **8** | **not a column; see below** |
+| rowBytes | `rowBytes` | 12 | |
+| Hz | **`refreshRate`** | 16 | plain integer, e.g. `60`, not a rate code |
+| bpp | `bitsPerPixel` | 24 | **column is the human depth, stored value differs; see below** |
+| colorSpace | `colorSpace` | 28 | |
+| encoding | `pixelEncoding` | 32 | `char[64]`, NUL-padded to the full 64 bytes |
+| `parameters` | `parameters` | 100 | address of the 70-byte register struct |
+
+**`totalWidth` is nonzero in all 52 entries of both tables, and in every one of
+them it equals `width`.** It is not a column because it would duplicate the W×H
+column exactly, not because it ships zero — it does not appear in the all-zero
+list below, and an implementer who emits only the columns would leave every
+entry with `totalWidth == 0`, which is wrong in all 52. Set
+`totalWidth = width` for every entry in both tables. Read directly out of
+`__DATA,__data` at 8192 and 11456, 136-byte stride, offset 8 of each entry.
+
+**The `bpp` column is the human bit depth; `bitsPerPixel` stores an
+`IOBitsPerPixel` enumerator, which is a different number.** The mapping (from
+`src/driverkit-3/driverkit/displayDefs.h`, and the only three values that occur
+in either table) is
+
+| `bpp` column | Stored `bitsPerPixel` | Enumerator |
+| --- | --- | --- |
+| 8 | **1** | `IO_8BitsPerPixel` |
+| 15 | **3** | `IO_15BitsPerPixel` |
+| 24 | **4** | `IO_24BitsPerPixel` |
+
+Transcribe 1, 3 and 4 — never 8, 15 and 24.
+
 `_GD5434_modeTable`, 24 entries. `colorSpace` 1 is `IO_OneIsWhiteColorSpace`,
 2 is `IO_RGBColorSpace`; every 8-bit mode appears twice, once greyscale and once
 pseudo-colour.
@@ -460,6 +523,13 @@ pseudo-colour.
 1152×864×15 at 75 Hz, and substitutes GD5446-specific register sets for the
 15-bpp and the 1152/1280 modes while reusing the GD5434 register sets elsewhere.
 
+The same column legend applies: **`totalWidth` equals `width` in all 28 entries
+and is again not a column**, `Hz` is `refreshRate`, and the `bpp` column is the
+human depth — store 1 for 8, 3 for 15. The `encoding` column is omitted here
+because `pixelEncoding` follows the same rule as in the GD5434 table:
+`WWWWWWWW` for `colorSpace` 1, `PPPPPPPP` for 8 bpp at `colorSpace` 2,
+`-RRRRRGGGGGBBBBB` for 15 bpp.
+
 | # | W×H | rowBytes | Hz | bpp | colorSpace | `parameters` |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | 640×480 | 640 | 60 | 8 | 1 | `_GD5434_mode_640_8_60` |
@@ -492,8 +562,12 @@ pseudo-colour.
 | 27 | 1280×1024 | 1280 | 70 | 8 | 2 | `_GD5446_mode_1280_8_70` |
 
 In both tables every entry ships with `frameBuffer`, `flags`, `memorySize`,
-`scanRate`, `_reserved1`, `dotClockRate`, `screenWidth`, `screenHeight` and
-`modeUnavailableFlag` all zero. They are filled in at runtime.
+`scanRate`, `_reserved1`, `dotClockRate`, `screenWidth`, `screenHeight`,
+`modeUnavailableFlag` and `_reserved[0]` all zero. They are filled in at runtime.
+**`totalWidth` and `refreshRate` are not on that list** — both are initialized
+and nonzero in all 52 entries, `totalWidth` to `width` and `refreshRate` to the
+`Hz` column. Every one of these statements was checked field by field across
+both tables against `__DATA,__data`.
 
 **Two mode-parameter structs in `__const` are referenced by neither table:**
 `_GD5434_mode_640_15_60` (5442) and `_GD5434_mode_640_15_75` (5512). The GD5446

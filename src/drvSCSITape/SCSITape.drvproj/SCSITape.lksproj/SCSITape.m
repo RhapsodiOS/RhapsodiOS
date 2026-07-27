@@ -185,6 +185,7 @@ done:
 {
     inquiry_reply_t	inquiryData;
     sc_status_t		rtn;
+    stInitReturn_t	irtn = STR_GOOD;
     char		driveType[DRIVE_TYPE_LENGTH];	/* name from Inquiry */
     char		*outp;
     char		deviceName[30];
@@ -192,11 +193,27 @@ done:
 
 
     /*
+     * Hold the target and lun for just as long as it takes to find out
+     * whether there is a tape out there; we give them back at "out:".
+     */
+    if ([controllerId reserveTarget: stTarget
+	lun: stLun
+	forOwner: self]) {
+	/*
+	 * Someone already has this one.
+	 */
+	return STR_ERROR;
+    }
+
+    /*
      * Initialize common instance variables.
      */
     _controller = controllerId;
     _target = stTarget;
     _lun = stLun;
+    [self reserveAllLuns];
+    _ignoreCheckCondition [_target][_lun] = NO;
+    _ignoreOpenCheckCondition = NO;
     sprintf(deviceName, "st%d", iunit);
     [self setName: deviceName];
     [self setDeviceKind:"SCSITape"];
@@ -243,9 +260,11 @@ IOLog ("InitSCSITape inquiry returned %d\n", rtn);
 	case SR_IOST_GOOD:
 	    break;
 	case SR_IOST_SELTO:
-	    return STR_SELECTTO;
+	    irtn = STR_SELECTTO;
+	    goto out;
 	default:
-	    return STR_ERROR;
+	    irtn = STR_ERROR;
+	    goto out;
     }
 
     /*
@@ -258,7 +277,8 @@ IOLog ("InitSCSITape inquiry returned %d\n", rtn);
 IOLog ("InitSCSITape: not a tape\n");
 #endif DEBUG
 
-	return(STR_NOTATAPE);
+	irtn = STR_NOTATAPE;
+	goto out;
     }
 
     /*
@@ -293,7 +313,7 @@ IOLog ("InitSCSITape: not a tape\n");
     sprintf(location, "Target %d LUN %d at %s", _target, _lun,
 	[controllerId name]);
     [self setLocation: location];
-    IOLog("%s: %s\n", deviceName, driveType);
+    IOLog("%s: %s at %s\n", deviceName, driveType, location);
 
 
     /*
@@ -314,7 +334,15 @@ IOLog ("InitSCSITape: not a tape\n");
 
     [super init];
     _isInitialized = YES;
-    return(STR_GOOD);
+
+out:
+    /*
+     * We only needed the target and its luns for the duration of the
+     * probe; -acquireDevice takes them again when the device is opened.
+     */
+    [self releaseAllLuns];
+    [_controller releaseTarget: stTarget lun: stLun forOwner: self];
+    return(irtn);
 } /* - initSCSITape: */
 
 

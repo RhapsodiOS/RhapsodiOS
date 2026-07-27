@@ -75,7 +75,7 @@ def _strip_parenthesised(text):
     return "".join(kept)
 
 
-def _selector(declaration):
+def read_selector(declaration):
     """Reduce an Objective-C method declaration to its bare selector.
 
     Keywords after the first may be empty: `initFromDeviceDescription::::` is a
@@ -161,7 +161,7 @@ def source_sites(repo_root, source_dir):
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:
-                    selector = _selector(" ".join(declaration))
+                    selector = read_selector(" ".join(declaration))
                     if selector:
                         key = f"{method.group(1)}[{current_class} {selector}]"
                         sites.setdefault(key, []).append((relative, number))

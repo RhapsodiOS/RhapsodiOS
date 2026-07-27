@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 from binrecon.macho import read_macho
-from binrecon.source_map import _selector
+from binrecon.source_map import read_selector
 
 TEXT_SECTION = "__TEXT,__text"
 
@@ -67,7 +67,7 @@ def source_methods(source_dir):
                 # The sign is dropped before parsing: source_map's reader keys
                 # off the last word before the first colon, which a signature
                 # written without a space after the sign would hand back.
-                selector = _selector(remainder) or ""
+                selector = read_selector(remainder) or ""
                 scope = "%s(%s)" % (class_name, category) if category else class_name
                 yield ("%s[%s %s]" % (sign, scope, selector),
                        class_name, selector, path.name, start + 1)

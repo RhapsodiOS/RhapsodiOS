@@ -72,15 +72,18 @@ def _difference_form_pairs(relocations, raw_by_key):
     relocation that names the same target and sits within _PAIR_WINDOW bytes
     of it. Same target and proximity alone are not enough -- two unrelated
     address computations can share both -- so, where the instruction bytes
-    are available, candidates are narrowed to the one whose base register
-    (bits 11-15) is the register the HI16/HA16's "lis"/"addis" wrote (bits
-    6-10), and then to the one that *follows* the HI16/HA16 rather than
-    precedes it, before picking the nearest by address. Either narrowing
-    step is skipped if it would eliminate every candidate (e.g. the raw
-    record is unavailable, or every candidate precedes the HI16/HA16 --
-    the compiler can reorder the pair). Only pairs actually found are
-    returned -- a half with no candidate at all is not reported as
-    anything.
+    are available, candidates are narrowed to the one that reads the
+    register the HI16/HA16's "lis"/"addis" wrote (bits 6-10). For a D-form
+    address instruction (addi/lwz/stw) that register is the base rA at bits
+    11-15; for an ori-form instruction (ori/oris/xori/andi.) it is instead
+    the source rS at bits 6-10, with rA at bits 11-15 naming the
+    destination -- so either field is accepted. Candidates are then
+    narrowed again to the one that *follows* the HI16/HA16 rather than
+    precedes it, before picking the nearest by address. Any narrowing step
+    is skipped if it would eliminate every candidate (e.g. the raw record
+    is unavailable, or every candidate precedes the HI16/HA16 -- the
+    compiler can reorder the pair). Only pairs actually found are returned
+    -- a half with no candidate at all is not reported as anything.
     """
     hi_halves = [r for r in relocations if r["kind"] in _HA_HI_SCATTERED_KINDS]
     lo_halves = [r for r in relocations if r["kind"] == _LO16_SCATTERED_KIND]
@@ -97,7 +100,9 @@ def _difference_form_pairs(relocations, raw_by_key):
             matching = []
             for lo in candidates:
                 lo_word = _instruction_word(raw_by_key, lo)
-                if lo_word is not None and _register(lo_word, 16) == destination:
+                if lo_word is not None and destination in (
+                    _register(lo_word, 16), _register(lo_word, 21)
+                ):
                     matching.append(lo)
             if matching:
                 candidates = matching

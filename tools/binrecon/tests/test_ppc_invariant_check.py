@@ -154,6 +154,37 @@ def test_second_ha16_not_paired_with_preceding_lo16(tmp_path):
     assert check_document(_document(tmp_path, text, relocations)) == []
 
 
+def test_ha16_pairs_with_ori_form_lo16_whose_source_register_matches(tmp_path):
+    # ori/oris/xori/andi. encode their register operands the other way round
+    # from the D-form address instructions (addi/lwz/stw): "ori rA,rS,UI"
+    # puts the register the lis/addis wrote in rS (bits 6-10), while rA
+    # (bits 11-15) is the destination. A decoy D-form candidate whose *base*
+    # register happens to equal that same register must not steal the
+    # pairing from the true ori-form partner just because it satisfies the
+    # base-register-only rule.
+    #
+    # decoy: lwz r5,0x5678(r9) -- base r9 (bits 11-15), precedes the HA16
+    # hi:    addis r9,r0,0x1234 -- writes r9
+    # lo:    ori r3,r9,0x0001 -- source r9 (bits 6-10), follows the HA16,
+    #        and its reconstructed value genuinely disagrees with hi's.
+    text = struct.pack(
+        ">III",
+        0x80A95678,  # lwz  r5,0x5678(r9)  <- decoy, base r9, precedes hi
+        0x3D201234,  # addis r9,r0,0x1234  <- HA16 (writes r9)
+        0x61230001,  # ori  r3,r9,0x0001   <- true partner, source r9
+    )
+    relocations = (
+        ppc_scattered(0, 0x100C, kind=PPC_RELOC_LO16) + ppc_pair(0x1234)
+        + ppc_scattered(4, 0x100C, kind=PPC_RELOC_HA16) + ppc_pair(0x5678)
+        + ppc_scattered(8, 0x100C, kind=PPC_RELOC_LO16) + ppc_pair(0x0002)
+    )
+
+    violations = check_document(_document(tmp_path, text, relocations))
+
+    assert len(violations) == 1
+    assert "reconstruct different values" in violations[0]
+
+
 def test_ppc_jbsr_island_inside_text_is_not_reported(tmp_path):
     # bl +8 into the island at 0x1008, which sits inside __TEXT,__text.
     text = struct.pack(">III", 0x48000009, 0x60000000, 0x4E800020)

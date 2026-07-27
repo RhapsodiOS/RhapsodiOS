@@ -364,9 +364,14 @@ def test_ppc_profile_inventory():
         "bmac-bundle-ppc.json", "bmac-ppc.json",
         "burgundy-bundle-ppc.json", "burgundy-ppc.json",
         "cuda-bundle-ppc.json", "cuda-ppc.json",
+        "dec21040-bundle-ppc.json", "dec21040-ppc.json",
+        "gem-bundle-ppc.json", "gem-ppc.json",
+        "gnic-bundle-ppc.json", "gnic-ppc.json",
+        "mace-bundle-ppc.json", "mace-ppc.json",
         "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
-        "scsitape-ppc.json", "scsitape-preload-ppc.json", "stblocksize-ppc.json",
+        "scsitape-ppc.json", "scsitape-preload-ppc.json",
+        "stblocksize-ppc.json",
     ]
 
 

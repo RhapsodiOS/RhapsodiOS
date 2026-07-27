@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reconstruct `src/drvSCSITape` against Apple's four shipped PowerPC binaries — dispositioning all 49 mapped functions, writing the five our tree lacks, and repairing the divergences found.
+**Goal:** Reconstruct `src/drvSCSITape` against Apple's four shipped PowerPC binaries — dispositioning all 49 mapped functions, writing the four our tree lacks, and repairing the divergences found.
 
-**Architecture:** Phase 1 produces `src/drvSCSITape/reconstruction/` with per-binary `source-map.json` and `ledger.json` plus one shared `divergences.md`, committed in full before any source change. Phase 2 then changes source one translation unit per commit: the naming and declaration class, the four absent `SCSITape` methods, `stblocksize`'s `_do_ioc`, and the remaining divergences.
+**Architecture:** Phase 1 produces `src/drvSCSITape/reconstruction/` with per-binary `source-map.json` and `ledger.json` plus one shared `divergences.md`, committed in full before any source change. Phase 2 then changes source one translation unit per commit: the naming and declaration class, the four absent `SCSITape` methods, and the remaining divergences.
 
 **Tech Stack:** Python 3.12 (`.venv-binrecon`), binrecon (`source-map`, `ledger`, `seed_ledger.py`, `filter_named_functions.py`, `selector_check.py`, `ppc_invariant_check.py`), Objective-C and C for Rhapsody DriverKit.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Nothing here is compile-verified.** There is no PowerPC compiler in this environment (`vm/` holds only `build-i386-*.sh`). This includes the five function bodies Phase 2 writes. Do not claim anything "works"; claim only what the checks prove.
+- **Nothing here is compile-verified.** There is no PowerPC compiler in this environment (`vm/` holds only `build-i386-*.sh`). This includes the four function bodies Task 9 writes. Do not claim anything "works"; claim only what the checks prove.
 - The four reference binaries are read-only inputs outside the repository, under `C:/Users/raynorpat/Downloads/test/Drivers/ppc/SCSITape.config/`. Never modify them or copy them into the repo.
 - Analyses of record live under `tools/binrecon/out/{scsitape,scsitape-preload,scsitape-postload,stblocksize}-ppc/published/analysis-reference-ida.json`. Do not regenerate them. `tools/binrecon/out/` is git-ignored — never commit anything under it.
 - Neither `source-map` nor `selector_check.py` recurses. Each `--source-dir` must be the subproject directory holding the sources.
@@ -93,8 +93,8 @@ Set `BINRECON_REFERENCE` to the matching binary for the profile in use.
 | `$DRV/SCSITape.m` | Four absent methods added; divergences repaired. |
 | `$DRV/SCSITape.h` | Declarations for the added methods. |
 | `$DRV/SCSITapeKern.m` | Divergences repaired. |
-| `src/drvSCSITape/stblocksize.tproj/stblocksize.c` | `_do_ioc` added. |
 | `.gitignore` | Lock rule widened to reach per-binary subdirectories. |
+| `tools/binrecon/binrecon/source_map.py` | K&R scanner fix (Task 10). |
 
 ---
 
@@ -721,7 +721,19 @@ cd /d/RhapsodiOS && git add "$DRV" src/drvSCSITape "$RECON" && git commit -m "dr
 
 ---
 
-### Task 9: Write the four absent SCSITape methods
+### Task 9: Write the two absent SCSITape methods
+
+> **Task narrowed after Task 7.** Only `reserveAllLuns` and `releaseAllLuns` are genuinely absent.
+> `initSCSITape:target:lun:controller:majorDeviceNumber:` and
+> `executeRequest:buffer:client:senseBuf:` already exist at `SCSITape.m:177` and `:938`; they were
+> reported unmapped by a second `source_map.py` bug (an inline C comment inside a multi-line
+> Objective-C signature). **Do not write those two.** Their divergences are Task 11's work, and the
+> scanner bug is Task 10's.
+>
+> Both methods this task writes are `- (void)` and belong to a category **`SCSITape(private)`**,
+> per `__OBJC,__cat_inst_meth` (type `v4@4:8`) and `__OBJC,__category`. Our tree has no such
+> category, so add `@interface SCSITape(private)` and `@implementation SCSITape(private)`.
+> `reserveAllLuns`'s two `IOLog` calls pass `[_controller name]`, not `[self name]`.
 
 **Files:**
 - Modify: `$DRV/SCSITape.m`, `$DRV/SCSITape.h`
@@ -781,43 +793,135 @@ cd /d/RhapsodiOS && git add "$RECON" && git commit -m "drvSCSITape: map the four
 
 ---
 
-### Task 10: Write stblocksize's `_do_ioc`
+### Task 10: Fix the source-map K&R scanner so `do_ioc` maps
+
+> **Task repurposed after Task 6.** This task originally said to *write* `_do_ioc`. That premise is
+> void: `stblocksize.c:170` already defines it, in K&R style, and it matches the reference
+> instruction for instruction — verified independently three times. The function was reported
+> unmapped because of a bug in binrecon's scanner, not because it is missing. **Do not write any
+> function body in this task.**
 
 **Files:**
-- Modify: `src/drvSCSITape/stblocksize.tproj/stblocksize.c`
-- Modify: `$RECON/stblocksize/ledger.json`, `$RECON/divergences.md`
+- Modify: `tools/binrecon/binrecon/source_map.py`
+- Test: `tools/binrecon/tests/test_source_map_builder.py`
 
 **Interfaces:**
-- Consumes: Task 6 Step 4's description.
-- Produces: `_do_ioc` defined; its ledger entry mapped.
+- Consumes: nothing from earlier tasks.
+- Produces: `source-map` recording K&R definitions whose parameter declarations are not indented, so `stblocksize`'s regenerated map reports 4 mapped / 16 unmapped in Task 12.
 
-- [ ] **Step 1: Re-read the reference**
+**Bug 1 — unindented K&R parameters.** `source_map.py`'s forward scan treats an unindented line as a structural boundary. Its guard comment says K&R parameter declarations are indented, but this codebase's idiom allows column 0:
 
-Dump `_do_ioc` (228 bytes) from `tools/binrecon/out/stblocksize-ppc/analysis.named.json`. Resolve each `bl` through the relocation table — this is a dyld executable, so its calls go through `__picsymbol_stub` entries, and the stub's target names the libc function.
+```c
+int
+do_ioc(srp)
+struct scsi_req *srp;
+{
+```
 
-- [ ] **Step 2: Write the function**
+`struct scsi_req *srp;` matches `_C_DEFINITION`, so the scan concludes the definition never resolved and no site is recorded. This is the only unindented-K&R definition across `src/drvSCSITape` and `src/drvSCSIServer`, so no existing reconstruction's numbers change — but the scanner is wrong for a construct this tree uses.
 
-Place it at its address-order position relative to `_main`, `_read_block_limits` and `_usage`. Match the reference's error handling exactly: which `errno` values it reports and via which call.
+**Bug 2 — inline comments in multi-line Objective-C signatures.** A comment inside a multi-line method signature corrupts selector reconstruction, so the site is recorded under a wrong name or not at all. Two real cases:
 
-- [ ] **Step 3: Verify and commit**
+```objc
+- (stInitReturn_t) initSCSITape:(int)iunit 	/* IODevice unit # */
+    target:		(u_char) stTarget
+```
+
+and a comment on a *continuation* line:
+
+```objc
+- (sc_status_t) executeRequest: (IOSCSIRequest *)scsiReq
+    buffer:(void *) buffer /* data destination */
+```
+
+Both exist in `SCSITape.m` (lines 177 and 938) and both were reported unmapped. Note that a comment on a *single-line* signature is already handled — `SCSITape.m:364`, `:369`, `:379`, `:384` and `:414` all map correctly — so the fix must be narrow enough not to disturb that.
+
+Neither bug affects any prior reconstruction: these are the only such constructs across `src/drvSCSITape` and `src/drvSCSIServer`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `tools/binrecon/tests/test_source_map_builder.py`, following the file's existing fixture style for source scanning. One test per bug:
+
+```python
+def test_kandr_definition_with_unindented_parameters_is_recorded(tmp_path):
+    source = tmp_path / "kandr.c"
+    source.write_text(
+        "int\n"
+        "do_ioc(srp)\n"
+        "struct scsi_req *srp;\n"
+        "{\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = scan_source_sites([tmp_path], repo_root=tmp_path)
+
+    assert [(site["name"], site["line"]) for site in sites] == [("do_ioc", 2)]
+```
+
+Read the module first for the real scanning entry point and the shape it returns — use those names rather than the ones above if they differ, and say so in your report.
+
+- [ ] **Step 2: Run it to verify it fails**
+
+```bash
+cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m pytest tools/binrecon/tests/test_source_map_builder.py -q -k kandr
+```
+
+Expected: both FAIL — no site recorded for the K&R definition, and a wrong or missing selector for the commented signatures.
+
+Add a second test covering the Objective-C cases, asserting that `initSCSITape:target:lun:controller:majorDeviceNumber:` and `executeRequest:buffer:client:senseBuf:` are recorded with their full selectors from fixtures shaped like the two snippets above, and a third asserting a single-line signature with a trailing comment still maps.
+
+- [ ] **Step 3: Fix both guards**
+
+Make the scan recognise a K&R parameter declaration at column 0. The `kandr` flag is already computed from the definition line ending in `)`; the fix is to stop treating a following `;`-terminated line as a structural boundary while that flag is set. Keep the existing behaviour for indented parameters and for genuine prototypes — a line ending in `;` that is *not* part of a K&R parameter list must still terminate the scan.
+
+- [ ] **Step 4: Verify the fix and the whole suite**
+
+```bash
+cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m pytest tools/binrecon -q
+```
+
+Expected: all pass, including the new test.
+
+Then confirm the real map now records it:
 
 ```bash
 cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m binrecon source-map \
   --reference-analysis tools/binrecon/out/stblocksize-ppc/analysis.named.json \
   --binary "$TAPE/stblocksize" --source-dir src/drvSCSITape/stblocksize.tproj \
-  --repo-root . --output .superpowers/sdd/stblocksize-check.json 2>&1 | tail -2
+  --repo-root . --output .superpowers/sdd/stblocksize-check.json
 PYTHONPATH=tools/binrecon $PY -c "
 import json
 m = json.load(open('.superpowers/sdd/stblocksize-check.json'))
 print('mapped', len(m['mapped']), 'unmapped', len(m['unmapped']))
+print([e['reference_names'][0] for e in m['mapped']])
 "
 ```
 
-Expected: `mapped 4 unmapped 16`. This is a throwaway check written to the git-ignored scratch directory; the committed map is regenerated in Task 12.
+Expected: `mapped 4 unmapped 16`, with `_do_ioc` among the mapped.
+
+Then confirm the driver map picks up the two Objective-C methods:
 
 ```bash
-cd /d/RhapsodiOS && git add src/drvSCSITape/stblocksize.tproj "$RECON" && git commit -m "drvSCSITape: add stblocksize's do_ioc"
+cd /d/RhapsodiOS && PYTHONPATH=tools/binrecon $PY -m binrecon source-map \n  --reference-analysis tools/binrecon/out/scsitape-ppc/analysis.named.json \n  --binary "$TAPE/SCSITape_reloc" --source-dir "$DRV" \n  --repo-root . --output .superpowers/sdd/scsitape-check.json
+PYTHONPATH=tools/binrecon $PY -c "
+import json
+m = json.load(open('.superpowers/sdd/scsitape-check.json'))
+print('mapped', len(m['mapped']), 'unmapped', len(m['unmapped']))
+print([e['reference_names'][0] for e in m['unmapped']])
+"
 ```
+
+Expected: `mapped 46 unmapped 4` — the 44 that already mapped plus `initSCSITape:` and `executeRequest:`; the 4 unmapped being `reserveAllLuns`, `releaseAllLuns` (Task 9 writes them) and the two build-generated classes. This is a throwaway check written to the git-ignored scratch directory; the committed map is regenerated in Task 12.
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /d/RhapsodiOS && git add tools/binrecon/binrecon/source_map.py tools/binrecon/tests/test_source_map_builder.py && git commit -m "binrecon: record definitions the scanner missed on K&R and commented signatures"
+```
+
+Note the `binrecon: ` prefix — this task changes shared tooling, not driver source.
 
 ---
 
@@ -961,7 +1065,7 @@ Add an `## Acceptance` section to `divergences.md` with the output of every comm
 
 Per the spec's §4.2 item 4, state for every entry still `unexamined` why the fix pass did not repair it. Where a spec expectation was not met, state the actual result and why — not the expectation.
 
-State plainly that nothing is compile-verified, including the five bodies Tasks 9 and 10 wrote.
+State plainly that nothing is compile-verified, including the four bodies Task 9 wrote.
 
 - [ ] **Step 6: Commit**
 
@@ -974,7 +1078,7 @@ cd /d/RhapsodiOS && git add "$RECON" && git commit -m "drvSCSITape: regenerate t
 ## Self-Review Notes
 
 - Spec coverage: §1.1 artifacts → Task 1; §1.2 starting state → Task 1 Step 4; §1.3 absent functions → Tasks 7, 9, 10; §1.4 out-of-scope → Task 1 Step 6 and Task 6 Step 3; §2.1 jump table → Task 3 Step 1; §2.2 techniques → Global Constraints; §3.1 layout → Task 1; §3.2 two phases → the Phase 1/Phase 2 split with Task 7 as the boundary commit; §3.3 tooling constraints → Global Constraints; §3.4 gitignore → Task 1 Step 1; §4.1 no compile verification → Global Constraints and Tasks 9, 10; §4.2 acceptance → Task 12.
-- The 49 examined functions distribute as 20 + 9 + 6 + 9 (Tasks 2–5, totalling `SCSITape_reloc`'s 44) + 5 (Task 6). The five absent bodies are Tasks 9 and 10.
+- The 49 examined functions distribute as 20 + 9 + 6 + 9 (Tasks 2–5, totalling `SCSITape_reloc`'s 44) + 5 (Task 6). The four absent bodies are Task 9. Task 10 was repurposed after Task 6 disproved its premise: `_do_ioc` already exists and the scanner was at fault.
 - Task 11 has no enumerable step list by construction, since its input is Phase 1's findings. Its procedure, gates and definition of done are specified; the absent list is not a placeholder.
 - Ledger addresses are keys shared across tasks. Tasks 2–5 use the address ranges printed in their own tables; Task 6 reads addresses from the seeded ledgers, using the command given immediately above its Step 1, because the helper analyses were not enumerated at plan time.
 - Acceptance arithmetic: `SCSITape` 44 mapped + 4 written = 48, unmapped 6 − 4 = 2; `stblocksize` 3 + 1 = 4, unmapped 17 − 1 = 16; the helpers unchanged. Each reconciles against §1.2's named counts of 50, 12, 16 and 20.

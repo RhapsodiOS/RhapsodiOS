@@ -79,7 +79,7 @@ extern id		stIdMap[];
  * Add ourself to cdevsw. Called from SCSIGeneric layer at probe time.
  */
 extern int		nulldev();
-extern int		nodev();
+extern int		enodev();
 
 static int stMajor = -1;
 
@@ -100,12 +100,12 @@ st_devsw_init()
 	(IOSwitchFunc) stread,
 	(IOSwitchFunc) stwrite,
 	(IOSwitchFunc) stioctl,
-	(IOSwitchFunc) nodev,
+	(IOSwitchFunc) enodev,
 	(IOSwitchFunc) nulldev,		// reset
 	(IOSwitchFunc) nulldev,
-	(IOSwitchFunc) nodev,		// mmap
-	(IOSwitchFunc) nodev,		// getc
-	(IOSwitchFunc) nodev);		// putc
+	(IOSwitchFunc) enodev,		// mmap
+	(IOSwitchFunc) enodev,		// getc
+	(IOSwitchFunc) enodev);		// putc
     if(rtn < 0) {
 	IOLog("st: Can't find space in devsw\n");
     }
@@ -334,22 +334,15 @@ IOLog ("SCSI Tape read/write: set up for fixed block transfer\n");
 
     } else {
 	length = uiop->uio_iov->iov_len;
-	if(rw_flag == SR_DMA_RD)
-	    if ([scsiTape suppressIllegalLength]) {
-		cdbp->c6s_opt |= C6OPT_SIL;
+	if(rw_flag == SR_DMA_RD) {
+	    [scsiTape setSuppressIllegalLength: YES];
+	    cdbp->c6s_opt |= C6OPT_SIL;
 
 #ifdef	DEBUG
 IOLog ("SCSI Tape read: variable block read, suppress illegal len errs\n");
 #endif	DEBUG
 
-	    }
-	    else {
-
-#ifdef	DEBUG
-IOLog ("SCSI Tape read: variable block read, allow illegal len errs\n");
-#endif	DEBUG
-
-	    }
+	}
     }
     assign_cdb_c6s_len (cdbp, length);
 
@@ -482,7 +475,7 @@ stioctl(dev_t dev,
 	     * sense data.
 	     */
 	    if(ST_EXABYTE(dev))
-		mgp->mt_type = MT_ISEXB;
+		mgp->mt_type = MT_ISEXABYTE;
 	    else
 		mgp->mt_type = MT_ISGS;
 	    mgp->mt_dsreg = ((u_char *)erp)[2];
@@ -495,7 +488,7 @@ stioctl(dev_t dev,
 #if	__BIG_ENDIAN__
 	    mgp->mt_resid = (u_int) erp->er_info;
 #elif	__LITTLE_ENDIAN__
-	    mgp->mt_resid = read_er_info_low_24();
+	    mgp->mt_resid = read_er_info_low_24(erp);
 	    mgp->mt_resid |= (u_int) erp->er_info3;
 #endif
 
@@ -573,6 +566,7 @@ int stForcePageAlign = 1;
 
 static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 {
+    SCSITape		*stp = scsiTape;
     void 		*alignedPtr = NULL;
     unsigned 		alignedLen = 0;
     void 		*freePtr;
@@ -582,6 +576,8 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
     int			rtn = 0;
     IOSCSIRequest	scsiReq;
     sc_status_t		srtn;
+    BOOL		savedIgnore = NO;
+    BOOL		savedOpenIgnore = NO;
 
     if(srp->sr_dma_max > [[scsiTape controller] maxTransfer]) {
 	return EINVAL;
@@ -670,6 +666,15 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 	    didAlign = NO;
 	}
     }
+    else {
+	/*
+	 * No data phase - nothing to align or copy.
+	 */
+	alignedLen = srp->sr_dma_max;
+	alignedPtr = srp->sr_addr;
+	client = IOVmTaskCurrent();
+	didAlign = NO;
+    }
 
     /*
      * Generate a contemporary version of scsi_req.
@@ -686,7 +691,18 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
     scsiReq.read = (srp->sr_dma_dir == SR_DMA_RD) ? YES : NO;
     scsiReq.maxTransfer = alignedLen;
     scsiReq.timeoutLength = srp->sr_ioto;
-    scsiReq.disconnect = 1;
+    scsiReq.disconnect = srp->sr_discon_disable ? 0 : 1;
+
+    /*
+     * The caller can ask us to keep quiet about check conditions for the
+     * duration of this one command.
+     */
+    if(srp->sr_ignore_chkcond) {
+	savedIgnore = stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun];
+	savedOpenIgnore = stp->_ignoreOpenCheckCondition;
+	stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun] = YES;
+	stp->_ignoreOpenCheckCondition = YES;
+    }
 
     /*
      * Go for it.
@@ -700,6 +716,11 @@ static int st_doiocsrq(id scsiTape, scsi_req_t *srp)
 	buffer : alignedPtr
 	client : client
 	senseBuf : &srp->sr_esense];
+
+    if(srp->sr_ignore_chkcond) {
+	stp->_ignoreCheckCondition [scsiReq.target][scsiReq.lun] = savedIgnore;
+	stp->_ignoreOpenCheckCondition = savedOpenIgnore;
+    }
 
     /*
      * Copy status back to user. Note that if we got this far, we

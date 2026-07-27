@@ -38,6 +38,8 @@ _C_DEFINITION = re.compile(
 
 _METHOD_DECLARATION_LIMIT = 20
 
+_COMMENT = re.compile(r"/\*.*?\*/")
+
 
 def defined_symbols(macho_document):
     """Map each address to the sorted unique names defined there.
@@ -52,7 +54,28 @@ def defined_symbols(macho_document):
     return {address: sorted(names) for address, names in index.items()}
 
 
-def _selector(declaration):
+def _strip_parenthesised(text):
+    """Replace every parenthesised span with a space, nesting included.
+
+    A single `\\([^()]*\\)` pass only removes innermost pairs, so a
+    function-pointer type such as `(int (*)(id, id))` loses its inner pairs
+    and leaves the outer `)` behind for the segment walk to read as a
+    keyword. Track the depth instead.
+    """
+    kept = []
+    depth = 0
+    for character in text:
+        if character == "(":
+            depth += 1
+            kept.append(" ")
+        elif character == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            kept.append(character)
+    return "".join(kept)
+
+
+def read_selector(declaration):
     """Reduce an Objective-C method declaration to its bare selector.
 
     Keywords after the first may be empty: `initFromDeviceDescription::::` is a
@@ -60,8 +83,14 @@ def _selector(declaration):
     gone, each colon is followed by its argument name and then, optionally, the
     next keyword, so matching `(\\w+)\\s*:` would capture the argument name as a
     keyword and turn `foo::::` into `foo:a:b:c:`. Walk the segments instead.
+
+    Comments go first, before the types: a comment may itself contain
+    parentheses, and one sitting between an argument name and the next
+    keyword would otherwise be read as that keyword, turning
+    `initSCSITape:target:` into `initSCSITape:/*:`.
     """
-    text = re.sub(r"\([^()]*\)", " ", declaration)
+    declaration = _COMMENT.sub(" ", declaration)
+    text = _strip_parenthesised(declaration)
     text = text.split("{")[0]
     if ":" in text:
         segments = text.split(":")
@@ -132,7 +161,7 @@ def source_sites(repo_root, source_dir):
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:
-                    selector = _selector(" ".join(declaration))
+                    selector = read_selector(" ".join(declaration))
                     if selector:
                         key = f"{method.group(1)}[{current_class} {selector}]"
                         sites.setdefault(key, []).append((relative, number))
@@ -149,8 +178,13 @@ def source_sites(repo_root, source_dir):
                 found_brace = "{" in line
                 found_semicolon = not found_brace and line.rstrip().endswith(";")
                 # A closed parameter list with no ";" may be a K&R definition,
-                # whose indented parameter declarations each end in ";". Those
-                # must not be read as a prototype's terminator.
+                # whose parameter declarations each end in ";". Those must not
+                # be read as a prototype's terminator. They are not reliably
+                # indented -- drvSCSITape's stblocksize.c writes them at column
+                # zero -- so indentation cannot be part of the test. A genuine
+                # prototype is unaffected: a single-line one is skipped before
+                # this point, and a wrapped one does not close its parameter
+                # list on the header line, so "kandr" is never set.
                 kandr = line.rstrip().endswith(")")
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
@@ -173,9 +207,7 @@ def source_sites(repo_root, source_dir):
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";") and not (
-                        kandr and candidate[:1].isspace()
-                    ):
+                    elif candidate.rstrip().endswith(";") and not kandr:
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:

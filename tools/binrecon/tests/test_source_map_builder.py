@@ -221,6 +221,107 @@ def test_source_sites_joins_wrapped_no_space_selector(tmp_path):
     ]
 
 
+def test_source_sites_joins_wrapped_selector_across_inline_comments(tmp_path):
+    """A comment inside a wrapped signature must not become a keyword.
+
+    Selector keywords are read as the word following each argument name, so
+    a comment between them -- drvSCSITape's SCSITape.m annotates both the
+    first line of initSCSITape: and a continuation line of executeRequest:
+    this way -- otherwise yields "initSCSITape:/*:lun:...".
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "SCSITape.m").write_text(
+        "@implementation SCSITape\n"
+        "\n"
+        "- (stInitReturn_t) initSCSITape:(int)iunit \t/* IODevice unit # */\n"
+        "    target:\t\t(u_char) stTarget\n"
+        "    lun:\t\t(u_char) stLun\n"
+        "{\n"
+        "    return ST_INIT_SUCCESS;\n"
+        "}\n"
+        "\n"
+        "- (sc_status_t) executeRequest: (IOSCSIRequest *)scsiReq\n"
+        "    buffer:(void *) buffer /* data destination */\n"
+        "    client:(vm_task_t) client\n"
+        "{\n"
+        "    return SR_IOST_GOOD;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[SCSITape initSCSITape:target:lun:]"] == [
+        ("src/driver/SCSITape.m", 3)
+    ]
+    assert sites["-[SCSITape executeRequest:buffer:client:]"] == [
+        ("src/driver/SCSITape.m", 10)
+    ]
+
+
+def test_source_sites_reads_a_selector_whose_argument_type_nests_parentheses(tmp_path):
+    """A function-pointer argument nests parentheses inside its type.
+
+    Stripping only innermost pairs leaves the outer type's closing paren
+    behind, and the segment walk then reads it as the keyword, yielding
+    "sortUsingFunction:)context:". Kits/Foundation/NSArray.m declares three
+    such methods.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "NSArray.m").write_text(
+        "@implementation NSArray\n"
+        "\n"
+        "- (void)sortUsingFunction:(int (*)(id, id, void *))compare\n"
+        "    context:(void *)context\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[NSArray sortUsingFunction:context:]"] == [
+        ("src/driver/NSArray.m", 3)
+    ]
+
+
+def test_source_sites_still_finds_single_line_selector_with_trailing_comment(tmp_path):
+    """A comment after a one-line signature already worked; keep it working.
+
+    Both shapes occur: an accessor with no keyword at all, and one whose
+    single keyword is followed by the comment.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "SCSITape.m").write_text(
+        "@implementation SCSITape\n"
+        "\n"
+        "- (int) target\t\t\t/* Set only during initialization */\n"
+        "{\n"
+        "    return (int) _target;\n"
+        "}\n"
+        "\n"
+        "- (void) setTarget:(int)target\t/* Initialization only */\n"
+        "{\n"
+        "    _target = target;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[SCSITape target]"] == [("src/driver/SCSITape.m", 3)]
+    assert sites["-[SCSITape setTarget:]"] == [("src/driver/SCSITape.m", 8)]
+
+
 def test_source_sites_ignores_bare_arithmetic_inside_a_method_body(tmp_path):
     source_dir = tmp_path / "src" / "driver"
     source_dir.mkdir(parents=True)
@@ -410,6 +511,30 @@ def test_source_sites_finds_kandr_definition_with_return_type_on_its_own_line(
     sites = source_sites(tmp_path, source_dir)
 
     assert sites["_bpf_movein"] == [("src/driver/bpf.c", 2)]
+
+
+def test_source_sites_finds_kandr_definition_with_unindented_parameters(tmp_path):
+    """K&R parameter declarations need not be indented.
+
+    drvSCSITape's stblocksize.c writes them at column zero. Each still ends
+    in ';' and must not be read as a prototype's terminator just because it
+    starts in column zero.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "stblocksize.c").write_text(
+        "int\n"
+        "do_ioc(srp)\n"
+        "struct scsi_req *srp;\n"
+        "{\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_do_ioc"] == [("src/driver/stblocksize.c", 2)]
 
 
 def test_source_sites_finds_ansi_definition_with_return_type_on_its_own_line(

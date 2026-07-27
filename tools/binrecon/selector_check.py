@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 from binrecon.macho import read_macho
+from binrecon.source_map import read_selector
 
 TEXT_SECTION = "__TEXT,__text"
 
@@ -35,44 +36,6 @@ def reference_selectors(path):
         if symbol["section"] == TEXT_SECTION
         and symbol["name"].startswith(("-[", "+["))
     }
-
-
-def _outside_parens(text):
-    """Drop parenthesised spans, so argument types don't look like keywords."""
-    kept = []
-    depth = 0
-    for character in text:
-        if character == "(":
-            depth += 1
-        elif character == ")":
-            depth -= 1
-        elif depth == 0:
-            kept.append(character)
-    return "".join(kept)
-
-
-def _selector(signature):
-    """Extract the selector from a method signature, types and argument names removed.
-
-    Apple declares some methods with empty keywords — `initFromDeviceDescription::::`
-    is a real selector in the reference binary. Once the parenthesised types are
-    gone, each colon is followed by its argument name and then, optionally, the
-    next keyword. Matching `(\\w*)\\s*:` would capture the argument name as the
-    keyword and silently turn `foo:::` into `foo:a:b:`, so walk the segments
-    instead: in every segment after the first, the argument name is the leading
-    word and the keyword is whatever word follows it, or nothing.
-    """
-    body = _outside_parens(signature).strip()
-    if ":" not in body:
-        words = body.split()
-        return words[0] if words else ""
-
-    segments = body.split(":")
-    selector = segments[0].strip() + ":"
-    for segment in segments[1:-1]:
-        words = segment.split()
-        selector += (words[1] if len(words) > 1 else "") + ":"
-    return selector
 
 
 def source_methods(source_dir):
@@ -95,16 +58,31 @@ def source_methods(source_dir):
             if class_name and re.match(r"^[-+]\s*[\(\w]", line):
                 start = index
                 signature = line
+                found_brace = "{" in signature
+                found_semicolon = not found_brace and signature.rstrip().endswith(";")
                 # A signature may wrap across lines; it ends at the body brace.
-                while "{" not in signature and index + 1 < len(lines) and len(signature) < 600:
+                # A declaration ending in ";" has no body and must not be read
+                # as a definition -- matching source_map's found_semicolon
+                # guard -- otherwise the scan runs on into the next method's
+                # signature and merges the two.
+                while not found_brace and not found_semicolon and index + 1 < len(lines) and len(signature) < 600:
                     index += 1
                     signature += " " + lines[index]
-                head = signature.split("{")[0].strip()
-                sign, remainder = head[0], head[1:]
-                selector = _selector(remainder)
-                scope = "%s(%s)" % (class_name, category) if category else class_name
-                yield ("%s[%s %s]" % (sign, scope, selector),
-                       class_name, selector, path.name, start + 1)
+                    if "{" in lines[index]:
+                        found_brace = True
+                    elif lines[index].rstrip().endswith(";"):
+                        found_semicolon = True
+                if found_brace and not found_semicolon:
+                    head = signature.split("{")[0].strip()
+                    sign, remainder = head[0], head[1:]
+                    # The sign is dropped before parsing: source_map's reader
+                    # keys off the last word before the first colon, which a
+                    # signature written without a space after the sign would
+                    # hand back.
+                    selector = read_selector(remainder) or ""
+                    scope = "%s(%s)" % (class_name, category) if category else class_name
+                    yield ("%s[%s %s]" % (sign, scope, selector),
+                           class_name, selector, path.name, start + 1)
             index += 1
 
 

@@ -3,7 +3,7 @@
 Reconstruct `src/drvSCSITape` against Apple's four shipped PowerPC binaries —
 the kernel driver and its three user-space helpers — using the `tools/binrecon`
 toolchain. A report pass dispositions every reference function; a fix pass then
-repairs the divergences and writes the five functions our tree lacks.
+repairs the divergences and writes the four functions our tree lacks.
 
 This is the third of three specs. The first,
 [2026-07-26-binrecon-ppc-support-design.md](2026-07-26-binrecon-ppc-support-design.md),
@@ -21,7 +21,7 @@ are on disk under `tools/binrecon/out/*-ppc/`.
 
 Measured with `binrecon source-map`, it is in **far better shape than
 `SCSIServer` was**: the driver maps 44 of its 50 named functions, where
-`SCSIServer` mapped 41 of 68 and carried 51 findings. The gap here is five
+`SCSIServer` mapped 41 of 68 and carried 51 findings. The gap here is four
 absent functions and whatever the examination turns up inside the 49 that map.
 
 That difference is worth stating plainly, because it changes what this spec is
@@ -60,7 +60,7 @@ The helpers' unmapped counts are almost entirely linkage glue (§1.4), not
 missing source. Their real content is `_main` in each, plus `_read_block_limits`
 and `_usage` in `stblocksize`.
 
-### 1.3 The five absent functions
+### 1.3 The four absent functions
 
 | Function | Artifact | Bytes |
 | --- | --- | --- |
@@ -68,9 +68,19 @@ and `_usage` in `stblocksize`.
 | `-[SCSITape executeRequest:buffer:client:senseBuf:]` | `SCSITape_reloc` | 832 |
 | `-[SCSITape reserveAllLuns]` | `SCSITape_reloc` | 236 |
 | `-[SCSITape releaseAllLuns]` | `SCSITape_reloc` | 128 |
-| `_do_ioc` | `stblocksize` | 228 |
 
-2332 bytes in total. Unlike `SCSIServer`'s absent set — Mach IPC plumbing and a
+2104 bytes in total.
+
+> **Corrected during the report pass.** This list originally included
+> `stblocksize`'s `_do_ioc` (228 bytes), making five functions and 2332 bytes.
+> That was wrong: `stblocksize.c:170` already defines it, in K&R style, and it
+> matches the reference instruction for instruction. It was reported unmapped
+> because `source_map.py`'s scanner does not record a K&R definition whose
+> parameter declarations are unindented — a tool bug, fixed rather than worked
+> around. It is the only such definition across `src/drvSCSITape` and
+> `src/drvSCSIServer`, so no other reconstruction's numbers change.
+
+Unlike `SCSIServer`'s absent set — Mach IPC plumbing and a
 644-byte notification handler — these are ordinary Objective-C methods on a
 class our tree already has, plus one C helper. That is why this spec writes them
 rather than deferring them (§4.1).
@@ -181,7 +191,7 @@ with a finding, so a reader can distinguish "examined and correct" from
 "examined and wrong".
 
 **Phase 2 — fix.** Source changes only, one translation unit per commit, each
-citing the ledger entries it resolves: the five absent bodies, the naming and
+citing the ledger entries it resolves: the four absent bodies, the naming and
 declaration class, and small precisely-evidenced in-body corrections. Artifacts
 regenerated at the end so they describe the finished tree.
 
@@ -211,7 +221,7 @@ exactly that problem today, with two tracked lock files. Widen the rule to
 
 There is no PowerPC compiler in this environment: `vm/` holds only
 `build-i386-*.sh`, and the Rhapsody guest builds i386. **Nothing in this spec is
-compile-verified, including the five newly written function bodies.**
+compile-verified, including the four newly written function bodies.**
 
 This spec writes those bodies where spec 2 deferred its own, because they are
 ordinary Objective-C methods on an existing class and one C helper rather than
@@ -254,7 +264,7 @@ Done when all of the following hold, with output shown:
    `divergences.md` of why the fix pass did not repair it.
 
    This is deliberately weaker than "none is `unexamined`". §3.2 scopes the fix
-   pass to the five absent bodies, the naming and declaration class, and small
+   pass to the four absent bodies, the naming and declaration class, and small
    precisely-evidenced corrections — so a large divergence found inside a mapped
    function would legitimately remain open. Spec 2 asserted the stronger form and
    could not meet it, ending with 31 open entries; stating the achievable
@@ -276,7 +286,7 @@ prove the driver builds or runs, and this spec does not claim otherwise.
 - **A PowerPC build.** The tree already carries the pieces: a PowerPC assembler
   and linker relocation support in `src/cctools-2` (`as/ppc.c`,
   `as/ppc-opcode.h`, `ld/ppc_reloc.c`) and GCC's `rs6000` configuration in
-  `src/cc-1`. Standing one up would compile-verify this spec's five bodies,
+  `src/cc-1`. Standing one up would compile-verify this spec's four bodies,
   discharge everything spec 2 deferred, and make `parity_check.py` and
   `import_check.py` usable.
 - **Spec 2's deferred work.** The 12 stub wrapper bodies and 6 absent bodies in

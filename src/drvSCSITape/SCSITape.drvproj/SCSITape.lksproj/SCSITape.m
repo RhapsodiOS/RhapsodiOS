@@ -44,6 +44,13 @@ int er_info_value ();		/* byte swapping for sense reply info data */
 
 id		stIdMap [NST];
 
+@interface SCSITape(private)
+
+- (void) reserveAllLuns;
+- (void) releaseAllLuns;
+
+@end
+
 @implementation SCSITape
 
 + (IODeviceStyle)deviceStyle
@@ -75,6 +82,7 @@ static unsigned int tapeUnit = 0;
     stInitReturn_t		irtn = STR_ERROR;
     BOOL			brtn = NO;
     int				major;
+    int				nTargets;
 
 /* asm volatile("int3");  */ // Early break to debugger
 
@@ -82,8 +90,19 @@ static unsigned int tapeUnit = 0;
 	return NO;
     }
 
-    for (stTarget=0; stTarget<SCSI_NTARGETS; stTarget++) {
-	for(stLun=0; stLun<SCSI_NLUNS; stLun++) {
+    /*
+     * Ask the controller how wide its bus is; we only have room for
+     * SCSI3_NTARGETS of them.
+     */
+    nTargets = [controllerId numberOfTargets];
+    if (nTargets > SCSI3_NTARGETS) {
+	nTargets = SCSI3_NTARGETS;
+	IOLog ("drvSCSITape supports bus ID targets 0 .. %d\n",
+	    SCSI3_NTARGETS - 1);
+    }
+
+    for (stTarget=0; stTarget<nTargets; stTarget++) {
+	for(stLun=0; stLun<1; stLun++) {	/* a tape lives at lun 0 */
 
 #ifdef DEBUG
 IOLog ("SCSITape probe: target %d  lun %d\n", stTarget, stLun);
@@ -97,18 +116,6 @@ IOLog ("SCSITape probe: target %d  lun %d\n", stTarget, stLun);
 		 * initialization.
 		 */
 		tapeId = [SCSITape alloc];
-	    }
-
-	    if ([controllerId reserveTarget:stTarget
-		lun:stLun
-		forOwner:tapeId]) {
-		/*
-		 * Someone already has this one.
-		 */
-		continue;
-	    }
-	    else {
-		[tapeId setReservedTargetLun: YES];
 	    }
 
 #ifdef DEBUG
@@ -139,10 +146,6 @@ IOLog ("SCSITape probe: irtn is %d\n", irtn);
 		    break;
 
 		default:
-		    [controllerId releaseTarget: stTarget
-			lun: stLun
-			forOwner: tapeId];
-		    [tapeId setReservedTargetLun: NO];
 		    if(irtn == STR_SELECTTO) {
 			/*
 			 * Skip the rest of the luns on
@@ -182,6 +185,7 @@ done:
 {
     inquiry_reply_t	inquiryData;
     sc_status_t		rtn;
+    stInitReturn_t	irtn = STR_GOOD;
     char		driveType[DRIVE_TYPE_LENGTH];	/* name from Inquiry */
     char		*outp;
     char		deviceName[30];
@@ -189,11 +193,27 @@ done:
 
 
     /*
+     * Hold the target and lun for just as long as it takes to find out
+     * whether there is a tape out there; we give them back at "out:".
+     */
+    if ([controllerId reserveTarget: stTarget
+	lun: stLun
+	forOwner: self]) {
+	/*
+	 * Someone already has this one.
+	 */
+	return STR_ERROR;
+    }
+
+    /*
      * Initialize common instance variables.
      */
     _controller = controllerId;
     _target = stTarget;
     _lun = stLun;
+    [self reserveAllLuns];
+    _ignoreCheckCondition [_target][_lun] = NO;
+    _ignoreOpenCheckCondition = NO;
     sprintf(deviceName, "st%d", iunit);
     [self setName: deviceName];
     [self setDeviceKind:"SCSITape"];
@@ -240,9 +260,11 @@ IOLog ("InitSCSITape inquiry returned %d\n", rtn);
 	case SR_IOST_GOOD:
 	    break;
 	case SR_IOST_SELTO:
-	    return STR_SELECTTO;
+	    irtn = STR_SELECTTO;
+	    goto out;
 	default:
-	    return STR_ERROR;
+	    irtn = STR_ERROR;
+	    goto out;
     }
 
     /*
@@ -255,7 +277,8 @@ IOLog ("InitSCSITape inquiry returned %d\n", rtn);
 IOLog ("InitSCSITape: not a tape\n");
 #endif DEBUG
 
-	return(STR_NOTATAPE);
+	irtn = STR_NOTATAPE;
+	goto out;
     }
 
     /*
@@ -290,7 +313,7 @@ IOLog ("InitSCSITape: not a tape\n");
     sprintf(location, "Target %d LUN %d at %s", _target, _lun,
 	[controllerId name]);
     [self setLocation: location];
-    IOLog("%s: %s\n", deviceName, driveType);
+    IOLog("%s: %s at %s\n", deviceName, driveType, location);
 
 
     /*
@@ -311,7 +334,15 @@ IOLog ("InitSCSITape: not a tape\n");
 
     [super init];
     _isInitialized = YES;
-    return(STR_GOOD);
+
+out:
+    /*
+     * We only needed the target and its luns for the duration of the
+     * probe; -acquireDevice takes them again when the device is opened.
+     */
+    [self releaseAllLuns];
+    [_controller releaseTarget: stTarget lun: stLun forOwner: self];
+    return(irtn);
 } /* - initSCSITape: */
 
 
@@ -319,10 +350,10 @@ IOLog ("InitSCSITape: not a tape\n");
 {
     if (_senseDataPtr)
 	IOFree (_senseDataPtr, sizeof (struct esense_reply));
+    if (_devAcquired)
+	[self releaseDevice];		/* gives back the target and luns */
     if (_devLock)
 	[_devLock free];
-    if (_reservedTargetLun)
-	[_controller releaseTarget: _target lun: _lun forOwner: _controller];
     return [super free];
 }
 
@@ -427,31 +458,15 @@ IOLog ("InitSCSITape: not a tape\n");
     return self;
 }
 
-- (BOOL) ignoreCheckCondition
-{
-    return _ignoreCheckCondition;
-}
-
 - setIgnoreCheckCondition: (BOOL) condition
 {
-    _ignoreCheckCondition = condition;
+    _ignoreOpenCheckCondition = condition;
     return self;
 }
 
 - (int) majorDevNum
 {
     return _majorDevNum;
-}
-
-- setReservedTargetLun: (BOOL) condition
-{
-    _reservedTargetLun = condition;
-    return self;
-}
-
-- (BOOL) reservedTargetLun
-{
-    return _reservedTargetLun;
 }
 
 - (IOReturn) acquireDevice
@@ -461,7 +476,15 @@ IOLog ("InitSCSITape: not a tape\n");
     [_devLock lock];
     if (_devAcquired == YES) {
 	ret = IO_R_BUSY;
+    } else if ([_controller reserveTarget: _target
+	lun: _lun
+	forOwner: self]) {
+	/*
+	 * Someone else already has our target/lun.
+	 */
+	ret = IO_R_BUSY;
     } else {
+	[self reserveAllLuns];
 	_devAcquired = YES;
 	ret = IO_R_SUCCESS;
     }
@@ -473,6 +496,8 @@ IOLog ("InitSCSITape: not a tape\n");
 {
     [_devLock lock];
     _devAcquired = NO;
+    [self releaseAllLuns];
+    [_controller releaseTarget: _target lun: _lun forOwner: self];
     [_devLock unlock];
     return IO_R_SUCCESS;
 }
@@ -530,7 +555,7 @@ IOLog ("InitSCSITape: not a tape\n");
 	senseBuf: _senseDataPtr];
 
     if(scsiReq.driverStatus == SR_IOST_GOOD) {
-	unsigned required = (char *)(&alignedReply->ir_zero3[0]) -
+	unsigned required = (char *)(&alignedReply->ir_zero3) -
 	    (char *)(alignedReply);
 	if(scsiReq.bytesTransferred < required) {
 	    IOLog("%s: bad DMA Transfer count (%d) on Inquiry\n",
@@ -978,44 +1003,46 @@ IOLog ("Length %d on return from executeRequest\n", scsiReq->bytesTransferred);
 		_senseDataValid = YES;
 	}
 	if (((rtn == SR_IOST_CHKSNV) || (rtn == SR_IOST_CHKSV)) &&
-	   	!_ignoreCheckCondition) {
+	   	!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+	   	!_ignoreOpenCheckCondition) {
 	    if(rtn == SR_IOST_CHKSV) {
 	    	rtn = SR_IOST_GOOD;
 	    }
 	    else {
 		rtn = [self requestSense: senseBuf];
 	    }
-	    if(rtn == SR_IOST_GOOD) {
+	}
+	if(rtn == SR_IOST_GOOD) {
+	    /*
+	     * If the error is a filemark, and we are reading,
+	     * then return no error.   Otherwise, return
+	     * check sense, with valid sense data.
+	     */
+	    if ((scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ) &&
+		(senseBuf->er_filemark)) {
+
 		/*
-		 * If the error is a filemark, and we are reading,
-		 * then return no error.   Otherwise, return
-		 * check sense, with valid sense data.
+		 * Check for correct reporting of bytes transferred.
+		 * (This works around a DPT firmware bug.)
 		 */
-		if ((scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ) &&
-		    (senseBuf->er_filemark)) {
+		int	transferLength =
+		    cdb_c6s_len_value (&scsiReq->cdb.cdb_c6s) -
+		    er_info_value (senseBuf);
 
-		    /*
-		     * Check for correct reporting of bytes transferred.
-		     * (This works around a DPT firmware bug.)
-		     */
-		    int	transferLength =
-			cdb_c6s_len_value (&scsiReq->cdb.cdb_c6s) -
-			er_info_value (senseBuf);
+		if ([self isFixedBlock]) {
+		    transferLength = transferLength * _blockSize;
+		}
 
-		    if ([self isFixedBlock]) {
-			transferLength = transferLength * _blockSize;
-		    }
-
-		    if (scsiReq->bytesTransferred != transferLength) {
+		if (scsiReq->bytesTransferred != transferLength) {
 #ifdef DEBUG
 IOLog ("%s: Incorrect byte count reported - "
     "corrected to %d\n", [self name], transferLength);
 #endif DEBUG
-			scsiReq->bytesTransferred = transferLength;
-		    }
+		    scsiReq->bytesTransferred = transferLength;
+		}
 
-		    rtn = SR_IOST_GOOD;
-		    scsiReq->driverStatus = SR_IOST_GOOD;
+		rtn = SR_IOST_GOOD;
+		scsiReq->driverStatus = SR_IOST_GOOD;
 
 #ifdef DEBUG
 IOLog ("execReq sense: er_filemark %d, er_badlen %d, er_sensekey %d, er_addsensecode %d, er_qualifier %d, er_info %d\n",
@@ -1024,40 +1051,42 @@ IOLog ("execReq sense: er_filemark %d, er_badlen %d, er_sensekey %d, er_addsense
 	er_info_value (senseBuf));
 #endif DEBUG
 
-		}
-		else {
-		    rtn = SR_IOST_CHKSV;
-		}
 	    }
 	    else {
-	 	if (_isInitialized) {
-		    IOLog("%s: Request Sense on target %d lun %d "
-			"failed (%s)\n",
-			[self name], _target, _lun,
-			IOFindNameForValue(rtn, IOScStatusStrings));
-		}
-		rtn = SR_IOST_CHKSNV;
+		rtn = SR_IOST_CHKSV;
 	    }
 	}
-
-	/*
-	 * Log error messages, except the spate of timeouts and
-	 * device not ready messages during initialization.
-	 */
-	if (_isInitialized &&
-	    (rtn != SR_IOST_GOOD) &&
-	    !_ignoreCheckCondition) {
-
-	    IOLog("%s, target %d, lun %d: op %s returned %s\n",
-		[self name], _target, _lun,
-		IOFindNameForValue(scsiReq->cdb.cdb_opcode,
-		    IOSCSIOpcodeStrings),
-		IOFindNameForValue(rtn, IOScStatusStrings));
-
-	    if (rtn == SR_IOST_CHKSV) {
-		IOLog ("    Sense key = 0x%x  Sense Code = 0x%x\n",
-		    senseBuf->er_sensekey, senseBuf->er_addsensecode);
+	else {
+	    if (_isInitialized &&
+		!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+		!_ignoreOpenCheckCondition) {
+		IOLog("%s: Request Sense on target %d lun %d "
+		    "failed (%s)\n",
+		    [self name], _target, _lun,
+		    IOFindNameForValue(rtn, IOScStatusStrings));
 	    }
+	    rtn = SR_IOST_CHKSNV;
+	}
+    }
+
+    /*
+     * Log error messages, except the spate of timeouts and
+     * device not ready messages during initialization.
+     */
+    if (_isInitialized &&
+	(rtn != SR_IOST_GOOD) &&
+	!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+	!_ignoreOpenCheckCondition) {
+
+	IOLog("%s, target %d, lun %d: op %s returned %s\n",
+	    [self name], _target, _lun,
+	    IOFindNameForValue(scsiReq->cdb.cdb_opcode,
+		IOSCSIOpcodeStrings),
+	    IOFindNameForValue(rtn, IOScStatusStrings));
+
+	if (rtn == SR_IOST_CHKSV) {
+	    IOLog ("    Sense key = 0x%x  Sense Code = 0x%x\n",
+		senseBuf->er_sensekey, senseBuf->er_addsensecode);
 	}
 
 	_didWrite = NO;
@@ -1180,7 +1209,16 @@ int
 cdb_c6s_len_value (struct cdb_6s *cdbp)
 {
 #if	__BIG_ENDIAN__
+#if	__NATURAL_ALIGNMENT__
+    return ((cdbp->c6s_len[0] << 16) | (cdbp->c6s_len[1] << 8) |
+	cdbp->c6s_len[2]);
+
+#else	__NATURAL_ALIGNMENT__
+
     return (cdbp->c6s_len);
+
+#endif	__NATURAL_ALIGNMENT__
+
 #elif	__LITTLE_ENDIAN__
     return (cdbp->c6s_len0 | (cdbp->c6s_len1 << 8) | (cdbp->c6s_len2 << 16));
 #endif
@@ -1196,3 +1234,50 @@ er_info_value (struct esense_reply *esrp)
 	(esrp->er_info2 << 16) | (esrp->er_info3 << 24));
 #endif
 }
+
+
+@implementation SCSITape(private)
+
+/*
+ * A tape lives at lun 0, but some drives answer on every lun of their
+ * target.  Hold the other luns so that nothing else claims one of them and
+ * starts talking to our drive.  Failure to reserve a lun is only a warning;
+ * remember the ones we did get in _lunsReserved.
+ */
+- (void) reserveAllLuns
+{
+    u_char	lun;
+
+    if (_lun != 0) {
+	IOLog ("%s: SCSITape (target %d, lun %d) expects lun 0\n",
+	    [_controller name], _target, _lun);
+    }
+
+    _lunsReserved = 0;
+    for (lun = 1; lun < SCSI_NLUNS; lun++) {
+	if ([_controller reserveTarget: _target lun: lun forOwner: self]) {
+	    IOLog ("%s: SCSITape (target %d) can't reserve, lun %d\n",
+		[_controller name], _target, lun);
+	}
+	else {
+	    _lunsReserved |= (1 << lun);
+	}
+    }
+}
+
+/*
+ * Give back the luns reserveAllLuns managed to get.  Lun 0 is ours and is
+ * released elsewhere.
+ */
+- (void) releaseAllLuns
+{
+    u_char	lun;
+
+    for (lun = SCSI_NLUNS - 1; lun != 0; lun--) {
+	if (_lunsReserved & (1 << lun)) {
+	    [_controller releaseTarget: _target lun: lun forOwner: self];
+	}
+    }
+}
+
+@end

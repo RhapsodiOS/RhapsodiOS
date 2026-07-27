@@ -31,6 +31,8 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+#import <string.h>
+
 /*
  * File-scope state.
  *
@@ -75,49 +77,224 @@ static char		nameBuf[20];
  * static; the other eight are exported for the kernel console.
  */
 
-/* Finding 2. */
+/*
+ * Finding 2.  The four grey levels of the console's black-and-white ramp,
+ * scaled by level/64 and written straight at the DAC write-address and
+ * data ports rather than through the vga_reg_out macros.  level is
+ * unsigned: the reference divides by 64 with a plain `shr', which a signed
+ * int would not permit, and -setBrightness:token: reaches this with an
+ * unsigned `cmp ... 0x40 / jbe'.
+ *
+ * Each entry is written three times, once per DAC component.  The scaled
+ * value is computed before the index is written -- that ordering is
+ * visible in the reference, which even materialises the black entry's zero
+ * into the value register separately from the zero it writes as the index.
+ * gcc computes level*63 as (level<<6)-level and shares level*3 between the
+ * 48/64 and the 30/64 entries; both fall out of the constants below.
+ */
 static void
-SetET4000Brightness(int level)
+SetET4000Brightness(unsigned int level)
 {
-}
+    unsigned char	v;
 
-/* Finding 3. */
-void
-select_read_segment(char seg)
-{
-}
+    v = level * WHITE_PALETTE_VALUE / 64;
+    outb(WRIT_COLR_PEL_WADR, WHITE_INDEX);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
 
-/* Finding 4. */
-void
-select_write_segment(char seg)
-{
-}
+    v = level * LIGHT_GRAY_PALETTE_VALUE / 64;
+    outb(WRIT_COLR_PEL_WADR, LIGHT_GRAY_INDEX);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
 
-/* Finding 5. */
-void
-select_read_plane(char plane)
-{
-}
+    v = level * DARK_GRAY_PALETTE_VALUE / 64;
+    outb(WRIT_COLR_PEL_WADR, DARK_GRAY_INDEX);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
 
-/* Finding 6. */
-void
-select_write_plane(char plane)
-{
-}
-
-/* Finding 7. */
-void
-vga_read_bpp4planar_to_bpp2packed32(unsigned short *fb, unsigned int *dst)
-{
+    v = level * BLACK_PALETTE_VALUE / 64;
+    outb(WRIT_COLR_PEL_WADR, BLACK_INDEX);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
+    outb(WRIT_COLR_PEL_DATA, v);
 }
 
 /*
- * Finding 8.  Note the frame buffer is the first argument of the reader
- * and the second of the writer; do not tidy that into a consistent order.
+ * Finding 3.  The ET4000's Segment Select register carries the read
+ * segment in its high nibble and the write segment in its low one, but
+ * Video System Configuration 1 can lock both out, so that bit is tested
+ * first.  CRT index reads go through the colour or the mono address port
+ * depending on colr_mode; both read their data from 0x3D5, which is what
+ * the checked-in header says and is why the compiler merges the two
+ * branches after the index write.
+ */
+void
+select_read_segment(char seg)
+{
+    char	tmp;
+
+    if (colr_mode)
+	vga_reg__in (COLR_CRT, CRT_TS_VS1, tmp)
+    else
+	vga_reg__in (MONO_CRT, CRT_TS_VS1, tmp)
+
+    if (tmp & CRT_TS_SGL)
+	return;
+
+    tmp = inb(READ_COLR_GCR_SEGS);
+    tmp &= GCR_TS_GWR;
+    tmp |= seg << 4;
+    outb(WRIT_COLR_GCR_SEGS, tmp);
+    curr_read_segment = seg;
+}
+
+/*
+ * Finding 4.  The same, on the other nibble.  Note the asymmetry the
+ * reference has and we keep: the read side shifts seg without masking it,
+ * the write side masks it without shifting.
+ */
+void
+select_write_segment(char seg)
+{
+    char	tmp;
+
+    if (colr_mode)
+	vga_reg__in (COLR_CRT, CRT_TS_VS1, tmp)
+    else
+	vga_reg__in (MONO_CRT, CRT_TS_VS1, tmp)
+
+    if (tmp & CRT_TS_SGL)
+	return;
+
+    tmp = inb(READ_COLR_GCR_SEGS);
+    tmp &= GCR_TS_GRD;
+    tmp |= seg & GCR_TS_GWR;
+    outb(WRIT_COLR_GCR_SEGS, tmp);
+    curr_write_segment = seg;
+}
+
+/*
+ * Finding 5.  Graphics Controller index 4, Read Map Select: which plane
+ * CPU reads come from, as a plane *number*.  Each macro re-reads and
+ * re-writes the index register, which is why 0x3CE is touched twice.
+ */
+void
+select_read_plane(char plane)
+{
+    char	tmp;
+
+    vga_reg__in (COLR_GCR, GCR_AT_READ_MAPS, tmp)
+    tmp &= ~GCR_AT_RMS;
+    tmp |= plane & GCR_AT_RMS;
+    vga_reg_out (COLR_GCR, GCR_AT_READ_MAPS, tmp)
+    curr_read_plane = plane;
+}
+
+/*
+ * Finding 6.  Sequencer index 2, Map Mask: which planes CPU writes reach,
+ * as a one-hot *mask*.  The argument is still a plane number, so unlike
+ * select_read_plane this one converts.  0xF0 is ~(EM3|EM2|EM1|EM0).
+ */
+void
+select_write_plane(char plane)
+{
+    char	tmp, val;
+
+    val = 1 << (plane & 3);
+    vga_reg__in (COLR_SEQ, SEQ_AT_MPK, tmp)
+    tmp &= 0xF0;
+    tmp |= val;
+    vga_reg_out (COLR_SEQ, SEQ_AT_MPK, tmp)
+    curr_write_plane = plane;
+}
+
+/*
+ * Finding 7.  Sixteen pixels of planes 1 and 0, complemented and
+ * interleaved into one word of sixteen two-bit pixels, plane 0 supplying
+ * the low bit of each pair.  A plane byte carries its leftmost pixel in
+ * its high bit and the packed word carries pixel zero in its low pair, so
+ * each byte's bits come out reversed; the complement is VGA's 1-is-set
+ * convention against the NeXT two-bit grey ramp.
+ *
+ * The Window Server's read_bpp4planar_to_bpp2packed is the same transform
+ * with the same shift table, returned rather than stored.
+ */
+void
+vga_read_bpp4planar_to_bpp2packed32(unsigned short *fb, unsigned int *dst)
+{
+    unsigned int	c, hi, lo;
+
+    select_read_plane(1);
+    c = (unsigned short)~*fb;
+    hi = ((c & 0x8000) <<  2) | ((c & 0x4000) <<  5) |
+	 ((c & 0x2000) <<  8) | ((c & 0x1000) << 11) |
+	 ((c & 0x0800) << 14) | ((c & 0x0400) << 17) |
+	 ((c & 0x0200) << 20) | ((c & 0x0100) << 23) |
+	 ((c & 0x0080) >>  6) | ((c & 0x0040) >>  3) |
+	  (c & 0x0020)        | ((c & 0x0010) <<  3) |
+	 ((c & 0x0008) <<  6) | ((c & 0x0004) <<  9) |
+	 ((c & 0x0002) << 12) | ((c & 0x0001) << 15);
+
+    select_read_plane(0);
+    c = (unsigned short)~*fb;
+    lo = ((c & 0x8000) <<  1) | ((c & 0x4000) <<  4) |
+	 ((c & 0x2000) <<  7) | ((c & 0x1000) << 10) |
+	 ((c & 0x0800) << 13) | ((c & 0x0400) << 16) |
+	 ((c & 0x0200) << 19) | ((c & 0x0100) << 22) |
+	 ((c & 0x0080) >>  7) | ((c & 0x0040) >>  4) |
+	 ((c & 0x0020) >>  1) | ((c & 0x0010) <<  2) |
+	 ((c & 0x0008) <<  5) | ((c & 0x0004) <<  8) |
+	 ((c & 0x0002) << 11) | ((c & 0x0001) << 14);
+
+    *dst = hi | lo;
+}
+
+/*
+ * Finding 8.  The inverse of finding 7, gathering each sixteen-bit half of
+ * the packed word into one plane byte.  The Window Server does this job
+ * through its two 64K lookup tables; the kernel half spells the same eight
+ * terms out inline, and the two are not to be harmonized.
+ *
+ * Note the frame buffer is the first argument of the reader and the second
+ * of the writer -- read(fb, &packed) against write(&packed, fb).  The
+ * cursor blitters depend on that; do not tidy it into a consistent order.
  */
 void
 vga_write_bpp2packed32_to_bpp4planar(unsigned int *src, unsigned short *fb)
 {
+    unsigned int	v, c;
+    unsigned char	hi, lo;
+
+    select_write_plane(1);
+    v = *src;
+    c = v & 0xAAAA;
+    lo = ~(((c & 0x8000) >> 15) | ((c & 0x2000) >> 12) |
+	   ((c & 0x0800) >>  9) | ((c & 0x0200) >>  6) |
+	   ((c & 0x0080) >>  3) |  (c & 0x0020)        |
+	   ((c & 0x0008) <<  3) | ((c & 0x0002) <<  6));
+    c = (v >> 16) & 0xAAAA;
+    hi = ~(((c & 0x8000) >> 15) | ((c & 0x2000) >> 12) |
+	   ((c & 0x0800) >>  9) | ((c & 0x0200) >>  6) |
+	   ((c & 0x0080) >>  3) |  (c & 0x0020)        |
+	   ((c & 0x0008) <<  3) | ((c & 0x0002) <<  6));
+    *fb = (hi << 8) | lo;
+
+    select_write_plane(0);
+    v = *src;
+    c = v & 0x5555;
+    lo = ~(((c & 0x4000) >> 14) | ((c & 0x1000) >> 11) |
+	   ((c & 0x0400) >>  8) | ((c & 0x0100) >>  5) |
+	   ((c & 0x0040) >>  2) | ((c & 0x0010) <<  1) |
+	   ((c & 0x0004) <<  4) | ((c & 0x0001) <<  7));
+    c = (v >> 16) & 0x5555;
+    hi = ~(((c & 0x4000) >> 14) | ((c & 0x1000) >> 11) |
+	   ((c & 0x0400) >>  8) | ((c & 0x0100) >>  5) |
+	   ((c & 0x0040) >>  2) | ((c & 0x0010) <<  1) |
+	   ((c & 0x0004) <<  4) | ((c & 0x0001) <<  7));
+    *fb = (hi << 8) | lo;
 }
 
 /* Finding 9. */
@@ -256,10 +433,27 @@ VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem)
     return 0;
 }
 
-/* Finding 26. */
+/*
+ * Finding 26.  Scan a boot string for a key and answer the first non-blank
+ * character after it, which for a boot string is the `='.  strlen is the
+ * inline repne scasb form -- there is no _strlen in the reference's symbol
+ * table -- while strncmp is a real call.
+ */
 static char *
 find_parameter(const char *key, char *s)
 {
+    int		len = strlen(key);
+    int		c;
+
+    while (*s) {
+	if (strncmp(s, key, len) == 0) {
+	    s += len;
+	    while ((c = *s) != 0 && (c == ' ' || c == '\t'))
+		s++;
+	    return c ? s : 0;
+	}
+	s++;
+    }
     return 0;
 }
 

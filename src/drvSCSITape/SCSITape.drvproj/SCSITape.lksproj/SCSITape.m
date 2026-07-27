@@ -430,11 +430,6 @@ IOLog ("InitSCSITape: not a tape\n");
     return self;
 }
 
-- (BOOL) ignoreCheckCondition
-{
-    return _ignoreCheckCondition;
-}
-
 - setIgnoreCheckCondition: (BOOL) condition
 {
     _ignoreCheckCondition = condition;
@@ -444,17 +439,6 @@ IOLog ("InitSCSITape: not a tape\n");
 - (int) majorDevNum
 {
     return _majorDevNum;
-}
-
-- setReservedTargetLun: (BOOL) condition
-{
-    _reservedTargetLun = condition;
-    return self;
-}
-
-- (BOOL) reservedTargetLun
-{
-    return _reservedTargetLun;
 }
 
 - (IOReturn) acquireDevice

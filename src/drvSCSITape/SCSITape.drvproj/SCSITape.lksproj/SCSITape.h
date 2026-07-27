@@ -42,8 +42,10 @@
     BOOL		_didWrite;	// last command was a write
     BOOL		_suppressIllegalLength;	// Suppress IL errors
     BOOL		_senseDataValid;// *_senseDataPtr from last command OK
-    BOOL		_reservedTargetLun; // Controller has reserved t & l
-    BOOL		_ignoreCheckCondition; // during Test Ready in open()
+    BOOL		_ignoreCheckCondition [SCSI3_NTARGETS][SCSI_NLUNS];
+					// per target/lun, during MTIOCSRQ
+    BOOL		_ignoreOpenCheckCondition;
+					// during Test Ready in open()
     unsigned int	_lunsReserved;	// bitmask of luns 1..7 we hold
 };
 
@@ -72,10 +74,7 @@
 - (int) blockSize;
 - (BOOL) suppressIllegalLength;
 - setSuppressIllegalLength: (BOOL) condition;
-- setReservedTargetLun: (BOOL) condition;
-- (BOOL) ignoreCheckCondition;
 - setIgnoreCheckCondition: (BOOL) condition;
-- (BOOL) reservedTargetLun;
 - (int) majorDevNum;
 - (IOReturn) acquireDevice;
 - (IOReturn) releaseDevice;

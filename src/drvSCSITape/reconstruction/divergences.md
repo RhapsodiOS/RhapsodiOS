@@ -1879,4 +1879,9 @@ The suite stood at 773 passed / 4 skipped before this task; the seven new
 tests cover `selector_check.py`'s selector reader (six, previously untested)
 and `source_map.py`'s nested-parenthesis handling (one).
 
+Two review fixes landed after this acceptance run: the shared selector
+reader was made public (`read_selector`) and `selector_check.py` gained
+`source_map.py`'s semicolon guard. The suite is 781 passed / 4 skipped at
+the branch tip; the other gates are unchanged.
+
 Every gate the plan names reaches the state it predicts.

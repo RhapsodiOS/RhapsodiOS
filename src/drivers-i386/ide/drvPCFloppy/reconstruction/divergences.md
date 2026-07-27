@@ -1558,42 +1558,60 @@ coverage.
 
 ## Closing state
 
-All five fix phases are complete. Measured against the build recorded as
-`rebuilt_sha256` in `ledger.json`:
+All five fix phases are complete and every divergence this report records is
+resolved. Measured against the build recorded as `rebuilt_sha256` in
+`ledger.json`:
 
 | Axis | Start | Close |
 |---|---:|---:|
 | `missing_symbols` | 163 | 1 |
 | `missing_strings` | 94 | 0 |
-| `missing_imports` | 7 | 1 |
+| `missing_imports` | 7 | 0 |
 | `unresolvable_imports` | 10 | 0 |
 | `unexamined` functions | 69 | 0 |
 
-`missing_symbols` is `__udivdi3`, libgcc's 64-bit division helper, which no
-source in this project writes. `load_source_map` passes, partitioning all 225
-functions. Every ledger entry is `control-flow-confirmed` or better, except the
-three build-generated entries recorded as `intentional-mismatch`.
+The single remaining symbol is `__udivdi3`, libgcc's 64-bit division helper,
+which no source in this project writes and which §1.3 places out of scope.
+`load_source_map` passes, partitioning all 225 functions. Every ledger entry is
+`control-flow-confirmed` or better, except the three build-generated entries
+recorded as `intentional-mismatch`: 104 `assembly-matched`, 118
+`control-flow-confirmed`, 3 `intentional-mismatch`.
 
-### The one remaining divergence
+Our build now imports every symbol the reference imports and no symbol the
+kernel cannot resolve. Every string it contains is byte-identical to Apple's.
 
-`.objc_class_name_Protocol` is still imported by the reference and not by us.
-The cause is now understood precisely. The reference's `__OBJC,__protocol`
-section is 140 bytes — seven protocol structures — and its `__OBJC,__class_names`
-names four of them: `IODiskPartitionExported`, `IODiskReadingAndWriting`,
-`IODiskPhysicalNEW` and `IODriveVolCheckSupport`. Our tree declares no
-`@protocol` at all, so the runtime's `Protocol` class is never referenced and
-our `__OBJC,__protocol` section is empty.
+### The protocols
 
-`IODiskPartitionNEW.m:47` implements `+requiredProtocols`, which is the hook
-these protocols exist to serve, so the omission is in the declarations rather
-than in the logic.
+An earlier revision of this section recorded the four undeclared Objective-C
+protocols as an accepted remainder. They have since been reconstructed, so that
+disposition no longer applies.
 
-This is recorded as an accepted remainder rather than repaired. Reconstructing
-it means deriving seven protocol definitions and their method lists from the
-`__OBJC` metadata and then attaching conformance to the right classes — a
-self-contained piece of analysis on the same scale as one of the fix phases,
-and one that touches headers across the whole driver rather than any single
-layer. It is the natural next unit of work on this driver, alongside functional
-testing.
+The reference's `__OBJC,__protocol` section holds seven structures but only four
+distinct protocols; the Objective-C 1.0 runtime emits one structure per
+translation unit that sees a declaration, so `IODiskReadingAndWriting` appears
+three times and `IODiskPhysicalNEW` twice. Their selector lists and type
+encodings were decoded from the reference's own metadata rather than inferred
+from our implementations:
 
-Reviewer: drvPCFloppy fix phases.
+| Protocol | Methods | Adopted by |
+|---|---:|---|
+| `IODiskPartitionExported` | 6 | `IODiskPartitionNEW` |
+| `IODiskReadingAndWriting` | 4 | `IOFloppyDisk`, `IOLogicalDiskNEW` |
+| `IODiskPhysicalNEW` | 1 | `IOFloppyDisk` |
+| `IODriveVolCheckSupport` | 10 | `IOFloppyDrive(volCheckSupport)` |
+
+The declarations live in `IODiskProtocols.h`. Note the last is adopted by a
+category rather than a class, and that `objc_protocol_list` is a chain — a
+decoder that ignores its `next` pointer under-reports conformance.
+
+Reconstructing them settled one open question. `IOFloppyDisk` declared its
+read and write `buffer` parameter as `void *` while `IOLogicalDiskNEW` used
+`unsigned char *`. The reference's own `IOFloppyDisk` encodes that parameter as
+`*`, so `void *` was a divergence in its own right rather than merely a
+disagreement between two conforming classes.
+
+### What remains
+
+Nothing in this document. The driver has not been exercised on hardware or in a
+guest — functional testing was scoped out of the spec from the start and is the
+natural next effort.

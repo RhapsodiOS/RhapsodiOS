@@ -235,16 +235,15 @@ first four match its remaining four "missing" entries exactly (see Selector chec
 
 ## Invariant check
 
-`ppc_invariant_check.py` output for both binaries, verbatim:
+`ppc_invariant_check.py` output for both binaries, verbatim (`mesh-ppc` re-run after the checker fix
+described below; `mesh-bundle-ppc` unaffected by that fix and unchanged from the original run):
 
 ```
 === mesh-ppc ===
-ppc-scattered-ha16-32-absolute at 0x120 and ppc-scattered-lo16-32-absolute at 0x124 reconstruct different values (0x8 vs 0xc)
-ppc-scattered-ha16-32-absolute at 0x2b2c and ppc-scattered-lo16-32-absolute at 0x2b28 reconstruct different values (0x18 vs 0x16)
 symbol _AllocateEventLog at 0x0 is not a function start
 137 scattered/difference-form relocations (target section verified, field is a difference, not an address)
 45 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
-1559 fused relocations, 3 violations
+1559 fused relocations, 1 violations
 === mesh-bundle-ppc ===
 symbol __mh_bundle_header at 0x0 is not a function start
 0 scattered/difference-form relocations (target section verified, field is a difference, not an address)
@@ -252,48 +251,56 @@ symbol __mh_bundle_header at 0x0 is not a function start
 0 fused relocations, 1 violations
 ```
 
-This driver is the first measured so far where `check_document` itself (the byte-order/HI16-LO16
-agreement checks) reports non-zero violations, rather than only `check_functions`' symbol/boundary
-check. Both are investigated below rather than taken at face value.
+The original run of this checker (before the fix below) reported two additional lines for
+`mesh-ppc`:
 
-**The two HI16/LO16 "mismatches" are checker pairing-heuristic artifacts, not decode defects.**
-`ppc_invariant_check.py`'s own pairing function documents that it greedily matches each scattered
-HI16/HA16 relocation to the *nearest* scattered LO16 targeting the same section within an 8-byte
-window -- a heuristic, not the Mach-O relocation table's actual structural PPC_RELOC_PAIR
-association. Dumping the raw relocations around both flagged addresses shows an alternate, exact-value
-match exists just outside the greedy choice in each case:
+```
+ppc-scattered-ha16-32-absolute at 0x120 and ppc-scattered-lo16-32-absolute at 0x124 reconstruct different values (0x8 vs 0xc)
+ppc-scattered-ha16-32-absolute at 0x2b2c and ppc-scattered-lo16-32-absolute at 0x2b28 reconstruct different values (0x18 vs 0x16)
+```
 
-- At `0x120`/HA16 addend `8`: candidates within the window are LO16 at `0x124` (addend `12`,
-  distance 4 -- the one the greedy algorithm picks, and reports as a mismatch) and LO16 at `0x128`
-  (addend `8`, distance 8 -- exact value match, but farther away). The compiled code at this address
-  loads one high-half base register reused by two adjacent field accesses at different offsets
-  (`0x124` and `0x128`), which the proximity heuristic cannot disambiguate correctly when the nearer
-  candidate happens to belong to a different field access.
-- At `0x2b2c`/HA16 addend `24` (`0x18`): candidates are LO16 at `0x2b28` (addend `22`/`0x16`, distance
-  4, the checker's pick) and LO16 at `0x2b30` (addend `24`/`0x18`, distance 4, an exact match with a
-  tied distance). Because both candidates are equidistant, the checker's `min()` tie-break picks
-  whichever appears first in relocation-table order, which here is the wrong one.
+(3 violations total in that run.) This driver was the first measured so far where `check_document`
+itself, not just `check_functions`' symbol/boundary check, reported non-zero. Rather than take it at
+face value, both sites were decoded by hand from the binary:
 
-In both cases the exact-value candidate exists nearby; this is consistent with the checker's own
-documented caveat that its pairing is a heuristic, not with an actual byte-order or sign-extension
-defect in `read_macho`'s decode. No other relocation-decode issue class (address-form bounds,
-`__OBJC` pointer targets, jbsr islands, paired-principal counts) reported anything for either binary.
+- **Site 1 (`0x120`/`0x124`/`0x128`):** `0x0120: addis r9,r0,0` (HA16, addend 8) was paired by the
+  checker's proximity heuristic with `0x0124: lwz r11,r11,0x600c` (LO16, addend 12) -- but that
+  instruction's **base register is r11**, not the `r9` the `addis` actually wrote, so it can never
+  have been that `addis`'s real partner. The true partner is `0x0128: lwz r9,r9,0x6008` -- base
+  register `r9`, addend 8, matching the `addis` exactly.
+- **Site 2 (`0x2b28`/`0x2b2c`/`0x2b30`):** `0x2b2c: addis r9,r0,0` (HA16, addend 24) was paired with
+  `0x2b28: addi r25,r9,0x6016` (addend 22) -- but that instruction **precedes** the `addis` and
+  belongs to the previous computation. The true partner is `0x2b30: addi r26,r9,0x6018`, addend 24,
+  which matches.
 
-**The `_AllocateEventLog` symbol-at-`0x0` is the same anomaly every driver measured so far has
-shown.** `MESH_DBDMA.m:298` defines `void AllocateEventLog( UInt32 size )` (non-static, called once
-at `MESH_DBDMA.m:460`, inside `#if USE_ELG && !CustomMiniMon`), so source exists for it, but the
-reference binary carries only a symbol-table entry at address `0x0` -- a placeholder/unresolved
-address, not a genuine boundary dispute affecting any mapped function or method. Because it is a
-plain C function rather than an Objective-C method, and the 173 reference-analysis functions never
-include an entry at `0x0`, it cannot appear in the source map's `mapped`/`unmapped`/`boundary_disputed`
-categories at all -- it is simply absent from both the map and the bucket table.
+Both sites confirm the relocation decode itself was correct throughout; only the checker's
+address-proximity pairing heuristic picked the wrong LO16 partner in each case (its own comment
+already flagged this pairing as a heuristic, not the Mach-O table's actual structural
+`PPC_RELOC_PAIR` association). **This has been fixed in the tool** (`ppc_invariant_check.py`,
+commit `151282da`, with two regression tests), and this task's re-run of the checker (verbatim
+above) now shows `mesh-ppc` reporting 1 violation instead of 3. No other relocation-decode issue
+class (address-form bounds, `__OBJC` pointer targets, jbsr islands, paired-principal counts)
+reported anything for either binary, before or after the fix.
+
+**The single remaining violation, `_AllocateEventLog` at `0x0`, is the same anomaly every driver
+measured so far has shown -- not a relocation violation.** `MESH_DBDMA.m:298` defines `void
+AllocateEventLog( UInt32 size )` (non-static, called once at `MESH_DBDMA.m:460`, inside `#if USE_ELG
+&& !CustomMiniMon`), so source exists for it, but the reference binary carries only a symbol-table
+entry at address `0x0` -- a placeholder/unresolved address, not a genuine boundary dispute affecting
+any mapped function or method. Because it is a plain C function rather than an Objective-C method,
+and the 173 reference-analysis functions never include an entry at `0x0`, it cannot appear in the
+source map's `mapped`/`unmapped`/`boundary_disputed` categories at all -- it is simply absent from
+both the map and the bucket table. This is the `boundary_disputed` pattern, not a relocation-decode
+defect.
 
 `mesh-bundle-ppc`'s `__mh_bundle_header` at address `0x0` is the standard synthetic bundle-header
 symbol Mach-O bundles carry at their load address; not a real function, so not a function start
 either -- identical to every other `_reloc`/bundle pair measured in this project.
 
-Actual relocation-decode violations, once the two pairing-heuristic artifacts and the two symbol/
-function-start anomalies are accounted for: 0 for both binaries, consistent with every driver
+**Acceptance item 2 (0 relocation violations) is now met for this driver.** With the checker fix
+applied, `mesh-ppc` and `mesh-bundle-ppc` both report exactly one item each, and in both cases that
+item is the address-`0x0` `boundary_disputed` symbol/function-start pattern, not a relocation
+violation. Actual relocation-decode violations: 0 for both binaries, consistent with every driver
 measured so far.
 
 ## Selector check

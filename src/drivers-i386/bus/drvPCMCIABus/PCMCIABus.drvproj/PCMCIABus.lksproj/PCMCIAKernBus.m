@@ -511,7 +511,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     /* If we have a cached resource, free it first */
     if (_memoryRangeResource != nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             range = [_memoryRangeResource range];
             IOLog("PKB: freeing range 0x%x(0x%x)\n", range.base, range.length);
         }
@@ -528,7 +528,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
                                                AlignedTo:PAGE_SIZE];
 
     /* Log the result if verbose */
-    if (_verbose) {
+    if (_verbose == YES) {
         if (_memoryRangeResource == nil) {
             IOLog("%s: memoryRangeResource: resource is nil\n", [self name]);
         } else {
@@ -555,7 +555,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     unsigned int windowCount;
     PCMCIAStatus cardPresent = { 1 };	/* present, nothing else */
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: adding adapter %x\n", (unsigned int)adapter);
     }
 
@@ -582,7 +582,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         socketInfo->pool = pool;
 
         /* Add windows from socket to pool */
-        if (_verbose) {
+        if (_verbose == YES) {
             windows = [socket windows];
             windowCount = [windows count];
             IOLog("PKB: adding %d windows for adapter\n", windowCount);
@@ -691,6 +691,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 - (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)changedStatus
 {
     SocketInfo *socketInfo;
+    unsigned int socketNum;
     PCMCIAStatus currentStatus;
     id memRange;
     Range range;
@@ -698,9 +699,13 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     unsigned int i, count;
     id tuple;
 
+    /* The reference asks for the number before testing, so this one send
+     * happens whether or not the status change is interesting. */
+    socketNum = [socket socketNumber];
+
     /* Check if we care about this status change */
     if (!changedStatus.present) {
-        IOLog("PCMCIA: don't care socket %d\n", [socket socketNumber]);
+        IOLog("PCMCIA: don't care socket %d\n", socketNum);
         return;
     }
 
@@ -720,7 +725,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     /* Get current status */
     currentStatus = [socket status];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: socket %d status: changed = %x, current = %x\n",
               [socket socketNumber], *(unsigned char *)&changedStatus,
               *(unsigned char *)&currentStatus);
@@ -735,7 +740,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         if (socketInfo->probed != 0) {
             /* Clean up card resources */
             if (socketInfo->tupleList != nil) {
-                [[socketInfo->tupleList freeObjects:@selector(free)] free];
+                [[socketInfo->tupleList freeObjects] free];
             }
 
             if (socketInfo->deviceDesc != nil) {
@@ -756,8 +761,8 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
             IOLog("PCMCIABus: Socket %d: card removed\n", [socket socketNumber]);
         }
     } else {
-        /* Card inserted */
-        if (socketInfo->probed == 0) {
+        /* Card inserted.  The reference compares against 1, not 0. */
+        if (socketInfo->probed != 1) {
             socketInfo->probed = 1;
 
             /* Enable socket */
@@ -767,7 +772,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
             }
 
             /* Allocate memory range for attribute memory */
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: trying to allocate memory range 0x%x..0x%x\n",
                       [self name], _memoryBase, _memoryBase + _memoryLength - 1);
             }
@@ -784,7 +789,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
             range = [memRange range];
 
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: reserved memory range 0x%x..0x%x\n",
                       [self name], range.base, range.base + range.length - 1);
             }

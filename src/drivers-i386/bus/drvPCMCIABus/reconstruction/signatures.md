@@ -332,6 +332,61 @@ them belong to this finding:
 These are a separate pass's work. Recording the 70.7% figure here so that a
 future pass has a baseline to move rather than a fresh guess.
 
+### The remaining-differences pass
+
+**One item on that list was not real.** "Extra message sends around logging
+sites" was an artefact of reading an instruction diff whose alignment had
+slipped. Every selector count already matched except `freeObjects`. What the
+diff was showing is a **basic-block layout** difference: the reference groups
+all of the early-return `IOLog` blocks together — its `present` test jumps
+forward past the lot, to +208 — while ours emits each one inline where the
+source puts it. No source construct was identified for that, and none was
+invented; it is left as an open observation. The `[edi+4]` flag test, which
+compares the same value on both sides and differs only in branch direction, is
+the same phenomenon.
+
+The other three were real and are fixed.
+
+**`_verbose` is compared against `YES`, and it is a whole-binary pattern**, not
+a quirk of this method. Counting over `__TEXT,__text`:
+
+| | `cmp byte ptr [..+0x20], 1` | `cmp byte ptr [..+0x20], 0` |
+| --- | --- | --- |
+| Reference | 66 | 1 |
+| Ours, before | 0 | 66 |
+
+The same 66 sites, in the opposite form. `_verbose` is a `BOOL`, so
+`if (_verbose)` yields `cmp 0` / `je` where Apple's `if (_verbose == YES)`
+yields `cmp 1` / `jne`. All 63 `if (_verbose)` in `PCMCIAKernBus.m` and
+`PCMCIAKernBusPrivate.m`, plus the two compound `&& _verbose` tests, now compare
+against `YES`. This is much larger than the one method under study, which is why
+it is recorded here rather than buried in a method-level note.
+
+**The first `socketNumber` send is unconditional again.** The reference issues
+it before `test byte ptr [ebp+0x14], 1`, so the number is fetched even when the
+`present` test sends control elsewhere — a message send cannot be hoisted above
+a branch by the compiler, so Apple's source evaluates it unconditionally. A
+local, assigned before the test and read only by the "don't care" log, restores
+that while leaving the other four sends inline: five sends, the first
+unconditional.
+
+**`probed` is compared against 1 at the second test.** The reference has
+`cmp byte ptr [edi+5], 1` / `je` where ours had `cmp 0` / `jne`; identical for a
+0/1 flag, different source. `if (socketInfo->probed == 0)` became
+`if (socketInfo->probed != 1)`. The *first* `probed` test already matched and
+was left alone.
+
+**`freeObjects` takes no argument.** `[[socketInfo->tupleList
+freeObjects:@selector(free)] free]` became `[[socketInfo->tupleList freeObjects]
+free]`.
+
+**Predictions for the next build:** 66 `cmp byte ptr [..+0x20], 1` and none
+against 0; the `freeObjects:` selector replaced by `freeObjects`; the first
+`socketNumber` send ahead of the `present` test; `cmp byte ptr [edi+5], 1` at
+the second `probed` test; and a similarity above 70.7%. Whether the block
+layout converges is genuinely unknown — the branch-polarity changes may reorder
+blocks as a side effect, or may not.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

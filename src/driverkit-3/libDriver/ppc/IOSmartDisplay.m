@@ -178,6 +178,43 @@ static IOConfigTable * configTable;		// saved by +probe:
 }
 @end
 
+extern long int strtol(const char *nptr, char **endptr, int base);
+
+// Turn a config table string of numbers into an allocated array of them.
+// Pass one counts and allocates, pass two fills in. Nothing is allocated,
+// and *count is left alone, if the string holds no numbers at all.
+
+static UInt32 * UnpackString( const char * string, UInt32 * count)
+{
+UInt32 *	array = 0;
+UInt32		num, value;
+const char *	next;
+char *		end;
+int		pass = 1;
+
+    do {
+	end = (char *) string;
+	num = 0;
+
+	while( (next = end)) {
+	    value = strtol( next, &end, 0);
+	    if( end == next)			// nothing more to convert
+		break;
+	    if( array)
+		array[ num] = value;
+	    num++;
+	}
+
+	if( pass && num) {
+	    array = (UInt32 *) IOMalloc( num * sizeof( UInt32));
+	    *count = num;
+	}
+
+    } while( pass--);
+
+    return( array);
+}
+
 @implementation IOSmartDDCDisplay
 
 - attach:framebuffer refCon:(UInt32)refCon
@@ -641,6 +678,22 @@ UInt16		value;
 
     *deviceID = avDisplayID;
     return( noErr);
+}
+
+- (IOReturn) IOSMADBGetLogicalRegister:(UInt32 *)params size:(UInt32)size
+		result:(UInt32 *)result size:(UInt32 *)resultSize
+{
+    IOReturn	err;
+    UInt16	data = 0;
+
+    if( (size != sizeof( UInt32)) || (*resultSize != sizeof( UInt32)))
+	return( IO_R_INVALID_ARG);
+
+    // register is the low 16 bits of the input word
+    err = [self getLogicalRegister:params[0] data:&data];
+    *result = data;
+
+    return( err);
 }
 
 - (IOReturn) IOSMADBSetLogicalRegister:(UInt32 *)params size:(UInt32)size

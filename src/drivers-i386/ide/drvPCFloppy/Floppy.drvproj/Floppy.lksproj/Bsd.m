@@ -177,8 +177,11 @@ static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 		return ENXIO;  // 6
 	}
 
-	partFlags = (unsigned char *)partition;
-	if ((partFlags != NULL) && ((*partFlags & 1) != 0)) {
+	// identifyBsdDev wrote the major-match flag directly into the low byte
+	// of the "partition" slot - it is not a pointer to allocated storage,
+	// so it must not be dereferenced.
+	partFlags = (unsigned char *)&partition;
+	if ((*partFlags & 1) != 0) {
 		return ENXIO;  // Block device ioctl not allowed on raw device
 	}
 

@@ -1548,23 +1548,54 @@ for by four functions:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
-| `setMode:` | 1020 | 1008 | Identical branch structure and identical 129-operation port-I/O sequence. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
+| `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
 | `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
-| `setPCIConfiguration` | 584 | 612 | Same 19 call targets in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here; and `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
+| `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
 | `determineConfiguration` | 768 | 712 | The one genuine divergence. See below. |
 
 **`determineConfiguration` is the only function whose control flow does not
 match.** Two things differ. First, the reference expands the `"Bus Type"`
 `strncmp` inline as a `repe cmpsb` sequence while our build emits `call
-_strncmp`, so the ordered call-target lists differ by one entry. Second, the two
-`chipType` range tests and the `installedVRAMBytes`/`memorySize` test are signed
-here (`jg`, `jbe`) and unsigned in the reference (`ja`, `jae`), which suggests
-the original declared `chipType` — and possibly the loop's comparison operands —
-with unsigned types. Neither difference changes behaviour: `chipType` only ever
-holds 0–4, and both `strncmp` forms compute the same result. Both are left
-unresolved here rather than guessed at, since changing an ivar's signedness is a
-Task 3 decision and the inline-`strncmp` form depends on compiler flags that are
-not recoverable from the binary.
+_strncmp`, so the ordered call-target lists differ by one entry — 7 calls in the
+reference against 8 here. Second, the two `chipType` range tests are signed here
+and unsigned in the reference: `cmp ecx, 1 / ja` and `cmp ecx, 4 / ja` at 1147
+and 1184 in the reference against `cmp dword [esi+0x258], 1 / jg` and
+`cmp dword [esi+0x258], 4 / jg` at 1135 and 1176 here. That is the whole of the
+signedness divergence, and it is confined to those two branches.
+
+The two other comparisons in this function that might look related are not
+divergences of that kind. The `cmp dword [reg+0x228], 0x1fffff` guard is `ja` on
+*both* sides — unsigned in the reference and unsigned here, identical. The
+installed-VRAM-against-`memorySize` test is `cmp dword [edx+0x228], eax / jae` in
+the reference and `cmp dword [ecx+edi+0x68], eax / jbe` here: `jbe` is the
+unsigned below-or-equal branch, not a signed one, so both sides are unsigned and
+the only difference is that the operands are reversed — the same pattern already
+recorded for `setPendingDisplayMode:` above, and not a signedness question at
+all. Counting all conditional branches, the reference has 14 and so do we.
+
+Neither remaining difference changes behaviour: `chipType` only ever holds 0–4,
+and both `strncmp` forms compute the same result. The inline-`strncmp` form
+depends on compiler flags that are not recoverable from the binary.
+
+**The obvious fix for the two `jg` was tried and does not work.** The hypothesis
+was that Apple declared `chipType` unsigned. The reference refutes it directly:
+its `__OBJC,__instance_vars` encodes `chipType` (offset 600) as `'i'`, a signed
+`int`, and all 16 of its ivar type encodings already match ours exactly.
+Declaring the ivar `unsigned int` would emit `'I'` and break a section that is
+currently identical, so the reference decides against the change and it was never
+built.
+
+A second, ABI-safe attempt was built on the guest: expressing the
+`chipType <= 1` / `chipType <= 4` chain as a `switch` with `case 0: case 1:` and
+`case 2: case 3: case 4:`. It got the comparison *form* right — gcc then loaded
+`chipType` once into `ecx` and emitted `cmp ecx, 1` and `cmp ecx, 4` with the
+same encodings and at nearly the same offsets as the reference — but it also
+emitted a lower-bound `test ecx, ecx / jl` that the reference does not have,
+taking the function from 14 conditional branches to 15 and moving it *away* from
+the reference's block shape. The change was reverted; the restored build is
+byte-identical to the pre-experiment build across all 21 functions. The `ja`
+against `jg` divergence is therefore not reachable from the ivar's declared type
+and not from a `switch`, and is left as it stands. Do not repeat either attempt.
 
 Two further gaps, neither of them in the driver source:
 
@@ -1575,10 +1606,22 @@ Two further gaps, neither of them in the driver source:
 - Correspondingly, `_CirrusLogicGD5434DisplayDriver_VERS_STRING` (160 bytes) and
   `_..._VERS_NUM` (4 bytes) are absent from the rebuilt `__TEXT,__const`, which
   is 2392 bytes against the reference's 2562 — a 170-byte difference that is
-  exactly those two symbols plus their padding. `parity_check.py` does not see
-  this because it compares `__TEXT,__text` symbols and `__cstring` strings only.
-  As recorded above, both are build-generated and encode a 1998 build host and
-  timestamp that should not be reproduced.
+  exactly those two symbols plus their padding.
+
+**The missing version symbols are an unexplained build-configuration gap, not an
+expected omission.** It is tempting to wave them away as build-generated content
+encoding a 1998 host and timestamp, but that reasoning is self-contradictory: if
+they are build-generated, *our* build should have generated its own pair with a
+2026 timestamp. It generated neither, and emitted no version bundle at all. The
+version-file step is simply not running. Two things follow. First,
+`parity_check.py` cannot detect this and its green result is narrower than it
+looks — `parity_check.py:13-14` scope it to `__TEXT,__cstring` and
+`__TEXT,__text` and the symbol comparison at `parity_check.py:33` filters on the
+text section, so `__TEXT,__const` is outside what it inspects at all. Second, the
+runtime impact is low, because neither symbol is referenced by any function in
+either binary. The gap will recur identically on the ThinkPad 760ED track, which
+uses the same project machinery, and should be diagnosed before that track
+starts rather than rediscovered there.
 
 ### Ledger status distribution
 
@@ -1605,7 +1648,9 @@ and are left untouched even though both are byte-identical to the reference.
 The ledger's own `reason` field is reserved for `intentional-mismatch` entries
 and is `null` on every entry here by schema rule, so this section is the record
 of what each status was granted for. Every reviewed entry carries the reviewer
-and the source path and line the status was granted against.
+and the source path and line the status was granted against, and the ledger now
+also records `rebuilt_sha256`, so the artifact the `assembly-matched` claims were
+measured against is named rather than implied.
 
 ## What is not reconstructed
 
@@ -1619,10 +1664,12 @@ that defines them and the `__DATA,__common` symbol
 `NAME` and `DriverKitVersion`, exactly as `VGA_instance.m` is for `drvVGA`.
 **They must not be written by hand.** If they are absent from the rebuilt binary,
 the fault is in the project's `NAME`/`PROJECTVERSION`/`DriverKitVersion`
-declarations or in the project type, not in the driver source. The same applies
-to `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM`, whose
-contents encode a 1998 build host and timestamp that cannot and should not be
-reproduced.
+declarations or in the project type, not in the driver source. `_..._VERS_STRING`
+and `_..._VERS_NUM` are likewise not hand-written source, but their absence is an
+open build-configuration defect rather than a deliberate omission — see the
+version-symbol gap recorded under "Build and parity" above. Their *contents*
+would carry our own build host and timestamp, not Apple's 1998 pair, so byte
+parity on those 164 bytes is not achievable; their existence is.
 
 Also not reconstructed, and deliberately so:
 

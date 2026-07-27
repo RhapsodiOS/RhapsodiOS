@@ -1,0 +1,364 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 212,
+      "reference_names": [
+        "-[AppleCuda initFromDeviceDescription:]"
+      ],
+      "size": 904,
+      "source_line": 213,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 1212,
+      "reference_names": [
+        "-[AppleCuda free]"
+      ],
+      "size": 60,
+      "source_line": 398,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 1288,
+      "reference_names": [
+        "-[AppleCuda receiveMsg]"
+      ],
+      "size": 336,
+      "source_line": 412,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 1720,
+      "reference_names": [
+        "-[AppleCuda timeoutOccurred]"
+      ],
+      "size": 116,
+      "source_line": 489,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 1852,
+      "reference_names": [
+        "-[AppleCuda CheckRequestQueue]"
+      ],
+      "size": 220,
+      "source_line": 506,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 2136,
+      "reference_names": [
+        "-[AppleCuda registerForADBAutopoll::]"
+      ],
+      "size": 108,
+      "source_line": 540,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 2260,
+      "reference_names": [
+        "-[AppleCuda ADBWrite:::::::]"
+      ],
+      "size": 344,
+      "source_line": 554,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 2636,
+      "reference_names": [
+        "-[AppleCuda ADBRead:::::]"
+      ],
+      "size": 152,
+      "source_line": 619,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 2804,
+      "reference_names": [
+        "-[AppleCuda ADBReset:::]"
+      ],
+      "size": 208,
+      "source_line": 668,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 3044,
+      "reference_names": [
+        "-[AppleCuda ADBFlush::::]"
+      ],
+      "size": 228,
+      "source_line": 704,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 3304,
+      "reference_names": [
+        "-[AppleCuda ADBSetPollList::::]"
+      ],
+      "size": 232,
+      "source_line": 742,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 3568,
+      "reference_names": [
+        "-[AppleCuda ADBPollEnable:::]"
+      ],
+      "size": 208,
+      "source_line": 828,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 3808,
+      "reference_names": [
+        "-[AppleCuda ADBPollDisable:::]"
+      ],
+      "size": 212,
+      "source_line": 866,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4052,
+      "reference_names": [
+        "-[AppleCuda ADBSetPollRate::::]"
+      ],
+      "size": 224,
+      "source_line": 903,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4308,
+      "reference_names": [
+        "-[AppleCuda ADBGetPollRate::::]"
+      ],
+      "size": 16,
+      "source_line": 941,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4324,
+      "reference_names": [
+        "-[AppleCuda ADBSetAlternateKeyboard::::]"
+      ],
+      "size": 16,
+      "source_line": 954,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4340,
+      "reference_names": [
+        "-[AppleCuda registerForClockTicks::]"
+      ],
+      "size": 20,
+      "source_line": 981,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4360,
+      "reference_names": [
+        "-[AppleCuda setRealTimeClock::::]"
+      ],
+      "size": 272,
+      "source_line": 996,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4664,
+      "reference_names": [
+        "-[AppleCuda getRealTimeClock::::]"
+      ],
+      "size": 256,
+      "source_line": 1045,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 4952,
+      "reference_names": [
+        "-[AppleCuda CudaMisc:::::]"
+      ],
+      "size": 168,
+      "source_line": 1157,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 5136,
+      "reference_names": [
+        "-[AppleCuda cuda_process_response]"
+      ],
+      "size": 564,
+      "source_line": 1201,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 5716,
+      "reference_names": [
+        "-[AppleCuda readNVRAM::::::]"
+      ],
+      "size": 16,
+      "source_line": 1280,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 5732,
+      "reference_names": [
+        "-[AppleCuda writeNVRAM::::::]"
+      ],
+      "size": 16,
+      "source_line": 1298,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 5748,
+      "reference_names": [
+        "-[AppleCuda registerForPowerInterrupts::]"
+      ],
+      "size": 20,
+      "source_line": 1316,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 5768,
+      "reference_names": [
+        "-[AppleCuda sendMiscCommand:::::::]"
+      ],
+      "size": 228,
+      "source_line": 1331,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 6344,
+      "reference_names": [
+        "-[AppleCuda interruptOccurred]"
+      ],
+      "size": 396,
+      "source_line": 1470,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 6772,
+      "reference_names": [
+        "-[AppleCuda EnableCudaInterrupt]"
+      ],
+      "size": 28,
+      "source_line": 1564,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 6800,
+      "reference_names": [
+        "-[AppleCuda cuda_transmit_data]"
+      ],
+      "size": 244,
+      "source_line": 1960,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 7044,
+      "reference_names": [
+        "-[AppleCuda cuda_expected_attention]"
+      ],
+      "size": 240,
+      "source_line": 2025,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 7300,
+      "reference_names": [
+        "-[AppleCuda cuda_unexpected_attention]"
+      ],
+      "size": 160,
+      "source_line": 2071,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 7460,
+      "reference_names": [
+        "-[AppleCuda cuda_receive_data]"
+      ],
+      "size": 484,
+      "source_line": 2115,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 7960,
+      "reference_names": [
+        "-[AppleCuda cuda_receive_last_byte]"
+      ],
+      "size": 276,
+      "source_line": 2202,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 8268,
+      "reference_names": [
+        "-[AppleCuda cuda_queue:]"
+      ],
+      "size": 160,
+      "source_line": 2248,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 8476,
+      "reference_names": [
+        "-[AppleCuda cuda_collision]"
+      ],
+      "size": 156,
+      "source_line": 2277,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 8648,
+      "reference_names": [
+        "-[AppleCuda cuda_idle]"
+      ],
+      "size": 72,
+      "source_line": 2316,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 8736,
+      "reference_names": [
+        "-[AppleCuda cuda_error]"
+      ],
+      "size": 368,
+      "source_line": 2342,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
+      "address": 9136,
+      "reference_names": [
+        "-[AppleCuda poll_device]"
+      ],
+      "size": 104,
+      "source_line": 2401,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    }
+  ],
+  "reference_sha256": "8CA26E3452246DE99BBD1731586B154B0B339DF3F4C2E65A50C000CC33EE1D1F",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 6044,
+      "reference_names": [
+        "-[AppleCuda StartCudaTransmission:]"
+      ],
+      "size": 284
+    },
+    {
+      "address": 9256,
+      "reference_names": [
+        "+[drvPPCCudaKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 9276,
+      "reference_names": [
+        "+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]"
+      ],
+      "size": 16
+    }
+  ]
+}

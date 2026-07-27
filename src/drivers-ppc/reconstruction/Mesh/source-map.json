@@ -1,0 +1,646 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1108,
+      "reference_names": [
+        "+[AppleMesh_SCSI probe:]"
+      ],
+      "size": 108,
+      "source_line": 449,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1232,
+      "reference_names": [
+        "-[AppleMesh_SCSI free]"
+      ],
+      "size": 184,
+      "source_line": 477,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1480,
+      "reference_names": [
+        "-[AppleMesh_SCSI getDMAAlignment:]"
+      ],
+      "size": 36,
+      "source_line": 517,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1516,
+      "reference_names": [
+        "-[AppleMesh_SCSI numQueueSamples]"
+      ],
+      "size": 16,
+      "source_line": 529,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1532,
+      "reference_names": [
+        "-[AppleMesh_SCSI sumQueueLengths]"
+      ],
+      "size": 16,
+      "source_line": 535,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1548,
+      "reference_names": [
+        "-[AppleMesh_SCSI maxQueueLength]"
+      ],
+      "size": 16,
+      "source_line": 541,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1564,
+      "reference_names": [
+        "-[AppleMesh_SCSI resetStatistics]"
+      ],
+      "size": 28,
+      "source_line": 547,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1592,
+      "reference_names": [
+        "-[AppleMesh_SCSI executeRequest:buffer:client:]"
+      ],
+      "size": 236,
+      "source_line": 563,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 1844,
+      "reference_names": [
+        "-[AppleMesh_SCSI executeRequest:ioMemoryDescriptor:]"
+      ],
+      "size": 176,
+      "source_line": 607,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2052,
+      "reference_names": [
+        "-[AppleMesh_SCSI resetSCSIBus]"
+      ],
+      "size": 64,
+      "source_line": 639,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2132,
+      "reference_names": [
+        "-[AppleMesh_SCSI interruptOccurred]"
+      ],
+      "size": 116,
+      "source_line": 661,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2264,
+      "reference_names": [
+        "-[AppleMesh_SCSI interruptOccurredAt:]"
+      ],
+      "size": 12,
+      "source_line": 681,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2276,
+      "reference_names": [
+        "-[AppleMesh_SCSI otherOccurred:]"
+      ],
+      "size": 12,
+      "source_line": 688,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2288,
+      "reference_names": [
+        "-[AppleMesh_SCSI receiveMsg]"
+      ],
+      "size": 60,
+      "source_line": 695,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2364,
+      "reference_names": [
+        "-[AppleMesh_SCSI timeoutOccurred]"
+      ],
+      "size": 536,
+      "source_line": 711,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 2932,
+      "reference_names": [
+        "-[AppleMesh_SCSI commandRequestOccurred]"
+      ],
+      "size": 452,
+      "source_line": 776,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 3416,
+      "reference_names": [
+        "-[AppleMesh_SCSI getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 836,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 3432,
+      "reference_names": [
+        "-[AppleMesh_SCSI setPowerState:]"
+      ],
+      "size": 40,
+      "source_line": 842,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 3472,
+      "reference_names": [
+        "-[AppleMesh_SCSI getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 856,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 3488,
+      "reference_names": [
+        "-[AppleMesh_SCSI setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 862,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 3504,
+      "reference_names": [
+        "-[AppleMesh_SCSI InitializeHardware:]"
+      ],
+      "size": 852,
+      "source_line": 1052,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 4544,
+      "reference_names": [
+        "-[AppleMesh_SCSI hardwareStart:]"
+      ],
+      "size": 1220,
+      "source_line": 1225,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 6108,
+      "reference_names": [
+        "-[AppleMesh_SCSI AllocHdwAndChanMem:]"
+      ],
+      "size": 320,
+      "source_line": 1515,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 6492,
+      "reference_names": [
+        "-[AppleMesh_SCSI InitCP]"
+      ],
+      "size": 392,
+      "source_line": 1658,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 6884,
+      "reference_names": [
+        "-[AppleMesh_SCSI UpdateCP:]"
+      ],
+      "size": 1108,
+      "source_line": 1766,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 8024,
+      "reference_names": [
+        "-[AppleMesh_SCSI SetupMsgO]"
+      ],
+      "size": 100,
+      "source_line": 2128,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 8124,
+      "reference_names": [
+        "-[AppleMesh_SCSI InitAutosenseCCL]"
+      ],
+      "size": 144,
+      "source_line": 2152,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 8316,
+      "reference_names": [
+        "-[AppleMesh_SCSI ClearCPResults]"
+      ],
+      "size": 64,
+      "source_line": 2181,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 8380,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoHardwareInterrupt]"
+      ],
+      "size": 388,
+      "source_line": 2209,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 8816,
+      "reference_names": [
+        "-[AppleMesh_SCSI ProcessInterrupt]"
+      ],
+      "size": 484,
+      "source_line": 2299,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 9316,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageGood]"
+      ],
+      "size": 508,
+      "source_line": 2456,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 9840,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageXferAutosense]"
+      ],
+      "size": 108,
+      "source_line": 2563,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 9980,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageXfer]"
+      ],
+      "size": 304,
+      "source_line": 2600,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 10300,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageArb]"
+      ],
+      "size": 92,
+      "source_line": 2661,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 10408,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageSelA]"
+      ],
+      "size": 144,
+      "source_line": 2712,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 10568,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageMsgO]"
+      ],
+      "size": 112,
+      "source_line": 2727,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 10696,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoInterruptStageCmdO]"
+      ],
+      "size": 232,
+      "source_line": 2768,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 10944,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoMessageInPhase]"
+      ],
+      "size": 592,
+      "source_line": 2853,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 11552,
+      "reference_names": [
+        "-[AppleMesh_SCSI ProcessMSGI]"
+      ],
+      "size": 1068,
+      "source_line": 2981,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 12636,
+      "reference_names": [
+        "-[AppleMesh_SCSI HandleReselectionInterrupt]"
+      ],
+      "size": 348,
+      "source_line": 3242,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 13000,
+      "reference_names": [
+        "-[AppleMesh_SCSI getReselectionTargetID]"
+      ],
+      "size": 128,
+      "source_line": 3341,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 13540,
+      "reference_names": [
+        "-[AppleMesh_SCSI WaitForMesh:]"
+      ],
+      "size": 248,
+      "source_line": 3456,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 13820,
+      "reference_names": [
+        "-[AppleMesh_SCSI WaitForReq]"
+      ],
+      "size": 296,
+      "source_line": 3494,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 14164,
+      "reference_names": [
+        "-[AppleMesh_SCSI SetSeqReg:]"
+      ],
+      "size": 52,
+      "source_line": 3527,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 14232,
+      "reference_names": [
+        "-[AppleMesh_SCSI DoHBASelfTest]"
+      ],
+      "size": 44,
+      "source_line": 3547,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 14276,
+      "reference_names": [
+        "-[AppleMesh_SCSI RunDBDMA:stageLabel:]"
+      ],
+      "size": 620,
+      "source_line": 3580,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 14960,
+      "reference_names": [
+        "-[AppleMesh_SCSI GetHBARegsAndClear:]"
+      ],
+      "size": 196,
+      "source_line": 3681,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 15156,
+      "reference_names": [
+        "-[AppleMesh_SCSI SetIntMask:]"
+      ],
+      "size": 24,
+      "source_line": 3730,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 15548,
+      "reference_names": [
+        "-[AppleMesh_SCSI logTimestamp:]"
+      ],
+      "size": 128,
+      "source_line": 3823,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 15708,
+      "reference_names": [
+        "-[AppleMesh_SCSI executeCmdBuf:]"
+      ],
+      "size": 328,
+      "source_line": 3940,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 16068,
+      "reference_names": [
+        "-[AppleMesh_SCSI abortAllCommands:]"
+      ],
+      "size": 272,
+      "source_line": 3977,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 16356,
+      "reference_names": [
+        "-[AppleMesh_SCSI threadResetBus:]"
+      ],
+      "size": 116,
+      "source_line": 3998,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 16488,
+      "reference_names": [
+        "-[AppleMesh_SCSI threadExecuteRequest:]"
+      ],
+      "size": 224,
+      "source_line": 4012,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 16728,
+      "reference_names": [
+        "-[AppleMesh_SCSI ioComplete:]"
+      ],
+      "size": 472,
+      "source_line": 4055,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 17232,
+      "reference_names": [
+        "-[AppleMesh_SCSI pushbackFullTargetQueue:]"
+      ],
+      "size": 108,
+      "source_line": 4166,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 17356,
+      "reference_names": [
+        "-[AppleMesh_SCSI pushbackCurrentRequest:]"
+      ],
+      "size": 120,
+      "source_line": 4207,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 17492,
+      "reference_names": [
+        "-[AppleMesh_SCSI killCurrentRequest]"
+      ],
+      "size": 136,
+      "source_line": 4222,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 17644,
+      "reference_names": [
+        "-[AppleMesh_SCSI disconnect]"
+      ],
+      "size": 140,
+      "source_line": 4249,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 17800,
+      "reference_names": [
+        "-[AppleMesh_SCSI reselectNexus:lun:queueTag:]"
+      ],
+      "size": 256,
+      "source_line": 4278,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 18072,
+      "reference_names": [
+        "-[AppleMesh_SCSI commandCanBeStarted:]"
+      ],
+      "size": 128,
+      "source_line": 4329,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 18200,
+      "reference_names": [
+        "-[AppleMesh_SCSI selectNextRequest]"
+      ],
+      "size": 228,
+      "source_line": 4382,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 18552,
+      "reference_names": [
+        "-[AppleMesh_SCSI killActiveCommand:]"
+      ],
+      "size": 100,
+      "source_line": 4429,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 18668,
+      "reference_names": [
+        "-[AppleMesh_SCSI activateCommand:]"
+      ],
+      "size": 216,
+      "source_line": 4447,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 18900,
+      "reference_names": [
+        "-[AppleMesh_SCSI deactivateCmd:]"
+      ],
+      "size": 152,
+      "source_line": 4477,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 19068,
+      "reference_names": [
+        "-[AppleMesh_SCSI killQueue:finalStatus:]"
+      ],
+      "size": 172,
+      "source_line": 4511,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    },
+    {
+      "address": 19256,
+      "reference_names": [
+        "-[AppleMesh_SCSI UpdateCurrentIndex]"
+      ],
+      "size": 420,
+      "source_line": 4528,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m"
+    }
+  ],
+  "reference_sha256": "3B7251FBD0B83A14655E011B5033A4582DE88CCAC6B600FB3F940BDFF7127173",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 4452,
+      "reference_names": [
+        "-[AppleMesh_SCSI ResetHardware:reason:]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 13128,
+      "reference_names": [
+        "-[AppleMesh_SCSI ResetMESH:reason:]"
+      ],
+      "size": 348
+    },
+    {
+      "address": 15180,
+      "reference_names": [
+        "-[AppleMesh_SCSI IssueAbort]"
+      ],
+      "size": 352
+    },
+    {
+      "address": 18444,
+      "reference_names": [
+        "-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]"
+      ],
+      "size": 92
+    },
+    {
+      "address": 19692,
+      "reference_names": [
+        "+[drvPPCMeshKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 19712,
+      "reference_names": [
+        "+[drvPPCMeshVersion driverKitVersionFordrvPPCMesh]"
+      ],
+      "size": 16
+    }
+  ]
+}

@@ -1,14 +1,16 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        CLASSES = (VGA.m, VGAConfigTable.m, VGASetMode.m, VGAModes.c);
-        H_FILES = (VGA.h, VGAModes.h);
+        CLASSES = (IOVGADisplay.m, vidBIOS.m);
+        H_FILES = (IOVGADisplayReloc.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,
             Makefile,
             Makefile.postamble,
-            Load_Commands.sect
+            Load_Commands.sect,
+            Unload_Commands.sect,
+            emu486.s
         );
         SUBPROJECTS = ();
     };

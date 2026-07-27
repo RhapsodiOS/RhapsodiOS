@@ -181,10 +181,8 @@ int LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigne
     extern unsigned int parsenum(char **strPtr);
     extern int LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigned int *count);
 
-    /* ID buffer is at offset 0x128 (296), size 0x200 (512 bytes) */
-    idBuffer = (char *)self + 0x128;
-    /* Buffer length counter at offset 0x328 (808) */
-    bufferLength = (int *)((char *)self + 0x328);
+    idBuffer = autoDetectIDs;
+    bufferLength = &autoDetectIDindex;
 
     /* Try "IDs" prefix */
     parseResult = parsePrefix("IDs", parameterName);

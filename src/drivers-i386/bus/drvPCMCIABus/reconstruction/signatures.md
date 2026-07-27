@@ -637,10 +637,74 @@ The parser's 32 raw offsets were left as they are: with the layout corrected
 they address the right fields, and rewriting them as named accesses would churn
 32 sites for identical codegen.
 
-**`PCMCIAResourceDriver` is still 516 bytes short**, missing `autoDetectIDs`
-(`[512c]` at +296) and `autoDetectIDindex` (`i` at +808). Whether anything writes
-those by offset the way the config parser does has not been checked; that is the
-next thing to look at.
+**Verified.** The rebuilt `PCMCIAConfigEntry` reads `instance_size` **520**
+against the reference's 520, with **all seventeen ivars identical** in offset,
+name and type but one: `PortRanges` encoded as `{?=...}` where the reference has
+`{_IOPortRangeTable=...}`. Declaring it through a typedef loses the tag in this
+compiler — and the asymmetry is itself the clue, since every other struct here
+is anonymous in the reference too, so Apple declared this one by tag. The ivar
+is now `struct _IOPortRangeTable PortRanges;`. The binary grew 349208 → 350316,
+consistent with the 148 recovered bytes.
+
+### `PCMCIAResourceDriver`: the same defect
+
+`PCMCIAResourceDriver` was 516 bytes short, and it is the same fault, not a
+coincidence. `getCharValues:forParameter:count:` addressed its two fields by raw
+offset —
+
+```c
+idBuffer     = (char *)self + 0x128;            /* 296 = autoDetectIDs   */
+bufferLength = (int *)((char *)self + 0x328);   /* 808 = autoDetectIDindex */
+```
+
+— with a comment naming the offsets and the buffer's 512-byte size, while
+`@interface PCMCIAResourceDriver : IODirectDevice { }` declared **no ivars at
+all**. The object was 296 bytes, entirely inherited, so `self + 0x128` began at
+its last byte and `bzero(idBuffer, 0x200)` cleared 512 bytes of whatever
+followed it in the heap.
+
+Both ivars are now declared — `char autoDetectIDs[512]` at +296 and
+`int autoDetectIDindex` at +808, giving 812 — and the two offset expressions
+became `autoDetectIDs` and `&autoDetectIDindex`. Two sites, so unlike the config
+parser's thirty-two they were worth naming; the codegen is the same either way.
+The `0x200` and `0x1ff` bounds in the copy loops are the reference's constants
+and agree with the declared array.
+
+**No other class in this driver uses raw `self`-offset access**, so the pattern
+is exhausted. It is worth stating what it was: in both classes the offsets were
+recovered correctly from the reference and the ivars were simply never declared
+to match, which turns an accurate reconstruction into a memory-corruption bug
+that no amount of instruction-level comparison would have surfaced. Comparing
+`instance_size` across every class is what found it, and is cheap. **That check
+is worth running against every other reconstructed driver in this tree.**
+
+### Where the class surface stands
+
+Both predictions verified in the build of 2026-07-27 00:46:
+
+| Class | Reference | Rebuilt | Ivars differing |
+| --- | --- | --- | --- |
+| `PCMCIAConfigEntry` | 520 | 520 | 0 of 17 |
+| `PCMCIAResourceDriver` | 812 | 812 | 0 of 2 |
+
+**No class in this driver now differs from the reference in instance size**, and
+the `PortRanges` tag came out right as well: declaring the ivar by struct tag
+rather than through the typedef produced `{_IOPortRangeTable=...}`.
+
+The name pool moved from 25 reference-only names to **7**, and 50 rebuilt-only
+to 32:
+
+```
+_private   adapters   attrMem   busRange   fields   socketTable   verbose
+```
+
+Every one belongs to a class whose instance size already matches — `PCMCIAKernBus`,
+`PCMCIAid`, `_PCMCIAPool`, `_PCMCIAPoolElement` — so these are pure ivar renames
+with no behavioural effect and real collision hazard (`verbose` against
+`setVerbose:`'s parameter, `fields` 28 mentions, `length` 117). They are left
+deliberately. `busRange` is the one with any structure to it: Apple has a single
+`Range busRange` at +20 where we have `_memoryBase` and `_memoryLength`, the same
+eight bytes split in two.
 
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`

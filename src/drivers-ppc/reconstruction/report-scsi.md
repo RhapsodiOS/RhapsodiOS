@@ -356,12 +356,16 @@ exists *for the same function*, and here none does. Evidence:
 
 **The runtime consequence is bounded, and the bound was measured.** Grepping
 `src/` for each of the four selectors outside `drvAppleMesh_SCSI` returns
-**nothing**: all four are referenced only from within `MESH_DBDMA.m` itself. Our
-source is internally consistent — it calls `ResetHardware:` where Apple's binary
-calls `ResetHardware:reason:` — so no external caller would hit an unrecognised
-selector. This is a **version or refactoring divergence between our tree and the
-source Apple shipped, not a broken call path**, and it is characterised, not
-fixed (spec §1.3).
+**nothing** for three of them — `ResetHardware:reason:`, `ResetMESH:reason:`
+and `IssueAbort` are referenced only from within `MESH_DBDMA.m` itself. The
+fourth, `killActiveCommandAndResetBus:reason:`, *is* referenced outside
+`drvAppleMesh_SCSI` (see below) — but every such reference is a `[self ...]`
+send on an `Apple96_SCSI` object, so no external caller reaches a Mesh object
+through it. Our source is internally consistent — it calls `ResetHardware:`
+where Apple's binary calls `ResetHardware:reason:` — so no external caller
+would hit an unrecognised selector. This is a **version or refactoring
+divergence between our tree and the source Apple shipped, not a broken call
+path**, and it is characterised, not fixed (spec §1.3).
 
 The combined wrapper is not a phantom. `killActiveCommandAndResetBus:reason:` is
 declared at `drvApple96_SCSI/Apple96SCSIPrivate.h:151`, defined at
@@ -404,8 +408,14 @@ uniformly wrong. Evidence: [Mesh/findings.md](Mesh/findings.md) and
 ### 4.5 Two checker defects were found and fixed during this spec
 
 Both were **false positives against acceptance item 2**, and in both cases the
-relocation *decode* was always correct — only the checking was wrong. Neither
-fix widened what the check accepts.
+relocation *decode* was always correct — only the checking was wrong. The first
+fix re-narrowed a pairing rule that had gone too loose; the second **did widen**
+what the check accepts — adding `__OBJC,__cat_cls_meth` to the method-list
+allow-list is exactly a widened allowance. That widening is safe: on the actual
+data it admits exactly one pointer, the `__cat_cls_meth` relocation at `0x6010`,
+whose addend `0x1ff8` is precisely the address of
+`+[Sym8xxController(Init) probe:]` — a genuine IMP field, not a boundary
+disagreement being waved through.
 
 **HA16/LO16 paired by address rather than by address computation**
 (`151282da`). `ppc_invariant_check.py` paired each scattered `HA16`/`HI16` with
@@ -976,9 +986,11 @@ disclosed. The section is bounded to the four questions, per spec §5.1.
   basic-block-shape only — no decompiler was available, so nothing here matches
   the byte-level check [report-network.md](report-network.md) §4.3 applied to
   Gem. §5's closing note states what that bounds.
-- **No demonstrated runtime consequence.** Mesh's four divergences (§4.2) are
-  referenced only from within `MESH_DBDMA.m`, so none breaks a call path. This
-  batch has no equivalent of Gem's CRC finding.
+- **No demonstrated runtime consequence.** Three of Mesh's four divergences
+  (§4.2) are referenced only from within `MESH_DBDMA.m`; the fourth is
+  referenced outside `drvAppleMesh_SCSI` but only on an `Apple96_SCSI` object,
+  so none breaks a call path. This batch has no equivalent of Gem's CRC
+  finding.
 - **`isCmdTimedOut` inlining is not confirmed** (§4.3), only judged likely.
 - **The packaging gap is recorded, not closed** (§4.6).
 - **`drvPPC53c96` and `drvPPCATA` were not re-measured** — §6 reads their

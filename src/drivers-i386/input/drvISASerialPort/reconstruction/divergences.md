@@ -3356,6 +3356,24 @@ has no drain loop. Two handlers, two different correct answers — recorded so n
 
 ### Finding 109 (new, for Task 10b) — `executeEvent:data:` writes the event tail twice
 
+> **RETRACTED — FALSE at the binary level.** The source observation is correct: our
+> `executeEvent:data:` does contain two `RX_enqueueLongEvent` call sites
+> (`ISASerialPort.m:3819` and `:3865`). The conclusion drawn from it is wrong. **gcc
+> tail-merges the two identical tails, so the emitted code contains exactly one call —
+> the same as the reference.** Verified by resolving every call relocation in both bodies:
+> both emit **14 calls**, and the target counts are identical function for function —
+> `_spl4` ×1, `_splx` ×2, `_thread_wakeup_prim` ×2, `_thread_call_enter` ×2,
+> `_flowMachine` ×1, `__udivdi3` ×1, `__umoddi3` ×1, `_validateRingBufferSize` ×2,
+> `_executeEvent` ×1, and `__TEXT,__text+-4` (address 0, the TU-1
+> `RX_enqueueLongEvent`) **×1 in each**. There is no extra enqueue in the binary, so
+> there is nothing to fix and Task 10b correctly did not act on this.
+>
+> The lesson is the one Finding 106 already recorded from the other direction: a count
+> taken from source does not establish a count in the object. This is the **fourth**
+> finding in this reconstruction to prove false, after 94, 102 and 68.
+
+*Original text, retained for the record:*
+
 `ISASerialPort.m` calls `RX_enqueueLongEvent` thirteen times where the reference calls it twelve.
 The extra one is in `-[ISASerialPort executeEvent:data:]`, which carries two structurally identical
 tails — MCR rebuild, `thread_call_enter`, mask test, enqueue — one in the `0x53` arm and one in
@@ -4182,3 +4200,71 @@ ledger … entries=45 assembly-matched=2 control-flow-confirmed=39 intentional-m
   summary because the count is zero.
 - All touched files LF-only per `git ls-files --eol`; the two records are `i/lf w/lf`.
 - `ledger.json.lock` is recreated by every `binrecon ledger` run and stays untracked.
+
+## Addendum 12 — `executeEvent:data:` read against the reference
+
+`-[ISASerialPort executeEvent:data:]` was the last function carrying open findings and no owning
+task. It is `control-flow-confirmed` from Task 6b and sat in neither Task 10a's nor 10b's scope.
+Read here against reference 6472–7340. **No defect found.** Ours is 864 bytes against the
+reference's 868, 238 instructions against 246.
+
+### The call graphs are identical
+
+Every call relocation in both bodies was resolved. Both emit **14 calls** and the per-target
+counts match exactly:
+
+| target | reference | ours |
+|---|---|---|
+| `_spl4` | 1 | 1 |
+| `_splx` | 2 | 2 |
+| `_thread_wakeup_prim` | 2 | 2 |
+| `_thread_call_enter` | 2 | 2 |
+| `_flowMachine` | 1 | 1 |
+| `__udivdi3` | 1 | 1 |
+| `__umoddi3` | 1 | 1 |
+| `_validateRingBufferSize` | 2 | 2 |
+| `_executeEvent` | 1 | 1 |
+| `RX_enqueueLongEvent` (address 0) | 1 | 1 |
+
+This retracts **Finding 109** — see the note at that finding. The TU-1 copy of
+`RX_enqueueLongEvent` lives at address 0 and is reached by a *relocated* `call 0`, which is
+indistinguishable from an `objc_msgSend` call site until the relocation is resolved. Any future
+call-graph comparison in this driver must resolve relocations; comparing raw `call` operands will
+silently merge the static helper with every Objective-C dispatch.
+
+### Field accesses agree once addressing modes are folded
+
+Comparing memory operands normalised to `Port`-relative (subtracting 296 from self-relative
+offsets, since `Port` is embedded at 296), **fourteen of seventeen offsets match exactly**:
+`RX.Size`, `RX.HighWater`, `RX.LowWater`, `TX.Size`, `TX.HighWater`, `TX.LowWater`, `Base`,
+`FlowControl`, `RXOstate`, `FrameTOEntry`, `CharLatInterval` and its nanosecond half, `WatchLock`,
+and the `State` high byte at +15.
+
+The three that appear to differ are addressing-mode and caching artifacts, not missing or extra
+operations:
+
+- **`WatchStateMask` (+16)** — both touch it **four times**. The reference computes
+  `&port->WatchStateMask` with `add edx, 0x10` (arithmetic, no memory operand) where ours uses
+  `lea edx, [edi+0x138]`; and at the first of the two sites the reference tests in place
+  (`test [ebx+0x10], edi`) where ours loads to a register first. Equal work.
+- **`State` (+12)** — the reference re-reads it where ours keeps it live in a register.
+- **the `Port *` ivar (+600)** — the reference re-reads it **six** times, ours **three**. This is
+  the `self->port->` versus cached-local shape; it is the largest single contributor to the size
+  difference and it is a source-spelling choice, not a divergence.
+
+### Still open, and deliberately not acted on
+
+**Finding 111's last two sites** are real: `ISASerialPort.m:3817` and `:3863` stage
+`self->Port.FlowControl` through a local via `memcpy` where the reference tests the field in place.
+They cost no net bytes — ours is 4 bytes *smaller* than the reference overall — so this is
+literalness polish rather than a defect. Left recorded rather than fixed, since the two sites sit
+immediately before the two tail-merged `RX_enqueueLongEvent` calls and touching them risks
+perturbing the merge that currently reproduces the reference's single call.
+
+### Method note
+
+Two of this pass's own measurements were wrong before they were right, and both errors were the
+same kind: a normalisation applied to one side but not the other, then a regex that matched
+`add esp, 0x10` and `shl edi, 0x10` as if they were `Port+16` accesses. Both inflated an apparent
+divergence that did not exist. A field-count comparison in this driver is only meaningful when the
+same fold is applied to both binaries and the operand is confirmed to be a memory reference.

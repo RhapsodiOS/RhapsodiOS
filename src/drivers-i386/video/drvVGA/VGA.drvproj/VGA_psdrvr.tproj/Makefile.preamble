@@ -1,1 +1,1 @@
-OTHER_LDFLAGS = -bundle
+OTHER_LDFLAGS = -bundle -undefined suppress

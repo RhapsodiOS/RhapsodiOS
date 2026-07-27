@@ -36,36 +36,76 @@
 
 #ifdef DRIVER_PRIVATE
 
-#define MAX_IO_RANGES 16
-#define MAX_MEM_WINDOWS 16
+/*
+ * The ivar layout below is Apple's, recovered from the PCMCIABus_reloc
+ * class structure: seventeen ivars totalling an instance size of 520.
+ * PCMCIAKernBusParsing.m writes these fields by raw byte offset, using
+ * the same offsets, so the layout is load-bearing rather than cosmetic.
+ */
+
+#define PCMCIA_POWER_ENTRIES    7
+#define PCMCIA_PORT_ENTRIES     16
+#define PCMCIA_MEM_ENTRIES      16
+
+/* {?="mantissa"s"exponent"s} */
+typedef struct {
+    short           mantissa;
+    short           exponent;
+} PCMCIAScalar;
+
+/* {_IOPortRangeTable="numEntries"I"table"[16{?="base"I"length"I}]} */
+typedef struct _IOPortRangeTable {
+    unsigned int    numEntries;
+    struct {
+        unsigned int    base;
+        unsigned int    length;
+    } table[PCMCIA_PORT_ENTRIES];
+} IOPortRangeTable;
+
+/* {?="irqUsed"c"share"c"pulse"c"level"c"NMI"c"IOCK"c"BERR"c"VEND"c"irqLevels"L} */
+typedef struct {
+    char            irqUsed;
+    char            share;
+    char            pulse;
+    char            level;
+    char            NMI;
+    char            IOCK;
+    char            BERR;
+    char            VEND;
+    unsigned long   irqLevels;
+} PCMCIAIRQInfo;
+
+/* {?="numEntries"I"table"[16{?="hostBase"I"length"I"cardBase"I"anyHostBase"c}]} */
+typedef struct {
+    unsigned int    numEntries;
+    struct {
+        unsigned int    hostBase;
+        unsigned int    length;
+        unsigned int    cardBase;
+        char            anyHostBase;
+    } table[PCMCIA_MEM_ENTRIES];
+} PCMCIAMemSpaceInfo;
 
 @interface PCMCIAConfigEntry : Object
 {
 @private
-    unsigned int    _configIndex;           /* Offset 0x04: Configuration index (0-63) */
-    unsigned int    _interfaceType;         /* Offset 0x08: Interface type */
-
-    /* I/O configuration */
-    unsigned int    _ioAddressLines;        /* Offset 0x6c: Number of address lines decoded */
-    unsigned char   _io8BitSupported;       /* Offset 0x70: 8-bit I/O transfers supported */
-    unsigned char   _io16BitSupported;      /* Offset 0x71: 16-bit I/O transfers supported */
-    unsigned int    _ioRangeCount;          /* Offset 0x74: Number of I/O ranges */
-    unsigned int    _ioRangeStart[MAX_IO_RANGES];   /* Offset 0x78: I/O range base addresses */
-    unsigned int    _ioRangeLength[MAX_IO_RANGES];  /* Offset 0x7c: I/O range lengths */
-
-    /* IRQ configuration */
-    unsigned char   _irqPresent;            /* Offset 0xf8: IRQ information present */
-    unsigned char   _irqShared;             /* Offset 0xf9: IRQ can be shared */
-    unsigned char   _irqPulse;              /* Offset 0xfa: Pulse mode IRQ */
-    unsigned char   _irqLevel;              /* Offset 0xfb: Level mode IRQ */
-    unsigned int    _irqMask;               /* Offset 0x100: Bitmask of supported IRQs */
-
-    /* Memory configuration */
-    unsigned int    _memWindowCount;        /* Offset 0x104: Number of memory windows */
-    unsigned int    _memCardAddress[MAX_MEM_WINDOWS];   /* Offset 0x108: Card memory addresses */
-    unsigned int    _memLength[MAX_MEM_WINDOWS];        /* Offset 0x10c: Memory window lengths */
-    unsigned int    _memHostAddress[MAX_MEM_WINDOWS];   /* Offset 0x110: Host memory addresses */
-    unsigned char   _memHostAddressValid[MAX_MEM_WINDOWS]; /* Offset 0x114: Host address valid flags */
+    unsigned int        index;                          /* +4   */
+    int                 interfaceType;                  /* +8   */
+    char                BVDActive;                      /* +12  */
+    char                WPActive;                       /* +13  */
+    char                ReadyBusyActive;                /* +14  */
+    char                MemoryWaitRequired;             /* +15  */
+    PCMCIAScalar        VccPowerInfo[PCMCIA_POWER_ENTRIES];  /* +16  */
+    PCMCIAScalar        Vpp1PowerInfo[PCMCIA_POWER_ENTRIES]; /* +44  */
+    PCMCIAScalar        Vpp2PowerInfo[PCMCIA_POWER_ENTRIES]; /* +72  */
+    PCMCIAScalar        waitTiming;                     /* +100 */
+    PCMCIAScalar        readyBusyTiming;                /* +104 */
+    unsigned int        IOAddrLines;                    /* +108 */
+    char                bus8;                           /* +112 */
+    char                bus16;                          /* +113 */
+    IOPortRangeTable    PortRanges;                     /* +116 */
+    PCMCIAIRQInfo       IRQInfo;                        /* +248 */
+    PCMCIAMemSpaceInfo  MemSpaceInfo;                   /* +260 */
 }
 
 - init;

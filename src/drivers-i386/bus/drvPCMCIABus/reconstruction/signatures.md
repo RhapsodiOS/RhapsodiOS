@@ -577,6 +577,71 @@ the reference's around `ref[173]` in `probeDevice:`, and a 52-against-5 run at
 the caveat this document has now earned three times over: read the source before
 believing the aligner.
 
+## Finding 2 — `PCMCIAConfigEntry`'s ivar layout, and a heap overflow
+
+**The "25 reference selectors we do not implement" recorded earlier were not
+selectors.** Checking what implements them: the reference implements *none* of
+them, and sends none of them. They are **ivar names**, pooled in
+`__OBJC,__meth_var_names` alongside selectors. The earlier reading of that
+number was wrong, and so was the conclusion drawn from it.
+
+Split by what they actually are:
+
+| Class | Reference size | Ours | Nature |
+| --- | --- | --- | --- |
+| `PCMCIAConfigEntry` | 520 | 372 | **layout differs** — 17 of the 25 names |
+| `PCMCIAResourceDriver` | 812 | 296 | **layout differs** — 2 names |
+| `PCMCIAKernBus` | 40 | 40 | naming only |
+| `PCMCIATuple` | 12 | 12 | naming only |
+| `PCMCIAid` | 24 | 24 | naming only — Apple's `char *fields[5]` against our five pointers |
+| `_PCMCIAPool`, `_PCMCIAPoolElement` | 8 | 8 | naming only |
+
+Renaming the naming-only cases carries no behavioural benefit and real hazard —
+`verbose` collides with `setVerbose:`'s parameter, and `length`, `data` and
+`fields` have 117, 51 and 28 mentions apiece. Not done.
+
+**`PCMCIAConfigEntry` was a different matter: the mismatch was corrupting the
+heap.** `PCMCIAKernBusParsing.m` populates the object through 32 raw byte-offset
+writes rather than named ivars —
+
+```c
+*(unsigned int *)((char *)configEntry + 0x6c) = ioByte & 0x1f;
+*(unsigned int *)((char *)configEntry + 0x108 + i * 0x10) = hostAddr << 8;
+```
+
+— and every one of those offsets is **Apple's**, correctly recovered. The parser
+was right. The class declaration was not: at 372 bytes it is 148 short, so the
+memory-window writes, which reach `0x114 + 15*0x10` = 516, ran past the end of
+the allocation. Nothing indexed the wrong field quietly; it wrote off the object.
+
+The layout is fully recoverable from the class structure's ivar types, nested
+encodings included:
+
+```
+{?="mantissa"s"exponent"s}                                            PCMCIAScalar
+{_IOPortRangeTable="numEntries"I"table"[16{?="base"I"length"I}]}      IOPortRangeTable
+{?="irqUsed"c"share"c"pulse"c"level"c"NMI"c"IOCK"c"BERR"c"VEND"c"irqLevels"L}
+{?="numEntries"I"table"[16{?="hostBase"I"length"I"cardBase"I"anyHostBase"c}]}
+```
+
+`PCMCIAConfigEntry.h` now declares those four types and Apple's seventeen ivars
+in order; the offsets reproduce +4 through +260 and total exactly 520. The
+accessors were remapped onto the real fields — `ioRangeCount` reads
+`PortRanges.numEntries`, `irqMask` reads `IRQInfo.irqLevels`, `memCardAddressAt:`
+reads `MemSpaceInfo.table[i].cardBase`, and so on. The nine power and timing
+fields Apple carries and we never had — `VccPowerInfo`, `Vpp1PowerInfo`,
+`Vpp2PowerInfo`, `waitTiming`, `readyBusyTiming`, `BVDActive`, `WPActive`,
+`ReadyBusyActive`, `MemoryWaitRequired` — are the missing 148 bytes.
+
+The parser's 32 raw offsets were left as they are: with the layout corrected
+they address the right fields, and rewriting them as named accesses would churn
+32 sites for identical codegen.
+
+**`PCMCIAResourceDriver` is still 516 bytes short**, missing `autoDetectIDs`
+(`[512c]` at +296) and `autoDetectIDindex` (`i` at +808). Whether anything writes
+those by offset the way the config parser does has not been checked; that is the
+next thing to look at.
+
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`
 sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,

@@ -322,10 +322,10 @@ IOLog ("InitSCSITape: not a tape\n");
 {
     if (_senseDataPtr)
 	IOFree (_senseDataPtr, sizeof (struct esense_reply));
+    if (_devAcquired)
+	[self releaseDevice];		/* gives back the target and luns */
     if (_devLock)
 	[_devLock free];
-    if (_reservedTargetLun)
-	[_controller releaseTarget: _target lun: _lun forOwner: _controller];
     return [super free];
 }
 

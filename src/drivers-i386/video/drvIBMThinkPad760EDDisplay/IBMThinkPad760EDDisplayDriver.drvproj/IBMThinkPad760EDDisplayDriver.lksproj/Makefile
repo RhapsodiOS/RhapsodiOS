@@ -15,7 +15,7 @@ LANGUAGE = English
 
 CLASSES = IBMThinkPad760ED.m TransferTable.m
 
-HFILES = IBMThinkPad760EDDisplayDriver.h
+HFILES = IBMThinkPad760ED.h
 
 OTHERLINKED = smapi.s
 

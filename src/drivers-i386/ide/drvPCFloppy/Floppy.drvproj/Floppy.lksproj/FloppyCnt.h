@@ -111,8 +111,7 @@ typedef struct {
  * Forward declarations for external functions
  */
 extern void *alloc_cnvmem(unsigned int size, unsigned int align);
-extern IOReturn IOForkThread(void (*threadFunc)(void *), void *arg);
-extern void IOExitThread(void);
+/* IOForkThread / IOExitThread come from <driverkit/generalFuncs.h> */
 
 /*
  * Floppy drive detection functions (defined in FloppyCnt.m)

@@ -490,6 +490,26 @@ nothing more: `probeDevice:withDescription:` carries substantial divergences
 beyond the scope of this thread, and that figure is the baseline for whoever
 takes it on.
 
+**Verified after the move.** All ten guards now appear in the reference's order,
+`PKB: aborting probe` last, and the whole-binary `_verbose` counts still read 66
+and 1 — the block moved rather than multiplied, as intended.
+
+Similarity rose only from 42.4% to **42.9%**, which is the honest measure of what
+a log-placement fix is worth. The instruction counts are nearly equal — 307
+reference against 308 ours — but the bodies diverge across 21 runs. The largest:
+
+| | |
+| --- | --- |
+| ref 64 insns / ours 3 | at `ref[233]`, beginning `mov eax, 1 ; jmp` — a success-return path we largely lack |
+| ours 30 / ref 0 | at `ref[217]` |
+| ours 22 / ref 12 | at `ref[219]` |
+| ours 20 / ref 0 | at `ref[213]` |
+| ours 16 / ref 0 | at `ref[173]` |
+
+Roughly 64 reference instructions are missing from ours and a similar volume of
+ours has no counterpart. That is a body-level reconstruction gap in this method,
+not a residue of the logging work, and it wants its own pass.
+
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`
 sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,

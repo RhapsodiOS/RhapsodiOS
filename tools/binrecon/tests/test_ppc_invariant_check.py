@@ -229,6 +229,19 @@ def test_objc_method_list_vanilla_pointing_into_text_is_not_reported(tmp_path):
     assert check_document(document) == []
 
 
+def test_objc_category_class_method_list_pointing_into_text_is_not_reported(tmp_path):
+    # __cat_cls_meth holds the objc_method structs for class methods declared
+    # in a category -- the same IMP-field justification as __cat_inst_meth.
+    # drvPPCSym8xx is the first measured driver to carry one
+    # (+[Sym8xxController(Init) probe:]), and it was reported as a violation
+    # because the allowance listed only three of the four method-list sections.
+    document = _objc_document(
+        tmp_path, section="__OBJC,__cat_cls_meth", target="__TEXT,__text",
+    )
+
+    assert check_document(document) == []
+
+
 def test_objc_non_method_list_vanilla_pointing_into_text_is_reported(tmp_path):
     # Same destination as above, but from a section that isn't a method
     # list -- the IMP-field justification doesn't apply here, so the

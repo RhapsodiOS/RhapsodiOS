@@ -22,7 +22,8 @@ _PAIRED_KINDS = ("hi16", "ha16", "lo16", "jbsr", "sectdiff")
 # __TEXT,__text -- the only __OBJC sections where that is true. Verified
 # against SCSIServer_reloc and SCSITape_reloc: every __OBJC vanilla
 # relocation naming __TEXT,__text lives in one of these three.
-_OBJC_METHOD_LIST_SECTIONS = ("__OBJC,__cls_meth", "__OBJC,__inst_meth", "__OBJC,__cat_inst_meth")
+_OBJC_METHOD_LIST_SECTIONS = ("__OBJC,__cls_meth", "__OBJC,__inst_meth",
+                              "__OBJC,__cat_cls_meth", "__OBJC,__cat_inst_meth")
 
 # Scattered HI16/HA16/LO16 relocations and SECTDIFF (macho.py's
 # "ppc-scattered-*-32-absolute" / "ppc-sectdiff-32-absolute" kinds) store a

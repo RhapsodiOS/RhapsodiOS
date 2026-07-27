@@ -637,10 +637,45 @@ The parser's 32 raw offsets were left as they are: with the layout corrected
 they address the right fields, and rewriting them as named accesses would churn
 32 sites for identical codegen.
 
-**`PCMCIAResourceDriver` is still 516 bytes short**, missing `autoDetectIDs`
-(`[512c]` at +296) and `autoDetectIDindex` (`i` at +808). Whether anything writes
-those by offset the way the config parser does has not been checked; that is the
-next thing to look at.
+**Verified.** The rebuilt `PCMCIAConfigEntry` reads `instance_size` **520**
+against the reference's 520, with **all seventeen ivars identical** in offset,
+name and type but one: `PortRanges` encoded as `{?=...}` where the reference has
+`{_IOPortRangeTable=...}`. Declaring it through a typedef loses the tag in this
+compiler — and the asymmetry is itself the clue, since every other struct here
+is anonymous in the reference too, so Apple declared this one by tag. The ivar
+is now `struct _IOPortRangeTable PortRanges;`. The binary grew 349208 → 350316,
+consistent with the 148 recovered bytes.
+
+### `PCMCIAResourceDriver`: the same defect
+
+`PCMCIAResourceDriver` was 516 bytes short, and it is the same fault, not a
+coincidence. `getCharValues:forParameter:count:` addressed its two fields by raw
+offset —
+
+```c
+idBuffer     = (char *)self + 0x128;            /* 296 = autoDetectIDs   */
+bufferLength = (int *)((char *)self + 0x328);   /* 808 = autoDetectIDindex */
+```
+
+— with a comment naming the offsets and the buffer's 512-byte size, while
+`@interface PCMCIAResourceDriver : IODirectDevice { }` declared **no ivars at
+all**. The object was 296 bytes, entirely inherited, so `self + 0x128` began at
+its last byte and `bzero(idBuffer, 0x200)` cleared 512 bytes of whatever
+followed it in the heap.
+
+Both ivars are now declared — `char autoDetectIDs[512]` at +296 and
+`int autoDetectIDindex` at +808, giving 812 — and the two offset expressions
+became `autoDetectIDs` and `&autoDetectIDindex`. Two sites, so unlike the config
+parser's thirty-two they were worth naming; the codegen is the same either way.
+The `0x200` and `0x1ff` bounds in the copy loops are the reference's constants
+and agree with the declared array.
+
+**No other class in this driver uses raw `self`-offset access**, so the pattern
+is exhausted. It is worth stating what it was: in both classes the offsets were
+recovered correctly from the reference and the ivars were simply never declared
+to match, which turns an accurate reconstruction into a memory-corruption bug
+that no amount of instruction-level comparison would have surfaced. Comparing
+`instance_size` across every class is what found it, and is cheap.
 
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`

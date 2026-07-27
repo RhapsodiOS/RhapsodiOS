@@ -573,9 +573,10 @@ copy of the `vidBIOS` class metadata agrees with it exactly: `vidBIOS : Object`,
 type encodings.
 
 `vidBIOS.m` and the emulator's assembly file are to be **listed** in the
-`lksproj` Makefile from the start (spec §1.4) but not written here; the link is
-expected to fail on `.objc_class_name_vidBIOS` and `_emu486` until drvVGA
-supplies them.
+`lksproj` Makefile from the start (spec §1.4) but not written here. The spec
+expected the link to fail on `.objc_class_name_vidBIOS` and `_emu486` until
+drvVGA supplies them; it does not — see "Build status" below, where `kl_ld`
+turns out to be a relocatable link that simply leaves them undefined.
 
 ## Source-file partition
 
@@ -2298,8 +2299,10 @@ Separately, **eight** `.objc_`-prefixed symbols are Objective-C class and
 category references rather than function imports. Three name classes the kernel
 supplies: `.objc_class_name_IODevice`, `.objc_class_name_IOFrameBufferDisplay`
 and `.objc_class_name_Object`. One, **`.objc_class_name_vidBIOS`, is defined by
-this binary's own deferred `vidBIOS.m`**, and together with `_emu486` it is what
-will leave the ThinkPad link unresolved until drvVGA supplies both (spec §4.3).
+this binary's own deferred `vidBIOS.m`**, and it stays undefined in our build
+until drvVGA supplies it. (`_emu486` does not: it is referenced only from
+`vidBIOS.m`, so it is absent from our build rather than undefined in it. See
+"Build status".)
 The remaining four — easy to miscount as more imports — are simply **this
 binary's own class and category names**:
 `.objc_class_name_IBMThinkPad760EDDisplayDriver`,
@@ -2312,6 +2315,177 @@ shared ones — nine symbols — are the entire non-Objective-C runtime surface 
 rewrite has to satisfy. The eight deferred-only imports must **not** appear in
 `IBMThinkPad760ED.m`, `TransferTable.m` or `smapi.s`; if they do, something has
 been written that belongs to `vidBIOS.m`.
+
+## Build status
+
+First compile of the reconstruction, on the Rhapsody guest via
+`sh vm/build-i386-video-recon.sh drvIBMThinkPad760EDDisplay`. Harness result:
+`make exit=0`, three `compiled …` lines, `fail=0`.
+
+### All three in-scope objects compile
+
+`IBMThinkPad760ED.o`, `TransferTable.o` and `smapi.o` all built, with **no
+errors**. The only diagnostics are seven warnings, all of them the expected
+consequence of `vidBIOS` being `@class`-only:
+
+```
+IBMThinkPad760ED.m:196: warning: cannot find class (factory) method.
+IBMThinkPad760ED.m:196: warning: return type for `alloc' defaults to id
+IBMThinkPad760ED.m:354: warning: `vidBIOS' does not respond to `int10:outregs:iorange:ionum:smmport:'
+IBMThinkPad760ED.m:363: warning: `vidBIOS' does not respond to `int10:outregs:iorange:ionum:smmport:'
+IBMThinkPad760ED.m:420: warning: `vidBIOS' does not respond to `int10:outregs:iorange:ionum:smmport:'
+IBMThinkPad760ED.m:437: warning: `vidBIOS' does not respond to `scratchSegment'
+IBMThinkPad760ED.m:440: warning: `vidBIOS' does not respond to `realToVirtual::'
+IBMThinkPad760ED.m:442: warning: `vidBIOS' does not respond to `int10:outregs:iorange:ionum:smmport:'
+```
+
+gcc warns rather than errors, so no `vidBIOS` `@interface` had to be added to
+`IBMThinkPad760ED.h`. On i386 the sends are harmless: every argument and result
+is 32-bit in `eax`, and every result is discarded or explicitly cast.
+
+### `smapi.s` really is assembled, and the object order is the reference's
+
+The `OTHERLINKED = smapi.s` / `OTHERLINKEDOFILES = smapi.o` pair works.
+`smapi.i386.o` is produced (288 bytes), and `kl_ld` was invoked with exactly
+
+```
+IBMThinkPad760ED.o TransferTable.o smapi.o IBMThinkPad760EDDisplayDriver_instance.o
+```
+
+which is the `__text` order predicted from `common.make:242` in "Source-file
+partition" above. That prediction is now empirical rather than inferred.
+
+One incidental note for anyone reading the harness: pb_makefiles emits the
+arch-less `foo.o` as a **symlink** to `foo.i386.o`, so a `find -type f` test for
+the object reports a false failure. `vm/build-i386-video-recon.sh` was corrected
+to `\( -type f -o -type l \)`.
+
+### The link does *not* fail — §4.3's expectation was wrong
+
+The spec's §4.3 and the harness both predicted the link would fail on
+`.objc_class_name_vidBIOS` and `_emu486`. **It does not.** `kl_ld` performs a
+*relocatable* link (`ld -r`), which leaves unresolved symbols undefined instead
+of erroring, exactly as it does for the kernel's own imports. So
+`IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc` **is
+produced** — 154920 bytes, `Mach-O preload executable i386`.
+
+That binary is *not* a deliverable and is not staged: it has no `vidBIOS` class
+and no `_emu486`, so it cannot load. But it is a real rebuilt artifact, and it
+makes `parity_check.py` runnable for this driver a phase earlier than planned.
+
+The complete undefined-symbol list of the rebuilt `_reloc`, verbatim from
+`nm -u`:
+
+```
+.objc_class_name_IODevice
+.objc_class_name_IOFrameBufferDisplay
+.objc_class_name_Object
+.objc_class_name_vidBIOS
+_IOForkThread
+_IOFree
+_IOLog
+_IOMalloc
+_IOSetThreadPriority
+_IOSleep
+_bzero
+_objc_msgSend
+_objc_msgSendSuper
+```
+
+Thirteen symbols, and they are **precisely** what "Undefined imports" above
+predicted: the four in-scope-only imports, the five shared ones, the three
+kernel-supplied classes, and `.objc_class_name_vidBIOS`. **None of the eight
+deferred-only imports appears** — no `_IOMallocLow`, `_IOMapPhysicalIntoIOTask`,
+`_memset`, `_page_size` or the rest — which confirms that nothing belonging to
+`vidBIOS.m` leaked into the three in-scope files. `_emu486` is likewise absent:
+it is referenced only from `vidBIOS.m`, so it is not an unresolved symbol of
+*this* build at all, only of the eventual complete one.
+
+### `parity_check.py`, run for the first time
+
+`parity_check.py REFERENCE REBUILT` reports:
+
+| Bucket | Count | Contents |
+| --- | --- | --- |
+| `missing_symbols` | **1** | `_emu486` |
+| `missing_strings` | **8** | the eight deferred `vidBIOS.m` strings tabulated under "The `__TEXT,__cstring` section" |
+| `extra_strings` | 0 | — |
+| `extra_symbols` | 35 | stabs debug entries (`…:f19`), source filenames, and the empty name — artifacts of the unstripped `-g` build, not real extras |
+
+So **all 31 of the reference's non-deferred `__TEXT,__text` symbols are present**
+and every reference string except the deferred eight is present, with nothing
+extra. Corroborating the string result by section size: reference `__cstring`
+is 1416 bytes, rebuilt 1092, and the difference — 324 — is exactly the sum of
+the eight deferred strings' lengths including their NULs. The in-scope
+`__cstring` is complete and byte-exact.
+
+### Function extents: 17 of the 29 in-scope match, 12 do not
+
+Name-level parity is not byte-level parity. Comparing each function's extent
+(next symbol's address minus its own, so padding is included on both sides):
+
+| # | Function | ref | rebuilt | Δ |
+| --- | --- | --- | --- | --- |
+| 2 | `initFromDeviceDescription:` | 780 | 788 | +8 |
+| 3 | `updateModeTable` | 128 | 116 | −12 |
+| 7 | `revertToVGAMode` | 216 | 212 | −4 |
+| 8 | `getModeInfo:` | 168 | 164 | −4 |
+| 9 | `determineConfiguration:` | 396 | 404 | +8 |
+| 11 | `setPCIConfiguration` | 676 | 664 | −12 |
+| 12 | `setPendingDisplayMode:` | 544 | 484 | −60 |
+| 14 | `setDisplayDeviceState:` | 80 | 76 | −4 |
+| 15 | `unlockRegisters` | 168 | 152 | −16 |
+| 16 | `lockRegisters` | 168 | 152 | −16 |
+| 23 | `reportSystemConfiguration` | 1088 | 1116 | +28 |
+| 24 | `name` | 60 | 56 | −4 |
+
+The other 17 in-scope functions — including all four `TransferTable` methods,
+`_smapi_asm`, `_set555Mode`, `enterLinearMode` and `setTransferTable:count:` —
+match their reference extent **exactly**, as do both generated objects. The
+in-scope `__text` span is 6464 bytes against the reference's 6552, 88 short.
+
+These twelve are the outstanding work for a byte-exact reconstruction. They are
+recorded here as measurement, not repaired: this task's gate was compilation.
+
+### Ledger status
+
+All 40 entries remain **`unexamined`**, which is the only defensible status. The
+strongest evidence available is name-level parity, and *no* entry has been
+confirmed byte-for-byte against a rebuild — twelve demonstrably differ. The
+29 in-scope entries additionally now carry `reviewer` and `source_path` /
+`source_line`, so the ledger states which source reconstructs each reference
+address. The eleven remaining entries — the two generated objects and the nine
+covering the deferred `vidBIOS`/`_emu486` region — were left untouched.
+
+Two caveats a reader must not misread:
+
+- **`--reason` is silently discarded.** `ledger.py:267-272` assigns `reason`
+  only on the `intentional-mismatch` branch; every other transition drops it. So
+  all 40 entries still have `reason: null` despite reasons being supplied. This
+  paragraph is where the reason lives instead.
+- **`rebuilt_sha256` is still the placeholder** documented above —
+  `47539E03…B5AEC`, the reference's own hash. It was **left uncorrected**: the
+  per-entry `comparison` artifacts were generated from that same
+  reference-against-its-own-copy run, and rewriting only the top-level hash
+  would make the two disagree, which is a worse inconsistency than the one
+  already documented. For the record, the real rebuilt `_reloc` produced by this
+  task hashes to
+  `A8B117B37B51531A1B28176446326C17E8529F9E24BA6994092795116A338723`. It is a
+  build artifact and is not committed; it is not reproducible byte-for-byte
+  anyway, since the unstripped `-g` build embeds absolute guest paths.
+
+### What has to happen before this driver links into something loadable
+
+1. drvVGA lands `vidBIOS.m` and the `_emu486` assembly file.
+2. This project's `lksproj` Makefile gains them — **`vidBIOS.m` must not go in
+   `CLASSES`**, for the object-ordering reason set out in "Source-file
+   partition": in the reference `vidBIOS.o` links *last*, after the generated
+   `IBMThinkPad760EDDisplayDriver_instance.o`, and a `CLASSES` entry would place
+   it immediately after `TransferTable.o`.
+3. Only then is the rebuilt `_reloc` structurally comparable to the reference
+   over its whole extent, `binrecon analyze` can be re-run against a genuine
+   rebuild, `rebuilt_sha256` and the comparison artifacts become meaningful, and
+   entries can start advancing off `unexamined`.
 
 ## The driver is a Trident, and one binary serves two machines
 

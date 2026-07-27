@@ -2,9 +2,11 @@
 # Build the i386 video drivers under reconstruction; stage config bundles.
 #
 # drvCirrusLogicGD5434 must link: its _reloc is the deliverable.
-# drvIBMThinkPad760EDDisplay cannot link yet — vidBIOS.m and _emu486 are
-# owned by the drvVGA reconstruction — so its gate is that the three
-# in-scope objects compile.
+# drvIBMThinkPad760EDDisplay's gate is only that the three in-scope objects
+# compile. It does produce a _reloc — kl_ld is a relocatable link, so the
+# drvVGA-owned .objc_class_name_vidBIOS and _emu486 stay undefined rather
+# than failing the link — but that _reloc cannot load until drvVGA supplies
+# them, so it is not staged as a deliverable.
 
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
@@ -82,11 +84,13 @@ build_objects() {
 	echo "======== build $name ($dir), objects only ========"
 	run_make "$src" || return 1
 	ec=$MAKE_EC
-	echo "make exit=$ec for $name (a link failure here is expected)"
+	echo "make exit=$ec for $name (objects, not a loadable driver)"
 
 	miss=0
 	for o in $*; do
-		found=`find "$src" -name "$o" -type f 2>/dev/null | head -1`
+		# pb_makefiles leaves the arch-less name as a symlink to the
+		# per-arch object, so -type f would miss it.
+		found=`find "$src" -name "$o" \( -type f -o -type l \) 2>/dev/null | head -1`
 		if [ -z "$found" ]; then
 			echo "FAILED: $o was not compiled" >&2
 			miss=1
@@ -97,7 +101,8 @@ build_objects() {
 	if [ $miss -ne 0 ]; then
 		return 1
 	fi
-	echo "NOTE: $name does not link until drvVGA supplies vidBIOS.m and emu486."
+	echo "NOTE: $name leaves .objc_class_name_vidBIOS and _emu486 undefined;"
+	echo "NOTE: it cannot load until drvVGA supplies vidBIOS.m and emu486."
 	return 0
 }
 

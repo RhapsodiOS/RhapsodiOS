@@ -15,7 +15,7 @@ LANGUAGE = English
 
 CLASSES = IOVGADisplay.m vidBIOS.m
 
-HFILES = IOVGADisplayPrivate.h
+HFILES = IOVGADisplayReloc.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect\
             Unload_Commands.sect emu486.s

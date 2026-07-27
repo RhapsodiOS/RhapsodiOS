@@ -9,7 +9,7 @@
  */
 
 #import <objc/Object.h>
-#import "IOVGADisplayPrivate.h"
+#import "IOVGADisplayReloc.h"
 
 @interface vidBIOS : Object
 @end

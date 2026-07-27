@@ -2,7 +2,7 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         CLASSES = (IOVGADisplay.m, vidBIOS.m);
-        H_FILES = (IOVGADisplayPrivate.h);
+        H_FILES = (IOVGADisplayReloc.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

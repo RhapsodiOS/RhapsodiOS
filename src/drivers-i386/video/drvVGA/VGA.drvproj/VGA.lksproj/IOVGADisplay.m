@@ -10,7 +10,7 @@
  */
 
 #import <driverkit/IOVGADisplay.h>
-#import "IOVGADisplayPrivate.h"
+#import "IOVGADisplayReloc.h"
 
 @implementation IOVGADisplay
 @end

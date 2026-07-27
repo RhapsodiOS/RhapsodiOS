@@ -136,10 +136,9 @@ def source_sites(repo_root, source_dir):
             if method:
                 declaration = [line]
                 found_brace = "{" in line
-                found_semicolon = not found_brace and line.rstrip().endswith(";")
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
-                while not found_brace and not found_semicolon and scan + 1 < end:
+                while not found_brace and scan + 1 < end:
                     candidate = lines[scan + 1]
                     if (
                         _END.match(candidate)
@@ -147,20 +146,22 @@ def source_sites(repo_root, source_dir):
                         or _METHOD.match(candidate)
                     ):
                         # A structural boundary, or the start of another
-                        # method declaration, before any brace/semicolon
-                        # means this was never a real declaration; stop
-                        # without consuming the line so the outer loop can
-                        # process it on its own (updating current_class,
-                        # or scanning it as its own declaration).
+                        # method declaration, before any brace means this
+                        # was never a real declaration; stop without
+                        # consuming the line so the outer loop can process
+                        # it on its own (updating current_class, or
+                        # scanning it as its own declaration). A trailing
+                        # ";" on the signature does not stop the search: NeXT
+                        # GCC allows a semicolon between a method signature
+                        # and its body, so only a boundary or the window
+                        # limit rules out a definition.
                         break
                     scan += 1
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";"):
-                        found_semicolon = True
 
-                if found_brace and not found_semicolon:
+                if found_brace:
                     selector = read_selector(" ".join(declaration))
                     if selector:
                         key = f"{method.group(1)}[{current_class} {selector}]"

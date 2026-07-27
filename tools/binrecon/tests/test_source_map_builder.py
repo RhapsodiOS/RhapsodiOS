@@ -581,6 +581,59 @@ def test_source_sites_still_skips_forward_declaration_with_return_type_on_its_ow
     assert "_ide_block_char_majors" not in sites
 
 
+def test_source_sites_finds_semicolon_then_brace_method_definition(tmp_path):
+    """NeXT-era GCC allows a ';' between a method signature and its body.
+
+    AppleCuda's StartCudaTransmission: in cuda.m is written this way; the
+    scanner used to read the trailing ';' as ending a forward declaration
+    and never recorded a site for the definition that follows.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Cuda.m").write_text(
+        "@implementation AppleCuda\n"
+        "\n"
+        "- (void)StartCudaTransmission:(CudaRequest *)plugInMessage;\n"
+        "{\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[AppleCuda StartCudaTransmission:]"] == [
+        ("src/driver/Cuda.m", 3)
+    ]
+
+
+def test_source_sites_still_skips_bare_semicolon_method_declaration(tmp_path):
+    """A signature ending in ';' with no following brace is a declaration,
+    not a definition, and must remain ignored. This must not regress just
+    because a brace-after-semicolon definition is now recorded."""
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Forward.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)declaredOnly:(int)x;\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "-[Foo declaredOnly:]" not in sites
+    assert sites["-[Foo realMethod]"] == [("src/driver/Forward.m", 5)]
+
+
 def _analysis(functions, sha256="A" * 64):
     return {"input": {"sha256": sha256}, "functions": functions}
 

@@ -32,6 +32,19 @@ MATCHES CALIBRATION
   check below for the one function-start mismatch the invariant checker separately
   flags).
 
+## Map validation
+
+`load_source_map` enforces an exact partition between the map's addresses and
+the reference analysis passed to it, so verifying a `--scope-to-objc` map
+requires scoping the analysis to the same covered addresses first: the map
+does not claim the 60 unnamed jump islands, and the bucket reconciliation
+above accounts for those 60 separately.
+
+```
+analysis functions 100 -> scoped 40
+load_source_map OK
+```
+
 ## Buckets
 
 Bucket table from `bucket_functions.py` run against

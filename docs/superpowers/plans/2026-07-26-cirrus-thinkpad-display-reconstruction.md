@@ -596,7 +596,9 @@ print('sha', m['reference_sha256'])
 print('bytes', sum(e['size'] for k in ('mapped','unmapped','boundary_disputed') for e in m[k]))"
 ```
 
-Expected: `mapped 0`, `unmapped 21`, `boundary_disputed 0`, `duplicate_candidates 0`, sha `7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D`, bytes `4388`. Every function unmapped is the correct baseline — our source shares no symbol with the reference.
+Expected: `mapped 0`, `unmapped 21`, `boundary_disputed 0`, `duplicate_candidates 0`, sha `7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D`, bytes **`4354`**. Every function unmapped is the correct baseline — our source shares no symbol with the reference.
+
+**The 34-byte shortfall against `__text`'s 4388 is expected and is not a finding.** IDA reports true function extents, and the linker pads between functions with `nop` to restore alignment. There are 14 such gaps of 1 to 3 bytes each, after `_selectMode` (553→556), `enterLinearMode` (710→712), `revertToVGAMode` (801→804), `determineConfiguration` (890→892), `isValidPCIAssignedBaseAddress:` (1658→1660), `setPCIConfiguration` (1689→1692), `setMode:` (2275→2276), `name` (3325→3328), `setPendingDisplayMode:` (3387→3388), `setTransferTable:count:` (3585→3588), `setBrightness:token:` (3921→3924), `_SetGammaValue` (4001→4004), `setGammaTable` (4086→4088) and the last glue function (4361→4364). The partition still spans 0 to 4388 with no unclaimed region, which is the property that matters. Confirm that span rather than the byte sum.
 
 If `mapped` is nonzero, a name collided by accident; inspect which and note it, do not "fix" it by renaming our invented source.
 

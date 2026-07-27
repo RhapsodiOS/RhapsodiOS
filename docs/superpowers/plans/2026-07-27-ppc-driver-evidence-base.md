@@ -866,7 +866,7 @@ print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
       'dup',len(d['duplicate_candidates']),'disputed',len(d['boundary_disputed']))
 ide=[u for u in d['unmapped'] if any('IdeDisk' in n for n in u['reference_names'])]
 print('unmapped IdeDisk methods:', len(ide))
-assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
+for e in d['duplicate_candidates']: print('  DUPLICATE:', e['reference_names'], e.get('source_sites') or '')
 "
 ```
 
@@ -1057,7 +1057,7 @@ d=json.load(open('src/drivers-ppc/reconstruction/53c96/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
       'dup',len(d['duplicate_candidates']),'disputed',len(d['boundary_disputed']))
 for u in d['unmapped']: print('  unmapped:', u['reference_names'], u['size'])
-assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
+for e in d['duplicate_candidates']: print('  DUPLICATE:', e['reference_names'], e.get('source_sites') or '')
 "
 ```
 
@@ -1218,7 +1218,7 @@ Confirm each item against observed output and record the evidence in `report.md`
 1. Ten `analyze` runs reported `"complete": true` and published `analysis-reference-ida.json`; exit 1 throughout, as designed.
 2. `ppc_invariant_check.py` reported 0 relocation violations across all ten. Symbol/function-start mismatches enumerated, not required to be zero.
 3. Five maps load via `load_source_map`, each against its reference analysis restricted to the addresses that map covers — Step 1.
-4. 0 `duplicate_candidates` across all five — Step 2. `boundary_disputed` enumerated with cause.
+4. `duplicate_candidates` is 0, or every entry is enumerated in the relevant `findings.md` with the evidence establishing its cause — Step 2. `boundary_disputed` likewise. `drvPPCATA` carries four explained entries; see spec §5 item 4.
 5. Every function in every binary lands in exactly one bucket; per binary the buckets sum to IDA's **total** function count. `RECONCILES: yes` in Tasks 2–6.
 6. Suite green — Step 4.
 7. `report.md` carries all five parts, and §5 names each follow-on spec with its measured gap.

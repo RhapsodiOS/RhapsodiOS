@@ -13,7 +13,7 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = CirrusLogicGD5434DisplayDriver.m
+CLASSES = CirrusLogicGD5434DisplayDriver.m ProgramDAC.m
 
 HFILES = CirrusLogicGD5434DisplayDriver.h
 

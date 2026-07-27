@@ -1,37 +1,98 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
-  "reference_sha256": "7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D",
-  "schema_version": "source-map-v1",
-  "unmapped": [
+  "mapped": [
     {
       "address": 0,
       "reference_names": [
         "-[CirrusLogicGD5434DisplayDriver initFromDeviceDescription:]"
       ],
-      "size": 553
-    },
-    {
-      "address": 556,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver selectMode]"
-      ],
-      "size": 154
+      "size": 553,
+      "source_line": 38,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
       "address": 712,
       "reference_names": [
         "-[CirrusLogicGD5434DisplayDriver enterLinearMode]"
       ],
-      "size": 89
+      "size": 89,
+      "source_line": 285,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
       "address": 804,
       "reference_names": [
         "-[CirrusLogicGD5434DisplayDriver revertToVGAMode]"
       ],
-      "size": 86
+      "size": 86,
+      "source_line": 292,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3296,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver clearScreen]"
+      ],
+      "size": 29,
+      "source_line": 370,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3544,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayModes]"
+      ],
+      "size": 16,
+      "source_line": 377,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3588,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setTransferTable:count:]"
+      ],
+      "size": 333,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m"
+    },
+    {
+      "address": 3924,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setBrightness:token:]"
+      ],
+      "size": 77,
+      "source_line": 66,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m"
+    },
+    {
+      "address": 4004,
+      "reference_names": [
+        "_SetGammaValue"
+      ],
+      "size": 82,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m"
+    },
+    {
+      "address": 4088,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setGammaTable]"
+      ],
+      "size": 273,
+      "source_line": 126,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.m"
+    }
+  ],
+  "reference_sha256": "7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 556,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver selectMode]"
+      ],
+      "size": 154
     },
     {
       "address": 892,
@@ -62,13 +123,6 @@
       "size": 1020
     },
     {
-      "address": 3296,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver clearScreen]"
-      ],
-      "size": 29
-    },
-    {
       "address": 3328,
       "reference_names": [
         "-[CirrusLogicGD5434DisplayDriver name]"
@@ -90,13 +144,6 @@
       "size": 16
     },
     {
-      "address": 3544,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver displayModes]"
-      ],
-      "size": 16
-    },
-    {
       "address": 3560,
       "reference_names": [
         "-[CirrusLogicGD5434DisplayDriver displayMemorySize]"
@@ -109,34 +156,6 @@
         "-[CirrusLogicGD5434DisplayDriver ramdacSpeed]"
       ],
       "size": 9
-    },
-    {
-      "address": 3588,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setTransferTable:count:]"
-      ],
-      "size": 333
-    },
-    {
-      "address": 3924,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setBrightness:token:]"
-      ],
-      "size": 77
-    },
-    {
-      "address": 4004,
-      "reference_names": [
-        "_SetGammaValue"
-      ],
-      "size": 82
-    },
-    {
-      "address": 4088,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setGammaTable]"
-      ],
-      "size": 273
     },
     {
       "address": 4364,

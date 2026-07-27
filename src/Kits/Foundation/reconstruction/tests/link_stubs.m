@@ -7,6 +7,7 @@
 
 #import <objc/objc.h>
 #import <objc/Object.h>
+#import <objc/Protocol.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -51,3 +52,81 @@ void NSRecordAllocationEvent(int eventType, ...)
 {
     unimplemented("NSRecordAllocationEvent");
 }
+
+/*  Task 7 (NSObject's instance methods) additions.  NSInternalInconsistencyException
+    is another exception-name constant, inert for the same reason
+    NSInvalidArgumentException above is: only read by code paths the
+    abort()-ing NSException stub is set up to catch before it's used.  */
+id NSInternalInconsistencyException = 0;
+
+/*  Foundation-private helpers NSObject.m's reference calls but that no
+    stage-2a task has reconstructed yet (NSPrivate/NSAutoreleasePool
+    territory).  */
+IMP _NSIMPForSelector(Class aClass, SEL aSelector)
+{
+    unimplemented("_NSIMPForSelector");
+    return NULL;
+}
+
+struct objc_method_description *_NSMethodDescriptionForSelector(Class aClass, SEL aSelector)
+{
+    unimplemented("_NSMethodDescriptionForSelector");
+    return NULL;
+}
+
+BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
+{
+    unimplemented("_NSClassConformsToProtocol");
+    return NO;
+}
+
+const char *_NSMethodExceptionProem(id object, SEL aSelector)
+{
+    unimplemented("_NSMethodExceptionProem");
+    return NULL;
+}
+
+void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
+{
+    unimplemented("_NSObjectRaiseNullSelectorException");
+}
+
+void NSAutoreleaseObject(id anObject)
+{
+    unimplemented("NSAutoreleaseObject");
+}
+
+void NSLog(id format, ...)
+{
+    unimplemented("NSLog");
+}
+
+/*  NSMethodSignature and NSString are not reconstructed until later
+    (NSMethodSignature.m is task-8-plus territory; NSString.m is stage 3).
+    -methodSignatureForSelector: and -description need their class objects
+    to link; minimal stub classes, not subclasses of NSObject, for the same
+    reason NSException above isn't -- ObjC dispatch is purely selector-based
+    so the real superclass doesn't matter to a stub that only aborts.  */
+@interface NSMethodSignature : Object
++ (id)signatureWithObjCTypes:(const char *)types;
+@end
+
+@implementation NSMethodSignature
++ (id)signatureWithObjCTypes:(const char *)types
+{
+    unimplemented("[NSMethodSignature signatureWithObjCTypes:]");
+    return nil;
+}
+@end
+
+@interface NSString : Object
++ (id)stringWithFormat:(id)format, ...;
+@end
+
+@implementation NSString
++ (id)stringWithFormat:(id)format, ...
+{
+    unimplemented("[NSString stringWithFormat:]");
+    return nil;
+}
+@end

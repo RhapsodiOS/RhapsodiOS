@@ -1,0 +1,156 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [],
+  "reference_sha256": "7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver initFromDeviceDescription:]"
+      ],
+      "size": 553
+    },
+    {
+      "address": 556,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver selectMode]"
+      ],
+      "size": 154
+    },
+    {
+      "address": 712,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver enterLinearMode]"
+      ],
+      "size": 89
+    },
+    {
+      "address": 804,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver revertToVGAMode]"
+      ],
+      "size": 86
+    },
+    {
+      "address": 892,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver determineConfiguration]"
+      ],
+      "size": 766
+    },
+    {
+      "address": 1660,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver isValidPCIAssignedBaseAddress:]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 1692,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setPCIConfiguration]"
+      ],
+      "size": 583
+    },
+    {
+      "address": 2276,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setMode:]"
+      ],
+      "size": 1020
+    },
+    {
+      "address": 3296,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver clearScreen]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 3328,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver name]"
+      ],
+      "size": 59
+    },
+    {
+      "address": 3388,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setPendingDisplayMode:]"
+      ],
+      "size": 140
+    },
+    {
+      "address": 3528,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayModeCount]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 3544,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayModes]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 3560,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayMemorySize]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 3576,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver ramdacSpeed]"
+      ],
+      "size": 9
+    },
+    {
+      "address": 3588,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setTransferTable:count:]"
+      ],
+      "size": 333
+    },
+    {
+      "address": 3924,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setBrightness:token:]"
+      ],
+      "size": 77
+    },
+    {
+      "address": 4004,
+      "reference_names": [
+        "_SetGammaValue"
+      ],
+      "size": 82
+    },
+    {
+      "address": 4088,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setGammaTable]"
+      ],
+      "size": 273
+    },
+    {
+      "address": 4364,
+      "reference_names": [
+        "+[CirrusLogicGD5434DisplayDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4376,
+      "reference_names": [
+        "+[CirrusLogicGD5434DisplayDriverVersion driverKitVersionForCirrusLogicGD5434DisplayDriver]"
+      ],
+      "size": 12
+    }
+  ]
+}

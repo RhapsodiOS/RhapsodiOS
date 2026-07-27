@@ -1024,11 +1024,11 @@ reference's exact behaviour, and is now dispositioned `assembly-matched` in
 `stblocksize/ledger.json` with `source_path`/`source_line` set by hand via
 `--source-path`/`--source-line` (the CLI supports this independently of
 `source-map.json`, which this task was not authorized to regenerate or hand-edit).
-`source-map.json` itself still shows `_do_ioc` as `unmapped` and was left
-unchanged, since the brief scopes this task's writable files to the three
-`ledger.json` files and this document — regenerating `source-map.json` needs
-either a fix to `source_map.py`'s K&R parameter-line guard or a rerun of
-Task 1's seeding step, both out of this task's scope. Flagging this
+Task 10 has since fixed the guard: it no longer requires a K&R parameter
+declaration to be indented, so a regenerated `stblocksize/source-map.json`
+maps `_do_ioc` to `stblocksize.c:170` and reads 4 mapped / 16 unmapped
+instead of 3 / 17. The committed `source-map.json` still carries the old
+3 / 17 figures — regenerating it is Task 12's step, not Task 10's. Flagging this
 prominently since it changes what Task 10 has to do: verify/carry this
 disposition forward rather than write fresh, uncompiled code from a
 from-scratch description.
@@ -1114,6 +1114,14 @@ each carries a real finding, not a clean match. `source-map.json` itself is
 left unchanged, for the same out-of-scope reason `_do_ioc`'s finding gives:
 fixing the scanner or rerunning Task 1's seeding step is not authorized by
 this task's brief.
+
+Task 10 has since fixed `_selector()` — it strips C comments before stripping
+parenthesised types, so both signatures now yield their real selectors. A
+regenerated `SCSITape/source-map.json` maps both, and (with Task 9's two
+net-new methods also in place) reads 48 mapped / 2 unmapped instead of
+44 / 6; the only entries left `unmapped` are the two build-generated classes.
+The committed `source-map.json` still carries the old 44 / 6 figures —
+regenerating it is Task 12's step, not Task 10's.
 
 ## Finding: `-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]` (address 524, 908 bytes; `SCSITape.m:177-315`) — the transient reserve/release cycle, ivar zeroing, and final `IOLog` all diverge
 

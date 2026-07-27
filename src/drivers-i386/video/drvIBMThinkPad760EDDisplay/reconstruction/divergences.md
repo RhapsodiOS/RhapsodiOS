@@ -36,21 +36,30 @@ plus the `__OBJC` metadata sections listed in "Source-file partition" below.
 `2`, and `Load Commands` is the 164-byte `WIRE` directive already restored by
 Task 6.
 
-**No function was examined against our source, because our source implements
-none of the reference's behaviour.** Our
-`IBMThinkPad760EDDisplayDriver.lksproj` implements a 366-line invented class
-with `mapMemoryRanges`, `initHardware`, `resetHardware`,
+**All 29 in-scope functions have now been examined against our source**, which
+reconstructs them in `IBMThinkPad760ED.m`, `TransferTable.m` and `smapi.s`; 17
+of the 29 match their reference extent exactly and 12 do not — see "Build
+status" below. That was not true when this report was first written, and the
+next three paragraphs describe the pre-rewrite state; they are retained because
+the `mapped`/`unmapped` history below is unreadable without them. The 11
+entries covering `vidBIOS`, `_emu486` and the two generated objects remain
+unexamined by design (§1.4).
+
+**At the report pass, no function had been examined against our source, because
+our source implemented none of the reference's behaviour.** Our
+`IBMThinkPad760EDDisplayDriver.lksproj` then implemented a 366-line invented
+class with `mapMemoryRanges`, `initHardware`, `resetHardware`,
 `setDisplayMode:height:depth:` and `+probe:`; Apple's implements
 `IBMThinkPad760EDDisplayDriver : IOFrameBufferDisplay` with the category
 `IBMThinkPad760EDDisplayDriver(TransferTable)`, the class `vidBIOS`, the two
 build-generated `_instance.m` classes, the file-static C helper `_set555Mode`
-and the hand-written assembly routine `_smapi_asm`. They share no string, no
+and the hand-written assembly routine `_smapi_asm`. They shared no string, no
 ivar and no hardware access.
 
-They are **not** wholly disjoint by name, and this document must not claim they
-are. The invented class carries the same name as Apple's, so `binrecon
+They were **not** wholly disjoint by name, and this document must not claim they
+were. The invented class carried the same name as Apple's, so `binrecon
 source-map` — which pairs `-[class selector]` symbols and looks at nothing else —
-reports four of the 40 reference entries as `mapped`:
+reported four of the 40 reference entries as `mapped`:
 
 | Addr | Reference symbol | What our invented method actually does |
 | --- | --- | --- |
@@ -61,11 +70,11 @@ reports four of the 40 reference entries as `mapped`:
 
 The prediction in the task brief — that exactly 56, 1184, 1812 and 4344 would
 collide, and that `selectMode:`, `setBrightness:` and `+probe:` would not —
-holds exactly. The collision is **nominal only**. A shared selector name is not
-evidence of a shared implementation, and the mapped count is therefore not the
-measure of disjointness. This document records **the reference's behaviour**,
-not a function-by-function diff. There is nothing to diff until Tasks 8 and 9
-write the replacements.
+held exactly. That collision was **nominal only**. A shared selector name is not
+evidence of a shared implementation, and the mapped count was therefore not the
+measure of disjointness. Tasks 8 and 9 wrote the replacements. The per-function
+findings below record **the reference's behaviour**; the diff against what we
+now build is in "Build status".
 
 ## Evidence
 
@@ -310,21 +319,31 @@ metadata sections and the raw section bytes, all read directly.
 
 ### Function partition
 
-`IBMThinkPad760EDDisplayDriver_reloc`, **40 entries**:
+`IBMThinkPad760EDDisplayDriver_reloc`, **40 entries**. The committed
+`source-map.json` alongside this document reads:
 
 | Bucket | Count |
 | --- | --- |
-| mapped | 4 |
-| unmapped | 36 |
+| mapped | 28 |
+| unmapped | 12 |
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-The four `mapped` are the nominal name collisions at 56, 1184, 1812 and 4344
-tabulated at the top of this document; none of them has a matching
-implementation. Reason class for all 36 `unmapped`: `no counterpart in our
-source`. **Nothing was moved by hand**, in either direction, and our invented
-source was not renamed to suppress the collisions — the buckets report what the
-tool observed.
+The 28 `mapped` are the 24 entries reconstructed in `IBMThinkPad760ED.m`
+(0–5708) and the four in `TransferTable.m` (5708–6440), each carrying the source
+path and line it was reconstructed at. The 12 `unmapped` are `_smapi_asm` — real
+reconstructed source, but in `smapi.s`, which `binrecon source-map` never sees
+because `source_map.py:84` globs `*.m` and `*.c` only — the two build-generated
+`_instance.m` glue functions at 6528 and 6540, and the nine entries of the
+deferred `vidBIOS`/`_emu486` region (6552 onward, including the two unnamed
+routines at 15796 and 15877).
+
+**At the report pass the same map read `mapped 4` / `unmapped 36`** — the four
+nominal name collisions at 56, 1184, 1812 and 4344 tabulated at the top of this
+document, none of which had a matching implementation, and 36 with reason class
+`no counterpart in our source`. **Nothing was moved by hand**, in either
+direction, at either pass, and our invented source was not renamed to suppress
+the collisions — the buckets report what the tool observed.
 
 **Correction to the plan's count: the partition has 40 entries, not 38.** IDA's
 raw document has 107 functions; `tools/binrecon/filter_contained_fragments.py`
@@ -2359,6 +2378,33 @@ One incidental note for anyone reading the harness: pb_makefiles emits the
 arch-less `foo.o` as a **symlink** to `foo.i386.o`, so a `find -type f` test for
 the object reports a false failure. `vm/build-i386-video-recon.sh` was corrected
 to `\( -type f -o -type l \)`.
+
+### The version-symbol gap recurred here, exactly as the Cirrus track predicted
+
+`drvCirrusLogicGD5434`'s `divergences.md` warned under "Build and parity" that
+the missing version bundle and the absent `_VERS_STRING`/`_VERS_NUM` pair are a
+build-configuration gap that "will recur identically on the ThinkPad 760ED
+track, which uses the same project machinery". **It did.** The `kl_ld` object
+list quoted above is the whole of it — `IBMThinkPad760ED.o TransferTable.o
+smapi.o IBMThinkPad760EDDisplayDriver_instance.o` — and there is no
+`IBMThinkPad760EDDisplayDriver_vers.o` among them. Nothing generated or linked
+one, so `_IBMThinkPad760EDDisplayDriver_VERS_STRING` and `_..._VERS_NUM` are
+absent from the rebuilt binary for the same reason they are absent from the
+Cirrus one.
+
+The strongest account the tree itself supports is this.
+`src/pb_makefiles-1/next-sgs.make:36-45` does define `$(VERS_FILE)` /
+`$(VERS_OFILE)` and the rule that generates them, but nothing links
+`$(VERS_OFILE)` unless `OTHER_GENERATED_OFILES` picks it up, and for a Kernel
+Server that comes only from
+`src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`,
+pulled in by the **optional** `-include` at `kernelserver.make:99-102` from
+`$(LOCAL_DEVELOPER_DIR)/Makefiles/pb_makefiles` — `/Local/Developer/Makefiles/pb_makefiles`
+per `src/pb_makefiles-1/platform-variables.make:54`. If that preamble is not
+installed there on the guest, the `-include` is silent and no version object is
+ever added. This is not a proven root cause: the guest filesystem was not
+inspected. It is recorded here so the recurrence is on the record rather than
+rediscovered a third time.
 
 ### The link does *not* fail — §4.3's expectation was wrong
 

@@ -1,0 +1,9 @@
+"Title"         = "drvPPCSym8xx";
+"Driver Name"   = "drvPPCSym8xx";
+"Matching"      = "apple53C8xx Apple53C875Card";
+"Class Names"   = "Sym8xxController";
+"Bus Type"      = "PPC";
+"Boot Driver"   = "no";
+"Server Name" = "drvPPCSym8xx";
+"Driver Version" = "PROGRAM:drvPPCSym8xx  PROJECT:drvPPCSym8xx-3  DEVELOPER:root  BUILT:Tue Nov 23 19:16:26 PST 1999";
+"Version" = "5.00";

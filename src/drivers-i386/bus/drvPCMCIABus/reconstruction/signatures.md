@@ -288,6 +288,50 @@ reference sends the no-argument `freeObjects`, ours sends
 `freeObjects:@selector(free)`. One line, in the card-removal path. Not
 investigated here.
 
+### Verification of the loose-ends pass
+
+Measured in a rebuilt `PCMCIABus_reloc` (349192 bytes, 2026-07-26 23:38 — 28
+bytes larger than before, as an edit of this kind should be). All four
+predictions held:
+
+| Prediction | Reference | Rebuilt |
+| --- | --- | --- |
+| `socketNumber` sent five times | 5 | 5 |
+| two `movzx` byte reads in the log | `[ebp-4]`, `[ebp+0x14]` | `[ebp-4]`, `[ebp+0x14]` |
+| the spill disappears | — | gone |
+| frame returns to the reference's | `sub esp, 0x14` | `sub esp, 0x14` |
+
+The `movzx` operands match slot for slot, which means `currentStatus` now
+occupies `[ebp-4]` exactly as it does in the reference — the frame layout, not
+just its size, agrees.
+
+`status` also dropped from two sends to one, matching. That was not predicted and
+is not claimed as a consequence of this change: the second send sat near the end
+of the method, and this count is sensitive to where the extent is cut, so the
+earlier reading of two may have included a neighbouring static function.
+
+### What the pass revealed once its own noise was gone
+
+With the three loose ends closed, the method can be compared as a whole for the
+first time, and it is **70.7% similar** to the reference — 367 reference
+instructions against 357 of ours. The remaining differences are real and none of
+them belong to this finding:
+
+- **`_verbose` is tested against 1, not 0.** The reference does
+  `cmp byte ptr [ecx + 0x20], 1` / `jne`, ours `cmp byte ptr [...], 0` / `je`, at
+  four sites. Apple's source compares the flag to a value rather than testing it
+  for truth, or the ivar's type differs.
+- **The first `socketNumber` send is unconditional in the reference.** It is
+  issued before `test byte ptr [ebp+0x14], 1`, so its result is computed even
+  when the `present` test sends control elsewhere. Ours now sends it inside the
+  branch. Five sends is right; where the first one sits is not.
+- **Ours has extra message sends around several logging sites**, visible as
+  inserted `push`/`call` runs in the instruction diff.
+- **`freeObjects` versus `freeObjects:`**, as above.
+
+These are a separate pass's work. Recording the 70.7% figure here so that a
+future pass has a baseline to move rather than a fresh guess.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

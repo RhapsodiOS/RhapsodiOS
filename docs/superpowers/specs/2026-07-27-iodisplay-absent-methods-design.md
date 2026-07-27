@@ -43,6 +43,9 @@ disassembly does not settle is recorded as unresolved rather than invented.
 All six go into `src/driverkit-3/libDriver/ppc/IOSmartDisplay.m`, which already
 defines `IOSmartDisplay`, `IOSmartADBDisplay` and `IOSmartDDCDisplay`.
 
+**Amended: five, not six.** `findADBDisplayInfoForType:` is not written, for
+the reason given in §3.6. Everything else in this spec stands.
+
 Reference: `IODisplay.config/IODisplay_reloc`, 32640 bytes, SHA-256
 `FD38FBA638BE85555D342D5349EABDE764F8562084DECEB1A3D33FDAC166B3F1`.
 
@@ -70,9 +73,18 @@ Determined before this spec was written, and not to be re-derived:
   every unknown constant in it was defined somewhere in this tree held again.
   Write the name, not the literal.
 - **`configTable` returns `IOConfigTable *`** (`IOTreeDevice.m:351`), and no
-  `_configTable` static exists in `IOSmartDisplay.m` today. §3.4's question is
+  such static exists in `IOSmartDisplay.m` today. §3.4's question is
   therefore already answered: it must be **introduced**, as a
   file-static `IOConfigTable *`.
+
+  **Correction, from the work itself:** the C identifier is **`configTable`**,
+  not `_configTable`. IDA displays the Mach-O symbol, and Mach-O prefixes every
+  C symbol with an underscore. The same symbol table proves the rule on names
+  whose source is already in hand — `_smInited` and `_ADB2SmartDisplay` are the
+  source's `smInited` (line 105) and `ADB2SmartDisplay` (line 106), and
+  `_SMADBHandler` is `SMADBHandler` (line 430). Writing `_configTable` in C
+  would have produced the Mach-O symbol `__configTable`. Everywhere below that
+  this spec writes `_configTable`, read `configTable`.
 
 ### 1.3 Two methods are already legible
 
@@ -85,7 +97,7 @@ a reviewer can check these independently.
 is stored to a static before `li r3, 1` returns. That is:
 
 ```objc
-_configTable = [deviceDescription configTable];
+configTable = [deviceDescription configTable];
 return YES;
 ```
 
@@ -152,18 +164,123 @@ with the uncertainty stated in a comment, and listed in the deliverable's
 findings. **An honestly recorded uncertainty is a result; a confident guess is a
 defect.**
 
+### 3.6 Amendment: the class-hierarchy divergence, and why one method is not written
+
+Writing the six turned up a divergence between this tree's `IOSmartDisplay` and
+Apple's shipped one that is larger than any single method. It is recorded here
+because it is the more valuable result.
+
+#### The evidence
+
+`IODisplay_reloc` carries `__OBJC,__class` and `__OBJC,__instance_vars`. Read
+with `read_macho`, they give Apple's own superclass links, ivar names, type
+encodings and offsets — measurements, not inferences:
+
+```
+class                            super_class      instance_size
+IOSmartDisplay                   IODevice          284  (0x11C)
+IOSmartADBDisplay                IOSmartDisplay    300  (0x12C)
+IOSmartDDCDisplay                IOSmartDisplay    412  (0x19C)
+
+IOSmartDisplay ivars (4)
+   attachedFramebuffer     @         +0x108
+   attachedRefCon          I         +0x10C
+   priv                    ^v        +0x110
+   _IOSmartDisplay_reserved [2i]     +0x114
+
+IOSmartADBDisplay ivars (6)
+   adbAddr                 C         +0x11C
+   waitAckValue            C         +0x11D
+   wiggleLADAddr           C         +0x11E
+   avDisplayID             s         +0x120
+   numModes                i         +0x124
+   modeList                ^I        +0x128
+```
+
+`.objc_class_name_IODevice` is an undefined external in the symbol table.
+
+This tree declares `@interface IOSmartDisplay:Object` (`IOSmartDisplay.m:44`).
+Under `Object` the class inherits 4 bytes, so its own ivars start at `+0x04`,
+its instance size is `0x18`, and `IOSmartADBDisplay`'s ivars start at `+0x18`.
+Apple's inherit **264** bytes of `IODevice` instead — **260 bytes more** — and
+Apple's `IOSmartADBDisplay` has **six** ivars where this tree has four:
+`wiggleLADAddr`, `numModes` and `modeList` in place of a single
+`const AVDeviceInfo * deviceInfo`.
+
+Those three are, field for field, this tree's `AVDeviceInfo` struct
+(`IOSmartDisplay.m:59-65`) flattened into the object. The shipped driver built
+its display description from the config table at runtime; this tree's source
+reaches a compiled-in `static const AVDeviceInfo` table through a pointer.
+Different mechanism, same data.
+
+#### The consequence
+
+`-[IOSmartADBDisplay findADBDisplayInfoForType:]` (`i6@4:8S12`, i.e.
+`- (IOReturn) findADBDisplayInfoForType:(UInt16)type`) touches **only** the
+three ivars this tree does not have — `+0x11E` (`stb`), `+0x124` (address
+taken, passed to `UnpackString`) and `+0x128` (`stw`, then `lwz` for the return
+value). It touches no ivar this tree does have. What it does is legible:
+
+```
+sprintf( key, "adb%dWiggle", type);
+str = [configTable valueForStringKey:key];
+if( str) { wiggleLADAddr = strtol( str, 0, 0); [configTable freeString:str]; }
+else	  { wiggleLADAddr = 4; }
+
+sprintf( key, "adb%dModes", type);
+str = [configTable valueForStringKey:key];
+if( str) {
+    str2 = [configTable valueForStringKey:str];		// indirect: the value names another key
+    if( str2) {
+	modeList = UnpackString( str2, &numModes);
+	[configTable freeString:str2];
+    }
+    [configTable freeString:str];
+}
+return( modeList ? noErr : -49);
+```
+
+Writing it would mean adding three ivars to `IOSmartADBDisplay` and — if the
+offsets were to be reproduced at all — changing `IOSmartDisplay`'s superclass
+from `Object` to `IODevice`, in a `driverkit-3` framework class shared with
+`IOApplePCIBus` and the deferred `IONDRVSupport`. That is a redesign, not a
+transcription, with no compiler to catch what it breaks.
+
+**The decision taken was to write what is writable and record the divergence as
+the finding.** `findADBDisplayInfoForType:` is therefore not written, and stays
+unmapped. That is the correct outcome, not a failure.
+
+#### Blast radius
+
+The five functions that *are* written are unaffected: every ivar reference in
+them is by name, so the compiler assigns the offset, and none depends on a
+literal offset matching Apple's. `IOSMADBGetAVDeviceID:size:`'s reading of
+`+0x120` as `avDisplayID` is confirmed by Apple's ivar table (`avDisplayID`,
+encoding `s`, offset 288) — the *name and type* are right even though the
+*offset* does not correspond under this tree's layout, and by-name access is
+all the source needs.
+
+`IOSmartDDCDisplay` carries the same +260 shift on `edid1` and nothing more.
+Whether other `libDriver/ppc` sources declare `:Object` where the shipped
+binary used a DriverKit superclass was **not** checked, and is left open.
+
 ## 4. Acceptance
 
-1. All six functions exist in `src/driverkit-3/libDriver/ppc/IOSmartDisplay.m`,
-   with the signatures the binary's selectors imply.
+1. **Amended: five** of the six functions exist in
+   `src/driverkit-3/libDriver/ppc/IOSmartDisplay.m`, with the signatures the
+   binary's selectors imply. `findADBDisplayInfoForType:` is not among them,
+   per §3.6.
 2. For each, a written account maps **every instruction** in its disassembly to
    the source that produces it, including every branch.
 3. Every constant is either a named constant found in this tree, or a numeric
    literal with a comment recording that no name was found.
-4. `_configTable`'s resolution is recorded per §3.4.
+4. `configTable`'s resolution is recorded per §3.4.
 5. `binrecon source-map` is regenerated for `IODisplay` and its `findings.md`
-   updated. **The six move from unmapped to mapped**, and the map still
-   reconciles. This is the only mechanical check available and it is a real one:
+   updated. **Amended: the four written Objective-C methods move from unmapped
+   to mapped**, and the map still reconciles. `_UnpackString` is a C function
+   and is outside `--scope-to-objc`'s view, so it appears in neither list; its
+   evidence is the bucket table. `findADBDisplayInfoForType:` stays unmapped,
+   per §3.6. This is the only mechanical check available and it is a real one:
    it confirms the selectors match the binary exactly.
 6. The binrecon suite is green at **845 passed, 4 skipped**; `ppc_package_check.py`
    still reports no divergences.

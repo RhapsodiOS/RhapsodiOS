@@ -634,6 +634,84 @@ def test_source_sites_still_skips_bare_semicolon_method_declaration(tmp_path):
     assert sites["-[Foo realMethod]"] == [("src/driver/Forward.m", 5)]
 
 
+def test_source_sites_declaration_does_not_reach_a_later_c_function_brace(tmp_path):
+    """Only the *next* non-blank line may turn a ';' into a definition.
+
+    A forward declaration followed by something that is not a structural
+    boundary but eventually opens a brace -- here a C helper -- must not be
+    read as a definition. Scanning on until any brace both invents
+    "-[Foo declaredOnly:]" and swallows the helper, because the outer loop
+    resumes past it.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Helper.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)declaredOnly:(int)x;\n"
+        "\n"
+        "static int helper(int a) {\n"
+        "    return a;\n"
+        "}\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "-[Foo declaredOnly:]" not in sites
+    assert sites["_helper"] == [("src/driver/Helper.m", 5)]
+    assert sites["-[Foo realMethod]"] == [("src/driver/Helper.m", 9)]
+
+
+def test_source_sites_ignores_a_c_continuation_line_starting_with_a_sign(tmp_path):
+    """`_METHOD` matches any indented line starting with '-' or '+'.
+
+    BMacEnetPrivate.m wraps arithmetic that way. The trailing ';' is what
+    stops the body search; without it "+ 2 * sizeof(IODBDMADescriptor) );"
+    scans on to the next brace and yields "+[Foo 2]".
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Wrap.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)compute\n"
+        "{\n"
+        "    dbdmaSize = round_page( RX_RING_LENGTH * sizeof(enet_dma_cmd_t)\n"
+        "                              + 2 * sizeof(IODBDMADescriptor) );\n"
+        "    /*\n"
+        "     * Allocate required memory\n"
+        "     */\n"
+        "    if ( !dmaCommands )\n"
+        "    {\n"
+        "        badFrameCount = ReadBigMacRegister(ioBaseEnet, kFECNT)\n"
+        "                          + ReadBigMacRegister(ioBaseEnet, kAECNT)\n"
+        "                              + ReadBigMacRegister(ioBaseEnet, kLECNT);\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites == {
+        "-[Foo compute]": [("src/driver/Wrap.m", 3)],
+        "-[Foo realMethod]": [("src/driver/Wrap.m", 18)],
+    }
+
+
 def _analysis(functions, sha256="A" * 64):
     return {"input": {"sha256": sha256}, "functions": functions}
 

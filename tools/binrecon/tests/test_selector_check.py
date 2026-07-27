@@ -136,3 +136,59 @@ def test_method_declaration_ending_in_semicolon_is_not_read_as_a_definition(tmp_
 """)
 
     assert names == {"-[Foo realMethod:]"}
+
+
+def test_declaration_does_not_reach_a_later_c_function_brace(tmp_path):
+    """Only the *next* non-blank line may turn a ';' into a definition.
+
+    A forward declaration followed by a non-boundary construct that later
+    opens a brace -- here a C helper -- must not be read as a definition.
+    Scanning on until any brace invents "-[Foo declaredOnly:]".
+    """
+    names = _write(tmp_path, """\
+@implementation Foo
+- (void)declaredOnly:(int)x;
+
+static int helper(int a) {
+    return a;
+}
+
+- (void)realMethod:(int)y
+{
+}
+@end
+""")
+
+    assert names == {"-[Foo realMethod:]"}
+
+
+def test_c_continuation_line_starting_with_a_sign_is_not_a_signature(tmp_path):
+    """A wrapped arithmetic term at column zero looks like a signature.
+
+    BMacEnetPrivate.m wraps sums that way. The trailing ';' is what stops
+    the body search; without it "+ 2 * sizeof(IODBDMADescriptor) );" scans
+    on to the next brace and yields "+[Foo 2]".
+    """
+    names = _write(tmp_path, """\
+@implementation Foo
+- (void)compute
+{
+    dbdmaSize = round_page( RX_RING_LENGTH * sizeof(enet_dma_cmd_t)
++ 2 * sizeof(IODBDMADescriptor) );
+    /*
+     * Allocate required memory
+     */
+    if ( !dmaCommands )
+    {
+        badFrameCount = ReadBigMacRegister(ioBaseEnet, kFECNT)
++ ReadBigMacRegister(ioBaseEnet, kAECNT)
++ ReadBigMacRegister(ioBaseEnet, kLECNT);
+    }
+}
+- (void)realMethod:(int)y
+{
+}
+@end
+""")
+
+    assert names == {"-[Foo compute]", "-[Foo realMethod:]"}

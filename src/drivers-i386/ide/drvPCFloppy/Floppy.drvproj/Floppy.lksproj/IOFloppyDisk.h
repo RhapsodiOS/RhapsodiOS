@@ -95,7 +95,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)readAsyncAt:(unsigned)offset
                  length:(unsigned)length
-                 buffer:(void *)buffer
+                 buffer:(unsigned char *)buffer
                 pending:(void *)pending
                  client:(vm_task_t)client;
 
@@ -104,7 +104,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)readAt:(unsigned)offset
             length:(unsigned)length
-            buffer:(void *)buffer
+            buffer:(unsigned char *)buffer
       actualLength:(unsigned *)actualLength
             client:(vm_task_t)client;
 
@@ -113,7 +113,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)writeAsyncAt:(unsigned)offset
                   length:(unsigned)length
-                  buffer:(void *)buffer
+                  buffer:(unsigned char *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client;
 
@@ -122,7 +122,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)writeAt:(unsigned)offset
              length:(unsigned)length
-             buffer:(void *)buffer
+             buffer:(unsigned char *)buffer
        actualLength:(unsigned *)actualLength
              client:(vm_task_t)client;
 

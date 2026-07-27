@@ -281,7 +281,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)readAsyncAt:(unsigned)offset
                  length:(unsigned)length
-                 buffer:(void *)buffer
+                 buffer:(unsigned char *)buffer
                 pending:(void *)pending
                  client:(vm_task_t)client
 {
@@ -318,7 +318,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)readAt:(unsigned)offset
             length:(unsigned)length
-            buffer:(void *)buffer
+            buffer:(unsigned char *)buffer
       actualLength:(unsigned *)actualLength
             client:(vm_task_t)client
 {
@@ -354,7 +354,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)writeAsyncAt:(unsigned)offset
                   length:(unsigned)length
-                  buffer:(void *)buffer
+                  buffer:(unsigned char *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client
 {
@@ -408,7 +408,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)writeAt:(unsigned)offset
              length:(unsigned)length
-             buffer:(void *)buffer
+             buffer:(unsigned char *)buffer
        actualLength:(unsigned *)actualLength
              client:(vm_task_t)client
 {

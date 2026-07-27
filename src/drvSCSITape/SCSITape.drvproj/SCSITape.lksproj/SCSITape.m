@@ -432,7 +432,7 @@ IOLog ("InitSCSITape: not a tape\n");
 
 - setIgnoreCheckCondition: (BOOL) condition
 {
-    _ignoreCheckCondition = condition;
+    _ignoreOpenCheckCondition = condition;
     return self;
 }
 

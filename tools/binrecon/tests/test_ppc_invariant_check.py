@@ -110,6 +110,50 @@ def test_scattered_ha16_and_lo16_pair_disagreeing_is_reported(tmp_path):
     assert "reconstruct different values" in violations[0]
 
 
+def test_ha16_pairs_with_matching_register_not_nearest_lo16(tmp_path):
+    # Mirrors drvPPCMesh_reloc's Site 1 (0x120-0x128): the nearest LO16 by
+    # address (0x816B0000, base r11) is an unrelated address computation.
+    # The true partner sits one instruction further out, uses r9 -- the
+    # register the addis actually wrote -- and agrees with the HA16 once
+    # paired correctly (both reconstruct 0x12345678).
+    text = struct.pack(
+        ">III",
+        0x3D201234,  # addis r9,r0,0x1234    <- HA16 (writes r9)
+        0x816B0000,  # lwz   r11,r11,0x0000  <- nearer LO16, wrong base (r11)
+        0x81295678,  # lwz   r9,r9,0x5678    <- true partner LO16 (base r9)
+    )
+    relocations = (
+        ppc_scattered(0, 0x100C, kind=PPC_RELOC_HA16) + ppc_pair(0x5678)
+        + ppc_scattered(4, 0x100C, kind=PPC_RELOC_LO16) + ppc_pair(0x0000)
+        + ppc_scattered(8, 0x100C, kind=PPC_RELOC_LO16) + ppc_pair(0x1234)
+    )
+
+    assert check_document(_document(tmp_path, text, relocations)) == []
+
+
+def test_second_ha16_not_paired_with_preceding_lo16(tmp_path):
+    # Mirrors drvPPCMesh_reloc's Site 2 (0x2b24-0x2b30): two consecutive
+    # HA16/LO16 pairs, both through r9, so the register alone can't tell
+    # them apart. The second HA16 sits exactly as far from the first pair's
+    # LO16 as from its own -- nearest-by-address alone picks the preceding,
+    # wrong one; only preferring the following LO16 gets it right.
+    text = struct.pack(
+        ">IIII",
+        0x3D201234,  # addis r9,r0,0x1234   <- HA16 #1 (writes r9)
+        0x83295678,  # addi  r25,r9,0x5678  <- LO16 #1, true partner of #1
+        0x3D202222,  # addis r9,r0,0x2222   <- HA16 #2 (writes r9)
+        0x83493333,  # addi  r26,r9,0x3333  <- LO16 #2, true partner of #2
+    )
+    relocations = (
+        ppc_scattered(0, 0x1010, kind=PPC_RELOC_HA16) + ppc_pair(0x5678)
+        + ppc_scattered(4, 0x1010, kind=PPC_RELOC_LO16) + ppc_pair(0x1234)
+        + ppc_scattered(8, 0x1010, kind=PPC_RELOC_HA16) + ppc_pair(0x3333)
+        + ppc_scattered(12, 0x1010, kind=PPC_RELOC_LO16) + ppc_pair(0x2222)
+    )
+
+    assert check_document(_document(tmp_path, text, relocations)) == []
+
+
 def test_ppc_jbsr_island_inside_text_is_not_reported(tmp_path):
     # bl +8 into the island at 0x1008, which sits inside __TEXT,__text.
     text = struct.pack(">III", 0x48000009, 0x60000000, 0x4E800020)

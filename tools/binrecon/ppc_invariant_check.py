@@ -55,11 +55,31 @@ _LO16_SCATTERED_KIND = "ppc-scattered-lo16-32-absolute"
 _PAIR_WINDOW = 8
 
 
-def _difference_form_pairs(relocations):
-    """Pair each scattered HI16/HA16 relocation with the nearest scattered
-    LO16 relocation that names the same target and sits within
-    _PAIR_WINDOW bytes of it. Only pairs actually found are returned -- a
-    half with no nearby partner is not reported as anything.
+def _register(word, shift):
+    return (word >> shift) & 0x1F
+
+
+def _instruction_word(raw_by_key, relocation):
+    """Return the 32-bit instruction word a relocation patches, decoded from
+    its raw record's original_bytes, or None if no raw record matches."""
+    original_bytes = raw_by_key.get((relocation["address"], relocation["kind"]))
+    return int(original_bytes, 16) if original_bytes is not None else None
+
+
+def _difference_form_pairs(relocations, raw_by_key):
+    """Pair each scattered HI16/HA16 relocation with the scattered LO16
+    relocation that names the same target and sits within _PAIR_WINDOW bytes
+    of it. Same target and proximity alone are not enough -- two unrelated
+    address computations can share both -- so, where the instruction bytes
+    are available, candidates are narrowed to the one whose base register
+    (bits 11-15) is the register the HI16/HA16's "lis"/"addis" wrote (bits
+    6-10), and then to the one that *follows* the HI16/HA16 rather than
+    precedes it, before picking the nearest by address. Either narrowing
+    step is skipped if it would eliminate every candidate (e.g. the raw
+    record is unavailable, or every candidate precedes the HI16/HA16 --
+    the compiler can reorder the pair). Only pairs actually found are
+    returned -- a half with no candidate at all is not reported as
+    anything.
     """
     hi_halves = [r for r in relocations if r["kind"] in _HA_HI_SCATTERED_KINDS]
     lo_halves = [r for r in relocations if r["kind"] == _LO16_SCATTERED_KIND]
@@ -70,6 +90,19 @@ def _difference_form_pairs(relocations):
             if lo["target"] == hi["target"]
             and abs(lo["address"] - hi["address"]) <= _PAIR_WINDOW
         ]
+        hi_word = _instruction_word(raw_by_key, hi)
+        if hi_word is not None:
+            destination = _register(hi_word, 21)
+            matching = []
+            for lo in candidates:
+                lo_word = _instruction_word(raw_by_key, lo)
+                if lo_word is not None and _register(lo_word, 16) == destination:
+                    matching.append(lo)
+            if matching:
+                candidates = matching
+        following = [lo for lo in candidates if lo["address"] > hi["address"]]
+        if following:
+            candidates = following
         if candidates:
             pairs.append((hi, min(candidates, key=lambda lo: abs(lo["address"] - hi["address"]))))
     return pairs
@@ -99,6 +132,7 @@ def check_document(document):
     sections = _sections(document)
     section_names = {section["name"] for section in sections}
     raw = document.get("extensions", {}).get("macho", {}).get("relocations", [])
+    raw_by_key = {(entry["address"], entry["kind"]): entry["original_bytes"] for entry in raw}
 
     for relocation in document["relocations"]:
         target = relocation["target"]
@@ -158,7 +192,7 @@ def check_document(document):
                     f"__OBJC pointer at 0x{entry['address']:x} points into {owner}"
                 )
 
-    for hi, lo in _difference_form_pairs(document["relocations"]):
+    for hi, lo in _difference_form_pairs(document["relocations"], raw_by_key):
         if (hi["addend"] & 0xFFFFFFFF) != (lo["addend"] & 0xFFFFFFFF):
             violations.append(
                 f"{hi['kind']} at 0x{hi['address']:x} and {lo['kind']} at 0x{lo['address']:x} "
@@ -224,7 +258,9 @@ def main(argv=None):
                     if _is_difference_form(relocation["kind"]))
     print(f"{scattered} scattered/difference-form relocations "
           "(target section verified, field is a difference, not an address)")
-    pairs = _difference_form_pairs(document["relocations"])
+    raw = document.get("extensions", {}).get("macho", {}).get("relocations", [])
+    raw_by_key = {(entry["address"], entry["kind"]): entry["original_bytes"] for entry in raw}
+    pairs = _difference_form_pairs(document["relocations"], raw_by_key)
     print(f"{len(pairs)} HI16/HA16-LO16 pairs checked "
           "(reconstructed values must agree)")
     print(f"{len(document['relocations'])} fused relocations, "

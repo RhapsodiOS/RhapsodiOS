@@ -382,20 +382,18 @@ static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 		break;
 
 	case 0x4020660a:  // FDIOCGCAPLIST - Get format capacities list
-		// Reference (0x12f0-0x1320) sends a one-argument "formatCapacities:"
-		// to drive (not deviceInfo), passing data as the argument, then
-		// feeds the returned bitmask into a one-argument
-		// "sizeListFromCapacities:" class message on IOFloppyDisk. Both
-		// differ from the selectors declared elsewhere in this tree (the
-		// zero-arg -formatCapacities in IOFloppyDrive.h, used correctly a
-		// few cases below, and the two-arg +sizeListFromCapacities:sizeList:
-		// in Geometry.h) - most likely two more overloads of the same
-		// names that never made it into those headers. The call shape
-		// (argument counts) is unambiguous in the disassembly; the exact
-		// declared signatures are not, and are outside this file. See the
-		// phase report.
-		formatCapacities = [drive formatCapacities:data];
-		[IOFloppyDisk sizeListFromCapacities:formatCapacities];
+		// Reference sends formatCapacities to drive (not deviceInfo) at
+		// 0x12f4, then feeds the returned bitmask and data into
+		// sizeListFromCapacities:sizeList:. The selector names are taken
+		// from the reference's own __OBJC,__meth_var_names, which holds
+		// "formatCapacities" with no colon and only the two-keyword
+		// "sizeListFromCapacities:sizeList:" - there is no one-argument
+		// form of either anywhere in the binary. The disassembly pushes an
+		// extra word before the zero-argument send at 0x12f3; cdecl lets
+		// the callee ignore it, and it does not name a different selector.
+		formatCapacities = [drive formatCapacities];
+		[IOFloppyDisk sizeListFromCapacities:formatCapacities
+		                             sizeList:(unsigned int *)data];
 		break;
 
 	case 0x40306405:  // DKIOCINFO - Get drive info

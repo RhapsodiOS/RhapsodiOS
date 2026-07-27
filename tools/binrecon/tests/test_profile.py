@@ -368,10 +368,12 @@ def test_ppc_profile_inventory():
         "gem-bundle-ppc.json", "gem-ppc.json",
         "gnic-bundle-ppc.json", "gnic-ppc.json",
         "mace-bundle-ppc.json", "mace-ppc.json",
+        "mesh-bundle-ppc.json", "mesh-ppc.json",
         "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
         "scsitape-ppc.json", "scsitape-preload-ppc.json",
-        "stblocksize-ppc.json",
+        "stblocksize-ppc.json", "sym8xx-bundle-ppc.json",
+        "sym8xx-ppc.json",
     ]
 
 

@@ -20,7 +20,6 @@ Source map built with `binrecon source-map --objc-methods --scope-to-objc` again
 mapped 38 unmapped 2 dup 0 disputed 0
   unmapped: ['+[drvPPCCudaKernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]'] 16
-MATCHES CALIBRATION
 ```
 
 - Total functions in the reference analysis: 100.
@@ -101,8 +100,8 @@ The source-map scanner previously read the `;` between the signature and the
 opening `{` as ending a forward declaration -- valid NeXT-era GCC syntax that
 the scanner did not recognize -- and never recorded a site for the definition
 that follows. That defect is fixed in `tools/binrecon/binrecon/source_map.py`
-(`source_sites` now keeps scanning past a signature-terminating `;` for a
-brace before treating a declaration as unresolved); Cuda now has **zero**
+(`source_sites` still ends a declaration at a trailing `;`, but only when the
+next non-blank line does not open the body with `{`); Cuda now has **zero**
 real gaps.
 
 ## Invariant check
@@ -164,9 +163,9 @@ extra (2):
 
 Exit code: 0. `selector_check.py` had its own copy of the same
 signature-ending-in-`;` scanning defect as the source-map builder (its
-`source_methods` mirrored `source_sites`'s `found_semicolon` guard); fixed
-alongside it, so `-[AppleCuda StartCudaTransmission:]` is no longer reported
-missing. The "missing" two now match the source map's unmapped set exactly,
+`source_methods` mirrored `source_sites`'s `found_semicolon` guard); it got
+the same one-line brace lookahead, so `-[AppleCuda StartCudaTransmission:]`
+is no longer reported missing. The "missing" two now match the source map's unmapped set exactly,
 both build-generated (see Unmapped detail) -- Cuda has zero real gaps. The
 "extra" two are selectors `cuda.m` defines (`ADBSetFileServerMode:` with 3
 keyword parts, `setPowerupTime:` with 4) that the reference binary's selector

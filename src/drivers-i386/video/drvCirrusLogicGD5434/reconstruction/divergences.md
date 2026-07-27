@@ -1516,6 +1516,23 @@ instruction stream is byte-identical, which is why the per-function comparison
 below masks 32-bit relocation operands before comparing. Recorded as an open
 question, not a defect.
 
+The inversion is confined to `__TEXT,__const`; every other multi-unit section
+keeps main-file-first order. `__TEXT,__text` runs 0–3588 for the main file, then
+3588–4364 for `ProgramDAC.m` and 4364–4388 for
+`CirrusLogicGD5434DisplayDriver_instance.m`; `__TEXT,__cstring` puts the main
+file's nineteen strings at 4388–4923 ahead of `ProgramDAC.m`'s single string at
+4924; `__DATA,__bss` puts the main file's `ioPorts.h` counter triple at
+15264–15272 ahead of `ProgramDAC.m`'s at 15276–15284; and `__OBJC,__module_info`
+names the units in that same order. The `__const` attributions themselves are
+not in doubt, since all three symbols are local and each is reached only from
+its own unit's text: `_gamma16` and `_gamma8` from 4278 and 4322 inside
+`setGammaTable` (4088, `ProgramDAC.m`), `_vgaMode` from 838 inside
+`revertToVGAMode` (804, main file). Because neither file's constants can be
+reordered within that file to produce the observed interleaving, a rebuild
+cannot reproduce the reference's `__const` layout by source reordering, and a
+`__const` address-parity mismatch on these symbols must not be attributed to a
+defect in `CirrusLogicGD5434DisplayDriver.m` or `ProgramDAC.m`.
+
 ## Build and parity
 
 `vm/build-i386-video-recon.sh drvCirrusLogicGD5434`, run in the Rhapsody guest,

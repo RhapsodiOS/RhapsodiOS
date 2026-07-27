@@ -414,11 +414,11 @@ instructions.** The two differ, because gcc tail-merged three error arms: the
 arm pushes its own format string (and its own `[self name]` result) and then
 `jmp`s to another arm's `call _IOLog` rather than emitting one of its own.
 
-| Function | Arm's last push | String pushed | Jumps to `call _IOLog` at |
-| --- | --- | --- | --- |
-| `initFromDeviceDescription:` | 344 | `%s: vidBIOS alloc failure` | 711 |
-| `enterLinearMode` | 1536 | `%s: TVGA BIOS SetMode failure (%04x)\n` | 1635 |
-| `setPCIConfiguration` | 2724 | `%s: Error: Unsupported PCI hardware\n` | 3132 |
+| Function | Arm's last push | `jmp` address | String pushed | Jumps to `call _IOLog` at |
+| --- | --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 344 | 349 | `%s: vidBIOS alloc failure` | 711 |
+| `enterLinearMode` | 1531 | 1536 | `%s: TVGA BIOS SetMode failure (%04x)\n` | 1635 |
+| `setPCIConfiguration` | 2719 | 2724 | `%s: Error: Unsupported PCI hardware\n` | 3132 |
 
 So those three have **5, 3 and 4 logical `IOLog`s against 4, 2 and 3 `call
 _IOLog` instructions**. The other three in-scope users have no merged arm and
@@ -430,7 +430,7 @@ raw instruction count it says so explicitly.
 **A rewrite that emits one call per `IOLog` will not match the reference
 byte-for-byte at those three sites.** Tail merging is something the compiler
 does, not something the source expresses; if gcc does not find the same merge,
-the divergence is at 344, 1536 and 2724 and nowhere else, and it is expected.
+the divergence is at 344, 1531 and 2719 and nowhere else, and it is expected.
 
 ### The `__TEXT,__cstring` section
 
@@ -1148,7 +1148,7 @@ One of the two functions carrying most of the risk in this reconstruction.
 - **DriverKit calls:** `objc_msgSend` to `displayInfo` (×3), `name` (×3),
   `int10:outregs:iorange:ionum:smmport:`, `unlockRegisters`, `lockRegisters`,
   `setGammaTable`; direct calls to `_smapi_asm` (×2), `_bzero` (×3), `IOLog`
-  (×3 — at 1384, 1630 and the tail-merged arm at 1536, so only two
+  (×3 — at 1384, 1630 and the tail-merged arm at 1531, so only two
   `call _IOLog` instructions), `_IOForkThread`, `_IOSetThreadPriority`.
 - **Callers:** none in this binary; called by the window server through
   `IOFrameBufferDisplay`. **Callees:** as above, plus `_set555Mode` by address.
@@ -1441,7 +1441,7 @@ Points the rewrite must not smooth over:
   `setPCIConfigData:atRegister:withDeviceDescription:` (×2), `getPCIConfigSpace:`,
   `setPCIConfigSpace:`, `isValidPCIAssignedBaseAddress:`, `memoryRangeList` (×2),
   `numMemoryRanges`, `setMemoryRangeList:num:` (×2), `name` (×4); four `IOLog`s
-  — at 3031, 3127, 3162 and the tail-merged arm at 2724, so only three
+  — at 3031, 3127, 3162 and the tail-merged arm at 2719, so only three
   `call _IOLog` instructions.
 - **Callers:** `initFromDeviceDescription:`. **Callees:**
   `isValidPCIAssignedBaseAddress:` by message send.

@@ -111,26 +111,53 @@ IdeCntInit.m:1101      -(ideIdentifyInfo_t *)getIdeIdentifyInfo:(unsigned int)un
 The reference binary contains exactly one compiled function per selector (one
 address, one size each -- 76 bytes / 19 instructions and 48 bytes / 12
 instructions, both plausible for a trivial array-index accessor plus PPC
-ObjC-method prologue/epilogue). I looked for a structural signal -- size,
-instruction-count, anything that would favor one candidate file over the
-other -- and there is none available: the two textual definitions are
+ObjC-method prologue/epilogue). Size and instruction count alone cannot
+distinguish the two candidate files, since the two textual definitions are
 close enough to identical that they would assemble to indistinguishable
-object code. I did not find (and Mach-O symbol lookup by exact reference
-name against `read_macho` returned nothing keyed this way either, since the
-binary's raw symbol table does not carry per-category disambiguation for
-this analysis) any byte-level evidence that could attribute the single
-compiled function to `IdeCnt.m` specifically over `IdeCntInit.m`, or vice
-versa. **This does not settle to a specific file/line; I am reporting it as
-unresolved rather than guessing.** What the evidence does establish: Apple's
-shipped binary contains only one compiled instance of each selector, while
-our tree carries two textual definitions of each (one in the primary class,
-one in the `(Initialize)` category) that are logically redundant with each
-other. Since Objective-C category methods override same-named primary-class
-methods in the runtime's method table, at most one of the two textual
-definitions in our tree is ever actually invoked at runtime for either
-selector regardless of which one the compiler happened to keep in Apple's
-original build -- the two are dead-code duplicates of each other in our
-source, independent of which specific line matches the shipped bytes.
+object code -- but the Mach-O symbol table itself settles the question, once
+queried correctly. IDA's exported analysis strips Objective-C category tags
+from method names, which is why an exact-name lookup against that export
+returns nothing keyed this way; `binrecon.macho.read_macho`, reading the
+Mach-O symbol table directly, does not strip them:
+
+```
+$ PYTHONPATH=tools/binrecon python -c "
+from binrecon.macho import read_macho
+d = read_macho('.../drvPPCATA_reloc')
+for s in d['symbols']:
+    n = s.get('name') or ''
+    if 'getIdeDriveInfo' in n or 'getIdeIdentifyInfo' in n:
+        print(s.get('address'), n)
+"
+  20176 0x4ed0  -[IdeController(Initialize) getIdeDriveInfo:]
+  23280 0x5af0  -[IdeController(Initialize) getIdeIdentifyInfo:]
+```
+
+Both compiled selectors carry the `(Initialize)` category tag. GCC only
+emits a category name in a compiled method's symbol when that method was
+compiled as part of a category implementation block: `IdeCnt.m:56` opens
+`@implementation IdeController` (the primary class, no category), while
+`IdeCntInit.m:131` opens `@implementation IdeController(Initialize)`.
+Objective-C category implementations replace same-named primary-class
+methods in the runtime's method table at load time, so Apple's build
+retained the category body and never compiled the primary-class body for
+either selector.
+
+**Conclusion: Apple shipped `IdeCntInit.m:443` (`getIdeDriveInfo:`) and
+`IdeCntInit.m:1101` (`getIdeIdentifyInfo:`).** The primary-class bodies at
+`IdeCnt.m:475` and `IdeCnt.m:469` were never compiled into this binary --
+they are dead code in our tree, redundant with the category implementations
+that are actually loaded, in Apple's build and in ours alike, under
+Objective-C's category-overrides-primary-class load semantics.
+
+This retracts the earlier assessment that this question was intrinsically
+unanswerable from static comparison. It was not: the binary's Mach-O symbol
+table does carry per-category disambiguation; only IDA's exported analysis
+discards it. The general lesson: IDA's export drops Objective-C category
+tags that `read_macho` retains, so category questions must be asked of
+`read_macho`, not of the IDA export. This mirrors the SCSITape spec's lesson
+that jump islands resolve through the Mach-O relocation table, which the IDA
+export also does not carry (`docs/superpowers/specs/2026-07-26-scsitape-ppc-reconstruction-design.md:146-148`).
 
 ## Map validation
 
@@ -201,10 +228,9 @@ non-static file-local thread entry point:
 
 `drvATADisk` has 2 static C functions (`ideminphys`, `ide_dev_to_id`), each
 appearing twice in `grep -n static` output -- once as a forward declaration,
-once as the definition -- for 4 total "static"-tagged lines, which likely
-accounts for the task's expectation of "4 static C functions" for this
-directory. Plus 12 more non-static named C functions with real source sites
-(BSD block/char-device switch-table entry points and helpers):
+once as the definition -- for 4 total "static"-tagged lines. Plus 12 more
+non-static named C functions with real source sites (BSD block/char-device
+switch-table entry points and helpers):
 
 - `_ideminphys` -- `src/kernel-7/bsd/dev/ppc/drvATADisk/ATADiskKernel.m:701` (static;
   declared `:141`)
@@ -247,21 +273,24 @@ generated code, not driver source.
 
 Raw unmapped entries fall into three groups:
 
-1. **38 `IdeDisk` selectors** (26 primary-class, incl. 4 class methods, plus
-   12 in an `(Internal)` category) -- not real gaps; see IdeDisk / ATADisk
+1. **38 `IdeDisk` selectors** (23 primary-class, incl. 4 class methods, plus
+   15 in an `(Internal)` category) -- not real gaps; see IdeDisk / ATADisk
    below. Full source coverage confirmed via the merged selector check.
 2. **2 real `IdeController` gaps**: `-[IdeController setTransferRate:]` (our
    source only has the two-argument
-   `-[IdeController setTransferRate:UseDMA:]`, `IdeCnt.m:493`); the
-   reference's `-[IdeController(Dma) isDmaSupported:]` and
-   `-[IdeController(Initialize) calcIdeConfigWord:]` are also present in the
-   raw unmapped set with a category tag our source's
-   `-[IdeController isDmaSupported:]` (`IdeCnt.m:480`, no category) and
-   `-[IdeController calcIdeConfigWord:]` (present, per bucket 6, but reported
-   unmapped because the reference and source category tags differ) do not
-   carry. This is a category-boundary characteristic of the reference
-   symbol naming, not a missing implementation, but it is recorded here as
-   observed rather than resolved.
+   `-[IdeController setTransferRate:UseDMA:]`, `IdeCnt.m:493`) and
+   `-[IdeController(Initialize) calcIdeConfigWord:]`, which has no source site
+   anywhere under `src/` -- a genuine missing implementation, not a
+   category-tag artifact. `source_map.py` strips category tags before
+   matching (confirmed directly against `source-map.json`: the `reference_names`
+   recorded for both `calcIdeConfigWord:` and `isDmaSupported:` carry no
+   category), so a reference/source category-tag difference cannot be the
+   reason either selector is unmapped -- the mechanism described in the
+   earlier version of this note is impossible.
+   `-[IdeController(Dma) isDmaSupported:]` is **not** in this set: it is
+   mapped, to address 14820 / `IdeCnt.m:480` (`-[IdeController
+   isDmaSupported:]`, no category in our source), verified directly against
+   `source-map.json`'s `mapped` list.
 3. **2 build-generated DriverKit accessors** (`kernelServerInstance`,
    `driverKitVersionFordrvPPCATA`), the same pattern seen in every driver so
    far -- tool-emitted, not hand-written.
@@ -317,11 +346,17 @@ duplicates (1):
 missing (43): [38 -[IdeDisk ...]/+[IdeDisk ...] entries + 2 IdeController real
 gaps + 2 build-generated + this driver's own directory does not define
 AtapiDisk/ATADisk at all]
-extra (17): [-[IdeController ...] entries whose category tag differs from the
-reference's, e.g. isDmaSupported:, getControllerType, setTransferRate:UseDMA:,
-numberOfDrives, configReadByte:value:, configWriteByte:value:, plus
-AtapiController(ATAPI)/IdeController(Dma)/IdeController(Initialize) entries
-with mismatched category tags]
+extra (17): [4 are pure category-boundary naming differences with a
+reference counterpart once the category tag is stripped --
+getIdeDriveInfo:, getIdeIdentifyInfo:, ideExecuteCmd:ToDrive:,
+isDmaSupported:; the other 13 have no reference counterpart at all,
+category-insensitive -- getControllerType, numberOfDrives,
+configReadByte:value:, configWriteByte:value:, setTransferRate:UseDMA:,
+matchDevicePath:, getDevicePath:maxLength:useAlias:, atapiDmaAllowed:,
+setupDMA:client:length:fRead:, setupDMAList:client:length:fRead:,
+calcIdeConfig:, calcIdeTimingsCmd646X:, calcIdeTimingsDBDMA: -- these are
+`IdeController` methods our tree defines that Apple's shipped binary does
+not]
 
 === src/kernel-7/bsd/dev/ppc/drvATADisk ===
 reference selectors: 148
@@ -342,8 +377,9 @@ Exit codes: 1 for the `drvPPCATA` run (the one `duplicates` entry), 0 for
 run but present in the other is not missing. All 148 `-[AtapiController ...]`
 and `-[IdeController ...]` selectors that show as "missing" in the
 `drvATADisk`-only run are defined in the `drvPPCATA` directory (they show as
-either matched or as one of the 17 category-tag "extra" entries there, not
-as missing) -- they are not real gaps, just in the other directory.
+either matched or as one of the 17 "extra" entries there -- see below for
+what those 17 actually are, not as missing) -- they are not real gaps, just
+in the other directory.
 Conversely, the `drvATADisk` run's 38 `-[ATADisk ...]`/`+[ATADisk ...]`
 "extra" entries are, selector-for-selector, the same 38 selectors the
 `drvPPCATA` run reports "missing" as `-[IdeDisk ...]`/`+[IdeDisk ...]` --
@@ -367,13 +403,43 @@ underscore-prefix convention), not redundant dead code; the tool's generic
 heuristic for underscore-prefixed selectors flags it as a "duplicate" because
 it cannot distinguish a delegating wrapper from truly redundant code.
 
-The 17 `drvPPCATA`-run "extra" entries and the corresponding "missing"
-category-tagged reference names (e.g. our source's
-`-[IdeController isDmaSupported:]`, no category, vs. the reference's
-`-[IdeController(Dma) isDmaSupported:]`) are a real, observed
-category-boundary difference between our source's `@implementation
-IdeController` grouping and the reference binary's per-category symbol
-naming; recorded here as observed, not resolved further.
+Of the 17 `drvPPCATA`-run "extra" entries, only **4** are category-boundary
+naming artifacts, not gaps: stripping every `(Category)` tag from both the
+148 reference selectors and the 17 extra names and re-comparing shows a
+reference counterpart for exactly `-[IdeController getIdeDriveInfo:]`
+(`-[IdeController(Initialize) getIdeDriveInfo:]`), `-[IdeController
+getIdeIdentifyInfo:]` (`-[IdeController(Initialize) getIdeIdentifyInfo:]`),
+`-[IdeController ideExecuteCmd:ToDrive:]` (`-[IdeController(Commands)
+ideExecuteCmd:ToDrive:]`), and `-[IdeController isDmaSupported:]`
+(`-[IdeController(Dma) isDmaSupported:]`).
+
+The remaining **13** -- `getControllerType`, `numberOfDrives`,
+`configReadByte:value:`, `configWriteByte:value:`, `setTransferRate:UseDMA:`,
+`matchDevicePath:`, `getDevicePath:maxLength:useAlias:`, `atapiDmaAllowed:`,
+`setupDMA:client:length:fRead:`, `setupDMAList:client:length:fRead:`,
+`calcIdeConfig:`, `calcIdeTimingsCmd646X:`, `calcIdeTimingsDBDMA:` -- have
+**no reference counterpart at all**, category-insensitive. This is a real
+finding, not a naming artifact: our `IdeController` carries 13 selectors with
+no compiled counterpart anywhere in the reference binary.
+
+## Bundle stub
+
+`drvPPCATA` (the non-relocatable bundle, profile `ata-bundle-ppc`, the
+8492-byte `drvPPCATA.config/drvPPCATA` from the Artifacts table above)
+analysis has exactly 2 functions:
+
+```
+0xf04 ['dyld_stub_binding_helper'] 48
+0xf34 ['__dyld_func_lookup'] 32
+```
+
+Both are named, standard dyld loader-glue routines (not driver code) -- this
+small bundle wrapper is a loader shim with no Objective-C methods and no
+driver logic of its own, so it carries no correspondence findings against
+`drvPPCATA_reloc`. No source map or bucket table was built for it (the
+source map and bucket script in this task both target `drvPPCATA_reloc`, the
+statically linked kernel server that actually contains the driver's compiled
+code).
 
 ## IdeDisk / ATADisk
 
@@ -415,12 +481,16 @@ against source (`ATADisk.m:87` `+ (BOOL)probe : deviceDescription`,
 
 **The merged selector check (Step 8) settles it completely.** Every one of
 the 38 `-[IdeDisk ...]`/`+[IdeDisk ...]` selectors reported "missing" when
-scanning only `drvPPCATA` is, selector-string-for-selector-string (same
-keywords, same category tag `(Internal)` where present), reported as an
-`-[ATADisk ...]`/`+[ATADisk ...]` "extra" entry when scanning only
-`drvATADisk` -- a full 38/38 match once the properly-parsed
-`selector_check.py` tool (which stitches wrapped signatures across up to 20
-lines) is used instead of the single-line regex from Step 6.
+scanning only `drvPPCATA` has a corresponding `-[ATADisk ...]`/`+[ATADisk
+...]` "extra" entry when scanning only `drvATADisk` -- a full 38/38 class
+correspondence once the properly-parsed `selector_check.py` tool (which
+stitches wrapped signatures across up to 20 lines) is used instead of the
+single-line regex from Step 6. Of those 38, **37 are byte-identical
+selector strings** (same keywords, same category tag `(Internal)` where
+present); the one exception is `logRwErr:block:status:readFlag:`, which
+prints as `logRwErr://:status:readFlag:` on the `ATADisk` side because of
+the trailing same-line `//` comment `selector_check.py`'s line-based parser
+folds into the name (see above) -- the same selector, not a real mismatch.
 
 **Verdict: RENAME ESTABLISHED.** `IdeDisk` (the binary) and `ATADisk` (our
 tree) are the same class under two names. The Step 6 script's 25/38 raw
@@ -428,6 +498,28 @@ intersection was itself an undercount caused by its single-line parsing; the
 true correspondence, confirmed by the merged selector check, is complete
 (38/38). See "Correspondence" above for the resulting raw vs.
 rename-adjusted numbers.
+
+**Size clause (spec §4.2).** The spec establishes the rename "when `IdeDisk`'s
+selectors and `ATADisk`'s coincide and their sizes correspond." There is no
+`ATADisk`-linked binary to compare byte-for-byte against `IdeDisk`'s compiled
+sizes -- `drvPPCATA_reloc` only ever links `IdeDisk`, so a literal
+byte-for-byte size comparison across the rename is not possible with the
+artifacts available. As a proxy, each of the 38 `IdeDisk` binary function
+sizes (bytes, from `source-map.json`'s `unmapped` entries) was paired with
+the corresponding `ATADisk` source method's line count (the gap to the next
+method's signature line in the same file, as a rough stand-in for compiled
+size) via `selector_check.py`'s method scanner, for the 37 of 38 pairs that
+match by selector (`logRwErr:block:status:readFlag:` excluded -- the same
+comment-folding artifact noted above prevents it from matching by name).
+Across those 37 pairs, binary byte-size and source line-count are strongly
+and monotonically correlated (Pearson r ~ 0.81, Spearman rho ~ 0.85), and the
+per-pair ratio stays in the 1.2-20.6 bytes/line range throughout, with no
+case where a large compiled function pairs with a trivial one-line source
+stub or vice versa. This is not a byte-for-byte equality check -- that would
+require an `ATADisk`-linked reference binary this task does not have -- but
+it is a measured, non-trivial size correspondence consistent with the two
+selector sets being the same implementations under different names, and it
+turns up no counter-evidence against the rename.
 
 ## Two source directories
 
@@ -444,7 +536,7 @@ selector check (Step 8) was run twice -- once per directory -- against the
 same reference binary, and the two outputs were merged by hand in
 "Selector check" above. The `drvPPCATA` run alone reports 105 of the
 reference's 148 selectors as either matched or present-with-different-
-category (124 of our definitions map, less the 1 duplicate); the
+category (148 reference selectors minus the 43 reported missing = 105); the
 `drvATADisk` run alone reports all 148 as missing, because that directory
 defines only `ATADisk`, never the reference's literal `IdeController`/
 `AtapiController`/`IdeDisk` names. Read separately, either run

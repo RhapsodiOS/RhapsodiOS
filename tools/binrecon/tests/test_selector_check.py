@@ -95,3 +95,24 @@ def test_nested_parentheses_in_an_argument_type(tmp_path):
 """)
 
     assert names == {"-[Widget setCallback:context:]"}
+
+
+def test_method_declaration_ending_in_semicolon_is_not_read_as_a_definition(tmp_path):
+    """A `- foo;` declaration inside an @implementation has no body.
+
+    Without a semicolon guard, the scan for the body brace runs past the
+    declaration and swallows the next real method's signature along with it,
+    producing one bogus merged entry and losing the real method entirely.
+    source_map.py already guards against this with its `found_semicolon`
+    check; selector_check.py must do the same.
+    """
+    names = _write(tmp_path, """\
+@implementation Foo
+- (BOOL)declOnly:(int)x;
+- (void)realMethod:(int)y
+{
+}
+@end
+""")
+
+    assert names == {"-[Foo realMethod:]"}

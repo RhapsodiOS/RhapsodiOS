@@ -58,19 +58,31 @@ def source_methods(source_dir):
             if class_name and re.match(r"^[-+]\s*[\(\w]", line):
                 start = index
                 signature = line
+                found_brace = "{" in signature
+                found_semicolon = not found_brace and signature.rstrip().endswith(";")
                 # A signature may wrap across lines; it ends at the body brace.
-                while "{" not in signature and index + 1 < len(lines) and len(signature) < 600:
+                # A declaration ending in ";" has no body and must not be read
+                # as a definition -- matching source_map's found_semicolon
+                # guard -- otherwise the scan runs on into the next method's
+                # signature and merges the two.
+                while not found_brace and not found_semicolon and index + 1 < len(lines) and len(signature) < 600:
                     index += 1
                     signature += " " + lines[index]
-                head = signature.split("{")[0].strip()
-                sign, remainder = head[0], head[1:]
-                # The sign is dropped before parsing: source_map's reader keys
-                # off the last word before the first colon, which a signature
-                # written without a space after the sign would hand back.
-                selector = read_selector(remainder) or ""
-                scope = "%s(%s)" % (class_name, category) if category else class_name
-                yield ("%s[%s %s]" % (sign, scope, selector),
-                       class_name, selector, path.name, start + 1)
+                    if "{" in lines[index]:
+                        found_brace = True
+                    elif lines[index].rstrip().endswith(";"):
+                        found_semicolon = True
+                if found_brace and not found_semicolon:
+                    head = signature.split("{")[0].strip()
+                    sign, remainder = head[0], head[1:]
+                    # The sign is dropped before parsing: source_map's reader
+                    # keys off the last word before the first colon, which a
+                    # signature written without a space after the sign would
+                    # hand back.
+                    selector = read_selector(remainder) or ""
+                    scope = "%s(%s)" % (class_name, category) if category else class_name
+                    yield ("%s[%s %s]" % (sign, scope, selector),
+                           class_name, selector, path.name, start + 1)
             index += 1
 
 

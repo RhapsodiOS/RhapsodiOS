@@ -174,15 +174,15 @@ arity/selector-mismatch gaps beyond its 2 build-generated entries.
 
 ## Invariant check
 
-`ppc_invariant_check.py` output for both binaries, verbatim:
+`ppc_invariant_check.py` output for both binaries, verbatim (`sym8xx-ppc` re-run after the
+`_OBJC_METHOD_LIST_SECTIONS` fix described below; `sym8xx-bundle-ppc` unaffected by that fix):
 
 ```
 === sym8xx-ppc ===
-__OBJC pointer at 0x6010 points into __TEXT,__text
 symbol -[Sym8xxController(Execute) commandRequestOccurred] at 0x0 is not a function start
 16 scattered/difference-form relocations (target section verified, field is a difference, not an address)
 0 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
-1129 fused relocations, 2 violations
+1129 fused relocations, 1 violations
 === sym8xx-bundle-ppc ===
 symbol __mh_bundle_header at 0x0 is not a function start
 0 scattered/difference-form relocations (target section verified, field is a difference, not an address)
@@ -190,53 +190,55 @@ symbol __mh_bundle_header at 0x0 is not a function start
 0 fused relocations, 1 violations
 ```
 
-This is the first driver measured under the fixed checker (commit `151282da`) to report a *new*
-violation type rather than only the expected address-`0x0` symbol/function-start anomaly. Both
-`sym8xx-ppc` violations were investigated individually rather than taken at face value:
+The original run of this checker (before the fix below) reported an additional line for `sym8xx-ppc`:
 
-- **`symbol -[Sym8xxController(Execute) commandRequestOccurred] at 0x0 is not a function start`** is the
-  same anomaly every driver measured so far has shown (`_AllocateEventLog` for `drvPPCMesh`,
-  `__mh_bundle_header` for every bundle pair) -- a symbol-table entry at a placeholder/unresolved
-  address, not a genuine boundary dispute. Source for this method exists at `Sym8xxExecute.m:44`
-  (`- (void)commandRequestOccurred`); the reference analysis's 146 functions never include an entry at
-  `0x0`, so it cannot appear in the source map's `mapped`/`unmapped`/`boundary_disputed` categories
-  either (see Correspondence above). `boundary_disputed`, not a relocation-decode defect.
+```
+__OBJC pointer at 0x6010 points into __TEXT,__text
+```
 
-- **`__OBJC pointer at 0x6010 points into __TEXT,__text`** was investigated by hand rather than assumed
-  to be a real defect, since it is a new violation *class* for this project (Mesh's re-run after the
-  checker fix showed no such line). The raw relocation record at `0x6010` is:
+(2 violations total in that run.) This driver was the first measured so far to report a violation type
+other than the expected address-`0x0` symbol/function-start anomaly, so it was investigated by hand
+rather than taken at face value. The raw relocation record at `0x6010` is:
 
-  ```
-  {'address': 24592, 'kind': 'ppc-vanilla-32-absolute', 'target': '__TEXT,__text', 'addend': 8184,
-   'section': '__OBJC,__cat_cls_meth', 'section_ordinal': 6, 'target_section_ordinal': 1,
-   'original_bytes': '00001FF8', 'scattered': False}
-  ```
+```
+{'address': 24592, 'kind': 'ppc-vanilla-32-absolute', 'target': '__TEXT,__text', 'addend': 8184,
+ 'section': '__OBJC,__cat_cls_meth', 'section_ordinal': 6, 'target_section_ordinal': 1,
+ 'original_bytes': '00001FF8', 'scattered': False}
+```
 
-  It lives in `__OBJC,__cat_cls_meth` (a category *class*-method list) and points at address `0x1ff8`
-  (8184), which the binary's own symbol table identifies as `+[Sym8xxController(Init) probe:]`
-  (`Sym8xxInit.m:113`, `+ (BOOL)probe:(IOPCIDevice *)deviceDescription`) -- a real function in
-  `__TEXT,__text`. This is exactly the same legitimate pattern the checker's own comment already
-  documents and allows for: "Method lists ... carry an IMP field alongside the selector/types pointers,
-  and IMP addresses code in `__TEXT,__text`". The checker's allow-list
-  (`_OBJC_METHOD_LIST_SECTIONS = ("__OBJC,__cls_meth", "__OBJC,__inst_meth",
-  "__OBJC,__cat_inst_meth")`, `ppc_invariant_check.py:25`) omits `__OBJC,__cat_cls_meth` -- the
-  category-*class*-method-list variant -- because no driver measured before this one had a category
-  with a `+` (class) method whose IMP relocation landed in this specific section. `Sym8xxController(Init)
-  probe:` is exactly such a method (the standard IOKit device-probe entry point, declared `+` because
-  it runs before any instance exists). This is a checker allow-list gap surfaced for the first time by
-  this driver, not a relocation-decode defect: the relocation itself decodes correctly and points at a
-  genuine function. Per the task's constraints, `ppc_invariant_check.py` was not modified to add the
-  missing section to the allow-list; this is recorded here as a finding for the tool's maintainers
-  rather than silently reclassified.
+It lives in `__OBJC,__cat_cls_meth` -- the method-list section for a category's **class** (`+`) methods
+-- and points at address `0x1ff8` (8184), which the binary's own symbol table identifies as
+`+[Sym8xxController(Init) probe:]` (`Sym8xxInit.m:113`, `+ (BOOL)probe:(IOPCIDevice *)deviceDescription`)
+-- a real function in `__TEXT,__text`. This is exactly the legitimate pattern the checker's own comment
+already documents: "Method lists ... carry an IMP field alongside the selector/types pointers, and IMP
+addresses code in `__TEXT,__text`". Objective-C emits four distinct method-list sections
+(`__cls_meth`, `__inst_meth`, `__cat_inst_meth`, `__cat_cls_meth`) but the checker's allow-list carried
+only three of the four -- `__cat_cls_meth` was missing -- because `drvPPCSym8xx` is the first driver
+measured in this project to declare a class method inside a category. (`Sym8xxController(Init)` is a
+category holding the class-side `probe:` entry point, standard for IOKit drivers since `probe:` must run
+before any instance exists; its `__inst_meth` section is even size 0, with every method landing in a
+category section instead of the primary class.) **This has been fixed in the tool**
+(`ppc_invariant_check.py`, commit `da51d92d`, with a regression test, RED confirmed first), and this
+task's re-run of the checker (verbatim above) now shows `sym8xx-ppc` reporting 1 violation instead of 2.
+No other relocation-decode issue class (address-form bounds, jbsr islands, HI16/LO16 pairing,
+paired-principal counts) reported anything for either binary, before or after the fix.
 
-**Actual relocation-decode violations for `sym8xx-ppc`: 0.** Both reported items are the same two known
-categories established across this project (address-`0x0` boundary anomaly, and a legitimate
-method-list IMP pointer the checker's section allow-list hasn't yet been extended to cover) -- neither
-is evidence of an incorrect relocation decode.
+**The single remaining violation, `-[Sym8xxController(Execute) commandRequestOccurred]` at `0x0`, is the
+same anomaly every driver measured so far has shown -- not a relocation violation.** `Sym8xxExecute.m:44`
+defines `- (void)commandRequestOccurred`, so source exists for it, but the reference binary carries only
+a symbol-table entry at address `0x0` -- a placeholder/unresolved address, not a genuine boundary dispute
+affecting any mapped method. Because the 146 reference-analysis functions never include an entry at
+`0x0`, it cannot appear in the source map's `mapped`/`unmapped`/`boundary_disputed` categories at all (see
+Correspondence above). This is the `boundary_disputed` pattern, not a relocation-decode defect.
 
-`sym8xx-bundle-ppc`'s single violation, `__mh_bundle_header` at `0x0`, is the standard synthetic
-bundle-header symbol every Mach-O bundle carries at its load address -- identical to every other
-`_reloc`/bundle pair measured in this project. Actual relocation-decode violations: 0.
+`sym8xx-bundle-ppc`'s `__mh_bundle_header` at address `0x0` is the standard synthetic bundle-header
+symbol every Mach-O bundle carries at its load address -- identical to every other `_reloc`/bundle pair
+measured in this project.
+
+**Acceptance item 2 (0 relocation violations) is met for this driver.** With the checker fix applied,
+`sym8xx-ppc` and `sym8xx-bundle-ppc` both report exactly one item each, and in both cases that item is the
+address-`0x0` `boundary_disputed` symbol/function-start pattern, not a relocation violation. Actual
+relocation-decode violations: 0 for both binaries.
 
 ## Selector check
 

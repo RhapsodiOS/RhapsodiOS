@@ -1,199 +1,335 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
-  "reference_sha256": "489D86652B8718237052F10A551FC6615B4B045F6614DCB790CFB73272C15B96",
-  "schema_version": "source-map-v1",
-  "unmapped": [
+  "mapped": [
     {
       "address": 0,
       "reference_names": [
         "-[IOVGADisplay _registerWithED]"
       ],
-      "size": 227
+      "size": 227,
+      "source_line": 118,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 228,
       "reference_names": [
         "_SetET4000Brightness"
       ],
-      "size": 237
+      "size": 237,
+      "source_line": 167,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 468,
       "reference_names": [
         "_select_read_segment"
       ],
-      "size": 103
+      "size": 103,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 572,
       "reference_names": [
         "_select_write_segment"
       ],
-      "size": 102
+      "size": 102,
+      "source_line": 232,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 676,
       "reference_names": [
         "_select_read_plane"
       ],
-      "size": 110
+      "size": 110,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 788,
       "reference_names": [
         "_select_write_plane"
       ],
-      "size": 127
+      "size": 127,
+      "source_line": 276,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 916,
       "reference_names": [
         "_vga_read_bpp4planar_to_bpp2packed32"
       ],
-      "size": 407
+      "size": 407,
+      "source_line": 301,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 1324,
       "reference_names": [
         "_vga_write_bpp2packed32_to_bpp4planar"
       ],
-      "size": 428
+      "size": 428,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 1752,
       "reference_names": [
         "_VGADisplayCursor"
       ],
-      "size": 816
+      "size": 816,
+      "source_line": 410,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 2568,
       "reference_names": [
         "_VGARemoveCursor"
       ],
-      "size": 660
+      "size": 660,
+      "source_line": 521,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 3228,
       "reference_names": [
         "-[IOVGADisplay hideCursor:]"
       ],
-      "size": 100
+      "size": 100,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 3328,
       "reference_names": [
         "-[IOVGADisplay moveCursor:frame:token:]"
       ],
-      "size": 517
+      "size": 517,
+      "source_line": 662,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 3848,
       "reference_names": [
         "-[IOVGADisplay showCursor:frame:token:]"
       ],
-      "size": 453
+      "size": 453,
+      "source_line": 743,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4304,
       "reference_names": [
         "-[IOVGADisplay generateNameAndUnit:]"
       ],
-      "size": 47
+      "size": 47,
+      "source_line": 816,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4352,
       "reference_names": [
         "-[IOVGADisplay map]"
       ],
-      "size": 9
+      "size": 9,
+      "source_line": 828,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4364,
       "reference_names": [
         "-[IOVGADisplay unmap]"
       ],
-      "size": 84
+      "size": 84,
+      "source_line": 837,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4448,
       "reference_names": [
         "+[IOVGADisplay probe:]"
       ],
-      "size": 144
+      "size": 144,
+      "source_line": 852,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4592,
       "reference_names": [
         "-[IOVGADisplay free]"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 871,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4636,
       "reference_names": [
         "-[IOVGADisplay initFromDeviceDescription:]"
       ],
-      "size": 358
+      "size": 358,
+      "source_line": 892,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 4996,
       "reference_names": [
         "-[IOVGADisplay setBrightness:token:]"
       ],
-      "size": 64
+      "size": 64,
+      "source_line": 937,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 5060,
       "reference_names": [
         "-[IOVGADisplay getIntValues:forParameter:count:]"
       ],
-      "size": 437
+      "size": 437,
+      "source_line": 962,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 5500,
       "reference_names": [
         "-[IOVGADisplay setIntValues:forParameter:count:]"
       ],
-      "size": 295
+      "size": 295,
+      "source_line": 1038,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 5796,
       "reference_names": [
         "-[IOVGADisplay allocateConsoleInfo]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 1083,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 5828,
       "reference_names": [
         "-[IOVGADisplay enterSVGAMode:]"
       ],
-      "size": 114
+      "size": 114,
+      "source_line": 1097,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 5944,
       "reference_names": [
         "-[IOVGADisplay int10:]"
       ],
-      "size": 166
+      "size": 166,
+      "source_line": 1124,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 6112,
       "reference_names": [
         "_find_parameter"
       ],
-      "size": 106
+      "size": 106,
+      "source_line": 1157,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
     {
       "address": 6220,
       "reference_names": [
         "-[IOVGADisplay didBootWithDefaultConfig]"
       ],
-      "size": 149
+      "size": 149,
+      "source_line": 1187,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m"
     },
+    {
+      "address": 6396,
+      "reference_names": [
+        "-[vidBIOS init]"
+      ],
+      "size": 267,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 6664,
+      "reference_names": [
+        "-[vidBIOS free]"
+      ],
+      "size": 107,
+      "source_line": 69,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 6772,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:smmport:]"
+      ],
+      "size": 696,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7468,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:]"
+      ],
+      "size": 44,
+      "source_line": 166,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7512,
+      "reference_names": [
+        "-[vidBIOS scratchSegment]"
+      ],
+      "size": 16,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7528,
+      "reference_names": [
+        "-[vidBIOS realToVirtual::]"
+      ],
+      "size": 22,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7552,
+      "reference_names": [
+        "_emu486"
+      ],
+      "size": 8088,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/emu486.s"
+    },
+    {
+      "address": 15640,
+      "reference_names": [
+        "sub_00003D18"
+      ],
+      "size": 81,
+      "source_line": 2723,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/emu486.s"
+    },
+    {
+      "address": 15721,
+      "reference_names": [
+        "sub_00003D69"
+      ],
+      "size": 37,
+      "source_line": 2787,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/emu486.s"
+    }
+  ],
+  "reference_sha256": "489D86652B8718237052F10A551FC6615B4B045F6614DCB790CFB73272C15B96",
+  "schema_version": "source-map-v1",
+  "unmapped": [
     {
       "address": 6372,
       "reference_names": [
@@ -207,69 +343,6 @@
         "+[VGAVersion driverKitVersionForVGA]"
       ],
       "size": 12
-    },
-    {
-      "address": 6396,
-      "reference_names": [
-        "-[vidBIOS init]"
-      ],
-      "size": 267
-    },
-    {
-      "address": 6664,
-      "reference_names": [
-        "-[vidBIOS free]"
-      ],
-      "size": 107
-    },
-    {
-      "address": 6772,
-      "reference_names": [
-        "-[vidBIOS int10:outregs:iorange:ionum:smmport:]"
-      ],
-      "size": 696
-    },
-    {
-      "address": 7468,
-      "reference_names": [
-        "-[vidBIOS int10:outregs:iorange:ionum:]"
-      ],
-      "size": 44
-    },
-    {
-      "address": 7512,
-      "reference_names": [
-        "-[vidBIOS scratchSegment]"
-      ],
-      "size": 16
-    },
-    {
-      "address": 7528,
-      "reference_names": [
-        "-[vidBIOS realToVirtual::]"
-      ],
-      "size": 22
-    },
-    {
-      "address": 7552,
-      "reference_names": [
-        "_emu486"
-      ],
-      "size": 8088
-    },
-    {
-      "address": 15640,
-      "reference_names": [
-        "sub_00003D18"
-      ],
-      "size": 81
-    },
-    {
-      "address": 15721,
-      "reference_names": [
-        "sub_00003D69"
-      ],
-      "size": 37
     }
   ]
 }

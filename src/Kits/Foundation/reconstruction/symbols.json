@@ -17,5 +17,16 @@
   "_NSDecimalRound", "_NSDecimalNormalize", "_NSDecimalAdd",
   "_NSDecimalSubtract", "_NSDecimalMultiply", "_NSDecimalDivide",
   "_NSDecimalPower", "_NSDecimalMultiplyByPowerOf10", "_NSDecimalString"
+ ],
+ "NSZone.m": [
+  "_NSAllocateMemoryPages", "_NSAllocateObject", "_NSCopyMemoryPages",
+  "_NSCopyObject", "_NSCreateZone", "_NSDeallocateMemoryPages",
+  "_NSDeallocateObject", "_NSDecrementExtraRefCountWasZero",
+  "_NSDefaultMallocZone", "_NSExtraRefCount", "_NSIncrementExtraRefCount",
+  "_NSLogPageSize", "_NSPageSize", "_NSRealMemoryAvailable",
+  "_NSRecycleZone", "_NSRoundDownToMultipleOfPageSize",
+  "_NSRoundUpToMultipleOfPageSize", "_NSSetZoneName",
+  "_NSShouldRetainWithZone", "_NSZoneCalloc", "_NSZoneFree",
+  "_NSZoneFromPointer", "_NSZoneMalloc", "_NSZoneName", "_NSZoneRealloc"
  ]
 }

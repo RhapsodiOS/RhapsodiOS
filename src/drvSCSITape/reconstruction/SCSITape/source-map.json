@@ -8,7 +8,7 @@
         "+[SCSITape requiredProtocols]"
       ],
       "size": 20,
-      "source_line": 62,
+      "source_line": 69,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -17,7 +17,16 @@
         "+[SCSITape probe:]"
       ],
       "size": 440,
-      "source_line": 69,
+      "source_line": 76,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 524,
+      "reference_names": [
+        "-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]"
+      ],
+      "size": 908,
+      "source_line": 180,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -26,7 +35,7 @@
         "-[SCSITape free]"
       ],
       "size": 144,
-      "source_line": 318,
+      "source_line": 349,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -35,7 +44,7 @@
         "-[SCSITape getIntValues:forParameter:count:]"
       ],
       "size": 244,
-      "source_line": 330,
+      "source_line": 361,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -44,7 +53,7 @@
         "-[SCSITape target]"
       ],
       "size": 16,
-      "source_line": 364,
+      "source_line": 395,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -53,7 +62,7 @@
         "-[SCSITape lun]"
       ],
       "size": 16,
-      "source_line": 369,
+      "source_line": 400,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -62,7 +71,7 @@
         "-[SCSITape controller]"
       ],
       "size": 16,
-      "source_line": 374,
+      "source_line": 405,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -71,7 +80,7 @@
         "-[SCSITape isInitialized]"
       ],
       "size": 20,
-      "source_line": 379,
+      "source_line": 410,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -80,7 +89,7 @@
         "-[SCSITape didWrite]"
       ],
       "size": 20,
-      "source_line": 384,
+      "source_line": 415,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -89,7 +98,7 @@
         "-[SCSITape isFixedBlock]"
       ],
       "size": 24,
-      "source_line": 389,
+      "source_line": 420,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -98,7 +107,7 @@
         "-[SCSITape senseDataValid]"
       ],
       "size": 20,
-      "source_line": 398,
+      "source_line": 429,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -107,7 +116,7 @@
         "-[SCSITape forceSenseDataInvalid]"
       ],
       "size": 20,
-      "source_line": 403,
+      "source_line": 434,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -116,7 +125,7 @@
         "-[SCSITape senseDataPtr]"
       ],
       "size": 16,
-      "source_line": 409,
+      "source_line": 440,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -125,7 +134,7 @@
         "-[SCSITape blockSize]"
       ],
       "size": 16,
-      "source_line": 414,
+      "source_line": 445,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -134,7 +143,7 @@
         "-[SCSITape suppressIllegalLength]"
       ],
       "size": 20,
-      "source_line": 419,
+      "source_line": 450,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -143,7 +152,7 @@
         "-[SCSITape setSuppressIllegalLength:]"
       ],
       "size": 16,
-      "source_line": 424,
+      "source_line": 455,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -152,7 +161,7 @@
         "-[SCSITape setIgnoreCheckCondition:]"
       ],
       "size": 16,
-      "source_line": 435,
+      "source_line": 461,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -161,7 +170,7 @@
         "-[SCSITape majorDevNum]"
       ],
       "size": 16,
-      "source_line": 441,
+      "source_line": 467,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -170,7 +179,7 @@
         "-[SCSITape acquireDevice]"
       ],
       "size": 168,
-      "source_line": 457,
+      "source_line": 472,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -179,7 +188,7 @@
         "-[SCSITape releaseDevice]"
       ],
       "size": 128,
-      "source_line": 472,
+      "source_line": 495,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -188,7 +197,7 @@
         "-[SCSITape stInquiry:]"
       ],
       "size": 420,
-      "source_line": 484,
+      "source_line": 509,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -197,7 +206,7 @@
         "-[SCSITape stTestReady]"
       ],
       "size": 160,
-      "source_line": 569,
+      "source_line": 594,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -206,7 +215,7 @@
         "-[SCSITape stCloseFile]"
       ],
       "size": 164,
-      "source_line": 606,
+      "source_line": 631,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -215,7 +224,7 @@
         "-[SCSITape stRewind]"
       ],
       "size": 132,
-      "source_line": 626,
+      "source_line": 651,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -224,7 +233,7 @@
         "-[SCSITape requestSense:]"
       ],
       "size": 368,
-      "source_line": 648,
+      "source_line": 673,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -233,7 +242,7 @@
         "-[SCSITape stModeSelect:]"
       ],
       "size": 332,
-      "source_line": 696,
+      "source_line": 721,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -242,7 +251,7 @@
         "-[SCSITape stModeSense:]"
       ],
       "size": 336,
-      "source_line": 748,
+      "source_line": 773,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -251,7 +260,7 @@
         "-[SCSITape executeMTOperation:]"
       ],
       "size": 432,
-      "source_line": 801,
+      "source_line": 826,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -260,7 +269,16 @@
         "-[SCSITape setBlockSize:]"
       ],
       "size": 260,
-      "source_line": 895,
+      "source_line": 920,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 5836,
+      "reference_names": [
+        "-[SCSITape executeRequest:buffer:client:senseBuf:]"
+      ],
+      "size": 832,
+      "source_line": 963,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -269,7 +287,7 @@
         "_moveString"
       ],
       "size": 124,
-      "source_line": 1093,
+      "source_line": 1122,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -278,7 +296,7 @@
         "_assign_cdb_c6s_len"
       ],
       "size": 32,
-      "source_line": 1127,
+      "source_line": 1156,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -287,7 +305,7 @@
         "_assign_msbd_numblocks"
       ],
       "size": 24,
-      "source_line": 1154,
+      "source_line": 1183,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -296,7 +314,7 @@
         "_assign_msbd_blocklength"
       ],
       "size": 24,
-      "source_line": 1167,
+      "source_line": 1196,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -305,7 +323,7 @@
         "_cdb_c6s_len_value"
       ],
       "size": 40,
-      "source_line": 1180,
+      "source_line": 1209,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -314,7 +332,25 @@
         "_er_info_value"
       ],
       "size": 20,
-      "source_line": 1190,
+      "source_line": 1228,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 7012,
+      "reference_names": [
+        "-[SCSITape reserveAllLuns]"
+      ],
+      "size": 236,
+      "source_line": 1247,
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
+    },
+    {
+      "address": 7280,
+      "reference_names": [
+        "-[SCSITape releaseAllLuns]"
+      ],
+      "size": 128,
+      "source_line": 1272,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITape.m"
     },
     {
@@ -377,7 +413,7 @@
         "_stioctl"
       ],
       "size": 740,
-      "source_line": 434,
+      "source_line": 427,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
     },
     {
@@ -386,7 +422,7 @@
         "_st_doiocsrq"
       ],
       "size": 840,
-      "source_line": 574,
+      "source_line": 567,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
     },
     {
@@ -395,41 +431,13 @@
         "_read_er_info_low_24"
       ],
       "size": 20,
-      "source_line": 739,
+      "source_line": 760,
       "source_path": "src/drvSCSITape/SCSITape.drvproj/SCSITape.lksproj/SCSITapeKern.m"
     }
   ],
   "reference_sha256": "ABB8D7E5FDEB9188A4C58D10AE6A7A1313A79EFBE49513AD3804E386BB65131A",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 524,
-      "reference_names": [
-        "-[SCSITape initSCSITape:target:lun:controller:majorDeviceNumber:]"
-      ],
-      "size": 908
-    },
-    {
-      "address": 5836,
-      "reference_names": [
-        "-[SCSITape executeRequest:buffer:client:senseBuf:]"
-      ],
-      "size": 832
-    },
-    {
-      "address": 7012,
-      "reference_names": [
-        "-[SCSITape reserveAllLuns]"
-      ],
-      "size": 236
-    },
-    {
-      "address": 7280,
-      "reference_names": [
-        "-[SCSITape releaseAllLuns]"
-      ],
-      "size": 128
-    },
     {
       "address": 11320,
       "reference_names": [

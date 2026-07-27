@@ -21,6 +21,15 @@
       "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
     },
     {
+      "address": 7072,
+      "reference_names": [
+        "_do_ioc"
+      ],
+      "size": 228,
+      "source_line": 170,
+      "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
+    },
+    {
       "address": 7300,
       "reference_names": [
         "_usage"
@@ -74,13 +83,6 @@
         "__dyld_func_lookup"
       ],
       "size": 16
-    },
-    {
-      "address": 7072,
-      "reference_names": [
-        "_do_ioc"
-      ],
-      "size": 228
     },
     {
       "address": 7892,

@@ -1,6 +1,8 @@
 /*  Behavioural tests for the zone and page functions in NSZone.m, stage 2a
-    of the Foundation reconstruction.  These are ordinary C over plain
-    memory and need no Objective-C runtime.  */
+    of the Foundation reconstruction.  These operate on plain memory, but
+    the implementation itself routes through objc_msgSend (NSSetZoneName
+    sends -cString to an NSString), so an Objective-C runtime is still
+    required to link and run this binary.  */
 
 #import <Foundation/NSZone.h>
 #include <stdio.h>

@@ -1003,44 +1003,46 @@ IOLog ("Length %d on return from executeRequest\n", scsiReq->bytesTransferred);
 		_senseDataValid = YES;
 	}
 	if (((rtn == SR_IOST_CHKSNV) || (rtn == SR_IOST_CHKSV)) &&
-	   	!_ignoreCheckCondition) {
+	   	!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+	   	!_ignoreOpenCheckCondition) {
 	    if(rtn == SR_IOST_CHKSV) {
 	    	rtn = SR_IOST_GOOD;
 	    }
 	    else {
 		rtn = [self requestSense: senseBuf];
 	    }
-	    if(rtn == SR_IOST_GOOD) {
+	}
+	if(rtn == SR_IOST_GOOD) {
+	    /*
+	     * If the error is a filemark, and we are reading,
+	     * then return no error.   Otherwise, return
+	     * check sense, with valid sense data.
+	     */
+	    if ((scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ) &&
+		(senseBuf->er_filemark)) {
+
 		/*
-		 * If the error is a filemark, and we are reading,
-		 * then return no error.   Otherwise, return
-		 * check sense, with valid sense data.
+		 * Check for correct reporting of bytes transferred.
+		 * (This works around a DPT firmware bug.)
 		 */
-		if ((scsiReq->cdb.cdb_c6.c6_opcode == C6OP_READ) &&
-		    (senseBuf->er_filemark)) {
+		int	transferLength =
+		    cdb_c6s_len_value (&scsiReq->cdb.cdb_c6s) -
+		    er_info_value (senseBuf);
 
-		    /*
-		     * Check for correct reporting of bytes transferred.
-		     * (This works around a DPT firmware bug.)
-		     */
-		    int	transferLength =
-			cdb_c6s_len_value (&scsiReq->cdb.cdb_c6s) -
-			er_info_value (senseBuf);
+		if ([self isFixedBlock]) {
+		    transferLength = transferLength * _blockSize;
+		}
 
-		    if ([self isFixedBlock]) {
-			transferLength = transferLength * _blockSize;
-		    }
-
-		    if (scsiReq->bytesTransferred != transferLength) {
+		if (scsiReq->bytesTransferred != transferLength) {
 #ifdef DEBUG
 IOLog ("%s: Incorrect byte count reported - "
     "corrected to %d\n", [self name], transferLength);
 #endif DEBUG
-			scsiReq->bytesTransferred = transferLength;
-		    }
+		    scsiReq->bytesTransferred = transferLength;
+		}
 
-		    rtn = SR_IOST_GOOD;
-		    scsiReq->driverStatus = SR_IOST_GOOD;
+		rtn = SR_IOST_GOOD;
+		scsiReq->driverStatus = SR_IOST_GOOD;
 
 #ifdef DEBUG
 IOLog ("execReq sense: er_filemark %d, er_badlen %d, er_sensekey %d, er_addsensecode %d, er_qualifier %d, er_info %d\n",
@@ -1049,40 +1051,42 @@ IOLog ("execReq sense: er_filemark %d, er_badlen %d, er_sensekey %d, er_addsense
 	er_info_value (senseBuf));
 #endif DEBUG
 
-		}
-		else {
-		    rtn = SR_IOST_CHKSV;
-		}
 	    }
 	    else {
-	 	if (_isInitialized) {
-		    IOLog("%s: Request Sense on target %d lun %d "
-			"failed (%s)\n",
-			[self name], _target, _lun,
-			IOFindNameForValue(rtn, IOScStatusStrings));
-		}
-		rtn = SR_IOST_CHKSNV;
+		rtn = SR_IOST_CHKSV;
 	    }
 	}
-
-	/*
-	 * Log error messages, except the spate of timeouts and
-	 * device not ready messages during initialization.
-	 */
-	if (_isInitialized &&
-	    (rtn != SR_IOST_GOOD) &&
-	    !_ignoreCheckCondition) {
-
-	    IOLog("%s, target %d, lun %d: op %s returned %s\n",
-		[self name], _target, _lun,
-		IOFindNameForValue(scsiReq->cdb.cdb_opcode,
-		    IOSCSIOpcodeStrings),
-		IOFindNameForValue(rtn, IOScStatusStrings));
-
-	    if (rtn == SR_IOST_CHKSV) {
-		IOLog ("    Sense key = 0x%x  Sense Code = 0x%x\n",
-		    senseBuf->er_sensekey, senseBuf->er_addsensecode);
+	else {
+	    if (_isInitialized &&
+		!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+		!_ignoreOpenCheckCondition) {
+		IOLog("%s: Request Sense on target %d lun %d "
+		    "failed (%s)\n",
+		    [self name], _target, _lun,
+		    IOFindNameForValue(rtn, IOScStatusStrings));
 	    }
+	    rtn = SR_IOST_CHKSNV;
+	}
+    }
+
+    /*
+     * Log error messages, except the spate of timeouts and
+     * device not ready messages during initialization.
+     */
+    if (_isInitialized &&
+	(rtn != SR_IOST_GOOD) &&
+	!_ignoreCheckCondition [scsiReq->target][scsiReq->lun] &&
+	!_ignoreOpenCheckCondition) {
+
+	IOLog("%s, target %d, lun %d: op %s returned %s\n",
+	    [self name], _target, _lun,
+	    IOFindNameForValue(scsiReq->cdb.cdb_opcode,
+		IOSCSIOpcodeStrings),
+	    IOFindNameForValue(rtn, IOScStatusStrings));
+
+	if (rtn == SR_IOST_CHKSV) {
+	    IOLog ("    Sense key = 0x%x  Sense Code = 0x%x\n",
+		senseBuf->er_sensekey, senseBuf->er_addsensecode);
 	}
 
 	_didWrite = NO;

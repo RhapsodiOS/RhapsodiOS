@@ -95,7 +95,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 102,
-      "source_line": 160,
+      "source_line": 161,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },
@@ -120,7 +120,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 110,
-      "source_line": 185,
+      "source_line": 187,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },
@@ -145,7 +145,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 127,
-      "source_line": 202,
+      "source_line": 205,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },
@@ -170,7 +170,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 407,
-      "source_line": 226,
+      "source_line": 230,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },
@@ -195,7 +195,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 428,
-      "source_line": 266,
+      "source_line": 270,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },
@@ -208,7 +208,8 @@
         ],
         "reasons": [
           "IDA and Ghidra agree exactly on address 1752, size 816, 16 basic blocks and 271 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
-          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 9; no replacement source has been written, so the status is unexamined."
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 9; no replacement source has been written, so the status is unexamined.",
+          "Reconstructed as VGADisplayCursor(IODisplayInfo *di, VGAShmem_t *shmem), external, finding 9. Statement for statement the reference: the two read-shadow saves into two locals each, the vga_reg__in of the sequencer map mask, the cursorRect and screenBounds copies, both y clips, the snap of minx to a sixteen-pixel column with c.maxx = c.minx + 32, the saveRect write-back as two dword stores, shift = (cursorRect.minx & 15) * 2 with rshift = 32 - shift, the three cursor pointers at shmem+0x48 + frame*64, +0x148 + frame*64 and +0x248 advanced by the rows the clip took, the two clip flags, the signed idiv 0x10000 / (di->width >> 4) that yields the latent 1638, the unsigned div that splits row into bank and offset, the bank pushed through select_write_segment and select_read_segment on entry and again whenever row % lines is zero, the two-column body with its shift == 0 special case that still steps save, and the restore that feeds the saved *read* values to the *write* selects. Control flow is identical: 23 branches and calls in the same order, the same predicates, the same targets. Not byte-identical -- ours is 772 bytes against the reference's 816. The whole difference is register allocation: our gcc gives the eight-byte Bounds c an esi:edi pair where the reference spills it, which shifts every other local's stack slot by eight and leaves di and row in memory where the reference keeps them in registers, and the reference hoists &vramBuf[1] into a register across the loop where ours pushes the immediate. No statement, constant, operand order or side effect differs; the two clip compares and the leftOK setcc come out with their operands reversed, which is the same predicate read the other way round. Read against the full reference disassembly instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back against it."
         ],
         "status": "agreed"
       },
@@ -217,11 +218,11 @@
         "_VGADisplayCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3b-t4-impl",
       "size": 816,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 339,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 2568,
@@ -232,7 +233,8 @@
         ],
         "reasons": [
           "IDA and Ghidra agree exactly on address 2568, size 660, 16 basic blocks and 216 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
-          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 10; no replacement source has been written, so the status is unexamined."
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 10; no replacement source has been written, so the status is unexamined.",
+          "Reconstructed as VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem), external, finding 10. 660 bytes against the reference's 660, with all fifteen named locals landing on the reference's exact stack slots (maskL -0x0C, maskR -0x10, scr -0x18, s -0x20, p -0x24, words -0x28, lines -0x2C, shift -0x30, the four saved shadows -0x34 through -0x40 and the map mask at -0x44) and control flow identical -- 23 branches and calls in the same order with the same targets. _mask_array.128 is subscripted with the reference's two expressions, oldCursorRect.minx - saveRect.minx and 16 - (saveRect.maxx - oldCursorRect.maxx), the second complemented; the same signed idiv gives the same 1638; save is read and never written and still steps 32 words per row. One thing the disassembly settled: the reference computes s.miny - scr.miny twice, once for p and the bank and again as the loop initialiser, because the two select calls between them kill the CSE, so the expression is inline in both places rather than held in row. Not byte-identical: our col gets a hard register where the reference spills it, which is the one missing temp slot (frame 0x50 against 0x54), and the reference hoists &vramBuf[1] into a register across the loop where ours pushes the immediate. Read against the full reference disassembly instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back against it."
         ],
         "status": "agreed"
       },
@@ -241,11 +243,11 @@
         "_VGARemoveCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3b-t4-impl",
       "size": 660,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 450,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3228,
@@ -256,7 +258,8 @@
         ],
         "reasons": [
           "IDA and Ghidra agree exactly on address 3228, size 100, 5 basic blocks and 38 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
-          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 11; no replacement source has been written, so the status is unexamined."
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 11; no replacement source has been written, so the status is unexamined.",
+          "Reconstructed as -hideCursor:(int)token, finding 11. Byte-for-byte identical to the reference: same 38 instructions, same registers, same order, same 100 bytes; the only textual difference is the absolute addresses of the __OBJC and __text operands, which differ because our __TEXT,__const is 170 bytes shorter (the build-generated _VGA_VERS_STRING / _VGA_VERS_NUM, already intentional-mismatch from Task 1). ev_try_lock is taken on &priv->cursorSema and a failure returns self having done nothing -- this half never blocks and never queues, and ev_lock is not imported by this binary at all. [self displayInfo] is sent before the depth test, not inside it, and token is never read. One thing the disassembly settled: priv is re-read from the ivar for the try-lock and again for the unlock, but the counter and the blitter argument share a single load, so the middle group holds it in a local while the two lock calls do not. Read against the full reference disassembly instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back against it."
         ],
         "status": "agreed"
       },
@@ -265,11 +268,11 @@
         "-[IOVGADisplay hideCursor:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3b-t4-impl",
       "size": 100,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 558,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
+      "status": "assembly-matched"
     },
     {
       "address": 3328,
@@ -280,7 +283,8 @@
         ],
         "reasons": [
           "IDA and Ghidra agree exactly on address 3328, size 517, 25 basic blocks and 167 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
-          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 12; no replacement source has been written, so the status is unexamined."
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 12; no replacement source has been written, so the status is unexamined.",
+          "Reconstructed as -moveCursor:frame:token:, finding 12. The Window Server's VGASysHideCursor, VGACheckShield and VGASysShowCursor inlined into one method, which is why the show tail appears twice and why both copies run in sequence when the shield clears -- VGACheckShield calls VGASysShowCursor and the caller calls it again. frame and cursorLoc are written first, then the hide, then the un-obscure that decrements the depth without asking the Window Server, then the shield test, whose rectangle is recomputed into locals and deliberately not written to cursorRect, with four strict compares so an edge-touching intersection is a miss. Control flow is identical: 26 branches and calls in the same order with the same targets, and the shield block's locals land on the reference's slots. 528 bytes against the reference's 520; the eight bytes are two redundant reloads our compiler emits for cursorRect.minx and .miny after storing them, plus a register copy before each add of CURSORWIDTH. Two things the disassembly settled: shielded is stored before the hide/show branch and the branch then tests the byte just stored, and the hot spot is read as one four-byte Point and split with sar 16. Read against the full reference disassembly instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back against it."
         ],
         "status": "agreed"
       },
@@ -289,11 +293,11 @@
         "-[IOVGADisplay moveCursor:frame:token:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3b-t4-impl",
       "size": 517,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 591,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3848,
@@ -304,7 +308,8 @@
         ],
         "reasons": [
           "IDA and Ghidra agree exactly on address 3848, size 453, 20 basic blocks and 147 instructions. angr is disabled for this profile because its CFGFast misdisassembles six bytes at 7760 inside _emu486 and breaks consensus normalization, so this is a two-analyzer consensus (divergences.md, Evidence).",
-          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 13; no replacement source has been written, so the status is unexamined."
+          "No source counterpart exists. Our VGA.lksproj implements a class VGA subclassing IOFrameBufferDisplay and shares no symbol, string or class name with Apple's IOVGADisplay, IOVGADisplay(VESAMode), vidBIOS and _emu486 inventory, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_reloc finding 13; no replacement source has been written, so the status is unexamined.",
+          "Reconstructed as -showCursor:frame:token:, finding 13. Finding 12 without the leading hide and without the un-obscure step, and with the final [self displayInfo] sent before the depth test rather than inside it -- a real difference between the two methods, read out of the two disassemblies. Control flow is identical: 21 branches and calls in the same order with the same targets. 468 bytes against the reference's 456, the twelve bytes being the same two redundant reloads as finding 12 plus one register copy in each of the two show tails. Read against the full reference disassembly instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back against it."
         ],
         "status": "agreed"
       },
@@ -313,11 +318,11 @@
         "-[IOVGADisplay showCursor:frame:token:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3b-t4-impl",
       "size": 453,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 672,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4304,
@@ -628,7 +633,7 @@
       "reason": null,
       "reviewer": "vga3b-t3-impl",
       "size": 106,
-      "source_line": 443,
+      "source_line": 836,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m",
       "status": "assembly-matched"
     },

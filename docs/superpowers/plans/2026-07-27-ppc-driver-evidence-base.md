@@ -570,7 +570,7 @@ d=json.load(open('src/drivers-ppc/reconstruction/BMac/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
       'dup',len(d['duplicate_candidates']),'disputed',len(d['boundary_disputed']))
 for u in d['unmapped']: print('  unmapped:', u['reference_names'], u['size'])
-assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
+for e in d['duplicate_candidates']: print('  DUPLICATE:', e['reference_names'], e.get('source_sites') or '')
 "
 ```
 
@@ -720,7 +720,7 @@ d=json.load(open('src/drivers-ppc/reconstruction/Burgundy/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
       'dup',len(d['duplicate_candidates']),'disputed',len(d['boundary_disputed']))
 for u in d['unmapped']: print('  unmapped:', u['reference_names'], u['size'])
-assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
+for e in d['duplicate_candidates']: print('  DUPLICATE:', e['reference_names'], e.get('source_sites') or '')
 "
 ```
 

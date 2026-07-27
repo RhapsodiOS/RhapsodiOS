@@ -53,7 +53,7 @@ Method counts corroborate the correspondence:
 | Driver | ObjC method definitions in source | Static C functions | Distinct method-name strings in binary |
 | --- | --- | --- | --- |
 | `drvCuda` | 39 | 0 | ~41 |
-| `drvApple96_SCSI` | 124 | 9 | ~92 |
+| `drvApple96_SCSI` | 124 | 8 | ~92 |
 | `drvPPCATA` + `drvATADisk` | 153 | 7 | ~148 |
 | `drvBMacEnet` | 63 | 3 | ~67 |
 | `drvPPCBurgundy` | 38 | 0 | ~40 |
@@ -61,7 +61,9 @@ Method counts corroborate the correspondence:
 The binary column is a regular-expression count of distinct `-[…]`/`+[…]`
 strings, so it is indicative rather than exact — establishing that these are
 the same drivers, not the precise gap. Producing the precise gap is this
-spec's job.
+spec's job. The `drvApple96_SCSI` static-function count above (8) is
+corrected from this spec's original estimate (9) against an exhaustive
+`grep -n '\bstatic\b'` of the source directory; see `53c96/findings.md`.
 
 ## 1. Scope
 
@@ -368,13 +370,20 @@ Done when all of the following hold, with output shown:
      evaluate preprocessor conditionals. Teaching it to would mean emulating
      the preprocessor — far outside this spec, and not worth it for two
      entries.
-   - **Two are a real property of Apple's source.** `getIdeDriveInfo:` and
-     `getIdeIdentifyInfo:` are each defined twice for the same class: in
-     `@implementation IdeController` (`IdeCnt.m:469` and `:475`) and again in
+   - **Two are a version divergence between our tree and Apple's shipped
+     source.** `getIdeDriveInfo:` and `getIdeIdentifyInfo:` are each defined
+     twice for the same class in our tree: in `@implementation IdeController`
+     (`IdeCnt.m:469` and `:475`) and again in
      `@implementation IdeController(Initialize)` (`IdeCntInit.m:443` and
-     `:1101`). A category implementation replaces the primary one at load
-     time, so one of each pair is dead code in the shipped driver. Which one
-     Apple actually shipped is answerable from the binary, and §4.4 records it.
+     `:1101`). Category-overrides-primary-class is a load-time behavior; it
+     cannot suppress compile-time symbol emission, so if Apple's `IdeCnt.m`
+     had contained these bodies, the binary would carry untagged
+     `-[IdeController …]` symbols for them, the same way it does for the
+     unguarded, untagged neighbours `isMultiSectorAllowed:` and
+     `getMultiSectorValue:` a few lines above them in the same
+     `@implementation` block. It doesn't: only the `(Initialize)`-tagged
+     symbols exist. Apple's shipped `IdeCnt.m` never contained these two
+     bodies at all; our tree does. §4.4 records the evidence.
 
    A duplicate that is measured, explained and evidenced is a result. Only an
    unexplained one is a defect.

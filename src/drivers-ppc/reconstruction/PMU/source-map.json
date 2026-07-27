@@ -1,0 +1,393 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 192,
+      "reference_names": [
+        "-[ApplePMU initFromDeviceDescription:]"
+      ],
+      "size": 680,
+      "source_line": 91,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 936,
+      "reference_names": [
+        "-[ApplePMU free]"
+      ],
+      "size": 60,
+      "source_line": 204,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1012,
+      "reference_names": [
+        "-[ApplePMU poll_device]"
+      ],
+      "size": 108,
+      "source_line": 220,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1136,
+      "reference_names": [
+        "-[ApplePMU receiveMsg]"
+      ],
+      "size": 248,
+      "source_line": 240,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1432,
+      "reference_names": [
+        "-[ApplePMU timeoutOccurred]"
+      ],
+      "size": 108,
+      "source_line": 280,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1556,
+      "reference_names": [
+        "-[ApplePMU CheckRequestQueue]"
+      ],
+      "size": 160,
+      "source_line": 296,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1764,
+      "reference_names": [
+        "-[ApplePMU registerForADBAutopoll::]"
+      ],
+      "size": 20,
+      "source_line": 324,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 1784,
+      "reference_names": [
+        "-[ApplePMU ADBWrite:::::::]"
+      ],
+      "size": 232,
+      "source_line": 336,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 2032,
+      "reference_names": [
+        "-[ApplePMU ADBRead:::::]"
+      ],
+      "size": 200,
+      "source_line": 391,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 2248,
+      "reference_names": [
+        "-[ApplePMU ADBReset:::]"
+      ],
+      "size": 160,
+      "source_line": 438,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 2424,
+      "reference_names": [
+        "-[ApplePMU ADBFlush::::]"
+      ],
+      "size": 196,
+      "source_line": 478,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 2636,
+      "reference_names": [
+        "-[ApplePMU ADBSetPollList::::]"
+      ],
+      "size": 228,
+      "source_line": 524,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 2880,
+      "reference_names": [
+        "-[ApplePMU ADBPollEnable:::]"
+      ],
+      "size": 200,
+      "source_line": 589,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3096,
+      "reference_names": [
+        "-[ApplePMU ADBPollDisable:::]"
+      ],
+      "size": 164,
+      "source_line": 633,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3276,
+      "reference_names": [
+        "-[ApplePMU ADBSetPollRate::::]"
+      ],
+      "size": 16,
+      "source_line": 672,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3292,
+      "reference_names": [
+        "-[ApplePMU ADBGetPollRate::::]"
+      ],
+      "size": 16,
+      "source_line": 685,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3308,
+      "reference_names": [
+        "-[ApplePMU ADBSetAlternateKeyboard::::]"
+      ],
+      "size": 16,
+      "source_line": 698,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3324,
+      "reference_names": [
+        "-[ApplePMU ADBinput::]"
+      ],
+      "size": 264,
+      "source_line": 715,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3620,
+      "reference_names": [
+        "-[ApplePMU registerForClockTicks::]"
+      ],
+      "size": 20,
+      "source_line": 745,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3640,
+      "reference_names": [
+        "-[ApplePMU setRealTimeClock::::]"
+      ],
+      "size": 156,
+      "source_line": 760,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3812,
+      "reference_names": [
+        "-[ApplePMU getRealTimeClock::::]"
+      ],
+      "size": 152,
+      "source_line": 805,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 3980,
+      "reference_names": [
+        "-[ApplePMU readNVRAM::::::]"
+      ],
+      "size": 460,
+      "source_line": 850,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 4456,
+      "reference_names": [
+        "-[ApplePMU writeNVRAM::::::]"
+      ],
+      "size": 476,
+      "source_line": 929,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 4948,
+      "reference_names": [
+        "-[ApplePMU registerForPowerInterrupts::]"
+      ],
+      "size": 20,
+      "source_line": 1010,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 4968,
+      "reference_names": [
+        "-[ApplePMU sendMiscCommand:::::::]"
+      ],
+      "size": 244,
+      "source_line": 1025,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 5228,
+      "reference_names": [
+        "-[ApplePMU StartPMUTransmission:]"
+      ],
+      "size": 808,
+      "source_line": 1086,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 6052,
+      "reference_names": [
+        "-[ApplePMU interruptOccurred]"
+      ],
+      "size": 1504,
+      "source_line": 1200,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 7604,
+      "reference_names": [
+        "-[ApplePMU interruptOccurredAt:]"
+      ],
+      "size": 248,
+      "source_line": 1488,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8048,
+      "reference_names": [
+        "-[ApplePMU SendPMUByte:]"
+      ],
+      "size": 184,
+      "source_line": 1571,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8248,
+      "reference_names": [
+        "-[ApplePMU ReadPMUByte:]"
+      ],
+      "size": 232,
+      "source_line": 1598,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8496,
+      "reference_names": [
+        "-[ApplePMU WaitForAckLo]"
+      ],
+      "size": 168,
+      "source_line": 1629,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8696,
+      "reference_names": [
+        "-[ApplePMU WaitForAckHi]"
+      ],
+      "size": 168,
+      "source_line": 1659,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8896,
+      "reference_names": [
+        "-[ApplePMU GetPMUInterruptState]"
+      ],
+      "size": 24,
+      "source_line": 1689,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8920,
+      "reference_names": [
+        "-[ApplePMU RestorePMUInterrupt:]"
+      ],
+      "size": 36,
+      "source_line": 1698,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8956,
+      "reference_names": [
+        "-[ApplePMU DisablePMUInterrupt]"
+      ],
+      "size": 28,
+      "source_line": 1710,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 8984,
+      "reference_names": [
+        "-[ApplePMU EnablePMUInterrupt]"
+      ],
+      "size": 28,
+      "source_line": 1720,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 9012,
+      "reference_names": [
+        "-[ApplePMU AcknowledgePMUInterrupt]"
+      ],
+      "size": 28,
+      "source_line": 1730,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 9040,
+      "reference_names": [
+        "-[ApplePMU GetSRInterruptState]"
+      ],
+      "size": 24,
+      "source_line": 1740,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 9064,
+      "reference_names": [
+        "-[ApplePMU RestoreSRInterrupt:]"
+      ],
+      "size": 36,
+      "source_line": 1749,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 9100,
+      "reference_names": [
+        "-[ApplePMU DisableSRInterrupt]"
+      ],
+      "size": 24,
+      "source_line": 1761,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    },
+    {
+      "address": 9124,
+      "reference_names": [
+        "-[ApplePMU EnableSRInterrupt]"
+      ],
+      "size": 24,
+      "source_line": 1770,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m"
+    }
+  ],
+  "reference_sha256": "2F63C89DFEDEBCC5D1F2CEABA8417DC65BCC8BF32CA7B310B1EA0DD43831F7B5",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 9252,
+      "reference_names": [
+        "+[drvPPCPMUKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 9272,
+      "reference_names": [
+        "+[drvPPCPMUVersion driverKitVersionFordrvPPCPMU]"
+      ],
+      "size": 16
+    }
+  ]
+}

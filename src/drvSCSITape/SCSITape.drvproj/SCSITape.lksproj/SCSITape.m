@@ -1209,7 +1209,16 @@ int
 cdb_c6s_len_value (struct cdb_6s *cdbp)
 {
 #if	__BIG_ENDIAN__
+#if	__NATURAL_ALIGNMENT__
+    return ((cdbp->c6s_len[0] << 16) | (cdbp->c6s_len[1] << 8) |
+	cdbp->c6s_len[2]);
+
+#else	__NATURAL_ALIGNMENT__
+
     return (cdbp->c6s_len);
+
+#endif	__NATURAL_ALIGNMENT__
+
 #elif	__LITTLE_ENDIAN__
     return (cdbp->c6s_len0 | (cdbp->c6s_len1 << 8) | (cdbp->c6s_len2 << 16));
 #endif

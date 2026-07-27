@@ -182,8 +182,14 @@ IOReturn watchState(Port *port, unsigned long *state, unsigned long mask)
         // Set the mask of bits we're watching
         port->WatchStateMask |= actualMask;
 
-        // Sleep waiting for state change
-        thread_sleep(&port->WatchStateMask, &port->WatchLock.locked, 1);  // 1 = interruptible
+        // Sleep waiting for state change.  The reference passes the lock's own
+        // address (lea eax,[esi+14h] at 23712), so take &WatchLock and cast it
+        // exactly as the simple_lock() call above does; reaching for
+        // &WatchLock.locked yields the same address but the wrong type, and the
+        // resulting incompatible-pointer warning is noise in a list this
+        // reconstruction reads as a load-failure signal.
+        thread_sleep(&port->WatchStateMask,
+                     (simple_lock_t)&port->WatchLock, 1);  // 1 = interruptible
 
         // Get the result of the wait
         waitResult = thread_wait_result();

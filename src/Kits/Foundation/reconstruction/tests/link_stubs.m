@@ -80,10 +80,10 @@ BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
     return NO;
 }
 
-const char *_NSMethodExceptionProem(id object, SEL aSelector)
+id _NSMethodExceptionProem(id object, SEL aSelector)
 {
     unimplemented("_NSMethodExceptionProem");
-    return NULL;
+    return nil;
 }
 
 void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)

@@ -23,7 +23,7 @@ extern id _objc_msgForward(id self, SEL op, ...);
 extern IMP _NSIMPForSelector(Class aClass, SEL aSelector);
 extern struct objc_method_description *_NSMethodDescriptionForSelector(Class aClass, SEL aSelector);
 extern BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol);
-extern const char *_NSMethodExceptionProem(id object, SEL aSelector);
+extern id _NSMethodExceptionProem(id object, SEL aSelector);
 extern void _NSObjectRaiseNullSelectorException(id object, SEL aSelector);
 extern void NSAutoreleaseObject(id anObject);
 
@@ -189,14 +189,15 @@ extern void NSAutoreleaseObject(id anObject);
 /*  Message forwarding.  */
 
 - (void)doesNotRecognizeSelector:(SEL)aSelector {
-    const char *proem = _NSMethodExceptionProem(self, aSelector);
+    id proem = _NSMethodExceptionProem(self, aSelector);
 
-    NSLog(@"%s does not recognize the selector", proem);
-    [NSException raise:NSInvalidArgumentException format:@"%s does not recognize the selector", proem];
+    NSLog(@"%@: selector not recognized", proem);
+    proem = _NSMethodExceptionProem(self, aSelector);
+    [NSException raise:NSInvalidArgumentException format:@"%@: selector not recognized", proem];
 }
 
 - (id)forward:(SEL)aSelector :(marg_list)argFrame {
-    [NSException raise:NSInternalInconsistencyException format:@"NSObject does not forward messages"];
+    [NSException raise:NSInternalInconsistencyException format:@"*** forward:: implementation not overridden"];
     return nil;
 }
 
@@ -311,7 +312,7 @@ extern void NSAutoreleaseObject(id anObject);
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"<%s: %p>", isa->name, self];
+    return [NSString stringWithFormat:@"<%s: 0x%x>", isa->name, self];
 }
 
 - (NSString *)debugDescription {

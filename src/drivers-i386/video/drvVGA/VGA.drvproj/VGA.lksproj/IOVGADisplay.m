@@ -23,6 +23,8 @@
 
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/i386/kernelDriver.h>
+#import <driverkit/i386/IOEISADeviceDescription.h>
+#import <driverkit/i386/directDevice.h>
 
 #import <driverkit/EventDriver.h>
 #import <driverkit/IOConfigTable.h>
@@ -31,7 +33,32 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+#import <machdep/i386/kernBootStruct.h>
+
+#import <stdio.h>
+#import <stdlib.h>
 #import <string.h>
+
+/*
+ * Two things this file reaches out of the kernel for, neither of which any
+ * driver header declares.
+ *
+ * kmId is the console device, defined by bsd/dev/i386/km.m; its
+ * registerDisplay: is declared in bsd/dev/i386/kmDevice.h, which is not a
+ * driver header, so the selector is declared here instead.  The category is
+ * interface-only and emits no __OBJC,__category record.
+ *
+ * VGAAllocateConsole lives in bsd/dev/i386/VGAConsole.c and is what makes
+ * the five console globals and the six select/convert functions below
+ * external rather than static.
+ */
+extern id	kmId;
+
+@interface Object (IOVGADisplayKM)
+- (void)registerDisplay:newDisplay;
+@end
+
+extern IOConsoleInfo	*VGAAllocateConsole(IODisplayInfo *display);
 
 /*
  * File-scope state.
@@ -46,8 +73,14 @@
  * The five console globals are external, not static: the kernel's
  * VGAConsole.c links against them.  colr_mode starts at 1 (colour), the
  * four plane/segment shadows at 0.
+ *
+ * svga_bios_mode is a char, not an int: every one of the eight accesses to
+ * it in the reference is byte-sized (`movb $1,_svga_bios_mode',
+ * `cmpb $1,_svga_bios_mode'), which no compiler emits for an int.  It still
+ * lands at __data 24576 with vesaMode at 24580, because the int that
+ * follows it is 4-byte aligned.
  */
-static int	svga_bios_mode = 0;
+static char	svga_bios_mode = 0;
 static int	vesaMode = 0x6A;
 
 int		colr_mode = 1;
@@ -66,9 +99,47 @@ static char		nameBuf[20];
 
 @implementation IOVGADisplay
 
-/* Finding 1. */
+/*
+ * Finding 1.  Ask the event driver for the shared region, check that it is
+ * no larger than the VGAShmem_t this driver was compiled against, zero it,
+ * and start the cursor hidden at depth 1.
+ *
+ * shmem_size is an int -- the protocol declares size:(int *) -- but the
+ * comparison against sizeof(VGAShmem_t) is unsigned, because sizeof is
+ * unsigned and the usual arithmetic conversions promote the int.  That is
+ * the reference's `ja', with no cast written anywhere.  The literal it
+ * compares against is 0x1448 = 5192, which is exactly what the checked-in
+ * IOVGAShared.h computes.
+ *
+ * A region *smaller* than sizeof(VGAShmem_t) is accepted; only the memset
+ * and the two stores below assume it is large enough for the bm12 arm the
+ * driver actually uses.
+ */
 - (IOReturn)_registerWithED
 {
+    Bounds	 bounds;
+    int		 shmem_size;
+    int		 token;
+    VGAShmem_t	*shmem;
+
+    token = [[EventDriver instance] registerScreen:self bounds:&bounds
+					     shmem:&priv size:&shmem_size];
+    shmem = priv;
+
+    if (token == -1)
+	return IO_R_INVALID_ARG;
+
+    if (shmem_size > sizeof(VGAShmem_t)) {
+	IOLog("%s: shmem_size > sizeof (VGAShmem_t)(%d<>%d)\n",
+	      [self name], shmem_size, sizeof(VGAShmem_t));
+	[[EventDriver instance] unregisterScreen:token];
+	return IO_R_INVALID_ARG;
+    }
+
+    memset(shmem, 0, shmem_size);
+    shmem->cursorShow = 1;
+    shmem->screenBounds = bounds;
+    [self setToken:token];
     return IO_R_SUCCESS;
 }
 
@@ -736,84 +807,320 @@ VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem)
     return self;
 }
 
-/* Finding 14. */
+/*
+ * Finding 14.  "VGADisplay%d" into the twenty-byte nameBuf, which is what
+ * the Window Server bundle later looks up as "VGADisplay0".  The unit is
+ * written through the caller's pointer and then read back out of it for
+ * the sprintf, which is what the reference does.
+ */
 - (char *)generateNameAndUnit:(unsigned int *)unit
 {
+    *unit = nextVGAUnit++;
+    sprintf(nameBuf, "VGADisplay%d", *unit);
     return nameBuf;
 }
 
 /*
  * Finding 15.  A stub in the reference too: the frame buffer is not
- * mapped through this path.
+ * mapped through this path.  It exists so that the IO_Framebuffer_Map
+ * parameter has something to call.
  */
 - (vm_offset_t)map
 {
     return 0;
 }
 
-/* Finding 16. */
+/*
+ * Finding 16.  The loop counter and the limit are unsigned, so a device
+ * with no port ranges releases nothing.
+ */
 - (void)unmap
 {
+    unsigned int	i, n;
+
+    n = [[self deviceDescription] numPortRanges];
+    for (i = 0; i < n; i++)
+	[self releasePortRange:i];
 }
 
-/* Finding 17.  Returns YES unconditionally in the reference. */
+/*
+ * Finding 17.  Apple's defect, reproduced rather than fixed: this returns
+ * YES unconditionally and never looks at what initFromDeviceDescription:
+ * gave back.  If the allocation or the init fails, the four messages below
+ * go to nil and the probe still reports success.
+ */
 + (BOOL)probe:deviceDescription
 {
+    unsigned int	 unit;
+    id			 display;
+    char		*name;
+
+    display = [[self alloc] initFromDeviceDescription:deviceDescription];
+    name = [display generateNameAndUnit:&unit];
+    [display setUnit:unit];
+    [display setName:name];
+    [display setDeviceKind:"frame buffer"];
+    [display registerDevice];
     return YES;
 }
 
-/* Finding 18. */
+/*
+ * Finding 18.  Nothing else: neither the shared region nor the vidBIOS
+ * instance is released.
+ */
 - free
 {
     return [super free];
 }
 
-/* Finding 19. */
+/*
+ * Finding 19.  Pick the mode, then say so on the console.
+ *
+ * The "Yes" test is a strcmp, not a strncmp: gcc turns strcmp against a
+ * literal into an inline four-byte repe cmpsb, which is the reference's
+ * `mov ecx,4' at 4744, whereas the strncmp in -didBootWithDefaultConfig is
+ * a real call.  Comparing four bytes means the terminator is compared too,
+ * so "Yesterday" does not match.
+ *
+ * -didBootWithDefaultConfig is NOT dead here.  The store that sets
+ * svga_bios_mode to 1 jumps *past* the else-branch's store and into the
+ * call, so the call runs on both paths and its YES answer clears the flag
+ * the "Yes" branch just set.  Booting with `config=Default' really does
+ * suppress SVGA mode.  See the report for the reading of the reference's
+ * branch at 4763 that settles this.
+ */
 - initFromDeviceDescription:deviceDescription
 {
+    const char	*s;
+
+    if ([super initFromDeviceDescription:deviceDescription] == nil)
+	return nil;
+
+    s = [[deviceDescription configTable] valueForStringKey:"SVGA Mode"];
+    if (s != NULL && strcmp(s, "Yes") == 0)
+	svga_bios_mode = 1;
+    else
+	svga_bios_mode = 0;
+
+    if ([self didBootWithDefaultConfig] == YES)
+	svga_bios_mode = 0;
+
+    if (svga_bios_mode == 1) {
+	bios = [[vidBIOS alloc] init];
+	if (bios == nil) {
+	    IOLog("VGADisplay: vidBIOS failed\n");
+	    svga_bios_mode = 0;
+	}
+    }
+
+    if (svga_bios_mode == 0)
+	IOLog("VGADisplay: Mode Selected: 640 x 480 @ 60 Hz (BW:2)\n");
+    else {
+	IOLog("VGADisplay: Mode Selected: 800 x 600 @ 60 Hz (BW:2)\n");
+	s = [[deviceDescription configTable]
+		valueForStringKey:"SVGA VESA BIOS Mode"];
+	if (s != NULL) {
+	    vesaMode = strtol(s, NULL, 16);
+	    IOLog("VGADisplay: VESA mode selected: 0x%x\n", vesaMode);
+	}
+    }
+
     return self;
 }
 
-/* Finding 20. */
+/*
+ * Finding 20.  Apple's second defect here: the range check logs and does
+ * not guard.  Both paths fall into SetET4000Brightness.  The comparison is
+ * unsigned -- the reference's `cmp ebx,0x40 / jbe' -- so a negative level
+ * is out of range too and then still reaches the DAC.  token is unread.
+ */
 - setBrightness:(int)level token:(int)t
 {
+    if ((unsigned int)level > 64)
+	IOLog("%s: Invalid arg to setBrightness:%d\n", [self name], level);
+
+    SetET4000Brightness(level);
     return self;
 }
 
-/* Finding 21. */
+/*
+ * Finding 21.  Four parameters, matched by strcmp in this order, with
+ * anything unrecognised going to the superclass.  gcc compiles each strcmp
+ * against a literal into an inline repe cmpsb of strlen+1 bytes, which is
+ * why the reference's counts are 19, 26, 17 and 24 and why a name that
+ * merely shares a prefix does not match.
+ *
+ * IO_Framebuffer_Map and IO_Framebuffer_Dimensions are implemented here but
+ * sent by nobody in this driver pair; the Window Server bundle sends only
+ * IOGetDisplayInfo and IO_Framebuffer_Register on this side.  They exist
+ * for the event driver and the console.
+ *
+ * IOGetDisplayInfo answers a hardcoded triple rather than displayInfo's,
+ * and it is that answer that determines every geometry global on the
+ * Window Server side.
+ */
 - (IOReturn)getIntValues	: (unsigned *)parameterArray
 		   forParameter	: (IOParameterName)parameterName
 			  count	: (unsigned *)count
 {
+    unsigned int	numInts = *count;
+
+    if (strcmp(parameterName, "IO_Framebuffer_Map") == 0) {
+	parameterArray[0] = (unsigned int)[self map];
+	*count = 1;
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "IO_Framebuffer_Dimensions") == 0) {
+	unsigned int	 values[3];
+	IODisplayInfo	*di;
+	int		 i;
+
+	di = [self displayInfo];
+	values[0] = di->width;
+	values[1] = di->height;
+	values[2] = di->rowBytes;
+
+	*count = 0;
+	for (i = 0; i < 3; i++) {
+	    if (*count == numInts)
+		break;
+	    parameterArray[i] = values[i];
+	    (*count)++;
+	}
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "IOGetDisplayInfo") == 0) {
+	if (*count != 3)
+	    return IO_R_INVALID_ARG;
+
+	if (svga_bios_mode) {
+	    parameterArray[0] = 800;
+	    parameterArray[1] = 600;
+	    parameterArray[2] = 200;
+	} else {
+	    parameterArray[0] = 640;
+	    parameterArray[1] = 480;
+	    parameterArray[2] = 160;
+	}
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "IO_Framebuffer_Register") == 0) {
+	IOReturn	rtn;
+
+	rtn = [self _registerWithED];
+	[kmId registerDisplay:self];
+
+	*count = 0;
+	if (numInts != 0) {
+	    *count = 1;
+	    parameterArray[0] = [self token];
+	}
+	return rtn;
+    }
+
     return [super getIntValues:parameterArray forParameter:parameterName
 			 count:count];
 }
 
-/* Finding 22. */
+/*
+ * Finding 22.  The same shape on the set side, with four more parameters
+ * of which the bundle sends only IO_Framebuffer_SetDimensions and
+ * Set VGA VESA Mode.
+ *
+ * SetDimensions never inspects count -- three ints are always read -- and
+ * it is what pushes IO_VGA into bitsPerPixel.  Set VGA VESA Mode reads
+ * parameterArray[0] not at all: it enters the mode the driver's own
+ * vesaMode global names.
+ */
 - (IOReturn)setIntValues	: (unsigned *)parameterArray
 		   forParameter	: (IOParameterName)parameterName
 			  count	: (unsigned)count
 {
+    if (strcmp(parameterName, "IO_Framebuffer_Unmap") == 0) {
+	[self unmap];
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "IO_Framebuffer_SetDimensions") == 0) {
+	IODisplayInfo	*di;
+
+	di = [self displayInfo];
+	di->width = parameterArray[0];
+	di->height = parameterArray[1];
+	di->rowBytes = parameterArray[2];
+	di->bitsPerPixel = IO_VGA;
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "IO_Framebuffer_Unregister") == 0) {
+	if (count != 1)
+	    return IO_R_INVALID_ARG;
+
+	[[EventDriver instance] unregisterScreen:parameterArray[0]];
+	return IO_R_SUCCESS;
+    }
+
+    if (strcmp(parameterName, "Set VGA VESA Mode") == 0) {
+	if (count != 1)
+	    return IO_R_INVALID_ARG;
+
+	[self enterSVGAMode:vesaMode];
+	return IO_R_SUCCESS;
+    }
+
     return [super setIntValues:parameterArray forParameter:parameterName
 			 count:count];
 }
 
-/* Finding 23. */
+/*
+ * Finding 23.  A tail call into the kernel's own VGAConsole.c.  This is the
+ * reason the five console globals and the six select/convert functions
+ * above are exported rather than static.
+ */
 - (IOConsoleInfo *)allocateConsoleInfo
 {
-    return 0;
+    return VGAAllocateConsole([self displayInfo]);
 }
 
 @end
 
 @implementation IOVGADisplay (VESAMode)
 
-/* Finding 24. */
+/*
+ * Finding 24.  VESA BIOS function 4F02, set SuperVGA video mode.  The
+ * five-second sleep is on the failure path only, and is there so that the
+ * operator can read the message before the console is repainted.
+ */
 - (void)enterSVGAMode:(unsigned int)mode
 {
+    emu486regs_t	regs;
+
+    memset(&regs, 0, sizeof regs);
+    regs.eax = 0x4F02;
+    regs.ebx = mode;
+
+    [self int10:&regs];
+
+    if ((unsigned short)regs.eax != 0x004F) {
+	IOLog("%s: BIOS mode change returned %04x\n", [self name],
+	      (unsigned short)regs.eax);
+	IOSleep(5000);
+    }
 }
 
-/* Finding 25. */
+/*
+ * Finding 25.  The entry into vidBIOS, and the reason -enterSVGAMode: can
+ * read its result out of the block it filled in: the same register block is
+ * passed as both inregs and outregs.
+ *
+ * The permit vector is built on the stack, one entry longer than the
+ * device's own port range list, with the wide-open range first -- so the
+ * device's ranges are additive and, given range 0, redundant.  The plumbing
+ * is there so that a narrower ports would work.
+ */
 - (int)int10:(emu486regs_t *)regs
 {
     /*
@@ -823,7 +1130,21 @@ VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem)
      */
     static const IORange ports = { 0, 0x10000 };
 
-    return 0;
+    id			 dd;
+    unsigned int	 numRanges;
+
+    dd = [self deviceDescription];
+    numRanges = [dd numPortRanges];
+
+    {
+	IORange	ranges[numRanges + 1];
+
+	ranges[0] = ports;
+	memcpy(&ranges[1], [dd portRangeList], numRanges * sizeof(IORange));
+
+	return [bios int10:regs outregs:regs iorange:ranges
+		      ionum:numRanges + 1];
+    }
 }
 
 /*
@@ -851,11 +1172,45 @@ find_parameter(const char *key, char *s)
 }
 
 /*
- * Finding 27.  Dead in the reference: finding 19 consults it only in the
- * branch that has just set svga_bios_mode to 0.
+ * Finding 27.  Answer whether the machine was booted with `config=Default'.
+ *
+ * The two literal addresses the reference folds -- 0x110A4 for the cookie
+ * and 0x11002 for the string -- are exactly KERNSTRUCT_ADDR's magicCookie
+ * and bootString from machdep/i386/kernBootStruct.h, so the header needs no
+ * change.  The blank test compiles as (unsigned char)(c - 9) <= 1 plus a
+ * separate compare against 0x20, so the accepted set is tab, newline and
+ * space.
+ *
+ * Contrary to finding 19's prose, this answer is used: see the comment on
+ * -initFromDeviceDescription: above.
  */
 - (BOOL)didBootWithDefaultConfig
 {
+    KERNBOOTSTRUCT	*kbs = KERNSTRUCT_ADDR;
+    char		*p;
+
+    if (kbs->magicCookie != KERNBOOTMAGIC)
+	return NO;
+
+    p = find_parameter("config", kbs->bootString);
+    if (p == 0)
+	return NO;
+
+    while (*p != 0 && (*p == ' ' || *p == '\t' || *p == '\n'))
+	p++;
+    if (p == 0 || *p != '=')
+	return NO;
+
+    p++;
+    while (*p != 0 && (*p == ' ' || *p == '\t' || *p == '\n'))
+	p++;
+
+    if (strncmp(p, "Default", 7) != 0)
+	return NO;
+
+    p += 7;
+    if (*p == 0 || *p == ' ' || *p == '\t' || *p == '\n')
+	return YES;
     return NO;
 }
 

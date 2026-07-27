@@ -8,13 +8,54 @@
 #import <objc/objc.h>
 #import <objc/Object.h>
 #import <objc/Protocol.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void unimplemented(const char *name)
 {
     fprintf(stderr, "link stub reached: %s\n", name);
     abort();
+}
+
+/*  Task 9 (NSProxy) addition: a way for a test to observe that a raise was
+    actually reached, without a real NSException to catch it with.  Every
+    "refuse to run" method this stage's NSProxy/NSObject reconstruction
+    supplies (-forward::, -forwardInvocation:, -methodSignatureForSelector:,
+    and, via -forwardInvocation:, -isKindOfClass:/-isMemberOfClass:/
+    -conformsToProtocol:/-respondsToSelector:) ends in
+    [NSException raise:format:], which aborts by default below -- a test
+    reaching one unexpectedly must still fail loudly, the same as any other
+    stub hit.  A test that specifically wants to prove one of those raise
+    paths was taken arms NSTestExpectingRaise and calls
+    setjmp(NSTestRaiseEnv) around the call; while armed, +raise:format:
+    below captures format's text into NSTestRaiseMessage and longjmp()s back
+    instead of aborting.  The arm auto-clears on first use, so this only
+    ever changes behaviour for a call a test explicitly set up -- an
+    unexpected raise (NSTestExpectingRaise still 0, its default and every
+    other stub's only mode) aborts exactly as before.  */
+jmp_buf NSTestRaiseEnv;
+int NSTestExpectingRaise = 0;
+char NSTestRaiseMessage[256];
+
+/*  format is always a `@"..."` literal on the paths this backs.  This
+    project's Objective-C frontend (src/cc-1/cc/objc/NXConstStr.h) lays such
+    a literal out as { Class isa; char *c_string; unsigned int len; };
+    NXConstantString itself is not reconstructed here (see
+    _NSConstantStringClassReference, below), so reading c_string directly --
+    without dispatching a message no class actually implements in this
+    stage -- is the only way to recover the raised text.  */
+static void NSTestCaptureRaiseMessage(id format)
+{
+    struct { Class isa; char *c_string; unsigned int len; } *literal = (void *)format;
+
+    if (format != nil && literal->c_string != NULL) {
+        strncpy(NSTestRaiseMessage, literal->c_string, sizeof(NSTestRaiseMessage) - 1);
+        NSTestRaiseMessage[sizeof(NSTestRaiseMessage) - 1] = '\0';
+    } else {
+        NSTestRaiseMessage[0] = '\0';
+    }
 }
 
 /*  NSKeepAllocationStatistics gates every allocation-statistics call site
@@ -38,6 +79,11 @@ id NSInvalidArgumentException = 0;
 @implementation NSException
 + (void)raise:(id)name format:(id)format, ...
 {
+    if (NSTestExpectingRaise) {
+        NSTestCaptureRaiseMessage(format);
+        NSTestExpectingRaise = 0;
+        longjmp(NSTestRaiseEnv, 1);
+    }
     unimplemented("[NSException raise:format:]");
 }
 + (id)exceptionWithName:(id)name reason:(id)reason userInfo:(id)userInfo

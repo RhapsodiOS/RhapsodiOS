@@ -23,6 +23,7 @@ Every task's requirements implicitly include this section.
   Track B:
   `C:\Users\raynorpat\Downloads\test\Drivers\i386\IBMThinkPad760EDDisplayDriver.config\IBMThinkPad760EDDisplayDriver_reloc`
 - **The reference binaries are read-only.** Never modify anything under `C:\Users\raynorpat\Downloads\test`.
+- **`BINRECON_REBUILT` must also be exported for any `binrecon` command, including `validate`.** Both profiles now declare a `rebuilt` artifact so that `binrecon compare` can run and the ledger can record a `rebuilt_sha256`. `profile.py:47-52` resolves that artifact eagerly and `_expand_artifact_path` raises when the variable is unset, and `cli.py:76-93` catches it before printing anything — so `validate` fails with `artifact variable BINRECON_REBUILT is not set` and shows nothing at all, including the reference identity, until the variable exists. Before a rebuilt binary exists, export it to any placeholder path to see reference-only output; afterwards point it at `out/i386/<Name>_reloc`.
 - **Reference identities.** Every committed `source-map.json` and `ledger.json` must carry the matching SHA-256; `load_source_map` enforces it.
 
   | Binary | Size | SHA-256 |

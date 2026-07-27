@@ -10,7 +10,7 @@ bus
 
 ide
  * drvEIDE - complete
- * drvPCFloppy - builds; reconstruction against Apple's Floppy_reloc in progress
+ * drvPCFloppy - reconstructed against Apple's Floppy_reloc; not yet tested on hardware
 
 input
  * drvBusMouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested

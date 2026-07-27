@@ -1,0 +1,9 @@
+"Title"         = "drvBMacEnet";
+"Driver Name"   = "drvBMacEnet";
+"Matching"      = "bmac";
+"Class Names"   = "BMacEnet";
+"Boot Driver"   = "yes";
+"Load Priority" = "7000";
+"Server Name" = "drvPPCBMac";
+"Driver Version" = "PROGRAM:drvPPCBMac  PROJECT:drvPPCBMac-9  DEVELOPER:root  BUILT:Tue Nov 23 19:14:45 PST 1999";
+"Version" = "5.00";

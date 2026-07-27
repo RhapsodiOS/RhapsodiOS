@@ -1,0 +1,9 @@
+"Title"         = "drvPPCMace";
+"Driver Name"   = "drvPPCMace";
+"Matching"      = "mace";
+"Class Names"   = "MaceEnet";
+"Boot Driver"   = "no";
+"Load Priority" = "7000";
+"Server Name" = "drvPPCMace";
+"Driver Version" = "PROGRAM:drvPPCMace  PROJECT:drvPPCMace-1  DEVELOPER:root  BUILT:Tue Nov 23 19:15:36 PST 1999";
+"Version" = "5.00";

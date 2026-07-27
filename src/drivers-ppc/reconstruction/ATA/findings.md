@@ -349,14 +349,16 @@ AtapiDisk/ATADisk at all]
 extra (17): [4 are pure category-boundary naming differences with a
 reference counterpart once the category tag is stripped --
 getIdeDriveInfo:, getIdeIdentifyInfo:, ideExecuteCmd:ToDrive:,
-isDmaSupported:; the other 13 have no reference counterpart at all,
-category-insensitive -- getControllerType, numberOfDrives,
+isDmaSupported:; 11 have no reference counterpart anywhere in the binary,
+class-insensitive -- getControllerType, numberOfDrives,
 configReadByte:value:, configWriteByte:value:, setTransferRate:UseDMA:,
-matchDevicePath:, getDevicePath:maxLength:useAlias:, atapiDmaAllowed:,
-setupDMA:client:length:fRead:, setupDMAList:client:length:fRead:,
-calcIdeConfig:, calcIdeTimingsCmd646X:, calcIdeTimingsDBDMA: -- these are
-`IdeController` methods our tree defines that Apple's shipped binary does
-not]
+atapiDmaAllowed:, setupDMA:client:length:fRead:,
+setupDMAList:client:length:fRead:, calcIdeConfig:, calcIdeTimingsCmd646X:,
+calcIdeTimingsDBDMA: -- these are `IdeController` methods our tree defines
+that Apple's shipped binary does not contain at all; the remaining 2,
+matchDevicePath: and getDevicePath:maxLength:useAlias:, are present in the
+binary but on -[IdeDisk ...], not -[IdeController ...] -- a class-placement
+divergence, not a missing implementation]
 
 === src/kernel-7/bsd/dev/ppc/drvATADisk ===
 reference selectors: 148
@@ -413,14 +415,33 @@ getIdeIdentifyInfo:]` (`-[IdeController(Initialize) getIdeIdentifyInfo:]`),
 ideExecuteCmd:ToDrive:]`), and `-[IdeController isDmaSupported:]`
 (`-[IdeController(Dma) isDmaSupported:]`).
 
-The remaining **13** -- `getControllerType`, `numberOfDrives`,
-`configReadByte:value:`, `configWriteByte:value:`, `setTransferRate:UseDMA:`,
-`matchDevicePath:`, `getDevicePath:maxLength:useAlias:`, `atapiDmaAllowed:`,
+Of the remaining 13, a **class-insensitive** comparison (selector only,
+ignoring both class and category) against the binary's full symbol set
+splits them further:
+
+**11** have no reference counterpart anywhere in the binary, on any class --
+`getControllerType`, `numberOfDrives`, `configReadByte:value:`,
+`configWriteByte:value:`, `setTransferRate:UseDMA:`, `atapiDmaAllowed:`,
 `setupDMA:client:length:fRead:`, `setupDMAList:client:length:fRead:`,
-`calcIdeConfig:`, `calcIdeTimingsCmd646X:`, `calcIdeTimingsDBDMA:` -- have
-**no reference counterpart at all**, category-insensitive. This is a real
-finding, not a naming artifact: our `IdeController` carries 13 selectors with
-no compiled counterpart anywhere in the reference binary.
+`calcIdeConfig:`, `calcIdeTimingsCmd646X:`, `calcIdeTimingsDBDMA:`. These are
+`IdeController` methods our tree defines that Apple's shipped binary does
+not contain at all -- a real finding, not a naming artifact.
+
+**2** are present in the binary, but on a different class:
+`-[IdeController matchDevicePath:]` and `-[IdeController
+getDevicePath:maxLength:useAlias:]` in our tree correspond to `-[IdeDisk
+matchDevicePath:]` and `-[IdeDisk getDevicePath:maxLength:useAlias:]` in the
+reference binary. This is a class-placement divergence, not a missing
+implementation, and it is more interesting than the other 11: our tree
+defines *both* selectors twice -- once on `IdeController`
+(`IdeCnt.m:64` `getDevicePath:maxLength:useAlias:`, `IdeCnt.m:85`
+`matchDevicePath:`) and again on `ATADisk` (`ATADisk.m:137`
+`getDevicePath:maxLength:useAlias:`, `ATADisk.m:154` `matchDevicePath:`) --
+while Apple's binary compiled them only once, on `IdeDisk`. Since `IdeDisk`
+is established below as our tree's `ATADisk` renamed, `ATADisk` already
+defines both selectors under the name Apple shipped; the `IdeController`
+copies are the extra ones with no counterpart on that class in the
+reference.
 
 ## Bundle stub
 

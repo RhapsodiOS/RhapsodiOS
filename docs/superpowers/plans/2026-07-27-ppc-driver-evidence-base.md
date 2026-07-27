@@ -459,16 +459,24 @@ Every number must come from command output pasted into the document. Do not writ
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
+MAP = 'src/drivers-ppc/reconstruction/Cuda/source-map.json'
 a = load_json(Path('tools/binrecon/out/cuda-ppc/published/analysis-reference-ida.json'))
-load_source_map(Path('src/drivers-ppc/reconstruction/Cuda/source-map.json'),
-                reference_analysis=a, repo_root=Path.cwd())
+m = json.load(open(MAP))
+covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+before = len(a['functions'])
+a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+print('analysis functions', before, '-> scoped', len(a['functions']))
+load_source_map(Path(MAP), reference_analysis=a, repo_root=Path.cwd())
 print('load_source_map OK')
 "
 ```
 
-Expected: `load_source_map OK`.
+Expected: an `analysis functions N -> scoped M` line followed by `load_source_map OK`.
+
+**Why the analysis is scoped before the check.** The map was built with `--scope-to-objc`, so it covers only the Objective-C functions. `load_source_map` enforces an *exact* partition, so handing it the unscoped analysis fails with `SemanticValidationError: source map partition mismatch` listing the unnamed jump islands — the very functions the map deliberately excludes. Restricting the analysis to the addresses the map covers checks the full partition, names, sizes and source-line bounds over everything the map claims. The functions removed here are not lost: the bucket reconciliation accounts for every one of them.
 
 - [ ] **Step 11: Commit**
 
@@ -600,16 +608,24 @@ Record verbatim.
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
+MAP = 'src/drivers-ppc/reconstruction/BMac/source-map.json'
 a = load_json(Path('tools/binrecon/out/bmac-ppc/published/analysis-reference-ida.json'))
-load_source_map(Path('src/drivers-ppc/reconstruction/BMac/source-map.json'),
-                reference_analysis=a, repo_root=Path.cwd())
+m = json.load(open(MAP))
+covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+before = len(a['functions'])
+a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+print('analysis functions', before, '-> scoped', len(a['functions']))
+load_source_map(Path(MAP), reference_analysis=a, repo_root=Path.cwd())
 print('load_source_map OK')
 "
 ```
 
-Expected: `load_source_map OK`.
+Expected: an `analysis functions N -> scoped M` line followed by `load_source_map OK`.
+
+**Why the analysis is scoped before the check.** The map was built with `--scope-to-objc`, so it covers only the Objective-C functions. `load_source_map` enforces an *exact* partition, so handing it the unscoped analysis fails with `SemanticValidationError: source map partition mismatch` listing the unnamed jump islands — the very functions the map deliberately excludes. Restricting the analysis to the addresses the map covers checks the full partition, names, sizes and source-line bounds over everything the map claims. The functions removed here are not lost: the bucket reconciliation accounts for every one of them.
 
 - [ ] **Step 10: Commit**
 
@@ -738,16 +754,24 @@ Record verbatim. This is the driver most likely to show renamed or absent select
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
+MAP = 'src/drivers-ppc/reconstruction/Burgundy/source-map.json'
 a = load_json(Path('tools/binrecon/out/burgundy-ppc/published/analysis-reference-ida.json'))
-load_source_map(Path('src/drivers-ppc/reconstruction/Burgundy/source-map.json'),
-                reference_analysis=a, repo_root=Path.cwd())
+m = json.load(open(MAP))
+covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+before = len(a['functions'])
+a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+print('analysis functions', before, '-> scoped', len(a['functions']))
+load_source_map(Path(MAP), reference_analysis=a, repo_root=Path.cwd())
 print('load_source_map OK')
 "
 ```
 
-Expected: `load_source_map OK`.
+Expected: an `analysis functions N -> scoped M` line followed by `load_source_map OK`.
+
+**Why the analysis is scoped before the check.** The map was built with `--scope-to-objc`, so it covers only the Objective-C functions. `load_source_map` enforces an *exact* partition, so handing it the unscoped analysis fails with `SemanticValidationError: source map partition mismatch` listing the unnamed jump islands — the very functions the map deliberately excludes. Restricting the analysis to the addresses the map covers checks the full partition, names, sizes and source-line bounds over everything the map claims. The functions removed here are not lost: the bucket reconciliation accounts for every one of them.
 
 - [ ] **Step 10: Commit**
 
@@ -924,16 +948,24 @@ done
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
+MAP = 'src/drivers-ppc/reconstruction/ATA/source-map.json'
 a = load_json(Path('tools/binrecon/out/ata-ppc/published/analysis-reference-ida.json'))
-load_source_map(Path('src/drivers-ppc/reconstruction/ATA/source-map.json'),
-                reference_analysis=a, repo_root=Path.cwd())
+m = json.load(open(MAP))
+covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+before = len(a['functions'])
+a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+print('analysis functions', before, '-> scoped', len(a['functions']))
+load_source_map(Path(MAP), reference_analysis=a, repo_root=Path.cwd())
 print('load_source_map OK')
 "
 ```
 
-Expected: `load_source_map OK`.
+Expected: an `analysis functions N -> scoped M` line followed by `load_source_map OK`.
+
+**Why the analysis is scoped before the check.** The map was built with `--scope-to-objc`, so it covers only the Objective-C functions. `load_source_map` enforces an *exact* partition, so handing it the unscoped analysis fails with `SemanticValidationError: source map partition mismatch` listing the unnamed jump islands — the very functions the map deliberately excludes. Restricting the analysis to the addresses the map covers checks the full partition, names, sizes and source-line bounds over everything the map claims. The functions removed here are not lost: the bucket reconciliation accounts for every one of them.
 
 - [ ] **Step 11: Commit**
 
@@ -1067,16 +1099,24 @@ Record verbatim.
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
+MAP = 'src/drivers-ppc/reconstruction/53c96/source-map.json'
 a = load_json(Path('tools/binrecon/out/53c96-ppc/published/analysis-reference-ida.json'))
-load_source_map(Path('src/drivers-ppc/reconstruction/53c96/source-map.json'),
-                reference_analysis=a, repo_root=Path.cwd())
+m = json.load(open(MAP))
+covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+before = len(a['functions'])
+a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+print('analysis functions', before, '-> scoped', len(a['functions']))
+load_source_map(Path(MAP), reference_analysis=a, repo_root=Path.cwd())
 print('load_source_map OK')
 "
 ```
 
-Expected: `load_source_map OK`.
+Expected: an `analysis functions N -> scoped M` line followed by `load_source_map OK`.
+
+**Why the analysis is scoped before the check.** The map was built with `--scope-to-objc`, so it covers only the Objective-C functions. `load_source_map` enforces an *exact* partition, so handing it the unscoped analysis fails with `SemanticValidationError: source map partition mismatch` listing the unnamed jump islands — the very functions the map deliberately excludes. Restricting the analysis to the addresses the map covers checks the full partition, names, sizes and source-line bounds over everything the map claims. The functions removed here are not lost: the bucket reconciliation accounts for every one of them.
 
 - [ ] **Step 10: Commit**
 
@@ -1102,20 +1142,27 @@ bsd/dev/ppc/drvApple96_SCSI."
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY - <<'PY'
+import json
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 
 PAIRS = [('Cuda','cuda-ppc'), ('53c96','53c96-ppc'), ('ATA','ata-ppc'),
          ('BMac','bmac-ppc'), ('Burgundy','burgundy-ppc')]
 for d, key in PAIRS:
+    mp = f'src/drivers-ppc/reconstruction/{d}/source-map.json'
     a = load_json(Path(f'tools/binrecon/out/{key}/published/analysis-reference-ida.json'))
-    load_source_map(Path(f'src/drivers-ppc/reconstruction/{d}/source-map.json'),
-                    reference_analysis=a, repo_root=Path.cwd())
-    print(d, 'OK')
+    m = json.load(open(mp))
+    covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+    before = len(a['functions'])
+    a['functions'] = [f for f in a['functions'] if f['address'] in covered]
+    load_source_map(Path(mp), reference_analysis=a, repo_root=Path.cwd())
+    print(f'{d} OK ({before} functions -> {len(a["functions"])} scoped)')
 PY
 ```
 
-Expected: five `OK` lines. This is acceptance item 3.
+Expected: five `OK` lines, each reporting the scoped count. This is acceptance item 3.
+
+The analysis is restricted to the addresses each map covers before the check. `--scope-to-objc` maps do not claim the unnamed jump islands, and `load_source_map` enforces an exact partition, so the unscoped analysis fails with `SemanticValidationError: source map partition mismatch`. Scoping checks the full partition, names, sizes and source-line bounds over everything the map does claim; acceptance item 5's bucket reconciliation accounts for every function removed here.
 
 - [ ] **Step 2: Collect the summary table**
 
@@ -1172,7 +1219,7 @@ Confirm each item against observed output and record the evidence in `report.md`
 
 1. Ten `analyze` runs reported `"complete": true` and published `analysis-reference-ida.json`; exit 1 throughout, as designed.
 2. `ppc_invariant_check.py` reported 0 relocation violations across all ten. Symbol/function-start mismatches enumerated, not required to be zero.
-3. Five maps load via `load_source_map` — Step 1.
+3. Five maps load via `load_source_map`, each against its reference analysis restricted to the addresses that map covers — Step 1.
 4. 0 `duplicate_candidates` across all five — Step 2. `boundary_disputed` enumerated with cause.
 5. Every function in every binary lands in exactly one bucket; per binary the buckets sum to IDA's **total** function count. `RECONCILES: yes` in Tasks 2–6.
 6. Suite green — Step 4.

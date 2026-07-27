@@ -319,6 +319,16 @@ Done when all of the following hold, with output shown:
    reference analysis and the repo root — re-verifying the exact function
    partition, names, full function sizes, source-line bounds, boundary
    overlaps, and the analysis's SHA-256 identity against §1.1.
+
+   **The analysis must first be restricted to the addresses that map covers.**
+   `--scope-to-objc` maps do not claim the unnamed jump islands, and
+   `load_source_map` enforces an *exact* partition, so the unscoped analysis
+   fails with `SemanticValidationError: source map partition mismatch` — as it
+   did for `drvPPCCuda`, listing the 60 islands the map deliberately excludes.
+   This was a defect in this item as originally written, found during the Cuda
+   measurement. Scoping preserves the item's full strength over everything the
+   map asserts; item 5 independently accounts for every function scoped out, so
+   the pair together still covers all 100 functions.
 4. **0 `duplicate_candidates`** across all five maps. `boundary_disputed`
    entries are enumerated with cause; a nonzero count is a finding, not a
    failure.

@@ -448,7 +448,15 @@ IOLog ("InitSCSITape: not a tape\n");
     [_devLock lock];
     if (_devAcquired == YES) {
 	ret = IO_R_BUSY;
+    } else if ([_controller reserveTarget: _target
+	lun: _lun
+	forOwner: self]) {
+	/*
+	 * Someone else already has our target/lun.
+	 */
+	ret = IO_R_BUSY;
     } else {
+	[self reserveAllLuns];
 	_devAcquired = YES;
 	ret = IO_R_SUCCESS;
     }

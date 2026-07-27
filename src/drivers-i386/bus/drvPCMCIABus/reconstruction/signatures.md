@@ -675,7 +675,36 @@ is exhausted. It is worth stating what it was: in both classes the offsets were
 recovered correctly from the reference and the ivars were simply never declared
 to match, which turns an accurate reconstruction into a memory-corruption bug
 that no amount of instruction-level comparison would have surfaced. Comparing
-`instance_size` across every class is what found it, and is cheap.
+`instance_size` across every class is what found it, and is cheap. **That check
+is worth running against every other reconstructed driver in this tree.**
+
+### Where the class surface stands
+
+Both predictions verified in the build of 2026-07-27 00:46:
+
+| Class | Reference | Rebuilt | Ivars differing |
+| --- | --- | --- | --- |
+| `PCMCIAConfigEntry` | 520 | 520 | 0 of 17 |
+| `PCMCIAResourceDriver` | 812 | 812 | 0 of 2 |
+
+**No class in this driver now differs from the reference in instance size**, and
+the `PortRanges` tag came out right as well: declaring the ivar by struct tag
+rather than through the typedef produced `{_IOPortRangeTable=...}`.
+
+The name pool moved from 25 reference-only names to **7**, and 50 rebuilt-only
+to 32:
+
+```
+_private   adapters   attrMem   busRange   fields   socketTable   verbose
+```
+
+Every one belongs to a class whose instance size already matches — `PCMCIAKernBus`,
+`PCMCIAid`, `_PCMCIAPool`, `_PCMCIAPoolElement` — so these are pure ivar renames
+with no behavioural effect and real collision hazard (`verbose` against
+`setVerbose:`'s parameter, `fields` 28 mentions, `length` 117). They are left
+deliberately. `busRange` is the one with any structure to it: Apple has a single
+`Range busRange` at +20 where we have `_memoryBase` and `_memoryLength`, the same
+eight bytes split in two.
 
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`

@@ -4,7 +4,7 @@ Current list of drivers to be implemented and the status of re-implementation
 bus
  * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
  * drvPCIBus - reconstructed against the reference binary; the kernel DriverKit pass found its testIDs:dev:fun:bus: prototype diverges from Apple's, not yet reconciled
- * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; statusChangedForSocket:changedStatus: now takes Apple's PCMCIAStatus bitfield and both its protocol records are byte-identical to the reference
+ * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; protocol records, every class instance size and ivar layout are byte-identical to the reference; two heap overflows from undeclared ivars fixed
  * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
  * Intel82365PCMCIA - compiles; reconstructed against the reference binary, all fixes applied; its five ObjC protocol records and four adoptions are byte-identical to the reference, not yet tested
 
@@ -67,6 +67,7 @@ video
  * drvMatroxMGA - complete
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete
+ * drvQVision - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
  * drvVGA - reconstruction in progress

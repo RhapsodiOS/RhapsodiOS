@@ -8,7 +8,16 @@
         "-[CirrusLogicGD5434DisplayDriver initFromDeviceDescription:]"
       ],
       "size": 553,
-      "source_line": 38,
+      "source_line": 913,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 556,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver selectMode]"
+      ],
+      "size": 154,
+      "source_line": 972,
       "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
@@ -17,7 +26,7 @@
         "-[CirrusLogicGD5434DisplayDriver enterLinearMode]"
       ],
       "size": 89,
-      "source_line": 285,
+      "source_line": 992,
       "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
@@ -26,7 +35,43 @@
         "-[CirrusLogicGD5434DisplayDriver revertToVGAMode]"
       ],
       "size": 86,
-      "source_line": 292,
+      "source_line": 1007,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 892,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver determineConfiguration]"
+      ],
+      "size": 766,
+      "source_line": 1018,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 1660,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver isValidPCIAssignedBaseAddress:]"
+      ],
+      "size": 29,
+      "source_line": 1106,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 1692,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setPCIConfiguration]"
+      ],
+      "size": 583,
+      "source_line": 1116,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 2276,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setMode:]"
+      ],
+      "size": 1020,
+      "source_line": 1184,
       "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
@@ -35,7 +80,34 @@
         "-[CirrusLogicGD5434DisplayDriver clearScreen]"
       ],
       "size": 29,
-      "source_line": 370,
+      "source_line": 1308,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3328,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver name]"
+      ],
+      "size": 59,
+      "source_line": 1313,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3388,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver setPendingDisplayMode:]"
+      ],
+      "size": 140,
+      "source_line": 1326,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3528,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayModeCount]"
+      ],
+      "size": 16,
+      "source_line": 1339,
       "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
@@ -44,7 +116,25 @@
         "-[CirrusLogicGD5434DisplayDriver displayModes]"
       ],
       "size": 16,
-      "source_line": 377,
+      "source_line": 1344,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3560,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver displayMemorySize]"
+      ],
+      "size": 16,
+      "source_line": 1349,
+      "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
+    },
+    {
+      "address": 3576,
+      "reference_names": [
+        "-[CirrusLogicGD5434DisplayDriver ramdacSpeed]"
+      ],
+      "size": 9,
+      "source_line": 1354,
       "source_path": "src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m"
     },
     {
@@ -87,76 +177,6 @@
   "reference_sha256": "7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 556,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver selectMode]"
-      ],
-      "size": 154
-    },
-    {
-      "address": 892,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver determineConfiguration]"
-      ],
-      "size": 766
-    },
-    {
-      "address": 1660,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver isValidPCIAssignedBaseAddress:]"
-      ],
-      "size": 29
-    },
-    {
-      "address": 1692,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setPCIConfiguration]"
-      ],
-      "size": 583
-    },
-    {
-      "address": 2276,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setMode:]"
-      ],
-      "size": 1020
-    },
-    {
-      "address": 3328,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver name]"
-      ],
-      "size": 59
-    },
-    {
-      "address": 3388,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver setPendingDisplayMode:]"
-      ],
-      "size": 140
-    },
-    {
-      "address": 3528,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver displayModeCount]"
-      ],
-      "size": 16
-    },
-    {
-      "address": 3560,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver displayMemorySize]"
-      ],
-      "size": 16
-    },
-    {
-      "address": 3576,
-      "reference_names": [
-        "-[CirrusLogicGD5434DisplayDriver ramdacSpeed]"
-      ],
-      "size": 9
-    },
     {
       "address": 4364,
       "reference_names": [

@@ -132,7 +132,8 @@ SetET4000Brightness(unsigned int level)
  * branches after the index write.
  */
 void
-select_read_segment(char seg)
+select_read_segment(seg)
+    char	seg;
 {
     char	tmp;
 
@@ -157,7 +158,8 @@ select_read_segment(char seg)
  * the write side masks it without shifting.
  */
 void
-select_write_segment(char seg)
+select_write_segment(seg)
+    char	seg;
 {
     char	tmp;
 
@@ -182,7 +184,8 @@ select_write_segment(char seg)
  * re-writes the index register, which is why 0x3CE is touched twice.
  */
 void
-select_read_plane(char plane)
+select_read_plane(plane)
+    char	plane;
 {
     char	tmp;
 
@@ -199,7 +202,8 @@ select_read_plane(char plane)
  * select_read_plane this one converts.  0xF0 is ~(EM3|EM2|EM1|EM0).
  */
 void
-select_write_plane(char plane)
+select_write_plane(plane)
+    char	plane;
 {
     char	tmp, val;
 
@@ -297,14 +301,151 @@ vga_write_bpp2packed32_to_bpp4planar(unsigned int *src, unsigned short *fb)
     *fb = (hi << 8) | lo;
 }
 
-/* Finding 9. */
+/*
+ * Finding 9.  Draw the cursor, saving the pixels it covers into
+ * cursor.bw.save.  The Window Server's counterpart is VGADisplayCursorBlit
+ * in VGAPSDriver.c and the two inner loops are the same code; the three
+ * differences are all kernel-side needs.  This half saves and restores the
+ * sequencer map mask and the plane and segment shadows around the loop, it
+ * pushes the bank through select_write_segment / select_read_segment at
+ * every 64K boundary, and it addresses the frame buffer as a literal
+ * ET4000_PHYS_BASE where the bundle asks get_addr_range.
+ *
+ * Two quirks of Apple's, reproduced rather than corrected.
+ *
+ * The write registers are restored from the *read* shadows: this function
+ * reads curr_read_segment and curr_read_plane into two locals each and
+ * hands one copy to the read select and the other to the write select.
+ * curr_write_segment and curr_write_plane are stored by the two write
+ * selects and read nowhere in the binary.
+ *
+ * The bank divisor is 0x10000 / (width >> 4), a signed divide of the 64K
+ * window by the row length in sixteen-pixel *words*, so 1638 at 640 wide.
+ * The Window Server divides by the row length in bytes and gets 819, which
+ * is the arithmetically right answer.  Both then step the same 80 byte row.
+ * Because y never reaches 480 the bank is always 0 and the two selects in
+ * the loop are dead at every geometry this driver supports, so the defect
+ * is latent; see divergences.md findings 9 and 25.
+ *
+ * The cursor is sixteen pixels wide but lands at an arbitrary column, so
+ * the blit snaps left to a sixteen pixel boundary and covers two 32 bit
+ * words per scan line.  When the cursor happens to be aligned the second
+ * word is untouched, but save still advances over it, which is why this
+ * loop steps 32 words -- 128 bytes -- over a save[16] of 64.  The excess
+ * runs past the end of the shared region.  The Window Server half does the
+ * same, symmetrically, so the two stay in step.
+ */
 void
 VGADisplayCursor(IODisplayInfo *di, VGAShmem_t *shmem)
 {
-    static unsigned int	vramBuf[2];		/* _vramBuf.125 */
+    static unsigned int	 vramBuf[2];		/* _vramBuf.125 */
+
+    Bounds		 scr;
+    Bounds		 c;
+    unsigned int	*img, *save, *msk;
+    int			 leftOK, rightOK;
+    unsigned int	 shift, rshift;
+    unsigned short	*p;
+    int			 words;
+    unsigned int	 lines;
+    int			 saveReadSegment, saveWriteSegment;
+    int			 saveReadPlane, saveWritePlane;
+    char		 mapMask;
+    int			 rows, col, row, bank;
+    unsigned int	 v;
+
+    saveWriteSegment = curr_read_segment;
+    saveReadSegment = curr_read_segment;
+    saveWritePlane = curr_read_plane;
+    saveReadPlane = curr_read_plane;
+    vga_reg__in (COLR_SEQ, SEQ_AT_MPK, mapMask)
+
+    c = shmem->cursorRect;
+    scr = shmem->screenBounds;
+
+    if (c.miny < scr.miny)
+	c.miny = scr.miny;
+    if (c.maxy > scr.maxy)
+	c.maxy = scr.maxy;
+
+    c.minx = scr.minx + ((shmem->cursorRect.minx - scr.minx) & ~15);
+    c.maxx = c.minx + 2 * CURSORWIDTH;
+    shmem->saveRect = c;
+
+    shift = (shmem->cursorRect.minx & 15) * 2;	/* 2 bits per pixel */
+    rshift = 32 - shift;
+
+    img = shmem->cursor.bw.image[shmem->frame];
+    msk = shmem->cursor.bw.mask[shmem->frame];
+    save = shmem->cursor.bw.save;
+
+    /* Skip the scan lines the vertical clip took off the top. */
+    rows = c.miny - shmem->cursorRect.miny;
+    img += rows;
+    msk += rows;
+
+    leftOK = c.minx >= scr.minx;
+    rightOK = c.maxx <= scr.maxx;
+
+    col = (c.minx - scr.minx) >> 4;
+    words = di->width >> 4;			/* 16 pixel words per line */
+    lines = 0x10000 / words;			/* lines per 64K window	   */
+
+    row = c.miny - scr.miny;
+    bank = row / lines;
+    p = (unsigned short *)ET4000_PHYS_BASE;
+    p += (row % lines) * words + col;
+    select_write_segment(bank);
+    select_read_segment(bank);
+
+    for (; row < c.maxy - scr.miny; row++) {
+	if (row % lines == 0) {
+	    bank = row / lines;
+	    select_write_segment(bank);
+	    select_read_segment(bank);
+	}
+	if (leftOK) {
+	    vga_read_bpp4planar_to_bpp2packed32(p, &vramBuf[0]);
+	    v = vramBuf[0];
+	    *save++ = v;
+	    v = (v & ~(*msk << shift)) | (*img << shift);
+	    vramBuf[0] = v;
+	    vga_write_bpp2packed32_to_bpp4planar(&vramBuf[0], p);
+	}
+	if (rightOK) {
+	    if (shift == 0)
+		save++;				/* nothing spills over */
+	    else {
+		vga_read_bpp4planar_to_bpp2packed32(p + 1, &vramBuf[1]);
+		v = vramBuf[1];
+		*save++ = v;
+		v = (v & ~(*msk >> rshift)) | (*img >> rshift);
+		vramBuf[1] = v;
+		vga_write_bpp2packed32_to_bpp4planar(&vramBuf[1], p + 1);
+	    }
+	}
+	p += words;
+	img++;
+	msk++;
+    }
+
+    select_read_segment(saveReadSegment);
+    select_write_segment(saveWriteSegment);
+    select_read_plane(saveReadPlane);
+    select_write_plane(saveWritePlane);
+    vga_reg_out (COLR_SEQ, SEQ_AT_MPK, mapMask)
 }
 
-/* Finding 10. */
+/*
+ * Finding 10.  Erase the cursor, restoring from cursor.bw.save.
+ *
+ * saveRect says which two columns the draw pass covered and oldCursorRect
+ * says where inside them the cursor actually was, so the two edge masks
+ * restore exactly the pixels that were painted and leave the rest of the
+ * word alone.  This blitter reads save and never writes it, so its stride
+ * past the end of the array is an over-read where finding 9's is an
+ * over-write.  Same save and restore discipline, same latent bank divisor.
+ */
 void
 VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem)
 {
@@ -314,32 +455,284 @@ VGARemoveCursor(IODisplayInfo *di, VGAShmem_t *shmem)
      * 0 for i == 16.  Two bits per pixel, which is why the index is a
      * pixel count and the shift is 2*i.  The 92 bytes of __data that
      * follow are emu486.s's state block, not part of this array.
+     *
+     * The Window Server carries a byte-identical copy as leftMask in its
+     * own __TEXT,__const and subscripts it with the same two expressions.
      */
-    static unsigned int	mask_array[17] = {	/* _mask_array.128 */
+    static unsigned int	 mask_array[17] = {	/* _mask_array.128 */
 	0xFFFFFFFF, 0xFFFFFFFC, 0xFFFFFFF0, 0xFFFFFFC0,
 	0xFFFFFF00, 0xFFFFFC00, 0xFFFFF000, 0xFFFFC000,
 	0xFFFF0000, 0xFFFC0000, 0xFFF00000, 0xFFC00000,
 	0xFF000000, 0xFC000000, 0xF0000000, 0xC0000000,
 	0x00000000
     };
-    static unsigned int	vramBuf[2];		/* _vramBuf.129 */
+    static unsigned int	 vramBuf[2];		/* _vramBuf.129 */
+
+    int			 leftOK, rightOK;
+    unsigned int	 maskL = 0, maskR = 0;
+    Bounds		 scr;
+    Bounds		 s;
+    unsigned short	*p;
+    int			 words;
+    unsigned int	 lines;
+    unsigned int	 shift;
+    int			 saveReadSegment, saveWriteSegment;
+    int			 saveReadPlane, saveWritePlane;
+    char		 mapMask;
+    unsigned int	*save;
+    int			 col, row, bank;
+
+    scr = shmem->screenBounds;
+    s = shmem->saveRect;
+
+    saveWriteSegment = curr_read_segment;
+    saveReadSegment = curr_read_segment;
+    saveWritePlane = curr_read_plane;
+    saveReadPlane = curr_read_plane;
+    vga_reg__in (COLR_SEQ, SEQ_AT_MPK, mapMask)
+
+    col = (s.minx - scr.minx) >> 4;
+    words = di->width >> 4;
+    lines = 0x10000 / words;
+
+    p = (unsigned short *)ET4000_PHYS_BASE;
+    p += ((s.miny - scr.miny) % lines) * words + col;
+    bank = (s.miny - scr.miny) / lines;
+    select_write_segment(bank);
+    select_read_segment(bank);
+
+    shift = (shmem->cursorRect.minx & 15) * 2;
+    save = shmem->cursor.bw.save;
+
+    leftOK = s.minx >= scr.minx;
+    if (leftOK)
+	maskL = mask_array[shmem->oldCursorRect.minx - s.minx];
+    rightOK = s.maxx <= scr.maxx;
+    if (rightOK)
+	maskR = ~mask_array[CURSORWIDTH -
+			    (s.maxx - shmem->oldCursorRect.maxx)];
+
+    for (row = s.miny - scr.miny; row < s.maxy - scr.miny; row++) {
+	if (row % lines == 0) {
+	    bank = row / lines;
+	    select_write_segment(bank);
+	    select_read_segment(bank);
+	}
+	if (leftOK) {
+	    vga_read_bpp4planar_to_bpp2packed32(p, &vramBuf[0]);
+	    vramBuf[0] = (vramBuf[0] & ~maskL) | (maskL & *save++);
+	    vga_write_bpp2packed32_to_bpp4planar(&vramBuf[0], p);
+	}
+	if (rightOK) {
+	    if (shift == 0)
+		save++;
+	    else {
+		vga_read_bpp4planar_to_bpp2packed32(p + 1, &vramBuf[1]);
+		vramBuf[1] = (vramBuf[1] & ~maskR) | (maskR & *save++);
+		vga_write_bpp2packed32_to_bpp4planar(&vramBuf[1], p + 1);
+	    }
+	}
+	p += words;
+    }
+
+    select_read_segment(saveReadSegment);
+    select_write_segment(saveWriteSegment);
+    select_read_plane(saveReadPlane);
+    select_write_plane(saveWritePlane);
+    vga_reg_out (COLR_SEQ, SEQ_AT_MPK, mapMask)
 }
 
-/* Finding 11. */
+/*
+ * Finding 11.  cursorShow is a hide depth, not a boolean, and the counter
+ * moves whether or not the blit happens.
+ *
+ * This side takes ev_try_lock and, when the Window Server holds the
+ * semaphore, returns self having done nothing at all: the kernel never
+ * blocks on the Window Server and never queues the update.  ev_lock is not
+ * imported by this binary, and the bundle's seven public cursor entries
+ * take ev_lock and never ev_try_lock.  That asymmetry is the driver's
+ * contention policy; do not substitute a blocking lock.
+ *
+ * token is accepted and never read, here and in the two below.
+ */
 - hideCursor:(int)token
 {
+    VGAShmem_t		*shmem;
+    IODisplayInfo	*di;
+
+    if (!ev_try_lock(&((VGAShmem_t *)priv)->cursorSema))
+	return self;
+
+    di = [self displayInfo];
+    shmem = priv;
+    if (shmem->cursorShow++ == 0)
+	VGARemoveCursor(di, shmem);
+
+    ev_unlock(&((VGAShmem_t *)priv)->cursorSema);
     return self;
 }
 
-/* Finding 12. */
+/*
+ * Finding 12.  The Window Server splits this into VGASysHideCursor,
+ * VGACheckShield and VGASysShowCursor behind a locked entry point; the
+ * kernel has the same three inlined into one method.  VGACheckShield's own
+ * call to VGASysShowCursor is the reason the show tail appears twice --
+ * once for the shield going away and once for the move itself -- and both
+ * copies run in sequence, which is what the bundle does too.
+ *
+ * Moving the pointer reveals an obscured cursor, and the kernel does that
+ * without asking the Window Server.  The shield test recomputes the cursor
+ * rectangle into locals and deliberately does not write cursorRect; the
+ * four comparisons are strict on the max side, so an edge-touching
+ * intersection is a miss.  cursorRect is written only by the show tail,
+ * and oldCursorRect is taken from it after the blit because that is what
+ * the erase pass restores from.
+ */
 - moveCursor:(Point *)cursorLoc frame:(int)frame token:(int)t
 {
+    VGAShmem_t		*shmem = priv;
+    IODisplayInfo	*di;
+
+    if (!ev_try_lock(&shmem->cursorSema))
+	return self;
+
+    shmem->frame = frame;
+    shmem->cursorLoc = *cursorLoc;
+
+    if (shmem->cursorShow++ == 0)
+	VGARemoveCursor([self displayInfo], shmem);
+
+    if (shmem->cursorObscured) {
+	shmem->cursorObscured = 0;
+	if (shmem->cursorShow)
+	    shmem->cursorShow--;
+    }
+
+    if (shmem->shieldFlag) {
+	Point	hot;
+	Bounds	c;
+	int	hit;
+
+	di = [self displayInfo];
+
+	hot = shmem->hotSpot[shmem->frame];
+	c.minx = shmem->cursorLoc.x - hot.x;
+	c.maxx = c.minx + CURSORWIDTH;
+	c.miny = shmem->cursorLoc.y - hot.y;
+	c.maxy = c.miny + CURSORHEIGHT;
+
+	hit = 0;
+	if (shmem->shieldRect.maxx > c.minx &&
+	    shmem->shieldRect.minx < c.maxx &&
+	    shmem->shieldRect.maxy > c.miny &&
+	    shmem->shieldRect.miny < c.maxy)
+	    hit++;
+
+	if (hit != shmem->shielded) {
+	    shmem->shielded = hit;
+	    if (shmem->shielded) {
+		if (shmem->cursorShow++ == 0)
+		    VGARemoveCursor(di, shmem);
+	    } else if (shmem->cursorShow && --shmem->cursorShow == 0) {
+		Point	hot;
+
+		hot = shmem->hotSpot[shmem->frame];
+		shmem->cursorRect.minx = shmem->cursorLoc.x - hot.x;
+		shmem->cursorRect.maxx = shmem->cursorRect.minx + CURSORWIDTH;
+		shmem->cursorRect.miny = shmem->cursorLoc.y - hot.y;
+		shmem->cursorRect.maxy = shmem->cursorRect.miny + CURSORHEIGHT;
+		VGADisplayCursor(di, shmem);
+		shmem->oldCursorRect = shmem->cursorRect;
+	    }
+	}
+    }
+
+    if (shmem->cursorShow && --shmem->cursorShow == 0) {
+	Point	hot;
+
+	di = [self displayInfo];
+	hot = shmem->hotSpot[shmem->frame];
+	shmem->cursorRect.minx = shmem->cursorLoc.x - hot.x;
+	shmem->cursorRect.maxx = shmem->cursorRect.minx + CURSORWIDTH;
+	shmem->cursorRect.miny = shmem->cursorLoc.y - hot.y;
+	shmem->cursorRect.maxy = shmem->cursorRect.miny + CURSORHEIGHT;
+	VGADisplayCursor(di, shmem);
+	shmem->oldCursorRect = shmem->cursorRect;
+    }
+
+    ev_unlock(&shmem->cursorSema);
     return self;
 }
 
-/* Finding 13. */
+/*
+ * Finding 13.  Finding 12 without the leading hide and without the
+ * un-obscure step, and with the last displayInfo taken before the depth
+ * test rather than inside it.
+ */
 - showCursor:(Point *)cursorLoc frame:(int)frame token:(int)t
 {
+    VGAShmem_t		*shmem = priv;
+    IODisplayInfo	*di;
+
+    if (!ev_try_lock(&shmem->cursorSema))
+	return self;
+
+    shmem->frame = frame;
+    shmem->cursorLoc = *cursorLoc;
+
+    if (shmem->shieldFlag) {
+	Point	hot;
+	Bounds	c;
+	int	hit;
+
+	di = [self displayInfo];
+
+	hot = shmem->hotSpot[shmem->frame];
+	c.minx = shmem->cursorLoc.x - hot.x;
+	c.maxx = c.minx + CURSORWIDTH;
+	c.miny = shmem->cursorLoc.y - hot.y;
+	c.maxy = c.miny + CURSORHEIGHT;
+
+	hit = 0;
+	if (shmem->shieldRect.maxx > c.minx &&
+	    shmem->shieldRect.minx < c.maxx &&
+	    shmem->shieldRect.maxy > c.miny &&
+	    shmem->shieldRect.miny < c.maxy)
+	    hit++;
+
+	if (hit != shmem->shielded) {
+	    shmem->shielded = hit;
+	    if (shmem->shielded) {
+		if (shmem->cursorShow++ == 0)
+		    VGARemoveCursor(di, shmem);
+	    } else if (shmem->cursorShow && --shmem->cursorShow == 0) {
+		Point	hot;
+
+		hot = shmem->hotSpot[shmem->frame];
+		shmem->cursorRect.minx = shmem->cursorLoc.x - hot.x;
+		shmem->cursorRect.maxx = shmem->cursorRect.minx + CURSORWIDTH;
+		shmem->cursorRect.miny = shmem->cursorLoc.y - hot.y;
+		shmem->cursorRect.maxy = shmem->cursorRect.miny + CURSORHEIGHT;
+		VGADisplayCursor(di, shmem);
+		shmem->oldCursorRect = shmem->cursorRect;
+	    }
+	}
+    }
+
+    di = [self displayInfo];
+    if (shmem->cursorShow && --shmem->cursorShow == 0) {
+	Point	hot;
+
+	hot = shmem->hotSpot[shmem->frame];
+	shmem->cursorRect.minx = shmem->cursorLoc.x - hot.x;
+	shmem->cursorRect.maxx = shmem->cursorRect.minx + CURSORWIDTH;
+	shmem->cursorRect.miny = shmem->cursorLoc.y - hot.y;
+	shmem->cursorRect.maxy = shmem->cursorRect.miny + CURSORHEIGHT;
+	VGADisplayCursor(di, shmem);
+	shmem->oldCursorRect = shmem->cursorRect;
+    }
+
+    ev_unlock(&shmem->cursorSema);
     return self;
 }
 

@@ -110,10 +110,19 @@ extern int	curr_write_plane;
 extern int	curr_read_segment;
 extern int	curr_write_segment;
 
-extern void	select_read_segment(char seg);
-extern void	select_write_segment(char seg);
-extern void	select_read_plane(char plane);
-extern void	select_write_plane(char plane);
+/*
+ * The four selects take a char and are declared and defined without a
+ * prototype, which is not tidiness lost but a requirement of the reference:
+ * with a prototype in scope gcc converts each argument to char and back,
+ * and the two cursor blitters would carry a movsbl before every one of
+ * their eight calls.  The reference has none -- it pushes the int straight
+ * -- so the callers see only the default argument promotions.  The bodies
+ * are unaffected either way; they read the low byte of the incoming word.
+ */
+extern void	select_read_segment();
+extern void	select_write_segment();
+extern void	select_read_plane();
+extern void	select_write_plane();
 extern void	vga_read_bpp4planar_to_bpp2packed32(unsigned short *fb,
 						    unsigned int *dst);
 extern void	vga_write_bpp2packed32_to_bpp4planar(unsigned int *src,

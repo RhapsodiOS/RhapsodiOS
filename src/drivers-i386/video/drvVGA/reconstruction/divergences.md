@@ -3152,3 +3152,37 @@ That is why `__picsymbol_stub` has 17 entries for 23 undefined symbols.
 - 444 bytes of `__const` in five VGA register tables plus the 16×16 `Bounds` and
   the 17-entry mask table; 131072 bytes of `__bss` in two built-at-runtime tables.
 - An `outb` whose dummy operand is an automatic, not `driverkit`'s `static int`.
+
+## Status
+
+**Analyzer coverage.** `VGA_reloc` ran IDA 9.2 and Ghidra 12.1; angr is disabled
+for that profile after its CFGFast recovered a phantom 6-byte function at 7760
+overlapping `_emu486`'s primary chunk. `VGA_psdrvr` ran IDA 9.2 alone; angr
+crashes during CFG recovery for this bundle and Ghidra's relocation metadata is
+unusable (`normalize_analysis` cannot derive a field width from it), so both
+are disabled for that profile. IDA-alone was accepted for `VGA_psdrvr`
+specifically because the Mach-O symbol table independently corroborates the
+partition, as detailed in the Evidence section above.
+
+**Build state.** The guest build succeeds. All five `Loaded Server` sections
+match Apple's byte for byte: `Server Name` 3, `Load Commands` 164,
+`Unload Commands` 67, `Instance Var` 12, `Server Version` 1.
+
+**Boot-test gate.** Deferred, not run — the shared QEMU working image was in
+use by a concurrent session.
+
+**Ledger state.** Every function in both ledgers stands at `unexamined` or
+`intentional-mismatch`; `VGA_reloc` is 38 entries (2 `intentional-mismatch`,
+36 `unexamined`) and `VGA_psdrvr` is 53 entries (19 `intentional-mismatch`,
+34 `unexamined`), pending the rewrite phase.
+
+**Open questions, stated plainly:**
+
+- Our `VGA_psdrvr` links as MH_EXECUTE where Apple's is MH_BUNDLE, because no
+  `-bundle` flag reaches the link. `parity_check.py` cannot read our build of
+  it as a result, so the rewrite phase's parity verification for that binary
+  is blocked until the link is fixed.
+- The `VGA` version bundle was never produced by our build, though the spec
+  expected the Driver project type to emit one without anyone writing code.
+- Ghidra's Mach-O relocation-kind gap for `VGA_psdrvr` is uninvestigated and is
+  a candidate for separate tooling work, not something this effort fixes.

@@ -620,7 +620,7 @@ NSIncrementExtraRefCount(id object)
     if (slot == 0) {
         /*  First extra reference: grow before the table is more than
             half full, then insert with the tag set to 1.  */
-        if (extraRefCounts->count * 2 >= extraRefCounts->capacity) {
+        if (extraRefCounts->count * 2 > extraRefCounts->capacity) {
             ExtraRefCountTableResize(extraRefCounts, extraRefCounts->capacity * 2);
             index = ExtraRefCountTableFindSlot(extraRefCounts, object);
         }

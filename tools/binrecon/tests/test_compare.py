@@ -513,6 +513,9 @@ def test_validator_rejects_unknown_evidence_kind_and_forged_acceptance(tmp_path)
 def test_mutation_during_later_section_reads_is_rejected(tmp_path, monkeypatch):
     import binrecon.compare as module
     rp, bp, left, right = _case(tmp_path)
+    # A same-size overwrite leaves stat metadata untouched whenever it lands in the same
+    # filesystem timestamp tick as the original write, so detection must not rely on it.
+    monkeypatch.setattr(module, "_STABLE_FIELDS", ())
     original = module._Artifact.read_at; calls = 0
     def mutate_during_sections(self, offset, size):
         nonlocal calls

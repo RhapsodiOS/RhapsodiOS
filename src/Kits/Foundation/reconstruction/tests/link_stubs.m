@@ -148,11 +148,6 @@ void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
     unimplemented("_NSObjectRaiseNullSelectorException");
 }
 
-void NSAutoreleaseObject(id anObject)
-{
-    unimplemented("NSAutoreleaseObject");
-}
-
 void NSLog(id format, ...)
 {
     unimplemented("NSLog");
@@ -230,9 +225,10 @@ id NSStringFromStack(id format, id separator)
 
 /*  Task 9 (NSProxy) addition.  NSProxy's own null-selector diagnostic
     helper, the direct counterpart to _NSObjectRaiseNullSelectorException
-    above -- not reconstructed (NSPrivate territory, Task 10), and not
-    reached by any test in this stage (none call performSelector: with a
-    NULL selector).  */
+    above.  Not part of NSAutoreleasePool.json or NSPrivate.json's method
+    lists, so Task 10 does not reconstruct it either -- still not
+    reconstructed, and not reached by any test in this stage (none call
+    performSelector: with a NULL selector).  */
 void _NSProxyRaiseNullSelectorException(id object, SEL aSelector)
 {
     unimplemented("_NSProxyRaiseNullSelectorException");

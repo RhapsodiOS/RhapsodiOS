@@ -508,19 +508,30 @@ Within each track the steps are ordered.
    → verify, track A: `CirrusLogicGD5434DisplayDriver_reloc` and
    `CirrusLogicGD5434DisplayDriver` both exist.
    → verify, track B: `IBMThinkPad760ED.o`, `TransferTable.o` and `smapi.o`
-   all compile. The link is **expected to fail** with unresolved
-   `.objc_class_name_vidBIOS` and `_emu486` until drvVGA supplies them; the
-   script reports this as the known deferral of §1.4 rather than as a build
-   failure, and the ThinkPad `_reloc` is not produced by this effort.
+   all compile.
+
+   > **Corrected after Task 10.** This step originally predicted the link
+   > would **fail** with unresolved `.objc_class_name_vidBIOS` and `_emu486`
+   > until drvVGA supplies them, and that no ThinkPad `_reloc` would be
+   > produced. All of that was wrong. `kl_ld` performs a *relocatable* link
+   > (`ld -r`), which leaves unresolved symbols undefined rather than erroring
+   > — so `IBMThinkPad760EDDisplayDriver_reloc` **is produced** with
+   > `make exit=0`. `.objc_class_name_vidBIOS` is indeed among the undefined
+   > symbols, but `_emu486` is not: it is referenced only from the deferred
+   > `vidBIOS.m`, so it never appears as an unresolved symbol of this build at
+   > all. See `divergences.md`'s "Build status" section for the full account.
 8. Run `tools/binrecon/parity_check.py` against the reference `_reloc` for
    track A.
    → verify: every reference `__TEXT,__cstring` string and every reference
    `__TEXT,__text` symbol is present in our build. Extras on our side are
    reported, not failures — our guest builds are unstripped.
 
-Track B has no `parity_check.py` step, because it produces no linked binary.
-Its equivalent check is the source map of step 6 plus the successful
-compilation of step 7.
+> **Corrected after Task 10.** Track B was expected to have no
+> `parity_check.py` step because it would produce no linked binary. It does
+> produce one — see the correction to step 7 above — so `parity_check.py`
+> runs against it too, and reports one missing symbol (`_emu486`) and eight
+> missing strings (the deferred `vidBIOS.m` strings), with nothing extra
+> beyond unstripped-build artifacts.
 
 ### 4.4 Out of scope for verification
 
@@ -531,11 +542,21 @@ source map, the ledger, and `parity_check.py`.
 
 ## 5. Risks
 
-**The ThinkPad track ends without a linked binary.** This is by design (§1.4)
-but it means the ThinkPad's 29 reconstructed functions are verified by
-compilation and source map only, not by a symbol- and string-level parity
-check against the reference. That check becomes available as soon as drvVGA
-lands `vidBIOS.m` and the emulator, and should be run then.
+**The ThinkPad track ends without a *loadable* binary.** This is by design
+(§1.4): `vidBIOS.m` and `_emu486` remain deferred to drvVGA, so the rebuilt
+`_reloc` has no `vidBIOS` class and cannot load.
+
+> **Corrected after Task 10.** This paragraph originally said the ThinkPad
+> track produces no linked binary at all, so its 29 reconstructed functions
+> would be verified by compilation and source map only, with a symbol- and
+> string-level parity check unavailable until drvVGA lands. That was wrong on
+> both counts: `kl_ld`'s relocatable link **does** produce a `_reloc`, and
+> `parity_check.py` **does** run against it now, reporting only `_emu486`
+> missing among symbols and the eight deferred `vidBIOS.m` strings missing.
+> What that check cannot yet do is confirm byte-level parity — 12 of the 29
+> in-scope function extents still differ from the reference — and it cannot
+> exercise the deferred region at all. Full parity, including `vidBIOS.m` and
+> `_emu486`, is still gated on drvVGA landing them.
 
 **`reportSystemConfiguration` is 1088 bytes**, the largest single function in
 either driver, and consists largely of SMAPI calls and `IOLog` formatting whose

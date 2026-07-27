@@ -1,7 +1,10 @@
 /*  Behavioural tests for NSObject's instance methods, stage 2a.  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSDebug.h>
+#import <objc/objc-runtime.h>
 #include <stdio.h>
+#include <string.h>
 
 static int failures = 0;
 
@@ -133,6 +136,102 @@ static void test_allocWithZone_uses_the_named_zone(void)
     [object release];
 }
 
+/*  NSZombieEnabled is read directly by NSZone.m's NSDeallocateObject, the
+    same way this test reaches it: as the FOUNDATION_EXPORT BOOL declared
+    in NSDebug.h (link_stubs.m supplies the storage, defaulting it to 0).
+    With it set, releasing an object down to a zero retain count no longer
+    frees the storage -- NSDeallocateObject retargets object->isa to a
+    synthesized "NSZombie_NSObject" class instead (NSZone.m's
+    _NSZombieClassForClass) and returns, leaving the object's memory (and
+    its isa field) safe to read afterward.  This test only reads isa/name
+    fields directly, exactly as NSZone.m's own zombie synthesis does; it
+    never sends the freed object a message, since every _NSZombie method
+    ends by raising an exception, and this project's Objective-C support
+    has no @try/@catch to catch it with.  */
+static void test_zombie_replaces_isa_on_dealloc(void)
+{
+    BOOL previousZombieEnabled = NSZombieEnabled;
+    id object;
+    Class originalClass;
+    Class zombieClass;
+
+    NSZombieEnabled = YES;
+
+    object = [[NSObject alloc] init];
+    originalClass = object->isa;
+    [object release];
+    zombieClass = object->isa;
+
+    CHECK(zombieClass != originalClass);
+    CHECK(zombieClass != Nil);
+    CHECK(strcmp(zombieClass->name, "NSZombie_NSObject") == 0);
+
+    NSZombieEnabled = previousZombieEnabled;
+}
+
+/*  A second object of the same original class, deallocated while zombies
+    are still enabled, must be retargeted to the very same zombie class as
+    the first -- exercising _NSZombieClassForClass's lookup-table hit path
+    (zombieClasses[]), not just the synthesis path the test above covers.  */
+static void test_zombie_class_is_reused_for_second_object(void)
+{
+    BOOL previousZombieEnabled = NSZombieEnabled;
+    id first;
+    id second;
+    Class firstZombieClass;
+    Class secondZombieClass;
+
+    NSZombieEnabled = YES;
+
+    first = [[NSObject alloc] init];
+    [first release];
+    firstZombieClass = first->isa;
+
+    second = [[NSObject alloc] init];
+    [second release];
+    secondZombieClass = second->isa;
+
+    CHECK(firstZombieClass == secondZombieClass);
+
+    NSZombieEnabled = previousZombieEnabled;
+}
+
+static void test_class_side_isMemberOfClass(void)
+{
+    CHECK(![NSObject isMemberOfClass:[NSObject class]]);
+}
+
+/*  +implementsSelector: is not covered here: both branches of
+    _NSIMPForSelector(self->isa, aSelector) are unreconstructed
+    (NSPrivate/NSAutoreleasePool territory) and link_stubs.m's stub for it
+    aborts unconditionally, confirmed by running the test binary -- there
+    is no selector this could be called with today that would not abort
+    the whole suite.  */
+
+static void test_class_side_zone(void)
+{
+    CHECK([NSObject zone] == NSDefaultMallocZone());
+}
+
+static void test_class_side_retainCount(void)
+{
+    CHECK([NSObject retainCount] == (unsigned)-1);
+}
+
+static void test_class_side_copy_and_mutableCopy(void)
+{
+    CHECK([NSObject copy] == [NSObject class]);
+    CHECK([NSObject mutableCopy] == [NSObject class]);
+}
+
+static void test_class_side_isAncestorOfObject(void)
+{
+    id object = [[NSObject alloc] init];
+
+    CHECK([NSObject isAncestorOfObject:object]);
+    [object release];
+}
+
 int main(void)
 {
     test_self_and_identity();
@@ -146,6 +245,13 @@ int main(void)
     test_new_allocates_and_initialises();
     test_class_introspection_on_the_class_object();
     test_allocWithZone_uses_the_named_zone();
+    test_zombie_replaces_isa_on_dealloc();
+    test_zombie_class_is_reused_for_second_object();
+    test_class_side_isMemberOfClass();
+    test_class_side_zone();
+    test_class_side_retainCount();
+    test_class_side_copy_and_mutableCopy();
+    test_class_side_isAncestorOfObject();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

@@ -44,6 +44,7 @@
     BOOL		_senseDataValid;// *_senseDataPtr from last command OK
     BOOL		_reservedTargetLun; // Controller has reserved t & l
     BOOL		_ignoreCheckCondition; // during Test Ready in open()
+    unsigned int	_lunsReserved;	// bitmask of luns 1..7 we hold
 };
 
 

@@ -44,6 +44,13 @@ int er_info_value ();		/* byte swapping for sense reply info data */
 
 id		stIdMap [NST];
 
+@interface SCSITape(private)
+
+- (void) reserveAllLuns;
+- (void) releaseAllLuns;
+
+@end
+
 @implementation SCSITape
 
 + (IODeviceStyle)deviceStyle
@@ -1196,3 +1203,50 @@ er_info_value (struct esense_reply *esrp)
 	(esrp->er_info2 << 16) | (esrp->er_info3 << 24));
 #endif
 }
+
+
+@implementation SCSITape(private)
+
+/*
+ * A tape lives at lun 0, but some drives answer on every lun of their
+ * target.  Hold the other luns so that nothing else claims one of them and
+ * starts talking to our drive.  Failure to reserve a lun is only a warning;
+ * remember the ones we did get in _lunsReserved.
+ */
+- (void) reserveAllLuns
+{
+    u_char	lun;
+
+    if (_lun != 0) {
+	IOLog ("%s: SCSITape (target %d, lun %d) expects lun 0\n",
+	    [_controller name], _target, _lun);
+    }
+
+    _lunsReserved = 0;
+    for (lun = 1; lun < SCSI_NLUNS; lun++) {
+	if ([_controller reserveTarget: _target lun: lun forOwner: self]) {
+	    IOLog ("%s: SCSITape (target %d) can't reserve, lun %d\n",
+		[_controller name], _target, lun);
+	}
+	else {
+	    _lunsReserved |= (1 << lun);
+	}
+    }
+}
+
+/*
+ * Give back the luns reserveAllLuns managed to get.  Lun 0 is ours and is
+ * released elsewhere.
+ */
+- (void) releaseAllLuns
+{
+    u_char	lun;
+
+    for (lun = SCSI_NLUNS - 1; lun != 0; lun--) {
+	if (_lunsReserved & (1 << lun)) {
+	    [_controller releaseTarget: _target lun: lun forOwner: self];
+	}
+    }
+}
+
+@end

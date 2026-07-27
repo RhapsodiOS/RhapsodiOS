@@ -280,6 +280,13 @@ disassembly:
    (`int`), which argues for `int *`.
 7. `UnpackString`'s outer loop is written `do { ... } while( pass--)`; a
    `for( pass = 1; pass >= 0; pass--)` produces the same instructions.
+
+8. The `extern long int strtol( const char *nptr, char **endptr, int base);`
+   declaration at `IOSmartDisplay.m:181` is **invented**, not recovered. The
+   binary carries a relocation to `_strtol` but no prototype. It follows this
+   tree's existing idiom for the same problem at
+   `IOFrameBufferDisplay.m:105`, but a different spelling -- a header include,
+   or a different integer type -- would produce the same call.
 8. `UnpackString`'s inner loop is written `while( (next = end))`; a
    two-variable `for( next = string; next; next = end)` produces the same
    instructions.

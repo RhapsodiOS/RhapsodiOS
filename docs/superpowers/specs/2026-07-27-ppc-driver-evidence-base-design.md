@@ -253,7 +253,29 @@ masking arithmetic with an explicit sign-extend-then-range-check.
 defect that blocks an artifact from publishing is in scope to fix**, because
 otherwise the measurement cannot complete. Any such fix follows `12a64a6c`'s
 precedent: a targeted change with a test, never a widening of what the
-integrity check accepts. Tool changes for any other reason are out of scope.
+integrity check accepts.
+
+**Also in scope: a tool defect that corrupts the measurement itself.** Found
+during the Cuda pass — `source_map.py`'s scanner drops any method definition
+written with a semicolon between signature and body:
+
+```objc
+- (void)StartCudaTransmission:(CudaRequest *)plugInMessage;
+{ ... }
+```
+
+Line 139 sets `found_semicolon`, and line 163's `found_brace and not
+found_semicolon` guard then never records the site. The idiom is valid
+NeXT-era GCC and appears twice across these five drivers —
+`drvCuda/cuda.m:1399` and `drvApple96_SCSI/Apple96SCSI.m:113`. Both are
+reported as gaps that do not exist.
+
+This is the same class of defect the SCSITape spec found in the same scanner
+(unindented K&R parameter declarations) and resolved the same way: "a tool
+bug, fixed rather than worked around." A measurement spec whose measuring
+instrument miscounts has no output worth keeping, so the allowance covers it.
+
+Tool changes for any other reason remain out of scope.
 
 ## 4. The report
 

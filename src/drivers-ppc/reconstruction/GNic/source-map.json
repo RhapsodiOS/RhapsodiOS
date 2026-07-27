@@ -1,0 +1,447 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 400,
+      "reference_names": [
+        "-[GNicEnet _initTxRing]"
+      ],
+      "size": 232,
+      "source_line": 170,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 712,
+      "reference_names": [
+        "-[GNicEnet _initRxRing]"
+      ],
+      "size": 348,
+      "source_line": 210,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 1140,
+      "reference_names": [
+        "-[GNicEnet _startChip]"
+      ],
+      "size": 116,
+      "source_line": 95,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 1288,
+      "reference_names": [
+        "-[GNicEnet _resetChip]"
+      ],
+      "size": 116,
+      "source_line": 71,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 1452,
+      "reference_names": [
+        "-[GNicEnet _initChip]"
+      ],
+      "size": 508,
+      "source_line": 26,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 1976,
+      "reference_names": [
+        "-[GNicEnet _disableAdapterInterrupts]"
+      ],
+      "size": 48,
+      "source_line": 280,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2040,
+      "reference_names": [
+        "-[GNicEnet _enableAdapterInterrupts]"
+      ],
+      "size": 52,
+      "source_line": 271,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2108,
+      "reference_names": [
+        "-[GNicEnet _restartTransmitter]"
+      ],
+      "size": 12,
+      "source_line": 507,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2120,
+      "reference_names": [
+        "-[GNicEnet _restartReceiver]"
+      ],
+      "size": 12,
+      "source_line": 763,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2132,
+      "reference_names": [
+        "-[GNicEnet _stopReceiveDMA]"
+      ],
+      "size": 12,
+      "source_line": 755,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2144,
+      "reference_names": [
+        "-[GNicEnet _stopTransmitDMA]"
+      ],
+      "size": 12,
+      "source_line": 499,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2156,
+      "reference_names": [
+        "-[GNicEnet _transmitPacket:]"
+      ],
+      "size": 208,
+      "source_line": 340,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2428,
+      "reference_names": [
+        "-[GNicEnet _receivePacket:length:timeout:]"
+      ],
+      "size": 248,
+      "source_line": 515,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2724,
+      "reference_names": [
+        "-[GNicEnet _packetToDebugger:]"
+      ],
+      "size": 100,
+      "source_line": 1022,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 2888,
+      "reference_names": [
+        "-[GNicEnet _sendPacket:length:]"
+      ],
+      "size": 444,
+      "source_line": 378,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 3460,
+      "reference_names": [
+        "-[GNicEnet _sendDummyPacket]"
+      ],
+      "size": 172,
+      "source_line": 469,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 3664,
+      "reference_names": [
+        "-[GNicEnet _receiveInterruptOccurred]"
+      ],
+      "size": 48,
+      "source_line": 330,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 3728,
+      "reference_names": [
+        "-[GNicEnet _receivePackets:]"
+      ],
+      "size": 984,
+      "source_line": 567,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 4856,
+      "reference_names": [
+        "-[GNicEnet _transmitInterruptOccurred]"
+      ],
+      "size": 200,
+      "source_line": 289,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 5088,
+      "reference_names": [
+        "-[GNicEnet _updateDescriptorFromNetBuf:Desc:ReceiveFlag:]"
+      ],
+      "size": 328,
+      "source_line": 920,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 5496,
+      "reference_names": [
+        "-[GNicEnet _findMulticastAddress:Index:]"
+      ],
+      "size": 192,
+      "source_line": 838,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 5704,
+      "reference_names": [
+        "-[GNicEnet _addMulticastAddress:]"
+      ],
+      "size": 208,
+      "source_line": 771,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 5960,
+      "reference_names": [
+        "-[GNicEnet _removeMulticastAddress:]"
+      ],
+      "size": 124,
+      "source_line": 817,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 6116,
+      "reference_names": [
+        "-[GNicEnet _monitorLinkStatus]"
+      ],
+      "size": 200,
+      "source_line": 991,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 6364,
+      "reference_names": [
+        "-[GNicEnet _getStationAddress:]"
+      ],
+      "size": 124,
+      "source_line": 891,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnetPrivate.m"
+    },
+    {
+      "address": 6504,
+      "reference_names": [
+        "+[GNicEnet probe:]"
+      ],
+      "size": 76,
+      "source_line": 100,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 6596,
+      "reference_names": [
+        "-[GNicEnet initFromDeviceDescription:]"
+      ],
+      "size": 528,
+      "source_line": 114,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 7172,
+      "reference_names": [
+        "-[GNicEnet free]"
+      ],
+      "size": 228,
+      "source_line": 198,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 7448,
+      "reference_names": [
+        "-[GNicEnet interruptOccurred]"
+      ],
+      "size": 220,
+      "source_line": 350,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 7700,
+      "reference_names": [
+        "-[GNicEnet serviceTransmitQueue]"
+      ],
+      "size": 164,
+      "source_line": 648,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 7880,
+      "reference_names": [
+        "-[GNicEnet transmit:]"
+      ],
+      "size": 312,
+      "source_line": 569,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 8240,
+      "reference_names": [
+        "-[GNicEnet transmitQueueSize]"
+      ],
+      "size": 16,
+      "source_line": 694,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 8256,
+      "reference_names": [
+        "-[GNicEnet transmitQueueCount]"
+      ],
+      "size": 44,
+      "source_line": 685,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 8316,
+      "reference_names": [
+        "-[GNicEnet resetAndEnable:]"
+      ],
+      "size": 340,
+      "source_line": 234,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 8672,
+      "reference_names": [
+        "-[GNicEnet timeoutOccurred]"
+      ],
+      "size": 288,
+      "source_line": 298,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9008,
+      "reference_names": [
+        "-[GNicEnet enablePromiscuousMode]"
+      ],
+      "size": 120,
+      "source_line": 473,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9176,
+      "reference_names": [
+        "-[GNicEnet disablePromiscuousMode]"
+      ],
+      "size": 112,
+      "source_line": 498,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9336,
+      "reference_names": [
+        "-[GNicEnet enableMulticastMode]"
+      ],
+      "size": 120,
+      "source_line": 521,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9504,
+      "reference_names": [
+        "-[GNicEnet disableMulticastMode]"
+      ],
+      "size": 112,
+      "source_line": 546,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9664,
+      "reference_names": [
+        "-[GNicEnet addMulticastAddress:]"
+      ],
+      "size": 124,
+      "source_line": 440,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9804,
+      "reference_names": [
+        "-[GNicEnet removeMulticastAddress:]"
+      ],
+      "size": 108,
+      "source_line": 458,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9928,
+      "reference_names": [
+        "-[GNicEnet sendPacket:length:]"
+      ],
+      "size": 40,
+      "source_line": 630,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 9984,
+      "reference_names": [
+        "-[GNicEnet receivePacket:length:timeout:]"
+      ],
+      "size": 40,
+      "source_line": 639,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10040,
+      "reference_names": [
+        "-[GNicEnet getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 411,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10056,
+      "reference_names": [
+        "-[GNicEnet setPowerState:]"
+      ],
+      "size": 68,
+      "source_line": 420,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10140,
+      "reference_names": [
+        "-[GNicEnet getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 393,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10156,
+      "reference_names": [
+        "-[GNicEnet setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 402,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    }
+  ],
+  "reference_sha256": "1D208A3E49CD9DDD6692C81AEACC9C0A5C4BF97F45827EF30DECC495E851B760",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 10432,
+      "reference_names": [
+        "+[drvPPCGNicKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 10452,
+      "reference_names": [
+        "+[drvPPCGNicVersion driverKitVersionFordrvPPCGNic]"
+      ],
+      "size": 16
+    }
+  ]
+}

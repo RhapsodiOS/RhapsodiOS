@@ -1,0 +1,9 @@
+"Title"         = "drvPPCPMU";
+"Driver Name"   = "drvPPCPMU";
+"Matching"      = "via-pmu";
+"Class Names"   = "ApplePMU";
+"Boot Driver"   = "no";
+"Load Priority" = "6800";
+"Server Name" = "drvPPCPMU";
+"Driver Version" = "PROGRAM:drvPPCPMU  PROJECT:drvPPCPMU-1  DEVELOPER:root  BUILT:Tue Nov 23 19:16:08 PST 1999";
+"Version" = "5.00";

@@ -1,0 +1,10 @@
+"Title"         = "drvPPCCuda";
+"Driver Name"   = "drvPPCCuda";
+"Matching"      = "via-cuda";
+"Class Names"   = "AppleCuda";
+"Boot Driver"   = "no";
+"Load Priority" = "6800";
+
+"Server Name" = "drvPPCCuda";
+"Driver Version" = "PROGRAM:drvPPCCuda  PROJECT:drvPPCCuda-1  DEVELOPER:root  BUILT:Tue Nov 23 19:15:00 PST 1999";
+"Version" = "5.00";

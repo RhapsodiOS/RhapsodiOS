@@ -1,0 +1,9 @@
+"Title"         = "drvPPCOHare";
+"Driver Name"   = "drvPPCOHare";
+"Matching"      = "pci106b,7";
+"Class Names"   = "AppleOHare";
+"Boot Driver"   = "no";
+"Load Priority" = "10000";
+"Server Name" = "drvPPCOHare";
+"Driver Version" = "PROGRAM:drvPPCOHare  PROJECT:drvPPCOHare-1  DEVELOPER:root  BUILT:Tue Nov 23 19:15:52 PST 1999";
+"Version" = "5.00";

@@ -807,10 +807,64 @@ Spec §5.3: these are the subtle part. `NSIncrementExtraRefCount` (612 bytes) an
 **Files:**
 - Modify: `src/Kits/Foundation/NSZone.m`
 - Create: `src/Kits/Foundation/reconstruction/tests/test_refcount.c`
+- Create: `src/Kits/Foundation/reconstruction/tests/link_stubs.m`
 
 **Interfaces:**
 - Consumes: the zone functions from Task 5; declarations in `src/Kits/Foundation/NSObject.h` (do not modify).
 - Produces: `NSAllocateObject`, `NSDeallocateObject`, `NSCopyObject`, `NSShouldRetainWithZone`, `NSExtraRefCount`, `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`.
+
+- [ ] **Step 0: Commit the link stubs — Task 5 needed these and had none**
+
+Stage 1's link stubs lived only on the guest and were never committed, so its test
+binaries could not be rebuilt from the tree. Closing that gap was one of stage 2a's
+goals, but the plan originally scheduled it for Task 7 — and Task 5 already needed
+stubs, so `test_zone.c` is currently **not reproducible from the tree**. Fix that
+before doing anything else here.
+
+`NSZone.m` after Task 5 references `NSException`, `NSKeepAllocationStatistics`,
+`NSRecordAllocationEvent` and an `NXConstantString`-backed `@""` literal, none of
+which exist in a two-file link. Create
+`src/Kits/Foundation/reconstruction/tests/link_stubs.m` supplying exactly the
+undefined symbols — determine the set empirically by building and reading the
+linker's complaints. Every stub must `abort()` rather than return a plausible
+value, so a test that reaches one fails loudly instead of silently passing:
+
+```objc
+/*  Link stubs for stage 2a's test binaries.
+
+    Foundation symbols the reconstructed modules reference but that this stage
+    does not implement.  Every stub aborts: a test that reaches one is depending
+    on unreconstructed behaviour and must fail loudly rather than quietly
+    observing a plausible-looking default.  */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+static void unimplemented(const char *name)
+{
+    fprintf(stderr, "link stub reached: %s
+", name);
+    abort();
+}
+```
+
+Add one stub per undefined symbol, each calling `unimplemented("<name>")`.
+
+Then **rebuild and re-run Task 5's suite against the committed stubs** and record
+the result — that is what makes `test_zone.c` reproducible:
+
+```
+cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers -o /tmp/test_zone reconstruction/tests/test_zone.c NSZone.m reconstruction/tests/link_stubs.m >& build.log
+echo $status
+/tmp/test_zone
+```
+
+Expected: `PASSED: 0 failure(s)`. If it does not reproduce, that is a finding —
+report it rather than adjusting the test.
+
+Task 5's `test_zone.c` header comment claims the zone functions "need no
+Objective-C runtime". That is no longer accurate — the implementation routes
+through `objc_msgSend`. Correct the comment while you are here.
 
 - [ ] **Step 1: Read the reference**
 
@@ -1026,9 +1080,11 @@ Spec §5.2: the risk here is volume, not complexity — 93 methods averaging 31 
 
 Read `docs/superpowers/plans/notes/2026-07-26-objc-hosting-probe.md`. If it records `RESULT: not hosted`, **stop** — this task cannot be behaviourally tested and the user has already been asked to decide. If it records `RESULT: hosted`, use its recorded link line for every build below.
 
-- [ ] **Step 2: Commit the link stubs**
+- [ ] **Step 2: Extend the committed link stubs**
 
-Stage 1's link stubs lived only on the guest and were never committed, so its test binaries cannot be rebuilt from the tree. Fix that here.
+`src/Kits/Foundation/reconstruction/tests/link_stubs.m` already exists — Task 6
+created it. Extend it with whatever further symbols `NSObject.m` needs, following
+the same rule: every stub `abort()`s so a test reaching one fails loudly.
 
 Create `src/Kits/Foundation/reconstruction/tests/link_stubs.m` supplying the minimum set of Foundation symbols the reconstructed modules reference but that stage 2a does not yet implement. Determine the set empirically — build, read the undefined-symbol list, and stub exactly those. Each stub must `abort()` rather than return a plausible value, so that a test accidentally depending on one fails loudly instead of silently passing:
 

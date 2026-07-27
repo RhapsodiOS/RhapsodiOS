@@ -103,7 +103,10 @@ typedef struct {
     unsigned int        IOAddrLines;                    /* +108 */
     char                bus8;                           /* +112 */
     char                bus16;                          /* +113 */
-    IOPortRangeTable    PortRanges;                     /* +116 */
+    /* Declared by tag, not through the typedef: the reference encodes this
+     * one as {_IOPortRangeTable=...} where its other structs are anonymous,
+     * and the tag does not survive a typedef here. */
+    struct _IOPortRangeTable  PortRanges;               /* +116 */
     PCMCIAIRQInfo       IRQInfo;                        /* +248 */
     PCMCIAMemSpaceInfo  MemSpaceInfo;                   /* +260 */
 }

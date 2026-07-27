@@ -54,6 +54,27 @@ def defined_symbols(macho_document):
     return {address: sorted(names) for address, names in index.items()}
 
 
+def _strip_parenthesised(text):
+    """Replace every parenthesised span with a space, nesting included.
+
+    A single `\\([^()]*\\)` pass only removes innermost pairs, so a
+    function-pointer type such as `(int (*)(id, id))` loses its inner pairs
+    and leaves the outer `)` behind for the segment walk to read as a
+    keyword. Track the depth instead.
+    """
+    kept = []
+    depth = 0
+    for character in text:
+        if character == "(":
+            depth += 1
+            kept.append(" ")
+        elif character == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            kept.append(character)
+    return "".join(kept)
+
+
 def _selector(declaration):
     """Reduce an Objective-C method declaration to its bare selector.
 
@@ -69,7 +90,7 @@ def _selector(declaration):
     `initSCSITape:target:` into `initSCSITape:/*:`.
     """
     declaration = _COMMENT.sub(" ", declaration)
-    text = re.sub(r"\([^()]*\)", " ", declaration)
+    text = _strip_parenthesised(declaration)
     text = text.split("{")[0]
     if ":" in text:
         segments = text.split(":")

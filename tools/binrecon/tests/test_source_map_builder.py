@@ -262,6 +262,35 @@ def test_source_sites_joins_wrapped_selector_across_inline_comments(tmp_path):
     ]
 
 
+def test_source_sites_reads_a_selector_whose_argument_type_nests_parentheses(tmp_path):
+    """A function-pointer argument nests parentheses inside its type.
+
+    Stripping only innermost pairs leaves the outer type's closing paren
+    behind, and the segment walk then reads it as the keyword, yielding
+    "sortUsingFunction:)context:". Kits/Foundation/NSArray.m declares three
+    such methods.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "NSArray.m").write_text(
+        "@implementation NSArray\n"
+        "\n"
+        "- (void)sortUsingFunction:(int (*)(id, id, void *))compare\n"
+        "    context:(void *)context\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[NSArray sortUsingFunction:context:]"] == [
+        ("src/driver/NSArray.m", 3)
+    ]
+
+
 def test_source_sites_still_finds_single_line_selector_with_trailing_comment(tmp_path):
     """A comment after a one-line signature already worked; keep it working.
 

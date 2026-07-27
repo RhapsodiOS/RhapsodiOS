@@ -1,0 +1,298 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 56,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver initFromDeviceDescription:]"
+      ],
+      "size": 777,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760EDDisplayDriver.m"
+    },
+    {
+      "address": 1184,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver enterLinearMode]"
+      ],
+      "size": 626,
+      "source_line": 177,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760EDDisplayDriver.m"
+    },
+    {
+      "address": 1812,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver revertToVGAMode]"
+      ],
+      "size": 215,
+      "source_line": 190,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760EDDisplayDriver.m"
+    },
+    {
+      "address": 4344,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver free]"
+      ],
+      "size": 89,
+      "source_line": 103,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760EDDisplayDriver.m"
+    }
+  ],
+  "reference_sha256": "47539E03C441BBFD6724EB6778D85BFACD0961B78A8DFA33D56321C938EB5AEC",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_set555Mode"
+      ],
+      "size": 54
+    },
+    {
+      "address": 836,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver updateModeTable]"
+      ],
+      "size": 128
+    },
+    {
+      "address": 964,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver selectMode]"
+      ],
+      "size": 115
+    },
+    {
+      "address": 1080,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver defaultMode]"
+      ],
+      "size": 102
+    },
+    {
+      "address": 2028,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver getModeInfo:]"
+      ],
+      "size": 168
+    },
+    {
+      "address": 2196,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver determineConfiguration:]"
+      ],
+      "size": 395
+    },
+    {
+      "address": 2592,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver isValidPCIAssignedBaseAddress:]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 2624,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setPCIConfiguration]"
+      ],
+      "size": 674
+    },
+    {
+      "address": 3300,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setPendingDisplayMode:]"
+      ],
+      "size": 544
+    },
+    {
+      "address": 3844,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver getDisplayDeviceState]"
+      ],
+      "size": 81
+    },
+    {
+      "address": 3928,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setDisplayDeviceState:]"
+      ],
+      "size": 80
+    },
+    {
+      "address": 4008,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver unlockRegisters]"
+      ],
+      "size": 166
+    },
+    {
+      "address": 4176,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver lockRegisters]"
+      ],
+      "size": 166
+    },
+    {
+      "address": 4436,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayModeCount]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4448,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayModes]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4460,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayMemorySize]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 4476,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver ramdacSpeed]"
+      ],
+      "size": 9
+    },
+    {
+      "address": 4488,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver readCMOS:]"
+      ],
+      "size": 71
+    },
+    {
+      "address": 4560,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver reportSystemConfiguration]"
+      ],
+      "size": 1088
+    },
+    {
+      "address": 5648,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver name]"
+      ],
+      "size": 59
+    },
+    {
+      "address": 5708,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setTransferTable:count:]"
+      ],
+      "size": 333
+    },
+    {
+      "address": 6044,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setBrightness:token:]"
+      ],
+      "size": 77
+    },
+    {
+      "address": 6124,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver SetGammaValueRed:Green:Blue:Level:]"
+      ],
+      "size": 82
+    },
+    {
+      "address": 6208,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setGammaTable]"
+      ],
+      "size": 229
+    },
+    {
+      "address": 6440,
+      "reference_names": [
+        "_smapi_asm"
+      ],
+      "size": 86
+    },
+    {
+      "address": 6528,
+      "reference_names": [
+        "+[IBMThinkPad760EDDisplayDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 6540,
+      "reference_names": [
+        "+[IBMThinkPad760EDDisplayDriverVersion driverKitVersionForIBMThinkPad760EDDisplayDriver]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 6552,
+      "reference_names": [
+        "-[vidBIOS init]"
+      ],
+      "size": 267
+    },
+    {
+      "address": 6820,
+      "reference_names": [
+        "-[vidBIOS free]"
+      ],
+      "size": 107
+    },
+    {
+      "address": 6928,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:smmport:]"
+      ],
+      "size": 696
+    },
+    {
+      "address": 7624,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:]"
+      ],
+      "size": 44
+    },
+    {
+      "address": 7668,
+      "reference_names": [
+        "-[vidBIOS scratchSegment]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7684,
+      "reference_names": [
+        "-[vidBIOS realToVirtual::]"
+      ],
+      "size": 22
+    },
+    {
+      "address": 7708,
+      "reference_names": [
+        "_emu486"
+      ],
+      "size": 8088
+    },
+    {
+      "address": 15796,
+      "reference_names": [
+        "sub_00003DB4"
+      ],
+      "size": 81
+    },
+    {
+      "address": 15877,
+      "reference_names": [
+        "sub_00003E05"
+      ],
+      "size": 37
+    }
+  ]
+}

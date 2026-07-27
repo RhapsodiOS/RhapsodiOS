@@ -609,6 +609,46 @@ def test_source_sites_finds_semicolon_then_brace_method_definition(tmp_path):
     ]
 
 
+def test_source_sites_finds_wrapped_signature_ending_in_semicolon_then_brace(tmp_path):
+    """The semicolon-before-brace idiom also occurs on a wrapped signature,
+    with the ';' on the last continuation line rather than the first line.
+
+    `drvApple96_SCSI/Apple96CurioPublic.m:424` is written this way:
+
+        - (void) logCommand
+                    : (const CommandBuffer *) commandPtr
+            reason  : (const char *) reason;
+        {
+
+    The first line does not end in ';', so the initial `found_semicolon`
+    check never fires; the signature only resolves inside the lookahead
+    loop, which must apply the same `_body_follows` guard to the ';' found
+    on this later continuation line -- otherwise the loop stops the scan
+    before ever reaching the '{' that follows, and the definition is lost.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Apple96.m").write_text(
+        "@implementation Apple96_SCSI\n"
+        "\n"
+        "- (void) logCommand\n"
+        "            : (const CommandBuffer *) commandPtr\n"
+        "    reason  : (const char *) reason;\n"
+        "{\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[Apple96_SCSI logCommand:reason:]"] == [
+        ("src/driver/Apple96.m", 3)
+    ]
+
+
 def test_source_sites_still_skips_bare_semicolon_method_declaration(tmp_path):
     """A signature ending in ';' with no following brace is a declaration,
     not a definition, and must remain ignored. This must not regress just

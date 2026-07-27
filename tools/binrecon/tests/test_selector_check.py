@@ -117,6 +117,28 @@ def test_semicolon_then_brace_method_definition_is_recorded(tmp_path):
     assert names == {"-[AppleCuda StartCudaTransmission:]"}
 
 
+def test_wrapped_signature_ending_in_semicolon_then_brace_is_recorded(tmp_path):
+    """The semicolon-before-brace idiom also occurs on a wrapped signature,
+    with the ';' on the last continuation line rather than the first --
+    the shape of `drvApple96_SCSI/Apple96CurioPublic.m:424`. The first line
+    has no trailing ';', so this only resolves through the lookahead loop's
+    in-loop `_body_follows` check; without it the loop stops at the ';' on
+    the continuation line and never reaches the '{' that follows.
+    """
+    names = _write(tmp_path, """\
+@implementation Apple96_SCSI
+- (void) logCommand
+            : (const CommandBuffer *) commandPtr
+    reason  : (const char *) reason;
+{
+    return;
+}
+@end
+""")
+
+    assert names == {"-[Apple96_SCSI logCommand:reason:]"}
+
+
 def test_method_declaration_ending_in_semicolon_is_not_read_as_a_definition(tmp_path):
     """A `- foo;` declaration inside an @implementation has no body.
 

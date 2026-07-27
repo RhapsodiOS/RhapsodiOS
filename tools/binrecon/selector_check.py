@@ -59,20 +59,26 @@ def source_methods(source_dir):
                 start = index
                 signature = line
                 found_brace = "{" in signature
-                found_semicolon = not found_brace and signature.rstrip().endswith(";")
                 # A signature may wrap across lines; it ends at the body brace.
-                # A declaration ending in ";" has no body and must not be read
-                # as a definition -- matching source_map's found_semicolon
-                # guard -- otherwise the scan runs on into the next method's
-                # signature and merges the two.
-                while not found_brace and not found_semicolon and index + 1 < len(lines) and len(signature) < 600:
+                # A trailing ";" on the signature does not end the search: NeXT
+                # GCC allows a semicolon between a method signature and its
+                # body, matching source_map's source_sites. A structural
+                # boundary -- @end, another @implementation, or another
+                # method's signature -- still stops the scan; without that
+                # check a true forward declaration's ";" would let the scan
+                # run into the next real method and merge the two.
+                while (not found_brace and index + 1 < len(lines)
+                       and len(signature) < 600):
+                    candidate = lines[index + 1]
+                    if (candidate.startswith("@end")
+                            or re.match(r"^@implementation\s+(\w+)\s*(?:\(\s*(\w+)\s*\))?", candidate)
+                            or re.match(r"^[-+]\s*[\(\w]", candidate)):
+                        break
                     index += 1
-                    signature += " " + lines[index]
-                    if "{" in lines[index]:
+                    signature += " " + candidate
+                    if "{" in candidate:
                         found_brace = True
-                    elif lines[index].rstrip().endswith(";"):
-                        found_semicolon = True
-                if found_brace and not found_semicolon:
+                if found_brace:
                     head = signature.split("{")[0].strip()
                     sign, remainder = head[0], head[1:]
                     # The sign is dropped before parsing: source_map's reader

@@ -97,6 +97,26 @@ def test_nested_parentheses_in_an_argument_type(tmp_path):
     assert names == {"-[Widget setCallback:context:]"}
 
 
+def test_semicolon_then_brace_method_definition_is_recorded(tmp_path):
+    """NeXT-era GCC allows a ';' between a method signature and its body.
+
+    AppleCuda's StartCudaTransmission: in cuda.m is written this way. This
+    scanner mirrors source_map.py's `source_sites`, which had -- and no
+    longer has -- the identical defect: it read the trailing ';' as ending a
+    forward declaration and never yielded the definition that follows.
+    """
+    names = _write(tmp_path, """\
+@implementation AppleCuda
+- (void)StartCudaTransmission:(CudaRequest *)plugInMessage;
+{
+    return;
+}
+@end
+""")
+
+    assert names == {"-[AppleCuda StartCudaTransmission:]"}
+
+
 def test_method_declaration_ending_in_semicolon_is_not_read_as_a_definition(tmp_path):
     """A `- foo;` declaration inside an @implementation has no body.
 

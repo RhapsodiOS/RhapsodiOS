@@ -461,12 +461,28 @@ the same strings in the same order, the repaired one included:
 [3] PKB:probeDriver: initFromDeviceDescription failed for class %s
 ```
 
-**One block sits in a different place.** `PKB: aborting probe` is the tenth and
-last guard in the reference and the fifth in ours; the other five are the same
-sequence displaced by that one. So it is a single block's position, not six
-differences. This is the same layout phenomenon seen in
-`statusChangedForSocket:` — the reference puts a rarely-taken block at the end
-where we emit it where the source sits.
+**One block sat in a different place**, and it was not the compiler. `PKB:
+aborting probe` is the tenth and last guard in the reference and was the fifth
+in ours. Reading the reference's tail shows why:
+
+```
++795  cmp byte ptr [edx+0x20], 1 ; jne +814     <- the guard
++801  push 'PKB: aborting probe' ; call IOLog
++814  cmp dword ptr [ebp-0x14], 0 ; je +836     <- IOFree(classNames, classListLength)
++836  cmp dword ptr [ebp-0x10], 0 ; je +865     <- [device freeString:serverName]
++865  cmp dword ptr [ebp-8], 0    ; je +890     <- [kernDevice free]
++890  cmp dword ptr [ebp-4], 0    ; je +912     <- [pcmciaDesc free]
++912  xor eax, eax                              <- return NO
+```
+
+The log is the **head of the shared `cleanup_and_fail` block**, ahead of four
+conditional frees that match ours one for one, in the same order. Ours had it
+inside the `pcmciaDesc == nil` branch instead, so only that one failure path
+logged it; the reference logs it on every path that reaches the label. Moving it
+to the top of `cleanup_and_fail` is therefore a behaviour fix as well as a
+placement one — the other `goto cleanup_and_fail` sites now log too, as Apple's
+do. The `_verbose` site count is unchanged at 57; the block moved rather than
+multiplied.
 
 **The method as a whole is only 42.4% similar**, far below
 `statusChangedForSocket:`'s 77.4%. Fixing the guard did what it claimed and

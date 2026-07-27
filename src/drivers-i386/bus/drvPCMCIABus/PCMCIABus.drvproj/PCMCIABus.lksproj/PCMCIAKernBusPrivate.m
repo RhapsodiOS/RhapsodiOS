@@ -1440,9 +1440,6 @@ ToCardAddress:(unsigned int)cardAddr
         /* Create IOPCMCIADeviceDescription */
         pcmciaDesc = [[IOPCMCIADeviceDescription alloc] _initWithDelegate:deviceDesc];
         if (pcmciaDesc == nil) {
-            if (_verbose == YES) {
-                IOLog("PKB: aborting probe\n");
-            }
             goto cleanup_and_fail;
         }
 
@@ -1501,6 +1498,11 @@ ToCardAddress:(unsigned int)cardAddr
     return YES;
 
 cleanup_and_fail:
+    /* Every failure path logs this, not just the one that allocates
+     * the device description. */
+    if (_verbose == YES) {
+        IOLog("PKB: aborting probe\n");
+    }
     if (classListLength != 0) {
         IOFree(classNames, classListLength);
     }

@@ -622,6 +622,21 @@ hand-written files in scope** — `IBMThinkPad760ED.m`, `TransferTable.m` and
 `IBMThinkPad760EDDisplayDriver_instance.m` unit is emitted by the Kernel Server
 project type and must not be written by hand.
 
+**`vidBIOS.m` must not be added to `CLASSES` when it lands.** In the reference
+it links *last* — its `__OBJC,__module_info` record follows
+`IBMThinkPad760EDDisplayDriver_instance.m`'s, and its `__text` at 6552 follows
+the instance methods at 6528. `common.make:242` builds `LOCAL_OFILES` as
+`CLASSES … PROJTYPE_OFILES OTHERLINKEDOFILES OTHER_OFILES
+OTHER_GENERATED_OFILES`, and `kernelserver.make:41` puts the generated instance
+object in `OTHER_GENERATED_OFILES`, so a `CLASSES` entry would place
+`vidBIOS.o` immediately after `TransferTable.o` — ahead of `smapi.o` and the
+instance object, which is the wrong text order. It has to go somewhere that
+sorts after `OTHER_GENERATED_OFILES` instead. For the in-scope three the
+current Makefile is already right: `LOCAL_OFILES` expands to
+`IBMThinkPad760ED.o TransferTable.o smapi.o
+IBMThinkPad760EDDisplayDriver_instance.o`, matching 0–5707 / 5708–6437 /
+6440–6526 / 6528–.
+
 ### The ivar layout
 
 `__OBJC,__instance_vars` is 272 bytes — a 4-byte count of 19 followed by
@@ -2121,7 +2136,13 @@ _smapi_asm:
   symbol binding is `external` where every compiler-emitted file-static helper
   in this binary (`_set555Mode`) is `local`; and it is separated from its
   neighbours on both sides by **zero-fill** padding (6437–6440 and 6526–6528),
-  which the linker only emits between object files.
+  which the linker only emits between object files. **Qualification:** none of
+  these separates a `.s` file from a `.c` file holding one `asm volatile` block
+  — `module_info` is emitted only for translation units containing Objective-C
+  constructs, and the missing `lock incl`, the external binding and the
+  gcc-shaped frame would all look the same either way — so what the zero-fill
+  padding establishes is exactly "a separate translation unit with no
+  Objective-C", and `smapi.s` remains the reading on convention.
 - **It nonetheless uses a standard `push ebp / mov ebp, esp` frame and reads its
   argument at `[ebp+8]`,** unlike `_emu486`, which has no frame pointer. So the
   frame-pointer argument in `drvVGA`'s `_emu486` case does not apply here, and
@@ -2129,6 +2150,23 @@ _smapi_asm:
   function.
 - The three-byte `90 90 90` at 6513–6516, jumped over by the two-byte `jmp` at
   6511, is intra-function alignment before the epilogue.
+- **Obligation on the next task: declare the argument type and the prototype in
+  `IBMThinkPad760ED.h`.** The reference gives no evidence for a separate
+  `smapi.h` — there is no extra `HFILES` entry to justify — so `struct smapiReg`
+  and
+
+  ```c
+  extern void smapi_asm(struct smapiReg *r);
+  ```
+
+  must both go in `IBMThinkPad760ED.h`. The struct must place its six 16-bit
+  members at byte offsets **0 (`ax`), 4 (`bx`), 8 (`cx`), 0x0C (`dx`),
+  0x10 (`si`), 0x14 (`di`)** — the assembly hard-codes those displacements, so a
+  layout with any other padding feeds garbage to the SMAPI trap. **Omitting the
+  prototype fails silently, not loudly:** under gcc 2.x C rules a call to
+  `smapi_asm(&reg)` with no declaration in scope gets the implicit
+  `int smapi_asm()`, compiles with at most a warning, and links, so nothing in
+  the build catches a wrong offset or a missing header.
 - **`binrecon source-map` cannot map 6440, and that is a scanner limitation.**
   `binrecon/source_map.py` globs `*.m` and `*.c` in each `--source-dir`, so it
   never opens `smapi.s` and knows nothing of `.s` definitions; 6440 stays in

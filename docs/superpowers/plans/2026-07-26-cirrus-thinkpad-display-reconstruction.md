@@ -1099,7 +1099,7 @@ The two small translation units: 88 bytes of assembly and 732 bytes of gamma cod
 **Files:**
 - Create: `src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/smapi.s`
 - Create: `.../IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m`
-- Modify: `.../IBMThinkPad760EDDisplayDriver.lksproj/Makefile:16` and add an `SFILES` line
+- Modify: `.../IBMThinkPad760EDDisplayDriver.lksproj/Makefile:16` and add `OTHERLINKED` / `OTHERLINKEDOFILES` lines
 
 **Interfaces:**
 - Consumes: `divergences.md` findings for 5708–6528.
@@ -1143,8 +1143,16 @@ CLASSES = IBMThinkPad760ED.m TransferTable.m
 and add, after the `HFILES` line:
 
 ```make
-SFILES = smapi.s
+OTHERLINKED = smapi.s
 ```
+
+plus, after the `OTHERSRCS` line:
+
+```make
+OTHERLINKEDOFILES = smapi.o
+```
+
+**`SFILES` is not a pb_makefiles variable** — `src/pb_makefiles-1/common.make:242` builds `LOCAL_OFILES` from `CLASSES`, `MFILES`, `CFILES`, `PROJTYPE_OFILES`, `OTHERLINKEDOFILES`, `OTHER_OFILES` and `OTHER_GENERATED_OFILES`, and nothing in `pb_makefiles` or `kernelserver.make` reads `SFILES`. Writing it would be a silent no-op: `smapi.o` would never be assembled and `_smapi_asm` would be an extra undefined symbol at link. The `OTHERLINKED` / `OTHERLINKEDOFILES` pair is Apple's own idiom for an assembly file in a `PROJECT_TYPE = Kernel Server` project — see `src/drivers-ppc/bus/drvPExpert/powermac/Makefile:19,30`. It also gives the right link order: `LOCAL_OFILES` expands to `IBMThinkPad760ED.o TransferTable.o smapi.o IBMThinkPad760EDDisplayDriver_instance.o`, because `kernelserver.make:41` appends the generated instance object to `OTHER_GENERATED_OFILES`, which sorts last — matching the reference `__text` layout 0–5707 / 5708–6437 / 6440–6526 / 6528–.
 
 `CLASSES` names `IBMThinkPad760ED.m` before that file exists; Task 9 creates it. If the build is run between tasks it will fail on the missing file, which is expected.
 

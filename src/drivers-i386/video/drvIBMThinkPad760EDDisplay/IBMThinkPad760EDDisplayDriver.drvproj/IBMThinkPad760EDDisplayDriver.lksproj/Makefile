@@ -17,9 +17,11 @@ CLASSES = IBMThinkPad760ED.m TransferTable.m
 
 HFILES = IBMThinkPad760EDDisplayDriver.h
 
-SFILES = smapi.s
+OTHERLINKED = smapi.s
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+
+OTHERLINKEDOFILES = smapi.o
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

@@ -31,12 +31,23 @@ id NSInvalidArgumentException = 0;
 
 @interface NSException : Object
 + (void)raise:(id)name format:(id)format, ...;
++ (id)exceptionWithName:(id)name reason:(id)reason userInfo:(id)userInfo;
+- (void)raise;
 @end
 
 @implementation NSException
 + (void)raise:(id)name format:(id)format, ...
 {
     unimplemented("[NSException raise:format:]");
+}
++ (id)exceptionWithName:(id)name reason:(id)reason userInfo:(id)userInfo
+{
+    unimplemented("[NSException exceptionWithName:reason:userInfo:]");
+    return nil;
+}
+- (void)raise
+{
+    unimplemented("[NSException raise]");
 }
 @end
 
@@ -121,6 +132,7 @@ void NSLog(id format, ...)
 
 @interface NSString : Object
 + (id)stringWithFormat:(id)format, ...;
++ (id)stringWithCString:(const char *)bytes length:(unsigned)length;
 @end
 
 @implementation NSString
@@ -129,4 +141,43 @@ void NSLog(id format, ...)
     unimplemented("[NSString stringWithFormat:]");
     return nil;
 }
++ (id)stringWithCString:(const char *)bytes length:(unsigned)length
+{
+    unimplemented("[NSString stringWithCString:length:]");
+    return nil;
+}
 @end
+
+/*  Task 8 (NSObject's class methods and _NSZombie) additions.  */
+
+/*  NSGenericException backs _NSZombie's diagnostic raise, which none of
+    this stage's tests provoke -- inert for the same reason
+    NSInvalidArgumentException above is.  */
+id NSGenericException = 0;
+
+/*  NSZombieEnabled/NSDeallocateZombies gate NSZone.m's zombie path in
+    NSDeallocateObject; every test in this stage leaves them at their real
+    defaults (NO), so that path is never actually reached.  */
+BOOL NSZombieEnabled = 0;
+BOOL NSDeallocateZombies = 0;
+
+/*  _NSInitializePlatform backs +[NSObject load]/+[NSObject initialize].
+    Unlike this file's other stubs, +load fires unconditionally -- the
+    Objective-C runtime calls every loaded class's +load automatically
+    before main() runs, not only when a test explicitly exercises that
+    path -- so an abort()-ing stub here would fail every test that links
+    NSObject.m, including ones that have nothing to do with Task 8.  A
+    silent no-op is the correct stand-in until this is reconstructed.  */
+void _NSInitializePlatform(void)
+{
+}
+
+/*  NSStringFromStack backs _NSZombie's backtrace text (NSDebug.h's "Stack
+    processing" group) -- not reconstructed yet, and only reachable by
+    actually sending a message to a zombie, which no test in this stage
+    does, so this one keeps the usual abort()-ing shape.  */
+id NSStringFromStack(id format, id separator)
+{
+    unimplemented("NSStringFromStack");
+    return nil;
+}

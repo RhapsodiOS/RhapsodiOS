@@ -323,15 +323,118 @@ NSAllocateObject(Class aClass, unsigned extraBytes, NSZone *zone)
     return newObject;
 }
 
-/*	NSZombieEnabled retargets a deallocated object's isa to a
-	synthesized zombie class (one cached per original class in a map
-	table), so that a message sent to freed storage afterward is
-	caught and logged instead of touching memory that may have been
-	reused.  Reconstructing that synthesis needs both dynamic class
-	creation and a working NSMapTable; NSMapTable.m in this tree is
-	still unimplemented stubs, so NSZombieEnabled support is deferred
-	to stage 2a Task 8 (_NSZombie), alongside the rest of that
-	subsystem.  Plain deallocation is unaffected.  */
+/*	NSZombieEnabled and NSDeallocateZombies (both read directly as
+	globals, matching NSKeepAllocationStatistics above -- the
+	environment-variable bootstrap that sets them from the process's
+	environment is NSDebug.h territory this stage doesn't reconstruct)
+	retarget a deallocated object's isa to a synthesized zombie class
+	instead of freeing it, so a message sent to it afterward is caught
+	and logged instead of touching memory that may have been reused.
+
+	The reference (_NSDeallocateObject, disassembled directly since it
+	is within this stage's analysis scope) keeps the original-class ->
+	zombie-class lookup in a real NSMapTable (classToZombie, backed by
+	NSCreateMapTableWithZone/NSMapGet/NSMapInsert); NSMapTable.m in this
+	tree is still unimplemented stubs and out of this task's file list,
+	so this reconstruction substitutes a private table for both
+	directions of that lookup -- the same substitution this file's own
+	ExtraRefCountTable already makes for NSMapTable's overflow case, for
+	the identical reason.  The table lives here (not in NSObject.m,
+	alongside _NSZombie itself) because NSZone.m is linked into every
+	stage-2a test binary, while NSObject.m is linked only into the ones
+	that need NSObject; _NSZombieClassForClass looks up _NSZombie by
+	name (objc_getClass), not by compile-time reference, so this file
+	has no link-time dependency on NSObject.m being present.
+	_NSOriginalClassForZombieClass is NSObject.m's own reverse-lookup
+	accessor, for the diagnostic message's class name.  */
+
+typedef struct {
+    Class originalClass;
+    Class zombieClass;
+} NSZombieClassEntry;
+
+static NSZombieClassEntry *zombieClasses = 0;
+static unsigned zombieClassCount = 0;
+static unsigned zombieClassCapacity = 0;
+
+static void
+NSRecordZombieClass(Class originalClass, Class zombieClass)
+{
+    if (zombieClassCount == zombieClassCapacity) {
+        unsigned newCapacity = (zombieClassCapacity == 0) ? 4 : zombieClassCapacity * 2;
+        NSZombieClassEntry *newEntries =
+            (NSZombieClassEntry *)NSZoneMalloc(0, newCapacity * sizeof(NSZombieClassEntry));
+        unsigned index;
+
+        for (index = 0; index < zombieClassCount; index++)
+            newEntries[index] = zombieClasses[index];
+        if (zombieClasses != 0)
+            NSZoneFree(0, zombieClasses);
+        zombieClasses = newEntries;
+        zombieClassCapacity = newCapacity;
+    }
+    zombieClasses[zombieClassCount].originalClass = originalClass;
+    zombieClasses[zombieClassCount].zombieClass = zombieClass;
+    zombieClassCount++;
+}
+
+/*  Finds (or synthesizes and caches) the zombie class standing in for
+    originalClass.  The reference builds the pair by memmove()-cloning
+    _NSZombie's own class and metaclass structs (each sizeof(struct
+    objc_class), matching this project's objc-class.h layout exactly) --
+    giving the clone the same method lists as _NSZombie itself -- then
+    gives the metaclass clone its own empty method cache (a fresh, zeroed
+    sizeof(struct objc_cache) block; sharing _NSZombie's own cache would
+    let a lookup on one pollute the other), sets a new
+    "NSZombie_<originalClass>" name shared by both, and registers the
+    result with objc_addClass.  */
+Class
+_NSZombieClassForClass(Class originalClass)
+{
+    Class zombieClass;
+    Class zombieMeta;
+    const char *originalName;
+    char *name;
+    unsigned index;
+
+    for (index = 0; index < zombieClassCount; index++)
+        if (zombieClasses[index].originalClass == originalClass)
+            return zombieClasses[index].zombieClass;
+
+    zombieClass = (Class)NSZoneMalloc(0, sizeof(struct objc_class));
+    memmove(zombieClass, objc_getClass("_NSZombie"), sizeof(struct objc_class));
+
+    zombieMeta = (Class)NSZoneMalloc(0, sizeof(struct objc_class));
+    memmove(zombieMeta, zombieClass->isa, sizeof(struct objc_class));
+    zombieMeta->cache = (struct objc_cache *)NSZoneMalloc(0, sizeof(struct objc_cache));
+    memset(zombieMeta->cache, 0, sizeof(struct objc_cache));
+    zombieClass->isa = zombieMeta;
+
+    originalName = originalClass->name;
+    name = (char *)NSZoneMalloc(0, strlen("NSZombie_") + strlen(originalName) + 1);
+    strcpy(name, "NSZombie_");
+    strcat(name, originalName);
+    zombieMeta->name = name;
+    zombieClass->name = name;
+
+    objc_addClass(zombieClass);
+    NSRecordZombieClass(originalClass, zombieClass);
+
+    return zombieClass;
+}
+
+/*  Reverse lookup for _NSZombie's diagnostic message (NSObject.m).  */
+Class
+_NSOriginalClassForZombieClass(Class zombieClass)
+{
+    unsigned index;
+
+    for (index = 0; index < zombieClassCount; index++)
+        if (zombieClasses[index].zombieClass == zombieClass)
+            return zombieClasses[index].originalClass;
+    return Nil;
+}
+
 void
 NSDeallocateObject(id object)
 {
@@ -340,6 +443,16 @@ NSDeallocateObject(id object)
 
     if (NSKeepAllocationStatistics)
         NSRecordAllocationEvent(NSObjectDeallocatedEvent, object);
+
+    if (NSZombieEnabled) {
+        Class zombieClass = _NSZombieClassForClass(object->isa);
+
+        if (NSDeallocateZombies)
+            (*_dealloc)((Object *)object);
+        else
+            object->isa = zombieClass;
+        return;
+    }
 
     (*_dealloc)((Object *)object);
 }

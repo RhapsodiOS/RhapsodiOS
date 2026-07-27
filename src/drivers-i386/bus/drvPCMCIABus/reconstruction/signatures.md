@@ -449,6 +449,31 @@ unguarded, relying on it being valid at that point. Our source had
 `_verbose` test. Matching the reference removes that defensive check, which is
 recorded here rather than left implicit.
 
+**Verified.** The rebuilt binary carries **66** `cmp byte ptr [..+0x20], 1` and
+one against 0 — the reference's counts exactly — and
+`probeDevice:withDescription:` now has ten guards. The first four line up with
+the same strings in the same order, the repaired one included:
+
+```
+[0] PKB: class list '%s'
+[1] PKB: driver class '%s' was not loaded
+[2] PKB: Driver %s could not be configured      <- repaired
+[3] PKB:probeDriver: initFromDeviceDescription failed for class %s
+```
+
+**One block sits in a different place.** `PKB: aborting probe` is the tenth and
+last guard in the reference and the fifth in ours; the other five are the same
+sequence displaced by that one. So it is a single block's position, not six
+differences. This is the same layout phenomenon seen in
+`statusChangedForSocket:` — the reference puts a rarely-taken block at the end
+where we emit it where the source sits.
+
+**The method as a whole is only 42.4% similar**, far below
+`statusChangedForSocket:`'s 77.4%. Fixing the guard did what it claimed and
+nothing more: `probeDevice:withDescription:` carries substantial divergences
+beyond the scope of this thread, and that figure is the baseline for whoever
+takes it on.
+
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`
 sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,

@@ -49,6 +49,13 @@ Two `_reloc` kernel servers under
 The remaining two functions in each binary are the build-generated glue of
 `_instance.m`, described in the VGA spec's §2.8.
 
+> **Corrected after Task 7.** The ThinkPad's function count is **40**, not 38.
+> The two extra entries are unnamed routines at 15796 and 15877, past the end of
+> IDA's extent for `_emu486` and deep inside the deferred region; `VGA_reloc`'s
+> map has the same pair 156 bytes lower. The 29 hand-written and the two
+> `_instance.m` glue functions are unaffected, so the remainder is nine deferred
+> entries, not seven. See the ThinkPad `divergences.md`, "Function partition".
+
 `CirrusLogicGD5434DisplayDriver_reloc` carries `cpu_subtype = 3`;
 `IBMThinkPad760EDDisplayDriver_reloc` carries `cpu_subtype = 4`
 (`CPU_SUBTYPE_486`), the same value that forced IDA to `-pmetapc` for
@@ -95,6 +102,14 @@ Server framebuffer driver with 22 functions.
 
 Verification of these bundles is limited to their existence after the guest
 build.
+
+> **Corrected after Task 5 — criterion unmet and open.** No version bundle was
+> produced for either driver. `vm/build-i386-video-recon.sh` prints
+> `WARNING: no CirrusLogicGD5434DisplayDriver version bundle produced`, and the
+> ThinkPad's `kl_ld` object list has no `_vers.o` either. Correspondingly
+> `_..._VERS_STRING` and `_..._VERS_NUM` are absent from both rebuilt
+> `__TEXT,__const` sections. This is an open build-configuration gap, not a
+> waived requirement; see §4.3 step 7 and both `divergences.md` files.
 
 ### 1.3 Other drivers are out of scope
 
@@ -143,6 +158,15 @@ This effort therefore:
   binary as an independent second copy to cross-validate its reconstruction
   against.
 
+> **Corrected after Task 8.** The third bullet was not done, deliberately.
+> Neither `vidBIOS.m` nor the emulator's assembly file is listed in the
+> ThinkPad's `lksproj` Makefile, and neither should be added to `CLASSES` when
+> drvVGA lands them: in the reference `vidBIOS.o` links **last**, after the
+> generated `IBMThinkPad760EDDisplayDriver_instance.o`, and a `CLASSES` entry
+> would place it immediately after `TransferTable.o` and break the `__text`
+> order. See the ThinkPad `divergences.md`, "What has to happen before this
+> driver links into something loadable".
+
 The consequence for verification is stated in §4.3.
 
 ### 1.5 Config tables and localized resources are in scope
@@ -177,6 +201,14 @@ reference. 366 lines, zero shared symbols.
 Both source maps will therefore place every reference function in `unmapped`
 under the "no counterpart in our source" reason class, exactly as `VGA_reloc`'s
 did.
+
+> **Corrected after Tasks 3 and 7.** Not so. Both invented classes carry the
+> *same class name* as Apple's, and `binrecon source-map` pairs on
+> `-[class selector]` alone, so it reported five nominal collisions on the
+> Cirrus baseline (0, 712, 804, 3296, 3544) and four on the ThinkPad (56, 1184,
+> 1812, 4344). Every one was a name match over a completely different body.
+> Both `divergences.md` files tabulate them. The claim about *shared behaviour*
+> stands; the claim about the bucket counts does not.
 
 ### 2.2 The reference's source-file partition is recorded in the binaries
 
@@ -450,6 +482,20 @@ of naming the header after the class's implementation file.
 Both `lksproj` Makefiles gain `MFILES`, `CFILES` and `SFILES` entries; today
 they list no sources at all.
 
+> **Corrected after Task 8 — this line was a Critical defect. Do not act on
+> it.** **`SFILES` is not a pb_makefiles variable at all.** Nothing in
+> `src/pb_makefiles-1` or `src/driverTools-1` defines or consumes it, so
+> assembly listed under `SFILES` is silently never assembled and never linked.
+> The working pair, as `src/awk-1/Makefile:17,24` uses it and as the stock
+> `Makefile.postamble` template documents it, is `OTHERLINKED = smapi.s` with
+> `OTHERLINKEDOFILES = smapi.o`; `common.make:242` folds `OTHERLINKEDOFILES`
+> into `LOCAL_OFILES` and `common.make:240` folds `OTHERLINKED` into
+> `SRCFILES`. `MFILES` and `CFILES` are real variables but
+> neither Makefile uses them: both list their Objective-C sources in `CLASSES`
+> (`CLASSES = CirrusLogicGD5434DisplayDriver.m ProgramDAC.m` and
+> `CLASSES = IBMThinkPad760ED.m TransferTable.m`), whose ordering within
+> `LOCAL_OFILES` is what reproduces the reference's `__text` layout.
+
 ### 3.4 Resources
 
 Copy Apple's `.table`, `.modes` and `English.lproj` contents verbatim into each
@@ -481,6 +527,14 @@ Within each track the steps are ordered.
 3. `binrecon source-map` against the current (invented) sources.
    → verify: the map partitions the full `__text` range and every reference
    function is in `unmapped`.
+
+   > **Corrected after Tasks 3 and 7.** The second half of this criterion is
+   > unmeetable and was dropped — see the correction to §2.1. Because the
+   > invented classes share Apple's class names, the baseline maps read
+   > `mapped 5` / `unmapped 16` (Cirrus) and `mapped 4` / `unmapped 36`
+   > (ThinkPad), all nominal selector-name collisions. The criterion that
+   > actually held is the first half: the map partitions the full `__text`
+   > range with no unclaimed region.
 4. Decompile every function in the track's scope and write
    `divergences.md`: behaviour, hardware registers and DriverKit calls touched,
    call-graph position, and every inference marked as an inference.
@@ -509,6 +563,18 @@ Within each track the steps are ordered.
    `CirrusLogicGD5434DisplayDriver` both exist.
    → verify, track B: `IBMThinkPad760ED.o`, `TransferTable.o` and `smapi.o`
    all compile.
+
+   > **Corrected after Task 5 — track A's criterion is UNMET and OPEN.** The
+   > `_reloc` exists; the `CirrusLogicGD5434DisplayDriver` version bundle does
+   > **not**. `vm/build-i386-video-recon.sh` prints `WARNING: no
+   > CirrusLogicGD5434DisplayDriver version bundle produced`, and nothing was
+   > staged. The same gap recurs on track B — its `kl_ld` object list contains
+   > no `_vers.o`. Half of this criterion therefore fails, and the branch merges
+   > with it failing rather than met: the missing `_..._VERS_STRING` /
+   > `_..._VERS_NUM` pair is unreferenced by any function in either binary, so
+   > the runtime impact is nil, but the build-configuration cause is not
+   > diagnosed. See §1.2, `src/drivers-i386/README`, and the "Build and parity"
+   > and "Build status" sections of the two `divergences.md` files.
 
    > **Corrected after Task 10.** This step originally predicted the link
    > would **fail** with unresolved `.objc_class_name_vidBIOS` and `_emu486`

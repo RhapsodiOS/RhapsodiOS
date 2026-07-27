@@ -167,7 +167,6 @@ src/drivers-ppc/<category>/<drvName>/
             Makefile
             Makefile.preamble
             Makefile.postamble
-            PB.project
 ```
 
 The `.lksproj/Makefile` is the NeXT Project Builder form, with
@@ -186,8 +185,9 @@ would introduce error for no benefit.
 
 ### 2.2 What identifies a copied source
 
-Each `.lksproj` gets a `PB.project` and each project a `dpkg/control`, matching
-the existing four. Beyond that, **the copied `.h` and `.m` files are
+Each project gets a `dpkg/control`, matching the existing four. `drvPPCGem`
+carries no `PB.project` at any level, so neither do these — the reference
+layout governs, not a generic description of Project Builder output. Beyond that, **the copied `.h` and `.m` files are
 byte-identical to their `src/kernel-7/bsd/dev/ppc/` originals** — no header
 banner, no path comment, no reformatting. A byte-identical copy is what makes
 §2.3's check meaningful; a copy annotated at copy time is not.
@@ -234,11 +234,10 @@ directory it came from, then the divergence check is run over the whole tree.
 Done when all of the following hold, with output shown:
 
 1. Nine packaged projects exist at the §1.1 paths, each with the complete §2.1
-   layout — no missing `Makefile`, `PB.project`, `Load_Commands.sect` or
-   `dpkg/control`.
+   layout — no missing `Makefile`, `Load_Commands.sect` or `dpkg/control`.
 2. Every copied `.h` and `.m` is **byte-identical** to its
    `src/kernel-7/bsd/dev/ppc/` origin, verified by hash, with **no source file
-   from those ten directories left uncopied**.
+   from those nine directories left uncopied**.
 3. Each project's `Default.table` and `DriverInfo` are byte-identical to the
    shipped reference bundle's.
 4. Each `.lksproj/Makefile`'s `CLASSES` and `HFILES` list exactly the `.m` and
@@ -250,7 +249,7 @@ Done when all of the following hold, with output shown:
    own tests pass.
 7. The binrecon suite is still green at **845 passed, 4 skipped** — this spec
    touches no binrecon code, so any change is a regression.
-8. `src/drivers-ppc/README` lists the ten new projects and the two stubs, with
+8. `src/drivers-ppc/README` lists the nine new projects and the two stubs, with
    the stubs marked as such.
 
 **Not claimed:** that any of this compiles, links, loads or runs. There is no

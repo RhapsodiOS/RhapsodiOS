@@ -17,6 +17,7 @@
 #import "VGAPSDriver.h"
 
 #import <driverkit/driverTypes.h>
+#import <string.h>
 
 /*
  * IO port access.
@@ -69,6 +70,51 @@ Bounds		vgaBounds;
 vm_address_t	vgaAddress;
 void	       *vgaVirtualAddress;
 
+typedef struct bmClass	bmClass;
+
+/*
+ * The Window Server's records, as much of them as this file touches.  The
+ * layouts belong to the Window Server, so only the fields the reference
+ * actually addresses are named and everything between them is reserved.
+ */
+struct NXScreenDev {
+    char		reserved0[0x10];
+    Bounds		bounds;			/* +0x10 */
+    char		reserved18[0x10];
+    VGAShmem_t	       *shmem;			/* +0x28 */
+};
+
+struct bitmap {
+    bmClass	       *isa;			/* +0x00 */
+    void	       *f4;			/* +0x04 */
+    void	       *f8;			/* +0x08 */
+    short		format;			/* +0x0c */
+    short		refcount;		/* +0x0e */
+    char		reserved10[0x10];
+    void	       *plane0;			/* +0x20 */
+    void	       *plane1;			/* +0x24 */
+};
+
+struct bmClass {
+    char		reserved0[0x10];
+    void	      (*free)(bitmap *bm);	/* +0x10 */
+    char		reserved14[0x28];
+    bitmap	     *(*newBitmap)(bmClass *self, const Bounds *r,
+				   void *image, void *mask, int rowbytes,
+				   int depth, int a, int b); /* +0x3c */
+};
+
+/*
+ * The three cursor converters, one per source pixel format.  Each takes two
+ * Bounds by value; the second is always the zero rectangle below.
+ */
+extern void	BM12Convert8to2(bitmap *dst, bitmap *src, Bounds sr,
+				void *f4, void *f8, Bounds dr);
+extern void	BM12Convert16to2(bitmap *dst, bitmap *src, Bounds sr,
+				 void *f4, void *f8, Bounds dr);
+extern void	BM12Convert32to2(bitmap *dst, bitmap *src, Bounds sr,
+				 void *f4, void *f8, Bounds dr);
+
 /*
  * The Window Server's four imaging machine class objects, one per pixel
  * format.  These are imported data, not code: the driver takes their
@@ -76,8 +122,6 @@ void	       *vgaVirtualAddress;
  * other three exist so the Window Server can ask for an offscreen bitmap
  * at a depth this screen does not use.
  */
-typedef struct bmClass	bmClass;
-
 extern bmClass	_bm12;			/* 2 bits/pixel, the screen's own */
 extern bmClass	_bm18;			/* 8 bit gray			 */
 extern bmClass	_bm34;			/* 16 bit RGB			 */
@@ -120,6 +164,13 @@ static void	build_tables(void);
 
 /* The cursor is always 16 by 16. */
 static const Bounds cursorBounds = { 0, CURSORWIDTH, 0, CURSORHEIGHT };
+
+/*
+ * The destination rectangle VGASetCursor hands the three converters.  It is
+ * always empty and it is a second const object, not padding: the reference
+ * loads both of its words from __const, eight bytes above leftMask.
+ */
+static const Bounds zeroBounds = { 0, 0, 0, 0 };
 
 /* leftMask[k] is ~0 << 2k: the pixels at or right of column k, 2 bpp. */
 static const unsigned int leftMask[17] = {
@@ -359,69 +410,355 @@ VGAStart(NXScreen *screen)
 asm(".globl _Start");
 asm(".set _Start, _VGAStart");
 
-/* Caller holds cursorSema. */
+/*
+ * cursorShow is a hide depth, not a boolean, and the counter moves whether or
+ * not the blit happens: the reference increments it unconditionally and lets
+ * the value it had decide.  Caller holds cursorSema.
+ */
 void
 VGASysHideCursor(NXScreenDev *dev)
 {
+    if (dev->shmem->cursorShow++ == 0)
+	VGARemoveCursorBlit(dev);
 }
 
-/* Caller holds cursorSema. */
+/*
+ * The other half of the counter.  The cursor rectangle is recomputed here and
+ * nowhere else, and oldCursorRect is taken from it after the blit, because
+ * that is what the erase pass restores from.  Caller holds cursorSema.
+ */
 void
 VGASysShowCursor(NXScreenDev *dev)
 {
+    Point		hot;
+
+    if (dev->shmem->cursorShow == 0)
+	return;
+    if (--dev->shmem->cursorShow != 0)
+	return;
+
+    hot = dev->shmem->hotSpot[dev->shmem->frame];
+    dev->shmem->cursorRect.minx = dev->shmem->cursorLoc.x - hot.x;
+    dev->shmem->cursorRect.maxx = dev->shmem->cursorRect.minx + CURSORWIDTH;
+    dev->shmem->cursorRect.miny = dev->shmem->cursorLoc.y - hot.y;
+    dev->shmem->cursorRect.maxy = dev->shmem->cursorRect.miny + CURSORHEIGHT;
+
+    VGADisplayCursorBlit(dev);
+    dev->shmem->oldCursorRect = dev->shmem->cursorRect;
 }
 
-/* Caller holds cursorSema. */
+/*
+ * Hide the cursor while it is under the shield rectangle and show it again
+ * when it comes out.  The rectangle is recomputed into locals and is
+ * deliberately not written back to cursorRect.  The four comparisons are
+ * strict on the max side, so an edge-touching intersection is a miss, and
+ * shielded is read as a signed char because that is how the reference reads
+ * it.  Caller holds cursorSema.
+ */
 void
 VGACheckShield(NXScreenDev *dev)
 {
+    Bounds		c;
+    Point		hot;
+    int			hit;
+
+    hot = dev->shmem->hotSpot[dev->shmem->frame];
+    c.minx = dev->shmem->cursorLoc.x - hot.x;
+    c.maxx = c.minx + CURSORWIDTH;
+    c.miny = dev->shmem->cursorLoc.y - hot.y;
+    c.maxy = c.miny + CURSORHEIGHT;
+
+    hit = 0;
+    if (dev->shmem->shieldRect.maxx > c.minx &&
+	dev->shmem->shieldRect.minx < c.maxx &&
+	dev->shmem->shieldRect.maxy > c.miny &&
+	dev->shmem->shieldRect.miny < c.maxy)
+	hit = 1;
+
+    if (hit != (signed char)dev->shmem->shielded) {
+	if (hit)
+	    VGASysHideCursor(dev);
+	else
+	    VGASysShowCursor(dev);
+	dev->shmem->shielded = hit;
+    }
 }
 
+/*
+ * The only writer of cursor.bw.image and cursor.bw.mask.  A scratch bm12
+ * bitmap over two 64 byte stack buffers receives the conversion, and those
+ * buffers are what gets copied into shared memory -- except for format 1,
+ * where the caller's own planes are used and the scratch bitmap is built and
+ * thrown away untouched.
+ *
+ * A format outside 1 through 4 converts nothing and leaves image and mask
+ * pointing at the uninitialized buffers, so it copies 128 bytes of stack into
+ * the shared cursor.  That is the reference's, and it is reachable only from
+ * the Window Server.
+ */
 void
 VGASetCursor(NXScreenDev *dev, bitmap *src, Point hot, int frame, int *flagp)
 {
+    unsigned int	 imageBuf[CURSORHEIGHT];
+    unsigned int	 maskBuf[CURSORHEIGHT];
+    void		*image = imageBuf;
+    void		*mask = maskBuf;
+    unsigned int	*dstImage = dev->shmem->cursor.bw.image[frame];
+    unsigned int	*dstMask = dev->shmem->cursor.bw.mask[frame];
+    bitmap		*tmp;
+    int			 hide;
+
+    tmp = _bm12.newBitmap(&_bm12, &cursorBounds, imageBuf, maskBuf,
+			  sizeof imageBuf, 4, 0, 0);
+
+    switch (src->format) {
+    case 1:
+	image = src->plane0;
+	mask = src->plane1;
+	break;
+    case 2:
+	BM12Convert8to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	break;
+    case 3:
+	BM12Convert16to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	break;
+    case 4:
+	BM12Convert32to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	break;
+    }
+
+    ev_lock(&dev->shmem->cursorSema);
+    hide = (*flagp == 0);
+    if (hide)
+	VGASysHideCursor(dev);
+    dev->shmem->hotSpot[frame] = hot;
+    bcopy(image, dstImage, sizeof imageBuf);
+    bcopy(mask, dstMask, sizeof maskBuf);
+    if (hide)
+	VGASysShowCursor(dev);
+    ev_unlock(&dev->shmem->cursorSema);
+
+    if (--tmp->refcount == 0)
+	tmp->isa->free(tmp);
 }
 
+/*
+ * The seven public entries below take the blocking lock.  The kernel half
+ * takes ev_try_lock and drops the update when it fails; this half waits.  The
+ * asymmetry is the driver's contention policy, so ev_try_lock must not appear
+ * in this file.
+ */
 void
 VGAHideCursor(NXScreenDev *dev)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    VGASysHideCursor(dev);
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
 void
 VGAShowCursor(NXScreenDev *dev)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    VGASysShowCursor(dev);
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
+/* Hide first, then raise the flag. */
 void
 VGAObscureCursor(NXScreenDev *dev)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    if (!dev->shmem->cursorObscured) {
+	VGASysHideCursor(dev);
+	dev->shmem->cursorObscured = 1;
+    }
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
+/* Clear the flag first, then show: the reverse of the order above. */
 void
 VGARevealCursor(NXScreenDev *dev)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    if (dev->shmem->cursorObscured) {
+	dev->shmem->cursorObscured = 0;
+	VGASysShowCursor(dev);
+    }
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
+/*
+ * shielded is cleared before VGACheckShield runs, so re-shielding an already
+ * shielded cursor with a rectangle that misses it leaves VGACheckShield
+ * seeing hit == shielded == 0 and doing nothing: the cursor stays hidden at
+ * depth one with shielded reading 0.  VGAUnshieldCursor does not recover it.
+ * Nothing in the shield path does.  Reproduced as written.
+ */
 void
 VGAShieldCursor(NXScreenDev *dev, Bounds *r)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    dev->shmem->shieldFlag = 1;
+    dev->shmem->shielded = 0;
+    dev->shmem->shieldRect = *r;
+    VGACheckShield(dev);
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
 void
 VGAUnshieldCursor(NXScreenDev *dev)
 {
+    ev_lock(&dev->shmem->cursorSema);
+    if (dev->shmem->shielded)
+	VGASysShowCursor(dev);
+    dev->shmem->shielded = 0;
+    dev->shmem->shieldFlag = 0;
+    ev_unlock(&dev->shmem->cursorSema);
 }
 
-/* Draw the cursor, saving what it covers into cursor.bw.save. */
+/*
+ * Draw the cursor, saving what it covers into cursor.bw.save.
+ *
+ * The cursor is 16 pixels wide but lands at an arbitrary column, so the blit
+ * snaps left to a 16 pixel boundary and covers two 32 bit words per scan
+ * line, shifting the image and mask across the seam.  When the cursor happens
+ * to be aligned the second word is untouched -- but the save pointer still
+ * advances over it, which is why both blitters step 32 words, 128 bytes, over
+ * a save[16] of 64.  The excess runs from +0x288 to +0x2C8, past the end of
+ * the 648 byte region VGAInitScreen asks for.  The kernel's VGADisplayCursor
+ * does the same, so the two halves stay in step; reproduced as written.
+ */
 static void
 VGADisplayCursorBlit(NXScreenDev *dev)
 {
+    Bounds		 c;
+    Bounds		 scr;
+    unsigned int	*img, *msk, *save;
+    unsigned int	 shift, rshift;
+    unsigned int	 words, lines;
+    unsigned short	*p;
+    unsigned int	 v;
+    int			 rows, col, row, last;
+    int			 leftOK, rightOK;
+
+    c = dev->shmem->cursorRect;
+    scr = dev->bounds;
+
+    if (scr.miny > c.miny)
+	c.miny = scr.miny;
+    if (scr.maxy < c.maxy)
+	c.maxy = scr.maxy;
+
+    c.minx = scr.minx + ((dev->shmem->cursorRect.minx - scr.minx) & ~15);
+    c.maxx = c.minx + 2 * CURSORWIDTH;
+    dev->shmem->saveRect = c;
+
+    shift = (dev->shmem->cursorRect.minx & 15) * 2;	/* 2 bits per pixel */
+    rshift = 32 - shift;
+
+    /* Skip the scan lines the vertical clip took off the top. */
+    rows = c.miny - dev->shmem->cursorRect.miny;
+    img = &dev->shmem->cursor.bw.image[dev->shmem->frame][rows];
+    msk = &dev->shmem->cursor.bw.mask[dev->shmem->frame][rows];
+    save = &dev->shmem->cursor.bw.save[0];
+
+    leftOK = scr.minx <= c.minx;
+    rightOK = c.maxx <= scr.maxx;
+
+    col = (c.minx - scr.minx) >> 4;
+    words = (unsigned int)vga_bpl >> 1;		/* 16 pixel words per line */
+    lines = 0x10000 / (unsigned int)vga_bpl;	/* lines per 64K window	   */
+    get_addr_range((void **)&p);
+
+    row = c.miny - scr.miny;
+    p += (row % lines) * words + col;
+    last = c.maxy - scr.miny;
+
+    for (; row < last; row++) {
+	if (leftOK) {
+	    v = read_bpp4planar_to_bpp2packed(p);
+	    *save++ = v;
+	    v = (v & ~(*msk << shift)) | (*img << shift);
+	    write_bpp2packed_to_bpp4planar(v, p);
+	}
+	if (rightOK) {
+	    if (shift == 0)
+		save++;				/* nothing spills over */
+	    else {
+		v = read_bpp4planar_to_bpp2packed(p + 1);
+		*save++ = v;
+		v = (v & ~(*msk >> rshift)) | (*img >> rshift);
+		write_bpp2packed_to_bpp4planar(v, p + 1);
+	    }
+	}
+	p += words;
+	img++;
+	msk++;
+    }
 }
 
-/* Erase the cursor, restoring from cursor.bw.save. */
+/*
+ * Erase the cursor, restoring from cursor.bw.save.
+ *
+ * saveRect says which two columns the draw pass covered and oldCursorRect
+ * says where inside them the cursor actually was, so the two edge masks
+ * restore exactly the pixels that were painted and leave the rest of the
+ * word alone.  This blitter reads save[] and never writes it, so its stride
+ * past the end of the array is an over-read where the draw pass's is an
+ * over-write.
+ */
 static void
 VGARemoveCursorBlit(NXScreenDev *dev)
 {
+    Bounds		 scr;
+    Bounds		 s;
+    unsigned int	*save;
+    unsigned int	 maskL = 0, maskR = 0;
+    unsigned int	 shift, words, lines;
+    unsigned short	*p;
+    unsigned int	 v;
+    int			 col, row, last;
+    int			 leftOK, rightOK;
+
+    scr = dev->bounds;
+    s = dev->shmem->saveRect;
+
+    col = (s.minx - scr.minx) >> 4;
+    words = (unsigned int)vga_bpl >> 1;
+    lines = 0x10000 / (unsigned int)vga_bpl;
+    get_addr_range((void **)&p);
+    p += ((s.miny - scr.miny) % lines) * words + col;
+
+    shift = (dev->shmem->cursorRect.minx & 15) * 2;
+    save = &dev->shmem->cursor.bw.save[0];
+
+    leftOK = s.minx >= scr.minx;
+    rightOK = scr.maxx >= s.maxx;
+    if (leftOK)
+	maskL = leftMask[dev->shmem->oldCursorRect.minx - s.minx];
+    if (rightOK)
+	maskR = ~leftMask[CURSORWIDTH -
+			  (s.maxx - dev->shmem->oldCursorRect.maxx)];
+
+    last = s.maxy - scr.miny;
+    for (row = s.miny - scr.miny; row < last; row++) {
+	if (leftOK) {
+	    v = read_bpp4planar_to_bpp2packed(p);
+	    v = (v & ~maskL) | (maskL & *save++);
+	    write_bpp2packed_to_bpp4planar(v, p);
+	}
+	if (rightOK) {
+	    if (shift == 0)
+		save++;
+	    else {
+		v = read_bpp4planar_to_bpp2packed(p + 1);
+		v = (v & ~maskR) | (maskR & *save++);
+		write_bpp2packed_to_bpp4planar(v, p + 1);
+	    }
+	}
+	p += words;
+    }
 }
 
 /*

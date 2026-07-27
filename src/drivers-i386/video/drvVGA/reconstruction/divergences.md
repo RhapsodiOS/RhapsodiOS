@@ -955,6 +955,49 @@ that assumed one uniform handler shape would be wrong.
 The two fragments the partition *does* keep, at 15640 and 15721, lie past
 `_emu486`'s IDA extent and are described as findings 37 and 38.
 
+**Two more defects in Apple's emulator, added by Phase 3b Task 8.** Finding 37
+records a one-byte defect in the condition-code table. Transcribing the whole
+function turned up two more of the same family, both one branch, both found
+because a byte-complete decode left exactly two regions of real code that
+nothing reaches.
+
+Every repeat-prefix dispatch in the function has the same three-way shape:
+`cmpb $1, Ldesc+2` and a `jne` to the `cmpb $2` test, then the `repne` form;
+`cmpb $2` and a `jne` past the `0xf3` prefix, then the `repe` form; falling
+through to the unprefixed form. There are 27 such tests. Twenty-five follow the
+shape. **Two do not**, and both are in the 32-bit half of a string-operation
+handler whose 16-bit half immediately above is correct:
+
+- **`0x2A88`, the 32-bit CMPS handler.** `75 4d` — `jne L2ad7` — where the shape
+  calls for `jne L2a8e`, four bytes on. The 16-bit path at `0x2A65` is the
+  control: its first `jne` at `0x2A6C` goes to its own `cmpb $2` at `0x2A73`.
+  `L2ad7` is inside the **32-bit TEST handler**, the label the prefix-skip `je`
+  at `0x2AD4` uses to step over the `0x66` in `66 85 05 …`. So a 32-bit `CMPSD`
+  or `REPE CMPSD` executes `testl %eax, Lregs` and leaves through the dispatch
+  loop's exit.
+- **`0x2D0D`, the 32-bit SCAS handler.** `0f 85 35 01 00 00` — `jne L2e48` —
+  where the shape calls for `jne L2d17`. `L2e48` is the **32-bit ROL handler**,
+  so `SCASD` and `REPE SCASD` execute `sahf / roll %cl,(%edi)`.
+
+The second carries corroboration independent of any reading of the shape: of the
+424 32-bit branch displacements in the function, 423 carry a pc-relative
+relocation and **this one does not**. It is the only branch operand the
+reference's assembler resolved as a constant rather than as a label, which is
+what you would see if the source wrote a number where it meant a label. (A
+spot-check by an independent linear scan reproduces this: correlating rel32
+branch sites against the Mach-O relocation table finds exactly one real site in
+`_emu486` with no entry, at `0x2D0D`. The first defect's branch is a short
+`rel8`, which never carries a relocation, so the same test says nothing about
+it.)
+
+Both leave real code stranded: the `cmpb $2` blocks at `0x2A8E` and `0x2D17` are
+unreachable. **Transcribe both branches verbatim and keep the stranded blocks**
+— the byte stream has to match, and "fixing" either branch turns 10496 bytes
+into something else. Like the `setnp` defect these only bite on paths a video
+BIOS is unlikely to take: 32-bit string operations in real mode need a `0x66`
+prefix on `CMPSD`/`SCASD`, which BIOS code of this era does not emit, which is
+presumably why all three survived.
+
 ---
 
 ### Per-function findings
@@ -998,7 +1041,7 @@ Writes the four-entry BW palette through the DAC index/data ports 0x3C8/0x3C9,
 each entry scaled by `level/64` and written three times (R, G, B):
 
 ```c
-static void SetET4000Brightness(int level)
+static void SetET4000Brightness(unsigned int level)
 {
     outb(0x3C8, WHITE_INDEX);       /* 3 */
     v = (level * 64 - level) >> 6;                  /* level * 63 / 64 */
@@ -1020,6 +1063,14 @@ and `BLACK_PALETTE_VALUE` from `IOVGADisplayPrivate.h`. gcc turned each
 `level * K / 64` into shifts and `lea`s; the rewrite should write the constants
 and let the compiler do that again. The DAC ports are written raw, not through
 the `vga_reg_out` macros. `static`, no symbol export.
+
+**Correction (Phase 3b Task 8): the parameter is `unsigned int`, and this
+finding did not say so.** The divisions by 64 and by 4 are plain `shr` — `shr
+ecx, 6` at 247 and `shr ecx, 2` at 307 — with no sign-correction `add` before
+them. A signed `int / 64` cannot compile to a bare logical shift; gcc would have
+emitted the round-toward-zero fixup. The caller agrees: `setBrightness:token:`
+tests the level with `cmp ebx, 0x40 / jbe` at 5007, an **unsigned** compare, and
+then calls 228 on both paths. The signature above is corrected in place.
 
 **3. `_select_read_segment` — 468, 103 bytes.**
 
@@ -1080,6 +1131,19 @@ void select_write_plane(char plane)
 *number* converted to a one-hot mask, unlike `select_read_plane`, which takes a
 number the hardware wants as a number. Global.
 
+**Correction (Phase 3b Task 8), covering findings 3–6: a form-only divergence
+between the two halves, which must not be harmonised.** The kernel reaches the
+GC and Sequencer *index* registers through `<driverkit/IOVGADisplayPrivate.h>`'s
+`vga_reg_out`, which is a read-modify-write: at 689–705 the reference does `mov
+edx,0x3CE / in al,dx / and cl,0xF0 / or cl,4 / out dx,al`, so bits 7:4 of the
+index register survive. The Window Server bundle writes the same index registers
+with a bare `outb` — `VGA_psdrvr` finding 28's `sub_703030F0` does `mov
+ebx,0x3CE / mov cl,4 / out dx,al` with no `in` at all — and so zeroes the high
+nibble the kernel preserves. Those bits are reserved on VGA hardware, so the two
+halves are equivalent in practice, but the *code* differs and each side must be
+transcribed as its own reference has it. This is a divergence in form between
+the two binaries, not a defect in either.
+
 **7. `_vga_read_bpp4planar_to_bpp2packed32` — 916, 407 bytes.**
 
 `void vga_read_bpp4planar_to_bpp2packed32(unsigned short *fb, unsigned int *dst)`.
@@ -1110,11 +1174,29 @@ is the whole content either way.
 The exact inverse of finding 7: masks the source with `0xAAAA`/`0x5555` in each
 16-bit half, gathers each half into a byte, complements it, and stores the two
 bytes as one 16-bit word — first with plane 1 selected, then with plane 0.
-Also global, also fully unrolled. The shift counts are finding 7's minus one
-throughout. **The frame-buffer pointer is the first argument of the reader and
+Also global, also fully unrolled. **The frame-buffer pointer is the first argument of the reader and
 the second of the writer** — `read(fb, &packed)` against `write(&packed, fb)` —
 which the call sites in findings 9 and 10 depend on and which a rewrite must
 not tidy into a consistent order.
+
+**Correction (Phase 3b Task 8): "the shift counts are finding 7's minus one
+throughout" was wrong, and the sentence is deleted above.** The two functions'
+shift tables are *inverses*, not offsets. Read off the reference in order,
+counting `shr n` as −n:
+
+| | first half | second half |
+| --- | --- | --- |
+| finding 7, plane-1 pass | +2 +5 +8 +11 +14 +17 +20 +23 | −6 −3 0 +3 +6 +9 +12 +15 |
+| finding 7, plane-0 pass | +1 +4 +7 +10 +13 +16 +19 +22 | −7 −4 −1 +2 +5 +8 +11 +14 |
+| finding 8, plane-1 pass | −15 −12 −9 −6 −3 0 +3 +6 | (same set, second gather) |
+| finding 8, plane-0 pass | −14 −11 −8 −5 −2 +1 +4 +7 | (same set, second gather) |
+
+The writer's plane-1 counts are the exact negation of the reader's plane-1
+second half, which is what "inverse transform" means at the bit level. Note also
+that the plane-0 pass is one *less* than plane-1 in the reader and one
+*greater* in the writer — the same sign flip. Nothing else in finding 8 is
+affected: the `0xAAAA`/`0x5555` masking, the complement, the plane order and the
+argument-order note all hold as written.
 
 **9. `_VGADisplayCursor` — 1752, 816 bytes.**
 
@@ -1258,22 +1340,49 @@ hide-depth counter are settled in the Shared contract section.
 ```
 
 The rect recomputation and the `hotSpot[frame]` read-as-one-`Point`-and-`sar 16`
-idiom are settled in the Shared contract section. gcc emitted the show tail
-twice — once inside the shield branch and once at the end — so the reference
-has two copies of the `VGADisplayCursor` call plus the `oldCursorRect` copy;
-that is code duplication from the optimiser, not two different behaviours.
-`token` is again unread.
+idiom are settled in the Shared contract section. `token` is again unread.
+
+**Correction (Phase 3b Task 8): the two show tails are not "code duplication
+from the optimiser". Both run, in sequence, and that is a behaviour.** The
+un-shield branch's tail begins at 3636 and the method's own trailing tail at
+3722, and the first falls straight into the second: `add esp, 8` at 3719 lands
+on 3722, and the first tail's "the decrement did not reach zero" exit is `jne
+0xe90` at 3649, which jumps *into the middle* of the second tail at 3728, past
+its own zero test. So on the clearing-shield path `cursorShow` is decremented
+**twice**, not once. At entry depth 2 the first tail only decrements and the
+second blits; at entry depth 1 the first tail decrements to zero and blits, and
+the second then sees zero and exits. gcc cross-jumped two source-level tails; it
+did not invent one.
+
+That two-step is exactly what the other half does with two calls: `VGA_psdrvr`
+finding 17's `_VGACheckShield` calls `_VGASysShowCursor` on the un-shield
+transition, and the caller's own `_VGASysShowCursor` runs after it, and finding
+16 shows `_VGASysShowCursor` *is* this tail (`if (cursorShow == 0) return; if
+(--cursorShow != 0) return; … blit`). The C source for both kernel methods
+therefore has two separate show tails, and a rewrite that factors them into one
+changes behaviour.
 
 **13. `-[IOVGADisplay showCursor:frame:token:]` — 3848, 453 bytes.**
 
 The same body as finding 12 minus the initial hide and the un-obscure step:
 sets `frame` and `cursorLoc`, runs the shield test if `shieldFlag`, then the
-show tail. `token` unread. Same duplicated show tail.
+show tail. `token` unread. Same pair of sequential show tails, with the same
+double decrement, corrected under finding 12.
+
+**Correction (Phase 3b Task 8): the two methods place the last `displayInfo`
+send differently, and this finding did not say so.** In `showCursor:` the send
+is *before* the depth test — at 4178 the code pushes the `displayInfo` selector
+and calls `objc_msgSend`, and only then at 4197 tests `cmp byte [edi+8], 0`. In
+`moveCursor:` the depth test comes first, at 3722, and the send is inside it, at
+3733. So `showCursor:` messages itself once per call whatever the hide depth,
+where `moveCursor:` messages only when it is about to blit. Reproduce each as
+its own disassembly has it; this is the difference the two bodies' 453 and 517
+bytes partly consist of.
 
 **14. `-[IOVGADisplay generateNameAndUnit:]` — 4304, 47 bytes.**
 
 ```c
-- (const char *)generateNameAndUnit:(unsigned int *)unit
+- (char *)generateNameAndUnit:(unsigned int *)unit
 {
     *unit = nextVGAUnit++;
     sprintf(nameBuf, "VGADisplay%d", *unit);
@@ -1283,6 +1392,16 @@ show tail. `token` unread. Same duplicated show tail.
 
 `_nextVGAUnit` and `_nameBuf` (20 bytes at 24800) are file statics. The name is
 what `_VGAStart` in the psdrvr looks up as `"VGADisplay0"`.
+
+**Correction (Phase 3b Task 8): the return type is `char *`, not `const char *`,
+and the declaration above is corrected in place.** The reference's entry in
+`__OBJC,__meth_var_types` is `*12@8:12^I16` — a bare `*`, with no leading `r`.
+gcc does emit `r` for `const` in this binary and the same section proves it:
+`-[vidBIOS int10:outregs:iorange:ionum:smmport:]` is
+`i24@8:12r^{?=IIIIIIIIIIIIIIII}16…r^{?=II}24i28`, three `r`-qualified pointers in
+one selector. Writing `const char *` costs one byte in the section: our build
+came out at `__OBJC,__meth_var_types` 419 against the reference's 418, and
+dropping the `const` makes it exact.
 
 **15. `-[IOVGADisplay map]` — 4352, 9 bytes.**
 
@@ -1335,13 +1454,12 @@ instance are not released.
 {
     if (![super initFromDeviceDescription:dd]) return nil;
     const char *s = [[dd configTable] valueForStringKey:"SVGA Mode"];
-    if (s && strncmp(s, "Yes", 4) == 0)
+    if (s && strcmp(s, "Yes") == 0)
         svga_bios_mode = 1;
-    else {
+    else
         svga_bios_mode = 0;
-        if ([self didBootWithDefaultConfig] == YES)
-            svga_bios_mode = 0;
-    }
+    if ([self didBootWithDefaultConfig] == YES)
+        svga_bios_mode = 0;
     if (svga_bios_mode == 1) {
         bios = [[vidBIOS alloc] init];
         if (bios == nil) {
@@ -1363,18 +1481,49 @@ instance are not released.
 }
 ```
 
-The `strncmp` is 4 bytes, so the terminator is compared and `"Yesterday"` does
-not match. Two findings sit inside this method:
+The four-byte compare includes the terminator, so `"Yesterday"` does not match.
+The three boot-log lines are the strings the gating boot test in §4.5 greps for.
 
-- **`didBootWithDefaultConfig` is dead.** It is consulted only in the branch
-  where `svga_bios_mode` has just been set to 0, and its only effect is to set
-  it to 0 again. The boot-with-`config=Default` escape hatch therefore never
-  suppresses SVGA mode in the shipped driver. The branch structure is
-  unambiguous — the call is inside the `else`, and the store it guards is
-  redundant. Phase 3b should reproduce the shape, because reproducing the
-  intent would change behaviour.
-- The three boot-log lines are the strings the gating boot test in §4.5 greps
-  for.
+**Correction (Phase 3b Task 8), three parts. The pseudo-C above is corrected in
+place; read it as `strcmp(s, "Yes") == 0`, a `char svga_bios_mode`, and the call
+to `didBootWithDefaultConfig` outside the `else`.**
+
+**1. `didBootWithDefaultConfig` is not dead, and this earlier finding was the
+worst error in the document.** The reference at 4756 stores
+`svga_bios_mode = 1` and then, at 4763, executes `eb 0a` — `jmp 4775`. That
+lands *past* the `else` branch's `svga_bios_mode = 0` store at 4768 and directly
+on the message send at 4775. The call therefore runs on **both** paths, and
+`cmp al, 1 / jne` at 4794 clears the flag when the answer is `YES`. So booting
+`config=Default` really does suppress SVGA mode, exactly as the method's name
+promises, and the shape the earlier text described — the call nested inside the
+`else`, guarding a redundant store — is not what the branch does. There are two
+defects in this translation unit, not three; this was never one of them. (The
+reconstruction written to this corrected shape came out byte-identical at 360,
+which the earlier shape could not have produced.)
+
+**2. The `"Yes"` test is `strcmp`, not `strncmp`.** At 4739–4754 the reference
+does `mov edi, 0x46d2 / mov ecx, 4 / cld / repe cmpsb` — an inline compare with
+a constant length, which is gcc's rewrite of `strcmp` against a string literal
+into `strlen(literal) + 1` bytes. It is not a call. Contrast
+`didBootWithDefaultConfig` at 6315–6323, in the same file: `push 7 / push
+0x489a / push ebx / call` — a real `strncmp(p, "Default", 7)` with the length as
+an argument. Both forms are in one translation unit, which settles the
+distinction rather than leaving it to taste. **The same rewrite is where
+findings 21 and 22 get their eight compare lengths**: 19, 26, 17, 24, 21, 29, 26
+and 18 are `strlen + 1` of `IO_Framebuffer_Map`, `IO_Framebuffer_Dimensions`,
+`IOGetDisplayInfo`, `IO_Framebuffer_Register`, `IO_Framebuffer_Unmap`,
+`IO_Framebuffer_SetDimensions`, `IO_Framebuffer_Unregister` and
+`Set VGA VESA Mode`. All eight are `strcmp`.
+
+**3. `svga_bios_mode` is a `char`, not an `int`.** Every access to it in `__text`
+is byte-sized: `mov byte ptr [0x6000], 1` at 4756, `mov byte ptr [0x6000], 0` at
+4768, 4798 and 4871, `cmp byte ptr [0x6000], 1` at 4805, `cmp byte ptr [0x6000],
+0` at 4881, and one more `cmp byte ptr [0x6000], 0` at 5272 in
+`getIntValues:forParameter:count:` — seven sites, and a scan of the whole file
+for the operand `00 60 00 00` finds no eighth. There is no `a1`, `8b 15`, `c7
+05` or `83 3d` form anywhere. `vesaMode` sits at 0x6004 and *is* a dword (`mov
+dword ptr [0x6004], eax` at 4965), so the three bytes at 0x6001–0x6003 are
+alignment padding in front of it, not the rest of an `int`.
 
 **20. `-[IOVGADisplay setBrightness:token:]` — 4996, 64 bytes.**
 
@@ -1522,7 +1671,11 @@ exactly: `KERNSTRUCT_ADDR` is 0x11000, `bootString` is at offset 2 and
 `magicCookie` at offset 0xA4 — 164, i.e. `2 + 160` rounded up to a 4-byte
 boundary. The blank test is compiled as `(unsigned char)(c - 9) <= 1` plus a
 separate compare against 0x20, so the accepted set is tab, newline and space.
-As finding 19 records, this method's answer never changes anything.
+**Correction (Phase 3b Task 8).** This finding used to close by saying that
+finding 19 records that the method's answer never changes anything. It does
+change something: finding 19's correction shows the call at 4775 runs on both
+paths and that a `YES` clears `svga_bios_mode`, so answering `YES` here really
+does suppress SVGA mode. The method is live.
 
 **28. `+[VGAKernelServerInstance kernelServerInstance]` — 6372, 12 bytes.**
 
@@ -1583,6 +1736,19 @@ failed `init` is what makes `initFromDeviceDescription:` log
 emulator relies on: the BIOS stack must be inside the first megabyte so that a
 real-mode `ss:sp` can address it.
 
+**Correction (Phase 3b Task 8): write four separate `return [self free];`
+statements, not a `goto fail` to a shared label.** The pseudo-C above uses one
+label because that reads well, but it is not what the source did. A shared label
+makes gcc emit an `add esp, 0x10` at the join to discard the `IOLog` arguments
+pushed on the way in, and our build came out at 270 bytes against the
+reference's 267 for exactly that instruction. Four separate `return [self
+free];` statements, which gcc cross-jumps into a single tail anyway, reproduce
+the reference byte for byte at 267. The reference's own shape shows why: all
+four failure paths jump to 6643, the `[self free]` send, and there is **no stack
+adjustment anywhere at that join** — `esp` is restored from `ebp` in the
+epilogue at 6656, so the pushed arguments never need cleaning. Reproducing this
+one is a matter of writing the return, not the `goto`.
+
 **31. `-[vidBIOS free]` — 6664, 107 bytes.**
 
 ```c
@@ -1626,6 +1792,22 @@ The four `IOLog` argument lists are what fix the register block layout, above.
 Note that step 4 reads the *live* interrupt vector table of the machine the
 kernel is running on, so this only works because `lowMem` maps physical 0.
 
+**Correction (Phase 3b Task 8): step 2's `port > 0xFFFF` guard is an *unsigned*
+compare while the same loop's bounds are signed, and the finding did not say
+so.** The port loop at 6940–7014 mixes the two deliberately. Its bounds are
+signed — `cmp ebx, esi / jge 0x1b68` at 6953 and `cmp [ebp-0x148], ebx / jg` at
+7014 — so `start` and `start + size` are plain `int`. The skip test in the middle
+is not: at 6960 the reference does `cmp ebx, 0xffff / **ja** 0x1b5f`. Plain
+`int` source gives `jg` there, verified on the guest, so the cast is real and
+must be written:
+
+```c
+if ((unsigned int)port > 0xFFFF) continue;
+```
+
+Getting this wrong is invisible for every port range the driver actually
+carries, and visible in the byte stream immediately.
+
 **33. `-[vidBIOS int10:outregs:iorange:ionum:]` — 7468, 44 bytes.**
 
 Forwards to finding 32 with `smmport = 0x10000`, one past the top of the port
@@ -1641,15 +1823,24 @@ interface.
 
 **35. `-[vidBIOS realToVirtual::]` — 7528, 22 bytes.**
 
-`return (void *)(lowMem + (segment << 4) + offset);` — converts a real-mode
+`return (void *)((segment << 4) + lowMem + offset);` — converts a real-mode
 `seg:off` to a pointer the kernel can dereference. Also uncalled within this
 binary.
+
+**Correction (Phase 3b Task 8): the addition order was backwards and is
+corrected in place.** The reference starts with the shift, not with `lowMem`:
+`mov eax, [ebp+0x10] / shl eax, 4` at 7534–7537, then `add eax, [edx+0xc]`
+(`lowMem`) at 7540, then `add eax, [ebp+0x14]` (`offset`) at 7543. Written as
+`lowMem + (segment << 4) + offset` the compiler loads `lowMem` first and the
+three instructions come out in a different order for the same 22 bytes' worth
+of arithmetic. Addition is associative; the emitted code is not.
 
 **36. `_emu486` — 7552, 8088 bytes (IDA) inside a 10496-byte extent.**
 
 Described in full in the `_emu486` subsection above: entry contract, state
 block, segment conversion, termination condition, four error codes, dispatch
-structure and the assembly-source evidence. For the ledger this is one entry at
+structure, the assembly-source evidence, and the two repeat-prefix dispatch
+defects at `0x2A88` and `0x2D0D` that Phase 3b Task 8 added there. For the ledger this is one entry at
 7552 with IDA's 8088-byte size, which is what the source map records; the 67
 unnamed interior fragments (1161 bytes, 7912–15206) are its per-opcode handlers
 and are excluded from the partition by the containment rule, and the 2288 bytes

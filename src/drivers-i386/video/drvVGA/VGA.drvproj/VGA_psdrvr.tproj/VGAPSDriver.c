@@ -21,23 +21,24 @@
 /*
  * IO port access.
  *
- * The dummy "=m" operand is an automatic, not a static, so the compiler
- * emits `lock incl -4(%ebp)' rather than a reference to a file-scope
- * integer.  Do not reach for <driverkit/i386/ioPorts.h> here: its outb
- * declares `static int xxx' and its inb has no dummy at all.
+ * outb carries a dummy "=m" operand and inb does not, which is why every
+ * `out' in the reference is followed by a `lock incl' and no `in' is.
+ * The dummy is an automatic, not a static, so the compiler emits
+ * `lock incl -4(%ebp)' rather than a reference to a file-scope integer.
+ * Do not reach for <driverkit/i386/ioPorts.h> here: its outb declares
+ * `static int xxx', which would put the counter in __DATA,__data and add
+ * a relocation the reference does not have.
  */
 static __inline__ unsigned char
 inb(unsigned short port)
 {
     unsigned char	data;
-    int			xxx;
 
     asm volatile(
-	"inb %2,%0; lock; incl %1"
+	"inb %1,%0"
 
-	: "=a" (data), "=m" (xxx)
-	: "d" (port), "1" (xxx)
-	: "cc");
+	: "=a" (data)
+	: "d" (port));
 
     return (data);
 }
@@ -423,58 +424,325 @@ VGARemoveCursorBlit(NXScreenDev *dev)
 {
 }
 
+/*
+ * Only four of the sixteen mode 0x12 pixel values are ever produced by
+ * this driver, so entries 4 through 255 are painted bright red as a tell:
+ * anything red on the screen came from a plane nothing here writes.  The
+ * four grays are the palette values of IOVGADisplayPrivate.h, and index 3
+ * is white where index 0 is black -- the inverse of NeXT's two bit gray,
+ * which is why the two conversion tables complement every byte.
+ */
 void
 set_colormap(void)
 {
+    int			i;
+
+    for (i = 0; i <= 255; i++) {
+	outb(0x3c8, i);
+	outb(0x3c9, 0x3f);
+	outb(0x3c9, 0);
+	outb(0x3c9, 0);
+    }
+    outb(0x3c8, 3);				/* white		*/
+    outb(0x3c9, 0x3f);
+    outb(0x3c9, 0x3f);
+    outb(0x3c9, 0x3f);
+    outb(0x3c8, 2);				/* light gray		*/
+    outb(0x3c9, 0x30);
+    outb(0x3c9, 0x30);
+    outb(0x3c9, 0x30);
+    outb(0x3c8, 1);				/* dark gray		*/
+    outb(0x3c9, 0x1e);
+    outb(0x3c9, 0x1e);
+    outb(0x3c9, 0x1e);
+    outb(0x3c8, 0);				/* black		*/
+    outb(0x3c9, 0);
+    outb(0x3c9, 0);
+    outb(0x3c9, 0);
 }
 
 /* Graphics Controller index 4: which plane reads come from. */
 static void
 select_read_plane(int plane)
 {
+    unsigned char	v;
+
+    outb(0x3ce, 4);
+    v = (inb(0x3cf) & 0xfc) | (plane & 3);
+    outb(0x3ce, 4);
+    outb(0x3cf, v);
 }
 
-/* Sequencer index 2: a one hot mask, so only one plane is written. */
+/*
+ * Sequencer index 2: a one hot mask, so only one plane is written.  Note
+ * the asymmetry with the read selector above, which takes a plane number.
+ */
 static void
 select_write_plane(int plane)
 {
+    unsigned char	v;
+
+    outb(0x3c4, 2);
+    v = (inb(0x3c5) & 0xf0) | (1 << (plane & 3));
+    outb(0x3c4, 2);
+    outb(0x3c5, v);
 }
 
+/*
+ * Where the aperture is right now.  This is the whole of the bundle's
+ * banking: it has a 128K mapping of 0xA0000 and never switches segments,
+ * so it only has to read back what the Graphics Controller was left at.
+ * Map select 3 is 0xB8000 on real hardware and this answers 0xB0000, a
+ * 32K error, but mode 0x12 uses select 1 and the path is dead.
+ */
 void
 get_addr_range(void **addr)
 {
+    outb(0x3ce, 6);
+    switch ((inb(0x3cf) & 0x0c) >> 2) {
+    case 0:
+    case 1:
+	*addr = (void *)vgaAddress;
+	break;
+    case 2:
+    case 3:
+	*addr = (void *)(vgaAddress + 0x10000);
+	break;
+    }
 }
 
+/*
+ * Save the map mask, fill, restore the map mask -- and never set it in
+ * between, so the fill lands in whatever planes are enabled.  VGAStart
+ * calls this straight after VGASetStdRegs(5) leaves SEQ[2] at 0x0f, so it
+ * clears all four, and that is the only time planes 2 and 3 are written.
+ * 320 * 200 shorts is 128000 bytes, not the 64K of the name; the mapping
+ * is 0x20000 bytes long, so the overrun stays inside it and the excess
+ * spills into the 0xB0000 half of the aperture instead of faulting.
+ */
 void
 fill_64K_plane(short value)
 {
+    unsigned char	saved;
+    short	       *p;
+    unsigned int	row, col;
+
+    outb(0x3c4, 2);
+    saved = inb(0x3c5);
+
+    get_addr_range((void **)&p);
+    for (row = 0; row <= 0xc7; row++)
+	for (col = 0; col <= 0x13f; col++)
+	    *p++ = value;
+
+    outb(0x3c4, 2);
+    outb(0x3c5, saved);
 }
 
-/* The flush.  Every drawing operation ends here. */
+/*
+ * The flush.  Every drawing operation ends here.
+ *
+ * The source stride is vga_width >> 4 32 bit words, which is vga_rowbytes
+ * bytes and is the bm12 shadow's pitch; the destination stride is the same
+ * count of 16 bit words, which is vga_bpl bytes.  Only planes 0 and 1 are
+ * ever written -- that is what makes this screen two bits deep on four
+ * plane hardware, and what set_colormap's red entries guard.
+ */
 void
 vga_at_mode12_bpp2_to_bpp4(Bounds *r)
 {
+    int			 x0, x1, y0, y1;
+    int			 first;
+    unsigned int	 n, i, words, y, v;
+    unsigned int	*src, *sp;
+    unsigned short	*dst, *dp;
+    unsigned char	 saved;
+    void		*p;
+
+    if (tablesBuilt == 0)
+	build_tables();
+
+    x0 = vgaBounds.minx > r->minx ? vgaBounds.minx : r->minx;
+    y0 = vgaBounds.miny > r->miny ? vgaBounds.miny : r->miny;
+    x1 = vgaBounds.maxx < r->maxx ? vgaBounds.maxx : r->maxx;
+    y1 = vgaBounds.maxy < r->maxy ? vgaBounds.maxy : r->maxy;
+    if (x1 < x0 || y0 > y1)
+	return;
+
+    x0 -= vgaBounds.minx;
+    y0 -= vgaBounds.miny;
+    x1 -= vgaBounds.minx;
+    y1 -= vgaBounds.miny;
+
+    /* The 16 pixel words this rectangle touches, and where they start. */
+    first = x0 >> 4;
+    n = x1 >> 4;
+    if (x1 % 16 > 0)
+	n++;
+    n -= first;
+
+    words = (unsigned int)vga_width >> 4;
+
+    outb(0x3c4, 2);
+    saved = inb(0x3c5);
+
+    src = (unsigned int *)vgaVirtualAddress + y0 * words + first;
+    get_addr_range(&p);
+    dst = (unsigned short *)p + y0 * words + first;
+
+    select_write_plane(0);
+    for (y = y0; y <= (unsigned int)y1; y++) {
+	sp = src;
+	dp = dst;
+	for (i = 0; i < n; i++) {
+	    v = *sp++;
+	    *dp++ = (evenTable[(v >> 16) & 0x5555] << 8) |
+		    evenTable[v & 0x5555];
+	}
+	select_write_plane(1);
+	sp = src;
+	dp = dst;
+	for (i = 0; i < n; i++) {
+	    v = *sp++;
+	    *dp++ = (oddTable[(v >> 16) & 0xaaaa] << 8) |
+		    oddTable[v & 0xaaaa];
+	}
+	select_write_plane(0);
+	src += words;
+	dst += words;
+    }
+    select_write_plane(0);
+
+    outb(0x3c4, 2);
+    outb(0x3c5, saved);
 }
 
+/*
+ * Sixteen pixels of planes 1 and 0, complemented and interleaved into one
+ * word of sixteen two bit pixels, plane 0 supplying the low bit of each
+ * pair.  A plane byte carries its leftmost pixel in its high bit and the
+ * packed word carries pixel zero in its low pair, so each byte's bits come
+ * out reversed; the complement is the gray-to-index inversion.
+ */
 unsigned int
 read_bpp4planar_to_bpp2packed(const void *addr)
 {
-    return (0);
+    unsigned int	c, hi, lo;
+
+    select_read_plane(1);
+    c = (unsigned short)~*(const unsigned short *)addr;
+    hi = ((c & 0x8000) <<  2) | ((c & 0x4000) <<  5) |
+	 ((c & 0x2000) <<  8) | ((c & 0x1000) << 11) |
+	 ((c & 0x0800) << 14) | ((c & 0x0400) << 17) |
+	 ((c & 0x0200) << 20) | ((c & 0x0100) << 23) |
+	 ((c & 0x0080) >>  6) | ((c & 0x0040) >>  3) |
+	  (c & 0x0020)        | ((c & 0x0010) <<  3) |
+	 ((c & 0x0008) <<  6) | ((c & 0x0004) <<  9) |
+	 ((c & 0x0002) << 12) | ((c & 0x0001) << 15);
+
+    select_read_plane(0);
+    c = (unsigned short)~*(const unsigned short *)addr;
+    lo = ((c & 0x8000) <<  1) | ((c & 0x4000) <<  4) |
+	 ((c & 0x2000) <<  7) | ((c & 0x1000) << 10) |
+	 ((c & 0x0800) << 13) | ((c & 0x0400) << 16) |
+	 ((c & 0x0200) << 19) | ((c & 0x0100) << 22) |
+	 ((c & 0x0080) >>  7) | ((c & 0x0040) >>  4) |
+	 ((c & 0x0020) >>  1) | ((c & 0x0010) <<  2) |
+	 ((c & 0x0008) <<  5) | ((c & 0x0004) <<  8) |
+	 ((c & 0x0002) << 11) | ((c & 0x0001) << 14);
+
+    return (hi | lo);
 }
 
+/*
+ * The inverse, through the two tables rather than through unrolled
+ * shifts.  The kernel half does this job with the shifts and no tables;
+ * the trade is deliberate and the two halves are not to be harmonized.
+ */
 void
 write_bpp2packed_to_bpp4planar(unsigned int v, void *addr)
 {
+    select_write_plane(1);
+    *(unsigned short *)addr = (oddTable[(v >> 16) & 0xaaaa] << 8) |
+			       oddTable[v & 0xaaaa];
+    select_write_plane(0);
+    *(unsigned short *)addr = (evenTable[(v >> 16) & 0x5555] << 8) |
+			       evenTable[v & 0x5555];
 }
 
-/* Fill evenTable and oddTable, once. */
+/*
+ * Fill evenTable and oddTable, once.  Each gathers the eight even or odd
+ * bits of a 16 bit half of a packed word into the eight plane bits it
+ * produces, most significant pixel first, and complements the result.
+ * The guard is incremented rather than set, so a second call would leave
+ * it at two; the only test is against zero and there is one caller.
+ */
 static void
 build_tables(void)
 {
+    unsigned int	c, v;
+
+    for (c = 0; c <= 0xffff; c++) {
+	v = ((c & 0x4000) >> 14) | ((c & 0x1000) >> 11) |
+	    ((c & 0x0400) >>  8) | ((c & 0x0100) >>  5) |
+	    ((c & 0x0040) >>  2) | ((c & 0x0010) <<  1) |
+	    ((c & 0x0004) <<  4) | ((c & 0x0001) <<  7);
+	evenTable[c] = ~v;
+
+	v = ((c & 0x8000) >> 15) | ((c & 0x2000) >> 12) |
+	    ((c & 0x0800) >>  9) | ((c & 0x0200) >>  6) |
+	    ((c & 0x0080) >>  3) |  (c & 0x0020)        |
+	    ((c & 0x0008) <<  3) | ((c & 0x0002) <<  6);
+	oddTable[c] = ~v;
+    }
+    tablesBuilt++;
 }
 
+/*
+ * Program the six standard register sets.  Mode 5 is 640x480x16, BIOS
+ * mode 0x12, and the only one VGAStart ever asks for.  A negative mode is
+ * not checked and would read before the tables; only mode > 5 is refused,
+ * and the refusal value is 1, not an IOReturn.
+ */
 int
 VGASetStdRegs(int mode)
 {
+    unsigned int	i;
+
+    if (mode > 5)
+	return (1);
+
+    inb(0x3da);					/* reset the AC flip flop */
+    outb(0x3c0, 0);				/* and blank the screen	  */
+
+    outb(0x3c2, miscTable[mode]);
+
+    for (i = 0; i <= 4; i++) {
+	outb(0x3c4, i);
+	outb(0x3c5, seqTable[mode][i]);
+    }
+    outb(0x3c4, 0);				/* release sequencer reset */
+    outb(0x3c5, 3);
+
+    outb(0x3d4, 0x11);				/* unprotect CRTC 0 to 7   */
+    outb(0x3d5, 0);
+    for (i = 0; i <= 0x18; i++) {
+	outb(0x3d4, i);
+	outb(0x3d5, crtcTable[mode][i]);
+    }
+
+    inb(0x3da);
+    for (i = 0; i <= 0x13; i++) {
+	outb(0x3c0, i);
+	outb(0x3c0, acTable[mode][i]);
+    }
+
+    for (i = 0; i <= 8; i++) {
+	outb(0x3ce, i);
+	outb(0x3cf, gcTable[mode][i]);
+    }
+
+    inb(0x3da);
+    outb(0x3c0, 0x20);				/* unblank		   */
     return (0);
 }

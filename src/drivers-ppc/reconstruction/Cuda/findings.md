@@ -147,30 +147,33 @@ source map, so neither affects the 38/2/0/0 correspondence numbers above.
 
 ```
 reference selectors: 41
-our definitions:     40
+our definitions:     41
 
 renames (0):
 
 duplicates (0):
 
-missing (3):
+missing (2):
     +[drvPPCCudaKernelServerInstance kernelServerInstance]
     +[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]
-    -[AppleCuda StartCudaTransmission:]
 
 extra (2):
     -[AppleCuda ADBSetFileServerMode:::]
     -[AppleCuda setPowerupTime::::]
 ```
 
-Exit code: 0. The "missing" three match the source map's unmapped set exactly
-(two build-generated, one real gap -- see Unmapped detail). The "extra" two are
-selectors `cuda.m` defines (`ADBSetFileServerMode:` with 3 keyword parts,
-`setPowerupTime:` with 4) that the reference binary's selector table does not
-carry under that exact name; this is a finding to record, not a task failure,
-and is orthogonal to the function-address correspondence measured above (the
-source map operates on IDA function addresses, not selector-table name
-matching).
+Exit code: 0. `selector_check.py` had its own copy of the same
+signature-ending-in-`;` scanning defect as the source-map builder (its
+`source_methods` mirrored `source_sites`'s `found_semicolon` guard); fixed
+alongside it, so `-[AppleCuda StartCudaTransmission:]` is no longer reported
+missing. The "missing" two now match the source map's unmapped set exactly,
+both build-generated (see Unmapped detail) -- Cuda has zero real gaps. The
+"extra" two are selectors `cuda.m` defines (`ADBSetFileServerMode:` with 3
+keyword parts, `setPowerupTime:` with 4) that the reference binary's selector
+table does not carry under that exact name; this is an open finding, not a
+task failure, and is orthogonal to the function-address correspondence
+measured above (the source map operates on IDA function addresses, not
+selector-table name matching).
 
 ## Bundle stub
 

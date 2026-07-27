@@ -546,6 +546,37 @@ code when it was arrangement.** The check that settles it cheaply is the
 instruction-count total: a genuine gap of sixty-four instructions cannot hide in
 a one-instruction difference between two methods.
 
+**Verified — and the similarity figures in this document were wrong.** The
+rebuild's exit path now has the reference's shape, `mov eax, 1` ahead of the
+frees rather than after them. The reported similarity did not move, which is
+what exposed the real problem: the metric was counting stack-slot allocation as
+divergence.
+
+```
+reference:  cmp dword ptr [ebp - 0x18], 0     <- classesLoaded
+rebuilt:    cmp dword ptr [ebp - 0x10], 0     <- same variable, different slot
+```
+
+Two independently compiled functions need not place locals at the same offsets,
+and every instruction touching one counted as a difference. Normalising negative
+`ebp` displacements alongside the address masking already in use:
+
+| Method | As reported | Corrected |
+| --- | --- | --- |
+| `probeDevice:withDescription:` | 42.9% | **85.2%**, 12 differing runs |
+| `statusChangedForSocket:changedStatus:` | 77.4% | 77.4%, 13 runs — unaffected |
+
+`probeDevice:` was never 57% divergent; it was mostly slot naming. The figure
+only moved for the method with many locals, which is why
+`statusChangedForSocket:` — measured over the same normalisation — is unchanged
+and its earlier numbers stand.
+
+The largest remaining runs are now small: 16 instructions of ours against 15 of
+the reference's around `ref[173]` in `probeDevice:`, and a 52-against-5 run at
+`ref[22]` in `statusChangedForSocket:`. Those are the next things to read, with
+the caveat this document has now earned three times over: read the source before
+believing the aligner.
+
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`
 sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,

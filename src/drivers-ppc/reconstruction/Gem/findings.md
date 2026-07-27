@@ -146,8 +146,10 @@ different reflected-CRC algorithm that this repository's
 behavior-equivalent.** I implemented both (BMac's `crc416`/`mace_crc` pair,
 reading each halfword big-endian -- the correct byte order on PowerPC -- and
 this repository's byte-wise reflected-CRC version) and ran both against five
-MAC addresses, including the standard IPv4 and IPv6 multicast addresses,
-taking the top 6 bits as the hash-table index each driver actually uses:
+MAC addresses, including the standard IPv4 and IPv6 multicast addresses. The
+raw CRCs differ on all five outright; two index derivations were checked on
+top of them, and neither derivation is the top 6 bits, despite that label
+below -- see the correction after the table:
 
 ```
 01:00:5E:00:00:01  apple=0x7FA32D9B (hash 31)  ours=0xD9B4C5FE (hash 54)  DIFFER
@@ -159,12 +161,47 @@ FF:FF:FF:FF:FF:FF  apple=0xFF48647D (hash 63)  ours=0xBE2612FF (hash 47)  DIFFER
 identical on 0/5 vectors
 ```
 
+**Correction: neither driver uses the top 6 bits as its hash-table index.**
+Apple's Mace and BMac compute `mace_crc(...) & 0x3f` (the low 6 bits) and then
+look the result up in a `reverse6[]` bit-reversal table
+(`MaceEnetPrivate.m:1499`/`:1568`-`:1569`). Gem uses the low 8 bits of its own
+CRC, bit-reversed and then inverted, in `-[GemEnet(Private)
+_addToHashTableMask:]` (`GemEnetPrivate.m:1062`-`1084`). The `(hash N)` values
+above are the raw top-6-bit slice for illustration only, not either driver's
+actual index.
+
+**The divergence holds under Apple's real index derivation, not just the
+illustrative one.** Re-running the same five vectors through `crc & 0x3f` then
+`reverse6[]` -- the index Mace and BMac's own source actually computes --
+still gives 0/5 agreement:
+
+```
+01:00:5E:00:00:01  apple idx=54  ours idx=31  DIFFER
+33:33:00:00:00:01  apple idx=23  ours idx=62  DIFFER
+FF:FF:FF:FF:FF:FF  apple idx=47  ours idx=63  DIFFER
+00:00:00:00:00:00  apple idx=19  ours idx=14  DIFFER
+01:23:45:67:89:AB  apple idx=18  ours idx=41  DIFFER
+
+reverse6[crc & 0x3f] identical on 0/5 vectors
+```
+
+So the divergence is not an artifact of which index derivation is used for
+the comparison: raw CRC, illustrative top-6-bit slice and Mace/BMac's real
+`& 0x3f` + `reverse6[]` derivation all show 0/5 agreement.
+
 Zero of five vectors agree, including both standard multicast addresses.
-The runtime consequence is concrete: this repository's `GemEnet` would
-program the wrong multicast hash bucket for every address tested, so it
-would drop multicast frames the real hardware/driver combination should
-accept, and accept frames it should not -- a real behavioral divergence, not
-just a naming/bookkeeping mismatch. `_mace_crc` stays in bucket 5 because a
+The runtime consequence is concrete, and traceable end to end in this
+driver's own source, not just asserted: `_mace_crc` is called at
+`GemEnetPrivate.m:1071` (inside `-[GemEnet(Private) _addToHashTableMask:]`)
+and `:1110` (inside `-[GemEnet(Private) _removeFromHashTableMask:]`); those
+two methods are called from `GemEnet.m:445` and `:463`; and
+`-[GemEnet(Private) _updateGemHashTableMask]`
+(`GemEnetPrivate.m:1049`-`1053`) writes `hashTableMask[]` into the GMAC
+hardware hash registers. So this repository's `GemEnet` would program the
+wrong multicast hash bucket for every address tested, so it would drop
+multicast frames the real hardware/driver combination should accept, and
+accept frames it should not -- a real behavioral divergence, not just a
+naming/bookkeeping mismatch. `_mace_crc` stays in bucket 5 because a
 source site genuinely exists (the bucket taxonomy is about source-site
 existence, not logic equivalence), but a later reader must not count it as
 a confirmed match: it is a name-only correspondence with divergent, tested,

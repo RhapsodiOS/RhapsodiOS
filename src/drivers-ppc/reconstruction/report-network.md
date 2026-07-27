@@ -353,7 +353,7 @@ Gem's own 8-bit hash index identical on 0/5 vectors
 
 **0 of 5 agree on every metric.** The rightmost column feeds each CRC through
 this repository's own `-[GemEnet(Private) _addToHashTableMask:]`
-(`GemEnetPrivate.m:1063`: low 8 bits, bit-reversed, then inverted) - so it is
+(`GemEnetPrivate.m:1062`: low 8 bits, bit-reversed, then inverted) - so it is
 the bucket this driver as written would actually program. It differs on all
 five. The concrete consequence: **`GemEnet` would program the wrong multicast
 hash bucket**, dropping multicast frames it should accept and accepting frames
@@ -388,7 +388,8 @@ and Gem are this project's own driver projects under
 `selector_check.py` reports 2 `extra` entries for Dec21040 and 0 for the other
 three: `-[DECchip2104x(Private) _dumpDescriptor:]` and
 `-[DECchip2104x(Private) _dumpRegisters]`. Both sit inside `#ifdef DEBUG` blocks
-at `DECchip2104xPrivate.m:223` and `:237`, and `#define DEBUG` is commented out
+- `_dumpRegisters` at `DECchip2104xPrivate.m:223`, `_dumpDescriptor:` at `:237` -
+and `#define DEBUG` is commented out
 at `DECchip2104xPrivate.m:64`, so neither compiles into the shipped binary. The
 source-selector parser counts them regardless of the inactive guard.
 
@@ -483,10 +484,15 @@ other. On the criterion, one driver separates cleanly from the rest.
   programs (§4.3).
 - **The follow-on spec's job:** replace `_mace_crc` with the `crc416`/`mace_crc`
   pair Apple shipped - `MaceEnetPrivate.m:1510`/`:1548` in this same tree is a
-  working, byte-verified template - and reconcile
-  `_addToHashTableMask:`/`_removeFromHashTableMask:` with the hash-index
-  derivation that pair implies. This is the only item in the batch that changes
-  what runs.
+  working, byte-verified template. The `crc416`/`mace_crc` pair implies no
+  hash-index derivation on its own - that is per-hardware. Gem's own
+  `_addToHashTableMask:`/`_removeFromHashTableMask:` index into an 8-bit-wide
+  `hashTableUseCount[256]`/`hashTableMask[32]` (16 words x 16 bits = 256
+  buckets actually written to hardware), which is plausibly correct for GMAC
+  and should not be replaced with Mace/BMac's 6-bit `& 0x3f` + `reverse6[]`
+  scheme without its own evidence. The evidenced fix is narrower than it looks:
+  replace the CRC function only. This is the only item in the batch that
+  changes what runs.
 
 ### 2. `drvPPCDec21040` - largest structural surface, no correspondence gap
 
@@ -569,9 +575,13 @@ not re-measured**.
 Selector sets are the selector part of each binary's `-[Class selector]` /
 `+[Class selector]` symbols. Two derivations were run: from the five committed
 source maps (`mapped` union `unmapped`, as the plan specifies), and
-independently from the five `_reloc` symbol tables via `read_macho`. They differ
-by exactly one selector per binary - the address-0x0 symbol from §1, which a
-source map cannot carry. **The symbol-table derivation is the one reported
+independently from the five `_reloc` symbol tables via `read_macho`. For GNic,
+Gem, Mace and BMac they differ by exactly one selector - the address-0x0 symbol
+from §1, which a source map cannot carry. **Dec21040 is the exception: its
+selector set is 44 under both derivations**, because its address-0x0 symbol,
+`-[DECchip21041 initFromDeviceDescription:]`, is a selector name two sibling
+classes also carry (§2), so dropping it from the source-map derivation removes
+no distinct selector. **The symbol-table derivation is the one reported
 below**, since it is the complete picture of what Apple shipped; where the two
 disagree it is called out.
 
@@ -583,8 +593,11 @@ Dec21040   objc symbols  51  distinct selectors  44
 BMac       objc symbols  67  distinct selectors  67
 ```
 
-Only Dec21040's symbol count exceeds its distinct-selector count, by 6 - its
-three classes' shared overrides (§2).
+Only Dec21040's symbol count exceeds its distinct-selector count, by 7 (51 - 44)
+- its three classes' shared overrides (§2): `initFromDeviceDescription:`,
+`getStationAddress:` and `selectInterface` are each defined on all three
+classes (2 extra each), and `_setInterface:` is defined on two (1 extra) -
+2 + 2 + 2 + 1 = 7.
 
 **This section is bounded to spec §4.6's four questions.** Anything beyond them
 is a recorded follow-on question (§5), not chased.
@@ -636,7 +649,11 @@ measurement artifact of §1, not a gap.
 
 24 selectors, from the source-map derivation (the artifact above shifts
 `_allocateMemory` and `probe:` into this band; both are universal in the
-binaries):
+binaries). This table switches derivation from Q1's symbol-table count to the
+source-map count, so it does not sum with Q1 and Q3 against the 91-selector
+union below: 30 + 24 + 39 = 93, not 91. The symbol-table equivalent of this
+band is 22 rows (11 in-4 + 7 in-3 + 4 in-2, dropping `_allocateMemory` and
+`probe:`), which reconciles: 30 + 22 + 39 = 91.
 
 | In | Selector | Drivers |
 | --- | --- | --- |

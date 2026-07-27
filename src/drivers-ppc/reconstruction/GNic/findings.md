@@ -34,7 +34,7 @@ mapped 47 unmapped 2 dup 0 disputed 0
 
 `GNicEnet.m` and `GNicEnetPrivate.m` (`@implementation GNicEnet` and
 `@implementation GNicEnet(Private)`) together define 48 Objective-C methods
-(22 + 26, counted with `grep -c "^[+-]" GNicEnet.m GNicEnetPrivate.m`), one
+(22 + 26, counted with `grep -c "^[+-]" GNicEnet.m GNicEnetPrivate.m`), two
 more than the 46 the task description cites. The extra method,
 `-[GNicEnet(Private) _allocateMemory]` (`GNicEnetPrivate.m:115`), has source
 but never surfaces as an analysis function -- it is the one entry the

@@ -488,10 +488,10 @@ cd $REPO && PYTHONPATH=tools $VENVPY -m pytest tools/tests/test_ppc_package_chec
 
 Expected: check tests pass; binrecon **845 passed, 4 skipped**. This spec touches no binrecon code, so any change there is a regression.
 
-- [ ] **Step 4: Verify the full layout of all twelve projects**
+- [ ] **Step 4: Verify the full layout of all eleven projects**
 
 ```bash
-cd $REPO && for p in input/drvPPCCuda input/drvPPCPMU bus/drvPPCOHare ide/drvPPCATA \
+cd $REPO && for p in input/drvPPCCuda input/drvPPCPMU bus/drvPPCOHare \
     network/drvPPCBMac network/drvPPCMace network/drvPPCDec21040 \
     scsi/drvPPC53c96 scsi/drvPPCMesh scsi/drvPPCSym8xx \
     input/drvIOADBDevice network/drvDEC21x4Ethernet; do

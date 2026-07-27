@@ -1497,6 +1497,116 @@ The remaining non-`__text` symbols:
 with a trailing newline. Both version symbols are build-generated and neither is
 referenced by any function.
 
+**Open question: the reference's `__TEXT,__const` is in the opposite object
+order from every other section.** `kl_ld` is handed
+`CirrusLogicGD5434DisplayDriver.o` before `ProgramDAC.o`, and in both the
+reference and the rebuilt binary `__TEXT,__text`, `__TEXT,__cstring` and
+`__DATA,__data` all follow that order. `__TEXT,__const` does not: in the
+reference `_gamma16` and `_gamma8` — `ProgramDAC.m`'s constants — sit at 4960 and
+4976, *ahead* of `_vgaMode` at 5232 and the whole `GD5434_mode_*` run, which come
+from the main file. The rebuilt binary puts them where the link order says they
+belong, `_vgaMode` first at 4348 and `_gamma16`/`_gamma8` last at 6468 and 6484.
+No source-level change in either file reproduces the inversion — it is not a
+matter of declaration order within a file, since each file's own constants stay
+correctly ordered relative to each other on both sides — and its cause is not
+recoverable from the binary. The practical consequence is that `__TEXT,__const`
+addresses cannot be used as a parity criterion for this driver: every absolute
+reference to a constant differs between the two binaries even where the
+instruction stream is byte-identical, which is why the per-function comparison
+below masks 32-bit relocation operands before comparing. Recorded as an open
+question, not a defect.
+
+## Build and parity
+
+`vm/build-i386-video-recon.sh drvCirrusLogicGD5434`, run in the Rhapsody guest,
+**succeeds on the first attempt with `make exit=0` and no compile errors**. This
+was the first time any of these sources had been through a compiler; no source
+change was needed to make them build. gcc emitted no warnings at all, including
+none for the two deliberately dead mode structs `GD5434_mode_640_15_60` and
+`GD5434_mode_640_15_75` — `-Wmost` as this compiler configures it does not imply
+`-Wunused-variable` for file-scope statics, so their presence costs nothing.
+`kl_ld` links `CirrusLogicGD5434DisplayDriver_reloc` as a `Mach-O preload
+executable i386`.
+
+`parity_check.py` against Apple's binary reports **0 missing strings and 0
+missing `__TEXT,__text` symbols**. It reports 26 extras on our side, all of which
+are debug artefacts of an unstripped guest build: the four source-file stabs, the
+21 stab-typed duplicates of the real function symbols, and one empty name. No
+reference method is misspelled and no reference function is unwritten.
+
+The linkage check reports `linkage mismatches: []`. In particular `_SetGammaValue`
+is `local` on both sides, so the `static` on it in `ProgramDAC.m` is correct, and
+`_vgaMode`, `_GD5434_modeTable`, `_GD5446_modeTable` and the four
+`defaultMode`/`modeTableCount` scalars are `external` on both sides.
+
+Going past what `parity_check.py` can see, all 21 `__TEXT,__text` functions were
+disassembled and compared against the reference individually. **17 of 21 are
+byte-for-byte identical** once 32-bit relocation operands are masked — necessarily
+masked, because of the `__TEXT,__const` inversion above. `__TEXT,__text` is 4348
+bytes against the reference's 4388, and the whole 40-byte difference is accounted
+for by four functions:
+
+| Function | Ref | Rebuilt | Nature of the difference |
+| --- | --- | --- | --- |
+| `setMode:` | 1020 | 1008 | Identical branch structure and identical 129-operation port-I/O sequence. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
+| `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
+| `setPCIConfiguration` | 584 | 612 | Same 19 call targets in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here; and `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
+| `determineConfiguration` | 768 | 712 | The one genuine divergence. See below. |
+
+**`determineConfiguration` is the only function whose control flow does not
+match.** Two things differ. First, the reference expands the `"Bus Type"`
+`strncmp` inline as a `repe cmpsb` sequence while our build emits `call
+_strncmp`, so the ordered call-target lists differ by one entry. Second, the two
+`chipType` range tests and the `installedVRAMBytes`/`memorySize` test are signed
+here (`jg`, `jbe`) and unsigned in the reference (`ja`, `jae`), which suggests
+the original declared `chipType` — and possibly the loop's comparison operands —
+with unsigned types. Neither difference changes behaviour: `chipType` only ever
+holds 0–4, and both `strncmp` forms compute the same result. Both are left
+unresolved here rather than guessed at, since changing an ivar's signedness is a
+Task 3 decision and the inline-`strncmp` form depends on compiler flags that are
+not recoverable from the binary.
+
+Two further gaps, neither of them in the driver source:
+
+- The build prints `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
+  produced`. Apple's `.config` directory carries a 16728-byte
+  `CirrusLogicGD5434DisplayDriver` alongside the reloc; our build produces only
+  the reloc.
+- Correspondingly, `_CirrusLogicGD5434DisplayDriver_VERS_STRING` (160 bytes) and
+  `_..._VERS_NUM` (4 bytes) are absent from the rebuilt `__TEXT,__const`, which
+  is 2392 bytes against the reference's 2562 — a 170-byte difference that is
+  exactly those two symbols plus their padding. `parity_check.py` does not see
+  this because it compares `__TEXT,__text` symbols and `__cstring` strings only.
+  As recorded above, both are build-generated and encode a 1998 build host and
+  timestamp that should not be reproduced.
+
+### Ledger status distribution
+
+| Status | Count |
+| --- | --- |
+| `assembly-matched` | 15 |
+| `control-flow-confirmed` | 3 |
+| `signature-confirmed` | 1 |
+| `unexamined` | 2 |
+
+The 15 at `assembly-matched` are the hand-written functions whose rebuilt
+instruction stream was read against the reference and found byte-identical under
+relocation masking; that is the strongest claim available and it is claimed only
+where whole-body byte equality was actually demonstrated. `setMode:`,
+`setPendingDisplayMode:` and `setPCIConfiguration` are held at
+`control-flow-confirmed` because their block shape and call targets were compared
+and agree, but their instruction streams do not match byte for byte.
+`determineConfiguration` is held at `signature-confirmed` because its call-target
+list does not match, so control flow was checked and *not* confirmed. The two
+`unexamined` entries are the build-generated glue at 4364 and 4376, which
+`source-map.json` lists as unmapped: they have no reconstructed source to review,
+and are left untouched even though both are byte-identical to the reference.
+
+The ledger's own `reason` field is reserved for `intentional-mismatch` entries
+and is `null` on every entry here by schema rule, so this section is the record
+of what each status was granted for. Every reviewed entry carries the reviewer
+and the source path and line the status was granted against.
+
 ## What is not reconstructed
 
 **The two generated glue functions at 4364 and 4376** —

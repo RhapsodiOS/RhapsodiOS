@@ -345,7 +345,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882203912, size 29, 3 basic blocks and 13 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 15; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 15; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGASysHideCursor(). Read against the full reference disassembly of 0x70302708 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. Our body is byte-for-byte identical to the reference's 29 bytes plus its three-byte pad: mov dl,[eax+8] / inc byte [eax+8] / test dl,dl, so the counter moves whether or not the erase blitter runs, and dev->shmem is at dev+0x28.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -355,11 +356,11 @@
         "_VGASysHideCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 29,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 419,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882203944,
@@ -369,7 +370,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882203944, size 107, 4 basic blocks and 39 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 16; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 16; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGASysShowCursor(). Read against the full reference disassembly of 0x70302728 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. Both early returns, the one-dword hotSpot[frame] load at [edx+ecx*4+0x38], the sar ecx,16 that recovers the y component, the four 16-bit cursorRect stores at +0x20/+0x22/+0x24/+0x26 and the two-dword oldCursorRect copy +0x20->+0x28 and +0x24->+0x2C all match. Ours is 116 bytes against the reference's 107 plus one byte of pad: the eight-byte difference is that our compiler reloads dev->shmem and re-reads cursorRect.minx to form maxx where the reference forwards the value it just stored.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -379,11 +381,11 @@
         "_VGASysShowCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 107,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 431,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204052,
@@ -393,7 +395,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204052, size 178, 11 basic blocks and 66 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 17; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 17; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGACheckShield(). Read against the full reference disassembly of 0x70302794 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. The rectangle is recomputed into a register pair and cursorRect is not written, exactly as the reference does; the four comparisons are 16-bit and signed with jle/jge, so an edge-touching intersection is a miss; shielded is read with movsx byte. Ours is 184 bytes against 178 plus two of pad, the four-byte difference being two mov eax,ecx our register allocator inserts before each add ax,0x10.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -403,11 +406,11 @@
         "_VGACheckShield"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 178,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 459,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204232,
@@ -417,7 +420,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204232, size 554, 14 basic blocks and 167 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 18; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 18; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGASetCursor(). Read against the full reference disassembly of 0x70302848 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. The four-entry jump table on format-1 with ja to the default, the eight-argument newBitmap call through the class object's +0x3C slot, the destination addressing shmem+frame*64+0x48 and +0x148, the sete/movzx that computes *flagp == 0, the one-dword hotSpot[frame] store, the two 64-byte bcopy calls and the dec word [tmp+0x0E] refcount with the free through tmp->isa+0x10 all match. This is where the eight unattributed __const bytes at 0x70303E4C are spent: the three converters take two Bounds by value, and the reference pushes 0x70303E44/0x70303E48 for the first and 0x70303E4C/0x70303E50 for the second, which is an all-zero Bounds. Ours is 624 bytes against 554 plus two of pad; the 68-byte difference is entirely that our compiler spills the PIC base to a stack slot where the reference keeps it in esi, costing six bytes at every __const and _bm12 reference.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -427,11 +431,11 @@
         "_VGASetCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 554,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 500,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204788,
@@ -441,7 +445,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204788, size 44, 1 basic blocks and 18 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 19; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 19; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGAHideCursor(). Read against the full reference disassembly of 0x70302A74 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 44 bytes against the reference's 44, same instructions: ev_lock on dev->shmem+4, the primitive, then dev->shmem recomputed for the ev_unlock. ev_lock blocks; this file never calls ev_try_lock, which is the kernel half's idiom.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -451,11 +456,11 @@
         "_VGAHideCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 44,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 552,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204832,
@@ -465,7 +470,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204832, size 44, 1 basic blocks and 18 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 20; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 20; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGAShowCursor(). Read against the full reference disassembly of 0x70302AA0 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 44 bytes against the reference's 44, same instructions, around VGASysShowCursor.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -475,11 +481,11 @@
         "_VGAShowCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 44,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 560,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204876,
@@ -489,7 +495,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204876, size 66, 3 basic blocks and 25 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 21; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 21; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGAObscureCursor(). Read against the full reference disassembly of 0x70302ACC instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 68 bytes against the reference's 66 plus two of pad, same instructions: hide first, then set cursorObscured at +0x09.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -499,11 +506,11 @@
         "_VGAObscureCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 66,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 569,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882204944,
@@ -513,7 +520,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882204944, size 63, 3 basic blocks and 24 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 22; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 22; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGARevealCursor(). Read against the full reference disassembly of 0x70302B10 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 64 bytes against the reference's 63 plus one of pad, same instructions: clear cursorObscured first, then show. The two-byte difference from VGAObscureCursor is the asymmetry in that order and is visible in both binaries.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -523,11 +531,11 @@
         "_VGARevealCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 63,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 581,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882205008,
@@ -537,7 +545,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882205008, size 78, 1 basic blocks and 31 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 23; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 23; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGAShieldCursor(). Read against the full reference disassembly of 0x70302B50 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 80 bytes against the reference's 78 plus two of pad, same instructions, one basic block with no conditional in it. shielded is cleared before VGACheckShield runs, which is the defect recorded in divergences.md's correction subsection; reproduced as written. shieldRect is copied as two dword moves to +0x14 and +0x18.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -547,11 +556,11 @@
         "_VGAShieldCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 78,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 599,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882205088,
@@ -561,7 +570,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882205088, size 73, 3 basic blocks and 27 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 24; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 24; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGAUnshieldCursor(). Read against the full reference disassembly of 0x70302BA0 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 76 bytes against the reference's 73 plus three of pad, same instructions. It touches +0x0B and +0x0A only and never reads or writes cursorShow at +0x08, so it does not recover the state VGAShieldCursor's defect can leave behind.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -571,11 +581,11 @@
         "_VGAUnshieldCursor"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 73,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 610,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882205164,
@@ -585,7 +595,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882205164, size 603, 14 basic blocks and 207 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 25; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 25; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGADisplayCursorBlit(). Read against the full reference disassembly of 0x70302BEC instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 596 bytes against the reference's 603 plus one of pad. Every step matches: the vertical clip against dev->bounds at dev+0x10, the and cl,0xf0 that snaps minx to a 16-pixel column, maxx = minx+32, the two-dword saveRect store to +0x0C/+0x10, shift = (cursorRect.minx & 15)*2 and rshift = 32-shift, the image/mask pointers advanced by four bytes per clipped row, save at shmem+0x248, the two setle flags, get_addr_range, the (row % lines)*words+col start, and the per-row shl/not/and/or for the left column and shr for the right. The save pointer advances twice per row including the shift == 0 branch that writes nothing, so 16 rows touch 128 bytes of a 64-byte save[16] and the draw pass writes the excess; reproduced as written. The seven-byte size difference is register allocation: ours keeps lines in ebx and the row counter in a stack slot, the reference the other way round. One divergence from the kernel half found and not resolved here: this side computes lines as 0x10000 / vga_bpl with an unsigned div, where VGA_reloc's _VGADisplayCursor computes 0x10000 / (width >> 4) with a signed idiv, a factor of two. See the task report.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -595,11 +606,11 @@
         "sub_70302BEC"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 603,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 633,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882205768,
@@ -609,7 +620,8 @@
         ],
         "reasons": [
           "IDA 9.2 reports address 1882205768, size 481, 14 basic blocks and 166 instructions.",
-          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 26; no replacement source has been written, so the status is unexamined.",
+          "No source counterpart exists. Our VGA_psdrvr.tproj is a 127-line invented printing API - VGAPSInit, VGAPSBeginPage, VGAPSRenderImage - and shares no symbol, no string and no global with Apple's Window Server framebuffer and cursor driver, so the source map places this entry in unmapped under the 'no counterpart in our source' reason class. The reference behaviour is decompiled in divergences.md, VGA_psdrvr finding 26; Phase 3a Task 4 has since written the replacement source; see source_path and source_line.",
+          "Reconstructed as VGARemoveCursorBlit(). Read against the full reference disassembly of 0x70302E48 instruction by instruction, disassembled out of the Mach-O with capstone rather than taken from the finding's pseudocode, and our own build's body was disassembled and compared back. 480 bytes against the reference's 481 plus three of pad. Every step matches: the two maskL/maskR zero initialisers at the top, saveRect read from +0x0C, the same words/lines/get_addr_range/column arithmetic as the draw pass, shift taken from cursorRect.minx, save at shmem+0x248, the two setge flags, leftMask[oldCursorRect.minx - saveRect.minx] and ~leftMask[16 - (saveRect.maxx - oldCursorRect.maxx)] indexed off the 17-entry __const table at 0x70303E54, and the per-row (v & ~m) | (m & *save++). This blitter only reads through the save pointer, so its stride past the end of save[16] is an over-read where the draw pass's is an over-write; reproduced as written. Same 0x10000 / vga_bpl against the kernel's 0x10000 / (width >> 4) divergence as the draw pass.",
           "Single-analyzer evidence. angr cannot produce an analysis document for this bundle at all - its CFG recovery aborts with 'block at address 1882209993 is outside function at address 1882210007' - and all 48 of Ghidra 12.1's relocation records come back as r_type == 0 - GENERIC_RELOC_VANILLA, the only relocation kind an i386 image of this era emits - which gives normalize_analysis nothing to derive a field width from. The independent corroboration for this partition is therefore the Mach-O symbol table, section table and relocation table read directly out of the file, not a second disassembler; the agreement status is recorded as partial for that reason (divergences.md, Evidence)."
         ],
         "status": "partial"
@@ -619,11 +631,11 @@
         "sub_70302E48"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "vga3a-t4-impl",
       "size": 481,
-      "source_line": null,
-      "source_path": null,
-      "status": "unexamined"
+      "source_line": 712,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
+      "status": "assembly-matched"
     },
     {
       "address": 1882206252,
@@ -646,7 +658,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 196,
-      "source_line": 436,
+      "source_line": 773,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -671,7 +683,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 81,
-      "source_line": 466,
+      "source_line": 803,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -696,7 +708,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 92,
-      "source_line": 481,
+      "source_line": 818,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -721,7 +733,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 117,
-      "source_line": 499,
+      "source_line": 836,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -746,7 +758,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 120,
-      "source_line": 524,
+      "source_line": 861,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -771,7 +783,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 932,
-      "source_line": 552,
+      "source_line": 889,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -796,7 +808,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 402,
-      "source_line": 628,
+      "source_line": 965,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -821,7 +833,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 124,
-      "source_line": 663,
+      "source_line": 1000,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -846,7 +858,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 240,
-      "source_line": 681,
+      "source_line": 1018,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },
@@ -871,7 +883,7 @@
       "reason": null,
       "reviewer": "vga3a-t3-impl",
       "size": 401,
-      "source_line": 708,
+      "source_line": 1045,
       "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c",
       "status": "assembly-matched"
     },

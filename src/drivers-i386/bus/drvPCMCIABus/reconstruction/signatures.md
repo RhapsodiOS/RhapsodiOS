@@ -510,6 +510,42 @@ Roughly 64 reference instructions are missing from ours and a similar volume of
 ours has no counterpart. That is a body-level reconstruction gap in this method,
 not a residue of the logging work, and it wants its own pass.
 
+### The success-return path: a restructure, not a reconstruction
+
+Reading that largest run in full does **not** show sixty-four instructions of
+missing logic. The near-equal totals — 307 reference against 308 ours — already
+argued against that, and the source confirms it: every construct is present. The
+run is an alignment artefact of one inverted branch.
+
+The reference's exit path is:
+
+```
++628  if (_verbose)            IOLog("PKB: all done probing")
++647  if (classListLength)     IOFree(classNames, classListLength)
++669  if (serverName)          [device freeString:serverName]
++698  cmp dword ptr [ebp-0x18], 0 ; je +716
++704      mov eax, 1 ; jmp                      <- return YES
++716  if (kernDevice)          [kernDevice free]
++741  if (pcmciaDesc)          [pcmciaDesc free]
++766  if (_verbose)            IOLog("PKB: no classes loaded, returning no")
++912  xor eax, eax                              <- return NO
+```
+
+`[ebp-0x18]` is `classesLoaded`. So Apple tests it, returns `YES` immediately,
+and lets the no-classes case **fall through** to the frees and the `NO` return.
+Ours wrapped that same case in `if (classesLoaded == 0) { … return NO; }`
+followed by `return YES`, which is semantically identical and structurally
+inverted — enough to shift every following block and defeat the aligner.
+
+Rewritten as `if (classesLoaded != 0) return YES;` with the remainder falling
+through. No logic was added or removed; nothing about the method's behaviour
+changes.
+
+**This is the third time in this thread that a diff run has been read as missing
+code when it was arrangement.** The check that settles it cheaply is the
+instruction-count total: a genuine gap of sixty-four instructions cannot hide in
+a one-instruction difference between two methods.
+
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`
 sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,

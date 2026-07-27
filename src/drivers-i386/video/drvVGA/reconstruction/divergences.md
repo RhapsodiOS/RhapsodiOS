@@ -49,9 +49,10 @@ reference binary in this repo, all of which are `cpu_subtype = 3`.
 `VGA_psdrvr` — **IDA alone**. angr cannot produce an analysis document for
 this bundle at all: its CFG recovery fails outright with `block at address
 1882209993 is outside function at address 1882210007`. Ghidra produces a
-document, but all 48 of its relocation records come back with the
-unclassified kind `"0"`, so `normalize_analysis` can never derive a field
-width and aborts on the first (`relocation 0 has missing or conflicting
+document, but all 48 of its relocation records come back as `r_type == 0` —
+`GENERIC_RELOC_VANILLA`, the only relocation kind an i386 image of this era
+emits — which gives `normalize_analysis` nothing to derive a field width
+from, so it aborts on the first (`relocation 0 has missing or conflicting
 width`). IDA-alone was accepted for this binary specifically because the
 Mach-O symbol table independently corroborates the partition: every
 symbol-table `__TEXT,__text` entry appears in IDA's function list, the sole
@@ -487,6 +488,11 @@ does nothing — the cursor stays hidden with `shielded` reading 0. It is
 recovered by the next `_VGAUnshieldCursor` only through the `cursorShow`
 depth counter, not through `shielded`. Reproduce it as written; if it is a
 defect it is Apple's, and changing it changes observable behaviour.
+
+*(This last sentence is corrected below, in the `## VGA_psdrvr` section's
+"Correction to the Shared contract's `_VGAShieldCursor` note" — `_VGAUnshieldCursor`
+never touches `cursorShow` at all, and nothing in the shield path recovers the
+state described here.)*
 
 **Obscuring.** `cursorObscured` at `+0x09`:
 
@@ -1719,8 +1725,10 @@ exists in our source, so nothing here is a diff.
 **One analyzer, not two or three.** angr cannot produce an analysis document for
 this bundle at all — CFG recovery aborts with `block at address 1882209993 is
 outside function at address 1882210007` — and all 48 of Ghidra 12.1's relocation
-records come back with the unclassified kind `"0"`, so `normalize_analysis` can
-never derive a field width and aborts on the first one. Both are disabled in
+records come back as `r_type == 0` — `GENERIC_RELOC_VANILLA`, the only
+relocation kind an i386 image of this era emits — which gives
+`normalize_analysis` nothing to derive a field width from, so it aborts on the
+first one. Both are disabled in
 `tools/binrecon/profiles/vga-psdrvr.json`. **Every function claim below rests on
 IDA 9.2 alone.** That is a weaker evidentiary base than the `VGA_reloc` section
 above, and it is stated here once rather than repeated per finding.
@@ -1735,12 +1743,14 @@ otherwise rest on IDA alone:
    have. The only symbol-table `__text` entry IDA declines to call a function is
    `__mh_bundle_header`, which is the bundle header rather than code; the source
    map follows IDA and omits it, which is why the map has 53 entries and not 54.
-2. **The section table arithmetic closes exactly.** `__picsymbol_stub` is 442
-   bytes = 17 × 26; `__const` is 444 bytes and every byte of it is claimed by
-   one of the five tables identified below; `__common` is 32 bytes and the seven
-   globals account for all 32; `__bss` is 131124 bytes and the two 65536-byte
-   conversion tables plus 52 bytes of scalars account for all of it. Nothing is
-   left over anywhere.
+2. **The section table arithmetic closes all but 8 bytes.** `__picsymbol_stub`
+   is 442 bytes = 17 × 26; `__const` is 444 bytes, and all but 8 of them are
+   claimed — 360 by the five register tables identified below, 8 by the
+   cursor layer's `Bounds` and 68 by its 17-entry mask table, with 8 zero
+   bytes between those last two attributed to no object; `__common` is 32
+   bytes and the seven globals account for all 32; `__bss` is 131124 bytes and
+   the two 65536-byte conversion tables plus 52 bytes of scalars account for
+   all of it. Only those 8 `__const` bytes are left over anywhere.
 3. **The kernel half is an independent second copy of the same code.** The two
    cursor blitters, the two planar/packed converters, the two plane selectors
    and the palette values exist on both sides of the driver, compiled from what
@@ -2023,7 +2033,16 @@ reference passes `1, 1`, and `IO_WriteThrough` is 1 in `driverTypes.h`'s
 `IOCache` enum. `IOString` is `char[IO_STRING_LENGTH]`, and the 80-byte hole in
 the frame is exactly that buffer.
 
-Two things about it are worth carrying into the rewrite verbatim.
+Three things about it are worth carrying into the rewrite verbatim.
+
+**`task_self()` is a load, not a call.** The reference reads the argument as
+`mov eax, [esi + disp] / mov eax, [eax] / push eax` — a PIC-relative load of
+`__nl_symbol_ptr`'s cell for the data symbol `_task_self_`, dereferenced once,
+with no `call` anywhere near it. That is exactly what the Mach macro
+`task_self()` expands to, so the listing's `task_self()` is correct — but a
+rewrite that instead emitted an actual call to a `task_self()` function would
+produce different bytes with nothing in this document to flag the mismatch
+except this note.
 
 **A defect in the `os_malloc` failure path.** Every other failure prints the
 `IOReturn` it just received. The `os_malloc` one prints `ebx`, which at that
@@ -2152,15 +2171,22 @@ region *larger* than `sizeof(VGAShmem_t)` and accepts anything smaller, precisel
 so that a 2-bit driver need not be handed the 5120-byte 24-bit cursor arm.
 648 < 5192.
 
-**But both blitters write past `cursor.bw.save`.** `save` is
-`unsigned int save[16]`, 64 bytes at `+0x248`. Both `sub_70302BEC` and
-`sub_70302E48` advance the save pointer by 4 bytes once for the left 16-pixel
-column and once for the right one, on every scan line, for up to 16 lines — 32
-words, 128 bytes. The kernel half does exactly the same: `_VGADisplayCursor` at
-`VGA_reloc` 1752 takes `lea eax, [ebx+248h]` and then `add ecx, 4` in both
-branches, including the `shift == 0` branch that advances without writing. So
-this is not an asymmetry between the halves; both were compiled from the same
-arithmetic.
+**The draw blitter writes past `cursor.bw.save`; the erase blitter only reads
+past it.** `save` is `unsigned int save[16]`, 64 bytes at `+0x248`. Both
+`sub_70302BEC` (draw) and `sub_70302E48` (erase) advance the save pointer by 4
+bytes once for the left 16-pixel column and once for the right one, on every
+scan line, for up to 16 lines — 32 words, 128 bytes — but only the draw
+blitter stores into it: it reads the framebuffer and does `mov [edx], edi`
+through the save pointer before advancing it. The erase blitter only consumes
+what is there — `and ecx, [ebx]` / `and edx, [ebx]` then `add ebx, 4` — and
+writes the framebuffer, never `save` itself. Over-read and over-write are
+different defect classes. The kernel half splits the same way:
+`_VGADisplayCursor` (draw) at `VGA_reloc` 1752 takes `lea eax, [ebx+248h]` and
+then `add ecx, 4` in both branches, including the `shift == 0` branch that
+advances without writing, and stores through it; `_VGARemoveCursor` (erase)
+advances the matching pointer and only reads through it. So the write/read
+split is not an asymmetry between the halves — draw writes, erase reads, on
+both sides — and both were compiled from the same arithmetic.
 
 Either `struct bm12Cursor.save` was `[32]` in the header Apple compiled against
 and the checked-in `[16]` is a different revision, or Apple overruns it by 64
@@ -2168,9 +2194,30 @@ bytes. The binary argues for the second: `sub_70301F58`'s `0x240` is
 `sizeof(struct bm12Cursor)` with `save[16]`; with `save[32]` it would be `0x280`.
 Widening `save` would not change `sizeof(VGAShmem_t)` — that is pinned at 5192 by
 the `bm38` arm and by the kernel's compiled-in constant — but it would change the
-648, and that number is in the artifact. **Reproduce the arithmetic as written and
-leave `IOVGAShared.h` alone**; §1.4 puts the header out of scope, and changing it
-would not change either binary.
+648, and that number is in the artifact. A further corroboration: with
+`save[32]`, `sizeof(struct bm12Cursor)` would be `0x280` and the request would be
+`0x2C8`, which is exactly the 128 bytes the blitters actually touch past
+`+0x248` — a `save[32]` header would size the request to cover the real
+footprint precisely. That coincidence does not undercut the rejection above; it
+strengthens it. `sub_70301F58` observably asks for `0x240`/`0x288`, not
+`0x280`/`0x2C8`, so Apple's binary was compiled against `save[16]` and simply
+overruns it, rather than against a wider array this project's header failed to
+capture. **Reproduce the arithmetic as written and leave `IOVGAShared.h`
+alone**; §1.4 puts the header out of scope, and changing it would not change
+either binary.
+
+**What the 64-byte overrun actually hits.** The Window Server's own request is
+exactly `0x288` (648) bytes — `sub_70301F58`'s `0x48 + 0x240` — and `save[16]`
+ends at exactly that offset, `0x248 + 0x40 = 0x288`. The blitters' 128-byte
+touch runs from `0x248` to `0x2C8`, so the excess 64 bytes, `0x288`–`0x2C8`,
+land past the end of the shared-memory region the driver itself asked for and
+past what `-[IOVGADisplay _registerWithED]` memsets to zero on registration. It
+does **not** land in the union's unused `bm18`/`bm34`/`bm38` padding: that
+padding only exists in a `VGAShmem_t` allocated at its full 5192-byte size, and
+this driver's registered block is 648 bytes, not 5192. Whatever the event
+driver placed in memory immediately after this screen's 648-byte block is what
+actually gets touched — a fact the rewrite has to carry forward rather than
+paper over by assuming the union's other arms absorb it.
 
 This is recorded as an addition to the Shared contract's §1, which says that
 `saveRect` and `cursor.bw.save[16]` are a shared scratch pair but does not say how
@@ -2868,9 +2915,12 @@ It saves and restores the map mask but never changes it, so the fill goes to
 whatever planes are currently enabled — all four, because `_VGAStart` calls it
 right after `VGASetStdRegs(5)` leaves SEQ[2] at `0x0F`. The save/restore is
 vestigial. 320 × 200 × 2 = 128000 bytes, which overruns the 64 KB the name
-promises; the excess lands past the aperture and is discarded by the hardware.
-Called once, with 0, and that is what clears planes 2 and 3 for good — nothing in
-this driver ever writes them again.
+promises, but not the mapping: `_VGAStart`'s `_IOMapEISADeviceMemory` call maps
+128 KB (`0x20000`) at `0xA0000`, and the whole 128000-byte write stays inside
+it, so nothing faults. The excess 62464 bytes spill into the `0xB0000` window
+of that same mapping rather than being discarded by the hardware or landing in
+planar VGA memory beyond it. Called once, with 0, and that is what clears
+planes 2 and 3 for good — nothing in this driver ever writes them again.
 
 **32. `_vga_at_mode12_bpp2_to_bpp4` — 1882206864 (`0x70303290`), 932 bytes.**
 
@@ -3037,10 +3087,13 @@ the 80×25 text mode. `mode < 0` is not checked and would read before the tables
 only `> 5` returns the error, and the error value is 1, not an `IOReturn`.
 
 The remaining 84 bytes of `__const`, `0x70303E44`–`0x70303E97`, are the cursor
-layer's: the 16×16 `Bounds` `{0, 16, 0, 16}` at `0x70303E44` used by
-`_VGASetCursor` (finding 18) and the 17-entry left-edge mask table at
-`0x70303E54` used by `sub_70302E48` (finding 26). Every byte of `__const` is
-accounted for.
+layer's: the 16×16 `Bounds` `{0, 16, 0, 16}` at `0x70303E44` (8 bytes) used by
+`_VGASetCursor` (finding 18), then 8 zero bytes at `0x70303E4C`–`0x70303E53`
+attributed to no object, then the 17-entry left-edge mask table at
+`0x70303E54` used by `sub_70302E48` (finding 26). Not every byte of `__const`
+is accounted for — those 8 bytes are the one gap; what *is* claimed is the
+five register tables above plus these two cursor objects, `Bounds` and the
+mask table, as the closing summary below states.
 
 **37–53. The seventeen PIC symbol stubs — 1882209417 (`0x70303C89`) through
 1882209833 (`0x70303E29`), 14 bytes each as IDA names them, 26 bytes each in

@@ -1482,20 +1482,22 @@ ToCardAddress:(unsigned int)cardAddr
         [device freeString:serverName];
     }
 
-    if (classesLoaded == 0) {
-        if (kernDevice != nil) {
-            [kernDevice free];
-        }
-        if (pcmciaDesc != nil) {
-            [pcmciaDesc free];
-        }
-        if (_verbose == YES) {
-            IOLog("PKB: no classes loaded, returning no\n");
-        }
-        return NO;
+    /* The reference returns here and lets the no-classes case fall
+     * through, rather than wrapping it in an if. */
+    if (classesLoaded != 0) {
+        return YES;
     }
 
-    return YES;
+    if (kernDevice != nil) {
+        [kernDevice free];
+    }
+    if (pcmciaDesc != nil) {
+        [pcmciaDesc free];
+    }
+    if (_verbose == YES) {
+        IOLog("PKB: no classes loaded, returning no\n");
+    }
+    return NO;
 
 cleanup_and_fail:
     /* Every failure path logs this, not just the one that allocates

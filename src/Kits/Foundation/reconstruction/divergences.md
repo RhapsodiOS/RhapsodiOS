@@ -323,3 +323,390 @@ binrecon check that every external `__TEXT,__text` symbol is claimed by
 some module's `text_symbols` would catch this class in each of the nine
 remaining stages, rather than relying on a reviewer noticing it by hand
 as happened here.
+
+## Stage 2a — `NSZone.m`, `NSObject.m`, `NSProxy.m`, `NSAutoreleasePool.m`, `NSPrivate.m` (object core)
+
+Companion artifacts for this stage: `object-core/source-map.json` (193/193
+reference functions mapped, 0 unmapped, 0 duplicate candidates, 0 boundary
+disputes) and `object-core/ledger.json` (193 entries, all reviewed). Five
+modules, 193 functions: `NSZone.m` (25 C functions), `NSObject.m` (37
+instance + 47 class methods, plus `_NSZombie`'s 9 instance methods = 93),
+`NSProxy.m` (27 instance + 20 class = 47), `NSAutoreleasePool.m` (8 instance
++ 15 class = 23) and `NSPrivate.m` (`_NSAutoreleasedMallocMemory`, 4
+instance + 1 class = 5).
+
+### Gate 1 — `abi-check`: 4 of 5 divergences fixed at the source; 1 residual, disclosed
+
+`--abi-dir` contains stage 1's three documents as well as stage 2a's five;
+`abi-check` reports any module with no `--built` object as a divergence, so
+the five 2a ABI documents (`NSObject.json`, `NSProxy.json`,
+`NSAutoreleasePool.json`, `NSPrivate.json`, `NSZone.json`) were copied to a
+scratch directory outside the repo and `--abi-dir` pointed there, rather
+than also passing stage 1's three objects.
+
+The first run against the five freshly-built i386 objects reported five
+divergences, all "unexpected exported symbol": `_NSAutoreleaseObject`,
+`__NSPushAutoreleasePool` and `__NSPopAutoreleasePool` in
+`NSAutoreleasePool.m`, and `__NSZombieClassForClass` and
+`__NSOriginalClassForZombieClass` in `NSZone.m`. None of the five 2a ABI
+documents' `text_symbols` lists these — they were never part of stage 2a's
+193-function scope (Task 3's scope draws only from header-declared C
+functions plus the 25 explicitly-added `NSZone.m` functions), so
+`abi-check`'s "local symbols are ours to choose, external ones must match
+the evidence" rule (`abi_check.py`'s own comment) correctly flagged all
+five as unaccounted-for exported surface.
+
+Four were fixed at the source, all confirmed safe by checking every call
+site first:
+
+- **`_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`** (`NSAutoreleasePool.m`)
+  are called only from within that same file (`-initWithCapacity:`,
+  `-release`, `+releaseAllPools`) — made `static`. No behavioural change.
+- **`_NSZombieClassForClass`** (`NSZone.m`) is called only from within that
+  same file (`NSDeallocateObject`) — made `static`. No behavioural change.
+- **`_NSOriginalClassForZombieClass`** (`NSZone.m`/`NSObject.m`) was a
+  reverse `zombieClass -> originalClass` lookup existing solely so
+  `NSObject.m`'s `_NSZombie` diagnostic could recover the original class's
+  name — but that name is already encoded in the zombie class's own
+  `"NSZombie_<originalClass>"` name string (set by
+  `_NSZombieClassForClass` itself), so the whole reverse-lookup function
+  was redundant. Removed; `NSObject.m`'s `logMessageAndRaise` now strips
+  the fixed `"NSZombie_"` prefix off `self->isa->name` directly, with the
+  same observable diagnostic text as before. This also let a genuine
+  pre-existing bug surface and get fixed (see below): `NSDebug.m` still
+  had TODO-stub bodies for 11 of `NSAutoreleasePool`'s 15 class methods
+  (`NSAutoreleasePoolDebugging`, declared in `NSDebug.h`), which is a real
+  duplicate-`@implementation`-`NSAutoreleasePool` hazard now that
+  `NSAutoreleasePool.m` implements them for real — confirmed by
+  `abi/NSAutoreleasePool.json` listing all 15 class methods directly under
+  the class (no separate category), matching the reference's own
+  `__OBJC,__module_info`, so `NSAutoreleasePool.m` is where the real
+  implementation belongs and now lives. `NSDebug.m`'s stub block was
+  removed (Makefile already listed `NSDebug.m`; no registration change
+  needed). This is the same class of "attribute-by-declaring-header
+  overridden by the reference's actual module placement" divergence
+  `NSZone.m` itself already represents (see below) — not new. The new
+  prefix-stripping logic in `NSObject.m`'s `logMessageAndRaise` is not
+  exercised by any test — neither zombie test in `test_object.m` actually
+  sends a message to a zombie object (both only inspect `object->isa` and
+  `zombieClass->name` directly), so this diagnostic path was already
+  untested before this change and remains so after it; see the
+  untested-methods table below.
+
+One divergence remains and could not be fixed without sacrificing
+confirmed reference behaviour: **`_NSAutoreleaseObject`, defined in
+`NSAutoreleasePool.m`, is genuinely called directly (`call
+_NSAutoreleaseObject`, not `objc_msgSend`) from `-[NSObject autorelease]`
+and `-[NSProxy autorelease]`**, confirmed straight from the reference's
+disassembly (`-[NSObject autorelease]` at `0x42503fd8`: `call
+_NSAutoreleaseObject` at `0x42503fd8+8`, resolved via the analysis JSON's
+own `calls` list, not inferred). Because it is called across three
+translation units, it cannot be made `static` without breaking that
+call — and duplicating its body privately in each file would fabricate a
+divergence (multiple copies) that the reference does not have, worse than
+the one `abi-check` already reports. No header declares
+`_NSAutoreleaseObject` (confirmed: absent from every `src/Kits/Foundation/
+*.h`), so it is invisible to `attach_symbols`' header-only attribution and
+was never captured in any of the five 2a ABI documents — this is the same
+class of gap Task 2's `symbol-audit` already flagged programme-wide (146
+`__NS`-prefixed private exports no header declares), just the first
+concrete instance stage 2a's own reconstruction needed to actually define
+rather than merely observe as unclaimed. **Gate 1 does not report a clean
+`ABI matches`; the honest final state is 1 residual, disclosed
+divergence, not 0.**
+
+### Gate 2 — test suites: PASS, no divergence
+
+All five suites report `PASSED: 0 failure(s)` on the guest against the
+current tree (including the `-addObject:` fix and the zombie-lookup
+simplification above): `test_zone`, `test_refcount`, `test_object`,
+`test_proxy`, `test_pool`.
+
+### The `-addObject:` bookkeeping divergence: closed
+
+Task 10 left `-[NSAutoreleasePool addObject:]` (the instance method)
+bypassing `NSAutoreleaseObject` entirely, appending straight to the
+target pool's own frame. The reference (`0x425732d8`) calls
+`_NSAutoreleaseObject` *first* — recording the object against the
+**innermost** pool and incrementing the global autoreleased-object
+counter — then re-homes it into the target pool's slot by shifting every
+more-deeply-nested frame along a shared per-thread buffer. Task 10's
+version skipped the counter bump entirely, so `[somePool addObject:obj]`
+followed by `[NSAutoreleasePool totalAutoreleasedObjects]` returned one
+less than the reference would.
+
+Closed this task: `-[NSAutoreleasePool addObject:]` now calls
+`NSAutoreleaseObject(anObject)` first (bumping the counter and recording
+against the innermost frame, exactly as the reference does), then — if
+`self`'s own frame differs from the innermost one — removes the tail
+entry from the innermost frame and appends it to `self`'s frame instead,
+reproducing the reference's externally observable "record against
+innermost first, then re-home into the target pool" contract without its
+buffer-shifting internals. All five suites still pass after this change.
+No test in this stage calls the instance method (still true after this
+fix — see the untested-methods table below), so the fix is verified by
+code inspection against the disassembly and by the five suites continuing
+to pass, not by a new assertion.
+
+### Gate 3 — `compare`/ledger: evidence only, not a pass/fail gate
+
+Same structural outcome as stage 1, now confirmed at 193-function scale.
+The rebuilt object was produced by compiling the five modules to i386
+objects (`cc -c -arch i386`, the same objects used for Gate 1) and
+combining them with `ld -r -arch i386` into one 55,176-byte relocatable
+object (249 functions once internal statics and PIC stub thunks are
+counted — the same "extra" pattern stage 1 observed, `75` for its `43`).
+`compare --require normalized-functions`: `code=442 relocation=1
+symbol-string-order=0 layout=32 padding=1 metadata=2004`; every one of
+the 442 function-level findings is `missing-reference-function` (249,
+covering all of the rebuilt object's own functions) or
+`missing-rebuilt-function` (193, covering all of the reference's
+scoped functions) — 0 functions were positionally correlated. This is
+`compare`'s positional `(section, occurrence, byte start/end)` matcher
+failing to correlate a 5-file excerpt rebuild against the reference's
+profile-guided scattered layout across an 80-module dylib, exactly as
+stage 1 diagnosed and predicted would recur — not a behavioural or
+instruction-level divergence in any of the 193 functions themselves.
+
+**Ledger disposition: all 193 entries, `intentional-mismatch`.**
+`object-core/ledger.json` records one status per reference function
+(matching the 193 functions in `analysis-reference-ida.json`, not the 249
+in the rebuilt object). Every entry carries the same reviewer-recorded
+reason: `compare`'s positional matcher cannot correlate a scattered-
+extraction rebuild, so the missing-rebuilt/missing-reference status is a
+structural artifact of the extraction, not a real divergence; Gate 1 and
+Gate 2 are this stage's actual correctness evidence, and
+`source-map.json`'s 193/193 mapped, 0 unmapped confirms every reference
+function has a source counterpart. All 193 were transitioned `unexamined`
+-> `signature-confirmed` -> `intentional-mismatch` via `binrecon ledger`,
+reviewer "Task 11 report pass". No entry required a `real, fix it`
+disposition.
+
+**Seeding note (tooling, not a code divergence):** an unscoped
+`analyze --ledger` run against the full 1,630,488-byte reference (needed
+to seed 193 `unexamined` ledger entries from a fresh comparison) exceeds
+the IDA adapter's 64 MiB output cap (68,085,924 bytes observed, rejected)
+— the same cap Task 3 of this stage already measured as dominated by
+fixed per-run overhead, not scoped-function count. Worked around by
+reusing stage 2a's own `analysis_scope` (the 193 committed ranges) plus
+one extra `{0, 65536}` range covering the rebuilt object's own (much
+lower, near-zero-based) address space, in a scratch profile never
+committed to the repo. Not a code or evidence divergence; a tooling
+scaling note for stages 3-5, whose modules (88 and 127 functions) will
+hit the same cap on any unscoped ledger-seeding attempt.
+
+### The measured ledger review cost
+
+Measured wall-clock from the seeded ledger's 193 `unexamined` entries to
+every one carrying its final `intentional-mismatch` status, via 386
+separate `binrecon ledger` invocations (two per entry: the mandatory
+`unexamined` -> `signature-confirmed` step, then ->
+`intentional-mismatch`): **189 seconds for 193 entries, ≈0.98 s/entry
+(≈0.49 s/invocation, 386 invocations).**
+
+As stage 1 noted and this stage confirms at more than 4x the scale: this
+number is not a per-function analysis rate. Every entry shares one
+disposition (diagnosed once, in "Gate 3" above), so the measured time is
+almost entirely `binrecon ledger` CLI process-startup overhead — 386
+separate Python-venv-import invocations. At 193 entries this stage now
+has the first genuinely usable comparison point against stage 1's
+43-entry, 217-second/86-invocation figure (≈5.0 s/entry, ≈2.52
+s/invocation there): **≈5x faster per invocation this run** (0.49 s vs
+2.52 s), which is almost certainly warm-filesystem/venv-import caching
+from this session's many prior `binrecon` invocations rather than a real
+"cost falls as scale grows" trend — the two measurements ran in different
+sessions on the same machine, not a controlled comparison, so stages 3-5
+should not extrapolate a specific per-invocation constant from either
+number. The comparison that *does* generalize: both stages' costs were
+dominated by CLI startup, not analysis time, because both stages'
+`compare` runs produced one shared disposition rather than genuinely
+distinct per-function judgements. What stages 3-5 (88 and 127
+functions) actually need to plan for remains upstream of the ledger CLI:
+confirm early whether their rebuild will hit the same positional-match
+failure (if so, skip budgeting per-function diff-reading time for Gate 3
+entirely, as both stage 1 and this stage did), and reserve real
+independent-review time only for functions that need it on the
+drvPCFloppy-style basis stage 1's own report already established (69 of
+222 functions there needed real, independent written analysis).
+
+### `NSZone.m`: 25 C functions in a module the reference does not have
+
+All 25 zone/allocation/refcount C functions (page allocation, zone
+allocation, and the retain-count side table) live in `NSZone.m` — a
+module the reference's `__OBJC,__module_info` does not have (it names 80
+units in the full binary, none of them `NSZone.m`; these 25 functions sit
+scattered across other modules' address ranges in the reference, the same
+"scattered extraction" pattern Gate 3 measures for every function in this
+stage). Seven of the 25
+(`NSAllocateObject`, `NSDeallocateObject`, `NSCopyObject`,
+`NSShouldRetainWithZone`, `NSIncrementExtraRefCount`,
+`NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`) are declared in
+`NSObject.h`, not a `NSZone.h` this tree has — spec §2.1's reasoning
+applies: attributing a C function by its declaring header is the
+project's default rule, but grouping all 25 zone/allocation/refcount
+functions into one new file mirrors how the reference's own memory
+layout keeps them address-adjacent and behaviourally coupled (the page
+allocator, the zone allocator built on it, and the retain-count table
+that zone-allocates its own storage), and avoids scattering 18
+header-undeclared private functions with no natural header home across
+existing files. **A divergence in file organisation only — symbols,
+linkage (except the one Gate 1 residual above) and behaviour are
+unchanged**, confirmed by Gate 1 matching all 25 of `NSZone.m`'s own ABI
+document exactly and Gate 2's suites exercising them successfully.
+
+### `NSPrivate.m`: the programme's first new source file
+
+`_NSAutoreleasedMallocMemory`'s implementation (4 instance + 1 class
+method) lives in `src/Kits/Foundation/NSPrivate.m` — a file the tree did
+not have before Task 10, because the original stub-generation pass only
+created a `.m` file per **public** header, and `_NSAutoreleasedMallocMemory`
+has none. Registered in the `Makefile`'s `CLASSES` list, between
+`NSPortNameServer.m` and `NSProcessInfo.m`, preserving the existing
+grouping and trailing-backslash continuations; no `HFILES`/
+`PUBLIC_HEADERS` entry, since there is no header.
+
+### The `binrecon symbol-audit` inventory (Task 2, programme-level)
+
+373 exported C functions in the reference binary were claimed by no
+module before this stage; assigning `NSZone.m`'s 25 dropped that to 348 —
+confirmed exactly by Task 2/Task 3's cross-check. 348 is still roughly
+half of Foundation's 736 total C functions. 146 of the 348 are
+`__NS`-prefixed private exports declared in no header at all, so the
+project's attribute-by-declaring-header rule can never claim them
+regardless of which stage runs — `_NSAutoreleaseObject`, the one residual
+Gate 1 finding above, is a concrete instance of exactly this bucket, not
+a new discovery: Task 2 already predicted stages would run into
+undeclared private exports they must actually *implement* (not merely
+list as unclaimed), and this stage is the first time that happened. The
+remaining clusters map to specific future stages (`NSSimple`/`NSUnicode`
+for stage 3 strings, `NSHash`/`NSMap` for stage 4 collections, etc., per
+Task 2's own breakdown) — this remains a programme-level finding, not
+resolved by any single stage.
+
+### Substitutions for unreconstructed machinery
+
+- The retain-count overflow store (`NSZone.m`'s `ExtraRefCountOverflow*`)
+  and the zombie class table (`NSZone.m`'s `zombieClasses` array) use
+  private linear-scan arrays rather than `NSMapTable`, because
+  `NSMapTable.m` is stage 4's territory.
+- `_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`/`NSAutoreleaseObject`
+  (`NSAutoreleasePool.m`) and `_NSAutoreleasedMallocMemory`'s cache
+  (`NSPrivate.m`) use process-global single-threaded equivalents rather
+  than the reference's per-thread storage, because `NSThread.m` is not
+  reconstructed yet.
+- `NSDefaultMallocZone`'s cache self-initialises on first call rather
+  than being set up by a platform bootstrap routine.
+- `NSZoneName`/`NSSetZoneName` (`NSZone.m`) use a private zone-to-name
+  table rather than the undocumented `NXZone` field the reference
+  apparently uses (not confirmed from the disassembly at this stage's
+  scope).
+
+Every one of these is single-threaded, matching every other substitution
+in this stage (`NSZone.m`'s own lock is skipped; `_NSInitializePlatform`
+no-ops) — no test in this stage runs threaded, so none of these are
+exercised concurrently.
+
+### Two genuinely unrecoverable strings (contrast with Task 7's false claim)
+
+`+[NSObject new]`/`+[NSObject debugDescription]` and
+`-[NSProxy description]` reference `__message_refs` cells resolving to
+addresses around `0x4140xxxx` (`0x414067cc`/`0x41406990` for the two
+`NSObject` selectors, `0x414067b4` for `NSProxy`'s) — far below this
+slice's own `0x42500000` base, meaning they resolve into a *different*,
+out-of-slice prebound image this stage has no access to. These are
+**genuinely** unrecoverable: confirmed by the addresses falling outside
+every range this slice's `relocations`/`symbols` tables cover, not merely
+asserted. Contrast with Task 7's *false* unrecoverability claim for three
+other strings (`-description`, `doesNotRecognizeSelector:`, `forward::`),
+where the real text sat verbatim in the analysis JSON's `strings` array
+the whole time and invented placeholder text was committed before a
+reviewer caught it (corrected in `612a7fe1`) — the lesson recorded there
+("grep the analysis JSON before accepting a negative claim") is why these
+two were checked and confirmed absent before being accepted as
+unrecoverable here.
+
+### Runtime facts carried forward for later stages
+
+- A root class must implement `+initialize`, or the Objective-C runtime
+  crashes with "Does not recognize selector forward::" the first time
+  any message reaches it — confirmed on the guest's native ppc runtime
+  (Task 1).
+- A root metaclass's `super_class` points back to its own class
+  (`src/objc-1/objc-class.m:708`), which is why
+  `[NSObject isKindOfClass:[NSObject class]]` returns **YES** (the
+  `isa`-chain walk reaches `NSObject` on its second step through the
+  metaclass tie-down) and why `[NSProxy superclass]` sent to the *class
+  object* `NSProxy` returns `NSProxy` itself, not `nil` — `NSProxy` has
+  no class-side `+superclass` override, so the message falls through the
+  same root-metaclass tie-down to the *instance* `-superclass`
+  implementation (`isa->super_class`), which for the metaclass is the
+  class itself. (`-[anInstance superclass]` sent to a real instance still
+  correctly returns `nil`, unaffected by this.)
+- `+[NSProxy initialize]` patches `-[NSProxy forward::]`'s installed IMP
+  to `-[NSObject forward::]`'s, at runtime (`class_getInstanceMethod` on
+  both, then a direct write to `method_imp`, confirmed against
+  `src/objc-1/objc-class.h`'s layout).
+- `NSProxy`'s `-isKindOfClass:`/`-isMemberOfClass:`/
+  `-conformsToProtocol:`/`-respondsToSelector:` all route through a
+  private `NSInvocationBuilder` and `-forwardInvocation:`, not a direct
+  `isa` comparison — so on this stage's reconstruction (matching the
+  reference) they **raise** rather than answering YES/NO. The
+  naive-looking "just return YES" implementation would have passed every
+  test that existed before Task 9 added coverage for this specifically.
+- `-[NSObject autorelease]` and `-[NSProxy autorelease]` both perform a
+  **direct C call** to `_NSAutoreleaseObject`, not an `objc_msgSend` —
+  confirmed from each call site's own `calls` list in the analysis JSON
+  (see Gate 1 above). This is why that one symbol cannot be made
+  `static` without diverging from confirmed reference behaviour.
+
+### Test-expectation corrections (reference is authority; the brief's assumed text was wrong)
+
+Two corrections, both confirmed against the disassembly before the test
+was changed:
+
+1. **`[NSObject isKindOfClass:[NSObject class]]` (Task 8,
+   `test_object.m`).** The brief's assumed expectation was `== NO`
+   ("`NSObject` is not a kind of the abstract notion `[NSObject class]`
+   applied to itself" reads plausible on paper). The reference disagrees:
+   `+isKindOfClass:` walks `self->isa` (the metaclass chain), and a root
+   metaclass's `super_class` points back to its own class (see above), so
+   the walk reaches `NSObject` on its second step. Corrected to
+   `CHECK([NSObject isKindOfClass:[NSObject class]] == YES)`.
+2. **`[NSProxy superclass]` sent to the class object (Task 9,
+   `test_proxy.m`).** The brief's assumed expectation was `== nil`. The
+   reference disagrees for the same root-metaclass-tie-down reason:
+   `NSProxy` has no class-side `+superclass`, so the message falls
+   through to the instance `-superclass` implementation, which for
+   the metaclass returns `NSProxy` itself. Corrected to
+   `CHECK([NSProxy superclass] == [NSProxy class])`, while
+   `CHECK([anActualProxyInstance superclass] == nil)` (a real instance,
+   not the class object) is kept and still passes, since that path is
+   unaffected.
+
+### Every method implemented but not behaviourally tested, and which stage picks it up
+
+| Function/method | Module | Why untested this stage | Picked up by |
+|---|---|---|---|
+| `NSAllocateObject`, `NSDeallocateObject`, `NSCopyObject` (instance `-copy`/`-mutableCopy` path specifically; the class-side `+copy`/`+mutableCopy` identity no-ops ARE tested) | `NSZone.m` | Exercising `-copy`/`NSCopyObject` meaningfully needs a real registered class with instance data to copy | Stage 3+ (whichever stage first needs `-copy` behaviourally) |
+| `description`, `NSSetZoneName`/`NSZoneName` | `NSObject.m`/`NSZone.m` | Need a working `NSString` | Stage 3 |
+| `NSProxy`'s forwarding methods actually forwarding a call (their *raise* paths ARE tested, by Task 9) | `NSProxy.m` | Real forwarding needs `NSInvocation`/`NSMethodSignature` | Stage 2c |
+| `_NSAutoreleasedMallocMemory` (all 5 methods) | `NSPrivate.m` | Only proven to link; no test references it | Whichever stage first needs autoreleased scratch memory |
+| Instance `-[NSAutoreleasePool addObject:]` | `NSAutoreleasePool.m` | No test in this stage calls the instance method (only the class method); the bookkeeping fix above is verified by inspection and by the suites still passing, not a new assertion | Later stage exercising multiple simultaneously-active pools |
+| ~12 of `NSAutoreleasePool`'s 15 class methods (`+autoreleasePoolExists`, `+autoreleasedObjectCount`, `+topAutoreleasePoolCount`, `+poolCountHighWaterMark`/`+setPoolCountHighWaterMark:`, `+poolCountHighWaterResolution`/`+setPoolCountHighWaterResolution:`, `+enableFreedObjectCheck:`, `+enableRelease:`, `+showPools`, `+resetTotalAutoreleasedObjects`, `+totalAutoreleasedObjects`, `+releaseAllPools`) | `NSAutoreleasePool.m` | `test_autoreleasepool.m`'s 5 tests only exercise pool lifecycle, drain ordering and `+addObject:` | Later stage/final review pass |
+| `+[NSObject implementsSelector:]` | `NSObject.m` | Its `_NSIMPForSelector` stub unconditionally aborts (confirmed empirically, exit 134) | Whichever stage reconstructs `_NSIMPForSelector` |
+| `-[NSAutoreleasePool retain]`/`-autorelease`/`-dealloc`'s warning path | `NSAutoreleasePool.m` | All three raise/warn through `_NSMethodExceptionProem`, whose stub unconditionally aborts *before* reaching `link_stubs.m`'s armed raise-capture harness — unlike `NSProxy`'s raise paths, which don't route through that same helper | Whichever stage reconstructs `_NSMethodExceptionProem` for real |
+| `-[NSObject performSelector:withObject:]` etc. with a non-`NULL` selector; `-isProxy`/`-isFault`/`-classForCoder`/`-replacementObjectForCoder:`/`-awakeAfterUsingCoder:` | `NSObject.m` | Trivial one-liners inherited untested from Task 7's review (test gaps, not defects) | Final review pass |
+
+### Task 1's runtime-hosting verdict, carried forward
+
+The design question the whole stage depends on — will the guest's
+Objective-C runtime host a foreign root class not compiled by Apple's own
+toolchain? — is **YES**, proven on the guest's native ppc runtime
+(`PASS: answer=42`), corrected from the brief's own literal framing
+("link an i386 executable"), which is impossible on this guest (no i386
+`crt1.o`/`libcc_dynamic.a`/System framework there at all — confirmed
+again by this task's own object-vs-executable split, see the header of
+this report). Every later stage's test binaries must build **native
+ppc, linked**; only the `abi-check` objects are `-arch i386`, compiled
+and never linked. This split is load-bearing for every remaining stage
+of the whole ten-stage programme, not just 2a.

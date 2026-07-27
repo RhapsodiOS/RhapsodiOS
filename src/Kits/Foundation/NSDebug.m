@@ -4,55 +4,16 @@
 
 #import <Foundation/NSDebug.h>
 
-@implementation NSAutoreleasePool
-
-+ (void)enableRelease:(BOOL)enable {
-    // TODO: Implement this method
-}
-
-+ (void)showPools {
-    // TODO: Implement this method
-}
-
-+ (void)resetTotalAutoreleasedObjects {
-    // TODO: Implement this method
-}
-
-+ (unsigned)totalAutoreleasedObjects {
-    // TODO: Implement this method
-    return 0;
-}
-
-+ (void)enableFreedObjectCheck:(BOOL)enable {
-    // TODO: Implement this method
-}
-
-+ (unsigned int)autoreleasedObjectCount {
-    // TODO: Implement this method
-    return 0;
-}
-
-+ (unsigned int)topAutoreleasePoolCount {
-    // TODO: Implement this method
-    return 0;
-}
-
-+ (unsigned int)poolCountHighWaterMark {
-    // TODO: Implement this method
-    return 0;
-}
-
-+ (void)setPoolCountHighWaterMark:(unsigned int)count {
-    // TODO: Implement this method
-}
-
-+ (unsigned int)poolCountHighWaterResolution {
-    // TODO: Implement this method
-    return 0;
-}
-
-+ (void)setPoolCountHighWaterResolution:(unsigned int)res {
-    // TODO: Implement this method
-}
-
-@end
+/*  NSDebug.h declares the (NSAutoreleasePoolDebugging) category on
+    NSAutoreleasePool, which is why the stub generator originally placed
+    an @implementation here.  The reference binary's own __OBJC,
+    __module_info places these 11 methods in the SAME module as the rest
+    of NSAutoreleasePool's class methods, not in a module of their own
+    (confirmed by stage 2a's committed abi/NSAutoreleasePool.json, which
+    lists all 15 class methods -- including these 11 -- directly under
+    the class, with no separate category entry) -- so the real
+    implementation belongs, and now lives, in NSAutoreleasePool.m, not
+    here.  Removed to avoid two translation units defining the same
+    @implementation NSAutoreleasePool selectors (this file's stub bodies
+    were a real duplicate-definition hazard once NSAutoreleasePool.m
+    implemented them for real; see divergences.md).  */

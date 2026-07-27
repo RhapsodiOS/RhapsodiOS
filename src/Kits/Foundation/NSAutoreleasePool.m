@@ -106,8 +106,10 @@ NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
 	-initWithCapacity: stores in _token.  `capacity` is the new frame's
 	initial array size: the reference reads it the same way
 	-initWithCapacity: itself does, the documented meaning of that
-	method's argument (an initial-size hint, not a hard limit).  */
-void *
+	method's argument (an initial-size hint, not a hard limit).  Static:
+	only -initWithCapacity: below calls this, unlike NSAutoreleaseObject,
+	which genuinely is a cross-file entry point (see its own comment).  */
+static void *
 _NSPushAutoreleasePool(unsigned capacity)
 {
     NSAutoreleasePoolFrame *frame;
@@ -134,8 +136,9 @@ _NSPushAutoreleasePool(unsigned capacity)
 
 /*	Drains every pool from the innermost down to (and including) the one
 	`token` identifies -- covering the case where an inner pool was
-	created but never itself released before its enclosing pool is.  */
-void
+	created but never itself released before its enclosing pool is.
+	Static: only +releaseAllPools and -release (below) call this.  */
+static void
 _NSPopAutoreleasePool(void *token)
 {
     while (poolStackCount > 0) {
@@ -153,7 +156,16 @@ _NSPopAutoreleasePool(void *token)
 	stage's published analysis scope at this call, so its behaviour for
 	that case is not confirmed; no test in this stage autoreleases
 	without an active pool, so the object is simply not tracked here --
-	documented, not exercised.  */
+	documented, not exercised.
+
+	Deliberately NOT static, unlike _NSPushAutoreleasePool/
+	_NSPopAutoreleasePool above: -[NSObject autorelease] and
+	-[NSProxy autorelease] both call this symbol directly (extern
+	declarations in NSObject.m/NSProxy.m), confirmed from each site's own
+	disassembly (a real `call` to this exact exported name, not
+	objc_msgSend) -- the same cross-file relationship the reference
+	itself has, just not one this stage's ABI baseline captured, since
+	no header declares it (see divergences.md).  */
 void
 NSAutoreleaseObject(id anObject)
 {
@@ -295,17 +307,34 @@ NSAutoreleaseObject(id anObject)
 /*  Inserts `anObject` into *this* pool's own frame, whichever pool that
     is -- distinct from the class method above, which always targets the
     innermost active pool.  The reference (0x425732d8) does this by
-    shifting every frame nested inside this one along a shared per-thread
-    buffer (out-of-scope internals, see the block comment above);
-    reconstructed here as a direct append to this pool's own array,
-    preserving the externally observable difference from +addObject:
+    calling _NSAutoreleaseObject first (recording the object against the
+    innermost pool and incrementing the global autoreleased-object
+    counter), then re-homing it into this pool's slot by shifting every
+    frame nested inside this one along a shared per-thread buffer
+    (out-of-scope internals, see the block comment above).  Reconstructed
+    here as calling NSAutoreleaseObject() first, for the same counter
+    side effect, then moving the object from the innermost frame to this
+    pool's own frame when the two differ -- preserving both the counter
+    bump and the externally observable difference from +addObject:
     (which pool ends up holding the object) without the reference's
     buffer-sharing mechanics.  */
 - (void)addObject:(id)anObject {
     NSAutoreleasePoolFrame *frame = (NSAutoreleasePoolFrame *)_token;
+    NSAutoreleasePoolFrame *innermost;
 
-    if (anObject != 0 && frame != 0)
+    if (anObject == 0 || frame == 0)
+        return;
+
+    NSAutoreleaseObject(anObject);
+
+    if (poolStackCount == 0)
+        return;
+
+    innermost = poolStack[poolStackCount - 1];
+    if (innermost != frame) {
+        innermost->count--;
         NSAutoreleasePoolFrameAppend(frame, anObject);
+    }
 }
 
 @end

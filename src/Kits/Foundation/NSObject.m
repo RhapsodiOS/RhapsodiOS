@@ -523,13 +523,15 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
     is linked into every stage-2a test binary, while this file (NSObject.m)
     is linked only into ones that need NSObject itself, and
     NSDeallocateObject -- the only place that creates a zombie class --
-    already lives in NSZone.m.  _NSOriginalClassForZombieClass is the one
-    accessor this file needs back, for the diagnostic message's class name.  */
+    already lives in NSZone.m.  This file needs no accessor back into that
+    table for the diagnostic message below: the original class's name is
+    already encoded in the zombie class's own "NSZombie_<originalClass>"
+    name (set by NSZone.m's _NSZombieClassForClass), so stripping that
+    fixed prefix recovers it directly, with no second table direction or
+    cross-file lookup function needed.  */
 
 @interface _NSZombie : NSProxy
 @end
-
-extern Class _NSOriginalClassForZombieClass(Class zombieClass);
 
 /*  The common trap every _NSZombie method below falls into.  Reconstructed
     directly from the reference's disassembly at 0x42575890 (a local
@@ -549,12 +551,19 @@ extern Class _NSOriginalClassForZombieClass(Class zombieClass);
 static void
 logMessageAndRaise(SEL erroringSelector, SEL cmd, id self)
 {
-    Class originalClass = _NSOriginalClassForZombieClass(self->isa);
+    static const char *zombiePrefix = "NSZombie_";
+    const char *zombieName = self->isa->name;
+    const char *originalName = zombieName;
     NSString *stack = NSStringFromStack(@"0x%x", @" ");
-    NSString *message = [NSString stringWithFormat:
+    NSString *message;
+
+    if (strncmp(zombieName, zombiePrefix, strlen(zombiePrefix)) == 0)
+        originalName = zombieName + strlen(zombiePrefix);
+
+    message = [NSString stringWithFormat:
         @"*** Selector '%s' sent to dealloced instance 0x%x of class %s.\n"
         @"Break at '-[_NSZombie %s]' to debug. Stack=%@",
-        erroringSelector, self, originalClass->name, cmd, stack];
+        erroringSelector, self, originalName, cmd, stack];
 
     NSLog(@"*** %@", message);
     [[NSException exceptionWithName:NSGenericException reason:message userInfo:nil] raise];

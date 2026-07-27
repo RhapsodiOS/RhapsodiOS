@@ -336,17 +336,22 @@ NSAllocateObject(Class aClass, unsigned extraBytes, NSZone *zone)
 	zombie-class lookup in a real NSMapTable (classToZombie, backed by
 	NSCreateMapTableWithZone/NSMapGet/NSMapInsert); NSMapTable.m in this
 	tree is still unimplemented stubs and out of this task's file list,
-	so this reconstruction substitutes a private table for both
-	directions of that lookup -- the same substitution this file's own
+	so this reconstruction substitutes a private table for the forward
+	direction of that lookup -- the same substitution this file's own
 	ExtraRefCountTable already makes for NSMapTable's overflow case, for
 	the identical reason.  The table lives here (not in NSObject.m,
 	alongside _NSZombie itself) because NSZone.m is linked into every
 	stage-2a test binary, while NSObject.m is linked only into the ones
 	that need NSObject; _NSZombieClassForClass looks up _NSZombie by
 	name (objc_getClass), not by compile-time reference, so this file
-	has no link-time dependency on NSObject.m being present.
-	_NSOriginalClassForZombieClass is NSObject.m's own reverse-lookup
-	accessor, for the diagnostic message's class name.  */
+	has no link-time dependency on NSObject.m being present.  Static:
+	unlike the reference's real classToZombie, nothing outside this file
+	needs the forward direction either -- NSObject.m's diagnostic message
+	(the only other consumer of this table's information) reads the
+	original class name straight off the zombie class's own
+	"NSZombie_<originalClass>" name string instead of asking this file
+	for a reverse lookup, so no second table direction or exported
+	accessor is needed for that either.  */
 
 typedef struct {
     Class originalClass;
@@ -388,7 +393,7 @@ NSRecordZombieClass(Class originalClass, Class zombieClass)
     let a lookup on one pollute the other), sets a new
     "NSZombie_<originalClass>" name shared by both, and registers the
     result with objc_addClass.  */
-Class
+static Class
 _NSZombieClassForClass(Class originalClass)
 {
     Class zombieClass;
@@ -421,18 +426,6 @@ _NSZombieClassForClass(Class originalClass)
     NSRecordZombieClass(originalClass, zombieClass);
 
     return zombieClass;
-}
-
-/*  Reverse lookup for _NSZombie's diagnostic message (NSObject.m).  */
-Class
-_NSOriginalClassForZombieClass(Class zombieClass)
-{
-    unsigned index;
-
-    for (index = 0; index < zombieClassCount; index++)
-        if (zombieClasses[index].zombieClass == zombieClass)
-            return zombieClasses[index].originalClass;
-    return Nil;
 }
 
 void

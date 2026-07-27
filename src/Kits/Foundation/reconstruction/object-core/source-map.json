@@ -1,0 +1,1778 @@
+{
+  "boundary_disputed": [],
+  "by_module": {
+    "NSAutoreleasePool.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 23,
+      "unmapped": 0
+    },
+    "NSObject.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 93,
+      "unmapped": 0
+    },
+    "NSPrivate.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 5,
+      "unmapped": 0
+    },
+    "NSProxy.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 47,
+      "unmapped": 0
+    },
+    "NSZone.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 25,
+      "unmapped": 0
+    }
+  },
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1112544016,
+      "reference_names": [
+        "_NSPageSize"
+      ],
+      "size": 21,
+      "source_line": 213,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112546792,
+      "reference_names": [
+        "_NSZoneFromPointer"
+      ],
+      "size": 16,
+      "source_line": 136,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112549852,
+      "reference_names": [
+        "_NSDeallocateObject"
+      ],
+      "size": 520,
+      "source_line": 432,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112550372,
+      "reference_names": [
+        "-[NSObject dealloc]"
+      ],
+      "size": 16,
+      "source_line": 453,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112550696,
+      "reference_names": [
+        "_NSAllocateObject"
+      ],
+      "size": 84,
+      "source_line": 311,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112551884,
+      "reference_names": [
+        "-[NSObject isKindOfClass:]"
+      ],
+      "size": 45,
+      "source_line": 329,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112553532,
+      "reference_names": [
+        "_NSShouldRetainWithZone"
+      ],
+      "size": 58,
+      "source_line": 473,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112554164,
+      "reference_names": [
+        "+[NSObject class]"
+      ],
+      "size": 10,
+      "source_line": 96,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112554844,
+      "reference_names": [
+        "-[NSObject zone]"
+      ],
+      "size": 28,
+      "source_line": 457,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112554872,
+      "reference_names": [
+        "_NSDefaultMallocZone"
+      ],
+      "size": 19,
+      "source_line": 58,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112555480,
+      "reference_names": [
+        "-[NSObject autorelease]"
+      ],
+      "size": 22,
+      "source_line": 448,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112555504,
+      "reference_names": [
+        "-[NSObject class]"
+      ],
+      "size": 12,
+      "source_line": 321,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112555516,
+      "reference_names": [
+        "-[NSObject respondsToSelector:]"
+      ],
+      "size": 25,
+      "source_line": 342,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112555920,
+      "reference_names": [
+        "-[NSObject release]"
+      ],
+      "size": 49,
+      "source_line": 439,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112556248,
+      "reference_names": [
+        "_NSZoneMalloc"
+      ],
+      "size": 78,
+      "source_line": 144,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112557276,
+      "reference_names": [
+        "-[NSObject hash]"
+      ],
+      "size": 13,
+      "source_line": 315,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112557700,
+      "reference_names": [
+        "-[NSObject retain]"
+      ],
+      "size": 22,
+      "source_line": 434,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112559536,
+      "reference_names": [
+        "_NSZoneFree"
+      ],
+      "size": 71,
+      "source_line": 199,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112560132,
+      "reference_names": [
+        "_NSDecrementExtraRefCountWasZero"
+      ],
+      "size": 480,
+      "source_line": 762,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112561268,
+      "reference_names": [
+        "-[NSObject init]"
+      ],
+      "size": 10,
+      "source_line": 430,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112565880,
+      "reference_names": [
+        "_NSIncrementExtraRefCount"
+      ],
+      "size": 612,
+      "source_line": 711,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112566492,
+      "reference_names": [
+        "+[NSObject allocWithZone:]"
+      ],
+      "size": 22,
+      "source_line": 71,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112577032,
+      "reference_names": [
+        "-[NSObject isProxy]"
+      ],
+      "size": 9,
+      "source_line": 465,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112586628,
+      "reference_names": [
+        "-[NSObject awakeAfterUsingCoder:]"
+      ],
+      "size": 10,
+      "source_line": 491,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112586880,
+      "reference_names": [
+        "-[NSObject isFault]"
+      ],
+      "size": 9,
+      "source_line": 469,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112593476,
+      "reference_names": [
+        "-[NSObject isEqual:]"
+      ],
+      "size": 21,
+      "source_line": 311,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112593836,
+      "reference_names": [
+        "-[NSAutoreleasePool init]"
+      ],
+      "size": 31,
+      "source_line": 263,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1112593868,
+      "reference_names": [
+        "-[NSAutoreleasePool initWithCapacity:]"
+      ],
+      "size": 123,
+      "source_line": 267,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1112593992,
+      "reference_names": [
+        "-[NSAutoreleasePool release]"
+      ],
+      "size": 19,
+      "source_line": 272,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1112601948,
+      "reference_names": [
+        "_NSZoneRealloc"
+      ],
+      "size": 83,
+      "source_line": 183,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112615048,
+      "reference_names": [
+        "+[NSAutoreleasePool allocWithZone:]"
+      ],
+      "size": 243,
+      "source_line": 187,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1112620552,
+      "reference_names": [
+        "-[NSObject retainCount]"
+      ],
+      "size": 17,
+      "source_line": 444,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112623232,
+      "reference_names": [
+        "_NSExtraRefCount"
+      ],
+      "size": 233,
+      "source_line": 683,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112626904,
+      "reference_names": [
+        "_NSZoneCalloc"
+      ],
+      "size": 106,
+      "source_line": 163,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112637384,
+      "reference_names": [
+        "-[_NSAutoreleasedMallocMemory mallocMemoryWithCapacity:]"
+      ],
+      "size": 24,
+      "source_line": 98,
+      "source_path": "src/Kits/Foundation/NSPrivate.m"
+    },
+    {
+      "address": 1112637732,
+      "reference_names": [
+        "-[NSObject methodForSelector:]"
+      ],
+      "size": 22,
+      "source_line": 354,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112640436,
+      "reference_names": [
+        "-[_NSAutoreleasedMallocMemory remainingCapacity]"
+      ],
+      "size": 20,
+      "source_line": 105,
+      "source_path": "src/Kits/Foundation/NSPrivate.m"
+    },
+    {
+      "address": 1112641792,
+      "reference_names": [
+        "+[NSObject alloc]"
+      ],
+      "size": 31,
+      "source_line": 75,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112643412,
+      "reference_names": [
+        "+[NSObject self]"
+      ],
+      "size": 10,
+      "source_line": 155,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112652324,
+      "reference_names": [
+        "+[_NSAutoreleasedMallocMemory mallocMemoryWithCapacity:]"
+      ],
+      "size": 435,
+      "source_line": 54,
+      "source_path": "src/Kits/Foundation/NSPrivate.m"
+    },
+    {
+      "address": 1112659996,
+      "reference_names": [
+        "+[NSObject respondsToSelector:]"
+      ],
+      "size": 25,
+      "source_line": 189,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112668532,
+      "reference_names": [
+        "-[NSObject performSelector:withObject:]"
+      ],
+      "size": 48,
+      "source_line": 406,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112671440,
+      "reference_names": [
+        "+[NSObject initialize]"
+      ],
+      "size": 12,
+      "source_line": 45,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112684364,
+      "reference_names": [
+        "+[NSObject hash]"
+      ],
+      "size": 13,
+      "source_line": 163,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112684504,
+      "reference_names": [
+        "-[NSObject isMemberOfClass:]"
+      ],
+      "size": 23,
+      "source_line": 338,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112684528,
+      "reference_names": [
+        "+[NSObject retain]"
+      ],
+      "size": 10,
+      "source_line": 261,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112688748,
+      "reference_names": [
+        "+[NSObject release]"
+      ],
+      "size": 7,
+      "source_line": 265,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112694092,
+      "reference_names": [
+        "+[NSObject instanceMethodSignatureForSelector:]"
+      ],
+      "size": 69,
+      "source_line": 124,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112694236,
+      "reference_names": [
+        "-[NSObject classForCoder]"
+      ],
+      "size": 12,
+      "source_line": 483,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112695388,
+      "reference_names": [
+        "_NSCopyObject"
+      ],
+      "size": 96,
+      "source_line": 454,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112697844,
+      "reference_names": [
+        "+[NSObject performSelector:]"
+      ],
+      "size": 44,
+      "source_line": 235,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112697920,
+      "reference_names": [
+        "-[_NSAutoreleasedMallocMemory initWithCapacity:]"
+      ],
+      "size": 79,
+      "source_line": 87,
+      "source_path": "src/Kits/Foundation/NSPrivate.m"
+    },
+    {
+      "address": 1112703668,
+      "reference_names": [
+        "-[_NSAutoreleasedMallocMemory dealloc]"
+      ],
+      "size": 161,
+      "source_line": 109,
+      "source_path": "src/Kits/Foundation/NSPrivate.m"
+    },
+    {
+      "address": 1112722096,
+      "reference_names": [
+        "-[NSObject conformsToProtocol:]"
+      ],
+      "size": 25,
+      "source_line": 346,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112723456,
+      "reference_names": [
+        "_NSRoundUpToMultipleOfPageSize"
+      ],
+      "size": 31,
+      "source_line": 229,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112723488,
+      "reference_names": [
+        "+[NSObject setVersion:]"
+      ],
+      "size": 16,
+      "source_line": 120,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112728252,
+      "reference_names": [
+        "_NSAllocateMemoryPages"
+      ],
+      "size": 123,
+      "source_line": 241,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112732432,
+      "reference_names": [
+        "-[NSObject replacementObjectForCoder:]"
+      ],
+      "size": 10,
+      "source_line": 487,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112735016,
+      "reference_names": [
+        "_NSDeallocateMemoryPages"
+      ],
+      "size": 113,
+      "source_line": 258,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112738260,
+      "reference_names": [
+        "+[NSObject instanceMethodForSelector:]"
+      ],
+      "size": 20,
+      "source_line": 112,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112742064,
+      "reference_names": [
+        "_NSRoundDownToMultipleOfPageSize"
+      ],
+      "size": 26,
+      "source_line": 235,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112742092,
+      "reference_names": [
+        "_NSCopyMemoryPages"
+      ],
+      "size": 125,
+      "source_line": 272,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112745196,
+      "reference_names": [
+        "+[NSObject new]"
+      ],
+      "size": 47,
+      "source_line": 58,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112748440,
+      "reference_names": [
+        "+[NSObject superclass]"
+      ],
+      "size": 13,
+      "source_line": 87,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112750992,
+      "reference_names": [
+        "+[NSObject isKindOfClass:]"
+      ],
+      "size": 45,
+      "source_line": 167,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112778712,
+      "reference_names": [
+        "+[NSObject copyWithZone:]"
+      ],
+      "size": 10,
+      "source_line": 79,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112779892,
+      "reference_names": [
+        "-[NSObject performSelector:]"
+      ],
+      "size": 44,
+      "source_line": 400,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112781696,
+      "reference_names": [
+        "+[NSProxy allocWithZone:]"
+      ],
+      "size": 22,
+      "source_line": 74,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112786820,
+      "reference_names": [
+        "+[NSObject instancesRespondToSelector:]"
+      ],
+      "size": 23,
+      "source_line": 104,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112790500,
+      "reference_names": [
+        "-[NSObject mutableCopy]"
+      ],
+      "size": 31,
+      "source_line": 479,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112806168,
+      "reference_names": [
+        "+[NSObject description]"
+      ],
+      "size": 68,
+      "source_line": 137,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112812936,
+      "reference_names": [
+        "_NSSetZoneName"
+      ],
+      "size": 63,
+      "source_line": 95,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112813000,
+      "reference_names": [
+        "_NSCreateZone"
+      ],
+      "size": 124,
+      "source_line": 66,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1112816440,
+      "reference_names": [
+        "-[NSProxy autorelease]"
+      ],
+      "size": 22,
+      "source_line": 340,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112821572,
+      "reference_names": [
+        "+[NSObject poseAsClass:]"
+      ],
+      "size": 20,
+      "source_line": 100,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112828084,
+      "reference_names": [
+        "-[NSObject methodDescriptionForSelector:]"
+      ],
+      "size": 22,
+      "source_line": 358,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112829088,
+      "reference_names": [
+        "+[NSProxy self]"
+      ],
+      "size": 10,
+      "source_line": 90,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112833836,
+      "reference_names": [
+        "-[NSProxy dealloc]"
+      ],
+      "size": 16,
+      "source_line": 345,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112838132,
+      "reference_names": [
+        "+[NSObject zone]"
+      ],
+      "size": 12,
+      "source_line": 279,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112843444,
+      "reference_names": [
+        "+[NSProxy initialize]"
+      ],
+      "size": 112,
+      "source_line": 57,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112843556,
+      "reference_names": [
+        "+[NSObject isEqual:]"
+      ],
+      "size": 21,
+      "source_line": 159,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112870580,
+      "reference_names": [
+        "+[NSProxy load]"
+      ],
+      "size": 12,
+      "source_line": 35,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112871032,
+      "reference_names": [
+        "+[NSObject version]"
+      ],
+      "size": 13,
+      "source_line": 116,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112871048,
+      "reference_names": [
+        "+[NSObject methodForSelector:]"
+      ],
+      "size": 22,
+      "source_line": 201,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112871072,
+      "reference_names": [
+        "+[NSObject load]"
+      ],
+      "size": 12,
+      "source_line": 41,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112877680,
+      "reference_names": [
+        "-[NSObject methodSignatureForSelector:]"
+      ],
+      "size": 69,
+      "source_line": 362,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112877752,
+      "reference_names": [
+        "-[NSObject copy]"
+      ],
+      "size": 31,
+      "source_line": 475,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112884104,
+      "reference_names": [
+        "+[NSObject conformsToProtocol:]"
+      ],
+      "size": 23,
+      "source_line": 108,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112884272,
+      "reference_names": [
+        "+[NSAutoreleasePool releaseAllPools]"
+      ],
+      "size": 229,
+      "source_line": 258,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1112891760,
+      "reference_names": [
+        "-[NSProxy willForwardSelector:]"
+      ],
+      "size": 32,
+      "source_line": 248,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112891792,
+      "reference_names": [
+        "-[NSProxy retain]"
+      ],
+      "size": 22,
+      "source_line": 326,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112891816,
+      "reference_names": [
+        "-[NSProxy release]"
+      ],
+      "size": 49,
+      "source_line": 331,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112891868,
+      "reference_names": [
+        "-[NSProxy isProxy]"
+      ],
+      "size": 12,
+      "source_line": 362,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112892260,
+      "reference_names": [
+        "-[NSObject perform:withEachObjectInArray:]"
+      ],
+      "size": 115,
+      "source_line": 418,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112904880,
+      "reference_names": [
+        "+[NSProxy isAncestorOfObject:]"
+      ],
+      "size": 45,
+      "source_line": 98,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1112905056,
+      "reference_names": [
+        "+[NSObject performSelector:withObject:]"
+      ],
+      "size": 48,
+      "source_line": 241,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1112905104,
+      "reference_names": [
+        "+[NSObject instanceMethodDescriptionForSelector:]"
+      ],
+      "size": 20,
+      "source_line": 209,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113007352,
+      "reference_names": [
+        "+[NSAutoreleasePool addObject:]"
+      ],
+      "size": 16,
+      "source_line": 191,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007368,
+      "reference_names": [
+        "+[NSAutoreleasePool autoreleasePoolExists]"
+      ],
+      "size": 30,
+      "source_line": 195,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007400,
+      "reference_names": [
+        "+[NSAutoreleasePool autoreleasedObjectCount]"
+      ],
+      "size": 12,
+      "source_line": 199,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007412,
+      "reference_names": [
+        "+[NSAutoreleasePool enableFreedObjectCheck:]"
+      ],
+      "size": 53,
+      "source_line": 214,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007468,
+      "reference_names": [
+        "+[NSAutoreleasePool enableRelease:]"
+      ],
+      "size": 53,
+      "source_line": 218,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007524,
+      "reference_names": [
+        "+[NSAutoreleasePool poolCountHighWaterMark]"
+      ],
+      "size": 26,
+      "source_line": 222,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007552,
+      "reference_names": [
+        "+[NSAutoreleasePool poolCountHighWaterResolution]"
+      ],
+      "size": 26,
+      "source_line": 230,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007580,
+      "reference_names": [
+        "+[NSAutoreleasePool resetTotalAutoreleasedObjects]"
+      ],
+      "size": 23,
+      "source_line": 238,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007604,
+      "reference_names": [
+        "+[NSAutoreleasePool setPoolCountHighWaterMark:]"
+      ],
+      "size": 39,
+      "source_line": 226,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007644,
+      "reference_names": [
+        "+[NSAutoreleasePool setPoolCountHighWaterResolution:]"
+      ],
+      "size": 39,
+      "source_line": 234,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007684,
+      "reference_names": [
+        "+[NSAutoreleasePool showPools]"
+      ],
+      "size": 12,
+      "source_line": 250,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007696,
+      "reference_names": [
+        "+[NSAutoreleasePool topAutoreleasePoolCount]"
+      ],
+      "size": 12,
+      "source_line": 208,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113007708,
+      "reference_names": [
+        "+[NSAutoreleasePool totalAutoreleasedObjects]"
+      ],
+      "size": 19,
+      "source_line": 242,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113008632,
+      "reference_names": [
+        "+[NSObject autorelease]"
+      ],
+      "size": 10,
+      "source_line": 272,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008644,
+      "reference_names": [
+        "+[NSObject copy]"
+      ],
+      "size": 10,
+      "source_line": 293,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008656,
+      "reference_names": [
+        "+[NSObject dealloc]"
+      ],
+      "size": 7,
+      "source_line": 276,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008664,
+      "reference_names": [
+        "+[NSObject debugDescription]"
+      ],
+      "size": 29,
+      "source_line": 301,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008696,
+      "reference_names": [
+        "+[NSObject doesNotRecognizeSelector:]"
+      ],
+      "size": 90,
+      "source_line": 223,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008788,
+      "reference_names": [
+        "+[NSObject forwardInvocation:]"
+      ],
+      "size": 55,
+      "source_line": 231,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008844,
+      "reference_names": [
+        "+[NSObject implementsSelector:]"
+      ],
+      "size": 46,
+      "source_line": 193,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008892,
+      "reference_names": [
+        "+[NSObject init]"
+      ],
+      "size": 10,
+      "source_line": 257,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008904,
+      "reference_names": [
+        "+[NSObject instancesImplementSelector:]"
+      ],
+      "size": 44,
+      "source_line": 197,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008948,
+      "reference_names": [
+        "+[NSObject isAncestorOfObject:]"
+      ],
+      "size": 45,
+      "source_line": 180,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113008996,
+      "reference_names": [
+        "+[NSObject isFault]"
+      ],
+      "size": 9,
+      "source_line": 287,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009008,
+      "reference_names": [
+        "+[NSObject isMemberOfClass:]"
+      ],
+      "size": 23,
+      "source_line": 176,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009032,
+      "reference_names": [
+        "+[NSObject isProxy]"
+      ],
+      "size": 9,
+      "source_line": 283,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009044,
+      "reference_names": [
+        "+[NSObject methodDescriptionForSelector:]"
+      ],
+      "size": 22,
+      "source_line": 205,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009068,
+      "reference_names": [
+        "+[NSObject methodSignatureForSelector:]"
+      ],
+      "size": 69,
+      "source_line": 213,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009140,
+      "reference_names": [
+        "+[NSObject mutableCopyWithZone:]"
+      ],
+      "size": 10,
+      "source_line": 83,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009152,
+      "reference_names": [
+        "+[NSObject mutableCopy]"
+      ],
+      "size": 10,
+      "source_line": 297,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009164,
+      "reference_names": [
+        "+[NSObject performSelector:withObject:withObject:]"
+      ],
+      "size": 52,
+      "source_line": 247,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113009216,
+      "reference_names": [
+        "+[NSObject retainCount]"
+      ],
+      "size": 12,
+      "source_line": 268,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113010384,
+      "reference_names": [
+        "+[NSProxy alloc]"
+      ],
+      "size": 31,
+      "source_line": 78,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010416,
+      "reference_names": [
+        "+[NSProxy autorelease]"
+      ],
+      "size": 10,
+      "source_line": 144,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010428,
+      "reference_names": [
+        "+[NSProxy class]"
+      ],
+      "size": 10,
+      "source_line": 94,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010440,
+      "reference_names": [
+        "+[NSProxy copyWithZone:]"
+      ],
+      "size": 10,
+      "source_line": 82,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010452,
+      "reference_names": [
+        "+[NSProxy debugDescription]"
+      ],
+      "size": 29,
+      "source_line": 161,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010484,
+      "reference_names": [
+        "+[NSProxy isFault]"
+      ],
+      "size": 9,
+      "source_line": 157,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010496,
+      "reference_names": [
+        "+[NSProxy isProxy]"
+      ],
+      "size": 9,
+      "source_line": 153,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010508,
+      "reference_names": [
+        "+[NSProxy mutableCopyWithZone:]"
+      ],
+      "size": 10,
+      "source_line": 86,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010520,
+      "reference_names": [
+        "+[NSProxy performSelector:]"
+      ],
+      "size": 44,
+      "source_line": 111,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010564,
+      "reference_names": [
+        "+[NSProxy performSelector:withObject:]"
+      ],
+      "size": 48,
+      "source_line": 117,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010612,
+      "reference_names": [
+        "+[NSProxy performSelector:withObject:withObject:]"
+      ],
+      "size": 52,
+      "source_line": 123,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010664,
+      "reference_names": [
+        "+[NSProxy release]"
+      ],
+      "size": 7,
+      "source_line": 137,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010672,
+      "reference_names": [
+        "+[NSProxy respondsToSelector:]"
+      ],
+      "size": 25,
+      "source_line": 107,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010700,
+      "reference_names": [
+        "+[NSProxy retainCount]"
+      ],
+      "size": 12,
+      "source_line": 140,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010712,
+      "reference_names": [
+        "+[NSProxy retain]"
+      ],
+      "size": 10,
+      "source_line": 133,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113010904,
+      "reference_names": [
+        "-[NSAutoreleasePool addObject:]"
+      ],
+      "size": 245,
+      "source_line": 321,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113011152,
+      "reference_names": [
+        "-[NSAutoreleasePool autorelease]"
+      ],
+      "size": 73,
+      "source_line": 299,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113011228,
+      "reference_names": [
+        "-[NSAutoreleasePool dealloc]"
+      ],
+      "size": 43,
+      "source_line": 281,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113011272,
+      "reference_names": [
+        "-[NSAutoreleasePool retainCount]"
+      ],
+      "size": 12,
+      "source_line": 287,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113011284,
+      "reference_names": [
+        "-[NSAutoreleasePool retain]"
+      ],
+      "size": 73,
+      "source_line": 291,
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m"
+    },
+    {
+      "address": 1113016144,
+      "reference_names": [
+        "-[NSObject debugDescription]"
+      ],
+      "size": 29,
+      "source_line": 499,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016176,
+      "reference_names": [
+        "-[NSObject description]"
+      ],
+      "size": 51,
+      "source_line": 495,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016228,
+      "reference_names": [
+        "-[NSObject doesNotRecognizeSelector:]"
+      ],
+      "size": 90,
+      "source_line": 372,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016320,
+      "reference_names": [
+        "-[NSObject forward::]"
+      ],
+      "size": 52,
+      "source_line": 380,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016372,
+      "reference_names": [
+        "-[NSObject forwardInvocation:]"
+      ],
+      "size": 55,
+      "source_line": 385,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016428,
+      "reference_names": [
+        "-[NSObject implementsSelector:]"
+      ],
+      "size": 46,
+      "source_line": 350,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016476,
+      "reference_names": [
+        "-[NSObject performSelector:withObject:withObject:]"
+      ],
+      "size": 52,
+      "source_line": 412,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016528,
+      "reference_names": [
+        "-[NSObject performv::]"
+      ],
+      "size": 112,
+      "source_line": 389,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016640,
+      "reference_names": [
+        "-[NSObject self]"
+      ],
+      "size": 10,
+      "source_line": 307,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016652,
+      "reference_names": [
+        "-[NSObject superclass]"
+      ],
+      "size": 15,
+      "source_line": 325,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113016680,
+      "reference_names": [
+        "-[NSProxy class]"
+      ],
+      "size": 12,
+      "source_line": 181,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113016692,
+      "reference_names": [
+        "-[NSProxy conformsToProtocol:]"
+      ],
+      "size": 140,
+      "source_line": 231,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113016832,
+      "reference_names": [
+        "-[NSProxy debugDescription]"
+      ],
+      "size": 29,
+      "source_line": 395,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113016864,
+      "reference_names": [
+        "-[NSProxy description]"
+      ],
+      "size": 71,
+      "source_line": 389,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113016936,
+      "reference_names": [
+        "-[NSProxy doesNotRecognizeSelector:]"
+      ],
+      "size": 54,
+      "source_line": 266,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113016992,
+      "reference_names": [
+        "-[NSProxy forward::]"
+      ],
+      "size": 52,
+      "source_line": 280,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017044,
+      "reference_names": [
+        "-[NSProxy forwardInvocation:]"
+      ],
+      "size": 50,
+      "source_line": 291,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017096,
+      "reference_names": [
+        "-[NSProxy hash]"
+      ],
+      "size": 13,
+      "source_line": 175,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017112,
+      "reference_names": [
+        "-[NSProxy isEqual:]"
+      ],
+      "size": 21,
+      "source_line": 171,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017136,
+      "reference_names": [
+        "-[NSProxy isFault]"
+      ],
+      "size": 9,
+      "source_line": 366,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017148,
+      "reference_names": [
+        "-[NSProxy isKindOfClass:]"
+      ],
+      "size": 140,
+      "source_line": 221,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017288,
+      "reference_names": [
+        "-[NSProxy isMemberOfClass:]"
+      ],
+      "size": 140,
+      "source_line": 226,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017428,
+      "reference_names": [
+        "-[NSProxy methodSignatureForSelector:]"
+      ],
+      "size": 52,
+      "source_line": 299,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017480,
+      "reference_names": [
+        "-[NSProxy performSelector:]"
+      ],
+      "size": 44,
+      "source_line": 304,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017524,
+      "reference_names": [
+        "-[NSProxy performSelector:withObject:]"
+      ],
+      "size": 48,
+      "source_line": 310,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017572,
+      "reference_names": [
+        "-[NSProxy performSelector:withObject:withObject:]"
+      ],
+      "size": 52,
+      "source_line": 316,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017624,
+      "reference_names": [
+        "-[NSProxy respondsToSelector:]"
+      ],
+      "size": 140,
+      "source_line": 236,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017764,
+      "reference_names": [
+        "-[NSProxy retainCount]"
+      ],
+      "size": 17,
+      "source_line": 336,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017784,
+      "reference_names": [
+        "-[NSProxy self]"
+      ],
+      "size": 10,
+      "source_line": 167,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017796,
+      "reference_names": [
+        "-[NSProxy superclass]"
+      ],
+      "size": 15,
+      "source_line": 185,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113017812,
+      "reference_names": [
+        "-[NSProxy zone]"
+      ],
+      "size": 16,
+      "source_line": 354,
+      "source_path": "src/Kits/Foundation/NSProxy.m"
+    },
+    {
+      "address": 1113018528,
+      "reference_names": [
+        "-[_NSZombie appendFormat:]"
+      ],
+      "size": 21,
+      "source_line": 574,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018552,
+      "reference_names": [
+        "-[_NSZombie autorelease]"
+      ],
+      "size": 27,
+      "source_line": 578,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018580,
+      "reference_names": [
+        "-[_NSZombie dealloc]"
+      ],
+      "size": 21,
+      "source_line": 583,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018604,
+      "reference_names": [
+        "-[_NSZombie forwardInvocation:]"
+      ],
+      "size": 46,
+      "source_line": 587,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018652,
+      "reference_names": [
+        "-[_NSZombie methodSignatureForSelector:]"
+      ],
+      "size": 26,
+      "source_line": 591,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018680,
+      "reference_names": [
+        "-[_NSZombie release]"
+      ],
+      "size": 21,
+      "source_line": 596,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018704,
+      "reference_names": [
+        "-[_NSZombie retainCount]"
+      ],
+      "size": 26,
+      "source_line": 600,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018732,
+      "reference_names": [
+        "-[_NSZombie retain]"
+      ],
+      "size": 27,
+      "source_line": 605,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113018760,
+      "reference_names": [
+        "-[_NSZombie stringByAppendingFormat:]"
+      ],
+      "size": 23,
+      "source_line": 610,
+      "source_path": "src/Kits/Foundation/NSObject.m"
+    },
+    {
+      "address": 1113080504,
+      "reference_names": [
+        "_NSLogPageSize"
+      ],
+      "size": 52,
+      "source_line": 219,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1113080556,
+      "reference_names": [
+        "_NSRealMemoryAvailable"
+      ],
+      "size": 76,
+      "source_line": 286,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1113080632,
+      "reference_names": [
+        "_NSRecycleZone"
+      ],
+      "size": 69,
+      "source_line": 85,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    },
+    {
+      "address": 1113080864,
+      "reference_names": [
+        "_NSZoneName"
+      ],
+      "size": 72,
+      "source_line": 121,
+      "source_path": "src/Kits/Foundation/NSZone.m"
+    }
+  ],
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

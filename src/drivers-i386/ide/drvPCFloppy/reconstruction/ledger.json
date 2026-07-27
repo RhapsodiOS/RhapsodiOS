@@ -77,12 +77,12 @@
       "names": [
         "-[IOFloppyDisk attachBsdDiskInterfaceToDrive:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 330,
       "source_line": 1376,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1032,
@@ -91,12 +91,12 @@
       "names": [
         "-[IOFloppyDisk detachBsdDiskInterfaceFromDrive:]"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 62,
       "source_line": 1448,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1096,
@@ -105,12 +105,12 @@
       "names": [
         "_HandleBsdOpen"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 154,
       "source_line": 392,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1252,
@@ -119,12 +119,12 @@
       "names": [
         "_HandleBsdClose"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 120,
       "source_line": 450,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1372,
@@ -133,12 +133,12 @@
       "names": [
         "_fakeStrategySuccess"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 143,
       "source_line": 715,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1516,
@@ -147,12 +147,12 @@
       "names": [
         "_HandleBsdRead"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 351,
       "source_line": 890,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1868,
@@ -175,12 +175,12 @@
       "names": [
         "_HandleBsdStrategy"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 272,
       "source_line": 799,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 2312,
@@ -189,12 +189,12 @@
       "names": [
         "_HandleBsdIoctl"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 2656,
       "source_line": 44,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4968,
@@ -231,12 +231,12 @@
       "names": [
         "_identifyBsdDev"
       ],
-      "reason": "diverges; see reconstruction/divergences.md",
+      "reason": "repaired in fix phase 5; blocks, calls and constants now match the reference",
       "reviewer": "drvPCFloppy report pass",
       "size": 244,
       "source_line": 540,
       "source_path": "src/drivers-i386/ide/drvPCFloppy/Floppy.drvproj/Floppy.lksproj/Bsd.m",
-      "status": "unexamined"
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5324,
@@ -3151,7 +3151,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "5C5B4459540B1BB9E8AE35A09C09DF411CD55AC04FE05ABCC36CCBAF56BC605D",
+  "rebuilt_sha256": "D30F7CBDB5CE93D56B3D6466F641484FEAC8834B0FE5E06F182F841A32363C98",
   "reference_sha256": "49608BD40A302A9A3541F9E37202DEEA871C30CD6CECFE8ABB99D75BDC1D8252",
   "schema_version": "ledger-v1"
 }

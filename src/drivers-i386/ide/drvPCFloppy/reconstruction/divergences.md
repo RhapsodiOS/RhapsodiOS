@@ -1553,3 +1553,47 @@ functions that are present by name diverge substantially in body — Layer 5 say
 of one that "the source's implementation is fabricated relative to the binary."
 Presence by name is the starting point for the fix phases, not evidence of
 coverage.
+
+---
+
+## Closing state
+
+All five fix phases are complete. Measured against the build recorded as
+`rebuilt_sha256` in `ledger.json`:
+
+| Axis | Start | Close |
+|---|---:|---:|
+| `missing_symbols` | 163 | 1 |
+| `missing_strings` | 94 | 0 |
+| `missing_imports` | 7 | 1 |
+| `unresolvable_imports` | 10 | 0 |
+| `unexamined` functions | 69 | 0 |
+
+`missing_symbols` is `__udivdi3`, libgcc's 64-bit division helper, which no
+source in this project writes. `load_source_map` passes, partitioning all 225
+functions. Every ledger entry is `control-flow-confirmed` or better, except the
+three build-generated entries recorded as `intentional-mismatch`.
+
+### The one remaining divergence
+
+`.objc_class_name_Protocol` is still imported by the reference and not by us.
+The cause is now understood precisely. The reference's `__OBJC,__protocol`
+section is 140 bytes — seven protocol structures — and its `__OBJC,__class_names`
+names four of them: `IODiskPartitionExported`, `IODiskReadingAndWriting`,
+`IODiskPhysicalNEW` and `IODriveVolCheckSupport`. Our tree declares no
+`@protocol` at all, so the runtime's `Protocol` class is never referenced and
+our `__OBJC,__protocol` section is empty.
+
+`IODiskPartitionNEW.m:47` implements `+requiredProtocols`, which is the hook
+these protocols exist to serve, so the omission is in the declarations rather
+than in the logic.
+
+This is recorded as an accepted remainder rather than repaired. Reconstructing
+it means deriving seven protocol definitions and their method lists from the
+`__OBJC` metadata and then attaching conformance to the right classes — a
+self-contained piece of analysis on the same scale as one of the fix phases,
+and one that touches headers across the whole driver rather than any single
+layer. It is the natural next unit of work on this driver, alongside functional
+testing.
+
+Reviewer: drvPCFloppy fix phases.

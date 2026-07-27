@@ -352,9 +352,32 @@ Done when all of the following hold, with output shown:
    measurement. Scoping preserves the item's full strength over everything the
    map asserts; item 5 independently accounts for every function scoped out, so
    the pair together still covers all 100 functions.
-4. **0 `duplicate_candidates`** across all five maps. `boundary_disputed`
-   entries are enumerated with cause; a nonzero count is a finding, not a
-   failure.
+4. `duplicate_candidates` is **0, or every entry is enumerated with the
+   evidence establishing its cause**. `boundary_disputed` gets the same
+   treatment. A nonzero count is a finding, not a failure.
+
+   This item originally demanded 0 outright. `drvPPCATA` cannot meet that, for
+   two unrelated reasons found during its measurement, and both are worth
+   reporting rather than suppressing:
+
+   - **Two are a scanner limitation.** `drvPPCATA/AtapiCntInternal.m` defines
+     `allocAtapiBuf` and `freeAtapiBuf:` twice — at lines 124 and 151 under
+     `#ifdef NO_ATAPI_RUNTIME_MEMORY_ALLOCATION`, and again at 161 and 172 in
+     the `#else`. `AtapiCnt.h:45` defines that macro unconditionally, so only
+     the first pair compiles. `source_map.py` is line-based and does not
+     evaluate preprocessor conditionals. Teaching it to would mean emulating
+     the preprocessor — far outside this spec, and not worth it for two
+     entries.
+   - **Two are a real property of Apple's source.** `getIdeDriveInfo:` and
+     `getIdeIdentifyInfo:` are each defined twice for the same class: in
+     `@implementation IdeController` (`IdeCnt.m:469` and `:475`) and again in
+     `@implementation IdeController(Initialize)` (`IdeCntInit.m:443` and
+     `:1101`). A category implementation replaces the primary one at load
+     time, so one of each pair is dead code in the shipped driver. Which one
+     Apple actually shipped is answerable from the binary, and §4.4 records it.
+
+   A duplicate that is measured, explained and evidenced is a result. Only an
+   unexplained one is a defect.
 5. Every function IDA found in every binary lands in exactly one of: mapped,
    or Phase 4's six buckets. Per binary, mapped plus the six buckets sums to
    IDA's total function count — total, not named, because bucket 3 is

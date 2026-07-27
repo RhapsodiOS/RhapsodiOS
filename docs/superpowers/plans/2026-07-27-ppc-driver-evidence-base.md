@@ -572,7 +572,7 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 "
 ```
 
-`duplicate_candidates` must be 0 (acceptance item 4). A nonzero `boundary_disputed` is a finding, not a failure — record each entry.
+`duplicate_candidates` must be 0, **or** every entry must be enumerated in `findings.md` with the evidence establishing its cause (acceptance item 4, as amended during the ATA measurement). A nonzero `boundary_disputed` is a finding, not a failure — record each entry the same way.
 
 - [ ] **Step 6: Bucket and reconcile**
 
@@ -720,7 +720,7 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 "
 ```
 
-`duplicate_candidates` must be 0.
+`duplicate_candidates` must be 0, or every entry enumerated with its cause (acceptance item 4, as amended).
 
 - [ ] **Step 6: Bucket and reconcile**
 
@@ -870,7 +870,7 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 "
 ```
 
-`duplicate_candidates` must be 0.
+`duplicate_candidates` must be 0, or every entry enumerated with its cause (acceptance item 4, as amended).
 
 - [ ] **Step 6: Establish or refute the IdeDisk/ATADisk rename**
 
@@ -1061,7 +1061,7 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 "
 ```
 
-`duplicate_candidates` must be 0.
+`duplicate_candidates` must be 0, or every entry enumerated with its cause (acceptance item 4, as amended).
 
 - [ ] **Step 6: Bucket and reconcile**
 

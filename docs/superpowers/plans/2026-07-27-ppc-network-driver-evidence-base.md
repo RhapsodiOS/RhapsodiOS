@@ -212,7 +212,7 @@ Replace the list in the assertion with that output. Do **not** weaken the test i
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
-Expected: green. Baseline before this task is **818 passed, 4 skipped**; it should stay 818 passed, 4 skipped, with `test_ppc_profile_inventory` now covering 25 profiles.
+Expected: **826 passed, 4 skipped**. The baseline before this task is 818; the +8 is correct and expected, because `test_ppc_profiles_are_reference_only_ida_runs` is parametrized over the `*-ppc.json` glob, so each new profile adds a passing test instance. `test_ppc_profile_inventory` now covers 25 profiles.
 
 - [ ] **Step 6: Commit**
 
@@ -966,7 +966,7 @@ Every number must trace to output you ran.
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
-Expected: green, 818 passed 4 skipped, with `test_ppc_profile_inventory` covering 25 profiles. Acceptance item 6.
+Expected: green, **826 passed, 4 skipped**, with `test_ppc_profile_inventory` covering 25 profiles. (818 was the pre-Task-1 baseline; the eight new profiles each add a parametrized test instance.) Acceptance item 6.
 
 - [ ] **Step 6: Confirm no generated evidence is staged**
 

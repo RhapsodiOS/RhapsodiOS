@@ -418,6 +418,32 @@ probeDevice:withDescription:]` has ten tests in the reference and nine in ours.
 That is a missing verbose log block, not a comparison-form problem, and it is a
 new finding rather than a residue of this pass. Not investigated here.
 
+The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
+absent from our selector table, as it is from the reference's, and `_verbose`
+sits at 65 of 66 exactly as predicted. `statusChangedForSocket:` holds at 77.4%,
+unchanged — its own call site had already been fixed a build earlier.
+
+### Where this driver stands, more broadly
+
+Comparing whole selector tables puts the remaining work in proportion:
+
+| | Reference | Rebuilt |
+| --- | --- | --- |
+| selectors | 160 | 185 |
+| shared | 135 | 135 |
+| reference-only | 25 | — |
+| rebuilt-only | — | 50 |
+
+The 25 we lack — `BVDActive`, `IOAddrLines`, `IRQInfo`, `MemSpaceInfo`,
+`MemoryWaitRequired`, `PortRanges`, `ReadyBusyActive`, `VccPowerInfo`,
+`Vpp1PowerInfo`, `Vpp2PowerInfo`, `WPActive`, `_private` and others — are
+accessors this reconstruction has not implemented. The 50 we have and the
+reference does not are largely our own ivar names.
+
+So the method-level agreement reached here sits inside a driver whose class
+surface still differs substantially. The 77.4% figure is a real measurement of
+one method and should not be read as a statement about the driver.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

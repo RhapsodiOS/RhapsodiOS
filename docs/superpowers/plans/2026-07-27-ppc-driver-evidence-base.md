@@ -463,7 +463,9 @@ from binrecon.schema import load_json, load_source_map
 MAP = 'src/drivers-ppc/reconstruction/Cuda/source-map.json'
 a = load_json(Path('tools/binrecon/out/cuda-ppc/published/analysis-reference-ida.json'))
 m = json.load(open(MAP))
-covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+covered = set()
+for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+    covered |= {e['address'] for e in m[cat]}
 before = len(a['functions'])
 a['functions'] = [f for f in a['functions'] if f['address'] in covered]
 print('analysis functions', before, '-> scoped', len(a['functions']))
@@ -612,7 +614,9 @@ from binrecon.schema import load_json, load_source_map
 MAP = 'src/drivers-ppc/reconstruction/BMac/source-map.json'
 a = load_json(Path('tools/binrecon/out/bmac-ppc/published/analysis-reference-ida.json'))
 m = json.load(open(MAP))
-covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+covered = set()
+for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+    covered |= {e['address'] for e in m[cat]}
 before = len(a['functions'])
 a['functions'] = [f for f in a['functions'] if f['address'] in covered]
 print('analysis functions', before, '-> scoped', len(a['functions']))
@@ -758,7 +762,9 @@ from binrecon.schema import load_json, load_source_map
 MAP = 'src/drivers-ppc/reconstruction/Burgundy/source-map.json'
 a = load_json(Path('tools/binrecon/out/burgundy-ppc/published/analysis-reference-ida.json'))
 m = json.load(open(MAP))
-covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+covered = set()
+for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+    covered |= {e['address'] for e in m[cat]}
 before = len(a['functions'])
 a['functions'] = [f for f in a['functions'] if f['address'] in covered]
 print('analysis functions', before, '-> scoped', len(a['functions']))
@@ -952,7 +958,9 @@ from binrecon.schema import load_json, load_source_map
 MAP = 'src/drivers-ppc/reconstruction/ATA/source-map.json'
 a = load_json(Path('tools/binrecon/out/ata-ppc/published/analysis-reference-ida.json'))
 m = json.load(open(MAP))
-covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+covered = set()
+for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+    covered |= {e['address'] for e in m[cat]}
 before = len(a['functions'])
 a['functions'] = [f for f in a['functions'] if f['address'] in covered]
 print('analysis functions', before, '-> scoped', len(a['functions']))
@@ -1103,7 +1111,9 @@ from binrecon.schema import load_json, load_source_map
 MAP = 'src/drivers-ppc/reconstruction/53c96/source-map.json'
 a = load_json(Path('tools/binrecon/out/53c96-ppc/published/analysis-reference-ida.json'))
 m = json.load(open(MAP))
-covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+covered = set()
+for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+    covered |= {e['address'] for e in m[cat]}
 before = len(a['functions'])
 a['functions'] = [f for f in a['functions'] if f['address'] in covered]
 print('analysis functions', before, '-> scoped', len(a['functions']))
@@ -1150,7 +1160,9 @@ for d, key in PAIRS:
     mp = f'src/drivers-ppc/reconstruction/{d}/source-map.json'
     a = load_json(Path(f'tools/binrecon/out/{key}/published/analysis-reference-ida.json'))
     m = json.load(open(mp))
-    covered = {e['address'] for e in m['mapped']} | {e['address'] for e in m['unmapped']}
+    covered = set()
+    for cat in ('mapped', 'unmapped', 'duplicate_candidates', 'boundary_disputed'):
+        covered |= {e['address'] for e in m[cat]}
     before = len(a['functions'])
     a['functions'] = [f for f in a['functions'] if f['address'] in covered]
     load_source_map(Path(mp), reference_analysis=a, repo_root=Path.cwd())

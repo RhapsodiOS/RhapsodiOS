@@ -387,6 +387,37 @@ the second `probed` test; and a similarity above 70.7%. Whether the block
 layout converges is genuinely unknown — the branch-polarity changes may reorder
 blocks as a side effect, or may not.
 
+### Verification
+
+All held. `statusChangedForSocket:changedStatus:` went from **70.7% to 77.4%**
+similar, and five of its six byte-flag tests are now instruction-identical:
+
+| Test | Reference | Rebuilt |
+| --- | --- | --- |
+| `[edi+4]` flag1 | `cmp 0` → `jne` | `cmp 0` → `je` |
+| `[ecx+0x20]` `_verbose` | `cmp 1` → `jne` | `cmp 1` → `jne` |
+| `[edi+5]` `probed` | `cmp 0` → `je` | `cmp 0` → `je` |
+| `[edi+5]` `probed` | `cmp 1` → `je` | `cmp 1` → `je` |
+| `[esi+0x20]` `_verbose` | `cmp 1` → `jne` | `cmp 1` → `jne` |
+| `[ecx+0x20]` `_verbose` | `cmp 1` → `jne` | `cmp 1` → `jne` |
+
+The one still differing is `[edi+4]`, which compares the same value and differs
+only in branch direction — the block-layout artefact, unchanged, so the
+polarity edits did **not** reorder blocks. The method's prologue now matches:
+the `socketNumber` send precedes `test byte ptr [ebp+0x14], 1`.
+
+**`freeObjects` went wider than one call site.** The reference's selector table
+contains `freeObjects` and **no `freeObjects:` at all**, so every site takes the
+no-argument form. Fixing only the one in `statusChangedForSocket:` left the
+other nine, in `PCMCIAKernBusPrivate.m`, still emitting `freeObjects:` — all ten
+now send `freeObjects`.
+
+**The `_verbose` count came back 65 against the reference's 66**, and the
+missing one localises to a single method: `-[PCMCIAKernBus(Private)
+probeDevice:withDescription:]` has ten tests in the reference and nine in ours.
+That is a missing verbose log block, not a comparison-form problem, and it is a
+new finding rather than a residue of this pass. Not investigated here.
+
 **Left unchanged.** Adopting the bitfield is not a one-line change to this
 driver; it is a coordinated change across three classes in a driver outside this
 record's scope. `PCICSocket` in the reference uses the same type in three more

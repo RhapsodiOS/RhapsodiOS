@@ -382,10 +382,10 @@ static void printDescription(id deviceDesc)
 
 cleanup_and_fail:
     if (!userSupplied && memoryMapList != nil) {
-        [[memoryMapList freeObjects:@selector(free)] free];
+        [[memoryMapList freeObjects] free];
     }
     if (windowList != nil) {
-        [[windowList freeObjects:@selector(free)] free];
+        [[windowList freeObjects] free];
     }
     IOFree(checkList, memoryRangeCount * 2);
     return nil;
@@ -732,7 +732,7 @@ cleanup_and_fail:
                     rangeResource = [ioPortsResource reserveRange:range];
                     if (rangeResource == nil) {
                         failed = YES;
-                        [[portRangeList freeObjects:@selector(free)] free];
+                        [[portRangeList freeObjects] free];
                         break;
                     }
                     [portRangeList addObject:rangeResource];
@@ -958,13 +958,13 @@ cleanup_and_fail:
     }
 
     if (!userSuppliedPorts && portRangeList != nil) {
-        [[portRangeList freeObjects:@selector(free)] free];
+        [[portRangeList freeObjects] free];
     }
     if (!userSuppliedIRQ && irqList != nil) {
-        [[irqList freeObjects:@selector(free)] free];
+        [[irqList freeObjects] free];
     }
     if (windowList != nil) {
-        [[windowList freeObjects:@selector(free)] free];
+        [[windowList freeObjects] free];
     }
 
     return NO;
@@ -1017,7 +1017,7 @@ cleanup_and_fail:
         if (driverName != NULL && strcmp(driverName, "<unknown>") != 0) {
             [table freeString:driverName];
         }
-        [[tupleListCopy freeObjects:@selector(free)] free];
+        [[tupleListCopy freeObjects] free];
         [deviceDesc free];
         return NO;
     }
@@ -1032,7 +1032,7 @@ cleanup_and_fail:
         if (_verbose == YES) {
             IOLog("PKB: failed to configure\n");
         }
-        [[tupleListCopy freeObjects:@selector(free)] free];
+        [[tupleListCopy freeObjects] free];
         [deviceDesc free];
         return NO;
     }
@@ -1739,7 +1739,7 @@ done:
             rangeResource = [ioPortsResource reserveRange:range];
             if (rangeResource == nil) {
                 /* Reservation failed - free all previously allocated ranges */
-                [portList freeObjects:@selector(free)];
+                [portList freeObjects];
                 return NO;
             }
 

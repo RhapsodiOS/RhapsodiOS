@@ -1415,7 +1415,9 @@ ToCardAddress:(unsigned int)cardAddr
         if (driverClass == nil) {
             if (_verbose == YES) {
                 IOLog("PKB: driver class '%s' was not loaded\n", className);
-                if (serverName != NULL) {
+                /* The reference re-tests _verbose here rather than checking
+                 * serverName for NULL, and pushes the pointer unguarded. */
+                if (_verbose == YES) {
                     IOLog("PKB: Driver %s could not be configured\n", serverName);
                 }
             }

@@ -415,8 +415,39 @@ now send `freeObjects`.
 **The `_verbose` count came back 65 against the reference's 66**, and the
 missing one localises to a single method: `-[PCMCIAKernBus(Private)
 probeDevice:withDescription:]` has ten tests in the reference and nine in ours.
-That is a missing verbose log block, not a comparison-form problem, and it is a
-new finding rather than a residue of this pass. Not investigated here.
+
+### The missing guard in `probeDevice:withDescription:`
+
+It is not a missing log. Both binaries reference the same thirteen strings in
+this method; what differs is that the reference guards one of them with
+`_verbose` and we do not. Mapping each guard to the string it protects:
+
+| Guarded string | Reference | Ours |
+| --- | --- | --- |
+| `PKB: Driver %s could not be configured` | `_verbose` | `serverName != NULL` |
+
+The reference's structure at `+250`:
+
+```
++250  cmp byte ptr [edx+0x20], 1 ; jne 0x1f8e     <- outer
++260  push edi ; push "driver class '%s' was not loaded" ; call IOLog
++274  mov edx, dword ptr [ebp+8]
++277  cmp byte ptr [edx+0x20], 1 ; jne 0x1f8e     <- inner, same target
++287  mov edx, dword ptr [ebp-0x10] ; push edx ; push "Driver %s could not be configured"
+```
+
+Both `jne`s branch to **the same address**, which is what a nested test
+produces: the outer false-branch and the inner false-branch both land at the end
+of the outer block. Two sibling `if`s would have sent the first elsewhere. So
+Apple wrote `_verbose` twice, once inside the other — redundant in source, and
+faithfully reproduced here.
+
+**This drops a NULL check the reconstruction had added.** The reference tests
+nothing before `mov edx, [ebp-0x10] ; push edx`; it pushes `serverName`
+unguarded, relying on it being valid at that point. Our source had
+`if (serverName != NULL)` in the position the reference uses for the second
+`_verbose` test. Matching the reference removes that defensive check, which is
+recorded here rather than left implicit.
 
 The nine-site `freeObjects` change was then confirmed in turn: `freeObjects:` is
 absent from our selector table, as it is from the reference's, and `_verbose`

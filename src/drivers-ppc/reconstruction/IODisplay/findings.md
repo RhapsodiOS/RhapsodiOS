@@ -12,20 +12,32 @@ Both re-verified locally with `sha256sum` against the paths under
 
 ## Correspondence
 
+**This section was rewritten after five of the six functions the measurement
+found absent were written from the binary's disassembly.** See
+`docs/superpowers/specs/2026-07-27-iodisplay-absent-methods-design.md`. Read the
+warning in "What is and is not claimed" below before drawing any conclusion
+from the improved numbers.
+
 Source map built with `binrecon source-map --objc-methods --scope-to-objc` against
 `IODisplay_reloc`, scoped to the Objective-C methods found in that binary
 (25 of the 64 total functions IDA reported):
 
 ```
-mapped 18 unmapped 7 dup 0 disputed 0
-  unmapped: ['+[IOSmartDisplay probe:]'] 60
+mapped 22 unmapped 3 dup 0 disputed 0
   unmapped: ['-[IOSmartADBDisplay findADBDisplayInfoForType:]'] 324
-  unmapped: ['-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]'] 44
-  unmapped: ['-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]'] 104
-  unmapped: ['-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]'] 68
   unmapped: ['+[IODisplayKernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[IODisplayVersion driverKitVersionForIODisplay]'] 16
 ```
+
+Before the writing work: `mapped 18 unmapped 7`. The four Objective-C methods
+that were written -- `+[IOSmartDisplay probe:]`,
+`-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]`,
+`-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]` and
+`-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]` -- all four moved from
+unmapped to mapped, which is the mechanical confirmation that their selectors
+match the binary exactly. `_UnpackString` was written too but is a plain C
+function, outside `--scope-to-objc`'s view; it appears in neither list, and its
+evidence is the bucket table below.
 
 Reading the binary's own symbol table directly with `read_macho` (not just
 IDA's export) gives a per-class census of 26 ObjC symbols: `IOSmartDisplay`
@@ -38,18 +50,58 @@ Cuda/BMac/Burgundy/OHare/Awacs, not the address-0x0-is-a-real-function
 anomaly `IOApplePCIBus` (Task 5) showed).
 
 - Total functions in the reference analysis: 64.
-- Named Objective-C methods, in scope: 25 -- 18 mapped + 7 unmapped.
+- Named Objective-C methods, in scope: 25 -- 22 mapped + 3 unmapped.
 - Out of scope: 39, composed of 37 unnamed jump islands (bucket 3) plus 2
   named, non-Objective-C C helper functions the `--scope-to-objc` map
-  deliberately does not claim (part of bucket 6, see Buckets below).
+  deliberately does not claim (bucket 5, see Buckets below).
 - `duplicate_candidates`: 0.
 - `boundary_disputed`: 0.
 
-Unlike Awacs and Burgundy, none of the 7 unmapped entries here are
+Unlike Awacs and Burgundy, none of the unmapped entries here are
 underscore-prefix renames -- `selector_check.py` (see below) confirms 0
-renames for this driver. Five of the seven are genuinely absent from
-source under any name (see Unmapped detail and Buckets), and two are the
-usual build-generated accessors.
+renames for this driver.
+
+### What is and is not claimed
+
+**The five written functions are not compile-verified. There is no PowerPC
+toolchain in this tree; no build was run and none is possible.** The map
+proves the *selectors* match the binary. It does not prove the *bodies* do,
+and no check available here can. Every uncertainty recorded while writing them
+is carried forward under "Uncertainties carried forward" below.
+
+### The class-hierarchy divergence
+
+The single most important result of the writing work is not a function. It is
+a structural divergence between this tree's `IOSmartDisplay` and Apple's,
+measured from `__OBJC,__class` and `__OBJC,__instance_vars` with `read_macho`:
+
+```
+class                            super_class      instance_size
+IOSmartDisplay                   IODevice          284  (0x11C)
+IOSmartADBDisplay                IOSmartDisplay    300  (0x12C)
+IOSmartDDCDisplay                IOSmartDisplay    412  (0x19C)
+
+IOSmartADBDisplay ivars (6)
+   adbAddr                 C         +0x11C
+   waitAckValue            C         +0x11D
+   wiggleLADAddr           C         +0x11E
+   avDisplayID             s         +0x120
+   numModes                i         +0x124
+   modeList                ^I        +0x128
+```
+
+This tree declares `@interface IOSmartDisplay:Object`
+(`src/driverkit-3/libDriver/ppc/IOSmartDisplay.m:44`), which inherits 4 bytes,
+not 264 -- **260 bytes less** -- and gives `IOSmartADBDisplay` **four** ivars
+(`adbAddr`, `waitAckValue`, `avDisplayID`, `const AVDeviceInfo * deviceInfo`)
+where Apple's has six. Apple's `wiggleLADAddr`/`numModes`/`modeList` are, field
+for field, this tree's `AVDeviceInfo` struct flattened into the object: the
+shipped driver built its display description from the config table at runtime,
+where this source reaches a compiled-in `static const AVDeviceInfo` table
+through a pointer.
+
+`.objc_class_name_IODevice` is an undefined external in the symbol table, which
+is the direct evidence for the superclass link.
 
 ## Map validation
 
@@ -73,7 +125,7 @@ and `src/drivers-ppc/reconstruction/IODisplay/source-map.json`:
 
 ```
 total functions: 64
-  mapped: 18
+  mapped: 22
   1-crt-dyld: 0
   2-picsymbol-stub: 0
   3-unnamed-jump-island: 37
@@ -81,14 +133,10 @@ total functions: 64
       0x1340  +[IODisplayKernelServerInstance kernelServerInstance]  (20 bytes)
       0x1354  +[IODisplayVersion driverKitVersionForIODisplay]  (16 bytes)
   5-fn-with-source-site: 0
-  6-fn-no-source-site: 7
-      0x10  +[IOSmartDisplay probe:]  (60 bytes)
+  6-fn-no-source-site: 3
       0x314  _UnpackString  (232 bytes)
       0x754  -[IOSmartADBDisplay findADBDisplayInfoForType:]  (324 bytes)
       0xa48  _SMADBHandler  (68 bytes)
-      0x1248  -[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]  (44 bytes)
-      0x1274  -[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]  (104 bytes)
-      0x12ec  -[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]  (68 bytes)
 counted: 64
 RECONCILES: yes
 ```
@@ -97,75 +145,156 @@ Buckets 1 (`crt-dyld`) and 2 (`picsymbol-stub`) are empty because
 `IODisplay_reloc` is a statically linked kernel server, not an
 `MH_EXECUTE` helper: it carries no crt/dyld startup routines and its
 analysis has no `__picsymbol_stub` section for the stub-range check to
-match against.
+match against. Bucket 5 is always 0 straight out of the script by design --
+it is the operator's job to move confirmed matches into it by hand.
 
-**Bucket 6, resolved one at a time against `src/driverkit-3/libDriver/ppc`
-(the whole directory grepped, case-sensitively, for each exact symbol; the
-directory's only display-related file is `IOSmartDisplay.m`, 626 lines,
-holding `@implementation` blocks for `IOSmartDisplay` (line 108),
-`IOSmartDDCDisplay` (line 173), and `IOSmartADBDisplay` (line 380)):**
+**Bucket 6, resolved one at a time against
+`src/driverkit-3/libDriver/ppc/IOSmartDisplay.m` (708 lines, holding
+`@implementation` blocks for `IOSmartDisplay` (line 109), `IOSmartDDCDisplay`
+(line 218) and `IOSmartADBDisplay` (line 425)):**
 
-- `_SMADBHandler` (68 bytes) -- **confirmed source site**, `IOSmartDisplay.m:430`
-  (`void SMADBHandler( int number, unsigned char *buffer, int count, void *
-  ssp)`). Exact name match modulo the standard C-symbol leading underscore
-  (not an ObjC selector rename -- this is a plain C function, registered as
-  an ADB callback at `IOSmartDisplay.m:533`). Moves to bucket 5.
-- `+[IOSmartDisplay probe:]` (60 bytes) -- grepped for `probe:` across the
-  whole directory: **no definition found anywhere.** `IOSmartDisplay`'s
-  `@implementation` block (`IOSmartDisplay.m:108`-`171`) defines
-  `findForConnection:refCon:`, `attach:refCon:`, `detach`, `attached`,
-  `getDisplayInfoForMode:flags:`, and `getGammaTableByIndex:...`, but no
-  `probe:`. **Genuinely absent from source under any name.**
-- `-[IOSmartADBDisplay findADBDisplayInfoForType:]` (324 bytes) -- grepped
-  for `findADBDisplayInfoForType` across the whole directory: **no
-  definition found anywhere**, not even a declaration. **Genuinely absent.**
-- `-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]` (44 bytes) -- grepped
-  for `IOSMADBGetAVDeviceID`: **no match anywhere.** **Genuinely absent.**
-- `-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]`
-  (104 bytes) -- grepped for `IOSMADBGetLogicalRegister`: **no match
-  anywhere** (note this is distinct from the *compiled* `-[IOSmartADBDisplay
-  getLogicalRegister:data:]`, which *is* present and mapped at
-  `IOSmartDisplay.m:486` -- the `IOSMADBGet...` family with the `size:`
-  argument list is a different, unimplemented entry point). **Genuinely
-  absent.**
-- `-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]` (68 bytes) --
-  same situation as the previous entry, distinct from the present
-  `setLogicalRegister:data:` (`IOSmartDisplay.m:463`). **Genuinely absent.**
-- `_UnpackString` (232 bytes) -- grepped case-insensitively for `unpack`
-  across the whole directory: the only hits are `UnpackFullSection`,
-  `UnpackPartialSection`, and `PEF_UnpackSection` in `IOPEFInternals.c` /
-  `IOPEFLoader.c` (PEF binary-loader code, unrelated). **No `UnpackString`
-  of any kind exists in this source directory.** **Genuinely absent.**
+- `_SMADBHandler` (68 bytes) -- **confirmed source site**,
+  `IOSmartDisplay.m:475` (`void SMADBHandler( int number, unsigned char
+  *buffer, int count, void * ssp)`). Exact name match modulo the standard
+  C-symbol leading underscore (not an ObjC selector rename -- this is a plain
+  C function, registered as an ADB callback). Pre-existing; not written here.
+  **Moves to bucket 5.**
+- `_UnpackString` (232 bytes) -- **written from the disassembly**, now at
+  `IOSmartDisplay.m:187` (`static UInt32 * UnpackString( const char * string,
+  UInt32 * count)`). It is placed there because the binary's function
+  addresses are in source order: `0x304` is
+  `-[IOSmartDisplay getGammaTableByIndex:...]`, `0x314` is `_UnpackString`,
+  `0x41c` is `-[IOSmartDDCDisplay attach:refCon:]`, so it sits between
+  `@implementation IOSmartDisplay`'s `@end` and `@implementation
+  IOSmartDDCDisplay`. **Moves to bucket 5 -- but by hand, and not
+  compile-verified.** The script cannot place it: it is a C function, outside
+  `--scope-to-objc`.
+- `-[IOSmartADBDisplay findADBDisplayInfoForType:]` (324 bytes) -- **stays in
+  bucket 6, deliberately.** This is the one function that was not written, and
+  the reason is the class-hierarchy divergence above. See Unmapped detail.
 
-Only 1 of the 7 bucket-6 entries (`_SMADBHandler`) has a confirmed source
-site and moves to bucket 5. The other 6 -- one non-ObjC C helper
-(`_UnpackString`) and five Objective-C methods -- are **real, unresolved
-gaps**: code the reference binary contains that this source directory does
-not implement under any name, spelling, or declaration.
-This is a materially different outcome from every other driver measured in
-this batch (Awacs, Burgundy, OHare, ApplePCIBus), where every bucket-6
-entry either resolved to a confirmed source site or to a well-understood
-class-attribution artifact.
+So bucket 6 falls from 7 entries to 1, and that last one is documented rather
+than resolved.
 
 ## Unmapped detail
 
-Seven reference selectors have no exact-name-matching source
-implementation:
+Three reference selectors have no exact-name-matching source implementation:
 
 - Two are build-generated, matching the pattern seen throughout this batch:
   - `+[IODisplayKernelServerInstance kernelServerInstance]` (20 bytes).
   - `+[IODisplayVersion driverKitVersionForIODisplay]` (16 bytes).
-- Five are real, unresolved gaps (see Buckets above for the full grep
-  evidence against each): `+[IOSmartDisplay probe:]`,
-  `-[IOSmartADBDisplay findADBDisplayInfoForType:]`,
-  `-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]`,
-  `-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]`, and
-  `-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]`.
+- One is a **documented structural blocker**:
+  `-[IOSmartADBDisplay findADBDisplayInfoForType:]` (324 bytes).
 
-Unlike Awacs and Burgundy, none of these five are underscore-prefix
-renames of a private category method -- `selector_check.py` independently
-confirms 0 renames for this driver (see Selector check below), and direct
-grepping (above) found no trace of any of the five under any spelling.
+### Why `findADBDisplayInfoForType:` was not written
+
+Its type encoding is `i6@4:8S12`, i.e.
+`- (IOReturn) findADBDisplayInfoForType:(UInt16)type`. Every memory reference
+in its 324 bytes, with `r28` = `self`:
+
+| offset | access | Apple's ivar | in this tree's class? |
+| --- | --- | --- | --- |
+| `+0x11E` | `stb` at `0x07BC` and `0x07DC` | `wiggleLADAddr` (`C`) | **absent** |
+| `+0x124` | address taken at `0x0830`, handed to `UnpackString` | `numModes` (`i`) | **absent** |
+| `+0x128` | `stw` at `0x0838`, `lwz` at `0x0868` | `modeList` (`^I`) | **absent** |
+
+It touches **no ivar this tree does have.** All three it does touch are missing
+from `IOSmartADBDisplay` here. What it does is legible from the disassembly --
+`__TEXT,__cstring +148` is `"adb%dWiggle"`, `+160` is `"adb%dModes"`,
+`__OBJC,__message_refs +48` is `valueForStringKey:` and `+52` is `freeString:`,
+and the `bl` at `0x0834` relocates to `__TEXT,__text + 788` = `0x314`, i.e.
+`_UnpackString` itself:
+
+```
+sprintf( key, "adb%dWiggle", type);
+str = [configTable valueForStringKey:key];
+if( str) { wiggleLADAddr = strtol( str, 0, 0); [configTable freeString:str]; }
+else	  { wiggleLADAddr = 4; }
+
+sprintf( key, "adb%dModes", type);
+str = [configTable valueForStringKey:key];
+if( str) {
+    str2 = [configTable valueForStringKey:str];		// the value names another key
+    if( str2) {
+	modeList = UnpackString( str2, &numModes);
+	[configTable freeString:str2];
+    }
+    [configTable freeString:str];
+}
+return( modeList ? noErr : -49);
+```
+
+The tail at `0x0868`-`0x0874` is a branchless `x ? 0 : -49` (`addic`/`subfe`/
+`rlwinm` with mask `0xFFFFFFCF`); `-49` is the same literal `initForADB:`
+already uses at `IOSmartDisplay.m:593`.
+
+Writing it would require adding three ivars to `IOSmartADBDisplay` and -- if
+the offsets were to be reproduced at all -- changing `IOSmartDisplay`'s
+superclass from `Object` to `IODevice`, in a `driverkit-3` framework class
+shared with `IOApplePCIBus` and the deferred `IONDRVSupport`. That is a
+redesign, not a transcription, with no compiler to catch what it breaks. The
+decision taken was to write what is writable and record the divergence as the
+finding. **Its remaining unmapped is the correct and documented outcome, not a
+failure.**
+
+### Blast radius of the divergence
+
+The five functions that *were* written are unaffected: every ivar reference in
+them is by name, so the compiler assigns the offset, and none depends on a
+literal offset matching Apple's.
+
+`IOSMADBGetAVDeviceID:size:`'s reading of `+0x120` as `avDisplayID` is
+**confirmed** by Apple's ivar table (`avDisplayID`, encoding `s`, offset 288) --
+the name and type are right even though the offset does not correspond under
+this tree's layout, and by-name access is all the source needs.
+
+`IOSmartDDCDisplay` carries the same +260 shift on `edid1` (`+0x11C` in the
+binary) and nothing more. Its encoding does show one further, unrelated
+cosmetic difference: Apple's `EDID` spells the second field group as
+`"vendorProduct"[4C] "serialNumber"[4C] "weekOfManufacture"C
+"yearOfManufacture"C` where this tree has one `UInt8 vendorProduct[10]` --
+same 10 bytes, different field names.
+
+Whether other `libDriver/ppc` sources declare `:Object` where the shipped
+binary used a DriverKit superclass was **not** checked, and is left open.
+
+### Uncertainties carried forward
+
+Recorded while writing, per the spec's §3.5. None of these is settled by the
+disassembly:
+
+1. `noErr` vs `IO_R_SUCCESS` for a `li r3, 0` return -- both are 0, identical
+   codegen. `noErr` was chosen because it is this file's existing idiom.
+2. `sizeof( UInt32)` vs the bare literals `4` and `8` -- identical codegen. The
+   *values* are settled (byte counts, per `+callDeviceMethod:`'s contract);
+   only the spelling is a choice.
+3. All argument and local names are invented. Argument names are not in the
+   binary; only types are.
+4. `+probe:`'s argument is written untyped (`id`). The encoding `@` is the same
+   for `id` and for `IODeviceDescription *`.
+5. Basic-block order in `IOSMADBGetAVDeviceID:size:`: the binary emits
+   success-then-error, the source is written as a guard clause. Same edges,
+   different placement.
+6. `UnpackString`'s `count` parameter is written `UInt32 *`; the binary shows
+   only a 32-bit store, and its one caller stores into an ivar typed `i`
+   (`int`), which argues for `int *`.
+7. `UnpackString`'s outer loop is written `do { ... } while( pass--)`; a
+   `for( pass = 1; pass >= 0; pass--)` produces the same instructions.
+8. `UnpackString`'s inner loop is written `while( (next = end))`; a
+   two-variable `for( next = string; next; next = end)` produces the same
+   instructions.
+9. `UInt16 data = 0;` in `IOSMADBGetLogicalRegister:...`: the zeroing is real
+   and precedes the argument checks, but whether Apple wrote it as an
+   initialiser or a separate statement is not distinguishable.
+10. All `//` comments added to the written functions are reconstruction notes,
+    not recovered text.
+
+One thing that *was* settled and is worth recording as a correction: the file
+static `+probe:` writes is spelled **`configTable`**, not `_configTable`. IDA
+shows the Mach-O symbol, and Mach-O prefixes C symbols with an underscore --
+the same table renders the source's `smInited` and `SMADBHandler` as
+`_smInited` and `_SMADBHandler`.
+
 
 ## Invariant check
 
@@ -199,7 +328,11 @@ candidates:
   (`IOMacRiscPCI.m:207`) and `IODeviceTreeBus` (`IODeviceTreeBus.m:701`),
   the two class-attribution sites already documented in Task 5's findings
   -- neither is `IOSmartDisplay`, and `IOSmartDisplay` does not itself
-  subclass either of those classes (it derives directly from `Object`).
+  subclass either of those classes (this tree declares it directly on
+  `Object`; the shipped binary derives it from `IODevice` -- see the
+  class-hierarchy divergence in Correspondence above, which is a plausible
+  explanation for `registerLoudly` existing at all and is recorded as a
+  hypothesis, not a finding).
   So this address-0x0 symbol has **no candidate source implementation at
   all**, unlike the `IOApplePCIBus` `registerLoudly` case, which had a
   logic-matching implementation on a related class. This is the same
@@ -212,14 +345,15 @@ candidates:
   series carries at its load address; not a real function.
 
 Neither candidate overlaps any function reported in the bucket table or
-the source map, so neither affects the 18/7/0/0 correspondence numbers
+the source map, so neither affects the 22/3/0/0 correspondence numbers
 above. `selector_check.py`'s "missing" list (below) includes
 `-[IOSmartDisplay registerLoudly]` for the same reason
 `+[PPCBurgundy probe:]` appeared there in the Burgundy task: it is a real,
 named selector in the reference binary's symbol table that resolves to
 address 0x0, so it never becomes one of the 25 in-scope functions the
 source map is built from, and it is also absent from source under any
-name -- a second confirmed gap independent of the five bucket-6 entries.
+name -- a second confirmed gap, independent of the bucket-6 entries and
+unaffected by the writing work.
 
 ## Selector check
 
@@ -228,19 +362,15 @@ full shared directory, per the task brief), verbatim:
 
 ```
 reference selectors: 26
-our definitions:     237
+our definitions:     241
 
 renames (0):
 
 duplicates (0):
 
-missing (8):
+missing (4):
     +[IODisplayKernelServerInstance kernelServerInstance]
     +[IODisplayVersion driverKitVersionForIODisplay]
-    +[IOSmartDisplay probe:]
-    -[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]
-    -[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]
-    -[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]
     -[IOSmartADBDisplay findADBDisplayInfoForType:]
     -[IOSmartDisplay registerLoudly]
 
@@ -248,10 +378,17 @@ extra (219):
     [see full verbatim list and class attribution below]
 ```
 
-The "missing" list is the union of the two build-generated accessors, the
-five genuine bucket-6 gaps, and `-[IOSmartDisplay registerLoudly]` (the
+Re-run after the writing work. Before it: `our definitions: 237`, `missing
+(8)`. The four extra definitions are the four Objective-C methods written from
+the disassembly, and they leave the "missing" list because their selectors now
+match the binary's exactly -- an independent confirmation of the source map's
+result, from a tool that does not use the source map.
+
+The "missing" list is now the union of the two build-generated accessors,
+`-[IOSmartADBDisplay findADBDisplayInfoForType:]` (the documented structural
+blocker -- see Unmapped detail), and `-[IOSmartDisplay registerLoudly]` (the
 Invariant-check address-0x0 symbol, absent from source under any name) --
-8 total, all independently confirmed above. 0 renames confirms the
+4 total, all independently confirmed above. 0 renames confirms the
 underscore-prefix convention documented for `PPCAwacs` and `PPCBurgundy`
 does **not** apply here -- consistent with `IODisplay`'s source being
 Apple's own original code (no `2025 RhapsodiOS Project` copyright anywhere
@@ -327,26 +464,23 @@ tree -- a result in its own right, not an artifact of this attribution.
 No extras in this run are same-class anomalies specific to `IODisplay`
 itself -- unlike Task 5, every extra here belongs to one of the two
 sibling attributions above; this driver's own real discrepancies surface
-entirely through the "missing" list (5 genuine gaps plus
-`registerLoudly`), not through unexplained extras.
+entirely through the "missing" list (originally 6 genuine gaps plus
+`registerLoudly`; 5 of the 6 have since been written from the disassembly
+and are not compile-verified), not through unexplained extras.
 
 ### Full verbatim extras list
 
 ```
 reference selectors: 26
-our definitions:     237
+our definitions:     241
 
 renames (0):
 
 duplicates (0):
 
-missing (8):
+missing (4):
     +[IODisplayKernelServerInstance kernelServerInstance]
     +[IODisplayVersion driverKitVersionForIODisplay]
-    +[IOSmartDisplay probe:]
-    -[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]
-    -[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]
-    -[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]
     -[IOSmartADBDisplay findADBDisplayInfoForType:]
     -[IOSmartDisplay registerLoudly]
 
@@ -596,7 +730,7 @@ contains the driver's compiled code).
 driver project -- the same directory Task 5 (`IOApplePCIBus`) used, and
 also the home of the deferred `IONDRVSupport`. `--scope-to-objc` source
 maps built against one binary only ever claim that binary's own classes,
-so mapping `IODisplay_reloc` produces a clean 18 mapped / 7 unmapped / 0
+so mapping `IODisplay_reloc` produces a clean 22 mapped / 3 unmapped / 0
 dup / 0 disputed result restricted to its three actually-compiled classes
 (`IOSmartDisplay`, `IOSmartADBDisplay`, `IOSmartDDCDisplay` -- per-class
 split enumerated in Correspondence above).
@@ -613,9 +747,11 @@ list (confirmed absent from both sibling binaries in this batch), of which
 58 are defined in the deferred `IONDRVSupport_reloc` and 134 are absent
 from every shipped ppc binary. This driver
 carries no same-class anomalies of its own among the extras -- the
-important discrepancies here are on the "missing" side instead: 5
-Objective-C/C entry points the reference binary implements that this
-source directory does not, under any name (see Buckets and Unmapped detail
-above), which is the opposite failure mode from the extras
+important discrepancies here were on the "missing" side instead: 6
+Objective-C/C entry points the reference binary implemented that this
+source directory did not, under any name. Five have since been written from
+the disassembly (not compile-verified) and one --
+`-[IOSmartADBDisplay findADBDisplayInfoForType:]` -- is documented as a
+structural blocker (see Buckets and Unmapped detail above), which is the opposite failure mode from the extras
 mischaracterization the task brief warns about, and is called out
 explicitly rather than folded into the sibling-attribution story.

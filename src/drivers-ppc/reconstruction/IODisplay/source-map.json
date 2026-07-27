@@ -3,12 +3,21 @@
   "duplicate_candidates": [],
   "mapped": [
     {
+      "address": 16,
+      "reference_names": [
+        "+[IOSmartDisplay probe:]"
+      ],
+      "size": 60,
+      "source_line": 111,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
       "address": 92,
       "reference_names": [
         "+[IOSmartDisplay findForConnection:refCon:]"
       ],
       "size": 408,
-      "source_line": 110,
+      "source_line": 118,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -17,7 +26,7 @@
         "-[IOSmartDisplay attach:refCon:]"
       ],
       "size": 164,
-      "source_line": 140,
+      "source_line": 148,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -26,7 +35,7 @@
         "-[IOSmartDisplay detach]"
       ],
       "size": 20,
-      "source_line": 147,
+      "source_line": 155,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -35,7 +44,7 @@
         "-[IOSmartDisplay attached]"
       ],
       "size": 24,
-      "source_line": 153,
+      "source_line": 161,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -44,7 +53,7 @@
         "-[IOSmartDisplay getDisplayInfoForMode:flags:]"
       ],
       "size": 16,
-      "source_line": 158,
+      "source_line": 166,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -53,7 +62,7 @@
         "-[IOSmartDisplay getGammaTableByIndex:dataCount:dataWidth:data:]"
       ],
       "size": 16,
-      "source_line": 164,
+      "source_line": 172,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -62,7 +71,7 @@
         "-[IOSmartDDCDisplay attach:refCon:]"
       ],
       "size": 568,
-      "source_line": 175,
+      "source_line": 220,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -71,7 +80,7 @@
         "-[IOSmartDDCDisplay getDisplayInfoForMode:flags:]"
       ],
       "size": 192,
-      "source_line": 257,
+      "source_line": 302,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -80,7 +89,7 @@
         "-[IOSmartADBDisplay getDisplayInfoForMode:flags:]"
       ],
       "size": 112,
-      "source_line": 382,
+      "source_line": 427,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -89,7 +98,7 @@
         "-[IOSmartADBDisplay doConnect]"
       ],
       "size": 192,
-      "source_line": 400,
+      "source_line": 445,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -98,7 +107,7 @@
         "-[IOSmartADBDisplay writeWithAcknowledge:data:ackValue:]"
       ],
       "size": 164,
-      "source_line": 440,
+      "source_line": 485,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -107,7 +116,7 @@
         "-[IOSmartADBDisplay setLogicalRegister:data:]"
       ],
       "size": 256,
-      "source_line": 463,
+      "source_line": 508,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -116,7 +125,7 @@
         "-[IOSmartADBDisplay getLogicalRegister:data:]"
       ],
       "size": 248,
-      "source_line": 486,
+      "source_line": 531,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -125,7 +134,7 @@
         "-[IOSmartADBDisplay setWiggle:]"
       ],
       "size": 72,
-      "source_line": 510,
+      "source_line": 555,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -134,7 +143,7 @@
         "-[IOSmartADBDisplay initForADB:]"
       ],
       "size": 348,
-      "source_line": 518,
+      "source_line": 563,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -143,7 +152,7 @@
         "-[IOSmartADBDisplay free]"
       ],
       "size": 84,
-      "source_line": 564,
+      "source_line": 609,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -152,7 +161,7 @@
         "-[IOSmartADBDisplay attach:refCon:]"
       ],
       "size": 364,
-      "source_line": 574,
+      "source_line": 619,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     },
     {
@@ -161,7 +170,34 @@
         "+[IOSmartADBDisplay probeADBForDisplays]"
       ],
       "size": 172,
-      "source_line": 606,
+      "source_line": 651,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4680,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]"
+      ],
+      "size": 44,
+      "source_line": 674,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4724,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]"
+      ],
+      "size": 104,
+      "source_line": 683,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4844,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]"
+      ],
+      "size": 68,
+      "source_line": 699,
       "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
     }
   ],
@@ -169,39 +205,11 @@
   "schema_version": "source-map-v1",
   "unmapped": [
     {
-      "address": 16,
-      "reference_names": [
-        "+[IOSmartDisplay probe:]"
-      ],
-      "size": 60
-    },
-    {
       "address": 1876,
       "reference_names": [
         "-[IOSmartADBDisplay findADBDisplayInfoForType:]"
       ],
       "size": 324
-    },
-    {
-      "address": 4680,
-      "reference_names": [
-        "-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]"
-      ],
-      "size": 44
-    },
-    {
-      "address": 4724,
-      "reference_names": [
-        "-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]"
-      ],
-      "size": 104
-    },
-    {
-      "address": 4844,
-      "reference_names": [
-        "-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]"
-      ],
-      "size": 68
     },
     {
       "address": 4928,

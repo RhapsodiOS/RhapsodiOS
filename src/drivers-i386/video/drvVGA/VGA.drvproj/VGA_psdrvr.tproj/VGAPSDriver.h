@@ -33,10 +33,18 @@ typedef struct bitmap		bitmap;
  * that the vector's initialize entry publishes.  All seven are tentative
  * definitions in VGAPSDriver.c so that they land in __DATA,__common.
  */
-extern int		vga_width;	/* pixels across			*/
-extern int		vga_height;	/* scan lines			*/
-extern int		vga_rowbytes;	/* bytes per line of the 2 bpp shadow */
-extern int		vga_bpl;	/* bytes per line of one VGA plane */
+/*
+ * All four are unsigned: the reference shifts vga_width right by four and
+ * vga_bpl right by one with `shr', and divides 0x10000 by vga_bpl with
+ * `div', none of which an int would produce.  vga_height and vga_rowbytes
+ * are only ever stored, multiplied and narrowed, so nothing in the binary
+ * pins their signedness; they follow the other two because a geometry set
+ * filled from one unsigned int values[3] would have been declared together.
+ */
+extern unsigned int	vga_width;	/* pixels across			*/
+extern unsigned int	vga_height;	/* scan lines			*/
+extern unsigned int	vga_rowbytes;	/* bytes per line of the 2 bpp shadow */
+extern unsigned int	vga_bpl;	/* bytes per line of one VGA plane */
 extern Bounds		vgaBounds;	/* the screen's bounds; zero until
 					   the vector's initialize entry runs */
 extern vm_address_t	vgaAddress;	/* 128K device mapping of 0xA0000 */

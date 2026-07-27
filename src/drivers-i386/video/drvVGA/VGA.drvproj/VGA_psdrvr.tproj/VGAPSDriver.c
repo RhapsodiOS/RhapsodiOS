@@ -17,6 +17,8 @@
 #import "VGAPSDriver.h"
 
 #import <driverkit/driverTypes.h>
+#import <mach/mach_init.h>
+#import <stddef.h>
 #import <string.h>
 
 /*
@@ -62,58 +64,191 @@ outb(unsigned short port, unsigned char data)
  * and no static -- so that they land in __DATA,__common where the Window
  * Server expects to find them.
  */
-int		vga_width;
-int		vga_height;
-int		vga_rowbytes;
-int		vga_bpl;
+unsigned int	vga_width;
+unsigned int	vga_height;
+unsigned int	vga_rowbytes;
+unsigned int	vga_bpl;
 Bounds		vgaBounds;
 vm_address_t	vgaAddress;
 void	       *vgaVirtualAddress;
 
-typedef struct bmClass	bmClass;
+typedef struct bmClass		bmClass;
+typedef struct opTail		opTail;
+typedef struct compositeOp	compositeOp;
+typedef struct drawOp		drawOp;
 
 /*
- * The Window Server's records, as much of them as this file touches.  The
- * layouts belong to the Window Server, so only the fields the reference
- * actually addresses are named and everything between them is reserved.
+ * The Window Server's records, as much of them as this file touches.  Every
+ * one of these layouts is the Window Server's and no header for any of them
+ * exists in this tree, so only the fields the reference actually addresses
+ * are named, everything between them is reserved, and the names are
+ * descriptive rather than authoritative.  The offsets are exact.
+ */
+
+/*
+ * The screen descriptor VGAStart is handed.  It is demonstrably not the
+ * screen device the vector entries receive: VGAStart writes a name and the
+ * driver vector into +0x08 and +0x0c, and the vector's initialize entry
+ * writes a bitmap into +0x0c.  The two are declared apart for that reason.
+ */
+struct NXScreen {
+    char		reserved0[8];
+    const char	       *name;			/* +0x08 */
+    void	     (**ops)();			/* +0x0c, the driver vector */
+};
+
+/*
+ * The screen device.  +0x00 is a one-byte kind tag; the compositing entry
+ * reads it off the source device and accepts 'g' or 'p'.  +0x01 bit 0 is
+ * set when the offscreen bitmap's depth differs from the screen's, and the
+ * reference sets it with a byte-wide read-modify-write, i.e. as a bit field.
  */
 struct NXScreenDev {
-    char		reserved0[0x10];
+    unsigned char	kind;			/* +0x00 */
+    unsigned char	depthDiffers : 1;	/* +0x01, bit 0 */
+    char		reserved2[10];
+    bitmap	       *screenBitmap;		/* +0x0c */
     Bounds		bounds;			/* +0x10 */
-    char		reserved18[0x10];
+    bitmap	       *cached;			/* +0x18 */
+    bitmap	       *offscreen;		/* +0x1c */
+    int			flags2;			/* +0x20 */
+    int			depth;			/* +0x24 */
     VGAShmem_t	       *shmem;			/* +0x28 */
+    int			shmemSize;		/* +0x2c */
 };
 
 struct bitmap {
     bmClass	       *isa;			/* +0x00 */
-    void	       *f4;			/* +0x04 */
-    void	       *f8;			/* +0x08 */
+    Bounds		bounds;			/* +0x04 */
     short		format;			/* +0x0c */
     short		refcount;		/* +0x0e */
-    char		reserved10[0x10];
+    char		reserved10[12];
+    unsigned char	f1c;			/* +0x1c, low two bits only */
+    char		reserved1d[3];
     void	       *plane0;			/* +0x20 */
     void	       *plane1;			/* +0x24 */
 };
 
-struct bmClass {
-    char		reserved0[0x10];
-    void	      (*free)(bitmap *bm);	/* +0x10 */
-    char		reserved14[0x28];
-    bitmap	     *(*newBitmap)(bmClass *self, const Bounds *r,
-				   void *image, void *mask, int rowbytes,
-				   int depth, int a, int b); /* +0x3c */
+/*
+ * The 36 bytes the compositing entry copies straight through from the
+ * operation record into the record it builds.  It is a struct so that the
+ * copy compiles to the one inline `rep movsl' the reference emits; two of
+ * the nine words are read back as coordinates and nothing else in this
+ * driver looks inside.
+ */
+struct opTail {
+    int			w[9];
+};
+
+/* What the Window Server hands the compositing entry. */
+struct compositeOp {
+    NXScreenDev	       *dst;			/* +0x00 */
+    NXScreenDev	       *src;			/* +0x04 */
+    unsigned char	which;			/* +0x08, low nibble selects
+						   the destination bitmap and
+						   the high nibble the source */
+    unsigned char	mode;			/* +0x09, two bits */
+    unsigned char	blit;			/* +0x0a */
+    unsigned char	f0b;			/* +0x0b */
+    char		reserved0c[4];
+    Bounds		rect;			/* +0x10 */
+    opTail		tail;			/* +0x18 */
+};
+
+/* What the compositing entry builds on its stack and hands the machine. */
+struct drawOp {
+    short		tag;			/* +0x00, 0, 1 or 2 */
+    short		blit;			/* +0x02 */
+    void	       *source;			/* +0x04 */
+    Bounds		rect;			/* +0x08 */
+    Bounds		dirty;			/* +0x10 */
+    unsigned char	f18;			/* +0x18 */
+    unsigned char	flag0 : 1;		/* +0x19, bit 0 */
+    unsigned char	flag1 : 1;		/* +0x19, bit 1 */
+    opTail		tail;			/* +0x1c */
 };
 
 /*
- * The three cursor converters, one per source pixel format.  Each takes two
- * Bounds by value; the second is always the zero rectangle below.
+ * The imaging machine's method table.  Every slot below is reached by its
+ * offset from the reference; the eight the driver never calls are reserved.
  */
-extern void	BM12Convert8to2(bitmap *dst, bitmap *src, Bounds sr,
-				void *f4, void *f8, Bounds dr);
-extern void	BM12Convert16to2(bitmap *dst, bitmap *src, Bounds sr,
-				 void *f4, void *f8, Bounds dr);
-extern void	BM12Convert32to2(bitmap *dst, bitmap *src, Bounds sr,
-				 void *f4, void *f8, Bounds dr);
+struct bmClass {
+    char		reserved0[12];
+    bitmap	     *(*newBitmap2)(bmClass *self, Bounds *r,
+				   int flag);			/* +0x0c */
+    void	      (*free)(bitmap *bm);			/* +0x10 */
+    char		reserved14[4];
+    void	      (*composite)(bitmap *dst, drawOp *op);	/* +0x18 */
+    void	      (*blit)(bitmap *dst, bitmap *src, Bounds *dr,
+			      Bounds *sr, int x, int y);	/* +0x1c */
+    bitmap	     *(*convert)(bitmap *bm, Bounds *r,
+				 int format);			/* +0x20 */
+    void	      (*fill)(bitmap *bm, int a, Bounds *r,
+			      int b);				/* +0x24 */
+    void	      (*setFlag)(bitmap *bm, int flag);		/* +0x28 */
+    void	      (*setOrigin)(bitmap *bm, short x, short y);/* +0x2c */
+    char		reserved30[4];
+    int		      (*getParams)(bitmap *bm, int *a, int *b, int *c,
+				   int *d, int *e);		/* +0x34 */
+    char		reserved38[4];
+    bitmap	     *(*newBitmap)(bmClass *self, const Bounds *r,
+				   void *image, void *mask, int size,
+				   int rowbytes, int a, int b);	/* +0x3c */
+};
+
+/*
+ * The three cursor converters, one per source pixel format.  Each takes
+ * three Bounds by value: the 16 by 16 cursor rectangle, the source bitmap's
+ * own bounds, and the zero rectangle below.  The middle one is what settles
+ * the two words at bitmap +0x04 and +0x08 as a Bounds rather than a pair of
+ * pointers; the compositing entry reads the same two as coordinates.
+ */
+extern void	BM12Convert8to2(bitmap *dst, bitmap *src, Bounds r,
+				Bounds sr, Bounds clip);
+extern void	BM12Convert16to2(bitmap *dst, bitmap *src, Bounds r,
+				 Bounds sr, Bounds clip);
+extern void	BM12Convert32to2(bitmap *dst, bitmap *src, Bounds r,
+				 Bounds sr, Bounds clip);
+
+/*
+ * The Window Server's and the system's own entry points.  No header for any
+ * of these exists in this tree either.  Only NXRegisterScreen's last two
+ * arguments are pinned by the reference, which narrows them with a movsx;
+ * the two zeros before them are the same kind of coordinate by inference.
+ */
+extern void	       *os_stderr;
+extern int		os_fprintf(void *stream, const char *fmt, ...);
+extern void	       *os_malloc(int size);
+extern port_t		LookupFrameBufferDevicePort(const char *name,
+						    const char *kind);
+extern void		NXRegisterScreen(NXScreen *screen, short x, short y,
+					 short width, short height);
+
+/*
+ * The device master RPCs.  These match driverkit's driverServer.h argument
+ * for argument; they are repeated here rather than included because that
+ * header pulls in driverTypesPrivate.h, which is not part of the installed
+ * header set this bundle builds against.
+ */
+extern port_t		device_master_self(void);
+extern IOReturn		_IOLookupByDeviceName(port_t master, IOString name,
+					      IOObjectNumber *object,
+					      IOString *kind);
+extern IOReturn		_IOGetIntValues(port_t master, IOObjectNumber object,
+					IOParameterName name,
+					unsigned int maxCount,
+					unsigned int *values,
+					unsigned int *count);
+extern IOReturn		_IOSetIntValues(port_t master, IOObjectNumber object,
+					IOParameterName name,
+					unsigned int *values,
+					unsigned int count);
+extern IOReturn		_IOMapEISADeviceMemory(port_t device, task_t task,
+					       vm_offset_t phys,
+					       vm_size_t length,
+					       vm_offset_t *addr,
+					       BOOL anywhere, IOCache cache);
+extern IOReturn		_IOMapEISADevicePorts(port_t device, thread_t thread);
 
 /*
  * The Window Server's four imaging machine class objects, one per pixel
@@ -135,16 +270,16 @@ extern bmClass	_bm38;			/* 32 bit RGB			 */
 static void	VGAInitScreen(NXScreenDev *dev);
 static void	VGARegisterScreen(void);
 static void	VGANullOp(void);
-static void	VGAComposite(void *op, Bounds *dirty);
+static void	VGAComposite(compositeOp *op, Bounds *dirty);
 static void	VGAFreeOffscreen(NXScreenDev *dev);
 static void	VGAFillRect(NXScreenDev *dev, int which, int arg, Bounds *r,
 			    int arg2);
 static void	VGASetOffscreenOrigin(NXScreenDev *dev, short x, short y);
 static void	VGAOffscreenOp18(NXScreenDev *dev);
-static void	VGANewOffscreen(NXScreenDev *dev, void *a, int which,
-				int depth, void *b);
-static void	VGAConvertOffscreen(NXScreenDev *dev, int index, void *a,
-				    int flag);
+static void	VGANewOffscreen(NXScreenDev *dev, Bounds *r, int which,
+				int depth, int flag);
+static void	VGAConvertOffscreen(NXScreenDev *dev, Bounds *r, int index,
+				    int flag, int x, int y);
 static int	VGAGetOffscreenParams(NXScreenDev *dev);
 
 /*
@@ -273,10 +408,18 @@ static bmClass *bmClasses[5] = {
 
 /*
  * The driver vector.  VGAStart stores its address in the screen
- * descriptor and the Window Server calls the driver through it.  Three of
- * the twenty-one slots are genuinely not implemented.
+ * descriptor and the Window Server calls the driver through it.
+ *
+ * Twenty-four slots, six of them not implemented.  Eighteen carry a
+ * relocation in the reference and the other six are zero; the last three
+ * zeros are the twelve bytes that sit between the vector and the
+ * compiler's address cells, and reading them as trailing null slots is what
+ * closes __DATA,__data at the reference's 152 bytes exactly.  Nothing
+ * distinguishes them from a separate twelve-byte zero object, so this is
+ * inference -- but a separate object would have to be unreferenced, and
+ * nothing in the reference reads it.
  */
-static void (*vgaDriverVector[21])() = {
+static void (*vgaDriverVector[24])() = {
     (void (*)())VGAComposite,			/* +0x00 */
     (void (*)())VGAFreeOffscreen,		/* +0x04 */
     0,						/* +0x08 */
@@ -297,15 +440,26 @@ static void (*vgaDriverVector[21])() = {
     (void (*)())VGAShieldCursor,		/* +0x44 */
     (void (*)())VGAUnshieldCursor,		/* +0x48 */
     0,						/* +0x4c */
-    (void (*)())VGANullOp			/* +0x50 */
+    (void (*)())VGANullOp,			/* +0x50 */
+    0,						/* +0x54 */
+    0,						/* +0x58 */
+    0						/* +0x5c */
 };
 
 /*
- * __DATA,__bss.  The device master port and the display's object number
- * are cached by VGAStart and reused by the vector's register entry.
+ * __DATA,__bss.  The display's object number and the device master port are
+ * cached by VGAStart and reused by the vector's register entry.  They are
+ * declared in this order because the reference puts object at the lower
+ * address and this compiler lays .lcomm out in declaration order.
+ *
+ * The reference's __bss is 44 bytes larger than ours and the difference is
+ * two objects, 12 bytes before object and 32 bytes after master, that no
+ * instruction and no data cell anywhere in the binary refers to.  They are
+ * not named here because the binary gives no evidence of what they were;
+ * see the task report for what was ruled out.
  */
-static port_t		master;
 static IOObjectNumber	object;
+static port_t		master;
 
 /*
  * The two conversion tables, built once at the first flush.  Each maps a
@@ -330,81 +484,360 @@ static int		tablesBuilt = 0;
  * ---------------------------------------------------------------------
  */
 
-/* Vector slot +0x0c.  The only writer of vgaBounds. */
+/*
+ * Vector slot +0x0c.  The only writer of vgaBounds.
+ *
+ * This is the single most important structural fact about this driver: the
+ * screen bitmap the Window Server draws into is a packed two-bit shadow in
+ * ordinary memory -- vgaVirtualAddress, at vga_rowbytes bytes per line --
+ * handed to the stock bm12 machine.  Nothing ever draws into VGA memory;
+ * the flush converts dirty rectangles into the four planes afterwards.
+ *
+ * The shared-memory request is built in two steps and totals 648 bytes,
+ * which is less than sizeof(VGAShmem_t) because only the bw arm is used.
+ */
 static void
 VGAInitScreen(NXScreenDev *dev)
 {
+    dev->flags2 = 0;
+    dev->shmemSize = offsetof(VGAShmem_t, cursor);		/* 0x48 */
+    dev->screenBitmap = _bm12.newBitmap(&_bm12, &dev->bounds,
+			vgaVirtualAddress, 0,
+			(dev->bounds.maxy - dev->bounds.miny) * vga_rowbytes,
+			vga_rowbytes, 1, 0);
+    dev->depth = 1;
+    dev->shmemSize += sizeof (struct bm12Cursor);		/* 0x240 */
+    vgaBounds = dev->bounds;
 }
 
-/* Vector slot +0x28.  Sends IO_Framebuffer_Register, after VGAStart. */
+/*
+ * Vector slot +0x28.  Sends IO_Framebuffer_Register, and it is sent after
+ * VGAStart has already returned: geometry first, registration here, which
+ * is the ordering the kernel half's _registerWithED depends on.  The token
+ * the RPC returns is read into a stack slot and never used.
+ */
 static void
 VGARegisterScreen(void)
 {
+    unsigned int	token;
+    unsigned int	count = 1;
+    IOReturn		r;
+
+    r = _IOGetIntValues(master, object, "IO_Framebuffer_Register", 1,
+			&token, &count);
+    if (r)
+	os_fprintf(os_stderr, "VGA Driver: can't register screen(%d)\n", r);
 }
 
-/* Vector slot +0x50.  Empty in the reference too. */
+/* Vector slot +0x50.  Empty in the reference too, frame pointer and all. */
 static void
 VGANullOp(void)
 {
 }
 
-/* Vector slot +0x00.  Composite, then flush the dirty rectangle. */
+/*
+ * Vector slot +0x00.  Composite, then flush the dirty rectangle.
+ *
+ * The operation record arrives with a destination and a source screen
+ * device, and the low and high nibbles of +0x08 say whether each one's
+ * cached or offscreen bitmap is meant.  A 64 byte record is built on the
+ * stack from it and handed to the destination machine's composite method.
+ * If the source needs converting the machine is asked for a temporary, and
+ * if that still does not match the destination's format a second temporary
+ * is built -- except when the operation record asks for a direct blit, in
+ * which case the blit stands in for the composite and the composite is
+ * skipped outright.  Both temporaries are released through the imaging
+ * machine's refcount protocol: a 16 bit count at +0x0e and free at class
+ * +0x10, the same protocol slots +0x04 and +0x24 and VGASetCursor use.
+ */
 static void
-VGAComposite(void *op, Bounds *dirty)
+VGAComposite(compositeOp *op, Bounds *dirty)
 {
+    drawOp		 d;
+    bitmap		*dst;
+    bitmap		*src;
+    bitmap		*tmp = 0;
+    bitmap		*tmp2 = 0;
+    int			 x, y;
+
+    d.blit = op->blit;
+    d.dirty = *dirty;
+    d.rect = op->rect;
+    d.flag0 = (op->mode >> 1) & 1;
+    d.flag1 = op->mode & 1;
+    d.tail = op->tail;
+    d.f18 = op->f0b;
+
+    dst = ((op->which & 0x0f) == 1) ? op->dst->cached : op->dst->offscreen;
+    d.tag = 0;
+
+    if (op->src != 0) {
+	switch (op->src->kind) {
+	case 'g':
+	    d.tag = 1;
+	    src = ((op->which & 0xf0) == 0x10) ? op->src->cached
+					       : op->src->offscreen;
+	    d.source = src;
+	    if (dst->isa != src->isa) {
+		tmp = src->isa->convert(src, &d.rect, dst->format);
+		d.source = tmp;
+		if (dst->format != tmp->format) {
+		    x = d.tail.w[1];
+		    y = d.tail.w[2];
+		    if (op->blit == 1) {
+			dst->isa->blit(dst, tmp, &d.dirty, &d.rect, x, y);
+			goto release;
+		    }
+		    x += d.dirty.minx - dst->bounds.minx;
+		    y += d.dirty.miny - dst->bounds.miny;
+		    tmp2 = dst->isa->newBitmap2(dst->isa, &d.rect, 0);
+		    tmp2->isa->blit(tmp2, tmp, &tmp2->bounds, &tmp2->bounds,
+				    x, y);
+		    d.source = tmp2;
+		}
+	    }
+	    break;
+	case 'p':
+	    d.tag = 2;
+	    d.source = op->src;
+	    break;
+	}
+    }
+
+    dst->isa->composite(dst, &d);
+
+release:
+    if (tmp != 0 && --tmp->refcount == 0)
+	tmp->isa->free(tmp);
+    if (tmp2 != 0 && --tmp2->refcount == 0)
+	tmp2->isa->free(tmp2);
+
+    vga_at_mode12_bpp2_to_bpp4(dirty);
 }
 
 /* Vector slot +0x04. */
 static void
 VGAFreeOffscreen(NXScreenDev *dev)
 {
+    if (dev->offscreen != 0 && --dev->offscreen->refcount == 0)
+	dev->offscreen->isa->free(dev->offscreen);
 }
 
-/* Vector slot +0x10. */
+/*
+ * Vector slot +0x10.  The flush is unconditional even when the fill went to
+ * the offscreen bitmap, where it converts a rectangle nothing changed.
+ * Reproduced as written.
+ */
 static void
 VGAFillRect(NXScreenDev *dev, int which, int arg, Bounds *r, int arg2)
 {
+    bitmap		*bm;
+
+    bm = (which == 1) ? dev->cached : dev->offscreen;
+    bm->isa->fill(bm, arg, r, arg2);
+    vga_at_mode12_bpp2_to_bpp4(r);
 }
 
-/* Vector slot +0x14. */
+/* Vector slot +0x14.  Both coordinates are read as 16 bit and widened. */
 static void
 VGASetOffscreenOrigin(NXScreenDev *dev, short x, short y)
 {
+    if (dev->offscreen != 0)
+	dev->offscreen->isa->setOrigin(dev->offscreen, x, y);
 }
 
-/* Vector slot +0x18. */
+/* Vector slot +0x18.  The constant 1 is the only argument and never varies. */
 static void
 VGAOffscreenOp18(NXScreenDev *dev)
 {
+    if (dev->offscreen != 0)
+	dev->offscreen->isa->setFlag(dev->offscreen, 1);
 }
 
-/* Vector slot +0x1c.  Clamps its depth to 0..4 before indexing bmClasses. */
+/*
+ * Vector slot +0x1c.  Clamps its depth to 0..4 before indexing bmClasses,
+ * unlike slot +0x24.
+ *
+ * The cached bitmap is taken out of the screen bitmap's own +0x0c as a
+ * whole 32 bit word, and every other bitmap in this file has a 16 bit
+ * format at that same offset.  Both readings are in the reference and they
+ * cannot both describe one struct, so the load is written at the literal
+ * offset rather than through a field and the conflict is left visible.
+ */
 static void
-VGANewOffscreen(NXScreenDev *dev, void *a, int which, int depth, void *b)
+VGANewOffscreen(NXScreenDev *dev, Bounds *r, int which, int depth, int flag)
 {
+    bmClass		*class;
+
+    dev->cached = *(bitmap **)((char *)dev->screenBitmap + 0x0c);
+    if (which == 1)
+	return;
+
+    if (depth < 0)
+	depth = 0;
+    else if (depth > 4)
+	depth = 4;
+    class = bmClasses[depth];
+
+    dev->offscreen = class->newBitmap2(class, r, flag);
+    dev->depthDiffers = (dev->cached->format != dev->offscreen->format);
 }
 
-/* Vector slot +0x24.  Does not clamp its index, unlike the slot above. */
+/*
+ * Vector slot +0x24.  Does not clamp its index, unlike the slot above, so a
+ * caller asking for a depth above 4 reads past the five entry table.
+ * Reproduced as written.
+ */
 static void
-VGAConvertOffscreen(NXScreenDev *dev, int index, void *a, int flag)
+VGAConvertOffscreen(NXScreenDev *dev, Bounds *r, int index, int flag,
+		    int x, int y)
 {
+    bitmap		*bm;
+    bitmap		*conv;
+    bmClass		*class;
+
+    bm = dev->offscreen;
+    class = bmClasses[index];
+
+    if (flag == 1)
+	return;
+    if (index == bm->format)
+	return;
+    if (bm->isa == class)
+	return;
+
+    bm = class->newBitmap2(class, r, (bm->f1c & 3) == 2);
+    conv = dev->offscreen->isa->convert(dev->offscreen, r, index);
+    bm->isa->blit(bm, conv, r, r, x, y);
+
+    if (--dev->offscreen->refcount == 0)
+	dev->offscreen->isa->free(dev->offscreen);
+    if (--conv->refcount == 0)
+	conv->isa->free(conv);
+
+    dev->offscreen = bm;
+    dev->depthDiffers = (dev->cached->format != bm->format);
 }
 
-/* Vector slot +0x2c. */
+/*
+ * Vector slot +0x2c.  Five out parameters, all discarded here; the entry is
+ * a pure pass-through of the callee's return value.
+ */
 static int
 VGAGetOffscreenParams(NXScreenDev *dev)
 {
-    return (0);
+    int			 a, b, c, d, e;
+
+    if (dev->offscreen == 0)
+	return (0);
+    return (dev->offscreen->isa->getParams(dev->offscreen, &a, &b, &c, &d,
+					   &e));
 }
 
 /*
  * The entry point.  Also exported as Start, which is the fixed name the
- * Window Server resolves in every display bundle.
+ * Window Server resolves in every display bundle; the two are one body, not
+ * a wrapper, because a wrapper would add a call.
+ *
+ * The call order is the whole contract between this driver and the Window
+ * Server: find the frame buffer's device port, look the display up by name,
+ * read its geometry, push the same geometry back, map the aperture, map the
+ * ports, allocate the two-bit shadow, program the registers, and only then
+ * register the screen.  Nothing here is reordered.
+ *
+ * task_self() is a variable, not a call: the reference loads it and
+ * dereferences it once.  thread_self() below really is a call.
  */
 int
 VGAStart(NXScreen *screen)
 {
-    return (-1);
+    unsigned int	 values[3];
+    IOString		 kind;
+    unsigned int	 count;
+    port_t		 port;
+    IOReturn		 r;
+
+    port = LookupFrameBufferDevicePort("VGADisplay0", "frame buffer");
+    if (port == 0) {
+	/* The one failure message with no %d, and so the one separate tail. */
+	os_fprintf(os_stderr, "VGA Driver: can't open framebuffer.\n");
+	return (-1);
+    }
+
+    master = device_master_self();
+    r = _IOLookupByDeviceName(master, "VGADisplay0", &object, &kind);
+    if (r) {
+	os_fprintf(os_stderr, "VGA Driver: can't find VGA display (%d).\n", r);
+	return (-1);
+    }
+
+    r = _IOGetIntValues(master, object, "IOGetDisplayInfo", 3, values, &count);
+    if (r) {
+	os_fprintf(os_stderr, "VGA Driver: can't set display info (%d).\n", r);
+	return (-1);
+    }
+    vga_width = values[0];
+    vga_height = values[1];
+    vga_rowbytes = values[2];
+    vga_bpl = values[2] >> 1;
+
+    r = _IOSetIntValues(master, object, "IO_Framebuffer_SetDimensions",
+			values, 3);
+    if (r) {
+	os_fprintf(os_stderr, "VGA Driver: can't set display info (%d).\n", r);
+	return (-1);
+    }
+
+    vgaAddress = 0;
+    r = _IOMapEISADeviceMemory(port, task_self(), 0xa0000, 0x20000,
+			       &vgaAddress, YES, IO_WriteThrough);
+    if (r) {
+	os_fprintf(os_stderr, "VGA Driver: can't map display memory (%d).\n",
+		   r);
+	return (-1);
+    }
+
+    r = _IOMapEISADevicePorts(port, thread_self());
+    if (r) {
+	os_fprintf(os_stderr, "VGA Driver: can't map display ports (%d).\n",
+		   r);
+	return (-1);
+    }
+
+    /*
+     * The stale r.  Every other failure prints the IOReturn it just
+     * received; this one prints the successful zero _IOMapEISADevicePorts
+     * returned above, so the only message this path can ever produce reads
+     * "(0)".  It is the reference's and it is observable, so it stays.
+     */
+    vgaVirtualAddress = os_malloc(vga_height * vga_rowbytes);
+    if (vgaVirtualAddress == 0) {
+	os_fprintf(os_stderr,
+		   "VGA Driver: can't allocate virtual display (%d).\n", r);
+	return (-1);
+    }
+
+    /*
+     * The test reads the stack slot, not the global.  They are equal here,
+     * but reloading vga_width would compile to different instructions.
+     */
+    if (values[0] != 640) {
+	values[0] = 0;
+	r = _IOSetIntValues(master, object, "Set VGA VESA Mode", values, 1);
+	if (r) {
+	    /* Two spaces after the colon, in the reference's own string. */
+	    os_fprintf(os_stderr, "VGA Driver:  can't talk to VGA (%d).\n", r);
+	    return (-1);
+	}
+    } else
+	VGASetStdRegs(5);			/* 640x480x16, mode 0x12 */
+
+    fill_64K_plane(0);
+    set_colormap();
+    screen->name = "VGA";
+    screen->ops = vgaDriverVector;
+    NXRegisterScreen(screen, 0, 0, vga_width, vga_height);
+    return (0);
 }
 
 asm(".globl _Start");
@@ -517,13 +950,13 @@ VGASetCursor(NXScreenDev *dev, bitmap *src, Point hot, int frame, int *flagp)
 	mask = src->plane1;
 	break;
     case 2:
-	BM12Convert8to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	BM12Convert8to2(tmp, src, cursorBounds, src->bounds, zeroBounds);
 	break;
     case 3:
-	BM12Convert16to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	BM12Convert16to2(tmp, src, cursorBounds, src->bounds, zeroBounds);
 	break;
     case 4:
-	BM12Convert32to2(tmp, src, cursorBounds, src->f4, src->f8, zeroBounds);
+	BM12Convert32to2(tmp, src, cursorBounds, src->bounds, zeroBounds);
 	break;
     }
 
@@ -667,8 +1100,8 @@ VGADisplayCursorBlit(NXScreenDev *dev)
     rightOK = c.maxx <= scr.maxx;
 
     col = (c.minx - scr.minx) >> 4;
-    words = (unsigned int)vga_bpl >> 1;		/* 16 pixel words per line */
-    lines = 0x10000 / (unsigned int)vga_bpl;	/* lines per 64K window	   */
+    words = vga_bpl >> 1;		/* 16 pixel words per line */
+    lines = 0x10000 / vga_bpl;	/* lines per 64K window	   */
     get_addr_range((void **)&p);
 
     row = c.miny - scr.miny;
@@ -725,8 +1158,8 @@ VGARemoveCursorBlit(NXScreenDev *dev)
     s = dev->shmem->saveRect;
 
     col = (s.minx - scr.minx) >> 4;
-    words = (unsigned int)vga_bpl >> 1;
-    lines = 0x10000 / (unsigned int)vga_bpl;
+    words = vga_bpl >> 1;
+    lines = 0x10000 / vga_bpl;
     get_addr_range((void **)&p);
     p += ((s.miny - scr.miny) % lines) * words + col;
 
@@ -918,7 +1351,7 @@ vga_at_mode12_bpp2_to_bpp4(Bounds *r)
 	n++;
     n -= first;
 
-    words = (unsigned int)vga_width >> 4;
+    words = vga_width >> 4;
 
     outb(0x3c4, 2);
     saved = inb(0x3c5);

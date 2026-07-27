@@ -79,8 +79,8 @@ All four `duplicate_candidates` entries, enumerated with cause:
   and same cause: `AtapiCntInternal.m:151` (`#ifdef` branch, compiled) and
   `:172` (`#else` branch, dead).
 
-**Real property of Apple's source (primary class vs. category, same
-selector):**
+**Version divergence between our tree and Apple's shipped source (primary
+class vs. category, same selector):**
 
 - `-[IdeController getIdeDriveInfo:]` (address 20176, size 76) --
   `src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m:475` inside
@@ -138,17 +138,35 @@ emits a category name in a compiled method's symbol when that method was
 compiled as part of a category implementation block: `IdeCnt.m:56` opens
 `@implementation IdeController` (the primary class, no category), while
 `IdeCntInit.m:131` opens `@implementation IdeController(Initialize)`.
-Objective-C category implementations replace same-named primary-class
-methods in the runtime's method table at load time, so Apple's build
-retained the category body and never compiled the primary-class body for
-either selector.
 
-**Conclusion: Apple shipped `IdeCntInit.m:443` (`getIdeDriveInfo:`) and
-`IdeCntInit.m:1101` (`getIdeIdentifyInfo:`).** The primary-class bodies at
-`IdeCnt.m:475` and `IdeCnt.m:469` were never compiled into this binary --
-they are dead code in our tree, redundant with the category implementations
-that are actually loaded, in Apple's build and in ours alike, under
-Objective-C's category-overrides-primary-class load semantics.
+Category-overrides-primary-class is a *runtime load-time* behavior: it
+replaces entries in a class's method list when the category loads. It
+cannot suppress *symbol emission* at compile time -- if `IdeCnt.m` had
+contained these two bodies, the compiler would have emitted untagged
+`-[IdeController …]` symbols for them regardless of what loaded afterward.
+
+The file itself provides the control. `isMultiSectorAllowed:`
+(`IdeCnt.m:459`) and `getMultiSectorValue:` (`IdeCnt.m:464`) sit in the same
+unguarded primary `@implementation IdeController` block, immediately above
+the two disputed bodies at `:469` and `:475` -- the whole file runs lines
+56-926 as a single `@implementation`, no intervening `@end`. Both neighbours
+compile to untagged symbols:
+
+```
+  -[IdeController isMultiSectorAllowed:]
+  -[IdeController getMultiSectorValue:]
+```
+
+If `IdeCnt.m:469` and `:475` had also been compiled, they would show the
+same untagged form. They don't -- only the `(Initialize)`-tagged symbols
+exist.
+
+**Conclusion: Apple's Rhapsody-vintage `IdeCnt.m` did not contain these two
+bodies at all; our tree does.** This is not dead code surviving in Apple's
+own driver -- it is a version divergence between our tree's copy of
+`IdeCnt.m` and the source Apple actually shipped, which defined
+`getIdeDriveInfo:` and `getIdeIdentifyInfo:` only once each, in
+`IdeCntInit.m:443` and `:1101`.
 
 This retracts the earlier assessment that this question was intrinsically
 unanswerable from static comparison. It was not: the binary's Mach-O symbol

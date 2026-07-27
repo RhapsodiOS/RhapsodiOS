@@ -150,7 +150,7 @@ exported), plus `IncrementAtomicAligned`, `BitAndAtomicAligned` and
 likewise not separately named in the reference analysis). Recorded here as an
 observed discrepancy against the brief's "9": this source tree has 8 static
 function definitions, not 9, by an exhaustive `grep -n '\bstatic\b'` of every
-`.m`/`.c` file in the directory. Ten non-static C helpers plus the two
+`.m`/`.c` file in the directory. Eleven non-static C helpers plus the two
 libgcc routines round out the eighteen bucket-6 entries.
 
 The remaining three bucket-6 entries do not move to bucket 5:

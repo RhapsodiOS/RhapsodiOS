@@ -119,7 +119,9 @@ one difference is ATA's.
 The shipped `drvPPCATA_reloc` links `IdeDisk`; our tree defines
 `ATADisk : IODisk` in `src/kernel-7/bsd/dev/ppc/drvATADisk/ATADisk.m`. The
 verdict is **RENAME ESTABLISHED**, on this evidence
-([ATA/findings.md](ATA/findings.md)):
+([ATA/findings.md](ATA/findings.md)) — established by selector correspondence
+and a size proxy, not by a literal byte-for-byte size match; see the size
+clause below and "Not claimed":
 
 - **38/38 selector correspondence.** Every `-[IdeDisk …]`/`+[IdeDisk …]`
   selector `selector_check.py` reports missing when scanning only
@@ -357,7 +359,7 @@ only three such cases across all five drivers:
 
 The other 2 are the build-generated accessors.
 
-### 4.5 ATA: dead code in Apple's own source
+### 4.5 ATA: a version divergence between our tree and Apple's shipped source
 
 `getIdeDriveInfo:` and `getIdeIdentifyInfo:` are each defined twice for
 `IdeController`: in `@implementation IdeController` (`IdeCnt.m:475` and `:469`)
@@ -374,10 +376,35 @@ The Mach-O symbol table settles it. Read via `binrecon.macho.read_macho`:
 
 Both compiled selectors carry the `(Initialize)` tag, and GCC emits a category
 name only when the method was compiled inside a category implementation block.
-**Apple shipped `IdeCntInit.m:443` and `IdeCntInit.m:1101`; the `IdeCnt.m:469`
-and `:475` bodies were never compiled in.** Under Objective-C's
-category-overrides-primary-class load semantics they are dead code in Apple's
-build and in ours alike. Evidence: [ATA/findings.md](ATA/findings.md).
+Category-overrides-primary-class is a *runtime load-time* behavior — it
+replaces entries in a class's method list when the category loads. It cannot
+suppress *symbol emission* at compile time: if Apple's `IdeCnt.m` had
+contained these two bodies, the compiler would have emitted untagged
+`-[IdeController …]` symbols for them regardless of whether a category
+happened to load afterward.
+
+The control proves this. `isMultiSectorAllowed:` (`IdeCnt.m:459`) and
+`getMultiSectorValue:` (`IdeCnt.m:464`) sit in the same unguarded primary
+`@implementation IdeController` block, immediately above the two disputed
+bodies at `:469` and `:475` — the whole file is a single `@implementation`
+running lines 56–926, no intervening `@end`. Both neighbours compile to
+untagged symbols (`-[IdeController isMultiSectorAllowed:]` and
+`-[IdeController getMultiSectorValue:]`). If `IdeCnt.m:469` and `:475` had
+also been compiled, they would show the same untagged form. They don't —
+only the `(Initialize)`-tagged symbols exist.
+
+**Apple's Rhapsody-vintage `IdeCnt.m` did not contain these two bodies at
+all; our tree does.** This is not dead code surviving in Apple's own driver —
+it is a divergence between our tree's copy of `IdeCnt.m` and the source Apple
+actually shipped, which contained only the `IdeCntInit.m:443` and `:1101`
+category bodies. Evidence: [ATA/findings.md](ATA/findings.md).
+
+This changes what the ATA follow-on spec must decide: not "delete dead code"
+but "reconcile a divergence between our tree and Apple's shipped source" —
+i.e. whether to remove the `IdeCnt.m` copies to match Apple's shipped tree,
+or keep both bodies as an intentional local variant. The two entries remain
+legitimate `duplicate_candidates` with an evidenced cause; only the stated
+cause changes (§5 item 4 is unaffected).
 
 The same two addresses read from IDA's export come back as
 `-[IdeController getIdeDriveInfo:]` and `-[IdeController getIdeIdentifyInfo:]`,
@@ -468,10 +495,18 @@ instead, two per stub.
 Ranked by **measured gap, not binary size**. Cuda at 43 KB with zero gaps needs
 far less work than Burgundy at 38 KB with a systematic rename.
 
-The ranking key is *gaps that survive explanation* — an unmapped entry with a
-documented, evidenced cause is a result, not work. Exact-name match rate is
-reported alongside but does not drive the order: Cuda has the lowest rate of
-the four Apple-sourced drivers (95.1%) and the least work of all five.
+The ranking key is **actionable divergence with runtime consequence** — a
+documented, evidenced cause does not by itself mean "no work": if the
+divergence changes what actually runs (a renamed selector breaks
+Objective-C's dynamic dispatch), it is real work no matter how well it is
+explained. That is why Burgundy ranks #1 despite 0 residual bucket-6 entries
+and every one of its 18 unmapped entries being documented and evidenced —
+its 16 renames are exactly this kind of divergence. Once runtime consequence
+is accounted for, the secondary tie-breaker is that an unmapped entry with a
+documented, evidenced cause but no runtime consequence (a scanner limitation,
+a libgcc helper) is a result, not work. Exact-name match rate is reported
+alongside but does not drive the order: Cuda has the lowest rate of the four
+Apple-sourced drivers (95.1%) and the least work of all five.
 
 ### 1. `drvPPCBurgundy` — largest gap, and different in kind
 
@@ -596,6 +631,14 @@ natural test fixtures**: each has a known-correct answer for every address.
   defines the macro unconditionally). Teaching it otherwise means emulating the
   preprocessor; not worth it for two entries, but worth knowing before reading
   any future duplicate list.
+- **The brace-lookahead inspects only the immediately following non-blank
+  line**, so a NeXT-idiom `- sig;` definition with an intervening comment
+  block between the `;` and the `{` is still dropped as a bare declaration.
+  13 such sites exist tree-wide, including files future PowerPC specs will
+  measure — `src/kernel-7/bsd/dev/ppc/PPCKeyboard.m:616,671,706`,
+  `src/kernel-7/bsd/dev/ppc/kmDevice.m:835`,
+  `src/driverkit-3/libDriver/ppc/IOFramebuffer.m:753`. Zero occur in the five
+  drivers measured here, so this report's measurements are uncorrupted by it.
 
 ---
 
@@ -687,8 +730,8 @@ with `unexpected=[5204, 5496, 20176, 23280]` — exactly its four duplicates.
 | --- | --- | --- |
 | 5204 | `-[AtapiController allocAtapiBuf]` | Scanner limitation — `AtapiCntInternal.m:124` (`#ifdef`) and `:161` (`#else`); `AtapiCnt.h:45` defines the macro unconditionally, so only `:124` compiles |
 | 5496 | `-[AtapiController freeAtapiBuf:]` | Same file, same cause: `:151` compiled, `:172` dead |
-| 20176 | `-[IdeController getIdeDriveInfo:]` | Real property of Apple's source — `IdeCnt.m:475` (primary) and `IdeCntInit.m:443` (`(Initialize)` category); binary carries the category tag, so Apple shipped the category body (§4.5) |
-| 23280 | `-[IdeController getIdeIdentifyInfo:]` | Same: `IdeCnt.m:469` (primary) and `IdeCntInit.m:1101` (category); category body shipped |
+| 20176 | `-[IdeController getIdeDriveInfo:]` | Version divergence — `IdeCnt.m:475` (primary, our tree only) and `IdeCntInit.m:443` (`(Initialize)` category); binary carries the category tag, so Apple's shipped `IdeCnt.m` never contained the primary-class body (§4.5) |
+| 23280 | `-[IdeController getIdeIdentifyInfo:]` | Same: `IdeCnt.m:469` (primary, our tree only) and `IdeCntInit.m:1101` (category); Apple's shipped source lacked this body too |
 
 Per spec §5 item 4, a duplicate that is measured, explained and evidenced is a
 result. All four are.
@@ -715,6 +758,11 @@ $ PYTHONPATH=tools/binrecon python -m pytest tools/binrecon/tests -q
 ```
 
 ### Item 7 — report carries all five parts, §5 names each spec with its gap — **PASS**
+
+Spec item 7 names these as §4.1–§4.5; this report promotes them to top-level
+§1–§5 (so its own §4 is free for driver-specific findings). §1 Correspondence
+maps to spec §4.1, §2 Class inventory to §4.2, §3 Non-Objective-C remainder
+to §4.3, §4 Findings to §4.4, §5 Decomposition proposal to §4.5.
 
 §1 Correspondence, §2 Class inventory, §3 Non-Objective-C remainder, §4
 Findings, §5 Decomposition proposal. §5 names five per-driver follow-on specs

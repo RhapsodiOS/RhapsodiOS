@@ -468,6 +468,8 @@ IOLog ("InitSCSITape: not a tape\n");
 {
     [_devLock lock];
     _devAcquired = NO;
+    [self releaseAllLuns];
+    [_controller releaseTarget: _target lun: _lun forOwner: self];
     [_devLock unlock];
     return IO_R_SUCCESS;
 }

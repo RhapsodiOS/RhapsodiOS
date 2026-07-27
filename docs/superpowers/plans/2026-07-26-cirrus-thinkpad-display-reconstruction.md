@@ -583,7 +583,7 @@ If `complete` is `False`, read `/tmp/cirrus-analyze.log` for the aborting analyz
 - [ ] **Step 2: Build the pre-rewrite source map**
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434 --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json
 ```
 
 Then check the partition:
@@ -597,11 +597,13 @@ print('sha', m['reference_sha256'])
 print('bytes', sum(e['size'] for k in ('mapped','unmapped','boundary_disputed') for e in m[k]))"
 ```
 
-Expected: `mapped 0`, `unmapped 21`, `boundary_disputed 0`, `duplicate_candidates 0`, sha `7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D`, bytes **`4354`**. Every function unmapped is the correct baseline — our source shares no symbol with the reference.
+Expected: `mapped 5`, `unmapped 16`, `boundary_disputed 0`, `duplicate_candidates 0`, sha `7DA038CCEA1CDE68B6CF2ACF4D12EE5056E7F0248ADD34D451FB96EA79C13D0D`, bytes **`4354`**.
+
+The five mapped entries are at reference addresses **0, 712, 804, 3296 and 3544** — `initFromDeviceDescription:`, `enterLinearMode`, `revertToVGAMode`, `clearScreen` and `displayModes`. The invented `CirrusLogicGD5434DisplayDriver.m` declares those five selector names on a class of the same name, so `source-map` pairs them. **That is a name collision, not evidence of a matching implementation.** The tool matches `-[class selector]` symbols and nothing else; it has no view of what the bodies do, and here they do something else entirely — the invented class subclasses `IOPCIDirectDevice` rather than `IOFrameBufferDisplay` and its bodies are hand-written guesses. Treat all 21 functions as needing reconstruction. Do not "fix" the collision by renaming our invented source, and do not read a nonzero `mapped` as partial parity.
 
 **The 34-byte shortfall against `__text`'s 4388 is expected and is not a finding.** IDA reports true function extents, and the linker pads between functions with `nop` to restore alignment. There are 14 such gaps of 1 to 3 bytes each, after `_selectMode` (553→556), `enterLinearMode` (710→712), `revertToVGAMode` (801→804), `determineConfiguration` (890→892), `isValidPCIAssignedBaseAddress:` (1658→1660), `setPCIConfiguration` (1689→1692), `setMode:` (2275→2276), `name` (3325→3328), `setPendingDisplayMode:` (3387→3388), `setTransferTable:count:` (3585→3588), `setBrightness:token:` (3921→3924), `_SetGammaValue` (4001→4004), `setGammaTable` (4086→4088) and the last glue function (4361→4364). The partition still spans 0 to 4388 with no unclaimed region, which is the property that matters. Confirm that span rather than the byte sum.
 
-If `mapped` is nonzero, a name collided by accident; inspect which and note it, do not "fix" it by renaming our invented source.
+If `mapped` holds any address other than those five, another name collided; inspect which and note it in `divergences.md`.
 
 - [ ] **Step 3: Read the full cstring and const sections**
 
@@ -625,7 +627,7 @@ Expected: the 20 strings listed in this plan's Cirrus partition section. Any str
 `src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/divergences.md`, modelled on `src/drivers-i386/video/drvVGA/reconstruction/divergences.md`. Required contents:
 
 1. A header table: binary, Mach-O type, size, SHA-256, and the `BINRECON_REFERENCE` path.
-2. An "Evidence" section: which analyzers ran, whether any was disabled and the verbatim error if so, and the statement that our source is disjoint so every function is in `unmapped`.
+2. An "Evidence" section: which analyzers ran, whether any was disabled and the verbatim error if so, and a statement that our source is disjoint from Apple's in behaviour — naming the five selectors whose names nevertheless collide, and saying that the collision is nominal and that none of the 21 functions has a counterpart implementation.
 3. A "Source-file partition" section giving the three `__OBJC,__module_info` modules and their `__text` ranges (`CirrusLogicGD5434DisplayDriver.m` 0–3588, `ProgramDAC.m` 3588–4364, `CirrusLogicGD5434DisplayDriver_instance.m` 4364–4388), plus the class/category each defines.
 4. **One numbered finding per function**, in address order, all 21. Each finding states: address, size, symbol; what the function does; which I/O ports, PCI config registers and DriverKit calls it touches; its callers and callees; which `__const`/`__data` symbols it reads; and every inference marked explicitly as an inference rather than an observation.
 5. A "Static storage" section attributing `_xxx.86`, `_xxx.89` and `_xxx.92` each to the function that owns it.
@@ -712,14 +714,14 @@ The project will not compile at the end of this task: `ProgramDAC.m`'s category 
 - [ ] **Step 4: Verify the source map moves**
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434 --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
 import json
 m=json.load(open('src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json'))
 print('mapped', sorted(e['address'] for e in m['mapped']))
 print('unmapped', len(m['unmapped']))"
 ```
 
-Expected: `mapped [3588, 3924, 4004, 4088]` and `unmapped 17`. If an address is missing, the source-map scanner did not find that definition — check the selector spelling against the reference, including empty keywords.
+Expected: `mapped [0, 712, 804, 3296, 3544, 3588, 3924, 4004, 4088]` and `unmapped 12`. The four new addresses are `ProgramDAC.m`'s; the leading five are Task 2's nominal collisions with the still-invented `CirrusLogicGD5434DisplayDriver.m` and stay put until Task 4 replaces it. If one of 3588, 3924, 4004 or 4088 is missing, the source-map scanner did not find that definition — check the selector spelling against the reference, including empty keywords.
 
 - [ ] **Step 5: Commit**
 
@@ -784,7 +786,7 @@ Write the 15 functions in the reference's address order, from the Task 2 finding
 - [ ] **Step 4: Verify the source map is complete**
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434 --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/cirruslogic-gd5434/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc" --source-dir src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
 import json
 m=json.load(open('src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/CirrusLogicGD5434DisplayDriver_reloc/source-map.json'))
 print('mapped', len(m['mapped']), 'unmapped', len(m['unmapped']))
@@ -1016,14 +1018,25 @@ Expected: `complete True`. If `complete` is `False`, read `/tmp/thinkpad-analyze
 `--objc-methods` is mandatory here: the six `vidBIOS` methods carry no symbol-table entry.
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
 import json
 m=json.load(open('src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json'))
 for k in ('mapped','unmapped','boundary_disputed','duplicate_candidates'): print(k, len(m[k]))
 print('vidBIOS present:', [e['reference_names'][0] for e in m['unmapped'] if 'vidBIOS' in e['reference_names'][0]])"
 ```
 
-Expected: `mapped 0`, `unmapped 38`, and all six `vidBIOS` methods present in the unmapped list. If the `vidBIOS` methods are absent, `--objc-methods` did not take effect and the partition is incomplete — do not proceed.
+Expected: `mapped` + `unmapped` = 38, `boundary_disputed 0`, `duplicate_candidates 0`, and all six `vidBIOS` methods present in the unmapped list. If the `vidBIOS` methods are absent, `--objc-methods` did not take effect and the partition is incomplete — do not proceed.
+
+**`mapped` will not be 0, and no count is asserted here** because it has not been measured — the ThinkPad reference analysis does not exist until Step 1 of this task runs. The invented `IBMThinkPad760EDDisplayDriver.m` declares a class of the same name as Apple's, so any selector it happens to share maps by name alone. By inspection, its `initFromDeviceDescription:`, `enterLinearMode`, `revertToVGAMode` and `free` match reference symbols at **56, 1184, 1812 and 4344**; its `selectMode:`, `setBrightness:` and `+probe:` do not match the reference's `selectMode`, `setBrightness:token:` and absent `+probe:`. So print the mapped addresses, check the set against that prediction, and record the actual set in `divergences.md`:
+
+```bash
+cd /d/RhapsodiOS && ./.venv-binrecon/Scripts/python.exe -c "
+import json
+m=json.load(open('src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json'))
+print('mapped', [(e['address'], e['reference_names'][0]) for e in m['mapped']])"
+```
+
+Every mapped entry here is a name collision only — the invented bodies do not implement the reference's behaviour. Treat all 29 in-scope functions as needing reconstruction, and do not rename our invented source to suppress a collision.
 
 - [ ] **Step 3: Read the full cstring section**
 
@@ -1137,13 +1150,13 @@ SFILES = smapi.s
 - [ ] **Step 5: Verify the source map moves**
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
 import json
 m=json.load(open('src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json'))
 print('mapped', sorted(e['address'] for e in m['mapped']))"
 ```
 
-Expected: `mapped [5708, 6044, 6124, 6208, 6440]`. If 6440 is absent, the scanner did not recognise the assembly definition — record that as a scanner limitation in `divergences.md` rather than renaming the symbol.
+Expected: **5708, 6044, 6124, 6208 and 6440 are all present in `mapped`** — that is what this step adds. The list will also still carry Task 7 Step 2's name collisions with the invented `IBMThinkPad760EDDisplayDriver.m`, which Task 9 deletes; check for the five addresses above rather than for list equality, and do not assert a total. If 6440 is absent, the scanner did not recognise the assembly definition — record that as a scanner limitation in `divergences.md` rather than renaming the symbol.
 
 - [ ] **Step 6: Commit**
 
@@ -1223,7 +1236,7 @@ HFILES = IBMThinkPad760ED.h
 - [ ] **Step 5: Verify the source map**
 
 ```bash
-cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
+cd /d/RhapsodiOS && export PYTHONPATH=tools/binrecon && ./.venv-binrecon/Scripts/python.exe -m binrecon source-map --reference-analysis tools/binrecon/out/thinkpad760ed/published/analysis-reference-ida.json --binary "C:/Users/raynorpat/Downloads/test/Drivers/i386/IBMThinkPad760EDDisplayDriver.config/IBMThinkPad760EDDisplayDriver_reloc" --source-dir src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj --repo-root . --objc-methods --output src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json && ./.venv-binrecon/Scripts/python.exe -c "
 import json
 m=json.load(open('src/drivers-i386/video/drvIBMThinkPad760EDDisplay/reconstruction/IBMThinkPad760EDDisplayDriver_reloc/source-map.json'))
 print('mapped', len(m['mapped']), 'unmapped', len(m['unmapped']))

@@ -14,8 +14,17 @@
 
 Every task's requirements implicitly include this section.
 
-- **Run every command from the repository root** `D:/RhapsodiOS`.
-- **Python is** `.venv-binrecon/Scripts/python.exe`. **Always set** `PYTHONPATH=tools/binrecon`.
+- **This work happens in the `ppc-driver-recon` worktree**, not the main checkout. Every prior reconstruction used its own worktree, and the main checkout's `qemu-debug-loop` branch has unrelated work in flight.
+- **Start every shell with these two assignments**, then use `$REPO` and `$VENVPY` exactly as the steps write them:
+
+```bash
+REPO="D:/RhapsodiOS/.claude/worktrees/ppc-driver-recon"
+VENVPY="D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe"
+```
+
+  `$VENVPY` points into the **main checkout** on purpose: `.venv-binrecon` is gitignored, exists only there, and is a shared tool rather than per-worktree state. `PYTHONPATH=tools/binrecon` stays relative and resolves against `$REPO` because every command runs after `cd $REPO`.
+
+- **Always set** `PYTHONPATH=tools/binrecon` on binrecon invocations.
 - **Reference artifacts live at** `C:/Users/raynorpat/Downloads/test/Drivers/ppc/` and stay outside Git. Never copy them into the repo.
 - **`binrecon analyze` exits 1 for every profile in this plan.** These are reference-only profiles with no rebuilt artifact, so `normalized-functions` acceptance is unsatisfiable by construction. **Exit 1 is success.** The pass condition is `"complete": true` in the run summary plus a published `published/analysis-reference-ida.json`. Do not "fix" the exit code, do not invent a rebuilt artifact, and do not change the acceptance level.
 - **Never commit anything under `tools/binrecon/out/`.** Generated evidence, excluded by `.gitignore:25`.
@@ -70,9 +79,11 @@ The spec expected `__picsymbol_stub` entries and crt/dyld startup routines. **Th
 
 **Buckets 1 and 2 will be empty for all five drivers.** The report must state this and say why, not silently omit the buckets.
 
-### Profiles that already exist
+### No profiles exist yet in this worktree
 
-`tools/binrecon/profiles/cuda-ppc.json` and `cuda-bundle-ppc.json` were created during calibration and are on disk, untracked. Task 1 verifies and commits them alongside the eight it creates. **Do not delete them.**
+Two Cuda profiles were created during calibration, but they were never committed and live only in the main checkout. **This worktree has none of them.** Task 1 creates all ten from scratch.
+
+Likewise `tools/binrecon/out/` does not exist here and will be created by the first `analyze` run.
 
 ---
 
@@ -102,40 +113,31 @@ Spec §2.2 lists only `report.md` and five `source-map.json`. This plan adds `fi
 ## Task 1: Ten binrecon profiles
 
 **Files:**
-- Create: `tools/binrecon/profiles/{53c96,ata,bmac,burgundy}-ppc.json`
-- Create: `tools/binrecon/profiles/{53c96,ata,bmac,burgundy}-bundle-ppc.json`
-- Verify existing: `tools/binrecon/profiles/cuda-ppc.json`, `cuda-bundle-ppc.json`
+- Create: `tools/binrecon/profiles/{cuda,53c96,ata,bmac,burgundy}-ppc.json`
+- Create: `tools/binrecon/profiles/{cuda,53c96,ata,bmac,burgundy}-bundle-ppc.json`
 
 **Interfaces:**
 - Produces: ten profiles at `tools/binrecon/profiles/<KEY>-ppc.json` and `<KEY>-bundle-ppc.json`, with `output_dir` of `../out/<KEY>-ppc` and `../out/<KEY>-bundle-ppc`. Tasks 2–6 consume these paths.
 
-- [ ] **Step 1: Confirm the two existing profiles are well-formed**
+- [ ] **Step 1: Confirm the worktree and venv are wired up**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
-import json
-for p in ['cuda-ppc','cuda-bundle-ppc']:
-    d=json.load(open(f'tools/binrecon/profiles/{p}.json'))
-    assert d['architecture']=='ppc' and d['endianness']=='big', p
-    assert d['analyzers']['ida']['enabled'] is True, p
-    assert d['analyzers']['ghidra']['enabled'] is False, p
-    assert d['analyzers']['angr']['enabled'] is False, p
-    print(p, 'OK', d['output_dir'])
-"
+REPO="D:/RhapsodiOS/.claude/worktrees/ppc-driver-recon"
+VENVPY="D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe"
+cd $REPO && git branch --show-current && $VENVPY --version && \
+  PYTHONPATH=tools/binrecon $VENVPY -m binrecon --help | head -3
 ```
 
-Expected exactly:
-```
-cuda-ppc OK ../out/cuda-ppc
-cuda-bundle-ppc OK ../out/cuda-bundle-ppc
-```
+Expected: `ppc-driver-recon`, `Python 3.13.9`, and the binrecon usage banner listing `validate,analyze,ledger,compare,consensus,source-map`.
 
-- [ ] **Step 2: Generate the eight remaining profiles**
+(`tools/binrecon/README.md` says the supported runtime is 3.12. The venv on this machine is 3.13.9 and the whole pipeline was calibrated on it. Use it as-is; do not rebuild the venv.)
+
+- [ ] **Step 2: Generate all ten profiles**
 
 Ghidra and angr are disabled because both reject a PowerPC profile before starting a subprocess.
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe - <<'PY'
+cd $REPO && $VENVPY - <<'PY'
 import json
 from pathlib import Path
 
@@ -161,7 +163,7 @@ TEMPLATE = {
     'output_dir': None,
 }
 
-DRIVERS = {'53c96': 'drvPPC53c96', 'ata': 'drvPPCATA',
+DRIVERS = {'cuda': 'drvPPCCuda', '53c96': 'drvPPC53c96', 'ata': 'drvPPCATA',
            'bmac': 'drvPPCBMac', 'burgundy': 'drvPPCBurgundy'}
 
 out = Path('tools/binrecon/profiles')
@@ -176,14 +178,14 @@ for key, driver in DRIVERS.items():
 PY
 ```
 
-Expected: eight `wrote tools/binrecon/profiles/...` lines.
+Expected: ten `wrote tools/binrecon/profiles/...` lines.
 
 - [ ] **Step 3: Validate all ten against the real artifacts**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && while read -r slug rel; do
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && while read -r slug rel; do
   BINRECON_REFERENCE="$REF/$rel" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon validate \
+    $VENVPY -m binrecon validate \
     --profile "tools/binrecon/profiles/$slug.json"
 done <<'EOF'
 cuda-ppc drvPPCCuda.config/drvPPCCuda_reloc
@@ -204,7 +206,7 @@ Expected: ten `reference ... size=... sha256=...` lines. **Check every size and 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add tools/binrecon/profiles/*-ppc.json && git commit -m "binrecon: add ten PowerPC profiles for the five shipped drivers
+cd $REPO && git add tools/binrecon/profiles/*-ppc.json && git commit -m "binrecon: add ten PowerPC profiles for the five shipped drivers
 
 Covers the bundle stub and kernel-server _reloc of drvPPCCuda, drvPPC53c96,
 drvPPCATA, drvPPCBMac and drvPPCBurgundy."
@@ -229,11 +231,11 @@ This is the reference task. It reproduces the calibration numbers and writes the
 - [ ] **Step 1: Run both analyses**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "cuda-ppc drvPPCCuda.config/drvPPCCuda_reloc" "cuda-bundle-ppc drvPPCCuda.config/drvPPCCuda"; do
   set -- $pair
   BINRECON_REFERENCE="$REF/$2" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+    $VENVPY -m binrecon analyze \
     --profile "tools/binrecon/profiles/$1.json" \
     --output "tools/binrecon/out/$1/run-summary.json"
   echo "exit=$? profile=$1"
@@ -245,7 +247,7 @@ Expected: two `analysis complete; analyzers=1 comparisons=0 normalized-functions
 - [ ] **Step 2: Verify both runs are complete and published**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json, pathlib
 for k in ['cuda-ppc','cuda-bundle-ppc']:
     s=json.load(open(f'tools/binrecon/out/{k}/run-summary.json'))
@@ -264,11 +266,11 @@ cuda-bundle-ppc complete= True published= True
 - [ ] **Step 3: Run the relocation invariant check on both**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "cuda-ppc drvPPCCuda.config/drvPPCCuda_reloc" "cuda-bundle-ppc drvPPCCuda.config/drvPPCCuda"; do
   set -- $pair
   echo "=== $1 ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/ppc_invariant_check.py \
+  PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
     --binary "$REF/$2" --analysis "tools/binrecon/out/$1/published/analysis-reference-ida.json"
 done
 ```
@@ -278,8 +280,8 @@ Expected: **0 relocation violations** for both. Any symbol/function-start mismat
 - [ ] **Step 4: Build the source map**
 
 ```bash
-cd D:/RhapsodiOS && mkdir -p src/drivers-ppc/reconstruction/Cuda && \
-PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m binrecon source-map \
+cd $REPO && mkdir -p src/drivers-ppc/reconstruction/Cuda && \
+PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
   --objc-methods --scope-to-objc \
   --reference-analysis tools/binrecon/out/cuda-ppc/published/analysis-reference-ida.json \
   --binary "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCCuda.config/drvPPCCuda_reloc" \
@@ -293,7 +295,7 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Confirm the map reproduces the calibration numbers**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 d=json.load(open('src/drivers-ppc/reconstruction/Cuda/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
@@ -319,7 +321,7 @@ If the assertion fails, **stop and report** — the pipeline changed since calib
 - [ ] **Step 6: Write the bucket classification script**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && cat > "$SCRATCH/bucket_functions.py" <<'PY'
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && cat > "$SCRATCH/bucket_functions.py" <<'PY'
 """Classify every function IDA found into exactly one bucket.
 
 Usage: bucket_functions.py <analysis.json> <source-map.json>
@@ -402,8 +404,8 @@ Expected: `written`.
 - [ ] **Step 7: Run the bucket script and confirm reconciliation**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
-.venv-binrecon/Scripts/python.exe "$SCRATCH/bucket_functions.py" \
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
+$VENVPY "$SCRATCH/bucket_functions.py" \
   tools/binrecon/out/cuda-ppc/published/analysis-reference-ida.json \
   src/drivers-ppc/reconstruction/Cuda/source-map.json
 ```
@@ -431,7 +433,7 @@ RECONCILES: yes
 - [ ] **Step 8: Run the selector check**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe \
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY \
   tools/binrecon/selector_check.py \
   "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCCuda.config/drvPPCCuda_reloc" \
   src/kernel-7/bsd/dev/ppc/drvCuda
@@ -456,7 +458,7 @@ Every number must come from command output pasted into the document. Do not writ
 - [ ] **Step 10: Verify the map loads against the reference analysis**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 a = load_json(Path('tools/binrecon/out/cuda-ppc/published/analysis-reference-ida.json'))
@@ -471,7 +473,7 @@ Expected: `load_source_map OK`.
 - [ ] **Step 11: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/Cuda && git commit -m "drivers-ppc: measure drvPPCCuda against its shipped binary
+cd $REPO && git add src/drivers-ppc/reconstruction/Cuda && git commit -m "drivers-ppc: measure drvPPCCuda against its shipped binary
 
 37 of 40 Objective-C methods map to bsd/dev/ppc/drvCuda; the only real gap is
 -[AppleCuda StartCudaTransmission:]."
@@ -494,11 +496,11 @@ Source: `src/kernel-7/bsd/dev/ppc/drvBMacEnet` — 63 ObjC method definitions, 3
 - [ ] **Step 1: Run both analyses**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "bmac-ppc drvPPCBMac.config/drvPPCBMac_reloc" "bmac-bundle-ppc drvPPCBMac.config/drvPPCBMac"; do
   set -- $pair
   BINRECON_REFERENCE="$REF/$2" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+    $VENVPY -m binrecon analyze \
     --profile "tools/binrecon/profiles/$1.json" \
     --output "tools/binrecon/out/$1/run-summary.json"
   echo "exit=$? profile=$1"
@@ -510,7 +512,7 @@ Expected: two `normalized-functions=FAIL` lines, each with `exit=1`. Success.
 - [ ] **Step 2: Verify complete and published**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json, pathlib
 for k in ['bmac-ppc','bmac-bundle-ppc']:
     s=json.load(open(f'tools/binrecon/out/{k}/run-summary.json'))
@@ -525,11 +527,11 @@ Expected: both lines `complete= True published= True`.
 - [ ] **Step 3: Invariant check on both**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "bmac-ppc drvPPCBMac.config/drvPPCBMac_reloc" "bmac-bundle-ppc drvPPCBMac.config/drvPPCBMac"; do
   set -- $pair
   echo "=== $1 ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/ppc_invariant_check.py \
+  PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
     --binary "$REF/$2" --analysis "tools/binrecon/out/$1/published/analysis-reference-ida.json"
 done
 ```
@@ -539,8 +541,8 @@ Expected: 0 relocation violations for both. Record any symbol/function-start mis
 - [ ] **Step 4: Build the source map**
 
 ```bash
-cd D:/RhapsodiOS && mkdir -p src/drivers-ppc/reconstruction/BMac && \
-PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m binrecon source-map \
+cd $REPO && mkdir -p src/drivers-ppc/reconstruction/BMac && \
+PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
   --objc-methods --scope-to-objc \
   --reference-analysis tools/binrecon/out/bmac-ppc/published/analysis-reference-ida.json \
   --binary "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCBMac.config/drvPPCBMac_reloc" \
@@ -554,7 +556,7 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Report the map counts**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 d=json.load(open('src/drivers-ppc/reconstruction/BMac/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
@@ -569,8 +571,8 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 - [ ] **Step 6: Bucket and reconcile**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
-.venv-binrecon/Scripts/python.exe "$SCRATCH/bucket_functions.py" \
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
+$VENVPY "$SCRATCH/bucket_functions.py" \
   tools/binrecon/out/bmac-ppc/published/analysis-reference-ida.json \
   src/drivers-ppc/reconstruction/BMac/source-map.json
 ```
@@ -582,7 +584,7 @@ Every entry the script lists under `6-fn-no-source-site` needs a manual source l
 - [ ] **Step 7: Selector check**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe \
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY \
   tools/binrecon/selector_check.py \
   "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCBMac.config/drvPPCBMac_reloc" \
   src/kernel-7/bsd/dev/ppc/drvBMacEnet
@@ -597,7 +599,7 @@ Record verbatim.
 - [ ] **Step 9: Verify the map loads**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 a = load_json(Path('tools/binrecon/out/bmac-ppc/published/analysis-reference-ida.json'))
@@ -612,7 +614,7 @@ Expected: `load_source_map OK`.
 - [ ] **Step 10: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/BMac && git commit -m "drivers-ppc: measure drvPPCBMac against its shipped binary
+cd $REPO && git add src/drivers-ppc/reconstruction/BMac && git commit -m "drivers-ppc: measure drvPPCBMac against its shipped binary
 
 Source map and bucket reconciliation for bsd/dev/ppc/drvBMacEnet."
 ```
@@ -634,11 +636,11 @@ This is the only driver whose source already lives in `src/drivers-ppc`, and the
 - [ ] **Step 1: Run both analyses**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "burgundy-ppc drvPPCBurgundy.config/drvPPCBurgundy_reloc" "burgundy-bundle-ppc drvPPCBurgundy.config/drvPPCBurgundy"; do
   set -- $pair
   BINRECON_REFERENCE="$REF/$2" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+    $VENVPY -m binrecon analyze \
     --profile "tools/binrecon/profiles/$1.json" \
     --output "tools/binrecon/out/$1/run-summary.json"
   echo "exit=$? profile=$1"
@@ -650,7 +652,7 @@ Expected: two `normalized-functions=FAIL` lines, each with `exit=1`. Success.
 - [ ] **Step 2: Verify complete and published**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json, pathlib
 for k in ['burgundy-ppc','burgundy-bundle-ppc']:
     s=json.load(open(f'tools/binrecon/out/{k}/run-summary.json'))
@@ -665,11 +667,11 @@ Expected: both lines `complete= True published= True`.
 - [ ] **Step 3: Invariant check on both**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "burgundy-ppc drvPPCBurgundy.config/drvPPCBurgundy_reloc" "burgundy-bundle-ppc drvPPCBurgundy.config/drvPPCBurgundy"; do
   set -- $pair
   echo "=== $1 ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/ppc_invariant_check.py \
+  PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
     --binary "$REF/$2" --analysis "tools/binrecon/out/$1/published/analysis-reference-ida.json"
 done
 ```
@@ -679,8 +681,8 @@ Expected: 0 relocation violations for both.
 - [ ] **Step 4: Build the source map**
 
 ```bash
-cd D:/RhapsodiOS && mkdir -p src/drivers-ppc/reconstruction/Burgundy && \
-PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m binrecon source-map \
+cd $REPO && mkdir -p src/drivers-ppc/reconstruction/Burgundy && \
+PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
   --objc-methods --scope-to-objc \
   --reference-analysis tools/binrecon/out/burgundy-ppc/published/analysis-reference-ida.json \
   --binary "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCBurgundy.config/drvPPCBurgundy_reloc" \
@@ -694,7 +696,7 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Report the map counts**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 d=json.load(open('src/drivers-ppc/reconstruction/Burgundy/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
@@ -709,8 +711,8 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 - [ ] **Step 6: Bucket and reconcile**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
-.venv-binrecon/Scripts/python.exe "$SCRATCH/bucket_functions.py" \
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
+$VENVPY "$SCRATCH/bucket_functions.py" \
   tools/binrecon/out/burgundy-ppc/published/analysis-reference-ida.json \
   src/drivers-ppc/reconstruction/Burgundy/source-map.json
 ```
@@ -720,7 +722,7 @@ Expected: `RECONCILES: yes`. Resolve every `6-fn-no-source-site` entry by greppi
 - [ ] **Step 7: Selector check**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe \
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY \
   tools/binrecon/selector_check.py \
   "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCBurgundy.config/drvPPCBurgundy_reloc" \
   src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj
@@ -735,7 +737,7 @@ Record verbatim. This is the driver most likely to show renamed or absent select
 - [ ] **Step 9: Verify the map loads**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 a = load_json(Path('tools/binrecon/out/burgundy-ppc/published/analysis-reference-ida.json'))
@@ -750,7 +752,7 @@ Expected: `load_source_map OK`.
 - [ ] **Step 10: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/Burgundy && git commit -m "drivers-ppc: measure drvPPCBurgundy against its shipped binary
+cd $REPO && git add src/drivers-ppc/reconstruction/Burgundy && git commit -m "drivers-ppc: measure drvPPCBurgundy against its shipped binary
 
 First measurement of the sound driver reimplementation against Apple's build."
 ```
@@ -772,11 +774,11 @@ This driver spans two source directories and carries the rename finding from spe
 - [ ] **Step 1: Run both analyses**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "ata-ppc drvPPCATA.config/drvPPCATA_reloc" "ata-bundle-ppc drvPPCATA.config/drvPPCATA"; do
   set -- $pair
   BINRECON_REFERENCE="$REF/$2" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+    $VENVPY -m binrecon analyze \
     --profile "tools/binrecon/profiles/$1.json" \
     --output "tools/binrecon/out/$1/run-summary.json"
   echo "exit=$? profile=$1"
@@ -788,7 +790,7 @@ Expected: two `normalized-functions=FAIL` lines, each with `exit=1`. Success. If
 - [ ] **Step 2: Verify complete and published**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json, pathlib
 for k in ['ata-ppc','ata-bundle-ppc']:
     s=json.load(open(f'tools/binrecon/out/{k}/run-summary.json'))
@@ -803,11 +805,11 @@ Expected: both lines `complete= True published= True`.
 - [ ] **Step 3: Invariant check on both**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "ata-ppc drvPPCATA.config/drvPPCATA_reloc" "ata-bundle-ppc drvPPCATA.config/drvPPCATA"; do
   set -- $pair
   echo "=== $1 ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/ppc_invariant_check.py \
+  PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
     --binary "$REF/$2" --analysis "tools/binrecon/out/$1/published/analysis-reference-ida.json"
 done
 ```
@@ -819,8 +821,8 @@ Expected: 0 relocation violations for both. `drvPPCATA_reloc` is 134,952 bytes a
 `--source-dir` is repeatable and the scanner does not recurse, so both directories must be passed explicitly.
 
 ```bash
-cd D:/RhapsodiOS && mkdir -p src/drivers-ppc/reconstruction/ATA && \
-PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m binrecon source-map \
+cd $REPO && mkdir -p src/drivers-ppc/reconstruction/ATA && \
+PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
   --objc-methods --scope-to-objc \
   --reference-analysis tools/binrecon/out/ata-ppc/published/analysis-reference-ida.json \
   --binary "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCATA.config/drvPPCATA_reloc" \
@@ -835,7 +837,7 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Report the map counts**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 d=json.load(open('src/drivers-ppc/reconstruction/ATA/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
@@ -855,7 +857,7 @@ The binary links `IdeDisk`; the tree defines `ATADisk : IODisk` in `src/kernel-7
 Compare the two selector sets:
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe - <<'PY'
+cd $REPO && $VENVPY - <<'PY'
 import json, re, pathlib
 
 d = json.load(open('src/drivers-ppc/reconstruction/ATA/source-map.json'))
@@ -890,8 +892,8 @@ If the rename is established, `findings.md` reports **both** a raw mapped/unmapp
 - [ ] **Step 7: Bucket and reconcile**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
-.venv-binrecon/Scripts/python.exe "$SCRATCH/bucket_functions.py" \
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
+$VENVPY "$SCRATCH/bucket_functions.py" \
   tools/binrecon/out/ata-ppc/published/analysis-reference-ida.json \
   src/drivers-ppc/reconstruction/ATA/source-map.json
 ```
@@ -901,10 +903,10 @@ Expected: `RECONCILES: yes`. The `IdeDisk` methods appear under bucket 6; annota
 - [ ] **Step 8: Selector check, both directories**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCATA.config/drvPPCATA_reloc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCATA.config/drvPPCATA_reloc" && \
 for d in src/kernel-7/bsd/dev/ppc/drvPPCATA src/kernel-7/bsd/dev/ppc/drvATADisk; do
   echo "=== $d ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe \
+  PYTHONPATH=tools/binrecon $VENVPY \
     tools/binrecon/selector_check.py "$REF" "$d"
 done
 ```
@@ -921,7 +923,7 @@ done
 - [ ] **Step 10: Verify the map loads**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 a = load_json(Path('tools/binrecon/out/ata-ppc/published/analysis-reference-ida.json'))
@@ -936,7 +938,7 @@ Expected: `load_source_map OK`.
 - [ ] **Step 11: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/ATA && git commit -m "drivers-ppc: measure drvPPCATA against its shipped binary
+cd $REPO && git add src/drivers-ppc/reconstruction/ATA && git commit -m "drivers-ppc: measure drvPPCATA against its shipped binary
 
 Maps drvPPCATA and drvATADisk as one unit and settles whether the shipped
 IdeDisk class is our ATADisk under another name."
@@ -959,11 +961,11 @@ The largest binary at 151,244 bytes. `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI` 
 - [ ] **Step 1: Run both analyses**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "53c96-ppc drvPPC53c96.config/drvPPC53c96_reloc" "53c96-bundle-ppc drvPPC53c96.config/drvPPC53c96"; do
   set -- $pair
   BINRECON_REFERENCE="$REF/$2" PYTHONPATH=tools/binrecon \
-    .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+    $VENVPY -m binrecon analyze \
     --profile "tools/binrecon/profiles/$1.json" \
     --output "tools/binrecon/out/$1/run-summary.json"
   echo "exit=$? profile=$1"
@@ -975,7 +977,7 @@ Expected: two `normalized-functions=FAIL` lines, each with `exit=1`. Success. If
 - [ ] **Step 2: Verify complete and published**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json, pathlib
 for k in ['53c96-ppc','53c96-bundle-ppc']:
     s=json.load(open(f'tools/binrecon/out/{k}/run-summary.json'))
@@ -990,11 +992,11 @@ Expected: both lines `complete= True published= True`.
 - [ ] **Step 3: Invariant check on both**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 for pair in "53c96-ppc drvPPC53c96.config/drvPPC53c96_reloc" "53c96-bundle-ppc drvPPC53c96.config/drvPPC53c96"; do
   set -- $pair
   echo "=== $1 ==="
-  PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe tools/binrecon/ppc_invariant_check.py \
+  PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
     --binary "$REF/$2" --analysis "tools/binrecon/out/$1/published/analysis-reference-ida.json"
 done
 ```
@@ -1004,8 +1006,8 @@ Expected: 0 relocation violations for both.
 - [ ] **Step 4: Build the source map**
 
 ```bash
-cd D:/RhapsodiOS && mkdir -p src/drivers-ppc/reconstruction/53c96 && \
-PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m binrecon source-map \
+cd $REPO && mkdir -p src/drivers-ppc/reconstruction/53c96 && \
+PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
   --objc-methods --scope-to-objc \
   --reference-analysis tools/binrecon/out/53c96-ppc/published/analysis-reference-ida.json \
   --binary "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPC53c96.config/drvPPC53c96_reloc" \
@@ -1019,7 +1021,7 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Report the map counts**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 d=json.load(open('src/drivers-ppc/reconstruction/53c96/source-map.json'))
 print('mapped',len(d['mapped']),'unmapped',len(d['unmapped']),
@@ -1034,8 +1036,8 @@ assert len(d['duplicate_candidates'])==0, 'duplicate_candidates must be 0'
 - [ ] **Step 6: Bucket and reconcile**
 
 ```bash
-cd D:/RhapsodiOS && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
-.venv-binrecon/Scripts/python.exe "$SCRATCH/bucket_functions.py" \
+cd $REPO && SCRATCH="C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/d97cb28c-f6f2-48c4-b66f-85d46244ce4d/scratchpad" && \
+$VENVPY "$SCRATCH/bucket_functions.py" \
   tools/binrecon/out/53c96-ppc/published/analysis-reference-ida.json \
   src/drivers-ppc/reconstruction/53c96/source-map.json
 ```
@@ -1047,7 +1049,7 @@ Resolve every `6-fn-no-source-site` entry by grepping `src/kernel-7/bsd/dev/ppc/
 - [ ] **Step 7: Selector check**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe \
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY \
   tools/binrecon/selector_check.py \
   "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPC53c96.config/drvPPC53c96_reloc" \
   src/kernel-7/bsd/dev/ppc/drvApple96_SCSI
@@ -1064,7 +1066,7 @@ Record verbatim.
 - [ ] **Step 9: Verify the map loads**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 a = load_json(Path('tools/binrecon/out/53c96-ppc/published/analysis-reference-ida.json'))
@@ -1079,7 +1081,7 @@ Expected: `load_source_map OK`.
 - [ ] **Step 10: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/53c96 && git commit -m "drivers-ppc: measure drvPPC53c96 against its shipped binary
+cd $REPO && git add src/drivers-ppc/reconstruction/53c96 && git commit -m "drivers-ppc: measure drvPPC53c96 against its shipped binary
 
 Source map and bucket reconciliation for the largest of the five,
 bsd/dev/ppc/drvApple96_SCSI."
@@ -1099,7 +1101,7 @@ bsd/dev/ppc/drvApple96_SCSI."
 - [ ] **Step 1: Re-verify all five maps load**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe - <<'PY'
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY - <<'PY'
 from pathlib import Path
 from binrecon.schema import load_json, load_source_map
 
@@ -1118,7 +1120,7 @@ Expected: five `OK` lines. This is acceptance item 3.
 - [ ] **Step 2: Collect the summary table**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe - <<'PY'
+cd $REPO && $VENVPY - <<'PY'
 import json
 
 PAIRS = [('Cuda','cuda-ppc'), ('53c96','53c96-ppc'), ('ATA','ata-ppc'),
@@ -1151,7 +1153,7 @@ Cite each per-driver `findings.md` from the section that summarizes it. Every nu
 - [ ] **Step 4: Run the binrecon test suite**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
 Expected: green. Baseline is 750 passed, 4 skipped. This is acceptance item 6. If Task 8 ran, the count will be higher by the tests it added.
@@ -1159,7 +1161,7 @@ Expected: green. Baseline is 750 passed, 4 skipped. This is acceptance item 6. I
 - [ ] **Step 5: Confirm no generated evidence is staged**
 
 ```bash
-cd D:/RhapsodiOS && git status --porcelain | grep -c "tools/binrecon/out/" || echo "0 - clean"
+cd $REPO && git status --porcelain | grep -c "tools/binrecon/out/" || echo "0 - clean"
 ```
 
 Expected: `0 - clean`. Anything under `tools/binrecon/out/` must never be committed.
@@ -1181,7 +1183,7 @@ Any item that cannot be satisfied is stated plainly in `report.md` with what was
 - [ ] **Step 7: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add src/drivers-ppc/reconstruction/report.md && git commit -m "drivers-ppc: report the five-driver PowerPC evidence base
+cd $REPO && git add src/drivers-ppc/reconstruction/report.md && git commit -m "drivers-ppc: report the five-driver PowerPC evidence base
 
 Correspondence, class inventories, bucket reconciliation and the ranked
 decomposition proposal for the per-driver reconstruction specs."
@@ -1205,9 +1207,9 @@ Precedent: `scsitape-ppc` failed with `IDA export failed: malformed fixup target
 - [ ] **Step 1: Capture the exact failure**
 
 ```bash
-cd D:/RhapsodiOS && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
+cd $REPO && REF="C:/Users/raynorpat/Downloads/test/Drivers/ppc" && \
 BINRECON_REFERENCE="$REF/<blocked artifact relative path>" PYTHONPATH=tools/binrecon \
-  .venv-binrecon/Scripts/python.exe -m binrecon analyze \
+  $VENVPY -m binrecon analyze \
   --profile "tools/binrecon/profiles/<blocked profile>.json" \
   --output "tools/binrecon/out/<blocked profile>/run-summary.json" 2>&1 | tail -40
 ```
@@ -1217,7 +1219,7 @@ Record the message and the address verbatim.
 - [ ] **Step 2: Read the run summary diagnostic**
 
 ```bash
-cd D:/RhapsodiOS && .venv-binrecon/Scripts/python.exe -c "
+cd $REPO && $VENVPY -c "
 import json
 s=json.load(open('tools/binrecon/out/<blocked profile>/run-summary.json'))
 print('complete',s['complete'])
@@ -1234,7 +1236,7 @@ Add a test under `tools/binrecon/tests/` that feeds the exact fixup shape from S
 Run it and confirm it fails:
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/<new test file> -q
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests/<new test file> -q
 ```
 
 Expected: FAIL, for the reason Step 1 reported.
@@ -1246,7 +1248,7 @@ Fix only the rejecting check, following `12a64a6c`'s precedent: sign-extend then
 - [ ] **Step 5: Confirm the test passes and nothing regressed**
 
 ```bash
-cd D:/RhapsodiOS && PYTHONPATH=tools/binrecon .venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
 Expected: green, with the new test included and the prior baseline intact.
@@ -1258,7 +1260,7 @@ Repeat Step 1's command. Expected: `normalized-functions=FAIL`, exit 1, `"comple
 - [ ] **Step 7: Commit**
 
 ```bash
-cd D:/RhapsodiOS && git add tools/binrecon && git commit -m "binrecon: accept the scattered section-difference fixup at <address>
+cd $REPO && git add tools/binrecon && git commit -m "binrecon: accept the scattered section-difference fixup at <address>
 
 The exporter rejected a legitimate negative displacement as corruption,
 blocking <artifact> from publishing."

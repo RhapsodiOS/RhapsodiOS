@@ -1,0 +1,334 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 544,
+      "reference_names": [
+        "-[PPCAwacs reset]"
+      ],
+      "size": 124,
+      "source_line": 333,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 684,
+      "reference_names": [
+        "-[PPCAwacs getHandler:level:argument:forInterrupt:]"
+      ],
+      "size": 88,
+      "source_line": 462,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1188,
+      "reference_names": [
+        "-[PPCAwacs _interruptOccurred]"
+      ],
+      "size": 188,
+      "source_line": 346,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1424,
+      "reference_names": [
+        "-[PPCAwacs interruptOccurredForInput:forOutput:]"
+      ],
+      "size": 132,
+      "source_line": 378,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1572,
+      "reference_names": [
+        "-[PPCAwacs startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "size": 236,
+      "source_line": 511,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1824,
+      "reference_names": [
+        "-[PPCAwacs stopDMAForChannel:read:]"
+      ],
+      "size": 112,
+      "source_line": 562,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1952,
+      "reference_names": [
+        "-[PPCAwacs isInputActive]"
+      ],
+      "size": 20,
+      "source_line": 492,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1972,
+      "reference_names": [
+        "-[PPCAwacs isOutputActive]"
+      ],
+      "size": 20,
+      "source_line": 502,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 1992,
+      "reference_names": [
+        "-[PPCAwacs getSamplingRatesLow:high:]"
+      ],
+      "size": 52,
+      "source_line": 422,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2044,
+      "reference_names": [
+        "-[PPCAwacs getSamplingRates:count:]"
+      ],
+      "size": 64,
+      "source_line": 432,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2124,
+      "reference_names": [
+        "-[PPCAwacs updateSampleRate:]"
+      ],
+      "size": 40,
+      "source_line": 602,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2180,
+      "reference_names": [
+        "-[PPCAwacs getDataEncodings:count:]"
+      ],
+      "size": 28,
+      "source_line": 447,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2208,
+      "reference_names": [
+        "-[PPCAwacs channelCountLimit]"
+      ],
+      "size": 16,
+      "source_line": 413,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2224,
+      "reference_names": [
+        "-[PPCAwacs channelCount]"
+      ],
+      "size": 16,
+      "source_line": 404,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2240,
+      "reference_names": [
+        "-[PPCAwacs updateInputGainLeft]"
+      ],
+      "size": 40,
+      "source_line": 637,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2296,
+      "reference_names": [
+        "-[PPCAwacs updateInputGainRight]"
+      ],
+      "size": 40,
+      "source_line": 645,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2352,
+      "reference_names": [
+        "-[PPCAwacs updateInputGain]"
+      ],
+      "size": 168,
+      "source_line": 611,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2536,
+      "reference_names": [
+        "-[PPCAwacs updateOutputAttenuationLeft]"
+      ],
+      "size": 40,
+      "source_line": 686,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2592,
+      "reference_names": [
+        "-[PPCAwacs updateOutputAttenuationRight]"
+      ],
+      "size": 40,
+      "source_line": 694,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2648,
+      "reference_names": [
+        "-[PPCAwacs updateOutputAttenuation]"
+      ],
+      "size": 256,
+      "source_line": 655,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 2920,
+      "reference_names": [
+        "-[PPCAwacs updateOutputMute]"
+      ],
+      "size": 72,
+      "source_line": 703,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    },
+    {
+      "address": 3020,
+      "reference_names": [
+        "-[PPCAwacs interruptClearFunc]"
+      ],
+      "size": 20,
+      "source_line": 592,
+      "source_path": "src/drivers-ppc/sound/drvPPCAwacs/PPCAwacs.drvproj/PPCAwacs.lksproj/PPCSound.m"
+    }
+  ],
+  "reference_sha256": "D66BE5132E4F53365D346F3ED38515C7D4024DCF13A2A3FD9711D39B04590890",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 3040,
+      "reference_names": [
+        "-[PPCAwacs resetAwacs]"
+      ],
+      "size": 340
+    },
+    {
+      "address": 3956,
+      "reference_names": [
+        "-[PPCAwacs allocateDMAMemory]"
+      ],
+      "size": 408
+    },
+    {
+      "address": 4460,
+      "reference_names": [
+        "-[PPCAwacs startIO:]"
+      ],
+      "size": 268
+    },
+    {
+      "address": 4744,
+      "reference_names": [
+        "-[PPCAwacs addAudioBuffer:Length:Interrupt:Output:]"
+      ],
+      "size": 504
+    },
+    {
+      "address": 5312,
+      "reference_names": [
+        "-[PPCAwacs loopAudio:]"
+      ],
+      "size": 320
+    },
+    {
+      "address": 5728,
+      "reference_names": [
+        "-[PPCAwacs resetAudio:]"
+      ],
+      "size": 216
+    },
+    {
+      "address": 6008,
+      "reference_names": [
+        "-[PPCAwacs setInputVol:]"
+      ],
+      "size": 104
+    },
+    {
+      "address": 6144,
+      "reference_names": [
+        "-[PPCAwacs setOutputVol:]"
+      ],
+      "size": 192
+    },
+    {
+      "address": 6368,
+      "reference_names": [
+        "-[PPCAwacs setOutputMute:]"
+      ],
+      "size": 84
+    },
+    {
+      "address": 6468,
+      "reference_names": [
+        "-[PPCAwacs setRate:]"
+      ],
+      "size": 120
+    },
+    {
+      "address": 6604,
+      "reference_names": [
+        "-[PPCAwacs setInputSource:]"
+      ],
+      "size": 88
+    },
+    {
+      "address": 6708,
+      "reference_names": [
+        "-[PPCAwacs checkHeadphonesInstalled]"
+      ],
+      "size": 320
+    },
+    {
+      "address": 7428,
+      "reference_names": [
+        "-[PPCAwacs getRate]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7444,
+      "reference_names": [
+        "-[PPCAwacs getInputSrc]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7460,
+      "reference_names": [
+        "-[PPCAwacs getOutputVol:]"
+      ],
+      "size": 48
+    },
+    {
+      "address": 7524,
+      "reference_names": [
+        "-[PPCAwacs getInputVol:]"
+      ],
+      "size": 48
+    },
+    {
+      "address": 7768,
+      "reference_names": [
+        "+[PPCAwacsKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 7788,
+      "reference_names": [
+        "+[PPCAwacsVersion driverKitVersionForPPCAwacs]"
+      ],
+      "size": 16
+    }
+  ]
+}

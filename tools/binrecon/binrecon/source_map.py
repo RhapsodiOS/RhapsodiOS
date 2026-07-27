@@ -38,6 +38,8 @@ _C_DEFINITION = re.compile(
 
 _METHOD_DECLARATION_LIMIT = 20
 
+_COMMENT = re.compile(r"/\*.*?\*/")
+
 
 def defined_symbols(macho_document):
     """Map each address to the sorted unique names defined there.
@@ -60,7 +62,13 @@ def _selector(declaration):
     gone, each colon is followed by its argument name and then, optionally, the
     next keyword, so matching `(\\w+)\\s*:` would capture the argument name as a
     keyword and turn `foo::::` into `foo:a:b:c:`. Walk the segments instead.
+
+    Comments go first, before the types: a comment may itself contain
+    parentheses, and one sitting between an argument name and the next
+    keyword would otherwise be read as that keyword, turning
+    `initSCSITape:target:` into `initSCSITape:/*:`.
     """
+    declaration = _COMMENT.sub(" ", declaration)
     text = re.sub(r"\([^()]*\)", " ", declaration)
     text = text.split("{")[0]
     if ":" in text:

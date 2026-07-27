@@ -19,6 +19,21 @@ if [ ! -f "$SRC/Makefile" ]; then
 	exit 1
 fi
 
+# VGA_psdrvr is an MH_BUNDLE, so its lazy stubs need dyld_stub_binding_helper
+# out of bundle1.o.  This host only has a ppc /lib/bundle1.o, which ld skips
+# with a warning when -arch i386 is in force, and the link then fails on an
+# external relocation in __TEXT,__picsymbol_stub.  Assemble Apple's own
+# Csu-1/bundle1.s for i386 and hand the result to the link.  If it cannot be
+# built the variable stays empty and the host's own bundle1.o is used.
+BUNDLE1=$OUT/bundle1-i386.o
+CSU=/build/source/src/Csu-1/bundle1.s
+if [ -f "$CSU" ] && cc -arch i386 -c -o "$BUNDLE1" "$CSU"; then
+	echo "assembled $BUNDLE1 for the psdrvr bundle link"
+else
+	echo "WARNING: no i386 bundle1.o; the psdrvr link may fail"
+	BUNDLE1=
+fi
+
 echo "======== build VGA (drvVGA) ========"
 cd "$SRC"
 find . -type f \( -name Makefile -o -name 'Makefile.*' \) -print |
@@ -26,7 +41,7 @@ while read f; do
 	tr -d '\r' < "$f" > /tmp/rhap_cr && mv /tmp/rhap_cr "$f"
 done
 
-gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 2>&1
+gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 BUNDLE1_I386="$BUNDLE1" 2>&1
 ec=$?
 echo "make exit=$ec for VGA"
 

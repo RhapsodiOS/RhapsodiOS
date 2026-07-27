@@ -17,15 +17,14 @@ Source map built with `binrecon source-map --objc-methods --scope-to-objc` again
 (40 of the 100 total functions IDA reported):
 
 ```
-mapped 37 unmapped 3 dup 0 disputed 0
-  unmapped: ['-[AppleCuda StartCudaTransmission:]'] 284
+mapped 38 unmapped 2 dup 0 disputed 0
   unmapped: ['+[drvPPCCudaKernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]'] 16
 MATCHES CALIBRATION
 ```
 
 - Total functions in the reference analysis: 100.
-- Named (Objective-C methods, in scope): 40 -- 37 mapped + 3 unmapped.
+- Named (Objective-C methods, in scope): 40 -- 38 mapped + 2 unmapped.
 - Unnamed: 60 (all unnamed jump islands; see Buckets below).
 - `duplicate_candidates`: 0.
 - `boundary_disputed`: 0 (from the source-map builder's own semantics; see Invariant
@@ -53,7 +52,7 @@ Bucket table from `bucket_functions.py` run against
 
 ```
 total functions: 100
-  mapped: 37
+  mapped: 38
   1-crt-dyld: 0
   2-picsymbol-stub: 0
   3-unnamed-jump-island: 60
@@ -61,8 +60,7 @@ total functions: 100
       0x2428  +[drvPPCCudaKernelServerInstance kernelServerInstance]  (20 bytes)
       0x243c  +[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]  (16 bytes)
   5-fn-with-source-site: 0
-  6-fn-no-source-site: 1
-      0x179c  -[AppleCuda StartCudaTransmission:]  (284 bytes)
+  6-fn-no-source-site: 0
 counted: 100
 RECONCILES: yes
 ```
@@ -72,34 +70,40 @@ Buckets 1 (`crt-dyld`) and 2 (`picsymbol-stub`) are empty because
 helper: it carries no crt/dyld startup routines and its analysis has no
 `__picsymbol_stub` section for the stub-range check to match against.
 
-Bucket 5 (`fn-with-source-site`) is 0 straight out of the script, as expected --
-it is populated only by hand after triage of bucket 6. For Cuda,
+Bucket 5 (`fn-with-source-site`) and bucket 6 (`fn-no-source-site`) are both 0.
 `src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m` defines 0 static C functions (only
 static *variables*; every function in the file is an Objective-C method), and
-the single bucket-6 entry, `-[AppleCuda StartCudaTransmission:]`, is itself an
-Objective-C method that the source map could not place (see Unmapped detail).
-No entries were moved from bucket 6 to bucket 5.
+the source map now places every Objective-C method in the binary (see Unmapped
+detail). No entries needed to be moved from bucket 6 to bucket 5.
 
 ## Unmapped detail
 
-Three reference selectors have no source-mapped implementation:
+Two reference selectors have no source-mapped implementation, both
+build-generated:
 
 - `+[drvPPCCudaKernelServerInstance kernelServerInstance]` (20 bytes) --
-  build-generated: a KernelServer wrapper class instance accessor emitted by
-  the driver-kit build tooling, not hand-written driver code.
+  a KernelServer wrapper class instance accessor emitted by the driver-kit
+  build tooling, not hand-written driver code.
 - `+[drvPPCCudaVersion driverKitVersionFordrvPPCCuda]` (16 bytes) --
-  build-generated: the DriverKit version accessor, likewise tool-emitted.
-- `-[AppleCuda StartCudaTransmission:]` (284 bytes) -- **the one real gap**.
-  `cuda.m` contains a method block under that name at line 1399, but its
-  signature line ends in a stray `;` before the opening `{` (every other method
-  in the file omits that semicolon -- confirmed by scanning all 27 other
-  `- (` signature lines in the file). That semicolon turns the line into a bare
-  forward declaration, so the block that follows is not attached to it as an
-  implementation. `selector_check.py`, which parses real method definitions
-  independently of the source-map builder, agrees: it lists this selector
-  under "missing" (see Selector check below), not among "our definitions:
-  40". Net effect: `drvCuda/cuda.m` does not currently define this selector,
-  matching the source map's classification of it as unmapped.
+  the DriverKit version accessor, likewise tool-emitted.
+
+`-[AppleCuda StartCudaTransmission:]` is not a gap. `cuda.m` defines it at
+line 1399:
+
+```objc
+- (void)StartCudaTransmission:(CudaRequest *)plugInMessage;
+{
+    ...
+}
+```
+
+The source-map scanner previously read the `;` between the signature and the
+opening `{` as ending a forward declaration -- valid NeXT-era GCC syntax that
+the scanner did not recognize -- and never recorded a site for the definition
+that follows. That defect is fixed in `tools/binrecon/binrecon/source_map.py`
+(`source_sites` now keeps scanning past a signature-terminating `;` for a
+brace before treating a declaration as unresolved); Cuda now has **zero**
+real gaps.
 
 ## Invariant check
 
@@ -135,7 +139,7 @@ candidates:
   not a real function, so not a function start either.
 
 Neither candidate overlaps any function reported in the bucket table or the
-source map, so neither affects the 37/3/0/0 correspondence numbers above.
+source map, so neither affects the 38/2/0/0 correspondence numbers above.
 
 ## Selector check
 

@@ -228,6 +228,15 @@
       "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
     },
     {
+      "address": 6044,
+      "reference_names": [
+        "-[AppleCuda StartCudaTransmission:]"
+      ],
+      "size": 284,
+      "source_line": 1399,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvCuda/cuda.m"
+    },
+    {
       "address": 6344,
       "reference_names": [
         "-[AppleCuda interruptOccurred]"
@@ -339,13 +348,6 @@
   "reference_sha256": "8CA26E3452246DE99BBD1731586B154B0B339DF3F4C2E65A50C000CC33EE1D1F",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 6044,
-      "reference_names": [
-        "-[AppleCuda StartCudaTransmission:]"
-      ],
-      "size": 284
-    },
     {
       "address": 9256,
       "reference_names": [

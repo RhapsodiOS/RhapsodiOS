@@ -13,14 +13,12 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = VGA.m VGAConfigTable.m VGASetMode.m
+CLASSES = IOVGADisplay.m vidBIOS.m
 
-CFILES = VGAModes.c
-
-HFILES = VGA.h VGAModes.h
+HFILES = IOVGADisplayPrivate.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect\
-            Unload_Commands.sect
+            Unload_Commands.sect emu486.s
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

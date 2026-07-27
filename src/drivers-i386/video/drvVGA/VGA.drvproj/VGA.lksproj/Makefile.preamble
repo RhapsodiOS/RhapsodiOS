@@ -1,0 +1,7 @@
+# EMU486_I386 names a preassembled i386 object for emu486.s. common.make's
+# LOCAL_OFILES has no rule that turns an SFILES-like variable into an
+# object (there is no SFILES variable at all in this pb_makefiles vintage),
+# so the build harness assembles emu486.s externally and hands the result
+# in here; kernelserver.make's KL_LDFLAGS includes OPTIONAL_LDFLAGS, so it
+# reaches the kl_ld link regardless of include order.
+OPTIONAL_LDFLAGS = $(EMU486_I386)

@@ -34,6 +34,20 @@ else
 	BUNDLE1=
 fi
 
+# emu486.s in VGA.lksproj is hand-written i386 assembly, and this
+# pb_makefiles vintage has no variable that carries a .s source into the
+# kernelserver link (common.make's LOCAL_OFILES never references an
+# SFILES-like variable). Assemble it explicitly and hand the object to the
+# link through EMU486_I386, which Makefile.preamble feeds to OPTIONAL_LDFLAGS.
+EMU486=$OUT/emu486-i386.o
+EMU486_S=$SRC/VGA.drvproj/VGA.lksproj/emu486.s
+if [ -f "$EMU486_S" ] && cc -arch i386 -c -o "$EMU486" "$EMU486_S"; then
+	echo "assembled $EMU486 for the VGA_reloc link"
+else
+	echo "WARNING: emu486.s did not assemble; VGA_reloc will be missing _emu486"
+	EMU486=
+fi
+
 echo "======== build VGA (drvVGA) ========"
 cd "$SRC"
 find . -type f \( -name Makefile -o -name 'Makefile.*' \) -print |
@@ -41,7 +55,7 @@ while read f; do
 	tr -d '\r' < "$f" > /tmp/rhap_cr && mv /tmp/rhap_cr "$f"
 done
 
-gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 BUNDLE1_I386="$BUNDLE1" 2>&1
+gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386 BUNDLE1_I386="$BUNDLE1" EMU486_I386="$EMU486" 2>&1
 ec=$?
 echo "make exit=$ec for VGA"
 

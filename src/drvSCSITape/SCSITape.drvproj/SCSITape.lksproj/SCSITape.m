@@ -82,6 +82,7 @@ static unsigned int tapeUnit = 0;
     stInitReturn_t		irtn = STR_ERROR;
     BOOL			brtn = NO;
     int				major;
+    int				nTargets;
 
 /* asm volatile("int3");  */ // Early break to debugger
 
@@ -89,8 +90,19 @@ static unsigned int tapeUnit = 0;
 	return NO;
     }
 
-    for (stTarget=0; stTarget<SCSI_NTARGETS; stTarget++) {
-	for(stLun=0; stLun<SCSI_NLUNS; stLun++) {
+    /*
+     * Ask the controller how wide its bus is; we only have room for
+     * SCSI3_NTARGETS of them.
+     */
+    nTargets = [controllerId numberOfTargets];
+    if (nTargets > SCSI3_NTARGETS) {
+	nTargets = SCSI3_NTARGETS;
+	IOLog ("drvSCSITape supports bus ID targets 0 .. %d\n",
+	    SCSI3_NTARGETS - 1);
+    }
+
+    for (stTarget=0; stTarget<nTargets; stTarget++) {
+	for(stLun=0; stLun<1; stLun++) {	/* a tape lives at lun 0 */
 
 #ifdef DEBUG
 IOLog ("SCSITape probe: target %d  lun %d\n", stTarget, stLun);
@@ -104,18 +116,6 @@ IOLog ("SCSITape probe: target %d  lun %d\n", stTarget, stLun);
 		 * initialization.
 		 */
 		tapeId = [SCSITape alloc];
-	    }
-
-	    if ([controllerId reserveTarget:stTarget
-		lun:stLun
-		forOwner:tapeId]) {
-		/*
-		 * Someone already has this one.
-		 */
-		continue;
-	    }
-	    else {
-		[tapeId setReservedTargetLun: YES];
 	    }
 
 #ifdef DEBUG
@@ -146,10 +146,6 @@ IOLog ("SCSITape probe: irtn is %d\n", irtn);
 		    break;
 
 		default:
-		    [controllerId releaseTarget: stTarget
-			lun: stLun
-			forOwner: tapeId];
-		    [tapeId setReservedTargetLun: NO];
 		    if(irtn == STR_SELECTTO) {
 			/*
 			 * Skip the rest of the luns on

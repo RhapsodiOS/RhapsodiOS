@@ -100,17 +100,19 @@ Nine of the ten have a source definition and move to bucket 5:
 `reverseBitOrder`, `crc416`, and `mace_crc` are the three static C functions
 the task description calls out for this source (searching for lines starting
 with the word static in the .m files confirms exactly these three function
-definitions, alongside several static module-scope IODBDMADescriptor
-variables that are not functions). The other six moved entries are non-static
+definitions, alongside other static, non-function declarations in
+`BMacEnetPrivate.m` -- six module-scope `IODBDMADescriptor` variables and one
+`static int reverse6[]` array). The other six moved entries are non-static
 C helpers declared in `BMacEnetPrivate.h` and defined in `BMacEnetHW.m`; the
 `--scope-to-objc` source map does not claim them because they are not
 Objective-C methods, not because they lack source.
 
 The tenth entry, `__udivdi3`, has no match anywhere under
 `src/kernel-7/bsd/dev/ppc/drvBMacEnet`. It is the libgcc 64-bit
-unsigned-division runtime helper the PPC compiler emits for the driver's
-DBDMA byte-count arithmetic; it stays in bucket 6 as a real, expected gap --
-it is compiler-generated code, not driver source.
+unsigned-division runtime helper the PPC compiler emits; it stays in bucket 6
+as a real, expected gap -- it is compiler-generated code, not driver source.
+No caller could be identified from the reference analysis, which carries no
+call-graph edges for this binary.
 
 ## Unmapped detail
 

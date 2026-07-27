@@ -357,8 +357,13 @@ PPC_PROFILES = sorted(
 )
 
 
-def test_seven_ppc_profiles_exist():
+def test_ppc_profile_inventory():
     assert [path.name for path in PPC_PROFILES] == [
+        "53c96-bundle-ppc.json", "53c96-ppc.json",
+        "ata-bundle-ppc.json", "ata-ppc.json",
+        "bmac-bundle-ppc.json", "bmac-ppc.json",
+        "burgundy-bundle-ppc.json", "burgundy-ppc.json",
+        "cuda-bundle-ppc.json", "cuda-ppc.json",
         "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
         "scsitape-ppc.json", "scsitape-preload-ppc.json", "stblocksize-ppc.json",

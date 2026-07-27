@@ -104,8 +104,16 @@ typedef struct EDID EDID;
 
 static UInt32	smInited = 0;			// why does +initialize get called twice?
 static IOSmartADBDisplay * ADB2SmartDisplay[ ADB_DEVICE_COUNT ];
+static IOConfigTable * configTable;		// saved by +probe:
 
 @implementation IOSmartDisplay
+
++ (BOOL) probe:deviceDescription
+{
+    // no instance is made here - just keep the table for later lookups
+    configTable = [deviceDescription configTable];
+    return( YES);
+}
 
 + findForConnection:framebuffer refCon:(UInt32)refCon
 {
@@ -621,6 +629,27 @@ UInt16		value;
 	[[IOSmartADBDisplay alloc] initForADB:i];
     }
     return( self);
+}
+
+// +callDeviceMethod: hands these the output buffer with its count by
+// reference, and the input buffer with its count by value. Counts are bytes.
+
+- (IOReturn) IOSMADBGetAVDeviceID:(UInt32 *)deviceID size:(UInt32 *)size
+{
+    if( *size != sizeof( UInt32))
+	return( IO_R_INVALID_ARG);
+
+    *deviceID = avDisplayID;
+    return( noErr);
+}
+
+- (IOReturn) IOSMADBSetLogicalRegister:(UInt32 *)params size:(UInt32)size
+{
+    if( size != (2 * sizeof( UInt32)))
+	return( IO_R_INVALID_ARG);
+
+    // register and data are the low 16 bits of each word
+    return( [self setLogicalRegister:params[0] data:params[1]]);
 }
 
 @end

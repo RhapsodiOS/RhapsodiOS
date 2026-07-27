@@ -5,8 +5,17 @@
 # drvIBMThinkPad760EDDisplay's gate is only that the three in-scope objects
 # compile. It does produce a _reloc — kl_ld is a relocatable link, so the
 # drvVGA-owned .objc_class_name_vidBIOS and _emu486 stay undefined rather
-# than failing the link — but that _reloc cannot load until drvVGA supplies
-# them, so it is not staged as a deliverable.
+# than failing the link — and that _reloc is staged alongside the Cirrus one
+# so parity_check.py has something to read, but it cannot load until drvVGA
+# supplies those symbols, so its absence does not fail the build.
+#
+# Gating is on artifact presence, not on gnumake's exit code, and that is
+# deliberate. run_make records gnumake's status in MAKE_EC and each arm echoes
+# it as "make exit=", but no arm fails on it: a recursive pb_makefiles build
+# can return nonzero for a step outside what these gates cover, and a build
+# that produced every artifact we asked for has met the gate regardless. Read
+# the echoed "make exit=" and the log for anything else. Keep this POSIX sh -
+# Rhapsody's /bin/sh is a 1999 Bourne shell with no "local" and no bashisms.
 
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
@@ -101,6 +110,26 @@ build_objects() {
 	if [ $miss -ne 0 ]; then
 		return 1
 	fi
+
+	# kl_ld does a relocatable link, so a _reloc IS produced even with
+	# drvVGA's symbols undefined. Report and stage it the way build_reloc
+	# does, so parity_check.py has something to read and the summary has
+	# something to list. Its presence is reported, never required: the
+	# objects above are the gate.
+	reloc=`find "$src" -name "${name}_reloc" \( -type f -o -type l \) 2>/dev/null | head -1`
+	if [ -n "$reloc" ]; then
+		echo "relocatable link produced $reloc"
+		file "$reloc"
+		dst="$OUT/$dir/$name.config"
+		rm -rf "$dst"
+		mkdir -p "$dst"
+		cp -p "$reloc" "$dst/"
+		echo "staged $dst"
+		ls -la "$dst"
+	else
+		echo "NOTE: no ${name}_reloc this time; objects still gate the build."
+	fi
+
 	echo "NOTE: $name leaves .objc_class_name_vidBIOS and _emu486 undefined;"
 	echo "NOTE: it cannot load until drvVGA supplies vidBIOS.m and emu486."
 	return 0

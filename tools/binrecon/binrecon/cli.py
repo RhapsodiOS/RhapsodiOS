@@ -260,6 +260,7 @@ def main(argv=None) -> int:
                 method_symbol_index(document),
             )
             assignment = json.loads(Path(args.symbols).read_text())
+            assignment = _filter_assignment_to_requested_modules(assignment, args.module)
             attach_symbols(modules, assignment, document["symbols"])
 
             output = Path(args.output)
@@ -419,6 +420,15 @@ def _source_map_command(arguments) -> int:
         repo_root=Path(arguments.repo_root),
     )
     return 0
+
+
+def _filter_assignment_to_requested_modules(assignment: dict, requested_modules) -> dict:
+    """Drop assignment entries for modules this ``abi`` invocation is not
+    emitting, so ``attach_symbols`` still raises on a typo in a requested
+    module but ignores entries the image legitimately doesn't define (e.g. a
+    C-function home like ``NSZone.m`` that isn't an __OBJC module)."""
+    return {name: symbols for name, symbols in assignment.items()
+            if name in requested_modules}
 
 
 _MAX_JSON = 16 * 1024 * 1024

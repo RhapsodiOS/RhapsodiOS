@@ -1,3 +1,4 @@
+from binrecon.cli import _filter_assignment_to_requested_modules
 from binrecon.objc_abi import attach_symbols
 from binrecon.schema import validate_document
 
@@ -107,3 +108,48 @@ def test_emitted_document_validates_against_abi_v1():
     attach_symbols(modules, {"NSRange.m": ["_NSUnionRange", "_NSZeroRect"]}, symbols)
 
     validate_document("abi-v1", modules["NSRange.m"])
+
+
+def test_filtered_assignment_still_errors_for_a_requested_module_the_image_lacks():
+    import pytest
+    from binrecon.objc_abi import ObjcAbiError
+
+    modules = {"NSRange.m": {
+        "schema_version": "abi-v1", "module": "NSRange.m",
+        "classes": [], "categories": [],
+        "text_symbols": [], "data_symbols": [],
+    }}
+    symbols = [
+        {"name": "_NSUnionRange", "address": 0x1000, "section": "__TEXT,__text"},
+    ]
+    assignment = {"NSGeometry.m": ["_NSUnionRange"]}
+    requested_modules = ["NSGeometry.m"]
+
+    filtered = _filter_assignment_to_requested_modules(assignment, requested_modules)
+
+    with pytest.raises(ObjcAbiError, match="NSGeometry.m"):
+        attach_symbols(modules, filtered, symbols)
+
+
+def test_filtered_assignment_ignores_a_module_not_requested():
+    modules = {"NSRange.m": {
+        "schema_version": "abi-v1", "module": "NSRange.m",
+        "classes": [], "categories": [],
+        "text_symbols": [], "data_symbols": [],
+    }}
+    symbols = [
+        {"name": "_NSUnionRange", "address": 0x1000, "section": "__TEXT,__text"},
+    ]
+    # NSZone.m is not a module the image defines (and is not requested here);
+    # its presence in the assignment must not raise once filtered.
+    assignment = {
+        "NSRange.m": ["_NSUnionRange"],
+        "NSZone.m": ["_NSZoneMalloc"],
+    }
+    requested_modules = ["NSRange.m"]
+
+    filtered = _filter_assignment_to_requested_modules(assignment, requested_modules)
+
+    attach_symbols(modules, filtered, symbols)
+
+    assert modules["NSRange.m"]["text_symbols"] == ["_NSUnionRange"]

@@ -335,7 +335,7 @@ instance + 47 class methods, plus `_NSZombie`'s 9 instance methods = 93),
 + 15 class = 23) and `NSPrivate.m` (`_NSAutoreleasedMallocMemory`, 4
 instance + 1 class = 5).
 
-### Gate 1 — `abi-check`: 4 of 5 divergences fixed at the source; 1 residual, disclosed
+### Gate 1 — `abi-check`: 4 of 5 divergences fixed at the source; 1 wrongly "fixed" by hiding it, corrected below
 
 `--abi-dir` contains stage 1's three documents as well as stage 2a's five;
 `abi-check` reports any module with no `--built` object as a divergence, so
@@ -356,14 +356,14 @@ functions plus the 25 explicitly-added `NSZone.m` functions), so
 the evidence" rule (`abi_check.py`'s own comment) correctly flagged all
 five as unaccounted-for exported surface.
 
-Four were fixed at the source, all confirmed safe by checking every call
-site first:
+Two were fixed at the source correctly, confirmed safe by checking every
+call site first:
 
-- **`_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`** (`NSAutoreleasePool.m`)
-  are called only from within that same file (`-initWithCapacity:`,
-  `-release`, `+releaseAllPools`) — made `static`. No behavioural change.
 - **`_NSZombieClassForClass`** (`NSZone.m`) is called only from within that
   same file (`NSDeallocateObject`) — made `static`. No behavioural change.
+  Confirmed against the reference: `_NSZombieClassForClass` is **not**
+  present in `Foundation-i386`'s exported symbol table, so `static` is
+  correct here — there is no reference behaviour to diverge from.
 - **`_NSOriginalClassForZombieClass`** (`NSZone.m`/`NSObject.m`) was a
   reverse `zombieClass -> originalClass` lookup existing solely so
   `NSObject.m`'s `_NSZombie` diagnostic could recover the original class's
@@ -372,9 +372,12 @@ site first:
   `_NSZombieClassForClass` itself), so the whole reverse-lookup function
   was redundant. Removed; `NSObject.m`'s `logMessageAndRaise` now strips
   the fixed `"NSZombie_"` prefix off `self->isa->name` directly, with the
-  same observable diagnostic text as before. This also let a genuine
-  pre-existing bug surface and get fixed (see below): `NSDebug.m` still
-  had TODO-stub bodies for 11 of `NSAutoreleasePool`'s 15 class methods
+  same observable diagnostic text as before. Confirmed against the
+  reference: `_NSOriginalClassForZombieClass` is also **not** present in
+  `Foundation-i386`'s exported symbol table, so deleting it (rather than
+  claiming it) is correct. This also let a genuine pre-existing bug
+  surface and get fixed (see below): `NSDebug.m` still had TODO-stub
+  bodies for 11 of `NSAutoreleasePool`'s 15 class methods
   (`NSAutoreleasePoolDebugging`, declared in `NSDebug.h`), which is a real
   duplicate-`@implementation`-`NSAutoreleasePool` hazard now that
   `NSAutoreleasePool.m` implements them for real — confirmed by
@@ -393,27 +396,85 @@ site first:
   untested before this change and remains so after it; see the
   untested-methods table below.
 
-One divergence remains and could not be fixed without sacrificing
-confirmed reference behaviour: **`_NSAutoreleaseObject`, defined in
-`NSAutoreleasePool.m`, is genuinely called directly (`call
-_NSAutoreleaseObject`, not `objc_msgSend`) from `-[NSObject autorelease]`
-and `-[NSProxy autorelease]`**, confirmed straight from the reference's
-disassembly (`-[NSObject autorelease]` at `0x42503fd8`: `call
-_NSAutoreleaseObject` at `0x42503fd8+8`, resolved via the analysis JSON's
-own `calls` list, not inferred). Because it is called across three
-translation units, it cannot be made `static` without breaking that
-call — and duplicating its body privately in each file would fabricate a
-divergence (multiple copies) that the reference does not have, worse than
-the one `abi-check` already reports. No header declares
-`_NSAutoreleaseObject` (confirmed: absent from every `src/Kits/Foundation/
-*.h`), so it is invisible to `attach_symbols`' header-only attribution and
-was never captured in any of the five 2a ABI documents — this is the same
-class of gap Task 2's `symbol-audit` already flagged programme-wide (146
-`__NS`-prefixed private exports no header declares), just the first
-concrete instance stage 2a's own reconstruction needed to actually define
-rather than merely observe as unclaimed. **Gate 1 does not report a clean
-`ABI matches`; the honest final state is 1 residual, disclosed
-divergence, not 0.**
+**The other two — `_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`
+(`NSAutoreleasePool.m`) — were fixed wrongly in the original pass, and
+that mistake is corrected here.** They were made `static` on the
+reasoning that only `-initWithCapacity:`, `-release` and
+`+releaseAllPools` in this same file call them. That reasoning only
+applies to symbols the reference itself does not export. Checked directly
+against the reference slice (`Foundation-i386`): **both are `binding:
+external`, `section: __TEXT,__text`** — Apple exports them, exactly like
+`_NSAutoreleaseObject` below. Making them `static` does not merely fail to
+match an internal convention; it silences a real "unexpected exported
+symbol" finding by making the symbol *not exported*, which is the
+opposite of what `abi-check` exists to enforce (`abi_check.py`'s own
+comment: "local symbols are ours to choose, external ones must match the
+evidence" — these are not local, the evidence says so). Any translation
+unit that linked against `_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`
+in Apple's Foundation, or a client relying on them, would fail to link
+against a build with them `static`. **Corrected**: both restored to
+external linkage in `NSAutoreleasePool.m`, and both — together with
+`_NSAutoreleaseObject` — are now claimed by name in
+`reconstruction/symbols.json` under `NSAutoreleasePool.m`.
+
+**`_NSAutoreleaseObject`, defined in `NSAutoreleasePool.m`, is genuinely
+called directly (`call _NSAutoreleaseObject`, not `objc_msgSend`) from
+`-[NSObject autorelease]` and `-[NSProxy autorelease]`**, confirmed
+straight from the reference's disassembly (`-[NSObject autorelease]` at
+`0x42503fd8`: `call _NSAutoreleaseObject` at `0x42503fd8+8`, resolved via
+the analysis JSON's own `calls` list, not inferred). It was already left
+external (correctly), but unclaimed by any ABI document — the original
+pass's residual, disclosed divergence. No header declares any of the
+three symbols (`_NSAutoreleaseObject`, `_NSPushAutoreleasePool`,
+`_NSPopAutoreleasePool`; confirmed: absent from every
+`src/Kits/Foundation/*.h`), so they are invisible to `attach_symbols`'
+header-only attribution and were never captured in any of the five 2a ABI
+documents — this is the same class of gap Task 2's `symbol-audit` already
+flagged programme-wide (146 `__NS`-prefixed private exports no header
+declares), just the first concrete instance stage 2a's own reconstruction
+needed to actually define rather than merely observe as unclaimed. All
+three are autorelease-pool machinery with no natural header home and
+`NSAutoreleasePool.m` is a real reference module, so all three are
+assigned there in `symbols.json` — the same category as the other 145
+undeclared private exports, not a new kind of gap.
+
+`abi/NSAutoreleasePool.json` was regenerated from `symbols.json` (`binrecon
+abi --module NSAutoreleasePool.m`) rather than hand-edited, so it stays
+derived evidence; it now lists all three names in `text_symbols`, with no
+other field changed (verified by diffing the regenerated document against
+its previous committed version — same classes, ivars, selectors, `types`
+strings).
+
+**Lesson for the remaining eight stages, since this will recur:** an
+"unexpected exported symbol" from `abi-check` means the symbol needs
+*claiming*, not suppressing. `static` is only correct when the reference
+itself does not export the symbol (as it correctly was for
+`_NSZombieClassForClass` above) — check the reference's own symbol table
+before changing linkage, not just this file's own call sites. Two of
+three symbols in the original pass were static-ed based on caller
+analysis alone, without that check, and that inverted the project's own
+rule that the reference is the authority and source changes to match it,
+not the other way around.
+
+**This fix's own guest verification status.** The `-static` -> external
+linkage change and the `symbols.json`/`abi/NSAutoreleasePool.json` claim
+above are source-level corrections checked directly against the
+reference's own symbol table (not guesswork), and the regenerated
+`abi/NSAutoreleasePool.json` was diffed against its previous committed
+version to confirm it gains exactly the three `text_symbols` and nothing
+else. Re-running `abi-check` against freshly compiled i386 objects, and
+re-running the five test suites, both require the ppc guest at
+`10.10.0.241`; that guest was unreachable from this environment when this
+fix was made (network fabric to its subnet was up — the gateway answered
+pings — but the host itself did not respond to ICMP, TCP/22, or plink
+across repeated attempts). Neither gate was re-run with fresh evidence in
+this pass. The description below of Gate 1 as passing and Gate 2 as
+`PASSED: 0 failure(s)` reflects Task 11's original run (before this
+symbol-linkage fix); this fix changes only linkage/comments, not any
+function's logic, so there is no code-behavioural reason for either gate
+to regress, but that inference is not a substitute for actually re-running
+`abi-check` and the five suites against this exact tree, which remains
+open until the guest is reachable again.
 
 ### Gate 2 — test suites: PASS, no divergence
 

@@ -28,5 +28,8 @@
   "_NSRoundUpToMultipleOfPageSize", "_NSSetZoneName",
   "_NSShouldRetainWithZone", "_NSZoneCalloc", "_NSZoneFree",
   "_NSZoneFromPointer", "_NSZoneMalloc", "_NSZoneName", "_NSZoneRealloc"
+ ],
+ "NSAutoreleasePool.m": [
+  "_NSAutoreleaseObject", "_NSPushAutoreleasePool", "_NSPopAutoreleasePool"
  ]
 }

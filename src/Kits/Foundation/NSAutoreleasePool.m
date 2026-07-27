@@ -106,10 +106,13 @@ NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
 	-initWithCapacity: stores in _token.  `capacity` is the new frame's
 	initial array size: the reference reads it the same way
 	-initWithCapacity: itself does, the documented meaning of that
-	method's argument (an initial-size hint, not a hard limit).  Static:
-	only -initWithCapacity: below calls this, unlike NSAutoreleaseObject,
-	which genuinely is a cross-file entry point (see its own comment).  */
-static void *
+	method's argument (an initial-size hint, not a hard limit).  Not
+	static: the reference exports this symbol (external, __TEXT,__text),
+	the same cross-TU-entry-point category NSAutoreleaseObject's own
+	comment below describes, even though only -initWithCapacity: in this
+	file happens to call it.  No header declares it (see divergences.md)
+	-- claimed by name in reconstruction/symbols.json instead.  */
+void *
 _NSPushAutoreleasePool(unsigned capacity)
 {
     NSAutoreleasePoolFrame *frame;
@@ -136,9 +139,14 @@ _NSPushAutoreleasePool(unsigned capacity)
 
 /*	Drains every pool from the innermost down to (and including) the one
 	`token` identifies -- covering the case where an inner pool was
-	created but never itself released before its enclosing pool is.
-	Static: only +releaseAllPools and -release (below) call this.  */
-static void
+	created but never itself released before its enclosing pool is.  Not
+	static: the reference exports this symbol (external, __TEXT,__text),
+	the same cross-TU-entry-point category NSAutoreleaseObject's own
+	comment below describes, even though only +releaseAllPools and
+	-release (below) happen to call it from within this file.  No header
+	declares it (see divergences.md) -- claimed by name in
+	reconstruction/symbols.json instead.  */
+void
 _NSPopAutoreleasePool(void *token)
 {
     while (poolStackCount > 0) {
@@ -158,14 +166,14 @@ _NSPopAutoreleasePool(void *token)
 	without an active pool, so the object is simply not tracked here --
 	documented, not exercised.
 
-	Deliberately NOT static, unlike _NSPushAutoreleasePool/
-	_NSPopAutoreleasePool above: -[NSObject autorelease] and
-	-[NSProxy autorelease] both call this symbol directly (extern
-	declarations in NSObject.m/NSProxy.m), confirmed from each site's own
-	disassembly (a real `call` to this exact exported name, not
-	objc_msgSend) -- the same cross-file relationship the reference
-	itself has, just not one this stage's ABI baseline captured, since
-	no header declares it (see divergences.md).  */
+	Not static, same as _NSPushAutoreleasePool/_NSPopAutoreleasePool
+	above: -[NSObject autorelease] and -[NSProxy autorelease] both call
+	this symbol directly (extern declarations in NSObject.m/NSProxy.m),
+	confirmed from each site's own disassembly (a real `call` to this
+	exact exported name, not objc_msgSend) -- the same cross-file
+	relationship the reference itself has, just not one this stage's ABI
+	baseline captured, since no header declares it (see
+	divergences.md).  */
 void
 NSAutoreleaseObject(id anObject)
 {

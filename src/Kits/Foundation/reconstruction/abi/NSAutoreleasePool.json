@@ -129,5 +129,9 @@
  "data_symbols": [],
  "module": "NSAutoreleasePool.m",
  "schema_version": "abi-v1",
- "text_symbols": []
+ "text_symbols": [
+  "_NSAutoreleaseObject",
+  "_NSPopAutoreleasePool",
+  "_NSPushAutoreleasePool"
+ ]
 }

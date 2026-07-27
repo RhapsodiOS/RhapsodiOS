@@ -1,6 +1,6 @@
 """Print the reference disassembly for functions whose name matches a prefix.
 
-Usage: dump.py PREFIX [PREFIX ...]
+Usage: dump.py [--analysis PATH] PREFIX [PREFIX ...]
 """
 
 import json
@@ -8,8 +8,14 @@ import sys
 
 ANALYSIS = "tools/binrecon/out/foundation-i386/published/analysis-reference-ida.json"
 
-prefixes = tuple(sys.argv[1:])
-document = json.load(open(ANALYSIS))
+args = sys.argv[1:]
+analysis_path = ANALYSIS
+if args and args[0] == "--analysis":
+    analysis_path = args[1]
+    args = args[2:]
+
+prefixes = tuple(args)
+document = json.load(open(analysis_path))
 for function in sorted(document["functions"], key=lambda f: f["address"]):
     names = function["names"]
     if not any(name.startswith(prefixes) for name in names):

@@ -216,8 +216,12 @@ path**. The consequences, which a reader of the committed artifacts must not
 misread:
 
 - `ledger.json`'s top-level `rebuilt_sha256` is
-  `47539E03…B5AEC`, which is the **reference's** hash. It records what
-  `BINRECON_REBUILT` pointed at, not a rebuild of anything.
+  `47539E03…B5AEC`. **That is the reference's own hash — the field names the
+  reference binary, not a rebuild. No rebuilt artifact exists.** The field is
+  not self-describing and the ledger was deliberately left unrestructured, so
+  this paragraph is the only thing that says so: read `rebuilt_sha256` in the
+  committed `ledger.json` as "whatever `BINRECON_REBUILT` happened to point at",
+  which on this run was a copy of the reference.
 - `run-summary.json` (not committed; `tools/binrecon/out/` is never committed)
   reports `acceptance.passed = true`. That is the reference compared against a
   byte-identical copy of itself and carries no information.
@@ -233,8 +237,13 @@ misread:
 
 The ledger's 40 addresses are exactly the source map's 40, verified directly.
 
-Tasks 8 and 9 must re-run `analyze` with `BINRECON_REBUILT` pointing at the real
-`out/i386/…/IBMThinkPad760EDDisplayDriver_reloc` and let the ledger be rewritten.
+**Tasks 8 and 9 must re-run the ledger against a real rebuilt binary before any
+entry advances beyond `unexamined`.** Re-run `analyze` with `BINRECON_REBUILT`
+pointing at the real `out/i386/…/IBMThinkPad760EDDisplayDriver_reloc`, let
+`rebuilt_sha256`, the comparison artifacts and every entry be rewritten from
+that, and only then review entries. Advancing any entry off `unexamined` while
+`rebuilt_sha256` still equals the reference's hash would record a review of the
+reference against itself.
 
 ### Why IDA alone is nevertheless trustworthy here
 
@@ -262,19 +271,23 @@ The other 27 in-scope names match character for character. The four differences
 are a display convention, not a disagreement about the binary — same addresses,
 same extents.
 
-**A second, independent partition check comes from `__OBJC,__inst_meth`.** The
-23 instance methods of `IBMThinkPad760EDDisplayDriver`, the 4 of the
-`TransferTable` category, the 1 metaclass method and the 6 of `vidBIOS` all
-carry an `imp` pointer, and every one of those 34 addresses is in IDA's set with
-the same value the symbol table gives (or, for the six `vidBIOS` methods, with
-no symbol-table entry at all). That is what makes `--objc-methods` mandatory:
-without it the six `vidBIOS` implementations at 6552, 6820, 6928, 7624, 7668 and
-7684 have no name from any source.
+**A second, independent partition check comes from the `__OBJC` method lists.**
+`__inst_meth` is 364 bytes — two `objc_method_list`s, 23 methods for
+`IBMThinkPad760EDDisplayDriver` and 6 for `vidBIOS`; `__cat_inst_meth` is 56
+bytes, the 4 `TransferTable` methods; and `__cls_meth` is 40 bytes, which is
+**two single-method lists, not one** — `+kernelServerInstance` at 6528 and
+`+driverKitVersionForIBMThinkPad760EDDisplayDriver` at 6540, one class method
+from each generated `_instance.m` class. All 23 + 6 + 4 + 2 carry an `imp`
+pointer, and every one of those 35 addresses is in IDA's set with the same value
+the symbol table gives (or, for the six `vidBIOS` methods, with no symbol-table
+entry at all). That is what makes `--objc-methods` mandatory: without it the six
+`vidBIOS` implementations at 6552, 6820, 6928, 7624, 7668 and 7684 have no name
+from any source.
 
-**Ghidra agreed, and this time the agreement is auditable.** The dot-free rerun's
-document was retained. Ghidra recovers 29 of the 31 in-scope symbol-table
-addresses with **byte sizes identical to IDA's in all 29**, and misses exactly
-two:
+**Ghidra agreed too, but that agreement cannot be audited.** During the dot-free
+rerun Ghidra's document was observed to recover 29 of the 31 in-scope
+symbol-table addresses with byte sizes matching IDA's in all 29, and to miss
+exactly two:
 
 | Address | Symbol | Preceded by |
 | --- | --- | --- |
@@ -283,11 +296,14 @@ two:
 
 Both are the functions preceded by zero-fill rather than `nop` padding — the
 same two-function blind spot Ghidra had on the sibling driver, and for the same
-reason. So the only in-scope disagreement between the two analyzers is which
-functions Ghidra declines to start, never where one ends. That document was
-written to a scratch directory outside the worktree and is not committed, so a
-reader cannot re-check it without re-running Ghidra; the symbol-table check
-above is the one that can be re-checked from what is committed.
+reason. So the only in-scope disagreement observed between the two analyzers was
+which functions Ghidra declines to start, never where one ends. **But that
+document was written to a scratch directory outside the worktree and is not
+committed**, so a reader cannot re-check any of the above without re-running
+Ghidra. It is recorded because it is what happened, not because it can be
+verified, and **it should carry no weight in accepting the single-analyzer
+consensus.** The corroboration that does carry weight is the Mach-O symbol-table
+check above, which is re-derivable from what is committed and stands on its own.
 
 So every claim below rests on IDA 9.2, the Mach-O symbol table, the `__OBJC`
 metadata sections and the raw section bytes, all read directly.
@@ -385,9 +401,36 @@ corroboration of the module boundaries `__OBJC,__module_info` states, and it is
 also the fourth piece of evidence that `_smapi_asm` is its own translation unit
 (see "The `_smapi_asm` linkage" below).
 
-There is one further zero-fill gap inside `_smapi_asm` itself, at 6513–6516
-(`90 90 90` — see finding 30), which is intra-function and not a module
-boundary.
+There is one further gap inside `_smapi_asm` itself, at 6513–6516, but it is
+**`90 90 90` — `nop`, not zero-fill** (see finding 29): it is the slack after a
+two-byte `jmp` to the epilogue, intra-function, and by the rule above it is
+therefore not a module boundary.
+
+### How `IOLog` is counted: gcc tail-merged three arms
+
+**Throughout this document `IOLog` is counted as logical invocations — one per
+`IOLog(...)` a rewrite would write in the source — not as `call _IOLog`
+instructions.** The two differ, because gcc tail-merged three error arms: the
+arm pushes its own format string (and its own `[self name]` result) and then
+`jmp`s to another arm's `call _IOLog` rather than emitting one of its own.
+
+| Function | Arm's last push | String pushed | Jumps to `call _IOLog` at |
+| --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 344 | `%s: vidBIOS alloc failure` | 711 |
+| `enterLinearMode` | 1536 | `%s: TVGA BIOS SetMode failure (%04x)\n` | 1635 |
+| `setPCIConfiguration` | 2724 | `%s: Error: Unsupported PCI hardware\n` | 3132 |
+
+So those three have **5, 3 and 4 logical `IOLog`s against 4, 2 and 3 `call
+_IOLog` instructions**. The other three in-scope users have no merged arm and
+both counts agree: `determineConfiguration:` 4, `reportSystemConfiguration` 13,
+`(TransferTable) setBrightness:token:` 1. In-scope totals: **30 logical
+`IOLog`s, 27 `call _IOLog` instructions.** Where a summary below still gives a
+raw instruction count it says so explicitly.
+
+**A rewrite that emits one call per `IOLog` will not match the reference
+byte-for-byte at those three sites.** Tail merging is something the compiler
+does, not something the source expresses; if gcc does not find the same merge,
+the divergence is at 344, 1536 and 2724 and nowhere else, and it is expected.
 
 ### The `__TEXT,__cstring` section
 
@@ -501,13 +544,19 @@ this effort** and is documented here rather than decompiled, per the spec's
 | 7684 | 24 | `-[vidBIOS realToVirtual::]` |
 | 7708 | 10496 | `_emu486` |
 
-(Sizes are symbol-table gaps. IDA gives `_emu486` an extent of 8088 bytes ending
-at 15796, with the two standalone fragments and 2290 bytes of jump tables making
-up the rest of the gap; see "Function partition" above.)
+(Only `_emu486`'s size is a symbol-table gap. **The six `vidBIOS` methods have
+no symbol-table entry at all** — `__TEXT,__text`'s symtab jumps straight from
+6540 to 7708 — so their sizes are gaps between consecutive `__OBJC` `imp`
+addresses, and between the last of them and `_emu486`. The same is true in
+`VGA_reloc`. IDA gives `_emu486` an extent of 8088 bytes ending at 15796, with
+the two standalone fragments and 2290 bytes of jump tables making up the rest of
+the gap; see "Function partition" above.)
 
-`vidBIOS.m`'s six methods span **6552 to 7708 here — 1156 bytes** — and
-`VGA_reloc`'s same six selectors span **6396 to 7551 — also 1156 bytes**, with
-every individual method size matching (268, 108, 696, 44, 16, 24 in both). Two
+**Extents in this document are half-open, `[start, end)`, so `end - start` is
+the size.** `vidBIOS.m`'s six methods span **6552 to 7708 here — 1156 bytes** —
+and `VGA_reloc`'s same six selectors span **6396 to 7552 — also 1156 bytes**,
+with every individual method size matching (268, 108, 696, 44, 16, 24 in both).
+Two
 independently linked binaries carrying byte-identical method extents for the
 same six selectors is strong evidence of a single shared source file compiled
 into each driver, and it makes the two copies **cross-validating**: whoever
@@ -886,8 +935,11 @@ fail:
   `vidBIOS` class reference, `setPCIConfiguration`, `readCMOS:` twice,
   `reportSystemConfiguration`, `selectMode`, `setPendingDisplayMode:`,
   `defaultMode`, `memoryRangeList`, `mapFrameBufferAtPhysicalAddress:length:`,
-  `displayInfo`, `updateModeTable`, `free`, and `name` five times. Direct call to
-  `_smapi_asm` and three call sites of `_IOLog`.
+  `displayInfo`, `updateModeTable`, `free`, and `name` four times. Direct call to
+  `_smapi_asm` and five `IOLog`s — at 512, 595, 605, 706 and the tail-merged arm
+  at 344, which is only four `call _IOLog` instructions (see "How `IOLog` is
+  counted" above). Four of the five take `[self name]`; the `"Trying default
+  mode…"` one at 605 has no `%s`.
 - **I/O ports:** none directly. **PCI:** none directly. **CMOS:** 0x7E and 0x7F,
   through `readCMOS:`. **SMAPI:** one call, function `BX = 0x0000`.
 - **Callers:** none in this binary; invoked by `IODevice`'s probe machinery.
@@ -1095,8 +1147,9 @@ One of the two functions carrying most of the risk in this reconstruction.
   `BX = 0x1009` (refresh rate, checked).
 - **DriverKit calls:** `objc_msgSend` to `displayInfo` (×3), `name` (×3),
   `int10:outregs:iorange:ionum:smmport:`, `unlockRegisters`, `lockRegisters`,
-  `setGammaTable`; direct calls to `_smapi_asm` (×2), `_bzero` (×3), `_IOLog`
-  (×2), `_IOForkThread`, `_IOSetThreadPriority`.
+  `setGammaTable`; direct calls to `_smapi_asm` (×2), `_bzero` (×3), `IOLog`
+  (×3 — at 1384, 1630 and the tail-merged arm at 1536, so only two
+  `call _IOLog` instructions), `_IOForkThread`, `_IOSetThreadPriority`.
 - **Callers:** none in this binary; called by the window server through
   `IOFrameBufferDisplay`. **Callees:** as above, plus `_set555Mode` by address.
 - **`__const`/`__data` read:** the mode-parameter record through
@@ -1387,8 +1440,9 @@ Points the rewrite must not smooth over:
   `getPCIdevice:function:bus:`, `getPCIConfigData:atRegister:withDeviceDescription:`,
   `setPCIConfigData:atRegister:withDeviceDescription:` (×2), `getPCIConfigSpace:`,
   `setPCIConfigSpace:`, `isValidPCIAssignedBaseAddress:`, `memoryRangeList` (×2),
-  `numMemoryRanges`, `setMemoryRangeList:num:` (×2), `name` (×4); `_IOLog` four
-  call sites.
+  `numMemoryRanges`, `setMemoryRangeList:num:` (×2), `name` (×4); four `IOLog`s
+  — at 3031, 3127, 3162 and the tail-merged arm at 2724, so only three
+  `call _IOLog` instructions.
 - **Callers:** `initFromDeviceDescription:`. **Callees:**
   `isValidPCIAssignedBaseAddress:` by message send.
 - **`__const`/`__data` read:** four `__cstring` entries. `physicalAddress` is
@@ -1800,7 +1854,8 @@ instruction stream:
 Summary of the interfaces this function touches: **SMAPI functions `0x0000`,
 `0x0008`, `0x0006`, `0x0001`, `0x0002` and `0x100C`**, six `_smapi_asm` calls;
 **no I/O port, no PCI register, no CMOS access**; `objc_msgSend` to `name`
-eleven times; `_IOLog` at fifteen call sites; nineteen `__cstring` references.
+nine times; `_IOLog` at thirteen call sites (no arm is tail-merged here, so
+thirteen `call _IOLog` instructions too); nineteen `__cstring` references.
 **Callers:** `initFromDeviceDescription:`. **Callees:** `_smapi_asm`.
 **`__const`/`__data`:** none; it writes `self->LCDWidth` and
 `self->viewportSize`.
@@ -2183,7 +2238,7 @@ Seventeen undefined symbols, split by which region references them:
 | Symbol | In-scope users | Deferred users |
 | --- | --- | --- |
 | `_IOFree` | `free`, `setTransferTable:count:` (×2) | `-[vidBIOS free]` |
-| `_IOLog` | eleven methods | `-[vidBIOS init]`, `-[vidBIOS int10:…smmport:]` |
+| `_IOLog` | six methods — `initFromDeviceDescription:` (56), `enterLinearMode` (1184), `determineConfiguration:` (2196), `setPCIConfiguration` (2624), `reportSystemConfiguration` (4560), `(TransferTable) setBrightness:token:` (6044) | `-[vidBIOS init]`, `-[vidBIOS int10:…smmport:]` |
 | `_IOMalloc` | `setTransferTable:count:` | `-[vidBIOS init]` |
 | `_objc_msgSend` | almost every method | `vidBIOS` methods |
 | `_objc_msgSendSuper` | `initFromDeviceDescription:`, `revertToVGAMode`, `free`, `name`, `setPendingDisplayMode:` | `-[vidBIOS free]` |
@@ -2196,11 +2251,18 @@ Seventeen undefined symbols, split by which region references them:
 `-[vidBIOS free]`, and `_memset` and `_page_size` from `-[vidBIOS init]` and
 `-[vidBIOS int10:…smmport:]`.
 
-Separately, four `.objc_class_name_*` symbols are class references rather than
-function imports: `IODevice`, `IOFrameBufferDisplay` and `Object` are supplied by
-the kernel, and **`.objc_class_name_vidBIOS` is defined by this binary's own
-deferred `vidBIOS.m`**. That last one, together with `_emu486`, is what will
-leave the ThinkPad link unresolved until drvVGA supplies both (spec §4.3).
+Separately, **eight** `.objc_`-prefixed symbols are Objective-C class and
+category references rather than function imports. Three name classes the kernel
+supplies: `.objc_class_name_IODevice`, `.objc_class_name_IOFrameBufferDisplay`
+and `.objc_class_name_Object`. One, **`.objc_class_name_vidBIOS`, is defined by
+this binary's own deferred `vidBIOS.m`**, and together with `_emu486` it is what
+will leave the ThinkPad link unresolved until drvVGA supplies both (spec §4.3).
+The remaining four — easy to miscount as more imports — are simply **this
+binary's own class and category names**:
+`.objc_class_name_IBMThinkPad760EDDisplayDriver`,
+`.objc_class_name_IBMThinkPad760EDDisplayDriverKernelServerInstance`,
+`.objc_class_name_IBMThinkPad760EDDisplayDriverVersion` and
+`.objc_category_name_IBMThinkPad760EDDisplayDriver_TransferTable`.
 
 **Consequence for Tasks 8 and 9:** the four in-scope-only imports plus the five
 shared ones — nine symbols — are the entire non-Objective-C runtime surface the

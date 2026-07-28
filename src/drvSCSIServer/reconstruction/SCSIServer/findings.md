@@ -527,7 +527,17 @@ count. `driverkit/kernelDriver.h:133` declares
 `IOReturn IOUnmapPhysicalFromIOTask(vm_address_t, unsigned)`, a two-argument
 match. `_vm_deallocate` is not among the reference's imports.
 
-### 5. Two of Apple's own defects, reproduced deliberately
+### 5. Three of Apple's own defects, deliberately *not* reproduced
+
+Task 3 originally reproduced these, following `divergences.md:370`. The user has
+since ruled that the convention at
+`docs/superpowers/plans/2026-07-25-kernel-pci-pcmcia-reconstruction.md:968`
+governs — "reproduce Apple's *form*, not Apple's *defects* … where the reference
+is demonstrably buggy, keep our correct behaviour and record it as
+`intentional-mismatch` with its evidence" — so our tree keeps the correct
+behaviour at all three sites, and addresses 772, 4828 and 5760 are
+`intentional-mismatch` in `reconstruction/ledger.json`. The measurements below
+are unchanged; only the disposition is.
 
 - `-[SCSIServer getCharValues:forParameter:count:]` writes `values[-1]`.
   Addresses 976-984 (`add r9, r31, r25` / `li r0, 0` / `stb r0, -1(r9)`) are
@@ -540,3 +550,8 @@ match. `_vm_deallocate` is not among the reference's imports.
   the descriptor at 5084/6016 and falls into the same block with the pointer
   still set, so the reference then sends `executeRequest:ioMemoryDescriptor:`,
   `unwireMemory` and a second `release` to an object it has already released.
+  `driverkit/IOMemoryDescriptor.h:132-134` confirms `-release` is a real
+  refcount release, so at a retain count of 1 that frees the object, and
+  `wireMemory:` fails on client-supplied addresses, which makes the path
+  client-reachable. Our two `*Scatter` bodies clear the descriptor after
+  releasing it so the block is skipped.

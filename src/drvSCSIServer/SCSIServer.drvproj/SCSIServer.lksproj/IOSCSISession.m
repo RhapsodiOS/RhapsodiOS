@@ -1046,18 +1046,27 @@ int IOSCSISession_executeSCSI3RequestScatter(id session, void *request,
                  * (6004-6016, selector __OBJC,__message_refs+96)
                  */
                 [ioMemDesc release];
+
+                /* INTENTIONAL MISMATCH (use-after-free in the reference):
+                 * the reference's guard at 6020-6024 is cmpwi cr1, r31, 0 /
+                 * beq cr1, loc_17CC with r31 still holding the descriptor the
+                 * bl at 6016 just released -- nothing between 6016 and 6020
+                 * clears r31.  So the reference's wire-failure path falls
+                 * into the block below and sends
+                 * executeSCSI3Request:ioMemoryDescriptor:, unwireMemory and a
+                 * second release to an already-released object.
+                 * IOMemoryDescriptor.h:132-134 confirms -release is a real
+                 * refcount release, so at a retain count of 1 that frees it,
+                 * and wireMemory: fails on client-supplied addresses, which
+                 * makes the path client-reachable.  We drop the descriptor
+                 * here so the block below is skipped; recorded as
+                 * intentional-mismatch at address 5760 in
+                 * reconstruction/ledger.json.
+                 */
+                ioMemDesc = nil;
             }
         }
 
-        /* APPLE DEFECT, REPRODUCED DELIBERATELY: the guard at 6020-6024 is
-         * cmpwi cr1, r31, 0 / beq cr1, loc_17CC, and r31 holds the
-         * descriptor.  It short-circuits only the allocation-failure path
-         * (which reaches it with r31 == 0).  The wire-failure path above
-         * releases the descriptor and then falls straight into this block
-         * with r31 still non-zero, so the reference goes on to use and
-         * release the descriptor it has already released.  No instruction
-         * between 6016 and 6020 clears r31.
-         */
         if (ioMemDesc != NULL) {
             /* Execute SCSI request with the memory descriptor
              * (6028-6056, selector __OBJC,__message_refs+112,
@@ -1365,18 +1374,27 @@ int IOSCSISession_executeRequestScatter(id session, void *request,
                  * (5072-5084, selector __OBJC,__message_refs+96)
                  */
                 [ioMemDesc release];
+
+                /* INTENTIONAL MISMATCH (use-after-free in the reference):
+                 * the reference's guard at 5088-5092 is cmpwi cr1, r31, 0 /
+                 * beq cr1, loc_1428 with r31 still holding the descriptor the
+                 * bl at 5084 just released -- nothing between 5084 and 5088
+                 * clears r31.  So the reference's wire-failure path falls
+                 * into the block below (5096-5156) and sends
+                 * executeRequest:ioMemoryDescriptor:, unwireMemory and a
+                 * second release to an already-released object.
+                 * IOMemoryDescriptor.h:132-134 confirms -release is a real
+                 * refcount release, so at a retain count of 1 that frees it,
+                 * and wireMemory: fails on client-supplied addresses, which
+                 * makes the path client-reachable.  We drop the descriptor
+                 * here so the block below is skipped; recorded as
+                 * intentional-mismatch at address 4828 in
+                 * reconstruction/ledger.json.
+                 */
+                ioMemDesc = nil;
             }
         }
 
-        /* APPLE DEFECT, REPRODUCED DELIBERATELY: the guard at 5088-5092 is
-         * cmpwi cr1, r31, 0 / beq cr1, loc_1428, and r31 holds the
-         * descriptor.  It short-circuits only the allocation-failure path
-         * (which reaches it with r31 == 0).  The wire-failure path above
-         * releases the descriptor and then falls straight into this block
-         * with r31 still non-zero, so the reference goes on to use and
-         * release the descriptor it has already released.  No instruction
-         * between 5084 and 5088 clears r31.
-         */
         if (ioMemDesc != NULL) {
             /* Execute SCSI request with the memory descriptor
              * (5096-5124, selector __OBJC,__message_refs+100,

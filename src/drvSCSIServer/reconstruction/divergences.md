@@ -62,7 +62,7 @@ reference. `deferred` = still open, out of Task 3's file scope.
 | `initFromDeviceDescription:` extra `IOLog` | still-open | fixed |
 | `registerSCSIController:` extra `IOLog` | still-open | fixed |
 | `serverConnect:taskPort:` wrong (underscored) selector | already-fixed (`b2d798bd`) | none |
-| `getCharValues:forParameter:count:` extra bounds guard | still-open | fixed: guard removed, Apple's `values[-1]` underflow reproduced with a comment |
+| `getCharValues:forParameter:count:` extra bounds guard | still-open | resolved the other way: the `if (bytesWritten > 0)` guard stays, and Apple's `values[-1]` underflow is recorded as `intentional-mismatch` at address 772 |
 | `objc_getClass()` vs static references | still-open + claim-wrong | fixed at all five sites, as plain `[super ...]` / `[IOSCSISession alloc]` |
 | twelve wrappers never send their message | still-open | fixed: all twelve now dispatch |
 | `IOSCSISession_returnFromScStatus` declared `void` | still-open | fixed: `int` in `IOSCSISession.h` and `.m`, returning the dispatched value |
@@ -93,25 +93,42 @@ Full evidence in `reconstruction/SCSIServer/findings.md`.
 
 ## Summary
 
-Final tally across all 68 ledger entries, after Tasks 3-7:
+Tally across all 68 ledger entries, transcribed from `reconstruction/ledger.json`
+after the SCSIServer reconstruction's Task 3 fix pass. (Earlier revisions of this
+table read `assembly-matched 14 / intentional-mismatch 3 / unexamined 51`, which
+was already 18 entries adrift of the ledger before Task 3 touched it.)
 
 | Status | Count |
 | --- | --- |
-| `assembly-matched` | 14 |
-| `intentional-mismatch` | 3 |
-| `unexamined` | 51 |
+| `assembly-matched` | 15 |
+| `intentional-mismatch` | 24 |
+| `signature-confirmed` | 1 |
+| `unexamined` | 28 |
 | **Total** | **68** |
 
-The 3 `intentional-mismatch` entries are the hand-written MiG demux
-(`_IOSCSISessionMig_server`, address 13520, disposed in Task 6) and the two
-build-generated classes this task dispositions (`+[SCSIServerKernelServerInstance
+The 24 `intentional-mismatch` entries are: the 18 MiG-generated dispatch stubs
+(`__XIOSCSISession_*`, addresses 9212-13376, dispositioned by Task 9); the
+hand-written MiG demux (`_IOSCSISessionMig_server`, address 13520, disposed in
+Task 6); the two build-generated classes (`+[SCSIServerKernelServerInstance
 kernelServerInstance]`, address 13708, and `+[SCSIServerVersion
 driverKitVersionForSCSIServer]`, address 13728 — see "Disposition of the 27 unmapped
-entries" below).
+entries" below); and the three places where Task 3's fix pass declined to reproduce
+a demonstrable defect in the reference, per
+`docs/superpowers/plans/2026-07-25-kernel-pci-pcmcia-reconstruction.md:968`
+("reproduce Apple's *form*, not Apple's *defects*"):
+
+| Address | Function | Defect kept out of our tree |
+| --- | --- | --- |
+| 772 | `-[SCSIServer getCharValues:forParameter:count:]` | unconditional `stb r0, -1(r9)` at 976-984, reached with `r31 == 0` via the `bge cr1, loc_3D0` break at 936 — a one-byte write before the caller's buffer |
+| 4828 | `_IOSCSISession_executeRequestScatter` | `release` at 5084 then `cmpwi cr1, r31, 0` / `beq cr1, loc_1428` at 5088-5092 with `r31` unchanged, so the wire-failure path falls into 5096-5156 and uses the freed descriptor twice more |
+| 5760 | `_IOSCSISession_executeSCSI3RequestScatter` | the same shape at 6016 and 6020-6024 in the SCSI-3 variant |
+
+The single `signature-confirmed` entry is address 1160,
+`-[IOSCSISession initServerWithTask:sendPort:]`.
 
 Of the 68 functions, **47 were read at instruction level**: the 41 functions Tasks 3-6
-compared against our source (14 confirmed `assembly-matched`, 27 left `unexamined`
-with a recorded finding of a real, non-cosmetic divergence), plus the 6 functions this
+compared against our source (15 confirmed `assembly-matched`, 4 `intentional-mismatch`,
+22 left `unexamined` with a recorded finding of a real, non-cosmetic divergence), plus the 6 functions this
 task reads directly from the reference disassembly because our tree has no
 counterpart to compare them against at all (see "Finding: six functions our tree lacks
 entirely" below).
@@ -123,11 +140,11 @@ defined. A further **18 entries** (now `intentional-mismatch`, dispositioned by 
 are the reference's own MiG-generated dispatch-stub bodies (`__XIOSCSISession_*`,
 addresses 9212-13376) — compiler output from the project's lost `.defs` file, not
 hand-written source, regenerated in `IOSCSISessionMig.defs` rather than transcribed by
-hand. The remaining **1 unexamined entry**
-(address 1160, `-[IOSCSISession initServerWithTask:sendPort:]`) *is* implemented in our
+hand. The remaining **1 entry** (address 1160,
+`-[IOSCSISession initServerWithTask:sendPort:]`, now `signature-confirmed`) *is* implemented in our
 tree, at `IOSCSISession.m:234`, but under a misspelled selector name (see "Finding:
 `-[IOSCSISession(Private) _initServerWithTask:sendPort:]` carries a spurious
-underscore" below); it stays `unexamined` because only its name, not its full
+underscore" below); it stays `signature-confirmed` because only its name, not its full
 instruction sequence, has been checked so far, and its disposition is Task 8's.
 6 + 18 + 1 = 25, plus the 2 build-generated classes now `intentional-mismatch` = 27,
 matching the unmapped count in "Starting state" above.
@@ -168,7 +185,7 @@ instruction by instruction against `SCSIServer.m`.
 | 228 | `-[SCSIServer initFromDeviceDescription:]` | `unexamined` | Finding: wrong registerSCSIController: argument; Finding: extra IOLog call; Finding: extra objc_getClass call |
 | 480 | `-[SCSIServer registerSCSIController:]` | `unexamined` | Finding: extra IOLog call |
 | 632 | `-[SCSIServer serverConnect:taskPort:]` | `unexamined` | Finding: wrong selector name; Finding: extra objc_getClass call |
-| 772 | `-[SCSIServer getCharValues:forParameter:count:]` | `unexamined` | Finding: extra bounds guard absent from reference; Finding: extra objc_getClass call |
+| 772 | `-[SCSIServer getCharValues:forParameter:count:]` | `intentional-mismatch` | Finding: bounds guard absent from reference — kept deliberately, see the Summary table above; Finding: extra objc_getClass call (fixed by Task 3) |
 
 `requiredProtocols` (address 16) accounts for every reference *instruction* with no unexplained
 difference, but the *data* the five instructions return does diverge (see the Finding immediately
@@ -366,9 +383,10 @@ decompiled store, not as a deliberate correction.
 
 **Consequence:** a real control-flow divergence, not a register-allocation artifact: our source
 skips the terminator write in the edge case where the reference would perform (a buggy) one-byte
-underflow write. Whether to reproduce the reference's underflow write or keep our guard is a Task 12
-decision (compare `## Apple's own defects` conventions used by sibling reconstructions — reproduce
-by default unless there's a reason not to). Left `unexamined`.
+underflow write. **Resolved:** the "reproduce by default" reading this paragraph used to advise is
+superseded. The governing convention is
+`docs/superpowers/plans/2026-07-25-kernel-pci-pcmcia-reconstruction.md:968` — "reproduce Apple's
+*form*, not Apple's *defects*" — so the guard stays and address 772 is `intentional-mismatch`.
 
 This function also calls `objc_getClass("IODevice")` where the reference loads a static reference
 instead — see "Finding: our source calls `objc_getClass()` where the reference loads static
@@ -660,10 +678,10 @@ full `{imp, sel}` message-ref struct), whose own relocation names an offset into
 | 4204 | `_IOSCSISession_numberOfTargets` | `unexamined` | Finding: dispatch stubbed out |
 | 4288 | `_IOSCSISession_executeRequest` | `unexamined` | Finding: dispatch stubbed out (control flow and delegation to `executeRequestScatter` otherwise match) |
 | 4544 | `_IOSCSISession_executeRequestOOLScatter` | `unexamined` | Finding: dispatch stubbed out; Finding: `IOTaskWireMemory` return-type mismatch |
-| 4828 | `_IOSCSISession_executeRequestScatter` | `unexamined` | Finding: dispatch stubbed out (IOMemoryDescriptor alloc/init/wire/unwire/release and controller execute calls all commented out) |
+| 4828 | `_IOSCSISession_executeRequestScatter` | `intentional-mismatch` | Finding: dispatch stubbed out (fixed by Task 3); the reference's use-after-free on the wire-failure path is deliberately not reproduced — see the Summary table above |
 | 5220 | `_IOSCSISession_executeSCSI3Request` | `unexamined` | Finding: dispatch stubbed out (mirrors 4288 with SCSI-3 offsets) |
 | 5476 | `_IOSCSISession_executeSCSI3RequestOOLScatter` | `unexamined` | Finding: dispatch stubbed out; Finding: `IOTaskWireMemory` return-type mismatch |
-| 5760 | `_IOSCSISession_executeSCSI3RequestScatter` | `unexamined` | Finding: dispatch stubbed out (mirrors 4828 with SCSI-3 offsets) |
+| 5760 | `_IOSCSISession_executeSCSI3RequestScatter` | `intentional-mismatch` | Finding: dispatch stubbed out (fixed by Task 3); same deliberate use-after-free divergence as 4828 |
 | 6152 | `_IOSCSISession_resetSCSIBus` | `unexamined` | Finding: dispatch stubbed out |
 | 6236 | `_IOSCSISession_returnFromScStatus` | `unexamined` | Finding: dispatch stubbed out; Finding: wrong return type |
 | 6304 | `_IOSCSISession_maxTransfer` | `assembly-matched` | `objc_msgSend(controller, maxTransfer)`, result stored through output pointer |
@@ -1906,9 +1924,9 @@ already-fixed and claim-wrong verdicts as well):
 | `+[SCSIServer probe:]` logging where the reference has none | three `IOLog` calls removed |
 | `-[SCSIServer initFromDeviceDescription:]` logging where the reference has none | `IOLog` removed |
 | `-[SCSIServer registerSCSIController:]` logging where the reference has none | `IOLog` removed |
-| `-[SCSIServer getCharValues:forParameter:count:]`'s extra bounds guard | removed; Apple's own `values[-1]` underflow write reproduced, with the addresses in a comment |
+| `-[SCSIServer getCharValues:forParameter:count:]`'s extra bounds guard | kept; Apple's own `values[-1]` underflow write is `intentional-mismatch` at address 772, with the addresses in a comment |
 | Our source calling `objc_getClass()` where the reference loads static `__cls_refs` | all five sites are now plain `[super ...]` / `[IOSCSISession alloc]`; see the correction on that finding |
-| Twelve of the eighteen C-callable wrapper functions never send the Objective-C message the reference sends | all twelve dispatch now, each with the reference addresses and the `__OBJC,__message_refs` slot in a comment; the two `*Scatter` bodies also reproduce Apple's use-after-release |
+| Twelve of the eighteen C-callable wrapper functions never send the Objective-C message the reference sends | all twelve dispatch now, each with the reference addresses and the `__OBJC,__message_refs` slot in a comment; the two `*Scatter` bodies clear the descriptor after the wire-failure `release` rather than reproduce Apple's use-after-release (`intentional-mismatch` at 4828 and 5760) |
 | `IOSCSISession_returnFromScStatus` still declared `void`, discarding the reference's return value | `int` in `IOSCSISession.h:196` and `IOSCSISession.m`, returning the dispatched value |
 | The OOL wrappers' "`vm_deallocate`" naming guess | `IOUnmapPhysicalFromIOTask`, resolved through the relocation at 4716/5648 |
 | `-[IOSCSISession free]`'s cleanup "callback" | direct `IOExitThread()`; the `session_cleanup_callback_t` typedef and its extern are removed |

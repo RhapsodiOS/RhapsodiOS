@@ -418,17 +418,20 @@ static id _server = NULL;                   /* Global SCSIServer instance */
 
     /* Replace last comma with null terminator.
      *
-     * APPLE DEFECT, REPRODUCED DELIBERATELY: addresses 976-984 are
-     * add r9, r31, r25 / li r0, 0 / stb r0, -1(r9) -- an unconditional store
-     * with no guard on bytesWritten.  Both ways out of the loop (the
-     * bge cr1, loc_3D0 break at 936 and the bottom test at 964-972) fall
-     * straight into it, so when *count is too small to hold even the first
-     * name plus its separator the break fires on iteration 0 with
-     * bytesWritten still 0 and the reference writes values[-1], one byte
-     * before the caller's buffer.  The guard this line used to carry
-     * (if (bytesWritten > 0)) has no counterpart in the reference.
+     * INTENTIONAL MISMATCH (out-of-bounds write in the reference): addresses
+     * 976-984 are add r9, r31, r25 / li r0, 0 / stb r0, -1(r9) -- an
+     * unconditional store with no guard on bytesWritten.  Both ways out of
+     * the loop (the bge cr1, loc_3D0 break at 936 and the bottom test at
+     * 964-972) fall straight into it, so when *count is too small to hold
+     * even the first name plus its separator the break fires on iteration 0
+     * with bytesWritten still 0 and the reference writes values[-1], one byte
+     * before the caller's buffer.  The guard below has no counterpart in the
+     * reference; recorded as intentional-mismatch at address 772 in
+     * reconstruction/ledger.json.
      */
-    values[bytesWritten - 1] = '\0';
+    if (bytesWritten > 0) {
+        values[bytesWritten - 1] = '\0';
+    }
 
     /* Set the count to the number of bytes written */
     *count = bytesWritten;

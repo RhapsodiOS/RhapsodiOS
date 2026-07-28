@@ -432,7 +432,7 @@ pairing is exactly one-to-one and in-order:
 ## Task 3: repairing the documented divergences
 
 Task 3 re-verified every open finding in
-`src/drvSCSIServer/reconstruction/divergences.md` against the current tree
+`src/drvSCSIServer/reconstruction/SCSIServer/divergences.md` against the current tree
 before changing anything, because a review had established that document had
 drifted. The classification, the evidence for each repair, and the
 uncertainties that remain are in `.superpowers/sdd/task-3-report.md`; this
@@ -536,7 +536,7 @@ governs — "reproduce Apple's *form*, not Apple's *defects* … where the refer
 is demonstrably buggy, keep our correct behaviour and record it as
 `intentional-mismatch` with its evidence" — so our tree keeps the correct
 behaviour at all three sites, and addresses 772, 4828 and 5760 are
-`intentional-mismatch` in `reconstruction/ledger.json`. The measurements below
+`intentional-mismatch` in `reconstruction/SCSIServer/ledger.json`. The measurements below
 are unchanged; only the disposition is.
 
 - `-[SCSIServer getCharValues:forParameter:count:]` writes `values[-1]`.
@@ -680,8 +680,10 @@ the header: nothing outside that file references address 7624.
 `IODestroyMappedVMTask` was declared `int`, "returns the result of
 vm_map_deallocate()". `vm_map_deallocate` has no result
 (`src/kernel-7/vm/vm_map.h:401`, `extern void vm_map_deallocate();`), and all
-eight MiG-stub call sites discard `r3` - 10792's call is followed at 10796 by a
-reload of the reply's `RetCode`. It is declared `void` now.
+six MiG-stub call sites (10792, 11152, 11568, 11988, 12372, 12752) discard `r3`
+- 10792's call is followed at 10796 by a reload of the reply's `RetCode`. It is
+declared `void` now. (The count read "eight" until Task 5; the conclusion never
+depended on it, since `vm_map_deallocate` is `extern void` on its own.)
 
 ### Constants, all traced to this tree's own headers
 
@@ -727,7 +729,7 @@ bound (7848-7856, 8164-8172) and as its own "should I still be running" test
 clients and mis-bounds both of its scans.
 
 Our source decrements on both paths, with the reasoning at each site. Address
-8412 is `intentional-mismatch` in `reconstruction/ledger.json`. This supersedes
+8412 is `intentional-mismatch` in `reconstruction/SCSIServer/ledger.json`. This supersedes
 `divergences.md`'s former advice at that finding, which told a reimplementer to
 reproduce the leak; that advice is corrected in place.
 
@@ -772,3 +774,279 @@ guard make sense.
   differently from the reference. Noted for Task 5's remap, not changed.
 - Nothing compiles, nothing is ledger-advanced past `signature-confirmed`, and
   the six functions are not yet in `source-map.json` - Task 5 remaps.
+
+## Task 5: build wiring, consolidation, remap and acceptance
+
+Nothing was compiled here either. There is no PowerPC toolchain and no host C
+compiler in this environment; `make` was never run. Every claim below is of
+**correspondence to the shipped binary**, never of buildability.
+
+### Build wiring - the `Makefile` was authoritative, and it was the one that was wrong
+
+The two build descriptions in `SCSIServer.lksproj` disagreed before this task,
+and they had disagreed since `IOTask.m` was split out:
+
+| | `Makefile` (before) | `PB.project` (before) |
+| --- | --- | --- |
+| classes | `SCSIServer.m IOSCSISession.m` | `SCSIServer.m, IOSCSISession.m, IOTask.m` |
+| headers | `SCSIServer.h IOSCSISession.h` | `SCSIServer.h, IOSCSISession.h, IOTask.h` |
+| other sources | no `IOSCSISessionMig.defs` | `IOSCSISessionMig.defs` |
+
+`PB.project` is Project Builder's own model of the project; the `Makefile` is
+what `gnumake` actually reads. **The `Makefile` is authoritative for what gets
+built**, so `IOTask.m` had never been compiled despite five commits of work on
+it. `PB.project` already named both `IOTask.m` and `IOTask.h`, so it needed no
+change; the fix was entirely on the `Makefile` side:
+
+```make
+CLASSES = SCSIServer.m IOSCSISession.m IOTask.m
+HFILES = SCSIServer.h IOSCSISession.h IOTask.h
+OTHERSRCS = Makefile Makefile.preamble Makefile.driver_preamble Makefile.postamble IOSCSISessionMig.defs
+```
+
+The `OTHERSRCS` addition is inert for compilation and closes the third
+disagreement. `.defs` compilation is driven by `DEFSFILES` in
+`Makefile.preamble` (untouched); `OTHERSRCS` feeds only `SRCFILES`
+(`src/pb_makefiles-1/common.make:240`), which is the source listing used by the
+`sourcefiles` and `installsrc` targets. `DEFSFILES` is *not* in `SRCFILES` -
+only its generated products are, via `GENERATED_SRCFILES` at `:238` - so without
+this line the `.defs` was absent from the project's own source list.
+
+`Makefile.preamble` was not touched, per this task's constraint.
+
+### Reconstruction directories consolidated
+
+Two directories described the same binary. Everything now lives in
+**`src/drvSCSIServer/reconstruction/SCSIServer/`**, matching `$RECON` as used
+throughout this plan's briefs and reports, and matching `src/drvSCSITape/`'s
+per-binary subdirectory layout.
+
+| File | Was | Now |
+| --- | --- | --- |
+| `divergences.md` | `reconstruction/` | moved to `reconstruction/SCSIServer/` |
+| `ledger.json` (live, 15/25/6/22) | `reconstruction/` | moved to `reconstruction/SCSIServer/`, replacing the all-`unexamined` seed |
+| `source-map.json` (prior session's) | `reconstruction/` | deleted; superseded by the map regenerated below |
+| `findings.md` | `reconstruction/SCSIServer/` | unchanged in place |
+
+**No measurement was re-run as part of the move.** `divergences.md` is
+byte-for-byte the file Task 3 last wrote; the ledger is byte-for-byte the one
+Task 4 last wrote. The only artifact regenerated in this task is
+`source-map.json`, and that is a fresh run of the recorded route, not a
+relocation of the old file. The stale flat `source-map.json` and the stale
+seeded nested `ledger.json` were the two files a later reader could have trusted
+by mistake; both are gone.
+
+The `Ledger` heading earlier in this file describes the seeded state at Task 1.
+The live ledger this task inherited and leaves unchanged is **15
+assembly-matched / 25 intentional-mismatch / 6 signature-confirmed / 22
+unexamined = 68**. Task 5 advanced no ledger entry: it wrote no function bodies.
+
+### The i386 exposure
+
+`Makefile.preamble` sets `INCLUDED_ARCHS = i386 ppc`, and the reference set
+contains **no i386 `SCSIServer` binary**. Everything measured in this plan came
+from the PowerPC `SCSIServer_reloc`. Adding `IOTask.m` to `CLASSES` therefore
+puts PowerPC-derived numbers into an i386 compilation that nothing can be
+checked against.
+
+What is and is not established about the two structure offsets in `IOTask.m`:
+
+- **Established.** The pointer they index is DriverKit's `IOTask_kern`, a
+  `struct task *`. 23 relocations name it, and no symbol `_entry` exists
+  anywhere in the binary's symbol table. `+0x18` is `map` and `+0xa4` is
+  `itk_space`; the offsets were right in the prior session's work, both field
+  *names* were wrong, and Task 4 renamed them. The identification is
+  corroborated by argument role against `src/kernel-7/kern/task.h:74` (`map`)
+  and `:81` (`itk_space`).
+- **Not established.** Nobody has *computed* either offset, for either
+  architecture. Doing so needs the size of `decl_simple_lock_data` in this build
+  configuration, which was not determined. The offsets are transcribed from the
+  PowerPC binary, not derived from the structure.
+
+A wrong offset here does not fail at build time. It compiles, and then wires or
+unwires the wrong memory. Per the user's decision the offsets go in as-is,
+unguarded and with no `#if defined(__i386__)` fence. This is a recorded
+uncertainty, not an oversight.
+
+(This task's brief described the offsets as having "no in-tree corroboration".
+Task 4 superseded that: the structure is in-tree and the field names are now
+correct. The narrower statement above is the accurate one.)
+
+### The regenerated source map
+
+The **primary** route from Task 1 Step 4, re-run verbatim -
+`filter_named_functions.py` over the reference analysis, then `source-map` with
+`--objc-methods` and **without** `--scope-to-objc`. The fallback was not used,
+in this task or in Task 1.
+
+```
+$ $VENVPY tools/binrecon/filter_named_functions.py \
+    tools/binrecon/out/scsiserver-ppc/published/analysis-reference-ida.json \
+    tools/binrecon/out/scsiserver-ppc/analysis-named.json
+EXIT: 0
+
+$ PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
+    --reference-analysis tools/binrecon/out/scsiserver-ppc/analysis-named.json \
+    --binary "$REF" \
+    --source-dir src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj \
+    --repo-root . --objc-methods \
+    --output src/drvSCSIServer/reconstruction/SCSIServer/source-map.json
+EXIT: 0
+
+mapped: 47
+unmapped: 21
+duplicate_candidates: 0
+boundary_disputed: 0
+```
+
+Task 1 measured 41/27. The six functions Task 4 wrote account for the whole
+difference, and all six now carry a file and a line:
+
+| Address | Reference name | Source site |
+| --- | --- | --- |
+| `0x0a70` | `_serverThreadFunc` | `IOSCSISession.m:858` |
+| `0x19bc` | `_IOTaskPortAllocate` | `IOTask.m:206` |
+| `0x1c98` | `_IOConvertTaskPortToVMTask` | `IOTask.m:499` |
+| `0x1d98` | `_IODestroyMappedVMTask` | `IOTask.m:545` |
+| `0x1dc8` | `__io_task_notification` | `IOTask.m:609` |
+| `0x20dc` | `_IORequestNotifyForClientTask` | `IOTask.m:766` |
+
+The remaining **21 unmapped** are exactly the entries that have no hand-written
+source site by construction, and each is accounted for:
+
+- **18** `__XIOSCSISession_*` MIG server stubs (`0x23fc`-`0x3440`) - generated by
+  `mig` from `IOSCSISessionMig.defs` at build time; no `.m` file contains them.
+- **1** `_IOSCSISessionMig_server` (`0x34d0`) - the MIG demultiplexer, generated
+  from the same `.defs`.
+- **2** build-generated class methods,
+  `+[SCSIServerKernelServerInstance kernelServerInstance]` (`0x358c`) and
+  `+[SCSIServerVersion driverKitVersionForSCSIServer]` (`0x35a0`) - emitted by
+  the Kernel Server project type, not written by hand.
+
+`duplicate_candidates` and `boundary_disputed` are both **0**, so neither needs
+an entry-by-entry explanation.
+
+### Bucket reconciliation - `RECONCILES: yes`
+
+```
+total functions: 68
+  mapped: 47
+  1-crt-dyld: 0
+  2-picsymbol-stub: 0
+  3-unnamed-jump-island: 0
+  4-build-generated-class: 2
+      0x358c  +[SCSIServerKernelServerInstance kernelServerInstance]  (20 bytes)
+      0x35a0  +[SCSIServerVersion driverKitVersionForSCSIServer]  (16 bytes)
+  5-fn-with-source-site: 0
+  6-fn-no-source-site: 19
+      (the 18 __XIOSCSISession_* stubs and _IOSCSISessionMig_server)
+counted: 68
+RECONCILES: yes
+EXIT: 0
+```
+
+Bucket 6 fell from 25 to 19 - the six written functions left it. Buckets 1 and 2
+are empty as expected for a `_reloc` kernel server; bucket 3 is empty because
+the filter step already removed the 138 jump islands.
+
+### PowerPC invariant check - unchanged, one known line
+
+```
+symbol +[SCSIServer deviceStyle] at 0x0 has no function start in the analysis,
+  but code is present: the bytes there are a function prologue, so the analysis
+  omits a real function
+20 scattered/difference-form relocations (target section verified, field is a
+  difference, not an address)
+10 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
+998 fused relocations, 1 violations
+EXIT: 1
+```
+
+Identical to Task 1's. The single violation is the `deviceStyle` exclusion
+documented above, and the tool's wording is the accurate one: **code is
+present**. Exit 1 is the gate reporting that one known line, not a new failure.
+
+### `deviceStyle` confirmed present, by string rather than by address
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/selector_check.py \
+    "$REF" src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj
+reference selectors: 15
+our definitions:     13
+renames (0):
+duplicates (0):
+missing (2):
+    +[SCSIServerKernelServerInstance kernelServerInstance]
+    +[SCSIServerVersion driverKitVersionForSCSIServer]
+extra (0):
+EXIT: 0
+```
+
+`selector_check.py` matches selector strings, not addresses, so it sees what the
+map structurally cannot. `+[SCSIServer deviceStyle]` is **not** in `missing`: it
+is present in our source, at `SCSIServer.m:37`. The only two `missing` entries
+are the two build-generated class methods, which are bucket 4 above and are not
+hand-written by anyone. `extra` and `renames` are both empty.
+
+47 mapped + 1 `deviceStyle` = **48 hand-written functions accounted for**.
+
+### Suite
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
+851 passed, 4 skipped in 58.65s
+
+$ PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests tools/tests -q
+854 passed, 4 skipped in 52.90s
+```
+
+`PYTHONPATH=tools/binrecon` is required; without it collection fails. No
+binrecon code was modified by this task, so the suite is a regression check on
+the tree, not on anything new.
+
+### Three corrections carried out of Task 4's review
+
+1. `IOTask.m:539` and this file both said "every one of the **eight** MiG-stub
+   call sites discards `r3`". There are **six**: 10792, 11152, 11568, 11988,
+   12372, 12752. Both now say six and list them. The `void` return stands
+   independently on `vm_map_deallocate` being `extern void`
+   (`src/kernel-7/vm/vm_map.h:401`), so the conclusion never depended on the
+   count - but this is an evidence file and the count is now right.
+2. `IOTask.m:129` declared `static int _notifyThread`, then cast
+   `IOForkThread`'s result to `int` at the assignment. It is a thread handle;
+   Task 4 had already applied `IOThread` to the analogous session field at
+   `IOSCSISession.m:299`. It is now `static IOThread _notifyThread` and the cast
+   is gone. `IOReferenceClientTask`'s upper-bound comparison at `IOTask.m:347`
+   gained an `(int *)` cast on `&_notifyThread`, because the bound is an address
+   comparison against an `int *` search pointer and the variable's type changed
+   underneath it.
+3. `IOSCSISession.m:860-861` declared `char requestBuffer[0x400]` /
+   `replyBuffer[0x400]` and cast them to `msg_header_t *` / `death_pill_t *`. A
+   `char` array carries no alignment guarantee, while the reference's two
+   buffers are 4-aligned at `r1+0x38` and `r1+0x438`. They are now unions of the
+   message type with a `char[0x400]`, which forces the alignment the message
+   structures need and keeps `sizeof(requestBuffer)` at `0x400` for the
+   `msg_size` assignment.
+
+All three edits were made line-count-neutral in both `.m` files, so every line
+citation already recorded in `divergences.md` and in this file still resolves.
+
+### Acceptance, item by item
+
+Against section 7 of
+`docs/superpowers/specs/2026-07-28-scsiserver-reconstruction-design.md`.
+
+| # | Item | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Map covers 47 of 48; every unmapped entry enumerated; `deviceStyle` confirmed by `selector_check.py` | **PASS** | `mapped: 47`; all 21 unmapped enumerated above (18 MIG stubs + demux + 2 build-generated); `selector_check.py` shows `deviceStyle` absent from `missing` |
+| 2 | `duplicate_candidates` is 0, or every entry enumerated with evidence | **PASS** | `duplicate_candidates: 0`, and `boundary_disputed: 0` |
+| 3 | Bucket reconciliation reports `RECONCILES: yes` | **PASS** | `bucket_functions.py`, `counted: 68`, `RECONCILES: yes`, exit 0 |
+| 4 | MIG check reports per-routine agreement with `IOSCSISessionMig.defs` | **PASS** | Task 2, recorded above under "`IOSCSISessionMig.defs` verified against the shipped MIG stubs": all 19 stubs agree on message layout, direction, argument order and dispatch slot |
+| 5 | All six bodies written, each with an instruction-by-instruction account covering every branch | **PASS** | Task 4, recorded above under "Task 4: the six absent functions written"; all six now appear in `mapped` with a file and line |
+| 6 | `IOTask.m`/`IOTask.h` in `CLASSES`/`HFILES` | **PASS** | `Makefile:16` and `:18`, this task; `PB.project` already agreed |
+| 7 | Binrecon suite stays green | **PASS** | `851 passed, 4 skipped` (`tools/binrecon/tests`); `854 passed, 4 skipped` (with `tools/tests`) |
+
+**The standing constraint applies to all seven.** Nothing was compiled. Item 6
+in particular asserts only that the two files are now named in the variables the
+build reads - not that the project builds, and not that `IOTask.m` compiles. No
+one has ever compiled it.

@@ -119,7 +119,7 @@ leak, detailed at the `_IORequestNotifyForClientTask` section below.
 
 ## Summary
 
-Tally across all 68 ledger entries, transcribed from `reconstruction/ledger.json`
+Tally across all 68 ledger entries, transcribed from `reconstruction/SCSIServer/ledger.json`
 after Task 4. (Earlier revisions of this table read
 `assembly-matched 14 / intentional-mismatch 3 / unexamined 51`, which was
 already 18 entries adrift of the ledger before Task 3 touched it; Task 3 left it

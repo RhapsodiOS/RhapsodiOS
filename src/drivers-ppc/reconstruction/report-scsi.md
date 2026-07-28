@@ -860,6 +860,47 @@ selectors, not bodies.)
 
 ---
 
+## 7. `SCSIServer` — measured under its own spec, and it does not live here
+
+`SCSIServer` is another SCSI binary in the same reference set, and its
+artifacts are **not** under `src/drivers-ppc/`. They are at
+[../../drvSCSIServer/reconstruction/SCSIServer/findings.md](../../drvSCSIServer/reconstruction/SCSIServer/findings.md),
+beside `divergences.md`, `source-map.json` and `ledger.json`.
+
+The reason is structural, not organisational. The four drivers in this report
+are PowerPC hardware drivers under `src/drivers-ppc/`, each built for `ppc`
+alone. `SCSIServer` is a top-level, architecture-neutral Kernel Server project
+at `src/drvSCSIServer/` whose `Makefile.preamble` sets
+`INCLUDED_ARCHS = i386 ppc`. It exports a Mach RPC surface to user space rather
+than driving hardware, and it has no `IOSCSIController` subclass, so §6's family
+comparison does not apply to it.
+
+Headline numbers, from
+[docs/superpowers/specs/2026-07-28-scsiserver-reconstruction-design.md](../../../docs/superpowers/specs/2026-07-28-scsiserver-reconstruction-design.md):
+
+| | |
+| --- | --- |
+| Reference | `Drivers/ppc/SCSIServer.config/SCSIServer_reloc`, `__text` `0x0`–`0x35b0`, 69 defined symbols |
+| IDA functions | 206, of which 138 are 16-byte jump islands; 68 named |
+| Source map | 47 mapped, 21 unmapped, 0 duplicates, 0 boundary disputes |
+| The 21 unmapped | 18 `__XIOSCSISession_*` MIG stubs, `_IOSCSISessionMig_server`, and 2 build-generated class methods — none hand-written |
+| Buckets | `RECONCILES: yes`, 68 counted |
+| Ledger | 15 assembly-matched / 25 intentional-mismatch / 6 signature-confirmed / 22 unexamined |
+| Written under that spec | the six functions that had no body anywhere — `_serverThreadFunc` plus five in `IOTask.m` — after which all six map |
+| Also verified | `IOSCSISessionMig.defs` (recovered by an earlier session) agrees with all 19 shipped MIG stubs on layout, direction, argument order and dispatch slot |
+
+`+[SCSIServer deviceStyle]` at `__text+0` is the same address-0 case §1 of this
+report corrects: IDA's function list has no entry there, the bytes are real code
+(`9421ffe0` / `stwu r1,-32(r1)`), and the method is present at
+`SCSIServer.m:37`. It is confirmed by `selector_check.py`, which matches
+selector strings rather than addresses. 47 mapped + 1 = the 48 hand-written
+functions.
+
+Nothing about `SCSIServer` is compile-verified either, for the same reason
+nothing here is.
+
+---
+
 ## Acceptance
 
 Spec §5, items 1–8. Every item below was observed in output run for this report;

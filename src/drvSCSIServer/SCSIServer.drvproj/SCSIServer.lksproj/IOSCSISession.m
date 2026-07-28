@@ -857,14 +857,14 @@ extern boolean_t IOSCSISessionMig_server(msg_header_t *request,
 
 static void serverThreadFunc(id session)
 {
-    char requestBuffer[0x400];
-    char replyBuffer[0x400];
+    union { msg_header_t hdr; char bytes[0x400]; } requestBuffer;   /* r1+0x38 */
+    union { death_pill_t pill; char bytes[0x400]; } replyBuffer;    /* r1+0x438 */
     msg_header_t *request;
     death_pill_t *reply;
     int result;
 
-    request = (msg_header_t *)requestBuffer;
-    reply = (death_pill_t *)replyBuffer;
+    request = &requestBuffer.hdr;
+    reply = &replyBuffer.pill;
 
     for (;;) {
         request->msg_local_port = (port_t)session;

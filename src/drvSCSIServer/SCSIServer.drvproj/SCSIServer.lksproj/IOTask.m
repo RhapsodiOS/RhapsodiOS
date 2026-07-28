@@ -126,7 +126,7 @@ static int _clientReferences[32] = {0};  /* Client reference array at 0x4008-0x4
  * So Apple's source wrote &_clientReferences[32] for the bound and
  * _notifyThread for the thread; the two happen to be the same address.
  */
-static int _notifyThread = 0;  /* Notification thread handle at 0x4088 */
+static IOThread _notifyThread = 0;  /* Notification thread handle at 0x4088 */
 
 /* ========================================================================
  * Client Task Notification Management (data)
@@ -344,7 +344,7 @@ int IOReferenceClientTask(int **clientReferenceSlot)
          *   piVar2 = piVar2 + 1;
          * } while (piVar2 < &_notifyThread);
          */
-        while (search_ptr < &_notifyThread) {
+        while (search_ptr < (int *)&_notifyThread) {
             if (*search_ptr == 0) {
                 /* Found empty slot */
                 break;
@@ -536,11 +536,11 @@ int IOConvertTaskPortToVMTask(mach_port_t taskPort)
  *   7592-7604  epilogue
  *
  * Returns void: vm_map_deallocate() itself is void
- * (src/kernel-7/vm/vm_map.h:401), and every one of the eight MiG-stub call
- * sites discards r3 - address 10792's call, for instance, is followed at
- * 10796 by `lwz r0, 0x1C(r30)`, reloading the reply's RetCode.  The header's
- * earlier "returns the result of vm_map_deallocate()" was a guess about a
- * function that has no result.
+ * (src/kernel-7/vm/vm_map.h:401), and each of the six MiG-stub call sites
+ * (10792, 11152, 11568, 11988, 12372, 12752) discards r3 - address 10792's
+ * call, for instance, is followed at 10796 by `lwz r0, 0x1C(r30)`, reloading
+ * the reply's RetCode.  The header's earlier "returns the result of
+ * vm_map_deallocate()" was a guess about a function that has no result.
  */
 void IODestroyMappedVMTask(int vmTask)
 {
@@ -807,7 +807,7 @@ int IORequestNotifyForClientTask(mach_port_t task, id session,
     notifClients[i * 2 + 1] = (int)session;
 
     if (_notifyThread == 0) {
-        _notifyThread = (int)IOForkThread((IOThreadFunc)_io_task_notification, NULL);
+        _notifyThread = IOForkThread((IOThreadFunc)_io_task_notification, NULL);
 
         if (_notifyThread == 0) {
             (void)ipc_object_copyin_compat(IOTask_kern->itk_space, *deathPort,

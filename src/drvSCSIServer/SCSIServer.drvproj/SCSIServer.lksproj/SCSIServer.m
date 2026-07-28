@@ -427,7 +427,7 @@ static id _server = NULL;                   /* Global SCSIServer instance */
      * with bytesWritten still 0 and the reference writes values[-1], one byte
      * before the caller's buffer.  The guard below has no counterpart in the
      * reference; recorded as intentional-mismatch at address 772 in
-     * reconstruction/ledger.json.
+     * reconstruction/SCSIServer/ledger.json.
      */
     if (bytesWritten > 0) {
         values[bytesWritten - 1] = '\0';

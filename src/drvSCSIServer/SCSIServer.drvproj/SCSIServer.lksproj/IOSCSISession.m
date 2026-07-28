@@ -1199,7 +1199,7 @@ int IOSCSISession_executeSCSI3RequestScatter(id session, void *request,
                  * makes the path client-reachable.  We drop the descriptor
                  * here so the block below is skipped; recorded as
                  * intentional-mismatch at address 5760 in
-                 * reconstruction/ledger.json.
+                 * reconstruction/SCSIServer/ledger.json.
                  */
                 ioMemDesc = nil;
             }
@@ -1527,7 +1527,7 @@ int IOSCSISession_executeRequestScatter(id session, void *request,
                  * makes the path client-reachable.  We drop the descriptor
                  * here so the block below is skipped; recorded as
                  * intentional-mismatch at address 4828 in
-                 * reconstruction/ledger.json.
+                 * reconstruction/SCSIServer/ledger.json.
                  */
                 ioMemDesc = nil;
             }

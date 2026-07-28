@@ -159,8 +159,13 @@ static int notifClientCnt = 0;    /* Current client count */
 /*
  * IOTaskPortAllocateName - Allocate and assign a name to a Mach port
  * name: Port name to assign
+ * Returns: port_allocate()'s kern_return_t when it fails, otherwise
+ *   port_rename()'s.  The reference leaves port_allocate's r3 alone on the
+ *   failure path (the bne at 6508 jumps straight to the epilogue at 6532) and
+ *   writes nothing after the bl _port_rename at 6528, so whichever call ran
+ *   last supplies the result.
  */
-void IOTaskPortAllocateName(mach_port_t name)
+int IOTaskPortAllocateName(mach_port_t name)
 {
     int result;
     mach_port_t allocated_port;
@@ -176,9 +181,11 @@ void IOTaskPortAllocateName(mach_port_t name)
 
     if (result == 0) {
         /* TODO: Rename the new port to 'name'
-         * port_rename(space, allocated_port, name)
+         * result = port_rename(space, allocated_port, name)
          */
     }
+
+    return result;
 }
 
 /*

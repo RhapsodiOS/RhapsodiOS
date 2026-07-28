@@ -18,8 +18,12 @@
 
 /* Allocate and assign a name to a Mach port
  * name: Port name to assign
+ * Returns: port_allocate()'s kern_return_t when it fails, otherwise
+ *   port_rename()'s.  Nothing writes r3 after the bne at 6508 or the
+ *   bl _port_rename at 6528, and -[IOSCSISession initForTask:...] tests
+ *   the result (cmpwi cr1,r3,0 at 1308, bne cr1 at 1312).
  */
-void IOTaskPortAllocateName(mach_port_t name);
+int IOTaskPortAllocateName(mach_port_t name);
 
 /* Allocate a Mach port in the IOTask's IPC space, without renaming it
  * name: Pointer to receive the newly allocated port (output parameter)

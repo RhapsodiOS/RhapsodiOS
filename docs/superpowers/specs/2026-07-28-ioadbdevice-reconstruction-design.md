@@ -101,13 +101,18 @@ Reference: `IOADBDevice.config/IOADBDevice_reloc`, 34180 bytes, `__text`
 
 ### 1.2 What has no body
 
-- **`+[IOADBDevice GetTable:length:]`** resolves to address `0`, with no
-  function entry. This is the fourth occurrence of a pattern seen in
-  `IOSmartDisplay`, `AppleOHare` and `PPCBurgundy`: a selector present in the
-  metadata with no code. There is nothing to transcribe; it is recorded, not
-  written.
 - The two build-generated classes, `IOADBDeviceKernelServerInstance` and
   `IOADBDeviceVersion`, which the Kernel Server build emits.
+
+**CORRECTION.** This section originally listed `+[IOADBDevice GetTable:length:]`
+here, on the grounds that it "resolves to address `0`, with no function entry"
+and is therefore "a selector present in the metadata with no code". That was a
+misreading of `ppc_invariant_check.py`'s output, repeated from four earlier
+specs. Address `0` is `__text`'s first address, not a null one; the bytes there
+are `7c0802a6` (`mflr r0`) and 208 more, and it is IDA's function list that
+omits the function, not Apple's binary that omits the code. The method is
+written. See `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The
+misreading".
 
 ### 1.3 What the externals reveal
 
@@ -236,9 +241,10 @@ implying they were recovered.
    and **`IOADBDevice`'s superclass is corrected to `Object`** per §2.2.
 5. `_initalize` keeps Apple's misspelling.
 6. A `binrecon` profile exists for this binary, an analysis is published, and a
-   source map is generated. **All fifteen methods map**, leaving only
-   `GetTable:length:` and the two build-generated accessors unmapped. The map
-   reconciles. **If a method does not map, its selector is wrong** — a real
+   source map is generated. **All fifteen methods IDA has functions for map**,
+   leaving only the two build-generated accessors unmapped. `GetTable:length:`
+   is written but appears in no map category, because IDA records no function
+   at `__text+0` for the map to place. The map reconciles. **If a method does not map, its selector is wrong** — a real
    defect, not a tooling artifact.
 7. No stub file still describes itself as a stub with empty bodies.
 8. `tools/ppc_package_check.py` reports no divergences and the binrecon suite

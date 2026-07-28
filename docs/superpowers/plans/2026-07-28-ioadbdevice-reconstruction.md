@@ -44,7 +44,7 @@ class ADBServer  : IODevice    instance_size = 268 (0x10c)
 ```
 
 - **The stub wrongly declares `IOADBDevice : IODevice`.** Task 1 corrects it to `Object`.
-- **`+[IOADBDevice GetTable:length:]` is at address 0 with no body** — nothing to write. Fourth occurrence of this pattern in the series.
+- **`+[IOADBDevice GetTable:length:]` is at address 0** — which is `__text`'s first address, not a null one. **CORRECTION:** this line originally read "with no body — nothing to write". It is a real 212-byte function that IDA's analysis omits, and it is written.
 - **`_initalize` is misspelled in Apple's binary. Reproduce the misspelling.**
 - **Undefined externals:** `_IOSetUNIXError`, `_NXZoneCalloc`, `_adb_devices`, `_bzero`, `_enodev`, `_kprintf`, `_objc_msgSend`, `_objc_msgSendSuper`, `_panic`, `_printf`, `_sprintf`, `_strcmp`, `_strlen`, `_strtol`.
 - **In-tree declarations to reuse, not redeclare:** `IOADBDeviceState`, `IOADBDeviceInfo`, `kIOADBDeviceAvailable`, `@protocol ADBprotocol` in `src/kernel-7/bsd/dev/ppc/IOADBBus.h` and `IOADBBusProt.h`; `extern struct adb_device adb_devices[]` at `adb.h:127`.
@@ -304,7 +304,7 @@ for u in m['unmapped']: print('  ', u['reference_names'][0])
 "
 ```
 
-Expected: **15 mapped**, unmapped only `+[IOADBDevice GetTable:length:]` and the two build-generated accessors. **If a method you wrote did not map, its selector is wrong** — a real defect. Report BLOCKED.
+Expected: **15 mapped**, unmapped only the two build-generated accessors. `+[IOADBDevice GetTable:length:]` will appear in neither list: IDA records no function at `__text+0`, and the map's universe is IDA's function list. **If a method you wrote did not map, its selector is wrong** — a real defect. Report BLOCKED.
 
 - [ ] **Step 5: Bucket reconciliation and map load**
 

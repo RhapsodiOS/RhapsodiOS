@@ -8,7 +8,9 @@ REFERENCE_BINARY = Path(
 GNIC_REFERENCE_BINARY = Path(
     "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCGNic.config/drvPPCGNic_reloc"
 )
-GNIC_SOURCE_DIR = Path("src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj")
+GNIC_SOURCE_DIR = (
+    Path(__file__).parents[3] / "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj"
+)
 
 
 def test_symbol_matches_when_source_drops_the_leading_underscore():

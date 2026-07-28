@@ -369,6 +369,7 @@ def test_ppc_profile_inventory():
         "dec21040-bundle-ppc.json", "dec21040-ppc.json",
         "gem-bundle-ppc.json", "gem-ppc.json",
         "gnic-bundle-ppc.json", "gnic-ppc.json",
+        "ioadbdevice-ppc.json",
         "iodisplay-bundle-ppc.json", "iodisplay-ppc.json",
         "mace-bundle-ppc.json", "mace-ppc.json",
         "mesh-bundle-ppc.json", "mesh-ppc.json",

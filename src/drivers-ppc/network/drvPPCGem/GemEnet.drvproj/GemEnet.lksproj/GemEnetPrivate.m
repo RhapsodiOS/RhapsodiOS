@@ -129,28 +129,56 @@ static GemRegisterDef gemRegisterTable[] = {
     { 0, NULL }  // End marker
 };
 
+#define ENET_CRCPOLY 0x04c11db7
+
+//
+// Accumulate 16 bits of an address into the running CRC
+//
+static unsigned int crc416(unsigned int current, unsigned short nxtval)
+{
+    register unsigned int counter;
+    register int highCRCBitSet, lowDataBitSet;
+
+    // Swap bytes
+    nxtval = ((nxtval & 0x00FF) << 8) | (nxtval >> 8);
+
+    // Compute bit-by-bit
+    for (counter = 0; counter != 16; ++counter) {
+        // is high CRC bit set?
+        if ((current & 0x80000000) == 0)
+            highCRCBitSet = 0;
+        else
+            highCRCBitSet = 1;
+
+        current = current << 1;
+
+        if ((nxtval & 0x0001) == 0)
+            lowDataBitSet = 0;
+        else
+            lowDataBitSet = 1;
+
+        nxtval = nxtval >> 1;
+
+        // do the XOR
+        if (highCRCBitSet ^ lowDataBitSet)
+            current = current ^ ENET_CRCPOLY;
+    }
+
+    return current;
+}
+
 //
 // Calculate MACE-style CRC for multicast hash
 //
-static unsigned int _mace_crc(unsigned char *address)
+static unsigned int mace_crc(unsigned short *address)
 {
-    unsigned int crc = 0xFFFFFFFF;
-    int i, j;
-    unsigned char byte;
+    register unsigned int newcrc;
 
-    for (i = 0; i < 6; i++) {
-        byte = address[i];
-        for (j = 0; j < 8; j++) {
-            if ((crc ^ byte) & 0x01) {
-                crc = (crc >> 1) ^ 0xEDB88320;
-            } else {
-                crc = crc >> 1;
-            }
-            byte >>= 1;
-        }
-    }
+    newcrc = crc416(0xffffffff, *address);	// address bits 47 - 32
+    newcrc = crc416(newcrc, address[1]);	// address bits 31 - 16
+    newcrc = crc416(newcrc, address[2]);	// address bits 15 - 0
 
-    return crc;
+    return newcrc;
 }
 
 @implementation GemEnet(Private)
@@ -1068,7 +1096,7 @@ static unsigned int _mace_crc(unsigned char *address)
     unsigned int byteIndex;
 
     // Calculate CRC for the address
-    crc = _mace_crc((unsigned char *)addr);
+    crc = mace_crc((unsigned short *)addr);
 
     // Take lower 8 bits of CRC
     crc = crc & 0xFF;
@@ -1107,7 +1135,7 @@ static unsigned int _mace_crc(unsigned char *address)
     short count;
 
     // Calculate CRC for the address
-    crc = _mace_crc((unsigned char *)addr);
+    crc = mace_crc((unsigned short *)addr);
 
     // Take lower 8 bits of CRC
     crc = crc & 0xFF;

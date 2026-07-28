@@ -108,6 +108,16 @@
 
 
 /*
+ * Return the largest transfer we can describe with a single DBDMA
+ * channel program: one page per DATA descriptor.
+ */
+- (unsigned int) maxTransfer
+{
+    return (page_size * gDBDMADescriptorMax);
+}
+
+
+/*
  * Return required DMA alignment for current architecture.
  */
 - (void)getDMAAlignment : (IODMAAlignment *)alignment;

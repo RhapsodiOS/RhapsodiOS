@@ -258,7 +258,7 @@ deserves more scrutiny than the clean relocations, not less.
 Record: the three Step 2 numbers; the route taken in Step 4; the four-category
 coverage from Step 5; the bucket table; the invariant-check result; the
 `deviceStyle` exclusion and why; and the gap list your map actually produced —
-plan's table. State plainly that nothing was compiled.
+State plainly that nothing was compiled.
 
 - [ ] **Step 9: Commit**
 
@@ -350,74 +350,105 @@ session compared them against the disassembly, **found real defects, and never
 fixed them** — its ledger still carries them as `unexamined` with Findings
 attached, and it names a "Task 12" that never ran.
 
-- [ ] **Step 1: Enumerate every open finding**
+- [ ] **Step 1: Enumerate every open finding — and re-verify each against the tree**
 
-Read `divergences.md` and list every ledger entry whose status is `unexamined`
-**with a Finding attached** — these are documented defects, distinct from the 51
-entries that are merely unread. For each, record the address, the source site,
-and what the reference does differently.
+**`divergences.md` has drifted from the source and cannot be trusted as a
+worklist.** A review of an earlier draft of this task established that of four
+findings spot-checked, **three had already been fixed** and the fourth's site
+list was wrong in both count and line numbers. Every `SCSIServer.m` line number
+in it is off by 3.
 
-Do not fix anything yet. Produce the list first so the scope is visible.
+So Step 1 is the task's foundation, not a formality:
 
-- [ ] **Step 2: Fix `-[SCSIServer initFromDeviceDescription:]` (address 228)**
+1. List every ledger entry in `divergences.md` whose status is `unexamined`
+   **with a Finding attached** — these are claimed defects, distinct from the 51
+   entries that are merely unread.
+2. For each, **open the current source and check whether it is still true.**
+   Record it as `already-fixed`, `still-open`, or `claim-wrong` (the finding
+   itself misdescribes the reference).
+3. For every `still-open` entry, re-derive the reference behaviour from the
+   disassembly yourself before changing anything. Do not act on the finding's
+   prose.
 
-Three findings, all at `SCSIServer.m:138`+:
+Known already-fixed at the time of writing — confirm rather than assume, and
+expect to find more:
 
-1. **Wrong argument at line 154.** Our source passes `self`:
-   `registerResult = (int)[self registerSCSIController:self];`
-   The reference passes the incoming `deviceDescription`. At entry r3=self,
-   r4=`_cmd`, r5=`deviceDescription`; the function copies r3→r30 and r5→r29 for
-   later reuse but leaves r3 and r5 untouched, so the call at addresses 260-268
-   fires as `objc_msgSend(self, @selector(registerSCSIController:), deviceDescription)`.
-   The comment above line 144 already flags our version as a guess. `probe:`
-   itself passes `deviceDescription` at `SCSIServer.m:101`.
-2. **Extra `IOLog` at line 197.** The reference goes straight from
-   `[self registerDevice]` / `_server = self` (addresses 368-392) to `mr r3, r31`
-   and the epilogue — no further `bl`, and the string does not appear in the
-   reference's string table.
-3. **The `objc_getClass` pattern** — see Step 4.
+- `SCSIServer.m:151` already passes `deviceDescription`, not `self`, to
+  `registerSCSIController:` (fixed in `c3a70903`).
+- `IOSCSISession.m:140` already passes `notify_port` to `IOTaskPortDeallocate()`
+  (fixed in `5b4d62ec`).
+- `IOSCSISession.m:173` already returns `nil`, not `self`.
 
-- [ ] **Step 3: Fix `-[IOSCSISession free]` (address 1732)**
+Produce the classified list before fixing anything. Its accuracy governs
+everything after it — the steps below name candidates, not confirmed defects.
 
-Three findings:
+- [ ] **Step 2: Fix whatever Step 1 classified `still-open`**
 
-1. **Missing `notify_port` argument to `IOTaskPortDeallocate()`** —
-   `divergences.md` calls this a compile error given the header declaration.
-   Settle the true arity from the reference and from `IOTask.h`.
-2. **The cleanup call resolves to `IOExitThread()`, not a callback.** Resolve the
-   target through the relocation table yourself before changing it.
-3. **Returns `self` where the reference returns `nil`.**
+Work from your own classified list, not from the candidates below. For each
+`still-open` entry, re-derive the reference behaviour from the disassembly, then
+correct the source.
 
-- [ ] **Step 4: Fix the `objc_getClass("Object")` pattern (four sites)**
+Two candidate areas Step 1 should have reached a verdict on:
 
-Our source writes `super_struct.class = objc_getClass("Object");`. The reference
-fills `objc_super.class` from a static reference — `lis r9, stru_5198.ext@ha` /
-`lwz r9, stru_5198.ext@l(r9)` / `stw r9, ...` — with no call. Four sites: three
-in `SCSIServer.m` and one at `IOSCSISession.m:168`.
+- **`-[SCSIServer initFromDeviceDescription:]` (address 228)** — an extra `IOLog`
+  with no counterpart. `divergences.md` says the reference goes straight from
+  `[self registerDevice]` / `_server = self` (addresses 368-392) to `mr r3, r31`
+  and the epilogue, with no further `bl` and no such string in the reference's
+  string table. Check the string table yourself.
+- **`-[IOSCSISession free]` (address 1732)** — a cleanup call that
+  `divergences.md` says resolves to `IOExitThread()` rather than a callback.
+  Resolve the target through the relocation table before changing anything.
 
-Write the idiom our tree uses for a superclass reference in this position. If no
-in-tree idiom exists, record that as an uncertainty rather than inventing one.
+- [ ] **Step 3: Decide the `objc_getClass` question on evidence**
 
-- [ ] **Step 5: Fix the remaining findings from Step 1**
+Our source fills the `objc_super` structure with a call:
+`super_struct.class = objc_getClass("Object");`. `divergences.md` says the
+reference instead loads a static reference — `lis r9, stru_5198.ext@ha` /
+`lwz r9, stru_5198.ext@l(r9)` / `stw r9, ...` — with no call at all.
 
-Including `probe:`'s three extra `IOLog` calls. For each, either correct the
-source or, if the divergence is deliberate, mark it `intentional-mismatch` in the
-ledger **with the reason written down** — that disposition exists and
-`divergences.md` already uses it for three entries.
+**There are five sites, not the four `divergences.md` implies**, and its line
+numbers are stale. The current sites are:
 
-- [ ] **Step 6: Where the evidence is ambiguous, record instead of guessing**
+```
+IOSCSISession.m:151    super_struct.class = objc_getClass("Object");
+IOSCSISession.m:227    super_struct.class = objc_getClass("Object");
+SCSIServer.m:174       superStruct.class  = objc_getClass("IODevice");
+SCSIServer.m:295       objc_msgSend(objc_getClass("IOSCSISession"), @selector(alloc))
+SCSIServer.m:359       superStruct.class  = objc_getClass("IODevice");
+```
+
+`SCSIServer.m:295` is a different construct — an `alloc` on a named class, not an
+`objc_super` fill. Judge it separately; it may be entirely correct.
+
+Verify each site against its own reference address before changing it. If our
+tree has no established idiom for a static superclass reference in this position,
+**record that as an uncertainty rather than inventing one** — this is a codegen
+difference, and writing a construct the tree never uses elsewhere is worse than
+leaving it documented.
+
+- [ ] **Step 4: Dispose of the rest**
+
+For every remaining `still-open` finding, either correct the source or, if the
+divergence is deliberate, mark it `intentional-mismatch` in the ledger **with the
+reason written down** — that disposition exists and `divergences.md` already uses
+it for three entries.
+
+For every `already-fixed` and `claim-wrong` entry, update `divergences.md` so the
+next reader is not sent after a defect that is not there.
+
+- [ ] **Step 5: Where the evidence is ambiguous, record instead of guessing**
 
 Any finding whose correct resolution you cannot establish from the disassembly
 goes into `$RECON/findings.md` as a numbered uncertainty with what you observed
 and what you would need. A confident guess is a defect; a recorded uncertainty is
 a result.
 
-- [ ] **Step 7: Update the ledger dispositions**
+- [ ] **Step 6: Update the ledger dispositions**
 
 Every entry you fixed moves from `unexamined` to `assembly-matched`, in
 `divergences.md`'s ledger table. State the new tally.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 cd $REPO && git add $LKS $RECON src/drvSCSIServer/reconstruction && \
@@ -609,8 +640,10 @@ cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/selector_check.py \
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests tools/tests -q
 ```
 
-Expected: `854 passed, 4 skipped`. `PYTHONPATH` is required — without it
-collection fails with 25 errors.
+Expected: `854 passed, 4 skipped` for **both** paths together. `tools/binrecon/tests`
+alone gives `851 passed, 4 skipped` — the three-test difference is `tools/tests`.
+Quote the command beside the count. `PYTHONPATH` is required; without it collection
+fails with 25 errors.
 
 - [ ] **Step 7: Cross-reference from the SCSI report**
 

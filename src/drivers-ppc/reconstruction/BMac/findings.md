@@ -151,11 +151,26 @@ HI16/HA16-LO16 agreement checks): 0 for both binaries. The single
 candidates:
 
 - `bmac-ppc`: `+[BMacEnet probe:]` at address `0x0` is a symbol in
-  `__TEXT,__text` that is not one of IDA's recognized function starts. Address
-  0x0 is the Mach-O header/load-command region, not a real code address in
-  this relocatable object -- this looks like a symbol-table entry with an
-  unresolved/placeholder address rather than a genuine boundary dispute
-  affecting any mapped function.
+  `__TEXT,__text` that is not one of IDA's recognized function starts.
+> **CORRECTION.** The bullet above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called address 0x0 the
+> Mach-O header/load-command region -- an unresolved/placeholder address. That was wrong,
+> and the same misreading was repeated across every driver spec in this series. `__text+0`
+> in `drvPPCBMac_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's *analysis* that
+> omits the function there, not Apple's binary that omits the code. `__TEXT,__text` does
+> not begin at the Mach header; `read_macho` reports address `0` for every undefined symbol
+> too (`_IOLog`, `_objc_msgSend`, ...), which is what made a defined symbol at `__text+0`
+> look empty.
+>
+> **`+[BMacEnet probe:]` is a real function the analysis does not record, not a phantom.**
+> It is an unmapped real function -- a genuine gap, not an artifact of the tooling.
+> `BMacEnet.m:45` defines a `probe:` whose selector matches, but that correspondence is now
+> *unverified* rather than *unnecessary*: there is Apple code at `__text+0` and nothing here
+> has compared the two. Nothing was re-measured for this correction and no source map was
+> regenerated: the mapped/unmapped counts above are unaffected, because IDA never had this
+> function to map. The checker now distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `bmac-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the standard
   synthetic bundle-header symbol Mach-O bundles carry at their load address;
   not a real function, so not a function start either.

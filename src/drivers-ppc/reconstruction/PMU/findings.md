@@ -59,8 +59,10 @@ Of those 43 source methods:
 - 41 have an address-matching counterpart the source map places (`mapped`).
 - 1 -- `+[ApplePMU probe:]` (`pmu.m:62`) -- has an exact-selector match in the binary's symbol table but
   at address `0x0`, which is not a function start in the reference analysis, so it cannot be
-  address-mapped; it is a name match with no analysis-side function to map it to, not a genuine gap (see
-  Invariant check below) -- the same anomaly pattern found in `drvPPCSym8xx` and `drvPPCOHare`.
+  address-mapped; it is a name match with no analysis-side function to map it to -- the same anomaly
+  pattern found in `drvPPCSym8xx` and `drvPPCOHare`. This line originally called that "not a genuine
+  gap". Per the Invariant check correction below, it **is** one: `__text+0` holds real code IDA's
+  analysis omits, so `drvPPCPMU` has one real unmapped function, not zero.
 - 1 -- `-[ApplePMU ADBSetFileServerMode:::]` (`pmu.m:576`) -- is a genuine source-only selector: it has
   **no** counterpart anywhere in the shipped binary's 44-entry ObjC symbol table (confirmed directly
   against `read_macho`'s full selector list; no similarly-named selector at any arity exists either, so
@@ -148,7 +150,7 @@ Two reference selectors have no source-mapped implementation, both build-generat
   version accessor, likewise tool-emitted.
 
 Both match `selector_check.py`'s entire "missing" list exactly (see Selector check below). There is no
-additional binary-only gap in this driver's unmapped set. The one real gap this driver has runs in the
+additional binary-only gap in this driver's unmapped set. The other real gap this driver has runs in the
 opposite direction -- a *source*-only selector with no binary counterpart, `-[ApplePMU
 ADBSetFileServerMode:::]` -- which is not part of the `unmapped` category (that category is scoped to
 binary functions the map's universe covers) and is instead characterised under Selector check below.
@@ -181,6 +183,25 @@ additional problem for either binary.
   function-start address in the reference analysis. This is a `boundary_disputed` candidate per the
   plan's established pattern, not a gap: source exists for it, and its selector matches exactly in the
   binary (see Selector check below).
+> **CORRECTION.** The bullet above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a
+> symbol-table entry with no resolved function-start address. That was wrong, and the same
+> misreading was repeated across every driver spec in this series. `__text+0` in
+> `drvPPCPMU_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's *analysis* that omits
+> the function there, not Apple's binary that omits the code. `read_macho` reports address
+> `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`, ...), which is what made a
+> defined symbol at `__text+0` look empty.
+>
+> **`+[ApplePMU probe:]` is a real function the analysis does not record, not a phantom.**
+> It is an unmapped real function -- a genuine gap, not an artifact of the tooling.
+> `pmu.m:62` defines a `probe:` whose selector matches, but that correspondence is now
+> *unverified* rather than *unnecessary*: there is Apple code at `__text+0` and nothing here
+> has compared the two. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `pmu-bundle-ppc`'s anomalous symbol, `__mh_bundle_header`, is the standard synthetic bundle-header
   symbol every Mach-O bundle carries at its load address -- identical to every other `_reloc`/bundle pair
   measured in this project.

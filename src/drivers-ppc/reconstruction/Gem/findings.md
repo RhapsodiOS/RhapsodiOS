@@ -49,7 +49,9 @@ counting: 49), two more than the 47 the task description cites. The extra
 method is `+[GemEnet probe:]` (`GemEnet.m:118`, declared `GemEnet.h:81`): it
 has source but never surfaces as an analysis function -- it is the entry the
 invariant checker (Step 3) flags as a symbol at address `0x0`, the same
-anomaly Task 2 hit for GNic's `_allocateMemory`. Because the 157 functions
+anomaly Task 2 hit for GNic's `_allocateMemory`. (Per the Invariant check
+correction below, `__text+0` does hold a real body IDA's analysis omits, so
+this is an unmapped real function, not an empty symbol.) Because the 157 functions
 IDA reported never include an entry at `0x0`, `probe:` cannot appear as
 "mapped" or "unmapped" in the source map. That leaves 48 methods with a
 genuine reference-function counterpart to map, matching `mapped 48` above
@@ -413,12 +415,26 @@ candidates:
 - `gem-ppc`: `+[GemEnet probe:]` at address `0x0` is a symbol in
   `__TEXT,__text` that is not one of IDA's recognized function starts.
   `GemEnet.m:118` defines this method (`+ (BOOL)probe:(IODeviceDescription *)devDesc`,
-  declared `GemEnet.h:81`), so source exists for it, but the reference
-  binary carries only a symbol-table entry at address 0x0 -- a
-  placeholder/unresolved address, not a genuine boundary dispute affecting
-  any mapped function. This is the same anomaly the Correspondence section
-  above explains: it is why the source has 49 methods but the map only
-  reconciles 48.
+  declared `GemEnet.h:81`), so source exists for it. This is the same anomaly
+  the Correspondence section above explains: it is why the source has 49
+  methods but the map only reconciles 48.
+> **CORRECTION.** The bullet above said the reference binary carries "only a symbol-table
+> entry at address 0x0 -- a placeholder/unresolved address". That was wrong, and the same
+> misreading was repeated across every driver spec in this series. `__text+0` in
+> `drvPPCGem_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's *analysis* that omits
+> the function there, not Apple's binary that omits the code. `read_macho` reports address
+> `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`, ...), which is what made a
+> defined symbol at `__text+0` look empty.
+>
+> **`+[GemEnet probe:]` is a real function the analysis does not record, not a phantom.**
+> It is an unmapped real function -- a genuine gap, not an artifact of the tooling.
+> `GemEnet.m:118`'s correspondence to it is now *unverified* rather than *unnecessary*:
+> there is Apple code at `__text+0` and nothing here has compared the two. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `gem-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the standard
   synthetic bundle-header symbol Mach-O bundles carry at their load address;
   not a real function, so not a function start either.

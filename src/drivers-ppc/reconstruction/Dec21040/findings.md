@@ -48,9 +48,11 @@ absence from the full Objective-C symbol dump of the reference binary. That
 leaves 49 method definitions that do compile.
 
 Of those 49, one -- `-[DECchip21041 initFromDeviceDescription:]`
-(`DECchip21041.m:52`) -- exists in the binary only as a symbol-table entry
-at address `0x0`, not a recognized function start (Step 3's invariant
-check flags this; see Invariant check below). Because the reference
+(`DECchip21041.m:52`) -- sits at address `0x0`, which is not a recognized
+function start (Step 3's invariant check flags this; see Invariant check
+below, where an earlier reading of that flag as "no code exists there" is
+retracted -- `__text+0` holds a real body IDA's analysis omits, so this is an
+unmapped real function). Because the reference
 analysis's 161 functions never include an entry at `0x0`, this method
 cannot appear as "mapped" or "unmapped" in the address-keyed source map, the
 same anomaly Task 2 (GNic's `_allocateMemory`), Task 3 (Gem's `probe:`) and
@@ -196,11 +198,26 @@ candidates:
   `0x0` is a symbol in `__TEXT,__text` that is not one of IDA's recognized
   function starts. `DECchip21041.m:52` defines this method
   (`- initFromDeviceDescription:(IODeviceDescription *)devDesc`), so source
-  exists for it, but the reference binary carries only a symbol-table entry
-  at address 0x0 -- a placeholder/unresolved address, not a genuine
-  boundary dispute affecting any mapped function. This is the same anomaly
-  the Correspondence section above explains: it is why the source has 49
-  compilable methods but the map only reconciles 48.
+  exists for it. This is the same anomaly the Correspondence section above
+  explains: it is why the source has 49 compilable methods but the map only
+  reconciles 48.
+> **CORRECTION.** The bullet above said the reference binary carries "only a symbol-table
+> entry at address 0x0 -- a placeholder/unresolved address". That was wrong, and the same
+> misreading was repeated across every driver spec in this series. `__text+0` in
+> `drvPPCDec21040_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's *analysis* that
+> omits the function there, not Apple's binary that omits the code. `read_macho` reports
+> address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`, ...), which is what
+> made a defined symbol at `__text+0` look empty.
+>
+> **`-[DECchip21041 initFromDeviceDescription:]` is a real function the analysis does not
+> record, not a phantom.** It is an unmapped real function -- a genuine gap, not an
+> artifact of the tooling. `DECchip21041.m:52`'s correspondence to it is now *unverified*
+> rather than *unnecessary*: there is Apple code at `__text+0` and nothing here has compared
+> the two. Nothing was re-measured for this correction and no source map was regenerated:
+> the mapped/unmapped counts above are unaffected, because IDA never had this function to
+> map. The checker now distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `dec21040-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the
   standard synthetic bundle-header symbol Mach-O bundles carry at their
   load address; not a real function, so not a function start either.

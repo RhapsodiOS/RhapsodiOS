@@ -232,9 +232,24 @@ candidates:
   Confirmed this symbol does not appear anywhere in the 118-entry function
   list of `analysis-reference-ida.json` (checked programmatically), the
   same pattern seen for `+[PPCBurgundy probe:]` and `+[AppleOHare probe:]`
-  in the earlier batches: address 0x0 is a symbol-table entry with an
-  unresolved/placeholder address, not a real code address in this
-  relocatable object.
+  in the earlier batches.
+> **CORRECTION.** The bullet above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called address 0x0 an
+> unresolved/placeholder address rather than a real code address. That was wrong, and the
+> same misreading was repeated across every driver spec in this series. `__text+0` in
+> `PPCAwacs_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's *analysis* that omits
+> the function there, not Apple's binary that omits the code. `read_macho` reports address
+> `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`, ...), which is what made a
+> defined symbol at `__text+0` look empty.
+>
+> **`+[PPCAwacs probe:]` is a real function the analysis does not record, not a phantom.**
+> It is an unmapped real function -- a genuine gap, not an artifact of the tooling. Its
+> body is not written here; that is separate work. Nothing was re-measured for this
+> correction and no source map was regenerated: the mapped/unmapped counts above are
+> unaffected, because IDA never had this function to map. The checker now distinguishes the
+> two cases. See `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`,
+> "The misreading".
+
 - `awacs-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the standard
   synthetic bundle-header symbol Mach-O bundles carry at their load
   address; not a real function, so not a function start either.
@@ -245,8 +260,10 @@ Unlike Burgundy, where `+probe:` is also absent from source under any name,
 this driver's `PPCSound.m:227` defines `+ (BOOL)probe:(IODeviceDescription *)`
 with the exact reference selector name -- so `selector_check.py`'s "missing"
 list below does *not* include `probe:` here, because the source does
-implement it (its absence from the reference's 118-function IDA list at
-address 0x0 is a binary-side artifact, not a source-side gap).
+implement it. Its absence from the reference's 118-function IDA list is an
+analysis-side artifact -- but, per the correction above, Apple's `probe:` body
+at `__text+0` is real, so `PPCSound.m:227`'s correspondence to it is
+*unverified* rather than *unnecessary*: nothing here has compared the two.
 
 ## Selector check
 

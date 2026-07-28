@@ -215,6 +215,27 @@ from the name.
 `activatePort`'s four call sites constrain its signature and give a starting
 point that the four handlers lack.
 
+> **CORRECTION (2026-07-28).** Two claims in this section were measured during
+> implementation and are wrong. They are left above as written, and corrected here.
+>
+> **`_activatePort` has zero call sites in our source, not four.** The table's
+> "Called 4× in source, never defined" and the paragraph above both rest on a grep
+> that matched `deactivatePort` as a substring. The *binary* does call it: a single
+> `ppc-jbsr-24-pc-relative` relocation at `0x2344` targets `__TEXT,__text+0xbb0`,
+> which is `_activatePort`, and `0x2344` falls inside `_executeEvent` (`0x20dc`).
+> Our `-[executeEvent:data:]` is still a stub, so nothing in the source reaches it.
+> The signature therefore had to come from the disassembly, not from call sites.
+>
+> **The four `TOHandler` functions are `thread_call` callbacks, not
+> `IOScheduleFunc` timeout callbacks.** Measured, as this section required. Each is
+> registered by `thread_call_allocate(handler, self + 0x128)` inside
+> `-[initFromDeviceDescription:]` — four `ppc-jbsr-24-pc-relative` relocations
+> against `_thread_call_allocate` at `0x03d0`, `0x03e4`, `0x03f8` and `0x040c`. So
+> the type is `thread_call_func_t`, `void (*)(void *, void *)`.
+>
+> Both corrections are also recorded in
+> `src/drivers-ppc/reconstruction/PPCSerialPort/findings.md`.
+
 ## 6. Artifacts
 
 To `src/drivers-ppc/reconstruction/PPCSerialPort/`, matching the nine drivers

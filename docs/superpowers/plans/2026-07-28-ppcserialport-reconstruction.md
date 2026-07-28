@@ -720,7 +720,7 @@ that had two unmapped functions.
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `861 passed, 4 skipped`. `PYTHONPATH` is required; without it
+Expected: `864 passed, 4 skipped`. `PYTHONPATH` is required; without it
 collection fails.
 
 - [ ] **Step 7: Final acceptance statement**
@@ -761,7 +761,7 @@ Task 3 Step 1 and consumed in Steps 2, 4, 5 and Task 5 Steps 1, 3. `$RECON` is
 `src/drivers-ppc/reconstruction/PPCSerialPort` throughout.
 
 **Suite counts.** Baseline 851 (`tools/binrecon/tests`). Task 1 adds 2 profile
-cases → 853. Task 2 adds 8 checker tests → 861. Task 5 expects 861.
+cases → 853. Task 2 adds 11 checker tests → 864. Task 5 expects 864.
 
 **Known soft spot.** `$ANALYSIS` is referenced before its exact filename is
 known — Task 1 Step 6 instructs the implementer to note it from the `analyze`

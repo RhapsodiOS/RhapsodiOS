@@ -263,15 +263,18 @@ renames`):
 | Burgundy | **21** | 40 | **52.5%** |
 
 Cuda's 95.1% is the *lowest* of the four Apple-sourced drivers and yet Cuda has
-zero real gaps: both misses are the build-generated pair. Match rate alone
-therefore does not rank the work; §5 ranks by gaps that survive explanation.
+zero real gaps among the functions IDA reported: both misses are the
+build-generated pair. (**Counting the address-0 correction below, Cuda has one
+real gap, not zero** -- `+[AppleCuda probe:]`.) Match rate alone therefore does
+not rank the work; §5 ranks by gaps that survive explanation.
 
 ### Symbol / function-start mismatches
 
 `ppc_invariant_check.py` reports one per artifact, ten in ten. None is a
 relocation-decode defect (see [Acceptance](#acceptance) item 2), and none
 overlaps any function in any bucket table or source map, so none affects the
-correspondence numbers.
+correspondence numbers -- but, per the correction below, that is because IDA
+never had these functions to map, not because there is nothing there.
 
 | Artifact | Symbol at 0x0 |
 | --- | --- |
@@ -282,17 +285,41 @@ correspondence numbers.
 | `53c96-ppc` | `+[Apple96_SCSI probe:]` |
 | all five bundles | `__mh_bundle_header` |
 
-Address 0x0 is the Mach-O header/load-command region, not a code address in a
-relocatable object: these are symbol-table entries with placeholder addresses.
 They are recorded as `boundary_disputed` candidates for the per-driver specs,
 the same disposition `+[SCSIServer deviceStyle]` received. `__mh_bundle_header`
-is the standard synthetic bundle-header symbol and is not a function at all.
+is the standard synthetic bundle-header symbol and is not a function at all --
+in the bundle stubs `__text` starts at `0xf04`, so that symbol sits at the Mach
+header, well before any code.
+
+> **CORRECTION.** This section originally read: *"Address 0x0 is the Mach-O
+> header/load-command region, not a code address in a relocatable object: these
+> are symbol-table entries with placeholder addresses."* **That is withdrawn.** In
+> a relocatable object `__TEXT,__text` begins at address 0, so address 0 is the
+> *first instruction*. Reading the five `_reloc` binaries directly, `__text+0`
+> holds `7c0802a6` (`mflr r0`) in every one of them, and each of the five symbols
+> in the table above is the single defined `__TEXT,__text` symbol at that address.
+> Every one names real code that IDA's *analysis* omits.
+>
+> The misreading came from `ppc_invariant_check.py`'s message, "symbol X at 0x0
+> is not a function start", which says nothing about the bytes, compounded by
+> `read_macho` reporting address `0` for *undefined* symbols (`_IOLog`,
+> `_objc_msgSend`, ...) as well. The checker now distinguishes the two cases.
+> Full account: [IOADBDevice/findings.md](IOADBDevice/findings.md), "The
+> misreading".
+>
+> **Consequence for this report's counts: each of the five `_reloc` binaries has
+> exactly one more real function than every table here reports** -- an *unmapped
+> real function*, never written and never compared against source. Nothing was
+> re-measured and no source map was regenerated for this correction; the mapped
+> and unmapped counts are correct as stated, because IDA never had these
+> functions to map. Only the gap totals move, by exactly one per driver. Each is
+> flagged where it occurs below.
 
 ---
 
 ## 4. Findings
 
-### 4.1 Cuda has zero real gaps
+### 4.1 Cuda has one real gap: `+[AppleCuda probe:]`
 
 Both unmapped entries are the build-generated accessors
 (`+[drvPPCCudaKernelServerInstance kernelServerInstance]`,
@@ -300,11 +327,17 @@ Both unmapped entries are the build-generated accessors
 0: `drvCuda/cuda.m` defines no C functions whatsoever — every function in the
 file is an Objective-C method. Evidence: [Cuda/findings.md](Cuda/findings.md).
 
+**This section was headed "Cuda has zero real gaps".** Per §3's correction,
+`+[AppleCuda probe:]` is real code at `__text+0` that IDA's analysis omits, so it
+appears in none of the buckets or lists above. `cuda.m:176` defines a `probe:`
+of the same name, but nothing here has compared it against the bytes Apple
+shipped. Cuda has **one** real, unwritten-against function, not zero.
+
 `-[AppleCuda StartCudaTransmission:]` is not a gap. It is defined at
 `cuda.m:1399` with a NeXT-era semicolon between signature and body, which the
 scanner used to drop; see §5.
 
-### 4.2 BMac has one real gap: `__udivdi3`
+### 4.2 BMac has two real gaps: `__udivdi3` and `+[BMacEnet probe:]`
 
 Nine of BMac's ten bucket-6 entries have a confirmed source site and move to
 bucket 5. The tenth, `__udivdi3` (0x5194, 1616 bytes), matches nothing under
@@ -313,6 +346,11 @@ runtime helper — compiler-generated, not driver source. An expected gap, not a
 missing implementation. No caller could be identified: the reference analysis
 carries no call-graph edges for this binary. Evidence:
 [BMac/findings.md](BMac/findings.md).
+
+The second gap is `+[BMacEnet probe:]` at `__text+0`, per §3's correction: real
+code IDA's analysis omits, so it is in no bucket. `BMacEnet.m:45` defines a
+`probe:` of the same name, unverified against Apple's bytes. This section
+previously said BMac had one real gap.
 
 ### 4.3 Burgundy: a systematic private-selector rename
 
@@ -325,10 +363,12 @@ would not resolve against this class as written.
 
 Only **21 of the 40** reference selectors match by exact name — the lowest of
 the five by a wide margin. The other 19: 16 renamed, 2 build-generated, and
-`+[PPCBurgundy probe:]`, which is absent from source under any name but which
-also has no real function body in the binary (it is one of the 0x0 placeholder
-symbols above), so its absence has no runtime consequence this analysis can
-observe. The reimplementation additionally adds one selector the reference
+`+[PPCBurgundy probe:]`, which is absent from source under any name and which,
+per §3's correction, **does** have a real body in the binary at `__text+0` that
+IDA's analysis omits. (This paragraph originally called it one of the "0x0
+placeholder symbols" with no body and no observable runtime consequence; both
+claims are withdrawn.) It is a real, unwritten function. The reimplementation
+additionally adds one selector the reference
 lacks, `-[PPCBurgundy updateSampleRate:]` (`BurgundySound.m:646`).
 
 **Burgundy is the only one of the five whose source is a RhapsodiOS
@@ -344,8 +384,11 @@ resulting counts are 101 mapped / 42 unmapped **measured**, 139 / 4 **derived**
 after applying the rename. Evidence: [ATA/findings.md](ATA/findings.md).
 
 Two of the surviving 4 are real absent bodies — compiled methods at real code
-addresses with no source site. With 53c96's `maxTransfer` (§4.8) these are the
-only three such cases across all five drivers:
+addresses with no source site. With 53c96's `maxTransfer` (§4.8) these were
+recorded as the only three such cases across all five drivers; **per §3's
+correction there are five**, the two added being `+[Apple96_SCSI probe:]` and
+`+[PPCBurgundy probe:]` at their binaries' `__text+0`, each absent from source
+under any name. The two here:
 
 - `-[IdeController setTransferRate:]` (0x6bc0, 36 bytes) — our tree defines
   only the two-argument `-[IdeController setTransferRate:UseDMA:]`
@@ -492,8 +535,14 @@ instead, two per stub.
 
 ## 5. Decomposition proposal
 
-Ranked by **measured gap, not binary size**. Cuda at 43 KB with zero gaps needs
+Ranked by **measured gap, not binary size**. Cuda at 43 KB with one gap needs
 far less work than Burgundy at 38 KB with a systematic rename.
+
+> **CORRECTION.** Every per-driver count in this section is one function short,
+> for the reason given in §3: each `_reloc` carries an unmapped real function at
+> `__text+0` that IDA's analysis never listed. The additions are noted per entry
+> below. The *ordering* does not change -- one unwritten method moves no driver
+> past another -- but no entry here is a zero-gap result any more.
 
 The ranking key is **actionable divergence with runtime consequence** — a
 documented, evidenced cause does not by itself mean "no work": if the
@@ -506,7 +555,7 @@ is accounted for, the secondary tie-breaker is that an unmapped entry with a
 documented, evidenced cause but no runtime consequence (a scanner limitation,
 a libgcc helper) is a result, not work. Exact-name match rate is reported
 alongside but does not drive the order: Cuda has the lowest rate of the four
-Apple-sourced drivers (95.1%) and the least work of all five.
+Apple-sourced drivers (95.1%) and the least work of all five (one method).
 
 ### 1. `drvPPCBurgundy` — largest gap, and different in kind
 
@@ -519,10 +568,13 @@ Apple-sourced drivers (95.1%) and the least work of all five.
 - **Drift or different version?** Neither. This is a **reimplementation**, the
   only one of the five. The gap is a naming-convention decision (underscore
   prefix on every private selector), not divergence from a shared ancestor.
+- **Bucket 6 plus the address-0 correction: 1** — `+[PPCBurgundy probe:]`.
 - **The follow-on spec's job:** decide whether to adopt Apple's selector names
   or keep the underscore convention, and account for
   `-[PPCBurgundy updateSampleRate:]` (extra) and `+[PPCBurgundy probe:]`
-  (absent, no real body). Sixteen renames is mechanical work with a real
+  (absent from source, and — per §3's correction, which replaces this line's
+  original "no real body" — carrying a real body at `__text+0` that must be
+  written). Sixteen renames is mechanical work with a real
   runtime consequence, which makes it well suited to a spec of its own.
 
 ### 2. `drvPPCATA` + `drvATADisk` — widest finding set
@@ -532,6 +584,9 @@ Apple-sourced drivers (95.1%) and the least work of all five.
 - **Exact-name match: 143 of 148 (96.6%)** merged across both directories.
 - **Bucket 6 after hand resolution: 3** — `setTransferRate:` and
   `calcIdeConfigWord:` (two real absent bodies) plus `__udivdi3` (libgcc).
+  **Plus 1 from §3's correction: 4** — `-[IdeController(ATAPI)
+  atapiWaitForNotBusy]` at `__text+0`, source at `AtapiCntCmds.m:47` but never
+  compared against it.
 - **Drift or different version?** Drift, plus a rename. The class rename
   (`IdeDisk`→`ATADisk`) is a Darwin-release rename, not a version difference;
   the 11 surplus `IdeController` methods look like our tree carrying a later or
@@ -548,7 +603,8 @@ Apple-sourced drivers (95.1%) and the least work of all five.
   151 KB — the largest binary and the largest function count.
 - **Exact-name match: 89 of 92 (96.7%)**.
 - **Bucket 6 after hand resolution: 3** — `__divdi3`, `__udivdi3` (both
-  libgcc), and `-[Apple96_SCSI maxTransfer]`.
+  libgcc), and `-[Apple96_SCSI maxTransfer]`. **Plus 1 from §3's correction: 4**
+  — `+[Apple96_SCSI probe:]` at `__text+0`, absent from source under any name.
 - **Drift or different version?** Drift, small. The 37 "extra" selectors are
   fully explained by `#if USE_CURIO_METHODS` and `#if 0`; they are not
   divergence.
@@ -556,26 +612,33 @@ Apple-sourced drivers (95.1%) and the least work of all five.
   `-[Apple96_SCSI maxTransfer]`. Sibling drivers give a template. Large binary,
   small gap; this is the cheapest of the top three despite being the biggest.
 
-### 4. `drvPPCBMac` — one compiler-generated gap
+### 4. `drvPPCBMac` — one compiler-generated gap and one unmapped method
 
 - **Measured:** 64 mapped / 2 unmapped / 0 dup / 0 disputed.
 - **Exact-name match: 65 of 67 (97.0%)**, the highest of the five.
-- **Bucket 6 after hand resolution: 1** (`__udivdi3`).
+- **Bucket 6 after hand resolution: 1** (`__udivdi3`). **Plus 1 from §3's
+  correction: 2** — `+[BMacEnet probe:]` at `__text+0`, source at
+  `BMacEnet.m:45` but never compared against it. The heading previously read
+  "one compiler-generated gap".
 - **Drift or different version?** Neither observable. Zero divergence in the
   driver's own code.
-- **The follow-on spec's job:** close to nothing on correspondence grounds.
-  Worth a spec only for packaging (§4.9) or for a compile attempt once a
-  PowerPC toolchain exists.
+- **The follow-on spec's job:** close to nothing on correspondence grounds
+  beyond verifying `probe:`. Worth a spec only for packaging (§4.9) or for a
+  compile attempt once a PowerPC toolchain exists.
 
-### 5. `drvPPCCuda` — no gap
+### 5. `drvPPCCuda` — one unmapped method
 
 - **Measured:** 38 mapped / 2 unmapped / 0 dup / 0 disputed, both unmapped
   build-generated.
-- **Bucket 5 and bucket 6 both 0.**
+- **Bucket 5 and bucket 6 both 0.** **Plus 1 from §3's correction: 1** —
+  `+[AppleCuda probe:]` at `__text+0`, source at `cuda.m:176` but never
+  compared against it. This entry previously read "no gap".
 - **Drift or different version?** Neither. This source and this binary agree
-  everywhere the measurement can see.
-- **The follow-on spec's job:** none on correspondence grounds. Cuda is the
-  control that shows the method finds zero when there is zero to find.
+  everywhere the measurement can see -- which, per §3, does not include
+  `__text+0`.
+- **The follow-on spec's job:** verify `probe:` against Apple's bytes; nothing
+  else on correspondence grounds. Cuda remains the control that shows the
+  method finds almost nothing when there is almost nothing to find.
 
 ### Tooling follow-on — name IDA's PowerPC glue stubs
 

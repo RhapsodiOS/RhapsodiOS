@@ -95,11 +95,33 @@ IDA does not treat as a function start, so it can appear in neither `mapped` nor
 | Mesh | `_AllocateEventLog` | `MESH_DBDMA.m:298` | plain C function |
 | Sym8xx | `-[Sym8xxController(Execute) commandRequestOccurred]` | `Sym8xxExecute.m:44` | Objective-C method |
 
-Address 0x0 is the Mach-O header/load-command region, not a code address in a
-relocatable object: these are symbol-table entries with placeholder addresses,
-the same disposition the two previous reports recorded for their nine binaries.
 Neither overlaps any function in any bucket table or source map, so neither
 affects the correspondence numbers.
+
+> **CORRECTION.** This section originally continued: *"Address 0x0 is the Mach-O
+> header/load-command region, not a code address in a relocatable object: these
+> are symbol-table entries with placeholder addresses, the same disposition the
+> two previous reports recorded for their nine binaries."* **That is withdrawn.**
+> In a relocatable object `__TEXT,__text` begins at address 0, so address 0 is
+> the *first instruction*. Reading both `_reloc` binaries directly, `__text+0`
+> holds `7c0802a6` (`mflr r0`) in each, and each symbol in the table above is the
+> single defined `__TEXT,__text` symbol at that address. Both name real code that
+> IDA's *analysis* omits.
+>
+> The misreading came from `ppc_invariant_check.py`'s message, "symbol X at 0x0
+> is not a function start", which says nothing about the bytes, compounded by
+> `read_macho` reporting address `0` for *undefined* symbols (`_IOLog`,
+> `_objc_msgSend`, ...) as well. The checker now distinguishes the two cases.
+> Full account: [IOADBDevice/findings.md](IOADBDevice/findings.md), "The
+> misreading".
+>
+> **Consequence for this report's counts: each `_reloc` has exactly one more real
+> function than every table here reports** -- an *unmapped real function*. The
+> source sites named above match by name, but nothing here has compared them
+> against Apple's bytes, so each is *unverified*, not settled. The
+> mapped/unmapped counts stand as measured, because IDA never had these functions
+> to map; only the gap totals move, by one per driver -- Mesh 4 -> 5, Sym8xx
+> 0 -> 1. Nothing was re-measured and no source map was regenerated.
 
 **Mesh's is the first that is a plain C function rather than an Objective-C
 method**, which is why Mesh — unlike every driver in the network batch — has no
@@ -325,15 +347,20 @@ disputed apiece — but GNic, Gem and Mace each left a bucket-6 entry (`__udivdi
 and in Gem's case a genuine driver-code absence as well), while Dec21040, the one
 that left none, carried two `extra` selectors. **Sym8xx is the only driver
 measured with an empty bucket-6 residue and an empty `extra` list at the same
-time.** Evidence:
+time** — as the bucket tables were built. Per §1's correction every driver in
+all three batches, Sym8xx included, carries one unmapped real function that no
+bucket table ever listed, so this is a statement about the tables, not about the
+binaries. Evidence:
 [Sym8xx/findings.md](Sym8xx/findings.md), "Correspondence", "Buckets",
 "Selector check".
 
 The one asterisk is `-[Sym8xxController(Execute) commandRequestOccurred]` at
 address `0x0` (§1), which `selector_check.py` matches by name — hence `extra 0`
 — while the source map cannot place it by address. It is the same address-0x0
-artifact all eleven `_reloc` binaries measured across the three specs show, not
-a gap.
+symbol all eleven `_reloc` binaries measured across the three specs show. This
+paragraph originally called it "not a gap"; per §1's correction it is one, an
+unmapped real function whose source site at `Sym8xxExecute.m:44` has never been
+compared against Apple's bytes. What it is not is a *missing selector*.
 
 ### 4.2 Mesh has four genuine Objective-C gaps, and none has a same-selector source site
 
@@ -529,9 +556,13 @@ characterised divergences, the other has none.
   `setIntValues:forParameter:count:`, `StartBucket`) — keep or delete. Its
   measured gap is **4 Objective-C selectors present in Apple's binary and absent
   from our source under that exact selector**.
-- **What is a result, not work:** the 2 build-generated accessors, the 5 C
-  helpers resolved to bucket 5, and the `_AllocateEventLog` symbol at 0x0.
-  `isCmdTimedOut` (§4.3) is an open question carried forward, not a task.
+- **What is a result, not work:** the 2 build-generated accessors and the 5 C
+  helpers resolved to bucket 5. `isCmdTimedOut` (§4.3) is an open question
+  carried forward, not a task. This list originally also carried
+  `_AllocateEventLog` at 0x0; per §1's correction that is a real function IDA's
+  analysis omits, so Mesh's measured gap is **5, not 4** -- the four selectors
+  plus `_AllocateEventLog`, whose `MESH_DBDMA.m:298` counterpart has never been
+  compared against Apple's bytes.
 
 It ranks first because it is the only driver here with any divergence at all —
 **not** because a runtime break was demonstrated. §4.2 measured the opposite:
@@ -540,24 +571,26 @@ our source does not implement. Compare [report-network.md](report-network.md)
 §4.3, where Gem's CRC divergence changed the hash bucket actually programmed on
 5 of 5 vectors. **No finding in this batch reaches that bar.**
 
-### 2. `drvPPCSym8xx` — nothing on correspondence grounds
+### 2. `drvPPCSym8xx` — one method on correspondence grounds
 
 - **Measured:** 44 mapped / 2 unmapped / 0 dup / 0 disputed; 13624 mapped bytes
   against 36 unmapped. 146 functions.
 - **Exact-name match: 45 of 47 (95.7%)**.
 - **Bucket 6 after hand resolution: 0** — nothing left over, not even
-  `__udivdi3`.
+  `__udivdi3`. **Plus §1's correction: 1** —
+  `-[Sym8xxController(Execute) commandRequestOccurred]` at `__text+0`, source at
+  `Sym8xxExecute.m:44`, never compared. This is no longer a zero-residue driver.
 - **Drift or different version?** Neither observable. 0 renames, 0 duplicates,
   0 extras; all three categories match their source block counts exactly.
-- **The follow-on spec's job:** packaging only (§4.6, `files.ppc:135-138`).
-  Nothing on correspondence grounds. Its measured gap is **0 selectors** — the
+- **The follow-on spec's job:** packaging (§4.6, `files.ppc:135-138`) and
+  verifying `commandRequestOccurred` against Apple's bytes (§1's correction).
+  Its measured gap is **0 missing selectors** — the
   only driver measured across all three specs whose `selector_check.py` reports
   both an empty `extra` list and a `missing` list containing nothing but
   tool-emitted accessors. Worth a spec of its own only for a compile attempt
   once a PowerPC toolchain exists.
 - **What is a result, not work:** the 2 build-generated accessors, the 4 C
-  helpers resolved to bucket 5, the `commandRequestOccurred` symbol at 0x0, and
-  the absence of `free` (§6, question 4) — `IOSCSIController` implements it at
+  helpers resolved to bucket 5, and the absence of `free` (§6, question 4) — `IOSCSIController` implements it at
   `src/driverkit-3/libDriver/Kernel/IOSCSIController.m:128`, so a subclass need
   not override it, and our source does not define it either.
 
@@ -818,8 +851,12 @@ map cannot carry:
 Mesh shows no disagreement at all, because its address-0x0 symbol is the plain C
 function `_AllocateEventLog`, not an Objective-C method (§1). **Both derivations
 give Mesh 0 and Sym8xx 1, so the result for the two drivers measured here is
-derivation-independent.** Checking both is what distinguishes the artifact from a
-real gap, exactly as [report-network.md](report-network.md) §6 established.
+derivation-independent.** Checking both is what distinguishes an
+analysis-side artifact from a genuinely absent selector, exactly as
+[report-network.md](report-network.md) §6 established. (The artifact is in IDA's
+function list, not in Apple's binary: per §1's correction each address-0x0 symbol
+names real code. That does not change any number in this section, which counts
+selectors, not bodies.)
 
 ---
 

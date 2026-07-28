@@ -97,11 +97,36 @@ mapped count by exactly one:
 | Mace | `+[MaceEnet probe:]` | `MaceEnet.m:45` | 48 | 47 | 47 |
 | Dec21040 | `-[DECchip21041 initFromDeviceDescription:]` | `DECchip21041.m:52` | 49 compilable | 48 | 48 |
 
-Address 0x0 is the Mach-O header/load-command region, not a code address in a
-relocatable object: these are symbol-table entries with placeholder addresses,
-the same disposition the previous report recorded for its five binaries. None
-overlaps any function in any bucket table or source map, so none affects the
-correspondence numbers. Evidence: each driver's `findings.md`, "Invariant check"
+None overlaps any function in any bucket table or source map, so none affects the
+correspondence numbers.
+
+> **CORRECTION.** This section originally continued: *"Address 0x0 is the Mach-O
+> header/load-command region, not a code address in a relocatable object: these
+> are symbol-table entries with placeholder addresses, the same disposition the
+> previous report recorded for its five binaries."* **That is withdrawn.** In a
+> relocatable object `__TEXT,__text` begins at address 0, so address 0 is the
+> *first instruction*. Reading the four `_reloc` binaries directly, `__text+0`
+> holds `7c0802a6` (`mflr r0`) in every one, and each symbol in the table above
+> is the single defined `__TEXT,__text` symbol at that address. Every one names
+> real code that IDA's *analysis* omits.
+>
+> The misreading came from `ppc_invariant_check.py`'s message, "symbol X at 0x0
+> is not a function start", which says nothing about the bytes, compounded by
+> `read_macho` reporting address `0` for *undefined* symbols (`_IOLog`,
+> `_objc_msgSend`, ...) as well. The checker now distinguishes the two cases.
+> Full account: [IOADBDevice/findings.md](IOADBDevice/findings.md), "The
+> misreading".
+>
+> **Consequence for this report's counts: each of the four `_reloc` binaries has
+> exactly one more real function than every table here reports** -- an *unmapped
+> real function*. The source sites named in the table above match by selector,
+> but nothing here has compared them against Apple's bytes, so each is
+> *unverified*, not settled. The mapped/unmapped counts stand as measured,
+> because IDA never had these functions to map; only the gap totals move, by
+> exactly one per driver (see §4.2's correction). Nothing was re-measured and no
+> source map was regenerated for this correction.
+
+Evidence: each driver's `findings.md`, "Invariant check"
 - [GNic](GNic/findings.md), [Gem](Gem/findings.md), [Mace](Mace/findings.md),
 [Dec21040](Dec21040/findings.md).
 
@@ -297,7 +322,16 @@ and ATA. No caller could be identified in any of the three: the reference
 analyses carry no call-graph edges for these binaries.
 
 Dec21040 is the one driver in this batch that does not carry it, which is why
-its bucket-6 residue is 0. Evidence: [GNic/findings.md](GNic/findings.md),
+its bucket-6 residue is 0.
+
+> **CORRECTION.** Per §1's correction, add **one real gap to each of the four**:
+> the unmapped real function at `__text+0` that IDA's analysis omits. GNic
+> 1 -> 2, Gem 1 -> 2, Mace 1 -> 2, and Dec21040 0 -> 1, so Dec21040's residue is
+> no longer zero. Unlike `__udivdi3` these are driver code, not compiler output,
+> and each has a same-named source method that has never been compared against
+> Apple's bytes.
+
+Evidence: [GNic/findings.md](GNic/findings.md),
 [Gem/findings.md](Gem/findings.md), [Mace/findings.md](Mace/findings.md), each
 under "Buckets".
 
@@ -471,13 +505,21 @@ Raw counts do not rank this batch: all four are 47-48 mapped / 2 unmapped / 0
 dup / 0 disputed, and their exact-name match rates sit within 0.1 points of each
 other. On the criterion, one driver separates cleanly from the rest.
 
+> **CORRECTION.** Every bucket-6 count below is one short, for the reason given
+> in §1: each `_reloc` carries an unmapped real function at `__text+0` that IDA's
+> analysis never listed. The additions are noted per entry. The ordering does not
+> change -- one unwritten method moves no driver past another -- but "no
+> correspondence gap" and "nothing on correspondence grounds" are no longer
+> accurate as originally written.
+
 ### 1. `drvPPCGem` - the only demonstrated runtime consequence
 
 - **Measured:** 48 mapped / 2 unmapped / 0 dup / 0 disputed; 9152 mapped bytes
   against 36 unmapped. 157 functions.
 - **Exact-name match: 49 of 51 (96.1%)** - joint-highest in the batch.
 - **Bucket 6 after hand resolution: 2** - `_crc416` (a genuine driver-code
-  absence) and `__udivdi3` (libgcc, expected).
+  absence) and `__udivdi3` (libgcc, expected). **Plus §1's correction: 3** -
+  `+[GemEnet probe:]` at `__text+0`, source at `GemEnet.m:118`, never compared.
 - **Drift or different version?** Neither. This is a **reimplementation**, and
   the divergence is algorithmic: `GemEnetPrivate.m:135` implements a different
   CRC under Apple's function name, with **0/5 agreement** on the bucket it
@@ -494,13 +536,15 @@ other. On the criterion, one driver separates cleanly from the rest.
   replace the CRC function only. This is the only item in the batch that
   changes what runs.
 
-### 2. `drvPPCDec21040` - largest structural surface, no correspondence gap
+### 2. `drvPPCDec21040` - largest structural surface, one correspondence gap
 
 - **Measured:** 48 mapped / 2 unmapped / 0 dup / 0 disputed; 10244 mapped bytes
   against 36 unmapped. 161 functions.
 - **Exact-name match: 49 of 51 (96.1%)**.
 - **Bucket 6 after hand resolution: 0** - the only driver in the batch with
-  nothing left over, not even `__udivdi3`.
+  nothing left over, not even `__udivdi3`. **Plus §1's correction: 1** -
+  `-[DECchip21041 initFromDeviceDescription:]` at `__text+0`, source at
+  `DECchip21041.m:52`, never compared. This is no longer a zero-residue driver.
 - **Drift or different version?** Neither observable. Three classes, three
   matching `@implementation` sets, no placement difference under a
   class-insensitive check.
@@ -515,23 +559,28 @@ other. On the criterion, one driver separates cleanly from the rest.
 - **Measured:** 47 mapped / 2 unmapped / 0 dup / 0 disputed; 12372 mapped bytes
   against 36 unmapped. 183 functions, the largest count in the batch.
 - **Exact-name match: 48 of 50 (96.0%)**.
-- **Bucket 6 after hand resolution: 1** (`__udivdi3`). All five of its other C
-  helpers are confirmed by disassembly, not by name.
+- **Bucket 6 after hand resolution: 1** (`__udivdi3`). **Plus §1's correction:
+  2** - `+[MaceEnet probe:]` at `__text+0`, source at `MaceEnet.m:45`, never
+  compared. All five of its other C helpers are confirmed by disassembly, not by
+  name.
 - **Drift or different version?** Neither. Zero divergence in the driver's own
   code - this is Apple's own Darwin source, and it is the control that makes
   Gem's divergence attributable to Gem.
 - **The follow-on spec's job:** packaging (§4.6, `files.ppc:109-111`). Nothing
   on correspondence grounds.
 
-### 4. `drvPPCGNic` - nothing on correspondence grounds
+### 4. `drvPPCGNic` - one method on correspondence grounds
 
 - **Measured:** 47 mapped / 2 unmapped / 0 dup / 0 disputed; 8156 mapped bytes
   against 36 unmapped. 156 functions, the smallest in the batch.
 - **Exact-name match: 48 of 50 (96.0%)**.
-- **Bucket 6 after hand resolution: 1** (`__udivdi3`).
+- **Bucket 6 after hand resolution: 1** (`__udivdi3`). **Plus §1's correction:
+  2** - `-[GNicEnet(Private) _allocateMemory]` at `__text+0`, source at
+  `GNicEnetPrivate.m:115`, never compared.
 - **Drift or different version?** Neither observable. Like Gem it is a
   reimplementation, but unlike Gem no probe found a divergent body.
-- **The follow-on spec's job:** none on correspondence grounds, and it does not
+- **The follow-on spec's job:** verify `_allocateMemory` against Apple's bytes;
+  nothing else on correspondence grounds, and it does not
   even carry the packaging gap - it is already a `.drvproj` under
   `src/drivers-ppc`. Worth a spec only for a compile attempt once a PowerPC
   toolchain exists.
@@ -688,8 +737,10 @@ Mace and BMac and absent from Dec21040 - question 4.
 exactly the trio whose CRC helper is byte-identical (§4.3, §4.4).
 `interruptOccurred` versus `interruptOccurredAt:` is the DriverKit
 direct-versus-indirect interrupt convention splitting the five. The
-`_allocateMemory` and `probe:` rows are the address-0x0 artifact, not real
-partial sharing.
+`_allocateMemory` and `probe:` rows are the address-0x0 symbols of §1, which
+IDA's analysis omits from its function list -- an analysis artifact in this
+table, though (per §1's correction) real code in the binary, not real partial
+sharing.
 
 ### Question 3 - per-driver selectors, indicating hardware-specific behaviour
 
@@ -745,11 +796,14 @@ Dec21040: 11
 ```
 
 **Four of the five are missing nothing.** The source-map derivation reports one
-extra for GNic (`_allocateMemory`), which is the address-0x0 artifact of §1 and
-**not** a gap: `-[GNicEnet(Private) _allocateMemory]` is in the binary's symbol
-table and is defined at `GNicEnetPrivate.m:115`.
+extra for GNic (`_allocateMemory`), the address-0x0 symbol of §1, and **not** a
+missing selector: `-[GNicEnet(Private) _allocateMemory]` is in the binary's
+symbol table and is defined at `GNicEnetPrivate.m:115`.
 [GNic/findings.md](GNic/findings.md) records this. Checking both derivations is
-what distinguishes the artifact from a real gap.
+what distinguishes an analysis artifact from an absent selector. (Per §1's
+correction it *is* a real function body, unmapped and never compared against
+that source line -- so it is a gap in the reconstruction, just not a
+missing-selector one. This paragraph originally called it simply "not a gap".)
 
 **Dec21040's 11 are not a reconstruction gap either.** Both sides of this
 comparison are Apple's own binaries, so a "missing" selector means Apple's

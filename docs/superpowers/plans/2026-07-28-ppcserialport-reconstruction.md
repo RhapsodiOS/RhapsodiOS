@@ -209,8 +209,15 @@ cd $REPO && BINRECON_REFERENCE="$REF" PYTHONPATH=tools/binrecon \
   $VENVPY -m binrecon analyze --profile tools/binrecon/profiles/ppcserialport-ppc.json
 ```
 
-Expected: exit 0, output under `tools/binrecon/out/ppcserialport-ppc/`. Note the
-analysis JSON path; later steps call it `$ANALYSIS`.
+**Expected: exit 1, and that is correct.** `cli.py:105` returns
+`0 if report["complete"] and acceptance["passed"] else 1`, and a reference-only
+profile carries no `rebuilt` binary, so `normalized-functions` acceptance has
+nothing to compare and can never pass. What matters is that the run reports
+`analysis complete` and publishes its output under
+`tools/binrecon/out/ppcserialport-ppc/published/`.
+
+Note the analysis JSON path; later steps call it `$ANALYSIS`. It is
+`tools/binrecon/out/ppcserialport-ppc/published/analysis-reference-ida.json`.
 
 - [ ] **Step 7: Record the analysis shape**
 

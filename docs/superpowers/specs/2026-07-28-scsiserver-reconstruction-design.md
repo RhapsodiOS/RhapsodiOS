@@ -6,7 +6,7 @@
 
 ## 1. Goal
 
-Measure Apple's shipped `SCSIServer` against our source, write the nine absent
+Measure Apple's shipped `SCSIServer` against our source, write the six absent
 function bodies, and wire `IOTask.m` into the build.
 
 This is a finishing job, not a reconstruction from scratch. `drvSCSIServer` was
@@ -24,7 +24,7 @@ via `binrecon.macho.read_macho`. They partition as:
 | --- | --- | --- |
 | MIG server (`__XIOSCSISession_*` ×18, `_IOSCSISessionMig_server`) | 19 | Generated; verified against the `.defs`, not mapped |
 | Build-generated (`SCSIServerVersion`, `SCSIServerKernelServerInstance`) | 2 | Recorded and excluded |
-| Hand-written | 48 | Mapped; 39 present, 9 absent |
+| Hand-written | 48 | Mapped; 42 present, 6 absent |
 
 The 48 hand-written functions are **13 Objective-C methods and 35 C functions**.
 That ratio drives the mapping decision in §4.2 and is the reverse of every prior
@@ -55,33 +55,57 @@ pattern established in the four prior driver specs.
 `instance_size = 8` implies `isa` plus one 4-byte ivar, but the name and type
 must come from the binary, not from this inference.
 
-## 3. The nine absent functions
+## 3. The six absent functions
 
-Verified absent by direct symbol lookup against all three `.m` files. Two earlier
-automated passes disagreed with each other — one used substring matching and
-under-reported, the other a malformed definition regex and over-reported — so
-this list was settled by per-symbol `grep -c "\bNAME\b"`.
+**Corrected after Task 1's measurement. This section originally listed nine —
+four Objective-C methods and five C functions. Both halves were wrong.**
 
-**Objective-C (4).** These are the entire construction and teardown path for both
-classes; our source has the operational methods but nothing that builds or
-destroys the objects.
+All six absent functions are C. **No Objective-C method is missing.**
 
-- `-[IOSCSISession init]`
-- `-[IOSCSISession initForDevice:result:]`
-- `-[IOSCSISession free]`
-- `-[SCSIServer initFromDeviceDescription:]`
-
-**C (5).**
-
-- `_IOConvertTaskPortToVMTask`
 - `_IODestroyMappedVMTask`
 - `_IOTaskPortAllocate`
-- `__io_task_notification`
+- `_IOConvertTaskPortToVMTask`
 - `_serverThreadFunc`
+- `_IORequestNotifyForClientTask`
+- `__io_task_notification`
 
 `_serverThreadFunc` and `__io_task_notification` are expected to be the hardest:
 a thread entry point and a Mach notification handler, both likely to touch the
 `_entry` table discussed in §5.
+
+### 3.1 What the original list got wrong, and why
+
+Two errors, both from pattern-matching shortcuts whose failures were then written
+here as fact. They are recorded because the same failure mode produced the
+address-0 error retracted across five earlier specs in this series.
+
+**The four Objective-C methods are all present.** They are written in old-style
+Objective-C, with no parenthesised return type:
+
+```objc
+IOSCSISession.m:57    - init
+IOSCSISession.m:79    - initForDevice:(const char *)device result:(int *)result
+IOSCSISession.m:105   - free
+SCSIServer.m:138      - initFromDeviceDescription:(id)deviceDescription
+```
+
+The survey used `grep "^[-+] *("`, which requires a `(` after the leading sign.
+That pattern cannot match a method that omits the return type — and the methods
+that omit it are exactly the `init`/`free` family. The tool reported nine
+Objective-C methods where the file has thirteen, and the four it dropped became
+this spec's headline finding: "the entire construction and teardown path is
+missing." All four are implemented and are `mapped` in the source map.
+
+**`_IORequestNotifyForClientTask` is absent and was missed.** A per-symbol
+`grep -c "\bNAME\b"` returned 3 and was read as present. The three hits are a
+comment (`IOSCSISession.m:213`), a call (`IOSCSISession.m:265`), and an `extern`
+declaration (`IOTask.h:105`). There is no definition. The function is 480 bytes
+at `0x20dc` — the second-largest of the six.
+
+**The rule this yields:** presence must be established by a definition site, not
+by an occurrence count and not by a regex over declaration syntax. The source map
+does this correctly; the ad-hoc surveys that preceded it did not, and their output
+should not have been recorded as measurement.
 
 ## 4. Method — how each partition is handled
 
@@ -100,10 +124,12 @@ lacks an entry there. `read_macho` also reports address 0 for *undefined*
 symbols, which is what made the two cases look alike.
 
 `+[SCSIServer deviceStyle]` **is** present in our source (`SCSIServer.m:37`). It
-is therefore neither a gap nor a phantom — it will simply be absent from the
-source map's universe, because `--scope-to-objc` builds that universe from IDA's
-function list. Record it as a known exclusion with its reason; do not count it as
-unmapped work.
+is therefore neither a gap nor a phantom — it is simply absent from the source
+map's universe, because that universe is built from IDA's function list under
+either mapping route. Task 1 confirmed this: the primary route drops
+`--scope-to-objc` entirely and `deviceStyle` is still excluded, because IDA's
+lowest function address is above 0. Record it as a known exclusion with its
+reason; do not count it as unmapped work.
 
 ### 4.2 Mapping
 
@@ -161,7 +187,7 @@ No MIG binary is available here, so this is a read-and-compare against the
 declarations, not a regenerate-and-diff. It catches wrong routine numbers and
 argument-count or size mismatches; it does not catch subtle codegen differences.
 
-### 4.4 Disciplines for the nine bodies
+### 4.4 Disciplines for the six bodies
 
 Each of these has caught a real defect earlier in this series:
 
@@ -232,7 +258,7 @@ already covers Mesh and Sym8xx.
 3. Bucket reconciliation reports `RECONCILES: yes`.
 4. The MIG check reports per-routine agreement with `IOSCSISessionMig.defs`, or
    names the specific mismatch and stops.
-5. All nine bodies written, each with an instruction-by-instruction account
+5. All six bodies written, each with an instruction-by-instruction account
    covering every branch.
 6. `IOTask.m`/`IOTask.h` in `CLASSES`/`HFILES`.
 7. The binrecon suite stays green (854 passed, 4 skipped at time of writing).

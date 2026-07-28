@@ -2,9 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Measure Apple's shipped `SCSIServer` against `src/drvSCSIServer`, write the nine absent function bodies, and wire `IOTask.m` into the build.
+**Goal:** Measure Apple's shipped `SCSIServer` against `src/drvSCSIServer`, fix the divergences a prior session documented but never repaired, write the six absent C function bodies, and wire `IOTask.m` into the build.
 
-**Architecture:** Measure first, so the gap list is evidence rather than assumption. Verify the MIG `.defs` early, because a mismatch there halts the spec. Then write the four Objective-C construction/teardown methods, then the five C functions, largest last. A final task wires the build, remaps, and runs acceptance.
+**Architecture:** Measure first, so the gap list is evidence rather than assumption. Verify the MIG `.defs` early, because a mismatch there halts the spec. Then fix the documented divergences, then write the six absent C functions, largest last. A final task wires the build, remaps, and runs acceptance.
+
+> **Corrected after Task 1.** This plan originally said "nine absent function
+> bodies — four Objective-C, five C." Task 1's measurement showed all four
+> Objective-C methods are implemented (old-style `- init` / `- free`, which the
+> survey's `grep "^[-+] *("` could not match), and that a sixth C function,
+> `_IORequestNotifyForClientTask`, is absent and was missed by an occurrence-count
+> check. Task 3 was rewritten accordingly. See spec §3.1.
 
 **Tech Stack:** Python 3.13 in `.venv-binrecon`, binrecon CLI, IDA Professional 9.2 (reference analysis only), Mach-O/PowerPC big-endian.
 
@@ -80,22 +87,27 @@ SCSIServerKernelServerInstance : Object     instance_size = 4     (build-generat
 `scsiserver-bundle-ppc.json`, both already in `test_ppc_profile_inventory`. Do
 not create profiles and do not edit that test.
 
-### The nine functions to write
+### The six functions to write — all C
 
 | # | Function | Addr | Size | Task |
 | --- | --- | --- | --- | --- |
-| 1 | `-[IOSCSISession init]` | `0x0654` | 56 | 3 |
-| 2 | `-[IOSCSISession initForDevice:result:]` | `0x068c` | 56 | 3 |
-| 3 | `-[SCSIServer initFromDeviceDescription:]` | `0x00e4` | 252 | 3 |
-| 4 | `-[IOSCSISession free]` | `0x06c4` | 344 | 3 |
-| 5 | `_IODestroyMappedVMTask` | `0x1d98` | 48 | 4 |
-| 6 | `_IOTaskPortAllocate` | `0x19bc` | 64 | 4 |
-| 7 | `_IOConvertTaskPortToVMTask` | `0x1c98` | 256 | 4 |
-| 8 | `_serverThreadFunc` | `0x0a70` | 356 | 4 |
-| 9 | `__io_task_notification` | `0x1dc8` | 788 | 4 |
+| 1 | `_IODestroyMappedVMTask` | `0x1d98` | 48 | 4 |
+| 2 | `_IOTaskPortAllocate` | `0x19bc` | 64 | 4 |
+| 3 | `_IOConvertTaskPortToVMTask` | `0x1c98` | 256 | 4 |
+| 4 | `_serverThreadFunc` | `0x0a70` | 356 | 4 |
+| 5 | `_IORequestNotifyForClientTask` | `0x20dc` | 480 | 4 |
+| 6 | `__io_task_notification` | `0x1dc8` | 788 | 4 |
 
-2,220 bytes total. Sizes are next-symbol deltas and include any trailing jump
-island; confirm each function's true extent from its `blr` before writing.
+Sizes are next-symbol **spans** — IDA's function size plus any trailing 16-byte
+jump island. Confirm each function's true extent from its `blr` before writing.
+
+`_IORequestNotifyForClientTask` is declared `extern` at `IOTask.h:105` and called
+at `IOSCSISession.m:265`, but never defined. An occurrence-count check found
+three hits — a comment, a call, and the declaration — and read them as a
+definition.
+
+**No Objective-C method is absent.** All 13 are implemented; Task 3 fixes the
+defects in four of them.
 
 Within each task, work smallest first — the small ones establish the idioms the
 large ones reuse.
@@ -108,17 +120,23 @@ large ones reuse.
 - `$RECON/findings.md` — the measurement, the MIG check, uncertainties (Tasks 1, 2, 5)
 
 **Modified:**
-- `$LKS/IOSCSISession.m` — three methods (Task 3)
-- `$LKS/SCSIServer.m` — one method (Task 3)
-- `$LKS/IOTask.m` — four C functions (Task 4)
+- `$LKS/IOSCSISession.m` — divergence fixes (Task 3)
+- `$LKS/SCSIServer.m` — divergence fixes (Task 3)
+- `src/drvSCSIServer/reconstruction/divergences.md` — ledger dispositions (Tasks 3, 5)
+- `$LKS/IOTask.m` — five C functions; `_serverThreadFunc` goes to `IOSCSISession.m` (Task 4)
 - `$LKS/IOTask.h` — declarations for anything newly exposed (Task 4)
 - `$LKS/Makefile` — `CLASSES` / `HFILES` (Task 5)
 
-`_serverThreadFunc` and `__io_task_notification` are session/server plumbing, not
-task plumbing. Put `_serverThreadFunc` in `IOSCSISession.m` beside the
-reservation helpers it works with, and `__io_task_notification` in `IOTask.m`
-beside `IOReleaseNotifyForFunc`. Task 4 confirms both placements against what
-each function actually references.
+`_serverThreadFunc` is session/server plumbing rather than task plumbing: put it
+in `IOSCSISession.m` beside the reservation helpers, and the other five in
+`IOTask.m`. Task 4 confirms every placement against what each function actually
+references.
+
+**Two pre-existing artifact locations.** A prior session left
+`src/drvSCSIServer/reconstruction/{source-map.json,ledger.json,divergences.md}`,
+and this plan's `$RECON` is the nested
+`src/drvSCSIServer/reconstruction/SCSIServer/`. Both now describe the same
+binary. Task 5 consolidates them into one location and says which it kept.
 
 ---
 
@@ -138,7 +156,7 @@ cd $REPO && BINRECON_REFERENCE="$REF" PYTHONPATH=tools/binrecon \
   $VENVPY -m binrecon analyze --profile tools/binrecon/profiles/scsiserver-ppc.json
 ```
 
-Expected: exit 0, output under `tools/out/scsiserver-ppc/`. Note the analysis
+Expected: exit 0, output under `tools/binrecon/out/scsiserver-ppc/`. Note the analysis
 JSON path — later steps call it `$ANALYSIS`.
 
 - [ ] **Step 2: Confirm the function count before mapping**
@@ -161,7 +179,7 @@ predicts. Record all three numbers in `findings.md`.
 
 ```bash
 cd $REPO && $VENVPY tools/binrecon/filter_named_functions.py \
-  $ANALYSIS tools/out/scsiserver-ppc/analysis-named.json
+  $ANALYSIS tools/binrecon/out/scsiserver-ppc/analysis-named.json
 ```
 
 Expected: exit 0. Re-run the Step 2 snippet against the output; `unnamed` must
@@ -171,7 +189,7 @@ now be 0 and `input.sha256` must be unchanged from `$ANALYSIS`.
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
-  --reference-analysis tools/out/scsiserver-ppc/analysis-named.json \
+  --reference-analysis tools/binrecon/out/scsiserver-ppc/analysis-named.json \
   --binary "$REF" \
   --source-dir $LKS \
   --repo-root . \
@@ -215,7 +233,7 @@ this series missed addresses that way. Every `duplicate_candidates` and
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/bucket_functions.py \
-  tools/out/scsiserver-ppc/analysis-named.json \
+  tools/binrecon/out/scsiserver-ppc/analysis-named.json \
   $RECON/source-map.json
 ```
 
@@ -227,7 +245,7 @@ build-generated class methods.
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
-  --binary "$REF" --analysis tools/out/scsiserver-ppc/analysis-named.json
+  --binary "$REF" --analysis tools/binrecon/out/scsiserver-ppc/analysis-named.json
 ```
 
 The tool now distinguishes "no analyzer function and no code" from "no analyzer
@@ -239,7 +257,7 @@ deserves more scrutiny than the clean relocations, not less.
 
 Record: the three Step 2 numbers; the route taken in Step 4; the four-category
 coverage from Step 5; the bucket table; the invariant-check result; the
-`deviceStyle` exclusion and why; and the nine-function gap list confirming this
+`deviceStyle` exclusion and why; and the gap list your map actually produced —
 plan's table. State plainly that nothing was compiled.
 
 - [ ] **Step 9: Commit**
@@ -314,134 +332,112 @@ cd $REPO && git add $RECON/findings.md && \
 
 ---
 
-## Task 3: The four Objective-C methods
+## Task 3: Fix the divergences the prior session documented
 
 **Files:**
-- Modify: `$LKS/IOSCSISession.m`, `$LKS/SCSIServer.m`, and the matching `.h` files if a declaration is missing
+- Modify: `$LKS/SCSIServer.m`, `$LKS/IOSCSISession.m`
+- Read: `src/drvSCSIServer/reconstruction/divergences.md` (1,824 lines, the prior session's instruction-level comparison)
 
 **Interfaces:**
-- Consumes: `$RECON/source-map.json` for addresses; `__OBJC,__meth_var_types` for signatures; `__OBJC,__instance_vars` for ivars.
-- Produces: four method bodies. Task 5 remaps and expects them mapped.
+- Consumes: `divergences.md`'s findings and ledger; `$RECON/source-map.json`.
+- Produces: corrected method bodies. Task 5 re-checks divergences and expects these resolved.
 
-These four are the entire construction and teardown path for both classes. Our
-source has every operational method but nothing that builds or destroys the
-objects.
+**This task originally read "The four Objective-C methods." That was wrong — all
+four are implemented.** They are old-style Objective-C (`- init`, `- free`,
+`- initFromDeviceDescription:`) with no parenthesised return type, which the
+survey's `grep "^[-+] *("` could not match. The real work is that the prior
+session compared them against the disassembly, **found real defects, and never
+fixed them** — its ledger still carries them as `unexamined` with Findings
+attached, and it names a "Task 12" that never ran.
 
-- [ ] **Step 1: Read the ivars before writing anything**
+- [ ] **Step 1: Enumerate every open finding**
 
-```bash
-cd $REPO && PYTHONPATH=tools/binrecon $VENVPY - <<'PY'
-from binrecon.macho import read_macho
-import struct
-P=r'C:/Users/raynorpat/Downloads/test/Drivers/ppc/SCSIServer.config/SCSIServer_reloc'
-d=read_macho(P); raw=open(P,'rb').read()
-secs={s['name']:s for s in d['sections']}
-def rd(a,n):
-    for s in secs.values():
-        if s['address']<=a<s['address']+s['size']:
-            o=s['offset']+(a-s['address']); return raw[o:o+n]
-def cstr(a):
-    b=rd(a,300); return b.split(b'\0')[0].decode('ascii','replace') if b else '?'
-c=secs['__OBJC,__class']
-for i in range(c['size']//40):
-    f=struct.unpack('>10I', rd(c['address']+i*40,40))
-    print(f"class {cstr(f[2])} : {cstr(f[1])}  instance_size={f[5]}")
-    if f[6]:
-        n=struct.unpack('>I', rd(f[6],4))[0]
-        for j in range(n):
-            nm,tp,off=struct.unpack('>3I', rd(f[6]+4+j*12,12))
-            print(f"     +0x{off:04x}  {cstr(tp):<30} {cstr(nm)}")
-PY
-```
+Read `divergences.md` and list every ledger entry whose status is `unexamined`
+**with a Finding attached** — these are documented defects, distinct from the 51
+entries that are merely unread. For each, record the address, the source site,
+and what the reference does differently.
 
-`SCSIServer`'s `instance_size` is 300 and `IOSCSISession`'s is 8, so `SCSIServer`
-carries substantial state and `IOSCSISession` exactly one 4-byte ivar. Compare
-what this prints against what `SCSIServer.h` and `IOSCSISession.h` currently
-declare, and record any divergence — a missing or misordered ivar makes every
-offset in these four methods wrong.
+Do not fix anything yet. Produce the list first so the scope is visible.
 
-- [ ] **Step 2: Settle the four signatures from the type strings**
+- [ ] **Step 2: Fix `-[SCSIServer initFromDeviceDescription:]` (address 228)**
 
-```bash
-cd $REPO && PYTHONPATH=tools/binrecon $VENVPY - <<'PY'
-from binrecon.macho import read_macho
-import struct
-P=r'C:/Users/raynorpat/Downloads/test/Drivers/ppc/SCSIServer.config/SCSIServer_reloc'
-d=read_macho(P); raw=open(P,'rb').read()
-secs={s['name']:s for s in d['sections']}
-def rd(a,n):
-    for s in secs.values():
-        if s['address']<=a<s['address']+s['size']:
-            o=s['offset']+(a-s['address']); return raw[o:o+n]
-def cstr(a):
-    b=rd(a,300); return b.split(b'\0')[0].decode('ascii','replace') if b else '?'
-for nm in ('__OBJC,__inst_meth','__OBJC,__cls_meth','__OBJC,__cat_inst_meth','__OBJC,__cat_cls_meth'):
-    s=secs.get(nm)
-    if not s: continue
-    a=s['address']; end=a+s['size']
-    while a < end:
-        _,cnt=struct.unpack('>2I', rd(a,8))
-        for j in range(cnt):
-            sel,types,imp=struct.unpack('>3I', rd(a+8+j*12,12))
-            print(f"  {cstr(sel):<42} {cstr(types):<24} imp=0x{imp:x}")
-        a += 8 + cnt*12
-PY
-```
+Three findings, all at `SCSIServer.m:138`+:
 
-Type encodings are authoritative: `^I` is a pointer to unsigned int where `I` is
-the value, `l` is long, `*` is `char *`, `r*` is `const char *`, `c` is BOOL, `@`
-is `id`. Getting `^I` wrong for `I` produces code that compiles and corrupts
-memory.
+1. **Wrong argument at line 154.** Our source passes `self`:
+   `registerResult = (int)[self registerSCSIController:self];`
+   The reference passes the incoming `deviceDescription`. At entry r3=self,
+   r4=`_cmd`, r5=`deviceDescription`; the function copies r3→r30 and r5→r29 for
+   later reuse but leaves r3 and r5 untouched, so the call at addresses 260-268
+   fires as `objc_msgSend(self, @selector(registerSCSIController:), deviceDescription)`.
+   The comment above line 144 already flags our version as a guess. `probe:`
+   itself passes `deviceDescription` at `SCSIServer.m:101`.
+2. **Extra `IOLog` at line 197.** The reference goes straight from
+   `[self registerDevice]` / `_server = self` (addresses 368-392) to `mr r3, r31`
+   and the epilogue — no further `bl`, and the string does not appear in the
+   reference's string table.
+3. **The `objc_getClass` pattern** — see Step 4.
 
-- [ ] **Step 3: Write `-[IOSCSISession init]` (`0x0654`, 56 bytes)**
+- [ ] **Step 3: Fix `-[IOSCSISession free]` (address 1732)**
 
-Smallest first. Disassemble the 56 bytes, resolve every `bl` through the
-relocation table, and write the body. Produce an instruction-by-instruction
-account covering every branch.
+Three findings:
 
-- [ ] **Step 4: Write `-[IOSCSISession initForDevice:result:]` (`0x068c`, 56 bytes)**
+1. **Missing `notify_port` argument to `IOTaskPortDeallocate()`** —
+   `divergences.md` calls this a compile error given the header declaration.
+   Settle the true arity from the reference and from `IOTask.h`.
+2. **The cleanup call resolves to `IOExitThread()`, not a callback.** Resolve the
+   target through the relocation table yourself before changing it.
+3. **Returns `self` where the reference returns `nil`.**
 
-Same size as `init`; check whether it shares a tail or an island with it. The
-`result:` parameter is an out-pointer — confirm its type from the encoding in
-Step 2, not from the name.
+- [ ] **Step 4: Fix the `objc_getClass("Object")` pattern (four sites)**
 
-- [ ] **Step 5: Write `-[SCSIServer initFromDeviceDescription:]` (`0x00e4`, 252 bytes)**
+Our source writes `super_struct.class = objc_getClass("Object");`. The reference
+fills `objc_super.class` from a static reference — `lis r9, stru_5198.ext@ha` /
+`lwz r9, stru_5198.ext@l(r9)` / `stw r9, ...` — with no call. Four sites: three
+in `SCSIServer.m` and one at `IOSCSISession.m:168`.
 
-Note this begins immediately after `+[SCSIServer deviceStyle]`'s region. Confirm
-its true start from its own prologue rather than trusting the `0xe4` boundary.
-`SCSIServer`'s 300-byte instance means this likely initializes many ivars; each
-offset must trace to a named ivar from Step 1.
+Write the idiom our tree uses for a superclass reference in this position. If no
+in-tree idiom exists, record that as an uncertainty rather than inventing one.
 
-- [ ] **Step 6: Write `-[IOSCSISession free]` (`0x06c4`, 344 bytes)**
+- [ ] **Step 5: Fix the remaining findings from Step 1**
 
-Largest in this task. Teardown mirrors construction: expect it to undo what
-`initForDevice:result:` and `initServerWithTask:sendPort:` set up, and to call
-into the reservation helpers (`blastAllReservations`) and the task plumbing.
-Resolve each call target rather than assuming the mirror.
+Including `probe:`'s three extra `IOLog` calls. For each, either correct the
+source or, if the divergence is deliberate, mark it `intentional-mismatch` in the
+ledger **with the reason written down** — that disposition exists and
+`divergences.md` already uses it for three entries.
 
-- [ ] **Step 7: Record uncertainties**
+- [ ] **Step 6: Where the evidence is ambiguous, record instead of guessing**
 
-Anything you could not settle from evidence goes into `$RECON/findings.md` as a
-numbered uncertainty with what you observed and what you would need. Do not
-resolve an ambiguity by picking the plausible option silently.
+Any finding whose correct resolution you cannot establish from the disassembly
+goes into `$RECON/findings.md` as a numbered uncertainty with what you observed
+and what you would need. A confident guess is a defect; a recorded uncertainty is
+a result.
+
+- [ ] **Step 7: Update the ledger dispositions**
+
+Every entry you fixed moves from `unexamined` to `assembly-matched`, in
+`divergences.md`'s ledger table. State the new tally.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd $REPO && git add $LKS $RECON/findings.md && \
-  git commit -m "drvSCSIServer: write the construction and teardown methods for both classes"
+cd $REPO && git add $LKS $RECON src/drvSCSIServer/reconstruction && \
+  git commit -m "drvSCSIServer: fix the documented divergences in SCSIServer and IOSCSISession"
 ```
 
 ---
 
-## Task 4: The five C functions
+## Task 4: The six C functions
 
 **Files:**
 - Modify: `$LKS/IOTask.m`, `$LKS/IOTask.h`, `$LKS/IOSCSISession.m`
 
 **Interfaces:**
 - Consumes: `$RECON/source-map.json`; the `_entry` declaration already in `IOTask.m`.
-- Produces: five function bodies. Task 5 remaps and expects them mapped.
+- Produces: six function bodies. Task 5 remaps and expects them mapped.
+
+All six absent functions are C; no Objective-C method is missing. Sizes below are
+next-symbol spans including any trailing jump island — confirm each function's
+true extent from its `blr` before writing.
 
 - [ ] **Step 1: Write `_IODestroyMappedVMTask` (`0x1d98`, 48 bytes)**
 
@@ -473,7 +469,21 @@ and are not verified by this measurement.** If this function reads or writes tha
 region, verify the bounds against the binary's data sections yourself and correct
 the comments if they are wrong.
 
-- [ ] **Step 5: Write `__io_task_notification` (`0x1dc8`, 788 bytes)**
+- [ ] **Step 5: Write `_IORequestNotifyForClientTask` (`0x20dc`, 480 bytes)**
+
+Second largest. Already declared at `IOTask.h:105`:
+
+```c
+extern int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort, mach_port_t *deathPort);
+```
+
+and already called at `IOSCSISession.m:265`. **Confirm that declared signature
+against the disassembly before writing** — it was written by an earlier session
+from the same binary but has never been checked, and both its call site and
+`-[IOSCSISession free]` depend on the arity being right. `IOTask.h:88` says it
+forks its own thread and never returns; verify that too.
+
+- [ ] **Step 6: Write `__io_task_notification` (`0x1dc8`, 788 bytes)**
 
 Largest function in the plan. A Mach notification handler — expect a dispatch on
 notification type with several branches. Enumerate every branch explicitly; a
@@ -484,17 +494,17 @@ The leading double underscore is the Mach-O convention for a source symbol named
 function `_io_task_notification`, matching how `IOTask.m` already names
 `IOReferenceClientTask` for the symbol `_IOReferenceClientTask`.
 
-- [ ] **Step 6: Declare anything newly exposed**
+- [ ] **Step 7: Declare anything newly exposed**
 
 Add declarations to `IOTask.h` only for functions another file calls. Keep
 internal helpers static, matching how `IOTask.m` already scopes its own.
 
-- [ ] **Step 7: Record uncertainties**
+- [ ] **Step 8: Record uncertainties**
 
-As Task 3 Step 7. Include explicitly whether the `0x4008`/`0x4088` addresses were
+As Task 3 Step 6. Include explicitly whether the `0x4008`/`0x4088` addresses were
 confirmed or corrected.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 cd $REPO && git add $LKS $RECON/findings.md && \
@@ -538,6 +548,25 @@ HFILES = SCSIServer.h IOSCSISession.h IOTask.h
 `IOTask.m` has never been built — it carries five commits of prior work but was
 never added here.
 
+**The two build descriptions already disagree.** `$LKS/PB.project` lists
+`SCSIServer.m, IOSCSISession.m, IOTask.m` in its `CLASSES`, while the `Makefile`
+lists only the first two. The `Makefile` is what builds, so this change is still
+required; note the pre-existing disagreement in `findings.md` and say which file
+you treated as authoritative. Check whether `PB.project`'s `H_FILES` also needs
+`IOTask.h` and make the two consistent.
+
+- [ ] **Step 1b: Consolidate the two reconstruction directories**
+
+A prior session left `src/drvSCSIServer/reconstruction/{source-map.json,
+ledger.json,divergences.md}`; this plan wrote to the nested
+`src/drvSCSIServer/reconstruction/SCSIServer/`. Both describe the same binary,
+and leaving both invites a later reader to trust the stale one.
+
+Consolidate into one directory. Keep `divergences.md` — it is the prior session's
+1,824-line instruction-level record and this plan's Task 3 updates it. State in
+`findings.md` which location you kept, what you moved, and that no measurement
+was re-run in the process.
+
 - [ ] **Step 2: Record the i386 exposure**
 
 `Makefile.preamble` sets `INCLUDED_ARCHS = i386 ppc`, and there is no i386
@@ -553,7 +582,7 @@ oversight.
 - [ ] **Step 3: Regenerate the source map**
 
 Re-run **the exact route Task 1 recorded** — primary or fallback, whichever was
-used. All nine new functions should now map.
+used. All six new functions should now map.
 
 - [ ] **Step 4: Re-run bucket reconciliation and the invariant check**
 
@@ -609,7 +638,7 @@ cd $REPO && git add $LKS $RECON src/drivers-ppc/reconstruction/report-scsi.md &&
 ## Self-Review
 
 **Spec coverage.** §1 goal → Tasks 3–5. §2 partition → Task 1 Steps 2, 6. §2.1
-classes and ivars → Task 3 Step 1. §3 nine functions → Tasks 3, 4. §4.1 address-0
+classes and ivars → measured in Task 1. §3 six functions → Task 4; §3.1 → Task 3. §4.1 address-0
 → Global Constraints, Task 1 Steps 2/7, Task 5 Step 5. §4.2 mapping route →
 Task 1 Steps 3–4, Task 5 Step 3. §4.3 MIG → Task 2. §4.4 disciplines → Global
 Constraints. §5 build wiring → Task 5 Steps 1–2. §6 artifacts → Task 1, Task 5

@@ -718,8 +718,8 @@ prototype at line 114
 
 | Line (now) | Line (pre-Task-4) | Call |
 | --- | --- | --- |
-| 2554 | 2409 | `savedIntState = SccDisableInterrupts(self);` |
-| 3180 | 3035 | `SccDisableInterrupts(self);` |
+| 2562 | 2409 | `savedIntState = SccDisableInterrupts(self);` |
+| 3188 | 3035 | `SccDisableInterrupts(self);` |
 
 Both **pre-date this branch** and neither was touched. They are **known-open**: determining the
 correct second argument at each site needs the disassembly of the enclosing functions, which is
@@ -750,10 +750,11 @@ not `stw`.
 Our source wrote a 32-bit word at both sites:
 `*(unsigned int *)(basePtr + 0x148) = 0 / = 1`. On big-endian PowerPC that stores the `1` into
 byte `0x14b` and leaves byte `0x148` at `0x00`, so **every byte reader would see channel A**.
-The readers are byte-width and always were: `-[initFromDeviceDescription:]` itself at
-`PPCSerialPort.m:1913`, `SccCloseChannel` at `:2307`, and -- decisively -- `SccChannelReset`,
-whose Apple body branches on `*(unsigned char *)(self + 0x148)` being 0 or 1 and does nothing
-for any other value.
+The readers are byte-width and always were: `OpenScc` at `PPCSerialPort.m:1918` and `:1921`,
+`SccCloseChannel` at `:2315`, and -- decisively -- `SccChannelReset`, whose Apple body branches
+on `*(unsigned char *)(self + 0x148)` being 0 or 1 and does nothing for any other value.
+`-[initFromDeviceDescription:]` is not among the readers: it only ever *writes* `0x148`, at the
+two sites above.
 
 The bug was latent while the *stub* `SccChannelReset` was still in the file, because that stub
 wrote `WR9 = 0x80` unconditionally and never read `0x148`. Deleting the stub above made the
@@ -831,7 +832,9 @@ EXIT=0
    (`src/drivers-ppc/bus/drvPExpert/powermac/interrupt.c` defines them). The file's three
    existing spl call sites already use local declarations of the form
    `extern unsigned int FUN_0000108c(void);` -- those `FUN_` names are `splpower`, `splx` and
-   `thread_call_free`, now identified from the islands they name. The new functions follow the
+   `thread_call_cancel`, now identified from the islands they name (an earlier draft named the
+   third one `thread_call_free`; the island at `0x106c` relocates against
+   `_thread_call_cancel`). The new functions follow the
    file's local-extern convention with the real names rather than importing a kernel header or
    renaming the three existing sites, which are out of this task's scope.
 
@@ -1126,8 +1129,8 @@ callbacks, not `IOScheduleFunc`, from the `lis`/`addi` relocation pairs inside
 Recorded here rather than fixed, because none is in Task 5's remit and each needs evidence
 this task did not gather.
 
-1. **Two `SccDisableInterrupts` arity errors.** `PPCSerialPort.m:2554`
-   (`savedIntState = SccDisableInterrupts(self);`) and `:3180` (`SccDisableInterrupts(self);`)
+1. **Two `SccDisableInterrupts` arity errors.** `PPCSerialPort.m:2562`
+   (`savedIntState = SccDisableInterrupts(self);`) and `:3188` (`SccDisableInterrupts(self);`)
    pass one argument to the two-argument function prototyped at `PPCSerialPort.m:114`. Both
    pre-date this branch. Fixing them needs the disassembly of the enclosing functions to
    recover the correct second argument at each site.
@@ -1147,6 +1150,25 @@ this task did not gather.
    a call site, and it is **ours, not Apple's**: `_SetStructureDefaults` does appear in the
    reference binary at file offset `0xed2a`, but every section ends before `0x8a40`, so that
    occurrence is in the symbol string table, not `__cstring`. Cosmetic; left alone.
-5. **`ledger.json` is stale.** It was seeded at Task 3 from the 64-entry `mapped` set and has
-   not been reseeded against the 71-entry map. No task reads it and no other driver in
-   `src/drivers-ppc/reconstruction/` has one; recorded rather than regenerated.
+5. **`ledger.json` has been regenerated and is no longer stale.** It was originally seeded at
+   Task 3 from the 64-entry `mapped` set, so its entry set and all 64 of its source citations
+   went stale as later tasks reseeded `source-map.json` and shifted line numbers. It has now
+   been reseeded with `tools/binrecon/seed_ledger.py` against the current map: **75 entries**
+   (71 mapped + 4 unmapped), every `(address, size)` pair matching a map bucket entry and every
+   `source_path`/`source_line` equal to the map's. Verified programmatically -- zero mismatches.
+6. **`splpower`, `splx` and `thread_call_cancel` are still spelled `FUN_xxxx` at three sites.**
+   The new handlers name these functions properly, but the file's three pre-existing spl sites
+   -- `PPCSerialPort.m:439-441`, `:1060-1061` and `:1096-1097` -- still declare and call them
+   under their decompiler names. The reference's relocations resolve every one of them:
+
+   | `FUN_` name | Island | Real symbol |
+   | --- | --- | --- |
+   | `FUN_0000108c`, `FUN_000011a0`, `FUN_000012cc` | `0x108c`, `0x11a0`, `0x12cc` | `_splpower` |
+   | `FUN_0000107c`, `FUN_00001190`, `FUN_000012ac` | `0x107c`, `0x1190`, `0x12ac` | `_splx` |
+   | `FUN_0000106c` | `0x106c` | `_thread_call_cancel` |
+
+   Each island carries a `ppc-hi16-32-absolute`/`ppc-lo16-32-absolute` pair against the named
+   undefined symbol. Note `FUN_0000106c` is currently declared `void FUN_0000106c(unsigned int)`,
+   which does not match `thread_call_cancel`'s real signature. Renaming the three sites is
+   outside this branch's scope; the mapping is recorded here so the next pass does not have to
+   re-derive it.

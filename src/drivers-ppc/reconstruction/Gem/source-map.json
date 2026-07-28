@@ -197,7 +197,7 @@
         "-[GemEnet _allocateMemory]"
       ],
       "size": 352,
-      "source_line": 382,
+      "source_line": 410,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -206,7 +206,7 @@
         "-[GemEnet _initTxRing]"
       ],
       "size": 208,
-      "source_line": 437,
+      "source_line": 465,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -215,7 +215,7 @@
         "-[GemEnet _initRxRing]"
       ],
       "size": 324,
-      "source_line": 474,
+      "source_line": 502,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -224,7 +224,7 @@
         "-[GemEnet _startChip]"
       ],
       "size": 208,
-      "source_line": 345,
+      "source_line": 373,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -233,7 +233,7 @@
         "-[GemEnet _resetChip]"
       ],
       "size": 84,
-      "source_line": 329,
+      "source_line": 357,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -242,7 +242,7 @@
         "-[GemEnet _initChip]"
       ],
       "size": 1252,
-      "source_line": 161,
+      "source_line": 189,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -251,7 +251,7 @@
         "-[GemEnet _disableAdapterInterrupts]"
       ],
       "size": 48,
-      "source_line": 542,
+      "source_line": 570,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -260,7 +260,7 @@
         "-[GemEnet _enableAdapterInterrupts]"
       ],
       "size": 84,
-      "source_line": 524,
+      "source_line": 552,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -269,7 +269,7 @@
         "-[GemEnet _restartTransmitter]"
       ],
       "size": 12,
-      "source_line": 812,
+      "source_line": 840,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -278,7 +278,7 @@
         "-[GemEnet _restartReceiver]"
       ],
       "size": 12,
-      "source_line": 1022,
+      "source_line": 1050,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -287,7 +287,7 @@
         "-[GemEnet _stopReceiveDMA]"
       ],
       "size": 12,
-      "source_line": 1014,
+      "source_line": 1042,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -296,7 +296,7 @@
         "-[GemEnet _stopTransmitDMA]"
       ],
       "size": 12,
-      "source_line": 804,
+      "source_line": 832,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -305,7 +305,7 @@
         "-[GemEnet _transmitPacket:]"
       ],
       "size": 208,
-      "source_line": 610,
+      "source_line": 638,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -314,7 +314,7 @@
         "-[GemEnet _receivePacket:length:timeout:]"
       ],
       "size": 248,
-      "source_line": 820,
+      "source_line": 848,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -323,7 +323,7 @@
         "-[GemEnet _packetToDebugger:]"
       ],
       "size": 100,
-      "source_line": 1354,
+      "source_line": 1382,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -332,7 +332,7 @@
         "-[GemEnet _sendPacket:length:]"
       ],
       "size": 444,
-      "source_line": 677,
+      "source_line": 705,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -341,7 +341,7 @@
         "-[GemEnet _sendDummyPacket]"
       ],
       "size": 172,
-      "source_line": 774,
+      "source_line": 802,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -350,7 +350,7 @@
         "-[GemEnet _receiveInterruptOccurred]"
       ],
       "size": 48,
-      "source_line": 600,
+      "source_line": 628,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -359,7 +359,7 @@
         "-[GemEnet _receivePackets:]"
       ],
       "size": 816,
-      "source_line": 872,
+      "source_line": 900,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -368,7 +368,7 @@
         "-[GemEnet _transmitInterruptOccurred]"
       ],
       "size": 200,
-      "source_line": 551,
+      "source_line": 579,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -377,7 +377,7 @@
         "-[GemEnet _updateDescriptorFromNetBuf:Desc:ReceiveFlag:]"
       ],
       "size": 356,
-      "source_line": 1186,
+      "source_line": 1214,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -386,7 +386,7 @@
         "-[GemEnet _monitorLinkStatus]"
       ],
       "size": 196,
-      "source_line": 1277,
+      "source_line": 1305,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -395,7 +395,7 @@
         "-[GemEnet _dumpRegisters]"
       ],
       "size": 296,
-      "source_line": 1313,
+      "source_line": 1341,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -404,7 +404,7 @@
         "-[GemEnet _getStationAddress:]"
       ],
       "size": 144,
-      "source_line": 1145,
+      "source_line": 1173,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -413,7 +413,7 @@
         "-[GemEnet _addToHashTableMask:]"
       ],
       "size": 152,
-      "source_line": 1062,
+      "source_line": 1090,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -422,7 +422,7 @@
         "-[GemEnet _removeFromHashTableMask:]"
       ],
       "size": 164,
-      "source_line": 1100,
+      "source_line": 1128,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     },
     {
@@ -431,7 +431,7 @@
         "-[GemEnet _updateGemHashTableMask]"
       ],
       "size": 196,
-      "source_line": 1030,
+      "source_line": 1058,
       "source_path": "src/drivers-ppc/network/drvPPCGem/GemEnet.drvproj/GemEnet.lksproj/GemEnetPrivate.m"
     }
   ],

@@ -18,17 +18,24 @@ Source map built with `binrecon source-map --objc-methods --scope-to-objc` again
 (91 of the 424 total functions IDA reported):
 
 ```
-mapped 88 unmapped 3 dup 0 disputed 0
-  unmapped: ['-[Apple96_SCSI maxTransfer]'] 40
+mapped 89 unmapped 2 dup 0 disputed 0
   unmapped: ['+[drvPPC53c96KernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[drvPPC53c96Version driverKitVersionFordrvPPC53c96]'] 16
 ```
 
+**This is down from `mapped 88 unmapped 3` at first measurement.**
+`-[Apple96_SCSI maxTransfer]`, previously the one unmapped entry that was not
+build-generated, has been written and now maps to
+`src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m:114`. Only the two
+build-generated accessors remain unmapped. See Unmapped detail below.
+
 - Total functions in the reference analysis: 424.
-- Named Objective-C methods, in scope: 91 -- 88 mapped + 3 unmapped.
+- Named Objective-C methods, in scope: 91 -- 89 mapped + 2 unmapped.
 - Out of scope: 333, composed of 316 unnamed jump islands (bucket 3) plus 17
   named, non-Objective-C symbols the `--scope-to-objc` map deliberately does
-  not claim (bucket 6, see Buckets below).
+  not claim (bucket 6, see Buckets below). This figure is unchanged:
+  `maxTransfer` moved out of bucket 6 into `mapped`, which is inside the
+  Objective-C scope, not out of it.
 - `duplicate_candidates`: 0. Checked directly against `read_macho` (which,
   unlike IDA's exported analysis, preserves category tags) for collisions:
   stripping every `-[Apple96_SCSI(Category) selector]` name down to
@@ -71,7 +78,7 @@ Bucket table from `bucket_functions.py` run against
 
 ```
 total functions: 424
-  mapped: 88
+  mapped: 89
   1-crt-dyld: 0
   2-picsymbol-stub: 0
   3-unnamed-jump-island: 316
@@ -79,8 +86,7 @@ total functions: 424
       0xbf94  +[drvPPC53c96KernelServerInstance kernelServerInstance]  (20 bytes)
       0xbfa8  +[drvPPC53c96Version driverKitVersionFordrvPPC53c96]  (16 bytes)
   5-fn-with-source-site: 0
-  6-fn-no-source-site: 18
-      0x260  -[Apple96_SCSI maxTransfer]  (40 bytes)
+  6-fn-no-source-site: 17
       0x28b0  _getConfigParam  (260 bytes)
       0x29e4  _GetSCSICommandLength  (132 bytes)
       0x61e8  _serviceTimeoutInterrupt  (348 bytes)
@@ -110,7 +116,7 @@ helper: it carries no crt/dyld startup routines and its analysis has no
 Bucket 5 prints 0 from the script by construction; it is populated by hand
 against every bucket-6 entry (`grep -rn <symbol>
 src/kernel-7/bsd/dev/ppc/drvApple96_SCSI`, including `Timestamp.c`). Fifteen
-of the eighteen have a source definition and move to bucket 5:
+of the seventeen have a source definition and move to bucket 5:
 
 - `_getConfigParam` (static) -- `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96Hardware.m:576`
   (prototype at `Apple96Hardware.m:56`)
@@ -151,40 +157,104 @@ likewise not separately named in the reference analysis). Recorded here as an
 observed discrepancy against the brief's "9": this source tree has 8 static
 function definitions, not 9, by an exhaustive `grep -n '\bstatic\b'` of every
 `.m`/`.c` file in the directory. Eleven non-static C helpers plus the two
-libgcc routines round out the eighteen bucket-6 entries.
+libgcc routines round out the seventeen bucket-6 entries.
 
-The remaining three bucket-6 entries do not move to bucket 5:
+The remaining two bucket-6 entries do not move to bucket 5:
 
 - `__divdi3` and `__udivdi3` -- the libgcc signed/unsigned 64-bit division
   runtime helpers the PPC compiler emits (the same `__udivdi3` gap recorded
   for `drvPPCBMac`). No match anywhere under
   `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI`. Compiler-generated code, not
-  driver source -- an expected gap, not an open question.
-- `-[Apple96_SCSI maxTransfer]` -- see Unmapped detail and Open questions
-  below; this one genuinely resists classification.
+  driver source -- an expected gap, not an open question, and explicitly out
+  of scope to write.
+
+`-[Apple96_SCSI maxTransfer]` (`0x260`, 40 bytes) **was an eighteenth bucket-6
+entry at first measurement and is gone from this table**: it is now written,
+so the source map claims it and the bucket script counts it under `mapped`.
+See Unmapped detail below.
 
 ## Unmapped detail
 
-Three reference selectors have no source-mapped implementation:
+**Two** reference selectors have no source-mapped implementation, down from
+three, and **both remaining ones are build-generated**:
 
 - `+[drvPPC53c96KernelServerInstance kernelServerInstance]` (20 bytes) --
   a KernelServer wrapper class instance accessor emitted by the driver-kit
   build tooling, not hand-written driver code.
 - `+[drvPPC53c96Version driverKitVersionFordrvPPC53c96]` (16 bytes) --
   the DriverKit version accessor, likewise tool-emitted.
-- `-[Apple96_SCSI maxTransfer]` (40 bytes) -- not build-generated. This is a
-  real, small (40-byte) Objective-C method compiled into the binary at a real
-  code address (`0x260`), not a placeholder. `Apple96_SCSI` inherits from
-  `IOSCSIController` (`Apple96SCSI.h:102`), which declares `maxTransfer` as an
-  overridable accessor; sibling SCSI drivers in this tree override it with a
-  small constant-returning method (e.g.
-  `src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m:451`,
-  `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m`). No such
-  override exists anywhere in `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI`,
-  in either the `.m` files or the `.h` declarations. See Open questions.
 
-The two build-generated accessors match the `selector_check.py` "missing"
-list below exactly; so does `maxTransfer`.
+There is no absent hand-written Objective-C method left in this driver. Both
+entries match the `selector_check.py` "missing" list below exactly.
+
+### `-[Apple96_SCSI maxTransfer]` -- written
+
+`-[Apple96_SCSI maxTransfer]` (`0x260`, 40 bytes) was the third unmapped
+entry, and the only one that was not build-generated. It has been written to
+`src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m:114` (and the
+identical `src/drivers-ppc/scsi/drvPPC53c96/…` copy), and the regenerated
+source map now places it there:
+
+```
+53c96 | -[Apple96_SCSI maxTransfer] -> src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m 114
+```
+
+Body:
+
+```objc
+- (unsigned int) maxTransfer
+{
+    return (page_size * gDBDMADescriptorMax);
+}
+```
+
+i.e. the largest transfer describable by a single DBDMA channel program: one
+page per DATA descriptor.
+
+**Class-hierarchy and layout check (spec §3.3), performed before writing any
+ivar access.** `maxTransfer` reads one ivar, so the shipped class's
+`super_class`, `instance_size` and ivar table were read from the binary's
+`__OBJC,__class` / `__OBJC,__instance_vars` sections and compared against our
+`@interface`:
+
+```
+class Apple96_SCSI  super="IOSCSIController"  instance_size=872  ivar_count=62
+   +0x0244 ( 580)  gSCSIPhysicalAddress             ^v
+   +0x0248 ( 584)  gSCSILogicalAddress              *
+   +0x024c ( 588)  gSCSIRegisterLength              I
+   +0x0250 ( 592)  gDBDMAPhysicalAddress            ^v
+   +0x0254 ( 596)  gDBDMALogicalAddress             ^{?}
+   +0x0258 ( 600)  gDBDMARegisterLength             I
+   +0x025c ( 604)  gDBDMAChannelAddress             ^v
+   +0x0260 ( 608)  gChannelCommandArea              ^{?}
+   +0x0264 ( 612)  gChannelCommandAreaSize          I
+   +0x0268 ( 616)  gDBDMADescriptorMax              I
+   ...
+```
+
+- Superclass agrees: the binary says `IOSCSIController`, and
+  `Apple96SCSI.h:102` declares `@interface Apple96_SCSI : IOSCSIController`.
+- **The ivar the method reads, `+0x268`, is `gDBDMADescriptorMax`** -- the
+  ivar the written body uses. Declared in our tree at `Apple96SCSI.h:119`.
+- All 62 ivar entries in the binary's table were checked by name against our
+  `@interface` block: **every one is present**, and no ordering divergence was
+  found. (`gSelectionTimeout` appears in our header only inside a comment at
+  `Apple96SCSI.h:248` and is not a live declaration.)
+
+So, unlike `IOSmartDisplay` in the IODisplay spec and unlike `AppleMesh_SCSI`
+in this one, **no layout divergence was found for `Apple96_SCSI`**, and the
+method was writable. Note the limit of this check: the binary's
+`instance_size` of 872 is a measured fact, but *our* side's computed size
+cannot be verified without a compiler, so what is claimed is only that the
+declared ivar set and ordering match, not that the two sizes were both
+computed and compared.
+
+**Not compile-verified.** There is no PowerPC toolchain in this environment.
+Nothing here was compiled, linked or loaded. The source map matching proves
+the *selector* matches the binary's; it does not prove the *body* does.
+
+Uncertainty carried forward: `page_size` is used unqualified, as the kernel
+global this tree exposes; no named constant was invented for it.
 
 ## Invariant check
 
@@ -225,7 +295,7 @@ defect. Recorded as `boundary_disputed` candidates:
   not a real function, so not a function start either.
 
 Neither candidate overlaps any function reported in the bucket table or the
-source map, so neither affects the 88/3/0/0 correspondence numbers above.
+source map, so neither affects the 89/2/0/0 correspondence numbers above.
 
 ## Selector check
 
@@ -233,16 +303,15 @@ source map, so neither affects the 88/3/0/0 correspondence numbers above.
 
 ```
 reference selectors: 92
-our definitions:     126
+our definitions:     127
 
 renames (0):
 
 duplicates (0):
 
-missing (3):
+missing (2):
     +[drvPPC53c96KernelServerInstance kernelServerInstance]
     +[drvPPC53c96Version driverKitVersionFordrvPPC53c96]
-    -[Apple96_SCSI maxTransfer]
 
 extra (37):
     -[Apple96_SCSI(Curio) curioClearATN]
@@ -292,8 +361,11 @@ present as a raw symbol at address `0x0` but excluded from IDA's function
 list (see Invariant check); it is the same symbol flagged there, not a new
 gap.
 
-The three "missing" entries match the source map's unmapped set exactly (see
-Unmapped detail). All 37 "extra" entries -- source-tree method definitions
+"Our definitions: 127" is one more than the 126 recorded at first measurement;
+the difference is exactly the newly written `-[Apple96_SCSI maxTransfer]`,
+which also removes the third "missing" entry. The two remaining "missing"
+entries match the source map's unmapped set exactly (see Unmapped detail). All
+37 "extra" entries -- source-tree method definitions
 with no corresponding binary selector -- are explained by conditional
 compilation, verified by inspection of the source:
 
@@ -330,7 +402,13 @@ code).
 
 ## Open questions
 
-- `-[Apple96_SCSI maxTransfer]` (0x260, 40 bytes) has no source site anywhere
+**Resolved: `-[Apple96_SCSI maxTransfer]` has been written.** It is no longer
+an open question; the record of the search that established it was genuinely
+absent is kept below, and the method as written is documented under Unmapped
+detail above. Nothing in the investigation below was contradicted -- the
+override really was missing from this source tree, and has now been supplied.
+
+- `-[Apple96_SCSI maxTransfer]` (0x260, 40 bytes) had no source site anywhere
   in `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI`. What was tried:
   - `grep -rn maxTransfer` across every `.m`, `.h`, and `.c` file in the
     directory -- every hit is a `scsiReq->maxTransfer` struct-field access,
@@ -349,6 +427,7 @@ code).
     short (single-`return`) body of similar size to the compiled method's 40
     bytes, so a real, small override in `Apple96_SCSI` is plausible and
     consistent with the binary evidence.
-  - No candidate source line was found. This is recorded as an unresolved gap,
-    not assigned a cause: the override that produced the compiled 40-byte
-    `-[Apple96_SCSI maxTransfer]` is missing from this source tree.
+  - No candidate source line was found. The override that produced the
+    compiled 40-byte `-[Apple96_SCSI maxTransfer]` was genuinely missing from
+    this source tree, rather than present under another name or hidden by the
+    NeXT-era semicolon pattern. It has since been written; see Unmapped detail.

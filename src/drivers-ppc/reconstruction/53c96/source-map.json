@@ -12,12 +12,21 @@
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
+      "address": 608,
+      "reference_names": [
+        "-[Apple96_SCSI maxTransfer]"
+      ],
+      "size": 40,
+      "source_line": 114,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
+    },
+    {
       "address": 648,
       "reference_names": [
         "-[Apple96_SCSI getDMAAlignment:]"
       ],
       "size": 32,
-      "source_line": 113,
+      "source_line": 123,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -26,7 +35,7 @@
         "-[Apple96_SCSI numQueueSamples]"
       ],
       "size": 16,
-      "source_line": 124,
+      "source_line": 134,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -35,7 +44,7 @@
         "-[Apple96_SCSI sumQueueLengths]"
       ],
       "size": 16,
-      "source_line": 130,
+      "source_line": 140,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -44,7 +53,7 @@
         "-[Apple96_SCSI maxQueueLength]"
       ],
       "size": 16,
-      "source_line": 136,
+      "source_line": 146,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -53,7 +62,7 @@
         "-[Apple96_SCSI resetStats]"
       ],
       "size": 28,
-      "source_line": 142,
+      "source_line": 152,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -62,7 +71,7 @@
         "-[Apple96_SCSI executeRequest:buffer:client:]"
       ],
       "size": 332,
-      "source_line": 158,
+      "source_line": 168,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -71,7 +80,7 @@
         "-[Apple96_SCSI executeRequest:ioMemoryDescriptor:]"
       ],
       "size": 320,
-      "source_line": 196,
+      "source_line": 206,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -80,7 +89,7 @@
         "-[Apple96_SCSI resetSCSIBus]"
       ],
       "size": 208,
-      "source_line": 234,
+      "source_line": 244,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -89,7 +98,7 @@
         "-[Apple96_SCSI interruptOccurred]"
       ],
       "size": 184,
-      "source_line": 265,
+      "source_line": 275,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -98,7 +107,7 @@
         "-[Apple96_SCSI interruptOccurredAt:]"
       ],
       "size": 72,
-      "source_line": 309,
+      "source_line": 319,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -107,7 +116,7 @@
         "-[Apple96_SCSI otherOccurred:]"
       ],
       "size": 72,
-      "source_line": 314,
+      "source_line": 324,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -116,7 +125,7 @@
         "-[Apple96_SCSI receiveMsg]"
       ],
       "size": 100,
-      "source_line": 319,
+      "source_line": 329,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -125,7 +134,7 @@
         "-[Apple96_SCSI timeoutOccurred]"
       ],
       "size": 1024,
-      "source_line": 366,
+      "source_line": 376,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -134,7 +143,7 @@
         "-[Apple96_SCSI commandRequestOccurred]"
       ],
       "size": 568,
-      "source_line": 461,
+      "source_line": 471,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -143,7 +152,7 @@
         "-[Apple96_SCSI getPowerState:]"
       ],
       "size": 16,
-      "source_line": 524,
+      "source_line": 534,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -152,7 +161,7 @@
         "-[Apple96_SCSI setPowerState:]"
       ],
       "size": 100,
-      "source_line": 530,
+      "source_line": 540,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -161,7 +170,7 @@
         "-[Apple96_SCSI getPowerManagement:]"
       ],
       "size": 16,
-      "source_line": 544,
+      "source_line": 554,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -170,7 +179,7 @@
         "-[Apple96_SCSI setPowerManagement:]"
       ],
       "size": 16,
-      "source_line": 550,
+      "source_line": 560,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -179,7 +188,7 @@
         "-[Apple96_SCSI setIntValues:forParameter:count:]"
       ],
       "size": 924,
-      "source_line": 561,
+      "source_line": 571,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -188,7 +197,7 @@
         "-[Apple96_SCSI getIntValues:forParameter:count:]"
       ],
       "size": 716,
-      "source_line": 670,
+      "source_line": 680,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m"
     },
     {
@@ -798,13 +807,6 @@
   "reference_sha256": "D4E01B128C43F18EB1357FC62874A8B89471C77F2BE4C0D955BE18054700B251",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 608,
-      "reference_names": [
-        "-[Apple96_SCSI maxTransfer]"
-      ],
-      "size": 40
-    },
     {
       "address": 49044,
       "reference_names": [

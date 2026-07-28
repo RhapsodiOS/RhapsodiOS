@@ -32,21 +32,33 @@ Source map built with `binrecon source-map --objc-methods --scope-to-objc` again
 `drvPPCMesh_reloc`, scoped to the Objective-C methods found in that binary:
 
 ```
-mapped 66 unmapped 6 dup 0 disputed 0
-  unmapped: ['-[AppleMesh_SCSI ResetHardware:reason:]'] 76
-  unmapped: ['-[AppleMesh_SCSI ResetMESH:reason:]'] 348
-  unmapped: ['-[AppleMesh_SCSI IssueAbort]'] 352
-  unmapped: ['-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]'] 92
+mapped 70 unmapped 2 dup 0 disputed 0
   unmapped: ['+[drvPPCMeshKernelServerInstance kernelServerInstance]'] 20
   unmapped: ['+[drvPPCMeshVersion driverKitVersionFordrvPPCMesh]'] 16
 ```
 
+**This is down from `mapped 66 unmapped 6` at first measurement.** All four of this driver's absent
+Objective-C methods have been written, and each now maps:
+
+```
+-[AppleMesh_SCSI ResetHardware:reason:]                -> MESH_DBDMA.m:1223
+-[AppleMesh_SCSI ResetMESH:reason:]                    -> MESH_DBDMA.m:3470
+-[AppleMesh_SCSI IssueAbort]                           -> MESH_DBDMA.m:3822
+-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:] -> MESH_DBDMA.m:4555
+```
+
+(paths relative to `src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/`). Only the two build-generated
+accessors remain unmapped. See Unmapped detail below for what was written, the class-layout
+divergence found while writing it, and every uncertainty carried forward.
+
 - Total functions in the reference analysis (`mesh-ppc`): 173.
-- Named Objective-C methods, in scope: 72 -- 66 mapped + 6 unmapped. This matches `read_macho`'s own
+- Named Objective-C methods, in scope: 72 -- 70 mapped + 2 unmapped. This matches `read_macho`'s own
   count of ObjC-method-shaped symbols in the binary exactly (see Categories below: 22 + 3 + 6 + 13 +
   10 + 18 = 72).
 - Out of scope: 101, composed of 96 unnamed jump islands (bucket 3, see Buckets below) plus 5 named,
-  non-Objective-C C functions the `--scope-to-objc` map deliberately does not claim (bucket 6).
+  non-Objective-C C functions the `--scope-to-objc` map deliberately does not claim (bucket 6). This
+  figure is unchanged: the four written methods moved from `unmapped` to `mapped`, both of which are
+  inside the Objective-C scope.
 - `duplicate_candidates`: 0.
 - `boundary_disputed`: 0, from the source-map builder's own semantics -- see Invariant check below
   for the one symbol/function-start anomaly (`_AllocateEventLog` at `0x0`) the invariant checker
@@ -67,29 +79,31 @@ mapped 66 unmapped 6 dup 0 disputed 0
 
 Counting every `+`/`-` method-signature line at column 0 in each block (including methods with no
 explicit return type, e.g. `- free`, which the naive `grep -c "^[+-]"` style used for prior drivers
-would still catch, but a stricter `^[+-]\s*\(` regex misses) gives 22 (primary) + 3 (Hardware) + 7
-(HardwarePrivate) + 13 (MeshInterrupt) + 11 (Mesh) + 17 (Private) = **73** method definitions, two
-more than the plan's orientation figure of 71 and matching `selector_check.py`'s "our definitions: 73"
-exactly (see Selector check below). This is the pattern the brief warned about: the plan's counts are
-approximate and every prior task has found more than stated.
+would still catch, but a stricter `^[+-]\s*\(` regex misses) gave **73** method definitions at first
+measurement: 22 (primary) + 3 (Hardware) + 7 (HardwarePrivate) + 13 (MeshInterrupt) + 11 (Mesh) + 17
+(Private). **It is now 77** -- the four written methods added one to `Hardware`, two to `Mesh` and
+one to `Private` -- matching `selector_check.py`'s current "our definitions: 77" exactly (see
+Selector check below).
 
-Of those 73 source methods:
+Of those 77 source methods:
 
-- 66 have an address-matching counterpart the source map places (`mapped`).
-- 4 are genuinely absent from the reference binary's selector table (`-[AppleMesh_SCSI
-  getIntValues:forParameter:count:]`, `-[AppleMesh_SCSI setIntValues:forParameter:count:]`,
-  `-[AppleMesh_SCSI(HardwarePrivate) StartBucket]`; the fourth and fifth,
-  `-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` and `-[AppleMesh_SCSI(Mesh)
-  AbortDisconnectedCommand]`, bring the "extra" total to 7 -- see Selector check).
-- 3 are same-named-but-different-selector siblings of a binary-only selector: source's
-  `-[AppleMesh_SCSI(Hardware) ResetHardware:]` (one keyword) vs. the binary's unmapped
-  `ResetHardware:reason:` (two keywords); source's `-[AppleMesh_SCSI(Mesh) ResetMESH:]` vs. the
-  binary's unmapped `ResetMESH:reason:`; and the pair `-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` /
-  `AbortDisconnectedCommand]` vs. the binary's single unmapped `IssueAbort`.
-- 73 - 66 mapped = 7 "extra" source methods total, consistent with `selector_check.py`'s count.
+- 70 have an address-matching counterpart the source map places (`mapped`), up from 66.
+- 7 remain "extra": source method definitions with no binary selector at all. These are unchanged
+  from first measurement and are **not** gaps in the reconstruction -- see Selector check for each.
+- 0 binary selectors now lack an exact-selector source match, down from 4.
 
-That leaves the reference binary's own unmapped set at 6 (4 real methods with no exact-selector
-source match + 2 build-generated), the number reported by the source map above.
+The four that were previously "same-named-but-different-selector siblings of a binary-only selector"
+are no longer that. Source still defines the one-keyword `-[AppleMesh_SCSI(Hardware)
+ResetHardware:]` and `-[AppleMesh_SCSI(Mesh) ResetMESH:]`, and still defines
+`-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` / `AbortDisconnectedCommand]`; those four stay in the
+"extra" list, because the binary genuinely has no counterpart for them. What changed is that the
+binary's two-keyword `ResetHardware:reason:` / `ResetMESH:reason:`, its `IssueAbort`, and its
+`killActiveCommandAndResetBus:reason:` now each have their own exact-selector definition alongside
+them, rather than only a near-miss relative.
+
+77 - 70 mapped = 7 "extra" source methods, consistent with `selector_check.py`'s count. That leaves
+the reference binary's own unmapped set at 2, both build-generated -- the number reported by the
+source map above.
 
 ## Map validation
 
@@ -103,8 +117,9 @@ analysis functions 173 -> scoped 72
 load_source_map OK
 ```
 
-72 is exactly 66 mapped + 6 unmapped, confirming the map's covered-address set is precisely the
-72-selector ObjC scope claimed above.
+72 is exactly 70 mapped + 2 unmapped, confirming the map's covered-address set is precisely the
+72-selector ObjC scope claimed above. The scope itself is a property of the binary and did not
+change; only the split between `mapped` and `unmapped` did.
 
 ## Buckets
 
@@ -114,7 +129,7 @@ Bucket table from `bucket_functions.py` run against
 
 ```
 total functions: 173
-  mapped: 66
+  mapped: 70
   1-crt-dyld: 0
   2-picsymbol-stub: 0
   3-unnamed-jump-island: 96
@@ -122,27 +137,31 @@ total functions: 173
       0x4cec  +[drvPPCMeshKernelServerInstance kernelServerInstance]  (20 bytes)
       0x4d00  +[drvPPCMeshVersion driverKitVersionFordrvPPCMesh]  (16 bytes)
   5-fn-with-source-site: 0
-  6-fn-no-source-site: 9
+  6-fn-no-source-site: 5
       0xc0  _EvLog  (292 bytes)
       0x204  _Pause  (388 bytes)
       0x3c8  _serviceTimeoutInterrupt  (124 bytes)
-      0x1164  -[AppleMesh_SCSI ResetHardware:reason:]  (76 bytes)
       0x16b4  _getConfigParam  (132 bytes)
       0x1758  _GetSCSICommandLength  (132 bytes)
-      0x3348  -[AppleMesh_SCSI ResetMESH:reason:]  (348 bytes)
-      0x3b4c  -[AppleMesh_SCSI IssueAbort]  (352 bytes)
-      0x480c  -[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]  (92 bytes)
 counted: 173
 RECONCILES: yes
 ```
+
+Bucket 6 is down from 9 entries to 5, and **bucket 6 now contains no Objective-C methods at all**.
+The four that were there -- `ResetHardware:reason:` (`0x1164`), `ResetMESH:reason:` (`0x3348`),
+`IssueAbort` (`0x3b4c`) and `killActiveCommandAndResetBus:reason:` (`0x480c`) -- have been written
+and are counted under `mapped`. The five that remain are all plain C functions, which the
+`--scope-to-objc` map never claims (see Group A below).
 
 Buckets 1 (`crt-dyld`) and 2 (`picsymbol-stub`) are empty because `drvPPCMesh_reloc` is a statically
 linked kernel server, not an `MH_EXECUTE` helper: it carries no crt/dyld startup routines and its
 analysis has no `__picsymbol_stub` section for the stub-range check to match against.
 
 Bucket 5 prints 0 from the script by construction; it is populated by hand against every bucket-6
-entry (`grep -n <symbol> src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m`). This bucket splits
-cleanly into two groups.
+entry (`grep -n <symbol> src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m`). Since the four
+absent methods were written, this bucket no longer splits into two groups -- **all 5 remaining
+entries are Group A, and all 5 move to bucket 5.** Group B, the four unmapped Objective-C methods,
+is now empty; it is retained below as a record of what was gap and how it was closed.
 
 **Group A -- the 5 named C functions all have an exact-name source definition and move to bucket 5:**
 
@@ -188,50 +207,184 @@ IDA found*, and an inlined static function leaves no such symbol. This is a real
 between the source's function count and the binary's -- noted here rather than asserted as fact,
 since no decompiler was available to directly confirm inlining at the two call sites.
 
-**Group B -- the 4 unmapped Objective-C methods stay in bucket 6 as genuine gaps, not moved to
-bucket 5**, because none has a source site with the *same selector* -- only a related, differently
-named or different-arity sibling (see Selector check below for the full detail):
+**Group B -- now empty.** These 4 Objective-C methods were bucket-6 gaps at first measurement,
+because none had a source site with the *same selector* -- only a related, differently named or
+different-arity sibling. All four have since been written and now appear under `mapped`:
 
-- `-[AppleMesh_SCSI ResetHardware:reason:]` (76 bytes) -- source only defines
-  `-[AppleMesh_SCSI(Hardware) ResetHardware:]` (`MESH_DBDMA.m:1208`, one keyword, `(Boolean)
-  resetSCSIBus`), a different (one-fewer-keyword) selector. No `reason:` variant exists in source.
-- `-[AppleMesh_SCSI ResetMESH:reason:]` (348 bytes) -- source only defines
-  `-[AppleMesh_SCSI(Mesh) ResetMESH:]` (`MESH_DBDMA.m:3392`, one keyword), same pattern.
-- `-[AppleMesh_SCSI IssueAbort]` (352 bytes) -- source has no method named `IssueAbort` at all; the
-  closest related methods are `-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` (`MESH_DBDMA.m:3739`) and
-  `-[AppleMesh_SCSI(Mesh) AbortDisconnectedCommand]` (`MESH_DBDMA.m:3788`), two separate zero-argument
-  methods where the binary appears to have one combined selector.
-- `-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]` (92 bytes) -- source keeps this as two
-  separate, already-mapped methods, `-[AppleMesh_SCSI(Private) killActiveCommand:]`
-  (`MESH_DBDMA.m:4429`, mapped to `0x4879`) and `-[AppleMesh_SCSI(Private) threadResetBus:]`
-  (`MESH_DBDMA.m:3998`, mapped to `0x3fe4`, which itself calls `killActiveCommand:` at
-  `MESH_DBDMA.m:3982`). The binary carries an additional combined-selector wrapper this
-  repository's source never implements as a single method.
+| Binary selector | Size | Was | Now written at |
+| --- | --- | --- | --- |
+| `-[AppleMesh_SCSI ResetHardware:reason:]` | 76 B | source had only one-keyword `ResetHardware:` | `MESH_DBDMA.m:1223`, category `Hardware` |
+| `-[AppleMesh_SCSI ResetMESH:reason:]` | 348 B | source had only one-keyword `ResetMESH:` | `MESH_DBDMA.m:3470`, category `Mesh` |
+| `-[AppleMesh_SCSI IssueAbort]` | 352 B | source had `AbortActiveCommand` / `AbortDisconnectedCommand`, no `IssueAbort` | `MESH_DBDMA.m:3822`, category `Mesh` |
+| `-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]` | 92 B | source kept `killActiveCommand:` and `threadResetBus:` separate | `MESH_DBDMA.m:4555`, category `Private` |
 
-None of these four is a name match at all once arity/selector is considered exactly, so none
-qualifies for bucket 5 under the taxonomy established by prior tasks ("a source site genuinely
-exists" for the *same* function). They remain real, characterised gaps.
+The sibling methods that made these near-misses all still exist and are unchanged --
+`-[AppleMesh_SCSI(Hardware) ResetHardware:]`, `-[AppleMesh_SCSI(Mesh) ResetMESH:]`,
+`-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` / `AbortDisconnectedCommand]`,
+`-[AppleMesh_SCSI(Private) killActiveCommand:]` (mapped to `0x4879`) and `threadResetBus:` (mapped
+to `0x3fe4`). Nothing was renamed or removed to make these map; four new methods were added
+alongside them.
+
+Each was placed in the category block matching the binary's own category tag for that selector
+(`Hardware`, `Mesh`, `Mesh`, `Private` respectively -- see the Categories table below), verified
+against `MESH_DBDMA.m`'s `@implementation` block boundaries. The source map does not check category
+placement and would happily map a method written into the wrong block, so this was checked
+separately.
 
 ## Unmapped detail
 
-Six reference selectors have no source-mapped implementation:
+**Two** reference selectors have no source-mapped implementation, down from six, and **both
+remaining ones are build-generated**:
 
-- `-[AppleMesh_SCSI ResetHardware:reason:]` (76 bytes) -- real gap; source has a same-named,
-  different-arity sibling (`ResetHardware:`), not a source-site match. See Buckets/Selector check.
-- `-[AppleMesh_SCSI ResetMESH:reason:]` (348 bytes) -- same pattern (`ResetMESH:`).
-- `-[AppleMesh_SCSI IssueAbort]` (352 bytes) -- real gap; source splits this into
-  `AbortActiveCommand`/`AbortDisconnectedCommand`, neither named `IssueAbort`.
-- `-[AppleMesh_SCSI killActiveCommandAndResetBus:reason:]` (92 bytes) -- real gap; source keeps
-  `killActiveCommand:` and `threadResetBus:` as two separate, already-mapped methods rather than one
-  combined selector.
 - `+[drvPPCMeshKernelServerInstance kernelServerInstance]` (20 bytes) -- build-generated: a
   KernelServer wrapper class instance accessor emitted by the driver-kit build tooling, not
   hand-written driver code (same pattern as every other `_reloc` kernel server measured so far).
 - `+[drvPPCMeshVersion driverKitVersionFordrvPPCMesh]` (16 bytes) -- build-generated: the DriverKit
   version accessor, likewise tool-emitted.
 
-The last two match the `selector_check.py` "missing" list's two build-generated entries exactly; the
-first four match its remaining four "missing" entries exactly (see Selector check below).
+There is no absent hand-written Objective-C method left in this driver. Both entries match the
+`selector_check.py` "missing" list exactly (see Selector check below).
+
+### The four written methods
+
+All four of this driver's previously absent methods were written from their own disassembly in
+`drvPPCMesh_reloc`, into both copies of `MESH_DBDMA.m` (the `src/kernel-7/bsd/dev/ppc/` original and
+the `src/drivers-ppc/scsi/drvPPCMesh/…` packaged copy; `tools/ppc_package_check.py` reports **no
+divergences**, so the two copies stayed identical).
+
+| Method | Size | Category | Line |
+| --- | --- | --- | --- |
+| `- (IOReturn) ResetHardware : (Boolean) reason : (const char*)` | 76 B | `Hardware` | `MESH_DBDMA.m:1223` |
+| `- (IOReturn) ResetMESH : (Boolean) reason : (const char*)` | 348 B | `Mesh` | `MESH_DBDMA.m:3470` |
+| `- (void) IssueAbort` | 352 B | `Mesh` | `MESH_DBDMA.m:3822` |
+| `- (void) killActiveCommandAndResetBus : (sc_status_t) reason : (const char*)` | 92 B | `Private` | `MESH_DBDMA.m:4555` |
+
+`ResetMESH:reason:` (348 B) and `IssueAbort` (352 B) are the two largest bodies written anywhere in
+this reconstruction series.
+
+**None of this is compile-verified.** There is no PowerPC toolchain in this environment; nothing was
+compiled, linked or loaded. The source map matching proves the *selectors* match the binary's; it
+does not prove the *bodies* do.
+
+### Class-layout divergence in `AppleMesh_SCSI` -- the second in this project
+
+Per spec §3.3, the shipped class's `super_class`, `instance_size` and ivar table were read from the
+binary's `__OBJC,__class` / `__OBJC,__instance_vars` sections before any ivar access was written,
+and compared against our `@interface` in `MESH_DBDMA.h:668`.
+
+```
+class AppleMesh_SCSI  super="IOSCSIController"  instance_size=816  ivar_count=43
+```
+
+- **Superclass agrees.** The binary says `IOSCSIController`; `MESH_DBDMA.h:668` declares
+  `@interface AppleMesh_SCSI : IOSCSIController < IOPower >`. This is unlike `IOSmartDisplay` in the
+  IODisplay spec, where the superclass itself diverged.
+- **The ivar layout does not agree.** Eight of the binary's 43 ivar names have no counterpart in our
+  `@interface`, and our `@interface` carries one the binary does not:
+
+```
+in binary but NOT in our @interface:
+    gKernelInterruptPort  gIncomingCmdQ  gIncomingCmdLock  gPendingCmdQ
+    gDisconnectedCmdQ  gMsgOutPtr  gMsgInTagType  gMsgInTag
+
+in our @interface but NOT in the binary:
+    abortCmdQ  incomingCmdQ  incomingCmdLock  pendingCmdQ
+    disconnectedCmdQ  msgOutPtr  msgInTagType  msgInTag
+```
+
+Two distinct things are mixed in those lists, and they matter differently:
+
+1. **A pure naming divergence, harmless.** Seven of the eight pairs are the same ivar under a
+   different spelling: Apple prefixes with `g` where our header does not (`gIncomingCmdQ` /
+   `incomingCmdQ`, `gIncomingCmdLock` / `incomingCmdLock`, `gPendingCmdQ` / `pendingCmdQ`,
+   `gDisconnectedCmdQ` / `disconnectedCmdQ`, `gMsgOutPtr` / `msgOutPtr`, `gMsgInTagType` /
+   `msgInTagType`, `gMsgInTag` / `msgInTag`). Same type, same purpose, same relative position.
+2. **A real structural divergence.** Apple's class has `gKernelInterruptPort` (`int`, at `+0x264`)
+   which ours does not have at all, and ours has `abortCmdQ` (`queue_head_t`, 8 bytes) which Apple's
+   does not. Apple also orders the incoming-queue lock *after* `gIncomingCmdQ` (`+0x268` queue,
+   `+0x270` lock) where ours declares the lock first.
+
+The net size effect is **-4 bytes (the missing port) +8 bytes (the added queue) = +4**: Apple's
+`instance_size` is **816**, and our declarations describe a class of **820**. Every ivar from
+`gActiveCommand` onward therefore sits 4 bytes higher in our layout than in Apple's
+(Apple `gActiveCommand` `+0x284`, ours `+0x288`).
+
+**This did not block any of the four methods.** Every ivar the four bodies touch --
+`gFlagIncompleteDBDMA`, `gActiveCommand`, `gCurrentTarget`, `gCurrentLUN`, `gMsgInState`,
+`msgOutPtr`, `gPerTargetData`, `gMsgInFlag`, `meshAddr` -- exists in our `@interface` under a name
+our source can compile against, so all four were written rather than recorded as unwritable the way
+`findADBDisplayInfoForType:` was. The bodies use *our* spellings (`msgOutPtr`, not `gMsgOutPtr`),
+because they must compile against our header, not Apple's.
+
+**But it is a finding in its own right, and the second class-layout divergence this project has
+found**, after `IOSmartDisplay`'s in the IODisplay spec. Consequences worth recording:
+
+- Any future reconstruction of a `drvPPCMesh` method that reads an ivar **by offset**, or that
+  touches `gKernelInterruptPort`, is not writable against this header as it stands.
+- A binary compiled from our header would not be layout-compatible with Apple's shipped
+  `AppleMesh_SCSI`, so the two are not interchangeable at the ABI level.
+- Which side is "right" is not established here. `abortCmdQ` may be a later revision, or a
+  reconstruction-era addition; `gKernelInterruptPort` may have been dropped for the same reason.
+  **This is recorded, not resolved** -- settling it needs evidence this task did not gather.
+
+### Uncertainties carried forward
+
+Per spec §3.4, a confident guess is a defect and a recorded uncertainty is a result. These are the
+open ones from writing the four bodies:
+
+- **`ResetMESH:reason:` never uses its `reason` argument.** Under the Objective-C ABI this method's
+  arguments arrive in `r5` (`resetSCSIBus`) and `r6` (`reason`). Across all 87 instructions of the
+  348-byte body at `0x3348`, **`r6` is never referenced** -- not read, not saved, not forwarded.
+  `r5` is used: `mr r31, r5` at `0x3370` parks `resetSCSIBus`, and `cmpwi cr1, r31, 0` at `0x33e0`
+  is the `if (resetSCSIBus)` branch the written body has. Nor is `r6` forwarded implicitly: every
+  call this method makes (`SetSeqReg:`, `GetHBARegsAndClear:`, `dbdma_reset`, `IODelay`, `IOSleep`)
+  is single-argument, so nothing could pass it along untouched.
+
+  The parameter is in the selector and in the `__OBJC,__meth_var_types` encoding, so it must be in
+  the signature, but the shipped build makes no use of it -- most plausibly a logging call compiled
+  out by a disabled `ELG`/`kprintf` macro, which is exactly the shape `EvLog`/`Pause` take elsewhere
+  in this file. **That explanation is not confirmed**, because a compiled-out call leaves nothing to
+  read. What is confirmed is only that the argument is unused.
+
+  Note the contrast, which was checked rather than assumed: `ResetHardware:reason:` (`0x1164`) also
+  never *references* `r6`, but there it is a pass-through, not disuse -- the method calls
+  `ResetMESH:reason:` without touching `r5` or `r6`, so both incoming arguments are forwarded
+  exactly as received. `killActiveCommandAndResetBus:reason:` does use its `reason`: `mr r29, r6`
+  at `0x4828`, restored to `r5` at `0x4844` for the `threadResetBus:` call.
+- **`IssueAbort` sets `transferCount0 = 0` where `AbortActiveCommand` sets `1`.** The existing,
+  already-mapped `-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` writes `meshAddr->transferCount0 = 1`
+  with Apple's own comment "set TC low = 1". `IssueAbort`'s disassembly writes `0`: `li r0, 0` at
+  `0x3c14` feeding `stb r0, 0(r9)` at `0x3c18`, where `r9` is `meshAddr` (`lwz r9, 0x244(r30)`).
+  The written body follows the binary, not the sibling. Whether the difference is deliberate or an
+  Apple-side inconsistency is **not established**.
+- **`IssueAbort` preloads the FIFO before issuing the Message Out command; `AbortActiveCommand`
+  issues the command first.** In `AbortActiveCommand` the source order is `SetSeqReg :
+  kMeshMessageOutCmd`, *then* `meshAddr->xFIFO = kScsiMsgAbort`. In `IssueAbort` the disassembly
+  reverses it: `stb r0, 0x20(r9)` with `r0 = 6` (`kScsiMsgAbort` into `xFIFO`) at `0x3c0c`, then the
+  counters and `busStatus0`, then `SetSeqReg : kMeshEnableReselect` (`li r5, 0xC`, `0x3c38`),
+  `SetIntMask` (`0x3c50`), and only at `0x3c60` `SetSeqReg : kMeshMessageOutCmd` (`li r5, 7`). The
+  written body follows the binary. This is a real ordering difference against the sibling method and
+  is **recorded, not reconciled**.
+- **`IODelay( 25 )` in `ResetMESH:reason:` has no named constant.** The 25-microsecond SCSI reset
+  assertion window is a bare literal in the binary, and a search of this tree found no named
+  constant for it -- unlike `APPLE_SCSI_RESET_DELAY`, which *was* found and is used for the 250 ms
+  settling delay in the same method, and unlike `SR_IOST_RESET` (`= 20`,
+  `src/kernel-7/bsd/dev/scsireg.h:806`), which was traced from the bare `li r5, 0x14` in
+  `ResetHardware:reason:`. Written as a literal with a comment recording that no name was found, per
+  spec §4 item 4. The SCSITape spec's observation that every unknown constant is defined somewhere
+  in this tree has held twice before; **this is its counterexample.**
+- **`r30` in `killActiveCommandAndResetBus:reason:` is saved but never used.** The 92-byte body
+  saves `r30` (`stw r30, var_8(r1)` at `0x4814`) and restores it (`lwz r30, var_8(r1)` at `0x485c`),
+  and across all 23 instructions those two are the **only** references to `r30` -- nothing in
+  between reads or writes it. Almost certainly a compiler artifact: a callee-saved register
+  allocated for a value that was then optimised away. The written body has no counterpart for it,
+  which is correct if that reading is right. Recorded because spec §3.2 requires accounting for
+  every instruction, and this is the one instruction pair with no source-level counterpart by
+  design.
+
+One more uncertainty is inherited rather than new: `defaultSelectionTimeout = 25` in
+`ResetMESH:reason:` carries Apple's own `// mlj ??? fix this value` comment, transcribed as-is from
+the sibling `ResetMESH:`. That is Apple's uncertainty, not this reconstruction's.
 
 ## Invariant check
 
@@ -309,19 +462,15 @@ measured so far.
 
 ```
 reference selectors: 72
-our definitions:     73
+our definitions:     77
 
 renames (0):
 
 duplicates (0):
 
-missing (6):
+missing (2):
     +[drvPPCMeshKernelServerInstance kernelServerInstance]
     +[drvPPCMeshVersion driverKitVersionFordrvPPCMesh]
-    -[AppleMesh_SCSI(Hardware) ResetHardware:reason:]
-    -[AppleMesh_SCSI(Mesh) IssueAbort]
-    -[AppleMesh_SCSI(Mesh) ResetMESH:reason:]
-    -[AppleMesh_SCSI(Private) killActiveCommandAndResetBus:reason:]
 
 extra (7):
     -[AppleMesh_SCSI getIntValues:forParameter:count:]
@@ -337,30 +486,44 @@ Exit code: 0 (`renames`/`duplicates` both empty, so the check does not fail on a
 inconsistency; it still reports non-empty `missing`/`extra` sets, which this task's brief requires
 characterising rather than treating as failure).
 
-"Reference selectors: 72" and "our definitions: 73" match the read_macho category count (72) and the
-method-definition recount (73) above exactly. Characterising each entry, class-insensitively as well
-(the class name `AppleMesh_SCSI` and its lower/upper-case variants do not appear misspelled or
+**The `missing` list is down from 6 entries to 2, and `our definitions` up from 73 to 77** -- the
+four written methods, exactly. `missing` now contains only the two build-generated classes.
+Critically, `renames` and `duplicates` are both still **0**: the four were added under selectors that
+match the binary's exactly, not under near-miss or double-underscored names, so `selector_check.py`
+corroborates the source map's own verdict from the binary's raw symbol table rather than from IDA's
+export.
+
+"Reference selectors: 72" is unchanged and is a property of the binary. "Our definitions: 77" matches
+the method-definition recount (77) above exactly. Characterising each entry, class-insensitively as
+well (the class name `AppleMesh_SCSI` and its lower/upper-case variants do not appear misspelled or
 differently-cased anywhere in either list, so the class-insensitive re-check changes nothing here):
 
 - `+[drvPPCMeshKernelServerInstance kernelServerInstance]`, `+[drvPPCMeshVersion
   driverKitVersionFordrvPPCMesh]` -- both build-generated (see Unmapped detail); no source
   counterpart exists or is expected for either class.
-- `-[AppleMesh_SCSI(Hardware) ResetHardware:reason:]` (missing) pairs with `-[AppleMesh_SCSI(Hardware)
-  ResetHardware:]` (extra): the reference binary's two-keyword selector has no source match; source's
-  one-keyword selector has no binary match. Same method name, genuinely different selector (different
+
+The four entries below are **no longer missing** -- each now has an exact-selector definition. The
+pairings are kept because they explain why the four "extra" siblings are still extra:
+
+- `-[AppleMesh_SCSI(Hardware) ResetHardware:reason:]` (was missing, now written) pairs with
+  `-[AppleMesh_SCSI(Hardware)
+  ResetHardware:]` (extra): the reference binary's two-keyword selector had no source match; source's
+  one-keyword selector still has no binary match. Same method name, genuinely different selector (different
   argument count), not a rename or duplicate in `selector_check.py`'s own sense (which reserves
   "renames" for exact-selector matches at different addresses).
-- `-[AppleMesh_SCSI(Mesh) ResetMESH:reason:]` (missing) pairs with `-[AppleMesh_SCSI(Mesh) ResetMESH:]`
-  (extra): identical pattern.
-- `-[AppleMesh_SCSI(Mesh) IssueAbort]` (missing) pairs with the two extra `-[AppleMesh_SCSI(Mesh)
-  AbortActiveCommand]` / `-[AppleMesh_SCSI(Mesh) AbortDisconnectedCommand]`: the binary's single
-  no-argument selector corresponds, in source, to two separately named no-argument methods with
-  completely different selector names (not merely different arity).
-- `-[AppleMesh_SCSI(Private) killActiveCommandAndResetBus:reason:]` (missing) has no "extra"
-  counterpart in this list, because its two source-side relatives (`killActiveCommand:` and
-  `threadResetBus:`) are *not* extra -- both already have their own exact-selector match in the
-  binary and are counted in `mapped` (addresses `0x4879` and `0x3fe4` respectively). The binary
-  additionally carries a combined-selector wrapper source never implements as its own method.
+- `-[AppleMesh_SCSI(Mesh) ResetMESH:reason:]` (was missing, now written) pairs with
+  `-[AppleMesh_SCSI(Mesh) ResetMESH:]` (extra): identical pattern.
+- `-[AppleMesh_SCSI(Mesh) IssueAbort]` (was missing, now written) pairs with the two extra
+  `-[AppleMesh_SCSI(Mesh) AbortActiveCommand]` / `-[AppleMesh_SCSI(Mesh) AbortDisconnectedCommand]`:
+  the binary's single no-argument selector corresponds, in the pre-existing source, to two
+  separately named no-argument methods with completely different selector names (not merely
+  different arity). Those two remain, unmodified; `IssueAbort` was written alongside them, following
+  its own disassembly rather than being synthesised from either.
+- `-[AppleMesh_SCSI(Private) killActiveCommandAndResetBus:reason:]` (was missing, now written) has
+  no "extra" counterpart in this list, because its two source-side relatives (`killActiveCommand:`
+  and `threadResetBus:`) are *not* extra -- both already have their own exact-selector match in the
+  binary and are counted in `mapped` (addresses `0x4879` and `0x3fe4` respectively). The written
+  method is the combined-selector wrapper that calls them both, matching the binary's 92-byte body.
 - `-[AppleMesh_SCSI getIntValues:forParameter:count:]`, `-[AppleMesh_SCSI
   setIntValues:forParameter:count:]` (extra) -- genuinely extra, three-keyword selectors with no
   missing counterpart at all; the reference binary has no `IntValues`-shaped selector anywhere
@@ -392,8 +555,8 @@ every other bundle pair measured in this project.
 Step 5's map-derived per-category count comes back entirely under `(primary)`:
 
 ```
-mapped 66 unmapped 6 dup 0 disputed 0
-mapped per category: {'(primary)': 66}
+mapped 70 unmapped 2 dup 0 disputed 0
+mapped per category: {'(primary)': 70}
 ```
 
 This is IDA's export stripping Objective-C category tags, exactly as the brief predicted -- the
@@ -408,34 +571,57 @@ every Objective-C-shaped symbol name:
 {'(primary)': 22, 'Hardware': 3, 'HardwarePrivate': 6, 'MeshInterrupt': 13, 'Mesh': 10, 'Private': 18}
 ```
 
-Total: 22 + 3 + 6 + 13 + 10 + 18 = 72, matching the source map's 66 mapped + 6 unmapped exactly.
+Total: 22 + 3 + 6 + 13 + 10 + 18 = 72, matching the source map's 70 mapped + 2 unmapped exactly.
+(This split is a property of the binary and is unchanged from first measurement.)
 
-To attribute each of the map's 66 `mapped` addresses to a real category (not just the flattened
+To attribute each of the map's 70 `mapped` addresses to a real category (not just the flattened
 `(primary)` IDA gives), each mapped entry's address was looked up a second time directly against
 `read_macho`'s symbol table (which retains the category tag), joining on address rather than on name:
 
 ```
-mapped by real category: {'(primary)': 20, 'Hardware': 2, 'HardwarePrivate': 6, 'MeshInterrupt': 13, 'Mesh': 8, 'Private': 17}
+mapped by real category:   {'(primary)': 20, 'Hardware': 3, 'HardwarePrivate': 6, 'MeshInterrupt': 13, 'Mesh': 10, 'Private': 18}
+unmapped by real category: {'(primary)': 2}
 ```
 
-20 + 2 + 6 + 13 + 8 + 17 = 66, matching `mapped` exactly. Combining this with the 6 unmapped entries'
-own categories (looked up the same way) accounts for the full 72-selector, 6-category split:
+20 + 3 + 6 + 13 + 10 + 18 = 70, matching `mapped` exactly:
 
 | Category | Mapped | Unmapped | Total (this class) |
 | --- | --- | --- | --- |
 | `(primary)` | 20 | 0 | 20 |
-| `Hardware` | 2 | 1 (`ResetHardware:reason:`) | 3 |
+| `Hardware` | 3 | 0 | 3 |
 | `HardwarePrivate` | 6 | 0 | 6 |
 | `MeshInterrupt` | 13 | 0 | 13 |
-| `Mesh` | 8 | 2 (`ResetMESH:reason:`, `IssueAbort`) | 10 |
-| `Private` | 17 | 1 (`killActiveCommandAndResetBus:reason:`) | 18 |
-| **`AppleMesh_SCSI` subtotal** | **66** | **4** | **70** |
+| `Mesh` | 10 | 0 | 10 |
+| `Private` | 18 | 0 | 18 |
+| **`AppleMesh_SCSI` subtotal** | **70** | **0** | **70** |
 | build-generated (`drvPPCMeshKernelServerInstance`, `drvPPCMeshVersion`) | 0 | 2 | 2 |
-| **Grand total** | **66** | **6** | **72** |
+| **Grand total** | **70** | **2** | **72** |
 
 This reconciles exactly against both the `read_macho`-derived category counts above (22 = 20
 `AppleMesh_SCSI` primary + 2 build-generated classes' own primary-category methods) and the source
-map's `mapped 66 unmapped 6` headline. `MeshInterrupt` (13 mapped, 0 unmapped) is the only category
-with a perfect 1:1 match to its source-block count (13, see Correspondence); every other category has
-at least one unmapped/extra selector, consistent with this driver being "the most category-fragmented
-driver measured so far" per the brief.
+map's `mapped 70 unmapped 2` headline.
+
+**Every category of `AppleMesh_SCSI` is now fully mapped**, and the only two unmapped selectors in
+the whole binary belong to the two build-generated classes. At first measurement `MeshInterrupt` was
+the only category with a perfect 1:1 match; `Hardware` (2/3), `Mesh` (8/10) and `Private` (17/18)
+each had a hole, and writing the four methods closed all three. The driver the brief called "the
+most category-fragmented measured so far" now has no unmapped hand-written method in any category.
+
+**What this table does not prove.** The `mapped by real category` join is on address, and takes the
+category from the *binary's* symbol table -- so it shows which binary selectors are now mapped, not
+where in our source they were written. The source map does not check category placement and would
+map a method written into the wrong `@implementation` block just as happily. Placement was therefore
+checked separately, against `MESH_DBDMA.m`'s own block boundaries:
+
+```
+444:@implementation AppleMesh_SCSI          1042:@end
+1046:@implementation AppleMesh_SCSI( Hardware )         1468:@end
+1519:@implementation AppleMesh_SCSI( HardwarePrivate )  2212:@end
+2217:@implementation AppleMesh_SCSI( MeshInterrupt )    3396:@end
+3399:@implementation AppleMesh_SCSI( Mesh )             4050:@end
+4053:@implementation AppleMesh_SCSI( Private )          4724:@end
+```
+
+Line 1223 falls inside `Hardware`, 3470 and 3822 inside `Mesh`, and 4555 inside `Private` --
+matching each selector's category tag in the binary. That is the check; the table above is
+corroboration that the corresponding binary selectors stopped being unmapped.

@@ -9,8 +9,8 @@
 #define kGNicRegExample		0x40000		// Example register
 
 // External function declarations
-extern unsigned int _ReadGNicRegister(int base, unsigned int offset_and_size);
-extern void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int value);
+extern unsigned int ReadGNicRegister(int base, unsigned int offset_and_size);
+extern void WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int value);
 extern void enforceInOrderExecutionIO(void);
 extern int IOPhysicalFromVirtual(void *virtualAddr, void **physicalAddr);
 extern void IOGetTimestamp(ns_time_t *time);
@@ -30,37 +30,37 @@ extern void IOGetTimestamp(ns_time_t *time);
     // Clear multicast table and other registers (64 entries, 8 bytes each)
     i = 0;
     do {
-        _WriteGNicRegister((int)memBase, i * 8 + 0x40100, 0);
-        _WriteGNicRegister((int)memBase, i * 8 + 0x40104, 0);
+        WriteGNicRegister((int)memBase, i * 8 + 0x40100, 0);
+        WriteGNicRegister((int)memBase, i * 8 + 0x40104, 0);
         i = i + 1;
     } while (i < 0x40);
 
     // Configure chip registers
-    _WriteGNicRegister((int)memBase, 0x400b8, 0x1e000c00);
-    _WriteGNicRegister((int)memBase, 0x200a8, 0);
-    _WriteGNicRegister((int)memBase, 0x200a0, 0x14e);
-    _WriteGNicRegister((int)memBase, 0x200d0, 1);
-    _WriteGNicRegister((int)memBase, 0x200a2, 0xc);
-    _WriteGNicRegister((int)memBase, 0x400b0, 0x260500);
-    _WriteGNicRegister((int)memBase, 0x200f8, 0x4c);
-    _WriteGNicRegister((int)memBase, 0x400bc, 0x30ffff);
-    _WriteGNicRegister((int)memBase, 0x200ce, 0x600);
-    _WriteGNicRegister((int)memBase, 0x200e4, 0x400);
-    _WriteGNicRegister((int)memBase, 0x40078, 0x400000);
-    _WriteGNicRegister((int)memBase, 0x4007c, 0x50b00);
-    _WriteGNicRegister((int)memBase, 0x20000, 0x15);
-    _WriteGNicRegister((int)memBase, 0x20020, 0x15);
+    WriteGNicRegister((int)memBase, 0x400b8, 0x1e000c00);
+    WriteGNicRegister((int)memBase, 0x200a8, 0);
+    WriteGNicRegister((int)memBase, 0x200a0, 0x14e);
+    WriteGNicRegister((int)memBase, 0x200d0, 1);
+    WriteGNicRegister((int)memBase, 0x200a2, 0xc);
+    WriteGNicRegister((int)memBase, 0x400b0, 0x260500);
+    WriteGNicRegister((int)memBase, 0x200f8, 0x4c);
+    WriteGNicRegister((int)memBase, 0x400bc, 0x30ffff);
+    WriteGNicRegister((int)memBase, 0x200ce, 0x600);
+    WriteGNicRegister((int)memBase, 0x200e4, 0x400);
+    WriteGNicRegister((int)memBase, 0x40078, 0x400000);
+    WriteGNicRegister((int)memBase, 0x4007c, 0x50b00);
+    WriteGNicRegister((int)memBase, 0x20000, 0x15);
+    WriteGNicRegister((int)memBase, 0x20020, 0x15);
 
     // Set TX descriptor ring physical address
-    _WriteGNicRegister((int)memBase, 0x40008, txDMACommandsPhys);
+    WriteGNicRegister((int)memBase, 0x40008, txDMACommandsPhys);
 
     // Set RX descriptor ring physical address
-    _WriteGNicRegister((int)memBase, 0x40028, rxDMACommandsPhys);
+    WriteGNicRegister((int)memBase, 0x40028, rxDMACommandsPhys);
 
     // Additional configuration
-    _WriteGNicRegister((int)memBase, 0x200e4, 0x400);
-    _WriteGNicRegister((int)memBase, 0x200e8, 0xa0);
-    _WriteGNicRegister((int)memBase, 0x200e0, 0x1000);
+    WriteGNicRegister((int)memBase, 0x200e4, 0x400);
+    WriteGNicRegister((int)memBase, 0x200e8, 0xa0);
+    WriteGNicRegister((int)memBase, 0x200e0, 0x1000);
 
     return YES;
 }
@@ -73,11 +73,11 @@ extern void IOGetTimestamp(ns_time_t *time);
     unsigned int resetStatus;
 
     // Initiate software reset by writing 1 to reset register
-    _WriteGNicRegister((int)memBase, 0x1006b, 1);
+    WriteGNicRegister((int)memBase, 0x1006b, 1);
 
     // Poll until reset completes (bit 0 clears)
     do {
-        resetStatus = _ReadGNicRegister((int)memBase, 0x1006b);
+        resetStatus = ReadGNicRegister((int)memBase, 0x1006b);
     } while ((resetStatus & 1) != 0);
 
     // Delay 10 microseconds
@@ -85,7 +85,7 @@ extern void IOGetTimestamp(ns_time_t *time);
 
     // Wait for chip to be ready (bit 0x40 clears in status register)
     do {
-        resetStatus = _ReadGNicRegister((int)memBase, 0x100f0);
+        resetStatus = ReadGNicRegister((int)memBase, 0x100f0);
     } while ((resetStatus & 0x40) != 0);
 }
 
@@ -97,16 +97,16 @@ extern void IOGetTimestamp(ns_time_t *time);
     unsigned int regValue;
 
     // Read current value from control register
-    regValue = _ReadGNicRegister((int)memBase, 0x400b0);
+    regValue = ReadGNicRegister((int)memBase, 0x400b0);
 
     // Set bits 0x280 to enable transmitter and receiver
-    _WriteGNicRegister((int)memBase, 0x400b0, regValue | 0x280);
+    WriteGNicRegister((int)memBase, 0x400b0, regValue | 0x280);
 
     // Kick receive DMA
-    _WriteGNicRegister((int)memBase, 0x20024, 1);
+    WriteGNicRegister((int)memBase, 0x20024, 1);
 
     // Kick transmit DMA
-    _WriteGNicRegister((int)memBase, 0x20004, 1);
+    WriteGNicRegister((int)memBase, 0x20004, 1);
 }
 
 //
@@ -271,7 +271,7 @@ extern void IOGetTimestamp(ns_time_t *time);
 - (void)_enableAdapterInterrupts
 {
     // Enable interrupts by writing mask to interrupt enable register
-    _WriteGNicRegister((int)memBase, 0x40080, 0x80838787);
+    WriteGNicRegister((int)memBase, 0x40080, 0x80838787);
 }
 
 //
@@ -280,7 +280,7 @@ extern void IOGetTimestamp(ns_time_t *time);
 - (void)_disableAdapterInterrupts
 {
     // Disable all interrupts by writing 0 to interrupt enable register
-    _WriteGNicRegister((int)memBase, 0x40080, 0);
+    WriteGNicRegister((int)memBase, 0x40080, 0);
 }
 
 //
@@ -368,7 +368,7 @@ extern void IOGetTimestamp(ns_time_t *time);
         txTail = nextTail;
 
         // Kick transmit DMA
-        _WriteGNicRegister((int)memBase, 0x20004, 1);
+        WriteGNicRegister((int)memBase, 0x20004, 1);
     }
 }
 
@@ -606,23 +606,23 @@ extern void IOGetTimestamp(ns_time_t *time);
                 }
 
                 // Read and clear error counters
-                errorCount1 = _ReadGNicRegister((int)memBase, 0x40350);
-                errorCount2 = _ReadGNicRegister((int)memBase, 0x40354);
-                errorCount3 = _ReadGNicRegister((int)memBase, 0x40360);
-                errorCount4 = _ReadGNicRegister((int)memBase, 0x40368);
-                errorCount5 = _ReadGNicRegister((int)memBase, 0x4036c);
-                _WriteGNicRegister((int)memBase, 0x40350, 0);
-                _WriteGNicRegister((int)memBase, 0x40354, 0);
-                _WriteGNicRegister((int)memBase, 0x40360, 0);
-                _WriteGNicRegister((int)memBase, 0x40368, 0);
-                _WriteGNicRegister((int)memBase, 0x4036c, 0);
+                errorCount1 = ReadGNicRegister((int)memBase, 0x40350);
+                errorCount2 = ReadGNicRegister((int)memBase, 0x40354);
+                errorCount3 = ReadGNicRegister((int)memBase, 0x40360);
+                errorCount4 = ReadGNicRegister((int)memBase, 0x40368);
+                errorCount5 = ReadGNicRegister((int)memBase, 0x4036c);
+                WriteGNicRegister((int)memBase, 0x40350, 0);
+                WriteGNicRegister((int)memBase, 0x40354, 0);
+                WriteGNicRegister((int)memBase, 0x40360, 0);
+                WriteGNicRegister((int)memBase, 0x40368, 0);
+                WriteGNicRegister((int)memBase, 0x4036c, 0);
 
                 // Increment error counter
                 [network incrementInputErrorsBy:(errorCount1 + errorCount2 + errorCount3 +
                                                   errorCount4 + errorCount5)];
 
                 // Kick receive register
-                _WriteGNicRegister((int)memBase, 0x20024, 1);
+                WriteGNicRegister((int)memBase, 0x20024, 1);
                 return YES;
             }
 
@@ -728,19 +728,19 @@ extern void IOGetTimestamp(ns_time_t *time);
                 rxHead = currentIndex;
             }
             // Read and clear error counters
-            errorCount1 = _ReadGNicRegister((int)memBase, 0x40350);
-            errorCount2 = _ReadGNicRegister((int)memBase, 0x40354);
-            errorCount3 = _ReadGNicRegister((int)memBase, 0x40360);
-            errorCount4 = _ReadGNicRegister((int)memBase, 0x40368);
-            errorCount5 = _ReadGNicRegister((int)memBase, 0x4036c);
-            _WriteGNicRegister((int)memBase, 0x40350, 0);
-            _WriteGNicRegister((int)memBase, 0x40354, 0);
-            _WriteGNicRegister((int)memBase, 0x40360, 0);
-            _WriteGNicRegister((int)memBase, 0x40368, 0);
-            _WriteGNicRegister((int)memBase, 0x4036c, 0);
+            errorCount1 = ReadGNicRegister((int)memBase, 0x40350);
+            errorCount2 = ReadGNicRegister((int)memBase, 0x40354);
+            errorCount3 = ReadGNicRegister((int)memBase, 0x40360);
+            errorCount4 = ReadGNicRegister((int)memBase, 0x40368);
+            errorCount5 = ReadGNicRegister((int)memBase, 0x4036c);
+            WriteGNicRegister((int)memBase, 0x40350, 0);
+            WriteGNicRegister((int)memBase, 0x40354, 0);
+            WriteGNicRegister((int)memBase, 0x40360, 0);
+            WriteGNicRegister((int)memBase, 0x40368, 0);
+            WriteGNicRegister((int)memBase, 0x4036c, 0);
             [network incrementInputErrorsBy:(errorCount1 + errorCount2 + errorCount3 +
                                               errorCount4 + errorCount5)];
-            _WriteGNicRegister((int)memBase, 0x20024, 1);
+            WriteGNicRegister((int)memBase, 0x20024, 1);
             return YES;
         } else {
             // Normal mode - send to network stack
@@ -789,19 +789,19 @@ extern void IOGetTimestamp(ns_time_t *time);
 
     do {
         // Read status register for this slot (offset +6)
-        regValue = _ReadGNicRegister((int)memBase, regOffset + 6);
+        regValue = ReadGNicRegister((int)memBase, regOffset + 6);
 
         // Check if bit 2 is clear (slot is available)
         if ((regValue & 2) == 0) {
             // Found empty slot - write MAC address (6 bytes)
             i = 0;
             do {
-                _WriteGNicRegister((int)memBase, regOffset + i, address->ea_byte[i]);
+                WriteGNicRegister((int)memBase, regOffset + i, address->ea_byte[i]);
                 i = i + 1;
             } while (i < 6);
 
             // Mark slot as valid by setting bit 2
-            _WriteGNicRegister((int)memBase, regOffset + i, 2);
+            WriteGNicRegister((int)memBase, regOffset + i, 2);
             return;
         }
 
@@ -827,8 +827,8 @@ extern void IOGetTimestamp(ns_time_t *time);
         index = index * 8;
 
         // Clear the multicast entry (write 0 to both registers)
-        _WriteGNicRegister((int)memBase, (index + 0x104) | 0x40000, 0);
-        _WriteGNicRegister((int)memBase, (index + 0x100) | 0x40000, 0);
+        WriteGNicRegister((int)memBase, (index + 0x104) | 0x40000, 0);
+        WriteGNicRegister((int)memBase, (index + 0x100) | 0x40000, 0);
     }
 }
 
@@ -849,7 +849,7 @@ extern void IOGetTimestamp(ns_time_t *time);
 
     do {
         // Read status register for this slot (offset +6)
-        regValue = _ReadGNicRegister((int)memBase, regOffset + 6);
+        regValue = ReadGNicRegister((int)memBase, regOffset + 6);
 
         // Check if bit 2 is set (slot is valid/in use)
         if ((regValue & 2) != 0) {
@@ -857,7 +857,7 @@ extern void IOGetTimestamp(ns_time_t *time);
             byteIndex = 0;
             while (1) {
                 // Read byte from hardware register
-                addrByte = _ReadGNicRegister((int)memBase, regOffset + byteIndex);
+                addrByte = ReadGNicRegister((int)memBase, regOffset + byteIndex);
 
                 // Compare with input address byte
                 if (addrByte != (unsigned char)address->ea_byte[byteIndex]) {
@@ -902,7 +902,7 @@ extern void IOGetTimestamp(ns_time_t *time);
 
         // Read 16-bit word from MAC address register
         // Registers start at 0x200d2 and are 2 bytes apart
-        regValue = _ReadGNicRegister((int)memBase, byteOffset + 0x200d2);
+        regValue = ReadGNicRegister((int)memBase, byteOffset + 0x200d2);
 
         // Extract and store low byte
         addr->ea_byte[byteOffset] = (unsigned char)(regValue & 0xFFFF);
@@ -994,22 +994,22 @@ extern void IOGetTimestamp(ns_time_t *time);
     unsigned int regValue;
 
     // Read current link status from register 0x200e2
-    currentStatus = _ReadGNicRegister((int)memBase, 0x200e2);
+    currentStatus = ReadGNicRegister((int)memBase, 0x200e2);
 
     // Check if link status bit 0x80 has changed
     if (((currentStatus ^ linkStatus) & 0x80) != 0) {
         if ((currentStatus & 0x80) == 0) {
             // Link is down
             IOLog("Ethernet(GNic): Link is down.\n\r");
-            regValue = _ReadGNicRegister((int)memBase, 0x1006c);
+            regValue = ReadGNicRegister((int)memBase, 0x1006c);
             regValue = (regValue & 0xfc) | 3;
         } else {
             // Link is up
             IOLog("Ethernet(GNic): Link is up at 1Gb - Full Duplex\n\r");
-            regValue = _ReadGNicRegister((int)memBase, 0x1006c);
+            regValue = ReadGNicRegister((int)memBase, 0x1006c);
             regValue = (regValue & 0xfc) | 1;
         }
-        _WriteGNicRegister((int)memBase, 0x1006c, regValue);
+        WriteGNicRegister((int)memBase, 0x1006c, regValue);
     }
 
     // Store current status for next comparison

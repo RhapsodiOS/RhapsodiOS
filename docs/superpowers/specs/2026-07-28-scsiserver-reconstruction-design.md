@@ -141,7 +141,7 @@ reason; do not count it as unmapped work.
 ### 4.2 Mapping
 
 **35 of the 48 hand-written functions are C** — the 18 `_IOSCSISession_*`
-wrappers, the 10 IOTask plumbing functions, and 7 others including
+server-side implementations, the 10 IOTask plumbing functions, and 7 others including
 `_serverThreadFunc` and the four reservation routines. Only 13 are Objective-C
 methods. Every prior spec in this series used `--scope-to-objc`, which restricts
 the analysis to Objective-C methods and would silently drop all 35. A map that

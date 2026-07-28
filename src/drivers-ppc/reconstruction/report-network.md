@@ -51,6 +51,18 @@ four**, and in all four the two unmapped entries are the same build-generated
 pair (§3). The 36 unmapped bytes are identical across the four because they are
 the same two tool-emitted accessors, 20 + 16 bytes.
 
+> **CORRECTION (2026-07-28).** Read the uniformity above for what it is: a
+> statement about **Objective-C methods only**. `--scope-to-objc` excludes every
+> hand-written C function from the map's universe, so an unmapped C function
+> cannot raise the `unmap` column no matter how badly it is named. GNic's did
+> not: two of its C functions carried a spurious leading underscore in the source
+> and would have emitted symbols matching nothing in Apple's table, and the
+> `unmap 2` above was blind to it. Fixed for GNic and remapped on the non-scoped
+> route (§3, §4.4). **The other three drivers in this table have not been checked
+> for the same defect** -- their C functions were moved to bucket 5 by the same
+> hand procedure, and for Mace and Dec21040 by disassembly as well, but no
+> definition-site check has been run over them.
+
 ### Named / unnamed split
 
 `--scope-to-objc` restricts each map to the binary's Objective-C methods, so the
@@ -228,6 +240,20 @@ Bucket-5 moves are recorded with file and line in each `findings.md`:
 
 - [GNic](GNic/findings.md): `_WriteGNicRegister` (`GNicEnet.m:66`),
   `_ReadGNicRegister` (`GNicEnet.m:32`).
+  > **CORRECTION (2026-07-28).** These two moves were made on the wrong name.
+  > The source identifiers were `_ReadGNicRegister` and `_WriteGNicRegister`,
+  > underscore included, so the compiler would have emitted
+  > `__ReadGNicRegister` / `__WriteGNicRegister` -- two underscores, matching
+  > nothing in Apple's symbol table. The hand move was a coincidence of spelling,
+  > not a correspondence, and **GNic's real gap count in this table was 3, not
+  > 1**. Both were renamed in commit `913c733a` and the map was rebuilt on the
+  > non-scoped route: `mapped 47 unmapped 5` before, `mapped 49 unmapped 3`
+  > after, over the same 52 named functions, with the two now resolving to
+  > `GNicEnet.m:32` and `:66`. `symbol_name_check.py` reports 2 hand-written C
+  > symbols and 0 missing definitions. Bucket 5 is now 0 by construction rather
+  > than by hand. See [GNic/findings.md](GNic/findings.md), "The underscore
+  > defect and the remap". Nothing was compiled: "the symbols would now match"
+  > follows from the Mach-O naming rule, not from a build.
 - [Gem](Gem/findings.md): `_WriteGemRegister` (`GemEnet.m:76`),
   `_ReadGemRegister` (`GemEnet.m:32`), `_mace_crc` (`GemEnetPrivate.m:135`).
   **`_mace_crc`'s move is a name-only match**, not a confirmed correspondence -
@@ -569,7 +595,7 @@ other. On the criterion, one driver separates cleanly from the rest.
 - **The follow-on spec's job:** packaging (§4.6, `files.ppc:109-111`). Nothing
   on correspondence grounds.
 
-### 4. `drvPPCGNic` - one method on correspondence grounds
+### 4. `drvPPCGNic` - one method and two misnamed C functions
 
 - **Measured:** 47 mapped / 2 unmapped / 0 dup / 0 disputed; 8156 mapped bytes
   against 36 unmapped. 156 functions, the smallest in the batch.
@@ -584,6 +610,21 @@ other. On the criterion, one driver separates cleanly from the rest.
   even carry the packaging gap - it is already a `.drvproj` under
   `src/drivers-ppc`. Worth a spec only for a compile attempt once a PowerPC
   toolchain exists.
+
+> **CORRECTION (2026-07-28).** The ranking above put GNic at the clean end of
+> the batch on the strength of a bucket-5 move that did not hold. **This driver
+> had two unmapped hand-written C functions, not zero.** `_ReadGNicRegister`
+> (0x283c, 132 bytes) and `_WriteGNicRegister` (0x27bc, 128 bytes) were spelled
+> with a leading underscore in the source, which the compiler would have doubled;
+> the `--scope-to-objc` map never claimed them, so no count in this report
+> exposed it. Renamed in commit `913c733a` and remapped on the non-scoped route
+> (`mapped 47 -> 49`, `unmapped 5 -> 3`, over 52 named functions), both now
+> resolve to `GNicEnet.m:32` and `:66`; `symbol_name_check.py` reports 2 symbols
+> and 0 missing. The rest of the entry stands: 47 Objective-C methods mapped,
+> `_allocateMemory` at `__text+0` still uncompared, `__udivdi3` still compiler
+> runtime. Nothing was compiled; the naming claim rests on the Mach-O rule.
+> Evidence: [GNic/findings.md](GNic/findings.md), "The underscore defect and the
+> remap".
 
 ### The limit of this ranking
 

@@ -1,47 +1,6 @@
 {
   "boundary_disputed": [],
-  "duplicate_candidates": [
-    {
-      "address": 11828,
-      "candidates": [
-        {
-          "source_line": 2036,
-          "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
-        },
-        {
-          "source_line": 2136,
-          "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
-        }
-      ],
-      "reasons": [
-        "symbol name resolves to multiple definitions"
-      ],
-      "reference_names": [
-        "_SccCloseChannel"
-      ],
-      "size": 232
-    },
-    {
-      "address": 12984,
-      "candidates": [
-        {
-          "source_line": 2025,
-          "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
-        },
-        {
-          "source_line": 2174,
-          "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
-        }
-      ],
-      "reasons": [
-        "symbol name resolves to multiple definitions"
-      ],
-      "reference_names": [
-        "_SccChannelReset"
-      ],
-      "size": 76
-    }
-  ],
+  "duplicate_candidates": [],
   "mapped": [
     {
       "address": 128,
@@ -49,7 +8,7 @@
         "-[PPCSerialPort initFromDeviceDescription:]"
       ],
       "size": 1364,
-      "source_line": 171,
+      "source_line": 177,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -58,7 +17,7 @@
         "_SetStructureDefaults"
       ],
       "size": 364,
-      "source_line": 2896,
+      "source_line": 3049,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -67,7 +26,7 @@
         "-[PPCSerialPort free]"
       ],
       "size": 260,
-      "source_line": 293,
+      "source_line": 299,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -76,7 +35,7 @@
         "-[PPCSerialPort getHandler:level:argument:forInterrupt:]"
       ],
       "size": 224,
-      "source_line": 1180,
+      "source_line": 1186,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -85,7 +44,16 @@
         "-[PPCSerialPort getCharValues:forParameter:count:]"
       ],
       "size": 268,
-      "source_line": 1123,
+      "source_line": 1129,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 2992,
+      "reference_names": [
+        "_activatePort"
+      ],
+      "size": 204,
+      "source_line": 1255,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -94,7 +62,7 @@
         "_deactivatePort"
       ],
       "size": 116,
-      "source_line": 1401,
+      "source_line": 1480,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -103,7 +71,7 @@
         "-[PPCSerialPort acquire:]"
       ],
       "size": 328,
-      "source_line": 351,
+      "source_line": 357,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -112,7 +80,7 @@
         "-[PPCSerialPort release]"
       ],
       "size": 292,
-      "source_line": 427,
+      "source_line": 433,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -121,7 +89,7 @@
         "-[PPCSerialPort setState:mask:]"
       ],
       "size": 212,
-      "source_line": 1047,
+      "source_line": 1053,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -130,7 +98,7 @@
         "-[PPCSerialPort getState]"
       ],
       "size": 56,
-      "source_line": 1033,
+      "source_line": 1039,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -139,7 +107,7 @@
         "-[PPCSerialPort watchState:mask:]"
       ],
       "size": 164,
-      "source_line": 1084,
+      "source_line": 1090,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -148,7 +116,7 @@
         "-[PPCSerialPort nextEvent]"
       ],
       "size": 52,
-      "source_line": 1016,
+      "source_line": 1022,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -157,7 +125,7 @@
         "-[PPCSerialPort executeEvent:data:]"
       ],
       "size": 372,
-      "source_line": 789,
+      "source_line": 795,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -166,7 +134,7 @@
         "-[PPCSerialPort requestEvent:data:]"
       ],
       "size": 612,
-      "source_line": 863,
+      "source_line": 869,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -175,7 +143,7 @@
         "-[PPCSerialPort enqueueEvent:data:sleep:]"
       ],
       "size": 88,
-      "source_line": 754,
+      "source_line": 760,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -184,7 +152,7 @@
         "-[PPCSerialPort dequeueEvent:data:sleep:]"
       ],
       "size": 136,
-      "source_line": 597,
+      "source_line": 603,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -193,7 +161,7 @@
         "-[PPCSerialPort enqueueData:bufferSize:transferCount:sleep:]"
       ],
       "size": 528,
-      "source_line": 638,
+      "source_line": 644,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -202,7 +170,43 @@
         "-[PPCSerialPort dequeueData:bufferSize:transferCount:minCount:]"
       ],
       "size": 500,
-      "source_line": 498,
+      "source_line": 504,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 7740,
+      "reference_names": [
+        "_dataLatTOHandler"
+      ],
+      "size": 48,
+      "source_line": 1463,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 7836,
+      "reference_names": [
+        "_frameTOHandler"
+      ],
+      "size": 108,
+      "source_line": 1677,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 8008,
+      "reference_names": [
+        "_delayTOHandler"
+      ],
+      "size": 112,
+      "source_line": 1496,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 8184,
+      "reference_names": [
+        "_heartBeatTOHandler"
+      ],
+      "size": 132,
+      "source_line": 1803,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -211,7 +215,7 @@
         "_executeEvent"
       ],
       "size": 1296,
-      "source_line": 1421,
+      "source_line": 1528,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -220,7 +224,7 @@
         "_freeRingBuffer"
       ],
       "size": 72,
-      "source_line": 1561,
+      "source_line": 1701,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -229,7 +233,7 @@
         "_allocateRingBuffer"
       ],
       "size": 104,
-      "source_line": 1331,
+      "source_line": 1387,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -238,7 +242,7 @@
         "_CheckQueues"
       ],
       "size": 320,
-      "source_line": 1449,
+      "source_line": 1556,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -247,7 +251,7 @@
         "_changeState"
       ],
       "size": 164,
-      "source_line": 1358,
+      "source_line": 1414,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -256,7 +260,7 @@
         "_watchState"
       ],
       "size": 300,
-      "source_line": 3059,
+      "source_line": 3212,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -265,7 +269,7 @@
         "_MyIOLog"
       ],
       "size": 44,
-      "source_line": 1708,
+      "source_line": 1883,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -274,7 +278,7 @@
         "_initChip"
       ],
       "size": 92,
-      "source_line": 1657,
+      "source_line": 1832,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -283,7 +287,7 @@
         "_programChip"
       ],
       "size": 12,
-      "source_line": 1978,
+      "source_line": 2153,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -292,7 +296,7 @@
         "_ProbeSccDevice"
       ],
       "size": 220,
-      "source_line": 1913,
+      "source_line": 2088,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -301,7 +305,16 @@
         "_OpenScc"
       ],
       "size": 216,
-      "source_line": 1733,
+      "source_line": 1908,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 11828,
+      "reference_names": [
+        "_SccCloseChannel"
+      ],
+      "size": 232,
+      "source_line": 2289,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -310,7 +323,7 @@
         "_SccReadByte"
       ],
       "size": 76,
-      "source_line": 2469,
+      "source_line": 2622,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -319,7 +332,7 @@
         "_SccWriteByte"
       ],
       "size": 96,
-      "source_line": 2770,
+      "source_line": 2923,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -328,7 +341,7 @@
         "_SccSetStopBits"
       ],
       "size": 180,
-      "source_line": 2731,
+      "source_line": 2884,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -337,7 +350,7 @@
         "_SccSetParity"
       ],
       "size": 204,
-      "source_line": 2665,
+      "source_line": 2818,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -346,7 +359,16 @@
         "_SccSetDataBits"
       ],
       "size": 192,
-      "source_line": 2593,
+      "source_line": 2746,
+      "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
+    },
+    {
+      "address": 12984,
+      "reference_names": [
+        "_SccChannelReset"
+      ],
+      "size": 76,
+      "source_line": 2327,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -355,7 +377,7 @@
         "_SccSetBaud"
       ],
       "size": 208,
-      "source_line": 2540,
+      "source_line": 2693,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -364,7 +386,7 @@
         "_SccReadData"
       ],
       "size": 20,
-      "source_line": 2495,
+      "source_line": 2648,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -373,7 +395,7 @@
         "_SccWriteData"
       ],
       "size": 28,
-      "source_line": 2798,
+      "source_line": 2951,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -382,7 +404,7 @@
         "_SccReadReg"
       ],
       "size": 44,
-      "source_line": 2510,
+      "source_line": 2663,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -391,7 +413,7 @@
         "_SccWriteReg"
       ],
       "size": 72,
-      "source_line": 2852,
+      "source_line": 3005,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -400,7 +422,7 @@
         "_SccWriteIntSafe"
       ],
       "size": 68,
-      "source_line": 2818,
+      "source_line": 2971,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -409,7 +431,7 @@
         "_PPCSerialRxDMAISR"
       ],
       "size": 44,
-      "source_line": 1875,
+      "source_line": 2050,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -418,7 +440,7 @@
         "_PPCSerialTxDMAISR"
       ],
       "size": 44,
-      "source_line": 1892,
+      "source_line": 2067,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -427,7 +449,7 @@
         "_PPCSerialISR"
       ],
       "size": 388,
-      "source_line": 1783,
+      "source_line": 1958,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -436,7 +458,7 @@
         "_SccHandleExtInterrupt"
       ],
       "size": 256,
-      "source_line": 2260,
+      "source_line": 2413,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -445,7 +467,7 @@
         "_SccHandleRxInterrupt"
       ],
       "size": 344,
-      "source_line": 2316,
+      "source_line": 2469,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -454,7 +476,7 @@
         "_SccHandleTxInterrupt"
       ],
       "size": 348,
-      "source_line": 2401,
+      "source_line": 2554,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -463,7 +485,7 @@
         "_SetUpTransmit"
       ],
       "size": 288,
-      "source_line": 2975,
+      "source_line": 3128,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -472,7 +494,7 @@
         "_SuspendTX"
       ],
       "size": 40,
-      "source_line": 3032,
+      "source_line": 3185,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -481,7 +503,7 @@
         "_SendNextChar"
       ],
       "size": 40,
-      "source_line": 2882,
+      "source_line": 3035,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -490,7 +512,7 @@
         "_SccDisableInterrupts"
       ],
       "size": 132,
-      "source_line": 2054,
+      "source_line": 2207,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -499,7 +521,7 @@
         "_SccEnableInterrupts"
       ],
       "size": 156,
-      "source_line": 2096,
+      "source_line": 2249,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -508,7 +530,7 @@
         "_SccSetDTR"
       ],
       "size": 72,
-      "source_line": 2640,
+      "source_line": 2793,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -517,7 +539,7 @@
         "_SccSetRTS"
       ],
       "size": 72,
-      "source_line": 2704,
+      "source_line": 2857,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -526,7 +548,7 @@
         "_SccGetDCD"
       ],
       "size": 80,
-      "source_line": 2232,
+      "source_line": 2385,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -535,7 +557,7 @@
         "_SccGetCTS"
       ],
       "size": 80,
-      "source_line": 2204,
+      "source_line": 2357,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -544,7 +566,7 @@
         "_InitQueue"
       ],
       "size": 48,
-      "source_line": 1692,
+      "source_line": 1867,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -553,7 +575,7 @@
         "_CloseQueue"
       ],
       "size": 40,
-      "source_line": 1542,
+      "source_line": 1649,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -562,7 +584,7 @@
         "_AddtoQueue"
       ],
       "size": 128,
-      "source_line": 1290,
+      "source_line": 1343,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -571,7 +593,7 @@
         "_RemovefromQueue"
       ],
       "size": 128,
-      "source_line": 1996,
+      "source_line": 2171,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -580,7 +602,7 @@
         "_FreeSpaceinQueue"
       ],
       "size": 24,
-      "source_line": 1584,
+      "source_line": 1724,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -589,7 +611,7 @@
         "_UsedSpaceinQueue"
       ],
       "size": 16,
-      "source_line": 3041,
+      "source_line": 3194,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -598,7 +620,7 @@
         "_GetQueueSize"
       ],
       "size": 16,
-      "source_line": 1645,
+      "source_line": 1785,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -607,7 +629,7 @@
         "_AddBytetoQueue"
       ],
       "size": 108,
-      "source_line": 1244,
+      "source_line": 1297,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     },
     {
@@ -616,48 +638,13 @@
         "_GetBytetoQueue"
       ],
       "size": 108,
-      "source_line": 1607,
+      "source_line": 1747,
       "source_path": "src/drivers-ppc/input/drvPPCSerialPort/PPCSerialPort.drvproj/PPCSerialPort.lksproj/PPCSerialPort.m"
     }
   ],
   "reference_sha256": "042AE84C5665991973441CA950F95317DF4842DB1A293CBC8E35ADDAA78270D9",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 2992,
-      "reference_names": [
-        "_activatePort"
-      ],
-      "size": 204
-    },
-    {
-      "address": 7740,
-      "reference_names": [
-        "_dataLatTOHandler"
-      ],
-      "size": 48
-    },
-    {
-      "address": 7836,
-      "reference_names": [
-        "_frameTOHandler"
-      ],
-      "size": 108
-    },
-    {
-      "address": 8008,
-      "reference_names": [
-        "_delayTOHandler"
-      ],
-      "size": 112
-    },
-    {
-      "address": 8184,
-      "reference_names": [
-        "_heartBeatTOHandler"
-      ],
-      "size": 132
-    },
     {
       "address": 17332,
       "reference_names": [

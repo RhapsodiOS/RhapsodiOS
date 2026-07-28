@@ -840,3 +840,313 @@ EXIT=0
 The row `| 0x0bb0 | _activatePort | 204 | Called 4x, never defined |` is wrong on its last
 column. `activatePort` had no call site in our source; the four hits were substrings of
 `deactivatePort`. The span, 204, is correct and is confirmed by the `blr` measurement above.
+
+---
+
+# Task 5: the remap, and acceptance against the spec's nine items
+
+Nothing was compiled for this task either. There is no PowerPC toolchain and no host C
+compiler in this environment, and `make` was not run. Every statement below is a claim of
+correspondence between our source and the shipped binary. In particular, the claim that the
+renamed C functions "would now emit symbols matching Apple's" is an argument from the Mach-O
+naming rule -- the compiler prepends exactly one underscore, so source `changeState` emits
+`_changeState` -- and **not** an observation of a build.
+
+## The route, re-run verbatim
+
+Task 3's route, unchanged: `filter_named_functions.py` on the published IDA analysis, then
+`binrecon source-map` with `--objc-methods` and **without** `--scope-to-objc`.
+`--scope-to-objc` would cover 17 of 72 hand-written functions and look complete; that is the
+failure mode this route exists to avoid.
+
+```
+$ $VENVPY tools/binrecon/filter_named_functions.py \
+    tools/binrecon/out/ppcserialport-ppc/published/analysis-reference-ida.json \
+    tools/binrecon/out/ppcserialport-ppc/analysis-named.json
+EXIT=0
+
+published/analysis-reference-ida.json   functions 285  unnamed 210  lowest 0x60
+analysis-named.json                     functions  75  unnamed   0  lowest 0x80
+input.sha256 (both)  042AE84C5665991973441CA950F95317DF4842DB1A293CBC8E35ADDAA78270D9
+```
+
+`unnamed` is 0 and `input.sha256` is unchanged, as in Task 3. `lowest = 0x60 > 0` is the
+address-0 rule reconfirmed: IDA's function list has no entry at `__text+0`.
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY -m binrecon source-map \
+    --reference-analysis tools/binrecon/out/ppcserialport-ppc/analysis-named.json \
+    --binary "$REF" --source-dir $LKS --repo-root . --objc-methods \
+    --output $RECON/source-map.json
+EXIT=0
+```
+
+`schema_version: source-map-v1`, `reference_sha256` reproduces the `_reloc` hash above.
+
+## Coverage across all four categories
+
+```
+mapped:               71
+unmapped:              4
+duplicate_candidates:  0
+boundary_disputed:     0
+```
+
+Sum = **75**, the analysis's named-function count. Coverage is judged across all four
+categories, not `mapped` and `unmapped` alone.
+
+Movement from Task 3, which mapped before the five absent bodies were written and before
+Task 4 deleted the two duplicate stubs:
+
+| Category | Task 3 | Task 5 | Delta | Cause |
+| --- | --- | --- | --- | --- |
+| mapped | 64 | 71 | +7 | +5 the newly written bodies, +2 the former duplicates |
+| unmapped | 9 | 4 | -5 | the five absent functions now have definition sites |
+| duplicate_candidates | 2 | 0 | -2 | Task 4 deleted one stub definition of each |
+| boundary_disputed | 0 | 0 | 0 | -- |
+
+**`duplicate_candidates` is 0**, as Task 4 predicted. `_SccCloseChannel` (0x2e34) now maps to
+`PPCSerialPort.m:2289` and `_SccChannelReset` (0x32b8) to `:2327` -- one definition each, and
+the surviving body in each pair is the one Task 4 verified against the disassembly.
+
+The five once-absent functions all map, at their measured sizes:
+
+```
+0x0bb0  _activatePort        204  PPCSerialPort.m:1255
+0x1e3c  _dataLatTOHandler     48  PPCSerialPort.m:1463
+0x1e9c  _frameTOHandler      108  PPCSerialPort.m:1677
+0x1f48  _delayTOHandler      112  PPCSerialPort.m:1496
+0x1ff8  _heartBeatTOHandler  132  PPCSerialPort.m:1803
+```
+
+Split by kind: `mapped` is 16 Objective-C + **55 C**, and 55 is exactly the hand-written C
+symbol count the definition-site checker reports. Every hand-written C function in the binary
+is now mapped to a source definition.
+
+`unmapped` is 4, and none of the four is driver code:
+
+```
+0x43b4  +[PPCSerialPortKernelServerInstance kernelServerInstance]   20   build-generated
+0x43c8  +[PPCSerialPortVersion driverKitVersionForPPCSerialPort]    16   build-generated
+0x43d8  __udivdi3                                                 1616   compiler runtime
+0x4a28  __umoddi3                                                 1464   compiler runtime
+```
+
+`__udivdi3` / `__umoddi3` are libgcc's 64-bit unsigned division and modulo helpers, 3080
+bytes and 15% of `__text`, excluded on the same grounds as MIG-generated code.
+
+### The partition, closed
+
+75 named = 2 build-generated + 2 compiler runtime + **71 hand-written**. All 71 are mapped.
+The 72nd hand-written function is `+[PPCSerialPort probe:]`, which never enters the map's
+universe (below). **The map covers 71 of the 72 hand-written functions**, which is the number
+spec section 7 item 4 asks for -- reached with 0 remaining gaps rather than 5.
+
+## The `probe:` exclusion, confirmed independently
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/selector_check.py "$REF" $LKS
+reference selectors: 19
+our definitions:     17
+
+renames (0):
+
+duplicates (0):
+
+missing (2):
+    +[PPCSerialPortKernelServerInstance kernelServerInstance]
+    +[PPCSerialPortVersion driverKitVersionForPPCSerialPort]
+
+extra (0):
+EXIT=0
+```
+
+`selector_check.py` matches by **string**, not by address, so it sees `probe:` where the map
+structurally cannot. 19 reference selectors = 16 mapped + `probe:` + the 2 build-generated;
+17 of ours = the same 16 + `probe:`. `+[PPCSerialPort probe:]` is **not** in the `missing`
+list, and it is defined at `PPCSerialPort.m:157`. Zero renames, zero duplicates, zero extras.
+
+This is a **known exclusion, not a gap and not a phantom**. `__text+0` holds `7c0802a6` --
+`mflr r0`, a function prologue -- so Apple's code is there; it is IDA's analysis that has no
+function start at address 0, its lowest entry being `0x60`. The opposite reading (that the
+symbol at 0x0 is an empty placeholder) was recorded across five earlier specs in this series
+and retracted in 22 places; it is not repeated here.
+
+## Buckets
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/bucket_functions.py \
+    tools/binrecon/out/ppcserialport-ppc/analysis-named.json $RECON/source-map.json
+
+total functions: 75
+  mapped: 71
+  1-crt-dyld: 0
+  2-picsymbol-stub: 0
+  3-unnamed-jump-island: 0
+  4-build-generated-class: 2
+      0x43b4  +[PPCSerialPortKernelServerInstance kernelServerInstance]  (20 bytes)
+      0x43c8  +[PPCSerialPortVersion driverKitVersionForPPCSerialPort]  (16 bytes)
+  5-fn-with-source-site: 0
+  6-fn-no-source-site: 2
+      0x43d8  __udivdi3  (1616 bytes)
+      0x4a28  __umoddi3  (1464 bytes)
+counted: 75
+RECONCILES: yes
+EXIT=0
+```
+
+**RECONCILES: yes.** Buckets 1 and 2 empty, as they are for any `_reloc` kernel server -- no
+crt/dyld startup routines, no `__picsymbol_stub` section. Bucket 3 empty because the 210
+unnamed entries were filtered before the map was built. Bucket 4 holds exactly the two
+build-generated class methods. Bucket 5 is 0 and needs no hand moves: everything with a
+source site is already in `mapped`.
+
+**Bucket 6 is now 2, and both are compiler runtime.** Task 3's bucket 6 was 9 and overstated
+the gap count by 4 (2 compiler runtime + 2 duplicate-definition cases that did have source
+sites). With the duplicates resolved and the five bodies written, bucket 6 reads directly:
+`__udivdi3` and `__umoddi3`, and no driver code at all.
+
+## PowerPC invariant check
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/ppc_invariant_check.py \
+    --binary "$REF" --analysis tools/binrecon/out/ppcserialport-ppc/analysis-named.json
+
+symbol +[PPCSerialPort probe:] at 0x0 has no function start in the analysis, but code is
+present: the bytes there are a function prologue, so the analysis omits a real function
+22 scattered/difference-form relocations (target section verified, field is a difference,
+not an address)
+4 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
+1277 fused relocations, 1 violations
+EXIT=1
+```
+
+Unchanged from Task 3, as it must be -- the check reads only the binary and the analysis,
+neither of which this task altered. One violation, and it is the `probe:` line reporting
+**code present**. All 1277 fused relocations reconstruct inside their named target sections,
+all 22 difference-form relocations name real sections, all 4 HI16/HA16-LO16 pairs agree, no
+`jbsr` island leaves `__TEXT,__text`, no `__OBJC` pointer is misdirected. Exit 1 reflects the
+counted violation, not a decode failure.
+
+## The definition-site gate, both drivers
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/symbol_name_check.py \
+    --binary "$REF" --source-dir $LKS
+hand-written C symbols: 55
+missing definitions   : 0
+EXIT=0
+
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/symbol_name_check.py \
+    --binary ".../drvPPCGNic.config/drvPPCGNic_reloc" --source-dir $GNIC
+hand-written C symbols: 2
+missing definitions   : 0
+EXIT=0
+```
+
+## GNic
+
+Remapped on this same route, and the two functions now map: `mapped 47 unmapped 5` before the
+rename, `mapped 49 unmapped 3` after, over the same 52 named functions. Its buckets print
+`RECONCILES: yes` with bucket 6 = 1 (`__udivdi3`). Full evidence, including why the earlier
+`--scope-to-objc` map could not have caught the defect, is in
+[../GNic/findings.md](../GNic/findings.md), "The underscore defect and the remap".
+[../report-network.md](../report-network.md) carries three corrections so it no longer reads
+as complete-and-correct on GNic.
+
+## Suite
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
+864 passed, 4 skipped in 51.10s
+```
+
+## Acceptance, item by item
+
+Spec section 7, all nine.
+
+**1. Two profiles created and `test_ppc_profile_inventory` updated; suite green. PASS.**
+`tools/binrecon/profiles/ppcserialport-ppc.json` and `ppcserialport-bundle-ppc.json` are both
+present. `pytest -k "profile_inventory or reference_only_ida"` selects 43 cases, all passing,
+including `test_ppc_profiles_are_reference_only_ida_runs[ppcserialport-ppc.json]` and
+`[ppcserialport-bundle-ppc.json]`. Full suite 864 passed, 4 skipped.
+
+**2. All 50 `PPCSerialPort` functions and both `GNic` functions renamed, with every call site
+updated. PASS.** The definition side is the checker's 55 -> 5 -> 0 progression: 55 missing
+before the rename, 5 after (exactly the five absent bodies, unfixable by renaming because
+there was nothing there to rename), 0 once Task 4 wrote them. 55 - 5 = **50 fixed by the
+rename alone**, the denominator unmoved at 55 across both runs. GNic's two are
+`_ReadGNicRegister` and `_WriteGNicRegister`, renamed in the same commit `913c733a`. The
+call-site side: a word-boundary grep for the old underscored spellings across
+`PPCSerialPort.{m,h}` returns exactly one hit, `PPCSerialPort.m:3054`, and it is inside an
+`IOLog` format string, not a call. The same grep over GNic returns zero hits.
+
+**3. Section 4.4's definition-site check passes for both drivers. PASS.**
+`symbol_name_check.py` reports 55 hand-written C symbols and 0 missing for
+`PPCSerialPort_reloc`, and 2 and 0 for `drvPPCGNic_reloc`; both exit 0. The check reads each
+binary's own `__TEXT,__text` symbol table and requires a source definition named the symbol
+minus one leading underscore.
+
+**4. The source map covers 71 of the 72 hand-written functions; the 72nd is
+`+[PPCSerialPort probe:]`, a known exclusion confirmed by `selector_check.py`. PASS.**
+`mapped` is 71 and accounts for every hand-written function in the analysis; the 4 unmapped
+are the 2 build-generated accessors and the 2 libgcc helpers. `selector_check.py` puts
+`probe:` among our 17 definitions and *not* among its 2 missing, matching by string where the
+map cannot match by address. `PPCSerialPort.m:157` is the definition.
+
+**5. `duplicate_candidates` is 0, or every entry is enumerated with evidence. PASS.** It is
+**0**. Task 3's 2 entries were genuine duplicate definitions; Task 4 identified Apple's body
+in each pair from the disassembly and deleted the other, and both symbols now resolve to a
+single source line.
+
+**6. Bucket reconciliation reports `RECONCILES: yes`, with `__udivdi3`/`__umoddi3` and the two
+build-generated class methods accounted for. PASS.** `RECONCILES: yes`, counted 75 of 75. The
+two class methods are bucket 4 by name and address; `__udivdi3` (0x43d8, 1616) and `__umoddi3`
+(0x4a28, 1464) are the whole of bucket 6, recorded as compiler runtime rather than as gaps.
+
+**7. All five bodies written, each with an instruction-by-instruction account covering every
+branch. PASS.** See "Task 4: the five absent C functions" above. `dataLatTOHandler`,
+`frameTOHandler`, `delayTOHandler` and `heartBeatTOHandler` have no conditional branch at all;
+`activatePort` has three conditional and three unconditional branches, each listed with its
+target. Registration was measured, not assumed -- all four handlers are Mach `thread_call`
+callbacks, not `IOScheduleFunc`, from the `lis`/`addi` relocation pairs inside
+`-[initFromDeviceDescription:]`. Extents were measured to each function's own `blr` and sum to
+604, agreeing with the map on all five.
+
+**8. GNic's existing source map re-run; its two functions now map. PASS.** 47/5/0/0 ->
+49/3/0/0 on the same route, `_WriteGNicRegister` -> `GNicEnet.m:66` and `_ReadGNicRegister` ->
+`GNicEnet.m:32`, with the gate at 2 symbols and 0 missing.
+
+**9. The binrecon suite stays green. PASS.** 864 passed, 4 skipped.
+
+**All nine pass.** None of them is a claim that anything builds.
+
+## Carried forward -- open work this task did not fix
+
+Recorded here rather than fixed, because none is in Task 5's remit and each needs evidence
+this task did not gather.
+
+1. **Two `SccDisableInterrupts` arity errors.** `PPCSerialPort.m:2554`
+   (`savedIntState = SccDisableInterrupts(self);`) and `:3180` (`SccDisableInterrupts(self);`)
+   pass one argument to the two-argument function prototyped at `PPCSerialPort.m:114`. Both
+   pre-date this branch. Fixing them needs the disassembly of the enclosing functions to
+   recover the correct second argument at each site.
+2. **All five new functions are unreferenced from our source.** Our
+   `-[initFromDeviceDescription:]` performs no `thread_call_allocate`, so the four handlers
+   have no registration site here, and `-[executeEvent:data:]` is still a stub, so
+   `activatePort` has no caller. Each would draw `-Wunused-function`. The binary has the call
+   sites; our source does not yet.
+3. **`freeRingBuffer` can be reached with a NULL base.** `activatePort`'s first-buffer failure
+   path calls `freeRingBuffer(port + 0x3c)` after `allocateRingBuffer` has already run
+   `InitQueue(queue, NULL, 0x1000)`, so `IOFree(NULL, 0x1000)` -- `kfree(NULL, 0x1000)` at
+   `src/driverkit-3/libDriver/Kernel/generalFuncs.m:78`. This reproduces Apple's control flow
+   faithfully; the hazard is inside `freeRingBuffer`, pre-existing code outside this work's
+   scope.
+4. **One old-spelling residue in a log string.** `PPCSerialPort.m:3054` logs
+   `"PPCSerialPort: _SetStructureDefaults: called (fullInit=%d)"`. It is a string literal, not
+   a call site, and it is **ours, not Apple's**: `_SetStructureDefaults` does appear in the
+   reference binary at file offset `0xed2a`, but every section ends before `0x8a40`, so that
+   occurrence is in the symbol string table, not `__cstring`. Cosmetic; left alone.
+5. **`ledger.json` is stale.** It was seeded at Task 3 from the 64-entry `mapped` set and has
+   not been reseeded against the 71-entry map. No task reads it and no other driver in
+   `src/drivers-ppc/reconstruction/` has one; recorded rather than regenerated.

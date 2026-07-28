@@ -12,6 +12,15 @@ Both re-verified locally with `sha256sum` against the paths under
 
 ## Correspondence
 
+> **SUPERSEDED (2026-07-28).** The numbers in this section describe the original
+> `--scope-to-objc` map, which by construction never claimed this driver's two
+> hand-written C functions and so could not report them as unmapped. That map has
+> been replaced by one built on the PPCSerialPort route (`filter_named_functions.py`
+> then `source-map --objc-methods`, **without** `--scope-to-objc`), which covers
+> all 52 named functions. See "The underscore defect and the remap" at the end of
+> this file for the current counts. The Objective-C conclusions below are
+> unchanged by the reroute: 47 methods mapped, then and now.
+
 Source map built with `binrecon source-map --objc-methods --scope-to-objc` against
 `drvPPCGNic_reloc`, scoped to the Objective-C methods found in that binary
 (49 of the 156 total functions IDA reported):
@@ -98,6 +107,18 @@ Two of the three have a source definition and move to bucket 5:
   `extern`-declares it at `GNicEnetPrivate.m:13`)
 - `_ReadGNicRegister` -- `src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m:32`
   (non-static, `extern`-declared at `GNicEnetPrivate.m:12`)
+
+> **CORRECTION (2026-07-28).** Both bucket-5 moves above were made **on the
+> wrong name**. The source spelled these functions `_ReadGNicRegister` and
+> `_WriteGNicRegister`, with a leading underscore *in the C identifier*. The
+> Mach-O naming rule prepends exactly one underscore, so those definitions would
+> have emitted `__ReadGNicRegister` and `__WriteGNicRegister` -- not the
+> `_ReadGNicRegister` / `_WriteGNicRegister` the binary carries. The hand move to
+> bucket 5 matched the binary's symbol against a source identifier that already
+> contained the underscore the compiler adds, so it was a coincidence of
+> spelling, not a correspondence. Both were renamed on 2026-07-28; see
+> "The underscore defect and the remap" at the end of this file for the
+> before/after map counts.
 
 Neither is the "1 static C function" the task description calls out for this
 source -- that is `static inline void enforceInOrderExecutionIO(void)` at
@@ -228,3 +249,158 @@ driver logic of its own, so it carries no correspondence findings against
 `GNicEnet`. No source map or bucket table was built for it (the source map
 and bucket script in this task both target `drvPPCGNic_reloc`, the statically
 linked kernel server that actually contains the driver's compiled code).
+
+---
+
+# The underscore defect and the remap (2026-07-28)
+
+Added by Task 5 of the PPCSerialPort reconstruction
+([docs/superpowers/specs/2026-07-28-ppcserialport-reconstruction-design.md](../../../../docs/superpowers/specs/2026-07-28-ppcserialport-reconstruction-design.md),
+§3.2 and acceptance item 8). **Nothing was compiled for it** -- there is no
+PowerPC toolchain and no host C compiler here, and `make` was not run. Every
+claim below is of correspondence between our source and the shipped binary.
+
+## The defect
+
+`drvPPCGNic` has exactly two hand-written C functions with external linkage, and
+**both carried a spurious leading underscore in the source identifier**:
+
+| Binary symbol | Old source name | Would have emitted | New source name |
+| --- | --- | --- | --- |
+| `_ReadGNicRegister` (0x283c, 132 bytes) | `_ReadGNicRegister` | `__ReadGNicRegister` | `ReadGNicRegister` |
+| `_WriteGNicRegister` (0x27bc, 128 bytes) | `_WriteGNicRegister` | `__WriteGNicRegister` | `WriteGNicRegister` |
+
+The C compiler prepends exactly one underscore when forming a Mach-O symbol, so a
+source identifier that already begins with one produces a symbol with two. Neither
+old name could have matched Apple's. That the new names *would* now match follows
+from that naming rule; it is **not** an observation of a build.
+
+Fixed in commit `913c733a`, "drivers-ppc: drop the spurious leading underscore
+from PPCSerialPort and GNic C functions", which renamed the two definitions, the
+two `extern` declarations at `GNicEnetPrivate.m:12-13`, and all 79 call sites
+across `GNicEnet.m` and `GNicEnetPrivate.m`.
+
+## The definition-site gate
+
+`symbol_name_check.py` reads the binary's own `__TEXT,__text` symbol table,
+filters out compiler runtime, and requires each remaining symbol to have a source
+definition named the symbol minus one leading underscore:
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/symbol_name_check.py \
+    --binary .../drvPPCGNic.config/drvPPCGNic_reloc \
+    --source-dir src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj
+hand-written C symbols: 2
+missing definitions   : 0
+EXIT=0
+```
+
+Two symbols, zero missing.
+
+## Before and after, on the same route
+
+The old map used `--scope-to-objc`, whose universe is Objective-C methods only:
+it never claimed `_ReadGNicRegister` or `_WriteGNicRegister`, so it could not
+report them as unmapped either. To get a real before/after, both runs below use
+the **same** route -- `filter_named_functions.py` on the published IDA analysis,
+then `source-map --objc-methods` without `--scope-to-objc` -- over the same
+52-function universe. The "before" run is against `GNicEnet.{h,m}` and
+`GNicEnetPrivate.m` materialised from git at `8f71c8c9`, the rename commit's
+parent.
+
+```
+                      mapped  unmapped  dup  disputed  sum
+before (8f71c8c9)         47         5    0         0   52
+after  (renamed)          49         3    0         0   52
+```
+
+The two functions moved from `unmapped` to `mapped`; nothing else changed.
+
+Before, `unmapped` was:
+
+```
+0x27bc  _WriteGNicRegister                                        128
+0x283c  _ReadGNicRegister                                         132
+0x28c0  +[drvPPCGNicKernelServerInstance kernelServerInstance]     20
+0x28d4  +[drvPPCGNicVersion driverKitVersionFordrvPPCGNic]         16
+0x28e4  __udivdi3                                                1616
+```
+
+After, it is the three that are not driver code:
+
+```
+0x28c0  +[drvPPCGNicKernelServerInstance kernelServerInstance]     20   build-generated
+0x28d4  +[drvPPCGNicVersion driverKitVersionFordrvPPCGNic]         16   build-generated
+0x28e4  __udivdi3                                               1616   compiler runtime
+```
+
+And the two now map to real definition sites:
+
+```
+0x27bc  _WriteGNicRegister  128  GNicEnet.m:66
+0x283c  _ReadGNicRegister   132  GNicEnet.m:32
+```
+
+For reference, the **checked-in** map before this change was the `--scope-to-objc`
+one: `mapped 47, unmapped 2, dup 0, disputed 0` over a 49-method universe.
+`source-map.json` in this directory is now the 52-function map.
+
+## Reference analysis and identity
+
+The analysis was re-run for this remap
+(`BINRECON_REFERENCE=... binrecon analyze --profile tools/binrecon/profiles/gnic-ppc.json`)
+and reproduces the identity recorded above:
+
+```
+published/analysis-reference-ida.json   functions 156  unnamed 104  lowest 0x160
+analysis-named.json                     functions  52  unnamed   0  lowest 0x190
+input.sha256 (both)  1D208A3E49CD9DDD6692C81AEACC9C0A5C4BF97F45827EF30DECC495E851B760
+```
+
+`analyze` exits 1 on a reference-only profile (no second analyzer to compare
+against, so `normalized-functions` cannot pass); the report is complete and the
+JSON is written. `filter_named_functions.py` exits 0 and leaves `input.sha256`
+untouched.
+
+## Buckets on the new route
+
+```
+$ PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/bucket_functions.py \
+    tools/binrecon/out/gnic-ppc/analysis-named.json \
+    src/drivers-ppc/reconstruction/GNic/source-map.json
+
+total functions: 52
+  mapped: 49
+  1-crt-dyld: 0
+  2-picsymbol-stub: 0
+  3-unnamed-jump-island: 0
+  4-build-generated-class: 2
+      0x28c0  +[drvPPCGNicKernelServerInstance kernelServerInstance]  (20 bytes)
+      0x28d4  +[drvPPCGNicVersion driverKitVersionFordrvPPCGNic]  (16 bytes)
+  5-fn-with-source-site: 0
+  6-fn-no-source-site: 1
+      0x28e4  __udivdi3  (1616 bytes)
+counted: 52
+RECONCILES: yes
+```
+
+Bucket 3 is 0 here rather than 104 because the 104 unnamed jump islands were
+dropped by `filter_named_functions.py` before the map was built; they are the
+same islands the old table counted, not islands that went missing. **Bucket 5 is
+0 and stays 0** -- the two C functions no longer need a hand move, because the
+map claims them.
+
+Bucket 6's residue is `__udivdi3` alone, unchanged: libgcc's 64-bit unsigned
+division helper, compiler runtime rather than a reconstruction gap.
+
+## Unchanged by the remap
+
+- `selector_check.py`: reference selectors 50, our definitions 48, renames 0,
+  duplicates 0, missing 2 (the build-generated pair), extra 0, exit 0.
+- `ppc_invariant_check.py` still reports one violation, and it is
+  `-[GNicEnet(Private) _allocateMemory]` at `0x0` **with code present** -- IDA's
+  function list omits a real function there. It is a known exclusion from any
+  map's universe, not a phantom and not an absent body, and its correspondence to
+  `GNicEnetPrivate.m:115` remains unverified. 6 difference-form relocations, 3
+  HI16/HA16-LO16 pairs, 1022 fused relocations.
+- The 47 mapped Objective-C methods and their source sites.

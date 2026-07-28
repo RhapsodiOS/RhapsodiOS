@@ -424,6 +424,24 @@
       "size": 16,
       "source_line": 402,
       "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10172,
+      "reference_names": [
+        "_WriteGNicRegister"
+      ],
+      "size": 128,
+      "source_line": 66,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
+    },
+    {
+      "address": 10300,
+      "reference_names": [
+        "_ReadGNicRegister"
+      ],
+      "size": 132,
+      "source_line": 32,
+      "source_path": "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj/GNicEnet.m"
     }
   ],
   "reference_sha256": "1D208A3E49CD9DDD6692C81AEACC9C0A5C4BF97F45827EF30DECC495E851B760",
@@ -442,6 +460,13 @@
         "+[drvPPCGNicVersion driverKitVersionFordrvPPCGNic]"
       ],
       "size": 16
+    },
+    {
+      "address": 10468,
+      "reference_names": [
+        "__udivdi3"
+      ],
+      "size": 1616
     }
   ]
 }

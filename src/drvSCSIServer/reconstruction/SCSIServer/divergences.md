@@ -204,7 +204,7 @@ not written by hand. They remain in the `unmapped` bucket permanently.
 
 `+[SCSIServer deviceStyle]` occupies address 0 in the symbol table, but IDA
 emits no function entry there, so it cannot appear in `source-map.json` — the map
-covers 68 functions, not the symbol table's 69. Our `SCSIServer.m:37` implements
+covers 68 functions, not the symbol table's 69. Our `SCSIServer.m:30` implements
 it. This is the same mismatch `ppc_invariant_check.py --analysis` reported during
 the binrecon PowerPC acceptance run, and it is an analyzer artifact, not a
 missing function.
@@ -976,6 +976,15 @@ whichever task disposes it). Left `unexamined`; Task 12 should wire up the two c
 existing comments and change the declaration in both the header and definition to return `int`
 (propagating the last kernel call's result), matching the reference and the caller's existing use of
 the return value.
+
+**Outcome (final whole-branch review pass):** the return-type half is **fixed**.
+`IOTaskPortAllocateName` is now `int` in both `IOTask.h:26` and `IOTask.m:168`,
+and the body returns its `result` local, so it propagates whichever kernel call
+ran last exactly as the reference does. The call site at `IOSCSISession.m:267`
+no longer assigns a `void` expression, which removes a compile error. The
+missing-calls half is unchanged: the body is still the stub, with the two
+`port_allocate`/`port_rename` calls left as `TODO` comments. The `self`-for-
+`mach_port_t` argument at the call site is also unchanged.
 
 ## Finding: `_IOTaskPortDeallocate` never issues its own Mach call, and is declared `void` where the reference returns a status
 
@@ -1996,7 +2005,7 @@ already-fixed and claim-wrong verdicts as well):
 
 | Finding | Why still open |
 | --- | --- |
-| `IOTaskPortAllocateName` never issuing its two Mach calls, still declared `void` | unchanged stub |
+| `IOTaskPortAllocateName` never issuing its two Mach calls | unchanged stub (the `void` return type was fixed in the final review pass; it is `int` now and returns `result`) |
 | `IOTaskPortDeallocate` never issuing its Mach call, still declared `void` | unchanged stub |
 | `IOTaskUnwireMemory` never issuing its Mach call, still declared `void`, reads `_page_size` not `_page_mask` | unchanged stub (only its sibling `IOTaskWireMemory`'s return type was fixed) |
 | `IOReferenceClientTask` never issuing its `port_rename` call | unchanged stub |

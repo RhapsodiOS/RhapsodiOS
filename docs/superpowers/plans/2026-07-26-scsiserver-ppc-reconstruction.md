@@ -365,7 +365,7 @@ not written by hand. They remain in the `unmapped` bucket permanently.
 
 `+[SCSIServer deviceStyle]` occupies address 0 in the symbol table, but IDA
 emits no function entry there, so it cannot appear in `source-map.json` — the map
-covers 68 functions, not the symbol table's 69. Our `SCSIServer.m:37` implements
+covers 68 functions, not the symbol table's 69. Our `SCSIServer.m:30` implements
 it. This is the same mismatch `ppc_invariant_check.py --analysis` reported during
 the binrecon PowerPC acceptance run, and it is an analyzer artifact, not a
 missing function.

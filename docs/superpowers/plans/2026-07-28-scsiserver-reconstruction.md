@@ -60,7 +60,7 @@ specs in this series and had to be retracted in 22 places. `read_macho` also
 reports address 0 for *undefined* symbols, which is what made the two cases look
 alike.
 
-`+[SCSIServer deviceStyle]` is present at `SCSIServer.m:37`. It is neither a gap
+`+[SCSIServer deviceStyle]` is present at `SCSIServer.m:30`. It is neither a gap
 nor a phantom — it is simply outside any map's universe. Record it as a known
 exclusion with its reason.
 

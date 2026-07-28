@@ -257,7 +257,7 @@ Both were established by running it, and both will otherwise waste time:
 `+[SCSIServer deviceStyle]` occupies address 0 in the symbol table, but IDA
 emits no function there, so it cannot appear in `source-map.json` at all — the
 map covers 68 functions, not 69. It gets a `divergences.md` entry recording that
-`SCSIServer.m:37` implements it and that the absence is an analyzer artifact.
+`SCSIServer.m:30` implements it and that the absence is an analyzer artifact.
 This is the same mismatch `ppc_invariant_check.py --analysis` reported during
 spec 1's acceptance run.
 

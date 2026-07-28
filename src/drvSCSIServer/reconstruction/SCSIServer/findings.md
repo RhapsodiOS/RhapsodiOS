@@ -83,8 +83,11 @@ exit 0
 ```
 
 Because `--scope-to-objc` was omitted, the map's universe is all 68 named
-functions, so the 35 C functions are measured alongside the 13 Objective-C
-methods rather than being invisible.
+functions, so the 35 C functions are measured alongside the 12 Objective-C
+methods rather than being invisible. (12, not 13: `+[SCSIServer deviceStyle]`
+is the thirteenth method in our source and it sits *outside* the universe, for
+the reason recorded under "Address 0" below. The regenerated map's 47 `mapped`
+entries split 12 Objective-C to 35 C.)
 
 ### Step 5 - four-category coverage
 
@@ -157,7 +160,7 @@ bytes there, read directly out of the file at `__text` file offset 2492:
 ```
 
 That is a complete 16-byte function returning 1. Our source has it at
-`SCSIServer.m:37`:
+`SCSIServer.m:30`:
 
 ```objc
 + (int)deviceStyle
@@ -184,8 +187,15 @@ reconciled by assumption.
 | `0x19bc` | 48 | 64 | `_IOTaskPortAllocate` | `IOTask.h:32` |
 | `0x1c98` | 160 | 256 | `_IOConvertTaskPortToVMTask` | `IOTask.h:76` |
 | `0x1d98` | 32 | 48 | `_IODestroyMappedVMTask` | `IOTask.h:85` |
-| `0x1dc8` | 644 | 788 | `__io_task_notification` | `IOTask.h:94` |
-| `0x20dc` | 480 | 576 | `_IORequestNotifyForClientTask` | `IOTask.h:105` |
+| `0x1dc8` | 644 | 788 | `__io_task_notification` | nowhere (see below) |
+| `0x20dc` | 480 | 576 | `_IORequestNotifyForClientTask` | `IOTask.h:102` |
+
+The "Declared" column is re-checked against the header as it stands after Task
+4's rewrite. `_IOTaskPortAllocate`, `_IOConvertTaskPortToVMTask` and
+`_IODestroyMappedVMTask` are still at `:32`, `:76` and `:85`;
+`_IORequestNotifyForClientTask` moved from `:105` to `:102`; and
+`__io_task_notification`, once declared at `:94`, is no longer declared in the
+header at all - it is `static` in `IOTask.m`.
 
 "IDA size" is the analyzer's function size; "Span" is the distance to the next
 named function, which includes the trailing 16-byte jump islands. The plan's
@@ -194,8 +204,10 @@ different things, and the **addresses agree exactly** for the five entries the
 two lists share.
 
 `_IORequestNotifyForClientTask` at `0x20dc` is the sixth gap. It is declared
-`extern` in `IOTask.h:105` and nothing in the tree defines it; the header's own
-comment says "NOT YET WRITTEN: declared extern only; nothing defines it yet." Its
+`extern` in `IOTask.h` - `:105` when this was measured, `:102` today - and at
+that point nothing in the tree defined it; the header's own comment then said
+"NOT YET WRITTEN: declared extern only; nothing defines it yet." (Task 4 wrote
+the body and removed that comment.) Its
 address is exactly `0x1dc8 + 788`, the byte after the span attributed to
 `__io_task_notification`, which is how it came to be folded into that entry and
 dropped from the plan's list.
@@ -206,10 +218,10 @@ All four are in `mapped`, with a source site:
 
 | Address | Name | Source |
 | --- | --- | --- |
-| `0x00e4` | `-[SCSIServer initFromDeviceDescription:]` | `SCSIServer.m:138` |
-| `0x0654` | `-[IOSCSISession init]` | `IOSCSISession.m:57` |
-| `0x068c` | `-[IOSCSISession initForDevice:result:]` | `IOSCSISession.m:79` |
-| `0x06c4` | `-[IOSCSISession free]` | `IOSCSISession.m:105` |
+| `0x00e4` | `-[SCSIServer initFromDeviceDescription:]` | `SCSIServer.m:142` |
+| `0x0654` | `-[IOSCSISession init]` | `IOSCSISession.m:61` |
+| `0x068c` | `-[IOSCSISession initForDevice:result:]` | `IOSCSISession.m:83` |
+| `0x06c4` | `-[IOSCSISession free]` | `IOSCSISession.m:109` |
 
 Each has a real body, not a stub. The design document says these were "verified
 absent by direct symbol lookup against all three `.m` files" using
@@ -415,7 +427,7 @@ pairing is exactly one-to-one and in-order:
    linking both is a duplicate-symbol collision. Only the comment's reasoning is
    wrong. Not fixed here - this task does not edit build files.
 
-2. `IOSCSISession.m:780` defines `IOSCSISession_returnFromScStatus` returning
+2. `IOSCSISession.m:943` defines `IOSCSISession_returnFromScStatus` returning
    `void`. The `.defs` declares routine 15 as a `routine`, and the reference's
    `__XIOSCSISession_returnFromScStatus` stores the implementation's `r3` into
    the reply `RetCode` (`0x336c: stw r3, 0x1c(r31)`), so the implementation must
@@ -427,7 +439,10 @@ pairing is exactly one-to-one and in-order:
    translation units with no shared header, so it compiles and links, and the stub
    stores an undefined `r3` into `RetCode`. A silent wrong status at runtime, not a
    build failure. The `.defs` is right and our `.m` is wrong; fixing the `.m` belongs to
-   the implementation task, not here.
+   the implementation task, not here. **Since fixed** - `IOSCSISession.m:943` and
+   `IOSCSISession.h:196` now declare it `int`; see `divergences.md`'s
+   "`IOSCSISession_returnFromScStatus` discards the reference's return value"
+   finding.
 
 ## Task 3: repairing the documented divergences
 
@@ -657,8 +672,9 @@ fields `map`/`itk_space`, plus `IOTask` alongside it.
 
 ### `IORequestNotifyForClientTask`'s declared signature: arity survived, one type did not
 
-`IOTask.h:105` declared
+Before Task 4's header rewrite, `IOTask.h:105` declared
 `int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort, mach_port_t *deathPort)`.
+(The corrected declaration is now at `IOTask.h:102`.)
 The **arity is right** - three arguments, `r3`/`r4`/`r5`, confirmed at the
 reference's own call site (addresses 1324-1340) - and so are the return type and
 the first and third parameters. The **second parameter's type is wrong**: it is
@@ -668,8 +684,9 @@ into `_notifClients[i][1]` at 8708; `IOReleaseNotifyForFunc` compares that field
 against its own `id session` parameter (9080-9088). It is declared `id session`
 now. `-[IOSCSISession free]`'s dependence on the arity is unaffected.
 
-`IOTask.h:88`'s claim that the function "runs as its own thread ... never
-returns" is **correct but was attached to the wrong function**: it headed the
+The pre-rewrite header's claim, then at `IOTask.h:88`, that the function "runs
+as its own thread ... never returns" is **correct but was attached to the wrong
+function**: it headed the
 `_io_task_notification` declaration, and `_io_task_notification` is exactly that
 - forked by `IOForkThread(&__io_task_notification, 0)` at 8744, ending in
 `IOExitThread()` at 8228, with the assembler's epilogue after it unreachable.
@@ -753,11 +770,14 @@ guard make sense.
   imported routines (`port_allocate`, `port_rename`, `port_deallocate`,
   `vm_map_pageable`) instead of `FUN_xxxxxxxx` placeholders, but no body was
   filled - out of this task's scope.
-- `IOTaskPortAllocateName` is declared `void` in `IOTask.h:22` while its call
-  site in `IOSCSISession.m` assigns its result, and the reference returns
-  `port_rename`'s status (no instruction clears `r3` before the `blr` at 6552).
-  Recorded, not changed: it belongs to the stub-body finding above, not to the
-  six functions.
+- `IOTaskPortAllocateName` was declared `void` while its call site in
+  `IOSCSISession.m` assigns its result. **Fixed in the final review pass**: it
+  is `int` in both `IOTask.h:26` and `IOTask.m:168`, and the stub body now
+  returns its `result` local. The reference returns a status - the `bne` at
+  6508 jumps straight to the epilogue at 6532 with `port_allocate`'s `r3`
+  intact, nothing writes `r3` after the `bl _port_rename` at 6528, and
+  `-[IOSCSISession initServerWithTask:sendPort:]` tests it (`cmpwi cr1,r3,0` at
+  1308, `bne cr1` at 1312). The body itself is still the stub described above.
 - `IOTask.m` still declares `extern unsigned int _page_size` and builds its mask
   as `_page_size - 1`. The reference has **no** `_page_size` relocation; the two
   wire functions account for all four `_page_mask` relocations and use it
@@ -905,11 +925,11 @@ difference, and all six now carry a file and a line:
 | Address | Reference name | Source site |
 | --- | --- | --- |
 | `0x0a70` | `_serverThreadFunc` | `IOSCSISession.m:858` |
-| `0x19bc` | `_IOTaskPortAllocate` | `IOTask.m:206` |
-| `0x1c98` | `_IOConvertTaskPortToVMTask` | `IOTask.m:499` |
-| `0x1d98` | `_IODestroyMappedVMTask` | `IOTask.m:545` |
-| `0x1dc8` | `__io_task_notification` | `IOTask.m:609` |
-| `0x20dc` | `_IORequestNotifyForClientTask` | `IOTask.m:766` |
+| `0x19bc` | `_IOTaskPortAllocate` | `IOTask.m:213` |
+| `0x1c98` | `_IOConvertTaskPortToVMTask` | `IOTask.m:506` |
+| `0x1d98` | `_IODestroyMappedVMTask` | `IOTask.m:552` |
+| `0x1dc8` | `__io_task_notification` | `IOTask.m:616` |
+| `0x20dc` | `_IORequestNotifyForClientTask` | `IOTask.m:773` |
 
 The remaining **21 unmapped** are exactly the entries that have no hand-written
 source site by construction, and each is accounted for:
@@ -984,7 +1004,7 @@ EXIT: 0
 
 `selector_check.py` matches selector strings, not addresses, so it sees what the
 map structurally cannot. `+[SCSIServer deviceStyle]` is **not** in `missing`: it
-is present in our source, at `SCSIServer.m:37`. The only two `missing` entries
+is present in our source, at `SCSIServer.m:30`. The only two `missing` entries
 are the two build-generated class methods, which are bucket 4 above and are not
 hand-written by anyone. `extra` and `renames` are both empty.
 
@@ -1006,7 +1026,7 @@ the tree, not on anything new.
 
 ### Three corrections carried out of Task 4's review
 
-1. `IOTask.m:539` and this file both said "every one of the **eight** MiG-stub
+1. `IOTask.m:546` and this file both said "every one of the **eight** MiG-stub
    call sites discards `r3`". There are **six**: 10792, 11152, 11568, 11988,
    12372, 12752. Both now say six and list them. The `void` return stands
    independently on `vm_map_deallocate` being `extern void`
@@ -1016,7 +1036,7 @@ the tree, not on anything new.
    `IOForkThread`'s result to `int` at the assignment. It is a thread handle;
    Task 4 had already applied `IOThread` to the analogous session field at
    `IOSCSISession.m:299`. It is now `static IOThread _notifyThread` and the cast
-   is gone. `IOReferenceClientTask`'s upper-bound comparison at `IOTask.m:347`
+   is gone. `IOReferenceClientTask`'s upper-bound comparison at `IOTask.m:354`
    gained an `(int *)` cast on `&_notifyThread`, because the bound is an address
    comparison against an `int *` search pointer and the variable's type changed
    underneath it.
@@ -1050,3 +1070,24 @@ Against section 7 of
 in particular asserts only that the two files are now named in the variables the
 build reads - not that the project builds, and not that `IOTask.m` compiles. No
 one has ever compiled it.
+
+## Final whole-branch review pass: two known-stale comments in `IOSCSISessionMig.defs`
+
+`IOSCSISessionMig.defs` is under a standing do-not-edit constraint, so both of
+these are recorded here rather than corrected in the file. Neither affects the
+generated MIG code - they are prose in comments.
+
+1. **`.defs:93-96`** says of `IOConvertTaskPortToVMTask` and
+   `IODestroyMappedVMTask`: "Neither function exists anywhere in this tree yet
+   (two of the six functions the fix pass deferred), so `vm_task_t` here is the
+   defensible intran/destructor reading, not a recovered fact." **Task 4 wrote
+   both.** They are defined at `IOTask.m:506` and `IOTask.m:552` and declared at
+   `IOTask.h:76` and `IOTask.h:85`. The `vm_task_t` reading itself is unchanged
+   and still rests on the intran/destructor shape, not on a recovered
+   declaration; only the "exists nowhere" clause is stale.
+
+2. **`.defs:8`** cites `src/drvSCSIServer/reconstruction/divergences.md`. Task 5
+   consolidated the reconstruction directories, so that file now lives at
+   `src/drvSCSIServer/reconstruction/SCSIServer/divergences.md`. The same
+   sentence's `task-9-report.md` reference is to a prior session's report and is
+   not in this tree.

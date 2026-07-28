@@ -892,7 +892,7 @@ Headline numbers, from
 `+[SCSIServer deviceStyle]` at `__text+0` is the same address-0 case §1 of this
 report corrects: IDA's function list has no entry there, the bytes are real code
 (`9421ffe0` / `stwu r1,-32(r1)`), and the method is present at
-`SCSIServer.m:37`. It is confirmed by `selector_check.py`, which matches
+`SCSIServer.m:30`. It is confirmed by `selector_check.py`, which matches
 selector strings rather than addresses. 47 mapped + 1 = the 48 hand-written
 functions.
 

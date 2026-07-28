@@ -130,7 +130,7 @@ symptom is `ppc_invariant_check` reporting `symbol +[SCSIServer deviceStyle] at
 lacks an entry there. `read_macho` also reports address 0 for *undefined*
 symbols, which is what made the two cases look alike.
 
-`+[SCSIServer deviceStyle]` **is** present in our source (`SCSIServer.m:37`). It
+`+[SCSIServer deviceStyle]` **is** present in our source (`SCSIServer.m:30`). It
 is therefore neither a gap nor a phantom — it is simply absent from the source
 map's universe, because that universe is built from IDA's function list under
 either mapping route. Task 1 confirmed this: the primary route drops
@@ -259,7 +259,7 @@ already covers Mesh and Sym8xx.
    unmapped entry enumerated and explained. The 48th is `+[SCSIServer
    deviceStyle]`, which cannot appear in any map because IDA's function list has
    no entry at `__text+0` (§4.1); it is a known exclusion, not a gap, and is
-   confirmed present at `SCSIServer.m:37` by `selector_check.py`, which matches
+   confirmed present at `SCSIServer.m:30` by `selector_check.py`, which matches
    by string rather than by address.
 2. `duplicate_candidates` is 0, or every entry is enumerated with evidence.
 3. Bucket reconciliation reports `RECONCILES: yes`.

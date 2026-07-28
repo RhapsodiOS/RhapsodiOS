@@ -236,14 +236,63 @@ def _island_displacement(entry):
     return field - 0x04000000 if field & 0x02000000 else field
 
 
-def check_functions(document, analysis):
-    """Report __text symbols that are not function starts in an IDA analysis."""
+def _text_word(document, data, address):
+    """The instruction word at `address`, or None if it isn't in __text."""
+    for section in document["sections"]:
+        if section["name"] != "__TEXT,__text":
+            continue
+        offset = section["offset"] + address - section["address"]
+        if not section["offset"] <= offset <= section["offset"] + section["size"] - 4:
+            return None
+        return int.from_bytes(data[offset:offset + 4], "big")
+    return None
+
+
+def _is_prologue(word):
+    """Whether `word` is one of the three prologue openings these compilers emit.
+
+    Narrow on purpose -- this decides only how a message is worded, so it
+    recognises the shapes actually observed at __text+0 in the reference
+    drivers and nothing more:
+
+      mflr r0                     0x7c0802a6, the non-leaf opening
+      stwu r1,d(r1)               opcode 37, the frame push
+      stw rS,d(r1), rS >= r13     opcode 36, a callee-saved register spill
+
+    A false negative only leaves the older, weaker wording in place.
+    """
+    if word is None:
+        return False
+    opcode, source, base = word >> 26, _register(word, 21), _register(word, 16)
+    return (word == 0x7C0802A6
+            or (opcode == 37 and source == 1 and base == 1)
+            or (opcode == 36 and source >= 13 and base == 1))
+
+
+def check_functions(document, analysis, data):
+    """Report __text symbols that are not function starts in an IDA analysis.
+
+    A symbol the analyzer has no function for does not mean the address is
+    empty: IDA misses the function at __text+0 in every PowerPC driver
+    measured in this series, and the bare "is not a function start" wording
+    was repeatedly read as "Apple shipped no code here". When the bytes at
+    the symbol are a prologue, say so.
+    """
     starts = {function["address"] for function in analysis["functions"]}
-    return [
-        f"symbol {symbol['name']} at 0x{symbol['address']:x} is not a function start"
-        for symbol in document["symbols"]
-        if symbol["section"] == "__TEXT,__text" and symbol["address"] not in starts
-    ]
+    violations = []
+    for symbol in document["symbols"]:
+        if symbol["section"] != "__TEXT,__text" or symbol["address"] in starts:
+            continue
+        where = f"symbol {symbol['name']} at 0x{symbol['address']:x}"
+        if _is_prologue(_text_word(document, data, symbol["address"])):
+            violations.append(
+                f"{where} has no function start in the analysis, but code is "
+                "present: the bytes there are a function prologue, so the "
+                "analysis omits a real function"
+            )
+        else:
+            violations.append(f"{where} is not a function start")
+    return violations
 
 
 def main(argv=None):
@@ -252,11 +301,12 @@ def main(argv=None):
     parser.add_argument("--analysis")
     arguments = parser.parse_args(argv)
 
-    document = read_macho(Path(arguments.binary))
+    binary = Path(arguments.binary)
+    document = read_macho(binary)
     violations = check_document(document)
     if arguments.analysis:
         analysis = json.loads(Path(arguments.analysis).read_text(encoding="utf-8"))
-        violations += check_functions(document, analysis)
+        violations += check_functions(document, analysis, binary.read_bytes())
 
     for violation in violations:
         print(violation)

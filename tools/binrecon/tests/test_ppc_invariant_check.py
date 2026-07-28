@@ -11,7 +11,7 @@ from macho_fixture import (
     ppc_scattered,
 )
 from binrecon.macho import read_macho
-from ppc_invariant_check import check_document
+from ppc_invariant_check import check_document, check_functions
 
 
 def _document(tmp_path, text, relocations):
@@ -285,3 +285,80 @@ def test_objc_non_method_list_vanilla_pointing_into_text_is_reported(tmp_path):
 
     assert len(violations) == 1
     assert "points into __TEXT,__text" in violations[0]
+
+
+# --- check_functions -------------------------------------------------------
+#
+# Every reference driver in this series carries a defined __TEXT,__text
+# symbol at __text+0 whose bytes are a real PowerPC prologue, and IDA's
+# analysis lists no function there. The bare "is not a function start"
+# wording was read five times as "there is no code at that address", so
+# these tests pin the distinction the message has to draw.
+
+def _function_document(word, *, name="+[Cls sel]", address=0):
+    """A minimal analysis-v1 document with one __TEXT,__text symbol."""
+    text = struct.pack(">I", word)
+    document = {
+        "sections": [
+            {"name": "__TEXT,__text", "address": 0x0, "offset": 0x40,
+             "size": len(text), "permissions": 5, "sha256": ""},
+        ],
+        "symbols": [
+            {"name": name, "address": address, "section": "__TEXT,__text",
+             "binding": "local"},
+        ],
+    }
+    return document, b"\0" * 0x40 + text
+
+
+def test_text_symbol_with_a_prologue_but_no_function_says_code_is_present(tmp_path):
+    # 0x7c0802a6 is "mflr r0" -- the first instruction of every non-leaf
+    # function these compilers emit. IOADBDevice_reloc, drvPPCOHare_reloc,
+    # drvPPCBurgundy_reloc, drvPPCSym8xx_reloc, drvPPCMesh_reloc and
+    # drvPPC53c96_reloc all open __text+0 with exactly this word.
+    document, data = _function_document(0x7C0802A6)
+
+    violations = check_functions(document, {"functions": []}, data)
+
+    assert len(violations) == 1
+    assert "code is present" in violations[0]
+    assert "analysis" in violations[0]
+    assert "is not a function start" not in violations[0]
+
+
+def test_text_symbol_with_a_stwu_prologue_says_code_is_present(tmp_path):
+    # 0x9421ffe0 is "stwu r1,-32(r1)" -- IODisplay_reloc's __text+0, a leaf
+    # that pushes a frame without saving lr.
+    document, data = _function_document(0x9421FFE0)
+
+    violations = check_functions(document, {"functions": []}, data)
+
+    assert len(violations) == 1
+    assert "code is present" in violations[0]
+
+
+def test_text_symbol_saving_a_callee_saved_register_says_code_is_present(tmp_path):
+    # 0x93c1fff8 is "stw r30,-8(r1)": a callee-saved register spilled
+    # through the stack pointer, which only a prologue does.
+    document, data = _function_document(0x93C1FFF8)
+
+    violations = check_functions(document, {"functions": []}, data)
+
+    assert len(violations) == 1
+    assert "code is present" in violations[0]
+
+
+def test_text_symbol_without_a_prologue_keeps_the_plain_wording(tmp_path):
+    # A word of zeroes is not a prologue, so nothing here licenses the
+    # claim that the symbol names code -- the original wording stands.
+    document, data = _function_document(0x00000000)
+
+    violations = check_functions(document, {"functions": []}, data)
+
+    assert violations == ["symbol +[Cls sel] at 0x0 is not a function start"]
+
+
+def test_text_symbol_that_is_a_function_start_is_not_reported(tmp_path):
+    document, data = _function_document(0x7C0802A6)
+
+    assert check_functions(document, {"functions": [{"address": 0}]}, data) == []

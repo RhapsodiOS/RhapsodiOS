@@ -66,6 +66,7 @@
 #import "IOADBDevice.h"
 
 #import <objc/zone.h>
+#import <bsd/dev/ppc/adb.h>
 
 extern void kprintf(const char *, ...);
 extern void printf(const char *, ...);
@@ -99,9 +100,13 @@ typedef struct {
 } IOADBDeviceEntry;
 
 /*
- * gDeviceTable and gDeviceCount are local symbols in the shipped binary
- * and are referenced only from this module, so they are static here.
+ * initialized, gDeviceTable and gDeviceCount are local symbols in the
+ * shipped binary and are referenced only from this module, so they are
+ * static here.  initialized is a byte: initalize reads it with lbz and
+ * writes it with stb, exactly as ADBServer.m's gADBServerLoaded is read
+ * and written.
  */
+static char		initialized;
 static IOADBDeviceEntry	gDeviceTable[64];	/* 1792 bytes of __bss */
 static int		gDeviceCount;
 
@@ -122,9 +127,11 @@ static int		gDeviceCount;
 extern id gADBDriver;
 
 /*
- * Builds gDeviceTable from adb_devices[].  Apple misspelled it; the symbol
- * table says _initalize and the spelling is the evidence.  Its body is one
- * of this driver's six C functions and is not part of this file set yet.
+ * Builds gDeviceTable from the bus's device info.  Apple misspelled it;
+ * the symbol table says _initalize and the spelling is the evidence, so it
+ * is reproduced.  Declared here because -initForDevice:result: calls it and
+ * is defined first; the body follows this file's @end, which is where
+ * __text puts it -- 0x5fc, after all nine methods.
  */
 static int initalize(void);
 
@@ -405,3 +412,131 @@ bad:
 }
 
 @end
+
+/*
+ * initalize (0x05fc, 468 bytes with its jump islands)  -- Apple's spelling
+ *
+ * Signature derived, not encoded: this is C, so there is no
+ * __OBJC,__meth_var_types entry.  The one call site, 0x120 in
+ * -initForDevice:result:, passes nothing (r3-r10 are untouched between the
+ * kprintf at 0x11c and the bl) and tests the returned r3 against zero, so
+ * the function takes no arguments and returns an int.  It is a `local'
+ * symbol in the symbol table, so it is static.
+ *
+ * 0x5fc-0x618   prologue: save lr and r27-r31, push a 112-byte frame.  The
+ *               only local is the 24-byte IOADBDeviceInfo at sp+0x38, just
+ *               above the 56-byte linkage and outgoing-parameter area.
+ * 0x61c-0x62c   lbz initialized and branch to 0x788 if it is nonzero.  A
+ *               byte load here and a byte store at 0x784 make it a char.
+ * 0x630         device = 1.  ADB address 0 is never probed; adb_io.h's
+ *               ADB_DEVICE_COUNT carries the note "ID 0 is special".
+ * 0x634         index = 0.
+ * 0x638-0x648   three loop invariants hoisted: &gDeviceTable into r29, a
+ *               zero into r28, and &adb_devices into r27.  r27's relocation
+ *               is the undefined external _adb_devices, so this reads
+ *               adb.h's kernel array directly.
+ * 0x64c-0x664   [gADBDriver getADBInfo:device :&info].  The selector is
+ *               ADBprotocol's two-argument getADBInfo:: at
+ *               __OBJC,__message_refs+0x18, not this class's own
+ *               one-argument getADBInfo:.  Its IOReturn is discarded --
+ *               nothing reads r3 afterwards.
+ * 0x668-0x670   info.flags, at sp+0x38+0x14, andi. 1 = ADB_FLAGS_PRESENT.
+ *               A clear bit branches to 0x760 and skips the entire body,
+ *               so index does not advance and the table stays packed.
+ * 0x674-0x684   the (i*8-i)*4 = i*28 index expression, then the first field
+ *               stored through stwx before r9 is folded into a base.
+ * 0x688-0x6a0   .address, .originalHandlerID and .handlerID, one word at a
+ *               time.  Four separate lwz/stw pairs -- not the 4-load /
+ *               4-store / 2-load / 2-store block -getADBInfo: emits for a
+ *               whole-struct assignment -- so these are four scalar
+ *               assignments and the struct is deliberately not copied.
+ * 0x6a4-0x6a8   .info.uniqueID = index + 1.  The uniqueID the bus reported,
+ *               at sp+0x38+0x10, is never read: the driver assigns its own
+ *               one-based identifier, and that is the value
+ *               -initForDevice:result: searches for.
+ * 0x6ac         .info.flags = 0, reusing r28.
+ * 0x6b0-0x6cc   the trace.  (device*2 + device)*8 = device*24, which is
+ *               sizeof(struct adb_device), and +0xC within it is a_flags.
+ *               So the value printed is adb_devices[device].a_flags from
+ *               the kernel's array, not the info just fetched.
+ * 0x6d0-0x6f4   ADB_FLAGS_REGISTERED set -> |= 0x1000.
+ * 0x6f8-0x71c   ADB_FLAGS_UNRESOLVED set -> |= 0x10000 (oris r0, r0, 1).
+ * 0x720-0x744   neither set (andi. 6, bne skips) -> |= 1.
+ * 0x748-0x758   .device = nil, r28 again.
+ * 0x75c         index++.
+ * 0x760-0x768   device++, then cmpwi 0xF and ble back to 0x64c.
+ * 0x76c-0x774   gDeviceCount = index.
+ * 0x778-0x784   initialized = 1.
+ * 0x788         r3 = 0.  Both the already-initialised branch and the
+ *               fall-through reach it, so there is one return and it is
+ *               always IO_R_SUCCESS -- which is why -initForDevice:result:
+ *               can never take its own 0x128 failure branch in practice.
+ * 0x78c-0x7ac   epilogue.
+ *
+ * The five index expressions at 0x674, 0x6dc, 0x704, 0x72c and 0x748 are
+ * the same computation rematerialised: the kprintf at 0x6cc clobbers the
+ * volatile registers, and gcc recomputes rather than spilling.  The source
+ * subscripts gDeviceTable[index] each time.
+ *
+ * Constants.  1, 2 and 4 in info.flags are adb.h's ADB_FLAGS_PRESENT,
+ * ADB_FLAGS_REGISTERED and ADB_FLAGS_UNRESOLVED, and the 6 at 0x724 is the
+ * latter two together; the 1 written into the driver's own flags word is
+ * IOADBBus.h's kIOADBDeviceAvailable.  0x1000 and 0x10000 have no name
+ * anywhere in this tree and are written as literals.  The loop bound 15 has
+ * no name either: IO_ADB_MAX_DEVICE is 16, and `device < IO_ADB_MAX_DEVICE'
+ * would be equivalent, but this compiler preserves the relational operator
+ * it is given -- `blt' for the `<' loops in -initForDevice:result: and
+ * `ble' for the `<=' one in adbServerIoctl -- and 0x764/0x768 is cmpwi 0xF
+ * followed by ble.  So the source said `<= 15', and that is written here.
+ *
+ * One shape is not recoverable: 0x670's beq skips to the increment, which
+ * an `if (present) { ... }' block and an `if (!present) continue;' compile
+ * to identically.  The block form is written because nothing else in this
+ * driver uses continue, and the choice is recorded rather than claimed.
+ */
+static int
+initalize(void)
+{
+    IOADBDeviceInfo	info;
+    int			device;
+    int			index;
+
+    if (initialized)
+	return IO_R_SUCCESS;
+
+    index = 0;
+
+    for (device = 1; device <= 15; device++) {		/* 15: unnamed */
+	[gADBDriver getADBInfo:device :&info];
+
+	if (info.flags & ADB_FLAGS_PRESENT) {
+	    gDeviceTable[index].info.originalAddress = info.originalAddress;
+	    gDeviceTable[index].info.address = info.address;
+	    gDeviceTable[index].info.originalHandlerID =
+		info.originalHandlerID;
+	    gDeviceTable[index].info.handlerID = info.handlerID;
+	    gDeviceTable[index].info.uniqueID = index + 1;
+	    gDeviceTable[index].info.flags = 0;
+
+	    kprintf("... adb flags = %lx\n", adb_devices[device].a_flags);
+
+	    if (info.flags & ADB_FLAGS_REGISTERED)
+		gDeviceTable[index].info.flags |= 0x1000;	/* unnamed */
+
+	    if (info.flags & ADB_FLAGS_UNRESOLVED)
+		gDeviceTable[index].info.flags |= 0x10000;	/* unnamed */
+
+	    if (!(info.flags & (ADB_FLAGS_REGISTERED | ADB_FLAGS_UNRESOLVED)))
+		gDeviceTable[index].info.flags |= kIOADBDeviceAvailable;
+
+	    gDeviceTable[index].device = nil;
+
+	    index++;
+	}
+    }
+
+    gDeviceCount = index;
+    initialized = 1;
+
+    return IO_R_SUCCESS;
+}

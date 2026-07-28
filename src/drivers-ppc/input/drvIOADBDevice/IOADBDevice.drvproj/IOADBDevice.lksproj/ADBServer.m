@@ -16,19 +16,23 @@
  * ADBServer is the pseudo device that fronts the ADB bus for user space:
  * +serverMajor: installs a character-device switch entry, +probe: sizes
  * the session map from the config table, and -getIntValues: publishes the
- * session count.  The character-device entry points it registers --
- * adbServeropen, adbServerclose and adbServerioctlDispatch -- are C
- * functions belonging to a later task and are only declared here.
+ * session count.  The character-device layer itself -- adbServeropen,
+ * adbServerclose, adbServerioctlDispatch and the two ioctl handlers it
+ * calls -- is five C functions, and they follow this file's @end in the
+ * order __text carries them.  Being C they have no type encodings, so
+ * their signatures are derived rather than read; each derivation is stated
+ * above the function it belongs to.
  *
  * Recovered from the binary: every selector and signature; the file-scope
  * names gADBServerMajor, gADBServerLoaded, gADBDriver, gMapLock,
- * gNumSessions and gADBDeviceIdMap, and the entry-point names
- * adbServeropen, adbServerclose and adbServerioctlDispatch (all from the
- * symbol table); the string constants; and the config-table key
- * "Maximum Sessions".
+ * gNumSessions and gADBDeviceIdMap, and the function names adbServeropen,
+ * adbServerclose, adbServerioctlDispatch, adbServerIoctl and
+ * ioadbDeviceIoctl (all from the symbol table); the string constants; and
+ * the config-table key "Maximum Sessions".
  *
- * Invented: the type name ADBDeviceIdMapEntry and its two field names, and
- * every argument and local name.
+ * Invented: the type names ADBDeviceIdMapEntry, ioadb_device_request_t and
+ * ioadb_table_request_t and all of their field names, and every argument
+ * and local name.
  *
  * gADBDeviceIdMap's layout is derived: +probe: bzeroes 0x800 bytes of it,
  * every index expression in this binary is i*8, the minor number that
@@ -40,16 +44,22 @@
  */
 
 #import "ADBServer.h"
+#import "IOADBDevice.h"
 
 #import <driverkit/devsw.h>
+#import <driverkit/kernelDriver.h>
 #import <driverkit/IOConfigTable.h>
 #import <driverkit/IODeviceDescription.h>
 #import <machkit/NXLock.h>
 #import <bsd/dev/ppc/IOADBBus.h>
+#import <bsd/sys/types.h>
+#import <bsd/sys/errno.h>
 
 extern void kprintf(const char *, ...);
+extern int sprintf(char *, const char *, ...);
 extern long strtol(const char *, char **, int);
 extern int strcmp(const char *, const char *);
+extern int strlen(const char *);
 extern void bzero(void *, int);
 
 /*
@@ -59,20 +69,114 @@ extern void bzero(void *, int);
 extern int enodev();
 
 /*
- * The three real entry points.  They are local symbols in the binary, so
- * static here.  Their argument lists are not settled by this task -- every
- * use below casts them to IOSwitchFunc, which is itself unprototyped -- so
- * they are declared without prototypes rather than with invented ones.
+ * The five C functions of this module, all `local' symbols in the binary
+ * and so static here.  They are declared up here because +serverMajor:
+ * installs the first three and adbServerioctlDispatch calls the last two,
+ * and all five are defined after this file's @end -- which is where __text
+ * puts them, at 0xd84 onwards, after every ADBServer method.
+ *
+ * These are C: there are no type encodings, so every parameter list below
+ * is DERIVED from the disassembly and from call sites, not read from
+ * metadata.  What each derivation rests on is recorded above the function
+ * itself.  In particular none of the three cdevsw entry points reads the
+ * flag, devtype or proc arguments the kernel passes them, so their trailing
+ * parameters are not recoverable and are not invented; +serverMajor: casts
+ * all three to IOSwitchFunc, which devsw.h declares as `int (*)()', so the
+ * casts remain correct either way.
  */
-static int adbServeropen();
-static int adbServerclose();
-static int adbServerioctlDispatch();
+static int adbServeropen(dev_t dev);
+static int adbServerclose(dev_t dev);
+static int adbServerioctlDispatch(dev_t dev, int cmd, void *data);
+static int adbServerIoctl(int cmd, void *data);
+static int ioadbDeviceIoctl(int unit, void *data);
 
 /* Invented type and field names; layout derived above. */
 typedef struct {
     id		device;			/* +0x00, the IOADBDevice for the unit */
     int		inUse;			/* +0x04, nonzero once allocated */
 } ADBDeviceIdMapEntry;
+
+/*
+ * The two ioctl payloads, DERIVED entirely from offsets.  Nothing in the
+ * binary names any of these types or fields; every name below is invented.
+ * What is not invented is the layout, and each one is confirmed twice over
+ * by the ioctl command words themselves, which encode sizeof(payload):
+ *
+ *   ioadb_device_request_t   32 bytes  == 0x020, the length in 0xC0206102
+ *   ioadb_table_request_t   396 bytes  == 0x18C, the length in 0xC18C6103
+ *
+ * ioadb_device_request_t's offsets come from ioadbDeviceIoctl's eight
+ * switch arms: +0x00 is the command it switches on, +0x04 takes every
+ * IOReturn it stores, +0x08 is the value word (the long uniqueID for
+ * command 2, the register number for 5 and 6, the state for 7 to 9) and is
+ * also the base of the IOADBDeviceInfo command 3 fills, +0x0c is the
+ * register buffer and the mask, and +0x14 is the register length.  An
+ * IOADBDeviceInfo at +0x08 is 24 bytes, which makes the struct exactly 32.
+ *
+ * ioadb_table_request_t's come from adbServerIoctl's GetTable arm: the same
+ * command and result words, a table at +0x08 and its length at +0x188.
+ * 0x188 - 0x08 = 384 = IO_ADB_MAX_DEVICE * sizeof(IOADBDeviceInfo), which
+ * is also what IOADBBus.h's comment on GetTable:length: demands ("an array
+ * that is IO_ADB_MAX_DEVICE long"), and 0x188 + 4 = 396.
+ *
+ * The register buffer's eight bytes are IO_ADB_MAX_PACKET, named in
+ * IOADBBus.h.  It is `char' rather than `unsigned char' because the method
+ * it is passed to encodes its buffer as `*', and because the dump loops
+ * read it with lbz -- plain char is unsigned on this ABI either way.
+ */
+typedef struct {
+    int			command;	/* +0x000 */
+    IOReturn		result;		/* +0x004 */
+    union {
+	long		uniqueID;			/* command 2 */
+	IOADBDeviceInfo	deviceInfo;			/* command 3 */
+	struct {
+	    int		whichRegister;			/* +0x008 */
+	    char	buffer[IO_ADB_MAX_PACKET];	/* +0x00c */
+	    int		length;				/* +0x014 */
+	} reg;						/* commands 5, 6 */
+	struct {
+	    unsigned int state;				/* +0x008 */
+	    unsigned int mask;				/* +0x00c */
+	} st;						/* commands 7, 8, 9 */
+    } u;				/* +0x008, 24 bytes */
+} ioadb_device_request_t;		/* 32 bytes = 0x020 */
+
+typedef struct {
+    int			command;			/* +0x000 */
+    IOReturn		result;				/* +0x004 */
+    IOADBDeviceInfo	table[IO_ADB_MAX_DEVICE];	/* +0x008, 384 B */
+    int			length;				/* +0x188 */
+} ioadb_table_request_t;		/* 396 bytes = 0x18C */
+
+/*
+ * The three ioctl command words, written as the literals the binary
+ * compares against.
+ *
+ * NO NAME FOR ANY OF THEM EXISTS IN THIS TREE.  adb.h, adb_io.h,
+ * IOADBBus.h, IOADBBusProt.h and the sys/ioctl.h family were all checked;
+ * the only 'a'-group ioctl in the tree is netiso's SIOCGSTYPE.  Rather than
+ * invent names, the literals stand and their decomposition under
+ * <bsd/sys/ioccom.h> is recorded here, each verified arithmetically:
+ *
+ *   0x40546101 = _IOR ('a', 1, char[84])                 84 == 0x054
+ *   0xC0206102 = _IOWR('a', 2, ioadb_device_request_t)   32 == 0x020
+ *   0xC18C6103 = _IOWR('a', 3, ioadb_table_request_t)   396 == 0x18C
+ *
+ * The first one is the only one Apple's own name for which survives: the
+ * kprintf at 0x10d0 in adbServerIoctl prints "... IOADB_KERN_GETDEVICE\n"
+ * on entry to its arm.  That is a string, not a definition, so it is
+ * recorded here and NOT written as a macro -- the header that defined it
+ * is not in this tree, and a macro here would be an invention wearing a
+ * recovered name.  Its 84-byte payload is used only as the destination of
+ * one sprintf, so nothing beyond "it starts with a string" is derivable
+ * about its layout, and no type is declared for it.
+ *
+ * Both comparisons against these words are cmpw, the signed compare, so
+ * the command is an int and 0xc18c6103 -- which does not fit in one -- is
+ * matched by bit pattern.  That is what the binary does and it is written
+ * as the binary does it, wart included.
+ */
 
 /*
  * gADBDriver is the IOADBBus this bundle talks to.  See IOADBDevice.m for
@@ -392,3 +496,470 @@ static ADBDeviceIdMapEntry	gADBDeviceIdMap[256];	/* 2048 bytes */
 }
 
 @end
+
+/*
+ * adbServeropen (0x0d84, 272 bytes with its jump islands)
+ *
+ * Signature derived.  Only r3 is read: 0x0d9c copies it to r29 and 0x0da4
+ * masks it with 0xff.  r4, r5 and r6 -- the flag, devtype and proc a
+ * cdevsw d_open is called with -- are never touched, so they are not
+ * recoverable and are not invented.  The return is r31, an int, and it is
+ * both handed to IOSetUNIXError and returned, so it is a UNIX errno.  The
+ * 0xff mask is minor()'s, defined in <bsd/sys/types.h> as ((x) & 0xff),
+ * which is why the argument is written dev_t.
+ *
+ * 0x0d84-0x0d98  prologue: save lr and r29-r31, push an 80-byte frame.
+ * 0x0d9c         dev -> r29.
+ * 0x0da0         rtn = 0.  Placed before the test, so it is an initialiser
+ *                rather than an assignment on the unit == 0 path.
+ * 0x0da4-0x0da8  andi. r30, r29, 0xff -- unit = minor(dev) -- and a beq
+ *                straight to the trailing trace at 0x0e28.  Minor 0 is the
+ *                server's own node, reserved by +probe:, and opening it
+ *                does nothing and succeeds.
+ * 0x0dac-0x0db8  the "open unit" trace.
+ * 0x0dbc-0x0dd4  gADBDeviceIdMap[unit].inUse: the i*8 index expression,
+ *                the flag at +4, and zero means no such session.
+ * 0x0dd8-0x0ddc  rtn = 0x13 = 19 = ENODEV, then to 0x0e28.
+ * 0x0de0-0x0df4  .device at +0 non-nil means the unit is already open.
+ * 0x0df8-0x0dfc  rtn = 0xd = 13 = EACCES, then to 0x0e28.
+ * 0x0e00-0x0e20  [IOADBDevice alloc] -- the receiver is the IOADBDevice
+ *                entry in __OBJC,__cls_refs, a literal class name -- stored
+ *                into .device.  The object is only allocated here; it is
+ *                initialised later, by ioadbDeviceIoctl's command 2.
+ * 0x0e24         rtn = 0 again.  Redundant against 0x0da0, and emitted, so
+ *                the source assigns it on this path too.
+ * 0x0e28-0x0e38  the shared exit trace; %x takes dev, not unit.
+ * 0x0e3c-0x0e40  IOSetUNIXError(rtn), called unconditionally, including
+ *                with rtn == 0.
+ * 0x0e44-0x0e60  epilogue returning rtn.
+ */
+static int
+adbServeropen(dev_t dev)
+{
+    int	unit = minor(dev);
+    int	rtn = 0;
+
+    if (unit != 0) {
+	kprintf("open unit:(%d)\n", unit);
+
+	if (gADBDeviceIdMap[unit].inUse == 0) {
+	    rtn = ENODEV;
+	} else if (gADBDeviceIdMap[unit].device != nil) {
+	    rtn = EACCES;
+	} else {
+	    gADBDeviceIdMap[unit].device = [IOADBDevice alloc];
+	    rtn = 0;
+	}
+    }
+
+    kprintf("adbServeropen(%x) = %d\n", dev, rtn);
+    IOSetUNIXError(rtn);
+
+    return rtn;
+}
+
+/*
+ * adbServerclose (0x0e94, 268 bytes with its jump islands)
+ *
+ * Signature derived the same way: r3 alone is read and masked with 0xff at
+ * 0x0ebc; r4 onwards are untouched.
+ *
+ * 0x0e94-0x0eb0  prologue: save lr and r27-r31, push an 80-byte frame.  Two
+ *                more callee-saved registers than open, because the entry
+ *                address is held live across three calls.
+ * 0x0eb4         dev -> r31.
+ * 0x0eb8         rtn = 0 in r27, and NOTHING EVER WRITES r27 AGAIN.  This
+ *                function cannot fail: every path returns 0, and the three
+ *                things that could have been errors are traces instead.
+ * 0x0ebc-0x0ec0  unit = minor(dev); zero goes straight to 0x0f2c.
+ * 0x0ec4-0x0ed0  unit*8, &gADBDeviceIdMap, and the entry address kept in
+ *                r28 -- unlike open, which recomputes it three times.
+ * 0x0ed4-0x0edc  .inUse zero -> 0x0f1c, the "already closed" trace.
+ * 0x0ee0-0x0ee8  .device nil -> 0x0f00, the "adbDevice is nil" trace.
+ * 0x0eec-0x0ef8  [device free], and the nil it returns stored back into
+ *                .device.  objc_msgSend, not objc_msgSendSuper.
+ * 0x0efc         join at 0x0f10.
+ * 0x0f00-0x0f0c  the nil trace; falls into 0x0f10.
+ * 0x0f10-0x0f18  .inUse = 0.  Both the freed and the nil path reach it, so
+ *                the session is released either way.
+ * 0x0f1c-0x0f28  the "already closed" trace; falls into 0x0f2c.
+ * 0x0f2c-0x0f3c  the shared exit trace, %x on dev again.
+ * 0x0f40-0x0f44  IOSetUNIXError(0).
+ * 0x0f48-0x0f6c  epilogue returning 0.
+ */
+static int
+adbServerclose(dev_t dev)
+{
+    int	unit = minor(dev);
+    int	rtn = 0;
+
+    if (unit != 0) {
+	if (gADBDeviceIdMap[unit].inUse != 0) {
+	    if (gADBDeviceIdMap[unit].device != nil)
+		gADBDeviceIdMap[unit].device =
+		    [gADBDeviceIdMap[unit].device free];
+	    else
+		kprintf("adbServerclose(%x), adbDevice is nil\n", dev);
+
+	    gADBDeviceIdMap[unit].inUse = 0;
+	} else {
+	    kprintf("adbServerclose(%x), is already closed\n", dev);
+	}
+    }
+
+    kprintf("adbServerclose(%x) = %d\n", dev, rtn);
+    IOSetUNIXError(rtn);
+
+    return rtn;
+}
+
+/*
+ * adbServerioctlDispatch (0x0fa0, 236 bytes with its jump islands)
+ *
+ * Signature derived, and it is this function that settles the other two
+ * ioctl signatures.  r3, r4 and r5 are read and nothing beyond; r5 is moved
+ * into r4 at 0x0fc0 and never touched again, so it is passed straight
+ * through to both callees as their second argument.  The two calls are
+ *
+ *   0x0fd0  r3 = r30 (cmd),           r4 = data  -> adbServerIoctl
+ *   0x0ffc  r3 = r29 & 0xff (minor),  r4 = data  -> ioadbDeviceIoctl
+ *
+ * both resolved through the relocation table, which names __TEXT,__text
+ * +0x108c and +0x1278 -- the branch targets alone are jump islands.  So
+ * adbServerIoctl takes (cmd, data) and ioadbDeviceIoctl takes (unit, data),
+ * and neither receives dev.  data's declared type is not recoverable: it is
+ * only ever a pointer that is passed on, so void * is written and the two
+ * handlers cast it to the payload their command implies.
+ *
+ * 0x0fa0-0x0fbc  prologue; dev -> r29, cmd -> r30, data r5 -> r4.
+ * 0x0fc4-0x0fc8  andi. r3, r29, 0xff sets the condition AND leaves minor()
+ *                in r3 for the second call; nonzero branches to 0x0fdc.
+ * 0x0fcc-0x0fd8  minor 0: adbServerIoctl(cmd, data).  This is the server's
+ *                own node, so the session-management ioctls land here.
+ * 0x0fdc-0x0fe8  cmd == 0xc0206102 -> 0x0ffc.
+ * 0x0fec-0x0ff8  cmd == 0xc18c6103 -> 0x0ffc, anything else -> 0x1008.
+ * 0x0ffc-0x1004  ioadbDeviceIoctl(minor(dev), data), r3 still holding the
+ *                masked value from 0x0fc4.
+ * 0x1008         rtn = 0x16 = 22 = EINVAL for every other command.
+ * 0x100c-0x1020  the shared trace.
+ * 0x1024-0x1028  IOSetUNIXError(rtn), again unconditional.
+ * 0x102c-0x1048  epilogue returning rtn.
+ *
+ * Note what is NOT here: no fifth cdevsw argument, and no check that data
+ * is non-NULL.  Note also that both device commands reach the same handler
+ * -- the dispatcher filters on the command word and lets ioadbDeviceIoctl
+ * decide what the payload means.
+ */
+static int
+adbServerioctlDispatch(dev_t dev, int cmd, void *data)
+{
+    int	rtn;
+
+    if (minor(dev) == 0)
+	rtn = adbServerIoctl(cmd, data);
+    else if (cmd == 0xC0206102 || cmd == 0xC18C6103)	/* both unnamed */
+	rtn = ioadbDeviceIoctl(minor(dev), data);
+    else
+	rtn = EINVAL;
+
+    kprintf("adbServerioctlDispatch(%x, 0x%x) = %d\n", dev, cmd, rtn);
+    IOSetUNIXError(rtn);
+
+    return rtn;
+}
+
+/*
+ * adbServerIoctl (0x108c, 492 bytes with its jump islands)
+ *
+ * Signature derived from the one call site above: (int cmd, void *data).
+ *
+ * 0x108c-0x10a0  prologue: save lr and r29-r31, push an 80-byte frame.
+ * 0x10a4         data -> r31.
+ * 0x10a8         rtn = 0 in r30.
+ * 0x10ac         a second copy of data into r29.  r31 is about to be reused
+ *                as the loop counter, so this copy is real, not codegen
+ *                noise -- it is the only surviving reference to the payload
+ *                after 0x1108.
+ * 0x10b0-0x10bc  cmd == 0xc18c6103 -> 0x11d0.
+ * 0x10c0-0x10cc  cmd != 0x40546101 -> 0x1214, the shared ENXIO.
+ *
+ * The compare order is the evidence for a switch rather than an if chain:
+ * gcc orders switch compares by value and lays the arms out in source
+ * order.  As signed ints 0xc18c6103 is negative and sorts first, which is
+ * the order tested; but its body is second in __text, at 0x11d0, behind the
+ * 0x40546101 body at 0x10d0.  An if/else-if would have put the first-tested
+ * body first.
+ *
+ * The 0x40546101 arm, 0x10d0-0x11cc:
+ * 0x10d0-0x10e4  two traces.  The first is the only place Apple's own name
+ *                for a command in this driver survives anywhere.
+ * 0x10e8-0x1104  [gMapLock lock] and the trace after it.
+ * 0x1108-0x1148  the free-unit search.  0x1108 sets unit = 0 in r31; 0x110c
+ *                to 0x1118 is the hoisted entry test, 0x111c to 0x1128 the
+ *                hoisted base and bound, and 0x112c to 0x1148 the rotated
+ *                body: the i*8 index, .inUse at +4, beq to break, then the
+ *                back edge testing against the gNumSessions cached in r11.
+ *                0x1148 is ble-, and the entry test at 0x1118 is bgt, so
+ *                the condition is unit <= gNumSessions -- one past the last
+ *                session, and written as the binary has it.
+ * 0x114c-0x1160  the "found unit" trace, gNumSessions reloaded from memory.
+ * 0x1164-0x1170  the bound re-read a third time for the post-loop test.
+ * 0x1174-0x1178  no free unit: rtn = 6 = ENXIO, straight to the unlock.
+ * 0x117c-0x1190  claim it: .inUse = 1.
+ * 0x1194-0x11a4  sprintf(data, "/dev/radbki%02d", unit) into the caller's
+ *                84-byte buffer.  This is the whole point of the command:
+ *                it hands back the path of a free minor.
+ * 0x11a8-0x11b4  the trace of what was written.
+ * 0x11b8-0x11cc  [gMapLock unlock] -- reached from both the ENXIO path and
+ *                the success path -- then to the exit trace.
+ *
+ * The 0xc18c6103 arm, 0x11d0-0x1210:
+ * 0x11d0-0x11d8  the payload's command word must be 1; anything else joins
+ *                the ENXIO at 0x1214.  1 is the GetTable command and has no
+ *                name in this tree, exactly as commands 2-9 do not.
+ * 0x11dc-0x11f4  [IOADBDevice GetTable:&req->table length:&req->length].
+ *                The receiver is the class, from __OBJC,__cls_refs, which
+ *                is consistent with GetTable:length: being a class method
+ *                -- and with its implementation address being 0, since this
+ *                is the only send of it in the binary.
+ * 0x11f8-0x11fc  req->result = the IOReturn.
+ * 0x1200-0x1210  the trace; %d takes the result still live in r4 and the
+ *                second takes req->length reloaded from +0x188.
+ *
+ * 0x1214         the shared rtn = ENXIO.
+ * 0x1218-0x1224  the exit trace.
+ * 0x1228-0x1244  epilogue returning rtn.  Note there is no IOSetUNIXError
+ *                here: the dispatcher above makes that call once, for both
+ *                handlers.
+ */
+static int
+adbServerIoctl(int cmd, void *data)
+{
+    ioadb_table_request_t	*req = data;
+    int				rtn = 0;
+    int				unit;
+
+    switch (cmd) {
+    case 0x40546101:				/* unnamed; see above */
+	kprintf("... IOADB_KERN_GETDEVICE\n");
+	kprintf("... test!\n");
+
+	[gMapLock lock];
+	kprintf("..... got lock\n");
+
+	for (unit = 0; unit <= gNumSessions; unit++)
+	    if (gADBDeviceIdMap[unit].inUse == 0)
+		break;
+
+	kprintf("..... found unit: %d of %d\n", unit, gNumSessions);
+
+	if (unit > gNumSessions) {
+	    rtn = ENXIO;
+	} else {
+	    gADBDeviceIdMap[unit].inUse = 1;
+	    sprintf(data, "/dev/radbki%02d", unit);
+	    kprintf("... adbDevice = %s\n", data);
+	}
+
+	[gMapLock unlock];
+	break;
+
+    case 0xC18C6103:				/* unnamed; see above */
+	if (req->command != 1) {		/* 1: unnamed */
+	    rtn = ENXIO;
+	    break;
+	}
+
+	req->result = [IOADBDevice GetTable:req->table
+				     length:&req->length];
+	kprintf("[GetTable] = %d (length = %d)\n", req->result, req->length);
+	break;
+
+    default:
+	rtn = ENXIO;
+	break;
+    }
+
+    kprintf("adbServerIoctl error = %d\n", rtn);
+
+    return rtn;
+}
+
+/*
+ * ioadbDeviceIoctl (0x1278, 760 bytes with its jump islands) -- the largest
+ * function in this binary.
+ *
+ * Signature derived from adbServerioctlDispatch's call at 0x0ffc:
+ * (int unit, void *data).  r3 is used only to index gADBDeviceIdMap, r4
+ * only as the payload pointer.  The dispatcher has already masked r3 with
+ * 0xff, so no masking happens here.
+ *
+ * This is a jump table, not a chain.  Every command's work is one message
+ * to the IOADBDevice the unit owns, its IOReturn stored into the payload,
+ * and a trace.  All eight arms and the default are covered below.
+ *
+ * 0x1278-0x1294  prologue: save lr and r27-r31, push a 336-byte frame.  The
+ *                frame is by far the largest here because of two 128-byte
+ *                character buffers; see the register arms.
+ * 0x1298-0x12a4  unit -> r28, data -> r31, a copy of data into r29, and
+ *                rtn = 0 in r27.  The r29 copy is used only by command 2;
+ *                every other arm addresses through r31.  Both are the same
+ *                pointer and the duplication is codegen, not a second
+ *                variable -- unlike adbServerIoctl's, where r31 is reused.
+ * 0x12a8-0x12bc  adbDevice = gADBDeviceIdMap[unit].device, i*8 again.
+ * 0x12c0-0x12d0  nil: trace, then r3 = 0x16 = EINVAL loaded directly and a
+ *                branch to 0x150c, past the 0x1508 that moves rtn into r3.
+ *                That is an early return, not a fall-through.
+ * 0x12d4-0x1304  the switch.  req->command - 2 compared unsigned against 7,
+ *                so the arms are 2 through 9 with no gaps; bgt takes
+ *                anything else to the default at 0x14f4.  The table is
+ *                eight signed offsets at __TEXT,__const+0 (0x1a78), each
+ *                relative to the table's own address, and they resolve in
+ *                order to 0x1308, 0x134c, 0x1378, 0x13a0, 0x1420, 0x14a8,
+ *                0x14bc and 0x14d4 -- source order, one arm per method.
+ *                Command 1 is GetTable and is handled by adbServerIoctl
+ *                instead; command 0 exists in neither.  None of the nine
+ *                values has a name in this tree.
+ *
+ * 0x1308-0x1348  command 2: [adbDevice initForDevice:req->u.uniqueID
+ *                result:&req->result], and the id it returns replaces the
+ *                map entry -- so a failed init stores nil and the unit
+ *                becomes un-ioctl-able until it is closed.  The trace's
+ *                %08x is the OLD pointer, still in r30, because r30 is not
+ *                reloaded; %ld and %d are reloaded from the payload.
+ * 0x134c-0x1374  command 3: getADBInfo: into &req->u.deviceInfo at +0x08.
+ *                0x1360's mr r4, r3 puts the IOReturn where the trace wants
+ *                it before 0x1364 stores it, which is why the trace needs
+ *                no reload.
+ * 0x1378-0x139c  command 4: flushADBDevice, same shape.
+ * 0x13a0-0x141c  command 5: readADBDeviceRegister:buffer:length: with
+ *                req->u.reg.whichRegister by value, &req->u.reg.buffer and
+ *                &req->u.reg.length.  Then the hex dump: 0x13c4 writes one
+ *                zero byte to the buffer at sp+0x38, and 0x13d8-0x1408 is
+ *                the loop, reloading the length every iteration because
+ *                sprintf may alias it, and re-running strlen every
+ *                iteration to find the end.  The byte is read with lbz --
+ *                zero-extended, which is what a plain char is on this ABI.
+ *                0x141c branches into the write arm's trailing kprintf.
+ * 0x1420-0x1498  command 6: the same, with the length passed by value and a
+ *                second 128-byte buffer at sp+0xb8.  Two distinct frame
+ *                slots for the two dumps is the evidence that these are two
+ *                block-scoped locals and not one shared buffer.  Each is
+ *                128 bytes: sp+0x38 to sp+0xb7 and sp+0xb8 to sp+0x137,
+ *                which together with the 0x38-byte linkage area and the
+ *                five saved registers at sp+0x13c account for the whole
+ *                336-byte frame exactly.  128 has no name in this tree.
+ * 0x149c-0x14a4  the trace tail the two register arms share.  gcc merged
+ *                the two calls' last argument, req->result; the two format
+ *                strings differ, so the source has two kprintf statements.
+ * 0x14a8-0x14b8  command 7: setState:mask:, state from +0x08, then into the
+ *                shared tail at 0x14e4.
+ * 0x14bc-0x14d0  command 8: getState.  Its result is stored at +0x08, the
+ *                value word, NOT at +0x04 -- this is the one arm that does
+ *                not record an IOReturn, because getState's return type is
+ *                the state itself.
+ * 0x14d4-0x14f0  command 9: watchState:mask:, passing &req->u.st.state.
+ *                0x14e4-0x14f0 is the tail command 7 also uses: the mask
+ *                from +0x0c, the send, and req->result = the IOReturn.
+ * 0x14f4-0x1504  default: trace the bad command and rtn = EINVAL.
+ * 0x1508         the shared r3 = rtn for all nine arms.
+ * 0x150c-0x152c  epilogue.
+ *
+ * Nothing here validates unit against gNumSessions, and nothing checks that
+ * req->u.reg.length is within IO_ADB_MAX_PACKET before the dump loop reads
+ * it.  Both are absent from the binary and neither is added.
+ *
+ * One thing the frame does not settle: the dump index.  Both loops use r30,
+ * which command 5 clobbers over adbDevice once it no longer needs it, so a
+ * single function-scope counter and two block-scoped ones are
+ * indistinguishable.  Function scope is written and the ambiguity recorded.
+ */
+static int
+ioadbDeviceIoctl(int unit, void *data)
+{
+    ioadb_device_request_t	*req = data;
+    id				adbDevice = gADBDeviceIdMap[unit].device;
+    int				rtn = 0;
+    int				i;
+
+    if (adbDevice == nil) {
+	kprintf("ioadbDeviceIoctl adbDevice = NULL\n");
+	return EINVAL;
+    }
+
+    switch (req->command) {			/* 2-9: all unnamed */
+    case 2:
+	gADBDeviceIdMap[unit].device =
+	    [adbDevice initForDevice:req->u.uniqueID result:&req->result];
+	kprintf("[0x%08x initForDevice: %ld] = %d\n",
+		adbDevice, req->u.uniqueID, req->result);
+	break;
+
+    case 3:
+	req->result = [adbDevice getADBInfo:&req->u.deviceInfo];
+	kprintf("[getADBInfo] = %d\n", req->result);
+	break;
+
+    case 4:
+	req->result = [adbDevice flushADBDevice];
+	kprintf("[flushADBDevice] = %d\n", req->result);
+	break;
+
+    case 5:
+	{
+	    char buf[128];			/* 128: unnamed */
+
+	    req->result =
+		[adbDevice readADBDeviceRegister:req->u.reg.whichRegister
+					  buffer:req->u.reg.buffer
+					  length:&req->u.reg.length];
+
+	    buf[0] = '\0';
+	    for (i = 0; i < req->u.reg.length; i++)
+		sprintf(buf + strlen(buf), "%02x ", req->u.reg.buffer[i]);
+
+	    kprintf("[readADBDeviceRegister: %d, %s] = %d\n",
+		    req->u.reg.whichRegister, buf, req->result);
+	}
+	break;
+
+    case 6:
+	{
+	    char buf[128];			/* 128: unnamed */
+
+	    req->result =
+		[adbDevice writeADBDeviceRegister:req->u.reg.whichRegister
+					   buffer:req->u.reg.buffer
+					   length:req->u.reg.length];
+
+	    buf[0] = '\0';
+	    for (i = 0; i < req->u.reg.length; i++)
+		sprintf(buf + strlen(buf), "%02x ", req->u.reg.buffer[i]);
+
+	    kprintf("[writeADBDeviceRegister: %d, %s] = %d\n",
+		    req->u.reg.whichRegister, buf, req->result);
+	}
+	break;
+
+    case 7:
+	req->result = [adbDevice setState:req->u.st.state
+				     mask:req->u.st.mask];
+	break;
+
+    case 8:
+	req->u.st.state = [adbDevice getState];
+	break;
+
+    case 9:
+	req->result = [adbDevice watchState:&req->u.st.state
+				       mask:req->u.st.mask];
+	break;
+
+    default:
+	kprintf("ioadbDeviceIoctl invalid command = %d\n", req->command);
+	rtn = EINVAL;
+	break;
+    }
+
+    return rtn;
+}

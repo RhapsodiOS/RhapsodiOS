@@ -211,9 +211,9 @@ static void watchState(PPCSerialPort *self, unsigned int *statePtr, unsigned int
     nodeName = [devDesc nodeName];
     if (nodeName != NULL) {
         if (strcmp(nodeName, "ch-a") == 0) {
-            *(unsigned int *)(basePtr + 0x148) = 0;  /* Channel A */
+            *(unsigned char *)(basePtr + 0x148) = 0;  /* Channel A */
         } else if (strcmp(nodeName, "ch-b") == 0) {
-            *(unsigned int *)(basePtr + 0x148) = 1;  /* Channel B */
+            *(unsigned char *)(basePtr + 0x148) = 1;  /* Channel B */
         }
     }
 
@@ -1240,9 +1240,15 @@ set_level_and_argument:
  * If the port is already active there is nothing to do.  Otherwise both ring
  * buffers are allocated; the allocations are chained with && so a failure of
  * either one lands on the same cleanup, which frees only the buffer at
- * offset 0x3c.  That is what the shipped code does: on a first-buffer failure
- * it frees the buffer it just failed to allocate, and on a second-buffer
- * failure it frees the first one but not the second.
+ * offset 0x3c.  That is what the shipped code does, and the second-buffer
+ * failure path is correct: the buffer at 0x24 was never allocated, so freeing
+ * only 0x3c leaks nothing.  The odd path is the *first*-buffer failure, which
+ * still calls freeRingBuffer(0x3c) even though that allocation just failed;
+ * allocateRingBuffer has already run InitQueue with a NULL buffer and a
+ * capacity of 0x1000, so freeRingBuffer reaches IOFree(NULL, 0x1000) and thus
+ * kfree(NULL, 0x1000).  The hazard belongs to freeRingBuffer, which does not
+ * guard its IOFree; it is pre-existing and out of this work's scope.  Apple's
+ * form is reproduced here rather than repaired.
  *
  * Returns: IO_R_SUCCESS, or IO_R_RESOURCE if a ring buffer could not be had.
  */
@@ -1659,9 +1665,11 @@ static IOReturn CloseQueue(void *queueBase)
  * Registered with thread_call_allocate(frameTOHandler, &self->portInfo);
  * spec is the port info block, call is unused.
  *
- * Clears the flow-control hold byte at offset 0x9d - the byte
- * SetStructureDefaults also zeroes - and then runs the interrupt service
- * routine.
+ * Zeroes the byte at offset 0x9d - the byte SetStructureDefaults also zeroes -
+ * and then runs the interrupt service routine.  What that byte means is not
+ * established: `__TEXT,__text` contains exactly two accesses to 0x9d, the
+ * `stb` in SetStructureDefaults (0x06fc) and the `stb` here (0x1ed0), and no
+ * read at all.
  *
  * The log string says "frameToHandler", with a lower case o.  That is the
  * spelling in the shipped binary and is kept verbatim.

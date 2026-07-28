@@ -565,9 +565,24 @@ is that same field.
 matches are `deactivatePort`, of which `activatePort` is a substring; a word-boundary grep for
 `activatePort` in `PPCSerialPort.m` and `PPCSerialPort.h` returns nothing and exits 1.
 
-So `activatePort` was exactly as unconstrained as the four handlers, and its signature had to
-come from the disassembly alone. Recorded because the dispatch offered those call sites as the
-thing that made this function "the best constrained" of the five, and they do not exist.
+Recorded because the dispatch offered those call sites as the thing that made this function
+"the best constrained" of the five, and they do not exist.
+
+**But `activatePort` was *not* as unconstrained as the four handlers.** Our *source* has no call
+site; the *binary* does. `0x2344 bl 0x268c` carries a `ppc-jbsr-24-pc-relative` relocation with
+target `__TEXT,__text` and addend `0xbb0` -- `_activatePort` itself -- and it sits inside
+`_executeEvent` (`0x20dc`):
+
+```
+2340  mr   r3, r30          one argument, in r3
+2344  bl   0x268c           -> island, jbsr reloc -> __TEXT,__text+0xbb0 = _activatePort
+2348  mr   r23, r3          the return value is consumed
+```
+
+That independently fixes both the arity (one argument) and the fact that the return value is
+used, corroborating `static IOReturn activatePort(PPCSerialPort *self)` as derived from the body
+below. Nothing in the written code changes as a result; the evidence is recorded because the
+earlier sentence understated it.
 
 ```
 0bb0-0bc0 prologue, saves r30 r31, frame 0x40
@@ -620,10 +635,23 @@ port info block `PPCSerialPort *self`.
 `beq` falls through to the early return when the port is **already** active.
 
 The two failure paths converge on one `freeRingBuffer(port + 0x3c)`. That is exactly what `&&`
-compiles to, and it is why the first-buffer failure frees a buffer that was never allocated and
-the second-buffer failure frees the first buffer but not the second. That asymmetry is in the
-shipped code; it is a consequence of the source's shape, not a separate defect, so reproducing
-the shape reproduces it.
+compiles to. **Which of the two paths is the odd one was stated backwards in an earlier draft of
+this section and is corrected here.**
+
+The **second**-buffer failure is *correct*. The buffer at `0x24` was never allocated -- its
+`IOMalloc` returned NULL -- so freeing only `0x3c`, the one that did succeed, leaks nothing.
+There is no "frees the first but not the second" defect on that path.
+
+The **first**-buffer failure is the odd one. It also calls `freeRingBuffer(port + 0x3c)`, for an
+allocation that had just failed. `allocateRingBuffer` calls `InitQueue(queue, NULL, 0x1000)`
+before returning NO, so the queue's buffer word is NULL and its capacity word is `0x1000`;
+`freeRingBuffer` then issues `IOFree(queue[0], queue[4])` = `IOFree(NULL, 0x1000)`, which is
+`kfree(NULL, 0x1000)` (`src/driverkit-3/libDriver/Kernel/generalFuncs.m:78`).
+
+Reproducing Apple's form here is right and **no `intentional-mismatch` is owed**: the null free
+happens inside `freeRingBuffer`, which does not guard its `IOFree`, and `freeRingBuffer` is
+pre-existing code outside this work's scope. Recorded as a known hazard belonging to
+`freeRingBuffer`, not to `activatePort`.
 
 ### Which queue is which
 
@@ -675,12 +703,78 @@ read `0x148` -- it matches neither arm.
 `(1,0) (0xb,0) (0xe,0) (0xf,8) (0,0x10) (0,0x10) (1,1) (9,0x80) (9,0x40)`, then
 `MyIOLog("In SccCloseChannel %d\n\r", *(unsigned char *)(self + 0x148))`. The body at line 2136 is
 that, in that order, with that string. The stub at line 2036 called
-`SccDisableInterrupts(self)` -- one argument to a two-argument function, a third compile error --
-and did nothing else.
+`SccDisableInterrupts(self)` -- one argument to a two-argument function -- and did nothing else.
 
 Both stubs deleted. Their two `IOLog` literals naming the functions under the old underscored
 spelling go with them. The `duplicate_candidates` count in the map is now stale at 2 and should
 be 0 on Task 5's remap.
+
+**Correction: deleting that stub did not remove the arity problem, only one instance of it.**
+An earlier draft called the stub's `SccDisableInterrupts(self)` "a third compile error", which
+reads as though the error class was closed by the deletion. It was not. Two more one-argument
+calls to the two-argument `SccDisableInterrupts` remain in `PPCSerialPort.m`, against the
+prototype at line 114
+(`static unsigned char SccDisableInterrupts(PPCSerialPort *self, unsigned int intType);`):
+
+| Line (now) | Line (pre-Task-4) | Call |
+| --- | --- | --- |
+| 2554 | 2409 | `savedIntState = SccDisableInterrupts(self);` |
+| 3180 | 3035 | `SccDisableInterrupts(self);` |
+
+Both **pre-date this branch** and neither was touched. They are **known-open**: determining the
+correct second argument at each site needs the disassembly of the enclosing functions, which is
+not this fix's scope. Nothing here should be read as a claim that the file's arity errors are
+gone.
+
+## Also fixed: the channel byte at `0x148` was being written as a word
+
+**A correctness fix derived from the reference, not a style change.**
+
+Apple stores the channel selector with `stb`. Measured in `__TEXT,__text`, inside
+`-[PPCSerialPort initFromDeviceDescription:]`:
+
+```
+014c  li   r0, 0
+0150  stb  r0, 0x270(r29)      ; nodeName == "ch-a" -> channel 0
+0154  b    0x190
+...
+0174  li   r0, 1
+0178  stb  r0, 0x270(r29)      ; nodeName == "ch-b" -> channel 1
+017c  b    0x190
+```
+
+`r29` is the ObjC `self` and the port info block is at instance offset `0x128`, so
+`0x270 - 0x128 = 0x148` -- the same byte every other site in the file reads. Both are `stb`,
+not `stw`.
+
+Our source wrote a 32-bit word at both sites:
+`*(unsigned int *)(basePtr + 0x148) = 0 / = 1`. On big-endian PowerPC that stores the `1` into
+byte `0x14b` and leaves byte `0x148` at `0x00`, so **every byte reader would see channel A**.
+The readers are byte-width and always were: `-[initFromDeviceDescription:]` itself at
+`PPCSerialPort.m:1913`, `SccCloseChannel` at `:2307`, and -- decisively -- `SccChannelReset`,
+whose Apple body branches on `*(unsigned char *)(self + 0x148)` being 0 or 1 and does nothing
+for any other value.
+
+The bug was latent while the *stub* `SccChannelReset` was still in the file, because that stub
+wrote `WR9 = 0x80` unconditionally and never read `0x148`. Deleting the stub above made the
+correct body -- the one that branches on the byte -- the live one, which makes the width
+mismatch load-bearing: channel B would silently reset as channel A.
+
+Both writes are now `*(unsigned char *)`, matching the `stb` in the reference.
+
+## Carried forward: the five new functions have no call site in our source
+
+None of the five functions written for Task 4 is referenced from `PPCSerialPort.m`:
+
+- the four handlers, because our `-[initFromDeviceDescription:]` performs no
+  `thread_call_allocate` -- the registration block at `0x03c4`-`0x0410` documented in Step 1 is
+  measured from the binary and has not been written into the source;
+- `activatePort`, because our `-[executeEvent:data:]` is still a stub, so the call site the
+  binary shows at `0x2344` has no counterpart here.
+
+That is consistent with the brief, which asked for the definition sites only. It does mean the
+handlers are **defined and not yet wired**, and that a build would emit `-Wunused-function` for
+each of the five. Recorded as carried-forward work, not as a defect in the bodies.
 
 ## Gate
 

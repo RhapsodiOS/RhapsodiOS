@@ -323,7 +323,7 @@
         "_IOTaskPortAllocateName"
       ],
       "size": 96,
-      "source_line": 163,
+      "source_line": 168,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -332,7 +332,7 @@
         "_IOTaskPortAllocate"
       ],
       "size": 48,
-      "source_line": 206,
+      "source_line": 213,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -341,7 +341,7 @@
         "_IOTaskPortDeallocate"
       ],
       "size": 48,
-      "source_line": 215,
+      "source_line": 222,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -350,7 +350,7 @@
         "_IOTaskWireMemory"
       ],
       "size": 80,
-      "source_line": 240,
+      "source_line": 247,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -359,7 +359,7 @@
         "_IOTaskUnwireMemory"
       ],
       "size": 80,
-      "source_line": 266,
+      "source_line": 273,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -368,7 +368,7 @@
         "_IOReferenceClientTask"
       ],
       "size": 232,
-      "source_line": 316,
+      "source_line": 323,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -377,7 +377,7 @@
         "_IODereferenceClientTask"
       ],
       "size": 148,
-      "source_line": 414,
+      "source_line": 421,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -386,7 +386,7 @@
         "_IOConvertTaskPortToVMTask"
       ],
       "size": 160,
-      "source_line": 499,
+      "source_line": 506,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -395,7 +395,7 @@
         "_IODestroyMappedVMTask"
       ],
       "size": 32,
-      "source_line": 545,
+      "source_line": 552,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -404,7 +404,7 @@
         "__io_task_notification"
       ],
       "size": 644,
-      "source_line": 609,
+      "source_line": 616,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -413,7 +413,7 @@
         "_IORequestNotifyForClientTask"
       ],
       "size": 480,
-      "source_line": 766,
+      "source_line": 773,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     },
     {
@@ -422,7 +422,7 @@
         "_IOReleaseNotifyForFunc"
       ],
       "size": 192,
-      "source_line": 837,
+      "source_line": 844,
       "source_path": "src/drvSCSIServer/SCSIServer.drvproj/SCSIServer.lksproj/IOTask.m"
     }
   ],

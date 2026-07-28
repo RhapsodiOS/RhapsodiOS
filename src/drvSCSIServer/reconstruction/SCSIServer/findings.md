@@ -555,3 +555,220 @@ are unchanged; only the disposition is.
   `wireMemory:` fails on client-supplied addresses, which makes the path
   client-reachable. Our two `*Scatter` bodies clear the descriptor after
   releasing it so the block is skipped.
+
+## Task 4: the six absent functions written
+
+All six are written; nothing was compiled, and no claim below is of
+buildability. Every `bl` was resolved through `binrecon.macho.read_macho`'s
+relocation table rather than IDA's export, since the PowerPC jump islands carry
+the HI16/LO16 pair that actually names the target.
+
+| Address | Function | Body | Islands | Span | Written in |
+| --- | --- | --- | --- | --- | --- |
+| 2672 | `_serverThreadFunc` | 276 | 5 x 16 | 356 | `IOSCSISession.m` |
+| 6588 | `_IOTaskPortAllocate` | 48 | 1 x 16 | 64 | `IOTask.m` |
+| 7320 | `_IOConvertTaskPortToVMTask` | 160 | 6 x 16 | 256 | `IOTask.m` |
+| 7576 | `_IODestroyMappedVMTask` | 32 | 1 x 16 | 48 | `IOTask.m` |
+| 7624 | `__io_task_notification` | 644 | 9 x 16 | 788 | `IOTask.m` |
+| 8412 | `_IORequestNotifyForClientTask` | 480 | 6 x 16 | 576 | `IOTask.m` |
+
+Every span checks out against the next symbol's address; 8412 + 480 + 6*16 =
+8988 = `_IOReleaseNotifyForFunc`, the six islands the brief predicted. The
+instruction-by-instruction account for each function is in the comment heading
+its definition and in `.superpowers/sdd/task-4-report.md`.
+
+`_serverThreadFunc` belongs in `IOSCSISession.m`, not `IOTask.m`: it sits between
+`_blastAllReservations` (2544) and `_IOSCSISession_initForDevice` (3028) in the
+reference's text, it sends `free` to an `IOSCSISession`, it reads that object's
+own `_priv` fields, and it dispatches through `_IOSCSISessionMig_server`. It
+touches no task plumbing at all.
+
+### The one thing that unlocks the rest: a port name is a pointer
+
+`_IOReferenceClientTask`'s one unidentified call, the `bl` at address 7076, has a
+`ppc-jbsr-24-pc-relative` relocation naming **`_port_rename`**, with
+`r3 = IOTask_kern->itk_space` (7056-7064), `r4 = *clientReferenceSlot` (7068) and
+`r5` = the free `_clientReferences` slot's own address (7072). It renames the
+client's port to the address of its refcount cell. From then on the two are the
+same 32-bit value, which is why:
+
+- `_IODereferenceClientTask` hands the same pointer straight to `_port_deallocate`
+  as a *name* (address 7276, `r4` still holding the incoming pointer from the
+  `mr r4, r3` at 7168);
+- `_IOConvertTaskPortToVMTask` passes the cell `_IOReferenceClientTask` rewrote
+  to `ipc_object_copyin_compat` as a `mach_port_t` (7380);
+- `_IORequestNotifyForClientTask` stores `*deathPort` into `_notifClients[i][0]`,
+  and `_io_task_notification` compares a received notification's `notify_port`
+  against it.
+
+`divergences.md` recorded "bare port name or `_clientReferences` slot pointer?"
+as its one genuinely unresolved question about this array. The answer is both.
+The same trick runs one level up: `-[IOSCSISession(Private)
+initServerWithTask:sendPort:]` calls `IOTaskPortAllocateName(self)` at 1300-1304,
+so a session's receive-port name is the session object's address - which is why
+`_serverThreadFunc` can store `self` straight into `msg_local_port` (2716) and
+why `_IORequestNotifyForClientTask`'s second argument is simultaneously the
+session and a `msg_send` destination.
+
+### `_entry` settled: it is DriverKit's `IOTask_kern`
+
+23 of the reference's relocations name `_IOTask_kern`; 4 name `_IOTask`; none
+name anything called `_entry`. Both are DriverKit globals -
+`src/driverkit-3/libDriver/Kernel/generalFuncsPrivate.m:72-74`,
+`port_name_t IOTask;` and `task_t IOTask_kern;  // kernel internal version of
+IOTask`. `IOTask_kern` is a `struct task *` (`src/kernel-7/kern/task.h:74`), and
+the declaration's two offsets are right but were misnamed:
+
+- `+0x18` is `map`, "Address space description" (`kern/task.h:81`) - the
+  `vm_map_pageable` argument in `IOTaskWireMemory`/`IOTaskUnwireMemory`, not a
+  "task port";
+- `+0xa4` is `itk_space`, the task's IPC space - the first argument of
+  `port_allocate`, `port_rename`, `port_deallocate`,
+  `ipc_object_copyin_compat` and `ipc_object_copyout_compat`, not a "port
+  functions" table. `src/kernel-7/driverkit/driverServerXXX.m:343` writes
+  `IOTask_kern->itk_space` for the same `ipc_object_copyin_compat` call.
+
+**No offset outside the declaration is touched** by any of the six functions, so
+it needed renaming, not extending. `IOTask.m` now declares `IOTask_kern` with
+fields `map`/`itk_space`, plus `IOTask` alongside it.
+
+### `0x4008`/`0x4088` settled: bounds confirmed, meaning corrected
+
+- `_clientReferences` at `0x4008` and `_notifyThread` at `0x4088`: **confirmed**
+  from the reference's own symbol table. `__DATA,__data` runs 0x4000-0x408b
+  (base 16384, size 140) and holds exactly `_protocols.26` (8 bytes),
+  `_clientReferences` (128 bytes, 0x4008-0x4087, 32 ints) and `_notifyThread`
+  (4 bytes). The "128 bytes = 32 ints" comment was right.
+- `_notifyThread` is **not** a boundary marker, as the comment claimed. It is the
+  `IOThread` handle of the single `_io_task_notification` thread: written from
+  `IOForkThread`'s result at 8748, read at 8720 and 8752, zeroed at 8224. The
+  array bound in `IOReferenceClientTask`/`IODereferenceClientTask` is
+  `&_clientReferences[32]`, which merely has the same address - the giveaway is
+  the relocation *kind*: those five sites (6956/6960, 6992/6996, 7008/7012,
+  7040/7044, 7196/7200) use `ppc-scattered-ha16/lo16-32-absolute`, the encoding
+  for an address outside the symbol it is relative to, while the two genuine
+  `_notifyThread` accesses (8712/8716, 8212/8216) use plain, non-scattered
+  relocations against the identical address.
+- The neighbouring `notifClientObjects[32]` comment was **wrong and is removed**.
+  `_notifClients` is at 0x4094 and `_notifClientCnt` at 0x4194: 256 bytes,
+  exactly 32 eight-byte entries with no room for a parallel array. "DAT_00004098"
+  was entry 0's own `+4` field. `IOReleaseNotifyForFunc` now reads
+  `client_entry[1]`, the field `IORequestNotifyForClientTask` writes at 8708.
+
+### `IORequestNotifyForClientTask`'s declared signature: arity survived, one type did not
+
+`IOTask.h:105` declared
+`int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort, mach_port_t *deathPort)`.
+The **arity is right** - three arguments, `r3`/`r4`/`r5`, confirmed at the
+reference's own call site (addresses 1324-1340) - and so are the return type and
+the first and third parameters. The **second parameter's type is wrong**: it is
+the session object, not a second port. The call site passes `_priv->0xc`, which
+`IOTaskPortAllocateName(self)` made equal to `self`; the body stores it verbatim
+into `_notifClients[i][1]` at 8708; `IOReleaseNotifyForFunc` compares that field
+against its own `id session` parameter (9080-9088). It is declared `id session`
+now. `-[IOSCSISession free]`'s dependence on the arity is unaffected.
+
+`IOTask.h:88`'s claim that the function "runs as its own thread ... never
+returns" is **correct but was attached to the wrong function**: it headed the
+`_io_task_notification` declaration, and `_io_task_notification` is exactly that
+- forked by `IOForkThread(&__io_task_notification, 0)` at 8744, ending in
+`IOExitThread()` at 8228, with the assembler's epilogue after it unreachable.
+`IORequestNotifyForClientTask` itself returns normally (`blr` at 8888).
+`_io_task_notification` is now `static` in `IOTask.m` and no longer declared in
+the header: nothing outside that file references address 7624.
+
+`IODestroyMappedVMTask` was declared `int`, "returns the result of
+vm_map_deallocate()". `vm_map_deallocate` has no result
+(`src/kernel-7/vm/vm_map.h:401`, `extern void vm_map_deallocate();`), and all
+eight MiG-stub call sites discard `r3` - 10792's call is followed at 10796 by a
+reload of the reply's `RetCode`. It is declared `void` now.
+
+### Constants, all traced to this tree's own headers
+
+| Value | Name | Header |
+| --- | --- | --- |
+| `0x1400` | `RCV_LARGE` \| `RCV_INTERRUPT` | `mach/message.h:765`, `:764` |
+| `0x0100` | `RCV_TIMEOUT` | `mach/message.h:762` |
+| `-0xCB` | `RCV_TIMED_OUT` | `mach/message.h:800` |
+| `1` | `SEND_TIMEOUT` | `mach/message.h:755` |
+| `5` | `SEND_TIMEOUT` \| `SEND_INTERRUPT` | `mach/message.h:755`, `:758` |
+| `6` | `MSG_TYPE_PORT` | `mach/message.h:716` |
+| `0xF` | `MSG_TYPE_PORT_NAME` | `mach/message.h:726` |
+| `0x11` | `MACH_MSG_TYPE_PORT_SEND` | `mach/message.h:414`, `:275` |
+| `2` | `TASK_NOTIFY_PORT` | `mach/task_special_ports.h:93` |
+| `0x41` | `NOTIFY_PORT_DELETED` | `mach/notify.h:153` |
+| `0x45` | `NOTIFY_PORT_DESTROYED` | `mach/notify.h:157` |
+| `0x41`..`0x4C` | `NOTIFY_FIRST` / `NOTIFY_LAST` bound | `mach/notify.h:152`, `:159` |
+| `-0x131` | `MIG_NO_REPLY` | `mach/mig_errors.h:98` |
+| `-0x12F` | `MIG_BAD_ID` | `mach/mig_errors.h:96` |
+| `-0x2BE` | `IO_R_RESOURCE` | `driverkit/return.h:40` |
+| `-0x2BF` | `IO_R_IPC_FAILURE` | `driverkit/return.h:41` |
+| `-0x2C6` | `IO_R_BAD_MSG_ID` | `driverkit/return.h:49` |
+| `0x20` | `sizeof(notification_t)` | `mach/notify.h:161-165` |
+| `0x1C` | `death_pill_t.RetCode` | `mach/mig_errors.h:124-128` |
+
+`_serverThreadFunc`'s range test `(unsigned)(msg_id - 0x41) <= 11` is the *open*
+interval `NOTIFY_FIRST < msg_id < NOTIFY_LAST`: `NOTIFY_FIRST` is `0100` = 64 and
+`NOTIFY_LAST` is `NOTIFY_FIRST + 015` = 77, so the inclusive range 65..76 is
+exactly what `>` and `<` produce. Two constants have no in-tree name and are left
+as literals with comments: the receive buffer size `0x400`, and the notification
+thread's 60000 ms (`li 0` / `ori 0xEA60`) receive timeout.
+
+### Apple's defect not reproduced: the `_notifClientCnt` leak
+
+`_IORequestNotifyForClientTask` increments `_notifClientCnt` at 8548-8552 before
+its first blocking call. Its first two failure returns (8592-8604 and 8656-8680)
+clear the `_notifClients` slot they reserved but never undo that increment; only
+the third, the fork-failure path at 8820-8836, does. Every
+`ipc_object_copyout_compat` or `IOReferenceClientTask` failure therefore inflates
+the count permanently. `_io_task_notification` trusts that count both as a loop
+bound (7848-7856, 8164-8172) and as its own "should I still be running" test
+(7816-7824, 7956-7968), so the leak pins the notification thread alive with no
+clients and mis-bounds both of its scans.
+
+Our source decrements on both paths, with the reasoning at each site. Address
+8412 is `intentional-mismatch` in `reconstruction/ledger.json`. This supersedes
+`divergences.md`'s former advice at that finding, which told a reimplementer to
+reproduce the leak; that advice is corrected in place.
+
+### `-[IOSCSISession initServerWithTask:sendPort:]`'s `IOForkThread` call site fixed
+
+Task 3 recorded but could not fix it. Addresses 1352-1372: `lis`/`addi`
+materialise `_serverThreadFunc` (ha16/lo16 pair naming `__TEXT,__text+2672`),
+`mr r4, r30` puts `self` in argument 2, the `bl` at 1364 relocates to
+`_IOForkThread`, and `stw r3, 0x14(r9)` stores the thread. Our source had
+`objc_msgSend(self, (SEL)0xa70)` - the function's own address read as a selector.
+It now reads `IOForkThread((IOThreadFunc)serverThreadFunc, self)`, and the
+session-structure comment's `+0x14` label is corrected from "session object ID"
+to "the forked server thread", which is what makes `-free`'s `IOExitThread()`
+guard make sense.
+
+### Still open after Task 4
+
+- `IOTaskPortAllocateName`, `IOTaskPortDeallocate`, `IOTaskWireMemory`,
+  `IOTaskUnwireMemory`, `IOReferenceClientTask` and `IODereferenceClientTask`
+  still have stub bodies with `TODO` comments. The comments now name the right
+  imported routines (`port_allocate`, `port_rename`, `port_deallocate`,
+  `vm_map_pageable`) instead of `FUN_xxxxxxxx` placeholders, but no body was
+  filled - out of this task's scope.
+- `IOTaskPortAllocateName` is declared `void` in `IOTask.h:22` while its call
+  site in `IOSCSISession.m` assigns its result, and the reference returns
+  `port_rename`'s status (no instruction clears `r3` before the `blr` at 6552).
+  Recorded, not changed: it belongs to the stub-body finding above, not to the
+  six functions.
+- `IOTask.m` still declares `extern unsigned int _page_size` and builds its mask
+  as `_page_size - 1`. The reference has **no** `_page_size` relocation; the two
+  wire functions account for all four `_page_mask` relocations and use it
+  directly. Already recorded in `divergences.md`; a comment at the declaration
+  now says so.
+- `-[IOSCSISession(Private) initServerWithTask:sendPort:]` still declares an
+  unused `mach_port_t notify_port` local. Pre-existing, not created here, left
+  alone.
+- The reference emits the `(Private)` category's `initServerWithTask:sendPort:`
+  at address 1160, *before* the class implementation's methods at 1604-2076;
+  our source has the class first. Likewise `_serverThreadFunc` is placed after
+  the four reservation helpers rather than immediately after
+  `_blastAllReservations`, because our source already orders those four
+  differently from the reference. Noted for Task 5's remap, not changed.
+- Nothing compiles, nothing is ledger-advanced past `signature-confirmed`, and
+  the six functions are not yet in `source-map.json` - Task 5 remaps.

@@ -10,7 +10,10 @@
 #import <driverkit/IOMemoryDescriptor.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/generalFuncs.h>
+#import <driverkit/return.h>
 #import <mach/mach.h>
+#import <mach/mig_errors.h>
+#import <mach/notify.h>
 
 /* Global SCSI session structures */
 static void *_scsiSessionList = NULL;      /* Head of session list (circular linked list) */
@@ -23,6 +26,11 @@ static int _sSessionIndex = 0;             /* Global session index counter */
  */
 extern void addReservation(id session, int target_high, int target_low, int lun_high, int lun_low);
 extern void blastAllReservations(id session);
+
+/* The per-session Mach RPC server loop, defined below and forked by
+ * -[IOSCSISession(Private) initServerWithTask:sendPort:]
+ */
+static void serverThreadFunc(id session);
 
 @implementation IOSCSISession
 
@@ -209,7 +217,7 @@ extern void blastAllReservations(id session);
  * offset +8: (unused/reserved)
  * offset +c: notify port (from IOTaskPortAllocateName)
  * offset +10: death port (from IORequestNotifyForClientTask)
- * offset +14: session object ID (from objc_msgSend with selector 0xa70)
+ * offset +14: the forked server thread (from IOForkThread)
  * offset +18: session index (_sSessionIndex)
  */
 - (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort
@@ -217,7 +225,7 @@ extern void blastAllReservations(id session);
     int result;
     void **session_struct;
     mach_port_t notify_port;
-    id session_object_id;
+    IOThread session_thread;
 
     /* Call [super init].
      * Addresses 1208-1240: receiver = self, then the class field is filled
@@ -269,21 +277,29 @@ extern void blastAllReservations(id session);
      * This sets up the death port at offset +10
      */
     result = IORequestNotifyForClientTask(task,
-                                         *(mach_port_t *)((char *)session_struct + 0xc),
+                                         *(id *)((char *)session_struct + 0xc),
                                          (mach_port_t *)((char *)session_struct + 0x10));
     if (result != 0) {
         /* Notification registration failed - free self and return */
         return (int)[self free];
     }
 
-    /* Get session object ID using selector 0xa70
-     * This appears to be a method that returns an object identifier
+    /* Fork this session's Mach RPC server loop.
+     *
+     * Addresses 1352-1372: lis/addi materialise _serverThreadFunc (the
+     * ha16/lo16 relocation pair names __TEXT,__text+2672), `mr r4, r30` puts
+     * self in the second argument, the bl at 1364 relocates to _IOForkThread,
+     * and `stw r3, 0x14(r9)` stores the returned thread into the session
+     * structure.  What used to stand here -- objc_msgSend(self, (SEL)0xa70) --
+     * read the function's own address as a selector; there is no message send
+     * at this site at all.  Field +0x14 is the thread, which is why -free
+     * calls IOExitThread() when it is non-zero.
      */
-    session_object_id = objc_msgSend(self, (SEL)0xa70);
-    *(id *)((char *)session_struct + 0x14) = session_object_id;
+    session_thread = IOForkThread((IOThreadFunc)serverThreadFunc, self);
+    *(IOThread *)((char *)session_struct + 0x14) = session_thread;
 
-    if (*(id *)((char *)session_struct + 0x14) == NULL) {
-        /* Failed to get session object ID - free self and return */
+    if (*(IOThread *)((char *)session_struct + 0x14) == NULL) {
+        /* Thread fork failed - free self and return */
         return (int)[self free];
     }
 
@@ -771,6 +787,128 @@ int findReservation(id session, int target_high, int target_low,
 
     /* Not found */
     return 0;
+}
+
+
+/* ========================================================================
+ * Per-Session Server Thread
+ * ======================================================================== */
+
+/*
+ * serverThreadFunc - the per-session Mach RPC server loop
+ * session: the IOSCSISession this thread belongs to
+ *
+ * Address 2672.  Sixty-nine instructions of body ending in the unconditional
+ * `b` back to the loop top at 2944, plus five 16-byte jump islands at
+ * 2948-3027 that make up the 356-byte next-symbol span (targets: msg_send,
+ * IOSCSISessionMig_server, objc_msgSend, IOLog, msg_receive).  It has no
+ * epilogue and never executes a blr - the only way out is one of the three
+ * [session free] calls, each of which reaches IOExitThread() inside -free
+ * whenever the session's own thread field is set, which it is for a live
+ * session.  The instructions after those calls are unreachable in practice.
+ *
+ * It belongs in this file, not IOTask.m: it sits between _blastAllReservations
+ * (2544) and _IOSCSISession_initForDevice (3028) in the reference's text, it
+ * sends -free to an IOSCSISession, it reads the session's own _priv fields,
+ * and it dispatches through IOSCSISessionMig_server.
+ *
+ * Two 1024-byte buffers, at r1+0x38 and r1+0x438 in an 0x850-byte frame.
+ * Instruction by instruction:
+ *
+ *   2700-2712  r31 = session, r30 = request, r29 = reply, r28 = the "free"
+ *              selector reference
+ *   2716       request->msg_local_port = (port_t)session.  The session object
+ *              *is* its own port name: -initServerWithTask:sendPort: calls
+ *              IOTaskPortAllocateName(self) at 1300-1304, which renames the
+ *              freshly allocated port to self.
+ *   2720-2740  request->msg_size = 0x400; msg_receive(request, 0x1400, 0).
+ *              0x1400 is RCV_LARGE (0x1000) | RCV_INTERRUPT (0x400),
+ *              src/kernel-7/mach/message.h:765 and :764 - an option word, not
+ *              a size.
+ *   2744-2780  on failure: IOLog the session index (_priv->0x18) and the
+ *              error, then [session free] - which does not return
+ *   2784-2792  IOSCSISessionMig_server(request, reply)
+ *   2796-2800  non-zero means "dispatched"; branch to the reply half
+ *   2804-2816  otherwise test request->msg_id: `msg_id - 0x41 <=u 11` is the
+ *              open range NOTIFY_FIRST < msg_id < NOTIFY_LAST, i.e. 65..76,
+ *              from NOTIFY_FIRST = 0100 and NOTIFY_LAST = NOTIFY_FIRST + 015
+ *              (src/kernel-7/mach/notify.h:152 and :159).  Outside it, fall
+ *              into the reply half.
+ *   2820-2832  inside it: 0x41 is NOTIFY_PORT_DELETED (notify.h:153) and 0x45
+ *              is NOTIFY_PORT_DESTROYED (notify.h:157); anything else in the
+ *              range is dropped without a reply (branch back to 2716)
+ *   2836-2856  either death notification clears _priv->0x10, the death port
+ *              IORequestNotifyForClientTask filled in, then [session free]
+ *   2860-2868  reply->RetCode == MIG_NO_REPLY (-0x131, mig_errors.h:98):
+ *              round again with nothing sent
+ *   2872-2884  reply->RetCode == MIG_BAD_ID (-0x12F, mig_errors.h:96) is
+ *              rewritten to IO_R_BAD_MSG_ID (-0x2C6, driverkit/return.h:49)
+ *   2888-2900  msg_send(reply, 5, 0); option 5 is SEND_TIMEOUT | SEND_INTERRUPT
+ *              (message.h:755 and :758)
+ *   2904-2908  success: round again
+ *   2912-2944  failure: IOLog, [session free], then the branch back to 2716
+ *
+ * The reply buffer is read at offset 0x1C, which is death_pill_t's RetCode -
+ * this tree's old-IPC MiG reply shape, msg_header_t + msg_type_t +
+ * kern_return_t (src/kernel-7/mach/mig_errors.h:124-128).
+ */
+extern boolean_t IOSCSISessionMig_server(msg_header_t *request,
+                                         msg_header_t *reply);
+
+static void serverThreadFunc(id session)
+{
+    char requestBuffer[0x400];
+    char replyBuffer[0x400];
+    msg_header_t *request;
+    death_pill_t *reply;
+    int result;
+
+    request = (msg_header_t *)requestBuffer;
+    reply = (death_pill_t *)replyBuffer;
+
+    for (;;) {
+        request->msg_local_port = (port_t)session;
+        request->msg_size = sizeof(requestBuffer);
+
+        result = msg_receive(request, RCV_LARGE | RCV_INTERRUPT, 0);
+        if (result != 0) {
+            IOLog("SS%d: Server Thread Receive Error(%d) - terminating\n",
+                  *(int *)((*(int *)((char *)session + 4)) + 0x18), result);
+            [session free];   /* reaches IOExitThread(); does not return */
+        }
+
+        if (IOSCSISessionMig_server(request, &reply->Head) == 0) {
+            if ((request->msg_id > NOTIFY_FIRST) &&
+                (request->msg_id < NOTIFY_LAST)) {
+
+                if ((request->msg_id == NOTIFY_PORT_DELETED) ||
+                    (request->msg_id == NOTIFY_PORT_DESTROYED)) {
+                    /* The client task died; drop the death-port registration
+                     * and take the session down with it.
+                     */
+                    *(int *)((*(int *)((char *)session + 4)) + 0x10) = 0;
+                    [session free];   /* does not return */
+                } else {
+                    /* Some other notification: no reply is owed */
+                    continue;
+                }
+            }
+        }
+
+        if (reply->RetCode == MIG_NO_REPLY) {
+            continue;
+        }
+        if (reply->RetCode == MIG_BAD_ID) {
+            reply->RetCode = IO_R_BAD_MSG_ID;
+        }
+
+        result = msg_send(&reply->Head, SEND_TIMEOUT | SEND_INTERRUPT, 0);
+        if (result != 0) {
+            IOLog("SS%d: Server Thread Send Error(%d) - terminating\n",
+                  *(int *)((*(int *)((char *)session + 4)) + 0x18), result);
+            [session free];   /* does not return */
+        }
+    }
 }
 
 

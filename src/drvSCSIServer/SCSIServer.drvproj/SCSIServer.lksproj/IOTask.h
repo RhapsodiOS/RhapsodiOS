@@ -21,13 +21,9 @@
  */
 void IOTaskPortAllocateName(mach_port_t name);
 
-/* Allocate a Mach port, without assigning it a name
+/* Allocate a Mach port in the IOTask's IPC space, without renaming it
  * name: Pointer to receive the newly allocated port (output parameter)
- * Returns: 0 on success, error code on failure
- *
- * NOT YET WRITTEN: absent from our source tree; the reference's body is a
- * direct tail call to the imported port_allocate(_IOTask_kern->port_funcs, name).
- * Deferred per the Phase 2 scope decision (needs a PowerPC compiler to verify).
+ * Returns: port_allocate()'s kern_return_t
  */
 int IOTaskPortAllocate(mach_port_t *name);
 
@@ -70,39 +66,36 @@ int IODereferenceClientTask(int *clientEntry);
  * taskPort: Mach task port
  * Returns: the task's VM map on success, 0 on failure
  *
- * NOT YET WRITTEN: absent from our source tree. Deferred per the Phase 2
- * scope decision (needs a PowerPC compiler to verify).
+ * Called from the MiG server stubs, which pass the result on as the SCSI
+ * request's `client` (vm_task_t).
  */
 int IOConvertTaskPortToVMTask(mach_port_t taskPort);
 
 /* Release a VM map obtained from IOConvertTaskPortToVMTask
  * vmTask: VM map to release
- * Returns: result of vm_map_deallocate()
  *
- * NOT YET WRITTEN: absent from our source tree. Deferred per the Phase 2
- * scope decision (needs a PowerPC compiler to verify).
+ * Returns nothing: the body is a single call to vm_map_deallocate(), which is
+ * itself void (src/kernel-7/vm/vm_map.h:401), and every MiG-stub call site
+ * discards the result register.
  */
-int IODestroyMappedVMTask(int vmTask);
-
-/* Client task death notification thread body
- * Runs as its own thread, forked by IORequestNotifyForClientTask; never
- * returns in the ordinary case.
- *
- * NOT YET WRITTEN: absent from our source tree. Deferred per the Phase 2
- * scope decision (needs a PowerPC compiler to verify).
- */
-void _io_task_notification(void);
+void IODestroyMappedVMTask(int vmTask);
 
 /* Register for client task death notification
- * task: Client task port
- * notifyPort: Port to notify when the client task dies
+ * task: the client's task port, as an ipc_port_t handed to us by the kernel
+ * session: the IOSCSISession to notify; also its own Mach port name.  The
+ *   reference stores this argument verbatim into the notification entry's
+ *   second field (address 8708), which IOReleaseNotifyForFunc matches against
+ *   its own `id session` and _io_task_notification uses as a msg_remote_port.
  * deathPort: Pointer to receive the registered death port (output parameter)
- * Returns: 0 on success, error code on failure
+ * Returns: 0 on success, IO_R_RESOURCE if all 32 slots are taken,
+ *   IO_R_IPC_FAILURE if the notification thread could not be forked, or the
+ *   failing call's own error code
  *
- * NOT YET WRITTEN: declared extern only; nothing defines it yet. Deferred
- * per the Phase 2 scope decision (needs a PowerPC compiler to verify).
+ * This function does return.  It is _io_task_notification, the thread it
+ * forks, that never returns in the ordinary case - that thread is internal to
+ * IOTask.m and is no longer declared here.
  */
-extern int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort, mach_port_t *deathPort);
+extern int IORequestNotifyForClientTask(mach_port_t task, id session, mach_port_t *deathPort);
 
 /* Release notification registration
  * deathPort: Death notification port to release

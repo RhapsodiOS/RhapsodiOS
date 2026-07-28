@@ -80,8 +80,8 @@ reference. `deferred` = still open, out of Task 3's file scope.
 | `IOReleaseNotifyForFunc` call-site argument | already-fixed (`2b33628e`) | none |
 | MiG dispatch-table order; PIC-displacement comment | moot (`5ac4f5c7` deleted both) | none |
 | `IOTaskPortAllocateName`'s `self` argument | claim-wrong | none needed; recorded above |
-| `IOTaskPortAllocateName` / `IOTaskPortDeallocate` / `IOTaskUnwireMemory` / `IOReferenceClientTask` / `IODereferenceClientTask` stub bodies; `IOReleaseNotifyForFunc`'s `notifClientObjects` | still-open | deferred: all in `IOTask.m`, which Task 3 may not modify |
-| six functions our tree lacks entirely | still-open | deferred to the task that writes them |
+| `IOTaskPortAllocateName` / `IOTaskPortDeallocate` / `IOTaskUnwireMemory` / `IOReferenceClientTask` / `IODereferenceClientTask` stub bodies; `IOReleaseNotifyForFunc`'s `notifClientObjects` | still-open | five stub bodies still open; `notifClientObjects` **closed by Task 4** |
+| six functions our tree lacks entirely | still-open | **closed by Task 4** |
 
 **New finding Task 3 recorded but did not fix:**
 `-[IOSCSISession initServerWithTask:sendPort:]` (address 1160) writes
@@ -90,29 +90,61 @@ reference. `deferred` = still open, out of Task 3's file scope.
 `objc_msgSend(self, (SEL)0xa70)` as our source has it. Fixing it requires
 `_serverThreadFunc`, one of the six absent functions, so it belongs with them.
 Full evidence in `reconstruction/SCSIServer/findings.md`.
+**Closed by Task 4**, which wrote `_serverThreadFunc` and then replaced the
+message send at `IOSCSISession.m` with
+`IOForkThread((IOThreadFunc)serverThreadFunc, self)`.
+
+## Task 4: the six absent functions
+
+All six are written, in `IOTask.m` (five) and `IOSCSISession.m` (one). The
+per-function instruction accounts are in `.superpowers/sdd/task-4-report.md`
+and in the comment heading each definition; three findings are worth carrying
+here because they correct statements elsewhere in this file:
+
+- **`_entry` is `IOTask_kern`**, and its fields are `map`/`itk_space`, not
+  `task_port`/`port_funcs`. See the "Groundwork" note below.
+- **`notifClientObjects` never existed.** `_notifClients` runs 0x4094-0x4193,
+  exactly 32 eight-byte entries; the "parallel array at 0x4098" was entry 0's
+  own `+4` field. `IOReleaseNotifyForFunc` now reads `client_entry[1]`, which is
+  the field `IORequestNotifyForClientTask` writes at address 8708.
+- **`_notifyThread` is a thread handle, not a boundary marker.** The array
+  bounds in `IOReferenceClientTask`/`IODereferenceClientTask` use *scattered*
+  relocations against `__DATA,__data+136` — the assembler's encoding for
+  `&_clientReferences[32]` — while the two genuine `_notifyThread` reads/writes
+  (8712/8716 and 8212/8216) are plain relocations. The addresses coincide; the
+  expressions do not.
+
+One `intentional-mismatch` was recorded: address 8412, the `_notifClientCnt`
+leak, detailed at the `_IORequestNotifyForClientTask` section below.
 
 ## Summary
 
 Tally across all 68 ledger entries, transcribed from `reconstruction/ledger.json`
-after the SCSIServer reconstruction's Task 3 fix pass. (Earlier revisions of this
-table read `assembly-matched 14 / intentional-mismatch 3 / unexamined 51`, which
-was already 18 entries adrift of the ledger before Task 3 touched it.)
+after Task 4. (Earlier revisions of this table read
+`assembly-matched 14 / intentional-mismatch 3 / unexamined 51`, which was
+already 18 entries adrift of the ledger before Task 3 touched it; Task 3 left it
+at `15 / 24 / 1 / 28`.)
 
 | Status | Count |
 | --- | --- |
 | `assembly-matched` | 15 |
-| `intentional-mismatch` | 24 |
-| `signature-confirmed` | 1 |
-| `unexamined` | 28 |
+| `intentional-mismatch` | 25 |
+| `signature-confirmed` | 6 |
+| `unexamined` | 22 |
 | **Total** | **68** |
 
-The 24 `intentional-mismatch` entries are: the 18 MiG-generated dispatch stubs
+Task 4 advanced its six addresses from `unexamined` to `signature-confirmed`
+(2672, 6588, 7320, 7576, 7624, 8412) and then 8412 on to
+`intentional-mismatch`. It deliberately did not claim `control-flow-confirmed`
+or `assembly-matched` for any of them: nothing here compiles.
+
+The 25 `intentional-mismatch` entries are: the 18 MiG-generated dispatch stubs
 (`__XIOSCSISession_*`, addresses 9212-13376, dispositioned by Task 9); the
 hand-written MiG demux (`_IOSCSISessionMig_server`, address 13520, disposed in
 Task 6); the two build-generated classes (`+[SCSIServerKernelServerInstance
 kernelServerInstance]`, address 13708, and `+[SCSIServerVersion
 driverKitVersionForSCSIServer]`, address 13728 — see "Disposition of the 27 unmapped
-entries" below); and the three places where Task 3's fix pass declined to reproduce
+entries" below); and the four places where Tasks 3 and 4 declined to reproduce
 a demonstrable defect in the reference, per
 `docs/superpowers/plans/2026-07-25-kernel-pci-pcmcia-reconstruction.md:968`
 ("reproduce Apple's *form*, not Apple's *defects*"):
@@ -122,9 +154,13 @@ a demonstrable defect in the reference, per
 | 772 | `-[SCSIServer getCharValues:forParameter:count:]` | unconditional `stb r0, -1(r9)` at 976-984, reached with `r31 == 0` via the `bge cr1, loc_3D0` break at 936 — a one-byte write before the caller's buffer |
 | 4828 | `_IOSCSISession_executeRequestScatter` | `release` at 5084 then `cmpwi cr1, r31, 0` / `beq cr1, loc_1428` at 5088-5092 with `r31` unchanged, so the wire-failure path falls into 5096-5156 and uses the freed descriptor twice more |
 | 5760 | `_IOSCSISession_executeSCSI3RequestScatter` | the same shape at 6016 and 6020-6024 in the SCSI-3 variant |
+| 8412 | `_IORequestNotifyForClientTask` | the `_notifClientCnt` leak: the failure returns at 8592-8604 and 8656-8680 clear the reserved slot but never undo the increment at 8548-8552, though the third failure path at 8820-8836 does (Task 4) |
 
-The single `signature-confirmed` entry is address 1160,
-`-[IOSCSISession initServerWithTask:sendPort:]`.
+The six `signature-confirmed` entries are address 1160,
+`-[IOSCSISession initServerWithTask:sendPort:]`, and the five functions Task 4
+wrote that are not `intentional-mismatch`: 2672 `_serverThreadFunc`, 6588
+`_IOTaskPortAllocate`, 7320 `_IOConvertTaskPortToVMTask`, 7576
+`_IODestroyMappedVMTask` and 7624 `__io_task_notification`.
 
 Of the 68 functions, **47 were read at instruction level**: the 41 functions Tasks 3-6
 compared against our source (15 confirmed `assembly-matched`, 4 `intentional-mismatch`,
@@ -884,12 +920,25 @@ disassembly view falls back to the nearest preceding *symbol table* name
 (`+[SCSIServer deviceStyle]`, address 0) whenever a load has no local symbol of its own, because IDA
 emits no function entry at address 0 to attach the name to correctly. `read_macho`'s relocation
 table resolves every one of these loads to the actual external symbol `_IOTask_kern`, in every one
-of the seven functions — confirming these are all reads of the `_entry` structure our source
-declares at `IOSCSISession.m:15-31`, and that the offsets read from it (`0xA4` = `port_funcs`,
-loaded in all seven; `0x18` = `task_port`, loaded in `IOTaskWireMemory`/`IOTaskUnwireMemory`) match
-our source's own documented field layout exactly. This is not a divergence — it is why the raw
-disassembly looks like it is loading a class method instead of a data pointer, and it is recorded so
-a future reader doesn't need to re-derive it.
+of the seven functions. This is not a divergence — it is why the raw disassembly looks like it is
+loading a class method instead of a data pointer, and it is recorded so a future reader doesn't need
+to re-derive it.
+
+**Resolved (Task 4): the global's name and both field names were wrong, the offsets were right.**
+`_IOTask_kern` accounts for 23 of the reference's relocations and `_IOTask` — a different global — for
+the other 4 (both in `__io_task_notification`, at 7696/7700 and 8176/8180). Neither is called
+`_entry`; that name appeared nowhere but our own declaration. Both globals are DriverKit's own:
+`src/driverkit-3/libDriver/Kernel/generalFuncsPrivate.m:72-74` declares `port_name_t IOTask;` and
+`task_t IOTask_kern;  // kernel internal version of IOTask`. `IOTask_kern` is therefore a
+`struct task *` (`src/kernel-7/kern/task.h:74`), and the two offsets our declaration covered are
+`+0x18` = `map`, struct task's "Address space description" (`kern/task.h:81`, the `vm_map_pageable`
+argument), and `+0xa4` = `itk_space`, the task's IPC space — the latter confirmed independently by
+`src/kernel-7/driverkit/driverServerXXX.m:343`, which writes `IOTask_kern->itk_space` as the first
+argument of the same `ipc_object_copyin_compat` call this driver makes. The old field names
+`task_port` and `port_funcs` were guesses: neither offset holds a port or a function table. **No
+offset outside the declaration is touched**, by these seven functions or by Task 4's six, so the
+declaration needed renaming, not extending. `IOTask.m`'s declaration now reads `IOTask_kern` with
+fields `map`/`itk_space`, and `IOTask` is declared alongside it.
 
 ## Finding: `_IOTaskPortAllocateName` never issues its own two Mach calls, and is declared `void` where the reference returns a status
 
@@ -1398,13 +1447,17 @@ Behaviour, traced instruction-for-instruction with every `bl` resolved via reloc
 
 Special-port slot `2`, the `_msg_receive`/`_msg_send` option and notification-ID constants above are
 all now named from this tree's own Mach headers (`task_special_ports.h`, `message.h`, `notify.h`), so
-none of them are "could not determine" any longer. The one thing that remains genuinely unresolved:
-whether `_notifClients[i]`'s first field, compared here against a received message's port, is a bare
-Mach port name or (per the existing `_IOReleaseNotifyForFunc` finding) the value of a
-`_clientReferences` slot pointer that also happens to serve as this comparison key —
-`_IORequestNotifyForClientTask` below (which populates this same array) is consistent with either
-reading, and disassembling the imported Mach kernel routines themselves is out of this project's
-scope.
+none of them are "could not determine" any longer.
+
+**Resolved (Task 4): it is both.** The question of whether `_notifClients[i]`'s first field is a bare
+Mach port name or a `_clientReferences` slot pointer is a false alternative. `_IOReferenceClientTask`'s
+one unidentified call — the `bl` at address 7076, which the Mach-O relocation table names
+`_port_rename`, with `r3 = _IOTask_kern->itk_space`, `r4 = *clientReferenceSlot` and `r5` = the slot's
+own address — *renames* the client's port to the address of its `_clientReferences` slot. From that
+call onwards the slot's address **is** the port's name in the IOTask's IPC space, which is why
+`_IODereferenceClientTask` can hand the same pointer straight to `_port_deallocate` as a name
+(address 7276, with `r4` still holding the incoming pointer from the `mr r4, r3` at 7168), and why
+`_IOConvertTaskPortToVMTask` passes the rewritten cell to `ipc_object_copyin_compat` as a `mach_port_t`.
 
 ### `_IORequestNotifyForClientTask` (address 8412, 480 bytes)
 
@@ -1473,10 +1526,18 @@ before either call ran. Only the third failure path (step 7, address 8820-8836) 
 real bug in the reference itself — every `ipc_object_copyout_compat`/`IOReferenceClientTask` failure
 permanently inflates `_notifClientCnt` by one relative to the number of live entries in
 `_notifClients`, which `__io_task_notification`'s drain-phase loop and its own `_notifClientCnt != 0`
-gating condition both trust as an accurate count. It is Apple's own defect, not a reconstruction bug to
-introduce independently — a reimplementer should reproduce it (matching this project's convention of
-reproducing Apple's own defects by default) rather than silently "fixing" it and diverging from the
-reference's observable behaviour.
+gating condition both trust as an accurate count.
+
+**Resolved (Task 4): not reproduced.** The "reproduce Apple's own defects by default" advice this
+paragraph used to give is superseded — the governing convention is
+`docs/superpowers/plans/2026-07-25-kernel-pci-pcmcia-reconstruction.md:968`, "reproduce Apple's *form*,
+not Apple's *defects*; where the reference is demonstrably buggy, keep our correct behaviour and record
+it as `intentional-mismatch` with its evidence". A count that only ever grows pins the notification
+thread alive with no clients left (its `_notifClientCnt != 0` tests at 7816-7824 and 7956-7968 never
+fire) and mis-bounds both of its scans (7848-7856 and 8164-8172). `IOTask.m`'s
+`IORequestNotifyForClientTask` therefore decrements `_notifClientCnt` on both early failure paths, with
+the reasoning in a comment at each site; address 8412 is `intentional-mismatch` in the ledger carrying
+the addresses above.
 
 Both "type" constants passed to `_ipc_object_copyout_compat`/`_ipc_object_copyin_compat` are now named
 above; the one remaining open question is the precise reason the same stack slot that held `param1` on

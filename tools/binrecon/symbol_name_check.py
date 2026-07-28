@@ -45,6 +45,7 @@ def hand_written_c_symbols(document):
         for symbol in document["symbols"]
         if symbol.get("section") == "__TEXT,__text"
         and not symbol["name"].startswith(("-[", "+["))
+        and symbol["name"] not in COMPILER_RUNTIME
     ]
 
 

@@ -238,3 +238,186 @@ scratch.
 
 `ledger.json` is seeded from this map by `tools/binrecon/seed_ledger.py`: 68
 entries, one per accounted-for function, every one `unexamined`.
+
+## `IOSCSISessionMig.defs` verified against the shipped MIG stubs
+
+`IOSCSISessionMig.defs` generates the 19 functions bucket 6 excuses as
+"generated, therefore not gaps". Nothing verified the `.defs` itself. This
+section does, by reading the reference's own stubs. **All 19 agree.**
+
+### Method and its limits
+
+There is no MIG binary here, so this is a **read-and-compare against
+declarations, not a regenerate-and-diff**. It catches wrong routine numbers,
+wrong declaration order, wrong argument count, wrong argument type, wrong
+in/out direction and wrong message sizes - each of those is directly visible in
+the stub's size checks, type-descriptor compares and implementation call. It
+does **not** catch subtle codegen differences (register allocation, branch
+shape, statics ordering). Nothing was compiled.
+
+Evidence used, all re-derived from the bytes:
+
+- `__text` disassembly of the 18 `__XIOSCSISession_*` stubs and
+  `_IOSCSISessionMig_server`, from
+  `tools/binrecon/out/scsiserver-ppc/published/analysis-reference-ida.json`.
+- The `__const` `msg_type_t` statics at `0x3704`-`0x37a0`, read out of the file
+  and decoded against `src/kernel-7/mach/message.h:679-726`.
+- The `__const` dispatch table at `0x37a4`, read from the reference's own
+  Mach-O `__const` relocations (18 entries; `__const` has exactly 18
+  relocations and no others).
+- The `PPC_RELOC_JBSR` relocations in `__text`, read from the Mach-O directly,
+  to resolve each stub's implementation call.
+
+### The dispatch table
+
+`_IOSCSISessionMig_server` at `0x34d0`:
+
+```
+0034e4  li    r0, 0x20          ; default reply msg_size = 0x20
+003504  lwz   r0, 0x14(r3)      ; request msg_id
+003508  addic r0, r0, 0x64      ; reply msg_id = request + 100
+003524  lwz   r0, 0x14(r3)
+003528  addic r0, r0, -0x1092   ; -4242
+00352c  cmplwi cr1, r0, 0x11    ; > 17 -> out of range
+003538  lis   r9, 0             ; scattered HA16, r_value = 0x37a4
+00353c  addi  r9, r9, -0xAA4    ; = 0x37a4 - 0x4248 (= 4242 * 4)
+003540  slwi  r0, r0, 2
+003544  lwzx  r0, r9, r0
+```
+
+**Subsystem base is 4242.** It is stated twice and both agree: the range test
+subtracts `0x1092` (4242), and the table pointer is pre-biased by `0x4248`
+(`4242 * 4`), so indexing by the raw `msg_id` lands on entry 0 at `msg_id`
+4242. The accepted range is `[4242, 4259]` - `cmplwi 0x11` admits 0 through 17,
+eighteen routines. A null table entry falls through to `li r3, 0` (message not
+handled), so the table is dense.
+
+The table at `0x37a4` (from `__const`'s own relocations, not inferred):
+
+| Idx | `msg_id` | Entry | `.defs` position | Agree |
+| --- | --- | --- | --- | --- |
+| 0 | 4242 | `__XIOSCSISession_free` @ `0x23fc` | 1st | yes |
+| 1 | 4243 | `__XIOSCSISession_initForDevice` @ `0x2464` | 2nd | yes |
+| 2 | 4244 | `__XIOSCSISession_releaseAllUnits` @ `0x2544` | 3rd | yes |
+| 3 | 4245 | `__XIOSCSISession_reserveTarget` @ `0x25c4` | 4th | yes |
+| 4 | 4246 | `__XIOSCSISession_releaseTarget` @ `0x2688` | 5th | yes |
+| 5 | 4247 | `__XIOSCSISession_reserveSCSI3Target` @ `0x274c` | 6th | yes |
+| 6 | 4248 | `__XIOSCSISession_releaseSCSI3Target` @ `0x2810` | 7th | yes |
+| 7 | 4249 | `__XIOSCSISession_numberOfTargets` @ `0x28d4` | 8th | yes |
+| 8 | 4250 | `__XIOSCSISession_executeRequest` @ `0x2964` | 9th | yes |
+| 9 | 4251 | `__XIOSCSISession_executeSCSI3Request` @ `0x2acc` | 10th | yes |
+| 10 | 4252 | `__XIOSCSISession_executeRequestScatter` @ `0x2c34` | 11th | yes |
+| 11 | 4253 | `__XIOSCSISession_executeSCSI3RequestScatter` @ `0x2dd8` | 12th | yes |
+| 12 | 4254 | `__XIOSCSISession_executeRequestOOLScatter` @ `0x2f7c` | 13th | yes |
+| 13 | 4255 | `__XIOSCSISession_executeSCSI3RequestOOLScatter` @ `0x30f8` | 14th | yes |
+| 14 | 4256 | `__XIOSCSISession_resetSCSIBus` @ `0x3274` | 15th | yes |
+| 15 | 4257 | `__XIOSCSISession_returnFromScStatus` @ `0x3304` | 16th | yes |
+| 16 | 4258 | `__XIOSCSISession_maxTransfer` @ `0x33b0` | 17th | yes |
+| 17 | 4259 | `__XIOSCSISession_getDMAAlignment` @ `0x3440` | 18th | yes |
+
+MIG assigns IDs sequentially from the subsystem base in declaration order, so
+`.defs` position *n* must be table index *n-1*. It is, for all eighteen.
+
+### Per-routine message layout
+
+Old-IPC `msg_header_t` is 24 bytes: `msg_simple` at byte 3, `msg_size` at 4,
+`msg_type` at 8, `msg_local_port` (the destination, i.e. the `server` argument)
+at `0xc`, `msg_remote_port` at `0x10`, `msg_id` at `0x14`. Every stub reads the
+server port from `0xc` of the request and writes `RetCode` to `0x1c` of the
+reply, after a `RetCodeType` descriptor at `0x18` that the server function
+plants. Failure is `-0x130` = `MIG_BAD_ARGUMENTS` (-304).
+
+| # | Routine | `.defs` signature | Request | Reply | Agree |
+| --- | --- | --- | --- | --- | --- |
+| 0 | `free` | `simpleroutine (server)` | `0x18`, simple=1 | none; `RetCode = -0x131` (`MIG_NO_REPLY`, -305) | yes |
+| 1 | `initForDevice` | `(server; in deviceName: array[*:80] of char)` | `size - 0x1c <= 0x50`; descriptor `0x18` masked `FFFF000C` == `08080008`; data `0x1c`, padded to word | `0x20` | yes |
+| 2 | `releaseAllUnits` | `(server)` | `0x18`, simple=1 | `0x20` | yes |
+| 3 | `reserveTarget` | `(server; in target: char; in lun: char)` | `0x28`; `08080018` @`0x18`, `lbz` @`0x1c`; `08080018` @`0x20`, `lbz` @`0x24` | `0x20` | yes |
+| 4 | `releaseTarget` | same as #3 | `0x28`, identical descriptors | `0x20` | yes |
+| 5 | `reserveSCSI3Target` | `(server; in target: struct[2] of unsigned; in lun: same)` | `0x30`; `02200028` @`0x18`, 8 bytes @`0x1c`; `02200028` @`0x24`, 8 bytes @`0x28` | `0x20` | yes |
+| 6 | `releaseSCSI3Target` | same as #5 | `0x30`, identical descriptors | `0x20` | yes |
+| 7 | `numberOfTargets` | `(server; out number: unsigned)` | `0x18` | `0x28`; `02200018` @`0x20`, word @`0x24` | yes |
+| 8 | `executeRequest` | `(server; inout scsiReq: array[88] of char; in client: IOVMTaskPort; in buffer: int; out status: int)` | `0x84`, simple=0; `08080588` @`0x18`, 88 B @`0x1c`; `06200018` @`0x74`, port @`0x78`; `02200018` @`0x7c`, int @`0x80` | `0x84`; `08080588` @`0x20`, 88 B copied @`0x24`; `02200018` @`0x7c`, status @`0x80` | yes |
+| 9 | `executeSCSI3Request` | same shape, `array[108] of char` | `0x98`; `080806C8` @`0x18`, 108 B @`0x1c`; port `0x88`/`0x8c`; int `0x90`/`0x94` | `0x98`; 108 B @`0x24`; status @`0x94` | yes |
+| 10 | `executeRequestScatter` | `(server; inout scsiReq: array[88]; in client; in ioRanges: array[*:896] of char; out status: int)` | `size - 0x80 <= 0x380`; 88 B @`0x1c`; port `0x74`/`0x78`; descriptor `0x7c` masked `FFFF000C` == `08080008`, data @`0x80` | `0x84` | yes |
+| 11 | `executeSCSI3RequestScatter` | same, `array[108]`, `array[*:872]` | `size - 0x94 <= 0x368`; 108 B @`0x1c`; port `0x88`/`0x8c`; masked descriptor `0x90`, data @`0x94` | `0x98` | yes |
+| 12 | `executeRequestOOLScatter` | `(server; inout scsiReq: array[88]; in client; in oolData: ^array[] of char; out status: int)` | `0x8c`; 88 B @`0x1c`; port `0x74`/`0x78`; long-form header `0x7c` masked to inline=0/longform=1, `long_name:long_size` @`0x80` == `0008:0008`, `long_number` @`0x84`, pointer @`0x88` | `0x84` | yes |
+| 13 | `executeSCSI3RequestOOLScatter` | same, `array[108]` | `0xa0`; 108 B @`0x1c`; port `0x88`/`0x8c`; long-form `0x90`, `0008:0008` @`0x94`, count @`0x98`, pointer @`0x9c` | `0x98` | yes |
+| 14 | `resetSCSIBus` | `(server; out status: unsigned)` | `0x18` | `0x28`; `02200018` @`0x20`, word @`0x24` | yes |
+| 15 | `returnFromScStatus` | `(server; in status: unsigned)` | `0x20`; `02200018` @`0x18`, `lwz` @`0x1c` | `0x20` | yes |
+| 16 | `maxTransfer` | `(server; out maxTransfer: unsigned)` | `0x18` | `0x28`; `02200018` @`0x20`, word @`0x24` | yes |
+| 17 | `getDMAAlignment` | `(server; out alignment: struct[4] of unsigned)` | `0x18` | `0x34`; `02200048` @`0x20`, 4 words @`0x24` | yes |
+| - | `_IOSCSISessionMig_server` | `subsystem IOSCSISessionMig 4242` | base 4242, 18 routines, `id + 100` reply | see above | yes |
+
+Descriptor decode (`msg_type_t`: name 31-24, size 23-16, number 15-4, inline 3,
+longform 2, deallocate 1), against `src/kernel-7/mach/std_types.defs`'s
+non-`MACH_IPC_FLAVOR` branch:
+
+- `08080018` = CHAR(8), 8-bit, number 1 -> `char`. Matches `type char = MSG_TYPE_CHAR`.
+- `02200028` = INTEGER_32(2), 32-bit, number 2 -> `struct[2] of unsigned`.
+- `02200018` = INTEGER_32, number 1 -> `int`/`unsigned`.
+- `02200048` = INTEGER_32, number 4 -> `struct[4] of unsigned`.
+- `06200018` = PORT(6), 32-bit, number 1 -> `port_t`. Matches
+  `type port_t = MSG_TYPE_PORT`; `mach_port_t`/`COPY_SEND` would read `13200018`.
+- `08080588` = CHAR, number 88; `080806C8` = CHAR, number 108.
+
+The `.defs`'s local `type unsigned = int;` is **required**, not optional: the
+old-flavour branch of `std_types.defs` defines `char`, `short`, `int`,
+`boolean_t`, `port_t` and `pointer_t`, but not `unsigned`.
+
+### Direction, argument order and the implementation call
+
+Each stub's call to its implementation was resolved through the Mach-O
+`PPC_RELOC_JBSR` relocations, not guessed from IDA's `sub_*` placeholders. The
+pairing is exactly one-to-one and in-order:
+
+- `__XIOSCSISession_free` -> `_IOSCSISession_free` @`0xc84`, and so on through
+  `__XIOSCSISession_getDMAAlignment` -> `_IOSCSISession_getDMAAlignment` @`0x18f4`.
+  No stub calls the wrong implementation.
+- The six `execute*` stubs additionally call `_IOConvertTaskPortToVMTask`
+  @`0x1c98` before, and `_IODestroyMappedVMTask` @`0x1d98` after, the
+  implementation - the intran/destructor shape MIG emits for a translated port
+  type. That confirms the `.defs`'s `IOVMTaskPort` declaration as an observed
+  fact from the binary. (Both functions are on the gap list above: present in
+  the reference, absent from our source.)
+- The four `inout scsiReq` shapes are confirmed by construction, not by
+  assumption: the implementation receives `request + 0x1c` (the request buffer
+  itself) and the stub then `memcpy`s that same buffer into `reply + 0x24` for
+  `0x58` or `0x6c` bytes. In-only would have no reply copy; out-only would not
+  pass the request buffer.
+- `out status` is confirmed the same way: the stub passes `&reply[0x80]` (or
+  `0x94`) into the implementation, so the implementation writes the reply slot
+  directly.
+- Argument order in every implementation call matches `.defs` declaration
+  order. For the scatter forms the count follows the data pointer
+  (`impl(port, scsiReq, vmtask, ioRanges, count, &status)`), the standard MIG
+  variable-array convention.
+
+### Verdict
+
+**All 19 agree. Nothing differs, and the plan is not halted by this task.**
+
+### Two adjacent inaccuracies found while verifying (neither is a `.defs` defect)
+
+1. `Makefile.preamble` says `IOSCSISessionMigUser.c` is excluded "because the
+   18 `IOSCSISession_*` wrapper functions already provide the client-facing
+   symbols by hand". That characterisation is wrong. In the reference those 18
+   functions are the **server-side implementations** the demux stubs call
+   (proved by the JBSR relocations above), and our `IOSCSISession.m` defines
+   them with the matching server-side signature - `id session` first, out
+   parameters by pointer. They are not client stubs and provide no client-facing
+   symbol. The *decision* to exclude `IOSCSISessionMigUser.c` is still correct,
+   for a different reason: MIG's User.c would define the same 18 names, so
+   linking both is a duplicate-symbol collision. Only the comment's reasoning is
+   wrong. Not fixed here - this task does not edit build files.
+
+2. `IOSCSISession.m:780` defines `IOSCSISession_returnFromScStatus` returning
+   `void`. The `.defs` declares routine 15 as a `routine`, and the reference's
+   `__XIOSCSISession_returnFromScStatus` stores the implementation's `r3` into
+   the reply `RetCode` (`0x336c: stw r3, 0x1c(r31)`), so the implementation must
+   return `kern_return_t`. The reference's own `_IOSCSISession_returnFromScStatus`
+   @`0x185c` tail-calls `objc_msgSend` and returns its result. The generated
+   `IOSCSISessionMigServer.c` includes a prototype for this name, so the `void`
+   definition would not merely mis-report status, it would conflict at compile
+   time. The `.defs` is right and our `.m` is wrong; fixing the `.m` belongs to
+   the implementation task, not here.

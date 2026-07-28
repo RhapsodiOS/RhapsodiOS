@@ -375,6 +375,7 @@ def test_ppc_profile_inventory():
         "mesh-bundle-ppc.json", "mesh-ppc.json",
         "ohare-bundle-ppc.json", "ohare-ppc.json",
         "pmu-bundle-ppc.json", "pmu-ppc.json",
+        "ppcserialport-bundle-ppc.json", "ppcserialport-ppc.json",
         "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
         "scsitape-ppc.json", "scsitape-preload-ppc.json",

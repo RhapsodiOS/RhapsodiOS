@@ -428,3 +428,115 @@ pairing is exactly one-to-one and in-order:
    stores an undefined `r3` into `RetCode`. A silent wrong status at runtime, not a
    build failure. The `.defs` is right and our `.m` is wrong; fixing the `.m` belongs to
    the implementation task, not here.
+
+## Task 3: repairing the documented divergences
+
+Task 3 re-verified every open finding in
+`src/drvSCSIServer/reconstruction/divergences.md` against the current tree
+before changing anything, because a review had established that document had
+drifted. The classification, the evidence for each repair, and the
+uncertainties that remain are in `.superpowers/sdd/task-3-report.md`; this
+section records only the facts that are new measurements of the binary.
+
+### 1. `requiredProtocols` returns `IOSCSIControllerExported`, not `IOSCSIController`
+
+`divergences.md` states twice that `__OBJC,__protocol+0` is the
+`IOSCSIController` protocol. It is not. `__OBJC,__protocol` (address 21424,
+40 bytes) holds two 20-byte records, and **both** carry a `protocol_name`
+field pointing at `__OBJC,__class_names+36`, which reads
+`"IOSCSIControllerExported"`. Read out of the file:
+
+```
+21424 isa=0x2  name=0x53fc  protocol_list=0  instance_methods=0x5000  class_methods=0
+21444 isa=0x2  name=0x53fc  protocol_list=0  instance_methods=0x5090  class_methods=0
+```
+
+`0x53fc` = 21500 = `__OBJC,__class_names` (21464) + 36. The full
+`__OBJC,__class_names` table is `SCSIServer`, `IODevice`, `Object`,
+`IOSCSIControllerExported`, `SCSIServer.m`, `IOSCSISession`, `Private`,
+`IOSCSISession.m`, `IOMemoryDescriptor`, `SCSIServerVersion`,
+`SCSIServerKernelServerInstance`, `SCSIServer_instance.m` — there is no
+`"IOSCSIController"` string in the binary at all.
+
+Both records' `instance_methods` lists (at `__OBJC,__cat_inst_meth+0` and
+`+144`) decode to the same fifteen method descriptions —
+`allocateBufferOfLength:actualStart:actualLength:`, `getDMAAlignment:`,
+`maxTransfer`, `returnFromScStatus:`, `resetSCSIBus`, the four
+`execute*Request*` variants, `numberOfTargets`, the four
+`reserve`/`release` target variants and `releaseAllUnitsForOwner:` — i.e.
+`driverkit/scsiTypes.h`'s `IOSCSIControllerExported`, selector for selector.
+Two copies exist because `SCSIServer.m` and `IOSCSISession.m` are separate
+translation units and each emits its own static `_OBJC_PROTOCOL_` record.
+
+`_protocols.26` (`__DATA,__data+0`, 8 bytes, the array
+`+[SCSIServer requiredProtocols]` returns) reads `{0x53b0, 0}` with a
+`ppc-vanilla-32-absolute` relocation on the first word naming
+`__OBJC,__protocol+0`. `0x53b0` is 21424, the first record — so the required
+protocol is `IOSCSIControllerExported`, the same protocol
+`IOSCSISession_initForDevice` checks conformance against.
+
+### 2. The reference never calls `objc_getClass`; it uses three different idioms
+
+`_objc_getClass` is not among the 34 imports. `_objc_getOrigClass` **is**.
+All five of our `objc_getClass` sites correspond to ordinary Objective-C
+syntax whose gcc output differs by context — verified against this tree's own
+compiler, `src/cc-1/cc/objc-act.c`:
+
+| Our site | Reference | gcc rule |
+| --- | --- | --- |
+| `SCSIServer.m` super sends (2) | `lis`/`lwz` of `__OBJC,__class+4` = `_OBJC_CLASS_SCSIServer.super_class` (addresses 328-332, 1004-1008) | `objc-act.c:8388`, `ucls_super_ref` — `[super ...]` in a class `@implementation` |
+| `IOSCSISession.m:free` super send | `lis`/`lwz` of `__OBJC,__class+44` = `_OBJC_CLASS_IOSCSISession.super_class` (addresses 1912-1916) | same rule |
+| `IOSCSISession.m` category super send | `bl _objc_getOrigClass("Object")` at address 1220, result stored into the struct at 1224 | `objc-act.c:8421`, `get_orig_class_reference` — `[super ...]` in a **category** |
+| `SCSIServer.m` `+alloc` receiver | `lis`/`lwz` of `__OBJC,__cls_refs+0` (addresses 672-680), whose own relocation names `__OBJC,__class_names+80` = `"IOSCSISession"` | `objc-act.c:2640`, `get_class_reference` under `flag_next_runtime` |
+
+`__OBJC,__class`'s four 40-byte records are, in order, `SCSIServer`,
+`IOSCSISession`, `SCSIServerVersion`, `SCSIServerKernelServerInstance`, so
+`+4` and `+44` are the first two records' `super_class` fields. No new
+construct had to be invented: plain `[super ...]` and `[IOSCSISession alloc]`
+reproduce all three shapes.
+
+### 3. `-[IOSCSISession initServerWithTask:sendPort:]` forks the server thread
+
+Not previously recorded anywhere, and **not fixed here** because it needs one
+of Task 4's six absent functions. Reference addresses 1352-1372:
+
+```
+1352  lis  r3, _serverThreadFunc@ha
+1356  addi r3, r3, _serverThreadFunc@l
+1360  mr   r4, r30                      ; self
+1364  bl   ...                          ; reloc: _IOForkThread
+1368  lwz  r9, 4(r30)
+1372  stw  r3, 0x14(r9)                 ; session_struct+0x14 = thread id
+```
+
+The field our source calls "session object ID" is the **thread identity
+returned by `IOForkThread(_serverThreadFunc, self)`**, which is why
+`-[IOSCSISession free]` calls `IOExitThread()` when it is non-zero, and why
+`_serverThreadFunc` (address 2672) is a per-session server loop that never
+returns. Our source instead writes
+`session_object_id = objc_msgSend(self, (SEL)0xa70);` — a hard-coded selector
+number with no counterpart in the reference. Whoever writes `_serverThreadFunc`
+should fix this call site at the same time.
+
+### 4. `IOUnmapPhysicalFromIOTask`, not `vm_deallocate`
+
+Both OOL wrappers' final call (addresses 4716 and 5648) carries a
+`ppc-jbsr-24-pc-relative` relocation naming the imported
+`_IOUnmapPhysicalFromIOTask`, with `r3` = the OOL address and `r4` = its byte
+count. `driverkit/kernelDriver.h:133` declares
+`IOReturn IOUnmapPhysicalFromIOTask(vm_address_t, unsigned)`, a two-argument
+match. `_vm_deallocate` is not among the reference's imports.
+
+### 5. Two of Apple's own defects, reproduced deliberately
+
+- `-[SCSIServer getCharValues:forParameter:count:]` writes `values[-1]`.
+  Addresses 976-984 (`add r9, r31, r25` / `li r0, 0` / `stb r0, -1(r9)`) are
+  unconditional, and the `bge cr1, loc_3D0` break at 936 reaches them with
+  `bytesWritten` still 0 when `*count` cannot hold even one name plus its
+  separator.
+- Both `*Scatter` wrappers use a released `IOMemoryDescriptor`. The guard at
+  4828's 5088-5092 (and 5760's 6020-6024) tests the descriptor pointer, which
+  is only zero on the allocation-failure path; the wire-failure path releases
+  the descriptor at 5084/6016 and falls into the same block with the pointer
+  still set, so the reference then sends `executeRequest:ioMemoryDescriptor:`,
+  `unwireMemory` and a second `release` to an object it has already released.

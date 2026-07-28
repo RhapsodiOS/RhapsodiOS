@@ -192,8 +192,11 @@ int IOSCSISession_executeSCSI3RequestOOLScatter(id session, void *request,
 /* Convert SCSI status to IOReturn code
  * session: IOSCSISession object
  * scStatus: SCSI status code
+ * Returns: the controller's converted status, which MIG stores into the
+ *   reply's RetCode -- IOSCSISessionMig.defs:199 declares this a `routine`,
+ *   not a `simpleroutine`
  */
-void IOSCSISession_returnFromScStatus(id session, unsigned int scStatus);
+int IOSCSISession_returnFromScStatus(id session, unsigned int scStatus);
 
 /* Reset the SCSI bus
  * session: IOSCSISession object

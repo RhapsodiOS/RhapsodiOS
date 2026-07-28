@@ -17,13 +17,6 @@ static id _scsiControllerList = NULL;       /* List of registered SCSI controlle
 static int _scsiServerMajor = 0;            /* Major device number for SCSI server */
 static id _server = NULL;                   /* Global SCSIServer instance */
 
-/* Protocol array for SCSIServer */
-extern Protocol *objc_protocol_IOSCSIController;  /* @protocol(IOSCSIController) */
-static Protocol *_scsiServerProtocols[] = {
-    &objc_protocol_IOSCSIController,
-    NULL
-};
-
 @implementation SCSIServer
 
 /*
@@ -87,12 +80,6 @@ static Protocol *_scsiServerProtocols[] = {
          * If _server == NULL (failure): return = 1 - 1 = 0 (NO)
          */
         result = (_server != NULL);
-
-        if (result) {
-            IOLog("SCSIServer: probe successful - server instance created\n");
-        } else {
-            IOLog("SCSIServer: probe failed - initialization failed\n");
-        }
     }
     else {
         /* Server already exists - register this as a SCSI controller
@@ -103,7 +90,6 @@ static Protocol *_scsiServerProtocols[] = {
         /* Always return NO for subsequent probes (result already = NO)
          * This prevents multiple SCSIServer instances
          */
-        IOLog("SCSIServer: probe - registering additional controller\n");
     }
 
     return result;
@@ -114,10 +100,28 @@ static Protocol *_scsiServerProtocols[] = {
  * Returns: Pointer to protocols array
  *
  * Returns the array of protocols that SCSI devices must conform to.
+ *
+ * The reference (address 16, 20 bytes) materialises the address of
+ * _protocols.26 and returns it.  _protocols.26 is eight bytes at
+ * __DATA,__data+0; its first word carries a vanilla-32-absolute relocation
+ * to __OBJC,__protocol+0 and its second word is zero, so the element type is
+ * Protocol * (a pointer to the struct), not Protocol **.  That record's
+ * protocol_name reads "IOSCSIControllerExported" and its fifteen method
+ * descriptions in __OBJC,__cat_inst_meth are scsiTypes.h's
+ * IOSCSIControllerExported, selector for selector.  There is no
+ * "IOSCSIController" string anywhere in __OBJC,__class_names, so the list
+ * names the Exported protocol, the same one IOSCSISession_initForDevice
+ * checks conformance against.
+ *
+ * gcc's ".26" suffix marks a function-scope static -- file-scope statics in
+ * this binary keep their bare names (_server, _sSessionIndex among them) --
+ * so the array is declared inside the method.
  */
 + (Protocol **)requiredProtocols
 {
-    return _scsiServerProtocols;
+    static Protocol *protocols[] = { @protocol(IOSCSIControllerExported), nil };
+
+    return protocols;
 }
 
 /*
@@ -138,7 +142,6 @@ static Protocol *_scsiServerProtocols[] = {
 - initFromDeviceDescription:(id)deviceDescription
 {
     int registerResult;
-    struct objc_super superStruct;
     id initResult;
 
     /* Register self as SCSI controller with deviceDescription
@@ -166,15 +169,15 @@ static Protocol *_scsiServerProtocols[] = {
     [self setDeviceKind:"SCSI Server"];
 
     /* Call [super initFromDeviceDescription:]
-     * local_14 = PTR_s_IODevice_0000519c
-     * local_18 = param_1
-     * IVar2 = FUN_000001c0(&local_18, s_initFromDeviceDescription:_000059c0, param_3)
+     * Addresses 324-356 build the objc_super on the stack: receiver = self
+     * (stw r30) and class = _OBJC_CLASS_SCSIServer.super_class, loaded
+     * statically (the lis/lwz pair at 328/332 carries a scattered relocation
+     * to __OBJC,__class+4), then bl _objc_msgSendSuper.  That is exactly what
+     * gcc emits for a plain [super ...] inside a class @implementation
+     * (src/cc-1/cc/objc-act.c:8388, ucls_super_ref), so the hand-built struct
+     * and the objc_getClass("IODevice") call it used are both removed.
      */
-    superStruct.receiver = self;
-    superStruct.class = objc_getClass("IODevice");
-    initResult = objc_msgSendSuper(&superStruct,
-                                   @selector(initFromDeviceDescription:),
-                                   deviceDescription);
+    initResult = [super initFromDeviceDescription:deviceDescription];
 
     if (initResult == NULL) {
         /* Super initialization failed - free and return */
@@ -190,8 +193,6 @@ static Protocol *_scsiServerProtocols[] = {
      * _server = param_1
      */
     _server = self;
-
-    IOLog("SCSIServer: Initialized successfully as 'SCSI Server'\n");
 
     return initResult;
 }
@@ -252,9 +253,6 @@ static Protocol *_scsiServerProtocols[] = {
      */
     _controllerNames[currentCount] = (char *)controllerName;
 
-    IOLog("SCSIServer: Registered SCSI controller '%s' (count: %d)\n",
-          controllerName, _controllerCount);
-
     /* Return self on success */
     return self;
 }
@@ -289,10 +287,14 @@ static Protocol *_scsiServerProtocols[] = {
     *connection = 0;
 
     /* Allocate a new SCSI session
-     * uVar1 = FUN_000002f4(s_IOSCSISession_00005428, s_alloc_000059e4)
-     * This is [IOSCSISession alloc]
+     * Addresses 672-688 load r3 from __OBJC,__cls_refs+0 (whose own vanilla
+     * relocation names __OBJC,__class_names+80, the string "IOSCSISession")
+     * and r4 from __OBJC,__message_refs+4 ("alloc"), then bl _objc_msgSend.
+     * A build-time class reference, not a runtime objc_getClass() lookup --
+     * which is what gcc emits for a plain [IOSCSISession alloc] under the
+     * NeXT runtime (src/cc-1/cc/objc-act.c:2640, get_class_reference).
      */
-    sessionAlloc = objc_msgSend(objc_getClass("IOSCSISession"), @selector(alloc));
+    sessionAlloc = [IOSCSISession alloc];
 
     /* Initialize the session with task and send port
      * iVar2 = FUN_000002f4(uVar1, s_initServerWithTask:sendPort:_00005a38, param_4, param_3)
@@ -340,7 +342,6 @@ static Protocol *_scsiServerProtocols[] = {
         forParameter:(const char *)parameter
                count:(unsigned int *)count
 {
-    struct objc_super superStruct;
     int result;
     unsigned int bytesWritten;
     int i;
@@ -354,12 +355,15 @@ static Protocol *_scsiServerProtocols[] = {
     result = strcmp(parameter, "SCSI Controllers");
 
     if (result != 0) {
-        /* Not our parameter - call super implementation */
-        superStruct.receiver = self;
-        superStruct.class = objc_getClass("IODevice");
-        return objc_msgSendSuper(&superStruct,
-                                @selector(getCharValues:forParameter:count:),
-                                values, parameter, count);
+        /* Not our parameter - call super implementation.
+         * Addresses 1000-1040 are the same static-super sequence as
+         * initFromDeviceDescription: above: receiver = self, class loaded
+         * from __OBJC,__class+4 (_OBJC_CLASS_SCSIServer.super_class), then
+         * bl _objc_msgSendSuper -- gcc's own output for a plain [super ...].
+         */
+        return (int)[super getCharValues:values
+                            forParameter:parameter
+                                   count:count];
     }
 
     /* Handle "SCSI Controllers" parameter */
@@ -412,12 +416,19 @@ static Protocol *_scsiServerProtocols[] = {
         bytesWritten = nextPos;
     }
 
-    /* Replace last comma with null terminator
-     * values[bytesWritten - 1] = '\0'
+    /* Replace last comma with null terminator.
+     *
+     * APPLE DEFECT, REPRODUCED DELIBERATELY: addresses 976-984 are
+     * add r9, r31, r25 / li r0, 0 / stb r0, -1(r9) -- an unconditional store
+     * with no guard on bytesWritten.  Both ways out of the loop (the
+     * bge cr1, loc_3D0 break at 936 and the bottom test at 964-972) fall
+     * straight into it, so when *count is too small to hold even the first
+     * name plus its separator the break fires on iteration 0 with
+     * bytesWritten still 0 and the reference writes values[-1], one byte
+     * before the caller's buffer.  The guard this line used to carry
+     * (if (bytesWritten > 0)) has no counterpart in the reference.
      */
-    if (bytesWritten > 0) {
-        values[bytesWritten - 1] = '\0';
-    }
+    values[bytesWritten - 1] = '\0';
 
     /* Set the count to the number of bytes written */
     *count = bytesWritten;

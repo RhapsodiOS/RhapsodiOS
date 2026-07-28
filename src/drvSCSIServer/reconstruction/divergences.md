@@ -18,6 +18,79 @@ compile-verified. Every claim rests on the reference disassembly.
 | duplicate_candidates | 0 | — |
 | boundary_disputed | 0 | — |
 
+## READ THIS FIRST: SCSIServer Task 3 re-verified every finding below
+
+**Everything under this heading was written before the SCSIServer
+reconstruction's Task 3, and parts of it had already been overtaken by fixes or
+were wrong when written.** Task 3 opened the current source for every finding
+and re-derived the reference behaviour from the disassembly before touching
+anything. Do not use a finding below as a worklist item without checking it
+against the "Task 3 disposition" table immediately following.
+
+Two claims below are **wrong as written** and are corrected in place at their
+own sections:
+
+1. `__OBJC,__protocol+0` is **not** the `IOSCSIController` protocol. Both of the
+   binary's two `Protocol` records are named `IOSCSIControllerExported`, and no
+   `"IOSCSIController"` string exists in `__OBJC,__class_names` at all. This
+   affects the `requiredProtocols` finding and the `initForDevice` wrapper
+   finding, which both assert the opposite.
+2. "our source calls `objc_getClass()` where the reference loads static
+   references" is right about three sites and wrong about the fourth: inside a
+   *category*, the reference really does make a runtime call — to
+   `_objc_getOrigClass`, which is one of its 34 imports. There are five sites,
+   not four.
+
+One further claim is wrong: `IOTaskPortAllocateName`'s finding says our call
+site "passes `self`, an `id`, where the reference expects a `mach_port_t
+name`". The reference passes `self` too (`mr r3, r30` at address 1300, straight
+into the `bl` at 1304 whose relocation names `__TEXT,__text+6460`). Our call
+site matches the reference exactly; only `IOTaskPortAllocateName`'s own body and
+return type are open.
+
+### Task 3 disposition
+
+`already-fixed` = the source no longer matches the finding. `still-open` = it
+did, and Task 3 repaired it. `claim-wrong` = the finding misdescribes the
+reference. `deferred` = still open, out of Task 3's file scope.
+
+| Finding | Verdict | Disposition |
+| --- | --- | --- |
+| `requiredProtocols` wrong indirection / storage class | still-open + claim-wrong | fixed: function-scope `static Protocol *protocols[] = { @protocol(IOSCSIControllerExported), nil }` |
+| `probe:` logs where the reference does not | still-open | fixed: three `IOLog` calls removed |
+| `initFromDeviceDescription:` wrong `registerSCSIController:` argument | already-fixed (`c3a70903`) | none |
+| `initFromDeviceDescription:` extra `IOLog` | still-open | fixed |
+| `registerSCSIController:` extra `IOLog` | still-open | fixed |
+| `serverConnect:taskPort:` wrong (underscored) selector | already-fixed (`b2d798bd`) | none |
+| `getCharValues:forParameter:count:` extra bounds guard | still-open | fixed: guard removed, Apple's `values[-1]` underflow reproduced with a comment |
+| `objc_getClass()` vs static references | still-open + claim-wrong | fixed at all five sites, as plain `[super ...]` / `[IOSCSISession alloc]` |
+| twelve wrappers never send their message | still-open | fixed: all twelve now dispatch |
+| `IOSCSISession_returnFromScStatus` declared `void` | still-open | fixed: `int` in `IOSCSISession.h` and `.m`, returning the dispatched value |
+| `-[IOSCSISession free]` drops `IOTaskPortDeallocate`'s argument | already-fixed (`5b4d62ec`) | none |
+| `-[IOSCSISession free]` returns `self` | already-fixed | none |
+| `-[IOSCSISession free]` cleanup callback | still-open | fixed: direct `IOExitThread()`, callback typedef and extern removed |
+| OOL wrappers' "`vm_deallocate`" guess | still-open | fixed: `IOUnmapPhysicalFromIOTask` |
+| `_removeReservation` pointer arithmetic | already-fixed (`5c17f9cb`) | none |
+| session-structure comment's swapped next/prev | already-fixed (`e853646a`) | none |
+| `_reserveTarget:lun:` dead duplicate method | already-fixed (`bc7c14da`) | none |
+| `IOSCSIControllerExported` undeclared | already-fixed (`47f6a92c`) | none |
+| `IOTaskWireMemory` declared `void` | already-fixed (`84fffeb1`) | none |
+| `IOSCSISession_initForDevice` missing `deviceNameCnt` | already-fixed (`b6c5147d`) | none |
+| `IODereferenceClientTask` wrong table/offset | already-fixed (`92384e9b`, `a495abfc`) | none |
+| `IOReleaseNotifyForFunc` call-site argument | already-fixed (`2b33628e`) | none |
+| MiG dispatch-table order; PIC-displacement comment | moot (`5ac4f5c7` deleted both) | none |
+| `IOTaskPortAllocateName`'s `self` argument | claim-wrong | none needed; recorded above |
+| `IOTaskPortAllocateName` / `IOTaskPortDeallocate` / `IOTaskUnwireMemory` / `IOReferenceClientTask` / `IODereferenceClientTask` stub bodies; `IOReleaseNotifyForFunc`'s `notifClientObjects` | still-open | deferred: all in `IOTask.m`, which Task 3 may not modify |
+| six functions our tree lacks entirely | still-open | deferred to the task that writes them |
+
+**New finding Task 3 recorded but did not fix:**
+`-[IOSCSISession initServerWithTask:sendPort:]` (address 1160) writes
+`session_struct+0x14` from `IOForkThread(&_serverThreadFunc, self)` (addresses
+1352-1372; the `bl` at 1364 relocates to `_IOForkThread`), not from
+`objc_msgSend(self, (SEL)0xa70)` as our source has it. Fixing it requires
+`_serverThreadFunc`, one of the six absent functions, so it belongs with them.
+Full evidence in `reconstruction/SCSIServer/findings.md`.
+
 ## Summary
 
 Final tally across all 68 ledger entries, after Tasks 3-7:
@@ -122,6 +195,13 @@ What was not checked in the original pass is the *data* at that address:
   The `__OBJC,__protocol` section itself starts at address 21424 (`{'name': '__OBJC,__protocol',
   'address': 21424, 'offset': 23916, 'size': 40, ...}`), so after relocation `protocols[0] ==
   21424` — a pointer directly *to* the `Protocol` struct, i.e. `protocols` has type `Protocol *[]`.
+- **Correction (Task 3).** That record's `protocol_name` field (address 21428) reads
+  `"IOSCSIControllerExported"`, not `IOSCSIController`. Both of the section's two 20-byte records
+  carry the *same* name pointer (`__OBJC,__class_names+36`), and no `"IOSCSIController"` string
+  exists anywhere in `__OBJC,__class_names`; the two records are the two translation units'
+  independent copies of the same protocol. Every statement below and elsewhere in this document
+  that calls the first record "the `IOSCSIController` protocol" is wrong. Evidence, including the
+  fifteen decoded method descriptions, is in `reconstruction/SCSIServer/findings.md`.
 - `_protocols.26` is gcc's standard mangling for a **function-local static** (the `.26` suffix
   disambiguates a local named `protocols` from other locals across the translation unit) — meaning
   Apple declared `static Protocol *protocols[] = {...}` *inside* `+requiredProtocols` itself, not at
@@ -295,6 +375,20 @@ instead — see "Finding: our source calls `objc_getClass()` where the reference
 references" below.
 
 ## Finding: our source calls `objc_getClass()` where the reference loads static references
+
+**Corrected and resolved by Task 3.** Three corrections to what follows. (a) There are **five**
+sites, not three plus a Task 4 addendum: `IOSCSISession.m`'s two super sends, `SCSIServer.m`'s two
+super sends and `SCSIServer.m`'s `+alloc` receiver. (b) The fourth site — `[super init]` inside
+`@implementation IOSCSISession (Private)` — is **not** a static reference in the reference either:
+addresses 1212-1224 materialise the string `"Object"` and `bl` a jump island whose relocation names
+the imported `_objc_getOrigClass`, storing its result into the `objc_super`. That is what this
+tree's own compiler emits for `[super ...]` in a *category* (`src/cc-1/cc/objc-act.c:8421`,
+`get_orig_class_reference`) as opposed to in a class `@implementation` (`:8388`, `ucls_super_ref`).
+(c) The suggested fix — "replace all three call sites with build-time class references … consistent
+with how `SCSIServer.m` already declares `extern Protocol *objc_protocol_IOSCSIController`" — was
+not taken, because that extern was itself the fabricated construct fixed by the `requiredProtocols`
+repair. All five sites are now plain Objective-C syntax (`[super ...]`, `[IOSCSISession alloc]`),
+which is what produces each of the reference's three shapes without inventing anything.
 
 **Source:** `SCSIServer.m:177` and `SCSIServer.m:362` (both `objc_getClass("IODevice")`, building an
 `objc_super` struct for a super-call), and `SCSIServer.m:298` (`objc_getClass("IOSCSISession")`,
@@ -600,7 +694,7 @@ defect this block actually has (below) is a different species entirely.
 
 **Source:** `IOSCSISession.m:441` (`_IOSCSISession_initForDevice`), which calls `objc_msgSend(conformsTo:, @protocol(IOSCSIControllerExported))`.
 
-**Reference behaviour:** the dispatch at address 3028 loads a protocol pointer from `__OBJC,__protocol` and passes it as the argument to `conformsTo:`. The reference binary's `__OBJC,__protocol` section (base 21424) contains two 20-byte `Protocol` struct records. The first, at offset 0, describes the `IOSCSIController` protocol (matching the finding in Task 3's `requiredProtocols` analysis). The second, at offset 20, contains a `protocol_name` field that reads exactly `"IOSCSIControllerExported"` — the name the reference passes to the conformance check.
+**Reference behaviour:** the dispatch at address 3028 loads a protocol pointer from `__OBJC,__protocol` and passes it as the argument to `conformsTo:`. The reference binary's `__OBJC,__protocol` section (base 21424) contains two 20-byte `Protocol` struct records. **Corrected by Task 3:** *both* records' `protocol_name` fields point at `__OBJC,__class_names+36` and read `"IOSCSIControllerExported"` — the first record is not `IOSCSIController`, and no such string exists in the binary. The two records are `SCSIServer.m`'s and `IOSCSISession.m`'s independent static copies of the same protocol; this call site uses the second (its own translation unit's) and `+[SCSIServer requiredProtocols]` uses the first.
 
 **Our source:** declares and uses `@protocol(IOSCSIControllerExported)` at `IOSCSISession.m:441` but does not declare the protocol itself anywhere in the source tree. The only protocol declaration in `IOSCSISession.h` is `@protocol IOSCSIController` (line 19), a different name. Similarly, `SCSIServer.m:21` declares `extern Protocol *objc_protocol_IOSCSIController;` to reference the compiled protocol struct by its mangled name, but there is no declaration of `objc_protocol_IOSCSIControllerExported`.
 
@@ -1803,18 +1897,26 @@ above for why several resolved findings still carry `unexamined`).
 | `IOSCSISession_initForDevice`'s two-parameter wrapper vs. the `.defs`'s three-argument call | this fix pass (Important 3) |
 | `IOReleaseNotifyForFunc` passing `&notifClients[i*2]` (an address) instead of the value stored there to `IODereferenceClientTask` | this fix pass (Important 4) — the `notifClientObjects` fabrication in the same finding is still open, see below |
 
+**Closed by SCSIServer Task 3** (see the disposition table at the top of this file for the
+already-fixed and claim-wrong verdicts as well):
+
+| Finding | How |
+| --- | --- |
+| `+[SCSIServer requiredProtocols]`'s wrong pointer indirection / static storage class | function-scope `static Protocol *protocols[] = { @protocol(IOSCSIControllerExported), nil }`; the fabricated `extern Protocol *objc_protocol_IOSCSIController` and its file-scope array are gone |
+| `+[SCSIServer probe:]` logging where the reference has none | three `IOLog` calls removed |
+| `-[SCSIServer initFromDeviceDescription:]` logging where the reference has none | `IOLog` removed |
+| `-[SCSIServer registerSCSIController:]` logging where the reference has none | `IOLog` removed |
+| `-[SCSIServer getCharValues:forParameter:count:]`'s extra bounds guard | removed; Apple's own `values[-1]` underflow write reproduced, with the addresses in a comment |
+| Our source calling `objc_getClass()` where the reference loads static `__cls_refs` | all five sites are now plain `[super ...]` / `[IOSCSISession alloc]`; see the correction on that finding |
+| Twelve of the eighteen C-callable wrapper functions never send the Objective-C message the reference sends | all twelve dispatch now, each with the reference addresses and the `__OBJC,__message_refs` slot in a comment; the two `*Scatter` bodies also reproduce Apple's use-after-release |
+| `IOSCSISession_returnFromScStatus` still declared `void`, discarding the reference's return value | `int` in `IOSCSISession.h:196` and `IOSCSISession.m`, returning the dispatched value |
+| The OOL wrappers' "`vm_deallocate`" naming guess | `IOUnmapPhysicalFromIOTask`, resolved through the relocation at 4716/5648 |
+| `-[IOSCSISession free]`'s cleanup "callback" | direct `IOExitThread()`; the `session_cleanup_callback_t` typedef and its extern are removed |
+
 **Open (still needs a fix pass):**
 
 | Finding | Why still open |
 | --- | --- |
-| `+[SCSIServer requiredProtocols]`'s wrong pointer indirection / static storage class | no commit addresses it; `SCSIServer.m:21-25`/`:118-121` unchanged |
-| `+[SCSIServer probe:]` logging where the reference has none | no commit addresses it |
-| `-[SCSIServer initFromDeviceDescription:]` logging where the reference has none | the argument half is resolved (above); the logging half is not |
-| `-[SCSIServer registerSCSIController:]` logging where the reference has none | no commit addresses it |
-| `-[SCSIServer getCharValues:forParameter:count:]`'s extra bounds guard | no commit addresses it |
-| Our source calling `objc_getClass()` where the reference loads static `__cls_refs` | no commit addresses it |
-| Twelve of the eighteen C-callable wrapper functions never send the Objective-C message the reference sends | stub `/* TODO */` bodies unchanged; matches the 12 `unexamined` wrapper entries in the ledger (§4.2 item 4 discussion above) |
-| `IOSCSISession_returnFromScStatus` still declared `void`, discarding the reference's return value | still `void IOSCSISession_returnFromScStatus(...)` in both header and definition |
 | `IOTaskPortAllocateName` never issuing its two Mach calls, still declared `void` | unchanged stub |
 | `IOTaskPortDeallocate` never issuing its Mach call, still declared `void` | unchanged stub |
 | `IOTaskUnwireMemory` never issuing its Mach call, still declared `void`, reads `_page_size` not `_page_mask` | unchanged stub (only its sibling `IOTaskWireMemory`'s return type was fixed) |
@@ -1822,3 +1924,4 @@ above for why several resolved findings still carry `unexamined`).
 | `IODereferenceClientTask`'s stubbed `_port_deallocate` cleanup call | unchanged stub (only the bounds/offset/one-past-the-end parts were fixed) |
 | `IOReleaseNotifyForFunc`'s fabricated `notifClientObjects` array and its match condition | unchanged (only the `IODereferenceClientTask` call-site argument was fixed, this pass) |
 | Six functions our tree lacks entirely (`_serverThreadFunc`, `_IOTaskPortAllocate`, `_IOConvertTaskPortToVMTask`, `_IODestroyMappedVMTask`, `__io_task_notification`, `_IORequestNotifyForClientTask`) | no source exists yet; these are the Phase-2-deferred bodies |
+| `-[IOSCSISession initServerWithTask:sendPort:]` calls `objc_msgSend(self, (SEL)0xa70)` where the reference calls `IOForkThread(&_serverThreadFunc, self)` | new in Task 3; blocked on `_serverThreadFunc`, so it belongs with the row above |

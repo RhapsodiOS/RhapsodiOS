@@ -492,7 +492,7 @@ Expected: 2 hand-written C symbols, **0 missing**, exit 0.
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
 ```
 
-Expected: `861 passed, 4 skipped` — 853 from Task 1 plus 8 new. If it differs,
+Expected: `864 passed, 4 skipped` — 853 from Task 1 plus 11 new. If it differs,
 say so rather than adjusting the expectation.
 
 ```bash

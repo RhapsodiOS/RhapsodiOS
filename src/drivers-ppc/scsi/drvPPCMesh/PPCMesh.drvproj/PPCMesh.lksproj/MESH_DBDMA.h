@@ -25,7 +25,7 @@
 
 /**
  * Copyright (c) 1994-1996 NeXT Software, Inc.  All rights reserved.
- * Copyright ï¿½ 1997 Apple Computer Inc. All Rights Reserved.
+ * Copyright © 1997 Apple Computer Inc. All Rights Reserved.
  * @author   Martin Minow   mailto:minow@apple.com
  * @revision    1997.02.13  Initial conversion from AMDPCSCSIDriver sources.
  *

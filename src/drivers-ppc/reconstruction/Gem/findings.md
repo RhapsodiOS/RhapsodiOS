@@ -229,8 +229,16 @@ _mace_crc: gem==bmac True   gem==mace True
 differ per binary -- Gem `0x2920`/`0x2984`, BMac `0x4ec0`/`0x4f24`, Mace
 `0x371c`/`0x3780` -- the bytes do not.)
 
-Both BMac's and Mace's *sources* are in this tree and were both measured
-against their own binaries in earlier specs and found to match.
+Both BMac's and Mace's *sources* are in this tree. **What the earlier specs
+established, precisely:** BMac's measurement moved `_crc416`/`_mace_crc` from
+bucket 6 to bucket 5 by locating a definition site *by name*, not by comparing
+bodies -- so the earlier work established correspondence by name, not by
+disassembly. `_mace_crc`'s 68-byte body was disassembled and compared during
+this spec (see above); `_crc416`'s 100-byte body was disassembled and checked
+against `BMacEnetPrivate.m:1622` during this spec's final review, confirming
+the byte swap, the `ENET_CRCPOLY` load, the sign test, the low-bit test, the
+XOR and the 16-iteration bound. Both bodies are therefore now verified against
+the binary directly, rather than inherited transitively.
 `src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m:1622` defines
 `crc416(current, nxtval)` as a 16-iteration bit loop with polynomial
 `0x04c11db7`, and `:1660` defines `mace_crc` as exactly three calls to

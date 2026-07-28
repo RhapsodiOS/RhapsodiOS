@@ -229,9 +229,22 @@ candidates:
   `__TEXT,__text` that is not one of IDA's recognized function starts.
   Confirmed this symbol does not appear anywhere in the 111-entry function
   list of `analysis-reference-ida.json` (checked programmatically), the
-  same pattern documented for `+[BMacEnet probe:]` in the BMac task: address
-  0x0 is a symbol-table entry with an unresolved/placeholder address, not a
-  real code address in this relocatable object.
+  same pattern documented for `+[BMacEnet probe:]` in the BMac task.
+> **CORRECTION.** The paragraph above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a placeholder
+> with an unresolved address. That was wrong, and the same misreading was repeated across five
+> merged specs. `__text+0` in `drvPPCBurgundy_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's
+> *analysis* that omits the function there, not Apple's binary that omits the code.
+> `read_macho` reports address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`,
+> ...), which is what made a defined symbol at `__text+0` look empty.
+>
+> **`+[PPCBurgundy probe:]` is a real function the analysis does not record, not a phantom.** It is an
+> unmapped real function. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `burgundy-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the
   standard synthetic bundle-header symbol Mach-O bundles carry at their
   load address; not a real function, so not a function start either.
@@ -241,9 +254,10 @@ source map, so neither affects the 21/18/0/0 correspondence numbers above.
 This also explains why `selector_check.py`'s "missing" list below includes
 `+[PPCBurgundy probe:]` even though the source map's `unmapped` list does
 not: `probe:` is a real, named selector in the reference binary's symbol
-table, but it resolves to address 0x0, so IDA's function list -- and
-therefore the `--scope-to-objc` source map built from it -- never counts it
-as one of the 39 in-scope functions in the first place.
+table at address 0x0, which IDA's function list does not carry -- and so the
+`--scope-to-objc` source map built from it never counts it as one of the 39
+in-scope functions in the first place. That is a limit of the analysis, not
+evidence that the selector has no body.
 
 ## Selector check
 
@@ -289,9 +303,9 @@ selectors: 21 match by exact name (the `mapped` set above), 16 are
 implemented under a renamed, underscore-prefixed private selector, 2 are
 build-generated accessors with no source counterpart, and 1
 (`+[PPCBurgundy probe:]`) is genuinely absent from the source under any
-name -- and, per the Invariant check above, does not correspond to a real
-function body in the reference binary either (address 0x0), so its absence
-from source has no runtime consequence that this analysis can observe.
+name -- and, per the Invariant check correction above, it **does** correspond
+to a real function body in the reference binary, at `__text+0`, which IDA's
+analysis omits. It is a real gap, not an artifact.
 The reimplementation also adds one selector, `-[PPCBurgundy
 updateSampleRate:]` (`BurgundySound.m:646`), that the reference binary does
 not have at all -- extra public API surface introduced during the
@@ -350,11 +364,10 @@ two very different categories:
   supply.
 
 Additionally, the reference binary carries one more selector,
-`+[PPCBurgundy probe:]`, that does not exist in source under any name --
-but per the Invariant check above, this selector does not correspond to a
-real function body in the reference binary either (its address resolves to
-0x0), so this could not be verified as a functional gap one way or another
-from static analysis alone. The reimplementation also adds one selector the
+`+[PPCBurgundy probe:]`, that does not exist in source under any name, and
+per the Invariant check correction above it **does** have a real body at
+`__text+0` that IDA's analysis omits. An earlier version of this paragraph
+said the opposite. It is a real, unwritten function. The reimplementation also adds one selector the
 reference lacks entirely (`-[PPCBurgundy updateSampleRate:]`).
 
 No static C helper functions exist anywhere in this source (confirmed by

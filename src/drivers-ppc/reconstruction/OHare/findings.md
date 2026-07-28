@@ -128,7 +128,12 @@ Bucket 5 prints 0 from the script by construction; it is populated by hand again
 smallest bucket-6 result of any driver measured so far in this project, consistent with `AppleOHare`
 being the smallest driver in the series: every one of its non-build-generated, non-jump-island functions
 either mapped directly (`initFromDeviceDescription:`) or fell outside the reference analysis's
-function-start set entirely (`probe:`, the address-`0x0` anomaly).
+function-start set entirely (`probe:`, at `__text+0`).
+
+**This is not the same as "zero real gaps", and an earlier reading of it said so wrongly.** The bucket
+table enumerates IDA's 7 functions, and IDA has no function for `+[AppleOHare probe:]` -- real code at
+`__text+0`. It is therefore outside every bucket, not accounted for by one. `drvPPCOHare` has **one
+real unmapped function**, not zero. See the Invariant check correction below.
 
 ## Unmapped detail
 
@@ -171,6 +176,23 @@ HI16/HA16-LO16 pairing, or fused-relocation count reported any additional proble
   resolved function-start address in the reference analysis. This is a `boundary_disputed` candidate per
   the plan's established pattern, not a gap: source exists for it (`ohare.m:35-42`), and its selector
   matches exactly in the binary (see Selector check below).
+> **CORRECTION.** The paragraph above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a placeholder
+> with an unresolved address. That was wrong, and the same misreading was repeated across five
+> merged specs. `__text+0` in `drvPPCOHare_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's
+> *analysis* that omits the function there, not Apple's binary that omits the code.
+> `read_macho` reports address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`,
+> ...), which is what made a defined symbol at `__text+0` look empty.
+>
+> **`+[AppleOHare probe:]` is a real function the analysis does not record, not a phantom.** It is an
+> unmapped real function. `ohare.m:35-42` defines a `probe:` whose selector matches, but that correspondence is
+> now *unverified* rather than *unnecessary*: there is Apple code at `__text+0` and
+> nothing here has compared the two. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `ohare-bundle-ppc`'s anomalous symbol, `__mh_bundle_header`, is the standard synthetic bundle-header
   symbol every Mach-O bundle carries at its load address -- identical to every other `_reloc`/bundle pair
   measured in this project.

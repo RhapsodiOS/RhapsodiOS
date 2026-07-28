@@ -286,10 +286,24 @@ defect. Recorded as `boundary_disputed` candidates:
   recorded for `drvPPCBMac`'s `+[BMacEnet probe:]`: a symbol in
   `__TEXT,__text` that is not one of IDA's recognized function starts.
   `Apple96_SCSI` does not define its own `probe:` in
-  `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI` (not found by grep); this looks
-  like an unresolved/placeholder symbol-table entry pointing at the
-  inherited `IOSCSIController` implementation, not a genuine boundary dispute
-  affecting any mapped function.
+  `src/kernel-7/bsd/dev/ppc/drvApple96_SCSI` (not found by grep).
+> **CORRECTION.** The paragraph above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a placeholder
+> with an unresolved address. That was wrong, and the same misreading was repeated across five
+> merged specs. `__text+0` in `drvPPC53c96_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's
+> *analysis* that omits the function there, not Apple's binary that omits the code.
+> `read_macho` reports address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`,
+> ...), which is what made a defined symbol at `__text+0` look empty.
+>
+> **`+[Apple96_SCSI probe:]` is a real function the analysis does not record, not a phantom.** It is an
+> unmapped real function. Because no source defines it, this is a real gap: Apple's binary has a `probe:` body
+> this tree does not. The earlier reading -- an unresolved entry pointing at the
+> inherited `IOSCSIController` implementation -- is withdrawn. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `53c96-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the standard
   synthetic bundle-header symbol Mach-O bundles carry at their load address;
   not a real function, so not a function start either.

@@ -121,7 +121,7 @@ bucketing script by construction -- entries move into it by hand, per section 3.
 Each `_reloc` carries exactly one `__TEXT,__text` Objective-C symbol at address
 `0x0`:
 
-| Driver | Symbol at 0x0 | Real IDA function? | Source site |
+| Driver | Symbol at 0x0 | In IDA's function list? | Source site |
 | --- | --- | --- | --- |
 | OHare | `+[AppleOHare probe:]` | no | `ohare.m:35` |
 | PMU | `+[ApplePMU probe:]` | no | `pmu.m:62` |
@@ -129,16 +129,30 @@ Each `_reloc` carries exactly one `__TEXT,__text` Objective-C symbol at address
 | ApplePCIBus | `-[IOPCIBridge registerLoudly]` | **yes** (12 bytes) | none on `IOPCIBridge`; logic match on `IOMacRiscPCIBridge`, `IOMacRiscPCI.m:207` |
 | IODisplay | `-[IOSmartDisplay registerLoudly]` | no | none, under any name |
 
-Address 0x0 is the Mach-O header/load-command region, not a code address in a
-relocatable object, so in four of five cases these are symbol-table entries with
-placeholder addresses -- the disposition all three previous reports recorded for
-their eleven binaries. **`ApplePCIBus` is the exception and is a genuine
-anomaly** (4.6): its address-0x0 symbol is a real IDA function with three
-instructions, which is why `ppc_invariant_check.py` reports 0 violations for
-that binary alone. Evidence: each driver's `findings.md`, "Invariant check".
+> **CORRECTION.** This section originally continued: *"Address 0x0 is the Mach-O
+> header/load-command region, not a code address in a relocatable object, so in
+> four of five cases these are symbol-table entries with placeholder addresses"*,
+> and called `ApplePCIBus` "the exception and a genuine anomaly". **All of that
+> is withdrawn.** In a relocatable object `__TEXT,__text` begins at address 0, so
+> address 0 is the *first instruction*, not a placeholder. Every one of these five
+> symbols names real code: reading the reference binaries directly, `__text+0` is
+> `7c0802a6` (`mflr r0`) in `drvPPCOHare_reloc`, `drvPPCBurgundy_reloc`,
+> `drvPPCSym8xx_reloc`, `drvPPCMesh_reloc` and `drvPPC53c96_reloc`, and
+> `9421ffe0` (`stwu r1,-32(r1)`, a leaf prologue) in `IODisplay_reloc`. The
+> "Real IDA function?" column has been renamed to say what it actually measured:
+> whether IDA's *analysis* lists a function there. `ApplePCIBus` is not the
+> exception -- it is the one case where IDA happened to record the function.
+>
+> The misreading came from `ppc_invariant_check.py`'s message, "symbol X at 0x0
+> is not a function start", which says nothing about the bytes, compounded by
+> `read_macho` reporting address `0` for *undefined* symbols as well. The checker
+> now distinguishes the two cases. Full account:
+> [IOADBDevice/findings.md](IOADBDevice/findings.md), "The misreading".
 
 None of the five overlaps any function in any bucket table or source map, so
-none affects the correspondence numbers.
+none affects the correspondence numbers -- but that is because IDA never had
+these functions to map, not because there is nothing there. Each is an
+**unmapped real function**.
 
 ---
 
@@ -498,7 +512,7 @@ Apple's reference exactly, so it is correctly not counted as a rename. This
 sharpens the finding: the convention is "underscore our own privates", not
 blanket prefixing.
 
-### 4.2 OHare has zero real gaps, and spec 1.2's prediction about it was wrong
+### 4.2 OHare's one-method gap: spec 1.2 guessed wrong, and so did this section
 
 Spec 1.2 wrote that `drvPPCOHare`'s binary "carries **two** real methods,
 `+[AppleOHare probe:]` and `-[AppleOHare initFromDeviceDescription:]`, and
@@ -519,13 +533,20 @@ ohare.m:45   - initFromDeviceDescription:(IOPCIDevice *)deviceDescription
 The reason only 1 of the 2 appears as `mapped` is unrelated to source:
 **`+[AppleOHare probe:]` sits at address `0x0`**, which is not a function start
 in the reference analysis (its 7-entry function list carries no entry at 0), so
-IDA records no function for it and nothing can map to it. It is a name match
-with no analysis-side function to map to, not a gap. Its selector matches
-exactly, and its body is at `ohare.m:35-42`.
+IDA records no function for it and nothing can map to it. Its selector matches
+exactly, and `ohare.m:35-42` defines a method of that name.
 
-**The correction is recorded explicitly**: the guessed one-method gap does not
-exist. OHare is the smallest complete measurement in the series -- 7 functions,
-1 mapped, bucket-6 residue 0 -- and it is a **clean** result, not a thin one.
+> **CORRECTION.** This section originally concluded that "the guessed one-method
+> gap does not exist" and that OHare has **zero real gaps**. That conclusion
+> rested on the address-0 symbol being a placeholder, which section 1's
+> correction withdraws. `+[AppleOHare probe:]` is real code at `__text+0` that
+> IDA's analysis omits, so `drvPPCOHare` has **one real unmapped function**, not
+> zero. What survives is the narrower point spec 1.2 got wrong: `ohare.m` does
+> define both methods, and the selector check confirms it. What does *not*
+> survive is the claim that the correspondence for `probe:` was therefore
+> settled. It is **unverified**, because nothing has compared `ohare.m:35-42`
+> against the 92 bytes Apple shipped.
+
 Evidence: [OHare/findings.md](OHare/findings.md), "Correspondence" and "Selector
 check".
 
@@ -625,15 +646,22 @@ Spec 5.1 named mischaracterising these as gaps the likeliest error in the batch.
 It is recorded here as a finding precisely so the number cannot be quoted
 without its attribution.
 
-### 4.6 `ApplePCIBus`'s address-0x0 symbol is the exception across four specs
+### 4.6 `ApplePCIBus`'s address-0x0 symbol is the *normal* case, not the exception
 
 Across sixteen drivers measured in four specs, every binary carries exactly one
-`__TEXT,__text` symbol at address `0x0`, and in every case but one that symbol
-has **no** corresponding IDA function -- it is a symbol-table entry with a
-placeholder address. This report re-verified that disposition firsthand for
-its own ten artifacts, five `_reloc` and five bundle stubs (Acceptance item
-2); the other six are carried forward from the three prior reports and were
-not re-verified here.
+`__TEXT,__text` symbol at address `0x0`, and in every case but one IDA's
+analysis lists **no** function there. This report re-verified that disposition
+firsthand for its own ten artifacts, five `_reloc` and five bundle stubs
+(Acceptance item 2); the other six are carried forward from the three prior
+reports and were not re-verified here.
+
+> **CORRECTION.** This section originally called the address-0 symbol "a
+> symbol-table entry with a placeholder address" and `IOApplePCIBus_reloc` "the
+> exception". Both are withdrawn; see section 1's correction. Address 0 is
+> `__text`'s first address, every one of these symbols names real code, and
+> `IOApplePCIBus_reloc` differs only in that IDA recorded the function. The
+> "exception" is IDA's analysis being complete for one binary, not Apple's
+> binary being unusual.
 
 **`IOApplePCIBus_reloc` is the exception.** `-[IOPCIBridge registerLoudly]` sits
 at address 0 *and* is a real 12-byte IDA function with three instructions
@@ -724,7 +752,10 @@ bucket-6 entry with a documented, evidenced cause and no unexplained content is
 On that criterion the ordering is not the match-rate ordering. `IODisplay` ranks
 first at 69.2% while `drvPPCOHare` ranks last at 50.0%, because IODisplay is the
 only driver here with code it cannot account for and OHare's shortfall is
-entirely a documented address-0x0 artifact.
+entirely its address-0x0 function. **Per section 1's correction that shortfall is
+real code, not an artifact**, so this ordering is weaker than it reads: OHare's
+92 bytes at `__text+0` are unaccounted for too, just by a source-side name
+match rather than by nothing.
 
 ### 1. `IODisplay` -- six unresolved absences, the only unexplained content in the batch
 
@@ -1132,8 +1163,9 @@ case where the count is 1, that 1 is the symbol/function-start mismatch from
 enumerated in section 1 (the four `_reloc` symbols) and section 3
 (`__mh_bundle_header` in all five stubs). They are not required to be zero.
 
-`applepcibus-ppc`'s 0 is 4.6's anomaly, not a stronger result: its address-0x0
-symbol happens to be a real IDA function, so there is no mismatch to flag.
+`applepcibus-ppc`'s 0 is not a stronger result: its address-0x0 symbol is one
+IDA's analysis happens to record, so there is no mismatch to flag. Per 4.6's
+correction that makes it the complete case, not the anomalous one.
 
 **No checker change was needed for this spec.** The two defects fixed during the
 SCSI spec and the `ori`-form under-report caught in its final review all hold;

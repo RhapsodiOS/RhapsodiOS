@@ -225,11 +225,26 @@ paired-principal counts) reported anything for either binary, before or after th
 
 **The single remaining violation, `-[Sym8xxController(Execute) commandRequestOccurred]` at `0x0`, is the
 same anomaly every driver measured so far has shown -- not a relocation violation.** `Sym8xxExecute.m:44`
-defines `- (void)commandRequestOccurred`, so source exists for it, but the reference binary carries only
-a symbol-table entry at address `0x0` -- a placeholder/unresolved address, not a genuine boundary dispute
-affecting any mapped method. Because the 146 reference-analysis functions never include an entry at
-`0x0`, it cannot appear in the source map's `mapped`/`unmapped`/`boundary_disputed` categories at all (see
-Correspondence above). This is the `boundary_disputed` pattern, not a relocation-decode defect.
+defines `- (void)commandRequestOccurred`, so source exists for it. Because the 146 reference-analysis
+functions never include an entry at `0x0`, it cannot appear in the source map's
+`mapped`/`unmapped`/`boundary_disputed` categories at all (see Correspondence above). This is the
+`boundary_disputed` pattern, not a relocation-decode defect.
+> **CORRECTION.** The paragraph above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a placeholder
+> with an unresolved address. That was wrong, and the same misreading was repeated across five
+> merged specs. `__text+0` in `drvPPCSym8xx_reloc` holds `7c0802a6` -- `mflr r0` -- and it is IDA's
+> *analysis* that omits the function there, not Apple's binary that omits the code.
+> `read_macho` reports address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`,
+> ...), which is what made a defined symbol at `__text+0` look empty.
+>
+> **`-[Sym8xxController(Execute) commandRequestOccurred]` is a real function the analysis does not record, not a phantom.** It is an
+> unmapped real function. `Sym8xxExecute.m:44` defines a method of that name, but the correspondence is now
+> *unverified* rather than *unnecessary*. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 
 `sym8xx-bundle-ppc`'s `__mh_bundle_header` at address `0x0` is the standard synthetic bundle-header
 symbol every Mach-O bundle carries at its load address -- identical to every other `_reloc`/bundle pair

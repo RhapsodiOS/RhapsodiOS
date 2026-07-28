@@ -46,8 +46,9 @@ wrapper classes -- one more than the 25 that appear in IDA's own function
 list, because `-[IOSmartDisplay registerLoudly]` is a symbol-table entry at
 address `0x0` that is not a recognized IDA function start (see Invariant
 check below; this is the standard pattern already seen for `+probe:` in
-Cuda/BMac/Burgundy/OHare/Awacs, not the address-0x0-is-a-real-function
-anomaly `IOApplePCIBus` (Task 5) showed).
+Cuda/BMac/Burgundy/OHare/Awacs -- which, per the correction in the Invariant
+check, is the address-0x0-*is*-a-real-function case that `IOApplePCIBus`
+(Task 5) was thought to be alone in showing).
 
 - Total functions in the reference analysis: 64.
 - Named Objective-C methods, in scope: 25 -- 22 mapped + 3 unmapped.
@@ -345,8 +346,26 @@ candidates:
   logic-matching implementation on a related class. This is the same
   general pattern as `+[AppleOHare probe:]`, `+[PPCBurgundy probe:]`, and
   `+[PPCAwacs probe:]` from earlier tasks: a real symbol-table entry with
-  no corresponding IDA function and (here) no corresponding source
-  implementation either.
+  no corresponding IDA function and no corresponding source implementation
+  either.
+> **CORRECTION.** The paragraph above read `ppc_invariant_check.py`'s "is not a function
+> start" message as "there is no code at that address", and called the symbol a placeholder
+> with an unresolved address. That was wrong, and the same misreading was repeated across five
+> merged specs. `__text+0` in `IODisplay_reloc` holds `9421ffe0` -- `stwu r1,-32(r1), a leaf prologue` -- and it is IDA's
+> *analysis* that omits the function there, not Apple's binary that omits the code.
+> `read_macho` reports address `0` for every undefined symbol too (`_IOLog`, `_objc_msgSend`,
+> ...), which is what made a defined symbol at `__text+0` look empty.
+>
+> **`-[IOSmartDisplay registerLoudly]` is a real function the analysis does not record, not a phantom.** It is an
+> unmapped real function. This document called the address-0x0 symbol anomalous for being real, on the strength
+> of `IOApplePCIBus` being "the exception". It was the normal case; `IOApplePCIBus` was
+> normal too, and the only difference there is that IDA happened to record the
+> function. Its body is not written here; that is separate work. Nothing was
+> re-measured for this correction and no source map was regenerated: the mapped/unmapped
+> counts above are unaffected, because IDA never had this function to map. The checker now
+> distinguishes the two cases. See
+> `src/drivers-ppc/reconstruction/IOADBDevice/findings.md`, "The misreading".
+
 - `iodisplay-bundle-ppc`: `__mh_bundle_header` at address `0x0` -- the
   standard synthetic bundle-header symbol every Mach-O bundle in this
   series carries at its load address; not a real function.

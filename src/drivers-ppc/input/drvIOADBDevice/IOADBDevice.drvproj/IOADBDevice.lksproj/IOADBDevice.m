@@ -131,17 +131,89 @@ extern id gADBDriver;
  * the symbol table says _initalize and the spelling is the evidence, so it
  * is reproduced.  Declared here because -initForDevice:result: calls it and
  * is defined first; the body follows this file's @end, which is where
- * __text puts it -- 0x5fc, after all nine methods.
+ * __text puts it -- 0x5fc, after all ten methods.
  */
 static int initalize(void);
 
 /*
- * Nine methods, not ten: +GetTable:length: is declared in the header
- * because callers send it, but __OBJC,__cls_meth gives its implementation
- * address as 0 with no function entry, so Apple's binary has no body for
- * it either.  There is nothing to transcribe.
+ * Ten methods.  +GetTable:length: is the first of them, at __text+0.
+ *
+ * __OBJC,__cls_meth gives its implementation address as 0, and IDA's
+ * analysis lists no function at 0 -- which was once read here as "Apple
+ * shipped no body for it".  That reading was wrong.  __text+0 opens
+ * `mflr r0' and runs 212 bytes to a blr at 0xd0, with a four-instruction
+ * jump island at 0xd4-0xe0; the next symbol, -initForDevice:result:, does
+ * not begin until 0xe4.  An implementation address of 0 is what a method
+ * at __text+0 must have, and read_macho reports 0 for every *undefined*
+ * symbol too, which is what made a defined symbol at __text+0 look empty.
+ * The body is transcribed below like every other.
  */
 @implementation IOADBDevice
+
+/*
+ * +GetTable:length: (0x0000, 228 bytes with its jump island)
+ *
+ * The first function in __text, so first in Apple's source order too.
+ *
+ * 0x000-0x010   prologue: save lr and r30-r31, push a 64-byte frame.
+ *               The saves precede the stwu, so they land at 0x38 and 0x3c
+ *               of the new frame; the epilogue at 0xc8/0xcc reads them
+ *               back through the restored r1 at the same -8/-4.
+ * 0x014-0x018   table (r5) -> r30 and length (r6) -> r31.  Both are
+ *               callee-saved, so they survive the call that follows.
+ * 0x01c-0x024   bl initalize (the relocation names __TEXT,__text+0x5fc,
+ *               _initalize, reached through the island at 0xd4), then
+ *               `or. r3,r3,r3' -- a compare against zero that leaves r3
+ *               untouched -- and beq to 0x34.  r3 is never written again,
+ *               so whatever initalize returned is what this method
+ *               returns, on both paths.
+ * 0x028-0x030   nonzero: *length = 0 and branch straight to the epilogue.
+ *               The table is left alone.
+ * 0x034-0x03c   zero: *length = gDeviceCount, read through an HA16/LO16
+ *               pair naming __DATA,__bss+0x700.
+ * 0x040-0x04c   index = 0, then gDeviceCount re-read through the same r9
+ *               and compared; bge skips the loop entirely when the table
+ *               is empty.  gcc hoisted this entry test and rotated the
+ *               body, the same shape as -initForDevice:result:' search
+ *               loop.
+ * 0x050-0x05c   loop invariants: &gDeviceTable (__DATA,__bss+0) into r4,
+ *               and gDeviceCount into r31 as the back edge's bound.  That
+ *               overwrites the length pointer, which 0x3c already used.
+ * 0x060-0x06c   destination index: (i*2 + i)*8 = i*24 into r11, added to
+ *               r30 for r10.  24 is sizeof(IOADBDeviceInfo).
+ * 0x070-0x07c   source index: (i*8 - i)*4 = i*28 into r0, added to r4 for
+ *               r9.  28 is sizeof(IOADBDeviceEntry) -- the same stride
+ *               -initForDevice:result: and initalize compute.
+ * 0x080-0x0ac   the 24-byte structure assignment, emitted as four loads,
+ *               four stores, two loads, two stores -- byte for byte the
+ *               block -getADBInfo: emits at 0x48c-0x4b8 for the same
+ *               whole-struct copy.  Only .info is copied; the entry's
+ *               .device at +0x18 is not, which is what leaves the source
+ *               stride 4 bytes wider than the destination's.
+ * 0x0b0-0x0b8   index++ and blt back to 0x60.
+ * 0x0bc-0x0d0   epilogue, shared by both paths.
+ * 0x0d4-0x0e0   the jump island for 0x01c: lis/ori of 0x5fc, mtctr, bctr.
+ *
+ * There is no NULL check on either argument, and no bound on *length
+ * against the caller's capacity; the binary has neither.
+ */
++ (IOReturn)GetTable:(IOADBDeviceInfo *)table length:(int *)length
+{
+    int		index;
+    IOReturn	rtn;
+
+    rtn = initalize();
+    if (rtn != IO_R_SUCCESS) {
+	*length = 0;
+	return rtn;
+    }
+
+    *length = gDeviceCount;
+    for (index = 0; index < gDeviceCount; index++)
+	table[index] = gDeviceTable[index].info;
+
+    return rtn;
+}
 
 /*
  * -initForDevice:result: (0x00e4, 696 bytes with its jump islands)
@@ -417,11 +489,11 @@ bad:
  * initalize (0x05fc, 468 bytes with its jump islands)  -- Apple's spelling
  *
  * Signature derived, not encoded: this is C, so there is no
- * __OBJC,__meth_var_types entry.  The one call site, 0x120 in
- * -initForDevice:result:, passes nothing (r3-r10 are untouched between the
- * kprintf at 0x11c and the bl) and tests the returned r3 against zero, so
- * the function takes no arguments and returns an int.  It is a `local'
- * symbol in the symbol table, so it is static.
+ * __OBJC,__meth_var_types entry.  Both call sites -- 0x1c in
+ * +GetTable:length: and 0x120 in -initForDevice:result: -- pass nothing
+ * (r3-r10 are untouched before each bl) and test the returned r3 against
+ * zero, so the function takes no arguments and returns an int.  It is a
+ * `local' symbol in the symbol table, so it is static.
  *
  * 0x5fc-0x618   prologue: save lr and r27-r31, push a 112-byte frame.  The
  *               only local is the 24-byte IOADBDeviceInfo at sp+0x38, just
@@ -482,12 +554,16 @@ bad:
  * ADB_FLAGS_REGISTERED and ADB_FLAGS_UNRESOLVED, and the 6 at 0x724 is the
  * latter two together; the 1 written into the driver's own flags word is
  * IOADBBus.h's kIOADBDeviceAvailable.  0x1000 and 0x10000 have no name
- * anywhere in this tree and are written as literals.  The loop bound 15 has
- * no name either: IO_ADB_MAX_DEVICE is 16, and `device < IO_ADB_MAX_DEVICE'
- * would be equivalent, but this compiler preserves the relational operator
- * it is given -- `blt' for the `<' loops in -initForDevice:result: and
- * `ble' for the `<=' one in adbServerIoctl -- and 0x764/0x768 is cmpwi 0xF
- * followed by ble.  So the source said `<= 15', and that is written here.
+ * anywhere in this tree and are written as literals.  The loop bound 15 is
+ * written as a literal too, but not because the tree has no name for the
+ * value: architecture-1/adb_bus.h:155 defines MAX_BUS_DEVICE_ADDRESS 15 and
+ * bsd/dev/adb.h:133 defines ADB_ADDR_HIGH 15, and either would read better
+ * than the digits.  Neither header is imported here, and adopting one would
+ * be a claim about which name Apple used that nothing in the binary
+ * supports.  What the binary does settle is the operator: this compiler
+ * preserves the one it is given -- `blt' for the `<' loops in
+ * -initForDevice:result: and `ble' for the `<=' one in adbServerIoctl --
+ * and 0x764/0x768 is cmpwi 0xF followed by ble, so the source said `<= 15'.
  *
  * One shape is not recoverable: 0x670's beq skips to the increment, which
  * an `if (present) { ... }' block and an `if (!present) continue;' compile
@@ -506,7 +582,7 @@ initalize(void)
 
     index = 0;
 
-    for (device = 1; device <= 15; device++) {		/* 15: unnamed */
+    for (device = 1; device <= 15; device++) {		/* 15: not named here */
 	[gADBDriver getADBInfo:device :&info];
 
 	if (info.flags & ADB_FLAGS_PRESENT) {

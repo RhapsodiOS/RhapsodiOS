@@ -44,10 +44,10 @@
 
 /*
  * +GetTable:length: appears in __OBJC,__cls_meth with an implementation
- * address of 0 and no function entry, so there is no body to transcribe.
- * It is declared because callers exist -- adbServerIoctl sends it to the
- * IOADBDevice class -- but its code is absent from Apple's binary.  This
- * is the fourth occurrence of that pattern in this series.
+ * address of 0.  That is not an absent body: it is the address of the
+ * first function in __text.  IDA's analysis lists no function there, but
+ * the bytes are `mflr r0' and 212 more, ending in a blr at 0xd0.  The
+ * body is transcribed in IOADBDevice.m like every other.
  *
  * Encoding: i12@4:8^{?=iiiilL}12^i16
  */

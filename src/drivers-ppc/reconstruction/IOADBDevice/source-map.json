@@ -8,7 +8,7 @@
         "-[IOADBDevice initForDevice:result:]"
       ],
       "size": 584,
-      "source_line": 196,
+      "source_line": 268,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[IOADBDevice free]"
       ],
       "size": 200,
-      "source_line": 269,
+      "source_line": 341,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[IOADBDevice getADBInfo:]"
       ],
       "size": 68,
-      "source_line": 293,
+      "source_line": 365,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[IOADBDevice flushADBDevice]"
       ],
       "size": 60,
-      "source_line": 316,
+      "source_line": 388,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[IOADBDevice readADBDeviceRegister:buffer:length:]"
       ],
       "size": 76,
-      "source_line": 339,
+      "source_line": 411,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -53,7 +53,7 @@
         "-[IOADBDevice writeADBDeviceRegister:buffer:length:]"
       ],
       "size": 76,
-      "source_line": 362,
+      "source_line": 434,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -62,7 +62,7 @@
         "-[IOADBDevice setState:mask:]"
       ],
       "size": 16,
-      "source_line": 385,
+      "source_line": 457,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -71,7 +71,7 @@
         "-[IOADBDevice getState]"
       ],
       "size": 16,
-      "source_line": 398,
+      "source_line": 470,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {
@@ -80,7 +80,7 @@
         "-[IOADBDevice watchState:mask:]"
       ],
       "size": 16,
-      "source_line": 409,
+      "source_line": 481,
       "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
     },
     {

@@ -50,19 +50,21 @@ mapped 15 unmapped 2 dup 0 disputed 0
   unmapped: +[IOADBDeviceVersion driverKitVersionForIOADBDevice]
 ```
 
-**All fifteen Objective-C methods with bodies map.** Only the two build-generated accessors remain,
-which is the expected floor for every driver in this series.
+**All fifteen Objective-C methods the reference analysis has functions for map.** Only the two
+build-generated accessors remain, which is the expected floor for every driver in this series. A
+sixteenth method, `+[IOADBDevice GetTable:length:]`, is written but cannot appear here at all --
+see below.
 
 ```
--[IOADBDevice initForDevice:result:]                  -> IOADBDevice.m:196
--[IOADBDevice free]                                   -> IOADBDevice.m:269
--[IOADBDevice getADBInfo:]                            -> IOADBDevice.m:293
--[IOADBDevice flushADBDevice]                         -> IOADBDevice.m:316
--[IOADBDevice readADBDeviceRegister:buffer:length:]   -> IOADBDevice.m:339
--[IOADBDevice writeADBDeviceRegister:buffer:length:]  -> IOADBDevice.m:362
--[IOADBDevice setState:mask:]                         -> IOADBDevice.m:385
--[IOADBDevice getState]                               -> IOADBDevice.m:398
--[IOADBDevice watchState:mask:]                       -> IOADBDevice.m:409
+-[IOADBDevice initForDevice:result:]                  -> IOADBDevice.m:268
+-[IOADBDevice free]                                   -> IOADBDevice.m:341
+-[IOADBDevice getADBInfo:]                            -> IOADBDevice.m:365
+-[IOADBDevice flushADBDevice]                         -> IOADBDevice.m:388
+-[IOADBDevice readADBDeviceRegister:buffer:length:]   -> IOADBDevice.m:411
+-[IOADBDevice writeADBDeviceRegister:buffer:length:]  -> IOADBDevice.m:434
+-[IOADBDevice setState:mask:]                         -> IOADBDevice.m:457
+-[IOADBDevice getState]                               -> IOADBDevice.m:470
+-[IOADBDevice watchState:mask:]                       -> IOADBDevice.m:481
 +[ADBServer serverMajor:]                             -> ADBServer.m:232
 +[ADBServer deviceStyle]                              -> ADBServer.m:272
 +[ADBServer requiredProtocols]                        -> ADBServer.m:301
@@ -74,37 +76,47 @@ which is the expected floor for every driver in this series.
 (paths relative to
 `src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/`).
 
-- Total functions in the reference analysis (`ioadbdevice-ppc`): 67, 5312 bytes.
-- Objective-C methods with function entries: 17 — 15 mapped + 2 unmapped, 2416 bytes.
+- Total functions in the reference analysis (`ioadbdevice-ppc`): 67, 5312 bytes — 212 bytes short of
+  `__text`, the one function IDA omits.
+- Objective-C methods with function entries: 17 — 15 mapped + 2 unmapped, 2416 bytes. An eighteenth
+  Objective-C method, `+GetTable:length:` (212 bytes), has no function entry.
 - Out of scope: 50 — 44 unnamed jump islands (704 bytes) and 6 named C functions (2192 bytes).
 - `duplicate_candidates`: 0. `boundary_disputed`: 0.
 
-**`+[IOADBDevice GetTable:length:]` does not appear in the map at all, not even as unmapped.** Its
-implementation address in `__OBJC,__cls_meth` is `0` and there is no function entry there, so the
-function analysis never produces a record for it and it cannot be classified. It is nonetheless a
-real selector in the metadata, and `adbServerIoctl` sends it to the `IOADBDevice` class, so it is
-declared in `IOADBDevice.h` and recorded here as **absent from the shipped binary, not omitted from
-this reconstruction**. This is the fourth occurrence of the pattern, after `IOSmartDisplay`,
-`AppleOHare` and `PPCBurgundy`.
+**`+[IOADBDevice GetTable:length:]` does not appear in the map at all, not even as unmapped -- and
+that is a property of IDA's analysis, not of Apple's binary.** Its implementation address in
+`__OBJC,__cls_meth` is `0` because it is the first function in `__text`, and IDA's function list
+carries no entry at `0`: its lowest entry is `0xd4`, the jump island that belongs to this very
+function. The map's universe is scoped to that function list, so a function IDA never recorded
+cannot be classified by it.
+
+The code is there. `__text+0` reads `7c0802a6` -- `mflr r0` -- and runs 212 bytes to a `blr` at
+`0xd0`, followed by a four-instruction jump island at `0xd4`-`0xe0`; `-initForDevice:result:` does
+not begin until `0xe4`. The arithmetic confirms it independently: `__TEXT,__text` is 5524 bytes and
+the 67 functions IDA reports total 5312. **The 212-byte difference is exactly this function.** The
+body is transcribed at `IOADBDevice.m:200`.
+
+See "The misreading" below for how this came to be recorded the other way round.
 
 ### Selector check
 
 ```
 reference selectors: 18
-our definitions:     15
+our definitions:     16
 
 renames (0):
 duplicates (0):
-missing (3):
-    +[IOADBDevice GetTable:length:]
+missing (2):
     +[IOADBDeviceKernelServerInstance kernelServerInstance]
     +[IOADBDeviceVersion driverKitVersionForIOADBDevice]
 extra (0):
 ```
 
 Zero renames and zero extras: every selector we define is spelled as Apple's binary spells it, and we
-define nothing Apple's binary does not have. The three missing are the bodyless class method and the
-two Kernel Server build products.
+define nothing Apple's binary does not have. The two missing are the Kernel Server build products.
+`selector_check.py` matches on selector string rather than on function-start validity, which is why
+it saw `+GetTable:length:` in the binary all along -- and why its earlier "missing (3)" was the first
+place the tree recorded a method that is in fact present.
 
 ### The three modules
 
@@ -117,7 +129,8 @@ module 2: name="IOADBDevice_instance.m"  defs: IOADBDeviceVersion, IOADBDeviceKe
 ```
 
 Our two source files carry Apple's names. `__text` order matches module order and, within a module,
-is source order: `IOADBDevice`'s nine methods then `initalize`; `ADBServer`'s six methods then the
+is source order: `IOADBDevice`'s ten methods -- `+GetTable:length:` first, at `__text+0` -- then
+`initalize`; `ADBServer`'s six methods then the
 five character-device C functions; then the two generated accessors. Both files are laid out that
 way, with the C functions after their `@end`.
 
@@ -167,7 +180,7 @@ claims no C functions, so all six land in bucket 6. All six now have source site
 
 | Function | Address | Source site |
 | --- | --- | --- |
-| `_initalize` | `0x5fc` | `IOADBDevice.m:498` |
+| `_initalize` | `0x5fc` | `IOADBDevice.m:570` |
 | `_adbServeropen` | `0xd84` | `ADBServer.m:537` |
 | `_adbServerclose` | `0xe94` | `ADBServer.m:591` |
 | `_adbServerioctlDispatch` | `0xfa0` | `ADBServer.m:654` |
@@ -176,22 +189,72 @@ claims no C functions, so all six land in bucket 6. All six now have source site
 
 **Bucket 6 is therefore empty in fact and bucket 5 holds six.** The tool cannot see this, and the
 line numbers above are the citation. Every function in this binary now has a source site except the
-two build-generated accessors and the bodyless `GetTable:length:`.
+two build-generated accessors. `+GetTable:length:` is written (`IOADBDevice.m:200`) but appears in
+no bucket, because the bucket table enumerates IDA's 67 functions and IDA has no function for it.
 
 ## Invariant check
 
 ```
-symbol +[IOADBDevice GetTable:length:] at 0x0 is not a function start
+symbol +[IOADBDevice GetTable:length:] at 0x0 has no function start in the analysis, but code is present: the bytes there are a function prologue, so the analysis omits a real function
 18 scattered/difference-form relocations (target section verified, field is a difference, not an address)
 5 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
 648 fused relocations, 1 violations
 ```
 
-The single violation is the bodyless class method described above, the same shape Mesh's
-`_AllocateEventLog` at `0x0` produces. It is a property of Apple's binary, not of our read: the
-symbol exists, the address is `0`, and there is no code there. Every one of the 648 fused
+The single violation is `+GetTable:length:` at `__text+0`, the same shape Mesh's `_AllocateEventLog`
+at `0x0` produces. It is a property of IDA's analysis, not of Apple's binary: the symbol exists, the
+address is `0`, the code is there, and IDA's function list does not record it. The checker's older
+wording -- "is not a function start" -- was true and was read here as "there is no code there",
+which it never said; the checker now says which of the two it means. Every one of the 648 fused
 relocations otherwise reconstructs to an address inside a declared section, and all five
 `HI16`/`HA16`–`LO16` pairs agree.
+
+## The misreading
+
+This is recorded as a finding because it is one, and because it survived five merged specs.
+
+**What the tool said.** `ppc_invariant_check.py`'s `check_functions` printed:
+
+```
+symbol +[IOADBDevice GetTable:length:] at 0x0 is not a function start
+```
+
+**What was inferred.** That there is no code at address `0` — that the symbol is a placeholder, that
+Apple shipped the selector without a body, and that there was therefore nothing to transcribe. Three
+places in this document, plus `IOADBDevice.h`, `IOADBDevice.m`, the design spec and the plan, stated
+it as settled fact. The worst formulation was in this file: *"It is a property of Apple's binary, not
+of our read."* That is exactly backwards.
+
+**Why it is wrong.**
+
+1. The message says only that the address is not in the analyzer's function list. It says nothing
+   about the bytes. IDA misses the function at `__text+0` in every PowerPC driver measured in this
+   series.
+2. `read_macho` reports address `0` for **undefined** symbols too — `_IOLog`, `_objc_msgSend`,
+   `_panic` and eighteen others in this binary alone. A *defined* symbol at `__text+0` is
+   indistinguishable from them in that view, which is what made `0` look like "no address" rather
+   than "the first address".
+3. The bytes settle it: `__text+0` is `7c0802a6`, `mflr r0`, and the function runs 212 bytes to a
+   `blr` at `0xd0`.
+4. So does the arithmetic: `__text` is 5524 bytes, IDA's 67 functions total 5312, and the difference
+   is 212.
+
+**What was done.** The checker now reads the instruction word at the symbol and, when it is a
+prologue, says that code is present and that the analysis omits a real function. The five other
+drivers whose `findings.md` carried the same misreading are corrected in place; each names a real
+unmapped function, not a phantom:
+
+| Driver | Function at `__text+0` | First word |
+| --- | --- | --- |
+| `drvPPCOHare` | `+[AppleOHare probe:]` | `7c0802a6` |
+| `drvPPCBurgundy` | `+[PPCBurgundy probe:]` | `7c0802a6` |
+| `drvPPCSym8xx` | `-[Sym8xxController(Execute) commandRequestOccurred]` | `7c0802a6` |
+| `drvPPCMesh` | `_AllocateEventLog` | `7c0802a6` |
+| `drvPPC53c96` | `+[Apple96_SCSI probe:]` | `7c0802a6` |
+| `IODisplay` | `-[IOSmartDisplay registerLoudly]` | `9421ffe0` |
+
+Their bodies are not written here; that is separate work. Their mapped counts do not change, because
+IDA never had these functions to map.
 
 ## Class layout, and the stub superclass correction
 
@@ -469,22 +532,28 @@ Every bare constant traced:
 | **`64`** | **unnamed** | `gDeviceTable` bound |
 | **`256`** | **unnamed** | `gADBDeviceIdMap` bound |
 | **`255` / `0x100`** | **unnamed** | `+probe:` session clamp |
-| **`15`** | **unnamed** | `initalize` loop bound |
+| `15` | `MAX_BUS_DEVICE_ADDRESS` / `ADB_ADDR_HIGH`, neither imported | `adb_bus.h:155`, `adb.h:133` |
 | **`0x1000`, `0x10000`** | **unnamed** | driver-side device flags |
 | **`128`** | **unnamed** | `ioadbDeviceIoctl` dump buffers |
 | **`0x40546101`, `0xC0206102`, `0xC18C6103`** | **unnamed** | ioctl commands |
 | **`1`-`9`** | **unnamed** | ioctl payload commands |
 
-Nineteen constants traced to names; **eight distinct groups could not be**, and are written as
+Twenty constants traced to names; **seven distinct groups could not be**, and are written as
 literals with comments saying so. That ratio is the story of the C functions: the Objective-C half of
 this driver traced almost everything (its only failures were the three array bounds), and the C half
 failed on most of what matters — the wire protocol.
 
-`15` deserves its own note. `IO_ADB_MAX_DEVICE` is 16 and `device < IO_ADB_MAX_DEVICE` would be
-equivalent, but this compiler preserves the relational operator it is given — `blt` for the `<` loops
-in `-initForDevice:result:`, `ble` for the `<=` one in `adbServerIoctl` — and `initalize`'s bound test
-at `0x764` is `cmpwi 0xF` followed by `ble`. So Apple wrote `<= 15`, a literal, next to a header that
-defines the constant. That is a finding, not a guess.
+`15` deserves its own note, and an earlier draft of this document got it wrong. It claimed the value
+had no name anywhere in the tree. **Two names for it exist:** `MAX_BUS_DEVICE_ADDRESS`
+(`src/architecture-1/adb_bus.h:155`) and `ADB_ADDR_HIGH` (`src/kernel-7/bsd/dev/adb.h:133`). Neither
+header is imported by `IOADBDevice.m`, so writing the digits is still defensible — adopting one of
+the two would assert which name Apple reached for, and nothing in the binary says. But the assertion
+of absence was false and is retracted.
+
+What the binary *does* settle is the operator, and that part stands: this compiler preserves the
+relational operator it is given — `blt` for the `<` loops in `-initForDevice:result:`, `ble` for the
+`<=` one in `adbServerIoctl` — and `initalize`'s bound test at `0x764` is `cmpwi 0xF` followed by
+`ble`, so the source said `<= 15`.
 
 ## The one divergence that is not reproducible
 
@@ -548,8 +617,10 @@ Every one of these is recorded rather than resolved.
 2. **The declared bound of `gADBDeviceIdMap`.** 256 from storage, unnamed.
 3. **The session clamp `255`/`0x100` in `+probe:`.** Unnamed. It is a comparison against `0xff`
    followed by an assignment of `0x100`, so it is a clamp and not a mask.
-4. **`initalize`'s loop bound 15.** Unnamed, and demonstrably a literal rather than
-   `IO_ADB_MAX_DEVICE` (see above).
+4. **Which name, if any, `initalize`'s loop bound 15 had.** Two constants of that value exist in the
+   tree — `MAX_BUS_DEVICE_ADDRESS` (`adb_bus.h:155`) and `ADB_ADDR_HIGH` (`adb.h:133`) — and
+   `IOADBDevice.m` imports neither header. The digits are written; the choice between the three is
+   not recoverable. (An earlier draft asserted no such constant existed. It was wrong.)
 5. **The driver-side device flag bits `0x1000` and `0x10000`.** Unnamed. The bus-side bits they are
    translated from are all named in `adb.h`; the driver's own encoding is not defined anywhere.
 6. **The three ioctl command words and the nine payload command values.** Unnamed. One of the twelve,
@@ -592,7 +663,7 @@ Every one of these is recorded rather than resolved.
 The map proves the *selectors* match Apple's binary and that every function has a source site. It
 does not prove the *bodies* do, and no check available here can. Specifically, none of the following
 is claimed: that this compiles, that it links, that it loads, that a `kernload` of it would produce a
-working `/dev/radbki00`, or that any single instruction of the 5312 analysed was transcribed
+working `/dev/radbki00`, or that any single instruction of the 5524 bytes of `__text` was transcribed
 correctly. What is claimed is that every one of them was read, and that every place where the reading
 was ambiguous is in the list above.
 
@@ -605,20 +676,21 @@ worth attempting. The measured facts first, then the verdict.
 
 | | Count |
 | --- | --- |
-| Functions written | **21** — 15 Objective-C methods, 6 C functions |
-| Bytes of `__text` written | **4572** of 5312 analysed (86%) |
-| Functions found unwritable | **1** |
+| Functions written | **22** — 16 Objective-C methods, 6 C functions |
+| Bytes of `__text` written | **4784** of 5524 in `__text` (87%) |
+| Functions found unwritable | **0** |
 | Functions out of scope by construction | 46 — 44 jump islands, 2 build-generated accessors |
 | Uncertainties standing | **18** |
-| Defects caught in review | **4**, all in the packaging stub |
-| Constants traced to a name | 19 |
-| Constant groups with no name in this tree | 8 |
-| Commits | 5 (Tasks 1, 2, 3, 4, 5) |
+| Defects caught in review | **5** — 4 in the packaging stub, 1 in this document |
+| Constants traced to a name | 20 |
+| Constant groups with no name in this tree | 7 |
+| Commits | 5 (Tasks 1, 2, 3, 4, 5), plus the corrections recorded below |
 
-**The one unwritable function is `+[IOADBDevice GetTable:length:]`.** Its implementation address in
-`__OBJC,__cls_meth` is `0` and there is no function entry there. Apple's binary has no body for it,
-so there is nothing to transcribe. It is declared, because `adbServerIoctl` sends it, and recorded.
-This is not a limit of the method; it is a property of the shipped artifact.
+**Nothing in this binary was found unwritable.** An earlier version of this table read 21 written and
+1 unwritable, the unwritable one being `+[IOADBDevice GetTable:length:]`. That was wrong: the
+function is 212 bytes at `__text+0` and is now written. The denominator changed with it — 5312 was
+IDA's function total, not `__text`'s size, and the 212-byte difference between them *was* the
+function said to be missing.
 
 **The four defects were all in the stub the packaging spec produced**, and every one of them was
 found by a discipline rather than by reading code:
@@ -639,12 +711,12 @@ would have shipped silently.
 The split between the two halves is the interesting number, because the C half is the analogue of
 Tulip's 116 C functions.
 
-| | Objective-C (15 fns) | C (6 fns) |
+| | Objective-C (16 fns) | C (6 fns) |
 | --- | --- | --- |
-| Bytes written | 2380 | 2192 |
+| Bytes written | 2592 | 2192 |
 | Uncertainties produced | 9 | 9 |
 | Unnamed constant groups | 3 | 5 |
-| Uncertainties per function | 0.6 | **1.5** |
+| Uncertainties per function | 0.56 | **1.5** |
 
 **Per byte the two halves cost about the same. Per function the C half produced two and a half times
 the unresolvable uncertainty, and it is the C half that failed to name constants.** That is the
@@ -671,7 +743,7 @@ Three specific things made the C functions harder, and all three generalise:
    are**, and it was luck that the protocol carried its own sizes.
 
 What was *not* hard: transcription. The individual bodies are straight-line, and only three of the
-twenty-one — `-initForDevice:result:`, `+probe:` and `ioadbDeviceIoctl` — needed real branch
+twenty-two — `-initForDevice:result:`, `+probe:` and `ioadbDeviceIoctl` — needed real branch
 bookkeeping. The largest function in the binary, `ioadbDeviceIoctl` at 760 bytes, turned out to be
 the *easiest* large function, because a jump table with one arm per method has no dropped branch to
 hide: the table itself enumerates them.
@@ -720,7 +792,7 @@ Concretely, the sequencing I would now recommend:
    register constants will be the norm rather than the exception.
 
 The one thing that would change all of this is a PowerPC toolchain. Every reconstruction spec has
-ended with that sentence and this one strengthens it more than any of them: 21 functions were written
+ended with that sentence and this one strengthens it more than any of them: 22 functions were written
 here and **zero of them have been compiled**. For the Objective-C half a wrong body is at least
 constrained by a selector check; for the C half there is no check at all. Until something can
 compile, the C half of a 55 KB driver is 116 unverified assertions.

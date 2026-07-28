@@ -719,9 +719,9 @@ adbServerioctlDispatch(dev_t dev, int cmd, void *data)
  *                name in this tree, exactly as commands 2-9 do not.
  * 0x11dc-0x11f4  [IOADBDevice GetTable:&req->table length:&req->length].
  *                The receiver is the class, from __OBJC,__cls_refs, which
- *                is consistent with GetTable:length: being a class method
- *                -- and with its implementation address being 0, since this
- *                is the only send of it in the binary.
+ *                is consistent with GetTable:length: being a class method.
+ *                Its implementation address is 0 because it is the first
+ *                function in __text, not because it has no body.
  * 0x11f8-0x11fc  req->result = the IOReturn.
  * 0x1200-0x1210  the trace; %d takes the result still live in r4 and the
  *                second takes req->length reloaded from +0x188.

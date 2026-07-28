@@ -32,6 +32,7 @@
 #import "PPCSerialPort.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <mach/clock_types.h>	/* tvalspec_t, for the heartbeat deadline */
 #import <string.h>
 #import <stdio.h>
 #import <stdlib.h>
@@ -81,18 +82,23 @@ static const unsigned char sccInitTable[34] = {
 // Forward declarations for utility functions
 //==============================================================================
 
+static IOReturn activatePort(PPCSerialPort *self);
 static IOReturn AddBytetoQueue(void *queueBase, unsigned char byte);
 static unsigned int AddtoQueue(void *queueBase, unsigned char *buffer, unsigned int size);
-static BOOL allocateRingBuffer(void *queueBase);
+static BOOL allocateRingBuffer(void *queueBase, unsigned int bufferSize);
 static void changeState(PPCSerialPort *self, unsigned int newState, unsigned int mask);
+static void dataLatTOHandler(void *spec, void *call);
 static void deactivatePort(PPCSerialPort *self);
+static void delayTOHandler(void *spec, void *call);
 static IOReturn executeEvent(PPCSerialPort *self, unsigned int event, unsigned int data, unsigned int *currentState, unsigned int *stateMask);
 static void CheckQueues(PPCSerialPort *self);
 static IOReturn CloseQueue(void *queueBase);
+static void frameTOHandler(void *spec, void *call);
 static void freeRingBuffer(void *queueBase);
 static unsigned int FreeSpaceinQueue(void *queueBase);
 static IOReturn GetBytetoQueue(void *queueBase, unsigned char *byteOut);
 static unsigned int GetQueueSize(void *queueBase);
+static void heartBeatTOHandler(void *spec, void *call);
 static void initChip(PPCSerialPort *self);
 static IOReturn InitQueue(int *queueBase, int bufferStart, int bufferSize);
 static void MyIOLog(const char *format, ...);
@@ -1225,6 +1231,47 @@ set_level_and_argument:
 //==============================================================================
 
 /*
+ * Activate the port.
+ *
+ * Allocates the two ring buffers, resets the per-open fields and marks the
+ * port active.  Called with the port info block (self + 0x128), the same
+ * pointer that is kept at offset 0x294 of the instance.
+ *
+ * If the port is already active there is nothing to do.  Otherwise both ring
+ * buffers are allocated; the allocations are chained with && so a failure of
+ * either one lands on the same cleanup, which frees only the buffer at
+ * offset 0x3c.  That is what the shipped code does: on a first-buffer failure
+ * it frees the buffer it just failed to allocate, and on a second-buffer
+ * failure it frees the first one but not the second.
+ *
+ * Returns: IO_R_SUCCESS, or IO_R_RESOURCE if a ring buffer could not be had.
+ */
+static IOReturn activatePort(PPCSerialPort *self)
+{
+    char *basePtr = (char *)self;
+
+    MyIOLog(" activatePort\n\r");
+
+    // Already active - nothing to do
+    if ((*(unsigned int *)(basePtr + 0xc) & STATE_ACTIVE) != 0) {
+        return IO_R_SUCCESS;
+    }
+
+    // TX ring buffer at offset 0x3c, requested size at offset 0x64;
+    // RX ring buffer at offset 0x24, requested size at offset 0x54.
+    if (allocateRingBuffer(basePtr + 0x3c, *(unsigned int *)(basePtr + 0x64)) &&
+        allocateRingBuffer(basePtr + 0x24, *(unsigned int *)(basePtr + 0x54))) {
+        SetStructureDefaults(self, NO);
+        changeState(self, STATE_ACTIVE, STATE_ACTIVE);
+        MyIOLog("End Act State %x\n\r", *(unsigned int *)(basePtr + 0xc));
+        return IO_R_SUCCESS;
+    }
+
+    freeRingBuffer(basePtr + 0x3c);
+    return IO_R_RESOURCE;
+}
+
+/*
  * Add a single byte to a queue.
  */
 /*
@@ -1325,10 +1372,13 @@ static unsigned int AddtoQueue(void *queueBase, unsigned char *buffer, unsigned 
  *
  * Parameters:
  *   queueBase: Pointer to queue control structure
+ *   bufferSize: Size requested by the caller.  The shipped driver ignores it
+ *               and always allocates 0x1000; both call sites in activatePort
+ *               pass it all the same.
  *
  * Returns: YES if allocation succeeded, NO if it failed
  */
-static BOOL allocateRingBuffer(void *queueBase)
+static BOOL allocateRingBuffer(void *queueBase, unsigned int bufferSize)
 {
     int bufferPtr;
 
@@ -1394,6 +1444,29 @@ static void changeState(PPCSerialPort *self, unsigned int newState, unsigned int
 }
 
 /*
+ * Data latency timeout handler.
+ *
+ * Registered in initFromDeviceDescription: with
+ *   thread_call_allocate(dataLatTOHandler, &self->portInfo)
+ * so the kernel calls it as a thread_call_func_t, i.e. (spec, call), where
+ * spec is the port info block.  Both arguments are unused here.
+ *
+ * The shipped body only logs and cycles the priority level; the data latency
+ * work it was presumably meant to do is not present.
+ */
+static void dataLatTOHandler(void *spec, void *call)
+{
+    unsigned int s;
+    extern unsigned int splpower(void);
+    extern void splx(unsigned int level);
+
+    MyIOLog("dataLatTOHandler\n\r");
+
+    s = splpower();
+    splx(s);
+}
+
+/*
  * Deactivate port.
  *
  * Stub implementation - deactivates the serial port.
@@ -1402,6 +1475,34 @@ static void deactivatePort(PPCSerialPort *self)
 {
     // Stub: Implementation needed
     // This likely clears the active state and stops any operations
+}
+
+/*
+ * Delay timeout handler.
+ *
+ * Registered with thread_call_allocate(delayTOHandler, &self->portInfo);
+ * spec is the port info block, call is unused.
+ *
+ * Clears the internal state bit 0x1000 - the same bit getState and
+ * watchState mask out of the state they hand back to clients - and then
+ * runs the interrupt service routine to drain whatever is pending.
+ */
+static void delayTOHandler(void *spec, void *call)
+{
+    char *basePtr = (char *)spec;
+    unsigned int s;
+    extern unsigned int splpower(void);
+    extern void splx(unsigned int level);
+
+    MyIOLog("delayTOHandler\n\r");
+
+    s = splpower();
+
+    *(unsigned int *)(basePtr + 0xc) = *(unsigned int *)(basePtr + 0xc) & 0xffffefff;
+
+    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
+
+    splx(s);
 }
 
 /*
@@ -1553,6 +1654,37 @@ static IOReturn CloseQueue(void *queueBase)
 }
 
 /*
+ * Frame timeout handler.
+ *
+ * Registered with thread_call_allocate(frameTOHandler, &self->portInfo);
+ * spec is the port info block, call is unused.
+ *
+ * Clears the flow-control hold byte at offset 0x9d - the byte
+ * SetStructureDefaults also zeroes - and then runs the interrupt service
+ * routine.
+ *
+ * The log string says "frameToHandler", with a lower case o.  That is the
+ * spelling in the shipped binary and is kept verbatim.
+ */
+static void frameTOHandler(void *spec, void *call)
+{
+    char *basePtr = (char *)spec;
+    unsigned int s;
+    extern unsigned int splpower(void);
+    extern void splx(unsigned int level);
+
+    MyIOLog("frameToHandler\n\r");
+
+    s = splpower();
+
+    *(unsigned char *)(basePtr + 0x9d) = 0;
+
+    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
+
+    splx(s);
+}
+
+/*
  * Free ring buffer.
  *
  * Frees the buffer memory and closes the queue.
@@ -1646,6 +1778,41 @@ static unsigned int GetQueueSize(void *queueBase)
 {
     int *queue = (int *)queueBase;
     return *(unsigned int *)(((char *)queue) + 0x10);
+}
+
+/*
+ * Heartbeat timeout handler.
+ *
+ * Registered with thread_call_allocate(heartBeatTOHandler, &self->portInfo);
+ * spec is the port info block, call is unused - the handler re-arms itself
+ * through its own thread_call_t, which is kept at offset 0xe4 of the port
+ * info block (0x20c of the instance).
+ *
+ * Runs the interrupt service routine, then reschedules itself one interval
+ * further on.  The interval is the tvalspec_t at offset 0x100, which
+ * SetStructureDefaults zeroes on a full init.
+ */
+static void heartBeatTOHandler(void *spec, void *call)
+{
+    char *basePtr = (char *)spec;
+    unsigned int s;
+    tvalspec_t deadline;
+    extern unsigned int splpower(void);
+    extern void splx(unsigned int level);
+    extern tvalspec_t deadline_from_interval(tvalspec_t interval);
+    extern void thread_call_enter_delayed(void *entry, tvalspec_t when);
+
+    MyIOLog("heartBeatTOHandler\n\r");
+
+    s = splpower();
+
+    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
+
+    // Re-arm: deadline = now + heartbeat interval (offset 0x100)
+    deadline = deadline_from_interval(*(tvalspec_t *)(basePtr + 0x100));
+    thread_call_enter_delayed(*(void **)(basePtr + 0xe4), deadline);
+
+    splx(s);
 }
 
 /*
@@ -2017,28 +2184,6 @@ static IOReturn RemovefromQueue(void *queueBase, unsigned char *buffer, unsigned
     }
 
     return bytesRemoved;
-}
-
-/*
- * Reset SCC channel.
- */
-static void SccChannelReset(PPCSerialPort *self)
-{
-    IOLog("PPCSerialPort: _SccChannelReset: called\n");
-
-    // Stub: Send channel reset command
-    SccWriteReg(self, SCC_WR9, 0x80); // Channel reset
-}
-
-/*
- * Close SCC channel.
- */
-static void SccCloseChannel(PPCSerialPort *self)
-{
-    IOLog("PPCSerialPort: _SccCloseChannel: called\n");
-
-    // Stub: Disable TX and RX
-    SccDisableInterrupts(self);
 }
 
 /*

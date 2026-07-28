@@ -30,10 +30,17 @@ The 48 hand-written functions are **13 Objective-C methods and 35 C functions**.
 That ratio drives the mapping decision in §4.2 and is the reverse of every prior
 driver in this series.
 
-The 18 `__XIOSCSISession_*` stubs pair with the 18 `_IOSCSISession_*` wrappers,
-matching `Makefile.preamble`'s note that `IOSCSISessionMigUser.c` is deliberately
-excluded "because the 18 `IOSCSISession_*` wrapper functions already provide the
-client-facing symbols by hand."
+The 18 `__XIOSCSISession_*` stubs are demux stubs, each branching to a real
+compiler-emitted branch island whose HI16/LO16 relocations resolve, one-to-one
+and in `.defs` order, to the matching `_IOSCSISession_*` function — the
+**server-side implementation** the stub calls. None of the 18 build a Mach
+message or call `msg_rpc`; each loads a selector and calls `objc_msgSend`.
+`Makefile.preamble:9`'s comment describing them as client-facing wrapper
+functions is inaccurate. Excluding `IOSCSISessionMigUser.c` from the build is
+still correct, but for a different reason: MIG's `migcom.tproj/global.c:93-94`
+leaves `ServerPrefix` and `UserPrefix` empty and `routine.c:1236-1237` derives
+both names from `rtName`, so the generated user side would define the same 18
+symbols — a duplicate-symbol collision.
 
 ### 2.1 Classes
 

@@ -261,7 +261,8 @@ Evidence used, all re-derived from the bytes:
   `_IOSCSISessionMig_server`, from
   `tools/binrecon/out/scsiserver-ppc/published/analysis-reference-ida.json`.
 - The `__const` `msg_type_t` statics at `0x3704`-`0x37a0`, read out of the file
-  and decoded against `src/kernel-7/mach/message.h:679-726`.
+  and decoded against `src/kernel-7/mach/message.h:677-691` (`msg_type_t`) and
+  `708-729` (`MSG_TYPE_*` defines).
 - The `__const` dispatch table at `0x37a4`, read from the reference's own
   Mach-O `__const` relocations (18 entries; `__const` has exactly 18
   relocations and no others).
@@ -368,7 +369,10 @@ old-flavour branch of `std_types.defs` defines `char`, `short`, `int`,
 ### Direction, argument order and the implementation call
 
 Each stub's call to its implementation was resolved through the Mach-O
-`PPC_RELOC_JBSR` relocations, not guessed from IDA's `sub_*` placeholders. The
+`PPC_RELOC_JBSR` relocations, not guessed from IDA's `sub_<next+0x20>` labels for
+the `bl` targets. Those `bl`s reach real compiler-emitted branch islands; the
+implementation address is resolved from the island's own HI16/LO16 relocation
+pair, not from the `bl`'s `JBSR` relocation, which only carries section #1. The
 pairing is exactly one-to-one and in-order:
 
 - `__XIOSCSISession_free` -> `_IOSCSISession_free` @`0xc84`, and so on through
@@ -416,8 +420,11 @@ pairing is exactly one-to-one and in-order:
    `__XIOSCSISession_returnFromScStatus` stores the implementation's `r3` into
    the reply `RetCode` (`0x336c: stw r3, 0x1c(r31)`), so the implementation must
    return `kern_return_t`. The reference's own `_IOSCSISession_returnFromScStatus`
-   @`0x185c` tail-calls `objc_msgSend` and returns its result. The generated
-   `IOSCSISessionMigServer.c` includes a prototype for this name, so the `void`
-   definition would not merely mis-report status, it would conflict at compile
-   time. The `.defs` is right and our `.m` is wrong; fixing the `.m` belongs to
+   @`0x185c` calls `objc_msgSend` and returns its result. The generated
+   `IOSCSISessionMigServer.c` includes a prototype for this name,
+   so the `void` definition does not merely lose the status — nothing diagnoses it.
+   `IOSCSISession.m` and the generated `IOSCSISessionMigServer.c` are separate
+   translation units with no shared header, so it compiles and links, and the stub
+   stores an undefined `r3` into `RetCode`. A silent wrong status at runtime, not a
+   build failure. The `.defs` is right and our `.m` is wrong; fixing the `.m` belongs to
    the implementation task, not here.

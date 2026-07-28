@@ -1216,6 +1216,19 @@ static Boolean isCmdTimedOut( CommandBuffer *cmdBuf )
 }/* end ResetHardware */
 
 
+    /* Same as ResetHardware, except that the caller supplies a reason  */
+    /* string for error logging. Note that this variant resets the MESH */
+    /* first and only then aborts the outstanding commands.             */
+
+- (IOReturn) ResetHardware : (Boolean)resetSCSIBus  reason : (const char*) reason
+{
+    [ self ResetMESH        : resetSCSIBus  reason : reason ];
+    [ self abortAllCommands : SR_IOST_RESET ];
+
+    return  IO_R_SUCCESS;
+}/* end ResetHardware:reason: */
+
+
     /* Start a SCSI transaction for the specified command.                  */
     /* ActiveCmd must be NULL. A return of kHardwareStartRejected           */
     /* indicates that caller may try again with another command;            */
@@ -3449,6 +3462,69 @@ exit:
 }/* end ResetMESH */
 
 
+    /* Same as ResetMESH, except that the caller supplies a reason string   */
+    /* for error logging (the shipped build makes no other use of it), and  */
+    /* the MESH is re-reset and its registers re-read before the 250 msec   */
+    /* settling delay rather than after it.                                 */
+
+- (IOReturn) ResetMESH : (Boolean)resetSCSIBus  reason : (const char*) reason
+{
+    IOReturn    ioReturn = IO_R_SUCCESS;
+    UInt8       defaultSelectionTimeout = 25;   // mlj ??? fix this value
+    UInt8       target;
+
+
+        /* Reset interrupts, the MESH Hardware Bus Adapter, and the DMA engine. */
+
+    [ self SetSeqReg            : kMeshResetMESH ]; /* completes quickly        */
+    [ self GetHBARegsAndClear   : TRUE ];       /* clear cmdDone                */
+
+    dbdma_reset( DBDMA_MESH_SCSI );
+
+        /* Init state variables:    */
+
+    gFlagIncompleteDBDMA    = FALSE;
+
+        /* Smash all active command state (just in case):   */
+
+    gActiveCommand  = NULL;
+    gCurrentTarget  = kInvalidTarget;
+    gCurrentLUN     = kInvalidLUN;
+    gMsgInState     = kMsgInInit;
+    msgOutPtr       = (UInt8*)CCLAddress( kcclMSGOdata );
+
+    if ( resetSCSIBus )
+    {
+        meshAddr->busStatus1 = kMeshRst; /***** ASSERT RESET SIGNAL *****/
+        SynchronizeIO();
+        IODelay( 25 );                   /* leave asserted for 25 mikes */
+        meshAddr->busStatus1 = 0;        /***** CLEAR  RESET SIGNAL *****/
+        SynchronizeIO();
+
+        [ self SetSeqReg : kMeshResetMESH ];    /* clear Err condition  */
+        [ self GetHBARegsAndClear : TRUE ];     /* check regs           */
+
+            /* Delay for 250 msec after resetting the bus.          */
+            /* This serves two purposes: it gives the MESH time to  */
+            /* stabilize (about 10 msec is sufficient) and gives    */
+            /* some devices time to re-initialize themselves.       */
+
+        IOSleep( APPLE_SCSI_RESET_DELAY );      /* Give Targets time to clean up */
+
+        for ( target = 0; target < SCSI_NTARGETS; target++ )
+        {
+            gPerTargetData[ target ].syncParms      = kSyncParmsAsync;
+            gPerTargetData[ target ].negotiateSDTR  = kSyncParmsFast;   // negotiate Fast
+        }
+    }/* end IF resetSCSIBus */
+
+    meshAddr->selectionTimeOut = defaultSelectionTimeout;
+    SynchronizeIO();
+
+    return  ioReturn;
+}/* end ResetMESH:reason: */
+
+
     /* Wait for an immediate (non-interrupting) command to complete.    */
     /* Note that it spins while waiting. It is timed to prevent a buggy */
     /* chip or target from hanging the system.                          */
@@ -3734,6 +3810,53 @@ exit:
     SynchronizeIO();
     return;
 }/* end SetIntMask */
+
+
+    /* Send an ABORT message to the target of the active command.           */
+    /* The active command, if any, is completed with a hardware-failure     */
+    /* status first. If the target is in Message Out phase, the Abort byte  */
+    /* is loaded into the FIFO and the Message Out command is issued with   */
+    /* interrupts re-enabled, so the resulting unexpected disconnect is     */
+    /* reported through the ISR. Otherwise ATN is simply dropped.           */
+
+- (void) IssueAbort
+{
+    gMsgInFlag = 0;                       /* clear kFlagMsgIn_Reject et al */
+
+    if ( gActiveCommand )
+    {
+        if ( gActiveCommand->scsiReq )
+            gActiveCommand->scsiReq->driverStatus = SR_IOST_HW;
+        [ self ioComplete : gActiveCommand ];
+    }
+
+    meshAddr->busStatus0 = kMeshAtn;      /***** Raise ATN signal      *****/
+    SynchronizeIO();
+
+    [ self SetSeqReg   : kMeshBusFreeCmd ];  /* clear ACK                   */
+    [ self WaitForMesh : TRUE ];             /* wait for PhaseMM            */
+
+    if ( (g.shadow.mesh.busStatus0 & kMeshPhaseMask) == kBusPhaseMSGO )
+    {           /* this is what we want:    */
+        [ self SetSeqReg : kMeshFlushFIFO ];    /* Flush the FIFO           */
+        meshAddr->xFIFO             = kScsiMsgAbort; /* put out Abort byte  */
+        meshAddr->transferCount0    = 0;
+        meshAddr->transferCount1    = 0;
+        meshAddr->busStatus0        = 0;        /***** clear ATN signal *****/
+        SynchronizeIO();
+
+        [ self SetSeqReg  : kMeshEnableReselect ];/* bus about to go free   */
+        [ self SetIntMask : kMeshIntrMask ];      /* Enable interrupts      */
+        [ self SetSeqReg  : kMeshMessageOutCmd ]; /* send the Abort byte    */
+        g.intLevel |= kLevelLatched;              /* set latched-int flag   */
+    }
+    else
+    {           /* target refused to enter MSGO phase:  */
+        meshAddr->busStatus0 = 0;               /***** clear ATN signal *****/
+        SynchronizeIO();
+    }
+    return;
+}/* end IssueAbort */
 
 
 - (void) AbortActiveCommand
@@ -4424,6 +4547,17 @@ exit:
 
     return;
 }/* end selectNextRequest */
+
+
+    /* Complete the active command with the given status, then reset  */
+    /* the bus. Reason is for error logging.                          */
+
+- (void) killActiveCommandAndResetBus : (sc_status_t)status  reason : (const char*) reason
+{
+    [ self killActiveCommand : status ];
+    [ self threadResetBus    : reason ];
+    return;
+}/* end killActiveCommandAndResetBus:reason: */
 
 
 - (void) killActiveCommand : (sc_status_t)status

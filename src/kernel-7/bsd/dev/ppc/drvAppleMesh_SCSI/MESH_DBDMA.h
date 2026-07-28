@@ -25,7 +25,7 @@
 
 /**
  * Copyright (c) 1994-1996 NeXT Software, Inc.  All rights reserved.
- * Copyright © 1997 Apple Computer Inc. All Rights Reserved.
+ * Copyright ï¿½ 1997 Apple Computer Inc. All Rights Reserved.
  * @author   Martin Minow   mailto:minow@apple.com
  * @revision    1997.02.13  Initial conversion from AMDPCSCSIDriver sources.
  *
@@ -930,6 +930,8 @@ typedef struct CommandBuffer
 
 -                       InitializeHardware : deviceDescription;
 - (IOReturn)            ResetHardware      : (Boolean)resetSCSIBus;
+- (IOReturn)            ResetHardware      : (Boolean)resetSCSIBus
+                        reason             : (const char*)reason;
 - (HardwareStartResult) hardwareStart      : (CommandBuffer*)cmdBuf;
 
 @end
@@ -1097,6 +1099,7 @@ typedef struct CommandBuffer
 @interface AppleMesh_SCSI( Mesh )
 
 - (IOReturn) ResetMESH  : (Boolean) resetSCSIBus;
+- (IOReturn) ResetMESH  : (Boolean) resetSCSIBus  reason : (const char*) reason;
 - (IOReturn) DoHBASelfTest;
 - (IOReturn) WaitForMesh : (Boolean) clearInterrupts;
 - (IOReturn) WaitForReq;
@@ -1104,6 +1107,7 @@ typedef struct CommandBuffer
 - (void) RunDBDMA : (UInt32) offset     stageLabel  : (UInt32) stageLabel;
 - (void) GetHBARegsAndClear : (Boolean) clearInts;
 - (void) SetIntMask : (UInt8) interruptMask;
+- (void) IssueAbort;
 - (void) AbortActiveCommand;
 - (void) AbortDisconnectedCommand;
 
@@ -1169,6 +1173,8 @@ typedef struct CommandBuffer
                 queueTag    : (UInt8) queueTag;
 - (Boolean) commandCanBeStarted : (CommandBuffer*) cmdBuf;
 - (void) selectNextRequest; /* Choose the next request that can be started. */
+- (void) killActiveCommandAndResetBus : (sc_status_t) status
+                            reason    : (const char*) reason;
 - (void) killActiveCommand : (sc_status_t) status;  // mlj added
 - (void) activateCommand : (CommandBuffer*) cmdBuf;
 - (void) deactivateCmd : (CommandBuffer*) cmdBuf;

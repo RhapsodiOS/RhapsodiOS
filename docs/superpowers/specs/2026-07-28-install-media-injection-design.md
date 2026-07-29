@@ -234,9 +234,15 @@ The port must earn trust before its output is believed:
 **If the kernel fits**, build 1.44 MB media as described.
 
 **If it does not**, resize the installation floppy to 2.88 MB. The repackager
-already regenerates geometry, so this is a parameter change: a new label
-geometry (80 cylinders, 2 heads, 36 sectors) and a filesystem sized for 2880
-frags. This branch is pre-approved, and costs only the rcz port, which is needed
+already regenerates allocation state, so this is a parameter change and the
+template's geometry is left alone: the filesystem grows to 2304 fragments —
+exactly `fs_fpg`, so the cylinder group's free-fragment bitmap keeps its length
+— and `fs_ncyl` becomes 2304/18 = 128 = `fs_cpg`, still one complete cylinder
+group. The image is then padded to 2880 sectors of 1024 bytes so QEMU sees a
+2.88 MB floppy; the last 480 sectors are deliberately left unused. Only
+`fs_size`, `fs_dsize`, `fs_ncyl`, the cylinder-group size fields and the NeXT
+label's `p_size` change — the latter in every label copy, each re-checksummed.
+This branch is pre-approved, and costs only the rcz port, which is needed
 either way. It yields QEMU-only media, which is acceptable for this goal.
 
 ## Testing

@@ -78,6 +78,7 @@ class Image(object):
         self.ipg = g(184)
         self.fpg = g(188)
         self.fsmnt = _cstr(sb[212:212 + 512])
+        self.maxsymlinklen = g(1320)
 
     def frag_offset(self, frag_no):
         """Byte offset of a fragment.  fs_fsbtodb is 0 on this filesystem."""
@@ -106,12 +107,16 @@ class Inode(object):
         self.db = list(struct.unpack_from("<%di" % NDADDR, buf, 40))
         self.ib = list(struct.unpack_from("<%di" % NIADDR, buf, 88))
         self.blocks = struct.unpack_from("<i", buf, 104)[0]
+        self.uid, self.gid = struct.unpack_from("<2I", buf, 112)
 
     def is_dir(self):
         return (self.mode & 0o170000) == 0o040000
 
     def is_reg(self):
         return (self.mode & 0o170000) == 0o100000
+
+    def is_lnk(self):
+        return (self.mode & 0o170000) == 0o120000
 
 
 def _cgstart(img, c):
@@ -264,6 +269,25 @@ def _fs_size_data(self):
     return self.fs_dsize
 
 
+def _readlink(self, ino):
+    """Target of a symbolic link.
+
+    Short targets are stored inline in the block-pointer area (a "fast
+    symlink", di_size <= fs_maxsymlinklen); longer ones occupy data blocks
+    like a regular file.
+    """
+    inode = self.inode(ino) if isinstance(ino, int) else ino
+    if not inode.is_lnk():
+        raise ValueError("inode %d is not a symbolic link" % inode.ino)
+    if inode.size <= self.maxsymlinklen:
+        frag, entry = _inode_location(self, inode.ino)
+        blk = self.read_frag(frag, self.bsize)
+        raw = blk[entry + 40:entry + 40 + inode.size]
+    else:
+        raw = self.read_file(inode)
+    return raw.decode("ascii", "replace")
+
+
 Image.inode = _inode
 Image.frags = _frags
 Image.read_file = _read_file
@@ -273,6 +297,7 @@ Image.lookup = _lookup
 Image.resolve = _resolve
 Image.max_writable = _max_writable
 Image.fs_size_data = _fs_size_data
+Image.readlink = _readlink
 
 
 def _fmt_stat(img, path, ino):

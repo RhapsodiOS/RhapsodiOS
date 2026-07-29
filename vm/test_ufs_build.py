@@ -114,6 +114,151 @@ class TestIdentityRoundTrip(unittest.TestCase):
             os.unlink(out)
 
 
+def _inode_meta(path):
+    """{path: (di_size, di_nlink, di_blocks)} for every node in a volume."""
+    out = {}
+    with rhap_image.Image(path) as img:
+        for node in ufs_extract.extract(path):
+            n = img.inode(img.resolve(node.path))
+            out[node.path] = (n.size, n.nlink, n.blocks)
+    return out
+
+
+def _inode_runs(img, inode):
+    """Fragment runs an inode owns, as (start, nfrags, is_whole_block).
+
+    Mirrors blksize (fs.h:498): every logical block is fs_frag fragments long
+    except a short tail at a direct block.  The indirect block, when present,
+    is a whole block too.
+    """
+    nblocks = (inode.size + img.bsize - 1) // img.bsize
+    ptrs = list(inode.db)
+    if nblocks > rhap_image.NDADDR:
+        ind = img.read_frag(inode.ib[0], img.bsize)
+        ptrs += list(struct.unpack_from("<%di" % img.nindir, ind, 0))
+    runs = []
+    for lbn in range(nblocks):
+        remaining = inode.size - lbn * img.bsize
+        if lbn == nblocks - 1 and lbn < rhap_image.NDADDR and remaining < img.bsize:
+            nfrags = (remaining + img.fsize - 1) // img.fsize
+            runs.append((ptrs[lbn], nfrags, False))
+        else:
+            runs.append((ptrs[lbn], img.frag, True))
+    if nblocks > rhap_image.NDADDR:
+        runs.append((inode.ib[0], img.frag, True))
+    return runs
+
+
+def _all_runs(path):
+    """(Geometry, blksfree, {frag: path}, [(path, start, nfrags, whole)])."""
+    g, _cg, blksfree = _read_cg(path)
+    owner = {}
+    runs = []
+    with rhap_image.Image(path) as img:
+        for node in ufs_extract.extract(path):
+            n = img.inode(img.resolve(node.path))
+            for start, nfrags, whole in _inode_runs(img, n):
+                runs.append((node.path, start, nfrags, whole))
+                for f in range(start, start + nfrags):
+                    if f in owner:
+                        raise AssertionError(
+                            "fragment %d claimed by both %s and %s"
+                            % (f, owner[f], node.path))
+                    owner[f] = node.path
+    return g, blksfree, owner, runs
+
+
+class TestOnDiskInvariants(unittest.TestCase):
+    def _assert_same_inode_meta(self, original, rebuilt):
+        a = _inode_meta(original)
+        b = _inode_meta(rebuilt)
+        self.assertEqual(sorted(a), sorted(b))
+        for p in a:
+            self.assertEqual(a[p], b[p],
+                             "di_size/di_nlink/di_blocks differ for %s" % p)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_installation_floppy_inode_metadata_identical(self):
+        out = _rebuild_to_temp(FLOPPY)
+        try:
+            self._assert_same_inode_meta(FLOPPY, out)
+            meta = _inode_meta(out)
+            self.assertEqual(meta["/usr/standalone/i386/sarld"][2], 160)
+            self.assertEqual(meta["/mach_kernel.rcz"][2], 1040)
+            self.assertEqual(meta["/"][0], ufs_build.DIRBLKSIZ)
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(DRIVERS), "install media not present")
+    def test_driver_disk_inode_metadata_identical(self):
+        out = _rebuild_to_temp(DRIVERS)
+        try:
+            self._assert_same_inode_meta(DRIVERS, out)
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_allocation_audit(self):
+        out = _rebuild_to_temp(FLOPPY)
+        try:
+            g, blksfree, owner, _runs = _all_runs(out)
+            first_data = g.csaddr + -(-g.cssize // g.fsize)
+            for f, path in owner.items():
+                self.assertLess(f, g.size,
+                                "%s claims fragment %d past fs_size" % (path, f))
+                self.assertFalse(ufs_build.bit_is_set(blksfree, f),
+                                 "%s claims fragment %d but it is marked free"
+                                 % (path, f))
+            for f in range(g.csaddr, g.size):
+                if ufs_build.bit_is_set(blksfree, f):
+                    continue
+                if f < first_data:
+                    continue  # the cylinder summary
+                self.assertIn(f, owner,
+                              "fragment %d is marked used but nothing owns it" % f)
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_alignment_invariants(self):
+        out = _rebuild_to_temp(FLOPPY)
+        try:
+            g, _blksfree, _owner, runs = _all_runs(out)
+            for path, start, nfrags, whole in runs:
+                if whole:
+                    self.assertEqual(start % g.frag, 0,
+                                     "%s: whole block at %d is not block-aligned"
+                                     % (path, start))
+                self.assertEqual(start // g.frag, (start + nfrags - 1) // g.frag,
+                                 "%s: run of %d at %d straddles a block boundary"
+                                 % (path, nfrags, start))
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_cluster_maps_match_blksfree(self):
+        out = _rebuild_to_temp(FLOPPY)
+        try:
+            g, cg, blksfree = _read_cg(out)
+            self.assertGreater(g.contigsumsize, 0)
+            sumoff, clusteroff, nclusterblks = struct.unpack_from("<3i", cg, 104)
+            free, summary = ufs_build.recompute_cluster_maps(
+                g, blksfree, nclusterblks)
+
+            stored_free = cg[clusteroff:clusteroff + len(free)]
+            for b in range(nclusterblks):
+                whole = all(ufs_build.bit_is_set(blksfree, b * g.frag + i)
+                            for i in range(g.frag))
+                self.assertEqual(bool(ufs_build.bit_is_set(stored_free, b)), whole,
+                                 "cluster bit %d disagrees with cg_blksfree" % b)
+            self.assertEqual(stored_free, free)
+            self.assertEqual(
+                list(struct.unpack_from("<%di" % len(summary), cg, sumoff)),
+                summary)
+        finally:
+            os.unlink(out)
+
+
 class TestRefusals(unittest.TestCase):
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
     def test_refuses_symlink(self):

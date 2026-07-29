@@ -22,11 +22,16 @@ SB_FIELDS = {
     "csaddr": 152, "cssize": 156, "cgsize": 160,
     "ntrak": 164, "nsect": 168, "spc": 172, "ncyl": 176, "cpg": 180,
     "ipg": 184, "fpg": 188,
-    "cpc": 856, "maxsymlinklen": 1320, "postblformat": 1356, "nrpos": 1360,
+    "cpc": 856, "contigsumsize": 1316, "maxsymlinklen": 1320,
+    "postblformat": 1356, "nrpos": 1360,
     "magic": 1372,
 }
 
-DIRBLKSIZ = 512
+# src/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS uses 1024, not DEV_BSIZE.
+DIRBLKSIZ = 1024
+
+# src/kernel-7/bsd/ufs/ufs/dinode.h:89 - direct block pointers per inode.
+NDADDR = 12
 
 Geometry = collections.namedtuple("Geometry", sorted(SB_FIELDS))
 CgTables = collections.namedtuple("CgTables", "blktot blks frsum nbfree nffree")
@@ -104,6 +109,35 @@ def recompute_cg_tables(g, blksfree):
             nffree += run
 
     return CgTables(blktot, blks, frsum, nbfree, nffree)
+
+
+def recompute_cluster_maps(g, blksfree, nclusterblks):
+    """Derive the cluster map and its run-length histogram from blksfree.
+
+    One bit per block, set when every fragment of the block is free.  The
+    histogram counts maximal runs of free blocks by length, with everything at
+    or above fs_contigsumsize accumulated in the last bucket; see
+    ffs_clusteracct in src/kernel-7/bsd/ufs/ffs/ffs_alloc.c:1810.
+    """
+    clustersfree = bytearray((g.fpg // g.frag + 7) // 8)
+    for b in range(nclusterblks):
+        base = b * g.frag
+        if all(bit_is_set(blksfree, base + i) for i in range(g.frag)):
+            clustersfree[b // 8] |= 1 << (b % 8)
+
+    clustersum = [0] * (g.contigsumsize + 1)
+    run = 0
+    for b in range(nclusterblks):
+        if bit_is_set(clustersfree, b):
+            run += 1
+            continue
+        if run:
+            clustersum[min(run, g.contigsumsize)] += 1
+        run = 0
+    if run:
+        clustersum[min(run, g.contigsumsize)] += 1
+
+    return bytes(clustersfree), clustersum
 
 
 def _roundup(n, m):
@@ -222,50 +256,72 @@ def build(template_path, nodes, total_frags=None):
     next_frag = _roundup(first_data, g.frag)
     limit = g.size
 
+    # The output must be a function of the node tree alone, so nothing of the
+    # template's own data area may show through the slack we do not write.
+    image[part + first_data * g.fsize:part + g.size * g.fsize] = \
+        bytes((g.size - first_data) * g.fsize)
+
     blksfree = bytearray(b"\xff" * ((g.fpg + 7) // 8))
     for f in range(0, first_data):
         blksfree[f // 8] &= ~(1 << (f % 8)) & 0xff
     for f in range(g.size, g.fpg):
         blksfree[f // 8] &= ~(1 << (f % 8)) & 0xff
 
-    def alloc(nfrags):
+    def _claim(start, nfrags):
         nonlocal next_frag
-        start = next_frag
         if start + nfrags > limit:
             raise BuildError(
                 "tree does not fit: needed %d more fragments at %d, volume ends "
                 "at %d" % (nfrags, start, limit))
         for f in range(start, start + nfrags):
             blksfree[f // 8] &= ~(1 << (f % 8)) & 0xff
-        next_frag += nfrags
+        next_frag = start + nfrags
         return start
+
+    def alloc_block():
+        """A whole block, block-aligned.
+
+        ffs_blkfree derives the block number by dividing by fs_frag, so a
+        misaligned whole block would free somebody else's fragments.
+        """
+        return _claim(_roundup(next_frag, g.frag), g.frag)
+
+    def alloc_frags(nfrags):
+        """A run of fewer than fs_frag fragments, never straddling a block."""
+        start = next_frag
+        if start // g.frag != (start + nfrags - 1) // g.frag:
+            start = _roundup(start, g.frag)
+        return _claim(start, nfrags)
 
     inodes = {}
     for node in nodes:
         data = payload[node.path]
-        nfrags = _roundup(len(data), g.fsize) // g.fsize
-        whole = nfrags // g.frag
-        tail = nfrags % g.frag
-        db = [0] * 12
+        nblocks = _roundup(len(data), g.bsize) // g.bsize
+        db = [0] * NDADDR
         ib = [0] * 3
         charged = 0
         blocks = []
-        for _ in range(whole):
-            blocks.append(alloc(g.frag))
-            charged += g.frag
-        if tail:
-            blocks.append(alloc(tail))
-            charged += tail
-        if len(blocks) > 12 + g.nindir:
+        for lbn in range(nblocks):
+            remaining = len(data) - lbn * g.bsize
+            # fs.h:498 (blksize): only a tail at a direct logical block may be
+            # fragmented.  An indirect-mapped block is always a full block.
+            if lbn == nblocks - 1 and lbn < NDADDR and remaining < g.bsize:
+                nfrags = _roundup(remaining, g.fsize) // g.fsize
+                blocks.append(alloc_frags(nfrags))
+            else:
+                nfrags = g.frag
+                blocks.append(alloc_block())
+            charged += nfrags
+        if len(blocks) > NDADDR + g.nindir:
             raise BuildError("%s needs double indirect blocks" % node.path)
-        for i, b in enumerate(blocks[:12]):
+        for i, b in enumerate(blocks[:NDADDR]):
             db[i] = b
-        if len(blocks) > 12:
-            ind = alloc(g.frag)
+        if len(blocks) > NDADDR:
+            ind = alloc_block()
             charged += g.frag
             ib[0] = ind
             table = bytearray(g.bsize)
-            for i, b in enumerate(blocks[12:]):
+            for i, b in enumerate(blocks[NDADDR:]):
                 struct.pack_into("<i", table, i * 4, b)
             image[part + ind * g.fsize:part + ind * g.fsize + g.bsize] = table
         off = 0
@@ -307,6 +363,11 @@ def build(template_path, nodes, total_frags=None):
     struct.pack_into("<%dh" % (g.cpg * g.nrpos), cg, boff, *t.blks)
     cg[iusedoff:iusedoff + len(inosused)] = inosused
     cg[freeoff:freeoff + len(blksfree)] = blksfree
+    if g.contigsumsize > 0:
+        clustersumoff, clusteroff, nclusterblks = struct.unpack_from("<3i", cg, 104)
+        clustersfree, clustersum = recompute_cluster_maps(g, blksfree, nclusterblks)
+        struct.pack_into("<%di" % len(clustersum), cg, clustersumoff, *clustersum)
+        cg[clusteroff:clusteroff + len(clustersfree)] = clustersfree
     image[part + g.cblkno * g.fsize:
           part + g.cblkno * g.fsize + g.bsize] = cg
 

@@ -31,6 +31,7 @@ def _node(img, path, ino, kind):
 def extract(image_path):
     with rhap_image.Image(image_path) as img:
         out = [_node(img, "/", 2, "dir")]
+        seen = {2: "/"}
         pending = [("/", 2)]
         while pending:
             path, ino = pending.pop(0)
@@ -44,6 +45,11 @@ def extract(image_path):
                         "regular files and symlinks can be repackaged"
                         % (path.rstrip("/"), name, dtype))
                 child_path = path.rstrip("/") + "/" + name
+                if child in seen:
+                    raise UnsupportedNode(
+                        "inode %d is reachable as both %s and %s; hard links "
+                        "cannot be repackaged" % (child, seen[child], child_path))
+                seen[child] = child_path
                 out.append(_node(img, child_path, child, kind))
                 if kind == "dir":
                     pending.append((child_path, child))

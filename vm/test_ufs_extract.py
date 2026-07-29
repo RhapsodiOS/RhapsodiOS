@@ -1,6 +1,7 @@
 import os
 import struct
 import unittest
+from unittest import mock
 
 import rhap_image
 import ufs_extract
@@ -77,6 +78,52 @@ class TestExtract(unittest.TestCase):
         nodes = ufs_extract.extract(disk)
         self.assertEqual(len(nodes), 111)
         self.assertEqual({n.kind for n in nodes}, {"dir", "reg"})
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_installation_floppy_has_no_hard_links(self):
+        nodes = ufs_extract.extract(FLOPPY)   # must not raise
+        self.assertEqual(len(nodes), 21)
+
+    def test_repeated_inode_raises_unsupported_node(self):
+        """Two directory entries pointing at the same inode is a hard link;
+        extract() must refuse rather than emit duplicated content."""
+
+        class _FakeInode(object):
+            mode = 0o644
+            uid = 0
+            gid = 0
+            mtime = 0
+
+        class _FakeImage(object):
+            def __init__(self, path):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def inode(self, ino):
+                return _FakeInode()
+
+            def read_file(self, inode):
+                return b""
+
+            def listdir(self, path):
+                if path == "/":
+                    return [("a", 5, 8), ("b", 6, 4)]
+                if path.rstrip("/") == "/b":
+                    return [("a", 5, 8)]   # same inode 5 as /a
+                return []
+
+        with mock.patch("rhap_image.Image", _FakeImage):
+            with self.assertRaises(ufs_extract.UnsupportedNode) as ctx:
+                ufs_extract.extract("fake-image")
+        message = str(ctx.exception)
+        self.assertIn("inode 5", message)
+        self.assertIn("/a", message)
+        self.assertIn("/b/a", message)
 
 
 if __name__ == "__main__":

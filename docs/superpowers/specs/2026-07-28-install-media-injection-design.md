@@ -278,3 +278,21 @@ disk image.
 - Repackaging the CD.
 - Any driver other than EIDE. The manifest makes adding one data, but nothing
   else is added speculatively.
+
+## Gate result (2026-07-28)
+
+`vm/measure-kernel-fit.py` output:
+
+```
+kernel            1472800 bytes
+compressed        1103265 bytes
+other objects     184 frags
+budget            1079 frags
+ceiling           1089536 bytes
+margin            -13729 bytes
+VERDICT: does NOT fit; fall through to the 2.88 MB branch (Task 7a)
+```
+
+The rebuilt kernel's rcz stream does not fit the 1.44 MB floppy, so the plan
+proceeds down the 2.88 MB resize branch (Task 7a) rather than the 1.44 MB
+media path.

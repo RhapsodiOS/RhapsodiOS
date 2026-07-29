@@ -68,6 +68,7 @@ class Image(object):
         self.cgoffset = g(24)
         self.cgmask = g(28)
         self.fs_size = g(36)
+        self.fs_dsize = g(40)
         self.ncg = g(44)
         self.bsize = g(48)
         self.fsize = g(52)
@@ -258,6 +259,11 @@ def _max_writable(self, ino):
     return ((inode.size + self.fsize - 1) // self.fsize) * self.fsize
 
 
+def _fs_size_data(self):
+    """Fragments available for file data, excluding all filesystem metadata."""
+    return self.fs_dsize
+
+
 Image.inode = _inode
 Image.frags = _frags
 Image.read_file = _read_file
@@ -266,6 +272,7 @@ Image.listdir = _listdir
 Image.lookup = _lookup
 Image.resolve = _resolve
 Image.max_writable = _max_writable
+Image.fs_size_data = _fs_size_data
 
 
 def _fmt_stat(img, path, ino):

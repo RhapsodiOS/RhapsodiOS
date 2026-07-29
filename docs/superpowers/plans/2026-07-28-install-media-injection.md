@@ -1010,6 +1010,34 @@ git commit -m "vm: recompute UFS cylinder-group summaries and validate against t
 - Consumes: everything from Task 6, plus `ufs_extract.Node`.
 - Produces: `ufs_build.build(template_path, nodes) -> bytes` — a complete volume image the same length as the template.
 
+> **Amended 2026-07-28 after review.** The code in this task's Step 3 as originally
+> written contained three Critical on-disk defects, none of which the identity
+> round-trip can detect. They were found in review and fixed in `c94502a5`; the
+> corrections are listed here so this document is not a trap for anyone re-running it.
+>
+> 1. **`DIRBLKSIZ` is 1024, not 512.** `src/kernel-7/bsd/ufs/ufs/dir.h:102` has
+>    `#ifdef __APPLE__ #define DIRBLKSIZ 1024`, and the shipped floppy's root
+>    directory is 1024 bytes with its last entry stretched to reach 1024. At 512
+>    every rebuilt directory is malformed and `ufs_lookup` can reach `panic("bad dir")`.
+> 2. **A fragmented tail must never land on an indirect-mapped block.**
+>    `fs.h:498` (`blksize`) returns `fs_bsize` unconditionally for `lbn >= NDADDR`.
+>    Allocate per logical block: fragment the tail only when it is the last block,
+>    `lbn < 12`, and it does not fill the block. Shipped proof: `sarld` has
+>    `di_blocks` 160 and `mach_kernel.rcz` 1040 — both whole-block tails.
+> 3. **Whole blocks and indirect blocks must be `fs_frag`-aligned.** Split the
+>    allocator into a block-aligned entry point (whole blocks and indirect blocks)
+>    and a fragment-run entry point that rounds up rather than straddling a block
+>    boundary. `ffs_blkfree` computes `fragstoblks(fs, bno)`, so a misaligned
+>    pointer frees the wrong eight fragments.
+>
+> Also fixed: regenerate `cg_clustersfree`/`cg_clustersum` from the final bitmap
+> (`fs_contigsumsize` is 8, so they are live), and zero the data region rather than
+> inheriting template bytes.
+>
+> The test that catches all of this — and that the original tests lacked — is
+> asserting that an unmodified rebuild reproduces every inode's `di_size`,
+> `di_nlink` and `di_blocks` exactly.
+
 Layout rules, all forced by the cloned geometry:
 
 - Fragments 0 through `dblkno - 1` are metadata (boot area, superblock at `sblkno`, cg block at `cblkno`, inode table at `iblkno`); the cylinder summary occupies `cssize` bytes at `csaddr`. Copy all of that region from the template, then overwrite the parts we regenerate.

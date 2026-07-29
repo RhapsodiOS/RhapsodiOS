@@ -1351,7 +1351,32 @@ git commit -m "vm: write UFS volumes from a node tree and verify the identity ro
 
 **Skip this task entirely if Task 3 printed "VERDICT: fits 1.44 MB".**
 
-A 2.88 MB floppy is 2880 sectors of 512 bytes; with `fs_fsize` 1024 and the label's `front` of 96 sectors, the partition holds 2880 - 96 = 2784 fragments. The geometry fields that must change are `fs_size`, `fs_dsize`, `fs_fpg`, `fs_ncyl`, `fs_cpg`, and the label's `p_size`; `fs_ntrak`, `fs_nsect` and `fs_spc` describe the physical geometry (2 heads, 36 sectors per track, 72 sectors per cylinder).
+**Measured facts this task depends on** (read from the installation floppy, do not re-derive):
+
+```
+label   secsize 1024   front 96   p_base 0   p_size 1344   (96 + 1344 = 1,474,560 B)
+sb      fs_size 1344   fs_dsize 1263   fs_fpg 2304   fs_cpg 128   fs_ncyl 75
+        fs_ntrak 2   fs_nsect 9   fs_spc 18   fs_nspf 1   fs_dblkno 80   fs_cssize 1024
+cg      btotoff 168   boff 680   iusedoff 2728   freeoff 2776   nextfreeoff 3136
+```
+
+The label counts **1024-byte** sectors, not 512-byte ones. A 2.88 MB floppy is therefore 2880 sectors of 1024 bytes = 2,949,120 bytes.
+
+`fs_fpg` is already 2304 — larger than the 1344-fragment volume — and the cylinder group's free-bitmap slot at `freeoff` 2776 is sized for exactly those 2304 fragments (288 bytes), with the cluster maps immediately after it at 3064. **Growing `fs_fpg` would overflow that bitmap into the cluster maps.** So do not grow it.
+
+Instead, size the filesystem to the fragments `fs_fpg` already covers and leave the tail of the medium unused:
+
+```
+image length   2880 * 1024 = 2,949,120     so QEMU sees a 2.88 MB floppy
+label p_size   2304                        front 96 + 2304 = 2400 sectors used, 480 spare
+fs_size        2304                        == fs_fpg, so the bitmap length is unchanged
+fs_dsize       2304 - (80 + 1) = 2223
+fs_ncyl        2304 / 18 = 128             == fs_cpg exactly: one complete cylinder group
+```
+
+Only four values change: `fs_size`, `fs_dsize`, `fs_ncyl`, and the label's `p_size`. `fs_fpg`, `fs_cpg`, `fs_ntrak`, `fs_nsect`, `fs_spc` and every cylinder-group offset stay exactly as the template has them, so no cg-layout surgery is needed and `recompute_cg_tables` keeps working unchanged.
+
+This yields a kernel ceiling of about 2,072,576 bytes against the measured 1,103,265-byte stream — roughly 970 KB of headroom, so future kernel growth does not re-open this question.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1362,8 +1387,9 @@ class TestResize(unittest.TestCase):
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
     def test_builds_a_2880k_volume(self):
         nodes = ufs_extract.extract(FLOPPY)
-        image = ufs_build.build(FLOPPY, nodes, total_frags=2784)
-        self.assertEqual(len(image), 2880 * 512)
+        image = ufs_build.build(FLOPPY, nodes, total_frags=2304,
+                                medium_sectors=2880)
+        self.assertEqual(len(image), 2880 * 1024)
         fd, out = tempfile.mkstemp(suffix=".img")
         os.close(fd)
         try:
@@ -1372,9 +1398,19 @@ class TestResize(unittest.TestCase):
             self.assertEqual([n.path for n in ufs_extract.extract(out)],
                              [n.path for n in nodes])
             g = ufs_build.read_geometry(out)
-            self.assertEqual(g.size, 2784)
+            self.assertEqual((g.size, g.dsize, g.fpg, g.ncyl),
+                             (2304, 2223, 2304, 128))
         finally:
             os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_to_outgrow_the_cylinder_group_bitmap(self):
+        """fs_fpg is 2304 and the cg free bitmap is sized for exactly that many
+        fragments; a larger filesystem would overrun it into the cluster maps."""
+        nodes = ufs_extract.extract(FLOPPY)
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes, total_frags=2784,
+                            medium_sectors=2880)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1395,46 +1431,39 @@ Expected: FAIL with `TypeError: build() got an unexpected keyword argument 'tota
             "resizing is not implemented; apply Task 7a of the plan first")
 ```
 
-and, immediately after `image = bytearray(f.read())`, insert:
+Change the signature to `def build(template_path, nodes, total_frags=None, medium_sectors=None):` and, immediately after `image = bytearray(f.read())`, insert:
 
 ```python
     if total_frags is not None:
-        sectors_per_frag = g.fsize // 512
-        image += bytearray((total_frags - g.size) * g.fsize)
-        sb_off = part + rhap_image.SBOFF
-        struct.pack_into("<i", image, sb_off + 36, total_frags)
-        struct.pack_into("<i", image, sb_off + 40,
-                         total_frags - (g.dblkno + g.cssize // g.fsize))
-        struct.pack_into("<i", image, sb_off + 188, total_frags)
-        cyls = total_frags * g.nspf // g.spc
-        struct.pack_into("<i", image, sb_off + 176, cyls)
-        struct.pack_into("<i", image, sb_off + 180, cyls)
-        struct.pack_into("<i", image, sb_off + 164, 2)
-        struct.pack_into("<i", image, sb_off + 168, 36)
-        struct.pack_into("<i", image, sb_off + 172, 72)
-        # NeXT label p_size is big-endian at label_offset + 194.
+        if total_frags > g.fpg:
+            raise BuildError(
+                "total_frags %d exceeds fs_fpg %d; the cylinder group's free "
+                "bitmap is sized for fs_fpg fragments and a larger filesystem "
+                "would overrun it into the cluster maps" % (total_frags, g.fpg))
         with rhap_image.Image(template_path) as probe:
             label_off = probe.label_offset
+            secsize = probe.label["secsize"]
+            front = probe.label["front"]
+        if medium_sectors is None:
+            medium_sectors = front + total_frags
+        want = medium_sectors * secsize
+        if want < len(image):
+            raise BuildError("medium of %d bytes is smaller than the %d-byte "
+                             "template" % (want, len(image)))
+        image += bytearray(want - len(image))
+
+        dsize = total_frags - (g.dblkno + g.cssize // g.fsize)
+        ncyl = -(-total_frags * g.nspf // g.spc)   # ceiling
+        sb_off = part + rhap_image.SBOFF
+        struct.pack_into("<i", image, sb_off + 36, total_frags)   # fs_size
+        struct.pack_into("<i", image, sb_off + 40, dsize)         # fs_dsize
+        struct.pack_into("<i", image, sb_off + 176, ncyl)         # fs_ncyl
+        # The NeXT label is big-endian; p_size sits at label_offset + 194.
         struct.pack_into(">i", image, label_off + 194, total_frags)
-        g = read_geometry_from_bytes(bytes(image))
+        g = g._replace(size=total_frags, dsize=dsize, ncyl=ncyl)
 ```
 
-and add the helper beside `read_geometry`:
-
-```python
-def read_geometry_from_bytes(image):
-    """Same as read_geometry, for an in-memory volume being constructed."""
-    import tempfile
-    fd, path = tempfile.mkstemp(suffix=".img")
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(image)
-        return read_geometry(path)
-    finally:
-        os.unlink(path)
-```
-
-with `import os` added at the top of the module.
+`fs_fpg`, `fs_cpg`, `fs_ntrak`, `fs_nsect` and `fs_spc` are deliberately left at the template's values, which is what keeps the cylinder-group layout — and therefore `recompute_cg_tables` — unchanged. Refreshing the geometry with `_replace` rather than re-reading the image also means no temporary file is needed.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1634,7 +1663,8 @@ def _payload(source, encoding):
     return rcz.compress(raw) if encoding == "rcz" else raw
 
 
-def build_floppy(master, replacements, out_path, total_frags=None):
+def build_floppy(master, replacements, out_path, total_frags=None,
+                 medium_sectors=None):
     nodes = ufs_extract.extract(master)
     known = {n.path for n in nodes}
     for path in replacements:
@@ -1643,7 +1673,8 @@ def build_floppy(master, replacements, out_path, total_frags=None):
                              "files, it does not create them" % (path, master))
     nodes = [n._replace(data=replacements.get(n.path, n.data))
              if n.kind == "reg" else n for n in nodes]
-    image = ufs_build.build(master, nodes, total_frags=total_frags)
+    image = ufs_build.build(master, nodes, total_frags=total_frags,
+                            medium_sectors=medium_sectors)
     with open(out_path, "wb") as f:
         f.write(image)
 
@@ -1652,18 +1683,26 @@ def resolve(manifest_entry):
     return {path: _payload(src, enc) for path, (src, enc) in manifest_entry.items()}
 
 
+# Task 3's gate measured the rebuilt kernel's stream at 1,103,265 bytes against a
+# 1,089,536-byte ceiling, so the installation floppy MUST be built at 2.88 MB.
+# The driver disk has ample room and stays 1.44 MB.
+INSTALL_FLOPPY_FRAGS = 2304
+INSTALL_FLOPPY_SECTORS = 2880
+
+
 def main(argv):
-    total_frags = None
-    if "--2880" in argv:
-        total_frags = 2784
     os.makedirs(BUILD, exist_ok=True)
     for name, master_name in (
             ("InstallationFloppy", "rhapsody_dr2_x86_InstallationFloppy.img"),
             ("DriverDisk", "rhapsody_dr2_x86_DriverDisk.img")):
         master = os.path.join(MASTERS, master_name)
         out = os.path.join(BUILD, master_name)
-        frags = total_frags if name == "InstallationFloppy" else None
-        build_floppy(master, resolve(MANIFEST[name]), out, total_frags=frags)
+        if name == "InstallationFloppy":
+            build_floppy(master, resolve(MANIFEST[name]), out,
+                         total_frags=INSTALL_FLOPPY_FRAGS,
+                         medium_sectors=INSTALL_FLOPPY_SECTORS)
+        else:
+            build_floppy(master, resolve(MANIFEST[name]), out)
         print("%s -> %s (%d bytes)" % (name, out, os.path.getsize(out)))
     return 0
 
@@ -1825,29 +1864,43 @@ def find_donors(image_path, need_bytes, limit=10):
                 if any(f == 0 for f in img.frags(inode)):
                     continue
                 out.append((child, inode.size))
+    out.sort(key=lambda d: -d[1])
     return out
 
 
-def patch_iso(master, out_path, donor_path):
+def patch_iso(master, out_path, kernel_donor, floppy_donor):
+    """Patch the CD in place.
+
+    The driver disk is still 1.44 MB and drops into its embedded slot exactly.
+    The installation floppy is now 2.88 MB and the embedded RhapsodyInstall.image
+    slot is exactly 1,474,560 bytes, so it is grafted, as is the oversized
+    kernel.
+    """
     shutil.copyfile(master, out_path)
     payloads = resolve(MANIFEST["ISO"])
     with open(KERNEL, "rb") as f:
         kernel = f.read()
+    with open(os.path.join(BUILD, "rhapsody_dr2_x86_DriverDisk.img"), "rb") as f:
+        drivers = f.read()
+    with open(os.path.join(BUILD,
+                           "rhapsody_dr2_x86_InstallationFloppy.img"), "rb") as f:
+        install = f.read()
     img = rhap_image.Image(out_path, writable=True)
     try:
         for path, data in payloads.items():
             rhap_inject.write_file(img, path, data)
             print("put   %s (%d bytes)" % (path, len(data)))
-        for name in ("rhapsody_dr2_x86_InstallationFloppy.img",
-                     "rhapsody_dr2_x86_DriverDisk.img"):
-            embedded = DISK_IMAGES + ("RhapsodyInstall.image"
-                                      if "Installation" in name
-                                      else "RhapsodyDrivers.image")
-            with open(os.path.join(BUILD, name), "rb") as f:
-                rhap_inject.write_file(img, embedded, f.read())
-            print("put   %s" % embedded)
-        rhap_inject.graft_file(img, "/mach_kernel", donor_path, kernel)
-        print("graft /mach_kernel onto %s (%d bytes)" % (donor_path, len(kernel)))
+
+        rhap_inject.write_file(img, DISK_IMAGES + "RhapsodyDrivers.image", drivers)
+        print("put   %sRhapsodyDrivers.image (%d bytes)" % (DISK_IMAGES, len(drivers)))
+
+        rhap_inject.graft_file(img, DISK_IMAGES + "RhapsodyInstall.image",
+                               floppy_donor, install)
+        print("graft %sRhapsodyInstall.image onto %s (%d bytes)"
+              % (DISK_IMAGES, floppy_donor, len(install)))
+
+        rhap_inject.graft_file(img, "/mach_kernel", kernel_donor, kernel)
+        print("graft /mach_kernel onto %s (%d bytes)" % (kernel_donor, len(kernel)))
     finally:
         img.close()
 ```
@@ -1857,13 +1910,15 @@ and extend `main` to run it after the floppies:
 ```python
     iso_master = os.path.join(MASTERS, ISO_NAME)
     iso_out = os.path.join(BUILD, ISO_NAME)
-    with open(KERNEL, "rb") as f:
-        need = len(f.read())
+    need = max(os.path.getsize(KERNEL),
+               os.path.getsize(os.path.join(
+                   BUILD, "rhapsody_dr2_x86_InstallationFloppy.img")))
     donors = find_donors(iso_master, need)
-    if not donors:
-        raise MediaError("no donor file of at least %d bytes found on the CD" % need)
-    print("donor candidates: %s" % ", ".join("%s (%d)" % d for d in donors[:3]))
-    patch_iso(iso_master, iso_out, donors[0][0])
+    if len(donors) < 2:
+        raise MediaError("need two distinct donor files of at least %d bytes on "
+                         "the CD; found %d" % (need, len(donors)))
+    print("donor candidates: %s" % ", ".join("%s (%d)" % d for d in donors[:4]))
+    patch_iso(iso_master, iso_out, donors[0][0], donors[1][0])
     print("ISO -> %s" % iso_out)
 ```
 

@@ -156,7 +156,8 @@ decompress(bytes) -> bytes
 ```
 
 **`vm/rhap_image.py`** — extended only as needed: `Inode` gains `uid` and `gid`
-(offsets 116 and 120 in the 128-byte dinode) and the reader gains `readlink`, so
+(offsets 112 and 116 in the 128-byte dinode, with `di_spare[2]` filling 120..127)
+and the reader gains `readlink`, so
 an extracted tree carries enough to be rebuilt faithfully. It stays read-only.
 
 **`vm/ufs_extract.py`** — walks an image into a tree of (path, type, mode, uid,

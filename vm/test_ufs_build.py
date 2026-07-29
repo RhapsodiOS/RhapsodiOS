@@ -277,5 +277,80 @@ class TestRefusals(unittest.TestCase):
             ufs_build.build(FLOPPY, nodes)
 
 
+class TestResize(unittest.TestCase):
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_builds_a_2880k_volume(self):
+        nodes = ufs_extract.extract(FLOPPY)
+        image = ufs_build.build(FLOPPY, nodes, total_frags=2304,
+                                medium_sectors=2880)
+        self.assertEqual(len(image), 2880 * 1024)
+        fd, out = tempfile.mkstemp(suffix=".img")
+        os.close(fd)
+        try:
+            with open(out, "wb") as f:
+                f.write(image)
+            self.assertEqual([n.path for n in ufs_extract.extract(out)],
+                             [n.path for n in nodes])
+            g = ufs_build.read_geometry(out)
+            self.assertEqual((g.size, g.dsize, g.fpg, g.ncyl),
+                             (2304, 2223, 2304, 128))
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_to_outgrow_the_cylinder_group_bitmap(self):
+        """fs_fpg is 2304 and the cg free bitmap is sized for exactly that many
+        fragments; a larger filesystem would overrun it into the cluster maps."""
+        nodes = ufs_extract.extract(FLOPPY)
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes, total_frags=2784,
+                            medium_sectors=2880)
+
+
+class TestTailAllocation(unittest.TestCase):
+    """di_blocks for every shape of the per-logical-block tail rule.
+
+    Only a tail that is the last block, mapped by a direct pointer, and short
+    of a whole block may be fragmented; everything else costs fs_frag.  The
+    shipped trees exercise only two of these shapes, so build a synthetic one.
+    """
+
+    SIZES = {
+        "/one_block": (8192, 8),             # exactly one block
+        "/short": (1, 1),                    # smaller than one block
+        "/ndaddr": (12 * 8192, 96),          # exactly NDADDR blocks, no indirect
+        "/ndaddr_tail": (12 * 8192 + 100, 112),  # tail at lbn 12: a WHOLE block
+        "/thirteen": (13 * 8192, 112),       # 13*8 + 8 for the indirect block
+        "/fragroundup": (8191, 8),           # fragroundup(8191) == bsize
+    }
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_di_blocks_for_every_tail_shape(self):
+        nodes = [ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None)]
+        for path, (size, _blocks) in sorted(self.SIZES.items()):
+            nodes.append(ufs_extract.Node(path, "reg", 0o100644, 0, 0, 0,
+                                          b"\xa5" * size))
+
+        image = ufs_build.build(FLOPPY, nodes)
+        fd, out = tempfile.mkstemp(suffix=".img")
+        os.close(fd)
+        try:
+            with open(out, "wb") as f:
+                f.write(image)
+            with rhap_image.Image(out) as img:
+                for path, (size, blocks) in sorted(self.SIZES.items()):
+                    n = img.inode(img.resolve(path))
+                    self.assertEqual(n.size, size, "di_size wrong for %s" % path)
+                    self.assertEqual(n.blocks, blocks,
+                                     "di_blocks wrong for %s" % path)
+                    self.assertEqual(bool(n.ib[0]), size > 12 * 8192,
+                                     "indirect block presence wrong for %s" % path)
+            for node in ufs_extract.extract(out)[1:]:
+                self.assertEqual(node.data, b"\xa5" * self.SIZES[node.path][0],
+                                 "contents differ for %s" % node.path)
+        finally:
+            os.unlink(out)
+
+
 if __name__ == "__main__":
     unittest.main()

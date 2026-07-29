@@ -202,15 +202,42 @@ def _dinode(ino_size, db, ib, blocks, mtime, mode, uid, gid, nlink):
     return bytes(raw)
 
 
-def build(template_path, nodes, total_frags=None):
+def build(template_path, nodes, total_frags=None, medium_sectors=None):
     g = read_geometry(template_path)
-    if total_frags is not None:
-        raise BuildError(
-            "resizing is not implemented; apply Task 7a of the plan first")
     with open(template_path, "rb") as f:
         image = bytearray(f.read())
     with rhap_image.Image(template_path) as img:
         part = img.part_start
+        label_off = img.label_offset
+        secsize = img.label["secsize"]
+        front = img.label["front"]
+
+    if total_frags is not None:
+        if total_frags > g.fpg:
+            raise BuildError(
+                "total_frags %d exceeds fs_fpg %d; the cylinder group's free "
+                "bitmap is sized for fs_fpg fragments and a larger filesystem "
+                "would overrun it into the cluster maps" % (total_frags, g.fpg))
+        if medium_sectors is None:
+            medium_sectors = front + total_frags
+        want = medium_sectors * secsize
+        if want < len(image):
+            raise BuildError("medium of %d bytes is smaller than the %d-byte "
+                             "template" % (want, len(image)))
+        image += bytearray(want - len(image))
+
+        dsize = total_frags - (g.dblkno + g.cssize // g.fsize)
+        ncyl = -(-total_frags * g.nspf // g.spc)   # ceiling
+        sb_off = part + rhap_image.SBOFF
+        struct.pack_into("<i", image, sb_off + 36, total_frags)   # fs_size
+        struct.pack_into("<i", image, sb_off + 40, dsize)         # fs_dsize
+        struct.pack_into("<i", image, sb_off + 176, ncyl)         # fs_ncyl
+        # The NeXT label is big-endian; p_size sits at label_offset + 194.
+        struct.pack_into(">i", image, label_off + 194, total_frags)
+        # fs_fpg, fs_cpg, fs_ntrak, fs_nsect and fs_spc deliberately keep the
+        # template's values: that is what leaves the cylinder-group layout, and
+        # therefore recompute_cg_tables, unchanged.
+        g = g._replace(size=total_frags, dsize=dsize, ncyl=ncyl)
 
     for node in nodes:
         if node.kind not in ("dir", "reg"):

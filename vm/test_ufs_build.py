@@ -56,8 +56,39 @@ class TestCgTables(unittest.TestCase):
     def test_reproduces_driver_disk_tables(self):
         g, cg, blksfree = _read_cg(DRIVERS)
         t = ufs_build.recompute_cg_tables(g, blksfree)
+
+        btotoff, boff = struct.unpack_from("<2i", cg, 84)
+        stored_blktot = list(struct.unpack_from("<%di" % g.cpg, cg, btotoff))
+        stored_blks = list(struct.unpack_from("<%dh" % (g.cpg * g.nrpos), cg, boff))
+        stored_frsum = list(struct.unpack_from("<%di" % g.frag, cg, 52))
         _ndir, stored_nbfree, _nifree, stored_nffree = struct.unpack_from("<4i", cg, 24)
-        self.assertEqual((t.nbfree, t.nffree), (stored_nbfree, stored_nffree))
+
+        self.assertEqual(t.blktot, stored_blktot)
+        self.assertEqual(t.blks, stored_blks)
+        self.assertEqual(t.frsum, stored_frsum)
+        self.assertEqual(t.nbfree, stored_nbfree)
+        self.assertEqual(t.nffree, stored_nffree)
+
+
+class TestClusterMaps(unittest.TestCase):
+    """recompute_cluster_maps against the shipped media, not our own output."""
+
+    def _assert_reproduces_stored_maps(self, path):
+        g, cg, blksfree = _read_cg(path)
+        self.assertGreater(g.contigsumsize, 0)
+        sumoff, clusteroff, nclusterblks = struct.unpack_from("<3i", cg, 104)
+        free, summary = ufs_build.recompute_cluster_maps(g, blksfree, nclusterblks)
+        self.assertEqual(cg[clusteroff:clusteroff + len(free)], free)
+        self.assertEqual(
+            list(struct.unpack_from("<%di" % len(summary), cg, sumoff)), summary)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_reproduces_installation_floppy_cluster_maps(self):
+        self._assert_reproduces_stored_maps(FLOPPY)
+
+    @unittest.skipUnless(_present(DRIVERS), "install media not present")
+    def test_reproduces_driver_disk_cluster_maps(self):
+        self._assert_reproduces_stored_maps(DRIVERS)
 
 
 import tempfile
@@ -332,6 +363,31 @@ class TestRefusals(unittest.TestCase):
         with self.assertRaises(ufs_build.BuildError):
             ufs_build.build(FLOPPY, nodes)
 
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_a_tree_that_is_not_rooted(self):
+        """Inode 2 goes to nodes[0], so nodes[0] has to be the root."""
+        nodes = ufs_extract.extract(FLOPPY)[1:]
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_a_node_whose_parent_is_absent(self):
+        """Otherwise the file gets an inode and blocks but no directory entry."""
+        nodes = ufs_extract.extract(FLOPPY)
+        nodes.append(ufs_extract.Node("/nowhere/orphan", "reg", 0o100644,
+                                      0, 0, 0, b"x"))
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_a_duplicate_path(self):
+        """A repeated path silently overwrites its own inode number and would
+        list the same name twice in its parent."""
+        nodes = ufs_extract.extract(FLOPPY)
+        nodes.append(nodes[-1])
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes)
+
 
 class TestResize(unittest.TestCase):
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
@@ -393,6 +449,19 @@ class TestResize(unittest.TestCase):
                             medium_sectors=2304)
 
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_resizing_to_the_templates_own_size_is_a_no_op(self):
+        """Resizing to the template's own geometry must reproduce it exactly.
+
+        This pins fs_size, fs_dsize, fs_ncyl, cg_ncyl, cg_ndblk,
+        cg_nclusterblks, p_size and the label checksum to the shipped bytes
+        rather than to constants this module computes itself.
+        """
+        nodes = ufs_extract.extract(FLOPPY)
+        self.assertEqual(ufs_build.build(FLOPPY, nodes),
+                         ufs_build.build(FLOPPY, nodes, total_frags=1344,
+                                         medium_sectors=1440))
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
     def test_refuses_to_outgrow_the_cylinder_group_bitmap(self):
         """fs_fpg is 2304 and the cg free bitmap is sized for exactly that many
         fragments; a larger filesystem would overrun it into the cluster maps."""
@@ -413,6 +482,8 @@ class TestTailAllocation(unittest.TestCase):
     SIZES = {
         "/one_block": (8192, 8),             # exactly one block
         "/short": (1, 1),                    # smaller than one block
+        "/mid_tail": (3 * 8192 + 100, 25),   # fragmented tail at lbn 3
+        "/late_tail": (11 * 8192 + 100, 89),  # fragmented tail at the last direct
         "/ndaddr": (12 * 8192, 96),          # exactly NDADDR blocks, no indirect
         "/ndaddr_tail": (12 * 8192 + 100, 112),  # tail at lbn 12: a WHOLE block
         "/thirteen": (13 * 8192, 112),       # 13*8 + 8 for the indirect block

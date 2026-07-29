@@ -1,5 +1,4 @@
 import os
-import struct
 import unittest
 from unittest import mock
 
@@ -48,6 +47,21 @@ class TestInodeOwnership(unittest.TestCase):
     def test_readlink_returns_a_target(self):
         with rhap_image.Image(ISO) as img:
             self.assertTrue(img.readlink(img.resolve("/etc")).endswith("private/etc"))
+
+    @unittest.skipUnless(_present(ISO), "install media not present")
+    def test_readlink_reads_a_long_target_from_data_blocks(self):
+        """A target at or past fs_maxsymlinklen is not a fast symlink: it lives
+        in data blocks, which is the other branch of _readlink.  28 of the CD's
+        symlinks are that shape."""
+        path = "/System/Library/CoreServices/windowPackage.ps"
+        with rhap_image.Image(ISO) as img:
+            ino = img.resolve(path)
+            self.assertIsNotNone(ino, "%s is missing from the CD" % path)
+            self.assertGreaterEqual(img.inode(ino).size, img.maxsymlinklen)
+            self.assertEqual(
+                img.readlink(ino),
+                "/System/Library/Frameworks/AppKit.framework/Resources/"
+                "windowPackage.ps")
 
 
 class TestExtract(unittest.TestCase):

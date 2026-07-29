@@ -5,7 +5,6 @@ compressed size, and the margin.  Exit 0 if it fits, 1 if it does not.
 """
 
 import os
-import sys
 
 import rcz
 import rhap_image
@@ -17,17 +16,19 @@ TARGET = "/mach_kernel.rcz"
 
 
 def used_frags_excluding(img, skip_ino):
-    total = 0
+    # The walk only sees a directory's entries, never the root itself, so seed
+    # the total with inode 2's own blocks.
+    total = img.inode(2).blocks
     stack = ["/"]
     while stack:
         path = stack.pop()
         for name, ino, dtype in img.listdir(path):
             if name in (".", ".."):
                 continue
-            child = path.rstrip("/") + "/" + name
             if ino != skip_ino:
                 total += img.inode(ino).blocks
             if dtype == 4:
+                child = path.rstrip("/") + "/" + name
                 stack.append(child)
     return total
 
@@ -36,7 +37,7 @@ def main():
     with rhap_image.Image(FLOPPY) as img:
         kernel_ino = img.resolve(TARGET)
         other = used_frags_excluding(img, kernel_ino)
-        budget = img.fs_size_data() - other
+        budget = img.fs_dsize - other
         payload = budget - img.frag
         ceiling = (payload // img.frag) * img.frag * img.fsize
 

@@ -33,8 +33,9 @@ DIRBLKSIZ = 1024
 # src/kernel-7/bsd/ufs/ufs/dinode.h:89 - direct block pointers per inode.
 NDADDR = 12
 
-# The label copies sit at physical blocks 0, 15, 30 and 45; IODiskPartition
-# reads them with the *physical* block size, always 512
+# The label copies sit at physical blocks 15, 30 and 45; -readLabel: probes
+# blocks 0, 15, 30 and 45 and takes the first that check_label accepts.
+# IODiskPartition reads them with the *physical* block size, always 512
 # (src/driverkit-3/libDriver/IODiskPartition.m:729-751).
 DEV_BSIZE = 512
 LABEL_MAGIC = b"dlV3"
@@ -297,12 +298,28 @@ def build(template_path, nodes, total_frags=None, medium_sectors=None):
         # therefore recompute_cg_tables, unchanged.
         g = g._replace(size=total_frags, dsize=dsize, ncyl=ncyl)
 
+    # Inode 2 goes to nodes[0] and every directory is filled from nodes[1:], so
+    # the tree has to be rooted, fully connected and free of duplicate paths.
+    if not nodes or nodes[0].path != "/":
+        raise BuildError('nodes[0] must be the root directory "/"')
+    paths = set()
     for node in nodes:
         if node.kind not in ("dir", "reg"):
             raise BuildError(
                 "%s is a %s; this writer handles only directories and regular "
                 "files (neither install floppy contains anything else)"
                 % (node.path, node.kind))
+        if node.path in paths:
+            raise BuildError("%s appears twice; one of the two would be lost "
+                             "and its directory would list the name twice"
+                             % node.path)
+        paths.add(node.path)
+    for node in nodes[1:]:
+        parent = node.path.rsplit("/", 1)[0] or "/"
+        if parent not in paths:
+            raise BuildError("%s has no parent %s in the tree; it would get an "
+                             "inode but appear in no directory"
+                             % (node.path, parent))
 
     ino_of = {}
     for i, node in enumerate(nodes):
@@ -371,8 +388,11 @@ def build(template_path, nodes, total_frags=None, medium_sectors=None):
         """
         return _claim(_roundup(next_frag, g.frag), g.frag)
 
+    # The allocator only moves forwards: fragments skipped by the alignment
+    # padding above are never revisited, so nominal free space slightly
+    # overstates the space a later build can actually reach.
     def alloc_frags(nfrags):
-        """A run of fewer than fs_frag fragments, never straddling a block."""
+        """A run of at most `fs_frag` fragments, never straddling a block."""
         start = next_frag
         if start // g.frag != (start + nfrags - 1) // g.frag:
             start = _roundup(start, g.frag)

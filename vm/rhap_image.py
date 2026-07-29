@@ -264,22 +264,18 @@ def _max_writable(self, ino):
     return ((inode.size + self.fsize - 1) // self.fsize) * self.fsize
 
 
-def _fs_size_data(self):
-    """Fragments available for file data, excluding all filesystem metadata."""
-    return self.fs_dsize
-
-
 def _readlink(self, ino):
     """Target of a symbolic link.
 
     Short targets are stored inline in the block-pointer area (a "fast
-    symlink", di_size <= fs_maxsymlinklen); longer ones occupy data blocks
-    like a regular file.
+    symlink"); longer ones occupy data blocks like a regular file.  The
+    comparison is strict, as in ufs_readlink
+    (src/kernel-7/bsd/ufs/ufs/ufs_vnops.c:1675, isize < mnt_maxsymlinklen).
     """
     inode = self.inode(ino) if isinstance(ino, int) else ino
     if not inode.is_lnk():
         raise ValueError("inode %d is not a symbolic link" % inode.ino)
-    if inode.size <= self.maxsymlinklen:
+    if inode.size < self.maxsymlinklen:
         frag, entry = _inode_location(self, inode.ino)
         blk = self.read_frag(frag, self.bsize)
         raw = blk[entry + 40:entry + 40 + inode.size]
@@ -296,7 +292,6 @@ Image.listdir = _listdir
 Image.lookup = _lookup
 Image.resolve = _resolve
 Image.max_writable = _max_writable
-Image.fs_size_data = _fs_size_data
 Image.readlink = _readlink
 
 

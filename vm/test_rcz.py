@@ -34,5 +34,26 @@ class TestDecompress(unittest.TestCase):
         self.assertEqual(rcz.decompress(stream), kernel)
 
 
+class TestCompress(unittest.TestCase):
+    def test_round_trip_edge_cases(self):
+        for payload in (b"", b"A", b"AB", b"ABC",
+                        bytes(1000), bytes(range(256)) * 4,
+                        b"\xff\xfe" * 500):
+            self.assertEqual(rcz.decompress(rcz.compress(payload)), payload,
+                             "round trip failed for %d bytes" % len(payload))
+
+    def test_header_records_original_length(self):
+        stream = rcz.compress(b"hello world")
+        self.assertEqual(stream[:8], b"\x00\x00\x02\x9a\x00\x00\x00\x0b")
+
+    @unittest.skipUnless(_media_present(), "install media not present")
+    def test_reproduces_shipped_stream_byte_for_byte(self):
+        with rhap_image.Image(ISO) as i:
+            kernel = i.read_file(i.resolve("/mach_kernel"))
+        with rhap_image.Image(FLOPPY) as f:
+            shipped = f.read_file(f.resolve("/mach_kernel.rcz"))
+        self.assertEqual(rcz.compress(kernel), shipped)
+
+
 if __name__ == "__main__":
     unittest.main()

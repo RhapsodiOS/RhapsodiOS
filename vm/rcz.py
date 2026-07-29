@@ -66,14 +66,72 @@ def decompress(data):
     return bytes(out)
 
 
+def _emit_group(token, tokenct, payload, final):
+    """Serialise one token word and its payload entries."""
+    tok = ((token << (32 - tokenct)) if final else token) & 0xffffffff
+    buf = bytearray(struct.pack(">I", tok))
+    c = 1 << 31
+    for j in range(tokenct):
+        if tok & c:
+            buf.append(payload[j] & 0xff)
+        else:
+            buf.append((payload[j] >> 8) & 0xff)
+            buf.append(payload[j] & 0xff)
+        c >>= 1
+    return bytes(buf)
+
+
+def compress(data):
+    out = bytearray(struct.pack(">II", MAGIC, len(data)))
+    que = list(range(QLEN))
+    token = 0
+    tokenct = 0
+    payload = []
+    word = 0
+
+    for ct in range(len(data)):
+        word = ((word << 8) | data[ct]) & 0xffffff
+        if ct % 2 == 1:
+            word &= 0xffff
+            try:
+                jmatch = que.index(word)
+            except ValueError:
+                jmatch = -1
+            token = (token << 1) | (1 if jmatch >= 0 else 0)
+            if jmatch >= 0:
+                c = que[jmatch]
+                jabove = (F1 * jmatch) >> 4
+                que[jabove + 1:jmatch + 1] = que[jabove:jmatch]
+                que[jabove] = c
+                payload.append(jmatch)
+            else:
+                que[ABOVE + 1:QLEN] = que[ABOVE:QLEN - 1]
+                que[ABOVE] = word
+                payload.append(word)
+            tokenct += 1
+            if tokenct == 32:
+                out += _emit_group(token, tokenct, payload, False)
+                token = 0
+                tokenct = 0
+                del payload[:]
+
+    if tokenct > 0:
+        out += _emit_group(token, tokenct, payload, True)
+    if len(data) % 2 == 1:
+        out.append(word & 0xff)
+    return bytes(out)
+
+
 def main(argv):
-    if len(argv) != 4 or argv[1] != "-d":
-        print("usage: rcz.py -d <infile> <outfile>", file=sys.stderr)
+    if len(argv) != 4 or argv[1] not in ("-c", "-d"):
+        print("usage: rcz.py {-c|-d} <infile> <outfile>", file=sys.stderr)
         return 2
     with open(argv[2], "rb") as f:
         data = f.read()
+    result = compress(data) if argv[1] == "-c" else decompress(data)
     with open(argv[3], "wb") as f:
-        f.write(decompress(data))
+        f.write(result)
+    print("%s: %d -> %d bytes" % (argv[2], len(data), len(result)))
     return 0
 
 

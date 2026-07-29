@@ -65,13 +65,47 @@ import tempfile
 import ufs_extract
 
 
-def _rebuild_to_temp(path):
-    nodes = ufs_extract.extract(path)
-    image = ufs_build.build(path, nodes)
+def _to_temp(image):
     fd, out = tempfile.mkstemp(suffix=".img")
     os.close(fd)
     with open(out, "wb") as f:
         f.write(image)
+    return out
+
+
+def _rebuild_to_temp(path):
+    nodes = ufs_extract.extract(path)
+    return _to_temp(ufs_build.build(path, nodes))
+
+
+def _resize_to_temp(path, total_frags=2304, medium_sectors=2880):
+    nodes = ufs_extract.extract(path)
+    return _to_temp(ufs_build.build(path, nodes, total_frags=total_frags,
+                                    medium_sectors=medium_sectors))
+
+
+def _label_copies(path):
+    """[(offset, p_size, stored checksum, recomputed checksum)] for the image.
+
+    The recomputation is deliberately independent of ufs_build: checksum16
+    (label_subr.c:71-86) over the first 560 bytes as big-endian u16s, with
+    dl_label_blkno and the checksum field read as zero.
+    """
+    with open(path, "rb") as f:
+        data = f.read()
+    out = []
+    for off in range(0, len(data) - 1023, 512):
+        if data[off:off + 4] != b"dlV3":
+            continue
+        lab = bytearray(data[off:off + 560])
+        struct.pack_into(">i", lab, 4, 0)
+        struct.pack_into(">H", lab, 0x22e, 0)
+        total = sum(struct.unpack_from(">H", lab, i * 2)[0] for i in range(280))
+        total = ((total & 0xffff0000) >> 16) + (total & 0xffff)
+        if total > 65535:
+            total -= 65535
+        out.append((off, struct.unpack_from(">i", data, off + 194)[0],
+                    struct.unpack_from(">H", data, off + 0x22e)[0], total))
     return out
 
 
@@ -197,25 +231,59 @@ class TestOnDiskInvariants(unittest.TestCase):
         finally:
             os.unlink(out)
 
+    def _assert_allocation_audit(self, out):
+        g, blksfree, owner, _runs = _all_runs(out)
+        first_data = g.csaddr + -(-g.cssize // g.fsize)
+        for f, path in owner.items():
+            self.assertLess(f, g.size,
+                            "%s claims fragment %d past fs_size" % (path, f))
+            self.assertFalse(ufs_build.bit_is_set(blksfree, f),
+                             "%s claims fragment %d but it is marked free"
+                             % (path, f))
+        for f in range(g.csaddr, g.size):
+            if ufs_build.bit_is_set(blksfree, f):
+                continue
+            if f < first_data:
+                continue  # the cylinder summary
+            self.assertIn(f, owner,
+                          "fragment %d is marked used but nothing owns it" % f)
+
+    def _assert_alignment_invariants(self, out):
+        g, _blksfree, _owner, runs = _all_runs(out)
+        for path, start, nfrags, whole in runs:
+            if whole:
+                self.assertEqual(start % g.frag, 0,
+                                 "%s: whole block at %d is not block-aligned"
+                                 % (path, start))
+            self.assertEqual(start // g.frag, (start + nfrags - 1) // g.frag,
+                             "%s: run of %d at %d straddles a block boundary"
+                             % (path, nfrags, start))
+
+    def _assert_cluster_maps_match_blksfree(self, out):
+        g, cg, blksfree = _read_cg(out)
+        self.assertGreater(g.contigsumsize, 0)
+        sumoff, clusteroff, nclusterblks = struct.unpack_from("<3i", cg, 104)
+        # The map has to span the whole volume, not just the template's.
+        self.assertEqual(nclusterblks, g.size // g.frag)
+        free, summary = ufs_build.recompute_cluster_maps(
+            g, blksfree, nclusterblks)
+
+        stored_free = cg[clusteroff:clusteroff + len(free)]
+        for b in range(nclusterblks):
+            whole = all(ufs_build.bit_is_set(blksfree, b * g.frag + i)
+                        for i in range(g.frag))
+            self.assertEqual(bool(ufs_build.bit_is_set(stored_free, b)), whole,
+                             "cluster bit %d disagrees with cg_blksfree" % b)
+        self.assertEqual(stored_free, free)
+        self.assertEqual(
+            list(struct.unpack_from("<%di" % len(summary), cg, sumoff)),
+            summary)
+
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
     def test_allocation_audit(self):
         out = _rebuild_to_temp(FLOPPY)
         try:
-            g, blksfree, owner, _runs = _all_runs(out)
-            first_data = g.csaddr + -(-g.cssize // g.fsize)
-            for f, path in owner.items():
-                self.assertLess(f, g.size,
-                                "%s claims fragment %d past fs_size" % (path, f))
-                self.assertFalse(ufs_build.bit_is_set(blksfree, f),
-                                 "%s claims fragment %d but it is marked free"
-                                 % (path, f))
-            for f in range(g.csaddr, g.size):
-                if ufs_build.bit_is_set(blksfree, f):
-                    continue
-                if f < first_data:
-                    continue  # the cylinder summary
-                self.assertIn(f, owner,
-                              "fragment %d is marked used but nothing owns it" % f)
+            self._assert_allocation_audit(out)
         finally:
             os.unlink(out)
 
@@ -223,15 +291,7 @@ class TestOnDiskInvariants(unittest.TestCase):
     def test_alignment_invariants(self):
         out = _rebuild_to_temp(FLOPPY)
         try:
-            g, _blksfree, _owner, runs = _all_runs(out)
-            for path, start, nfrags, whole in runs:
-                if whole:
-                    self.assertEqual(start % g.frag, 0,
-                                     "%s: whole block at %d is not block-aligned"
-                                     % (path, start))
-                self.assertEqual(start // g.frag, (start + nfrags - 1) // g.frag,
-                                 "%s: run of %d at %d straddles a block boundary"
-                                 % (path, nfrags, start))
+            self._assert_alignment_invariants(out)
         finally:
             os.unlink(out)
 
@@ -239,22 +299,18 @@ class TestOnDiskInvariants(unittest.TestCase):
     def test_cluster_maps_match_blksfree(self):
         out = _rebuild_to_temp(FLOPPY)
         try:
-            g, cg, blksfree = _read_cg(out)
-            self.assertGreater(g.contigsumsize, 0)
-            sumoff, clusteroff, nclusterblks = struct.unpack_from("<3i", cg, 104)
-            free, summary = ufs_build.recompute_cluster_maps(
-                g, blksfree, nclusterblks)
+            self._assert_cluster_maps_match_blksfree(out)
+        finally:
+            os.unlink(out)
 
-            stored_free = cg[clusteroff:clusteroff + len(free)]
-            for b in range(nclusterblks):
-                whole = all(ufs_build.bit_is_set(blksfree, b * g.frag + i)
-                            for i in range(g.frag))
-                self.assertEqual(bool(ufs_build.bit_is_set(stored_free, b)), whole,
-                                 "cluster bit %d disagrees with cg_blksfree" % b)
-            self.assertEqual(stored_free, free)
-            self.assertEqual(
-                list(struct.unpack_from("<%di" % len(summary), cg, sumoff)),
-                summary)
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_resized_volume_holds_the_same_invariants(self):
+        """The identity path alone let a stale cg_nclusterblks through."""
+        out = _resize_to_temp(FLOPPY)
+        try:
+            self._assert_allocation_audit(out)
+            self._assert_alignment_invariants(out)
+            self._assert_cluster_maps_match_blksfree(out)
         finally:
             os.unlink(out)
 
@@ -294,8 +350,47 @@ class TestResize(unittest.TestCase):
             g = ufs_build.read_geometry(out)
             self.assertEqual((g.size, g.dsize, g.fpg, g.ncyl),
                              (2304, 2223, 2304, 128))
+            with rhap_image.Image(out) as img:
+                self.assertEqual(img.label["p_size"], 2304)
         finally:
             os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_every_label_copy_is_resized_and_checksummed(self):
+        """-readLabel: takes the first copy that passes check_label, so a stale
+        copy would clamp the volume straight back to 1344 sectors."""
+        self.assertTrue(all(stored == computed
+                            for _off, _p, stored, computed in _label_copies(FLOPPY)),
+                        "the checksum recomputation does not match the masters")
+        out = _resize_to_temp(FLOPPY)
+        try:
+            copies = _label_copies(out)
+            self.assertGreater(len(copies), 1, "expected several label copies")
+            for off, p_size, stored, computed in copies:
+                self.assertEqual(p_size, 2304,
+                                 "label copy at %d still says %d" % (off, p_size))
+                self.assertEqual(stored, computed,
+                                 "label copy at %d has a bad checksum" % off)
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_cylinder_group_sizes_follow_the_new_fs_size(self):
+        out = _resize_to_temp(FLOPPY)
+        try:
+            _g, cg, _blksfree = _read_cg(out)
+            self.assertEqual(struct.unpack_from("<i", cg, 20)[0], 2304)   # cg_ndblk
+            self.assertEqual(struct.unpack_from("<i", cg, 112)[0], 288)   # nclusterblks
+            self.assertEqual(struct.unpack_from("<h", cg, 16)[0], 0)      # cg_ncyl
+        finally:
+            os.unlink(out)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_refuses_a_medium_smaller_than_the_filesystem(self):
+        nodes = ufs_extract.extract(FLOPPY)
+        with self.assertRaises(ufs_build.BuildError):
+            ufs_build.build(FLOPPY, nodes, total_frags=2304,
+                            medium_sectors=2304)
 
     @unittest.skipUnless(_present(FLOPPY), "install media not present")
     def test_refuses_to_outgrow_the_cylinder_group_bitmap(self):

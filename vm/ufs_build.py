@@ -33,6 +33,15 @@ DIRBLKSIZ = 1024
 # src/kernel-7/bsd/ufs/ufs/dinode.h:89 - direct block pointers per inode.
 NDADDR = 12
 
+# The label copies sit at physical blocks 0, 15, 30 and 45; IODiskPartition
+# reads them with the *physical* block size, always 512
+# (src/driverkit-3/libDriver/IODiskPartition.m:729-751).
+DEV_BSIZE = 512
+LABEL_MAGIC = b"dlV3"
+LABEL_P_SIZE = 194                  # dl_part[0].p_size
+LABEL_CHECKSUM = 0x22e              # dl_v3_checksum, disk_label.h:48,106
+LABEL_SUM_SHORTS = 280              # sizeof(disk_label_t) - sizeof(dl_un_t), in u16s
+
 Geometry = collections.namedtuple("Geometry", sorted(SB_FIELDS))
 CgTables = collections.namedtuple("CgTables", "blktot blks frsum nbfree nffree")
 
@@ -202,13 +211,51 @@ def _dinode(ino_size, db, ib, blocks, mtime, mode, uid, gid, nlink):
     return bytes(raw)
 
 
+def label_checksum(label):
+    """The ones-complement 16-bit sum check_label recomputes for a v3 label.
+
+    checksum16 (src/driverkit-3/libDriver/label_subr.c:71-86) folds the first
+    560 bytes as big-endian u16s; check_label:123-125 zeroes dl_label_blkno and
+    the checksum field itself first, so both read as zero here.  The caller
+    keeps the real dl_label_blkno.
+    """
+    buf = bytearray(label[:LABEL_SUM_SHORTS * 2])
+    struct.pack_into(">i", buf, 4, 0)
+    struct.pack_into(">H", buf, LABEL_CHECKSUM, 0)
+    total = sum(struct.unpack_from(">H", buf, i * 2)[0]
+                for i in range(LABEL_SUM_SHORTS))
+    total = ((total & 0xffff0000) >> 16) + (total & 0xffff)
+    if total > 65535:
+        total -= 65535
+    return total
+
+
+def patch_labels(image, part_start, p_size):
+    """Resize the partition in every label copy and re-checksum each one.
+
+    -readLabel: (IODiskPartition.m:727-790) takes the first copy that
+    check_label accepts, so patching one copy and leaving the others stale
+    just makes the kernel pick a stale one and clamp the volume back.
+    """
+    found = 0
+    for off in range(0, part_start, DEV_BSIZE):
+        if image[off:off + len(LABEL_MAGIC)] != LABEL_MAGIC:
+            continue
+        struct.pack_into(">i", image, off + LABEL_P_SIZE, p_size)
+        struct.pack_into(">H", image, off + LABEL_CHECKSUM,
+                         label_checksum(image[off:off + LABEL_SUM_SHORTS * 2]))
+        found += 1
+    if not found:
+        raise BuildError("no NeXT disk label in the %d bytes before the "
+                         "partition" % part_start)
+
+
 def build(template_path, nodes, total_frags=None, medium_sectors=None):
     g = read_geometry(template_path)
     with open(template_path, "rb") as f:
         image = bytearray(f.read())
     with rhap_image.Image(template_path) as img:
         part = img.part_start
-        label_off = img.label_offset
         secsize = img.label["secsize"]
         front = img.label["front"]
 
@@ -220,6 +267,10 @@ def build(template_path, nodes, total_frags=None, medium_sectors=None):
                 "would overrun it into the cluster maps" % (total_frags, g.fpg))
         if medium_sectors is None:
             medium_sectors = front + total_frags
+        if medium_sectors < front + total_frags:
+            raise BuildError(
+                "medium of %d sectors cannot hold a %d-fragment filesystem "
+                "that starts at sector %d" % (medium_sectors, total_frags, front))
         want = medium_sectors * secsize
         if want < len(image):
             raise BuildError("medium of %d bytes is smaller than the %d-byte "
@@ -232,8 +283,15 @@ def build(template_path, nodes, total_frags=None, medium_sectors=None):
         struct.pack_into("<i", image, sb_off + 36, total_frags)   # fs_size
         struct.pack_into("<i", image, sb_off + 40, dsize)         # fs_dsize
         struct.pack_into("<i", image, sb_off + 176, ncyl)         # fs_ncyl
-        # The NeXT label is big-endian; p_size sits at label_offset + 194.
-        struct.pack_into(">i", image, label_off + 194, total_frags)
+        # The cylinder group's three size fields, exactly as newfs derives them
+        # (mkfs.c:782-788).  This is the single group, so it is also the last.
+        cg_off = part + g.cblkno * g.fsize
+        struct.pack_into("<h", image, cg_off + 16, ncyl % g.cpg)  # cg_ncyl
+        struct.pack_into("<i", image, cg_off + 20, total_frags)   # cg_ndblk
+        if g.contigsumsize > 0:
+            struct.pack_into("<i", image, cg_off + 112,           # cg_nclusterblks
+                             total_frags // g.frag)
+        patch_labels(image, part, total_frags)
         # fs_fpg, fs_cpg, fs_ntrak, fs_nsect and fs_spc deliberately keep the
         # template's values: that is what leaves the cylinder-group layout, and
         # therefore recompute_cg_tables, unchanged.

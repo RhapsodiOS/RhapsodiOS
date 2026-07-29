@@ -3,6 +3,7 @@ import struct
 import unittest
 
 import rhap_image
+import ufs_extract
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ISO = os.path.join(HERE, "install", "rhapsody_dr2_x86.iso")
@@ -46,6 +47,36 @@ class TestInodeOwnership(unittest.TestCase):
     def test_readlink_returns_a_target(self):
         with rhap_image.Image(ISO) as img:
             self.assertTrue(img.readlink(img.resolve("/etc")).endswith("private/etc"))
+
+
+class TestExtract(unittest.TestCase):
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_installation_floppy_shape(self):
+        nodes = ufs_extract.extract(FLOPPY)
+        self.assertEqual(nodes[0].path, "/")
+        self.assertEqual(nodes[0].kind, "dir")
+        by_path = {n.path: n for n in nodes}
+        self.assertEqual(len(nodes), 21)   # root plus the 20 objects
+        self.assertEqual(by_path["/mach_kernel.rcz"].kind, "reg")
+        self.assertEqual(len(by_path["/mach_kernel.rcz"].data), 1052315)
+        self.assertEqual(by_path["/usr/standalone/i386/sarld"].kind, "reg")
+        self.assertNotIn("lnk", {n.kind for n in nodes})
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_parents_precede_children(self):
+        seen = set()
+        for node in ufs_extract.extract(FLOPPY):
+            if node.path != "/":
+                parent = node.path.rsplit("/", 1)[0] or "/"
+                self.assertIn(parent, seen, "%s came before %s" % (node.path, parent))
+            seen.add(node.path)
+
+    @unittest.skipUnless(_present(FLOPPY), "install media not present")
+    def test_driver_disk_has_no_links(self):
+        disk = os.path.join(HERE, "install", "rhapsody_dr2_x86_DriverDisk.img")
+        nodes = ufs_extract.extract(disk)
+        self.assertEqual(len(nodes), 111)
+        self.assertEqual({n.kind for n in nodes}, {"dir", "reg"})
 
 
 if __name__ == "__main__":

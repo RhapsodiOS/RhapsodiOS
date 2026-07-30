@@ -42,6 +42,7 @@ typedef struct {
         unsigned long);
     TASStatus (*serviceDMA)(void *, TASStreamDirection, PPCDBDMARing *,
         unsigned long *);
+    TASStatus (*ackDMAInterrupt)(void *, TASStreamDirection);
     TASStatus (*executeAction)(void *, const TASAudioAction *);
     TASStatus (*applyControls)(void *, const TASAudioDesiredControls *,
         unsigned long);
@@ -60,6 +61,7 @@ typedef struct {
     TASRuntimeOps ops;
     unsigned long acquiredMask;
     unsigned long pendingIRQs;
+    unsigned long detectISREdges;
     unsigned long dmaFaultMask;
     unsigned long operationDeadline;
     int initialized;
@@ -76,6 +78,7 @@ TASStatus TASRuntimeStartStream(TASRuntime *, TASStreamDirection,
 TASStatus TASRuntimeStopStream(TASRuntime *, TASStreamDirection,
     unsigned long);
 void TASRuntimeRecordISR(TASRuntime *, TASRuntimeIRQ);
+TASStatus TASRuntimeRecordDMAISR(TASRuntime *, TASStreamDirection);
 TASStatus TASRuntimeServiceDeferred(TASRuntime *, unsigned long, int *, int *);
 TASStatus TASRuntimeSetControls(TASRuntime *,
     const TASAudioDesiredControls *, unsigned long);

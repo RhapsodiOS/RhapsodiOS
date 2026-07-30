@@ -20,6 +20,7 @@ static int valid_ops(const TASRuntimeOps *ops)
     return ops != 0 && ops->acquire != 0 && ops->release != 0 &&
         ops->prepareDMA != 0 && ops->startDMA != 0 &&
         ops->stopResetDMA != 0 && ops->serviceDMA != 0 &&
+        ops->ackDMAInterrupt != 0 &&
         ops->executeAction != 0 && ops->applyControls != 0 &&
         ops->sampleDetects != 0 && ops->now != 0 &&
         ops->signalDeferred != 0 &&
@@ -105,6 +106,7 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
         }
         runtime->acquiredMask |= TAS_STAGE_BIT(stage);
     }
+    TASRuntimeRecordISR(runtime, kTASRuntimeIRQDetect);
     return kTASStatusOK;
 }
 
@@ -159,8 +161,100 @@ void TASRuntimeRecordISR(TASRuntime *runtime, TASRuntimeIRQ irq)
 {
     if (runtime == 0 || !runtime->initialized)
         return;
+    if (irq == kTASRuntimeIRQDetect)
+        ++runtime->detectISREdges;
     runtime->pendingIRQs |= (unsigned long)irq;
     runtime->ops.signalDeferred(runtime->ops.context);
+}
+
+TASStatus TASRuntimeRecordDMAISR(TASRuntime *runtime,
+    TASStreamDirection direction)
+{
+    TASStatus status;
+    TASRuntimeIRQ irq;
+    if (runtime == 0 || !runtime->initialized ||
+        (direction != kTASStreamOutput && direction != kTASStreamInput))
+        return kTASStatusMalformed;
+    status = runtime->ops.ackDMAInterrupt(runtime->ops.context, direction);
+    irq = direction == kTASStreamOutput ? kTASRuntimeIRQOutput :
+        kTASRuntimeIRQInput;
+    runtime->pendingIRQs |= (unsigned long)irq;
+    if (status != kTASStatusOK)
+        runtime->dmaFaultMask |= 1UL << (unsigned long)direction;
+    runtime->ops.signalDeferred(runtime->ops.context);
+    return status;
+}
+
+static TASStatus execute_plan(TASRuntime *, TASAudioActionPlan *,
+    TASAudioToken *, unsigned long);
+
+static TASStatus schedule_detect(TASRuntime *runtime,
+    TASAudioActionPlan *plan)
+{
+    unsigned long index;
+    TASStatus status;
+    for (index = 0UL; index < plan->count; ++index) {
+        if (plan->actions[index].operation != kTASAudioScheduleDebounce)
+            return kTASStatusUnsupported;
+        status = runtime->ops.executeAction(runtime->ops.context,
+            &plan->actions[index]);
+        if (status != kTASStatusOK) {
+            runtime->ops.failMute(runtime->ops.context);
+            return status;
+        }
+    }
+    runtime->ops.signalDeferred(runtime->ops.context);
+    return kTASStatusOK;
+}
+
+static TASStatus service_detect(TASRuntime *runtime, int newEdge,
+    unsigned long deadline)
+{
+    TASAudioActionPlan plan;
+    TASAudioToken sample;
+    TASAudioToken route;
+    TASStatus status;
+    unsigned long generation;
+    unsigned long now;
+    unsigned long detects;
+    now = runtime->ops.now(runtime->ops.context);
+    if (newEdge) {
+        detects = runtime->ops.sampleDetects(runtime->ops.context);
+        status = TASAudioRecordDetectISR(&runtime->audio, detects,
+            &generation);
+        if (status != kTASStatusOK)
+            return status;
+        if (now > ~0UL - TAS_AUDIO_DEBOUNCE_CONFIRM_MS)
+            return kTASStatusOverflow;
+        status = TASAudioBuildDebounceSchedule(&runtime->audio, generation,
+            now + TAS_AUDIO_DEBOUNCE_CONFIRM_MS, &plan);
+        if (status != kTASStatusOK)
+            return status;
+        return schedule_detect(runtime, &plan);
+    }
+    if (!runtime->audio.debouncePending)
+        return kTASStatusOK;
+    generation = runtime->audio.detectGeneration;
+    status = TASAudioPrepareDebounceSample(&runtime->audio, generation, now,
+        &plan, &sample);
+    if (status == kTASStatusTimeout)
+        return status;
+    if (status != kTASStatusOK)
+        return status;
+    status = runtime->ops.executeAction(runtime->ops.context,
+        &plan.actions[0]);
+    if (status != kTASStatusOK) {
+        runtime->ops.failMute(runtime->ops.context);
+        return status;
+    }
+    detects = runtime->ops.sampleDetects(runtime->ops.context);
+    status = TASAudioApplyDetectSample(&runtime->audio, &sample, detects,
+        now, &plan, &route);
+    if (status == kTASStatusUnresolved)
+        return schedule_detect(runtime, &plan);
+    if (status != kTASStatusOK)
+        return status;
+    return execute_plan(runtime, &plan, &route, deadline);
 }
 
 TASStatus TASRuntimeServiceDeferred(TASRuntime *runtime,
@@ -170,8 +264,6 @@ TASStatus TASRuntimeServiceDeferred(TASRuntime *runtime,
     TASStatus result;
     unsigned long completed;
     unsigned long pending;
-    unsigned long edge;
-    (void)deadline;
     if (runtime == 0 || notifyInput == 0 || notifyOutput == 0)
         return kTASStatusMalformed;
     *notifyInput = 0;
@@ -198,9 +290,10 @@ TASStatus TASRuntimeServiceDeferred(TASRuntime *runtime,
         } else
             *notifyInput = completed != 0UL;
     }
-    if ((pending & kTASRuntimeIRQDetect) != 0UL) {
-        status = TASAudioRecordDetectISR(&runtime->audio,
-            runtime->ops.sampleDetects(runtime->ops.context), &edge);
+    if ((pending & kTASRuntimeIRQDetect) != 0UL ||
+        runtime->audio.debouncePending) {
+        status = service_detect(runtime,
+            (pending & kTASRuntimeIRQDetect) != 0UL, deadline);
         if (status != kTASStatusOK && result == kTASStatusOK)
             result = status;
     }
@@ -231,6 +324,9 @@ static TASStatus execute_plan(TASRuntime *runtime,
     TASAudioToken rollback;
     unsigned long index;
     unsigned long rollbackDeadline;
+    unsigned long detectEdges;
+    unsigned long generation;
+    detectEdges = runtime->detectISREdges;
     for (index = 0UL; index < plan->count; ++index) {
         status = TASAudioAuthorizeAction(&runtime->audio, token, index);
         if (status != kTASStatusOK)
@@ -240,6 +336,14 @@ static TASStatus execute_plan(TASRuntime *runtime,
             &plan->actions[index]);
         if (status != kTASStatusOK)
             break;
+        if (runtime->detectISREdges != detectEdges) {
+            status = TASAudioRecordDetectISR(&runtime->audio,
+                runtime->ops.sampleDetects(runtime->ops.context),
+                &generation);
+            detectEdges = runtime->detectISREdges;
+            if (status != kTASStatusOK)
+                break;
+        }
         status = TASAudioCompleteAction(&runtime->audio, token, index);
         if (status != kTASStatusOK)
             break;
@@ -284,7 +388,11 @@ TASStatus TASRuntimeSetPower(TASRuntime *runtime, TASPowerState power,
         &token);
     if (status != kTASStatusOK)
         return status;
-    return execute_plan(runtime, &plan, &token, deadline);
+    status = execute_plan(runtime, &plan, &token, deadline);
+    if (status == kTASStatusOK && runtime->audio.debouncePending &&
+        runtime->audio.powerState == kTASPowerWaking)
+        TASRuntimeRecordISR(runtime, kTASRuntimeIRQDetect);
+    return status;
 }
 
 /* Raw fields follow Apple's AudioI2SControl serial-format register layout. */

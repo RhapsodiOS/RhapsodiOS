@@ -330,7 +330,6 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
     case kTASRuntimeCreateAudioChannels:
         return kTASStatusOK; /* IOAudio init owns channel/thread creation. */
     case kTASRuntimeInitialRoute:
-        TASRuntimeRecordISR(&self->runtime, kTASRuntimeIRQDetect);
         return kTASStatusOK;
     default:
         return kTASStatusMalformed;
@@ -433,6 +432,22 @@ static TASStatus tas_service_dma(void *opaque, TASStreamDirection direction,
     return status == kPPCDBDMAOK ? kTASStatusOK : kTASStatusUnresolved;
 }
 
+static TASStatus tas_ack_dma_interrupt(void *opaque,
+    TASStreamDirection direction)
+{
+    PPCTASAudio *self;
+    volatile IODBDMAChannelRegisters *registers;
+    self = (PPCTASAudio *)opaque;
+    registers = (volatile IODBDMAChannelRegisters *)(direction ==
+        kTASStreamOutput ? self->outputDBDMARegisters :
+        self->inputDBDMARegisters);
+    if (registers == 0)
+        return kTASStatusMissing;
+    (void)IOGetDBDMAChannelStatus(registers);
+    eieio();
+    return kTASStatusOK;
+}
+
 static TASStatus tas_action(void *opaque, const TASAudioAction *action)
 {
     PPCTASAudio *self;
@@ -445,7 +460,6 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         return kTASStatusOK;
     case kTASAudioScheduleDebounce:
         IODelay(TAS_AUDIO_DEBOUNCE_CONFIRM_MS * 1000UL);
-        [self _interruptOccurred];
         return kTASStatusOK;
     case kTASAudioSampleDetects:
         (void)tas_detects(self);
@@ -622,6 +636,7 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.startDMA = tas_start_dma;
     ops.stopResetDMA = tas_stop_dma;
     ops.serviceDMA = tas_service_dma;
+    ops.ackDMAInterrupt = tas_ack_dma_interrupt;
     ops.executeAction = tas_action;
     ops.applyControls = tas_controls;
     ops.sampleDetects = tas_detects;
@@ -635,16 +650,16 @@ static void tas_output_interrupt(void *identity, void *state, void *argument)
 {
     (void)identity;
     (void)state;
-    TASRuntimeRecordISR(&((PPCTASAudio *)argument)->runtime,
-        kTASRuntimeIRQOutput);
+    (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
+        kTASStreamOutput);
 }
 
 static void tas_input_interrupt(void *identity, void *state, void *argument)
 {
     (void)identity;
     (void)state;
-    TASRuntimeRecordISR(&((PPCTASAudio *)argument)->runtime,
-        kTASRuntimeIRQInput);
+    (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
+        kTASStreamInput);
 }
 
 static void tas_detect_interrupt(void *identity, void *state, void *argument)
@@ -653,11 +668,6 @@ static void tas_detect_interrupt(void *identity, void *state, void *argument)
     (void)state;
     TASRuntimeRecordISR(&((PPCTASAudio *)argument)->runtime,
         kTASRuntimeIRQDetect);
-}
-
-static void tas_clear_interrupts(void)
-{
-    eieio();
 }
 
 @implementation PPCTASAudio
@@ -858,7 +868,8 @@ static void tas_clear_interrupts(void)
 }
 - (IOAudioInterruptClearFunc)interruptClearFunc
 {
-    return tas_clear_interrupts;
+    /* Special direction-aware handlers own the sole DBDMA ack path. */
+    return 0;
 }
 
 - (IOReturn)getPowerState:(PMPowerState *)state

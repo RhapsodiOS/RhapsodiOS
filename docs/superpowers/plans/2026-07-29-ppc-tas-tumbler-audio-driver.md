@@ -354,7 +354,7 @@ Use canonical `IODBDMADescriptor` semantics, not the reconstructed AWACS/Burgund
 
 - [ ] **Step 1: Add failing descriptor tests**
 
-Cover 16-byte alignment, big-endian command/address/dependency/result fields, physical-page splits, 16-bit transfer-count limits, ring wrap/branch descriptor, independent input/output rings, completion decoding, and rejection of unmappable or oversized buffers.
+Cover 16-byte alignment, little-endian memory images for the command/address/dependency/result fields (matching DriverKit's `WriteSwap32`/`ReadSwap32` accessors on PowerPC), physical-page splits, 16-bit transfer-count limits, ring wrap/branch descriptor, independent input/output rings, completion decoding, and rejection of unmappable or oversized buffers.
 
 - [ ] **Step 2: Implement pure ring construction**
 
@@ -462,11 +462,11 @@ Ensure the driver is buildable/discoverable and its source provenance is explici
 - Create: `src/drivers-ppc/sound/drvPPCTASAudio/SOURCES.md`
 - Modify: `docs/superpowers/plans/2026-07-29-ppc-tas-tumbler-audio-driver.md` (checkboxes/evidence only)
 
-- [ ] **Step 1: Register every production source/header**
+- [x] **Step 1: Register every production source/header**
 
 Verify each `.m`, `.c`, and `.h` appears in `PPCTASAudio.lksproj/PB.project` and generated Makefile source lists. Keep `INCLUDED_ARCHS = ppc` in every project preamble.
 
-- [ ] **Step 2: Record sources and corrections**
+- [x] **Step 2: Record sources and corrections**
 
 List TI TAS3001C/TAS3004 documentation, AppleOnboardAudio files, and OpenBSD `tumbler.c`, `snapper.c`, `i2s.c`, `i2sreg.h`, `kiic.c`, and `macgpio.c` with URLs and licenses. State that behavior/register facts were reimplemented and that no GPL source was copied. Record the six-byte TAS3004 DRC and RB-sequence corrections.
 
@@ -481,7 +481,7 @@ rg -n "TODO|TBD|FIXME|XXX" src/drivers-ppc/sound/drvPPCTASAudio src/drivers-ppc/
 
 Expected: no whitespace errors or unresolved placeholders. If target build is unavailable, preserve its exact command and mark only that verification pending.
 
-- [ ] **Step 4: Review against the approved design**
+- [x] **Step 4: Review against the approved design**
 
 Confirm: one bundle/two codec backends; structural unknown-machine attach; no guessed resources; 44.1 kHz full-duplex; exact-rate filtering; independent DBDMA rings/one clock; volume/mute/input controls; speaker fallback plus headphone/lineout mask; mute-before-switch; deferred debounce; bounded failure recovery; PE ownership; AWACS/Burgundy unchanged.
 
@@ -489,12 +489,38 @@ Confirm: one bundle/two codec backends; structural unknown-machine attach; no gu
 
 Using throwaway images, boot an older no-TAS Sawtooth and verify no regression or accidental attach. On a supported real or emulated fixture, verify attach/init, playback/capture, simultaneous full duplex, jack routing, control persistence, fault recovery, and PM callback sequences. Physical speaker/headphone/line-level validation remains required before declaring Tier 1 hardware support.
 
-- [ ] **Step 6: Request code review, fix findings, and commit**
+- [x] **Step 6: Request code review, fix findings, and commit**
 
 ```bash
 git add src/drivers-ppc/sound/drvPPCTASAudio src/drivers-ppc/bus/drvPExpert src/kernel-7/machdep/ppc/PEKeyLargo.h docs/superpowers/plans/2026-07-29-ppc-tas-tumbler-audio-driver.md
 git commit -m "drvPPCTASAudio: document support and verification"
 ```
+
+### Task 10 evidence summary
+
+- Production registration verified: all one `.m`, six `.c`, and six `.h`
+  files appear in both `PPCTASAudio.lksproj/PB.project` and its generated
+  `Makefile`; all three project preambles retain `INCLUDED_ARCHS = ppc`.
+- `README.md` records the bundle architecture, firmware contract, TAS3001C and
+  TAS3004 behavior, 250 ms polling plus 5 ms confirmation latency,
+  singleton/tombstone unload limitation, full-duplex shared-rate constraint,
+  and pending target/hardware acceptance.
+- `SOURCES.md` pins OpenBSD commit
+  `229406285b562176139341c58aea5014bfb768a3`, identifies the license and facts
+  taken from each reference, records the TAS3004 six-byte DRC discrepancy and
+  biquad RB correction, and explains the external-GPIO routing evidence.
+- Canonical DriverKit `IODBDMADescriptor` fields are stored through
+  `WriteSwap32`/`ReadSwap32`: the operation, address, dependency, and result
+  fields therefore have a **little-endian memory image on PowerPC**. Task 7
+  Step 1 now uses that canonical wording as well.
+- Task 10 Step 3 remains unchecked because `vm/rhap-vm.ps1 ssh` stopped before
+  guest contact: this worktree has no `vm/vm.conf` and the wrapper directs the
+  user to copy and edit `vm.conf.example`. The exact host-test, PE-test, and
+  target-build commands are preserved in `README.md`; documentation link,
+  placeholder/static, and whitespace checks were run separately.
+- Task 10 Step 5 remains unchecked: no supported emulator fixture or physical
+  TAS endpoint was available for playback, capture, jack, PM, or analog route
+  acceptance. AWACS and Burgundy files remain unchanged.
 
 ## Final acceptance gate
 

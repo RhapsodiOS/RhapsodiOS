@@ -60,6 +60,7 @@
 #import "AtapiCntCmds.h"
 #import "IdeShared.h"
 #import "IdeModeUtils.h"
+#import "IDEAddressing.h"
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
 #if (IO_DRIVERKIT_VERSION != 330)
@@ -1280,11 +1281,16 @@ ata_mode_to_mask(ata_mode_t mode)
     ideRegsVal_t ideRegs;
     unsigned char nSectors;
 	ide_return_t rtn;
+    ideCapacity_t capacity;
     ideIdentifyInfo_t *infoPtr = _drives[unit].ideIdentifyInfo;
 
     bzero((unsigned char *)&ideRegs, sizeof(ideRegs));
 
     _drives[unit].ideIdentifyInfoSupported = YES;
+    _drives[unit].lba48Supported = NO;
+    _drives[unit].addressableSectors =
+		_drives[unit].ideInfo.sectors_per_trk *
+		_drives[unit].ideInfo.heads * _drives[unit].ideInfo.cylinders;
     bzero(infoPtr, sizeof(ideIdentifyInfo_t));
 
     _driveNum = unit;
@@ -1308,6 +1314,13 @@ ata_mode_to_mask(ata_mode_t mode)
         return IDER_CMD_ERROR;
     }
 
+    IDEParseIdentifyCapacity((const unsigned short *)infoPtr, &capacity);
+    _drives[unit].lba48Supported = capacity.lba48Supported ? YES : NO;
+    _drives[unit].addressableSectors = capacity.sectors;
+    if (capacity.clamped)
+		IOLog("%s: Drive %d: capacity limited to 0xffffffff sectors\n",
+		      [self name], unit);
+
     /*
      * Fill in this struct similar to which we would have gotten from CMOS. 
      */
@@ -1320,26 +1333,6 @@ ata_mode_to_mask(ata_mode_t mode)
 		ip->landing_zone = 0;
 		ip->sectors_per_trk = _drives[unit].ideIdentifyInfo->sectorsPerTrack;
 		ip->bytes_per_sector = IDE_SECTOR_SIZE;
-		if ([IODevice driverKitVersion] > 410) { 
-			ip->total_sectors = ip->sectors_per_trk *
-								ip->heads *
-								ip->cylinders;
-			
-			/* If disk supports LBA, and Words (61:60) indicates that the
-			 * user-addressable logical sectors is larger than the number
-			 * of sectors computed through CHS translation, then use the
-			 * larger value. This will be needed for disks with more than
-			 * 16,514,064 sectors. (16383 C x 16 H x 63 S)
-			 */
-			if ((infoPtr->capabilities & IDE_CAP_LBA_SUPPORTED) &&
-				(infoPtr->userAddressableSectors > ip->total_sectors))
-				ip->total_sectors = infoPtr->userAddressableSectors;
-		}
-		else {
-    		// fake capacity for backward compatibility.
-			ip->total_sectors = ip->sectors_per_trk * ip->heads *
-		    	ip->cylinders * ip->bytes_per_sector;
-		}
     }
 
     /*
@@ -1353,6 +1346,29 @@ ata_mode_to_mask(ata_mode_t mode)
 		    [self name], unit);
 #endif DEBUG
 		_drives[unit].addressMode = ADDRESS_MODE_CHS;
+	}
+
+    if (biosInfo == NO) {
+		ideDriveInfo_t *ip = &(_drives[unit].ideInfo);
+		unsigned int chsSectors = ip->sectors_per_trk * ip->heads *
+			ip->cylinders;
+
+		if ([IODevice driverKitVersion] > 410) {
+			ip->total_sectors = chsSectors;
+			if ((_drives[unit].addressMode == ADDRESS_MODE_LBA) &&
+				(capacity.sectors != 0))
+				ip->total_sectors = capacity.sectors;
+		}
+		else {
+			// fake capacity for backward compatibility.
+			ip->total_sectors = chsSectors * ip->bytes_per_sector;
+		}
+	}
+
+    if (_drives[unit].addressMode == ADDRESS_MODE_CHS) {
+		_drives[unit].addressableSectors =
+			_drives[unit].ideInfo.sectors_per_trk *
+			_drives[unit].ideInfo.heads * _drives[unit].ideInfo.cylinders;
 	}
 
     /*

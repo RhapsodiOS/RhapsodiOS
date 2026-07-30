@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Approved design, pending written-spec review
+**Status:** Approved
 
 **Components:** `src/drivers-i386/ide/drvAHCI`, `src/kernel-7/bsd/dev`, `src/drivers-i386/ide/drvEIDE`, `src/kernel-7/machdep/i386/swapgeneric.m`
 
@@ -85,7 +85,8 @@ the existing EIDE hardware path intact.
 
 ### AHCIController
 
-`AHCIController : IOPCIDirectDevice` owns one PCI AHCI function and only
+`AHCIController : IODirectDevice` uses the `IOPCIDirectDevice` category and owns
+one PCI AHCI function and only
 HBA-global state:
 
 - PCI validation and BAR5/ABAR mapping.

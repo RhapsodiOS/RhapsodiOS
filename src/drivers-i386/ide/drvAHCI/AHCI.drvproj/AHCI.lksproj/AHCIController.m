@@ -97,6 +97,9 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     IOReturn mapResult;
     AHCIHBAOps ops;
     unsigned int interruptLine;
+    unsigned char implementedPorts[AHCI_MAX_PORTS];
+    unsigned int implementedCount;
+    unsigned int portIndex;
     int port;
     AHCIDeviceKind kind;
     AHCIU32 ghc;
@@ -207,9 +210,14 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         return nil;
     }
 
-    for (port = AHCINextPort(hbaInfo.portsImplemented, -1);
-         port >= 0;
-         port = AHCINextPort(hbaInfo.portsImplemented, port)) {
+    implementedCount = AHCIPortCollectImplemented(
+        hbaInfo.portsImplemented, implementedPorts, AHCI_MAX_PORTS);
+    if (implementedCount == 0 || implementedCount > AHCI_MAX_PORTS) {
+        [self free];
+        return nil;
+    }
+    for (portIndex = 0; portIndex < implementedCount; ++portIndex) {
+        port = (int)implementedPorts[portIndex];
         ports[port] = [[AHCIPort alloc] initWithMMIO:&mmio
                                                 port:(unsigned int)port
                                         capabilities:hbaInfo.capabilities];
@@ -228,15 +236,21 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         else
             IOLog("%s: port %d empty\n", [self name], port);
     }
-    if (portCount != AHCIPortCountImplemented(hbaInfo.portsImplemented)) {
+    if (portCount != implementedCount) {
         [self free];
         return nil;
     }
+    if ([self enableAllInterrupts] != IO_R_SUCCESS) {
+        [self disableAllInterrupts];
+        [self free];
+        return nil;
+    }
+    driverKitInterruptsEnabled = YES;
+    globalInterruptsEnabled = YES;
     ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
     AHCIMMIOWrite(&mmio, AHCI_REG_GHC,
                   ghc | AHCI_GHC_AE | AHCI_GHC_IE);
     AHCIMMIOBarrier(&mmio);
-    globalInterruptsEnabled = YES;
 
     if (!AHCIVersionIsCommon(hbaInfo.version))
         IOLog("%s: AHCI version %x is newer or unknown; using common register subset\n",
@@ -259,6 +273,10 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
         AHCIMMIOBarrier(&mmio);
         globalInterruptsEnabled = NO;
+    }
+    if (driverKitInterruptsEnabled) {
+        [self disableAllInterrupts];
+        driverKitInterruptsEnabled = NO;
     }
     for (port = 0; port < AHCI_MAX_PORTS; ++port) {
         if (ports[port] != nil) {
@@ -290,21 +308,35 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 - (void)interruptOccurred
 {
     AHCIU32 asserted;
+    AHCIU32 ghc;
     int port;
 
-    if (!globalInterruptsEnabled || mmio.base == 0)
-        return;
-    asserted = AHCIMMIORead(&mmio, AHCI_REG_IS) &
-               hbaInfo.portsImplemented;
-    for (port = AHCINextPort(asserted, -1);
-         port >= 0;
-         port = AHCINextPort(asserted, port)) {
-        if (ports[port] != nil)
-            [ports[port] handleInterrupt];
+    driverKitInterruptsEnabled = NO;
+    asserted = 0;
+    if (globalInterruptsEnabled && mmio.base != 0) {
+        asserted = AHCIMMIORead(&mmio, AHCI_REG_IS) &
+                   hbaInfo.portsImplemented;
+        for (port = AHCINextPort(asserted, -1);
+             port >= 0;
+             port = AHCINextPort(asserted, port)) {
+            if (ports[port] != nil)
+                [ports[port] handleInterrupt];
+        }
+        if (asserted != 0) {
+            AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);
+            AHCIMMIOBarrier(&mmio);
+        }
     }
-    if (asserted != 0) {
-        AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);
-        AHCIMMIOBarrier(&mmio);
+    if ([self enableAllInterrupts] == IO_R_SUCCESS) {
+        driverKitInterruptsEnabled = YES;
+    } else {
+        if (globalInterruptsEnabled && mmio.base != 0) {
+            ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+            AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
+            AHCIMMIOBarrier(&mmio);
+            globalInterruptsEnabled = NO;
+        }
+        IOLog("AHCI: failed to re-enable DriverKit interrupts\n");
     }
 }
 

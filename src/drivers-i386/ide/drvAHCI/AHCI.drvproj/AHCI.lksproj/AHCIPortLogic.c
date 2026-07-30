@@ -113,6 +113,18 @@ static int ahci_wait(const AHCIPortOps *ops, unsigned int port,
     return (((value & mask) != 0) ? 1 : 0) == set;
 }
 
+static AHCIPortResult ahci_stop_fis(const AHCIPortOps *ops,
+                                    unsigned int port)
+{
+    AHCIU32 command;
+
+    command = ahci_port_read(ops, port, AHCI_PX_CMD);
+    ahci_port_write(ops, port, AHCI_PX_CMD, command & ~AHCI_PXCMD_FRE);
+    return ahci_wait(ops, port, AHCI_PXCMD_FR, 0,
+                     AHCI_ENGINE_TIMEOUT_MS) ?
+        AHCI_PORT_SUCCESS : AHCI_PORT_ENGINE_TIMEOUT;
+}
+
 static int ahci_link_active(AHCIU32 ssts)
 {
     return (ssts & AHCI_SSTS_DET_MASK) == AHCI_SSTS_DET_PRESENT &&
@@ -152,10 +164,7 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
     if (!ahci_wait(ops, port, AHCI_PXCMD_CR, 0,
                    AHCI_ENGINE_TIMEOUT_MS))
         return AHCI_PORT_ENGINE_TIMEOUT;
-    command = ahci_port_read(ops, port, AHCI_PX_CMD);
-    ahci_port_write(ops, port, AHCI_PX_CMD, command & ~AHCI_PXCMD_FRE);
-    if (!ahci_wait(ops, port, AHCI_PXCMD_FR, 0,
-                   AHCI_ENGINE_TIMEOUT_MS))
+    if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
         return AHCI_PORT_ENGINE_TIMEOUT;
 
     ahci_port_write(ops, port, AHCI_PX_CLB,
@@ -187,11 +196,8 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
         ahci_port_write(ops, port, AHCI_PX_SCTL,
                         sctl & ~AHCI_SCTL_DET_MASK);
         if (!ahci_wait_link(ops, port)) {
-            command = ahci_port_read(ops, port, AHCI_PX_CMD);
-            ahci_port_write(ops, port, AHCI_PX_CMD,
-                            command & ~AHCI_PXCMD_FRE);
-            (void)ahci_wait(ops, port, AHCI_PXCMD_FR, 0,
-                            AHCI_ENGINE_TIMEOUT_MS);
+            if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
+                return AHCI_PORT_ENGINE_TIMEOUT;
             ahci_port_write(ops, port, AHCI_PX_IE,
                             AHCI_PORT_INITIAL_IE_MASK);
             return AHCI_PORT_SUCCESS;
@@ -199,6 +205,8 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
         ssts = ahci_port_read(ops, port, AHCI_PX_SSTS);
     }
     if (!ahci_link_active(ssts)) {
+        if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
+            return AHCI_PORT_ENGINE_TIMEOUT;
         ahci_port_write(ops, port, AHCI_PX_IE, AHCI_PORT_INITIAL_IE_MASK);
         return AHCI_PORT_SUCCESS;
     }
@@ -228,10 +236,7 @@ AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
     if (!ahci_wait(ops, port, AHCI_PXCMD_CR, 0,
                    AHCI_ENGINE_TIMEOUT_MS))
         return AHCI_PORT_ENGINE_TIMEOUT;
-    command = ahci_port_read(ops, port, AHCI_PX_CMD);
-    ahci_port_write(ops, port, AHCI_PX_CMD, command & ~AHCI_PXCMD_FRE);
-    if (!ahci_wait(ops, port, AHCI_PXCMD_FR, 0,
-                   AHCI_ENGINE_TIMEOUT_MS))
+    if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
         return AHCI_PORT_ENGINE_TIMEOUT;
     ahci_port_write(ops, port, AHCI_PX_IS, 0xffffffffU);
     ahci_port_write(ops, port, AHCI_PX_SERR, 0xffffffffU);
@@ -240,18 +245,32 @@ AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
 
 unsigned int AHCIPortCountImplemented(AHCIU32 pi)
 {
-    unsigned int count;
-    unsigned int port;
-
-    count = 0;
-    for (port = 0; port < 32U; ++port) {
-        if ((pi & (1U << port)) != 0)
-            ++count;
-    }
-    return count;
+    return AHCIPortCollectImplemented(pi, 0, 0);
 }
 
 int AHCIPortImplemented(AHCIU32 pi, unsigned int port)
 {
     return port < 32U && (pi & (1U << port)) != 0;
+}
+
+unsigned int AHCIPortCollectImplemented(AHCIU32 pi, unsigned char *ports,
+                                        unsigned int capacity)
+{
+    unsigned int count;
+    unsigned int port;
+
+    count = 0;
+    for (port = 0; port < 32U; ++port) {
+        if ((pi & (1U << port)) != 0) {
+            if (ports != 0 && count < capacity)
+                ports[count] = (unsigned char)port;
+            ++count;
+        }
+    }
+    return count;
+}
+
+int AHCIPortArenaMayRelease(AHCIPortResult stopResult)
+{
+    return stopResult == AHCI_PORT_SUCCESS;
 }

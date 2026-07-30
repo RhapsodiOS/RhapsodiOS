@@ -80,5 +80,8 @@ AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
                                     unsigned int port);
 unsigned int AHCIPortCountImplemented(AHCIU32 pi);
 int AHCIPortImplemented(AHCIU32 pi, unsigned int port);
+unsigned int AHCIPortCollectImplemented(AHCIU32 pi, unsigned char *ports,
+                                        unsigned int capacity);
+int AHCIPortArenaMayRelease(AHCIPortResult stopResult);
 
 #endif

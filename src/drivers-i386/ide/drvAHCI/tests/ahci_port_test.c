@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "AHCIShared.h"
 #include "AHCIPortLogic.h"
 
 static int failures;
@@ -102,6 +103,7 @@ typedef struct {
     AHCIU32 eventValue[256];
     unsigned int eventCount;
     unsigned int delayedMilliseconds;
+    int fisStuck;
 } PortFake;
 
 static AHCIU32 port_read(void *context, AHCIU32 offset)
@@ -134,7 +136,7 @@ static void port_write(void *context, AHCIU32 offset, AHCIU32 value)
     if (offset == AHCI_PORT_BASE(0) + AHCI_PX_CMD) {
         if ((value & AHCI_PXCMD_FRE) != 0)
             value |= AHCI_PXCMD_FR;
-        else
+        else if (!fake->fisStuck)
             value &= ~AHCI_PXCMD_FR;
         if ((value & AHCI_PXCMD_ST) != 0)
             value |= AHCI_PXCMD_CR;
@@ -259,7 +261,9 @@ static void test_comreset_only_for_recoverable_link(void)
           AHCI_PORT_SUCCESS);
     CHECK(kind == AHCI_DEVICE_NONE);
     CHECK(fake.delayedMilliseconds == 0U);
-    CHECK((fake.registers[AHCI_PX_CMD / 4U] & AHCI_PXCMD_ST) == 0);
+    CHECK((fake.registers[AHCI_PX_CMD / 4U] &
+           (AHCI_PXCMD_ST | AHCI_PXCMD_FRE |
+            AHCI_PXCMD_CR | AHCI_PXCMD_FR)) == 0);
 }
 
 static void test_stop_masks_interrupts_and_stops_both_engines(void)
@@ -281,8 +285,36 @@ static void test_stop_masks_interrupts_and_stops_both_engines(void)
             AHCI_PXCMD_CR | AHCI_PXCMD_FR)) == 0);
 }
 
+static void test_empty_port_refuses_release_when_fis_will_not_stop(void)
+{
+    AHCIPortOps ops;
+    AHCIPortArena arena;
+    PortFake fake;
+    AHCIDeviceKind kind;
+    AHCIPortResult result;
+
+    init_active_fake(&fake, 0);
+    fake.registers[AHCI_PX_SSTS / 4U] = 0;
+    fake.fisStuck = 1;
+    memset(&arena, 0, sizeof(arena));
+    arena.physicalBase = 0xc000U;
+    arena.commandListOffset = AHCI_PORT_COMMAND_LIST_OFFSET;
+    arena.receivedFISOffset = AHCI_PORT_RECEIVED_FIS_OFFSET;
+    arena.commandTableOffset = AHCI_PORT_COMMAND_TABLE_OFFSET;
+    ops.context = &fake;
+    ops.read = port_read;
+    ops.write = port_write;
+    ops.delay = port_delay;
+    ops.barrier = port_barrier;
+    result = AHCIPortInitializeHardware(&ops, 0U, 0, &arena, &kind);
+    CHECK(result == AHCI_PORT_ENGINE_TIMEOUT);
+    CHECK(!AHCIPortArenaMayRelease(result));
+}
+
 static void test_sparse_pi_includes_port_31(void)
 {
+    unsigned char ports[AHCI_MAX_PORTS];
+    unsigned int count;
     unsigned int pi;
 
     pi = 0x80000005U;
@@ -292,6 +324,21 @@ static void test_sparse_pi_includes_port_31(void)
     CHECK(AHCIPortImplemented(pi, 2U));
     CHECK(AHCIPortImplemented(pi, 31U));
     CHECK(!AHCIPortImplemented(pi, 32U));
+
+    memset(ports, 0xff, sizeof(ports));
+    count = AHCIPortCollectImplemented(0x80000001U, ports,
+                                       AHCI_MAX_PORTS);
+    CHECK(count == 2U);
+    CHECK(ports[0] == 0U);
+    CHECK(ports[1] == 31U);
+    CHECK(ports[2] == 0xffU);
+}
+
+static void test_arena_release_requires_a_stopped_engine(void)
+{
+    CHECK(AHCIPortArenaMayRelease(AHCI_PORT_SUCCESS));
+    CHECK(!AHCIPortArenaMayRelease(AHCI_PORT_ENGINE_TIMEOUT));
+    CHECK(!AHCIPortArenaMayRelease(AHCI_PORT_BAD_ARGUMENT));
 }
 
 int main(void)
@@ -301,7 +348,9 @@ int main(void)
     test_engine_sequence_and_classification();
     test_comreset_only_for_recoverable_link();
     test_stop_masks_interrupts_and_stops_both_engines();
+    test_empty_port_refuses_release_when_fis_will_not_stop();
     test_sparse_pi_includes_port_31();
+    test_arena_release_requires_a_stopped_engine();
     if (failures != 0)
         return 1;
     printf("ahci_port_test: all tests passed\n");

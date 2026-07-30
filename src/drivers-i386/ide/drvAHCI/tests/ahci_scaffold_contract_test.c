@@ -463,6 +463,34 @@ static int valid_controller_source(const char *text)
            !has_identifier(text, "IdeDisk");
 }
 
+static int valid_task9_interrupt_lifecycle(const char *text)
+{
+    static const char initializer[] =
+        "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription";
+
+    return has_scoped_ordered_pair(text, initializer, "- free",
+               "if ([self enableAllInterrupts] != IO_R_SUCCESS)",
+               "ghc | AHCI_GHC_AE | AHCI_GHC_IE") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[self disableAllInterrupts]; [self free]; return nil;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "driverKitInterruptsEnabled = YES;") &&
+           has_scoped_ordered_pair(text, initializer, "- free",
+               "globalInterruptsEnabled = YES;",
+               "ghc | AHCI_GHC_AE | AHCI_GHC_IE") &&
+           has_scoped_ordered_pair(text, "- free", "- (void)interruptOccurred",
+               "AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);",
+               "[self disableAllInterrupts];") &&
+           has_scoped_expression(text, "- free", "- (void)interruptOccurred",
+               "if (driverKitInterruptsEnabled) { [self disableAllInterrupts]; driverKitInterruptsEnabled = NO; }") &&
+           has_scoped_expression(text, "- (void)interruptOccurred", "@end",
+               "if ([self enableAllInterrupts] == IO_R_SUCCESS) { driverKitInterruptsEnabled = YES; }") &&
+           has_scoped_expression(text, "- (void)interruptOccurred", "@end",
+               "AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);") &&
+           has_scoped_expression(text, "- (void)interruptOccurred", "@end",
+               "AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);");
+}
+
 static int valid_link_makefile(const char *text)
 {
     return has_exact_line(text,
@@ -899,7 +927,9 @@ static void test_bundle_contract(void)
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
                       "commandList[0].ctba = arena.physicalBase + arena.commandTableOffset;", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
-                      "for (port = AHCINextPort(hbaInfo.portsImplemented, -1);", 0);
+                      "implementedCount = AHCIPortCollectImplemented(", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                      "ports[port] = [[AHCIPort alloc] initWithMMIO:&mmio", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
                       "ghc | AHCI_GHC_AE | AHCI_GHC_IE);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
@@ -907,7 +937,7 @@ static void test_bundle_contract(void)
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
                       "stopResult = AHCIPortStopHardware(&ops, portNumber);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
-                      "if (stopResult == AHCI_PORT_SUCCESS && rawArena != 0) {", 0);
+                      "if (AHCIPortArenaMayRelease(stopResult) && rawArena != 0) {", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
                       "AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Load_Commands.sect",
@@ -935,8 +965,53 @@ static void test_controller_contract(void)
                        valid_controller_header);
     require_valid_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
                        valid_controller_source);
+    require_valid_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                       valid_task9_interrupt_lifecycle);
     require_valid_file("AHCI.drvproj/AHCI.lksproj/AHCIHBA.c",
                        valid_hba_source);
+}
+
+static void test_task9_interrupt_mutations(void)
+{
+    char *source;
+    char *mutation;
+    size_t bytes;
+
+    source = read_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m");
+    if (source == NULL) {
+        ++failures;
+        return;
+    }
+    bytes = strlen(source) + 256U;
+    mutation = (char *)malloc(bytes);
+    if (mutation == NULL) {
+        free(source);
+        ++failures;
+        return;
+    }
+    if (!replace_once(mutation, bytes, source,
+                      "if ([self enableAllInterrupts] != IO_R_SUCCESS)",
+                      "if (0)"))
+        ++failures;
+    else
+        expect_invalid("initial interrupt enable removed",
+                       valid_task9_interrupt_lifecycle, mutation);
+    if (!replace_once(mutation, bytes, source,
+                      "[self disableAllInterrupts];\n        driverKitInterruptsEnabled = NO;",
+                      "driverKitInterruptsEnabled = NO;"))
+        ++failures;
+    else
+        expect_invalid("interrupt disable removed",
+                       valid_task9_interrupt_lifecycle, mutation);
+    if (!replace_once(mutation, bytes, source,
+                      "if ([self enableAllInterrupts] == IO_R_SUCCESS)",
+                      "if (1)"))
+        ++failures;
+    else
+        expect_invalid("interrupt re-enable removed",
+                       valid_task9_interrupt_lifecycle, mutation);
+    free(mutation);
+    free(source);
 }
 
 int main(int argc, char **argv)
@@ -948,6 +1023,7 @@ int main(int argc, char **argv)
     }
     test_bundle_contract();
     test_controller_contract();
+    test_task9_interrupt_mutations();
     if (failures != 0) {
         fprintf(stderr, "ahci_scaffold_contract_test: %d failure(s)\n",
                 failures);

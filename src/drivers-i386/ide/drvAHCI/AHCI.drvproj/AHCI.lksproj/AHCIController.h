@@ -22,6 +22,7 @@
     AHCIHBAInfo hbaInfo;
     AHCIPort *ports[AHCI_MAX_PORTS];
     unsigned int portCount;
+    BOOL driverKitInterruptsEnabled;
     BOOL globalInterruptsEnabled;
 }
 

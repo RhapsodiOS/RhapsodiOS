@@ -134,7 +134,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         stopResult = AHCIPortStopHardware(&ops, portNumber);
         hardwareTouched = NO;
     }
-    if (stopResult == AHCI_PORT_SUCCESS && rawArena != 0) {
+    if (AHCIPortArenaMayRelease(stopResult) && rawArena != 0) {
         IOFreeLow(rawArena, rawArenaBytes);
         rawArena = 0;
         rawArenaBytes = 0;

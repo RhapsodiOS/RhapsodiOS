@@ -85,7 +85,9 @@ typedef struct {
     void *context;
     int (*getProperty)(void *, TASNode, const char *,
         const unsigned char **, unsigned long *);
+    /* A non-path query uses *node as a cursor; zero starts iteration. */
     int (*findNode)(void *, const char *, TASNode *);
+    /* Optional accelerators; the parser works when both are null. */
     unsigned long (*findNodes)(void *, const char *, TASNode *,
         unsigned long);
     unsigned long (*findPropertyNodes)(void *, const char *, const char *,

@@ -222,13 +222,32 @@ static int fixture_find(void *context, const char *path, TASNode *nodeId)
 {
     TASFixture *fixture;
     unsigned long index;
+    int after;
     fixture = (TASFixture *)context;
+    if (path[0] == '/') {
+        for (index = 0; index < fixture->nodeCount; ++index) {
+            if (strcmp(fixture->nodes[index].path, path) == 0) {
+                *nodeId = fixture->nodes[index].node;
+                return 1;
+            }
+        }
+        *nodeId = 0;
+        return 0;
+    }
+    after = *nodeId == 0;
     for (index = 0; index < fixture->nodeCount; ++index) {
-        if (strcmp(fixture->nodes[index].path, path) == 0) {
+        if (!after) {
+            if (fixture->nodes[index].node == *nodeId)
+                after = 1;
+            continue;
+        }
+        if (strcmp(path, "*") == 0 ||
+            strcmp(fixture->nodes[index].name, path) == 0) {
             *nodeId = fixture->nodes[index].node;
             return 1;
         }
     }
+    *nodeId = 0;
     return 0;
 }
 

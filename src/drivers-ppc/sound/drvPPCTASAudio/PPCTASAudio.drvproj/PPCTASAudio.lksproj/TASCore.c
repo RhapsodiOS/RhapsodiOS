@@ -76,6 +76,51 @@ static TASStatus parse_range(const unsigned char *bytes, TASRange *range)
     return kTASStatusOK;
 }
 
+static unsigned long find_nodes(const TASPropertyReader *reader,
+    const char *name, TASNode *nodes, unsigned long capacity)
+{
+    TASNode cursor;
+    unsigned long count;
+    if (reader->findNodes != 0)
+        return reader->findNodes(reader->context, name, nodes, capacity);
+    cursor = 0;
+    count = 0;
+    while (count <= capacity &&
+        reader->findNode(reader->context, name, &cursor)) {
+        if (count < capacity)
+            nodes[count] = cursor;
+        ++count;
+    }
+    return count;
+}
+
+static unsigned long find_property_nodes(const TASPropertyReader *reader,
+    const char *name, const char *value, TASNode *nodes,
+    unsigned long capacity)
+{
+    TASNode cursor;
+    const unsigned char *bytes;
+    unsigned long length;
+    unsigned long count;
+    if (reader->findPropertyNodes != 0)
+        return reader->findPropertyNodes(reader->context, name, value, nodes,
+            capacity);
+    cursor = 0;
+    count = 0;
+    while (count <= capacity &&
+        reader->findNode(reader->context, "*", &cursor)) {
+        if (property(reader, cursor, name, &bytes, &length) && length != 0 &&
+            bytes[length - 1UL] == 0 &&
+            strlen((const char *)bytes) + 1UL == length &&
+            strcmp((const char *)bytes, value) == 0) {
+            if (count < capacity)
+                nodes[count] = cursor;
+            ++count;
+        }
+    }
+    return count;
+}
+
 static int node_in(const TASNode *nodes, unsigned long count, TASNode node)
 {
     unsigned long index;
@@ -96,8 +141,7 @@ static int is_sound_bus(const TASPropertyReader *reader, TASNode node)
     unsigned long count;
     unsigned long index;
     for (index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
-        count = reader->findNodes(reader->context, names[index], nodes,
-            TAS_DISCOVERY_LIMIT);
+        count = find_nodes(reader, names[index], nodes, TAS_DISCOVERY_LIMIT);
         if (count > TAS_DISCOVERY_LIMIT)
             return -1;
         if (node_in(nodes, count, node))
@@ -188,9 +232,9 @@ static TASStatus codec_for_chain(const TASPropertyReader *reader,
     if (!reader->findNode(reader->context, "/mac-io/i2c/deq", &codec))
         return kTASStatusNotMatched;
     status = compatible_kind(reader, codec, &refKind, &refCompatible);
-    if (status != kTASStatusOK)
-        return status;
-    if (soundKind != refKind)
+    if (status == kTASStatusOK && soundKind != refKind)
+        return kTASStatusConflict;
+    if (status != kTASStatusOK && status != kTASStatusMissing)
         return kTASStatusConflict;
     candidate->codec = codec;
     candidate->kind = soundKind;
@@ -212,10 +256,9 @@ static TASStatus discover_candidate(const TASPropertyReader *reader,
     unsigned long index;
     unsigned long matches;
     TASStatus status;
-    controllerCount = reader->findNodes(reader->context, "i2s", controllers,
+    controllerCount = find_nodes(reader, "i2s", controllers,
         TAS_DISCOVERY_LIMIT);
-    soundCount = reader->findNodes(reader->context, "sound", sounds,
-        TAS_DISCOVERY_LIMIT);
+    soundCount = find_nodes(reader, "sound", sounds, TAS_DISCOVERY_LIMIT);
     if (controllerCount > TAS_DISCOVERY_LIMIT ||
         soundCount > TAS_DISCOVERY_LIMIT)
         return kTASStatusAmbiguous;
@@ -320,8 +363,7 @@ static TASStatus parse_codec_transport(const TASPropertyReader *reader,
     if (!havePrimary)
         return kTASStatusMissing;
     config->i2cAddress = primary;
-    count = reader->findNodes(reader->context, "i2c", i2cNodes,
-        TAS_DISCOVERY_LIMIT);
+    count = find_nodes(reader, "i2c", i2cNodes, TAS_DISCOVERY_LIMIT);
     if (count == 0 || count > TAS_DISCOVERY_LIMIT ||
         !reader->getParent(reader->context, candidate->codec, &parent))
         return kTASStatusNotMatched;
@@ -362,8 +404,8 @@ static TASStatus resolve_gpio_role(const TASPropertyReader *reader,
         if (!property(reader, owner, primary, &bytes, &length) &&
             (primaryAlias == 0 ||
             !property(reader, owner, primaryAlias, &bytes, &length))) {
-            count = reader->findPropertyNodes(reader->context, "audio-gpio",
-                legacy, nodes, 2);
+            count = find_property_nodes(reader, "audio-gpio", legacy, nodes,
+                2);
             if (count == 0)
                 return kTASStatusOK;
             if (count != 1UL)
@@ -470,7 +512,7 @@ static TASStatus parse_required_gpio(const TASPropertyReader *reader,
 
 static TASStatus parse_route(const TASPropertyReader *reader,
     const TASCandidate *candidate, TASRouteKind kind,
-    TASRouteDescriptor *route)
+    unsigned long quirks, TASRouteDescriptor *route)
 {
     static const char *mutePrimary[kTASRouteCount] = {
         "platform-headphone-mute", "platform-lineout-mute"
@@ -499,6 +541,25 @@ static TASStatus parse_route(const TASPropertyReader *reader,
         &detectNode, &haveDetect);
     if (status != kTASStatusOK)
         return status;
+    if (kind == kTASRouteHeadphone &&
+        (quirks & kTASQuirkANDedReset) != 0) {
+        if (!haveMute)
+            return kTASStatusMissing;
+        status = parse_gpio(reader, candidate->macIO, muteNode, 0,
+            &route->mute);
+        if (status != kTASStatusOK)
+            return status;
+        if (!haveDetect) {
+            route->present = 0;
+            return kTASStatusOK;
+        }
+        status = parse_gpio(reader, candidate->macIO, detectNode, 1,
+            &route->detect);
+        if (status != kTASStatusOK)
+            return status;
+        route->present = 1;
+        return kTASStatusOK;
+    }
     if (!haveMute && !haveDetect) {
         route->present = 0;
         return kTASStatusOK;
@@ -547,6 +608,14 @@ static TASStatus parse_policy(const TASPropertyReader *reader,
         if (config->rates[index] == 0)
             return kTASStatusMalformed;
     }
+    return kTASStatusOK;
+}
+
+static TASStatus parse_quirks(const TASPropertyReader *reader,
+    TASNode soundChip, TASMachineConfig *config)
+{
+    const unsigned char *bytes;
+    unsigned long length;
     if (property(reader, soundChip, "has-anded-reset", &bytes, &length)) {
         if (length != 0)
             return kTASStatusMalformed;
@@ -595,10 +664,20 @@ static TASStatus parse_candidate(const TASPropertyReader *reader,
     status = parse_codec_transport(reader, candidate, config);
     if (status != kTASStatusOK)
         return status;
-    status = parse_required_gpio(reader, candidate, "platform-hw-reset", 0,
-        "audio-hw-reset", &config->hardwareReset);
+    if ((candidate->kind == kTASCodecTAS3001C &&
+        config->i2cAddress != 0x34UL) ||
+        (candidate->kind == kTASCodecTAS3004 &&
+        config->i2cAddress != 0x35UL))
+        return kTASStatusMalformed;
+    status = parse_quirks(reader, candidate->soundChip, config);
     if (status != kTASStatusOK)
         return status;
+    if ((config->quirks & kTASQuirkANDedReset) == 0) {
+        status = parse_required_gpio(reader, candidate, "platform-hw-reset",
+            0, "audio-hw-reset", &config->hardwareReset);
+        if (status != kTASStatusOK)
+            return status;
+    }
     status = parse_required_gpio(reader, candidate, "platform-amp-mute", 0,
         "amp-mute", &config->amplifierMute);
     if (status != kTASStatusOK)
@@ -610,7 +689,7 @@ static TASStatus parse_candidate(const TASPropertyReader *reader,
         return status;
     for (route = 0; route < (int)kTASRouteCount; ++route) {
         status = parse_route(reader, candidate, (TASRouteKind)route,
-            &config->routes[route]);
+            config->quirks, &config->routes[route]);
         if (status != kTASStatusOK)
             return status;
     }
@@ -629,7 +708,6 @@ static TASStatus parse_machine_config(const TASPropertyReader *reader,
     TASCandidate candidate;
     TASStatus status;
     if (reader == 0 || reader->getProperty == 0 || reader->findNode == 0 ||
-        reader->findNodes == 0 || reader->findPropertyNodes == 0 ||
         reader->resolvePhandle == 0 || reader->getParent == 0)
         return kTASStatusMalformed;
     memset(configuration, 0, sizeof(*configuration));

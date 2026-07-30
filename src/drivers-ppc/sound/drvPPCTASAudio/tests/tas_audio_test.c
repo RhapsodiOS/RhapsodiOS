@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+
 #include "tas_fixtures.h"
 
 #include <stdio.h>
@@ -13,6 +15,16 @@ static TASStatus parse(TASFixture *fixture, TASMachineConfig *config)
 {
     TASPropertyReader reader;
     reader = TASFixtureReader(fixture);
+    return TASParseMachineConfig(&reader, config);
+}
+
+static TASStatus parse_four_callbacks(TASFixture *fixture,
+    TASMachineConfig *config)
+{
+    TASPropertyReader reader;
+    reader = TASFixtureReader(fixture);
+    reader.findNodes = 0;
+    reader.findPropertyNodes = 0;
     return TASParseMachineConfig(&reader, config);
 }
 
@@ -94,6 +106,18 @@ static void test_rejects_non_sound_bus_role(void)
     CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
 }
 
+static void test_four_callback_reader_contract(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASFixtureTumbler(&fixture);
+    CHECK(parse_four_callbacks(&fixture, &config) == kTASStatusOK);
+    CHECK(config.codecKind == kTASCodecTAS3001C);
+    TASFixtureSnapper(&fixture);
+    CHECK(parse_four_callbacks(&fixture, &config) == kTASStatusOK);
+    CHECK(config.codecKind == kTASCodecTAS3004);
+}
+
 static void test_ref_is_required_for_aoakeylargo(void)
 {
     TASFixture fixture;
@@ -133,6 +157,22 @@ static void test_old_codec_fallback_parent_and_port(void)
     CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
 }
 
+static void test_old_endpoint_identity_is_topological(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASFixtureTumbler(&fixture);
+    TASFixtureRemove(&fixture, kFixtureCodec, "compatible");
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    CHECK(config.codecKind == kTASCodecTAS3001C);
+    TASFixtureSetString(&fixture, kFixtureCodec, "compatible", "snapper");
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+    TASFixtureSetString(&fixture, kFixtureSoundChip, "compatible",
+        "AOAKeylargo");
+    TASFixtureRemove(&fixture, kFixtureCodec, "compatible");
+    CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
+}
+
 static void test_i2c_port_child_and_alias(void)
 {
     TASFixture fixture;
@@ -163,6 +203,38 @@ static void test_i2c_address_forms_and_conflict(void)
     cells[0] = 0x34;
     TASFixtureSetCells(&fixture, kFixtureCodec, "i2c-address", cells, 1);
     CHECK(parse(&fixture, &config) == kTASStatusConflict);
+}
+
+static void set_codec_address(TASFixture *fixture, unsigned long address)
+{
+    unsigned long cells[1];
+    TASFixtureRemove(fixture, kFixtureCodec, "reg");
+    TASFixtureRemove(fixture, kFixtureCodec, "i2c-address");
+    cells[0] = address;
+    TASFixtureSetCells(fixture, kFixtureCodec, "reg", cells, 1);
+}
+
+static void test_codec_specific_address_matrix(void)
+{
+    static const unsigned long values[] = {
+        0x68, 0x34, 0x6a, 0x35, 0x36, 0x50
+    };
+    static const int tumblerOK[] = { 1, 1, 0, 0, 0, 0 };
+    static const int snapperOK[] = { 0, 0, 1, 1, 0, 0 };
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long index;
+    TASStatus status;
+    for (index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
+        TASFixtureTumbler(&fixture);
+        set_codec_address(&fixture, values[index]);
+        status = parse(&fixture, &config);
+        CHECK((status == kTASStatusOK) == tumblerOK[index]);
+        TASFixtureSnapper(&fixture);
+        set_codec_address(&fixture, values[index]);
+        status = parse(&fixture, &config);
+        CHECK((status == kTASStatusOK) == snapperOK[index]);
+    }
 }
 
 static void test_interrupt_pairs_and_alias(void)
@@ -270,7 +342,85 @@ static void test_routes_and_published_anded_reset(void)
     CHECK(config.quirks == kTASQuirkANDedReset);
     TASFixtureRemove(&fixture, kFixtureSoundBus, "platform-headphone-detect");
     TASFixtureRemove(&fixture, kFixtureHeadphoneDetect, "audio-gpio");
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    CHECK(config.routes[kTASRouteHeadphone].present == 0);
+}
+
+static void remove_headphone_detect(TASFixture *fixture)
+{
+    TASFixtureRemove(fixture, kFixtureSoundBus,
+        "platform-headphone-detect");
+    TASFixtureRemove(fixture, kFixtureHeadphoneDetect, "audio-gpio");
+}
+
+static void remove_headphone_mute(TASFixture *fixture)
+{
+    TASFixtureRemove(fixture, kFixtureSoundBus, "platform-headphone-mute");
+    TASFixtureRemove(fixture, kFixtureHeadphoneMute, "audio-gpio");
+}
+
+static void test_anded_reset_alternative_resources(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASFixtureSnapper(&fixture);
+    TASFixtureSetEmpty(&fixture, kFixtureSoundChip, "has-anded-reset");
+    TASFixtureRemove(&fixture, kFixtureSoundBus, "platform-hw-reset");
+    TASFixtureRemove(&fixture, kFixtureHardwareReset, "audio-gpio");
+    remove_headphone_detect(&fixture);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    CHECK(config.quirks == kTASQuirkANDedReset);
+    CHECK(config.routes[kTASRouteHeadphone].present == 0);
+    CHECK(config.routes[kTASRouteHeadphone].mute.offset == 0x70UL);
+    remove_headphone_mute(&fixture);
     CHECK(parse(&fixture, &config) == kTASStatusMissing);
+    TASFixtureSnapper(&fixture);
+    TASFixtureRemove(&fixture, kFixtureSoundBus, "platform-hw-reset");
+    TASFixtureRemove(&fixture, kFixtureHardwareReset, "audio-gpio");
+    CHECK(parse(&fixture, &config) == kTASStatusMissing);
+}
+
+static int file_contains(const char *path, const char *text)
+{
+    FILE *file;
+    char buffer[1024];
+    size_t count;
+    file = fopen(path, "rb");
+    if (file == 0)
+        return 0;
+    count = fread(buffer, 1, sizeof(buffer) - 1U, file);
+    fclose(file);
+    buffer[count] = 0;
+    return strstr(buffer, text) != 0;
+}
+
+static void test_table_and_legacy_matches_are_disjoint(void)
+{
+    CHECK(file_contains("../PPCTASAudio.drvproj/Default.table",
+        "\"Matching\" = \"i2s\";"));
+    CHECK(!file_contains("../PPCTASAudio.drvproj/Default.table", "awacs"));
+    CHECK(!file_contains("../PPCTASAudio.drvproj/Default.table", "burgundy"));
+    CHECK(file_contains("../../drvPPCAwacs/PPCAwacs.drvproj/Default.table",
+        "awacs davbus"));
+    CHECK(file_contains(
+        "../../drvPPCBurgundy/PPCBurgundy.drvproj/Default.table",
+        "burgundy davbus"));
+}
+
+static void test_non_tas_compatibles_never_match(void)
+{
+    static const char *values[] = {
+        "awacs", "burgundy", "davbus", "tumbler-extra", "snapper-extra"
+    };
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long index;
+    for (index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
+        TASFixtureTumbler(&fixture);
+        TASFixtureSetString(&fixture, kFixtureSoundChip, "compatible",
+            values[index]);
+        CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
+    }
 }
 
 static void test_resources_addresses_and_policy(void)
@@ -321,15 +471,21 @@ int main(void)
     test_snapper_primary_phandles_and_relative_gpio();
     test_discovers_roles_without_fixed_paths();
     test_rejects_non_sound_bus_role();
+    test_four_callback_reader_contract();
     test_ref_is_required_for_aoakeylargo();
     test_multiple_i2s_candidates_are_ambiguous();
     test_old_codec_fallback_parent_and_port();
+    test_old_endpoint_identity_is_topological();
     test_i2c_port_child_and_alias();
     test_i2c_address_forms_and_conflict();
+    test_codec_specific_address_matrix();
     test_interrupt_pairs_and_alias();
     test_gpio_exact_lengths_and_locations();
     test_required_gpio_roles();
     test_routes_and_published_anded_reset();
+    test_anded_reset_alternative_resources();
+    test_table_and_legacy_matches_are_disjoint();
+    test_non_tas_compatibles_never_match();
     test_resources_addresses_and_policy();
     test_config_is_atomic_on_new_errors();
     if (failures != 0) {

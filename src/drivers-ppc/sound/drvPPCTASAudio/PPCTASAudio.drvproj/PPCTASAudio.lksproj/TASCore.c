@@ -1170,19 +1170,19 @@ TASStatus TASPrepareI2STransition(const TASMachineConfig *configuration,
         return kTASStatusMalformed;
     if (!valid_shared_clock(state))
         return kTASStatusMalformed;
-    if (state->generation == ~0UL)
-        return kTASStatusOverflow;
     status = TASSelectI2SClock(configuration, rate, &prepared.clock);
     if (status != kTASStatusOK)
         return status;
-    live = state->activeMask != 0UL && state->activeRate != rate;
-    if (live && ((state->quiescedMask & state->activeMask) !=
-        state->activeMask || !state->outputsMuted))
-        return kTASStatusConflict;
     prepared.generation = state->generation;
     prepared.activeRate = state->activeRate;
     prepared.activeMask = state->activeMask;
     prepared.noOp = state->activeMask != 0UL && state->activeRate == rate;
+    if (state->generation == ~0UL && !prepared.noOp)
+        return kTASStatusOverflow;
+    live = state->activeMask != 0UL && state->activeRate != rate;
+    if (live && ((state->quiescedMask & state->activeMask) !=
+        state->activeMask || !state->outputsMuted))
+        return kTASStatusConflict;
     *transition = prepared;
     return kTASStatusOK;
 }
@@ -1218,6 +1218,8 @@ TASStatus TASObserveI2SClockStopped(const TASSharedClock *state,
         return kTASStatusMalformed;
     if (!valid_transition(state, transition))
         return kTASStatusConflict;
+    if (transition->noOp)
+        return kTASStatusMalformed;
     if (!clocksStopped)
         return kTASStatusTimeout;
     observed.transition = *transition;
@@ -1259,6 +1261,8 @@ TASStatus TASCommitI2STransition(TASSharedClock *state,
         return kTASStatusMalformed;
     if (!valid_transition(state, &stopped->transition))
         return kTASStatusConflict;
+    if (stopped->transition.noOp)
+        return kTASStatusMalformed;
     committed = *state;
     if (advance_generation(&committed) != kTASStatusOK)
         return kTASStatusOverflow;

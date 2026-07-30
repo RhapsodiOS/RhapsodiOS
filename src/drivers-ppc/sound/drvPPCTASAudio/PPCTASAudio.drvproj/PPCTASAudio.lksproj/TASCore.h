@@ -237,6 +237,7 @@ typedef struct {
 } TASAudioAction;
 
 #define TAS_AUDIO_ACTION_MAX 32
+#define TAS_AUDIO_DEBOUNCE_CONFIRM_MS 5UL
 
 typedef struct {
     TASAudioAction actions[TAS_AUDIO_ACTION_MAX];
@@ -255,6 +256,7 @@ typedef struct {
     unsigned long generation;
     unsigned long detectGeneration;
     unsigned long actionCount;
+    unsigned long deadline;
     unsigned long targetRoutes;
     TASPowerState targetPower;
 } TASAudioToken;
@@ -267,6 +269,8 @@ typedef struct {
     unsigned long generation;
     unsigned long detectGeneration;
     unsigned long debounceDeadline;
+    unsigned long candidateDetects;
+    unsigned long transitionDeadline;
     TASCodecKind codecKind;
     unsigned long quirks;
     TASPowerState powerState;
@@ -277,6 +281,7 @@ typedef struct {
     int startsBlocked;
     int transitionPending;
     int debouncePending;
+    int candidateValid;
     int detectBlocked;
     int transitionBlocked;
 } TASAudioState;

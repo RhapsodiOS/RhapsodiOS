@@ -1406,19 +1406,14 @@ TASStatus TASAudioSetDesiredControls(TASAudioState *state,
 {
     if (!valid_audio_state(state) || !valid_audio_controls(controls))
         return kTASStatusMalformed;
+    if (state->transitionPending)
+        return kTASStatusConflict;
     if (state->transitionBlocked || state->generation == ~0UL) {
         state->transitionBlocked = 1;
         return kTASStatusOverflow;
     }
     state->desired = *controls;
     ++state->generation;
-    if (state->transitionPending) {
-        state->transitionPending = 0;
-        state->currentRoutes = 0UL;
-        state->routeValid = 0;
-        state->hardwareValid = 0;
-        state->outputsMuted = 1;
-    }
     return kTASStatusOK;
 }
 
@@ -1467,6 +1462,7 @@ TASStatus TASAudioRecordDetectISR(TASAudioState *state,
     state->desiredDetects = audio_normalize_detects(state, detects);
     state->debouncePending = 1;
     state->debounceDeadline = 0UL;
+    state->candidateValid = 0;
     *generation = state->detectGeneration;
     return kTASStatusOK;
 }
@@ -1506,6 +1502,7 @@ TASStatus TASAudioPrepareDebounceSample(TASAudioState *state,
     token->kind = kTASAudioTokenDebounce;
     token->detectGeneration = generation;
     token->actionCount = 1UL;
+    token->deadline = state->debounceDeadline;
     return kTASStatusOK;
 }
 
@@ -1515,16 +1512,43 @@ TASStatus TASAudioApplyDetectSample(TASAudioState *state,
 {
     TASAudioState changed;
     TASStatus status;
+    unsigned long normalized;
+    unsigned long deadline;
+    TASAudioActionPlan scheduled;
+    TASAudioToken empty;
     if (!valid_audio_state(state) || sample == 0 || plan == 0 || token == 0)
         return kTASStatusMalformed;
     if (sample->kind != kTASAudioTokenDebounce ||
         sample->detectGeneration != state->detectGeneration ||
+        sample->deadline != state->debounceDeadline ||
         !state->debouncePending)
         return kTASStatusConflict;
+    normalized = audio_normalize_detects(state, detects);
+    if (!state->candidateValid || state->candidateDetects != normalized) {
+        if (sample->deadline > ~0UL - TAS_AUDIO_DEBOUNCE_CONFIRM_MS ||
+            state->detectGeneration == ~0UL)
+            return kTASStatusOverflow;
+        deadline = sample->deadline + TAS_AUDIO_DEBOUNCE_CONFIRM_MS;
+        changed = *state;
+        ++changed.detectGeneration;
+        changed.candidateDetects = normalized;
+        changed.candidateValid = 1;
+        changed.debouncePending = 1;
+        changed.debounceDeadline = deadline;
+        audio_plan_init(&scheduled);
+        audio_action(&scheduled, kTASAudioScheduleDebounce,
+            changed.detectGeneration, deadline);
+        memset(&empty, 0, sizeof(empty));
+        *state = changed;
+        *plan = scheduled;
+        *token = empty;
+        return kTASStatusUnresolved;
+    }
     changed = *state;
     changed.debouncePending = 0;
     changed.debounceDeadline = 0UL;
-    status = TASAudioPrepareRoute(&changed, detects, plan, token);
+    changed.candidateValid = 0;
+    status = TASAudioPrepareRoute(&changed, normalized, plan, token);
     if (status == kTASStatusOK)
         *state = changed;
     return status;
@@ -1534,6 +1558,7 @@ static void audio_invalidate_debounce(TASAudioState *state)
 {
     state->debouncePending = 0;
     state->debounceDeadline = 0UL;
+    state->candidateValid = 0;
     if (state->detectGeneration == ~0UL)
         state->detectBlocked = 1;
     else
@@ -1562,7 +1587,7 @@ static void audio_build_sleep(TASAudioState *state, unsigned long deadline,
 }
 
 static void audio_build_wake(TASAudioState *state, unsigned long deadline,
-    TASAudioActionPlan *plan, unsigned long target)
+    TASAudioActionPlan *plan)
 {
     TASAudioAction *volume;
     audio_mute_all(state, plan);
@@ -1588,21 +1613,12 @@ static void audio_build_wake(TASAudioState *state, unsigned long deadline,
         state->desired.inputSource, deadline);
     audio_action(plan, kTASAudioRestoreInputGain,
         state->desired.inputGain, deadline);
-    audio_action(plan, kTASAudioSetOutputMux, target, 0UL);
-    audio_action(plan, kTASAudioSetCodecRoute, target, deadline);
-    if ((target & kTASAudioRouteSpeaker) != 0UL)
-        audio_action(plan, kTASAudioUnmuteSpeaker, 0UL, 0UL);
-    if ((target & kTASAudioRouteHeadphone) != 0UL)
-        audio_action(plan, kTASAudioUnmuteHeadphone, 0UL, 0UL);
-    if ((target & kTASAudioRouteLineOut) != 0UL)
-        audio_action(plan, kTASAudioUnmuteLineOut, 0UL, 0UL);
 }
 
 TASStatus TASAudioPreparePower(TASAudioState *state, TASPowerState power,
     unsigned long deadline, TASAudioActionPlan *plan, TASAudioToken *token)
 {
     TASStatus status;
-    unsigned long target;
     if (!valid_audio_state(state) || plan == 0 || token == 0 ||
         deadline == 0UL || power < kTASPowerReady ||
         power > kTASPowerOff)
@@ -1614,16 +1630,17 @@ TASStatus TASAudioPreparePower(TASAudioState *state, TASPowerState power,
     if (status != kTASStatusOK)
         return status;
     state->startsBlocked = 1;
+    state->transitionDeadline = deadline;
     audio_invalidate_debounce(state);
     audio_plan_init(plan);
-    target = audio_target_routes(state, state->desiredDetects);
     if (power == kTASPowerReady)
-        audio_build_wake(state, deadline, plan, target);
+        audio_build_wake(state, deadline, plan);
     else
         audio_build_sleep(state, deadline, plan);
-    token->targetRoutes = power == kTASPowerReady ? target : 0UL;
+    token->targetRoutes = 0UL;
     token->targetPower = power;
     token->actionCount = plan->count;
+    token->deadline = deadline;
     if (power == kTASPowerReady) {
         state->debouncePending = 1;
         state->debounceDeadline = deadline;
@@ -1637,6 +1654,7 @@ TASStatus TASAudioAuthorizeAction(const TASAudioState *state,
     if (!valid_audio_state(state) || token == 0)
         return kTASStatusMalformed;
     if (!state->transitionPending || token->generation != state->generation ||
+        token->deadline != state->transitionDeadline ||
         token->kind == kTASAudioTokenNone || index >= token->actionCount)
         return kTASStatusConflict;
     return kTASStatusOK;
@@ -1648,7 +1666,8 @@ TASStatus TASAudioCommitTransition(TASAudioState *state,
     TASAudioToken consumed;
     if (!valid_audio_state(state) || token == 0)
         return kTASStatusMalformed;
-    if (!state->transitionPending || token->generation != state->generation)
+    if (!state->transitionPending || token->generation != state->generation ||
+        token->deadline != state->transitionDeadline)
         return kTASStatusConflict;
     if (token->kind == kTASAudioTokenRoute) {
         state->currentRoutes = token->targetRoutes;
@@ -1660,9 +1679,9 @@ TASStatus TASAudioCommitTransition(TASAudioState *state,
         state->streamsRunning = 0;
         state->currentRoutes = token->targetRoutes;
         if (token->targetPower == kTASPowerReady) {
-            state->routeValid = 1;
+            state->routeValid = 0;
             state->hardwareValid = 1;
-            state->outputsMuted = token->targetRoutes == 0UL;
+            state->outputsMuted = 1;
             state->startsBlocked = 0;
         } else {
             state->routeValid = 0;
@@ -1673,6 +1692,7 @@ TASStatus TASAudioCommitTransition(TASAudioState *state,
     } else
         return kTASStatusMalformed;
     state->transitionPending = 0;
+    state->transitionDeadline = 0UL;
     memset(&consumed, 0, sizeof(consumed));
     *token = consumed;
     return kTASStatusOK;
@@ -1685,16 +1705,17 @@ TASStatus TASAudioFailTransition(TASAudioState *state, TASAudioToken *token,
     if (!valid_audio_state(state) || token == 0 || plan == 0)
         return kTASStatusMalformed;
     if (!state->transitionPending || token->generation != state->generation ||
+        token->deadline != state->transitionDeadline ||
         (token->kind != kTASAudioTokenRoute &&
         token->kind != kTASAudioTokenPower))
         return kTASStatusConflict;
     audio_plan_init(plan);
     audio_mute_all(state, plan);
     if (token->kind == kTASAudioTokenPower) {
-        audio_action(plan, kTASAudioStopOutputDMA, 0UL, 0UL);
-        audio_action(plan, kTASAudioResetOutputDMA, 0UL, 0UL);
-        audio_action(plan, kTASAudioStopInputDMA, 0UL, 0UL);
-        audio_action(plan, kTASAudioResetInputDMA, 0UL, 0UL);
+        audio_action(plan, kTASAudioStopOutputDMA, 0UL, token->deadline);
+        audio_action(plan, kTASAudioResetOutputDMA, 0UL, token->deadline);
+        audio_action(plan, kTASAudioStopInputDMA, 0UL, token->deadline);
+        audio_action(plan, kTASAudioResetInputDMA, 0UL, token->deadline);
         state->powerState = kTASPowerFault;
         state->startsBlocked = 1;
         audio_invalidate_debounce(state);
@@ -1705,6 +1726,7 @@ TASStatus TASAudioFailTransition(TASAudioState *state, TASAudioToken *token,
     state->hardwareValid = 0;
     state->outputsMuted = 1;
     state->transitionPending = 0;
+    state->transitionDeadline = 0UL;
     if (state->generation == ~0UL)
         state->transitionBlocked = 1;
     else

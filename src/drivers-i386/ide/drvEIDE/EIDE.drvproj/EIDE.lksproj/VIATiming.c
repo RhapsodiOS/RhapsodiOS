@@ -247,6 +247,10 @@ void VIAResetConfig(viaConfig_t *config, viaChip_t chip,
     unsigned char setupMask;
     unsigned char unit;
 
+    if (chip <= VIA_CHIP_NONE || chip > VIA_CHIP_686A ||
+        channel > VIA_CHANNEL_SECONDARY)
+        return;
+
     VIAConfigureEarlyFIFO(config, chip);
     VIAClearHalfClock(config, chip, channel);
 

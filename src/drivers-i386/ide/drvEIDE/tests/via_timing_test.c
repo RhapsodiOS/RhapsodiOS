@@ -331,6 +331,28 @@ static void test_invalid_compute_inputs_fail_closed(void)
                                        drive(1, 5, VIA_XFER_PIO, 4));
 }
 
+static void check_invalid_reset_is_unchanged(viaChip_t chip,
+                                             unsigned char channel)
+{
+    viaConfig_t config;
+    viaConfig_t expected;
+
+    fill_config_sequence(&config);
+    expected = config;
+
+    VIAResetConfig(&config, chip, channel);
+
+    CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
+}
+
+static void test_invalid_reset_inputs_fail_closed(void)
+{
+    check_invalid_reset_is_unchanged(VIA_CHIP_NONE, VIA_CHANNEL_PRIMARY);
+    check_invalid_reset_is_unchanged((viaChip_t)(VIA_CHIP_686A + 1),
+                                     VIA_CHANNEL_PRIMARY);
+    check_invalid_reset_is_unchanged(VIA_CHIP_596A, 2);
+}
+
 static void test_udma_input_is_not_rejected(void)
 {
     viaConfig_t config;
@@ -375,6 +397,7 @@ int main(void)
     test_absent_sibling_fields_stay_unchanged();
     test_later_chip_resets_preserve_owned_fields();
     test_invalid_compute_inputs_fail_closed();
+    test_invalid_reset_inputs_fail_closed();
     test_udma_input_is_not_rejected();
     test_cable_detection_is_disabled();
 

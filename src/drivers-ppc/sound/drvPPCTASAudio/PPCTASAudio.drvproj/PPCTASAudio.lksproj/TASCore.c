@@ -1384,9 +1384,15 @@ static TASStatus audio_reserve(TASAudioState *state, TASAudioTokenKind kind,
     token->kind = kind;
     token->generation = state->generation;
     token->detectGeneration = state->detectGeneration;
+    token->sourceDetectGeneration = state->detectGeneration;
     token->sourceDesiredDetects = state->desiredDetects;
+    token->sourceDebounceDeadline = state->debounceDeadline;
+    token->sourceCandidateDetects = state->candidateDetects;
     token->sourcePower = state->powerState;
     token->sourceStartsBlocked = state->startsBlocked;
+    token->sourceDebouncePending = state->debouncePending;
+    token->sourceCandidateValid = state->candidateValid;
+    token->sourceDetectBlocked = state->detectBlocked;
     return kTASStatusOK;
 }
 
@@ -1740,9 +1746,15 @@ TASStatus TASAudioPreparePower(TASAudioState *state, TASPowerState power,
     status = audio_reserve(&changed, kTASAudioTokenPower, token);
     if (status != kTASStatusOK)
         return status;
+    token->sourceDetectGeneration = state->detectGeneration;
     token->sourceDesiredDetects = state->desiredDetects;
+    token->sourceDebounceDeadline = state->debounceDeadline;
+    token->sourceCandidateDetects = state->candidateDetects;
     token->sourcePower = state->powerState;
     token->sourceStartsBlocked = state->startsBlocked;
+    token->sourceDebouncePending = state->debouncePending;
+    token->sourceCandidateValid = state->candidateValid;
+    token->sourceDetectBlocked = state->detectBlocked;
     token->targetRoutes = 0UL;
     token->targetPower = power;
     token->actionCount = built.count;
@@ -1854,6 +1866,7 @@ TASStatus TASAudioCancelTransition(TASAudioState *state,
     TASAudioToken *token)
 {
     TASAudioToken consumed;
+    int detectUnchanged;
     if (!valid_audio_state(state) || token == 0)
         return kTASStatusMalformed;
     if (!audio_token_current(state, token, 1) ||
@@ -1867,11 +1880,20 @@ TASStatus TASAudioCancelTransition(TASAudioState *state,
         return kTASStatusConflict;
     if (state->generation == ~0UL)
         return kTASStatusOverflow;
+    detectUnchanged = token->detectGeneration == state->detectGeneration;
     if (token->kind == kTASAudioTokenPower) {
         state->powerState = token->sourcePower;
         state->startsBlocked = token->sourceStartsBlocked;
+        if (detectUnchanged) {
+            state->detectGeneration = token->sourceDetectGeneration;
+            state->debouncePending = token->sourceDebouncePending;
+            state->debounceDeadline = token->sourceDebounceDeadline;
+            state->candidateValid = token->sourceCandidateValid;
+            state->candidateDetects = token->sourceCandidateDetects;
+            state->detectBlocked = token->sourceDetectBlocked;
+        }
     }
-    if (token->detectGeneration == state->detectGeneration)
+    if (detectUnchanged)
         state->desiredDetects = token->sourceDesiredDetects;
     ++state->generation;
     state->transitionPending = 0;

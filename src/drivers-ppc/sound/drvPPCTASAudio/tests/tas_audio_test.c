@@ -2552,6 +2552,7 @@ static void test_audio_cancel_transition(void)
     TASAudioState state;
     TASAudioState before;
     TASAudioState reserved;
+    TASAudioState newest;
     TASAudioActionPlan plan;
     TASAudioActionPlan rollbackPlan;
     TASAudioToken token;
@@ -2563,6 +2564,103 @@ static void test_audio_cancel_transition(void)
     unsigned long edge;
     unsigned long reservedGeneration;
     audio_controls(&controls, 0);
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone, kTASCodecTAS3001C, kTASQuirkANDedReset,
+        &controls) == kTASStatusOK);
+    CHECK(TASAudioRecordDetectISR(&state, 1UL, &edge) == kTASStatusOK);
+    CHECK(TASAudioBuildDebounceSchedule(&state, edge, 100UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASAudioPrepareDebounceSample(&state, edge, 100UL, &plan,
+        &sample) == kTASStatusOK);
+    CHECK(TASAudioApplyDetectSample(&state, &sample, 1UL, 100UL, &plan,
+        &rejectedToken) == kTASStatusUnresolved);
+    before = state;
+    CHECK(before.debouncePending && before.candidateValid &&
+        before.debounceDeadline == 100UL + TAS_AUDIO_DEBOUNCE_CONFIRM_MS);
+    CHECK(TASAudioPreparePower(&state, kTASPowerSuspended, 200UL, &plan,
+        &token) == kTASStatusOK);
+    CHECK(!state.debouncePending && !state.candidateValid);
+
+    reserved = state;
+    rejectedToken = token;
+    ++rejectedToken.generation;
+    newest = reserved;
+    beforeToken = rejectedToken;
+    CHECK(TASAudioCancelTransition(&reserved, &rejectedToken) ==
+        kTASStatusConflict);
+    CHECK(memcmp(&reserved, &newest, sizeof(reserved)) == 0);
+    CHECK(memcmp(&rejectedToken, &beforeToken, sizeof(rejectedToken)) == 0);
+
+    reserved = state;
+    rejectedToken = token;
+    CHECK(TASAudioAuthorizeAction(&reserved, &rejectedToken, 0UL) ==
+        kTASStatusOK);
+    newest = reserved;
+    beforeToken = rejectedToken;
+    CHECK(TASAudioCancelTransition(&reserved, &rejectedToken) ==
+        kTASStatusConflict);
+    CHECK(memcmp(&reserved, &newest, sizeof(reserved)) == 0);
+    CHECK(memcmp(&rejectedToken, &beforeToken, sizeof(rejectedToken)) == 0);
+    CHECK(TASAudioCompleteAction(&reserved, &rejectedToken, 0UL) ==
+        kTASStatusOK);
+    newest = reserved;
+    beforeToken = rejectedToken;
+    CHECK(TASAudioCancelTransition(&reserved, &rejectedToken) ==
+        kTASStatusConflict);
+    CHECK(memcmp(&reserved, &newest, sizeof(reserved)) == 0);
+    CHECK(memcmp(&rejectedToken, &beforeToken, sizeof(rejectedToken)) == 0);
+
+    CHECK(TASAudioCancelTransition(&state, &token) == kTASStatusOK);
+    CHECK(state.powerState == before.powerState && state.startsBlocked ==
+        before.startsBlocked && state.detectGeneration ==
+        before.detectGeneration && state.desiredDetects ==
+        before.desiredDetects && state.debouncePending ==
+        before.debouncePending && state.debounceDeadline ==
+        before.debounceDeadline && state.candidateValid ==
+        before.candidateValid && state.candidateDetects ==
+        before.candidateDetects && state.detectBlocked ==
+        before.detectBlocked);
+    CHECK(TASAudioPrepareDebounceSample(&state, state.detectGeneration,
+        state.debounceDeadline, &plan, &sample) == kTASStatusOK);
+    CHECK(TASAudioApplyDetectSample(&state, &sample, 1UL,
+        state.debounceDeadline, &plan, &token) == kTASStatusOK);
+    audio_complete_plan(&state, &token);
+    CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+    CHECK(state.currentRoutes == kTASAudioRouteHeadphone);
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone, kTASCodecTAS3001C, kTASQuirkANDedReset,
+        &controls) == kTASStatusOK);
+    CHECK(TASAudioRecordDetectISR(&state, 0UL, &edge) == kTASStatusOK);
+    CHECK(TASAudioBuildDebounceSchedule(&state, edge, 300UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASAudioPreparePower(&state, kTASPowerSuspended, 400UL, &plan,
+        &token) == kTASStatusOK);
+    CHECK(TASAudioRecordDetectISR(&state, 1UL, &edge) == kTASStatusOK);
+    newest = state;
+    CHECK(TASAudioCancelTransition(&state, &token) == kTASStatusOK);
+    CHECK(state.powerState == kTASPowerReady && !state.startsBlocked &&
+        state.detectGeneration == newest.detectGeneration &&
+        state.desiredDetects == newest.desiredDetects &&
+        state.debouncePending == newest.debouncePending &&
+        state.debounceDeadline == newest.debounceDeadline &&
+        state.candidateValid == newest.candidateValid &&
+        state.candidateDetects == newest.candidateDetects &&
+        state.detectBlocked == newest.detectBlocked);
+    CHECK(TASAudioBuildDebounceSchedule(&state, edge, 450UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASAudioPrepareDebounceSample(&state, edge, 450UL, &plan,
+        &sample) == kTASStatusOK);
+    CHECK(TASAudioApplyDetectSample(&state, &sample, 1UL, 450UL, &plan,
+        &rejectedToken) == kTASStatusUnresolved);
+    CHECK(TASAudioPrepareDebounceSample(&state, state.detectGeneration,
+        state.debounceDeadline, &plan, &sample) == kTASStatusOK);
+    CHECK(TASAudioApplyDetectSample(&state, &sample, 1UL,
+        state.debounceDeadline, &plan, &token) == kTASStatusOK);
+    audio_complete_plan(&state, &token);
+    CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+    CHECK(state.currentRoutes == kTASAudioRouteHeadphone);
 
     CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
         kTASAudioRouteHeadphone, kTASCodecTAS3001C, kTASQuirkANDedReset,

@@ -261,7 +261,10 @@ typedef struct {
     TASAudioTokenKind kind;
     unsigned long generation;
     unsigned long detectGeneration;
+    unsigned long sourceDetectGeneration;
     unsigned long sourceDesiredDetects;
+    unsigned long sourceDebounceDeadline;
+    unsigned long sourceCandidateDetects;
     unsigned long actionCount;
     unsigned long deadline;
     unsigned long nextAction;
@@ -271,6 +274,9 @@ typedef struct {
     TASPowerState sourcePower;
     int actionInFlight;
     int sourceStartsBlocked;
+    int sourceDebouncePending;
+    int sourceCandidateValid;
+    int sourceDetectBlocked;
 } TASAudioToken;
 
 typedef enum {

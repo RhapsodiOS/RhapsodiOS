@@ -948,6 +948,7 @@ static unsigned char unaligned_warnings;
     unsigned int	dispatchCommand;
     ideTaskfile_t	taskfile;
     BOOL		addressCommand;
+    BOOL		nativeDMA;
 
     ddm_ide_cmd("ideExecuteCmd: executing %x\n", ideIoReq->cmd,2,3,4,5);
 
@@ -1019,12 +1020,72 @@ static unsigned char unaligned_warnings;
 	}
 
 	dispatchCommand = command;
+	nativeDMA = (dispatchCommand == IDE_READ_DMA ||
+		dispatchCommand == IDE_WRITE_DMA) &&
+		(((vm_offset_t)ideIoReq->addr & 0x03) == 0);
+
+	if (nativeDMA) {
+	    dh = _drives[_driveNum].addressMode;
+	    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
+	    outb(_ideRegsAddrs.drHead, dh);
+	    IODelay(1);
+	    [self clearInterrupts];
+
+	    switch (dispatchCommand) {
+	      case IDE_READ_DMA:
+		block = ideIoReq->block;
+		cnt = ideIoReq->blkcnt;
+		ddm_ide_log("IDE_READ_DMA: %d\n", cnt, 2, 3, 4, 5);
+		if (cnt > MAX_BLOCKS_PER_XFER) {
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+
+		ideIoReq->status = [self performDMA:ideIoReq];
+		if (ideIoReq->status == IDER_SUCCESS)
+		    ideIoReq->blocks_xfered = ideIoReq->blkcnt;
+		break;
+
+	      case IDE_WRITE_DMA:
+		block = ideIoReq->block;
+		cnt = ideIoReq->blkcnt;
+		ddm_ide_log("IDE_WRITE_DMA: %d\n", cnt, 2, 3, 4, 5);
+		if (cnt > MAX_BLOCKS_PER_XFER) {
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+
+		ideIoReq->status = [self performDMA:ideIoReq];
+		if (ideIoReq->status == IDER_SUCCESS)
+		    ideIoReq->blocks_xfered = ideIoReq->blkcnt;
+		break;
+
+	      default:
+		break;
+	    }
+	} else {
+	    if (dispatchCommand == IDE_READ_DMA) {
+		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
+		    IOLog("%s: READ DMA: buffer not 4-byte aligned\n",
+			[self name]);
+		    unaligned_warnings++;
+		}
+		command = IDE_READ_MULTIPLE;
+		dispatchCommand = command;
+	    } else if (dispatchCommand == IDE_WRITE_DMA) {
+		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
+		    IOLog("%s: WRITE DMA: buffer not 4-byte aligned\n",
+			[self name]);
+		    unaligned_warnings++;
+		}
+		command = IDE_WRITE_MULTIPLE;
+		dispatchCommand = command;
+	    }
+
 	addressCommand = NO;
 	switch (dispatchCommand) {
-	  case IDE_READ_DMA:
 	  case IDE_READ:
 	  case IDE_READ_MULTIPLE:
-	  case IDE_WRITE_DMA:
 	  case IDE_WRITE:
 	  case IDE_WRITE_MULTIPLE:
 	  case IDE_READ_VERIFY:
@@ -1070,27 +1131,6 @@ static unsigned char unaligned_warnings;
 
 	switch (dispatchCommand) {
 
-	  case IDE_READ_DMA:
-		if (((vm_offset_t)ideIoReq->addr & 0x03) == 0) {
-		ddm_ide_log("IDE_READ_DMA: %d\n", cnt, 2, 3, 4, 5);
-
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
-		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-	    break;
-		}
-		
-		/*
-		 * If we reached here, it means that the buffer is not 4-byte
-		 * aligned. This should not happen.
-		 */
-		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
-			IOLog("%s: READ DMA: buffer not 4-byte aligned\n", [self name]);
-			unaligned_warnings++;
-		}
-		command = taskfile.useLBA48 ?
-			IDE_READ_MULTIPLE_EXT : IDE_READ_MULTIPLE;
-
 	  case IDE_READ:
 	  case IDE_READ_MULTIPLE:
 
@@ -1111,27 +1151,6 @@ static unsigned char unaligned_warnings;
 	    if (ideIoReq->status == IDER_SUCCESS)
 		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
 	    break;
-
-	  case IDE_WRITE_DMA:
-		if (((vm_offset_t)ideIoReq->addr & 0x03) == 0) {
-		ddm_ide_log("IDE_WRITE_DMA: %d\n", cnt, 2, 3, 4, 5);
-
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
-		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-	    break;
-		}
-
-		/*
-		 * If we reached here, it means that the buffer is not 4-byte
-		 * aligned. This should not happen.
-		 */
-		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
-			IOLog("%s: WRITE DMA: buffer not 4-byte aligned\n", [self name]);
-			unaligned_warnings++;
-		}
-		command = taskfile.useLBA48 ?
-			IDE_WRITE_MULTIPLE_EXT : IDE_WRITE_MULTIPLE;
 
 	  case IDE_WRITE:
 	  case IDE_WRITE_MULTIPLE:
@@ -1217,6 +1236,7 @@ static unsigned char unaligned_warnings;
 	    ddm_ide_lock("ideExecuteCmd: releasing lock, bad cmd\n",1,2,3,4,5);
 	    [self ideCntrlrUnLock];
 	    return (IDER_REJECT);
+	}
 	}
 
 	/*

@@ -28,6 +28,7 @@ static void test_highest_mode_bit(void)
     CHECK(ideHighestModeBit(0x0000, 5) == 0x00);
     CHECK(ideHighestModeBit(0x0021, 5) == 0x20);
     CHECK(ideHighestModeBit(0x0001, 0) == 0x01);
+    CHECK(ideHighestModeBit(0xffc0, 5) == 0x00);
 }
 
 static void fill_config(viaConfig_t *config, unsigned char value)
@@ -418,6 +419,38 @@ static void test_586a_udma2_preserves_unowned_and_siblings(void)
     CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
 }
 
+static void test_udma0_and_udma1_encodings(void)
+{
+    static const viaChip_t chips[] = {
+        VIA_CHIP_586A, VIA_CHIP_596A, VIA_CHIP_686A
+    };
+    static const unsigned char expected[][2] = {
+        { 0xc2, 0xc1 },
+        { 0xe2, 0xe1 },
+        { 0xe2, 0xe1 }
+    };
+    viaConfig_t config;
+    viaDriveTiming_t drives[2];
+    unsigned char chip;
+    unsigned char mode;
+
+    drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
+    for (chip = 0; chip < sizeof(chips) / sizeof(chips[0]); ++chip) {
+        for (mode = 0; mode < 2; ++mode) {
+            fill_config(&config, 0x00);
+            drives[0] = drive(1, 4, VIA_XFER_UDMA, mode);
+
+            VIAComputeConfig(&config, chips[chip],
+                             VIA_CHANNEL_PRIMARY, drives);
+
+            CHECK(CFG(config, 0x53) == expected[chip][mode]);
+            CHECK(CFG(config, 0x52) == 0x03);
+            if (chips[chip] == VIA_CHIP_686A)
+                CHECK((CFG(config, 0x52) & 0x08) == 0);
+        }
+    }
+}
+
 static void test_596a_udma2_preserves_reserved_bits(void)
 {
     viaConfig_t config;
@@ -624,6 +657,7 @@ int main(void)
     test_invalid_compute_inputs_fail_closed();
     test_invalid_reset_inputs_fail_closed();
     test_original_586_preserves_udma_window();
+    test_udma0_and_udma1_encodings();
     test_586a_udma2_preserves_unowned_and_siblings();
     test_596a_udma2_preserves_reserved_bits();
     test_686a_udma4_and_cable_detection();

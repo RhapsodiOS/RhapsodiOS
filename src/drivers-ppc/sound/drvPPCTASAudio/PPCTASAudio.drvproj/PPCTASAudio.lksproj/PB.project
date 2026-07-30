@@ -1,8 +1,9 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        C_FILES = (TASCore.c, TAS3001C.c, TAS3004.c, PPCDBDMAAudio.c);
-        H_FILES = (TASCore.h, TASCodec.h, PPCDBDMAAudio.h);
+        CLASSES = (PPCTASAudio.m);
+        C_FILES = (TASCore.c, TAS3001C.c, TAS3004.c, PPCDBDMAAudio.c, TASRuntime.c);
+        H_FILES = (PPCTASAudio.h, TASCore.h, TASCodec.h, PPCDBDMAAudio.h, TASRuntime.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,
@@ -11,6 +12,7 @@
             Load_Commands.sect,
             ../../tests/Makefile.host,
             ../../tests/tas_audio_test.c,
+            ../../tests/tas_runtime_test.c,
             ../../tests/tas_fixtures.c,
             ../../tests/tas_fixtures.h
         );

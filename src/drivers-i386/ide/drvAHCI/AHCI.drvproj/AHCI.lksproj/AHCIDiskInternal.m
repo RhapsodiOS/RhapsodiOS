@@ -77,6 +77,23 @@
     return YES;
 }
 
+- (IOReturn)flushCache
+{
+    AHCIDiskRequest *request;
+    IOReturn result;
+
+    request = [self allocRequest:0];
+    request->command = AHCI_DISK_FLUSH;
+    result = [self enqueueRequest:request];
+    [self freeRequest:request];
+    return result;
+}
+
+IOReturn AHCIDiskTransportFlush(id disk)
+{
+    return [(AHCIDisk *)disk flushCache];
+}
+
 - (AHCIDiskRequest *)allocRequest:(void *)pending
 {
     AHCIDiskRequest *request;
@@ -201,7 +218,7 @@ static void AHCIDiskBuildFIS(unsigned char fis[20], unsigned int block,
     while (remaining != 0) {
         if (!AHCIDiskPlanSegment(block, remaining,
                                  request->command == AHCI_DISK_WRITE,
-                                 &segment))
+                                 _identify.lba48, &segment))
             return IO_R_INVALID_ARG;
         extended = segment.command == AHCI_ATA_READ_DMA_EXT ||
                    segment.command == AHCI_ATA_WRITE_DMA_EXT;

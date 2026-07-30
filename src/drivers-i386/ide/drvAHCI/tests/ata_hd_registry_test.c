@@ -69,6 +69,11 @@ static void test_registry_integration_source_contract(void)
     char *probe;
     char *initCall;
     char *bootInitCall;
+    char *closeMethod;
+    char *closePin;
+    char *flushCall;
+    char *flushErrorMap;
+    char *closeUnpin;
 
     header = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.h");
     registry = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.m");
@@ -85,6 +90,8 @@ static void test_registry_integration_source_contract(void)
         goto done;
 
     CHECK(strstr(header, "typedef int (*ata_hd_ioctl_fn)") != NULL);
+    CHECK(strstr(header, "typedef IOReturn (*ata_hd_flush_fn)") != NULL);
+    CHECK(strstr(header, "ata_hd_set_flush") != NULL);
     CHECK(strstr(header, "BOOL ata_hd_registry_init(void);") != NULL);
     CHECK(strstr(header, "ata_hd_map_set_live") != NULL);
     CHECK(strstr(header, "ata_hd_map_clear_partition") != NULL);
@@ -94,6 +101,26 @@ static void test_registry_integration_source_contract(void)
     CHECK(strstr(registry,
                  "ATAHDRegistryIsActive(&ata_hd_core, unit)") != NULL);
     CHECK(strstr(registry, "return map->liveId;") != NULL);
+    CHECK(strstr(registry, "flushResult = flush(disk);") != NULL);
+    CHECK(strstr(registry,
+                 "[ata_hd_lock unlock];\n    if (flush != NULL)") != NULL);
+    CHECK(strstr(registry, "[disk errnoFromReturn:flushResult]") != NULL);
+    closeMethod = strstr(registry, "ata_hd_close(dev_t dev");
+    closePin = closeMethod == NULL ? NULL :
+               strstr(closeMethod, "result = ATAHDRegistryOpen(");
+    flushCall = closePin == NULL ? NULL :
+                strstr(closePin, "flushResult = flush(disk);");
+    flushErrorMap = flushCall == NULL ? NULL :
+                    strstr(flushCall,
+                           "flushError = [disk errnoFromReturn:flushResult]");
+    closeUnpin = flushCall == NULL ? NULL :
+                 strstr(flushCall, "result = ATAHDRegistryClose(");
+    CHECK(closePin != NULL && flushCall != NULL &&
+          flushErrorMap != NULL && closeUnpin != NULL);
+    if (closePin != NULL && flushCall != NULL &&
+        flushErrorMap != NULL && closeUnpin != NULL)
+        CHECK(closePin < flushCall && flushCall < flushErrorMap &&
+              flushErrorMap < closeUnpin);
     CHECK(strstr(diskMethods, "ata_hd_map_set_live") != NULL);
     CHECK(strstr(diskMethods, "ata_hd_map_clear_live") != NULL);
     CHECK(strstr(diskMethods, "ata_hd_map_set_partition") != NULL);

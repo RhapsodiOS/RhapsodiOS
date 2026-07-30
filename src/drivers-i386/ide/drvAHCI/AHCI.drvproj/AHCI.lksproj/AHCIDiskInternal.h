@@ -12,6 +12,7 @@
 - (BOOL)initResourcesForPort:(AHCIPort *)port;
 - (BOOL)identifyDevice;
 - (BOOL)publish;
+- (IOReturn)flushCache;
 - (AHCIDiskRequest *)allocRequest:(void *)pending;
 - (void)freeRequest:(AHCIDiskRequest *)request;
 - (IOReturn)enqueueRequest:(AHCIDiskRequest *)request;
@@ -26,6 +27,7 @@
                     pending:(void *)pending
                actualLength:(unsigned int *)actualLength;
 volatile void AHCIDiskWorker(AHCIDisk *disk);
+IOReturn AHCIDiskTransportFlush(id disk);
 @end
 
 #endif

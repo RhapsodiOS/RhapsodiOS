@@ -50,6 +50,8 @@ int AHCIDiskParseIdentify(const unsigned short words[256],
     } else {
         capacity = (unsigned int)words[60] |
                    ((unsigned int)words[61] << 16);
+        if (capacity > AHCI_DISK_LBA28_LIMIT)
+            capacity = AHCI_DISK_LBA28_LIMIT;
     }
     if (capacity == 0)
         return 0;
@@ -79,7 +81,8 @@ int AHCIDiskClipRequest(unsigned int capacity, unsigned int block,
 }
 
 int AHCIDiskPlanSegment(unsigned int block, unsigned int remaining,
-                        int write, AHCIDiskSegment *segment)
+                        int write, int lba48,
+                        AHCIDiskSegment *segment)
 {
     int extended;
 
@@ -90,6 +93,8 @@ int AHCIDiskPlanSegment(unsigned int block, unsigned int remaining,
     segment->bytes = segment->blocks * AHCI_DISK_SECTOR_BYTES;
     extended = block >= AHCI_DISK_LBA28_LIMIT ||
                segment->blocks > AHCI_DISK_LBA28_LIMIT - block;
+    if (extended && !lba48)
+        return 0;
     if (write)
         segment->command = extended ? AHCI_ATA_WRITE_DMA_EXT :
                                       AHCI_ATA_WRITE_DMA;

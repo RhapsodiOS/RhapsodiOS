@@ -43,6 +43,8 @@
     if (globalUnit < 0)
         return NO;
     _hdUnit = globalUnit;
+    if (!ata_hd_set_flush(_hdUnit, self, AHCIDiskTransportFlush))
+        return NO;
     unit = (unsigned int)globalUnit;
     [self setDevAndIdInfo:devAndIdInfo];
     [self setUnit:unit];
@@ -119,12 +121,12 @@
 
 - (void)synchronizeCache
 {
-    AHCIDiskRequest *request;
+    IOReturn result;
 
-    request = [self allocRequest:0];
-    request->command = AHCI_DISK_FLUSH;
-    (void)[self enqueueRequest:request];
-    [self freeRequest:request];
+    result = [self flushCache];
+    if (result != IO_R_SUCCESS)
+        IOLog("%s: cache flush failed (%s)\n", [self name],
+              [self stringFromReturn:result]);
 }
 
 - (IOReturn)updatePhysicalParameters

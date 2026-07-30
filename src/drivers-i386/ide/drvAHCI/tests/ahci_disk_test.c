@@ -36,7 +36,7 @@ static void base_identify(unsigned short words[256])
     memset(words, 0, 512U);
     words[49] = 1U << 9;
     words[60] = 0x5678U;
-    words[61] = 0x1234U;
+    words[61] = 0x0234U;
     put_string(words, 10U, 10U, "SN123");
     put_string(words, 23U, 4U, "FW1");
     put_string(words, 27U, 20U, "RhapsodiOS SATA Disk");
@@ -49,11 +49,24 @@ static void test_lba28_identify(void)
 
     base_identify(words);
     CHECK(AHCIDiskParseIdentify(words, &result));
-    CHECK(result.capacity == 0x12345678U);
+    CHECK(result.capacity == 0x02345678U);
     CHECK(result.lba48 == 0);
     CHECK(strcmp(result.model, "RhapsodiOS SATA Disk") == 0);
     CHECK(strcmp(result.serial, "SN123") == 0);
     CHECK(strcmp(result.firmware, "FW1") == 0);
+}
+
+static void test_lba28_capacity_is_capped(void)
+{
+    unsigned short words[256];
+    AHCIDiskIdentify result;
+
+    base_identify(words);
+    words[60] = 0xffffU;
+    words[61] = 0xffffU;
+    CHECK(AHCIDiskParseIdentify(words, &result));
+    CHECK(result.capacity == AHCI_DISK_LBA28_LIMIT);
+    CHECK(result.lba48 == 0);
 }
 
 static void test_lba48_capacity_is_capped(void)
@@ -99,28 +112,34 @@ static void test_request_boundaries(void)
     CHECK(AHCIDiskClipRequest(UINT_MAX, UINT_MAX - 1U, 4096U,
                               &blocks));
     CHECK(blocks == 1U);
+    CHECK(AHCIDiskClipRequest(AHCI_DISK_LBA28_LIMIT,
+                              AHCI_DISK_LBA28_LIMIT - 1U,
+                              1024U, &blocks));
+    CHECK(blocks == 1U);
 }
 
 static void test_segment_and_command_selection(void)
 {
     AHCIDiskSegment segment;
 
-    CHECK(AHCIDiskPlanSegment(1U, 300U, 0, &segment));
+    CHECK(AHCIDiskPlanSegment(1U, 300U, 0, 0, &segment));
     CHECK(segment.blocks == 256U);
     CHECK(segment.bytes == 128U * 1024U);
     CHECK(segment.command == AHCI_ATA_READ_DMA);
 
-    CHECK(AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, &segment));
+    CHECK(!AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 0, &segment));
+    CHECK(AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 1, &segment));
     CHECK(segment.blocks == 2U);
     CHECK(segment.command == AHCI_ATA_WRITE_DMA_EXT);
 
-    CHECK(AHCIDiskPlanSegment(0x10000000U, 1U, 0, &segment));
+    CHECK(AHCIDiskPlanSegment(0x10000000U, 1U, 0, 1, &segment));
     CHECK(segment.command == AHCI_ATA_READ_DMA_EXT);
 }
 
 int main(void)
 {
     test_lba28_identify();
+    test_lba28_capacity_is_capped();
     test_lba48_capacity_is_capped();
     test_unsupported_sector_sizes_and_empty_media();
     test_request_boundaries();

@@ -95,8 +95,11 @@ int main(void)
     require_text(internalm, "AHCI_ATA_FLUSH_CACHE_EXT");
     require_text(internalm, "completeTransfer:");
     require_text(internalm, "client:request->client");
+    require_text(internalm, "_identify.lba48, &segment");
     require_text(internalm, "client:IOVmTaskSelf()");
     require_text(internalm, "ata_hd_unregister(_hdUnit)");
+    require_text(diskm, "ata_hd_set_flush(_hdUnit,");
+    require_text(internalm, "AHCIDiskTransportFlush");
     require_text(portm, "translation.task = client;");
     require_text(portm, "AHCIPortTranslateAddress, &translation");
     require_text(portm, "- (BOOL)unpublishDisk");

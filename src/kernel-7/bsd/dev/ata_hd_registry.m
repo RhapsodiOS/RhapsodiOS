@@ -24,6 +24,7 @@
 typedef struct ATAHDUnitState {
     struct buf *physbuf;
     ata_hd_ioctl_fn transportIoctl;
+    ata_hd_flush_fn transportFlush;
     unsigned char blockOpen[ATA_HD_PARTITIONS];
     unsigned char rawOpen[ATA_HD_PARTITIONS];
 } ATAHDUnitState;
@@ -297,6 +298,7 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
     map->rawDev = makedev(ata_hd_raw_major, (unit << 3));
     map->blockDev = makedev(ata_hd_block_major, (unit << 3));
     ata_hd_units[unit].transportIoctl = transportIoctl;
+    ata_hd_units[unit].transportFlush = NULL;
     bzero((char *)ata_hd_units[unit].blockOpen,
           sizeof(ata_hd_units[unit].blockOpen));
     bzero((char *)ata_hd_units[unit].rawOpen,
@@ -305,6 +307,23 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
 
     [ata_hd_lock unlock];
     return unit;
+}
+
+BOOL
+ata_hd_set_flush(unsigned int unit, id disk,
+                 ata_hd_flush_fn transportFlush)
+{
+    BOOL set;
+
+    if (unit >= ATA_HD_UNITS || disk == nil || transportFlush == NULL ||
+        !ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    set = ATAHDRegistryOwner(&ata_hd_core, unit) == disk ? YES : NO;
+    if (set)
+        ata_hd_units[unit].transportFlush = transportFlush;
+    [ata_hd_lock unlock];
+    return set;
 }
 
 BOOL
@@ -375,6 +394,7 @@ ata_hd_unregister(unsigned int unit)
 
     bzero((char *)&ata_hd_maps[unit], sizeof(ata_hd_maps[unit]));
     ata_hd_units[unit].transportIoctl = NULL;
+    ata_hd_units[unit].transportFlush = NULL;
     bzero((char *)ata_hd_units[unit].blockOpen,
           sizeof(ata_hd_units[unit].blockOpen));
     bzero((char *)ata_hd_units[unit].rawOpen,
@@ -641,11 +661,16 @@ static int
 ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
+    ata_hd_flush_fn flush;
     unsigned char *openState;
     unsigned int partition;
     unsigned int unit;
     int result;
+    int flushError;
+    IOReturn flushResult;
 
+    flushError = 0;
+    flushResult = IO_R_SUCCESS;
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
     openState = ata_hd_presence_for_dev_locked(dev);
@@ -655,14 +680,21 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
     }
     unit = IO_DISK_UNIT(dev);
     partition = IO_DISK_PART(dev);
+    flush = ata_hd_units[unit].transportFlush;
     result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
     if (result == ATA_HD_REGISTRY_SUCCESS)
         result = ATAHDRegistryCloseIfPresent(&ata_hd_core, unit, partition,
                                              openState);
     [ata_hd_lock unlock];
+    if (flush != NULL) {
+        if (result == ATA_HD_REGISTRY_SUCCESS)
+            flushResult = flush(disk);
+    }
     if (result != ATA_HD_REGISTRY_SUCCESS) {
         return ata_hd_core_error_to_errno(result);
     }
+    if (flushResult != IO_R_SUCCESS)
+        flushError = [disk errnoFromReturn:flushResult];
 
     if (partition != ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
@@ -674,8 +706,9 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
     [ata_hd_lock lock];
     result = ATAHDRegistryClose(&ata_hd_core, unit, partition);
     [ata_hd_lock unlock];
-    return (result == ATA_HD_REGISTRY_SUCCESS) ? 0 :
-           ata_hd_core_error_to_errno(result);
+    if (result != ATA_HD_REGISTRY_SUCCESS)
+        return ata_hd_core_error_to_errno(result);
+    return flushError;
 }
 
 static int

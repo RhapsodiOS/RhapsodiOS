@@ -12,12 +12,15 @@ struct proc;
 typedef int (*ata_hd_ioctl_fn)(id disk, dev_t dev,
                                unsigned int cmd, caddr_t data,
                                int flag, struct proc *proc);
+typedef IOReturn (*ata_hd_flush_fn)(id disk);
 
 BOOL ata_hd_registry_init(void);
 BOOL ata_hd_devsw_init(Class diskClass,
                        IODeviceDescription *deviceDescription);
 int ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
                     IODevAndIdInfo **mapOut);
+BOOL ata_hd_set_flush(unsigned int unit, id disk,
+                      ata_hd_flush_fn transportFlush);
 BOOL ata_hd_activate_units(const unsigned int *units, id *disks,
                            unsigned int count);
 IOReturn ata_hd_unregister(unsigned int unit);

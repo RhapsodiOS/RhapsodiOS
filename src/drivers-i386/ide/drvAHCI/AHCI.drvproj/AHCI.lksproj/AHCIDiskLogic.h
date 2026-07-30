@@ -33,6 +33,7 @@ int AHCIDiskParseIdentify(const unsigned short words[256],
 int AHCIDiskClipRequest(unsigned int capacity, unsigned int block,
                         unsigned int length, unsigned int *blocks);
 int AHCIDiskPlanSegment(unsigned int block, unsigned int remaining,
-                        int write, AHCIDiskSegment *segment);
+                        int write, int lba48,
+                        AHCIDiskSegment *segment);
 
 #endif

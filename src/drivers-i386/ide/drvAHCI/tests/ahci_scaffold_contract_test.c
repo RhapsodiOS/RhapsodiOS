@@ -339,8 +339,8 @@ static int valid_controller_source(const char *text)
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription";
 
     return has_exact_line(text, "#import <driverkit/i386/IOPCIDirectDevice.h>", 0) &&
-           has_exact_line(text, "#define AHCI_ICH9_PCI_ID 0x29228086", 0) &&
-           has_exact_line(text, "#define AHCI_PCI_CLASS_CODE 0x010601", 0) &&
+           has_exact_line(text, "#import \"AHCIHBA.h\"", 0) &&
+           has_exact_line(text, "#import \"AHCIShared.h\"", 0) &&
            has_exact_line(text, "@implementation AHCIController", 0) &&
            has_scoped_expression(text, probe, initializer,
                "AHCIController *controller;") &&
@@ -349,22 +349,96 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, probe, initializer,
                "if (controller == nil) return NO;") &&
            has_scoped_expression(text, probe, initializer,
-               "[controller free]; return NO;") &&
-           !has_scoped_expression(text, probe, initializer, "return YES;") &&
-           has_scoped_expression(text, initializer, "@end",
-               "[self getPCIConfigData:&pciID atRegister:0x00] != IO_R_SUCCESS") &&
-           has_scoped_expression(text, initializer, "@end",
+               "if ([controller registerDevice] == nil) { [controller free]; return NO; }") &&
+           has_scoped_expression(text, probe, initializer, "return YES;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[IODirectDevice getPCIConfigData:&pciID atRegister:AHCI_PCI_ID_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
                "pciID != AHCI_ICH9_PCI_ID") &&
-           has_scoped_expression(text, initializer, "@end",
-               "[self getPCIConfigData:&classRevision atRegister:0x08] != IO_R_SUCCESS") &&
-           has_scoped_expression(text, initializer, "@end",
+           has_scoped_expression(text, initializer, "- free",
+               "[IODirectDevice getPCIConfigData:&classRevision atRegister:AHCI_PCI_CLASS_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
                "((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE") &&
-           has_scoped_expression(text, initializer, "@end",
-               "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 matched; attachment deferred\\n\", [self name]);") &&
-           has_scoped_expression(text, initializer, "@end", "return self;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
+               "(bar5 & AHCI_PCI_BAR_IO) != 0") &&
+           has_scoped_expression(text, initializer, "- free",
+               "(bar5 & AHCI_PCI_BAR_TYPE_MASK) != AHCI_PCI_BAR_TYPE_32") &&
+           has_scoped_expression(text, initializer, "- free",
+               "(bar5 & AHCI_PCI_BAR_PREFETCH) != 0") &&
+           has_scoped_expression(text, initializer, "- free",
+               "abarPhysical = bar5 & AHCI_PCI_BAR_MEMORY_MASK;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "enabledCommand = command | AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
+               "(commandReadback & (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) != (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)") &&
+           has_scoped_expression(text, initializer, "- free",
+               "memoryRange.start = abarPhysical;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "memoryRange.size = AHCI_ABAR_LENGTH;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
+               "[super initFromDeviceDescription:deviceDescription] == nil") &&
+           has_scoped_expression(text, initializer, "- free",
+               "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff]; if (mapResult != IO_R_SUCCESS) { [self free]; return nil; } abarMapped = YES; if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }") &&
+           has_scoped_expression(text, initializer, "- free",
+               "AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
+               "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);") &&
+           has_scoped_expression(text, initializer, "- free", "return self;") &&
+           has_scoped_expression(text, "- free", "@end",
+               "[self unmapMemoryRange:0 from:abarAddress]") &&
            !has_identifier(text, "IdeController") &&
            !has_identifier(text, "AtapiController") &&
-           !has_identifier(text, "IdeDisk");
+           !has_identifier(text, "IdeDisk") &&
+           !has_identifier(text, "AHCIPort") &&
+           !has_identifier(text, "IOMalloc") &&
+           !has_identifier(text, "IOMallocLow");
+}
+
+static int valid_link_makefile(const char *text)
+{
+    return has_exact_line(text,
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c", 1) &&
+        has_exact_line(text, "CLASSES = AHCIController.m", 1) &&
+        has_exact_line(text,
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIShared.h",
+        1) &&
+        !has_identifier(text, "AHCIPort");
+}
+
+static int valid_link_project(const char *text)
+{
+    return has_exact_line(text,
+        "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c);", 0) &&
+        has_exact_line(text, "CLASSES = (AHCIController.m);", 0) &&
+        has_exact_line(text,
+        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIShared.h);",
+        0) &&
+        !has_identifier(text, "AHCIPort");
+}
+
+static int valid_hba_source(const char *text)
+{
+    return has_exact_line(text, "#include \"AHCIHBA.h\"", 0) &&
+           has_scoped_expression(text, "AHCIHBAResult AHCIHBAInitialize",
+               "}", "info->capabilities = ops->read(ops->context, AHCI_REG_CAP);") &&
+           has_scoped_expression(text, "static void ahci_disable_interrupts",
+               "AHCIHBAResult AHCIHBAInitialize",
+               "(ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE") &&
+           has_scoped_expression(text, "static void ahci_disable_interrupts",
+               "AHCIHBAResult AHCIHBAInitialize",
+               "ahci_write(ops, AHCI_REG_IS, 0xffffffffU);") &&
+           has_identifier(text, "AHCI_BOHC_BB_OBSERVE_MS") &&
+           has_identifier(text, "AHCI_BOHC_HANDOFF_TIMEOUT_MS") &&
+           has_identifier(text, "AHCI_HBA_RESET_TIMEOUT_MS") &&
+           !has_identifier(text, "AHCIPort") &&
+           !has_identifier(text, "IOMalloc") &&
+           !has_identifier(text, "IOMallocLow");
 }
 
 static int valid_postload(const char *text)
@@ -461,8 +535,10 @@ static void test_validator_mutations(void)
     char postload_ok[2048];
     char postload_31_devices[2048];
     char postload_7_partitions[2048];
-    char controller_ok[4096];
-    char mutation[4096];
+    char controller_ok[16384];
+    char mutation[16384];
+    char link_makefile_ok[512];
+    char hba_source_ok[2048];
     char long_root[600];
 
     strcpy(postload_ok,
@@ -483,29 +559,66 @@ static void test_validator_mutations(void)
 
     strcpy(controller_ok,
         "#import <driverkit/i386/IOPCIDirectDevice.h>\n"
-        "#define AHCI_ICH9_PCI_ID 0x29228086\n"
-        "#define AHCI_PCI_CLASS_CODE 0x010601\n"
+        "#import \"AHCIHBA.h\"\n#import \"AHCIShared.h\"\n"
         "@implementation AHCIController\n");
     strcat(controller_ok,
         "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription {\n"
         "AHCIController *controller;\n"
         "controller = [[self alloc] initFromDeviceDescription:deviceDescription];\n"
-        "if (controller == nil) return NO;\n[controller free];\nreturn NO;\n}\n");
+        "if (controller == nil) return NO;\n"
+        "if ([controller registerDevice] == nil) { [controller free]; return NO; }\n"
+        "return YES;\n}\n");
     strcat(controller_ok,
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription {\n"
-        "if ([self getPCIConfigData:&pciID atRegister:0x00] != IO_R_SUCCESS ||\n"
+        "if ([IODirectDevice getPCIConfigData:&pciID atRegister:AHCI_PCI_ID_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
         "pciID != AHCI_ICH9_PCI_ID ||\n");
     strcat(controller_ok,
-        "[self getPCIConfigData:&classRevision atRegister:0x08] != IO_R_SUCCESS ||\n"
+        "[IODirectDevice getPCIConfigData:&classRevision atRegister:AHCI_PCI_CLASS_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
         "((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) return nil;\n");
     strcat(controller_ok,
-        "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 matched; attachment deferred\\n\", [self name]);\n"
-        "return self;\n}\n@end\n");
+        "if ([IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
+        "(bar5 & AHCI_PCI_BAR_IO) != 0 ||\n"
+        "(bar5 & AHCI_PCI_BAR_TYPE_MASK) != AHCI_PCI_BAR_TYPE_32 ||\n"
+        "(bar5 & AHCI_PCI_BAR_PREFETCH) != 0) return nil;\n"
+        "abarPhysical = bar5 & AHCI_PCI_BAR_MEMORY_MASK;\n");
+    strcat(controller_ok,
+        "enabledCommand = command | AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER;\n"
+        "if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) return nil;\n"
+        "if ((commandReadback & (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) != (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) return nil;\n");
+    strcat(controller_ok,
+        "memoryRange.start = abarPhysical;\nmemoryRange.size = AHCI_ABAR_LENGTH;\n"
+        "if ([deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS) return nil;\n"
+        "if ([super initFromDeviceDescription:deviceDescription] == nil) return nil;\n");
+    strcat(controller_ok,
+        "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff];\n"
+        "if (mapResult != IO_R_SUCCESS) { [self free]; return nil; }\n"
+        "abarMapped = YES;\n"
+        "if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }\n"
+        "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) return nil;\n");
+    strcat(controller_ok,
+        "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);\n"
+        "return self;\n}\n- free { [self unmapMemoryRange:0 from:abarAddress]; return [super free]; }\n@end\n");
+
+    strcpy(link_makefile_ok,
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c\n"
+        "CLASSES = AHCIController.m\n"
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIShared.h\n");
+    strcpy(hba_source_ok,
+        "#include \"AHCIHBA.h\"\n"
+        "static void ahci_disable_interrupts(const AHCIHBAOps *ops) {\n"
+        "ahci_write(ops, AHCI_REG_GHC, (ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE);\n"
+        "ahci_write(ops, AHCI_REG_IS, 0xffffffffU);\n}\n"
+        "AHCIHBAResult AHCIHBAInitialize(const AHCIHBAOps *ops, AHCIHBAInfo *info) {\n"
+        "info->capabilities = ops->read(ops->context, AHCI_REG_CAP);\n"
+        "AHCI_BOHC_BB_OBSERVE_MS; AHCI_BOHC_HANDOFF_TIMEOUT_MS;\n"
+        "AHCI_HBA_RESET_TIMEOUT_MS;\n}\n");
 
     if (!valid_default_table(default_ok) ||
         !valid_controller_header(header_ok) ||
         !valid_postload(postload_ok) ||
-        !valid_controller_source(controller_ok)) {
+        !valid_controller_source(controller_ok) ||
+        !valid_link_makefile(link_makefile_ok) ||
+        !valid_hba_source(hba_source_ok)) {
         fprintf(stderr, "valid mutation fixture rejected\n");
         ++failures;
     }
@@ -534,7 +647,7 @@ static void test_validator_mutations(void)
     }
 
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "0x010601", "0x010600"))
+                      "AHCI_PCI_CLASS_CODE", "0x010600"))
         ++failures;
     expect_invalid("wrong PCI class tuple", valid_controller_source, mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
@@ -543,14 +656,74 @@ static void test_validator_mutations(void)
     expect_invalid("wrong PCI class extraction", valid_controller_source,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "return NO;\n}\n- init",
-                      "return YES;\n}\n- init"))
+                      "return YES;\n}\n- init",
+                      "return NO;\n}\n- init"))
         ++failures;
-    expect_invalid("probe returns YES", valid_controller_source, mutation);
+    expect_invalid("probe omits successful claim", valid_controller_source,
+                   mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "[controller free];", "/* controller free */"))
+                      "[controller registerDevice]", "controller"))
         ++failures;
-    expect_invalid("probe omits free", valid_controller_source, mutation);
+    expect_invalid("probe omits registration", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "AHCI_PCI_BAR5_REGISTER", "AHCI_PCI_CLASS_REGISTER"))
+        ++failures;
+    expect_invalid("BAR5 read removed", valid_controller_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "bar5 & AHCI_PCI_BAR_MEMORY_MASK", "bar5"))
+        ++failures;
+    expect_invalid("BAR5 mask removed", valid_controller_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER",
+                      "AHCI_PCI_COMMAND_MEMORY"))
+        ++failures;
+    expect_invalid("bus master enable removed", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "memoryRange.size = AHCI_ABAR_LENGTH;",
+                      "memoryRange.size = 0x1000U;"))
+        ++failures;
+    expect_invalid("ABAR span shortened", valid_controller_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "cache:IO_CacheOff", "cache:IO_CacheDefault"))
+        ++failures;
+    expect_invalid("ABAR cache enabled", valid_controller_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "abarMapped = YES;\nif (abarAddress == 0",
+                      "if (abarAddress == 0"))
+        ++failures;
+    expect_invalid("invalid successful map leaks", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "AHCIHBAInitialize(&ops, &hbaInfo)",
+                      "AHCI_HBA_SUCCESS"))
+        ++failures;
+    expect_invalid("production HBA call removed", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "return self;\n}\n- free",
+                      "IOMalloc(1); return self;\n}\n- free"))
+        ++failures;
+    expect_invalid("port allocation introduced", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), link_makefile_ok,
+                      "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c",
+                      "CFILES = AHCICommand.c AHCIState.c"))
+        ++failures;
+    expect_invalid("HBA production source removed", valid_link_makefile,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
+                      "(ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE",
+                      "ghc | AHCI_GHC_AE | AHCI_GHC_IE"))
+        ++failures;
+    expect_invalid("global IE enabled", valid_hba_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
+                      "AHCI_HBA_RESET_TIMEOUT_MS;",
+                      "AHCI_HBA_RESET_TIMEOUT_MS; AHCIPort;"))
+        ++failures;
+    expect_invalid("port construction introduced", valid_hba_source,
+                   mutation);
     if (!replace_once(mutation, sizeof(mutation), postload_ok,
                       "mknod(path, mode, device)",
                       "mknod(path, mode, minor)"))
@@ -583,12 +756,12 @@ static void test_bundle_contract(void)
     require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile", "NAME = AHCI", 1);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile.preamble",
                       "INCLUDED_ARCHS = i386", 1);
-    require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile",
-                      "CFILES = AHCICommand.c AHCIState.c", 1);
+    require_valid_file("AHCI.drvproj/AHCI.lksproj/Makefile",
+                       valid_link_makefile);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile",
                       "CLASSES = AHCIController.m", 1);
-    require_line_file("AHCI.drvproj/AHCI.lksproj/PB.project",
-                      "C_FILES = (AHCICommand.c, AHCIState.c);", 0);
+    require_valid_file("AHCI.drvproj/AHCI.lksproj/PB.project",
+                       valid_link_project);
     require_line_file("AHCI.drvproj/AHCI.lksproj/PB.project",
                       "CLASSES = (AHCIController.m);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Load_Commands.sect",
@@ -616,6 +789,8 @@ static void test_controller_contract(void)
                        valid_controller_header);
     require_valid_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
                        valid_controller_source);
+    require_valid_file("AHCI.drvproj/AHCI.lksproj/AHCIHBA.c",
+                       valid_hba_source);
 }
 
 int main(int argc, char **argv)

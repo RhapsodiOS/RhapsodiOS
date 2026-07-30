@@ -156,6 +156,12 @@ int main(void)
     require_text(portm, "while (activeDiskNotifications != 0)");
     require_text(portm, "diskNotificationsBlocked = YES");
     require_text(portm, "diskUnpublishing");
+    require_scoped_order(portm, "matchesKind:(BOOL)sameKind",
+                         "- (BOOL)controllerDidReset", "diskUnpublishing",
+                         "return AHCI_PORT_COMMAND_ERROR");
+    require_scoped_order(portm, "- (BOOL)controllerDidReset",
+                         "- (void)controllerResetFailed",
+                         "diskUnpublishing", "online =");
     require_scoped_order(portm, "- (BOOL)unpublishDisk",
                          "- (void)handleInterrupt", "diskToFree = disk",
                          "disk = nil");
@@ -166,6 +172,23 @@ int main(void)
                          "- (void)handleInterrupt",
                          "[commandLock unlockWith:condition]",
                          "[diskToFree free]");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt", "disk = diskToFree",
+                         "online = NO");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt", "online = NO",
+                         "AHCIPortMMIOWrite(mmio,");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt", "online = NO",
+                         "++activeDiskNotifications");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt",
+                         "[diskToFree portBecameNotReady]",
+                         "diskNotificationsBlocked = NO");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt",
+                         "[diskToFree portBecameNotReady]",
+                         "diskUnpublishing = NO");
     require_order(portm, "if (disk != nil && !diskNotificationsBlocked)",
                   "++activeDiskNotifications");
     require_order(portm, "++activeDiskNotifications",

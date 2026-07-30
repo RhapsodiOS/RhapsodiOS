@@ -254,7 +254,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     unsigned char *commandTable;
     unsigned short *identifyData;
 
-    if (!sameKind || destroying)
+    if (!sameKind || destroying || diskUnpublishing)
         return AHCI_PORT_COMMAND_ERROR;
     AHCIPortFillOps(&ops, mmio);
     commandList = (AHCICommandHeader *)
@@ -294,11 +294,12 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,
                                         &arena, &recoveredKind);
     controllerResetting = NO;
-    validationResult = result == AHCI_PORT_SUCCESS ?
-        [self validateRecoveredKind:recoveredKind
-                         matchesKind:AHCIRecoveredKindValid(
-                             previousKind, recoveredKind)] :
-        AHCI_PORT_COMMAND_ERROR;
+    validationResult = diskUnpublishing ? AHCI_PORT_COMMAND_ERROR :
+        (result == AHCI_PORT_SUCCESS ?
+         [self validateRecoveredKind:recoveredKind
+                          matchesKind:AHCIRecoveredKindValid(
+                              previousKind, recoveredKind)] :
+         AHCI_PORT_COMMAND_ERROR);
     online = result == AHCI_PORT_SUCCESS &&
              validationResult == AHCI_PORT_SUCCESS;
     AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
@@ -476,7 +477,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIDeviceKind recoveredKind;
 
     [commandLock lock];
-    if (!AHCILocalRecoveryAllowed(destroying, controllerResetting)) {
+    if (!AHCILocalRecoveryAllowed(destroying, controllerResetting,
+                                  diskUnpublishing)) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
@@ -762,14 +764,18 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     unpublished = [diskToFree free] == nil ? YES : NO;
     notifyDiskOffline = NO;
     [commandLock lock];
-    diskUnpublishing = NO;
-    if (!unpublished) {
+    if (unpublished) {
+        diskUnpublishing = NO;
+    } else {
         disk = diskToFree;
-        diskNotificationsBlocked = NO;
-        if (!online) {
-            ++activeDiskNotifications;
-            notifyDiskOffline = YES;
+        online = NO;
+        if (mmio != 0 && mmio->base != 0) {
+            AHCIPortMMIOWrite(mmio,
+                              AHCI_PORT_BASE(portNumber) + AHCI_PX_IE, 0);
+            AHCIPortMMIOBarrier(mmio);
         }
+        ++activeDiskNotifications;
+        notifyDiskOffline = YES;
     }
     condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
                 AHCI_LOCK_PENDING :
@@ -780,6 +786,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [diskToFree portBecameNotReady];
         [commandLock lock];
         --activeDiskNotifications;
+        diskNotificationsBlocked = NO;
+        diskUnpublishing = NO;
         condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
                     AHCI_LOCK_PENDING :
                     (commandArbiter.state == AHCI_COMMAND_IDLE ?

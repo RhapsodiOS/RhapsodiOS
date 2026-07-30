@@ -198,10 +198,11 @@ static void test_controller_recovery_gate(void)
 
 static void test_controller_reset_owns_recovery_after_flag_is_set(void)
 {
-    CHECK(AHCILocalRecoveryAllowed(0, 0));
-    CHECK(!AHCILocalRecoveryAllowed(1, 0));
-    CHECK(!AHCILocalRecoveryAllowed(0, 1));
-    CHECK(!AHCILocalRecoveryAllowed(1, 1));
+    CHECK(AHCILocalRecoveryAllowed(0, 0, 0));
+    CHECK(!AHCILocalRecoveryAllowed(1, 0, 0));
+    CHECK(!AHCILocalRecoveryAllowed(0, 1, 0));
+    CHECK(!AHCILocalRecoveryAllowed(0, 0, 1));
+    CHECK(!AHCILocalRecoveryAllowed(1, 1, 1));
 }
 
 static void test_destroy_aborts_active_request_once(void)

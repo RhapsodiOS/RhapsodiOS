@@ -160,9 +160,10 @@ int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after)
            (after == AHCI_DEVICE_SATA || after == AHCI_DEVICE_ATAPI);
 }
 
-int AHCILocalRecoveryAllowed(int destroying, int controllerResetting)
+int AHCILocalRecoveryAllowed(int destroying, int controllerResetting,
+                             int diskUnpublishing)
 {
-    return !destroying && !controllerResetting;
+    return !destroying && !controllerResetting && !diskUnpublishing;
 }
 
 void AHCIRecoveryGateInit(AHCIRecoveryGate *gate)

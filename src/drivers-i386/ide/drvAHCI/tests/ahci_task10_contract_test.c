@@ -217,7 +217,7 @@ static int valid_port_lifecycle(const char *text)
                         "[controller finishSubmissionCommit]") &&
            scoped_order(text, "matchesKind:(BOOL)sameKind\n{",
                         "- (BOOL)controllerDidReset",
-                        "if (!sameKind || destroying)",
+                        "if (!sameKind || destroying || diskUnpublishing)",
                         "AHCIPortRecoveryIdentify(&ops") &&
            scoped_absent(text, "matchesKind:(BOOL)sameKind\n{",
                          "- (BOOL)controllerDidReset", "commandArbiter") &&
@@ -228,7 +228,8 @@ static int valid_port_lifecycle(const char *text)
                         "AHCICommandFinishIRQ(&commandArbiter") &&
            scoped_order(text, "- (void)recoverCommand",
                         "- (IOReturn)executeATA:",
-                        "AHCILocalRecoveryAllowed(destroying, controllerResetting)",
+                        "AHCILocalRecoveryAllowed(destroying, controllerResetting,\n"
+                        "                                  diskUnpublishing)",
                         "AHCIRecoveryFor(completionSnapshot.portIS") &&
            scoped_order(text, "- (void)recoverCommand",
                         "- (IOReturn)executeATA:",
@@ -370,8 +371,8 @@ static void test_lifecycle_mutations(const char *portm)
     new_text[4] = "result = AHCI_PORT_SUCCESS; recoveredKind = AHCI_DEVICE_NONE;";
     old_text[5] = "AHCIPortRecoveryIdentify(&ops";
     new_text[5] = "AHCIPortRecoveryIdentifyMissing(&ops";
-    old_text[6] = "if (!sameKind || destroying)\n        return AHCI_PORT_COMMAND_ERROR;";
-    new_text[6] = "if (!sameKind || destroying)\n        return AHCI_PORT_COMMAND_ERROR;\n    AHCICommandFinishIRQ(&commandArbiter, 1U);";
+    old_text[6] = "if (!sameKind || destroying || diskUnpublishing)\n        return AHCI_PORT_COMMAND_ERROR;";
+    new_text[6] = "if (!sameKind || destroying || diskUnpublishing)\n        return AHCI_PORT_COMMAND_ERROR;\n    AHCICommandFinishIRQ(&commandArbiter, 1U);";
     for (index = 0; index < 7U; ++index) {
         if (!replace_once(mutation, capacity, source, old_text[index],
                           new_text[index]) ||

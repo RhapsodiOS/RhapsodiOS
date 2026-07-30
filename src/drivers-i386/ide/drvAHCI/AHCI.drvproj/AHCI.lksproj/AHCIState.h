@@ -119,7 +119,8 @@ AHCITimeoutAction AHCICommandTimeoutAction(
     const AHCICommandArbiter *arbiter, unsigned int armedGeneration,
     unsigned long deadline, unsigned long now);
 int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after);
-int AHCILocalRecoveryAllowed(int destroying, int controllerResetting);
+int AHCILocalRecoveryAllowed(int destroying, int controllerResetting,
+                             int diskUnpublishing);
 void AHCIRecoveryGateInit(AHCIRecoveryGate *gate);
 int AHCIRecoveryGateBeginSubmission(AHCIRecoveryGate *gate);
 void AHCIRecoveryGateEndSubmission(AHCIRecoveryGate *gate);

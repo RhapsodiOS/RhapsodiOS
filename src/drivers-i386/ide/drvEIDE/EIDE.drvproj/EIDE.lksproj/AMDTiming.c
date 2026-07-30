@@ -39,6 +39,8 @@ static const amdMWDMATiming_t amdMWDMATiming[] = {
     { 25,  70,  25, 120 }
 };
 
+static const unsigned char amdUDMA[] = { 2, 1, 0, 4, 5, 6 };
+
 static const amdChipInfo_t amd756Early = {
     AMD_CHIP_756, "AMD-756", 4, AMD_MODE_NONE, 4
 };
@@ -151,6 +153,26 @@ static unsigned char AMDCommandOffset(unsigned char channel)
     return (unsigned char)(0x4e + (1 - channel) - AMD_CONFIG_BASE);
 }
 
+static unsigned char AMDUDMAOffset(unsigned char channel, unsigned char unit)
+{
+    unsigned char dn;
+
+    dn = (unsigned char)(channel * 2 + unit);
+    return (unsigned char)(0x50 + (3 - dn) - AMD_CONFIG_BASE);
+}
+
+static void AMDClearFIFO(amdConfig_t *config, amdChip_t chip,
+                         unsigned char channel)
+{
+    unsigned char mask;
+
+    if (chip != AMD_CHIP_766)
+        return;
+    mask = channel == AMD_CHANNEL_PRIMARY ? 0xc0 : 0x30;
+    config->bytes[0x41 - AMD_CONFIG_BASE] =
+        (unsigned char)(config->bytes[0x41 - AMD_CONFIG_BASE] & ~mask);
+}
+
 const amdChipInfo_t *AMDFindChip(unsigned long pciID, unsigned char revision)
 {
     if (pciID == AMD_IDE_756) {
@@ -177,6 +199,7 @@ void AMDComputeConfig(amdConfig_t *config, amdChip_t chip,
     unsigned char setupOffset;
     unsigned char setupShift;
     unsigned char setupMask;
+    unsigned char udmaOffset;
     unsigned char unit;
 
     if (config == 0 || drives == 0 || !AMDValidChip(chip) ||
@@ -187,8 +210,23 @@ void AMDComputeConfig(amdConfig_t *config, amdChip_t chip,
             continue;
         if (drives[unit].pioMode > 4 ||
             (drives[unit].transferType == AMD_XFER_MWDMA &&
-             drives[unit].transferMode > 2))
+             drives[unit].transferMode > 2) ||
+            (drives[unit].transferType == AMD_XFER_UDMA &&
+             ((chip == AMD_CHIP_756 && drives[unit].transferMode > 4) ||
+              (chip == AMD_CHIP_766 && drives[unit].transferMode > 5))))
             return;
+    }
+
+    AMDClearFIFO(config, chip, channel);
+    for (unit = 0; unit < 2; ++unit) {
+        udmaOffset = AMDUDMAOffset(channel, unit);
+        config->bytes[udmaOffset] =
+            (unsigned char)((config->bytes[udmaOffset] & 0x38) | 0x03);
+        if (drives[unit].present &&
+            drives[unit].transferType == AMD_XFER_UDMA)
+            config->bytes[udmaOffset] =
+                (unsigned char)((config->bytes[udmaOffset] & 0x38) |
+                                0xc0 | amdUDMA[drives[unit].transferMode]);
     }
 
     setupOffset = 0x4c - AMD_CONFIG_BASE;
@@ -236,11 +274,19 @@ void AMDResetConfig(amdConfig_t *config, amdChip_t chip,
     unsigned char setupOffset;
     unsigned char setupShift;
     unsigned char setupMask;
+    unsigned char udmaOffset;
     unsigned char unit;
 
     if (config == 0 || !AMDValidChip(chip) ||
         channel > AMD_CHANNEL_SECONDARY)
         return;
+
+    AMDClearFIFO(config, chip, channel);
+    for (unit = 0; unit < 2; ++unit) {
+        udmaOffset = AMDUDMAOffset(channel, unit);
+        config->bytes[udmaOffset] =
+            (unsigned char)((config->bytes[udmaOffset] & 0x38) | 0x03);
+    }
 
     setupOffset = 0x4c - AMD_CONFIG_BASE;
     for (unit = 0; unit < 2; ++unit) {
@@ -254,4 +300,20 @@ void AMDResetConfig(amdConfig_t *config, amdChip_t chip,
     }
 
     config->bytes[AMDCommandOffset(channel)] = 0xff;
+}
+
+int AMDDetect80WireCable(const amdConfig_t *config, amdChip_t chip,
+                         unsigned char channel)
+{
+    unsigned char mask;
+
+    if (config == 0 || channel > AMD_CHANNEL_SECONDARY)
+        return 0;
+    if (chip == AMD_CHIP_756)
+        return 1;
+    if (chip != AMD_CHIP_766)
+        return 0;
+
+    mask = channel == AMD_CHANNEL_PRIMARY ? 0x03 : 0x0c;
+    return (config->bytes[0x42 - AMD_CONFIG_BASE] & mask) != 0;
 }

@@ -144,6 +144,8 @@ static void test_secondary_compute_preserves_complete_snapshot(void)
     CFG(expected, 0x48) = 0xa8;
     CFG(expected, 0x4c) = 0x03;
     CFG(expected, 0x4e) = 0x20;
+    CFG(expected, 0x51) = 0x03;
+    CFG(expected, 0x50) = 0x03;
     drives[0] = drive(1, 4, AMD_XFER_PIO, 4);
     drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
 
@@ -163,6 +165,8 @@ static void test_secondary_reset_preserves_complete_snapshot(void)
     CFG(expected, 0x48) = 0xa8;
     CFG(expected, 0x4c) = 0x5f;
     CFG(expected, 0x4e) = 0xff;
+    CFG(expected, 0x51) = 0x1b;
+    CFG(expected, 0x50) = 0x1b;
 
     AMDResetConfig(&config, AMD_CHIP_756, AMD_CHANNEL_SECONDARY);
 
@@ -181,6 +185,9 @@ static void test_absent_primary_preserves_complete_snapshot(void)
     CFG(expected, 0x4a) = 0xa8;
     CFG(expected, 0x4c) = 0xfa;
     CFG(expected, 0x4f) = 0xff;
+    CFG(expected, 0x41) = 0x1a;
+    CFG(expected, 0x53) = 0x1b;
+    CFG(expected, 0x52) = 0x1b;
     drives[0] = drive(0, 0, AMD_XFER_PIO, 0);
     drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
 
@@ -243,6 +250,274 @@ static void test_reset_preserves_sibling_channel(void)
     CHECK(CFG(config, 0x4e) == CFG(before, 0x4e));
 }
 
+static void check_only_offsets_changed(const amdConfig_t *before,
+                                       const amdConfig_t *after,
+                                       const unsigned char *allowed,
+                                       unsigned char allowedCount)
+{
+    unsigned char index;
+    unsigned char allowedIndex;
+    int isAllowed;
+
+    for (index = 0; index < AMD_CONFIG_SIZE; ++index) {
+        isAllowed = 0;
+        for (allowedIndex = 0; allowedIndex < allowedCount; ++allowedIndex) {
+            if (index == allowed[allowedIndex] - AMD_CONFIG_BASE)
+                isAllowed = 1;
+        }
+        if (!isAllowed)
+            CHECK(before->bytes[index] == after->bytes[index]);
+    }
+}
+
+static void test_udma_encoding_and_disable(void)
+{
+    static const unsigned char encoding[] = { 2, 1, 0, 4, 5, 6 };
+    amdConfig_t config;
+    amdConfig_t before;
+    amdDriveTiming_t drives[2];
+    unsigned char mode;
+
+    drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
+    for (mode = 0; mode <= 5; ++mode) {
+        fill_config(&config, 0x38);
+        drives[0] = drive(1, 4, AMD_XFER_UDMA, mode);
+        AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+        CHECK(CFG(config, 0x53) == (unsigned char)(0xf8 | encoding[mode]));
+        CHECK(CFG(config, 0x52) == 0x3b);
+        CHECK((CFG(config, 0x53) & 0x38) == 0x38);
+        CHECK((CFG(config, 0x52) & 0x38) == 0x38);
+    }
+
+    fill_config(&config, 0x38);
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 4);
+    AMDComputeConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x53) == 0xfd);
+    CHECK(CFG(config, 0x52) == 0x3b);
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 5);
+    AMDComputeConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(memcmp(config.bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+
+    fill_config(&config, 0x38);
+    drives[0] = drive(1, 4, AMD_XFER_PIO, 4);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x53) == 0x3b);
+    CHECK(CFG(config, 0x52) == 0x3b);
+}
+
+static void test_reset_disables_current_udma_only(void)
+{
+    amdConfig_t config;
+    amdConfig_t before;
+
+    fill_config(&config, 0x38);
+    CFG(config, 0x50) = 0xe1;
+    CFG(config, 0x51) = 0xe2;
+    before = config;
+    AMDResetConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY);
+    CHECK(CFG(config, 0x53) == 0x3b);
+    CHECK(CFG(config, 0x52) == 0x3b);
+    CHECK(CFG(config, 0x50) == CFG(before, 0x50));
+    CHECK(CFG(config, 0x51) == CFG(before, 0x51));
+    CHECK((CFG(config, 0x53) & 0x38) == 0x38);
+    CHECK((CFG(config, 0x52) & 0x38) == 0x38);
+}
+
+static void check_cable_detection(const amdConfig_t *config, amdChip_t chip,
+                                  unsigned char channel, int expected)
+{
+    amdConfig_t before;
+
+    before = *config;
+    CHECK(AMDDetect80WireCable(config, chip, channel) == expected);
+    CHECK(memcmp(config->bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+}
+
+static void test_cable_detection_does_not_write(void)
+{
+    amdConfig_t config;
+
+    fill_config(&config, 0x5a);
+    CFG(config, 0x42) = 0;
+    check_cable_detection(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, 1);
+    check_cable_detection(&config, AMD_CHIP_756, AMD_CHANNEL_SECONDARY, 1);
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, 0);
+
+    CFG(config, 0x42) = 0x01;
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, 1);
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY, 0);
+    CFG(config, 0x42) = 0x02;
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, 1);
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY, 0);
+    CFG(config, 0x42) = 0x04;
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, 0);
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY, 1);
+    CFG(config, 0x42) = 0x08;
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, 0);
+    check_cable_detection(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY, 1);
+    check_cable_detection(&config, AMD_CHIP_NONE, AMD_CHANNEL_PRIMARY, 0);
+    check_cable_detection(&config, AMD_CHIP_766, 2, 0);
+    CHECK(AMDDetect80WireCable(NULL, AMD_CHIP_766, AMD_CHANNEL_PRIMARY) == 0);
+}
+
+static void test_766_fifo_policy(void)
+{
+    amdConfig_t config;
+    amdDriveTiming_t drives[2];
+
+    drives[0] = drive(0, 0, AMD_XFER_PIO, 0);
+    drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
+    fill_config(&config, 0xff);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x41) == 0x3f);
+    fill_config(&config, 0xff);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY, drives);
+    CHECK(CFG(config, 0x41) == 0xcf);
+    fill_config(&config, 0xff);
+    AMDResetConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY);
+    CHECK(CFG(config, 0x41) == 0x3f);
+    fill_config(&config, 0xff);
+    AMDResetConfig(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY);
+    CHECK(CFG(config, 0x41) == 0xcf);
+
+    fill_config(&config, 0);
+    AMDResetConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY);
+    CHECK(CFG(config, 0x41) == 0);
+    fill_config(&config, 0xa5);
+    AMDResetConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY);
+    CHECK(CFG(config, 0x41) == 0xa5);
+    fill_config(&config, 0xa5);
+    AMDComputeConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x41) == 0xa5);
+}
+
+static void test_complete_ownership_and_invalid_udma(void)
+{
+    static const unsigned char amd766Primary[] = {
+        0x41, 0x4a, 0x4b, 0x4c, 0x4f, 0x52, 0x53
+    };
+    static const unsigned char amd766Secondary[] = {
+        0x41, 0x48, 0x49, 0x4c, 0x4e, 0x50, 0x51
+    };
+    static const unsigned char amd756Primary[] = {
+        0x4a, 0x4b, 0x4c, 0x4f, 0x52, 0x53
+    };
+    amdConfig_t config;
+    amdConfig_t before;
+    amdDriveTiming_t drives[2];
+
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 5);
+    drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
+    fill_config(&config, 0x5a);
+    CFG(config, 0x52) = 0x38;
+    CFG(config, 0x53) = 0x38;
+    before = config;
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    check_only_offsets_changed(&before, &config, amd766Primary, 7);
+    CHECK((CFG(config, 0x52) & 0x38) == 0x38);
+    CHECK((CFG(config, 0x53) & 0x38) == 0x38);
+
+    fill_config(&config, 0x5a);
+    before = config;
+    AMDResetConfig(&config, AMD_CHIP_766, AMD_CHANNEL_SECONDARY);
+    check_only_offsets_changed(&before, &config, amd766Secondary, 7);
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 4);
+    AMDComputeConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, drives);
+    check_only_offsets_changed(&before, &config, amd756Primary, 6);
+    CHECK(CFG(config, 0x41) == CFG(before, 0x41));
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 6);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(memcmp(config.bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+    AMDComputeConfig(NULL, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    AMDResetConfig(NULL, AMD_CHIP_766, AMD_CHANNEL_PRIMARY);
+}
+
+typedef struct {
+    unsigned char channel;
+    unsigned char unit;
+    unsigned char udmaOffset;
+    unsigned char siblingUDMAOffset;
+    unsigned char dataOffset;
+    unsigned char siblingDataOffset;
+    unsigned char fifo;
+    unsigned char setup;
+    unsigned char commandOffset;
+} amdUDMA3Position_t;
+
+static void test_udma3_all_positions_preserve_complete_snapshot(void)
+{
+    static const amdUDMA3Position_t positions[] = {
+        { AMD_CHANNEL_PRIMARY, 0, 0x53, 0x52, 0x4b, 0x4a, 0x38, 0x38, 0x4f },
+        { AMD_CHANNEL_PRIMARY, 1, 0x52, 0x53, 0x4a, 0x4b, 0x38, 0xc8, 0x4f },
+        { AMD_CHANNEL_SECONDARY, 0, 0x51, 0x50, 0x49, 0x48, 0x08, 0x33, 0x4e },
+        { AMD_CHANNEL_SECONDARY, 1, 0x50, 0x51, 0x48, 0x49, 0x08, 0x3c, 0x4e }
+    };
+    amdConfig_t config;
+    amdConfig_t expected;
+    amdDriveTiming_t drives[2];
+    unsigned char position;
+
+    for (position = 0; position < 4; ++position) {
+        fill_config(&config, 0x38);
+        expected = config;
+        CFG(expected, 0x41) = positions[position].fifo;
+        CFG(expected, positions[position].udmaOffset) = 0xfc;
+        CFG(expected, positions[position].siblingUDMAOffset) = 0x3b;
+        CFG(expected, positions[position].dataOffset) = 0x20;
+        CFG(expected, positions[position].siblingDataOffset) = 0xa8;
+        CFG(expected, 0x4c) = positions[position].setup;
+        CFG(expected, positions[position].commandOffset) = 0x20;
+        drives[0] = drive(0, 0, AMD_XFER_PIO, 0);
+        drives[1] = drive(0, 0, AMD_XFER_PIO, 0);
+        drives[positions[position].unit] =
+            drive(1, 4, AMD_XFER_UDMA, 3);
+
+        AMDComputeConfig(&config, AMD_CHIP_766,
+                         positions[position].channel, drives);
+
+        CHECK(CFG(config, positions[position].udmaOffset) == 0xfc);
+        CHECK(CFG(config, positions[position].siblingUDMAOffset) == 0x3b);
+        CHECK(memcmp(config.bytes, expected.bytes, AMD_CONFIG_SIZE) == 0);
+    }
+}
+
+static void test_compute_validation_is_atomic(void)
+{
+    amdConfig_t config;
+    amdConfig_t before;
+    amdDriveTiming_t drives[2];
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_PIO, 4);
+    drives[1] = drive(1, 5, AMD_XFER_PIO, 5);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(memcmp(config.bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_MWDMA, 2);
+    drives[1] = drive(1, 4, AMD_XFER_MWDMA, 3);
+    AMDComputeConfig(&config, AMD_CHIP_766, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(memcmp(config.bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+
+    fill_config(&config, 0x5a);
+    before = config;
+    drives[0] = drive(1, 4, AMD_XFER_UDMA, 4);
+    drives[1] = drive(1, 4, AMD_XFER_UDMA, 5);
+    AMDComputeConfig(&config, AMD_CHIP_756, AMD_CHANNEL_PRIMARY, drives);
+    CHECK(memcmp(config.bytes, before.bytes, AMD_CONFIG_SIZE) == 0);
+}
+
 int main(void)
 {
     test_chip_lookup();
@@ -254,6 +529,13 @@ int main(void)
     test_absent_primary_preserves_complete_snapshot();
     test_invalid_compute_inputs_preserve_snapshot();
     test_reset_preserves_sibling_channel();
+    test_udma_encoding_and_disable();
+    test_reset_disables_current_udma_only();
+    test_cable_detection_does_not_write();
+    test_766_fifo_policy();
+    test_complete_ownership_and_invalid_udma();
+    test_udma3_all_positions_preserve_complete_snapshot();
+    test_compute_validation_is_atomic();
 
     if (failures != 0) {
         fprintf(stderr, "amd_timing_test: %d failure(s)\n", failures);

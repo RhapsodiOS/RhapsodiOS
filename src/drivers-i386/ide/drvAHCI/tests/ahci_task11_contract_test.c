@@ -84,6 +84,8 @@ int main(void)
         "../AHCI.drvproj/AHCI.lksproj/AHCIPort.m";
     const char *controllerm =
         "../AHCI.drvproj/AHCI.lksproj/AHCIController.m";
+    const char *eideInternalm =
+        "../../drvEIDE/EIDE.drvproj/EIDE.lksproj/IdeDiskInternal.m";
 
     require_text(portm, "identifyBuffer");
     require_order(diskm, "identifyDevice", "ata_hd_register(self, 0,");
@@ -101,10 +103,27 @@ int main(void)
     require_text(internalm, "ata_hd_unregister(_hdUnit)");
     require_text(diskm, "ata_hd_set_flush(_hdUnit,");
     require_text(internalm, "AHCIDiskTransportFlush");
-    require_order(internalm, "ata_hd_async_complete(request->pending)",
-                  "completeTransfer:request->pending");
+    require_order(internalm, "completeTransfer:pending",
+                  "freeRequest:request");
+    require_order(internalm, "freeRequest:request",
+                  "ata_hd_async_complete(registryToken)");
+    require_order(eideInternalm, "completeTransfer:pending",
+                  "freeIdeBuf:ideBuf");
+    require_order(eideInternalm, "freeIdeBuf:ideBuf",
+                  "ata_hd_async_complete(registryToken)");
     require_text(internalm, "portBecameNotReady");
     require_text(portm, "[disk portBecameNotReady]");
+    require_text(portm, "notifyDiskOffline");
+    require_text(portm, "activeDiskNotifications");
+    require_text(portm, "while (activeDiskNotifications != 0)");
+    require_order(portm, "++activeDiskNotifications",
+                  "[commandLock unlockWith:condition]");
+    require_order(portm, "[diskToNotify portBecameNotReady]",
+                  "--activeDiskNotifications");
+    require_order(portm, "asyncAction == AHCI_ASYNC_PORT_OFFLINE",
+                  "[commandLock unlockWith:condition]");
+    require_order(portm, "[commandLock unlockWith:condition]",
+                  "[diskToNotify portBecameNotReady]");
     require_text(diskm, "publication state is uncertain; retaining hd");
     require_text(diskm, "activation failed; retaining hd");
     require_order(diskm, "activation failed; retaining hd",

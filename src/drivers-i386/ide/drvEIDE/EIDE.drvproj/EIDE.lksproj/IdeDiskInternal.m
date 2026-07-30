@@ -346,8 +346,10 @@ void *ideThreadPtr;
     ideBuf->waitLock = waitLock;
     [ideBuf->waitLock initWith:NO];
     
-    if (pending != NULL)
+    if (pending != NULL) {
 	ideBuf->pending = pending;
+	(void)ata_hd_async_token(pending, &ideBuf->registryToken);
+    }
 	
     [_ideBufLock unlock];
     return (ideBuf);
@@ -371,8 +373,10 @@ void *ideThreadPtr;
     if (pending == NULL) {
 	ideBuf->waitLock = [NXConditionLock alloc];
 	[ideBuf->waitLock initWith:NO];
-    } else
+    } else {
 	ideBuf->pending = pending;
+	(void)ata_hd_async_token(pending, &ideBuf->registryToken);
+    }
     return (ideBuf);
 }
 
@@ -536,11 +540,20 @@ void *ideThreadPtr;
 - (void)ideIoComplete:(ideBuf_t *) ideBuf
 {
     if (ideBuf->pending) {
-	ata_hd_async_complete(ideBuf->pending);
-	[self completeTransfer:ideBuf->pending
-		    withStatus:ideBuf->status
-		    actualLength:ideBuf->bytesXfr];
+	void *pending;
+	ATAHDAsyncToken registryToken;
+	IOReturn status;
+	u_int bytesXfr;
+
+	pending = ideBuf->pending;
+	registryToken = ideBuf->registryToken;
+	status = ideBuf->status;
+	bytesXfr = ideBuf->bytesXfr;
+	[self completeTransfer:pending
+		    withStatus:status
+		    actualLength:bytesXfr];
 	[self freeIdeBuf:ideBuf];
+	ata_hd_async_complete(registryToken);
     } else {
 	/*
 	 * Sync I/O. Just wake up the waiting thread. 

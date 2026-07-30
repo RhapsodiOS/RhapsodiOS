@@ -6,6 +6,7 @@
 #import <driverkit/return.h>
 #import <driverkit/IODisk.h>
 #import <driverkit/IODeviceDescription.h>
+#import "ata_hd_registry_core.h"
 
 struct proc;
 
@@ -21,7 +22,8 @@ int ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
                     IODevAndIdInfo **mapOut);
 BOOL ata_hd_set_flush(unsigned int unit, id disk,
                       ata_hd_flush_fn transportFlush);
-void ata_hd_async_complete(void *pending);
+BOOL ata_hd_async_token(void *pending, ATAHDAsyncToken *tokenOut);
+void ata_hd_async_complete(ATAHDAsyncToken token);
 BOOL ata_hd_activate_units(const unsigned int *units, id *disks,
                            unsigned int count);
 IOReturn ata_hd_unregister(unsigned int unit);

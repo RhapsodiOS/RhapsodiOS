@@ -20,7 +20,6 @@
 #define ATA_HD_RAW_MAJOR 15
 #define ATA_HD_LIVE_PART (ATA_HD_PARTITIONS - 1)
 #define ATA_HD_MAX_PHYS_IO (256 * 512)
-#define ATA_HD_ASYNC_PINS (ATA_HD_UNITS * 128)
 
 typedef struct ATAHDUnitState {
     struct buf *physbuf;
@@ -31,12 +30,6 @@ typedef struct ATAHDUnitState {
     unsigned char rawOpen[ATA_HD_PARTITIONS];
 } ATAHDUnitState;
 
-typedef struct ATAHDAsyncPin {
-    void *pending;
-    unsigned int unit;
-    unsigned int partition;
-} ATAHDAsyncPin;
-
 typedef enum ATAHDDevswState {
     ATA_HD_DEVSW_NONE,
     ATA_HD_DEVSW_INITIALIZING,
@@ -46,7 +39,7 @@ typedef enum ATAHDDevswState {
 static ATAHDRegistryCore ata_hd_core;
 static IODevAndIdInfo ata_hd_maps[ATA_HD_UNITS];
 static ATAHDUnitState ata_hd_units[ATA_HD_UNITS];
-static ATAHDAsyncPin ata_hd_async_pins[ATA_HD_ASYNC_PINS];
+static ATAHDAsyncTokenCore ata_hd_async_tokens;
 
 /*
  * Initialized before i386 DriverKit probing starts. The registry lock protects
@@ -82,7 +75,8 @@ static int ata_hd_core_error_to_errno(int error);
 static void ata_hd_free_physbufs(struct buf **physbufs,
                                  unsigned int count);
 static int ata_hd_pin_io_locked(void *pending, unsigned int unit,
-                                unsigned int partition);
+                                unsigned int partition,
+                                ATAHDAsyncToken *tokenOut);
 
 BOOL
 ata_hd_registry_init(void)
@@ -99,7 +93,7 @@ ata_hd_registry_init(void)
     ATAHDRegistryCoreInit(&ata_hd_core);
     bzero((char *)ata_hd_maps, sizeof(ata_hd_maps));
     bzero((char *)ata_hd_units, sizeof(ata_hd_units));
-    bzero((char *)ata_hd_async_pins, sizeof(ata_hd_async_pins));
+    ATAHDAsyncTokenCoreInit(&ata_hd_async_tokens);
     ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
     ata_hd_block_major = -1;
     ata_hd_raw_major = -1;
@@ -820,6 +814,7 @@ ata_hd_strategy(struct buf *bp)
     vm_task_t client;
     unsigned int unit;
     unsigned int partition;
+    ATAHDAsyncToken token;
     int pinResult;
 
     [ata_hd_lock lock];
@@ -832,7 +827,7 @@ ata_hd_strategy(struct buf *bp)
     }
     unit = IO_DISK_UNIT(bp->b_dev);
     partition = IO_DISK_PART(bp->b_dev);
-    pinResult = ata_hd_pin_io_locked(bp, unit, partition);
+    pinResult = ata_hd_pin_io_locked(bp, unit, partition, &token);
     if (pinResult != ATA_HD_REGISTRY_SUCCESS) {
         [ata_hd_lock unlock];
         bp->b_error = ata_hd_core_error_to_errno(pinResult);
@@ -847,7 +842,7 @@ ata_hd_strategy(struct buf *bp)
 
     if ([disk blockSize] == 0) {
         bp->b_error = ENXIO;
-        ata_hd_async_complete(bp);
+        ata_hd_async_complete(token);
         goto bad;
     }
 
@@ -867,7 +862,7 @@ ata_hd_strategy(struct buf *bp)
 
     if (result != IO_R_SUCCESS) {
         bp->b_error = [disk errnoFromReturn:result];
-        ata_hd_async_complete(bp);
+        ata_hd_async_complete(token);
         goto bad;
     }
 
@@ -880,55 +875,58 @@ bad:
 
 static int
 ata_hd_pin_io_locked(void *pending, unsigned int unit,
-                     unsigned int partition)
+                     unsigned int partition, ATAHDAsyncToken *tokenOut)
 {
-    unsigned int index;
-    unsigned int freeIndex;
     int result;
 
-    if (pending == NULL || unit >= ATA_HD_UNITS ||
+    if (pending == NULL || tokenOut == NULL || unit >= ATA_HD_UNITS ||
         partition >= ATA_HD_PARTITIONS ||
         ata_hd_units[unit].ioCount == ~0U)
         return ATA_HD_REGISTRY_INVALID;
-    freeIndex = ATA_HD_ASYNC_PINS;
-    for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
-        if (ata_hd_async_pins[index].pending == pending)
-            return ATA_HD_REGISTRY_INVALID;
-        if (freeIndex == ATA_HD_ASYNC_PINS &&
-            ata_hd_async_pins[index].pending == NULL)
-            freeIndex = index;
-    }
-    if (freeIndex == ATA_HD_ASYNC_PINS)
-        return ATA_HD_BUSY;
     result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
     if (result != ATA_HD_REGISTRY_SUCCESS)
         return result;
-    ata_hd_async_pins[freeIndex].pending = pending;
-    ata_hd_async_pins[freeIndex].unit = unit;
-    ata_hd_async_pins[freeIndex].partition = partition;
+    result = ATAHDAsyncTokenReserve(&ata_hd_async_tokens, pending, unit,
+                                    partition, tokenOut);
+    if (result != ATA_HD_REGISTRY_SUCCESS) {
+        (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
+        return result;
+    }
     ++ata_hd_units[unit].ioCount;
     return ATA_HD_REGISTRY_SUCCESS;
 }
 
-void
-ata_hd_async_complete(void *pending)
+BOOL
+ata_hd_async_token(void *pending, ATAHDAsyncToken *tokenOut)
 {
-    unsigned int index;
+    int result;
+
+    if (pending == NULL || tokenOut == NULL || !ata_hd_registry_ready ||
+        ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    result = ATAHDAsyncTokenForPending(&ata_hd_async_tokens, pending,
+                                       tokenOut);
+    [ata_hd_lock unlock];
+    return result == ATA_HD_REGISTRY_SUCCESS ? YES : NO;
+}
+
+void
+ata_hd_async_complete(ATAHDAsyncToken token)
+{
     unsigned int unit;
     unsigned int partition;
+    int result;
 
-    if (pending == NULL || !ata_hd_registry_ready || ata_hd_lock == nil)
+    if (!ata_hd_registry_ready || ata_hd_lock == nil)
         return;
     [ata_hd_lock lock];
-    for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
-        if (ata_hd_async_pins[index].pending == pending) {
-            unit = ata_hd_async_pins[index].unit;
-            partition = ata_hd_async_pins[index].partition;
-            ata_hd_async_pins[index].pending = NULL;
+    result = ATAHDAsyncTokenRelease(&ata_hd_async_tokens, token, &unit,
+                                    &partition);
+    if (result == ATA_HD_REGISTRY_SUCCESS) {
+        if (ata_hd_units[unit].ioCount != 0)
             --ata_hd_units[unit].ioCount;
-            (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
-            break;
-        }
+        (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
     }
     [ata_hd_lock unlock];
 }

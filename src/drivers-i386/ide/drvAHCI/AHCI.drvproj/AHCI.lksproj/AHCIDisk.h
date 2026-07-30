@@ -4,6 +4,7 @@
 #import <driverkit/IODisk.h>
 #import <driverkit/kernelDiskMethods.h>
 #import <kern/queue.h>
+#import <bsd/dev/ata_hd_registry_core.h>
 #import "AHCIDiskLogic.h"
 
 #define AHCI_DISK_REQUEST_COUNT 128
@@ -22,6 +23,7 @@ typedef struct {
     unsigned char *buffer;
     vm_task_t client;
     void *pending;
+    ATAHDAsyncToken registryToken;
     id waitLock;
     unsigned int bytesTransferred;
     IOReturn status;

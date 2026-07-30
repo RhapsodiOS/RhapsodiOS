@@ -3,6 +3,7 @@
 
 #define ATA_HD_UNITS 32
 #define ATA_HD_PARTITIONS 8
+#define ATA_HD_ASYNC_PINS (ATA_HD_UNITS * 128)
 
 #define ATA_HD_REGISTRY_SUCCESS 0
 #define ATA_HD_REGISTRY_INVALID -1
@@ -18,6 +19,23 @@ typedef struct ATAHDRegistryCore {
     unsigned char active[ATA_HD_UNITS];
     unsigned int openCounts[ATA_HD_UNITS][ATA_HD_PARTITIONS];
 } ATAHDRegistryCore;
+
+typedef struct ATAHDAsyncToken {
+    unsigned int index;
+    unsigned int generation;
+} ATAHDAsyncToken;
+
+typedef struct ATAHDAsyncPin {
+    void *pending;
+    unsigned int unit;
+    unsigned int partition;
+    unsigned int generation;
+    unsigned char active;
+} ATAHDAsyncPin;
+
+typedef struct ATAHDAsyncTokenCore {
+    ATAHDAsyncPin pins[ATA_HD_ASYNC_PINS];
+} ATAHDAsyncTokenCore;
 
 void ATAHDRegistryCoreInit(ATAHDRegistryCore *registry);
 int ATAHDRegistryAllocate(ATAHDRegistryCore *registry, void *owner);
@@ -43,5 +61,14 @@ int ATAHDRegistryCloseIfPresent(ATAHDRegistryCore *registry,
                                 unsigned int unit, unsigned int partition,
                                 unsigned char *present);
 int ATAHDRegistryRemove(ATAHDRegistryCore *registry, unsigned int unit);
+void ATAHDAsyncTokenCoreInit(ATAHDAsyncTokenCore *tokens);
+int ATAHDAsyncTokenReserve(ATAHDAsyncTokenCore *tokens, void *pending,
+                           unsigned int unit, unsigned int partition,
+                           ATAHDAsyncToken *tokenOut);
+int ATAHDAsyncTokenForPending(const ATAHDAsyncTokenCore *tokens,
+                              void *pending, ATAHDAsyncToken *tokenOut);
+int ATAHDAsyncTokenRelease(ATAHDAsyncTokenCore *tokens,
+                           ATAHDAsyncToken token, unsigned int *unitOut,
+                           unsigned int *partitionOut);
 
 #endif

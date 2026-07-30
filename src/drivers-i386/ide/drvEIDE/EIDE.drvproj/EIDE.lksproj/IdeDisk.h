@@ -45,6 +45,7 @@
 #import <driverkit/driverTypes.h>
 #import <driverkit/IODisk.h>
 #import <driverkit/kernelDiskMethods.h>
+#import <bsd/dev/ata_hd_registry_core.h>
 
 #if (IO_DRIVERKIT_VERSION == 330)
 #import <mach/time_stamp.h>
@@ -91,6 +92,7 @@ typedef  struct {
     id		waitLock;	/* NXConditionLock  */
     void	*pending;	/* if non-NULL, async request; this is */
 				/* used to ioComplete: the operation. */
+    ATAHDAsyncToken registryToken;
 
     unsigned 	needsDisk:1,
 		oneWay:1;	/* 1 ==> no I/O complete */

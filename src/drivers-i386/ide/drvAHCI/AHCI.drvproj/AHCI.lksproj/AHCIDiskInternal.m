@@ -138,6 +138,8 @@ IOReturn AHCIDiskTransportFlush(id disk)
     request->waitLock = waitLock;
     [request->waitLock initWith:NO];
     request->pending = pending;
+    if (pending != 0)
+        (void)ata_hd_async_token(pending, &request->registryToken);
     [_poolLock unlock];
     return request;
 }
@@ -165,10 +167,19 @@ IOReturn AHCIDiskTransportFlush(id disk)
 - (void)completeRequest:(AHCIDiskRequest *)request
 {
     if (request->pending != 0) {
-        ata_hd_async_complete(request->pending);
-        [self completeTransfer:request->pending withStatus:request->status
-                  actualLength:request->bytesTransferred];
+        void *pending;
+        ATAHDAsyncToken registryToken;
+        IOReturn status;
+        unsigned int bytesTransferred;
+
+        pending = request->pending;
+        registryToken = request->registryToken;
+        status = request->status;
+        bytesTransferred = request->bytesTransferred;
+        [self completeTransfer:pending withStatus:status
+                  actualLength:bytesTransferred];
         [self freeRequest:request];
+        ata_hd_async_complete(registryToken);
     } else {
         [request->waitLock lock];
         [request->waitLock unlockWith:YES];

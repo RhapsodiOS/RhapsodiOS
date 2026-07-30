@@ -38,6 +38,7 @@
     BOOL online;
     BOOL controllerResetting;
     BOOL skipCommandRecovery;
+    unsigned int activeDiskNotifications;
     AHCIDisk *disk;
 }
 

@@ -76,6 +76,9 @@ static void test_registry_integration_source_contract(void)
     char *flushCall;
     char *flushErrorMap;
     char *closeUnpin;
+    char *strategy;
+    char *tokenDeclaration;
+    char *tokenPin;
 
     header = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.h");
     registry = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.m");
@@ -100,6 +103,8 @@ static void test_registry_integration_source_contract(void)
     CHECK(strstr(header, "typedef int (*ata_hd_ioctl_fn)") != NULL);
     CHECK(strstr(header, "typedef IOReturn (*ata_hd_flush_fn)") != NULL);
     CHECK(strstr(header, "ata_hd_set_flush") != NULL);
+    CHECK(strstr(header, "ATAHDAsyncToken") != NULL);
+    CHECK(strstr(header, "ata_hd_async_token") != NULL);
     CHECK(strstr(header, "ata_hd_async_complete") != NULL);
     CHECK(strstr(header, "BOOL ata_hd_registry_init(void);") != NULL);
     CHECK(strstr(header, "ata_hd_map_set_live") != NULL);
@@ -112,13 +117,21 @@ static void test_registry_integration_source_contract(void)
     CHECK(strstr(registry, "return map->liveId;") != NULL);
     CHECK(strstr(registry, "flushResult = flush(disk);") != NULL);
     CHECK(strstr(registry, "ioCount") != NULL);
-    CHECK(strstr(registry, "ata_hd_async_complete(bp);") != NULL);
+    CHECK(strstr(registry, "ata_hd_async_complete(token);") != NULL);
+    strategy = strstr(registry,
+                      "static void\nata_hd_strategy(struct buf *bp)\n{");
+    tokenDeclaration = strategy == NULL ? NULL :
+                       strstr(strategy, "ATAHDAsyncToken token;");
+    tokenPin = strategy == NULL ? NULL :
+               strstr(strategy, "ata_hd_pin_io_locked(bp");
+    CHECK(tokenDeclaration != NULL && tokenPin != NULL &&
+          tokenDeclaration < tokenPin);
     CHECK(strstr(registry, "while (ata_hd_units[unit].ioCount != 0)") !=
           NULL);
-    CHECK(strstr(eideInternal, "ata_hd_async_complete(ideBuf->pending)") !=
+    CHECK(strstr(eideInternal, "ata_hd_async_complete(registryToken)") !=
           NULL);
     CHECK(strstr(ahciInternal,
-                 "ata_hd_async_complete(request->pending)") != NULL);
+                 "ata_hd_async_complete(registryToken)") != NULL);
     CHECK(strstr(registry,
                  "[ata_hd_lock unlock];\n    if (flush != NULL)") != NULL);
     CHECK(strstr(registry, "[disk errnoFromReturn:flushResult]") != NULL);
@@ -161,6 +174,44 @@ done:
     free(diskMethods);
     free(eideInternal);
     free(ahciInternal);
+}
+
+static void test_async_tokens_reject_stale_and_double_release(void)
+{
+    ATAHDAsyncTokenCore tokens;
+    ATAHDAsyncToken first;
+    ATAHDAsyncToken second;
+    unsigned int unit;
+    unsigned int partition;
+    int firstPending;
+    int secondPending;
+
+    ATAHDAsyncTokenCoreInit(&tokens);
+    CHECK(ATAHDAsyncTokenReserve(&tokens, &firstPending, 3, 4, &first) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDAsyncTokenForPending(&tokens, &firstPending, &second) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(first.index == second.index);
+    CHECK(first.generation == second.generation);
+    CHECK(ATAHDAsyncTokenReserve(&tokens, &firstPending, 5, 6, &second) ==
+          ATA_HD_REGISTRY_DUPLICATE);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, first, &unit, &partition) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(unit == 3 && partition == 4);
+
+    CHECK(ATAHDAsyncTokenReserve(&tokens, &secondPending, 7, 1, &second) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(second.index == first.index);
+    CHECK(second.generation != first.generation);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, first, &unit, &partition) ==
+          ATA_HD_REGISTRY_INVALID);
+    CHECK(ATAHDAsyncTokenForPending(&tokens, &secondPending, &first) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(first.generation == second.generation);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, second, &unit, &partition) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, second, &unit, &partition) ==
+          ATA_HD_REGISTRY_INVALID);
 }
 
 static void test_lowest_free_and_owner_lookup(void)
@@ -406,6 +457,7 @@ int main(void)
     test_skipped_second_target_preserves_last_slot();
     test_open_counts_and_busy_removal();
     test_vnode_presence_balances_core_transitions();
+    test_async_tokens_reject_stale_and_double_release();
 
     if (failures != 0) {
         fprintf(stderr, "ata_hd_registry_test: %d failure(s)\n", failures);

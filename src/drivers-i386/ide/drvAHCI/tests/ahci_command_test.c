@@ -73,6 +73,52 @@ static void test_packet_fis(void)
     check_fis(fis, expected);
 }
 
+static void test_packet_command(void)
+{
+    static const unsigned char testUnitReady[12] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+    static const unsigned char read10[12] = {
+        0x28, 0x00, 0x00, 0x00, 0x12, 0x34,
+        0x00, 0x00, 0x01, 0x00, 0x00, 0x00
+    };
+    static const unsigned char command16[16] = {
+        0x88, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+    };
+    unsigned char fis[20];
+    unsigned char acmd[16];
+
+    memset(fis, 0xff, sizeof(fis));
+    memset(acmd, 0xff, sizeof(acmd));
+    CHECK(AHCIBuildPacketCommand(fis, acmd, testUnitReady, 12,
+                                 0, 0) == 0);
+    CHECK(fis[2] == 0xa0 && fis[3] == 0x00);
+    CHECK(fis[5] == 0x00 && fis[6] == 0x00);
+    CHECK(memcmp(acmd, testUnitReady, 12) == 0);
+    CHECK(acmd[12] == 0 && acmd[15] == 0);
+
+    memset(acmd, 0xff, sizeof(acmd));
+    CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 12,
+                                 2048, 0) == 0);
+    CHECK(fis[3] == 0x05);
+    CHECK(fis[5] == 0x00 && fis[6] == 0x08);
+    CHECK(memcmp(acmd, read10, 12) == 0);
+    CHECK(acmd[12] == 0 && acmd[15] == 0);
+
+    CHECK(AHCIBuildPacketCommand(fis, acmd, command16, 16,
+                                 4096, 1) == 0);
+    CHECK(fis[3] == 0x01);
+    CHECK(fis[5] == 0x00 && fis[6] == 0x10);
+    CHECK(memcmp(acmd, command16, 16) == 0);
+
+    CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 10,
+                                 2048, 0) != 0);
+    CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 12,
+                                 131073, 0) != 0);
+}
+
 static void test_lba28_read_dma_fis(void)
 {
     static const unsigned char expected[20] = {
@@ -275,6 +321,7 @@ int main(void)
     test_identify_fis();
     test_identify_packet_fis();
     test_packet_fis();
+    test_packet_command();
     test_lba28_read_dma_fis();
     test_lba48_write_dma_fis();
     test_invalid_dma_fis();

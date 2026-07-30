@@ -500,9 +500,9 @@ static int valid_link_makefile(const char *text)
 {
     return has_exact_line(text,
         "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c AHCIPortLogic.c AHCIDiskLogic.c", 1) &&
-        has_exact_line(text, "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m", 1) &&
+        has_exact_line(text, "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m AHCIATAPI.m", 1) &&
         has_exact_line(text,
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h AHCIDisk.h AHCIDiskInternal.h AHCIDiskLogic.h",
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h AHCIDisk.h AHCIDiskInternal.h AHCIDiskLogic.h AHCIATAPI.h",
         1);
 }
 
@@ -510,9 +510,9 @@ static int valid_link_project(const char *text)
 {
     return has_exact_line(text,
         "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c, AHCIPCI.c, AHCIPortLogic.c, AHCIDiskLogic.c);", 0) &&
-        has_exact_line(text, "CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m);", 0) &&
+        has_exact_line(text, "CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m, AHCIATAPI.m);", 0) &&
         has_exact_line(text,
-        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h, AHCIPort.h, AHCIPortLogic.h, AHCIDisk.h, AHCIDiskInternal.h, AHCIDiskLogic.h);",
+        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h, AHCIPort.h, AHCIPortLogic.h, AHCIDisk.h, AHCIDiskInternal.h, AHCIDiskLogic.h, AHCIATAPI.h);",
         0);
 }
 
@@ -715,8 +715,8 @@ static void test_validator_mutations(void)
 
     strcpy(link_makefile_ok,
         "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c AHCIPortLogic.c AHCIDiskLogic.c\n"
-        "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m\n"
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h AHCIDisk.h AHCIDiskInternal.h AHCIDiskLogic.h\n");
+        "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m AHCIATAPI.m\n"
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h AHCIDisk.h AHCIDiskInternal.h AHCIDiskLogic.h AHCIATAPI.h\n");
     strcpy(hba_source_ok,
         "#include \"AHCIHBA.h\"\n"
         "static void ahci_write(const AHCIHBAOps *ops, AHCIU32 offset, AHCIU32 value) {\n"
@@ -914,11 +914,11 @@ static void test_bundle_contract(void)
     require_valid_file("AHCI.drvproj/AHCI.lksproj/Makefile",
                        valid_link_makefile);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile",
-                      "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m", 1);
+                      "CLASSES = AHCIController.m AHCIPort.m AHCIDisk.m AHCIDiskInternal.m AHCIATAPI.m", 1);
     require_valid_file("AHCI.drvproj/AHCI.lksproj/PB.project",
                        valid_link_project);
     require_line_file("AHCI.drvproj/AHCI.lksproj/PB.project",
-                      "CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m);", 0);
+                      "CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m, AHCIATAPI.m);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.h",
                       "@interface AHCIPort : Object", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIShared.h",

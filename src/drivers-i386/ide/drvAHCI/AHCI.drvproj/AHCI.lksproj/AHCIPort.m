@@ -1,5 +1,7 @@
 #import "AHCIPort.h"
 #import "AHCIDisk.h"
+#import "AHCIATAPI.h"
+#import "AHCICommand.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/kernelDriver.h>
 #import <mach/mach_interface.h>
@@ -106,6 +108,20 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     ops->barrier = AHCIPortMMIOBarrier;
 }
 
+static int AHCIPortPacketCheckCondition(
+    BOOL isPacket, const AHCICompletionSnapshot *snapshot)
+{
+    AHCIU32 errorInterrupts;
+
+    if (!isPacket || snapshot == 0 || snapshot->serr != 0 ||
+        (snapshot->taskFile & 1U) == 0)
+        return 0;
+    errorInterrupts = snapshot->portIS &
+                      (AHCI_PXIS_RECOVERABLE_MASK |
+                       AHCI_PXIS_FATAL_MASK);
+    return errorInterrupts == AHCI_PXIS_TFES;
+}
+
 @implementation AHCIPort
 
 - initWithMMIO:(AHCIMMIOContext *)context
@@ -173,6 +189,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     BOOL defer;
 
     if (![self unpublishDisk])
+        return self;
+    if (![self unpublishATAPI])
         return self;
     defer = NO;
     if (commandLock != nil) {
@@ -254,7 +272,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     unsigned char *commandTable;
     unsigned short *identifyData;
 
-    if (!sameKind || destroying || diskUnpublishing)
+    if (!sameKind || destroying || diskUnpublishing || atapiUnpublishing)
         return AHCI_PORT_COMMAND_ERROR;
     AHCIPortFillOps(&ops, mmio);
     commandList = (AHCICommandHeader *)
@@ -271,6 +289,9 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                                            identifyData, kind);
         if (result == AHCI_PORT_SUCCESS && disk != nil &&
             ![disk reidentifyFromWords:identifyData])
+            return AHCI_PORT_COMMAND_ERROR;
+        if (result == AHCI_PORT_SUCCESS && atapi != nil &&
+            ![atapi reidentifyFromWords:identifyData])
             return AHCI_PORT_COMMAND_ERROR;
         return result;
     }
@@ -294,7 +315,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,
                                         &arena, &recoveredKind);
     controllerResetting = NO;
-    validationResult = diskUnpublishing ? AHCI_PORT_COMMAND_ERROR :
+    validationResult = (diskUnpublishing || atapiUnpublishing) ?
+        AHCI_PORT_COMMAND_ERROR :
         (result == AHCI_PORT_SUCCESS ?
          [self validateRecoveredKind:recoveredKind
                           matchesKind:AHCIRecoveredKindValid(
@@ -307,6 +329,10 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortMMIOBarrier(mmio);
     if (online)
         deviceKind = recoveredKind;
+    if (online && atapi != nil)
+        [atapi portBecameReady];
+    else if (atapi != nil)
+        [atapi portBecameNotReady];
     if (commandArbiter.state == AHCI_COMMAND_PENDING &&
         AHCICommandFinishIRQ(&commandArbiter, commandArbiter.generation)) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
@@ -326,6 +352,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     online = NO;
     if (disk != nil)
         [disk portBecameNotReady];
+    if (atapi != nil)
+        [atapi portBecameNotReady];
     if (commandArbiter.state == AHCI_COMMAND_PENDING &&
         AHCICommandFinishIRQ(&commandArbiter, commandArbiter.generation)) {
         controllerResetting = NO;
@@ -347,6 +375,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     online = NO;
     if (disk != nil)
         [disk portBecameNotReady];
+    if (atapi != nil)
+        [atapi portBecameNotReady];
     if (commandArbiter.state == AHCI_COMMAND_PENDING) {
         skipCommandRecovery = YES;
         commandResult = IO_R_IO;
@@ -478,12 +508,14 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 
     [commandLock lock];
     if (!AHCILocalRecoveryAllowed(destroying, controllerResetting,
-                                  diskUnpublishing)) {
+                                  diskUnpublishing || atapiUnpublishing)) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
     if (disk != nil)
         [disk portBecameNotReady];
+    if (atapi != nil)
+        [atapi portBecameNotReady];
     if (AHCIRecoveryFor(completionSnapshot.portIS,
                         completionSnapshot.serr, 1, 0) ==
         AHCI_RECOVERY_HBA) {
@@ -515,6 +547,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
                           AHCI_PORT_INITIAL_IE_MASK);
         AHCIPortMMIOBarrier(mmio);
+        if (atapi != nil)
+            [atapi portBecameReady];
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
@@ -640,6 +674,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     }
     ++activeExecutors;
     requestedBytes = length;
+    packetCommand = packet != 0;
     commandResult = IO_R_IO;
     bzero(&completionSnapshot, sizeof(completionSnapshot));
     stale = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
@@ -666,9 +701,11 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 
     [commandLock lockWhen:AHCI_LOCK_DONE];
     result = commandResult;
-    if (result == IO_R_SUCCESS)
-        *actual = completionSnapshot.transferred;
-    recover = result != IO_R_SUCCESS && !skipCommandRecovery;
+    *actual = completionSnapshot.transferred;
+    recover = result != IO_R_SUCCESS && !skipCommandRecovery &&
+              !(result == IO_R_IO &&
+                AHCIPortPacketCheckCondition(packetCommand,
+                                             &completionSnapshot));
     skipCommandRecovery = NO;
     if (recover) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
@@ -676,6 +713,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock lock];
     }
     commandArbiter.state = AHCI_COMMAND_IDLE;
+    packetCommand = NO;
     if (activeExecutors != 0)
         --activeExecutors;
     finishFree = destroying && quiesceComplete && !timeoutArmed &&
@@ -713,6 +751,81 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     disk = [AHCIDisk publishForPort:self
                  deviceDescription:deviceDescription];
     return disk != nil;
+}
+
+- (BOOL)publishATAPIFromDeviceDescription:
+    (IODeviceDescription *)deviceDescription
+{
+    unsigned char fis[20];
+    unsigned int actual;
+    unsigned short *identifyData;
+
+    if (deviceKind != AHCI_DEVICE_ATAPI || atapi != nil)
+        return atapi != nil;
+    identifyData = (unsigned short *)[self identifyBuffer];
+    if (identifyData == 0)
+        return NO;
+    bzero(identifyData, 512);
+    AHCIBuildIdentifyFIS(fis, 1);
+    if ([self executeATA:AHCI_ATAPI_IDENTIFY_PACKET_DEVICE
+                     fis:fis packet:0 buffer:identifyData
+                   length:512 write:NO client:IOVmTaskSelf()
+                  timeout:AHCI_ATAPI_PACKET_TIMEOUT_SECONDS
+              transferred:&actual] != IO_R_SUCCESS ||
+        actual != 512U)
+        return NO;
+    atapi = [AHCIATAPIController publishForPort:self
+                                  identifyWords:identifyData
+                             deviceDescription:deviceDescription];
+    return atapi != nil;
+}
+
+- (BOOL)unpublishATAPI
+{
+    AHCIATAPIController *device;
+    int condition;
+
+    if (commandLock == nil)
+        return atapi == nil;
+    [commandLock lock];
+    if (atapi == nil) {
+        condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                    AHCI_LOCK_PENDING :
+                    (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+        [commandLock unlockWith:condition];
+        return YES;
+    }
+    atapiUnpublishing = YES;
+    device = atapi;
+    [device portBecameNotReady];
+    atapi = nil;
+    condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                AHCI_LOCK_PENDING :
+                (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                 AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+    [commandLock unlockWith:condition];
+    if ([device free] != nil) {
+        [commandLock lock];
+        atapi = device;
+        online = NO;
+        [device portBecameNotReady];
+        atapiUnpublishing = NO;
+        condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                    AHCI_LOCK_PENDING :
+                    (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+        [commandLock unlockWith:condition];
+        return NO;
+    }
+    [commandLock lock];
+    atapiUnpublishing = NO;
+    condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                AHCI_LOCK_PENDING :
+                (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                 AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+    [commandLock unlockWith:condition];
+    return YES;
 }
 
 - (BOOL)unpublishDisk
@@ -836,7 +949,9 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortMMIOBarrier(mmio);
     completion = AHCIClassifyCompletion(&completionSnapshot,
                                          requestedBytes);
-    if (completion == AHCI_COMPLETION_ERROR) {
+    if (completion == AHCI_COMPLETION_ERROR &&
+        !AHCIPortPacketCheckCondition(packetCommand,
+                                      &completionSnapshot)) {
         AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0);
         AHCIPortMMIOBarrier(mmio);
     }
@@ -845,6 +960,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                                             linkStatus);
     if (asyncAction == AHCI_ASYNC_PORT_OFFLINE) {
         online = NO;
+        if (atapi != nil)
+            [atapi portBecameNotReady];
         if (disk != nil && !diskNotificationsBlocked) {
             notifyDiskOffline = YES;
             diskToNotify = disk;

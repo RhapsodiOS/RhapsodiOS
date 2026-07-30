@@ -21,6 +21,11 @@ int AHCIBuildDMAFIS(unsigned char fis[20], unsigned int lba,
                     unsigned char lba48);
 void AHCIBuildFlushFIS(unsigned char fis[20], unsigned char lba48);
 void AHCIBuildPacketFIS(unsigned char fis[20]);
+int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
+                           const unsigned char *cdb,
+                           unsigned int cdbLength,
+                           unsigned int transferBytes,
+                           unsigned char write);
 /* Status-returning APIs may leave outputs partially written on error. */
 int AHCIParseIdentify(const unsigned short id[256], AHCICapacity *out);
 int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,

@@ -2,8 +2,8 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c, AHCIPCI.c, AHCIPortLogic.c, AHCIDiskLogic.c);
-        CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m);
-        H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h, AHCIPort.h, AHCIPortLogic.h, AHCIDisk.h, AHCIDiskInternal.h, AHCIDiskLogic.h);
+        CLASSES = (AHCIController.m, AHCIPort.m, AHCIDisk.m, AHCIDiskInternal.m, AHCIATAPI.m);
+        H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h, AHCIPort.h, AHCIPortLogic.h, AHCIDisk.h, AHCIDiskInternal.h, AHCIDiskLogic.h, AHCIATAPI.h);
         OTHER_SOURCES = (Load_Commands.sect, Makefile, Makefile.preamble);
     };
     LANGUAGE = English;

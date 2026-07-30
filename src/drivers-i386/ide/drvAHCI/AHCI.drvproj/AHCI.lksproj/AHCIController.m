@@ -278,6 +278,11 @@ static int AHCIVersionIsCommon(AHCIU32 version)
                 publishDiskFromDeviceDescription:deviceDescription])
             IOLog("%s: port %d SATA disk was not published\n",
                   [self name], port);
+        if ([ports[port] deviceKind] == AHCI_DEVICE_ATAPI &&
+            ![ports[port]
+                publishATAPIFromDeviceDescription:deviceDescription])
+            IOLog("%s: port %d ATAPI device was not published\n",
+                  [self name], port);
     }
 
     if (!AHCIVersionIsCommon(hbaInfo.version))
@@ -299,6 +304,11 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     for (port = 0; port < AHCI_MAX_PORTS; ++port) {
         if (ports[port] != nil && ![ports[port] unpublishDisk]) {
             IOLog("%s: retaining controller while hd registry is busy\n",
+                  [self name]);
+            return self;
+        }
+        if (ports[port] != nil && ![ports[port] unpublishATAPI]) {
+            IOLog("%s: retaining controller while ATAPI child is busy\n",
                   [self name]);
             return self;
         }

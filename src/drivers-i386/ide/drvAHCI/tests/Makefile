@@ -6,7 +6,7 @@ INCLUDES = -I../AHCI.drvproj/AHCI.lksproj \
 
 .PHONY: all check test clean
 
-all: ahci_command_test ahci_state_test ahci_hba_test ahci_pci_test ahci_port_test ahci_scaffold_contract_test ahci_task10_contract_test ahci_disk_test ahci_task11_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
+all: ahci_command_test ahci_state_test ahci_hba_test ahci_pci_test ahci_port_test ahci_scaffold_contract_test ahci_task10_contract_test ahci_disk_test ahci_task11_contract_test ahci_task12_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
 
 ahci_command_test: ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.h ../AHCI.drvproj/AHCI.lksproj/AHCIRegs.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c
@@ -35,6 +35,9 @@ ahci_disk_test: ahci_disk_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIDiskLogic.c ..
 ahci_task11_contract_test: ahci_task11_contract_test.c
 	$(CC) $(CFLAGS) -o $@ ahci_task11_contract_test.c
 
+ahci_task12_contract_test: ahci_task12_contract_test.c
+	$(CC) $(CFLAGS) -o $@ ahci_task12_contract_test.c
+
 ata_hd_registry_test: ata_hd_registry_test.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ata_hd_registry_test.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.c
 
@@ -59,10 +62,11 @@ test: all
 	./ahci_task10_contract_test
 	./ahci_disk_test
 	./ahci_task11_contract_test
+	./ahci_task12_contract_test
 	./ata_hd_registry_test
 	./ata_hd_root_test
 	./eide_registry_migration_test
 	./eide_ioctl_validation_test
 
 clean:
-	rm -f ahci_command_test ahci_state_test ahci_hba_test ahci_pci_test ahci_port_test ahci_scaffold_contract_test ahci_task10_contract_test ahci_disk_test ahci_task11_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
+	rm -f ahci_command_test ahci_state_test ahci_hba_test ahci_pci_test ahci_port_test ahci_scaffold_contract_test ahci_task10_contract_test ahci_disk_test ahci_task11_contract_test ahci_task12_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test

@@ -20,6 +20,30 @@ void AHCIBuildPacketFIS(unsigned char fis[20])
     AHCIBuildH2DFIS(fis, 0xa0);
 }
 
+int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
+                           const unsigned char *cdb,
+                           unsigned int cdbLength,
+                           unsigned int transferBytes,
+                           unsigned char write)
+{
+    unsigned int byteCount;
+
+    if (fis == 0 || acmd == 0 || cdb == 0 ||
+        (cdbLength != 12 && cdbLength != 16) ||
+        transferBytes > 131072U)
+        return -1;
+    AHCIBuildPacketFIS(fis);
+    memset(acmd, 0, 16);
+    memcpy(acmd, cdb, cdbLength);
+    if (transferBytes == 0)
+        return 0;
+    fis[3] = (unsigned char)(0x01U | (write ? 0U : 0x04U));
+    byteCount = transferBytes > 0xffffU ? 0xffffU : transferBytes;
+    fis[5] = (unsigned char)byteCount;
+    fis[6] = (unsigned char)(byteCount >> 8);
+    return 0;
+}
+
 int AHCIBuildDMAFIS(unsigned char fis[20], unsigned int lba,
                     unsigned int sectors, unsigned char write,
                     unsigned char lba48)

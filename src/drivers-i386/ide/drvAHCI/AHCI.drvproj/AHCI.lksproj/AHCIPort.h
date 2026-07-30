@@ -10,6 +10,7 @@
 #import "AHCIPortLogic.h"
 
 @class AHCIDisk;
+@class AHCIATAPIController;
 
 @interface AHCIPort : Object
 {
@@ -26,6 +27,7 @@
     AHCICompletionSnapshot completionSnapshot;
     unsigned char receivedFISSnapshot[AHCI_PORT_RECEIVED_FIS_BYTES];
     unsigned int requestedBytes;
+    BOOL packetCommand;
     unsigned long timeoutDeadlineSeconds;
     AHCITimeoutChain timeoutChain;
     BOOL timeoutArmed;
@@ -42,6 +44,8 @@
     BOOL diskNotificationsBlocked;
     BOOL diskUnpublishing;
     AHCIDisk *disk;
+    BOOL atapiUnpublishing;
+    AHCIATAPIController *atapi;
 }
 
 - initWithMMIO:(AHCIMMIOContext *)context
@@ -54,6 +58,9 @@
 - (BOOL)publishDiskFromDeviceDescription:
     (IODeviceDescription *)deviceDescription;
 - (BOOL)unpublishDisk;
+- (BOOL)publishATAPIFromDeviceDescription:
+    (IODeviceDescription *)deviceDescription;
+- (BOOL)unpublishATAPI;
 - (void)handleInterrupt;
 - (void)setController:(id)owner;
 - (BOOL)controllerDidReset;

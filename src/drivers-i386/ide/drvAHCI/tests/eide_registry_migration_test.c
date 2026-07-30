@@ -148,6 +148,55 @@ static void test_transactional_registration(const char *diskSource,
           strstr(diskHeader, "int _hdUnit") != NULL);
 }
 
+static void test_target_classification_precedes_reservation(
+    const char *diskSource)
+{
+    const char *probe;
+    const char *targetLoop;
+    const char *targetLoopEnd;
+    const char *atapiGate;
+    const char *atapiContinue;
+    const char *driveInfo;
+    const char *typeGate;
+    const char *typeContinue;
+    const char *allocation;
+    const char *registration;
+
+    probe = strstr(diskSource, "+ (BOOL)probe");
+    targetLoop = probe == NULL ? NULL :
+        strstr(probe, "for (unit = 0; unit < MAX_IDE_DRIVES; unit++)");
+    targetLoopEnd = targetLoop == NULL ? NULL :
+        strstr(targetLoop, "if (ata_hd_activate_units");
+    CHECK(targetLoop != NULL);
+    CHECK(targetLoopEnd != NULL);
+    if (targetLoop == NULL || targetLoopEnd == NULL)
+        return;
+
+    atapiGate = strstr(targetLoop, "[controllerId isAtapiDevice:unit]");
+    driveInfo = strstr(targetLoop, "[controllerId getIdeDriveInfo:unit]");
+    typeGate = strstr(targetLoop, "candidateInfo.type == 0");
+    allocation = strstr(targetLoop,
+                        "[[IdeDisk alloc] initFromDeviceDescription");
+    registration = strstr(targetLoop, "ata_hd_register(diskId");
+    CHECK(atapiGate != NULL && atapiGate < targetLoopEnd);
+    CHECK(driveInfo != NULL && driveInfo < targetLoopEnd);
+    CHECK(typeGate != NULL && typeGate < targetLoopEnd);
+    CHECK(allocation != NULL && allocation < targetLoopEnd);
+    CHECK(registration != NULL && registration < targetLoopEnd);
+    if (atapiGate == NULL || driveInfo == NULL || typeGate == NULL ||
+        allocation == NULL || registration == NULL)
+        return;
+
+    atapiContinue = strstr(atapiGate, "continue;");
+    typeContinue = strstr(typeGate, "continue;");
+    CHECK(atapiContinue != NULL && atapiContinue < driveInfo);
+    CHECK(typeContinue != NULL && typeContinue < allocation);
+    CHECK(atapiGate < driveInfo);
+    CHECK(driveInfo < typeGate);
+    CHECK(typeGate < allocation);
+    CHECK(allocation < registration);
+}
+
 static void test_safe_teardown(const char *internalSource)
 {
     const char *resources;
@@ -281,6 +330,7 @@ int main(void)
         test_private_namespace_is_removed(kernelHeader, kernelSource,
                                           diskSource, internalHeader);
         test_transactional_registration(diskSource, diskHeader);
+        test_target_classification_precedes_reservation(diskSource);
         test_safe_teardown(internalSource);
         test_transport_ioctl_only(kernelSource);
         test_global_unit_naming(internalSource);

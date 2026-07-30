@@ -233,6 +233,50 @@ static void test_capacity_and_reuse(void)
     CHECK(ATAHDRegistryAllocate(&registry, &owners[ATA_HD_UNITS]) == 7);
 }
 
+static void test_skipped_second_target_preserves_last_slot(void)
+{
+    ATAHDRegistryCore registry;
+    int occupiedOwners[ATA_HD_UNITS - 1];
+    int targetOwners[2];
+    int extraOwner;
+    int reserveTarget[2];
+    unsigned int preparedUnits[1];
+    void *preparedOwners[1];
+    unsigned int preparedCount;
+    unsigned int target;
+    unsigned int unit;
+    int allocatedUnit;
+
+    ATAHDRegistryCoreInit(&registry);
+    for (unit = 0; unit < ATA_HD_UNITS - 1; ++unit)
+        CHECK(ATAHDRegistryAllocate(&registry, &occupiedOwners[unit]) ==
+              (int)unit);
+
+    reserveTarget[0] = 1; /* cached drive info says ATA */
+    reserveTarget[1] = 0; /* cached drive info says ATAPI/empty */
+    preparedCount = 0;
+    for (target = 0; target < 2; ++target) {
+        if (!reserveTarget[target])
+            continue;
+        allocatedUnit = ATAHDRegistryAllocate(&registry,
+                                              &targetOwners[target]);
+        CHECK(allocatedUnit == ATA_HD_UNITS - 1);
+        preparedUnits[preparedCount] = (unsigned int)allocatedUnit;
+        preparedOwners[preparedCount] = &targetOwners[target];
+        ++preparedCount;
+    }
+
+    CHECK(preparedCount == 1);
+    CHECK(ATAHDRegistryActivateBatch(&registry, preparedUnits,
+                                     preparedOwners, preparedCount) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryIsActive(&registry, ATA_HD_UNITS - 1) == 1);
+    CHECK(ATAHDRegistryOwner(&registry, ATA_HD_UNITS - 1) ==
+          &targetOwners[0]);
+    CHECK(ATAHDRegistryAllocate(&registry, &extraOwner) ==
+          ATA_HD_REGISTRY_FULL);
+}
+
 static void test_open_counts_and_busy_removal(void)
 {
     ATAHDRegistryCore registry;
@@ -313,6 +357,7 @@ int main(void)
     test_reserved_units_are_inactive_until_activation();
     test_batch_activation_is_all_or_none();
     test_capacity_and_reuse();
+    test_skipped_second_target_preserves_last_slot();
     test_open_counts_and_busy_removal();
     test_vnode_presence_balances_core_transitions();
 

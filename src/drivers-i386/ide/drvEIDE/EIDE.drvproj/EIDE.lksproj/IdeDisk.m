@@ -97,6 +97,7 @@ static Protocol *protocols[] = {
     id preparedDisks[MAX_IDE_DRIVES];
     unsigned int preparedUnits[MAX_IDE_DRIVES];
     unsigned int preparedCount = 0;
+    ideDriveInfo_t candidateInfo;
     IODevAndIdInfo *idMap;
     int globalUnit;
     int unit, i;
@@ -124,7 +125,12 @@ static Protocol *protocols[] = {
 //  IOLog("IdeDisk probing for controller %x\n", controllerId);
 	
     for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
-    
+	if ([controllerId isAtapiDevice:unit] == YES)
+	    continue;
+	candidateInfo = [controllerId getIdeDriveInfo:unit];
+	if (candidateInfo.type == 0)
+	    continue;
+
 	diskId = [[IdeDisk alloc] initFromDeviceDescription:deviceDescription];
 	if (diskId == nil) {
 	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);

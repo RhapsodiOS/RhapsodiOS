@@ -507,9 +507,15 @@ TASStatus TASRuntimeServiceDeferred(TASRuntime *runtime,
     int detectFault;
     if (runtime == 0 || notifyInput == 0 || notifyOutput == 0)
         return kTASStatusMalformed;
-    runtime->ops.lockOperation(runtime->ops.context);
     *notifyInput = 0;
     *notifyOutput = 0;
+    if (!runtime->initialized)
+        return kTASStatusConflict;
+    runtime->ops.lockOperation(runtime->ops.context);
+    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return kTASStatusConflict;
+    }
     result = kTASStatusOK;
     runtime->ops.lockInterrupt(runtime->ops.context);
     pending = runtime->pendingIRQs;
@@ -576,7 +582,13 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
     TASAudioState candidate;
     if (runtime == 0 || desired == 0)
         return kTASStatusMalformed;
+    if (!runtime->initialized)
+        return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
+    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return kTASStatusConflict;
+    }
     runtime->ops.lockState(runtime->ops.context);
     candidate = runtime->audio;
     status = TASAudioSetDesiredControls(&candidate, desired);
@@ -709,7 +721,13 @@ TASStatus TASRuntimeSetPower(TASRuntime *runtime, TASPowerState power,
     TASPowerState currentPower;
     if (runtime == 0)
         return kTASStatusMalformed;
+    if (!runtime->initialized)
+        return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
+    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return kTASStatusConflict;
+    }
     runtime->ops.lockState(runtime->ops.context);
     status = TASAudioPreparePower(&runtime->audio, power, deadline, &plan,
         &token);

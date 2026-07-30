@@ -42,6 +42,15 @@ static NXLock *tasCalloutLock;
 static PPCTASAudio *tasCalloutOwner;
 static unsigned long tasNextCalloutToken;
 
+static int tas_is_closing(PPCTASAudio *self)
+{
+    int closing;
+    [tasCalloutLock lock];
+    closing = self->closing;
+    [tasCalloutLock unlock];
+    return closing;
+}
+
 static void tas_lock_interrupt(void *opaque)
 {
     [((PPCTASAudio *)opaque)->interruptLock acquire];
@@ -1062,6 +1071,8 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     const TASAudioDesiredControls *candidate)
 {
     TASStatus status;
+    if (tas_is_closing(self))
+        return kTASStatusConflict;
     status = TASRuntimeSetControls(&self->runtime, candidate,
         tas_now(self) + 100UL);
     if (status == kTASStatusOK)
@@ -1144,6 +1155,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 
 - (BOOL)reset
 {
+    if (tas_is_closing(self))
+        return NO;
     [self setDeviceKind:"PPCTASAudio"];
     [self setUnit:0];
     [self setName:"PPCTASAudio0"];
@@ -1185,6 +1198,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     void *channelAddress;
     unsigned int channelBytes;
     (void)localChannel;
+    if (tas_is_closing(self))
+        return NO;
     if (isRead)
         [self getInputChannelBuffer:&channelAddress size:&channelBytes];
     else
@@ -1200,6 +1215,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)stopDMAForChannel:(unsigned int)localChannel read:(BOOL)isRead
 {
     (void)localChannel;
+    if (tas_is_closing(self))
+        return;
     (void)TASRuntimeStopStream(&runtime,
         isRead ? kTASStreamInput : kTASStreamOutput,
         tas_now(self) + 1000UL);
@@ -1210,7 +1227,7 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     *serviceInput = NO;
     *serviceOutput = NO;
-    if (closing)
+    if (tas_is_closing(self))
         return;
     (void)TASRuntimeServiceDeferred(&runtime, tas_now(self) + 100UL,
         serviceInput, serviceOutput);
@@ -1256,6 +1273,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (BOOL)isInputActive
 {
     BOOL active;
+    if (tas_is_closing(self))
+        return NO;
     [operationLock lock];
     active = (runtime.clock.activeMask & kTASStreamMaskInput) != 0UL;
     [operationLock unlock];
@@ -1264,6 +1283,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (BOOL)isOutputActive
 {
     BOOL active;
+    if (tas_is_closing(self))
+        return NO;
     [operationLock lock];
     active = (runtime.clock.activeMask & kTASStreamMaskOutput) != 0UL;
     [operationLock unlock];
@@ -1274,6 +1295,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     TASAudioDesiredControls candidate;
     unsigned long coefficient;
+    if (tas_is_closing(self))
+        return;
     if (TASRuntimeGainToCodec((int)[self inputGainLeft], &coefficient) !=
         kTASStatusOK)
         return;
@@ -1285,6 +1308,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     TASAudioDesiredControls candidate;
     unsigned long coefficient;
+    if (tas_is_closing(self))
+        return;
     if (TASRuntimeGainToCodec((int)[self inputGainRight], &coefficient) !=
         kTASStatusOK)
         return;
@@ -1295,6 +1320,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)updateOutputMute
 {
     TASAudioDesiredControls candidate;
+    if (tas_is_closing(self))
+        return;
     candidate = desiredControls;
     candidate.userMuted = [self isOutputMuted];
     (void)tas_update_controls(self, &candidate);
@@ -1303,6 +1330,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     TASAudioDesiredControls candidate;
     unsigned long coefficient;
+    if (tas_is_closing(self))
+        return;
     if (TASRuntimeAttenuationToCodec([self outputAttenuationLeft],
         &coefficient) != kTASStatusOK)
         return;
@@ -1314,6 +1343,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     TASAudioDesiredControls candidate;
     unsigned long coefficient;
+    if (tas_is_closing(self))
+        return;
     if (TASRuntimeAttenuationToCodec([self outputAttenuationRight],
         &coefficient) != kTASStatusOK)
         return;
@@ -1324,6 +1355,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)setInput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
     TASAudioDesiredControls candidate;
+    if (tas_is_closing(self))
+        return;
     candidate = desiredControls;
     if (!enable)
         return;
@@ -1342,12 +1375,16 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     TASAudioDesiredControls candidate;
     (void)tag;
+    if (tas_is_closing(self))
+        return;
     candidate = desiredControls;
     candidate.userMuted = !enable;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)setAnalogInputSource:(NXSoundParameterTag)tag
 {
+    if (tas_is_closing(self))
+        return;
     if (tag == NX_SoundDeviceAnalogInputSource_Microphone)
         [self setInput:NX_SoundDeviceMicIn enable:YES];
     else if (tag == NX_SoundDeviceAnalogInputSource_LineIn)
@@ -1369,6 +1406,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (IOReturn)setPowerState:(PMPowerState)state
 {
     TASPowerState target;
+    if (tas_is_closing(self))
+        return IO_R_NOT_ATTACHED;
     target = state == PM_OFF ? kTASPowerOff :
         (state == PM_SUSPENDED ? kTASPowerSuspended :
         (state == PM_STANDBY ? kTASPowerStandby : kTASPowerReady));

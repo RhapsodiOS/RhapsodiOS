@@ -32,6 +32,29 @@ static int driver_source_contains(const char *text)
         "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCTASAudio.m", text);
 }
 
+static unsigned long driver_source_count(const char *text)
+{
+    FILE *file;
+    static char source[65536];
+    char *cursor;
+    size_t count;
+    unsigned long matches;
+    file = fopen(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCTASAudio.m", "rb");
+    if (file == 0)
+        return 0UL;
+    count = fread(source, 1, sizeof(source) - 1U, file);
+    fclose(file);
+    source[count] = 0;
+    matches = 0UL;
+    cursor = source;
+    while ((cursor = strstr(cursor, text)) != 0) {
+        ++matches;
+        cursor += strlen(text);
+    }
+    return matches;
+}
+
 typedef struct {
     long events[128];
     unsigned long eventCount;
@@ -1346,6 +1369,44 @@ static void test_unwind_deadline_saturates_at_clock_wrap(void)
     CHECK(mock.lastStopDeadline == ~0UL);
 }
 
+static void test_runtime_commands_reject_after_unwind(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned long hardwareCalls;
+    unsigned long signalCount;
+    int notifyInput;
+    int notifyOutput;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(TASRuntimeUnwind(&runtime) == kTASStatusOK);
+    hardwareCalls = mock.hardwareCalls;
+    signalCount = mock.signalCount;
+    desired.leftVolume = 123UL;
+    CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) ==
+        kTASStatusConflict);
+    CHECK(TASRuntimeSetPower(&runtime, kTASPowerOff, 3000UL) ==
+        kTASStatusConflict);
+    runtime.pendingIRQs = kTASRuntimeIRQOutput | kTASRuntimeIRQDetect;
+    notifyInput = 1;
+    notifyOutput = 1;
+    CHECK(TASRuntimeServiceDeferred(&runtime, 3000UL, &notifyInput,
+        &notifyOutput) == kTASStatusConflict);
+    CHECK(!notifyInput && !notifyOutput &&
+        runtime.pendingIRQs ==
+            (kTASRuntimeIRQOutput | kTASRuntimeIRQDetect));
+    CHECK(mock.hardwareCalls == hardwareCalls &&
+        mock.signalCount == signalCount);
+}
+
 static void test_controls_preserve_prior_serialized_route_commit(void)
 {
     TASMachineConfig config;
@@ -1415,8 +1476,11 @@ static void test_driver_uses_async_debounce_and_bounded_polling(void)
     CHECK(driver_source_contains("if (!retainOwner)"));
     CHECK(driver_source_contains("*serviceInput = NO"));
     CHECK(driver_source_contains("*serviceOutput = NO"));
-    CHECK(driver_source_contains("if (closing)"));
+    CHECK(driver_source_contains("if (tas_is_closing(self))"));
     CHECK(driver_source_contains("if (target == kTASPowerReady)"));
+    CHECK(driver_source_contains("static int tas_is_closing"));
+    CHECK(driver_source_contains("closing = self->closing"));
+    CHECK(driver_source_count("tas_is_closing(self)") >= 16UL);
     CHECK(driver_source_contains(
         "    }\n    tas_arm_poll_locked(self);\n"
         "    [tasCalloutLock unlock];"));
@@ -1468,6 +1532,7 @@ int main(void)
     test_unwind_disables_irqs_before_dma_and_clears_latches();
     test_unwind_failure_preserves_dma_resources_and_mute_truth();
     test_unwind_deadline_saturates_at_clock_wrap();
+    test_runtime_commands_reject_after_unwind();
     test_controls_preserve_prior_serialized_route_commit();
     test_driver_binds_runtime_controls_and_safe_irq_ordinals();
     test_driver_uses_async_debounce_and_bounded_polling();

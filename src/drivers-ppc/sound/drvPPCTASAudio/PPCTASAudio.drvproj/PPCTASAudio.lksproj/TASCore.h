@@ -193,6 +193,7 @@ typedef struct {
     unsigned long rightVolume;
     unsigned long inputGain;
     unsigned long inputSource;
+    int inputMuxActive;
     int userMuted;
 } TASAudioDesiredControls;
 
@@ -204,8 +205,6 @@ typedef enum {
     kTASAudioCodecDigitalMute,
     kTASAudioAssertAndedReset,
     kTASAudioReleaseAndedReset,
-    kTASAudioSetOutputMux,
-    kTASAudioSetCodecRoute,
     kTASAudioUnmuteSpeaker,
     kTASAudioUnmuteHeadphone,
     kTASAudioUnmuteLineOut,

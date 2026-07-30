@@ -369,6 +369,31 @@ static unsigned long codec_count_write(const CodecMock *mock,
     return count;
 }
 
+static const CodecEvent *codec_last_write(const CodecMock *mock,
+    unsigned char reg)
+{
+    unsigned long index;
+    const CodecEvent *found;
+    found = 0;
+    for (index = 0UL; index < mock->eventCount; ++index) {
+        if (mock->events[index].kind == 3 && mock->events[index].reg == reg)
+            found = &mock->events[index];
+    }
+    return found;
+}
+
+static void check_unity_mixer(const CodecEvent *event,
+    unsigned long length)
+{
+    unsigned long index;
+    CHECK(event != 0);
+    if (event == 0)
+        return;
+    CHECK(event->length == length && event->data[0] == 0x10);
+    for (index = 1UL; index < length; ++index)
+        CHECK(event->data[index] == 0);
+}
+
 static const unsigned char tas3001WriteOrder[] = {
     0x01,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
     0x13,0x14,0x15,0x16,0x17,0x18,0x01,
@@ -1571,6 +1596,22 @@ static void test_codec_golden_initialization(void)
         }
         CHECK(codec.shadow[0x01][0] == 0x6a);
         CHECK(codec.shadowLength[0x04] == 6UL);
+        CHECK(codec.shadow[0x07][0] == 0x10 &&
+            codec.shadow[0x07][1] == 0 && codec.shadow[0x07][2] == 0);
+        check_unity_mixer(codec_last_write(&mock, 0x07),
+            backend == 0UL ? 3UL : 9UL);
+        if (backend != 0UL) {
+            CHECK(codec.shadow[0x08][0] == 0x10);
+            check_unity_mixer(codec_last_write(&mock, 0x08), 9UL);
+            CHECK(codec.shadowLength[0x02] == 6UL);
+        }
+        codec_mock_init(&mock);
+        codec.callbacks = codec_callbacks(&mock);
+        CHECK(TASCodecRestore(&codec, 200UL) == kTASStatusOK);
+        check_unity_mixer(codec_last_write(&mock, 0x07),
+            backend == 0UL ? 3UL : 9UL);
+        if (backend != 0UL)
+            check_unity_mixer(codec_last_write(&mock, 0x08), 9UL);
     }
 }
 
@@ -2407,7 +2448,6 @@ static int audio_plan_has_unmute_before(const TASAudioActionPlan *plan,
 static int audio_action_is_codec(TASAudioActionOperation operation)
 {
     return operation == kTASAudioCodecDigitalMute ||
-        operation == kTASAudioSetCodecRoute ||
         operation == kTASAudioCodecAnalogLowPower ||
         operation == kTASAudioCodecMuteLowPower ||
         operation == kTASAudioCodecReset ||
@@ -2478,7 +2518,7 @@ static void test_audio_route_state_machine(void)
         CHECK(plan.actions[0].operation == kTASAudioMuteSpeaker);
         CHECK(plan.actions[1].operation == kTASAudioMuteHeadphone);
         CHECK(plan.actions[2].operation == kTASAudioMuteLineOut);
-        CHECK(!audio_plan_has_unmute_before(&plan, 5UL));
+        CHECK(!audio_plan_has_unmute_before(&plan, 3UL));
         CHECK(TASAudioCommitTransition(&state, &token) ==
             kTASStatusConflict);
         CHECK(TASAudioAuthorizeAction(&state, &token, 1UL) ==
@@ -2512,7 +2552,7 @@ static void test_audio_route_state_machine(void)
         plan.count));
 
     controls.userMuted = 0;
-    for (ordinal = 0UL; ordinal < 7UL; ++ordinal) {
+    for (ordinal = 0UL; ordinal < 5UL; ++ordinal) {
         CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
             kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
             kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
@@ -2545,8 +2585,7 @@ static void test_audio_route_state_machine(void)
     CHECK(plan.actions[1].operation == kTASAudioReleaseAndedReset);
     CHECK(plan.actions[2].operation == kTASAudioCodecReset);
     CHECK(plan.actions[3].operation == kTASAudioCodecRestore);
-    CHECK(plan.actions[4].operation == kTASAudioSetOutputMux);
-    CHECK(plan.actions[5].operation == kTASAudioSetCodecRoute);
+    CHECK(plan.actions[4].operation == kTASAudioUnmuteHeadphone);
     andedCount = plan.count;
     CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
         kTASAudioRouteLineOut, kTASCodecTAS3001C,
@@ -3024,9 +3063,6 @@ static void test_audio_power_state_machine(void)
         CHECK(plan.actions[8].operation == kTASAudioRebuildOutputDMA);
         CHECK(plan.actions[9].operation == kTASAudioRebuildInputDMA);
         CHECK(!audio_plan_has_unmute_before(&plan, plan.count));
-        for (index = 0UL; index < plan.count; ++index)
-            CHECK(plan.actions[index].operation != kTASAudioSetOutputMux &&
-                plan.actions[index].operation != kTASAudioSetCodecRoute);
         audio_complete_plan(&state, &token);
         CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
         CHECK(state.powerState == kTASPowerWaking && state.startsBlocked &&

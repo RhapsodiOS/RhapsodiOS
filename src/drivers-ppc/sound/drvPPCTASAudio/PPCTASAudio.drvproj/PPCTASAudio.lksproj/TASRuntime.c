@@ -60,7 +60,6 @@ static int valid_ops(const TASRuntimeOps *ops)
         ops->lockOperation != 0 && ops->unlockOperation != 0 &&
         ops->lockState != 0 && ops->unlockState != 0 &&
         ops->executeAction != 0 && ops->applyControls != 0 &&
-        ops->applyOutputRoute != 0 &&
         ops->sampleDetects != 0 && ops->now != 0 &&
         ops->signalDeferred != 0 &&
         ops->failMuteOutputs != 0;
@@ -706,14 +705,8 @@ static TASStatus execute_plan(TASRuntime *runtime,
         if (status != kTASStatusOK)
             break;
         plan->actions[index].deadline = deadline;
-        if (plan->actions[index].operation == kTASAudioSetOutputMux)
-            status = kTASStatusOK;
-        else if (plan->actions[index].operation == kTASAudioSetCodecRoute)
-            status = runtime->ops.applyOutputRoute(runtime->ops.context,
-                plan->actions[index].value, deadline);
-        else
-            status = runtime->ops.executeAction(runtime->ops.context,
-                &plan->actions[index]);
+        status = runtime->ops.executeAction(runtime->ops.context,
+            &plan->actions[index]);
         if (status != kTASStatusOK)
             break;
         runtime->ops.lockInterrupt(runtime->ops.context);

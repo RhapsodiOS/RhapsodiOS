@@ -242,7 +242,7 @@ static TASStatus tas3001_state(TASCodec *codec, unsigned long deadline)
     memset(zero2, 0, sizeof(zero2));
     memset(zero3, 0, sizeof(zero3));
     zero1[0] = 0;
-    unity[0] = 1; unity[1] = 0; unity[2] = 0;
+    unity[0] = 0x10; unity[1] = 0; unity[2] = 0;
     status = TASCodecWrite(codec, 0x02, zero2, 2UL, deadline);
     if (status != kTASStatusOK) return status;
     status = TASCodecTransportWrite(codec, 0x04, zero6, 6UL, deadline);

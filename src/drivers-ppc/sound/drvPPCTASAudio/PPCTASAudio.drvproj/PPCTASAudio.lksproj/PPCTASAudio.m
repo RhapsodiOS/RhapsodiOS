@@ -974,8 +974,17 @@ static TASStatus tas_controls(void *opaque,
     const TASAudioDesiredControls *controls, unsigned long deadline)
 {
     PPCTASAudio *self;
+    PEAudioGPIO gpio;
     TASStatus status;
+    int oldMuxActive;
     self = (PPCTASAudio *)opaque;
+    oldMuxActive = self->desiredControls.inputMuxActive;
+    gpio.offset = self->machineConfig.inputMux.offset;
+    gpio.activeHigh = self->machineConfig.inputMux.activeHigh;
+    status = tas_status(PEAudioGPIOWrite(&gpio,
+        controls->inputMuxActive ? TRUE : FALSE));
+    if (status != kTASStatusOK)
+        return status;
     status = TASCodecSetMute(&self->runtime.codec, 1, deadline);
     if (status == kTASStatusOK)
         status = TASCodecSetVolume(&self->runtime.codec,
@@ -989,23 +998,10 @@ static TASStatus tas_controls(void *opaque,
     if (status == kTASStatusOK)
         status = TASCodecSetMute(&self->runtime.codec,
             controls->userMuted, deadline);
+    if (status != kTASStatusOK &&
+        oldMuxActive != controls->inputMuxActive)
+        (void)PEAudioGPIOWrite(&gpio, oldMuxActive ? TRUE : FALSE);
     return status;
-}
-
-static TASStatus tas_output_route(void *opaque, unsigned long routes,
-    unsigned long deadline)
-{
-    PPCTASAudio *self;
-    unsigned long availableRoutes;
-    (void)deadline;
-    self = (PPCTASAudio *)opaque;
-    [self->stateLock acquire];
-    availableRoutes = self->runtime.audio.availableRoutes;
-    [self->stateLock release];
-    if ((routes & ~availableRoutes) != 0UL)
-        return kTASStatusMalformed;
-    /* External output mute GPIOs are authoritative on reviewed machines. */
-    return kTASStatusOK;
 }
 
 static TASStatus tas_detects(void *opaque, unsigned long *result)
@@ -1057,7 +1053,6 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.unlockState = tas_unlock_state;
     ops.executeAction = tas_action;
     ops.applyControls = tas_controls;
-    ops.applyOutputRoute = tas_output_route;
     ops.sampleDetects = tas_detects;
     ops.now = tas_now;
     ops.signalDeferred = tas_signal;
@@ -1417,15 +1412,14 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     candidate = desiredControls;
     if (!enable)
         return;
-    if (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn &&
-        tag != NX_SoundDeviceCDIn && tag != NX_SoundDeviceAux1In)
+    if (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn)
         return;
-    if (tag == NX_SoundDeviceMicIn || tag == NX_SoundDeviceLineIn)
-        candidate.inputSource = kTASCodecInputAnalog;
-    else if (tag == NX_SoundDeviceCDIn)
-        candidate.inputSource = kTASCodecInputDigital1;
-    else
-        candidate.inputSource = kTASCodecInputDigital2;
+    /* The required firmware input-data-mux proves the two external analog
+     * positions.  Keep the TAS mixer on one stable I2S path: this GPIO,
+     * never output-route state, selects microphone (inactive) or line
+     * (active). */
+    candidate.inputMuxActive = tag == NX_SoundDeviceLineIn;
+    candidate.inputSource = kTASCodecInputDigital1;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)setOutput:(NXSoundParameterTag)tag enable:(BOOL)enable

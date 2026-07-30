@@ -53,7 +53,6 @@ typedef struct {
     TASStatus (*executeAction)(void *, const TASAudioAction *);
     TASStatus (*applyControls)(void *, const TASAudioDesiredControls *,
         unsigned long);
-    TASStatus (*applyOutputRoute)(void *, unsigned long, unsigned long);
     TASStatus (*sampleDetects)(void *, unsigned long *);
     unsigned long (*now)(void *);
     void (*signalDeferred)(void *);

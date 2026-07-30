@@ -24,3 +24,22 @@ Power-management callbacks and the TAS sleep/wake state machine are
 implemented and tested.  The current PPC PMSetPowerState path does not
 dispatch DriverKit IOPower callbacks end-to-end, so actual system sleep/wake
 awaits PMU/platform dispatch integration and is not currently supported.
+
+Output selection is intentionally only mute-all followed by selective
+unmute of the real speaker, headphone, and line-out GPIOs.  There is no
+invented output mux or codec-route operation: OpenBSD's pinned i2s driver
+uses exactly those external mute GPIOs for its output selector:
+https://github.com/openbsd/src/blob/229406285b562176139341c58aea5014bfb768a3/sys/arch/macppc/dev/i2s.c
+
+The codec mixers use 4.20 unity (10 00 00), matching the pinned OpenBSD
+TAS3001C and TAS3004 initial images and TI's TAS3004 software reference:
+https://github.com/openbsd/src/blob/229406285b562176139341c58aea5014bfb768a3/sys/arch/macppc/dev/tumbler.c
+https://github.com/openbsd/src/blob/229406285b562176139341c58aea5014bfb768a3/sys/arch/macppc/dev/snapper.c
+https://www.ti.com/lit/an/slea030/slea030.pdf
+The TAS3004 DRC shadow remains six bytes, as in that pinned OpenBSD register
+model, despite inconsistent surviving datasheet descriptions.
+
+Only microphone and line-in are selectable.  The required firmware
+codec-input-data-mux GPIO selects microphone (inactive) or line-in (active),
+while both use one stable codec mixer input.  CD and auxiliary source tags
+are rejected, and jack/output routing never changes the input selection.

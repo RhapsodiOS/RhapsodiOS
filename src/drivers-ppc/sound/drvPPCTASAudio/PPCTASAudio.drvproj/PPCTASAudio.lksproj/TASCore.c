@@ -1282,6 +1282,7 @@ static int valid_audio_controls(const TASAudioDesiredControls *controls)
         controls->leftVolume <= 0xffffffUL &&
         controls->rightVolume <= 0xffffffUL &&
         controls->inputGain <= 0xffffffUL && controls->inputSource <= 2UL &&
+        (controls->inputMuxActive == 0 || controls->inputMuxActive == 1) &&
         (controls->userMuted == 0 || controls->userMuted == 1);
 }
 
@@ -1459,10 +1460,6 @@ static TASStatus audio_build_route(const TASAudioState *state,
     }
     if (target == 0UL)
         return kTASStatusOK;
-    status = audio_action(plan, kTASAudioSetOutputMux, target, 0UL);
-    if (status != kTASStatusOK) return status;
-    status = audio_action(plan, kTASAudioSetCodecRoute, target, 0UL);
-    if (status != kTASStatusOK) return status;
     if ((target & kTASAudioRouteSpeaker) != 0UL) {
         status = audio_action(plan, kTASAudioUnmuteSpeaker, 0UL, 0UL);
         if (status != kTASStatusOK) return status;

@@ -33,11 +33,13 @@ static TASStatus tas3004_state(TASCodec *codec, unsigned long deadline)
     unsigned char mixer[9];
     unsigned char allPass[1];
     TASStatus status;
+    /* OpenBSD's pinned TAS3004 register model uses six DRC bytes even
+     * though surviving TI documentation is inconsistent about this width. */
     memset(drc, 0, sizeof(drc)); drc[0] = 1;
     memset(zero6, 0, sizeof(zero6));
     memset(zero3, 0, sizeof(zero3));
     zero1[0] = 0;
-    memset(mixer, 0, sizeof(mixer)); mixer[0] = 1;
+    memset(mixer, 0, sizeof(mixer)); mixer[0] = 0x10;
     allPass[0] = 2;
     status = TASCodecWrite(codec, 0x02, drc, 6UL, deadline);
     if (status != kTASStatusOK) return status;

@@ -81,8 +81,6 @@ typedef struct {
     TASAudioActionOperation injectOperation;
     TASAudioActionOperation failOperation;
     int injected;
-    unsigned long outputRouteCalls;
-    unsigned long lastOutputRoute;
     unsigned long safeMuteFailCall;
     unsigned long safeMuteCalls;
     unsigned long prepareCount;
@@ -271,27 +269,6 @@ static TASStatus runtime_controls(void *context,
         kTASStatusTimeout : kTASStatusOK;
 }
 
-static TASStatus runtime_output_route(void *context, unsigned long routes,
-    unsigned long deadline)
-{
-    RuntimeMock *mock;
-    (void)deadline;
-    mock = (RuntimeMock *)context;
-    runtime_hardware_boundary(mock);
-    ++mock->outputRouteCalls;
-    mock->lastOutputRoute = routes;
-    if (!mock->injected && mock->runtime != 0 &&
-        mock->injectOperation == kTASAudioSetCodecRoute) {
-        mock->injected = 1;
-        TASRuntimeRecordISR(mock->runtime, kTASRuntimeIRQDetect);
-    }
-    if (mock->failOperation == kTASAudioSetCodecRoute) {
-        mock->failOperation = kTASAudioBlockStarts;
-        return kTASStatusTimeout;
-    }
-    return kTASStatusOK;
-}
-
 static TASStatus runtime_detects(void *context, unsigned long *detects)
 {
     RuntimeMock *mock;
@@ -449,7 +426,6 @@ static TASRuntimeOps runtime_ops(RuntimeMock *mock)
     ops.unlockState = runtime_unlock_state;
     ops.executeAction = runtime_action;
     ops.applyControls = runtime_controls;
-    ops.applyOutputRoute = runtime_output_route;
     ops.sampleDetects = runtime_detects;
     ops.now = runtime_now;
     ops.signalDeferred = runtime_signal;
@@ -622,7 +598,7 @@ static void test_edge_during_route_rolls_back_safely(void)
     CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
     mock.runtime = &runtime;
     CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
-    mock.injectOperation = kTASAudioSetCodecRoute;
+    mock.injectOperation = kTASAudioUnmuteHeadphone;
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQDetect);
     CHECK(TASRuntimeServiceDeferred(&runtime, 2000UL, &notifyInput,
         &notifyOutput) == kTASStatusOK);
@@ -665,7 +641,7 @@ static void test_route_action_failure_rolls_back_muted(void)
     mock.nowValue = runtime.audio.debounceDeadline;
     CHECK(TASRuntimeServiceDeferred(&runtime, 2000UL, &notifyInput,
         &notifyOutput) == kTASStatusOK);
-    mock.failOperation = kTASAudioSetCodecRoute;
+    mock.failOperation = kTASAudioUnmuteHeadphone;
     mock.nowValue = runtime.audio.debounceDeadline;
     CHECK(TASRuntimeServiceDeferred(&runtime, 2000UL, &notifyInput,
         &notifyOutput) == kTASStatusTimeout);
@@ -1007,7 +983,7 @@ static void test_initial_route_failure_unwinds_muted(void)
     desired.rate = 44100UL;
     memset(&mock, 0, sizeof(mock));
     mock.nowValue = 1000UL;
-    mock.failOperation = kTASAudioSetCodecRoute;
+    mock.failOperation = kTASAudioUnmuteHeadphone;
     config = tumbler_config();
     ops = runtime_ops(&mock);
     CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
@@ -1061,7 +1037,6 @@ static void test_route_uses_output_op_and_preserves_input_state(void)
     ops = runtime_ops(&mock);
     CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
     CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
-    CHECK(mock.outputRouteCalls == 1UL);
     CHECK(runtime.audio.desired.inputSource == kTASCodecInputAnalog &&
         runtime.audio.desired.inputGain == 77UL);
 }
@@ -1593,6 +1568,16 @@ static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
     CHECK(driver_source_contains("localInterrupt == 1U"));
     CHECK(driver_source_contains("localInterrupt == 2U"));
     CHECK(driver_source_contains("tag != NX_SoundDeviceMicIn"));
+    CHECK(!driver_source_contains("NX_SoundDeviceCDIn"));
+    CHECK(!driver_source_contains("NX_SoundDeviceAux1In"));
+    CHECK(driver_source_contains("controls->inputMuxActive ? TRUE : FALSE"));
+    CHECK(!driver_source_contains("tas_output_route"));
+    CHECK(!source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.h",
+        "applyOutputRoute"));
+    CHECK(!source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASCore.h",
+        "kTASAudioSetCodecRoute"));
 }
 
 static void test_driver_uses_async_debounce_and_bounded_polling(void)

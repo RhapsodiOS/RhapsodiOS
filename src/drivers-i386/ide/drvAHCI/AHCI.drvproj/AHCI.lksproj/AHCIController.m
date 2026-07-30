@@ -9,10 +9,14 @@
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription
 {
-    AHCIController *instance;
+    AHCIController *controller;
 
-    instance = [[self alloc] initFromDeviceDescription:deviceDescription];
-    return instance != nil;
+    controller = [[self alloc]
+        initFromDeviceDescription:deviceDescription];
+    if (controller == nil)
+        return NO;
+    [controller free];
+    return NO;
 }
 
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
@@ -34,10 +38,9 @@
         return nil;
     }
 
-    IOLog("%s: Intel ICH9 AHCI controller matched; attachment deferred\n",
+    IOLog("%s: Intel AHCI 8086:2922 class 01:06:01 matched; attachment deferred\n",
           [self name]);
-    [self free];
-    return nil;
+    return self;
 }
 
 @end

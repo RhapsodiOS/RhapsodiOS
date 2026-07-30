@@ -7,6 +7,7 @@
 "Bus Type" = "PCI";
 "Location" = "";
 "Auto Detect IDs" = "0x29228086";
+"Boot Driver";
 "Block Major" = "3";
 "Character Major" = "15";
 "Post-Load" = "PostLoad";

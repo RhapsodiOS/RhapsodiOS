@@ -11,6 +11,7 @@
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
+- (void)interruptOccurred;
 
 @end
 

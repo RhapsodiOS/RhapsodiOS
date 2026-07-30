@@ -16,6 +16,10 @@
 #define AHCI_BLOCK_MAJOR 3
 #define AHCI_CHARACTER_MAJOR 15
 
+/*
+ * PostLoad is invoked as root and uses its current group for new nodes.
+ * umask(0) and the mknod modes below establish the final permissions.
+ */
 static int makeNode(char *deviceName, int unit, int major, int partition,
                     unsigned short mode);
 

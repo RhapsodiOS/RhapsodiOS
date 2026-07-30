@@ -22,10 +22,15 @@
     PPCDBDMAOps dmaOps[2];
     unsigned long debounceCalloutGeneration;
     unsigned long debounceCalloutDeadline;
+    unsigned long debounceCalloutToken;
+    unsigned long pollCalloutToken;
+    unsigned long workerRetryCalloutToken;
     PMPowerState currentPowerState;
     int closing;
+    int ioAudioInitialized;
     int debounceCalloutPending;
     int pollCalloutPending;
+    int workerRetryCalloutPending;
     id interruptLock;
     id operationLock;
     id stateLock;

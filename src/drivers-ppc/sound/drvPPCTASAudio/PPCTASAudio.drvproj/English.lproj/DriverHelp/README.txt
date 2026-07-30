@@ -15,6 +15,11 @@ Teardown disables DMA interrupts before bounded stop/reset.  If hardware does
 not stop, the driver fail-mutes and deliberately preserves DMA resources
 rather than freeing descriptors that the controller could still access.
 
+IOAudio does not terminate its worker threads during -free.  After successful
+initialization this driver therefore quiesces hardware but retains its object,
+locks, and singleton callout ownership.  A loaded instance cannot be unloaded
+or replaced safely; a second probe remains rejected until system restart.
+
 Power-management callbacks and the TAS sleep/wake state machine are
 implemented and tested.  The current PPC PMSetPowerState path does not
 dispatch DriverKit IOPower callbacks end-to-end, so actual system sleep/wake

@@ -8,6 +8,14 @@
 static TASStatus service_detect(TASRuntime *, int, unsigned long);
 static TASStatus fail_mute_and_invalidate(TASRuntime *, int);
 
+static unsigned long runtime_deadline_after(unsigned long now,
+    unsigned long interval)
+{
+    if (now > ~0UL - interval)
+        return ~0UL;
+    return now + interval;
+}
+
 static void record_dma_fault(TASRuntime *runtime,
     TASStreamDirection direction, unsigned long deadline)
 {
@@ -194,7 +202,8 @@ TASStatus TASRuntimeUnwind(TASRuntime *runtime)
     if (runtime == 0 || !runtime->initialized)
         return kTASStatusMalformed;
     runtime->ops.lockOperation(runtime->ops.context);
-    deadline = runtime->ops.now(runtime->ops.context) + 100UL;
+    deadline = runtime_deadline_after(
+        runtime->ops.now(runtime->ops.context), 100UL);
     status = unwind_locked(runtime, deadline);
     runtime->ops.unlockOperation(runtime->ops.context);
     return status;

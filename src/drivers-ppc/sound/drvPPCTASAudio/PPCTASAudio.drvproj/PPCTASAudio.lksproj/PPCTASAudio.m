@@ -35,12 +35,12 @@ static unsigned long tas_now(void *opaque);
 static void tas_wait_microseconds(void *opaque, unsigned long usec);
 static void tas_debounce_callout(void *opaque);
 static void tas_poll_callout(void *opaque);
+static void tas_worker_retry_callout(void *opaque);
 
-/* PPCTASAudio is a singleton; the broker rejects a second live owner. */
+/* The permanent lock serializes the singleton owner and token namespace. */
 static NXLock *tasCalloutLock;
 static PPCTASAudio *tasCalloutOwner;
-static int tasDebounceCalloutToken;
-static int tasPollCalloutToken;
+static unsigned long tasNextCalloutToken;
 
 static void tas_lock_interrupt(void *opaque)
 {
@@ -73,58 +73,86 @@ static void tas_unlock_state(void *opaque)
     [((PPCTASAudio *)opaque)->stateLock release];
 }
 
-static void tas_post_worker_message(PPCTASAudio *self)
+static int tas_post_worker_message(PPCTASAudio *self)
 {
     msg_header_t msg;
     memset(&msg, 0, sizeof(msg));
     msg.msg_size = sizeof(msg);
     msg.msg_remote_port = IOGetKernPort([self interruptPort]);
     msg.msg_id = IO_DEVICE_INTERRUPT_MSG;
-    (void)msg_send_from_kernel(&msg, MSG_OPTION_NONE, 0);
+    return msg_send_from_kernel(&msg, SEND_TIMEOUT, 0) == SEND_SUCCESS;
+}
+
+static unsigned long tas_next_callout_token_locked(void)
+{
+    if (tasNextCalloutToken == ~0UL)
+        return 0UL;
+    ++tasNextCalloutToken;
+    return tasNextCalloutToken;
+}
+
+static void tas_schedule_worker_retry_locked(PPCTASAudio *self)
+{
+    unsigned long token;
+    if (self->closing || self->workerRetryCalloutPending)
+        return;
+    token = tas_next_callout_token_locked();
+    if (token == 0UL)
+        return;
+    self->workerRetryCalloutToken = token;
+    self->workerRetryCalloutPending = 1;
+    ns_timeout((func)tas_worker_retry_callout, (void *)token,
+        (ns_time_t)TAS_AUDIO_DEBOUNCE_CONFIRM_MS * TAS_NSEC_PER_MS,
+        CALLOUT_PRI_THREAD);
+}
+
+static void tas_signal_worker_locked(PPCTASAudio *self)
+{
+    if (tas_post_worker_message(self)) {
+        if (self->workerRetryCalloutPending)
+            (void)ns_untimeout((func)tas_worker_retry_callout,
+                (void *)self->workerRetryCalloutToken);
+        self->workerRetryCalloutPending = 0;
+        self->workerRetryCalloutToken = 0UL;
+    } else
+        tas_schedule_worker_retry_locked(self);
 }
 
 static void tas_signal(void *opaque)
 {
-    tas_post_worker_message((PPCTASAudio *)opaque);
+    PPCTASAudio *self;
+    self = (PPCTASAudio *)opaque;
+    [tasCalloutLock lock];
+    if (tasCalloutOwner == self && !self->closing)
+        tas_signal_worker_locked(self);
+    [tasCalloutLock unlock];
 }
 
 static void tas_arm_poll_locked(PPCTASAudio *self)
 {
+    unsigned long token;
     if (self->closing || self->pollCalloutPending)
         return;
+    token = tas_next_callout_token_locked();
+    if (token == 0UL)
+        return;
+    self->pollCalloutToken = token;
     self->pollCalloutPending = 1;
-    ns_timeout((func)tas_poll_callout, &tasPollCalloutToken,
+    ns_timeout((func)tas_poll_callout, (void *)token,
         (ns_time_t)TAS_POLL_INTERVAL_MS * TAS_NSEC_PER_MS,
         CALLOUT_PRI_THREAD);
 }
 
 static void tas_arm_poll(PPCTASAudio *self)
 {
-    if (tasCalloutLock == nil)
-        return;
     [tasCalloutLock lock];
     if (tasCalloutOwner == self)
         tas_arm_poll_locked(self);
     [tasCalloutLock unlock];
 }
 
-static void tas_cancel_poll(PPCTASAudio *self)
-{
-    if (tasCalloutLock == nil)
-        return;
-    [tasCalloutLock lock];
-    if (tasCalloutOwner == self) {
-        self->pollCalloutPending = 0;
-        (void)ns_untimeout((func)tas_poll_callout,
-            &tasPollCalloutToken);
-    }
-    [tasCalloutLock unlock];
-}
-
 static int tas_register_callouts(PPCTASAudio *self)
 {
-    if (tasCalloutLock == nil)
-        tasCalloutLock = [NXLock new];
     if (tasCalloutLock == nil)
         return 0;
     [tasCalloutLock lock];
@@ -138,37 +166,61 @@ static int tas_register_callouts(PPCTASAudio *self)
     return 1;
 }
 
-static void tas_cancel_callouts(PPCTASAudio *self)
+static void tas_cancel_callouts(PPCTASAudio *self, int retainOwner)
 {
     if (tasCalloutLock == nil)
         return;
     [tasCalloutLock lock];
     if (tasCalloutOwner == self) {
         self->closing = 1;
+        if (self->debounceCalloutPending)
+            (void)ns_untimeout((func)tas_debounce_callout,
+                (void *)self->debounceCalloutToken);
+        if (self->pollCalloutPending)
+            (void)ns_untimeout((func)tas_poll_callout,
+                (void *)self->pollCalloutToken);
+        if (self->workerRetryCalloutPending)
+            (void)ns_untimeout((func)tas_worker_retry_callout,
+                (void *)self->workerRetryCalloutToken);
         self->debounceCalloutPending = 0;
         self->pollCalloutPending = 0;
-        (void)ns_untimeout((func)tas_debounce_callout,
-            &tasDebounceCalloutToken);
-        (void)ns_untimeout((func)tas_poll_callout,
-            &tasPollCalloutToken);
-        tasCalloutOwner = nil;
+        self->workerRetryCalloutPending = 0;
+        self->debounceCalloutToken = 0UL;
+        self->pollCalloutToken = 0UL;
+        self->workerRetryCalloutToken = 0UL;
+        if (!retainOwner)
+            tasCalloutOwner = nil;
     }
     [tasCalloutLock unlock];
+}
+
+static TASStatus tas_schedule_debounce_locked(PPCTASAudio *self,
+    ns_time_t delay)
+{
+    unsigned long token;
+    token = tas_next_callout_token_locked();
+    if (token == 0UL)
+        return kTASStatusOverflow;
+    self->debounceCalloutToken = token;
+    self->debounceCalloutPending = 1;
+    ns_timeout((func)tas_debounce_callout, (void *)token, delay,
+        CALLOUT_PRI_THREAD);
+    return kTASStatusOK;
 }
 
 static void tas_debounce_callout(void *opaque)
 {
     PPCTASAudio *self;
+    unsigned long token;
     unsigned long generation;
     unsigned long deadline;
     unsigned long now;
     int valid;
-    (void)opaque;
-    if (tasCalloutLock == nil)
-        return;
+    token = (unsigned long)opaque;
     [tasCalloutLock lock];
     self = tasCalloutOwner;
-    if (self == nil || self->closing || !self->debounceCalloutPending) {
+    if (self == nil || self->closing || !self->debounceCalloutPending ||
+        token != self->debounceCalloutToken) {
         [tasCalloutLock unlock];
         return;
     }
@@ -176,9 +228,10 @@ static void tas_debounce_callout(void *opaque)
     deadline = self->debounceCalloutDeadline;
     now = tas_now(self);
     if (now < deadline) {
-        ns_timeout((func)tas_debounce_callout, &tasDebounceCalloutToken,
-            (ns_time_t)(deadline - now) * TAS_NSEC_PER_MS,
-            CALLOUT_PRI_THREAD);
+        self->debounceCalloutPending = 0;
+        self->debounceCalloutToken = 0UL;
+        (void)tas_schedule_debounce_locked(self,
+            (ns_time_t)(deadline - now) * TAS_NSEC_PER_MS);
         [tasCalloutLock unlock];
         return;
     }
@@ -188,8 +241,9 @@ static void tas_debounce_callout(void *opaque)
         self->runtime.audio.debounceDeadline == deadline;
     [self->stateLock release];
     self->debounceCalloutPending = 0;
+    self->debounceCalloutToken = 0UL;
     if (valid)
-        tas_post_worker_message(self);
+        tas_signal_worker_locked(self);
     [tasCalloutLock unlock];
 }
 
@@ -197,24 +251,44 @@ static void tas_poll_callout(void *opaque)
 {
     PPCTASAudio *self;
     TASPowerState powerState;
-    (void)opaque;
-    if (tasCalloutLock == nil)
-        return;
+    unsigned long token;
+    token = (unsigned long)opaque;
     [tasCalloutLock lock];
     self = tasCalloutOwner;
-    if (self == nil || self->closing) {
+    if (self == nil || self->closing || !self->pollCalloutPending ||
+        token != self->pollCalloutToken) {
         [tasCalloutLock unlock];
         return;
     }
     self->pollCalloutPending = 0;
+    self->pollCalloutToken = 0UL;
     [self->stateLock acquire];
     powerState = self->runtime.audio.powerState;
     [self->stateLock release];
     if (self->runtime.initialized && powerState == kTASPowerReady) {
         TASRuntimeRecordISR(&self->runtime, kTASRuntimeIRQDetect);
-        tas_post_worker_message(self);
-        tas_arm_poll_locked(self);
+        tas_signal_worker_locked(self);
     }
+    tas_arm_poll_locked(self);
+    [tasCalloutLock unlock];
+}
+
+static void tas_worker_retry_callout(void *opaque)
+{
+    PPCTASAudio *self;
+    unsigned long token;
+    token = (unsigned long)opaque;
+    [tasCalloutLock lock];
+    self = tasCalloutOwner;
+    if (self == nil || self->closing ||
+        !self->workerRetryCalloutPending ||
+        token != self->workerRetryCalloutToken) {
+        [tasCalloutLock unlock];
+        return;
+    }
+    self->workerRetryCalloutPending = 0;
+    self->workerRetryCalloutToken = 0UL;
+    tas_signal_worker_locked(self);
     [tasCalloutLock unlock];
 }
 
@@ -746,6 +820,7 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
     PEAudioGPIO gpio;
     TASStreamDirection direction;
     TASAudioDesiredControls desired;
+    TASStatus status;
     self = (PPCTASAudio *)opaque;
     [self->stateLock acquire];
     desired = self->runtime.audio.desired;
@@ -761,17 +836,18 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
             [tasCalloutLock unlock];
             return kTASStatusConflict;
         }
-        if (self->debounceCalloutPending)
+        if (self->debounceCalloutPending) {
             (void)ns_untimeout((func)tas_debounce_callout,
-                &tasDebounceCalloutToken);
+                (void *)self->debounceCalloutToken);
+            self->debounceCalloutPending = 0;
+            self->debounceCalloutToken = 0UL;
+        }
         self->debounceCalloutGeneration = action->value;
         self->debounceCalloutDeadline = action->deadline;
-        self->debounceCalloutPending = 1;
-        ns_timeout((func)tas_debounce_callout, &tasDebounceCalloutToken,
-            (ns_time_t)TAS_AUDIO_DEBOUNCE_CONFIRM_MS * TAS_NSEC_PER_MS,
-            CALLOUT_PRI_THREAD);
+        status = tas_schedule_debounce_locked(self,
+            (ns_time_t)TAS_AUDIO_DEBOUNCE_CONFIRM_MS * TAS_NSEC_PER_MS);
         [tasCalloutLock unlock];
-        return kTASStatusOK;
+        return status;
     case kTASAudioSampleDetects:
         /* TASRuntime performs the single injected physical sample. */
         return kTASStatusOK;
@@ -860,7 +936,6 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         return tas_apply_i2s(self, desired.rate,
             action->deadline);
     case kTASAudioDisableDetectIRQs:
-        tas_cancel_poll(self);
         return kTASStatusOK;
     case kTASAudioEnableDetectIRQs:
         /* Detect GPIO IRQs are not main-description interrupt ordinals. */
@@ -1013,6 +1088,14 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 
 @implementation PPCTASAudio
 
++ initialize
+{
+    /* The Objective-C runtime serializes this permanent broker setup. */
+    if (self == [PPCTASAudio class] && tasCalloutLock == nil)
+        tasCalloutLock = [NXLock new];
+    return [super initialize];
+}
+
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
 {
     PPCTASPropertyContext propertyContext;
@@ -1055,6 +1138,7 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
         [instance free];
         return NO;
     }
+    instance->ioAudioInitialized = 1;
     return YES;
 }
 
@@ -1073,20 +1157,25 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - free
 {
     TASStatus status;
-    tas_cancel_callouts(self);
+    tas_cancel_callouts(self, 1);
     status = runtime.initialized ? TASRuntimeUnwind(&runtime) :
         kTASStatusOK;
     if (status != kTASStatusOK) {
         IOLog("PPCTASAudio: DMA cleanup failed; preserving resources\n");
         return self;
     }
-    [interruptLock free];
-    interruptLock = nil;
-    [operationLock free];
-    operationLock = nil;
-    [stateLock free];
-    stateLock = nil;
-    return [super free];
+    if (!ioAudioInitialized) {
+        tas_cancel_callouts(self, 0);
+        [interruptLock free];
+        interruptLock = nil;
+        [operationLock free];
+        operationLock = nil;
+        [stateLock free];
+        stateLock = nil;
+        return [super free];
+    }
+    IOLog("PPCTASAudio: quiesced; IOAudio worker threads retain driver\n");
+    return self;
 }
 
 - (BOOL)startDMAForChannel:(unsigned int)localChannel read:(BOOL)isRead
@@ -1119,6 +1208,10 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)interruptOccurredForInput:(BOOL *)serviceInput
     forOutput:(BOOL *)serviceOutput
 {
+    *serviceInput = NO;
+    *serviceOutput = NO;
+    if (closing)
+        return;
     (void)TASRuntimeServiceDeferred(&runtime, tas_now(self) + 100UL,
         serviceInput, serviceOutput);
 }
@@ -1282,6 +1375,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     if (TASRuntimeSetPower(&runtime, target, tas_now(self) + 1000UL) !=
         kTASStatusOK)
         return IO_R_IO;
+    if (target == kTASPowerReady)
+        tas_arm_poll(self);
     currentPowerState = state;
     return IO_R_SUCCESS;
 }

@@ -72,6 +72,7 @@ typedef struct {
     int mutateRouteBeforeOperation;
     const void *lastBuffer;
     unsigned long lastRate;
+    unsigned long lastStopDeadline;
     int deferSchedule;
 } RuntimeMock;
 
@@ -155,11 +156,11 @@ static TASStatus runtime_stop(void *context, TASStreamDirection direction,
 {
     RuntimeMock *mock;
     (void)direction;
-    (void)deadline;
     mock = (RuntimeMock *)context;
     runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
     ++mock->stopCount[(unsigned long)direction];
+    mock->lastStopDeadline = deadline;
     mock->events[mock->eventCount++] = -100L - (long)direction;
     if ((mock->failStopMask &
         (1UL << (unsigned long)direction)) != 0UL) {
@@ -1323,6 +1324,28 @@ static void test_unwind_failure_preserves_dma_resources_and_mute_truth(void)
     CHECK(runtime.pendingIRQs == 0UL && runtime.dmaFaultMask == 0UL);
 }
 
+static void test_unwind_deadline_saturates_at_clock_wrap(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned char output[512];
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 2500UL) == kTASStatusOK);
+    mock.nowValue = ~0UL - 50UL;
+    CHECK(TASRuntimeUnwind(&runtime) == kTASStatusOK);
+    CHECK(mock.lastStopDeadline == ~0UL);
+}
+
 static void test_controls_preserve_prior_serialized_route_commit(void)
 {
     TASMachineConfig config;
@@ -1373,12 +1396,32 @@ static void test_driver_uses_async_debounce_and_bounded_polling(void)
     CHECK(driver_source_contains(
         "IOGetKernPort([self interruptPort])"));
     CHECK(driver_source_contains("msg_send_from_kernel"));
+    CHECK(driver_source_contains("SEND_TIMEOUT, 0"));
+    CHECK(!driver_source_contains("MSG_OPTION_NONE"));
     CHECK(driver_source_contains("TAS_POLL_INTERVAL_MS 250UL"));
     CHECK(driver_source_contains("debounceCalloutPending"));
     CHECK(driver_source_contains("pollCalloutPending"));
     CHECK(driver_source_contains("closing"));
     CHECK(driver_source_contains("tasCalloutOwner != nil"));
-    CHECK(driver_source_contains("tas_cancel_callouts(self)"));
+    CHECK(driver_source_contains("tas_cancel_callouts(self, 1)"));
+    CHECK(driver_source_contains("workerRetryCalloutPending"));
+    CHECK(driver_source_contains("tas_worker_retry_callout"));
+    CHECK(driver_source_contains("token != self->debounceCalloutToken"));
+    CHECK(driver_source_contains("token != self->pollCalloutToken"));
+    CHECK(driver_source_contains("tas_next_callout_token_locked"));
+    CHECK(driver_source_contains("+ initialize"));
+    CHECK(driver_source_contains("instance->ioAudioInitialized = 1"));
+    CHECK(driver_source_contains("if (!ioAudioInitialized)"));
+    CHECK(driver_source_contains("if (!retainOwner)"));
+    CHECK(driver_source_contains("*serviceInput = NO"));
+    CHECK(driver_source_contains("*serviceOutput = NO"));
+    CHECK(driver_source_contains("if (closing)"));
+    CHECK(driver_source_contains("if (target == kTASPowerReady)"));
+    CHECK(driver_source_contains(
+        "    }\n    tas_arm_poll_locked(self);\n"
+        "    [tasCalloutLock unlock];"));
+    CHECK(driver_source_contains(
+        "IOAudio worker threads retain driver\\n\");\n    return self;"));
     CHECK(!driver_source_contains("[self _interruptOccurred]"));
     CHECK(!driver_source_contains(
         "IODelay(TAS_AUDIO_DEBOUNCE_CONFIRM_MS"));
@@ -1388,6 +1431,12 @@ static void test_driver_uses_async_debounce_and_bounded_polling(void)
     CHECK(source_file_contains(
         "../PPCTASAudio.drvproj/English.lproj/DriverHelp/README.txt",
         "preserves DMA resources"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/English.lproj/DriverHelp/README.txt",
+        "worker threads"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/English.lproj/DriverHelp/README.txt",
+        "cannot be unloaded"));
 }
 
 int main(void)
@@ -1418,6 +1467,7 @@ int main(void)
     test_failed_controls_invalidate_truth_from_mute_result();
     test_unwind_disables_irqs_before_dma_and_clears_latches();
     test_unwind_failure_preserves_dma_resources_and_mute_truth();
+    test_unwind_deadline_saturates_at_clock_wrap();
     test_controls_preserve_prior_serialized_route_commit();
     test_driver_binds_runtime_controls_and_safe_irq_ordinals();
     test_driver_uses_async_debounce_and_bounded_polling();

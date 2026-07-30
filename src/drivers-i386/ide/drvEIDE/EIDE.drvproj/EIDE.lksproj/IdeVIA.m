@@ -115,7 +115,7 @@ const ideChipsetOps_t ideVIAOps = {
 	return YES;
 }
 
-- (BOOL) VIAWriteConfigFrom:(const viaConfig_t *)before
+- (BOOL) VIAWriteChangesFrom:(const viaConfig_t *)before
 	to:(const viaConfig_t *)after
 {
 	unsigned int index;
@@ -182,7 +182,7 @@ const ideChipsetOps_t ideVIAOps = {
 	after = before;
 	VIAComputeConfig(&after, (viaChip_t)_chipCaps.privateData, channel,
 		timings);
-	return [self VIAWriteConfigFrom:&before to:&after];
+	return [self VIAWriteChangesFrom:&before to:&after];
 }
 
 - (BOOL) VIAResetTiming
@@ -200,7 +200,7 @@ const ideChipsetOps_t ideVIAOps = {
 	}
 	after = before;
 	VIAResetConfig(&after, (viaChip_t)_chipCaps.privateData, channel);
-	return [self VIAWriteConfigFrom:&before to:&after];
+	return [self VIAWriteChangesFrom:&before to:&after];
 }
 
 - (BOOL) VIADetectCable

@@ -55,6 +55,8 @@ TASStatus TASCodecBind(TASCodec *, const TASCodecOps *,
     const TASCodecCallbacks *);
 TASStatus TASCodecWrite(TASCodec *, unsigned char, const unsigned char *,
     unsigned long, unsigned long);
+TASStatus TASCodecTransportWrite(TASCodec *, unsigned char,
+    const unsigned char *, unsigned long, unsigned long);
 TASStatus TASCodecInitialize(TASCodec *, int, unsigned long);
 TASStatus TASCodecRestore(TASCodec *, unsigned long);
 TASStatus TASCodecSetVolume(TASCodec *, unsigned long, unsigned long,

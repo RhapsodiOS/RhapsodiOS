@@ -138,9 +138,15 @@ static TASStatus tas3004_mix(TASCodec *codec, TASCodecInputSource source,
     offset = source == kTASCodecInputDigital1 ? 0UL :
         (source == kTASCodecInputDigital2 ? 3UL : 6UL);
     TASCodecEncode24(gain, mixer + offset);
-    status = TASCodecWrite(codec, 0x07, mixer, 9UL, deadline);
+    status = TASCodecTransportWrite(codec, 0x07, mixer, 9UL, deadline);
     if (status != kTASStatusOK) return status;
-    return TASCodecWrite(codec, 0x08, mixer, 9UL, deadline);
+    status = TASCodecTransportWrite(codec, 0x08, mixer, 9UL, deadline);
+    if (status != kTASStatusOK) return status;
+    memcpy(codec->shadow[0x07], mixer, 9);
+    memcpy(codec->shadow[0x08], mixer, 9);
+    codec->shadowLength[0x07] = 9UL;
+    codec->shadowLength[0x08] = 9UL;
+    return kTASStatusOK;
 }
 
 static TASStatus tas3004_gain(TASCodec *codec, unsigned long gain,

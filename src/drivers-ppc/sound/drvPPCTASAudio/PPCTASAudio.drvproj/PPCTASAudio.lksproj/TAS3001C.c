@@ -44,7 +44,7 @@ TASStatus TASCodecBind(TASCodec *codec, const TASCodecOps *ops,
     return kTASStatusOK;
 }
 
-TASStatus TASCodecWrite(TASCodec *codec, unsigned char reg,
+TASStatus TASCodecTransportWrite(TASCodec *codec, unsigned char reg,
     const unsigned char *bytes, unsigned long length,
     unsigned long deadlineMilliseconds)
 {
@@ -65,6 +65,18 @@ TASStatus TASCodecWrite(TASCodec *codec, unsigned char reg,
         return TASCodecFailOperation(codec, status);
     if (written != length)
         return TASCodecFailOperation(codec, kTASStatusUnresolved);
+    return kTASStatusOK;
+}
+
+TASStatus TASCodecWrite(TASCodec *codec, unsigned char reg,
+    const unsigned char *bytes, unsigned long length,
+    unsigned long deadlineMilliseconds)
+{
+    TASStatus status;
+    status = TASCodecTransportWrite(codec, reg, bytes, length,
+        deadlineMilliseconds);
+    if (status != kTASStatusOK)
+        return status;
     memcpy(codec->shadow[reg], bytes, (size_t)length);
     codec->shadowLength[reg] = length;
     return kTASStatusOK;
@@ -286,11 +298,19 @@ static TASStatus tas3001_source(TASCodec *codec, TASCodecInputSource source,
         return kTASStatusUnsupported;
     memset(muted, 0, sizeof(muted));
     TASCodecEncode24(codec->inputGain, selected);
-    status = TASCodecWrite(codec, 0x07,
+    status = TASCodecTransportWrite(codec, 0x07,
         source == kTASCodecInputDigital1 ? selected : muted, 3UL, deadline);
     if (status != kTASStatusOK) return status;
-    return TASCodecWrite(codec, 0x08,
+    status = TASCodecTransportWrite(codec, 0x08,
         source == kTASCodecInputDigital2 ? selected : muted, 3UL, deadline);
+    if (status != kTASStatusOK) return status;
+    memcpy(codec->shadow[0x07],
+        source == kTASCodecInputDigital1 ? selected : muted, 3);
+    memcpy(codec->shadow[0x08],
+        source == kTASCodecInputDigital2 ? selected : muted, 3);
+    codec->shadowLength[0x07] = 3UL;
+    codec->shadowLength[0x08] = 3UL;
+    return kTASStatusOK;
 }
 
 static const TASCodecOps tas3001Ops = {

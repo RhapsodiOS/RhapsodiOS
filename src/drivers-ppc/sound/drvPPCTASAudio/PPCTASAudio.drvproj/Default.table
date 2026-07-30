@@ -3,6 +3,6 @@
 "Location" = "";
 "Instance" = "0";
 "Driver Name" = "PPCTASAudio";
-"Matching" = "tumbler snapper";
+"Matching" = "i2s";
 "Class Names" = "PPCTASAudio";
 "Server Name" = "drvPPCTASAudio";

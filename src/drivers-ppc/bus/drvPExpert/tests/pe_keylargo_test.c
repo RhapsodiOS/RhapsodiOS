@@ -678,7 +678,7 @@ static void test_keywest_initial_busy_recovery_timeout(void)
     transport = transport_for(&fake);
     request = request_for(&byte, 1, kPEKeyWestRead);
     CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
-        KERN_PE_KEYWEST_TIMEOUT);
+        KERN_PE_KEYWEST_ARBITRATION_LOST);
     expect_serialized_and_clean(&fake);
 }
 

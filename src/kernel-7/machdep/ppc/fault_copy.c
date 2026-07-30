@@ -63,16 +63,12 @@
 
 caddr_t cioseg(space_t space, caddr_t addr);
 
-extern unsigned int PEInterruptRecoveryMark(void);
-extern void PEInterruptRecoveryRestore(unsigned int mark);
-
 int
 safe_bcopy(caddr_t src, caddr_t dst, int len)
 {
 	int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if(tmpbuf)
@@ -86,7 +82,6 @@ safe_bcopy(caddr_t src, caddr_t dst, int len)
 		bcopy(src, dst, len);
 	}
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 
 	return(error);
 }
@@ -97,7 +92,6 @@ safe_bzero(void *dst, unsigned long ulen)
 	int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if (tmpbuf)
@@ -111,7 +105,6 @@ safe_bzero(void *dst, unsigned long ulen)
 		bzero(dst, ulen);
 	}
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 
 	return(error);
 }
@@ -154,7 +147,6 @@ unsigned maxlen, *lencopied;
 	int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if(tmpbuf)
@@ -186,7 +178,6 @@ unsigned maxlen, *lencopied;
 		*to++ = '\0';	// NULL terminate
 
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 
 	if (lencopied)
 		*lencopied = to - oto;
@@ -205,7 +196,6 @@ unsigned count;
 	int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 	if (setjmp(&jmpbuf)) {
 		error = EFAULT;
@@ -216,7 +206,6 @@ unsigned count;
 	}
 
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 	return (error);
 }
 
@@ -320,7 +309,6 @@ copystr(from, to, maxlen, lencopied)
     int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if(tmpbuf)
@@ -344,7 +332,6 @@ copystr(from, to, maxlen, lencopied)
 	}
 out:
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 	return (error);
 }
 
@@ -370,7 +357,6 @@ copyoutstr(from, to, maxlen, lencopied)
 	int error = 0;
 	label_t jmpbuf;
 	vm_offset_t tmpbuf = current_thread()->recover;
-	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if(tmpbuf)
@@ -408,7 +394,6 @@ copyoutstr(from, to, maxlen, lencopied)
 		*lencopied = to - oto;
 
 	current_thread()->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 	return error;
 }
 
@@ -421,7 +406,6 @@ copyin(void *src, void *dst, size_t len)
 	vm_offset_t	tmpbuf = self->recover;
 	label_t		jmpbuf;
 	int		error = 0;
-	unsigned int	interruptDepth = PEInterruptRecoveryMark();
 	void		*tsrc;
 	size_t		tlen;
 
@@ -446,7 +430,6 @@ copyin(void *src, void *dst, size_t len)
 		}
 	}
 	self->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 	return(error);
 }
 
@@ -457,7 +440,6 @@ copyout(void *src, void *dst, size_t len)
 	vm_offset_t	tmpbuf = self->recover;
 	label_t		jmpbuf;
 	int		error = 0;
-	unsigned int	interruptDepth = PEInterruptRecoveryMark();
 	void		*tdst;
 	size_t		tlen;
 
@@ -482,7 +464,6 @@ copyout(void *src, void *dst, size_t len)
 		}
 	}
 	self->recover = (vm_offset_t)tmpbuf;
-	PEInterruptRecoveryRestore(interruptDepth);
 	return(error);
 }
 

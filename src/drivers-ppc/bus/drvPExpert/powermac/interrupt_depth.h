@@ -34,16 +34,10 @@ PEInterruptDepthEnterException(unsigned int *depth, int exception,
     return PEInterruptDepthEnter(depth);
 }
 
-static unsigned int
-PEInterruptDepthMark(unsigned int depth)
+static int
+PEInterruptDepthAllowsRecovery(unsigned int depth, int hasRecovery)
 {
-    return depth;
-}
-
-static void
-PEInterruptDepthRecover(unsigned int *depth, unsigned int mark)
-{
-    *depth = mark;
+    return hasRecovery && !PEInterruptDepthActive(depth);
 }
 
 #endif /* _POWERMAC_INTERRUPT_DEPTH_H_ */

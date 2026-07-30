@@ -106,8 +106,7 @@ PEKeyWestI2CTransferCore(const PEKeyLargoTransport *transport,
             transport->write8(transport->context, kPEKeyWestRegISR,
                 kPEKeyWestInterruptStop);
         else
-            /* Unsafe recovery takes precedence over reporting BUSY. */
-            result = KERN_PE_KEYWEST_TIMEOUT;
+            result = stopResult;
         goto out;
     }
 

@@ -72,18 +72,6 @@ PEIsInInterruptContext(void)
 	return PEInterruptDepthActive(pe_interrupt_depth[cpu_number()]);
 }
 
-unsigned int
-PEInterruptRecoveryMark(void)
-{
-	return PEInterruptDepthMark(pe_interrupt_depth[cpu_number()]);
-}
-
-void
-PEInterruptRecoveryRestore(unsigned int mark)
-{
-	PEInterruptDepthRecover(&pe_interrupt_depth[cpu_number()], mark);
-}
-
 #if DEBUG
 vm_offset_t spl_addr;
 #endif /* MACH_DEBUG */
@@ -280,7 +268,8 @@ struct ppc_saved_state * interrupt(
 		 * thandler vectors to ihandler.
 		 */
 		th = current_thread();
-		if (th && th->recover) {
+		if (PEInterruptDepthAllowsRecovery(pe_interrupt_depth[cpu],
+		    th != 0 && th->recover != 0)) {
 			label_t *l = (label_t *)th->recover;
 			th->recover = (vm_offset_t)NULL;
 			longjmp(l,1);

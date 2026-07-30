@@ -15,9 +15,11 @@ int
 main(void)
 {
     unsigned int depth = 0;
-    unsigned int mark;
     const int external = 0x500;
     const int decrementer = 0x900;
+    int currentPriority;
+    int oldPriority;
+    int entered;
 
     CHECK(!PEInterruptDepthActive(depth));
     CHECK(PEInterruptDepthEnter(&depth));
@@ -47,19 +49,39 @@ main(void)
     CHECK(PEInterruptDepthActive(depth));
     CHECK(PEInterruptDepthLeave(&depth));
 
-    mark = PEInterruptDepthMark(depth);
-    CHECK(PEInterruptDepthEnterException(&depth, external,
-        external, decrementer));
-    PEInterruptDepthRecover(&depth, mark);
-    CHECK(!PEInterruptDepthActive(depth));
+    CHECK(PEInterruptDepthAllowsRecovery(depth, 1));
+    CHECK(!PEInterruptDepthAllowsRecovery(depth, 0));
     CHECK(PEInterruptDepthEnter(&depth));
-    mark = PEInterruptDepthMark(depth);
-    CHECK(PEInterruptDepthEnterException(&depth, decrementer,
-        external, decrementer));
-    PEInterruptDepthRecover(&depth, mark);
+    CHECK(!PEInterruptDepthAllowsRecovery(depth, 1));
     CHECK(PEInterruptDepthActive(depth));
     CHECK(depth == 1);
     CHECK(PEInterruptDepthLeave(&depth));
+
+    currentPriority = 4;
+    oldPriority = currentPriority;
+    currentPriority = 0;
+    entered = PEInterruptDepthEnterException(&depth, external,
+        external, decrementer);
+    CHECK(entered);
+    CHECK(PEInterruptDepthActive(depth));
+    CHECK(currentPriority == 0);
+    if (entered)
+        CHECK(PEInterruptDepthLeave(&depth));
+    currentPriority = oldPriority;
+    CHECK(!PEInterruptDepthActive(depth));
+    CHECK(currentPriority == 4);
+
+    oldPriority = currentPriority;
+    currentPriority = 0;
+    entered = PEInterruptDepthEnterException(&depth, decrementer,
+        external, decrementer);
+    CHECK(entered);
+    CHECK(PEInterruptDepthActive(depth));
+    if (entered)
+        CHECK(PEInterruptDepthLeave(&depth));
+    currentPriority = oldPriority;
+    CHECK(!PEInterruptDepthActive(depth));
+    CHECK(currentPriority == 4);
 
     if (failures != 0)
         return 1;

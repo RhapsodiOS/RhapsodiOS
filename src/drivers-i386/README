@@ -67,7 +67,6 @@ video
  * drvMatroxMGA - complete
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete
- * drvQVision - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
  * drvVGA - both halves reconstructed against Apple's binaries, not built since the

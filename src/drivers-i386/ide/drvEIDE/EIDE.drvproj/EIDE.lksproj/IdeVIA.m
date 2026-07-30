@@ -191,7 +191,8 @@ const ideChipsetOps_t ideVIAOps = {
 	viaConfig_t after;
 	unsigned char channel;
 
-	bmStopDMA(_bmRegs);
+	if ((_chipCaps.flags & CHIP_FLAG_BUSMASTER) && _bmRegs != 0)
+		bmStopDMA(_bmRegs);
 	if (![self VIAChannel:&channel])
 		return NO;
 	if (![self VIAReadConfig:&before]) {

@@ -25,6 +25,13 @@ int ATAHDRegistryOpen(ATAHDRegistryCore *registry, unsigned int unit,
                       unsigned int partition);
 int ATAHDRegistryClose(ATAHDRegistryCore *registry, unsigned int unit,
                        unsigned int partition);
+int ATAHDRegistryPublishPinnedOpen(ATAHDRegistryCore *registry,
+                                   unsigned int unit,
+                                   unsigned int partition,
+                                   unsigned char *present);
+int ATAHDRegistryCloseIfPresent(ATAHDRegistryCore *registry,
+                                unsigned int unit, unsigned int partition,
+                                unsigned char *present);
 int ATAHDRegistryRemove(ATAHDRegistryCore *registry, unsigned int unit);
 
 #endif

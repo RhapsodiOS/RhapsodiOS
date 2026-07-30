@@ -1,6 +1,9 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 #include "ata_hd_registry_core.h"
 
@@ -22,6 +25,93 @@ typedef struct AHCIMockOwner {
             ++failures;                                                       \
         }                                                                     \
     } while (0)
+
+static char *read_source(const char *path)
+{
+    FILE *file;
+    char *text;
+    long length;
+    size_t count;
+
+    file = fopen(path, "rb");
+    if (file == NULL)
+        return NULL;
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fclose(file);
+        return NULL;
+    }
+    length = ftell(file);
+    if (length < 0 || fseek(file, 0, SEEK_SET) != 0) {
+        fclose(file);
+        return NULL;
+    }
+    text = (char *)malloc((size_t)length + 1);
+    if (text == NULL) {
+        fclose(file);
+        return NULL;
+    }
+    count = fread(text, 1, (size_t)length, file);
+    fclose(file);
+    if (count != (size_t)length) {
+        free(text);
+        return NULL;
+    }
+    text[length] = '\0';
+    return text;
+}
+
+static void test_registry_integration_source_contract(void)
+{
+    char *header;
+    char *registry;
+    char *autoconf;
+    char *diskMethods;
+    char *probe;
+    char *initCall;
+    char *bootInitCall;
+
+    header = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.h");
+    registry = read_source("../../../../kernel-7/bsd/dev/ata_hd_registry.m");
+    autoconf = read_source(
+        "../../../../kernel-7/driverkit/i386/autoconf_i386.m");
+    diskMethods = read_source(
+        "../../../../driverkit-3/libDriver/Kernel/kernelDiskMethods.m");
+    CHECK(header != NULL);
+    CHECK(registry != NULL);
+    CHECK(autoconf != NULL);
+    CHECK(diskMethods != NULL);
+    if (header == NULL || registry == NULL || autoconf == NULL ||
+        diskMethods == NULL)
+        goto done;
+
+    CHECK(strstr(header, "typedef int (*ata_hd_ioctl_fn)") != NULL);
+    CHECK(strstr(header, "BOOL ata_hd_registry_init(void);") != NULL);
+    CHECK(strstr(header, "ata_hd_map_set_live") != NULL);
+    CHECK(strstr(header, "ata_hd_map_clear_partition") != NULL);
+    CHECK(strstr(registry, "*mapOut = NULL;") != NULL);
+    CHECK(strstr(registry, "if (ata_hd_lock == nil)") == NULL);
+    CHECK(strstr(diskMethods, "ata_hd_map_set_live") != NULL);
+    CHECK(strstr(diskMethods, "ata_hd_map_clear_live") != NULL);
+    CHECK(strstr(diskMethods, "ata_hd_map_set_partition") != NULL);
+    CHECK(strstr(diskMethods, "ata_hd_map_clear_partition") != NULL);
+
+    probe = strstr(autoconf, "probeNativeDevices(void)");
+    CHECK(probe != NULL);
+    if (probe != NULL) {
+        initCall = strstr(probe, "ata_hd_registry_init()");
+        bootInitCall = strstr(probe, "bootDriverInit();");
+        CHECK(initCall != NULL);
+        CHECK(bootInitCall != NULL);
+        if (initCall != NULL && bootInitCall != NULL)
+            CHECK(initCall < bootInitCall);
+    }
+
+done:
+    free(header);
+    free(registry);
+    free(autoconf);
+    free(diskMethods);
+}
 
 static void test_lowest_free_and_owner_lookup(void)
 {
@@ -107,53 +197,47 @@ static void test_vnode_presence_balances_core_transitions(void)
 {
     ATAHDRegistryCore registry;
     int owner;
-    int blockOpen;
-    int rawOpen;
+    unsigned char blockOpen;
+    unsigned char rawOpen;
 
     ATAHDRegistryCoreInit(&registry);
     CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
     blockOpen = 0;
     rawOpen = 0;
 
-    if (!blockOpen) {
-        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
-              ATA_HD_REGISTRY_SUCCESS);
-        blockOpen = 1;
-    }
-    if (!blockOpen) {
-        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
-              ATA_HD_REGISTRY_SUCCESS);
-        blockOpen = 1;
-    }
+    CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryPublishPinnedOpen(&registry, 0, 0, &blockOpen) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryPublishPinnedOpen(&registry, 0, 0, &blockOpen) ==
+          ATA_HD_REGISTRY_SUCCESS);
     CHECK(registry.openCounts[0][0] == 1);
 
-    if (!rawOpen) {
-        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
-              ATA_HD_REGISTRY_SUCCESS);
-        rawOpen = 1;
-    }
+    CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryPublishPinnedOpen(&registry, 0, 0, &rawOpen) ==
+          ATA_HD_REGISTRY_SUCCESS);
     CHECK(registry.openCounts[0][0] == 2);
     CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_BUSY);
 
-    if (rawOpen) {
-        CHECK(ATAHDRegistryClose(&registry, 0, 0) ==
-              ATA_HD_REGISTRY_SUCCESS);
-        rawOpen = 0;
-    }
+    CHECK(ATAHDRegistryCloseIfPresent(&registry, 0, 0, &rawOpen) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryCloseIfPresent(&registry, 0, 0, &rawOpen) ==
+          ATA_HD_REGISTRY_INVALID);
     CHECK(registry.openCounts[0][0] == 1);
     CHECK(blockOpen == 1);
 
-    if (blockOpen) {
-        CHECK(ATAHDRegistryClose(&registry, 0, 0) ==
-              ATA_HD_REGISTRY_SUCCESS);
-        blockOpen = 0;
-    }
+    CHECK(ATAHDRegistryCloseIfPresent(&registry, 0, 0, &blockOpen) ==
+          ATA_HD_REGISTRY_SUCCESS);
     CHECK(registry.openCounts[0][0] == 0);
     CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);
 }
 
 int main(void)
 {
+    test_registry_integration_source_contract();
     test_lowest_free_and_owner_lookup();
     test_duplicate_and_invalid_inputs();
     test_capacity_and_reuse();

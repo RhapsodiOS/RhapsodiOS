@@ -75,6 +75,38 @@ int ATAHDRegistryClose(ATAHDRegistryCore *registry, unsigned int unit,
     return ATA_HD_REGISTRY_SUCCESS;
 }
 
+int ATAHDRegistryPublishPinnedOpen(ATAHDRegistryCore *registry,
+                                   unsigned int unit,
+                                   unsigned int partition,
+                                   unsigned char *present)
+{
+    if (registry == 0 || present == 0 || unit >= ATA_HD_UNITS ||
+        partition >= ATA_HD_PARTITIONS || registry->owners[unit] == 0 ||
+        registry->openCounts[unit][partition] == 0)
+        return ATA_HD_REGISTRY_INVALID;
+    if (*present == 0) {
+        *present = 1;
+        return ATA_HD_REGISTRY_SUCCESS;
+    }
+
+    return ATAHDRegistryClose(registry, unit, partition);
+}
+
+int ATAHDRegistryCloseIfPresent(ATAHDRegistryCore *registry,
+                                unsigned int unit, unsigned int partition,
+                                unsigned char *present)
+{
+    int result;
+
+    if (present == 0 || *present == 0)
+        return ATA_HD_REGISTRY_INVALID;
+
+    result = ATAHDRegistryClose(registry, unit, partition);
+    if (result == ATA_HD_REGISTRY_SUCCESS)
+        *present = 0;
+    return result;
+}
+
 int ATAHDRegistryRemove(ATAHDRegistryCore *registry, unsigned int unit)
 {
     unsigned int partition;

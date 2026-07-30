@@ -24,20 +24,29 @@
 typedef struct ATAHDUnitState {
     struct buf *physbuf;
     ata_hd_ioctl_fn transportIoctl;
-    BOOL blockOpen[ATA_HD_PARTITIONS];
-    BOOL rawOpen[ATA_HD_PARTITIONS];
+    unsigned char blockOpen[ATA_HD_PARTITIONS];
+    unsigned char rawOpen[ATA_HD_PARTITIONS];
 } ATAHDUnitState;
+
+typedef enum ATAHDDevswState {
+    ATA_HD_DEVSW_NONE,
+    ATA_HD_DEVSW_INITIALIZING,
+    ATA_HD_DEVSW_READY
+} ATAHDDevswState;
 
 static ATAHDRegistryCore ata_hd_core;
 static IODevAndIdInfo ata_hd_maps[ATA_HD_UNITS];
 static ATAHDUnitState ata_hd_units[ATA_HD_UNITS];
 
 /*
- * DriverKit configuration is serialized while the first disk class probes.
- * NXLock is a sleep lock and may cover IODisk calls which allocate or wait.
+ * Initialized before i386 DriverKit probing starts. The registry lock protects
+ * only the core, map contents, vnode-presence state, callback pointers, and
+ * devsw publication state. It must not be held while calling an IODisk object.
+ * IODisk map writers take this lock through the ata_hd_map_* entry points.
  */
 static NXLock *ata_hd_lock = nil;
-static BOOL ata_hd_initialized = NO;
+static BOOL ata_hd_registry_ready = NO;
+static ATAHDDevswState ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
 static int ata_hd_block_major = -1;
 static int ata_hd_raw_major = -1;
 
@@ -57,7 +66,34 @@ static BOOL ata_hd_requested_majors(Class diskClass,
 static BOOL ata_hd_parse_major(const char *string, int *majorOut);
 static BOOL ata_hd_valid_dev_locked(dev_t dev);
 static id ata_hd_disk_for_dev_locked(dev_t dev);
+static unsigned char *ata_hd_presence_for_dev_locked(dev_t dev);
+static int ata_hd_map_unit_locked(IODevAndIdInfo *map);
 static int ata_hd_core_error_to_errno(int error);
+static void ata_hd_free_physbufs(struct buf **physbufs,
+                                 unsigned int count);
+
+BOOL
+ata_hd_registry_init(void)
+{
+    NXLock *registryLock;
+
+    if (ata_hd_registry_ready)
+        return YES;
+
+    registryLock = [NXLock new];
+    if (registryLock == nil)
+        return NO;
+
+    ATAHDRegistryCoreInit(&ata_hd_core);
+    bzero((char *)ata_hd_maps, sizeof(ata_hd_maps));
+    bzero((char *)ata_hd_units, sizeof(ata_hd_units));
+    ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
+    ata_hd_block_major = -1;
+    ata_hd_raw_major = -1;
+    ata_hd_lock = registryLock;
+    ata_hd_registry_ready = YES;
+    return YES;
+}
 
 static BOOL
 ata_hd_parse_major(const char *string, int *majorOut)
@@ -113,10 +149,15 @@ ata_hd_devsw_init(Class diskClass,
                   IODeviceDescription *deviceDescription)
 {
     extern int seltrue();
+    struct buf *physbufs[ATA_HD_UNITS];
     unsigned int unit;
     unsigned int allocated;
     int requestedBlockMajor;
     int requestedRawMajor;
+    int blockMajor;
+    int rawMajor;
+    BOOL cdevAdded;
+    BOOL bdevAdded;
 
     if (!ata_hd_requested_majors(diskClass, deviceDescription,
                                  &requestedBlockMajor,
@@ -125,28 +166,49 @@ ata_hd_devsw_init(Class diskClass,
     if (requestedBlockMajor != ATA_HD_BLOCK_MAJOR ||
         requestedRawMajor != ATA_HD_RAW_MAJOR)
         return NO;
+    if (!ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
 
-    if (ata_hd_lock == nil) {
-        ata_hd_lock = [NXLock new];
-        if (ata_hd_lock == nil)
-            return NO;
+    for (;;) {
+        [ata_hd_lock lock];
+        if (ata_hd_devsw_state != ATA_HD_DEVSW_INITIALIZING)
+            break;
+        [ata_hd_lock unlock];
+        IOSleep(1);
     }
 
-    [ata_hd_lock lock];
-
-    if (ata_hd_initialized) {
-        if (requestedBlockMajor == ata_hd_block_major &&
-            requestedRawMajor == ata_hd_raw_major) {
-            [diskClass setBlockMajor:ata_hd_block_major];
-            [diskClass setCharacterMajor:ata_hd_raw_major];
-            [ata_hd_lock unlock];
-            return YES;
-        }
+    if (ata_hd_devsw_state == ATA_HD_DEVSW_READY) {
+        blockMajor = ata_hd_block_major;
+        rawMajor = ata_hd_raw_major;
         [ata_hd_lock unlock];
+        if (requestedBlockMajor != blockMajor ||
+            requestedRawMajor != rawMajor)
+            return NO;
+        [diskClass setBlockMajor:blockMajor];
+        [diskClass setCharacterMajor:rawMajor];
+        return YES;
+    }
+
+    ata_hd_devsw_state = ATA_HD_DEVSW_INITIALIZING;
+    [ata_hd_lock unlock];
+
+    allocated = 0;
+    for (unit = 0; unit < ATA_HD_UNITS; ++unit) {
+        physbufs[unit] = (struct buf *)IOMalloc(sizeof(struct buf));
+        if (physbufs[unit] == NULL)
+            break;
+        bzero((char *)physbufs[unit], sizeof(struct buf));
+        ++allocated;
+    }
+    if (allocated != ATA_HD_UNITS) {
+        [ata_hd_lock lock];
+        ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
+        [ata_hd_lock unlock];
+        ata_hd_free_physbufs(physbufs, allocated);
         return NO;
     }
 
-    if ([diskClass addToCdevswFromDescription:deviceDescription
+    cdevAdded = [diskClass addToCdevswFromDescription:deviceDescription
                                       open:(IOSwitchFunc)ata_hd_open
                                      close:(IOSwitchFunc)ata_hd_close
                                       read:(IOSwitchFunc)ata_hd_read
@@ -157,66 +219,52 @@ ata_hd_devsw_init(Class diskClass,
                                     select:(IOSwitchFunc)seltrue
                                       mmap:(IOSwitchFunc)eno_mmap
                                       getc:(IOSwitchFunc)eno_getc
-                                      putc:(IOSwitchFunc)eno_putc] != YES) {
-        [ata_hd_lock unlock];
-        return NO;
-    }
-
-    if ([diskClass addToBdevswFromDescription:deviceDescription
+                                      putc:(IOSwitchFunc)eno_putc];
+    bdevAdded = NO;
+    if (cdevAdded == YES) {
+        bdevAdded = [diskClass
+                    addToBdevswFromDescription:deviceDescription
                                       open:(IOSwitchFunc)ata_hd_open
                                      close:(IOSwitchFunc)ata_hd_close
                                   strategy:(IOSwitchFunc)ata_hd_strategy
                                      ioctl:(IOSwitchFunc)ata_hd_ioctl
                                       dump:(IOSwitchFunc)eno_dump
                                      psize:(IOSwitchFunc)ata_hd_size
-                                    isTape:FALSE] != YES) {
-        [diskClass removeFromCdevsw];
+                                    isTape:FALSE];
+    }
+
+    blockMajor = [diskClass blockMajor];
+    rawMajor = [diskClass characterMajor];
+    if (cdevAdded != YES || bdevAdded != YES ||
+        blockMajor != requestedBlockMajor || rawMajor != requestedRawMajor) {
+        if (bdevAdded == YES)
+            [diskClass removeFromBdevsw];
+        if (cdevAdded == YES)
+            [diskClass removeFromCdevsw];
+        [ata_hd_lock lock];
+        ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
         [ata_hd_lock unlock];
+        ata_hd_free_physbufs(physbufs, ATA_HD_UNITS);
         return NO;
     }
 
-    ata_hd_block_major = [diskClass blockMajor];
-    ata_hd_raw_major = [diskClass characterMajor];
-    if (ata_hd_block_major != requestedBlockMajor ||
-        ata_hd_raw_major != requestedRawMajor) {
-        [diskClass removeFromBdevsw];
-        [diskClass removeFromCdevsw];
-        ata_hd_block_major = -1;
-        ata_hd_raw_major = -1;
-        [ata_hd_lock unlock];
-        return NO;
-    }
-
-    ATAHDRegistryCoreInit(&ata_hd_core);
-    bzero((char *)ata_hd_maps, sizeof(ata_hd_maps));
-    bzero((char *)ata_hd_units, sizeof(ata_hd_units));
-
-    allocated = 0;
-    for (unit = 0; unit < ATA_HD_UNITS; ++unit) {
-        ata_hd_units[unit].physbuf =
-            (struct buf *)IOMalloc(sizeof(struct buf));
-        if (ata_hd_units[unit].physbuf == NULL)
-            break;
-        bzero((char *)ata_hd_units[unit].physbuf, sizeof(struct buf));
-        ++allocated;
-    }
-
-    if (allocated != ATA_HD_UNITS) {
-        for (unit = 0; unit < allocated; ++unit) {
-            IOFree(ata_hd_units[unit].physbuf, sizeof(struct buf));
-            ata_hd_units[unit].physbuf = NULL;
-        }
-        [diskClass removeFromBdevsw];
-        [diskClass removeFromCdevsw];
-        ata_hd_block_major = -1;
-        ata_hd_raw_major = -1;
-        [ata_hd_lock unlock];
-        return NO;
-    }
-
-    ata_hd_initialized = YES;
+    [ata_hd_lock lock];
+    for (unit = 0; unit < ATA_HD_UNITS; ++unit)
+        ata_hd_units[unit].physbuf = physbufs[unit];
+    ata_hd_block_major = blockMajor;
+    ata_hd_raw_major = rawMajor;
+    ata_hd_devsw_state = ATA_HD_DEVSW_READY;
     [ata_hd_lock unlock];
     return YES;
+}
+
+static void
+ata_hd_free_physbufs(struct buf **physbufs, unsigned int count)
+{
+    unsigned int unit;
+
+    for (unit = 0; unit < count; ++unit)
+        IOFree(physbufs[unit], sizeof(struct buf));
 }
 
 int
@@ -226,11 +274,14 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
     IODevAndIdInfo *map;
     int unit;
 
-    if (disk == nil || mapOut == NULL || ata_hd_lock == nil)
+    if (mapOut == NULL)
+        return ATA_HD_REGISTRY_INVALID;
+    *mapOut = NULL;
+    if (disk == nil || !ata_hd_registry_ready || ata_hd_lock == nil)
         return ATA_HD_REGISTRY_INVALID;
 
     [ata_hd_lock lock];
-    if (!ata_hd_initialized) {
+    if (ata_hd_devsw_state != ATA_HD_DEVSW_READY) {
         [ata_hd_lock unlock];
         return ATA_HD_REGISTRY_INVALID;
     }
@@ -261,11 +312,12 @@ ata_hd_unregister(unsigned int unit)
 {
     int result;
 
-    if (unit >= ATA_HD_UNITS || ata_hd_lock == nil)
+    if (unit >= ATA_HD_UNITS || !ata_hd_registry_ready ||
+        ata_hd_lock == nil)
         return IO_R_INVALID_ARG;
 
     [ata_hd_lock lock];
-    if (!ata_hd_initialized) {
+    if (ata_hd_devsw_state != ATA_HD_DEVSW_READY) {
         [ata_hd_lock unlock];
         return IO_R_NO_DEVICE;
     }
@@ -299,7 +351,7 @@ ata_hd_lookup(dev_t dev)
 {
     IODevAndIdInfo *map;
 
-    if (ata_hd_lock == nil)
+    if (!ata_hd_registry_ready || ata_hd_lock == nil)
         return NULL;
 
     [ata_hd_lock lock];
@@ -312,6 +364,124 @@ ata_hd_lookup(dev_t dev)
     return map;
 }
 
+static int
+ata_hd_map_unit_locked(IODevAndIdInfo *map)
+{
+    unsigned int unit;
+
+    for (unit = 0; unit < ATA_HD_UNITS; ++unit) {
+        if (map == &ata_hd_maps[unit])
+            return (int)unit;
+    }
+    return -1;
+}
+
+BOOL
+ata_hd_map_is_owned(IODevAndIdInfo *map)
+{
+    BOOL owned;
+
+    if (map == NULL || !ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    owned = (ata_hd_map_unit_locked(map) >= 0) ? YES : NO;
+    [ata_hd_lock unlock];
+    return owned;
+}
+
+BOOL
+ata_hd_map_set_live(IODevAndIdInfo *map, id disk)
+{
+    int unit;
+
+    if (map == NULL || disk == nil || !ata_hd_registry_ready ||
+        ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    unit = ata_hd_map_unit_locked(map);
+    if (unit >= 0 && ATAHDRegistryOwner(&ata_hd_core, unit) == disk)
+        map->liveId = disk;
+    [ata_hd_lock unlock];
+    return (unit >= 0) ? YES : NO;
+}
+
+BOOL
+ata_hd_map_clear_live(IODevAndIdInfo *map, id disk)
+{
+    int unit;
+    unsigned int partition;
+    BOOL busy;
+
+    if (map == NULL || disk == nil || !ata_hd_registry_ready ||
+        ata_hd_lock == nil)
+        return NO;
+    for (;;) {
+        [ata_hd_lock lock];
+        unit = ata_hd_map_unit_locked(map);
+        if (unit < 0 || map->liveId != disk) {
+            [ata_hd_lock unlock];
+            return (unit >= 0) ? YES : NO;
+        }
+        busy = NO;
+        for (partition = 0; partition < ATA_HD_PARTITIONS; ++partition) {
+            if (ata_hd_core.openCounts[unit][partition] != 0) {
+                busy = YES;
+                break;
+            }
+        }
+        if (!busy) {
+            map->liveId = nil;
+            [ata_hd_lock unlock];
+            return YES;
+        }
+        [ata_hd_lock unlock];
+        IOSleep(1);
+    }
+}
+
+BOOL
+ata_hd_map_set_partition(IODevAndIdInfo *map, id disk,
+                         unsigned int partition)
+{
+    int unit;
+
+    if (map == NULL || disk == nil || partition >= ATA_HD_LIVE_PART ||
+        !ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    unit = ata_hd_map_unit_locked(map);
+    if (unit >= 0 && ATAHDRegistryOwner(&ata_hd_core, unit) != NULL)
+        map->partitionId[partition] = disk;
+    [ata_hd_lock unlock];
+    return (unit >= 0) ? YES : NO;
+}
+
+BOOL
+ata_hd_map_clear_partition(IODevAndIdInfo *map, id disk,
+                           unsigned int partition)
+{
+    int unit;
+
+    if (map == NULL || disk == nil || partition >= ATA_HD_LIVE_PART ||
+        !ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
+    for (;;) {
+        [ata_hd_lock lock];
+        unit = ata_hd_map_unit_locked(map);
+        if (unit < 0 || map->partitionId[partition] != disk) {
+            [ata_hd_lock unlock];
+            return (unit >= 0) ? YES : NO;
+        }
+        if (ata_hd_core.openCounts[unit][partition] == 0) {
+            map->partitionId[partition] = nil;
+            [ata_hd_lock unlock];
+            return YES;
+        }
+        [ata_hd_lock unlock];
+        IOSleep(1);
+    }
+}
+
 static BOOL
 ata_hd_valid_dev_locked(dev_t dev)
 {
@@ -319,7 +489,7 @@ ata_hd_valid_dev_locked(dev_t dev)
     unsigned int partition;
     int deviceMajor;
 
-    if (!ata_hd_initialized)
+    if (ata_hd_devsw_state != ATA_HD_DEVSW_READY)
         return NO;
 
     unit = IO_DISK_UNIT(dev);
@@ -354,6 +524,21 @@ ata_hd_disk_for_dev_locked(dev_t dev)
     return map->partitionId[partition];
 }
 
+static unsigned char *
+ata_hd_presence_for_dev_locked(dev_t dev)
+{
+    unsigned int unit;
+    unsigned int partition;
+
+    if (!ata_hd_valid_dev_locked(dev))
+        return NULL;
+    unit = IO_DISK_UNIT(dev);
+    partition = IO_DISK_PART(dev);
+    if (major(dev) == ata_hd_block_major)
+        return &ata_hd_units[unit].blockOpen[partition];
+    return &ata_hd_units[unit].rawOpen[partition];
+}
+
 static int
 ata_hd_core_error_to_errno(int error)
 {
@@ -369,49 +554,48 @@ static int
 ata_hd_open(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
-    BOOL *openState;
+    unsigned char *openState;
+    BOOL becamePresent;
     unsigned int partition;
     unsigned int unit;
     int result;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
-    if (disk == nil) {
+    openState = ata_hd_presence_for_dev_locked(dev);
+    if (disk == nil || openState == NULL) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
-    if ([disk isDiskReady:NO]) {
-        [ata_hd_lock unlock];
-        return ENXIO;
-    }
-
     unit = IO_DISK_UNIT(dev);
     partition = IO_DISK_PART(dev);
-    if (major(dev) == ata_hd_block_major)
-        openState = &ata_hd_units[unit].blockOpen[partition];
-    else
-        openState = &ata_hd_units[unit].rawOpen[partition];
+    result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    [ata_hd_lock unlock];
+    if (result != ATA_HD_REGISTRY_SUCCESS)
+        return ata_hd_core_error_to_errno(result);
 
-    if (*openState) {
+    if ([disk isDiskReady:NO]) {
+        [ata_hd_lock lock];
+        (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
         [ata_hd_lock unlock];
-        return 0;
+        return ENXIO;
     }
 
-    result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    [ata_hd_lock lock];
+    becamePresent = (*openState == 0) ? YES : NO;
+    result = ATAHDRegistryPublishPinnedOpen(&ata_hd_core, unit, partition,
+                                            openState);
+    [ata_hd_lock unlock];
     if (result != ATA_HD_REGISTRY_SUCCESS) {
-        [ata_hd_lock unlock];
         return ata_hd_core_error_to_errno(result);
     }
-    *openState = YES;
 
-    if (partition != ATA_HD_LIVE_PART) {
+    if (becamePresent && partition != ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
             [disk setBlockDeviceOpen:YES];
         else
             [disk setRawDeviceOpen:YES];
     }
-
-    [ata_hd_lock unlock];
     return 0;
 }
 
@@ -419,35 +603,28 @@ static int
 ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
-    BOOL *openState;
+    unsigned char *openState;
     unsigned int partition;
     unsigned int unit;
     int result;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
-    if (disk == nil) {
+    openState = ata_hd_presence_for_dev_locked(dev);
+    if (disk == nil || openState == NULL || *openState == 0) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
     unit = IO_DISK_UNIT(dev);
     partition = IO_DISK_PART(dev);
-    if (major(dev) == ata_hd_block_major)
-        openState = &ata_hd_units[unit].blockOpen[partition];
-    else
-        openState = &ata_hd_units[unit].rawOpen[partition];
-
-    if (!*openState) {
-        [ata_hd_lock unlock];
-        return ENXIO;
-    }
-
-    result = ATAHDRegistryClose(&ata_hd_core, unit, partition);
+    result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    if (result == ATA_HD_REGISTRY_SUCCESS)
+        result = ATAHDRegistryCloseIfPresent(&ata_hd_core, unit, partition,
+                                             openState);
+    [ata_hd_lock unlock];
     if (result != ATA_HD_REGISTRY_SUCCESS) {
-        [ata_hd_lock unlock];
         return ata_hd_core_error_to_errno(result);
     }
-    *openState = NO;
 
     if (partition != ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
@@ -456,8 +633,11 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
             [disk setRawDeviceOpen:NO];
     }
 
+    [ata_hd_lock lock];
+    result = ATAHDRegistryClose(&ata_hd_core, unit, partition);
     [ata_hd_lock unlock];
-    return 0;
+    return (result == ATA_HD_REGISTRY_SUCCESS) ? 0 :
+           ata_hd_core_error_to_errno(result);
 }
 
 static int
@@ -469,13 +649,14 @@ ata_hd_read(dev_t dev, struct uio *uiop, int ioflag)
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
-    if (disk == nil) {
+    if (disk == nil || ata_hd_presence_for_dev_locked(dev) == NULL ||
+        *ata_hd_presence_for_dev_locked(dev) == 0) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
     physbuf = ata_hd_units[IO_DISK_UNIT(dev)].physbuf;
-    blockSize = [disk blockSize];
     [ata_hd_lock unlock];
+    blockSize = [disk blockSize];
 
     return physio((int (*)())ata_hd_strategy, physbuf, dev, B_READ,
                   ata_hd_minphys, uiop, blockSize);
@@ -490,13 +671,14 @@ ata_hd_write(dev_t dev, struct uio *uiop, int ioflag)
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
-    if (disk == nil) {
+    if (disk == nil || ata_hd_presence_for_dev_locked(dev) == NULL ||
+        *ata_hd_presence_for_dev_locked(dev) == 0) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
     physbuf = ata_hd_units[IO_DISK_UNIT(dev)].physbuf;
-    blockSize = [disk blockSize];
     [ata_hd_lock unlock];
+    blockSize = [disk blockSize];
 
     return physio((int (*)())ata_hd_strategy, physbuf, dev, B_WRITE,
                   ata_hd_minphys, uiop, blockSize);
@@ -511,10 +693,13 @@ ata_hd_strategy(struct buf *bp)
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(bp->b_dev);
-    if (disk == nil) {
+    if (disk == nil || ata_hd_presence_for_dev_locked(bp->b_dev) == NULL ||
+        *ata_hd_presence_for_dev_locked(bp->b_dev) == 0) {
+        [ata_hd_lock unlock];
         bp->b_error = ENXIO;
-        goto bad_locked;
+        goto bad;
     }
+    [ata_hd_lock unlock];
 
     if ((bp->b_flags & (B_PHYS | B_KERNSPACE)) == B_PHYS)
         client = IOVmTaskForBuf(bp);
@@ -523,7 +708,7 @@ ata_hd_strategy(struct buf *bp)
 
     if ([disk blockSize] == 0) {
         bp->b_error = ENXIO;
-        goto bad_locked;
+        goto bad;
     }
 
     if (bp->b_flags & B_READ) {
@@ -542,15 +727,13 @@ ata_hd_strategy(struct buf *bp)
 
     if (result != IO_R_SUCCESS) {
         bp->b_error = [disk errnoFromReturn:result];
-        goto bad_locked;
+        goto bad;
     }
 
-    [ata_hd_lock unlock];
     return;
 
-bad_locked:
+bad:
     bp->b_flags |= B_ERROR;
-    [ata_hd_lock unlock];
     biodone(bp);
 }
 
@@ -568,7 +751,9 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
     int result;
 
     [ata_hd_lock lock];
-    if (!ata_hd_valid_dev_locked(dev)) {
+    if (!ata_hd_valid_dev_locked(dev) ||
+        ata_hd_presence_for_dev_locked(dev) == NULL ||
+        *ata_hd_presence_for_dev_locked(dev) == 0) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
@@ -591,23 +776,20 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
 
     default:
         disk = (id)ATAHDRegistryOwner(&ata_hd_core, unit);
+        transportIoctl = ata_hd_units[unit].transportIoctl;
+        [ata_hd_lock unlock];
         if (disk == nil) {
-            [ata_hd_lock unlock];
             return ENXIO;
         }
-        transportIoctl = ata_hd_units[unit].transportIoctl;
         if (transportIoctl == NULL) {
-            [ata_hd_lock unlock];
             return EINVAL;
         }
-        result = transportIoctl(disk, dev, (unsigned int)cmd,
-                                data, flag, proc);
-        [ata_hd_lock unlock];
-        return result;
+        return transportIoctl(disk, dev, (unsigned int)cmd,
+                              data, flag, proc);
     }
 
+    [ata_hd_lock unlock];
     if (disk == nil) {
-        [ata_hd_lock unlock];
         return ENXIO;
     }
 
@@ -626,10 +808,8 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
         struct disk_label *label;
 
         label = (struct disk_label *)IOMalloc(sizeof(*label));
-        if (label == NULL) {
-            [ata_hd_lock unlock];
+        if (label == NULL)
             return ENOMEM;
-        }
         ioResult = [disk readLabel:label];
         if (ioResult == IO_R_SUCCESS)
             *(struct disk_label *)data = *label;
@@ -642,10 +822,8 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
         struct disk_label *label;
 
         label = (struct disk_label *)IOMalloc(sizeof(*label));
-        if (label == NULL) {
-            [ata_hd_lock unlock];
+        if (label == NULL)
             return ENOMEM;
-        }
         *label = *(struct disk_label *)data;
         ioResult = [disk writeLabel:label];
         IOFree(label, sizeof(*label));
@@ -684,7 +862,6 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
     result = 0;
     if (ioResult != IO_R_SUCCESS)
         result = [disk errnoFromReturn:ioResult];
-    [ata_hd_lock unlock];
     return result;
 }
 
@@ -696,12 +873,13 @@ ata_hd_size(dev_t dev)
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
-    if (disk == nil) {
+    if (disk == nil || ata_hd_presence_for_dev_locked(dev) == NULL ||
+        *ata_hd_presence_for_dev_locked(dev) == 0) {
         [ata_hd_lock unlock];
         return -1;
     }
-    blockSize = [disk blockSize];
     [ata_hd_lock unlock];
+    blockSize = [disk blockSize];
     return blockSize;
 }
 

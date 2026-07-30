@@ -46,6 +46,9 @@
 #import <kernserv/prototypes.h>
 #import <driverkit/generalFuncs.h>
 
+#ifdef i386
+#import <bsd/dev/ata_hd_registry.h>
+#endif
 
 #ifdef ppc //bknight - 12/3/97 - Radar #2004660
 #define GROK_APPLE 1
@@ -122,9 +125,17 @@
 		return;
 	}
 	if(_isPhysical) {
+#ifdef i386
+		if(ata_hd_map_set_live(_devAndIdInfo, self))
+			return;
+#endif
 	    	_devAndIdInfo->liveId = self;
 	}
 	else {
+#ifdef i386
+		if(ata_hd_map_set_partition(_devAndIdInfo, self, partition))
+			return;
+#endif
 	    	_devAndIdInfo->partitionId[partition] = self;
 	}
 }
@@ -145,12 +156,19 @@
 		return;
 	}
 	if(_isPhysical) {
+#ifdef i386
+		if(ata_hd_map_clear_live(_devAndIdInfo, self))
+			return;
+#endif
 	    	_devAndIdInfo->liveId = nil;
 	}
 	else {
+#ifdef i386
+		if(ata_hd_map_clear_partition(_devAndIdInfo, self, partition))
+			return;
+#endif
 	    	_devAndIdInfo->partitionId[partition] = nil;
 	}
 }
 
 @end
-

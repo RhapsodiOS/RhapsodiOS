@@ -183,11 +183,16 @@ static void test_dma_command_selection(void)
                                &command, &useLba48) == 0);
     CHECK(command == 0x25 && useLba48 == 1);
     CHECK(AHCISelectDMACommand(0, 1, 1, 1, &command, &useLba48) == 0);
+    CHECK(command == 0xca && useLba48 == 0);
+    CHECK(AHCISelectDMACommand(0x0fffffffU, 2, 1, 1,
+                               &command, &useLba48) == 0);
     CHECK(command == 0x35 && useLba48 == 1);
     CHECK(AHCISelectDMACommand(0x0fffffffU, 2, 0, 0,
                                &command, &useLba48) != 0);
     CHECK(AHCISelectDMACommand(0, 0, 0, 0, &command, &useLba48) != 0);
     CHECK(AHCISelectDMACommand(0, 257, 0, 1, &command, &useLba48) != 0);
+    CHECK(AHCISelectDMACommand(0xffffffffU, 2, 0, 1,
+                               &command, &useLba48) != 0);
 }
 
 static void test_prdt_builder(void)

@@ -95,10 +95,12 @@ int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,
 {
     if (command == 0 || useLba48 == 0 || sectors == 0 || sectors > 256)
         return -1;
-    if (!lba48 && lba > 0x0fffffffU - (sectors - 1))
+    if (lba > 0xffffffffU - (sectors - 1))
         return -1;
 
-    *useLba48 = lba48 ? 1 : 0;
+    *useLba48 = lba > 0x0fffffffU - (sectors - 1);
+    if (*useLba48 && !lba48)
+        return -1;
     if (*useLba48)
         *command = write ? 0x35 : 0x25;
     else

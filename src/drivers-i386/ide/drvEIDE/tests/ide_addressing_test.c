@@ -138,6 +138,9 @@ static void test_taskfile_construction(void)
     CHECK(IDEBuildTaskfile(&taskfile, IDE_ADDRESS_LBA, 0,
         99, 2, 100, 0, 0, 0) == IDE_ADDRESS_INVALID);
     CHECK(IDEBuildTaskfile(&taskfile, IDE_ADDRESS_LBA, 0,
+        0xfffffffeUL, 1, 0xffffffffUL, 1, 0, 0) == IDE_ADDRESS_OK);
+    CHECK(taskfile.useLBA48 == 1);
+    CHECK(IDEBuildTaskfile(&taskfile, IDE_ADDRESS_LBA, 0,
         0xfffffffeUL, 2, 0xffffffffUL, 1, 0, 0) == IDE_ADDRESS_INVALID);
 }
 

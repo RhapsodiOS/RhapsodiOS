@@ -448,12 +448,12 @@ void *ideThreadPtr;
 		return (IO_R_INVALID);
     }
     blocksReq = length / block_size;
-    if ((deviceBlock + blocksReq) > dev_size) {
-		if (deviceBlock >= dev_size) {
-			return (IO_R_INVALID_ARG);
-		}
+    if (blocksReq == 0)
+		return (IO_R_INVALID);
+    if (deviceBlock >= dev_size)
+		return (IO_R_INVALID_ARG);
+    if (blocksReq > dev_size - deviceBlock)
 		blocksReq = dev_size - deviceBlock;
-    }
     ideBuf = [self allocIdeBuf:pending];
     ideBuf->command = command;
     ideBuf->block = deviceBlock;
@@ -632,21 +632,22 @@ void *ideThreadPtr;
  */
 - (IOReturn) ideRwCommon:(ideBuf_t *)ideBuf
 {
-    int     currentBlock = ideBuf->block;	/* start block, current
+    unsigned int currentBlock = ideBuf->block;	/* start block, current
 						 * segment */
-    int     	currentBlockCnt;	/* block count, current segment */
-    int     	blocksToGo = ideBuf->blockCnt;
+    unsigned int currentBlockCnt;	/* block count, current segment */
+    unsigned int blocksToGo = ideBuf->blockCnt;
     char   	*currentBuf = ideBuf->buf;
     ideIoReq_t ideIoReq;
     IOReturn 	rtn;
     unsigned 	int block_size = _ideInfo.bytes_per_sector;
     BOOL    	readFlag = (ideBuf->command == IDEC_READ) ? YES : NO;
-    int     	blocksMoved;
+    unsigned int blocksMoved;
     ns_time_t 	start_time;
 
     IOGetTimestamp(&start_time);
 
     while (blocksToGo) {
+	bzero(&ideIoReq, sizeof(ideIoReq));
 
 	/*
 	 * Set up controller command block for current segment. 

@@ -955,9 +955,11 @@ static unsigned char unaligned_warnings;
     unsigned char 	dh;
     unsigned int	command;
     unsigned int	dispatchCommand;
+    unsigned int	extendedCommand;
     ideTaskfile_t	taskfile;
     BOOL		addressCommand;
     BOOL		nativeDMA;
+    int			requiredLBA48;
 
     ddm_ide_cmd("ideExecuteCmd: executing %x\n", ideIoReq->cmd,2,3,4,5);
 
@@ -1040,15 +1042,36 @@ static unsigned char unaligned_warnings;
 		ideIoReq->status = IDER_REJECT;
 		break;
 	    }
+	    requiredLBA48 = -1;
+	    if (cnt != 0 &&
+		block < _drives[drive].addressableSectors &&
+		cnt <= _drives[drive].addressableSectors - block &&
+		_drives[drive].addressMode != ADDRESS_MODE_CHS)
+		requiredLBA48 =
+		    (block >= IDE_LBA28_SECTORS ||
+		     cnt > IDE_LBA28_SECTORS - block);
 	    ideIoReq->status = [self buildTaskfile:&taskfile
 		block:ideIoReq->block count:ideIoReq->blkcnt drive:drive];
-	    if (ideIoReq->status != IDER_SUCCESS)
+	    if (ideIoReq->status != IDER_SUCCESS) {
+		IOLog("%s: taskfile reject: base cmd %x selected cmd %x "
+		    "block %x count %x required LBA48 %d (-1 unknown) "
+		    "selected unknown\n",
+		    [self name], ideIoReq->cmd, dispatchCommand,
+		    block, cnt, requiredLBA48);
 		break;
-	    command = ideIoReq->cmd;
-	    if (taskfile.useLBA48 &&
-		(command = IDEExtendedCommand(command)) == 0) {
-		ideIoReq->status = IDER_REJECT;
-		break;
+	    }
+	    command = dispatchCommand;
+	    if (taskfile.useLBA48) {
+		extendedCommand = IDEExtendedCommand(command);
+		if (extendedCommand == 0) {
+		    IOLog("%s: EXT opcode reject: base cmd %x selected cmd %x "
+			"block %x count %x required LBA48 %d selected LBA48 %d\n",
+			[self name], ideIoReq->cmd, command, block, cnt,
+			requiredLBA48, taskfile.useLBA48);
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+		command = extendedCommand;
 	    }
 
 	    dh = _drives[_driveNum].addressMode;
@@ -1073,7 +1096,8 @@ static unsigned char unaligned_warnings;
 			[self name]);
 		    unaligned_warnings++;
 		}
-		command = IDE_READ_MULTIPLE;
+		command = _drives[drive].multiSector ?
+		    IDE_READ_MULTIPLE : IDE_READ;
 		dispatchCommand = command;
 	    } else if (dispatchCommand == IDE_WRITE_DMA) {
 		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
@@ -1081,7 +1105,8 @@ static unsigned char unaligned_warnings;
 			[self name]);
 		    unaligned_warnings++;
 		}
-		command = IDE_WRITE_MULTIPLE;
+		command = _drives[drive].multiSector ?
+		    IDE_WRITE_MULTIPLE : IDE_WRITE;
 		dispatchCommand = command;
 	    }
 
@@ -1110,14 +1135,35 @@ static unsigned char unaligned_warnings;
 		ideIoReq->status = IDER_REJECT;
 		break;
 	    }
+	    requiredLBA48 = -1;
+	    if (cnt != 0 &&
+		block < _drives[drive].addressableSectors &&
+		cnt <= _drives[drive].addressableSectors - block &&
+		_drives[drive].addressMode != ADDRESS_MODE_CHS)
+		requiredLBA48 =
+		    (block >= IDE_LBA28_SECTORS ||
+		     cnt > IDE_LBA28_SECTORS - block);
 	    ideIoReq->status = [self buildTaskfile:&taskfile
 		block:block count:cnt drive:drive];
-	    if (ideIoReq->status != IDER_SUCCESS)
+	    if (ideIoReq->status != IDER_SUCCESS) {
+		IOLog("%s: taskfile reject: base cmd %x selected cmd %x "
+		    "block %x count %x required LBA48 %d (-1 unknown) "
+		    "selected unknown\n",
+		    [self name], ideIoReq->cmd, command, block, cnt,
+		    requiredLBA48);
 		break;
-	    if (taskfile.useLBA48 &&
-		(command = IDEExtendedCommand(command)) == 0) {
-		ideIoReq->status = IDER_REJECT;
-		break;
+	    }
+	    if (taskfile.useLBA48) {
+		extendedCommand = IDEExtendedCommand(command);
+		if (extendedCommand == 0) {
+		    IOLog("%s: EXT opcode reject: base cmd %x selected cmd %x "
+			"block %x count %x required LBA48 %d selected LBA48 %d\n",
+			[self name], ideIoReq->cmd, command, block, cnt,
+			requiredLBA48, taskfile.useLBA48);
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+		command = extendedCommand;
 	    }
 	}
 

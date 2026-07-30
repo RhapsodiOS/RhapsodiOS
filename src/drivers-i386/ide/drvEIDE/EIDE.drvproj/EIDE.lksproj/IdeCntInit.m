@@ -59,6 +59,7 @@
 #import "IdePIIX.h"
 #import "AtapiCntCmds.h"
 #import "IdeShared.h"
+#import "IdeModeUtils.h"
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
 #if (IO_DRIVERKIT_VERSION != 330)
@@ -1174,7 +1175,6 @@ ata_mode_to_mask(ata_mode_t mode)
 {
 	unsigned char n;
     ata_mode_t m = ATA_MODE_0;
-	int i;
 
     /*
      * For PIO, check if we support the ATA-2 additions. 
@@ -1232,13 +1232,7 @@ ata_mode_to_mask(ata_mode_t mode)
 	/*
 	 * Multiword DMA. Read Word 63.
 	 */
-	m = ATA_MODE_NONE;
-	for (i = 2; i >= 0; i--) {
-		if (infoPtr->mwDma & (1 << i)) {
-			m = (1 << i);
-			break;
-		}
-	}
+	m = ideHighestModeBit(infoPtr->mwDma, 2);
 	/* Can't be Multiword DMA mode 1 and above and NOT support
 	 * Words 64 through 70.
 	 */
@@ -1252,14 +1246,8 @@ ata_mode_to_mask(ata_mode_t mode)
 	 * Ultra DMA. Read capability from Word 88.
 	 */
 	m = ATA_MODE_NONE;
-	if (infoPtr->fieldValidity & IDE_WORD88_SUPPORTED) {
-		for (i = 2; i >= 0; i--) {
-			if (infoPtr->UDma & (1 << i)) {
-				m = (1 << i);
-				break;
-			}
-		}
-	}
+	if (infoPtr->fieldValidity & IDE_WORD88_SUPPORTED)
+		m = ideHighestModeBit(infoPtr->UDma, 5);
 	modes->mode.udma = ata_mode_to_mask(m);
 
     return;

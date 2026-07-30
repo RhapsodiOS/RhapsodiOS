@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "IdeModeUtils.h"
 #include "VIATiming.h"
 
 static int failures;
@@ -17,6 +18,17 @@ static int failures;
             ++failures;                                                       \
         }                                                                     \
     } while (0)
+
+static void test_highest_mode_bit(void)
+{
+    CHECK(ideHighestModeBit(0x003f, 5) == 0x20);
+    CHECK(ideHighestModeBit(0x001f, 5) == 0x10);
+    CHECK(ideHighestModeBit(0x0008, 5) == 0x08);
+    CHECK(ideHighestModeBit(0x003f, 2) == 0x04);
+    CHECK(ideHighestModeBit(0x0000, 5) == 0x00);
+    CHECK(ideHighestModeBit(0x0021, 5) == 0x20);
+    CHECK(ideHighestModeBit(0x0001, 0) == 0x01);
+}
 
 static void fill_config(viaConfig_t *config, unsigned char value)
 {
@@ -598,6 +610,7 @@ static void test_cable_detection_conditions(void)
 
 int main(void)
 {
+    test_highest_mode_bit();
     test_chip_lookup();
     test_586_primary_pio4();
     test_586a_primary_mwdma1();

@@ -54,7 +54,8 @@ static void ahci_disable_interrupts(const AHCIHBAOps *ops)
     AHCIU32 ghc;
 
     ghc = ops->read(ops->context, AHCI_REG_GHC);
-    ahci_write(ops, AHCI_REG_GHC, (ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE);
+    ahci_write(ops, AHCI_REG_GHC,
+               (ghc | AHCI_GHC_AE) & ~(AHCI_GHC_IE | AHCI_GHC_HR));
     ahci_write(ops, AHCI_REG_IS, 0xffffffffU);
 }
 
@@ -80,8 +81,10 @@ AHCIHBAResult AHCIHBAInitialize(const AHCIHBAOps *ops, AHCIHBAInfo *info)
         return AHCI_HBA_INVALID_PI;
 
     result = ahci_bios_handoff(ops, info->capabilities2);
-    if (result != AHCI_HBA_SUCCESS)
+    if (result != AHCI_HBA_SUCCESS) {
+        /* Firmware still owns the HBA; do not touch GHC or IS. */
         return result;
+    }
 
     ghc = ops->read(ops->context, AHCI_REG_GHC);
     ahci_write(ops, AHCI_REG_GHC, ghc | AHCI_GHC_AE);

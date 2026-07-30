@@ -491,14 +491,21 @@ static int valid_link_project(const char *text)
 static int valid_hba_source(const char *text)
 {
     return has_exact_line(text, "#include \"AHCIHBA.h\"", 0) &&
+           has_scoped_ordered_pair(text, "static void ahci_write",
+               "static AHCIHBAResult ahci_bios_handoff",
+               "ops->write(ops->context, offset, value);",
+               "ops->barrier(ops->context);") &&
            has_scoped_expression(text, "AHCIHBAResult AHCIHBAInitialize",
                "}", "info->capabilities = ops->read(ops->context, AHCI_REG_CAP);") &&
            has_scoped_expression(text, "static void ahci_disable_interrupts",
                "AHCIHBAResult AHCIHBAInitialize",
-               "(ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE") &&
+               "(ghc | AHCI_GHC_AE) & ~(AHCI_GHC_IE | AHCI_GHC_HR)") &&
            has_scoped_expression(text, "static void ahci_disable_interrupts",
                "AHCIHBAResult AHCIHBAInitialize",
                "ahci_write(ops, AHCI_REG_IS, 0xffffffffU);") &&
+           has_scoped_expression(text, "result = ahci_bios_handoff",
+               "ghc = ops->read(ops->context, AHCI_REG_GHC);",
+               "if (result != AHCI_HBA_SUCCESS) { return result; }") &&
            has_identifier(text, "AHCI_BOHC_BB_OBSERVE_MS") &&
            has_identifier(text, "AHCI_BOHC_HANDOFF_TIMEOUT_MS") &&
            has_identifier(text, "AHCI_HBA_RESET_TIMEOUT_MS") &&
@@ -684,12 +691,20 @@ static void test_validator_mutations(void)
         "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h\n");
     strcpy(hba_source_ok,
         "#include \"AHCIHBA.h\"\n"
+        "static void ahci_write(const AHCIHBAOps *ops, AHCIU32 offset, AHCIU32 value) {\n"
+        "ops->write(ops->context, offset, value);\n"
+        "ops->barrier(ops->context);\n}\n"
+        "static AHCIHBAResult ahci_bios_handoff(const AHCIHBAOps *ops, AHCIU32 cap2) { return AHCI_HBA_SUCCESS; }\n"
         "static void ahci_disable_interrupts(const AHCIHBAOps *ops) {\n"
-        "ahci_write(ops, AHCI_REG_GHC, (ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE);\n"
-        "ahci_write(ops, AHCI_REG_IS, 0xffffffffU);\n}\n"
+        "ahci_write(ops, AHCI_REG_GHC, (ghc | AHCI_GHC_AE) & ~(AHCI_GHC_IE | AHCI_GHC_HR));\n"
+        "ahci_write(ops, AHCI_REG_IS, 0xffffffffU);\n}\n");
+    strcat(hba_source_ok,
         "AHCIHBAResult AHCIHBAInitialize(const AHCIHBAOps *ops, AHCIHBAInfo *info) {\n"
         "info->capabilities = ops->read(ops->context, AHCI_REG_CAP);\n"
         "AHCI_BOHC_BB_OBSERVE_MS; AHCI_BOHC_HANDOFF_TIMEOUT_MS;\n"
+        "result = ahci_bios_handoff(ops, info->capabilities2);\n"
+        "if (result != AHCI_HBA_SUCCESS) { return result; }\n"
+        "ghc = ops->read(ops->context, AHCI_REG_GHC);\n"
         "AHCI_HBA_RESET_TIMEOUT_MS;\n}\n");
 
     if (!valid_default_table(default_ok) ||
@@ -821,10 +836,21 @@ static void test_validator_mutations(void)
     expect_invalid("PCI production source removed", valid_link_makefile,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
-                      "(ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE",
-                      "ghc | AHCI_GHC_AE | AHCI_GHC_IE"))
+                      "~(AHCI_GHC_IE | AHCI_GHC_HR)",
+                      "~AHCI_GHC_IE"))
         ++failures;
-    expect_invalid("global IE enabled", valid_hba_source, mutation);
+    expect_invalid("reset cleanup leaves HR asserted", valid_hba_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
+                      "ops->barrier(ops->context);", ""))
+        ++failures;
+    expect_invalid("write barrier removed", valid_hba_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
+                      "if (result != AHCI_HBA_SUCCESS) { return result; }",
+                      "if (result != AHCI_HBA_SUCCESS) { }"))
+        ++failures;
+    expect_invalid("BOHC timeout pushback removed", valid_hba_source,
+                   mutation);
     if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
                       "AHCI_HBA_RESET_TIMEOUT_MS;",
                       "AHCI_HBA_RESET_TIMEOUT_MS; AHCIPort;"))

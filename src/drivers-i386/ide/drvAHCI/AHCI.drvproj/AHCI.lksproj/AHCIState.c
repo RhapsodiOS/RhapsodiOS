@@ -43,6 +43,7 @@ AHCIDeviceKind AHCIClassifyPort(unsigned int ssts, unsigned int sig)
 
 int AHCICommandCompleted(unsigned int ci, unsigned int portIS)
 {
+    /* Completion follows CI; portIS is classified separately for recovery. */
     (void)portIS;
     return (ci & 0x00000001U) == 0;
 }
@@ -55,8 +56,7 @@ AHCIRecovery AHCIRecoveryFor(unsigned int portIS, unsigned int serr,
 
     localError = (portIS & AHCI_PXIS_RECOVERABLE_MASK) |
                  (serr & AHCI_PXSERR_ERROR_MASK);
-    if ((portIS & AHCI_PXIS_FATAL_MASK) != 0 ||
-        (localError != 0 && engineStopped == 0))
+    if (engineStopped == 0 || (portIS & AHCI_PXIS_FATAL_MASK) != 0)
         return hbaResetAlreadyTried ? AHCI_RECOVERY_OFFLINE :
                                       AHCI_RECOVERY_HBA;
     if (localError != 0)

@@ -56,6 +56,8 @@ static void test_command_completion_requires_ci_clear(void)
 static void test_recovery_decisions(void)
 {
     CHECK(AHCIRecoveryFor(0, 0, 1, 0) == AHCI_RECOVERY_NONE);
+    CHECK(AHCIRecoveryFor(0, 0, 0, 0) == AHCI_RECOVERY_HBA);
+    CHECK(AHCIRecoveryFor(0, 0, 0, 1) == AHCI_RECOVERY_OFFLINE);
     CHECK(AHCIRecoveryFor(AHCI_PXIS_PCS, 0, 1, 0) == AHCI_RECOVERY_PORT);
     CHECK(AHCIRecoveryFor(AHCI_PXIS_TFES, 0, 1, 0) == AHCI_RECOVERY_PORT);
     CHECK(AHCIRecoveryFor(AHCI_PXIS_IFS, 0, 1, 0) == AHCI_RECOVERY_PORT);

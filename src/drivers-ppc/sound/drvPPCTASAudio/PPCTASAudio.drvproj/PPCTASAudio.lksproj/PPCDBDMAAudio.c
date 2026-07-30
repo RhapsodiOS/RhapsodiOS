@@ -330,7 +330,8 @@ PPCDBDMATransition PPCDBDMAStopRing(PPCDBDMARing *ring,
     const PPCDBDMAOps *ops, unsigned long deadline)
 {
     PPCDBDMAStatus status;
-    if (ring == 0 || ring->state != kPPCDBDMARunning ||
+    if (ring == 0 || (ring->state != kPPCDBDMARunning &&
+        ring->state != kPPCDBDMAFaulted) ||
         !valid_register_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);
     if (deadline_expired(ops, deadline))

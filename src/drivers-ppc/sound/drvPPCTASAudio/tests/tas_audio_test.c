@@ -2195,6 +2195,28 @@ static void test_dbdma_bounded_transitions(void)
     CHECK(!transition.sharedClockInvalidated && ring.state ==
         kPPCDBDMAFaulted);
     CHECK(registers.timeCalls != 0UL);
+
+    memset(&registers, 0, sizeof(registers));
+    registers.tick = 1UL;
+    registers.status[0] = 0UL;
+    registers.statusCount = 1UL;
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStopRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK &&
+        ring.state == kPPCDBDMAStopped);
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAReady);
+
+    ring.state = kPPCDBDMAFaulted;
+    memset(&registers, 0, sizeof(registers));
+    registers.tick = 2UL;
+    registers.status[0] = kPPCDBDMAActive;
+    registers.status[1] = kPPCDBDMAActive;
+    registers.statusCount = 2UL;
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStopRing(&ring, &ops, 3UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMAFaulted);
 }
 
 static void test_dbdma_coherency_deadlines_and_reset_restart(void)

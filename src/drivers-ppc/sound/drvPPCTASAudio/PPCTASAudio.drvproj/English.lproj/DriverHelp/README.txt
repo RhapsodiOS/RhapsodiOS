@@ -6,6 +6,15 @@ only a request to probe: the driver must remain detached unless TASCore finds
 one unique, internally consistent tumbler (TAS3001C) or snapper (TAS3004)
 sound hierarchy.  Other I2S audio hardware is intentionally rejected.
 
+The main I2S device description cannot bind the child GPIO jack-detect
+interrupt.  While the device is ready, the driver therefore polls jack state
+every 250 ms and retains the normal two-sample, 5 ms debounce.  Jack routing
+may consequently lag a physical insertion or removal by about 250 ms.
+
+Teardown disables DMA interrupts before bounded stop/reset.  If hardware does
+not stop, the driver fail-mutes and deliberately preserves DMA resources
+rather than freeing descriptors that the controller could still access.
+
 Power-management callbacks and the TAS sleep/wake state machine are
 implemented and tested.  The current PPC PMSetPowerState path does not
 dispatch DriverKit IOPower callbacks end-to-end, so actual system sleep/wake

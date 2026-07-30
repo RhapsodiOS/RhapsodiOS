@@ -80,7 +80,7 @@ TASStatus TASRuntimeProbe(const TASPropertyReader *, TASMachineConfig *);
 TASStatus TASRuntimeInit(TASRuntime *, const TASMachineConfig *,
     const TASAudioDesiredControls *, const TASRuntimeOps *);
 TASStatus TASRuntimeReset(TASRuntime *, unsigned long);
-void TASRuntimeUnwind(TASRuntime *);
+TASStatus TASRuntimeUnwind(TASRuntime *);
 TASStatus TASRuntimeStartStream(TASRuntime *, TASStreamDirection,
     const void *, unsigned long, unsigned long, unsigned long,
     unsigned long);

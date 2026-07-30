@@ -20,8 +20,12 @@
     void *ringAllocations[4];
     PPCDBDMAStorage ringStorage[2];
     PPCDBDMAOps dmaOps[2];
-    unsigned long pendingGeneration;
+    unsigned long debounceCalloutGeneration;
+    unsigned long debounceCalloutDeadline;
     PMPowerState currentPowerState;
+    int closing;
+    int debounceCalloutPending;
+    int pollCalloutPending;
     id interruptLock;
     id operationLock;
     id stateLock;

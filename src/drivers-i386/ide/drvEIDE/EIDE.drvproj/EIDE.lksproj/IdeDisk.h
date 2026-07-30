@@ -148,8 +148,6 @@ typedef  struct {
 + (BOOL)probe:deviceDescription;
 + (IODeviceStyle) deviceStyle;
 + (Protocol **) requiredProtocols;
-+ (BOOL)hd_devsw_init:deviceDescription;
-
 - (ideDriveInfo_t)ideGetDriveInfo;
 - (id)cntrlr;
 - (unsigned)driveNum;

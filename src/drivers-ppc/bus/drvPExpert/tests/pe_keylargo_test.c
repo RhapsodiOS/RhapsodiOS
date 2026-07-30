@@ -5,6 +5,23 @@
 #include "../powermac/chips/keylargo_audio.h"
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))
+#define EXPECTED_PE_KEYLARGO_SUBSYSTEM 4001
+
+typedef char pe_nack_abi_value[
+    KERN_PE_KEYWEST_NACK ==
+    (err_kern | err_sub(EXPECTED_PE_KEYLARGO_SUBSYSTEM) | 1) ? 1 : -1];
+typedef char pe_busy_abi_value[
+    KERN_PE_KEYWEST_BUSY ==
+    (err_kern | err_sub(EXPECTED_PE_KEYLARGO_SUBSYSTEM) | 2) ? 1 : -1];
+typedef char pe_arbitration_abi_value[
+    KERN_PE_KEYWEST_ARBITRATION_LOST ==
+    (err_kern | err_sub(EXPECTED_PE_KEYLARGO_SUBSYSTEM) | 3) ? 1 : -1];
+typedef char pe_timeout_abi_value[
+    KERN_PE_KEYWEST_TIMEOUT ==
+    (err_kern | err_sub(EXPECTED_PE_KEYLARGO_SUBSYSTEM) | 4) ? 1 : -1];
+typedef char pe_not_ready_abi_value[
+    KERN_PE_KEYLARGO_NOT_READY ==
+    (err_kern | err_sub(EXPECTED_PE_KEYLARGO_SUBSYSTEM) | 5) ? 1 : -1];
 
 typedef struct {
     char kind;
@@ -22,6 +39,15 @@ typedef struct {
     unsigned int dataIndex;
     int stallAt;
     int controllerStarted;
+    int directionRead;
+    int eventPresented;
+    int dataWritten;
+    int dataRead;
+    int readDataCompleted;
+    int stopIssued;
+    int arbitrationAt;
+    int invalidTransitions;
+    unsigned int timeReads;
     tvalspec_t now;
     unsigned int fcr1;
     TraceEntry trace[128];
@@ -57,6 +83,44 @@ static void inside_lock(Fake *fake)
         fake->callbacksOutsideLock++;
 }
 
+static unsigned int remaining_data_events(const Fake *fake)
+{
+    unsigned int index;
+    unsigned int count = 0;
+
+    for (index = fake->eventIndex; index < fake->eventCount; index++) {
+        if (fake->events[index] == kPEKeyWestInterruptData)
+            count++;
+    }
+    return count;
+}
+
+static int event_is_ready(const Fake *fake)
+{
+    unsigned char event;
+    unsigned int remaining;
+
+    if (!fake->controllerStarted || fake->eventIndex >= fake->eventCount)
+        return 0;
+    event = fake->events[fake->eventIndex];
+    if (event == kPEKeyWestInterruptAddress)
+        return fake->eventIndex == 0;
+    if (event == kPEKeyWestInterruptData) {
+        if (!fake->directionRead)
+            return fake->dataWritten;
+        remaining = remaining_data_events(fake);
+        if (remaining > 1)
+            return (fake->regs[kPEKeyWestRegControl] &
+                kPEKeyWestControlSendACK) != 0;
+        return (fake->regs[kPEKeyWestRegControl] &
+            kPEKeyWestControlSendACK) == 0;
+    }
+    if (event == kPEKeyWestInterruptStop)
+        return (fake->directionRead && fake->readDataCompleted) ||
+            fake->stopIssued;
+    return 0;
+}
+
 static unsigned char fake_read8(void *context, unsigned int reg)
 {
     Fake *fake = (Fake *)context;
@@ -67,14 +131,19 @@ static unsigned char fake_read8(void *context, unsigned int reg)
         if (fake->stallAt >= 0 &&
             fake->eventIndex >= (unsigned int)fake->stallAt)
             value = 0;
-        else if (fake->eventIndex < fake->eventCount)
+        else if (event_is_ready(fake)) {
             value = fake->events[fake->eventIndex];
-        else
+            fake->eventPresented = 1;
+        } else
             value = 0;
-    } else if (reg == kPEKeyWestRegStatus &&
+    } else if (reg == kPEKeyWestRegStatus && fake->eventPresented &&
         fake->eventIndex < fake->eventCount) {
         value = fake->acks[fake->eventIndex];
     } else if (reg == kPEKeyWestRegData) {
+        if (!fake->eventPresented || !fake->directionRead ||
+            fake->events[fake->eventIndex] != kPEKeyWestInterruptData)
+            fake->invalidTransitions++;
+        fake->dataRead = 1;
         value = fake->data[fake->dataIndex++];
     } else {
         value = fake->regs[reg];
@@ -91,12 +160,42 @@ static void fake_write8(void *context, unsigned int reg, unsigned char value)
     fake->regs[reg] = value;
     trace(fake, 'w', reg, value);
     if (reg == kPEKeyWestRegControl &&
-        value == kPEKeyWestControlTransferAddress)
+        value == kPEKeyWestControlTransferAddress) {
         fake->controllerStarted = 1;
+        fake->directionRead =
+            (fake->regs[kPEKeyWestRegAddress] & 1) != 0;
+    }
+    if (reg == kPEKeyWestRegControl &&
+        value == kPEKeyWestControlStop)
+        fake->stopIssued = 1;
+    if (reg == kPEKeyWestRegControl && value == 0 &&
+        fake->directionRead && fake->eventPresented &&
+        fake->eventIndex < fake->eventCount &&
+        fake->events[fake->eventIndex] == kPEKeyWestInterruptData &&
+        remaining_data_events(fake) > 1)
+        fake->invalidTransitions++;
+    if (reg == kPEKeyWestRegData) {
+        if (!fake->controllerStarted || fake->directionRead ||
+            fake->eventIndex >= fake->eventCount ||
+            fake->events[fake->eventIndex] != kPEKeyWestInterruptData)
+            fake->invalidTransitions++;
+        fake->dataWritten = 1;
+    }
     if (reg == kPEKeyWestRegISR && value != 0 &&
         fake->eventIndex < fake->eventCount &&
-        value == fake->events[fake->eventIndex])
+        value == fake->events[fake->eventIndex] &&
+        fake->eventPresented) {
+        if (value == kPEKeyWestInterruptData && fake->directionRead &&
+            !fake->dataRead)
+            fake->invalidTransitions++;
+        if (value == kPEKeyWestInterruptData && fake->directionRead &&
+            remaining_data_events(fake) == 1)
+            fake->readDataCompleted = 1;
         fake->eventIndex++;
+        fake->eventPresented = 0;
+        fake->dataWritten = 0;
+        fake->dataRead = 0;
+    }
 }
 
 static unsigned int fake_read_fcr1(void *context)
@@ -123,7 +222,12 @@ static void fake_get_time(void *context, tvalspec_t *now)
 
     inside_lock(fake);
     *now = fake->now;
+    fake->timeReads++;
     fake->now.tv_nsec++;
+    if (fake->now.tv_nsec >= NSEC_PER_SEC) {
+        fake->now.tv_nsec = 0;
+        fake->now.tv_sec++;
+    }
     trace(fake, 't', 0, now->tv_nsec);
 }
 
@@ -139,6 +243,18 @@ static int fake_compare_time(void *context, const tvalspec_t *left,
     if (left->tv_nsec == right->tv_nsec)
         return 0;
     return left->tv_nsec < right->tv_nsec ? -1 : 1;
+}
+
+static kern_return_t fake_transfer_status(void *context)
+{
+    Fake *fake = (Fake *)context;
+
+    inside_lock(fake);
+    trace(fake, 'e', 0, fake->eventIndex);
+    if (fake->arbitrationAt >= 0 &&
+        fake->eventIndex >= (unsigned int)fake->arbitrationAt)
+        return KERN_PE_KEYWEST_ARBITRATION_LOST;
+    return KERN_SUCCESS;
 }
 
 static void fake_lock(void *context)
@@ -170,6 +286,7 @@ static PEKeyLargoTransport transport_for(Fake *fake)
     transport.writeFCR1LE = fake_write_fcr1;
     transport.getTime = fake_get_time;
     transport.compareTime = fake_compare_time;
+    transport.transferStatus = fake_transfer_status;
     transport.lock = fake_lock;
     transport.unlock = fake_unlock;
     return transport;
@@ -179,6 +296,7 @@ static void init_fake(Fake *fake)
 {
     memset(fake, 0, sizeof(*fake));
     fake->stallAt = -1;
+    fake->arbitrationAt = -1;
 }
 
 static PEKeyWestI2CRequest request_for(unsigned char *buffer,
@@ -209,6 +327,64 @@ static int saw_write(const Fake *fake, unsigned int reg, unsigned long value)
     return 0;
 }
 
+static unsigned int count_writes(const Fake *fake, unsigned int reg,
+    unsigned long value)
+{
+    unsigned int index;
+    unsigned int count = 0;
+
+    for (index = 0; index < fake->traceCount; index++) {
+        if (fake->trace[index].kind == 'w' &&
+            fake->trace[index].reg == reg &&
+            fake->trace[index].value == value)
+            count++;
+    }
+    return count;
+}
+
+static void expect_trace_in_order(const Fake *fake,
+    const TraceEntry *expected, unsigned int expectedCount)
+{
+    unsigned int actualIndex = 0;
+    unsigned int expectedIndex;
+
+    for (expectedIndex = 0; expectedIndex < expectedCount;
+        expectedIndex++) {
+        while (actualIndex < fake->traceCount &&
+            (fake->trace[actualIndex].kind != expected[expectedIndex].kind ||
+            fake->trace[actualIndex].reg != expected[expectedIndex].reg ||
+            fake->trace[actualIndex].value !=
+            expected[expectedIndex].value))
+            actualIndex++;
+        CHECK(actualIndex < fake->traceCount);
+        if (actualIndex < fake->traceCount)
+            actualIndex++;
+    }
+}
+
+static void expect_cleanup_order(const Fake *fake)
+{
+    static const TraceEntry expected[] = {
+        { 'w', kPEKeyWestRegControl, 0 },
+        { 'w', kPEKeyWestRegIER, 0 },
+        { 'w', kPEKeyWestRegStatus, 0 },
+        { 'w', kPEKeyWestRegISR, kPEKeyWestInterruptMask },
+        { 'U', 0, 0 }
+    };
+    unsigned int start;
+    unsigned int index;
+
+    CHECK(fake->traceCount >= ARRAY_COUNT(expected));
+    if (fake->traceCount < ARRAY_COUNT(expected))
+        return;
+    start = fake->traceCount - ARRAY_COUNT(expected);
+    for (index = 0; index < ARRAY_COUNT(expected); index++) {
+        CHECK(fake->trace[start + index].kind == expected[index].kind);
+        CHECK(fake->trace[start + index].reg == expected[index].reg);
+        CHECK(fake->trace[start + index].value == expected[index].value);
+    }
+}
+
 static void expect_serialized_and_clean(const Fake *fake)
 {
     CHECK(fake->traceCount >= 2);
@@ -217,8 +393,33 @@ static void expect_serialized_and_clean(const Fake *fake)
     CHECK(fake->callbacksOutsideLock == 0);
     CHECK(fake->lockDepth == 0);
     CHECK(saw_write(fake, kPEKeyWestRegControl, kPEKeyWestControlStop));
+    CHECK(count_writes(fake, kPEKeyWestRegControl,
+        kPEKeyWestControlStop) == 1);
     CHECK(saw_write(fake, kPEKeyWestRegControl, 0));
     CHECK(saw_write(fake, kPEKeyWestRegIER, 0));
+    CHECK(fake->invalidTransitions == 0);
+    expect_cleanup_order(fake);
+}
+
+static void test_error_abi_values(void)
+{
+    kern_return_t errors[5];
+    unsigned int index;
+    unsigned int other;
+
+    errors[0] = KERN_PE_KEYWEST_NACK;
+    errors[1] = KERN_PE_KEYWEST_BUSY;
+    errors[2] = KERN_PE_KEYWEST_ARBITRATION_LOST;
+    errors[3] = KERN_PE_KEYWEST_TIMEOUT;
+    errors[4] = KERN_PE_KEYLARGO_NOT_READY;
+    for (index = 0; index < ARRAY_COUNT(errors); index++) {
+        CHECK(err_get_system(errors[index]) == err_get_system(err_kern));
+        CHECK(err_get_sub(errors[index]) ==
+            EXPECTED_PE_KEYLARGO_SUBSYSTEM);
+        CHECK(err_get_code(errors[index]) == (int)(index + 1));
+        for (other = index + 1; other < ARRAY_COUNT(errors); other++)
+            CHECK(errors[index] != errors[other]);
+    }
 }
 
 static void test_keywest_write_success(void)
@@ -227,6 +428,17 @@ static void test_keywest_write_success(void)
     PEKeyLargoTransport transport;
     PEKeyWestI2CRequest request;
     unsigned char bytes[2] = { 0xa5, 0x5a };
+    static const TraceEntry expected[] = {
+        { 'w', kPEKeyWestRegMode,
+            (2U << 4) | kPEKeyWestModeStandardSubaddress },
+        { 'w', kPEKeyWestRegAddress, 0x68 },
+        { 'w', kPEKeyWestRegSubaddress, 0x15 },
+        { 'w', kPEKeyWestRegControl,
+            kPEKeyWestControlTransferAddress },
+        { 'w', kPEKeyWestRegData, 0xa5 },
+        { 'w', kPEKeyWestRegData, 0x5a },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop }
+    };
 
     init_fake(&fake);
     fake.events[0] = kPEKeyWestInterruptAddress;
@@ -248,6 +460,7 @@ static void test_keywest_write_success(void)
     CHECK(saw_write(&fake, kPEKeyWestRegSubaddress, 0x15));
     CHECK(saw_write(&fake, kPEKeyWestRegData, 0xa5));
     CHECK(saw_write(&fake, kPEKeyWestRegData, 0x5a));
+    expect_trace_in_order(&fake, expected, ARRAY_COUNT(expected));
     expect_serialized_and_clean(&fake);
 }
 
@@ -257,6 +470,19 @@ static void test_keywest_read_success(void)
     PEKeyLargoTransport transport;
     PEKeyWestI2CRequest request;
     unsigned char bytes[2] = { 0, 0 };
+    static const TraceEntry expected[] = {
+        { 'w', kPEKeyWestRegMode, (2U << 4) | kPEKeyWestModeCombined },
+        { 'w', kPEKeyWestRegAddress, 0x69 },
+        { 'w', kPEKeyWestRegSubaddress, 0x15 },
+        { 'w', kPEKeyWestRegControl,
+            kPEKeyWestControlTransferAddress },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlSendACK },
+        { 'r', kPEKeyWestRegData, 0x31 },
+        { 'w', kPEKeyWestRegISR, kPEKeyWestInterruptData },
+        { 'w', kPEKeyWestRegControl, 0 },
+        { 'r', kPEKeyWestRegData, 0x42 },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop }
+    };
 
     init_fake(&fake);
     fake.events[0] = kPEKeyWestInterruptAddress;
@@ -277,6 +503,39 @@ static void test_keywest_read_success(void)
     CHECK(saw_write(&fake, kPEKeyWestRegAddress, 0x69));
     CHECK(saw_write(&fake, kPEKeyWestRegControl,
         kPEKeyWestControlSendACK));
+    expect_trace_in_order(&fake, expected, ARRAY_COUNT(expected));
+    expect_serialized_and_clean(&fake);
+}
+
+static void test_keywest_one_byte_read_order(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    PEKeyWestI2CRequest request;
+    unsigned char byte = 0;
+    static const TraceEntry expected[] = {
+        { 'w', kPEKeyWestRegControl,
+            kPEKeyWestControlTransferAddress },
+        { 'r', kPEKeyWestRegData, 0x7c },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop },
+        { 'w', kPEKeyWestRegControl, 0 }
+    };
+
+    init_fake(&fake);
+    fake.events[0] = kPEKeyWestInterruptAddress;
+    fake.events[1] = kPEKeyWestInterruptData;
+    fake.events[2] = kPEKeyWestInterruptStop;
+    fake.acks[0] = kPEKeyWestStatusLastACK;
+    fake.data[0] = 0x7c;
+    fake.eventCount = 3;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestRead);
+
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) == KERN_SUCCESS);
+    CHECK(byte == 0x7c);
+    CHECK(!saw_write(&fake, kPEKeyWestRegControl,
+        kPEKeyWestControlSendACK));
+    expect_trace_in_order(&fake, expected, ARRAY_COUNT(expected));
     expect_serialized_and_clean(&fake);
 }
 
@@ -286,6 +545,23 @@ static void test_keywest_nacks(void)
     PEKeyLargoTransport transport;
     PEKeyWestI2CRequest request;
     unsigned char byte = 0x55;
+    static const TraceEntry addressNACK[] = {
+        { 'w', kPEKeyWestRegControl,
+            kPEKeyWestControlTransferAddress },
+        { 'r', kPEKeyWestRegISR, kPEKeyWestInterruptAddress },
+        { 'r', kPEKeyWestRegStatus, 0 },
+        { 'w', kPEKeyWestRegISR, kPEKeyWestInterruptAddress },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop },
+        { 'r', kPEKeyWestRegISR, kPEKeyWestInterruptStop }
+    };
+    static const TraceEntry dataNACK[] = {
+        { 'w', kPEKeyWestRegData, 0x55 },
+        { 'r', kPEKeyWestRegISR, kPEKeyWestInterruptData },
+        { 'r', kPEKeyWestRegStatus, 0 },
+        { 'w', kPEKeyWestRegISR, kPEKeyWestInterruptData },
+        { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop },
+        { 'r', kPEKeyWestRegISR, kPEKeyWestInterruptStop }
+    };
 
     init_fake(&fake);
     fake.events[0] = kPEKeyWestInterruptAddress;
@@ -295,6 +571,7 @@ static void test_keywest_nacks(void)
     request = request_for(&byte, 1, kPEKeyWestWrite);
     CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
         KERN_PE_KEYWEST_NACK);
+    expect_trace_in_order(&fake, addressNACK, ARRAY_COUNT(addressNACK));
     expect_serialized_and_clean(&fake);
 
     init_fake(&fake);
@@ -306,6 +583,29 @@ static void test_keywest_nacks(void)
     transport = transport_for(&fake);
     CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
         KERN_PE_KEYWEST_NACK);
+    expect_trace_in_order(&fake, dataNACK, ARRAY_COUNT(dataNACK));
+    expect_serialized_and_clean(&fake);
+}
+
+static void test_keywest_arbitration_loss(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    PEKeyWestI2CRequest request;
+    unsigned char byte = 0x55;
+
+    init_fake(&fake);
+    fake.events[0] = kPEKeyWestInterruptAddress;
+    fake.events[1] = kPEKeyWestInterruptData;
+    fake.events[2] = kPEKeyWestInterruptStop;
+    fake.acks[0] = kPEKeyWestStatusLastACK;
+    fake.eventCount = 3;
+    fake.arbitrationAt = 1;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestWrite);
+
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+        KERN_PE_KEYWEST_ARBITRATION_LOST);
     expect_serialized_and_clean(&fake);
 }
 
@@ -334,6 +634,12 @@ static void test_keywest_timeout_at_every_phase(void)
         PEKeyLargoTransport transport;
         PEKeyWestI2CRequest request;
         unsigned char bytes[2] = { 1, 2 };
+        static const TraceEntry expected[] = {
+            { 'w', kPEKeyWestRegControl,
+                kPEKeyWestControlTransferAddress },
+            { 'w', kPEKeyWestRegControl, kPEKeyWestControlStop },
+            { 'w', kPEKeyWestRegControl, 0 }
+        };
 
         init_fake(&fake);
         fake.events[0] = kPEKeyWestInterruptAddress;
@@ -350,6 +656,79 @@ static void test_keywest_timeout_at_every_phase(void)
         request.deadline.tv_nsec = 3;
         CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
             KERN_PE_KEYWEST_TIMEOUT);
+        expect_trace_in_order(&fake, expected, ARRAY_COUNT(expected));
+        expect_serialized_and_clean(&fake);
+    }
+}
+
+static void test_keywest_deadline_edges(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    PEKeyWestI2CRequest request;
+    unsigned char byte = 0;
+
+    init_fake(&fake);
+    fake.events[0] = kPEKeyWestInterruptAddress;
+    fake.eventCount = 1;
+    fake.stallAt = 0;
+    fake.now.tv_sec = 5;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestRead);
+    request.deadline.tv_sec = 5;
+    request.deadline.tv_nsec = 0;
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+        KERN_PE_KEYWEST_TIMEOUT);
+    CHECK(fake.timeReads == 1);
+    expect_serialized_and_clean(&fake);
+
+    init_fake(&fake);
+    fake.events[0] = kPEKeyWestInterruptAddress;
+    fake.eventCount = 1;
+    fake.stallAt = 0;
+    fake.now.tv_sec = 0;
+    fake.now.tv_nsec = NSEC_PER_SEC - 1;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestRead);
+    request.deadline.tv_sec = 1;
+    request.deadline.tv_nsec = 1;
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+        KERN_PE_KEYWEST_TIMEOUT);
+    CHECK(fake.timeReads == 3);
+    expect_serialized_and_clean(&fake);
+}
+
+static void test_keywest_read_timeouts_around_ack(void)
+{
+    int phase;
+
+    for (phase = 0; phase < 4; phase++) {
+        Fake fake;
+        PEKeyLargoTransport transport;
+        PEKeyWestI2CRequest request;
+        unsigned char bytes[2] = { 0, 0 };
+
+        init_fake(&fake);
+        fake.events[0] = kPEKeyWestInterruptAddress;
+        fake.events[1] = kPEKeyWestInterruptData;
+        fake.events[2] = kPEKeyWestInterruptData;
+        fake.events[3] = kPEKeyWestInterruptStop;
+        fake.acks[0] = kPEKeyWestStatusLastACK;
+        fake.data[0] = 0x11;
+        fake.data[1] = 0x22;
+        fake.eventCount = 4;
+        fake.stallAt = phase;
+        transport = transport_for(&fake);
+        request = request_for(bytes, 2, kPEKeyWestRead);
+        request.deadline.tv_nsec = 3;
+
+        CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+            KERN_PE_KEYWEST_TIMEOUT);
+        if (phase >= 1)
+            CHECK(saw_write(&fake, kPEKeyWestRegControl,
+                kPEKeyWestControlSendACK));
+        if (phase >= 2)
+            CHECK(saw_write(&fake, kPEKeyWestRegControl, 0));
         expect_serialized_and_clean(&fake);
     }
 }
@@ -498,11 +877,16 @@ static void test_public_wrappers_are_not_ready(void)
 
 int main(void)
 {
+    test_error_abi_values();
     test_keywest_write_success();
     test_keywest_read_success();
+    test_keywest_one_byte_read_order();
     test_keywest_nacks();
+    test_keywest_arbitration_loss();
     test_keywest_initial_busy();
     test_keywest_timeout_at_every_phase();
+    test_keywest_deadline_edges();
+    test_keywest_read_timeouts_around_ack();
     test_gpio_polarities_and_semantics();
     test_i2s_states_preserve_bits_and_order();
     test_public_wrappers_are_not_ready();

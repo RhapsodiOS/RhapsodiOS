@@ -41,6 +41,7 @@ typedef struct {
     void (*getTime)(void *context, tvalspec_t *now);
     int (*compareTime)(void *context, const tvalspec_t *left,
         const tvalspec_t *right);
+    kern_return_t (*transferStatus)(void *context);
     void (*lock)(void *context);
     void (*unlock)(void *context);
 } PEKeyLargoTransport;

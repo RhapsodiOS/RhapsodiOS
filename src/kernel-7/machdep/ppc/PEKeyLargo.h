@@ -4,6 +4,7 @@
 #include <mach/boolean.h>
 #include <mach/kern_return.h>
 #include <mach/clock_types.h>
+#include <mach/error.h>
 
 typedef enum {
     kPEKeyWestWrite = 0,
@@ -31,11 +32,17 @@ typedef enum {
     kPEI2SCellRunning = 2
 } PEI2SCellState;
 
-#define KERN_PE_KEYWEST_NACK             ((kern_return_t)0x100)
-#define KERN_PE_KEYWEST_BUSY             ((kern_return_t)0x101)
-#define KERN_PE_KEYWEST_ARBITRATION_LOST ((kern_return_t)0x102)
-#define KERN_PE_KEYWEST_TIMEOUT          ((kern_return_t)0x103)
-#define KERN_PE_KEYLARGO_NOT_READY       ((kern_return_t)0x104)
+/* Subsystem 4000 is PM; 4001 is otherwise unused and reserved here. */
+#define PE_KEYLARGO_ERROR_SUBSYSTEM 4001
+#define pe_keylargo_err(code) \
+    ((kern_return_t)(err_kern | err_sub(PE_KEYLARGO_ERROR_SUBSYSTEM) | \
+    (code)))
+
+#define KERN_PE_KEYWEST_NACK             pe_keylargo_err(1)
+#define KERN_PE_KEYWEST_BUSY             pe_keylargo_err(2)
+#define KERN_PE_KEYWEST_ARBITRATION_LOST pe_keylargo_err(3)
+#define KERN_PE_KEYWEST_TIMEOUT          pe_keylargo_err(4)
+#define KERN_PE_KEYLARGO_NOT_READY       pe_keylargo_err(5)
 
 kern_return_t PEKeyWestI2CTransfer(const PEKeyWestI2CRequest *request);
 kern_return_t PEAudioGPIORead(const PEAudioGPIO *gpio, boolean_t *active);

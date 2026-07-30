@@ -6,8 +6,8 @@ keylargo_transport_valid(const PEKeyLargoTransport *transport)
     return transport != 0 && transport->read8 != 0 &&
         transport->write8 != 0 && transport->readFCR1LE != 0 &&
         transport->writeFCR1LE != 0 && transport->getTime != 0 &&
-        transport->compareTime != 0 && transport->lock != 0 &&
-        transport->unlock != 0;
+        transport->compareTime != 0 && transport->transferStatus != 0 &&
+        transport->lock != 0 && transport->unlock != 0;
 }
 
 static boolean_t
@@ -25,10 +25,14 @@ keywest_wait_interrupt(const PEKeyLargoTransport *transport,
     unsigned char expected, const tvalspec_t *deadline)
 {
     unsigned char pending;
+    kern_return_t status;
 
     for (;;) {
         if (keywest_deadline_reached(transport, deadline))
             return KERN_PE_KEYWEST_TIMEOUT;
+        status = transport->transferStatus(transport->context);
+        if (status != KERN_SUCCESS)
+            return status;
         pending = transport->read8(transport->context,
             kPEKeyWestRegISR);
         if ((pending & expected) != 0)

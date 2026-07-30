@@ -263,23 +263,27 @@ static TASStatus codec_for_chain(const TASPropertyReader *reader,
     const char *soundCompatible;
     const char *refCompatible;
     TASNode codec;
+    TASNode busCodec;
+    TASNode chipCodec;
     TASStatus soundStatus;
     TASStatus status;
-    int haveRef;
+    int haveBusRef;
+    int haveChipRef;
     soundStatus = compatible_kind(reader, soundChip, &soundKind,
         &soundCompatible);
     if (soundStatus != kTASStatusOK &&
         soundStatus != kTASStatusNotMatched)
         return soundStatus;
-    status = resolve_ref(reader, soundBus, &codec, &haveRef);
+    status = resolve_ref(reader, soundBus, &busCodec, &haveBusRef);
     if (status != kTASStatusOK)
         return status;
-    if (!haveRef) {
-        status = resolve_ref(reader, soundChip, &codec, &haveRef);
-        if (status != kTASStatusOK)
-            return status;
-    }
-    if (haveRef) {
+    status = resolve_ref(reader, soundChip, &chipCodec, &haveChipRef);
+    if (status != kTASStatusOK)
+        return status;
+    if (haveBusRef && haveChipRef && busCodec != chipCodec)
+        return kTASStatusConflict;
+    if (haveBusRef || haveChipRef) {
+        codec = haveBusRef ? busCodec : chipCodec;
         status = compatible_kind(reader, codec, &refKind, &refCompatible);
         if (status != kTASStatusOK)
             return status;

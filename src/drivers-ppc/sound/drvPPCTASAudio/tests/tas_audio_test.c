@@ -136,6 +136,47 @@ static void test_ref_is_required_for_aoakeylargo(void)
     CHECK(parse(&fixture, &config) == kTASStatusAmbiguous);
 }
 
+static void test_bus_and_chip_codec_refs_are_reconciled(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASMachineConfig before;
+    unsigned long cells[2];
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x30;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip,
+        "platform-tas-codec-ref", cells, 1);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    TASFixtureRemove(&fixture, kFixtureSoundBus,
+        "platform-tas-codec-ref");
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+
+    memset(&config, 0xa5, sizeof(config));
+    before = config;
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x43;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip,
+        "platform-tas-codec-ref", cells, 1);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x30; cells[1] = 0x30;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip,
+        "platform-tas-codec-ref", cells, 2);
+    config = before;
+    CHECK(parse(&fixture, &config) == kTASStatusMalformed);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x77;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip,
+        "platform-tas-codec-ref", cells, 1);
+    config = before;
+    CHECK(parse(&fixture, &config) == kTASStatusUnresolved);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+}
+
 static void test_multiple_i2s_candidates_are_ambiguous(void)
 {
     TASFixture fixture;
@@ -591,6 +632,7 @@ int main(void)
     test_rejects_non_sound_bus_role();
     test_four_callback_reader_contract();
     test_ref_is_required_for_aoakeylargo();
+    test_bus_and_chip_codec_refs_are_reconciled();
     test_multiple_i2s_candidates_are_ambiguous();
     test_old_codec_fallback_parent_and_port();
     test_old_endpoint_identity_is_topological();

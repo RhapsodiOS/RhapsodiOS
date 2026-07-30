@@ -253,6 +253,8 @@ static void test_absent_sibling_fields_stay_unchanged(void)
     CFG(expected, 0x4b) = 0x20;
     CFG(expected, 0x4c) &= 0x3f;
     CFG(expected, 0x4f) = 0x20;
+    CFG(expected, 0x52) = 0x13;
+    CFG(expected, 0x53) = 0x13;
     drives[0] = drive(1, 4, VIA_XFER_PIO, 4);
     drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
 
@@ -281,6 +283,8 @@ static void test_later_chip_resets_preserve_owned_fields(void)
         CFG(expected, 0x4b) = 0xa8;
         CFG(expected, 0x4c) |= 0xf0;
         CFG(expected, 0x4f) = 0xff;
+        CFG(expected, 0x52) = 0x13;
+        CFG(expected, 0x53) = 0x13;
 
         VIAResetConfig(&config, chips[i], VIA_CHANNEL_PRIMARY);
 
@@ -353,25 +357,220 @@ static void test_invalid_reset_inputs_fail_closed(void)
     check_invalid_reset_is_unchanged(VIA_CHIP_596A, 2);
 }
 
-static void test_udma_input_is_not_rejected(void)
+static void test_original_586_preserves_udma_window(void)
 {
     viaConfig_t config;
+    viaConfig_t before;
+    viaConfig_t expected;
     viaDriveTiming_t drives[2];
 
-    fill_config(&config, 0x00);
+    fill_config_sequence(&config);
+    before = config;
+    expected = config;
+    CFG(expected, 0x43) = 0x23;
+    CFG(expected, 0x4b) = 0x20;
+    CFG(expected, 0x4c) = 0x0c;
+    CFG(expected, 0x4d) = 0x0d;
+    CFG(expected, 0x4f) = 0x20;
     drives[0] = drive(1, 4, VIA_XFER_UDMA, 0xff);
+    drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
+
+    VIAComputeConfig(&config, VIA_CHIP_586,
+                     VIA_CHANNEL_PRIMARY, drives);
+
+    CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
+
+    VIAResetConfig(&config, VIA_CHIP_586, VIA_CHANNEL_PRIMARY);
+    CHECK(memcmp(&CFG(config, 0x50), &CFG(before, 0x50), 4) == 0);
+}
+
+static void test_586a_udma2_preserves_unowned_and_siblings(void)
+{
+    viaConfig_t config;
+    viaConfig_t expected;
+    viaDriveTiming_t drives[2];
+
+    fill_config(&config, 0x3c);
+    CFG(config, 0x4d) = 0x4d;
+    expected = config;
+    CFG(expected, 0x4b) = 0x20;
+    CFG(expected, 0x4f) = 0x20;
+    CFG(expected, 0x52) = 0x3f;
+    CFG(expected, 0x53) = 0xfc;
+    drives[0] = drive(1, 4, VIA_XFER_UDMA, 2);
+    drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
+
+    VIAComputeConfig(&config, VIA_CHIP_586A,
+                     VIA_CHANNEL_PRIMARY, drives);
+
+    CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
+}
+
+static void test_596a_udma2_preserves_reserved_bits(void)
+{
+    viaConfig_t config;
+    viaConfig_t expected;
+    viaDriveTiming_t drives[2];
+
+    fill_config(&config, 0x18);
+    CFG(config, 0x43) = 0x43;
+    CFG(config, 0x4d) = 0x4d;
+    expected = config;
+    CFG(expected, 0x4b) = 0x20;
+    CFG(expected, 0x4f) = 0x20;
+    CFG(expected, 0x52) = 0x1b;
+    CFG(expected, 0x53) = 0xf8;
+    drives[0] = drive(1, 4, VIA_XFER_UDMA, 2);
+    drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
+
+    VIAComputeConfig(&config, VIA_CHIP_596A,
+                     VIA_CHANNEL_PRIMARY, drives);
+
+    CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
+}
+
+static void test_686a_udma4_and_cable_detection(void)
+{
+    viaConfig_t config;
+    viaConfig_t before;
+    viaConfig_t expected;
+    viaDriveTiming_t drives[2];
+
+    fill_config(&config, 0x10);
+    expected = config;
+    CFG(expected, 0x4b) = 0x20;
+    CFG(expected, 0x4f) = 0x20;
+    CFG(expected, 0x52) = 0x1b;
+    CFG(expected, 0x53) = 0xf0;
+    drives[0] = drive(1, 4, VIA_XFER_UDMA, 4);
     drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
 
     VIAComputeConfig(&config, VIA_CHIP_686A,
                      VIA_CHANNEL_PRIMARY, drives);
 
-    CHECK(CFG(config, 0x4b) == 0x20);
-    CHECK(CFG(config, 0x4f) == 0x20);
+    /* 0x10 preserved, 0x03 disables the absent slave, 0x08 selects 66 MHz. */
+    CHECK(memcmp(config.bytes, expected.bytes, VIA_CONFIG_SIZE) == 0);
+    before = config;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 1);
+    CHECK(memcmp(config.bytes, before.bytes, VIA_CONFIG_SIZE) == 0);
+    CFG(config, 0x52) &= (unsigned char)~0x08;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 0);
+    CFG(config, 0x52) = CFG(before, 0x52);
+    CFG(config, 0x53) = 0xe2;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 0);
 }
 
-static void test_cable_detection_is_disabled(void)
+static void test_686a_channel_uses_one_clock(void)
 {
     viaConfig_t config;
+    viaDriveTiming_t drives[2];
+
+    fill_config(&config, 0x00);
+    drives[0] = drive(1, 4, VIA_XFER_UDMA, 4);
+    drives[1] = drive(1, 4, VIA_XFER_UDMA, 2);
+
+    VIAComputeConfig(&config, VIA_CHIP_686A,
+                     VIA_CHANNEL_PRIMARY, drives);
+
+    CHECK(CFG(config, 0x53) == 0xe0);
+    CHECK(CFG(config, 0x52) == 0xea);
+}
+
+static void test_686a_secondary_mapping_preserves_primary(void)
+{
+    viaConfig_t config;
+    viaDriveTiming_t drives[2];
+
+    fill_config_sequence(&config);
+    drives[0] = drive(1, 4, VIA_XFER_UDMA, 3);
+    drives[1] = drive(0, 0, VIA_XFER_PIO, 0);
+
+    VIAComputeConfig(&config, VIA_CHIP_686A,
+                     VIA_CHANNEL_SECONDARY, drives);
+
+    CHECK(CFG(config, 0x50) == 0x1b);
+    CHECK(CFG(config, 0x51) == 0xf1);
+    CHECK(CFG(config, 0x52) == 0x52);
+    CHECK(CFG(config, 0x53) == 0x53);
+}
+
+static void test_udma_reset_masks(void)
+{
+    static const viaChip_t chips[] = {
+        VIA_CHIP_586A, VIA_CHIP_596A, VIA_CHIP_686A
+    };
+    viaConfig_t config;
+    unsigned char i;
+
+    for (i = 0; i < sizeof(chips) / sizeof(chips[0]); ++i) {
+        fill_config(&config, 0xff);
+        VIAResetConfig(&config, chips[i], VIA_CHANNEL_SECONDARY);
+        if (chips[i] == VIA_CHIP_586A) {
+            CHECK(CFG(config, 0x50) == 0x3f);
+            CHECK(CFG(config, 0x51) == 0x3f);
+        } else if (chips[i] == VIA_CHIP_596A) {
+            CHECK(CFG(config, 0x50) == 0x1b);
+            CHECK(CFG(config, 0x51) == 0x1b);
+        } else {
+            CHECK(CFG(config, 0x50) == 0x13);
+            CHECK(CFG(config, 0x51) == 0x1b);
+        }
+        CHECK(CFG(config, 0x52) == 0xff);
+        CHECK(CFG(config, 0x53) == 0xff);
+    }
+}
+
+static void test_non_udma_and_absent_drives_are_disabled(void)
+{
+    viaConfig_t config;
+    viaDriveTiming_t drives[2];
+
+    fill_config(&config, 0x3c);
+    drives[0] = drive(1, 4, VIA_XFER_MWDMA, 2);
+    drives[1] = drive(0, 0, VIA_XFER_UDMA, 4);
+    VIAComputeConfig(&config, VIA_CHIP_586A,
+                     VIA_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x53) == 0x3f);
+    CHECK(CFG(config, 0x52) == 0x3f);
+
+    fill_config(&config, 0x18);
+    VIAComputeConfig(&config, VIA_CHIP_686A,
+                     VIA_CHANNEL_PRIMARY, drives);
+    CHECK(CFG(config, 0x53) == 0x1b);
+    CHECK(CFG(config, 0x52) == 0x13);
+}
+
+static void test_invalid_udma_modes_fail_closed(void)
+{
+    viaDriveTiming_t absent;
+
+    absent = drive(0, 0, VIA_XFER_PIO, 0);
+    check_invalid_compute_is_unchanged(VIA_CHIP_586A,
+                                       VIA_CHANNEL_PRIMARY,
+                                       drive(1, 4, VIA_XFER_UDMA, 3),
+                                       absent);
+    check_invalid_compute_is_unchanged(VIA_CHIP_596A,
+                                       VIA_CHANNEL_SECONDARY,
+                                       drive(1, 4, VIA_XFER_UDMA, 3),
+                                       absent);
+    check_invalid_compute_is_unchanged(VIA_CHIP_686A,
+                                       VIA_CHANNEL_PRIMARY,
+                                       drive(1, 4, VIA_XFER_UDMA, 4),
+                                       drive(1, 4, VIA_XFER_UDMA, 5));
+}
+
+static void test_cable_detection_conditions(void)
+{
+    viaConfig_t config;
+    viaConfig_t before;
+
+    fill_config(&config, 0x00);
+    CFG(config, 0x52) = 0x08;
+    CFG(config, 0x53) = 0x20;
+    before = config;
 
     fill_config(&config, 0xff);
     CHECK(VIADetect80WireCable(&config, VIA_CHIP_586,
@@ -380,8 +579,21 @@ static void test_cable_detection_is_disabled(void)
                                VIA_CHANNEL_SECONDARY) == 0);
     CHECK(VIADetect80WireCable(&config, VIA_CHIP_596A,
                                VIA_CHANNEL_PRIMARY) == 0);
+    config = before;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A, 2) == 0);
     CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
-                               VIA_CHANNEL_SECONDARY) == 0);
+                               VIA_CHANNEL_PRIMARY) == 1);
+    CHECK(memcmp(config.bytes, before.bytes, VIA_CONFIG_SIZE) == 0);
+    CFG(config, 0x52) = 0x00;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 0);
+    CFG(config, 0x52) = 0x08;
+    CFG(config, 0x53) = 0x00;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 0);
+    CFG(config, 0x53) = 0x22;
+    CHECK(VIADetect80WireCable(&config, VIA_CHIP_686A,
+                               VIA_CHANNEL_PRIMARY) == 0);
 }
 
 int main(void)
@@ -398,8 +610,16 @@ int main(void)
     test_later_chip_resets_preserve_owned_fields();
     test_invalid_compute_inputs_fail_closed();
     test_invalid_reset_inputs_fail_closed();
-    test_udma_input_is_not_rejected();
-    test_cable_detection_is_disabled();
+    test_original_586_preserves_udma_window();
+    test_586a_udma2_preserves_unowned_and_siblings();
+    test_596a_udma2_preserves_reserved_bits();
+    test_686a_udma4_and_cable_detection();
+    test_686a_channel_uses_one_clock();
+    test_686a_secondary_mapping_preserves_primary();
+    test_udma_reset_masks();
+    test_non_udma_and_absent_drives_are_disabled();
+    test_invalid_udma_modes_fail_closed();
+    test_cable_detection_conditions();
 
     if (failures != 0) {
         fprintf(stderr, "via_timing_test: %d failure(s)\n", failures);

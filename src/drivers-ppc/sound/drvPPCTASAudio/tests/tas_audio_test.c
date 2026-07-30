@@ -826,6 +826,16 @@ static void test_i2s_transition_plans_and_stop_timeout(void)
         44100UL, &clock) == kTASStatusOK);
     CHECK(TASPrepareI2STransition(&config, &state, 44100UL,
         &transition) == kTASStatusOK);
+    CHECK(transition.noOp == 1);
+    CHECK(TASBuildI2SStopPlan(&state, &transition, 25UL, &plan) ==
+        kTASStatusOK);
+    CHECK(plan.count == 0UL);
+    CHECK(TASObserveI2SClockStopped(&state, &transition, 1, &stopped) ==
+        kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) == kTASStatusOK);
+    CHECK(plan.count == 0UL);
+    CHECK(TASCommitI2STransition(&state, &stopped) == kTASStatusOK);
+    CHECK(state.activeRate == 44100UL && stopped.observedStopped == 0);
     CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
         &transition) == kTASStatusConflict);
     CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamOutput, 1) ==
@@ -891,6 +901,143 @@ static void test_i2s_transition_plans_and_stop_timeout(void)
     CHECK(state.activeRate == 44100UL);
 }
 
+static void prepare_stopped(const TASMachineConfig *config,
+    const TASSharedClock *state, unsigned long rate,
+    TASI2SStoppedToken *stopped)
+{
+    TASI2STransition transition;
+    CHECK(TASPrepareI2STransition(config, state, rate, &transition) ==
+        kTASStatusOK);
+    CHECK(TASObserveI2SClockStopped(state, &transition, 1, stopped) ==
+        kTASStatusOK);
+}
+
+static void test_i2s_transition_generation_boundaries(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASSharedClock state;
+    TASSharedClock before;
+    TASI2SClock clock;
+    TASI2SClock clockBefore;
+    TASI2STransition transition;
+    TASI2STransition transitionBefore;
+    TASI2SStoppedToken stopped;
+    TASI2SStoppedToken stoppedBefore;
+    TASSharedClock overflowState;
+    TASSharedClock overflowStateBefore;
+    TASI2SStoppedToken overflowStopped;
+    TASI2SStoppedToken overflowStoppedBefore;
+    TASI2SRegisterPlan plan;
+    TASFixtureTumbler(&fixture);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+
+    TASSharedClockInit(&state);
+    state.generation = ~0UL;
+    before = state;
+    memset(&clock, 0xa5, sizeof(clock));
+    clockBefore = clock;
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        44100UL, &clock) == kTASStatusOverflow);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(memcmp(&clock, &clockBefore, sizeof(clock)) == 0);
+
+    TASSharedClockInit(&state);
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        44100UL, &clock) == kTASStatusOK);
+    state.generation = ~0UL;
+    before = state;
+    CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) ==
+        kTASStatusOverflow);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamOutput, 0) ==
+        kTASStatusOK);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamOutput, 1) ==
+        kTASStatusOverflow);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(TASSetI2SOutputsMuted(&state, 0) == kTASStatusOK);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(TASSetI2SOutputsMuted(&state, 1) == kTASStatusOverflow);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    memset(&transition, 0xa5, sizeof(transition));
+    transitionBefore = transition;
+    CHECK(TASPrepareI2STransition(&config, &state, 44100UL,
+        &transition) == kTASStatusOverflow);
+    CHECK(memcmp(&transition, &transitionBefore, sizeof(transition)) == 0);
+
+    state.generation = ~0UL - 1UL;
+    state.quiescedMask = state.activeMask;
+    state.outputsMuted = 1;
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusOK);
+    CHECK(TASBuildI2SStopPlan(&state, &transition, 25UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASObserveI2SClockStopped(&state, &transition, 1, &stopped) ==
+        kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) == kTASStatusOK);
+    overflowState = state;
+    overflowStopped = stopped;
+    overflowState.generation = ~0UL;
+    overflowStopped.transition.generation = ~0UL;
+    overflowStateBefore = overflowState;
+    overflowStoppedBefore = overflowStopped;
+    CHECK(TASCommitI2STransition(&overflowState, &overflowStopped) ==
+        kTASStatusOverflow);
+    CHECK(memcmp(&overflowState, &overflowStateBefore,
+        sizeof(overflowState)) == 0);
+    CHECK(memcmp(&overflowStopped, &overflowStoppedBefore,
+        sizeof(overflowStopped)) == 0);
+    CHECK(TASCommitI2STransition(&state, &stopped) == kTASStatusOK);
+    CHECK(state.activeRate == 48000UL && state.generation == ~0UL);
+    CHECK(stopped.observedStopped == 0);
+    before = state;
+    stoppedBefore = stopped;
+    CHECK(TASCommitI2STransition(&state, &stopped) ==
+        kTASStatusMalformed);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+    CHECK(memcmp(&stopped, &stoppedBefore, sizeof(stopped)) == 0);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusMalformed);
+}
+
+static void test_i2s_tokens_stale_after_shared_state_mutations(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASSharedClock state;
+    TASI2SClock clock;
+    TASI2SStoppedToken stopped;
+    TASI2SRegisterPlan plan;
+    TASFixtureTumbler(&fixture);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+
+    TASSharedClockInit(&state);
+    prepare_stopped(&config, &state, 44100UL, &stopped);
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        44100UL, &clock) == kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusConflict);
+
+    prepare_stopped(&config, &state, 44100UL, &stopped);
+    CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) == kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusConflict);
+
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        44100UL, &clock) == kTASStatusOK);
+    prepare_stopped(&config, &state, 44100UL, &stopped);
+    CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamOutput, 1) ==
+        kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusConflict);
+
+    prepare_stopped(&config, &state, 44100UL, &stopped);
+    CHECK(TASSetI2SOutputsMuted(&state, 1) == kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusConflict);
+}
+
 int main(void)
 {
     test_tumbler_published_shape();
@@ -923,6 +1070,8 @@ int main(void)
     test_exact_i2s_clock_vectors_and_rate_policy();
     test_shared_i2s_clock_acquisition();
     test_i2s_transition_plans_and_stop_timeout();
+    test_i2s_transition_generation_boundaries();
+    test_i2s_tokens_stale_after_shared_state_mutations();
     if (failures != 0) {
         fprintf(stderr, "%d TAS audio checks failed\n", failures);
         return 1;

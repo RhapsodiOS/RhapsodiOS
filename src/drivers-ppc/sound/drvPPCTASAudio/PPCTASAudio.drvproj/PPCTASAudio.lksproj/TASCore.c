@@ -1147,7 +1147,9 @@ static int valid_transition(const TASSharedClock *state,
         memcmp(&transition->clock, &expected, sizeof(expected)) != 0 ||
         transition->generation != state->generation ||
         transition->activeRate != state->activeRate ||
-        transition->activeMask != state->activeMask)
+        transition->activeMask != state->activeMask ||
+        transition->noOp != (state->activeMask != 0UL &&
+        state->activeRate == transition->clock.rate))
         return 0;
     live = state->activeMask != 0UL &&
         state->activeRate != transition->clock.rate;
@@ -1168,6 +1170,8 @@ TASStatus TASPrepareI2STransition(const TASMachineConfig *configuration,
         return kTASStatusMalformed;
     if (!valid_shared_clock(state))
         return kTASStatusMalformed;
+    if (state->generation == ~0UL)
+        return kTASStatusOverflow;
     status = TASSelectI2SClock(configuration, rate, &prepared.clock);
     if (status != kTASStatusOK)
         return status;
@@ -1178,6 +1182,7 @@ TASStatus TASPrepareI2STransition(const TASMachineConfig *configuration,
     prepared.generation = state->generation;
     prepared.activeRate = state->activeRate;
     prepared.activeMask = state->activeMask;
+    prepared.noOp = state->activeMask != 0UL && state->activeRate == rate;
     *transition = prepared;
     return kTASStatusOK;
 }
@@ -1193,6 +1198,10 @@ TASStatus TASBuildI2SStopPlan(const TASSharedClock *state,
     if (!valid_transition(state, transition))
         return kTASStatusConflict;
     memset(&built, 0, sizeof(built));
+    if (transition->noOp) {
+        *plan = built;
+        return kTASStatusOK;
+    }
     plan_step(&built, kTASI2SRequestClockStop, 0UL);
     plan_step(&built, kTASI2SAwaitClockStopped, stopDeadline);
     *plan = built;
@@ -1227,6 +1236,10 @@ TASStatus TASBuildI2SFormatPlan(const TASSharedClock *state,
     if (!valid_transition(state, &stopped->transition))
         return kTASStatusConflict;
     memset(&built, 0, sizeof(built));
+    if (stopped->transition.noOp) {
+        *plan = built;
+        return kTASStatusOK;
+    }
     plan_step(&built, kTASI2SSetCellClockHeld, 0UL);
     plan_format(&built, &stopped->transition.clock);
     plan_step(&built, kTASI2SWriteDataWord,
@@ -1234,5 +1247,25 @@ TASStatus TASBuildI2SFormatPlan(const TASSharedClock *state,
     plan_step(&built, kTASI2SBarrier, 0UL);
     plan_step(&built, kTASI2SSetCellRunning, 0UL);
     *plan = built;
+    return kTASStatusOK;
+}
+
+TASStatus TASCommitI2STransition(TASSharedClock *state,
+    TASI2SStoppedToken *stopped)
+{
+    TASSharedClock committed;
+    TASI2SStoppedToken consumed;
+    if (state == 0 || stopped == 0 || stopped->observedStopped != 1)
+        return kTASStatusMalformed;
+    if (!valid_transition(state, &stopped->transition))
+        return kTASStatusConflict;
+    committed = *state;
+    if (advance_generation(&committed) != kTASStatusOK)
+        return kTASStatusOverflow;
+    if (committed.activeMask != 0UL)
+        committed.activeRate = stopped->transition.clock.rate;
+    memset(&consumed, 0, sizeof(consumed));
+    *state = committed;
+    *stopped = consumed;
     return kTASStatusOK;
 }

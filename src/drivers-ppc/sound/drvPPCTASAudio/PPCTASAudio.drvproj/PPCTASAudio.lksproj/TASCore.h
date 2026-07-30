@@ -133,6 +133,7 @@ typedef struct {
     unsigned long generation;
     unsigned long activeRate;
     unsigned long activeMask;
+    int noOp;
 } TASI2STransition;
 
 typedef struct {
@@ -193,5 +194,7 @@ TASStatus TASObserveI2SClockStopped(const TASSharedClock *state,
     TASI2SStoppedToken *stopped);
 TASStatus TASBuildI2SFormatPlan(const TASSharedClock *state,
     const TASI2SStoppedToken *stopped, TASI2SRegisterPlan *plan);
+TASStatus TASCommitI2STransition(TASSharedClock *state,
+    TASI2SStoppedToken *stopped);
 
 #endif

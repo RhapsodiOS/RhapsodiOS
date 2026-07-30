@@ -1,5 +1,6 @@
 #include "PPCDBDMAAudio.h"
 
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -119,6 +120,12 @@ PPCDBDMAStatus PPCDBDMABuildRing(PPCDBDMARing *ring,
     needed = (chunkCount + 1UL) * PPC_DBDMA_DESCRIPTOR_BYTES;
     if (needed > storage->bytes)
         return kPPCDBDMAOversized;
+#if ULONG_MAX > 0xffffffffUL
+    if (storage->physical > 0xffffffffUL)
+        return kPPCDBDMAOverflow;
+#endif
+    if (needed - 1UL > 0xffffffffUL - storage->physical)
+        return kPPCDBDMAOverflow;
     memset(encoded, 0, sizeof(encoded));
     command = direction == kPPCDBDMAInput ? 2UL : 0UL;
     for (index = 0UL; index < chunkCount; ++index) {

@@ -1909,6 +1909,50 @@ static void test_dbdma_rejects_invalid_and_is_atomic(void)
         32UL, 32UL, &ops) == kPPCDBDMAOverflow);
 }
 
+static void test_dbdma_ring_physical_range_is_exact_and_atomic(void)
+{
+    DMARingBytes bytes;
+    DMATranslateMock translate;
+    PPCDBDMAOps ops;
+    PPCDBDMARing ring;
+    PPCDBDMARing before;
+    PPCDBDMAStorage storage;
+    PPCDBDMADescriptor branch;
+    unsigned char bytesBefore[sizeof(bytes.bytes)];
+    unsigned long tooWide;
+    dma_translate_mock(&translate, 256UL, 256UL, 0x72000000UL,
+        0x72000100UL);
+    ops = dma_ops(&translate, 0);
+    storage = dma_storage(&bytes, 0xfffffff0UL);
+    memset(&ring, 0x39, sizeof(ring));
+    memset(bytes.bytes, 0x4a, sizeof(bytes.bytes));
+    before = ring;
+    memcpy(bytesBefore, bytes.bytes, sizeof(bytesBefore));
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput,
+        dmaBuffer, 256UL, 256UL, &ops) == kPPCDBDMAOverflow);
+    CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+    CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+
+    if (sizeof(unsigned long) > 4U) {
+        tooWide = 0xffffffffUL;
+        ++tooWide;
+        storage.physical = tooWide;
+        translate.calls = 0UL;
+        CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput,
+            dmaBuffer, 256UL, 256UL, &ops) == kPPCDBDMAOverflow);
+        CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+        CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+    }
+
+    storage.physical = 0xffffffe0UL;
+    translate.calls = 0UL;
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput,
+        dmaBuffer, 256UL, 256UL, &ops) == kPPCDBDMAOK);
+    CHECK(ring.descriptorCount == 2UL);
+    CHECK(PPCDBDMALoadDescriptor(&ring, 1UL, &branch) == kPPCDBDMAOK);
+    CHECK(branch.dependency == 0xffffffe0UL);
+}
+
 static void test_dbdma_completion_progression_and_fault_isolation(void)
 {
     DMARingBytes inputBytes;
@@ -2067,6 +2111,7 @@ int main(void)
     test_dbdma_descriptor_words_and_directions();
     test_dbdma_splits_translation_count_and_periods();
     test_dbdma_rejects_invalid_and_is_atomic();
+    test_dbdma_ring_physical_range_is_exact_and_atomic();
     test_dbdma_completion_progression_and_fault_isolation();
     test_dbdma_bounded_transitions();
     if (failures != 0) {

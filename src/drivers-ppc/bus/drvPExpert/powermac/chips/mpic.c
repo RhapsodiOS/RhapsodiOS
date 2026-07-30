@@ -46,6 +46,12 @@
  * MKLINUX-1.0DR2
  */
 
+#ifdef MPIC_DIRECT_HOST_TEST
+
+#include <interrupts.h>
+
+#else
+
 #include <mach/boolean.h>
 
 #ifndef NULL
@@ -70,10 +76,27 @@
 #include <interrupts.h>
 #include <chips/mpic.h>
 
+#endif
+
+int
+PEMPIClogicalForSource(struct powermac_interrupt *map, int count, int source)
+{
+	if (source < 0 || source >= count)
+		return -1;
+	if (map[source].i_device != -1)
+		return map[source].i_device;
+	return PMAC_DEV_MPIC_DIRECT_BASE + source;
+}
+
+#ifndef MPIC_DIRECT_HOST_TEST
+
 /* Prototypes */
 
 static int
 mpic_find_entry(int device, struct powermac_interrupt **handler, int nentries);
+
+static int
+mpic_direct_source(int device);
 
 static unsigned int
 mpic_int_to_number(int index);
@@ -245,12 +268,32 @@ mpic_find_entry(int device,
 	return 0;
 }
 
+static int
+mpic_direct_source(int device)
+{
+	int source;
+
+	if (device < PMAC_DEV_MPIC_DIRECT_BASE)
+		return -1;
+	source = device - PMAC_DEV_MPIC_DIRECT_BASE;
+	if (source >= nmpic_interrupts)
+		return -1;
+	return source;
+}
+
 
 static unsigned int
 mpic_int_to_number(int index)
 {
+	int source;
 
 //kprintf("mpic_pmac_int_to_number: Int: %d\n", index);
+
+	source = mpic_direct_source(index);
+	if (source >= 0)
+		return index;
+	if (index >= PMAC_DEV_MPIC_DIRECT_BASE)
+		return -1;
 
 	// This is temporary. DeviceTreeProbe always bit reverses
 	// for compatibility with the existing config tables. Once
@@ -258,7 +301,8 @@ mpic_int_to_number(int index)
 	index ^= 0x18;
 
 	if (index >= 0 && index < nmpic_interrupts)
-	    return (mpic_interrupts[index].i_device);
+	    return PEMPIClogicalForSource(mpic_interrupts,
+		nmpic_interrupts, index);
 	if (index < (nmpic_interrupts + nmpic_via_interrupts))
 	    return (mpic_via1_interrupts[index - nmpic_interrupts].i_device);
 	return (-1);
@@ -277,13 +321,20 @@ mpic_register_int(int device,
 //kprintf("mpic_register_int: device: %d\n", device);
 
 	/* Check primary interrupts */
-	p = mpic_interrupts;
-	i = mpic_find_entry(device, &p, nmpic_interrupts);
+	i = mpic_direct_source(device);
+	if (i >= 0)
+		p = &mpic_interrupts[i];
+	else {
+		p = mpic_interrupts;
+		i = mpic_find_entry(device, &p, nmpic_interrupts);
+	}
 	if (p) {
 		if (p->i_handler) {
 			panic("mpic_register_int: "
 			      "Interrupt %d already taken!? ", device);
 		} else {
+			if (device >= PMAC_DEV_MPIC_DIRECT_BASE)
+				p->i_device = device;
 			p->i_handler = handler;
 			p->i_level = level;
 			p->i_arg = arg;
@@ -363,11 +414,19 @@ static boolean_t
 mpic_enable_irq(int irq)
 {
   u_long    tmp;
+	int source;
 
-    // This is temporary. DeviceTreeProbe always bit reverses
-    // for compatibility with the existing config tables. Once
-    // GC and the driver config tables agree, remove this.
-    irq ^= 0x18;
+	source = mpic_direct_source(irq);
+	if (source >= 0)
+		irq = source;
+	else {
+		if (irq >= PMAC_DEV_MPIC_DIRECT_BASE)
+			return FALSE;
+		// This is temporary. DeviceTreeProbe always bit reverses
+		// for compatibility with the existing config tables. Once
+		// GC and the driver config tables agree, remove this.
+		irq ^= 0x18;
+	}
 
   /* make sure the irq is in the mpic table and not via-cuda */
   if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
@@ -386,11 +445,19 @@ static boolean_t
 mpic_disable_irq(int irq)
 {
   u_long    tmp;
+	int source;
 
-    // This is temporary. DeviceTreeProbe always bit reverses
-    // for compatibility with the existing config tables. Once
-    // GC and the driver config tables agree, remove this.
-    irq ^= 0x18;
+	source = mpic_direct_source(irq);
+	if (source >= 0)
+		irq = source;
+	else {
+		if (irq >= PMAC_DEV_MPIC_DIRECT_BASE)
+			return FALSE;
+		// This is temporary. DeviceTreeProbe always bit reverses
+		// for compatibility with the existing config tables. Once
+		// GC and the driver config tables agree, remove this.
+		irq ^= 0x18;
+	}
 
   /* make sure the irq is in the mpic table and not via-cuda */
   if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
@@ -476,3 +543,5 @@ void mpic_via1_interrupt(int device, void *ssp, void *arg)
 	  irq &= ~(1<<bit);
 	}
 }
+
+#endif /* !MPIC_DIRECT_HOST_TEST */

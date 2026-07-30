@@ -24,9 +24,15 @@
 #ifndef _POWERMAC_INTERRUPTS_H_
 #define _POWERMAC_INTERRUPTS_H_
 
+#ifdef MPIC_DIRECT_HOST_TEST
+typedef int boolean_t;
+typedef int spl_t;
+struct ppc_saved_state;
+#else
 #include <mach/ppc/boolean.h>
 #include <mach/ppc/thread_status.h> /* for struct ppc_saved_state */
 #include <machdep/ppc/machspl.h>
+#endif
 
 /*
  * Generic Power Macintosh Interrupts
@@ -103,6 +109,8 @@
 #define	PMAC_DEV_START		128
 #define	PMAC_DEV_END		511
 
+#define PMAC_DEV_MPIC_DIRECT_BASE 512
+
 /* Macro for accessing VIA registers */
 #define via_reg(X) reg8(X)
 
@@ -112,6 +120,9 @@ struct powermac_interrupt {
 	void *		i_arg;
 	int		i_device;
 };
+
+extern int PEMPIClogicalForSource(struct powermac_interrupt *map,
+				  int count, int source);
 
 extern unsigned int (*pmac_int_to_number)(int index);
 

@@ -1,0 +1,12 @@
+HOST_CC ?= cc
+HOST_CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
+
+mpic_direct_test: mpic_direct_test.c ../powermac/chips/mpic.c
+	$(HOST_CC) $(HOST_CFLAGS) -DMPIC_DIRECT_HOST_TEST \
+	    -I../powermac -o $@ mpic_direct_test.c ../powermac/chips/mpic.c
+
+test: mpic_direct_test
+	./mpic_direct_test
+
+clean:
+	rm -f mpic_direct_test

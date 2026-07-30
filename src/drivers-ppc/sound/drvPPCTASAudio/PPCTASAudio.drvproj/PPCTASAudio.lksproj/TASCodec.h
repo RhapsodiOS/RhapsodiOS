@@ -18,7 +18,7 @@ typedef struct {
         const unsigned char *, unsigned long, unsigned long,
         unsigned long *);
     TASStatus (*setReset)(void *, int);
-    TASStatus (*delayMicroseconds)(void *, unsigned long);
+    TASStatus (*delayMicroseconds)(void *, unsigned long, unsigned long);
     void (*failMute)(void *);
 } TASCodecCallbacks;
 
@@ -44,6 +44,7 @@ typedef struct TASCodec {
     unsigned long shadowLength[TAS_CODEC_REGISTER_COUNT];
     unsigned long inputGain;
     TASCodecInputSource inputSource;
+    int muted;
     int hardwareValid;
     int shadowComplete;
 } TASCodec;
@@ -68,7 +69,7 @@ TASStatus TASCodecSetInputSource(TASCodec *, TASCodecInputSource,
 
 TASStatus TASCodecFailOperation(TASCodec *, TASStatus);
 TASStatus TASCodecReset(TASCodec *, int);
-TASStatus TASCodecDelay(TASCodec *, unsigned long);
+TASStatus TASCodecDelay(TASCodec *, unsigned long, unsigned long);
 void TASCodecEncode24(unsigned long, unsigned char *);
 
 #endif

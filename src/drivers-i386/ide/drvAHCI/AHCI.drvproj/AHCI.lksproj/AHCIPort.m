@@ -9,9 +9,6 @@ extern unsigned int vm_page_size;
 #define AHCI_LOCK_IDLE       0
 #define AHCI_LOCK_PENDING    1
 #define AHCI_LOCK_DONE       2
-#define AHCI_TFD_BSY         0x80U
-#define AHCI_TFD_DRQ         0x08U
-
 @interface AHCIPort(Task10Private)
 - (void)timeoutFired;
 - (void)recoverCommand;
@@ -238,64 +235,26 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     controller = owner;
 }
 
-- (BOOL)setRecoveryValidator:(AHCIRecoveryValidator)validator
-                      context:(void *)context
-{
-    BOOL installed;
-
-    if (validator == 0)
-        return NO;
-    [commandLock lock];
-    installed = recoveryValidator == 0 ? YES : NO;
-    if (installed) {
-        recoveryValidator = validator;
-        recoveryValidatorContext = context;
-    }
-    [commandLock unlockWith:
-        commandArbiter.state == AHCI_COMMAND_PENDING ?
-        AHCI_LOCK_PENDING :
-        (commandArbiter.state == AHCI_COMMAND_IDLE ?
-         AHCI_LOCK_IDLE : AHCI_LOCK_DONE)];
-    return installed;
-}
-
 - (BOOL)validateRecoveredKind:(AHCIDeviceKind)kind
                   matchesKind:(BOOL)sameKind
 {
-    AHCIRecoveryValidator validator;
-    void *validatorContext;
-    AHCICommandState savedState;
-    AHCICompletionSnapshot savedCompletion;
-    IOReturn savedResult;
-    unsigned int savedRequestedBytes;
-    BOOL savedSkipCommandRecovery;
-    BOOL passed;
+    AHCIPortOps ops;
+    AHCICommandHeader *commandList;
+    unsigned char *commandTable;
+    unsigned short *identifyData;
 
-    validator = recoveryValidator;
-    validatorContext = recoveryValidatorContext;
-    if (!sameKind)
+    if (!sameKind || destroying)
         return NO;
-    if (validator == 0)
-        return YES;
-    savedState = commandArbiter.state;
-    savedCompletion = completionSnapshot;
-    savedResult = commandResult;
-    savedRequestedBytes = requestedBytes;
-    savedSkipCommandRecovery = skipCommandRecovery;
-    recoveryValidationInProgress = YES;
-    commandArbiter.state = AHCI_COMMAND_IDLE;
-    [commandLock unlockWith:AHCI_LOCK_IDLE];
-    passed = validator(validatorContext, self, kind);
-    [commandLock lock];
-    recoveryValidationInProgress = NO;
-    commandArbiter.state = savedState;
-    completionSnapshot = savedCompletion;
-    commandResult = savedResult;
-    requestedBytes = savedRequestedBytes;
-    skipCommandRecovery = savedSkipCommandRecovery;
-    if (destroying)
-        passed = NO;
-    return AHCIRecoveryValidated(1, 1, passed);
+    AHCIPortFillOps(&ops, mmio);
+    commandList = (AHCICommandHeader *)
+                  (arena.virtualBase + arena.commandListOffset);
+    commandTable = (unsigned char *)
+                   (arena.virtualBase + arena.commandTableOffset);
+    identifyData = (unsigned short *)
+                   (arena.virtualBase + arena.identifyOffset);
+    return AHCIPortRecoveryIdentify(&ops, portNumber, &arena, commandList,
+                                    commandTable, identifyData, kind) ==
+           AHCI_PORT_SUCCESS;
 }
 
 - (BOOL)controllerDidReset
@@ -319,6 +278,9 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
              [self validateRecoveredKind:recoveredKind
                               matchesKind:AHCIRecoveredKindValid(
                                   previousKind, recoveredKind)];
+    AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
+                      online ? AHCI_PORT_INITIAL_IE_MASK : 0);
+    AHCIPortMMIOBarrier(mmio);
     if (online)
         deviceKind = recoveredKind;
     if (commandArbiter.state == AHCI_COMMAND_PENDING &&
@@ -474,24 +436,28 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                              previousKind, recoveredKind)]) {
         deviceKind = recoveredKind;
         online = YES;
+        AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
+                          AHCI_PORT_INITIAL_IE_MASK);
+        AHCIPortMMIOBarrier(mmio);
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
     online = NO;
+    AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE, 0);
+    AHCIPortMMIOBarrier(mmio);
     [commandLock unlockWith:AHCI_LOCK_DONE];
     if (result == AHCI_PORT_ENGINE_TIMEOUT && controller != nil)
         [controller recoverController];
 }
 
-- (IOReturn)executeATAInternal:(unsigned char)command
-                            fis:(const unsigned char *)fis
-                         packet:(const unsigned char *)packet
-                         buffer:(void *)buffer
-                         length:(unsigned int)length
-                          write:(BOOL)write
-                        timeout:(unsigned int)seconds
-                    transferred:(unsigned int *)actual
-                       recovery:(BOOL)recovery
+- (IOReturn)executeATA:(unsigned char)command
+                   fis:(const unsigned char *)fis
+                packet:(const unsigned char *)packet
+                buffer:(void *)buffer
+                length:(unsigned int)length
+                 write:(BOOL)write
+               timeout:(unsigned int)seconds
+           transferred:(unsigned int *)actual
 {
     AHCISegment segments[32];
     unsigned int segmentCount;
@@ -518,12 +484,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_OFFLINE;
     }
-    if ((recovery && !recoveryValidationInProgress) ||
-        (!recovery && recoveryValidationInProgress)) {
-        [commandLock unlockWith:AHCI_LOCK_IDLE];
-        return IO_R_BUSY;
-    }
-    if ((!online && !recovery) || mmio == 0 || mmio->base == 0) {
+    if (!online || mmio == 0 || mmio->base == 0) {
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_OFFLINE;
     }
@@ -535,9 +496,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_INVALID_ARG;
     }
-    submissionEntered = recovery ? NO :
-        (controller != nil && [controller beginSubmission]);
-    if (!recovery && !submissionEntered) {
+    submissionEntered = controller != nil && [controller beginSubmission];
+    if (!submissionEntered) {
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_BUSY;
     }
@@ -556,10 +516,6 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         completionSnapshot.serr = 0;
         if (submissionEntered)
             [controller endSubmission];
-        if (recovery) {
-            [commandLock unlockWith:AHCI_LOCK_IDLE];
-            return IO_R_TIMEOUT;
-        }
         ++activeExecutors;
         [commandLock unlockWith:AHCI_LOCK_DONE];
         [self recoverCommand];
@@ -596,8 +552,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     submissionEntered = NO;
     generation = AHCICommandBegin(&commandArbiter);
     if (generation == 0) {
-        if (!recovery)
-            [controller finishSubmissionCommit];
+        [controller finishSubmissionCommit];
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_BUSY;
     }
@@ -624,15 +579,14 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     }
     AHCIPortMMIOBarrier(mmio);
     AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U);
-    if (!recovery)
-        [controller finishSubmissionCommit];
+    [controller finishSubmissionCommit];
     [commandLock unlockWith:AHCI_LOCK_PENDING];
 
     [commandLock lockWhen:AHCI_LOCK_DONE];
     result = commandResult;
     if (result == IO_R_SUCCESS)
         *actual = completionSnapshot.transferred;
-    recover = result != IO_R_SUCCESS && !skipCommandRecovery && !recovery;
+    recover = result != IO_R_SUCCESS && !skipCommandRecovery;
     skipCommandRecovery = NO;
     if (recover) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
@@ -650,34 +604,6 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         return result;
     }
     return result;
-}
-
-- (IOReturn)executeATA:(unsigned char)command
-                   fis:(const unsigned char *)fis
-                packet:(const unsigned char *)packet
-                buffer:(void *)buffer
-                length:(unsigned int)length
-                 write:(BOOL)write
-               timeout:(unsigned int)seconds
-           transferred:(unsigned int *)actual
-{
-    return [self executeATAInternal:command fis:fis packet:packet
-                             buffer:buffer length:length write:write
-                            timeout:seconds transferred:actual recovery:NO];
-}
-
-- (IOReturn)executeRecoveryATA:(unsigned char)command
-                           fis:(const unsigned char *)fis
-                        packet:(const unsigned char *)packet
-                        buffer:(void *)buffer
-                        length:(unsigned int)length
-                         write:(BOOL)write
-                       timeout:(unsigned int)seconds
-                   transferred:(unsigned int *)actual
-{
-    return [self executeATAInternal:command fis:fis packet:packet
-                             buffer:buffer length:length write:write
-                            timeout:seconds transferred:actual recovery:YES];
 }
 
 - (unsigned int)portNumber

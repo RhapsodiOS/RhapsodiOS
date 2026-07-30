@@ -160,12 +160,6 @@ int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after)
            (after == AHCI_DEVICE_SATA || after == AHCI_DEVICE_ATAPI);
 }
 
-int AHCIRecoveryValidated(int sameKind, int validatorInstalled,
-                          int validatorPassed)
-{
-    return sameKind && (!validatorInstalled || validatorPassed);
-}
-
 void AHCIRecoveryGateInit(AHCIRecoveryGate *gate)
 {
     if (gate == 0)

@@ -8,10 +8,6 @@
 #import "AHCIShared.h"
 #import "AHCIPortLogic.h"
 
-@class AHCIPort;
-typedef BOOL (*AHCIRecoveryValidator)(void *context, AHCIPort *port,
-                                      AHCIDeviceKind kind);
-
 @interface AHCIPort : Object
 {
     AHCIMMIOContext *mmio;
@@ -39,9 +35,6 @@ typedef BOOL (*AHCIRecoveryValidator)(void *context, AHCIPort *port,
     BOOL online;
     BOOL controllerResetting;
     BOOL skipCommandRecovery;
-    AHCIRecoveryValidator recoveryValidator;
-    void *recoveryValidatorContext;
-    BOOL recoveryValidationInProgress;
 }
 
 - initWithMMIO:(AHCIMMIOContext *)context
@@ -55,8 +48,6 @@ typedef BOOL (*AHCIRecoveryValidator)(void *context, AHCIPort *port,
 - (BOOL)controllerDidReset;
 - (void)controllerResetFailed;
 - (void)controllerWillReset;
-- (BOOL)setRecoveryValidator:(AHCIRecoveryValidator)validator
-                      context:(void *)context;
 - (IOReturn)executeATA:(unsigned char)command
                    fis:(const unsigned char *)fis
                 packet:(const unsigned char *)packet
@@ -65,14 +56,6 @@ typedef BOOL (*AHCIRecoveryValidator)(void *context, AHCIPort *port,
                  write:(BOOL)write
                timeout:(unsigned int)seconds
            transferred:(unsigned int *)actual;
-- (IOReturn)executeRecoveryATA:(unsigned char)command
-                           fis:(const unsigned char *)fis
-                        packet:(const unsigned char *)packet
-                        buffer:(void *)buffer
-                        length:(unsigned int)length
-                         write:(BOOL)write
-                       timeout:(unsigned int)seconds
-                   transferred:(unsigned int *)actual;
 
 @end
 

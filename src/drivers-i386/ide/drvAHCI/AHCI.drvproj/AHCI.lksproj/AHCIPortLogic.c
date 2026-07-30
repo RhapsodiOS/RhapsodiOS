@@ -29,7 +29,7 @@ AHCIPortResult AHCIPortPrepareArena(unsigned long rawVirtual,
     AHCIU32 physicalBase;
     unsigned int adjustment;
     unsigned long virtualBase;
-    unsigned int offsets[6];
+    unsigned int offsets[8];
     unsigned int i;
 
     if (rawVirtual == 0 || translate == 0 || arena == 0 ||
@@ -62,7 +62,10 @@ AHCIPortResult AHCIPortPrepareArena(unsigned long rawVirtual,
     offsets[4] = AHCI_PORT_COMMAND_TABLE_OFFSET;
     offsets[5] = AHCI_PORT_COMMAND_TABLE_OFFSET +
                  AHCI_PORT_COMMAND_TABLE_BYTES - 1U;
-    for (i = 0; i < 6U; ++i) {
+    offsets[6] = AHCI_PORT_IDENTIFY_OFFSET;
+    offsets[7] = AHCI_PORT_IDENTIFY_OFFSET +
+                 AHCI_PORT_IDENTIFY_BYTES - 1U;
+    for (i = 0; i < 8U; ++i) {
         if (!ahci_translate_expected(translate, translateContext,
                                      virtualBase + offsets[i],
                                      physicalBase + offsets[i]))
@@ -81,6 +84,8 @@ AHCIPortResult AHCIPortPrepareArena(unsigned long rawVirtual,
     arena->receivedFISBytes = AHCI_PORT_RECEIVED_FIS_BYTES;
     arena->commandTableOffset = AHCI_PORT_COMMAND_TABLE_OFFSET;
     arena->commandTableBytes = AHCI_PORT_COMMAND_TABLE_BYTES;
+    arena->identifyOffset = AHCI_PORT_IDENTIFY_OFFSET;
+    arena->identifyBytes = AHCI_PORT_IDENTIFY_BYTES;
     arena->usableBytes = AHCI_PORT_ARENA_USABLE_BYTES;
     return AHCI_PORT_SUCCESS;
 }
@@ -293,6 +298,104 @@ AHCIPortResult AHCIPortRecoverHardware(const AHCIPortOps *ops,
                    AHCI_ENGINE_TIMEOUT_MS))
         return AHCI_PORT_ENGINE_TIMEOUT;
     ahci_port_write(ops, port, AHCI_PX_IE, AHCI_PORT_INITIAL_IE_MASK);
+    return AHCI_PORT_SUCCESS;
+}
+
+static int ahci_identify_data_valid(const volatile unsigned short *identify,
+                                    AHCIDeviceKind kind)
+{
+    unsigned int index;
+    int anyNonzero;
+    int anyNotOnes;
+
+    anyNonzero = 0;
+    anyNotOnes = 0;
+    for (index = 0; index < 256U; ++index) {
+        if (identify[index] != 0)
+            anyNonzero = 1;
+        if (identify[index] != 0xffffU)
+            anyNotOnes = 1;
+    }
+    if (!anyNonzero || !anyNotOnes)
+        return 0;
+    if (kind == AHCI_DEVICE_SATA)
+        return (identify[0] & 0x8040U) == 0x0040U;
+    if (kind == AHCI_DEVICE_ATAPI)
+        return (identify[0] & 0xc000U) == 0x8000U;
+    return 0;
+}
+
+AHCIPortResult AHCIPortRecoveryIdentify(
+    const AHCIPortOps *ops, unsigned int port, const AHCIPortArena *arena,
+    AHCICommandHeader *commandList, unsigned char *commandTable,
+    unsigned short *identifyData, AHCIDeviceKind kind)
+{
+    unsigned char fis[20];
+    AHCISegment segment;
+    AHCIU32 portIS;
+    AHCIU32 taskFile;
+    AHCIU32 serr;
+    AHCIU32 transferred;
+    unsigned int waited;
+    int dataValid;
+
+    if (ops == 0 || ops->read == 0 || ops->write == 0 ||
+        ops->delay == 0 || ops->barrier == 0 || arena == 0 ||
+        commandList == 0 || commandTable == 0 || identifyData == 0 ||
+        port >= 32U || arena->identifyBytes != AHCI_PORT_IDENTIFY_BYTES ||
+        (kind != AHCI_DEVICE_SATA && kind != AHCI_DEVICE_ATAPI))
+        return AHCI_PORT_BAD_ARGUMENT;
+    ahci_port_write(ops, port, AHCI_PX_IE, 0);
+    waited = 0;
+    while ((ahci_port_read(ops, port, AHCI_PX_TFD) &
+            (AHCI_TFD_BSY | AHCI_TFD_DRQ)) != 0 &&
+           waited < AHCI_TFD_TIMEOUT_MS) {
+        ops->delay(ops->context, AHCI_POLL_INTERVAL_MS);
+        waited += AHCI_POLL_INTERVAL_MS;
+    }
+    if ((ahci_port_read(ops, port, AHCI_PX_TFD) &
+         (AHCI_TFD_BSY | AHCI_TFD_DRQ)) != 0)
+        return AHCI_PORT_COMMAND_TIMEOUT;
+
+    memset(identifyData, 0, AHCI_PORT_IDENTIFY_BYTES);
+    AHCIBuildIdentifyFIS(fis, kind == AHCI_DEVICE_ATAPI ? 1U : 0U);
+    segment.address = arena->physicalBase + arena->identifyOffset;
+    segment.length = AHCI_PORT_IDENTIFY_BYTES;
+    if (!AHCIPortBuildSlot(&commandList[0], commandTable,
+                           arena->physicalBase + arena->commandTableOffset,
+                           fis, 0, 0, &segment, 1U,
+                           AHCI_PORT_IDENTIFY_BYTES, 0, 0))
+        return AHCI_PORT_BAD_ARGUMENT;
+
+    ahci_clear_port_errors(ops, port);
+    commandList[0].prdbc = 0;
+    ops->barrier(ops->context);
+    ahci_port_write(ops, port, AHCI_PX_CI, 1U);
+    waited = 0;
+    while ((ahci_port_read(ops, port, AHCI_PX_CI) & 1U) != 0 &&
+           waited < AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS) {
+        ops->delay(ops->context, AHCI_POLL_INTERVAL_MS);
+        waited += AHCI_POLL_INTERVAL_MS;
+    }
+    if ((ahci_port_read(ops, port, AHCI_PX_CI) & 1U) != 0) {
+        (void)AHCIPortStopHardware(ops, port);
+        return AHCI_PORT_COMMAND_TIMEOUT;
+    }
+    portIS = ahci_port_read(ops, port, AHCI_PX_IS);
+    taskFile = ahci_port_read(ops, port, AHCI_PX_TFD);
+    serr = ahci_port_read(ops, port, AHCI_PX_SERR);
+    ops->barrier(ops->context);
+    transferred = ((volatile AHCICommandHeader *)commandList)[0].prdbc;
+    dataValid = ahci_identify_data_valid(
+        (const volatile unsigned short *)identifyData, kind);
+    ahci_port_write(ops, port, AHCI_PX_IS, portIS);
+    ahci_port_write(ops, port, AHCI_PX_SERR, serr);
+    if ((portIS & (AHCI_PXIS_RECOVERABLE_MASK |
+                   AHCI_PXIS_FATAL_MASK)) != 0 ||
+        (taskFile & (AHCI_TFD_BSY | AHCI_TFD_DRQ | AHCI_TFD_ERR)) != 0 ||
+        serr != 0 || transferred != AHCI_PORT_IDENTIFY_BYTES ||
+        !dataValid)
+        return AHCI_PORT_COMMAND_ERROR;
     return AHCI_PORT_SUCCESS;
 }
 

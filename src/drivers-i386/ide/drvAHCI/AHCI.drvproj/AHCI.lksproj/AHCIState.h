@@ -119,8 +119,6 @@ AHCITimeoutAction AHCICommandTimeoutAction(
     const AHCICommandArbiter *arbiter, unsigned int armedGeneration,
     unsigned long deadline, unsigned long now);
 int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after);
-int AHCIRecoveryValidated(int sameKind, int validatorInstalled,
-                          int validatorPassed);
 void AHCIRecoveryGateInit(AHCIRecoveryGate *gate);
 int AHCIRecoveryGateBeginSubmission(AHCIRecoveryGate *gate);
 void AHCIRecoveryGateEndSubmission(AHCIRecoveryGate *gate);

@@ -15,7 +15,9 @@
 #define AHCI_PORT_COMMAND_TABLE_BYTES       \
     (AHCI_PORT_COMMAND_TABLE_HEADER_BYTES + \
      AHCI_PORT_COMMAND_TABLE_PRD_BYTES)
-#define AHCI_PORT_ARENA_USABLE_BYTES        1920U
+#define AHCI_PORT_IDENTIFY_OFFSET            2048U
+#define AHCI_PORT_IDENTIFY_BYTES             512U
+#define AHCI_PORT_ARENA_USABLE_BYTES         2560U
 #define AHCI_PORT_ARENA_ALLOCATION_BYTES    \
     (AHCI_PORT_ARENA_USABLE_BYTES + 4095U)
 
@@ -23,6 +25,10 @@
 #define AHCI_COMRESET_ASSERT_MS             1U
 #define AHCI_LINK_TIMEOUT_MS                10000U
 #define AHCI_TFD_TIMEOUT_MS                 10000U
+#define AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS   10000U
+#define AHCI_TFD_ERR                        0x01U
+#define AHCI_TFD_DRQ                        0x08U
+#define AHCI_TFD_BSY                        0x80U
 #define AHCI_MAX_TRANSFER_BYTES             (128U * 1024U)
 
 #define AHCI_PORT_INITIAL_IE_MASK \
@@ -37,7 +43,9 @@ typedef enum {
     AHCI_PORT_BAD_ARGUMENT,
     AHCI_PORT_ADDRESS_ERROR,
     AHCI_PORT_ENGINE_TIMEOUT,
-    AHCI_PORT_LINK_TIMEOUT
+    AHCI_PORT_LINK_TIMEOUT,
+    AHCI_PORT_COMMAND_TIMEOUT,
+    AHCI_PORT_COMMAND_ERROR
 } AHCIPortResult;
 
 typedef int (*AHCIPortTranslate)(void *context,
@@ -53,6 +61,8 @@ typedef struct {
     unsigned int receivedFISBytes;
     unsigned int commandTableOffset;
     unsigned int commandTableBytes;
+    unsigned int identifyOffset;
+    unsigned int identifyBytes;
     unsigned int usableBytes;
 } AHCIPortArena;
 
@@ -86,6 +96,10 @@ AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
 AHCIPortResult AHCIPortRecoverHardware(const AHCIPortOps *ops,
                                        unsigned int port,
                                        const AHCIPortArena *arena);
+AHCIPortResult AHCIPortRecoveryIdentify(
+    const AHCIPortOps *ops, unsigned int port, const AHCIPortArena *arena,
+    AHCICommandHeader *commandList, unsigned char *commandTable,
+    unsigned short *identifyData, AHCIDeviceKind kind);
 unsigned int AHCIPortCountImplemented(AHCIU32 pi);
 int AHCIPortImplemented(AHCIU32 pi, unsigned int port);
 unsigned int AHCIPortCollectImplemented(AHCIU32 pi, unsigned char *ports,

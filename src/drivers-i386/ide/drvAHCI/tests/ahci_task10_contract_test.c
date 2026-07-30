@@ -44,6 +44,18 @@ static void require_text(const char *file, const char *needle)
     free(text);
 }
 
+static void require_absent(const char *file, const char *needle)
+{
+    char *text;
+
+    text = read_file(file);
+    if (text == NULL || strstr(text, needle) != NULL) {
+        fprintf(stderr, "%s: unexpected %s\n", file, needle);
+        ++failures;
+    }
+    free(text);
+}
+
 static void require_order(const char *file, const char *first,
                           const char *second)
 {
@@ -103,16 +115,16 @@ static int valid_port_lifecycle(const char *text)
            scoped_order(text, "- free", "- (void)finishDeferredFree",
                         "AHCIPortStopHardware(&ops, portNumber)",
                         "quiesceComplete = YES;") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "generation = AHCICommandBegin(&commandArbiter)",
                         "IOScheduleFunc(AHCIPortTimeout, self, 1)") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "IOScheduleFunc(AHCIPortTimeout, self, 1)",
                         "AHCIPortMMIOBarrier(mmio);") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "AHCIPortMMIOBarrier(mmio);",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
@@ -158,38 +170,35 @@ static int valid_port_lifecycle(const char *text)
            scoped_absent(text, "- (void)timeoutFired\n{",
                          "- (void)recoverCommand",
                          "timeoutChain.armedGeneration =") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "if (destroying) {",
-                        "if ((recovery && !recoveryValidationInProgress)") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+                        "if (!online || mmio == 0") &&
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "[controller beginSubmission]",
                         "[controller commitSubmission]") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
-                        "if (recovery) {", "++activeExecutors;") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "[controller commitSubmission]",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)") &&
-           scoped_order(text, "- (IOReturn)executeATAInternal:",
-                        "- (IOReturn)executeATA:",
+           scoped_order(text, "- (IOReturn)executeATA:",
+                        "- (unsigned int)portNumber",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)",
                         "[controller finishSubmissionCommit]") &&
-           scoped_order(text, "- (BOOL)validateRecoveredKind:",
+           scoped_order(text, "matchesKind:(BOOL)sameKind\n{",
                         "- (BOOL)controllerDidReset",
-                        "savedResult = commandResult;",
-                        "passed = validator(validatorContext, self, kind)") &&
-           scoped_order(text, "- (BOOL)validateRecoveredKind:",
-                        "- (BOOL)controllerDidReset",
-                        "passed = validator(validatorContext, self, kind)",
-                        "commandResult = savedResult;") &&
+                        "if (!sameKind || destroying)",
+                        "AHCIPortRecoveryIdentify(&ops") &&
+           scoped_absent(text, "matchesKind:(BOOL)sameKind\n{",
+                         "- (BOOL)controllerDidReset", "commandArbiter") &&
+           scoped_absent(text, "matchesKind:(BOOL)sameKind\n{",
+                         "- (BOOL)controllerDidReset", "unlockWith") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0)",
                         "AHCICommandFinishIRQ(&commandArbiter") &&
            scoped_order(text, "- (void)recoverCommand",
-                        "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
                         "AHCI_RECOVERY_HBA", "[controller recoverController]");
 }
 
@@ -213,8 +222,8 @@ static int valid_controller_recovery(const char *text)
                         "[ports[port] controllerResetFailed]") &&
            scoped_order(text, "- (void)recoverController",
                         "- (BOOL)beginSubmission",
-                        "globalInterruptsEnabled = YES;",
-                        "[ports[port] controllerDidReset]") &&
+                        "[ports[port] controllerDidReset]",
+                        "globalInterruptsEnabled = YES;") &&
            scoped_order(text, "- (void)recoverController",
                         "- (BOOL)beginSubmission",
                         "[ports[port] controllerDidReset]",
@@ -229,6 +238,40 @@ static int valid_controller_recovery(const char *text)
            scoped_order(text, "- (void)finishSubmissionCommit",
                         "- (void)interruptOccurred",
                         "[recoveryLock unlock]", "}");
+}
+
+static int valid_polling_identify(const char *text)
+{
+    return scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "ahci_port_write(ops, port, AHCI_PX_IE, 0)",
+                        "AHCI_PX_TFD") &&
+           scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "waited < AHCI_TFD_TIMEOUT_MS",
+                        "ahci_port_write(ops, port, AHCI_PX_CI, 1U)") &&
+           scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "waited < AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS",
+                        "portIS = ahci_port_read(ops, port, AHCI_PX_IS)") &&
+           scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "portIS = ahci_port_read(ops, port, AHCI_PX_IS)",
+                        "transferred = ((volatile AHCICommandHeader *)") &&
+           scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "transferred = ((volatile AHCICommandHeader *)",
+                        "ahci_port_write(ops, port, AHCI_PX_IS, portIS)") &&
+           scoped_order(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                        "unsigned int AHCIPortCountImplemented",
+                        "ahci_port_write(ops, port, AHCI_PX_IS, portIS)",
+                        "ahci_port_write(ops, port, AHCI_PX_SERR, serr)") &&
+           scoped_absent(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                         "unsigned int AHCIPortCountImplemented",
+                         "AHCICommandFinishIRQ") &&
+           scoped_absent(text, "AHCIPortResult AHCIPortRecoveryIdentify(",
+                         "unsigned int AHCIPortCountImplemented",
+                         "IOScheduleFunc");
 }
 
 static int replace_once(char *out, size_t capacity, const char *source,
@@ -256,8 +299,8 @@ static void test_lifecycle_mutations(const char *portm)
     char *source;
     char *mutation;
     size_t capacity;
-    const char *old_text[5];
-    const char *new_text[5];
+    const char *old_text[7];
+    const char *new_text[7];
     unsigned int index;
 
     source = read_file(portm);
@@ -284,7 +327,11 @@ static void test_lifecycle_mutations(const char *portm)
     new_text[3] = "AHCI_RECOVERY_PORT";
     old_text[4] = "result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,\n                                        &arena, &recoveredKind);";
     new_text[4] = "result = AHCI_PORT_SUCCESS; recoveredKind = AHCI_DEVICE_NONE;";
-    for (index = 0; index < 5U; ++index) {
+    old_text[5] = "AHCIPortRecoveryIdentify(&ops";
+    new_text[5] = "AHCIPortRecoveryIdentifyMissing(&ops";
+    old_text[6] = "if (!sameKind || destroying)\n        return NO;";
+    new_text[6] = "if (!sameKind || destroying)\n        return NO;\n    AHCICommandFinishIRQ(&commandArbiter, 1U);";
+    for (index = 0; index < 7U; ++index) {
         if (!replace_once(mutation, capacity, source, old_text[index],
                           new_text[index]) ||
             valid_port_lifecycle(mutation)) {
@@ -308,17 +355,62 @@ static void test_controller_recovery(const char *ctrlm)
     free(source);
 }
 
+static void test_polling_identify(const char *logicc)
+{
+    char *source;
+    char *mutation;
+    size_t capacity;
+    const char *old_text[3];
+    const char *new_text[3];
+    unsigned int index;
+
+    source = read_file(logicc);
+    if (source == NULL || !valid_polling_identify(source)) {
+        fprintf(stderr, "production polling IDENTIFY rejected\n");
+        ++failures;
+        free(source);
+        return;
+    }
+    capacity = strlen(source) + 256U;
+    mutation = (char *)malloc(capacity);
+    if (mutation == NULL) {
+        free(source);
+        ++failures;
+        return;
+    }
+    old_text[0] = "waited < AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS)";
+    new_text[0] = "waited < 0)";
+    old_text[1] = "ahci_port_write(ops, port, AHCI_PX_IS, portIS);";
+    new_text[1] = "ops->barrier(ops->context);";
+    old_text[2] = "return AHCI_PORT_SUCCESS;\n}\n\nunsigned int AHCIPortCountImplemented";
+    new_text[2] = "IOScheduleFunc(0, 0, 0);\n    return AHCI_PORT_SUCCESS;\n}\n\nunsigned int AHCIPortCountImplemented";
+    for (index = 0; index < 3U; ++index) {
+        if (!replace_once(mutation, capacity, source, old_text[index],
+                          new_text[index]) ||
+            valid_polling_identify(mutation)) {
+            fprintf(stderr, "polling IDENTIFY mutation %u survived\n",
+                    index);
+            ++failures;
+        }
+    }
+    free(mutation);
+    free(source);
+}
+
 int main(void)
 {
     const char *porth = "../AHCI.drvproj/AHCI.lksproj/AHCIPort.h";
     const char *portm = "../AHCI.drvproj/AHCI.lksproj/AHCIPort.m";
+    const char *logicc = "../AHCI.drvproj/AHCI.lksproj/AHCIPortLogic.c";
+    const char *logich = "../AHCI.drvproj/AHCI.lksproj/AHCIPortLogic.h";
     const char *ctrlh = "../AHCI.drvproj/AHCI.lksproj/AHCIController.h";
     const char *ctrlm = "../AHCI.drvproj/AHCI.lksproj/AHCIController.m";
 
     require_text(porth, "- (IOReturn)executeATA:(unsigned char)command");
     require_text(porth, "transferred:(unsigned int *)actual;");
-    require_text(porth, "executeRecoveryATA:(unsigned char)command");
-    require_text(porth, "setRecoveryValidator:(AHCIRecoveryValidator)validator");
+    require_absent(porth, "executeRecoveryATA:");
+    require_absent(porth, "AHCIRecoveryValidator");
+    require_absent(portm, "recoveryValidationInProgress");
     require_text(portm, "AHCIPortBuildSegments(");
     require_text(portm, "AHCIPortBuildSlot(");
     require_text(portm, "AHCI_TFD_TIMEOUT_MS");
@@ -348,6 +440,24 @@ int main(void)
     require_text(portm, "[controller commitSubmission]");
     require_text(portm, "[controller finishSubmissionCommit]");
     require_text(portm, "[self validateRecoveredKind:recoveredKind");
+    require_text(portm, "AHCIPortRecoveryIdentify(&ops");
+    require_text(portm, "rawArena = IOMallocLow(rawArenaBytes)");
+    require_text(logich, "AHCI_PORT_IDENTIFY_BYTES             512U");
+    require_text(logich, "AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS");
+    require_text(logicc, "AHCIBuildIdentifyFIS(fis");
+    require_text(logicc, "offsets[6] = AHCI_PORT_IDENTIFY_OFFSET");
+    require_text(logicc, "offsets[7] = AHCI_PORT_IDENTIFY_OFFSET +");
+    require_text(logicc, "ahci_port_write(ops, port, AHCI_PX_IE, 0)");
+    require_order(logicc, "ahci_port_write(ops, port, AHCI_PX_IE, 0)",
+                  "ahci_port_write(ops, port, AHCI_PX_CI, 1U)");
+    require_order(logicc, "AHCI_PX_CI, 1U)",
+                  "waited < AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS");
+    require_order(logicc, "waited < AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS",
+                  "portIS = ahci_port_read(ops, port, AHCI_PX_IS)");
+    require_text(logicc, "transferred != AHCI_PORT_IDENTIFY_BYTES");
+    require_text(logicc, "ahci_identify_data_valid(");
+    require_absent(logicc, "AHCICommandFinishIRQ");
+    require_absent(logicc, "IOScheduleFunc");
     require_text(portm, "AHCICopyVolatileBytes(receivedFISSnapshot");
     require_text(ctrlm, "AHCIRecoveryGateStart(&recoveryGate)");
     require_text(ctrlm, "AHCIRecoveryGateDrained(&recoveryGate)");
@@ -358,6 +468,7 @@ int main(void)
     require_text(ctrlm, "controllerOffline = YES");
     test_lifecycle_mutations(portm);
     test_controller_recovery(ctrlm);
+    test_polling_identify(logicc);
     if (failures != 0)
         return EXIT_FAILURE;
     printf("ahci_task10_contract_test: all tests passed\n");

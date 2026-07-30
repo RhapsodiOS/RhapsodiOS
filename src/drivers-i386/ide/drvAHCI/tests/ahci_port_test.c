@@ -73,7 +73,9 @@ static void test_arena_layout(void)
     CHECK(arena.receivedFISBytes == 256U);
     CHECK(arena.commandTableOffset == 1280U);
     CHECK(arena.commandTableBytes == 640U);
-    CHECK(arena.usableBytes == 1920U);
+    CHECK(arena.identifyOffset == 2048U);
+    CHECK(arena.identifyBytes == 512U);
+    CHECK(arena.usableBytes == 2560U);
     CHECK(((arena.physicalBase + arena.commandTableOffset) & 127U) == 0);
 }
 
@@ -103,6 +105,11 @@ static void test_arena_rejects_invalid_translations(void)
     CHECK(AHCIPortPrepareArena(rawVirtual, AHCI_PORT_ARENA_ALLOCATION_BYTES,
                                4096U, translate, &fake, &arena) ==
           AHCI_PORT_ADDRESS_ERROR);
+
+    fake.discontinuity = 0x21000UL + AHCI_PORT_IDENTIFY_OFFSET;
+    CHECK(AHCIPortPrepareArena(rawVirtual, AHCI_PORT_ARENA_ALLOCATION_BYTES,
+                               4096U, translate, &fake, &arena) ==
+          AHCI_PORT_ADDRESS_ERROR);
 }
 
 enum {
@@ -123,6 +130,13 @@ typedef struct {
     int comresetReleased;
     unsigned int linkWaitedMilliseconds;
     unsigned int linkUpAtMilliseconds;
+    unsigned int identifyCompleteAtMilliseconds;
+    AHCICommandHeader *identifyHeader;
+    unsigned short *identifyData;
+    unsigned short identifyWord0;
+    AHCIU32 identifyPortIS;
+    AHCIU32 identifyTaskFile;
+    AHCIU32 identifySERR;
 } PortFake;
 
 static AHCIU32 port_read(void *context, AHCIU32 offset)
@@ -191,6 +205,18 @@ static void port_delay(void *context, unsigned int milliseconds)
     fake->delayedMilliseconds += milliseconds;
     if (fake->comresetReleased)
         fake->linkWaitedMilliseconds += milliseconds;
+    if (fake->identifyCompleteAtMilliseconds != 0 &&
+        fake->delayedMilliseconds >= fake->identifyCompleteAtMilliseconds &&
+        (fake->registers[AHCI_PX_CI / 4U] & 1U) != 0) {
+        fake->registers[AHCI_PX_CI / 4U] = 0;
+        fake->registers[AHCI_PX_IS / 4U] = fake->identifyPortIS;
+        fake->registers[AHCI_PX_TFD / 4U] = fake->identifyTaskFile;
+        fake->registers[AHCI_PX_SERR / 4U] = fake->identifySERR;
+        if (fake->identifyHeader != 0)
+            fake->identifyHeader->prdbc = 512U;
+        if (fake->identifyData != 0)
+            fake->identifyData[0] = fake->identifyWord0;
+    }
 }
 
 static void port_barrier(void *context)
@@ -663,6 +689,118 @@ static void test_recovery_is_port_local_and_bounded(void)
     CHECK(fake.delayedMilliseconds == AHCI_ENGINE_TIMEOUT_MS);
 }
 
+static void test_recovery_identify_is_polling_only_and_validates_data(void)
+{
+    union {
+        AHCIU32 align;
+        unsigned char bytes[AHCI_PORT_ARENA_USABLE_BYTES];
+    } storage;
+    AHCIPortOps ops;
+    AHCIPortArena arena;
+    PortFake fake;
+    unsigned char *table;
+
+    memset(&storage, 0, sizeof(storage));
+    memset(&arena, 0, sizeof(arena));
+    arena.physicalBase = 0x20000U;
+    arena.commandListOffset = AHCI_PORT_COMMAND_LIST_OFFSET;
+    arena.commandTableOffset = AHCI_PORT_COMMAND_TABLE_OFFSET;
+    arena.identifyOffset = AHCI_PORT_IDENTIFY_OFFSET;
+    arena.identifyBytes = AHCI_PORT_IDENTIFY_BYTES;
+    ops.context = &fake;
+    ops.read = port_read;
+    ops.write = port_write;
+    ops.delay = port_delay;
+    ops.barrier = port_barrier;
+    table = storage.bytes + AHCI_PORT_COMMAND_TABLE_OFFSET;
+
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.identifyCompleteAtMilliseconds = 2U;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    fake.identifyWord0 = 0x0040U;
+    fake.identifyPortIS = AHCI_PXIS_DHRS;
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) == AHCI_PORT_SUCCESS);
+    CHECK(table[2] == 0xecU);
+    CHECK(fake.registers[AHCI_PX_IE / 4U] == 0);
+    CHECK(fake.registers[AHCI_PX_IS / 4U] == 0);
+    CHECK(fake.registers[AHCI_PX_SERR / 4U] == 0);
+    CHECK(fake.delayedMilliseconds == 2U);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATAPI);
+    fake.identifyCompleteAtMilliseconds = 1U;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    fake.identifyWord0 = 0x8000U;
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_ATAPI) == AHCI_PORT_SUCCESS);
+    CHECK(table[2] == 0xa1U);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.identifyCompleteAtMilliseconds = 1U;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    fake.identifyWord0 = 0x8000U;
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) ==
+          AHCI_PORT_COMMAND_ERROR);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.identifyCompleteAtMilliseconds = 1U;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    fake.identifyWord0 = 0x0040U;
+    fake.identifyPortIS = AHCI_PXIS_TFES;
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) ==
+          AHCI_PORT_COMMAND_ERROR);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) ==
+          AHCI_PORT_COMMAND_TIMEOUT);
+    CHECK(fake.delayedMilliseconds == AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.registers[AHCI_PX_TFD / 4U] = AHCI_TFD_BSY;
+    fake.identifyCompleteAtMilliseconds = 1U;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    fake.identifyWord0 = 0x0040U;
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) ==
+          AHCI_PORT_COMMAND_TIMEOUT);
+    CHECK(fake.delayedMilliseconds == AHCI_TFD_TIMEOUT_MS);
+    CHECK(fake.registers[AHCI_PX_CI / 4U] == 0);
+    CHECK(fake.registers[AHCI_PX_IE / 4U] == 0);
+}
+
 static void test_completion_interrupts_are_enabled(void)
 {
     CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_DHRS) != 0);
@@ -705,6 +843,7 @@ int main(void)
     test_buffer_translation_rejects_unsafe_requests();
     test_slot_zero_command_layout();
     test_recovery_is_port_local_and_bounded();
+    test_recovery_identify_is_polling_only_and_validates_data();
     test_completion_interrupts_are_enabled();
     test_received_fis_snapshot_covers_d2h_and_pio();
     if (failures != 0)

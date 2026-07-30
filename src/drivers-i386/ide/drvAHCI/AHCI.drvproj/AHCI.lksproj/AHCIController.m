@@ -388,15 +388,15 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [recoveryLock unlock];
         return;
     }
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil)
+            [ports[port] controllerDidReset];
+    }
     ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
     AHCIMMIOWrite(&mmio, AHCI_REG_GHC,
                   ghc | AHCI_GHC_AE | AHCI_GHC_IE);
     AHCIMMIOBarrier(&mmio);
     globalInterruptsEnabled = YES;
-    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
-        if (ports[port] != nil)
-            [ports[port] controllerDidReset];
-    }
     hbaResetAlreadyTried = NO;
     controllerRecovering = NO;
     [recoveryLock lock];
